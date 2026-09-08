@@ -43,7 +43,7 @@ export default function Dropdown(props: WidgetProps) {
     },
   };
 
-  const handleChange = (path: string, newValue: any) => {
+  const handleChange = (_path: string, newValue: any) => {
     onChange(newValue);
   };
 

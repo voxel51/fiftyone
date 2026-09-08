@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import { ensureColorScheme, useSessionSetter } from "@fiftyone/state";
 import { useCallback } from "react";
 import type { EventHandlerHook } from "./registerEvent";
@@ -9,7 +13,7 @@ const useSetColorScheme: EventHandlerHook = () => {
       // we don't send rgb list to GraphQL
       setter("colorScheme", ensureColorScheme(payload.color_scheme));
     },
-    [setter]
+    [setter],
   );
 };
 export default useSetColorScheme;

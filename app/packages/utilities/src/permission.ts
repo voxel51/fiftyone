@@ -1,7 +1,7 @@
 export function canPerformAction(
   allowed: boolean,
   readOnly: boolean,
-  action?: string
+  action?: string,
 ): CanPerformActionReturnType {
   const enable = allowed && !readOnly;
   let message;
@@ -18,5 +18,5 @@ export function canPerformAction(
 type CanPerformActionReturnType = [
   boolean,
   string | undefined,
-  "pointer" | "not-allowed"
+  "pointer" | "not-allowed",
 ];

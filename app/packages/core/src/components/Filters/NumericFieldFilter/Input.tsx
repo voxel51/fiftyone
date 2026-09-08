@@ -13,7 +13,7 @@ import {
   styles,
 } from "@fiftyone/utilities";
 import type { CSSProperties } from "react";
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRecoilValue } from "recoil";
 
 export type InputType =

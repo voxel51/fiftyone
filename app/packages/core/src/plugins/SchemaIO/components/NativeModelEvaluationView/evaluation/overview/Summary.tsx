@@ -218,10 +218,10 @@ export default function Summary(props) {
               ? "#FF6464"
               : "#8BC18D"
             : negativeRatio
-            ? lesserIsBetter
-              ? "#8BC18D"
-              : "#FF6464"
-            : theme.palette.text.tertiary;
+              ? lesserIsBetter
+                ? "#8BC18D"
+                : "#FF6464"
+              : theme.palette.text.tertiary;
           const showTrophy = lesserIsBetter ? difference < 0 : difference > 0;
           const showCompareTrophy =
             typeof difference === "number" && difference !== 0 && !showTrophy;
@@ -381,7 +381,7 @@ function formatCustomMetricRows(evaluationMetrics, comparisonMetrics) {
     const compareValue = get(
       comparisonMetrics,
       `custom_metrics.${operatorUri}.value`,
-      null
+      null,
     );
     const hasOneValue = customMetric.value !== null || compareValue !== null;
 

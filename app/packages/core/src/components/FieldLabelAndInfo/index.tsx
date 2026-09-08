@@ -1,4 +1,4 @@
-import { InfoIcon, useTheme } from "@fiftyone/components";
+import { InfoIcon, Markdown, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { coloring } from "@fiftyone/state";
 import { Field, formatDate, formatDateTime } from "@fiftyone/utilities";
@@ -68,7 +68,7 @@ function useFieldInfo(field, nested, { expandedPath, color }) {
   const [open, setOpen] = useState(false);
   const [selectedField, setSelectedField] = useRecoilState(selectedFieldInfo);
 
-  function onHover(e) {
+  function onHover() {
     setSelectedField(instanceId);
   }
   function onHoverEnd(e) {
@@ -248,7 +248,7 @@ function FieldInfoExpanded({
   const descTooLong = field.description && field.description.length > 250;
   const tooManyInfoKeys = field.info && Object.keys(field.info).length > 2;
   const [isCollapsed, setIsCollapsed] = useState(
-    descTooLong || tooManyInfoKeys
+    descTooLong || tooManyInfoKeys,
   );
 
   const setIsCustomizingColor = useSetRecoilState(activeColorEntry);
@@ -315,7 +315,7 @@ function FieldInfoExpanded({
         )}
       </FieldInfoExpandedContainer>
     </FieldInfoHoverTarget>,
-    document.body
+    document.body,
   );
 }
 
@@ -349,10 +349,9 @@ const CustomizeColor: React.FunctionComponent<CustomizeColorProp> = ({
 
 function ExpFieldInfoDesc({ collapsed, description }) {
   return (
-    <FieldInfoDesc
-      $collapsed={collapsed}
-      dangerouslySetInnerHTML={{ __html: description }}
-    />
+    <FieldInfoDesc $collapsed={collapsed}>
+      <Markdown>{description}</Markdown>
+    </FieldInfoDesc>
   );
 }
 
@@ -364,7 +363,7 @@ function ExpFieldInfoDesc({ collapsed, description }) {
 // of the target element
 function computePopoverPosition(
   el: MutableRefObject<HTMLElement>,
-  hoverTarget: MutableRefObject<HTMLElement>
+  hoverTarget: MutableRefObject<HTMLElement>,
 ) {
   const targetBounds = hoverTarget.current.getBoundingClientRect();
   const selfBounds = el.current.getBoundingClientRect();
@@ -553,7 +552,7 @@ function FieldInfoTable({
   );
 }
 
-function keyValueIsRenderable([key, value]) {
+function keyValueIsRenderable([, value]) {
   if (value === undefined || value === null) return true;
   switch (typeof value) {
     case "string":

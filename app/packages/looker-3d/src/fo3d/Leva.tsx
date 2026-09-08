@@ -12,7 +12,7 @@ export const Leva = () => {
   const font = useFont();
 
   const [isLevaPanelOn, setIsLevaPanelOn] = useRecoilState(
-    isLevaConfigPanelOnAtom
+    isLevaConfigPanelOnAtom,
   );
 
   useHotkey(
@@ -21,7 +21,7 @@ export const Leva = () => {
       setIsLevaPanelOn((prev) => !prev);
     },
     [],
-    { useTransaction: false }
+    { useTransaction: false },
   );
 
   return createPortal(
@@ -61,6 +61,6 @@ export const Leva = () => {
       flat
       hidden={!isLevaPanelOn}
     />,
-    document.getElementById(LEVA_CONTAINER_ID) ?? document.body
+    document.getElementById(LEVA_CONTAINER_ID) ?? document.body,
   );
 };

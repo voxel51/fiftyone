@@ -6,9 +6,9 @@ import { spawnSync } from "child_process";
 import { Duration } from "src/oss/utils";
 
 /**
- * Options for generating a blank video file via ffmpeg.
+ * Options for generating a video file via ffmpeg.
  */
-interface CreateBlankVideoOptions {
+interface CreateVideoOptions {
   /**
    * Duration of the video in seconds.
    */
@@ -29,28 +29,30 @@ interface CreateBlankVideoOptions {
    * Background color of the video as a CSS hex string (e.g. `"#ff0000"`).
    */
   color: string;
+  /** When `true`, muxes in a sine-tone audio track. */
+  audio?: boolean;
   /**
-   * Path to the output video file.
-   * The file extension must match the codec used — this function encodes
-   * with `libvpx`, so the output path should use a `.webm` extension
-   * (e.g. `/tmp/videos/clip.webm`).
+   * Path to the output video file. The extension picks the container and
+   * codec: `.webm` (VP8) or `.mp4` (VP9, faststart).
    */
   outputPath: string;
 }
 
 /**
- * Generates a blank, solid-color video file using ffmpeg.
+ * Generates a solid-color video file using ffmpeg, optionally carrying a
+ * sine-tone audio track.
  *
- * The video is encoded with the `libvpx` VP8 codec at a target bitrate of 1Mbps
- * and `yuv420p` pixel format. The ffmpeg process is run synchronously via a
- * shell subprocess with a 5-second timeout. Performance timing is always logged
+ * The video codec follows the output extension (VP8/`.webm`, VP9/`.mp4`) at
+ * a target bitrate of 1Mbps and `yuv420p` pixel format; audio, when
+ * requested, is Opus. The ffmpeg process is run synchronously via a shell
+ * subprocess with a 10-second timeout. Performance timing is always logged
  * to the console on completion.
  *
- * @param options - Configuration for video generation. See {@link CreateBlankVideoOptions}.
+ * @param options - Configuration for video generation. See {@link CreateVideoOptions}.
  * @returns A `Promise` that resolves when the video has been written to disk.
  *
  * @example
- * await createBlankVideo({
+ * await createVideo({
  *   outputPath: "/tmp/videos/clip.webm",
  *   duration: 3,
  *   width: 640,
@@ -59,24 +61,40 @@ interface CreateBlankVideoOptions {
  *   color: "#00ff00",
  * });
  */
-export const createBlankVideo = async (
-  options: CreateBlankVideoOptions
+export const createVideo = async (
+  options: CreateVideoOptions,
 ): Promise<void> => {
-  const { duration, width, height, frameRate, color, outputPath } = options;
+  const { duration, width, height, frameRate, color, audio, outputPath } =
+    options;
   const startTime = performance.now();
 
-  const ffmpegCommand = `ffmpeg -filter_complex 'color=c=${color}:s=${width}x${height}' -t ${duration} -r ${String(
-    frameRate
-  )} -c:v libvpx -b:v 1M -pix_fmt yuv420p ${outputPath}`;
+  const isMp4 = outputPath.endsWith(".mp4");
+  const inputs = [
+    `-f lavfi -i 'color=c=${color}:s=${width}x${height}'`,
+    // Opus requires 48 kHz
+    audio ? `-f lavfi -i 'sine=frequency=440:sample_rate=48000'` : "",
+  ];
+  const args = [
+    `-t ${duration}`,
+    `-r ${String(frameRate)}`,
+    `-c:v ${isMp4 ? "libvpx-vp9" : "libvpx"}`,
+    "-b:v 1M",
+    "-pix_fmt yuv420p",
+    audio ? "-c:a libopus -b:a 64k" : "",
+    isMp4 ? "-movflags +faststart" : "",
+  ];
+  const ffmpegCommand = ["ffmpeg", ...inputs, ...args, outputPath]
+    .filter(Boolean)
+    .join(" ");
 
   spawnSync(ffmpegCommand, {
     shell: true,
-    timeout: Duration.Seconds(5),
+    timeout: Duration.Seconds(10),
   });
 
   const endTime = performance.now();
   const timeTaken = endTime - startTime;
   console.log(
-    `Video generation, path = ${outputPath}, completed in ${timeTaken} milliseconds`
+    `Video generation, path = ${outputPath}, completed in ${timeTaken} milliseconds`,
   );
 };

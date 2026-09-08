@@ -1,7 +1,6 @@
 import LoadingDots from "@fiftyone/components/src/components/Loading/LoadingDots";
 import LoadingSpinner from "@fiftyone/components/src/components/Loading/LoadingSpinner";
 import { Box } from "@mui/material";
-import React from "react";
 import { getComponentProps } from "../utils";
 
 export default function LoadingView(props) {

@@ -14,14 +14,15 @@ import {
   selectorFamily,
   useRecoilState,
   useRecoilValue,
-  useRecoilValueLoadable,
 } from "recoil";
 import styled from "styled-components";
 import { prettify } from "../../../utils/generic";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
+import { QuickEditEntry } from "../../Modal/Sidebar/Annotate";
 import { NameAndCountContainer } from "../../utils";
 import RegularEntry from "./RegularEntry";
-import { QuickEditEntry } from "../../Modal/Sidebar/Annotate";
+
+const { LOADING, useActiveModalSampleValue } = fos;
 
 const expandedPathValueEntry = atomFamily<boolean, string>({
   key: "expandedPathValueEntry",
@@ -76,7 +77,7 @@ const ScalarValueEntry = ({
   trigger: (
     event: React.MouseEvent<HTMLDivElement>,
     key: string,
-    cb: () => void
+    cb: () => void,
   ) => void;
   slices?: boolean;
 }) => {
@@ -152,7 +153,7 @@ const ListValueEntry = ({
   trigger: (
     event: React.MouseEvent<HTMLDivElement>,
     key: string,
-    cb: () => void
+    cb: () => void,
   ) => void;
   slices?: boolean;
 }) => {
@@ -176,8 +177,8 @@ const ListValueEntry = ({
         embeddedDocType
           ? embeddedDocType
           : subfield
-          ? `${ftype}(${subfield})`
-          : ftype
+            ? `${ftype}(${subfield})`
+            : ftype
       })`}
       backgroundColor={backgroundColor}
       clickable
@@ -252,14 +253,17 @@ const SlicesLengthLoadable = ({ path }: { path: string }) => {
 };
 
 const LengthLoadable = ({ path }: { path: string }) => {
-  const data = useData<unknown[]>(path);
+  const data = useActiveModalSampleValue<unknown[]>(path);
+  if (data === LOADING) {
+    return <LoadingDots text="" />;
+  }
   return <>{data?.length || 0}</>;
 };
 
 const ListLoadable = ({ path }: { path: string }) => {
-  const data = useData<Primitive[]>(path);
+  const data = useActiveModalSampleValue<Primitive[]>(path);
   const { fields, ftype, subfield } = fos.useAssertedRecoilValue(
-    fos.field(path)
+    fos.field(path),
   );
   const timeZone = useRecoilValue(fos.timeZone);
 
@@ -269,10 +273,15 @@ const ListLoadable = ({ path }: { path: string }) => {
   }
 
   const values = useMemo(() => {
+    if (data === LOADING) return LOADING;
     return Array.from(data || []).map((value) =>
-      format({ fields, ftype: field, value, timeZone })
+      format({ fields, ftype: field, value, timeZone }),
     );
   }, [data, field, fields, timeZone]);
+
+  if (values === LOADING) {
+    return <LoadingDots text="" />;
+  }
 
   return (
     <ListContainer data-cy={`sidebar-entry-${path}`}>
@@ -364,7 +373,8 @@ const SlicesLoadable = ({ path }: { path: string }) => {
 
 const useSlicesData = <T,>(path: string) => {
   const keys = path.split(".");
-  const { activeSampleMap, activeSlices } = fos.useRenderConfig3dState();
+  const activeSampleMap = fos.useActive3dSamplesMap();
+  const activeSlices = fos.useActive3dSlices();
   const slices = Array.from(activeSlices || []).sort();
 
   if (!slices.every((slice) => activeSampleMap[slice])) {
@@ -380,7 +390,7 @@ const useSlicesData = <T,>(path: string) => {
       target,
       keys,
       data[slice].sample,
-      isList
+      isList,
     );
   }
 
@@ -388,8 +398,19 @@ const useSlicesData = <T,>(path: string) => {
 };
 
 const Loadable = ({ path }: { path: string }) => {
-  const value = useData<string | number | null>(path);
-  const none = value === null || value === undefined;
+  const value = useActiveModalSampleValue<string | number | null>(path);
+  if (value === LOADING) return <LoadingDots text="" />;
+  return <LoadableValue path={path} value={value} />;
+};
+
+const LoadableValue = ({
+  path,
+  value,
+}: {
+  path: string;
+  value: string | number | null;
+}) => {
+  const none = value == null;
   const { fields, ftype } =
     useRecoilValue(fos.field(path)) ?? makePseudoField(path);
   const color = useRecoilValue(fos.pathColor(path));
@@ -397,7 +418,7 @@ const Loadable = ({ path }: { path: string }) => {
 
   const formatted = useMemo(
     () => format({ fields, ftype, timeZone, value }),
-    [fields, ftype, timeZone, value]
+    [fields, ftype, timeZone, value],
   );
 
   return (
@@ -411,31 +432,6 @@ const Loadable = ({ path }: { path: string }) => {
       {none ? "None" : formatted}
     </div>
   );
-};
-
-const useData = <T,>(path: string): T => {
-  const keys = path.split(".");
-  const loadable = useRecoilValueLoadable(fos.activeModalSidebarSample);
-  const field = fos.useAssertedRecoilValue(fos.field(keys[0]));
-  const isList = useRecoilValue(fos.isOfDocumentFieldList(path));
-
-  if (loadable.state === "loading") {
-    throw loadable.contents;
-  }
-
-  if (loadable.state === "hasError") {
-    if (loadable.contents instanceof fos.GroupSampleNotFound) {
-      return null as T;
-    }
-
-    if (loadable.contents instanceof fos.SampleNotFound) {
-      throw new Promise(() => null);
-    }
-
-    throw loadable.contents;
-  }
-
-  return fos.pullSidebarValue(field, keys, loadable.contents, isList) as T;
 };
 
 const isScalarValue = selectorFamily({
@@ -457,15 +453,15 @@ const PathValueEntry = ({
   trigger: (
     event: React.MouseEvent<HTMLDivElement>,
     key: string,
-    cb: () => void
+    cb: () => void,
   ) => void;
 }) => {
   const [hovering, setHovering] = useState<boolean>(false);
-  const { activeSlices: active3dSlices, isPinned } =
-    fos.useRenderConfig3dState();
+  const active3dSlices = fos.useActive3dSlices();
+  const isPinned = fos.useIs3dPinned();
   const slices = isPinned && (active3dSlices?.length || 1) > 1;
-
   const isScalar = useRecoilValue(isScalarValue(path));
+
   return (
     <div
       onMouseEnter={() => setHovering(true)}

@@ -1,7 +1,11 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import type { Queries } from "./makeRoutes";
 import type { Entry } from "./routing";
 
-import { Loading, Pending } from "@fiftyone/components";
+import { Pending } from "@fiftyone/components";
 import { subscribe } from "@fiftyone/relay";
 import {
   isModalActive,
@@ -11,7 +15,7 @@ import {
   useSetModalState,
 } from "@fiftyone/state";
 import { useColorScheme } from "@mui/material";
-import React, {
+import {
   Suspense,
   useCallback,
   useEffect,
@@ -26,6 +30,7 @@ import {
   useSetRecoilState,
 } from "recoil";
 import { useRouterContext } from "./routing";
+import Pixelating from "./Pixelating";
 
 export const pendingEntry = atom<boolean>({
   key: "pendingEntry",
@@ -67,7 +72,7 @@ const Renderer = () => {
         set(entry, result);
         setReady(true);
       },
-    [router]
+    [router],
   );
 
   const init = useCallback(
@@ -76,7 +81,7 @@ const Renderer = () => {
       await setExpansion();
       apply(result);
     },
-    [apply, setExpansion, setModalState]
+    [apply, setExpansion, setModalState],
   );
 
   useEffect(() => {
@@ -90,12 +95,11 @@ const Renderer = () => {
   useEffect(() => {
     return router.subscribe(
       () => undefined,
-      () => setPending(true)
+      () => setPending(true),
     );
   }, [router, setPending]);
 
-  const loading = <Loading>Pixelating...</Loading>;
-
+  const loading = <Pixelating />;
   if (!routeEntry || !ready) return loading;
 
   return (

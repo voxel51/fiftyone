@@ -29,10 +29,23 @@ from .utils import (
     create_implied_field,
     validate_field_name,
     validate_fields_match,
+    warn_reserved_pk_paths,
 )
 
 fod = fou.lazy_import("fiftyone.core.dataset")
 fog = fou.lazy_import("fiftyone.core.groups")
+
+
+_MEDIA_IDENTITY_FIELDS = ("filepath", "media_reference")
+
+
+def _filter_media_identity_fields(field_names, active_field):
+    return tuple(
+        field_name
+        for field_name in field_names
+        if field_name not in _MEDIA_IDENTITY_FIELDS
+        or field_name == active_field
+    )
 
 
 def get_default_fields(cls, include_private=False, use_db_fields=False):
@@ -95,10 +108,20 @@ class DatasetMixin(object):
     @classmethod
     def _get_default_fields(cls, include_private=False, use_db_fields=False):
         # pylint: disable=no-member
-        return cls.__bases__[0]._get_fields_ordered(
-            include_private=include_private,
-            use_db_fields=use_db_fields,
+        field_names = cls.__bases__[0]._fields_ordered
+        if not include_private:
+            field_names = tuple(
+                field for field in field_names if not field.startswith("_")
+            )
+
+        field_names = cls._filter_media_identity_fields(
+            field_names, include_private
         )
+
+        if use_db_fields:
+            field_names = cls._to_db_fields(field_names)
+
+        return field_names
 
     @classmethod
     def _get_fields_ordered(cls, include_private=False, use_db_fields=False):
@@ -109,10 +132,28 @@ class DatasetMixin(object):
                 f for f in field_names if not f.startswith("_")
             )
 
+        field_names = cls._filter_media_identity_fields(
+            field_names, include_private
+        )
+
         if use_db_fields:
             field_names = cls._to_db_fields(field_names)
 
         return field_names
+
+    @classmethod
+    def _filter_media_identity_fields(cls, field_names, include_private):
+        if include_private or cls._is_frames_doc:
+            return field_names
+
+        dataset = cls._dataset
+        doc = getattr(dataset, "_doc", None)
+        reference_mode = (
+            doc is not None and doc.media_reference_kind is not None
+        )
+
+        active_field = "media_reference" if reference_mode else "filepath"
+        return _filter_media_identity_fields(field_names, active_field)
 
     @classmethod
     def _to_db_fields(cls, field_names):
@@ -355,6 +396,8 @@ class DatasetMixin(object):
                 media_type=media_type,
                 is_frame_field=is_frame_field,
             )
+
+        warn_reserved_pk_paths(fof.flatten_schema(new_schema).keys())
 
         # Silently skip updating metadata of any read-only fields
         for path in list(new_metadata.keys()):
@@ -617,6 +660,8 @@ class DatasetMixin(object):
                     dataset, path, new_path, label_schemas, new_label_schemas
                 )
 
+        warn_reserved_pk_paths(new_paths)
+
         if simple_paths:
             _paths, _new_paths = zip(*simple_paths)
             cls._rename_fields_simple(_paths, _new_paths)
@@ -708,6 +753,8 @@ class DatasetMixin(object):
 
             if field is not None:
                 schema_paths.append((path, new_path))
+
+        warn_reserved_pk_paths(new_paths)
 
         if simple_paths:
             _paths, _new_paths = zip(*simple_paths)
@@ -1745,6 +1792,14 @@ class NoDatasetMixin(object):
             field_names = tuple(
                 f for f in field_names if not f.startswith("_")
             )
+            active_field = (
+                "media_reference"
+                if self._data.get("media_reference") is not None
+                else "filepath"
+            )
+            field_names = _filter_media_identity_fields(
+                field_names, active_field
+            )
 
         if use_db_fields:
             field_names = self._to_db_fields(field_names)
@@ -1882,6 +1937,13 @@ class NoDatasetMixin(object):
     def to_dict(self, extended=False):
         d = {}
         for k, v in self._data.items():
+            if k in _MEDIA_IDENTITY_FIELDS and v is None:
+                continue
+
+            field = self.default_fields.get(k)
+            if isinstance(field, fof.MediaReferenceField):
+                v = field.to_mongo(v)
+
             # Store ObjectIds in private fields in the DB
             if k == "id":
                 k = "_id"
@@ -1904,6 +1966,10 @@ class NoDatasetMixin(object):
                 continue
             elif isinstance(v, ObjectId) and k.startswith("_"):
                 k = k[1:]
+
+            field = cls.default_fields.get(k)
+            if isinstance(field, fof.MediaReferenceField):
+                v = field.to_python(v)
 
             kwargs[k] = v
 

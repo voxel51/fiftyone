@@ -20,7 +20,7 @@ export default class SpaceTree {
   // the constructor takes the root node, the selected node, and the layout
   constructor(
     serializedTree?: SpaceNodeJSON,
-    onTreeUpdate?: SpaceTreeUpdateCallback
+    onTreeUpdate?: SpaceTreeUpdateCallback,
   ) {
     this.root = serializedTree
       ? spaceNodeFromJSON(serializedTree)
@@ -40,6 +40,15 @@ export default class SpaceTree {
     this.onUpdate(rootNode.toJSON());
   }
 
+  findNodeById(id: string, node: SpaceNode = this.root): SpaceNode | undefined {
+    if (node.id === id) return node;
+    for (const child of node.children) {
+      const found = this.findNodeById(id, child);
+      if (found) return found;
+    }
+    return undefined;
+  }
+
   // a method for adding a new node to the tree
   // the new node is added as a child of the selected node
   // the new node is selected
@@ -57,6 +66,7 @@ export default class SpaceTree {
       node.activeChild = node.firstChild().activeChild;
       node.layout = node.firstChild().layout;
       node.firstChild().remove();
+      node.sizes = undefined;
       this.updateTree(node);
     }
   }
@@ -66,7 +76,6 @@ export default class SpaceTree {
     let ancestorNode = parentNode;
     if (parentNode?.parent && parentNode?.children.length === 1) {
       ancestorNode = parentNode?.parent;
-      ancestorNode.sizes = undefined;
       parentNode?.remove();
       this.joinNode(ancestorNode);
     } else if (ancestorNode) {

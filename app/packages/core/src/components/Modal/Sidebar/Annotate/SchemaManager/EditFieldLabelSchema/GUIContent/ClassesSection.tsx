@@ -117,7 +117,7 @@ const ClassesSection = ({
       onAddClass(name);
       setIsAdding(false);
     },
-    [onAddClass]
+    [onAddClass],
   );
 
   const handleStartEdit = useCallback((name: string) => {
@@ -177,7 +177,7 @@ const ClassesSection = ({
               primaryContent: name,
               secondaryContent: formatAttributeCount(attributeCount),
               actions: <EditAction onEdit={() => handleStartEdit(name)} />,
-            })
+            }),
       ),
     [
       classes,
@@ -189,7 +189,7 @@ const ClassesSection = ({
       handleCancelEdit,
       handleDeleteClass,
       handleStartEdit,
-    ]
+    ],
   );
 
   const handleOrderChange = useCallback(
@@ -197,7 +197,7 @@ const ClassesSection = ({
       const newOrder = newItems.map((item) => item.id);
       onOrderChange?.(newOrder);
     },
-    [onOrderChange]
+    [onOrderChange],
   );
 
   return (

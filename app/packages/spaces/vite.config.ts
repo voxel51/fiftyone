@@ -23,7 +23,7 @@ export default defineConfig(({ mode }) => {
         "re-resizable": "ReResizable",
         "styled-components": "StyledComponents",
         typescript: "Typescript",
-      })
+      }),
     );
     config.build = {
       minify: true,

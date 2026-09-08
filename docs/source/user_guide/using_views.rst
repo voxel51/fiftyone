@@ -105,6 +105,10 @@ Or, you can access individual samples in a view by their ID or filepath:
 Saving views
 ____________
 
+.. customavailablein::
+    :oss_version: 0.19.0
+    :enterprise_version: 1.1
+
 If you find yourself frequently using/recreating certain views, you can use
 :meth:`save_view() <fiftyone.core.dataset.Dataset.save_view>` to save them on
 your dataset under a name of your choice:
@@ -748,6 +752,10 @@ stage to filter the contents of arbitrarily-typed fields:
 Grouping
 ________
 
+.. customavailablein::
+    :oss_version: 0.21.0
+    :enterprise_version: 1.3.0
+
 You can use
 :meth:`group_by() <fiftyone.core.collections.SampleCollection.group_by>` to
 dynamically group the samples in a collection by a specified field:
@@ -1069,6 +1077,10 @@ filter a dataset by date as follows:
 Object patches
 ______________
 
+.. customavailablein::
+    :oss_version: 0.9.0
+    :enterprise_version: 1.0
+
 If your dataset contains label list fields like |Detections| or |Polylines|,
 then you can use
 :meth:`to_patches() <fiftyone.core.collections.SampleCollection.to_patches>` to
@@ -1368,6 +1380,10 @@ performing manipulations that are unique to video data.
 
 Clip views
 ----------
+
+.. customavailablein::
+    :oss_version: 0.14.0
+    :enterprise_version: 1.0
 
 You can use
 :meth:`to_clips() <fiftyone.core.collections.SampleCollection.to_clips>` to
@@ -1924,6 +1940,10 @@ the source collection, but you can control this by passing the optional
 
 Frame patches views
 -------------------
+
+.. customavailablein::
+    :oss_version: 0.11.2
+    :enterprise_version: 1.0
 
 Since frame views into video datasets behave just like any other view, you can
 chain

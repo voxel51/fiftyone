@@ -22,7 +22,7 @@ export const numConcurrentRenderingLabels = atom(0);
  * Set of hovered instances
  */
 export const hoveredInstances = atom<HoveredInstancesLabelsTuple | false>(
-  false
+  false,
 );
 
 /**
@@ -38,7 +38,7 @@ export const isHoveringAnyLabelWithInstanceConfig = () => {
  * Whether there are hovered instances of a particular instance
  */
 export const isHoveringParticularLabelWithInstanceConfig = (
-  instanceId: InstanceId
+  instanceId: InstanceId,
 ) => {
   const currentHoveredInstances = jotaiStore.get(hoveredInstances);
 
@@ -78,7 +78,7 @@ export const updateHoveredInstances = atom(
         { ...prevWithCorrectInstanceId, [newValue.labelId]: newValue },
       ];
     });
-  }
+  },
 );
 
 /**
@@ -96,5 +96,11 @@ export const currentModalUniqueIdJotaiAtom = atom<string>("");
 
 export type { GroupVisibilityConfigSnapshot } from "./group-annotation";
 export * from "./jotai-store";
-export { ANNOTATE, EXPLORE, ModalMode, modalMode, type ModalViewportState } from "./modal";
+export {
+  ANNOTATE,
+  EXPLORE,
+  modalMode,
+  ModalMode,
+  type ModalViewportState,
+} from "./modal";
 export { modalBridge } from "./modalBridge";

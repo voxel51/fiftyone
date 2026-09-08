@@ -5,7 +5,7 @@ module.exports = {
   },
   overrides: [
     {
-      files: ["src/worker/**/*.ts"],
+      files: ["src/worker/**/*.ts", "src/mcap/worker/**/*.ts"],
       env: {
         browser: false,
         es6: true,
@@ -19,7 +19,7 @@ module.exports = {
     "plugin:react-hooks/recommended",
     "plugin:react/jsx-runtime",
     "plugin:@typescript-eslint/recommended",
-    "prettier",
+    "plugin:prettier/recommended",
   ],
   globals: {
     JSX: true,

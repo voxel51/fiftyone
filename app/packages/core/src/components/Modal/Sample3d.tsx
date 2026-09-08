@@ -12,6 +12,8 @@ import useCanAnnotate from "./Sidebar/Annotate/useCanAnnotate";
 const Sample3dContainer = styled.div`
   width: 100%;
   height: 100%;
+  /* let flex parents shrink this below the canvas's fixed pixel size */
+  min-height: 0;
   position: relative;
 `;
 

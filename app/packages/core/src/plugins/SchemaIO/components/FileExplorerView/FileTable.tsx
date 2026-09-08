@@ -1,4 +1,3 @@
-import React from "react";
 import {
   Table,
   TableBody,
@@ -12,9 +11,8 @@ import {
 import { Button } from "@fiftyone/components";
 import FolderIcon from "@mui/icons-material/Folder";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
-import moment from "moment";
 import { scrollable } from "@fiftyone/components";
-import { humanReadableBytes } from "@fiftyone/utilities";
+import { formatRelativeTime, humanReadableBytes } from "@fiftyone/utilities";
 
 const Wrapper = ({ children }) => (
   <Paper
@@ -94,7 +92,8 @@ function FileTable({
                 </Box>
               </TableCell>
               <TableCell>
-                {file.date_modified && moment(file.date_modified).fromNow()}
+                {file.date_modified &&
+                  formatRelativeTime(new Date(file.date_modified).getTime())}
               </TableCell>
               <TableCell>{humanReadableBytes(file.size)}</TableCell>
             </TableRow>

@@ -5,6 +5,10 @@ pandas vs FiftyOne
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 0.19.0
+    :enterprise_version: 1.1
+
 This cheat sheet shows how to translate common
 `pandas <https://pandas.pydata.org>`_ operations into FiftyOne.
 

@@ -4,6 +4,7 @@
 
 import { COLOR_BY, REGRESSION, getColor } from "@fiftyone/utilities";
 import colorString from "color-string";
+import { getRenderedScale } from "../util";
 import {
   INFO_COLOR,
   LABEL_SELECTION_GREEN,
@@ -27,10 +28,23 @@ export const t = (state: BaseState, x: number, y: number): Coordinates => {
   return [ctlx + cw * x, ctly + ch * y];
 };
 
+/**
+ * Convert a draw-space length (`pointRadius`, `strokeWidth`, …) to image
+ * pixels, the space of `pixelCoordinates`/`dimensions` hit tests. Draw-space
+ * sizes are already zoom-compensated (divided by `scale` in `postProcess`),
+ * so the remaining factor is the window's fit scale.
+ */
+export const sizeInImagePixels = (state: BaseState, length: number): number =>
+  length /
+  getRenderedScale(
+    [state.windowBBox[2], state.windowBBox[3]],
+    state.dimensions,
+  );
+
 const strokeRect = (
   ctx: CanvasRenderingContext2D,
   state: Readonly<BaseState>,
-  color: string
+  color: string,
 ) => {
   ctx.strokeStyle = color;
   ctx.beginPath();
@@ -45,7 +59,7 @@ const strokeRect = (
 export const strokeCanvasRect = (
   ctx: CanvasRenderingContext2D,
   state: Readonly<BaseState>,
-  color: string
+  color: string,
 ): void => {
   ctx.lineWidth = state.strokeWidth;
   ctx.setLineDash([]);
@@ -59,7 +73,7 @@ export const strokeCanvasRect = (
  * Returns true if mask targets is RGB
  */
 export function isRgbMaskTargets(
-  maskTargets: MaskTargets
+  maskTargets: MaskTargets,
 ): maskTargets is RgbMaskTargets {
   if (!maskTargets || typeof maskTargets !== "object") {
     throw new Error("mask targets is invalid");
@@ -102,7 +116,7 @@ export const convertId = (obj: Record<string, any>): Record<string, any> => {
         return [key, value.map((item) => ({ ...item, id: item["_id"] }))];
       }
       return [key, value];
-    })
+    }),
   );
 };
 
@@ -127,11 +141,11 @@ export const getHashLabelColorByInstance = (label: RegularLabel): string => {
 
 export const shouldShowLabelTag = (
   selectedLabelTags?: null | string[], // labelTags that are active
-  labelTags?: null | string[] // current label's tags
+  labelTags?: null | string[], // current label's tags
 ) => {
   return Boolean(
     (selectedLabelTags?.length === 0 && labelTags?.length > 0) ||
-      selectedLabelTags?.some((tag) => labelTags?.includes(tag))
+    selectedLabelTags?.some((tag) => labelTags?.includes(tag)),
   );
 };
 
@@ -162,7 +176,7 @@ export const getLabelColor = ({
     return getColor(
       coloring.pool,
       coloring.seed,
-      getHashLabelColorByInstance(label)
+      getHashLabelColorByInstance(label),
     );
   }
 
@@ -190,7 +204,7 @@ export const getLabelColor = ({
       // specified tag color > color by label tag's value > label tag field color > default label tag color
 
       const tagColor = labelTagColors?.valueColors?.find((pair) =>
-        label.tags.includes(pair.value)
+        label.tags.includes(pair.value),
       )?.color;
 
       if (isValidColor(tagColor)) {
@@ -236,7 +250,7 @@ const getLabelColorKey = (
   field: CustomizeColor,
   label: RegularLabel,
   is3D: boolean,
-  embeddedDocType: string
+  embeddedDocType: string,
 ) => {
   let key;
   if (field.colorByAttribute) {
@@ -244,8 +258,8 @@ const getLabelColorKey = (
       key = ["string", "number"].includes(typeof label.index)
         ? "index"
         : is3D
-        ? "_id"
-        : "id";
+          ? "_id"
+          : "id";
     } else {
       key = field.colorByAttribute;
     }
@@ -360,7 +374,7 @@ export interface LabelSelectionVisuals {
  */
 export function resolveLabelSelectionVisuals(
   labelId: string,
-  options: BaseOptions
+  options: BaseOptions,
 ): LabelSelectionVisuals | null {
   const { selectedLabels, selectedLabelTypes, labelSelectionStyle } = options;
 
@@ -381,3 +395,55 @@ export function resolveLabelSelectionVisuals(
       return { styleName, color: null };
   }
 }
+
+const formatAttributeNumber = (value: number): string => {
+  if (!Number.isFinite(value)) {
+    return String(value);
+  }
+
+  if (value % 1 === 0) {
+    return value.toLocaleString();
+  }
+
+  return Number(
+    value.toFixed(Math.abs(value) < 0.001 ? 6 : 3),
+  ).toLocaleString();
+};
+
+export const formatLabelAttributeValue = (value: unknown): string | null => {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  if (Array.isArray(value)) {
+    const parts = value
+      .map(formatLabelAttributeValue)
+      .filter((part) => part !== null && part !== "");
+    return parts.length ? parts.join(", ") : null;
+  }
+
+  switch (typeof value) {
+    case "number":
+      return formatAttributeNumber(value);
+    case "boolean":
+      return value ? "True" : "False";
+    case "string":
+      return value;
+    default:
+      return null;
+  }
+};
+
+/**
+ * Render a label's shown attribute values as a comma separated string.
+ */
+export const getLabelAttributesText = (
+  label: object,
+  attributes: string[],
+): string =>
+  attributes
+    .map((name) =>
+      formatLabelAttributeValue((label as Record<string, unknown>)[name]),
+    )
+    .filter((value) => value !== null && value !== "")
+    .join(", ");

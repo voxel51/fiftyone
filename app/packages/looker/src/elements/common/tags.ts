@@ -27,6 +27,8 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
   private fontSize?: number;
   private labelTagColors: LabelTagColor = {};
   private playing = false;
+  private showPatchLabels: BaseState["options"]["showPatchLabels"];
+  private shownLabelAttributes: BaseState["options"]["shownLabelAttributes"];
 
   createHTMLElement() {
     const container = document.createElement("div");
@@ -50,11 +52,13 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         filter,
         labelTagColors,
         selectedLabelTags,
+        showPatchLabels,
+        shownLabelAttributes,
         timeZone,
       },
       playing,
     }: Readonly<State>,
-    sample: Readonly<Sample>
+    sample: Readonly<Sample>,
   ) {
     this.handleFont(fontSize);
     if (this.playing !== playing) {
@@ -70,6 +74,8 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         compareObjectArrays(this.customizedColors, customizeColorSetting) &&
         isEqual(this.labelTagColors, labelTagColors) &&
         isEqual(this.attributeVisibility, attributeVisibility) &&
+        isEqual(this.shownLabelAttributes, shownLabelAttributes) &&
+        this.showPatchLabels === showPatchLabels &&
         this.colorSeed === coloring.seed) ||
       !sample
     ) {
@@ -85,6 +91,8 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       labelTagColors,
       sample,
       selectedLabelTags,
+      showPatchLabels,
+      shownLabelAttributes,
       timeZone,
     });
 
@@ -96,19 +104,21 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     this.labelTagColors = labelTagColors;
     this.colorPool = coloring.pool as string[];
     this.attributeVisibility = attributeVisibility;
+    this.showPatchLabels = showPatchLabels;
+    this.shownLabelAttributes = shownLabelAttributes;
 
     this.element.dispatchEvent(
       new CustomEvent("re-render-tag", {
         bubbles: true,
-      })
+      }),
     );
 
     const spacing = `${fontSize * SPACING_COEFFICIENT}px`;
     for (const { path, value, color, title } of elements.filter((e) =>
-      Boolean(e)
+      Boolean(e),
     )) {
       this.element.appendChild(
-        applyTagValue(color, path, title, value, spacing)
+        applyTagValue(color, path, title, value, spacing),
       );
     }
 
@@ -122,7 +132,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
 
       this.element.style.setProperty(
         "line-height",
-        `${fontSize * LINE_HEIGHT_COEFFICIENT}px`
+        `${fontSize * LINE_HEIGHT_COEFFICIENT}px`,
       );
     }
   }
@@ -133,7 +143,7 @@ export const applyTagValue = (
   path: string | undefined,
   title: string,
   value: string,
-  spacing: string
+  spacing: string,
 ) => {
   const div = document.createElement("div");
   const child = prettify(value);
@@ -215,7 +225,7 @@ function sortObjectArrays(a, b) {
       return comparison;
     }
     const valueComparison = JSON.stringify(a[key])?.localeCompare(
-      JSON.stringify(b[key])
+      JSON.stringify(b[key]),
     );
     if (valueComparison !== 0) {
       return valueComparison;

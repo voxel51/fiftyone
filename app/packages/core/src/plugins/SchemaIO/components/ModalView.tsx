@@ -1,4 +1,3 @@
-import React from "react";
 import ModalBase from "@fiftyone/components/src/components/ModalBase/ModalBase";
 
 export default function ModalView(props) {

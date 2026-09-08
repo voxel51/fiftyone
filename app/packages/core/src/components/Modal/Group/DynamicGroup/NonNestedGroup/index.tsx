@@ -1,5 +1,5 @@
 import * as fos from "@fiftyone/state";
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { Sample2D } from "../../../Sample2D";
@@ -24,11 +24,11 @@ const ElementsContainer = styled.div`
 
 export const NonNestedDynamicGroup = () => {
   const [isBigLookerVisible, setIsBigLookerVisible] = useRecoilState(
-    fos.groupMediaIsMain2DViewerVisibleSetting
+    fos.groupMediaIsMain2DViewerVisibleSetting,
   );
   const viewMode = useRecoilValue(fos.dynamicGroupsViewMode(true));
   const isCarouselVisible = useRecoilValue(
-    fos.groupMediaIsCarouselVisibleSetting
+    fos.groupMediaIsCarouselVisibleSetting,
   );
   const parent = useRecoilValue(fos.parentMediaTypeSelector);
   const isAnnotateMode = fos.useModalMode() === fos.ModalMode.ANNOTATE;

@@ -55,11 +55,11 @@ const boundsAtomFamily = atomFamily<Range, ThresholdStateKey>({
 export const usePcdMaterialControls = (
   name: string,
   geometry: BufferGeometry,
-  defaultMaterial: FoPointcloudMaterialProps
+  defaultMaterial: FoPointcloudMaterialProps,
 ) => {
   const { numPrimaryAssets } = useFo3dContext();
   const [isColormapModalOpen, setIsColormapModalOpen] = useRecoilState(
-    isColormapModalOpenAtom
+    isColormapModalOpenAtom,
   );
 
   const shadeModes = useMemo(() => {
@@ -75,7 +75,7 @@ export const usePcdMaterialControls = (
     return [SHADE_BY_NONE, SHADE_BY_HEIGHT, SHADE_BY_CUSTOM].concat(
       Array.from(new Set(attributeNames))
         .sort()
-        .filter((name) => name !== "position" && name !== "dynamicAttr")
+        .filter((name) => name !== "position" && name !== "dynamicAttr"),
     );
   }, [geometry]);
 
@@ -92,20 +92,20 @@ export const usePcdMaterialControls = (
         return value;
       },
       stringify: (value) => value,
-    }
+    },
   );
   const [customColor, setCustomColor] = useState(defaultMaterial.customColor);
   const [pointSize, setPointSize] = fos.useBrowserStorage(
     "fo3dPcdPointSize",
-    defaultMaterial.pointSize
+    defaultMaterial.pointSize,
   );
   const [isPointSizeAttenuated, setIsPointSizeAttenuated] =
     fos.useBrowserStorage(
       "fo3dIsPointSizeAttenuated",
-      defaultMaterial.attenuateByDistance
+      defaultMaterial.attenuateByDistance,
     );
 
-  const [opacity, setOpacity] = useState(defaultMaterial.opacity);
+  const [opacity] = useState(defaultMaterial.opacity);
 
   const colorScheme = useRecoilValue(fos.colorScheme);
 
@@ -154,7 +154,7 @@ export const usePcdMaterialControls = (
 
       return normalized;
     },
-    [shadeBy, thresholdsLut]
+    [shadeBy, thresholdsLut],
   );
 
   const thresholdStateKey = useMemo(
@@ -162,7 +162,7 @@ export const usePcdMaterialControls = (
       name,
       shadeBy,
     }),
-    [name, shadeBy]
+    [name, shadeBy],
   );
   const setBounds = useSetRecoilState(boundsAtomFamily(thresholdStateKey));
 
@@ -182,7 +182,7 @@ export const usePcdMaterialControls = (
     if (colorScheme.colorscales && colorScheme.colorscales.length > 0) {
       const path = `::fo3d::pcd::${shadeBy}`;
       const colorScale = colorScheme.colorscales.find(
-        (colorScale) => colorScale.path === path
+        (colorScale) => colorScale.path === path,
       );
       return Boolean(colorScale?.name || colorScale?.list);
     }
@@ -192,7 +192,8 @@ export const usePcdMaterialControls = (
 
   const isDefaultAppConfigColormapAvailable = useMemo(() => {
     return Boolean(
-      colorScheme.defaultColorscale?.name || colorScheme.defaultColorscale?.list
+      colorScheme.defaultColorscale?.name ||
+      colorScheme.defaultColorscale?.list,
     );
   }, [colorScheme.defaultColorscale]);
 
@@ -222,7 +223,7 @@ export const usePcdMaterialControls = (
     if (isExplicitAppConfigColormapAvailable) {
       const path = `::fo3d::pcd::${shadeBy}`;
       const colorScale = colorScheme.colorscales.find(
-        (colorScale) => colorScale.path === path
+        (colorScale) => colorScale.path === path,
       );
 
       // `list` is prioritized over `name`
@@ -262,6 +263,8 @@ export const usePcdMaterialControls = (
   }, [
     colormapOverride,
     colorScheme.colorscales,
+    colorScheme.defaultColorscale?.list,
+    colorScheme.defaultColorscale?.name,
     shadeBy,
     isExplicitAppConfigColormapAvailable,
     isDefaultAppConfigColormapAvailable,
@@ -307,6 +310,7 @@ export const usePcdMaterialControls = (
       </div>
     );
   }, [
+    setColormapOverride,
     setIsColormapModalOpen,
     shadeBy,
     colorMap.source,
@@ -317,7 +321,7 @@ export const usePcdMaterialControls = (
   const theme = useTheme();
 
   const [activeThreshold, setActiveThreshold] = useRecoilState(
-    activeThresholdAtomFamily(thresholdStateKey)
+    activeThresholdAtomFamily(thresholdStateKey),
   );
 
   // This effect resets active threshold defaults when shading attributes change.
@@ -359,16 +363,19 @@ export const usePcdMaterialControls = (
     );
   }, [geometry, shadeBy, theme.primary.main, thresholdStateKey]);
 
-  const onChangeTextBox: OnChangeHandler = useCallback((newValue: number) => {
-    setPointSize(newValue);
-  }, []);
+  const onChangeTextBox: OnChangeHandler = useCallback(
+    (newValue: number) => {
+      setPointSize(newValue);
+    },
+    [setPointSize],
+  );
 
   const handleColormapSave = useCallback(
     (colorscaleList: ColorscaleInput["list"]) => {
       setColormapOverride({ [shadeBy]: colorscaleList });
       setIsColormapModalOpen(false);
     },
-    [setColormapOverride, shadeBy]
+    [setColormapOverride, setIsColormapModalOpen, shadeBy],
   );
 
   useControls(
@@ -423,13 +430,13 @@ export const usePcdMaterialControls = (
             render: () => {
               return Boolean(
                 shadeBy !== SHADE_BY_HEIGHT &&
-                  shadeBy !== SHADE_BY_NONE &&
-                  shadeBy !== SHADE_BY_RGB &&
-                  !(
-                    shadeBy === SHADE_BY_INTENSITY &&
-                    !geometry.hasAttribute("intensity")
-                  ) &&
-                  shadeBy !== SHADE_BY_CUSTOM
+                shadeBy !== SHADE_BY_NONE &&
+                shadeBy !== SHADE_BY_RGB &&
+                !(
+                  shadeBy === SHADE_BY_INTENSITY &&
+                  !geometry.hasAttribute("intensity")
+                ) &&
+                shadeBy !== SHADE_BY_CUSTOM,
               );
             },
           }),
@@ -449,7 +456,7 @@ export const usePcdMaterialControls = (
           order: PANEL_ORDER_PCD_CONTROLS,
           // collapse only if there's more than one primary asset in the scene
           collapsed: numPrimaryAssets > 1,
-        }
+        },
       ),
     }),
     [
@@ -469,7 +476,7 @@ export const usePcdMaterialControls = (
       numPrimaryAssets,
       name,
       shadeModes,
-    ]
+    ],
   );
 
   return {

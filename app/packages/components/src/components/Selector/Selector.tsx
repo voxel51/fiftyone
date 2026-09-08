@@ -17,6 +17,7 @@ export class SelectorValidationError extends Error {}
 
 export interface SelectorProps<T> {
   id?: string;
+  disabled?: boolean;
   value?: string;
   onSelect: (search: string, v?: T) => Promise<string> | void;
   placeholder: string;
@@ -31,13 +32,14 @@ export interface SelectorProps<T> {
   overflowContainer?: boolean;
   onMouseEnter?: React.MouseEventHandler;
   cy?: string;
-  footer?: React.JSX.Element;
-  DuringSuspense?: (props: React.PropsWithChildren) => React.JSX.Element;
+  footer?: JSX.Element;
+  DuringSuspense?: (props: React.PropsWithChildren) => JSX.Element;
 }
 
 function Selector<T>(props: SelectorProps<T>) {
   const {
     id,
+    disabled,
     value,
     onSelect,
     placeholder,
@@ -89,9 +91,18 @@ function Selector<T>(props: SelectorProps<T>) {
   }, [active, onSelect, toKey, valuesRef]);
 
   useLayoutEffect(() => {
-    setSearch(value || "");
+    // sync only on `value` changes — running this when editing ends would
+    // overwrite the optimistic assignment in onSelectWrapper with a stale prop
     local.current = value || "";
   }, [value]);
+
+  useLayoutEffect(() => {
+    // an async `value` update must not clobber an active editing session's
+    // search text — it would filter the open results by the stale value
+    if (!editing) {
+      setSearch(value || "");
+    }
+  }, [value, editing]);
 
   const ref = useRef<HTMLInputElement | null>();
   const hovering = useRef(false);
@@ -135,6 +146,7 @@ function Selector<T>(props: SelectorProps<T>) {
       title={editing && search.length ? search : placeholder}
     >
       <Input
+        disabled={disabled}
         inputStyle={editing ? { ...inputStyle } : inputStyle}
         inputClassName={inputClassName}
         spellCheck={false}
@@ -226,7 +238,7 @@ function Selector<T>(props: SelectorProps<T>) {
                 </Suspense>
               </motion.div>
             </AnimatePresence>
-          )
+          ),
         )}
     </div>
   );

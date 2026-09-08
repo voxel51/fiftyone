@@ -4,7 +4,10 @@ import { ModalPom } from "../../modal";
 export class ModalTaggerPom {
   readonly locator: Locator;
 
-  constructor(private readonly page: Page, private readonly modal: ModalPom) {
+  constructor(
+    private readonly page: Page,
+    private readonly modal: ModalPom,
+  ) {
     this.locator = modal.locator.getByTestId("popout");
   }
 

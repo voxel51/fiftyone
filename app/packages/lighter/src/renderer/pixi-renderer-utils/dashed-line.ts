@@ -48,6 +48,7 @@ export class DashLine {
   scale = 1;
 
   // sanity check to ensure the lineStyle is still in use
+  // @ts-expect-error unused — kept per the sanity-check note above
   private activeTexture!: PIXI.Texture;
 
   private start!: PIXI.Point;
@@ -109,7 +110,7 @@ export class DashLine {
     x1: number,
     y1: number,
     x2: number,
-    y2: number
+    y2: number,
   ): number {
     return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
   }
@@ -136,7 +137,7 @@ export class DashLine {
         const gap = Math.min(this.dash[this.dash.length - 1], length);
         this.graphics.lineTo(
           x - Math.cos(angle) * gap,
-          y - Math.sin(angle) * gap
+          y - Math.sin(angle) * gap,
         );
         this.graphics.closePath();
       } else {
@@ -176,7 +177,7 @@ export class DashLine {
             x0 + cos * dist,
             y0 + sin * dist,
             this.start.x,
-            this.start.y
+            this.start.y,
           );
           if (remainingDistance <= dist) {
             if (dashIndex % 2 === 0) {
@@ -221,7 +222,7 @@ export class DashLine {
     y: number,
     radius: number,
     points = 80,
-    matrix?: PIXI.Matrix
+    matrix?: PIXI.Matrix,
   ): this {
     const interval = (Math.PI * 2) / points;
     let angle = 0,
@@ -229,14 +230,14 @@ export class DashLine {
     if (matrix) {
       first = new PIXI.Point(
         x + Math.cos(angle) * radius,
-        y + Math.sin(angle) * radius
+        y + Math.sin(angle) * radius,
       );
       matrix.apply(first, first);
       this.moveTo(first.x, first.y);
     } else {
       first = new PIXI.Point(
         x + Math.cos(angle) * radius,
-        y + Math.sin(angle) * radius
+        y + Math.sin(angle) * radius,
       );
       this.moveTo(first.x, first.y);
     }
@@ -247,7 +248,7 @@ export class DashLine {
           ? first
           : new PIXI.Point(
               x + Math.cos(angle) * radius,
-              y + Math.sin(angle) * radius
+              y + Math.sin(angle) * radius,
             );
       this.lineTo(next.x, next.y);
       angle += interval;
@@ -261,12 +262,11 @@ export class DashLine {
     radiusX: number,
     radiusY: number,
     points = 80,
-    matrix?: PIXI.Matrix
+    matrix?: PIXI.Matrix,
   ): this {
     const interval = (Math.PI * 2) / points;
     let first: { x: number; y: number } = { x: 0, y: 0 };
     const point = new PIXI.Point();
-    let f = 0;
     for (let i = 0; i < Math.PI * 2; i += interval) {
       let x0 = x - radiusX * Math.sin(i);
       let y0 = y - radiusY * Math.cos(i);
@@ -305,7 +305,7 @@ export class DashLine {
           this.lineTo(
             points[i] as number,
             points[i + 1] as number,
-            i === points.length - 2
+            i === points.length - 2,
           );
         }
       }
@@ -338,7 +338,7 @@ export class DashLine {
     y: number,
     width: number,
     height: number,
-    matrix?: PIXI.Matrix
+    matrix?: PIXI.Matrix,
   ): this {
     if (matrix) {
       const p = new PIXI.Point();
@@ -378,7 +378,7 @@ export class DashLine {
   }
 
   // adjust the matrix for the dashed texture
-  private adjustLineStyle(angle: number) {
+  private adjustLineStyle(_angle: number) {
     // Note: This method may need to be updated based on the specific PIXI.js version
     // For newer PIXI versions, texture-based line styling may need a different approach
     // This is a placeholder for texture-based dashed line implementation
@@ -387,7 +387,7 @@ export class DashLine {
   // creates or uses cached texture
   private static getTexture(
     options: Required<DashLineOptions>,
-    dashSize: number
+    dashSize: number,
   ): PIXI.Texture {
     const key = options.dash.toString();
     if (DashLine.dashTextureCache[key]) {

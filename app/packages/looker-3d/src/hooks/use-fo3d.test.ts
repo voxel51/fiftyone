@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react-hooks";
+import { act, renderHook } from "@testing-library/react";
 import type { ModalSample } from "@fiftyone/state";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FiftyoneSceneRawJson } from "../utils";
@@ -25,8 +25,13 @@ const mockState = vi.hoisted(() => ({
   getSampleSrc: vi.fn((path: string) => `src:${path}`),
   buildFoScene: vi.fn((rawData: FiftyoneSceneRawJson) => rawData),
   getRootAssetCount: vi.fn(
-    (scene: FiftyoneSceneRawJson | null) => scene?.children?.length ?? 0
+    (scene: FiftyoneSceneRawJson | null) => scene?.children?.length ?? 0,
   ),
+  directPcdAlignment: {
+    error: null as Error | null,
+    isLoading: false,
+    transformsBySlice: {},
+  },
 }));
 
 vi.mock("@fiftyone/state", () => ({
@@ -64,6 +69,10 @@ vi.mock("./use-fo3d-fetcher", () => ({
 vi.mock("./use-fo3d-scene-parser", () => ({
   buildFoScene: mockState.buildFoScene,
   getRootAssetCount: mockState.getRootAssetCount,
+}));
+
+vi.mock("./use-grouped-direct-pcd-world-transforms", () => ({
+  useGroupedDirectPcdWorldTransforms: () => mockState.directPcdAlignment,
 }));
 
 const DEFAULT_MATERIAL = {
@@ -159,6 +168,11 @@ describe("useFo3d", () => {
     mockState.getSampleSrc.mockClear();
     mockState.buildFoScene.mockClear();
     mockState.getRootAssetCount.mockClear();
+    mockState.directPcdAlignment = {
+      error: null,
+      isLoading: false,
+      transformsBySlice: {},
+    };
   });
 
   afterEach(() => {
@@ -196,6 +210,87 @@ describe("useFo3d", () => {
     ]);
   });
 
+  it("places grouped PCD slices in world and exposes label parent transforms", async () => {
+    const leftSample = buildModalSample("left-id", "/tmp/group/left.pcd");
+    const rightSample = buildModalSample("right-id", "/tmp/group/right.pcd");
+
+    mockState.isGroup = true;
+    mockState.group3dState.activeSlices = ["lidar_left", "lidar_right"];
+    mockState.group3dState.activeDirectSlices = ["lidar_left", "lidar_right"];
+    mockState.group3dState.activeSampleMap = {
+      lidar_left: leftSample,
+      lidar_right: rightSample,
+    };
+    mockState.group3dState.allSampleMap =
+      mockState.group3dState.activeSampleMap;
+    mockState.directPcdAlignment = {
+      error: null,
+      isLoading: false,
+      transformsBySlice: {
+        lidar_left: {
+          translation: [-5, 0, 0],
+          quaternion: [0, 0, 0, 1],
+          source_frame: "lidar_left",
+          target_frame: "world",
+        },
+        lidar_right: {
+          translation: [5, 0, 0],
+          quaternion: [0, 0, 0, 1],
+          source_frame: "lidar_right",
+          target_frame: "world",
+        },
+      },
+    };
+
+    const { result } = renderHook(() => useFo3d(leftSample));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const content = getLastNonNullFo3dContent();
+    expect(
+      Object.fromEntries(
+        content.children.map((child) => [child.name, child.position]),
+      ),
+    ).toEqual({
+      lidar_left: [-5, 0, 0],
+      lidar_right: [5, 0, 0],
+    });
+    expect(result.current.directPcdWorldTransformsBySampleId).toEqual({
+      "left-id": mockState.directPcdAlignment.transformsBySlice.lidar_left,
+      "right-id": mockState.directPcdAlignment.transformsBySlice.lidar_right,
+    });
+  });
+
+  it("does not render grouped PCDs when configured world alignment fails", async () => {
+    const pcdSample = buildModalSample("pcd-id", "/tmp/group/lidar.pcd");
+
+    mockState.isGroup = true;
+    mockState.group3dState.activeSlices = ["lidar_top"];
+    mockState.group3dState.activeDirectSlices = ["lidar_top"];
+    mockState.group3dState.activeSampleMap = { lidar_top: pcdSample };
+    mockState.group3dState.allSampleMap =
+      mockState.group3dState.activeSampleMap;
+    mockState.directPcdAlignment = {
+      error: new Error("Unable to align grouped PCD slice to world: lidar_top"),
+      isLoading: false,
+      transformsBySlice: {},
+    };
+
+    const { result } = renderHook(() => useFo3d(pcdSample));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.foScene).toBeNull();
+    expect(result.current.loadError?.message).toContain(
+      "Unable to align grouped PCD slice to world: lidar_top",
+    );
+    expect(getLastNonNullFo3dContent()).toBeUndefined();
+  });
+
   it("appends active direct 3d slices onto the active fo3d scene root", async () => {
     const sceneSample = buildModalSample("scene-id", "/tmp/group/scene.fo3d");
     const lidarSample = buildModalSample("lidar-id", "/tmp/group/lidar.pcd");
@@ -221,7 +316,7 @@ describe("useFo3d", () => {
 
     expect(mockState.fetchFo3d).toHaveBeenCalledWith(
       "src:/tmp/group/scene.fo3d",
-      "/tmp/group/scene.fo3d"
+      "/tmp/group/scene.fo3d",
     );
     expect(result.current.isLoading).toBe(false);
     expect(result.current.rootAssetCount).toBe(2);
@@ -240,11 +335,11 @@ describe("useFo3d", () => {
     ];
     const firstSample = buildModalSample(
       "scene-a-id",
-      "/tmp/group/scene-a.fo3d"
+      "/tmp/group/scene-a.fo3d",
     );
     const secondSample = buildModalSample(
       "scene-b-id",
-      "/tmp/group/scene-b.fo3d"
+      "/tmp/group/scene-b.fo3d",
     );
 
     mockState.fetchFo3d
@@ -257,7 +352,7 @@ describe("useFo3d", () => {
         initialProps: {
           sample: firstSample,
         },
-      }
+      },
     );
 
     rerender({ sample: secondSample });

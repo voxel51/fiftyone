@@ -45,7 +45,7 @@ export default function Workspaces() {
 
   const filteredWorkspaces = useMemo(() => {
     return workspaces.filter((space) =>
-      space.name.toLowerCase().includes(searchTerm.toLowerCase())
+      space.name.toLowerCase().includes(searchTerm.toLowerCase()),
     );
   }, [workspaces, searchTerm]);
 
@@ -122,7 +122,7 @@ export default function Workspaces() {
                   >
                     {filteredWorkspaces.map((space) => (
                       <Workspace
-                        key={space.id}
+                        key={space.name}
                         onEdit={() => {
                           setOpen(false);
                         }}

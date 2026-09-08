@@ -44,6 +44,39 @@ async function checkPort(port: number): Promise<boolean> {
   });
 }
 
+const PORT_BASE = 3050;
+const PORTS_PER_WORKER = 10;
+
+/**
+ * Reserves a port for a worker's FiftyOne server.
+ *
+ * Each concurrently running worker owns a disjoint window of ports:
+ * `parallelIndex` is unique across the workers running at any one moment, so
+ * two of them can never choose the same port. Within its own window a worker
+ * skips ports that are still occupied — a restarted worker reuses its
+ * predecessor's `parallelIndex` and can outrace that server's teardown.
+ *
+ * @param parallelIndex - Playwright's `workerInfo.parallelIndex`.
+ */
+export async function reserveWorkerPort(
+  parallelIndex: number,
+): Promise<number> {
+  const first = PORT_BASE + parallelIndex * PORTS_PER_WORKER;
+  const last = first + PORTS_PER_WORKER - 1;
+
+  for (let port = first; port <= last; port++) {
+    if (await checkPort(port)) {
+      return port;
+    }
+
+    console.log(`Port ${port} is in use, trying the next in the window`);
+  }
+
+  throw new Error(
+    `no free port in [${first}, ${last}] for worker ${parallelIndex}`,
+  );
+}
+
 /**
  * Resolves if the port is available within the specified timeout.
  * If it's in use, keeps checking every 5 seconds for up to 1 minute (by default).
@@ -54,7 +87,7 @@ async function checkPort(port: number): Promise<boolean> {
  */
 export async function assertPortAvailableOrWaitWithTimeout(
   port: number,
-  timeout = 60000
+  timeout = 60000,
 ): Promise<void> {
   console.log("Checking port availability:", port, "timeout:", timeout);
   const checkInterval = timeout > 5000 ? 5000 : timeout;

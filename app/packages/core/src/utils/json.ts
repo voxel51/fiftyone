@@ -23,7 +23,7 @@ export const normalizeData = (data: unknown): unknown => {
 
     // recursively normalize objects
     return Object.fromEntries(
-      Object.entries(obj).map(([k, v]) => [k, normalizeData(v)])
+      Object.entries(obj).map(([k, v]) => [k, normalizeData(v)]),
     );
   }
 
@@ -42,10 +42,10 @@ export const normalizeData = (data: unknown): unknown => {
  * @param to To object
  */
 export const generateJsonPatch = <
-  T extends Record<string, unknown> | unknown[]
+  T extends Record<string, unknown> | unknown[],
 >(
   from: T,
-  to: T
+  to: T,
 ): jsonpatch.Operation[] => {
   return jsonpatch.compare(normalizeData(from), normalizeData(to));
 };
@@ -58,7 +58,7 @@ export const generateJsonPatch = <
  */
 export const extractNestedField = <T>(
   data: Record<string, unknown>,
-  path: string
+  path: string,
 ): T | undefined => {
   const parts = path.split(".");
 

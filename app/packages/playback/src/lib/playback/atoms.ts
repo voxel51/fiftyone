@@ -1,0 +1,279 @@
+// ---------------------------------------------------------------------------
+// Module-level atom definitions for the continuous-time playback engine.
+//
+// Each PlaybackProvider creates its own Jotai store (via createStore), so
+// atom values are scoped per provider instance. Multiple independent
+// playback instances on the same page each get their own copy.
+//
+// These atoms are an implementation detail of this package — they are NOT
+// exported from the package index. Access is layered by consumer role:
+//
+// - React components subscribe through the hooks in `use-playback-state.ts`
+//   / `use-stream.ts`, which bind the surrounding provider's store. (Bare
+//   `useAtomValue(atom)` would silently resolve a nested foreign Jotai
+//   Provider's store — see `playback-store-context.ts`.)
+// - Stream plumbing and tests that already hold a PlaybackStore use the
+//   imperative helpers in `store-access.ts`.
+// - Code inside this lib layer (the engine's RAF loop, stream bases) uses
+//   the atoms directly via store.get / store.set — that's the layer the
+//   helpers wrap.
+// ---------------------------------------------------------------------------
+
+import { atom, type PrimitiveAtom } from "jotai/vanilla";
+import {
+  atomFamily,
+  atomWithStorage,
+  createJSONStorage,
+} from "jotai/vanilla/utils";
+import type {
+  BufferedRanges,
+  BufferingStream,
+  PlaybackInspectionMarker,
+  SeekEvent,
+} from "./types";
+
+/**
+ * Per-stream reactive value atom, keyed by stream id. Lazily created on first
+ * access. Streams write their resolved data into `streamValueAtom(id)` from
+ * `onCommit`; consumers read it via `useStream(id)`.
+ *
+ * Atoms persist for the lifetime of the store — a consumer that subscribes
+ * before its stream registers will get `null` until the stream's first commit.
+ */
+// `atom<unknown>(null)` would resolve to `PrimitiveAtom<unknown>` in
+// theory, but Jotai's overloads narrow it to a read-only `Atom<unknown>`
+// because the bare `null` initial value matches the read-fn overload
+// first. Cast preserves the writable shape so subclasses' onCommit can
+// call `store.set(streamValueAtom(id), ...)`.
+export const streamValueAtom = atomFamily(
+  (_id: string) => atom<unknown>(null) as PrimitiveAtom<unknown>,
+);
+
+/**
+ * The visual playhead position. Updates immediately on every seek, scrub, and
+ * RAF tick for smooth UI. Use this to position the playhead needle and display
+ * the time readout. Do NOT use this to drive data — stream data may not be
+ * ready at this time yet.
+ */
+export const playheadAtom = atom(0);
+
+/**
+ * Timeline time (seconds) the pointer is currently inspecting, or null
+ * when nothing is hovered. Hover-capable surfaces (the timeline ruler,
+ * plot panels) both publish into and render from this atom, so a shared
+ * caret lets users correlate one moment across every time-axis surface.
+ * Purely visual: it never drives data fetches or the engine clock.
+ */
+// Same overload quirk as streamValueAtom above: a bare `null` initial
+// value narrows to a read-only Atom; the cast preserves writability.
+export const hoverTimeAtom = atom<number | null>(null) as PrimitiveAtom<
+  number | null
+>;
+
+/**
+ * Persistent visual inspection time, separate from hover and the engine clock.
+ * Ownership prevents a stale tile cleanup from clearing a newer publisher.
+ */
+export const inspectionMarkerAtom = atom<PlaybackInspectionMarker | null>(
+  null,
+) as PrimitiveAtom<PlaybackInspectionMarker | null>;
+
+/**
+ * The last time the engine confirmed all blocking streams were ready and
+ * advanced the playhead. This is the authoritative "what should I render"
+ * time for data-driven consumers. Lags behind `playheadAtom` when streams
+ * are buffering.
+ */
+export const currentTimeAtom = atom(0);
+
+export const isPlayingAtom = atom(false);
+
+/**
+ * True after the user has requested playback but before the engine has enough
+ * startup buffer to advance without immediately stalling. This represents
+ * intent, not active clock movement; `isPlayingAtom` remains the source of
+ * truth for actual playback.
+ */
+export const isPlayPendingAtom = atom(false);
+
+/**
+ * True when at least one blocking stream is not ready at the next target
+ * time. The RAF loop sets this while playing; seek/step set it while
+ * paused. UI components read it to show spinners.
+ *
+ * While paused, the engine has no tick to clear it — the stream that
+ * fulfils the pending data is expected to flip it back to `false` (the
+ * MCAP data stream does this when the playhead tick becomes covered).
+ */
+export const isBufferingAtom = atom(false);
+
+/**
+ * Optional human-readable progress detail to render next to the buffering
+ * indicator (e.g. "3/7 streams"). Streams that can quantify their catch-up
+ * progress write it; `null` hides the detail.
+ */
+export const bufferingDetailAtom = atom<string | null>(null) as PrimitiveAtom<
+  string | null
+>;
+
+/**
+ * Structured readiness behind the aggregate buffering detail. Data layers
+ * publish blocking stream identifiers and their playhead readiness so the
+ * timeline can explain exactly what playback is waiting for.
+ */
+export const bufferingStreamsAtom = atom<readonly BufferingStream[]>([]);
+
+/**
+ * Time ranges where every blocking stream has data buffered and ready to
+ * play. Written by the data layer (e.g. the MCAP data stream, throttled);
+ * rendered as shading along the timeline's top edge so users can see how
+ * far ahead playback can run.
+ */
+export const bufferedRangesAtom = atom<BufferedRanges>([]);
+
+/**
+ * Monotonic wake-up signal for streams whose own `bufferedRanges()` affects
+ * startup readiness, but should not overwrite the timeline-visible
+ * `bufferedRangesAtom`. Bumped by streams through store-access.
+ */
+export const streamRangesVersionAtom = atom(0);
+
+// View window (the visible time range in the ruler/track area)
+export const viewStartAtom = atom(0);
+export const viewEndAtom = atom(0); // initialised to duration by PlaybackProvider
+
+// Loop region
+export const loopStartAtom = atom(0);
+export const loopEndAtom = atom(0); // initialised to duration by PlaybackProvider
+
+// Provider-initialized config.
+export const durationAtom = atom(0);
+export const stepIntervalAtom = atom(1 / 30);
+
+/**
+ * Trailing delay before a paused seek may ask missing blocking streams to
+ * prefetch. The visual playhead and already-buffered commits remain immediate.
+ *
+ * This is runtime-settable because a long-lived PlaybackProvider may host
+ * sources with different access costs over its lifetime. General playback
+ * defaults to zero; data layers that know a source is remote may opt in.
+ */
+export const seekFetchDebounceMsAtom = atom(0);
+
+/**
+ * Playback speed multiplier. 1.0 = normal speed, 2.0 = double speed,
+ * 0.5 = half speed. Applied to the dt on every RAF tick.
+ */
+export const speedAtom = atom(1.0);
+
+/**
+ * Rolling media-seconds-per-wall-second actually committed by the engine.
+ * Null outside active playback and before the first measurement window.
+ */
+export const achievedSpeedAtom = atom<number | null>(null) as PrimitiveAtom<
+  number | null
+>;
+
+/** Volume restored by unmute when the user has never set a level. */
+export const DEFAULT_AUDIO_VOLUME = 0.7;
+
+// SSR (the teams app evaluates this module during Next.js prerender) has
+// no `window`, and restricted browsers (sandboxed iframes, blocked
+// cookies) throw on the storage accessor itself; `undefined` keeps the
+// atom in-memory in both cases.
+const guardedStorage = (
+  kind: "localStorage" | "sessionStorage",
+): Storage | undefined => {
+  if (typeof window === "undefined") {
+    return undefined;
+  }
+  try {
+    return window[kind];
+  } catch {
+    return undefined;
+  }
+};
+
+/**
+ * Audio volume in [0, 1]. Independent of `audioMutedAtom` so unmute
+ * restores the prior level. Persisted per user across sessions.
+ */
+export const audioVolumeAtom = atomWithStorage(
+  "fo-playback-audio-volume",
+  DEFAULT_AUDIO_VOLUME,
+  // explicit sync storage keeps the value type `number`
+  createJSONStorage<number>(() => guardedStorage("localStorage")),
+  // the persisted value must be readable at first store.get
+  { getOnInit: true },
+);
+
+/**
+ * Whether timeline audio is muted. Session-scoped: every session starts
+ * muted (browsers reject unmuted autoplay before a user gesture), but an
+ * unmute survives sample changes — each sample mounts a fresh provider
+ * store, which would otherwise re-mute. While muted, an audio stream goes
+ * dormant (unsubscribed) so it never gates the engine's barrier.
+ */
+export const audioMutedAtom = atomWithStorage(
+  "fo-playback-audio-muted",
+  true,
+  createJSONStorage<boolean>(() => guardedStorage("sessionStorage")),
+  { getOnInit: true },
+);
+
+/**
+ * Master volume/mute — canonical names for the multi-track model, aliasing
+ * `audioVolumeAtom`/`audioMutedAtom` above. These are renaming re-exports,
+ * NOT new atoms: same atom identity, same underlying storage keys, so
+ * introducing per-track audio state requires no migration and no
+ * dual-write. New code should prefer these "master" names to make the
+ * master/per-track distinction explicit at call sites; the old names
+ * remain valid for any code not yet updated.
+ */
+export const audioMasterVolumeAtom = audioVolumeAtom;
+export const audioMasterMutedAtom = audioMutedAtom;
+
+/**
+ * Audio status for the volume UI: "unavailable" renders no control,
+ * "available" renders it, "error" (a fatal `MediaError` on the source)
+ * renders it disabled with an explanatory tooltip. Audio integrations
+ * write it.
+ */
+export type AudioAvailability = "unavailable" | "available" | "error";
+
+export const audioAvailableAtom = atom<AudioAvailability>("unavailable");
+
+// Per-track audio state (multi-track model) lives in audio-atoms.ts to keep
+// it colocated and reviewable; re-exported here so `atoms.ts` stays the one
+// place to look for every playback atom.
+export {
+  audioTrackMutedAtom,
+  audioTracksAtom,
+  audioTrackSnapshotsAtom,
+  audioTrackVolumeAtom,
+  hasRegisteredAudioTracksAtom,
+  DEFAULT_TRACK_VOLUME,
+  type AudioSourceKind,
+  type AudioTrackDescriptor,
+  type AudioTrackSnapshot,
+} from "./audio-atoms";
+
+/**
+ * Fired on discontinuous playhead jumps: user seek, step forward/back,
+ * play() resetting to loop start, and loop-wrap. NOT fired on normal
+ * frame-by-frame RAF ticks.
+ *
+ * The `seq` counter makes each event distinguishable even when `time`
+ * hasn't changed (e.g. seeking to the same position twice).
+ *
+ * Streams subscribe to this atom — via useSeekEvent or store.sub — to react
+ * to user intent such as cancelling obsolete speculative work. It fires
+ * immediately; missing-data fetch admission is independently controlled by
+ * seekFetchDebounceMsAtom. playheadAtom also updates immediately for smooth UI.
+ */
+// See `streamValueAtom` — same null-initial-value overload quirk; the
+// cast preserves the writable shape so `store.set(seekEventAtom, ...)`
+// keeps its setter signature.
+export const seekEventAtom = atom<SeekEvent | null>(
+  null,
+) as PrimitiveAtom<SeekEvent | null>;

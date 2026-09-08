@@ -53,6 +53,9 @@ Cloud credentials
 Dataset permissions
 -------------------
 
+.. customavailablein::
+    :enterprise_version: 1.3.0
+
 .. autoapimodule:: fiftyone.management.dataset
    :members:
    :undoc-members:
@@ -80,6 +83,9 @@ Plugin management
 Orchestrator management
 -----------------------
 
+.. customavailablein::
+    :enterprise_version: 2.10.0
+
 .. autoapimodule:: fiftyone.management.orchestrator
    :members:
    :undoc-members:
@@ -88,6 +94,9 @@ Orchestrator management
 
 Secrets
 -------
+
+.. customavailablein::
+    :enterprise_version: 2.10.0
 
 .. autoapimodule:: fiftyone.management.secret
    :members:
@@ -159,6 +168,9 @@ API keys can be generated, listed, and deleted for service accounts:
 User management
 ---------------
 
+.. customavailablein::
+    :enterprise_version: 1.3.0
+
 .. autoapimodule:: fiftyone.management.users
    :members:
    :undoc-members:
@@ -167,6 +179,9 @@ User management
 
 Group management
 ----------------
+
+.. customavailablein::
+    :enterprise_version: 2.0.0
 
 .. autoapimodule:: fiftyone.management.user_groups
    :members:

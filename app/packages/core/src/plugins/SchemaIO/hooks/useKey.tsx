@@ -12,10 +12,10 @@ export function useKey(
   path: string,
   schema: ViewPropsType["schema"],
   data?: unknown,
-  useData?: boolean
+  useData?: boolean,
 ): [string, () => void] {
   const value = useMemo(() => {
-    return useData ? data : data ?? get(schema, "default");
+    return useData ? data : (data ?? get(schema, "default"));
   }, [useData, data, schema]);
   const memoizedPath = useMemo(() => path, [path]);
   const { id = DEFAULT_ID } = useContext(SchemaIOContext);

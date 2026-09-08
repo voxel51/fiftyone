@@ -71,7 +71,7 @@ export const loadOverlays = <State extends BaseState>(
     [key: string]: any;
   },
   schema: Schema,
-  video = false
+  video = false,
 ): Overlay<State>[] => {
   const { classifications, overlays } = accumulateOverlays(sample, schema);
 
@@ -88,7 +88,7 @@ export const loadOverlays = <State extends BaseState>(
 const TAGS = new Set(LABEL_TAGS_CLASSES);
 
 const EMBEDDED_FIELDS = Object.freeze(
-  new Set([EMBEDDED_DOCUMENT_FIELD, DYNAMIC_EMBEDDED_DOCUMENT_FIELD])
+  new Set([EMBEDDED_DOCUMENT_FIELD, DYNAMIC_EMBEDDED_DOCUMENT_FIELD]),
 );
 
 export const accumulateOverlays = <State extends BaseState>(
@@ -97,7 +97,7 @@ export const accumulateOverlays = <State extends BaseState>(
   },
   schema: Schema,
   prefix = [],
-  depth = 1
+  depth = 1,
 ): {
   classifications: Labels<TemporalDetectionLabel | ClassificationLabel>;
   overlays: Overlay<State>[];
@@ -132,7 +132,7 @@ export const accumulateOverlays = <State extends BaseState>(
         label,
         schema,
         [...prefix, field],
-        depth - 1
+        depth - 1,
       );
       classifications.push(...nestedResult.classifications);
       overlays.push(...nestedResult.overlays);

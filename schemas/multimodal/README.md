@@ -8,10 +8,10 @@ TypeScript contract surfaces consumed by the SDK and app packages.
 
 ## Files
 
--   `v1/common.proto`: shared descriptors and time primitives
--   `v1/inventory.proto`: source inventory contract
--   `v1/playback.proto`: playback plan, panel, and layout contract
--   `build.py`: local code generation entrypoint for Python and TypeScript
+- `v1/common.proto`: shared descriptors and time primitives
+- `v1/inventory.proto`: source inventory contract
+- `v1/playback.proto`: playback plan, panel, and layout contract
+- `build.py`: local code generation entrypoint for Python and TypeScript
 
 ## Usage
 
@@ -22,11 +22,11 @@ The build script does two things:
 
 It uses:
 
--   all protobuf files under the current versioned schema directory as the
-    schema source of truth
--   vendored protobuf imports under `include`
--   project-local `protoc-gen-es` from `app/package.json`
--   local `protoc` matching the Python protobuf runtime pinned in `setup.py`
+- all protobuf files under the current versioned schema directory as the schema
+  source of truth
+- vendored protobuf imports under `include`
+- project-local `protoc-gen-es` from `app/package.json`
+- local `protoc` matching the Python protobuf runtime pinned in `setup.py`
 
 `protoc` generates the Python output natively. TypeScript generation is not a
 built-in `protoc` feature, so it uses the external `protoc-gen-es` plugin. The

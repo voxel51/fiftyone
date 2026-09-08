@@ -37,7 +37,12 @@ describe("Position Component", () => {
 
       // The paths follow the structure: parent.child
       // position.x, position.y, dimensions.width, dimensions.height
-      const paths = ["position.x", "position.y", "dimensions.width", "dimensions.height"];
+      const paths = [
+        "position.x",
+        "position.y",
+        "dimensions.width",
+        "dimensions.height",
+      ];
 
       paths.forEach((path) => setPathUserUnchanged(path));
 

@@ -28,7 +28,7 @@ export function useSelectionEffect() {
           view,
           filters,
           loadedPlot?.patches_field,
-          loadedPlot?.points_field
+          loadedPlot?.points_field,
         )
       ) {
         fetchUpdatedSelection({

@@ -32,14 +32,14 @@ export const useRegisterSidebarCommandHandlers = (
   container: React.RefObject<HTMLDivElement | null>,
   entries: fos.SidebarEntry[],
   items: React.MutableRefObject<InteractiveItems>,
-  modal: boolean
+  modal: boolean,
 ) => {
   const handleExpandField = useRecoilCallback(
     ({ set }) =>
       async (path: string) => {
         set(fos.sidebarExpanded({ path, modal }), true);
       },
-    [modal]
+    [modal],
   );
 
   useRegisterCommandHandler(
@@ -48,8 +48,8 @@ export const useRegisterSidebarCommandHandlers = (
       async (cmd) => {
         await handleExpandField(cmd.path);
       },
-      [handleExpandField]
-    )
+      [handleExpandField],
+    ),
   );
 
   const handleCollapseField = useRecoilCallback(
@@ -57,7 +57,7 @@ export const useRegisterSidebarCommandHandlers = (
       async (path: string) => {
         set(fos.sidebarExpanded({ path, modal }), false);
       },
-    [modal]
+    [modal],
   );
 
   const handleCollapseFieldWithExpandedPath = useRecoilCallback(
@@ -67,7 +67,7 @@ export const useRegisterSidebarCommandHandlers = (
         const expandedPath = await snapshot.getPromise(fos.expandPath(path));
         await handleCollapseField(expandedPath);
       },
-    [handleCollapseField]
+    [handleCollapseField],
   );
 
   useRegisterCommandHandler(
@@ -76,8 +76,8 @@ export const useRegisterSidebarCommandHandlers = (
       async (cmd) => {
         await handleCollapseFieldWithExpandedPath(cmd.path);
       },
-      [handleCollapseFieldWithExpandedPath]
-    )
+      [handleCollapseFieldWithExpandedPath],
+    ),
   );
 
   // Handler: Scroll to field
@@ -89,7 +89,7 @@ export const useRegisterSidebarCommandHandlers = (
 
       // Find the target entry
       const targetEntry = entries.find(
-        (entry) => entry.kind === fos.EntryKind.PATH && entry.path === path
+        (entry) => entry.kind === fos.EntryKind.PATH && entry.path === path,
       );
 
       if (!targetEntry) {
@@ -110,7 +110,7 @@ export const useRegisterSidebarCommandHandlers = (
         inline: "nearest",
       });
     },
-    [container, entries, items]
+    [container, entries, items],
   );
 
   useRegisterCommandHandler(
@@ -119,8 +119,8 @@ export const useRegisterSidebarCommandHandlers = (
       async (cmd) => {
         await handleScrollToField(cmd.path);
       },
-      [handleScrollToField]
-    )
+      [handleScrollToField],
+    ),
   );
 
   // Handler: Expand and scroll to field
@@ -137,13 +137,13 @@ export const useRegisterSidebarCommandHandlers = (
             const onAnimationRest = () => {
               container.current?.removeEventListener(
                 "animation-onRest",
-                onAnimationRest
+                onAnimationRest,
               );
               resolve();
             };
             container.current.addEventListener(
               "animation-onRest",
-              onAnimationRest
+              onAnimationRest,
             );
           });
         }
@@ -151,7 +151,7 @@ export const useRegisterSidebarCommandHandlers = (
         // Scroll to the label field (e.g., "yolo11")
         await handleScrollToField(path);
       },
-    [handleExpandField, handleScrollToField, container]
+    [handleExpandField, handleScrollToField, container],
   );
 
   useRegisterCommandHandler(
@@ -162,7 +162,7 @@ export const useRegisterSidebarCommandHandlers = (
       async (cmd) => {
         await handleExpandAndScrollToField(cmd.path);
       },
-      [handleExpandAndScrollToField]
-    )
+      [handleExpandAndScrollToField],
+    ),
   );
 };

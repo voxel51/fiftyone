@@ -85,7 +85,7 @@ const PcdsSelector = () => {
   const actions = fos.useRenderConfig3dActions();
   const setCurrentAction = useSetRecoilState(currentActionAtom);
   const availableSlices = allSlices.filter((slice) =>
-    Boolean(allSampleMap[slice])
+    Boolean(allSampleMap[slice]),
   );
 
   const containerRef = useRef<HTMLDivElement>(null);

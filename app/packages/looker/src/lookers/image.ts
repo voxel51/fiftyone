@@ -24,7 +24,7 @@ export class ImageLooker extends AbstractLooker<ImageState> {
 
   getInitialState(
     config: ImageState["config"],
-    options: ImageState["options"]
+    options: ImageState["options"],
   ) {
     const resolved = {
       ...this.getDefaultOptions(),
@@ -100,7 +100,7 @@ export class ImageLooker extends AbstractLooker<ImageState> {
 
   updateOptions(
     options: Partial<ImageState["options"]>,
-    disableReload = false
+    disableReload = false,
   ) {
     const reload =
       !disableReload &&

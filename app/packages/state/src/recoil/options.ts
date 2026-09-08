@@ -36,7 +36,7 @@ export const selectedMediaFieldAtomFamily = graphQLSyncFragmentAtomFamily<
   },
   {
     key: "selectedMediaFieldAtomFamily",
-  }
+  },
 );
 
 export const selectedMediaField = selectorFamily<string, boolean>({
@@ -75,7 +75,7 @@ export const dynamicGroupsViewMode = selectorFamily({
 
       if (!value) {
         return modal
-          ? get(dynamicGroupsViewModeStore(false)) ?? "pagination"
+          ? (get(dynamicGroupsViewModeStore(false)) ?? "pagination")
           : "pagination";
       }
 

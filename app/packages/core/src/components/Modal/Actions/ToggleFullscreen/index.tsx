@@ -1,7 +1,6 @@
 import { PillButton } from "@fiftyone/components";
 import { fullscreen } from "@fiftyone/state";
 import { Fullscreen, FullscreenExit } from "@mui/icons-material";
-import React from "react";
 import { useRecoilState } from "recoil";
 
 const ToggleFullscreen = () => {

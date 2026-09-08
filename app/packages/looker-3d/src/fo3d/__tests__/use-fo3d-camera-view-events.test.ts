@@ -1,11 +1,12 @@
-import type { CameraControls } from "@react-three/drei";
-import { renderHook } from "@testing-library/react-hooks";
+import { renderHook } from "@testing-library/react";
 import type { RefObject } from "react";
 import type { Box3, PerspectiveCamera } from "three";
 import { Box3 as ThreeBox3, Vector3 } from "three";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SET_EGO_VIEW_EVENT, SET_TOP_VIEW_EVENT } from "../../constants";
 import { useFo3dCameraViewEvents } from "../../hooks/use-fo3d-camera-view-events";
+import type { Fo3dCameraControls } from "../camera-controls";
+import type { FoScene } from "../render-types";
 
 const hookState = vi.hoisted(() => ({
   overriddenCameraPosition: null as [number, number, number] | null,
@@ -16,7 +17,7 @@ vi.mock("@fiftyone/state", () => ({
   useEventHandler: (
     _target: EventTarget | undefined,
     eventType: string,
-    handler: () => void
+    handler: () => void,
   ) => {
     hookState.handlers.set(eventType, handler);
   },
@@ -39,12 +40,12 @@ vi.mock("recoil", async () => {
 
 type CameraHarness = {
   cameraRef: RefObject<PerspectiveCamera>;
-  cameraControlsRef: RefObject<CameraControls>;
-  setLookAt: ReturnType<typeof vi.fn>;
+  cameraControlsRef: RefObject<Fo3dCameraControls>;
+  update: ReturnType<typeof vi.fn>;
 };
 
 const makeCameraHarness = (): CameraHarness => {
-  const setLookAt = vi.fn();
+  const update = vi.fn();
 
   return {
     cameraRef: {
@@ -54,10 +55,11 @@ const makeCameraHarness = (): CameraHarness => {
     } as unknown as RefObject<PerspectiveCamera>,
     cameraControlsRef: {
       current: {
-        setLookAt,
+        target: new Vector3(0, 0, 0),
+        update,
       },
-    } as unknown as RefObject<CameraControls>,
-    setLookAt,
+    } as unknown as RefObject<Fo3dCameraControls>,
+    update,
   };
 };
 
@@ -67,7 +69,7 @@ const makeFoScene = (position: [number, number, number] | null = [0, 0, 10]) =>
       position,
       lookAt: [0, 0, 0],
     },
-  } as any);
+  }) as unknown as FoScene;
 
 describe("useFo3dCameraViewEvents", () => {
   beforeEach(() => {
@@ -82,11 +84,11 @@ describe("useFo3dCameraViewEvents", () => {
   });
 
   it("handles top-view event immediately when scene bbox is available", () => {
-    const { cameraRef, cameraControlsRef, setLookAt } = makeCameraHarness();
+    const { cameraRef, cameraControlsRef, update } = makeCameraHarness();
     const recomputeBounds = vi.fn();
     const finiteBox = new ThreeBox3(
       new Vector3(-1, -1, -1),
-      new Vector3(1, 1, 1)
+      new Vector3(1, 1, 1),
     ) as Box3;
 
     renderHook(() =>
@@ -99,7 +101,7 @@ describe("useFo3dCameraViewEvents", () => {
         foScene: makeFoScene(),
         settings: null,
         recomputeBounds,
-      })
+      }),
     );
 
     const topHandler = hookState.handlers.get(SET_TOP_VIEW_EVENT);
@@ -108,16 +110,17 @@ describe("useFo3dCameraViewEvents", () => {
     topHandler?.();
 
     expect(recomputeBounds).not.toHaveBeenCalled();
-    expect(setLookAt).toHaveBeenCalledTimes(1);
-    expect(setLookAt.mock.calls[0][6]).toBe(true);
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(cameraRef.current?.position.toArray()).toEqual([0, 5, 0]);
+    expect(cameraControlsRef.current?.target.toArray()).toEqual([0, 0, 0]);
   });
 
   it("recomputes bounds and defers top-view action when bbox is missing", () => {
-    const { cameraRef, cameraControlsRef, setLookAt } = makeCameraHarness();
+    const { cameraRef, cameraControlsRef, update } = makeCameraHarness();
     const recomputeBounds = vi.fn();
     const effectiveBox = new ThreeBox3(
       new Vector3(-2, -2, -2),
-      new Vector3(2, 2, 2)
+      new Vector3(2, 2, 2),
     ) as Box3;
 
     renderHook(() =>
@@ -130,7 +133,7 @@ describe("useFo3dCameraViewEvents", () => {
         foScene: makeFoScene(),
         settings: null,
         recomputeBounds,
-      })
+      }),
     );
 
     const topHandler = hookState.handlers.get(SET_TOP_VIEW_EVENT);
@@ -139,21 +142,23 @@ describe("useFo3dCameraViewEvents", () => {
     topHandler?.();
 
     expect(recomputeBounds).toHaveBeenCalledTimes(1);
-    expect(setLookAt).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
 
     vi.advanceTimersByTime(49);
-    expect(setLookAt).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
 
     vi.advanceTimersByTime(1);
-    expect(setLookAt).toHaveBeenCalledTimes(1);
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(cameraRef.current?.position.toArray()).toEqual([0, 10, 0]);
+    expect(cameraControlsRef.current?.target.toArray()).toEqual([0, 0, 0]);
   });
 
   it("cleans up deferred view commands on unmount", () => {
-    const { cameraRef, cameraControlsRef, setLookAt } = makeCameraHarness();
+    const { cameraRef, cameraControlsRef, update } = makeCameraHarness();
     const recomputeBounds = vi.fn();
     const effectiveBox = new ThreeBox3(
       new Vector3(-2, -2, -2),
-      new Vector3(2, 2, 2)
+      new Vector3(2, 2, 2),
     ) as Box3;
 
     const { unmount } = renderHook(() =>
@@ -166,7 +171,7 @@ describe("useFo3dCameraViewEvents", () => {
         foScene: makeFoScene(),
         settings: null,
         recomputeBounds,
-      })
+      }),
     );
 
     const topHandler = hookState.handlers.get(SET_TOP_VIEW_EVENT);
@@ -178,16 +183,16 @@ describe("useFo3dCameraViewEvents", () => {
     unmount();
     vi.advanceTimersByTime(50);
 
-    expect(setLookAt).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
   });
 
   it("uses operator override precedence for ego-view events", () => {
-    const { cameraRef, cameraControlsRef, setLookAt } = makeCameraHarness();
+    const { cameraRef, cameraControlsRef, update } = makeCameraHarness();
     hookState.overriddenCameraPosition = [4, 5, 6];
     const recomputeBounds = vi.fn();
     const finiteBox = new ThreeBox3(
       new Vector3(-1, -1, -1),
-      new Vector3(1, 1, 1)
+      new Vector3(1, 1, 1),
     ) as Box3;
 
     renderHook(() =>
@@ -200,7 +205,7 @@ describe("useFo3dCameraViewEvents", () => {
         foScene: makeFoScene([9, 9, 9]),
         settings: null,
         recomputeBounds,
-      })
+      }),
     );
 
     const egoHandler = hookState.handlers.get(SET_EGO_VIEW_EVENT);
@@ -208,10 +213,7 @@ describe("useFo3dCameraViewEvents", () => {
 
     egoHandler?.();
 
-    expect(setLookAt).toHaveBeenCalledTimes(1);
-    expect(setLookAt.mock.calls[0][0]).toBe(4);
-    expect(setLookAt.mock.calls[0][1]).toBe(5);
-    expect(setLookAt.mock.calls[0][2]).toBe(6);
-    expect(setLookAt.mock.calls[0][6]).toBe(true);
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(cameraRef.current?.position.toArray()).toEqual([4, 5, 6]);
   });
 });

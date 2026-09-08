@@ -5,11 +5,13 @@ import {
   createSampleRendererRenderContext,
   getFileExtension,
   getMatchingSampleRenderer,
+  getSampleRendererGridSlotComponent,
   getSampleRendererComponent,
   getSelectedMediaPath,
   hasMatchMediaMatchers,
   isSampleRendererGridEnabled,
   matchesMatchMedia,
+  SAMPLE_RENDERER_GRID_SLOT,
   sortSampleRenderersByPriority,
   supportsSampleRenderer,
 } from "./sample-renderer";
@@ -28,7 +30,7 @@ const createSample = () =>
       { field: "filepath", url: "/tmp/default.bin" },
       { field: "thumbnail_path", url: "/tmp/preview.PDF" },
     ],
-  } as const);
+  }) as const;
 
 const createRegistration = (
   name: string,
@@ -37,15 +39,18 @@ const createRegistration = (
     supports:
       | {
           extensions?: string[];
+          mediaReferenceKinds?: string[];
           mimeTypes?: string[];
           mediaTypes?: string[];
         }
       | ((ctx: any) => boolean);
     grid?: {
+      clickBehavior?: "renderer" | "passthrough";
       enabled?: boolean;
       overrideComponent?: React.FunctionComponent<{ ctx: any }>;
+      slots?: Partial<Record<string, React.FunctionComponent>>;
     };
-  }
+  },
 ) => ({
   name,
   component: ({ ctx }: { ctx: any }) => <div>{ctx.media.url}</div>,
@@ -63,15 +68,29 @@ describe("sample renderer matcher utilities", () => {
     const sample = createSample();
 
     expect(getSelectedMediaPath(sample, "thumbnail_path")).toBe(
-      "/tmp/preview.PDF"
+      "/tmp/preview.PDF",
     );
     expect(getSelectedMediaPath(sample, "missing")).toBe("/tmp/default.bin");
+  });
+
+  it("ignores an empty selected media path", () => {
+    const sample = createSample();
+
+    expect(
+      getSelectedMediaPath(
+        {
+          ...sample,
+          urls: [...sample.urls, { field: "empty_path", url: "" }],
+        },
+        "empty_path",
+      ),
+    ).toBe("/tmp/default.bin");
   });
 
   it("builds a media context for non-native selected media", () => {
     const media = createSampleRendererMediaContext(
       createSample(),
-      "thumbnail_path"
+      "thumbnail_path",
     );
 
     expect(media).toMatchObject({
@@ -85,6 +104,60 @@ describe("sample renderer matcher utilities", () => {
     expect(media.url).toContain(encodeURIComponent("/tmp/preview.PDF"));
   });
 
+  it("does not reuse root metadata for an unknown alternate path", () => {
+    const sample = createSample();
+    const media = createSampleRendererMediaContext(
+      {
+        ...sample,
+        urls: [...sample.urls, { field: "unknown_path", url: "/tmp/preview" }],
+      },
+      "unknown_path",
+    );
+
+    expect(media.mimeType).toBeNull();
+  });
+
+  it("classifies a native alternate path independently of the root type", () => {
+    const sample = createSample();
+    const media = createSampleRendererMediaContext(
+      {
+        ...sample,
+        urls: [
+          ...sample.urls,
+          { field: "image_path", url: "/tmp/preview.png" },
+        ],
+      },
+      "image_path",
+    );
+
+    expect(media).toMatchObject({
+      mimeType: "image/png",
+      mediaType: "unknown",
+      isNative: true,
+    });
+  });
+
+  it("keeps root metadata authoritative for an extensionless signed URL", () => {
+    const media = createSampleRendererMediaContext(
+      {
+        sample: {
+          filepath: "/tmp/default",
+          metadata: { mime_type: "application/pdf" },
+          media_type: "unknown",
+        },
+        urls: [
+          {
+            field: "filepath",
+            url: "https://example.com/media/asset?signature=abc",
+          },
+        ],
+      },
+      "filepath",
+    );
+
+    expect(media.mimeType).toBe("application/pdf");
+  });
+
   it("builds a render context with the surface included", () => {
     const sample = createSample();
     const ctx = createSampleRendererRenderContext(
@@ -92,7 +165,7 @@ describe("sample renderer matcher utilities", () => {
       "thumbnail_path",
       dataset,
       schema,
-      "modal"
+      "modal",
     );
 
     expect(ctx.sample).toBe(sample);
@@ -101,24 +174,66 @@ describe("sample renderer matcher utilities", () => {
     expect(ctx.surface).toBe("modal");
   });
 
+  it("builds a pathless media-reference context without a native looker", () => {
+    const media = createSampleRendererMediaContext(
+      {
+        sample: {
+          _id: "episode",
+          media_reference: {
+            kind: "lerobot-episode",
+            key: "source:17",
+          },
+          _media_type: "multimodal",
+        },
+      },
+      "media_reference",
+    );
+
+    expect(media).toMatchObject({
+      extension: null,
+      isNative: false,
+      mediaReference: {
+        kind: "lerobot-episode",
+        key: "source:17",
+      },
+      mediaType: "multimodal",
+      path: null,
+      url: null,
+    });
+    expect(
+      matchesMatchMedia({ mediaReferenceKinds: ["LEROBOT-EPISODE"] }, media),
+    ).toBe(true);
+
+    const filepathMedia = createSampleRendererMediaContext(
+      createSample(),
+      "filepath",
+    );
+    expect(
+      matchesMatchMedia(
+        { mediaReferenceKinds: ["lerobot-episode"] },
+        filepathMedia,
+      ),
+    ).toBe(false);
+  });
+
   it("detects matcher presence only when a matcher field is populated", () => {
     expect(hasMatchMediaMatchers(undefined)).toBe(false);
     expect(hasMatchMediaMatchers({})).toBe(false);
     expect(hasMatchMediaMatchers({ extensions: ["  ", ""] })).toBe(false);
     expect(hasMatchMediaMatchers({ mimeTypes: ["application/pdf"] })).toBe(
-      true
+      true,
     );
   });
 
   it("matches extensions, mime types, and media types case-insensitively", () => {
     const media = createSampleRendererMediaContext(
       createSample(),
-      "thumbnail_path"
+      "thumbnail_path",
     );
 
     expect(matchesMatchMedia({ extensions: [".pdf"] }, media)).toBe(true);
     expect(matchesMatchMedia({ mimeTypes: ["APPLICATION/PDF"] }, media)).toBe(
-      true
+      true,
     );
     expect(matchesMatchMedia({ mediaTypes: ["UNKNOWN"] }, media)).toBe(true);
   });
@@ -126,7 +241,7 @@ describe("sample renderer matcher utilities", () => {
   it("requires all provided matcher fields to match", () => {
     const media = createSampleRendererMediaContext(
       createSample(),
-      "thumbnail_path"
+      "thumbnail_path",
     );
 
     expect(
@@ -135,8 +250,8 @@ describe("sample renderer matcher utilities", () => {
           extensions: ["pdf"],
           mimeTypes: ["application/pdf"],
         },
-        media
-      )
+        media,
+      ),
     ).toBe(true);
     expect(
       matchesMatchMedia(
@@ -144,8 +259,8 @@ describe("sample renderer matcher utilities", () => {
           extensions: ["pdf"],
           mimeTypes: ["image/png"],
         },
-        media
-      )
+        media,
+      ),
     ).toBe(false);
   });
 });
@@ -157,7 +272,7 @@ describe("sample renderer selection", () => {
       "thumbnail_path",
       dataset,
       schema,
-      "modal"
+      "modal",
     );
     const registration = createRegistration("pdf", {
       supports: { extensions: ["pdf"] },
@@ -166,16 +281,40 @@ describe("sample renderer selection", () => {
     expect(supportsSampleRenderer(registration, ctx)).toBe(true);
   });
 
+  it("selects a media-reference renderer without a filepath or URL", () => {
+    const ctx = createSampleRendererRenderContext(
+      {
+        sample: {
+          _id: "episode",
+          media_reference: {
+            kind: "lerobot-episode",
+            key: "source:17",
+          },
+          _media_type: "multimodal",
+        },
+      },
+      "media_reference",
+      dataset,
+      schema,
+      "modal",
+    );
+    const registration = createRegistration("logical-episode", {
+      supports: { mediaReferenceKinds: ["lerobot-episode"] },
+    });
+
+    expect(getMatchingSampleRenderer([registration], ctx)).toBe(registration);
+  });
+
   it("supports predicate matchers", () => {
     const ctx = createSampleRendererRenderContext(
       createSample(),
       "thumbnail_path",
       dataset,
       schema,
-      "modal"
+      "modal",
     );
     const predicate = vi.fn(
-      (matchCtx) => matchCtx.media.mimeType === "application/pdf"
+      (matchCtx) => matchCtx.media.mimeType === "application/pdf",
     );
     const registration = createRegistration("pdf", {
       supports: predicate,
@@ -191,7 +330,7 @@ describe("sample renderer selection", () => {
       "thumbnail_path",
       dataset,
       schema,
-      "modal"
+      "modal",
     );
     const low = createRegistration("zeta", {
       priority: 1,
@@ -212,7 +351,7 @@ describe("sample renderer selection", () => {
       low,
     ]);
     expect(getMatchingSampleRenderer([low, tieB, tieA], ctx)?.name).toBe(
-      "alpha"
+      "alpha",
     );
   });
 
@@ -230,7 +369,7 @@ describe("sample renderer selection", () => {
       "filepath",
       dataset,
       schema,
-      "modal"
+      "modal",
     );
     const registration = createRegistration("native-image", {
       supports: { mediaTypes: ["image"] },
@@ -246,7 +385,7 @@ describe("sample renderer selection", () => {
       "thumbnail_path",
       dataset,
       schema,
-      "grid"
+      "grid",
     );
     const registration = createRegistration("pdf", {
       supports: { extensions: ["pdf"] },
@@ -267,7 +406,7 @@ describe("sample renderer selection", () => {
     };
 
     expect(getSampleRendererComponent(registration, "grid", canonical)).toBe(
-      canonical
+      canonical,
     );
   });
 
@@ -283,7 +422,44 @@ describe("sample renderer selection", () => {
     };
 
     expect(getSampleRendererComponent(registration, "grid", canonical)).toBe(
-      override
+      override,
     );
+  });
+
+  it("returns a grid slot component only when grid rendering is enabled", () => {
+    const SlotComponent = () => <div>header</div>;
+    const enabledRegistration = createRegistration("enabled", {
+      supports: { extensions: ["pdf"] },
+      grid: {
+        enabled: true,
+        slots: {
+          [SAMPLE_RENDERER_GRID_SLOT.HEADER_AFTER_RESOURCE_COUNT]:
+            SlotComponent,
+        },
+      },
+    });
+    const disabledRegistration = createRegistration("disabled", {
+      supports: { extensions: ["pdf"] },
+      grid: {
+        enabled: false,
+        slots: {
+          [SAMPLE_RENDERER_GRID_SLOT.HEADER_AFTER_RESOURCE_COUNT]:
+            SlotComponent,
+        },
+      },
+    });
+
+    expect(
+      getSampleRendererGridSlotComponent(
+        enabledRegistration,
+        SAMPLE_RENDERER_GRID_SLOT.HEADER_AFTER_RESOURCE_COUNT,
+      ),
+    ).toBe(SlotComponent);
+    expect(
+      getSampleRendererGridSlotComponent(
+        disabledRegistration,
+        SAMPLE_RENDERER_GRID_SLOT.HEADER_AFTER_RESOURCE_COUNT,
+      ),
+    ).toBeNull();
   });
 });

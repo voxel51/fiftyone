@@ -13,7 +13,7 @@ import { InferenceCapability } from "../types";
 export const useAIAnnotationActionGroup = (): ToolbarActionGroup => {
   const pointSelection = usePointSelection();
   const { inferenceCapabilities } = useAnnotationAgent(
-    useAgentSelector()?.activeAgent?.agent
+    useAgentSelector()?.activeAgent?.agent,
   );
 
   return useMemo(
@@ -45,6 +45,6 @@ export const useAIAnnotationActionGroup = (): ToolbarActionGroup => {
         },
       ],
     }),
-    [inferenceCapabilities, pointSelection]
+    [inferenceCapabilities, pointSelection],
   );
 };

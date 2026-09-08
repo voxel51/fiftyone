@@ -1,3 +1,4 @@
+/// <reference path="./env.d.ts" />
 import {
   EventSourceMessage,
   fetchEventSource,
@@ -50,7 +51,15 @@ export type FetchResultType =
   | "blob"
   | "text"
   | "arrayBuffer"
+  | "response"
   | "json-stream";
+
+/**
+ * Browser HTTP cache modes callers may request. "only-if-cached" is
+ * excluded: it is only valid with mode "same-origin", and every request
+ * here is sent with mode "cors", where the fetch would throw.
+ */
+export type BrowserCacheMode = Exclude<RequestCache, "only-if-cached">;
 
 /**
  * Configuration for a `fetch` call.
@@ -70,6 +79,17 @@ export type FetchFunctionConfig<T> = {
    * @default false
    */
   cache?: boolean;
+  /**
+   * Browser HTTP cache mode for the underlying fetch. Byte-range readers
+   * pass "no-store": Chrome may answer a Range request from a cached
+   * superset block whose Content-Range does not match what was asked.
+   * @default "no-cache"
+   */
+  browserCache?: BrowserCacheMode;
+  /** Cancels the request and response-body read. */
+  signal?: AbortSignal;
+  /** Reports cumulative response-body bytes as they arrive. */
+  onProgress?: (loadedBytes: number) => void;
 };
 
 /**
@@ -89,7 +109,7 @@ export interface FetchFunction {
     retries?: number,
     retryCodes?: number[],
     errorHandler?: (response: Response) => void | Promise<void>,
-    headers?: Record<string, string>
+    headers?: Record<string, string>,
   ): Promise<R>;
 }
 
@@ -105,7 +125,10 @@ export interface FetchFunctionExtended {
     retries?: number,
     retryCodes?: number[],
     errorHandler?: (response: Response) => void | Promise<void>,
-    headers?: Record<string, string>
+    headers?: Record<string, string>,
+    signal?: AbortSignal,
+    onProgress?: (loadedBytes: number) => void,
+    browserCache?: BrowserCacheMode,
   ): Promise<FetchFunctionResult<R>>;
 }
 
@@ -127,7 +150,7 @@ export type GetFetchFunctionOptions = {
  */
 const withCache = <T>(
   cacheKey: string,
-  fetchFn: () => Promise<T>
+  fetchFn: () => Promise<T>,
 ): Promise<T> => {
   if (fetchCache.has(cacheKey)) {
     return Promise.resolve(fetchCache.get(cacheKey) as T);
@@ -177,9 +200,9 @@ export const getFetchFunction = (options?: GetFetchFunctionOptions) => {
     retries?: number,
     retryCodes?: number[],
     errorHandler?: (response: Response) => void | Promise<void>,
-    headers?: Record<string, string>
-  ): Promise<R> =>
-    withCache(buildCacheKey(method, path, body), () =>
+    headers?: Record<string, string>,
+  ): Promise<R> => {
+    const fetchResult = () =>
       fetchFunctionSingleton<A, R>(
         method,
         path,
@@ -188,9 +211,13 @@ export const getFetchFunction = (options?: GetFetchFunctionOptions) => {
         retries,
         retryCodes,
         errorHandler,
-        headers
-      )
-    );
+        headers,
+      );
+
+    return result === "response"
+      ? fetchResult()
+      : withCache(buildCacheKey(method, path, body), fetchResult);
+  };
 };
 
 /**
@@ -199,7 +226,7 @@ export const getFetchFunction = (options?: GetFetchFunctionOptions) => {
  */
 export const getFetchFunctionExtended =
   (): (<A, R>(
-    config: FetchFunctionConfig<A>
+    config: FetchFunctionConfig<A>,
   ) => Promise<FetchFunctionResult<R>>) =>
   <A, R>(config: FetchFunctionConfig<A>): Promise<FetchFunctionResult<R>> => {
     const doFetch = () =>
@@ -211,13 +238,16 @@ export const getFetchFunctionExtended =
         config.retries,
         config.retryCodes,
         config.errorHandler,
-        config.headers
+        config.headers,
+        config.signal,
+        config.onProgress,
+        config.browserCache,
       );
 
-    if (config.cache) {
+    if (config.cache && config.result !== "response") {
       return withCache(
         buildCacheKey(config.method, config.path, config.body),
-        doFetch
+        doFetch,
       );
     }
 
@@ -258,7 +288,7 @@ export const mergeHeaders = (
       // convert everything to Record<string, string>
       .map((h) => headersAsRecord(h))
       // reduce with spread, ignoring any undefined values
-      .reduce((a, b) => (a && b ? { ...a, ...b } : a ?? b), {})
+      .reduce((a, b) => (a && b ? { ...a, ...b } : (a ?? b)), {})
   );
 };
 
@@ -287,7 +317,7 @@ export function getFetchPathPrefix(): string {
 export const setFetchParameters = (
   origin: string,
   headers: HeadersInit = {},
-  pathPrefix = ""
+  pathPrefix = "",
 ) => {
   fetchHeaders = headers;
   fetchOrigin = origin;
@@ -302,10 +332,72 @@ export const getFetchParameters = () => {
   };
 };
 
+const joinFetchUrl = (
+  origin: string,
+  pathPrefix: string,
+  path: string,
+): string => {
+  const prefix = pathPrefix.replace(/^\/+|\/+$/g, "");
+  const suffix = path.replace(/^\/+/, "");
+  const relative = [prefix, suffix].filter(Boolean).join("/");
+  const base = origin.replace(/\/+$/, "");
+  return `${base}/${relative}`;
+};
+
+const resolveFetchUrl = (
+  origin: string | undefined,
+  pathPrefix: string,
+  path: string,
+): string => {
+  try {
+    new URL(path);
+    return path;
+  } catch {
+    if (typeof origin !== "string") {
+      throw new Error("Fetch parameters are not configured");
+    }
+
+    return joinFetchUrl(origin, pathPrefix, path);
+  }
+};
+
+/** Builds an absolute URL from the configured fetch origin and path prefix. */
+export const getFetchUrl = (path: string): string => {
+  return resolveFetchUrl(fetchOrigin, fetchPathPrefix, path);
+};
+
+// Identical GraphQL QUERIES that are in flight at the same moment share one
+// request. Several independent subscribers commonly derive the same
+// dataset-level aggregation from one view change, and each duplicate costs a
+// full server resolve. Only reads are shared: a mutation is never coalesced,
+// and the entry is dropped the moment the request settles, so nothing is
+// cached across gestures.
+const inFlightQueries = new Map<string, Promise<unknown>>();
+
+const graphqlQueryKey = (
+  method: string,
+  path: string,
+  body: unknown,
+): string | null => {
+  if (method.toUpperCase() !== "POST" || !body || typeof body !== "object") {
+    return null;
+  }
+
+  const query = (body as { query?: unknown }).query;
+  if (
+    typeof query !== "string" ||
+    !/^\s*query\s+aggregationsQuery\b/.test(query)
+  ) {
+    return null;
+  }
+
+  return `${path}:${JSON.stringify(body)}`;
+};
+
 export const setFetchFunction = (
   origin: string,
   defaultHeaders: HeadersInit = {},
-  pathPrefix = ""
+  pathPrefix = "",
 ) => {
   setFetchParameters(origin, defaultHeaders, pathPrefix);
 
@@ -317,31 +409,20 @@ export const setFetchFunction = (
     retries = 2,
     retryCodes = [502, 503, 504],
     errorHandler,
-    headers
+    headers,
+    signal,
+    onProgress,
+    browserCache,
   ) => {
-    let url: string;
     const controller = new AbortController();
-
-    try {
-      // if a valid URL is provided, make no adjustments
-      new URL(path);
-      url = path;
-    } catch {
-      if (fetchPathPrefix) {
-        path = `${fetchPathPrefix}${path}`.replaceAll("//", "/");
-      }
-
-      url = `${origin}${
-        !origin.endsWith("/") && !path.startsWith("/") ? "/" : ""
-      }${path}`;
-    }
+    const url = resolveFetchUrl(origin, fetchPathPrefix, path);
 
     // set content type only if body is present, otherwise it can cause Bad Request
     // errors for endpoints that don't expect a body
     headers = mergeHeaders(
       body ? { "Content-Type": "application/json" } : {},
       defaultHeaders,
-      headers
+      headers,
     );
 
     const fetchCall = retries
@@ -355,17 +436,18 @@ export const setFetchFunction = (
             ) {
               return true;
             }
+            return false;
           },
         })
       : fetch;
 
     const response = await fetchCall(url, {
       method: method,
-      cache: "no-cache",
+      cache: browserCache ?? "no-cache",
       headers,
       mode: "cors",
       body: body ? JSON.stringify(body) : null,
-      signal: controller.signal,
+      signal: signal ?? controller.signal,
       referrerPolicy: "same-origin",
     });
 
@@ -419,6 +501,22 @@ export const setFetchFunction = (
       };
     }
 
+    if (result === "response") {
+      return {
+        response,
+        headers: response.headers,
+      };
+    }
+
+    if (result === "arrayBuffer" && onProgress) {
+      return {
+        response: asFetchResult(
+          await readResponseArrayBuffer(response, onProgress),
+        ),
+        headers: response.headers,
+      };
+    }
+
     return {
       response: await response[result](),
       headers: response.headers,
@@ -436,22 +534,81 @@ export const setFetchFunction = (
     retries: number = 2,
     retryCodes: number[] = [502, 503, 504],
     errorHandler: (response: Response) => void | Promise<void>,
-    headers: Record<string, string>
-  ) =>
-    fetchFunctionExtended<A, R>(
-      method,
-      path,
-      body,
-      result,
-      retries,
-      retryCodes,
-      errorHandler,
-      headers
-    ).then((res) => res.response);
+    headers: Record<string, string>,
+  ) => {
+    const send = () =>
+      fetchFunctionExtended<A, R>(
+        method,
+        path,
+        body,
+        result,
+        retries,
+        retryCodes,
+        errorHandler,
+        headers,
+        undefined,
+        undefined,
+      ).then((res) => res.response);
+
+    const key = result === "json" ? graphqlQueryKey(method, path, body) : null;
+    if (key === null) {
+      return send();
+    }
+
+    const pending = inFlightQueries.get(key);
+    if (pending) {
+      return pending as Promise<R>;
+    }
+
+    const request = send().finally(() => inFlightQueries.delete(key));
+    inFlightQueries.set(key, request);
+    return request;
+  };
 };
 
+// FetchFunctionExtended predates result-type discrimination and lets callers
+// select the generic response type. Keep that boundary in one place for the
+// progress-aware array-buffer path instead of leaking an `any` assertion.
+function asFetchResult<Result>(value: unknown): Result {
+  return value as Result;
+}
+
+async function readResponseArrayBuffer(
+  response: Response,
+  onProgress: (loadedBytes: number) => void,
+): Promise<ArrayBuffer> {
+  const reader = response.body?.getReader();
+  if (!reader) {
+    const buffer = await response.arrayBuffer();
+    onProgress(buffer.byteLength);
+    return buffer;
+  }
+
+  const chunks: Uint8Array[] = [];
+  let loadedBytes = 0;
+  onProgress(loadedBytes);
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    loadedBytes += value.byteLength;
+    onProgress(loadedBytes);
+  }
+
+  const bytes = new Uint8Array(loadedBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bytes.buffer;
+}
+
 class JSONStreamParser {
-  constructor(response, private controller: AbortController) {
+  constructor(
+    response,
+    private controller: AbortController,
+  ) {
     this.reader = response.body.getReader();
     this.decoder = new TextDecoder();
     this.partialLine = "";
@@ -532,7 +689,7 @@ export const getEventSource = (
     onerror?: (error: Error) => void;
   },
   signal: AbortSignal,
-  body = {}
+  body = {},
 ): void => {
   if (polling) {
     pollingEventSource(path, events, signal, body);
@@ -597,8 +754,18 @@ export const getEventSource = (
             }
 
             throw new ServerError(
-              {},
-              (err as unknown as { stack: string }).stack
+              {
+                code: response.status,
+                bodyResponse: err,
+                route: response.url,
+                payload: {},
+                requestHeaders: init?.headers ?? {},
+                responseHeaders: response.headers,
+                statusText: response.statusText,
+                stack: (err as unknown as { stack?: string }).stack,
+              },
+              (err as unknown as { message?: string }).message ??
+                `${response.status} ${response.url}`,
             );
           }
 
@@ -633,7 +800,7 @@ const pollingEventSource = (
   },
   signal: AbortSignal,
   body = {},
-  opened = false
+  opened = false,
 ): void => {
   if (signal.aborted) {
     return;
@@ -661,7 +828,7 @@ const pollingEventSource = (
 
       setTimeout(
         () => pollingEventSource(path, events, signal, body, opened),
-        2000
+        2000,
       );
     })
     .catch((error) => {
@@ -678,22 +845,7 @@ const pollingEventSource = (
 
       setTimeout(
         () => pollingEventSource(path, events, signal, body, opened),
-        2000
+        2000,
       );
     });
-};
-
-const getFirstFilterPath = (requestBody: any) => {
-  if (requestBody && requestBody.query) {
-    if (requestBody.query.includes("paginateSamplesQuery")) {
-      const pathsArray = requestBody?.variables?.filters;
-      const paths = pathsArray ? Object.keys(pathsArray) : [];
-      return paths.length > 0 ? paths[0] : undefined;
-    }
-    if (requestBody.query.includes("lightningQuery")) {
-      const paths = requestBody?.variables?.input?.paths;
-      return paths && paths.length > 0 ? paths[0].path : undefined;
-    }
-  }
-  return undefined;
 };

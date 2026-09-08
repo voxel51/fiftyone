@@ -10,7 +10,6 @@ import type { OverlayMask } from "@fiftyone/looker/src/numpy";
 import { LRUCache } from "lru-cache";
 import { v4 as uuidv4 } from "uuid";
 
-import MaskPathDecodeWorker from "./maskPathDecodeWorker?worker&inline";
 import type { DecodeResponse } from "./maskPathDecodeWorker";
 
 // Minimum of 1 worker, maximum of 4 workers
@@ -61,16 +60,13 @@ const cache = new LRUCache<string, OverlayMask>({
 const supportsWorkers = (): boolean =>
   typeof Worker !== "undefined" && typeof window !== "undefined";
 
-/** Worker factory. */
-const spawnWorker = (): Worker => {
-  try {
-    return new MaskPathDecodeWorker();
-  } catch {
-    return new Worker(new URL("./maskPathDecodeWorker.ts", import.meta.url), {
-      type: "module",
-    });
-  }
-};
+/**
+ * Worker factory.
+ */
+const spawnWorker = (): Worker =>
+  new Worker(new URL("./maskPathDecodeWorker.ts", import.meta.url), {
+    type: "module",
+  });
 
 const bindWorker = (slot: Slot, worker: Worker): void => {
   slot.worker = worker;
@@ -131,7 +127,18 @@ const ensurePool = (): Slot[] | undefined => {
     return undefined;
   }
 
-  slots = Array.from({ length: MAX_WORKERS }, () => createSlot());
+  try {
+    slots = Array.from({ length: MAX_WORKERS }, () => createSlot());
+  } catch (err) {
+    // `new Worker(...)` can throw synchronously (e.g. CSP blocking
+    // `worker-src`). Leave the pool unset so callers fall back to the
+    // main-thread decode path instead of rejecting.
+    console.error(
+      "[decodeMaskPath] worker pool unavailable; using main-thread decode:",
+      err,
+    );
+    return undefined;
+  }
   return slots;
 };
 
@@ -177,7 +184,7 @@ const drain = (): void => {
 export async function decodeMaskPath(
   url: string,
   field: string,
-  cls: string
+  cls: string,
 ): Promise<OverlayMask | undefined> {
   // Defensive: callers should never pass a non-string URL, but if they do,
   // a downstream `fetch(undefined)` would resolve to a phantom request
@@ -211,16 +218,15 @@ export async function decodeMaskPath(
 async function decodeMaskPathImpl(
   url: string,
   field: string,
-  cls: string
+  cls: string,
 ): Promise<OverlayMask | undefined> {
   const pool = ensurePool();
 
   if (!pool) {
     // No worker support (SSR, tests). Fall back to a direct fetch+decode on
     // whatever thread we're on so callers still get a result.
-    const { decodeMaskOnDisk } = await import(
-      "@fiftyone/looker/src/worker/mask-decoder"
-    );
+    const { decodeMaskOnDisk } =
+      await import("@fiftyone/looker/src/worker/mask-decoder");
 
     try {
       const response = await fetch(url);
@@ -228,7 +234,7 @@ async function decodeMaskPathImpl(
       if (!response.ok) {
         console.error(
           `[decodeMaskPath] fallback fetch failed: HTTP ${response.status} ` +
-            `${response.statusText} (${url})`
+            `${response.statusText} (${url})`,
         );
         return undefined;
       }

@@ -447,7 +447,11 @@ class AttributeSpec:
         type: the value type (e.g. ``"bool"``, ``"str"``)
         component: the UI component (e.g. ``"checkbox"``, ``"dropdown"``,
             ``"radio"``)
-        values: optional list of allowed values
+        values: optional list of allowed values. Mutually exclusive with
+            ``taxonomy``
+        taxonomy: optional taxonomy name whose nodes supply the allowed
+            values for a ``str`` or ``list<str>`` dropdown. Mutually
+            exclusive with ``values``
         when: optional :class:`WhenCondition` controlling when this attribute
             is visible. Use a bare leaf for a single condition, or compose
             with :class:`WhenAnd` / :class:`WhenOr` for boolean logic.
@@ -498,6 +502,7 @@ class AttributeSpec:
     type: str
     component: str
     values: Optional[list] = None
+    taxonomy: Optional[str] = None
     when: Optional[WhenCondition] = None
     read_only: Optional[bool] = None
     default: Any = None
@@ -515,6 +520,17 @@ class AttributeSpec:
                 f"AttributeSpec field(s) must be non-empty strings: "
                 f"{', '.join(invalid_fields)}"
             )
+        if self.taxonomy is not None:
+            if not isinstance(self.taxonomy, str) or not self.taxonomy:
+                raise ValueError(
+                    "AttributeSpec.taxonomy must be a non-empty string "
+                    "if provided"
+                )
+            if self.values is not None:
+                raise ValueError(
+                    "AttributeSpec.taxonomy and AttributeSpec.values are "
+                    "mutually exclusive"
+                )
 
     def to_dict(self) -> dict:
         """Serializes this attribute to a dict.
@@ -528,6 +544,7 @@ class AttributeSpec:
             "component": self.component,
         }
         attr_insert_to_dict(d, "values", self)
+        attr_insert_to_dict(d, "taxonomy", self)
         attr_insert_to_dict(d, "read_only", self)
         attr_insert_to_dict(d, "default", self)
         attr_insert_to_dict(d, "range", self)
@@ -552,6 +569,14 @@ class AttributeSpec:
         if values is not None and not isinstance(values, list):
             raise ValueError("AttributeSpec.values must be a list if provided")
 
+        taxonomy = d.get("taxonomy")
+        if taxonomy is not None and (
+            not isinstance(taxonomy, str) or not taxonomy
+        ):
+            raise ValueError(
+                "AttributeSpec.taxonomy must be a non-empty string if provided"
+            )
+
         when = None
         if "when" in d:
             when = WhenCondition.from_dict(d["when"])
@@ -561,6 +586,7 @@ class AttributeSpec:
             type=d["type"],
             component=d["component"],
             values=values,
+            taxonomy=taxonomy,
             when=when,
             read_only=d.get("read_only"),
             default=d.get("default"),

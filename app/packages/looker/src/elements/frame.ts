@@ -2,8 +2,8 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { FrameState, StateUpdate } from "../state";
-import { BaseElement, Events } from "./base";
+import { FrameState } from "../state";
+import { BaseElement } from "./base";
 import {
   acquirePlayer,
   acquireThumbnailer,
@@ -29,7 +29,7 @@ export class FrameNumberElement extends BaseElement<FrameState> {
       this.element.textContent = getFrameString(
         frameNumber,
         duration,
-        frameRate
+        frameRate,
       );
     }
     return this.element;

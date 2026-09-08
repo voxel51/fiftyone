@@ -58,7 +58,7 @@ describe("computeActiveFields", () => {
       frameSchemaMock,
       allSampleLabels,
       allFrameLabels,
-      undefined
+      undefined,
     );
 
     expect(result).toEqual(["detection", "classification"]);
@@ -74,7 +74,7 @@ describe("computeActiveFields", () => {
       frameSchemaMock,
       allSampleLabels,
       allFrameLabels,
-      { paths: ["classification", "otherLabel"] }
+      { paths: ["classification", "otherLabel"] },
     );
 
     expect(result).toEqual(["classification", "otherLabel"]);
@@ -90,7 +90,7 @@ describe("computeActiveFields", () => {
       frameSchemaMock,
       allSampleLabels,
       allFrameLabels,
-      { paths: ["classification"], exclude: true }
+      { paths: ["classification"], exclude: true },
     );
 
     expect(result).toEqual([

@@ -44,7 +44,7 @@ export function buildSimilarityRunName({
   if (negCount > 0) {
     return `${pluralizeUnit(count, unit)} positive, ${pluralizeUnit(
       negCount,
-      unit
+      unit,
     )} negative`;
   }
 
@@ -53,7 +53,7 @@ export function buildSimilarityRunName({
 
 export function formatValueAsNumber(
   value: string | number,
-  fractionDigits = 3
+  fractionDigits = 3,
 ) {
   const numericValue =
     typeof value === "number" ? value : parseFloat(value as string);

@@ -10,8 +10,8 @@ import {
 } from "recoil";
 import * as THREE from "three";
 import { SNAP_TOLERANCE } from "../constants";
-import { useFo3dContext } from "../fo3d/context";
 import { useEmptyCanvasInteraction } from "../hooks/use-empty-canvas-interaction";
+import { useSelect3DLabelForAnnotation } from "../hooks/useSelect3DLabelForAnnotation";
 import {
   activeSegmentationStateAtom,
   annotationPlaneAtom,
@@ -54,18 +54,18 @@ export const SegmentPolylineRenderer = ({
   const [selectedLabelForAnnotation, setSelectedLabelForAnnotation] =
     useRecoilState(selectedLabelForAnnotationAtom);
   const [segmentState, setSegmentState] = useRecoilState(
-    activeSegmentationStateAtom
+    activeSegmentationStateAtom,
   );
   const setTooltipDetail = useSetRecoilState(fos.tooltipDetail);
   const { createPolyline, updatePolylinePoints } = usePolylineOperations();
 
   const setEditingToNewPolyline = useSetEditingToNewPolyline();
+  const selectForAnnotation = useSelect3DLabelForAnnotation();
 
   const setIsActivelySegmenting = useSetRecoilState(
-    isSegmentingPointerDownAtom
+    isSegmentingPointerDownAtom,
   );
   const annotationPlane = useRecoilValue(annotationPlaneAtom);
-  const { upVector } = useFo3dContext();
 
   // Track last click time for double-click detection
   const lastClickTimeRef = useRef<number>(0);
@@ -76,7 +76,7 @@ export const SegmentPolylineRenderer = ({
     ({ snapshot }) =>
       async (
         vertices: [number, number, number][],
-        overrideShouldClose: boolean = false
+        overrideShouldClose = false,
       ) => {
         if (vertices.length < 2) return;
 
@@ -88,7 +88,7 @@ export const SegmentPolylineRenderer = ({
 
         const newSegmentPoints = vertices.map(
           (pt) =>
-            pt.map((p) => Number(p.toFixed(7))) as [number, number, number]
+            pt.map((p) => Number(p.toFixed(7))) as [number, number, number],
         );
 
         // Check if the label already exists in working store
@@ -99,7 +99,7 @@ export const SegmentPolylineRenderer = ({
 
         if (existingLabel && isPolyline(existingLabel)) {
           // Add a new segment to an already-selected polyline (multi-segment)
-          const existingPoints3d = existingLabel.points3d || [];
+          const existingPoints3d = existingLabel.data.points3d || [];
           const newPoints3d = [...existingPoints3d, newSegmentPoints];
 
           // Update existing polyline in working store
@@ -109,7 +109,7 @@ export const SegmentPolylineRenderer = ({
             segments: newPoints3d.map((pts) => ({ points: pts })),
             path: currentActiveField,
             sampleId: currentSampleId,
-            label: existingLabel.label ?? "",
+            label: existingLabel.data.label ?? "",
             misc: {
               closed: shouldClose,
             },
@@ -142,6 +142,8 @@ export const SegmentPolylineRenderer = ({
         // Set editing for sidebar UI
         setEditingToNewPolyline(labelId, transformData);
 
+        // surface-owned create tracker: commitSegment reads this id to append
+        // the next segment to the same polyline (multi-segment draw)
         if (selectedLabelForAnnotation) {
           setSelectedLabelForAnnotation({
             ...selectedLabelForAnnotation,
@@ -155,10 +157,17 @@ export const SegmentPolylineRenderer = ({
             _cls: POLYLINE,
             label: labelClass,
             points3d: transformData.segments.map((seg) =>
-              seg.points.map((pt) => roundTuple(pt))
+              seg.points.map((pt) => roundTuple(pt)),
             ),
           });
         }
+
+        // selection flows through the engine anchor: use3dInteractionAdapter
+        // attaches the transform controls + scene selection from one source
+        selectForAnnotation({
+          _id: labelId,
+          path: currentActiveField || "",
+        });
 
         setSegmentState({
           isActive: false,
@@ -173,7 +182,8 @@ export const SegmentPolylineRenderer = ({
       currentSampleId,
       createPolyline,
       updatePolylinePoints,
-    ]
+      selectForAnnotation,
+    ],
   );
 
   // Check if current position is close to first vertex for closing
@@ -182,10 +192,10 @@ export const SegmentPolylineRenderer = ({
       return shouldClosePolylineLoop(
         segmentState.vertices,
         [currentPos.x, currentPos.y, currentPos.z],
-        SNAP_TOLERANCE
+        SNAP_TOLERANCE,
       );
     },
-    [segmentState.vertices]
+    [segmentState.vertices],
   );
 
   const handleClick = useCallback(
@@ -241,7 +251,13 @@ export const SegmentPolylineRenderer = ({
 
       lastAddedVertexRef.current = newVertex;
     },
-    [segmentState, shouldCloseLoop, commitSegment]
+    [
+      segmentState,
+      shouldCloseLoop,
+      commitSegment,
+      setIsActivelySegmenting,
+      setSegmentState,
+    ],
   );
 
   // Handle mouse move for rubber band effect
@@ -254,14 +270,14 @@ export const SegmentPolylineRenderer = ({
         currentMousePosition: [worldPos.x, worldPos.y, worldPos.z],
       }));
     },
-    [setSegmentState]
+    [setSegmentState],
   );
 
   // Calculate the annotation plane for raycasting
   const raycastPlane = useMemo(() => {
     const plane = getPlaneFromPositionAndQuaternion(
       annotationPlane.position,
-      annotationPlane.quaternion
+      annotationPlane.quaternion,
     );
 
     return {
@@ -269,7 +285,7 @@ export const SegmentPolylineRenderer = ({
       // Negative constant for raycasting
       constant: -plane.constant,
     } as THREE.Plane;
-  }, [annotationPlane, upVector]);
+  }, [annotationPlane]);
 
   useEmptyCanvasInteraction({
     onPointerUp: segmentState.isActive ? handleClick : undefined,
@@ -282,7 +298,7 @@ export const SegmentPolylineRenderer = ({
   });
 
   useEffect(() => {
-    if (ignoreEffects) return;
+    if (ignoreEffects) return undefined;
 
     if (segmentState.isActive) {
       setTooltipDetail(null);
@@ -291,12 +307,15 @@ export const SegmentPolylineRenderer = ({
         document.body.style.cursor = "default";
       };
     }
-  }, [segmentState.isActive]);
+
+    return undefined;
+  }, [segmentState.isActive, ignoreEffects, setTooltipDetail]);
 
   useEffect(() => {
-    if (ignoreEffects) return;
+    if (ignoreEffects) return undefined;
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
       if (!segmentState.isActive) return;
 
       // Handle Escape key - cancel segmentation
@@ -340,6 +359,7 @@ export const SegmentPolylineRenderer = ({
     segmentState.vertices,
     setSegmentState,
     setIsActivelySegmenting,
+    ignoreEffects,
   ]);
 
   // Render completed segments
@@ -354,12 +374,12 @@ export const SegmentPolylineRenderer = ({
           points={[segmentState.vertices[i], segmentState.vertices[i + 1]]}
           color={color}
           lineWidth={lineWidth}
-        />
+        />,
       );
     }
 
     return segments;
-  }, [segmentState.vertices, segmentState.isClosed, color, lineWidth]);
+  }, [segmentState.vertices, color, lineWidth]);
 
   // Rubber band from last vertex to current mouse position
   const rubberBand = useMemo(() => {
@@ -413,7 +433,7 @@ export const SegmentPolylineRenderer = ({
             labelId="segmenting"
             segmentIndex={0}
             pointIndex={index}
-          />
+          />,
         );
       });
     }

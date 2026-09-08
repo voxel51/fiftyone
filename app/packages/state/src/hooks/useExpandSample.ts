@@ -1,25 +1,14 @@
-import type * as foq from "@fiftyone/relay";
+import type { PaginateSamplesNode } from "@fiftyone/relay";
 import type { ID, SpotlightConfig } from "@fiftyone/spotlight";
-import type { ResponseFrom } from "../utils";
 
 import { get } from "lodash";
 import { useRecoilCallback } from "recoil";
 import * as atoms from "../recoil/atoms";
 import * as groupAtoms from "../recoil/groups";
-import useSetExpandedSample, {
-  SET_EXPANDED_SAMPLE_SOURCE_OPEN,
-} from "./useSetExpandedSample";
+import useSetExpandedSample from "./useSetExpandedSample";
 import useSetModalState from "./useSetModalState";
 
-export type Sample = Exclude<
-  Exclude<
-    ResponseFrom<foq.paginateSamplesQuery>["samples"]["edges"][0]["node"],
-    {
-      readonly __typename: "%other";
-    }
-  >,
-  null
->;
+export type Sample = Exclude<PaginateSamplesNode, null>;
 
 export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
   const setExpandedSample = useSetExpandedSample();
@@ -40,7 +29,7 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
             } else {
               newSelected.set(
                 item.id.description,
-                event.altKey ? "alt" : "default"
+                event.altKey ? "alt" : "default",
               );
             }
 
@@ -49,10 +38,10 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
           return;
         }
 
-        const hasGroupSlices = await snapshot.getPromise(
-          groupAtoms.hasGroupSlices
-        );
-        const groupField = await snapshot.getPromise(groupAtoms.groupField);
+        const [hasGroupSlices, groupField] = await Promise.all([
+          snapshot.getPromise(groupAtoms.hasGroupSlices),
+          snapshot.getPromise(groupAtoms.groupField),
+        ]);
 
         const iter = async (request: Promise<ID | undefined>) => {
           const id = await request;
@@ -94,21 +83,35 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
           };
         };
 
+        // Soft cursor walks resolve the target id (loading pages on the
+        // way) without committing focus, so peeking never navigates. The
+        // store maps ids to paginated sample nodes ({ sample, urls, ... }).
+        const peek = async (offset: number) => {
+          const id = await cursor.next(offset, true);
+          if (!id) {
+            return null;
+          }
+
+          const node = store.get(id);
+          if (!node) {
+            return null;
+          }
+
+          return { id: id.description, sample: node };
+        };
+
         const hasNext = Boolean(await cursor.next(1, true));
         const hasPrevious = Boolean(await cursor.next(-1, true));
 
-        setModalState({
+        await setModalState({
           next,
+          peek,
           previous,
-        })
-          .then(() => iter(Promise.resolve(item.id)))
-          .then((data) =>
-            setExpandedSample(
-              { ...data, hasNext, hasPrevious },
-              { source: SET_EXPANDED_SAMPLE_SOURCE_OPEN }
-            )
-          );
+        });
+
+        const data = await iter(Promise.resolve(item.id));
+        await setExpandedSample({ ...data, hasNext, hasPrevious });
       },
-    [setExpandedSample, setModalState]
+    [setExpandedSample, setModalState],
   );
 };

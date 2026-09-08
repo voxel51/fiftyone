@@ -62,7 +62,7 @@ export class VersionMismatchError extends Error {
   constructor(
     message?: string,
     readonly responseBody?: Record<string, unknown>,
-    readonly versionToken?: string
+    readonly versionToken?: string,
   ) {
     super(message);
     this.name = "Version Mismatch Error";
@@ -98,7 +98,7 @@ const errorHandlers: Record<number, (response: Response) => Promise<void>> = {
     }
 
     throw new MalformedRequestError(
-      "Unexpected error response. See console for details."
+      "Unexpected error response. See console for details.",
     );
   },
 
@@ -120,7 +120,7 @@ const errorHandlers: Record<number, (response: Response) => Promise<void>> = {
     throw new VersionMismatchError(
       "Invalid version token",
       responseBody,
-      parseETag(response.headers.get("ETag"))
+      parseETag(response.headers.get("ETag")),
     );
   },
 };
@@ -131,7 +131,7 @@ const errorHandlers: Record<number, (response: Response) => Promise<void>> = {
  * @param config fetch configuration
  */
 const doFetch = <A, R>(
-  config: Omit<FetchFunctionConfig<A>, "errorHandler">
+  config: Omit<FetchFunctionConfig<A>, "errorHandler">,
 ): Promise<FetchFunctionResult<R>> => {
   return getFetchFunctionExtended()({
     errorHandler: (response) => errorHandlers[response.status]?.(response),
@@ -145,7 +145,7 @@ const doFetch = <A, R>(
  * @param request Patch sample request
  */
 export const patchSample = async (
-  request: PatchSampleRequest
+  request: PatchSampleRequest,
 ): Promise<PatchSampleResponse> => {
   // Build the base path for the request.
   const pathParts = ["dataset", request.datasetId, "sample", request.sampleId];
@@ -166,7 +166,7 @@ export const patchSample = async (
       request.generatedSampleId === request.sampleId
     ) {
       throw new Error(
-        "generatedSampleId is required and must be different from sampleId when generatedDatasetName is provided"
+        "generatedSampleId is required and must be different from sampleId when generatedDatasetName is provided",
       );
     }
     queryParams.set("generated_dataset", request.generatedDatasetName);
@@ -179,7 +179,7 @@ export const patchSample = async (
     : encodeURIPath(pathParts);
 
   const deltas = request.deltas.map((delta) =>
-    "value" in delta ? { ...delta, value: toExtendedJson(delta.value) } : delta
+    "value" in delta ? { ...delta, value: toExtendedJson(delta.value) } : delta,
   );
 
   const response = await doFetch<JSONDeltas, Sample>({

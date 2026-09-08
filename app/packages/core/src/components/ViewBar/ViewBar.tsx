@@ -108,14 +108,14 @@ const ViewBar = React.memo(() => {
         e.preventDefault();
         send("ENTER");
       },
-      [send]
+      [send],
     ),
   };
 
   const theme = useTheme();
   useOutsideClick(
     barRef,
-    () => state.matches("running.focus.focused") && send("TOGGLE_FOCUS")
+    () => state.matches("running.focus.focused") && send("TOGGLE_FOCUS"),
   );
 
   return (

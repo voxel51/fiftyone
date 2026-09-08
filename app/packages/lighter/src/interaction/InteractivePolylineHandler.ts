@@ -144,7 +144,7 @@ export class InteractivePolylineHandler implements InteractionHandler {
    */
   private pushWithStickyTracking(
     cmd: Undoable,
-    stickyAfter: string | null
+    stickyAfter: string | null,
   ): void {
     const stickyBefore = this.lastExtensionPointId;
     this.setLastExtensionPointId(stickyAfter);
@@ -168,14 +168,14 @@ export class InteractivePolylineHandler implements InteractionHandler {
   constructor(
     public readonly overlay: PolylineOverlay,
     private readonly resolvePointHit?: (
-      ctx: KeypointPointHitContext
+      ctx: KeypointPointHitContext,
     ) => KeypointPointHitAction | undefined,
     private readonly resolveEdgeHit?: (
-      ctx: PolylineEdgeHitContext
+      ctx: PolylineEdgeHitContext,
     ) => PolylineEdgeHitAction | undefined,
     private readonly resolveEmptyHit?: (
-      ctx: PolylineEmptyHitContext
-    ) => PolylineEmptyHitAction | undefined
+      ctx: PolylineEmptyHitContext,
+    ) => PolylineEmptyHitAction | undefined,
   ) {
     this.priorIsDeletable = overlay.getDeletable();
     overlay.setDeletable(true);
@@ -288,9 +288,12 @@ export class InteractivePolylineHandler implements InteractionHandler {
 
   onMove({ worldPoint, event }: OverlayEvent): boolean {
     if (this.dragPointId !== null) {
+      // Move silently while dragging; onPointerUp emits the single committed
+      // move so the engine writes once per gesture, not once per frame.
       this.overlay.movePointById(
         this.dragPointId,
-        this.overlay.absolutePointToRelative(worldPoint)
+        this.overlay.absolutePointToRelative(worldPoint),
+        false,
       );
       // Hide new point preview while dragging
       this.overlay.setPreviewPoint(null);
@@ -305,7 +308,7 @@ export class InteractivePolylineHandler implements InteractionHandler {
 
   onModifiersChanged(
     modifiers: ClickEventModifiers,
-    worldPoint: Point | null
+    worldPoint: Point | null,
   ): void {
     if (this.dragPointId !== null || !worldPoint) {
       return;
@@ -328,10 +331,10 @@ export class InteractivePolylineHandler implements InteractionHandler {
    */
   private refreshPreview(
     worldPoint: Point,
-    modifiers: ClickEventModifiers
+    modifiers: ClickEventModifiers,
   ): void {
     this.overlay.setPreviewAnchorFlipped(
-      modifiers.metaKey || modifiers.ctrlKey
+      modifiers.metaKey || modifiers.ctrlKey,
     );
 
     // hide preview if:
@@ -353,7 +356,7 @@ export class InteractivePolylineHandler implements InteractionHandler {
   getCursor(
     worldPoint: Point,
     _scale: number,
-    modifiers?: ClickEventModifiers
+    modifiers?: ClickEventModifiers,
   ): string {
     if (this.dragPointId !== null) {
       return "grabbing";
@@ -367,6 +370,19 @@ export class InteractivePolylineHandler implements InteractionHandler {
   }
 
   onPointerUp(_params: OverlayEvent): boolean {
+    // Clear the overlay's own per-point drag state on EVERY pointer-up, not just
+    // at cleanup. The click that selects the polyline runs the overlay's
+    // `onPointerDown` (which sets `dragPointIndex`) before this handler takes
+    // over dispatch, so the matching pointer-up arrives here and the overlay's
+    // state is never released. It reports `isInteracting()` for as long as the
+    // shape stays selected, and the engine bridge treats that as an in-flight
+    // gesture and defers every projection — so scrubbing paints the geometry the
+    // overlay happened to hold (`skip(interacting)` in the bridge loop), which is
+    // the "I only see the most recently drawn state until the playhead leaves the
+    // track" report. Only drag tracking is reset; the vertex sub-selection that
+    // Backspace reads is untouched.
+    this.overlay.cancelPointDrag();
+
     if (this.dragPointId === null) {
       return true;
     }
@@ -387,11 +403,15 @@ export class InteractivePolylineHandler implements InteractionHandler {
       return true;
     }
 
+    // Live drag moved the point silently; emit the committed move now so the
+    // engine records one write for the whole gesture.
+    this.overlay.emitPointMoved(id, from, to);
+
     const cmd = new MoveKeypointPointCommand(
       this.overlay as unknown as KeypointOverlay,
       id,
       from,
-      to
+      to,
     );
     CommandContextManager.instance().getActiveContext().pushUndoable(cmd);
     this.pushedCommandIds.add(cmd.id);
@@ -491,7 +511,7 @@ export class InteractivePolylineHandler implements InteractionHandler {
     const cmd = new RemovePolylinePointCommand(
       this.overlay,
       loc.segmentIdx,
-      loc.indexInSegment
+      loc.indexInSegment,
     );
     cmd.execute();
     this.pushWithStickyTracking(cmd, stickyAfter);
@@ -521,7 +541,7 @@ export class InteractivePolylineHandler implements InteractionHandler {
     const newId = this.overlay.insertPointInSegment(
       edgeHit.segmentIdx,
       indexInSegment,
-      edgeHit.projectedRel
+      edgeHit.projectedRel,
     );
 
     const cmd = new AddPolylinePointCommand(
@@ -529,7 +549,7 @@ export class InteractivePolylineHandler implements InteractionHandler {
       edgeHit.segmentIdx,
       indexInSegment,
       newId,
-      edgeHit.projectedRel
+      edgeHit.projectedRel,
     );
     CommandContextManager.instance().getActiveContext().pushUndoable(cmd);
     this.pushedCommandIds.add(cmd.id);
@@ -548,7 +568,7 @@ export class InteractivePolylineHandler implements InteractionHandler {
       newId,
       relativePoint,
       undefined,
-      true
+      true,
     );
     this.setActiveSegmentIdx(newSegIdx);
     this.pushWithStickyTracking(cmd, newId);
@@ -558,29 +578,29 @@ export class InteractivePolylineHandler implements InteractionHandler {
 
   private extendNearestEndpoint(
     worldPoint: Point,
-    relativePoint: [number, number]
+    relativePoint: [number, number],
   ): string {
     return this.extendFromEndpoint(
       relativePoint,
       this.overlay.findNearestEndpoint(
         worldPoint,
         this.activeSegmentIdx ?? undefined,
-        false
-      )
+        false,
+      ),
     );
   }
 
   private extendFarthestEndpoint(
     worldPoint: Point,
-    relativePoint: [number, number]
+    relativePoint: [number, number],
   ): string {
     return this.extendFromEndpoint(
       relativePoint,
       this.overlay.findNearestEndpoint(
         worldPoint,
         this.activeSegmentIdx ?? undefined,
-        true
-      )
+        true,
+      ),
     );
   }
 
@@ -641,7 +661,7 @@ export class InteractivePolylineHandler implements InteractionHandler {
    * to the unanchored farthest-endpoint behavior.
    */
   private tryExtendOppositeOfSticky(
-    relativePoint: [number, number]
+    relativePoint: [number, number],
   ): string | null {
     const ep = this.getStickyEndpoint();
     if (!ep) {
@@ -655,7 +675,7 @@ export class InteractivePolylineHandler implements InteractionHandler {
 
   private extendFromEndpoint(
     relativePoint: [number, number],
-    target: SegmentEndpoint
+    target: SegmentEndpoint,
   ): string {
     // No segments yet — extend gesture seeds the first segment.
     if (!target) {
@@ -672,14 +692,14 @@ export class InteractivePolylineHandler implements InteractionHandler {
     const newId = this.overlay.insertPointInSegment(
       target.segmentIdx,
       indexInSegment,
-      relativePoint
+      relativePoint,
     );
     const cmd = new AddPolylinePointCommand(
       this.overlay,
       target.segmentIdx,
       indexInSegment,
       newId,
-      relativePoint
+      relativePoint,
     );
     this.pushWithStickyTracking(cmd, newId);
 

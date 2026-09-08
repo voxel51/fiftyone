@@ -54,5 +54,5 @@ export const ActionOption = React.memo(
         </span>
       </ItemAction>
     );
-  }
+  },
 );

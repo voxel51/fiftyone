@@ -1,13 +1,10 @@
 import {
-  CLASSIFICATIONS,
   EMBEDDED_DOCUMENT_FIELD,
   type Field,
-  LABELS_PATH,
+  LABEL_LIST_PATH,
   LIST_FIELD,
   type Schema,
-  TEMPORAL_DETECTIONS,
   VALID_PRIMITIVE_TYPES,
-  withPath,
 } from "@fiftyone/utilities";
 import type { Sample } from "../..";
 
@@ -19,7 +16,7 @@ type Data = { [key: string]: unknown };
 export const getBubbles = (
   path: string,
   data: Data,
-  input: Schema
+  input: Schema,
 ): [Field, unknown[]] => {
   const out = parseSample(path.split("."), data, input);
 
@@ -53,16 +50,10 @@ export const getBubbles = (
       }
     }
 
-    if (field.embeddedDocType === withPath(LABELS_PATH, CLASSIFICATIONS)) {
+    const listFieldName = LABEL_LIST_PATH[field.embeddedDocType];
+    if (listFieldName) {
       out.values = unwind(field.dbField, out.values).flatMap(
-        (value) => value.classifications || []
-      ) as Sample[];
-      break;
-    }
-
-    if (field.embeddedDocType === withPath(LABELS_PATH, TEMPORAL_DETECTIONS)) {
-      out.values = unwind(field.dbField, out.values).flatMap(
-        (value) => value.detections || []
+        (value) => value[listFieldName] || [],
       ) as Sample[];
       break;
     }
@@ -94,7 +85,7 @@ export const getField = (keys: string[], schema: Schema) => {
 export const parseSample = (keys: string[], sample: Data, schema: Schema) => {
   if (keys[0] === FRAMES && schema?.frames?.embeddedDocType === FRAMES_SAMPLE) {
     return {
-      values: sample?.frames[0] as Sample[],
+      values: (sample?.frames?.[0] ?? []) as Sample[],
       schema: schema.frames.fields,
       keys: keys.slice(1),
     };

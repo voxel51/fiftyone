@@ -19,13 +19,10 @@ message StreamInventory {
   // Optional human-readable stream label for default panel titles.
   optional string display_name = 4;
 
-  // Optional coordinate frame associated with records in this stream.
-  optional string coordinate_frame_id = 5;
-
   // Adapter-provided stream metadata, such as topic, channel, column, shard,
   // schema name, or source path. Scene-level metadata belongs on
   // SceneInventory.metadata.
-  map<string, string> metadata = 6;
+  map<string, string> metadata = 5;
 }
 
 // Static coordinate-frame topology discovered by the source adapter. This

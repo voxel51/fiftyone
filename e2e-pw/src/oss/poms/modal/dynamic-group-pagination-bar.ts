@@ -6,7 +6,10 @@ export class DynamicGroupPaginationPom {
   readonly input: Locator;
   readonly assert: DynamicGroupPaginationAsserter;
 
-  constructor(private readonly page: Page, private readonly modal: ModalPom) {
+  constructor(
+    private readonly page: Page,
+    private readonly modal: ModalPom,
+  ) {
     this.locator = modal.locator.getByTestId("dynamic-group-pagination-bar");
     this.input = this.locator.getByTestId("dynamic-group-pagination-bar-input");
     this.assert = new DynamicGroupPaginationAsserter(this);

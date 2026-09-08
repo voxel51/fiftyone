@@ -52,7 +52,7 @@ const ListDefaultInput = ({
           : "Type a value and press Enter",
       },
     }),
-    [choices, isNumeric, readOnly]
+    [choices, isNumeric, readOnly],
   );
 
   const handleChange = (_path: string, newValues: unknown) => {

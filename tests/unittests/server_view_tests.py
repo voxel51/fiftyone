@@ -9,11 +9,14 @@ FiftyOne Server view tests.
 import math
 import unittest
 
+import numpy as np
+
 import fiftyone as fo
 import fiftyone.core.dataset as fod
 import fiftyone.core.labels as fol
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
+import fiftyone.core.stages as fosg
 from fiftyone.server.query import Dataset
 from fiftyone.server.samples import paginate_samples
 import fiftyone.server.view as fosv
@@ -259,6 +262,30 @@ class ServerViewTests(unittest.TestCase):
         }
         view = fosv.get_view("test", filters=filters)
         self.assertEqual(len(view), 0)
+
+    @drop_datasets
+    def test_pagination_data_excludes_exact_paths(self):
+        dataset = fo.Dataset("test")
+        dataset.add_sample(
+            fo.Sample(
+                filepath="image.png",
+                clip=np.array([1.0, 2.0]),
+                **{"clip-pred-test": fo.Classification(label="cat")},
+            )
+        )
+
+        view = fosv.get_view("test", pagination_data=True)
+        (sample,) = list(
+            foo.aggregate(
+                foo.get_db_conn()[view._dataset._sample_collection_name],
+                view._pipeline(),
+            )
+        )
+
+        # the vector field is excluded; a sibling field sharing its name
+        # prefix is not
+        self.assertNotIn("clip", sample)
+        self.assertIn("clip-pred-test", sample)
 
     @drop_datasets
     def test_extended_frame_sample(self):
@@ -945,6 +972,68 @@ class ServerViewTests(unittest.TestCase):
             },
         )
         self.assertEqual(len(view), 1)
+
+    @drop_datasets
+    def test_dynamic_group_injects_group_field(self):
+        dataset = fod.Dataset("test")
+        dataset.add_samples(
+            [
+                fos.Sample(filepath="a.png", category="cat"),
+                fos.Sample(filepath="b.png", category="$foo"),
+            ]
+        )
+
+        stages = [fosg.GroupBy("category")._serialize()]
+
+        for group_value in ("cat", "$foo"):
+            with self.subTest(group_value=group_value):
+                view = fosv.get_view(
+                    "test", stages=stages, dynamic_group=group_value
+                )
+                (sample,) = foo.aggregate(
+                    foo.get_db_conn()[view._dataset._sample_collection_name],
+                    view._pipeline(),
+                )
+                self.assertEqual(sample["_group"], group_value)
+
+    @drop_datasets
+    def test_modal_group_filter_injects_group_field(self):
+        dataset = fod.Dataset("test")
+        dataset.add_group_field("group", default="left")
+        group = fo.Group()
+        dataset.add_samples(
+            [
+                fos.Sample(
+                    filepath="a.png",
+                    category="cat",
+                    group=group.element(name="left"),
+                ),
+                fos.Sample(
+                    filepath="b.png",
+                    category="cat",
+                    group=group.element(name="right"),
+                ),
+            ]
+        )
+
+        stages = [fosg.GroupBy("category")._serialize()]
+        view = fosv.get_view(
+            "test",
+            stages=stages,
+            sample_filter=fosv.SampleFilter(
+                group=fosv.GroupElementFilter(slices=["left"])
+            ),
+        )
+
+        samples = list(
+            foo.aggregate(
+                foo.get_db_conn()[view._dataset._sample_collection_name],
+                view._pipeline(),
+            )
+        )
+        self.assertGreater(len(samples), 0)
+        for s in samples:
+            self.assertEqual(s["_group"], "cat")
 
     @drop_datasets
     def test_sort_by(self):

@@ -5,29 +5,35 @@ describe("paths", () => {
   describe("determinePathType", () => {
     it("should detect URLs", () => {
       expect(paths.determinePathType("http://example.com")).toBe(
-        paths.PathType.URL
+        paths.PathType.URL,
       );
       expect(paths.determinePathType("https://example.com")).toBe(
-        paths.PathType.URL
+        paths.PathType.URL,
       );
       expect(paths.determinePathType("s3://example.com")).toBe(
-        paths.PathType.URL
+        paths.PathType.URL,
+      );
+      expect(
+        paths.determinePathType("data:image/png;base64,iVBORw0KGgo="),
+      ).toBe(paths.PathType.URL);
+      expect(paths.determinePathType("blob:https://example.com/abc-123")).toBe(
+        paths.PathType.URL,
       );
     });
 
     it("should detect Linux paths", () => {
       expect(paths.determinePathType("/home/user/file.txt")).toBe(
-        paths.PathType.LINUX
+        paths.PathType.LINUX,
       );
       expect(paths.determinePathType("~/file.txt")).toBe(paths.PathType.LINUX);
     });
 
     it("should detect Windows paths", () => {
       expect(paths.determinePathType("C:\\Users\\user\\file.txt")).toBe(
-        paths.PathType.WINDOWS
+        paths.PathType.WINDOWS,
       );
       expect(paths.determinePathType("\\\\server\\share\\file.txt")).toBe(
-        paths.PathType.WINDOWS
+        paths.PathType.WINDOWS,
       );
     });
   });
@@ -48,14 +54,14 @@ describe("paths", () => {
           "data",
           "folder1",
           "folder2",
-          "file.txt"
-        )
+          "file.txt",
+        ),
       ).toBe("https://cloud.com/bucket/data/folder1/folder2/file.txt");
       expect(paths.joinPaths("/home/user", "docs", "notes.txt")).toBe(
-        "/home/user/docs/notes.txt"
+        "/home/user/docs/notes.txt",
       );
       expect(paths.joinPaths("C:\\Windows", "System32", "drivers")).toBe(
-        "C:\\Windows\\System32\\drivers"
+        "C:\\Windows\\System32\\drivers",
       );
       expect(paths.joinPaths("/foo", "..")).toBe("/");
     });
@@ -77,14 +83,14 @@ describe("paths", () => {
     it("should resolve the parent directory", () => {
       expect(
         paths.resolveParent(
-          "https://cloud.com/bucket/data/folder1/folder2/file.txt"
-        )
+          "https://cloud.com/bucket/data/folder1/folder2/file.txt",
+        ),
       ).toBe("https://cloud.com/bucket/data/folder1/folder2");
       expect(paths.resolveParent("/home/user/docs/notes.txt")).toBe(
-        "/home/user/docs"
+        "/home/user/docs",
       );
       expect(paths.resolveParent("C:\\Windows\\System32\\drivers")).toBe(
-        "C:\\Windows\\System32"
+        "C:\\Windows\\System32",
       );
       expect(paths.resolveParent("C:\\Windows")).toBe("C:\\");
       expect(paths.resolveParent("s3://foo")).toBe("s3://");
@@ -92,7 +98,7 @@ describe("paths", () => {
       expect(paths.resolveParent("/my-path")).toBe("/");
       expect(paths.resolveParent("s3://")).toBe(null);
       expect(paths.resolveParent("s3://foo/bar/baz.txt?q1=1&q2=2")).toBe(
-        "s3://foo/bar"
+        "s3://foo/bar",
       );
     });
   });
@@ -101,12 +107,12 @@ describe("paths", () => {
     it("should return the basename", () => {
       expect(
         paths.getBasename(
-          "https://cloud.com/bucket/data/folder1/folder2/file.txt"
-        )
+          "https://cloud.com/bucket/data/folder1/folder2/file.txt",
+        ),
       ).toBe("file.txt");
       expect(paths.getBasename("/home/user/docs/notes.txt")).toBe("notes.txt");
       expect(paths.getBasename("C:\\Windows\\System32\\drivers")).toBe(
-        "drivers"
+        "drivers",
       );
       expect(paths.getBasename("s3://foo")).toBe("foo");
       expect(paths.getBasename("/")).toBe(null);
@@ -118,12 +124,12 @@ describe("paths", () => {
     it("should return the root", () => {
       expect(
         paths.getRootOrProtocol(
-          "https://cloud.com/bucket/data/folder1/folder2/file.txt"
-        )
+          "https://cloud.com/bucket/data/folder1/folder2/file.txt",
+        ),
       ).toBe("https://");
       expect(paths.getRootOrProtocol("/home/user/docs/notes.txt")).toBe("/");
       expect(paths.getRootOrProtocol("C:\\Windows\\System32\\drivers")).toBe(
-        "C:\\"
+        "C:\\",
       );
       expect(paths.getRootOrProtocol("s3://foo")).toBe("s3://");
       expect(paths.getRootOrProtocol("/")).toBe("/");

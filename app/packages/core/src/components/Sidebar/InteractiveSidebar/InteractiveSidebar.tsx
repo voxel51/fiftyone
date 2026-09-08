@@ -1,7 +1,7 @@
 import * as fos from "@fiftyone/state";
 import { useEventHandler } from "@fiftyone/state";
 import { Controller, animated, config } from "@react-spring/web";
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Container, SidebarColumn } from "./Components";
 import style from "./style.module.css";
 import type { InteractiveItems, RenderEntry } from "./types";
@@ -9,7 +9,14 @@ import useAnimate from "./useAnimate";
 import useExit from "./useExit";
 import useGetNewOrder from "./useGetNewOrder";
 import { useRegisterSidebarCommandHandlers } from "./useRegisterSidebarCommandHandlers";
-import { Direction, MARGIN, calculateItemLayout, getEntryKey } from "./utils";
+import {
+  Direction,
+  MARGIN,
+  calculateItemLayout,
+  disposeInteractiveItems,
+  getEntryKey,
+  pruneInteractiveItems,
+} from "./utils";
 
 const InteractiveSidebar = ({
   isDisabled,
@@ -76,7 +83,7 @@ const InteractiveSidebar = ({
               container?.current.dispatchEvent(
                 new CustomEvent("animation-onRest", {
                   bubbles: true,
-                })
+                }),
               );
             }
           },
@@ -88,6 +95,11 @@ const InteractiveSidebar = ({
     }
   }
 
+  // Drop controllers for entries that no longer exist (skip mid-drag).
+  if (!down.current) {
+    pruneInteractiveItems(items.current, order.current);
+  }
+
   const placeItems = useCallback(() => {
     const { results: placements, minHeight } = calculateItemLayout(
       items.current,
@@ -95,7 +107,7 @@ const InteractiveSidebar = ({
       order.current,
       null,
       0,
-      lastTouched.current
+      lastTouched.current,
     );
 
     controller.set({ minHeight: minHeight + MARGIN });
@@ -110,9 +122,19 @@ const InteractiveSidebar = ({
       }
     }
   }, [controller]);
+
   const [observer] = useState<ResizeObserver>(
-    () => new ResizeObserver(placeItems)
+    () => new ResizeObserver(placeItems),
   );
+
+  // Dispose controllers + disconnect the observer on unmount (disconnect also
+  // releases rows pruned during render, which the ref callback skips).
+  useEffect(() => {
+    return () => {
+      disposeInteractiveItems(controller, items.current);
+      observer.disconnect();
+    };
+  }, [controller, observer]);
 
   const getNewOrder = useGetNewOrder({
     down,
@@ -150,14 +172,14 @@ const InteractiveSidebar = ({
         if (down.current && canScroll && delta < 24) {
           container.current?.scroll(
             0,
-            container.current.scrollTop + (up ? -1 : 1)
+            container.current.scrollTop + (up ? -1 : 1),
           );
           animate(y);
           scrollWith(direction, y);
         }
       });
     },
-    [animate]
+    [animate],
   );
 
   useEventHandler(document.body, "mousemove", ({ clientY }) => {
@@ -173,7 +195,7 @@ const InteractiveSidebar = ({
     (
       event: React.MouseEvent<HTMLDivElement>,
       key: string,
-      callback: () => void
+      callback: () => void,
     ) => {
       if (event.button !== 0) return;
 
@@ -186,7 +208,7 @@ const InteractiveSidebar = ({
       lastTouched.current = null;
       placeItems();
     },
-    [placeItems]
+    [placeItems],
   );
 
   useExit({
@@ -230,7 +252,7 @@ const InteractiveSidebar = ({
             group,
             entry,
             items.current[key].controller,
-            trigger
+            trigger,
           );
           const style = entry.kind === fos.EntryKind.INPUT ? { zIndex: 0 } : {};
 

@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react-hooks";
+import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import useRecords from "./useRecords";
 
@@ -6,7 +6,7 @@ describe("useRecords", () => {
   it("return new records when clear string changes", () => {
     const { result, rerender } = renderHook(
       (clear: string) => useRecords(clear),
-      { initialProps: "one" }
+      { initialProps: "one" },
     );
     expect(result.current.size).toBe(0);
 

@@ -29,7 +29,7 @@ export class Asset3dPanelPom {
     await this.page.mouse.down();
     await this.page.mouse.move(
       levaCenterX + dragXOffset,
-      levaCenterY + dragYOffset
+      levaCenterY + dragYOffset,
     );
     await this.page.mouse.up();
   }

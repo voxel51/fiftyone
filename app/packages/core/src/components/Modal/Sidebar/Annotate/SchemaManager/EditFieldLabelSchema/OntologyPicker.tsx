@@ -6,13 +6,15 @@ import {
   TextColor,
   TextVariant,
 } from "@voxel51/voodo";
-import type { OntologySummary } from "./useOntologies";
+import type { OntologySummary, OntologyType } from "./useOntologies";
 
 interface OntologyPickerProps {
   ontologies: OntologySummary[] | null;
   isFetching: boolean;
   error: string | null;
   onPick: (value: string) => void;
+  type?: OntologyType;
+  value?: string;
 }
 
 const OntologyPicker = ({
@@ -20,21 +22,25 @@ const OntologyPicker = ({
   isFetching,
   error,
   onPick,
+  type = "annotation_ontology",
+  value,
 }: OntologyPickerProps) => {
+  const label = type === "taxonomy" ? "taxonomies" : "ontologies";
+
   if (isFetching) {
     return <Spinner size={Size.Md} />;
   }
   if (error) {
     return (
       <Text variant={TextVariant.Md} color={TextColor.Destructive}>
-        Failed to load ontologies: {error}
+        Failed to load {label}: {error}
       </Text>
     );
   }
   if (!ontologies?.length) {
     return (
       <Text variant={TextVariant.Md} color={TextColor.Secondary}>
-        No ontologies in this environment yet. Create one via the SDK.
+        No {label} in this environment yet. Create one via the SDK.
       </Text>
     );
   }
@@ -48,6 +54,7 @@ const OntologyPicker = ({
     <Select
       exclusive
       portal
+      value={value}
       options={options}
       onChange={(v) => onPick(v as string)}
     />

@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import { useTrackEvent } from "@fiftyone/analytics";
 import {
   DiscordLink,
@@ -43,7 +47,7 @@ const getUseSearch = (fragment: NavDatasets$key) => {
           }
         }
       `,
-      fragment
+      fragment,
     );
 
     useDebounce(
@@ -51,7 +55,7 @@ const getUseSearch = (fragment: NavDatasets$key) => {
         refetch({ search });
       },
       200,
-      [search, refresh]
+      [search, refresh],
     );
 
     return useMemo(() => {
@@ -76,7 +80,7 @@ const Nav: React.FC<
         ...NavDatasets
       }
     `,
-    fragment
+    fragment,
   );
 
   const useSearch = getUseSearch(data);
@@ -98,7 +102,7 @@ const Nav: React.FC<
           </Suspense>
         )}
         {!hasDataset && <div style={{ flex: 1 }} />}
-        <div style={{ padding: '0.5rem' }}>
+        <div style={{ padding: "0.5rem" }}>
           <Teams />
         </div>
         <div className={iconContainer}>
@@ -121,7 +125,7 @@ const Nav: React.FC<
           <DiscordLink />
           <GitHubLink />
           <DocsLink />
-          <Box ml={1}> 
+          <Box ml={1}>
             <OperatorPlacements place={types.Places.HEADER_ACTIONS} />
           </Box>
         </div>

@@ -66,7 +66,7 @@ function OperatorIO() {
     <Box sx={{ p: 4 }}>
       <Box sx={{ pb: 2 }}>
         <TabsView
-          onChange={(path, mode) => {
+          onChange={(_path, mode) => {
             setMode(mode);
             setState({ ...state, linear: 0, circular: 0 });
           }}

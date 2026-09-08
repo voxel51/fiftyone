@@ -11,14 +11,17 @@ type HandlerOptions = {
   params: { [name: string]: unknown };
   operator: string;
   prompt?: boolean;
-  panelId: string;
+  // Optional: the panelId is passed as triggerEvent's first argument and read
+  // from there; handlePanelEvent never reads it off the options object. Every
+  // call site omits it here, so requiring it just produced spurious TS errors.
+  panelId?: string;
   callback?: ExecutionCallback;
-  currentPanelState?: any; // most current panel state
+  currentPanelState?: unknown; // most current panel state
 };
 
 type PendingError = {
   message: string;
-  error: any;
+  error: unknown;
   operator: string;
 } | null;
 
@@ -58,8 +61,8 @@ export default function usePanelEvent(): TriggerEventFn {
       },
       panelId,
       panelState,
-      args
-    )
+      args,
+    ),
   );
 }
 
@@ -78,8 +81,8 @@ export function handlePanelEvent(
     setPendingError: (err: PendingError) => void;
   },
   panelId: string,
-  panelState: any,
-  args: any[]
+  panelState: unknown,
+  args: unknown[],
 ) {
   const options = args[0] as HandlerOptions;
   const { params, operator, prompt, currentPanelState } = options;
@@ -95,7 +98,9 @@ export function handlePanelEvent(
   const actualParams = {
     ...params,
     panel_id: panelId,
-    panel_state: currentPanelState ?? ((panelState as any)?.state || {}),
+    panel_state:
+      currentPanelState ??
+      ((panelState as { state?: object } | null)?.state || {}),
   };
 
   const eventCallback = (result: OperatorResult, opts) => {
@@ -108,15 +113,15 @@ export function handlePanelEvent(
         typeof result.errorMessage === "string"
           ? result.errorMessage
           : result.errorMessage instanceof Error
-          ? result.errorMessage.message
-          : String(result.errorMessage);
+            ? result.errorMessage.message
+            : String(result.errorMessage);
     } else if (result.error) {
       errorMessage =
         typeof result.error === "string"
           ? result.error
           : result.error instanceof Error
-          ? result.error.message
-          : String(result.error);
+            ? result.error.message
+            : String(result.error);
     }
 
     let suppressError = false;
@@ -162,11 +167,12 @@ export function usePendingPanelEventError(): {
       const { message, error, operator } = pendingError;
       setPendingError(null); // Clear the pending error
       const [operatorUri, eventName] = operator.split("#");
+      const errorInfo = error as { stack?: string; message?: string } | null;
       throw new PanelEventError(
         message,
-        error?.stack || error?.message || String(error),
+        errorInfo?.stack || errorInfo?.message || String(error),
         operatorUri,
-        eventName
+        eventName,
       );
     }
   }, [pendingError]);
@@ -183,7 +189,7 @@ export function useTriggerPanelEvent() {
       event: string,
       params?: ParamsType,
       prompt?: boolean,
-      callback?: ExecutionCallback
+      callback?: ExecutionCallback,
     ) => {
       handleEvent(panelId, {
         operator: event,
@@ -193,7 +199,7 @@ export function useTriggerPanelEvent() {
         panelId,
       });
     },
-    [handleEvent, panelId]
+    [handleEvent, panelId],
   );
 
   return triggerEvent;

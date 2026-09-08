@@ -1,6 +1,6 @@
 import { useNotification } from "@fiftyone/state";
 import { Button, Text, TextColor, TextVariant, Variant } from "@voxel51/voodo";
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import useCanManageSchema from "./useCanManageSchema";
 import {
   InitializationStatus,

@@ -26,7 +26,7 @@ export class TransformOverlayCommand implements Undoable {
     private overlay: Spatial,
     overlayId: string,
     private oldBounds: Rect,
-    private newBounds: Rect
+    private newBounds: Rect,
   ) {
     this.id = `transform-${overlayId}-${Date.now()}`;
     this.description = `Transform overlay ${overlayId}`;

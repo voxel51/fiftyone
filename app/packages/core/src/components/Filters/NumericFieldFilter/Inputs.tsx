@@ -1,5 +1,4 @@
 import * as fos from "@fiftyone/state";
-import React from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import type { InputType } from "./Input";
@@ -26,7 +25,7 @@ export default function Inputs({
       modal,
       path,
       withBounds: false,
-    })
+    }),
   );
   const setSnackBarErrors = useSetRecoilState(fos.snackbarErrors);
 

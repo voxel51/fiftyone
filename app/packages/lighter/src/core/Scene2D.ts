@@ -28,6 +28,8 @@ import type {
 import { InteractionManager } from "../interaction/InteractionManager";
 import type { InteractiveDetectionHandler } from "../interaction/InteractiveDetectionHandler";
 import { BaseOverlay } from "../overlay/BaseOverlay";
+import { CONTAINS } from "./containment";
+export { CONTAINS };
 import type { Selectable } from "../selection/Selectable";
 import type { SelectionOptions } from "../selection/SelectionManager";
 import { SelectionManager } from "../selection/SelectionManager";
@@ -55,19 +57,19 @@ import type { Scene2DConfig, SceneOptions } from "./SceneConfig";
 
 export const TypeGuards = {
   isHoverable: (
-    body: Partial<BaseOverlay & Hoverable>
+    body: Partial<BaseOverlay & Hoverable>,
   ): body is BaseOverlay & Hoverable =>
     "getTooltipInfo" in body &&
     "onHoverEnter" in body &&
     "onHoverLeave" in body &&
     "onHoverMove" in body,
   isSelectable: (
-    body: BaseOverlay | InteractionHandler
+    body: BaseOverlay | InteractionHandler,
   ): body is BaseOverlay & InteractionHandler & Selectable =>
     "id" in body && "isSelected" in body && "setSelected" in body,
 
   isSpatial: (
-    body: BaseOverlay | InteractionHandler
+    body: BaseOverlay | InteractionHandler,
   ): body is BaseOverlay & Spatial => "bounds" in body,
 
   isInteractionHandler: (value: unknown): value is InteractionHandler =>
@@ -91,15 +93,6 @@ const isUsableBounds = (bounds: Rect | undefined): bounds is Rect => {
     BaseOverlay.validBounds(bounds) && bounds.width !== 0 && bounds.height !== 0
   );
 };
-
-/**
- * Const enum for point containment levels.
- */
-export const enum CONTAINS {
-  NONE = 0,
-  CONTENT = 1,
-  BORDER = 2,
-}
 
 /**
  * Interface for overlay ordering state.
@@ -149,6 +142,8 @@ export class Scene2D {
   private overlayOrder: string[] = [];
   private renderingState = new RenderingStateManager();
   private sceneOptions?: SceneOptions;
+  /** See {@link setReadOnly}. */
+  private readOnlyMode = false;
   private selectionManager: SelectionManager;
   private renderCallbacks = new Map<string, RenderCallback>();
   private colorMappingContext?: ColorMappingContext;
@@ -156,6 +151,10 @@ export class Scene2D {
   private rotation: number = 0;
   private interactiveMode: boolean = false;
   private interactiveHandler?: InteractionHandler;
+  // When an external authority (the annotation engine) owns undo/redo, Lighter
+  // must not also push its own edit commands — the engine captures the same
+  // edits as value-based entries, so a self-push double-counts every gesture.
+  private externalUndoAuthority: boolean = false;
   private isRenderLoopActive: boolean = false;
   private abortController = new AbortController();
   private readonly sceneId: string;
@@ -176,8 +175,21 @@ export class Scene2D {
       config.canvas,
       this.selectionManager,
       config.renderer,
-      this.eventChannel
+      this.eventChannel,
     );
+
+    // A filtered-out label must not be clickable at its old position, or
+    // hiding it in the sidebar makes empty canvas do something. Set once as a
+    // live closure over `this` rather than re-pushed on every options change:
+    // `shouldShowOverlay` already reads `this.sceneOptions` fresh each call,
+    // so this predicate stays correct as options change without needing its
+    // own update path. `id` may not resolve to a registered overlay at all —
+    // a self-managed draw/paint tool handler is not one — in which case there
+    // is nothing to filter and the handler stays hit-testable.
+    this.interactionManager.setVisibilityPredicate((id) => {
+      const overlay = this.overlays.get(id);
+      return overlay ? this.shouldShowOverlay(overlay) : true;
+    });
 
     this.eventBus = getEventBus<LighterEventGroup>(this.eventChannel);
 
@@ -190,13 +202,20 @@ export class Scene2D {
         this.overlays.forEach((overlay) => {
           overlay.markDirty();
         });
-      }
+      },
     );
 
     // Listen for scene options changes to trigger re-rendering
     this.registerEventHandler("lighter:scene-options-changed", (event) => {
-      const { activePaths, showOverlays, alpha } = event;
-      this.updateOptions({ activePaths, showOverlays, alpha });
+      // `updateOptions` REPLACES `sceneOptions` wholesale (see its own doc
+      // comment) — every field this handler receives has to be re-listed
+      // here or it is silently dropped the next time ANY option changes,
+      // `filter` included. `readOnly` avoided this trap entirely by living
+      // in its own field instead of this bag; `filter` doesn't need that,
+      // since it belongs with `activePaths`/`showOverlays` as one more
+      // per-render display option, but it does need to be named here.
+      const { activePaths, showOverlays, alpha, filter } = event;
+      this.updateOptions({ activePaths, showOverlays, alpha, filter });
 
       this.overlays.forEach((overlay) => {
         overlay.markDirty();
@@ -233,6 +252,8 @@ export class Scene2D {
 
     // Listen for OVERLAY_ESTABLISH events to unset bounds of new overlay
     this.registerEventHandler("lighter:overlay-establish", (event) => {
+      if (this.externalUndoAuthority) return;
+
       const { handler, bounds } = event;
 
       if (handler) {
@@ -246,6 +267,8 @@ export class Scene2D {
 
     // Listen for OVERLAY_DRAG_END events to trigger re-rendering of overlays that are currently dragged
     this.registerEventHandler("lighter:overlay-drag-end", (event) => {
+      if (this.externalUndoAuthority) return;
+
       const overlay = this.getOverlay(event.id);
       if (overlay && TypeGuards.isSpatial(overlay)) {
         const { startBounds, bounds } = event;
@@ -258,7 +281,7 @@ export class Scene2D {
             overlay,
             event.id,
             startBounds,
-            bounds
+            bounds,
           );
           CommandContextManager.instance()
             .getActiveContext()
@@ -269,6 +292,8 @@ export class Scene2D {
 
     // Listen for OVERLAY_RESIZE_END events to trigger re-rendering of overlays that are currently resized
     this.registerEventHandler("lighter:overlay-resize-end", (event) => {
+      if (this.externalUndoAuthority) return;
+
       const overlay = this.getOverlay(event.id);
       if (overlay && TypeGuards.isSpatial(overlay)) {
         const { startBounds, bounds: endBounds } = event;
@@ -283,7 +308,7 @@ export class Scene2D {
             overlay,
             event.id,
             startBounds,
-            endBounds
+            endBounds,
           );
           CommandContextManager.instance()
             .getActiveContext()
@@ -295,8 +320,14 @@ export class Scene2D {
     // Listen for paint stroke end events to push undo/redo commands
     this.registerEventHandler(
       "lighter:overlay-paint-end",
-      ({ id, paintStrokeData }) => {
+      ({ id, paintStrokeData, isEstablishing }) => {
+        if (this.externalUndoAuthority) return;
+
         if (!id || !paintStrokeData) return;
+
+        // First-stroke-of-a-new-mask: the AddOverlayCommand from the
+        // subsequent overlay-establish will register the undo/redo command.
+        if (isEstablishing) return;
 
         const overlay = this.getOverlay(id);
         const { beforeBounds, beforeSnapshot, afterBounds, afterSnapshot } =
@@ -309,14 +340,14 @@ export class Scene2D {
             beforeSnapshot,
             beforeBounds,
             afterSnapshot,
-            afterBounds
+            afterBounds,
           );
 
           CommandContextManager.instance()
             .getActiveContext()
             .pushUndoable(command);
         }
-      }
+      },
     );
 
     // Listen for DO_OVERLAY_HOVER events to force hover state
@@ -355,7 +386,7 @@ export class Scene2D {
    */
   private registerEventHandler<K extends keyof LighterEventGroup>(
     event: K,
-    handler: EventHandler<LighterEventGroup[K]>
+    handler: EventHandler<LighterEventGroup[K]>,
   ): void {
     const offHandler = this.eventBus.on(event, handler);
     this.abortController.signal.addEventListener("abort", offHandler);
@@ -412,7 +443,7 @@ export class Scene2D {
    */
   private createFieldBins(
     overlays: Map<string, BaseOverlay>,
-    activePaths: string[]
+    activePaths: string[],
   ): Record<string, string[]> {
     const bins: Record<string, string[]> = {};
 
@@ -437,7 +468,7 @@ export class Scene2D {
   private buildInitialOrder(
     bins: Record<string, string[]>,
     activePaths: string[],
-    overlays?: Map<string, BaseOverlay>
+    overlays?: Map<string, BaseOverlay>,
   ): string[] {
     const ordered: string[] = [];
 
@@ -461,11 +492,11 @@ export class Scene2D {
    */
   private addRemainingOverlays(
     ordered: string[],
-    overlays: Map<string, BaseOverlay>
+    overlays: Map<string, BaseOverlay>,
   ): string[] {
     const result = [...ordered];
 
-    overlays.forEach((overlay, id) => {
+    overlays.forEach((_overlay, id) => {
       if (!result.includes(id)) {
         result.push(id);
       }
@@ -497,7 +528,7 @@ export class Scene2D {
    */
   private rotateOverlays(
     overlays: string[],
-    rotate: number
+    rotate: number,
   ): [string[], number] {
     if (overlays.length === 0) {
       return [overlays, 0];
@@ -531,7 +562,7 @@ export class Scene2D {
 
     const newRotation = Math.min(
       this.rotation + 1,
-      this.overlayOrder.length - 1
+      this.overlayOrder.length - 1,
     );
 
     if (newRotation !== this.rotation) {
@@ -765,10 +796,94 @@ export class Scene2D {
   }
 
   /**
+   * Read-only mode: overlays stay selectable and hoverable, but none of them
+   * can be moved, resized, or drawn. See
+   * {@link InteractionManager.setReadOnly}.
+   *
+   * Deliberately NOT part of {@link SceneOptions}: that object is replaced
+   * wholesale by `updateOptions`, and the `lighter:scene-options-changed`
+   * handler rebuilds it from only `activePaths` / `showOverlays` / `alpha` —
+   * a read-only flag living there would be silently dropped the first time
+   * the sidebar toggled a field. This is a surface-lifetime property, not a
+   * display option, so it gets its own storage.
+   */
+  setReadOnly(readOnly: boolean): void {
+    this.readOnlyMode = readOnly;
+    this.interactionManager.setReadOnly(readOnly);
+    for (const overlay of this.overlays.values()) {
+      this.applyReadOnlyTo(overlay);
+    }
+  }
+
+  /**
+   * Strip an overlay's move affordances while the scene is read-only.
+   *
+   * This is presentation, not enforcement — `InteractionManager` already
+   * refuses the gesture. But `DetectionOverlay` gates its resize handles and
+   * selection scrim on `isDraggable || isResizeable`, so leaving those set
+   * would draw grab handles for a drag that cannot happen. Clearing them
+   * makes a selected label render as a plain highlighted box.
+   *
+   * One-way by design: read-only is a surface-lifetime property, so this
+   * never re-enables anything an overlay opted out of on its own.
+   */
+  private applyReadOnlyTo(overlay: BaseOverlay): void {
+    if (!this.readOnlyMode) {
+      return;
+    }
+    // Not on BaseOverlay — only the spatial overlays that can move define
+    // them, so feature-detect rather than widen the base type.
+    const movable = overlay as Partial<{
+      setDraggable(value: boolean): void;
+      setResizeable(value: boolean): void;
+    }>;
+    movable.setDraggable?.(false);
+    movable.setResizeable?.(false);
+  }
+
+  /** Whether geometry mutation is blocked on this scene. */
+  isReadOnly(): boolean {
+    return this.readOnlyMode;
+  }
+
+  /**
+   * Allows more than one overlay to be selected at a time.
+   *
+   * A surface-lifetime property, stored the same way and for the same reason
+   * as {@link setReadOnly}: `SceneOptions` is replaced wholesale by
+   * `updateOptions`, so a flag living there would be dropped the first time
+   * the sidebar toggled a field.
+   *
+   * On for surfaces that select labels rather than edit them — video Explore,
+   * where clicking boxes builds up `selectedLabels` for tagging. Off for the
+   * annotation surfaces, whose drag / resize / paint handlers act on a single
+   * selected overlay.
+   *
+   * This is the ONE switch for that behavior, and it reaches past the scene:
+   * `InteractionManager` reads it to decide whether a click toggles an overlay
+   * or replaces the selection, and the annotation engine's Lighter bridge
+   * reads it back off the scene to decide whether a click is additive in the
+   * engine's active set. Everything that has to agree about "can this surface
+   * hold several selected labels?" derives from here rather than being told
+   * separately, because a surface that set only some of them would show a
+   * canvas that collapses to one highlighted overlay while the other layers
+   * accumulate.
+   */
+  setMultipleSelection(multipleSelection: boolean): void {
+    this.selectionManager.setMultipleSelection(multipleSelection);
+  }
+
+  /** Whether this scene allows more than one overlay to be selected. */
+  isMultipleSelection(): boolean {
+    return this.selectionManager.isMultipleSelection();
+  }
+
+  /**
    * Determines if overlay order should be recalculated based on cursor position.
    * Only recalculates if the cursor is over a non-canonical overlay.
    * @returns True if overlay order should be recalculated.
    */
+  // @ts-expect-error unused — overlay-order recalculation not yet wired up
   private shouldRecalculateOverlayOrder(): boolean {
     const pixelCoordinates = this.interactionManager.getPixelCoordinates();
     if (!pixelCoordinates) {
@@ -882,12 +997,8 @@ export class Scene2D {
     });
 
     // Apply rotation if needed
-    let newRotate = orderState.rotate;
     if (orderState.rotate !== 0) {
-      [contained, newRotate] = this.rotateOverlays(
-        contained,
-        orderState.rotate
-      );
+      [contained] = this.rotateOverlays(contained, orderState.rotate);
     }
 
     // Handle hover-only mode
@@ -1023,7 +1134,7 @@ export class Scene2D {
    * @returns A function to unregister the callback.
    */
   registerRenderCallback(
-    callback: Omit<RenderCallback, "id"> & { id?: string }
+    callback: Omit<RenderCallback, "id"> & { id?: string },
   ): () => void {
     const id = callback.id || `render-callback-${Date.now()}-${Math.random()}`;
 
@@ -1052,10 +1163,10 @@ export class Scene2D {
    * @param phase - The phase to execute callbacks for.
    */
   private async executeRenderCallbacks(
-    phase: "before" | "after"
+    phase: "before" | "after",
   ): Promise<void> {
     const callbacks = Array.from(this.renderCallbacks.values()).filter(
-      (callback) => callback.phase === phase
+      (callback) => callback.phase === phase,
     );
 
     for (const callback of callbacks) {
@@ -1082,7 +1193,7 @@ export class Scene2D {
         this,
         overlay,
         undefined,
-        undefined
+        undefined,
       );
       this.executeCommand(command);
       return;
@@ -1099,13 +1210,22 @@ export class Scene2D {
     overlay.setResourceLoader(this.config.resourceLoader);
     overlay.setEventChannel(this.eventChannel);
     overlay.rehydrateMask?.();
+    this.applyReadOnlyTo(overlay);
 
     // Add to internal tracking
     this.overlays.set(overlay.id, overlay);
 
     // Register with managers first
     this.interactionManager.addHandler(overlay);
-    if (TypeGuards.isSelectable(overlay)) {
+    // `isSelectable` is structural (has the Selectable methods); honor an
+    // overlay's opt-out via its selection priority (a `selectable: false`
+    // overlay reports < 0). Without this a tool overlay like the point-selection
+    // keypoint scaffold would join the single-selection set and steal/clear the
+    // engine anchor from the label being annotated.
+    if (
+      TypeGuards.isSelectable(overlay) &&
+      overlay.getSelectionPriority() >= 0
+    ) {
       this.selectionManager.addSelectable(overlay);
     }
 
@@ -1114,6 +1234,7 @@ export class Scene2D {
 
     this.eventBus.dispatch("lighter:overlay-added", {
       id: overlay.id,
+      overlayId: overlay.id,
       overlay,
     });
   }
@@ -1122,8 +1243,13 @@ export class Scene2D {
    * Removes an overlay from the scene.
    * @param id - The ID of the overlay to remove.
    * @param withUndo - Whether to track this operation for undo/redo.
+   * @param lifecycle - Whether this is a lifecycle event (not user-driven)
    */
-  removeOverlay(id: string, withUndo: boolean = false): void {
+  removeOverlay(
+    id: string,
+    withUndo: boolean = false,
+    lifecycle: boolean = false,
+  ): void {
     if (withUndo) {
       const overlay = this.overlays.get(id);
       if (overlay) {
@@ -1146,12 +1272,12 @@ export class Scene2D {
 
       this.overlays.delete(id);
       this.overlayOrder = this.overlayOrder.filter(
-        (overlayId) => overlayId !== id
+        (overlayId) => overlayId !== id,
       );
       this.renderingState.clear(id);
     }
 
-    this.eventBus.dispatch("lighter:overlay-removed", { id });
+    this.eventBus.dispatch("lighter:overlay-removed", { id, lifecycle });
   }
 
   /**
@@ -1197,7 +1323,7 @@ export class Scene2D {
    */
   async transformOverlay(
     id: string,
-    options: TransformOptions
+    options: TransformOptions,
   ): Promise<boolean> {
     const overlay = this.overlays.get(id);
     if (!overlay) {
@@ -1234,7 +1360,7 @@ export class Scene2D {
       overlay,
       id,
       oldBounds,
-      newBounds
+      newBounds,
     );
 
     await this.executeCommand(command);
@@ -1256,7 +1382,7 @@ export class Scene2D {
    */
   getVisibleOverlays(): BaseOverlay[] {
     return Array.from(this.overlays.values()).filter((overlay) =>
-      this.shouldShowOverlay(overlay)
+      this.shouldShowOverlay(overlay),
     );
   }
 
@@ -1277,7 +1403,7 @@ export class Scene2D {
   getVisibleSelectableOverlays(): BaseOverlay[] {
     return Array.from(this.overlays.values()).filter(
       (overlay) =>
-        this.shouldShowOverlay(overlay) && TypeGuards.isSelectable(overlay)
+        this.shouldShowOverlay(overlay) && TypeGuards.isSelectable(overlay),
     );
   }
 
@@ -1303,6 +1429,15 @@ export class Scene2D {
       isUndoable,
       command,
     });
+  }
+
+  /**
+   * Hand undo/redo authority to an external owner (the annotation engine). While
+   * set, Lighter records no edit commands of its own — the owner captures every
+   * gesture, so a self-push would double-count it on the shared command stack.
+   */
+  setExternalUndoAuthority(enabled: boolean): void {
+    this.externalUndoAuthority = enabled;
   }
 
   /**
@@ -1573,7 +1708,7 @@ export class Scene2D {
    */
   private shouldRenderOverlay(
     overlay: BaseOverlay | undefined,
-    status: string
+    status: string,
   ): boolean {
     return (
       overlay !== undefined &&
@@ -1592,8 +1727,18 @@ export class Scene2D {
     if (this.sceneOptions?.showOverlays === false) return false;
 
     const activePaths = this.sceneOptions?.activePaths;
-    if (activePaths && overlay.field) {
-      return activePaths.includes(overlay.field);
+    if (activePaths && overlay.field && !activePaths.includes(overlay.field)) {
+      return false;
+    }
+
+    // Per-label filter (sidebar confidence / value / tag filters, and hidden
+    // labels — both fold into the one predicate the looker checked in
+    // `Overlay.isShown`). Skipped for a field-less overlay: the canonical
+    // media is already returned above, and any other field-less overlay is
+    // not a label the filter has an opinion about.
+    const filter = this.sceneOptions?.filter;
+    if (filter && overlay.field && !filter(overlay.field, overlay.label)) {
+      return false;
     }
 
     return true;
@@ -1621,7 +1766,7 @@ export class Scene2D {
         this.createOverlayStyle(overlay),
         {
           canonicalMediaBounds,
-        }
+        },
       );
 
       if (ret instanceof Promise) {
@@ -1662,7 +1807,7 @@ export class Scene2D {
    * @param handler - The interaction handler to use for interactive mode.
    */
   public enterInteractiveMode(
-    handler: InteractionHandler | InteractiveDetectionHandler
+    handler: InteractionHandler | InteractiveDetectionHandler,
   ): void {
     if (this.interactiveMode) {
       return;
@@ -1714,7 +1859,7 @@ export class Scene2D {
    * coupling lighter to the consumer's identity.
    */
   public setEmptyCanvasClickHandler(
-    handler: EmptyCanvasClickHandler | null
+    handler: EmptyCanvasClickHandler | null,
   ): void {
     this.interactionManager.setEmptyCanvasClickHandler(handler);
   }

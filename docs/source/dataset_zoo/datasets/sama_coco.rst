@@ -5,6 +5,10 @@ Sama-COCO
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 0.21.0
+    :enterprise_version: 1.3.0
+
 Sama-COCO is a relabeling of COCO-2017 and is a large-scale object detection
 and segmentation dataset. Masks in Sama-COCO are tighter and many crowd
 instances have been decomposed into their components.

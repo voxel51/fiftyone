@@ -6,16 +6,20 @@ Dataset and sample helper utilities for FiftyOne server routes.
 |
 """
 
-from typing import Any, Union
+from __future__ import annotations
+
+from typing import Any, TYPE_CHECKING, Union
 import logging
 from starlette.exceptions import HTTPException
 
-import fiftyone as fo
 import fiftyone.core.odm as foo
 import fiftyone.core.labels as fol
 
 from fiftyone.server.utils.json.jsonpatch import apply as apply_jsonpatch
 from fiftyone.server.utils.json.serialization import deserialize
+
+if TYPE_CHECKING:
+    import fiftyone as fo
 
 logger = logging.getLogger(__name__)
 

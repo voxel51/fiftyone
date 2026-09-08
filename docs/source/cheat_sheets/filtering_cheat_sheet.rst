@@ -5,6 +5,10 @@ Filtering Cheat Sheet
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 0.19.0
+    :enterprise_version: 1.1
+
 This cheat sheet shows how to perform common matching and filtering operations
 in FiftyOne using :ref:`dataset views <using-views>`.
 

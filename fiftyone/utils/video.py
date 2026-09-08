@@ -901,9 +901,17 @@ def _transform_video(
                 frames = _frames
 
         if reencode:
-            # Use default reencoding parameters from ``eta.core.video.FFmpeg``
+            # Use default reencoding parameters from ``eta.core.video.FFmpeg``.
+            # For MP4/MOV outputs, write the moov atom at the front of the file
+            # so players can start playback without seeking to the end.
             kwargs["in_opts"] = None
-            kwargs["out_opts"] = None
+            if out_ext.lower() in (".mp4", ".mov", ".m4v"):
+                kwargs["out_opts"] = list(etav.FFmpeg.DEFAULT_VIDEO_OUT_OPTS) + [
+                    "-movflags",
+                    "+faststart",
+                ]
+            else:
+                kwargs["out_opts"] = None
         else:
             # No reencoding parameters
             if "in_opts" not in kwargs:

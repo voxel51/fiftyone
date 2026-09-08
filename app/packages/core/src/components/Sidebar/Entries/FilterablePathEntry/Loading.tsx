@@ -1,5 +1,5 @@
 import { LoadingDots } from "@fiftyone/components";
-import React, { useLayoutEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import Container from "./Container";
 
 export default function () {

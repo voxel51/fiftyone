@@ -48,15 +48,15 @@ const canUseSessionStorage = () =>
 const isFailure = (value: unknown): value is GridCustomRendererFailure => {
   return Boolean(
     value &&
-      typeof value === "object" &&
-      typeof (value as GridCustomRendererFailure).datasetName === "string" &&
-      typeof (value as GridCustomRendererFailure).rendererName === "string" &&
-      typeof (value as GridCustomRendererFailure).failedAt === "number"
+    typeof value === "object" &&
+    typeof (value as GridCustomRendererFailure).datasetName === "string" &&
+    typeof (value as GridCustomRendererFailure).rendererName === "string" &&
+    typeof (value as GridCustomRendererFailure).failedAt === "number",
   );
 };
 
 const parseFailures = (
-  value: unknown
+  value: unknown,
 ): Record<string, GridCustomRendererFailure> => {
   if (!value || typeof value !== "object") {
     return {};
@@ -86,7 +86,7 @@ const parseDismissedBanners = (value: unknown): Record<string, boolean> => {
 
       return acc;
     },
-    {}
+    {},
   );
 };
 
@@ -108,7 +108,7 @@ const migrateLegacySnapshot = (value: Record<string, unknown>) => {
 };
 
 const getLatestFailure = (
-  failures: Record<string, GridCustomRendererFailure>
+  failures: Record<string, GridCustomRendererFailure>,
 ): GridCustomRendererFailure | null => {
   let latestFailure: GridCustomRendererFailure | null = null;
 
@@ -122,7 +122,7 @@ const getLatestFailure = (
 };
 
 const getForcedSubscription = (
-  failures: Record<string, GridCustomRendererFailure>
+  failures: Record<string, GridCustomRendererFailure>,
 ) => {
   const latestFailure = getLatestFailure(failures);
 
@@ -155,7 +155,7 @@ const readSnapshot = (): GridCustomRendererFailoverSnapshot => {
     if ("failures" in value || "dismissedBanners" in value) {
       return {
         dismissedBanners: parseDismissedBanners(
-          (value as { dismissedBanners?: unknown }).dismissedBanners
+          (value as { dismissedBanners?: unknown }).dismissedBanners,
         ),
         failures: parseFailures((value as { failures?: unknown }).failures),
       };
@@ -186,7 +186,7 @@ const replaceSnapshot = (nextSnapshot: GridCustomRendererFailoverSnapshot) => {
 
 const getFailure = (
   datasetName: string | null | undefined,
-  currentSnapshot: GridCustomRendererFailoverSnapshot = snapshot
+  currentSnapshot: GridCustomRendererFailoverSnapshot = snapshot,
 ) => {
   if (!datasetName) {
     return null;
@@ -197,7 +197,7 @@ const getFailure = (
 
 const isBannerDismissed = (
   datasetName: string | null | undefined,
-  currentSnapshot: GridCustomRendererFailoverSnapshot = snapshot
+  currentSnapshot: GridCustomRendererFailoverSnapshot = snapshot,
 ) => {
   if (!datasetName) {
     return false;
@@ -228,12 +228,12 @@ export const getGridCustomRendererFailoverForcedSubscription = () =>
 
 /** Returns the recorded failure for a dataset in the current browser session. */
 export const getGridCustomRendererFailover = (
-  datasetName: string | null | undefined
+  datasetName: string | null | undefined,
 ) => getFailure(datasetName);
 
 /** Whether custom grid renderers are disabled for the given dataset. */
 export const isGridCustomRendererFailOpen = (
-  datasetName: string | null | undefined
+  datasetName: string | null | undefined,
 ) => Boolean(getFailure(datasetName));
 
 /**
@@ -262,7 +262,7 @@ export const markGridCustomRendererFailed = ({
   const latestFailure = getLatestFailure(snapshot.failures);
   const failedAt = Math.max(
     Date.now(),
-    latestFailure ? latestFailure.failedAt + 1 : 0
+    latestFailure ? latestFailure.failedAt + 1 : 0,
   );
 
   const failure = {
@@ -292,7 +292,7 @@ export const markGridCustomRendererFailed = ({
  * crashing renderer for that dataset.
  */
 export const dismissGridCustomRendererFailoverBanner = (
-  datasetName: string | null | undefined
+  datasetName: string | null | undefined,
 ) => {
   if (!datasetName || isBannerDismissed(datasetName)) {
     return;
@@ -321,7 +321,7 @@ export const useGridCustomRendererFailover = (datasetName?: string | null) => {
   const currentSnapshot = useSyncExternalStore(
     subscribeToGridCustomRendererFailover,
     getGridCustomRendererFailoverSnapshot,
-    createEmptySnapshot
+    createEmptySnapshot,
   );
 
   const failure = getFailure(datasetName, currentSnapshot);

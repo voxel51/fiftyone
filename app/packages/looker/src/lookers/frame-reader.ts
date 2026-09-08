@@ -149,7 +149,7 @@ export const { acquireReader, clearReader } = (() => {
 
   return {
     acquireReader: (
-      options: AcquireReaderOptions
+      options: AcquireReaderOptions,
     ): ((frameNumber?: number) => void) => {
       currentOptions = options;
 

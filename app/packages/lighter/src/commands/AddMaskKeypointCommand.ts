@@ -22,7 +22,7 @@ export class AddMaskKeypointCommand implements Undoable {
     private overlay: DetectionOverlay,
     private pointId: string,
     private worldPoint: Point,
-    private variant?: string
+    private variant?: string,
   ) {
     this.id = `add-mask-keypoint-${pointId}-${Date.now()}`;
     this.description = `Add mask keypoint ${pointId}`;

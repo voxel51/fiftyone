@@ -19,6 +19,7 @@ export type {
   ImageOptions,
   KeypointSkeleton,
   LabelData,
+  LabelTagColor,
   Point,
   Sample,
   VideoConfig,

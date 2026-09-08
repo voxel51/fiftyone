@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import type { setSampleMutation } from "@fiftyone/relay";
 import type { RegisteredWriter } from "./registerWriter";
 

@@ -1,14 +1,31 @@
 import { CopyButton } from "@fiftyone/components";
 import { Box, useColorScheme } from "@mui/material";
-import React from "react";
-import SyntaxHighlighter from "react-syntax-highlighter";
-import {
-  a11yDark,
-  a11yLight,
-} from "react-syntax-highlighter/dist/esm/styles/hljs";
-import { scrollable } from "../../scrollable.module.css";
+// Use the `Light` build and register only the languages we render. The default
+// `react-syntax-highlighter` export bundles all ~190 hljs languages (~1.4MB) onto
+// the eager critical path; this keeps it to the handful we actually use.
+import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
+import bash from "react-syntax-highlighter/dist/esm/languages/hljs/bash";
+import javascript from "react-syntax-highlighter/dist/esm/languages/hljs/javascript";
+import json from "react-syntax-highlighter/dist/esm/languages/hljs/json";
+import python from "react-syntax-highlighter/dist/esm/languages/hljs/python";
+import typescript from "react-syntax-highlighter/dist/esm/languages/hljs/typescript";
+import yaml from "react-syntax-highlighter/dist/esm/languages/hljs/yaml";
+import a11yDark from "react-syntax-highlighter/dist/esm/styles/hljs/a11y-dark";
+import a11yLight from "react-syntax-highlighter/dist/esm/styles/hljs/a11y-light";
+import scrollableStyles from "../../scrollable.module.css";
 
-export default function CodeBlock({ text, ...props }: CodeBlockProps) {
+SyntaxHighlighter.registerLanguage("bash", bash);
+SyntaxHighlighter.registerLanguage("javascript", javascript);
+SyntaxHighlighter.registerLanguage("json", json);
+SyntaxHighlighter.registerLanguage("python", python);
+SyntaxHighlighter.registerLanguage("typescript", typescript);
+SyntaxHighlighter.registerLanguage("yaml", yaml);
+
+export default function CodeBlock({
+  text,
+  language,
+  ...props
+}: CodeBlockProps) {
   const { mode } = useColorScheme();
 
   return (
@@ -41,8 +58,8 @@ export default function CodeBlock({ text, ...props }: CodeBlockProps) {
       />
       <SyntaxHighlighter
         showLineNumbers
-        className={scrollable}
-        language="Python"
+        className={scrollableStyles.scrollable}
+        language={(language ?? "python").toLowerCase()}
         customStyle={{ margin: 0, lineHeight: 1.75 }}
         style={mode === "dark" ? a11yDark : a11yLight}
         {...props}

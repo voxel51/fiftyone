@@ -1,5 +1,5 @@
 import * as fos from "@fiftyone/state";
-import React, { Suspense } from "react";
+import { Suspense } from "react";
 import { useRecoilValue } from "recoil";
 import { GroupSuspense } from "../../GroupSuspense";
 import { GroupView } from "../../GroupView";

@@ -21,7 +21,7 @@ export default class Iter<K, V> {
     request: Request<K, V>,
     renderer: Renderer<K, V>,
     section: Section<K, V>,
-    sibling: Sibling<K, V>
+    sibling: Sibling<K, V>,
   ) {
     this.#focus = focus;
     this.#request = request;
@@ -56,7 +56,7 @@ export default class Iter<K, V> {
         result = await section.first(
           this.#request,
           this.#renderer,
-          this.#sibling
+          this.#sibling,
         );
       }
 

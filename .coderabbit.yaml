@@ -5,7 +5,7 @@ reviews:
   profile: "assertive"
   request_changes_workflow: false
   changed_files_summary: false
-  auto_assign_reviewers: true
+  auto_assign_reviewers: false
   high_level_summary: true
   poem: false
   review_status: true
@@ -33,11 +33,12 @@ reviews:
   auto_review:
     enabled: true
     ignore_title_keywords:
-      - "WIP"
+      - "AUTOMATED MERGE"
       - "DO NOT MERGE"
       - "DRAFT"
       - "MERGE OSS"
       - "OSS MERGE"
+      - "WIP"
     drafts: false
     base_branches:
       - "develop"

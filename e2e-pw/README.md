@@ -1,24 +1,24 @@
 ## Getting Started Locally
 
--   Install playwright extension for VSCode.
--   Copy `.env.dev.template` into `.env.dev` and fill in the values.
--   Run `yarn` to install dependencies. Make sure you're using at least node
-    18.x (preferably 20.x). `nvm install 20 && nvm use 20`.
--   Run tests directly from VSCode or from the command line with `yarn e2e`, or
-    start the UI mode using `yarn e2e:ui` command. If you're using a local dev
-    build, read the following section.
--   If Playwright version was upgraded, you'll need to run
-    `yarn playwright install` to update the browser binaries.
+- Install playwright extension for VSCode.
+- Copy `.env.dev.template` into `.env.dev` and fill in the values.
+- Run `yarn` to install dependencies. Make sure you're using at least node 18.x
+  (preferably 20.x). `nvm install 20 && nvm use 20`.
+- Run tests directly from VSCode or from the command line with `yarn e2e`, or
+  start the UI mode using `yarn e2e:ui` command. If you're using a local dev
+  build, read the following section.
+- If Playwright version was upgraded, you'll need to run
+  `yarn playwright install` to update the browser binaries.
 
 ### To use the local dev server of the app
 
--   This is useful if you want to run the tests against a local dev server of
-    the app.
--   Set `export USE_DEV_BUILD=true` in `.env.dev` file.
--   Run `yarn devserver` to start the app dev server in a separate terminal
-    window.
--   Proceed to run e2e tests as usual, from the CLI, VSCode, or Playwright UI.
--   **NOTE: Parallelization doesn't work with dev build.**
+- This is useful if you want to run the tests against a local dev server of the
+  app.
+- Set `export USE_DEV_BUILD=true` in `.env.dev` file.
+- Run `yarn devserver` to start the app dev server in a separate terminal
+  window.
+- Proceed to run e2e tests as usual, from the CLI, VSCode, or Playwright UI.
+- **NOTE: Parallelization doesn't work with dev build.**
 
 ### Tips
 
@@ -31,18 +31,30 @@
 ### Spec Organization
 
 All specs live directly in `e2e-pw/src/oss/specs/` with no subdirectories and
-are named `<ticket>-<short-description>.spec.ts`, e.g.
-`FOEPD-1234-my-regression-test.spec.ts`. Specs without a known ticket use
-`MISSING` as the placeholder.
+are named `<short-description>.spec.ts`, e.g. `my-regression-test.spec.ts`.
 
 ### Patterns
 
--   Use POMs where applicable, e.g. for pages, or for common components like
-    grid, modal, sidebar.
--   Do not use assertion logic directly in POMs, instead use composition to
-    create POMs that contain the assertion class.
--   Refrain from using `page.waitForTimeout()`. There is almost always a better
-    alternative, like using custom events.
+- Use POMs where applicable, e.g. for pages, or for common components like
+  grid, modal, sidebar.
+- Do not use assertion logic directly in POMs, instead use composition to
+  create POMs that contain the assertion class.
+- Refrain from using `page.waitForTimeout()`. There is almost always a better
+  alternative, like using custom events.
+- Keep individual tests small. These specs also run in fiftyone-teams CI at
+  roughly 2–4x the duration (slower server boot, page loads, and screenshot
+  stabilization), so a test that takes more than ~60 seconds here is a timeout
+  risk there. Split large flows into focused tests.
+- Avoid `test.describe.serial` unless tests genuinely depend on each other's
+  state. With serial mode, one failure re-runs the entire file on every retry
+  (re-paying web server boot and dataset creation) and healthy siblings get
+  reported as retried, which confuses flake triage. When tests mutate shared
+  data (e.g. annotation autosave), prefer giving each test its own sample
+  (`numSamples` plus `indexToId`-addressed ids) over serializing the file.
+- Settle the canvas before `toHaveScreenshot` (finish drags, move the pointer
+  to a neutral position). Screenshot assertions wait for consecutive identical
+  frames, so each one against a repainting canvas pays a multi-second
+  stabilization loop.
 
 #### Check for flakiness
 
@@ -106,36 +118,37 @@ class MyPOMAsserter {
 
 1. Read [Playwright docs](https://playwright.dev/docs/test-snapshots) on this
    subject.
-2. Since baseline screenshots are platform dependent, and our CI server runs on
-   linux, to generate linux screenshots locally, run the following commands:
+2. Baseline screenshots are platform dependent. CI compares the
+   `*-chromium-linux.png` baselines rendered inside the CI container image
+   (`ghcr.io/voxel51/fiftyone-e2e`); other environments' font stacks differ by
+   pixels, so only that image's renders are canonical. To update a linux
+   baseline, harvest the render from a CI run of your PR:
 
 ```
-# create a docker image with playwright and python and fiftyone
-yarn build-linux-screenshot-docker-image
+# download the merged report from the failing run
+gh run download <run-id> -n playwright-report-merged -D /tmp/report
 
-# make sure mongod is running and available in your host machine at localhost:27017
-
-# generate screenshots
-# from e2e-pw directory, run:
-docker run --rm --network host -v $(pwd):/work/ -w /work/ -it screenshot /bin/bash
-
-# inside the docker container, run:
-npx playwright test --update-snapshots -g "description of my test"
-
-Note: `PYTHONPATH` and virtual env setup is done automatically.
+# each failed screenshot's trace zip (in /tmp/report/data/) lists
+# attachments mapping <name>-{expected,actual,diff}.png to sha-named
+# files in the same directory; commit the *actual* over the baseline:
+cp /tmp/report/data/<actual-sha>.png \
+  src/oss/specs/<spec>.spec.ts-snapshots/<name>-chromium-linux.png
 ```
+
+Only accept an actual after reviewing the diff — a dimension change or a
+highlighted UI element is a behavioral difference, not render noise.
 
 #### Creating Datasets
 
-Always use `DatasetFactory.createBlankDataset` when a test needs a FiftyOne
-dataset. It generates blank PNG images, inserts samples directly into the
-underlying MongoDB collection for performance, and applies any additional
-schema fields and saved views.
+Always use `DatasetFactory.createDataset` when a test needs a FiftyOne dataset.
+It generates blank PNG images, inserts samples directly into the underlying
+MongoDB collection for performance, and applies any additional schema fields
+and saved views.
 
 ```ts
 import { DatasetFactory } from "src/shared/dataset-factory";
 
-await DatasetFactory.createBlankDataset({
+await DatasetFactory.createDataset({
     datasetName: "my-test-dataset",
     numSamples: 5,
     numbered: true,
@@ -258,20 +271,20 @@ pattern to learn regardless of what is being tested.
 
 #### Browser / Target has been closed
 
--   Most likely a missing `await` somewhere. Use VSCode eslint integration to
-    get hints on missing `await`s.
+- Most likely a missing `await` somewhere. Use VSCode eslint integration to get
+  hints on missing `await`s.
 
 #### Error: No tests found
 
--   This shows up randomly when running tests from VSCode. Run "Developer:
-    Reload Window" to fix it.
+- This shows up randomly when running tests from VSCode. Run "Developer: Reload
+  Window" to fix it.
 
 #### Troubleshooting
 
 The order of the steps is from the most to the least likely to fix the issue.
 
--   Run `yarn kill-port 8787` to kill any stray processes that might be running
-    on port 8787.
--   Reload VSCode developer window.
--   Close all browser windows from previous test runs.
--   Restart the dev server.
+- Run `yarn kill-port 8787` to kill any stray processes that might be running
+  on port 8787.
+- Reload VSCode developer window.
+- Close all browser windows from previous test runs.
+- Restart the dev server.

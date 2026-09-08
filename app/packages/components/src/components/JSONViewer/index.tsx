@@ -29,18 +29,18 @@ export default function JSONViewer(props: JSONViewerPropsType) {
         setDebouncedSearchTerm(searchTerm);
       },
       SEARCH_DEBOUNCE,
-      { leading: true }
+      { leading: true },
     );
   }, [setDebouncedSearchTerm]);
 
   const keyRenderer = useMemo(
     () => KeyRendererWrapper(debouncedSearchTerm),
-    [debouncedSearchTerm]
+    [debouncedSearchTerm],
   );
 
   const valuesRenderer = useMemo(
     () => getValueRenderersForSearch(debouncedSearchTerm),
-    [debouncedSearchTerm]
+    [debouncedSearchTerm],
   );
 
   useEffect(() => {

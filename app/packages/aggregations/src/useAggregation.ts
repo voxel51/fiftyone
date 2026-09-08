@@ -67,7 +67,7 @@ export default function useAggregation({
 
   const aggregate = async (
     aggregations: Aggregation[],
-    datasetName?: string
+    datasetName?: string,
   ) => {
     setLoading(true);
     const jsonAggregations = aggregations.map((a) => a.toJSON());

@@ -108,7 +108,7 @@ export const useRuns = (): UseRunsResult => {
               reject(e instanceof Error ? e : new Error(String(e)));
             }
           },
-        }
+        },
       ).catch((error: unknown) => {
         fetchingRef.current = false;
         console.error("Operator execution failed for fetchRuns:", error);
@@ -199,14 +199,14 @@ export const useRuns = (): UseRunsResult => {
         return newRuns;
       });
     },
-    [setRuns]
+    [setRuns],
   );
 
   const removeRun = useCallback(
     (runId: string) => {
       setRuns((prev) => prev.filter((r) => r.run_id !== runId));
     },
-    [setRuns]
+    [setRuns],
   );
 
   const removeRuns = useCallback(
@@ -214,7 +214,7 @@ export const useRuns = (): UseRunsResult => {
       const ids = new Set(runIds);
       setRuns((prev) => prev.filter((r) => !ids.has(r.run_id)));
     },
-    [setRuns]
+    [setRuns],
   );
 
   return { runs, loaded, refreshRuns, updateRun, removeRun, removeRuns };

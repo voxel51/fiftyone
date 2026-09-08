@@ -66,7 +66,7 @@ export interface ResultsProps<T> {
   active?: number;
   component: React.FC<{ value: T; className?: string }>;
   cy?: string;
-  footer?: React.JSX.Element;
+  footer?: JSX.Element;
   onSelect: (value: T) => void;
   results?: T[];
   toKey?: (value: T) => string;
@@ -87,7 +87,7 @@ function Results<T>({
 
   useLayoutEffect(() => {
     ref.current?.dispatchEvent(
-      new CustomEvent(`selector-results-${cy}`, { bubbles: true })
+      new CustomEvent(`selector-results-${cy}`, { bubbles: true }),
     );
   }, [cy, ref]);
 
@@ -132,7 +132,7 @@ function Footer<T>({
   results,
   total,
 }: {
-  footer?: React.JSX.Element;
+  footer?: JSX.Element;
   results?: T[];
   total?: number;
 }) {

@@ -1,6 +1,6 @@
 import { LoadingDots } from "@fiftyone/components";
 import { AggregationQueryTimeout } from "@fiftyone/state";
-import React, { Suspense } from "react";
+import { Suspense } from "react";
 import type { RecoilValue } from "recoil";
 import { constSelector, useRecoilValue, useRecoilValueLoadable } from "recoil";
 import TimedOut from "../Common/TimedOut";

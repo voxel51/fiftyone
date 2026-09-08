@@ -8,7 +8,7 @@ from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
 DESCRIPTOR: _descriptor.FileDescriptor
 
 class StreamInventory(_message.Message):
-    __slots__ = ("stream_id", "payload", "record_count", "display_name", "coordinate_frame_id", "metadata")
+    __slots__ = ("stream_id", "payload", "record_count", "display_name", "metadata")
     class MetadataEntry(_message.Message):
         __slots__ = ("key", "value")
         KEY_FIELD_NUMBER: _ClassVar[int]
@@ -20,15 +20,13 @@ class StreamInventory(_message.Message):
     PAYLOAD_FIELD_NUMBER: _ClassVar[int]
     RECORD_COUNT_FIELD_NUMBER: _ClassVar[int]
     DISPLAY_NAME_FIELD_NUMBER: _ClassVar[int]
-    COORDINATE_FRAME_ID_FIELD_NUMBER: _ClassVar[int]
     METADATA_FIELD_NUMBER: _ClassVar[int]
     stream_id: str
     payload: _common_pb2.PayloadDescriptor
     record_count: int
     display_name: str
-    coordinate_frame_id: str
     metadata: _containers.ScalarMap[str, str]
-    def __init__(self, stream_id: _Optional[str] = ..., payload: _Optional[_Union[_common_pb2.PayloadDescriptor, _Mapping]] = ..., record_count: _Optional[int] = ..., display_name: _Optional[str] = ..., coordinate_frame_id: _Optional[str] = ..., metadata: _Optional[_Mapping[str, str]] = ...) -> None: ...
+    def __init__(self, stream_id: _Optional[str] = ..., payload: _Optional[_Union[_common_pb2.PayloadDescriptor, _Mapping]] = ..., record_count: _Optional[int] = ..., display_name: _Optional[str] = ..., metadata: _Optional[_Mapping[str, str]] = ...) -> None: ...
 
 class StaticCoordinateFrameEdge(_message.Message):
     __slots__ = ("parent_frame_id", "child_frame_id", "source_stream_id")

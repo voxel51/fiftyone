@@ -2,7 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  * @vitest-environment jsdom
  */
-import { renderHook } from "@testing-library/react-hooks";
+import { renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 const mockSelectors = vi.hoisted(() => ({
@@ -97,8 +97,9 @@ describe("useGroupByFieldValue", () => {
         contents: new Error("fetch failed"),
       },
     };
-    const { result } = renderHook(() => useGroupByFieldValue());
-    expect(result.error).toEqual(new Error("fetch failed"));
+    expect(() => renderHook(() => useGroupByFieldValue())).toThrow(
+      "fetch failed",
+    );
   });
 });
 
@@ -111,8 +112,9 @@ describe("useElementsCount", () => {
         contents: new Error("count failed"),
       },
     };
-    const { result } = renderHook(() => useElementsCount(true));
-    expect(result.error).toEqual(new Error("count failed"));
+    expect(() => renderHook(() => useElementsCount(true))).toThrow(
+      "count failed",
+    );
   });
 
   it("returns 0 before the count settles", () => {

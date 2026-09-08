@@ -56,7 +56,7 @@ export const drawRippleRings = ({
       center,
       radius,
       { strokeStyle: color, lineWidth: RIPPLE_LINE_WIDTH, opacity },
-      containerId
+      containerId,
     );
   }
 };

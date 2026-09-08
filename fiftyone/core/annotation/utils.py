@@ -68,7 +68,10 @@ def get_supported_app_annotation_fields(sample_collection):
 
 
 def list_valid_annotation_fields(
-    sample_collection, require_app_support=False, flatten=False
+    sample_collection,
+    require_app_support=False,
+    flatten=False,
+    include_frames=False,
 ):
     """Lists all valid annotation fields for a
     :class:`fiftyone.core.collections.SampleCollection`.
@@ -83,14 +86,101 @@ def list_valid_annotation_fields(
             by the App for annotation
         flatten (False): whether to flatten embedded documents with
             ``dot.notation``
+        include_frames (False): whether to also include valid per-frame label
+            fields, keyed by their ``frames.<field>`` path
 
     Returns:
         a sorted list of valid annotation field names
     """
-    fields = sample_collection.get_field_schema()
+    # On video, spatial labels belong to frames — a sample-level
+    # detections/polylines field isn't annotatable, so drop it from the
+    # sample-level scan (frame-level spatial labels are added below).
+    exclude_sample_spatial = sample_collection.media_type == fom.VIDEO
 
+    result = _valid_annotation_fields(
+        sample_collection,
+        sample_collection.get_field_schema(),
+        require_app_support,
+        exclude_spatial_labels=exclude_sample_spatial,
+    )
+
+    if include_frames and sample_collection._has_frame_fields():
+        frame_fields = _valid_annotation_fields(
+            sample_collection,
+            sample_collection.get_frame_field_schema(),
+            require_app_support,
+        )
+        result |= {f"frames.{field_name}" for field_name in frame_fields}
+
+    if flatten:
+        result = flatten_fields(sample_collection, result, require_app_support)
+
+    return sorted(result)
+
+
+def backfill_instances_from_index(sample_collection, fields=None):
+    """Populates the ``instance`` attribute from a legacy ``index`` attribute
+    for any of the given track label fields that have ``index`` values but no
+    ``instance`` values yet.
+
+    Lets datasets whose tracks are defined by ``index`` (rather than
+    ``instance``) be recognized as tracks during a scan. Fields that already
+    have any ``instance`` values are left untouched, so existing tracks are
+    never clobbered and the operation is idempotent.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        fields (None): a field name or iterable of field names to process. By
+            default, all valid annotation fields are processed, matching the
+            all-fields scan in :func:`generate_label_schemas`
+    """
+    if fields is None:
+        fields = list_valid_annotation_fields(
+            sample_collection, include_frames=True
+        )
+    elif isinstance(fields, str):
+        fields = [fields]
+
+    for field in fields:
+        _maybe_backfill_field_instances(sample_collection, field)
+
+
+def _maybe_backfill_field_instances(sample_collection, field):
+    # imported lazily — `fiftyone.utils.labels` pulls in heavy deps we don't
+    # want at annotation-module import time
+    import fiftyone.utils.labels as foul
+
+    label_field = sample_collection.get_field(field)
+    if not isinstance(label_field, fof.EmbeddedDocumentField):
+        return
+
+    if not issubclass(label_field.document_type, foac.TRACK_LABEL_TYPES):
+        return
+
+    root, _ = sample_collection._get_label_field_root(field)
+    instance_path = f"{root}.instance"
+    index_path = f"{root}.index"
+
+    # `instance` is a dynamic attribute (absent from the declared schema), so
+    # count the data directly rather than checking the schema
+
+    # don't clobber a field that already has tracks
+    if sample_collection.count(instance_path) > 0:
+        return
+
+    # nothing to backfill from
+    if sample_collection.count(index_path) == 0:
+        return
+
+    foul.index_to_instance(sample_collection, field)
+
+
+def _valid_annotation_fields(
+    collection, schema, require_app_support, exclude_spatial_labels=False
+):
     result = set()
-    for field_name, field in fields.items():
+    for field_name, field in schema.items():
 
         if _is_supported_primitive(field):
             result.add(field_name)
@@ -103,13 +193,15 @@ def list_valid_annotation_fields(
             result.add(field_name)
             continue
 
-        if _is_supported_label(sample_collection, field, require_app_support):
+        if exclude_spatial_labels and issubclass(
+            field.document_type, foac.SPATIAL_LABEL_TYPES
+        ):
+            continue
+
+        if _is_supported_label(collection, field, require_app_support):
             result.add(field_name)
 
-    if flatten:
-        result = flatten_fields(sample_collection, result, require_app_support)
-
-    return sorted(result)
+    return result
 
 
 def flatten_fields(collection, fields, require_app_support=False):

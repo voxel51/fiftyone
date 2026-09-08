@@ -46,13 +46,13 @@ const AccordionDetails = styled(MuiAccordionDetails)(({ theme }) => ({
 export default function Accordion(props) {
   const { label, children, defaultExpanded, Actions } = props;
   const [expanded, setExpanded] = React.useState<boolean>(
-    Boolean(defaultExpanded)
+    Boolean(defaultExpanded),
   );
 
   return (
     <StyledMuiAccordion
       expanded={expanded}
-      onChange={(e, expanded) => setExpanded(expanded)}
+      onChange={(_e, expanded) => setExpanded(expanded)}
       sx={{ width: "100%" }}
     >
       <AccordionSummary>

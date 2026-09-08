@@ -1,6 +1,6 @@
+import { useTrackEvent } from "@fiftyone/analytics";
 import {
   useAutoSave,
-  useRegisterAnnotationCommandHandlers,
   useRegisterAnnotationEventHandlers,
   useRegisterAnnotationKeybindings,
   useRegisterRendererEventHandlers,
@@ -10,47 +10,47 @@ import {
   KnownContexts,
   useKeyBindings,
 } from "@fiftyone/commands";
-import {
-  ErrorDisplayMarkup,
-  HelpPanel,
-  JSONPanel,
-  Loading,
-} from "@fiftyone/components";
+import { ErrorDisplayMarkup, HelpPanel, JSONPanel } from "@fiftyone/components";
 import { selectiveRenderingEventBus } from "@fiftyone/looker";
 import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
-import { canAnnotate, ModalMode, useModalMode } from "@fiftyone/state";
+import {
+  ModalMode,
+  canAnnotate,
+  useIsMediaType,
+  useModalMode,
+} from "@fiftyone/state";
 import {
   currentModalUniqueIdJotaiAtom,
   jotaiStore,
 } from "@fiftyone/state/src/jotai";
-import { is3d } from "@fiftyone/utilities";
-import React, {
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-} from "react";
+import { is3d, MEDIA_TYPE_MULTIMODAL } from "@fiftyone/utilities";
+import React, { Fragment, Suspense, useCallback, useMemo, useRef } from "react";
 import ReactDOM from "react-dom";
-import { useRecoilCallback, useRecoilValue } from "recoil";
 import {
-  ErrorBoundary as ReactErrorBoundary,
   FallbackProps,
+  ErrorBoundary as ReactErrorBoundary,
 } from "react-error-boundary";
+import {
+  useRecoilCallback,
+  useRecoilValue,
+  useRecoilValueLoadable,
+} from "recoil";
 import styled from "styled-components";
 import Actions from "./Actions";
 import ModalNavigation from "./ModalNavigation";
 import { ModalSpace } from "./ModalSpace";
-import { Sidebar } from "./Sidebar";
-import SchemaManagementProvider from "./Sidebar/Annotate/SchemaManagementProvider";
-import useCanManageSchema from "./Sidebar/Annotate/useCanManageSchema";
-import { useAnnotationTracking } from "./Sidebar/Annotate/useAnnotationTracking";
-import { SegmentationToolbar } from "./Sidebar/Annotate/Edit/SegmentationToolbar";
 import { ModalStatusBar } from "./ModalStatusBar";
+import { Sidebar } from "./Sidebar";
+import { SegmentationToolbar } from "./Sidebar/Annotate/Edit/SegmentationToolbar";
 import { useAnnotationStatus } from "./Sidebar/Annotate/Edit/useAnnotationStatus";
-import { TooltipInfo } from "./TooltipInfo";
-import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
+import { useAnnotationTracking } from "./Sidebar/Annotate/useAnnotationTracking";
+import { TooltipInfoBoundary } from "./TooltipInfoBoundary";
+import {
+  useLookerHelpers,
+  useShowClassicSidebar,
+  useTooltipEventHandler,
+} from "./hooks";
 import { modalContext } from "./modal-context";
 
 const ModalWrapper = styled.div`
@@ -88,55 +88,33 @@ const SpacesContainer = styled.div`
 `;
 
 const AnnotationHandlerRegistration = () => {
-  useRegisterAnnotationCommandHandlers();
+  // Sparse groups can have no sample on the active slice; the annotation
+  // hooks below read modalSample and would throw GroupSampleNotFound. Skip
+  // registration entirely until the slice has a sample.
+  const modal = useRecoilValueLoadable(fos.modalSample);
+  if (
+    modal.state === "hasError" &&
+    modal.contents instanceof fos.GroupSampleNotFound
+  ) {
+    return <Fragment />;
+  }
+  return <AnnotationHandlerRegistrationInner />;
+};
+
+const AnnotationHandlerRegistrationInner = () => {
   useRegisterAnnotationEventHandlers();
   useRegisterAnnotationKeybindings();
   useRegisterRendererEventHandlers();
   useAnnotationTracking();
 
   const modalMode = useModalMode();
-  const canManageSchema = useCanManageSchema();
 
   useAutoSave(modalMode === ModalMode.ANNOTATE);
 
-  return canManageSchema ? <SchemaManagementProvider /> : <Fragment />;
+  return <Fragment />;
 };
 
 const ModalErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
-  const modalGroupSlice = useRecoilValue(fos.modalGroupSlice);
-  const errorSliceRef = useRef(modalGroupSlice);
-  const recoverGroupSlice = useRecoilCallback(
-    ({ snapshot, set }) =>
-      async () => {
-        const fallback = await snapshot.getPromise(fos.groupSlice);
-
-        if (fallback) {
-          set(fos.modalGroupSlice, fallback);
-        }
-      },
-    []
-  );
-
-  useEffect(() => {
-    if (error instanceof fos.GroupSampleNotFound) {
-      void recoverGroupSlice();
-    }
-  }, [error, recoverGroupSlice]);
-
-  useEffect(() => {
-    if (
-      error instanceof fos.GroupSampleNotFound &&
-      modalGroupSlice &&
-      modalGroupSlice !== errorSliceRef.current
-    ) {
-      resetErrorBoundary();
-    }
-  }, [error, modalGroupSlice, resetErrorBoundary]);
-
-  if (error instanceof fos.GroupSampleNotFound) {
-    return <Loading>Pixelating...</Loading>;
-  }
-
   return (
     <ErrorDisplayMarkup
       error={error as Error}
@@ -152,9 +130,7 @@ const Modal = () => {
   const pointerDownTargetRef = useRef<EventTarget | null>(null);
   const { enabled: isAnnotationEnabled } = useRecoilValue(canAnnotate);
   const clearModal = fos.useClearModal();
-  const { is3dVisible } = fos.useRenderConfig3dState();
-  const groupSlice = useRecoilValue(fos.groupSlice);
-  const modalGroupSlice = useRecoilValue(fos.modalGroupSlice);
+  const is3dVisible = fos.useIs3dVisible();
   const modalSelector = useRecoilValue(fos.modalSelector);
 
   const onPointerDownModalWrapper = useCallback((e: React.PointerEvent) => {
@@ -174,16 +150,35 @@ const Modal = () => {
       // Reset the tracked target
       pointerDownTargetRef.current = null;
     },
-    [clearModal]
+    [clearModal],
   );
 
   const { jsonPanel, helpPanel } = useLookerHelpers();
+
+  const trackEvent = useTrackEvent();
+  const trackBoundaryError = useCallback(
+    (error: Error) => {
+      // same event the @fiftyone/components ErrorBoundary emits, so errors
+      // caught by these raw boundaries still reach analytics. Nested errors
+      // (e.g. AggregateError) can hold arbitrary values, so guard against
+      // throwing while reporting the original throw
+      const nested = (error as Error & { errors?: unknown })?.errors;
+      trackEvent("uncaught_app_error", {
+        error: error?.message || error?.name || error,
+        stack: error?.stack,
+        messages: Array.isArray(nested)
+          ? nested.map((e) => (e instanceof Error ? e.message : String(e)))
+          : undefined,
+      });
+    },
+    [trackEvent],
+  );
 
   const modalCloseHandler = useRecoilCallback(
     ({ snapshot, set }) =>
       async () => {
         const isTooltipCurrentlyLocked = await snapshot.getPromise(
-          fos.isTooltipLocked
+          fos.isTooltipLocked,
         );
         if (isTooltipCurrentlyLocked) {
           set(fos.isTooltipLocked, false);
@@ -203,14 +198,14 @@ const Modal = () => {
         clearModal();
         activeLookerRef.current?.removeEventListener(
           "close",
-          modalCloseHandler
+          modalCloseHandler,
         );
 
         selectiveRenderingEventBus.removeAllListeners();
 
         jotaiStore.set(currentModalUniqueIdJotaiAtom, "");
       },
-    [clearModal, jsonPanel, helpPanel]
+    [clearModal, jsonPanel, helpPanel],
   );
 
   const selectCallback = useRecoilCallback(
@@ -229,7 +224,7 @@ const Modal = () => {
           return newSelected;
         });
       },
-    []
+    [],
   );
 
   const sidebarFn = useRecoilCallback(
@@ -237,7 +232,7 @@ const Modal = () => {
       async () => {
         set(fos.sidebarVisible(true), (prev) => !prev);
       },
-    []
+    [],
   );
 
   const fullscreenFn = useRecoilCallback(
@@ -245,28 +240,46 @@ const Modal = () => {
       async () => {
         set(fos.fullscreen, (prev) => !prev);
       },
-    []
+    [],
   );
 
   const closeFn = useRecoilCallback(
     ({ snapshot }) =>
       async () => {
         const mediaType = await snapshot.getPromise(fos.mediaType);
+        // Temporary: multimodal viewers own Escape handling for now, so the
+        // shared modal close shortcut should leave them mounted.
+        if (mediaType === MEDIA_TYPE_MULTIMODAL) {
+          return;
+        }
+
         if (
           activeLookerRef.current ||
           (mediaType && is3d(mediaType)) ||
           is3dVisible
         ) {
-          // we handle close logic in modal + other places
+          // A mounted looker or 3D viewer owns its own Escape handling and
+          // calls `modalCloseHandler` itself once it decides Escape should
+          // close rather than, e.g., clear a selection first.
           return;
         }
 
+        // Video Explore mounts no looker at all (`VideoTimelineSurface`
+        // paints through Lighter), so `activeLookerRef.current` is never set
+        // there and this call is what actually closes the modal on that
+        // surface. "Clear the selection on the first Escape" still happens —
+        // it is implemented as a separate, higher-priority `Escape` binding
+        // in `useVideoExploreKeybindings.ts` that is enabled only while a
+        // selection exists, so `KeyManager` runs it INSTEAD of the default
+        // close binding and this handler is never reached until the
+        // selection is empty.
         await modalCloseHandler();
       },
-    [is3dVisible, modalCloseHandler]
+    [is3dVisible, modalCloseHandler],
   );
 
-  const isSidebarVisible = useRecoilValue(fos.sidebarVisible(true));
+  const showClassicSidebar = useShowClassicSidebar();
+  const isMultimodal = useIsMediaType(MEDIA_TYPE_MULTIMODAL);
 
   useKeyBindings(KnownContexts.Modal, [
     {
@@ -283,13 +296,19 @@ const Modal = () => {
       label: "Fullscreen",
       description: "Enter/Exit full screen mode",
     },
-    {
-      commandId: KnownCommands.ModalSidebarToggle,
-      sequence: "s",
-      handler: sidebarFn,
-      label: "Sidebar",
-      description: "Show/Hide the sidebar",
-    },
+    // multimodal has no classic sidebar to show/hide, so the shortcut would
+    // silently flip state that mounts nothing
+    ...(isMultimodal
+      ? []
+      : [
+          {
+            commandId: KnownCommands.ModalSidebarToggle,
+            sequence: "s",
+            handler: sidebarFn,
+            label: "Sidebar",
+            description: "Show/Hide the sidebar",
+          },
+        ]),
     {
       commandId: KnownCommands.ModalSelect,
       sequence: "x",
@@ -329,10 +348,10 @@ const Modal = () => {
           currentModalUniqueIdJotaiAtom,
           `${snapshot.getLoadable(fos.groupId).getValue()}-${snapshot
             .getLoadable(fos.nullableModalSampleId)
-            .getValue()}`
+            .getValue()}`,
         );
       },
-    [modalCloseHandler, addTooltipEventHandler]
+    [modalCloseHandler, addTooltipEventHandler],
   );
 
   const setActiveLookerRef = useCallback(
@@ -340,7 +359,7 @@ const Modal = () => {
       activeLookerRef.current = looker;
       onLookerSet(looker);
     },
-    [onLookerSet]
+    [onLookerSet],
   );
 
   return ReactDOM.createPortal(
@@ -356,18 +375,32 @@ const Modal = () => {
         onClick={onClickModalWrapper}
         data-cy="modal"
       >
-        <Actions />
-        {isAnnotationEnabled && <AnnotationHandlerRegistration />}
-        <TooltipInfo />
-        <ModalContainer style={{ ...screenParams }}>
+        {/* Overlay chrome gets its own boundary: a render throw here (e.g. a
+            failing browser-storage read behind a cosmetic preference) must
+            not unmount the modal itself. Shows the error in the overlay's
+            place and resets on navigation like the main boundary. */}
+        <ReactErrorBoundary
+          FallbackComponent={ModalErrorFallback}
+          onError={trackBoundaryError}
+          resetKeys={[modalSelector?.id, modalSelector?.groupId]}
+        >
+          <Actions />
+        </ReactErrorBoundary>
+        {isAnnotationEnabled && (
+          <Suspense>
+            <AnnotationHandlerRegistration />
+          </Suspense>
+        )}
+        <TooltipInfoBoundary
+          FallbackComponent={ModalErrorFallback}
+          onError={trackBoundaryError}
+          resetKeys={[modalSelector?.id, modalSelector?.groupId]}
+        />
+        <ModalContainer data-cy="modal-content" style={{ ...screenParams }}>
           <ReactErrorBoundary
             FallbackComponent={ModalErrorFallback}
-            resetKeys={[
-              modalSelector?.id,
-              modalSelector?.groupId,
-              groupSlice,
-              modalGroupSlice,
-            ]}
+            onError={trackBoundaryError}
+            resetKeys={[modalSelector?.id, modalSelector?.groupId]}
           >
             <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />
             <ModalNavigation closePanels={closePanels} />
@@ -376,7 +409,7 @@ const Modal = () => {
               <ModalSpace />
               <ModalStatusBar />
             </SpacesContainer>
-            {isSidebarVisible && <Sidebar />}
+            {showClassicSidebar && <Sidebar />}
             <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_RIGHT} />
 
             {jsonPanel.isOpen && (
@@ -398,7 +431,7 @@ const Modal = () => {
         </ModalContainer>
       </ModalWrapper>
     </modalContext.Provider>,
-    document.getElementById("modal") as HTMLDivElement
+    document.getElementById("modal") as HTMLDivElement,
   );
 };
 

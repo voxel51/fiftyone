@@ -1,4 +1,5 @@
 .yarn/*
+!.yarn/patches
 !.yarn/releases
 !.yarn/plugins
 !.yarn/sdks
@@ -12,3 +13,4 @@ dist
 docs.json
 tsconfig.tsbuildinfo
 yarn-error.log
+storybook-static/

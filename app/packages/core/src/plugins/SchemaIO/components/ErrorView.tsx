@@ -1,5 +1,5 @@
 import { Box, Stack, Typography } from "@mui/material";
-import React, { useState } from "react";
+import { useState } from "react";
 import PopoutButton from "./PopoutButton";
 import { Error } from "@mui/icons-material";
 import { getComponentProps } from "../utils";

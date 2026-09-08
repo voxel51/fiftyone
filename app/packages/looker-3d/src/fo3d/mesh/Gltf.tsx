@@ -33,12 +33,12 @@ export const Gltf = ({
     () =>
       preTransformedGltfPath ??
       getSampleSrc(getResolvedUrlForFo3dAsset(gltfPath, fo3dRoot)),
-    [gltfPath, preTransformedGltfPath, fo3dRoot]
+    [gltfPath, preTransformedGltfPath, fo3dRoot],
   );
 
   const resourcePath = useMemo(
     () => getBasePathForTextures(fo3dRoot, gltfUrl),
-    [fo3dRoot, gltfUrl]
+    [fo3dRoot, gltfUrl],
   );
 
   const { material } = useMeshMaterialControls(name, defaultMaterial, true);
@@ -52,7 +52,7 @@ export const Gltf = ({
         loader.manager = loadingManager;
       }
       loader.setResourcePath(resourcePath);
-    }
+    },
   );
 
   // Deep clone scene when in multipanel view to avoid React Three Fiber caching issues
@@ -71,7 +71,7 @@ export const Gltf = ({
 
   const mixer = useMemo(
     () => (scene ? new AnimationMixer(scene) : null),
-    [scene]
+    [scene],
   );
 
   useAnimationSelect(name, animations, mixer);

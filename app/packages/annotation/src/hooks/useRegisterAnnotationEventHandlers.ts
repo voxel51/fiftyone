@@ -1,12 +1,12 @@
 import { useAnnotationEventHandler } from "./useAnnotationEventHandler";
 import { INDEFINITE_TOAST_TIMEOUT, useActivityToast } from "@fiftyone/state";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { IconName, Variant } from "@voxel51/voodo";
-import { useLabelsContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useLabels";
-import { DetectionLabel } from "@fiftyone/looker";
 import {
+  deriveSaveHealth,
   usePersistenceEventHandler,
   usePersistenceRetryController,
+  usePublishSaveStatus,
 } from "../persistence";
 
 /**
@@ -15,9 +15,22 @@ import {
  */
 export const useRegisterAnnotationEventHandlers = () => {
   const { setConfig } = useActivityToast();
-  const { addLabelToSidebar } = useLabelsContext();
   const handlePersistenceRequest = usePersistenceEventHandler();
   const retryController = usePersistenceRetryController();
+  const publishSaveStatus = usePublishSaveStatus();
+
+  // mirror the retry controller's health onto the shared save status the
+  // indicator reads; the toasts above and this light share one controller
+  useEffect(() => {
+    publishSaveStatus((prev) => ({
+      ...prev,
+      health: deriveSaveHealth(retryController),
+    }));
+  }, [
+    publishSaveStatus,
+    retryController.canAttempt,
+    retryController.isUnhealthy,
+  ]);
 
   useAnnotationEventHandler(
     "annotation:persistenceRequested",
@@ -25,37 +38,27 @@ export const useRegisterAnnotationEventHandlers = () => {
       if (retryController.canAttempt) {
         await handlePersistenceRequest();
       }
-    }, [handlePersistenceRequest, retryController.canAttempt])
+    }, [handlePersistenceRequest, retryController.canAttempt]),
   );
 
   useAnnotationEventHandler(
     "annotation:persistenceInFlight",
     useCallback(() => {
       retryController.recordAttempt();
-
-      // silence notifications when unhealthy
-      if (!retryController.isUnhealthy) {
-        setConfig({
-          iconName: IconName.Spinner,
-          message: "Saving changes...",
-          variant: Variant.Secondary,
-          timeout: INDEFINITE_TOAST_TIMEOUT,
-        });
-      }
-    }, [retryController, setConfig])
+      publishSaveStatus((prev) => ({ ...prev, inFlight: true }));
+    }, [publishSaveStatus, retryController]),
   );
 
   useAnnotationEventHandler(
     "annotation:persistenceSuccess",
     useCallback(() => {
-      setConfig({
-        iconName: IconName.Check,
-        message: "Changes saved successfully",
-        variant: Variant.Success,
-      });
-
+      publishSaveStatus((prev) => ({
+        ...prev,
+        inFlight: false,
+        lastSavedAt: Date.now(),
+      }));
       retryController.reset();
-    }, [retryController, setConfig])
+    }, [publishSaveStatus, retryController]),
   );
 
   useAnnotationEventHandler(
@@ -63,6 +66,8 @@ export const useRegisterAnnotationEventHandlers = () => {
     useCallback(
       ({ error }) => {
         console.error(error);
+
+        publishSaveStatus((prev) => ({ ...prev, inFlight: false }));
 
         if (retryController.isUnhealthy) {
           setConfig({
@@ -72,30 +77,9 @@ export const useRegisterAnnotationEventHandlers = () => {
             variant: Variant.Danger,
             timeout: INDEFINITE_TOAST_TIMEOUT,
           });
-        } else {
-          setConfig({
-            iconName: IconName.Error,
-            message: "Unable to save changes. Please try again.",
-            variant: Variant.Danger,
-          });
         }
       },
-      [retryController.isUnhealthy, setConfig]
-    )
-  );
-
-  useAnnotationEventHandler(
-    "annotation:canvasDetectionOverlayEstablish",
-    useCallback(
-      (payload) => {
-        addLabelToSidebar({
-          data: payload.overlay.label as DetectionLabel,
-          overlay: payload.overlay,
-          path: payload.overlay.field,
-          type: "Detection",
-        });
-      },
-      [addLabelToSidebar]
-    )
+      [publishSaveStatus, retryController.isUnhealthy, setConfig],
+    ),
   );
 };

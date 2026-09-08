@@ -4,7 +4,7 @@ import { convertTargets, viewsAreEqual } from "./utils";
 describe("convertTargets", () => {
   it("upper cases rgb hex targets", () => {
     expect(
-      convertTargets([{ target: "#ffffff", value: "white" }])
+      convertTargets([{ target: "#ffffff", value: "white" }]),
     ).toStrictEqual({ "#FFFFFF": { label: "white", intTarget: 1 } });
   });
 });

@@ -1,5 +1,6 @@
 import * as fos from "@fiftyone/state";
 import { TransformControls } from "@react-three/drei";
+import type { TransformControls as TransformControlsImpl } from "three-stdlib";
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
@@ -14,7 +15,7 @@ import type { Archetype3d, TransformProps } from "../../types";
 
 type TransformableProps = {
   archetype: Archetype3d;
-  explicitObjectRef?: React.RefObject<any>;
+  explicitObjectRef?: React.RefObject<THREE.Object3D>;
   transformControlsPosition?: THREE.Vector3Tuple;
   children: React.ReactNode;
 } & Pick<
@@ -47,27 +48,27 @@ export const Transformable = ({
   transformControlsPosition = [0, 0, 0],
   ...transformControlsProps
 }: TransformableProps) => {
-  const groupRef = useRef<any>(null);
+  const groupRef = useRef<THREE.Group>(null);
 
   const modalMode = useAtomValue(fos.modalMode);
   const transformMode = useRecoilValue(transformModeAtom);
   const currentArchetypeSelectedForTransform = useRecoilValue(
-    currentArchetypeSelectedForTransformAtom
+    currentArchetypeSelectedForTransformAtom,
   );
   const [isCurrentlyTransforming, setIsCurrentlyTransforming] = useRecoilState(
-    isCurrentlyTransformingAtom
+    isCurrentlyTransformingAtom,
   );
-  const isAnnotateMode = modalMode === "annotate";
+  const isAnnotateMode = modalMode === fos.ModalMode.ANNOTATE;
 
   const onTransformStartDecorated = useCallback(() => {
     setIsCurrentlyTransforming(true);
     onTransformStart?.();
-  }, [onTransformStart, archetype]);
+  }, [onTransformStart, setIsCurrentlyTransforming]);
 
   const onTransformEndDecorated = useCallback(() => {
     setIsCurrentlyTransforming(false);
     onTransformEnd?.();
-  }, [onTransformEnd, archetype]);
+  }, [onTransformEnd, setIsCurrentlyTransforming]);
 
   const onObjectChangeDecorated = useCallback(() => {
     onTransformChange?.();
@@ -75,6 +76,10 @@ export const Transformable = ({
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) {
+        return;
+      }
+
       if (event.key === "Escape" && isCurrentlyTransforming) {
         setIsCurrentlyTransforming(false);
         event.stopImmediatePropagation();
@@ -87,7 +92,7 @@ export const Transformable = ({
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [archetype, isCurrentlyTransforming]);
+  }, [archetype, isCurrentlyTransforming, setIsCurrentlyTransforming]);
 
   return (
     <>
@@ -102,7 +107,9 @@ export const Transformable = ({
           >
             <TransformControls
               userData={{ [FO_USER_DATA.IS_HELPER]: true }}
-              ref={transformControlsRef}
+              ref={
+                transformControlsRef as React.RefObject<TransformControlsImpl>
+              }
               rotationSnap={0.01}
               scaleSnap={0.01}
               object={explicitObjectRef?.current || groupRef.current}

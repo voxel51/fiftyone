@@ -8,7 +8,7 @@
 import type { BaseState, Control, ControlMap } from "../state";
 
 export const readActions = <State extends BaseState>(
-  actions: ControlMap<State>
+  actions: ControlMap<State>,
 ): ControlMap<State> => {
   return Object.fromEntries(
     Object.entries(actions).reduce<[string, Control<State>][]>(
@@ -25,8 +25,8 @@ export const readActions = <State extends BaseState>(
           [v.eventKeys || v.shortcut, v] as [string, Control<State>],
         ];
       },
-      []
-    )
+      [],
+    ),
   );
 };
 

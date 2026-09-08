@@ -25,7 +25,7 @@ const isColorBlindColorPool = selector({
   get: ({ get }) =>
     isSameArray(
       get(fos.colorScheme).colorPool,
-      fos.constants.COLOR_BLIND_FRIENDLY_PALETTE
+      fos.constants.COLOR_BLIND_FRIENDLY_PALETTE,
     ),
 });
 
