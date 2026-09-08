@@ -45,7 +45,6 @@ from fiftyone.utils.lerobot import (
 import fiftyone.types as fot
 import fiftyone.utils.data as foud
 
-
 # One source key per kind: a sample's key names its source, and the source
 # entry on the dataset is what says which kind that is.
 _SOURCE_KEY = "a1b2c3d4e5f6"
@@ -98,6 +97,13 @@ def _make_reference(episode_index, source=_SOURCE_KEY):
         videos={"camera": [0, 0, float(episode_index), episode_index + 1.0]},
         tasks=["demo"],
     )
+
+
+def _located(path):
+    """A path as the platform resolves it. A recorded location is stored
+    with forward slashes and the path a test spelled carries the platform's
+    separators, case and drive; both resolve to the same place."""
+    return os.path.normcase(os.path.realpath(path))
 
 
 def _record_source(dataset, kind=LEROBOT_EPISODE_KIND, key=_SOURCE_KEY):
@@ -867,7 +873,8 @@ class MediaReferenceDatasetTests(unittest.TestCase):
         recorded = fmm._media_sources_by_id(destination)
         self.assertEqual(set(recorded), {_SOURCE_KEY, bundled_key})
         self.assertEqual(
-            recorded[bundled_key]["loc"], "/tmp/media-source-%s" % bundled_key
+            _located(recorded[bundled_key]["loc"]),
+            _located("/tmp/media-source-%s" % bundled_key),
         )
 
     @drop_datasets
@@ -1399,7 +1406,9 @@ class MediaReferenceDatasetTests(unittest.TestCase):
 
         # and every caller still reads one self-contained description
         entries = fmm._media_sources_by_id(dataset)
-        self.assertEqual(entries["a"]["loc"], "/tmp/sources/a")
+        self.assertEqual(
+            _located(entries["a"]["loc"]), _located("/tmp/sources/a")
+        )
         self.assertEqual(entries["a"]["data_path"], layout["data_path"])
         self.assertEqual(entries["a"]["kind"], LEROBOT_EPISODE_KIND)
         self.assertTrue(entries["a"]["statistics"])
