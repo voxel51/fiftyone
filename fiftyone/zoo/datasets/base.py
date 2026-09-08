@@ -3512,6 +3512,81 @@ class RTKSLAMAbsoluteAccuracyDataset(FiftyOneDataset):
         return dataset_type, num_samples, None
 
 
+class EgocentricEMGForceDataset(FiftyOneDataset):
+    """First-person household task recordings pairing RGB-D video with wrist
+    EMG and per-finger contact force, as native ``.mcap`` episodes.
+
+    Someone wearing a depth camera and an eight-channel EMG band on each
+    wrist works through eight household tasks. Alongside the video each
+    episode carries the muscle signal from both forearms at roughly 550 Hz,
+    a 21-point hand skeleton per frame, an estimate of how hard each finger
+    is pressing, and wrist IMU.
+
+    Every episode is cut into subtasks a reviewer described in English, so
+    the 122 segments read as instructions rather than indices.
+
+    38.2 minutes of recording: 67,185 camera and depth frames, 2,539,493 EMG
+    samples, 60,254 hand skeletons and 133,721 per-finger force readings.
+
+    Contact force is an estimate derived from hand pose and depth rather
+    than a reading from an instrumented glove, and it saturates at 45 N.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("egocentric-emg-force")
+
+        # The tasks with the firmest contact
+        view = dataset.match({"peak_finger_force": {"$gt": 40}})
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        8.43 GB
+    """
+
+    _REPO_ID = "Voxel51/Egocentric-EMG-Force"
+
+    # Pinned so a loaded dataset is reproducible; the default branch is
+    # mutable and could change media, labels or size underneath a user
+    _REVISION = "688219163bb5119781cdff26b23606dd9d9df812"
+
+    @property
+    def name(self):
+        return "egocentric-emg-force"
+
+    @property
+    def license(self):
+        return "CC BY-NC 4.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "egocentric", "emg", "force", "rgb-d")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        logger.info("Downloading %s from the Hugging Face Hub", self._REPO_ID)
+        hfh.snapshot_download(
+            repo_id=self._REPO_ID,
+            repo_type="dataset",
+            revision=self._REVISION,
+            local_dir=dataset_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
 class RoboLabDataset(FiftyOneDataset):
     """Policy rollouts recorded on NVIDIA's RoboLab manipulation benchmark,
     as native ``.mcap`` episodes.
@@ -3590,6 +3665,7 @@ AVAILABLE_DATASETS = {
     "cityscapes": CityscapesDataset,
     "coco-2014": COCO2014Dataset,
     "coco-2017": COCO2017Dataset,
+    "egocentric-emg-force": EgocentricEMGForceDataset,
     "fiw": FIWDataset,
     "hmdb51": HMDB51Dataset,
     "imagenet-sample": ImageNetSampleDataset,
