@@ -118,6 +118,12 @@ export const useSyncAnnotationVideoStore = (
       settle();
     });
     seed();
+    // A stream that is already warm (a rebuild against frames it has fetched)
+    // may never fire the subscription again, so what the cache holds settles
+    // the loading state at once; an empty cache waits for the first landing
+    if (stream.cachedFrames().length > 0) {
+      settle();
+    }
 
     // Restore edits carried from the prior FrameStore (same sample) after the
     // source seed; the working overlay is source-independent, so it wins. Each
