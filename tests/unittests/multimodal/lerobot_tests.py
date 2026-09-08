@@ -185,6 +185,13 @@ def _source_locs(dataset):
     }
 
 
+def _located(path):
+    """A path as the platform resolves it. A recorded location is stored
+    with forward slashes and the path a test spelled carries the platform's
+    separators, case and short names; both resolve to the same place."""
+    return os.path.normcase(os.path.realpath(path))
+
+
 def _take_sources(dataset):
     """Removes and returns the dataset's media sources: what an unbound
     source looks like to everything downstream."""
@@ -317,13 +324,17 @@ class LeRobotImporterTests(unittest.TestCase):
             try:
                 _put_sources(dataset, entries, loc=relocated_root)
                 locs = _source_locs(dataset)
-                self.assertEqual(locs[episode.source_id], relocated_root)
+                self.assertEqual(
+                    _located(locs[episode.source_id]), _located(relocated_root)
+                )
                 resolved = fmm._resolve_media_references(
                     dataset, {"e": episode.to_mongo()}
                 )["e"].assets
                 self.assertTrue(
                     all(
-                        asset.path.startswith(relocated_root)
+                        _located(asset.path).startswith(
+                            _located(relocated_root)
+                        )
                         and os.path.isfile(asset.path)
                         for asset in resolved
                     )
@@ -523,8 +534,8 @@ print(os.path.join(sources[source_id], *path.split('/')))
             # import records the source's real location, so that is what a
             # reader is handed back
             self.assertEqual(
-                run(),
-                os.path.join(os.path.realpath(root), "meta", "info.json"),
+                _located(run()),
+                _located(os.path.join(root, "meta", "info.json")),
             )
 
             entries = list(fmm._media_sources_by_id(dataset).values())
@@ -1164,7 +1175,8 @@ class MediaAssetLifecycleTests(unittest.TestCase):
             # a source this import created resolves through the bundle's
             # copy, not the exporting machine's location
             self.assertEqual(
-                _source_locs(imported)[source["id"]], bundle_source_root
+                _located(_source_locs(imported)[source["id"]]),
+                _located(bundle_source_root),
             )
 
     @drop_datasets
@@ -1243,9 +1255,9 @@ class MediaAssetLifecycleTests(unittest.TestCase):
             )
             # the bundle rebinds the source onto itself, not the original
             self.assertTrue(
-                _source_locs(materialized_import)[
-                    reference.source_id
-                ].startswith(os.path.realpath(materialized_root))
+                _located(
+                    _source_locs(materialized_import)[reference.source_id]
+                ).startswith(_located(materialized_root))
             )
             self.assertNotIn(
                 "media_reference_sources", materialized_import.info
