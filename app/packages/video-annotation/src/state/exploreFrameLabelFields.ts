@@ -130,10 +130,46 @@ export const useExploreSampleClassificationPaths = (): ReadonlySet<string> => {
   const active = fos.useActiveFields({ modal: true });
   const classificationFields = useSampleClassificationFieldPaths();
 
-  return useMemo(() => {
-    const known = new Set(classificationFields);
-    return new Set(active.filter((path) => known.has(path)));
-  }, [active, classificationFields]);
+  return useMemo(
+    () => toExploreSampleClassificationPaths(active, classificationFields),
+    [active, classificationFields],
+  );
+};
+
+/**
+ * Pure half of {@link useExploreSampleClassificationPaths}: sidebar active
+ * paths plus the schema's sample-level classification paths in, the paths
+ * Explore should paint out. Separated from the hook for the same reason
+ * {@link toExploreFrameLabelFields} is — the selection rule is testable
+ * without a state provider.
+ *
+ * The schema list is the authority on WHICH paths are sample-level
+ * classifications (it comes from a `space: SAMPLE` query, so `frames.*` is
+ * already absent); the active list is the authority on which of them the user
+ * is asking to see. Intersecting is what keeps a checked-but-nonexistent path
+ * and an existing-but-unchecked one both out.
+ *
+ * @param active - Sidebar active paths, `frames.`-prefixed for frame fields.
+ * @param classificationFields - Sample-level classification paths in the
+ *   dataset schema.
+ */
+export const toExploreSampleClassificationPaths = (
+  active: readonly string[],
+  classificationFields: readonly string[],
+): ReadonlySet<string> => {
+  const known = new Set(classificationFields);
+
+  return new Set(
+    active.filter(
+      // The `frames.` exclusion is belt-and-braces: a `space: SAMPLE` query
+      // cannot return a frame path today. It is asserted rather than assumed
+      // because every path in the engine has exactly one owning store, and
+      // `frames.classifications` belongs to the `FrameStore` — if the query
+      // ever widened, an unguarded intersection would hand one path to both
+      // halves of the composite store.
+      (path) => !path.startsWith(FRAMES_PREFIX) && known.has(path),
+    ),
+  );
 };
 
 /**
@@ -155,10 +191,20 @@ export const useExploreOverlayPaths = (): ReadonlySet<string> => {
   const classificationPaths = useExploreSampleClassificationPaths();
 
   return useMemo(
-    () => new Set([...framePaths, ...classificationPaths]),
+    () => toExploreOverlayPaths(framePaths, classificationPaths),
     [framePaths, classificationPaths],
   );
 };
+
+/**
+ * Pure half of {@link useExploreOverlayPaths}. A union, but a load-bearing
+ * one — dropping either side is how an entire label namespace stops painting,
+ * and neither omission fails at the type level.
+ */
+export const toExploreOverlayPaths = (
+  framePaths: ReadonlySet<string>,
+  classificationPaths: ReadonlySet<string>,
+): ReadonlySet<string> => new Set([...framePaths, ...classificationPaths]);
 
 /**
  * The sample-level TemporalDetections fields Explore should paint.
