@@ -951,6 +951,112 @@ describe("applyConditionalOwnerChange", () => {
     });
   });
 
+  // ── Branch 2b: list attribute re-shown after being nulled ────────────────
+
+  describe("list attribute re-shown after the hide branch nulled it", () => {
+    // Mirrors the gm-segment-issue ontology: `glitch_kind` is a checkbox list
+    // gated on label == "object_glitch" with no default.
+    const listAttributes: AttributeConfig[] = [
+      {
+        name: "label",
+        type: "str",
+        component: "dropdown",
+        values: ["object_glitch", "sensor_dropout"],
+      },
+      {
+        name: "glitch_kind",
+        type: "list<str>",
+        component: "checkboxes",
+        values: ["missing", "duplicated"],
+        when: {
+          operator: "equals" as const,
+          field: "label",
+          value: "object_glitch",
+        },
+      },
+      {
+        name: "glitch_kind_with_default",
+        type: "list<str>",
+        component: "checkboxes",
+        values: ["missing", "duplicated"],
+        default: ["missing"],
+        when: {
+          operator: "equals" as const,
+          field: "label",
+          value: "object_glitch",
+        },
+      },
+    ];
+
+    it("restores [] (not null) when a defaultless list attribute becomes visible again", () => {
+      const prevData = { label: "sensor_dropout", glitch_kind: null };
+      const nextValue: Record<string, unknown> = {
+        label: "object_glitch",
+        glitch_kind: null,
+      };
+
+      applyConditionalOwnerChange(
+        "glitch_kind",
+        listAttributes,
+        prevData,
+        nextValue,
+      );
+
+      expect(nextValue.glitch_kind).toEqual([]);
+    });
+
+    it("prefers the configured default over [] for list attributes", () => {
+      const prevData = {
+        label: "sensor_dropout",
+        glitch_kind_with_default: null,
+      };
+      const nextValue: Record<string, unknown> = {
+        label: "object_glitch",
+        glitch_kind_with_default: null,
+      };
+
+      applyConditionalOwnerChange(
+        "glitch_kind_with_default",
+        listAttributes,
+        prevData,
+        nextValue,
+      );
+
+      expect(nextValue.glitch_kind_with_default).toEqual(["missing"]);
+    });
+
+    it("leaves an undefined (never set) list attribute alone", () => {
+      const prevData = { label: "sensor_dropout" };
+      const nextValue: Record<string, unknown> = { label: "object_glitch" };
+
+      applyConditionalOwnerChange(
+        "glitch_kind",
+        listAttributes,
+        prevData,
+        nextValue,
+      );
+
+      expect(nextValue.glitch_kind).toBeUndefined();
+    });
+
+    it("still writes null (not []) when the list attribute is hidden", () => {
+      const prevData = { label: "object_glitch", glitch_kind: ["missing"] };
+      const nextValue: Record<string, unknown> = {
+        label: "sensor_dropout",
+        glitch_kind: ["missing"],
+      };
+
+      applyConditionalOwnerChange(
+        "glitch_kind",
+        listAttributes,
+        prevData,
+        nextValue,
+      );
+
+      expect(nextValue.glitch_kind).toBeNull();
+    });
+  });
+
   // ── Branch 2: became visible with no value ───────────────────────────────
 
   describe("became visible with null value (prevOwner === undefined && currentOwner && value[name] == null)", () => {
