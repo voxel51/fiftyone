@@ -36,18 +36,30 @@ export class GridPom {
     this.locator = page.getByTestId("fo-grid");
   }
 
+  /**
+   * The section of tiles above the viewport
+   */
   getBackwardSection() {
     return this.locator.getByTestId("spotlight-section-backward");
   }
 
+  /**
+   * The section of tiles at and below the viewport; the target of grid screenshots
+   */
   getForwardSection() {
     return this.locator.getByTestId("spotlight-section-forward");
   }
 
+  /**
+   * The nth tile, whether a looker or a custom renderer
+   */
   getNthTile(n: number) {
     return this.locator.locator(TILE_SELECTOR).nth(n);
   }
 
+  /**
+   * The nth looker tile
+   */
   getNthLooker(n: number) {
     return this.locator.getByTestId("looker").nth(n);
   }
@@ -56,10 +68,16 @@ export class GridPom {
     return (await tile.getAttribute("data-cy")) === CUSTOM_RENDERER_TEST_ID;
   }
 
+  /**
+   * The selection checkbox of the nth looker tile
+   */
   async getNthCheckbox(n: number) {
     return this.getNthLooker(n).getByTestId("looker-checkbox-input-");
   }
 
+  /**
+   * Toggle selection of the nth sample
+   */
   async toggleSelectNthSample(n: number) {
     const tile = this.getNthTile(n);
     if (await this.isCustomRendererTile(tile)) {
@@ -71,10 +89,16 @@ export class GridPom {
     await tile.click({ position: { x: 10, y: 5 } });
   }
 
+  /**
+   * Toggle selection of the first sample
+   */
   async toggleSelectFirstSample() {
     await this.toggleSelectNthSample(0);
   }
 
+  /**
+   * Open the nth sample in the modal
+   */
   async openNthSample(n: number) {
     const tile = this.getNthTile(n);
     if (await this.isCustomRendererTile(tile)) {
@@ -95,14 +119,30 @@ export class GridPom {
     await tile.click({ position: { x: 10, y: 80 } });
   }
 
+  /**
+   * Open the first sample in the modal
+   */
   async openFirstSample() {
     return this.openNthSample(0);
   }
 
-  async getEntryCountText() {
-    return this.page.getByTestId("entry-counts").textContent();
+  /**
+   * The entry count text in the actions row; plain text with no hover behavior
+   */
+  get entryCounts() {
+    return this.page.getByTestId("entry-counts");
   }
 
+  /**
+   * Read the entry count text
+   */
+  async getEntryCountText() {
+    return this.entryCounts.textContent();
+  }
+
+  /**
+   * Scroll to the last rendered tile
+   */
   async scrollBottom() {
     const forwardSectionDiv = this.getForwardSection().locator("div").last();
     await forwardSectionDiv.waitFor({ state: "visible" });
@@ -111,6 +151,9 @@ export class GridPom {
     });
   }
 
+  /**
+   * Scroll to the first rendered tile
+   */
   async scrollTop() {
     const backwardSectionDiv = this.getBackwardSection().locator("div").first();
     await backwardSectionDiv.waitFor({ state: "visible" });
@@ -119,6 +162,9 @@ export class GridPom {
     });
   }
 
+  /**
+   * Choose a group slice from the actions row
+   */
   async selectSlice(slice: string) {
     if (await this.page.getByTestId("modal").isVisible()) {
       // Defensive, no-op-ish cleanup to dismiss any open thing before interacting with the grid slice selector.
@@ -167,6 +213,9 @@ export class GridPom {
     );
   }
 
+  /**
+   * Run an action that refreshes the grid and wait for the refresh
+   */
   async run<T>(wrap: () => Promise<T>): Promise<T> {
     const refresh = await this.armGridRefresh();
     const result = await wrap();
@@ -178,16 +227,25 @@ export class GridPom {
 class GridAsserter {
   constructor(private readonly gridPom: GridPom) {}
 
+  /**
+   * Assert the number of rendered tiles
+   */
   async isTileCountEqualTo(n: number) {
     const tileCount = await this.gridPom.locator.locator(TILE_SELECTOR).count();
     expect(tileCount).toBe(n);
   }
 
+  /**
+   * Assert the nth sample is selected
+   */
   async isNthSampleSelected(n: number) {
     const checkbox = await this.gridPom.getNthCheckbox(n);
     await expect(checkbox).toBeChecked();
   }
 
+  /**
+   * Assert a tag bubble on the nth tile shows a value
+   */
   async nthSampleHasTagValue(
     n: number,
     tagName: string,
@@ -197,11 +255,17 @@ class GridAsserter {
     await expect(tagElement).toHaveText(expectedTagValue);
   }
 
+  /**
+   * Assert a tag bubble is absent from the nth tile
+   */
   async nthSampleHasNoTag(n: number, tagName: string) {
     const tagElement = this.gridPom.getNthTile(n).getByTestId(`tag-${tagName}`);
     await expect(tagElement).toBeHidden();
   }
 
+  /**
+   * Assert the selection count shown in the actions row
+   */
   async isSelectionCountEqualTo(n: number) {
     const action = this.gridPom.actionsRow.gridActionsRow.getByTestId(
       "action-manage-selected",
@@ -215,8 +279,11 @@ class GridAsserter {
     await expect(action.first()).toHaveText(String(n));
   }
 
+  /**
+   * Assert the entry count text, ignoring whitespace differences
+   */
   async isEntryCountTextEqualTo(text: string) {
-    const entryCounts = this.gridPom.page.getByTestId("entry-counts");
+    const entryCounts = this.gridPom.entryCounts;
     const normalize = (value: string | null) =>
       (value ?? "").replace(/\s+/g, " ").trim();
 
