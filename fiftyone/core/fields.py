@@ -1308,9 +1308,18 @@ class _GeoField(Field):
     # The GeoJSON type of the field. Subclasses must implement this
     _TYPE = None
 
+    # The number of nested lists wrapping each ``[longitude, latitude]``
+    # coordinate pair. Subclasses must implement this
+    _NUM_COORD_DIMS = None
+
     def to_mongo(self, value):
         if isinstance(value, dict):
             return value
+
+        # Range-check coordinates on write rather than in ``validate()`` so
+        # that datasets containing out-of-range coordinates written by earlier
+        # versions can still be loaded
+        self._validate_coordinates(value, self._NUM_COORD_DIMS)
 
         return SON([("type", self._TYPE), ("coordinates", value)])
 
@@ -1319,6 +1328,43 @@ class _GeoField(Field):
             return value["coordinates"]
 
         return value
+
+    def validate(self, value):
+        if isinstance(value, dict):
+            self.error("Geo fields expect coordinate lists, but found dict")
+
+        super().validate(value)
+
+    def _validate_coordinates(self, value, num_dims):
+        if num_dims > 0:
+            if not isinstance(value, (list, tuple)):
+                # Defer malformed structure to ``validate()``, which raises a
+                # clearer GeoJSON error
+                return
+
+            for coordinates in value:
+                self._validate_coordinates(coordinates, num_dims - 1)
+
+            return
+
+        if not isinstance(value, (list, tuple)) or len(value) < 2:
+            return
+
+        longitude, latitude = value[0], value[1]
+        if not isinstance(longitude, numbers.Number) or not isinstance(
+            latitude, numbers.Number
+        ):
+            return
+
+        if not -180 <= longitude <= 180:
+            self.error(
+                f"Longitude {longitude} is not in the valid range [-180, 180]"
+            )
+
+        if not -90 <= latitude <= 90:
+            self.error(
+                f"Latitude {latitude} is not in the valid range [-90, 90]"
+            )
 
 
 class GeoPointField(_GeoField, mongoengine.fields.PointField):
@@ -1334,12 +1380,7 @@ class GeoPointField(_GeoField, mongoengine.fields.PointField):
     """
 
     _TYPE = "Point"
-
-    def validate(self, value):
-        if isinstance(value, dict):
-            self.error("Geo fields expect coordinate lists, but found dict")
-
-        super().validate(value)
+    _NUM_COORD_DIMS = 0
 
 
 class GeoLineStringField(_GeoField, mongoengine.fields.LineStringField):
@@ -1357,12 +1398,7 @@ class GeoLineStringField(_GeoField, mongoengine.fields.LineStringField):
     """
 
     _TYPE = "LineString"
-
-    def validate(self, value):
-        if isinstance(value, dict):
-            self.error("Geo fields expect coordinate lists, but found dict")
-
-        super().validate(value)
+    _NUM_COORD_DIMS = 1
 
 
 class GeoPolygonField(_GeoField, mongoengine.fields.PolygonField):
@@ -1387,12 +1423,7 @@ class GeoPolygonField(_GeoField, mongoengine.fields.PolygonField):
     """
 
     _TYPE = "Polygon"
-
-    def validate(self, value):
-        if isinstance(value, dict):
-            self.error("Geo fields expect coordinate lists, but found dict")
-
-        super().validate(value)
+    _NUM_COORD_DIMS = 2
 
 
 class GeoMultiPointField(_GeoField, mongoengine.fields.MultiPointField):
@@ -1410,12 +1441,7 @@ class GeoMultiPointField(_GeoField, mongoengine.fields.MultiPointField):
     """
 
     _TYPE = "MultiPoint"
-
-    def validate(self, value):
-        if isinstance(value, dict):
-            self.error("Geo fields expect coordinate lists, but found dict")
-
-        super().validate(value)
+    _NUM_COORD_DIMS = 1
 
 
 class GeoMultiLineStringField(
@@ -1439,12 +1465,7 @@ class GeoMultiLineStringField(
     """
 
     _TYPE = "MultiLineString"
-
-    def validate(self, value):
-        if isinstance(value, dict):
-            self.error("Geo fields expect coordinate lists, but found dict")
-
-        super().validate(value)
+    _NUM_COORD_DIMS = 2
 
 
 class GeoMultiPolygonField(_GeoField, mongoengine.fields.MultiPolygonField):
@@ -1474,12 +1495,7 @@ class GeoMultiPolygonField(_GeoField, mongoengine.fields.MultiPolygonField):
     """
 
     _TYPE = "MultiPolygon"
-
-    def validate(self, value):
-        if isinstance(value, dict):
-            self.error("Geo fields expect coordinate lists, but found dict")
-
-        super().validate(value)
+    _NUM_COORD_DIMS = 3
 
 
 class VectorField(mongoengine.fields.BinaryField, Field):

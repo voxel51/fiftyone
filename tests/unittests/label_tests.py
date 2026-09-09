@@ -10,11 +10,14 @@ import tempfile
 import unittest
 
 from bson import Binary, ObjectId
+from mongoengine.errors import ValidationError
 import numpy as np
 import numpy.testing as nptest
 
 import fiftyone as fo
+import fiftyone.core.fields as fof
 import fiftyone.core.labels as focl
+import fiftyone.core.odm as foo
 import fiftyone.utils.labels as foul
 from fiftyone.core.labels import _read_mask, _write_mask
 from fiftyone import ViewField as F
@@ -1008,6 +1011,171 @@ class ExportMaskTests(unittest.TestCase):
                         det.export_mask(
                             outpath, overwrite_path=case["overwrite_path"]
                         )
+
+
+class GeoLocationValidationTests(unittest.TestCase):
+    """Tests that out-of-range geographic coordinates are rejected when geo
+    data is written to a dataset, while datasets that already contain such
+    coordinates remain loadable (#2171).
+    """
+
+    # Field-level range validation on write (no database)
+
+    def test_geo_point_field_accepts_valid_coordinates(self):
+        field = fof.GeoPointField()
+        field.to_mongo([0, 0])
+        field.to_mongo([-180, -90])
+        field.to_mongo([180, 90])
+
+    def test_geo_point_field_rejects_out_of_range_longitude(self):
+        field = fof.GeoPointField()
+        with self.assertRaises(ValidationError):
+            field.to_mongo([181, 0])
+        with self.assertRaises(ValidationError):
+            field.to_mongo([-181, 0])
+
+    def test_geo_point_field_rejects_out_of_range_latitude(self):
+        field = fof.GeoPointField()
+        with self.assertRaises(ValidationError):
+            field.to_mongo([0, 91])
+        with self.assertRaises(ValidationError):
+            field.to_mongo([0, -91])
+
+    def test_geo_field_rejects_dict_input(self):
+        field = fof.GeoPointField()
+        with self.assertRaises(ValidationError):
+            field.validate({"type": "Point", "coordinates": [0, 0]})
+
+    def test_geo_line_string_field_validates_each_point(self):
+        field = fof.GeoLineStringField()
+        field.to_mongo([[0, 0], [10, 10]])
+        with self.assertRaises(ValidationError):
+            field.to_mongo([[0, 0], [200, 10]])
+        with self.assertRaises(ValidationError):
+            field.to_mongo([[0, 0], [10, 91]])
+
+    def test_geo_polygon_field_validates_nested_points(self):
+        field = fof.GeoPolygonField()
+        field.to_mongo([[[0, 0], [1, 1], [2, 0], [0, 0]]])
+        with self.assertRaises(ValidationError):
+            field.to_mongo([[[0, 0], [1, 1], [2, 95], [0, 0]]])
+        with self.assertRaises(ValidationError):
+            field.to_mongo([[[0, 0], [181, 1], [2, 0], [0, 0]]])
+
+    def test_geo_multi_point_field_validates_each_point(self):
+        field = fof.GeoMultiPointField()
+        field.to_mongo([[0, 0], [10, 10]])
+        with self.assertRaises(ValidationError):
+            field.to_mongo([[0, 0], [10, 200]])
+        with self.assertRaises(ValidationError):
+            field.to_mongo([[0, 0], [181, 10]])
+
+    def test_geo_multi_line_string_field_validates_nested_points(self):
+        field = fof.GeoMultiLineStringField()
+        field.to_mongo([[[0, 0], [1, 1]], [[2, 2], [3, 3]]])
+        with self.assertRaises(ValidationError):
+            field.to_mongo([[[0, 0], [1, 1]], [[2, 2], [181, 3]]])
+        with self.assertRaises(ValidationError):
+            field.to_mongo([[[0, 0], [1, 1]], [[2, 2], [3, 91]]])
+
+    def test_geo_multi_polygon_field_validates_deeply_nested_points(self):
+        field = fof.GeoMultiPolygonField()
+        field.to_mongo(
+            [
+                [[[0, 0], [1, 1], [2, 0], [0, 0]]],
+                [[[5, 5], [6, 6], [7, 5], [5, 5]]],
+            ]
+        )
+        with self.assertRaises(ValidationError):
+            field.to_mongo(
+                [
+                    [[[0, 0], [1, 1], [2, 0], [0, 0]]],
+                    [[[5, 5], [6, 6], [7, 95], [5, 5]]],
+                ]
+            )
+        with self.assertRaises(ValidationError):
+            field.to_mongo(
+                [
+                    [[[0, 0], [1, 1], [2, 0], [0, 0]]],
+                    [[[5, 5], [200, 6], [7, 5], [5, 5]]],
+                ]
+            )
+
+    # Out-of-range coordinates are rejected when written to a dataset (#2171)
+
+    @drop_datasets
+    def test_out_of_range_point_is_rejected_on_add(self):
+        dataset = fo.Dataset()
+        sample = fo.Sample(
+            filepath="image.jpg",
+            location=fo.GeoLocation(point=[200, 200]),
+        )
+        with self.assertRaises(ValidationError):
+            dataset.add_sample(sample)
+
+    @drop_datasets
+    def test_out_of_range_line_is_rejected_on_add(self):
+        dataset = fo.Dataset()
+        sample = fo.Sample(
+            filepath="image.jpg",
+            location=fo.GeoLocation(line=[[0, 0], [200, 10]]),
+        )
+        with self.assertRaises(ValidationError):
+            dataset.add_sample(sample)
+
+    @drop_datasets
+    def test_out_of_range_polygons_are_rejected_on_add(self):
+        dataset = fo.Dataset()
+        sample = fo.Sample(
+            filepath="image.jpg",
+            location=fo.GeoLocations(
+                polygons=[[[[0, 0], [1, 1], [2, 95], [0, 0]]]]
+            ),
+        )
+        with self.assertRaises(ValidationError):
+            dataset.add_sample(sample)
+
+    @drop_datasets
+    def test_valid_geolocation_is_added(self):
+        dataset = fo.Dataset()
+        sample = fo.Sample(
+            filepath="image.jpg",
+            location=fo.GeoLocation(point=[-73.9857, 40.7484]),
+        )
+        dataset.add_sample(sample)
+        self.assertEqual(len(dataset), 1)
+
+    @drop_datasets
+    def test_valid_geolocations_are_added(self):
+        dataset = fo.Dataset()
+        sample = fo.Sample(
+            filepath="image.jpg",
+            location=fo.GeoLocations(
+                points=[[-73.9857, 40.7484], [-87.6298, 41.8781]]
+            ),
+        )
+        dataset.add_sample(sample)
+        self.assertEqual(len(dataset), 1)
+
+    @drop_datasets
+    def test_existing_out_of_range_coordinates_remain_loadable(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(
+            fo.Sample(
+                filepath="image.jpg",
+                location=fo.GeoLocation(point=[0, 0]),
+            )
+        )
+
+        # Simulate coordinates written by a version that did not range-check
+        conn = foo.get_db_conn()
+        conn[dataset._sample_collection_name].update_one(
+            {}, {"$set": {"location.point.coordinates": [200, 200]}}
+        )
+
+        dataset.reload()
+        sample = dataset.first()
+        self.assertEqual(sample.location.point, [200, 200])
 
 
 if __name__ == "__main__":
