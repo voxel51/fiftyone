@@ -5,6 +5,7 @@ The FiftyOne Model Zoo.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import defaultdict
 from copy import deepcopy
 import functools
@@ -24,7 +25,6 @@ import fiftyone as fo
 import fiftyone.core.models as fom
 import fiftyone.core.utils as fou
 from fiftyone.utils.github import GitHubRepository
-
 
 MODELS_MANIEST_FILENAME = "manifest.json"
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))

@@ -5,6 +5,7 @@ Dataset ingestors.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 
 import eta.core.utils as etau
@@ -19,7 +20,6 @@ from .importers import (
     UnlabeledVideoDatasetImporter,
     LabeledVideoDatasetImporter,
 )
-
 
 logger = logging.getLogger(__name__)
 

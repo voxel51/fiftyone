@@ -546,8 +546,10 @@ print(os.path.join(sources[source_id], *path.split('/')))
                 # a process that recorded nothing reads the source's current
                 # location out of the dataset, not a location it remembered
                 self.assertEqual(
-                    run(),
-                    os.path.join(relocated_root, "meta", "info.json"),
+                    _located(run()),
+                    _located(
+                        os.path.join(relocated_root, "meta", "info.json")
+                    ),
                 )
 
             _put_sources(dataset, entries)

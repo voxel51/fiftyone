@@ -31,7 +31,6 @@ import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 from fiftyone.server.scalars import JSON
 
-
 logger = logging.getLogger(__name__)
 
 
