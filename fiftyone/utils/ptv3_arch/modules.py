@@ -100,7 +100,9 @@ class PointSequential(PointModule):
                         input.octree,
                         input.octree.depth,
                     )
-                    input.feat = input.octree.features[-1][input.octree_inverse]
+                    input.feat = input.octree.features[-1][
+                        input.octree_inverse
+                    ]
                 else:
                     input = module(input)
             # PyTorch module

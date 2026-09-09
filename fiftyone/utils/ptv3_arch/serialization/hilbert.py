@@ -134,7 +134,9 @@ def encode(locs, num_dims, num_bits):
 
     # Treat the location integers as 64-bit unsigned and then split them up into
     # a sequence of uint8s.  Preserve the association by dimension.
-    locs_uint8 = locs.long().view(torch.uint8).reshape((-1, num_dims, 8)).flip(-1)
+    locs_uint8 = (
+        locs.long().view(torch.uint8).reshape((-1, num_dims, 8)).flip(-1)
+    )
 
     # Now turn these into bits and truncate to num_bits.
     gray = (
@@ -160,13 +162,19 @@ def encode(locs, num_dims, num_bits):
 
             # Where the bit is off, exchange the lower bits with the 0 dimension.
             to_flip = torch.logical_and(
-                torch.logical_not(mask[:, None]).repeat(1, gray.shape[2] - bit - 1),
-                torch.logical_xor(gray[:, 0, bit + 1 :], gray[:, dim, bit + 1 :]),
+                torch.logical_not(mask[:, None]).repeat(
+                    1, gray.shape[2] - bit - 1
+                ),
+                torch.logical_xor(
+                    gray[:, 0, bit + 1 :], gray[:, dim, bit + 1 :]
+                ),
             )
             gray[:, dim, bit + 1 :] = torch.logical_xor(
                 gray[:, dim, bit + 1 :], to_flip
             )
-            gray[:, 0, bit + 1 :] = torch.logical_xor(gray[:, 0, bit + 1 :], to_flip)
+            gray[:, 0, bit + 1 :] = torch.logical_xor(
+                gray[:, 0, bit + 1 :], to_flip
+            )
 
     # Now flatten out.
     gray = gray.swapaxes(1, 2).reshape((-1, num_bits * num_dims))
@@ -234,7 +242,11 @@ def decode(hilberts, num_dims, num_bits):
     # Treat each of the hilberts as a s equence of eight uint8.
     # This treats all of the inputs as uint64 and makes things uniform.
     hh_uint8 = (
-        hilberts.ravel().type(torch.int64).view(torch.uint8).reshape((-1, 8)).flip(-1)
+        hilberts.ravel()
+        .type(torch.int64)
+        .view(torch.uint8)
+        .reshape((-1, 8))
+        .flip(-1)
     )
 
     # Turn these lists of uints into lists of bits and then truncate to the size
@@ -269,12 +281,16 @@ def decode(hilberts, num_dims, num_bits):
             # Where the bit is off, exchange the lower bits with the 0 dimension.
             to_flip = torch.logical_and(
                 torch.logical_not(mask[:, None]),
-                torch.logical_xor(gray[:, 0, bit + 1 :], gray[:, dim, bit + 1 :]),
+                torch.logical_xor(
+                    gray[:, 0, bit + 1 :], gray[:, dim, bit + 1 :]
+                ),
             )
             gray[:, dim, bit + 1 :] = torch.logical_xor(
                 gray[:, dim, bit + 1 :], to_flip
             )
-            gray[:, 0, bit + 1 :] = torch.logical_xor(gray[:, 0, bit + 1 :], to_flip)
+            gray[:, 0, bit + 1 :] = torch.logical_xor(
+                gray[:, 0, bit + 1 :], to_flip
+            )
 
     # Pad back out to 64 bits.
     extra_dims = 64 - num_bits
@@ -285,7 +301,9 @@ def decode(hilberts, num_dims, num_bits):
 
     # Take those blocks and turn them unto uint8s.
     # from IPython import embed; embed()
-    locs_uint8 = (locs_chopped * bitpack_mask).sum(3).squeeze().type(torch.uint8)
+    locs_uint8 = (
+        (locs_chopped * bitpack_mask).sum(3).squeeze().type(torch.uint8)
+    )
 
     # Finally, treat these as uint64s.
     flat_locs = locs_uint8.view(torch.int64)

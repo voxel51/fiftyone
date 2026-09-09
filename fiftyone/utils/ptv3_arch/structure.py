@@ -69,7 +69,9 @@ class Point(Dict):
             assert {"grid_size", "coord"}.issubset(self.keys())
 
             self["grid_coord"] = torch.div(
-                self.coord - self.coord.min(0)[0], self.grid_size, rounding_mode="trunc"
+                self.coord - self.coord.min(0)[0],
+                self.grid_size,
+                rounding_mode="trunc",
             ).int()
 
         if depth is None:
@@ -90,7 +92,8 @@ class Point(Dict):
         #   ...
         #  OrderN ([n])] (k, n)
         code = [
-            encode(self.grid_coord, self.batch, depth, order=order_) for order_ in order
+            encode(self.grid_coord, self.batch, depth, order=order_)
+            for order_ in order
         ]
         code = torch.stack(code)
         order = torch.argsort(code)
@@ -131,7 +134,9 @@ class Point(Dict):
             # (adjust `grid_size` to what your want)
             assert {"grid_size", "coord"}.issubset(self.keys())
             self["grid_coord"] = torch.div(
-                self.coord - self.coord.min(0)[0], self.grid_size, rounding_mode="trunc"
+                self.coord - self.coord.min(0)[0],
+                self.grid_size,
+                rounding_mode="trunc",
             ).int()
         if "sparse_shape" in self.keys():
             sparse_shape = self.sparse_shape
@@ -169,7 +174,9 @@ class Point(Dict):
             # (adjust `grid_size` to what your want)
             assert {"grid_size", "coord"}.issubset(self.keys())
             self["grid_coord"] = torch.div(
-                self.coord - self.coord.min(0)[0], self.grid_size, rounding_mode="trunc"
+                self.coord - self.coord.min(0)[0],
+                self.grid_size,
+                rounding_mode="trunc",
             ).int()
         if depth is None:
             if "depth" in self.keys():
@@ -198,7 +205,9 @@ class Point(Dict):
         octree.build_octree(point)
         octree.construct_all_neigh()
 
-        query_pts = torch.cat([self.grid_coord, point.batch_id], dim=1).contiguous()
+        query_pts = torch.cat(
+            [self.grid_coord, point.batch_id], dim=1
+        ).contiguous()
         inverse = octree.search_xyzb(query_pts, depth, True)
         assert torch.sum(inverse < 0) == 0  # all mapping should be valid
         inverse_ = torch.unique(inverse)

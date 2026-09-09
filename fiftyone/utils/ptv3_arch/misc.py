@@ -14,7 +14,8 @@ from itertools import chain
 @torch.no_grad()
 def offset2bincount(offset):
     return torch.diff(
-        offset, prepend=torch.tensor([0], device=offset.device, dtype=torch.long)
+        offset,
+        prepend=torch.tensor([0], device=offset.device, dtype=torch.long),
     )
 
 

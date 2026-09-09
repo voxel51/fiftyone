@@ -28,13 +28,17 @@ class KeyLUT:
     def encode_lut(self, device=torch.device("cpu")):
         if device not in self._encode:
             cpu = torch.device("cpu")
-            self._encode[device] = tuple(e.to(device) for e in self._encode[cpu])
+            self._encode[device] = tuple(
+                e.to(device) for e in self._encode[cpu]
+            )
         return self._encode[device]
 
     def decode_lut(self, device=torch.device("cpu")):
         if device not in self._decode:
             cpu = torch.device("cpu")
-            self._decode[device] = tuple(e.to(device) for e in self._decode[cpu])
+            self._decode[device] = tuple(
+                e.to(device) for e in self._decode[cpu]
+            )
         return self._decode[device]
 
     def xyz2key(self, x, y, z, depth):
@@ -111,7 +115,11 @@ def key2xyz(key: torch.Tensor, depth: int = 16):
     """
 
     DX, DY, DZ = _key_lut.decode_lut(key.device)
-    x, y, z = torch.zeros_like(key), torch.zeros_like(key), torch.zeros_like(key)
+    x, y, z = (
+        torch.zeros_like(key),
+        torch.zeros_like(key),
+        torch.zeros_like(key),
+    )
 
     b = key >> 48
     key = key & ((1 << 48) - 1)
