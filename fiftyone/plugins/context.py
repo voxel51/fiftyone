@@ -14,8 +14,6 @@ import sys
 import traceback
 import types
 
-import fiftyone as fo
-import fiftyone.core.utils as fou
 import fiftyone.plugins as fop
 
 from fiftyone.operators.decorators import plugins_cache
@@ -108,6 +106,48 @@ def _ensure_parent_modules(module_name, plugin_dir):
         parent = sys.modules[plugin_parent]
         if hasattr(parent, "__path__") and plugin_dir not in parent.__path__:
             parent.__path__.append(plugin_dir)
+
+
+def _purge_sys_modules_under_dir(plugin_dir):
+    """Removes cached modules whose ``__file__`` lives under ``plugin_dir``.
+
+    Ensures a subsequent import re-reads plugin sources from disk (including
+    submodules), which ``importlib`` would otherwise serve from ``sys.modules``.
+
+    The check is a literal path-prefix comparison; we deliberately avoid
+    ``os.path.realpath`` per ``sys.modules`` entry because that turns this
+    routine into hundreds of synchronous ``stat()`` calls on the asyncio event
+    loop. This is safe because plugin (sub)modules are loaded via
+    :func:`importlib.util.spec_from_file_location` with paths derived from
+    the same ``plugin_dir`` we receive here, so their ``__file__`` attributes
+    share its literal prefix. The only supported symlink usage is symlinking
+    an entire plugin directory; we never resolve nor follow symlinks for
+    files *within* a plugin.
+    """
+    if not plugin_dir:
+        return
+
+    prefix = plugin_dir + os.sep
+    for name in list(sys.modules):
+        mod = sys.modules[name]
+        mod_file = getattr(mod, "__file__", None)
+        if not mod_file:
+            continue
+        if mod_file == plugin_dir or mod_file.startswith(prefix):
+            del sys.modules[name]
+
+
+def _invalidate_plugin_python_caches(plugin_dir):
+    """Drop import caches for files under a plugin directory.
+
+    Purges ``sys.modules`` entries whose ``__file__`` lives under
+    ``plugin_dir`` so subsequent imports re-read sources from disk, and
+    calls ``importlib.invalidate_caches()`` so path finders (e.g.
+    ``FileFinder``) drop cached directory listings after plugin files or
+    subpackages are added, removed, or renamed on disk.
+    """
+    _purge_sys_modules_under_dir(plugin_dir)
+    importlib.invalidate_caches()
 
 
 @plugins_cache
@@ -240,6 +280,8 @@ class PluginContext(object):
             # path-dependent naming issues (e.g., /sc/... becoming sc.home...)
             fallback_name = os.path.basename(module_dir)
             module_name = _get_plugin_module_name(self.name, fallback_name)
+
+            _invalidate_plugin_python_caches(module_dir)
 
             _ensure_parent_modules(module_name, module_dir)
 
