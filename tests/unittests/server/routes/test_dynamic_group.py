@@ -369,9 +369,9 @@ class TestDynamicGroupPatch:
     ):
         """The raw `<iso>|<count>` token form validates like the ETag form."""
         _, lmts = group_view.values(["id", "last_modified_at"])
-        mock_request.headers[
-            "If-Match"
-        ] = f"{max(lmts).isoformat()}|{len(lmts)}"
+        mock_request.headers["If-Match"] = (
+            f"{max(lmts).isoformat()}|{len(lmts)}"
+        )
         mock_request.body.return_value = json_payload(
             _body(stages, [_replace_label(members[0], "dog")])
         )
