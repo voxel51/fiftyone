@@ -128,7 +128,11 @@ class SpatialHeatmapOutputProcessor(fout.OutputProcessor):
                         if N % h == 0:
                             H, W = h, N // h
                             break
-                    if H == 1 and N > 1 and N not in self._warned_prime_token_counts:
+                    if (
+                        H == 1
+                        and N > 1
+                        and N not in self._warned_prime_token_counts
+                    ):
                         logger.warning(
                             "Prime token count %d produced a 1x%d spatial "
                             "layout; padding or truncating tokens to a "
@@ -173,7 +177,9 @@ class SpatialHeatmapOutputProcessor(fout.OutputProcessor):
                     (attention_resized - att_min) / (att_max - att_min) * 255
                 ).astype(np.uint8)
             else:
-                attention_uint8 = np.zeros_like(attention_resized, dtype=np.uint8)
+                attention_uint8 = np.zeros_like(
+                    attention_resized, dtype=np.uint8
+                )
 
             heatmaps.append(fol.Heatmap(map=attention_uint8, range=[0, 255]))
 
@@ -207,12 +213,18 @@ class CRadioV4ModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
             d, "hf_repo", default=DEFAULT_CRADIO_MODEL
         )
         self.hf_revision = self.parse_string(d, "hf_revision", default=None)
-        self.output_type = self.parse_string(d, "output_type", default="summary")
+        self.output_type = self.parse_string(
+            d, "output_type", default="summary"
+        )
         self.use_mixed_precision = self.parse_bool(
             d, "use_mixed_precision", default=True
         )
-        self.apply_smoothing = self.parse_bool(d, "apply_smoothing", default=True)
-        self.smoothing_sigma = self.parse_number(d, "smoothing_sigma", default=1.51)
+        self.apply_smoothing = self.parse_bool(
+            d, "apply_smoothing", default=True
+        )
+        self.smoothing_sigma = self.parse_number(
+            d, "smoothing_sigma", default=1.51
+        )
 
         # For summary (embeddings) mode, use as_feature_extractor
         if self.output_type == "summary":
@@ -287,7 +299,10 @@ class CRadioV4Model(fout.TorchImageModel, fom.SupportsGetItem):
     def __exit__(self, *args):
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
-        elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        elif (
+            hasattr(torch.backends, "mps")
+            and torch.backends.mps.is_available()
+        ):
             torch.mps.empty_cache()
         return False
 
@@ -367,7 +382,9 @@ class CRadioV4Model(fout.TorchImageModel, fom.SupportsGetItem):
         if config.hf_revision is not None:
             load_kwargs["revision"] = config.hf_revision
 
-        return CLIPImageProcessor.from_pretrained(config.hf_repo, **load_kwargs)
+        return CLIPImageProcessor.from_pretrained(
+            config.hf_repo, **load_kwargs
+        )
 
     def _check_mixed_precision_support(self):
         """Check if GPU supports bfloat16 (Ampere+)."""
@@ -385,7 +402,9 @@ class CRadioV4Model(fout.TorchImageModel, fom.SupportsGetItem):
 
             capability = torch.cuda.get_device_capability(self._device)
         except cuda_exceptions as e:
-            logger.warning("Could not determine mixed precision support: %s", e)
+            logger.warning(
+                "Could not determine mixed precision support: %s", e
+            )
             return False
 
         return capability[0] >= 8
