@@ -68,3 +68,6 @@ operators:
   # dataset
   - delete_brain_run
   - get_field_schema
+
+  # upload
+  - upload_files

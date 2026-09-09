@@ -27,8 +27,8 @@ export const FeatureFlagged = ({
   const { isEnabled, isResolved } = useFeature({ feature, enableTracking });
 
   if (!isResolved) {
-    return resolving ?? <Fragment />;
+    return <>{resolving ?? <Fragment />}</>;
   }
 
-  return isEnabled ? children : (fallback ?? <Fragment />);
+  return <>{isEnabled ? children : (fallback ?? <Fragment />)}</>;
 };

@@ -1,0 +1,11 @@
+# Uploaded files (keep directory but not contents)
+uploads/*
+!uploads/.gitkeep
+
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Large test fixture (generated, not committed)
+e2e/fixtures/large-file.bin

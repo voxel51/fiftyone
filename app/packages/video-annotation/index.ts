@@ -1,4 +1,6 @@
 export { VideoAnnotationSurface } from "./src/components/VideoAnnotationSurface";
+export { HoverPopover } from "./src/components/HoverPopover";
+export type { HoverPopoverProps } from "./src/components/HoverPopover";
 export { useVfcClockSource } from "./src/hooks/useVfcClockSource";
 export { LighterVideo } from "./src/components/LighterVideo";
 export { RegisterVideoExploreLabels } from "./src/components/RegisterVideoExploreLabels";

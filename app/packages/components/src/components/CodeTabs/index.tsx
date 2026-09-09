@@ -1,13 +1,16 @@
 import { CodeBlock } from "@fiftyone/components";
 import { Box, Tab, Tabs } from "@mui/material";
-import { useMemo, useState } from "react";
+import { ReactNode, useMemo, useState } from "react";
 import { CodeBlockProps } from "../CodeBlock";
 
-type CodeTab = Omit<CodeBlockProps, "text"> & {
+type CodeTabBase = Omit<CodeBlockProps, "text"> & {
   id: string;
-  code: string;
   label: string;
 };
+
+type CodeTab =
+  | (CodeTabBase & { code: string; content?: never })
+  | (CodeTabBase & { code?: never; content: NonNullable<ReactNode> });
 
 type CodeTabsProps = {
   tabs: Array<CodeTab>;
@@ -52,8 +55,12 @@ export default function CodeTabs(props: CodeTabsProps) {
           ))}
         </Tabs>
       </Box>
-      <Box mt={1} sx={{ cursor: "pointer", minWidth: 720 }}>
-        <CodeBlock {...tabProps} text={tabProps.code} />
+      <Box mt={1} sx={{ minWidth: 720 }}>
+        {tabProps.content ?? (
+          <Box sx={{ cursor: "pointer" }}>
+            <CodeBlock {...tabProps} text={tabProps.code ?? ""} />
+          </Box>
+        )}
       </Box>
     </Box>
   );

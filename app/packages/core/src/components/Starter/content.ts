@@ -23,6 +23,16 @@ for filepath, label in zip(filepaths, labels):
 
 dataset.add_samples(samples)`;
 
+const ADD_SAMPLE_CLOUD_CODE = `import fiftyone.core.storage as fos
+import fiftyone as fo
+
+# Upload media from your local machine to a cloud bucket
+cloud_dir = "gs://<bucket>/<tenant>/<dataset>"
+fos.copy_files("/local/path", cloud_dir)
+
+dataset = fo.load_dataset("$CURRENT_DATASET_NAME")
+dataset.add_dir(cloud_dir)`;
+
 const ADD_DATASET_CODE = `import fiftyone as fo
 
 # A name for the dataset
@@ -39,6 +49,8 @@ dataset = fo.Dataset.from_dir(
     dataset_type=dataset_type,
     name=name,
 )`;
+
+export { ADD_SAMPLE_CLOUD_CODE };
 
 export const CONTENT_BY_MODE = {
   SELECT_DATASET: {

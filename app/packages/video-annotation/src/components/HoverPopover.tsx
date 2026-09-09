@@ -22,12 +22,14 @@ export interface HoverPopoverProps {
   content: React.ReactNode;
   /** Card width in px. */
   width?: number;
+  /** Which side of the trigger the card grows from. Defaults to "above". */
+  placement?: "above" | "below";
   /** The trigger. Wrapped in an inline-flex span that owns the hover. */
   children: React.ReactNode;
 }
 
 /**
- * Hover-opened card anchored above its trigger.
+ * Hover-opened card anchored above or below its trigger.
  *
  * Deliberately not a `Tooltip`: it portals above both the annotation modal and
  * any clipping (`overflow: hidden`) ancestor, and it stays open while the
@@ -42,6 +44,7 @@ export const HoverPopover: React.FC<HoverPopoverProps> = ({
   label,
   content,
   width = DEFAULT_WIDTH,
+  placement = "above",
   children,
 }) => {
   const anchorRef = useRef<HTMLSpanElement>(null);
@@ -81,10 +84,9 @@ export const HoverPopover: React.FC<HoverPopoverProps> = ({
             onMouseLeave={scheduleClose}
             style={{
               position: "fixed",
-              // Anchor above the trigger: pin the card's bottom just over the
-              // trigger's top so it grows upward (a toolbar sits low when the
-              // timeline drawer is collapsed, which clips a downward card).
-              bottom: window.innerHeight - rect.top + CARD_MARGIN,
+              ...(placement === "above"
+                ? { bottom: window.innerHeight - rect.top + CARD_MARGIN }
+                : { top: rect.bottom + CARD_MARGIN }),
               // Left-aligned to the trigger, but pulled back in when that would
               // hang the card off the right edge — nothing clips a fixed,
               // portaled element back into view.

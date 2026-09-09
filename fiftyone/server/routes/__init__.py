@@ -41,6 +41,8 @@ if is_feature_enabled("VFF_MULTIMODAL"):
 
     multimodal_routes = MultimodalRoutes
 
+from .files import FileDelete, FileUpload
+
 # Starlette routes should not be created here. Please leave as tuple definitions
 routes = (
     CameraRoutes
@@ -73,5 +75,7 @@ routes = (
         ("/get-similar-labels-frames", GetSimilarLabelsFrameCollection),
         ("/video-labels/index", VideoLabelsIndex),
         ("/video-labels/window", VideoLabelsWindow),
+        ("/files/upload", FileUpload),
+        ("/files", FileDelete),
     ]
 )
