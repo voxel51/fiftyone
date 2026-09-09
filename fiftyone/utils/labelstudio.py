@@ -171,6 +171,7 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
         self._api_key = api_key
         self.backend = "labelstudio"
         self._min_server_version = "1.5.0"
+        self._min_polyline_server_version = "1.23.0"
 
         self._setup()
 
@@ -186,12 +187,24 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
         server_version = self._client.make_request(
             "GET", "/api/version"
         ).json()["release"]
-        if not version.parse(server_version) >= version.parse(
-            self._min_server_version
-        ):
+        self._server_version = version.parse(server_version)
+        if self._server_version < version.parse(self._min_server_version):
             raise ValueError(
                 "Current Label Studio integration is only compatible with "
                 "version>=%s" % self._min_server_version
+            )
+
+    def _verify_label_schema(self, label_schema):
+        if any(
+            label_info["type"] in ("polyline", "polylines")
+            for label_info in label_schema.values()
+        ) and self._server_version < version.parse(
+            self._min_polyline_server_version
+        ):
+            raise ValueError(
+                "Polyline labels require Label Studio installed version %s; "
+                "required version %s or newer"
+                % (self._server_version, self._min_polyline_server_version)
             )
 
     def _init_project(self, config, samples):
@@ -210,6 +223,7 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
         """
         project_name = deepcopy(config.project_name)
         label_schema = deepcopy(config.label_schema)
+        self._verify_label_schema(label_schema)
 
         if project_name is None:
             _dataset_name = samples._root_dataset.name.replace(" ", "_")
@@ -432,10 +446,7 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
                 "segmentations. Use upload_samples() instead"
             )
 
-        if _LABEL_TYPES[label_type]["multiple"] is None:
-            return export_label_to_label_studio(labels)
-
-        return [export_label_to_label_studio(l) for l in labels]
+        return export_label_to_label_studio(labels, label_type=label_type)
 
     def upload_samples(self, samples, anno_key, backend):
         """Uploads the given samples to Label Studio according to the given
@@ -667,6 +678,8 @@ def import_label_studio_annotation(result):
         label = _from_rectanglelabels(result)
     elif ls_type == "polygonlabels":
         label = _from_polygonlabels(result)
+    elif ls_type == "vectorlabels":
+        label = _from_vectorlabels(result)
     elif ls_type == "keypointlabels":
         label = _from_keypointlabels(result)
     elif ls_type == "brushlabels":
@@ -698,10 +711,10 @@ def export_label_to_label_studio(label, label_type=None, full_result=None):
         label: a :class:`fiftyone.core.labels.Label` or list of
             :class:`fiftyone.core.labels.Label` instances
         label_type (None): the label type to use when exporting the annotation.
-            This argument is only used when exporting object detections. By
-            default, only the bounding boxes are exported, but you can pass
-            ``label_type="instances"`` to export them as brush labels encoding
-            the instance masks instead
+            When exporting object detections, you can pass
+            ``label_type="instances"`` to export instance masks as brush
+            labels. When exporting polylines, use ``"polylines"`` for
+            VectorLabels or ``"polygons"`` for PolygonLabels
         full_result (None): if non-empty, return the full Label Studio result
 
     Returns:
@@ -724,7 +737,31 @@ def export_label_to_label_studio(label, label_type=None, full_result=None):
         else:
             result_value, ls_type, ids = _to_detection(label)
     elif _check_type(label, fol.Polyline, fol.Polylines):
-        result_value, ls_type, ids = _to_polyline(label)
+        if label_type in ("polyline", "polylines"):
+            result_value, ls_type, ids = _to_vectorlabels(label)
+        elif label_type in ("polygon", "polygons"):
+            result_value, ls_type, ids = _to_polyline(label)
+        elif label_type is None:
+            if isinstance(label, fol.Polylines):
+                polylines = label.polylines
+            elif isinstance(label, list):
+                polylines = label
+            else:
+                polylines = [label]
+
+            filled_values = {polyline.filled for polyline in polylines}
+            if len(filled_values) > 1:
+                raise ValueError(
+                    "Cannot infer Label Studio type from mixed filled "
+                    "polylines"
+                )
+
+            if filled_values == {True}:
+                result_value, ls_type, ids = _to_polyline(label)
+            else:
+                result_value, ls_type, ids = _to_vectorlabels(label)
+        else:
+            raise ValueError("Unsupported polyline type: %s" % label_type)
     elif _check_type(label, fol.Keypoint, fol.Keypoints):
         result_value, ls_type, ids = _to_keypoint(label)
     elif isinstance(label, fol.Segmentation):
@@ -850,6 +887,51 @@ def _to_polyline(label):
     return result, ls_type, label.id
 
 
+def _to_vectorlabels(label):
+    ls_type = "vectorlabels"
+
+    if isinstance(label, list):
+        return (
+            [_to_vectorlabels(l)[0] for l in label],
+            ls_type,
+            [l.id for l in label],
+        )
+
+    if isinstance(label, fol.Polylines):
+        return (
+            [_to_vectorlabels(l)[0] for l in label.polylines],
+            ls_type,
+            [l.id for l in label.polylines],
+        )
+
+    if len(label.points) != 1:
+        raise ValueError(
+            "VectorLabels export requires exactly one path per polyline"
+        )
+
+    vertices = []
+    previous_id = None
+    for point in _denormalize_values(label.points[0]):
+        point_id = str(ObjectId())
+        vertices.append(
+            {
+                "id": point_id,
+                "x": point[0],
+                "y": point[1],
+                "prevPointId": previous_id,
+                "isBezier": False,
+            }
+        )
+        previous_id = point_id
+
+    result = {
+        "vertices": vertices,
+        "closed": label.closed,
+        "vectorlabels": [label.label],
+    }
+    return result, ls_type, label.id
+
+
 def _to_keypoint(label):
     ls_type = "keypointlabels"
 
@@ -921,6 +1003,71 @@ def _from_polygonlabels(result):
     label_values = result["value"][result["type"]]
     kwargs = dict(points=[ls_points], filled=True, closed=True)
     return fol.Polyline(label=label_values[0], **kwargs)
+
+
+def _from_vectorlabels(result):
+    value = result["value"]
+    vertices = value["vertices"]
+    vertex_ids = set()
+    children = defaultdict(list)
+    roots = []
+
+    for vertex in vertices:
+        if (
+            vertex.get("isBezier", False)
+            or "controlPoint1" in vertex
+            or "controlPoint2" in vertex
+        ):
+            raise ValueError(
+                "Bezier vertices are not supported by FiftyOne polylines"
+            )
+
+        vertex_id = vertex.get("id")
+        if vertex_id is None or vertex_id in vertex_ids:
+            raise ValueError(
+                "VectorLabels vertices must form a single linear path"
+            )
+
+        vertex_ids.add(vertex_id)
+        previous_id = vertex.get("prevPointId")
+        if previous_id is None:
+            roots.append(vertex_id)
+        else:
+            children[previous_id].append(vertex_id)
+
+    if len(roots) != 1 or any(len(c) > 1 for c in children.values()):
+        raise ValueError(
+            "VectorLabels vertices must form a single linear path"
+        )
+
+    vertices_by_id = {vertex["id"]: vertex for vertex in vertices}
+    ordered_vertices = []
+    vertex_id = roots[0]
+    while vertex_id is not None:
+        vertex = vertices_by_id.get(vertex_id)
+        if vertex is None:
+            raise ValueError(
+                "VectorLabels vertices must form a single linear path"
+            )
+
+        ordered_vertices.append(vertex)
+        next_vertices = children.get(vertex_id, [])
+        vertex_id = next_vertices[0] if next_vertices else None
+
+    if len(ordered_vertices) != len(vertices):
+        raise ValueError(
+            "VectorLabels vertices must form a single linear path"
+        )
+
+    points = _normalize_values(
+        [[vertex["x"], vertex["y"]] for vertex in ordered_vertices]
+    )
+    return fol.Polyline(
+        label=value["vectorlabels"][0],
+        points=[points],
+        closed=value["closed"],
+        filled=False,
+    )
 
 
 def _from_keypointlabels(result):
@@ -1051,7 +1198,32 @@ _LABEL_TYPES = {
         child_tag="Label",
         label=fol.Detection,
     ),
+    "polyline": dict(
+        parent_tag="VectorLabels",
+        child_tag="Label",
+        label=fol.Polyline,
+        tag_kwargs={
+            "closable": "true",
+            "curves": "false",
+            "skeleton": "false",
+        },
+    ),
     "polylines": dict(
+        parent_tag="VectorLabels",
+        child_tag="Label",
+        label=fol.Polyline,
+        tag_kwargs={
+            "closable": "true",
+            "curves": "false",
+            "skeleton": "false",
+        },
+    ),
+    "polygon": dict(
+        parent_tag="PolygonLabels",
+        child_tag="Label",
+        label=fol.Polyline,
+    ),
+    "polygons": dict(
         parent_tag="PolygonLabels",
         child_tag="Label",
         label=fol.Polyline,
