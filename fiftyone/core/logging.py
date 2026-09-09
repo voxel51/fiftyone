@@ -13,6 +13,7 @@ import sys
 import time
 
 import fiftyone as fo
+import fiftyone.constants as foc
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,7 @@ class JsonFormatter(logging.Formatter):
             "filename": record.filename,
             "lineno": record.lineno,
             "function": record.funcName,
-            "fiftyone_version": fo.__version__,
+            "fiftyone_version": foc.VERSION,
         }
 
         if record.exc_info:
