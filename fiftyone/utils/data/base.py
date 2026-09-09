@@ -5,6 +5,7 @@ Data utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import itertools
 import logging
 import multiprocessing.dummy
@@ -21,7 +22,6 @@ import eta.core.video as etav
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.utils as fou
-
 
 logger = logging.getLogger(__name__)
 

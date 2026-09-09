@@ -14,7 +14,6 @@ from fiftyone.core.annotation.attributes import (
 from fiftyone.core.annotation.nodes import Node
 from fiftyone.core.ontology import AnnotationOntology, Taxonomy
 
-
 _ALLOWED_THEN_KEYS = {"values", "component"}
 
 

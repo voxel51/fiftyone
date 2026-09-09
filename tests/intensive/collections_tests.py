@@ -9,13 +9,13 @@ All of these tests are designed to be run manually via::
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import random
 import unittest
 
 import fiftyone as fo
 import fiftyone.zoo as foz
 from fiftyone import ViewField as F
-
 
 _ANIMALS = [
     "bear",

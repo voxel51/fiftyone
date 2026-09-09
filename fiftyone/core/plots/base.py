@@ -5,13 +5,13 @@ Base plotting definitions.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 
 import fiftyone.core.context as foc
 import fiftyone.core.labels as fol
 import fiftyone.core.patches as fop
 import fiftyone.core.video as fov
-
 
 logger = logging.getLogger(__name__)
 

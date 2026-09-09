@@ -44,7 +44,10 @@ import {
   type PlotSeriesConfig,
 } from "../plots/plot-tile-state";
 import { rawTileStreamAtom } from "../tiles/raw-message-binding";
-import { persistedImageTileBindingsAtom } from "../tiles/tile-source-bindings";
+import {
+  persistedAudioTileBindingsAtom,
+  persistedImageTileBindingsAtom,
+} from "../tiles/tile-source-bindings";
 import { cameraScopeKey } from "../scope/camera-scope";
 import { readSidebarPreferences } from "../settings/sidebar-preferences";
 import { createSemanticSourceIndex } from "../settings/semantic-source";
@@ -646,7 +649,18 @@ export function ModalLayoutPersistence({
     tilesRef,
   });
 
-  usePrunePersistedImageBindings(store, tiles);
+  usePrunePersistedTileBindings(
+    store,
+    tiles,
+    TILE_TYPE.IMAGE,
+    persistedImageTileBindingsAtom,
+  );
+  usePrunePersistedTileBindings(
+    store,
+    tiles,
+    TILE_TYPE.AUDIO,
+    persistedAudioTileBindingsAtom,
+  );
 
   const plotSeriesPatch = useCallback(
     (value: Readonly<Record<string, readonly PlotSeriesConfig[]>>) => ({
@@ -967,29 +981,31 @@ type PersistedTileAtomField =
   | "scene3dSettings";
 
 /** Remove durable bindings only when their pane leaves the live layout. */
-function usePrunePersistedImageBindings(
+function usePrunePersistedTileBindings(
   store: ReturnType<typeof useStore>,
   tiles: Readonly<Record<string, TilingTile>>,
+  tileType: TileType,
+  bindingsAtom: PrimitiveAtom<Readonly<Record<string, string>>>,
 ): void {
-  const imageTileIdsKey = Object.keys(tiles)
-    .filter((tileId) => tileTypeFromId(tileId) === TILE_TYPE.IMAGE)
+  const liveTileIdsKey = Object.keys(tiles)
+    .filter((tileId) => tileTypeFromId(tileId) === tileType)
     .join("\u0000");
 
   // This effect reconciles intentional pane removal with durable bindings.
   useEffect(() => {
-    const imageTileIds = new Set(
-      imageTileIdsKey ? imageTileIdsKey.split("\u0000") : [],
+    const liveTileIds = new Set(
+      liveTileIdsKey ? liveTileIdsKey.split("\u0000") : [],
     );
-    store.set(persistedImageTileBindingsAtom, (previous) => {
+    store.set(bindingsAtom, (previous) => {
       const staleIds = Object.keys(previous).filter(
-        (tileId) => !imageTileIds.has(tileId),
+        (tileId) => !liveTileIds.has(tileId),
       );
       if (staleIds.length === 0) return previous;
       const next = { ...previous };
       for (const tileId of staleIds) delete next[tileId];
       return next;
     });
-  }, [imageTileIdsKey, store]);
+  }, [bindingsAtom, liveTileIdsKey, store]);
 }
 
 /**

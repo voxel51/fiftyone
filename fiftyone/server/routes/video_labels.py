@@ -33,7 +33,6 @@ import fiftyone.core.view as fov
 from fiftyone.server.decorators import route
 import fiftyone.server.view as fosv
 
-
 # Synthetic instance-id prefix for an index-based track (a label with no
 # ``instance._id`` but a persisted ``index``). Must match the client's
 # ``TRACK_INDEX_PREFIX`` (``@fiftyone/annotation``) so the baseline index and

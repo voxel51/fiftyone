@@ -5,6 +5,7 @@ FiftyOne Zoo Datasets provided by :mod:`torchvision:torchvision.datasets`.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
@@ -15,7 +16,6 @@ import fiftyone.utils.data as foud
 import fiftyone.utils.imagenet as foui
 import fiftyone.utils.voc as fouv
 import fiftyone.zoo.datasets as fozd
-
 
 _TORCH_IMPORT_ERROR = """
 

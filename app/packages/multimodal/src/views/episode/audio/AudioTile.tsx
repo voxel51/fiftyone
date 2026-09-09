@@ -14,6 +14,7 @@ import {
   TextVariant,
   Variant,
 } from "@voxel51/voodo";
+import { useStore } from "jotai";
 import React, {
   useCallback,
   useEffect,
@@ -29,9 +30,12 @@ import { SCENE_SOURCE_TYPE } from "../../../ir";
 import { useSceneSourcesByType } from "../../../scene-inventory/react";
 import type { EpisodeTileProps } from "../tiles/tile-types";
 import { channelLabel, synthesizePeaks } from "../../../audio/peak-pyramid";
-import { usePanelVisibilityScope } from "../settings/sidebar-preferences-context";
-import { semanticSourceKey } from "../settings/semantic-source";
-import { updateSidebarPreferences } from "../settings/sidebar-preferences";
+import {
+  persistedAudioTileBindingsAtom,
+  resolveAvailableAudioStream,
+  usePersistAudioTileBinding,
+  usePreferredAudioTileStream,
+} from "../tiles/tile-source-bindings";
 import { useRegisterTileSettings } from "../tiles/tile-settings-context";
 import AudioTileSettings from "./AudioTileSettings";
 import styles from "./AudioTile.module.css";
@@ -55,38 +59,51 @@ const AudioTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
   // and offer no way to change it, so a recording with several audio topics
   // could only ever show the first one — and the `initialSourceId` the host
   // passes when a tile is opened for a specific source was ignored outright.
-  const [selectedSourceId, setSelectedSourceId] = useState<string | undefined>(
+  const [primarySourceId, setPrimarySourceId] = useState<string | undefined>(
     () => initialSourceId ?? sources[0]?.id,
   );
-  const preferenceScope = usePanelVisibilityScope();
+  const jotaiStore = useStore();
+  const preferredSourceId = usePreferredAudioTileStream();
   /** Wheel-zoom surface spanning the ruler and the waveform beneath it. */
   const zoomRef = useRef<HTMLDivElement>(null);
 
-  // Persist the choice so it survives a refresh. Stored as a semantic key,
-  // never the runtime source id: ids are positional and get reassigned
-  // between loads, so a persisted id would restore a different topic. This
-  // is the same mechanism image tiles use for their camera.
+  // Persist the choice so it survives a refresh and sample navigation. Stored
+  // as a semantic key, never the runtime source id: ids are positional and
+  // get reassigned between loads, so a persisted id would restore a different
+  // topic. Same mechanism image tiles use for their camera.
+  const persistAudioTileBinding = usePersistAudioTileBinding(
+    primarySourceId ?? "",
+  );
   const selectSource = useCallback(
     (nextSourceId: string) => {
-      setSelectedSourceId(nextSourceId);
-      const source = sources.find((candidate) => candidate.id === nextSourceId);
-      if (!preferenceScope || !source || !tileId) return;
-      const audioSourceKey = semanticSourceKey(source);
-      updateSidebarPreferences(preferenceScope, (current) => ({
-        ...current,
-        tiles: {
-          ...current.tiles,
-          [tileId]: { ...current.tiles[tileId], audioSourceKey },
-        },
-      }));
+      persistAudioTileBinding(nextSourceId);
+      setPrimarySourceId(nextSourceId);
     },
-    [preferenceScope, sources, tileId],
+    [persistAudioTileBinding],
   );
-  // A source can disappear between recordings; fall back rather than bind to
-  // an id the inventory no longer has.
-  const primarySourceId =
-    sources.find((source) => source.id === selectedSourceId)?.id ??
-    sources[0]?.id;
+
+  // This effect restores a returning durable preference or temporarily falls
+  // back when the current sample lacks it. The shell stays mounted across
+  // sample navigation and runtime ids are reassigned per recording, so the id
+  // bound at mount goes stale the moment a new inventory lands — the tile used
+  // to notice only that the id was missing and drop to `sources[0]`, snapping
+  // every audio pane onto the first topic even when the new sample carried the
+  // same ones. Automatic fallback never writes the preference, so a later
+  // sample can restore the user's chosen source.
+  useEffect(() => {
+    const preferredStream =
+      preferredSourceId ??
+      (tileId
+        ? jotaiStore.get(persistedAudioTileBindingsAtom)[tileId]
+        : undefined);
+    const nextSourceId = resolveAvailableAudioStream(
+      primarySourceId,
+      preferredStream,
+      sources,
+    );
+    if (nextSourceId !== primarySourceId) setPrimarySourceId(nextSourceId);
+  }, [jotaiStore, preferredSourceId, primarySourceId, sources, tileId]);
+
   const primarySource = sources.find((source) => source.id === primarySourceId);
   const setTileTitle = useSetTileTitle();
   const setHeaderExtra = useSetTileHeaderExtra();

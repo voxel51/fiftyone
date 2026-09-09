@@ -31,7 +31,9 @@ from fiftyone.core.map.typing import SampleCollection
 
 T = TypeVar("T")  # Sample type
 R = TypeVar("R")  # Return value type of map_fcn
-U = TypeVar("U")  # Return value type of iter_fcn if set - must be same as input type to map_fcn.
+U = TypeVar(
+    "U"
+)  # Return value type of iter_fcn if set - must be same as input type to map_fcn.
 
 
 logger = logging.getLogger(__name__)
@@ -160,9 +162,6 @@ class Mapper(abc.ABC):
         else:
             if save is True:
                 logger.warning("Unable to save when `iter_fcn` is provided")
-                
-        
-
 
         yield from self._map_samples(
             sample_collection,
