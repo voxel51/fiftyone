@@ -137,6 +137,47 @@ class TestPredictAll:
         assert isinstance(out[0], fol.Detections)
         assert out[0].detections == []
 
+    def test_predict_all_restores_torch_initializers(self):
+        # The checkpoint's infer() disables them process-wide and never
+        # puts them back
+        import torch
+
+        model = fuo.UnlimitedOCRModel.__new__(fuo.UnlimitedOCRModel)
+
+        class _DisablingModel:
+            def infer(self, tokenizer, **kwargs):
+                torch.nn.Linear.reset_parameters = lambda self: None
+                torch.nn.LayerNorm.reset_parameters = lambda self: None
+                return ""
+
+        model._model = _DisablingModel()
+        model._tokenizer = None
+        model.config = fuo.UnlimitedOCRModelConfig({})
+
+        before = (
+            torch.nn.Linear.reset_parameters,
+            torch.nn.LayerNorm.reset_parameters,
+        )
+
+        model._predict_all([{"filepath": "/a.jpg"}])
+
+        assert torch.nn.Linear.reset_parameters is before[0]
+        assert torch.nn.LayerNorm.reset_parameters is before[1]
+
+
+class TestKeepTorchInit:
+    def test_restores_after_an_exception(self):
+        import torch
+
+        before = torch.nn.Linear.reset_parameters
+
+        with pytest.raises(RuntimeError):
+            with fuo._keep_torch_init():
+                torch.nn.Linear.reset_parameters = lambda self: None
+                raise RuntimeError("boom")
+
+        assert torch.nn.Linear.reset_parameters is before
+
 
 if __name__ == "__main__":
     import sys

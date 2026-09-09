@@ -8,6 +8,7 @@ FiftyOne Model Zoo.
 """
 
 import ast
+import contextlib
 import logging
 import os
 import re
@@ -28,6 +29,9 @@ import torch
 logger = logging.getLogger(__name__)
 
 DEFAULT_UNLIMITED_OCR_MODEL = "baidu/Unlimited-OCR"
+
+# Classes whose initializers the checkpoint replaces; see _keep_torch_init()
+_TORCH_INIT_CLASSES = ("Linear", "LayerNorm")
 
 # The default prompt runs full document parsing (layout + text + tables). The
 # ``<image>`` token is where the image is inserted, and must be present.
@@ -53,6 +57,27 @@ def _ensure_unlimited_ocr():
 
 
 transformers = fou.lazy_import("transformers", callback=_ensure_unlimited_ocr)
+
+
+@contextlib.contextmanager
+def _keep_torch_init():
+    """Restores torch's default initializers after a call into the model.
+
+    The checkpoint's ``infer()`` begins by calling its own
+    ``disable_torch_init()``, which replaces ``reset_parameters`` on
+    ``torch.nn.Linear`` and ``torch.nn.LayerNorm`` with no-ops and never
+    puts them back. That is process-wide, so without this every module
+    built later in the session would skip its initialization.
+    """
+    saved = [
+        (getattr(torch.nn, name), getattr(torch.nn, name).reset_parameters)
+        for name in _TORCH_INIT_CLASSES
+    ]
+    try:
+        yield
+    finally:
+        for cls, reset_parameters in saved:
+            cls.reset_parameters = reset_parameters
 
 
 def _to_pil(image):
@@ -200,6 +225,15 @@ class UnlimitedOCRModel(fout.TorchImageModel, fom.SupportsGetItem):
         pass  # transformers downloads the model on first load
 
     def _load_model(self, config):
+        # The checkpoint's ``infer`` moves its own tensors with ``.cuda()``
+        # and runs under ``torch.autocast("cuda")``, so it cannot run on CPU
+        # whatever device the model itself was placed on
+        if not torch.cuda.is_available():
+            raise ValueError(
+                "Unlimited-OCR requires a CUDA-capable GPU, but none is "
+                "available"
+            )
+
         self._tokenizer = transformers.AutoTokenizer.from_pretrained(
             config.name_or_path, trust_remote_code=True
         )
@@ -246,19 +280,20 @@ class UnlimitedOCRModel(fout.TorchImageModel, fom.SupportsGetItem):
                         # reads a file, so it is written into the scratch dir
                         image_file = os.path.join(scratch, "image.png")
                         _to_pil(item).save(image_file)
-                    raw = self._model.infer(
-                        self._tokenizer,
-                        prompt=self.config.prompt,
-                        image_file=image_file,
-                        output_path=scratch,
-                        eval_mode=True,
-                        base_size=self.config.base_size,
-                        image_size=self.config.crop_size,
-                        crop_mode=self.config.crop_mode,
-                        max_length=self.config.max_length,
-                        no_repeat_ngram_size=self.config.no_repeat_ngram_size,
-                        ngram_window=self.config.ngram_window,
-                    )
+                    with _keep_torch_init():
+                        raw = self._model.infer(
+                            self._tokenizer,
+                            prompt=self.config.prompt,
+                            image_file=image_file,
+                            output_path=scratch,
+                            eval_mode=True,
+                            base_size=self.config.base_size,
+                            image_size=self.config.crop_size,
+                            crop_mode=self.config.crop_mode,
+                            max_length=self.config.max_length,
+                            no_repeat_ngram_size=self.config.no_repeat_ngram_size,
+                            ngram_window=self.config.ngram_window,
+                        )
             except Exception as e:  # per-image guard
                 logger.warning("Unlimited-OCR failed on an image: %s", e)
                 results.append(fol.Detections())
