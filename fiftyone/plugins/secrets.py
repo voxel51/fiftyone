@@ -5,6 +5,7 @@ Plugin secrets resolver.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 import traceback
 import typing

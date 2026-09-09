@@ -5,6 +5,7 @@ GeoTIFF utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import os
 
 import eta.core.image as etai

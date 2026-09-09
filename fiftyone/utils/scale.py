@@ -6,6 +6,7 @@ Utilities for working with annotations in
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import defaultdict
 from copy import deepcopy
 import logging
@@ -27,7 +28,6 @@ import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 import fiftyone.utils.image as foui
-
 
 logger = logging.getLogger(__name__)
 
