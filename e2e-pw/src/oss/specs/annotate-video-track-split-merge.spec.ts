@@ -19,7 +19,10 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
 import type { Page } from "src/oss/fixtures";
-import type { VideoAnnotateSDK } from "src/oss/fixtures/video-annotate-sdk";
+import type {
+  FrameTrackLabel,
+  VideoAnnotateSDK,
+} from "src/oss/fixtures/video-annotate-sdk";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-video-track-split-merge",
@@ -78,6 +81,70 @@ const openAnnotate = async (
   await modal.sidebar.switchMode("annotate");
   await modal.videoAnnotate.waitForSurface();
 };
+
+/**
+ * The two tracks a split leaves on `field`, from the database: `head` is the
+ * original instance (frames before the cut), `tail` the new one (frames from
+ * the cut on). Both sides of the cut must be keyframes — each half re-lerps
+ * from its own keyframes afterwards, so without the pin the shape at the cut
+ * jumps — and nothing else may have been promoted.
+ */
+const expectSplitPersisted = (
+  rows: FrameTrackLabel[],
+  originalInstance: string,
+  totalFrames: number,
+) => {
+  const byInstance = new Map<string, FrameTrackLabel[]>();
+  for (const row of rows) {
+    if (!row.instance) continue;
+    byInstance.set(row.instance, [
+      ...(byInstance.get(row.instance) ?? []),
+      row,
+    ]);
+  }
+
+  const head = byInstance.get(originalInstance) ?? [];
+  const tailInstance = [...byInstance.keys()].find(
+    (instance) => instance !== originalInstance,
+  );
+  expect(tailInstance, "the split should mint a second instance").toBeTruthy();
+  const tail = byInstance.get(tailInstance as string) ?? [];
+
+  const frames = (labels: FrameTrackLabel[]) =>
+    labels.map((l) => l.frame).sort((a, b) => a - b);
+  const headFrames = frames(head);
+  const tailFrames = frames(tail);
+  const cut = tailFrames[0];
+
+  expect(headFrames.at(-1), "head ends right before the cut").toBe(cut - 1);
+  expect(tailFrames.at(-1), "tail runs to the last frame").toBe(totalFrames);
+  expect(headFrames[0]).toBe(1);
+
+  const keyframes = (labels: FrameTrackLabel[]) =>
+    frames(labels.filter((l) => l.keyframe));
+  expect(keyframes(head), "head's last frame is its only keyframe").toEqual([
+    cut - 1,
+  ]);
+  expect(keyframes(tail), "tail's first frame is its only keyframe").toEqual([
+    cut,
+  ]);
+
+  for (const row of [...head, ...tail]) {
+    expect(row.hasGeometry, `frame ${row.frame} keeps its geometry`).toBe(true);
+  }
+};
+
+/** Track instance ids on `field` in the database, before any edit. */
+const persistedInstances = async (
+  sdk: VideoAnnotateSDK,
+  field: string,
+): Promise<string[]> => [
+  ...new Set(
+    (await sdk.frameTrackState(datasetName, field))
+      .map((row) => row.instance)
+      .filter((id): id is string => !!id),
+  ),
+];
 
 const savedResponse = (page: Page) =>
   page.waitForResponse(
@@ -140,6 +207,81 @@ test.describe.serial("video annotation track split / merge", () => {
     await va.clickSplitToolbarButton();
 
     await va.assert.objectTrackCount(3);
+  });
+
+  test("split pins both sides of the cut as keyframes and persists", async ({
+    fiftyoneLoader,
+    modal,
+    page,
+    videoAnnotateSDK,
+  }) => {
+    // vehicle is the only seeded instance on its class; it is the split target
+    const [vehicleInstance] = await persistedInstances(
+      videoAnnotateSDK,
+      "detections",
+    );
+
+    await openAnnotate(fiftyoneLoader, modal, page);
+    const va = modal.videoAnnotate;
+
+    await va.assert.objectTrackCount(2);
+    const vehicleId = await va.labelRowId("vehicle");
+    await va.pinTrack(vehicleId);
+    await va.clickTrack(vehicleId);
+    await va.seekToRulerFraction(0.5);
+
+    const saved = savedResponse(page);
+    await va.clickSplitToolbarButton();
+    await va.assert.objectTrackCount(3);
+    await saved;
+
+    // 2 s at 10 fps
+    const rows = await videoAnnotateSDK.frameTrackState(
+      datasetName,
+      "detections",
+    );
+    expectSplitPersisted(rows, vehicleInstance, 20);
+  });
+
+  test("split a polyline track: two tracks, both cut frames keyframes, vertices kept", async ({
+    fiftyoneLoader,
+    modal,
+    page,
+    videoAnnotateSDK,
+  }) => {
+    // one detection track (vehicle) + one polyline track (person, index=2);
+    // no second detection track, so "person" names the polyline
+    await videoAnnotateSDK.seed({
+      datasetName,
+      videoPaths: [clip],
+      withEvents: false,
+      trackedSampleIndices: [0],
+      polylineSampleIndices: [0],
+    });
+    const [polylineInstance] = await persistedInstances(
+      videoAnnotateSDK,
+      "polylines",
+    );
+
+    await openAnnotate(fiftyoneLoader, modal, page);
+    const va = modal.videoAnnotate;
+
+    await va.assert.objectTrackCount(2);
+    const personId = await va.labelRowId("person");
+    await va.pinTrack(personId);
+    await va.clickTrack(personId);
+    await va.seekToRulerFraction(0.5);
+
+    const saved = savedResponse(page);
+    await va.clickSplitToolbarButton();
+    await va.assert.objectTrackCount(3);
+    await saved;
+
+    const rows = await videoAnnotateSDK.frameTrackState(
+      datasetName,
+      "polylines",
+    );
+    expectSplitPersisted(rows, polylineInstance, 20);
   });
 
   test("merge (context menu) folds one same-class track into the other and persists", async ({

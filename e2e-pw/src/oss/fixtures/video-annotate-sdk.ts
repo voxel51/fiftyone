@@ -1,4 +1,17 @@
+import fs from "fs";
+import os from "os";
+import path from "path";
 import { OssLoader } from "./loader";
+
+/** One frame's label on a tracked frame field, as persisted. */
+export interface FrameTrackLabel {
+  frame: number;
+  /** The cross-frame `instance._id` (the track key), or null. */
+  instance: string | null;
+  keyframe: boolean;
+  /** A box or at least one polyline vertex is stored on the frame. */
+  hasGeometry: boolean;
+}
 
 export interface SeedVideoAnnotationOptions {
   /** Dataset name. */
@@ -84,6 +97,66 @@ export class VideoAnnotateSDK {
 
   constructor() {
     this.loader = new OssLoader();
+  }
+
+  /**
+   * Every persisted label on `field` (`detections` / `polylines`) across the
+   * frames of one sample, with its track instance and keyframe flag — the
+   * database's view of a track edit once autosave has landed.
+   */
+  async frameTrackState(
+    datasetName: string,
+    field: string,
+    sampleIndex = 0,
+  ): Promise<FrameTrackLabel[]> {
+    const resultFile = path.join(
+      os.tmpdir(),
+      `frame-track-state-${Date.now()}-${Math.random()
+        .toString(36)
+        .substring(2)}.json`,
+    );
+
+    await this.loader.executePythonCode(`
+import json
+import fiftyone as fo
+
+dataset = fo.load_dataset("${datasetName}")
+sample = dataset.skip(${sampleIndex}).first()
+rows = []
+for fn, frame in sample.frames.items():
+    container = frame["${field}"]
+    if container is None:
+        continue
+    for label in getattr(container, "${field}", []) or []:
+        instance = getattr(label, "instance", None)
+        points = getattr(label, "points", None)
+        rows.append({
+            "frame": int(fn),
+            "instance": str(instance._id) if instance is not None else None,
+            "keyframe": bool(getattr(label, "keyframe", False)),
+            "has_geometry": bool(getattr(label, "bounding_box", None))
+            or bool(points and any(len(s) for s in points)),
+        })
+
+with open("${resultFile}", "w") as f:
+    json.dump(rows, f)
+`);
+
+    const raw = fs.readFileSync(resultFile, "utf-8");
+    fs.unlinkSync(resultFile);
+    const parsed = JSON.parse(raw) as Array<{
+      frame: number;
+      instance: string | null;
+      keyframe: boolean;
+      has_geometry: boolean;
+    }>;
+
+    return parsed.map((row) => ({
+      frame: row.frame,
+      instance: row.instance,
+      keyframe: row.keyframe,
+      hasGeometry: row.has_geometry,
+    }));
   }
 
   seed(options: SeedVideoAnnotationOptions) {
