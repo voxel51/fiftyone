@@ -653,9 +653,7 @@ def _render_literal(node: LiteralNode) -> str:
     if as_ == "date":
         # `utcfromtimestamp` is deprecated from Python 3.12; the tz-aware call
         # is the same instant and the same naive-UTC value once compared
-        return (
-            "datetime.fromtimestamp(%r / 1000, timezone.utc)" % node["v"]
-        )
+        return "datetime.fromtimestamp(%r / 1000, timezone.utc)" % node["v"]
 
     if as_ == "timedelta":
         return "timedelta(milliseconds=%r)" % node["v"]

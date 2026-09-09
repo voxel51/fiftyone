@@ -57,9 +57,23 @@ export const useSyncAnnotationVideoStore = (
      * what should be feeding this surface, and `warmupAll` competes with it.
      */
     seedWholeClip?: boolean;
+    /**
+     * Sample-level label paths the hydration nudge should watch (see
+     * {@link useHydrateSampleLevelOverlays}).
+     *
+     * Explore must supply its own. The default is `useVisibleLabelSchemas()`,
+     * which is `annotation-active ∩ explore-active` and therefore EMPTY until
+     * the Annotate sidebar has run `useLoadSchemas()` — so in Explore the
+     * signature never changes, `resync` never fires, and a sample-level label
+     * that resolves its type after the surface mounted stays unmounted. That
+     * is what kept the sample Classification bubble off this surface even once
+     * the bridge scope admitted it.
+     */
+    sampleLevelPaths?: ReadonlySet<string>;
   } = {},
 ): void => {
   const seedWholeClip = options.seedWholeClip ?? true;
+  const sampleLevelPathsOverride = options.sampleLevelPaths;
   const engine = useAnnotationEngine();
   const sampleId = useActiveSampleId();
   const getSample = useSampleInstanceGetter();
@@ -162,7 +176,12 @@ export const useSyncAnnotationVideoStore = (
     };
   }, [engine, sampleId, labelTypes, getSample, stream, seedWholeClip]);
 
-  useHydrateSampleLevelOverlays(engine, sampleId, sampleLevelRef);
+  useHydrateSampleLevelOverlays(
+    engine,
+    sampleId,
+    sampleLevelRef,
+    sampleLevelPathsOverride,
+  );
 };
 
 /**
@@ -192,8 +211,11 @@ const useHydrateSampleLevelOverlays = (
   engine: ReturnType<typeof useAnnotationEngine>,
   sampleId: string,
   sampleLevelRef: MutableRefObject<SampleLabelStore | null>,
+  pathsOverride?: ReadonlySet<string>,
 ): void => {
-  const visible = useVisibleLabelSchemas();
+  // Called unconditionally to keep hook order stable; the override wins.
+  const annotationVisible = useVisibleLabelSchemas();
+  const visible = pathsOverride ?? annotationVisible;
 
   // Sample-level label fields (exclude the frame fields — the FrameStore
   // announces those itself). TDs are kept in: resync refreshes the temporal

@@ -1680,8 +1680,7 @@ class ViewExpressionQueryTests(unittest.TestCase):
 
 class AsyncViewBarSchemaTests(unittest.IsolatedAsyncioTestCase):
     async def test_query_resolves(self):
-        result = await schema.execute(
-            """
+        result = await schema.execute("""
             {
                 viewExpressionAstVersion
                 viewExpressionFieldKinds { ftype kind }
@@ -1709,8 +1708,7 @@ class AsyncViewBarSchemaTests(unittest.IsolatedAsyncioTestCase):
                     }
                 }
             }
-            """
-        )
+            """)
         self.assertIsNone(result.errors)
         self.assertEqual(
             result.data["viewExpressionAstVersion"], foea.AST_VERSION
