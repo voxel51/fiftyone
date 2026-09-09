@@ -44,7 +44,6 @@ from .parsers import (
     ImageSampleParser,
 )
 
-
 fota = fou.lazy_import("fiftyone.core.tags")
 foma = fou.lazy_import("fiftyone.multimodal.media_reference.asset_planning")
 fmm = fou.lazy_import("fiftyone.multimodal.media_reference.field_model")
@@ -2042,9 +2041,9 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         self._metadata["name"] = sample_collection._dataset.name
         self._metadata["media_type"] = sample_collection.media_type
         if sample_collection.media_type == fomm.GROUP:
-            self._metadata[
-                "group_media_types"
-            ] = sample_collection.group_media_types
+            self._metadata["group_media_types"] = (
+                sample_collection.group_media_types
+            )
 
         schema = sample_collection._serialize_field_schema()
         self._metadata["sample_fields"] = schema
@@ -2078,27 +2077,27 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
             info["mask_targets"] = sample_collection._serialize_mask_targets()
 
         if sample_collection.default_mask_targets:
-            info[
-                "default_mask_targets"
-            ] = sample_collection._serialize_default_mask_targets()
+            info["default_mask_targets"] = (
+                sample_collection._serialize_default_mask_targets()
+            )
 
         if sample_collection.skeletons:
             info["skeletons"] = sample_collection._serialize_skeletons()
 
         if sample_collection.default_skeleton:
-            info[
-                "default_skeleton"
-            ] = sample_collection._serialize_default_skeleton()
+            info["default_skeleton"] = (
+                sample_collection._serialize_default_skeleton()
+            )
 
         if sample_collection.camera_intrinsics:
-            info[
-                "camera_intrinsics"
-            ] = sample_collection._serialize_camera_intrinsics()
+            info["camera_intrinsics"] = (
+                sample_collection._serialize_camera_intrinsics()
+            )
 
         if sample_collection.static_transforms:
-            info[
-                "static_transforms"
-            ] = sample_collection._serialize_static_transforms()
+            info["static_transforms"] = (
+                sample_collection._serialize_static_transforms()
+            )
 
         if sample_collection.app_config.is_custom():
             info["app_config"] = sample_collection.app_config.to_dict(

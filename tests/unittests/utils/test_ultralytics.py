@@ -23,8 +23,12 @@ class TestDetectionsToVisualPrompts:
         original_bbox_b = [0.5, 0.0, 0.5, 1.0]
         dets = fol.Detections(
             detections=[
-                fol.Detection(label="person", bounding_box=list(original_bbox_a)),
-                fol.Detection(label="person", bounding_box=list(original_bbox_b)),
+                fol.Detection(
+                    label="person", bounding_box=list(original_bbox_a)
+                ),
+                fol.Detection(
+                    label="person", bounding_box=list(original_bbox_b)
+                ),
             ]
         )
 
@@ -188,7 +192,10 @@ class TestFiftyOneYOLOEVPCollate:
 
         from fiftyone.utils.ultralytics import FiftyOneYOLOEVPModel
 
-        vp_a = {"bboxes": np.array([[0.0, 0.0, 1.0, 1.0]]), "cls": np.array([0])}
+        vp_a = {
+            "bboxes": np.array([[0.0, 0.0, 1.0, 1.0]]),
+            "cls": np.array([0]),
+        }
         classes_a = ["dog"]
         vp_b = None
         classes_b = None
@@ -451,8 +458,8 @@ class TestFiftyOneYOLOEVPVisualPrompts:
         # Stub _set_predictor: parent's implementation requires a real
         # ultralytics model. Tests inspect _set_predictor_calls.
         model._set_predictor_calls = []
-        model._set_predictor = lambda config, m: model._set_predictor_calls.append(
-            (config, m)
+        model._set_predictor = (
+            lambda config, m: model._set_predictor_calls.append((config, m))
         )
 
         # Recording mock for self._output_processor. Captures every call and
@@ -477,9 +484,7 @@ class TestFiftyOneYOLOEVPVisualPrompts:
                     "classes": classes,
                 }
             )
-            label = (
-                f"out-{vp_classes[0]}" if vp_classes else "no-vp"
-            )
+            label = f"out-{vp_classes[0]}" if vp_classes else "no-vp"
             return [
                 fol.Detections(
                     detections=[
@@ -605,9 +610,7 @@ class TestFiftyOneYOLOEVPVisualPrompts:
 
         vp = {"bboxes": np.array([[0.0, 0.0, 1.0, 1.0]]), "cls": np.array([0])}
 
-        model._predict_all_visual_prompts(
-            ["A", "B"], [vp, vp], [["x"], ["x"]]
-        )
+        model._predict_all_visual_prompts(["A", "B"], [vp, vp], [["x"], ["x"]])
 
         assert model._set_predictor_calls == [(model.config, model._model)]
 

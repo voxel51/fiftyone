@@ -16,7 +16,6 @@ from typing import Any
 
 import fiftyone.core.annotation.constants as foac
 
-
 logger = logging.getLogger(__name__)
 
 _SOURCE = "_source"

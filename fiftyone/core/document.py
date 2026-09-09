@@ -5,6 +5,7 @@ Base classes for objects that are backed by database documents.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from copy import deepcopy
 
 from bson import ObjectId

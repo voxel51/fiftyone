@@ -20,7 +20,6 @@ from fiftyone.operators.store.models import KeyDocument
 from fiftyone.factory.repo_factory import MongoExecutionStoreRepo
 from fiftyone.operators.store import ExecutionStore
 
-
 EPSILON = 0.1
 
 

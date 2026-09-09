@@ -15,7 +15,6 @@ import typing as t
 from fiftyone.core.json import stringify
 from fiftyone.core.utils import datetime_to_timestamp, timestamp_to_datetime
 
-
 BSON = gql.scalar(
     t.NewType("BSON", object),
     serialize=lambda v: json.loads(json_util.dumps(v)),

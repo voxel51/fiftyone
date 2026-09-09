@@ -87,7 +87,11 @@ async def get_metadata(
     filepath = sample["filepath"]
     metadata = sample.get("metadata", None)
 
-    (opm_field, detections_fields, additional_fields,) = (
+    (
+        opm_field,
+        detections_fields,
+        additional_fields,
+    ) = (
         additional_media_fields
         if additional_media_fields is not None
         else _get_additional_media_fields(collection)
