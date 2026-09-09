@@ -3,7 +3,16 @@ import { GridPom } from "src/oss/poms/grid";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
-const datasetName = getUniqueDatasetNameWithPrefix("smoke-quickstart");
+const datasetName = getUniqueDatasetNameWithPrefix("smoke-sidebar");
+
+// "bottle" appears in exactly one sample
+const GROUND_TRUTH = [
+  ["bottle", "cup", "person"],
+  ["cat", "person"],
+  ["horse", "person"],
+  ["cup", "cat"],
+  ["horse"],
+];
 
 const test = base.extend<{ sidebar: SidebarPom; grid: GridPom }>({
   sidebar: async ({ page }, use) => {
@@ -18,11 +27,18 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
 
-  await fiftyoneLoader.loadZooDataset("quickstart", datasetName, {
-    max_samples: 5,
+  await datasetFactory.createDetectionsDataset({
+    datasetName,
+    numbered: true,
+    samples: GROUND_TRUTH.map((labels) => ({
+      detections: {
+        ground_truth: labels,
+        predictions: [{ label: labels[0], confidence: 0.9 }],
+      },
+    })),
   });
 });
 
