@@ -6,6 +6,7 @@ Utilities for working with the
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 import os
 
@@ -20,7 +21,6 @@ import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 import fiftyone.types as fot
-
 
 logger = logging.getLogger(__name__)
 

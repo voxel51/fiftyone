@@ -5,6 +5,7 @@ FiftyOne Server dataloader
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from dataclasses import dataclass
 import typing as t
 
@@ -64,7 +65,10 @@ def get_dataloader_resolver(
     key: str,
     filters: t.List[dict],
     projections: t.Optional[t.Dict] = None,
-) -> t.Callable[[str, Info], t.Coroutine[t.Any, t.Any, t.Optional[T]],]:
+) -> t.Callable[
+    [str, Info],
+    t.Coroutine[t.Any, t.Any, t.Optional[T]],
+]:
     dataloaders[cls] = DataLoaderConfig(
         collection=collection,
         key=key,

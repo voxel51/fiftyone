@@ -5,6 +5,7 @@ FiftyOne Server stage definitions
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import typing as t
 
 import strawberry as gql

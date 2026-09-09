@@ -5,6 +5,7 @@ TensorFlow utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import contextlib
 import logging
 import multiprocessing
@@ -26,7 +27,6 @@ import fiftyone.utils.data as foud
 
 fou.ensure_tf(eager=True)
 import tensorflow as tf
-
 
 logger = logging.getLogger(__name__)
 

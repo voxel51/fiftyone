@@ -6,6 +6,7 @@ Tests for the :mod:`fiftyone.utils.labelstudio` module.
 |
 =======
 """
+
 import os
 import random
 

@@ -5,6 +5,7 @@ GitHub utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 import os
 import re
@@ -12,7 +13,6 @@ import requests
 
 import eta.core.utils as etau
 import eta.core.web as etaw
-
 
 logger = logging.getLogger(__name__)
 

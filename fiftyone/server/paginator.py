@@ -94,7 +94,10 @@ async def get_items(
 
 def get_paginator_resolver(
     cls: t.Type[T], key: str, filters: t.List[dict], collection: str
-) -> t.Callable[[t.Optional[int], t.Optional[str], Info], Connection[T, str],]:
+) -> t.Callable[
+    [t.Optional[int], t.Optional[str], Info],
+    Connection[T, str],
+]:
     async def paginate(
         search: t.Optional[str],
         first: t.Optional[int] = LIST_LIMIT,

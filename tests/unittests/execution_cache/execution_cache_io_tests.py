@@ -5,6 +5,7 @@ Integration tests for execution_cache.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import unittest
 import fiftyone as fo
 
@@ -15,6 +16,7 @@ from fiftyone.operators.cache.utils import _build_cache_key
 from decorators import drop_datasets, drop_collection
 
 TEST_COLLECTION_NAME = "test-execution-cache"
+
 
 # Cached function that queries the dataset
 @execution_cache(ttl=60, collection_name=TEST_COLLECTION_NAME)

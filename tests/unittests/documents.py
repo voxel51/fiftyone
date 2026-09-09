@@ -9,6 +9,7 @@ To run the unit tests, use the following command:
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import unittest
 
 from mongoengine import EmbeddedDocument

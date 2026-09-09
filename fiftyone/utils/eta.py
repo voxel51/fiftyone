@@ -6,6 +6,7 @@ Utilities for interfacing with the
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import defaultdict
 import warnings
 
@@ -26,7 +27,6 @@ import eta.core.video as etav
 
 import fiftyone.core.labels as fol
 import fiftyone.core.models as fom
-
 
 _IMAGE_MODELS = (
     etal.ImageModel,

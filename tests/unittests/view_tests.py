@@ -5268,7 +5268,7 @@ class ViewStageTests(unittest.TestCase):
         self.assertEqual(type(second_stage), fosg.Select)
 
     def test_selected_samples_in_group_slices(self):
-        (dataset, selected_ids) = self._make_group_by_group_dataset()
+        dataset, selected_ids = self._make_group_by_group_dataset()
         view = dataset.view()
         self.assertEqual(view.media_type, "group")
 
