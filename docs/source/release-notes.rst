@@ -3,6 +3,153 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.25.0
+--------------------------
+*Released September 9, 2026*
+
+Includes all updates from :ref:`FiftyOne 1.22.0 <release-notes-v1.22.0>`, plus:
+
+- **Multimodal embeddings**: compute embeddings over time windows of an
+  episode's sensor streams and explore them in a new embeddings plot. Find
+  similar moments by text, point, or lasso, and click a point to jump the
+  timeline there
+- **Spatiotemporal comments**: anchor Discussion threads to a point or box
+  on a sample, video frame, or multimodal episode
+- **FiftyOne Agent built in**: use the Agent without installing a plugin.
+  Admins choose its default model, and you can attach selected samples to
+  the chat
+- **Custom workflow stages**: build your own annotation workflow stages in
+  Python and use them in the workflow editor alongside the built-in stages
+- Agentic Labeling adds Find samples, a text similarity search that suggests
+  example and test samples, and Qwen3.8 support
+- Filter multimodal datasets on events, signals, and label tags, and see
+  where each matched on the episode timeline
+- Export a single episode as MCAP, load LeRobot datasets from cloud storage,
+  and set up projections faster with clear status in Settings
+- Annotation workflows: a per-sample In progress status, labeler names in
+  the Metrics contributors table, and samples deleted mid-run are skipped
+  automatically
+- Fixes: workflow runs no longer get stuck when a stage step fails, task
+  counts stay accurate, and the MCP server starts reliably
+
+.. _release-notes-v1.22.0:
+
+FiftyOne 1.22.0
+---------------
+*Released September 9, 2026*
+
+App
+^^^
+- **LeRobot v3 datasets**: load LeRobot datasets with the new
+  `LeRobotDataset` type. Play episodes in the multimodal viewer with
+  synchronized camera streams and frame-by-frame state and action values
+  `#8341 <https://github.com/voxel51/fiftyone/pull/8341>`_,
+  `#8363 <https://github.com/voxel51/fiftyone/pull/8363>`_,
+  `#8397 <https://github.com/voxel51/fiftyone/pull/8397>`_
+- **Video timeline in Explore mode**: scrub video samples and see their
+  frame-level labels on the timeline without entering Annotate
+  `#8342 <https://github.com/voxel51/fiftyone/pull/8342>`_
+- **Audio in the multimodal viewer**: play a recording's audio tracks in
+  sync with the timeline, with per-track volume, mute, and a mixer. Long
+  recordings play without loading the whole track first
+  `#8274 <https://github.com/voxel51/fiftyone/pull/8274>`_,
+  `#8356 <https://github.com/voxel51/fiftyone/pull/8356>`_
+- Polyline tracks on video interpolate between keyframes, like detection
+  tracks
+  `#8380 <https://github.com/voxel51/fiftyone/pull/8380>`_
+- New temporal tags are pinned to the timeline, and the tag dropdown offers
+  the dataset's existing tags. The temporal tags field also loads quickly on
+  large grids
+  `#8357 <https://github.com/voxel51/fiftyone/pull/8357>`_,
+  `#8401 <https://github.com/voxel51/fiftyone/pull/8401>`_
+- Signal plots stay readable while zooming and panning. The axis fits what
+  is visible, and the plot no longer blanks while new data loads
+  `#8364 <https://github.com/voxel51/fiftyone/pull/8364>`_
+- Multimodal grid: smoother hover playback, a Cover/Contain fit option, and
+  episodes reopen instantly after a page reload
+  `#8346 <https://github.com/voxel51/fiftyone/pull/8346>`_,
+  `#8306 <https://github.com/voxel51/fiftyone/pull/8306>`_
+- Grouped point cloud slices with static transforms render aligned in the
+  world frame. Cuboids drawn there save back in each slice's own sensor frame
+  `#8316 <https://github.com/voxel51/fiftyone/pull/8316>`_,
+  `#8324 <https://github.com/voxel51/fiftyone/pull/8324>`_
+- Similarity search shows indexes that don't apply to the current view as
+  disabled, with an explanation, instead of hiding them
+  `#8352 <https://github.com/voxel51/fiftyone/pull/8352>`_
+- The timeline uses its full width when no track labels are shown
+  `#8360 <https://github.com/voxel51/fiftyone/pull/8360>`_
+- Clicking an existing label while a draw tool is active no longer selects
+  it, so dense scenes stay drawable. Use the Select tool to select labels
+  `#8318 <https://github.com/voxel51/fiftyone/pull/8318>`_
+- Fixed frame numbers in Annotate being offset from Explore and ffmpeg on
+  some videos
+  `#8410 <https://github.com/voxel51/fiftyone/pull/8410>`_
+- Fixed Annotate repeatedly re-saving after a label was deleted
+  `#8333 <https://github.com/voxel51/fiftyone/pull/8333>`_
+- Fixed camera tiles flickering during 3D label playback in the multimodal
+  viewer, and made camera and keypoint tooltips easier to hit
+  `#8340 <https://github.com/voxel51/fiftyone/pull/8340>`_
+- Fixed the modal crashing when the browser's storage is unavailable
+  `#8354 <https://github.com/voxel51/fiftyone/pull/8354>`_
+- Fixed a blank grid after a custom grid renderer error. Reloading the page
+  now recovers
+  `#8400 <https://github.com/voxel51/fiftyone/pull/8400>`_
+
+Performance
+^^^^^^^^^^^
+- Dataset grids appear up to 14x faster on first load, and multimodal grids
+  scroll faster
+  `#8325 <https://github.com/voxel51/fiftyone/pull/8325>`_,
+  `#8338 <https://github.com/voxel51/fiftyone/pull/8338>`_
+- The timeline stays responsive on samples with hundreds of tracks
+  `#8289 <https://github.com/voxel51/fiftyone/pull/8289>`_
+
+Core
+^^^^
+- Added support for Python 3.14, and `motor` is no longer a dependency
+  `#8212 <https://github.com/voxel51/fiftyone/pull/8212>`_
+- Fixed `map_samples()` occasionally losing results from its final batch
+  `#8343 <https://github.com/voxel51/fiftyone/pull/8343>`_
+- Fixed saving dates and other untyped values in `dataset.info`
+  `#8379 <https://github.com/voxel51/fiftyone/pull/8379>`_
+- Fixed CVAT skeleton keypoint import: keypoints are ordered by node and
+  hidden points are marked as `nan`
+  `#7520 <https://github.com/voxel51/fiftyone/pull/7520>`_,
+  `#8233 <https://github.com/voxel51/fiftyone/pull/8233>`_
+
+Models
+^^^^^^
+- Added DINOv3 image embedding models in four sizes to the Model Zoo, and
+  `compute_patch_embeddings()` works with Transformers models
+  `#8021 <https://github.com/voxel51/fiftyone/pull/8021>`_
+- Depth Anything V3 supports more upstream options: reference view
+  strategy, pose scale alignment, metric scale on output heatmaps, and GLB
+  export controls
+  `#7144 <https://github.com/voxel51/fiftyone/pull/7144>`_
+- Find zoo models that support text prompts with the new `text-embedding`
+  tag
+  `#8372 <https://github.com/voxel51/fiftyone/pull/8372>`_
+- Fixed RF-DETR inference with `rfdetr>=1.8`
+  `#7959 <https://github.com/voxel51/fiftyone/pull/7959>`_
+
+Datasets
+^^^^^^^^
+- Added the RoboLab manipulation benchmark, TII-RATM drone racing, RTK-SLAM
+  absolute accuracy, and Egocentric EMG-force datasets to the Dataset Zoo
+  `#8317 <https://github.com/voxel51/fiftyone/pull/8317>`_,
+  `#8367 <https://github.com/voxel51/fiftyone/pull/8367>`_,
+  `#8368 <https://github.com/voxel51/fiftyone/pull/8368>`_,
+  `#8358 <https://github.com/voxel51/fiftyone/pull/8358>`_
+
+Brain
+^^^^^
+- The pgvector backend supports IVFFlat indexes, tuned automatically to the
+  dataset size, and embeddings with more than 2000 dimensions. Requires
+  `fiftyone-brain>=0.24.1`
+  `#311 <https://github.com/voxel51/fiftyone-brain/pull/311>`_,
+  `#312 <https://github.com/voxel51/fiftyone-brain/pull/312>`_,
+  `#8307 <https://github.com/voxel51/fiftyone/pull/8307>`_
+
 FiftyOne Enterprise 2.24.1
 --------------------------
 *Released August 21, 2026*
