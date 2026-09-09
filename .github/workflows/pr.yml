@@ -147,6 +147,29 @@ jobs:
       needs.modified-files.outputs.format-changes == 'true')
     uses: ./.github/workflows/lint-app.yml
 
+  oss-merged-check:
+    # Downstream repos gate merges on an `oss / merged` status that their sync
+    # workflows post for oss-sync/* PRs. Native PRs there have no OSS
+    # counterpart, so this auto-passes the status for them. Skipped here.
+    if: >-
+      github.repository != 'voxel51/fiftyone' &&
+      !startsWith(github.head_ref, 'oss-sync/')
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+    steps:
+      - uses: actions/github-script@v9
+        with:
+          script: |
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.payload.pull_request.head.sha,
+              state: 'success',
+              context: 'oss / merged',
+              description: 'Not an OSS sync PR',
+            });
+
   lint-python:
     needs: modified-files
     if: >-
