@@ -157,14 +157,36 @@ export class SidebarPom {
     return reset.click();
   }
 
+  get modeToggle() {
+    return this.sidebar.getByTestId("sidebar-mode-status");
+  }
+
+  /**
+   * The mode toggle's tooltip; `@fiftyone/components` renders a Tooltip with
+   * the test id `tooltip-${text}`
+   */
+  modeTooltip(mode: "FILTER" | "VISIBILITY") {
+    return this.page.getByTestId(
+      mode === "FILTER"
+        ? "tooltip-Use the controls below to create filtered views into your data"
+        : "tooltip-Use the controls below to toggle the visibility of field values in the grid",
+    );
+  }
+
   async toggleSidebarMode() {
-    const toggle = this.sidebar.getByTestId("sidebar-mode-status");
-    await toggle.click();
-    // the pointer stays on the toggle after the click and its tooltip, which
-    // overlaps the grid, opens after a delay; park the pointer on the header
-    // and wait for the tooltip to unmount
-    await this.page.mouse.move(0, 0);
-    await expect(this.page.locator('[data-cy^="tooltip-"]')).toHaveCount(0);
+    const mode =
+      (await this.modeToggle.textContent()) === "FILTER"
+        ? "VISIBILITY"
+        : "FILTER";
+    await this.modeToggle.click();
+    await expect(this.modeToggle).toHaveText(mode);
+
+    // the pointer rests where the click left it, on the toggle, and its
+    // tooltip opens over the grid after a delay; rest the pointer on the
+    // entry count, which has no hover behavior, and wait for the tooltip
+    // to unmount
+    await this.page.getByTestId("entry-counts").hover();
+    await expect(this.modeTooltip(mode)).toBeHidden();
   }
 
   async toggleSidebarGroup(name: string) {
