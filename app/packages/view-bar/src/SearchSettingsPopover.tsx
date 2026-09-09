@@ -136,7 +136,7 @@ export const SearchSettingsPopover: React.FC<SearchSettingsPopoverProps> = ({
             <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
               {promptKeys.length > 0
                 ? "Choose the embedding index and how many results to return."
-                : "No similarity index yet – plain-language search needs one."}
+                : "Add a similarity index once to search this dataset in plain language."}
             </Text>
           </Stack>
 
@@ -211,7 +211,7 @@ export const SearchSettingsPopover: React.FC<SearchSettingsPopoverProps> = ({
                 Similarity Search
               </Stack>
             ) : (
-              "Set up similarity search"
+              "Create index"
             )}
           </Button>
         </Stack>

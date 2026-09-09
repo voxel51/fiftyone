@@ -3,9 +3,9 @@
  *
  * Similarity search in the bar: typing a prompt and pressing Enter appends a
  * `SortBySimilarity` stage to the current view. The box always renders —
- * without a prompt-capable index it becomes the on-ramp: its dropdown says
- * search by meaning is off, and its one action opens the Similarity Search
- * panel to set an index up.
+ * without a prompt-capable index it becomes the on-ramp: its dropdown asks
+ * for a similarity index, and its one action opens the Similarity Search
+ * panel to create one.
  *
  * The magnifying glass is where the search's settings live (which index, how
  * many results); focusing the input offers the dataset's previous queries.
@@ -190,10 +190,11 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
                   />
                   <div className={styles.emptyCopy}>
                     <Text variant={TextVariant.Sm} color={TextColor.Primary}>
-                      Search by meaning is off
+                      Describe what you’re looking for
                     </Text>
                     <Text variant={TextVariant.Xs} color={TextColor.Tertiary}>
-                      No similarity index yet – plain-language search needs one.
+                      Add a similarity index once to search this dataset in
+                      plain language.
                     </Text>
                   </div>
                   <Button
@@ -204,7 +205,7 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
                       onOpenPanel();
                     }}
                   >
-                    Set up
+                    Create index
                   </Button>
                 </div>
               )

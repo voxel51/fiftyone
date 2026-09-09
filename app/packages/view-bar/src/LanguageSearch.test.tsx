@@ -60,8 +60,8 @@ describe("LanguageSearch", () => {
       screen.getByRole("combobox", { name: LANGUAGE_SEARCH_LABEL }),
     );
     expect(onUnavailable).not.toHaveBeenCalled();
-    expect(screen.getByText("Search by meaning is off")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Set up" }));
+    expect(screen.getByText("Describe what you’re looking for")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Create index" }));
     expect(onOpenPanel).toHaveBeenCalledTimes(1);
   });
 
