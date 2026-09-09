@@ -10,27 +10,28 @@ video with thermal and acoustic sensing, as native `.mcap` episodes.
 
 A copper surface is driven past the onset of boiling while a high-speed camera
 watches from the side and a hydrophone, a microphone and an acoustic-emission
-sensor listen. Boiling changes character before it changes appearance, and
-every modality carries a recorded clock offset against the temperature
-acquisition, so the sound, the surface temperature and the frames sit on one
-timeline.
+sensor listen. Boiling changes character before it changes appearance, and the
+sensor streams carry a recorded clock offset against the temperature
+acquisition, so the sound and the surface temperature sit on one timeline.
 
-Each pool-boiling episode carries the camera, surface temperature and heat
-flux, the four embedded thermocouples, acoustic band power and characteristic
-frequencies per sensor, per-hit acoustic-emission parameters, and the
-release's derived markers stamped where they were found: departure from
-nucleate boiling, the surface temperature peak, the critical-heat-flux marker
-and the DC power start and shutoff. Two closed-loop immersion-cooling runs are
-carried alongside them, recorded in infrared with HFE-7100 and water.
+Each pool-boiling episode carries surface temperature and heat flux, the four
+embedded thermocouples, acoustic band power and characteristic frequencies per
+sensor, per-hit acoustic-emission parameters, and the release's derived
+markers stamped where they were found: departure from nucleate boiling, the
+surface temperature peak, the critical-heat-flux marker and the DC power start
+and shutoff. Every episode but the hydrophone reference run also carries the
+camera. Two closed-loop immersion-cooling runs are carried alongside them,
+recorded in infrared with HFE-7100 and water.
 
 Seven episodes and 1.72 hours of recording, holding 389,483 camera frames,
 3,392,459 thermal samples and 171,970 acoustic-emission hits.
 
 The critical-heat-flux figures are the release's own screening markers rather
 than validated measurements, and each episode carries the source's
-``chf_event_status`` beside them. The camera carries no clock offset of its
-own, so its frames are placed by scaling container time onto the run; each
-episode records the ``video_time_scale`` it was placed with.
+``chf_event_status`` beside them. The high-speed camera carries no clock
+offset of its own, so its frames are placed by scaling container time onto the
+run and those episodes record the ``video_time_scale`` they were placed with.
+The infrared frames carry their own timestamps.
 
 **Details**
 
