@@ -76,9 +76,7 @@ class MapAnythingModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         self.hf_repo = self.parse_string(
             d, "hf_repo", default=DEFAULT_MAPANYTHING_MODEL
         )
-        self.output_type = self.parse_string(
-            d, "output_type", default="depth"
-        )
+        self.output_type = self.parse_string(d, "output_type", default="depth")
         if self.output_type not in self.VALID_OUTPUT_TYPES:
             raise ValueError(
                 f"output_type must be one of {self.VALID_OUTPUT_TYPES}, "
@@ -195,9 +193,7 @@ class MapAnythingModel(fout.TorchImageModel):
             for img in imgs:
                 pil_img = self._to_pil(img)
 
-                tmp = tempfile.NamedTemporaryFile(
-                    suffix=".png", delete=False
-                )
+                tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
                 tmp.close()
                 pil_img.save(tmp.name)
 
@@ -223,9 +219,7 @@ class MapAnythingModel(fout.TorchImageModel):
                 pred = preds[0]
 
                 if self._output_type == "depth":
-                    depth = (
-                        pred["depth_z"][0].squeeze(-1).cpu().numpy()
-                    )
+                    depth = pred["depth_z"][0].squeeze(-1).cpu().numpy()
                     depth = np.clip(depth, 0, None)
                     depth_max = depth.max()
                     if depth_max > 0:
@@ -245,11 +239,7 @@ class MapAnythingModel(fout.TorchImageModel):
                         )
                     )
                     mask = (
-                        pred["mask"][0]
-                        .squeeze(-1)
-                        .cpu()
-                        .numpy()
-                        .astype(bool)
+                        pred["mask"][0].squeeze(-1).cpu().numpy().astype(bool)
                         & valid.cpu().numpy()
                     )
                     pts3d_np = pts3d.cpu().numpy()

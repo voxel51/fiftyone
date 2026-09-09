@@ -18,10 +18,10 @@ from unittest.mock import patch, MagicMock
 import fiftyone.core.labels as fol
 import fiftyone.utils.mapanything as _ma_module
 
-
 # ---------------------------------------------------------------------------
 # Prevent lazy-import callbacks from triggering `pip install` in CI
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(autouse=True)
 def _mock_mapanything_deps():
@@ -42,6 +42,7 @@ def _mock_mapanything_deps():
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_model(output_type="depth"):
     """Create a minimal MapAnythingModel without loading weights."""
@@ -98,67 +99,81 @@ def _patch_depthmap_to_world(pts3d, valid):
 # Config (16 tests)
 # ===================================================================
 
+
 class TestMapAnythingModelConfig:
     """Test MapAnythingModelConfig parsing and defaults."""
 
     def test_default_hf_repo(self):
         from fiftyone.utils.mapanything import MapAnythingModelConfig
+
         config = MapAnythingModelConfig({})
         assert config.hf_repo == "facebook/map-anything-apache"
 
     def test_default_output_type(self):
         from fiftyone.utils.mapanything import MapAnythingModelConfig
+
         config = MapAnythingModelConfig({})
         assert config.output_type == "depth"
 
     def test_default_use_amp(self):
         from fiftyone.utils.mapanything import MapAnythingModelConfig
+
         config = MapAnythingModelConfig({})
         assert config.use_amp is True
 
     def test_default_amp_dtype(self):
         from fiftyone.utils.mapanything import MapAnythingModelConfig
+
         config = MapAnythingModelConfig({})
         assert config.amp_dtype == "bf16"
 
     def test_custom_hf_repo(self):
         from fiftyone.utils.mapanything import MapAnythingModelConfig
+
         config = MapAnythingModelConfig({"hf_repo": "facebook/map-anything"})
         assert config.hf_repo == "facebook/map-anything"
 
     def test_output_type_depth(self):
         from fiftyone.utils.mapanything import MapAnythingModelConfig
+
         config = MapAnythingModelConfig({"output_type": "depth"})
         assert config.output_type == "depth"
 
     def test_output_type_pointcloud(self):
         from fiftyone.utils.mapanything import MapAnythingModelConfig
+
         config = MapAnythingModelConfig({"output_type": "pointcloud"})
         assert config.output_type == "pointcloud"
 
     def test_use_amp_false(self):
         from fiftyone.utils.mapanything import MapAnythingModelConfig
+
         config = MapAnythingModelConfig({"use_amp": False})
         assert config.use_amp is False
 
     def test_amp_dtype_fp16(self):
         from fiftyone.utils.mapanything import MapAnythingModelConfig
+
         config = MapAnythingModelConfig({"amp_dtype": "fp16"})
         assert config.amp_dtype == "fp16"
 
     def test_amp_dtype_fp32(self):
         from fiftyone.utils.mapanything import MapAnythingModelConfig
+
         config = MapAnythingModelConfig({"amp_dtype": "fp32"})
         assert config.amp_dtype == "fp32"
 
     def test_combined_depth(self):
         from fiftyone.utils.mapanything import MapAnythingModelConfig
-        config = MapAnythingModelConfig({
-            "hf_repo": "facebook/map-anything-apache",
-            "output_type": "depth",
-            "use_amp": True,
-            "amp_dtype": "bf16",
-        })
+
+        config = MapAnythingModelConfig(
+            {
+                "hf_repo": "facebook/map-anything-apache",
+                "output_type": "depth",
+                "use_amp": True,
+                "amp_dtype": "bf16",
+            }
+        )
         assert config.hf_repo == "facebook/map-anything-apache"
         assert config.output_type == "depth"
         assert config.use_amp is True
@@ -166,12 +181,15 @@ class TestMapAnythingModelConfig:
 
     def test_combined_pointcloud(self):
         from fiftyone.utils.mapanything import MapAnythingModelConfig
-        config = MapAnythingModelConfig({
-            "hf_repo": "facebook/map-anything",
-            "output_type": "pointcloud",
-            "use_amp": False,
-            "amp_dtype": "fp32",
-        })
+
+        config = MapAnythingModelConfig(
+            {
+                "hf_repo": "facebook/map-anything",
+                "output_type": "pointcloud",
+                "use_amp": False,
+                "amp_dtype": "fp32",
+            }
+        )
         assert config.hf_repo == "facebook/map-anything"
         assert config.output_type == "pointcloud"
         assert config.use_amp is False
@@ -181,25 +199,31 @@ class TestMapAnythingModelConfig:
         from fiftyone.utils.mapanything import MapAnythingModelConfig
         import fiftyone.utils.torch as fout
         import fiftyone.zoo.models as fozm
+
         config = MapAnythingModelConfig({})
         assert isinstance(config, fout.TorchImageModelConfig)
         assert isinstance(config, fozm.HasZooModel)
 
     def test_unknown_keys_ignored(self):
         from fiftyone.utils.mapanything import MapAnythingModelConfig
-        config = MapAnythingModelConfig({
-            "hf_repo": "facebook/map-anything-apache",
-            "totally_bogus_key": 42,
-        })
+
+        config = MapAnythingModelConfig(
+            {
+                "hf_repo": "facebook/map-anything-apache",
+                "totally_bogus_key": 42,
+            }
+        )
         assert config.hf_repo == "facebook/map-anything-apache"
 
     def test_empty_string_hf_repo(self):
         from fiftyone.utils.mapanything import MapAnythingModelConfig
+
         config = MapAnythingModelConfig({"hf_repo": ""})
         assert config.hf_repo == ""
 
     def test_output_type_invalid_raises(self):
         from fiftyone.utils.mapanything import MapAnythingModelConfig
+
         with pytest.raises(ValueError, match="output_type must be one of"):
             MapAnythingModelConfig({"output_type": "mesh"})
 
@@ -207,6 +231,7 @@ class TestMapAnythingModelConfig:
 # ===================================================================
 # Input conversion — _to_pil (14 tests)
 # ===================================================================
+
 
 class TestMapAnythingToPil:
     """Test MapAnythingModel._to_pil input conversion."""
@@ -310,6 +335,7 @@ class TestMapAnythingToPil:
 # Depth output processor (12 tests)
 # ===================================================================
 
+
 class TestDepthOutput:
     """Test depth heatmap output path."""
 
@@ -407,16 +433,23 @@ class TestDepthOutput:
 # Pointcloud output processor (12 tests)
 # ===================================================================
 
+
 class TestPointcloudOutput:
     """Test pointcloud output path."""
 
-    def _run_pointcloud(self, mask_tensor=None, valid_tensor=None, h=518, w=518):
+    def _run_pointcloud(
+        self, mask_tensor=None, valid_tensor=None, h=518, w=518
+    ):
         model = _make_model("pointcloud")
         pred = _mock_pred(h, w)
         if mask_tensor is not None:
             pred["mask"] = [mask_tensor]
         pts3d = torch.rand(h, w, 3)
-        valid = valid_tensor if valid_tensor is not None else torch.ones(h, w, dtype=torch.bool)
+        valid = (
+            valid_tensor
+            if valid_tensor is not None
+            else torch.ones(h, w, dtype=torch.bool)
+        )
         _patch_infer(model, pred)
         with _patch_load_images(), _patch_depthmap_to_world(pts3d, valid):
             result = model._predict_all([Image.new("RGB", (64, 64))])
@@ -453,7 +486,7 @@ class TestPointcloudOutput:
         """Half of mask false → roughly half the points."""
         h, w = 518, 518
         mask = torch.ones(h, w, 1)
-        mask[:h // 2, :, :] = 0
+        mask[: h // 2, :, :] = 0
         result, _, _ = self._run_pointcloud(mask_tensor=mask)
         assert len(result[0].points3d) < h * w
 
@@ -480,7 +513,10 @@ class TestPointcloudOutput:
         valid = torch.ones(h, w, dtype=torch.bool)
         valid[75:, :] = False
         result, _, _ = self._run_pointcloud(
-            mask_tensor=mask, valid_tensor=valid, h=h, w=w,
+            mask_tensor=mask,
+            valid_tensor=valid,
+            h=h,
+            w=w,
         )
         assert len(result[0].points3d) == 50 * 100
 
@@ -496,6 +532,7 @@ class TestPointcloudOutput:
 # ===================================================================
 # Inference — _predict_all control flow (14 tests)
 # ===================================================================
+
 
 class TestPredictAll:
     """Test _predict_all orchestration logic."""
@@ -626,6 +663,7 @@ class TestPredictAll:
 # Input image variations (10 tests)
 # ===================================================================
 
+
 class TestInputVariations:
     """Test _predict_all with varied input types and sizes."""
 
@@ -677,6 +715,7 @@ class TestInputVariations:
 # ===================================================================
 # Determinism and consistency (6 tests)
 # ===================================================================
+
 
 class TestDeterminism:
     """Test that same input produces same output."""
@@ -748,6 +787,7 @@ class TestDeterminism:
 # Model properties (4 tests)
 # ===================================================================
 
+
 class TestModelProperties:
     """Test model attribute accessors."""
 
@@ -773,6 +813,7 @@ class TestModelProperties:
 # ===================================================================
 # Manifest entry (6 tests)
 # ===================================================================
+
 
 class TestManifestEntry:
     """Test the manifest-torch.json entry is well-formed."""
@@ -804,8 +845,10 @@ class TestManifestEntry:
         assert "map-anything-apache" in manifest["source"]
 
     def test_type_path(self, manifest):
-        assert manifest["default_deployment_config_dict"]["type"] == \
-            "fiftyone.utils.mapanything.MapAnythingModel"
+        assert (
+            manifest["default_deployment_config_dict"]["type"]
+            == "fiftyone.utils.mapanything.MapAnythingModel"
+        )
 
     def test_tags_contain_3d(self, manifest):
         assert "3d" in manifest["tags"]
@@ -820,6 +863,7 @@ class TestManifestEntry:
 # ===================================================================
 # Batch processing (12 tests)
 # ===================================================================
+
 
 class TestBatchProcessing:
     """Test batch inference behavior."""
@@ -945,9 +989,7 @@ class TestBatchProcessing:
             _mock_pred(depth_val=10.0),
         ]
         model._model = MagicMock()
-        model._model.infer = MagicMock(
-            side_effect=[[p] for p in preds]
-        )
+        model._model.infer = MagicMock(side_effect=[[p] for p in preds])
 
         imgs = [Image.new("RGB", (64, 64)) for _ in range(3)]
         with _patch_load_images():
@@ -966,18 +1008,21 @@ class TestBatchProcessing:
         h, w = 100, 100
         pred_full = _mock_pred(h, w)
         pred_half = _mock_pred(h, w)
-        pred_half["mask"] = [torch.cat([
-            torch.ones(h // 2, w, 1),
-            torch.zeros(h // 2, w, 1),
-        ], dim=0)]
+        pred_half["mask"] = [
+            torch.cat(
+                [
+                    torch.ones(h // 2, w, 1),
+                    torch.zeros(h // 2, w, 1),
+                ],
+                dim=0,
+            )
+        ]
 
         pts3d = torch.rand(h, w, 3)
         valid = torch.ones(h, w, dtype=torch.bool)
 
         model._model = MagicMock()
-        model._model.infer = MagicMock(
-            side_effect=[[pred_full], [pred_half]]
-        )
+        model._model.infer = MagicMock(side_effect=[[pred_full], [pred_half]])
 
         imgs = [Image.new("RGB", (64, 64)), Image.new("RGB", (64, 64))]
         with _patch_load_images(), _patch_depthmap_to_world(pts3d, valid):
