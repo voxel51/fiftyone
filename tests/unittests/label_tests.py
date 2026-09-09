@@ -947,8 +947,10 @@ class ExportMaskTests(unittest.TestCase):
             with self.subTest(case["id"]):
                 with tempfile.TemporaryDirectory() as tmp:
                     src = os.path.join(tmp, "original.png")
-                    dst = src if case["overwrite_path"] else os.path.join(
-                        tmp, "copy.png"
+                    dst = (
+                        src
+                        if case["overwrite_path"]
+                        else os.path.join(tmp, "copy.png")
                     )
                     _write_mask(self._ZEROS, src)
 
@@ -1001,9 +1003,7 @@ class ExportMaskTests(unittest.TestCase):
                         _write_mask(self._ZEROS, mp)
                         outpath = mp
 
-                    det = self._make_detection(
-                        mask=case["mask"], mask_path=mp
-                    )
+                    det = self._make_detection(mask=case["mask"], mask_path=mp)
                     with self.assertRaises(ValueError, msg=case["id"]):
                         det.export_mask(
                             outpath, overwrite_path=case["overwrite_path"]
