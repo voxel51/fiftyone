@@ -10,7 +10,6 @@ Model Zoo.
 import json
 import logging
 import re
-from typing import Any, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -25,7 +24,7 @@ import torch
 logger = logging.getLogger(__name__)
 
 
-def _ensure_qwen3_8() -> None:
+def _ensure_qwen3_8():
     # Qwen3.8 reports model_type "qwen3_5"
     fou.ensure_package("transformers>=5.8.0")
     fou.ensure_package("accelerate")
@@ -34,9 +33,6 @@ def _ensure_qwen3_8() -> None:
 transformers = fou.lazy_import("transformers", callback=_ensure_qwen3_8)
 
 from PIL import Image as PILImage
-
-# Anything fout.to_rgb_pil accepts
-ImageLike = Union[str, np.ndarray, torch.Tensor, PILImage.Image]
 
 DEFAULT_QWEN3_8_MODEL = "Qwen/Qwen3.8-27B"
 
@@ -76,11 +72,11 @@ class Qwen38OutputProcessor(fout.OutputProcessor):
 
     def __call__(
         self,
-        output: Sequence[str],
-        frame_size: Tuple[int, int],
-        confidence_thresh: Optional[float] = None,
-        **kwargs: Any,
-    ) -> List[fol.Detections]:
+        output,
+        frame_size,
+        confidence_thresh=None,
+        **kwargs,
+    ):
         """Processes model output into detections.
 
         Args:
@@ -101,7 +97,7 @@ class Qwen38OutputProcessor(fout.OutputProcessor):
         return results
 
     @staticmethod
-    def _extract_answer(raw_output: Optional[str]) -> str:
+    def _extract_answer(raw_output):
         """Return the committed answer, or ``""`` when the model never
         closed its reasoning block.
 
@@ -120,14 +116,12 @@ class Qwen38OutputProcessor(fout.OutputProcessor):
         return Qwen38OutputProcessor._strip_turn_ends(answer)
 
     @staticmethod
-    def _strip_turn_ends(text: str) -> str:
+    def _strip_turn_ends(text):
         for marker in _TURN_ENDS:
             text = text.split(marker)[0]
         return text.strip()
 
-    def _parse_detections(
-        self, raw_output: str, frame_size: Tuple[int, int]
-    ) -> List[fol.Detection]:
+    def _parse_detections(self, raw_output, frame_size):
         """Parse an answer payload into Detection objects."""
         detections = []
 
@@ -228,7 +222,7 @@ class Qwen38ModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
             that can hold it
     """
 
-    def __init__(self, d: dict) -> None:
+    def __init__(self, d):
         d = self.init(d)
         super().__init__(d)
 
@@ -292,14 +286,14 @@ class Qwen38Model(fout.TorchImageModel):
         config: a :class:`Qwen38ModelConfig`
     """
 
-    def __init__(self, config: "Qwen38ModelConfig") -> None:
+    def __init__(self, config):
         self._processor = None
         super().__init__(config)
 
-    def _download_model(self, config: "Qwen38ModelConfig") -> None:
+    def _download_model(self, config):
         pass
 
-    def _load_model(self, config: "Qwen38ModelConfig") -> torch.nn.Module:
+    def _load_model(self, config):
         # Checked before transformers is resolved, so an invalid
         # configuration does not first pull in the library
         if config.load_in_4bit and not self._using_gpu:
@@ -347,7 +341,7 @@ class Qwen38Model(fout.TorchImageModel):
 
         return model
 
-    def _get_prompt(self) -> str:
+    def _get_prompt(self):
         if self.config.prompt is not None:
             return self.config.prompt
 
@@ -360,7 +354,7 @@ class Qwen38Model(fout.TorchImageModel):
 
         return DEFAULT_DETECTION_PROMPT
 
-    def _forward_pass(self, imgs: Sequence[Any]) -> List[str]:
+    def _forward_pass(self, imgs):
         prompt = self._get_prompt()
         results = []
 
@@ -410,7 +404,7 @@ class Qwen38Model(fout.TorchImageModel):
 
         return results
 
-    def _prepare_image(self, img: ImageLike) -> PILImage.Image:
+    def _prepare_image(self, img):
         """Converts image-like input to an RGB PIL image for the processor.
 
         ``fout.to_rgb_pil`` expects channel-last layout and reads float
