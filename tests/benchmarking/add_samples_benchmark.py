@@ -7,6 +7,7 @@ Results are written to `add_samples_benchmark.log`.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 import os
 
@@ -14,7 +15,6 @@ import eta.core.logging as etal
 
 import fiftyone as fo
 import fiftyone.zoo as foz
-
 
 logger = logging.getLogger(__name__)
 

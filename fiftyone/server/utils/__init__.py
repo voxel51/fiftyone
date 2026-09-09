@@ -19,7 +19,6 @@ import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 from fiftyone.server.utils import http, json
 
-
 _cache = cachetools.TTLCache(maxsize=10, ttl=900)  # ttl in seconds
 _dacite_config = Config(check_types=False)
 

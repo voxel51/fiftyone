@@ -5,6 +5,7 @@ FiftyOne types.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import types
 
 from .dataset_types import *
