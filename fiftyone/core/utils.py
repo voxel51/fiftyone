@@ -2654,12 +2654,19 @@ def iter_slices(sliceable, batch_size):
         from the input
 
     Raises:
-        ValueError: if a dict-like ``sliceable`` has values with mismatched
+        ValueError: if ``batch_size`` is not a positive integer or ``None``,
+            or if a dict-like ``sliceable`` has values with mismatched
             lengths
     """
     if batch_size is None:
         yield sliceable
         return
+
+    if not isinstance(batch_size, numbers.Integral) or batch_size < 1:
+        raise ValueError(
+            "batch_size must be a positive integer or None; found %r"
+            % (batch_size,)
+        )
 
     if isinstance(sliceable, Mapping):
         # dict-like batches (eg HuggingFace ``BatchFeature``) are sliced
