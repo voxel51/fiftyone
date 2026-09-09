@@ -6,7 +6,7 @@ import { ModalPom } from "src/oss/poms/modal";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
-const datasetName = getUniqueDatasetNameWithPrefix("quickstart-groups");
+const datasetName = getUniqueDatasetNameWithPrefix("groups");
 
 const FIRST_SAMPLE_FILENAME = "left-0.png";
 const SECOND_SAMPLE_FILENAME = "left-1.png";
@@ -53,7 +53,7 @@ test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   });
 });
 
-test.describe.serial("quickstart-groups", () => {
+test.describe.serial("groups", () => {
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });

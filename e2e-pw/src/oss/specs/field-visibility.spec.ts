@@ -4,7 +4,7 @@ import { GridPom } from "src/oss/poms/grid";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
-const datasetName = getUniqueDatasetNameWithPrefix("smoke-quickstart");
+const datasetName = getUniqueDatasetNameWithPrefix("smoke-field-visibility");
 
 const test = base.extend<{
   fieldVisibility: FieldVisibilityPom;

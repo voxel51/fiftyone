@@ -4,7 +4,7 @@ import { ModalPom } from "src/oss/poms/modal";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
-const datasetName = getUniqueDatasetNameWithPrefix("quickstart-groups-dynamic");
+const datasetName = getUniqueDatasetNameWithPrefix("groups-dynamic");
 
 // 16 groups paired into 8 dynamic groups of 2, ordered within each pair
 const NUM_GROUPS = 16;
@@ -51,7 +51,7 @@ test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   });
 });
 
-test.describe.serial("quickstart-groups", () => {
+test.describe.serial("groups-dynamic", () => {
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ view: "dynamic" }),

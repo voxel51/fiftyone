@@ -4,7 +4,7 @@ import { ModalPom } from "src/oss/poms/modal";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
-const datasetName = getUniqueDatasetNameWithPrefix("smoke-quickstart");
+const datasetName = getUniqueDatasetNameWithPrefix("smoke-grid");
 
 // 14 predictions over 8 distinct labels
 const PREDICTIONS = [
@@ -64,7 +64,7 @@ test.afterEach(async ({ modal, page }) => {
   await page.reload();
 });
 
-test.describe.serial("quickstart", () => {
+test.describe.serial("grid-smoke", () => {
   test("smoke", async ({ eventUtils, grid, modal, sidebar }) => {
     await grid.assert.isEntryCountTextEqualTo("5 samples");
 

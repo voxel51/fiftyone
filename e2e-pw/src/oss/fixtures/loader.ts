@@ -1,5 +1,5 @@
 import { Page } from "@playwright/test";
-import { getPythonCommand, getStringifiedKwargs } from "src/oss/utils/commands";
+import { getPythonCommand } from "src/oss/utils/commands";
 import {
   AbstractFiftyoneLoader,
   WaitUntilGridVisibleOptions,
@@ -22,36 +22,6 @@ export class OssLoader extends AbstractFiftyoneLoader {
   constructor() {
     super();
     this.pythonRunner = new PythonRunner(getPythonCommand);
-  }
-
-  async loadZooDataset(
-    zooDatasetName: string,
-    id: string,
-    kwargs: Record<string, string> = {},
-  ) {
-    const kwargsStringified = getStringifiedKwargs(kwargs);
-
-    return this.pythonRunner.exec(`
-      import fcntl
-      import os
-
-      import fiftyone as fo
-      import fiftyone.zoo as foz
-
-      # parallel workers share the zoo download cache; an exclusive lock per
-      # dataset serializes the download, after which loads are cache hits
-      os.makedirs(fo.config.dataset_zoo_dir, exist_ok=True)
-      lock_path = os.path.join(
-        fo.config.dataset_zoo_dir, ".${zooDatasetName}.lock"
-      )
-      with open(lock_path, "w") as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX)
-        dataset = foz.load_zoo_dataset(
-          "${zooDatasetName}", dataset_name="${id}"${kwargsStringified}
-        )
-
-      dataset.persistent = True
-    `);
   }
 
   async loadTestDataset() {

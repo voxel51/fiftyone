@@ -3,7 +3,7 @@ import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
-const datasetName = getUniqueDatasetNameWithPrefix("smoke-quickstart");
+const datasetName = getUniqueDatasetNameWithPrefix("smoke-dynamic-embedded-documents");
 
 const test = base.extend<{
   grid: GridPom;
