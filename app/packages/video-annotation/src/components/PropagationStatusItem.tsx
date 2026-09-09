@@ -14,9 +14,9 @@ import {
 import React from "react";
 
 /**
- * Right-hand top-bar status content for an in-flight propagation run. Drive
- * it through {@link useAnnotationStatus}'s `setContent`: re-set on each
- * progress tick and clear (`null`) on completion. The `done`/`total` count
+ * Modal status bar content for an in-flight propagation run. Drive it
+ * through `useModalStatusBar`'s `setContent`: re-set on each progress tick
+ * and clear (`null`) on completion. The `done`/`total` count
  * is shown only when both are provided — omit them for indeterminate phases
  * (e.g. one-time model download). `onStop`, when provided, renders a Stop
  * button — propagation polls the same flag via `shouldAbort`.

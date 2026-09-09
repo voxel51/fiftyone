@@ -7,6 +7,7 @@ import {
   useActiveSampleId,
   useAgentRegistry,
   useAnnotationEngine,
+  useModalStatusBar,
   useSampleDescriptor,
 } from "@fiftyone/annotation";
 import {
@@ -21,7 +22,6 @@ import {
   useApplyPropagatedDetection,
   useApplyPropagationResult,
 } from "../propagation/useApplyPropagationResult";
-import { useAnnotationStatus } from "@fiftyone/annotation";
 import { useFrameLabelsStream } from "../streams/frameLabelsStream";
 import { useImaVidImageStream } from "../streams/imaVidImageStreamHandle";
 
@@ -141,7 +141,7 @@ const useSam2Propagate = () => {
   const resolveAgent = useResolveAgent();
   const sampleDescriptor = useSampleDescriptor();
   const applyPropagatedDetection = useApplyPropagatedDetection();
-  const { setContent: setStatusContent } = useAnnotationStatus();
+  const { setContent: setStatusContent } = useModalStatusBar();
 
   return useCallback(
     async (args: PropagateArgs): Promise<boolean> => {

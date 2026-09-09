@@ -1,3 +1,4 @@
+import { type StatusContent, useModalStatusBar } from "@fiftyone/annotation";
 import {
   useInferenceStatus,
   useToolsContext,
@@ -7,7 +8,6 @@ import { useCurrent3dAnnotationMode } from "@fiftyone/looker-3d/src/state/access
 import type { PolylineAnnotationLabel } from "@fiftyone/state";
 import { useAtomValue } from "jotai";
 import { useEffect, useMemo } from "react";
-import { StatusContent, useModalStatusBar } from "../../../ModalStatusBar";
 import {
   AISegmentationStatus,
   BrushStatus,
