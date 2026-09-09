@@ -3,3 +3,15 @@
 .panel {
   width: 360px;
 }
+
+/* The index picker spans the panel like the fields beside it; the double
+   class outranks the dropdown's inline-block utility */
+.picker.picker {
+  display: block;
+  width: 100%;
+}
+
+.pickerTrigger {
+  width: 100%;
+  justify-content: space-between;
+}

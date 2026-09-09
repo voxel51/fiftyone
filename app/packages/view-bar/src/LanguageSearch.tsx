@@ -36,7 +36,7 @@ import React from "react";
 import styles from "./LanguageSearch.module.css";
 import { SearchSettingsPopover } from "./SearchSettingsPopover";
 
-export const LANGUAGE_SEARCH_LABEL = "Search by natural language";
+export const LANGUAGE_SEARCH_LABEL = "Search or ask in natural language";
 
 export interface LanguageSearchProps {
   onSubmit: (query: string) => void;

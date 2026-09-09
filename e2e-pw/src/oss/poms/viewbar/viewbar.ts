@@ -38,7 +38,7 @@ export class ViewBarPom {
   /** The similarity search field in the bar's first row (a voodo Combobox). */
   get searchInput() {
     return this.locator.getByRole("combobox", {
-      name: "Search by natural language",
+      name: "Search or ask in natural language",
     });
   }
 

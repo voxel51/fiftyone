@@ -12,13 +12,17 @@ import type { PromptableSimilarityIndex } from "@fiftyone/state";
 import {
   Align,
   Button,
+  Dropdown,
+  DropdownAnchor,
+  DropdownTrigger,
   Icon,
   IconName,
   Input,
   InputType,
+  Justify,
+  MenuTextItem,
   Orientation,
   Popover,
-  Select,
   Size,
   Spacing,
   Stack,
@@ -26,7 +30,6 @@ import {
   TextColor,
   TextVariant,
   Variant,
-  ZIndex,
 } from "@voxel51/voodo";
 import React from "react";
 
@@ -107,94 +110,112 @@ export const SearchSettingsPopover: React.FC<SearchSettingsPopoverProps> = ({
   k,
   onChangeK,
   onOpenPanel,
-}) => (
-  <Popover
-    trigger={trigger}
-    panelClassName={styles.panel}
-    // Focus stays on the magnifier: moving it into the panel lands on the
-    // index picker, which opens its list on focus — a menu nobody asked for —
-    // and moving it back on close leaves the magnifier wearing a focus ring
-    focusOnOpen={false}
-  >
-    {({ close }) => (
-      <Stack
-        role="dialog"
-        aria-label="Search settings"
-        data-cy="view-bar-search-settings"
-        orientation={Orientation.Column}
-        spacing={Spacing.Md}
-      >
-        <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
-          <Text variant={TextVariant.Md} color={TextColor.Primary}>
-            Search settings
-          </Text>
-          <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
-            {promptKeys.length > 0
-              ? "Choose the embedding index and how many results to return."
-              : "No similarity index yet – plain-language search needs one."}
-          </Text>
-        </Stack>
-
-        {promptKeys.length > 0 && (
-          <>
-            <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
-              <Text variant={TextVariant.Label} color={TextColor.Tertiary}>
-                Index
-              </Text>
-              <Select
-                aria-label="Index"
-                data-cy="search-settings-indexes"
-                exclusive
-                portal
-                // The menu must land above the popover panel, not under it
-                zIndex={ZIndex.AboveModal}
-                value={selectedKey ?? undefined}
-                onChange={(value) => {
-                  if (typeof value === "string") {
-                    onSelectKey(value);
-                  }
-                }}
-                options={promptKeys.map((index) => ({
-                  id: index.key,
-                  data: { label: describeIndex(index) },
-                }))}
-              />
-            </Stack>
-            <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
-              <Text variant={TextVariant.Label} color={TextColor.Tertiary}>
-                Results
-              </Text>
-              <ResultsInput k={k} onChangeK={onChangeK} />
-            </Stack>
-          </>
-        )}
-
-        <Button
-          variant={Variant.Secondary}
-          size={Size.Sm}
-          data-cy="search-settings-open-panel"
-          onClick={() => {
-            onOpenPanel();
-            close();
-          }}
+}) => {
+  const selected = promptKeys.find((index) => index.key === selectedKey);
+  return (
+    <Popover
+      trigger={trigger}
+      panelClassName={styles.panel}
+      // Focus stays on the magnifier: moving it into the panel lands on the
+      // index picker, which opens its list on focus — a menu nobody asked for —
+      // and moving it back on close leaves the magnifier wearing a focus ring
+      focusOnOpen={false}
+    >
+      {({ close }) => (
+        <Stack
+          role="dialog"
+          aria-label="Search settings"
+          data-cy="view-bar-search-settings"
+          orientation={Orientation.Column}
+          spacing={Spacing.Md}
         >
-          {promptKeys.length > 0 ? (
-            <Stack
-              orientation={Orientation.Row}
-              align={Align.Center}
-              spacing={Spacing.Xs}
-            >
-              Open
-              {/* the Similarity Search panel's own icon, so the button
-                    reads as a pointer to that panel */}
-              <Icon name={IconName.ImageSearch} size={Size.Sm} />
-              Similarity Search
-            </Stack>
-          ) : (
-            "Set up similarity search"
+          <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+            <Text variant={TextVariant.Md} color={TextColor.Primary}>
+              Search settings
+            </Text>
+            <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+              {promptKeys.length > 0
+                ? "Choose the embedding index and how many results to return."
+                : "No similarity index yet – plain-language search needs one."}
+            </Text>
+          </Stack>
+
+          {promptKeys.length > 0 && (
+            <>
+              <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
+                <Text variant={TextVariant.Label} color={TextColor.Tertiary}>
+                  Index
+                </Text>
+                {/* A menu, not a combobox: picking one of a few known indexes
+                  is a choice, and a field that accepted typing offered a
+                  search nobody needs and opened itself on focus */}
+                <Dropdown
+                  anchor={DropdownAnchor.BottomStart}
+                  className={styles.picker}
+                  data-cy="search-settings-indexes"
+                  trigger={
+                    <DropdownTrigger className={styles.pickerTrigger}>
+                      {selected ? describeIndex(selected) : "Choose an index"}
+                    </DropdownTrigger>
+                  }
+                >
+                  {promptKeys.map((index) => (
+                    <MenuTextItem
+                      key={index.key}
+                      aria-current={index.key === selectedKey}
+                      onClick={() => onSelectKey(index.key)}
+                    >
+                      <Stack
+                        orientation={Orientation.Row}
+                        align={Align.Center}
+                        justify={Justify.Between}
+                        spacing={Spacing.Sm}
+                      >
+                        {describeIndex(index)}
+                        {index.key === selectedKey && (
+                          <Icon name={IconName.Check} size={Size.Sm} />
+                        )}
+                      </Stack>
+                    </MenuTextItem>
+                  ))}
+                </Dropdown>
+              </Stack>
+              <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
+                <Text variant={TextVariant.Label} color={TextColor.Tertiary}>
+                  Results
+                </Text>
+                <ResultsInput k={k} onChangeK={onChangeK} />
+              </Stack>
+            </>
           )}
-        </Button>
-      </Stack>
-    )}
-  </Popover>
-);
+
+          <Button
+            variant={Variant.Secondary}
+            size={Size.Sm}
+            data-cy="search-settings-open-panel"
+            onClick={() => {
+              onOpenPanel();
+              close();
+            }}
+          >
+            {promptKeys.length > 0 ? (
+              <Stack
+                orientation={Orientation.Row}
+                align={Align.Center}
+                spacing={Spacing.Xs}
+              >
+                Open
+                {/* the Similarity Search panel's own icon, so the button
+                    reads as a pointer to that panel */}
+                <Icon name={IconName.ImageSearch} size={Size.Sm} />
+                Similarity Search
+              </Stack>
+            ) : (
+              "Set up similarity search"
+            )}
+          </Button>
+        </Stack>
+      )}
+    </Popover>
+  );
+};
