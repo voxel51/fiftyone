@@ -74,9 +74,7 @@ class Metadata(DynamicEmbeddedDocument):
 
         with requests.get(url, stream=True) as r:
             r.raise_for_status()
-            size_bytes = fou.ResponseStream(
-                r, chunk_size=2**10
-            ).consume_size()
+            size_bytes = fou.ResponseStream(r, chunk_size=2**10).consume_size()
 
         return cls(size_bytes=size_bytes, mime_type=mime_type)
 

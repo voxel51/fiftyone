@@ -47,7 +47,6 @@ from .parsers import (
     FiftyOneVideoLabelsSampleParser,
 )
 
-
 fota = fou.lazy_import("fiftyone.core.tags")
 foma = fou.lazy_import("fiftyone.multimodal.media_reference.asset_planning")
 fmm = fou.lazy_import("fiftyone.multimodal.media_reference.field_model")

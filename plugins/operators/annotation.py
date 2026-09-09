@@ -20,7 +20,6 @@ import fiftyone.core.fields as fof
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
 
-
 _FRAMES_PREFIX = "frames."
 
 

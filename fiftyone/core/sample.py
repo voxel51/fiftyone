@@ -25,7 +25,6 @@ import fiftyone.core.utils as fou
 fmm = fou.lazy_import("fiftyone.multimodal.media_reference.field_model")
 import fiftyone.core.media_reference as fmd
 
-
 #: The stored field, which the hydrating property of the same name shadows
 _REFERENCE_FIELDS = ("media_reference",)
 
