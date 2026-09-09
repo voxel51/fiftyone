@@ -45,7 +45,7 @@ markers and a custom sensor with several marker grids.
         # The firmest contacts
         view = dataset.match({"peak_force": {"$gt": 50}})
 
-        session = fo.launch_app(dataset)
+        session = fo.launch_app(dataset, view=view)
 
   .. group-tab:: CLI
 

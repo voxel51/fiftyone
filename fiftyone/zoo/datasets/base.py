@@ -3747,7 +3747,7 @@ class TaFTactileForceDataset(FiftyOneDataset):
         # The firmest contacts
         view = dataset.match({"peak_force": {"$gt": 50}})
 
-        session = fo.launch_app(dataset)
+        session = fo.launch_app(dataset, view=view)
 
     Dataset size
         41.65 GB
