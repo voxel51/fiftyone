@@ -25,7 +25,7 @@ from bson import DBRef, ObjectId, json_util
 import cachetools
 import mongoengine.errors as moe
 from pymongo import DeleteMany, InsertOne, ReplaceOne, UpdateMany, UpdateOne
-from pymongo.errors import BulkWriteError, CursorNotFound
+from pymongo.errors import BulkWriteError, CursorNotFound, OperationFailure
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -50,18 +50,21 @@ import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 import fiftyone.migrations as fomi
-import fiftyone.multimodal.media as fmm
 
 fot = fou.lazy_import("fiftyone.core.stages")
 foud = fou.lazy_import("fiftyone.utils.data")
 food = fou.lazy_import("fiftyone.operators.delegated")
 foos = fou.lazy_import("fiftyone.operators.store")
 fota = fou.lazy_import("fiftyone.core.tags")
+fmm = fou.lazy_import("fiftyone.multimodal.media_reference.field_model")
 
 
 _SUMMARY_FIELD_KEY = "_summary_field"
 _AUTO_TRANSFORMATION_MAX_INTERMEDIATES = 2
 logger = logging.getLogger(__name__)
+
+#: Mongo's error code for dropping an index that is not there
+_INDEX_NOT_FOUND = 27
 
 
 class DatasetNotFoundError(ValueError):
@@ -533,33 +536,56 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._doc.sample_fields[idx] = field_doc
 
     @property
-    def media_reference_kind(self):
-        """The kind of media references that this dataset contains, or None
-        if the dataset does not contain media references.
-        """
-        return self._doc.media_reference_kind
+    def media_sources(self):
+        """The media sources this dataset records, one per referenced source.
 
-    def _adopt_media_reference(self, kind):
-        current_kind = self._doc.media_reference_kind
-        if current_kind == kind:
+        Each is a dict describing where a source is and what every episode of
+        it shares. A sample's ``media_reference`` is ``<source key>/<episode>``
+        and names one of them.
+
+        The list is a copy; use an importer to record sources.
+        """
+        return list(fmm._media_sources_by_id(self).values())
+
+    def _contains_media_references(self):
+        """Whether this dataset's samples are media-reference-backed: it
+        records at least one media source.
+
+        Read from the roots table, which stays with the document: a source is
+        only ever recorded by interning the root it sits under, so this holds
+        without reading the sources themselves.
+        """
+        return bool(self._doc._media_roots)
+
+    def _record_media_sources(self, entries, overwrite=True):
+        """Records media sources on this dataset, merged by source id. The
+        first recorded source turns the dataset reference-backed.
+
+        An entry naming an absolute ``loc`` is filed under a root: identical
+        roots are stored once, so relocating a whole tree is one edit.
+        """
+        entries = list(entries)
+        if not entries:
             return
 
-        if len(self) > 0:
-            if current_kind is not None:
-                raise ValueError(
-                    "A media-reference dataset cannot contain multiple "
-                    "reference kinds"
-                )
+        if not self._contains_media_references():
+            self._adopt_reference_identity()
 
+        fmm._load_media_tables(self._doc)
+        entries = fmm._intern_media_sources(self._doc, entries)
+        _merge_media_sources(self._doc, entries, overwrite=overwrite)
+        fmm._sweep_media_tables(self._doc)
+        self._doc.save()
+
+    def _adopt_reference_identity(self):
+        """Switches an empty filepath dataset to reference identity: the
+        sparse key index replaces the filepath indexes, and filepath leaves
+        the schema."""
+        if len(self) > 0:
             raise ValueError(
                 "A dataset cannot mix filepath-backed and "
                 "media-reference-backed samples"
             )
-
-        if current_kind is not None:
-            self._doc.media_reference_kind = kind
-            self._doc.save()
-            return
 
         indexes = self._sample_collection.index_information()
         matching_indexes = [
@@ -584,37 +610,28 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             for name, index in indexes.items()
             # Every filepath index is inactive in reference mode, including
             # compound indexes created before the empty dataset was adopted
-            # as reference-backed.
+            # as reference-backed
             if any(field == "filepath" for field, _ in index.get("key", ()))
         ]
 
-        self._doc.media_reference_kind = kind
+        # the reference identity replaces the filepath in the schema
         self._doc.sample_fields = [
             field
             for field in self._doc.sample_fields
-            if field.name not in ("filepath", "media_reference")
+            if field.name != "filepath"
+        ] + [
+            foo.SampleFieldDocument.from_field(
+                self._sample_doc_cls._fields["media_reference"]
+            )
         ]
-        field = self._sample_doc_cls._fields["media_reference"]
-        self._doc.sample_fields.append(
-            foo.SampleFieldDocument.from_field(field)
-        )
-
-        app_config = self._doc.app_config
-        if app_config.grid_media_field == "filepath":
-            app_config.grid_media_field = "media_reference"
-
-        if app_config.modal_media_field == "filepath":
-            app_config.modal_media_field = "media_reference"
-
-        app_config.media_fields = [
-            field for field in app_config.media_fields if field != "filepath"
-        ]
-        if "media_reference" not in app_config.media_fields:
-            app_config.media_fields.append("media_reference")
-
         self._doc.save()
         for index_name in filepath_indexes:
-            self._sample_collection.drop_index(index_name)
+            # a concurrent adoption may already have dropped it
+            try:
+                self._sample_collection.drop_index(index_name)
+            except OperationFailure as e:
+                if e.code != _INDEX_NOT_FOUND:
+                    raise
 
     def _init_frames(self):
         if self._frame_doc_cls is not None:
@@ -4225,6 +4242,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             the ID of the sample in the dataset
         """
+        # One sample takes the same identity check as a batch: a reference
+        # naming a source this dataset does not record is unresolvable
+        (sample,) = _validate_media_source_iterable(self, [sample])
         sample = self._transform_sample(
             sample,
             expand_schema=expand_schema,
@@ -4283,7 +4303,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if num_samples is None:
             num_samples = samples
 
-        samples = _validate_media_source_iterable(samples)
+        samples = _validate_media_source_iterable(self, samples)
 
         transform_fn = partial(
             self._transform_sample,
@@ -4416,7 +4436,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         progress=None,
         num_samples=None,
     ):
-        samples = _validate_media_source_iterable(samples)
+        samples = _validate_media_source_iterable(self, samples)
 
         transform_fn = partial(
             self._transform_sample,
@@ -4486,8 +4506,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if self.media_type is None and sample:
             self.media_type = _get_media_type(sample)
-
-        _handle_incoming_media_source(self, sample)
 
         if expand_schema:
             self._expand_schema(sample, dynamic)
@@ -4660,7 +4678,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample: a :class:`fiftyone.core.sample.Sample`
             key_field (None): the sample field to use to decide whether to join
                 with an existing sample. By default, ``filepath`` or
-                ``media_reference.key`` is used according to the dataset's
+                ``media_reference`` is used according to the dataset's
                 media identity
             skip_existing (False): whether to skip existing samples (True) or
                 merge them (False)
@@ -4795,7 +4813,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 iterable of :class:`fiftyone.core.sample.Sample` instances
             key_field (None): the sample field to use to decide whether to join
                 with an existing sample. By default, ``filepath`` or
-                ``media_reference.key`` is used according to the dataset's
+                ``media_reference`` is used according to the dataset's
                 media identity
             key_fcn (None): a function that accepts a
                 :class:`fiftyone.core.sample.Sample` instance and computes a
@@ -4908,6 +4926,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if key_fcn is None:
             tmp = Dataset()
+            if self._contains_media_references():
+                # The staging dataset must record what this one does, or a
+                # reference-backed sample cannot be staged at all
+                tmp._record_media_sources(
+                    fmm._media_sources_by_id(self).values()
+                )
 
             try:
                 tmp.add_samples(
@@ -6753,7 +6777,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 sample
             key_field (None): the sample field to use to decide whether to join
                 with an existing sample. By default, ``filepath`` or
-                ``media_reference.key`` is used according to the media source
+                ``media_reference`` is used according to the media source
                 of the samples
             key_fcn (None): a function that accepts a
                 :class:`fiftyone.core.sample.Sample` instance and computes a
@@ -7092,7 +7116,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 sample
             key_field (None): the sample field to use to decide whether to join
                 with an existing sample. By default, ``filepath`` or
-                ``media_reference.key`` is used according to the media source
+                ``media_reference`` is used according to the media source
                 of the samples
             key_fcn (None): a function that accepts a
                 :class:`fiftyone.core.sample.Sample` instance and computes a
@@ -7313,7 +7337,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 sample
             key_field (None): the sample field to use to decide whether to join
                 with an existing sample. By default, ``filepath`` or
-                ``media_reference.key`` is used according to the media source
+                ``media_reference`` is used according to the media source
                 of the samples
             key_fcn (None): a function that accepts a
                 :class:`fiftyone.core.sample.Sample` instance and computes a
@@ -8761,6 +8785,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         dataset._doc.info = d.get("info", {})
 
+        # A serialized entry names where its source is; recording files it
+        # under this dataset's own table of roots, which a raw assignment
+        # would leave unfiled and unresolvable
+        dataset._record_media_sources(d.get("_media_sources") or [])
+
         dataset._doc.classes = d.get("classes", {})
         dataset._doc.default_classes = d.get("default_classes", [])
 
@@ -9290,10 +9319,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return fos.Sample.from_doc(doc, dataset=self)
 
     def _sample_dict_to_doc(self, d, *, _reload_backing_docs=True):
-        descriptor = None if d is None else d.get("media_reference")
-        if descriptor is not None:
-            d["media_reference"] = fmm._hydrate_media_reference(descriptor)
-
         try:
             return self._sample_doc_cls.from_dict(d)
         except Exception as e:
@@ -9566,10 +9591,12 @@ def _create_dataset(
     sample_doc_cls = _create_sample_document_cls(obj, sample_collection_name)
 
     # pylint: disable=no-member
+    # A new dataset is filepath-backed; the reference identity is declared
+    # only when it adopts one
     sample_fields = [
         foo.SampleFieldDocument.from_field(field)
-        for field in sample_doc_cls._fields.values()
-        if field.name != "media_reference"
+        for name, field in sample_doc_cls._fields.items()
+        if name != "media_reference"
     ]
 
     if _clips:
@@ -10017,9 +10044,6 @@ def _create_frame_document_cls(
 
 
 def _declare_fields(dataset, doc_cls, field_docs=None):
-    if field_docs is not None and not doc_cls._is_frames_doc:
-        _validate_media_reference_field_docs(field_docs)
-
     default_fields = set(doc_cls._fields.keys())
     if field_docs is not None:
         default_fields -= {field_doc.name for field_doc in field_docs}
@@ -10082,27 +10106,17 @@ def _load_dataset(obj, name, virtual=False):
         raise e
 
 
-def _validate_media_reference_field_docs(field_docs):
-    media_reference_type = etau.get_class_name(fof.MediaReferenceField)
-    for field_doc in field_docs:
-        if isinstance(field_doc, Mapping):
-            name = field_doc.get("name")
-            ftype = field_doc.get("ftype")
-        else:
-            name = field_doc.name
-            ftype = field_doc.ftype
-
-        if name == "media_reference" and ftype != media_reference_type:
-            raise ValueError(
-                "Dataset field 'media_reference' has incompatible schema "
-                "%s; expected %s" % (ftype, media_reference_type)
-            )
-
-
 def _do_load_dataset(obj, name):
     # pylint: disable=no-member
     db = foo.get_db_conn()
-    res = db.datasets.find_one({"name": name})
+    # Media sources and their layouts are read only when something resolves
+    # media, which this document is loaded far too often to pay for. The
+    # roots table stays: it is small and says whether there is anything to
+    # fetch
+    res = db.datasets.find_one(
+        {"name": name},
+        {"_media_sources": 0, "_media_source_layouts": 0},
+    )
     if not res:
         raise DatasetNotFoundError(name)
     dataset_doc = foo.DatasetDocument.from_dict(res)
@@ -10738,6 +10752,21 @@ def _merge_dataset_doc(
     curr_doc.save()
 
 
+def _merge_media_sources(doc, sources, overwrite=True):
+    """Merges media-source entries into a dataset document by source id."""
+    by_id = {
+        media_source["id"]: index
+        for index, media_source in enumerate(doc._media_sources)
+    }
+    for media_source in sources:
+        index = by_id.get(media_source["id"])
+        if index is None:
+            by_id[media_source["id"]] = len(doc._media_sources)
+            doc._media_sources.append(dict(media_source))
+        elif overwrite:
+            doc._media_sources[index] = dict(media_source)
+
+
 def _update_no_overwrite(d, dnew):
     d.update({k: v for k, v in dnew.items() if k not in d})
 
@@ -11224,7 +11253,7 @@ def _merge_samples_pipeline(
         if insert_new:
             # Must include default fields when new samples may be inserted.
             # Any extra fields here are omitted in `when_matched` pipeline
-            if key_field == "media_reference.key":
+            if key_field == "media_reference":
                 project.pop(key_field, None)
 
             project[identity_field] = True
@@ -11952,84 +11981,184 @@ def _resolve_media_merge_key(dataset, samples):
         mode = _get_media_identity_mode(dataset)
 
     if mode == "reference":
-        return "media_reference.key"
+        return "media_reference"
 
     return "filepath"
 
 
 def _handle_incoming_media_source(dataset, samples):
-    kind = _get_media_reference_kind(samples)
-    mode = "reference" if kind is not None else "filepath"
+    """An incoming collection keeps the dataset to one media identity, and a
+    reference-backed one brings its media sources along."""
+    mode = _get_media_identity_mode(samples)
+    if mode is None:
+        return
 
-    _validate_media_source_compatibility(dataset, mode, kind)
+    if mode == "filepath":
+        if dataset._contains_media_references():
+            raise ValueError(
+                "A dataset cannot mix filepath-backed and "
+                "media-reference-backed samples"
+            )
+
+        return
+
+    _adopt_media_sources(dataset, samples)
+    if not dataset._contains_media_references():
+        raise ValueError(
+            "Dataset '%s' records no media sources. Add a source with "
+            "add_dir(), or add samples from a dataset that records theirs; "
+            "a reference resolves only through a recorded source"
+            % dataset.name
+        )
 
 
-def _validate_media_source_compatibility(dataset, mode, kind):
-    if mode == "reference":
-        dataset._adopt_media_reference(kind)
-    elif dataset.media_reference_kind is not None:
+class _MediaTables:
+    """The tables a document dict files its sources under, for a dict that is
+    written to the database whole rather than through a dataset."""
+
+    def __init__(self):
+        self._media_roots = []
+        self._media_source_layouts = []
+
+
+def _file_dict_media_sources(dataset_dict):
+    """Files a document dict's source entries under its own tables.
+
+    A bundle names where each source is and how it is read; the dataset
+    stores each of those once and names it, and this dict is written to the
+    database whole, so the filing has to happen here rather than through the
+    dataset.
+    """
+    media_sources = dataset_dict.get("_media_sources") or []
+    if not any("loc" in media_source for media_source in media_sources):
+        return
+
+    tables = _MediaTables()
+    dataset_dict["_media_sources"] = fmm._intern_media_sources(
+        tables, media_sources
+    )
+    dataset_dict["_media_roots"] = tables._media_roots
+    dataset_dict["_media_source_layouts"] = tables._media_source_layouts
+
+
+def _adopt_media_sources(dataset, samples):
+    """Carries the media sources of another dataset, or of a collection of its
+    samples, into this dataset, so their references stay resolvable wherever
+    the samples land. Each sample carries its own reference."""
+    # Entries carry where their source is, not the root id its own dataset
+    # files it under; recording files them under this dataset's roots
+    if isinstance(samples, foc.SampleCollection):
+        media_sources = fmm._media_sources_by_id(
+            samples._root_dataset
+        ).values()
+    elif isinstance(samples, foo.DatasetDocument):
+        media_sources = fmm._located_media_sources(samples)
+    elif isinstance(samples, dict):
+        media_sources = samples.get("_media_sources") or []
+    else:
+        return
+
+    media_sources = list(media_sources)
+
+    if not media_sources:
+        return
+
+    recorded = fmm._media_sources_by_id(dataset)
+    new_media_sources = [
+        media_source
+        for media_source in media_sources
+        if media_source.get("id") not in recorded
+    ]
+    if new_media_sources:
+        dataset._record_media_sources(new_media_sources, overwrite=False)
+
+
+def _get_media_identity_mode(samples):
+    if isinstance(samples, (fos.Sample, fos.SampleView)):
+        if samples._doc.get_field("media_reference") is not None:
+            return "reference"
+
+        return "filepath"
+
+    if isinstance(samples, foc.SampleCollection):
+        if samples._contains_media_references():
+            return "reference"
+
+        return "filepath"
+
+    if isinstance(samples, foo.DatasetDocument):
+        # the roots table stays with a lean-loaded document; its sources are
+        # read only when something resolves media
+        return "reference" if samples._media_roots else "filepath"
+
+    if isinstance(samples, dict):
+        return "reference" if samples.get("_media_sources") else "filepath"
+
+    return None
+
+
+def _validate_media_source_iterable(dataset, samples):
+    """One identity check per add: the first sample says whether the batch is
+    file-backed or reference-backed, and a reference-backed batch from another
+    dataset brings that dataset's media sources along. The rest of the samples
+    are not read."""
+    samples = iter(samples)
+    first = next(samples, None)
+    if first is None:
+        return
+
+    mode = _get_media_identity_mode(first)
+    if mode == "filepath" and dataset._contains_media_references():
         raise ValueError(
             "A dataset cannot mix filepath-backed and "
             "media-reference-backed samples"
         )
 
+    if mode != "reference":
+        yield first
+        yield from samples
+        return
 
-def _get_media_reference_kind(samples):
-    if isinstance(samples, (fos.Sample, fos.SampleView)):
-        reference = samples.media_reference
-        if reference is None:
-            return None
+    src_dataset = getattr(first, "_dataset", None)
+    if src_dataset is not None and src_dataset._doc.id != dataset._doc.id:
+        _adopt_media_sources(dataset, src_dataset)
 
-        return fmm._get_media_reference_kind(reference)
+    if not dataset._contains_media_references():
+        raise ValueError(
+            "Dataset '%s' records no media sources. Add a source with "
+            "add_dir(), or add samples from a dataset that records "
+            "theirs; a reference resolves only through a recorded source"
+            % dataset.name
+        )
 
-    if isinstance(samples, foc.SampleCollection):
-        return samples.media_reference_kind
-
-    if isinstance(samples, foo.DatasetDocument):
-        return samples.media_reference_kind
-
-    if isinstance(samples, dict):
-        return samples.get("media_reference_kind")
-
-    return None
-
-
-def _get_media_identity_mode(samples):
-    if isinstance(samples, (fos.Sample, fos.SampleView)):
-        if samples.media_reference is not None:
-            return "reference"
-
-        return "filepath"
-
-    if isinstance(samples, foc.SampleCollection):
-        if samples.media_reference_kind is not None:
-            return "reference"
-
-        return "filepath"
-
-    return None
-
-
-def _validate_media_source_iterable(samples):
-    expected_source = None
+    # Read once, checked per sample as it streams past: a batch is only as
+    # resolvable as its least resolvable reference
+    recorded = fmm._recorded_media_source_ids(dataset)
+    yield _validated_media_source(dataset, first, recorded)
     for sample in samples:
-        mode = _get_media_identity_mode(sample)
-        source = (mode, _get_media_reference_kind(sample))
-        if expected_source is None:
-            expected_source = source
-        elif source != expected_source:
-            if mode != expected_source[0]:
-                raise ValueError(
-                    "A dataset cannot mix filepath-backed and "
-                    "media-reference-backed samples"
-                )
+        yield _validated_media_source(dataset, sample, recorded)
 
-            raise ValueError(
-                "A media-reference dataset cannot contain multiple "
-                "reference kinds"
-            )
 
-        yield sample
+def _validated_media_source(dataset, sample, recorded):
+    """The sample, once it is reference-backed and its reference names a
+    source the dataset records. Only the batch's first sample decided the
+    mode, so a later sample of the other kind is caught here."""
+    reference = getattr(sample, "media_reference", None)
+    if reference is None:
+        raise ValueError(
+            "A dataset cannot mix filepath-backed and "
+            "media-reference-backed samples"
+        )
+
+    source_id = getattr(reference, "source_id", None)
+    if source_id is not None and source_id not in recorded:
+        raise ValueError(
+            "Dataset '%s' does not record media source '%s'. Add the source "
+            "with add_dir() rather than add_samples(), so the dataset records "
+            "where its bytes are" % (dataset.name, source_id)
+        )
+
+    return sample
 
 
 def _validate_media_field_edits(

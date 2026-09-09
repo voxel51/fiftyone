@@ -190,6 +190,9 @@ export namespace State {
       [key: string]: Targets;
     };
     groupSlice?: string;
+    /** Where each media source the browser addresses by path is, by
+     * source id. Absent on datasets whose media is not reference-backed. */
+    mediaSources?: Readonly<Record<string, string>> | null;
     mediaType: MediaType;
     parentMediaType: MediaType;
     name: string;

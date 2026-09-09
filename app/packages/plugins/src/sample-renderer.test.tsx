@@ -9,6 +9,7 @@ import {
   getSampleRendererComponent,
   getSelectedMediaPath,
   hasMatchMediaMatchers,
+  hasSampleRendererSource,
   isSampleRendererGridEnabled,
   matchesMatchMedia,
   SAMPLE_RENDERER_GRID_SLOT,
@@ -39,7 +40,6 @@ const createRegistration = (
     supports:
       | {
           extensions?: string[];
-          mediaReferenceKinds?: string[];
           mimeTypes?: string[];
           mediaTypes?: string[];
         }
@@ -180,8 +180,8 @@ describe("sample renderer matcher utilities", () => {
         sample: {
           _id: "episode",
           media_reference: {
-            kind: "lerobot-episode",
-            key: "source:17",
+            _cls: "LeRobotEpisodeReference",
+            key: "lerobot-source/0",
           },
           _media_type: "multimodal",
         },
@@ -193,26 +193,22 @@ describe("sample renderer matcher utilities", () => {
       extension: null,
       isNative: false,
       mediaReference: {
-        kind: "lerobot-episode",
-        key: "source:17",
+        _cls: "LeRobotEpisodeReference",
+        key: "lerobot-source/0",
       },
       mediaType: "multimodal",
       path: null,
       url: null,
     });
-    expect(
-      matchesMatchMedia({ mediaReferenceKinds: ["LEROBOT-EPISODE"] }, media),
-    ).toBe(true);
+    expect(hasSampleRendererSource(media)).toBe(true);
+    expect(matchesMatchMedia({ mediaTypes: ["MULTIMODAL"] }, media)).toBe(true);
 
     const filepathMedia = createSampleRendererMediaContext(
       createSample(),
       "filepath",
     );
     expect(
-      matchesMatchMedia(
-        { mediaReferenceKinds: ["lerobot-episode"] },
-        filepathMedia,
-      ),
+      matchesMatchMedia({ mediaTypes: ["multimodal"] }, filepathMedia),
     ).toBe(false);
   });
 
@@ -287,8 +283,8 @@ describe("sample renderer selection", () => {
         sample: {
           _id: "episode",
           media_reference: {
-            kind: "lerobot-episode",
-            key: "source:17",
+            _cls: "LeRobotEpisodeReference",
+            key: "lerobot-source/0",
           },
           _media_type: "multimodal",
         },
@@ -299,7 +295,7 @@ describe("sample renderer selection", () => {
       "modal",
     );
     const registration = createRegistration("logical-episode", {
-      supports: { mediaReferenceKinds: ["lerobot-episode"] },
+      supports: (candidate) => candidate.media.mediaReference != null,
     });
 
     expect(getMatchingSampleRenderer([registration], ctx)).toBe(registration);

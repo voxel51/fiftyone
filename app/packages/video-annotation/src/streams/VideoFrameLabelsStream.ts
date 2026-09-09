@@ -824,7 +824,6 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
         endFrame,
       });
 
-      let landed = 0;
       for (const [frameNumber, fields] of Object.entries(result.frames)) {
         // Field-projected window payload → the cache's per-frame doc shape.
         // The engine owns edits, so the stream never reconciles against it.
@@ -837,14 +836,13 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
         this.maskSourceCache.delete(Number(frameNumber));
         this.maskUndecodable.delete(Number(frameNumber));
         this.releaseMasksAt(Number(frameNumber));
-        landed++;
       }
 
       mergeRange(this.fetchedRanges, result.range);
 
-      if (landed > 0) {
-        this.notifyEdits();
-      }
+      // Also when nothing landed: a window with no frame documents is still an
+      // answer, and the first landing is what settles a store born loading
+      this.notifyEdits();
     } catch (error) {
       // Surface but don't crash — the engine will keep asking; subsequent
       // prefetch calls will retry the missing frames.

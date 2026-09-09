@@ -20,14 +20,11 @@ export const ImageAnnotationSurface: React.FC<{ sample: ModalSample }> = ({
   const [revealed, setRevealed] = useState(false);
 
   return (
-    <div className={styles.root} data-cy="image-annotation-surface">
+    <div className={styles.root}>
       <div className={styles.content}>
         <LighterSampleRenderer sample={sample} onRevealChange={setRevealed} />
         {!revealed && (
-          <div
-            className={styles.cover}
-            data-cy="image-annotate-prerequisite-checking"
-          >
+          <div className={styles.cover}>
             <Spinner size={Size.Lg} />
           </div>
         )}

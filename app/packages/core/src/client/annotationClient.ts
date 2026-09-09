@@ -53,7 +53,7 @@ export type PatchDynamicGroupRequest = {
 
 export type PatchDynamicGroupResponse = {
   samples: Sample[];
-  versionToken: string;
+  versionToken: string | null;
 };
 
 /**

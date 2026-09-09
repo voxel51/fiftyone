@@ -20,6 +20,7 @@ two responsibilities:
 import typing as t
 
 from starlette.endpoints import HTTPEndpoint
+from starlette.exceptions import HTTPException
 from starlette.responses import JSONResponse
 from starlette.requests import Request
 
@@ -153,13 +154,26 @@ def index_post_pipeline(
 
     When ``dynamic_group`` is set the input is the dynamic group's ordered
     *samples* rather than a video's flattened frames (an image dataset grouped
-    into a video / ImaVid). There is no ``frame_number`` field, so a leading
-    stage synthesizes one from each sample's rank in the group — relying on the
-    input being pre-ordered, which ``get_dynamic_group`` guarantees. The label
-    field is read at sample level; its ``$field.list`` shape is identical to a
-    flattened frame field, so the projection/unwind/group are unchanged.
+    into a video / ImaVid). The frame number is each sample's 1-indexed rank in
+    the group — relying on the input being pre-ordered, which
+    ``get_dynamic_group`` guarantees — read straight from the unwound rank, so
+    nothing is written into the sample document (which may carry a real
+    ``frame_number`` of its own). The label field is read at sample level; its
+    ``$field.list`` shape is identical to a flattened frame field, so the
+    unwind/group are unchanged.
     """
     labels_expr = "$%s.%s" % (field, list_field) if list_field else "$" + field
+    fn_expr: t.Any = "$frame_number"
+    rank_stages: t.List[dict] = []
+    if dynamic_group:
+        # Fold the ordered samples into one array and unwind it with its
+        # index; the documents come back under `docs`, untouched
+        rank_stages = [
+            {"$group": {"_id": None, "docs": {"$push": "$$ROOT"}}},
+            {"$unwind": {"path": "$docs", "includeArrayIndex": "rank"}},
+        ]
+        fn_expr = {"$add": ["$rank", 1]}
+        labels_expr = "$docs." + labels_expr[1:]
 
     index_track_id = {
         "$cond": [
@@ -198,34 +212,12 @@ def index_post_pipeline(
 
         group["attributeSamples"] = {"$push": sample}
 
-    # Video frames carry `frame_number`; dynamic-group samples don't, so fold
-    # the ordered samples into one array and read each sample's 1-indexed
-    # position back out as its frame number.
-    rank_stages: t.List[dict] = (
-        [
-            {"$group": {"_id": None, "docs": {"$push": "$$ROOT"}}},
-            {"$unwind": {"path": "$docs", "includeArrayIndex": "rank"}},
-            {
-                "$replaceRoot": {
-                    "newRoot": {
-                        "$mergeObjects": [
-                            "$docs",
-                            {"frame_number": {"$add": ["$rank", 1]}},
-                        ]
-                    }
-                }
-            },
-        ]
-        if dynamic_group
-        else []
-    )
-
     return [
         *rank_stages,
         {
             "$project": {
                 "_id": False,
-                "fn": "$frame_number",
+                "fn": fn_expr,
                 "labels": {"$ifNull": [labels_expr, []]},
             }
         },
@@ -379,6 +371,14 @@ class VideoLabelsWindow(HTTPEndpoint):
     async def post(self, request: Request, data: dict):
         start_frame = int(data.get("startFrame", 1))
         end_frame = int(data.get("endFrame", start_frame))
+        # Frames are 1-indexed and the window is inclusive; anything else
+        # reaches the driver as a negative skip or limit and surfaces as a 500
+        if start_frame < 1 or end_frame < start_frame:
+            raise HTTPException(
+                status_code=400,
+                detail="startFrame must be at least 1 and endFrame at least "
+                "startFrame",
+            )
         dataset = data.get("dataset")
         stages = data.get("view")
         extended = data.get("extended", None)

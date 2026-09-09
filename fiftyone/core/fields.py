@@ -22,7 +22,8 @@ import eta.core.utils as etau
 import fiftyone.core.frame_utils as fofu
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
-import fiftyone.multimodal.media as fmm
+
+fmm = fou.lazy_import("fiftyone.multimodal.media_reference.field_model")
 
 
 def validate_constraints(
@@ -1179,43 +1180,23 @@ class DictField(mongoengine.fields.DictField, Field):
             for _value in value.values():
                 self.field.validate(_value)
 
+    def to_mongo(self, value, use_db_field=True, fields=None):
+        # Untyped dict values bypass each subfield's own `to_mongo()`, so
+        # they aren't otherwise serialized to BSON-safe types (dates, numpy
+        # arrays, etc). `serialize_value()` already recursively handles
+        # this, so we return its result directly rather than also
+        # delegating to `super().to_mongo()`, which would recurse back into
+        # this same method for each already-serialized value (eg treating
+        # an already-serialized `Binary` as an iterable of raw bytes)
+        if self.field is None and isinstance(value, dict):
+            # Imported here to avoid a circular import with `fiftyone.core.odm`
+            import fiftyone.core.odm.utils as foou
 
-class MediaReferenceField(Field):
-    """The protected immutable media-reference descriptor field.
+            return foou.serialize_value(value, extended=False)
 
-    Values are exposed as :class:`fiftyone.multimodal.MediaReference`
-    instances and stored as public ``{"kind": ..., "key": ...}``
-    descriptors. Resolver details are hydrated from the private bindings
-    collection.
-    """
-
-    def validate(self, value):
-        if isinstance(value, fmm.MediaReference):
-            fmm._validate_media_reference_descriptor(
-                fmm._serialize_media_reference(value)
-            )
-            return
-
-        fmm._validate_media_reference_descriptor(value)
-
-    def to_mongo(self, value):
-        if value is None:
-            return None
-
-        if isinstance(value, fmm.MediaReference):
-            return fmm._serialize_media_reference(value)
-
-        fmm._validate_media_reference_descriptor(value)
-        return dict(value)
-
-    def to_python(self, value):
-        if value is None:
-            return None
-
-        if isinstance(value, fmm.MediaReference):
-            return value
-
-        return fmm._hydrate_media_reference(value)
+        return super().to_mongo(
+            value, use_db_field=use_db_field, fields=fields
+        )
 
 
 class KeypointsField(ListField):
@@ -2192,3 +2173,26 @@ _PRIMITIVE_FIELDS = (
     ObjectIdField,
     StringField,
 )
+
+
+class MediaReferenceField(EmbeddedDocumentField):
+    """A reference-backed sample's media identity: which media source its
+    media comes from, and where in that source it is.
+
+    The source is recorded once on the owning dataset; this field holds only
+    what is this sample's alone.
+
+    Args:
+        document_type (None): the
+            :class:`fiftyone.core.media_reference.MediaReference` subclass
+            stored in this field
+        description (None): an optional description
+        info (None): an optional info dict
+        read_only (False): whether the field is read-only
+        created_at (None): the datetime the field was created
+    """
+
+    def __init__(self, document_type=None, **kwargs):
+        # Resolved by name so the field can be declared before the documents
+        # module is imported
+        super().__init__(document_type or "MediaReference", **kwargs)

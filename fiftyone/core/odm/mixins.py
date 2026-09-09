@@ -148,9 +148,9 @@ class DatasetMixin(object):
 
         dataset = cls._dataset
         doc = getattr(dataset, "_doc", None)
-        reference_mode = (
-            doc is not None and doc.media_reference_kind is not None
-        )
+        # the roots table stays with a lean-loaded document; the sources
+        # themselves are fetched only when something resolves media
+        reference_mode = doc is not None and bool(doc._media_roots)
 
         active_field = "media_reference" if reference_mode else "filepath"
         return _filter_media_identity_fields(field_names, active_field)
@@ -646,9 +646,9 @@ class DatasetMixin(object):
             if path in label_schemas:
                 new_label_schemas[new_path] = new_label_schemas.pop(path)
                 if path in active_label_schemas:
-                    active_label_schemas[
-                        active_label_schemas.index(path)
-                    ] = new_path
+                    active_label_schemas[active_label_schemas.index(path)] = (
+                        new_path
+                    )
                 continue
 
             for field in label_schemas:
@@ -1789,13 +1789,12 @@ class NoDatasetMixin(object):
         field_names = tuple(self._data.keys())
 
         if not include_private:
+            reference_backed = self._data.get("media_reference") is not None
             field_names = tuple(
                 f for f in field_names if not f.startswith("_")
             )
             active_field = (
-                "media_reference"
-                if self._data.get("media_reference") is not None
-                else "filepath"
+                "media_reference" if reference_backed else "filepath"
             )
             field_names = _filter_media_identity_fields(
                 field_names, active_field
@@ -2067,6 +2066,8 @@ def _get_index_updates(dataset, paths, new_paths=None):
     has_frame_fields = dataset._has_frame_fields()
     index_info = dataset.get_index_information()
     fields_map = dataset._get_db_fields_map(reverse=True)
+    prefix = None
+    frame_fields_map = {}
     if has_frame_fields:
         prefix = dataset._FRAMES_PREFIX
         frame_fields_map = dataset._get_db_fields_map(

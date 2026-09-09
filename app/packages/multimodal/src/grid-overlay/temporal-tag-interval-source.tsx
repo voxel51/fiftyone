@@ -11,7 +11,7 @@ import type {
   EpisodeIntervalSourceProps,
 } from "../extensions/episode-intervals";
 import type { TemporalTag } from "../temporal-tags";
-import { useSampleRendererTemporalTags } from "../temporal-tags";
+import { useSampleTemporalTagsFromDataset } from "../temporal-tags";
 
 const SOURCE_ID = "fiftyone:temporal-tags";
 const INACTIVE: EpisodeIntervalContribution = { intervals: [] };
@@ -21,8 +21,7 @@ const INACTIVE: EpisodeIntervalContribution = { intervals: [] };
  * pseudo-field contributes every interval on the sample, matching the
  * sample-tags parent checkbox; selecting child filter values narrows it to
  * those values. Contributes nothing, and fetches nothing, when neither is
- * active — this outer gate is what keeps an unfiltered grid from issuing a tag
- * request per tile.
+ * active.
  */
 const TemporalTagIntervalSourceComponent: React.FC<
   EpisodeIntervalSourceProps
@@ -49,7 +48,12 @@ const TemporalTagIntervals: React.FC<
     readonly showAll: boolean;
   }
 > = ({ activeValues, children, ctx, showAll }) => {
-  const { temporalTags } = useSampleRendererTemporalTags(ctx);
+  // The grid mounts one of these per tile, so the tags come from the dataset's
+  // single shared load rather than a fetch per sample
+  const temporalTags = useSampleTemporalTagsFromDataset(
+    ctx.dataset.datasetId,
+    ctx.sample.sample._id,
+  );
   const colorForTag = useTemporalTagColor();
 
   const contribution = useMemo<EpisodeIntervalContribution>(() => {

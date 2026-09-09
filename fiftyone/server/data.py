@@ -5,6 +5,7 @@ FiftyOne Server data
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from dataclasses import dataclass
 import typing as t
 
@@ -13,7 +14,6 @@ import starlette.requests as strq
 import starlette.responses as strp
 import strawberry.types as gqlt
 from strawberry.dataloader import DataLoader
-
 
 T = t.TypeVar("T")
 

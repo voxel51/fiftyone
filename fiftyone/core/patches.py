@@ -5,6 +5,7 @@ Patches views.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import defaultdict
 from copy import deepcopy
 
@@ -21,7 +22,6 @@ import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 import fiftyone.core.validation as fova
 import fiftyone.core.view as fov
-
 
 _PATCHES_TYPES = (fol.Detections, fol.Polylines, fol.Keypoints)
 _NO_MATCH_ID = ""

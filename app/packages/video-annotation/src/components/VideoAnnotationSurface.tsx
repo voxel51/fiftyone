@@ -32,7 +32,6 @@ import {
   SyntheticTrackTimeline,
 } from "./SyntheticLabels";
 import { VideoAnnotationToolbar } from "./VideoAnnotationToolbar";
-import { VideoAnnotationTopBar } from "./VideoAnnotationTopBar";
 import { LighterVideo } from "./LighterVideo";
 import styles from "./VideoAnnotationSurface.module.css";
 
@@ -203,21 +202,16 @@ const VideoAnnotationSurfaceForSample: React.FC<
 
   // Metadata gate: without a frame count no strategy can mount, so show an
   // actionable prompt instead of a stream that would throw or blank out.
-  // Wrapped in the provider (see the resolved return) — the top bar reads the
-  // playback context in every surface state.
   if (prerequisites.status === "blocked") {
     return (
-      <PlaybackProvider snapToFrameOnSettle>
-        <div
-          ref={dimensions.ref as React.RefObject<HTMLDivElement>}
-          className={styles.root}
-        >
-          <VideoAnnotationTopBar sample={sample} />
-          <div className={styles.media}>
-            <AnnotatePrerequisiteNotice blocker={prerequisites.blocker} />
-          </div>
+      <div
+        ref={dimensions.ref as React.RefObject<HTMLDivElement>}
+        className={styles.root}
+      >
+        <div className={styles.media}>
+          <AnnotatePrerequisiteNotice blocker={prerequisites.blocker} />
         </div>
-      </PlaybackProvider>
+      </div>
     );
   }
 
@@ -225,17 +219,14 @@ const VideoAnnotationSurfaceForSample: React.FC<
   // hold on a spinner so the scaffolding mounts exactly once, on the winner.
   if (resolution.status !== "resolved" || !resolution.strategy) {
     return (
-      <PlaybackProvider snapToFrameOnSettle>
-        <div
-          ref={dimensions.ref as React.RefObject<HTMLDivElement>}
-          className={styles.root}
-        >
-          <VideoAnnotationTopBar sample={sample} />
-          <div className={styles.media}>
-            <AnnotatePrerequisiteChecking />
-          </div>
+      <div
+        ref={dimensions.ref as React.RefObject<HTMLDivElement>}
+        className={styles.root}
+      >
+        <div className={styles.media}>
+          <AnnotatePrerequisiteChecking />
         </div>
-      </PlaybackProvider>
+      </div>
     );
   }
 
@@ -247,8 +238,8 @@ const VideoAnnotationSurfaceForSample: React.FC<
     <div
       ref={dimensions.ref as React.RefObject<HTMLDivElement>}
       className={styles.root}
+      data-cy="video-annotation-surface"
     >
-      <VideoAnnotationTopBar sample={sample} />
       <div className={styles.media}>
         <Tile videoSrc={videoSrc} hasAudio={resolution.hasAudio} />
       </div>

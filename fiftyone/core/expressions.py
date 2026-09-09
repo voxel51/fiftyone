@@ -2801,9 +2801,7 @@ class ViewExpression(object):
             array.sort({comp}){rev};
             return array;
         }}
-        """.format(
-            comp=comp, rev=rev
-        )
+        """.format(comp=comp, rev=rev)
 
         return self._function(sort_fcn)
 

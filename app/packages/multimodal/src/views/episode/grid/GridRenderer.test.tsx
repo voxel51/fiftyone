@@ -620,13 +620,14 @@ describe("GridRenderer", () => {
     expect(screen.getByText(previewHarness.preview.error)).toBeTruthy();
   });
 
-  it("shows idle as an empty no-source state without loading animation", () => {
+  it("separates a session that never opened from a stream-less episode", () => {
     previewHarness.preview.status = "idle";
     previewHarness.preview.hasPreviewStreams = false;
 
     render(<GridRenderer ctx={rendererCtx()} />);
 
-    expect(screen.getByText("No preview streams")).toBeTruthy();
+    expect(screen.getByText("Preview did not start")).toBeTruthy();
+    expect(screen.queryByText("No preview streams")).toBeNull();
     expect(screen.queryByTestId("episode-loading-ascii")).toBeNull();
   });
 
@@ -1198,7 +1199,7 @@ describe("GridRenderer", () => {
     expect(snapshotHarness.requests).toHaveLength(1);
   });
 
-  it("withdraws preview demand as soon as modal activation makes the grid inactive", async () => {
+  it("keeps its preview session alive under the modal but stops playback", async () => {
     const { rerender } = render(
       <GridRenderer ctx={rendererCtx()} isGridActive />,
     );
@@ -1207,13 +1208,16 @@ describe("GridRenderer", () => {
         enabled: true,
       }),
     );
+    previewHarness.preview.pause.mockClear();
 
+    // The modal covers the grid without a mouseleave
     rerender(<GridRenderer ctx={rendererCtx()} isGridActive={false} />);
 
     expect(vi.mocked(useGridPreview).mock.lastCall?.[0]).toMatchObject({
-      enabled: false,
+      enabled: true,
     });
-    expect(vi.mocked(useEpisodePreviewSession).mock.lastCall?.[2]).toBe(false);
+    expect(vi.mocked(useEpisodePreviewSession).mock.lastCall?.[2]).toBe(true);
+    expect(previewHarness.preview.pause).toHaveBeenCalled();
   });
 
   it("keeps same-source preview demand while a new stream key checks persistence", async () => {
@@ -1373,6 +1377,28 @@ describe("GridRenderer", () => {
     await waitFor(() => expect(bitmapHostHarness.lastBitmap).toBe(current));
   });
 
+  it("tracks the shared pose while the grid is inactive, without reactivating", async () => {
+    previewHarness.preview.frame = pointCloudFrame();
+    previewHarness.preview.status = "ready";
+
+    const { rerender } = render(<GridRenderer ctx={rendererCtx()} />);
+    snapshotHarness.requests[0].resolve(fakeSnapshotBitmap());
+    await waitFor(() => expect(bitmapHostHarness.lastBitmap).not.toBeNull());
+
+    // A tile the modal covers stays visible, so another cell's orbit still
+    // reaches it and no reactivation transition is needed
+    rerender(<GridRenderer ctx={rendererCtx()} isGridActive={false} />);
+    const pose = { position: [1, 2, 3], target: [0, 0, 0] };
+    cameraPoseHarness.pose = pose;
+    rerender(<GridRenderer ctx={rendererCtx()} isGridActive={false} />);
+
+    await waitFor(() => expect(snapshotHarness.requests.length).toBe(2), {
+      timeout: 2_000,
+    });
+    expect(snapshotHarness.requests[1].job.cameraPose).toBe(pose);
+    snapshotHarness.requests[1].resolve(fakeSnapshotBitmap());
+  });
+
   it("re-snapshots after the shared camera pose settles (debounced)", async () => {
     previewHarness.preview.frame = pointCloudFrame();
     previewHarness.preview.status = "ready";
@@ -1394,32 +1420,6 @@ describe("GridRenderer", () => {
     expect(snapshotHarness.requests[1].job.cameraPose).toBe(pose);
 
     snapshotHarness.requests[1].resolve(fakeSnapshotBitmap());
-  });
-
-  it("snapshots once on reactivation after the shared pose drifted", () => {
-    vi.useFakeTimers();
-    previewHarness.preview.frame = pointCloudFrame();
-    previewHarness.preview.status = "ready";
-
-    const { rerender } = render(<GridRenderer ctx={rendererCtx()} />);
-    expect(snapshotHarness.requests.length).toBe(1);
-
-    // The cell deactivates, then another cell orbits the shared pose
-    // while this one is dormant.
-    rerender(<GridRenderer ctx={rendererCtx()} isGridActive={false} />);
-    const pose = { position: [1, 2, 3], target: [0, 0, 0] };
-    cameraPoseHarness.pose = pose;
-
-    // Reactivation snapshots immediately at the freshly-read pose...
-    rerender(<GridRenderer ctx={rendererCtx()} isGridActive />);
-    expect(snapshotHarness.requests.length).toBe(2);
-    expect(snapshotHarness.requests[1].job.cameraPose).toBe(pose);
-
-    // ...and the pose-diff debounce adds no duplicate at the same pose.
-    act(() => {
-      vi.advanceTimersByTime(1_000);
-    });
-    expect(snapshotHarness.requests.length).toBe(2);
   });
 });
 

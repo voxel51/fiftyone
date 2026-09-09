@@ -41,7 +41,6 @@ def json_payload(payload) -> bytes:
 def fixture_dataset():
     """An image dataset dynamically groupable into ordered scenes."""
     dataset = fo.Dataset()
-    dataset.persistent = True
 
     samples = []
     for scene in (SCENE, OTHER_SCENE):
@@ -336,6 +335,20 @@ class TestDynamicGroupPatch:
         assert exc_info.value.status_code == 400
 
     @pytest.mark.asyncio
+    async def test_scalar_patch_entry_is_rejected(
+        self, mutator, mock_request, stages
+    ):
+        """A patches entry that is not an object 400s, not 500s."""
+        mock_request.body.return_value = json_payload(
+            _body(stages, ["invalid"])
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            await mutator.patch(mock_request)
+
+        assert exc_info.value.status_code == 400
+
+    @pytest.mark.asyncio
     async def test_missing_if_match_is_rejected(
         self, mutator, mock_request, stages, members
     ):
@@ -356,9 +369,9 @@ class TestDynamicGroupPatch:
     ):
         """The raw `<iso>|<count>` token form validates like the ETag form."""
         _, lmts = group_view.values(["id", "last_modified_at"])
-        mock_request.headers[
-            "If-Match"
-        ] = f"{max(lmts).isoformat()}|{len(lmts)}"
+        mock_request.headers["If-Match"] = (
+            f"{max(lmts).isoformat()}|{len(lmts)}"
+        )
         mock_request.body.return_value = json_payload(
             _body(stages, [_replace_label(members[0], "dog")])
         )

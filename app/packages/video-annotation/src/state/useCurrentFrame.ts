@@ -13,7 +13,7 @@ import { useModalSampleFrameRate } from "./accessors";
  * surface.
  *
  * The surface drives playback through `PlaybackProvider` / `usePlaybackEngine`
- * (visible position = `usePlayhead()` seconds), NOT the legacy `useTimeline`
+ * (visible position = `useCurrentTime()` seconds), NOT the legacy `useTimeline`
  * timeline-state machinery (which is never created here, so its frame number
  * stays frozen). Everything that needs the live frame — the engine clock,
  * the canvas bridge's `frameOf`, timeline select/hover frame-stamping — must

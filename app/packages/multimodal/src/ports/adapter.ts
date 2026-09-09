@@ -65,11 +65,6 @@ export interface EpisodeSource {
 
 export type { MediaReferenceDescriptor } from "@fiftyone/utilities";
 
-/** Multi-asset episode source discovered through a server manifest. */
-export interface ManifestEpisodeSource extends EpisodeSource {
-  readonly mediaReference: MediaReferenceDescriptor;
-}
-
 /** Lightweight sample facts available before a heavy adapter chunk loads. */
 export interface SampleDescriptor {
   readonly mediaReference?: MediaReferenceDescriptor | null;
@@ -113,6 +108,8 @@ export interface EpisodePreviewSession {
 
 /** Cancellation controls for opening one episode session resource. */
 export interface EpisodeOpenOptions {
+  /** A poster open: the source lists only what the sample already delivered. */
+  readonly preview?: boolean;
   readonly signal?: AbortSignal;
 }
 

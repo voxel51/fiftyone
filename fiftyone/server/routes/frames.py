@@ -7,6 +7,7 @@ FiftyOne Server /frames route
 """
 
 from starlette.endpoints import HTTPEndpoint
+from starlette.exceptions import HTTPException
 from starlette.responses import JSONResponse
 from starlette.requests import Request
 
@@ -26,6 +27,12 @@ class Frames(HTTPEndpoint):
         start_frame = int(data.get("frameNumber", 1))
         frame_count = int(data.get("frameCount", 1))
         num_frames = int(data.get("numFrames"))
+        # Frames are 1-indexed; a lower start would reach the driver as a
+        # negative skip and surface as a 500
+        if start_frame < 1:
+            raise HTTPException(
+                status_code=400, detail="frameNumber must be at least 1"
+            )
         extended = data.get("extended", None)
         dataset = data.get("dataset")
         stages = data.get("view")
@@ -123,6 +130,10 @@ class Frames(HTTPEndpoint):
         clip has no `frames` field — each "frame" is a sample of the dynamic
         group. ``get_view(dynamic_group=...)`` selects that group's ordered
         samples; we window and project them like the video path does.
+
+        The documents are served as stored. The i-th document is frame
+        ``range[0] + i``; the client derives that from ``range`` rather than
+        the server writing an artificial frame number into a real sample.
         """
         view = await fosv.get_view(
             dataset,
@@ -150,12 +161,6 @@ class Frames(HTTPEndpoint):
             view._pipeline(post_pipeline=post_pipeline),
         )
         samples = await cursor.to_list(count)
-
-        # The dynamic group is ordered, so the i-th sample is frame
-        # `start_frame + i`. Stamp it so the client keys frames the same way as
-        # the video `frames` path.
-        for offset, sample in enumerate(samples):
-            sample["frame_number"] = start_frame + offset
 
         return JSONResponse(
             {

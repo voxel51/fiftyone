@@ -118,6 +118,12 @@ export const useSyncAnnotationVideoStore = (
       settle();
     });
     seed();
+    // A stream that is already warm (a rebuild against frames it has fetched)
+    // may never fire the subscription again, so what the cache holds settles
+    // the loading state at once; an empty cache waits for the first landing
+    if (stream.cachedFrames().length > 0) {
+      settle();
+    }
 
     // Restore edits carried from the prior FrameStore (same sample) after the
     // source seed; the working overlay is source-independent, so it wins. Each
@@ -132,8 +138,13 @@ export const useSyncAnnotationVideoStore = (
     // (propagation, interpolation, track ops). The timeline never needed it —
     // it reads the server index — and a read-only surface has no such
     // consumers at all, so it opts out. See `seedWholeClip`.
+    // Resolution settles the loading flag even when no chunk fires the edits
+    // subscription: a clip with no frame labels, or a rebuild against an
+    // already-warm stream (deactivating the last frame field changes
+    // `labelTypes` without changing the fetched set, so the stream stays
+    // mounted).
     if (seedWholeClip) {
-      void stream.warmupAll();
+      stream.warmupAll().then(settle, settle);
     }
 
     return () => {

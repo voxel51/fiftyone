@@ -15,6 +15,7 @@ from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 
+from fiftyone.core.utils import run_sync_task
 import fiftyone.server.view as fosv
 from fiftyone.server import decorators, utils
 from fiftyone.server.exceptions import DbVersionMismatchError
@@ -170,6 +171,18 @@ class DynamicGroup(HTTPEndpoint):
                 status_code=400, detail="Invalid If-Match header"
             )
 
+        # Everything from here is synchronous SDK work against the database;
+        # it runs off the event loop
+        return await run_sync_task(self._patch, dataset_id, data, token)
+
+    def _patch(
+        self,
+        dataset_id: str,
+        data: dict,
+        token: Tuple[datetime.datetime, int],
+    ) -> JSONResponse:
+        dynamic_group = data["dynamicGroup"]
+        patches = data["patches"]
         dataset = get_dataset(dataset_id)
         view = fosv.get_view(
             dataset,
@@ -202,6 +215,12 @@ class DynamicGroup(HTTPEndpoint):
         members = set(member_ids)
         samples = []
         for entry in patches:
+            if not isinstance(entry, dict):
+                raise HTTPException(
+                    status_code=400,
+                    detail="each patches entry must be an object",
+                )
+
             sample_id = entry.get("sampleId")
             ops = entry.get("patch")
 

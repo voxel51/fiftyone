@@ -5,6 +5,7 @@ Tests related to Session behavior.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import gc
 import time
 from unittest.mock import MagicMock, patch

@@ -456,6 +456,10 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
   const effectiveLayoutScopeKey =
     layoutScopeKey ??
     (source ? `episode-source:${source.sourceId}` : undefined);
+  // Pins are a user choice, so they outlive the modal that made them
+  const pinPersistKey = effectiveLayoutScopeKey
+    ? `episode-pins:${effectiveLayoutScopeKey}`
+    : undefined;
   const cameraViewStateScopeKey =
     cameraScopeKey(effectiveLayoutScopeKey, cameraPreferenceField) ??
     effectiveLayoutScopeKey;
@@ -666,6 +670,7 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
                                       ? [...defaultPinnedTrackIds]
                                       : undefined
                                   }
+                                  pinPersistKey={pinPersistKey}
                                   onTagDelete={onTagDelete}
                                   leftSidebar={
                                     <SettingsSidebar
