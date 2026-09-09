@@ -155,7 +155,7 @@
         "hyparquet": "^1.26.2",
         "jotai": "catalog:",
         "lru-cache": "catalog:",
-        "maplibre-gl": "^4.7.1",
+        "maplibre-gl": "^6.0.0",
         "meshoptimizer": "^0.22.0",
         "mp4box": "^2.4.1",
         "protobufjs": "^7.6.4",
