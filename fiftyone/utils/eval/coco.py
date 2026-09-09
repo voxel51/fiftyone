@@ -487,13 +487,21 @@ _NO_MATCH_ID = ""
 _NO_MATCH_IOU = None
 
 
-def _coco_evaluation_single_iou(gts, preds, eval_key, config):
+def _coco_evaluation_single_iou(
+    gts, preds, eval_key, config, max_preds=None, per_class_max_preds=True
+):
     iou_thresh = min(config.iou, 1 - 1e-10)
     id_key = "%s_id" % eval_key
     iou_key = "%s_iou" % eval_key
 
     cats, pred_ious, iscrowd = _coco_evaluation_setup(
-        gts, preds, [id_key], iou_key, config
+        gts,
+        preds,
+        [id_key],
+        iou_key,
+        config,
+        max_preds=max_preds,
+        per_class_max_preds=per_class_max_preds,
     )
 
     matches = _compute_matches(
@@ -534,7 +542,13 @@ def _coco_evaluation_iou_sweep(gts, preds, config):
 
 
 def _coco_evaluation_setup(
-    gts, preds, id_keys, iou_key, config, max_preds=None
+    gts,
+    preds,
+    id_keys,
+    iou_key,
+    config,
+    max_preds=None,
+    per_class_max_preds=True,
 ):
     iscrowd = lambda l: bool(l.get_attribute_value(config.iscrowd, False))
     classwise = config.classwise
@@ -549,6 +563,20 @@ def _coco_evaluation_setup(
 
     if config.keypoint_sigmas is not None:
         iou_kwargs.update(keypoint_sigmas=config.keypoint_sigmas)
+
+    if isinstance(preds, fol.Keypoints):
+        sort_key = lambda p: np.nanmean(p.confidence) if p.confidence else -1
+    else:
+        sort_key = lambda p: p.confidence or -1
+
+    if max_preds is not None and not per_class_max_preds and preds is not None:
+        _preds = preds[preds._LABEL_LIST_FIELD]
+        pred_ids = {
+            pred.id
+            for pred in sorted(_preds, key=sort_key, reverse=True)[:max_preds]
+        }
+    else:
+        pred_ids = None
 
     # Organize ground truth and predictions by category
 
@@ -569,13 +597,11 @@ def _coco_evaluation_setup(
             for id_key in id_keys:
                 obj[id_key] = _NO_MATCH_ID
 
+            if pred_ids is not None and obj.id not in pred_ids:
+                continue
+
             label = obj.label if classwise else "all"
             cats[label]["preds"].append(obj)
-
-    if isinstance(preds, fol.Keypoints):
-        sort_key = lambda p: np.nanmean(p.confidence) if p.confidence else -1
-    else:
-        sort_key = lambda p: p.confidence or -1
 
     # Compute IoUs within each category
     pred_ious = {}
@@ -586,7 +612,7 @@ def _coco_evaluation_setup(
         # Highest confidence predictions first
         preds = sorted(preds, key=sort_key, reverse=True)
 
-        if max_preds is not None:
+        if max_preds is not None and per_class_max_preds:
             preds = preds[:max_preds]
 
         objects["preds"] = preds
