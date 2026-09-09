@@ -158,15 +158,12 @@ test.describe("view bar keyboard", () => {
     const editor = await viewBar.addStage("Limit");
     await editor.fill("limit", "3");
     // The commit applies; Apply never appears, so focus must move on rather
-    // than die with a button that isn't there
+    // than die with a button that isn't there. It moves INTO the next slot:
+    // the slot opens as a typeahead, so describing the next stage is a matter
+    // of typing, not of finding a focused "+" first
     await grid.run(() => editor.commit("limit"));
-
-    const slots = viewBar.stagesRow.getByLabel("Insert stage");
-    await expect(slots.last()).toBeFocused();
-
-    // And that focus is enough to describe the next stage
-    await page.keyboard.press("Enter");
     await expect(viewBar.insertTypeahead).toBeFocused();
+
     await page.keyboard.type("Skip");
     await page.keyboard.press("Enter");
     await editor.assert.isOpen();
