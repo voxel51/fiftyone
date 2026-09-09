@@ -70,7 +70,7 @@ def _to_pil(img):
     return PILImage.fromarray(img).convert("RGB")
 
 
-def _select_dtype(device) -> "torch.dtype":
+def _select_dtype(device):
     """bfloat16 is a CUDA optimization; CPU inference wants float32."""
     return torch.bfloat16 if "cuda" in str(device) else torch.float32
 
