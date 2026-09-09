@@ -37,8 +37,23 @@ moge_v3 = fou.lazy_import("moge.model.v3", callback=_ensure_moge)
 DEFAULT_MOGE_MODEL = "Ruicheng/moge-3-vitl"
 
 
+def _to_array(value):
+    """Converts one per-image output to a numpy array, keeping ``None``."""
+    if value is None:
+        return None
+
+    if isinstance(value, torch.Tensor):
+        return value.detach().float().cpu().numpy()
+
+    return np.asarray(value)
+
+
 def _to_arrays(value):
-    """Converts a batch of per-image outputs to a list of numpy arrays."""
+    """Converts a batch of per-image outputs to a list of numpy arrays.
+
+    Outputs the model did not produce for an image are kept as ``None`` so
+    that the list stays aligned with the batch.
+    """
     if value is None:
         return None
 
@@ -52,19 +67,33 @@ def _to_arrays(value):
             else list(value)
         )
 
-    return [
-        (
-            v.detach().float().cpu().numpy()
-            if isinstance(v, torch.Tensor)
-            else np.asarray(v)
-        )
-        for v in value
-    ]
+    return [_to_array(v) for v in value]
 
 
 def _is_single(value):
     """Whether an array holds one image's output rather than a batch."""
     return value.ndim == 2 or (value.ndim == 3 and value.shape[-1] in (1, 3))
+
+
+def _per_image(value, depths, name):
+    """Returns ``value`` when it holds one entry per image, else ``None``.
+
+    A shorter list cannot be attributed to particular images, so it is
+    dropped rather than applied to the wrong ones.
+    """
+    if value is None:
+        return None
+
+    if len(value) != len(depths):
+        logger.warning(
+            "Model output '%s' has %d entries for %d images; ignoring it",
+            name,
+            len(value),
+            len(depths),
+        )
+        return None
+
+    return value
 
 
 def _resize(array, size, nearest):
@@ -134,10 +163,12 @@ class MoGeOutputProcessor(fout.OutputProcessor):
         if not depths:
             raise ValueError("Model output 'depth' is empty")
 
-        masks = _to_arrays(output.get("mask"))
-        normals = _to_arrays(output.get("normal"))
-        points = _to_arrays(output.get("points"))
-        intrinsics = output.get("intrinsics")
+        masks = _per_image(_to_arrays(output.get("mask")), depths, "mask")
+        normals = _per_image(
+            _to_arrays(output.get("normal")), depths, "normal"
+        )
+        points = _per_image(_to_arrays(output.get("points")), depths, "points")
+        intrinsics = _per_image(output.get("intrinsics"), depths, "intrinsics")
         is_metric = output.get("is_metric", True)
 
         width, height = frame_size
@@ -165,11 +196,15 @@ class MoGeOutputProcessor(fout.OutputProcessor):
 
             if size is not None and depth.shape[:2] != (height, width):
                 depth = _resize(depth, size, nearest=False)
-                if mask is not None:
-                    mask = (
-                        _resize(mask.astype(np.float32), size, nearest=True)
-                        > 0.5
-                    )
+
+            if (
+                mask is not None
+                and size is not None
+                and mask.shape[:2] != (height, width)
+            ):
+                mask = (
+                    _resize(mask.astype(np.float32), size, nearest=True) > 0.5
+                )
 
             max_depth = float(np.max(depth)) if depth.size else 0.0
             if max_depth > 0:
@@ -186,20 +221,22 @@ class MoGeOutputProcessor(fout.OutputProcessor):
             if mask is not None:
                 heatmap.valid_mask = mask.astype(np.uint8)
 
-            if intrinsics is not None and i < len(intrinsics):
-                k = intrinsics[i]
+            k = intrinsics[i] if intrinsics and i < len(intrinsics) else None
+            if k is not None:
                 if isinstance(k, torch.Tensor):
                     k = k.detach().float().cpu().numpy()
                 heatmap.intrinsics = np.asarray(k, dtype=np.float32).tolist()
 
-            if normals is not None and i < len(normals):
-                normal = np.asarray(normals[i], dtype=np.float32)
+            normal = normals[i] if normals and i < len(normals) else None
+            if normal is not None:
+                normal = np.asarray(normal, dtype=np.float32)
                 if size is not None and normal.shape[:2] != (height, width):
                     normal = _resize(normal, size, nearest=False)
                 heatmap.normal_map = normal
 
-            if points is not None and i < len(points):
-                point_map = np.asarray(points[i], dtype=np.float32)
+            point_map = points[i] if points and i < len(points) else None
+            if point_map is not None:
+                point_map = np.asarray(point_map, dtype=np.float32)
                 if size is not None and point_map.shape[:2] != (height, width):
                     point_map = _resize(point_map, size, nearest=False)
                 heatmap.point_map = point_map
@@ -318,6 +355,15 @@ class MoGeModel(fout.TorchImageModel):
             )
             refine_steps = 0
 
+        use_fp16 = bool(self.config.use_fp16 or self.using_half_precision)
+        if use_fp16 and self._device.type != "cuda":
+            logger.warning(
+                "MoGe-3 half precision needs a CUDA device; running in full "
+                "precision on %s",
+                self._device,
+            )
+            use_fp16 = False
+
         depths, masks, normals, points, intrinsics = [], [], [], [], []
         for img in imgs:
             if isinstance(img, torch.Tensor):
@@ -347,9 +393,7 @@ class MoGeModel(fout.TorchImageModel):
                 resolution_level=self.config.resolution_level,
                 fov_x=self.config.fov_x,
                 refine_steps=refine_steps,
-                use_fp16=bool(
-                    self.config.use_fp16 or self.using_half_precision
-                ),
+                use_fp16=use_fp16,
             )
 
             depths.append(output["depth"].detach().float().cpu().numpy())
@@ -361,13 +405,10 @@ class MoGeModel(fout.TorchImageModel):
             intrinsics.append(
                 k.detach().float().cpu().numpy() if k is not None else None
             )
-            if (
-                self.config.include_normals
-                and output.get("normal") is not None
-            ):
-                normals.append(output["normal"].detach().float().cpu().numpy())
-            if self.config.include_points and output.get("points") is not None:
-                points.append(output["points"].detach().float().cpu().numpy())
+            if self.config.include_normals:
+                normals.append(_to_array(output.get("normal")))
+            if self.config.include_points:
+                points.append(_to_array(output.get("points")))
 
         result = {
             "depth": depths,
@@ -375,9 +416,9 @@ class MoGeModel(fout.TorchImageModel):
             "intrinsics": intrinsics,
             "is_metric": True,
         }
-        if normals:
+        if any(n is not None for n in normals):
             result["normal"] = normals
-        if points:
+        if any(p is not None for p in points):
             result["points"] = points
 
         return result

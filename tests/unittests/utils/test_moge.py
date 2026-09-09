@@ -185,3 +185,55 @@ class TestMoGeOutputProcessor:
 
         assert np.all(results[0].map == 0)
         assert results[0].max_depth == 0.0
+
+    def test_none_mask_entry_is_skipped(self):
+        processor = self._make_processor()
+        depth = np.array([[10.0, 20.0], [30.0, 40.0]], dtype=np.float32)
+
+        results = processor({"depth": [depth], "mask": [None]}, (2, 2))
+
+        assert not hasattr(results[0], "valid_mask")
+        assert results[0].max_depth == pytest.approx(40.0)
+
+    def test_none_intrinsics_entry_is_skipped(self):
+        processor = self._make_processor()
+        depth = np.ones((2, 2), dtype=np.float32)
+
+        results = processor({"depth": [depth], "intrinsics": [None]}, (2, 2))
+
+        assert not hasattr(results[0], "intrinsics")
+
+    def test_mixed_none_entries_stay_aligned(self):
+        processor = self._make_processor()
+        depth = np.ones((2, 2), dtype=np.float32)
+        normal = np.zeros((2, 2, 3), dtype=np.float32)
+        normal[..., 2] = -1.0
+
+        results = processor(
+            {"depth": [depth, depth], "normal": [None, normal]}, (2, 2)
+        )
+
+        assert not hasattr(results[0], "normal_map")
+        assert results[1].normal_map[0, 0, 2] == pytest.approx(-1.0)
+
+    def test_short_optional_list_is_ignored(self):
+        processor = self._make_processor()
+        depth = np.ones((2, 2), dtype=np.float32)
+        normal = np.zeros((2, 2, 3), dtype=np.float32)
+
+        results = processor(
+            {"depth": [depth, depth], "normal": [normal]}, (2, 2)
+        )
+
+        assert not hasattr(results[0], "normal_map")
+        assert not hasattr(results[1], "normal_map")
+
+    def test_mask_is_resized_when_depth_already_matches(self):
+        processor = self._make_processor()
+        depth = np.ones((4, 4), dtype=np.float32)
+        mask = np.ones((2, 2), dtype=bool)
+
+        results = processor({"depth": [depth], "mask": [mask]}, (4, 4))
+
+        assert results[0].map.shape == (4, 4)
+        assert results[0].valid_mask.shape == (4, 4)
