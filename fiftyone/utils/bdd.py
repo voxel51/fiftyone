@@ -6,6 +6,7 @@ Utilities for working with datasets in
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from copy import deepcopy
 import logging
 import os
@@ -20,7 +21,6 @@ import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.storage as fos
 import fiftyone.utils.data as foud
-
 
 logger = logging.getLogger(__name__)
 
@@ -426,12 +426,8 @@ def download_bdd100k_dataset(
     labels_zip = os.path.join(scratch_dir, _BDD100K_LABELS_ZIP)
 
     extracted_dir = os.path.join(scratch_dir, "bdd100k")
-    extracted_val_images = os.path.join(
-        extracted_dir, "images", "100k", "val"
-    )
-    extracted_val_labels = os.path.join(
-        extracted_dir, "labels", "100k", "val"
-    )
+    extracted_val_images = os.path.join(extracted_dir, "images", "100k", "val")
+    extracted_val_labels = os.path.join(extracted_dir, "labels", "100k", "val")
 
     if not os.path.isfile(images_zip):
         logger.info("Downloading BDD100K images from %s...", _BDD100K_IA_BASE)
@@ -523,11 +519,13 @@ def _convert_mot_to_legacy_labels(mot_dir, out_path):
                 )
             labels.append(converted)
 
-        entries.append({
-            "name": name,
-            "attributes": mot.get("attributes", {}) or {},
-            "labels": labels,
-        })
+        entries.append(
+            {
+                "name": name,
+                "attributes": mot.get("attributes", {}) or {},
+                "labels": labels,
+            }
+        )
 
     etas.write_json(entries, out_path)
 
@@ -542,11 +540,13 @@ def _convert_mot_poly2d(mot_poly2d, category):
     """
     vertices = [[pt[0], pt[1]] for pt in mot_poly2d if len(pt) >= 2]
     types = "".join(pt[2] for pt in mot_poly2d if len(pt) >= 3)
-    return [{
-        "vertices": vertices,
-        "types": types,
-        "closed": category.startswith("area/"),
-    }]
+    return [
+        {
+            "vertices": vertices,
+            "types": types,
+            "closed": category.startswith("area/"),
+        }
+    ]
 
 
 def _count_split_samples(dataset_dir):
