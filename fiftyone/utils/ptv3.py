@@ -435,7 +435,7 @@ def _load_point_cloud(filepath):
     return points
 
 
-def _load_backbone_state_dict(model_path: str) -> dict:
+def _load_backbone_state_dict(model_path):
     """Loads a PTv3 backbone state dict from ``model_path``.
 
     Supports both a safetensors file (the shipped, pickle-free format) and a raw
