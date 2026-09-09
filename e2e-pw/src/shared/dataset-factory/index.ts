@@ -186,6 +186,14 @@ interface DatasetOptions {
   appConfig?: JSONObject;
 
   /**
+   * `fo.ColorScheme` keyword arguments for `dataset.app_config.color_scheme`.
+   *
+   * @example
+   * colorScheme: { color_by: "instance", color_pool: ["red", "green"] }
+   */
+  colorScheme?: JSONObject;
+
+  /**
    * Field descriptions and info dicts to attach to declared fields, keyed by
    * field path (nested paths like `metadata.width` are allowed).
    *
@@ -326,6 +334,7 @@ const createDataset = (() => {
   const loader = new OssLoader();
   return async ({
     appConfig = {},
+    colorScheme,
     datasetName,
     fieldMetadata = {},
     frameSchema = {},
@@ -473,6 +482,14 @@ const createDataset = (() => {
       Object.keys(appConfig).length
         ? `for key, value in json.loads('${JSON.stringify(appConfig)}').items():
         setattr(dataset.app_config, key, value)
+    dataset.save()`
+        : ""
+    }
+    ${
+      colorScheme
+        ? `dataset.app_config.color_scheme = fo.ColorScheme(
+        **json.loads('${JSON.stringify(colorScheme)}')
+    )
     dataset.save()`
         : ""
     }
