@@ -20,16 +20,22 @@ const test = base.extend<{
   },
 });
 
-const datasetName = getUniqueDatasetNameWithPrefix("quickstart-groups");
+const datasetName = getUniqueDatasetNameWithPrefix("display-options-groups");
 
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  await fiftyoneLoader.loadZooDataset("quickstart-groups", datasetName, {
-    max_samples: 12,
+  await datasetFactory.createGroupDataset({
+    datasetName,
+    numGroups: 4,
+    slices: [
+      { name: "left", mediaType: "image" },
+      { name: "right", mediaType: "image" },
+      { name: "pcd", mediaType: "point-cloud" },
+    ],
   });
 });
 
