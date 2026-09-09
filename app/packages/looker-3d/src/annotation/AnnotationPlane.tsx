@@ -1,6 +1,13 @@
 import { Line, useCursor } from "@react-three/drei";
-import { useFrame } from "@react-three/fiber";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useFrame, type ThreeEvent } from "@react-three/fiber";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentRef,
+} from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import * as THREE from "three";
 import { FO_USER_DATA } from "../constants";
@@ -40,9 +47,9 @@ export const AnnotationPlane = ({
 
   const { sceneBoundingBox, upVector } = useFo3dContext();
   const meshRef = useRef<THREE.Mesh>(null);
-  const lineRef = useRef<any>(null);
+  const lineRef = useRef<ComponentRef<typeof Line>>(null);
   const materialRef = useRef<THREE.MeshBasicMaterial>(null);
-  const transformControlsRef = useRef<any>(null);
+  const transformControlsRef = useRef<THREE.Object3D>(null);
   const [isHovered, setIsHovered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isMouseDown, setIsMouseDown] = useState(false);
@@ -158,7 +165,12 @@ export const AnnotationPlane = ({
       showY: transformControlsProps.showY,
       showZ: transformControlsProps.showZ,
     }));
-  }, [transformControlsProps, annotationPlane.enabled, isSelected]);
+  }, [
+    transformControlsProps,
+    annotationPlane.enabled,
+    isSelected,
+    setAnnotationPlane,
+  ]);
 
   useCursor(
     isHovered && isSelected && !isSegmenting,
@@ -181,13 +193,13 @@ export const AnnotationPlane = ({
     }
   });
 
-  const handleMouseDown = useCallback((event: any) => {
+  const handleMouseDown = useCallback((event: ThreeEvent<PointerEvent>) => {
     setIsMouseDown(true);
     setDragStartPosition({ x: event.clientX, y: event.clientY });
   }, []);
 
   const handleMouseMove = useCallback(
-    (event: any) => {
+    (event: ThreeEvent<PointerEvent>) => {
       if (isMouseDown && dragStartPosition) {
         const deltaX = Math.abs(event.clientX - dragStartPosition.x);
         const deltaY = Math.abs(event.clientY - dragStartPosition.y);
@@ -209,7 +221,7 @@ export const AnnotationPlane = ({
   }, []);
 
   const handlePlaneClick = useCallback(
-    (event: any) => {
+    (event: ThreeEvent<MouseEvent>) => {
       if (!showTransformControls || isSegmenting) return;
 
       event.stopPropagation();
@@ -259,7 +271,7 @@ export const AnnotationPlane = ({
         quaternion: newQuaternion,
       }));
     }
-  }, []);
+  }, [setAnnotationPlane]);
 
   const handleTransformEnd = useCallback(() => {
     syncAnnotationPlaneTransformation();

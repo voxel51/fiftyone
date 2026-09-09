@@ -31,7 +31,7 @@ export const mockUsePanelStateByIdCallback = vi.mocked(
 export const mockUseActivePanelEventsCount = vi.mocked(
   useActivePanelEventsCount,
 );
-export let mockCallback: any;
+export let mockCallback: Parameters<typeof usePanelStateByIdCallback>[0];
 
 export function setupPanelEventTestMocks() {
   vi.clearAllMocks();

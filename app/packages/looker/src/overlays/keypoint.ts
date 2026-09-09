@@ -13,7 +13,7 @@ import {
 } from "../state";
 import { distance, distanceFromLineSegment, multiply } from "../util";
 import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
-import { resolveLabelSelectionVisuals, t } from "./util";
+import { resolveLabelSelectionVisuals, sizeInImagePixels, t } from "./util";
 import { isHoveringParticularLabelWithInstanceConfig } from "@fiftyone/state/src/jotai";
 
 interface KeypointLabel extends RegularLabel {
@@ -34,7 +34,8 @@ export default class KeypointOverlay<
 
     const result = this.getDistanceAndMaybePoint(state);
 
-    if (result && result[0] <= state.pointRadius) {
+    // distances are image-pixel; convert the draw-space radius to match
+    if (result && result[0] <= sizeInImagePixels(state, state.pointRadius)) {
       return CONTAINS.BORDER;
     }
     return CONTAINS.NONE;
@@ -158,7 +159,7 @@ export default class KeypointOverlay<
         y,
         ...(multiply(dimensions, point) as [number, number]),
       );
-      if (d <= pointRadius * TOLERANCE) {
+      if (d <= sizeInImagePixels(state, pointRadius * TOLERANCE)) {
         distances.push([0, i]);
       } else {
         distances.push([d, i]);

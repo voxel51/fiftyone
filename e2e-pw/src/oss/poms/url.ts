@@ -36,10 +36,9 @@ export class UrlPom {
   }
 
   async pageChange<T>(wrap: () => Promise<T>): Promise<T> {
-    const pageChange =
-      this.eventUtils.getEventReceivedPromiseForPredicate("page-change");
+    const pageChange = await this.eventUtils.arm("page-change");
     const result = await wrap();
-    await pageChange;
+    await pageChange.received;
     return result;
   }
 

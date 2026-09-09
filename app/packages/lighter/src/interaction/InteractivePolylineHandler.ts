@@ -288,9 +288,12 @@ export class InteractivePolylineHandler implements InteractionHandler {
 
   onMove({ worldPoint, event }: OverlayEvent): boolean {
     if (this.dragPointId !== null) {
+      // Move silently while dragging; onPointerUp emits the single committed
+      // move so the engine writes once per gesture, not once per frame.
       this.overlay.movePointById(
         this.dragPointId,
         this.overlay.absolutePointToRelative(worldPoint),
+        false,
       );
       // Hide new point preview while dragging
       this.overlay.setPreviewPoint(null);
@@ -367,6 +370,19 @@ export class InteractivePolylineHandler implements InteractionHandler {
   }
 
   onPointerUp(_params: OverlayEvent): boolean {
+    // Clear the overlay's own per-point drag state on EVERY pointer-up, not just
+    // at cleanup. The click that selects the polyline runs the overlay's
+    // `onPointerDown` (which sets `dragPointIndex`) before this handler takes
+    // over dispatch, so the matching pointer-up arrives here and the overlay's
+    // state is never released. It reports `isInteracting()` for as long as the
+    // shape stays selected, and the engine bridge treats that as an in-flight
+    // gesture and defers every projection — so scrubbing paints the geometry the
+    // overlay happened to hold (`skip(interacting)` in the bridge loop), which is
+    // the "I only see the most recently drawn state until the playhead leaves the
+    // track" report. Only drag tracking is reset; the vertex sub-selection that
+    // Backspace reads is untouched.
+    this.overlay.cancelPointDrag();
+
     if (this.dragPointId === null) {
       return true;
     }
@@ -386,6 +402,10 @@ export class InteractivePolylineHandler implements InteractionHandler {
     if (from[0] === to[0] && from[1] === to[1]) {
       return true;
     }
+
+    // Live drag moved the point silently; emit the committed move now so the
+    // engine records one write for the whole gesture.
+    this.overlay.emitPointMoved(id, from, to);
 
     const cmd = new MoveKeypointPointCommand(
       this.overlay as unknown as KeypointOverlay,

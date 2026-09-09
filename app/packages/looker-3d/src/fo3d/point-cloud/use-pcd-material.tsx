@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { BufferGeometry, Quaternion } from "three";
+import type { BufferGeometry, Group, Object3D, Quaternion } from "three";
 import {
   DEFAULT_BOUNDING_BOX,
   SHADE_BY_CUSTOM,
@@ -64,15 +64,15 @@ export const usePcdMaterial = (
   name: string,
   geometry: BufferGeometry,
   defaultMaterial: PcdAsset["defaultMaterial"],
-  pcdContainerRef: React.RefObject<any>,
+  pcdContainerRef: React.RefObject<Object3D>,
   quaternion?: Quaternion,
-  vertexColorsAvailable: boolean = false,
+  _vertexColorsAvailable = false,
   pointCloudCrop?: PointCloudCrop | null,
 ) => {
   const { upVector, pluginSettings } = useFo3dContext();
 
   const { boundingBox: pcdBoundingBox } = useFo3dBounds(
-    pcdContainerRef,
+    pcdContainerRef as React.RefObject<Group>,
     !!geometry,
   );
 
@@ -309,7 +309,6 @@ export const usePcdMaterial = (
     name,
     colorMap,
     activeThreshold,
-    vertexColorsAvailable,
     pointCloudCrop,
   ]);
 

@@ -166,5 +166,16 @@ const resolveWorkspace = (
     return session.sessionSpaces;
   }
 
+  // state replays (reconnects, refreshes) carry the server's spaces without
+  // the client's ordering stamp, lagging local writes by the push debounce;
+  // once this session has written (its copy is stamped), an unstamped replay
+  // must not clobber it
+  if (
+    session.sessionSpaces?._version !== undefined &&
+    state.spaces?._version === undefined
+  ) {
+    return session.sessionSpaces;
+  }
+
   return state.spaces || session.sessionSpaces;
 };

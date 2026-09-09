@@ -208,9 +208,49 @@ class VideoLabelsAggregationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(by_id[id_b]["segments"], [[2, 4]])
         self.assertEqual(by_id[id_b]["keyframes"], [])
 
-        # The instance-less detection fragments into a single-frame entry.
+        # An instance-less, index-less detection has no track identity, so it
+        # fragments into a single-frame entry keyed by its own doc _id.
         self.assertEqual(by_id[id_legacy]["segments"], [[1, 1]])
         self.assertEqual(by_id[id_legacy]["classLabel"], "car")
+
+    @drop_async_dataset
+    async def test_index_only_tracks_coalesce_by_index(self, dataset):
+        video = fo.Sample(filepath="video.mp4")
+        # An instance-less "vehicle" carrying a stable index across frames 1-3
+        # coalesces into ONE synthetic track-<index>; a bare detection (no
+        # instance, no index) still fragments by its per-frame _id.
+        video[1]["detections"] = fo.Detections(
+            detections=[
+                fo.Detection(label="vehicle", index=0),
+                fo.Detection(label="sign"),
+            ]
+        )
+        video[2]["detections"] = fo.Detections(
+            detections=[fo.Detection(label="vehicle", index=0)]
+        )
+        video[3]["detections"] = fo.Detections(
+            detections=[fo.Detection(label="vehicle", index=0)]
+        )
+        dataset.add_sample(video)
+
+        id_bare = str(video[1]["detections"].detections[1]._id)
+
+        view = fov.make_optimized_select_view(
+            dataset.view(), video.id, flatten=True
+        )
+        result = await aggregate_index(view, ["detections"])
+
+        by_id = {e["instanceId"]: e for e in result["detections"]["instances"]}
+
+        # index 0 → one synthetic track spanning all three frames
+        self.assertIn("track-0", by_id)
+        self.assertEqual(by_id["track-0"]["segments"], [[1, 3]])
+        self.assertEqual(by_id["track-0"]["classLabel"], "vehicle")
+        self.assertEqual(by_id["track-0"]["persistedIndex"], 0)
+
+        # the bare detection still fragments by its own _id
+        self.assertIn(id_bare, by_id)
+        self.assertEqual(by_id[id_bare]["segments"], [[1, 1]])
 
     @drop_async_dataset
     async def test_index_dynamic_attribute_segments(self, dataset):

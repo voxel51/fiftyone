@@ -9,23 +9,6 @@
  * shapes with no React / state deps.
  */
 
-/** ObjectId hex string. */
-export type ObjectIdHex = string;
-
-export type PropagationMethod = "linear" | "sam2";
-
-/** Provenance written on labels created by a propagation run. */
-export interface PropagationBlob {
-  method: PropagationMethod;
-  run_id: ObjectIdHex;
-  /**
-   * Source keyframes' `_id`s. Two for a bracketed run (linear interp,
-   * or SAM2 between two keyframes); one for a SAM2 forward run that tracks
-   * from a single seed keyframe to the end of the clip.
-   */
-  parent_keyframes: [ObjectIdHex, ...ObjectIdHex[]];
-}
-
 export interface SyntheticBox {
   id: string;
   /**
@@ -56,9 +39,37 @@ export interface SyntheticBox {
   instance?: { _cls: "Instance"; _id?: string };
   /** `true` for user-authored / propagation source; `false` for interpolated. */
   keyframe: boolean;
-  /** Provenance for propagation-created labels; `null` for keyframes. */
-  propagation: PropagationBlob | null;
 }
+
+/**
+ * A tracked polyline as the propagation path sees it — the sibling of
+ * {@link SyntheticBox} for vertex geometry. Propagation lerps `points` where a
+ * detection's is a `bounding_box`; everything else (identity, track index,
+ * keyframe flag) carries the same meaning.
+ */
+export interface SyntheticPolyline {
+  id: string;
+  /** Real MongoDB `_id` when the polyline has been persisted. */
+  _id?: string;
+  label: string;
+  /** One entry per ring / path; each is normalized [x, y] pairs in [0, 1]. */
+  points: [number, number][][];
+  /** Whether the last vertex connects back to the first. */
+  closed?: boolean;
+  filled?: boolean;
+  /** FiftyOne track index, when present. */
+  index?: number;
+  instance?: { _cls: "Instance"; _id?: string };
+  /** `true` for user-authored / propagation source; `false` for interpolated. */
+  keyframe: boolean;
+}
+
+/**
+ * Either geometry propagation can interpolate between two keyframes. Agents
+ * narrow to the one they handle; `useVideoPropagate` picks the agent from the
+ * field's label type, so the pairing is decided before an agent ever sees it.
+ */
+export type SyntheticKeyframe = SyntheticBox | SyntheticPolyline;
 
 export interface FrameLabelSnapshot {
   frameNumber: number;
@@ -75,7 +86,6 @@ export interface RawDetection {
   mask_path?: string;
   mask?: unknown;
   keyframe?: boolean;
-  propagation?: PropagationBlob | null;
 }
 
 export interface RawDetectionsField {
@@ -92,11 +102,44 @@ export interface RawPolyline {
   filled?: boolean;
   instance?: { _cls: "Instance"; _id?: string } | null;
   keyframe?: boolean;
-  propagation?: PropagationBlob | null;
 }
 
 export interface RawPolylinesField {
   polylines?: RawPolyline[];
+}
+
+export interface RawKeypoint {
+  _id?: string;
+  id?: string;
+  index?: number;
+  label?: string;
+  /** Flat list of `[x, y]` vertices in normalized coordinates. */
+  points?: [number, number][];
+  confidence?: number[] | null;
+  instance?: { _cls: "Instance"; _id?: string } | null;
+  keyframe?: boolean;
+}
+
+export interface RawKeypointsField {
+  keypoints?: RawKeypoint[];
+}
+
+/**
+ * Non-spatial: a per-frame classification has no geometry, so the Lighter
+ * `ClassificationOverlay` renders it as a label chip rather than a shape.
+ */
+export interface RawClassification {
+  _id?: string;
+  id?: string;
+  index?: number;
+  label?: string;
+  confidence?: number | null;
+  instance?: { _cls: "Instance"; _id?: string } | null;
+  keyframe?: boolean;
+}
+
+export interface RawClassificationsField {
+  classifications?: RawClassification[];
 }
 
 /**
@@ -119,9 +162,4 @@ export interface LocalDetection {
    * value through `updateLabel`'s shallow merge.
    */
   keyframe?: boolean;
-  /**
-   * Propagation provenance. User edits clear this (`null`); leave
-   * undefined to preserve the existing value through the shallow merge.
-   */
-  propagation?: PropagationBlob | null;
 }

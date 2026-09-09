@@ -9,17 +9,25 @@ import {
   useInteraction,
   useSurfaceActions,
 } from "@fiftyone/annotation";
+import type { TimelineTracksScroller } from "@fiftyone/playback";
 import { LabelType } from "@fiftyone/utilities";
+import type React from "react";
 import { useCallback, useEffect, useRef } from "react";
 import { useCurrentFrame, useCurrentFrameGetter } from "./useCurrentFrame";
 
 const SURFACE = "video-timeline";
 
-// Keyframes exist to drive linear propagation, which interpolates a bounding
-// box — so a keyframe is a detection-only concern.
+// Keyframes exist to drive linear propagation, so a type is keyframeable iff
+// propagation can interpolate its geometry: a detection's bounding box, or a
+// polyline's vertices. Keep this in step with `linearAgentFor` in
+// `useVideoPropagate` — a type that resolves to a linear agent there but is
+// missing here has a working interpolation path with no way to manage its
+// keyframes from the toolbar.
 const KEYFRAME_TYPES: ReadonlySet<LabelType> = new Set([
   LabelType.Detection,
   LabelType.Detections,
+  LabelType.Polyline,
+  LabelType.Polylines,
 ]);
 
 // Split is a track-identity op, valid for any frame-level instance geometry we
@@ -112,7 +120,7 @@ const useSelectionTypeGate = (allowed: ReadonlySet<LabelType>): boolean => {
   });
 };
 
-/** True iff every selected track is a detection — gates Mark Keyframe. */
+/** True iff every selected track is keyframeable — gates Mark Keyframe. */
 export const useSelectionIsKeyframeable = (): boolean =>
   useSelectionTypeGate(KEYFRAME_TYPES);
 
@@ -227,12 +235,18 @@ export const useFollowAnchorFrame = (): void => {
 
 /**
  * Bring the anchored (lead) track's row into view when selection moves — the
- * engine-native replacement for the scene-event scroll. Relies on
- * `data-track-id={id}` rendered by `TimelineTrack` (row id == instanceId for
- * object tracks). `scrollIntoView` with `block: "nearest"` no-ops when the row
- * is already visible, so pinned / on-screen rows generate no scroll.
+ * engine-native replacement for the scene-event scroll.
+ *
+ * Goes through the timeline's {@link TimelineTracksScroller} rather than the
+ * DOM: the tracks drawer is virtualized, so an off-screen row has no
+ * `[data-track-id]` node to scroll to and a DOM query would silently no-op for
+ * exactly the rows that need scrolling. The scroller falls back to the DOM for
+ * pinned rows, which always render. Both paths land on "nearest", so a row
+ * that's already visible generates no scroll.
  */
-export const useScrollTrackToAnchor = (): void => {
+export const useScrollTrackToAnchor = (
+  scroller: React.RefObject<TimelineTracksScroller | null>,
+): void => {
   const engine = useAnnotationEngine();
   const anchorId = useInteraction(
     engine,
@@ -251,15 +265,7 @@ export const useScrollTrackToAnchor = (): void => {
     // Defer to the next frame so any layout shift from the selection settles
     // before scrolling.
     requestAnimationFrame(() => {
-      const row = document.querySelector(
-        `[data-track-id="${CSS.escape(anchorId)}"]`,
-      );
-
-      row?.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-        inline: "nearest",
-      });
+      scroller.current?.scrollToTrack(anchorId);
     });
-  }, [anchorId]);
+  }, [anchorId, scroller]);
 };

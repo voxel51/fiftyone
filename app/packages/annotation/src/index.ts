@@ -1,3 +1,4 @@
+export * from "./components";
 export * from "./engine";
 // Seam for the video-annotation surface (which owns the video-coupled
 // hooks). Explicit re-exports rather than `export * from "./agents"` so the
@@ -9,10 +10,14 @@ export type {
   InferenceResult,
   MediaBitmap,
   PropagatedDetection,
+  PropagatedLabel,
+  PropagatedPolyline,
   PropagationContext,
   PropagationInferenceResult,
 } from "./agents/types";
 export { useAgentRegistry } from "./agents/hooks/useAgentRegistry";
+export { useClearPointPrompts } from "./agents/hooks/useClearPointPrompts";
+export { useEndPointSession } from "./agents/hooks/useEndPointSession";
 export { useSampleDescriptor } from "./agents/hooks/useSampleDescriptor";
 export {
   useSetSegmentBitmapSource,

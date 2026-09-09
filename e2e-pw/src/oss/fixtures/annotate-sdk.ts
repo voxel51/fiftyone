@@ -137,6 +137,31 @@ export class AnnotateSDK {
   }
 
   /**
+   * Waits until at least `minCount` detections of `field` are persisted.
+   *
+   * The right wait after an edit whose label is created asynchronously
+   * (e.g. AI inference in a worker): save settlement reads "settled" before
+   * the label even exists, and a network wait can miss an early patch. This
+   * polls the database itself, so it can only pass once the label is real.
+   *
+   * Expected latency: inference (mock: instant) + one autosave tick (<= 3s)
+   * + the patch round-trip; each probe costs ~1s of Python startup. The 15s
+   * bound is ~3 probes past the expected worst case, not a race.
+   */
+  async waitForDetectionCount(dataset: string, field: string, minCount = 1) {
+    const deadline = Date.now() + 15_000;
+    let count = 0;
+    while (Date.now() < deadline) {
+      count = (await this.getDetectionsState(dataset, field)).count;
+      if (count >= minCount) return;
+    }
+    throw new Error(
+      `expected >=${minCount} persisted "${field}" detections within 15s, ` +
+        `found ${count}`,
+    );
+  }
+
+  /**
    * Reads back the persisted state of a sample-level `Classification` field on a
    * single sample. Use to verify a classification create/delete round-trip.
    *

@@ -144,7 +144,7 @@ export const Gizmos = ({
 
     setCellSize(roundedCellSize);
     setSectionSize(roundedSectionSize);
-  }, [sceneSize]);
+  }, [sceneSize, setCellSize, setSectionSize]);
 
   // The fade distance is the distance at which the grid will start to fade out
   // the multipliers and offset are arbitrary

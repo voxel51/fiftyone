@@ -76,19 +76,23 @@ export const createLooker3dBridge = ({
         return undefined;
       }
 
-      managed.add(entry._id);
-      return handleFor(entry._id, entry.path);
+      managed.add(entry.data._id);
+      return handleFor(entry.data._id, entry.path);
     },
 
     refOf: (handle) => ({ path: handle.path, instanceId: handle.instanceId }),
 
     mount: (descriptor) => {
-      const color = resolveColor?.(descriptor.label) ?? descriptor.label.color;
-      const entry = { ...descriptor.label, color } as Working3dLabel;
+      const color =
+        resolveColor?.(descriptor.entry) ?? descriptor.entry.ui.color;
+      const entry = {
+        ...descriptor.entry,
+        ui: { ...descriptor.entry.ui, color },
+      } as Working3dLabel;
 
       store.add(entry);
-      managed.add(entry._id);
-      return handleFor(entry._id, entry.path);
+      managed.add(entry.data._id);
+      return handleFor(entry.data._id, entry.path);
     },
 
     unmount: (handle) => {

@@ -5,6 +5,10 @@ Configuring FiftyOne
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 0.4.0
+    :enterprise_version: 1.0
+
 FiftyOne can be configured in various ways. This guide covers the various
 options that exist, how to view your current config, and how to customize your
 config as desired.
@@ -369,6 +373,10 @@ session.
 Configuring a MongoDB connection
 --------------------------------
 
+.. customavailablein::
+    :oss_version: 0.13.0
+    :enterprise_version: 1.0
+
 By default, FiftyOne is installed with its own MongoDB database distribution.
 This database is managed by FiftyOne automatically as a service that runs
 whenever at least one FiftyOne Python client is alive.
@@ -414,6 +422,10 @@ You must also add `?authSource=admin` to your database URI:
 
 MongoDB network compression
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. customavailablein::
+    :oss_version: 1.5.0
+    :enterprise_version: 2.8.0
 
 You can optionally configure
 `MongoDB network compression <https://www.mongodb.com/developer/products/mongodb/mongodb-network-compression>`_
@@ -511,6 +523,10 @@ Then, in another shell, configure the database URI and launch FiftyOne:
 
 Database migrations
 -------------------
+
+.. customavailablein::
+    :oss_version: 0.15.1
+    :enterprise_version: 1.0
 
 New FiftyOne versions occasionally introduce data model changes that require
 database migrations when you :ref:`upgrade <upgrading-fiftyone>` or
@@ -710,6 +726,10 @@ Or, you can even dynamically change the timezone while you work in Python:
 Configuring the App
 -------------------
 
+.. customavailablein::
+    :oss_version: 0.7.2
+    :enterprise_version: 1.0
+
 The :ref:`FiftyOne App <fiftyone-app>` can also be configured in various ways.
 A new copy of your App config is applied to each |Session| object that is
 created when you launch the App. A session's config can be inspected and
@@ -775,12 +795,14 @@ The FiftyOne App can be configured in the ways described below:
 | `proxy_url`                | `FIFTYONE_APP_PROXY_URL`                | `None`        | A URL string to override the default server URL. Useful for configuring the session        |
 |                            |                                         |               | through a reverse proxy in notebook environments.                                          |
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
-| `show_confidence`          | `FIFTYONE_APP_SHOW_CONFIDENCE`          | `True`        | Whether to show confidences when rendering labels in the App's expanded sample view.       |
+| `show_confidence`          | `FIFTYONE_APP_SHOW_CONFIDENCE`          | `True`        | Deprecated; has no effect. Label attribute visibility is controlled per attribute in the   |
+|                            |                                         |               | App's sidebar.                                                                             |
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
-| `show_index`               | `FIFTYONE_APP_SHOW_INDEX`               | `True`        | Whether to show indexes when rendering labels in the App's expanded sample view.           |
+| `show_index`               | `FIFTYONE_APP_SHOW_INDEX`               | `True`        | Deprecated; has no effect. Label attribute visibility is controlled per attribute in the   |
+|                            |                                         |               | App's sidebar.                                                                             |
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
-| `show_label`               | `FIFTYONE_APP_SHOW_LABEL`               | `True`        | Whether to show the label value when rendering detection labels in the App's expanded      |
-|                            |                                         |               | sample view.                                                                               |
+| `show_label`               | `FIFTYONE_APP_SHOW_LABEL`               | `True`        | Deprecated; has no effect. Label attribute visibility is controlled per attribute in the   |
+|                            |                                         |               | App's sidebar.                                                                             |
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
 | `show_skeletons`           | `FIFTYONE_APP_SHOW_SKELETONS`           | `True`        | Whether to show keypoint skeletons, if available.                                          |
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
@@ -813,7 +835,7 @@ You can print your App config at any time via the Python library and the CLI:
         print(fo.app_config)
 
         # Print a specific App config field
-        print(fo.app_config.show_label)
+        print(fo.app_config.show_skeletons)
 
     .. code-block:: text
 
@@ -866,7 +888,7 @@ You can print your App config at any time via the Python library and the CLI:
         fiftyone app config
 
         # Print a specific App config field
-        fiftyone app config show_label
+        fiftyone app config show_skeletons
 
     .. code-block:: text
 
@@ -959,8 +981,8 @@ via the following pattern:
 
     # Create a custom App config
     app_config = fo.app_config.copy()
-    app_config.show_confidence = False
-    app_config.show_label = False
+    app_config.show_skeletons = False
+    app_config.loop_videos = True
 
     session = fo.launch_app(dataset, config=app_config)
 
@@ -973,8 +995,8 @@ apply the changes:
     :linenos:
 
     # Customize the config of a live session
-    session.config.show_confidence = True
-    session.config.show_label = True
+    session.config.show_skeletons = True
+    session.config.loop_videos = False
     session.refresh()  # must refresh after edits
 
 Editing your JSON App config
@@ -989,8 +1011,8 @@ For example, a valid App config JSON file is:
 .. code-block:: json
 
     {
-        "show_confidence": false,
-        "show_label": false
+        "show_skeletons": false,
+        "loop_videos": true
     }
 
 When `fiftyone` is imported, any options from your JSON App config are applied,
@@ -1033,8 +1055,8 @@ current session.
 
     import fiftyone as fo
 
-    fo.app_config.show_confidence = False
-    fo.app_config.show_label = False
+    fo.app_config.show_skeletons = False
+    fo.app_config.loop_videos = True
 
 .. _configuring-plugins:
 

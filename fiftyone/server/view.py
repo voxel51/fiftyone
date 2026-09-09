@@ -26,7 +26,6 @@ import fiftyone.core.view as fov
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
 from fiftyone.server.scalars import BSONArray, JSON
 
-
 _LABEL_TAGS = "_label_tags"
 _TEMPORAL_TAGS = "_temporal_tags"
 
@@ -363,6 +362,24 @@ def handle_group_filter(
     elif filter.id:
         view = fov.make_optimized_select_view(view, filter.id, groups=True)
 
+        for stage in stages:
+            # inject _group so modal sample records stay consistent with
+            # slice-filtered requests, which also carry the dynamic group
+            # value
+            if isinstance(stage, fosg.GroupBy):
+                view = view._add_view_stage(
+                    fosg.Mongo(
+                        [
+                            {
+                                "$addFields": {
+                                    "_group": stage._get_group_expr(view)[0]
+                                }
+                            }
+                        ]
+                    ),
+                    validate=False,
+                )
+
     if not group_by and filter.slices:
         # use 'match' to select requested slices, and avoid media type
         # validation
@@ -394,9 +411,25 @@ def _project_pagination_paths(
         if isinstance(field, (fof.DictField, fof.VectorField))
     ]
 
+    # A media reference is the sample's identity and is delivered whole: its
+    # coordinates are a kind's own, so they are not in the declared schema
+    references = [
+        path
+        for path, field in schema.items()
+        if isinstance(field, fof.MediaReferenceField)
+    ]
+
     selected_fields = ["_group"]  # store dynamic group values
     for path in schema:
-        if any(path.startswith(exclude) for exclude in excluded):
+        # exclude the field and its children, but not sibling fields that
+        # share a name prefix (e.g. `clip` must not exclude `clip-pred`)
+        if any(
+            path == exclude or path.startswith(exclude + ".")
+            for exclude in excluded
+        ):
+            continue
+
+        if any(path.startswith(reference + ".") for reference in references):
             continue
 
         selected_fields.append(path)

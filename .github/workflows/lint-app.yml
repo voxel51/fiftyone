@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - uses: dorny/paths-filter@v4
         id: changes
@@ -17,18 +17,16 @@ jobs:
               - 'app/**'
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
-          node-version: "22"
+          node-version: "24"
 
-      - name: Enable corepack
-        run: corepack enable
-      - name: Prepare yarn 4
-        run: corepack prepare yarn@4.9.1 --activate
+      - name: Prepare yarn
+        uses: ./.github/actions/setup-yarn
 
       - name: Cache Node Modules
         id: node-cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             app/node_modules
@@ -38,18 +36,19 @@ jobs:
       - name: Install Dependencies
         run: cd app && yarn install
 
-      - name: Lint ESLint packages
-        run: |
-          cd app
-          ESLINT_PACKAGES=$(grep -v '^#' ./eslint-packages.txt | xargs)
-          yarn eslint $ESLINT_PACKAGES
+      - parallel:
+          - name: Lint ESLint packages
+            run: |
+              cd app
+              ESLINT_PACKAGES=$(grep -v '^#' ./eslint-packages.txt | xargs)
+              yarn eslint $ESLINT_PACKAGES
 
-      - name: Check formatting
-        run: |
-          cd app
-          yarn format:check
+          - name: Check formatting
+            run: |
+              cd app
+              yarn format:check
 
-      - name: Check multimodal package
-        run: |
-          cd app
-          yarn check
+          - name: Check strict packages (multimodal, embeddings-v2)
+            run: |
+              cd app
+              yarn check

@@ -6,6 +6,15 @@ Agent Ecosystem
 
 .. default-role:: code
 
+.. meta::
+    :description: The FiftyOne Agent Ecosystem: MCP-powered tools and
+        expert skills that let AI assistants take real action on your
+        datasets.
+
+.. customavailablein::
+    :oss_version: 1.16.0
+    :enterprise_version: 2.19.0
+
 Welcome to the FiftyOne Agent Ecosystem! 🤖
 
 Here you'll discover expert workflows, MCP-powered tools, and skills that

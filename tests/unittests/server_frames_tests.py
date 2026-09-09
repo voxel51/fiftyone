@@ -44,24 +44,26 @@ class FramesProjectionTests(unittest.IsolatedAsyncioTestCase):
         ]
 
         # Projected read: only `frame_number` + the requested field.
-        projected = await foo.aggregate(
+        projected_cursor = await foo.aggregate(
             collection,
             view._pipeline(
                 frames_only=True,
                 support=[1, 3],
                 post_pipeline=_frames_projection(["detections"]),
             ),
-        ).to_list(None)
+        )
+        projected = await projected_cursor.to_list(None)
 
         self.assertEqual(len(projected), 3)
         self.assertIn("detections", projected[0])
         self.assertNotIn("other", projected[0])
 
         # Unprojected read still carries every frame field.
-        full = await foo.aggregate(
+        full_cursor = await foo.aggregate(
             collection,
             view._pipeline(frames_only=True, support=[1, 3]),
-        ).to_list(None)
+        )
+        full = await full_cursor.to_list(None)
 
         self.assertIn("detections", full[0])
         self.assertIn("other", full[0])

@@ -1,5 +1,5 @@
 import * as fos from "@fiftyone/state";
-import { act, renderHook } from "@testing-library/react-hooks";
+import { act, renderHook } from "@testing-library/react";
 import React, { useEffect } from "react";
 import { RecoilRoot, useRecoilValue } from "recoil";
 import { expect, test } from "vitest";

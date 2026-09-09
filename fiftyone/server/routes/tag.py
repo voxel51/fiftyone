@@ -84,7 +84,7 @@ class Tag(HTTPEndpoint):
         )
 
         samples = []
-        async for document in foo.aggregate(
+        async for document in await foo.aggregate(
             foo.get_async_db_conn()[view._dataset._sample_collection_name],
             view._pipeline(attach_frames=is_video),
         ):

@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react-hooks";
+import { act, renderHook } from "@testing-library/react";
 import { Box3, type Group } from "three";
 import { type Mock, afterEach, describe, expect, it, vi } from "vitest";
 import { useFo3dBounds } from "./use-bounds";
@@ -42,7 +42,7 @@ describe("useFo3dBounds", () => {
 
     // Mock Box3 to return unstable boxes initially, then stabilize
     let callCount = 0;
-    const MockBox3 = vi.fn().mockImplementation(() => {
+    const MockBox3 = vi.fn().mockImplementation(function () {
       callCount++;
       // Return different boxes for the first 3 calls (unstable)
       // Then return a consistent stable box (calls 4+)
@@ -96,7 +96,7 @@ describe("useFo3dBounds", () => {
     } as unknown as React.RefObject<Group>;
 
     // Mock Box3 to return a box with non-finite values
-    const MockBox3 = vi.fn().mockImplementation(() => {
+    const MockBox3 = vi.fn().mockImplementation(function () {
       return {
         min: {
           x: Number.POSITIVE_INFINITY,
@@ -131,7 +131,7 @@ describe("useFo3dBounds", () => {
     } as unknown as React.RefObject<Group>;
 
     // Mock Box3 to return a valid stable box
-    const MockBox3 = vi.fn().mockImplementation(() => {
+    const MockBox3 = vi.fn().mockImplementation(function () {
       return {
         min: { x: 0, y: 0, z: 0, equals: vi.fn(() => true) },
         max: { x: 1, y: 1, z: 1, equals: vi.fn(() => true) },
@@ -176,9 +176,7 @@ describe("useFo3dBounds", () => {
     } as unknown as React.RefObject<Group>;
 
     // Mock Box3 to return a stable box after multiple calls
-    let callCount = 0;
-    const MockBox3 = vi.fn().mockImplementation(() => {
-      callCount++;
+    const MockBox3 = vi.fn().mockImplementation(function () {
       return {
         min: { x: 0.5, y: 0.5, z: 0.5 },
         max: { x: 1.5, y: 1.5, z: 1.5 },
@@ -212,7 +210,7 @@ describe("useFo3dBounds", () => {
     } as unknown as React.RefObject<Group>;
 
     let computeCallCount = 0;
-    const MockBox3 = vi.fn().mockImplementation(() => {
+    const MockBox3 = vi.fn().mockImplementation(function () {
       computeCallCount++;
       // Return different boxes based on compute cycle
       // Cycle 1: small values, Cycle 2: large values
@@ -263,7 +261,7 @@ describe("useFo3dBounds", () => {
     } as unknown as React.RefObject<Group>;
 
     let computeCount = 0;
-    const MockBox3 = vi.fn().mockImplementation(() => {
+    const MockBox3 = vi.fn().mockImplementation(function () {
       computeCount++;
       return {
         min: { x: 0.5, y: 0.5, z: 0.5 },
@@ -301,7 +299,7 @@ describe("useFo3dBounds", () => {
 
     let callCount = 0;
     // Create boxes that are slightly different but within epsilon tolerance
-    const MockBox3 = vi.fn().mockImplementation(() => {
+    const MockBox3 = vi.fn().mockImplementation(function () {
       callCount++;
       const baseMin = 0.5;
       const baseMax = 1.5;

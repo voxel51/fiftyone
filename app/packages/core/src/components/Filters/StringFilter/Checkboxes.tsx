@@ -206,7 +206,7 @@ const Checkboxes = ({
             key={value}
             color={resultColor ? resultColor(value) : color}
             value={selectedSet.has(value)}
-            forceColor={value === null || Boolean(resultColor)}
+            forceColor={value === null}
             name={value === null ? "None" : value}
             loading={loading}
             count={getCount(count, value)}

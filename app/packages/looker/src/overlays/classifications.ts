@@ -26,7 +26,11 @@ import {
   SelectData,
   isShown,
 } from "./base";
-import { getLabelColor, resolveLabelSelectionVisuals } from "./util";
+import {
+  getLabelAttributesText,
+  getLabelColor,
+  resolveLabelSelectionVisuals,
+} from "./util";
 
 export type Classification = {
   _cls: "Classification";
@@ -303,16 +307,10 @@ export class ClassificationsOverlay<
     state: Readonly<State>,
     label: Label,
   ): string {
-    let text = state.options.showLabel
-      ? `${getText(this.getCls(field, state), label)}`
-      : "";
-
-    if (state.options.showConfidence && !isNaN(label.confidence as number)) {
-      text.length && (text += " ");
-      text += `(${Number(label.confidence).toFixed(2)})`;
-    }
-
-    return text;
+    const attributes = state.options.shownLabelAttributes?.[field];
+    return attributes
+      ? getLabelAttributesText(label, attributes)
+      : `${getText(this.getCls(field, state), label)}`;
   }
 
   private strokeBorder(

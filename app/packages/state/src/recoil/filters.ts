@@ -4,9 +4,11 @@ import {
   graphQLSyncFragmentAtom,
 } from "@fiftyone/relay";
 import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
-import { DefaultValue, selectorFamily } from "recoil";
+import { useMemo } from "react";
+import { DefaultValue, selectorFamily, useRecoilValue } from "recoil";
 import { getSessionRef, sessionAtom } from "../session";
-import { extendedSelection } from "./atoms";
+import { activeFilterValues } from "./activeFilterValues";
+import { extendedSelection, extendedSelectionOverrideStage } from "./atoms";
 import { pathHasIndexes, queryPerformance } from "./queryPerformance";
 import { expandPath, fields } from "./schema";
 import { hiddenLabelIds, isFrameField } from "./selectors";
@@ -63,6 +65,14 @@ export const filters = (() => {
   );
 })();
 
+export { activeFilterValues } from "./activeFilterValues";
+
+/** Recoil-bound {@link activeFilterValues} for the grid's filter set. */
+export const useActiveFilterValues = (path: string): string[] => {
+  const current = useRecoilValue(filters);
+  return useMemo(() => activeFilterValues(current, path), [current, path]);
+};
+
 export const filter = selectorFamily<
   State.Filter,
   { path: string; modal: boolean }
@@ -101,6 +111,21 @@ export const filter = selectorFamily<
     },
 });
 
+/**
+ * Field filters alone — the only input an aggregation's `extended` flag
+ * controls. An extended selection (grid checkboxes, a plot lasso, an override
+ * stage) rides in `extendedStages`, which every aggregation sends whether or
+ * not it is extended, so counting it as a filter made the extended
+ * aggregation a byte-identical twin of the unextended one.
+ */
+export const hasFieldFilters = selectorFamily<boolean, boolean>({
+  key: "hasFieldFilters",
+  get:
+    (modal) =>
+    ({ get }) =>
+      Object.keys(get(modal ? modalFilters : filters)).length > 0,
+});
+
 export const hasFilters = selectorFamily<boolean, boolean>({
   key: "hasFilters",
   get:
@@ -110,8 +135,11 @@ export const hasFilters = selectorFamily<boolean, boolean>({
       const hidden = Boolean(modal && get(hiddenLabelIds).size);
       const selection =
         !modal && Boolean(get(extendedSelection)?.selection?.length);
+      // An extended selection expressed as a view-stage override (e.g. a
+      // plot lasso) scopes the grid just like an id-list selection does
+      const override = !modal && Boolean(get(extendedSelectionOverrideStage));
 
-      return f || hidden || selection;
+      return f || hidden || selection || override;
     },
 });
 

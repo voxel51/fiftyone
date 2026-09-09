@@ -17,10 +17,7 @@ export enum QueryType {
   Upload = "upload",
 }
 
-/**
- * Scope for a similarity search (full dataset or current view).
- */
-export type SearchScope = "view" | "dataset";
+export { ViewTarget } from "@fiftyone/operators/src/types";
 
 /**
  * Configuration for a brain similarity key.
@@ -35,6 +32,16 @@ export type BrainKeyConfig = {
   embeddings_field?: string;
   metric?: string;
   identifiers?: { label: string; value: string }[];
+};
+
+/**
+ * A brain key annotated with whether it can be used in the current
+ * view. Incompatible keys are still shown in the UI (grayed out) with
+ * `incompatibleReason` as hover text.
+ */
+export type AnnotatedBrainKeyConfig = BrainKeyConfig & {
+  compatible: boolean;
+  incompatibleReason?: string;
 };
 
 /**
@@ -72,7 +79,7 @@ export type SimilaritySearchParams = {
   query_type: QueryType;
   query: string | string[];
   reverse: boolean;
-  search_scope: SearchScope;
+  view_target: ViewTarget;
   patches_field?: string;
   k?: number;
   dist_field?: string;

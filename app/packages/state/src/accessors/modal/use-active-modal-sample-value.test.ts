@@ -2,8 +2,17 @@
  * Copyright 2017-2026, Voxel51, Inc.
  * @vitest-environment jsdom
  */
-import { renderHook } from "@testing-library/react-hooks";
+import { renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+
+const renderAndCatch = (hook: () => unknown) => {
+  try {
+    renderHook(hook);
+  } catch (e) {
+    return e;
+  }
+  return undefined;
+};
 
 const mockSelectors = vi.hoisted(() => ({
   activeModalSidebarSample: { key: "activeModalSidebarSample" },
@@ -114,19 +123,17 @@ describe("useActiveModalSampleValue", () => {
   it("rethrows plain SampleNotFound (does not swallow it)", () => {
     const err = new mockErrors.SampleNotFound("missing");
     setSample({ state: "hasError", contents: err });
-    const { result } = renderHook(() =>
-      useActiveModalSampleValue<string>("foo"),
+    expect(renderAndCatch(() => useActiveModalSampleValue<string>("foo"))).toBe(
+      err,
     );
-    expect(result.error).toBe(err);
   });
 
   it("rethrows arbitrary errors", () => {
     const err = new TypeError("boom");
     setSample({ state: "hasError", contents: err });
-    const { result } = renderHook(() =>
-      useActiveModalSampleValue<string>("foo"),
+    expect(renderAndCatch(() => useActiveModalSampleValue<string>("foo"))).toBe(
+      err,
     );
-    expect(result.error).toBe(err);
   });
 
   it("calls pullSidebarValue with the split keys and isList flag", () => {

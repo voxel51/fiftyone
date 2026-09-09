@@ -148,6 +148,10 @@ export const createLighterBridge = ({
         return; // ref deleted or reconciled away while gated — discard
       }
 
+      if (!label.mask_path && !label.mask) {
+        return; // mask removed while the decode was in flight — discard
+      }
+
       if (url && !mask) {
         console.warn(
           `[mask-path] decode failed for detection ${id} in field ` +
@@ -211,6 +215,9 @@ export const createLighterBridge = ({
 
       return undefined;
     },
+
+    isInteracting: (overlay) =>
+      (overlay as { isInteracting?: () => boolean }).isInteracting?.() ?? false,
 
     unmount: (overlay) => {
       // unmount is a SILENT apply, and it often runs inside the engine's

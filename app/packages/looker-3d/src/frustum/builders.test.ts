@@ -267,7 +267,7 @@ describe("isValidStaticTransform", () => {
   it("returns false for invalid translation", () => {
     expect(
       isValidStaticTransform({
-        translation: [1, 2] as any,
+        translation: [1, 2] as unknown as StaticTransform["translation"],
         quaternion: [0, 0, 0, 1],
       }),
     ).toBe(false);
@@ -291,7 +291,7 @@ describe("isValidStaticTransform", () => {
     expect(
       isValidStaticTransform({
         translation: [1, 2, 3],
-        quaternion: [0, 0, 0] as any,
+        quaternion: [0, 0, 0] as unknown as StaticTransform["quaternion"],
       }),
     ).toBe(false);
 

@@ -1,0 +1,143 @@
+name: Community to main PR
+
+# When a pull request is merged into the `community` branch, open (or update) a
+# direct `community` → `main` pull request and post to the #community Slack
+# channel. The PR head is the `community` branch itself — there is no intermediate
+# merge branch. Pairs with sync-main-to-community.yml (the main → community
+# direction).
+
+on:
+  # pull_request_target (not pull_request) is required to access the
+  # FIFTYONE_GITHUB_TOKEN secret needed to open a PR that triggers downstream CI.
+  # This is safe despite the usual warnings: the job only runs on merged PRs
+  # (closed + merged == true guard), checkout uses the base `ref: community`
+  # rather than the PR head, and no repo code is executed — only git/gh commands.
+  pull_request_target:
+    types: [closed]
+    branches: [community]
+  workflow_dispatch:
+
+concurrency:
+  group: community-to-main
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  pr:
+    # The `community` branch is OSS-only; only act on merged PRs (or manual runs).
+    if: >-
+      github.repository == 'voxel51/fiftyone' &&
+      (github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: community
+          # Full commit graph for the diff and trial merge, blobs on demand
+          fetch-depth: 0
+          filter: blob:none
+          # Use the bot PAT so the PR triggers CI (GITHUB_TOKEN-authored PRs don't).
+          token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
+          persist-credentials: false
+
+      - name: "Open or update community → main PR and notify #community"
+        env:
+          GH_TOKEN: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_COMMUNITY_WEBHOOK_URL }}
+          REPO: ${{ github.repository }}
+        run: |
+          # Fail fast: this job exists to notify #community, so a missing webhook
+          # is a misconfiguration to surface, not something to silently skip.
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            echo "::error::SLACK_COMMUNITY_WEBHOOK_URL not set; cannot notify #community."
+            exit 1
+          fi
+
+          git fetch --no-tags origin main community
+
+          if git diff --quiet origin/main...origin/community; then
+            echo "No changes to integrate from community into main."
+            exit 0
+          fi
+
+          # The contributions landing in this PR — what `community` is ahead of
+          # `main` by — so the body shows (and refreshes) what's integrated.
+          included="$(git log --format='- %s' origin/main..origin/community)"
+          body="$(printf '%s\n' \
+            'Automated integration of community contributions into `main`, opened because `community` is ahead of `main`. This PR tracks the `community` branch and updates as more contributions land.' \
+            '' \
+            '### Included from `community`' \
+            "$included")"
+
+          number="$(gh pr list --repo "$REPO" --head community --base main \
+            --state open --json number --jq '.[0].number // empty')"
+          if [ -n "$number" ]; then
+            # REST, not `gh pr edit`: edit's GraphQL metadata prefetch needs
+            # read:org, which the PAT doesn't have.
+            gh api --silent -X PATCH "repos/$REPO/pulls/$number" -f body="$body"
+            action="updated"
+          else
+            gh pr create --repo "$REPO" --head community --base main \
+              --title 'AUTOMATED MERGE `community` to `main`' \
+              --body "$body"
+            number="$(gh pr list --repo "$REPO" --head community --base main \
+              --state open --json number --jq '.[0].number // empty')"
+            action="opened"
+          fi
+
+          url="$(gh pr view "$number" --repo "$REPO" --json url --jq .url)"
+
+          # Detect conflicts deterministically with a local trial merge, rather
+          # than GitHub's asynchronously-computed `mergeable` field. The
+          # conflicting file set is identical in either merge direction, and this
+          # catches conflicts introduced by the community side (which the
+          # main → community sync never sees, since it only runs on main pushes).
+          git config user.name 'voxel51-bot'
+          git config user.email 'bot@voxel51.com'
+          conflicts=""
+          if ! git merge --no-commit --no-ff origin/main >/dev/null 2>&1; then
+            conflicts="$(git diff --name-only --diff-filter=U)"
+          fi
+          git merge --abort 2>/dev/null || true
+
+          # Record the outcome in the run's step summary so it's visible from the
+          # Actions UI without going to Slack.
+          {
+            if [ -n "$conflicts" ]; then
+              echo "### 🚨 community → main PR $action — merge conflict"
+              echo
+              echo "[#$number]($url) conflicts with \`main\` and needs manual resolution."
+              echo
+              echo "Conflicting files:"
+              echo
+              printf '%s\n' "$conflicts" | sed 's/^/- `/; s/$/`/'
+            else
+              echo "### community → main PR $action — ✅ no conflicts"
+              echo
+              echo "[#$number]($url)"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ -n "$conflicts" ]; then
+            files="$(printf '%s\n' "$conflicts" | sed 's/^/• /')"
+            text="$(printf '%s\n' \
+              ":rotating_light: community → main PR $action — merge conflict" \
+              "" \
+              "<$url|#$number> conflicts with \`main\` and needs manual resolution." \
+              "" \
+              "Conflicting files:" \
+              "$files")"
+          else
+            text="$(printf '%s\n' \
+              ":twisted_rightwards_arrows: community → main PR $action" \
+              "" \
+              "<$url|#$number> — ✅ no conflicts" \
+              "" \
+              "Integrates community contributions into \`main\`.")"
+          fi
+
+          jq -nc --arg text "$text" '{text: $text}' \
+            | curl -sS -X POST -H 'Content-type: application/json' --data @- "$SLACK_WEBHOOK_URL"

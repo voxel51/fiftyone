@@ -1,3 +1,4 @@
+import type { SyntheticBox, SyntheticKeyframe } from "@fiftyone/utilities";
 import type {
   AnnotationAgent,
   AnnotationAgentLifecycle,
@@ -62,6 +63,10 @@ function generateObjectIdHex(): string {
  * Each emitted Detection carries `keyframe: false`, the propagation run's
  * provenance blob, and the shared `instance.id` from the source keyframes.
  */
+/** Narrows a propagation keyframe to the box geometry this agent lerps. */
+const isBoxKeyframe = (keyframe: SyntheticKeyframe): keyframe is SyntheticBox =>
+  Array.isArray((keyframe as SyntheticBox).bounding_box);
+
 export class PropagationBrowserAgent implements AnnotationAgent<PropagationInferenceResult> {
   private lifecycleStatus: AnnotationAgentLifecycleStatus = "idle";
   private readonly listeners = new Set<AnnotationAgentLifecycleListener>();
@@ -78,20 +83,22 @@ export class PropagationBrowserAgent implements AnnotationAgent<PropagationInfer
     this.setStatus("inferring");
 
     try {
+      // `parentKeyframes` spans both geometries propagation can lerp;
+      // `useVideoPropagate` resolves the agent from the field's label type, so a
+      // box keyframe is what reaches this agent. Narrow explicitly rather than
+      // asserting, so a future dispatch bug surfaces here instead of producing
+      // `undefined` coordinates.
       const [leftKeyframe, rightKeyframe] = context.parentKeyframes;
+
+      if (!isBoxKeyframe(leftKeyframe) || !isBoxKeyframe(rightKeyframe)) {
+        throw new Error(
+          "propagate-linear received a keyframe with no bounding box",
+        );
+      }
+
       const left: Bbox = leftKeyframe.bounding_box;
       const right: Bbox = rightKeyframe.bounding_box;
       const span: number = context.toFrame - context.fromFrame;
-      const runId: string = generateObjectIdHex();
-
-      // Provenance records the *mongo* `_id`s of the two source keyframes,
-      // not their cross-frame-stable synthetic overlay ids (`instance-<...>`,
-      // identical for both ends of a tracked object). Fall back to the
-      // synthetic id only if a keyframe somehow lacks a persisted `_id`.
-      const parentKeyframeIds: [string, string] = [
-        leftKeyframe._id ?? leftKeyframe.id,
-        rightKeyframe._id ?? rightKeyframe.id,
-      ];
 
       const perFrame: PropagationInferenceResult["perFrame"] = [];
       range(context.fromFrame + 1, context.toFrame).forEach((n) => {
@@ -104,11 +111,6 @@ export class PropagationBrowserAgent implements AnnotationAgent<PropagationInfer
           index: leftKeyframe.index,
           instance: { _cls: "Instance", _id: context.instanceId },
           keyframe: false,
-          propagation: {
-            method: "linear",
-            run_id: runId,
-            parent_keyframes: parentKeyframeIds,
-          },
         };
         perFrame.push({ frameNumber: n, detection });
       });

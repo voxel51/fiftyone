@@ -13,6 +13,7 @@ from fiftyone.operators.server import OperatorRoutes
 from .aggregate import Aggregate
 from .camera import CameraRoutes
 from .embeddings import EmbeddingsRoutes
+from .embeddings_v2 import EmbeddingsV2Routes
 from .event import Event
 from .events import Events
 from .features import Features
@@ -30,6 +31,7 @@ from .screenshot import Screenshot
 from .sort import Sort
 from .tag import Tag
 from .tagging import Tagging
+from .temporal_tags import TemporalTagRoutes
 from .values import Values
 from .video_labels import VideoLabelsIndex, VideoLabelsWindow
 
@@ -43,7 +45,9 @@ if is_feature_enabled("VFF_MULTIMODAL"):
 routes = (
     CameraRoutes
     + EmbeddingsRoutes
+    + EmbeddingsV2Routes
     + GroupsRoutes
+    + TemporalTagRoutes
     + multimodal_routes
     + OperatorRoutes
     + RuntimeAssetRoutes

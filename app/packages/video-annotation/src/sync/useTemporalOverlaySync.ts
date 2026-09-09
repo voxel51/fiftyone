@@ -14,16 +14,14 @@ import {
   type TemporalOptions,
   useLighterSetupWithPixi,
 } from "@fiftyone/lighter";
-import { useModalSample } from "@fiftyone/state";
 import { isTemporalDetectionsField } from "@fiftyone/utilities";
 import { type MutableRefObject, useEffect, useRef } from "react";
-import { frameAt, usePlayhead } from "@fiftyone/playback";
 import {
   useTemporalDetectionFieldPaths,
   useVisibleLabelSchemas,
 } from "../state/accessors";
+import { useCurrentFrame } from "../state/useCurrentFrame";
 import type { FrameLabelReader } from "../tracks/frameTracks";
-import { getModalSampleFrameRate } from "../utils/modalSample";
 
 /**
  * Minimal scene surface the diff needs — typed against the lighter
@@ -190,18 +188,13 @@ export const useEngineTemporalSample = (): Record<string, unknown> => {
 };
 
 /**
- * Current playhead frame, held in a ref. fps comes from the sample metadata;
- * the ref lets the diff effect seed overlays without re-running per tick.
+ * Current playhead frame, held in a ref. Reads the surface's clamped
+ * frame source ({@link useCurrentFrame}); the ref lets the diff effect
+ * seed overlays without re-running per tick.
  */
 const useCurrentFrameRef = (): MutableRefObject<number | null> => {
-  const modalSample = useModalSample();
-  const playheadSec = usePlayhead();
-  const frameRate = getModalSampleFrameRate(modalSample);
-
-  const currentFrame =
-    frameRate && Number.isFinite(frameRate) && frameRate > 0
-      ? frameAt(playheadSec, frameRate)
-      : null;
+  const frame = useCurrentFrame();
+  const currentFrame = frame > 0 ? frame : null;
 
   const currentFrameRef = useRef(currentFrame);
   currentFrameRef.current = currentFrame;
@@ -271,19 +264,20 @@ const useOverlayCleanup = (
   overlaysRef: MutableRefObject<Map<string, TemporalOverlay>>,
 ): void => {
   useEffect(() => {
+    // stable Map instance — safe to read in cleanup
+    const overlays = overlaysRef.current;
     return () => {
       if (!scene) {
         return;
       }
 
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      for (const id of overlaysRef.current.keys()) {
+      for (const id of overlays.keys()) {
         scene.removeOverlay(id);
       }
 
-      overlaysRef.current.clear();
+      overlays.clear();
     };
-  }, [scene]);
+  }, [scene, overlaysRef]);
 };
 
 /**
@@ -299,6 +293,18 @@ const useOverlayCleanup = (
 export function useTemporalOverlaySync(
   scene: Scene,
   canonicalMediaReady: boolean,
+  /**
+   * Explore's active TD field set, when this is driving the Explore surface.
+   *
+   * `useVisibleLabelSchemas()` (the default below) is annotation-active ∩
+   * explore-active, populated by `useLoadSchemas()` only once the Annotate
+   * sidebar has been opened this session — so in an Explore-only session it
+   * stays empty and every TD overlay silently fails to paint, however many TD
+   * fields are checked in the Explore sidebar. When supplied, this IS the
+   * active set, the same way `useFrameDerivedTracks`' `exploreLabelTypes`
+   * overrides its own annotation-schema default.
+   */
+  exploreActivePaths?: ReadonlySet<string>,
 ): void {
   const overlaysRef = useRef<Map<string, TemporalOverlay>>(new Map());
 
@@ -307,7 +313,8 @@ export function useTemporalOverlaySync(
   // schema-manager deactivation evicts the TD overlay from the canvas too —
   // matching the timeline + sidebar. (Was explore-active only, which the schema
   // manager never touches.)
-  const activePaths = useVisibleLabelSchemas();
+  const annotationActivePaths = useVisibleLabelSchemas();
+  const activePaths = exploreActivePaths ?? annotationActivePaths;
   const currentFrameRef = useCurrentFrameRef();
 
   useOverlayDiff(

@@ -1,8 +1,8 @@
 /**
- * The bridge's `onEditCommit` callback: after a box drag / resize commits,
+ * The bridge's `onEditCommit` callback: after a geometry drag / resize commits,
  * promote the touched frame to a keyframe and dispatch `keyframeChanged` so the
- * auto-interpolate hook re-lerps. Bbox-only, frame-scoped, and folded into the
- * edit's undo unit via the commit's `undoKey`.
+ * auto-interpolate hook re-lerps. Frame-scoped, geometry-bearing (box or
+ * points), and folded into the edit's undo unit via the commit's `undoKey`.
  */
 
 import { renderHook } from "@testing-library/react";
@@ -56,6 +56,8 @@ beforeEach(() => {
 
 describe("useKeyframePromotionOnEdit", () => {
   it("promotes a non-keyframe frame and re-lerps, folded into the edit's undo unit", () => {
+    // Legacy data may still carry a `propagation` blob; promotion must NOT
+    // try to clear it with `propagation: null` (that null is the poison).
     frameData = { A: det({ keyframe: false, propagation: { foo: 1 } }) };
 
     render()("A", PATH, "gesture:1");
@@ -64,9 +66,12 @@ describe("useKeyframePromotionOnEdit", () => {
     expect(mockEngine.transaction.mock.calls[0][1]).toEqual({
       undoKey: "gesture:1",
     });
+    // Promotion writes only `keyframe: true` — no `propagation: null`, which
+    // would seed a null baseline that the next re-lerp diffs as a `replace`
+    // over a server-absent path (the frame-patch error).
     expect(mockEngine.updateLabel).toHaveBeenCalledWith(
       { sample: SAMPLE, path: PATH, instanceId: "A", frame: FRAME },
-      { keyframe: true, propagation: null },
+      { keyframe: true },
     );
     expect(mockBus.dispatch).toHaveBeenCalledWith(
       "annotation:keyframeChanged",
@@ -103,12 +108,43 @@ describe("useKeyframePromotionOnEdit", () => {
     expect(mockBus.dispatch).not.toHaveBeenCalled();
   });
 
-  it("ignores a label without a bounding box — the lerp interpolates bbox only", () => {
+  it("promotes a points-based (keypoint / polyline) frame — points persist as keyframes", () => {
+    frameData = {
+      A: det({
+        _cls: "Polyline",
+        keyframe: false,
+        bounding_box: undefined,
+        points: [[[0, 0]]],
+      }),
+    };
+
+    render()("A", "frames.polylines", "gesture:4");
+
+    expect(mockEngine.updateLabel).toHaveBeenCalledWith(
+      {
+        sample: SAMPLE,
+        path: "frames.polylines",
+        instanceId: "A",
+        frame: FRAME,
+      },
+      { keyframe: true },
+    );
+    expect(mockBus.dispatch).toHaveBeenCalledWith(
+      "annotation:keyframeChanged",
+      expect.objectContaining({
+        instanceId: "A",
+        kind: "set",
+        path: "frames.polylines",
+      }),
+    );
+  });
+
+  it("ignores a label with neither bounding box nor points", () => {
     frameData = {
       A: det({ keyframe: false, bounding_box: undefined }),
     };
 
-    render()("A", PATH, "gesture:4");
+    render()("A", PATH, "gesture:6");
 
     expect(mockEngine.updateLabel).not.toHaveBeenCalled();
     expect(mockBus.dispatch).not.toHaveBeenCalled();

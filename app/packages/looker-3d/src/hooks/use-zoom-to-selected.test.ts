@@ -1,3 +1,4 @@
+import type { ModalSample } from "@fiftyone/state";
 import { Box3, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 import type { RenderModel } from "../annotation/store";
@@ -5,13 +6,14 @@ import {
   createLabelBoundingBox,
   getSelectedLabelsBoundingBox,
   resolveAnnotationLabelBoundingBox,
+  type SelectedLabelLike,
 } from "./zoom-to-selected-bounds";
 
 const makeSample = (sample: Record<string, unknown>) =>
   ({
     id: sample._id,
     sample,
-  }) as any;
+  }) as unknown as ModalSample;
 
 const expectBox = (
   box: Box3 | null,
@@ -216,12 +218,16 @@ describe("zoom-to-selected bounds", () => {
     const renderModel: RenderModel = {
       detections: [
         {
-          _id: "moving-box",
-          _cls: "Detection",
+          data: {
+            _id: "moving-box",
+            _cls: "Detection",
+            location: [5, 0, 0],
+            dimensions: [2, 2, 2],
+          },
           path: "labels",
-          location: [5, 0, 0],
-          dimensions: [2, 2, 2],
-        } as any,
+          sampleId: "sample-1",
+          ui: { selected: false },
+        } as unknown as RenderModel["detections"][number],
       ],
       polylines: [],
     };
@@ -232,7 +238,7 @@ describe("zoom-to-selected bounds", () => {
         path: "labels",
         location: [0, 0, 0],
         dimensions: [2, 2, 2],
-      } as any,
+      } as SelectedLabelLike,
       renderModel,
     });
 

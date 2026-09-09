@@ -18,9 +18,9 @@ import { OverlayLabel } from "../labels/loader";
  */
 export const useSimilarLabels3d = (label: OverlayLabel) => {
   const [isSimilarLabelHovered, setIsSimilarLabelHovered] = useState(false);
-  const instanceId = label.instance?._id;
+  const instanceId = label.data.instance?._id;
   const sampleId = label.sampleId;
-  const labelId = label._id;
+  const labelId = label.data._id;
   const path = label.path;
 
   // This effect subscribes to hover events and updates similar-label hover state.

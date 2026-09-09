@@ -12,25 +12,27 @@ import { DETECTION } from "@fiftyone/utilities";
 
 function makeDetection(
   id: string,
-  overrides: Partial<ReconciledDetection3D> = {},
+  overrides: Partial<ReconciledDetection3D["data"]> = {},
 ): ReconciledDetection3D {
   return {
-    _id: id,
-    _cls: DETECTION,
-    type: DETECTION,
+    data: {
+      _id: id,
+      _cls: DETECTION,
+      location: [0, 0, 0],
+      dimensions: [1, 1, 1],
+      rotation: [0, 0, 0],
+      tags: [],
+      ...overrides,
+    },
     path: "predictions",
-    location: [0, 0, 0],
-    dimensions: [1, 1, 1],
-    rotation: [0, 0, 0],
     sampleId: "s1",
-    tags: [],
-    ...overrides,
+    ui: { selected: false },
   };
 }
 
 function makeDoc(labels: ReconciledDetection3D[]): WorkingDoc {
   const labelsById: WorkingDoc["labelsById"] = {};
-  for (const l of labels) labelsById[l._id] = l;
+  for (const l of labels) labelsById[l.data._id] = l;
   return { labelsById };
 }
 
@@ -50,7 +52,7 @@ function setSchemaClasses(field: string, classes: string[]) {
 
 function clearSchema(field: string) {
   const store = getDefaultStore();
-  store.set(labelSchemaData(field), undefined as any);
+  store.set(labelSchemaData(field), undefined);
 }
 
 afterEach(() => {
@@ -80,10 +82,9 @@ describe("getDefaultLabel", () => {
   });
 
   it("ignores labels from other fields", () => {
-    const doc = makeDoc([
-      makeDetection("1", { label: "car", path: "other_field" }),
-      makeDetection("2", { label: "person" }),
-    ]);
+    const otherField = makeDetection("1", { label: "car" });
+    otherField.path = "other_field";
+    const doc = makeDoc([otherField, makeDetection("2", { label: "person" })]);
     expect(getDefaultLabel("predictions", doc)).toBe("person");
   });
 

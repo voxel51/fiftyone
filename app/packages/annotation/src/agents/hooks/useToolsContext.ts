@@ -51,7 +51,10 @@ export interface ToolsState extends ToolsContext {
 const positivePointsAtom = atom<PointDescriptor[]>([]);
 const negativePointsAtom = atom<PointDescriptor[]>([]);
 const regionsOfInterestAtom = atom<ROI[]>([]);
-const textPromptAtom = atom<string | null>(null);
+// The initial value carries its type rather than `atom<string | null>(null)`: a
+// bare `null` argument matches jotai's read-only `atom(read)` overload under
+// this project's non-strict null checks, which types the setter as `never`.
+const textPromptAtom = atom(null as string | null);
 
 /**
  * Hook which returns the current {@link ToolsContext} (read-only).
@@ -138,11 +141,14 @@ export const useToolsState = (): ToolsState => {
     [positivePoints, setNegativePoints, setPositivePoints],
   );
 
+  // Each write keeps the previous value when it's already empty so a reset on
+  // already-clear state doesn't re-render subscribers — callers reset on
+  // recurring signals (every playhead move), not just at session edges.
   const reset = useCallback(() => {
-    setPositivePoints([]);
-    setNegativePoints([]);
-    setRegionsOfInterest([]);
-    setTextPrompt(null);
+    setPositivePoints((prev) => (prev.length > 0 ? [] : prev));
+    setNegativePoints((prev) => (prev.length > 0 ? [] : prev));
+    setRegionsOfInterest((prev) => (prev.length > 0 ? [] : prev));
+    setTextPrompt((prev) => (prev === null ? prev : null));
   }, [
     setPositivePoints,
     setNegativePoints,

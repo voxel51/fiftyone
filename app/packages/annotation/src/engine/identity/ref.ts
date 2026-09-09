@@ -7,6 +7,44 @@
  * is a separate, derived query; store ops never key on `instanceId` alone.
  */
 
+import type { LabelData } from "@fiftyone/utilities";
+
+/** Synthetic `instanceId` prefix for an index-based track (no `instance._id`). */
+export const TRACK_INDEX_PREFIX = "track-";
+
+/**
+ * The engine `instanceId` for a per-frame label. A tracked instance keys by its
+ * `instance._id`; an instance-less label carrying a persisted track `index`
+ * keys by the synthetic `track-<index>` so its per-frame occurrences coalesce
+ * into one track; a bare detection keys by its own doc `_id`.
+ */
+export const addressIdOf = (label: LabelData): string => {
+  const instance = label.instance as { _id?: string } | undefined;
+
+  if (instance?._id) {
+    return instance._id;
+  }
+
+  const index = label.index as number | undefined;
+
+  if (index != null) {
+    return `${TRACK_INDEX_PREFIX}${index}`;
+  }
+
+  return label._id;
+};
+
+/** The track `index` encoded in a `track-<index>` id, or `undefined`. */
+export const indexFromAddressId = (instanceId: string): number | undefined => {
+  if (!instanceId.startsWith(TRACK_INDEX_PREFIX)) {
+    return undefined;
+  }
+
+  const index = Number(instanceId.slice(TRACK_INDEX_PREFIX.length));
+
+  return Number.isFinite(index) ? index : undefined;
+};
+
 /**
  * Canonical address of an annotation entity. The lingua franca: store keys,
  * change events, selection sets, and signal topics all key on this.

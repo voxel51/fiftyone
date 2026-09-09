@@ -27,9 +27,8 @@ export function stringifyError(error, fallback?) {
 export function onEnter(
   handler: (e: KeyboardEvent) => void,
 ): KeyboardEventHandler {
-  // @ts-ignore
-  return (e: KeyboardEvent) => {
-    if (e.key === "Enter") handler(e);
+  return (e) => {
+    if (e.key === "Enter") handler(e as unknown as KeyboardEvent);
   };
 }
 
@@ -128,8 +127,8 @@ export function memoizedDebounce(
   const memoizedFunc = memoize(function () {
     return debounce(func, wait, options);
   }, options?.resolver);
-  return function () {
-    memoizedFunc.apply(this, arguments).apply(this, arguments);
+  return function (...args: unknown[]) {
+    memoizedFunc.apply(this, args).apply(this, args);
   };
 }
 
@@ -140,7 +139,7 @@ function getPromptTitle(operatorPrompt) {
   return definition?.view?.label;
 }
 
-type MemoizeResolver = (...args) => any;
+type MemoizeResolver = (...args: unknown[]) => unknown;
 
 type MemoizedDebounceOptions = DebounceSettings & {
   resolver: MemoizeResolver;

@@ -206,6 +206,16 @@ class _SAM2Predictor(fosam._SAMPredictor):
           model's prediction in BxC
           low resolution logits in BxCxHxW where H=W=256
         """
+        # ``_predict`` (unlike the public ``predict``) assumes prompts are
+        # already on the model's device; our transforms build them on CPU, so
+        # move them here or GPU inference mismatches (cpu coords @ cuda matrix).
+        device = self.processor.device
+        if point_coords is not None:
+            point_coords = point_coords.to(device)
+        if point_labels is not None:
+            point_labels = point_labels.to(device)
+        if boxes is not None:
+            boxes = boxes.to(device)
         return self.processor._predict(
             point_coords=point_coords,
             point_labels=point_labels,
@@ -377,12 +387,12 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
         outputs = []
         for img_idx in range(len(images)):
             out_masks, iou_pred, _ = self._sam_predictor.processor._predict(
-                point_coords=point_coords[img_idx]
-                if point_coords is not None
-                else None,
-                point_labels=point_labels[img_idx]
-                if point_labels is not None
-                else None,
+                point_coords=(
+                    point_coords[img_idx] if point_coords is not None else None
+                ),
+                point_labels=(
+                    point_labels[img_idx] if point_labels is not None else None
+                ),
                 boxes=boxes[img_idx] if boxes is not None else None,
                 mask_input=mask_inputs[img_idx] if mask_inputs else None,
                 multimask_output=multimask_output,

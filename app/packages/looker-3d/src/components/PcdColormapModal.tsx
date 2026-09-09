@@ -189,21 +189,18 @@ const PcdColormapModal: React.FC<PcdColormapModalProps> = ({
     return defaultValue;
   });
 
-  const handleColormapSelect = useCallback(
-    (value: string) => {
-      const colormap = value as ColormapType;
-      setSelectedColormap(colormap);
+  const handleColormapSelect = useCallback((value: string) => {
+    const colormap = value as ColormapType;
+    setSelectedColormap(colormap);
 
-      const nextStops = colormap === "Legacy" ? 10 : 20;
-      setNumStops(nextStops);
+    const nextStops = colormap === "Legacy" ? 10 : 20;
+    setNumStops(nextStops);
 
-      const gradient = getGradientFromSchemeName(colormap, nextStops);
+    const gradient = getGradientFromSchemeName(colormap, nextStops);
 
-      setColorList(gradient);
-      setHasChanges(true);
-    },
-    [numStops],
-  );
+    setColorList(gradient);
+    setHasChanges(true);
+  }, []);
 
   const handleSave = useCallback(() => {
     onSave(colorList);
@@ -260,7 +257,7 @@ const PcdColormapModal: React.FC<PcdColormapModalProps> = ({
     // Add the new index to the set of new rows
     setNewRowIndices((prev) => new Set([...prev, insertIndex + 1]));
     setHasChanges(true);
-  }, [colorList]);
+  }, [colorList, colorScheme.colorPool]);
 
   const removeColorStop = useCallback(
     (index: number) => {

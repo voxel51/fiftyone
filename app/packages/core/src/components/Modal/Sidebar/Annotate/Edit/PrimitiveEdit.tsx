@@ -31,19 +31,16 @@ export default function PrimitiveEdit({
 
   const primitiveSchema = generatePrimitiveSchema(path, currentLabelSchema);
 
-  const [fieldValue, setFieldValue] = useState<Primitive | Date>(
-    parseDatabaseValue(type, value),
+  const [fieldValue, setFieldValue] = useState<Primitive>(
+    parseDatabaseValue(value),
   );
 
   // synchronize external value changes with field
-  useEffect(
-    () => setFieldValue(parseDatabaseValue(type, value)),
-    [type, value],
-  );
+  useEffect(() => setFieldValue(parseDatabaseValue(value)), [value]);
 
   // need to use a ref to access field value in command callback;
   // command will run before the next render loop when `fieldValue` is updated.
-  const transientFieldValue = useRef<Primitive>(fieldValue as Primitive);
+  const transientFieldValue = useRef<Primitive>(fieldValue);
 
   // undoable command which handles primitive edits
   const editCommand = useCreateCommand(

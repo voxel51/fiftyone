@@ -11,7 +11,7 @@ import { useEffect } from "react";
 import OperatorIO from "./OperatorIO";
 import { PANEL_LOAD_TIMEOUT } from "./constants";
 import { useActivePanelEventsCount } from "./hooks";
-import { Property } from "./types";
+import { Property, type PropertyJSON } from "./types";
 import { CustomPanelProps, useCustomPanelHooks } from "./useCustomPanelHooks";
 import { useTrackEvent } from "@fiftyone/analytics";
 import usePanelEvent from "./usePanelEvent";
@@ -31,13 +31,13 @@ export function CustomPanel(props: CustomPanelProps) {
   const [_, setLoading] = usePanelLoading(panelId);
   const triggerPanelEvent = usePanelEvent();
 
-  let {
+  const {
     handlePanelStateChange,
     handlePanelStatePathChange,
     panelSchema,
     data,
   } = useCustomPanelHooks(props);
-  let pending = fos.useTimeout(PANEL_LOAD_TIMEOUT);
+  const pending = fos.useTimeout(PANEL_LOAD_TIMEOUT);
   const setPanelCloseEffect = useSetPanelCloseEffect();
   const trackEvent = useTrackEvent();
 
@@ -49,6 +49,8 @@ export function CustomPanel(props: CustomPanelProps) {
         triggerPanelEvent(panelId, { operator: props.onUnLoad });
       }
     });
+    // register the close effect once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -78,7 +80,7 @@ export function CustomPanel(props: CustomPanelProps) {
       </CenteredStack>
     );
 
-  const schema = Property.fromJSON(panelSchema);
+  const schema = Property.fromJSON(panelSchema as PropertyJSON);
 
   return (
     <Box
@@ -113,6 +115,8 @@ function DimensionRefresher(props) {
 
   useEffect(() => {
     dimensions?.refresh();
+    // refresh dimensions once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return children;

@@ -8,8 +8,5 @@ FiftyOne feature flags.
 
 from typing import Literal
 
-
-FeatureFlag = Literal[
-    "VFF_MULTIMODAL",
-]
+FeatureFlag = Literal["VFF_MULTIMODAL",]
 """Enumeration of active feature flags."""

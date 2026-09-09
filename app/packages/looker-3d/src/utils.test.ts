@@ -7,9 +7,11 @@ import {
   Raycaster,
   Scene,
   Vector3,
+  type Vector3Tuple,
 } from "three";
 import { describe, expect, it, vi } from "vitest";
 import { COLOR_POOL } from "./constants";
+import type { FiftyoneSceneRawJson } from "./utils";
 import {
   areVectorsCoLocated,
   computeMinMaxForColorBufferAttribute,
@@ -19,6 +21,7 @@ import {
   eulerToQuaternion,
   findObjectByUserData,
   formatNumber,
+  getFiftyoneSceneSummary,
   getAxisAlignedBoundingBoxForPoints3d,
   getColorFromPoolBasedOnHash,
   getGridQuaternionFromUpVector,
@@ -139,6 +142,57 @@ describe("findObjectByUserData", () => {
 
     expect(findObjectByUserData(scene, "labelId", "label-1")).toBe(child);
     expect(findObjectByUserData(scene, "labelId", "missing")).toBeNull();
+  });
+});
+
+describe("getFiftyoneSceneSummary", () => {
+  it("counts GaussianSplat nodes separately from unknown nodes", () => {
+    const scene = {
+      _type: "Scene",
+      name: "root",
+      visible: true,
+      position: [0, 0, 0],
+      quaternion: [0, 0, 0, 1],
+      scale: [1, 1, 1],
+      children: [
+        {
+          _type: "GaussianSplat",
+          name: "splats",
+          visible: true,
+          position: [0, 0, 0],
+          quaternion: [0, 0, 0, 1],
+          scale: [1, 1, 1],
+          children: [],
+        },
+        {
+          _type: "PlyMesh",
+          name: "parent",
+          visible: true,
+          position: [0, 0, 0],
+          quaternion: [0, 0, 0, 1],
+          scale: [1, 1, 1],
+          children: [
+            {
+              _type: "GaussianSplat",
+              name: "nested-splats",
+              visible: true,
+              position: [0, 0, 0],
+              quaternion: [0, 0, 0, 1],
+              scale: [1, 1, 1],
+              children: [],
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(
+      getFiftyoneSceneSummary(scene as unknown as FiftyoneSceneRawJson),
+    ).toMatchObject({
+      meshCount: 1,
+      splatCount: 2,
+      unknownCount: 0,
+    });
   });
 });
 
@@ -809,7 +863,9 @@ describe("validatePoints3dArray", () => {
       ], // valid
     ];
 
-    const result = validatePoints3dArray(mixedSegments as any);
+    const result = validatePoints3dArray(
+      mixedSegments as unknown as Vector3Tuple[][],
+    );
     expect(result).toEqual([
       [
         [1, 2, 3],
@@ -838,7 +894,9 @@ describe("validatePoints3dArray", () => {
         [4, 5, "6"],
       ], // invalid point
     ];
-    const result = validatePoints3dArray(invalidSegments as any);
+    const result = validatePoints3dArray(
+      invalidSegments as unknown as Vector3Tuple[][],
+    );
     expect(result).toEqual([]);
   });
 
@@ -928,7 +986,9 @@ describe("getAxisAlignedBoundingBoxForPoints3d", () => {
   });
 
   it("returns zero location and dimensions for null input", () => {
-    const result = getAxisAlignedBoundingBoxForPoints3d(null as any);
+    const result = getAxisAlignedBoundingBoxForPoints3d(
+      null as unknown as Vector3Tuple[],
+    );
     expect(result).toEqual({
       location: [0, 0, 0],
       dimensions: [0, 0, 0],
@@ -936,7 +996,9 @@ describe("getAxisAlignedBoundingBoxForPoints3d", () => {
   });
 
   it("returns zero location and dimensions for undefined input", () => {
-    const result = getAxisAlignedBoundingBoxForPoints3d(undefined as any);
+    const result = getAxisAlignedBoundingBoxForPoints3d(
+      undefined as unknown as Vector3Tuple[],
+    );
     expect(result).toEqual({
       location: [0, 0, 0],
       dimensions: [0, 0, 0],
@@ -953,7 +1015,7 @@ describe("getAxisAlignedBoundingBoxForPoints3d", () => {
       [1, 2, Number.NaN],
       [1, 2, Number.POSITIVE_INFINITY],
       [1, 2, Number.NEGATIVE_INFINITY],
-    ] as any;
+    ] as unknown as Vector3Tuple[];
     const result = getAxisAlignedBoundingBoxForPoints3d(invalidPoints);
     expect(result).toEqual({
       location: [0, 0, 0],
@@ -1023,7 +1085,7 @@ describe("getAxisAlignedBoundingBoxForPoints3d", () => {
       [10, 11, 12],
       [Number.NaN, 2, 3],
       [13, 14, 15],
-    ] as any;
+    ] as unknown as Vector3Tuple[];
     const result = getAxisAlignedBoundingBoxForPoints3d(mixedPoints);
     expect(result.location).toEqual([7, 8, 9]);
     expect(result.dimensions).toEqual([12, 12, 12]);
@@ -1127,7 +1189,7 @@ describe("getAxisAlignedBoundingBoxForPoints3d", () => {
       [8, 9, Number.POSITIVE_INFINITY],
       [10, 11, 12],
       [Number.NEGATIVE_INFINITY, 13, 14],
-    ] as any;
+    ] as unknown as Vector3Tuple[];
     const result = getAxisAlignedBoundingBoxForPoints3d(points);
     expect(result.location).toEqual([5.5, 6.5, 7.5]);
     expect(result.dimensions).toEqual([9, 9, 9]);
@@ -1140,7 +1202,7 @@ describe("getAxisAlignedBoundingBoxForPoints3d", () => {
       [6, Number.NaN, 7],
       [8, 9, Number.NaN],
       [10, 11, 12],
-    ] as any;
+    ] as unknown as Vector3Tuple[];
     const result = getAxisAlignedBoundingBoxForPoints3d(points);
     expect(result.location).toEqual([5.5, 6.5, 7.5]);
     expect(result.dimensions).toEqual([9, 9, 9]);

@@ -3,6 +3,7 @@ import {
   type FetchFunctionConfig,
   type FetchFunctionResult,
 } from "@fiftyone/utilities";
+import { createAbortError } from "../../utils/cancellation";
 import { safeNumber } from "./bigint-utils";
 import { parseByteSize } from "./byte-size";
 import type { ByteClient } from "./types";
@@ -11,6 +12,7 @@ const DEFAULT_HTTP_BYTE_READ_RETRIES = 2;
 const DEFAULT_HTTP_BYTE_READ_INACTIVITY_TIMEOUT_MS = 30_000;
 const MAX_HTTP_BYTE_READ_INACTIVITY_TIMEOUT_MS = 5 * 60_000;
 const MIN_HTTP_BYTE_READ_RATE_BYTES_PER_SEC = 64 * 1024;
+const HTTP_BYTE_READ_ABORT_MESSAGE = "HTTP byte-range read aborted";
 
 type AbortableFetchFunction = <Body, Result>(
   config: FetchFunctionConfig<Body>,
@@ -23,10 +25,15 @@ export function createHttpByteClient(
   fetchFunction?: AbortableFetchFunction,
 ): ByteClient {
   return {
-    async stat(source) {
+    async stat(source, signal) {
+      if (signal?.aborted) {
+        throw createAbortError(HTTP_BYTE_READ_ABORT_MESSAGE);
+      }
       const fetchBytes: AbortableFetchFunction =
         fetchFunction ?? getFetchFunctionExtended();
       const controller = new AbortController();
+      const onExternalAbort = () => controller.abort();
+      signal?.addEventListener("abort", onExternalAbort, { once: true });
 
       try {
         const { headers } = await withHttpByteReadTimeout(
@@ -38,6 +45,7 @@ export function createHttpByteClient(
               retries: DEFAULT_HTTP_BYTE_READ_RETRIES,
               signal: controller.signal,
               onProgress,
+              browserCache: "no-store",
             }),
           controller,
           DEFAULT_HTTP_BYTE_READ_INACTIVITY_TIMEOUT_MS,
@@ -57,9 +65,14 @@ export function createHttpByteClient(
             : {}),
         };
       } catch {
+        if (signal?.aborted) {
+          throw createAbortError(HTTP_BYTE_READ_ABORT_MESSAGE);
+        }
         // HEAD is only an optimization; object stores and CORS policies often
         // block it even when ranged GETs are allowed.
         return undefined;
+      } finally {
+        signal?.removeEventListener("abort", onExternalAbort);
       }
     },
 
@@ -71,10 +84,10 @@ export function createHttpByteClient(
         throw new Error("Byte range length must be positive");
       }
       if (request.signal?.aborted) {
-        throw abortedByteReadError();
+        throw createAbortError(HTTP_BYTE_READ_ABORT_MESSAGE);
       }
 
-      const expectedLength = safeNumber(request.range.length);
+      let expectedLength = safeNumber(request.range.length);
       const endOffset = request.range.offset + request.range.length - 1n;
       const fetchBytes: AbortableFetchFunction =
         fetchFunction ?? getFetchFunctionExtended();
@@ -98,6 +111,10 @@ export function createHttpByteClient(
               retries: DEFAULT_HTTP_BYTE_READ_RETRIES,
               signal: controller.signal,
               onProgress,
+              // The app has its own byte caches; letting the browser HTTP
+              // cache store these blocks risks a cached superset answering a
+              // narrower Range with a mismatched Content-Range.
+              browserCache: "no-store",
             }),
           controller,
           httpByteReadInactivityTimeoutMs(expectedLength),
@@ -105,13 +122,13 @@ export function createHttpByteClient(
       } catch (error) {
         // Deliberate aborts must be distinguishable from transport failures.
         if (request.signal?.aborted) {
-          throw abortedByteReadError();
+          throw createAbortError(HTTP_BYTE_READ_ABORT_MESSAGE);
         }
         throw error;
       } finally {
         request.signal?.removeEventListener("abort", onExternalAbort);
       }
-      const bytes = new Uint8Array(buffer);
+      let bytes = new Uint8Array(buffer);
 
       // Validate the HTTP range contract before trusting the returned bytes.
       const contentRange = headers?.get("Content-Range");
@@ -130,27 +147,49 @@ export function createHttpByteClient(
 
       const contentRangeStart = BigInt(contentRangeMatch[1]);
       const contentRangeEnd = BigInt(contentRangeMatch[2]);
-      if (
-        contentRangeStart !== request.range.offset ||
-        contentRangeEnd !== request.range.offset + request.range.length - 1n ||
-        safeNumber(contentRangeEnd - contentRangeStart + 1n) !== expectedLength
-      ) {
-        throw new Error(
-          `Expected Content-Range for ${request.range.offset.toString()}-${
-            request.range.offset + request.range.length - 1n
-          } but received '${contentRange}'`,
-        );
-      }
-
       const totalSizeBytes =
         contentRangeMatch[3] === "*" ? undefined : BigInt(contentRangeMatch[3]);
       if (totalSizeBytes !== undefined && contentRangeEnd >= totalSizeBytes) {
         throw new Error(`Invalid Content-Range header '${contentRange}'`);
       }
-      if (bytes.byteLength !== expectedLength) {
+
+      // A range that runs past the end is answered up to the last byte
+      // (RFC 9110); a caller that did not know the size yet reads the
+      // shorter span and learns the size from the same response.
+      const requestedEnd = request.range.offset + request.range.length - 1n;
+      const truncatedAtEnd =
+        totalSizeBytes !== undefined &&
+        contentRangeEnd === totalSizeBytes - 1n &&
+        contentRangeEnd < requestedEnd;
+      if (
+        contentRangeStart > request.range.offset ||
+        (contentRangeEnd < requestedEnd && !truncatedAtEnd)
+      ) {
         throw new Error(
-          `Expected ${expectedLength} bytes but received ${bytes.byteLength}`,
+          `Expected Content-Range covering ${request.range.offset.toString()}-${requestedEnd} but received '${contentRange}'`,
         );
+      }
+      if (truncatedAtEnd) {
+        expectedLength = safeNumber(
+          contentRangeEnd - request.range.offset + 1n,
+        );
+      }
+
+      const spanLength = safeNumber(contentRangeEnd - contentRangeStart + 1n);
+      if (bytes.byteLength !== spanLength) {
+        throw new Error(
+          `Expected ${spanLength} bytes but received ${bytes.byteLength}`,
+        );
+      }
+      if (
+        contentRangeStart !== request.range.offset ||
+        spanLength !== expectedLength
+      ) {
+        // Browser HTTP caches may answer a narrow Range with a stored
+        // superset block; a copy of the requested window keeps the oversized
+        // backing buffer collectable.
+        const sliceStart = safeNumber(request.range.offset - contentRangeStart);
+        bytes = bytes.slice(sliceStart, sliceStart + expectedLength);
       }
 
       // Preserve discovered source size and content validator so later cache
@@ -175,21 +214,13 @@ export function createHttpByteClient(
 
       return {
         bytes,
-        range: request.range,
+        range: truncatedAtEnd
+          ? { length: BigInt(expectedLength), offset: request.range.offset }
+          : request.range,
         source,
       };
     },
   };
-}
-
-/**
- * Rejection for reads whose caller-provided signal aborted. Named
- * "AbortError" so generic cancellation detection recognizes it.
- */
-function abortedByteReadError(): Error {
-  const error = new Error("HTTP byte-range read aborted");
-  error.name = "AbortError";
-  return error;
 }
 
 /**

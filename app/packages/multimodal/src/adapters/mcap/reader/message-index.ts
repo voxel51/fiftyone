@@ -1,6 +1,7 @@
 import { McapStreamReader, type McapTypes } from "@mcap/core";
-import { compareBigInt } from "../bigint";
-import { mcapErrorMessage } from "../errors";
+import { compareBigInt } from "../../../ir";
+import { throwIfAborted } from "../../../utils/cancellation";
+import { errorMessage } from "../../../utils/errors";
 import type {
   McapIndexedMessageTime,
   McapIndexedReaderLike,
@@ -22,6 +23,21 @@ const MESSAGE_INDEX_RECORD_READER_OPTIONS: NonNullable<
 };
 const MCAP_RECORD_HEADER_BYTES = 9;
 const MESSAGE_INDEX_CONTENT_HEADER_BYTES = 6;
+const MAX_MESSAGE_INDEX_BATCH_SPAN_BYTES = 64n * 1024n;
+
+interface MessageIndexRead {
+  readonly channel: McapTypes.TypedMcapRecords["Channel"];
+  readonly range: {
+    readonly length: bigint;
+    readonly offset: bigint;
+  };
+}
+
+/** Exact, possibly coalesced MessageIndex range selected for one chunk. */
+export interface McapMessageIndexReadRange {
+  readonly length: bigint;
+  readonly offset: bigint;
+}
 
 /**
  * Reads ordered MCAP message times directly from chunk message-index records.
@@ -31,6 +47,7 @@ export async function* readIndexedMessageTimesForReader(
   readable: McapTypes.IReadable,
   args: McapReadIndexedMessageTimesRequest = {},
 ): AsyncGenerator<McapIndexedMessageTime, void, void> {
+  throwIfAborted(args.signal);
   if (
     args.limit !== undefined &&
     (!Number.isFinite(args.limit) ||
@@ -40,15 +57,35 @@ export async function* readIndexedMessageTimesForReader(
     return;
   }
 
-  const channelIds = channelIdsForTopics(reader.channelsById, args.topics);
+  const topicChannelIds = channelIdsForTopics(reader.channelsById, args.topics);
+  const channelIds = args.channelIds
+    ? new Set(
+        args.channelIds.filter((channelId) => topicChannelIds.has(channelId)),
+      )
+    : topicChannelIds;
   if (channelIds.size === 0) {
     return;
   }
 
-  if (chunksAreOrdered(reader.chunkIndexes)) {
+  const requestedChunkOffsets = args.chunkStartOffsets
+    ? new Set(args.chunkStartOffsets)
+    : undefined;
+  const chunkIndexes: readonly McapTypes.TypedMcapRecords["ChunkIndex"][] =
+    requestedChunkOffsets
+      ? reader.chunkIndexes.filter(
+          (chunkIndex: McapTypes.TypedMcapRecords["ChunkIndex"]) =>
+            requestedChunkOffsets.has(chunkIndex.chunkStartOffset),
+        )
+      : reader.chunkIndexes;
+  if (chunkIndexes.length === 0) {
+    return;
+  }
+
+  if (chunksAreOrdered(chunkIndexes)) {
     let count = 0;
 
-    for (const chunkIndex of reader.chunkIndexes) {
+    for (const chunkIndex of chunkIndexes) {
+      throwIfAborted(args.signal);
       if (!chunkOverlapsRange(chunkIndex, args.startTimeNs, args.endTimeNs)) {
         if (
           args.endTimeNs !== undefined &&
@@ -65,8 +102,10 @@ export async function* readIndexedMessageTimesForReader(
         endTimeNs: args.endTimeNs,
         readable,
         reader,
+        signal: args.signal,
         startTimeNs: args.startTimeNs,
       });
+      throwIfAborted(args.signal);
 
       for (const entry of chunkEntries) {
         yield entry;
@@ -83,7 +122,8 @@ export async function* readIndexedMessageTimesForReader(
 
   const entries: McapIndexedMessageTime[] = [];
 
-  for (const chunkIndex of reader.chunkIndexes) {
+  for (const chunkIndex of chunkIndexes) {
+    throwIfAborted(args.signal);
     if (!chunkOverlapsRange(chunkIndex, args.startTimeNs, args.endTimeNs)) {
       continue;
     }
@@ -95,6 +135,7 @@ export async function* readIndexedMessageTimesForReader(
         endTimeNs: args.endTimeNs,
         readable,
         reader,
+        signal: args.signal,
         startTimeNs: args.startTimeNs,
       })),
     );
@@ -125,7 +166,7 @@ export function parseMcapMessageIndexRecord(
     record = reader.nextRecord();
   } catch (error) {
     throw new Error(
-      `Expected MCAP MessageIndex record: ${mcapErrorMessage(
+      `Expected MCAP MessageIndex record: ${errorMessage(
         error,
         "failed to parse record",
       )}`,
@@ -193,68 +234,180 @@ export async function readChunkIndexedMessageTimes({
   channelIds,
   chunkIndex,
   endTimeNs,
+  readExact,
   readable,
   reader,
+  signal,
   startTimeNs,
 }: {
   readonly channelIds: ReadonlySet<number>;
   readonly chunkIndex: McapTypes.TypedMcapRecords["ChunkIndex"];
   readonly endTimeNs: bigint | undefined;
+  readonly readExact?: (
+    offset: bigint,
+    size: bigint,
+    signal?: AbortSignal,
+  ) => Promise<Uint8Array>;
   readonly readable: McapTypes.IReadable;
   readonly reader: McapIndexedReaderLike;
+  readonly signal?: AbortSignal;
   readonly startTimeNs: bigint | undefined;
 }): Promise<readonly McapIndexedMessageTime[]> {
   const entries: McapIndexedMessageTime[] = [];
+  const reads = collectMessageIndexReads({
+    channelIds,
+    chunkIndex,
+    reader,
+  });
 
-  for (const channelId of channelIds) {
-    const channel = reader.channelsById.get(channelId);
-    if (!channel) {
-      throw new Error(`Missing MCAP channel ${channelId}`);
-    }
+  for (const batch of batchMessageIndexReads(reads)) {
+    throwIfAborted(signal);
+    const batchEnd = batch.reduce((end, read) => {
+      const readEnd = read.range.offset + read.range.length;
+      return readEnd > end ? readEnd : end;
+    }, batch[0].range.offset);
+    const batchOffset = batch[0].range.offset;
+    const batchBytes = readExact
+      ? await (signal
+          ? readExact(batchOffset, batchEnd - batchOffset, signal)
+          : readExact(batchOffset, batchEnd - batchOffset))
+      : await readExactRange(
+          readable,
+          batchOffset,
+          batchEnd - batchOffset,
+          signal,
+        );
+    throwIfAborted(signal);
 
-    const range = messageIndexRangeForChannel(chunkIndex, channelId);
-    if (!range) {
-      continue;
-    }
-
-    const bytes = await readExactRange(readable, range.offset, range.length);
-    const messageIndex = parseMcapMessageIndexRecord(bytes);
-    if (messageIndex.channelId !== channelId) {
-      throw new Error(
-        `MCAP MessageIndex channel ${messageIndex.channelId} did not match expected channel ${channelId}`,
-      );
-    }
-
-    for (const [logTimeNs, messageOffset] of messageIndex.records) {
-      if (!isWithinIndexedRange(logTimeNs, startTimeNs, endTimeNs)) {
-        continue;
+    for (const { channel, range } of batch) {
+      const relativeOffset = Number(range.offset - batchOffset);
+      const relativeEnd = relativeOffset + Number(range.length);
+      const bytes = batchBytes.subarray(relativeOffset, relativeEnd);
+      const messageIndex = parseMcapMessageIndexRecord(bytes);
+      if (messageIndex.channelId !== channel.id) {
+        throw new Error(
+          `MCAP MessageIndex channel ${messageIndex.channelId} did not match expected channel ${channel.id}`,
+        );
       }
 
-      entries.push({
-        channelId,
-        chunkStartOffset: chunkIndex.chunkStartOffset,
-        logTimeNs,
-        messageOffset,
-        topic: channel.topic,
-      });
+      for (const [logTimeNs, messageOffset] of messageIndex.records) {
+        if (!isWithinIndexedRange(logTimeNs, startTimeNs, endTimeNs)) {
+          continue;
+        }
+
+        entries.push({
+          channelId: channel.id,
+          chunkStartOffset: chunkIndex.chunkStartOffset,
+          logTimeNs,
+          messageOffset,
+          topic: channel.topic,
+        });
+      }
     }
   }
 
   return entries.sort(compareIndexedMessageTimes);
 }
 
+/**
+ * Plans the exact MessageIndex reads used by
+ * `readChunkIndexedMessageTimes()`, without touching source bytes.
+ */
+export function collectChunkMessageIndexReadRanges({
+  channelIds,
+  chunkIndex,
+  reader,
+}: {
+  readonly channelIds: ReadonlySet<number>;
+  readonly chunkIndex: McapTypes.TypedMcapRecords["ChunkIndex"];
+  readonly reader: McapIndexedReaderLike;
+}): readonly McapMessageIndexReadRange[] {
+  return batchMessageIndexReads(
+    collectMessageIndexReads({ channelIds, chunkIndex, reader }),
+  ).map((batch) => {
+    const offset = batch[0].range.offset;
+    const end = batch.reduce((batchEnd, read) => {
+      const readEnd = read.range.offset + read.range.length;
+      return readEnd > batchEnd ? readEnd : batchEnd;
+    }, offset);
+    return { length: end - offset, offset };
+  });
+}
+
+function collectMessageIndexReads({
+  channelIds,
+  chunkIndex,
+  reader,
+}: {
+  readonly channelIds: ReadonlySet<number>;
+  readonly chunkIndex: McapTypes.TypedMcapRecords["ChunkIndex"];
+  readonly reader: McapIndexedReaderLike;
+}): MessageIndexRead[] {
+  const reads: MessageIndexRead[] = [];
+  for (const channelId of channelIds) {
+    const channel = reader.channelsById.get(channelId);
+    if (!channel) {
+      throw new Error(`Missing MCAP channel ${channelId}`);
+    }
+    const range = messageIndexRangeForChannel(chunkIndex, channelId);
+    if (range) {
+      reads.push({ channel, range });
+    }
+  }
+  return reads.sort((left, right) =>
+    compareBigInt(left.range.offset, right.range.offset),
+  );
+}
+
+/**
+ * Coalesces nearby selected MessageIndex records into bounded exact reads.
+ * The MCAP footer stores these records contiguously by chunk, so this avoids
+ * paying one remote round trip per active channel without turning sparse
+ * selections into an unbounded footer fetch.
+ */
+function batchMessageIndexReads(
+  reads: readonly MessageIndexRead[],
+): readonly (readonly MessageIndexRead[])[] {
+  const batches: MessageIndexRead[][] = [];
+
+  for (const read of reads) {
+    const batch = batches.at(-1);
+    if (!batch) {
+      batches.push([read]);
+      continue;
+    }
+
+    const span = read.range.offset + read.range.length - batch[0].range.offset;
+    if (span > MAX_MESSAGE_INDEX_BATCH_SPAN_BYTES) {
+      batches.push([read]);
+      continue;
+    }
+
+    batch.push(read);
+  }
+
+  return batches;
+}
+
 function readExactRange(
   readable: McapTypes.IReadable,
   offset: bigint,
   size: bigint,
+  signal?: AbortSignal,
 ): Promise<Uint8Array> {
-  return (
-    (
-      readable as McapTypes.IReadable & {
-        readExact?(offset: bigint, size: bigint): Promise<Uint8Array>;
-      }
-    ).readExact?.(offset, size) ?? readable.read(offset, size)
-  );
+  const readExact = (
+    readable as McapTypes.IReadable & {
+      readExact?(
+        offset: bigint,
+        size: bigint,
+        signal?: AbortSignal,
+      ): Promise<Uint8Array>;
+    }
+  ).readExact;
+  if (!readExact) return readable.read(offset, size);
+  return signal
+    ? readExact.call(readable, offset, size, signal)
+    : readExact.call(readable, offset, size);
 }
 
 /**

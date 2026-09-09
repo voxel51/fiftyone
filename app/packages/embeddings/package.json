@@ -17,16 +17,26 @@
         "@fiftyone/plugins": "*",
         "@fiftyone/state": "*",
         "plotly.js": "^3.1.1",
-        "use-resize-observer": "^9.0.2"
+        "use-resize-observer": "catalog:"
     },
     "devDependencies": {
-        "vite": "^7.3.2",
-        "vite-plugin-externals": "^0.5.0"
+        "@types/react": "catalog:",
+        "@vitejs/plugin-react": "catalog:",
+        "jotai": "catalog:",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "react-error-boundary": "catalog:",
+        "react-relay": "catalog:",
+        "recoil": "catalog:",
+        "recoil-relay": "catalog:",
+        "relay-runtime": "catalog:",
+        "styled-components": "catalog:",
+        "vite": "catalog:",
+        "vite-plugin-externals": "catalog:"
     },
     "fiftyone": {
         "script": "dist/index.umd.js"
     },
-    "packageManager": "yarn@4.9.1",
     "peerDependencies": {
         "@mui/icons-material": "*",
         "react-error-boundary": "*",

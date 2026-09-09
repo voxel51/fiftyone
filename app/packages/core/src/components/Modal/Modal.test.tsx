@@ -2,6 +2,19 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { shouldShowClassicSidebar } from "./utils";
+
+describe("shouldShowClassicSidebar", () => {
+  it("is false for a multimodal viewer, regardless of sidebar visibility", () => {
+    expect(shouldShowClassicSidebar(true, true)).toBe(false);
+    expect(shouldShowClassicSidebar(false, true)).toBe(false);
+  });
+
+  it("follows sidebar visibility for a non-multimodal viewer", () => {
+    expect(shouldShowClassicSidebar(true, false)).toBe(true);
+    expect(shouldShowClassicSidebar(false, false)).toBe(false);
+  });
+});
 
 describe("Modal keyboard shortcuts handler", () => {
   let mockHandlers: {

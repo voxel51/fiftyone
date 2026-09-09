@@ -1,7 +1,7 @@
 import * as fos from "@fiftyone/state";
 import { useEventHandler } from "@fiftyone/state";
 import { Controller, animated, config } from "@react-spring/web";
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Container, SidebarColumn } from "./Components";
 import style from "./style.module.css";
 import type { InteractiveItems, RenderEntry } from "./types";
@@ -9,7 +9,14 @@ import useAnimate from "./useAnimate";
 import useExit from "./useExit";
 import useGetNewOrder from "./useGetNewOrder";
 import { useRegisterSidebarCommandHandlers } from "./useRegisterSidebarCommandHandlers";
-import { Direction, MARGIN, calculateItemLayout, getEntryKey } from "./utils";
+import {
+  Direction,
+  MARGIN,
+  calculateItemLayout,
+  disposeInteractiveItems,
+  getEntryKey,
+  pruneInteractiveItems,
+} from "./utils";
 
 const InteractiveSidebar = ({
   isDisabled,
@@ -88,6 +95,11 @@ const InteractiveSidebar = ({
     }
   }
 
+  // Drop controllers for entries that no longer exist (skip mid-drag).
+  if (!down.current) {
+    pruneInteractiveItems(items.current, order.current);
+  }
+
   const placeItems = useCallback(() => {
     const { results: placements, minHeight } = calculateItemLayout(
       items.current,
@@ -110,9 +122,19 @@ const InteractiveSidebar = ({
       }
     }
   }, [controller]);
+
   const [observer] = useState<ResizeObserver>(
     () => new ResizeObserver(placeItems),
   );
+
+  // Dispose controllers + disconnect the observer on unmount (disconnect also
+  // releases rows pruned during render, which the ref callback skips).
+  useEffect(() => {
+    return () => {
+      disposeInteractiveItems(controller, items.current);
+      observer.disconnect();
+    };
+  }, [controller, observer]);
 
   const getNewOrder = useGetNewOrder({
     down,

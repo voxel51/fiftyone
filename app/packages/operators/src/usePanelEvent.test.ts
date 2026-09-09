@@ -2,7 +2,7 @@ import { PanelEventError } from "@fiftyone/utilities";
 import { act, renderHook } from "@testing-library/react";
 import React from "react";
 import { RecoilRoot } from "recoil";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import usePanelEvent, { usePendingPanelEventError } from "./usePanelEvent";
 
 ////////////////////////////
@@ -37,7 +37,7 @@ const mockUseActivePanelEventsCount = vi.mocked(useActivePanelEventsCount);
 // Mock executeOperator to avoid calling the actual operator, which isn't needed for this test
 const mockExecuteOperator = vi.mocked(executeOperator);
 
-let mockDecrement: any;
+let mockDecrement: Mock;
 
 beforeEach(() => {
   vi.clearAllMocks();

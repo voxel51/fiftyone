@@ -222,7 +222,7 @@ export const AnnotationTips = ({
           Dismiss
         </TipsButton>
         <TipsButton $variant="primary" onClick={handleDoNotShowAgain}>
-          Don't show again
+          Don&apos;t show again
         </TipsButton>
       </TipsActions>
     </TipsContainer>

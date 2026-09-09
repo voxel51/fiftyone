@@ -83,7 +83,7 @@ export const Pcd = ({
       ...prev,
       renderModeDescriptor: shadingMode,
     }));
-  }, [shadingMode]);
+  }, [shadingMode, setHoverMetadata]);
 
   if (!points) {
     return null;

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<07db4bca0811114125f2b07bad33efc5>>
+ * @generated SignedSource<<efe93d7a0e4876d79fad76678634dba5>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -21,12 +21,17 @@ export type datasetFragment$data = {
       readonly embeddingsField: string | null;
       readonly maxK: number | null;
       readonly method: string | null;
+      readonly model: string | null;
+      readonly numDims: number | null;
       readonly patchesField: string | null;
+      readonly pointsField: string | null;
       readonly supportsLeastSimilarity: boolean | null;
       readonly supportsPrompts: boolean | null;
       readonly type: BrainRunType | null;
     } | null;
+    readonly error: string | null;
     readonly key: string;
+    readonly ready: boolean | null;
     readonly timestamp: number | null;
     readonly version: string | null;
     readonly viewStages: ReadonlyArray<string> | null;
@@ -67,6 +72,7 @@ export type datasetFragment$data = {
       readonly value: string;
     }>;
   }>;
+  readonly mediaSources: object | null;
   readonly mediaType: string | null;
   readonly name: string;
   readonly parentMediaType: string | null;
@@ -212,6 +218,13 @@ return {
       "name": "lastLoadedAt",
       "storageKey": null
     },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "mediaSources",
+      "storageKey": null
+    },
     (v0/*: any*/),
     (v1/*: any*/),
     {
@@ -253,6 +266,20 @@ return {
         {
           "alias": null,
           "args": null,
+          "kind": "ScalarField",
+          "name": "ready",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "error",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
           "concreteType": "BrainRunConfig",
           "kind": "LinkedField",
           "name": "config",
@@ -285,6 +312,27 @@ return {
               "args": null,
               "kind": "ScalarField",
               "name": "supportsPrompts",
+              "storageKey": null
+            },
+            {
+              "alias": null,
+              "args": null,
+              "kind": "ScalarField",
+              "name": "numDims",
+              "storageKey": null
+            },
+            {
+              "alias": null,
+              "args": null,
+              "kind": "ScalarField",
+              "name": "pointsField",
+              "storageKey": null
+            },
+            {
+              "alias": null,
+              "args": null,
+              "kind": "ScalarField",
+              "name": "model",
               "storageKey": null
             },
             {
@@ -478,6 +526,6 @@ return {
 };
 })();
 
-(node as any).hash = "866766401d421b021e8ff682461bb3c0";
+(node as any).hash = "ca48d00369663cf08a83df441475103c";
 
 export default node;

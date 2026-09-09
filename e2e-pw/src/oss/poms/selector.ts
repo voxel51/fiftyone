@@ -27,14 +27,9 @@ export class SelectorPom {
   }
 
   async openResults() {
-    const promise = this.eventUtils.getEventReceivedPromiseForPredicate(
-      `selector-results-${this.title}`,
-      () => {
-        return true;
-      },
-    );
+    const results = await this.eventUtils.arm(`selector-results-${this.title}`);
     await this.input.focus();
-    await promise;
+    await results.received;
   }
 
   async closeResults() {

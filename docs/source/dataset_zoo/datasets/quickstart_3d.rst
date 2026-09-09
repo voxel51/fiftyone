@@ -5,6 +5,10 @@ Quickstart 3D
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 0.24.0
+    :enterprise_version: 1.7.0
+
 A small 3D dataset with meshes, point clouds, and oriented bounding boxes.
 
 The dataset consists of 200 3D mesh samples from the test split of the

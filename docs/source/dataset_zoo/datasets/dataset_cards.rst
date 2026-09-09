@@ -69,6 +69,13 @@
     :tags: image,detection,segmentation
 
 .. customcarditem::
+    :header: Egocentric EMG-Force
+    :description: Eight first-person household task recordings in native MCAP format, pairing RGB-D video with eight-channel wrist EMG, hand skeletons, per-finger contact force and 122 English-labelled subtasks.
+    :link: datasets/egocentric_emg_force.html
+    :image: ../_images/egocentric-emg-force.png
+    :tags: multimodal,mcap,egocentric,emg,force
+
+.. customcarditem::
     :header: Fashion MNIST
     :description: A modern alternative to MNIST featuring 70,000 28x28 grayscale images of fashion items (shirts, shoes, bags, etc.). More complex than digit recognition.
     :link: datasets/fashion_mnist.html
@@ -223,11 +230,32 @@
     :tags: 3d,point-cloud,mesh,quickstart
 
 .. customcarditem::
+    :header: RoboLab
+    :description: 4,000 policy rollouts on NVIDIA's RoboLab manipulation benchmark in native MCAP format, with three camera views, depth, calibration, and success labels on every take.
+    :link: datasets/robolab.html
+    :image: ../_images/robolab.png
+    :tags: multimodal,mcap,robotics,depth
+
+.. customcarditem::
+    :header: RTK-SLAM Absolute Accuracy
+    :description: Four handheld walking sequences in native MCAP format pairing LiDAR, camera, IMU and GNSS with 87 total-station checkpoints and three published SLAM trajectories measured against them.
+    :link: datasets/rtk_slam_absolute_accuracy.html
+    :image: ../_images/rtk-slam-absolute-accuracy.png
+    :tags: multimodal,mcap,slam,lidar,gnss
+
+.. customcarditem::
     :header: Sama-COCO
     :description: Improved version of COCO-2017 with tighter segmentation masks and better crowd annotations. Large-scale object detection and segmentation dataset with enhanced quality.
     :link: datasets/sama_coco.html
     :image: ../_images/sama-coco-validation.png
     :tags: image,detection,segmentation
+
+.. customcarditem::
+    :header: TII-RATM Drone Racing
+    :description: Six indoor drone racing flights in native MCAP format, pairing onboard fisheye video and a 500 Hz IMU with visual-inertial odometry and motion capture ground truth on one clock.
+    :link: datasets/tii_ratm_drone_racing.html
+    :image: ../_images/tii-ratm-drone-racing.png
+    :tags: multimodal,mcap,drone,slam,ground-truth
 
 .. customcarditem::
     :header: UCF101

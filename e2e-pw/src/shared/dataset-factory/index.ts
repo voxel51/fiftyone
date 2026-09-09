@@ -42,7 +42,13 @@ interface Helpers {
  * The set of supported FiftyOne label field types.
  * These correspond to embedded document types in the FiftyOne data model.
  */
-type Label = "Classification" | "Classifications" | "Detection" | "Detections";
+type Label =
+  | "Classification"
+  | "Classifications"
+  | "Detection"
+  | "Detections"
+  | "Polyline"
+  | "Polylines";
 
 /**
  * All supported field types for dataset schema definitions.
@@ -80,6 +86,8 @@ const LABEL_TYPES = new Set([
   "Classifications",
   "Detection",
   "Detections",
+  "Polyline",
+  "Polylines",
 ]);
 
 /**
@@ -166,6 +174,24 @@ interface DatasetOptions {
   };
 
   /**
+   * Annotation label schemas keyed by field path. Each is applied with
+   * `dataset.update_label_schema(field, schema)` and the field is added to
+   * `dataset.active_label_schemas`, all inside the single dataset-creation
+   * subprocess — no follow-up SDK calls needed.
+   *
+   * @example
+   * labelSchemas: {
+   *   polylines: {
+   *     type: "polylines",
+   *     classes: ["lane", "curb"],
+   *     attributes: [],
+   *     component: "dropdown",
+   *   },
+   * }
+   */
+  labelSchemas?: { [field: string]: JSONObject };
+
+  /**
    * A factory function that populates a sample with data.
    * Receives an empty `SampleScaffold` and should return a `JSONObject`
    * representing the fully populated sample.
@@ -220,6 +246,7 @@ const createDataset = (() => {
       width: 50,
       height: 50,
     },
+    labelSchemas = {},
     numSamples = 1,
     numbered = false,
     savedViews = {},
@@ -331,6 +358,15 @@ const createDataset = (() => {
         ]
     )
     
+    ${
+      Object.keys(labelSchemas).length
+        ? `label_schemas = json.loads('${JSON.stringify(labelSchemas)}')
+    for field_name, label_schema in label_schemas.items():
+        dataset.update_label_schema(field_name, label_schema)
+    dataset.active_label_schemas = list(label_schemas.keys())`
+        : ""
+    }
+
     ${Object.entries(savedViews)
       .map(([name, view]) => {
         return `dataset.save_view("${name}", ${view})`;

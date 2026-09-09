@@ -1,4 +1,5 @@
-import { Button, IconName, Size, Variant } from "@voxel51/voodo";
+import { Button, Size, Variant } from "@voxel51/voodo";
+import { TagIcon } from "../stableIcons";
 import React, { useEffect } from "react";
 import { useTemporalTagContext } from "./TemporalTagContext";
 import styles from "./TemporalTag.module.css";
@@ -48,7 +49,7 @@ const TemporalTagButton: React.FC = () => {
       variant={Variant.Icon}
       size={Size.Xs}
       data-testid="temporal-tag-mode-button"
-      leadingIcon={IconName.Tag}
+      leadingIcon={TagIcon}
       aria-label={active ? "Exit tag mode" : "Enter tag mode (Shift+T)"}
       aria-pressed={active}
       className={active ? styles.tagButtonActive : undefined}

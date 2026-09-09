@@ -10,23 +10,30 @@ import {
 import { LabeledField } from "@fiftyone/components";
 import { DetectionLabel } from "@fiftyone/looker";
 import {
+  computeCuboidHeadingAndUpRelabel,
+  type CuboidResizeFace,
   formatDegrees,
+  getCuboidUpFace,
+  HeadingUpVectorFields,
+  isValidHeadingUpFacePair,
   quaternionToRadians,
   radiansToQuaternion,
   useCuboidOperations,
+  useSetHeadingUpEditorHover,
+  useSetHeadingUpPreview,
 } from "@fiftyone/looker-3d";
 import { useCurrentDatasetId } from "@fiftyone/state";
-import { DETECTION } from "@fiftyone/utilities";
 import { Box, Stack, TextField } from "@mui/material";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import * as THREE from "three";
 import { Vector3Tuple } from "three";
+import {
+  type Coordinates3d,
+  deriveTransformState,
+} from "./deriveTransformState";
 import { useAnnotationContext } from "./useAnnotationContext";
 
-interface Coordinates3d {
-  position: { x?: number; y?: number; z?: number };
-  dimensions: { lx?: number; ly?: number; lz?: number };
-  rotation: { rx?: number; ry?: number; rz?: number };
-}
+export type { Coordinates3d } from "./deriveTransformState";
 
 /**
  * Formats a number to a maximum of 2 decimal places.
@@ -73,6 +80,23 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
   const sample = useSceneSampleId();
   const dataset = useCurrentDatasetId() ?? "";
 
+  // `data` (the annotation context's selection payload) already carries the
+  // same geometry fields as the engine's committed label and is available
+  // the instant this component mounts — unlike `committed` below, which
+  // depends on the engine subscription's first tick (keyed on `sample`,
+  // which can itself still be settling on initial modal open). Without this,
+  // the Up picker sat inert (unhighlighted, non-interactive: `upFace` stuck
+  // on its pre-data fallback and `hasValidBounds` false) until *some*
+  // unrelated write — e.g. a heading-arrow drag — finally produced a fresh
+  // `committed` value and woke it up. Seeding from `data` first removes that
+  // wait; `committed` below still re-syncs on every subsequent change.
+  useEffect(() => {
+    const seeded = deriveTransformState(data);
+    if (seeded) {
+      setTransformState(seeded);
+    }
+  }, [data]);
+
   // committed baseline — the cuboid's stored geometry read reactively from the
   // engine so it re-syncs on EVERY committed change (drag-end, number input,
   // undo/redo). The sidebar never reaches into looker-3d's working/transient
@@ -86,31 +110,10 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
   );
 
   useEffect(() => {
-    if (
-      committed?._cls !== DETECTION ||
-      !committed.location ||
-      !committed.dimensions
-    ) {
-      return;
+    const next = deriveTransformState(committed);
+    if (next) {
+      setTransformState(next);
     }
-
-    const rotation = committed.quaternion
-      ? quaternionToRadians(committed.quaternion)
-      : (committed.rotation ?? [0, 0, 0]);
-
-    setTransformState({
-      position: {
-        x: committed.location[0],
-        y: committed.location[1],
-        z: committed.location[2],
-      },
-      dimensions: {
-        lx: committed.dimensions[0],
-        ly: committed.dimensions[1],
-        lz: committed.dimensions[2],
-      },
-      rotation: { rx: rotation[0], ry: rotation[1], rz: rotation[2] },
-    });
   }, [committed]);
 
   // LIVE geometry from the engine — the 3D scene publishes mid-gesture ABSOLUTE
@@ -210,6 +213,107 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
         dimensions: newDimensions,
         quaternion: newQuaternion,
         rotation: newRotation,
+      });
+    },
+    [data, transformState, updateCuboid, readOnly],
+  );
+
+  // A cuboid's heading is always local +X by definition — it never has
+  // anything to pick away from itself, so it isn't state at all.
+  const headingFace: CuboidResizeFace = "+x";
+
+  // "Up" isn't stored either — it's derived from the box's orientation by
+  // `getCuboidUpFace`, the same helper the relabel below uses, so the
+  // highlighted face and the face a click actually applies can't disagree.
+  // (It has no scene up vector to pass — this DOM sidebar has no access to
+  // one — so both sides fall back to world +Z identically.)
+  //
+  // Derived straight from `transformState` — the single source of truth also
+  // used for the position/rotation fields above — rather than mirrored into
+  // its own `useState`. Two writers racing to update a mirrored copy (this
+  // derivation vs. the optimistic set below) was exactly the bug: whichever
+  // fired last briefly won, so the highlighted face flickered between right
+  // and stale-wrong as the engine's committed/live updates arrived out of
+  // order with the optimistic local write.
+  const { rx, ry, rz } = transformState.rotation;
+  const upFace = useMemo<CuboidResizeFace>(() => {
+    if (rx === undefined || ry === undefined || rz === undefined) {
+      return "+z";
+    }
+    const quaternion = new THREE.Quaternion(
+      ...radiansToQuaternion([rx, ry, rz]),
+    );
+    return getCuboidUpFace(quaternion, headingFace);
+  }, [rx, ry, rz, headingFace]);
+
+  const setHeadingUpPreview = useSetHeadingUpPreview();
+  const setHeadingUpEditorHover = useSetHeadingUpEditorHover();
+
+  // Clears any preview/hover left over from this section if the label
+  // changes or the panel unmounts — otherwise a ghost arrow or suppressed
+  // gizmo could get stuck showing for a label this panel no longer edits.
+  useEffect(() => {
+    return () => {
+      setHeadingUpPreview(null);
+      setHeadingUpEditorHover(null);
+    };
+  }, [labelId, setHeadingUpPreview, setHeadingUpEditorHover]);
+
+  const handleHeadingUpChange = useCallback(
+    (nextHeadingFace: CuboidResizeFace, nextUpFace: CuboidResizeFace) => {
+      if (
+        readOnly ||
+        !data?._id ||
+        !isValidHeadingUpFacePair(nextHeadingFace, nextUpFace) ||
+        !hasValidBounds(transformState)
+      ) {
+        return;
+      }
+
+      const dimensions: Vector3Tuple = [
+        transformState.dimensions.lx ?? 0,
+        transformState.dimensions.ly ?? 0,
+        transformState.dimensions.lz ?? 0,
+      ];
+      const quaternion = new THREE.Quaternion(
+        ...radiansToQuaternion([
+          transformState.rotation.rx ?? 0,
+          transformState.rotation.ry ?? 0,
+          transformState.rotation.rz ?? 0,
+        ]),
+      );
+
+      const relabel = computeCuboidHeadingAndUpRelabel({
+        dimensions,
+        quaternion,
+        headingFace: nextHeadingFace,
+        upFace: nextUpFace,
+      });
+
+      if (!relabel) {
+        return;
+      }
+
+      const rotation = quaternionToRadians(relabel.quaternion);
+
+      // Optimistic write into the SAME state `upFace` is derived from, so the
+      // highlight updates immediately without a second, racing writer — the
+      // later committed/live confirmation carries this identical value, so it
+      // just re-confirms rather than momentarily reverting it.
+      setTransformState((prev) => ({
+        ...prev,
+        dimensions: {
+          lx: relabel.dimensions[0],
+          ly: relabel.dimensions[1],
+          lz: relabel.dimensions[2],
+        },
+        rotation: { rx: rotation[0], ry: rotation[1], rz: rotation[2] },
+      }));
+
+      void updateCuboid(data._id, {
+        dimensions: relabel.dimensions,
+        quaternion: relabel.quaternion,
+        rotation,
       });
     },
     [data, transformState, updateCuboid, readOnly],
@@ -400,6 +504,22 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
               disabled={readOnly}
             />
           }
+        />
+      </Stack>
+
+      <Stack spacing={0.75} sx={{ pt: 1.5 }}>
+        <HeadingUpVectorFields
+          upFace={upFace}
+          onUpChange={(face) => handleHeadingUpChange(headingFace, face)}
+          onUpFaceHover={(face) =>
+            setHeadingUpPreview(
+              face && labelId ? { labelId, role: "up", face } : null,
+            )
+          }
+          onHoverActiveChange={(active) =>
+            setHeadingUpEditorHover(active && labelId ? { labelId } : null)
+          }
+          disabled={readOnly}
         />
       </Stack>
     </Box>

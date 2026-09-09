@@ -1,8 +1,25 @@
 import * as fos from "@fiftyone/state";
-import { useHelpPanel, useJSONPanel } from "@fiftyone/state";
+import { useHelpPanel, useIsMediaType, useJSONPanel } from "@fiftyone/state";
+import { MEDIA_TYPE_MULTIMODAL } from "@fiftyone/utilities";
 import { useCallback, useContext, useRef } from "react";
-import { useRecoilCallback } from "recoil";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 import { modalContext } from "./modal-context";
+import { shouldShowClassicSidebar } from "./utils";
+
+/**
+ * Whether the modal's classic sidebar is actually mounted.
+ *
+ * Anything positioned against the sidebar, or that offers to toggle it, must
+ * read this rather than `sidebarVisible` directly — multimodal suppresses the
+ * sidebar regardless of that flag, so `sidebarVisible` alone would leave
+ * controls that do nothing and layout inset against a panel that isn't there.
+ */
+export const useShowClassicSidebar = () => {
+  const isSidebarVisible = useRecoilValue(fos.sidebarVisible(true));
+  const isMultimodal = useIsMediaType(MEDIA_TYPE_MULTIMODAL);
+
+  return shouldShowClassicSidebar(isSidebarVisible, isMultimodal);
+};
 
 export const useLookerHelpers = () => {
   const jsonPanel = useJSONPanel();

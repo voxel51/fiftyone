@@ -9,6 +9,7 @@ import {
   getSampleRendererComponent,
   getSelectedMediaPath,
   hasMatchMediaMatchers,
+  hasSampleRendererSource,
   isSampleRendererGridEnabled,
   matchesMatchMedia,
   SAMPLE_RENDERER_GRID_SLOT,
@@ -72,6 +73,20 @@ describe("sample renderer matcher utilities", () => {
     expect(getSelectedMediaPath(sample, "missing")).toBe("/tmp/default.bin");
   });
 
+  it("ignores an empty selected media path", () => {
+    const sample = createSample();
+
+    expect(
+      getSelectedMediaPath(
+        {
+          ...sample,
+          urls: [...sample.urls, { field: "empty_path", url: "" }],
+        },
+        "empty_path",
+      ),
+    ).toBe("/tmp/default.bin");
+  });
+
   it("builds a media context for non-native selected media", () => {
     const media = createSampleRendererMediaContext(
       createSample(),
@@ -89,6 +104,60 @@ describe("sample renderer matcher utilities", () => {
     expect(media.url).toContain(encodeURIComponent("/tmp/preview.PDF"));
   });
 
+  it("does not reuse root metadata for an unknown alternate path", () => {
+    const sample = createSample();
+    const media = createSampleRendererMediaContext(
+      {
+        ...sample,
+        urls: [...sample.urls, { field: "unknown_path", url: "/tmp/preview" }],
+      },
+      "unknown_path",
+    );
+
+    expect(media.mimeType).toBeNull();
+  });
+
+  it("classifies a native alternate path independently of the root type", () => {
+    const sample = createSample();
+    const media = createSampleRendererMediaContext(
+      {
+        ...sample,
+        urls: [
+          ...sample.urls,
+          { field: "image_path", url: "/tmp/preview.png" },
+        ],
+      },
+      "image_path",
+    );
+
+    expect(media).toMatchObject({
+      mimeType: "image/png",
+      mediaType: "unknown",
+      isNative: true,
+    });
+  });
+
+  it("keeps root metadata authoritative for an extensionless signed URL", () => {
+    const media = createSampleRendererMediaContext(
+      {
+        sample: {
+          filepath: "/tmp/default",
+          metadata: { mime_type: "application/pdf" },
+          media_type: "unknown",
+        },
+        urls: [
+          {
+            field: "filepath",
+            url: "https://example.com/media/asset?signature=abc",
+          },
+        ],
+      },
+      "filepath",
+    );
+
+    expect(media.mimeType).toBe("application/pdf");
+  });
+
   it("builds a render context with the surface included", () => {
     const sample = createSample();
     const ctx = createSampleRendererRenderContext(
@@ -103,6 +172,44 @@ describe("sample renderer matcher utilities", () => {
     expect(ctx.dataset).toBe(dataset);
     expect(ctx.schema).toBe(schema);
     expect(ctx.surface).toBe("modal");
+  });
+
+  it("builds a pathless media-reference context without a native looker", () => {
+    const media = createSampleRendererMediaContext(
+      {
+        sample: {
+          _id: "episode",
+          media_reference: {
+            _cls: "LeRobotEpisodeReference",
+            key: "lerobot-source/0",
+          },
+          _media_type: "multimodal",
+        },
+      },
+      "media_reference",
+    );
+
+    expect(media).toMatchObject({
+      extension: null,
+      isNative: false,
+      mediaReference: {
+        _cls: "LeRobotEpisodeReference",
+        key: "lerobot-source/0",
+      },
+      mediaType: "multimodal",
+      path: null,
+      url: null,
+    });
+    expect(hasSampleRendererSource(media)).toBe(true);
+    expect(matchesMatchMedia({ mediaTypes: ["MULTIMODAL"] }, media)).toBe(true);
+
+    const filepathMedia = createSampleRendererMediaContext(
+      createSample(),
+      "filepath",
+    );
+    expect(
+      matchesMatchMedia({ mediaTypes: ["multimodal"] }, filepathMedia),
+    ).toBe(false);
   });
 
   it("detects matcher presence only when a matcher field is populated", () => {
@@ -168,6 +275,30 @@ describe("sample renderer selection", () => {
     });
 
     expect(supportsSampleRenderer(registration, ctx)).toBe(true);
+  });
+
+  it("selects a media-reference renderer without a filepath or URL", () => {
+    const ctx = createSampleRendererRenderContext(
+      {
+        sample: {
+          _id: "episode",
+          media_reference: {
+            _cls: "LeRobotEpisodeReference",
+            key: "lerobot-source/0",
+          },
+          _media_type: "multimodal",
+        },
+      },
+      "media_reference",
+      dataset,
+      schema,
+      "modal",
+    );
+    const registration = createRegistration("logical-episode", {
+      supports: (candidate) => candidate.media.mediaReference != null,
+    });
+
+    expect(getMatchingSampleRenderer([registration], ctx)).toBe(registration);
   });
 
   it("supports predicate matchers", () => {

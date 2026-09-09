@@ -120,7 +120,9 @@ export const createRouter = <T extends OperationType>(
             let current: Entry<T> | undefined = undefined;
             try {
               current = currentEntryResource.read();
-            } catch {}
+            } catch {
+              // the current entry may not have resolved yet
+            }
             for (const [_, [cb]] of subscribers) cb(entry, action, current);
             // update currentEntryResource after calling subscribers
             currentEntryResource = loadingResource;

@@ -5,6 +5,7 @@ FiftyOne Zoo Datasets provided natively by the library.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 import os
 import shutil
@@ -13,6 +14,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
 
+import fiftyone.core.utils as fou
 import fiftyone.types as fot
 import fiftyone.utils.activitynet as foua
 import fiftyone.utils.bdd as foub
@@ -30,6 +32,11 @@ import fiftyone.utils.sama as fous
 import fiftyone.utils.places as foup
 import fiftyone.utils.ucf101 as fouu
 import fiftyone.zoo.datasets as fozd
+
+hfh = fou.lazy_import(
+    "huggingface_hub",
+    callback=lambda: fou.ensure_package("huggingface_hub>=0.20.0"),
+)
 
 
 logger = logging.getLogger(__name__)
@@ -3433,6 +3440,292 @@ class UCF101Dataset(FiftyOneDataset):
         return dataset_type, num_samples, classes
 
 
+class RTKSLAMAbsoluteAccuracyDataset(FiftyOneDataset):
+    """Handheld LiDAR, camera, IMU and GNSS sequences measured against
+    surveyed checkpoints, as native ``.mcap`` episodes.
+
+    A handheld rig carrying a Livox MID360, a global shutter camera and a
+    GNSS receiver is walked through a public park and a construction hall,
+    both of which block the sky in places, including a 30 m underpass and an
+    indoor hall spanning more than 400 seconds of the route.
+
+    The reference is not the GNSS. A geodetic total station surveyed 87
+    checkpoints along the routes independently, so absolute error can be
+    measured without first fitting the estimate onto the reference. Three
+    published trajectories are carried alongside the sensors, together with
+    each one's distance to every checkpoint.
+
+    Four sequences and 64.6 minutes of walking.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("rtk-slam-absolute-accuracy")
+
+        # Where the sky was hardest to see
+        view = dataset.sort_by("gnss_fix_rate")
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        10.85 GB
+    """
+
+    _REPO_ID = "Voxel51/RTK-SLAM-Absolute-Accuracy"
+
+    # Pinned so a loaded dataset is reproducible; the default branch is
+    # mutable and could change media, labels or size underneath a user
+    _REVISION = "191fb2b186dfc4f07794a1ccbe13cd0a0192bb6c"
+
+    @property
+    def name(self):
+        return "rtk-slam-absolute-accuracy"
+
+    @property
+    def license(self):
+        return "CC BY 4.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "slam", "lidar", "gnss", "ground-truth")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        logger.info("Downloading %s from the Hugging Face Hub", self._REPO_ID)
+        hfh.snapshot_download(
+            repo_id=self._REPO_ID,
+            repo_type="dataset",
+            revision=self._REVISION,
+            local_dir=dataset_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
+class TIIRATMDroneRacingDataset(FiftyOneDataset):
+    """Indoor drone racing flights pairing onboard visual-inertial odometry
+    with motion capture ground truth, as native ``.mcap`` episodes.
+
+    A quadrotor flies laps of a four-gate track, three on an ellipse and
+    three on a lemniscate, carrying a fisheye camera and a 500 Hz IMU while a
+    motion capture system watches the room. Each episode carries both the
+    estimate the drone computed for itself and the reference measured at the
+    same instant, along with the distance between them.
+
+    Six flights, 10.9 minutes and 2,563 metres flown. Tracking error ranges
+    from 0.61 m to 1.66 m RMSE across the six.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("tii-ratm-drone-racing")
+
+        # The flights the odometry found hardest
+        view = dataset.sort_by("tracking_error_rmse_m", reverse=True)
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        0.58 GB
+    """
+
+    _REPO_ID = "Voxel51/TII-RATM-Drone-Racing"
+
+    # Pinned so a loaded dataset is reproducible; the default branch is
+    # mutable and could change media, labels or size underneath a user
+    _REVISION = "cf5751f3693331301d42ea025dfb7d16ed5195ec"
+
+    @property
+    def name(self):
+        return "tii-ratm-drone-racing"
+
+    @property
+    def license(self):
+        return "CC BY 4.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "drone", "uav", "slam", "ground-truth")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        logger.info("Downloading %s from the Hugging Face Hub", self._REPO_ID)
+        hfh.snapshot_download(
+            repo_id=self._REPO_ID,
+            repo_type="dataset",
+            revision=self._REVISION,
+            local_dir=dataset_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
+class EgocentricEMGForceDataset(FiftyOneDataset):
+    """First-person household task recordings pairing RGB-D video with wrist
+    EMG and per-finger contact force, as native ``.mcap`` episodes.
+
+    Someone wearing a depth camera and an eight-channel EMG band on each
+    wrist works through eight household tasks. Alongside the video each
+    episode carries the muscle signal from both forearms at roughly 550 Hz,
+    a 21-point hand skeleton per frame, an estimate of how hard each finger
+    is pressing, and wrist IMU.
+
+    Every episode is cut into subtasks a reviewer described in English, so
+    the 122 segments read as instructions rather than indices.
+
+    38.2 minutes of recording: 67,185 camera and depth frames, 2,539,493 EMG
+    samples, 60,254 hand skeletons and 133,721 per-finger force readings.
+
+    Contact force is an estimate derived from hand pose and depth rather
+    than a reading from an instrumented glove, and it saturates at 45 N.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("egocentric-emg-force")
+
+        # The tasks with the firmest contact
+        view = dataset.match({"peak_finger_force": {"$gt": 40}})
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        8.43 GB
+    """
+
+    _REPO_ID = "Voxel51/Egocentric-EMG-Force"
+
+    # Pinned so a loaded dataset is reproducible; the default branch is
+    # mutable and could change media, labels or size underneath a user
+    _REVISION = "688219163bb5119781cdff26b23606dd9d9df812"
+
+    @property
+    def name(self):
+        return "egocentric-emg-force"
+
+    @property
+    def license(self):
+        return "CC BY-NC 4.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "egocentric", "emg", "force", "rgb-d")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        logger.info("Downloading %s from the Hugging Face Hub", self._REPO_ID)
+        hfh.snapshot_download(
+            repo_id=self._REPO_ID,
+            repo_type="dataset",
+            revision=self._REVISION,
+            local_dir=dataset_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
+class RoboLabDataset(FiftyOneDataset):
+    """Policy rollouts recorded on NVIDIA's RoboLab manipulation benchmark,
+    as native ``.mcap`` episodes.
+
+    Each take carries three synchronized camera views with a matching 16-bit
+    depth stream, per-camera intrinsics, joint positions, actions,
+    end-effector pose, and the task instruction. Takes keep the benchmark's
+    own success label, so failed rollouts sit alongside successful ones.
+
+    In 153 of the 4,000 takes the camera streams carry 80 frames while depth
+    and telemetry carry 81, so align streams by timestamp rather than by
+    index.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("robolab")
+
+        # Rollouts the policy got right
+        view = dataset.match({"success": True})
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        21.85 GB
+    """
+
+    _REPO_ID = "Voxel51/RoboLab-EgoX"
+
+    # Pinned so a loaded dataset is reproducible; the default branch is
+    # mutable and could change media, labels or size underneath a user
+    _REVISION = "d0e2b63117ada16d60ae9f5f8224545f6851a8ee"
+
+    @property
+    def name(self):
+        return "robolab"
+
+    @property
+    def license(self):
+        return "Apache-2.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "robotics", "manipulation", "depth")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        logger.info("Downloading %s from the Hugging Face Hub", self._REPO_ID)
+        hfh.snapshot_download(
+            repo_id=self._REPO_ID,
+            repo_type="dataset",
+            revision=self._REVISION,
+            local_dir=dataset_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
 AVAILABLE_DATASETS = {
     "activitynet-100": ActivityNet100Dataset,
     "activitynet-200": ActivityNet200Dataset,
@@ -3442,6 +3735,7 @@ AVAILABLE_DATASETS = {
     "cityscapes": CityscapesDataset,
     "coco-2014": COCO2014Dataset,
     "coco-2017": COCO2017Dataset,
+    "egocentric-emg-force": EgocentricEMGForceDataset,
     "fiw": FIWDataset,
     "hmdb51": HMDB51Dataset,
     "imagenet-sample": ImageNetSampleDataset,
@@ -3455,13 +3749,16 @@ AVAILABLE_DATASETS = {
     "open-images-v6": OpenImagesV6Dataset,
     "open-images-v7": OpenImagesV7Dataset,
     "places": PlacesDataset,
+    "rtk-slam-absolute-accuracy": RTKSLAMAbsoluteAccuracyDataset,
     "quickstart": QuickstartDataset,
     "quickstart-geo": QuickstartGeoDataset,
     "quickstart-video": QuickstartVideoDataset,
     "quickstart-trajectories": QuickstartTrajectoriesDataset,
     "quickstart-groups": QuickstartGroupsDataset,
     "quickstart-3d": Quickstart3DDataset,
+    "robolab": RoboLabDataset,
     "sama-coco": SamaCOCODataset,
+    "tii-ratm-drone-racing": TIIRATMDroneRacingDataset,
     "ucf101": UCF101Dataset,
 }
 

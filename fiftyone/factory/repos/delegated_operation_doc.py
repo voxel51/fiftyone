@@ -5,6 +5,7 @@ FiftyOne delegated operation repository document.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import copy
 from datetime import datetime
 import logging

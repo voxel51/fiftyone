@@ -12,6 +12,7 @@ export * from "./grid";
 export * from "./groupEntries";
 export * from "./groups";
 export * from "./internal";
+export * from "./labelAttributes";
 export * from "./labels";
 export * from "./looker";
 export * from "./mediaFields";

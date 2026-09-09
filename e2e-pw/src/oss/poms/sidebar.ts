@@ -85,6 +85,15 @@ export class SidebarPom {
     return selector.click();
   }
 
+  /**
+   * The eye button on an attribute's filter row controlling whether the
+   * attribute renders in label overlays. Visible after expanding the parent
+   * field's dropdown.
+   */
+  shownAttributeToggle(path: string) {
+    return this.sidebar.getByTestId(`shown-attribute-${path}`);
+  }
+
   async waitForElement(dataCy: string) {
     const selector = this.sidebar.getByTestId(dataCy);
     await selector.waitFor();
@@ -112,7 +121,10 @@ export class SidebarPom {
     const selectionDiv = this.sidebar
       .getByTestId("checkbox-" + label)
       .getByTitle(label);
-    await selectionDiv.click({ force: true });
+    // no force: the actionability wait keeps the click from landing while
+    // the filter dropdown is still animating open (a forced click computes
+    // its point once and misses a moving checkbox)
+    await selectionDiv.click();
   }
 
   async applySearch(field: string, search: string) {

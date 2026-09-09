@@ -3,8 +3,12 @@ import React, { type ReactNode } from "react";
 import styles from "./SidebarPanel.module.css";
 
 export interface SidebarPanelProps {
-  /** Section title shown at the top of the panel. */
-  title: ReactNode;
+  /**
+   * Section title shown at the top of the panel. Omit when the panel is
+   * already nested under a tab (or other chrome) that names it, so the
+   * name isn't shown twice.
+   */
+  title?: ReactNode;
   children: ReactNode;
 }
 
@@ -20,10 +24,14 @@ export interface SidebarPanelProps {
 const SidebarPanel: React.FC<SidebarPanelProps> = ({ title, children }) => {
   return (
     <div className={styles.root}>
-      <div className={styles.header}>
-        <Heading level={HeadingLevel.H4}>{title}</Heading>
-      </div>
-      <Divider />
+      {title ? (
+        <>
+          <div className={styles.header}>
+            <Heading level={HeadingLevel.H4}>{title}</Heading>
+          </div>
+          <Divider />
+        </>
+      ) : null}
       <div className={styles.body}>{children}</div>
     </div>
   );

@@ -10,7 +10,7 @@ import {
 } from "@fiftyone/relay";
 import { fieldVisibilityStage, gridSortBy } from "@fiftyone/state";
 import { is3d } from "@fiftyone/utilities";
-import { DefaultValue, atomFamily, selector, selectorFamily } from "recoil";
+import { atomFamily, DefaultValue, selector, selectorFamily } from "recoil";
 import { v4 as uuid } from "uuid";
 import { getGridCustomRendererFailoverForcedSubscription } from "../gridCustomRendererFailover";
 import * as atoms from "./atoms";
@@ -416,6 +416,9 @@ export const hiddenFieldLabels = selectorFamily<string[], string>({
   },
 });
 
+// sort_by_similarity has no server-side index for this backend
+const MULTIMODAL_SIMILARITY = "multimodal";
+
 export type Method = {
   key: string;
   supportsPrompts: boolean;
@@ -433,8 +436,9 @@ export const similarityMethods = selector<{
 
     return methods
       .filter(
-        ({ config: { type, cls } }) =>
-          type == "similarity" || cls.toLowerCase().includes("similarity"),
+        ({ config: { type, cls, method } }) =>
+          (type == "similarity" || cls.toLowerCase().includes("similarity")) &&
+          method !== MULTIMODAL_SIMILARITY,
       )
       .reduce(
         (

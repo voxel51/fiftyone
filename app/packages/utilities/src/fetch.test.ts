@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getFetchFunction,
   getFetchFunctionExtended,
+  getFetchUrl,
+  setFetchParameters,
   setFetchFunction,
+  type BrowserCacheMode,
 } from "./fetch";
 
 describe("fetch", () => {
@@ -43,6 +46,17 @@ describe("fetch", () => {
     });
   });
 
+  it("resolves configured paths and preserves absolute URLs", () => {
+    setFetchFunction("http://localhost:5151", {}, "/proxy");
+
+    expect(getFetchUrl("/dataset/sample/asset")).toBe(
+      "http://localhost:5151/proxy/dataset/sample/asset",
+    );
+    expect(getFetchUrl("https://signed.example/video.mp4?token=secret")).toBe(
+      "https://signed.example/video.mp4?token=secret",
+    );
+  });
+
   it("forwards external abort signals", async () => {
     const mockFetch = vi.fn(
       (_url: string, init: RequestInit) =>
@@ -67,6 +81,45 @@ describe("fetch", () => {
 
     await expect(request).rejects.toMatchObject({ name: "AbortError" });
     expect(mockFetch.mock.calls[0]?.[1].signal).toBe(controller.signal);
+  });
+
+  it("builds URLs from configured transport parameters", () => {
+    setFetchFunction(
+      "http://localhost:3000/",
+      {},
+      "/api/proxy/fiftyone-teams/",
+    );
+    expect(getFetchUrl("/dataset/id")).toBe(
+      "http://localhost:3000/api/proxy/fiftyone-teams/dataset/id",
+    );
+
+    setFetchFunction("http://localhost:8787");
+    expect(getFetchUrl("/dataset/id")).toBe("http://localhost:8787/dataset/id");
+  });
+
+  it("uses the same normalized URL for configured fetches", async () => {
+    const mockFetch = vi.fn(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", mockFetch);
+    setFetchFunction(
+      "http://localhost:3000/",
+      {},
+      "/api/proxy/fiftyone-teams/",
+    );
+
+    await getFetchFunction()("GET", "/dataset/id", null, "json", 0);
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      "http://localhost:3000/api/proxy/fiftyone-teams/dataset/id",
+      expect.any(Object),
+    );
+  });
+
+  it("rejects navigation URLs before fetch configuration", () => {
+    setFetchParameters(undefined as never);
+    expect(() => getFetchUrl("/dataset/id")).toThrow(
+      "Fetch parameters are not configured",
+    );
+    setFetchFunction("http://localhost");
   });
 
   it("reports streamed array-buffer progress", async () => {
@@ -94,5 +147,83 @@ describe("fetch", () => {
 
     expect(new Uint8Array(result.response)).toEqual(new Uint8Array([1, 2, 3]));
     expect(onProgress.mock.calls.map(([loaded]) => loaded)).toEqual([0, 2, 3]);
+  });
+
+  it("returns an unconsumed response when requested", async () => {
+    const response = new Response("stream me", { status: 200 });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => response),
+    );
+    setFetchFunction("http://localhost");
+
+    const result = await getFetchFunctionExtended()<undefined, Response>({
+      method: "GET",
+      path: "/test",
+      result: "response",
+      retries: 0,
+    });
+
+    expect(result.response).toBe(response);
+    await expect(result.response.text()).resolves.toBe("stream me");
+  });
+
+  it("does not cache non-replayable responses", async () => {
+    const mockFetch = vi.fn(async () => new Response("stream me"));
+    vi.stubGlobal("fetch", mockFetch);
+    setFetchFunction("http://localhost");
+
+    const cachedFetch = getFetchFunction({ cache: true });
+    const basicResponses = await Promise.all([
+      cachedFetch<undefined, Response>(
+        "GET",
+        "/basic",
+        undefined,
+        "response",
+        0,
+      ),
+      cachedFetch<undefined, Response>(
+        "GET",
+        "/basic",
+        undefined,
+        "response",
+        0,
+      ),
+    ]);
+    const extendedResponses = await Promise.all([
+      getFetchFunctionExtended()<undefined, Response>({
+        cache: true,
+        method: "GET",
+        path: "/extended",
+        result: "response",
+        retries: 0,
+      }),
+      getFetchFunctionExtended()<undefined, Response>({
+        cache: true,
+        method: "GET",
+        path: "/extended",
+        result: "response",
+        retries: 0,
+      }),
+    ]);
+
+    await expect(
+      Promise.all([
+        ...basicResponses.map((response) => response.text()),
+        ...extendedResponses.map(({ response }) => response.text()),
+      ]),
+    ).resolves.toEqual(["stream me", "stream me", "stream me", "stream me"]);
+    expect(mockFetch).toHaveBeenCalledTimes(4);
+  });
+
+  it("rejects the only-if-cached browser cache mode at compile time", () => {
+    // Every request is sent with mode "cors", where the Request constructor
+    // throws on "only-if-cached" — the type must not admit it
+    // @ts-expect-error -- excluded from BrowserCacheMode
+    const invalid: BrowserCacheMode = "only-if-cached";
+    void invalid;
+
+    const valid: BrowserCacheMode = "no-store";
+    expect(valid).toBe("no-store");
   });
 });

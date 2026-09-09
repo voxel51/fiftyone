@@ -78,6 +78,8 @@ beforeEach(() => {
 
 describe("track ops", () => {
   it("markKeyframe toggles keyframe on the addressed frame and notifies", () => {
+    // Legacy data may still carry a `propagation` blob; markKeyframe must NOT
+    // try to clear it with `propagation: null` (that null is the poison).
     frameData = {
       2: { A: det("d2", "A", { keyframe: false, propagation: { foo: 1 } }) },
     };
@@ -85,9 +87,12 @@ describe("track ops", () => {
     render().current.markKeyframe(2, ["instance-A"]);
 
     expect(mockActions.transaction).toHaveBeenCalledTimes(1);
+    // Only `keyframe: true` is written — no `propagation: null`, which would
+    // seed a null baseline that a later re-lerp diffs as a `replace` over a
+    // server-absent path (the frame-patch error).
     expect(mockActions.updateLabel).toHaveBeenCalledWith(
       { path: PATH, instanceId: "A", frame: 2 },
-      { keyframe: true, propagation: null },
+      { keyframe: true },
     );
     expect(mockBus.dispatch).toHaveBeenCalledWith(
       "annotation:keyframeChanged",
@@ -157,6 +162,26 @@ describe("track ops", () => {
         label: "x",
         bounding_box: [0, 0, 1, 1],
         confidence: 0.9,
+        keyframe: false,
+      },
+    );
+  });
+
+  it("extendTrack carries the source frame's mask onto the filler frames", () => {
+    const mask = { shape: [2, 2], counts: "abcd" };
+    frameData = {
+      1: { A: det("d1", "A", { keyframe: true, mask }) },
+    };
+
+    render().current.extendTrack("instance-A", 1, [2]);
+
+    expect(mockActions.updateLabel).toHaveBeenCalledWith(
+      { path: PATH, instanceId: "A", frame: 2 },
+      {
+        _cls: "Detection",
+        label: "x",
+        bounding_box: [0, 0, 1, 1],
+        mask,
         keyframe: false,
       },
     );
@@ -318,7 +343,10 @@ describe("track identity ops (split / merge)", () => {
     });
 
     // ...and re-laid under the minted instance, identity stripped, content kept
-    expect(mockActions.updateLabel).toHaveBeenCalledTimes(2);
+    // 2 re-stamps onto the new instance + 1 keyframe pin on the head's last
+    // frame (the cut is pinned on both sides so the lerp there is retained)
+    expect(mockActions.updateLabel).toHaveBeenCalledTimes(3);
+
     expect(mockActions.updateLabel).toHaveBeenCalledWith(
       { path: PATH, instanceId: "NEW", frame: 3 },
       {
@@ -343,6 +371,113 @@ describe("track identity ops (split / merge)", () => {
       instanceId: "A",
       newInstanceId: "NEW",
       atFrame: 3,
+    });
+  });
+
+  it("splits a track on its own field when the caller omits one", () => {
+    // Regression: the toolbar's Split button calls `splitTrack(id, frame)` with
+    // no field, which defaulted to the stream's PRIMARY field. A polyline track
+    // lives on `frames.polylines`, so the reader found no frames for it, the
+    // empty-tail guard returned, and the button silently did nothing.
+    frameData = {
+      1: { A: det("d1", "A") },
+      2: { A: det("d2", "A") },
+      3: { A: det("d3", "A") },
+    };
+    activeRefs = [{ instanceId: "A", path: "frames.polylines" }];
+
+    render().current.splitTrack("instance-A", 2);
+
+    expect(mockActions.transaction).toHaveBeenCalledTimes(1);
+    // frames 2 and 3 move to the new instance, addressed on the POLYLINE field
+    expect(mockActions.deleteLabel).toHaveBeenCalledWith({
+      path: "frames.polylines",
+      instanceId: "A",
+      frame: 2,
+    });
+    expect(mockActions.updateLabel).toHaveBeenCalledWith(
+      { path: "frames.polylines", instanceId: "NEW", frame: 2 },
+      expect.anything(),
+    );
+    expect(mockBus.dispatch).toHaveBeenCalledWith(
+      "annotation:trackSplit",
+      expect.objectContaining({ instanceId: "A", newInstanceId: "NEW" }),
+    );
+  });
+
+  it("pins both sides of the cut as keyframes, retaining the lerp there", () => {
+    // A split makes each half an independent track. The two frames either side
+    // of the cut are usually interpolated filler, so without pinning them the
+    // next re-lerp on either half recomputes its boundary frame from that half's
+    // own keyframes and the shape at the cut jumps.
+    frameData = {
+      1: { A: det("d1", "A", { keyframe: true }) },
+      2: { A: det("d2", "A") },
+      3: { A: det("d3", "A") },
+      4: { A: det("d4", "A", { keyframe: true }) },
+    };
+
+    render().current.splitTrack("instance-A", 3);
+
+    // head: frame 2 is now its last frame, pinned in place
+    expect(mockActions.updateLabel).toHaveBeenCalledWith(
+      { path: PATH, instanceId: "A", frame: 2 },
+      { keyframe: true },
+    );
+    // tail: frame 3 arrives on the new instance already a keyframe
+    expect(mockActions.updateLabel).toHaveBeenCalledWith(
+      { path: PATH, instanceId: "NEW", frame: 3 },
+      expect.objectContaining({ keyframe: true }),
+    );
+    // the rest of the tail is copied as filler, not promoted
+    expect(mockActions.updateLabel).toHaveBeenCalledWith(
+      { path: PATH, instanceId: "NEW", frame: 4 },
+      expect.objectContaining({ keyframe: true }),
+    );
+  });
+
+  it("does not pin a head that does not exist (cut at the first frame)", () => {
+    frameData = { 1: { A: det("d1", "A") }, 2: { A: det("d2", "A") } };
+
+    render().current.splitTrack("instance-A", 1);
+
+    // nothing stays behind, so there is no head frame to pin
+    expect(mockActions.updateLabel).not.toHaveBeenCalledWith(
+      expect.objectContaining({ instanceId: "A" }),
+      { keyframe: true },
+    );
+    // the tail's first frame is still pinned
+    expect(mockActions.updateLabel).toHaveBeenCalledWith(
+      { path: PATH, instanceId: "NEW", frame: 1 },
+      expect.objectContaining({ keyframe: true }),
+    );
+  });
+
+  it("an explicit field still wins over the selection's", () => {
+    // the timeline's context menu knows the field and passes it; that must not
+    // be overridden by whatever happens to be selected
+    frameData = { 1: { A: det("d1", "A") }, 2: { A: det("d2", "A") } };
+    activeRefs = [{ instanceId: "A", path: "frames.polylines" }];
+
+    render().current.splitTrack("instance-A", 2, "frames.detections_2");
+
+    expect(mockActions.deleteLabel).toHaveBeenCalledWith({
+      path: "frames.detections_2",
+      instanceId: "A",
+      frame: 2,
+    });
+  });
+
+  it("merges on the source track's own field when the caller omits one", () => {
+    frameData = { 1: { A: det("d1", "A") }, 2: { B: det("d2", "B") } };
+    activeRefs = [{ instanceId: "A", path: "frames.polylines" }];
+
+    render().current.mergeTracks("instance-A", "instance-B");
+
+    expect(mockActions.deleteLabel).toHaveBeenCalledWith({
+      path: "frames.polylines",
+      instanceId: "A",
+      frame: 1,
     });
   });
 
@@ -415,13 +550,27 @@ describe("track identity ops (split / merge)", () => {
     expect(mockBus.dispatch).not.toHaveBeenCalled();
   });
 
-  it("mergeTracks skips a legacy track-<index> on either side", () => {
-    frameData = { 1: { A: det("d1", "A") } };
+  it("mergeTracks operates on an index-based track-<index> (a real address)", () => {
+    // source is an instance-less index track; the engine addresses it by its
+    // synthetic `track-1` id, so merge treats it like any other track
+    frameData = {
+      1: { "track-1": det("d1", "track-1", { index: 1, instance: undefined }) },
+      2: { A: det("d2", "A") },
+    };
 
     render().current.mergeTracks("track-1", "instance-A");
-    render().current.mergeTracks("instance-A", "track-1");
 
-    expect(mockActions.transaction).not.toHaveBeenCalled();
+    expect(mockActions.transaction).toHaveBeenCalledTimes(1);
+    expect(mockActions.deleteLabel).toHaveBeenCalledWith({
+      path: PATH,
+      instanceId: "track-1",
+      frame: 1,
+    });
+    // frame 1 has no target box → the source content is re-laid onto A
+    expect(mockActions.updateLabel).toHaveBeenCalledWith(
+      { path: PATH, instanceId: "A", frame: 1 },
+      expect.objectContaining({ label: "x", bounding_box: [0, 0, 1, 1] }),
+    );
   });
 });
 

@@ -2,12 +2,20 @@ import { act, cleanup, renderHook } from "@testing-library/react";
 import { useAtomValue } from "jotai";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { isPlayingAtom, seekEventAtom } from "./atoms";
+import {
+  isBufferingAtom,
+  isPlayingAtom,
+  seekEventAtom,
+  speedAtom,
+} from "./atoms";
 import { PlaybackProvider, usePlaybackStore } from "./PlaybackProvider";
+import { getMasterMuted, setMasterMuted } from "./store-access";
 import { useVideoSync } from "./use-video-sync";
 
 interface FakeVideo {
   currentTime: number;
+  playbackRate: number;
+  muted: boolean;
   play: ReturnType<typeof vi.fn>;
   pause: ReturnType<typeof vi.fn>;
   addEventListener: ReturnType<typeof vi.fn>;
@@ -19,6 +27,8 @@ function makeVideo(initialTime = 0): FakeVideo {
   const listeners = new Map<string, EventListener[]>();
   const video: FakeVideo = {
     currentTime: initialTime,
+    playbackRate: 1,
+    muted: false,
     play: vi.fn().mockResolvedValue(undefined),
     pause: vi.fn(),
     addEventListener: vi.fn((event: string, fn: EventListener) => {
@@ -148,6 +158,164 @@ describe("useVideoSync", () => {
 
       expect(result.current.isPlaying).toBe(false);
       expect(video.pause).toHaveBeenCalled();
+    });
+  });
+
+  describe("speed → playbackRate", () => {
+    it("applies the current speed on mount", () => {
+      const video = makeVideo();
+      video.playbackRate = 3;
+      renderSync(video);
+
+      // the engine's default, pushed onto an element that was out of step
+      expect(video.playbackRate).toBe(1);
+    });
+
+    it("follows speed changes", () => {
+      const video = makeVideo();
+      const { result } = renderSync(video);
+
+      act(() => {
+        result.current.store.set(speedAtom, 2);
+      });
+
+      // with a clock source registered the engine runs no `dt` arithmetic —
+      // the element's rate is the only thing speed can act on
+      expect(video.playbackRate).toBe(2);
+    });
+
+    it("does not throw when the ref is null", () => {
+      const { result } = renderSync(null);
+      act(() => {
+        result.current.store.set(speedAtom, 2);
+      });
+    });
+
+    it("re-applies the speed after the element loads a new source", () => {
+      const video = makeVideo();
+      const { result } = renderSync(video);
+
+      act(() => {
+        result.current.store.set(speedAtom, 2);
+      });
+      expect(video.playbackRate).toBe(2);
+
+      // the media load algorithm resets the rate to defaultPlaybackRate on
+      // every load, and the element is reused across samples
+      video.playbackRate = 1;
+      act(() => video._fire("loadstart"));
+
+      expect(video.playbackRate).toBe(2);
+    });
+  });
+
+  describe("autoplay-policy fallback", () => {
+    /** A play() that is refused the way an unmuted element is refused. */
+    function refusePlay(video: FakeVideo, times = 1) {
+      let refusals = times;
+      video.play.mockImplementation(() => {
+        if (refusals-- > 0) {
+          return Promise.reject(
+            Object.assign(new Error("blocked"), { name: "NotAllowedError" }),
+          );
+        }
+        return Promise.resolve(undefined);
+      });
+    }
+
+    it("mutes and retries so the picture still plays", async () => {
+      const video = makeVideo();
+      const { result } = renderSync(video);
+      // the surface is unmuted (see `useVideoElementAudio`); the policy
+      // refuses it before a user gesture
+      setMasterMuted(result.current.store, false);
+      video.muted = false;
+      refusePlay(video);
+      video.play.mockClear();
+
+      await act(async () => {
+        result.current.store.set(isPlayingAtom, true);
+      });
+
+      expect(video.muted).toBe(true);
+      expect(getMasterMuted(result.current.store)).toBe(true);
+      // once refused, once retried with sound given up
+      expect(video.play).toHaveBeenCalledTimes(2);
+    });
+
+    it("gives up rather than looping when a muted element is still refused", async () => {
+      const video = makeVideo();
+      const { result } = renderSync(video);
+      video.muted = true;
+      refusePlay(video, 5);
+      video.play.mockClear();
+
+      await act(async () => {
+        result.current.store.set(isPlayingAtom, true);
+      });
+
+      // nothing left to concede — no retry, and no mute state to rewrite
+      expect(video.play).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not start the element when playing was cancelled mid-refusal", async () => {
+      const video = makeVideo();
+      const { result } = renderSync(video);
+      setMasterMuted(result.current.store, false);
+      video.muted = false;
+
+      // hold the refusal open so the state can change before it settles
+      let refuse: () => void = () => undefined;
+      video.play.mockImplementationOnce(
+        () =>
+          new Promise((_resolve, reject) => {
+            refuse = () =>
+              reject(
+                Object.assign(new Error("blocked"), {
+                  name: "NotAllowedError",
+                }),
+              );
+          }),
+      );
+
+      act(() => {
+        result.current.store.set(isPlayingAtom, true);
+      });
+      video.play.mockClear();
+
+      // the engine's barrier raises buffering while a blocking stream loads
+      act(() => {
+        result.current.store.set(isBufferingAtom, true);
+      });
+
+      await act(async () => {
+        refuse();
+      });
+
+      // with this element registered as the clock source, retrying here
+      // would advance the playhead past a barrier meant to hold it
+      expect(video.play).not.toHaveBeenCalled();
+    });
+
+    it("leaves audio alone when play fails for some other reason", async () => {
+      const video = makeVideo();
+      const { result } = renderSync(video);
+      setMasterMuted(result.current.store, false);
+      video.muted = false;
+      video.play.mockImplementation(() =>
+        Promise.reject(
+          Object.assign(new Error("decode"), { name: "NotSupportedError" }),
+        ),
+      );
+      video.play.mockClear();
+
+      await act(async () => {
+        result.current.store.set(isPlayingAtom, true);
+      });
+
+      expect(video.muted).toBe(false);
+      expect(getMasterMuted(result.current.store)).toBe(false);
+      expect(video.play).toHaveBeenCalledTimes(1);
     });
   });
 

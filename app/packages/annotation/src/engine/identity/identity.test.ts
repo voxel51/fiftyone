@@ -5,7 +5,13 @@ import {
   decodeEntityId,
   encodeEntityId,
 } from "./entityId";
-import { refKey, refsEqual, toLabelRef } from "./ref";
+import {
+  addressIdOf,
+  indexFromAddressId,
+  refKey,
+  refsEqual,
+  toLabelRef,
+} from "./ref";
 import type { LabelRef } from "./ref";
 
 const ref = (overrides: Partial<LabelRef> = {}): LabelRef => ({
@@ -59,6 +65,36 @@ describe("toLabelRef", () => {
     });
 
     expect(bound).toEqual(ref({ sample: "sample-9", frame: 4 }));
+  });
+});
+
+describe("addressIdOf", () => {
+  it("prefers the instance _id when present", () => {
+    expect(
+      addressIdOf({ _id: "doc-1", index: 3, instance: { _id: "inst-1" } }),
+    ).toBe("inst-1");
+  });
+
+  it("falls back to a synthetic track-<index> for an instance-less label", () => {
+    expect(addressIdOf({ _id: "doc-1", index: 3 })).toBe("track-3");
+    // index 0 is a real track, not "absent"
+    expect(addressIdOf({ _id: "doc-1", index: 0 })).toBe("track-0");
+  });
+
+  it("falls back to the doc _id for a bare label (no instance, no index)", () => {
+    expect(addressIdOf({ _id: "doc-1" })).toBe("doc-1");
+  });
+});
+
+describe("indexFromAddressId", () => {
+  it("decodes the index from a track-<index> id", () => {
+    expect(indexFromAddressId("track-3")).toBe(3);
+    expect(indexFromAddressId("track-0")).toBe(0);
+  });
+
+  it("returns undefined for a non-index address id", () => {
+    expect(indexFromAddressId("inst-1")).toBeUndefined();
+    expect(indexFromAddressId("track-nope")).toBeUndefined();
   });
 });
 

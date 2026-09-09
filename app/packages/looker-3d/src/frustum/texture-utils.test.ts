@@ -1,3 +1,4 @@
+import type { Texture } from "three";
 import { describe, expect, it } from "vitest";
 import {
   applyTextureDimensionsToIntrinsics,
@@ -14,7 +15,7 @@ describe("getTextureDimensions", () => {
         width: 640,
         height: 480,
       },
-    } as any;
+    } as Texture;
 
     expect(getTextureDimensions(texture)).toEqual({
       width: 1920,
@@ -25,7 +26,7 @@ describe("getTextureDimensions", () => {
   it("falls back to generic width and height", () => {
     const texture = {
       image: { width: 640, height: 480 },
-    } as any;
+    } as Texture;
 
     expect(getTextureDimensions(texture)).toEqual({
       width: 640,
@@ -36,7 +37,7 @@ describe("getTextureDimensions", () => {
   it("falls back to video dimensions before generic width and height", () => {
     const texture = {
       image: { videoWidth: 1280, videoHeight: 720, width: 640, height: 480 },
-    } as any;
+    } as Texture;
 
     expect(getTextureDimensions(texture)).toEqual({
       width: 1280,
@@ -47,7 +48,7 @@ describe("getTextureDimensions", () => {
   it("returns undefined when usable dimensions are unavailable", () => {
     const texture = {
       image: { width: 0, height: 0 },
-    } as any;
+    } as Texture;
 
     expect(getTextureDimensions(texture)).toBeUndefined();
   });

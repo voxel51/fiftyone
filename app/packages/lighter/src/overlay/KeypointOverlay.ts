@@ -307,6 +307,10 @@ export class KeypointOverlay
     return this._relativeBoundsCache;
   }
 
+  isInteracting(): boolean {
+    return this.dragPointIndex !== null;
+  }
+
   isDragging(): boolean {
     return this.dragPointIndex !== null;
   }
@@ -872,8 +876,12 @@ export class KeypointOverlay
    *
    * @param pointId - ID of the point to move
    * @param to - [x, y] destination coordinates
+   * @param emit - When `false`, moves silently (re-render only, no
+   *   `keypoint-point-moved`). Interactive handlers use this to update the point
+   *   live during a drag and emit a single committed move on pointer-up, so the
+   *   engine writes once per gesture rather than once per frame.
    */
-  movePointById(pointId: string, to: [number, number]): void {
+  movePointById(pointId: string, to: [number, number], emit = true): void {
     const entry = this.#points.find((p) => p.id === pointId);
     if (!entry) {
       return;
@@ -882,6 +890,23 @@ export class KeypointOverlay
     const from: [number, number] = entry.position;
     entry.position = [to[0], to[1]];
 
+    if (emit) {
+      this.emitPointMoved(pointId, from, entry.position);
+    }
+
+    this.markDirty();
+  }
+
+  /**
+   * Dispatches a committed `keypoint-point-moved`. Handlers that drag a point
+   * silently (see {@link movePointById}) call this once on pointer-up to
+   * finalize the gesture with its true start/end positions.
+   */
+  emitPointMoved(
+    pointId: string,
+    from: [number, number],
+    to: [number, number],
+  ): void {
     this.eventBus.dispatch("lighter:keypoint-point-moved", {
       id: this.id,
       overlayId: this.id,
@@ -889,8 +914,6 @@ export class KeypointOverlay
       from: { x: from[0], y: from[1] },
       to: { x: to[0], y: to[1] },
     });
-
-    this.markDirty();
   }
 
   /**
@@ -923,6 +946,13 @@ export class KeypointOverlay
       position: [entry.position[0], entry.position[1]],
       variant: entry.variant,
     };
+  }
+
+  /**
+   * The number of points currently in this overlay.
+   */
+  getPointCount(): number {
+    return this.#points.length;
   }
 
   /**

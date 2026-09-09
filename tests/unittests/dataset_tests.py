@@ -11,6 +11,7 @@ import os
 import random
 import string
 import unittest
+import warnings
 from collections import Counter
 from copy import copy, deepcopy
 from datetime import date, datetime, timedelta
@@ -472,6 +473,56 @@ class DatasetTests(unittest.TestCase):
         # Datasets should automatically refresh upon save() errors
         field = dataset.get_field("frames.ground_truth.detections.label")
         self.assertEqual(field.info, {"foo2": "bar2"})
+
+    @drop_datasets
+    def test_dataset_field_info_serialization(self):
+        # https://github.com/voxel51/fiftyone/issues/2865
+        #
+        # Untyped `info` dicts must serialize the same value types that are
+        # natively supported by typed fields (dates, numpy arrays, etc),
+        # since untyped dict values otherwise bypass each subfield's own
+        # `to_mongo()`
+        dataset = fo.Dataset()
+
+        today = date.today()
+        arr = np.array([1.0, 2.0, 3.0])
+
+        dataset.add_sample_field(
+            "field1",
+            fo.DateField,
+            info={
+                "date": today,
+                "nested": {"date": today},
+                "list": [today],
+                "arr": arr,
+                "flag": True,
+                "n": 5,
+            },
+        )
+
+        field = dataset.get_field("field1")
+        self.assertEqual(field.info["date"], today)
+        self.assertEqual(field.info["nested"]["date"], today)
+        self.assertEqual(field.info["list"], [today])
+        self.assertTrue(np.array_equal(field.info["arr"], arr))
+        self.assertEqual(field.info["flag"], True)
+        self.assertEqual(field.info["n"], 5)
+
+        dataset.reload()
+
+        # `date` values necessarily round-trip as UTC midnight `datetime`
+        # values, since BSON has no native date-only type
+        field = dataset.get_field("field1")
+        self.assertEqual(
+            field.info["date"], datetime(today.year, today.month, today.day)
+        )
+
+        # The array must round-trip with its values intact, not be mangled
+        # into a list of raw serialized bytes (a regression risk of
+        # `DictField.to_mongo()` delegating to `super().to_mongo()`, which
+        # would recurse back into itself and treat the already-serialized
+        # `Binary` value as an iterable of raw bytes)
+        self.assertTrue(np.array_equal(field.info["arr"], arr))
 
     @drop_datasets
     def test_dataset_shared_field_metadata(self):
@@ -1604,6 +1655,48 @@ class DatasetTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             dataset.clone_sample_field("foo", "_private")
 
+        # "pk" is a reserved keyword (MongoEngine's alias for "id");
+        # using it warns but is not (yet) an error
+
+        with self.assertWarns(UserWarning):
+            dataset.add_sample_field("pk", fo.StringField)
+
+        self.assertIn("pk", dataset.get_field_schema())
+        dataset.delete_sample_field("pk")
+
+        with self.assertWarns(UserWarning):
+            dataset.rename_sample_field("foo", "pk")
+
+        dataset.rename_sample_field("pk", "foo")
+
+        with self.assertWarns(UserWarning):
+            dataset.clone_sample_field("foo", "pk")
+
+        dataset.delete_sample_field("pk")
+
+        dataset.add_sample_field(
+            "spam",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.DynamicEmbeddedDocument,
+        )
+
+        # The warning fires exactly once per operation
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            dataset.add_sample_field("spam.pk", fo.StringField)
+
+        self.assertEqual(
+            len([x for x in w if "reserved" in str(x.message)]), 1
+        )
+
+        # Dynamic schema expansion warns when a `pk` field enters the schema
+        embedded = fo.DynamicEmbeddedDocument()
+        embedded["pk"] = fo.DynamicEmbeddedDocument(value=51)
+        sample = fo.Sample(filepath="image.jpg", embedded=embedded)
+
+        with self.assertWarns(UserWarning):
+            dataset.add_sample(sample, dynamic=True)
+
     @drop_datasets
     def test_frame_field_names(self):
         dataset = fo.Dataset()
@@ -1613,6 +1706,13 @@ class DatasetTests(unittest.TestCase):
         # "frames" is a reserved keyword
         with self.assertRaises(ValueError):
             dataset.add_sample_field("frames", fo.StringField)
+
+        # "pk" is a reserved keyword (MongoEngine's alias for "id");
+        # using it warns but is not (yet) an error
+        with self.assertWarns(UserWarning):
+            dataset.add_frame_field("pk", fo.StringField)
+
+        dataset.delete_frame_field("pk")
 
         # Field names cannot be empty
 

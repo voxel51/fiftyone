@@ -18,6 +18,13 @@ export interface TimelineHeaderProps {
    */
   onToggle?: () => void;
   /**
+   * Open state of the surface {@link onToggle} controls, forwarded to
+   * {@link TimelineControls} to orient its trailing chevron. Owned by the
+   * `Drawer` — `TimelineWithTracks` reads it off the `header` render prop's
+   * state rather than tracking a second copy.
+   */
+  expanded?: boolean;
+  /**
    * Overlay rendered on top of the ruler row (position:relative wrapper).
    * Used by TemporalTagRangeOverlay to capture pointer events for range
    * selection — sits only over the ruler, not the controls row above.
@@ -31,11 +38,21 @@ export interface TimelineHeaderProps {
    */
   extraControls?: ReactNode;
   /**
+   * Forwarded to {@link TimelineControls}' `readouts` — clock-adjacent host
+   * readouts (the absolute/UTC timestamp), rendered inside the time group.
+   */
+  readouts?: ReactNode;
+  /**
    * Optional content forwarded to {@link TimelineControls}' `extraActions` —
    * rendered far-right after the playhead time, preceded by a divider (e.g.
    * the temporal tag-mode button).
    */
   extraActions?: ReactNode;
+  /**
+   * Optional content forwarded to {@link TimelineControls}' `trailingActions`
+   * — buttons pinned to the right edge, just left of the drawer chevron.
+   */
+  trailingActions?: ReactNode;
   /**
    * Content rendered below the ruler, still inside the always-visible
    * header region. Used by `TimelineWithTracks` to keep pinned tracks
@@ -54,17 +71,23 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
   labelWidth,
   zoomRef,
   onToggle,
+  expanded,
   rulerOverlay,
   extraControls,
+  readouts,
   extraActions,
+  trailingActions,
   children,
 }) => {
   return (
     <div className={styles.root} data-testid="timeline-header-root">
       <TimelineControls
         onToggle={onToggle}
+        expanded={expanded}
         extraControls={extraControls}
+        readouts={readouts}
         extraActions={extraActions}
+        trailingActions={trailingActions}
       />
       <TimelineRuler
         labelWidth={labelWidth}

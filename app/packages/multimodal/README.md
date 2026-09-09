@@ -1,91 +1,79 @@
 # `@fiftyone/multimodal`
 
-App-side package for multimodal data loading, decoding, and visualization.
+App-side infrastructure for loading, decoding, synchronizing, and visualizing
+multimodal episode data. It supports multiple source formats while keeping
+playback and React surfaces format-neutral.
 
-## Layer Contracts
+## Episode views
 
-### Resources
+The production React shell lives in `src/views/episode`. Its files are grouped
+by product domain: grid, image, interaction, layout, logs, map, playback,
+plots, raw data, scene, settings, shell composition, spatial capabilities,
+status, stream discovery, and tiles. See the
+[episode domain guide](src/views/episode/README.md) for ownership and placement
+rules.
 
-Resources cover byte-range reads, decode execution, and bounded cache contracts
-under `src/client/resources`.
+Within this package, `views` means the application layer: product workflow and
+composition. Reusable rendering and direct manipulation stay in
+`visualization`.
 
-While resources are source-agnostic: a byte range is just `{ source, range }`,
-and a decode request is just `{ payload, bytes, context }`. **Adapters** decide
-which ranges to read and which payload descriptors to decode.
+Visualization is organized by semantic output: 2D media, 3D scene, map, plot,
+message, and logs. Shared interaction and WebGPU are foundations; cross-family
+rendering lives in an explicit composition domain. Extensions contribute
+timeline sections or namespaced tiles through narrow contracts.
 
-### Adapters
+## Naming
 
-Adapters compose resources for a concrete source format. The MCAP adapter under
-`src/adapters/mcap` owns MCAP indexing, chunk decompression, channel/schema
-mapping, direct topic metadata reads, sync-window selection, worker playback,
-and adapter-owned decoder registration. Its public surface presents
-playback-ready APIs.
+- Component-primary files use PascalCase and match their main component.
+- Hooks, state, controllers, and pure logic use kebab-case.
 
-## Runtime Flow for Synchronized Playback
+## Runtime flow
 
-1. Playback driver derives an MCAP byte source from the sample filepath and
-   creates a worker-backed MCAP resource client.
-2. The MCAP resource client initializes an `@mcap/core` indexed reader over app
-   media byte-range URLs, using the raw byte cache and decompression handlers.
-3. Grid and modal renderers ask the MCAP reader summary for topic metadata via
-   `readTopics(...)`; the modal asks the same source for the active timeline
-   range via `readTimelineRange(...)`.
-4. The driver then reads synchronized windows with
-   `readSynchronizedMessages(...)` for load/seek and
-   `readSynchronizedMessageBatch(...)` for playback lookahead.
-5. MCAP messages are mapped to generic payload descriptors and decoded through
-   the decode resource client.
-6. Decoded visualization outputs are cached and rendered by source-agnostic
-   panels.
+1. Composition identifies the source and lazily loads its adapter.
+2. Shared byte resources acquire source assets and populate bounded caches.
+3. The adapter returns a neutral manifest and pull-based `EpisodeSession`.
+4. Runtime policy requests time windows, using optional accelerated
+   capabilities only when they preserve shared fallback semantics.
+5. Adapters map records into `DecodedFrame` values and cloneable visualization
+   outputs.
+6. Episode contexts deliver those values to modal, grid, timeline, and tile
+   consumers.
 
-## Worker Playback
+## Bounded aggregate reads
 
-Playback uses `src/adapters/mcap/worker` so MCAP scans, decompression, and
-payload decoding do not block the main UI thread. The worker owns the same MCAP
-resource client as inline execution, but exposes it through prioritized RPC:
+Playback windows continue to use the pull-based `EpisodeSession.read()` path.
+Any feature that may inspect a manifest-wide or otherwise source-sized region
+must instead use `session.boundedRead` when the adapter exposes it:
 
-- current-frame requests run before speculative playback batches,
-- streaming reads return incremental values to the main thread,
-- transferable buffers move decoded image/point-cloud data without extra copies
+1. Open the source account once. Calling `openAccount()` without an argument
+   selects the adapter's fixed finite source allowance; supplying another
+   allowance is an explicit product-policy decision.
+2. Create one job per independently resumable feature.
+3. Request one mandatory finite grant and render only the returned coverage.
+4. Store the opaque continuation and resume only after an explicit feature
+   decision. Never drain it automatically.
+5. Treat `budget-exhausted` and `oversized-source-unit` as partial outcomes,
+   not as permission to fall back to `session.read()`.
 
-## Decompression
+All jobs and speculative byte-cache warming share the same source account.
+Warm-cache hits therefore consume logical source bytes even when transferred
+bytes are zero. A source or content-validator change creates a new session and
+invalidates old jobs and continuations.
 
-The adapter delegates MCAP chunk decompression (usually zstd or lz4) to
-Foxglove's browser WASM codec packages.
+Cancellation aborts an in-flight range request and suppresses result delivery.
+The MCAP worker yields after each synchronous, precharged chunk and at bounded
+decode intervals so it can observe cancellation before starting more source
+work. A cancelled grant returns no continuation, retains its conservative
+reservation, and records best-effort usage for work completed before the
+cancellation boundary.
 
-## Caching
+## Development
 
-Caching is split by ownership. The core media path has three architectural
-caches, described below.
+From `app/`, run:
 
-### Core Media Path
+```shell
+yarn workspace @fiftyone/multimodal check
+yarn vitest run packages/multimodal/src --no-coverage
+```
 
-1. **Raw byte-range cache**
-
-    `src/client/resources` keeps a bounded in-memory LRU of byte-range reads by
-    source identity and half-open range. This is the durable, format-agnostic
-    media cache. MCAP uses it through `ByteClientReadable`, but the cache
-    itself knows only about byte sources and ranges.
-
-    The cached byte client normalizes most small reads into source-aware fill
-    blocks before checking the cache. Local/unknown sources use smaller fill
-    blocks, while remote/object-storage sources use larger blocks to reduce
-    round trips. A later subrange read can be sliced from the cached fill
-    block.
-
-2. **MCAP reader and index caches**
-
-    `src/adapters/mcap/reader` owns initialized MCAP readers per source. The
-    reader store prevents each playback request from rebuilding the MCAP
-    reader, reparsing summary metadata, and recreating the seekable reader
-    wrapper.
-
-    The default reader also gives `@mcap/core` a message-index cache budget.
-    That cache is owned by the MCAP library, but the adapter sets the budget
-    because indexed message-time reads are on the playback hot path.
-
-3. **Synchronized playback-window cache**
-
-    A playback window is the resolved answer for one frame: source, active
-    timeline, frame time, playback topics, and sync policies. This cache is
-    controller-policy-shaped, so it belongs with the playback driver.
+The check covers lint, TypeScript, and dependency-cruiser architecture rules.

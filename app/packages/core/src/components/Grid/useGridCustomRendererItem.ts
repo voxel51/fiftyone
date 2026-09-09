@@ -5,6 +5,7 @@ import {
   getComponent,
   getMatchingSampleRenderer,
   getSampleRendererComponent,
+  hasSampleRendererSource,
   PluginComponentType,
   useActivePlugins,
 } from "@fiftyone/plugins";
@@ -12,7 +13,10 @@ import type { ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import type React from "react";
 import { useCallback, useMemo, useRef } from "react";
-import { useRecoilBridgeAcrossReactRoots_UNSTABLE } from "recoil";
+import {
+  useRecoilBridgeAcrossReactRoots_UNSTABLE,
+  useRecoilCallback,
+} from "recoil";
 import { GridCustomRendererItem } from "./GridCustomRendererItem";
 
 type GridSampleResult = SampleRendererSampleLike;
@@ -38,6 +42,18 @@ export function useGridCustomRendererItem(
   const RecoilBridge = useRecoilBridgeAcrossReactRoots_UNSTABLE();
   const hasTrackedRendererUsageRef = useRef(false);
 
+  // Synchronous, non-hook lookup so a GridCustomRendererItem instance can
+  // reconcile its local `selected` flag against the true source of truth when
+  // it's reattached from the cache (e.g. after scrolling out of and back into
+  // the shown viewport) instead of trusting a value it hasn't been updated
+  // with while offscreen.
+  const isSampleSelected = useRecoilCallback(
+    ({ snapshot }) =>
+      (sampleId: string) =>
+        snapshot.getLoadable(fos.selectedSamples).getValue().has(sampleId),
+    [],
+  );
+
   const getResolvedRenderer = useCallback(
     (result: GridSampleResult) => {
       if (!dataset || isDatasetRendererDisabled) {
@@ -56,7 +72,11 @@ export function useGridCustomRendererItem(
         ? getComponent(matchedRenderer.name)
         : null;
 
-      if (!matchedRenderer || !ctx.media.url || !canonicalRenderer) {
+      if (
+        !matchedRenderer ||
+        !hasSampleRendererSource(ctx.media) ||
+        !canonicalRenderer
+      ) {
         return null;
       }
 
@@ -84,7 +104,10 @@ export function useGridCustomRendererItem(
       const looker = createDefaultLooker.current?.(
         {
           ...result,
+          frameNumber: result.frameNumber,
+          frameRate: result.frameRate,
           symbol: id,
+          urls: result.urls ?? {},
         },
         { fontSize },
       ) as fos.Lookers;
@@ -117,6 +140,7 @@ export function useGridCustomRendererItem(
             RecoilBridge as React.ComponentType<React.PropsWithChildren>,
           ctx: resolvedRenderer.ctx,
           symbol: id,
+          isSampleSelected,
         }) as unknown as fos.Lookers;
 
         // Track coarse-grained adoption once per active grid instance (rather
@@ -135,7 +159,13 @@ export function useGridCustomRendererItem(
         return createDefaultItem(result, id, fontSize);
       }
     },
-    [createDefaultItem, getResolvedRenderer, RecoilBridge, trackEvent],
+    [
+      createDefaultItem,
+      getResolvedRenderer,
+      RecoilBridge,
+      trackEvent,
+      isSampleSelected,
+    ],
   );
 
   return { createItem };

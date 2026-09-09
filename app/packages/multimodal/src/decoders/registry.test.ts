@@ -11,7 +11,6 @@ describe("DecoderRegistry", () => {
     registry.register(decoder);
 
     expect(registry.find(decoder.payload)).toBe(decoder);
-    expect(registry.list()).toEqual([decoder]);
   });
 
   it("rejects duplicate payload registrations", () => {

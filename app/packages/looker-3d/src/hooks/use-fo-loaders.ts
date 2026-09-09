@@ -16,7 +16,7 @@ type CredentialAwareLoader = {
   setWithCredentials?: (value: boolean) => unknown;
 };
 
-type FoLoaderNoSuspenseProto<TInput, TResult> = new (...args: any[]) => {
+type FoLoaderNoSuspenseProto<TInput, TResult> = new (...args: never[]) => {
   loadAsync: (
     input: TInput,
     onProgress?: (event: ProgressEvent<EventTarget>) => void,
@@ -24,11 +24,11 @@ type FoLoaderNoSuspenseProto<TInput, TResult> = new (...args: any[]) => {
 } & CredentialAwareLoader;
 
 type FoLoaderNoSuspenseInput<
-  TLoader extends FoLoaderNoSuspenseProto<any, any>,
+  TLoader extends FoLoaderNoSuspenseProto<unknown, unknown>,
 > = Parameters<InstanceType<TLoader>["loadAsync"]>[0];
 
 type FoLoaderNoSuspenseResult<
-  TLoader extends FoLoaderNoSuspenseProto<any, any>,
+  TLoader extends FoLoaderNoSuspenseProto<unknown, unknown>,
 > = Awaited<ReturnType<InstanceType<TLoader>["loadAsync"]>>;
 
 function disposeLoadedResource(resource: unknown) {
@@ -68,7 +68,8 @@ function hasMatchingCustomCredentialsAudience(urls: unknown): boolean {
     );
 }
 
-function configureFoLoaderInstance(
+/** Applies FiftyOne loading-manager and credential behavior to a loader. */
+export function configureFoLoaderInstance(
   loaderInstance: CredentialAwareLoader,
   urls: unknown,
   loadingManager: unknown,
@@ -120,7 +121,7 @@ export function useFoLoader<
  * React Three error path.
  */
 export function useFoLoaderNoSuspense<
-  TLoader extends FoLoaderNoSuspenseProto<any, any>,
+  TLoader extends FoLoaderNoSuspenseProto<unknown, unknown>,
 >(
   Loader: TLoader,
   input: FoLoaderNoSuspenseInput<TLoader> | null | undefined,
@@ -134,16 +135,20 @@ export function useFoLoaderNoSuspense<
   );
   const latestLoaderFunctionRef = useRef(loaderFunction);
 
+  // This effect keeps asynchronous loads pointed at the latest loader
+  // customization without restarting a load solely because a callback moved.
   useEffect(() => {
     latestLoaderFunctionRef.current = loaderFunction;
   }, [loaderFunction]);
 
+  // This effect owns the optional loader request and disposes resolved
+  // resources whenever the input changes or the hook unmounts.
   useEffect(() => {
     if (input == null) {
       disposeLoadedResource(currentResultRef.current);
       currentResultRef.current = null;
       setResult(null);
-      return;
+      return undefined;
     }
 
     let cancelled = false;
@@ -159,7 +164,9 @@ export function useFoLoaderNoSuspense<
     );
     latestLoaderFunctionRef.current?.(loader);
 
-    loader.loadAsync(input).then(
+    (
+      loader.loadAsync(input) as Promise<FoLoaderNoSuspenseResult<TLoader>>
+    ).then(
       (nextResult) => {
         if (cancelled) {
           disposeLoadedResource(nextResult);

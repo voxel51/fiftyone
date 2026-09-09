@@ -36,13 +36,23 @@ export function createMcapReaderStore({
   readSignal,
 }: CreateMcapReaderStoreOptions): McapReaderStore {
   const readers = new Map<string, Promise<McapIndexedReaderLike>>();
+  const resolvedReaders = new Set<McapIndexedReaderLike>();
+  let disposed = false;
 
   return {
     dispose() {
+      disposed = true;
+      for (const reader of resolvedReaders) {
+        reader.dispose?.();
+      }
+      resolvedReaders.clear();
       readers.clear();
     },
 
     get(source) {
+      if (disposed) {
+        return Promise.reject(new Error("MCAP reader store is disposed"));
+      }
       const key = byteSourceAccessKey(source);
       let reader = readers.get(key);
 
@@ -54,10 +64,19 @@ export function createMcapReaderStore({
             logChunkRead,
             readSignal,
           }),
-        ).catch((error) => {
-          readers.delete(key);
-          throw error;
-        });
+        )
+          .then((resolved) => {
+            if (disposed) {
+              resolved.dispose?.();
+            } else {
+              resolvedReaders.add(resolved);
+            }
+            return resolved;
+          })
+          .catch((error) => {
+            readers.delete(key);
+            throw error;
+          });
         readers.set(key, reader);
       }
 

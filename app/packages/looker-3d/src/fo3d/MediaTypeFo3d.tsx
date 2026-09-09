@@ -126,9 +126,10 @@ export const MediaTypeFo3dComponent = () => {
   const canAnnotate = useCanAnnotate().showAnnotationTab;
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const sceneSampleId = sceneSample.id ?? sceneSample.sample._id;
-  const loadingManager = useMemo(() => new LoadingManager(), [sceneSampleId]);
+  const loadingManager = useMemo(() => new LoadingManager(), []);
 
   const {
+    directPcdWorldTransformsBySampleId,
     foScene,
     isLoading: isParsingFo3d,
     loadError,
@@ -186,6 +187,7 @@ export const MediaTypeFo3dComponent = () => {
       loadingManager,
       cameraLifecycleState,
       isSceneReady,
+      directPcdWorldTransformsBySampleId,
     });
 
   const { shouldRenderMultiPanelView, currentRenderPath } = useFo3dPanelRouting(

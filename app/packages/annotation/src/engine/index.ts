@@ -7,7 +7,15 @@
 
 // identity
 export type { LabelRef, ScopedRef } from "./identity/ref";
-export { linkageKey, refKey, refsEqual, toLabelRef } from "./identity/ref";
+export {
+  addressIdOf,
+  indexFromAddressId,
+  linkageKey,
+  refKey,
+  refsEqual,
+  toLabelRef,
+  TRACK_INDEX_PREFIX,
+} from "./identity/ref";
 export { FRAMES_PREFIX, toSchemaField } from "./identity/framePath";
 export type { EntityId, EntityIdentity } from "./identity/entityId";
 export {

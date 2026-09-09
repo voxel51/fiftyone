@@ -7,7 +7,6 @@ import {
   PANEL_NAME,
   QUERY_TYPE_IMAGE,
   QUERY_TYPE_TEXT,
-  SCOPE_VIEW,
   SEARCH_OPERATOR_URI,
 } from "./constants";
 import {
@@ -121,7 +120,7 @@ export default function useSimilarityPopover({
           reverse: false,
           k: DEFAULT_K,
           run_name: runName,
-          search_scope: SCOPE_VIEW,
+          view_target: "CURRENT_VIEW",
         };
         if (patchesField) {
           params.patches_field = patchesField;

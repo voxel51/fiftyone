@@ -146,7 +146,7 @@ export interface BaseOverlayProps {
   opacity: number;
   rotation: THREE.Vector3Tuple;
   selected: boolean;
-  onClick: (e: any) => void;
+  onClick?: (e: ThreeEvent<MouseEvent>) => void;
   label: OverlayLabel;
   color: string;
 }
@@ -156,7 +156,7 @@ export interface TransformProps extends TransformControlsProps {
   onTransformStart?: () => void;
   onTransformEnd?: () => void;
   onTransformChange?: () => void;
-  transformControlsRef?: RefObject<any>;
+  transformControlsRef?: RefObject<THREE.Object3D>;
 }
 
 export interface HoverState {
@@ -169,6 +169,19 @@ export interface EventHandlers {
   onPointerOut: () => void;
   onPointerMissed: () => void;
   onPointerMove: (e: ThreeEvent<PointerEvent>) => void;
+}
+
+/**
+ * `useEventHandlers()`'s raw shape — `label` is a call-time argument rather
+ * than curried in, so one set of handlers can be shared across every label
+ * in an instanced batch. `Cuboid` curries its own label once into the
+ * `EventHandlers` shape above for the standalone path.
+ */
+export interface InstancedEventHandlers {
+  onPointerOver: (label: OverlayLabel, e?: ThreeEvent<PointerEvent>) => void;
+  onPointerOut: (label: OverlayLabel) => void;
+  onPointerMissed: () => void;
+  onPointerMove: (label: OverlayLabel, e: ThreeEvent<PointerEvent>) => void;
 }
 
 export type Archetype3d = "point" | "cuboid" | "polyline" | "annotation-plane";
@@ -237,22 +250,19 @@ export interface CuboidCreationState {
  */
 export function isDetection3dOverlay(
   overlay: unknown,
-): overlay is OverlayLabel & {
-  _cls: "Detection";
-  dimensions: THREE.Vector3Tuple;
-  location: THREE.Vector3Tuple;
-  rotation?: THREE.Vector3Tuple;
-  quaternion?: THREE.Vector4Tuple;
-} & Record<string, unknown> {
+): overlay is ReconciledDetection3D {
+  if (!overlay || typeof overlay !== "object" || !("data" in overlay)) {
+    return false;
+  }
+  const doc = (overlay as OverlayLabel).data;
   return (
-    overlay &&
-    typeof overlay === "object" &&
-    "_cls" in overlay &&
-    overlay._cls === DETECTION &&
-    "dimensions" in overlay &&
-    "location" in overlay &&
-    overlay.dimensions != null &&
-    overlay.location != null
+    !!doc &&
+    typeof doc === "object" &&
+    doc._cls === DETECTION &&
+    "dimensions" in doc &&
+    "location" in doc &&
+    doc.dimensions != null &&
+    doc.location != null
   );
 }
 
@@ -261,17 +271,50 @@ export function isDetection3dOverlay(
  */
 export function isPolyline3dOverlay(
   overlay: unknown,
-): overlay is OverlayLabel & {
-  _cls: "Polyline";
-  points3d: THREE.Vector3Tuple[][];
-} & Record<string, unknown> {
+): overlay is ReconciledPolyline3D {
+  if (!overlay || typeof overlay !== "object" || !("data" in overlay)) {
+    return false;
+  }
+  const doc = (overlay as OverlayLabel).data;
   return (
-    overlay &&
-    typeof overlay === "object" &&
-    "_cls" in overlay &&
-    overlay._cls === POLYLINE &&
-    "points3d" in overlay &&
-    overlay.points3d != null
+    !!doc &&
+    typeof doc === "object" &&
+    doc._cls === POLYLINE &&
+    "points3d" in doc &&
+    doc.points3d != null
+  );
+}
+
+/**
+ * Type guard for a bare 3D detection DOCUMENT (no wrapper) — e.g. the
+ * `selectedLabelForAnnotationAtom` value or a raw sample label.
+ */
+export function isDetection3dDocument(
+  doc: unknown,
+): doc is ReconciledDetection3D["data"] {
+  return (
+    !!doc &&
+    typeof doc === "object" &&
+    (doc as { _cls?: string })._cls === DETECTION &&
+    "dimensions" in doc &&
+    "location" in doc &&
+    (doc as { dimensions?: unknown }).dimensions != null &&
+    (doc as { location?: unknown }).location != null
+  );
+}
+
+/**
+ * Type guard for a bare 3D polyline DOCUMENT (no wrapper).
+ */
+export function isPolyline3dDocument(
+  doc: unknown,
+): doc is ReconciledPolyline3D["data"] {
+  return (
+    !!doc &&
+    typeof doc === "object" &&
+    (doc as { _cls?: string })._cls === POLYLINE &&
+    "points3d" in doc &&
+    (doc as { points3d?: unknown }).points3d != null
   );
 }
 
@@ -279,16 +322,16 @@ export function isPolyline3dOverlay(
  * Type guard to check if a reconciled label is a Detection.
  */
 export function isDetection(
-  label: ReconciledDetection3D | ReconciledPolyline3D,
-): label is ReconciledDetection3D {
-  return label._cls === "Detection";
+  entry: ReconciledDetection3D | ReconciledPolyline3D,
+): entry is ReconciledDetection3D {
+  return entry.data._cls === "Detection";
 }
 
 /**
  * Type guard to check if a reconciled label is a Polyline.
  */
 export function isPolyline(
-  label: ReconciledDetection3D | ReconciledPolyline3D,
-): label is ReconciledPolyline3D {
-  return label._cls === "Polyline";
+  entry: ReconciledDetection3D | ReconciledPolyline3D,
+): entry is ReconciledPolyline3D {
+  return entry.data._cls === "Polyline";
 }

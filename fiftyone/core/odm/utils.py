@@ -11,6 +11,7 @@ import inspect
 import json
 import numbers
 import sys
+import warnings
 
 from bson import Binary, json_util, ObjectId, SON
 import numpy as np
@@ -179,6 +180,25 @@ def validate_field_name(field_name, media_type=None, is_frame_field=False):
         )
 
 
+def warn_reserved_pk_paths(paths):
+    """Warns once if any of the given field paths contain a component named
+    ``"pk"``, which is a reserved keyword in MongoEngine.
+
+    Args:
+        paths: an iterable of field paths
+    """
+    bad = sorted(p for p in set(paths) if "pk" in p.split("."))
+    if bad:
+        warnings.warn(
+            "Field(s) %s: 'pk' is a reserved keyword and will likely "
+            "become an invalid field name in a future release; fields "
+            "named 'pk' do not behave correctly in bulk write operations "
+            "such as set_field(), and embedded fields named 'pk' may be "
+            "silently dropped during serialization. Existing fields can "
+            "be migrated via rename_sample_field()/rename_frame_field()" % bad
+        )
+
+
 def create_field(
     name,
     ftype,
@@ -271,6 +291,12 @@ def create_field(
 
             field_kwargs["field"] = subfield
     elif issubclass(ftype, fof.EmbeddedDocumentField):
+        if embedded_doc_type is None and issubclass(
+            ftype, fof.MediaReferenceField
+        ):
+            # The media identity declares its own type
+            embedded_doc_type = ftype().document_type
+
         if embedded_doc_type is None or not issubclass(
             embedded_doc_type, fooe.BaseEmbeddedDocument
         ):

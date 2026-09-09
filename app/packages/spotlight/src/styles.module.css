@@ -28,7 +28,7 @@
   outline: none;
 }
 
-@-moz-document {
+@-moz-document url-prefix() {
   .spotlight {
     scrollbar-width: none;
   }

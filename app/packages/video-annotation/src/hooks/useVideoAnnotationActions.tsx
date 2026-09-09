@@ -3,7 +3,8 @@ import { useModalSample } from "@fiftyone/state";
 import { Icon, IconName, Size } from "@voxel51/voodo";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
-import { frameAt, usePlayhead } from "@fiftyone/playback";
+import { usePlayhead } from "@fiftyone/playback";
+import { resolveFrameCount } from "../utils/frameCount";
 import { getModalSampleFrameRate } from "../utils/modalSample";
 import {
   labelSchemaData,
@@ -16,8 +17,10 @@ import {
   useSelectionIsInstanceTrack,
   useSelectionIsKeyframeable,
 } from "../state/useVideoInteraction";
+import { useCurrentFrame } from "../state/useCurrentFrame";
 import { useFrameKeyframeState } from "./useFrameKeyframeState";
 import { useVideoSurfaceActions } from "./useVideoSurfaceActions";
+import { AiTrackUpsellButton } from "../components/AiTrackUpsellButton";
 
 /**
  * Small SVG diamond glyph used by the Mark Keyframe toolbar button. Filled
@@ -65,6 +68,7 @@ const DiamondIcon = ({ filled }: { filled: boolean }) => (
 export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
   const actions = useVideoSurfaceActions();
   const playhead = usePlayhead();
+  const playheadFrame = useCurrentFrame();
   const selected = useSelectedTrackIds();
   const modalSample = useModalSample();
 
@@ -90,8 +94,8 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
     return active[0] ?? null;
   }, [tdFieldPaths, visible, selectedTdField]);
   const fps = getModalSampleFrameRate(modalSample);
-  const canCreateTd =
-    !!tdFieldPath && Number.isFinite(fps) && fps !== undefined && fps > 0;
+  const hasUsableFps = Number.isFinite(fps) && fps !== undefined && fps > 0;
+  const canCreateTd = !!tdFieldPath && hasUsableFps;
 
   // Default class for a freshly-created TemporalDetection: schema's `default`
   // if set, else the first declared class. Mirrors `buildNewLabelData` in
@@ -122,11 +126,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
 
   // split needs one instance-track (detection / polyline) + a playhead frame
   const canSplit =
-    selectedIds.length === 1 &&
-    selectionIsInstanceTrack &&
-    Number.isFinite(fps) &&
-    !!fps &&
-    fps > 0;
+    selectedIds.length === 1 && selectionIsInstanceTrack && hasUsableFps;
 
   return useMemo<ToolbarActionGroup[]>(
     () => [
@@ -138,15 +138,22 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
             id: "create-temporal-detection",
             label: "New TD",
             icon: <Icon name={IconName.Add} size={Size.Sm} />,
+            // Disabled with an explanation rather than hidden: on a dataset
+            // with no TemporalDetections field, a button that simply is not
+            // there tells the user nothing about why.
             tooltip: canCreateTd
               ? `Create a TemporalDetection on \`${tdFieldPath}\``
               : "No TemporalDetections field on this dataset",
             isDisabled: !canCreateTd,
             onClick: () => {
               if (!canCreateTd || !tdFieldPath || !fps) return;
-              // Default: 1-second window starting at the playhead frame.
-              const startFrame = frameAt(playhead, fps);
-              const endFrame = startFrame + Math.round(fps);
+              // Default: 1-second window starting at the playhead frame,
+              // capped at the video's last frame.
+              const startFrame = playheadFrame;
+              const endFrame = Math.min(
+                startFrame + Math.round(fps),
+                resolveFrameCount(modalSample, fps) ?? Infinity,
+              );
               actions.createTemporalDetection(
                 tdFieldPath,
                 [startFrame, endFrame],
@@ -162,7 +169,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
             tooltip: !hasSelection
               ? "Select a label to mark a keyframe"
               : !selectionIsKeyframeable
-                ? "Keyframes are only available for detections"
+                ? "Keyframes are only available for detections and polylines"
                 : "Toggle keyframe at this frame",
             isDisabled: !canMarkKeyframe,
             onClick: () => {
@@ -176,17 +183,32 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
             icon: <Icon name={IconName.UnfoldMore} size={Size.Sm} />,
             tooltip: canSplit
               ? "Split the selected track at this frame"
-              : selectedIds.length === 1 && !selectionIsInstanceTrack
-                ? "Splitting is only available for detections and polylines"
-                : "Select one track to split it at the playhead",
+              : !hasUsableFps
+                ? "This video has no usable frame rate"
+                : selectedIds.length === 1 && !selectionIsInstanceTrack
+                  ? "Splitting is only available for detections and polylines"
+                  : "Select one track to split it at the playhead",
             isDisabled: !canSplit,
             onClick: () => {
               if (!canSplit || !fps) {
                 return;
               }
 
-              actions.splitTrack(selectedIds[0], frameAt(playhead, fps));
+              actions.splitTrack(selectedIds[0], playheadFrame);
             },
+          },
+          {
+            // Upsell for AI-powered object tracking (not in the OSS app): an
+            // always-present, disabled-styled button whose only action is a
+            // hover callout. Owns its own presentation via the custom-component
+            // hatch; onClick is a required no-op.
+            id: "ai-track",
+            label: "AI Track",
+            icon: <Icon name={IconName.AI} size={Size.Sm} />,
+            // Required by the item type but unreachable — the toolbar renders
+            // `customComponent` instead of wiring `onClick`.
+            onClick: () => {},
+            customComponent: <AiTrackUpsellButton />,
           },
         ],
       },
@@ -198,8 +220,11 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
       canSplit,
       fps,
       hasSelection,
+      hasUsableFps,
       isKeyframeAtPlayhead,
+      modalSample,
       playhead,
+      playheadFrame,
       selectedIds,
       selectionIsInstanceTrack,
       selectionIsKeyframeable,

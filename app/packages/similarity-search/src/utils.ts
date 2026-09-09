@@ -4,7 +4,7 @@ import {
   SimilaritySearchParams,
   DateFilterPreset,
   QueryType,
-  SearchScope,
+  ViewTarget,
 } from "./types";
 import { DAY_MS } from "./constants";
 
@@ -125,7 +125,7 @@ export type BuildExecutionParamsInput = {
   queryIds: string[];
   reverse: boolean;
   patchesField?: string;
-  searchScope: SearchScope;
+  viewTarget: ViewTarget;
   hasView: boolean;
   view: unknown[];
   k: number | "";
@@ -164,7 +164,7 @@ export const buildExecutionParams = (
     queryIds,
     reverse,
     patchesField,
-    searchScope,
+    viewTarget,
     k,
     distField,
     runName,
@@ -185,7 +185,7 @@ export const buildExecutionParams = (
     query_type: queryType,
     query,
     reverse,
-    search_scope: searchScope,
+    view_target: viewTarget,
     patches_field: patchesField,
   };
 

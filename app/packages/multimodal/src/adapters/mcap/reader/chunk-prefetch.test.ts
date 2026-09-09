@@ -4,8 +4,8 @@ import {
   collectChunkDataPrefetchRanges,
   collectWindowPrefetchRanges,
   prefetchMcapByteRanges,
-  type McapPrefetchByteRange,
 } from "./chunk-prefetch";
+import type { McapPrefetchByteRange } from "./prefetch-types";
 
 describe("collectWindowPrefetchRanges", () => {
   it("collects message-index regions before chunk data in time order", () => {

@@ -1,6 +1,5 @@
 import {
   FRAMES_PREFIX,
-  stripReservedLabelAttributes,
   useActiveAnnotationSampleId,
   useAnnotationEngine,
 } from "@fiftyone/annotation";
@@ -190,34 +189,6 @@ const useHandleSchemaChange = (readOnly: boolean) => {
         ),
       );
 
-      // Merge onto the live overlay label, which can be fresher than the
-      // form's `data` snapshot. Discard fields which are owned elsewhere.
-      const { support: _formSupport, ...formResult } = result as Record<
-        string,
-        unknown
-      >;
-      const value = {
-        ...(overlay.label as Record<string, unknown>),
-        ...formResult,
-      };
-
-      const allAttributes = Array.isArray(config?.attributes)
-        ? config.attributes
-        : [];
-
-      const uniqueConditionalNames = new Set(
-        allAttributes.filter((a) => a.when).map((a) => a.name),
-      );
-
-      // Iterate over the unique conditional attribute names and apply
-      // owner-change rules (clear stale value or seed a new default).
-      for (const name of uniqueConditionalNames) {
-        if (!name) continue;
-        applyConditionalOwnerChange(name, allAttributes, data ?? {}, value);
-      }
-
-      if (isEqual(value, data)) return;
-
       // address the engine in its own namespace: the anchor ref carries the
       // track `instanceId` and the present `frame` for a video frame label. The
       // field is already the full path (`frames.<field>` for a frame field) — a
@@ -247,13 +218,57 @@ const useHandleSchemaChange = (readOnly: boolean) => {
         instanceId,
         frame,
       };
-      // Persist only true label data: a 3D draft's slot carries the working/
-      // overlay shape (type/isNew/color/path/sampleId), and committing those
-      // pollutes Sample — the write-half's `build3dLabel` strips the same set,
-      // so the idempotent guard would never match and the sync loops forever.
-      const persistableValue = stripReservedLabelAttributes(
-        value as Record<string, unknown>,
+
+      // Merge onto ENGINE truth — the committed label can be fresher than
+      // both the form's `data` snapshot and the overlay's label (a 3D draft's
+      // overlay stub is frozen at creation, but its geometry edits commit to
+      // the engine immediately). Pre-commit drafts have no engine entry yet
+      // and fall back to the overlay label. Discard fields owned elsewhere.
+      const engineBase = engine.getLabel(ref) as
+        | Record<string, unknown>
+        | undefined;
+      const { support: _formSupport, ...formResult } = result as Record<
+        string,
+        unknown
+      >;
+      const value = {
+        ...(engineBase ?? (overlay.label as Record<string, unknown>)),
+        ...formResult,
+      };
+
+      const allAttributes = Array.isArray(config?.attributes)
+        ? config.attributes
+        : [];
+
+      const uniqueConditionalNames = new Set(
+        allAttributes.filter((a) => a.when).map((a) => a.name),
       );
+
+      // Iterate over the unique conditional attribute names and apply
+      // owner-change rules (clear stale value or seed a new default).
+      for (const name of uniqueConditionalNames) {
+        if (!name) continue;
+        applyConditionalOwnerChange(name, allAttributes, data ?? {}, value);
+      }
+
+      // Guard on the form-managed slice only: `value` merges engine truth,
+      // whose geometry drifts from the form's `data` snapshot as gestures
+      // commit — a full-object compare would turn an unchanged blur into a
+      // no-op undoable transaction.
+      const editedKeys = new Set([
+        ...Object.keys(formResult),
+        ...uniqueConditionalNames,
+      ]);
+      const snapshot = (data ?? {}) as Record<string, unknown>;
+      const changed = [...editedKeys].some(
+        (key) => key && !isEqual(value[key], snapshot[key]),
+      );
+      if (!changed) return;
+
+      // `value` is already pure label data: every surface keeps view state
+      // outside the document (3D working entries nest it under `ui`), so
+      // schema attributes may use any name — including "type" and "color".
+      const persistableValue = value as Record<string, unknown>;
 
       // A video frame label belongs to a track. A static track-level edit
       // (label, index, non-dynamic attributes) applies to EVERY frame the
@@ -274,7 +289,8 @@ const useHandleSchemaChange = (readOnly: boolean) => {
 
       // the anchor frame's pre-edit value — `updateLabel` has not run yet, so the
       // engine still holds the old label; forward-fill boundaries read against it
-      const previous = engine.getLabel(ref) ?? (data as LabelData);
+      const previous =
+        (engineBase as LabelData | undefined) ?? (data as LabelData);
 
       const trackWrites = [
         ...buildTrackFanOut(engine, ref, trackPartial),

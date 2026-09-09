@@ -22,6 +22,16 @@ describe("createLocalFileByteClient", () => {
     });
   });
 
+  it("honors an already-aborted stat signal", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const client = createLocalFileByteClient();
+
+    await expect(
+      client.stat?.(createSource(createFile([1])), controller.signal),
+    ).rejects.toMatchObject({ name: "AbortError" });
+  });
+
   it("reads the exact requested byte range", async () => {
     const file = createFile([1, 2, 3, 4]);
     const source = createSource(file);
@@ -90,13 +100,21 @@ describe("createLocalFileByteClient", () => {
     const source = createSource(createFile([1, 2, 3, 4]));
     const client = createLocalFileByteClient();
 
-    await expect(
-      client.readBytes({
+    const error = await client
+      .readBytes({
         range: { length: 1n, offset: 0n },
         signal: controller.signal,
         source,
-      }),
-    ).rejects.toMatchObject({ name: "AbortError" });
+      })
+      .catch((cause: unknown) => cause);
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toMatchObject({
+      message: "File byte-range read aborted",
+      name: "AbortError",
+    });
+    expect((error as Error).constructor).toBe(Error);
+    expect((error as Error).stack).toContain("local-file-byte-client.ts");
   });
 });
 

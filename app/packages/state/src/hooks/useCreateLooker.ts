@@ -16,10 +16,7 @@ import type { BaseState, ImaVidConfig } from "@fiftyone/looker/src/state";
 import {
   EMBEDDED_DOCUMENT_FIELD,
   LIST_FIELD,
-  getMimeType,
-  isDirect3dSamplePath,
   isFo3dSamplePath,
-  isNativeMediaType,
   isNullish,
 } from "@fiftyone/utilities";
 import { useEffect, useRef } from "react";
@@ -35,6 +32,7 @@ import { State } from "../recoil/types";
 import { getSampleSrc, resolveSelectionIcon } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
 import { getNormalizedUrls } from "../utils";
+import { resolveMediaFieldLooker } from "./media-field-lookers";
 import { useOnShiftClickLabel } from "./useOnShiftClickLabel";
 
 export default <T extends AbstractLooker<BaseState>>(
@@ -105,46 +103,26 @@ export default <T extends AbstractLooker<BaseState>>(
           | typeof VideoLooker
           | typeof MetadataLooker = ImageLooker;
 
-        const mimeType = getMimeType(sample);
-
         // sometimes the urls are an array of objects, sometimes they are just an object
         // this is a workaround to make sure we can handle both cases
         // todo: investigate why this is the case
         const urls = getNormalizedUrls(rawUrls);
 
-        // split("?")[0] is to remove query params, if any, from signed urls
-        const filePath =
-          urls.filepath?.split("?")[0] ?? (sample.filepath as string);
-        const mediaFieldPath = urls[mediaField];
-        const isDirect3dSample =
-          isDirect3dSamplePath(filePath) ||
-          isDirect3dSamplePath(mediaFieldPath);
+        const {
+          hasSelectedMediaPath,
+          mediaFieldPath,
+          mimeType,
+          nativeLookerType,
+        } = resolveMediaFieldLooker({ mediaField, sample, urls });
 
-        if (
-          !isNativeMediaType(sample.media_type ?? sample._media_type) &&
-          !isDirect3dSample
-        ) {
+        if (nativeLookerType === null) {
           create = MetadataLooker;
-        } else {
-          if (isDirect3dSample) {
-            create = ThreeDLooker;
-          } else if (mimeType !== null) {
-            const isVideo = mimeType.startsWith("video/");
-
-            if (isVideo && (isFrame || isPatch)) {
-              create = FrameLooker;
-            }
-
-            if (isVideo) {
-              create = VideoLooker;
-            }
-
-            if (!isVideo && shouldRenderImaVidLooker) {
-              create = ImaVidLooker;
-            }
-          } else {
-            create = ImageLooker;
-          }
+        } else if (nativeLookerType === "3d") {
+          create = ThreeDLooker;
+        } else if (nativeLookerType === "video") {
+          create = VideoLooker;
+        } else if (mimeType !== null && shouldRenderImaVidLooker) {
+          create = ImaVidLooker;
         }
 
         let config: ConstructorParameters<T>[1] = {
@@ -174,7 +152,9 @@ export default <T extends AbstractLooker<BaseState>>(
           isModal,
         };
 
-        let sampleMediaFilePath = urls[mediaField];
+        let sampleMediaFilePath = hasSelectedMediaPath
+          ? mediaFieldPath
+          : undefined;
         if (isNullish(sampleMediaFilePath) && options.mediaFallback === true) {
           sampleMediaFilePath = urls.filepath;
         }

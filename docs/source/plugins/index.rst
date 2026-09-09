@@ -5,6 +5,11 @@ Plugins Ecosystem
 
 .. default-role:: code
 
+.. meta::
+    :description: Browse the FiftyOne Plugins ecosystem, community and
+        official plugins that extend the FiftyOne App with new operators
+        and panels.
+
 Welcome to the FiftyOne Plugins ecosystem! 🚀
 
 Here you'll discover cutting-edge research, state-of-the-art models, and
@@ -90,6 +95,7 @@ will transform FiftyOne into your bespoke visual AI development workbench.
    Overview <overview>
    Using plugins <using_plugins>
    Developing plugins <developing_plugins>
+   Developing plugins with Skills <../getting_started/agents/index>
    Contributing plugins <contributing_plugins>
    Enterprise plugins 🚀 <../enterprise/plugins>
    API reference <api/plugins>

@@ -18,7 +18,7 @@ import { ErrorCallback, ProgressCallback } from "./types";
 export class DynamicPCDLoader extends Loader {
   public littleEndian: boolean;
 
-  constructor(manager?: LoadingManager, littleEndian: boolean = true) {
+  constructor(manager?: LoadingManager, littleEndian = true) {
     super(manager);
     this.littleEndian = littleEndian;
   }

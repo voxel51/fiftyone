@@ -13,11 +13,16 @@ import type { Renderer2D } from "../renderer/Renderer2D";
 import type { DrawStyle, Point, Rect } from "../types";
 import {
   createMaskCanvas,
-  decodeMask,
+  decodeMaskToRaster,
   encodeMask,
+  maskBitmapCache,
   maskBounds,
+  maskSourceOf,
   type MaskBounds,
+  type MaskSource,
 } from "../utils";
+
+import type { DecodedMask } from "../utils/maskDecoding";
 
 export interface MaskSnapshot {
   imageData: ImageData;
@@ -55,6 +60,28 @@ export interface PaintStrokeData {
 export class MaskCanvas {
   // Cached decoded mask bitmap, keyed by the raw mask source to detect changes.
   private maskBitmap?: ImageBitmap;
+  /**
+   * Source whose cache entry {@link maskBitmap} is borrowed from, when it came
+   * from {@link maskBitmapCache}. Held separately from `rawMaskData`, which
+   * `ensureCanvas` clears while the borrow is still outstanding.
+   */
+  private borrowedSource?: MaskSource;
+
+  /**
+   * Previous frame's decoded mask, drawn while the current frame's source is
+   * still decoding so the overlay never blinks to nothing mid-playback. Cleared
+   * as soon as the real bitmap lands, or if its decode fails.
+   */
+  private staleBitmap?: ImageBitmap;
+  private staleSource?: MaskSource;
+  private stalePixels?: { src: Uint8Array; width: number; height: number };
+  /**
+   * Source whose decode failed. Skipped by {@link decodeMaskIfNeeded} so a
+   * permanently broken mask costs one decode, not one per render. Never
+   * cleared: a decode is a pure function of its source, and any edit yields a
+   * different source anyway.
+   */
+  private failedSource?: MaskSource;
   /**
    * Raw mask source awaiting decode (deferred until color is known). Either
    * a base64-encoded numpy string (inline `mask` field) or a pre-decoded
@@ -95,17 +122,14 @@ export class MaskCanvas {
   }
 
   /**
-   * Normalizes the input mask source to either a base64 string (for inline
-   * `mask` data) or a pre-decoded {@link OverlayMask} (for `mask_path` data).
-   * Plain `undefined` and `{ $binary: { base64 } }` wrappers are unwrapped.
+   * Normalizes the input mask source to the value the decode pipeline consumes.
+   * Delegates to the shared helper so the cache key derived here matches the one
+   * readiness checks derive from the same label.
    */
   private static extractSource(
     mask?: SerializedMask | OverlayMask,
-  ): string | OverlayMask | undefined {
-    if (!mask) return undefined;
-    if (typeof mask === "string") return mask;
-    if ("$binary" in mask) return mask.$binary.base64;
-    return mask;
+  ): MaskSource | undefined {
+    return maskSourceOf(mask);
   }
 
   /**
@@ -118,9 +142,65 @@ export class MaskCanvas {
     const source = MaskCanvas.extractSource(mask);
     if (source === this.rawMaskData) return false;
 
+    // Never reset while a paint encode is still in flight: those canvas pixels
+    // are an uncommitted stroke not yet reflected in any source, so a reconcile
+    // echo reproject (which carries the older, pre-stroke value) would drop them
+    // — and the in-flight encode bails on the canvas swap, losing the stroke for
+    // good. Once the encode has resolved the pixels live in `source`, so a reset
+    // here is recoverable (ensureCanvas re-seeds from `rawMaskData`).
+    if (this.encodingInFlight > 0) return false;
+
+    if (source) {
+      // Hold the outgoing bitmap as a fallback so the mask doesn't blink out
+      // while the incoming source decodes. Playback advances frames faster
+      // than an uncached decode resolves, so clearing here shows a maskless
+      // frame and reads as flicker; the previous frame's mask is a far better
+      // stand-in for the fraction of a frame it takes the real one to land.
+      this.retainStale();
+    } else {
+      // A vanishing mask has no incoming decode to converge on — a retained
+      // fallback would be drawn (and hit-tested) forever.
+      this.releaseStale();
+    }
+
     this.reset();
     this.rawMaskData = source;
     return true;
+  }
+
+  /**
+   * Move the current bitmap aside as the hold-last fallback, transferring its
+   * cache borrow rather than releasing it. `rawPixels` moves with it so
+   * hit-testing agrees with what is actually on screen.
+   */
+  private retainStale(): void {
+    if (!this.maskBitmap) {
+      return;
+    }
+
+    this.releaseStale();
+
+    this.staleBitmap = this.maskBitmap;
+    this.staleSource = this.borrowedSource;
+    this.stalePixels = this.rawPixels;
+
+    // Ownership moved to the stale slot — clear these so `reset`'s
+    // `releaseBitmap` doesn't hand the borrow back while we're still drawing it.
+    this.maskBitmap = undefined;
+    this.borrowedSource = undefined;
+  }
+
+  /** Drop the hold-last fallback, returning its borrow. */
+  private releaseStale(): void {
+    if (this.staleSource !== undefined) {
+      maskBitmapCache.release(this.staleSource);
+    } else {
+      this.staleBitmap?.close();
+    }
+
+    this.staleBitmap = undefined;
+    this.staleSource = undefined;
+    this.stalePixels = undefined;
   }
 
   /**
@@ -130,8 +210,7 @@ export class MaskCanvas {
    * one is set afterward.
    */
   private reset(): void {
-    this.maskBitmap?.close();
-    this.maskBitmap = undefined;
+    this.releaseBitmap();
     this.rawMaskData = undefined;
     this.rawPixels = undefined;
 
@@ -151,7 +230,9 @@ export class MaskCanvas {
    * Returns true if a mask is available for rendering (editing canvas or decoded bitmap).
    */
   private hasRenderable(): boolean {
-    return this.canvas != null || this.maskBitmap != null;
+    return (
+      this.canvas != null || this.maskBitmap != null || this.staleBitmap != null
+    );
   }
 
   /**
@@ -171,32 +252,118 @@ export class MaskCanvas {
     // Snapshot the source so a concurrent updateSource() can invalidate this
     // decode without stale data overwriting the new source on resolution.
     const sourceToken = this.rawMaskData;
+
+    // A cache hit is adopted synchronously so the mask paints in the same tick
+    // as the frame advance that asked for it. Deferring a hit to a microtask
+    // would reintroduce exactly the one-frame lag the cache exists to remove.
+    const cached = maskBitmapCache.acquire(sourceToken);
+
+    if (cached) {
+      this.adoptDecoded(sourceToken, cached);
+      return;
+    }
+
+    // After the cache probe, not before: if this source ever does become
+    // resident (another consumer decoded it), the hit above still draws it.
+    if (sourceToken === this.failedSource) {
+      return;
+    }
+
     this.decoding = true;
+    void this.decodeUntilCurrent(onDecoded);
+  }
 
-    decodeMask(sourceToken)
-      .then(({ bitmap, rawPixels }) => {
-        this.decoding = false;
+  /**
+   * Decode until the result matches the CURRENT source, then adopt it.
+   *
+   * Retrying rather than discarding is what makes the mask converge. A single
+   * attempt that resolves stale has nowhere to hand off to: `decodeMaskIfNeeded`
+   * is gated on `decoding`, so a frame advance during the decode gets no decode
+   * of its own, and the stale resolution triggers no re-render — leaving the
+   * previous frame's mask on screen until some unrelated event repaints. Under
+   * CPU load that window covers most frame advances.
+   *
+   * Mirrors the retry in the engine's Lighter bridge (`mountWhenDecoded`), which
+   * loops for the same reason. The synchronous cache-hit path stays in
+   * {@link decodeMaskIfNeeded} so a hit is still adopted in the calling tick.
+   */
+  private async decodeUntilCurrent(onDecoded?: () => void): Promise<void> {
+    // Tracked outside the loop so the catch blacklists the source that
+    // actually failed, not whatever `rawMaskData` has moved on to since.
+    let sourceToken = this.rawMaskData;
 
-        // Source changed mid-decode — discard this result. The next render
-        // will re-trigger decodeMaskIfNeeded against the current rawMaskData.
-        if (this.rawMaskData !== sourceToken) {
-          bitmap.close();
+    try {
+      for (;;) {
+        sourceToken = this.rawMaskData;
+
+        if (!sourceToken) {
           return;
         }
 
-        this.maskBitmap?.close();
-        this.maskBitmap = bitmap;
+        const cached = maskBitmapCache.acquire(sourceToken);
 
-        if (rawPixels) {
-          this.rawPixels = rawPixels;
+        if (cached) {
+          this.adoptDecoded(sourceToken, cached);
+          onDecoded?.();
+          return;
         }
 
+        const decoded = await maskBitmapCache.acquireAsync(sourceToken);
+
+        // Source moved on while we were decoding — return this borrow and go
+        // again against whatever is current now.
+        if (this.rawMaskData !== sourceToken) {
+          maskBitmapCache.release(sourceToken);
+          continue;
+        }
+
+        this.adoptDecoded(sourceToken, decoded);
         onDecoded?.();
-      })
-      .catch((err) => {
-        console.error("[MaskCanvas] mask decode failed:", err);
-        this.decoding = false;
-      });
+
+        return;
+      }
+    } catch (err) {
+      console.error("[MaskCanvas] mask decode failed:", err);
+      this.failedSource = sourceToken;
+
+      // Nothing is coming, so stop showing the previous frame's mask — a stale
+      // mask held indefinitely is worse than none.
+      this.releaseStale();
+      onDecoded?.();
+    } finally {
+      this.decoding = false;
+    }
+  }
+
+  /** Take up a freshly-acquired borrow, returning any previous one. */
+  private adoptDecoded(source: MaskSource, decoded: DecodedMask): void {
+    this.releaseBitmap();
+
+    this.maskBitmap = decoded.bitmap;
+    this.borrowedSource = source;
+
+    if (decoded.rawPixels) {
+      // Shared with every other borrower of this source — read-only.
+      this.rawPixels = decoded.rawPixels;
+    }
+
+    // The real mask is up; the hold-last fallback has done its job.
+    this.releaseStale();
+  }
+
+  /**
+   * Give up the current bitmap: a borrow goes back to the cache (which decides
+   * when to close it), anything self-owned is closed here.
+   */
+  private releaseBitmap(): void {
+    if (this.borrowedSource !== undefined) {
+      maskBitmapCache.release(this.borrowedSource);
+    } else {
+      this.maskBitmap?.close();
+    }
+
+    this.borrowedSource = undefined;
+    this.maskBitmap = undefined;
   }
 
   /**
@@ -240,6 +407,18 @@ export class MaskCanvas {
 
       return;
     }
+
+    if (this.staleBitmap) {
+      // Hold-last: the incoming source is still decoding. Drawn at the CURRENT
+      // frame's bounds, so a moving track's mask tracks the box rather than
+      // lagging a frame behind it.
+      renderer.drawImage(
+        { type: "bitmap", bitmap: this.staleBitmap },
+        bounds,
+        { opacity, tint: color },
+        containerId,
+      );
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -269,11 +448,60 @@ export class MaskCanvas {
       this.context.imageSmoothingEnabled = false;
       this.context.drawImage(this.maskBitmap, 0, 0, width, height);
       this.context.imageSmoothingEnabled = prevSmoothing;
-      this.maskBitmap.close();
-      this.maskBitmap = undefined;
+      // `drawImage` copied the pixels into our canvas, so the borrow is done.
+      // Releasing rather than closing leaves the entry usable by other frames.
+      this.releaseBitmap();
+    } else if (this.rawMaskData) {
+      // No decoded bitmap yet — e.g. `updateSource` just reset us from a
+      // reconcile reproject (echo or undo) and the async decode hasn't run. Seed
+      // the canvas synchronously from the raw source so a stroke that begins now
+      // paints onto the existing mask instead of a blank canvas (the mask-drop
+      // bug).
+      this.seedCanvasFromRawSync(width, height);
     }
 
     this.rawMaskData = undefined;
+  }
+
+  /**
+   * Synchronously rasterizes {@link rawMaskData} into the (already-created)
+   * editing canvas, scaled to fit. The raster is color-INDEPENDENT (white+alpha)
+   * to match painted strokes; the display color is applied at draw time via
+   * tint. Best-effort: a decode failure leaves the canvas blank rather than
+   * throwing, matching the pre-seed behavior.
+   */
+  private seedCanvasFromRawSync(width: number, height: number): void {
+    if (!this.rawMaskData || !this.context) return;
+
+    try {
+      const {
+        rgba,
+        width: srcWidth,
+        height: srcHeight,
+        rawPixels,
+      } = decodeMaskToRaster(this.rawMaskData);
+
+      const { maskCanvas: srcCanvas, maskContext: srcContext } =
+        createMaskCanvas(srcWidth, srcHeight);
+      srcContext.putImageData(
+        new ImageData(new Uint8ClampedArray(rgba), srcWidth, srcHeight),
+        0,
+        0,
+      );
+
+      const prevSmoothing = this.context.imageSmoothingEnabled;
+      this.context.imageSmoothingEnabled = false;
+      this.context.drawImage(srcCanvas, 0, 0, width, height);
+      this.context.imageSmoothingEnabled = prevSmoothing;
+
+      // Keep hit-testing working immediately: ensureCanvas clears `rawMaskData`
+      // right after this, so the async decode never runs to backfill
+      // `rawPixels`. Adopt the freshly rasterized pixels now (they're at the
+      // mask's native resolution, which is what containsMaskPixel maps against).
+      this.rawPixels = { src: rawPixels, width: srcWidth, height: srcHeight };
+    } catch (err) {
+      console.error("[MaskCanvas] ensureCanvas sync seed failed:", err);
+    }
   }
 
   /**
@@ -302,7 +530,7 @@ export class MaskCanvas {
    * Prefers the editing canvas (most up-to-date), falls back to decoded bitmap.
    */
   getPreviewSource(): HTMLCanvasElement | ImageBitmap | undefined {
-    return this.canvas ?? this.maskBitmap;
+    return this.canvas ?? this.maskBitmap ?? this.staleBitmap;
   }
 
   /**
@@ -311,7 +539,11 @@ export class MaskCanvas {
    * is outside the given relative bounding box.
    */
   containsMaskPixel(relativePoint: Point, relativeBounds: Rect): boolean {
-    if (!this.rawPixels) return false;
+    // Fall back to the hold-last pixels so hit-testing agrees with whatever is
+    // actually on screen while an incoming source decodes.
+    const pixels = this.rawPixels ?? this.stalePixels;
+
+    if (!pixels) return false;
 
     const { x, y, width: bw, height: bh } = relativeBounds;
 
@@ -324,7 +556,7 @@ export class MaskCanvas {
       return false;
     }
 
-    const { src, width, height } = this.rawPixels;
+    const { src, width, height } = pixels;
     const px = Math.floor(((relativePoint.x - x) / bw) * (width - 1));
     const py = Math.floor(((relativePoint.y - y) / bh) * (height - 1));
 
@@ -878,5 +1110,8 @@ export class MaskCanvas {
 
   destroy(): void {
     this.reset();
+    // `reset` deliberately leaves the hold-last slot alone (a source swap moves
+    // the bitmap there and then resets); teardown has to return that borrow.
+    this.releaseStale();
   }
 }

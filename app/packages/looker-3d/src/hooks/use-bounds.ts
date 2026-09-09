@@ -47,7 +47,7 @@ const isFiniteBox = (b: Box3) =>
  */
 export function useFo3dBounds(
   objectRef: React.RefObject<Group>,
-  isReady: boolean = true,
+  isReady = true,
   opts: Options = {},
 ) {
   const {
@@ -143,6 +143,7 @@ export function useFo3dBounds(
 
     const cancel = startLoop();
     return () => {
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- cleanup must bump the LATEST token to invalidate in-flight loops
       runToken.current++;
       cancel?.();
     };

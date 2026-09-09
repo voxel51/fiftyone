@@ -1,6 +1,10 @@
 FiftyOne Cheat Sheets
 =====================
 
+.. meta::
+    :description: Topic-focused, informationally dense FiftyOne cheat
+        sheets covering views, filtering, and other core operations.
+
 Check out the links below for topic-focused, informationally dense documents
 that will help you get right down to business using FiftyOne.
 

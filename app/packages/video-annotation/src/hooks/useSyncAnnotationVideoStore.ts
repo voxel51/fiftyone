@@ -7,6 +7,7 @@ import {
   useSampleInstanceGetter,
   VideoLabelStore,
 } from "@fiftyone/annotation";
+import type { LabelType } from "@fiftyone/utilities";
 import { type MutableRefObject, useEffect, useRef } from "react";
 import { useFrameLabelsStream } from "../streams/frameLabelsStream";
 import { parseFramesData } from "../streams/framesData";
@@ -30,12 +31,57 @@ import {
  *
  * Must be mounted under the modal scope where the labels stream is published.
  */
-export const useSyncAnnotationVideoStore = (): void => {
+export const useSyncAnnotationVideoStore = (
+  /**
+   * Frame fields to register, keyed to label type. Explore supplies its own
+   * (see `useExploreFrameLabelFields`) because the annotation-schema default
+   * below is empty outside Annotate mode.
+   */
+  labelTypesOverride?: Record<string, LabelType>,
+  options: {
+    /**
+     * Fetch every frame of the clip up front (see `warmupAll`).
+     *
+     * Annotate needs it: propagation, interpolation and track ops walk every
+     * frame of the engine's store, and a windowed seed would hide frames
+     * they have to see.
+     *
+     * Explore must NOT. It is read-only, so nothing walks the whole clip
+     * there, and the cost is paid three times over during playback:
+     * `warmupAll` dispatches every chunk at once with no concurrency cap,
+     * crowding the `<video>`'s own byte fetch off the connection pool; the
+     * stream is `blocking: true`, so the engine's barrier holds the playhead
+     * on every frame those requests haven't reached yet; and each chunk that
+     * lands re-seeds the whole store on the main thread. `prefetch()` — the
+     * windowed path the engine already calls as the playhead advances — is
+     * what should be feeding this surface, and `warmupAll` competes with it.
+     */
+    seedWholeClip?: boolean;
+    /**
+     * Sample-level label paths the hydration nudge should watch (see
+     * {@link useHydrateSampleLevelOverlays}).
+     *
+     * Explore must supply its own. The default is `useVisibleLabelSchemas()`,
+     * which is `annotation-active ∩ explore-active` and therefore EMPTY until
+     * the Annotate sidebar has run `useLoadSchemas()` — so in Explore the
+     * signature never changes, `resync` never fires, and a sample-level label
+     * that resolves its type after the surface mounted stays unmounted. That
+     * is what kept the sample Classification bubble off this surface even once
+     * the bridge scope admitted it.
+     */
+    sampleLevelPaths?: ReadonlySet<string>;
+  } = {},
+): void => {
+  const seedWholeClip = options.seedWholeClip ?? true;
+  const sampleLevelPathsOverride = options.sampleLevelPaths;
   const engine = useAnnotationEngine();
   const sampleId = useActiveSampleId();
   const getSample = useSampleInstanceGetter();
   const stream = useFrameLabelsStream();
-  const labelTypes = useFrameLabelFields();
+  // Both are called unconditionally to keep hook order stable; the override
+  // wins when a surface supplies one.
+  const annotationLabelTypes = useFrameLabelFields();
+  const labelTypes = labelTypesOverride ?? annotationLabelTypes;
 
   // Working overlay carried across an effect rebuild (e.g. activating a frame
   // field, or the labels stream re-mounting) so unsaved edits aren't dropped
@@ -83,9 +129,12 @@ export const useSyncAnnotationVideoStore = (): void => {
     carry.current = null;
 
     // Whole-clip seed for engine consumers that still walk every frame
-    // (propagation, interpolation, track ops). The timeline no longer needs
-    // it — it reads the server index. Retire once those ops fetch per-range.
-    void stream.warmupAll();
+    // (propagation, interpolation, track ops). The timeline never needed it —
+    // it reads the server index — and a read-only surface has no such
+    // consumers at all, so it opts out. See `seedWholeClip`.
+    if (seedWholeClip) {
+      void stream.warmupAll();
+    }
 
     return () => {
       // Carry unsaved edits to the next FrameStore (this same hook stays
@@ -99,9 +148,14 @@ export const useSyncAnnotationVideoStore = (): void => {
       sampleLevel.dispose();
       sampleLevelRef.current = null;
     };
-  }, [engine, sampleId, labelTypes, getSample, stream]);
+  }, [engine, sampleId, labelTypes, getSample, stream, seedWholeClip]);
 
-  useHydrateSampleLevelOverlays(engine, sampleId, sampleLevelRef);
+  useHydrateSampleLevelOverlays(
+    engine,
+    sampleId,
+    sampleLevelRef,
+    sampleLevelPathsOverride,
+  );
 };
 
 /**
@@ -131,8 +185,11 @@ const useHydrateSampleLevelOverlays = (
   engine: ReturnType<typeof useAnnotationEngine>,
   sampleId: string,
   sampleLevelRef: MutableRefObject<SampleLabelStore | null>,
+  pathsOverride?: ReadonlySet<string>,
 ): void => {
-  const visible = useVisibleLabelSchemas();
+  // Called unconditionally to keep hook order stable; the override wins.
+  const annotationVisible = useVisibleLabelSchemas();
+  const visible = pathsOverride ?? annotationVisible;
 
   // Sample-level label fields (exclude the frame fields — the FrameStore
   // announces those itself). TDs are kept in: resync refreshes the temporal

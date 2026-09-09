@@ -203,6 +203,24 @@ from .core.runs import (
     RunResults,
 )
 from .core.sample import Sample
+from .core.media_reference import MediaReference
+from .multimodal.media_reference import (
+    InvalidMediaLocationError,
+    MalformedMediaSourceError,
+    MediaAsset,
+    MediaAssetRole,
+    MediaAssetSelector,
+    MediaReferenceError,
+    MediaSourceAuthorizationError,
+    MissingMediaRootError,
+    MovedMediaRootError,
+    RowInterval,
+    StaleMediaReferenceError,
+    UnfinalizedMediaSourceError,
+    UnsupportedMediaReferenceOperation,
+    VideoTimestampInterval,
+    WholeFile,
+)
 from .core.threed import (
     BoxGeometry,
     CylinderGeometry,
@@ -210,9 +228,11 @@ from .core.threed import (
     SphereGeometry,
     FbxMesh,
     GltfMesh,
+    MirisStream,
     ObjMesh,
     PlyMesh,
     StlMesh,
+    GaussianSplat,
     PerspectiveCamera,
     PointLight,
     DirectionalLight,
@@ -310,3 +330,9 @@ from .utils.eval.segmentation import (
 )
 from .utils.quickstart import quickstart
 from . import training
+
+from .utils.lerobot import (
+    LeRobotEpisodeReference,
+    UnsupportedLeRobotExportModeError,
+    UnsupportedLeRobotVersionError,
+)

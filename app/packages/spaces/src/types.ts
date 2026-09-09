@@ -45,6 +45,8 @@ export type SpaceNodeJSON = {
   pinned?: SpaceNode["pinned"];
   sizes?: number[];
   _name?: string;
+  // ordering stamp for the two-way session sync (see MainSpace)
+  _version?: number;
 };
 
 export type PanelProps = {

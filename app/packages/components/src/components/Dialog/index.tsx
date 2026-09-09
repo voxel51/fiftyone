@@ -6,7 +6,8 @@ import {
 } from "@mui/material";
 
 export default function Dialog(props: DialogProps) {
-  const { children, PaperProps, onClose, ...otherProps } = props;
+  const { children, PaperProps, onClose, hideCloseButton, ...otherProps } =
+    props;
   return (
     <MuiDialog
       PaperProps={{
@@ -16,16 +17,18 @@ export default function Dialog(props: DialogProps) {
       onClose={onClose}
       {...otherProps}
     >
-      <IconButton
-        onClick={() => {
-          if (onClose) {
-            onClose({}, "closeButtonClick");
-          }
-        }}
-        sx={{ position: "absolute", top: 8, right: 8 }}
-      >
-        <Close />
-      </IconButton>
+      {!hideCloseButton && (
+        <IconButton
+          onClick={() => {
+            if (onClose) {
+              onClose({}, "closeButtonClick");
+            }
+          }}
+          sx={{ position: "absolute", top: 8, right: 8 }}
+        >
+          <Close />
+        </IconButton>
+      )}
       {children}
     </MuiDialog>
   );
@@ -36,4 +39,6 @@ type DialogProps = Omit<MuiDialogProps, "onClose"> & {
     event: unknown,
     reason: "backdropClick" | "escapeKeyDown" | "closeButtonClick",
   ) => void;
+  /** For dialogs that render their own close control in a header */
+  hideCloseButton?: boolean;
 };

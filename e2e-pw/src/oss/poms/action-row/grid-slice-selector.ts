@@ -30,6 +30,11 @@ export class GridSliceSelectorPom {
     return slices;
   }
 
+  /** The slice the grid is showing now. The selector input holds its name. */
+  async activeSlice() {
+    return this.page.getByTestId(SLICE_SELECTOR_TEST_ID).inputValue();
+  }
+
   async selectSlice(sliceName: string) {
     const sliceResultsContainer = await this.openSliceSelector();
 

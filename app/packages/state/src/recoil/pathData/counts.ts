@@ -1,5 +1,5 @@
 import { VALID_KEYPOINTS } from "@fiftyone/utilities";
-import { selectorFamily } from "recoil";
+import { selectorFamily, waitForAll } from "recoil";
 import { aggregation } from "../aggregations";
 import { datasetSampleCount } from "../dataset";
 import * as filterAtoms from "../filters";
@@ -208,12 +208,21 @@ export const noneCount = selectorFamily<
   get:
     (params) =>
     ({ get }) => {
-      const { count: aggCount = 0 } = get(aggregation(params)) ?? {};
+      // List fields and label-tags have no meaningful none bucket — bail
+      // before touching aggregations (and avoid an unused fetch).
+      const isLabelTag = params.path.startsWith("_label_tags");
+      if (isLabelTag || get(schemaAtoms.isListField(params.path))) {
+        return 0;
+      }
 
       const parent = params.path.split(".").slice(0, -1).join(".");
-      const isLabelTag = params.path.startsWith("_label_tags");
-      return get(schemaAtoms.isListField(params.path)) || isLabelTag
-        ? 0
-        : (get(count({ ...params, path: parent })) as number) - aggCount;
+      // Fetch the field aggregation and the parent count concurrently;
+      // sequential ``get``s waterfall (suspend on one, then fire the
+      // other), doubling latency when each aggregation is expensive
+      // (large datasets, cold caches, slower backends).
+      const [fieldAgg, parentCount] = get(
+        waitForAll([aggregation(params), count({ ...params, path: parent })]),
+      );
+      return (parentCount as number) - ((fieldAgg?.count as number) ?? 0);
     },
 });

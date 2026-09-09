@@ -1,5 +1,5 @@
 import { byteSourceAccessKey } from "../../../query/bytes";
-import { mcapError } from "../errors";
+import { toError } from "../../../utils/errors";
 import type {
   McapGridPreviewRequestPayload,
   McapGridPreviewResult,
@@ -22,7 +22,7 @@ type PendingRequest = {
 /**
  * Error used when a grid preview request is cancelled before completion.
  */
-export class McapGridPreviewRequestCancelledError extends Error {
+class McapGridPreviewRequestCancelledError extends Error {
   constructor() {
     super(CANCELLED_ERROR_MESSAGE);
     this.name = "McapGridPreviewRequestCancelledError";
@@ -89,7 +89,7 @@ export class McapGridPreviewTransport {
       } catch (error) {
         options.signal?.removeEventListener("abort", abort);
         this.pending.delete(id);
-        reject(mcapError(error));
+        reject(toError(error));
       }
     });
   }
@@ -115,11 +115,4 @@ export class McapGridPreviewTransport {
     }
     this.pending.clear();
   }
-}
-
-/**
- * Returns whether an error came from grid preview request cancellation.
- */
-export function isMcapGridPreviewRequestCancelled(error: unknown): boolean {
-  return error instanceof McapGridPreviewRequestCancelledError;
 }

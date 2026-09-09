@@ -1,11 +1,6 @@
-import {
-  useActiveSampleId,
-  useAnnotationEngine,
-  useEngineSelector,
-} from "@fiftyone/annotation";
 import { getLabelColorFromContext } from "@fiftyone/lighter";
 import type { ModalSample } from "@fiftyone/state";
-import type { LabelData, Stage } from "@fiftyone/utilities";
+import type { Stage } from "@fiftyone/utilities";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   useActiveDetectionField,
@@ -17,15 +12,22 @@ import {
   useGroupSlice,
   useModalSampleId,
   useView,
+  useLabelSchemasLoaded,
   useVisibleLabelSchemas,
 } from "../state/accessors";
+import {
+  useExploreFrameLabelFields,
+  useExploreTemporalDetectionFieldPaths,
+} from "../state/exploreFrameLabelFields";
 import { useEngineTemporalSample } from "../sync/useTemporalOverlaySync";
 import { useWarmupThenSeek } from "../hooks/useWarmupThenSeek";
 import {
   TimelineWithTracks,
   TrackProvider,
+  type TimelineTracksScroller,
   type Track,
   type TrackEventMenuItem,
+  useActivateStream,
   useDuration,
   usePlaybackStream,
 } from "@fiftyone/playback";
@@ -34,14 +36,15 @@ import {
   usePublishFrameLabelsStream,
 } from "../streams/frameLabelsStream";
 import {
-  buildTracksFromIndex,
   objectTrackClassOf,
   objectTrackPathOf,
   parseSubTrackId,
-  type FrameOverlay,
   type PerInstanceLabel,
 } from "../tracks/frameTracks";
-import { useVideoLabelsIndex } from "../hooks/useVideoLabelsIndex";
+import {
+  useFrameDerivedTracks,
+  type ObjectTrackColorResolver,
+} from "../tracks/useFrameDerivedTracks";
 import {
   useTrackExpansion,
   type TrackExpansion,
@@ -52,6 +55,7 @@ import { resolveTrackExtentEdit } from "../tracks/trackExtentEdit";
 import { useVideoTrackDecorator } from "../tracks/useVideoTrackDecorator";
 import { useScrollTrackToAnchor } from "../state/useVideoInteraction";
 import { useCurrentFrameGetter } from "../state/useCurrentFrame";
+import { useTimelineDrawerOpen } from "../state/useTimelineDrawer";
 import {
   useVideoSurfaceActions,
   type VideoSurfaceActions,
@@ -62,7 +66,6 @@ import {
   type TemporalDetectionLabelLike,
 } from "../tracks/temporalDetectionTracks";
 import { VideoFrameLabelsStream } from "../streams/VideoFrameLabelsStream";
-import { VideoAnnotationToolbar } from "./VideoAnnotationToolbar";
 
 const DEFAULT_FRAME_FIELD = "frames.detections";
 
@@ -94,11 +97,70 @@ type TrackDecoration = BaseTrackDecoration & {
 /** Row height (px) for a dynamic-attribute sub-track — shorter than a parent. */
 const SUB_TRACK_ROW_HEIGHT = 22;
 
-/** Resolves the row color for a per-frame object track. */
-type ObjectTrackColorResolver = (
-  label: PerInstanceLabel,
-  path: string,
-) => string;
+/**
+ * Most "Merge into …" entries to offer on one track's menu.
+ *
+ * A merge target has to be a different track of the same class on the same
+ * field, which on a densely tracked sample can be thousands of rows — a menu
+ * nobody can use, and one whose element tree we'd rebuild on every render of
+ * the row. Capping keeps the common case (a handful of fragments of the same
+ * object) intact; past that the menu stops being the right tool and the user
+ * wants the merge dialog.
+ */
+const MAX_MERGE_TARGETS = 12;
+
+/** Bucket key gating merge: same field path AND same class. */
+const mergeGroupKey = (
+  path: string | null,
+  classLabel: string | null,
+): string => `${path ?? ""}\u0000${classLabel ?? ""}`;
+
+/** A merge candidate plus where it sits in time, for proximity ranking. */
+interface MergeCandidate {
+  id: string;
+  label: string;
+  /** Start of the track's first presence bar; its position on the timeline. */
+  startSec: number;
+}
+
+/** Where a track begins, for ranking merge candidates against it. */
+const trackStartSec = (track: Track): number => track.events[0]?.startSec ?? 0;
+
+/**
+ * The merge targets offered for `track`: its own bucket, minus itself, nearest
+ * first, capped at {@link MAX_MERGE_TARGETS}, plus how many the cap dropped.
+ *
+ * Ranked by distance in time rather than list position. Merging almost always
+ * means rejoining fragments of one object that got split, and those sit next
+ * to each other on the timeline — taking the head of the bucket instead would
+ * offer a late-ordered track twelve unrelated candidates and silently omit its
+ * actual neighbour.
+ */
+function mergeTargetsFor(
+  groups: ReadonlyMap<string, MergeCandidate[]>,
+  track: Track,
+): { mergeTargets: { id: string; label: string }[]; omitted: number } {
+  const bucket = groups.get(
+    mergeGroupKey(objectTrackPathOf(track), objectTrackClassOf(track)),
+  );
+  if (!bucket) return { mergeTargets: [], omitted: 0 };
+
+  const from = trackStartSec(track);
+  const ranked = bucket
+    .filter((candidate) => candidate.id !== track.id)
+    .sort(
+      (a, b) =>
+        Math.abs(a.startSec - from) - Math.abs(b.startSec - from) ||
+        a.id.localeCompare(b.id),
+    );
+
+  return {
+    mergeTargets: ranked
+      .slice(0, MAX_MERGE_TARGETS)
+      .map(({ id, label }) => ({ id, label })),
+    omitted: Math.max(0, ranked.length - MAX_MERGE_TARGETS),
+  };
+}
 
 /** Resolves the row color for a temporal-detection track. */
 type TemporalDetectionColorResolver = (
@@ -120,8 +182,31 @@ const toPerFrameField = (field: string): string =>
  */
 export const RegisterFrameLabels: React.FC<{
   sample: ModalSample;
-  children: React.ReactNode;
-}> = ({ sample, children }) => {
+  /**
+   * Optional. Prefer rendering this registrar as a childless SIBLING of the
+   * surface: it swaps its wrapper component when duration lands, and re-keys on
+   * the resolved `frameCount`, so anything nested here is unmounted and rebuilt
+   * on the way to ready. That is ruinous when the subtree owns the `<video>`
+   * the duration comes from. Consumers reach the stream through
+   * `useFrameLabelsStream` (see `usePublishFrameLabelsStream` below) rather
+   * than through position, so nesting buys nothing.
+   */
+  children?: React.ReactNode;
+  /**
+   * Which surface this is registering for, which decides WHICH per-frame
+   * fields get fetched.
+   *
+   * Annotate reads the annotation schemas (`useFrameLabelFields`), which know
+   * only the types the editor can create — Detections and Polylines — and only
+   * the ones activated in the Schema Manager. Explore paints from the
+   * sidebar's active paths instead, across every type the per-frame pipeline
+   * can project. Fetching one set while registering and painting the other is
+   * how `frames.keypoints` and `frames.classifications` ended up never
+   * arriving: the projection asked for them, `/video-labels/window` was never
+   * told to return them.
+   */
+  mode?: "annotate" | "explore";
+}> = ({ sample, children, mode = "annotate" }) => {
   const duration = useDuration();
   const dataset = useDatasetName();
   const view = useView();
@@ -133,7 +218,13 @@ export const RegisterFrameLabels: React.FC<{
   // Every active per-frame field — the stream fetches + seeds all of them so the
   // engine (and the sidebar/canvas/timeline that read it) sees more than just
   // the primary detection field (e.g. polylines, masked detections).
-  const labelFields = useFrameLabelFields();
+  //
+  // Both hooks run unconditionally (hooks cannot be called in a branch) and
+  // the mode picks between them; each is a cheap state read.
+  const annotationLabelFields = useFrameLabelFields();
+  const exploreLabelFields = useExploreFrameLabelFields();
+  const labelFields =
+    mode === "explore" ? exploreLabelFields : annotationLabelFields;
 
   const frameRate = getModalSampleFrameRate(sample);
   const ready =
@@ -225,7 +316,20 @@ const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
     stream.setPrimaryField(props.frameField);
   }, [stream, props.frameField]);
 
+  // The stream holds mask borrows in the process-wide bitmap cache; nothing
+  // else can return them after unmount, so this teardown is what keeps a
+  // sample change from pinning cache entries forever. (A StrictMode re-mount
+  // is fine: the next commit's hold window simply re-borrows.)
+  useEffect(() => () => stream.dispose(), [stream]);
+
   usePlaybackStream(streamRef.current);
+
+  // Registration alone leaves the stream dormant, which the engine skips
+  // entirely — no readiness barrier, no prefetch. Nothing renders from its
+  // published snapshot (the engine owns labels; this stream seeds them via
+  // `subscribeToEdits`), so activate it explicitly: the clock must wait on
+  // label readiness rather than run ahead of the overlays.
+  useActivateStream(LABELS_STREAM_ID);
 
   // Publish so consumers above the surface reach it via useFrameLabelsStream.
   usePublishFrameLabelsStream(streamRef.current);
@@ -237,121 +341,6 @@ const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
 };
 
 /**
- * Build the per-instance object tracks from the server distribution index
- * merged with the engine's edited-frame overlay — no whole-clip walk. Tracks
- * rebuild on each engine commit (cheap: only the dirty frames are read).
- * `resolved` flips true once the index settles, gating the pin bootstrap.
- */
-function useFrameDerivedTracks(
-  resolveColor: ObjectTrackColorResolver,
-  getDynamicAttributes: (path: string | null) => string[],
-): {
-  tracks: Track[];
-  resolved: boolean;
-} {
-  const stream = useFrameLabelsStream();
-  const engine = useAnnotationEngine();
-  const sampleId = useActiveSampleId();
-  const visible = useVisibleLabelSchemas();
-  const labelTypes = useFrameLabelFields();
-
-  // Fetch the index for every declared frame label field (stable per dataset/
-  // view) so visibility toggles filter client-side without re-fetching.
-  const allFields = useMemo(() => Object.keys(labelTypes), [labelTypes]);
-
-  // Each field's declared dynamic attributes, scoped per path so a field
-  // without dynamic attributes gets no sub-tracks.
-  const dynamicByPath = useMemo(() => {
-    const map: Record<string, string[]> = {};
-    for (const path of allFields) {
-      map[path] = getDynamicAttributes(path);
-    }
-    return map;
-  }, [allFields, getDynamicAttributes]);
-
-  // The fetch takes the union across fields — the backend returns attribute
-  // segments only for the fields that actually declare each attribute.
-  const allDynamicAttributes = useMemo(
-    () => Array.from(new Set(Object.values(dynamicByPath).flat())),
-    [dynamicByPath],
-  );
-
-  // Gate each frame field's tracks on the sidebar's visible set — deactivating
-  // a field in the schema manager hides its timeline rows, matching the canvas
-  // + sidebar.
-  const paths = useMemo(
-    () => allFields.filter((p) => visible.has(p)),
-    [allFields, visible],
-  );
-
-  const { indexByPath, loaded } = useVideoLabelsIndex(
-    stream,
-    allFields,
-    allDynamicAttributes,
-  );
-
-  // engine version is the rebuild signal.
-  const engineVersion = useEngineSelector(engine, () => engine.getVersion());
-
-  // No visible frame field, or the index hasn't settled: no rows. Tracks build
-  // per visible field from that field's index ⊕ its dirty-frame overlay, then
-  // concatenate — instance ids are unique across fields, so the rows just merge.
-  const tracks = useMemo(() => {
-    if (!stream || !sampleId || !loaded || paths.length === 0) {
-      return [];
-    }
-
-    return paths.flatMap((path) =>
-      buildTracksFromIndex({
-        path,
-        index: indexByPath[path] ?? [],
-        overlay: readEngineOverlay(engine, sampleId, path),
-        fps: stream.fps,
-        resolveColor,
-        dynamicAttributes: dynamicByPath[path] ?? [],
-      }),
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- engineVersion is the invalidation signal
-  }, [
-    engine,
-    sampleId,
-    paths,
-    stream,
-    resolveColor,
-    indexByPath,
-    loaded,
-    dynamicByPath,
-    engineVersion,
-  ]);
-
-  return { tracks, resolved: loaded };
-}
-
-/**
- * The engine's materialized frames + their live labels, keyed by frame number —
- * the overlay that shadows the server index. Reads every loaded frame, not just
- * the dirty set: a successful autosave folds edits into the seed and clears the
- * dirty set, so a dirty-only overlay would revert the timeline to the stale
- * index after each save. The engine is authoritative for every frame it holds,
- * so overlaying all of them keeps the timeline correct post-save and composes
- * index (unloaded) ⊕ engine (loaded window) once the seed is windowed. Bounded
- * by the loaded window, which today is the whole clip (see `warmupAll`).
- */
-function readEngineOverlay(
-  engine: ReturnType<typeof useAnnotationEngine>,
-  sample: string,
-  path: string,
-): FrameOverlay {
-  const overlay: FrameOverlay = new Map<number, LabelData[]>();
-
-  for (const frame of engine.loadedFrames(sample)) {
-    overlay.set(frame, engine.listLabels({ sample, path, frame }));
-  }
-
-  return overlay;
-}
-
-/**
  * Derive TD tracks from the engine — the authoritative, reactive TD source.
  * Reading it directly means a `support` / label edit (sidebar or timeline drag)
  * rebuilds the rows immediately. The prior scene-overlay read only re-derived on
@@ -361,10 +350,18 @@ function readEngineOverlay(
 function useTemporalDetectionTracks(
   sample: ModalSample | undefined,
   resolveColor: TemporalDetectionColorResolver,
+  /**
+   * Explore's active TD field set. Same override, same reason, as
+   * {@link useTemporalOverlaySync}'s: `useVisibleLabelSchemas()` stays empty
+   * in an Explore-only session, which without this dropped every TD row from
+   * the timeline exactly as it dropped every TD box from the canvas.
+   */
+  exploreVisible?: ReadonlySet<string>,
 ): Track[] {
   const temporalSample = useEngineTemporalSample();
   const frameRate = getModalSampleFrameRate(sample);
-  const visible = useVisibleLabelSchemas();
+  const annotationVisible = useVisibleLabelSchemas();
+  const visible = exploreVisible ?? annotationVisible;
 
   return useMemo(() => {
     if (
@@ -450,19 +447,64 @@ function useTrackDecorator({
   // implicit context).
   const splitFrameRef = useRef(1);
 
-  // id + label + class of every object track, the universe of merge targets;
-  // each row filters itself out and to its own class below.
-  const mergeCandidates = useMemo(
+  // Merge targets, bucketed by the pair that gates them — same class, same
+  // field. Grouping once turns the per-row lookup into a map hit; the previous
+  // shape was a flat list every row re-filtered, which is O(tracks) per
+  // rendered row and showed up as scroll cost on big samples.
+  const mergeCandidatesByGroup = useMemo(() => {
+    const groups = new Map<string, MergeCandidate[]>();
+
+    for (const track of objectTracks) {
+      if (parseSubTrackId(track.id)) continue;
+
+      const key = mergeGroupKey(
+        objectTrackPathOf(track),
+        objectTrackClassOf(track),
+      );
+      const candidate: MergeCandidate = {
+        id: track.id,
+        label: track.label,
+        startSec: trackStartSec(track),
+      };
+      const bucket = groups.get(key);
+      if (bucket) {
+        bucket.push(candidate);
+      } else {
+        groups.set(key, [candidate]);
+      }
+    }
+
+    return groups;
+  }, [objectTracks]);
+
+  /**
+   * Row decorations, keyed on the track object and validated against the
+   * interaction decoration it was built from.
+   *
+   * `baseDecorate` changes identity on every hover and selection move (it
+   * closes over the id sets), which would otherwise re-mint every mounted
+   * row's decoration on the hottest interaction there is. It hands back a
+   * stable object per row when that row's own state hasn't changed, so
+   * comparing it is enough to reuse the whole decoration — and the memoized
+   * rows then skip re-rendering. Everything else the decoration reads resets
+   * the cache through the dependency list below.
+   */
+  const cache = useMemo(
     () =>
-      objectTracks
-        .filter((t) => !parseSubTrackId(t.id))
-        .map((t) => ({
-          id: t.id,
-          label: t.label,
-          classLabel: objectTrackClassOf(t),
-          path: objectTrackPathOf(t),
-        })),
-    [objectTracks],
+      new WeakMap<
+        Track,
+        { base: BaseTrackDecoration; built: TrackDecoration }
+      >(),
+    [
+      fps,
+      snapStepSec,
+      actions,
+      stream,
+      getCurrentFrame,
+      mergeCandidatesByGroup,
+      expansion,
+      expandableParentIds,
+    ],
   );
 
   return useCallback(
@@ -470,20 +512,31 @@ function useTrackDecorator({
       // A sub-track row links its hover / selection to the PARENT instance and
       // renders as an indented child; it owns no presence-bar edits.
       const sub = parseSubTrackId(track.id);
+      const base = sub
+        ? baseDecorate({ ...track, id: sub.parentId })
+        : baseDecorate(track);
+
+      const cached = cache.get(track);
+      if (cached && cached.base === base) return cached.built;
+
+      const remember = (built: TrackDecoration): TrackDecoration => {
+        cache.set(track, { base, built });
+        return built;
+      };
+
       if (sub) {
-        const parentLink = baseDecorate({ ...track, id: sub.parentId });
-        return {
+        const parentLink = base;
+        return remember({
           ...parentLink,
           expansionGutter: true,
           depth: 1,
           isChild: true,
           height: SUB_TRACK_ROW_HEIGHT,
-        };
+        });
       }
 
-      const base = baseDecorate(track);
       if (!fps) {
-        return { ...base, expansionGutter: true };
+        return remember({ ...base, expansionGutter: true });
       }
 
       // A TD row is identified by its structured event payload; anything else
@@ -506,37 +559,31 @@ function useTrackDecorator({
           // the track's own frames field — the per-frame ops address it directly,
           // so a track on a non-primary field still deletes / splits / merges
           trackPath: objectTrackPathOf(track),
-          // merge only into a different track OF THE SAME CLASS on the SAME field
-          // (a cross-field merge is meaningless)
-          mergeTargets: mergeCandidates
-            .filter(
-              (c) =>
-                c.id !== track.id &&
-                c.classLabel === objectTrackClassOf(track) &&
-                c.path === objectTrackPathOf(track),
-            )
-            .map((c) => ({ id: c.id, label: c.label })),
+          // merge only into a different track OF THE SAME CLASS on the SAME
+          // field (a cross-field merge is meaningless), capped so a class with
+          // thousands of instances doesn't build — or show — a menu that long
+          ...mergeTargetsFor(mergeCandidatesByGroup, track),
         });
 
         if (!expandableParentIds.has(track.id)) {
-          return { ...decorated, expansionGutter: true };
+          return remember({ ...decorated, expansionGutter: true });
         }
 
-        return {
+        return remember({
           ...decorated,
           expansionGutter: true,
           expandable: true,
           expanded: expansion.isExpanded(track.id),
           onToggleExpand: () => expansion.toggle(track.id),
-        };
+        });
       }
 
       // Object track with no stream yet: can't wire frame edits — base only.
       if (isObjectTrack) {
-        return { ...base, expansionGutter: true };
+        return remember({ ...base, expansionGutter: true });
       }
 
-      return {
+      return remember({
         ...decorateTemporalDetectionTrack({
           tdEvent: tdEvent as TemporalDetectionEventData,
           base,
@@ -545,16 +592,17 @@ function useTrackDecorator({
           actions,
         }),
         expansionGutter: true,
-      };
+      });
     },
     [
+      cache,
       baseDecorate,
       fps,
       snapStepSec,
       actions,
       stream,
       getCurrentFrame,
-      mergeCandidates,
+      mergeCandidatesByGroup,
       expansion,
       expandableParentIds,
     ],
@@ -570,11 +618,43 @@ function useTrackDecorator({
  * only at mount) bootstraps from the real frame-track list; later recolors
  * update through the live `tracks` prop and preserve the user's pin state.
  */
-export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
+export const FrameLabelsTracks: React.FC<{
+  sample?: ModalSample;
+  /** Cap on the timeline drawer body (px); it scrolls internally past this. */
+  maxSize?: number;
+  /**
+   * Host content for the controls row, after the playback cluster. Passed
+   * through to `TimelineWithTracks` rather than assumed here: this component
+   * renders the same read-only track data in Explore and in Annotate, and
+   * only Annotate has editing actions to offer.
+   */
+  extraActions?: React.ReactNode;
+  /**
+   * Host content for the controls row's TRAILING group, beside the drawer
+   * chevron. Where a surface's own action cluster belongs — Explore puts its
+   * fit / JSON / help buttons here.
+   */
+  trailingActions?: React.ReactNode;
+  /**
+   * Which surface's per-frame field set the object tracks come from. Same
+   * choice, and for the same reason, as {@link RegisterFrameLabels}' — the
+   * rows have to describe the fields the stream actually fetched.
+   */
+  mode?: "annotate" | "explore";
+}> = ({
   sample,
+  maxSize,
+  extraActions,
+  trailingActions,
+  mode = "annotate",
 }) => {
   const { resolveObjectColor, resolveTemporalDetectionColor } =
     useTrackColorResolvers();
+
+  const exploreLabelFields = useExploreFrameLabelFields();
+
+  // Persisted globally so switching samples keeps the drawer open/closed.
+  const [drawerOpen, setDrawerOpen] = useTimelineDrawerOpen();
 
   // Persist pin state per video (dataset + sample) so reopening the same
   // sample restores which tracks the user pinned to the timeline.
@@ -591,11 +671,29 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
   const getDynamicAttributeNames = useDynamicAttributeNamesGetter();
 
   const { tracks: frameTracks, resolved: frameTracksResolved } =
-    useFrameDerivedTracks(resolveObjectColor, getDynamicAttributeNames);
+    useFrameDerivedTracks(
+      resolveObjectColor,
+      getDynamicAttributeNames,
+      mode === "explore" ? exploreLabelFields : undefined,
+    );
+  const exploreTdFields = useExploreTemporalDetectionFieldPaths();
   const temporalDetectionTracks = useTemporalDetectionTracks(
     sample,
     resolveTemporalDetectionColor,
+    mode === "explore" ? exploreTdFields : undefined,
   );
+
+  // Readiness for the data-timeline-loaded test seam: schemas must have
+  // landed (TD/frame fields are schema-gated), and the frame index must
+  // have resolved unless there are no frame fields to index.
+  const schemasLoaded = useLabelSchemasLoaded();
+  const visibleSchemas = useVisibleLabelSchemas();
+  const hasFrameFields = useMemo(
+    () => [...visibleSchemas].some((path) => path.startsWith("frames.")),
+    [visibleSchemas],
+  );
+  const timelineLoaded =
+    schemasLoaded && (frameTracksResolved || !hasFrameFields);
 
   // Object tracks (with their sub-tracks interleaved) followed by TD tracks.
   const tracks = useMemo(
@@ -633,7 +731,10 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
   // tracks land, leaving frame tracks unpinned.
   const ready = frameTracksResolved;
 
-  useScrollTrackToAnchor();
+  // Filled by TimelineWithTracks; the drawer is virtualized, so revealing a
+  // row has to go through the list rather than the DOM.
+  const timelineScroller = useRef<TimelineTracksScroller | null>(null);
+  useScrollTrackToAnchor(timelineScroller);
   const decorateTrack = useTrackDecorator({
     sample,
     objectTracks: frameTracks,
@@ -650,7 +751,13 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
     >
       <TimelineWithTracks
         decorateTrack={decorateTrack}
-        extraControls={<VideoAnnotationToolbar />}
+        scrollerRef={timelineScroller}
+        extraActions={extraActions}
+        trailingActions={trailingActions}
+        loaded={timelineLoaded}
+        maxSize={maxSize}
+        drawerOpen={drawerOpen}
+        onDrawerOpenChange={setDrawerOpen}
       />
     </TrackProvider>
   );
@@ -668,6 +775,7 @@ function decorateObjectTrack({
   splitFrameRef,
   trackPath,
   mergeTargets,
+  omitted,
 }: {
   track: Track;
   base: BaseTrackDecoration;
@@ -679,6 +787,8 @@ function decorateObjectTrack({
   splitFrameRef: React.MutableRefObject<number>;
   trackPath: string | null;
   mergeTargets: { id: string; label: string }[];
+  /** Same-class targets dropped by the cap, so the menu can say so. */
+  omitted: number;
 }): TrackDecoration {
   // Address the track's own frames field so a non-primary-field track still
   // operates; `undefined` falls back to the stream's primary field in the action.
@@ -691,6 +801,14 @@ function decorateObjectTrack({
       onSelect: () => actions.deleteTrack(track.id, fieldPath),
     },
     {
+      // deletes only the frame captured when the menu opened (see onContextMenu);
+      // a no-op when the track has no occurrence on that frame
+      label: "Delete current frame",
+      destructive: true,
+      onSelect: () =>
+        actions.trimTrack(track.id, [splitFrameRef.current], fieldPath),
+    },
+    {
       // splits at the frame captured when the menu opened (see onContextMenu)
       label: "Split at playhead",
       onSelect: () =>
@@ -701,6 +819,16 @@ function decorateObjectTrack({
       onSelect: () => actions.mergeTracks(track.id, target.id, fieldPath),
     })),
   ];
+
+  // Say so rather than let the list look complete — a silently truncated menu
+  // reads as "there is nothing else to merge into".
+  if (omitted > 0) {
+    menuItems.push({
+      label: `…and ${omitted} more not shown`,
+      disabled: true,
+      onSelect: () => undefined,
+    });
+  }
 
   return {
     ...base,

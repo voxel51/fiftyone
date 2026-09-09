@@ -7,6 +7,7 @@ FiftyOne ontology data class unit tests.
 """
 
 import unittest
+from unittest import mock
 
 from fiftyone.core.annotation.attributes import (
     MAX_CONDITION_DEPTH,
@@ -1068,6 +1069,49 @@ class OntologySDKTests(unittest.TestCase):
 
         self.assertEqual(fresh.version, 2)
         self.assertEqual(load_ontology("forwarded").description, "rev 2")
+
+
+class OntologyConnectionBootstrapTests(unittest.TestCase):
+    """``OntologyDocument.objects`` must bootstrap the DB connection before
+    building a queryset — the first SDK call in a cold process may be an
+    ontology call, and mongoengine's default manager does not establish the
+    default connection on its own.
+    """
+
+    def test_objects_manager_bootstraps_connection_first(self):
+        import fiftyone.core.odm.ontology as foo_odm
+
+        manager = mock.Mock()
+
+        with (
+            mock.patch.object(
+                foo_odm, "ensure_connection", manager.ensure_connection
+            ),
+            mock.patch.object(
+                foo_odm.OntologyDocument,
+                "_get_collection",
+                manager._get_collection,
+            ),
+        ):
+            foo_odm.OntologyDocument.objects
+
+        calls = [name for name, _, _ in manager.mock_calls]
+        self.assertIn("_get_collection", calls)
+        self.assertEqual(
+            calls[0],
+            "ensure_connection",
+            f"connection must be established before any query; got {calls}",
+        )
+
+    def test_ontology_document_uses_connected_manager(self):
+        import inspect
+
+        import fiftyone.core.odm.ontology as foo_odm
+
+        self.assertIsInstance(
+            inspect.getattr_static(foo_odm.OntologyDocument, "objects"),
+            foo_odm._ConnectedQuerySetManager,
+        )
 
 
 class NodeTests(unittest.TestCase):

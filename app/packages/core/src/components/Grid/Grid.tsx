@@ -69,6 +69,13 @@ function Grid() {
   const setSample = fos.useExpandSample(store);
   const autosizing = useRecoilValue(gridAutosizing);
 
+  // `reset` is the grid's refresh signal. The callables below are routed
+  // through a ref so their identities are not rebuild triggers — a transient
+  // identity change from an unrelated state update must not destroy and
+  // recreate the grid
+  const refs = React.useRef({ get, page, renderer, setSample });
+  refs.current = { get, page, renderer, setSample };
+
   const spotlight = useMemoOne(() => {
     /** SPOTLIGHT REFRESHER */
     reset;
@@ -81,31 +88,22 @@ function Grid() {
     cache.freeze();
 
     return new Spotlight<number, fos.Sample>({
-      ...get(),
-      ...renderer,
+      ...refs.current.get(),
+
+      detachItem: (item) => refs.current.renderer.detachItem(item),
+      hideItem: (item) => refs.current.renderer.hideItem(item),
+      showItem: (item) => refs.current.renderer.showItem(item),
 
       maxRows: MAX_ROWS,
       maxItemsSizeBytes: autosizing ? maxBytes : undefined,
       scrollbar: true,
       spacing,
 
-      get: (next) => page(next),
-      onItemClick: setSample,
+      get: (next) => refs.current.page(next),
+      onItemClick: (item) => refs.current.setSample(item),
       rowAspectRatioThreshold: zoom,
     });
-  }, [
-    cache,
-    autosizing,
-    get,
-    maxBytes,
-    page,
-    renderer,
-    reset,
-    resizing,
-    setSample,
-    spacing,
-    zoom,
-  ]);
+  }, [cache, autosizing, maxBytes, reset, resizing, spacing, zoom]);
 
   useEscape();
   useEvents({ id, cache, pixels, resizing, set, spotlight });

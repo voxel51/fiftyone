@@ -468,6 +468,9 @@ schemas:
 Indexing MCAP data __SUB_BETA__
 _______________________________
 
+.. customavailablein::
+    :enterprise_version: 2.22.0
+
 .. note::
 
     MCAP indexing is only available in
@@ -558,6 +561,9 @@ progress, disable it, or retry a stuck run at any time:
 
 Authoring manifests __SUB_BETA__
 ________________________________
+
+.. customavailablein::
+    :enterprise_version: 2.22.0
 
 A **projection manifest** is a YAML document that tells the indexing system
 what data to extract from your MCAP files and how to organize it. A manifest

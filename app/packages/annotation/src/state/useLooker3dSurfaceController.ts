@@ -78,12 +78,12 @@ export const useLooker3dSurfaceWrite = (): Looker3dSurfaceWrite => {
     () => ({
       ready: controller !== null,
 
-      // a store-bound handle reading the explicitly-supplied label: the
-      // controller's `toLabel` serializes it (build3dLabel strips the
-      // working-only attrs) and commits in one origin-suppressed transaction
+      // a store-bound handle reading the explicitly-supplied entry: the
+      // controller's `toLabel` serializes its document (`entry.data`) and
+      // commits in one origin-suppressed transaction
       commit: (label) =>
         controller?.commit({
-          instanceId: label._id,
+          instanceId: label.data._id,
           path: label.path,
           read: () => label,
           apply: () => undefined,

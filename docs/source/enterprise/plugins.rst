@@ -5,6 +5,9 @@ FiftyOne Enterprise Plugins
 
 .. default-role:: code
 
+.. customavailablein::
+    :enterprise_version: 1.3.0
+
 FiftyOne Enterprise provides native support for installing and running
 :ref:`FiftyOne plugins <fiftyone-plugins>`, which offers powerful opportunities
 to extend and customize the functionality of your Enterprise deployment to suit
@@ -356,6 +359,9 @@ method from the Management SDK:
 Delegated operations
 ____________________
 
+.. customavailablein::
+    :enterprise_version: 1.4.0
+
 :ref:`Delegated operations <delegated-operations>` are a powerful feature of
 FiftyOne's plugin framework that allows users to schedule tasks from within the
 App that are executed in the background on a connected compute cluster.
@@ -434,8 +440,8 @@ and their status.
 
 .. _enterprise-distributed-execution:
 
-Distributed execution __SUB_NEW__
-_________________________________
+Distributed execution
+_____________________
 
 .. versionadded:: 2.11.0
 
@@ -501,8 +507,8 @@ platform such as Databricks or Anyscale.
 
 .. _enterprise-on-demand-compute:
 
-On-demand compute __SUB_NEW__
------------------------------
+On-demand compute
+-----------------
 
 .. versionadded:: 2.11.0
 
@@ -532,6 +538,36 @@ externally-managed workflow orchestration tools, such as
 `Airflow <https://airflow.apache.org>`_, `Flyte <https://flyte.org>`_, and
 `Spark <https://spark.apache.org/>`_. Please contact your Voxel51 support team
 for further details.
+
+.. _enterprise-services:
+
+Services
+________
+
+.. customavailablein::
+    :enterprise_version: 2.23.0
+
+Some builtin operators run as long-lived *services*: always-on model servers
+that stay ready between uses instead of spinning up a new job per run. Services
+are hosted by a **service orchestrator** and power GPU-backed, interactive
+features such as :ref:`agentic labeling <agentic-labeling>` and
+:ref:`AI-assisted annotation <in-app-ai-annotation>` (segmentation and video
+tracking), where a per-run cold start would otherwise make the experience too
+slow.
+
+Administrators manage services from the Services page under Settings >
+Services, where you can start, stop, and monitor each service and view its
+status.
+
+.. image:: https://cdn.voxel51.com/plugins/services_page.webp
+   :alt: enterprise-services-page
+   :align: center
+
+Services run on your own GPU infrastructure, provisioned through the service
+orchestrator. Administrators can refer to the
+`deployment guide <https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/docs/configuring-service-orchestrator.md>`_
+to learn how to configure the service orchestrator for their FiftyOne
+Enterprise deployment.
 
 .. _enterprise-managing-delegated-operations:
 
@@ -566,6 +602,17 @@ The table provides options to sort, search, and filter runs shown to refine the
 list as you like:
 
 .. image:: /images/plugins/operators/runs/runs_general.png
+
+.. _enterprise-deployment-runs:
+
+Deployment-level Runs page
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The Runs tab described above lives on a dataset. Users can also reach a
+**deployment-level** Runs page from Settings > Runs that opens the same table
+without first loading a dataset, making it a convenient entry point for
+monitoring delegated operations and long-running
+:ref:`service <enterprise-services>` operations across the whole deployment.
 
 .. _enterprise-runs-statuses:
 
@@ -689,6 +736,9 @@ appears beside the operator label:
 Renaming
 ^^^^^^^^
 
+.. customavailablein::
+    :enterprise_version: 1.5.0
+
 When delegating an operation multiple times on the same dataset, you may wish
 to give the runs custom labels so that you can easily identify each run later.
 
@@ -704,6 +754,9 @@ indicated by “3”:
 
 Terminate
 ^^^^^^^^^
+
+.. customavailablein::
+    :enterprise_version: 1.5.0
 
 To terminate a run, click the three dots indicated by "1". Then, in the
 menu, click "Terminate" as indicated by "2". The run status will be
@@ -725,6 +778,9 @@ updated and will now display as failed:
 
 Monitoring progress
 ^^^^^^^^^^^^^^^^^^^
+
+.. customavailablein::
+    :enterprise_version: 1.5.0
 
 Delegated operations can optionally
 :ref:`report their progress <operator-reporting-progress>` during execution.

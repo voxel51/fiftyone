@@ -2,12 +2,7 @@ import type { FrameLabelSnapshot, SyntheticBox } from "@fiftyone/utilities";
 import { PlaybackStreamBase } from "@fiftyone/playback";
 
 // Re-exported from `@fiftyone/utilities` for the package barrel.
-export type {
-  FrameLabelSnapshot,
-  PropagationBlob,
-  PropagationMethod,
-  SyntheticBox,
-} from "@fiftyone/utilities";
+export type { FrameLabelSnapshot, SyntheticBox } from "@fiftyone/utilities";
 
 export interface SyntheticActor {
   id: string;
@@ -213,7 +208,6 @@ function snapshotAtTime(
       // — synthetic actors have no numeric index by design).
       instance: { _cls: "Instance", _id: actor.id },
       keyframe: true,
-      propagation: null,
     });
   }
   return { frameNumber, detections };

@@ -17,7 +17,12 @@ import {
   isPolyline,
   isPolyline3dOverlay,
 } from "../../types";
-import type { ReconciledDetection3D, ReconciledPolyline3D } from "../types";
+import type {
+  Detection3DDocument,
+  Polyline3DDocument,
+  ReconciledDetection3D,
+  ReconciledPolyline3D,
+} from "../types";
 import {
   roundDetection,
   roundPolyline,
@@ -134,17 +139,17 @@ function mapOverlaysToLabelId(
 
   for (const overlay of overlays) {
     if (isDetection3dOverlay(overlay)) {
-      const detection: ReconciledDetection3D = {
-        ...overlay,
-      };
-      labelsById[overlay._id] = roundDetection(detection);
+      labelsById[overlay.data._id] = roundDetection({ ...overlay });
     } else if (isPolyline3dOverlay(overlay)) {
       const polyline: ReconciledPolyline3D = {
         ...overlay,
-        filled: !!overlay.filled,
-        closed: !!overlay.closed,
+        data: {
+          ...overlay.data,
+          filled: !!overlay.data.filled,
+          closed: !!overlay.data.closed,
+        },
       };
-      labelsById[overlay._id] = roundPolyline(polyline);
+      labelsById[overlay.data._id] = roundPolyline(polyline);
     }
   }
 
@@ -182,7 +187,13 @@ export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
       },
       initialized: true,
     });
-  }, [mode, currentSampleId, rawOverlays, workingState.initialized]);
+  }, [
+    mode,
+    currentSampleId,
+    rawOverlays,
+    workingState.initialized,
+    setWorking,
+  ]);
 
   const prevRawRef = useRef(rawOverlays);
 
@@ -198,7 +209,7 @@ export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
         const rawById = new Map<string, OverlayLabel>();
 
         for (const o of overlays) {
-          rawById.set(o._id, o);
+          rawById.set(o.data._id, o);
         }
 
         const prev = state.doc.labelsById;
@@ -219,7 +230,7 @@ export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
 
           // Baseline no longer includes this label (e.g. annotationSchemas
           // contracted). User-created labels (isNew) are always kept.
-          if (!raw && !label.isNew) {
+          if (!raw && !label.ui.isNew) {
             if (!next) next = { ...prev };
             delete next[id];
             changed = true;
@@ -227,10 +238,10 @@ export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
           }
 
           // Color drifted (e.g. coloring settings changed).
-          // Only touch `color` — geometry fields are user edits and stay put.
-          if (raw && raw.color !== label.color) {
+          // Only touch `color` — the document is user edits and stays put.
+          if (raw && raw.ui.color !== label.ui.color) {
             if (!next) next = { ...prev };
-            next[id] = { ...label, color: raw.color };
+            next[id] = { ...label, ui: { ...label.ui, color: raw.ui.color } };
             changed = true;
           }
         }
@@ -240,19 +251,22 @@ export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
         // that wasn't there at init time.
         for (const overlay of overlays) {
           // Already in working — handled above
-          if (prev[overlay._id]) continue;
+          if (prev[overlay.data._id]) continue;
 
           if (!next) next = { ...prev };
 
           if (isDetection3dOverlay(overlay)) {
-            next[overlay._id] = roundDetection({
+            next[overlay.data._id] = roundDetection({
               ...overlay,
             });
           } else if (isPolyline3dOverlay(overlay)) {
-            next[overlay._id] = roundPolyline({
+            next[overlay.data._id] = roundPolyline({
               ...overlay,
-              filled: !!overlay.filled,
-              closed: !!overlay.closed,
+              data: {
+                ...overlay.data,
+                filled: !!overlay.data.filled,
+                closed: !!overlay.data.closed,
+              },
             });
           }
           changed = true;
@@ -345,7 +359,7 @@ export function useUpdateWorkingLabel() {
     ({ set }) =>
       (
         labelId: LabelId,
-        updates: Partial<ReconciledDetection3D> | Partial<ReconciledPolyline3D>,
+        updates: Partial<Detection3DDocument> | Partial<Polyline3DDocument>,
       ) => {
         set(workingAtom, (prev): WorkingState => {
           const existingLabel = prev.doc.labelsById[labelId];
@@ -358,7 +372,7 @@ export function useUpdateWorkingLabel() {
           const roundedUpdates: Record<string, unknown> = { ...updates };
 
           if (isDetection(existingLabel)) {
-            const detectionUpdates = updates as Partial<ReconciledDetection3D>;
+            const detectionUpdates = updates as Partial<Detection3DDocument>;
             if (detectionUpdates.location) {
               roundedUpdates.location = roundTuple(detectionUpdates.location);
             }
@@ -376,7 +390,7 @@ export function useUpdateWorkingLabel() {
               );
             }
           } else if (isPolyline(existingLabel)) {
-            const polylineUpdates = updates as Partial<ReconciledPolyline3D>;
+            const polylineUpdates = updates as Partial<Polyline3DDocument>;
             if (polylineUpdates.points3d) {
               roundedUpdates.points3d = polylineUpdates.points3d.map(
                 (segment) =>
@@ -389,7 +403,7 @@ export function useUpdateWorkingLabel() {
 
           const updatedLabel = {
             ...existingLabel,
-            ...roundedUpdates,
+            data: { ...existingLabel.data, ...roundedUpdates },
           } as ReconciledDetection3D | ReconciledPolyline3D;
 
           return {
@@ -426,7 +440,7 @@ export function useAddWorkingLabel() {
               ...prev.doc,
               labelsById: {
                 ...prev.doc.labelsById,
-                [roundedLabel._id]: roundedLabel,
+                [roundedLabel.data._id]: roundedLabel,
               },
             },
           };

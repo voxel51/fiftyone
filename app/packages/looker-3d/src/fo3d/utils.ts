@@ -44,7 +44,9 @@ export const getSavedCameraState = (
     ) {
       return parsed as SavedCameraState;
     }
-  } catch {}
+  } catch {
+    // corrupt saved state falls through to null
+  }
   return null;
 };
 
@@ -111,10 +113,25 @@ export const getNodeFromSceneByName = (scene: FoScene, name: string) => {
   return null;
 };
 
+/**
+ * Builds the leva schema for the scene's per-node visibility toggles.
+ *
+ * `savedVisibility` lets a persisted choice win over the scene's authored
+ * `visible` flag, so hiding a point cloud survives a refresh. Only node names
+ * present in the saved map are overridden, so a map left over from a scene with
+ * a different graph degrades to the authored defaults instead of hiding things
+ * that no longer exist.
+ */
 export const getVisibilityMapFromFo3dParsed = (
   foSceneGraph: FoScene,
+  savedVisibility?: Record<string, boolean> | null,
 ): Record<string, boolean> => {
   if (!foSceneGraph) return null;
+
+  const resolveVisible = (child: FoSceneNode) => {
+    const saved = savedVisibility?.[child.name];
+    return typeof saved === "boolean" ? saved : child.visible;
+  };
 
   const getVisibilityMapForChild = (child: FoSceneNode, _isNested: boolean) => {
     if (child.children?.length > 0) {
@@ -128,7 +145,7 @@ export const getVisibilityMapFromFo3dParsed = (
       return {
         [folderName]: folder({
           [child.name]: {
-            value: child.visible,
+            value: resolveVisible(child),
             label: child.name,
           },
           ...childrenVisibilityMap.reduce(
@@ -140,13 +157,45 @@ export const getVisibilityMapFromFo3dParsed = (
     }
 
     return {
-      [child.name]: child.visible,
+      [child.name]: resolveVisible(child),
     };
   };
 
   return foSceneGraph.children
     .map((child) => getVisibilityMapForChild(child, false))
     .reduce((acc, curr) => ({ ...acc, ...curr }), {});
+};
+
+/**
+ * Flattens a scene's *authored* per-node visibility (ignoring any saved
+ * preference), keyed by node name.
+ *
+ * Used as the baseline a saved preference is diffed against: a node's
+ * visibility is only worth persisting once it diverges from what the scene
+ * itself authored.
+ */
+export const getAuthoredVisibilityMap = (
+  foSceneGraph: FoScene,
+): Record<string, boolean> => {
+  if (!foSceneGraph) return {};
+
+  const walk = (child: FoSceneNode): Record<string, boolean> => {
+    const own = { [child.name]: child.visible };
+
+    if (!child.children?.length) {
+      return own;
+    }
+
+    return child.children.reduce(
+      (acc, nested) => ({ ...acc, ...walk(nested) }),
+      own,
+    );
+  };
+
+  return foSceneGraph.children.reduce(
+    (acc, child) => ({ ...acc, ...walk(child) }),
+    {} as Record<string, boolean>,
+  );
 };
 
 export const getMediaPathForFo3dSample = (

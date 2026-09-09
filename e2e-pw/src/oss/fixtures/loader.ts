@@ -32,11 +32,24 @@ export class OssLoader extends AbstractFiftyoneLoader {
     const kwargsStringified = getStringifiedKwargs(kwargs);
 
     return this.pythonRunner.exec(`
+      import fcntl
+      import os
+
+      import fiftyone as fo
       import fiftyone.zoo as foz
 
-      dataset = foz.load_zoo_dataset(
-        "${zooDatasetName}", dataset_name="${id}"${kwargsStringified}
+      # parallel workers share the zoo download cache; an exclusive lock per
+      # dataset serializes the download, after which loads are cache hits
+      os.makedirs(fo.config.dataset_zoo_dir, exist_ok=True)
+      lock_path = os.path.join(
+        fo.config.dataset_zoo_dir, ".${zooDatasetName}.lock"
       )
+      with open(lock_path, "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        dataset = foz.load_zoo_dataset(
+          "${zooDatasetName}", dataset_name="${id}"${kwargsStringified}
+        )
+
       dataset.persistent = True
     `);
   }
@@ -105,10 +118,13 @@ export class OssLoader extends AbstractFiftyoneLoader {
       document.addEventListener("pointerdown", handleCursorChange);
       document.addEventListener("pointerup", handleCursorChange);
 
-      window.__FO_PLAYWRIGHT_LOADING_SCREEN_COUNT = 0;
+      // log-visibility watchdog for every spec; specs asserting on loading
+      // screen counts arm an EventUtils.initCounter for
+      // "global-loading-screen" instead
+      let loadingScreens = 0;
       document.addEventListener("global-loading-screen", () => {
-        window.__FO_PLAYWRIGHT_LOADING_SCREEN_COUNT += 1;
-        if (window.__FO_PLAYWRIGHT_LOADING_SCREEN_COUNT > 1) {
+        loadingScreens += 1;
+        if (loadingScreens > 1) {
           throw new Error(
             "Global loading screen fired more than once — top-level Suspense boundary re-activated after initial page load",
           );
@@ -210,9 +226,16 @@ export class OssLoader extends AbstractFiftyoneLoader {
       return;
     }
 
+    // a grid tile's terminal state depends on its kind: lookers finish
+    // drawing a canvas (or report an error); custom-renderer tiles are
+    // ready once their wrapper commits
     await page.waitForFunction(
       () => {
         if (document.querySelector(`[data-cy=looker-error-info]`)) {
+          return true;
+        }
+
+        if (document.querySelector(`[data-cy=grid-custom-renderer]`)) {
           return true;
         }
 

@@ -5,6 +5,10 @@ Annotating Datasets
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 0.13.0
+    :enterprise_version: 1.0
+
 FiftyOne provides a powerful annotation API that makes it easy to add or edit
 labels on your :ref:`datasets <using-datasets>` or specific
 :ref:`views <using-views>` into them.
@@ -544,6 +548,10 @@ for more details.
 Label schema
 ------------
 
+.. customavailablein::
+    :oss_version: 0.14.0
+    :enterprise_version: 1.0
+
 The `label_schema`, `label_field`, `label_type`, `classes`, `attributes`, and
 `mask_targets` parameters to
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` allow
@@ -758,6 +766,10 @@ types like lists, dictionaries, and arrays will be omitted.
 Restricting additions, deletions, and edits
 -------------------------------------------
 
+.. customavailablein::
+    :oss_version: 0.14.0
+    :enterprise_version: 1.0
+
 When you create annotation runs that involve editing existing label fields, you
 can optionally specify that certain changes are not allowed by passing the
 following flags to
@@ -857,6 +869,10 @@ for this as follows:
 
 Labeling videos
 ---------------
+
+.. customavailablein::
+    :oss_version: 0.14.0
+    :enterprise_version: 1.0
 
 When annotating spatiotemporal objects in videos, you have a few additional
 options at your fingertips.
@@ -1073,7 +1089,7 @@ three classes with the appropriate abstract methods implemented:
 .. note::
 
     Refer to the
-    `fiftyone.utils.cvat <https://github.com/voxel51/fiftyone/blob/develop/fiftyone/utils/cvat.py>`_
+    `fiftyone.utils.cvat <https://github.com/voxel51/fiftyone/blob/main/fiftyone/utils/cvat.py>`_
     module for an example of how the above subclasses are implemented for the
     CVAT backend.
 

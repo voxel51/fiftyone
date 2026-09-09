@@ -5,6 +5,10 @@ KITTI Multiview
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 0.17.0
+    :enterprise_version: 1.0
+
 KITTI contains a suite of vision tasks built using an autonomous
 driving platform.
 

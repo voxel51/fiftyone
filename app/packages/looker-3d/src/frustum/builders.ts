@@ -55,7 +55,7 @@ export function staticTransformToMatrix4(
  */
 export function computeFrustumDepth(
   sceneBounds: Box3 | null,
-  scaleFactor: number = 0.1,
+  scaleFactor = 0.1,
 ): number {
   return FRUSTUM_DEPTH;
   // todo: need to "tune" proportionating with scene bbox more

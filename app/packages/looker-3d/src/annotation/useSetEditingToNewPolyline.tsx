@@ -33,7 +33,7 @@ export const useSetEditingToNewPolyline = () => {
       resetCurrentEditing();
       clear();
     };
-  }, [resetCurrentEditing]);
+  }, [resetCurrentEditing, clear]);
 
   return useCallback(
     (labelId: string, transformData: PolylinePointTransformData) => {
@@ -56,6 +56,10 @@ export const useSetEditingToNewPolyline = () => {
       const effectivePoints: [number, number, number][][] =
         transformData.segments.map((segment) => segment.points);
 
+      // Label data is the persistable document ONLY — addressing (path,
+      // sampleId) rides on the AnnotationLabel wrapper, never inside `data`,
+      // so a draft's first save cannot leak it into the sample.
+      const labelPath = transformData.path ?? currentActiveField;
       const defaultPolylineLabelData = {
         _id: labelId,
         _cls: "Polyline",
@@ -64,8 +68,6 @@ export const useSetEditingToNewPolyline = () => {
         filled: false,
         closed: shouldDefaultToClosed,
         label: transformData.label,
-        path: transformData.path ?? currentActiveField,
-        sampleId: transformData.sampleId ?? currentSampleId,
         ...(transformData.misc ?? {}),
       };
 
@@ -77,14 +79,14 @@ export const useSetEditingToNewPolyline = () => {
       setCurrentEditing({
         isNew: true,
         data: stagedPolylineLabelData,
-        path: stagedPolylineLabelData.path,
+        path: labelPath,
         type: "Polyline" as const,
         overlay: {
           id: labelId,
           getLabel: () => {
             return stagedPolylineLabelData;
           },
-          field: stagedPolylineLabelData.path,
+          field: labelPath,
           label: stagedPolylineLabelData,
           setSelected: (selected: boolean) => {
             if (!selected) {

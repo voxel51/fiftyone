@@ -1,6 +1,10 @@
 FiftyOne Concepts
 =================
 
+.. meta::
+    :description: In-depth guides to FiftyOne's core concepts: datasets,
+        views, the App, evaluation, brain methods, and more.
+
 Each section in this guide provides an example-centric deep dive into a core
 concept of FiftyOne, with the goal of getting you up-and-running with FiftyOne
 on your data quickly and easily.
@@ -66,7 +70,7 @@ on your data quickly and easily.
     :header: Evaluating models  __SUB_NEW__
     :description: Use FiftyOne's builtin methods to evaluate your models and analyze their strengths and weaknesses.
     :button_text: Learn more about evaluating models
-    :button_link: evaluation.html
+    :button_link: evaluation/index.html
 
 .. customcalloutitem::
     :header: Using aggregations

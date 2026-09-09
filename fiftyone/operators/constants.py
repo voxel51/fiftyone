@@ -50,3 +50,15 @@ class ViewTarget:
     When using this option, specify 'custom_view_target' in the
     operator parameters with a list of JSON-serialized view stages to apply.
     """
+
+    @classmethod
+    def values(cls):
+        """Returns all :class:`ViewTarget` values."""
+        return _VIEW_TARGET_VALUES
+
+
+_VIEW_TARGET_VALUES = tuple(
+    value
+    for name, value in vars(ViewTarget).items()
+    if not name.startswith("_") and isinstance(value, str)
+)

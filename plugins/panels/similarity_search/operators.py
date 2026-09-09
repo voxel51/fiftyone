@@ -120,15 +120,7 @@ class SimilaritySearchOperator(foo.Operator):
                 if is_snapshot or not can_edit:
                     dist_field = None
 
-            # Determine the base view for the search.
-            # "view" uses ctx.view (includes view stages, sidebar
-            # filters, and extended stages from the app).
-            # "dataset" (default) uses the bare dataset view.
-            search_scope = ctx.params.get("search_scope", "dataset")
-            if search_scope == "view":
-                view = ctx.view
-            else:
-                view = dataset.view()
+            view = ctx.target_view(require_flat=True)
 
             ctx.set_progress(0.2, label="Preparing query...")
 

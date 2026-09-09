@@ -159,6 +159,19 @@ export class ModalSidebarPom {
     return absPath;
   }
 
+  async hide() {
+    const toggle = this.page
+      .getByTestId("modal")
+      .getByTestId("action-toggle-sidebar");
+    await toggle.waitFor({ state: "visible" });
+
+    if (await this.locator.isVisible()) {
+      await toggle.click();
+    }
+
+    await expect(this.locator).toBeHidden();
+  }
+
   /**
    * Hovers over a sidebar field and clicks the quick edit button to open
    * inline editing
@@ -233,9 +246,10 @@ class ModalSidebarAsserter {
   async waitUntilSidebarEntryTextEquals(key: string, value: string) {
     return this.modalSidebarPom.page.waitForFunction(
       ({ key_, value_ }: { key_: string; value_: string }) => {
+        // a not-yet-mounted entry is "not equal yet", not a crash
         return (
           document.querySelector(`[data-cy='sidebar-entry-${key_}']`)
-            .textContent === value_
+            ?.textContent === value_
         );
       },
       { key_: key, value_: value },
@@ -301,10 +315,11 @@ class ModalSidebarAsserter {
   async verifySampleTagCount(count: number) {
     await this.modalSidebarPom.page.waitForFunction(
       (count_) => {
+        // a not-yet-mounted entry is "not equal yet", not a crash
         return (
           Number(
             document.querySelector("#modal [data-cy='sidebar-entry-tags']")
-              .textContent,
+              ?.textContent,
           ) === count_
         );
       },
@@ -345,11 +360,12 @@ class ModalSidebarAsserter {
   async verifyLabelTagCount(count: number) {
     await this.modalSidebarPom.page.waitForFunction(
       (count_) => {
+        // a not-yet-mounted entry is "not equal yet", not a crash
         return (
           Number(
             document.querySelector(
               "#modal [data-cy='sidebar-field-container-_label_tags'] [data-cy='entry-count-all']",
-            ).textContent,
+            )?.textContent,
           ) === count_
         );
       },

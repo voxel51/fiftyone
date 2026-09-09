@@ -43,12 +43,14 @@ vi.mock("@fiftyone/annotation", () => ({
 }));
 
 vi.mock("@fiftyone/state", () => ({
-  DefaultContextManager: vi.fn(() => ({
-    isActive: () => false,
-    enter: vi.fn(),
-    exit: vi.fn(),
-    registerExitCallback: vi.fn(),
-  })),
+  DefaultContextManager: vi.fn(function () {
+    return {
+      isActive: () => false,
+      enter: vi.fn(),
+      exit: vi.fn(),
+      registerExitCallback: vi.fn(),
+    };
+  }),
   useActiveModalFields: () => [[], vi.fn()],
   useModalSample: () => ({ sample: { _id: "test-sample-id" } }),
   useQueryPerformanceSampleLimit: () => 1000,

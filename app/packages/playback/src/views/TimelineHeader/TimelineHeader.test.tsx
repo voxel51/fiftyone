@@ -90,12 +90,16 @@ describe("TimelineHeader", () => {
   it("renders the controls row and the ruler in document order", () => {
     render(<HeaderHarness />);
     const root = screen.getByTestId("timeline-header-root");
-    // Controls (root has class "root" with border-bottom) is the first
-    // child; ruler is the second.
-    const children = Array.from(root.children);
-    expect(children).toHaveLength(2);
-    expect(children[0].querySelector('[aria-label="Play"]')).not.toBeNull();
-    expect(children[1].getAttribute("data-testid")).toBe("timeline-ruler");
+    const controls = screen.getByTestId("timeline-controls-root");
+    const ruler = screen.getByTestId("timeline-ruler");
+    expect(root.contains(controls)).toBe(true);
+    expect(root.contains(ruler)).toBe(true);
+    // Order, not child index: the ruler is wrapped for its right-click menu,
+    // so counting direct children says nothing useful.
+    expect(
+      controls.compareDocumentPosition(ruler) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("renders rulerOverlay inside the ruler's DOM node", () => {
@@ -124,16 +128,26 @@ describe("TimelineHeader", () => {
         <div data-testid="pinned-section">pinned tracks</div>
       </HeaderHarness>,
     );
+    // Presence of the slot, not a child count: the ruler is wrapped for its
+    // right-click menu, so counting the root's children is brittle.
     expect(screen.getByTestId("pinned-section")).toBeTruthy();
-    // The root should gain a third child (the belowRuler wrapper).
     const root = screen.getByTestId("timeline-header-root");
-    expect(root.children).toHaveLength(3);
+    const ruler = screen.getByTestId("timeline-ruler");
+    const pinned = screen.getByTestId("pinned-section");
+    expect(root.contains(pinned)).toBe(true);
+    expect(ruler.contains(pinned)).toBe(false);
+    expect(
+      ruler.compareDocumentPosition(pinned) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("does not render the belowRuler slot when children is absent", () => {
     render(<HeaderHarness />);
+    // The slot itself is absent, which is the behaviour. Child counts are
+    // not: the ruler is wrapped for its right-click menu.
+    expect(screen.queryByTestId("pinned-section")).toBeNull();
     const root = screen.getByTestId("timeline-header-root");
-    expect(root.children).toHaveLength(2);
+    expect(root.querySelector('[class*="belowRuler"]')).toBeNull();
   });
 
   describe("buffered-ranges shading", () => {

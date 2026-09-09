@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import {
   type BufferGeometry,
+  type LoadingManager,
   Mesh,
   Points,
   type Quaternion,
@@ -16,13 +17,16 @@ import { usePointCloudHoverFromRaycast } from "../../hooks/use-point-cloud-hover
 import type { PointCloudCrop } from "../../utils/point-cloud-crop";
 import { useFo3dContext } from "../context";
 import { usePcdMaterial } from "../point-cloud/use-pcd-material";
+import { GaussianSplatAsset } from "../render-types";
 import type {
   FoMeshBasicMaterialProps,
   FoMeshMaterial,
   FoPointcloudMaterialProps,
   PlyAsset,
 } from "../render-types";
+import { GaussianSplat } from "../splat/GaussianSplat";
 import { getBasePathForTextures, getResolvedUrlForFo3dAsset } from "../utils";
+import { sniffPlyIsGaussianSplat } from "./ply-splat-detection";
 
 interface PlyProps {
   name: string;
@@ -32,7 +36,69 @@ interface PlyProps {
   scale: Vector3;
   children?: React.ReactNode;
   pointCloudCrop?: PointCloudCrop | null;
+  requiresCovariance?: boolean;
 }
+
+type PlySplatDetection = {
+  plyUrl: string;
+  isGaussianSplat: boolean;
+};
+
+/**
+ * Sniffs one PLY URL and reports the result only while that URL is current.
+ * The caller can keep rendering nothing during the initial `null` state.
+ */
+export const usePlySplatDetection = (
+  plyUrl: string,
+  loadingManager?: Pick<LoadingManager, "itemStart" | "itemEnd" | "itemError">,
+) => {
+  const [splatDetection, setSplatDetection] =
+    useState<PlySplatDetection | null>(null);
+  const currentDetection =
+    splatDetection?.plyUrl === plyUrl ? splatDetection : null;
+
+  // This effect sniffs the PLY header so Gaussian PLYs are routed through
+  // Spark without asking Three's ordinary PLY loader to parse the full file.
+  useEffect(() => {
+    let cancelled = false;
+    let loadingEnded = false;
+    const abortController = new AbortController();
+    const headerUrl = `${plyUrl}#ply-splat-header`;
+    const endLoading = () => {
+      if (loadingEnded) {
+        return;
+      }
+
+      loadingManager?.itemEnd(headerUrl);
+      loadingEnded = true;
+    };
+
+    loadingManager?.itemStart(headerUrl);
+
+    sniffPlyIsGaussianSplat(plyUrl, abortController.signal)
+      .then((result) => {
+        if (!cancelled) {
+          setSplatDetection({ plyUrl, isGaussianSplat: result });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          // Classification is an optimization for routing Gaussian PLYs. If it
+          // fails, preserve the established behavior and let Three load the PLY.
+          setSplatDetection({ plyUrl, isGaussianSplat: false });
+        }
+      })
+      .finally(endLoading);
+
+    return () => {
+      cancelled = true;
+      abortController.abort();
+      endLoading();
+    };
+  }, [loadingManager, plyUrl]);
+
+  return currentDetection;
+};
 
 const DEFAULT_PLY_MATERIAL: FoMeshMaterial = {
   _type: "MeshStandardMaterial",
@@ -46,6 +112,7 @@ const DEFAULT_PLY_MATERIAL: FoMeshMaterial = {
   vertexColors: true,
 };
 
+/** Resolves whether a PLY geometry should use point-cloud rendering. */
 export const inferPlyIsPointCloud = (
   geometry: BufferGeometry | null | undefined,
   explicitIsPointCloud: boolean | undefined,
@@ -103,12 +170,13 @@ const PlyWithPointsMaterial = ({
 
   const { setHoverMetadata } = useFo3dContext();
 
+  // This effect updates hover metadata when point-cloud shading changes.
   useEffect(() => {
     setHoverMetadata((prev) => ({
       ...prev,
       renderModeDescriptor: shadingMode,
     }));
-  }, [shadingMode]);
+  }, [setHoverMetadata, shadingMode]);
 
   if (!geometry || !pointsMaterial) {
     return null;
@@ -180,7 +248,7 @@ const PlyWithNoMaterialOverride = ({
   return <primitive object={mesh} />;
 };
 
-export const Ply = ({
+const PlyGeometry = ({
   name,
   ply: {
     plyPath,
@@ -233,6 +301,7 @@ export const Ply = ({
     [geometry, isPcd],
   );
 
+  // This effect prepares loaded PLY geometry for its resolved render mode.
   useEffect(() => {
     setIsGeometryResolved(false);
     setIsUsingVertexColors(false);
@@ -315,4 +384,59 @@ export const Ply = ({
       <group>{children ?? null}</group>
     </group>
   );
+};
+
+/** Routes a PLY asset to Spark, a point cloud, or a triangle mesh. */
+export const Ply = (props: PlyProps) => {
+  const {
+    name,
+    ply: { plyPath, preTransformedPlyPath, centerGeometry },
+    position,
+    quaternion,
+    scale,
+    children,
+    requiresCovariance,
+  } = props;
+  const { fo3dRoot, loadingManager } = useFo3dContext();
+
+  const plyUrl = useMemo(
+    () =>
+      preTransformedPlyPath ??
+      getSampleSrc(getResolvedUrlForFo3dAsset(plyPath, fo3dRoot)),
+    [plyPath, preTransformedPlyPath, fo3dRoot],
+  );
+  const currentDetection = usePlySplatDetection(plyUrl, loadingManager);
+  const isGaussianSplat = currentDetection?.isGaussianSplat ?? null;
+
+  const splat = useMemo(
+    () =>
+      new GaussianSplatAsset(
+        plyPath,
+        preTransformedPlyPath,
+        "ply",
+        centerGeometry,
+      ),
+    [plyPath, preTransformedPlyPath, centerGeometry],
+  );
+
+  if (isGaussianSplat === null) {
+    return null;
+  }
+
+  if (isGaussianSplat) {
+    return (
+      <GaussianSplat
+        name={name}
+        splat={splat}
+        position={position}
+        quaternion={quaternion}
+        scale={scale}
+        requiresCovariance={requiresCovariance}
+      >
+        {children}
+      </GaussianSplat>
+    );
+  }
+
+  return <PlyGeometry {...props} />;
 };

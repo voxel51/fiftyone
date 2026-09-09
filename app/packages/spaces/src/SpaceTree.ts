@@ -40,6 +40,15 @@ export default class SpaceTree {
     this.onUpdate(rootNode.toJSON());
   }
 
+  findNodeById(id: string, node: SpaceNode = this.root): SpaceNode | undefined {
+    if (node.id === id) return node;
+    for (const child of node.children) {
+      const found = this.findNodeById(id, child);
+      if (found) return found;
+    }
+    return undefined;
+  }
+
   // a method for adding a new node to the tree
   // the new node is added as a child of the selected node
   // the new node is selected

@@ -34,11 +34,9 @@ const RegisterTiles: React.FC<{ entries: RegisteredTile[] }> = ({
 describe("TilingHeader", () => {
   beforeEach(() => {
     // voodo's Dropdown (headlessui Menu) uses ResizeObserver internally.
-    global.ResizeObserver = vi.fn().mockImplementation(() => ({
-      observe: vi.fn(),
-      unobserve: vi.fn(),
-      disconnect: vi.fn(),
-    }));
+    global.ResizeObserver = vi.fn().mockImplementation(function () {
+      return { observe: vi.fn(), unobserve: vi.fn(), disconnect: vi.fn() };
+    });
   });
 
   afterEach(() => {
@@ -56,9 +54,19 @@ describe("TilingHeader", () => {
     expect(screen.queryByTestId("tiling-header-add-tile")).toBeNull();
   });
 
-  it("renders compact header actions beside the filename stack", () => {
+  it("renders compact header actions immediately before Layout", () => {
     render(
       <TilingProvider>
+        <RegisterTiles
+          entries={[
+            {
+              type: "camera",
+              typeLabel: "Camera",
+              icon: IconName.GridView,
+              Tile: CameraTile,
+            },
+          ]}
+        />
         <TilingHeader
           fileName="session.fo"
           headerActions={<button type="button">Unmount recording</button>}
@@ -70,6 +78,9 @@ describe("TilingHeader", () => {
     expect(
       screen.getByRole("button", { name: "Unmount recording" }),
     ).toBeTruthy();
+    expect(
+      screen.getAllByRole("button").map((button) => button.textContent?.trim()),
+    ).toEqual(["Unmount recording", "Layout"]);
   });
 
   it("does not render sidebar toggles when no handlers are wired", () => {
@@ -154,8 +165,8 @@ describe("TilingHeader", () => {
     );
     const button = screen.getByTestId("tiling-header-add-tile");
     expect(button).toBeTruthy();
-    expect(button.getAttribute("aria-label")).toBe("Add Tile");
-    expect(button.textContent).toBe("Add Tile");
+    expect(button.getAttribute("aria-label")).toBe("Layout");
+    expect(button.textContent).toBe("Layout");
     expect(button.className).toContain("border-1");
   });
 

@@ -26,29 +26,29 @@ export function applyTransientToCuboid(
     return detection;
   }
 
-  let result = { ...detection };
+  const doc = { ...detection.data };
 
   if (transient.positionDelta) {
-    result.location = [
-      detection.location[0] + transient.positionDelta[0],
-      detection.location[1] + transient.positionDelta[1],
-      detection.location[2] + transient.positionDelta[2],
+    doc.location = [
+      doc.location[0] + transient.positionDelta[0],
+      doc.location[1] + transient.positionDelta[1],
+      doc.location[2] + transient.positionDelta[2],
     ];
   }
 
   if (transient.dimensionsDelta) {
-    result.dimensions = [
-      detection.dimensions[0] + transient.dimensionsDelta[0],
-      detection.dimensions[1] + transient.dimensionsDelta[1],
-      detection.dimensions[2] + transient.dimensionsDelta[2],
+    doc.dimensions = [
+      doc.dimensions[0] + transient.dimensionsDelta[0],
+      doc.dimensions[1] + transient.dimensionsDelta[1],
+      doc.dimensions[2] + transient.dimensionsDelta[2],
     ];
   }
 
   if (transient.quaternionOverride) {
-    result.quaternion = transient.quaternionOverride;
+    doc.quaternion = transient.quaternionOverride;
   }
 
-  return result;
+  return { ...detection, data: doc };
 }
 
 /**
@@ -63,7 +63,7 @@ export function applyTransientToPolyline(
     return polyline;
   }
 
-  let newPoints3d = polyline.points3d;
+  let newPoints3d = polyline.data.points3d;
 
   // Apply position delta to all vertices
   if (transient.positionDelta) {
@@ -97,7 +97,7 @@ export function applyTransientToPolyline(
 
   return {
     ...polyline,
-    points3d: newPoints3d,
+    data: { ...polyline.data, points3d: newPoints3d },
   };
 }
 
@@ -188,7 +188,7 @@ export function useRenderDetection(
   const renderModel = useRenderModel();
 
   return useMemo(
-    () => renderModel.detections.find((d) => d._id === labelId),
+    () => renderModel.detections.find((d) => d.data._id === labelId),
     [renderModel.detections, labelId],
   );
 }
@@ -202,7 +202,7 @@ export function useRenderPolyline(
   const renderModel = useRenderModel();
 
   return useMemo(
-    () => renderModel.polylines.find((p) => p._id === labelId),
+    () => renderModel.polylines.find((p) => p.data._id === labelId),
     [renderModel.polylines, labelId],
   );
 }

@@ -19,6 +19,9 @@ module.exports = tseslint.config(
       "playwright/no-wait-for-selector": "off",
       "playwright/no-force-option": "off",
       "playwright/no-conditional-in-test": "off",
+      // quarantining a flaky test IS the workflow: skips carry a reason
+      // comment and the burn-in gate screens their return
+      "playwright/no-skipped-test": "off",
     },
   },
   {

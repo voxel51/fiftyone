@@ -5,6 +5,7 @@ Video frame views.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import defaultdict
 from copy import deepcopy
 import logging
@@ -934,7 +935,7 @@ def _init_frames(
 
             _id = frame_ids_map.get(fn, None)
             _filepath = images_patt % fn
-            _rand = foos._generate_rand(_filepath)
+            _rand = foos._generate_rand()
             _dataset_id = dataset._doc.id
 
             if missing_fps is not None and fn in missing_fps:

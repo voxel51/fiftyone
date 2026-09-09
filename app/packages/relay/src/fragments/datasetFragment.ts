@@ -8,6 +8,7 @@ export default graphql`
     id
     info
     lastLoadedAt
+    mediaSources
     mediaType
     name
     parentMediaType
@@ -20,12 +21,17 @@ export default graphql`
       version
       timestamp
       viewStages
+      ready
+      error
       config {
         cls
         embeddingsField
         method
         patchesField
         supportsPrompts
+        numDims
+        pointsField
+        model
         type
         maxK
         supportsLeastSimilarity

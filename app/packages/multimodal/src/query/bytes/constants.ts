@@ -1,5 +1,7 @@
 const BYTES_PER_MEGABYTE = 1024 * 1024;
 
+export { BYTE_SOURCE_READ_PROFILE } from "../../ir";
+
 /**
  * Default in-memory raw byte cache budget.
  */
@@ -15,11 +17,3 @@ export const DEFAULT_LOCAL_BYTE_CACHE_BLOCK_SIZE_BYTES = 2 * BYTES_PER_MEGABYTE;
  */
 export const DEFAULT_REMOTE_BYTE_CACHE_BLOCK_SIZE_BYTES =
   32 * BYTES_PER_MEGABYTE;
-
-/**
- * Explicit source profile for byte-cache fill policy.
- */
-export const BYTE_SOURCE_READ_PROFILE = Object.freeze({
-  LOCAL: "local",
-  REMOTE: "remote",
-} as const);

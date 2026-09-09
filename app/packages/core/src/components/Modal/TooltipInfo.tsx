@@ -70,9 +70,9 @@ const HiddenItemsContainer = styled.div`
 `;
 
 const HiddenItemRowDiv = styled.div`
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   height: 1.5rem;
 `;
 
@@ -83,11 +83,11 @@ const Row = styled.div`
 `;
 
 const ContentItemContainer = styled.div`
+  position: relative;
   margin: 0;
   padding: 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
 `;
 
 const ContentItemDiv = styled.div`
@@ -97,11 +97,11 @@ const ContentItemDiv = styled.div`
 `;
 
 const VisibilityIconContainer = animated(styled.div`
-  width: 1.5rem;
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding-right: 0.5rem;
+  justify-content: flex-end;
 `);
 
 const ContentValue = styled.div`

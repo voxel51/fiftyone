@@ -46,11 +46,18 @@ export default ({
       }
     }, QP_WAIT);
 
+    const detail = () => ({
+      id,
+      width: element?.parentElement?.getBoundingClientRect().width,
+    });
+
     const mount = () => {
       cache.unfreeze();
       clearTimeout(timeout);
       document.getElementById(pixels)?.classList.add(styles.hidden);
-      document.dispatchEvent(new CustomEvent("grid-mount"));
+      document.dispatchEvent(
+        new CustomEvent("grid-mount", { detail: detail() }),
+      );
     };
 
     const rejected = (event: Rejected) => {
@@ -71,7 +78,9 @@ export default ({
     return () => {
       clearTimeout(timeout);
       freeVideos();
-      document.dispatchEvent(new CustomEvent("grid-unmount"));
+      document.dispatchEvent(
+        new CustomEvent("grid-unmount", { detail: detail() }),
+      );
       document.getElementById(pixels)?.classList.remove(styles.hidden);
       spotlight.removeEventListener("load", mount);
       spotlight.removeEventListener("rowchange", set);

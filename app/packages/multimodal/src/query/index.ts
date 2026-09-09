@@ -14,7 +14,7 @@ import {
   createDecodeClient,
   createMemoryDecodedOutputCache,
   DEFAULT_DECODED_CACHE_SIZE_BYTES,
-} from "./decode";
+} from "./decoding";
 import type {
   CreateMultimodalQueryClientOptions,
   MultimodalQueryClient,
@@ -117,7 +117,7 @@ export * from "./bytes";
 /**
  * Public decode-query surface.
  */
-export * from "./decode";
+export * from "./decoding";
 
 /**
  * Public combined query-client contracts.

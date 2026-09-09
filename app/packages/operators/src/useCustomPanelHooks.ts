@@ -54,6 +54,9 @@ function useCtxChangePanelEvent(loaded, panelId, value, operator) {
     if (loaded && operator) {
       triggerCtxChangedEvent(panelId, { operator, params: { value } });
     }
+    // fire only when the observed value (or operator) changes; loaded and
+    // panelId gate the send but must not trigger one
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, operator]);
 }
 

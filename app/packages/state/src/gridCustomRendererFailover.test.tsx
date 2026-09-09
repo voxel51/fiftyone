@@ -1,7 +1,8 @@
-import { act, renderHook } from "@testing-library/react-hooks";
+import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   __resetGridCustomRendererFailoverForTests,
+  consumeGridCustomRendererFailover,
   dismissGridCustomRendererFailoverBanner,
   getGridCustomRendererFailover,
   isGridCustomRendererFailOpen,
@@ -101,5 +102,35 @@ describe("gridCustomRendererFailover", () => {
     } finally {
       nowSpy.mockRestore();
     }
+  });
+
+  // Re-importing the module is a page load: it re-reads sessionStorage, which
+  // is what survives a refresh and Chrome's tab restore.
+  it("keeps a failure through the reload it triggered", async () => {
+    markGridCustomRendererFailed({
+      datasetName: "lerobot",
+      rendererName: "EpisodeRenderer",
+    });
+
+    vi.resetModules();
+    const nextLoad = await import("./gridCustomRendererFailover");
+
+    expect(nextLoad.isGridCustomRendererFailOpen("lerobot")).toBe(true);
+  });
+
+  it("retries the renderer on the load after that one", async () => {
+    markGridCustomRendererFailed({
+      datasetName: "lerobot",
+      rendererName: "EpisodeRenderer",
+    });
+    consumeGridCustomRendererFailover();
+
+    // The reload it triggered is this load, so it still holds here.
+    expect(isGridCustomRendererFailOpen("lerobot")).toBe(true);
+
+    vi.resetModules();
+    const nextLoad = await import("./gridCustomRendererFailover");
+
+    expect(nextLoad.isGridCustomRendererFailOpen("lerobot")).toBe(false);
   });
 });

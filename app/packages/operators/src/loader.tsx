@@ -1,6 +1,6 @@
 import { datasetName as datasetNameAtom } from "@fiftyone/state";
 import { isPrimitiveString } from "@fiftyone/utilities";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { registerBuiltInOperators } from "./built-in-operators";
 import { useOperatorPlacementsResolver } from "./hooks";
@@ -14,7 +14,13 @@ import {
 let startupOperatorsExecuted = false;
 const registeredPanels = new Set<string>();
 
-async function loadOperators(datasetName: string) {
+/**
+ * Fetch operator/panel definitions for `datasetName` and register any not
+ * already known. Shared by the mount-time loader below and by
+ * `useRefreshOperators`, which needs the same fetch-and-register step
+ * without `loadOperators`' one-time dataset-open/startup side effects.
+ */
+async function fetchAndRegisterOperators(datasetName: string) {
   registerBuiltInOperators();
   const panels = await loadOperatorsFromServer(datasetName);
   for (const panel of panels) {
@@ -23,6 +29,10 @@ async function loadOperators(datasetName: string) {
       registerPanel(panel);
     }
   }
+}
+
+async function loadOperators(datasetName: string) {
+  await fetchAndRegisterOperators(datasetName);
   executeOperatorsForEvent("onDatasetOpen");
   if (!startupOperatorsExecuted) {
     executeOperatorsForEvent("onStartup");
@@ -72,4 +82,23 @@ export function useOperators(datasetLess?: boolean) {
     error,
     state,
   };
+}
+
+/**
+ * Re-fetches and registers operators/panels, then bumps the refresh count
+ * so mounted consumers see anything new without a reload. Skips
+ * `loadOperators`' one-time `onDatasetOpen`/`onStartup` side effects.
+ */
+export function useRefreshOperators() {
+  const setAvailableOperatorsRefreshCount = useSetRecoilState(
+    availableOperatorsRefreshCount,
+  );
+
+  return useCallback(
+    async (datasetName: string) => {
+      await fetchAndRegisterOperators(datasetName);
+      setAvailableOperatorsRefreshCount((count) => count + 1);
+    },
+    [setAvailableOperatorsRefreshCount],
+  );
 }

@@ -22,7 +22,11 @@ export default [
       ...hooksPlugin.configs.recommended.rules,
       "@typescript-eslint/no-unused-vars": [
         "error",
-        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          ignoreRestSiblings: true,
+        },
       ],
       "react/display-name": "off",
     },

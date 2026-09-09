@@ -1,9 +1,12 @@
+import { createAbortError, throwIfAborted } from "../../utils/cancellation";
 import { safeNumber } from "./bigint-utils";
 import type {
   ByteClient,
   ByteRangeReadRequest,
   ByteSourceDescriptor,
 } from "./types";
+
+const FILE_BYTE_READ_ABORT_MESSAGE = "File byte-range read aborted";
 
 /**
  * Creates a byte client that reads sources backed by `ByteSourceDescriptor`
@@ -12,7 +15,8 @@ import type {
  */
 export function createLocalFileByteClient(): ByteClient {
   return {
-    async stat(source) {
+    async stat(source, signal) {
+      throwIfAborted(signal, FILE_BYTE_READ_ABORT_MESSAGE);
       return source.localFile
         ? withFileSize(source, source.localFile)
         : undefined;
@@ -25,9 +29,7 @@ export function createLocalFileByteClient(): ByteClient {
       }
 
       validateRequestRange(request, file);
-      if (request.signal?.aborted) {
-        throw abortedFileReadError();
-      }
+      throwIfAborted(request.signal, FILE_BYTE_READ_ABORT_MESSAGE);
 
       const start = safeNumber(request.range.offset);
       const length = safeNumber(request.range.length);
@@ -86,12 +88,11 @@ function readBlobArrayBuffer(
   if (!signal) {
     return blobArrayBuffer(blob);
   }
-  if (signal.aborted) {
-    throw abortedFileReadError();
-  }
+  throwIfAborted(signal, FILE_BYTE_READ_ABORT_MESSAGE);
 
   return new Promise((resolve, reject) => {
-    const onAbort = () => reject(abortedFileReadError());
+    const onAbort = () =>
+      reject(createAbortError(FILE_BYTE_READ_ABORT_MESSAGE));
     signal.addEventListener("abort", onAbort, { once: true });
     blobArrayBuffer(blob)
       .then(resolve, reject)
@@ -125,10 +126,4 @@ function blobArrayBuffer(blob: Blob): Promise<ArrayBuffer> {
     };
     reader.readAsArrayBuffer(blob);
   });
-}
-
-function abortedFileReadError(): Error {
-  const error = new Error("File byte-range read aborted");
-  error.name = "AbortError";
-  return error;
 }

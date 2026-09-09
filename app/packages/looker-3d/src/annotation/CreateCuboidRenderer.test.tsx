@@ -29,6 +29,7 @@ const mocks = vi.hoisted(() => ({
   setEditingToNewCuboid: vi.fn(),
   setTransformMode: vi.fn(),
   useEmptyCanvasInteraction: vi.fn(),
+  directPcdWorldTransformsBySampleId: {} as Record<string, unknown>,
 }));
 
 vi.mock("@fiftyone/annotation", () => ({
@@ -39,6 +40,10 @@ vi.mock("@fiftyone/annotation", () => ({
     },
   }),
   useSceneSampleId: () => "scene-sample",
+}));
+
+vi.mock("@fiftyone/state", () => ({
+  useStableSceneSample3d: () => ({ sample: { _id: "scene-sample" } }),
 }));
 
 vi.mock("@fiftyone/utilities", () => ({
@@ -54,6 +59,13 @@ vi.mock("recoil", () => ({
 
 vi.mock("../hooks/use-empty-canvas-interaction", () => ({
   useEmptyCanvasInteraction: mocks.useEmptyCanvasInteraction,
+}));
+
+vi.mock("../fo3d/context", () => ({
+  useFo3dContext: () => ({
+    directPcdWorldTransformsBySampleId:
+      mocks.directPcdWorldTransformsBySampleId,
+  }),
 }));
 
 // The renderer reads live scene point clouds (via useThree under the hood) to
@@ -115,6 +127,7 @@ describe("CreateCuboidRenderer", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.directPcdWorldTransformsBySampleId = {};
     creationStateValue = INITIAL_CREATION_STATE;
 
     (useRecoilState as Mock).mockImplementation((atom) => {
@@ -233,5 +246,36 @@ describe("CreateCuboidRenderer", () => {
     expect(mocks.setTransformMode).toHaveBeenCalledWith("scale");
     // Create mode exits after a cuboid is placed; press C to start another.
     expect(setIsCreatingCuboid).toHaveBeenCalledWith(false);
+  });
+
+  it("stores a world-created cuboid in the target PCD native frame", () => {
+    creationStateValue = STEP_TWO_CREATION_STATE;
+    mocks.directPcdWorldTransformsBySampleId = {
+      "scene-sample": {
+        translation: [10, 0, 0],
+        quaternion: [0, 0, 0, 1],
+        source_frame: "lidar_top",
+        target_frame: "world",
+      },
+    };
+
+    render(<CreateCuboidRenderer />);
+    triggerCommitClick();
+
+    expect(mocks.createCuboid).toHaveBeenCalledWith(
+      "new-cuboid-id",
+      expect.objectContaining({
+        location: [-9.5, 0.5, 0],
+        dimensions: [1, 1, 1],
+        quaternion: [0, 0, 1, 0],
+      }),
+      "ground_truth",
+      "vehicle",
+    );
+    expect(mocks.setEditingToNewCuboid).toHaveBeenCalledWith(
+      "new-cuboid-id",
+      expect.objectContaining({ location: [-9.5, 0.5, 0] }),
+      "vehicle",
+    );
   });
 });

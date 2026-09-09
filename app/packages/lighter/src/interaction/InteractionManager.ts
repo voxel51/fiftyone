@@ -19,6 +19,7 @@ import type { InteractionState } from "../overlay/DetectionOverlay";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { SelectionManager } from "../selection/SelectionManager";
+import { resolveSelectionClick } from "./resolveSelectionClick";
 import type { Point, Rect } from "../types";
 import { buildBrushCursor } from "./buildBrushCursor";
 import { InteractiveCreationHandler } from "./InteractiveCreationHandler";
@@ -81,6 +82,8 @@ function isSelfManagedInteractiveHandler(handler: InteractionHandler): boolean {
 export interface KeypointMutationHandler {
   getSelectedPointIndex(): number | null;
   removePoint(index: number): void;
+  /** Optional: how many points the overlay currently has. */
+  getPointCount?(): number;
 }
 
 function hasKeypointMutation(
@@ -230,6 +233,15 @@ export class InteractionManager {
   private emptyCanvasClickHandler?: EmptyCanvasClickHandler;
 
   // Configuration
+  /** See {@link setReadOnly}. */
+  private readOnly = false;
+
+  /**
+   * See {@link setVisibilityPredicate}. `undefined` = every handler is
+   * hit-testable, matching every caller that never sets one.
+   */
+  private visibilityPredicate?: (id: string) => boolean;
+
   private readonly CLICK_THRESHOLD = 3; // pixels, dictates drag vs. click
   private readonly DRAG_TIME_THRESHOLD = 500; // ms, dictates drag vs. click
   private readonly DOUBLE_CLICK_TIME_THRESHOLD = 500; // ms
@@ -274,6 +286,42 @@ export class InteractionManager {
   }
 
   /**
+   * Read-only mode: overlays stay selectable and hoverable, but none of them
+   * can be moved, resized, or drawn.
+   *
+   * Enforced at the single point where a pointer-down would hand control to
+   * an overlay's own handler — the moment an overlay enters a DRAGGING /
+   * RESIZE / PAINTING state. Selection runs BEFORE that point, so it is
+   * unaffected, and `onMove` self-guards on an interaction state the overlay
+   * can now never enter.
+   *
+   * For a surface that renders labels it has no way to save (Explore), where
+   * an accidental drag would otherwise commit a silent edit.
+   */
+  public setReadOnly(readOnly: boolean): void {
+    this.readOnly = readOnly;
+  }
+
+  /** Whether geometry mutation is currently blocked. */
+  public isReadOnly(): boolean {
+    return this.readOnly;
+  }
+
+  /**
+   * Which handlers are currently hit-testable, by id.
+   *
+   * Rendering (`Scene2D.shouldShowOverlay`) and hit-testing are separate
+   * systems by construction — this manager has no reference back to the
+   * scene or its overlays — so a label the scene stops PAINTING (a sidebar
+   * filter, a deactivated field) stays fully clickable at its last drawn
+   * position unless this is set. Scene2D injects a predicate that answers
+   * exactly what it paints, so the two agree without this class knowing why.
+   */
+  public setVisibilityPredicate(predicate?: (id: string) => boolean): void {
+    this.visibilityPredicate = predicate;
+  }
+
+  /**
    * Get the current pixel coordinates.
    * This is the raw pixel coordinates where mouse cursor is,
    * but the reference system is the canvas.
@@ -282,6 +330,42 @@ export class InteractionManager {
    */
   public getPixelCoordinates(): Point | undefined {
     return this.currentPixelCoordinates;
+  }
+
+  /**
+   * Whether the camera-pan modifier (shift) is held. A shift-drag pans over
+   * anything under the cursor — empty canvas or an overlay — so it never draws,
+   * selects, or resizes. Aspect-ratio-locked resize lives on alt/meta instead.
+   */
+  private isPanModifierActive(): boolean {
+    return this.currentModifiers.shiftKey;
+  }
+
+  /**
+   * While a creation tool is active, unselected overlays are treated as empty
+   * canvas. Merge is excluded because it picks sources by selecting overlays.
+   */
+  private isDrawModeActive(): boolean {
+    if (detectionModeBridge.isActive()) {
+      return true;
+    }
+
+    if (!segmentationModeBridge.isActive()) {
+      return false;
+    }
+
+    const tool = segmentationModeBridge.getActiveTool();
+    return tool !== SegmentationTool.Select && tool !== SegmentationTool.Merge;
+  }
+
+  /** While drawing, an unselected overlay never claims the pointer. */
+  private isDrawingOverUnselected(handler?: InteractionHandler): boolean {
+    return (
+      !!handler &&
+      TypeGuards.isSelectable(handler) &&
+      !this.selectionManager.isSelected(handler.id) &&
+      this.isDrawModeActive()
+    );
   }
 
   private setupEventListeners(): void {
@@ -311,6 +395,7 @@ export class InteractionManager {
     this.clickStartPoint = point;
 
     let handler: InteractionHandler | undefined = undefined;
+    // `getInteractiveHandler` already returns undefined when read-only.
     const interactiveHandler = this.getInteractiveHandler();
 
     if (interactiveHandler) {
@@ -325,8 +410,22 @@ export class InteractionManager {
       }
     } else {
       handler = this.findHandlerAtPoint(point);
-      // Prevent pan/zoom when target is selectable
-      if (handler && TypeGuards.isSelectable(handler)) {
+      const isNonOverlay = !handler || handler.id === this.canonicalMediaId;
+
+      // Modifier-drag pans the camera over anything under the cursor — empty
+      // canvas or an overlay. Leave the viewport drag plugin active (no
+      // disableZoomPan / capture / pendingAction) and bail before any selection,
+      // draw, or resize so the drag only pans.
+      if (this.isPanModifierActive()) {
+        return;
+      }
+
+      // Prevent pan/zoom when target is selectable, so dragging an overlay
+      // moves/resizes it instead of the camera. Read-only is excluded: it bails
+      // out below rather than entering a move/resize state, so disabling the
+      // drag plugin here would strand the gesture — the press would neither
+      // move the overlay nor pan, and pan is only restored on pointerup.
+      if (!this.readOnly && handler && TypeGuards.isSelectable(handler)) {
         this.renderer.disableZoomPan();
       }
 
@@ -341,14 +440,30 @@ export class InteractionManager {
         return;
       }
 
-      // If clicking an overlay, select it
-      const isUnselectedOverlay =
-        !!handler &&
-        TypeGuards.isSelectable(handler) &&
-        !this.selectionManager.isSelected(handler.id);
+      const isSelectableOverlay = !!handler && TypeGuards.isSelectable(handler);
 
-      if (isUnselectedOverlay) {
-        this.selectionManager.select(handler!.id);
+      // the selected overlay still wins the hit test so drag/resize works
+      const drawOverOverlay = this.isDrawingOverUnselected(handler);
+
+      // See `resolveSelectionClick` for the rule. The pointer event rides
+      // along only on the toggle path: it decides the `isShiftPressed` the
+      // select event carries, and no single-select surface should change what
+      // it reports.
+      const selectionAction = resolveSelectionClick({
+        isSelectableOverlay,
+        isSelected: isSelectableOverlay
+          ? this.selectionManager.isSelected(handler!.id)
+          : false,
+        isDrawingOver: drawOverOverlay,
+        multipleSelection: this.selectionManager.isMultipleSelection(),
+      });
+
+      if (selectionAction !== "none") {
+        if (selectionAction === "toggle") {
+          this.selectionManager.toggle(handler!.id, { event });
+        } else {
+          this.selectionManager.select(handler!.id);
+        }
 
         // Select an overlay before issuing any edits. The cursor at this point
         // is a 'pointer' indicating selection, not painting/erasing/keypoint.
@@ -360,15 +475,12 @@ export class InteractionManager {
 
       // Detection mode: defer overlay creation until we confirm this is a drag.
       // If the user releases without dragging (a click), exit detection mode.
-      // Clicking on an existing overlay selects it normally instead.
       if (detectionModeBridge.isActive() || segmentationModeBridge.isActive()) {
-        const isNonOverlay = !handler || handler.id === this.canonicalMediaId;
-
         const isSelectInSegmentation =
           segmentationModeBridge.isActive() &&
           segmentationModeBridge.getActiveTool() === SegmentationTool.Select;
 
-        if (isNonOverlay && !isSelectInSegmentation) {
+        if ((isNonOverlay || drawOverOverlay) && !isSelectInSegmentation) {
           this.renderer.disableZoomPan();
 
           this.pendingAction = {
@@ -383,6 +495,12 @@ export class InteractionManager {
           return;
         }
       }
+    }
+
+    // Read-only stops here: selection above has already run, but handing the
+    // pointer to the overlay is what puts it into a move/resize/paint state.
+    if (this.readOnly) {
+      return;
     }
 
     if (
@@ -454,12 +572,18 @@ export class InteractionManager {
       return;
     }
 
-    if (TypeGuards.isSelectable(handler) && !handler.isSelected?.()) {
+    // unselected overlays aren't clickable while drawing — show the mode cursor
+    const isUnselectedOverlay =
+      TypeGuards.isSelectable(handler) && !handler.isSelected?.();
+
+    if (isUnselectedOverlay && !this.isDrawModeActive()) {
       this.canvas.style.cursor = "pointer";
     } else if (segmentationModeBridge.isActive()) {
       this.canvas.style.cursor = buildBrushCursor(
         segmentationModeBridge.getToolState(scale)!,
       );
+    } else if (isUnselectedOverlay && detectionModeBridge.isActive()) {
+      this.canvas.style.cursor = "crosshair";
     } else if (TypeGuards.isInteractionHandler(handler) && handler.getCursor) {
       this.canvas.style.cursor = handler.getCursor(
         worldPoint,
@@ -980,19 +1104,31 @@ export class InteractionManager {
 
     this.syncModifiersFromEvent(event);
 
-    if (event.shiftKey) {
-      this.maintainAspectRatio = event.shiftKey;
+    // Alt (Windows/Linux) or Cmd/Meta (macOS) locks the resize aspect ratio;
+    // shift is reserved for camera pan.
+    if (event.altKey || event.metaKey) {
+      this.maintainAspectRatio = true;
       return;
     }
 
-    // Delete/Backspace: remove sub-selected keypoint
-    if (event.key === "Delete" || event.key === "Backspace") {
+    // Delete/Backspace: remove sub-selected keypoint. Read-only refuses it —
+    // `removePoint` mutates geometry on a surface with no way to save, which
+    // is exactly what read-only promises cannot happen.
+    if (
+      !this.readOnly &&
+      (event.key === "Delete" || event.key === "Backspace")
+    ) {
       const selectedId = this.selectionManager.getSelectedIds()[0];
       if (selectedId) {
         const handler = this.handlers.find((h) => h.id === selectedId);
         if (handler && hasKeypointMutation(handler)) {
           const idx = handler.getSelectedPointIndex();
-          if (idx !== null && idx >= 0) {
+          // Removing the *last* remaining point would leave a geometry-less
+          // overlay (and, on video, a track that renders nothing but still
+          // exists). Deleting the only vertex IS deleting the label, so leave
+          // the event for the label-delete keybinding to handle.
+          const count = handler.getPointCount?.() ?? Number.POSITIVE_INFINITY;
+          if (idx !== null && idx >= 0 && count > 1) {
             handler.removePoint(idx);
             event.preventDefault();
           }
@@ -1002,7 +1138,7 @@ export class InteractionManager {
   };
 
   /**
-   * Handles keyboard events for release of shift modifier to maintain aspect ratio.
+   * Handles release of the aspect-ratio-lock modifier (alt/meta).
    * @param event - The keyboard event.
    */
   private handleKeyUp = (event: KeyboardEvent): void => {
@@ -1019,7 +1155,7 @@ export class InteractionManager {
 
     this.syncModifiersFromEvent(event);
 
-    this.maintainAspectRatio = event.shiftKey;
+    this.maintainAspectRatio = event.altKey || event.metaKey;
   };
 
   /**
@@ -1301,7 +1437,10 @@ export class InteractionManager {
     // Hover target is pre-resolved by the caller (single hit-test per
     // pointermove). `undefined` means either nothing under the cursor or a
     // drag is active and hover should be cleared.
-    const handler = resolvedHandler;
+    // no hover highlight while drawing over an unselected overlay
+    const handler = this.isDrawingOverUnselected(resolvedHandler)
+      ? undefined
+      : resolvedHandler;
     const interactingHandler = this.findInteractingHandler();
 
     // If we are dragging, we should unhover the previous one
@@ -1429,6 +1568,14 @@ export class InteractionManager {
   }
 
   private getInteractiveHandler(): InteractionHandler | undefined {
+    // Read-only never yields a draw handler. Entering one is an annotate-only
+    // path, but a shared scene can still have one installed — and this is the
+    // single choke point for that, so pointer-move/right-click/pending-move
+    // are covered too rather than only pointer-down.
+    if (this.readOnly) {
+      return undefined;
+    }
+
     // self-managed handlers take precedence to allow editing on top of
     // other overlays
     const selfManaged = this.handlers.find((h) =>
@@ -1479,6 +1626,10 @@ export class InteractionManager {
       const handler = this.handlers[i];
 
       if (skipCanonicalMedia && handler.id === this.canonicalMediaId) {
+        continue;
+      }
+
+      if (this.visibilityPredicate && !this.visibilityPredicate(handler.id)) {
         continue;
       }
 

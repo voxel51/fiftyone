@@ -39,6 +39,13 @@ class Frames(HTTPEndpoint):
             dataset, stages=stages, extended_stages=extended, awaitable=True
         )
         end_frame = min(num_frames + start_frame, frame_count)
+        if end_frame < start_frame:
+            # an empty range would produce a to_list() length < 1, which
+            # pymongo rejects
+            return JSONResponse(
+                {"frames": [], "range": [start_frame, end_frame]}
+            )
+
         support = None if stages else [start_frame, end_frame]
 
         def run(view):
@@ -67,12 +74,13 @@ class Frames(HTTPEndpoint):
 
             post_pipeline = [{"$project": projection}]
 
-        frames = await foo.aggregate(
+        cursor = await foo.aggregate(
             foo.get_async_db_conn()[view._dataset._sample_collection_name],
             view._pipeline(
                 frames_only=True, support=support, post_pipeline=post_pipeline
             ),
-        ).to_list(end_frame - start_frame + 1)
+        )
+        frames = await cursor.to_list(end_frame - start_frame + 1)
 
         return JSONResponse(
             {

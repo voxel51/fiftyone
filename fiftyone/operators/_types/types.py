@@ -743,14 +743,15 @@ class Object(BaseType):
         base_view_description=None,
         current_view_label="Current view",
         current_view_description=None,
-        dataset_label="Entire dataset",
+        dataset_label="Dataset",
         dataset_description=None,
         dataset_view_label="Dataset",
         dataset_view_description=None,
-        selected_samples_label="Selected samples",
+        selected_samples_label="Current selection",
         selected_samples_description=None,
         selected_labels_label="Selected labels",
         selected_labels_description=None,
+        require_flat=False,
         **kwargs,
     ):
         """Defines a view target input property.
@@ -761,7 +762,7 @@ class Object(BaseType):
 
         The choices include:
 
-        - Entire dataset (if the current view is not a generated view)
+        - Dataset (if the current view is not a generated view)
         - Base view (if the current view is a generated view such as
           :class:`fiftyone.core.clips.ClipsView`, :class:`fiftyone.core.video.FramesView`,
           or :class:`fiftyone.core.patches.PatchesView`), which is the semantic
@@ -771,7 +772,7 @@ class Object(BaseType):
           view of ``dataset.limit(51).to_frames("ground_truth")``
         - Dataset view (if ``allow_dataset_view`` is ``True``)
         - Current view (if the current view is different from the dataset view)
-        - Selected samples (if ``allow_selected_samples`` is ``True`` and there are
+        - Current selection (if ``allow_selected_samples`` is ``True`` and there are
           selected samples)
         - Selected labels (if ``allow_selected_labels`` is ``True`` and there are
           selected labels)
@@ -788,7 +789,7 @@ class Object(BaseType):
         description parameter is not ``None``, it will be used as the
         description for the corresponding target view choice. Otherwise, a
         default description will be generated such as
-        ``f"{action_description} the entire dataset"``.
+        ``f"{action_description} the base view"``.
 
 
         Examples::
@@ -845,7 +846,7 @@ class Object(BaseType):
                 current_view_description (None): the description for the "current
                     view" target view. If ``None``, a default description is
                     generated
-                dataset_label (Entire dataset): the label for the "entire dataset"
+                dataset_label (Dataset): the label for the "entire dataset"
                     target view
                 dataset_description (None): the description for the "entire
                     dataset" target view. If ``None``, a default description is
@@ -855,7 +856,7 @@ class Object(BaseType):
                 dataset_view_description (None): the description for the "dataset
                     view" target view. If ``None``, a default description is
                     generated
-                selected_samples_label (Selected samples): the label for the
+                selected_samples_label (Current selection): the label for the
                     "selected samples" target view
                 selected_samples_description (None): the description for the
                     "selected samples" target view. If ``None``, a default
@@ -865,6 +866,8 @@ class Object(BaseType):
                 selected_labels_description (None): the description for the
                     "selected labels" target view. If ``None``, a default
                     description is generated
+                require_flat (False): whether the operation requires a
+                    flattened (non-grouped) collection
 
             Returns:
                 a :class:`ViewTargetProperty`
@@ -891,6 +894,7 @@ class Object(BaseType):
             selected_samples_description=selected_samples_description,
             selected_labels_label=selected_labels_label,
             selected_labels_description=selected_labels_description,
+            require_flat=require_flat,
             **kwargs,
         )
         self.add_property(name, _property)
@@ -1867,6 +1871,8 @@ class AutocompleteView(Choices):
         read_only (False): whether the view is read-only
         allow_user_input (True): when True the user can input a value that is not in the choices
         allow_duplicates (True): when True the user can select the same choice multiple times
+        filter_selected_options (False): when True a multi-select drops the
+            choices already selected from its list rather than marking them
     """
 
     def __init__(self, **kwargs):
@@ -2812,6 +2818,10 @@ class PromptView(View):
         super().__init__(**kwargs)
 
 
+def _append_scope(description, scope_description):
+    return " ".join(filter(None, (description, scope_description)))
+
+
 class ViewTargetOptions(object):
     """Represents the options for a :class:`ViewTargetProperty`.
 
@@ -2829,7 +2839,7 @@ class ViewTargetOptions(object):
         include_dataset_view=False,
         include_selected_labels=False,
         include_selected_samples=False,
-        dataset_label="Entire dataset",
+        dataset_label="Dataset",
         dataset_description=None,
         base_view_label="Base view",
         base_view_description=None,
@@ -2837,10 +2847,13 @@ class ViewTargetOptions(object):
         current_view_description=None,
         dataset_view_label="Dataset",
         dataset_view_description=None,
-        selected_samples_label="Selected samples",
+        selected_samples_label="Current selection",
         selected_samples_description=None,
         selected_labels_label="Selected labels",
         selected_labels_description=None,
+        scope_description=None,
+        dataset_scope_description=None,
+        unavailable=None,
         **_,
     ):
         """Initializes instance
@@ -2890,30 +2903,45 @@ class ViewTargetOptions(object):
             selected_labels_description (None): the description for the
                 "selected labels" target view. If ``None``, a default
                 description is generated
+            scope_description (None): a group slice scope to append to the
+                view-based target descriptions, e.g.
+                ``"in the current slice (left)"``
+            dataset_scope_description (None): a group slice scope to append to
+                the "entire dataset" target description
+            unavailable (None): a dict mapping view targets that the operation
+                cannot process to the reason why. These targets are offered as
+                disabled choices carrying the reason, and are excluded from
+                :meth:`available_values`
         """
         super().__init__()
 
-        # Resolve descriptions for the various target views
+        # Resolve descriptions for the various target views, with the slice
+        # scope each target resolves to appended for grouped datasets
         action_description = action_description or "Process"
-        dataset_description = (
-            dataset_description or f"{action_description} the entire dataset"
+        dataset_description = _append_scope(
+            dataset_description or "Entire dataset",
+            dataset_scope_description,
         )
-        base_view_description = (
-            base_view_description or f"{action_description} the base view"
+        base_view_description = _append_scope(
+            base_view_description or f"{action_description} the base view",
+            scope_description,
         )
-        current_view_description = (
-            current_view_description
-            or f"{action_description} the current view"
+        current_view_description = _append_scope(
+            current_view_description or "Samples matching filters",
+            scope_description,
         )
-        dataset_view_description = (
-            dataset_view_description
-            or f"{action_description} the dataset view"
+        dataset_view_description = _append_scope(
+            dataset_view_description or "All samples in the dataset",
+            scope_description,
         )
-        selected_samples_description = selected_samples_description or (
-            f"{action_description} only the selected samples"
+        selected_samples_description = _append_scope(
+            selected_samples_description or "Selected samples",
+            scope_description,
         )
-        selected_labels_description = selected_labels_description or (
-            f"{action_description} only the selected labels"
+        selected_labels_description = _append_scope(
+            selected_labels_description
+            or f"{action_description} only the selected labels",
+            scope_description,
         )
 
         self.choices_view = choices_view
@@ -2958,16 +2986,37 @@ class ViewTargetOptions(object):
                 selected_labels_description,
             ),
         ]
+        unavailable = unavailable or {}
+        self._unavailable = {}
+
         for target_view, include, label, description in choice_order:
+            # a target that is not offered carries no reason to show
+            reason = unavailable.get(target_view) if include else None
+            if reason is not None:
+                # offered with the reason it cannot be used, rather than hidden
+                self._unavailable[target_view] = reason
+
             self.choices_view.add_choice(
                 target_view,
                 label=label,
-                description=description,
+                description=reason if reason is not None else description,
                 include=include,
+                disabled=reason is not None,
             )
+
+    @property
+    def unavailable(self):
+        """A dict mapping the offered view targets that the operation cannot
+        process to the reason why.
+        """
+        return self._unavailable
 
     def values(self):
         return self.choices_view.values()
+
+    def available_values(self):
+        """The offered view target values that the operation can process."""
+        return [v for v in self.values() if v not in self._unavailable]
 
 
 class ViewTargetProperty(Property):
@@ -2979,7 +3028,7 @@ class ViewTargetProperty(Property):
 
     The choices include:
 
-    - Entire dataset (if the current view is not a generated view)
+    - All samples (if the current view is not a generated view)
     - Base view (if the current view is a generated view such as
       :class:`fiftyone.core.clips.ClipsView`, :class:`fiftyone.core.video.FramesView`,
       or :class:`fiftyone.core.patches.PatchesView`), which is the semantic
@@ -2989,7 +3038,7 @@ class ViewTargetProperty(Property):
       view of ``dataset.limit(51).to_frames("ground_truth")``
     - Dataset view (if ``allow_dataset_view`` is ``True``)
     - Current view (if the current view is different from the dataset view)
-    - Selected samples (if ``allow_selected_samples`` is ``True`` and there are
+    - Current selection (if ``allow_selected_samples`` is ``True`` and there are
       selected samples)
     - Selected labels (if ``allow_selected_labels`` is ``True`` and there are
       selected labels)
@@ -3049,7 +3098,7 @@ class ViewTargetProperty(Property):
         allow_selected_labels=False,
         allow_dataset_view=False,
         default_target=None,
-        dataset_label="Entire dataset",
+        dataset_label="Dataset",
         dataset_description=None,
         base_view_label="Base view",
         base_view_description=None,
@@ -3057,7 +3106,7 @@ class ViewTargetProperty(Property):
         current_view_description=None,
         dataset_view_label="Dataset",
         dataset_view_description=None,
-        selected_samples_label="Selected samples",
+        selected_samples_label="Current selection",
         selected_samples_description=None,
         selected_labels_label="Selected labels",
         selected_labels_description=None,
@@ -3113,24 +3162,22 @@ class ViewTargetProperty(Property):
                 "selected labels" target view. If ``None``, a default
                 description is generated
             require_flat (False): whether the operation requires a flattened
-                (non-grouped) collection. When ``True``, grouped views that
-                cannot be automatically scoped to the active group slice
-                invalidate this property
+                (non-grouped) collection. When ``True``, grouped collections
+                are scoped to the active group slice, unless the view already
+                selects slices
         """
-        # surface unflattenable grouped views as a form validation error
-        # rather than an execution failure
-        invalid_error = None
-        if require_flat:
-            try:
-                # pylint: disable-next-line=protected-access
-                ctx._get_active_view(ctx.view, require_flat=True)
-            except ValueError as e:
-                invalid_error = str(e)
+        # grouped datasets surface the slice scope each target resolves to
+        scope, dataset_scope = ctx.get_group_slice_scopes(
+            require_flat=require_flat
+        )
+        unavailable = ctx.get_unavailable_view_targets(
+            require_flat=require_flat
+        )
 
         # Determine which target views are available
         has_base_view = (
-            ctx.view._is_generated  # pylint: disable=protected-access
-        )
+            ctx.view._is_generated
+        )  # pylint: disable=protected-access
         if has_base_view:
             has_view = ctx.view != ctx.view._base_view
         else:
@@ -3141,13 +3188,17 @@ class ViewTargetProperty(Property):
             ctx.selected_labels
         )
 
+        # for grouped datasets the current view is the active slice, so it is a
+        # distinct target from the dataset even when no view is applied
+        include_current_view = has_view or bool(scope)
+
         # Create choice view with proper choices included
         choice_view = view_type(label="Target view")
         options = ViewTargetOptions(
             choice_view,
             action_description=action_description,
             include_base_view=has_base_view,
-            include_current_view=has_view,
+            include_current_view=include_current_view,
             include_dataset=not has_base_view,
             include_dataset_view=allow_dataset_view,
             include_selected_labels=has_selected_labels,
@@ -3164,19 +3215,26 @@ class ViewTargetProperty(Property):
             selected_samples_description=selected_samples_description,
             selected_labels_label=selected_labels_label,
             selected_labels_description=selected_labels_description,
+            scope_description=scope,
+            dataset_scope_description=dataset_scope,
+            unavailable=unavailable,
         )
         self._options = options
 
-        _type = Enum(options.values())
+        # unusable targets are offered with their reason, but cannot be
+        # submitted or defaulted to
+        vals = options.available_values()
+        _type = Enum(vals)
 
-        vals = options.values()
-        if not default_target or default_target not in vals:
-            default_target = (
-                vals[-1] if vals else constants.ViewTarget.DATASET
-            )  # last option or safe fallback
+        if not vals:
+            # every target is unavailable, so there is nothing to default to
+            default_target = None
+        elif not default_target or default_target not in vals:
+            default_target = vals[-1]  # last option
 
-        # Only 1 option so no need for a radio group, just hide it.
-        if len(options.values()) <= 1:
+        # Only 1 option so no need for a radio group, just hide it. Grouped
+        # datasets keep it visible so the slice scope stays discoverable
+        if len(options.values()) <= 1 and not (scope or dataset_scope):
             choice_view = HiddenView(read_only=False)
 
         super().__init__(
@@ -3185,10 +3243,6 @@ class ViewTargetProperty(Property):
             view=choice_view,
             **kwargs,
         )
-
-        if invalid_error is not None:
-            self.invalid = True
-            self.error_message = invalid_error
 
     @property
     def options(self):

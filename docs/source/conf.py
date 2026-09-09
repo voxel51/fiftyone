@@ -18,6 +18,7 @@ sys.path.insert(0, os.path.abspath("../extensions"))
 
 from custom_directives import (
     CustomAnimatedCTADirective,
+    CustomAvailableInDirective,
     CustomButtonDirective,
     CustomCalloutItemDirective,
     CustomCardItemDirective,
@@ -26,7 +27,12 @@ from custom_directives import (
     CustomUseCaseCardDirective,
 )
 from fiftyone.internal.docs import is_hidden_from_docs
-from redirects import generate_api_redirects, generate_redirects
+from llms_txt import get_meta_description
+from redirects import (
+    generate_api_redirects,
+    generate_redirects,
+    inject_moved_anchor_redirects,
+)
 
 import fiftyone.constants as foc
 
@@ -87,6 +93,10 @@ if teams_dir:
     autoapi_dirs = [os.path.join(teams_dir, "fiftyone")]
     autoapi_generate_api_docs = False
     autoapi_options = ["members", "undoc-members", "show-inheritance"]
+    # multimodal is feature-gated and excluded from public API docs; its
+    # protobuf __generated__ modules defeat astroid and spam
+    # "Cannot resolve import" warnings
+    autoapi_ignore = ["*migrations*", "*/multimodal/*"]
 
 # Types of class members to generate documentation for.
 autodoc_default_options = {
@@ -214,7 +224,7 @@ html_favicon = "_static/favicon/favicon.ico"
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
-html_extra_path = ["404.html", "robots.txt"]
+html_extra_path = ["404.html", "robots.txt", "_extra"]
 
 # These paths are either relative to html_static_path
 # or fully qualified paths (eg. https://...)
@@ -306,11 +316,40 @@ def _skip_hidden_from_docs(_app, _what, _name, obj, _skip, _options):
     return None
 
 
+def _inject_page_meta(app, pagename, templatename, context, doctree):
+    """Fixes the canonical URL and supplies a description for extrahead.
+
+    Sphinx's own canonical `<link>` tag reads straight from
+    `context["pageurl"]`, so correcting it here (rather than in the
+    template) is enough to point canonical at the clean directory URL
+    instead of the raw `index.html` path.
+
+    `has_meta_description` tells extrahead whether docutils already
+    rendered a `.. meta:: :description:` directive as its own
+    `<meta name="description">` tag, so it can skip adding a duplicate.
+    """
+    pageurl = context.get("pageurl")
+    if pageurl and pageurl.endswith("/index.html"):
+        context["pageurl"] = pageurl[: -len("index.html")]
+
+    description = get_meta_description(app.env, pagename)
+    context["has_meta_description"] = bool(description)
+    if not description:
+        lines = app.config.llms_txt_description.splitlines()
+        description = lines[0].lstrip("> ").strip() if lines else ""
+    context["meta_description"] = description
+    context["markdown_url"] = (
+        f"{app.config.llms_txt_base_url.rstrip('/')}/{pagename}.md"
+    )
+
+
 def setup(app):
     # Generate page redirects
     app.add_config_value("redirects_file", "redirects", "env")
     app.connect("builder-inited", generate_redirects)
     app.connect("build-finished", generate_api_redirects)
+    app.connect("html-page-context", inject_moved_anchor_redirects)
+    app.connect("html-page-context", _inject_page_meta)
     # See https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#event-autodoc-skip-member
     app.connect("autodoc-skip-member", _skip_hidden_from_docs)
 
@@ -322,3 +361,4 @@ def setup(app):
     app.add_directive("customguidescard", CustomGuidesCardDirective)
     app.add_directive("customanimatedcta", CustomAnimatedCTADirective)
     app.add_directive("customusecasecard", CustomUseCaseCardDirective)
+    app.add_directive("customavailablein", CustomAvailableInDirective)

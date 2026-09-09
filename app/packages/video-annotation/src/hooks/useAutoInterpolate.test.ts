@@ -238,12 +238,63 @@ describe("useAutoInterpolate (Case C — tail step-hold)", () => {
     );
   });
 
-  it("does not step-hold a non-detection anchor (no bounding_box)", () => {
-    // A polyline-style track: keyframe present but no bbox to hold forward.
+  it("step-holds a polyline anchor's points forward over filler", () => {
+    // A polyline track's filler is written when the shape is first drawn — one
+    // vertex — so every vertex added to the keyframe afterwards has to be held
+    // forward, exactly as a resized box is. Without this the drawn frame keeps
+    // the full shape and the rest of the track keeps the stale one.
     streamRef.current = { labelsField: "polylines", totalFrames: 3 };
     getLabelImpl.current = ({ frame }: { frame: number }) => {
-      if (frame === 1) return { keyframe: true, points: [[0, 0]] } as never;
-      if (frame === 2) return { keyframe: false, points: [[1, 1]] } as never;
+      if (frame === 1)
+        return {
+          keyframe: true,
+          points: [
+            [
+              [0, 0],
+              [1, 0],
+              [1, 1],
+            ],
+          ],
+          closed: false,
+          filled: false,
+        } as never;
+      if (frame === 2) return { keyframe: false, points: [[[0, 0]]] } as never;
+      return null;
+    };
+
+    renderHook(() => useAutoInterpolate());
+
+    fireKeyframeChanged({
+      trackId: "t1",
+      instanceId: "i1",
+      frame: 1,
+      kind: "set",
+      path: "frames.polylines",
+    });
+
+    expect(updateLabel).toHaveBeenCalledWith(
+      { path: "frames.polylines", instanceId: "i1", frame: 2 },
+      {
+        points: [
+          [
+            [0, 0],
+            [1, 0],
+            [1, 1],
+          ],
+        ],
+        closed: false,
+        filled: false,
+        keyframe: false,
+      },
+    );
+  });
+
+  it("does not step-hold an anchor with no geometry at all", () => {
+    // Neither a bbox nor points — nothing to hold forward.
+    streamRef.current = { labelsField: "polylines", totalFrames: 3 };
+    getLabelImpl.current = ({ frame }: { frame: number }) => {
+      if (frame === 1) return { keyframe: true } as never;
+      if (frame === 2) return { keyframe: false } as never;
       return null;
     };
 

@@ -86,7 +86,7 @@ describe("buildPerInstanceTracks", () => {
     expect(tracks[0].label).toBe("person 7");
   });
 
-  it("addresses legacy instance-less detections by their doc _id", () => {
+  it("coalesces instance-less detections by their track index", () => {
     const det: LabelData = {
       _id: "doc-3",
       _cls: "Detection",
@@ -96,9 +96,15 @@ describe("buildPerInstanceTracks", () => {
     };
 
     const resolveColor = vi.fn<ColorResolver>(() => "#fff");
-    const tracks = build(1, { 1: [det] }, resolveColor);
+    // The same index on distinct per-frame doc _ids must be ONE track.
+    const tracks = build(
+      2,
+      { 1: [det], 2: [{ ...det, _id: "doc-3b" }] },
+      resolveColor,
+    );
 
-    expect(tracks[0].id).toBe("doc-3");
+    expect(tracks).toHaveLength(1);
+    expect(tracks[0].id).toBe("track-3");
     expect(resolveColor).toHaveBeenCalledWith(
       {
         label: "vehicle",
@@ -107,6 +113,19 @@ describe("buildPerInstanceTracks", () => {
       },
       PATH,
     );
+  });
+
+  it("addresses a bare detection (no instance, no index) by its doc _id", () => {
+    const det: LabelData = {
+      _id: "doc-bare",
+      _cls: "Detection",
+      label: "vehicle",
+      keyframe: false,
+    };
+
+    const tracks = build(1, { 1: [det] });
+
+    expect(tracks[0].id).toBe("doc-bare");
   });
 
   it("assigns instance-only ordinals as the next free integer above the per-class max", () => {
@@ -128,6 +147,28 @@ describe("buildPerInstanceTracks", () => {
 
     // Sorted by ordinal: persisted 3, then the next free (4).
     expect(tracks.map((t) => t.label)).toEqual(["person 3", "person 4"]);
+  });
+
+  it("orders rows deterministically regardless of label accumulation order", () => {
+    // three instance-only tracks of one class — no persisted index, so the
+    // ordinal is assigned; the resulting row order must not depend on the
+    // order the labels happen to arrive in
+    const mk = (inst: string): LabelData => ({
+      _id: `doc-${inst}`,
+      _cls: "Detection",
+      label: "person",
+      instance: { _cls: "Instance", _id: inst },
+    });
+
+    const forward = build(1, { 1: [mk("a"), mk("b"), mk("c")] }).map(
+      (t) => t.id,
+    );
+    const reversed = build(1, { 1: [mk("c"), mk("b"), mk("a")] }).map(
+      (t) => t.id,
+    );
+
+    expect(forward).toEqual(["a", "b", "c"]);
+    expect(reversed).toEqual(forward);
   });
 
   it("builds a track per instance across multiple fields, colored by each field's path", () => {

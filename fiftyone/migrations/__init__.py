@@ -5,6 +5,7 @@ FiftyOne's migration interface.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import types
 
 from .runner import (

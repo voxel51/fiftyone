@@ -5,6 +5,10 @@ FiftyOne Recipes
 
 .. default-role:: code
 
+.. meta::
+    :description: Short, focused FiftyOne recipes for common workflows
+        like merging datasets, custom embeddings, and batch processing.
+
 FiftyOne turbocharges your current workflows, transforming hours of scripting
 into minutes so that you can focus on your models. Browse the recipes below to
 see how you can leverage FiftyOne to enhance key parts of your machine learning
@@ -158,6 +162,8 @@ workflows.
    :hidden:
 
    Creating views <creating_views.ipynb>
+   Adding classifier predictions <adding_classifications.ipynb>
+   Adding object detections <adding_detections.ipynb>
    Draw labels on samples <draw_labels.ipynb>
    Convert dataset formats <convert_datasets.ipynb>
    Merging datasets <merge_datasets.ipynb>

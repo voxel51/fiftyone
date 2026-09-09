@@ -31,9 +31,7 @@
 ### Spec Organization
 
 All specs live directly in `e2e-pw/src/oss/specs/` with no subdirectories and
-are named `<ticket>-<short-description>.spec.ts`, e.g.
-`FOEPD-1234-my-regression-test.spec.ts`. Specs without a known ticket use
-`MISSING` as the placeholder.
+are named `<short-description>.spec.ts`, e.g. `my-regression-test.spec.ts`.
 
 ### Patterns
 
@@ -43,6 +41,20 @@ are named `<ticket>-<short-description>.spec.ts`, e.g.
   create POMs that contain the assertion class.
 - Refrain from using `page.waitForTimeout()`. There is almost always a better
   alternative, like using custom events.
+- Keep individual tests small. These specs also run in fiftyone-teams CI at
+  roughly 2–4x the duration (slower server boot, page loads, and screenshot
+  stabilization), so a test that takes more than ~60 seconds here is a timeout
+  risk there. Split large flows into focused tests.
+- Avoid `test.describe.serial` unless tests genuinely depend on each other's
+  state. With serial mode, one failure re-runs the entire file on every retry
+  (re-paying web server boot and dataset creation) and healthy siblings get
+  reported as retried, which confuses flake triage. When tests mutate shared
+  data (e.g. annotation autosave), prefer giving each test its own sample
+  (`numSamples` plus `indexToId`-addressed ids) over serializing the file.
+- Settle the canvas before `toHaveScreenshot` (finish drags, move the pointer
+  to a neutral position). Screenshot assertions wait for consecutive identical
+  frames, so each one against a repainting canvas pays a multi-second
+  stabilization loop.
 
 #### Check for flakiness
 
@@ -106,24 +118,25 @@ class MyPOMAsserter {
 
 1. Read [Playwright docs](https://playwright.dev/docs/test-snapshots) on this
    subject.
-2. Since baseline screenshots are platform dependent, and our CI server runs on
-   linux, to generate linux screenshots locally, run the following commands:
+2. Baseline screenshots are platform dependent. CI compares the
+   `*-chromium-linux.png` baselines rendered inside the CI container image
+   (`ghcr.io/voxel51/fiftyone-e2e`); other environments' font stacks differ by
+   pixels, so only that image's renders are canonical. To update a linux
+   baseline, harvest the render from a CI run of your PR:
 
 ```
-# create a docker image with playwright and python and fiftyone
-yarn build-linux-screenshot-docker-image
+# download the merged report from the failing run
+gh run download <run-id> -n playwright-report-merged -D /tmp/report
 
-# make sure mongod is running and available in your host machine at localhost:27017
-
-# generate screenshots
-# from e2e-pw directory, run:
-docker run --rm --network host -v $(pwd):/work/ -w /work/ -it screenshot /bin/bash
-
-# inside the docker container, run:
-npx playwright test --update-snapshots -g "description of my test"
-
-Note: `PYTHONPATH` and virtual env setup is done automatically.
+# each failed screenshot's trace zip (in /tmp/report/data/) lists
+# attachments mapping <name>-{expected,actual,diff}.png to sha-named
+# files in the same directory; commit the *actual* over the baseline:
+cp /tmp/report/data/<actual-sha>.png \
+  src/oss/specs/<spec>.spec.ts-snapshots/<name>-chromium-linux.png
 ```
+
+Only accept an actual after reviewing the diff — a dimension change or a
+highlighted UI element is a behavioral difference, not render noise.
 
 #### Creating Datasets
 

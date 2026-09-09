@@ -13,6 +13,18 @@ export function setMockAtoms(newMockValues: { [key: string]: any }) {
 }
 
 export const getValue = (atom) => {
+  // ``waitForAll`` resolves its dependencies eagerly here (the mock has no
+  // async/loadable machinery): map ``getValue`` over the deps, preserving the
+  // array/object shape the caller passed.
+  if (atom && atom.__waitForAll) {
+    const { deps } = atom;
+    return Array.isArray(deps)
+      ? deps.map(getValue)
+      : Object.fromEntries(
+          Object.entries(deps).map(([k, v]) => [k, getValue(v)]),
+        );
+  }
+
   if (mockValuesStore[atom.key]) {
     const str = JSON.stringify(atom.params);
     if (Object.hasOwn(mockValuesStore[atom.key], str)) {
@@ -51,6 +63,10 @@ const setValue = (atom, value) => {
     mockValues[atom.key] = value instanceof Function ? value(current) : value;
   }
 };
+
+export function waitForAll<T>(deps: T) {
+  return { __waitForAll: true, deps };
+}
 
 export function atom<T>(options: Parameters<typeof recoil.atom<T>>[0]) {
   return { key: options.key };

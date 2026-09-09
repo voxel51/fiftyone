@@ -9,11 +9,14 @@ import {
   fieldPaths,
   groupSlice,
   modalSampleId,
+  State,
   useCurrentDatasetId,
   view,
 } from "@fiftyone/state";
 import { FRAMES_PREFIX } from "@fiftyone/annotation";
 import {
+  CLASSIFICATION_FIELD,
+  CLASSIFICATIONS_FIELD,
   DETECTION,
   EMBEDDED_DOCUMENT_FIELD,
   LabelType,
@@ -28,7 +31,10 @@ import {
   useAnnotationContext,
   useAnnotationFields,
 } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
-import { visibleLabelSchemas } from "../../../core/src/components/Modal/Sidebar/Annotate/state";
+import {
+  activeLabelSchemas,
+  visibleLabelSchemas,
+} from "../../../core/src/components/Modal/Sidebar/Annotate/state";
 
 /**
  * Read accessors for the external recoil / jotai atoms the video surface
@@ -72,6 +78,25 @@ export const useTemporalDetectionFieldPaths = () =>
     }),
   );
 
+/**
+ * Schema paths of the dataset's SAMPLE-level classification fields, single and
+ * list alike.
+ *
+ * `space: SAMPLE` is what keeps the `frames.*` namespace out. A per-frame
+ * classification is the `FrameStore`'s to paint (see
+ * {@link useExploreFrameLabelFields}), and the composite `VideoLabelStore`
+ * routes by which half claims the path — admitting `frames.classifications`
+ * here would scope the same path twice, once per owner.
+ */
+export const useSampleClassificationFieldPaths = () =>
+  useRecoilValue(
+    fieldPaths({
+      space: State.SPACE.SAMPLE,
+      ftype: EMBEDDED_DOCUMENT_FIELD,
+      embeddedDocType: [CLASSIFICATION_FIELD, CLASSIFICATIONS_FIELD],
+    }),
+  );
+
 /** The overlay currently being edited in the sidebar (`@fiftyone/core`). */
 export const useCurrentEditingOverlay = () =>
   useAnnotationContext().selected?.overlay ?? null;
@@ -97,6 +122,14 @@ export const useVisibleLabelSchemas = (): ReadonlySet<string> => {
   const visible = useAtomValue(visibleLabelSchemas);
   return useMemo(() => new Set(visible), [visible]);
 };
+
+/**
+ * Whether the `get_label_schemas` operator round-trip has landed. Until it
+ * does, schema-gated derivations (visible fields, TD tracks) see an empty
+ * set rather than the real activation state.
+ */
+export const useLabelSchemasLoaded = (): boolean =>
+  useAtomValue(activeLabelSchemas) !== null;
 
 /**
  * Every schema-active per-frame label field, mapped to its list label type

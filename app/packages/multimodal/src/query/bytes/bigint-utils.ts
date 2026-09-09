@@ -1,8 +1,8 @@
 /**
  * Converts a `bigint` byte length to a `number`, throwing if the value
- * exceeds `Number.MAX_SAFE_INTEGER`. MCAP byte offsets and lengths are
- * encoded as `uint64`; values beyond the safe integer range would silently
- * corrupt arithmetic.
+ * exceeds `Number.MAX_SAFE_INTEGER`. Container formats often encode byte
+ * offsets and lengths as `uint64`; larger values would silently corrupt
+ * arithmetic.
  */
 export function safeNumber(value: bigint): number {
   if (value > BigInt(Number.MAX_SAFE_INTEGER)) {

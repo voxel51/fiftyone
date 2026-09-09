@@ -241,6 +241,7 @@ export abstract class BaseOverlay<
    * Override this method in subclasses to perform specific cleanup.
    */
   destroy(): void {
+    this.renderer?.dispose(this.containerId);
     this._eventBus = undefined;
     this._eventChannel = undefined;
   }

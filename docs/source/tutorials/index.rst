@@ -5,6 +5,10 @@ FiftyOne Tutorials
 
 .. default-role:: code
 
+.. meta::
+    :description: Hands-on FiftyOne tutorials showing how to curate
+        datasets, debug models, and turn good models into great ones.
+
 Each tutorial below is a curated demonstration of how FiftyOne can help refine
 your datasets and turn your good models into *great models*.
 
@@ -252,10 +256,13 @@ your datasets and turn your good models into *great models*.
    Exploring Kaputt Dataset <kaputt_dataset.ipynb>
    DINOv3 visual search <dinov3.ipynb>
    pandas and FiftyOne <pandas_comparison.ipynb>
+   Evaluating object detections <evaluate_detections.ipynb>
+   Evaluating a classifier <evaluate_classifications.ipynb>
    Working with Open Images <open_images.ipynb>
    Embeddings with Qdrant <qdrant.ipynb>
    3D point clouds with Point-E <pointe.ipynb>
    Monocular depth estimation <monocular_depth_estimation.ipynb>
+   Zero-shot classification <zero_shot_classification.ipynb>
    Data augmentation <data_augmentation.ipynb>
    Detecting small objects <small_object_detection.ipynb>
    Anomaly detection <anomaly_detection.ipynb>

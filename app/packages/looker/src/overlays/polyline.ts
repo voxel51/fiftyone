@@ -3,13 +3,15 @@
  */
 
 import { isHoveringParticularLabelWithInstanceConfig } from "@fiftyone/state/src/jotai";
-import { TOLERANCE } from "../constants";
+import { INFO_COLOR, TOLERANCE } from "../constants";
 import { BaseState, Coordinates } from "../state";
-import { distanceFromLineSegment, getRenderedScale } from "../util";
+import { distanceFromLineSegment } from "../util";
 import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
 import {
   getInstanceStrokeStyles,
+  getLabelAttributesText,
   resolveLabelSelectionVisuals,
+  sizeInImagePixels,
   t,
 } from "./util";
 
@@ -24,12 +26,15 @@ export default class PolylineOverlay<
   State extends BaseState,
 > extends CoordinateOverlay<State, PolylineLabel> {
   containsPoint(state: Readonly<State>): CONTAINS {
-    const tolerance =
-      (state.strokeWidth * TOLERANCE) /
-      getRenderedScale(
-        [state.windowBBox[2], state.windowBBox[3]],
-        state.dimensions,
-      );
+    // A lone vertex is hit-tested like a keypoint: the target is the drawn dot's
+    // radius, not a stroke-width tolerance meant for lines. Without this the
+    // clickable area is smaller than the dot you can see, so the label reads as
+    // un-hoverable and un-selectable in Explore.
+    if (this.loneVertexHit(state)) {
+      return CONTAINS.BORDER;
+    }
+
+    const tolerance = sizeInImagePixels(state, state.strokeWidth * TOLERANCE);
     const minDistance = this.getMouseDistance(state);
     if (minDistance <= tolerance) {
       return CONTAINS.BORDER;
@@ -64,6 +69,14 @@ export default class PolylineOverlay<
       });
 
     for (const path of this.label.points || []) {
+      // A single-vertex path has no segment to stroke, but it is still a real
+      // shape the annotator drew — draw the vertex itself so it doesn't vanish
+      // in Explore (it renders in Annotate, where vertices are drawn).
+      if (path.length === 1) {
+        this.drawVertex(ctx, state, path[0], strokeColor, selected);
+        continue;
+      }
+
       if (path.length < 2) {
         continue;
       }
@@ -81,6 +94,88 @@ export default class PolylineOverlay<
         );
       }
     }
+
+    !state.config.thumbnail && this.drawLabelText(ctx, state);
+  }
+
+  /**
+   * Draws the label tag, matching `DetectionOverlay`'s tag styling so polylines
+   * read the same as every other label in Explore (filled box in the label
+   * colour, `INFO_COLOR` text, same padding).
+   *
+   * Anchored at the centroid of the shape's points — a polyline's bounding-box
+   * corner can sit far from any actual geometry — except for a lone vertex,
+   * where the tag is lifted clear of the dot so it doesn't hide it. Placement
+   * mirrors the Annotate surface (centred on the anchor, above the dot) so a
+   * label doesn't shift when toggling between Explore and Annotate.
+   */
+  private drawLabelText(ctx: CanvasRenderingContext2D, state: Readonly<State>) {
+    const labelText = this.getLabelText(state);
+
+    if (!labelText.length) {
+      return;
+    }
+
+    const points = (this.label.points || []).flat().filter(Boolean);
+
+    if (!points.length) {
+      return;
+    }
+
+    const isLoneVertex = points.length === 1;
+    const anchor: Coordinates = isLoneVertex
+      ? points[0]
+      : [
+          points.reduce((sum, p) => sum + p[0], 0) / points.length,
+          points.reduce((sum, p) => sum + p[1], 0) / points.length,
+        ];
+
+    const { width } = ctx.measureText(labelText);
+    const height = state.fontSize;
+    const bpad = state.textPad * 3 + state.strokeWidth;
+    const boxWidth = width + bpad;
+    const boxHeight = height + bpad;
+
+    const [ax, ay] = t(state, anchor[0], anchor[1]);
+
+    // Match the Annotate placement so a label doesn't jump when toggling modes:
+    // horizontally centred on the anchor, and for a lone vertex lifted entirely
+    // above the dot rather than sitting up-and-to-the-right of it (the dot is
+    // drawn at double radius while selected). `oy` is the box's BOTTOM edge (it
+    // is drawn upward from there).
+    const ox = ax - boxWidth / 2;
+    const vertexRadius = this.isSelected(state)
+      ? state.pointRadius * 2
+      : state.pointRadius;
+    const oy = isLoneVertex
+      ? ay - vertexRadius - state.strokeWidth
+      : ay + boxHeight / 2;
+
+    ctx.beginPath();
+    ctx.fillStyle = this.getColor(state);
+    ctx.moveTo(ox, oy);
+    ctx.lineTo(ox + boxWidth, oy);
+    ctx.lineTo(ox + boxWidth, oy - boxHeight);
+    ctx.lineTo(ox, oy - boxHeight);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = INFO_COLOR;
+    const pad = state.textPad + state.strokeWidth;
+    ctx.fillText(labelText, ox + pad, oy - pad);
+  }
+
+  private getLabelText(state: Readonly<State>): string {
+    const attributes = state.options.shownLabelAttributes?.[this.field];
+
+    return attributes
+      ? getLabelAttributesText(
+          this.label,
+          attributes.filter((name) => name !== "points"),
+        )
+      : this.label.label
+        ? `${this.label.label}`
+        : "";
   }
 
   getMouseDistance(state: Readonly<State>): number {
@@ -88,6 +183,15 @@ export default class PolylineOverlay<
     const [w, h] = state.dimensions;
     const xy = state.pixelCoordinates;
     for (const shape of this.label.points || []) {
+      // No segments to measure against for a lone vertex — measure to the point
+      // itself, otherwise a single-vertex polyline can never be hovered.
+      if (shape.length === 1) {
+        distances.push(
+          Math.hypot(xy[0] - w * shape[0][0], xy[1] - h * shape[0][1]),
+        );
+        continue;
+      }
+
       for (let i = 0; i < shape.length - 1; i++) {
         distances.push(
           distanceFromLineSegment(
@@ -122,6 +226,74 @@ export default class PolylineOverlay<
 
   getPoints(): Coordinates[] {
     return getPolylinePoints([this.label]);
+  }
+
+  /**
+   * The cursor's hit against a single-vertex shape, or `null` when it isn't over
+   * one. Mirrors `KeypointOverlay.getDistanceAndMaybePoint`: the radius is
+   * `state.pointRadius * TOLERANCE`, doubled while selected, converted to the
+   * image-pixel space of the distances (`dimensions`-scaled vs
+   * `pixelCoordinates`) so the target always matches the dot actually drawn.
+   */
+  private loneVertexHit(
+    state: Readonly<State>,
+  ): { coordinates: Coordinates; index: number } | null {
+    const radius = sizeInImagePixels(
+      state,
+      (this.isSelected(state) ? state.pointRadius * 2 : state.pointRadius) *
+        TOLERANCE,
+    );
+    const [w, h] = state.dimensions;
+    const [x, y] = state.pixelCoordinates;
+    const shapes = this.label.points || [];
+
+    for (let i = 0; i < shapes.length; i++) {
+      if (shapes[i]?.length !== 1) {
+        continue;
+      }
+
+      const [px, py] = shapes[i][0];
+      if (Math.hypot(x - w * px, y - h * py) <= radius) {
+        return { coordinates: shapes[i][0], index: i };
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Draws a lone vertex as a filled dot, matching how `KeypointOverlay` draws
+   * points (same `state.pointRadius`, same selected-size bump) so a
+   * single-vertex polyline reads consistently with other point geometry.
+   */
+  private drawVertex(
+    ctx: CanvasRenderingContext2D,
+    state: Readonly<State>,
+    point: Coordinates,
+    color: string,
+    selected: boolean,
+  ): void {
+    const [x, y] = t(state, point[0], point[1]);
+
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(
+      x,
+      y,
+      selected ? state.pointRadius * 2 : state.pointRadius,
+      0,
+      Math.PI * 2,
+    );
+    ctx.fill();
+
+    // Selected dots get the same inner marker keypoints use, so selection is
+    // visible on a shape that has no outline to restyle.
+    if (selected) {
+      ctx.fillStyle = INFO_COLOR;
+      ctx.beginPath();
+      ctx.arc(x, y, state.pointRadius, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   private strokePath(

@@ -29,6 +29,7 @@ const useField = (path: string) =>
 const FilterableEntry = ({
   disabled,
   entryKey,
+  group,
   modal,
   path,
   onFocus,
@@ -97,6 +98,7 @@ const FilterableEntry = ({
               color={color}
               expandedPath={expandedPath}
               template={useTitleTemplate({
+                group,
                 modal,
                 path,
               })}

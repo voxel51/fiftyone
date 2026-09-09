@@ -1,28 +1,25 @@
 import fs from "node:fs";
 import path from "node:path";
-import reactRefresh from "@vitejs/plugin-react-refresh";
+import react from "@vitejs/plugin-react";
 import nodePolyfills from "rollup-plugin-polyfill-node";
 import { defineConfig, normalizePath, type Plugin } from "vite";
 import relay from "vite-plugin-relay";
 import svgr from "vite-plugin-svgr";
 import wasm from "vite-plugin-wasm";
-import { basePlugins } from "../../vite.base.config";
+
+const foxgloveWasmWrapperPattern =
+  /[\\/]node_modules[\\/]@foxglove[\\/](?:wasm-(lz4|zstd)[\\/]dist[\\/]wasm-(lz4|zstd)|wasm-bz2[\\/]wasm[\\/]module)\.js$/;
+const foxgloveWasmRequirePattern =
+  /require\((["'])(\.\/(?:wasm-(?:lz4|zstd)|module)\.wasm)\1\)/g;
 
 async function loadConfig() {
-  const pluginRewriteAll = (await import("vite-plugin-rewrite-all")).default;
-
   return defineConfig({
     base: "",
     plugins: [
-      ...basePlugins,
       svgr(),
-      reactRefresh({
-        parserPlugins: ["classProperties", "classPrivateProperties"],
-      }),
+      react(),
       relay,
       nodePolyfills(),
-      // pluginRewriteAll to address this vite bug: https://github.com/vitejs/vite/issues/2415
-      pluginRewriteAll(),
       foxgloveWasmAsUrl(),
       wasm(),
       // Vite's worker bundling breaks ort's WASM resolution and emits hashed
@@ -71,7 +68,7 @@ async function loadConfig() {
     },
     optimizeDeps: {
       exclude: ["onnxruntime-web"],
-      esbuildOptions: {
+      rolldownOptions: {
         plugins: [foxgloveWasmOptimizeAsUrl()],
       },
     },
@@ -82,46 +79,33 @@ async function loadConfig() {
     resolve: {
       alias: {
         path: "path-browserify",
+        fs: path.resolve(__dirname, "fs-stub.js"),
       },
       dedupe: ["react", "react-dom", "react/jsx-runtime"],
     },
     build: {
-      commonjsOptions: {
-        // The @foxglove wasm packages locate their .wasm binaries with
-        // `require("./<name>.wasm")`, which foxgloveWasmAsUrl() resolves
-        // to a Vite `?url` module (a single default export holding the
-        // asset URL string). Default CommonJS interop hands `require()`
-        // the frozen module namespace instead of that string, and the
-        // emscripten glue then crashes on `filename.startsWith(...)`.
-        // Returning the default export for exactly these ids gives the
-        // glue the URL string, matching the dev-mode esbuild shim.
-        requireReturnsDefault: (id: string) =>
-          /[\\/]@foxglove[\\/]wasm-(lz4|zstd|bz2)[\\/].*\.wasm\?url$/.test(id)
-            ? "auto"
-            : false,
-      },
       rollupOptions: {
         onwarn(warning, warn) {
           if (warning.code === "MODULE_LEVEL_DIRECTIVE") {
             return;
           }
+          // @foxglove/rosmsg-serialization compiles message writers with
+          // eval by design; the warning is not actionable from here
+          if (
+            warning.code === "EVAL" &&
+            warning.id?.includes("@foxglove/rosmsg-serialization")
+          ) {
+            return;
+          }
           warn(warning);
         },
-        output: {
-          // Give the heavy, lazily-loaded vendor libs their own deterministic
-          // chunks so rollup doesn't hoist them into the entry or glue them
-          // together (e.g. mapbox + plotly landing in one blob). Each only
-          // loads when its panel/view opens.
-          manualChunks(id) {
-            if (id.includes("node_modules")) {
-              if (/[\\/](mapbox-gl|@mapbox)[\\/]/.test(id)) return "mapbox-gl";
-              if (/[\\/]plotly\.js/.test(id) || /react-plotly\.js/.test(id))
-                return "plotly";
-              if (/[\\/]recharts[\\/]/.test(id)) return "recharts";
-              if (/[\\/]html2canvas[\\/]/.test(id)) return "html2canvas";
-            }
-          },
-        },
+        // No manual chunking: rolldown's emulation of function-form
+        // manualChunks pulls each matched library's entire dependency
+        // closure (react-dom, clsx, transition-group, lodash internals)
+        // into the forced chunk and re-exports module-init helpers across
+        // chunk boundaries, which can execute modules before their
+        // initializers run. Rolldown already gives dynamically-imported
+        // panels (plotly, mapbox, recharts, html2canvas) their own chunks.
       },
     },
     server: {
@@ -166,6 +150,23 @@ function foxgloveWasmAsUrl(): Plugin {
   return {
     name: "foxglove-wasm-as-url",
     enforce: "pre",
+    transform(code, id) {
+      if (!foxgloveWasmWrapperPattern.test(id)) {
+        return null;
+      }
+
+      // These Emscripten shims expect webpack-style asset requires to return
+      // the URL string directly. Vite 8's Rolldown build instead returns the
+      // `?url` module namespace, and build.commonjsOptions is now a no-op.
+      // Accept either shape so dev and production keep identical semantics.
+      const transformed = code.replace(
+        foxgloveWasmRequirePattern,
+        (_match, quote, source) =>
+          `((module) => module.default ?? module)(require(${quote}${source}${quote}))`,
+      );
+
+      return transformed === code ? null : { code: transformed, map: null };
+    },
     async resolveId(source, importer, options) {
       if (
         !source.endsWith(".wasm") ||
@@ -190,34 +191,30 @@ function foxgloveWasmAsUrl(): Plugin {
   };
 }
 
-function foxgloveWasmOptimizeAsUrl() {
-  const namespace = "foxglove-wasm-url";
-  const wrapperPattern =
-    /[\\/]node_modules[\\/]@foxglove[\\/](?:wasm-(lz4|zstd)[\\/]dist[\\/]wasm-(lz4|zstd)|wasm-bz2[\\/]wasm[\\/]module)\.js$/;
+function foxgloveWasmOptimizeAsUrl(): Plugin {
+  const prefix = "\0foxglove-wasm-url:";
 
   return {
     name: "foxglove-wasm-url",
-    setup(build) {
-      build.onResolve(
-        { filter: /^\.\/(?:wasm-(?:lz4|zstd)|module)\.wasm$/ },
-        (args) => {
-          if (!wrapperPattern.test(args.importer)) {
-            return undefined;
-          }
+    resolveId(source, importer) {
+      if (
+        !/^\.\/(?:wasm-(?:lz4|zstd)|module)\.wasm$/.test(source) ||
+        !importer ||
+        !foxgloveWasmWrapperPattern.test(importer)
+      ) {
+        return null;
+      }
 
-          return {
-            namespace,
-            path: path.resolve(args.resolveDir, args.path),
-          };
-        },
-      );
+      return prefix + path.resolve(path.dirname(importer), source);
+    },
+    load(id) {
+      if (!id.startsWith(prefix)) {
+        return null;
+      }
 
-      build.onLoad({ filter: /.*/, namespace }, (args) => ({
-        contents: `module.exports = ${JSON.stringify(
-          `/@fs/${normalizePath(args.path)}`,
-        )};`,
-        loader: "js",
-      }));
+      return `module.exports = ${JSON.stringify(
+        `/@fs/${normalizePath(id.slice(prefix.length))}`,
+      )};`;
     },
   };
 }

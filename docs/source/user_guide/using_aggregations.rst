@@ -5,6 +5,10 @@ Using Aggregations
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 0.6.4
+    :enterprise_version: 1.0
+
 :ref:`Datasets <using-datasets>` are the core data structure in FiftyOne,
 allowing you to represent your raw data, labels, and associated metadata. When
 you query and manipulate a |Dataset| object using
@@ -441,6 +445,10 @@ collection:
 
 Quantiles
 _________
+
+.. customavailablein::
+    :oss_version: 0.16.6
+    :enterprise_version: 1.0
 
 You can use the
 :meth:`quantiles() <fiftyone.core.collections.SampleCollection.quantiles>`

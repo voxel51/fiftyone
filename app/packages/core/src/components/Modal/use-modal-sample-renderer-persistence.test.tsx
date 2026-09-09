@@ -25,6 +25,10 @@ vi.mock("@fiftyone/plugins", () => ({
   createSampleRendererRenderContext: () => ({ media: { url: "/a.mcap" } }),
   getComponent: () => () => null,
   getMatchingSampleRenderer: () => registration,
+  hasSampleRendererSource: (media: {
+    mediaReference?: unknown;
+    url?: string | null;
+  }) => Boolean(media.url || media.mediaReference),
   isSampleRendererModalPersistent: () => true,
   useActivePlugins: () => [registration],
 }));

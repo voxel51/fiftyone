@@ -1,8 +1,8 @@
 import { useAnnotationEventBus } from "@fiftyone/annotation";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, type ThreeEvent } from "@react-three/fiber";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
-import { Matrix4, Mesh, Vector3 } from "three";
+import { Matrix4, Mesh, Object3D, Vector3 } from "three";
 import { Transformable } from "../labels/shared/TransformControls";
 import {
   activeSegmentationStateAtom,
@@ -47,7 +47,7 @@ export const PolylinePointMarker = ({
   tooltipDescriptor = null,
 }: PolylinePointMarkerProps) => {
   const meshRef = useRef<Mesh>(null);
-  const transformControlsRef = useRef<any>(null);
+  const transformControlsRef = useRef<Object3D>(null);
   const [startMatrix, setStartMatrix] = useState<Matrix4 | null>(null);
   const annotationEventBus = useAnnotationEventBus();
 
@@ -76,7 +76,7 @@ export const PolylinePointMarker = ({
     hoveredVertex?.pointIndex === pointIndex;
 
   const handlePointClick = useCallback(
-    (event: any) => {
+    (event: ThreeEvent<MouseEvent>) => {
       if (!isDraggable) return;
 
       event.stopPropagation();
@@ -179,7 +179,15 @@ export const PolylinePointMarker = ({
     }
 
     endDragFn(labelId);
-  }, [onPointMove, selectedPoint, position, startMatrix, endDragFn, labelId]);
+  }, [
+    onPointMove,
+    selectedPoint,
+    setSelectedPoint,
+    position,
+    startMatrix,
+    endDragFn,
+    labelId,
+  ]);
 
   // This effect resets the cursor to default when the component unmounts.
   useEffect(() => {

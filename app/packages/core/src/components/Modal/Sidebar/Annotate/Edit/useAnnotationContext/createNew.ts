@@ -98,11 +98,23 @@ export function createNewLabel(
     const polylineData = data as PolylineLabel;
     const overlay = overlayFactory.create<PolylineOptions, PolylineOverlay>(
       "polyline",
-      { field, id, label: polylineData, selectable: true },
+      // starts empty; points are seeded through the point API below
+      { field, id, label: { ...polylineData, points: [] }, selectable: true },
     );
     // withUndo=true so first-point placement is undoable.
     addOverlay(overlay, true);
     scene?.selectOverlay(id, { ignoreSideEffects: true });
+
+    // The point API dispatches `lighter:keypoint-point-added`, which the
+    // bridge commits to the engine. Points baked into the constructor are
+    // never committed.
+    for (const segment of polylineData.points ?? []) {
+      const segmentIdx = overlay.startNewSegment();
+      for (const point of segment) {
+        overlay.appendPointToSegment(segmentIdx, point);
+      }
+    }
+
     return {
       data: polylineData,
       overlay,

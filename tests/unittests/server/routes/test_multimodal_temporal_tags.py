@@ -17,8 +17,10 @@ from starlette.exceptions import HTTPException
 
 import fiftyone as fo
 import fiftyone.core.odm as foo
-import fiftyone.multimodal.server.routes as fomr
 import fiftyone.core.tags as fota
+import fiftyone.multimodal.server.routes as fomr
+import fiftyone.server.routes as fosr
+import fiftyone.server.routes.temporal_tags as fott
 
 
 @pytest.fixture(autouse=True)
@@ -66,7 +68,7 @@ def fixture_sample_ids(dataset):
 @pytest.fixture(name="sample_tags_endpoint")
 def fixture_sample_tags_endpoint():
     """Returns the sample tags endpoint instance."""
-    return fomr.SampleTagsEndpoint(
+    return fott.SampleTagsEndpoint(
         scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
     )
 
@@ -74,7 +76,7 @@ def fixture_sample_tags_endpoint():
 @pytest.fixture(name="sample_tag_endpoint")
 def fixture_sample_tag_endpoint():
     """Returns the sample tag item endpoint instance."""
-    return fomr.SampleTagEndpoint(
+    return fott.SampleTagEndpoint(
         scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
     )
 
@@ -82,7 +84,7 @@ def fixture_sample_tag_endpoint():
 @pytest.fixture(name="tags_endpoint")
 def fixture_tags_endpoint():
     """Returns the dataset tags endpoint instance."""
-    return fomr.TagsEndpoint(
+    return fott.TagsEndpoint(
         scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
     )
 
@@ -90,7 +92,7 @@ def fixture_tags_endpoint():
 @pytest.fixture(name="tag_counts_endpoint")
 def fixture_tag_counts_endpoint():
     """Returns the tag counts endpoint instance."""
-    return fomr.TagCountsEndpoint(
+    return fott.TagCountsEndpoint(
         scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
     )
 
@@ -769,37 +771,40 @@ class TestTagsRoute:
         assert exc_info.value.status_code == 404
         assert "Dataset 'missing-dataset' not found" in exc_info.value.detail
 
-    def test_multimodal_routes_register_tag_endpoints(self):
-        routes = dict(fomr.MultimodalRoutes)
-        tag_routes = [
-            (path, endpoint)
-            for path, endpoint in fomr.MultimodalRoutes
-            if "/tags" in path
-        ]
-
-        assert tag_routes == [
+    def test_temporal_tag_routes_register_tag_endpoints(self):
+        assert fott.TemporalTagRoutes == [
             (
                 "/dataset/{dataset_id}/sample/{sample_id}/tags/{tag_id}",
-                fomr.SampleTagEndpoint,
+                fott.SampleTagEndpoint,
             ),
             (
                 "/dataset/{dataset_id}/sample/{sample_id}/tags",
-                fomr.SampleTagsEndpoint,
+                fott.SampleTagsEndpoint,
             ),
             (
                 "/dataset/{dataset_id}/tags/counts",
-                fomr.TagCountsEndpoint,
+                fott.TagCountsEndpoint,
             ),
             (
                 "/dataset/{dataset_id}/tags",
-                fomr.TagsEndpoint,
+                fott.TagsEndpoint,
             ),
         ]
-        assert routes["/dataset/{dataset_id}/tags"] is fomr.TagsEndpoint
+        routes = dict(fott.TemporalTagRoutes)
+        assert routes["/dataset/{dataset_id}/tags"] is fott.TagsEndpoint
         assert (
             routes["/dataset/{dataset_id}/tags/counts"]
-            is fomr.TagCountsEndpoint
+            is fott.TagCountsEndpoint
         )
-        assert not hasattr(fomr.TagsEndpoint, "post")
-        assert not hasattr(fomr.TagsEndpoint, "delete")
-        assert not hasattr(fomr.TagCountsEndpoint, "post")
+        assert not hasattr(fott.TagsEndpoint, "post")
+        assert not hasattr(fott.TagsEndpoint, "delete")
+        assert not hasattr(fott.TagCountsEndpoint, "post")
+
+    def test_multimodal_routes_do_not_register_tag_endpoints(self):
+        assert all("/tags" not in path for path, _ in fomr.MultimodalRoutes)
+
+    def test_server_registers_temporal_tag_routes(self):
+        registered_routes = dict(fosr.routes)
+
+        for path, endpoint in fott.TemporalTagRoutes:
+            assert registered_routes[path] is endpoint

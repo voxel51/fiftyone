@@ -15,6 +15,7 @@ export default function AutocompleteView(props) {
   const valuesOnly = getValuesOnlySettingFromSchema(schema);
   const allowUserInput = view.allow_user_input !== false;
   const allowClearing = view.allow_clearing !== false;
+  const filterSelected = view.filter_selected_options === true;
   return (
     <FieldWrapper {...props}>
       <Autocomplete
@@ -23,6 +24,7 @@ export default function AutocompleteView(props) {
         disabled={readOnly}
         autoHighlight
         clearOnBlur={multiple}
+        filterSelectedOptions={multiple && filterSelected}
         value={getDefaultValue(data, choices, multiple)}
         freeSolo={allowUserInput}
         size="small"

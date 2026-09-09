@@ -1,6 +1,6 @@
 import { ThreeEvent } from "@react-three/fiber";
 import * as React from "react";
-import { DRAG_GATE_THRESHOLD_PX } from "../constants";
+import { useDragGate } from "./shared/useDragGate";
 
 type ClickEvt = ThreeEvent<MouseEvent>;
 type PointerEvt = ThreeEvent<PointerEvent>;
@@ -19,14 +19,16 @@ export type DragGate3DProps = {
  * Only fires onClick if the pointer didn't move beyond the threshold.
  */
 export function DragGate3D({
-  dragThresholdPx = DRAG_GATE_THRESHOLD_PX,
+  dragThresholdPx,
   onClick,
   children,
 }: DragGate3DProps) {
-  const startRef = React.useRef<{ x: number; y: number } | null>(null);
-  const draggedRef = React.useRef(false);
-
-  const thresholdSq = dragThresholdPx * dragThresholdPx;
+  const {
+    onPointerDown: gateOnPointerDown,
+    onPointerMove: gateOnPointerMove,
+    onPointerUp: gateOnPointerUp,
+    isClick,
+  } = useDragGate({ dragThresholdPx });
 
   // Store child handlers in a ref to avoid adding them as dependencies
   const childHandlersRef = React.useRef<{
@@ -43,42 +45,40 @@ export function DragGate3D({
     onClick: children.props.onClick,
   };
 
-  const handlePointerDown = React.useCallback((e: PointerEvt) => {
-    childHandlersRef.current.onPointerDown?.(e);
-    startRef.current = { x: e.nativeEvent.clientX, y: e.nativeEvent.clientY };
-    draggedRef.current = false;
-  }, []);
+  const handlePointerDown = React.useCallback(
+    (e: PointerEvt) => {
+      childHandlersRef.current.onPointerDown?.(e);
+      gateOnPointerDown(e);
+    },
+    [gateOnPointerDown],
+  );
 
   const handlePointerMove = React.useCallback(
     (e: PointerEvt) => {
       childHandlersRef.current.onPointerMove?.(e);
-      if (!startRef.current || draggedRef.current) return;
-
-      const dx = e.nativeEvent.clientX - startRef.current.x;
-      const dy = e.nativeEvent.clientY - startRef.current.y;
-
-      if (dx * dx + dy * dy > thresholdSq) {
-        draggedRef.current = true;
-      }
+      gateOnPointerMove(e);
     },
-    [thresholdSq],
+    [gateOnPointerMove],
   );
 
-  const handlePointerUp = React.useCallback((e: PointerEvt) => {
-    childHandlersRef.current.onPointerUp?.(e);
-    startRef.current = null;
-  }, []);
+  const handlePointerUp = React.useCallback(
+    (e: PointerEvt) => {
+      childHandlersRef.current.onPointerUp?.(e);
+      gateOnPointerUp(e);
+    },
+    [gateOnPointerUp],
+  );
 
   const handleClick = React.useCallback(
     (e: ClickEvt) => {
-      if (draggedRef.current) {
+      if (!isClick()) {
         e.stopPropagation();
         return;
       }
       childHandlersRef.current.onClick?.(e);
       onClick?.(e);
     },
-    [onClick],
+    [isClick, onClick],
   );
 
   return React.cloneElement(children, {

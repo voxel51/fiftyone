@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react-hooks";
+import { act, renderHook } from "@testing-library/react";
 import type { RefObject } from "react";
 import { MOUSE, Vector3 } from "three";
 import { beforeEach, describe, expect, it, vi } from "vitest";

@@ -19,5 +19,5 @@ export function useProjectedCuboid(
   return useMemo(() => {
     if (!cuboid) return null;
     return computeCuboidProjection(cuboid, frustumData, upVector);
-  }, [cuboid, frustumData, upVector?.x, upVector?.y, upVector?.z]);
+  }, [cuboid, frustumData, upVector]);
 }

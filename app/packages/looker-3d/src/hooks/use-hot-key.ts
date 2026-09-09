@@ -28,9 +28,12 @@ export const useHotkey = (
 
   const { useTransaction, ignoreModifiers } = props;
 
-  const decoratedCb = useTransaction
-    ? useRecoilTransaction_UNSTABLE((ctx) => () => cb(ctx), deps)
-    : recoil.useRecoilCallback((ctx) => () => cb(ctx), deps);
+  const transactionCb = useRecoilTransaction_UNSTABLE(
+    (ctx) => () => cb(ctx),
+    deps,
+  );
+  const callbackCb = recoil.useRecoilCallback((ctx) => () => cb(ctx), deps);
+  const decoratedCb = useTransaction ? transactionCb : callbackCb;
 
   const handle = useCallback(
     (e: KeyboardEventUnionType) => {
@@ -58,7 +61,7 @@ export const useHotkey = (
         decoratedCb();
       }
     },
-    [decoratedCb, keyCode],
+    [decoratedCb, ignoreModifiers, keyCode],
   );
 
   // This effect registers and cleans up the global keydown listener.

@@ -10,6 +10,7 @@ import styled from "styled-components";
 import useExit from "./Sidebar/Annotate/Edit/useExit";
 import useSave from "./Sidebar/Annotate/Edit/useSave";
 import { createDebouncedNavigator } from "./debouncedNavigator";
+import { useShowClassicSidebar } from "./hooks";
 import {
   KnownCommands,
   KnownContexts,
@@ -63,7 +64,7 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
   );
   const clearUndo = useUndoRedo(KnownContexts.ModalAnnotate).clear;
   const sidebarwidth = useRecoilValue(fos.sidebarWidth(true));
-  const isSidebarVisible = useRecoilValue(fos.sidebarVisible(true));
+  const isSidebarVisible = useShowClassicSidebar();
 
   const countLoadable = useRecoilValueLoadable(
     fos.count({ path: "", extended: true, modal: false }),
