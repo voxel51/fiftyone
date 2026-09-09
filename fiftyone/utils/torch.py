@@ -42,7 +42,6 @@ import torchvision
 from torchvision.models.feature_extraction import create_feature_extractor
 from torchvision.transforms import functional as F
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -1388,7 +1387,8 @@ class ClassifierOutputProcessor(OutputProcessor):
         # float32. Half-precision logits, which any model that runs under
         # `torch.amp.autocast` produces, overflow `np.exp` and leave every
         # confidence NaN; the shift also keeps large float32 logits finite
-        scaled = logits.astype(np.float32, copy=False)
+        dtype = np.promote_types(logits.dtype, np.float32)
+        scaled = logits.astype(dtype, copy=False)
         odds = np.exp(scaled - np.max(scaled, axis=1, keepdims=True))
         odds /= np.sum(odds, axis=1, keepdims=True)
         scores = np.max(odds, axis=1)

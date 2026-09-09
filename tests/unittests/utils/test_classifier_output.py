@@ -61,6 +61,17 @@ class TestClassifierOutputProcessor:
         assert preds[0].label == "cat"
         assert preds[0].confidence == pytest.approx(1.0)
 
+    def test_double_precision_logits_keep_their_precision(self):
+        # Widening to float32 must not narrow logits that arrive wider
+        processor = _processor()
+        logits = torch.tensor([[20.0, 1.0, 0.5]], dtype=torch.float64)
+
+        preds = processor(logits, None)
+
+        expected = torch.softmax(logits, dim=1).max().item()
+        assert preds[0].confidence == pytest.approx(expected, abs=1e-12)
+        assert preds[0].confidence < 1.0
+
     def test_batch_is_scored_per_row(self):
         processor = _processor()
         logits = torch.tensor([[5.0, 0.0, 0.0], [0.0, 0.0, 5.0]])
