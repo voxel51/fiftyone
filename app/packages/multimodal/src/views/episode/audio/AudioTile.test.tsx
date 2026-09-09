@@ -1,4 +1,5 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { act, cleanup, render, screen, within } from "@testing-library/react";
+import { createStore, Provider as JotaiProvider } from "jotai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -12,6 +13,9 @@ const mocks = vi.hoisted(() => ({
     type: string;
   }>,
   waveformTracks: [] as Array<{ pyramid: unknown }>,
+  tileSettings: null as {
+    content: { props: { onSelectSource: (sourceId: string) => void } };
+  } | null,
   pcmResult: {
     waveformPeaks: null as unknown,
     hasAudio: false,
@@ -25,10 +29,18 @@ vi.mock("@fiftyone/tiling", () => ({
   useTileId: () => "audio-tile-1",
 }));
 
-// The tile publishes a source picker to the sidebar; registering it needs a
-// provider this unit test has no reason to mount.
+// The tile publishes a source picker to the sidebar; registering it for real
+// needs a provider this unit test has no reason to mount, so the stub keeps
+// the registration for tests that drive the picker's callback directly.
 vi.mock("../tiles/tile-settings-context", () => ({
-  useRegisterTileSettings: () => undefined,
+  useRegisterTileSettings: (
+    _tileId: string | undefined,
+    registration: {
+      content: { props: { onSelectSource: (sourceId: string) => void } };
+    },
+  ) => {
+    mocks.tileSettings = registration;
+  },
 }));
 
 vi.mock("@fiftyone/playback", () => ({
@@ -72,8 +84,12 @@ vi.mock("./WaveformSurface", () => ({
   ),
 }));
 
+import { persistedAudioTileBindingsAtom } from "../tiles/tile-source-bindings";
 import { semanticSourceKey } from "../settings/semantic-source";
-import { updateSidebarPreferences } from "../settings/sidebar-preferences";
+import {
+  readSidebarPreferences,
+  updateSidebarPreferences,
+} from "../settings/sidebar-preferences";
 import { SidebarPreferencesProvider } from "../settings/sidebar-preferences-context";
 import AudioTile from "./AudioTile";
 
@@ -82,6 +98,7 @@ describe("AudioTile", () => {
     cleanup();
     vi.clearAllMocks();
     mocks.sources = [];
+    mocks.tileSettings = null;
     mocks.pcmResult = { waveformPeaks: null, hasAudio: false, status: "idle" };
   });
 
@@ -243,6 +260,43 @@ describe("AudioTile", () => {
       );
 
       // Before the fix this fell through to `sources[0]` — "Mic Front".
+      expect(headerLabel()).toContain("Mic Rear");
+    });
+
+    it("persists a picked source, so the next sample's ids resolve back to it", () => {
+      renderScoped([audio("1", micFront), audio("2", micRear)]);
+      expect(headerLabel()).toContain("Mic Front");
+
+      // Stand-in for the user choosing the topic in the tile's settings.
+      act(() => {
+        mocks.tileSettings?.content.props.onSelectSource("2");
+      });
+      expect(headerLabel()).toContain("Mic Rear");
+      // Stored semantically, never as the runtime id — that id belongs to
+      // this sample only.
+      expect(
+        readSidebarPreferences(SCOPE).tiles["audio-tile-1"]?.audioSourceKey,
+      ).toBe(
+        semanticSourceKey({ sourceName: micRear.sourceName, type: "audio" }),
+      );
+
+      cleanup();
+      renderScoped([audio("7", micFront), audio("9", micRear)]);
+      expect(headerLabel()).toContain("Mic Rear");
+    });
+
+    it("follows the durable binding when there is no dataset scope to persist a key to", () => {
+      // Without a scope the modal-scoped atom is the pane's only memory of
+      // its topic; the tile still has to prefer it over `sources[0]`.
+      const store = createStore();
+      store.set(persistedAudioTileBindingsAtom, { "audio-tile-1": "2" });
+      mocks.sources = [audio("1", micFront), audio("2", micRear)];
+      render(
+        <JotaiProvider store={store}>
+          <AudioTile />
+        </JotaiProvider>,
+      );
+
       expect(headerLabel()).toContain("Mic Rear");
     });
 
