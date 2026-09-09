@@ -134,11 +134,17 @@ Models
 
 Datasets
 ^^^^^^^^
-- Added the RoboLab manipulation benchmark, TII-RATM drone racing, RTK-SLAM
-  absolute accuracy, and Egocentric EMG-force datasets to the Dataset Zoo
-  `#8317 <https://github.com/voxel51/fiftyone/pull/8317>`_,
-  `#8367 <https://github.com/voxel51/fiftyone/pull/8367>`_,
-  `#8368 <https://github.com/voxel51/fiftyone/pull/8368>`_,
+- Added `robolab`, NVIDIA's manipulation benchmark with 4,000 multimodal
+  takes across 28 tasks, to the Dataset Zoo
+  `#8317 <https://github.com/voxel51/fiftyone/pull/8317>`_
+- Added `tii-ratm-drone-racing`, indoor quadrotor racing flights with a
+  fisheye camera, IMU, and motion capture ground truth, to the Dataset Zoo
+  `#8367 <https://github.com/voxel51/fiftyone/pull/8367>`_
+- Added `rtk-slam-absolute-accuracy`, handheld SLAM recordings through a park
+  and a construction hall with RTK ground truth, to the Dataset Zoo
+  `#8368 <https://github.com/voxel51/fiftyone/pull/8368>`_
+- Added `egocentric-emg-force`, first-person depth video with wrist EMG
+  across eight household tasks, to the Dataset Zoo
   `#8358 <https://github.com/voxel51/fiftyone/pull/8358>`_
 
 Brain
