@@ -266,8 +266,8 @@ class ModalAnnotateEditAsserter {
    * @param expectedValue The expected field value
    */
   async verifyFieldValue(path: string, expectedValue: string) {
-    const actualValue = await this.modalAnnotateEdit.getFieldValue(path);
-    expect(actualValue).toBe(expectedValue);
+    const field = await this.modalAnnotateEdit.getField(path);
+    await expect(field).toHaveValue(expectedValue);
   }
 
   /**

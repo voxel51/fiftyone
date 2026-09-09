@@ -159,7 +159,12 @@ export class SidebarPom {
 
   async toggleSidebarMode() {
     const toggle = this.sidebar.getByTestId("sidebar-mode-status");
-    return toggle.click();
+    await toggle.click();
+    // the pointer stays on the toggle after the click and its tooltip, which
+    // overlaps the grid, opens after a delay; park the pointer on the header
+    // and wait for the tooltip to unmount
+    await this.page.mouse.move(0, 0);
+    await expect(this.page.locator('[data-cy^="tooltip-"]')).toHaveCount(0);
   }
 
   async toggleSidebarGroup(name: string) {
