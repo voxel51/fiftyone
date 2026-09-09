@@ -1,4 +1,10 @@
-"""Comprehensive test suite for C-RADIOv4 wrapper - extended coverage."""
+"""
+Tests for fiftyone/utils/radio.py C-RADIOv4 model wrapper.
+
+| Copyright 2017-2026, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
 
 import logging
 import os
@@ -34,75 +40,90 @@ from fiftyone.utils.radio import (
     SpatialHeatmapOutputProcessor,
 )
 
-
 # =============================================================================
 # CONFIG TESTS
 # =============================================================================
+
 
 def test_config_default_repo():
     config = CRadioV4ModelConfig({})
     assert config.hf_repo == DEFAULT_CRADIO_MODEL
     assert config.hf_repo == "nvidia/C-RADIOv4-H"
 
+
 def test_config_output_summary():
     config = CRadioV4ModelConfig({"output_type": "summary"})
     assert config.output_type == "summary"
     assert config.as_feature_extractor
 
+
 def test_config_output_spatial():
     config = CRadioV4ModelConfig({"output_type": "spatial"})
     assert config.output_type == "spatial"
-    assert not getattr(config, 'as_feature_extractor', False)
+    assert not getattr(config, "as_feature_extractor", False)
+
 
 def test_config_mixed_precision_default():
     config = CRadioV4ModelConfig({})
     assert config.use_mixed_precision
 
+
 def test_config_mixed_precision_false():
     config = CRadioV4ModelConfig({"use_mixed_precision": False})
     assert not config.use_mixed_precision
+
 
 def test_config_smoothing_default():
     config = CRadioV4ModelConfig({})
     assert config.apply_smoothing
 
+
 def test_config_smoothing_false():
     config = CRadioV4ModelConfig({"apply_smoothing": False})
     assert not config.apply_smoothing
+
 
 def test_config_sigma_default():
     config = CRadioV4ModelConfig({})
     assert config.smoothing_sigma == 1.51
 
+
 def test_config_sigma_custom():
     config = CRadioV4ModelConfig({"smoothing_sigma": 3.0})
     assert config.smoothing_sigma == 3.0
+
 
 def test_config_so400m():
     config = CRadioV4ModelConfig({"hf_repo": "nvidia/C-RADIOv4-SO400M"})
     assert config.hf_repo == "nvidia/C-RADIOv4-SO400M"
 
+
 def test_config_hf_revision():
     config = CRadioV4ModelConfig({"hf_revision": "deadbeef"})
     assert config.hf_revision == "deadbeef"
+
 
 def test_config_inheritance():
     config = CRadioV4ModelConfig({})
     assert isinstance(config, fout.TorchImageModelConfig)
 
+
 def test_config_has_zoo_model():
     config = CRadioV4ModelConfig({})
     assert isinstance(config, fozm.HasZooModel)
 
+
 def test_config_combined():
-    config = CRadioV4ModelConfig({
-        "hf_repo": "nvidia/C-RADIOv4-SO400M",
-        "hf_revision": "deadbeef",
-        "output_type": "spatial",
-        "use_mixed_precision": False,
-        "apply_smoothing": True,
-        "smoothing_sigma": 2.0,
-    })
+    config = CRadioV4ModelConfig(
+        {
+            "hf_repo": "nvidia/C-RADIOv4-SO400M",
+            "hf_revision": "deadbeef",
+            "output_type": "spatial",
+            "use_mixed_precision": False,
+            "apply_smoothing": True,
+            "smoothing_sigma": 2.0,
+        }
+    )
     assert config.hf_repo == "nvidia/C-RADIOv4-SO400M"
     assert config.hf_revision == "deadbeef"
     assert config.output_type == "spatial"
@@ -196,6 +217,7 @@ def test_check_mixed_precision_support_handles_runtime_error(
 # OUTPUT PROCESSOR TESTS
 # =============================================================================
 
+
 def test_radio_proc_batch1():
     proc = RadioOutputProcessor()
     tensor = torch.randn(1, 2560)
@@ -203,11 +225,13 @@ def test_radio_proc_batch1():
     assert len(result) == 1
     assert result[0].shape == (2560,)
 
+
 def test_radio_proc_batch_multi():
     proc = RadioOutputProcessor()
     tensor = torch.randn(8, 2560)
     result = proc(tensor, [(100, 100)] * 8)
     assert len(result) == 8
+
 
 def test_radio_proc_dim():
     proc = RadioOutputProcessor()
@@ -216,11 +240,13 @@ def test_radio_proc_dim():
         result = proc(tensor, (100, 100))
         assert result[0].shape == (dim,)
 
+
 def test_radio_proc_dtype_bfloat16():
     proc = RadioOutputProcessor()
     tensor = torch.randn(1, 2560).bfloat16()
     result = proc(tensor, (100, 100))
     assert result[0].dtype == np.float32
+
 
 def test_radio_proc_gpu():
     if not torch.cuda.is_available():
@@ -230,11 +256,13 @@ def test_radio_proc_gpu():
     result = proc(tensor, (100, 100))
     assert isinstance(result[0], np.ndarray)
 
+
 def test_radio_proc_numpy():
     proc = RadioOutputProcessor()
     arr = np.random.randn(3, 2560).astype(np.float32)
     result = proc(arr, [(100, 100)] * 3)
     assert len(result) == 3
+
 
 def test_spatial_proc_nchw():
     proc = SpatialHeatmapOutputProcessor()
@@ -242,11 +270,13 @@ def test_spatial_proc_nchw():
     result = proc(tensor, [(640, 480)])
     assert result[0].map.shape == (480, 640)
 
+
 def test_spatial_proc_nlc():
     proc = SpatialHeatmapOutputProcessor()
     tensor = torch.randn(1, 256, 1280)
     result = proc(tensor, [(640, 480)])
     assert result[0].map.shape == (480, 640)
+
 
 def test_spatial_proc_prime_tokens_warns(caplog):
     proc = SpatialHeatmapOutputProcessor()
@@ -256,7 +286,10 @@ def test_spatial_proc_prime_tokens_warns(caplog):
         result = proc(tensor, [(640, 480)])
 
     assert result[0].map.shape == (480, 640)
-    assert "Prime token count 509 produced a 1x509 spatial layout" in caplog.text
+    assert (
+        "Prime token count 509 produced a 1x509 spatial layout" in caplog.text
+    )
+
 
 def test_spatial_proc_dtype_and_range():
     proc = SpatialHeatmapOutputProcessor()
@@ -267,10 +300,13 @@ def test_spatial_proc_dtype_and_range():
     assert result[0].map.max() <= 255
     assert result[0].range == [0, 255]
 
+
 def test_spatial_proc_smoothing_effect():
     tensor = torch.randn(1, 512, 16, 16)
 
-    proc_smooth = SpatialHeatmapOutputProcessor(apply_smoothing=True, smoothing_sigma=2.0)
+    proc_smooth = SpatialHeatmapOutputProcessor(
+        apply_smoothing=True, smoothing_sigma=2.0
+    )
     proc_no_smooth = SpatialHeatmapOutputProcessor(apply_smoothing=False)
 
     result_smooth = proc_smooth(tensor.clone(), [(320, 240)])
@@ -278,21 +314,24 @@ def test_spatial_proc_smoothing_effect():
 
     assert not np.array_equal(result_smooth[0].map, result_no_smooth[0].map)
 
+
 def test_spatial_proc_nan_inf():
     proc = SpatialHeatmapOutputProcessor()
     tensor = torch.randn(1, 512, 8, 8)
-    tensor[0, :10, 0, 0] = float('nan')
-    tensor[0, 10:20, 1, 1] = float('inf')
-    tensor[0, 20:30, 2, 2] = float('-inf')
+    tensor[0, :10, 0, 0] = float("nan")
+    tensor[0, 10:20, 1, 1] = float("inf")
+    tensor[0, 20:30, 2, 2] = float("-inf")
     result = proc(tensor, [(100, 100)])
     assert not np.isnan(result[0].map).any()
     assert not np.isinf(result[0].map).any()
+
 
 def test_spatial_proc_constant():
     proc = SpatialHeatmapOutputProcessor()
     tensor = torch.ones(1, 512, 8, 8)
     result = proc(tensor, [(100, 100)])
     assert result[0].map.shape == (100, 100)
+
 
 def test_spatial_proc_batch_diff_sizes():
     proc = SpatialHeatmapOutputProcessor()
@@ -310,6 +349,7 @@ def test_spatial_proc_batch_diff_sizes():
 # INFERENCE TESTS (require model download)
 # =============================================================================
 
+
 @requires_inference
 def test_infer_summary_single():
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -318,6 +358,7 @@ def test_infer_summary_single():
     with model:
         result = model._predict_all([img])
     assert result[0].shape == (2560,)
+
 
 @requires_inference
 def test_infer_summary_batch_mixed_sizes():
@@ -335,6 +376,7 @@ def test_infer_summary_batch_mixed_sizes():
     for r in result:
         assert r.shape == (2560,)
 
+
 @requires_inference
 def test_infer_spatial_single():
     config = CRadioV4ModelConfig({"output_type": "spatial"})
@@ -344,6 +386,7 @@ def test_infer_spatial_single():
         result = model._predict_all([img])
     assert isinstance(result[0], fol.Heatmap)
     assert result[0].map.shape == (480, 640)
+
 
 @requires_inference
 def test_infer_spatial_batch():
@@ -359,6 +402,7 @@ def test_infer_spatial_batch():
     assert result[0].map.shape == (240, 320)
     assert result[1].map.shape == (480, 640)
 
+
 @requires_inference
 def test_infer_empty_input():
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -366,6 +410,7 @@ def test_infer_empty_input():
     with model:
         result = model._predict_all([])
     assert result == []
+
 
 @requires_inference
 def test_infer_min_size():
@@ -376,13 +421,14 @@ def test_infer_min_size():
         result = model._predict_all([img])
     assert result[0].shape == (2560,)
 
+
 @requires_inference
 def test_infer_model_reuse():
     config = CRadioV4ModelConfig({"output_type": "summary"})
     model = CRadioV4Model(config)
     with model:
         for i in range(3):
-            img = Image.new("RGB", (256, 256), color=(i*80, i*80, i*80))
+            img = Image.new("RGB", (256, 256), color=(i * 80, i * 80, i * 80))
             result = model._predict_all([img])
             assert result[0].shape == (2560,)
 
@@ -391,11 +437,13 @@ def test_infer_model_reuse():
 # FIFTYONE INTEGRATION TESTS (require model download)
 # =============================================================================
 
+
 @requires_inference
 def test_fo_model_type():
     config = CRadioV4ModelConfig({})
     model = CRadioV4Model(config)
     assert isinstance(model, fom.Model)
+
 
 @requires_inference
 def test_fo_compute_embeddings():
@@ -411,6 +459,7 @@ def test_fo_compute_embeddings():
             assert emb.shape == (2560,)
     finally:
         fo.delete_dataset(dataset.name)
+
 
 @requires_inference
 def test_fo_apply_model_spatial():
