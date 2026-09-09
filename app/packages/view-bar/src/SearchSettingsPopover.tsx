@@ -64,6 +64,41 @@ export const describeIndex = (index: PromptableSimilarityIndex): string => {
     : label;
 };
 
+/**
+ * The results count, typed freely: the field holds whatever is being typed —
+ * including nothing, mid-edit — and reports each value that is a usable
+ * count. Clamping every keystroke made the field un-editable: deleting down
+ * to an empty field snapped straight back to the old number.
+ */
+const ResultsInput: React.FC<{ k: number; onChangeK: (k: number) => void }> = ({
+  k,
+  onChangeK,
+}) => {
+  const [draft, setDraft] = React.useState(String(k));
+  // An outside change (another dataset's remembered count) shows through
+  React.useEffect(() => setDraft(String(k)), [k]);
+  return (
+    <Input
+      size={Size.Sm}
+      type={InputType.Number}
+      min={1}
+      value={draft}
+      data-cy="search-settings-k"
+      aria-label="Number of results"
+      onChange={(e) => {
+        const text = e.target.value;
+        setDraft(text);
+        const n = Number(text);
+        if (text.trim() && Number.isFinite(n) && n >= 1) {
+          onChangeK(clampMatches(n, k));
+        }
+      }}
+      // Leaving the field empty or invalid keeps the last usable count
+      onBlur={() => setDraft(String(k))}
+    />
+  );
+};
+
 export const SearchSettingsPopover: React.FC<SearchSettingsPopoverProps> = ({
   trigger,
   promptKeys,
@@ -73,7 +108,14 @@ export const SearchSettingsPopover: React.FC<SearchSettingsPopoverProps> = ({
   onChangeK,
   onOpenPanel,
 }) => (
-  <Popover trigger={trigger} panelClassName={styles.panel}>
+  <Popover
+    trigger={trigger}
+    panelClassName={styles.panel}
+    // Focus stays on the magnifier: moving it into the panel lands on the
+    // index picker, which opens its list on focus — a menu nobody asked for —
+    // and moving it back on close leaves the magnifier wearing a focus ring
+    focusOnOpen={false}
+  >
     {({ close }) => (
       <Stack
         role="dialog"
@@ -122,16 +164,7 @@ export const SearchSettingsPopover: React.FC<SearchSettingsPopoverProps> = ({
               <Text variant={TextVariant.Label} color={TextColor.Tertiary}>
                 Results
               </Text>
-              <Input
-                size={Size.Sm}
-                type={InputType.Number}
-                value={String(k)}
-                data-cy="search-settings-k"
-                aria-label="Number of results"
-                onChange={(e) =>
-                  onChangeK(clampMatches(Number(e.target.value), k))
-                }
-              />
+              <ResultsInput k={k} onChangeK={onChangeK} />
             </Stack>
           </>
         )}

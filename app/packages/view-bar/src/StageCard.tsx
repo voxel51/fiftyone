@@ -321,6 +321,7 @@ export const StageCard: React.FC<StageCardProps> = ({
       <div
         ref={focusEditor}
         tabIndex={-1}
+        className={styles.editor}
         data-cy="view-stage-editor"
         onKeyDown={(e) => {
           // Escape closes the editor and puts the keyboard back on the

@@ -37,3 +37,9 @@
 .wrapRow {
   flex-wrap: wrap;
 }
+
+/* The editor is a focus sink: it takes the keyboard when no control can, so
+   Tab and Escape work from the start. That focus is not a selection to show. */
+.editor {
+  outline: none;
+}
