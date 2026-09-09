@@ -16,7 +16,7 @@ import fiftyone.utils.bdd as foub
 class TestConvertMotPoly2d:
     """Conversion of MOT-style poly2d points to legacy polylines."""
 
-    def test_triples_produce_vertices_and_types(self) -> None:
+    def test_triples_produce_vertices_and_types(self):
         out = foub._convert_mot_poly2d(
             [[1.0, 2.0, "L"], [3.0, 4.0, "C"]], "lane/road_curb"
         )
@@ -25,12 +25,12 @@ class TestConvertMotPoly2d:
         assert out[0]["types"] == "LC"
         assert out[0]["closed"] is False
 
-    def test_area_category_is_closed(self) -> None:
+    def test_area_category_is_closed(self):
         out = foub._convert_mot_poly2d([[0.0, 0.0, "L"]], "area/drivable")
 
         assert out[0]["closed"] is True
 
-    def test_short_points_are_skipped(self) -> None:
+    def test_short_points_are_skipped(self):
         """A point with fewer than two values is dropped rather than
         raising IndexError."""
         out = foub._convert_mot_poly2d(
@@ -44,7 +44,7 @@ class TestConvertMotPoly2d:
 class TestDownloadErrorRemediation:
     """Parser failures name the actual failing path."""
 
-    def test_bad_source_dir_names_the_source_dir(self, tmp_path) -> None:
+    def test_bad_source_dir_names_the_source_dir(self, tmp_path):
         source_dir = str(tmp_path / "not-bdd")
         os.makedirs(source_dir)
 
