@@ -14,6 +14,7 @@ import {
   DIV,
   MIN_ASPECT_RATIO_RECOMMENDATION,
   ONE,
+  RESIZE_TIMEOUT,
   SCROLLBAR_WIDTH,
   THREE,
   TWO,
@@ -51,12 +52,14 @@ export default class Spotlight<K, V> extends EventTarget {
   readonly #element = create(DIV);
   readonly #keys = new WeakMap<ID, K>();
 
+  #at?: At;
   #backward: Section<K, V>;
   #focused?: ID;
   #forward: Section<K, V>;
   #loaded = false;
   #rect?: DOMRect;
   #rejected = false;
+  #resizeTimeout?: ReturnType<typeof setTimeout>;
   #scrollReader?: ReturnType<typeof createScrollReader>;
   #updater?: Updater;
   #validate?: (key: string, add: number) => void;
@@ -123,11 +126,20 @@ export default class Spotlight<K, V> extends EventTarget {
     element.appendChild(this.#element);
 
     const observer = new ResizeObserver(([el]) => {
-      if (this.attached && this.#loaded) {
-        // update rect for height
-        this.#rect = el.contentRect;
-        this.#render({ ...this.#measure() });
+      if (!this.attached || !this.#loaded) {
+        return;
       }
+
+      const previous = this.#rect;
+      this.#rect = el.contentRect;
+      if (previous && previous.width !== this.#rect.width) {
+        // relayout in place; a rebuild would refetch pages and media
+        this.#resize();
+        return;
+      }
+
+      // update rect for height
+      this.#render({ ...this.#measure() });
     });
     observer.observe(this.#element);
     // Run in the next animation frame for a correct measurement;
@@ -150,6 +162,7 @@ export default class Spotlight<K, V> extends EventTarget {
   }
 
   destroy(): void {
+    this.#resizeTimeout && clearTimeout(this.#resizeTimeout);
     this.#aborter.abort();
     this.#backward?.destroy();
     this.#forward?.destroy();
@@ -401,13 +414,28 @@ export default class Spotlight<K, V> extends EventTarget {
       ...params,
     });
 
+    const backwardMatch = backwardResult?.match;
+    const forwardMatch = forwardResult?.match;
+    const best =
+      backwardMatch &&
+      (!forwardMatch || backwardMatch.delta < forwardMatch.delta)
+        ? backwardMatch
+        : forwardMatch;
+    if (best) {
+      // remember the top visible row so a relayout can re-anchor to it
+      this.#at = {
+        description: best.row.first.description,
+        offset: Math.abs(best.delta),
+      };
+    }
+
     const rowChange = handleRowChange({
       at,
       dispatchOffset,
       keys: this.#keys,
       matches: {
-        backward: backwardResult?.match,
-        forward: forwardResult?.match,
+        backward: backwardMatch,
+        forward: forwardMatch,
       },
     });
 
@@ -434,6 +462,64 @@ export default class Spotlight<K, V> extends EventTarget {
           Math.max(this.#config.rowAspectRatioThreshold(this.#width), ONE))) *
       ZOOMING_COEFFICIENT
     );
+  }
+
+  #inView(description: string) {
+    let row = this.#forward?.find(description);
+    let top: number;
+    if (row) {
+      top = this.#backward.height + row.from;
+    } else {
+      row = this.#backward?.find(description);
+      if (!row) {
+        return false;
+      }
+
+      top = this.#backward.height - row.from - row.height;
+    }
+
+    const scrollTop = this.#element.scrollTop;
+    return top < scrollTop + this.#height && top + row.height > scrollTop;
+  }
+
+  #resize() {
+    // rescale existing rows at the new width; items, order, and instances
+    // are unchanged, so nothing refetches
+    this.#backward?.resize(this.#width);
+    this.#forward?.resize(this.#width);
+
+    const at = this.#at ?? this.#config.at;
+
+    // zooming skips new item creation while a drag is in progress
+    this.#render({ at, offset: ZERO, zooming: true });
+
+    this.#resizeTimeout && clearTimeout(this.#resizeTimeout);
+    this.#resizeTimeout = setTimeout(() => {
+      this.#resizeTimeout = undefined;
+      this.#render({
+        at: this.#at ?? at,
+        offset: ZERO,
+        zooming: false,
+        ...this.#measure(),
+      });
+    }, RESIZE_TIMEOUT);
+  }
+
+  #setFocus(id?: ID) {
+    if (id) {
+      this.#focused = id;
+
+      // re-anchoring an on-screen item would scroll its row to the top of
+      // the grid; only bring off-screen items into view
+      if (!this.#inView(id.description)) {
+        this.#render({
+          at: { description: id.description, offset: ZERO },
+          ...this.#measure(),
+        });
+      }
+    }
+
+    return this.#focused;
   }
 
   async #fill() {
@@ -505,17 +591,7 @@ export default class Spotlight<K, V> extends EventTarget {
       const { items, next, previous } = await this.#get(key);
 
       return {
-        focus: (id?: ID) => {
-          if (id) {
-            this.#focused = id;
-          }
-
-          this.#render({
-            at: { description: this.#focused.description, offset: ZERO },
-            ...this.#measure(),
-          });
-          return this.#focused;
-        },
+        focus: (id?: ID) => this.#setFocus(id),
         items,
         next,
         previous,
@@ -579,17 +655,7 @@ export default class Spotlight<K, V> extends EventTarget {
       const { items, next, previous } = await this.#get(key);
 
       return {
-        focus: (id?: ID) => {
-          if (id) {
-            this.#focused = id;
-          }
-
-          this.#render({
-            at: { description: this.#focused.description, offset: ZERO },
-            ...this.#measure(),
-          });
-          return this.#focused;
-        },
+        focus: (id?: ID) => this.#setFocus(id),
         items: [...items].reverse(),
         next: previous,
         previous: next,

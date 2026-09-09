@@ -16,14 +16,12 @@ export default ({
   id,
   cache,
   pixels,
-  resizing,
   set,
   spotlight,
 }: {
   id: string;
   cache: LookerCache;
   pixels: string;
-  resizing: boolean;
   set: (location: ScrollLocation) => void;
   spotlight?: Spotlight<number, fos.Sample>;
 }) => {
@@ -31,7 +29,7 @@ export default ({
   const setRecommendedZoom = useSetRecoilState(recommendedGridZoom);
 
   useLayoutEffect(() => {
-    if (resizing || !spotlight) {
+    if (!spotlight) {
       return undefined;
     }
 
@@ -86,14 +84,5 @@ export default ({
       spotlight.removeEventListener("rowchange", set);
       spotlight.destroy();
     };
-  }, [
-    cache,
-    id,
-    handleAutosize,
-    pixels,
-    resizing,
-    set,
-    setRecommendedZoom,
-    spotlight,
-  ]);
+  }, [cache, id, handleAutosize, pixels, set, setRecommendedZoom, spotlight]);
 };

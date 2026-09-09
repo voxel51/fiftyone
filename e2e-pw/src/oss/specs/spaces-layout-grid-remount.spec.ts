@@ -1,13 +1,16 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Asserts that the grid tears down and remounts exactly once per spaces
- * layout change (opening a panel side-by-side, closing a split panel).
+ * Asserts that the grid survives spaces layout changes (opening a panel
+ * side-by-side, closing a split panel) without tearing down.
  *
- * Regression guard: the spotlight memo keyed on the identities of its
- * callables, so state updates riding along with a layout change (e.g. panel
- * loading status) could destroy and recreate the grid after it had already
- * loaded, flashing the loading animation a second time.
+ * Regression guard, twice over: the spotlight memo once keyed on the
+ * identities of its callables, so state updates riding along with a layout
+ * change (e.g. panel loading status) could destroy and recreate the grid
+ * after it had already loaded; later, width changes themselves destroyed and
+ * rebuilt the grid, refetching pages and media. The grid now relayouts in
+ * place on resize — a layout change must produce zero unmounts and zero
+ * additional mounts.
  */
 import { test as base, expect } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
@@ -17,6 +20,10 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 const datasetName = getUniqueDatasetNameWithPrefix(
   "spaces-layout-grid-remount",
 );
+
+// covers the grid's post-resize settle render (250ms) plus headroom, so a
+// late teardown would be observed rather than racing the counter read
+const LAYOUT_SETTLE_MS = 1_000;
 
 const test = base.extend<{ grid: GridPom; panel: GridPanelPom }>({
   grid: async ({ page, eventUtils }, use) => {
@@ -36,7 +43,7 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test("grid remounts exactly once per spaces layout change", async ({
+test("grid survives spaces layout changes without remounting", async ({
   fiftyoneLoader,
   grid,
   page,
@@ -47,33 +54,31 @@ test("grid remounts exactly once per spaces layout change", async ({
   const { mounts, unmounts } = await grid.armLifecycleCounters();
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 
-  const now = () => page.evaluate(() => performance.now());
-  const assertCycles = async (n: number, context: Record<string, number>) => {
+  const assertNoRefresh = async (context: Record<string, number>) => {
+    await page.waitForTimeout(LAYOUT_SETTLE_MS);
     const message = JSON.stringify({
       ...context,
       mounts: await mounts.timeline(),
       unmounts: await unmounts.timeline(),
     });
-    // n refresh cycles plus the initial page-load mount
-    expect(await mounts.read(), message).toBe(n + 1);
-    expect(await unmounts.read(), message).toBe(n);
+    // the initial page-load mount is the only mount, ever
+    expect(await mounts.read(), message).toBe(1);
+    expect(await unmounts.read(), message).toBe(0);
   };
 
+  const now = () => page.evaluate(() => performance.now());
+
   // split: a plain panel open places it side-by-side, splitting the layout
-  const split = await grid.armGridRefresh();
   const splitAt = await now();
   await panel.openInSplit("Histograms");
-  await split.received;
   await expect(panel.getContent("Histograms")).toBeVisible();
   await expect(grid.getNthTile(0)).toBeVisible();
-  await assertCycles(1, { splitAt });
+  await assertNoRefresh({ splitAt });
 
   // join: closing the split panel collapses the layout back to a single pane
-  const join = await grid.armGridRefresh();
   const joinAt = await now();
   await panel.closeTab("Histograms");
-  await join.received;
   await expect(panel.getContent("Histograms")).toBeHidden();
   await expect(grid.getNthTile(0)).toBeVisible();
-  await assertCycles(2, { splitAt, joinAt });
+  await assertNoRefresh({ splitAt, joinAt });
 });

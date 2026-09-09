@@ -11,13 +11,13 @@ import { create, pixels } from "./utilities";
 
 export default class Row<K, V> {
   #from: number;
+  #width: number;
 
   readonly #aborter: AbortController = new AbortController();
   readonly #config: SpotlightConfig<K, V>;
   readonly #dangle?: boolean;
   readonly #container: HTMLDivElement = create(DIV);
   readonly #row: { item: ItemData<K, V>; element: HTMLDivElement }[];
-  readonly #width: number;
 
   constructor({
     config,
@@ -73,25 +73,7 @@ export default class Row<K, V> {
       return { element, item };
     });
 
-    const height = this.height;
-
-    let left = ZERO;
-
-    for (const {
-      element,
-      item: { aspectRatio },
-    } of this.#row) {
-      const itemWidth = height * aspectRatio;
-
-      element.style.height = pixels(height);
-      element.style.width = pixels(itemWidth);
-      element.style.left = pixels(left);
-
-      left += itemWidth + config.spacing;
-    }
-
-    this.#container.style.height = pixels(height);
-    this.#container.style.width = pixels(this.#width);
+    this.#layout();
   }
 
   get attached() {
@@ -139,6 +121,11 @@ export default class Row<K, V> {
       }
     }
     return false;
+  }
+
+  resize(width: number) {
+    this.#width = width;
+    this.#layout();
   }
 
   hide(): void {
@@ -192,6 +179,28 @@ export default class Row<K, V> {
 
   updateItems(updater: (id: ID) => void) {
     for (const row of this.#row) updater(row.item.id);
+  }
+
+  #layout() {
+    const height = this.height;
+
+    let left = ZERO;
+
+    for (const {
+      element,
+      item: { aspectRatio },
+    } of this.#row) {
+      const itemWidth = height * aspectRatio;
+
+      element.style.height = pixels(height);
+      element.style.width = pixels(itemWidth);
+      element.style.left = pixels(left);
+
+      left += itemWidth + this.#config.spacing;
+    }
+
+    this.#container.style.height = pixels(height);
+    this.#container.style.width = pixels(this.#width);
   }
 
   get #cleanAspectRatio() {
