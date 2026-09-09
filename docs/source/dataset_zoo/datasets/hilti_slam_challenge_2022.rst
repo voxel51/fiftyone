@@ -47,7 +47,7 @@ runs arrive as eighteen episodes.
         # The runs with a continuous reference trajectory
         view = dataset.match({"has_dense_ground_truth": True})
 
-        session = fo.launch_app(dataset)
+        session = fo.launch_app(dataset, view=view)
 
   .. group-tab:: CLI
 

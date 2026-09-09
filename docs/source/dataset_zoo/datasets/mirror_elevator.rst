@@ -45,7 +45,7 @@ field groups them.
         # One run per physical cabin
         view = dataset.match({"sequence": {"$ne": "elevator_03"}})
 
-        session = fo.launch_app(dataset)
+        session = fo.launch_app(dataset, view=view)
 
   .. group-tab:: CLI
 

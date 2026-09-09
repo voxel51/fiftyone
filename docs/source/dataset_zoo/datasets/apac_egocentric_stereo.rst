@@ -46,7 +46,7 @@ eyes ride in one side-by-side stream cut at `per_eye_width`.
         # The industrial workplaces
         view = dataset.match({"environment": "Industrial"})
 
-        session = fo.launch_app(dataset)
+        session = fo.launch_app(dataset, view=view)
 
   .. group-tab:: CLI
 

@@ -4231,7 +4231,7 @@ class APACEgocentricStereoDataset(FiftyOneDataset):
         # The industrial workplaces
         view = dataset.match({"environment": "Industrial"})
 
-        session = fo.launch_app(dataset)
+        session = fo.launch_app(dataset, view=view)
 
     Dataset size
         5.73 GB
@@ -4303,7 +4303,7 @@ class HiltiSLAMChallenge2022Dataset(FiftyOneDataset):
         # The runs with a continuous reference trajectory
         view = dataset.match({"has_dense_ground_truth": True})
 
-        session = fo.launch_app(dataset)
+        session = fo.launch_app(dataset, view=view)
 
     Dataset size
         49.70 GB
@@ -4372,7 +4372,7 @@ class MirrorSentinelElevatorDataset(FiftyOneDataset):
         # One run per physical cabin
         view = dataset.match({"sequence": {"$ne": "elevator_03"}})
 
-        session = fo.launch_app(dataset)
+        session = fo.launch_app(dataset, view=view)
 
     Dataset size
         6.18 GB
