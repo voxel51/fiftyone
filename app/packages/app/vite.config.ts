@@ -105,7 +105,7 @@ async function loadConfig() {
         // into the forced chunk and re-exports module-init helpers across
         // chunk boundaries, which can execute modules before their
         // initializers run. Rolldown already gives dynamically-imported
-        // panels (plotly, mapbox, recharts, html2canvas) their own chunks.
+        // panels (plotly, map, recharts, html2canvas) their own chunks.
       },
     },
     server: {

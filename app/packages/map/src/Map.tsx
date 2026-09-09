@@ -1,21 +1,16 @@
 import styles from "./Map.module.css";
 
 import * as foc from "@fiftyone/components";
-import { ExternalLink } from "@fiftyone/components";
 import { usePluginSettings } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import MapboxDraw from "@mapbox/mapbox-gl-draw";
 import contains from "@turf/boolean-contains";
 import { debounce } from "lodash";
-import mapbox, { GeoJSONSource, LngLatBounds } from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
 import React from "react";
-import Map, { Layer, MapRef, Source } from "react-map-gl";
 
 import { useRecoilState, useRecoilValue } from "recoil";
 import useResizeObserver from "use-resize-observer";
 
-import DrawControl from "./Draw";
 import useFetchGeoLocations, {
   SampleLocationMap,
   sampleLocationMapAtom,
@@ -28,31 +23,30 @@ import {
 } from "@fiftyone/state";
 import { SELECTION_SCOPE } from "./constants";
 import Options from "./Options";
+import { getMapProvider } from "./basemaps";
+import MapRenderer, { type MapBounds, type MapHandle } from "./MapRenderer";
 import {
   activeField,
   defaultSettings,
-  MAP_STYLES,
-  mapStyle,
-  Settings,
+  mapboxStyle,
+  maplibreStyle,
+  type MapSettings,
 } from "./state";
-
-const fitBoundsOptions = { animate: false, padding: 30 };
 
 const computeBounds = (
   data: GeoJSON.FeatureCollection<GeoJSON.Point, { id: string }>,
 ) => {
-  return data.features.reduce(
-    (bounds, { geometry: { coordinates } }) =>
-      bounds.extend(coordinates as [number, number]),
-    new LngLatBounds(),
+  const [first, ...coordinates] = data.features.map(
+    ({ geometry }) => geometry.coordinates as [number, number],
   );
-};
 
-const fitBounds = (
-  map: MapRef,
-  data: GeoJSON.FeatureCollection<GeoJSON.Point, { id: string }>,
-) => {
-  map.fitBounds(computeBounds(data), fitBoundsOptions);
+  return coordinates.reduce<MapBounds>(
+    ([[west, south], [east, north]], [longitude, latitude]) => [
+      [Math.min(west, longitude), Math.min(south, latitude)],
+      [Math.max(east, longitude), Math.max(north, latitude)],
+    ],
+    [first, first],
+  );
 };
 
 const createSourceData = (
@@ -102,23 +96,23 @@ const Panel: React.FC<{}> = () => {
   });
   const sampleLocationMap = useRecoilValue(sampleLocationMapAtom);
 
-  const settings = usePluginSettings<Required<Settings>>(
-    "map",
-    defaultSettings,
-  );
+  const settings = usePluginSettings<MapSettings>("map", defaultSettings);
 
-  const style = useRecoilValue(mapStyle);
+  const provider = getMapProvider(settings.mapboxAccessToken);
+  const mapboxStyleValue = useRecoilValue(mapboxStyle);
+  const maplibreStyleValue = useRecoilValue(maplibreStyle);
+  const style = provider === "mapbox" ? mapboxStyleValue : maplibreStyleValue;
   const [{ selection }, setExtendedSelection] = useRecoilState(
     fos.extendedSelection,
   );
   const resetExtendedSelection = useResetExtendedSelection();
 
-  const mapRef = React.useRef<MapRef>(null);
+  const mapRef = React.useRef<MapHandle>(null);
   const onResize = React.useMemo(
     () =>
       debounce(
         () => {
-          mapRef.current && mapRef.current.resize();
+          mapRef.current?.resize();
         },
         10,
         {
@@ -191,76 +185,27 @@ const Panel: React.FC<{}> = () => {
   );
   const [mapError, setMapError] = React.useState(false);
 
-  const onLoad = React.useCallback(() => {
-    const map = mapRef.current?.getMap();
-    if (!map) return;
-    map.on("click", "cluster", (event) => {
-      event.preventDefault();
-      const features = map.queryRenderedFeatures(event.point, {
-        layers: ["cluster"],
-      });
-      draw.changeMode("simple_select");
-
-      const clusterId = features[0].properties?.cluster_id;
-      const source = map.getSource("points") as GeoJSONSource;
-      source.getClusterExpansionZoom(clusterId, (error, zoom) => {
-        if (error) return;
-
-        const point = features[0].geometry as GeoJSON.Point;
-        mapRef.current?.easeTo({
-          center: point.coordinates as [number, number],
-          zoom: zoom,
-        });
-      });
-    });
-
-    const pointer = () => (map.getCanvas().style.cursor = "pointer");
-    const crosshair = () => (map.getCanvas().style.cursor = "crosshair");
-    const drag = () => (map.getCanvas().style.cursor = "all-scroll");
-    map.on("mouseenter", "cluster", pointer);
-    map.on("mouseleave", "cluster", crosshair);
-    map.on("mouseenter", "point", () => pointer);
-    map.on("mouseleave", "point", () => crosshair);
-    map.on("dragstart", drag);
-    map.on("dragend", crosshair);
-  }, []);
-
   const length = React.useMemo(
     () => Object.keys(sampleLocationMap).length,
     [sampleLocationMap],
   );
 
   React.useEffect(() => {
-    mapRef.current && data && fitBounds(mapRef.current, data);
-  }, [data]);
+    mapRef.current?.fitBounds();
+  }, [data, provider]);
+
+  React.useEffect(() => {
+    setMapError(false);
+  }, [provider, style]);
 
   useBeforeScreenshot(() => {
-    return new Promise((resolve) => {
-      mapRef.current.once("render", () => {
-        resolve(mapRef.current.getCanvas());
-      });
-      mapRef.current.setBearing(mapRef.current.getBearing());
-    });
+    return mapRef.current.beforeScreenshot();
   });
 
   const setPanelCloseEffect = useSetPanelCloseEffect();
   React.useEffect(() => {
     setPanelCloseEffect(resetExtendedSelection);
   }, []);
-
-  if (!settings.mapboxAccessToken) {
-    return (
-      <foc.Loading>
-        No Mapbox token provided.&nbsp;
-        <ExternalLink
-          style={{ color: theme.text.primary }}
-          href={"https://docs.voxel51.com/user_guide/app.html#map-panel"}
-        >
-          Learn more
-        </ExternalLink>
-      </foc.Loading>
-    );
-  }
 
   const noData = !length || !data;
 
@@ -273,100 +218,31 @@ const Panel: React.FC<{}> = () => {
       {loading && !length ? (
         <foc.Loading style={{ opacity: 0.5 }}>Pixelating...</foc.Loading>
       ) : mapError ? (
-        <foc.Loading>
-          Something went wrong... is your&nbsp;
-          <ExternalLink
-            style={{ color: theme.text.primary }}
-            href={"https://docs.voxel51.com/user_guide/app.html#map-panel"}
-          >
-            Mapbox token
-          </ExternalLink>
-          &nbsp;valid?
-        </foc.Loading>
+        <foc.Loading>Something went wrong while loading the map</foc.Loading>
       ) : (
-        <Map
+        <MapRenderer
           ref={mapRef}
-          mapLib={mapbox}
-          mapStyle={`mapbox://styles/mapbox/${MAP_STYLES[style]}`}
-          initialViewState={{
-            bounds,
-            fitBoundsOptions,
-          }}
-          onStyleData={() => {
-            mapRef.current &&
-              (mapRef.current.getCanvas().style.cursor = "crosshair");
-          }}
+          bounds={bounds}
+          clusterColor={theme.primary.plainColor}
+          data={data}
+          draw={draw}
           mapboxAccessToken={settings.mapboxAccessToken}
-          onLoad={onLoad}
-          onRender={() => {
-            if (draw.getMode() !== "draw_polygon") {
-              draw.changeMode("draw_polygon");
-            }
-          }}
-          onError={({ error }) => {
+          onCreate={onCreate}
+          onError={(error) => {
             setMapError(true);
             throw error;
           }}
-        >
-          <Source
-            id="points"
-            type="geojson"
-            data={data}
-            cluster={settings.clustering}
-            clusterMaxZoom={settings.clusterMaxZoom}
-          >
-            {settings.clustering && (
-              <Layer
-                id={"cluster"}
-                filter={["has", "point_count"]}
-                paint={{
-                  "circle-color": theme.primary.plainColor,
-                  "circle-opacity": 0.7,
-                  "circle-radius": [
-                    "step",
-                    ["get", "point_count"],
-                    20,
-                    10,
-                    30,
-                    25,
-                    40,
-                  ],
-                  ...settings.clusters.paint,
-                }}
-                type={"circle"}
-              />
-            )}
-            {settings.clustering && (
-              <Layer
-                id={"cluster-count"}
-                filter={["has", "point_count"]}
-                layout={{
-                  "text-field": "{point_count_abbreviated}",
-                  "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
-                  "text-size": 12,
-                }}
-                paint={settings.clusters.textPaint}
-                type={"symbol"}
-              />
-            )}
-
-            <Layer
-              id={"point"}
-              filter={["!", ["has", "point_count"]]}
-              paint={settings.pointPaint}
-              type={"circle"}
-            />
-          </Source>
-          <DrawControl draw={draw} onCreate={onCreate} />
-        </Map>
+          provider={provider}
+          settings={settings}
+          style={style}
+        />
       )}
 
       <Options
-        fitData={() => mapRef.current && fitBounds(mapRef.current, data)}
-        fitSelectionData={() =>
-          mapRef.current && fitBounds(mapRef.current, data)
-        }
+        fitData={() => mapRef.current?.fitBounds()}
+        fitSelectionData={() => mapRef.current?.fitBounds()}
         clearSelectionData={resetExtendedSelection}
+        provider={provider}
       />
     </div>
   );

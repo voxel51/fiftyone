@@ -3108,15 +3108,16 @@ location data:
 
     session = fo.launch_app(dataset)
 
-.. note::
+By default, FiftyOne renders the map with
+`MapLibre GL JS <https://maplibre.org/>`_ and uses
+`OpenFreeMap <https://openfreemap.org/>`_ basemaps built from
+`OpenStreetMap <https://www.openstreetmap.org/copyright>`_ data. No access
+token is required, and the required provider and data attribution is displayed
+on the map.
 
-    You must configure a
-    `Mapbox access token <https://docs.mapbox.com/help/getting-started/access-tokens>`_
-    in order to use the Map UI. See below for instructions.
-
-    FiftyOne uses the Mapbox GL JS API,
-    `which is free <https://www.mapbox.com/pricing/#maps>`_ up to 50,000 map
-    loads each month.
+If you wish to use Mapbox instead, configure a
+`Mapbox access token <https://docs.mapbox.com/help/getting-started/access-tokens>`_,
+and the Map panel will use Mapbox and its basemaps.
 
 .. image:: /images/app/app-map-panel.gif
     :alt: app-map-panel
@@ -3160,14 +3161,14 @@ settings shown below under the `plugins.map` key of your
     {
         "plugins": {
             "map": {
-                // Your mapbox token. This is required
+                // Optional. When set, use Mapbox instead of MapLibre
                 "mapboxAccessToken": "XXXXXXXX",
 
                 // Whether to enable clustering
                 "clustering": true,
 
                 // Never use clustering beyond this zoom level
-                // https://docs.mapbox.com/help/glossary/zoom-level
+                // https://maplibre.org/maplibre-style-spec/sources/#geojson-clustermaxzoom
                 "clusterMaxZoom": 11,
 
                 // Controls the look and feel of clusters
@@ -3177,7 +3178,7 @@ settings shown below under the `plugins.map` key of your
                         "circle-opacity": 0.7,
 
                         // Step expressions can be used
-                        // https://docs.mapbox.com/mapbox-gl-js/style-spec/#expressions-step
+                        // https://maplibre.org/maplibre-style-spec/expressions/#step
                         // 20px circles when point count is less than 10
                         // 30px circles when point count is between 10 and 25
                         // 40px circles when point count is greater than or equal to 25
@@ -3195,8 +3196,8 @@ settings shown below under the `plugins.map` key of your
         }
     }
 
-If you prefer, you can provide your Mapbox token by setting the `MAPBOX_TOKEN`
-environment variable:
+You can also provide the Mapbox token with the `MAPBOX_TOKEN` environment
+variable:
 
 .. code-block:: shell
 

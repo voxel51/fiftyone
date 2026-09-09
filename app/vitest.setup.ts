@@ -5,7 +5,7 @@
 
 // Mock window.URL.createObjectURL and revokeObjectURL
 // These are browser APIs that aren't available in jsdom but are required by
-// libraries like plotly.js/mapbox-gl
+// libraries like plotly.js and the map renderers
 if (typeof window !== "undefined") {
   globalThis.ResizeObserver ??= class {
     observe() {}
