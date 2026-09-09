@@ -24,7 +24,6 @@ from .geo import GeoPoints
 from .get_similar_labels_frames import GetSimilarLabelsFrameCollection
 from .groups import GroupsRoutes
 from .media import Media
-from .media_reference import MediaReferenceRoutes
 from .ontology import OntologyAttributes, OntologyTaxonomy, Ontologies
 from .plugins import Plugins
 from .runtime_assets import RuntimeAssetRoutes
@@ -50,7 +49,6 @@ routes = (
     + EmbeddingsRoutes
     + EmbeddingsV2Routes
     + GroupsRoutes
-    + MediaReferenceRoutes
     + TemporalTagRoutes
     + multimodal_routes
     + OperatorRoutes
