@@ -147,9 +147,9 @@ LeRobot samples back to a self-contained LeRobot v3 dataset.
 .. note::
 
     LeRobot support requires `pyarrow>=10.0.0` and currently supports
-    **LeRobot v3** datasets stored on local disk. Because samples reference
-    the source dataset rather than copying it, re-import your dataset if the
-    underlying LeRobot source is modified or moved.
+    **LeRobot v3** datasets. Because samples reference the source dataset
+    rather than copying it, re-import your dataset if the underlying LeRobot
+    source is modified or moved.
 
 .. _multimodal-grid-previews:
 
@@ -767,9 +767,10 @@ The `export_media` behavior depends on how the collection's media is stored:
 Exporting to LeRobot format
 ---------------------------
 
-Any collection of LeRobot episodes — an entire dataset, or a view containing
-the episodes you've curated — can be exported as a new, self-contained
-LeRobot v3 dataset that any LeRobot-compatible tooling can consume:
+Any collection of LeRobot episodes from a single source — an entire dataset,
+or a view containing the episodes you've curated — can be exported as a new,
+self-contained LeRobot v3 dataset that any LeRobot-compatible tooling can
+consume:
 
 .. code-block:: python
     :linenos:
