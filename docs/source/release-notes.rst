@@ -40,39 +40,33 @@ FiftyOne 1.22.0
 
 App
 ^^^
-- **LeRobot v3 datasets**: load LeRobot datasets with the new
-  `LeRobotDataset` type. Play episodes in the multimodal viewer with
-  synchronized camera streams and frame-by-frame state and action values
-  `#8341 <https://github.com/voxel51/fiftyone/pull/8341>`_,
-  `#8363 <https://github.com/voxel51/fiftyone/pull/8363>`_,
-  `#8397 <https://github.com/voxel51/fiftyone/pull/8397>`_
+- **LeRobot episode viewer**: play LeRobot episodes in the multimodal viewer
+  with synchronized camera streams and frame-by-frame state and action values
+  `#8363 <https://github.com/voxel51/fiftyone/pull/8363>`_
 - **Video timeline in Explore mode**: scrub video samples and see their
   frame-level labels on the timeline without entering Annotate
   `#8342 <https://github.com/voxel51/fiftyone/pull/8342>`_
 - **Audio in the multimodal viewer**: play a recording's audio tracks in
   sync with the timeline, with per-track volume, mute, and a mixer. Long
   recordings play without loading the whole track first
-  `#8274 <https://github.com/voxel51/fiftyone/pull/8274>`_,
-  `#8356 <https://github.com/voxel51/fiftyone/pull/8356>`_
+  `#8274 <https://github.com/voxel51/fiftyone/pull/8274>`_
 - Polyline tracks on video interpolate between keyframes, like detection
   tracks
   `#8380 <https://github.com/voxel51/fiftyone/pull/8380>`_
 - New temporal tags are pinned to the timeline, and the tag dropdown offers
-  the dataset's existing tags. The temporal tags field also loads quickly on
-  large grids
-  `#8357 <https://github.com/voxel51/fiftyone/pull/8357>`_,
-  `#8401 <https://github.com/voxel51/fiftyone/pull/8401>`_
+  the dataset's existing tags
+  `#8357 <https://github.com/voxel51/fiftyone/pull/8357>`_
 - Signal plots stay readable while zooming and panning. The axis fits what
   is visible, and the plot no longer blanks while new data loads
   `#8364 <https://github.com/voxel51/fiftyone/pull/8364>`_
-- Multimodal grid: smoother hover playback, a Cover/Contain fit option, and
-  episodes reopen instantly after a page reload
-  `#8346 <https://github.com/voxel51/fiftyone/pull/8346>`_,
+- Multimodal grid tiles have smoother hover playback and a Cover/Contain fit
+  option
+  `#8346 <https://github.com/voxel51/fiftyone/pull/8346>`_
+- Multimodal episodes reopen instantly after a page reload
   `#8306 <https://github.com/voxel51/fiftyone/pull/8306>`_
 - Grouped point cloud slices with static transforms render aligned in the
   world frame. Cuboids drawn there save back in each slice's own sensor frame
-  `#8316 <https://github.com/voxel51/fiftyone/pull/8316>`_,
-  `#8324 <https://github.com/voxel51/fiftyone/pull/8324>`_
+  `#8316 <https://github.com/voxel51/fiftyone/pull/8316>`_
 - Similarity search shows indexes that don't apply to the current view as
   disabled, with an explanation, instead of hiding them
   `#8352 <https://github.com/voxel51/fiftyone/pull/8352>`_
@@ -97,15 +91,18 @@ App
 
 Performance
 ^^^^^^^^^^^
-- Dataset grids appear up to 14x faster on first load, and multimodal grids
-  scroll faster
-  `#8325 <https://github.com/voxel51/fiftyone/pull/8325>`_,
+- Dataset grids appear up to 14x faster on first load
+  `#8325 <https://github.com/voxel51/fiftyone/pull/8325>`_
+- Multimodal grids scroll faster
   `#8338 <https://github.com/voxel51/fiftyone/pull/8338>`_
 - The timeline stays responsive on samples with hundreds of tracks
   `#8289 <https://github.com/voxel51/fiftyone/pull/8289>`_
 
 Core
 ^^^^
+- **LeRobot v3 datasets**: load LeRobot datasets with the new
+  `LeRobotDataset` type
+  `#8341 <https://github.com/voxel51/fiftyone/pull/8341>`_
 - Added support for Python 3.14, and `motor` is no longer a dependency
   `#8212 <https://github.com/voxel51/fiftyone/pull/8212>`_
 - Fixed `map_samples()` occasionally losing results from its final batch
@@ -114,8 +111,7 @@ Core
   `#8379 <https://github.com/voxel51/fiftyone/pull/8379>`_
 - Fixed CVAT skeleton keypoint import: keypoints are ordered by node and
   hidden points are marked as `nan`
-  `#7520 <https://github.com/voxel51/fiftyone/pull/7520>`_,
-  `#8233 <https://github.com/voxel51/fiftyone/pull/8233>`_
+  `#7520 <https://github.com/voxel51/fiftyone/pull/7520>`_
 
 Models
 ^^^^^^
@@ -152,9 +148,7 @@ Brain
 - The pgvector backend supports IVFFlat indexes, tuned automatically to the
   dataset size, and embeddings with more than 2000 dimensions. Requires
   `fiftyone-brain>=0.24.1`
-  `#311 <https://github.com/voxel51/fiftyone-brain/pull/311>`_,
-  `#312 <https://github.com/voxel51/fiftyone-brain/pull/312>`_,
-  `#8307 <https://github.com/voxel51/fiftyone/pull/8307>`_
+  `#311 <https://github.com/voxel51/fiftyone-brain/pull/311>`_
 
 FiftyOne Enterprise 2.24.1
 --------------------------
