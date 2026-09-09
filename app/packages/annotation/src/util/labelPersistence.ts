@@ -8,6 +8,7 @@ import type { Sample } from "@fiftyone/looker";
 import { NotFoundError } from "@fiftyone/utilities";
 import { isSampleIsh } from "@fiftyone/looker/src/util";
 import type { OpType } from "../types";
+import { recordSampleVersionToken } from "./getSampleVersionToken";
 
 export type DoPatchSampleArgs = {
   sample: Sample | null;
@@ -155,6 +156,7 @@ export const doPatchSample = async ({
       if (updatedSample) {
         // transform response data to match the graphql sample format
         const cleanedSample = transformSampleData(updatedSample);
+        recordSampleVersionToken(cleanedSample);
         postSample = cleanedSample;
         if (isSampleIsh(cleanedSample)) {
           refreshSample(cleanedSample as Sample);

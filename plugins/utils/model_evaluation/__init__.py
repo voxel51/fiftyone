@@ -9,7 +9,6 @@ FiftyOne builtin plugins.
 from fiftyone.operators.store import ExecutionStore
 from bson import ObjectId
 
-
 STORE_NAME = "model_evaluation_panel_builtin"
 
 

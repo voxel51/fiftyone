@@ -6,7 +6,6 @@ FiftyOne v0.23.0 revision.
 |
 """
 
-
 from bson import ObjectId
 
 
