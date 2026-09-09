@@ -56,20 +56,19 @@ export const getSampleVersionToken = ({
 }: {
   sample: Sample | null;
 }): string | null => {
-  if (!sample) {
+  if (!sample?.last_modified_at) {
     return null;
   }
 
-  const own = sample.last_modified_at
-    ? parseTimestamp(sample.last_modified_at)
-    : null;
-  const recorded = confirmed.get(sample._id);
+  const own = parseTimestamp(sample.last_modified_at);
 
-  if (own && recorded) {
-    return toToken(recorded.getTime() > own.getTime() ? recorded : own);
+  if (!own) {
+    return null;
   }
 
-  const latest = own ?? recorded;
+  const recorded = confirmed.get(sample._id);
 
-  return latest ? toToken(latest) : null;
+  return toToken(
+    recorded && recorded.getTime() > own.getTime() ? recorded : own,
+  );
 };
