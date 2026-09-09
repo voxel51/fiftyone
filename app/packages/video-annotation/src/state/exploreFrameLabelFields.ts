@@ -7,7 +7,10 @@ import * as fos from "@fiftyone/state";
 import { LabelType } from "@fiftyone/utilities";
 import { PROJECTABLE_FRAME_LABEL_TYPES } from "../streams/framesData";
 import { useMemo } from "react";
-import { useTemporalDetectionFieldPaths } from "./accessors";
+import {
+  useSampleClassificationFieldPaths,
+  useTemporalDetectionFieldPaths,
+} from "./accessors";
 
 /**
  * Label types the per-frame pipeline can actually paint.
@@ -99,6 +102,62 @@ export const useExploreFrameLabelFields = (): Record<string, LabelType> => {
 export const useExploreFrameLabelPaths = (): ReadonlySet<string> => {
   const fields = useExploreFrameLabelFields();
   return useMemo(() => new Set(Object.keys(fields)), [fields]);
+};
+
+/**
+ * The SAMPLE-level classification fields Explore should paint.
+ *
+ * A sample Classification is not `frames.*`, so {@link useExploreFrameLabelPaths}
+ * — which exists to keep the per-frame namespace the `FrameStore` owns — can
+ * never answer for it, and the bridge scope built from that hook alone silently
+ * dropped every sample classification: `bridgeLoop`'s `inScope` tests
+ * `paths.has(ref.path)`, so `cls` was filtered out before hydration however
+ * plainly the sidebar had it checked. That is the whole reason the top-left
+ * bubble the video looker drew went missing on this surface.
+ *
+ * Nothing else in the pipeline needed changing: `FrameTemporalView` already
+ * reports a sample-level label as present on every frame (only a temporal
+ * detection is gated by its `support`), `SampleLabelStore` resolves the type
+ * from the sample's own schema rather than the annotation schemas, and
+ * `classificationAdapter` is registered for both Classification and
+ * Classifications. Scope was the only gate.
+ *
+ * Derived from the sidebar's active paths for the same reason the per-frame
+ * hook is: the annotation-schema sets stay empty in Explore until the Annotate
+ * sidebar has loaded them.
+ */
+export const useExploreSampleClassificationPaths = (): ReadonlySet<string> => {
+  const active = fos.useActiveFields({ modal: true });
+  const classificationFields = useSampleClassificationFieldPaths();
+
+  return useMemo(() => {
+    const known = new Set(classificationFields);
+    return new Set(active.filter((path) => known.has(path)));
+  }, [active, classificationFields]);
+};
+
+/**
+ * Everything the Explore surface's Lighter bridge should hydrate: the paintable
+ * per-frame fields plus the sample-level classifications.
+ *
+ * The bridge takes ONE flat scope regardless of a path's temporal posture —
+ * `frameOf` is what stamps the playhead frame onto `frames.*` and leaves a
+ * sample-level path frame-less — so both namespaces belong in the same set.
+ * The frame store's own registration stays frames-only
+ * ({@link useExploreFrameLabelFields}): a sample classification is the
+ * `SampleLabelStore` half's to hold.
+ *
+ * Temporal detections are deliberately absent — they render through
+ * `useTemporalOverlaySync`, not the bridge, and carry no Lighter adapter.
+ */
+export const useExploreOverlayPaths = (): ReadonlySet<string> => {
+  const framePaths = useExploreFrameLabelPaths();
+  const classificationPaths = useExploreSampleClassificationPaths();
+
+  return useMemo(
+    () => new Set([...framePaths, ...classificationPaths]),
+    [framePaths, classificationPaths],
+  );
 };
 
 /**
