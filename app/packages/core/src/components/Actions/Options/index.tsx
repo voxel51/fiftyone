@@ -1,3 +1,4 @@
+import { Anchor } from "@voxel51/voodo";
 import { PillButton } from "@fiftyone/components";
 import { useOutsideClick } from "@fiftyone/state";
 import { Settings } from "@mui/icons-material";
@@ -20,7 +21,7 @@ export default ({
       ref={ref}
     >
       <PillButton
-        tooltipPlacement={modal ? "bottom" : "top"}
+        tooltipPlacement={modal ? Anchor.Bottom : Anchor.Top}
         icon={<Settings />}
         open={open}
         onClick={() => setOpen(!open)}

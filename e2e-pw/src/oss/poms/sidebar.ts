@@ -8,10 +8,8 @@ export const SIDEBAR_MODE = {
 export type SidebarMode = (typeof SIDEBAR_MODE)[keyof typeof SIDEBAR_MODE];
 
 const SIDEBAR_MODE_TOOLTIP: Record<SidebarMode, string> = {
-  [SIDEBAR_MODE.FILTER]:
-    "Use the controls below to create filtered views into your data",
-  [SIDEBAR_MODE.VISIBILITY]:
-    "Use the controls below to toggle the visibility of field values in the grid",
+  [SIDEBAR_MODE.FILTER]: "sidebar-mode-tooltip-filter",
+  [SIDEBAR_MODE.VISIBILITY]: "sidebar-mode-tooltip-visibility",
 };
 
 export class SidebarPom {
@@ -233,11 +231,10 @@ export class SidebarPom {
   }
 
   /**
-   * The mode toggle's tooltip; `@fiftyone/components` renders a Tooltip with
-   * the test id `tooltip-${text}`
+   * The mode toggle's tooltip
    */
   modeTooltip(mode: SidebarMode) {
-    return this.page.getByTestId(`tooltip-${SIDEBAR_MODE_TOOLTIP[mode]}`);
+    return this.page.getByTestId(SIDEBAR_MODE_TOOLTIP[mode]);
   }
 
   /**

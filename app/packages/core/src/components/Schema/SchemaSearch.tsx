@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Box, Typography } from "@mui/material";
-import { Tooltip, useTheme } from "@fiftyone/components";
+import { useTheme } from "@fiftyone/components";
+import { Anchor, Tooltip } from "@voxel51/voodo";
 import { SchemaSelection } from "./SchemaSelection";
 import { useSchemaSettings, useSearchSchemaFields } from "@fiftyone/state";
 import { Clear } from "@mui/icons-material";
@@ -87,7 +88,7 @@ export const SchemaSearch = (props: Props) => {
             }
           }}
         />
-        <Tooltip text="Hit Enter to see results!" placement="bottom-center">
+        <Tooltip anchor={Anchor.Bottom} content="Hit Enter to see results!">
           <Box
             style={{
               zIndex: 1600,

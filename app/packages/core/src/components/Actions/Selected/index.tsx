@@ -1,3 +1,4 @@
+import { Anchor } from "@voxel51/voodo";
 import { PillButton } from "@fiftyone/components";
 import { useLighter } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
@@ -88,7 +89,7 @@ export default ({
         highlight={samples.size > 0 || open || (labels.size > 0 && modal)}
         text={text}
         title={title}
-        tooltipPlacement={modal ? "bottom" : "top"}
+        tooltipPlacement={modal ? Anchor.Bottom : Anchor.Top}
         style={{
           cursor: loading ? "default" : "pointer",
         }}

@@ -1,4 +1,4 @@
-import { Tooltip, useTheme } from "@fiftyone/components/src/components";
+import { useTheme } from "@fiftyone/components/src/components";
 import PopoutDiv from "@fiftyone/components/src/components/Popout/PopoutDiv";
 import * as fos from "@fiftyone/state";
 import { useOutsideClick } from "@fiftyone/state";
@@ -10,6 +10,7 @@ import {
 } from "@fiftyone/utilities";
 import KeyboardArrowDownOutlinedIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
 import KeyboardArrowUpOutlinedIcon from "@mui/icons-material/KeyboardArrowUpOutlined";
+import { Anchor, Tooltip } from "@voxel51/voodo";
 import { cloneDeep } from "lodash";
 import React from "react";
 import { useRecoilValue } from "recoil";
@@ -84,10 +85,8 @@ const ColorAttribute: React.FC<Prop> = ({ style }) => {
       Select an attribute to color by
       <ActionDiv ref={ref}>
         <Tooltip
-          text={
-            "You can select StringField, BooleanField or IntField attribute for annotation's color"
-          }
-          placement={"top-center"}
+          anchor={Anchor.Top}
+          content="You can select StringField, BooleanField or IntField attribute for annotation's color"
         >
           <SelectButton
             onClick={() => setOpen((o) => !o)}

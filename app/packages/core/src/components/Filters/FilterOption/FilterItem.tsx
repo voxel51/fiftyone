@@ -1,4 +1,3 @@
-import { Tooltip } from "@fiftyone/components";
 import FilterAltIcon from "@mui/icons-material/FilterAlt";
 import FilterAltOffIcon from "@mui/icons-material/FilterAltOff";
 import HideImageIcon from "@mui/icons-material/HideImage";
@@ -6,6 +5,7 @@ import ImageIcon from "@mui/icons-material/Image";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import IconButton from "@mui/material/IconButton";
+import { Anchor, Tooltip } from "@voxel51/voodo";
 import type { ForwardedRef } from "react";
 import React from "react";
 import styled from "styled-components";
@@ -59,7 +59,7 @@ function TooltipWrapper({
 }: React.PropsWithChildren<{ tooltip?: string }>) {
   if (tooltip) {
     return (
-      <Tooltip text={tooltip} placement="right-start">
+      <Tooltip anchor={Anchor.Right} content={tooltip}>
         {children}
       </Tooltip>
     );

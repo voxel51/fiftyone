@@ -1,8 +1,9 @@
-import { IconButton, Tooltip } from "@fiftyone/components";
+import { IconButton } from "@fiftyone/components";
 import InfoIcon from "@mui/icons-material/Info";
 import SearchIcon from "@mui/icons-material/Search";
 import SettingsIcon from "@mui/icons-material/Settings";
 import CircularProgress from "@mui/material/CircularProgress";
+import { Anchor, Tooltip } from "@voxel51/voodo";
 import type { CSSProperties } from "react";
 import styled from "styled-components";
 
@@ -29,8 +30,8 @@ const GroupButton = ({ buttons }: GroupButtonProps) => {
     <div style={{ display: "flex", flexDirection: "row" }}>
       {buttons.map((button) => (
         <Tooltip
-          text={button.tooltipText}
-          placement={"top-center"}
+          anchor={Anchor.Top}
+          content={button.tooltipText}
           key={`actionButton-${button.icon}`}
         >
           <Container onClick={button.onClick}>

@@ -1,6 +1,6 @@
-import { Tooltip } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { PaginationItemProps } from "@mui/material";
+import { Anchor, Text, Tooltip } from "@voxel51/voodo";
 import React, { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 
@@ -39,7 +39,12 @@ export const PaginationComponentWithTooltip = React.memo(
 
       if (tooltipText) {
         return (
-          <Tooltip text={tooltipText} placement="top-center">
+          <Tooltip
+            anchor={Anchor.Top}
+            content={
+              <Text data-cy={`tooltip-${tooltipText}`}>{tooltipText}</Text>
+            }
+          >
             <div ref={ref} {...props} />
           </Tooltip>
         );
