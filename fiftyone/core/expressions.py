@@ -2426,7 +2426,7 @@ class ViewExpression(object):
         if not isinstance(values, ViewExpression):
             values = ViewExpression(values)
 
-        return values.is_subset(self)
+        return values.is_subset(self.if_null([]))
 
     def is_subset(self, values):
         """Checks whether this expression's contents, which must resolve to an

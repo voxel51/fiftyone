@@ -639,6 +639,49 @@ class ViewExpressionTests(unittest.TestCase):
             self.assertTrue(my_int < bounds[0] or my_int > bounds[1])
 
     @drop_datasets
+    def test_contains_all_missing_field(self):
+        # https://github.com/voxel51/fiftyone/issues/3560
+        dataset = fo.Dataset()
+
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="filepath1.jpg",
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(label="cat"),
+                            fo.Detection(label="dog"),
+                        ]
+                    ),
+                ),
+                fo.Sample(filepath="filepath2.jpg"),
+                fo.Sample(
+                    filepath="filepath3.jpg",
+                    predictions=fo.Detections(
+                        detections=[fo.Detection(label="cat")]
+                    ),
+                ),
+            ]
+        )
+
+        # samples whose `predictions.detections.label` path is missing
+        # cannot contain anything
+        view = dataset.match(
+            F("predictions.detections.label").contains(
+                ["cat", "dog"], all=True
+            )
+        )
+        self.assertEqual(len(view), 1)
+
+        view = dataset.match(
+            F("predictions.detections.label").contains(["cat", "fox"])
+        )
+        self.assertEqual(len(view), 2)
+
+        view = dataset.match(F("tags").contains(["a", "b"], all=True))
+        self.assertEqual(len(view), 0)
+
+    @drop_datasets
     def test_arithmetic(self):
         dataset = fo.Dataset()
 
