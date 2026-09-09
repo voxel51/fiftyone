@@ -106,14 +106,12 @@ const assets: readonly AssetDescriptor[] = [
   {
     id: "info",
     mediaType: "application/json",
-    metadata: { sizeBytes: infoBytes.byteLength.toString() },
     role: "dataset-info",
     selector: { kind: "whole-file" },
   },
   {
     id: "episodes",
     mediaType: "application/vnd.apache.parquet",
-    metadata: { sizeBytes: "1" },
     role: "episode-metadata",
     selector: {
       coordinateSystem: "parquet-file-row",
@@ -125,7 +123,7 @@ const assets: readonly AssetDescriptor[] = [
   {
     id: "data",
     mediaType: "application/vnd.apache.parquet",
-    metadata: { chunkIndex: "0", fileIndex: "0", sizeBytes: "2" },
+    metadata: { chunkIndex: "0", fileIndex: "0" },
     role: "tabular-frame-data",
     selector: {
       coordinateSystem: "parquet-file-row",
@@ -138,7 +136,6 @@ const assets: readonly AssetDescriptor[] = [
     featureName: "observation.images.embedded",
     id: "images",
     mediaType: "application/vnd.apache.parquet",
-    metadata: { sizeBytes: "2" },
     role: "image-payload",
     selector: {
       coordinateSystem: "parquet-file-row",
@@ -154,7 +151,6 @@ const assets: readonly AssetDescriptor[] = [
     metadata: {
       chunkIndex: "0",
       fileIndex: "0",
-      sizeBytes: tinyMp4Bytes.byteLength.toString(),
       stream: "observation.images.test",
     },
     role: "video-stream",
@@ -165,6 +161,16 @@ const assets: readonly AssetDescriptor[] = [
     },
   },
 ];
+
+// The manifest carries no sizes; a reader learns each object's size from its
+// first response, so the fixture reports it the way the byte client does.
+const assetSizes: Readonly<Record<string, number>> = {
+  data: 2,
+  episodes: 1,
+  images: 2,
+  info: infoBytes.byteLength,
+  video: tinyMp4Bytes.byteLength,
+};
 
 const episodeRow = {
   "data/chunk_index": 0n,
@@ -226,12 +232,19 @@ const dataRows = [
   },
 ];
 
-const source: EpisodeSource = {
+const source = {
   assets: {
     list: async () => assets,
-    resolve: async (assetId) => descriptor(assetId),
+    resolve: async (assetId: string) => descriptor(assetId),
   },
-  episodeId: "episode-0",
+  episodeId: "src/0",
+  // A poster open never reads info.json; the sample's own rate declares it
+  fps: 30,
+  reference: {
+    data: [0, 0, 0, 3],
+    key: "src/0",
+    tasks: ["reach for the cube"],
+  },
 };
 
 const io: ByteResources = {
@@ -244,15 +257,21 @@ const io: ByteResources = {
         : byteSource.sourceId === "video"
           ? tinyMp4Bytes.slice(start, end)
           : new Uint8Array(Number(range.length));
-    return { bytes, range, source: byteSource };
+    return { bytes, range, source: sized(byteSource) };
   },
 };
+
+function sized(byteSource: ByteSourceDescriptor): ByteSourceDescriptor {
+  const size = assetSizes[byteSource.sourceId];
+  return size === undefined
+    ? byteSource
+    : { ...byteSource, sizeBytes: size.toString() };
+}
 
 function descriptor(assetId: string): ByteSourceDescriptor {
   const asset = assets.find((candidate) => candidate.id === assetId);
   if (!asset) throw new Error(`Unknown test asset ${assetId}`);
   return {
-    sizeBytes: asset.metadata?.sizeBytes,
     sourceId: asset.id,
     url: `memory://${asset.id}`,
   };
@@ -287,22 +306,20 @@ defineEpisodeSessionContractTests({
 
 describe("LeRobot format adapter", () => {
   it("detects only explicit LeRobot source identities", () => {
+    const mediaReference = {
+      _cls: "LeRobotEpisodeReference",
+      key: "src/7",
+    };
     expect(
       detectLeRobotSample({
+        mediaReference,
         mediaType: "multimodal",
-        mediaReference: {
-          kind: "lerobot-episode",
-          key: "source:17",
-        },
       }),
     ).toBe(true);
     expect(
       detectLeRobotSample({
+        mediaReference,
         mediaType: "application/x-lerobot",
-        mediaReference: {
-          kind: "lerobot-episode",
-          key: "source:17",
-        },
       }),
     ).toBe(false);
     expect(
@@ -440,7 +457,7 @@ describe("LeRobot format adapter", () => {
         stream: "lerobot:action",
         window: session.manifest.timeRange,
       });
-      expect(readParquetObjects).toHaveBeenCalledTimes(3);
+      expect(readParquetObjects).toHaveBeenCalledTimes(2);
     } finally {
       session.dispose();
     }
@@ -594,18 +611,10 @@ describe("LeRobot format adapter", () => {
         [secondFeature]: info.features["observation.images.test"],
       },
     };
-    const dualInfoBytes = new TextEncoder().encode(JSON.stringify(dualInfo));
     const firstVideoAsset = assets.find((asset) => asset.id === "video");
     if (!firstVideoAsset) throw new Error("Missing test video asset");
     const dualAssets = [
-      ...assets.map((asset) =>
-        asset.id === "info"
-          ? {
-              ...asset,
-              metadata: { sizeBytes: dualInfoBytes.byteLength.toString() },
-            }
-          : asset,
-      ),
+      ...assets,
       {
         ...firstVideoAsset,
         featureName: secondFeature,
@@ -618,22 +627,19 @@ describe("LeRobot format adapter", () => {
     ];
     let activeVideoReads = 0;
     let maxActiveVideoReads = 0;
-    const dualSource: EpisodeSource = {
+    const dualInfoBytes = new TextEncoder().encode(JSON.stringify(dualInfo));
+    const dualSource = {
+      ...source,
       assets: {
         list: async () => dualAssets,
-        resolve: async (assetId) => {
+        resolve: async (assetId: string) => {
           const asset = dualAssets.find(
             (candidate) => candidate.id === assetId,
           );
           if (!asset) throw new Error(`Unknown dual-camera asset ${assetId}`);
-          return {
-            sizeBytes: asset.metadata?.sizeBytes,
-            sourceId: asset.id,
-            url: `memory://${asset.id}`,
-          };
+          return { sourceId: asset.id, url: `memory://${asset.id}` };
         },
       },
-      episodeId: "episode-0",
     };
     const dualIo: ByteResources = {
       readBytes: async (request) => {
@@ -646,13 +652,26 @@ describe("LeRobot format adapter", () => {
         try {
           const start = Number(request.range.offset);
           const end = start + Number(request.range.length);
-          const bytes =
-            request.source.sourceId === "info"
+          const bytes = isVideo
+            ? tinyMp4Bytes.slice(start, end)
+            : request.source.sourceId === "info"
               ? dualInfoBytes.slice(start, end)
-              : isVideo
-                ? tinyMp4Bytes.slice(start, end)
-                : new Uint8Array(Number(request.range.length));
-          return { bytes, range: request.range, source: request.source };
+              : new Uint8Array(Number(request.range.length));
+          return {
+            bytes,
+            range: request.range,
+            source: isVideo
+              ? {
+                  ...request.source,
+                  sizeBytes: tinyMp4Bytes.byteLength.toString(),
+                }
+              : request.source.sourceId === "info"
+                ? {
+                    ...request.source,
+                    sizeBytes: dualInfoBytes.byteLength.toString(),
+                  }
+                : sized(request.source),
+          };
         } finally {
           if (isVideo) activeVideoReads -= 1;
         }
@@ -791,10 +810,9 @@ describe("LeRobot format adapter", () => {
         nextStartTimeNs: 500_000_000n,
         status: "ready",
         streamSourceName: "observation.images.test",
-        streamSourceNames: [
-          "observation.images.embedded",
-          "observation.images.test",
-        ],
+        // A poster open lists cameras only; the embedded image feature has
+        // no video asset to preview
+        streamSourceNames: ["observation.images.test"],
       });
       expect(
         first.videoDecodeRunway?.map((frame) =>
@@ -802,7 +820,9 @@ describe("LeRobot format adapter", () => {
             ? frame.image.timestampNs
             : null,
         ),
-      ).toEqual([0n, 500_000_000n]);
+        // 250ms of lookahead reaches no second frame on a 2fps camera; the
+        // runway covers what the caller asked for, not the whole GOP
+      ).toEqual([0n]);
       await expect(
         preview.read({
           sourceName: "observation.images.test",
@@ -818,47 +838,18 @@ describe("LeRobot format adapter", () => {
   });
 
   it("keeps AV1 grid previews native while demuxing modal access units", async () => {
-    const av1InfoBytes = new TextEncoder().encode(
-      JSON.stringify({
-        ...info,
-        features: {
-          ...info.features,
-          "observation.images.test": {
-            ...info.features["observation.images.test"],
-            info: { "video.codec": "av1", "video.fps": 2 },
-          },
+    const av1Info = {
+      ...info,
+      features: {
+        ...info.features,
+        "observation.images.test": {
+          ...info.features["observation.images.test"],
+          info: { "video.codec": "av1", "video.fps": 2 },
         },
-      }),
-    );
-    const av1Assets = assets.map((asset) => {
-      if (asset.id === "info") {
-        return {
-          ...asset,
-          metadata: { sizeBytes: av1InfoBytes.byteLength.toString() },
-        };
-      }
-      if (asset.id === "video") {
-        return {
-          ...asset,
-          metadata: {
-            ...asset.metadata,
-            sizeBytes: tinyAv1Mp4Bytes.byteLength.toString(),
-          },
-        };
-      }
-      return asset;
-    });
-    const av1Source: EpisodeSource = {
-      ...source,
-      assets: {
-        list: async () => av1Assets,
-        resolve: async (assetId) => ({
-          ...descriptor(assetId),
-          sizeBytes: av1Assets.find((asset) => asset.id === assetId)?.metadata
-            ?.sizeBytes,
-        }),
       },
     };
+    const av1InfoBytes = new TextEncoder().encode(JSON.stringify(av1Info));
+    const av1Source: typeof source = source;
     const av1Io: ByteResources = {
       readBytes: async (request) => {
         const start = Number(request.range.offset);
@@ -867,14 +858,20 @@ describe("LeRobot format adapter", () => {
           return {
             bytes: tinyAv1Mp4Bytes.slice(start, end),
             range: request.range,
-            source: request.source,
+            source: {
+              ...request.source,
+              sizeBytes: tinyAv1Mp4Bytes.byteLength.toString(),
+            },
           };
         }
         if (request.source.sourceId !== "info") return io.readBytes(request);
         return {
           bytes: av1InfoBytes.slice(start, end),
           range: request.range,
-          source: request.source,
+          source: {
+            ...request.source,
+            sizeBytes: av1InfoBytes.byteLength.toString(),
+          },
         };
       },
     };
@@ -897,10 +894,9 @@ describe("LeRobot format adapter", () => {
         },
         status: "ready",
         streamSourceName: "observation.images.test",
-        streamSourceNames: [
-          "observation.images.embedded",
-          "observation.images.test",
-        ],
+        // A poster open lists cameras only; the embedded image feature has
+        // no video asset to preview
+        streamSourceNames: ["observation.images.test"],
       });
     } finally {
       preview.dispose();
@@ -1045,7 +1041,11 @@ async function realSource(root: string): Promise<{
   camera1SizeBytes: number;
   close(): Promise<void>;
   io: ByteResources;
-  source: EpisodeSource;
+  source: {
+    assets: typeof source.assets;
+    episodeId: string;
+    reference: { data: readonly number[]; key: string; tasks: string[] };
+  };
 }> {
   const paths = {
     data: join(root, "data/chunk-000/file-000.parquet"),
@@ -1154,7 +1154,8 @@ async function realSource(root: string): Promise<{
     },
     source: {
       assets: { list: async () => realAssets, resolve },
-      episodeId: "episode-0",
+      episodeId: "src/0",
+      reference: { data: [0, 0, 0, 426], key: "src/0", tasks: [] },
     },
   };
 }

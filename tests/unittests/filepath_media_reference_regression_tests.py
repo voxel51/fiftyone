@@ -22,7 +22,7 @@ import fiftyone as fo
 import fiftyone.core.collections as foc
 import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
-import fiftyone.core.media_assets as foma
+import fiftyone.multimodal.media_reference.asset_planning as foma
 import fiftyone.core.utils as fou
 from fiftyone.server.samples import (
     ImageSample,
@@ -58,7 +58,6 @@ class FilepathMediaReferenceRegressionTests(unittest.TestCase):
             "aggregate",
             side_effect=AssertionError("filepath datasets must not aggregate"),
         ):
-            self.assertIsNone(dataset.media_reference_kind)
             self.assertFalse(dataset._contains_media_references())
             self.assertEqual(
                 dataset._get_default_indexes(),
@@ -254,18 +253,6 @@ class FilepathMediaReferenceRegressionTests(unittest.TestCase):
                 "_ReferenceAssetPlanBuilder",
                 side_effect=AssertionError(
                     "filepath exports must not construct reference plans"
-                ),
-            ), mock.patch.object(
-                foma,
-                "_export_media_reference_bindings",
-                side_effect=AssertionError(
-                    "filepath exports must not query reference bindings"
-                ),
-            ), mock.patch.object(
-                foma,
-                "_hydrate_media_reference_binding",
-                side_effect=AssertionError(
-                    "filepath exports must not hydrate references"
                 ),
             ):
                 source.export(

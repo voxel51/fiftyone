@@ -23,8 +23,8 @@ describe("detectMcapSample", () => {
     expect(
       detectMcapSample({
         mediaReference: {
-          kind: "lerobot-episode",
-          key: "source:17",
+          _cls: "LeRobotEpisodeReference",
+          key: "lerobot-source/0",
         },
         mediaType: "multimodal",
       }),
