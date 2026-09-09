@@ -5,12 +5,12 @@ FiftyOne memory limit utility unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import types
 import unittest
 from unittest.mock import patch
 
 import fiftyone.core.utils as fou
-
 
 _GiB = 1024**3
 

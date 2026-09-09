@@ -5,6 +5,7 @@ FiftyOne JSON handling
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import dataclasses
 from datetime import date, datetime
 import math
@@ -13,7 +14,6 @@ from bson import ObjectId
 import numpy as np
 
 import fiftyone.core.utils as fou
-
 
 _MASK_CLASSES = {"Detection", "Heatmap", "Segmentation"}
 

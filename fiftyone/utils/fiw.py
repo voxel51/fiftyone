@@ -6,6 +6,7 @@ Utilities for working with the
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 import os
 from collections import defaultdict
@@ -20,7 +21,6 @@ import fiftyone.utils.data as foud
 
 from fiftyone.core.expressions import ViewField as F
 from fiftyone.core.expressions import VALUE
-
 
 logger = logging.getLogger(__name__)
 

@@ -989,7 +989,8 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
     def _get_frame_indices(self):
         """Return the frame indices from which to extract prompt fields for prompting.
 
-        When ``None``,``prompt_field`` in all the frames are used for visual prompting."""
+        When ``None``,``prompt_field`` in all the frames are used for visual prompting.
+        """
 
         prompt_frame_indices = self.config.prompt_frame_indices
         if prompt_frame_indices is None:

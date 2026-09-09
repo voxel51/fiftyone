@@ -16,7 +16,6 @@ from jinja2 import Environment, BaseLoader
 import eta.core.utils as etau
 import fiftyone.zoo as foz
 
-
 logger = logging.getLogger(__name__)
 
 
