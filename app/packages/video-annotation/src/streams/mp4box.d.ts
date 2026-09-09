@@ -41,6 +41,15 @@ declare module "mp4box" {
     track_width: number;
     track_height: number;
     type?: "audio" | "video" | "subtitles" | "metadata";
+    /** `elst` entries, when the track has an edit list. */
+    edits?: Array<{
+      /** Movie timescale units. */
+      segment_duration: number;
+      /** Track timescale units; `-1` marks an empty edit. */
+      media_time: number;
+      media_rate_integer: number;
+      media_rate_fraction: number;
+    }>;
   }
 
   export interface Movie {
