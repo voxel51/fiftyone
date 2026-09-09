@@ -119,6 +119,80 @@ def get_listening_tcp_ports(process):
             yield conn.laddr[1]  # port
 
 
+def shutdown_mongod(process, timeout=60):
+    """Asks the given ``mongod`` process to shut itself down, and waits for it
+    to exit.
+
+    Terminating ``mongod`` rather than letting it shut itself down leaves its
+    cached collection metadata stale, because that metadata is only persisted
+    when the storage engine checkpoints (every 60 seconds, by default). The
+    documents themselves are recovered from the journal when the database next
+    starts, but the stale metadata is not, so collections can report a document
+    count of 0 while actually containing documents, which makes datasets appear
+    to be empty.
+
+    This is not hypothetical on Windows, where terminating a process maps to
+    ``TerminateProcess()``, which ``mongod`` cannot handle; on other platforms
+    it maps to ``SIGTERM``, which ``mongod`` does handle.
+
+    Args:
+        process (psutil.Process): the ``mongod`` process
+        timeout (60): the number of seconds to wait for the process to exit
+
+    Returns:
+        True if the process exited, and False if it must be terminated instead
+    """
+    try:
+        import pymongo
+        from pymongo.errors import AutoReconnect, ServerSelectionTimeoutError
+    except ImportError:
+        return False
+
+    try:
+        ports = list(get_listening_tcp_ports(process))
+    except psutil.Error:
+        return False
+
+    if not ports:
+        # the database never started listening, so it has nothing to persist
+        return False
+
+    try:
+        client = pymongo.MongoClient(
+            host="127.0.0.1",
+            port=ports[0],
+            directConnection=True,
+            # the database is local and known to be listening, so these only
+            # bound the failure case, in which the process is terminated
+            serverSelectionTimeoutMS=5000,
+            connectTimeoutMS=5000,
+        )
+    except Exception:
+        return False
+
+    try:
+        client.admin.command("shutdown", 1)
+    except ServerSelectionTimeoutError:
+        # NB: this is a subclass of `AutoReconnect`, but unlike the disconnect
+        # below, it means the database was never reached, so it did not shut
+        # down and must be terminated instead
+        return False
+    except AutoReconnect:
+        # expected: the database closes its connections while shutting down
+        pass
+    except Exception:
+        return False
+    finally:
+        client.close()
+
+    try:
+        process.wait(timeout=timeout)
+    except psutil.TimeoutExpired:
+        return False
+
+    return True
+
+
 def send_ipc_message(process, message):
     """Sends a message to a process's IPCServer.
 

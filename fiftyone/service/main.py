@@ -41,7 +41,12 @@ import psutil
 
 os.environ["FIFTYONE_DISABLE_SERVICES"] = "1"
 from fiftyone.service.ipc import IPCServer
+import fiftyone.service.util as fosu
 
+
+# the maximum time to wait for the database to shut itself down before it is
+# forcibly terminated
+DATABASE_SHUTDOWN_TIMEOUT = 60
 
 lock = threading.Lock()
 
@@ -291,6 +296,14 @@ def shutdown():
 
     Also dumps output if the main child process fails to exit cleanly.
     """
+
+    # the database must be given the chance to shut itself down, as terminating
+    # it leaves its cached collection metadata stale, which makes datasets
+    # appear to be empty the next time the database starts
+    if args.service_name == "db" and fosu.shutdown_mongod(
+        child, timeout=DATABASE_SHUTDOWN_TIMEOUT
+    ):
+        return
 
     # "yarn dev" doesn't pass SIGTERM to its children - to be safe, kill all
     # subprocesses of the child process first
