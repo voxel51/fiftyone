@@ -12,19 +12,6 @@ import { useCallback } from "react";
 import { useCurrentFrameGetter } from "./useCurrentFrame";
 import { useHoveredTrackIds, useSelectedTrackIds } from "./useVideoSelection";
 
-export {
-  useFollowAnchorFrame,
-  useScrollTrackToAnchor,
-} from "./useVideoAnchorFollow";
-export {
-  useHoveredTrackIds,
-  useSelectedInstanceTrackField,
-  useSelectedTemporalDetectionField,
-  useSelectedTrackIds,
-  useSelectionIsInstanceTrack,
-  useSelectionIsKeyframeable,
-} from "./useVideoSelection";
-
 const SURFACE = "video-timeline";
 
 /**

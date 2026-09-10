@@ -4,7 +4,7 @@ import {
   useSelectedTrackIds,
   useSelectionIsInstanceTrack,
   useSelectionIsKeyframeable,
-} from "../state/useVideoInteraction";
+} from "../state/useVideoSelection";
 import { useFrameKeyframeState } from "./useFrameKeyframeState";
 
 export interface TrackSelectionGates {

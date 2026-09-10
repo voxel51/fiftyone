@@ -25,26 +25,10 @@ import {
 } from "./useLighterModeHandlers";
 
 /**
- * Bridges Lighter overlay events into the annotation systems for the video
- * surface. Binds the scene's event channel and delegates each concern to a
- * tightly-scoped handler hook.
- *
- * Event-handler-only: state changes flow through the public mode interfaces
- * (`useDetectionMode` / `useSegmentationMode` / `usePolylineMode`) rather than
- * direct atom access, so this stays decoupled from those modules' internals.
- * The modes are resolved once here (the binding agent) and injected — segmentation
- * in particular installs a scene handler (`usePenTool`), so it must mount once.
- * Sidebar membership is engine-derived (`useEntries` reads engine presence), so
- * nothing here pushes or prunes sidebar rows.
- *
- * Canvas selection (`lighter:overlay-select` / `deselect`) is owned by the
- * engine's Lighter `frame-locked` bridge (`SurfaceController.selectHandle`),
- * which maps an overlay handle to its `LabelRef` and drives `engine.interaction`
- * — so there is deliberately no select/deselect handler here.
- *
- * @param scene - The scene to bridge, or `null` while it's still being set up.
- *   When `null`, handlers attach to an inert sentinel channel and re-bind once
- *   the real scene becomes available.
+ * Bridge the video surface's Lighter overlay events into the create modes:
+ * the modes are resolved once here and injected into each handler hook. A
+ * `null` scene binds an inert channel until the real one arrives; canvas
+ * select/deselect is the engine bridge's, so there is no handler for it here.
  */
 export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
   const registerHandler = useLighterEventHandler(

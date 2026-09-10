@@ -22,9 +22,7 @@ export type PropagationResultHandler = (
 
 /**
  * Writes a single propagated label (box or polyline) into a 1-based frame.
- * `undoKey`
- * coalesces a streaming run's per-frame writes (which can't share one
- * synchronous transaction) into a single undo unit.
+ * `undoKey` coalesces a streaming run's per-frame writes into one undo unit.
  */
 export type PropagatedDetectionWriter = (
   frameNumber: number,
@@ -35,16 +33,9 @@ export type PropagatedDetectionWriter = (
 const SURFACE = "video";
 
 /**
- * Hook which returns a single-frame writer bound to the active session. Used by
- * the batch {@link useApplyPropagationResult} (sync agents returning every
- * frame at once) and by streaming agents (SAM2) that emit a frame at a time as
- * inference lands.
- *
- * The engine addresses a track by its `instance._id`, so a per-frame write
- * upserts that track's box at the frame — no fresh-id dedup dance: an existing
- * box for the instance is overwritten in place, a gap gets a freshly-minted
- * frame doc. Identity fields (`_id`/`instance`) are the store's, so they're
- * stripped from the written content and re-stamped from the ref.
+ * A single-frame writer bound to the active session: upserts the track's label
+ * at `(instance._id, frame)`, stripping the store-owned identity fields. No-op
+ * without a labels stream.
  */
 export const useApplyPropagatedDetection = (): PropagatedDetectionWriter => {
   const engine = useAnnotationEngine();

@@ -6,9 +6,9 @@ import type { Rect } from "@fiftyone/lighter";
 import { useLighter } from "@fiftyone/lighter";
 import type { ModalViewportState } from "@fiftyone/state";
 import { useEffect, useRef } from "react";
+import { useAnnotationLabelsReady } from "../Sidebar/Annotate/useLabels";
 import {
   useHasContent,
-  useLabelsReady,
   useRendererReady,
   useSceneEventBus,
 } from "./useViewportReadiness";
@@ -22,15 +22,13 @@ export const useInitializeViewport = (
   savedViewport: ModalViewportState | null,
   effectiveZoom: boolean,
   mediaBounds: Rect | null,
-) => {
+): void => {
   const { scene } = useLighter();
   const appliedRef = useRef(false);
   const eventBus = useSceneEventBus();
   const rendererReady = useRendererReady();
-
   const hasContent = useHasContent(effectiveZoom);
-
-  const labelsLoaded = useLabelsReady();
+  const labelsLoaded = useAnnotationLabelsReady();
 
   useEffect(() => {
     if (

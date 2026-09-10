@@ -7,12 +7,20 @@ import {
   VideoLabelStore,
 } from "@fiftyone/annotation";
 import type { LabelType } from "@fiftyone/utilities";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useFrameLabelsStream } from "../streams/frameLabelsStream";
-import { useFrameLabelFields } from "../state/accessors";
 import { seedFrameStore } from "../utils/frameStoreSeed";
 import { useCarriedFrameEdits } from "./useCarriedFrameEdits";
-import { useHydrateSampleLevelOverlays } from "./useHydrateSampleLevelOverlays";
+import { useOnSampleLevelLabelsChange } from "./useOnSampleLevelLabelsChange";
+
+export interface SyncVideoStoreOptions {
+  /** Frame fields to register, keyed to label type. */
+  labelTypes: Record<string, LabelType>;
+  /** Sample-level label paths whose resolution re-announces the sample-level backing. */
+  sampleLevelPaths: ReadonlySet<string>;
+  /** Fetch every frame up front for consumers that walk the whole clip; `warmupAll` competes with playback. Default `true`. */
+  seedWholeClip?: boolean;
+}
 
 /**
  * Own the video sample's engine store for the lifetime of the surface: a
@@ -20,30 +28,19 @@ import { useHydrateSampleLevelOverlays } from "./useHydrateSampleLevelOverlays";
  * `/frames` stream plus a {@link SampleLabelStore} over the shared `Sample`.
  * Must be mounted under the modal scope where the labels stream is published.
  */
-export const useSyncAnnotationVideoStore = (
-  /** Frame fields to register, keyed to label type; Explore supplies its own because the annotation-schema default is empty outside Annotate. */
-  labelTypesOverride?: Record<string, LabelType>,
-  options: {
-    /** Fetch every frame up front for consumers that walk the whole clip; Explore must not, since `warmupAll` competes with playback. */
-    seedWholeClip?: boolean;
-    /** Sample-level label paths the hydration nudge watches; Explore must supply its own since the default is empty outside Annotate. */
-    sampleLevelPaths?: ReadonlySet<string>;
-  } = {},
-): void => {
-  const seedWholeClip = options.seedWholeClip ?? true;
-  const sampleLevelPathsOverride = options.sampleLevelPaths;
+export const useSyncAnnotationVideoStore = ({
+  labelTypes,
+  sampleLevelPaths,
+  seedWholeClip = true,
+}: SyncVideoStoreOptions): void => {
   const engine = useAnnotationEngine();
   const sampleId = useActiveSampleId();
   const getSample = useSampleInstanceGetter();
   const stream = useFrameLabelsStream();
-  // Both are called unconditionally to keep hook order stable; the override
-  // wins when a surface supplies one.
-  const annotationLabelTypes = useFrameLabelFields();
-  const labelTypes = labelTypesOverride ?? annotationLabelTypes;
   const carry = useCarriedFrameEdits();
 
-  // The live sample-level backing, so the hydration nudge below can re-announce
-  // it without re-registering the composite store.
+  // The live sample-level backing, re-announced below without re-registering
+  // the composite store.
   const sampleLevelRef = useRef<SampleLabelStore | null>(null);
 
   useEffect(() => {
@@ -76,10 +73,11 @@ export const useSyncAnnotationVideoStore = (
     };
   }, [engine, sampleId, labelTypes, getSample, stream, seedWholeClip, carry]);
 
-  useHydrateSampleLevelOverlays(
-    engine,
-    sampleId,
-    sampleLevelRef,
-    sampleLevelPathsOverride,
-  );
+  // Once a sample-level label becomes resolvable (or its type settles), the
+  // Lighter bridge mounts its overlay and the temporal view refreshes its
+  // presence cache; the FrameStore announces frame fields itself.
+  const resyncSampleLevel = useCallback(() => {
+    sampleLevelRef.current?.resync();
+  }, []);
+  useOnSampleLevelLabelsChange(sampleId, sampleLevelPaths, resyncSampleLevel);
 };

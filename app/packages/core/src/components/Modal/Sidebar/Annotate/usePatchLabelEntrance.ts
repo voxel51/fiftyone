@@ -1,11 +1,9 @@
-import type { useAnnotationEngine } from "@fiftyone/annotation";
+import type { AnnotationEngine } from "@fiftyone/annotation";
 import { isPatchesView } from "@fiftyone/state";
 import { useCallback, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { SINGULAR } from "./labelRows";
 import { useSetEntranceLabel } from "./useAnnotationContextManager";
-
-type AnnotationEngine = ReturnType<typeof useAnnotationEngine>;
 
 /**
  * In a patches view, open a single-label patch's source label for editing as

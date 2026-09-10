@@ -7,59 +7,16 @@ import {
 import type { LabelData } from "@fiftyone/utilities";
 import { useCallback } from "react";
 import { useFrameLabelsStream } from "../streams/frameLabelsStream";
+import { resolveSegmentsToRepropagate } from "../utils/repropagateSegments";
 import { useVideoPropagate } from "./useVideoPropagate";
 
 const SURFACE = "video";
 
-/** Inclusive `[fromFrame, toFrame]` segment to re-propagate. */
-export type FrameRange = [number, number];
-
 /**
- * Given the current set of keyframe frames on a track and the frame where a
- * keyframe just changed, return the `(from, to)` pairs whose in-between frames
- * need re-propagation.
- *
- * - `kind: "set"` — `frame` is now a keyframe. Re-propagate both sides:
- *   (prev-keyframe, frame) and (frame, next-keyframe). Each side is skipped if
- *   no bracketing keyframe exists on that side.
- * - `kind: "removed"` — `frame` is no longer a keyframe. Re-propagate the wider
- *   span (prev-keyframe, next-keyframe). Skipped entirely if either bracketing
- *   keyframe is missing.
- */
-export function resolveSegmentsToRepropagate(
-  keyframeFrames: number[],
-  changedFrame: number,
-  kind: "set" | "removed",
-): FrameRange[] {
-  const sorted = [...keyframeFrames].sort((a, b) => a - b);
-  const prev = sorted.filter((f) => f < changedFrame).at(-1) ?? null;
-  const next = sorted.find((f) => f > changedFrame) ?? null;
-
-  const segments: FrameRange[] = [];
-
-  if (kind === "set") {
-    if (prev !== null) {
-      segments.push([prev, changedFrame]);
-    }
-
-    if (next !== null) {
-      segments.push([changedFrame, next]);
-    }
-  } else if (prev !== null && next !== null) {
-    segments.push([prev, next]);
-  }
-
-  return segments;
-}
-
-/**
- * Subscribe to `annotation:keyframeChanged` and re-propagate (linear) each
- * in-between segment that needs re-lerping against the new keyframe layout.
- *
- * Keyframe frames are read from the engine, so the layout reflects the edit
- * that just fired the event. Mount once inside the surface; a no-op until a
- * stream is published
- * (it supplies the field path / frame count) and an instance is identified.
+ * On `annotation:keyframeChanged`, re-propagate (linear) each bracketing
+ * segment against the new keyframe layout, and step-hold an edited last
+ * keyframe's geometry over its trailing filler. A no-op until a labels stream
+ * is published.
  */
 export const useAutoInterpolate = (): void => {
   const engine = useAnnotationEngine();
@@ -118,19 +75,20 @@ export const useAutoInterpolate = (): void => {
         // Re-lerp under the triggering edit's gesture key (when present) so
         // each segment coalesces into that edit's single undo unit, on the
         // changed label's own field.
-        segments.forEach(([from, to]) => {
-          void propagate(instanceId, from, to, "linear", undoKey, path);
+        segments.forEach(([fromFrame, toFrame]) => {
+          void propagate({
+            instanceId,
+            fromFrame,
+            toFrame,
+            mode: "linear",
+            undoKey,
+            path,
+          });
         });
 
-        // Case C — tail step-hold. Editing the LAST keyframe of a track has no
-        // keyframe after it to lerp toward, so the forward re-lerp above is a
-        // no-op for the trailing filler — yet a track can extend past its last
-        // keyframe with `keyframe: false` filler (a track extend, or the
-        // first-frame-only auto-keyframe asymmetry). Without this the filler
-        // keeps its stale geometry and the user sees a jump at `frame + 1`.
-        // Step-hold the edited keyframe's box forward over that filler,
-        // coalesced into the edit's undo unit. Detections only — a keyframe is a
-        // bbox concern (mirrors the guard in `useKeyframePromotionOnEdit`).
+        // Tail step-hold: the last keyframe has nothing to lerp toward, yet a
+        // track can carry `keyframe: false` filler past it. Hold the edited
+        // geometry over that filler, coalesced into the edit's undo unit.
         if (kind === "set") {
           const anchor = engine.getLabel({
             sample: sampleId,
@@ -140,11 +98,8 @@ export const useAutoInterpolate = (): void => {
           });
           const hasNextKeyframe = keyframeFrames.some((kf) => kf > frame);
 
-          // Whichever geometry the track carries. A polyline's filler has to be
-          // refreshed the same way a box's is: the frames forward of the only
-          // keyframe were filled when the shape was first drawn (one vertex), so
-          // without this every vertex added afterwards would live on the drawn
-          // frame alone and the rest of the track would keep the stale shape.
+          // whichever geometry the track carries; polyline filler is refreshed
+          // the same way a box's is
           const held: Partial<LabelData> | null = !anchor
             ? null
             : Array.isArray(anchor.bounding_box)

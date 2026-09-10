@@ -47,21 +47,12 @@ export const usePersistAnnotationDeltas =
     const eventBus = useAnnotationEventBus();
     const isGenerated = useRecoilValue(isGeneratedView);
 
-    // the pinned 3D scene is a distinct sample; patch it through its own
-    // binding (version token + refresh keyed to that sample). Inert unless a
-    // grouped modal actually renders a separate 3D scene.
-    //
-    // STABLE (non-suspending) variant of the same 3D interaction sample: this
-    // hook is now reached from the broad Lighter renderer path (useBridge →
-    // useDeleteAnnotation), where the suspending `useInteraction3dSample` would
-    // hang the modal on "Pixelating…". Until the 3D group query settles it reads
-    // `undefined`, which matches `sceneId` below so the 3D branch stays inert.
+    // the pinned 3D scene is a distinct sample patched through its own binding;
+    // the non-suspending 3D sample reads `undefined` until the group query
+    // settles, matching `sceneId` so the 3D branch stays inert
     const modalId = useModalSample()?.sample?._id;
-    // The task's unit of work: the GRID anchor sample id, stable across
-    // group-slice and 3D-pin changes. Non-generated label ops attribute
-    // to it so grouped-modal edits (the second camera, the pinned 3D
-    // scene) reach the submit delta and the trail under the same key the
-    // subtask, the delta peek, and the tracker focus already use.
+    // the grid anchor sample id, stable across group-slice and 3D-pin changes,
+    // so grouped-modal edits attribute to one key
     const anchorSampleId = useRecoilValue(nullableModalSampleId) ?? undefined;
     const sceneId = useThreeDSceneSampleId();
     const threeDScene = useStableInteraction3dSample();

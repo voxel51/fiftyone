@@ -138,14 +138,9 @@ export const useRegisterPointSelectionFinalizeHandler = ({
 };
 
 /**
- * Track deleted: deleting a track leaves no useful edit/draw state to keep open,
- * so tear the active create mode down and drop the user back to Select.
- *
- * Every create mode, not just detection: deleting a polyline track left polyline
- * mode nominally active but with its creation handler gone with the overlay, so
- * the cursor reverted to a pointer and canvas clicks drew nothing — a mode that
- * looks armed and does nothing. Deactivating matches what deleting a detection
- * track already did.
+ * Track deleted: tear down whichever create mode is active and drop the user
+ * back to Select. A deleted track's creation handler goes with its overlay, so
+ * a mode left armed would draw nothing.
  */
 export const useRegisterTrackDeletedHandler = ({
   detectionMode,

@@ -13,7 +13,10 @@
 import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
-import type { LabelSchema } from "src/shared/dataset-factory";
+import type {
+  ImageDatasetOptions,
+  LabelSchema,
+} from "src/shared/dataset-factory";
 import { EventUtils } from "src/shared/event-utils";
 
 const SAMPLE_ID = "000000000000000000000000";
@@ -25,16 +28,38 @@ const schema: LabelSchema = {
   component: "dropdown",
 };
 
+// Two adjacent masked cats for the merge test to operate on.
+const twoMaskedCats: Pick<ImageDatasetOptions, "withSampleData"> = {
+  withSampleData: (_, { createId, mask }) => ({
+    instances: {
+      _cls: "Detections",
+      detections: [
+        [0.25, 0.4, 0.2, 0.2],
+        [0.55, 0.4, 0.2, 0.2],
+      ].map((bounding_box) => ({
+        _id: createId(),
+        _cls: "Detection",
+        tags: [] as string[],
+        label: "cat",
+        bounding_box,
+        mask: mask(50, 50),
+      })),
+    },
+  }),
+};
+
 const test = base.extend<{
   modal: ModalPom;
   datasetName: string;
+  seed: Pick<ImageDatasetOptions, "withSampleData">;
 }>({
+  seed: [{}, { option: true }],
   modal: async ({ page, eventUtils }, use) => {
     await use(new ModalPom(page, eventUtils));
   },
   // Fresh dataset per test. Uses the test title so each baseline is
   // colocated with its corresponding dataset's render.
-  datasetName: async ({ datasetFactory }, use, testInfo) => {
+  datasetName: async ({ datasetFactory, seed }, use, testInfo) => {
     const name = getUniqueDatasetNameWithPrefix(
       `seg-snap-${testInfo.title.replace(/\s+/g, "-")}`,
     );
@@ -46,6 +71,7 @@ const test = base.extend<{
       labelSchemas: {
         instances: schema,
       },
+      ...seed,
     });
 
     await use(name);
@@ -138,53 +164,44 @@ test.describe.serial("segmentation tool snapshots", () => {
     await modal.sampleCanvas.assert.hasScreenshot("seg-ai-mask.png");
   });
 
-  test("merge", async ({
-    browser,
-    datasetFactory,
-    datasetName,
-    fiftyoneLoader,
-    modal,
-    page,
-  }) => {
-    // Pre-seed two adjacent mask detections so the merge test operates on a
-    // known starting state — independent of the brush/pen flows.
-    await datasetFactory.seedDetections({
+  test.describe("merge", () => {
+    test.use({ seed: twoMaskedCats });
+
+    test("merge", async ({
+      browser,
       datasetName,
-      field: "instances",
-      detections: [
-        { label: "cat", boundingBox: [0.25, 0.4, 0.2, 0.2], maskSize: 50 },
-        { label: "cat", boundingBox: [0.55, 0.4, 0.2, 0.2], maskSize: 50 },
-      ],
+      fiftyoneLoader,
+      modal,
+      page,
+    }) => {
+      await openAnnotate(modal, page, fiftyoneLoader, datasetName);
+      await modal.sidebar.annotate.pickTool("Merge");
+
+      // Click the first detection to set as merge target, then the second
+      // detection to merge into the target.
+      await modal.sampleCanvas.click(0.35, 0.5);
+      await modal.sampleCanvas.click(0.65, 0.5);
+
+      await modal.sidebar.annotate.waitForSavesSettled();
+
+      await modal.sampleCanvas.assert.hasScreenshot("seg-merge-union.png");
+
+      // Sanity check: the merge persisted the pair as a single masked detection.
+      const context = await browser.newContext();
+      const freshPage = await context.newPage();
+      try {
+        const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+        await openAnnotate(freshModal, freshPage, fiftyoneLoader, datasetName);
+        const rows = freshModal.sidebar.annotate.labelRowsFor("instances");
+        await expect(rows).toHaveCount(1);
+        await rows.click();
+        await freshModal.sidebar.edit.assert.hasMaskPreview();
+        await expect
+          .poll(() => freshModal.sidebar.edit.maskPreviewPixels())
+          .toBeGreaterThan(0);
+      } finally {
+        await context.close();
+      }
     });
-    // Annotate the freshly-saved sample.
-
-    await openAnnotate(modal, page, fiftyoneLoader, datasetName);
-    await modal.sidebar.annotate.pickTool("Merge");
-
-    // Click the first detection to set as merge target, then the second
-    // detection to merge into the target.
-    await modal.sampleCanvas.click(0.35, 0.5);
-    await modal.sampleCanvas.click(0.65, 0.5);
-
-    await modal.sidebar.annotate.waitForSavesSettled();
-
-    await modal.sampleCanvas.assert.hasScreenshot("seg-merge-union.png");
-
-    // Sanity check: the merge persisted the pair as a single masked detection.
-    const context = await browser.newContext();
-    const freshPage = await context.newPage();
-    try {
-      const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-      await openAnnotate(freshModal, freshPage, fiftyoneLoader, datasetName);
-      const rows = freshModal.sidebar.annotate.labelRowsFor("instances");
-      await expect(rows).toHaveCount(1);
-      await rows.click();
-      await freshModal.sidebar.edit.assert.hasMaskPreview();
-      await expect
-        .poll(() => freshModal.sidebar.edit.maskPreviewPixels())
-        .toBeGreaterThan(0);
-    } finally {
-      await context.close();
-    }
   });
 });

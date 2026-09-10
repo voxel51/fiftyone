@@ -14,7 +14,7 @@ import { useCanonicalMediaBounds } from "./useViewportReadiness";
  * @param sampleId - The ID of the sample being displayed, used to match
  *   the saved viewport to the correct sample.
  */
-const useViewport = (sampleId: string | undefined) => {
+const useViewport = (sampleId: string | undefined): void => {
   const options = useModalLookerOptions();
 
   const [initConditions, setInitConditions] = useState<{

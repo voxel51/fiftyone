@@ -5,8 +5,8 @@ import {
 } from "@fiftyone/annotation";
 import { useCallback } from "react";
 
-/** Resolves a registered agent by id, or `null` when absent. */
-export const useResolveAgent = () => {
+/** Resolves a registered propagation agent by id, or `null` when absent. */
+export const useResolvePropagationAgent = () => {
   const registry = useAgentRegistry();
 
   return useCallback(

@@ -13,10 +13,17 @@ import { useSyncAnnotationFrameClock } from "../hooks/useSyncAnnotationFrameCloc
 import { useDynamicGroupPersistence } from "../hooks/useDynamicGroupPersistence";
 import { useSyncAnnotationVideoStore } from "../hooks/useSyncAnnotationVideoStore";
 import { useVideoLighterEngineBridge } from "../hooks/useVideoLighterEngineBridge";
-import { useFollowAnchorFrame } from "../state/useVideoInteraction";
+import {
+  useFrameLabelFields,
+  useVisibleLabelSchemas,
+} from "../state/accessors";
+import { useFollowAnchorFrame } from "../state/useFollowAnchorFrame";
 import { useAnnotatePrerequisites } from "../hooks/useAnnotatePrerequisites";
 import { useDecodeStrategy } from "../hooks/useDecodeStrategy";
-import type { DecodeStrategy } from "../utils/decodeStrategy";
+import {
+  type DecodeStrategy,
+  parseForcedStrategy,
+} from "../utils/decodeStrategy";
 import { useTimelineMaxSize } from "../hooks/useTimelineMaxSize";
 import { PlaybackProvider, type TimelineMode } from "@fiftyone/playback";
 import {
@@ -190,13 +197,22 @@ const VideoAnnotationSurfaceForSample: React.FC<
     [prerequisites.frameRate],
   );
 
+  // A `?video-decode=` URL override wins over the surface's own choice; read
+  // once at mount.
+  const [urlForcedStrategy] = useState<DecodeStrategy | undefined>(() =>
+    typeof window === "undefined"
+      ? undefined
+      : parseForcedStrategy(window.location.search),
+  );
+
   // Decide the decode strategy up front. Runs unconditionally (before the gates
   // below) to keep hook order stable across the resolving → resolved transition.
   const resolution = useDecodeStrategy({
     videoSrc,
     frameCount: prerequisites.frameCount,
     enabled: prerequisites.status === "ready",
-    force: isImageDynamicGroupVideo ? "fetch" : undefined,
+    force:
+      urlForcedStrategy ?? (isImageDynamicGroupVideo ? "fetch" : undefined),
   });
 
   // Metadata gate: without a frame count no strategy can mount, so show an
@@ -311,10 +327,12 @@ const VideoAnnotationSurfaceForSample: React.FC<
  */
 const VideoAnnotationHandlerRegistration: React.FC = () => {
   useSyncAnnotationFrameClock();
-  useSyncAnnotationVideoStore();
+  const labelTypes = useFrameLabelFields();
+  const visiblePaths = useVisibleLabelSchemas();
+  useSyncAnnotationVideoStore({ labelTypes, sampleLevelPaths: visiblePaths });
   // after the clock + store: the bridge reconciles against the FrameTemporalView
   // and a seeded frame store, not the degenerate pool view
-  useVideoLighterEngineBridge();
+  useVideoLighterEngineBridge(visiblePaths);
   useRegisterVideoAnnotationKeybindings();
   // expose the active ImaVid frame to the SAM2 agent for click-to-segment
   useRegisterVideoSegmentBitmap();

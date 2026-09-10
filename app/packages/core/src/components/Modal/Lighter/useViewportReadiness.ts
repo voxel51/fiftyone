@@ -9,7 +9,6 @@ import {
   useLighterEventHandler,
 } from "@fiftyone/lighter";
 import { useCallback, useState } from "react";
-import { useAnnotationLabelsReady } from "../Sidebar/Annotate/useLabels";
 
 export const useSceneEventHandler = () => {
   const { scene } = useLighter();
@@ -65,9 +64,6 @@ export const useHasContent = (enabled: boolean) => {
 
   return enabled ? hasContent : true;
 };
-
-/** Whether the annotation label list is ready to read; see {@link useAnnotationLabelsReady}. */
-export const useLabelsReady = () => useAnnotationLabelsReady();
 
 /**
  * Whether the PixiJS renderer has finished async initialization. Gates

@@ -12,23 +12,15 @@ import {
   useCanonicalMediaInstall,
   useSceneColorScheme,
   useSceneInteractionFlags,
-} from "./useLighterSceneSetup";
+} from "./sceneSetupHooks";
 import { useViewportReset } from "./useViewportReset";
 
-export { useViewportReset };
-
 /**
- * Owns the Lighter scene lifecycle shared by both video-annotation tiles:
- * attaches the singleton canvas, sets up the pixi scene under a fresh scene
- * id, syncs the color scheme, installs a canonical-media overlay sized to
- * `dims`, and resets the viewport once renderer + media are ready.
- *
- * `dims` is injected so the hook stays agnostic to how the tile discovered
- * them. `sceneIdDeps` recompute the scene id (the video tile re-mints per
- * source; pass nothing for a once-per-mount scene).
- *
- * Returns the scene plus whether its canonical media is installed; feed
- * `canonicalMediaReady` into {@link useVideoAnnotationSyncBundle}.
+ * Own a tile's Lighter scene lifecycle: attach the singleton canvas, set up the
+ * pixi scene under a fresh id (re-minted when `sceneIdDeps` change), sync the
+ * color scheme, install a canonical-media overlay sized to `dims`, and reset
+ * the viewport once renderer + media are ready. Returns the scene and whether
+ * its canonical media is installed.
  */
 export function useLighterMediaScene({
   hostRef,

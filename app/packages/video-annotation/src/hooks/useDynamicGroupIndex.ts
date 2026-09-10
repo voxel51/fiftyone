@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   type GetFramesRequest,
   getFrames,
@@ -30,12 +30,26 @@ export const toGroupToken = (timestamps: Date[]): string | null => {
 };
 
 export interface DynamicGroupIndex {
-  /** The current write state, `null` until the index fetch lands. */
-  stateRef: React.MutableRefObject<GroupWriteState | null>;
-  /** The in-flight index fetch, awaited before any write. */
-  readyRef: React.MutableRefObject<Promise<void> | null>;
+  /** Resolves once the in-flight index fetch settles; immediately when none is in flight. */
+  whenReady: () => Promise<void>;
+  /** The current write state, `null` until the index fetch lands or after it was dropped. */
+  getState: () => GroupWriteState | null;
+  /** Record the token a successful write returned; `null` drops the state so the next write refetches. */
+  commit: (token: string | null) => void;
+  /** Replace the member index and token, e.g. from a version-mismatch response. */
+  replace: (index: string[], token: string | null) => void;
   /** Fetch the member index and token again, e.g. after a failed mount fetch. */
   loadIndex: () => Promise<void>;
+}
+
+export interface DynamicGroupIndexInput {
+  active: boolean;
+  sampleId: string;
+  dataset: string;
+  view: GetFramesRequest["view"];
+  slice: GetFramesRequest["slice"];
+  dynamicGroup: GetFramesRequest["dynamicGroup"];
+  frameCount: number | null;
 }
 
 /**
@@ -50,15 +64,7 @@ export const useDynamicGroupIndex = ({
   slice,
   dynamicGroup,
   frameCount,
-}: {
-  active: boolean;
-  sampleId: string;
-  dataset: string;
-  view: GetFramesRequest["view"];
-  slice: GetFramesRequest["slice"];
-  dynamicGroup: GetFramesRequest["dynamicGroup"];
-  frameCount: number | null;
-}): DynamicGroupIndex => {
+}: DynamicGroupIndexInput): DynamicGroupIndex => {
   const stateRef = useRef<GroupWriteState | null>(null);
   const readyRef = useRef<Promise<void> | null>(null);
   // bumped on each (re)mount so a stale fetch cannot land its state
@@ -121,5 +127,20 @@ export const useDynamicGroupIndex = ({
     };
   }, [active, loadIndex]);
 
-  return { stateRef, readyRef, loadIndex };
+  return useMemo(
+    () => ({
+      whenReady: () => readyRef.current ?? Promise.resolve(),
+      getState: () => stateRef.current,
+      commit: (token) => {
+        const current = stateRef.current;
+        stateRef.current =
+          token && current ? { index: current.index, token } : null;
+      },
+      replace: (index, token) => {
+        stateRef.current = { index, token };
+      },
+      loadIndex,
+    }),
+    [loadIndex],
+  );
 };

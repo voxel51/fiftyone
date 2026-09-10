@@ -29,15 +29,9 @@ export interface AnnotatePrerequisites {
 }
 
 /**
- * Resolve the one prerequisite every decode strategy needs up front: a
- * positive fps + a frame count (from `total_frame_count`, else
- * `duration * fps`). Absent when `VideoMetadata` wasn't computed → `metadata`
- * block, which the surface renders as an actionable prompt instead of mounting
- * a stream that would throw.
- *
- * Whether per-frame images were materialized is not a prerequisite: it's one
- * input to the decode-strategy resolver (fetch vs. extract vs. the `<video>`
- * tile), not a hard gate — see {@link useDecodeStrategy}.
+ * Resolve the sample's positive fps and frame count (`total_frame_count`, else
+ * `duration * fps`; the group's element count for an image dynamic group).
+ * Either missing is a `metadata` block the surface renders as a prompt.
  */
 export const useAnnotatePrerequisites = (
   sample: ModalSample,

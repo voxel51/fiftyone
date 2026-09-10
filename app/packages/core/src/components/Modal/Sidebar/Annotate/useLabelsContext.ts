@@ -5,16 +5,8 @@ import { useCallback, useMemo } from "react";
 import { addLabel, labelMap, labels } from "./labelsAtoms";
 
 /**
- * Returns a callback that updates the {@link AnnotationLabelData} for a label
- * identified by its overlay ID.
- *
- * The callback looks up the label's individual atom in the {@link labelMap},
- * replaces its `data` field, and returns whether the update succeeded.
- *
- * @returns A callback with signature
- *   `(id: string, data: AnnotationLabelData) => boolean` that returns `true`
- *   if the label was found and updated, or `false` if no label with the given
- *   ID exists.
+ * A callback that replaces the `data` of the label atom in {@link labelMap}
+ * keyed by `id`. Returns `false` when no such label exists.
  */
 const useUpdateLabelAtom = () => {
   return useAtomCallback(

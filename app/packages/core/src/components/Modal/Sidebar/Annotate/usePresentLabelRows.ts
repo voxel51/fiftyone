@@ -31,18 +31,10 @@ const sameRows = (a: LabelRow[] | null, b: LabelRow[] | null): boolean => {
 };
 
 /**
- * The present-label rows for the active fields at the current playhead — the
- * single source of truth for both the sidebar list and its count. One row per
- * present in-scope label, ordered by field then label name. For an image (pool)
- * sample presence is the whole pool; for a video (frame view) it is the current
- * frame's labels plus any in-support temporal detections, and the list
- * re-derives as the playhead scrubs — so a count built from it reflects the
- * CURRENT FRAME, not the whole clip. Returns `null` while the engine isn't ready
- * (loading gate); an empty array once ready with no labels. Rows carry a
- * `{id, path, frame?}` ref that {@link LabelEntry} reads the label at.
- *
- * Lives in its own module (not `useEntries`) so the sidebar count can reuse it
- * without `GroupEntry` ↔ `useEntries` forming an import cycle.
+ * One `{id, path, frame?}` row per present in-scope label at the current
+ * playhead, ordered by active field then label name; for a video this is the
+ * current frame plus in-support temporal detections. `null` while the engine
+ * isn't ready, an empty array once ready with no labels.
  */
 export const usePresentLabelRows = (): LabelRow[] | null => {
   const engine = useAnnotationEngine();

@@ -9,7 +9,7 @@ import {
   useLighterEventHandler,
 } from "@fiftyone/lighter";
 import { useCallback, useEffect, useState } from "react";
-import type { LighterScene } from "./useLighterSceneSetup";
+import type { LighterScene } from "./sceneSetupHooks";
 
 /**
  * Reset the viewport to the identity frame once the renderer and the canonical

@@ -46,7 +46,7 @@ export const useDynamicGroupPersistence = ({
     // 0 and "" are legitimate group values; only null/undefined means none
     enabled && !!frameCount && !!sampleId && !!dataset && dynamicGroup != null;
 
-  const { stateRef, readyRef, loadIndex } = useDynamicGroupIndex({
+  const group = useDynamicGroupIndex({
     active,
     sampleId,
     dataset,
@@ -58,21 +58,21 @@ export const useDynamicGroupPersistence = ({
 
   const persist = useCallback(
     async (deltas: JSONDeltas): Promise<boolean> => {
-      await readyRef.current;
-      let state = stateRef.current;
+      await group.whenReady();
+      let state = group.getState();
 
       if (!state?.token) {
         // a persistence tick can land between the index effect's teardown and
         // its remount fetch; give the fetch one macrotask
         await new Promise((resolve) => setTimeout(resolve, 0));
-        await readyRef.current;
-        state = stateRef.current;
+        await group.whenReady();
+        state = group.getState();
       }
 
       if (!state?.token && active) {
         // the mount fetch failed or the last token was unreadable; refetch
-        await loadIndex();
-        state = stateRef.current;
+        await group.loadIndex();
+        state = group.getState();
       }
 
       if (!state?.token || !datasetId || dynamicGroup == null) {
@@ -112,9 +112,7 @@ export const useDynamicGroupPersistence = ({
 
           // an unreadable token cannot validate the next save; drop the state
           // so the next persist refetches
-          stateRef.current = response.versionToken
-            ? { index: state.index, token: response.versionToken }
-            : null;
+          group.commit(response.versionToken ?? null);
         } catch (err) {
           if (err instanceof VersionMismatchError) {
             // the 412 carries the fresh member list; the pending deltas retry
@@ -124,10 +122,10 @@ export const useDynamicGroupPersistence = ({
               | undefined;
 
             if (body?.members) {
-              stateRef.current = {
-                index: body.members.map((member) => member.id),
-                token: err.versionToken ?? null,
-              };
+              group.replace(
+                body.members.map((member) => member.id),
+                err.versionToken ?? null,
+              );
             }
           }
 
@@ -138,17 +136,7 @@ export const useDynamicGroupPersistence = ({
 
       return rest.length > 0 ? patchSelected(rest) : true;
     },
-    [
-      active,
-      datasetId,
-      dynamicGroup,
-      loadIndex,
-      readyRef,
-      sampleId,
-      stateRef,
-      view,
-      patchSelected,
-    ],
+    [active, datasetId, dynamicGroup, group, sampleId, view, patchSelected],
   );
 
   useEffect(() => {

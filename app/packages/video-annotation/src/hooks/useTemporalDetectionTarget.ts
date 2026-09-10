@@ -7,7 +7,7 @@ import {
   useTemporalDetectionFieldPaths,
   useVisibleLabelSchemas,
 } from "../state/accessors";
-import { useSelectedTemporalDetectionField } from "../state/useVideoInteraction";
+import { useSelectedTemporalDetectionField } from "../state/useVideoSelection";
 
 export interface TemporalDetectionTarget {
   /** Sample-level field a new temporal detection is created on, if any. */

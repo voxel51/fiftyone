@@ -18,15 +18,10 @@ import { useLighterInteractionPolicy } from "./useLighterInteractionPolicy";
 import { useSyncOverlayReadOnly } from "./useSyncOverlayReadOnly";
 
 /**
- * Mount the Lighter surface on the annotation engine: the bridge owns
- * overlay hydration, reconcile, gesture commits, and select/hover routing
- * (replacing the legacy `useLabels` hydration, `useSyncLighterSample`, and
- * focus/hover handlers). Scoped to the active schema paths — toggling
- * schemas re-creates the bridge (clear + rehydrate, the legacy reset
- * semantics). Selection policy (merge tool, draft lock, generated views)
- * is the modal's, injected via {@link useLighterInteractionPolicy}.
- *
- * Mount once at the annotation root, after `useSyncAnnotationEngine`.
+ * Mount the image Lighter surface on the annotation engine, scoped to the
+ * visible schema paths and disabled on video surfaces (which mount their own
+ * frame-stamping bridge). Mount once at the annotation root, after
+ * `useSyncAnnotationEngine`.
  */
 export const useLighterAnnotationBridge = (): void => {
   const engine = useAnnotationEngine();

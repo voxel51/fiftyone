@@ -47,22 +47,10 @@ export const useRegisterDrawHandler = ({
 };
 
 /**
- * Draw establish: the engine bridge commits + selects the draw synchronously, so
- * a microtask later the engine owns the label and the interaction anchor IS the
- * new track's ref. Two things happen here, both keyed off that anchor:
- *
- *  1. Hand the form off from the surface-owned draft to the engine anchor. The
- *     draft pins the ENGINE path (`frames.<field>`) so the write routes to the
- *     FrameStore and carries no engine ref, so the form shows the raw path and
- *     neither playhead-follow nor live re-sync engage. Dropping the draft
- *     (`clear`) lets `useFormAnchor` adopt the anchor — schema field + ref — so
- *     the form reads `<field>` and tracks the playhead, as a deselect→reselect
- *     does manually.
- *  2. Auto-extend a freshly-drawn box forward as a short track. `establish` fires
- *     only for a new draw (a new track), so this is new-tracks-only by
- *     construction; copy its box onto the next frames as non-keyframe filler
- *     (`extendTrack` semantics), matching a manual drag-to-extend. Leaves a
- *     single keyframe, so a later propagate/auto-lerp fills these in place.
+ * Draw establish: a microtask after the engine bridge commits a new draw, hand
+ * the form from the surface-owned draft to the engine anchor (`clear`), stamp
+ * the drawn frame as the track's first keyframe, and auto-extend the geometry
+ * forward as non-keyframe filler. All writes fold into the draw's undo unit.
  */
 export const useRegisterDrawEstablishHandler = ({
   registerHandler,
@@ -102,13 +90,8 @@ export const useRegisterDrawEstablishHandler = ({
 
           clear();
 
-          // Geometry-bearing draws become tracks: a box, or a keypoint /
-          // polyline's `points`. `useKeyframePromotionOnEdit` already treats both
-          // as track geometry when a frame is EDITED, so gating the DRAW on boxes
-          // alone left the two halves disagreeing: editing a polyline promoted a
-          // keyframe, but drawing one never established the track in the first
-          // place — no first keyframe, no auto-extend, no timeline row. A fresh
-          // draw of a non-geometry label kind still isn't a track.
+          // geometry-bearing draws (a box, or a keypoint / polyline's `points`)
+          // become tracks; any other label kind does not
           const hasTrackGeometry =
             Array.isArray(source.bounding_box) ||
             (Array.isArray(source.points) &&

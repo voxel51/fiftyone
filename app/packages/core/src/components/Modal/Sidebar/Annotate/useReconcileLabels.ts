@@ -1,4 +1,4 @@
-import type { useAnnotationEngine } from "@fiftyone/annotation";
+import type { AnnotationEngine } from "@fiftyone/annotation";
 import type { useLighter } from "@fiftyone/lighter";
 import type { AnnotationLabel, AnnotationLabelData } from "@fiftyone/state";
 import { getDefaultStore } from "jotai";
@@ -12,7 +12,6 @@ import {
 } from "./labelRows";
 import { labels } from "./labelsAtoms";
 
-type AnnotationEngine = ReturnType<typeof useAnnotationEngine>;
 type LighterScene = ReturnType<typeof useLighter>["scene"];
 
 /**

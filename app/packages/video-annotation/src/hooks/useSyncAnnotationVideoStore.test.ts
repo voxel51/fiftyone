@@ -72,7 +72,11 @@ describe("useSyncAnnotationVideoStore loading state", () => {
     hoisted.stream = makeStream([{ frame_number: 1 }, { frame_number: 2 }]);
 
     renderHook(() =>
-      useSyncAnnotationVideoStore(undefined, { seedWholeClip: false }),
+      useSyncAnnotationVideoStore({
+        labelTypes: {},
+        sampleLevelPaths: new Set<string>(),
+        seedWholeClip: false,
+      }),
     );
 
     expect(hoisted.registered).toHaveLength(1);
@@ -83,7 +87,11 @@ describe("useSyncAnnotationVideoStore loading state", () => {
     hoisted.stream = makeStream([]);
 
     renderHook(() =>
-      useSyncAnnotationVideoStore(undefined, { seedWholeClip: false }),
+      useSyncAnnotationVideoStore({
+        labelTypes: {},
+        sampleLevelPaths: new Set<string>(),
+        seedWholeClip: false,
+      }),
     );
 
     expect(hoisted.registered[0].isLoading()).toBe(true);

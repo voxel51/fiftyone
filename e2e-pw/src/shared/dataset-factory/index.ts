@@ -3,9 +3,8 @@
  */
 
 import { createDataset } from "./creators";
-import { seedDetections, updateLabelSchema } from "./helpers";
+import { updateLabelSchema } from "./helpers";
 
-export type { DetectionSpec } from "./helpers";
 export type * from "./types";
 
 /**
@@ -22,11 +21,9 @@ export type * from "./types";
  * await DatasetFactory.createDataset({ mediaType: "video", datasetName: "my-videos" });
  * await DatasetFactory.createDataset({ mediaType: "3d", datasetName: "my-scenes" });
  * await DatasetFactory.createDataset({ mediaType: "multimodal", datasetName: "my-episodes" });
- * await DatasetFactory.seedDetections({ datasetName, field, detections });
  * await DatasetFactory.updateLabelSchema({ datasetName, field, schema });
  */
 export const DatasetFactory = {
   createDataset,
-  seedDetections,
   updateLabelSchema,
 };

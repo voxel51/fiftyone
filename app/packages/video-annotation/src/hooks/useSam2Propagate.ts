@@ -9,7 +9,7 @@ import type { PropagateArgs } from "../propagation/propagateArgs";
 import { isSam2Agent, toSyntheticBox } from "../propagation/propagationShapes";
 import { useApplyPropagatedDetection } from "../propagation/useApplyPropagationResult";
 import { useImaVidImageStream } from "../streams/imaVidImageStreamHandle";
-import { useResolveAgent } from "./useResolveAgent";
+import { useResolvePropagationAgent } from "./useResolvePropagationAgent";
 
 /**
  * SAM2 tracking streams a detection per frame as inference lands, so the
@@ -19,7 +19,7 @@ import { useResolveAgent } from "./useResolveAgent";
 export const useSam2Propagate = () => {
   const engine = useAnnotationEngine();
   const imageStream = useImaVidImageStream();
-  const resolveAgent = useResolveAgent();
+  const resolveAgent = useResolvePropagationAgent();
   const sampleDescriptor = useSampleDescriptor();
   const applyPropagatedDetection = useApplyPropagatedDetection();
   const { setContent: setStatusContent } = useModalStatusBar();

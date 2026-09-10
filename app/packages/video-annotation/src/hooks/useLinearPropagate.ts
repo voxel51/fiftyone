@@ -10,14 +10,14 @@ import {
   toSyntheticPolyline,
 } from "../propagation/propagationShapes";
 import { useApplyPropagationResult } from "../propagation/useApplyPropagationResult";
-import { useResolveAgent } from "./useResolveAgent";
+import { useResolvePropagationAgent } from "./useResolvePropagationAgent";
 
 /**
  * Linear interpolation lerps the bracketing keyframe pair in one synchronous
  * inference call. No-ops without an end keyframe to lerp toward.
  */
 export const useLinearPropagate = () => {
-  const resolveAgent = useResolveAgent();
+  const resolveAgent = useResolvePropagationAgent();
   const sampleDescriptor = useSampleDescriptor();
   const applyPropagation = useApplyPropagationResult();
 
