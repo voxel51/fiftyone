@@ -14,7 +14,6 @@ import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-video-temporal");
 const id = "000000000000000000000000";
-const clip = `/tmp/${datasetName}.webm`;
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -22,19 +21,11 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory, videoAnnotateSDK }) => {
+test.beforeAll(async ({ foWebServer, datasetFactory }) => {
   await foWebServer.startWebServer();
-  await mediaFactory.createVideo({
-    outputPath: clip,
-    duration: 2,
-    width: 64,
-    height: 64,
-    frameRate: 10,
-    color: "#3050a0",
-  });
   // 20 frames @ 10fps; events split into thirds:
   // approach [1,6], pass [7,13], depart [14,20].
-  await videoAnnotateSDK.seed({ datasetName, videoPaths: [clip] });
+  await datasetFactory.createVideoDataset({ datasetName });
 });
 
 test.afterAll(async ({ foWebServer }) => {

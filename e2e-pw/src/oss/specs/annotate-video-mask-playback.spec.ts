@@ -22,7 +22,6 @@ const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-video-mask-playback",
 );
 const id = "000000000000000000000000";
-const clip = `/tmp/${datasetName}.webm`;
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -30,22 +29,14 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory, videoAnnotateSDK }) => {
+test.beforeAll(async ({ foWebServer, datasetFactory }) => {
   await foWebServer.startWebServer();
   // 40 frames @ 10fps — the 30-frame auto-extend stays clear of the clip end.
-  await mediaFactory.createVideo({
-    outputPath: clip,
-    duration: 4,
-    width: 64,
-    height: 64,
-    frameRate: 10,
-    color: "#3050a0",
-  });
-  // clean slate (no pre-seeded tracks) with the detections schema active, so
+  // Clean slate (no pre-seeded tracks) with the detections schema active, so
   // segmentation mode is enterable and the first paint creates the only track.
-  await videoAnnotateSDK.seed({
+  await datasetFactory.createVideoDataset({
     datasetName,
-    videoPaths: [clip],
+    videoOptions: { duration: 4 },
     withEvents: false,
   });
 });

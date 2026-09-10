@@ -25,7 +25,6 @@ const datasetName = getUniqueDatasetNameWithPrefix(
 
 /** Fixed ObjectId addressing the first sample (so we can deep-link the modal). */
 const id = "000000000000000000000000";
-const clip = `/tmp/${datasetName}.webm`;
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -33,16 +32,8 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
-  await mediaFactory.createVideo({
-    outputPath: clip,
-    duration: 2,
-    width: 64,
-    height: 64,
-    frameRate: 10,
-    color: "#3050a0",
-  });
 });
 
 test.afterAll(async ({ foWebServer }) => {
@@ -92,10 +83,9 @@ test.describe.serial("video non-box label create", () => {
   // Re-seed a clean slate per test (polylines field + schema active, no tracks):
   // these run serially against one dataset, so a persisted draw from one test
   // would otherwise leave a stray track that the next test's count picks up.
-  test.beforeEach(async ({ videoAnnotateSDK }) => {
-    await videoAnnotateSDK.seed({
+  test.beforeEach(async ({ datasetFactory }) => {
+    await datasetFactory.createVideoDataset({
       datasetName,
-      videoPaths: [clip],
       withPolylineField: true,
     });
   });

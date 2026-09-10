@@ -10,7 +10,6 @@ import { Annotate3dSDK } from "./annotate-3d-sdk";
 import { AnnotateSDK } from "./annotate-sdk";
 import { FoWebServer } from "./fo-server";
 import { OssLoader } from "./loader";
-import { VideoAnnotateSDK } from "./video-annotate-sdk";
 
 // note: this difference between "with" and "without" is only for type safety
 
@@ -23,7 +22,6 @@ export type CustomFixturesWithoutPage = {
   foWebServer: FoWebServer;
   annotateSDK: AnnotateSDK;
   annotate3dSDK: Annotate3dSDK;
-  videoAnnotateSDK: VideoAnnotateSDK;
 };
 
 // these fixtures have access to the {page} fixture
@@ -84,12 +82,6 @@ const customFixtures = base.extend<object, CustomFixturesWithoutPage>({
   annotate3dSDK: [
     async ({}, use) => {
       await use(new Annotate3dSDK());
-    },
-    { scope: "worker" },
-  ],
-  videoAnnotateSDK: [
-    async ({}, use) => {
-      await use(new VideoAnnotateSDK());
     },
     { scope: "worker" },
   ],

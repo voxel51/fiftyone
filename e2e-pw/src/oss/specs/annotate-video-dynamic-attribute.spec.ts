@@ -27,7 +27,6 @@ const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-video-dynamic-attr",
 );
 const id = "000000000000000000000000";
-const clip = `/tmp/${datasetName}.webm`;
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -35,17 +34,8 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
-  // 20 frames @ 10fps — long enough to fill several frames forward.
-  await mediaFactory.createVideo({
-    outputPath: clip,
-    duration: 2,
-    width: 64,
-    height: 64,
-    frameRate: 10,
-    color: "#3050a0",
-  });
 });
 
 test.afterAll(async ({ foWebServer }) => {
@@ -105,10 +95,10 @@ const setSignal = async (modal: ModalPom, page: Page, choice: string) => {
 };
 
 // re-seed per test: one tracked instance carrying turn_signal="off" everywhere.
-test.beforeEach(async ({ videoAnnotateSDK }) => {
-  await videoAnnotateSDK.seed({
+// 20 frames @ 10fps — long enough to fill several frames forward.
+test.beforeEach(async ({ datasetFactory }) => {
+  await datasetFactory.createVideoDataset({
     datasetName,
-    videoPaths: [clip],
     withEvents: false,
     trackedSampleIndices: [0],
     dynamicAttribute: { name: ATTR, values: ["off", "left", "right"] },

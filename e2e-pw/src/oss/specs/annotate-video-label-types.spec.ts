@@ -31,7 +31,6 @@ const datasetName = getUniqueDatasetNameWithPrefix(
 
 /** Fixed ObjectId addressing the first sample (so we can deep-link the modal). */
 const id = "000000000000000000000000";
-const clip = `/tmp/${datasetName}.webm`;
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -39,21 +38,12 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory, videoAnnotateSDK }) => {
+test.beforeAll(async ({ foWebServer, datasetFactory }) => {
   await foWebServer.startWebServer();
-  await mediaFactory.createVideo({
-    outputPath: clip,
-    duration: 2,
-    width: 64,
-    height: 64,
-    frameRate: 10,
-    color: "#3050a0",
-  });
   // sample 0: a masked detection track (vehicle) + a polyline track (person),
   // each a single instance present on every frame.
-  await videoAnnotateSDK.seed({
+  await datasetFactory.createVideoDataset({
     datasetName,
-    videoPaths: [clip],
     trackedSampleIndices: [0],
     maskedSampleIndices: [0],
     polylineSampleIndices: [0],

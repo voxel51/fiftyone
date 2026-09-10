@@ -24,7 +24,6 @@ import type { Page } from "src/oss/fixtures";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-video-undo");
 const id = "000000000000000000000000";
-const clip = `/tmp/${datasetName}.webm`;
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -32,17 +31,8 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
-  // 20 frames @ 10fps — a drawn box auto-extends ~30, clamped to the clip.
-  await mediaFactory.createVideo({
-    outputPath: clip,
-    duration: 2,
-    width: 64,
-    height: 64,
-    frameRate: 10,
-    color: "#3050a0",
-  });
 });
 
 test.afterAll(async ({ foWebServer }) => {
@@ -85,10 +75,10 @@ const savedResponse = (page: Page) =>
   );
 
 // re-seed per test: one tracked instance (vehicle) present on every frame.
-test.beforeEach(async ({ videoAnnotateSDK }) => {
-  await videoAnnotateSDK.seed({
+// 20 frames @ 10fps — a drawn box auto-extends ~30, clamped to the clip.
+test.beforeEach(async ({ datasetFactory }) => {
+  await datasetFactory.createVideoDataset({
     datasetName,
-    videoPaths: [clip],
     withEvents: false,
     trackedSampleIndices: [0],
   });

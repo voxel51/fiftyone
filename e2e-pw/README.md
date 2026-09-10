@@ -176,6 +176,24 @@ await DatasetFactory.createDataset({
 });
 ```
 
+For the video-annotation surface, use `DatasetFactory.createVideoDataset`. It
+generates one solid-color clip per sample (2 s, 64×64, 10 fps `.webm` by
+default; override via `videoOptions`, as a bag or a per-index function), then
+seeds a video dataset with active `frames.detections` and `events` annotation
+schemas, optional pre-seeded tracks, masks, polylines and dynamic attributes.
+Clips are written once per dataset name, so a spec that re-seeds in
+`beforeEach` only rebuilds the dataset.
+
+```ts
+await DatasetFactory.createVideoDataset({
+    datasetName: "my-video-dataset",
+    numSamples: 2,
+    videoOptions: { duration: 4 },
+    withEvents: false,
+    trackedSampleIndices: [0, 1],
+});
+```
+
 Each sample is automatically assigned a stable, index-derived `_id` of the form
 `000000000000000000000000` (zero-padded 24-character hex). This makes it easy
 to reference samples by ID in assertions. Use the `indexToId` helper to derive

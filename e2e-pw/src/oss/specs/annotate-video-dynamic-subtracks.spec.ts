@@ -19,13 +19,13 @@ import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
+import type { DatasetFactory } from "src/shared/dataset-factory";
 import type { Page } from "src/oss/fixtures";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-video-dynamic-subtracks",
 );
 const id = "000000000000000000000000";
-const clip = `/tmp/${datasetName}.webm`;
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -33,17 +33,8 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
-  // 20 frames @ 10fps — long enough to fill several frames forward.
-  await mediaFactory.createVideo({
-    outputPath: clip,
-    duration: 2,
-    width: 64,
-    height: 64,
-    frameRate: 10,
-    color: "#3050a0",
-  });
 });
 
 test.afterAll(async ({ foWebServer }) => {
@@ -102,19 +93,21 @@ const setSignal = async (modal: ModalPom, page: Page, choice: string) => {
 const assertSignal = async (modal: ModalPom, expected: string) =>
   expect.poll(() => modal.sidebar.edit.getFieldValue(ATTR)).toBe(expected);
 
-/** Seed one tracked instance carrying `turn_signal`="off" on every frame. */
-const seedSingle = (sdk: { seed: (o: object) => Promise<unknown> }) =>
-  sdk.seed({
+/**
+ * Seed one tracked instance carrying `turn_signal`="off" on every frame. 20
+ * frames @ 10fps — long enough to fill several frames forward.
+ */
+const seedSingle = (datasetFactory: typeof DatasetFactory) =>
+  datasetFactory.createVideoDataset({
     datasetName,
-    videoPaths: [clip],
     withEvents: false,
     trackedSampleIndices: [0],
     dynamicAttribute: { name: ATTR, values: ["off", "left", "right"] },
   });
 
 test.describe.serial("video annotation dynamic attribute sub-tracks", () => {
-  test.beforeEach(async ({ videoAnnotateSDK }) => {
-    await seedSingle(videoAnnotateSDK);
+  test.beforeEach(async ({ datasetFactory }) => {
+    await seedSingle(datasetFactory);
   });
 
   test("a chevron reveals one sub-track per dynamic attribute; collapsing hides it", async ({
@@ -263,10 +256,9 @@ test.describe.serial("video annotation dynamic attribute sub-tracks", () => {
 });
 
 test.describe.serial("video annotation multiple dynamic attributes", () => {
-  test.beforeEach(async ({ videoAnnotateSDK }) => {
-    await videoAnnotateSDK.seed({
+  test.beforeEach(async ({ datasetFactory }) => {
+    await datasetFactory.createVideoDataset({
       datasetName,
-      videoPaths: [clip],
       withEvents: false,
       trackedSampleIndices: [0],
       dynamicAttributes: [

@@ -26,8 +26,6 @@ const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-video-polyline-interp",
 );
 const id = "000000000000000000000000";
-// .mp4 so the surface takes the mp4/native decode path the reported clip uses
-const clip = `/tmp/${datasetName}.mp4`;
 
 /** Vertices of the drawn shape, in relative canvas coordinates. */
 const DRAWN: Array<[number, number]> = [
@@ -46,28 +44,22 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
-  // ~180 frames @ 30fps, matching the reported clip's shape (the 10fps/40-frame
-  // variant of this spec passes, so frame rate / clip length is a suspect)
-  await mediaFactory.createVideo({
-    outputPath: clip,
-    duration: 6,
-    width: 64,
-    height: 64,
-    frameRate: 30,
-    color: "#3050a0",
-  });
 });
 
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeEach(async ({ videoAnnotateSDK }) => {
-  await videoAnnotateSDK.seed({
+test.beforeEach(async ({ datasetFactory }) => {
+  await datasetFactory.createVideoDataset({
     datasetName,
-    videoPaths: [clip],
+    // .mp4 so the surface takes the mp4/native decode path the reported clip
+    // uses; ~180 frames @ 30fps, matching the reported clip's shape (the
+    // 10fps/40-frame variant of this spec passes, so frame rate / clip length
+    // is a suspect)
+    videoOptions: { container: "mp4", duration: 6, frameRate: 30 },
     withEvents: false,
     // schema only: this spec draws the first polyline itself
     withPolylineField: true,

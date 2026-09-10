@@ -61,7 +61,7 @@ export interface SeedAnnotate3dOptions {
  * Seeds a 3D-annotation dataset: `.fo3d` scene samples with fixed ids, a
  * declared + active sample-level `detections` annotation schema, and an
  * optional pre-seeded cuboid (`fo.Detection` with 3D geometry) on requested
- * samples. The sibling of {@link VideoAnnotateSDK} for the looker-3d surface.
+ * samples. The looker-3d counterpart of `DatasetFactory.createVideoDataset`.
  *
  * A 3D cuboid is a `fo.Detection` carrying `location` ([x,y,z] center),
  * `dimensions` ([l,w,h]) and `rotation` ([x,y,z] euler) — the same field the

@@ -25,7 +25,6 @@ import type { Page } from "src/oss/fixtures";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-video-td-crud");
 const id = "000000000000000000000000";
-const clip = `/tmp/${datasetName}.webm`;
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -50,25 +49,17 @@ const collectEngineErrors = (page: Page): string[] => {
   return out;
 };
 
-test.beforeAll(async ({ foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
-  await mediaFactory.createVideo({
-    outputPath: clip,
-    duration: 2,
-    width: 64,
-    height: 64,
-    frameRate: 10,
-    color: "#3050a0",
-  });
 });
 
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeEach(async ({ videoAnnotateSDK }) => {
+test.beforeEach(async ({ datasetFactory }) => {
   // three TDs: approach [1,6], pass [7,13], depart [14,20].
-  await videoAnnotateSDK.seed({ datasetName, videoPaths: [clip] });
+  await datasetFactory.createVideoDataset({ datasetName });
 });
 
 const openAnnotate = async (

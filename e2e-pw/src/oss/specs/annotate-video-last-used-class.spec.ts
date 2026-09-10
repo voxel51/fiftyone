@@ -15,7 +15,6 @@ const datasetName = getUniqueDatasetNameWithPrefix("annotate-video-last-used");
 
 /** Fixed ObjectId addressing the first sample (so we can deep-link the modal). */
 const id = "000000000000000000000000";
-const clip = `/tmp/${datasetName}.webm`;
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -23,19 +22,11 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory, videoAnnotateSDK }) => {
+test.beforeAll(async ({ foWebServer, datasetFactory }) => {
   await foWebServer.startWebServer();
-  await mediaFactory.createVideo({
-    outputPath: clip,
-    duration: 2,
-    width: 64,
-    height: 64,
-    frameRate: 10,
-    color: "#3050a0",
-  });
   // classes: ["vehicle", "person", "road sign"] — "vehicle" is the schema
   // default, so a draw that defaults to "person" proves last-used drove it.
-  await videoAnnotateSDK.seed({ datasetName, videoPaths: [clip] });
+  await datasetFactory.createVideoDataset({ datasetName });
 });
 
 test.afterAll(async ({ foWebServer }) => {

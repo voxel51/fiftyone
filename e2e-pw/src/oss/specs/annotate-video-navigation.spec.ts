@@ -17,8 +17,6 @@ import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-video-nav");
-const clip0 = `/tmp/${datasetName}-0.webm`;
-const clip1 = `/tmp/${datasetName}-1.webm`;
 
 const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   grid: async ({ page, eventUtils }, use) => use(new GridPom(page, eventUtils)),
@@ -26,29 +24,14 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
     use(new ModalPom(page, eventUtils)),
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory, videoAnnotateSDK }) => {
+test.beforeAll(async ({ foWebServer, datasetFactory }) => {
   await foWebServer.startWebServer();
-  await mediaFactory.createVideo({
-    outputPath: clip0,
-    duration: 2,
-    width: 64,
-    height: 64,
-    frameRate: 10,
-    color: "#3050a0",
-  });
-  await mediaFactory.createVideo({
-    outputPath: clip1,
-    duration: 2,
-    width: 64,
-    height: 64,
-    frameRate: 10,
-    color: "#a05030",
-  });
   // both samples carry their own tracked instance, so the object track id
   // differs between samples — a reliable "the surface switched" signal.
-  await videoAnnotateSDK.seed({
+  await datasetFactory.createVideoDataset({
     datasetName,
-    videoPaths: [clip0, clip1],
+    numSamples: 2,
+    videoOptions: (index) => (index === 1 ? { color: "#a05030" } : {}),
     trackedSampleIndices: [0, 1],
   });
 });

@@ -14,10 +14,7 @@ import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-video-audio");
 
-// mp4 so the decode probe's demux verdict drives the volume UI in both
-// directions. Sample i has ObjectId(f"{i:024x}").
-const audibleClip = `/tmp/${datasetName}-audible.mp4`;
-const silentClip = `/tmp/${datasetName}-silent.mp4`;
+// Sample i has ObjectId(f"{i:024x}").
 const audibleId = "000000000000000000000000";
 const silentId = "000000000000000000000001";
 
@@ -27,24 +24,14 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory, videoAnnotateSDK }) => {
+test.beforeAll(async ({ foWebServer, datasetFactory }) => {
   await foWebServer.startWebServer();
-  const clip = {
-    duration: 2,
-    width: 64,
-    height: 64,
-    frameRate: 10,
-    color: "#3050a0",
-  };
-  await mediaFactory.createVideo({
-    ...clip,
-    outputPath: audibleClip,
-    audio: true,
-  });
-  await mediaFactory.createVideo({ ...clip, outputPath: silentClip });
-  await videoAnnotateSDK.seed({
+  // mp4 so the decode probe's demux verdict drives the volume UI in both
+  // directions; only sample 0 carries an audio track.
+  await datasetFactory.createVideoDataset({
     datasetName,
-    videoPaths: [audibleClip, silentClip],
+    numSamples: 2,
+    videoOptions: (index) => ({ container: "mp4", audio: index === 0 }),
     withEvents: false,
   });
 });

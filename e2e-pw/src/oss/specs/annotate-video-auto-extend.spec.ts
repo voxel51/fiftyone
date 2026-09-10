@@ -25,7 +25,6 @@ const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-video-auto-extend",
 );
 const id = "000000000000000000000000";
-const clip = `/tmp/${datasetName}.webm`;
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -33,27 +32,19 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
-  // 40 frames @ 10fps — the 30-frame auto-extend stays clear of the clip end.
-  await mediaFactory.createVideo({
-    outputPath: clip,
-    duration: 4,
-    width: 64,
-    height: 64,
-    frameRate: 10,
-    color: "#3050a0",
-  });
 });
 
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeEach(async ({ videoAnnotateSDK }) => {
-  await videoAnnotateSDK.seed({
+test.beforeEach(async ({ datasetFactory }) => {
+  // 40 frames @ 10fps — the 30-frame auto-extend stays clear of the clip end.
+  await datasetFactory.createVideoDataset({
     datasetName,
-    videoPaths: [clip],
+    videoOptions: { duration: 4 },
     withEvents: false,
   });
 });

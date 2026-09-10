@@ -22,7 +22,6 @@ const datasetName = getUniqueDatasetNameWithPrefix("annotate-video-field-move");
 
 /** Fixed ObjectId addressing the first sample (so we can deep-link the modal). */
 const id = "000000000000000000000000";
-const clip = `/tmp/${datasetName}.webm`;
 
 const FIELDS = ["frames.detections", "frames.predictions"] as const;
 const otherField = (current: string) =>
@@ -76,16 +75,8 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
-  await mediaFactory.createVideo({
-    outputPath: clip,
-    duration: 2,
-    width: 64,
-    height: 64,
-    frameRate: 10,
-    color: "#3050a0",
-  });
 });
 
 test.afterAll(async ({ foWebServer }) => {
@@ -130,10 +121,9 @@ const inFreshContext = async (
 };
 
 test.describe.serial("video annotation field move", () => {
-  test.beforeEach(async ({ fiftyoneLoader, videoAnnotateSDK }) => {
-    await videoAnnotateSDK.seed({
+  test.beforeEach(async ({ fiftyoneLoader, datasetFactory }) => {
+    await datasetFactory.createVideoDataset({
       datasetName,
-      videoPaths: [clip],
       withEvents: false,
       trackedSampleIndices: [0],
     });

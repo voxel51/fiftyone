@@ -18,17 +18,16 @@ import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
-import type { Page } from "src/oss/fixtures";
 import type {
+  DatasetFactory,
   FrameTrackLabel,
-  VideoAnnotateSDK,
-} from "src/oss/fixtures/video-annotate-sdk";
+} from "src/shared/dataset-factory";
+import type { Page } from "src/oss/fixtures";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-video-track-split-merge",
 );
 const id = "000000000000000000000000";
-const clip = `/tmp/${datasetName}.webm`;
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -36,16 +35,8 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
-  await mediaFactory.createVideo({
-    outputPath: clip,
-    duration: 2,
-    width: 64,
-    height: 64,
-    frameRate: 10,
-    color: "#3050a0",
-  });
 });
 
 test.afterAll(async ({ foWebServer }) => {
@@ -54,19 +45,21 @@ test.afterAll(async ({ foWebServer }) => {
 
 // Two tracks on sample 0 (vehicle index=1 + a second index=2), every frame.
 // `secondTrackClassIndex` 1 => cross-class ("person"); 0 => same-class ("vehicle").
-const seedTwoTracks = (sdk: VideoAnnotateSDK, secondTrackClassIndex = 1) =>
-  sdk.seed({
+const seedTwoTracks = (
+  datasetFactory: typeof DatasetFactory,
+  secondTrackClassIndex = 1,
+) =>
+  datasetFactory.createVideoDataset({
     datasetName,
-    videoPaths: [clip],
     withEvents: false,
     trackedSampleIndices: [0],
     secondTrackSampleIndices: [0],
     secondTrackClassIndex,
   });
 
-test.beforeEach(async ({ videoAnnotateSDK }) => {
+test.beforeEach(async ({ datasetFactory }) => {
   // default: cross-class (vehicle + person) — used by split + merge-gating.
-  await seedTwoTracks(videoAnnotateSDK);
+  await seedTwoTracks(datasetFactory);
 });
 
 const openAnnotate = async (
@@ -142,11 +135,11 @@ interface TrackInstances {
 }
 
 const persistedInstances = async (
-  sdk: VideoAnnotateSDK,
+  datasetFactory: typeof DatasetFactory,
   field: string,
   targetLabel: string,
 ): Promise<TrackInstances> => {
-  const rows = await sdk.frameTrackState(datasetName, field);
+  const rows = await datasetFactory.frameTrackState(datasetName, field);
   const all = new Set(
     rows.map((row) => row.instance).filter((id): id is string => !!id),
   );
@@ -223,10 +216,10 @@ test.describe.serial("video annotation track split / merge", () => {
     fiftyoneLoader,
     modal,
     page,
-    videoAnnotateSDK,
+    datasetFactory,
   }) => {
     const before = await persistedInstances(
-      videoAnnotateSDK,
+      datasetFactory,
       "detections",
       "vehicle",
     );
@@ -246,7 +239,7 @@ test.describe.serial("video annotation track split / merge", () => {
     await saved;
 
     // 2 s at 10 fps
-    const rows = await videoAnnotateSDK.frameTrackState(
+    const rows = await datasetFactory.frameTrackState(
       datasetName,
       "detections",
     );
@@ -257,19 +250,18 @@ test.describe.serial("video annotation track split / merge", () => {
     fiftyoneLoader,
     modal,
     page,
-    videoAnnotateSDK,
+    datasetFactory,
   }) => {
     // one detection track (vehicle) + one polyline track (person, index=2);
     // no second detection track, so "person" names the polyline
-    await videoAnnotateSDK.seed({
+    await datasetFactory.createVideoDataset({
       datasetName,
-      videoPaths: [clip],
       withEvents: false,
       trackedSampleIndices: [0],
       polylineSampleIndices: [0],
     });
     const before = await persistedInstances(
-      videoAnnotateSDK,
+      datasetFactory,
       "polylines",
       "person",
     );
@@ -288,10 +280,7 @@ test.describe.serial("video annotation track split / merge", () => {
     await va.assert.objectTrackCount(3);
     await saved;
 
-    const rows = await videoAnnotateSDK.frameTrackState(
-      datasetName,
-      "polylines",
-    );
+    const rows = await datasetFactory.frameTrackState(datasetName, "polylines");
     expectSplitPersisted(rows, before, 20);
   });
 
@@ -300,11 +289,11 @@ test.describe.serial("video annotation track split / merge", () => {
     fiftyoneLoader,
     modal,
     page,
-    videoAnnotateSDK,
+    datasetFactory,
   }) => {
     // merge is gated to same-class tracks, so re-seed both as "vehicle". The
     // two share a class but are distinct instances (index 1 vs 2).
-    await seedTwoTracks(videoAnnotateSDK, 0);
+    await seedTwoTracks(datasetFactory, 0);
 
     await openAnnotate(fiftyoneLoader, modal, page);
     const va = modal.videoAnnotate;

@@ -29,7 +29,6 @@ const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-video-schema-active",
 );
 const id = "000000000000000000000000";
-const clip = `/tmp/${datasetName}.webm`;
 
 const FRAME_FIELD = "frames.detections";
 const TD_FIELD = "events";
@@ -46,31 +45,22 @@ const test = base.extend<{
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
-  // 20-frame clip so the events thirds land on approach [1,6] / pass [7,13] /
-  // depart [14,20]; the playhead opens on frame 1 (approach in support).
-  await mediaFactory.createVideo({
-    outputPath: clip,
-    duration: 2,
-    width: 64,
-    height: 64,
-    frameRate: 10,
-    color: "#3050a0",
-  });
 });
 
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeEach(async ({ videoAnnotateSDK }) => {
-  // a tracked `vehicle` frame detection on every frame + the three demo TDs;
-  // both schemas active. Re-seeded per test so activation edits don't leak
-  // across the serial dataset.
-  await videoAnnotateSDK.seed({
+test.beforeEach(async ({ datasetFactory }) => {
+  // a tracked `vehicle` frame detection on every frame + the three demo TDs
+  // over the 20-frame clip (approach [1,6] / pass [7,13] / depart [14,20]; the
+  // playhead opens on frame 1, approach in support); both schemas active.
+  // Re-seeded per test so activation edits don't leak across the serial
+  // dataset.
+  await datasetFactory.createVideoDataset({
     datasetName,
-    videoPaths: [clip],
     trackedSampleIndices: [0],
   });
 });

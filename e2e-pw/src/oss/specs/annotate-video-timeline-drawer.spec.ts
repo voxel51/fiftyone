@@ -17,7 +17,6 @@ const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-video-timeline-drawer",
 );
 const id = "000000000000000000000000";
-const clip = `/tmp/${datasetName}.webm`;
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -25,28 +24,19 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
-  await mediaFactory.createVideo({
-    outputPath: clip,
-    duration: 2,
-    width: 64,
-    height: 64,
-    frameRate: 10,
-    color: "#3050a0",
-  });
 });
 
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeEach(async ({ videoAnnotateSDK }) => {
+test.beforeEach(async ({ datasetFactory }) => {
   // one tracked vehicle (index=1) on every frame; no TDs so the timeline holds
   // a single object track.
-  await videoAnnotateSDK.seed({
+  await datasetFactory.createVideoDataset({
     datasetName,
-    videoPaths: [clip],
     withEvents: false,
     trackedSampleIndices: [0],
   });
