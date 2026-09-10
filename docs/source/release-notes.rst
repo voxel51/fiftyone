@@ -153,8 +153,7 @@ Datasets
 Brain
 ^^^^^
 - The pgvector backend supports IVFFlat indexes, tuned automatically to the
-  dataset size, and embeddings with more than 2000 dimensions. Requires
-  `fiftyone-brain>=0.24.1`
+  dataset size, and embeddings with more than 2000 dimensions
   `#311 <https://github.com/voxel51/fiftyone-brain/pull/311>`_
 
 FiftyOne Enterprise 2.24.1
