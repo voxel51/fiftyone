@@ -225,14 +225,17 @@ jobs:
         # python matrix was skipped or died before uploading
         run: |
           mkdir -p pytest-junit
-          gh api --paginate \
-            "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts?per_page=100" \
-            --jq '.artifacts[] | select(.name | startswith("pytest-results-")) | [.id, .name] | @tsv' |
+          # reruns list every attempt's artifact under the same name; keep
+          # only the newest per name so a rerun's results replace the
+          # earlier attempt's instead of being overwritten by them
+          gh api --paginate --slurp \
+            "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts?per_page=100" |
+          jq -r '[.[].artifacts[] | select(.name | startswith("pytest-results-"))]
+                 | group_by(.name) | map(max_by(.created_at))[]
+                 | [.id, .name] | @tsv' |
           while IFS=$'\t' read -r id name; do
             gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip" > "$name.zip"
-            # -o: reruns list every attempt's artifact under the same name;
-            # an interactive replace prompt would fail the job
-            unzip -o -q -d "pytest-junit/$name" "$name.zip"
+            unzip -q -d "pytest-junit/$name" "$name.zip"
             printf '%s\t%s\n' "$name" \
               "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts/$id" \
               >> pytest-junit/artifact-urls.tsv
