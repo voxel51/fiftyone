@@ -530,7 +530,7 @@ ${
 }
 
 for field_name, label_schema in payload["labelSchemas"].items():
-    dataset.update_label_schema(field_name, label_schema)
+    dataset.update_label_schema(field_name, label_schema, allow_new_attrs=True)
 ${
   Object.keys(labelSchemas).length
     ? 'dataset.active_label_schemas = list(payload["labelSchemas"].keys())'
@@ -1011,7 +1011,7 @@ import fiftyone as fo
 dataset = fo.load_dataset("${datasetName}")
 
 with open("${schemaFile}") as f:
-    dataset.update_label_schema("${field}", json.load(f))
+    dataset.update_label_schema("${field}", json.load(f), allow_new_attrs=True)
 
 ${
   activate
