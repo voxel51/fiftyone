@@ -8,6 +8,7 @@ export interface FrameTrackLabel {
   frame: number;
   /** The cross-frame `instance._id` (the track key), or null. */
   instance: string | null;
+  label: string | null;
   keyframe: boolean;
   /** A box or at least one polyline vertex is stored on the frame. */
   hasGeometry: boolean;
@@ -133,6 +134,7 @@ for fn, frame in sample.frames.items():
         rows.append({
             "frame": int(fn),
             "instance": str(instance._id) if instance is not None else None,
+            "label": getattr(label, "label", None),
             "keyframe": bool(getattr(label, "keyframe", False)),
             "has_geometry": bool(getattr(label, "bounding_box", None))
             or bool(points and any(len(s) for s in points)),
@@ -147,6 +149,7 @@ with open("${resultFile}", "w") as f:
     const parsed = JSON.parse(raw) as Array<{
       frame: number;
       instance: string | null;
+      label: string | null;
       keyframe: boolean;
       has_geometry: boolean;
     }>;
@@ -154,6 +157,7 @@ with open("${resultFile}", "w") as f:
     return parsed.map((row) => ({
       frame: row.frame,
       instance: row.instance,
+      label: row.label,
       keyframe: row.keyframe,
       hasGeometry: row.has_geometry,
     }));

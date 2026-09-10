@@ -84,14 +84,15 @@ const openAnnotate = async (
 
 /**
  * The two tracks a split leaves on `field`, from the database: `head` is the
- * original instance (frames before the cut), `tail` the new one (frames from
- * the cut on). Both sides of the cut must be keyframes — each half re-lerps
- * from its own keyframes afterwards, so without the pin the shape at the cut
- * jumps — and nothing else may have been promoted.
+ * split track's original instance (frames before the cut), `tail` the instance
+ * the split minted (frames from the cut on). Both sides of the cut must be
+ * keyframes — each half re-lerps from its own keyframes afterwards, so without
+ * the pin the shape at the cut jumps — and nothing else may have been promoted.
+ * Other tracks on the field (the untouched second class) are ignored.
  */
 const expectSplitPersisted = (
   rows: FrameTrackLabel[],
-  originalInstance: string,
+  before: TrackInstances,
   totalFrames: number,
 ) => {
   const byInstance = new Map<string, FrameTrackLabel[]>();
@@ -103,12 +104,12 @@ const expectSplitPersisted = (
     ]);
   }
 
-  const head = byInstance.get(originalInstance) ?? [];
-  const tailInstance = [...byInstance.keys()].find(
-    (instance) => instance !== originalInstance,
+  const head = byInstance.get(before.target) ?? [];
+  const minted = [...byInstance.keys()].filter(
+    (instance) => !before.all.has(instance),
   );
-  expect(tailInstance, "the split should mint a second instance").toBeTruthy();
-  const tail = byInstance.get(tailInstance as string) ?? [];
+  expect(minted, "the split mints exactly one new instance").toHaveLength(1);
+  const tail = byInstance.get(minted[0]) ?? [];
 
   const frames = (labels: FrameTrackLabel[]) =>
     labels.map((l) => l.frame).sort((a, b) => a - b);
@@ -116,9 +117,9 @@ const expectSplitPersisted = (
   const tailFrames = frames(tail);
   const cut = tailFrames[0];
 
+  expect(headFrames[0]).toBe(1);
   expect(headFrames.at(-1), "head ends right before the cut").toBe(cut - 1);
   expect(tailFrames.at(-1), "tail runs to the last frame").toBe(totalFrames);
-  expect(headFrames[0]).toBe(1);
 
   const keyframes = (labels: FrameTrackLabel[]) =>
     frames(labels.filter((l) => l.keyframe));
@@ -134,17 +135,26 @@ const expectSplitPersisted = (
   }
 };
 
-/** Track instance ids on `field` in the database, before any edit. */
+/** The tracks on `field` before an edit: every instance, and the one to split. */
+interface TrackInstances {
+  all: Set<string>;
+  target: string;
+}
+
 const persistedInstances = async (
   sdk: VideoAnnotateSDK,
   field: string,
-): Promise<string[]> => [
-  ...new Set(
-    (await sdk.frameTrackState(datasetName, field))
-      .map((row) => row.instance)
-      .filter((id): id is string => !!id),
-  ),
-];
+  targetLabel: string,
+): Promise<TrackInstances> => {
+  const rows = await sdk.frameTrackState(datasetName, field);
+  const all = new Set(
+    rows.map((row) => row.instance).filter((id): id is string => !!id),
+  );
+  const target = rows.find((row) => row.label === targetLabel)?.instance;
+  expect(target, `a "${targetLabel}" track is seeded`).toBeTruthy();
+
+  return { all, target: target as string };
+};
 
 const savedResponse = (page: Page) =>
   page.waitForResponse(
@@ -215,10 +225,10 @@ test.describe.serial("video annotation track split / merge", () => {
     page,
     videoAnnotateSDK,
   }) => {
-    // vehicle is the only seeded instance on its class; it is the split target
-    const [vehicleInstance] = await persistedInstances(
+    const before = await persistedInstances(
       videoAnnotateSDK,
       "detections",
+      "vehicle",
     );
 
     await openAnnotate(fiftyoneLoader, modal, page);
@@ -240,7 +250,7 @@ test.describe.serial("video annotation track split / merge", () => {
       datasetName,
       "detections",
     );
-    expectSplitPersisted(rows, vehicleInstance, 20);
+    expectSplitPersisted(rows, before, 20);
   });
 
   test("split a polyline track: two tracks, both cut frames keyframes, vertices kept", async ({
@@ -258,9 +268,10 @@ test.describe.serial("video annotation track split / merge", () => {
       trackedSampleIndices: [0],
       polylineSampleIndices: [0],
     });
-    const [polylineInstance] = await persistedInstances(
+    const before = await persistedInstances(
       videoAnnotateSDK,
       "polylines",
+      "person",
     );
 
     await openAnnotate(fiftyoneLoader, modal, page);
@@ -281,7 +292,7 @@ test.describe.serial("video annotation track split / merge", () => {
       datasetName,
       "polylines",
     );
-    expectSplitPersisted(rows, polylineInstance, 20);
+    expectSplitPersisted(rows, before, 20);
   });
 
   test("merge (context menu) folds one same-class track into the other and persists", async ({
