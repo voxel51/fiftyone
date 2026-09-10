@@ -20,6 +20,7 @@ two responsibilities:
 import typing as t
 
 from starlette.endpoints import HTTPEndpoint
+from starlette.exceptions import HTTPException
 from starlette.responses import JSONResponse
 from starlette.requests import Request
 
@@ -103,14 +104,25 @@ def run_length_encode_values(
     return runs
 
 
-def resolve_label_list_field(dataset, field: str) -> t.Optional[str]:
-    """The label-list subfield for a frame field, or ``None`` for a single label.
+def resolve_label_list_field(
+    dataset, field: str, dynamic_group: bool = False
+) -> t.Optional[str]:
+    """The label-list subfield for a label field, or ``None`` for a single label.
 
     A ``Detections`` field stores its labels under ``detections``, ``Polylines``
     under ``polylines``, and so on; the index unwinds that list. A single-label
     field (e.g. ``Detection``) has no list and is unwound directly.
+
+    ``dynamic_group`` selects which schema to resolve against: a video's labels
+    live on the frame schema, but a dynamic group's "frames" are samples, so its
+    labels live on the sample schema.
     """
-    field_obj = dataset.get_frame_field_schema().get(field)
+    schema = (
+        dataset.get_field_schema()
+        if dynamic_group
+        else dataset.get_frame_field_schema()
+    )
+    field_obj = schema.get(field)
     if not isinstance(field_obj, fof.EmbeddedDocumentField):
         return None
 
@@ -121,6 +133,7 @@ def index_post_pipeline(
     field: str,
     list_field: t.Optional[str],
     dynamic_attributes: t.Sequence[str] = (),
+    dynamic_group: bool = False,
 ) -> t.List[dict]:
     """Mongo stages that group a frame field's labels into per-instance state.
 
@@ -138,8 +151,29 @@ def index_post_pipeline(
     runs. The same unwind/group scan already visits every label, so collecting
     the values is near-free; the cost the column adds is the pushed array, paid
     only for the attributes the caller asks for.
+
+    When ``dynamic_group`` is set the input is the dynamic group's ordered
+    *samples* rather than a video's flattened frames (an image dataset grouped
+    into a video / ImaVid). The frame number is each sample's 1-indexed rank in
+    the group — relying on the input being pre-ordered, which
+    ``get_dynamic_group`` guarantees — read straight from the unwound rank, so
+    nothing is written into the sample document (which may carry a real
+    ``frame_number`` of its own). The label field is read at sample level; its
+    ``$field.list`` shape is identical to a flattened frame field, so the
+    unwind/group are unchanged.
     """
     labels_expr = "$%s.%s" % (field, list_field) if list_field else "$" + field
+    fn_expr: t.Any = "$frame_number"
+    rank_stages: t.List[dict] = []
+    if dynamic_group:
+        # Fold the ordered samples into one array and unwind it with its
+        # index; the documents come back under `docs`, untouched
+        rank_stages = [
+            {"$group": {"_id": None, "docs": {"$push": "$$ROOT"}}},
+            {"$unwind": {"path": "$docs", "includeArrayIndex": "rank"}},
+        ]
+        fn_expr = {"$add": ["$rank", 1]}
+        labels_expr = "$docs." + labels_expr[1:]
 
     index_track_id = {
         "$cond": [
@@ -179,10 +213,11 @@ def index_post_pipeline(
         group["attributeSamples"] = {"$push": sample}
 
     return [
+        *rank_stages,
         {
             "$project": {
                 "_id": False,
-                "fn": "$frame_number",
+                "fn": fn_expr,
                 "labels": {"$ifNull": [labels_expr, []]},
             }
         },
@@ -255,10 +290,13 @@ async def aggregate_index(
     view,
     fields: t.Iterable[str],
     dynamic_attributes: t.Sequence[str] = (),
+    dynamic_group: bool = False,
 ) -> t.Dict[str, dict]:
     """Run the per-instance index aggregation for each requested field.
 
-    ``view`` is expected to already select the single video sample. Returns
+    ``view`` already selects the clip's frames: the single video sample (and
+    ``frames_only`` flattens its frames), or — when ``dynamic_group`` is set —
+    the dynamic group's ordered samples, each treated as a frame. Returns
     ``{field: {"instances": [...]}}`` with frame numbers and ObjectIds still
     raw — the route stringifies on the way out. ``dynamic_attributes`` adds the
     per-instance ``attributeSegments`` value runs (see
@@ -268,11 +306,13 @@ async def aggregate_index(
 
     result: t.Dict[str, dict] = {}
     for field in fields:
-        list_field = resolve_label_list_field(view._dataset, field)
+        list_field = resolve_label_list_field(
+            view._dataset, field, dynamic_group
+        )
         pipeline = view._pipeline(
-            frames_only=True,
+            frames_only=not dynamic_group,
             post_pipeline=index_post_pipeline(
-                field, list_field, dynamic_attributes
+                field, list_field, dynamic_attributes, dynamic_group
             ),
         )
         cursor = await foo.aggregate(collection, pipeline)
@@ -293,6 +333,23 @@ class VideoLabelsIndex(HTTPEndpoint):
         sample_id = data.get("sampleId")
         fields = data.get("fields") or []
         dynamic_attributes = data.get("dynamicAttributes") or []
+        # When set, the clip is a dynamic group (an image dataset grouped into a
+        # video) rather than a video sample; its "frames" are the group's
+        # ordered samples and the index is built over them.
+        dynamic_group = data.get("dynamicGroup")
+
+        if dynamic_group is not None:
+            view = await fosv.get_view(
+                dataset,
+                stages=stages,
+                extended_stages=extended,
+                dynamic_group=dynamic_group,
+                awaitable=True,
+            )
+            result = await aggregate_index(
+                view, fields, dynamic_attributes, dynamic_group=True
+            )
+            return JSONResponse(foj.stringify(result))
 
         view = await fosv.get_view(
             dataset, stages=stages, extended_stages=extended, awaitable=True
@@ -314,11 +371,53 @@ class VideoLabelsWindow(HTTPEndpoint):
     async def post(self, request: Request, data: dict):
         start_frame = int(data.get("startFrame", 1))
         end_frame = int(data.get("endFrame", start_frame))
+        # Frames are 1-indexed and the window is inclusive; anything else
+        # reaches the driver as a negative skip or limit and surfaces as a 500
+        if start_frame < 1 or end_frame < start_frame:
+            raise HTTPException(
+                status_code=400,
+                detail="startFrame must be at least 1 and endFrame at least "
+                "startFrame",
+            )
         dataset = data.get("dataset")
         stages = data.get("view")
         extended = data.get("extended", None)
         sample_id = data.get("sampleId")
         fields = data.get("fields") or []
+        # When set, the clip is a dynamic group (an image dataset grouped into a
+        # video); the window is that group's ordered samples in the requested
+        # range rather than a video sample's `frames` field.
+        dynamic_group = data.get("dynamicGroup")
+
+        if dynamic_group is not None:
+            view = await fosv.get_view(
+                dataset,
+                stages=stages,
+                extended_stages=extended,
+                dynamic_group=dynamic_group,
+                awaitable=True,
+            )
+
+            count = end_frame - start_frame + 1
+
+            def window(view):
+                # 1-indexed frames → 0-indexed skip; window to the request.
+                return view.skip(start_frame - 1).limit(count)
+
+            view = await run_sync_task(window, view)
+            windowed = await aggregate_window(
+                view,
+                fields,
+                None,
+                dynamic_group=True,
+                start_frame=start_frame,
+            )
+            return JSONResponse(
+                {
+                    "frames": foj.stringify(windowed),
+                    "range": [start_frame, end_frame],
+                }
+            )
 
         view = await fosv.get_view(
             dataset, stages=stages, extended_stages=extended, awaitable=True
@@ -353,36 +452,45 @@ class VideoLabelsWindow(HTTPEndpoint):
 
 
 async def aggregate_window(
-    view, fields: t.Iterable[str], support: t.Optional[t.List[int]]
+    view,
+    fields: t.Iterable[str],
+    support: t.Optional[t.List[int]],
+    dynamic_group: bool = False,
+    start_frame: int = 1,
 ) -> t.Dict[str, dict]:
     """Read field-projected label payloads for the windowed frames.
 
     Returns ``{frame_number: {field: payload}}`` keyed by stringified frame
     number, dropping fields a frame doesn't carry. ``view`` already selects the
     sample and limits the frame range (via ``support`` or a ``$filter`` stage).
+
+    When ``dynamic_group`` is set the "frames" are the dynamic group's ordered
+    samples (already windowed by the caller via ``skip``/``limit``); they carry
+    sample-level label fields and no ``frame_number``, so the i-th sample is
+    keyed as ``start_frame + i``.
     """
     fields = list(fields)
-    project = {"frame_number": True}
-    for field in fields:
-        project[field] = True
+    project = {field: True for field in fields}
+    if not dynamic_group:
+        project["frame_number"] = True
 
     cursor = await foo.aggregate(
         foo.get_async_db_conn()[view._dataset._sample_collection_name],
         view._pipeline(
-            frames_only=True,
-            support=support,
+            frames_only=not dynamic_group,
+            support=None if dynamic_group else support,
             post_pipeline=[{"$project": project}],
         ),
     )
-    frames = await cursor.to_list(None)
+    docs = await cursor.to_list(None)
 
     windowed: t.Dict[str, dict] = {}
-    for frame in frames:
-        frame_number = frame.get("frame_number")
+    for offset, doc in enumerate(docs):
+        frame_number = (
+            start_frame + offset if dynamic_group else doc.get("frame_number")
+        )
         windowed[str(frame_number)] = {
-            field: frame[field]
-            for field in fields
-            if frame.get(field) is not None
+            field: doc[field] for field in fields if doc.get(field) is not None
         }
 
     return windowed

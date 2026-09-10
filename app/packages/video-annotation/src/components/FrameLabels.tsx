@@ -8,8 +8,10 @@ import {
   useColorSeed,
   useDatasetName,
   useDynamicAttributeNamesGetter,
+  useDynamicGroupValue,
   useFrameLabelFields,
   useGroupSlice,
+  useModalSampleFrameRate,
   useModalSampleId,
   useView,
   useLabelSchemasLoaded,
@@ -50,11 +52,11 @@ import {
   type TrackExpansion,
 } from "../tracks/useTrackExpansion";
 import { LABELS_STREAM_ID } from "../utils/ids";
-import { getModalSampleFrameRate } from "../utils/modalSample";
 import { resolveTrackExtentEdit } from "../tracks/trackExtentEdit";
 import { useVideoTrackDecorator } from "../tracks/useVideoTrackDecorator";
 import { useScrollTrackToAnchor } from "../state/useVideoInteraction";
 import { useCurrentFrameGetter } from "../state/useCurrentFrame";
+import { getModalSampleFrameRate } from "../utils/modalSample";
 import { useTimelineDrawerOpen } from "../state/useTimelineDrawer";
 import {
   useVideoSurfaceActions,
@@ -212,6 +214,7 @@ export const RegisterFrameLabels: React.FC<{
   const view = useView();
   const slice = useGroupSlice();
   const sampleId = useModalSampleId();
+  const dynamicGroup = useDynamicGroupValue();
   // Source of truth for which per-frame list this stream reads + patches.
   // Default while the schema resolves avoids a tear-down/re-mount churn.
   const activeField = useActiveDetectionField() ?? DEFAULT_FRAME_FIELD;
@@ -226,7 +229,7 @@ export const RegisterFrameLabels: React.FC<{
   const labelFields =
     mode === "explore" ? exploreLabelFields : annotationLabelFields;
 
-  const frameRate = getModalSampleFrameRate(sample);
+  const frameRate = useModalSampleFrameRate(sample);
   const ready =
     duration > 0 &&
     !!sampleId &&
@@ -258,8 +261,8 @@ export const RegisterFrameLabels: React.FC<{
   // discard the move's unsaved edits. The primary follows in place via
   // `setPrimaryField` (below); only adding/removing a field re-mounts.
   const fieldSetKey = [...frameFields].sort().join(",");
-  const key = `${sampleId}|${dataset}|${
-    slice ?? ""
+  const key = `${sampleId}|${dataset}|${slice ?? ""}|${
+    dynamicGroup ?? ""
   }|${frameRate}|${frameCount}|${fieldSetKey}`;
 
   return (
@@ -268,6 +271,7 @@ export const RegisterFrameLabels: React.FC<{
       sampleId={sampleId}
       dataset={dataset}
       view={view}
+      dynamicGroup={dynamicGroup}
       frameCount={frameCount}
       frameRate={frameRate}
       frameField={frameField}
@@ -282,6 +286,7 @@ interface FrameLabelsRegistrationProps {
   sampleId: string;
   dataset: string;
   view: Stage[];
+  dynamicGroup: string | null;
   frameCount: number;
   frameRate: number;
   frameField: string;
@@ -301,6 +306,7 @@ const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
       sampleId: props.sampleId,
       dataset: props.dataset,
       view: props.view,
+      dynamicGroup: props.dynamicGroup,
       frameCount: props.frameCount,
       frameRate: props.frameRate,
       frameField: props.frameField,
@@ -437,7 +443,7 @@ function useTrackDecorator({
   const actions = useVideoSurfaceActions();
   const stream = useFrameLabelsStream();
   const getCurrentFrame = useCurrentFrameGetter();
-  const fps = getModalSampleFrameRate(sample);
+  const fps = useModalSampleFrameRate(sample);
   const snapStepSec =
     Number.isFinite(fps) && fps && fps > 0 ? 1 / fps : undefined;
 
@@ -694,7 +700,6 @@ export const FrameLabelsTracks: React.FC<{
   );
   const timelineLoaded =
     schemasLoaded && (frameTracksResolved || !hasFrameFields);
-
   // Object tracks (with their sub-tracks interleaved) followed by TD tracks.
   const tracks = useMemo(
     () => [...frameTracks, ...temporalDetectionTracks],

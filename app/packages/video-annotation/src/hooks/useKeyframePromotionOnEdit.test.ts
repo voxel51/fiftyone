@@ -27,9 +27,17 @@ const mockBus = { dispatch: vi.fn() };
 
 vi.mock("@fiftyone/annotation", () => ({
   FRAMES_PREFIX: "frames.",
+  isFrameScopedPath: (path: string, isDgva: boolean) =>
+    isDgva ? !path.startsWith("frames.") : path.startsWith("frames."),
   useAnnotationEngine: () => mockEngine,
   useActiveSampleId: () => SAMPLE,
   useAnnotationEventBus: () => mockBus,
+}));
+
+let isImageDynamicGroupVideo = false;
+
+vi.mock("@fiftyone/state", () => ({
+  useIsImageDynamicGroupVideo: () => isImageDynamicGroupVideo,
 }));
 
 vi.mock("../state/useCurrentFrame", () => ({
@@ -51,6 +59,7 @@ const render = () =>
 
 beforeEach(() => {
   frameData = {};
+  isImageDynamicGroupVideo = false;
   vi.clearAllMocks();
 });
 
@@ -103,6 +112,36 @@ describe("useKeyframePromotionOnEdit", () => {
     frameData = { A: det({ keyframe: false }) };
 
     render()("A", "events", "gesture:3");
+
+    expect(mockEngine.updateLabel).not.toHaveBeenCalled();
+    expect(mockBus.dispatch).not.toHaveBeenCalled();
+  });
+
+  it("promotes a bare-path frame on a dynamic group — its frame labels are top-level", () => {
+    isImageDynamicGroupVideo = true;
+    frameData = { A: det({ keyframe: false }) };
+
+    render()("A", "detections", "gesture:7");
+
+    expect(mockEngine.updateLabel).toHaveBeenCalledWith(
+      { sample: SAMPLE, path: "detections", instanceId: "A", frame: FRAME },
+      { keyframe: true },
+    );
+    expect(mockBus.dispatch).toHaveBeenCalledWith(
+      "annotation:keyframeChanged",
+      expect.objectContaining({
+        instanceId: "A",
+        kind: "set",
+        path: "detections",
+      }),
+    );
+  });
+
+  it("ignores a `frames.*` path on a dynamic group — not in its namespace", () => {
+    isImageDynamicGroupVideo = true;
+    frameData = { A: det({ keyframe: false }) };
+
+    render()("A", PATH, "gesture:8");
 
     expect(mockEngine.updateLabel).not.toHaveBeenCalled();
     expect(mockBus.dispatch).not.toHaveBeenCalled();

@@ -28,6 +28,13 @@ export type GetFramesRequest = {
   frameCount: number;
   /** Group slice name, when the dataset is grouped. */
   slice?: string | null;
+  /**
+   * Dynamic-group value, when the clip is a dynamic group rather than a video
+   * sample. The server returns that group's ordered samples as frames (the
+   * ImaVid case for an image dataset grouped into a video, which has no
+   * `frames` field to unwind).
+   */
+  dynamicGroup?: string | null;
   /** Optional extended view stages. */
   extended?: unknown;
   /**
@@ -36,6 +43,12 @@ export type GetFramesRequest = {
    * document when a caller needs just a few fields (e.g. `["filepath"]`).
    */
   fields?: string[];
+  /**
+   * The media field frame media is read from (default `filepath`). A server
+   * with cloud-backed media signs this field's path into each frame's
+   * `media_url` rather than mutating the field itself.
+   */
+  mediaField?: string;
 };
 
 /**

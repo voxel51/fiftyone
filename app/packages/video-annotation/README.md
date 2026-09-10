@@ -251,15 +251,15 @@ engine took ownership of writes and persistence.
 
 ### Public API (`index.ts`)
 
-| Symbol                                                                          | Purpose                                             |
-| ------------------------------------------------------------------------------- | --------------------------------------------------- |
-| `VideoAnnotationSurface`                                                        | Composition root — the component consumers mount.   |
-| `VideoFrameLabelsStream`, `ImaVidImageStream`, `SyntheticLabelStream`           | Playback streams (`PlaybackStreamBase` subclasses). |
-| `useFrameLabelsStream`, `useImaVidImageStream` / `usePublishImaVidImageStream`  | Published-stream-handle hooks.                      |
-| `buildTemporalDetectionTracks`, `resolveTrackExtentEdit`                        | Track builders / drag resolution.                   |
-| `useTemporalOverlaySync`, `syncTemporalOverlays`                                | Engine-sourced temporal-detection ↔ overlay sync.   |
-| `useRegisterVideoAnnotationKeybindings`, `useAutoInterpolate`                   | Behavior registrars.                                |
-| `PropagationStatusItem`, `useVideoAnnotationStatus`, `resolvePropagationTarget` | Propagation / status UI.                            |
+| Symbol                                                                         | Purpose                                             |
+| ------------------------------------------------------------------------------ | --------------------------------------------------- |
+| `VideoAnnotationSurface`                                                       | Composition root — the component consumers mount.   |
+| `VideoFrameLabelsStream`, `ImaVidImageStream`, `SyntheticLabelStream`          | Playback streams (`PlaybackStreamBase` subclasses). |
+| `useFrameLabelsStream`, `useImaVidImageStream` / `usePublishImaVidImageStream` | Published-stream-handle hooks.                      |
+| `buildTemporalDetectionTracks`, `resolveTrackExtentEdit`                       | Track builders / drag resolution.                   |
+| `useTemporalOverlaySync`, `syncTemporalOverlays`                               | Engine-sourced temporal-detection ↔ overlay sync.   |
+| `useRegisterVideoAnnotationKeybindings`, `useAutoInterpolate`                  | Behavior registrars.                                |
+| `PropagationStatusItem`, `resolvePropagationTarget`                            | Propagation / status UI.                            |
 
 ### Directory map
 
@@ -270,7 +270,7 @@ src/
 ├── sync/            # the reconcilers left after the engine took the canvas/sidebar
 ├── tracks/          # engine-sourced timeline-row builders + drag/extent + identity
 ├── hooks/           # scene/clock/bridge orchestration + engine-write surface actions
-├── state/           # foreign-atom accessors + frame/interaction seams + status slot
+├── state/           # foreign-atom accessors + frame/interaction seams
 ├── media/           # ExternalCanonicalMedia (non-drawing canonical overlay)
 ├── propagation/     # propagation target resolution + result application (engine-write)
 ├── overlayAdapters/ # raw label ↔ Lighter overlay-prop adapters
@@ -279,12 +279,12 @@ src/
 
 | Directory          | Key modules                                                                                                                                                                                                                                                                                                                                              | Role                                                                                   |
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `components/`      | `VideoAnnotationSurface`, `VideoLighterTile`, `ImaVidLighterTile`, `FrameLabels`, `SyntheticLabels`, `RegisterImaVidImage`, `VideoAnnotationTopBar`, `VideoAnnotationToolbar`, `PropagationStatusItem`                                                                                                                                                   | Composition root, media tiles, timeline, chrome.                                       |
+| `components/`      | `VideoAnnotationSurface`, `VideoLighterTile`, `ImaVidLighterTile`, `FrameLabels`, `SyntheticLabels`, `RegisterImaVidImage`, `VideoAnnotationToolbar`, `PropagationStatusItem`                                                                                                                                                                            | Composition root, media tiles, timeline, chrome.                                       |
 | `streams/`         | `VideoFrameLabelsStream`, `ImaVidImageStream`, `SyntheticLabelStream`, `frameLabelsStream`, `imaVidImageStreamHandle`, `createStreamHandle`, `framesData`, `fetchedRanges`, `framesWorker`                                                                                                                                                               | Server-backed streams that seed the engine + the published-handle factory + decode.    |
 | `sync/`            | `useTemporalOverlaySync`, `useSyncLighterAnnotation`, `useSyncMediaTransform`                                                                                                                                                                                                                                                                            | Engine-sourced TD chips, the draw-mode / mode-quit event bridge, media transform.      |
 | `tracks/`          | `frameTracks`, `temporalDetectionTracks`, `syntheticTracks`, `trackExtentEdit`, `trackIdentity`, `useVideoTrackDecorator`, `autoExtend`                                                                                                                                                                                                                  | Build `Track[]` rows from the engine; trim/shift/extend; row ↔ engine identity.        |
 | `hooks/`           | `useLighterTileScene`, `useVideoLighterEngineBridge`, `useSyncAnnotationVideoStore`, `useSyncAnnotationFrameClock`, `useFrameClock`, `useVideoSurfaceActions`, `useVideoAnnotationActions`, `useVideoPropagate`, `useVideoAnnotationSyncBundle`, `useWarmupThenSeek`, `useAutoInterpolate`, `useRegisterVideoAnnotationKeybindings`, `useVfcClockSource` | Scene lifecycle, engine store/bridge/clock registration, engine-write surface actions. |
-| `state/`           | `accessors`, `useCurrentFrame`, `useVideoInteraction`, `videoAnnotationStatus`                                                                                                                                                                                                                                                                           | Foreign atoms; the frame source + engine-interaction seam; the top-bar status slot.    |
+| `state/`           | `accessors`, `useCurrentFrame`, `useVideoInteraction`                                                                                                                                                                                                                                                                                                    | Foreign atoms; the frame source + engine-interaction seam.                             |
 | `media/`           | `ExternalCanonicalMedia`                                                                                                                                                                                                                                                                                                                                 | Intrinsic + letterbox bounds for media Lighter doesn't paint.                          |
 | `propagation/`     | `propagationTarget`, `useApplyPropagationResult`                                                                                                                                                                                                                                                                                                         | Resolve a propagation run; write SAM2/linear results through the engine.               |
 | `overlayAdapters/` | `detection`, `index`, `types`                                                                                                                                                                                                                                                                                                                            | Typed label ↔ overlay-prop registry (`detection` wired); `VideoDetectionLabel` type.   |

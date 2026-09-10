@@ -108,16 +108,36 @@ export const useSyncAnnotationVideoStore = (
     // `labelTypes`, but the composite store still owns the sample-level
     // (temporal-detection) labels; tearing it down then would sweep those
     // overlays too. Visibility/activation gates rendering, never the store.
-    const frames = new FrameStore(sampleId, { labelTypes });
+    // Born loading: the cache starts empty, so the first seeds are
+    // provisional — consumers (the sidebar list) treat empty-while-loading as
+    // a spinner, not "no labels". Settled by the first landed chunk or the
+    // whole-clip warmup, whichever comes first.
+    const frames = new FrameStore(sampleId, { labelTypes, loading: true });
     const sampleLevel = new SampleLabelStore(sampleId, getSample(sampleId));
     const store = new VideoLabelStore(sampleId, frames, sampleLevel);
     const unregister = engine.registerStore(store);
     sampleLevelRef.current = sampleLevel;
 
+    let torndown = false;
+    const settle = () => {
+      if (!torndown) {
+        frames.setLoading(false);
+      }
+    };
+
     const seed = () =>
       frames.setData(parseFramesData(stream.cachedFrames(), labelTypes));
-    const unsubscribe = stream.subscribeToEdits(seed);
+    const unsubscribe = stream.subscribeToEdits(() => {
+      seed();
+      settle();
+    });
     seed();
+    // A stream that is already warm (a rebuild against frames it has fetched)
+    // may never fire the subscription again, so what the cache holds settles
+    // the loading state at once; an empty cache waits for the first landing
+    if (stream.cachedFrames().length > 0) {
+      settle();
+    }
 
     // Restore edits carried from the prior FrameStore (same sample) after the
     // source seed; the working overlay is source-independent, so it wins. Each
@@ -132,11 +152,17 @@ export const useSyncAnnotationVideoStore = (
     // (propagation, interpolation, track ops). The timeline never needed it —
     // it reads the server index — and a read-only surface has no such
     // consumers at all, so it opts out. See `seedWholeClip`.
+    // Resolution settles the loading flag even when no chunk fires the edits
+    // subscription: a clip with no frame labels, or a rebuild against an
+    // already-warm stream (deactivating the last frame field changes
+    // `labelTypes` without changing the fetched set, so the stream stays
+    // mounted).
     if (seedWholeClip) {
-      void stream.warmupAll();
+      stream.warmupAll().then(settle, settle);
     }
 
     return () => {
+      torndown = true;
       // Carry unsaved edits to the next FrameStore (this same hook stays
       // mounted across a stream re-mount). Overwrites any prior carry, so a
       // different sample's edits can never leak back into this one.

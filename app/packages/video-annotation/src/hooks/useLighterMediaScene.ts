@@ -4,6 +4,8 @@
 
 import {
   UNDEFINED_LIGHTER_SCENE_ID,
+  dispatchAfterPaintSettle,
+  useLighterEventBus,
   useLighterEventHandler,
   useLighterSetupWithPixi,
 } from "@fiftyone/lighter";
@@ -113,31 +115,42 @@ function useCanonicalMediaInstall(
  * world coordinates. Bounds arrive via ResizeObserver after layout, so we gate
  * on the `bounds-changed` event rather than renderer-ready alone (which races
  * a zero-size scene).
+ *
+ * After the reset settles on-canvas, dispatches
+ * `lighter:viewport-init-complete` — the same reveal signal the image modal's
+ * `useViewport` emits — so tiles can stay hidden until overlays are painted at
+ * their final transform.
  */
-function useViewportReset(scene: LighterScene, sceneId: string): void {
-  const [rendererReady, setRendererReady] = useState(false);
-  const [mediaBoundsReady, setMediaBoundsReady] = useState(false);
+export function useViewportReset(scene: LighterScene, sceneId: string): void {
+  // Readiness is recorded per scene id: a re-minted scene starts over, so a
+  // signal the previous scene raised can never open the new one early
+  const [rendererReadyFor, setRendererReadyFor] = useState<string | null>(null);
+  const [mediaBoundsReadyFor, setMediaBoundsReadyFor] = useState<string | null>(
+    null,
+  );
   const useEventHandler = useLighterEventHandler(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
   );
-
-  useEffect(() => {
-    setMediaBoundsReady(false);
-  }, [sceneId]);
+  const eventBus = useLighterEventBus(
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
+  );
 
   useEventHandler(
     "lighter:renderer-ready",
-    useCallback(() => setRendererReady(true), []),
-    { once: true },
+    useCallback(() => setRendererReadyFor(sceneId), [sceneId]),
   );
 
   useEventHandler(
     "lighter:canonical-media-bounds-changed",
-    useCallback(() => setMediaBoundsReady(true), []),
+    useCallback(() => setMediaBoundsReadyFor(sceneId), [sceneId]),
   );
 
   useEffect(() => {
-    if (!scene || !rendererReady || !mediaBoundsReady) {
+    if (
+      !scene ||
+      rendererReadyFor !== sceneId ||
+      mediaBoundsReadyFor !== sceneId
+    ) {
       return;
     }
 
@@ -146,7 +159,10 @@ function useViewportReset(scene: LighterScene, sceneId: string): void {
     }
 
     scene.resetZoomPan();
-  }, [scene, sceneId, rendererReady, mediaBoundsReady]);
+    dispatchAfterPaintSettle(scene, () =>
+      eventBus.dispatch("lighter:viewport-init-complete", {}),
+    );
+  }, [scene, sceneId, rendererReadyFor, mediaBoundsReadyFor, eventBus]);
 }
 
 /**
@@ -160,7 +176,7 @@ function useViewportReset(scene: LighterScene, sceneId: string): void {
  * source; pass nothing for a once-per-mount scene).
  *
  * Returns the scene plus whether its canonical media is installed; feed
- * `canonicalMediaReady` into {@link useVideoAnnotationSyncBundle}.
+ * `canonicalMediaReady` into {@link useVideoAnnotationSyncBundle}..
  */
 export function useLighterMediaScene({
   hostRef,

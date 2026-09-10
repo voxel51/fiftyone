@@ -444,8 +444,9 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
     // it renders from the range it last measured, so a list that shrinks (the
     // final track deleted, a filter applied) transiently addresses rows past
     // the new end. Reading through an undefined row here took the whole tree
-    // down with it.
-    if (!track) return null;
+    // down with it. The row is on its way out, but it still has to measure:
+    // an empty item is Virtuoso's "zero-sized element" warning.
+    if (!track) return <div style={{ height: estimatedRowHeight }} />;
 
     const extra = decorationFor(track, false);
     return (

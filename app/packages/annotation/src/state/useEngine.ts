@@ -1,4 +1,4 @@
-import { useModalSample } from "@fiftyone/state";
+import { useIsImageDynamicGroupVideo, useModalSample } from "@fiftyone/state";
 import { atom, useAtomValue } from "jotai";
 import { useEffect, useMemo } from "react";
 import { AnnotationEngine } from "../engine/core/engine";
@@ -33,7 +33,9 @@ export const useAnnotationEngine = (): AnnotationEngine =>
  * A video sample is the exception: its store is the composite
  * {@link VideoLabelStore} (frame-detections + sample-level), owned and seeded by
  * the video surface from its `/frames` source. The engine federates one store
- * per sample, so this hook leaves the video sample alone.
+ * per sample, so this hook leaves the video sample alone. An image dataset
+ * dynamically grouped into a video (ImaVid) routes to the same video surface,
+ * so it is skipped here too despite its `image` media type.
  *
  * Mount once at the annotation root, after the sample-sync hooks (their effects
  * fill each Sample first, so a store never indexes the previous sample's data).
@@ -53,15 +55,17 @@ export const useSyncAnnotationEngine = (): void => {
   const isVideo =
     ((modalSample?.sample?.media_type as unknown as string) ??
       modalSample?.sample?._media_type) === "video";
+  const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
 
   // the modal's distinct sample documents — a grouped 2D + 3D modal renders
   // two at once (the selected slice and the pinned 3D scene, already guaranteed
   // distinct by useThreeDSceneSampleId); every other case collapses to one.
-  // A video selected slice is skipped — the video surface registers it.
+  // A video (or image-backed dynamic-group video) selected slice is skipped —
+  // the video surface registers it.
   const sampleIds = useMemo(() => {
     const ids: string[] = [];
 
-    if (modalId && !isVideo) {
+    if (modalId && !isVideo && !isImageDynamicGroupVideo) {
       ids.push(modalId);
     }
 
@@ -70,7 +74,7 @@ export const useSyncAnnotationEngine = (): void => {
     }
 
     return ids;
-  }, [modalId, sceneId, isVideo]);
+  }, [modalId, sceneId, isVideo, isImageDynamicGroupVideo]);
 
   useEffect(() => {
     if (sampleIds.length === 0) {

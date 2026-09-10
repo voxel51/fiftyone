@@ -66,6 +66,24 @@ describe("FrameStore identity + resolution", () => {
     expect(store.getLabel(ref("doc-1", 1))).toBeUndefined();
   });
 
+  it("resolves a frameless ref by instance across frames", () => {
+    const store = makeStore(
+      frames({
+        1: { [PATH]: [det("doc-1", "A", [0, 0, 1, 1])] },
+        3: { [PATH]: [det("doc-2", "B", [0, 0, 3, 3])] },
+      }),
+    );
+
+    // The surface's selection refs carry no frame; the interaction GC's
+    // liveness check must still resolve them or any sample-level reset
+    // deselects every frame label
+    const frameless = { sample: SAMPLE, path: PATH, instanceId: "B" };
+    expect(store.getLabel(frameless)?.bounding_box).toEqual([0, 0, 3, 3]);
+    expect(
+      store.getLabel({ sample: SAMPLE, path: PATH, instanceId: "nope" }),
+    ).toBeUndefined();
+  });
+
   it("lists by frame and enumerates the pool as frame-stamped refs", () => {
     const store = makeStore(
       frames({

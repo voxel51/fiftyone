@@ -192,6 +192,18 @@ interface DatasetOptions {
   labelSchemas?: { [field: string]: JSONObject };
 
   /**
+   * Keys of text-promptable similarity indexes to compute on the dataset.
+   *
+   * Each is a REAL sklearn similarity index over deterministic random
+   * embeddings — no model is loaded and nothing downloads, so this is
+   * instant. The recorded model name marks the index prompt-capable, which
+   * lights up every promptable-index UI affordance. Searching by a SAMPLE ID
+   * string executes for real against the stored embeddings; only free-text
+   * prompts would need the actual model, so specs query by id.
+   */
+  promptableIndexes?: string[];
+
+  /**
    * A factory function that populates a sample with data.
    * Receives an empty `SampleScaffold` and should return a `JSONObject`
    * representing the fully populated sample.
@@ -249,6 +261,7 @@ const createDataset = (() => {
     labelSchemas = {},
     numSamples = 1,
     numbered = false,
+    promptableIndexes = [],
     savedViews = {},
     schema = {},
     withSampleData = () => ({}),
@@ -371,7 +384,29 @@ const createDataset = (() => {
       .map(([name, view]) => {
         return `dataset.save_view("${name}", ${view})`;
       })
-      .join("\n")}
+      .join("\n    ")}
+
+    ${
+      promptableIndexes.length
+        ? `import numpy as np
+    import fiftyone.brain as fob
+
+    for _key in json.loads('${JSON.stringify(promptableIndexes)}'):
+        fob.compute_similarity(
+            dataset,
+            embeddings=np.random.RandomState(51).rand(${numSamples}, 8),
+            brain_key=_key,
+            backend="sklearn",
+        )
+        # Promptability is flipped on the saved run doc: naming a model
+        # would make compute_similarity load it, and the quick-search UI
+        # reads only this flag. Text prompts still cannot execute — specs
+        # query by sample id, which ranks by the stored embeddings.
+        _run_doc = dataset._doc.brain_methods[_key]
+        _run_doc.config["supports_prompts"] = True
+        _run_doc.save()`
+        : ""
+    }
     `);
   };
 })();

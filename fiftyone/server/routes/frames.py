@@ -7,6 +7,7 @@ FiftyOne Server /frames route
 """
 
 from starlette.endpoints import HTTPEndpoint
+from starlette.exceptions import HTTPException
 from starlette.responses import JSONResponse
 from starlette.requests import Request
 
@@ -26,6 +27,12 @@ class Frames(HTTPEndpoint):
         start_frame = int(data.get("frameNumber", 1))
         frame_count = int(data.get("frameCount", 1))
         num_frames = int(data.get("numFrames"))
+        # Frames are 1-indexed; a lower start would reach the driver as a
+        # negative skip and surface as a 500
+        if start_frame < 1:
+            raise HTTPException(
+                status_code=400, detail="frameNumber must be at least 1"
+            )
         extended = data.get("extended", None)
         dataset = data.get("dataset")
         stages = data.get("view")
@@ -34,11 +41,15 @@ class Frames(HTTPEndpoint):
         # (e.g. the ImaVid image stream wants just `filepath`) pass them here to
         # avoid shipping the whole frame document.
         fields = data.get("fields")
+        # When set, the clip's "frames" are the ordered samples of this dynamic
+        # group rather than a video sample's `frames` field. This is the ImaVid
+        # case for an image dataset dynamically grouped into a video, which has
+        # no `frames` field to unwind.
+        dynamic_group = data.get("dynamicGroup")
 
-        view = await fosv.get_view(
-            dataset, stages=stages, extended_stages=extended, awaitable=True
-        )
-        end_frame = min(num_frames + start_frame, frame_count)
+        # `end_frame` is served inclusively, so the window's last frame is
+        # `start_frame + num_frames - 1` (clamped to the clip)
+        end_frame = min(start_frame + num_frames - 1, frame_count)
         if end_frame < start_frame:
             # an empty range would produce a to_list() length < 1, which
             # pymongo rejects
@@ -46,6 +57,20 @@ class Frames(HTTPEndpoint):
                 {"frames": [], "range": [start_frame, end_frame]}
             )
 
+        if dynamic_group is not None:
+            return await self._post_dynamic_group(
+                dataset=dataset,
+                stages=stages,
+                extended=extended,
+                dynamic_group=dynamic_group,
+                start_frame=start_frame,
+                end_frame=end_frame,
+                fields=fields,
+            )
+
+        view = await fosv.get_view(
+            dataset, stages=stages, extended_stages=extended, awaitable=True
+        )
         support = None if stages else [start_frame, end_frame]
 
         def run(view):
@@ -85,6 +110,61 @@ class Frames(HTTPEndpoint):
         return JSONResponse(
             {
                 "frames": foj.stringify(frames),
+                "range": [start_frame, end_frame],
+            }
+        )
+
+    async def _post_dynamic_group(
+        self,
+        dataset,
+        stages,
+        extended,
+        dynamic_group,
+        start_frame,
+        end_frame,
+        fields,
+    ):
+        """Serves a window of a dynamic group's ordered samples as "frames".
+
+        For an image dataset dynamically grouped into a video (ImaVid), the
+        clip has no `frames` field — each "frame" is a sample of the dynamic
+        group. ``get_view(dynamic_group=...)`` selects that group's ordered
+        samples; we window and project them like the video path does.
+
+        The documents are served as stored. The i-th document is frame
+        ``range[0] + i``; the client derives that from ``range`` rather than
+        the server writing an artificial frame number into a real sample.
+        """
+        view = await fosv.get_view(
+            dataset,
+            stages=stages,
+            extended_stages=extended,
+            dynamic_group=dynamic_group,
+            awaitable=True,
+        )
+
+        count = end_frame - start_frame + 1
+
+        def run(view):
+            # 1-indexed frames → 0-indexed skip; window to the request.
+            return view.skip(start_frame - 1).limit(count)
+
+        view = await run_sync_task(run, view)
+
+        post_pipeline = None
+        if fields:
+            projection = {field: True for field in fields}
+            post_pipeline = [{"$project": projection}]
+
+        cursor = await foo.aggregate(
+            foo.get_async_db_conn()[view._dataset._sample_collection_name],
+            view._pipeline(post_pipeline=post_pipeline),
+        )
+        samples = await cursor.to_list(count)
+
+        return JSONResponse(
+            {
+                "frames": foj.stringify(samples),
                 "range": [start_frame, end_frame],
             }
         )

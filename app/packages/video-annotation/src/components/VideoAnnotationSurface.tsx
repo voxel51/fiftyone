@@ -1,4 +1,8 @@
-import { getSampleSrc, useDimensions } from "@fiftyone/state";
+import {
+  getSampleSrc,
+  useDimensions,
+  useIsImageDynamicGroupVideo,
+} from "@fiftyone/state";
 import type { ModalSample } from "@fiftyone/state";
 import React, { useMemo, useState } from "react";
 import { useAutoInterpolate } from "../hooks/useAutoInterpolate";
@@ -6,6 +10,7 @@ import { useEndPointSessionOnFrameChange } from "../hooks/useEndPointSessionOnFr
 import { useRegisterVideoAnnotationKeybindings } from "../hooks/useRegisterVideoAnnotationKeybindings";
 import { useRegisterVideoSegmentBitmap } from "../hooks/useRegisterVideoSegmentBitmap";
 import { useSyncAnnotationFrameClock } from "../hooks/useSyncAnnotationFrameClock";
+import { useDynamicGroupPersistence } from "../hooks/useDynamicGroupPersistence";
 import { useSyncAnnotationVideoStore } from "../hooks/useSyncAnnotationVideoStore";
 import { useVideoLighterEngineBridge } from "../hooks/useVideoLighterEngineBridge";
 import { useFollowAnchorFrame } from "../state/useVideoInteraction";
@@ -27,7 +32,6 @@ import {
   SyntheticTrackTimeline,
 } from "./SyntheticLabels";
 import { VideoAnnotationToolbar } from "./VideoAnnotationToolbar";
-import { VideoAnnotationTopBar } from "./VideoAnnotationTopBar";
 import { LighterVideo } from "./LighterVideo";
 import styles from "./VideoAnnotationSurface.module.css";
 
@@ -152,7 +156,15 @@ const VideoAnnotationSurfaceForSample: React.FC<
   VideoAnnotationSurfaceProps
 > = ({ sample }) => {
   const labelsMode = useLabelsMode();
+  const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
   const prerequisites = useAnnotatePrerequisites(sample);
+
+  // ImaVid write path: frame edits fan out to the group's member samples
+  // under one group version token. Inert for native video.
+  useDynamicGroupPersistence({
+    enabled: isImageDynamicGroupVideo,
+    frameCount: prerequisites.frameCount,
+  });
 
   // Measure the surface so the timeline body caps at a fraction of it: past the
   // cap the drawer scrolls internally instead of growing into the media area.
@@ -162,11 +174,16 @@ const VideoAnnotationSurfaceForSample: React.FC<
 
   // Resolved top-level media URL. The `html` tile binds to it and the `extract`
   // source decodes it in a worker; the `fetch` source resolves per-frame URLs
-  // instead and ignores it.
+  // instead and ignores it. A dynamic-group ImaVid sample's URL is an image,
+  // not a video source — never expose it as one.
   const videoSrc = useMemo(() => {
+    if (isImageDynamicGroupVideo) {
+      return null;
+    }
+
     const url = sample.urls?.[0]?.url;
     return url ? getSampleSrc(url) : null;
-  }, [sample]);
+  }, [sample, isImageDynamicGroupVideo]);
 
   // Sequence mode gives the readout a frame domain to switch into.
   const mode = useMemo<TimelineMode>(
@@ -180,6 +197,7 @@ const VideoAnnotationSurfaceForSample: React.FC<
     videoSrc,
     frameCount: prerequisites.frameCount,
     enabled: prerequisites.status === "ready",
+    force: isImageDynamicGroupVideo ? "fetch" : undefined,
   });
 
   // Metadata gate: without a frame count no strategy can mount, so show an
@@ -190,7 +208,6 @@ const VideoAnnotationSurfaceForSample: React.FC<
         ref={dimensions.ref as React.RefObject<HTMLDivElement>}
         className={styles.root}
       >
-        <VideoAnnotationTopBar sample={sample} />
         <div className={styles.media}>
           <AnnotatePrerequisiteNotice blocker={prerequisites.blocker} />
         </div>
@@ -206,7 +223,6 @@ const VideoAnnotationSurfaceForSample: React.FC<
         ref={dimensions.ref as React.RefObject<HTMLDivElement>}
         className={styles.root}
       >
-        <VideoAnnotationTopBar sample={sample} />
         <div className={styles.media}>
           <AnnotatePrerequisiteChecking />
         </div>
@@ -222,8 +238,8 @@ const VideoAnnotationSurfaceForSample: React.FC<
     <div
       ref={dimensions.ref as React.RefObject<HTMLDivElement>}
       className={styles.root}
+      data-cy="video-annotation-surface"
     >
-      <VideoAnnotationTopBar sample={sample} />
       <div className={styles.media}>
         <Tile videoSrc={videoSrc} hasAudio={resolution.hasAudio} />
       </div>

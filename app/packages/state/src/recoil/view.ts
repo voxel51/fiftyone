@@ -1,5 +1,8 @@
 import {
   datasetFragment,
+  expressionCatalogFragment,
+  expressionCatalogFragment$data,
+  expressionCatalogFragment$key,
   graphQLSyncFragmentAtom,
   stageDefinitionsFragment,
   stageDefinitionsFragment$data,
@@ -22,6 +25,23 @@ export const stageDefinitions = graphQLSyncFragmentAtom<
     default: [],
   },
   { key: "stageDefinitions" },
+);
+
+/**
+ * The server's description of view expressions: every operator with its
+ * kinds and docstring summary, the kind of value each field type holds, and
+ * the AST version both sides must agree on to exchange an envelope.
+ */
+export const expressionCatalog = graphQLSyncFragmentAtom<
+  expressionCatalogFragment$key,
+  expressionCatalogFragment$data | null
+>(
+  {
+    fragments: [expressionCatalogFragment],
+    read: (data) => data,
+    default: null,
+  },
+  { key: "expressionCatalog" },
 );
 
 export const view = graphQLSyncFragmentAtom<viewFragment$key, State.Stage[]>(
@@ -296,4 +316,14 @@ export const generatedDatasetName = selector<string | undefined>({
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
+});
+
+/**
+ * A view change in flight outside the router's knowledge — a server-side
+ * operator that applies a view when it finishes. Read through
+ * `useViewChangePending`; the router clears it when the next entry loads.
+ */
+export const viewChangePending = atom<boolean>({
+  key: "viewChangePending",
+  default: false,
 });

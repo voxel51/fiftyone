@@ -55,5 +55,7 @@ test("Built-in operators: set view", async ({ viewBar, operatorsBrowser }) => {
   await operatorsBrowser.show();
   await operatorsBrowser.search("E2E");
   await operatorsBrowser.choose("E2E: Set view");
+  // The applied view lands as the collapsed summary chip
+  await viewBar.expand();
   await viewBar.assert.hasViewStage("Limit3");
 });

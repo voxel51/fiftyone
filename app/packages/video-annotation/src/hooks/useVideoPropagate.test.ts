@@ -45,6 +45,7 @@ const RIGHT = { ...LEFT, _id: "right" };
 
 vi.mock("@fiftyone/annotation", () => ({
   AgentTaskType: { PROPAGATE: "propagate" },
+  useModalStatusBar: () => ({ setContent: vi.fn() }),
   useActiveSampleId: () => "sample-1",
   useSampleDescriptor: () => ({ id: "sample-1" }),
   useAgentRegistry: () => ({
@@ -76,10 +77,6 @@ vi.mock("../streams/imaVidImageStreamHandle", () => ({
 vi.mock("../propagation/useApplyPropagationResult", () => ({
   useApplyPropagationResult: () => applyPropagation,
   useApplyPropagatedDetection: () => vi.fn(),
-}));
-
-vi.mock("../state/videoAnnotationStatus", () => ({
-  useVideoAnnotationStatus: () => ({ begin: vi.fn(), end: vi.fn() }),
 }));
 
 vi.mock("../components/PropagationStatusItem", () => ({

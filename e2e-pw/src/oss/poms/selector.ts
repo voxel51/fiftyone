@@ -17,7 +17,11 @@ export class SelectorPom {
     this.resultsContainer = this.parent.getByTestId(
       `selector-results-container-${this.title}`,
     );
-    this.results = this.resultsContainer.locator("> div");
+    // Rows are divs in the legacy selector and option buttons in a voodo
+    // Combobox (the dataset picker)
+    this.results = this.resultsContainer.locator(
+      ":scope > div, :scope > [role='option']",
+    );
   }
 
   async selectResult(value: string) {

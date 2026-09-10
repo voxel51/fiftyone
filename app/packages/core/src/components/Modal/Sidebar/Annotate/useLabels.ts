@@ -1,6 +1,7 @@
 import {
   useActiveAnnotationSampleId,
   useAnnotationEngine,
+  useSampleSelector,
 } from "@fiftyone/annotation";
 import {
   UNDEFINED_LIGHTER_SCENE_ID,
@@ -23,18 +24,26 @@ import { useSetEntranceLabel } from "./useAnnotationContextManager";
 
 /**
  * The sidebar label list is ready to render once label schemas have been
- * fetched (`activeLabelSchemas` is non-null) AND there is an active annotation
- * sample to read from. This is the engine-readiness signal that replaces the
- * old `labelsState` loading gate: the list reads the engine directly, so its
- * gate keys on the engine's preconditions, not on a mirror-load lifecycle.
+ * fetched (`activeLabelSchemas` is non-null) AND the active annotation
+ * sample's source data has hydrated. This is the engine-readiness signal that
+ * replaces the old `labelsState` loading gate: the list reads the engine
+ * directly, so its gate keys on the engine's preconditions, not on a
+ * mirror-load lifecycle.
  *
  * Schemas arrive asynchronously via `get_label_schemas`; requiring non-null
- * schemas keeps the gate from opening on a transient zero-result state.
+ * schemas keeps the gate from opening on a transient zero-result state. The
+ * hydration check exists because a sample-id change hands out a fresh empty
+ * {@link Sample} whose data lands in a later effect — until its data carries
+ * the active id, empty present reads mean "loading", not "no labels".
  */
 export const useAnnotationLabelsReady = (): boolean => {
   const schemasLoaded = useAtomValue(activeLabelSchemas) !== null;
   const sampleId = useActiveAnnotationSampleId();
-  return schemasLoaded && Boolean(sampleId);
+  const hydrated = useSampleSelector(
+    (s) => (s.getData() as { _id?: string })._id === sampleId,
+    sampleId,
+  );
+  return schemasLoaded && Boolean(sampleId) && hydrated;
 };
 
 export const addLabel = atom(

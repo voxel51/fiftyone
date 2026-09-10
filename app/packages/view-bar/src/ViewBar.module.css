@@ -1,0 +1,84 @@
+/* The bar: one framed region of one or two rows. The search row is always
+   there; the stages row opens under it, in the flow, so the page below moves
+   down rather than being covered. */
+.bar {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+}
+
+/* The gutter: the search row's canvas. It sits in the header, which is on the
+   shell's palette, so it keeps the shell's surface and border; the tokens
+   come when the shell moves as a whole. */
+.gutter {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  box-sizing: border-box;
+  background: var(--fo-palette-background-level1);
+  border: 1px solid var(--fo-palette-primary-plainBorder);
+  border-radius: 4px;
+}
+
+/* With the stages row under it the gutter is the frame's top half: the row
+   brings the divider and the bottom edge */
+.gutter.open {
+  border-bottom-width: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.clearSlot {
+  flex-shrink: 0;
+  height: 100%;
+  padding: 0 6px;
+}
+
+.stagesToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
+  height: 100%;
+  padding: 0 10px;
+  /* Inside the gutter, so it divides with the gutter's own border color */
+  border-left: 1px solid var(--fo-palette-primary-plainBorder);
+}
+
+.stagesCount {
+  line-height: 1;
+}
+
+/* The stages row: the frame's bottom half, on the gutter's surface, with the
+   divider above it and the frame's bottom edge */
+.stagesRow {
+  min-width: 0;
+  box-sizing: border-box;
+  background: var(--fo-palette-background-level1);
+  border: 1px solid var(--fo-palette-primary-plainBorder);
+  border-radius: 0 0 4px 4px;
+}
+
+/* Scrolls sideways for long stage chains. The breathing room lives inside the
+   scroller, so it scrolls away with the content. */
+.scroller {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 var(--spacing-xs);
+  overflow-x: auto;
+  overflow-y: hidden;
+  /* Hides the gutter's scrollbar in every engine — `scrollbar-width` covers
+     Firefox and recent Chrome, the pseudo-element covers the rest. A 40px row
+     has no room to give a scrollbar, and stages clipping at the border is the
+     affordance instead. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scroller::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}

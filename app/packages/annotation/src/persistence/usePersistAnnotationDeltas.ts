@@ -137,7 +137,11 @@ export const usePersistAnnotationDeltas =
 
       let success = true;
       for (const entry of patches) {
-        const patch = entry.sample === sceneId ? patch3d : patchSelected;
+        // a store with its own transport (e.g. a dynamic group played as
+        // video, whose patch fans out to member samples) owns the write
+        const patch =
+          engine.getPersistenceAdapter(entry.sample) ??
+          (entry.sample === sceneId ? patch3d : patchSelected);
 
         const ok = await patch(entry.deltas, {
           attributionSampleId: anchorSampleId,

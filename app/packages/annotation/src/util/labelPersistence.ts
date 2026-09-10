@@ -8,6 +8,7 @@ import type { Sample } from "@fiftyone/looker";
 import { NotFoundError } from "@fiftyone/utilities";
 import { isSampleIsh } from "@fiftyone/looker/src/util";
 import type { OpType } from "../types";
+import { recordSampleVersionToken } from "./getSampleVersionToken";
 
 export type DoPatchSampleArgs = {
   sample: Sample | null;
@@ -99,7 +100,16 @@ export const doPatchSample = async ({
   const versionToken = getVersionToken();
 
   if (!datasetId || !sample?._id || !versionToken) {
-    return false;
+    // a sample without `last_modified_at` mints no token — name the failed
+    // precondition instead of silently reporting "rejected"
+    throw new Error(
+      "cannot patch sample: missing write precondition " +
+        JSON.stringify({
+          hasDatasetId: !!datasetId,
+          sampleId: sample?._id ?? null,
+          hasVersionToken: !!versionToken,
+        }),
+    );
   }
 
   let caughtErr: Error;
@@ -146,6 +156,7 @@ export const doPatchSample = async ({
       if (updatedSample) {
         // transform response data to match the graphql sample format
         const cleanedSample = transformSampleData(updatedSample);
+        recordSampleVersionToken(cleanedSample);
         postSample = cleanedSample;
         if (isSampleIsh(cleanedSample)) {
           refreshSample(cleanedSample as Sample);
@@ -173,7 +184,7 @@ export const doPatchSample = async ({
 
       console.error("error patching sample", error);
 
-      return false;
+      throw error;
     }
   }
 

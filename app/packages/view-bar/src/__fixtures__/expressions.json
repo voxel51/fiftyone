@@ -1,0 +1,636 @@
+[
+    {
+        "name": "comparison",
+        "python": "F('confidence') > 0.5",
+        "ast": {
+            "t": "call",
+            "op": "__gt__",
+            "self": {
+                "t": "field",
+                "path": "confidence"
+            },
+            "args": [
+                {
+                    "t": "lit",
+                    "v": 0.5
+                }
+            ],
+            "kwargs": {}
+        },
+        "mongo": {
+            "$gt": ["$confidence", 0.5]
+        },
+        "reconstructible": true
+    },
+    {
+        "name": "equality",
+        "python": "F('label') == 'cat'",
+        "ast": {
+            "t": "call",
+            "op": "__eq__",
+            "self": {
+                "t": "field",
+                "path": "label"
+            },
+            "args": [
+                {
+                    "t": "lit",
+                    "v": "cat"
+                }
+            ],
+            "kwargs": {}
+        },
+        "mongo": {
+            "$eq": ["$label", "cat"]
+        },
+        "reconstructible": true
+    },
+    {
+        "name": "conjunction",
+        "python": "(F('confidence') > 0.5) & F('label').is_in(['a', 'b'])",
+        "ast": {
+            "t": "call",
+            "op": "__and__",
+            "self": {
+                "t": "call",
+                "op": "__gt__",
+                "self": {
+                    "t": "field",
+                    "path": "confidence"
+                },
+                "args": [
+                    {
+                        "t": "lit",
+                        "v": 0.5
+                    }
+                ],
+                "kwargs": {}
+            },
+            "args": [
+                {
+                    "t": "call",
+                    "op": "is_in",
+                    "self": {
+                        "t": "field",
+                        "path": "label"
+                    },
+                    "args": [
+                        {
+                            "t": "list",
+                            "items": [
+                                {
+                                    "t": "lit",
+                                    "v": "a"
+                                },
+                                {
+                                    "t": "lit",
+                                    "v": "b"
+                                }
+                            ]
+                        }
+                    ],
+                    "kwargs": {}
+                }
+            ],
+            "kwargs": {}
+        },
+        "mongo": {
+            "$and": [
+                {
+                    "$gt": ["$confidence", 0.5]
+                },
+                {
+                    "$in": ["$label", ["a", "b"]]
+                }
+            ]
+        },
+        "reconstructible": true
+    },
+    {
+        "name": "disjunction",
+        "python": "(F('a') > 1) | (F('b') < 2)",
+        "ast": {
+            "t": "call",
+            "op": "__or__",
+            "self": {
+                "t": "call",
+                "op": "__gt__",
+                "self": {
+                    "t": "field",
+                    "path": "a"
+                },
+                "args": [
+                    {
+                        "t": "lit",
+                        "v": 1
+                    }
+                ],
+                "kwargs": {}
+            },
+            "args": [
+                {
+                    "t": "call",
+                    "op": "__lt__",
+                    "self": {
+                        "t": "field",
+                        "path": "b"
+                    },
+                    "args": [
+                        {
+                            "t": "lit",
+                            "v": 2
+                        }
+                    ],
+                    "kwargs": {}
+                }
+            ],
+            "kwargs": {}
+        },
+        "mongo": {
+            "$or": [
+                {
+                    "$gt": ["$a", 1]
+                },
+                {
+                    "$lt": ["$b", 2]
+                }
+            ]
+        },
+        "reconstructible": true
+    },
+    {
+        "name": "negation",
+        "python": "~(F('x') > 1)",
+        "ast": {
+            "t": "call",
+            "op": "__invert__",
+            "self": {
+                "t": "call",
+                "op": "__gt__",
+                "self": {
+                    "t": "field",
+                    "path": "x"
+                },
+                "args": [
+                    {
+                        "t": "lit",
+                        "v": 1
+                    }
+                ],
+                "kwargs": {}
+            },
+            "args": [],
+            "kwargs": {}
+        },
+        "mongo": {
+            "$not": {
+                "$gt": ["$x", 1]
+            }
+        },
+        "reconstructible": true
+    },
+    {
+        "name": "arithmetic",
+        "python": "(F('a') + F('b')) * 2",
+        "ast": {
+            "t": "call",
+            "op": "__mul__",
+            "self": {
+                "t": "call",
+                "op": "__add__",
+                "self": {
+                    "t": "field",
+                    "path": "a"
+                },
+                "args": [
+                    {
+                        "t": "field",
+                        "path": "b"
+                    }
+                ],
+                "kwargs": {}
+            },
+            "args": [
+                {
+                    "t": "lit",
+                    "v": 2
+                }
+            ],
+            "kwargs": {}
+        },
+        "mongo": {
+            "$multiply": [
+                {
+                    "$add": ["$a", "$b"]
+                },
+                2
+            ]
+        },
+        "reconstructible": true
+    },
+    {
+        "name": "reflected",
+        "python": "2 - F('a')",
+        "ast": {
+            "t": "call",
+            "op": "__rsub__",
+            "self": {
+                "t": "field",
+                "path": "a"
+            },
+            "args": [
+                {
+                    "t": "lit",
+                    "v": 2
+                }
+            ],
+            "kwargs": {}
+        },
+        "mongo": {
+            "$subtract": [2, "$a"]
+        },
+        "reconstructible": true
+    },
+    {
+        "name": "length_idiom",
+        "python": "F('preds.detections').length() > 2",
+        "ast": {
+            "t": "call",
+            "op": "__gt__",
+            "self": {
+                "t": "call",
+                "op": "length",
+                "self": {
+                    "t": "field",
+                    "path": "preds.detections"
+                },
+                "args": [],
+                "kwargs": {}
+            },
+            "args": [
+                {
+                    "t": "lit",
+                    "v": 2
+                }
+            ],
+            "kwargs": {}
+        },
+        "mongo": {
+            "$gt": [
+                {
+                    "$size": {
+                        "$ifNull": ["$preds.detections", []]
+                    }
+                },
+                2
+            ]
+        },
+        "reconstructible": true
+    },
+    {
+        "name": "filter_then_length",
+        "python": "F('preds.detections').filter(F('confidence') > 0.9).length()",
+        "ast": {
+            "t": "call",
+            "op": "length",
+            "self": {
+                "t": "call",
+                "op": "filter",
+                "self": {
+                    "t": "field",
+                    "path": "preds.detections"
+                },
+                "args": [
+                    {
+                        "t": "call",
+                        "op": "__gt__",
+                        "self": {
+                            "t": "field",
+                            "path": "confidence"
+                        },
+                        "args": [
+                            {
+                                "t": "lit",
+                                "v": 0.9
+                            }
+                        ],
+                        "kwargs": {}
+                    }
+                ],
+                "kwargs": {}
+            },
+            "args": [],
+            "kwargs": {}
+        },
+        "mongo": {
+            "$size": {
+                "$ifNull": [
+                    {
+                        "$filter": {
+                            "input": "$preds.detections",
+                            "as": "this",
+                            "cond": {
+                                "$gt": ["$$this.confidence", 0.9]
+                            }
+                        }
+                    },
+                    []
+                ]
+            }
+        },
+        "reconstructible": true
+    },
+    {
+        "name": "exists",
+        "python": "F('x').exists()",
+        "ast": {
+            "t": "call",
+            "op": "exists",
+            "self": {
+                "t": "field",
+                "path": "x"
+            },
+            "args": [],
+            "kwargs": {}
+        },
+        "mongo": {
+            "$gt": ["$x", null]
+        },
+        "reconstructible": true
+    },
+    {
+        "name": "string_chain",
+        "python": "F('tag').lower().starts_with('a')",
+        "ast": {
+            "t": "call",
+            "op": "starts_with",
+            "self": {
+                "t": "call",
+                "op": "lower",
+                "self": {
+                    "t": "field",
+                    "path": "tag"
+                },
+                "args": [],
+                "kwargs": {}
+            },
+            "args": [
+                {
+                    "t": "lit",
+                    "v": "a"
+                }
+            ],
+            "kwargs": {}
+        },
+        "mongo": {
+            "$regexMatch": {
+                "input": {
+                    "$toLower": "$tag"
+                },
+                "regex": "^a",
+                "options": null
+            }
+        },
+        "reconstructible": true
+    },
+    {
+        "name": "index_then_call",
+        "python": "F('preds.detections')[0]('label')",
+        "ast": {
+            "t": "call",
+            "op": "__call__",
+            "self": {
+                "t": "call",
+                "op": "__getitem__",
+                "self": {
+                    "t": "field",
+                    "path": "preds.detections"
+                },
+                "args": [
+                    {
+                        "t": "lit",
+                        "v": 0
+                    }
+                ],
+                "kwargs": {}
+            },
+            "args": [
+                {
+                    "t": "lit",
+                    "v": "label"
+                }
+            ],
+            "kwargs": {}
+        },
+        "mongo": {
+            "$let": {
+                "vars": {
+                    "expr": {
+                        "$arrayElemAt": ["$preds.detections", 0]
+                    }
+                },
+                "in": "$$expr.label"
+            }
+        },
+        "reconstructible": true
+    },
+    {
+        "name": "static_any",
+        "python": "E.any([F('a') > 1, F('b') > 2])",
+        "ast": {
+            "t": "static",
+            "op": "any",
+            "args": [
+                {
+                    "t": "list",
+                    "items": [
+                        {
+                            "t": "call",
+                            "op": "__gt__",
+                            "self": {
+                                "t": "field",
+                                "path": "a"
+                            },
+                            "args": [
+                                {
+                                    "t": "lit",
+                                    "v": 1
+                                }
+                            ],
+                            "kwargs": {}
+                        },
+                        {
+                            "t": "call",
+                            "op": "__gt__",
+                            "self": {
+                                "t": "field",
+                                "path": "b"
+                            },
+                            "args": [
+                                {
+                                    "t": "lit",
+                                    "v": 2
+                                }
+                            ],
+                            "kwargs": {}
+                        }
+                    ]
+                }
+            ],
+            "kwargs": {}
+        },
+        "mongo": {
+            "$or": [
+                {
+                    "$gt": ["$a", 1]
+                },
+                {
+                    "$gt": ["$b", 2]
+                }
+            ]
+        },
+        "reconstructible": true
+    },
+    {
+        "name": "static_all",
+        "python": "E.all([F('a') > 1, F('b') > 2])",
+        "ast": {
+            "t": "static",
+            "op": "all",
+            "args": [
+                {
+                    "t": "list",
+                    "items": [
+                        {
+                            "t": "call",
+                            "op": "__gt__",
+                            "self": {
+                                "t": "field",
+                                "path": "a"
+                            },
+                            "args": [
+                                {
+                                    "t": "lit",
+                                    "v": 1
+                                }
+                            ],
+                            "kwargs": {}
+                        },
+                        {
+                            "t": "call",
+                            "op": "__gt__",
+                            "self": {
+                                "t": "field",
+                                "path": "b"
+                            },
+                            "args": [
+                                {
+                                    "t": "lit",
+                                    "v": 2
+                                }
+                            ],
+                            "kwargs": {}
+                        }
+                    ]
+                }
+            ],
+            "kwargs": {}
+        },
+        "mongo": {
+            "$and": [
+                {
+                    "$gt": ["$a", 1]
+                },
+                {
+                    "$gt": ["$b", 2]
+                }
+            ]
+        },
+        "reconstructible": true
+    },
+    {
+        "name": "literal",
+        "python": "E.literal('x')",
+        "ast": {
+            "t": "static",
+            "op": "literal",
+            "args": [
+                {
+                    "t": "lit",
+                    "v": "x"
+                }
+            ],
+            "kwargs": {}
+        },
+        "mongo": {
+            "$literal": "x"
+        },
+        "reconstructible": true
+    },
+    {
+        "name": "date_compare",
+        "python": "F('created_at') > datetime.utcfromtimestamp(1577836800000.0 / 1000)",
+        "ast": {
+            "t": "call",
+            "op": "__gt__",
+            "self": {
+                "t": "field",
+                "path": "created_at"
+            },
+            "args": [
+                {
+                    "t": "lit",
+                    "v": 1577836800000.0,
+                    "as": "date"
+                }
+            ],
+            "kwargs": {}
+        },
+        "mongo": {
+            "$gt": [
+                "$created_at",
+                {
+                    "$toDate": 1577836800000.0
+                }
+            ]
+        },
+        "reconstructible": true
+    },
+    {
+        "name": "frozen_field",
+        "python": "F('$x') > 1",
+        "ast": {
+            "t": "call",
+            "op": "__gt__",
+            "self": {
+                "t": "field",
+                "path": "$x"
+            },
+            "args": [
+                {
+                    "t": "lit",
+                    "v": 1
+                }
+            ],
+            "kwargs": {}
+        },
+        "mongo": {
+            "$gt": ["$x", 1]
+        },
+        "reconstructible": true
+    },
+    {
+        "name": "raw_mongo",
+        "python": "E({'$gt': ['$x', 1]})",
+        "ast": {
+            "t": "mongo",
+            "expr": {
+                "$gt": ["$x", 1]
+            }
+        },
+        "mongo": {
+            "$gt": ["$x", 1]
+        },
+        "reconstructible": false
+    }
+]

@@ -1,0 +1,35 @@
+/* The root paints the annotate-area background once — the canvas is
+   transparent, and this token must match the video surface's root so the
+   two modes look the same. */
+.root {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  background: var(--color-content-bg-card-1);
+}
+
+/* Positioned wrapper for the media region so the loading cover can overlay
+   it. overflow: hidden clips the shared canvas — pixi stamps inline px
+   dimensions on it (autoDensity), so it can arrive oversized from its
+   previous host and paint over the top bar (mirrors TileBody). */
+.content {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Opaque loading cover until the scene's initial viewport settles —
+   progressive loading (image decode, overlay hydration) happens underneath,
+   invisibly. Mirrors the video surface's cover. */
+.cover {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: var(--color-content-bg-card-1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
