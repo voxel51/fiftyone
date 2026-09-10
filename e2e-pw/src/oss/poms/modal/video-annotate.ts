@@ -361,6 +361,8 @@ export class VideoAnnotatePom {
    * @param vertices Container-relative [0, 1] points, one per vertex.
    */
   async drawPolyline(vertices: Array<[number, number]>) {
+    await this.modal.sampleCanvas.waitForDrawingCursor();
+
     for (const [x, y] of vertices) {
       await this.modal.sampleCanvas.click(x, y);
     }
