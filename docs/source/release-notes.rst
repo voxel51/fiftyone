@@ -13,6 +13,10 @@ Includes all updates from :ref:`FiftyOne 1.22.0 <release-notes-v1.22.0>`, plus:
   episode's sensor streams and explore them in a new embeddings plot. Find
   similar moments by text, point, or lasso, and click a point to jump the
   timeline there
+- **FiftyOne Agent built in**: use the Agent without installing a plugin,
+  and ask it about selected samples, an uploaded image, or the current App
+  state. Admins can have it write and run SDK code or build a plugin, and
+  can set the organization's default model and instructions
 - **Custom workflow stages**: build your own annotation workflow stages in
   Python and use them in the workflow editor alongside the built-in stages
 - Agentic Labeling adds Find samples, a text similarity search that suggests
