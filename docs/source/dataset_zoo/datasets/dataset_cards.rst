@@ -76,6 +76,13 @@
     :tags: multimodal,mcap,egocentric,emg,force
 
 .. customcarditem::
+    :header: Construction-Site Traversability
+    :description: Four closed-loop robot sessions across two active construction sites in native MCAP format, pairing colour and range cameras with a Livox LiDAR, two IMUs, LiDAR-inertial and wheel odometry and GNSS fixes.
+    :link: datasets/construction_site_traversability.html
+    :image: ../_images/construction-site-traversability.png
+    :tags: multimodal,mcap,robotics,lidar,depth,gnss
+
+.. customcarditem::
     :header: Fashion MNIST
     :description: A modern alternative to MNIST featuring 70,000 28x28 grayscale images of fashion items (shirts, shoes, bags, etc.). More complex than digit recognition.
     :link: datasets/fashion_mnist.html
