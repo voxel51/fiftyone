@@ -3,6 +3,7 @@ import {
   getRotatedBoxCorners,
   getRotation2d,
   isPointInRotatedBox,
+  lerpRotation,
   toRotatedBoxFrame,
 } from "./rotated-box";
 
@@ -93,6 +94,41 @@ describe("isPointInRotatedBox", () => {
   it("expands the box by the given padding", () => {
     expect(isPointInRotatedBox([395, 250], BOX, 0, DIMS)).toBe(false);
     expect(isPointInRotatedBox([395, 250], BOX, 0, DIMS, 6)).toBe(true);
+  });
+});
+
+describe("lerpRotation", () => {
+  it("interpolates plainly when the arc does not wrap", () => {
+    expect(lerpRotation(0.2, 0.6, 0.5)).toBeCloseTo(0.4);
+    expect(lerpRotation(0.2, 0.6, 0)).toBeCloseTo(0.2);
+    expect(lerpRotation(0.2, 0.6, 1)).toBeCloseTo(0.6);
+  });
+
+  it("takes the shortest arc through zero", () => {
+    // 350° → 10° is a 20° turn through 0°, not 340° backwards
+    const from = (350 * Math.PI) / 180;
+    const to = (10 * Math.PI) / 180;
+    const mid = lerpRotation(from, to, 0.5);
+    expect((mid * 180) / Math.PI).toBeCloseTo(0);
+  });
+
+  it("takes the shortest arc in the negative direction", () => {
+    // 10° → 350° turns -20° through 0°
+    const from = (10 * Math.PI) / 180;
+    const to = (350 * Math.PI) / 180;
+    const mid = lerpRotation(from, to, 0.25);
+    expect((mid * 180) / Math.PI).toBeCloseTo(5);
+  });
+
+  it("normalizes results into [0, 2*pi)", () => {
+    const result = lerpRotation(
+      (350 * Math.PI) / 180,
+      (10 * Math.PI) / 180,
+      0.25,
+    );
+    expect(result).toBeGreaterThanOrEqual(0);
+    expect(result).toBeLessThan(2 * Math.PI);
+    expect((result * 180) / Math.PI).toBeCloseTo(355);
   });
 });
 

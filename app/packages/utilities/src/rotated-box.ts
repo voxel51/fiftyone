@@ -111,3 +111,23 @@ export const toRotatedBoxFrame = (
 
   return [dx * cos + dy * sin, -dx * sin + dy * cos];
 };
+
+/**
+ * Interpolates between two rotations along the shortest arc, so a keyframe
+ * pair like 350° → 10° turns 20° through zero rather than 340° backwards.
+ * Matches CVAT's video-track interpolation semantics.
+ *
+ * @returns radians, normalized into `[0, 2*pi)`
+ */
+export const lerpRotation = (from: number, to: number, t: number): number => {
+  const TWO_PI = 2 * Math.PI;
+
+  let diff = (to - from) % TWO_PI;
+  if (diff > Math.PI) {
+    diff -= TWO_PI;
+  } else if (diff < -Math.PI) {
+    diff += TWO_PI;
+  }
+
+  return (((from + diff * t) % TWO_PI) + TWO_PI) % TWO_PI;
+};
