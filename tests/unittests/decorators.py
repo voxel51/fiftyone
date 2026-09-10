@@ -7,7 +7,6 @@ Decorator utils for unit tests.
 """
 
 from functools import wraps
-from inspect import iscoroutinefunction
 import os
 import platform
 import unittest
@@ -21,15 +20,6 @@ def drop_datasets(func):
     """Decorator that drops all non-persistent datasets from the database
     before running a test.
     """
-
-    if iscoroutinefunction(func):
-
-        @wraps(func)
-        async def async_wrapper(*args, **kwargs):
-            fo.delete_non_persistent_datasets()
-            return await func(*args, **kwargs)
-
-        return async_wrapper
 
     @wraps(func)
     def wrapper(*args, **kwargs):
