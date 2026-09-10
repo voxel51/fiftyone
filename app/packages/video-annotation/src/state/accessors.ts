@@ -229,15 +229,23 @@ export const useDynamicGroupElementCount = (enabled = true): number | null =>
 
 /**
  * Value of the current modal dynamic group's group-by field — identifies which
- * group the `/frames` route should return ordered samples for. Suspends with
- * the rest of the modal sample resolution.
+ * group the `/frames` route should return ordered samples for — or null when
+ * the modal is not an image dataset grouped into a video. Suspends with the
+ * rest of the modal sample resolution.
+ *
+ * The server injects `_group` for ANY `group_by` stage, a video dataset's
+ * included; only an image-backed group plays as a video, so the value is
+ * gated on that, or a grouped video dataset would ask `/frames` for its
+ * sibling videos and address bare label paths the frame store does not own.
  *
  * `groupByFieldValue` reads the sample's `_group` (typed loosely as a dict, but
  * a scalar key in practice); the rest of the app treats it as a string (e.g.
  * `dynamicGroupPageSelector`) and the server accepts it as opaque BSON.
  */
-export const useDynamicGroupValue = (): string | null =>
-  (useRecoilValue(groupByFieldValue) as unknown as string | null) ?? null;
+export const useDynamicGroupValue = (): string | null => {
+  const value = useRecoilValue(groupByFieldValue) as unknown as string | null;
+  return useIsImageDynamicGroupVideo() ? (value ?? null) : null;
+};
 
 /**
  * Dynamic-attribute names for a label field path. Re-exported from core so the
