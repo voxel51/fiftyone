@@ -18,13 +18,13 @@ import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
+import { annotate3dSeed } from "./annotate-3d/seed";
+import { polylineGeometry, polylineLabels } from "./annotate-3d/read";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-3d-polyline");
 
 /** Fixed ObjectId addressing the first sample (so we can deep-link the modal). */
 const id = "000000000000000000000000";
-const plyPath = `/tmp/${datasetName}.ply`;
-const scenePath = `/tmp/${datasetName}.fo3d`;
 
 const polylineClasses = ["lane", "barrier", "curb"];
 
@@ -34,12 +34,8 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
-  // a single PLY cube wrapped in a minimal fo3d scene is enough geometry for
-  // the viewer to mount and frame the scene.
-  mediaFactory.createPly({ outputPath: plyPath, shape: "cube" });
-  mediaFactory.createFo3d({ outputPath: scenePath, plyPath });
 });
 
 test.afterAll(async ({ foWebServer }) => {
@@ -63,14 +59,15 @@ const openAnnotate = async (
 test.describe.serial("3d polyline annotation", () => {
   // Re-seed per test so each delete/undo case starts from a clean polyline
   // (mirrors the cuboid spec).
-  test.beforeEach(async ({ annotate3dSDK, fiftyoneLoader, modal, page }) => {
-    await annotate3dSDK.seed({
+  test.beforeEach(async ({ datasetFactory, fiftyoneLoader, modal, page }) => {
+    await datasetFactory.create3dDataset({
       datasetName,
-      scenePaths: [scenePath],
-      // polyline-only active schema (no cuboids requested)
-      cuboidSampleIndices: [],
-      polylineClasses,
-      polylineSampleIndices: [0],
+      ...annotate3dSeed({
+        // polyline-only active schema (no cuboids requested)
+        cuboidSampleIndices: [],
+        polylineClasses,
+        polylineSampleIndices: [0],
+      }),
     });
     await openAnnotate(fiftyoneLoader, modal, page);
   });
@@ -100,7 +97,7 @@ test.describe.serial("3d polyline annotation", () => {
   });
 
   test("a class edit on the polyline persists across a fresh save", async ({
-    annotate3dSDK,
+    datasetFactory,
     modal,
     page,
   }) => {
@@ -117,11 +114,15 @@ test.describe.serial("3d polyline annotation", () => {
 
     // the polyline stays a single label whose class is now persisted "barrier"
     await expect
-      .poll(async () => annotate3dSDK.getPolylineLabels(datasetName), {
-        // each readback spawns a python process, so give the DB round-trip
-        // room for several attempts (the default 5s is too tight).
-        timeout: 20_000,
-      })
+      .poll(
+        async () =>
+          polylineLabels(await datasetFactory.readSample({ datasetName })),
+        {
+          // each readback spawns a python process, so give the DB round-trip
+          // room for several attempts (the default 5s is too tight).
+          timeout: 20_000,
+        },
+      )
       .toEqual(["barrier"]);
   });
 
@@ -144,7 +145,7 @@ test.describe.serial("3d polyline annotation", () => {
   });
 
   test("a delete persists across a fresh save", async ({
-    annotate3dSDK,
+    datasetFactory,
     modal,
     page,
   }) => {
@@ -160,11 +161,15 @@ test.describe.serial("3d polyline annotation", () => {
     await saved;
 
     await expect
-      .poll(async () => annotate3dSDK.getPolylineLabels(datasetName), {
-        // each readback spawns a python process, so give the DB round-trip
-        // room for several attempts (the default 5s is too tight).
-        timeout: 20_000,
-      })
+      .poll(
+        async () =>
+          polylineLabels(await datasetFactory.readSample({ datasetName })),
+        {
+          // each readback spawns a python process, so give the DB round-trip
+          // room for several attempts (the default 5s is too tight).
+          timeout: 20_000,
+        },
+      )
       .toEqual([]);
   });
 
@@ -173,7 +178,7 @@ test.describe.serial("3d polyline annotation", () => {
   // engine's command stack must still drive undo AND redo — and each step must
   // itself re-persist (the engine commits through the same save path).
   test("undo and redo of a persisted class edit re-persist through the DB", async ({
-    annotate3dSDK,
+    datasetFactory,
     modal,
     page,
   }) => {
@@ -191,9 +196,13 @@ test.describe.serial("3d polyline annotation", () => {
     await modal.sidebar.edit.selectFieldChoice("label", "barrier");
     await saved;
     await expect
-      .poll(async () => annotate3dSDK.getPolylineLabels(datasetName), {
-        timeout: 20_000,
-      })
+      .poll(
+        async () =>
+          polylineLabels(await datasetFactory.readSample({ datasetName })),
+        {
+          timeout: 20_000,
+        },
+      )
       .toEqual(["barrier"]);
 
     // after the autosave the stack survives: undo reverts the class and
@@ -204,9 +213,13 @@ test.describe.serial("3d polyline annotation", () => {
     await modal.sidebar.edit.assert.verifyFieldValue("label", "lane");
     await saved;
     await expect
-      .poll(async () => annotate3dSDK.getPolylineLabels(datasetName), {
-        timeout: 20_000,
-      })
+      .poll(
+        async () =>
+          polylineLabels(await datasetFactory.readSample({ datasetName })),
+        {
+          timeout: 20_000,
+        },
+      )
       .toEqual(["lane"]);
 
     // redo re-applies the class and re-persists "barrier"
@@ -216,9 +229,13 @@ test.describe.serial("3d polyline annotation", () => {
     await modal.sidebar.edit.assert.verifyFieldValue("label", "barrier");
     await saved;
     await expect
-      .poll(async () => annotate3dSDK.getPolylineLabels(datasetName), {
-        timeout: 20_000,
-      })
+      .poll(
+        async () =>
+          polylineLabels(await datasetFactory.readSample({ datasetName })),
+        {
+          timeout: 20_000,
+        },
+      )
       .toEqual(["barrier"]);
   });
 });
@@ -228,19 +245,20 @@ test.describe.serial("3d polyline annotation", () => {
 // empty-canvas pointer handler; a pre-seeded label at scene center can intercept
 // a draw click, so a clean scene makes the gesture deterministic.
 test.describe.serial("3d polyline creation", () => {
-  test.beforeEach(async ({ annotate3dSDK, fiftyoneLoader, modal, page }) => {
-    await annotate3dSDK.seed({
+  test.beforeEach(async ({ datasetFactory, fiftyoneLoader, modal, page }) => {
+    await datasetFactory.create3dDataset({
       datasetName,
-      scenePaths: [scenePath],
-      cuboidSampleIndices: [],
-      polylineClasses,
-      polylineSampleIndices: [],
+      ...annotate3dSeed({
+        cuboidSampleIndices: [],
+        polylineClasses,
+        polylineSampleIndices: [],
+      }),
     });
     await openAnnotate(fiftyoneLoader, modal, page);
   });
 
   test("drawing a polyline on the canvas creates a label, assigns a class, and persists", async ({
-    annotate3dSDK,
+    datasetFactory,
     modal,
     page,
   }) => {
@@ -289,12 +307,18 @@ test.describe.serial("3d polyline creation", () => {
     // the drawn polyline persists as a single label carrying the class and a
     // non-empty points3d geometry
     await expect
-      .poll(async () => annotate3dSDK.getPolylineLabels(datasetName), {
-        timeout: 20_000,
-      })
+      .poll(
+        async () =>
+          polylineLabels(await datasetFactory.readSample({ datasetName })),
+        {
+          timeout: 20_000,
+        },
+      )
       .toEqual(["barrier"]);
 
-    const geom = await annotate3dSDK.getPolylineGeometry(datasetName);
+    const geom = polylineGeometry(
+      await datasetFactory.readSample({ datasetName }),
+    );
     expect(geom.points3d?.length ?? 0).toBeGreaterThan(0);
     expect(geom.points3d?.[0]?.length ?? 0).toBeGreaterThanOrEqual(2);
   });

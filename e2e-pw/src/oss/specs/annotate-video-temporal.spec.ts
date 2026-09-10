@@ -11,6 +11,7 @@ import { test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
+import { videoAnnotationSeed } from "./annotate-video/seed";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-video-temporal");
 const id = "000000000000000000000000";
@@ -25,7 +26,10 @@ test.beforeAll(async ({ foWebServer, datasetFactory }) => {
   await foWebServer.startWebServer();
   // 20 frames @ 10fps; events split into thirds:
   // approach [1,6], pass [7,13], depart [14,20].
-  await datasetFactory.createVideoDataset({ datasetName });
+  await datasetFactory.createVideoDataset({
+    datasetName,
+    ...videoAnnotationSeed(),
+  });
 });
 
 test.afterAll(async ({ foWebServer }) => {

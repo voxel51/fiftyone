@@ -10,6 +10,7 @@
 import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import { annotate3dSeed } from "./annotate-3d/seed";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-3d-selection-clear",
@@ -17,8 +18,6 @@ const datasetName = getUniqueDatasetNameWithPrefix(
 
 /** Fixed ObjectId addressing the first sample (so we can deep-link the modal). */
 const id = "000000000000000000000000";
-const plyPath = `/tmp/${datasetName}.ply`;
-const scenePath = `/tmp/${datasetName}.fo3d`;
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -26,10 +25,8 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
-  mediaFactory.createPly({ outputPath: plyPath, shape: "cube" });
-  mediaFactory.createFo3d({ outputPath: scenePath, plyPath });
 });
 
 test.afterAll(async ({ foWebServer }) => {
@@ -49,12 +46,13 @@ const selectedCount = async (modal: ModalPom) => {
 // Flaky: the canvas center-click intermittently fails to land a selection
 // (selectedCount stays 0), which both tests depend on
 test.describe.skip("3d explore selection does not bleed into annotate", () => {
-  test.beforeEach(async ({ annotate3dSDK, fiftyoneLoader, modal, page }) => {
-    await annotate3dSDK.seed({
+  test.beforeEach(async ({ datasetFactory, fiftyoneLoader, modal, page }) => {
+    await datasetFactory.create3dDataset({
       datasetName,
-      scenePaths: [scenePath],
-      classes: ["car", "truck", "pedestrian"],
-      cuboidSampleIndices: [0],
+      ...annotate3dSeed({
+        classes: ["car", "truck", "pedestrian"],
+        cuboidSampleIndices: [0],
+      }),
     });
 
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {

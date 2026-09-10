@@ -18,6 +18,7 @@ import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
+import { videoAnnotationSeed } from "./annotate-video/seed";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-video-label-types-create",
@@ -86,7 +87,9 @@ test.describe.serial("video non-box label create", () => {
   test.beforeEach(async ({ datasetFactory }) => {
     await datasetFactory.createVideoDataset({
       datasetName,
-      withPolylineField: true,
+      ...videoAnnotationSeed({
+        withPolylineField: true,
+      }),
     });
   });
 

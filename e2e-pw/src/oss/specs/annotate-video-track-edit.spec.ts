@@ -23,6 +23,7 @@ import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
 import type { Page } from "src/oss/fixtures";
+import { videoAnnotationSeed } from "./annotate-video/seed";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-video-track-edit");
 const id = "000000000000000000000000";
@@ -75,8 +76,10 @@ const savedResponse = (page: Page) =>
 test.beforeEach(async ({ datasetFactory }) => {
   await datasetFactory.createVideoDataset({
     datasetName,
-    withEvents: false,
-    trackedSampleIndices: [0],
+    ...videoAnnotationSeed({
+      withEvents: false,
+      trackedSampleIndices: [0],
+    }),
   });
 });
 

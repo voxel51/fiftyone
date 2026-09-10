@@ -21,6 +21,7 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
 import type { DatasetFactory } from "src/shared/dataset-factory";
 import type { Page } from "src/oss/fixtures";
+import { videoAnnotationSeed } from "./annotate-video/seed";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-video-dynamic-subtracks",
@@ -100,9 +101,11 @@ const assertSignal = async (modal: ModalPom, expected: string) =>
 const seedSingle = (datasetFactory: typeof DatasetFactory) =>
   datasetFactory.createVideoDataset({
     datasetName,
-    withEvents: false,
-    trackedSampleIndices: [0],
-    dynamicAttribute: { name: ATTR, values: ["off", "left", "right"] },
+    ...videoAnnotationSeed({
+      withEvents: false,
+      trackedSampleIndices: [0],
+      dynamicAttribute: { name: ATTR, values: ["off", "left", "right"] },
+    }),
   });
 
 test.describe.serial("video annotation dynamic attribute sub-tracks", () => {
@@ -259,12 +262,14 @@ test.describe.serial("video annotation multiple dynamic attributes", () => {
   test.beforeEach(async ({ datasetFactory }) => {
     await datasetFactory.createVideoDataset({
       datasetName,
-      withEvents: false,
-      trackedSampleIndices: [0],
-      dynamicAttributes: [
-        { name: ATTR, values: ["off", "left", "right"] },
-        { name: "brake", values: ["off", "on"] },
-      ],
+      ...videoAnnotationSeed({
+        withEvents: false,
+        trackedSampleIndices: [0],
+        dynamicAttributes: [
+          { name: ATTR, values: ["off", "left", "right"] },
+          { name: "brake", values: ["off", "on"] },
+        ],
+      }),
     });
   });
 

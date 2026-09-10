@@ -176,23 +176,35 @@ await DatasetFactory.createDataset({
 });
 ```
 
-For the video-annotation surface, use `DatasetFactory.createVideoDataset`. It
-generates one solid-color clip per sample (2 s, 64×64, 10 fps `.webm` by
-default; override via `videoOptions`, as a bag or a per-index function), then
-seeds a video dataset with active `frames.detections` and `events` annotation
-schemas, optional pre-seeded tracks, masks, polylines and dynamic attributes.
-Clips are written once per dataset name, so a spec that re-seeds in
-`beforeEach` only rebuilds the dataset.
+`createVideoDataset`, `create3dDataset` and `createGroupDataset` take the same
+`schema`, `labelSchemas`, `withSampleData` and `savedViews` options and differ
+only in the media generated per sample (`videoOptions`, `sceneOptions`,
+`imageOptions` — each an object or a function of the sample index). A video
+dataset declares frame fields with a `frames.` prefix in `schema`, populates
+frames through `withFrameData(frame, helpers)` (called once per sample and
+frame number) and materializes frame images with `sampleFrames: true`.
+`helpers.mask(width, height)` serializes an all-ones numpy mask.
 
 ```ts
 await DatasetFactory.createVideoDataset({
     datasetName: "my-video-dataset",
-    numSamples: 2,
     videoOptions: { duration: 4 },
-    withEvents: false,
-    trackedSampleIndices: [0, 1],
+    schema: { "frames.detections": "Detections" },
+    withFrameData: (_, { createId }) => ({
+        detections: {
+            _cls: "Detections",
+            detections: [{ _id: createId(), _cls: "Detection", label: "cat" }],
+        },
+    }),
+    sampleFrames: true,
 });
 ```
+
+Read persisted state back as raw documents with `readSample` / `readFrames` and
+extract the values to assert on; `updateLabelSchema` applies a label schema to
+a dataset built outside the factory. Recipes shared by a spec family (the
+video-annotation and 3D seeds, the raw-document readers) live beside the specs
+in `src/oss/specs/annotate-*/`.
 
 Each sample is automatically assigned a stable, index-derived `_id` of the form
 `000000000000000000000000` (zero-padded 24-character hex). This makes it easy

@@ -8,7 +8,7 @@
  *     persists,
  *   - a "Remove" stroke erases pixels and is undoable on the engine stack.
  *
- * Mask state is read back from Python (`getDetectionsState`) — a true server
+ * Mask state is read back from Python (`detectionsState`) — a true server
  * round-trip. The Add stroke grows the masked region beyond the seed bbox, so
  * the raw pixel count is a robust grow signal there. The Remove stroke is
  * asserted on COVERAGE FRACTION (`maskCoverage`), NOT raw pixels: the mask is
@@ -23,6 +23,7 @@
 import { expect, test as base, type Page } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import { detectionsState } from "./annotate-2d/read";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-2d-mask-edit");
 
@@ -60,20 +61,21 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ annotateSDK, datasetFactory, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
   await datasetFactory.createDataset({
     datasetName,
     imageOptions: { fillColor: "white", width: 640, height: 480 },
     schema: { detections: "Detections" },
+    labelSchemas: {
+      detections: {
+        type: "detections",
+        classes: ["cat", "dog"],
+        attributes: [],
+        component: "dropdown",
+      },
+    },
   });
-  await annotateSDK.updateLabelSchema(datasetName, "detections", {
-    type: "detections",
-    classes: ["cat", "dog"],
-    attributes: [],
-    component: "dropdown",
-  });
-  await annotateSDK.addFieldToActiveLabelSchema(datasetName, "detections");
 });
 
 test.afterAll(async ({ foWebServer }) => {
@@ -93,15 +95,16 @@ test.describe.serial("2D annotation mask edit (brush)", () => {
   });
 
   test("an Add brush stroke grows the mask and persists", async ({
-    annotateSDK,
+    datasetFactory,
     modal,
     page,
   }) => {
     await modal.sidebar.annotate.selectActiveLabel("cat", 0);
     await modal.sidebar.edit.assert.inSegmentationMode(true);
 
-    const before = (
-      await annotateSDK.getDetectionsState(datasetName, "detections")
+    const before = detectionsState(
+      await datasetFactory.readSample({ datasetName }),
+      "detections",
     ).maskPixels;
     expect(before).toBeGreaterThan(0);
 
@@ -117,8 +120,10 @@ test.describe.serial("2D annotation mask edit (brush)", () => {
     await expect
       .poll(
         async () =>
-          (await annotateSDK.getDetectionsState(datasetName, "detections"))
-            .maskPixels,
+          detectionsState(
+            await datasetFactory.readSample({ datasetName }),
+            "detections",
+          ).maskPixels,
         // each readback spawns a python process; the default 5s starves under
         // CI load (the commit + re-rasterization round-trip needs room).
         { timeout: 20_000 },
@@ -127,7 +132,7 @@ test.describe.serial("2D annotation mask edit (brush)", () => {
   });
 
   test("a Remove brush stroke erases pixels and is undoable", async ({
-    annotateSDK,
+    datasetFactory,
     modal,
     page,
   }) => {
@@ -135,8 +140,9 @@ test.describe.serial("2D annotation mask edit (brush)", () => {
     await modal.sidebar.edit.assert.inSegmentationMode(true);
 
     // seed mask is fully set within its bbox → coverage starts at 1.0.
-    const before = (
-      await annotateSDK.getDetectionsState(datasetName, "detections")
+    const before = detectionsState(
+      await datasetFactory.readSample({ datasetName }),
+      "detections",
     ).maskCoverage;
     expect(before).toBeGreaterThan(0);
 
@@ -153,8 +159,10 @@ test.describe.serial("2D annotation mask edit (brush)", () => {
     await expect
       .poll(
         async () =>
-          (await annotateSDK.getDetectionsState(datasetName, "detections"))
-            .maskCoverage,
+          detectionsState(
+            await datasetFactory.readSample({ datasetName }),
+            "detections",
+          ).maskCoverage,
         { timeout: 20_000 },
       )
       .toBeLessThan(before);
@@ -168,8 +176,10 @@ test.describe.serial("2D annotation mask edit (brush)", () => {
     await expect
       .poll(
         async () =>
-          (await annotateSDK.getDetectionsState(datasetName, "detections"))
-            .maskCoverage,
+          detectionsState(
+            await datasetFactory.readSample({ datasetName }),
+            "detections",
+          ).maskCoverage,
         { timeout: 20_000 },
       )
       .toBe(before);

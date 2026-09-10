@@ -17,6 +17,7 @@ import { expect, test as base, type Page } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
+import { videoAnnotationSeed } from "./annotate-video/seed";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-video-mask-playback",
@@ -37,7 +38,9 @@ test.beforeAll(async ({ foWebServer, datasetFactory }) => {
   await datasetFactory.createVideoDataset({
     datasetName,
     videoOptions: { duration: 4 },
-    withEvents: false,
+    ...videoAnnotationSeed({
+      withEvents: false,
+    }),
   });
 });
 

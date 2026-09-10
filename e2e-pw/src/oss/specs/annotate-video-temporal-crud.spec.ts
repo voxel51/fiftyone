@@ -22,6 +22,7 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
 import type { Page } from "src/oss/fixtures";
+import { videoAnnotationSeed } from "./annotate-video/seed";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-video-td-crud");
 const id = "000000000000000000000000";
@@ -59,7 +60,10 @@ test.afterAll(async ({ foWebServer }) => {
 
 test.beforeEach(async ({ datasetFactory }) => {
   // three TDs: approach [1,6], pass [7,13], depart [14,20].
-  await datasetFactory.createVideoDataset({ datasetName });
+  await datasetFactory.createVideoDataset({
+    datasetName,
+    ...videoAnnotationSeed(),
+  });
 });
 
 const openAnnotate = async (

@@ -7,6 +7,37 @@ import { HorizontalAlign, Jimp, loadFont, VerticalAlign } from "jimp";
 const fonts = require("jimp/fonts");
 
 /**
+ * Options for generating a solid-color PNG.
+ */
+export interface ImageOptions {
+  /** The width of the image in pixels. */
+  width: number;
+  /** The height of the image in pixels. */
+  height: number;
+  /**
+   * The background fill color as a CSS hex string.
+   * @default "#00ddff"
+   */
+  fillColor?: string;
+  /**
+   * Optional text to render centered over the image.
+   * Rendered using a 10px black sans-serif font (`SANS_10_BLACK`).
+   */
+  watermarkString?: string;
+  /**
+   * When `true`, suppresses all console logging.
+   * @default false
+   */
+  hideLogs?: boolean;
+}
+
+export const DEFAULT_IMAGE_OPTIONS: ImageOptions = {
+  fillColor: "white",
+  width: 50,
+  height: 50,
+};
+
+/**
  * Generates a PNG image at the specified path, with optional fill color
  * and centered watermark text.
  *
@@ -44,29 +75,12 @@ const fonts = require("jimp/fonts");
  *   hideLogs: true,
  * });
  */
-export const createImage = async (options: {
-  /** The absolute or relative file path where the image will be saved. */
-  outputPath: string;
-  /** The width of the image in pixels. */
-  width: number;
-  /** The height of the image in pixels. */
-  height: number;
-  /**
-   * The background fill color as a CSS hex string.
-   * @default "#00ddff"
-   */
-  fillColor?: string;
-  /**
-   * Optional text to render centered over the image.
-   * Rendered using a 10px black sans-serif font (`SANS_10_BLACK`).
-   */
-  watermarkString?: string;
-  /**
-   * When `true`, suppresses all console logging.
-   * @default false
-   */
-  hideLogs?: boolean;
-}) => {
+export const createImage = async (
+  options: ImageOptions & {
+    /** The absolute or relative file path where the image will be saved. */
+    outputPath: string;
+  },
+) => {
   const { width, height, outputPath, fillColor, hideLogs } = options;
   const startTime = performance.now();
 

@@ -15,6 +15,7 @@ import { expect, test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import { videoAnnotationSeed } from "./annotate-video/seed";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-video-nav");
 
@@ -32,7 +33,9 @@ test.beforeAll(async ({ foWebServer, datasetFactory }) => {
     datasetName,
     numSamples: 2,
     videoOptions: (index) => (index === 1 ? { color: "#a05030" } : {}),
-    trackedSampleIndices: [0, 1],
+    ...videoAnnotationSeed({
+      trackedSampleIndices: [0, 1],
+    }),
   });
 });
 

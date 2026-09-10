@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { Jimp } from "jimp";
 import { expect, Locator, test as base } from "src/oss/fixtures";
-import type { AnnotateSDK } from "src/oss/fixtures/annotate-sdk";
+import type { DatasetFactory } from "src/shared/dataset-factory";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
@@ -34,7 +34,7 @@ type PersistedCuboid = {
 
 const seedDataset = async (
   fiftyoneLoader: AbstractFiftyoneLoader,
-  annotateSDK: AnnotateSDK,
+  datasetFactory: typeof DatasetFactory,
 ) => {
   await fiftyoneLoader.executePythonCode(`
 import fiftyone as fo
@@ -96,13 +96,16 @@ dataset.add_samples([left, right])
 dataset.persistent = True
   `);
 
-  await annotateSDK.updateLabelSchema(datasetName, "detections", {
-    type: "detections",
-    classes: ["seeded-left", "world-created"],
-    attributes: [],
-    component: "dropdown",
+  await datasetFactory.updateLabelSchema({
+    datasetName,
+    field: "detections",
+    schema: {
+      type: "detections",
+      classes: ["seeded-left", "world-created"],
+      attributes: [],
+      component: "dropdown",
+    },
   });
-  await annotateSDK.addFieldToActiveLabelSchema(datasetName, "detections");
 };
 
 const readLeftCuboids = async (
@@ -173,7 +176,7 @@ const countOuterBandPixels = async (canvas: Locator) => {
 };
 
 test.beforeAll(
-  async ({ annotateSDK, fiftyoneLoader, foWebServer, mediaFactory }) => {
+  async ({ datasetFactory, fiftyoneLoader, foWebServer, mediaFactory }) => {
     await foWebServer.startWebServer();
     mediaFactory.createPcd({
       outputPath: leftPcdPath,
@@ -185,7 +188,7 @@ test.beforeAll(
       shape: "cube",
       numPoints: 216,
     });
-    await seedDataset(fiftyoneLoader, annotateSDK);
+    await seedDataset(fiftyoneLoader, datasetFactory);
   },
 );
 

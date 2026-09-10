@@ -84,13 +84,7 @@ const test = base.extend<{ modal: ModalPom }>({
 });
 
 test.beforeAll(
-  async ({
-    annotateSDK,
-    datasetFactory,
-    fiftyoneLoader,
-    foWebServer,
-    mediaFactory,
-  }) => {
+  async ({ datasetFactory, fiftyoneLoader, foWebServer, mediaFactory }) => {
     await foWebServer.startWebServer();
 
     // A solid-white PNG → a full instance mask (every pixel in-mask).
@@ -107,18 +101,16 @@ test.beforeAll(
         datasetName: cfg.datasetName,
         imageOptions: { fillColor: "white", width: 640, height: 480 },
         schema: { detections: "Detections" },
+        labelSchemas: {
+          detections: {
+            type: "detections",
+            classes: ["cat", "dog"],
+            attributes: [],
+            component: "dropdown",
+          },
+        },
       });
       await fiftyoneLoader.executePythonCode(seedDetection(cfg));
-      await annotateSDK.updateLabelSchema(cfg.datasetName, "detections", {
-        type: "detections",
-        classes: ["cat", "dog"],
-        attributes: [],
-        component: "dropdown",
-      });
-      await annotateSDK.addFieldToActiveLabelSchema(
-        cfg.datasetName,
-        "detections",
-      );
     }
   },
 );

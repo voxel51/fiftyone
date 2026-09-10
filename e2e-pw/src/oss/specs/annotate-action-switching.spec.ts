@@ -21,7 +21,7 @@ const test = base.extend<{
   },
 });
 
-test.beforeAll(async ({ annotateSDK, datasetFactory, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
   await datasetFactory.createDataset({
     datasetName,
@@ -41,23 +41,21 @@ test.beforeAll(async ({ annotateSDK, datasetFactory, foWebServer }) => {
       },
       weather: { _id: createId(), label: "sunny" },
     }),
+    labelSchemas: {
+      detections: {
+        type: "detections",
+        classes: ["cat", "dog"],
+        attributes: [],
+        component: "dropdown",
+      },
+      weather: {
+        type: "classification",
+        classes: ["sunny", "cloudy", "rainy"],
+        attributes: [],
+        component: "dropdown",
+      },
+    },
   });
-
-  await annotateSDK.updateLabelSchema(datasetName, "detections", {
-    type: "detections",
-    classes: ["cat", "dog"],
-    attributes: [],
-    component: "dropdown",
-  });
-  await annotateSDK.addFieldToActiveLabelSchema(datasetName, "detections");
-
-  await annotateSDK.updateLabelSchema(datasetName, "weather", {
-    type: "classification",
-    classes: ["sunny", "cloudy", "rainy"],
-    attributes: [],
-    component: "dropdown",
-  });
-  await annotateSDK.addFieldToActiveLabelSchema(datasetName, "weather");
 });
 
 test.afterAll(async ({ foWebServer }) => {

@@ -11,6 +11,7 @@ import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
+import { videoAnnotationSeed } from "./annotate-video/seed";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-video-audio");
 
@@ -32,7 +33,9 @@ test.beforeAll(async ({ foWebServer, datasetFactory }) => {
     datasetName,
     numSamples: 2,
     videoOptions: (index) => ({ container: "mp4", audio: index === 0 }),
-    withEvents: false,
+    ...videoAnnotationSeed({
+      withEvents: false,
+    }),
   });
 });
 

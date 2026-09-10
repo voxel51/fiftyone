@@ -10,6 +10,7 @@ import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
+import { videoAnnotationSeed } from "./annotate-video/seed";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-video-last-used");
 
@@ -26,7 +27,10 @@ test.beforeAll(async ({ foWebServer, datasetFactory }) => {
   await foWebServer.startWebServer();
   // classes: ["vehicle", "person", "road sign"] — "vehicle" is the schema
   // default, so a draw that defaults to "person" proves last-used drove it.
-  await datasetFactory.createVideoDataset({ datasetName });
+  await datasetFactory.createVideoDataset({
+    datasetName,
+    ...videoAnnotationSeed(),
+  });
 });
 
 test.afterAll(async ({ foWebServer }) => {

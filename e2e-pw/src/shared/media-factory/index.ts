@@ -6,6 +6,7 @@ import { createFo3d } from "./fo3d";
 import { createMcapFixture } from "./mcap";
 import { createPcd } from "./pcd";
 import { createPly } from "./ply";
+import { createScene } from "./scene";
 import { createVideo } from "./video";
 
 /**
@@ -18,7 +19,8 @@ import { createVideo } from "./video";
  * import { MediaFactory } from "./media-factory";
  *
  * await MediaFactory.createImage({ outputPath: "/tmp/sample.png", width: 128, height: 128 });
- * await MediaFactory.createVideo({ outputPath: "/tmp/clip.webm", duration: 3, width: 640, height: 480, frameRate: 30, color: "#ffffff" });
+ * await MediaFactory.createVideo({ outputPath: "/tmp/clip", duration: 3, container: "webm" });
+ * MediaFactory.createScene({ outputPath: "/tmp/scene" });
  * MediaFactory.createPcd({ outputPath: "/tmp/scene.pcd", numPoints: 10, shape: "diagonal" });
  */
 export const MediaFactory = {
@@ -33,4 +35,6 @@ export const MediaFactory = {
   createPly,
   /** Writes a minimal fo3d scene JSON file wrapping a single PLY mesh. See {@link createFo3d}. */
   createFo3d,
+  /** Writes a PLY cube plus the fo3d scene wrapping it. See {@link createScene}. */
+  createScene,
 };

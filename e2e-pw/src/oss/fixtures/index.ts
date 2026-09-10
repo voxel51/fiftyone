@@ -6,8 +6,6 @@ import { reserveWorkerPort } from "src/shared/network-utils/port";
 import { SAM2_MOCK_WORKER_SRC } from "src/shared/sam2-mock-worker";
 import { AbstractFiftyoneLoader } from "../../shared/abstract-loader";
 import { AggregationWatcher } from "./aggregation-watcher";
-import { Annotate3dSDK } from "./annotate-3d-sdk";
-import { AnnotateSDK } from "./annotate-sdk";
 import { FoWebServer } from "./fo-server";
 import { OssLoader } from "./loader";
 
@@ -20,8 +18,6 @@ export type CustomFixturesWithoutPage = {
   datasetFactory: typeof DatasetFactory;
   mediaFactory: typeof MediaFactory;
   foWebServer: FoWebServer;
-  annotateSDK: AnnotateSDK;
-  annotate3dSDK: Annotate3dSDK;
 };
 
 // these fixtures have access to the {page} fixture
@@ -70,18 +66,6 @@ const customFixtures = base.extend<object, CustomFixturesWithoutPage>({
   foWebServer: [
     async ({ fiftyoneServerPort }, use) => {
       await use(new FoWebServer(fiftyoneServerPort));
-    },
-    { scope: "worker" },
-  ],
-  annotateSDK: [
-    async ({}, use) => {
-      await use(new AnnotateSDK());
-    },
-    { scope: "worker" },
-  ],
-  annotate3dSDK: [
-    async ({}, use) => {
-      await use(new Annotate3dSDK());
     },
     { scope: "worker" },
   ],

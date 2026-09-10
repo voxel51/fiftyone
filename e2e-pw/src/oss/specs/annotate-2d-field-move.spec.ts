@@ -17,6 +17,7 @@ import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
+import type { LabelSchema } from "src/shared/dataset-factory";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-2d-field-move");
 
@@ -36,7 +37,7 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ annotateSDK, datasetFactory, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
   await datasetFactory.createDataset({
     datasetName,
@@ -49,18 +50,19 @@ test.beforeAll(async ({ annotateSDK, datasetFactory, foWebServer }) => {
         ],
       },
     }),
+    // Both fields share a schema so the destination dropdown offers the other one.
+    labelSchemas: Object.fromEntries(
+      FIELDS.map((field): [string, LabelSchema] => [
+        field,
+        {
+          type: "detections",
+          classes: ["cat", "dog"],
+          attributes: [],
+          component: "dropdown",
+        },
+      ]),
+    ),
   });
-
-  // Both fields share a schema so the destination dropdown offers the other one.
-  for (const field of FIELDS) {
-    await annotateSDK.updateLabelSchema(datasetName, field, {
-      type: "detections",
-      classes: ["cat", "dog"],
-      attributes: [],
-      component: "dropdown",
-    });
-    await annotateSDK.addFieldToActiveLabelSchema(datasetName, field);
-  }
 });
 
 test.afterAll(async ({ foWebServer }) => {

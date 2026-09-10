@@ -18,11 +18,10 @@ import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
-import type {
-  DatasetFactory,
-  FrameTrackLabel,
-} from "src/shared/dataset-factory";
+import type { DatasetFactory } from "src/shared/dataset-factory";
 import type { Page } from "src/oss/fixtures";
+import { videoAnnotationSeed } from "./annotate-video/seed";
+import { frameTrackState, type FrameTrackLabel } from "./annotate-video/read";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-video-track-split-merge",
@@ -51,10 +50,12 @@ const seedTwoTracks = (
 ) =>
   datasetFactory.createVideoDataset({
     datasetName,
-    withEvents: false,
-    trackedSampleIndices: [0],
-    secondTrackSampleIndices: [0],
-    secondTrackClassIndex,
+    ...videoAnnotationSeed({
+      withEvents: false,
+      trackedSampleIndices: [0],
+      secondTrackSampleIndices: [0],
+      secondTrackClassIndex,
+    }),
   });
 
 test.beforeEach(async ({ datasetFactory }) => {
@@ -139,7 +140,10 @@ const persistedInstances = async (
   field: string,
   targetLabel: string,
 ): Promise<TrackInstances> => {
-  const rows = await datasetFactory.frameTrackState(datasetName, field);
+  const rows = frameTrackState(
+    await datasetFactory.readFrames({ datasetName }),
+    field,
+  );
   const all = new Set(
     rows.map((row) => row.instance).filter((id): id is string => !!id),
   );
@@ -239,8 +243,8 @@ test.describe.serial("video annotation track split / merge", () => {
     await saved;
 
     // 2 s at 10 fps
-    const rows = await datasetFactory.frameTrackState(
-      datasetName,
+    const rows = frameTrackState(
+      await datasetFactory.readFrames({ datasetName }),
       "detections",
     );
     expectSplitPersisted(rows, before, 20);
@@ -256,9 +260,11 @@ test.describe.serial("video annotation track split / merge", () => {
     // no second detection track, so "person" names the polyline
     await datasetFactory.createVideoDataset({
       datasetName,
-      withEvents: false,
-      trackedSampleIndices: [0],
-      polylineSampleIndices: [0],
+      ...videoAnnotationSeed({
+        withEvents: false,
+        trackedSampleIndices: [0],
+        polylineSampleIndices: [0],
+      }),
     });
     const before = await persistedInstances(
       datasetFactory,
@@ -280,7 +286,10 @@ test.describe.serial("video annotation track split / merge", () => {
     await va.assert.objectTrackCount(3);
     await saved;
 
-    const rows = await datasetFactory.frameTrackState(datasetName, "polylines");
+    const rows = frameTrackState(
+      await datasetFactory.readFrames({ datasetName }),
+      "polylines",
+    );
     expectSplitPersisted(rows, before, 20);
   });
 

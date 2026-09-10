@@ -27,7 +27,7 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ annotateSDK, datasetFactory, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
   await datasetFactory.createDataset({
     datasetName,
@@ -40,15 +40,15 @@ test.beforeAll(async ({ annotateSDK, datasetFactory, foWebServer }) => {
         ],
       },
     }),
+    labelSchemas: {
+      detections: {
+        type: "detections",
+        classes: ["cat", "dog"],
+        attributes: [{ name: "confidence", type: "float", component: "text" }],
+        component: "dropdown",
+      },
+    },
   });
-
-  await annotateSDK.updateLabelSchema(datasetName, "detections", {
-    type: "detections",
-    classes: ["cat", "dog"],
-    attributes: [{ name: "confidence", type: "float", component: "text" }],
-    component: "dropdown",
-  });
-  await annotateSDK.addFieldToActiveLabelSchema(datasetName, "detections");
 });
 
 test.afterAll(async ({ foWebServer }) => {

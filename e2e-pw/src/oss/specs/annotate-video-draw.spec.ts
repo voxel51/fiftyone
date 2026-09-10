@@ -12,6 +12,7 @@ import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
+import { videoAnnotationSeed } from "./annotate-video/seed";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-video-draw");
 
@@ -27,7 +28,10 @@ const test = base.extend<{ modal: ModalPom }>({
 test.beforeAll(async ({ foWebServer, datasetFactory }) => {
   await foWebServer.startWebServer();
   // clean slate (no pre-seeded tracks): drawing is the only object track.
-  await datasetFactory.createVideoDataset({ datasetName });
+  await datasetFactory.createVideoDataset({
+    datasetName,
+    ...videoAnnotationSeed(),
+  });
 });
 
 test.afterAll(async ({ foWebServer }) => {

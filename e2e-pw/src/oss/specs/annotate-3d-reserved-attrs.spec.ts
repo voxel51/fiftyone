@@ -15,13 +15,13 @@
 import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import { annotate3dSeed } from "./annotate-3d/seed";
+import { cuboidDocument } from "./annotate-3d/read";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-3d-reserved");
 
 /** Fixed ObjectId addressing the first sample (so we can deep-link the modal). */
 const id = "000000000000000000000000";
-const plyPath = `/tmp/${datasetName}.ply`;
-const scenePath = `/tmp/${datasetName}.fo3d`;
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -29,10 +29,8 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
-  mediaFactory.createPly({ outputPath: plyPath, shape: "cube" });
-  mediaFactory.createFo3d({ outputPath: scenePath, plyPath });
 });
 
 test.afterAll(async ({ foWebServer }) => {
@@ -40,17 +38,18 @@ test.afterAll(async ({ foWebServer }) => {
 });
 
 test.describe.serial("3d reserved-name attributes", () => {
-  test.beforeEach(async ({ annotate3dSDK, fiftyoneLoader, modal, page }) => {
-    await annotate3dSDK.seed({
+  test.beforeEach(async ({ datasetFactory, fiftyoneLoader, modal, page }) => {
+    await datasetFactory.create3dDataset({
       datasetName,
-      scenePaths: [scenePath],
-      classes: ["car", "truck"],
-      cuboidSampleIndices: [0],
-      detectionAttributes: [
-        { name: "type", type: "str" },
-        { name: "color", type: "str" },
-      ],
-      cuboidAttributeValues: { type: "sedan", color: "red" },
+      ...annotate3dSeed({
+        classes: ["car", "truck"],
+        cuboidSampleIndices: [0],
+        detectionAttributes: [
+          { name: "type", type: "str" },
+          { name: "color", type: "str" },
+        ],
+        cuboidAttributeValues: { type: "sedan", color: "red" },
+      }),
     });
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ id }),
@@ -61,7 +60,7 @@ test.describe.serial("3d reserved-name attributes", () => {
   });
 
   test("an attribute named `type` renders with its persisted value and an edit saves verbatim", async ({
-    annotate3dSDK,
+    datasetFactory,
     modal,
     page,
   }) => {
@@ -90,7 +89,9 @@ test.describe.serial("3d reserved-name attributes", () => {
     await expect
       .poll(
         async () => {
-          const doc = await annotate3dSDK.getCuboidDocument(datasetName);
+          const doc = cuboidDocument(
+            await datasetFactory.readSample({ datasetName }),
+          );
           return doc ? { type: doc.type, color: doc.color } : null;
         },
         { timeout: 20_000 },
@@ -99,7 +100,9 @@ test.describe.serial("3d reserved-name attributes", () => {
 
     // the label class and geometry survive the attribute write, and no
     // wrapper bookkeeping leaked into the persisted document
-    const doc = await annotate3dSDK.getCuboidDocument(datasetName);
+    const doc = cuboidDocument(
+      await datasetFactory.readSample({ datasetName }),
+    );
     expect(doc?.label).toBe("car");
     expect(doc?.location).toEqual([0, 0, 0]);
     expect(doc).not.toHaveProperty("path");

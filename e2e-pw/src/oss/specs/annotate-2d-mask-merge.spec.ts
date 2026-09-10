@@ -47,24 +47,23 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(
-  async ({ annotateSDK, datasetFactory, fiftyoneLoader, foWebServer }) => {
-    await foWebServer.startWebServer();
-    await datasetFactory.createDataset({
-      datasetName,
-      imageOptions: { fillColor: "white", width: 640, height: 480 },
-      schema: { detections: "Detections" },
-    });
-    await fiftyoneLoader.executePythonCode(seedDetections());
-    await annotateSDK.updateLabelSchema(datasetName, "detections", {
-      type: "detections",
-      classes: ["cat", "dog"],
-      attributes: [],
-      component: "dropdown",
-    });
-    await annotateSDK.addFieldToActiveLabelSchema(datasetName, "detections");
-  },
-);
+test.beforeAll(async ({ datasetFactory, fiftyoneLoader, foWebServer }) => {
+  await foWebServer.startWebServer();
+  await datasetFactory.createDataset({
+    datasetName,
+    imageOptions: { fillColor: "white", width: 640, height: 480 },
+    schema: { detections: "Detections" },
+    labelSchemas: {
+      detections: {
+        type: "detections",
+        classes: ["cat", "dog"],
+        attributes: [],
+        component: "dropdown",
+      },
+    },
+  });
+  await fiftyoneLoader.executePythonCode(seedDetections());
+});
 
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();

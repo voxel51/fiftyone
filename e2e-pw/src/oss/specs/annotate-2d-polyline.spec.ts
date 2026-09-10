@@ -83,16 +83,15 @@ const inFreshContext = async (
   }
 };
 
-test.beforeAll(
-  async ({ annotateSDK, datasetFactory, fiftyoneLoader, foWebServer }) => {
-    await foWebServer.startWebServer();
-    await datasetFactory.createDataset({
-      datasetName,
-      imageOptions: { fillColor: "white", width: 640, height: 480 },
-    });
-    // The factory only models Detection(s)/Classification(s); declare the
-    // Polylines field directly.
-    await fiftyoneLoader.executePythonCode(`
+test.beforeAll(async ({ datasetFactory, fiftyoneLoader, foWebServer }) => {
+  await foWebServer.startWebServer();
+  await datasetFactory.createDataset({
+    datasetName,
+    imageOptions: { fillColor: "white", width: 640, height: 480 },
+  });
+  // The factory only models Detection(s)/Classification(s); declare the
+  // Polylines field directly.
+  await fiftyoneLoader.executePythonCode(`
 import fiftyone as fo
 
 dataset = fo.load_dataset("${datasetName}")
@@ -102,15 +101,17 @@ dataset.add_sample_field(
 dataset.add_sample_field("polylines.polylines.index", fo.IntField)
 dataset.save()
 `);
-    await annotateSDK.updateLabelSchema(datasetName, "polylines", {
+  await datasetFactory.updateLabelSchema({
+    datasetName,
+    field: "polylines",
+    schema: {
       type: "polylines",
       classes: ["lane", "curb"],
       attributes: [],
       component: "dropdown",
-    });
-    await annotateSDK.addFieldToActiveLabelSchema(datasetName, "polylines");
-  },
-);
+    },
+  });
+});
 
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();

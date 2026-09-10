@@ -14,6 +14,7 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
 import type { Page } from "src/oss/fixtures";
+import { videoAnnotationSeed } from "./annotate-video/seed";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-video-track-delete",
@@ -39,8 +40,10 @@ test.beforeEach(async ({ datasetFactory }) => {
   // to a single object track.
   await datasetFactory.createVideoDataset({
     datasetName,
-    withEvents: false,
-    trackedSampleIndices: [0],
+    ...videoAnnotationSeed({
+      withEvents: false,
+      trackedSampleIndices: [0],
+    }),
   });
 });
 

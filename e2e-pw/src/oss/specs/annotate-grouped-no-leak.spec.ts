@@ -26,7 +26,7 @@ import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
-import type { AnnotateSDK } from "src/oss/fixtures/annotate-sdk";
+import type { DatasetFactory } from "src/shared/dataset-factory";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-grouped-no-leak");
 
@@ -73,7 +73,7 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
  */
 const seedDataset = async (
   fiftyoneLoader: AbstractFiftyoneLoader,
-  annotateSDK: AnnotateSDK,
+  datasetFactory: typeof DatasetFactory,
 ) => {
   await fiftyoneLoader.executePythonCode(`
 import fiftyone as fo
@@ -146,19 +146,22 @@ samples = [
 dataset.add_samples(samples)
   `);
 
-  await annotateSDK.updateLabelSchema(datasetName, "detections", {
-    type: "detections",
-    classes: ["cat", "dog"],
-    attributes: [],
-    component: "dropdown",
+  await datasetFactory.updateLabelSchema({
+    datasetName,
+    field: "detections",
+    schema: {
+      type: "detections",
+      classes: ["cat", "dog"],
+      attributes: [],
+      component: "dropdown",
+    },
   });
-  await annotateSDK.addFieldToActiveLabelSchema(datasetName, "detections");
 };
 
 /**
  * Reads back the persisted detection classes per group slice (sorted, so the
  * comparison is order-independent). Used to confirm a class edit landed only on
- * its own slice's sample. Mirrors the temp-file readback pattern of the 3D SDK
+ * its own slice's sample. Mirrors the temp-file readback pattern of the dataset factory readers
  * (each call spawns a python process — poll with a generous timeout).
  */
 const readSliceClasses = async (
@@ -247,8 +250,8 @@ if fo.dataset_exists("${datasetName}"):
 });
 
 test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
-  test.beforeEach(async ({ annotateSDK, fiftyoneLoader, modal, page }) => {
-    await seedDataset(fiftyoneLoader, annotateSDK);
+  test.beforeEach(async ({ datasetFactory, fiftyoneLoader, modal, page }) => {
+    await seedDataset(fiftyoneLoader, datasetFactory);
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
     // suppress the one-time 3D annotation tips popup — it overlays the
     // looker3d action bar (bottom-left in multiview) and intercepts the

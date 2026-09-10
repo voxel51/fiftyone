@@ -20,6 +20,8 @@ import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { SAM2_MOCK_WORKER_SRC } from "src/shared/sam2-mock-worker";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import type { LabelSchema } from "src/shared/dataset-factory";
+import { detectionsState } from "./annotate-2d/read";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
   "smoke-annotate-segmentation-ai",
@@ -35,14 +37,14 @@ const test = base.extend<{
 
 // Minimal Detections schema — the mock worker creates the mask at runtime;
 // the schema only needs to declare the field type and available classes.
-const schema: Record<string, unknown> = {
+const schema: LabelSchema = {
   type: "detections",
   classes: ["cat"],
   attributes: [],
   component: "dropdown",
 };
 
-test.beforeAll(async ({ annotateSDK, datasetFactory, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
   await datasetFactory.createDataset({
     datasetName,
@@ -50,10 +52,10 @@ test.beforeAll(async ({ annotateSDK, datasetFactory, foWebServer }) => {
     schema: {
       instances: "Detections",
     },
+    labelSchemas: {
+      instances: schema,
+    },
   });
-
-  await annotateSDK.updateLabelSchema(datasetName, "instances", schema);
-  await annotateSDK.addFieldToActiveLabelSchema(datasetName, "instances");
 });
 
 test.afterAll(async ({ foWebServer }) => {
@@ -82,7 +84,7 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
 
 test.describe.serial("segmentation AI (SAM2) round-trip", () => {
   test("placing a positive point persists a Detection with a mask", async ({
-    annotateSDK,
+    datasetFactory,
     fiftyoneLoader,
     modal,
     page,
@@ -103,7 +105,16 @@ test.describe.serial("segmentation AI (SAM2) round-trip", () => {
     // ── 3. Wait for the inferred detection to persist ───────────────────────
     // inference runs in a worker: settlement alone reads "settled" before
     // the label exists, so wait on the persisted state itself
-    await annotateSDK.waitForDetectionCount(datasetName, "instances");
+    await expect
+      .poll(
+        async () =>
+          detectionsState(
+            await datasetFactory.readSample({ datasetName }),
+            "instances",
+          ).count,
+        { timeout: 15_000 },
+      )
+      .toBeGreaterThanOrEqual(1);
 
     // The inferred detection is left selected; the create toolbar is hidden
     // while editing, so exit via the edit form rather than the toolbar.
@@ -115,8 +126,8 @@ test.describe.serial("segmentation AI (SAM2) round-trip", () => {
       searchParams: new URLSearchParams({ id: "000000000000000000000000" }),
     });
 
-    const state = await annotateSDK.getDetectionsState(
-      datasetName,
+    const state = detectionsState(
+      await datasetFactory.readSample({ datasetName }),
       "instances",
     );
 

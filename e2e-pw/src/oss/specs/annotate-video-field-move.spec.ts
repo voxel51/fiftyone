@@ -17,6 +17,7 @@ import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
+import { videoAnnotationSeed } from "./annotate-video/seed";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-video-field-move");
 
@@ -124,8 +125,10 @@ test.describe.serial("video annotation field move", () => {
   test.beforeEach(async ({ fiftyoneLoader, datasetFactory }) => {
     await datasetFactory.createVideoDataset({
       datasetName,
-      withEvents: false,
-      trackedSampleIndices: [0],
+      ...videoAnnotationSeed({
+        withEvents: false,
+        trackedSampleIndices: [0],
+      }),
     });
     await addPredictionsField(fiftyoneLoader);
   });

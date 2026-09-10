@@ -25,10 +25,12 @@
 import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import type { LabelSchema } from "src/shared/dataset-factory";
+import { detectionsState } from "./annotate-2d/read";
 
 const SAMPLE_ID = "000000000000000000000000";
 
-const schema: Record<string, unknown> = {
+const schema: LabelSchema = {
   type: "detections",
   classes: ["cat"],
   attributes: [],
@@ -44,7 +46,7 @@ const test = base.extend<{
   },
   // Fresh dataset per test. Uses the test title so each baseline is
   // colocated with its corresponding dataset's render.
-  datasetName: async ({ annotateSDK, datasetFactory }, use, testInfo) => {
+  datasetName: async ({ datasetFactory }, use, testInfo) => {
     const name = getUniqueDatasetNameWithPrefix(
       `seg-snap-${testInfo.title.replace(/\s+/g, "-")}`,
     );
@@ -53,10 +55,10 @@ const test = base.extend<{
       datasetName: name,
       imageOptions: { fillColor: "white", width: 640, height: 480 },
       schema: { instances: "Detections" },
+      labelSchemas: {
+        instances: schema,
+      },
     });
-
-    await annotateSDK.updateLabelSchema(name, "instances", schema);
-    await annotateSDK.addFieldToActiveLabelSchema(name, "instances");
 
     await use(name);
   },
@@ -120,7 +122,7 @@ test.describe.serial("segmentation tool snapshots", () => {
   });
 
   test("ai", async ({
-    annotateSDK,
+    datasetFactory,
     datasetName,
     fiftyoneLoader,
     mockSam2Worker,
@@ -140,7 +142,16 @@ test.describe.serial("segmentation tool snapshots", () => {
 
     // inference runs in a worker: settlement alone reads "settled" before
     // the label exists, so wait on the persisted state itself
-    await annotateSDK.waitForDetectionCount(datasetName, "instances");
+    await expect
+      .poll(
+        async () =>
+          detectionsState(
+            await datasetFactory.readSample({ datasetName }),
+            "instances",
+          ).count,
+        { timeout: 15_000 },
+      )
+      .toBeGreaterThanOrEqual(1);
 
     // Right-click to finalize the AI session: destroys the keypoint
     // overlay (and its ripple animation), leaving only the mask render.
@@ -150,7 +161,6 @@ test.describe.serial("segmentation tool snapshots", () => {
   });
 
   test("merge", async ({
-    annotateSDK,
     datasetFactory,
     datasetName,
     fiftyoneLoader,
@@ -168,7 +178,6 @@ test.describe.serial("segmentation tool snapshots", () => {
       ],
     });
     // Annotate the freshly-saved sample.
-    void annotateSDK; // unused — kept so per-test fixture creation still runs
 
     await openAnnotate(modal, page, fiftyoneLoader, datasetName);
     await modal.sidebar.annotate.pickTool("Merge");
@@ -183,8 +192,8 @@ test.describe.serial("segmentation tool snapshots", () => {
     await modal.sampleCanvas.assert.hasScreenshot("seg-merge-union.png");
 
     // Sanity check: the merge collapsed the pair into a single detection.
-    const state = await annotateSDK.getDetectionsState(
-      datasetName,
+    const state = detectionsState(
+      await datasetFactory.readSample({ datasetName }),
       "instances",
     );
     expect(state.count).toBe(1);

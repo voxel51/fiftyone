@@ -19,7 +19,7 @@ import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
-import type { AnnotateSDK } from "src/oss/fixtures/annotate-sdk";
+import type { DatasetFactory } from "src/shared/dataset-factory";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-3d-pin-leak");
 
@@ -45,7 +45,7 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
  */
 const seedDataset = async (
   fiftyoneLoader: AbstractFiftyoneLoader,
-  annotateSDK: AnnotateSDK,
+  datasetFactory: typeof DatasetFactory,
 ) => {
   await fiftyoneLoader.executePythonCode(`
 import fiftyone as fo
@@ -87,13 +87,16 @@ samples = [
 dataset.add_samples(samples)
   `);
 
-  await annotateSDK.updateLabelSchema(datasetName, "detections", {
-    type: "detections",
-    classes: ["cat", "dog"],
-    attributes: [],
-    component: "dropdown",
+  await datasetFactory.updateLabelSchema({
+    datasetName,
+    field: "detections",
+    schema: {
+      type: "detections",
+      classes: ["cat", "dog"],
+      attributes: [],
+      component: "dropdown",
+    },
   });
-  await annotateSDK.addFieldToActiveLabelSchema(datasetName, "detections");
 };
 
 test.beforeAll(async ({ foWebServer, mediaFactory }) => {
@@ -137,8 +140,8 @@ if fo.dataset_exists("${datasetName}"):
 });
 
 test.describe.serial("grouped 2D+3D annotation — 3D pin does not leak", () => {
-  test.beforeEach(async ({ annotateSDK, fiftyoneLoader, modal, page }) => {
-    await seedDataset(fiftyoneLoader, annotateSDK);
+  test.beforeEach(async ({ datasetFactory, fiftyoneLoader, modal, page }) => {
+    await seedDataset(fiftyoneLoader, datasetFactory);
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
     await modal.close({ ignoreError: true });
   });

@@ -9,7 +9,7 @@
  *   - the classification can be deleted (the undo of that delete is a known
  *     engine gap — see the `test.fixme` below).
  *
- * Persistence is read back from Python (`getClassificationState`) — a true
+ * Persistence is read back from Python (`classificationState`) — a true
  * server round-trip on the sample's `Classification` field.
  *
  * The create form pre-fills `label` with the first class; persistence is gated
@@ -22,6 +22,7 @@
 import { expect, test as base, type Page } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import { classificationState } from "./annotate-2d/read";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-2d-classification",
@@ -55,20 +56,21 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ annotateSDK, datasetFactory, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
   await datasetFactory.createDataset({
     datasetName,
     imageOptions: { fillColor: "white", width: 640, height: 480 },
     schema: { [FIELD]: "Classification" },
+    labelSchemas: {
+      [FIELD]: {
+        type: "classification",
+        classes: ["sunny", "cloudy"],
+        attributes: [],
+        component: "dropdown",
+      },
+    },
   });
-  await annotateSDK.updateLabelSchema(datasetName, FIELD, {
-    type: "classification",
-    classes: ["sunny", "cloudy"],
-    attributes: [],
-    component: "dropdown",
-  });
-  await annotateSDK.addFieldToActiveLabelSchema(datasetName, FIELD);
 });
 
 test.afterAll(async ({ foWebServer }) => {
@@ -88,7 +90,7 @@ test.describe.serial("2D annotation classification", () => {
 
   // flaky: passed only on retry in CI
   test.skip("creating a classification assigns a class and persists", async ({
-    annotateSDK,
+    datasetFactory,
     modal,
     page,
   }) => {
@@ -107,14 +109,17 @@ test.describe.serial("2D annotation classification", () => {
     await expect
       .poll(
         async () =>
-          (await annotateSDK.getClassificationState(datasetName, FIELD)).label,
+          classificationState(
+            await datasetFactory.readSample({ datasetName }),
+            FIELD,
+          ).label,
         { timeout: 15_000 },
       )
       .toBe("cloudy");
   });
 
   test("a classification can be deleted", async ({
-    annotateSDK,
+    datasetFactory,
     modal,
     page,
   }) => {
@@ -125,7 +130,10 @@ test.describe.serial("2D annotation classification", () => {
     await expect
       .poll(
         async () =>
-          (await annotateSDK.getClassificationState(datasetName, FIELD)).label,
+          classificationState(
+            await datasetFactory.readSample({ datasetName }),
+            FIELD,
+          ).label,
         { timeout: 15_000 },
       )
       .toBe("cloudy");
@@ -137,8 +145,10 @@ test.describe.serial("2D annotation classification", () => {
     await expect
       .poll(
         async () =>
-          (await annotateSDK.getClassificationState(datasetName, FIELD))
-            .present,
+          classificationState(
+            await datasetFactory.readSample({ datasetName }),
+            FIELD,
+          ).present,
         { timeout: 15_000 },
       )
       .toBe(false);
@@ -151,7 +161,7 @@ test.describe.serial("2D annotation classification", () => {
   // restore the way list labels are. Re-enable once the engine restores a
   // deleted single label on undo.
   test.fixme("a classification deletion is undoable", async ({
-    annotateSDK,
+    datasetFactory,
     modal,
     page,
   }) => {
@@ -162,7 +172,10 @@ test.describe.serial("2D annotation classification", () => {
     await expect
       .poll(
         async () =>
-          (await annotateSDK.getClassificationState(datasetName, FIELD)).label,
+          classificationState(
+            await datasetFactory.readSample({ datasetName }),
+            FIELD,
+          ).label,
         { timeout: 15_000 },
       )
       .toBe("cloudy");
@@ -178,7 +191,10 @@ test.describe.serial("2D annotation classification", () => {
     await expect
       .poll(
         async () =>
-          (await annotateSDK.getClassificationState(datasetName, FIELD)).label,
+          classificationState(
+            await datasetFactory.readSample({ datasetName }),
+            FIELD,
+          ).label,
         { timeout: 15_000 },
       )
       .toBe("cloudy");

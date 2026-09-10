@@ -24,6 +24,7 @@ import { SchemaManagerPom } from "src/oss/poms/schema-manager";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
 import type { Page } from "src/oss/fixtures";
+import { videoAnnotationSeed } from "./annotate-video/seed";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-video-schema-active",
@@ -61,7 +62,9 @@ test.beforeEach(async ({ datasetFactory }) => {
   // dataset.
   await datasetFactory.createVideoDataset({
     datasetName,
-    trackedSampleIndices: [0],
+    ...videoAnnotationSeed({
+      trackedSampleIndices: [0],
+    }),
   });
 });
 

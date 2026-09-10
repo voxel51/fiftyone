@@ -18,13 +18,13 @@ import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
+import { annotate3dSeed } from "./annotate-3d/seed";
+import { cuboidGeometry, cuboidLabels } from "./annotate-3d/read";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-3d-cuboid");
 
 /** Fixed ObjectId addressing the first sample (so we can deep-link the modal). */
 const id = "000000000000000000000000";
-const plyPath = `/tmp/${datasetName}.ply`;
-const scenePath = `/tmp/${datasetName}.fo3d`;
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -32,12 +32,8 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
-  // a single PLY cube wrapped in a minimal fo3d scene is enough geometry for
-  // the viewer to mount and frame the scene.
-  mediaFactory.createPly({ outputPath: plyPath, shape: "cube" });
-  mediaFactory.createFo3d({ outputPath: scenePath, plyPath });
 });
 
 test.afterAll(async ({ foWebServer }) => {
@@ -61,12 +57,13 @@ const openAnnotate = async (
 test.describe.serial("3d cuboid annotation", () => {
   // Re-seed per test so each delete/undo case starts from a clean cuboid
   // (mirrors the video label-create specs).
-  test.beforeEach(async ({ annotate3dSDK, fiftyoneLoader, modal, page }) => {
-    await annotate3dSDK.seed({
+  test.beforeEach(async ({ datasetFactory, fiftyoneLoader, modal, page }) => {
+    await datasetFactory.create3dDataset({
       datasetName,
-      scenePaths: [scenePath],
-      classes: ["car", "truck", "pedestrian"],
-      cuboidSampleIndices: [0],
+      ...annotate3dSeed({
+        classes: ["car", "truck", "pedestrian"],
+        cuboidSampleIndices: [0],
+      }),
     });
     await openAnnotate(fiftyoneLoader, modal, page);
   });
@@ -95,7 +92,7 @@ test.describe.serial("3d cuboid annotation", () => {
   });
 
   test("editing a cuboid's position via the form persists and round-trips through undo/redo", async ({
-    annotate3dSDK,
+    datasetFactory,
     modal,
     page,
   }) => {
@@ -118,7 +115,9 @@ test.describe.serial("3d cuboid annotation", () => {
     await expect
       .poll(
         async () => {
-          const geom = await annotate3dSDK.getCuboidGeometry(datasetName);
+          const geom = cuboidGeometry(
+            await datasetFactory.readSample({ datasetName }),
+          );
           return geom.location
             ? Math.round(geom.location[0] * 100) / 100
             : null;
@@ -136,7 +135,7 @@ test.describe.serial("3d cuboid annotation", () => {
   });
 
   test("a class edit on the cuboid persists across a fresh save", async ({
-    annotate3dSDK,
+    datasetFactory,
     modal,
     page,
   }) => {
@@ -153,11 +152,15 @@ test.describe.serial("3d cuboid annotation", () => {
 
     // the cuboid stays a single detection whose class is now persisted "truck"
     await expect
-      .poll(async () => annotate3dSDK.getCuboidLabels(datasetName), {
-        // each readback spawns a python process, so give the DB round-trip
-        // room for several attempts (the default 5s is too tight).
-        timeout: 20_000,
-      })
+      .poll(
+        async () =>
+          cuboidLabels(await datasetFactory.readSample({ datasetName })),
+        {
+          // each readback spawns a python process, so give the DB round-trip
+          // room for several attempts (the default 5s is too tight).
+          timeout: 20_000,
+        },
+      )
       .toEqual(["truck"]);
   });
 
@@ -180,7 +183,7 @@ test.describe.serial("3d cuboid annotation", () => {
   });
 
   test("a delete persists across a fresh save", async ({
-    annotate3dSDK,
+    datasetFactory,
     modal,
     page,
   }) => {
@@ -196,11 +199,15 @@ test.describe.serial("3d cuboid annotation", () => {
     await saved;
 
     await expect
-      .poll(async () => annotate3dSDK.getCuboidLabels(datasetName), {
-        // each readback spawns a python process, so give the DB round-trip
-        // room for several attempts (the default 5s is too tight).
-        timeout: 20_000,
-      })
+      .poll(
+        async () =>
+          cuboidLabels(await datasetFactory.readSample({ datasetName })),
+        {
+          // each readback spawns a python process, so give the DB round-trip
+          // room for several attempts (the default 5s is too tight).
+          timeout: 20_000,
+        },
+      )
       .toEqual([]);
   });
 
@@ -209,7 +216,7 @@ test.describe.serial("3d cuboid annotation", () => {
   // engine's command stack must still drive undo AND redo — and each step must
   // itself re-persist (the engine commits through the same save path).
   test("undo and redo of a persisted class edit re-persist through the DB", async ({
-    annotate3dSDK,
+    datasetFactory,
     modal,
     page,
   }) => {
@@ -227,11 +234,15 @@ test.describe.serial("3d cuboid annotation", () => {
     await modal.sidebar.edit.selectFieldChoice("label", "truck");
     await saved;
     await expect
-      .poll(async () => annotate3dSDK.getCuboidLabels(datasetName), {
-        // each readback spawns a python process, so give the DB round-trip
-        // room for several attempts (the default 5s is too tight).
-        timeout: 20_000,
-      })
+      .poll(
+        async () =>
+          cuboidLabels(await datasetFactory.readSample({ datasetName })),
+        {
+          // each readback spawns a python process, so give the DB round-trip
+          // room for several attempts (the default 5s is too tight).
+          timeout: 20_000,
+        },
+      )
       .toEqual(["truck"]);
 
     // after the autosave the stack survives: undo reverts the class and
@@ -242,11 +253,15 @@ test.describe.serial("3d cuboid annotation", () => {
     await modal.sidebar.edit.assert.verifyFieldValue("label", "car");
     await saved;
     await expect
-      .poll(async () => annotate3dSDK.getCuboidLabels(datasetName), {
-        // each readback spawns a python process, so give the DB round-trip
-        // room for several attempts (the default 5s is too tight).
-        timeout: 20_000,
-      })
+      .poll(
+        async () =>
+          cuboidLabels(await datasetFactory.readSample({ datasetName })),
+        {
+          // each readback spawns a python process, so give the DB round-trip
+          // room for several attempts (the default 5s is too tight).
+          timeout: 20_000,
+        },
+      )
       .toEqual(["car"]);
 
     // redo re-applies the class and re-persists "truck"
@@ -256,11 +271,15 @@ test.describe.serial("3d cuboid annotation", () => {
     await modal.sidebar.edit.assert.verifyFieldValue("label", "truck");
     await saved;
     await expect
-      .poll(async () => annotate3dSDK.getCuboidLabels(datasetName), {
-        // each readback spawns a python process, so give the DB round-trip
-        // room for several attempts (the default 5s is too tight).
-        timeout: 20_000,
-      })
+      .poll(
+        async () =>
+          cuboidLabels(await datasetFactory.readSample({ datasetName })),
+        {
+          // each readback spawns a python process, so give the DB round-trip
+          // room for several attempts (the default 5s is too tight).
+          timeout: 20_000,
+        },
+      )
       .toEqual(["truck"]);
   });
 });
@@ -271,18 +290,19 @@ test.describe.serial("3d cuboid annotation", () => {
 // click (selecting it instead of drawing), so a clean scene makes the gesture
 // deterministic.
 test.describe.serial("3d cuboid creation", () => {
-  test.beforeEach(async ({ annotate3dSDK, fiftyoneLoader, modal, page }) => {
-    await annotate3dSDK.seed({
+  test.beforeEach(async ({ datasetFactory, fiftyoneLoader, modal, page }) => {
+    await datasetFactory.create3dDataset({
       datasetName,
-      scenePaths: [scenePath],
-      classes: ["car", "truck", "pedestrian"],
-      cuboidSampleIndices: [],
+      ...annotate3dSeed({
+        classes: ["car", "truck", "pedestrian"],
+        cuboidSampleIndices: [],
+      }),
     });
     await openAnnotate(fiftyoneLoader, modal, page);
   });
 
   test("drawing a cuboid on the canvas creates a label, assigns a class, and persists", async ({
-    annotate3dSDK,
+    datasetFactory,
     modal,
     page,
   }) => {
@@ -315,9 +335,13 @@ test.describe.serial("3d cuboid creation", () => {
 
     // the drawn cuboid persists as a single detection carrying the class
     await expect
-      .poll(async () => annotate3dSDK.getCuboidLabels(datasetName), {
-        timeout: 20_000,
-      })
+      .poll(
+        async () =>
+          cuboidLabels(await datasetFactory.readSample({ datasetName })),
+        {
+          timeout: 20_000,
+        },
+      )
       .toEqual(["truck"]);
   });
 });

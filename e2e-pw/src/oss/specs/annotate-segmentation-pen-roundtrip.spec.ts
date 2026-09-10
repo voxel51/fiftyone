@@ -15,6 +15,8 @@ import { expect, test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import type { LabelSchema } from "src/shared/dataset-factory";
+import { detectionsState } from "./annotate-2d/read";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
   "smoke-annotate-segmentation-pen",
@@ -36,14 +38,14 @@ const test = base.extend<{
 // is the rendered mask payload — not a schema-declared attribute. The pen
 // tool creates the mask at runtime; the schema only needs to declare the
 // field as `detections` with available classes.
-const schema: Record<string, unknown> = {
+const schema: LabelSchema = {
   type: "detections",
   classes: ["cat", "dog"],
   attributes: [],
   component: "dropdown",
 };
 
-test.beforeAll(async ({ annotateSDK, datasetFactory, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
   await datasetFactory.createDataset({
     datasetName,
@@ -51,10 +53,10 @@ test.beforeAll(async ({ annotateSDK, datasetFactory, foWebServer }) => {
     schema: {
       instances: "Detections",
     },
+    labelSchemas: {
+      instances: schema,
+    },
   });
-
-  await annotateSDK.updateLabelSchema(datasetName, "instances", schema);
-  await annotateSDK.addFieldToActiveLabelSchema(datasetName, "instances");
 });
 
 test.afterAll(async ({ foWebServer }) => {
@@ -69,7 +71,7 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
 
 test.describe.serial("segmentation pen-tool round-trip", () => {
   test("draws a mask polygon, persists it, and the mask survives reload", async ({
-    annotateSDK,
+    datasetFactory,
     fiftyoneLoader,
     modal,
     page,
@@ -108,8 +110,8 @@ test.describe.serial("segmentation pen-tool round-trip", () => {
     });
 
     // ── 5. Verify from Python that the saved sample has a non-empty mask ────
-    const state = await annotateSDK.getDetectionsState(
-      datasetName,
+    const state = detectionsState(
+      await datasetFactory.readSample({ datasetName }),
       "instances",
     );
 

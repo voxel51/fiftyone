@@ -49,19 +49,17 @@ test.afterEach(async ({ modal, page }) => {
 });
 
 test.describe.serial("annotate-sidebar-smoke", () => {
-  test("smoke", async ({ grid, modal, annotateSDK }) => {
-    await annotateSDK.updateLabelSchema(
+  test("smoke", async ({ grid, modal, datasetFactory }) => {
+    await datasetFactory.updateLabelSchema({
       datasetName,
-      "ground_truth",
-      ground_truth_schema,
-    );
-    await annotateSDK.addFieldToActiveLabelSchema(datasetName, "ground_truth");
-    await annotateSDK.updateLabelSchema(
+      field: "ground_truth",
+      schema: ground_truth_schema,
+    });
+    await datasetFactory.updateLabelSchema({
       datasetName,
-      "uniqueness",
-      uniqueness_schema,
-    );
-    await annotateSDK.addFieldToActiveLabelSchema(datasetName, "uniqueness");
+      field: "uniqueness",
+      schema: uniqueness_schema,
+    });
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");

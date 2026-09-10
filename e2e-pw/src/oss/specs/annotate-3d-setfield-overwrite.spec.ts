@@ -23,13 +23,13 @@ import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
+import { annotate3dSeed } from "./annotate-3d/seed";
+import { cuboidLabels } from "./annotate-3d/read";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-3d-setfield");
 
 /** Fixed ObjectId addressing the first sample (so we can deep-link the modal). */
 const id = "000000000000000000000000";
-const plyPath = `/tmp/${datasetName}.ply`;
-const scenePath = `/tmp/${datasetName}.fo3d`;
 
 /** Saved-view slug applying the `set_field` projection. */
 const viewSlug = "set-field-note";
@@ -40,10 +40,8 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
-  mediaFactory.createPly({ outputPath: plyPath, shape: "cube" });
-  mediaFactory.createFo3d({ outputPath: scenePath, plyPath });
 });
 
 test.afterAll(async ({ foWebServer }) => {
@@ -115,12 +113,13 @@ const openAnnotate = async (
 };
 
 test.describe.serial("3d annotate set_field overwrite", () => {
-  test.beforeEach(async ({ annotate3dSDK, fiftyoneLoader }) => {
-    await annotate3dSDK.seed({
+  test.beforeEach(async ({ datasetFactory, fiftyoneLoader }) => {
+    await datasetFactory.create3dDataset({
       datasetName,
-      scenePaths: [scenePath],
-      classes: ["car", "truck", "pedestrian"],
-      cuboidSampleIndices: [0],
+      ...annotate3dSeed({
+        classes: ["car", "truck", "pedestrian"],
+        cuboidSampleIndices: [0],
+      }),
     });
 
     // Materialize known DB values, then save a view that PROJECTS different
@@ -153,7 +152,7 @@ dataset.save_view("${viewSlug}", view)
   });
 
   test("editing a cuboid does not persist set_field-projected fields", async ({
-    annotate3dSDK,
+    datasetFactory,
     fiftyoneLoader,
     modal,
     page,
@@ -174,9 +173,13 @@ dataset.save_view("${viewSlug}", view)
 
     // the cuboid edit persisted
     await expect
-      .poll(async () => annotate3dSDK.getCuboidLabels(datasetName), {
-        timeout: 20_000,
-      })
+      .poll(
+        async () =>
+          cuboidLabels(await datasetFactory.readSample({ datasetName })),
+        {
+          timeout: 20_000,
+        },
+      )
       .toEqual(["truck"]);
 
     // CRITICAL: neither projected value may clobber the DB. The top-level

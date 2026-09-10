@@ -24,6 +24,7 @@ import { expect, test as base, type Page } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
+import { videoAnnotationSeed } from "./annotate-video/seed";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-video-label-types",
@@ -44,9 +45,11 @@ test.beforeAll(async ({ foWebServer, datasetFactory }) => {
   // each a single instance present on every frame.
   await datasetFactory.createVideoDataset({
     datasetName,
-    trackedSampleIndices: [0],
-    maskedSampleIndices: [0],
-    polylineSampleIndices: [0],
+    ...videoAnnotationSeed({
+      trackedSampleIndices: [0],
+      maskedSampleIndices: [0],
+      polylineSampleIndices: [0],
+    }),
   });
 });
 

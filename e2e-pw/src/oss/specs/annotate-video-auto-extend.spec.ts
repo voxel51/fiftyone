@@ -20,6 +20,7 @@ import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
 import type { Page } from "src/oss/fixtures";
+import { videoAnnotationSeed } from "./annotate-video/seed";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-video-auto-extend",
@@ -45,7 +46,9 @@ test.beforeEach(async ({ datasetFactory }) => {
   await datasetFactory.createVideoDataset({
     datasetName,
     videoOptions: { duration: 4 },
-    withEvents: false,
+    ...videoAnnotationSeed({
+      withEvents: false,
+    }),
   });
 });
 

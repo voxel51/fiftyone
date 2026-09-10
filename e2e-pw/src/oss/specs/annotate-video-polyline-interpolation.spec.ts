@@ -21,6 +21,7 @@ import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
 import type { Page } from "src/oss/fixtures";
+import { videoAnnotationSeed } from "./annotate-video/seed";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-video-polyline-interp",
@@ -60,12 +61,14 @@ test.beforeEach(async ({ datasetFactory }) => {
     // 10fps/40-frame variant of this spec passes, so frame rate / clip length
     // is a suspect)
     videoOptions: { container: "mp4", duration: 6, frameRate: 30 },
-    withEvents: false,
-    // schema only: this spec draws the first polyline itself
-    withPolylineField: true,
-    // the reported sample carried several other polyline tracks; a pre-seeded
-    // track makes the drawn one share the surface, as it did there
-    polylineSampleIndices: [0],
+    ...videoAnnotationSeed({
+      withEvents: false,
+      // schema only: this spec draws the first polyline itself
+      withPolylineField: true,
+      // the reported sample carried several other polyline tracks; a pre-seeded
+      // track makes the drawn one share the surface, as it did there
+      polylineSampleIndices: [0],
+    }),
   });
 });
 
