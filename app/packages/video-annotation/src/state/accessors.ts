@@ -14,12 +14,15 @@ import {
   type ModalSample,
   modalSampleId,
   selectedMediaField,
+  State,
   useCurrentDatasetId,
   useIsImageDynamicGroupVideo,
   view,
 } from "@fiftyone/state";
 import { isFrameScopedPath } from "./framePaths";
 import {
+  CLASSIFICATION_FIELD,
+  CLASSIFICATIONS_FIELD,
   DETECTION,
   EMBEDDED_DOCUMENT_FIELD,
   LabelType,
@@ -80,6 +83,25 @@ export const useTemporalDetectionFieldPaths = () =>
     fieldPaths({
       ftype: EMBEDDED_DOCUMENT_FIELD,
       embeddedDocType: TEMPORAL_DETECTIONS_FIELD,
+    }),
+  );
+
+/**
+ * Schema paths of the dataset's SAMPLE-level classification fields, single and
+ * list alike.
+ *
+ * `space: SAMPLE` is what keeps the `frames.*` namespace out. A per-frame
+ * classification is the `FrameStore`'s to paint (see
+ * {@link useExploreFrameLabelFields}), and the composite `VideoLabelStore`
+ * routes by which half claims the path — admitting `frames.classifications`
+ * here would scope the same path twice, once per owner.
+ */
+export const useSampleClassificationFieldPaths = () =>
+  useRecoilValue(
+    fieldPaths({
+      space: State.SPACE.SAMPLE,
+      ftype: EMBEDDED_DOCUMENT_FIELD,
+      embeddedDocType: [CLASSIFICATION_FIELD, CLASSIFICATIONS_FIELD],
     }),
   );
 
