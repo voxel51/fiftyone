@@ -58,6 +58,8 @@ const drawPolyline = async (
   modal: ModalPom,
   vertices: Array<[number, number]>,
 ) => {
+  await modal.sampleCanvas.waitForDrawingCursor();
+
   for (const [x, y] of vertices) {
     await modal.sampleCanvas.click(x, y);
   }
