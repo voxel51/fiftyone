@@ -4,6 +4,7 @@
 
 import type { ImageSpec } from "../media-factory/image";
 import type { McapSpec } from "../media-factory/mcap";
+import type { PcdSpec } from "../media-factory/pcd";
 import type { SceneSpec } from "../media-factory/scene";
 import type { VideoSpec } from "../media-factory/video";
 
@@ -86,23 +87,33 @@ export type Label =
   | "Classifications"
   | "Detection"
   | "Detections"
+  | "Instance"
   | "Polyline"
   | "Polylines"
   | "TemporalDetection"
   | "TemporalDetections";
 
-/**
- * All supported field types for dataset schema definitions.
- * Includes both primitive scalar types and FiftyOne {@link Label} types.
- */
-export type FieldType =
-  | Label
+type ScalarFieldType =
   | "BooleanField"
   | "DictField"
   | "FloatField"
   | "IntField"
-  | "ListField"
   | "StringField";
+
+type ListOf<T extends string> = `ListField<${T}>`;
+
+/**
+ * Scalar, list and FiftyOne {@link Label} field types. A typed list nests up
+ * to three deep, e.g. `"ListField<ListField<ListField<FloatField>>>"` for a
+ * polyline's `points3d`.
+ */
+export type FieldType =
+  | Label
+  | ScalarFieldType
+  | "ListField"
+  | ListOf<ScalarFieldType>
+  | ListOf<ListOf<ScalarFieldType>>
+  | ListOf<ListOf<ListOf<ScalarFieldType>>>;
 
 /**
  * A recursive type representing any valid JSON value.
@@ -240,8 +251,9 @@ export interface ImageDatasetOptions extends BaseDatasetOptions {
  */
 export interface GroupSliceConfig {
   name: string;
-  mediaType: "image" | "3d" | "video";
+  mediaType: "image" | "3d" | "point-cloud" | "video";
   imageOptions?: ImageSpec;
+  pcdOptions?: PcdSpec;
   sceneOptions?: SceneSpec;
   videoOptions?: VideoSpec;
 }
@@ -260,6 +272,9 @@ export interface GroupDatasetOptions extends BaseDatasetOptions<GroupSampleScaff
 
   /** Options for the image of each image-slice sample. */
   imageOptions?: PerSample<ImageSpec>;
+
+  /** Options for the point cloud of each point-cloud-slice sample. */
+  pcdOptions?: PerSample<PcdSpec>;
 
   /** Options for the scene of each 3d-slice sample. */
   sceneOptions?: PerSample<SceneSpec>;

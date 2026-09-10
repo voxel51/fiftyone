@@ -188,6 +188,12 @@ prefix in `schema`, populates frames through `withFrameData(frame, helpers)`
 `sampleFrames: true`. `helpers.mask(width, height)` serializes an all-ones
 numpy mask.
 
+Every attribute a `withSampleData`/`withFrameData` document carries must be
+declared in `schema`, including dynamic label attributes such as a cuboid's
+`detections.detections.location` (`"ListField<FloatField>"`) or a polyline's
+`points3d` (`"ListField<ListField<ListField<FloatField>>>"`); seeding fails
+with the undeclared paths and their inferred types otherwise.
+
 ```ts
 await DatasetFactory.createDataset({
     mediaType: "video",

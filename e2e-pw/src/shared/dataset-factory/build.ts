@@ -22,6 +22,7 @@ const LABEL_TYPES = new Set([
   "Classifications",
   "Detection",
   "Detections",
+  "Instance",
   "Polyline",
   "Polylines",
   "TemporalDetection",
@@ -50,12 +51,22 @@ export interface BuildOptions extends Pick<
   groupSlices?: GroupSliceConfig[];
 }
 
+/** `ListField<ListField<FloatField>>` → `fo.ListField(fo.ListField(fo.FloatField()))`. */
+const fieldInstance = (fieldType: string): string => {
+  const list = /^ListField<(.*)>$/.exec(fieldType);
+  return list ? `fo.ListField(${fieldInstance(list[1])})` : `fo.${fieldType}()`;
+};
+
 const addField = (fieldPath: string, fieldType: FieldType) => {
   const isFrameField = fieldPath.startsWith("frames.");
   const method = isFrameField ? "add_frame_field" : "add_sample_field";
   const name = isFrameField ? fieldPath.slice("frames.".length) : fieldPath;
-  return isLabelType(fieldType)
-    ? `dataset.${method}("${name}", fo.EmbeddedDocumentField, embedded_doc_type=fo.${fieldType})`
+  if (isLabelType(fieldType)) {
+    return `dataset.${method}("${name}", fo.EmbeddedDocumentField, embedded_doc_type=fo.${fieldType})`;
+  }
+  const list = /^ListField<(.*)>$/.exec(fieldType);
+  return list
+    ? `dataset.${method}("${name}", fo.ListField, subfield=${fieldInstance(list[1])})`
     : `dataset.${method}("${name}", fo.${fieldType})`;
 };
 
@@ -152,6 +163,24 @@ if payload["frames"]:
         )
 
     dataset._frame_collection.insert_many(frame_docs)
+
+# raw inserts bypass the ODM, so every attribute the documents carry must be
+# declared in the schema for the app to read it back
+undeclared = dict(${
+      mediaType === "group"
+        ? "dataset.select_group_slices(_allow_mixed=True)"
+        : "dataset"
+    }.get_dynamic_field_schema())
+if payload["frames"]:
+    frame_schema = ${
+      mediaType === "group"
+        ? 'dataset.select_group_slices(media_type="video")'
+        : "dataset"
+    }.get_dynamic_frame_field_schema() or {}
+    undeclared.update({f"frames.{path}": f for path, f in frame_schema.items()})
+if undeclared:
+    listed = "\\n".join(f"  {path}: {field}" for path, field in undeclared.items())
+    raise ValueError(f"declare these in 'schema':\\n{listed}")
 
 ${hasVideo ? "dataset.compute_metadata()" : ""}
 ${

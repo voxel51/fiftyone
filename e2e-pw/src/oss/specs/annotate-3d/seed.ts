@@ -53,6 +53,13 @@ type Seed = Required<
   Pick<Dataset3dOptions, "labelSchemas" | "schema" | "withSampleData">
 >;
 
+/** Field type of a `cuboidAttributeValues` entry, from its JSON value. */
+const VALUE_FIELD_TYPES: { [type: string]: Schema[string] } = {
+  string: "StringField",
+  number: "FloatField",
+  boolean: "BooleanField",
+};
+
 const ATTRIBUTE_FIELD_TYPES: { [type: string]: Schema[string] } = {
   str: "StringField",
   int: "IntField",
@@ -90,14 +97,23 @@ export const annotate3dSeed = ({
   const cuboids = new Set(cuboidSampleIndices);
   const polylines = new Set(polylineClasses ? polylineSampleIndices : []);
 
-  const schema: Schema = { detections: "Detections" };
+  const schema: Schema = {
+    detections: "Detections",
+    "detections.detections.location": "ListField<FloatField>",
+    "detections.detections.dimensions": "ListField<FloatField>",
+    "detections.detections.rotation": "ListField<FloatField>",
+  };
+  for (const [name, value] of Object.entries(cuboidAttributeValues)) {
+    schema[`detections.detections.${name}`] = VALUE_FIELD_TYPES[typeof value];
+  }
   for (const attr of detectionAttributes) {
     schema[`detections.detections.${attr.name}`] =
       ATTRIBUTE_FIELD_TYPES[attr.type];
   }
   if (polylineClasses) {
     schema.polylines = "Polylines";
-    schema["polylines.polylines.points3d"] = "ListField";
+    schema["polylines.polylines.points3d"] =
+      "ListField<ListField<ListField<FloatField>>>";
   }
 
   const labelSchemas: { [field: string]: LabelSchema } = {};

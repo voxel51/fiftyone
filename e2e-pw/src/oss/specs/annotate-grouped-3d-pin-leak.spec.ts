@@ -50,7 +50,12 @@ const seedDataset = (datasetFactory: typeof DatasetFactory) =>
         },
       },
     ],
-    schema: { detections: "Detections" },
+    schema: {
+      detections: "Detections",
+      "detections.detections.location": "ListField<FloatField>",
+      "detections.detections.dimensions": "ListField<FloatField>",
+      "detections.detections.rotation": "ListField<FloatField>",
+    },
     labelSchemas: {
       detections: {
         type: "detections",

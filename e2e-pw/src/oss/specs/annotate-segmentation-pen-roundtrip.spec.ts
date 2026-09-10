@@ -2,8 +2,8 @@
  * Copyright 2017-2026, Voxel51, Inc.
  *
  * Pen-tool round-trip: draw a polygon mask in segmentation mode, commit with a
- * right-click, wait for autosave, reload, and verify the persisted detection
- * renders a non-empty mask. Anything breaking the lighter → delta-supplier →
+ * right-click, wait for autosave, and verify from a fresh browser context that
+ * the persisted detection renders a non-empty mask. Anything breaking the lighter → delta-supplier →
  * patchSample chain or the pen commit path fails here.
  */
 
@@ -12,6 +12,7 @@ import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { LabelSchema } from "src/shared/dataset-factory";
+import { EventUtils } from "src/shared/event-utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
   "smoke-annotate-segmentation-pen",
@@ -56,17 +57,19 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
+const sampleId = "000000000000000000000000";
+
 test.beforeEach(async ({ page, fiftyoneLoader }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
-    searchParams: new URLSearchParams({ id: "000000000000000000000000" }),
+    searchParams: new URLSearchParams({ id: sampleId }),
   });
 });
 
 test.describe.serial("segmentation pen-tool round-trip", () => {
   test("draws a mask polygon, persists it, and the mask survives reload", async ({
+    browser,
     fiftyoneLoader,
     modal,
-    page,
   }) => {
     // ── 1. Enter annotate → segmentation mode → pick Pen ─────────────────────
     await modal.assert.isOpen();
@@ -95,24 +98,28 @@ test.describe.serial("segmentation pen-tool round-trip", () => {
 
     await modal.sidebar.edit.exitToList();
 
-    // ── 4. Reload the page; verify it doesn't drop the persisted Detection ──
-    await page.reload();
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
-      searchParams: new URLSearchParams({ id: "000000000000000000000000" }),
-    });
+    // ── 4. A fresh browser context must list the detection with its mask ────
+    const context = await browser.newContext();
+    try {
+      const freshPage = await context.newPage();
+      await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
+        searchParams: new URLSearchParams({ id: sampleId }),
+      });
+      const fresh = new ModalPom(freshPage, new EventUtils(freshPage));
+      await fresh.waitForSampleLoadDomAttribute();
+      await fresh.sidebar.switchMode("annotate");
+      const rows = fresh.sidebar.annotate.labelRowsFor("instances");
+      expect(await rows.count()).toBeGreaterThanOrEqual(1);
 
-    // ── 5. Verify the reloaded sample lists the detection with its mask ─────
-    await modal.waitForSampleLoadDomAttribute();
-    await modal.sidebar.switchMode("annotate");
-    const rows = modal.sidebar.annotate.labelRowsFor("instances");
-    expect(await rows.count()).toBeGreaterThanOrEqual(1);
-
-    // Pen polygon covered ~20% × 20% of the image; a non-empty rendered mask
-    // catches "the field saved but the mask is empty".
-    await rows.first().click();
-    await modal.sidebar.edit.assert.hasMaskPreview();
-    await expect
-      .poll(() => modal.sidebar.edit.maskPreviewPixels())
-      .toBeGreaterThan(0);
+      // Pen polygon covered ~20% × 20% of the image; a non-empty rendered mask
+      // catches "the field saved but the mask is empty".
+      await rows.first().click();
+      await fresh.sidebar.edit.assert.hasMaskPreview();
+      await expect
+        .poll(() => fresh.sidebar.edit.maskPreviewPixels())
+        .toBeGreaterThan(0);
+    } finally {
+      await context.close();
+    }
   });
 });

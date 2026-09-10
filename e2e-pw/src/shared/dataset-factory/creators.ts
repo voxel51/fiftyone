@@ -11,6 +11,7 @@ import {
   imageMedia,
   indices,
   mcapMedia,
+  pcdMedia,
   resolve,
   sceneMedia,
   videoMedia,
@@ -117,8 +118,8 @@ const DEFAULT_GROUP_SLICES: GroupSliceConfig[] = [
 
 /**
  * Group dataset: image slices are generated PNGs, 3D slices a PLY mesh wrapped
- * in a `.fo3d` scene, video slices generated clips. The default layout is
- * `left` (image), `right` (image) and `3d`.
+ * in a `.fo3d` scene, point-cloud slices a bare `.pcd`, video slices generated
+ * clips. The default layout is `left` (image), `right` (image) and `3d`.
  *
  * @example
  * await DatasetFactory.createDataset({
@@ -141,6 +142,7 @@ const createGroupDataset = async ({
   },
   labelSchemas,
   numGroups = 3,
+  pcdOptions,
   sampleFrames = false,
   savedViews,
   sceneOptions = { meshes: [{ color: [96, 208, 255] }] },
@@ -170,6 +172,11 @@ const createGroupDataset = async ({
           return videoMedia({
             ...resolve(videoOptions, index),
             ...slice.videoOptions,
+          });
+        case "point-cloud":
+          return pcdMedia({
+            ...resolve(pcdOptions, index),
+            ...slice.pcdOptions,
           });
         default:
           return sceneMedia({

@@ -130,6 +130,7 @@ export const videoAnnotationSeed = ({
 
   const schema: Schema = {
     "frames.detections": "Detections",
+    "frames.detections.detections.instance": "Instance",
     "frames.detections.detections.keyframe": "BooleanField",
     "frames.detections.detections.propagation": "DictField",
   };
@@ -138,6 +139,7 @@ export const videoAnnotationSeed = ({
   }
   if (polylineSchema) {
     schema["frames.polylines"] = "Polylines";
+    schema["frames.polylines.polylines.instance"] = "Instance";
     schema["frames.polylines.polylines.keyframe"] = "BooleanField";
     schema["frames.polylines.polylines.propagation"] = "DictField";
   }

@@ -20,7 +20,7 @@ const datasetName = getUniqueDatasetNameWithPrefix("annotate-grouped-no-leak");
 /**
  * slice → { media, seeded detection count }, distinct and non-zero so a
  * cross-slice read leak changes the asserted count. `image` is the default 2D
- * slice; `mesh` and `cloud` are 3D slices carrying cuboids.
+ * slice; `mesh` (fo3d) and `cloud` (pcd) are 3D slices carrying cuboids.
  */
 const SLICES = {
   image: { media: "image", count: 2 },
@@ -63,13 +63,14 @@ const seedDataset = (datasetFactory: typeof DatasetFactory) =>
         },
       },
       { name: "mesh", mediaType: "3d" },
-      {
-        name: "cloud",
-        mediaType: "3d",
-        sceneOptions: { meshes: [{ shape: "point-cloud", numPoints: 216 }] },
-      },
+      { name: "cloud", mediaType: "point-cloud" },
     ],
-    schema: { detections: "Detections" },
+    schema: {
+      detections: "Detections",
+      "detections.detections.location": "ListField<FloatField>",
+      "detections.detections.dimensions": "ListField<FloatField>",
+      "detections.detections.rotation": "ListField<FloatField>",
+    },
     labelSchemas: {
       detections: {
         type: "detections",

@@ -7,6 +7,11 @@ import path from "path";
 import { createImage, type ImageSpec } from "../media-factory/image";
 import { createMask } from "../media-factory/mask";
 import { createMcapFixture, type McapSpec } from "../media-factory/mcap";
+import {
+  createPcd,
+  DEFAULT_PCD_SPEC,
+  type PcdSpec,
+} from "../media-factory/pcd";
 import { createScene, type SceneSpec } from "../media-factory/scene";
 import {
   createVideo,
@@ -59,6 +64,14 @@ export const videoMedia =
       filepath: await createVideo({ outputPath, ...spec }),
       numFrames: Math.round(duration * frameRate),
     };
+  };
+
+export const pcdMedia =
+  (spec: Partial<PcdSpec>): MediaGenerator<GeneratedMedia> =>
+  (outputPath) => {
+    const filepath = `${outputPath}.pcd`;
+    createPcd({ outputPath: filepath, ...DEFAULT_PCD_SPEC, ...spec });
+    return { filepath };
   };
 
 export const sceneMedia =

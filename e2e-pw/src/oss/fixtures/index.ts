@@ -3,7 +3,7 @@ import { DatasetFactory } from "src/shared/dataset-factory";
 import { EventUtils } from "src/shared/event-utils";
 import { MediaFactory } from "src/shared/media-factory";
 import { reserveWorkerPort } from "src/shared/network-utils/port";
-import { SAM2_MOCK_WORKER_SRC } from "src/shared/sam2-mock-worker";
+import { installSam2MockWorker } from "src/shared/sam2-mock-worker";
 import { AbstractFiftyoneLoader } from "../../shared/abstract-loader";
 import { AggregationWatcher } from "./aggregation-watcher";
 import { FoWebServer } from "./fo-server";
@@ -90,16 +90,7 @@ export const test = customFixtures.extend<CustomFixturesWithPage>({
     await use(new AggregationWatcher(page));
   },
   mockSam2Worker: async ({ page }, use) => {
-    // Must install BEFORE the page mounts BrowserAnnotationProvider. See
-    // `app/.../BrowserAnnotationProvider.ts` for the seam contract.
-    await page.addInitScript((workerSrc: string) => {
-      (
-        window as unknown as { __FO_TEST_SAM2_WORKER_FACTORY?: () => Worker }
-      ).__FO_TEST_SAM2_WORKER_FACTORY = () => {
-        const blob = new Blob([workerSrc], { type: "text/javascript" });
-        return new Worker(URL.createObjectURL(blob));
-      };
-    }, SAM2_MOCK_WORKER_SRC);
+    await installSam2MockWorker(page);
     await use();
   },
   baseURL: async ({ fiftyoneServerPort }, use) => {

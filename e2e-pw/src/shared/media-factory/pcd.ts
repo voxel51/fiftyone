@@ -38,6 +38,8 @@ export interface PcdSpec {
 
 export type PcdOptions = MediaOptions & PcdSpec;
 
+export const DEFAULT_PCD_SPEC: PcdSpec = { shape: "cube", numPoints: 216 };
+
 /**
  * Generates a PCD file at `outputPath` with `numPoints` points on the 3D
  * diagonal (`[i, i, i]`) or filling a cubic grid of side

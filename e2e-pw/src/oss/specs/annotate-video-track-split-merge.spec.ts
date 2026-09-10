@@ -107,7 +107,7 @@ const timelineTracks = async (
  * The two tracks a split leaves on a fresh browser context's timeline: `head`
  * (the original instance, frames before the cut) and `tail` (the minted
  * instance, frames from the cut on), each with the cut-adjacent frame as its
- * only keyframe and every frame still painting the split `field`. Without the
+ * only keyframe and exactly one of them painted on every frame. Without the
  * keyframe pins the shape at the cut jumps; other tracks are ignored.
  */
 const expectSplitPersisted = async (
@@ -152,14 +152,18 @@ const expectSplitPersisted = async (
     "tail's first frame is its only keyframe",
   ).toEqual([cut]);
 
+  // overlay ids are the timeline's track ids (`instance-<id>`)
   for (let frame = 1; frame <= totalFrames; frame++) {
     if (frame > 1) {
       await va.stepForward();
     }
-    const overlays = (await va.canvasOverlayGeometry()).filter(
-      (overlay) => overlay.field === field,
-    );
-    expect(overlays, `frame ${frame} keeps its geometry`).toHaveLength(1);
+    const painted = (await va.canvasOverlayGeometry())
+      .filter((overlay) => overlay.field === field)
+      .map((overlay) => overlay.id)
+      .filter((id) => id === head || id === tail);
+    expect(painted, `frame ${frame} paints the split track once`).toEqual([
+      frame < cut ? head : tail,
+    ]);
   }
 };
 

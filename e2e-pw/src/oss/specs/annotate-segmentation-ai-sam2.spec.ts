@@ -3,17 +3,18 @@
  *
  * AI-assisted segmentation (SAM2) round-trip: pick the AI tool, place a
  * positive point, let the mocked worker return a deterministic mask, await its
- * autosave, reload, and verify the persisted detection renders a non-empty
- * mask. The worker is swapped in through the
+ * autosave, and verify from a fresh browser context that the persisted
+ * detection renders a non-empty mask. The worker is swapped in through the
  * `window.__FO_TEST_SAM2_WORKER_FACTORY` seam, so no weights download and no
  * inference runs.
  */
 
 import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
-import { SAM2_MOCK_WORKER_SRC } from "src/shared/sam2-mock-worker";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { LabelSchema } from "src/shared/dataset-factory";
+import { EventUtils } from "src/shared/event-utils";
+import { installSam2MockWorker } from "src/shared/sam2-mock-worker";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
   "smoke-annotate-segmentation-ai",
@@ -54,31 +55,20 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeEach(async ({ page, fiftyoneLoader }) => {
-  // Install the mock worker BEFORE the page mounts BrowserAnnotationProvider.
-  // The factory wraps the worker source in a Blob URL so it runs in a real
-  // Worker context — same shape as the production worker.
-  await page.addInitScript((workerSrc: string) => {
-    (
-      window as unknown as {
-        __FO_TEST_SAM2_WORKER_FACTORY?: () => Worker;
-      }
-    ).__FO_TEST_SAM2_WORKER_FACTORY = () => {
-      const blob = new Blob([workerSrc], { type: "text/javascript" });
-      return new Worker(URL.createObjectURL(blob));
-    };
-  }, SAM2_MOCK_WORKER_SRC);
+const sampleId = "000000000000000000000000";
 
+test.beforeEach(async ({ page, fiftyoneLoader }) => {
+  await installSam2MockWorker(page);
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
-    searchParams: new URLSearchParams({ id: "000000000000000000000000" }),
+    searchParams: new URLSearchParams({ id: sampleId }),
   });
 });
 
 test.describe.serial("segmentation AI (SAM2) round-trip", () => {
   test("placing a positive point persists a Detection with a mask", async ({
+    browser,
     fiftyoneLoader,
     modal,
-    page,
   }) => {
     // ── 1. Enter annotate → segmentation → AI ───────────────────────────────
     await modal.assert.isOpen();
@@ -103,23 +93,29 @@ test.describe.serial("segmentation AI (SAM2) round-trip", () => {
     // while editing, so exit via the edit form rather than the toolbar.
     await modal.sidebar.edit.exitToList();
 
-    // ── 4. Reload and verify the Detection survived ─────────────────────────
-    await page.reload();
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
-      searchParams: new URLSearchParams({ id: "000000000000000000000000" }),
-    });
+    // ── 4. A fresh browser context must show the persisted Detection ────────
+    const context = await browser.newContext();
+    try {
+      await installSam2MockWorker(context);
+      const freshPage = await context.newPage();
+      await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
+        searchParams: new URLSearchParams({ id: sampleId }),
+      });
+      const fresh = new ModalPom(freshPage, new EventUtils(freshPage));
+      await fresh.waitForSampleLoadDomAttribute();
+      await fresh.sidebar.switchMode("annotate");
+      const rows = fresh.sidebar.annotate.labelRowsFor("instances");
+      expect(await rows.count()).toBeGreaterThanOrEqual(1);
 
-    await modal.waitForSampleLoadDomAttribute();
-    await modal.sidebar.switchMode("annotate");
-    const rows = modal.sidebar.annotate.labelRowsFor("instances");
-    expect(await rows.count()).toBeGreaterThanOrEqual(1);
-
-    // Mock worker's 8x8 all-foreground mask → a non-empty rendered mask.
-    // Loose lower bound catches "field saved but mask empty".
-    await rows.first().click();
-    await modal.sidebar.edit.assert.hasMaskPreview();
-    await expect
-      .poll(() => modal.sidebar.edit.maskPreviewPixels())
-      .toBeGreaterThan(0);
+      // Mock worker's 8x8 all-foreground mask → a non-empty rendered mask.
+      // Loose lower bound catches "field saved but mask empty".
+      await rows.first().click();
+      await fresh.sidebar.edit.assert.hasMaskPreview();
+      await expect
+        .poll(() => fresh.sidebar.edit.maskPreviewPixels())
+        .toBeGreaterThan(0);
+    } finally {
+      await context.close();
+    }
   });
 });
