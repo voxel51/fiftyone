@@ -296,6 +296,37 @@ class TestDynamicGroupPatch:
         assert members[1]["detections"].detections[0].label == "cat"
 
     @pytest.mark.asyncio
+    async def test_member_moved_after_group_check_is_rejected(
+        self, mutator, mock_request, dataset, stages, members, monkeypatch
+    ):
+        """A member another client writes between the group check and its
+        swap 412s instead of being overwritten under a 200."""
+        real_get_group_state = ford.get_group_state
+
+        def move_member_after_check(view):
+            state = real_get_group_state(view)
+            other = dataset[members[1].id]
+            other["detections"].detections[0].label = "moved"
+            other.save()
+            return state
+
+        monkeypatch.setattr(ford, "get_group_state", move_member_after_check)
+
+        mock_request.body.return_value = json_payload(
+            _body(stages, [_replace_label(members[1], "dog")])
+        )
+
+        #####
+        response = await mutator.patch(mock_request)
+        #####
+
+        assert response.status_code == 412
+
+        # the other client's write survives
+        target = dataset[members[1].id]
+        assert target["detections"].detections[0].label == "moved"
+
+    @pytest.mark.asyncio
     async def test_membership_change_is_rejected(
         self, mutator, mock_request, dataset, stages, members
     ):

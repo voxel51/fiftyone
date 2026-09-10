@@ -191,6 +191,10 @@ class DynamicGroup(HTTPEndpoint):
         )
 
         member_ids, lmts = get_group_state(view)
+        # Each member's swap must be pinned to the state the group token was
+        # validated against, not to a re-read of the member: a writer that
+        # slipped in between would otherwise be overwritten with a 200
+        lmt_by_id = dict(zip(member_ids, lmts))
         # A member missing `last_modified_at` cannot pin the group's state;
         # it is also invisible to the client's token, so exclude it from the
         # max on both sides rather than crashing the comparison. A group with
@@ -241,7 +245,7 @@ class DynamicGroup(HTTPEndpoint):
             _handle_top_level_patch(sample, ops)
 
             try:
-                save_sample(sample, sample.last_modified_at)
+                save_sample(sample, lmt_by_id[sample_id])
             except DbVersionMismatchError:
                 # A member moved between the group validation and its swap.
                 # The whole request fails with GROUP-shaped state — the
