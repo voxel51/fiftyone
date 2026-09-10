@@ -65,7 +65,6 @@ test.describe.serial("annotate-sidebar-smoke", () => {
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
-    await modal.waitForLighterReady();
     await modal.sidebar.annotate.selectActiveLabel("bird", 1);
     await modal.sidebar.edit.assert.undoIsEnabled(false);
     await modal.sidebar.edit.assert.redoIsEnabled(false);

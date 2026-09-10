@@ -57,7 +57,6 @@ test.beforeEach(async ({ fiftyoneLoader, modal, page }) => {
   await modal.waitForSampleLoadDomAttribute();
   await modal.assert.isOpen();
   await modal.sidebar.switchMode("annotate");
-  await modal.waitForLighterReady();
 });
 
 /** Draw a detection box across the given relative corners (annotate mode). */

@@ -90,7 +90,6 @@ test.describe.serial("2D annotation mask edit (brush)", () => {
     await modal.waitForSampleLoadDomAttribute();
     await modal.assert.isOpen();
     await modal.sidebar.switchMode("annotate");
-    await modal.waitForLighterReady();
   });
 
   test("an Add brush stroke grows the mask and persists", async ({

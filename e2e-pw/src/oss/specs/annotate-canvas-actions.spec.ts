@@ -186,7 +186,6 @@ test.describe.serial("canvas interactions and action state", () => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
-    await modal.waitForLighterReady();
 
     await modal.sidebar.annotate.assert.selectIsActive();
 
@@ -205,7 +204,6 @@ test.describe.serial("canvas interactions and action state", () => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
-    await modal.waitForLighterReady();
 
     await modal.sidebar.annotate.assert.selectIsActive();
 

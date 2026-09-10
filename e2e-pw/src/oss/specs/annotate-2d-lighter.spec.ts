@@ -58,7 +58,6 @@ test.beforeEach(async ({ fiftyoneLoader, modal, page }) => {
   await modal.waitForSampleLoadDomAttribute();
   await modal.assert.isOpen();
   await modal.sidebar.switchMode("annotate");
-  await modal.waitForLighterReady();
 });
 
 /** Poll the engine-derived Labels count until it settles on `expected`. */
@@ -148,7 +147,6 @@ test.describe.serial("2D Lighter annotation", () => {
       const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
       await freshModal.waitForSampleLoadDomAttribute();
       await freshModal.sidebar.switchMode("annotate");
-      await freshModal.waitForLighterReady();
 
       await expectLabelsCount(freshModal, before + 1);
     } finally {

@@ -80,7 +80,6 @@ test.describe.serial("action switching", () => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
-    await modal.waitForLighterReady();
 
     await modal.sidebar.annotate.assert.selectIsActive();
     await modal.sidebar.annotate.assert.classificationIsActive(false);
@@ -91,7 +90,6 @@ test.describe.serial("action switching", () => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
-    await modal.waitForLighterReady();
 
     await modal.sidebar.annotate.assert.selectIsActive();
 
@@ -106,7 +104,6 @@ test.describe.serial("action switching", () => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
-    await modal.waitForLighterReady();
 
     await modal.sidebar.annotate.assert.selectIsActive();
 
@@ -123,7 +120,6 @@ test.describe.serial("action switching", () => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
-    await modal.waitForLighterReady();
 
     await modal.sidebar.annotate.createClassification();
     await modal.sidebar.annotate.assert.classificationIsActive();
@@ -144,7 +140,6 @@ test.describe.serial("action switching", () => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
-    await modal.waitForLighterReady();
 
     await modal.sidebar.annotate.detectionMode("Detections");
     await modal.sidebar.annotate.assert.detectionModeIsActive();
@@ -160,7 +155,6 @@ test.describe.serial("action switching", () => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
-    await modal.waitForLighterReady();
 
     await modal.sidebar.annotate.createClassification();
     await modal.sidebar.annotate.assert.classificationIsActive();
@@ -178,7 +172,6 @@ test.describe.serial("action switching", () => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
-    await modal.waitForLighterReady();
 
     await modal.sidebar.annotate.detectionMode("Detections");
     await modal.sidebar.annotate.assert.detectionModeIsActive();
@@ -196,7 +189,6 @@ test.describe.serial("action switching", () => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
-    await modal.waitForLighterReady();
 
     await modal.sidebar.annotate.detectionMode("Detections");
     await modal.sidebar.annotate.assert.detectionModeIsActive();

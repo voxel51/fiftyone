@@ -79,7 +79,6 @@ test.beforeEach(async ({ fiftyoneLoader, modal, page }) => {
   await modal.waitForSampleLoadDomAttribute();
   await modal.assert.isOpen();
   await modal.sidebar.switchMode("annotate");
-  await modal.waitForLighterReady();
 });
 
 const inFreshContext = async (
@@ -96,7 +95,6 @@ const inFreshContext = async (
     const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
     await freshModal.waitForSampleLoadDomAttribute();
     await freshModal.sidebar.switchMode("annotate");
-    await freshModal.waitForLighterReady();
     await verify(freshModal);
   } finally {
     await context.close();

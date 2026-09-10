@@ -67,7 +67,6 @@ test.describe.serial("annotate-sidebar-smoke", () => {
     await modal.waitForSampleLoadDomAttribute();
 
     await modal.sidebar.switchMode("annotate");
-    await modal.waitForLighterReady();
 
     await modal.sidebar.annotate.assert.verifyActiveLabelsCount(3);
     await modal.sidebar.annotate.assert.verifyActivePrimitiveFieldsCount(1);
