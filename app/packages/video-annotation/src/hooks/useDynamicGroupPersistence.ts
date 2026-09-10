@@ -104,21 +104,23 @@ export const useDynamicGroupPersistence = ({
 
   const stateRef = useRef<GroupWriteState | null>(null);
   const readyRef = useRef<Promise<void> | null>(null);
+  // Bumped whenever the index effect (re)mounts, so a fetch from a previous
+  // mount cannot land its state on the next one.
+  const generation = useRef(0);
 
   const active =
     // `dynamicGroup` is the group's VALUE — 0 and "" are legitimate groups,
     // so only null/undefined means "not a dynamic group"
     enabled && !!frameCount && !!sampleId && !!dataset && dynamicGroup != null;
 
-  useEffect(() => {
-    if (!active) {
-      return undefined;
-    }
+  // The group's ordered member ids and `last_modified_at` values, which mint
+  // the initial group token. Shared by the mount effect and by `persist`: a
+  // fetch that fails leaves no write state, and the next save retries it
+  // instead of failing every pass until the modal is reopened.
+  const loadIndex = useCallback((): Promise<void> => {
+    const requested = generation.current;
 
-    let cancelled = false;
-    stateRef.current = null;
-
-    readyRef.current = getFrames({
+    const request = getFrames({
       sampleId,
       dataset,
       view,
@@ -132,7 +134,7 @@ export const useDynamicGroupPersistence = ({
       fields: ["last_modified_at"],
     })
       .then((response) => {
-        if (cancelled) {
+        if (requested !== generation.current) {
           return;
         }
 
@@ -155,12 +157,25 @@ export const useDynamicGroupPersistence = ({
         console.error("failed to load dynamic group member index", err);
       });
 
+    readyRef.current = request;
+    return request;
+  }, [sampleId, dataset, view, slice, dynamicGroup, frameCount]);
+
+  useEffect(() => {
+    if (!active) {
+      return undefined;
+    }
+
+    generation.current += 1;
+    stateRef.current = null;
+    void loadIndex();
+
     return () => {
-      cancelled = true;
+      generation.current += 1;
       stateRef.current = null;
       readyRef.current = null;
     };
-  }, [active, sampleId, dataset, view, slice, dynamicGroup, frameCount]);
+  }, [active, loadIndex]);
 
   const persist = useCallback(
     async (deltas: JSONDeltas): Promise<boolean> => {
@@ -173,6 +188,13 @@ export const useDynamicGroupPersistence = ({
         // way, so give the fetch one macrotask before failing the pass
         await new Promise((resolve) => setTimeout(resolve, 0));
         await readyRef.current;
+        state = stateRef.current;
+      }
+
+      if (!state?.token && active) {
+        // the mount-time fetch failed, or the last write's token was
+        // unreadable: fetch the index again rather than fail this pass too
+        await loadIndex();
         state = stateRef.current;
       }
 
@@ -243,7 +265,11 @@ export const useDynamicGroupPersistence = ({
             );
           }
 
-          state.token = response.versionToken;
+          // an unreadable token cannot validate the next save; drop the
+          // state so the next persist re-fetches the index and mints one
+          stateRef.current = response.versionToken
+            ? { index: state.index, token: response.versionToken }
+            : null;
         } catch (err) {
           if (err instanceof VersionMismatchError) {
             // the 412 carries the fresh member list — rebuild the index and
@@ -273,7 +299,7 @@ export const useDynamicGroupPersistence = ({
 
       return success;
     },
-    [datasetId, dynamicGroup, sampleId, view, patchSelected],
+    [active, datasetId, dynamicGroup, loadIndex, sampleId, view, patchSelected],
   );
 
   useEffect(() => {
