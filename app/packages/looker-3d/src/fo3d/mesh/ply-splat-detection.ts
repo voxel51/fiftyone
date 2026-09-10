@@ -158,6 +158,8 @@ const fetchPlyHeaderText = async (plyUrl: string) => {
       result: "response",
       retries: 0,
       headers: { Range: `bytes=0-${PLY_HEADER_RANGE_BYTES - 1}` },
+      // a cached 206 would be replayed to the full PLY load, which rejects it
+      browserCache: "no-store",
     });
     const rangedHeaderText = await readPlyHeaderText(response);
 
