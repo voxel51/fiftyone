@@ -3726,6 +3726,83 @@ class RoboLabDataset(FiftyOneDataset):
         return dataset_type, num_samples, None
 
 
+class HiltiSLAMChallenge2023Dataset(FiftyOneDataset):
+    """The Hilti SLAM Challenge 2023 recordings, as native ``.mcap``
+    episodes.
+
+    The 2023 challenge extends the benchmark to multi-session and
+    multi-platform mapping across three active construction sites, with the
+    runs at a site overlapping so they can be solved alone or combined into
+    one map. Two rigs recorded it: the Phasma-style handheld suite carried
+    over from 2022, with five global-shutter cameras, a Hesai PandarXT-32
+    LiDAR and an inertial unit, and a tracked drilling robot carrying four
+    OAK-D stereo pairs, a RoboSense BPearl hemispherical LiDAR and an Xsens
+    MTi-670. A surveyor measured reference positions along every run.
+
+    Camera frames are published at 10 Hz on both rigs, on the LiDAR's clock.
+    The handheld cameras record at 40 Hz and every fourth frame is kept; the
+    robot's already record at 10 Hz and every frame is kept.
+
+    The three additional Site 2 handheld runs carry rapidly flashing lights
+    in their camera streams, which the source flags as a photosensitivity
+    risk. Every episode carries ``has_flashing_lights`` so they can be
+    excluded before the App is opened.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("hilti-slam-challenge-2023")
+
+        # Everything except the runs with flashing lights
+        view = dataset.match({"has_flashing_lights": False})
+
+        session = fo.launch_app(dataset, view=view)
+
+    Dataset size
+        53.41 GB
+    """
+
+    _REPO_ID = "Voxel51/Hilti-SLAM-Challenge-2023"
+    # Pinned so a loaded dataset is reproducible; the default branch is
+    # mutable and could change media, labels or size underneath a user
+    _REVISION = "44459951696f1eb2f3cbf0a57b31203762f7b918"
+
+    @property
+    def name(self):
+        return "hilti-slam-challenge-2023"
+
+    @property
+    def license(self):
+        return "CC-BY-NC-SA-3.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "slam", "lidar", "imu")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        logger.info("Downloading %s from the Hugging Face Hub", self._REPO_ID)
+        hfh.snapshot_download(
+            repo_id=self._REPO_ID,
+            repo_type="dataset",
+            revision=self._REVISION,
+            local_dir=dataset_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
 AVAILABLE_DATASETS = {
     "activitynet-100": ActivityNet100Dataset,
     "activitynet-200": ActivityNet200Dataset,
@@ -3737,6 +3814,7 @@ AVAILABLE_DATASETS = {
     "coco-2017": COCO2017Dataset,
     "egocentric-emg-force": EgocentricEMGForceDataset,
     "fiw": FIWDataset,
+    "hilti-slam-challenge-2023": HiltiSLAMChallenge2023Dataset,
     "hmdb51": HMDB51Dataset,
     "imagenet-sample": ImageNetSampleDataset,
     "kinetics-400": Kinetics400Dataset,
