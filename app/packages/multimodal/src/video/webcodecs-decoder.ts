@@ -574,10 +574,13 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
     if (unit.frame.codec !== "h264") return unit.frame.bytes;
     if (unit.frame.h264.sps) this.sps = unit.frame.h264.sps;
     if (unit.frame.h264.pps) this.pps = unit.frame.h264.pps;
+    // A frame's parameter sets come from the container's out-of-band record
+    // (avcC), so the access unit still needs them inlined; a stream that also
+    // carries them in-band decodes fine with the repeat
     return h264AccessUnitWithParameterSets({
       bytes: unit.frame.bytes,
-      pps: unit.frame.h264.pps ? undefined : this.pps,
-      sps: unit.frame.h264.sps ? undefined : this.sps,
+      pps: this.pps,
+      sps: this.sps,
     });
   }
 }
