@@ -13,18 +13,6 @@ Includes all updates from :ref:`FiftyOne 1.22.0 <release-notes-v1.22.0>`, plus:
   episode's sensor streams and explore them in a new embeddings plot. Find
   similar moments by text, point, or lasso, and click a point to jump the
   timeline there
-- **Spatiotemporal comments**: anchor Discussion threads to a point or box
-  on a sample, video frame, or multimodal episode
-- **FiftyOne Agent built in**: the Agent is available directly in the
-  Enterprise App, with no plugin to install. Ask it about selected
-  samples, an uploaded image, or the current App state, and track
-  long-running delegated operations directly from the Agent. Admins can
-  generate, review, edit, and run FiftyOne SDK code and build complete
-  plugins through conversation, route traffic through enterprise AI
-  gateways and custom endpoints, use cloud-managed credentials instead of
-  entering API keys in the App, set organization, user, and dataset-level
-  instructions, configure a default model with per-user overrides, and
-  see LLM usage and cost by user and model
 - **Custom workflow stages**: build your own annotation workflow stages in
   Python and use them in the workflow editor alongside the built-in stages
 - Agentic Labeling adds Find samples, a text similarity search that suggests
