@@ -21,7 +21,6 @@ import { ModalPom } from "src/oss/poms/modal";
 import { SAM2_MOCK_WORKER_SRC } from "src/shared/sam2-mock-worker";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { LabelSchema } from "src/shared/dataset-factory";
-import { detectionsState } from "./annotate-2d/read";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
   "smoke-annotate-segmentation-ai",
@@ -84,7 +83,6 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
 
 test.describe.serial("segmentation AI (SAM2) round-trip", () => {
   test("placing a positive point persists a Detection with a mask", async ({
-    datasetFactory,
     fiftyoneLoader,
     modal,
     page,
@@ -100,21 +98,13 @@ test.describe.serial("segmentation AI (SAM2) round-trip", () => {
     await modal.sidebar.annotate.assert.toolIsActive("AI");
 
     // ── 2. Place a positive point — inference auto-fires on context change ──
+    // inference runs in a worker: settlement alone reads "settled" before
+    // the label exists, so arm the autosave response that will carry it
+    const saved = modal.sidebar.annotate.waitForPatch();
     await modal.sampleCanvas.click(0.5, 0.5);
 
     // ── 3. Wait for the inferred detection to persist ───────────────────────
-    // inference runs in a worker: settlement alone reads "settled" before
-    // the label exists, so wait on the persisted state itself
-    await expect
-      .poll(
-        async () =>
-          detectionsState(
-            await datasetFactory.readSample({ datasetName }),
-            "instances",
-          ).count,
-        { timeout: 15_000 },
-      )
-      .toBeGreaterThanOrEqual(1);
+    await saved;
 
     // The inferred detection is left selected; the create toolbar is hidden
     // while editing, so exit via the edit form rather than the toolbar.
@@ -126,15 +116,17 @@ test.describe.serial("segmentation AI (SAM2) round-trip", () => {
       searchParams: new URLSearchParams({ id: "000000000000000000000000" }),
     });
 
-    const state = detectionsState(
-      await datasetFactory.readSample({ datasetName }),
-      "instances",
-    );
+    await modal.waitForSampleLoadDomAttribute();
+    await modal.sidebar.switchMode("annotate");
+    const rows = modal.sidebar.annotate.labelRowsFor("instances");
+    expect(await rows.count()).toBeGreaterThanOrEqual(1);
 
-    expect(state.present).toBe(true);
-    expect(state.count).toBeGreaterThanOrEqual(1);
-    // Mock worker's 8x8 all-foreground mask → 64 binary pixels after
-    // normalizeMask. Loose lower bound catches "field saved but mask empty".
-    expect(state.maskPixels).toBeGreaterThan(0);
+    // Mock worker's 8x8 all-foreground mask → a non-empty rendered mask.
+    // Loose lower bound catches "field saved but mask empty".
+    await rows.first().click();
+    await modal.sidebar.edit.assert.hasMaskPreview();
+    await expect
+      .poll(() => modal.sidebar.edit.maskPreviewPixels())
+      .toBeGreaterThan(0);
   });
 });

@@ -20,7 +20,7 @@
  * The mask is 8x8 all-ones (foreground) so the agent's `normalizeMask`
  * (thresholded at >0.5) yields 64 foreground pixels, which after the
  * agent's encode + the server-side save round-trip, the spec can verify
- * with `detectionsState(...).maskPixels > 0`.
+ * with the sidebar's mask preview rendering opaque pixels.
  */
 export const SAM2_MOCK_WORKER_SRC = `
   self.onmessage = (e) => {

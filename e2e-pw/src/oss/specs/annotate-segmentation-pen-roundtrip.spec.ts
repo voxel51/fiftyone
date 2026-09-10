@@ -16,7 +16,6 @@ import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { LabelSchema } from "src/shared/dataset-factory";
-import { detectionsState } from "./annotate-2d/read";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
   "smoke-annotate-segmentation-pen",
@@ -71,7 +70,6 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
 
 test.describe.serial("segmentation pen-tool round-trip", () => {
   test("draws a mask polygon, persists it, and the mask survives reload", async ({
-    datasetFactory,
     fiftyoneLoader,
     modal,
     page,
@@ -109,17 +107,18 @@ test.describe.serial("segmentation pen-tool round-trip", () => {
       searchParams: new URLSearchParams({ id: "000000000000000000000000" }),
     });
 
-    // ── 5. Verify from Python that the saved sample has a non-empty mask ────
-    const state = detectionsState(
-      await datasetFactory.readSample({ datasetName }),
-      "instances",
-    );
+    // ── 5. Verify the reloaded sample lists the detection with its mask ─────
+    await modal.waitForSampleLoadDomAttribute();
+    await modal.sidebar.switchMode("annotate");
+    const rows = modal.sidebar.annotate.labelRowsFor("instances");
+    expect(await rows.count()).toBeGreaterThanOrEqual(1);
 
-    expect(state.present).toBe(true);
-    expect(state.count).toBeGreaterThanOrEqual(1);
-    // Pen polygon covered ~20% × 20% of a 640×480 image → ~12k pixels at the
-    // image scale, but masks are usually stored at the detection bbox scale.
-    // A loose lower bound catches "the field saved but the mask is empty".
-    expect(state.maskPixels).toBeGreaterThan(0);
+    // Pen polygon covered ~20% × 20% of the image; a non-empty rendered mask
+    // catches "the field saved but the mask is empty".
+    await rows.first().click();
+    await modal.sidebar.edit.assert.hasMaskPreview();
+    await expect
+      .poll(() => modal.sidebar.edit.maskPreviewPixels())
+      .toBeGreaterThan(0);
   });
 });

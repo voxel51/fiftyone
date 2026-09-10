@@ -200,11 +200,12 @@ await DatasetFactory.createVideoDataset({
 });
 ```
 
-Read persisted state back as raw documents with `readSample` / `readFrames` and
-extract the values to assert on; `updateLabelSchema` applies a label schema to
-a dataset built outside the factory. Recipes shared by a spec family (the
-video-annotation and 3D seeds, the raw-document readers) live beside the specs
-in `src/oss/specs/annotate-*/`.
+Verify persistence the way a user would see it: await the edit's sample-save
+response, then assert from a fresh browser context on what the app renders.
+Group slices may be `image`, `3d` or `video` (with per-slice media options);
+video slices take `withFrameData` and `sampleFrames` too. Recipes shared by a
+spec family (the video-annotation and 3D seeds) live beside the specs in
+`src/oss/specs/annotate-*/`.
 
 Each sample is automatically assigned a stable, index-derived `_id` of the form
 `000000000000000000000000` (zero-padded 24-character hex). This makes it easy

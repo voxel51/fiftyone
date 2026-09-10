@@ -180,6 +180,38 @@ export class VideoAnnotatePom {
   }
 
   /**
+   * A track's presence intervals in seconds, read off its rendered lane. The
+   * row must be mounted (drawer open or pinned).
+   */
+  async trackIntervals(
+    trackId: string,
+  ): Promise<Array<{ start: number; end: number }>> {
+    return this.page
+      .locator(`[data-track-id="${trackId}"] [data-event-kind="interval"]`)
+      .evaluateAll((bars) =>
+        bars.map((bar) => ({
+          start: Number(bar.getAttribute("data-event-start")),
+          end: Number(bar.getAttribute("data-event-end")),
+        })),
+      );
+  }
+
+  /**
+   * Frame start times (seconds) of a track's keyframe markers, ascending. The
+   * row must be mounted (drawer open or pinned).
+   */
+  async keyframeTimes(trackId: string): Promise<number[]> {
+    const times = await this.page
+      .locator(`[data-track-id="${trackId}"] [data-event-kind="point"]`)
+      .evaluateAll((markers) =>
+        markers.map((marker) =>
+          Number(marker.getAttribute("data-event-start")),
+        ),
+      );
+    return times.sort((a, b) => a - b);
+  }
+
+  /**
    * Drag a TD interval's END resize handle by `dxPx` pixels (positive = later),
    * resizing its `support` end. The drag uses document-level mouse listeners and
    * a 3px threshold, so move in several steps past it before releasing.

@@ -37,16 +37,6 @@ const savedSample = (page: Page) =>
       ["POST", "PATCH", "PUT"].includes(r.request().method()),
   );
 
-/** Clear the sample's polylines so each serial test starts from zero. */
-const clearPolylines = () => `
-import fiftyone as fo
-
-dataset = fo.load_dataset("${datasetName}")
-sample = dataset.first()
-sample.polylines = fo.Polylines(polylines=[])
-sample.save()
-`;
-
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
     await use(new ModalPom(page, eventUtils));
@@ -83,34 +73,8 @@ const inFreshContext = async (
   }
 };
 
-test.beforeAll(async ({ datasetFactory, fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
-  await datasetFactory.createDataset({
-    datasetName,
-    imageOptions: { fillColor: "white", width: 640, height: 480 },
-  });
-  // The factory only models Detection(s)/Classification(s); declare the
-  // Polylines field directly.
-  await fiftyoneLoader.executePythonCode(`
-import fiftyone as fo
-
-dataset = fo.load_dataset("${datasetName}")
-dataset.add_sample_field(
-    "polylines", fo.EmbeddedDocumentField, embedded_doc_type=fo.Polylines
-)
-dataset.add_sample_field("polylines.polylines.index", fo.IntField)
-dataset.save()
-`);
-  await datasetFactory.updateLabelSchema({
-    datasetName,
-    field: "polylines",
-    schema: {
-      type: "polylines",
-      classes: ["lane", "curb"],
-      attributes: [],
-      component: "dropdown",
-    },
-  });
 });
 
 test.afterAll(async ({ foWebServer }) => {
@@ -118,8 +82,24 @@ test.afterAll(async ({ foWebServer }) => {
 });
 
 test.describe.serial("2D annotation polyline", () => {
-  test.beforeEach(async ({ fiftyoneLoader, modal, page }) => {
-    await fiftyoneLoader.executePythonCode(clearPolylines());
+  test.beforeEach(async ({ datasetFactory, fiftyoneLoader, modal, page }) => {
+    // a fresh dataset per test so each serial test starts from zero polylines
+    await datasetFactory.createDataset({
+      datasetName,
+      imageOptions: { fillColor: "white", width: 640, height: 480 },
+      schema: {
+        polylines: "Polylines",
+        "polylines.polylines.index": "IntField",
+      },
+      labelSchemas: {
+        polylines: {
+          type: "polylines",
+          classes: ["lane", "curb"],
+          attributes: [],
+          component: "dropdown",
+        },
+      },
+    });
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ id }),
     });

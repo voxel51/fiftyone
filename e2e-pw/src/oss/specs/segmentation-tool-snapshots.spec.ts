@@ -26,7 +26,7 @@ import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { LabelSchema } from "src/shared/dataset-factory";
-import { detectionsState } from "./annotate-2d/read";
+import { EventUtils } from "src/shared/event-utils";
 
 const SAMPLE_ID = "000000000000000000000000";
 
@@ -122,7 +122,6 @@ test.describe.serial("segmentation tool snapshots", () => {
   });
 
   test("ai", async ({
-    datasetFactory,
     datasetName,
     fiftyoneLoader,
     mockSam2Worker,
@@ -138,20 +137,11 @@ test.describe.serial("segmentation tool snapshots", () => {
 
     // One positive point near the center; mock worker returns a
     // deterministic 8x8 all-foreground mask at bbox {0.4, 0.4, 0.2, 0.2}.
-    await modal.sampleCanvas.click(0.5, 0.5);
-
     // inference runs in a worker: settlement alone reads "settled" before
-    // the label exists, so wait on the persisted state itself
-    await expect
-      .poll(
-        async () =>
-          detectionsState(
-            await datasetFactory.readSample({ datasetName }),
-            "instances",
-          ).count,
-        { timeout: 15_000 },
-      )
-      .toBeGreaterThanOrEqual(1);
+    // the label exists, so arm the autosave response that will carry it
+    const saved = modal.sidebar.annotate.waitForPatch();
+    await modal.sampleCanvas.click(0.5, 0.5);
+    await saved;
 
     // Right-click to finalize the AI session: destroys the keypoint
     // overlay (and its ripple animation), leaving only the mask render.
@@ -161,6 +151,7 @@ test.describe.serial("segmentation tool snapshots", () => {
   });
 
   test("merge", async ({
+    browser,
     datasetFactory,
     datasetName,
     fiftyoneLoader,
@@ -191,12 +182,21 @@ test.describe.serial("segmentation tool snapshots", () => {
 
     await modal.sampleCanvas.assert.hasScreenshot("seg-merge-union.png");
 
-    // Sanity check: the merge collapsed the pair into a single detection.
-    const state = detectionsState(
-      await datasetFactory.readSample({ datasetName }),
-      "instances",
-    );
-    expect(state.count).toBe(1);
-    expect(state.maskPixels).toBeGreaterThan(0);
+    // Sanity check: the merge persisted the pair as a single masked detection.
+    const context = await browser.newContext();
+    const freshPage = await context.newPage();
+    try {
+      const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+      await openAnnotate(freshModal, freshPage, fiftyoneLoader, datasetName);
+      const rows = freshModal.sidebar.annotate.labelRowsFor("instances");
+      await expect(rows).toHaveCount(1);
+      await rows.click();
+      await freshModal.sidebar.edit.assert.hasMaskPreview();
+      await expect
+        .poll(() => freshModal.sidebar.edit.maskPreviewPixels())
+        .toBeGreaterThan(0);
+    } finally {
+      await context.close();
+    }
   });
 });

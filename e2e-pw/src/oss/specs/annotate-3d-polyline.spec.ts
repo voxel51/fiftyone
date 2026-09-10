@@ -3,7 +3,7 @@
  *
  * Foundational coverage for the 3D (looker-3d) polyline annotation surface — the
  * second 3D annotation archetype after cuboids, and previously uncovered. Opens
- * an `.fo3d` scene carrying a seeded `fo.Polyline` (a `points3d` list of
+ * an `.fo3d` scene carrying a seeded `Polyline` (a `points3d` list of
  * `[x,y,z]` segments) in annotate mode and exercises the deterministic flows:
  * the polyline lists in the sidebar and is selectable, selecting it opens the
  * edit form + the (translate-only) transform gizmo, a class edit persists, and a
@@ -14,12 +14,12 @@
  * there's no deterministic form-driven geometry edit — class edits and the
  * canvas draw are the deterministic surfaces and are what this covers.
  */
-import { expect, test as base } from "src/oss/fixtures";
+import { Browser, expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import { EventUtils } from "src/shared/event-utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
 import { annotate3dSeed } from "./annotate-3d/seed";
-import { polylineGeometry, polylineLabels } from "./annotate-3d/read";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-3d-polyline");
 
@@ -56,6 +56,36 @@ const openAnnotate = async (
   await modal.annotate3d.waitForSurface();
 };
 
+/** Verify persisted state from a brand-new browser context (true round-trip). */
+const inFreshContext = async (
+  browser: Browser,
+  fiftyoneLoader: AbstractFiftyoneLoader,
+  verify: (modal: ModalPom) => Promise<void>,
+) => {
+  const context = await browser.newContext();
+  const freshPage = await context.newPage();
+  try {
+    const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+    await openAnnotate(fiftyoneLoader, freshModal, freshPage);
+    await verify(freshModal);
+  } finally {
+    await context.close();
+  }
+};
+
+/** The labels listed in the annotate sidebar of a fresh browser context. */
+const expectPersistedLabels = (
+  browser: Browser,
+  fiftyoneLoader: AbstractFiftyoneLoader,
+  labels: string[],
+) =>
+  inFreshContext(browser, fiftyoneLoader, async (fresh) => {
+    await fresh.annotate3d.assert.labelCount(labels.length);
+    for (const label of labels) {
+      await fresh.annotate3d.assert.labelListed(label);
+    }
+  });
+
 test.describe.serial("3d polyline annotation", () => {
   // Re-seed per test so each delete/undo case starts from a clean polyline
   // (mirrors the cuboid spec).
@@ -79,9 +109,7 @@ test.describe.serial("3d polyline annotation", () => {
     await modal.annotate3d.assert.labelListed("lane");
   });
 
-  // Flaky: selection intermittently doesn't arm annotation mode, so the
-  // toolbar/transform gizmo never mounts
-  test.skip("selecting the polyline opens its edit form, toolbar, and transform gizmo", async ({
+  test("selecting the polyline opens its edit form, toolbar, and transform gizmo", async ({
     modal,
   }) => {
     await modal.annotate3d.selectLabel("lane");
@@ -97,7 +125,8 @@ test.describe.serial("3d polyline annotation", () => {
   });
 
   test("a class edit on the polyline persists across a fresh save", async ({
-    datasetFactory,
+    browser,
+    fiftyoneLoader,
     modal,
     page,
   }) => {
@@ -113,17 +142,7 @@ test.describe.serial("3d polyline annotation", () => {
     await saved;
 
     // the polyline stays a single label whose class is now persisted "barrier"
-    await expect
-      .poll(
-        async () =>
-          polylineLabels(await datasetFactory.readSample({ datasetName })),
-        {
-          // each readback spawns a python process, so give the DB round-trip
-          // room for several attempts (the default 5s is too tight).
-          timeout: 20_000,
-        },
-      )
-      .toEqual(["barrier"]);
+    await expectPersistedLabels(browser, fiftyoneLoader, ["barrier"]);
   });
 
   test("deleting the polyline drops its row; undo restores it and redo re-deletes", async ({
@@ -145,7 +164,8 @@ test.describe.serial("3d polyline annotation", () => {
   });
 
   test("a delete persists across a fresh save", async ({
-    datasetFactory,
+    browser,
+    fiftyoneLoader,
     modal,
     page,
   }) => {
@@ -160,17 +180,7 @@ test.describe.serial("3d polyline annotation", () => {
     await modal.annotate3d.assert.labelCount(0);
     await saved;
 
-    await expect
-      .poll(
-        async () =>
-          polylineLabels(await datasetFactory.readSample({ datasetName })),
-        {
-          // each readback spawns a python process, so give the DB round-trip
-          // room for several attempts (the default 5s is too tight).
-          timeout: 20_000,
-        },
-      )
-      .toEqual([]);
+    await expectPersistedLabels(browser, fiftyoneLoader, []);
   });
 
   // The audit flagged that undo/redo durability across an autosave is
@@ -178,7 +188,8 @@ test.describe.serial("3d polyline annotation", () => {
   // engine's command stack must still drive undo AND redo — and each step must
   // itself re-persist (the engine commits through the same save path).
   test("undo and redo of a persisted class edit re-persist through the DB", async ({
-    datasetFactory,
+    browser,
+    fiftyoneLoader,
     modal,
     page,
   }) => {
@@ -195,15 +206,7 @@ test.describe.serial("3d polyline annotation", () => {
     let saved = awaitSave();
     await modal.sidebar.edit.selectFieldChoice("label", "barrier");
     await saved;
-    await expect
-      .poll(
-        async () =>
-          polylineLabels(await datasetFactory.readSample({ datasetName })),
-        {
-          timeout: 20_000,
-        },
-      )
-      .toEqual(["barrier"]);
+    await expectPersistedLabels(browser, fiftyoneLoader, ["barrier"]);
 
     // after the autosave the stack survives: undo reverts the class and
     // re-persists "lane"
@@ -212,15 +215,7 @@ test.describe.serial("3d polyline annotation", () => {
     await modal.sidebar.edit.undo();
     await modal.sidebar.edit.assert.verifyFieldValue("label", "lane");
     await saved;
-    await expect
-      .poll(
-        async () =>
-          polylineLabels(await datasetFactory.readSample({ datasetName })),
-        {
-          timeout: 20_000,
-        },
-      )
-      .toEqual(["lane"]);
+    await expectPersistedLabels(browser, fiftyoneLoader, ["lane"]);
 
     // redo re-applies the class and re-persists "barrier"
     saved = awaitSave();
@@ -228,15 +223,7 @@ test.describe.serial("3d polyline annotation", () => {
     await modal.sidebar.edit.redo();
     await modal.sidebar.edit.assert.verifyFieldValue("label", "barrier");
     await saved;
-    await expect
-      .poll(
-        async () =>
-          polylineLabels(await datasetFactory.readSample({ datasetName })),
-        {
-          timeout: 20_000,
-        },
-      )
-      .toEqual(["barrier"]);
+    await expectPersistedLabels(browser, fiftyoneLoader, ["barrier"]);
   });
 });
 
@@ -258,7 +245,8 @@ test.describe.serial("3d polyline creation", () => {
   });
 
   test("drawing a polyline on the canvas creates a label, assigns a class, and persists", async ({
-    datasetFactory,
+    browser,
+    fiftyoneLoader,
     modal,
     page,
   }) => {
@@ -269,27 +257,19 @@ test.describe.serial("3d polyline creation", () => {
     await modal.annotate3d.assert.polylineModeActive(true);
     await modal.looker3dControls.setTopView();
 
-    // The draw clicks raycast against the LIVE camera, so a still-animating
-    // top-view camera drops vertices and the polyline never commits. There's no
-    // camera-settled signal to await and a fixed wait is brittle to slow
-    // software-GL CI runners (where the animation outlasts any guess), so make
-    // the gesture adaptive: re-arm + redraw until a vertex lands and the
-    // freshly-created polyline auto-selects, opening its edit form. The success
-    // check is bounded so a dropped draw retries instead of hanging the test.
+    // the freshly-created polyline auto-selects, opening its edit form
     const labelInput = modal.sidebar.edit
       .getFieldContainer("label")
       .locator("input, textarea, select");
-    await expect(async () => {
-      if (!(await modal.annotate3d.isNewSegmentActive())) {
-        await modal.annotate3d.startSegment();
-      }
-      await modal.annotate3d.drawPolyline([
-        [0.4, 0.4],
-        [0.6, 0.4],
-        [0.6, 0.6],
-      ]);
-      await expect(labelInput).toBeVisible({ timeout: 3_000 });
-    }).toPass({ timeout: 90_000 });
+    if (!(await modal.annotate3d.isNewSegmentActive())) {
+      await modal.annotate3d.startSegment();
+    }
+    await modal.annotate3d.drawPolyline([
+      [0.4, 0.4],
+      [0.6, 0.4],
+      [0.6, 0.6],
+    ]);
+    await expect(labelInput).toBeVisible();
 
     // the freshly-drawn polyline is auto-selected with its edit form open
     // (which replaces the label list); verify creation through the form, then
@@ -306,20 +286,13 @@ test.describe.serial("3d polyline creation", () => {
 
     // the drawn polyline persists as a single label carrying the class and a
     // non-empty points3d geometry
-    await expect
-      .poll(
-        async () =>
-          polylineLabels(await datasetFactory.readSample({ datasetName })),
-        {
-          timeout: 20_000,
-        },
-      )
-      .toEqual(["barrier"]);
-
-    const geom = polylineGeometry(
-      await datasetFactory.readSample({ datasetName }),
-    );
-    expect(geom.points3d?.length ?? 0).toBeGreaterThan(0);
-    expect(geom.points3d?.[0]?.length ?? 0).toBeGreaterThanOrEqual(2);
+    await inFreshContext(browser, fiftyoneLoader, async (fresh) => {
+      await fresh.annotate3d.assert.labelCount(1);
+      await fresh.annotate3d.assert.labelListed("barrier");
+      await fresh.annotate3d.selectLabel("barrier");
+      expect(
+        await fresh.annotate3d.selectedVertexCount(),
+      ).toBeGreaterThanOrEqual(2);
+    });
   });
 });

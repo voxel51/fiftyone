@@ -16,6 +16,8 @@ export const DRAG_GATE_THRESHOLD_PX = 4;
 
 export const SET_TOP_VIEW_EVENT = "fo-action-set-top-view";
 export const SET_EGO_VIEW_EVENT = "fo-action-set-ego-view";
+/** Fired on `document` once a frame has rendered a programmatic camera look-at. */
+export const CAMERA_LOOK_AT_SETTLED_EVENT = "looker3d-camera-look-at-settled";
 export const SET_ZOOM_TO_SELECTED_EVENT = "fo-action-zoom-to-selected";
 
 export const SHADE_BY_INTENSITY = "intensity";

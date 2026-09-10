@@ -2,7 +2,6 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import fs from "fs";
 import os from "os";
 import path from "path";
 import { OssLoader } from "src/oss/fixtures/loader";
@@ -12,6 +11,7 @@ import {
   DEFAULT_IMAGE_OPTIONS,
   type ImageOptions,
 } from "../media-factory/image";
+import { createMcapFixture, type McapFixtureKind } from "../media-factory/mcap";
 import { createScene, type SceneOptions } from "../media-factory/scene";
 import {
   createVideo,
@@ -43,6 +43,9 @@ export interface GroupSampleScaffold extends SampleScaffold {
 
   /** The group slice the sample belongs to. */
   slice: string;
+
+  /** Frame count of the generated clip, on video slices. */
+  numFrames?: number;
 }
 
 /** A sample scaffold inside a video dataset. */
@@ -222,7 +225,7 @@ interface BaseDatasetOptions<S extends SampleScaffold = SampleScaffold> {
    * Annotation label schemas keyed by field path. Each is applied with
    * `dataset.update_label_schema(field, schema)` and the field is added to
    * `dataset.active_label_schemas`, all inside the single dataset-creation
-   * subprocess — no follow-up calls needed.
+   * subprocess.
    *
    * @example
    * labelSchemas: {
@@ -279,11 +282,15 @@ export interface DatasetOptions extends BaseDatasetOptions {
 }
 
 /**
- * A single slice in a group dataset: a name and its media type.
+ * A single slice in a group dataset: a name, its media type, and optional
+ * media options for that slice (over the dataset-level ones).
  */
 export interface GroupSliceConfig {
   name: string;
-  mediaType: "image" | "3d";
+  mediaType: "image" | "3d" | "video";
+  imageOptions?: Partial<ImageOptions>;
+  sceneOptions?: Partial<SceneOptions>;
+  videoOptions?: Partial<VideoOptions>;
 }
 
 /**
@@ -301,6 +308,23 @@ export interface GroupDatasetOptions extends BaseDatasetOptions<GroupSampleScaff
 
   /** Options for the scene of each 3d-slice sample. */
   sceneOptions?: PerSample<SceneOptions>;
+
+  /** Options for the clip of each video-slice sample. */
+  videoOptions?: PerSample<VideoOptions>;
+
+  /**
+   * A factory function that populates a frame of a video-slice sample with
+   * data, called once per (sample, frame number). Frames are inserted only
+   * when this is given.
+   */
+  withFrameData?: (frame: FrameScaffold, helpers: Helpers) => JSONObject;
+
+  /**
+   * Materialize per-frame images of the video slices via
+   * `to_frames(sample_frames=True)`.
+   * @default false
+   */
+  sampleFrames?: boolean;
 }
 
 /**
@@ -331,6 +355,20 @@ export interface VideoDatasetOptions extends BaseDatasetOptions<VideoSampleScaff
 }
 
 /**
+ * Configuration options for creating a multimodal (MCAP) dataset.
+ */
+export interface MultimodalDatasetOptions extends BaseDatasetOptions {
+  /** @default 1 */
+  numSamples?: number;
+
+  /**
+   * The MCAP fixture recorded for each sample.
+   * @default "tiny-episode-a"
+   */
+  mcapKind?: PerSample<{ kind: McapFixtureKind }>;
+}
+
+/**
  * Configuration options for creating a 3D dataset.
  */
 export interface Dataset3dOptions extends BaseDatasetOptions {
@@ -358,7 +396,7 @@ interface BuildOptions extends Pick<
   BaseDatasetOptions,
   "datasetName" | "labelSchemas" | "savedViews" | "schema"
 > {
-  mediaType: "image" | "video" | "3d" | "group";
+  mediaType: "image" | "video" | "3d" | "multimodal" | "group";
   samples: SampleSpec[];
   frames?: FrameSpec[];
   sampleFrames?: boolean;
@@ -410,6 +448,9 @@ const build = (() => {
       JSON.stringify({ samples, frames, labelSchemas }),
       "json",
     );
+    const hasVideo =
+      mediaType === "video" ||
+      groupSlices.some((slice) => slice.mediaType === "video");
     const mediaTypeCode =
       mediaType === "group"
         ? [
@@ -427,9 +468,13 @@ from datetime import datetime
 from bson import ObjectId, json_util
 
 import fiftyone as fo
+from fiftyone import ViewField as F
 
 with open("${payload}") as f:
     payload = json_util.loads(f.read())
+
+if fo.dataset_exists("${datasetName}"):
+    fo.delete_dataset("${datasetName}")
 
 dataset = fo.Dataset("${datasetName}")
 dataset.persistent = True
@@ -475,8 +520,14 @@ if payload["frames"]:
 
     dataset._frame_collection.insert_many(frame_docs)
 
-${mediaType === "video" ? "dataset.compute_metadata()" : ""}
-${sampleFrames ? "dataset.to_frames(sample_frames=True)" : ""}
+${hasVideo ? "dataset.compute_metadata()" : ""}
+${
+  sampleFrames
+    ? mediaType === "group"
+      ? 'dataset.select_group_slices(media_type="video").to_frames(sample_frames=True)'
+      : "dataset.to_frames(sample_frames=True)"
+    : ""
+}
 
 for field_name, label_schema in payload["labelSchemas"].items():
     dataset.update_label_schema(field_name, label_schema)
@@ -601,22 +652,28 @@ const createGroupDataset = async ({
   },
   labelSchemas,
   numGroups = 3,
+  sampleFrames = false,
   savedViews,
   sceneOptions = { shape: "cube", color: [96, 208, 255] },
   schema,
   slices = DEFAULT_GROUP_SLICES,
+  videoOptions,
+  withFrameData,
   withSampleData = () => ({}),
 }: GroupDatasetOptions) => {
   const outputDir = await mediaDir(datasetName);
   const images = new Array<Promise<void>>();
   const samples = new Array<SampleSpec>();
+  const frames = new Array<FrameSpec>();
 
   let index = 0;
   for (let groupIndex = 0; groupIndex < numGroups; groupIndex++) {
     const groupId = createId().$oid;
     for (const slice of slices) {
       const outputPath = path.join(outputDir, `${slice.name}-${groupIndex}`);
+      const _id = indexToId(index);
       let filepath: string;
+      let numFrames: number | undefined;
       if (slice.mediaType === "image") {
         filepath = `${outputPath}.png`;
         images.push(
@@ -624,21 +681,44 @@ const createGroupDataset = async ({
             outputPath: filepath,
             ...DEFAULT_IMAGE_OPTIONS,
             ...resolve(imageOptions, index),
+            ...slice.imageOptions,
           }),
         );
+      } else if (slice.mediaType === "video") {
+        const options = {
+          ...DEFAULT_VIDEO_OPTIONS,
+          ...resolve(videoOptions, index),
+          ...slice.videoOptions,
+        };
+        filepath = await createVideo({ outputPath, ...options });
+        numFrames = Math.round(options.duration * options.frameRate);
+        for (
+          let frameNumber = 1;
+          withFrameData && frameNumber <= numFrames;
+          frameNumber++
+        ) {
+          frames.push({
+            sampleId: _id,
+            frameNumber,
+            data: withFrameData(
+              { sampleId: _id, sampleIndex: index, frameNumber, numFrames },
+              helpers,
+            ),
+          });
+        }
       } else {
         filepath = createScene({
           outputPath,
           ...resolve(sceneOptions, index),
+          ...slice.sceneOptions,
         });
       }
-      const _id = indexToId(index);
       samples.push({
         id: _id,
         filepath,
         group: { id: groupId, name: slice.name },
         data: withSampleData(
-          { _id, filepath, index, groupIndex, slice: slice.name },
+          { _id, filepath, index, groupIndex, slice: slice.name, numFrames },
           helpers,
         ),
       });
@@ -652,6 +732,8 @@ const createGroupDataset = async ({
     mediaType: "group",
     groupSlices: slices,
     samples,
+    frames,
+    sampleFrames,
     schema,
     labelSchemas,
     savedViews,
@@ -785,6 +867,50 @@ const create3dDataset = async ({
 };
 
 /**
+ * Creates a FiftyOne multimodal dataset with one generated MCAP recording per
+ * sample at `<tmpdir>/<datasetName>/<index>.mcap`.
+ *
+ * @example
+ * await DatasetFactory.createMultimodalDataset({ datasetName: "my-episodes" });
+ */
+const createMultimodalDataset = async ({
+  datasetName,
+  labelSchemas,
+  mcapKind,
+  numSamples = 1,
+  savedViews,
+  schema,
+  withSampleData = () => ({}),
+}: MultimodalDatasetOptions) => {
+  const outputDir = await mediaDir(datasetName);
+  const samples = new Array<SampleSpec>();
+
+  for (let index = 0; index < numSamples; index++) {
+    const filepath = path.join(outputDir, `${index}.mcap`);
+    await createMcapFixture({
+      outputPath: filepath,
+      kind: "tiny-episode-a",
+      ...resolve(mcapKind, index),
+    });
+    const _id = indexToId(index);
+    samples.push({
+      id: _id,
+      filepath,
+      data: withSampleData({ _id, filepath, index }, helpers),
+    });
+  }
+
+  await build({
+    datasetName,
+    mediaType: "multimodal",
+    samples,
+    schema,
+    labelSchemas,
+    savedViews,
+  });
+};
+
+/**
  * Spec for a single detection seeded into an existing sample.
  *
  * `maskSize` (optional): attaches a square mask of all-ones with the given
@@ -898,74 +1024,6 @@ ${
 })();
 
 /**
- * Selects a sample by its position in dataset order.
- */
-export interface ReadOptions {
-  datasetName: string;
-  /** @default 0 */
-  sampleIndex?: number;
-}
-
-const read = (() => {
-  const loader = new OssLoader();
-  return async (
-    { datasetName, sampleIndex = 0 }: ReadOptions,
-    collection: "sample" | "frames",
-  ) => {
-    const resultFile = path.join(
-      os.tmpdir(),
-      `read-${collection}-${Date.now()}-${Math.random()
-        .toString(36)
-        .substring(2)}.json`,
-    );
-
-    await loader.executePythonCode(`
-from bson import json_util
-
-import fiftyone as fo
-
-dataset = fo.load_dataset("${datasetName}")
-sample = dataset.skip(${sampleIndex}).first()
-${
-  collection === "sample"
-    ? 'doc = dataset._sample_collection.find_one({"_id": sample._id})'
-    : `doc = list(
-    dataset._frame_collection.find({"_sample_id": sample._id}).sort(
-        "frame_number", 1
-    )
-)`
-}
-
-with open("${resultFile}", "w") as f:
-    f.write(json_util.dumps(doc))
-`);
-
-    const raw = fs.readFileSync(resultFile, "utf-8");
-    fs.unlinkSync(resultFile);
-    return JSON.parse(raw);
-  };
-})();
-
-/**
- * Reads a sample's raw database document (extended JSON: ids as `{ $oid }`,
- * binaries as `{ $binary }`). Tests extract the values they assert on, so
- * the persisted state is verified without a fresh browser context.
- *
- * @example
- * const sample = await DatasetFactory.readSample({ datasetName });
- * expect(sample.detections.detections).toHaveLength(1);
- */
-const readSample = (options: ReadOptions): Promise<JSONObject> =>
-  read(options, "sample");
-
-/**
- * Reads a video sample's raw frame documents, ordered by frame number.
- * See {@link readSample}.
- */
-const readFrames = (options: ReadOptions): Promise<JSONObject[]> =>
-  read(options, "frames");
-
-/**
  * Factory for creating FiftyOne datasets in test and fixture contexts. Every
  * creator takes the same `schema`, `labelSchemas`, `withSampleData` and
  * `savedViews` options and inserts fixed-id documents directly; they differ
@@ -978,18 +1036,16 @@ const readFrames = (options: ReadOptions): Promise<JSONObject[]> =>
  * await DatasetFactory.createGroupDataset({ datasetName: "my-groups" });
  * await DatasetFactory.createVideoDataset({ datasetName: "my-videos" });
  * await DatasetFactory.create3dDataset({ datasetName: "my-scenes" });
+ * await DatasetFactory.createMultimodalDataset({ datasetName: "my-episodes" });
  * await DatasetFactory.seedDetections({ datasetName, field, detections });
  * await DatasetFactory.updateLabelSchema({ datasetName, field, schema });
- * const sample = await DatasetFactory.readSample({ datasetName });
- * const frames = await DatasetFactory.readFrames({ datasetName });
  */
 export const DatasetFactory = {
   createDataset,
   createGroupDataset,
   createVideoDataset,
   create3dDataset,
+  createMultimodalDataset,
   seedDetections,
   updateLabelSchema,
-  readSample,
-  readFrames,
 };

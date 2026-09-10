@@ -5,6 +5,7 @@
 import type {
   Dataset3dOptions,
   JSONObject,
+  JSONValue,
   LabelSchema,
   Schema,
 } from "src/shared/dataset-factory";
@@ -14,7 +15,7 @@ export interface Annotate3dSeedOptions {
   classes?: string[];
   /**
    * Sample indices that carry a pre-seeded 3D cuboid (a single
-   * `fo.Detection` with `location`/`dimensions`/`rotation`, class
+   * `Detection` with `location`/`dimensions`/`rotation`, class
    * `classes[0]`) so tests can exercise select/edit/transform/delete on an
    * existing cuboid without the brittle three-click canvas draw. Defaults to
    * `[0]`.
@@ -22,7 +23,7 @@ export interface Annotate3dSeedOptions {
   cuboidSampleIndices?: number[];
   /**
    * Polyline (3D) classes. Passing this declares + activates a sample-level
-   * `polylines` annotation schema (a `fo.Polylines` field). When omitted the
+   * `polylines` annotation schema (a `Polylines` field). When omitted the
    * dataset has no polyline schema (the cuboid-only shape). The active
    * annotation schema becomes polylines-only unless cuboids are also requested
    * (a non-empty `cuboidSampleIndices`), so polyline-mode resolves the polyline
@@ -30,7 +31,7 @@ export interface Annotate3dSeedOptions {
    */
   polylineClasses?: string[];
   /**
-   * Sample indices that carry a pre-seeded 3D polyline (a single `fo.Polyline`
+   * Sample indices that carry a pre-seeded 3D polyline (a single `Polyline`
    * with `points3d` — a list of segments of `[x,y,z]` — class
    * `polylineClasses[0]`) so tests can exercise select/edit/delete on an
    * existing polyline without the canvas draw. Only honored when
@@ -48,7 +49,7 @@ export interface Annotate3dSeedOptions {
    * Initial attribute values stamped on every pre-seeded cuboid as dynamic
    * `Detection` fields.
    */
-  cuboidAttributeValues?: Record<string, string>;
+  cuboidAttributeValues?: { [name: string]: JSONValue };
 }
 
 type Seed = Required<
@@ -70,10 +71,10 @@ const COMMON_ATTRIBUTES = [
 /**
  * Builds the `create3dDataset` arguments for a 3D-annotation dataset: a
  * declared + active sample-level `detections` annotation schema and an
- * optional pre-seeded cuboid (`fo.Detection` with 3D geometry) on requested
+ * optional pre-seeded cuboid (`Detection` with 3D geometry) on requested
  * samples.
  *
- * A 3D cuboid is a `fo.Detection` carrying `location` ([x,y,z] center),
+ * A 3D cuboid is a `Detection` carrying `location` ([x,y,z] center),
  * `dimensions` ([l,w,h]) and `rotation` ([x,y,z] euler) — the same field the
  * `detection3dAdapter` renders on the annotation engine. A 3D polyline carries
  * `points3d` (a list of [x,y,z] segments) as a dynamic attribute — `points`

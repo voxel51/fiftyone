@@ -3,6 +3,7 @@ import { is3d, isDirect3dSamplePath, setContains3d } from "@fiftyone/utilities";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { ActionBar } from "./action-bar";
+import { useWorkingLabel } from "./annotation/store/working";
 import { Container } from "./containers";
 import { Fo3dErrorBoundary } from "./ErrorBoundary";
 import { Leva } from "./fo3d/Leva";
@@ -16,7 +17,9 @@ import {
   isColormapModalOpenAtom,
   isGridOnAtom,
   isLevaConfigPanelOnAtom,
+  selectedLabelForAnnotationAtom,
 } from "./state";
+import { isPolyline3dOverlay } from "./types";
 
 /**
  * This component renders all supported 3D contexts through the FO3D pipeline,
@@ -58,8 +61,17 @@ export const Looker3d = () => {
 
   const thisSampleId = useRecoilValue(fos.modalSampleId);
 
-  // test affordance: 3D selection has no DOM signal, so expose its count
-  const selectedLabelCount = useRecoilValue(fos.selectedLabels).length;
+  const selectedLabelForAnnotation = useRecoilValue(
+    selectedLabelForAnnotationAtom,
+  );
+  const workingLabel = useWorkingLabel(selectedLabelForAnnotation?._id ?? "");
+  const selectedVertexCount =
+    workingLabel && isPolyline3dOverlay(workingLabel)
+      ? workingLabel.data.points3d?.reduce(
+          (count, segment) => count + segment.length,
+          0,
+        )
+      : undefined;
 
   useEffect(() => {
     return () => {
@@ -202,7 +214,7 @@ export const Looker3d = () => {
         onMouseOver={update}
         onMouseMove={update}
         data-cy="looker3d"
-        data-cy-selected-label-count={selectedLabelCount}
+        data-cy-selected-vertex-count={selectedVertexCount}
       >
         <MediaTypeFo3dComponent key={looker3dSceneKey} />
         <ActionBar

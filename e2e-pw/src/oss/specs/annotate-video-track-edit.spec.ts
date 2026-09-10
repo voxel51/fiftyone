@@ -18,9 +18,10 @@
  * `bounding_box=[0.3,0.3,0.2,0.2]` on every frame) so a persisting edit in one
  * test can't leak into the next.
  */
-import { expect, test as base } from "src/oss/fixtures";
+import { Browser, expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import { EventUtils } from "src/shared/event-utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
 import type { Page } from "src/oss/fixtures";
 import { videoAnnotationSeed } from "./annotate-video/seed";
@@ -53,6 +54,23 @@ const openAnnotate = async (
   await modal.assert.isOpen();
   await modal.sidebar.switchMode("annotate");
   await modal.videoAnnotate.waitForSurface();
+};
+
+/** Verify persisted state from a brand-new browser context (true round-trip). */
+const inFreshContext = async (
+  browser: Browser,
+  fiftyoneLoader: AbstractFiftyoneLoader,
+  verify: (modal: ModalPom) => Promise<void>,
+) => {
+  const context = await browser.newContext();
+  const freshPage = await context.newPage();
+  try {
+    const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+    await openAnnotate(fiftyoneLoader, freshModal, freshPage);
+    await verify(freshModal);
+  } finally {
+    await context.close();
+  }
 };
 
 /** Read a numeric edit-form field value (the sidebar shows relative [0,1]). */
@@ -185,6 +203,7 @@ test.describe.serial("video annotation track editing", () => {
   });
 
   test("selecting a track on the canvas neither persists nor promotes a keyframe", async ({
+    browser,
     fiftyoneLoader,
     modal,
     page,
@@ -217,22 +236,26 @@ test.describe.serial("video annotation track editing", () => {
     await modal.sampleCanvas.move(0.4, 0.4, "pointer");
     await modal.sampleCanvas.click(0.4, 0.4);
 
-    // the editor opened — selection worked — but more than one autosave cycle
-    // (3s) elapses with zero round-trips: a select is not an edit
+    // the editor opened — selection worked
     await expect(modal.sidebar.edit.backButton).toBeVisible();
-    // proving a negative requires outwaiting the autosave cycle
-    // eslint-disable-next-line playwright/no-wait-for-timeout
-    await page.waitForTimeout(4000);
-    expect(persists).toBe(0);
 
-    // prove the autosave loop is alive (the 0 above wasn't a dead-loop false
-    // negative): a real field edit DOES round-trip
+    // a select is not an edit: the next autosave carries only a real edit. A
+    // class change fans across the track without touching geometry, so a no-op
+    // resize committed by the select would ride the same patch and promote the
+    // frame to a keyframe — which the fresh load below would show
     const saved = savedResponse(page);
-    await modal.sidebar.edit.setFieldValue("position.x", "0.42");
+    await modal.sidebar.edit.selectFieldChoice("label", "person");
     await saved;
-    expect(persists).toBeGreaterThan(0);
-
+    expect(persists).toBe(1);
     page.off("response", countPersist);
+
+    await inFreshContext(browser, fiftyoneLoader, async (fresh) => {
+      const va = fresh.videoAnnotate;
+      await va.assert.labelListed("person");
+      const [trackId] = await va.objectTrackIds();
+      await va.openTracksDrawer();
+      expect(await va.keyframeTimes(trackId)).toEqual([]);
+    });
   });
 
   test("selecting on the canvas, timeline, and sidebar all open the same editor", async ({

@@ -13,20 +13,13 @@
  * pinned: assert the image sidebar shows only its two detections (no leak), and
  * as a positive control that selecting `mesh` does surface its cuboid.
  */
-import fs from "node:fs";
 import { expect, test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
-import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
 import type { DatasetFactory } from "src/shared/dataset-factory";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-3d-pin-leak");
-
-const imgPath = `/tmp/${datasetName}-image.png`;
-const cubePlyPath = `/tmp/${datasetName}-cube.ply`;
-const meshScenePath = `/tmp/${datasetName}-mesh.fo3d`;
-const TEMP_FILE_PATHS = [imgPath, cubePlyPath, meshScenePath];
 
 const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   grid: async ({ page, eventUtils }, use) => {
@@ -43,105 +36,80 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
  * drives `EnsureGroupSample` to pin the 3D viewer + select the image slice on
  * open — the leak precondition.
  */
-const seedDataset = async (
-  fiftyoneLoader: AbstractFiftyoneLoader,
-  datasetFactory: typeof DatasetFactory,
-) => {
-  await fiftyoneLoader.executePythonCode(`
-import fiftyone as fo
-import fiftyone.core.media as fom
-
-if fo.dataset_exists("${datasetName}"):
-    fo.delete_dataset("${datasetName}")
-
-dataset = fo.Dataset("${datasetName}")
-dataset.add_group_field("group", default="mesh")
-dataset._doc.group_media_types = {"image": fom.IMAGE, "mesh": fom.THREE_D}
-dataset.save()
-dataset.persistent = True
-
-group = fo.Group()
-samples = [
-    fo.Sample(
-        filepath="${imgPath}",
-        group=group.element("image"),
-        detections=fo.Detections(detections=[
-            fo.Detection(label="cat", bounding_box=[0.05, 0.4, 0.08, 0.2]),
-            fo.Detection(label="cat", bounding_box=[0.2, 0.4, 0.08, 0.2]),
-        ]),
-    ),
-    fo.Sample(
-        filepath="${meshScenePath}",
-        media_type="3d",
-        group=group.element("mesh"),
-        detections=fo.Detections(detections=[
-            fo.Detection(
-                label="dog",
-                location=[6.0, 6.0, 0.0],
-                dimensions=[1.0, 1.0, 1.0],
-                rotation=[0.0, 0.0, 0.0],
-            ),
-        ]),
-    ),
-]
-dataset.add_samples(samples)
-  `);
-
-  await datasetFactory.updateLabelSchema({
+const seedDataset = (datasetFactory: typeof DatasetFactory) =>
+  datasetFactory.createGroupDataset({
     datasetName,
-    field: "detections",
-    schema: {
-      type: "detections",
-      classes: ["cat", "dog"],
-      attributes: [],
-      component: "dropdown",
+    numGroups: 1,
+    slices: [
+      { name: "mesh", mediaType: "3d" },
+      {
+        name: "image",
+        mediaType: "image",
+        imageOptions: {
+          width: 320,
+          height: 240,
+          fillColor: "#264653",
+          watermarkString: "image",
+          hideLogs: true,
+        },
+      },
+    ],
+    schema: { detections: "Detections" },
+    labelSchemas: {
+      detections: {
+        type: "detections",
+        classes: ["cat", "dog"],
+        attributes: [],
+        component: "dropdown",
+      },
     },
+    withSampleData: ({ slice }, { createId }) => ({
+      detections: {
+        _cls: "Detections",
+        detections:
+          slice === "image"
+            ? [
+                {
+                  _id: createId(),
+                  _cls: "Detection",
+                  tags: [],
+                  label: "cat",
+                  bounding_box: [0.05, 0.4, 0.08, 0.2],
+                },
+                {
+                  _id: createId(),
+                  _cls: "Detection",
+                  tags: [],
+                  label: "cat",
+                  bounding_box: [0.2, 0.4, 0.08, 0.2],
+                },
+              ]
+            : [
+                {
+                  _id: createId(),
+                  _cls: "Detection",
+                  tags: [],
+                  label: "dog",
+                  location: [6, 6, 0],
+                  dimensions: [1, 1, 1],
+                  rotation: [0, 0, 0],
+                },
+              ],
+      },
+    }),
   });
-};
 
-test.beforeAll(async ({ foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
-  mediaFactory.createImage({
-    outputPath: imgPath,
-    width: 320,
-    height: 240,
-    fillColor: "#264653",
-    watermarkString: "image",
-    hideLogs: true,
-  });
-  mediaFactory.createPly({ outputPath: cubePlyPath, shape: "cube" });
-  mediaFactory.createFo3d({ outputPath: meshScenePath, plyPath: cubePlyPath });
 });
 
-test.afterAll(async ({ fiftyoneLoader, foWebServer }) => {
-  try {
-    await fiftyoneLoader.executePythonCode(`
-import fiftyone as fo
-if fo.dataset_exists("${datasetName}"):
-    fo.delete_dataset("${datasetName}")
-`);
-  } catch (error) {
-    void error;
-  }
-
-  try {
-    await foWebServer.stopWebServer();
-  } catch (error) {
-    void error;
-  }
-
-  TEMP_FILE_PATHS.forEach((filePath) => {
-    try {
-      fs.rmSync(filePath, { force: true });
-    } catch (error) {
-      void error;
-    }
-  });
+test.afterAll(async ({ foWebServer }) => {
+  await foWebServer.stopWebServer();
 });
 
 test.describe.serial("grouped 2D+3D annotation — 3D pin does not leak", () => {
   test.beforeEach(async ({ datasetFactory, fiftyoneLoader, modal, page }) => {
-    await seedDataset(fiftyoneLoader, datasetFactory);
+    await seedDataset(datasetFactory);
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
     await modal.close({ ignoreError: true });
   });

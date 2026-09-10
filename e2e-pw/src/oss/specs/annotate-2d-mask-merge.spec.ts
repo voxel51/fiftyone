@@ -9,9 +9,9 @@
  *   - the source is absorbed (label count 2 → 1) and the merge persists,
  *   - a single undo restores the source (count → 2).
  *
- * Masks are seeded via `fo.Detection` so the embedded mask carries `_cls` and
- * decodes (see annotate-2d-mask.spec.ts for why the factory JSON path
- * doesn't). Merge needs ≥2 masked detections in the field for the tool to enable.
+ * The seeded detections carry `_cls` so their embedded masks decode (see
+ * annotate-2d-mask.spec.ts). Merge needs ≥2 masked detections in the field for
+ * the tool to enable.
  */
 import { Browser, expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -25,30 +25,22 @@ const id = "000000000000000000000000";
 const isSamplePatch = (method: string) =>
   ["POST", "PATCH", "PUT"].includes(method);
 
-/** Two masked detections, tiled apart along x so each is clickable on canvas. */
-const seedDetections = () => `
-import fiftyone as fo
-import numpy as np
-
-dataset = fo.load_dataset("${datasetName}")
-sample = dataset.first()
-sample.detections = fo.Detections(detections=[
-    fo.Detection(label="cat", bounding_box=[0.15, 0.4, 0.18, 0.2],
-                 mask=np.ones((50, 50), dtype=bool)),
-    fo.Detection(label="dog", bounding_box=[0.6, 0.4, 0.18, 0.2],
-                 mask=np.ones((50, 50), dtype=bool)),
-])
-sample.save()
-`;
-
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
     await use(new ModalPom(page, eventUtils));
   },
 });
 
-test.beforeAll(async ({ datasetFactory, fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
+});
+
+test.afterAll(async ({ foWebServer }) => {
+  await foWebServer.stopWebServer();
+});
+
+test.beforeEach(async ({ datasetFactory, fiftyoneLoader, modal, page }) => {
+  // a fresh pair per test so a prior test's merge doesn't bleed in
   await datasetFactory.createDataset({
     datasetName,
     imageOptions: { fillColor: "white", width: 640, height: 480 },
@@ -61,17 +53,31 @@ test.beforeAll(async ({ datasetFactory, fiftyoneLoader, foWebServer }) => {
         component: "dropdown",
       },
     },
+    // two masked detections, tiled apart along x so each is clickable on canvas
+    withSampleData: (_, { createId, mask }) => ({
+      detections: {
+        _cls: "Detections",
+        detections: [
+          {
+            _id: createId(),
+            _cls: "Detection",
+            tags: [],
+            label: "cat",
+            bounding_box: [0.15, 0.4, 0.18, 0.2],
+            mask: mask(50, 50),
+          },
+          {
+            _id: createId(),
+            _cls: "Detection",
+            tags: [],
+            label: "dog",
+            bounding_box: [0.6, 0.4, 0.18, 0.2],
+            mask: mask(50, 50),
+          },
+        ],
+      },
+    }),
   });
-  await fiftyoneLoader.executePythonCode(seedDetections());
-});
-
-test.afterAll(async ({ foWebServer }) => {
-  await foWebServer.stopWebServer();
-});
-
-test.beforeEach(async ({ fiftyoneLoader, modal, page }) => {
-  // Re-seed both detections so a prior test's merge doesn't bleed in.
-  await fiftyoneLoader.executePythonCode(seedDetections());
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
   });

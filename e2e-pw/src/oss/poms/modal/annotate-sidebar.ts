@@ -22,6 +22,25 @@ export class ModalAnnotateSidebarPom {
     );
   }
 
+  /** Label rows of the active-labels list, each carrying `data-cy-label` / `data-cy-path`. */
+  get labelRows(): Locator {
+    return this.locator.locator("[data-cy^='annotate-label-']");
+  }
+
+  /** Label rows of the field at `path` (e.g. `weather`, `instances`). */
+  labelRowsFor(path: string): Locator {
+    return this.locator.locator(
+      `[data-cy^='annotate-label-'][data-cy-path='${path}']`,
+    );
+  }
+
+  /** Label rows whose text is `labelText`. */
+  labelRow(labelText: string): Locator {
+    return this.locator.locator(
+      `[data-cy^='annotate-label-'][data-cy-label='${labelText}']`,
+    );
+  }
+
   /**
    * Get the count of active labels in the sidebar
    *

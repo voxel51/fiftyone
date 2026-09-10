@@ -40,7 +40,7 @@ export class ModalPom {
 
   constructor(
     private readonly page: Page,
-    private readonly eventUtils: EventUtils,
+    readonly eventUtils: EventUtils,
   ) {
     this.assert = new ModalAsserter(this);
     this.locator = page.getByTestId("modal");

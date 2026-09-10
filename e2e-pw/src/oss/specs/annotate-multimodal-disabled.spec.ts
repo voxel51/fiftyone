@@ -19,17 +19,9 @@ const test = base.extend<{
   },
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  // ``.mcap`` gives the sample the ``multimodal`` media type, which makes the
-  // whole dataset multimodal (media type can't change after creation).
-  await fiftyoneLoader.executePythonCode(`
-    import fiftyone as fo
-
-    dataset = fo.Dataset("${datasetName}")
-    dataset.add_sample(fo.Sample(filepath="/tmp/${datasetName}.mcap"))
-    dataset.persistent = True
-  `);
+  await datasetFactory.createMultimodalDataset({ datasetName });
 });
 
 test.afterAll(async ({ foWebServer }) => {

@@ -37,39 +37,6 @@ const savedSample = (page: Page) =>
       ["POST", "PATCH", "PUT"].includes(r.request().method()),
   );
 
-/**
- * Declare a second per-frame Detections field (`frames.predictions`) and add it
- * to the active label schemas so the field-move dropdown offers it as a
- * destination. Mirrors how the seed declares `frames.detections`.
- */
-const addPredictionsField = (loader: AbstractFiftyoneLoader) =>
-  loader.executePythonCode(`
-import fiftyone as fo
-
-dataset = fo.load_dataset("${datasetName}")
-dataset.add_frame_field(
-    "predictions", fo.EmbeddedDocumentField, embedded_doc_type=fo.Detections
-)
-dataset.add_frame_field("predictions.detections.keyframe", fo.BooleanField)
-dataset.add_frame_field("predictions.detections.propagation", fo.DictField)
-
-schema = {
-    "type": "detections",
-    "component": "dropdown",
-    "attributes": [
-        {"name": "id", "type": "id", "component": "text", "read_only": True},
-        {"name": "index", "type": "int", "component": "text"},
-    ],
-    "classes": ${JSON.stringify(CLASSES)},
-}
-dataset.update_label_schema("frames.predictions", schema, allow_new_attrs=True)
-if "frames.predictions" not in dataset.active_label_schemas:
-    dataset.active_label_schemas = dataset.active_label_schemas + [
-        "frames.predictions"
-    ]
-dataset.save()
-`);
-
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
     await use(new ModalPom(page, eventUtils));
@@ -122,15 +89,35 @@ const inFreshContext = async (
 };
 
 test.describe.serial("video annotation field move", () => {
-  test.beforeEach(async ({ fiftyoneLoader, datasetFactory }) => {
+  test.beforeEach(async ({ datasetFactory }) => {
+    // a second per-frame Detections field (`frames.predictions`), active, so
+    // the field-move dropdown offers it as a destination
+    const seed = videoAnnotationSeed({
+      withEvents: false,
+      trackedSampleIndices: [0],
+    });
     await datasetFactory.createVideoDataset({
       datasetName,
-      ...videoAnnotationSeed({
-        withEvents: false,
-        trackedSampleIndices: [0],
-      }),
+      ...seed,
+      schema: {
+        ...seed.schema,
+        "frames.predictions": "Detections",
+        "frames.predictions.detections.keyframe": "BooleanField",
+        "frames.predictions.detections.propagation": "DictField",
+      },
+      labelSchemas: {
+        ...seed.labelSchemas,
+        "frames.predictions": {
+          type: "detections",
+          component: "dropdown",
+          attributes: [
+            { name: "id", type: "id", component: "text", read_only: true },
+            { name: "index", type: "int", component: "text" },
+          ],
+          classes: CLASSES,
+        },
+      },
     });
-    await addPredictionsField(fiftyoneLoader);
   });
 
   test("moving a track between frame fields re-homes it and persists", async ({

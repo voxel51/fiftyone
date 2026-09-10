@@ -106,6 +106,69 @@ export class ModalAnnotateEditPom {
   }
 
   /**
+   * Opaque pixel count of the rendered mask preview — the sidebar's picture of
+   * the selected detection's mask. Zero until the mask has decoded.
+   */
+  async maskPreviewPixels(): Promise<number> {
+    return this.page
+      .getByTestId("annotate-mask-preview")
+      .locator("canvas")
+      .evaluate((canvas: HTMLCanvasElement) => {
+        const context = canvas.getContext("2d");
+        if (!context) {
+          return 0;
+        }
+        const { data } = context.getImageData(
+          0,
+          0,
+          canvas.width,
+          canvas.height,
+        );
+        let opaque = 0;
+        for (let i = 3; i < data.length; i += 4) {
+          if (data[i] > 0) {
+            opaque++;
+          }
+        }
+        return opaque;
+      });
+  }
+
+  /**
+   * Covered fraction of the rendered mask preview: opaque pixels over the area
+   * the mask is drawn into (its own size fit to the preview), so it compares
+   * across mask resolutions. Zero until the mask has decoded.
+   */
+  async maskPreviewCoverage(): Promise<number> {
+    return this.page
+      .getByTestId("annotate-mask-preview")
+      .locator("canvas")
+      .evaluate((canvas: HTMLCanvasElement) => {
+        const width = Number(canvas.dataset.maskWidth);
+        const height = Number(canvas.dataset.maskHeight);
+        const context = canvas.getContext("2d");
+        if (!context || !width || !height) {
+          return 0;
+        }
+        const scale = Math.min(canvas.width / width, canvas.height / height);
+        const area = Math.round(width * scale) * Math.round(height * scale);
+        const { data } = context.getImageData(
+          0,
+          0,
+          canvas.width,
+          canvas.height,
+        );
+        let opaque = 0;
+        for (let i = 3; i < data.length; i += 4) {
+          if (data[i] > 0) {
+            opaque++;
+          }
+        }
+        return opaque / area;
+      });
+  }
+
+  /**
    * Get the error message text for a specific field
    *
    * @param path The field path

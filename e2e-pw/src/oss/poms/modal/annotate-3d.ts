@@ -155,6 +155,13 @@ export class ModalAnnotate3dPom {
     return this.geometryField(axis).inputValue();
   }
 
+  /** Vertex count of the selected 3D polyline, read off the looker3d container. */
+  async selectedVertexCount(): Promise<number> {
+    return Number(
+      await this.container.getAttribute("data-cy-selected-vertex-count"),
+    );
+  }
+
   /**
    * The engine-derived sidebar label rows currently listed for the 3D scene.
    * Shared selector with the 2D/video surfaces.
