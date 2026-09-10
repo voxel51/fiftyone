@@ -124,7 +124,17 @@ export const detectionAdapter: LighterAdapter = {
         ? { mask: null, mask_path: null }
         : {};
 
-    return { ...data, ...maskData, bounding_box: boundingBox };
+    // Rotation channel: the overlay owns the live scalar rotation for 2D
+    // boxes. Persist it when the gesture set one, or when the stored label
+    // already carried a scalar (so rotating back to exactly 0 overwrites the
+    // stale value). A 3D `[x, y, z]` rotation list flows through `data`
+    // untouched — the overlay reports 0 for it. Optional-called: handles are
+    // duck-typed at this boundary (tests supply plain stubs).
+    const rotation = overlay.getRotation?.() ?? 0;
+    const rotationData =
+      rotation !== 0 || typeof data.rotation === "number" ? { rotation } : {};
+
+    return { ...data, ...maskData, ...rotationData, bounding_box: boundingBox };
   },
 };
 

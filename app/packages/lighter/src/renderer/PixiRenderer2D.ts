@@ -219,11 +219,31 @@ export class PixiRenderer2D implements Renderer2D {
     graphics.fill();
   }
 
+  /**
+   * Rotates `graphics` around the center of `bounds` — shapes are drawn in
+   * world coordinates, so pivoting at the center re-anchors the rotation
+   * there.
+   */
+  private applyRotation(
+    graphics: PIXI.Graphics,
+    bounds: Rect,
+    rotation?: number,
+  ): void {
+    if (!rotation) return;
+
+    const cx = bounds.x + bounds.width / 2;
+    const cy = bounds.y + bounds.height / 2;
+    graphics.pivot.set(cx, cy);
+    graphics.position.set(cx, cy);
+    graphics.rotation = rotation;
+  }
+
   drawHandles(
     bounds: Rect,
     width: number,
     color: number | string,
     containerId: string,
+    rotation?: number,
   ): void {
     width *= HANDLE_FACTOR / this.getScale();
     const graphics = new PIXI.Graphics();
@@ -232,6 +252,7 @@ export class PixiRenderer2D implements Renderer2D {
     this.drawBoxes(graphics, bounds, width + outline, color, HANDLE_ALPHA);
     this.drawBoxes(graphics, bounds, width, HANDLE_COLOR, HANDLE_ALPHA);
 
+    this.applyRotation(graphics, bounds, rotation);
     this.addToContainer(graphics, containerId);
   }
 
@@ -239,6 +260,7 @@ export class PixiRenderer2D implements Renderer2D {
     bounds: Rect,
     canonicalMediaBounds: Rect,
     containerId: string,
+    rotation?: number,
   ): void {
     const mask = new PIXI.Graphics();
     mask.rect(
@@ -249,6 +271,28 @@ export class PixiRenderer2D implements Renderer2D {
     );
     mask.setFillStyle({ color: SELECTED_COLOR, alpha: SELECTED_ALPHA });
     mask.fill();
+
+    if (rotation) {
+      // rotated cutout: punch the rotated corners as a polygon. No clamping
+      // to media bounds — the scrim itself only covers the media, so a
+      // cutout region outside it simply cuts nothing.
+      const cx = bounds.x + bounds.width / 2;
+      const cy = bounds.y + bounds.height / 2;
+      const cos = Math.cos(rotation);
+      const sin = Math.sin(rotation);
+      const corners = [
+        [-bounds.width / 2, -bounds.height / 2],
+        [bounds.width / 2, -bounds.height / 2],
+        [bounds.width / 2, bounds.height / 2],
+        [-bounds.width / 2, bounds.height / 2],
+      ].flatMap(([x, y]) => [cx + x * cos - y * sin, cy + x * sin + y * cos]);
+
+      mask.poly(corners);
+      mask.cut();
+      mask.eventMode = "none";
+      this.addToContainer(mask, containerId);
+      return;
+    }
 
     const x = Math.max(bounds.x, canonicalMediaBounds.x);
     const y = Math.max(bounds.y, canonicalMediaBounds.y);
@@ -271,7 +315,12 @@ export class PixiRenderer2D implements Renderer2D {
     this.addToContainer(mask, containerId);
   }
 
-  drawRect(bounds: Rect, style: DrawStyle, containerId: string): void {
+  drawRect(
+    bounds: Rect,
+    style: DrawStyle,
+    containerId: string,
+    rotation?: number,
+  ): void {
     const graphics = new PIXI.Graphics();
     const width = (style.lineWidth || 1) / this.getScale();
 
@@ -304,6 +353,7 @@ export class PixiRenderer2D implements Renderer2D {
       }
     }
 
+    this.applyRotation(graphics, bounds, rotation);
     this.addToContainer(graphics, containerId);
   }
 

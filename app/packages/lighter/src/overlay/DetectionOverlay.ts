@@ -8,6 +8,9 @@ import {
   HANDLE_OFFSET_Y,
   HOVERED_DASH_LENGTH,
   LABEL_ARCHETYPE_PRIORITY,
+  ROTATE_HANDLE_OFFSET,
+  ROTATE_HANDLE_RADIUS,
+  ROTATION_SNAP,
   SELECTED_DASH_LENGTH,
   STROKE_WIDTH,
 } from "../constants";
@@ -20,6 +23,7 @@ import type {
   RawLookerLabel,
   Rect,
   RenderMeta,
+  Rotatable,
   Spatial,
 } from "../types";
 import { parseColorWithAlpha } from "../utils/color";
@@ -38,6 +42,12 @@ import { MaskCanvas } from "./MaskCanvas";
 import type { MaskSnapshot, PaintStrokeData } from "./MaskCanvas";
 import { MaskKeypoints } from "./MaskKeypoints";
 import type { SerializedMask } from "@fiftyone/utilities";
+import {
+  getRotatedBoxCorners,
+  getRotation2d,
+  isPointInRotatedBox,
+  toRotatedBoxFrame,
+} from "@fiftyone/utilities";
 import { BASE_ALPHA } from "@fiftyone/looker/src/constants";
 import type { OverlayMask } from "@fiftyone/looker/src/numpy";
 
@@ -47,6 +57,12 @@ export type DetectionLabel = RawLookerLabel & {
   confidence?: number;
   mask?: SerializedMask;
   mask_path?: string;
+  /**
+   * 2D boxes: radians, applied around the box center, positive is clockwise
+   * on screen. 3D boxes carry an `[x, y, z]` list here instead, which this
+   * surface ignores.
+   */
+  rotation?: number | number[];
 };
 
 /**
@@ -83,6 +99,7 @@ export type InteractionState =
   | ResizeRegion
   | "NONE"
   | "DRAGGING"
+  | "ROTATING"
   | "SETTING"
   | "PAINTING";
 
@@ -96,7 +113,7 @@ const LEFT_MOUSE_BUTTON = 1;
  */
 export class DetectionOverlay
   extends BaseOverlay<DetectionLabel>
-  implements Selectable, Spatial, Hoverable
+  implements Selectable, Spatial, Hoverable, Rotatable
 {
   private isDraggable: boolean;
   private isResizeable: boolean;
@@ -104,10 +121,14 @@ export class DetectionOverlay
   private moveStartPoint?: Point;
   private moveStartPosition?: Point;
   private moveStartBounds?: Rect;
+  private moveStartRotation?: number;
+  /** Pointer angle minus box rotation at rotate-grab time, in radians */
+  private rotateGrabOffset = 0;
   private isSelectedState = false;
   private isBeingEstablished = false;
 
   #relativeBounds: Rect;
+  #rotation = 0;
 
   private textBounds?: Rect;
 
@@ -133,6 +154,7 @@ export class DetectionOverlay
     this.isDraggable = options.draggable !== false;
     this.isResizeable = options.resizeable !== false;
     this.#relativeBounds = options.relativeBounds || NO_BOUNDS;
+    this.#rotation = getRotation2d(options.label.rotation);
 
     this.maskSource = options.preDecodedMask ?? this.label.mask;
     if (this.maskSource) {
@@ -174,6 +196,12 @@ export class DetectionOverlay
         id: this.id,
         bounds: this.bounds,
       });
+    }
+
+    const rotation = getRotation2d(label.rotation);
+    if (rotation !== this.#rotation) {
+      this.#rotation = rotation;
+      this.markDirty();
     }
 
     if (label.mask) {
@@ -345,9 +373,16 @@ export class DetectionOverlay
 
     delete mainStrokeStyle.dashPattern;
 
+    const rotation = this.getRotation() || undefined;
+
     // Hide bbox stroke by default when mask is present (only show on selection/hover)
     if (!this.hasMask() || this.isSelectedState || this.isHoveredState) {
-      renderer.drawRect(this.bounds, mainStrokeStyle, this.containerId);
+      renderer.drawRect(
+        this.bounds,
+        mainStrokeStyle,
+        this.containerId,
+        rotation,
+      );
     }
 
     if (hoverStrokeColor) {
@@ -358,6 +393,7 @@ export class DetectionOverlay
           lineWidth: style.lineWidth || STROKE_WIDTH,
         },
         this.containerId,
+        rotation,
       );
     } else if (overlayStrokeColor && overlayDash) {
       renderer.drawRect(
@@ -368,6 +404,7 @@ export class DetectionOverlay
           dashPattern: [overlayDash, overlayDash],
         },
         this.containerId,
+        rotation,
       );
     }
 
@@ -382,13 +419,19 @@ export class DetectionOverlay
         this.bounds,
         renderMeta.canonicalMediaBounds,
         this.containerId,
+        rotation,
       );
       renderer.drawHandles(
         this.bounds,
         style.lineWidth || STROKE_WIDTH,
         color,
         this.containerId,
+        rotation,
       );
+
+      if (this.canRotate()) {
+        this.drawRotateHandle(renderer, style.strokeStyle);
+      }
     }
 
     const showLabel = !this.hasMask() || hoverStrokeColor || overlayStrokeColor;
@@ -398,6 +441,8 @@ export class DetectionOverlay
         ? style.lineWidth / renderer.getScale() / 2
         : 0;
 
+      // the header stays unrotated, anchored to the STORED box's top-left —
+      // a stationary point while the box rotates under it
       const labelPosition = this.isSelected()
         ? {
             x: this.bounds.x + offset * HANDLE_OFFSET_X,
@@ -432,6 +477,36 @@ export class DetectionOverlay
     this.emitLoaded();
   }
 
+  /** Draws the rotate handle: a stem from the top edge midpoint to a knob. */
+  private drawRotateHandle(renderer: Renderer2D, strokeStyle: string): void {
+    const scale = renderer.getScale();
+    const knobCenter = this.getRotateHandleCenter(scale);
+
+    // top edge midpoint, rotated with the box
+    const { x, y, width, height } = this.bounds;
+    const cx = x + width / 2;
+    const cy = y + height / 2;
+    const dy = y - cy;
+    const rotation = this.getRotation();
+    const topMid = {
+      x: cx - dy * Math.sin(rotation),
+      y: cy + dy * Math.cos(rotation),
+    };
+
+    renderer.drawLine(
+      topMid,
+      knobCenter,
+      { strokeStyle, lineWidth: 1 },
+      this.containerId,
+    );
+    renderer.drawPoint(
+      knobCenter,
+      ROTATE_HANDLE_RADIUS / scale,
+      { fillStyle: strokeStyle, strokeStyle: "#ffffff", lineWidth: 1 },
+      this.containerId,
+    );
+  }
+
   getMoveStartPosition(): Point | undefined {
     return this.moveStartPosition;
   }
@@ -456,6 +531,96 @@ export class DetectionOverlay
     return this.interactionState.startsWith("RESIZE_");
   }
 
+  isRotating() {
+    return this.interactionState === "ROTATING";
+  }
+
+  /**
+   * The rendered 2D rotation, in radians. `0` for masked detections —
+   * instance masks are stored relative to the axis-aligned box, so rotation
+   * is ignored when a mask is present.
+   */
+  getRotation(): number {
+    if (this.hasMask() || this.maskKeypoints) {
+      return 0;
+    }
+
+    return this.#rotation;
+  }
+
+  /** Sets the rotation, normalized into `[0, 2*pi)`. */
+  setRotation(rotation: number): void {
+    const TWO_PI = 2 * Math.PI;
+    const normalized = ((rotation % TWO_PI) + TWO_PI) % TWO_PI;
+
+    if (normalized !== this.#rotation) {
+      this.#rotation = normalized;
+      this.markDirty();
+    }
+  }
+
+  getMoveStartRotation(): number | undefined {
+    return this.moveStartRotation;
+  }
+
+  /** Whether the rotate handle is active for this overlay. */
+  private canRotate(): boolean {
+    return (
+      this.isResizeable &&
+      !this.hasMask() &&
+      !this.maskKeypoints &&
+      this.hasValidBounds()
+    );
+  }
+
+  /** The rotated box's world-space corners (TL, TR, BR, BL when unrotated). */
+  private getWorldCorners(): [Point, Point, Point, Point] {
+    const { x, y, width, height } = this.bounds;
+    const corners = getRotatedBoxCorners(
+      [x, y, width, height],
+      this.getRotation(),
+      // bounds are already world-space pixels; unit dimensions apply the
+      // rotation in that same space
+      [1, 1],
+    );
+
+    return corners.map(([cx, cy]) => ({ x: cx, y: cy })) as [
+      Point,
+      Point,
+      Point,
+      Point,
+    ];
+  }
+
+  /** World-space center of the rotate handle knob. */
+  private getRotateHandleCenter(scale: number): Point {
+    const { x, y, width, height } = this.bounds;
+    const cx = x + width / 2;
+    const cy = y + height / 2;
+
+    // unrotated: centered above the top edge; rotate with the box
+    const dy = y - ROTATE_HANDLE_OFFSET / scale - cy;
+    const rotation = this.getRotation();
+    const cos = Math.cos(rotation);
+    const sin = Math.sin(rotation);
+
+    return { x: cx - dy * sin, y: cy + dy * cos };
+  }
+
+  private isOnRotateHandle(worldPoint: Point, scale: number): boolean {
+    if (!this.isSelected() || !this.canRotate()) {
+      return false;
+    }
+
+    const center = this.getRotateHandleCenter(scale);
+    // 2x the drawn radius for a forgiving grab target
+    const hitRadius = (2 * ROTATE_HANDLE_RADIUS) / scale;
+
+    return (
+      Math.hypot(worldPoint.x - center.x, worldPoint.y - center.y) <= hitRadius
+    );
+  }
+
   isSetting() {
     return this.interactionState === "SETTING";
   }
@@ -470,10 +635,19 @@ export class DetectionOverlay
   ): ResizeRegion | null {
     const { x, y, height, width } = this.bounds;
 
-    const isNorth = worldPoint.y <= y + EDGE_THRESHOLD / scale;
-    const isEast = worldPoint.x >= x + width - EDGE_THRESHOLD / scale;
-    const isSouth = worldPoint.y >= y + height - EDGE_THRESHOLD / scale;
-    const isWest = worldPoint.x <= x + EDGE_THRESHOLD / scale;
+    // test in the box's local frame so edges follow the rotation; for an
+    // unrotated box this reduces to the plain world-space comparison
+    const [lx, ly] = toRotatedBoxFrame(
+      [worldPoint.x, worldPoint.y],
+      [x, y, width, height],
+      this.getRotation(),
+      [1, 1],
+    );
+
+    const isNorth = ly <= -height / 2 + EDGE_THRESHOLD / scale;
+    const isEast = lx >= width / 2 - EDGE_THRESHOLD / scale;
+    const isSouth = ly >= height / 2 - EDGE_THRESHOLD / scale;
+    const isWest = lx <= -width / 2 + EDGE_THRESHOLD / scale;
 
     return isNorth && isWest
       ? "RESIZE_NW"
@@ -504,6 +678,10 @@ export class DetectionOverlay
       return "default";
     }
 
+    if (this.isOnRotateHandle(worldPoint, scale)) {
+      return this.isRotating() ? "grabbing" : "grab";
+    }
+
     const resizeRegion = this.getResizeRegion(worldPoint, scale);
 
     if (!resizeRegion) {
@@ -518,21 +696,41 @@ export class DetectionOverlay
       return "default";
     }
 
-    switch (resizeRegion) {
-      case "RESIZE_N":
-      case "RESIZE_S":
-        return "ns-resize";
-      case "RESIZE_E":
-      case "RESIZE_W":
+    return DetectionOverlay.resizeCursor(resizeRegion, this.getRotation());
+  }
+
+  /**
+   * The resize cursor for a region, oriented to the region's VISUAL drag
+   * axis: the local axis rotated by the box's rotation, bucketed to the
+   * nearest of the four bidirectional resize cursors.
+   */
+  private static resizeCursor(region: ResizeRegion, rotation: number): string {
+    // drag-axis angle of each region on an unrotated box, in degrees
+    const base: Record<ResizeRegion, number> = {
+      RESIZE_E: 0,
+      RESIZE_W: 0,
+      RESIZE_SE: 45,
+      RESIZE_NW: 45,
+      RESIZE_N: 90,
+      RESIZE_S: 90,
+      RESIZE_NE: 135,
+      RESIZE_SW: 135,
+    };
+
+    const degrees = (rotation * 180) / Math.PI;
+    // bidirectional axis: bucket into [0, 180) at 45-degree resolution
+    const axis =
+      (((Math.round((base[region] + degrees) / 45) * 45) % 180) + 180) % 180;
+
+    switch (axis) {
+      case 0:
         return "ew-resize";
-      case "RESIZE_NE":
-      case "RESIZE_SW":
-        return "nesw-resize";
-      case "RESIZE_NW":
-      case "RESIZE_SE":
+      case 45:
         return "nwse-resize";
+      case 90:
+        return "ns-resize";
       default:
-        return "grab";
+        return "nesw-resize";
     }
   }
 
@@ -557,6 +755,26 @@ export class DetectionOverlay
 
     // Mask detections are painted, not dragged/resized
     if (this.hasMask() || this.maskKeypoints) return false;
+
+    if (this.isOnRotateHandle(worldPoint, scale)) {
+      this.renderer?.disableZoomPan();
+      this.interactionState = "ROTATING";
+      this.moveStartRotation = this.#rotation;
+
+      const { x, y, width, height } = this.bounds;
+      const pointerAngle = Math.atan2(
+        worldPoint.y - (y + height / 2),
+        worldPoint.x - (x + width / 2),
+      );
+      this.rotateGrabOffset = pointerAngle - this.#rotation;
+
+      // satisfy the InteractionManager's gesture bookkeeping
+      this.moveStartPoint = point;
+      this.moveStartPosition = { x: this.bounds.x, y: this.bounds.y };
+      this.moveStartBounds = { ...this.bounds };
+
+      return true;
+    }
 
     const resizeRegion = this.getResizeRegion(worldPoint, scale);
     const cursorState = !this.hasValidBounds()
@@ -682,6 +900,10 @@ export class DetectionOverlay
       return this.onDrag(point, event, scale);
     }
 
+    if (this.interactionState === "ROTATING") {
+      return this.onRotate(worldPoint, event);
+    }
+
     if (
       this.interactionState === "SETTING" ||
       this.interactionState.startsWith("RESIZE_")
@@ -690,6 +912,23 @@ export class DetectionOverlay
     }
 
     return false;
+  }
+
+  private onRotate(worldPoint: Point, event: PointerEvent): boolean {
+    const { x, y, width, height } = this.bounds;
+    const pointerAngle = Math.atan2(
+      worldPoint.y - (y + height / 2),
+      worldPoint.x - (x + width / 2),
+    );
+
+    let rotation = pointerAngle - this.rotateGrabOffset;
+
+    if (event.shiftKey) {
+      rotation = Math.round(rotation / ROTATION_SNAP) * ROTATION_SNAP;
+    }
+
+    this.setRotation(rotation);
+    return true;
   }
 
   private onSegmentationMove({
@@ -761,6 +1000,65 @@ export class DetectionOverlay
     return true;
   }
 
+  /**
+   * Resizes a rotated box. The gesture runs entirely in the box's local
+   * frame: the pointer delta is inverse-rotated, applied to the grabbed
+   * local edges, and the resulting center shift is rotated back into world
+   * space — so the grabbed edge follows the cursor and the opposite edge
+   * stays fixed on screen at any angle. Aspect-ratio lock is not supported
+   * while rotated.
+   */
+  private onResizeRotated(point: Point, scale: number): boolean {
+    if (!this.moveStartPoint || !this.moveStartBounds) return false;
+
+    const rotation = this.getRotation();
+    const cos = Math.cos(rotation);
+    const sin = Math.sin(rotation);
+
+    const dx = (point.x - this.moveStartPoint.x) / scale;
+    const dy = (point.y - this.moveStartPoint.y) / scale;
+
+    // pointer delta in the box's local frame
+    const ldx = dx * cos + dy * sin;
+    const ldy = -dx * sin + dy * cos;
+
+    const start = this.moveStartBounds;
+
+    // local edges relative to the gesture-start center
+    let left = -start.width / 2;
+    let right = start.width / 2;
+    let top = -start.height / 2;
+    let bottom = start.height / 2;
+
+    const state = this.interactionState;
+    if (["RESIZE_NW", "RESIZE_N", "RESIZE_NE"].includes(state)) top += ldy;
+    if (["RESIZE_SW", "RESIZE_S", "RESIZE_SE"].includes(state)) bottom += ldy;
+    if (["RESIZE_NW", "RESIZE_W", "RESIZE_SW"].includes(state)) left += ldx;
+    if (["RESIZE_NE", "RESIZE_E", "RESIZE_SE"].includes(state)) right += ldx;
+
+    // dragging past the opposite edge inverts the box
+    if (right < left) [left, right] = [right, left];
+    if (bottom < top) [top, bottom] = [bottom, top];
+
+    const width = right - left;
+    const height = bottom - top;
+
+    // the local center moved; rotate that offset back into world space
+    const lcx = (left + right) / 2;
+    const lcy = (top + bottom) / 2;
+    const cx = start.x + start.width / 2 + lcx * cos - lcy * sin;
+    const cy = start.y + start.height / 2 + lcx * sin + lcy * cos;
+
+    this.bounds = {
+      x: cx - width / 2,
+      y: cy - height / 2,
+      width,
+      height,
+    };
+
+    return true;
+  }
+
   private onResize(
     point: Point,
     _event: PointerEvent,
@@ -768,6 +1066,10 @@ export class DetectionOverlay
     maintainAspectRatio = false,
   ): boolean {
     if (!this.moveStartPoint || !this.moveStartBounds) return false;
+
+    if (this.getRotation() && this.interactionState.startsWith("RESIZE_")) {
+      return this.onResizeRotated(point, scale);
+    }
 
     const delta = {
       x: (point.x - this.moveStartPoint.x) / scale,
@@ -914,6 +1216,7 @@ export class DetectionOverlay
     this.moveStartPoint = undefined;
     this.moveStartPosition = undefined;
     this.moveStartBounds = undefined;
+    this.moveStartRotation = undefined;
     this.renderer?.enableZoomPan();
 
     if (wasPainting) {
@@ -986,6 +1289,40 @@ export class DetectionOverlay
    * @returns The containment level (NONE = 0, CONTENT = 1, BORDER = 2).
    */
   getContainmentLevel(point: Point): CONTAINS {
+    const rotation = this.getRotation();
+
+    // the rotate handle floats outside the box; treat it like the header so
+    // pointer routing reaches this overlay
+    if (
+      this.renderer &&
+      this.isOnRotateHandle(point, this.renderer.getScale())
+    ) {
+      return CONTAINS.BORDER;
+    }
+
+    if (rotation) {
+      const { x, y, width, height } = this.bounds;
+      const strokeWidth = this.getCurrentStyle()?.lineWidth ?? STROKE_WIDTH;
+
+      if (
+        isPointInRotatedBox(
+          [point.x, point.y],
+          [x, y, width, height],
+          rotation,
+          [1, 1],
+          strokeWidth,
+        )
+      ) {
+        return CONTAINS.CONTENT;
+      }
+
+      if (this.textBounds && this.isPointInRect(point, this.textBounds)) {
+        return CONTAINS.BORDER;
+      }
+
+      return CONTAINS.NONE;
+    }
+
     const drawnBounds = this.getDrawnBBox();
 
     // Check if point is inside the main bounding box
@@ -1017,6 +1354,28 @@ export class DetectionOverlay
     // If point is in header, return 0 (highest priority)
     if (this.textBounds && this.isPointInRect(point, this.textBounds)) {
       return 0;
+    }
+
+    // The rotate handle wins routing outright, like the header
+    if (
+      this.renderer &&
+      this.isOnRotateHandle(point, this.renderer.getScale())
+    ) {
+      return 0;
+    }
+
+    if (this.getRotation()) {
+      const corners = this.getWorldCorners();
+
+      return Math.min(
+        ...corners.map((corner, i) =>
+          distanceFromLineSegment(
+            point,
+            corner,
+            corners[(i + 1) % corners.length],
+          ),
+        ),
+      );
     }
 
     // Get the drawn bounding box
