@@ -275,8 +275,7 @@ async def aggregate_index(
                 field, list_field, dynamic_attributes
             ),
         )
-        cursor = await foo.aggregate(collection, pipeline)
-        groups = await cursor.to_list(None)
+        groups = await foo.aggregate(collection, pipeline).to_list(None)
         result[field] = {
             "instances": build_instance_index(groups, dynamic_attributes)
         }
@@ -366,15 +365,14 @@ async def aggregate_window(
     for field in fields:
         project[field] = True
 
-    cursor = await foo.aggregate(
+    frames = await foo.aggregate(
         foo.get_async_db_conn()[view._dataset._sample_collection_name],
         view._pipeline(
             frames_only=True,
             support=support,
             post_pipeline=[{"$project": project}],
         ),
-    )
-    frames = await cursor.to_list(None)
+    ).to_list(None)
 
     windowed: t.Dict[str, dict] = {}
     for frame in frames:

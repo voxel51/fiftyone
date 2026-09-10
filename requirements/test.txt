@@ -10,7 +10,7 @@ pytest-timeout==2.4.0
 pytest==9.1.1
 qwen-vl-utils>=0.0.14,<0.0.15
 shapely
-tensorflow; python_version < "3.14"
+tensorflow
 torch>=2.12.0
 torchvision>=0.27.0
 transformers>=4.57.0
