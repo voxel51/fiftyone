@@ -13,6 +13,11 @@ const { source } = vi.hoisted(() => ({
     committed: 0,
     frameRate: undefined as number | undefined,
     totalFrameCount: undefined as number | undefined,
+    // an image dataset grouped into a video: no video metadata, the frame
+    // rate is the dataset's target and the frame count is the member count
+    isImageDynamicGroupVideo: false,
+    targetFrameRate: 30,
+    elementCount: null as number | null,
   },
 }));
 
@@ -29,14 +34,17 @@ vi.mock("@fiftyone/state", () => ({
     frameRate: source.frameRate,
     sample: { metadata: { total_frame_count: source.totalFrameCount } },
   }),
+  useIsImageDynamicGroupVideo: () => source.isImageDynamicGroupVideo,
 }));
 
-// The accessor falls back to the dataset's dynamic-group target frame rate
-// through recoil; the native-video path under test only reads the sample's
-// own frame rate.
+// The accessors read the dataset's dynamic-group target frame rate and the
+// group's member count through recoil; stub both sources.
 vi.mock("./accessors", () => ({
   useModalSampleFrameRate: (sample?: { frameRate?: number }) =>
-    sample?.frameRate,
+    sample?.frameRate ??
+    (source.isImageDynamicGroupVideo ? source.targetFrameRate : undefined),
+  useDynamicGroupElementCount: (enabled: boolean) =>
+    enabled ? source.elementCount : null,
 }));
 
 import { useCurrentFrame } from "./useCurrentFrame";
@@ -76,5 +84,20 @@ describe("useCurrentFrame", () => {
 
     const { result } = renderHook(() => useCurrentFrame());
     expect(result.current).toBe(-1);
+  });
+  it("clamps an image dynamic group to its member count", () => {
+    // no video metadata on an image sample: the clamp must come from the
+    // group, or End at the clip end stamps a frame with no member behind it
+    source.isImageDynamicGroupVideo = true;
+    source.frameRate = undefined;
+    source.totalFrameCount = undefined;
+    source.elementCount = 40;
+    source.committed = 40 / source.targetFrameRate;
+
+    const { result } = renderHook(() => useCurrentFrame());
+    expect(result.current).toBe(40);
+
+    source.isImageDynamicGroupVideo = false;
+    source.elementCount = null;
   });
 });

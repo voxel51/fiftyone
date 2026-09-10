@@ -5,7 +5,7 @@
 import { frameAt, useCurrentTime } from "@fiftyone/playback";
 import { useModalSample } from "@fiftyone/state";
 import { useCallback, useRef } from "react";
-import { resolveFrameCount } from "../utils/frameCount";
+import { useAnnotatePrerequisites } from "../hooks/useAnnotatePrerequisites";
 import { useModalSampleFrameRate } from "./accessors";
 
 /**
@@ -20,10 +20,13 @@ import { useModalSampleFrameRate } from "./accessors";
  * read it from here, converting the playhead seconds to a 1-indexed frame via
  * the shared `frameAt`.
  *
- * Clamped to the sample's real frame range: the engine allows the playhead to
+ * Clamped to the clip's real frame range: the engine allows the playhead to
  * rest at exactly `duration` (seek/step clamp inclusively), where an unclamped
  * conversion yields a nonexistent frame N+1 — no labels resolve there while
- * the renderer still shows the last frame.
+ * the renderer still shows the last frame, and a gesture stamped there has no
+ * member sample to land on. The range comes from the same prerequisites the
+ * surface mounts its streams with: video metadata for a native video, the
+ * group's member count for an image dataset grouped into a video.
  */
 export const useCurrentFrame = (): number => {
   const sample = useModalSample();
@@ -35,12 +38,15 @@ export const useCurrentFrame = (): number => {
   // gates, and gesture frame-stamping must hold with it.
   const time = useCurrentTime();
   const fps = useModalSampleFrameRate(sample);
+  // undefined while the surface is blocked on metadata: the conversion then
+  // runs unclamped, as there is no known last frame to clamp to
+  const { frameCount } = useAnnotatePrerequisites(sample);
 
   if (!fps || !Number.isFinite(fps) || fps <= 0) {
     return -1;
   }
 
-  return frameAt(time, fps, resolveFrameCount(sample, fps) ?? undefined);
+  return frameAt(time, fps, frameCount);
 };
 
 /**
