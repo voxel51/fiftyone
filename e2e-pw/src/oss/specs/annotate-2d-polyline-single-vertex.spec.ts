@@ -75,6 +75,7 @@ const openSample = async (
   await modal.waitForSampleLoadDomAttribute();
   await modal.assert.isOpen();
   await modal.sidebar.switchMode("annotate");
+  await modal.waitForLighterReady();
 };
 
 /**

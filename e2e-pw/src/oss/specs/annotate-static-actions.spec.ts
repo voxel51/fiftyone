@@ -84,6 +84,7 @@ test.describe.serial("static actions toolbar", () => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
+    await modal.waitForLighterReady();
 
     // The create toolbar is visible before editing
     const detectionModeButton = page.getByTestId("detection-mode");
@@ -105,6 +106,7 @@ test.describe.serial("static actions toolbar", () => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
+    await modal.waitForLighterReady();
 
     // Verify mode toggle is visible before editing
     const exploreButton = modal.sidebar.locator.getByTestId("explore");
@@ -127,6 +129,7 @@ test.describe.serial("static actions toolbar", () => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
+    await modal.waitForLighterReady();
 
     await schemaManager.open();
     await schemaManager.assert.isOpen();
@@ -139,6 +142,7 @@ test.describe.serial("static actions toolbar", () => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
+    await modal.waitForLighterReady();
 
     const labelListHeader = modal.sidebar.locator.getByText("Edit", {
       exact: true,

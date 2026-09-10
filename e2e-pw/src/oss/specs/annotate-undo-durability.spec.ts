@@ -61,6 +61,7 @@ test.beforeEach(async ({ fiftyoneLoader, modal, page }) => {
   await modal.waitForSampleLoadDomAttribute();
   await modal.assert.isOpen();
   await modal.sidebar.switchMode("annotate");
+  await modal.waitForLighterReady();
 });
 
 /** Read a numeric edit-form field value. */

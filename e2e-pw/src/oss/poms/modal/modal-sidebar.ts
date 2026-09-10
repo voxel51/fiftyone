@@ -191,17 +191,6 @@ export class ModalSidebarPom {
    */
   async switchMode(mode: "annotate" | "explore") {
     await this.locator.getByTestId(mode).click();
-
-    if (mode === "annotate") {
-      // The annotate surface renders through lighter, whose WebGL renderer
-      // arrives in a lazy chunk: the sample's `canvas-loaded` marker says
-      // nothing about it. The surface is revealed only once the scene (and with
-      // it the interaction manager) is constructed, so until then canvas clicks
-      // reach no interaction manager and are silently dropped.
-      await expect(
-        this.page.getByTestId("lighter-sample-renderer"),
-      ).toHaveCSS("visibility", "visible");
-    }
   }
 
   /**

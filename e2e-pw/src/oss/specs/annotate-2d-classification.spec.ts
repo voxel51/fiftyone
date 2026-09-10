@@ -84,6 +84,7 @@ test.describe.serial("2D annotation classification", () => {
     await modal.waitForSampleLoadDomAttribute();
     await modal.assert.isOpen();
     await modal.sidebar.switchMode("annotate");
+    await modal.waitForLighterReady();
   });
 
   // flaky: passed only on retry in CI

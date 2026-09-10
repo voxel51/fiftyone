@@ -79,6 +79,7 @@ const inFreshContext = async (
     const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
     await freshModal.waitForSampleLoadDomAttribute();
     await freshModal.sidebar.switchMode("annotate");
+    await freshModal.waitForLighterReady();
     await verify(freshModal);
   } finally {
     await context.close();
@@ -127,6 +128,7 @@ test.describe.serial("2D annotation polyline", () => {
     await modal.waitForSampleLoadDomAttribute();
     await modal.assert.isOpen();
     await modal.sidebar.switchMode("annotate");
+    await modal.waitForLighterReady();
   });
 
   test("drawing a polyline creates a labeled polyline that persists", async ({
