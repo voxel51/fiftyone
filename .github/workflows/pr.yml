@@ -176,7 +176,7 @@ jobs:
       python-versions: >-
         ${{ (github.base_ref == 'main' ||
         startsWith(github.base_ref, 'feat/'))
-        && '["3.10", "3.14"]' || '["3.10", "3.11", "3.12", "3.13", "3.14"]' }}
+        && '["3.10", "3.13"]' || '["3.10", "3.11", "3.12", "3.13"]' }}
 
   test-windows:
     needs: modified-files
@@ -188,7 +188,7 @@ jobs:
       python-versions: >-
         ${{ (github.base_ref == 'main' ||
         startsWith(github.base_ref, 'feat/'))
-        && '["3.10", "3.14"]' || '["3.10", "3.11", "3.12", "3.13", "3.14"]' }}
+        && '["3.10", "3.13"]' || '["3.10", "3.11", "3.12", "3.13"]' }}
 
   ci-comment:
     # Every PR gets an authoritative CI comment. When the e2e pipeline ran,

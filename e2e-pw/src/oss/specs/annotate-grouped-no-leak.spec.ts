@@ -95,6 +95,7 @@ const seedDataset = (datasetFactory: typeof DatasetFactory) =>
               _cls: "Detection",
               tags: [],
               label: "cat",
+              bounding_box: [] as number[],
               location: [6 + 2 * j, 6, 0],
               dimensions: [1, 1, 1],
               rotation: [0, 0, 0],

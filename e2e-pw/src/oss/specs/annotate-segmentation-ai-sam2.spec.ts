@@ -73,6 +73,7 @@ test.describe.serial("segmentation AI (SAM2) round-trip", () => {
     // ── 1. Enter annotate → segmentation → AI ───────────────────────────────
     await modal.assert.isOpen();
     await modal.sidebar.switchMode("annotate");
+    await modal.waitForLighterReady();
 
     await modal.sidebar.annotate.segmentationMode();
     await modal.sidebar.annotate.assert.segmentationModeIsActive();

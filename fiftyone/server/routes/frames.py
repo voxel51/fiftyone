@@ -45,12 +45,16 @@ class Frames(HTTPEndpoint):
         # samples rather than a video sample's `frames` field
         dynamic_group = data.get("dynamicGroup")
 
+        view = await fosv.get_view(
+            dataset, stages=stages, extended_stages=extended, awaitable=True
+        )
         # `end_frame` is served inclusively, so the window's last frame is
         # `start_frame + num_frames - 1` (clamped to the clip)
         end_frame = min(start_frame + num_frames - 1, frame_count)
+
         if end_frame < start_frame:
-            # an empty range would produce a to_list() length < 1, which
-            # pymongo rejects
+            # An empty range would ask to_list() for a negative length, which
+            # both motor and pymongo reject with ValueError.
             return JSONResponse(
                 {"frames": [], "range": [start_frame, end_frame]}
             )
@@ -66,9 +70,6 @@ class Frames(HTTPEndpoint):
                 fields=fields,
             )
 
-        view = await fosv.get_view(
-            dataset, stages=stages, extended_stages=extended, awaitable=True
-        )
         support = None if stages else [start_frame, end_frame]
 
         def run(view):
@@ -97,13 +98,12 @@ class Frames(HTTPEndpoint):
 
             post_pipeline = [{"$project": projection}]
 
-        cursor = await foo.aggregate(
+        frames = await foo.aggregate(
             foo.get_async_db_conn()[view._dataset._sample_collection_name],
             view._pipeline(
                 frames_only=True, support=support, post_pipeline=post_pipeline
             ),
-        )
-        frames = await cursor.to_list(end_frame - start_frame + 1)
+        ).to_list(end_frame - start_frame + 1)
 
         return JSONResponse(
             {
@@ -148,11 +148,10 @@ class Frames(HTTPEndpoint):
             projection = {field: True for field in fields}
             post_pipeline = [{"$project": projection}]
 
-        cursor = await foo.aggregate(
+        samples = await foo.aggregate(
             foo.get_async_db_conn()[view._dataset._sample_collection_name],
             view._pipeline(post_pipeline=post_pipeline),
-        )
-        samples = await cursor.to_list(count)
+        ).to_list(count)
 
         return JSONResponse(
             {

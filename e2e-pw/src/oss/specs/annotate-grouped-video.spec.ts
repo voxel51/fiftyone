@@ -86,6 +86,7 @@ const seedDataset = (datasetFactory: typeof DatasetFactory) => {
       "frames.detections": "Detections",
       "frames.detections.detections.keyframe": "BooleanField",
       "frames.detections.detections.propagation": "DictField",
+      "frames.detections.detections.instance": "Instance",
       detections: "Detections",
       classification: "Classification",
       events: "TemporalDetections",

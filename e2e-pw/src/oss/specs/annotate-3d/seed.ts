@@ -150,6 +150,8 @@ export const annotate3dSeed = ({
                 _cls: "Detection",
                 tags: [],
                 label: classes[0],
+                // the grid looker destructures this declared list even for cuboids
+                bounding_box: [] as number[],
                 location: [0, 0, 0],
                 dimensions: [2, 2, 2],
                 rotation: [0, 0, 0],
