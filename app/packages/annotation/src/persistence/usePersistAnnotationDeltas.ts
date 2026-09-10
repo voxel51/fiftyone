@@ -25,28 +25,19 @@ import { useAnnotationEngine, useThreeDSceneSampleId } from "../state";
 type PersistenceResult = boolean | null;
 
 /**
- * The persist in flight per engine. Writers (the autosave tick, a delete's
- * immediate flush) are independent callers, so without this two writes can
- * interleave: the second computes its deltas and version token before the
- * first's response has been reconciled, re-sends what the first already
- * wrote, and fails the server's If-Match check. Each persist waits for the
- * previous one, then reads the engine fresh.
+ * The persist in flight per engine. Each persist waits for the previous one
+ * so a second write never reads deltas and a version token the first has not
+ * yet reconciled.
  */
 const inFlight = new WeakMap<object, Promise<unknown>>();
 
 /**
  * Hook which provides a callback to persist all pending annotation deltas.
+ * Each dirty sample is written through its own binding (version token and
+ * refresh); generated patches views keep their own path.
  *
- * A grouped modal renders more than one sample at once (the selected slice and
- * the pinned 3D scene), each its own engine store. The engine emits one patch
- * per dirty sample, and each is written through a binding keyed to that sample
- * (its own version token + refresh). Generated (patches) views are
- * single-sample and carry label metadata, so they keep their own path.
- *
- * @returns A callback that persists annotation deltas and returns:
- *   - `true` if persistence was successful
- *   - `false` if persistence was unsuccessful
- *   - `null` if no changes were pending
+ * @returns A callback resolving `true` on success, `false` on failure, `null`
+ *   when nothing was pending
  */
 export const usePersistAnnotationDeltas =
   (): (() => Promise<PersistenceResult>) => {
@@ -147,8 +138,7 @@ export const usePersistAnnotationDeltas =
 
       let success = true;
       for (const entry of patches) {
-        // a store with its own transport (e.g. a dynamic group played as
-        // video, whose patch fans out to member samples) owns the write
+        // a store with its own transport owns the write
         const patch =
           engine.getPersistenceAdapter(entry.sample) ??
           (entry.sample === sceneId ? patch3d : patchSelected);

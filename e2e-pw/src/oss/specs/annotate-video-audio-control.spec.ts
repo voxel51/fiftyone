@@ -1,11 +1,10 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Timeline audio controls on the video-annotation surface (FOEPD-4226): a
- * source video carrying an audio track shows the volume group in the
- * timeline controls, muted by default; a silent video shows no volume UI at
- * all — no disabled control, no indicator. Both directions are driven by the
- * native-decode probe's mp4box track table.
+ * Timeline audio controls on the video-annotation surface (FOEPD-4226): a video
+ * with an audio track shows the volume group muted by default, a silent video
+ * shows no volume UI at all. Both are driven by the native-decode probe's
+ * mp4box track table.
  */
 import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -29,7 +28,8 @@ test.beforeAll(async ({ foWebServer, datasetFactory }) => {
   await foWebServer.startWebServer();
   // mp4 so the decode probe's demux verdict drives the volume UI in both
   // directions; only sample 0 carries an audio track.
-  await datasetFactory.createVideoDataset({
+  await datasetFactory.createDataset({
+    mediaType: "video",
     datasetName,
     numSamples: 2,
     videoOptions: (index) => ({ container: "mp4", audio: index === 0 }),

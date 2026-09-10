@@ -1,11 +1,10 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Temporal-detection (TD) membership on the video-annotation surface: the
- * annotate sidebar lists a sample-level TD only while the playhead is inside
- * that TD's `support` span (support-gated engine presence), and re-derives as
- * the playhead moves. The three seeded events (approach / pass / depart) split
- * the clip into thirds, so each is listed only within its own third.
+ * Temporal-detection membership on the video surface: the sidebar lists a
+ * sample-level TD only while the playhead is inside its `support` span and
+ * re-derives as the playhead moves. The three seeded events split the clip
+ * into thirds, so each lists only within its own third.
  */
 import { test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -26,7 +25,8 @@ test.beforeAll(async ({ foWebServer, datasetFactory }) => {
   await foWebServer.startWebServer();
   // 20 frames @ 10fps; events split into thirds:
   // approach [1,6], pass [7,13], depart [14,20].
-  await datasetFactory.createVideoDataset({
+  await datasetFactory.createDataset({
+    mediaType: "video",
     datasetName,
     ...videoAnnotationSeed(),
   });

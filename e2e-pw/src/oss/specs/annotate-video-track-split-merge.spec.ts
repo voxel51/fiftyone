@@ -1,17 +1,12 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Instance-level track actions on the video-annotation surface: SPLIT a track
- * into two objects at the playhead (frames >= F re-keyed onto a fresh instance,
- * the original keeps frames < F) and MERGE one track into another (the source's
- * frames re-keyed onto the target's instance, target-wins on overlap; the
- * source ceases to exist). Both are single engine transactions — one undo unit
- * — and survive a true round-trip (fresh browser context) via autosave.
- *
- * Seeded with two tracks on sample 0, each on every frame. By default they are
- * distinct classes ("vehicle" index=1 + "person" index=2) — used by split and
- * by the cross-class merge-gating test. The successful-merge test re-seeds both
- * as the same class, since merge is gated to same-class tracks.
+ * Instance-level track actions on the video surface: SPLIT re-keys frames from
+ * the playhead onto a fresh instance and MERGE re-keys the source's frames onto
+ * the target (target wins on overlap), each one undo unit that survives a fresh
+ * browser context. Seeded with two tracks on every frame, distinct classes by
+ * default; the successful-merge test re-seeds them same-class since merge is
+ * gated to same-class tracks.
  */
 import { Browser, expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -48,7 +43,8 @@ const seedTwoTracks = (
   datasetFactory: typeof DatasetFactory,
   secondTrackClassIndex = 1,
 ) =>
-  datasetFactory.createVideoDataset({
+  datasetFactory.createDataset({
+    mediaType: "video",
     datasetName,
     ...videoAnnotationSeed({
       withEvents: false,
@@ -108,13 +104,11 @@ const timelineTracks = async (
 });
 
 /**
- * The two tracks a split leaves on the timeline of a fresh browser context:
- * `head` is the split track's original instance (frames before the cut),
- * `tail` the instance the split minted (frames from the cut on). Both sides of
- * the cut must be keyframes — each half re-lerps from its own keyframes
- * afterwards, so without the pin the shape at the cut jumps — and nothing else
- * may have been promoted. Every frame keeps an overlay of the split `field` on
- * the canvas. Other tracks (the untouched second class) are ignored.
+ * The two tracks a split leaves on a fresh browser context's timeline: `head`
+ * (the original instance, frames before the cut) and `tail` (the minted
+ * instance, frames from the cut on), each with the cut-adjacent frame as its
+ * only keyframe and every frame still painting the split `field`. Without the
+ * keyframe pins the shape at the cut jumps; other tracks are ignored.
  */
 const expectSplitPersisted = async (
   modal: ModalPom,
@@ -267,7 +261,8 @@ test.describe.serial("video annotation track split / merge", () => {
   }) => {
     // one detection track (vehicle) + one polyline track (person, index=2);
     // no second detection track, so "person" names the polyline
-    await datasetFactory.createVideoDataset({
+    await datasetFactory.createDataset({
+      mediaType: "video",
       datasetName,
       ...videoAnnotationSeed({
         withEvents: false,

@@ -2,25 +2,11 @@ import { expect, Locator, Page } from "src/oss/fixtures";
 import { ModalPom } from ".";
 
 /**
- * The 3D annotation surface: the `looker3d` viewer in ANNOTATE mode plus its
- * floating annotation toolbar (cuboid create, transform gizmo, delete,
- * annotation plane, polyline segments). Composes with the shared modal POMs
- * (`modal.sidebar.annotate` / `modal.sidebar.edit` / `modal.looker3dControls`)
- * — only the 3D-specific toolbar + canvas affordances live here.
- *
- * The annotation toolbar is the shared Voodo `ActionToolbar`, whose buttons
- * expose their action `id` as `data-cy` and active state as `data-cy-active`
- * (e.g. `create-cuboid`, `translate`, `rotate`, `scale`, `contextual-delete`,
- * `toggle-annotation-plane`, `new-segment`). The whole toolbar is gated on an
- * active 3D annotation mode (`MediaTypeFo3d`): it mounts only once a
- * cuboid/polyline is selected (selection arms the mode) or a draw mode is
- * entered — NOT on bare entry into annotate mode. The transform group is only
- * mounted while a cuboid/polyline is selected; the cuboid group only while
- * cuboid-draw mode is active.
- *
- * Sidebar label rows are the engine-presence-derived rows shared with the 2D
- * and video surfaces: `[data-cy^=annotate-label-]` carrying `data-cy-label` /
- * `data-cy-path`.
+ * The 3D annotation surface: the `looker3d` viewer in annotate mode plus its
+ * floating annotation toolbar, composing with the shared modal POMs. Toolbar
+ * buttons expose their action `id` as `data-cy` and active state as
+ * `data-cy-active`; the toolbar mounts only once a label is selected or a draw
+ * mode is entered, never on bare entry into annotate mode.
  */
 export class ModalAnnotate3dPom {
   readonly page: Page;
@@ -99,10 +85,10 @@ export class ModalAnnotate3dPom {
   }
 
   /**
-   * A floating annotation-toolbar button by its action id. The toolbar renders
-   * in the modal portal, so it's targeted off `page`. Groups mount/unmount with
-   * context (transform group needs a selection, cuboid group needs draw mode),
-   * so callers must establish that state before clicking.
+   * A floating annotation-toolbar button by its action id, targeted off `page`
+   * because the toolbar renders in the modal portal. Groups mount with context
+   * (transform needs a selection, cuboid needs draw mode), so establish that
+   * state before clicking.
    */
   toolbarButton(id: ToolbarActionId): Locator {
     return this.page.locator(`[data-cy="${id}"]`);
@@ -204,15 +190,10 @@ export class ModalAnnotate3dPom {
 
   /**
    * Draw a cuboid with the three-click gesture (center → orientation → width)
-   * at container-fractional coordinates. Each click is an explicit
-   * move→down→up so the looker-3d empty-canvas pointer handler raycasts a plane
-   * point per click.
-   *
-   * Clicks raycast onto the annotation plane (the world XY plane at z=0 by
-   * default), so pair this with a top view (`looker3dControls.setTopView()`) to
-   * make the gesture land deterministically. The resulting geometry is still
-   * camera-dependent, so assert that a cuboid was created + persisted rather
-   * than exact location/dimensions.
+   * at container-fractional coordinates, each click an explicit move→down→up so
+   * the empty-canvas handler raycasts a plane point per click. Clicks raycast
+   * onto the annotation plane (world XY at z=0), so pair with
+   * `looker3dControls.setTopView()` and assert creation rather than geometry.
    */
   async drawCuboid(points: Array<[number, number]>) {
     if (points.length !== 3) {
@@ -234,20 +215,12 @@ export class ModalAnnotate3dPom {
   }
 
   /**
-   * Draw a polyline by placing a vertex at each container-fractional point with
-   * a single click, then committing with a double-click at the last point.
-   *
-   * The looker-3d segment renderer detects a commit via a sub-200ms
-   * double-click (it drops the duplicate vertex the double-click would add and
-   * commits the rest), so each placement click is spaced beyond that window to
-   * register as a distinct vertex, and the final commit is a deliberate rapid
-   * double-click. Pass at least two points and keep the last point clear of the
-   * first (a click within the snap tolerance of the first vertex closes the
-   * loop instead of committing).
-   *
-   * Like {@link drawCuboid}, clicks raycast onto the annotation plane (world XY
-   * at z=0), so pair this with a top view; assert that a polyline was created +
-   * persisted rather than its exact vertices (camera-dependent world coords).
+   * Draw a polyline by clicking each container-fractional vertex (spaced beyond
+   * the renderer's 200ms double-click window) and committing with a rapid
+   * double-click at the last point, which must stay clear of the first vertex
+   * or the loop closes instead. Like {@link drawCuboid}, clicks raycast onto
+   * the z=0 annotation plane, so pair with a top view and assert creation
+   * rather than exact vertices.
    */
   async drawPolyline(points: Array<[number, number]>) {
     if (points.length < 2) {

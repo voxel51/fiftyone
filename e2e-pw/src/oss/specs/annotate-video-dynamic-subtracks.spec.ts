@@ -1,19 +1,11 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Dynamic-attribute sub-track rows on the video-annotation timeline. An
- * attribute declared `dynamic` in the `frames.detections` schema gets a
- * collapsible sub-track row beneath its parent object track, with the
- * attribute's value coalesced into segments along the timeline:
- *
- *  - sub-tracks are collapsed by default — a parent's chevron reveals them;
- *  - a declared-dynamic attribute always gets a row (uniform → one segment);
- *  - a mid-track edit (forward-fill) splits the row into two value segments;
- *  - collapsing hides the sub-track rows again.
- *
- * The dataset is re-seeded per test (one tracked `vehicle` instance with a
- * dynamic `turn_signal` attribute = "off" on every frame) so a persisting edit
- * can't leak into the next test.
+ * Dynamic-attribute sub-track rows on the video timeline: collapsed by default
+ * behind the parent's chevron, one row per declared-dynamic attribute with its
+ * value coalesced into segments, and a mid-track forward-fill splits a row into
+ * two segments. Re-seeded per test with one tracked `vehicle` carrying
+ * `turn_signal` = "off" on every frame.
  */
 import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -99,7 +91,8 @@ const assertSignal = async (modal: ModalPom, expected: string) =>
  * frames @ 10fps — long enough to fill several frames forward.
  */
 const seedSingle = (datasetFactory: typeof DatasetFactory) =>
-  datasetFactory.createVideoDataset({
+  datasetFactory.createDataset({
+    mediaType: "video",
     datasetName,
     ...videoAnnotationSeed({
       withEvents: false,
@@ -260,7 +253,8 @@ test.describe.serial("video annotation dynamic attribute sub-tracks", () => {
 
 test.describe.serial("video annotation multiple dynamic attributes", () => {
   test.beforeEach(async ({ datasetFactory }) => {
-    await datasetFactory.createVideoDataset({
+    await datasetFactory.createDataset({
+      mediaType: "video",
       datasetName,
       ...videoAnnotationSeed({
         withEvents: false,

@@ -21,7 +21,7 @@ const test = base.extend<{
 
 test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  await datasetFactory.createMultimodalDataset({ datasetName });
+  await datasetFactory.createDataset({ mediaType: "multimodal", datasetName });
 });
 
 test.afterAll(async ({ foWebServer }) => {

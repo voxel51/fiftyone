@@ -1,19 +1,11 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Drawing a fresh per-frame detection box on the video-annotation surface:
- *
- *  - auto-extend (guards `9dbd95a6b2`): a freshly-drawn box becomes a short
- *    track, copied forward ~30 frames as non-keyframe filler (clamped at the
- *    clip end). Bracketed semantically via engine presence — a frame inside the
- *    extent lists the label, a frame past it does not.
- *  - fresh-draw form-sync (guards finding A / fcc91e013a / 94c366c562): the
- *    moment the draw is released to the engine the edit form's field reads the
- *    schema field `detections` (NOT the raw engine path `frames.detections`),
- *    and the form keeps following the playhead with no deselect/reselect.
- *
- * Clean slate, re-seeded per test (no pre-existing tracks) so the draw is the
- * only object track. The clip is 40 frames so the 30-frame extent isn't clamped.
+ * Drawing a fresh per-frame box on the video surface: it auto-extends ~30
+ * frames as non-keyframe filler (a frame inside the extent lists the label, one
+ * past it does not), and the edit form immediately reads the schema field
+ * `detections` and keeps following the playhead. Re-seeded clean per test on a
+ * 40-frame clip so the extent isn't clamped.
  */
 import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -43,7 +35,8 @@ test.afterAll(async ({ foWebServer }) => {
 
 test.beforeEach(async ({ datasetFactory }) => {
   // 40 frames @ 10fps — the 30-frame auto-extend stays clear of the clip end.
-  await datasetFactory.createVideoDataset({
+  await datasetFactory.createDataset({
+    mediaType: "video",
     datasetName,
     videoOptions: { duration: 4 },
     ...videoAnnotationSeed({

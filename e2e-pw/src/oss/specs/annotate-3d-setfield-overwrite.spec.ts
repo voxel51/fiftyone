@@ -1,19 +1,11 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * The annotation editor loads the sample from the current view, so a value a
- * `set_field` stage projects into the view (without materializing it to the DB)
- * becomes the diff baseline. When the annotator edits a cuboid, the autosave
- * PATCH must not write the stale, view-projected value of an unedited field
- * back to the DB.
- *
- * The dataset carries:
- *   - `note` (top-level StringField) materialized in the DB as "db-original"
- *   - one 3D cuboid (`Detection`) the annotator will edit
- * A saved view applies `set_field("note", "projected-value")` so the modal
- * sample the editor loads sees `note == "projected-value"` (≠ the DB value).
- * After editing the cuboid's class + autosave, the DB `note` must still be
- * "db-original" — proving the projection was never persisted.
+ * The annotation editor loads the sample from the current view, so a
+ * `set_field` projection becomes the diff baseline, and an autosave after
+ * editing a cuboid must not write projected values of unedited fields to the
+ * DB. The dataset materializes `note` and the cuboid's `confidence` and saves
+ * a view projecting different values over both.
  */
 import { Browser, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -94,7 +86,8 @@ test.describe.serial("3d annotate set_field overwrite", () => {
       detectionAttributes: [{ name: "confidence", type: "float" }],
       cuboidAttributeValues: { confidence: 0.1 },
     });
-    await datasetFactory.create3dDataset({
+    await datasetFactory.createDataset({
+      mediaType: "3d",
       datasetName,
       ...seed,
       schema: { ...seed.schema, note: "StringField" },

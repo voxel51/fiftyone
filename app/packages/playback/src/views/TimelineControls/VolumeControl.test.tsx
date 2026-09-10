@@ -111,8 +111,8 @@ describe("VolumeControl", () => {
   });
 
   it("clicks on bare slider internals never toggle the tracks drawer", () => {
-    // The original bug's path: the slider renders roleless divs, so a click
-    // on its innermost node bubbles to the drawer toggle unless guarded.
+    // the slider renders roleless divs, so a click on its innermost node
+    // bubbles to the drawer toggle unless guarded
     const onToggle = vi.fn();
     renderControls({ onToggle });
 

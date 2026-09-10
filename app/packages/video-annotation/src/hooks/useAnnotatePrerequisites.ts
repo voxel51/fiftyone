@@ -42,11 +42,9 @@ export interface AnnotatePrerequisites {
 export const useAnnotatePrerequisites = (
   sample: ModalSample,
 ): AnnotatePrerequisites => {
-  // An image dataset dynamically grouped into a video (ImaVid) has no
-  // VideoMetadata: its frame rate falls back to the dataset's
-  // `dynamic_groups_target_frame_rate` and its frame count is the group's
-  // element count. Both hooks run unconditionally to keep hook order stable;
-  // the count aggregation only mounts on the ImaVid path.
+  // An image dataset grouped into a video has no VideoMetadata: its frame
+  // rate is the dataset's target rate and its frame count is the group's
+  // element count. Both hooks run unconditionally to keep hook order stable.
   const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
   const imaVidFrameRate = useModalSampleFrameRate(sample);
   const elementCount = useDynamicGroupElementCount(isImageDynamicGroupVideo);

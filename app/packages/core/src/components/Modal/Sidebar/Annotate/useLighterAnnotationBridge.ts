@@ -35,13 +35,8 @@ export const useLighterAnnotationBridge = (): void => {
   const interactionPolicy = useLighterInteractionPolicy();
   const dataset = useCurrentDatasetId() ?? "";
 
-  // A video sample shares the global lighter scene atom but is owned by the
-  // video surface's own frame-locked bridge — disable this one so its handlers
-  // don't bind to the video tile's scene (the video bridge stamps the frame;
-  // this one would mis-route writes frame-agnostically). An image dataset
-  // dynamically grouped into a video is the same surface with image samples:
-  // with both bridges mounted, this one's frame-less selection became the
-  // anchor after a draw, so the track never got its keyframe or auto-extend.
+  // the video surface (a video sample or an image dynamic group video) mounts
+  // its own frame-stamping bridge; this frame-less one must stay off there
   const isVideo = useIsVideo();
   const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
   const isVideoSurface = isVideo || isImageDynamicGroupVideo;

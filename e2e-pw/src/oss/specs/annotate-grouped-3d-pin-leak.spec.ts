@@ -1,17 +1,12 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * 3D cuboids must not leak into a 2D camera slice's editable sidebar when the
- * 3D viewer is pinned. When a group's default slice is 3D, `EnsureGroupSample`
- * pins the 3D viewer and swaps the selection to the first non-3D slice, so the
- * scene stays pinned while the active annotation slice is 2D. The sidebar must
- * resolve the active sample from the rendering surface, not the pinned scene,
- * or the scene's cuboids appear as editable rows on the camera slice.
- *
- * The default slice is the 3D `mesh` (one "dog" cuboid); `image` carries two
- * "cat" detections. On open the selection lands on `image` with the 3D viewer
- * pinned: assert the image sidebar shows only its two detections (no leak), and
- * as a positive control that selecting `mesh` does surface its cuboid.
+ * 3D cuboids must not leak into a 2D camera slice's editable sidebar while the
+ * 3D viewer is pinned: with a 3D default slice, `EnsureGroupSample` pins the
+ * viewer and selects the first non-3D slice, and the sidebar must resolve the
+ * active sample from the rendering surface. The default `mesh` slice carries
+ * one "dog" cuboid and `image` two "cat" detections, so the image sidebar must
+ * list only the two while selecting `mesh` surfaces the cuboid.
  */
 import { expect, test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
@@ -37,7 +32,8 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
  * open — the leak precondition.
  */
 const seedDataset = (datasetFactory: typeof DatasetFactory) =>
-  datasetFactory.createGroupDataset({
+  datasetFactory.createDataset({
+    mediaType: "group",
     datasetName,
     numGroups: 1,
     slices: [
@@ -118,11 +114,9 @@ test.describe.serial("grouped 2D+3D annotation — 3D pin does not leak", () => 
     grid,
     modal,
   }) => {
-    // Default slice is the 3D mesh, so EnsureGroupSample pins the 3D viewer and
-    // selects the image slice. The 3D scene is the pinned/current sample even
-    // though the active annotation slice is the 2D image slice. Let the slice
-    // swap + 2D-viewer visibility settle before entering Annotate so the modal
-    // opens on the 2D camera surface (the leak precondition) deterministically.
+    // the default slice is the 3D mesh, so EnsureGroupSample pins the viewer and
+    // selects the image slice; let that settle before entering Annotate so the
+    // modal opens on the 2D surface (the leak precondition)
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute(true);
     await modal.sidebar.switchMode("annotate");

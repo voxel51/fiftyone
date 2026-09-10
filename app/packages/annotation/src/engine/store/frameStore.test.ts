@@ -74,9 +74,8 @@ describe("FrameStore identity + resolution", () => {
       }),
     );
 
-    // The surface's selection refs carry no frame; the interaction GC's
-    // liveness check must still resolve them or any sample-level reset
-    // deselects every frame label
+    // selection refs carry no frame; failing to resolve them would deselect
+    // every frame label on a sample-level reset
     const frameless = { sample: SAMPLE, path: PATH, instanceId: "B" };
     expect(store.getLabel(frameless)?.bounding_box).toEqual([0, 0, 3, 3]);
     expect(

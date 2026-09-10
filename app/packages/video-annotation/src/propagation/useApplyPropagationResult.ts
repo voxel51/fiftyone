@@ -65,7 +65,6 @@ export const useApplyPropagatedDetection = (): PropagatedDetectionWriter => {
       }
 
       // the track's own frame field (e.g. a polyline), defaulting to primary
-      // (labelsPath: `frames.<field>` for a video, bare for a dynamic group)
       const path = opts?.path ?? stream.labelsPath;
       const { _id, instance, ...content } = detection;
 

@@ -1,18 +1,10 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Foundational coverage for the 3D (looker-3d) annotation surface — the engine
- * surface that previously had NO e2e coverage. Opens an `.fo3d` scene carrying
- * a seeded cuboid (`Detection` with location/dimensions/rotation) in
- * annotate mode and exercises the deterministic flows: the annotation toolbar
- * mounts, the cuboid lists in the sidebar and is selectable, selecting it opens
- * the edit form + transform gizmo, and deleting it round-trips through undo and
- * persists.
- *
- * The three-click canvas cuboid-DRAW gesture raycasts into the three.js scene
- * (camera/scene-dependent, non-deterministic in world space) and is left to a
- * follow-up spec; this harness establishes select/edit/delete/undo/persist on a
- * seeded cuboid.
+ * 3D (looker-3d) cuboid annotation on a seeded `Detection` with
+ * location/dimensions/rotation: the toolbar mounts, the cuboid lists and
+ * selects, its form edits persist, and delete round-trips through undo. The
+ * three-click canvas draw is covered in its own describe on an empty scene.
  */
 import { Browser, expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -88,7 +80,8 @@ test.describe.serial("3d cuboid annotation", () => {
   // Re-seed per test so each delete/undo case starts from a clean cuboid
   // (mirrors the video label-create specs).
   test.beforeEach(async ({ datasetFactory, fiftyoneLoader, modal, page }) => {
-    await datasetFactory.create3dDataset({
+    await datasetFactory.createDataset({
+      mediaType: "3d",
       datasetName,
       ...annotate3dSeed({
         classes: ["car", "truck", "pedestrian"],
@@ -264,7 +257,8 @@ test.describe.serial("3d cuboid annotation", () => {
 // deterministic.
 test.describe.serial("3d cuboid creation", () => {
   test.beforeEach(async ({ datasetFactory, fiftyoneLoader, modal, page }) => {
-    await datasetFactory.create3dDataset({
+    await datasetFactory.createDataset({
+      mediaType: "3d",
       datasetName,
       ...annotate3dSeed({
         classes: ["car", "truck", "pedestrian"],

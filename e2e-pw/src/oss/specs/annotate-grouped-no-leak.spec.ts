@@ -1,22 +1,11 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Grouped (multi-sample) annotation: the sidebar label list AND the persist
- * write must follow the SELECTED annotation slice. Each slice is a distinct
- * sample doc, so the engine federates by `ref.sample` and the sidebar resolves
- * the active sample via `useActiveAnnotationSampleId`. This pins the cross-slice
- * no-leak the grouped-modal work fixed — labels of one slice neither LISTING on
- * another (read federation) nor being WRITTEN to another on edit (persist
- * federation).
- *
- * A 2D+3D group (one image slice + two 3D slices) is required to meaningfully
- * exercise the fix: `useActiveAnnotationSampleId` only diverges from `modalId`
- * via the `useThreeDSceneSampleId` discriminator, which is `undefined` in a
- * 2D-only group — so a pure-2D group has nothing 3D-specific to federate. Each
- * slice carries a DISTINCT detection count so a read leak changes the asserted
- * count; per-slice class edits + DB readbacks confirm a write lands only on its
- * own slice. The image slice carries 2D detections; the 3D slices carry cuboids
- * (`Detection` with location/dimensions/rotation).
+ * Grouped annotation: the sidebar label list and the persist write must follow
+ * the selected annotation slice, since each slice is its own sample doc. A
+ * 2D+3D group is required because `useActiveAnnotationSampleId` only diverges
+ * from `modalId` through the 3D-scene discriminator, and each slice carries a
+ * distinct detection count so a leak changes the asserted count.
  */
 import { Browser, expect, test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
@@ -29,8 +18,8 @@ import type { DatasetFactory, JSONObject } from "src/shared/dataset-factory";
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-grouped-no-leak");
 
 /**
- * slice → { media, seeded detection count }. Distinct, non-zero counts make a
- * cross-slice read leak change the asserted count. `image` is the default 2D
+ * slice → { media, seeded detection count }, distinct and non-zero so a
+ * cross-slice read leak changes the asserted count. `image` is the default 2D
  * slice; `mesh` and `cloud` are 3D slices carrying cuboids.
  */
 const SLICES = {
@@ -51,17 +40,14 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
 });
 
 /**
- * (Re)create the grouped dataset: one group whose image slice carries 2D
- * detections and whose two 3D slices carry cuboids, each slice a distinct
- * count. Re-seeded per test so the mutating edit cases each start clean.
- *
- * The cuboids sit well off the scene origin so a center canvas draw (the CREATE
- * test) raycasts a clean z=0 plane instead of selecting a seeded cuboid; the
- * looker frames the scene mesh at the origin, so these project to the
- * periphery. Sidebar-driven select/edit/delete is position-agnostic.
+ * (Re)create the grouped dataset per test: one group whose image slice carries
+ * 2D detections and whose two 3D slices carry cuboids, each slice a distinct
+ * count. The cuboids sit off the scene origin so the CREATE test's center draw
+ * raycasts a clean z=0 plane instead of selecting one.
  */
 const seedDataset = (datasetFactory: typeof DatasetFactory) =>
-  datasetFactory.createGroupDataset({
+  datasetFactory.createDataset({
+    mediaType: "group",
     datasetName,
     numGroups: 1,
     slices: [
@@ -80,7 +66,7 @@ const seedDataset = (datasetFactory: typeof DatasetFactory) =>
       {
         name: "cloud",
         mediaType: "3d",
-        sceneOptions: { shape: "point-cloud", numPoints: 216 },
+        sceneOptions: { meshes: [{ shape: "point-cloud", numPoints: 216 }] },
       },
     ],
     schema: { detections: "Detections" },
@@ -196,11 +182,9 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     await grid.openFirstSample();
     await modal.sidebar.switchMode("annotate");
 
-    // Walk every slice, then revisit in reverse — the count must stay each
-    // slice's OWN count throughout. A leak (one slice's labels appearing on
-    // another) would show the wrong count. Switching the annotation slice
-    // re-federates the active sample (and, for a 3D slice, focuses + loads its
-    // scene), so poll the count to absorb the async reload.
+    // walk every slice, then revisit in reverse: the count must stay each slice's
+    // own count throughout. Switching the slice re-federates the active sample
+    // (and loads a 3D scene), so poll the count to absorb the reload.
     const visit = async (slice: SliceName) => {
       await modal.sidebar.annotate.selectAnnotationSlice(slice);
       await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice(slice);
@@ -346,14 +330,9 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
       })
       .toBe(1);
 
-    // keep the seeded cuboid (so the detections field stays enabled — the
-    // `cuboid-mode` toolbar mounts on field activation, and an emptied slice
-    // drops the field out of the Explore sidebar). The seeded cuboids sit OFF
-    // the scene origin (see `cuboid_dets`), so a center draw raycasts a clean
-    // z=0 plane instead of selecting the existing cuboid.
-    //
-    // Enter cuboid mode, look straight down Z so the three draw clicks land
-    // deterministically on the z=0 plane, then draw a cuboid at center.
+    // keep the seeded cuboid so the detections field stays enabled (an emptied
+    // slice drops the field and the `cuboid-mode` toolbar with it); it sits off
+    // the origin, so a center draw after the top view lands on a clean z=0 plane
     await modal.annotate3d.enterCuboidMode();
     await modal.looker3dControls.setTopView();
     await modal.annotate3d.toggleCreateCuboid();

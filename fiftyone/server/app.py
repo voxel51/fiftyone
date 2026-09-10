@@ -155,10 +155,9 @@ if _allowed_origins:
                 "accept-ranges",
                 "content-range",
                 "content-length",
-                # annotation writes return the fresh version token in the
-                # ETag header, which is NOT CORS-safelisted — without this a
-                # cross-origin app (e.g. a vite dev server) reads null and
-                # every follow-up save fails its version check
+                # ETag carries the annotation version token and is not
+                # CORS-safelisted; without this a cross-origin app reads
+                # null and every follow-up save fails its version check
                 "etag",
             ],
         )

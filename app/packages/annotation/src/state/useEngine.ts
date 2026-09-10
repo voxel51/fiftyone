@@ -21,24 +21,10 @@ export const useAnnotationEngine = (): AnnotationEngine =>
   useAtomValue(engineAtom);
 
 /**
- * Own the engine's store lifecycle for the modal: register a
- * {@link SampleLabelStore} over the {@link Sample} of every sample the modal
- * renders — the selected slice, plus the pinned 3D slice when a grouped modal
- * shows both (they are distinct sample documents, federated by the engine and
- * addressed by `LabelRef.sample`). Re-register when that set changes.
- *
- * Unregistration sweeps engine-owned ephemera (selection, hover, undo) for the
- * departed sample — sample-switch deselection lives there, not here.
- *
- * A video sample is the exception: its store is the composite
- * {@link VideoLabelStore} (frame-detections + sample-level), owned and seeded by
- * the video surface from its `/frames` source. The engine federates one store
- * per sample, so this hook leaves the video sample alone. An image dataset
- * dynamically grouped into a video (ImaVid) routes to the same video surface,
- * so it is skipped here too despite its `image` media type.
- *
- * Mount once at the annotation root, after the sample-sync hooks (their effects
- * fill each Sample first, so a store never indexes the previous sample's data).
+ * Register a {@link SampleLabelStore} for every sample the modal renders,
+ * except video surfaces, which own their composite {@link VideoLabelStore}.
+ * Mount once at the annotation root after the sample-sync hooks so a store
+ * never indexes the previous sample's data.
  */
 export const useSyncAnnotationEngine = (): void => {
   const engine = useAnnotationEngine();
@@ -60,8 +46,7 @@ export const useSyncAnnotationEngine = (): void => {
   // the modal's distinct sample documents — a grouped 2D + 3D modal renders
   // two at once (the selected slice and the pinned 3D scene, already guaranteed
   // distinct by useThreeDSceneSampleId); every other case collapses to one.
-  // A video (or image-backed dynamic-group video) selected slice is skipped —
-  // the video surface registers it.
+  // a video-surface selected slice is skipped; the video surface registers it
   const sampleIds = useMemo(() => {
     const ids: string[] = [];
 

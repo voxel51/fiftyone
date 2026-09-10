@@ -1,19 +1,12 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * AI-assisted segmentation (SAM2) round-trip: enter segmentation mode, pick
- * the AI tool, place a positive point, let the mocked SAM2 worker return a
- * deterministic mask, wait for auto-save to persist it, reload the page,
- * then query the persisted sample from Python to verify a Detection with a
- * non-empty mask was saved.
- *
- * Pairs with the pen-tool round-trip spec to cover the second main
- * segmentation-creation path. Together they guard the lighter → delta-
- * supplier → patchSample chain for both manual and AI-assisted flows.
- *
- * The real SAM2 worker is replaced via the `window.__FO_TEST_SAM2_WORKER_FACTORY`
- * seam on `BrowserAnnotationProvider`, so no ONNX weights are downloaded
- * and no model inference runs.
+ * AI-assisted segmentation (SAM2) round-trip: pick the AI tool, place a
+ * positive point, let the mocked worker return a deterministic mask, await its
+ * autosave, reload, and verify the persisted detection renders a non-empty
+ * mask. The worker is swapped in through the
+ * `window.__FO_TEST_SAM2_WORKER_FACTORY` seam, so no weights download and no
+ * inference runs.
  */
 
 import { expect, test as base } from "src/oss/fixtures";

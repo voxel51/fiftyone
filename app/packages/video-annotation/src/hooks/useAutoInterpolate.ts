@@ -84,7 +84,6 @@ export const useAutoInterpolate = (): void => {
 
         // re-lerp on the field the change happened on (a non-primary track,
         // e.g. a polyline, re-lerps in place); fall back to the primary field
-        // (labelsPath: `frames.<field>` for a video, bare for a dynamic group)
         const path = payload.path ?? stream.labelsPath;
         const keyframeFrames: number[] = [];
         // Every frame the instance is present on (keyframe or filler). The tail

@@ -100,8 +100,7 @@ export const doPatchSample = async ({
   const versionToken = getVersionToken();
 
   if (!datasetId || !sample?._id || !versionToken) {
-    // a sample without `last_modified_at` mints no token — name the failed
-    // precondition instead of silently reporting "rejected"
+    // name the failed precondition instead of reporting "rejected"
     throw new Error(
       "cannot patch sample: missing write precondition " +
         JSON.stringify({

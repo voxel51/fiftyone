@@ -41,10 +41,8 @@ class Frames(HTTPEndpoint):
         # (e.g. the ImaVid image stream wants just `filepath`) pass them here to
         # avoid shipping the whole frame document.
         fields = data.get("fields")
-        # When set, the clip's "frames" are the ordered samples of this dynamic
-        # group rather than a video sample's `frames` field. This is the ImaVid
-        # case for an image dataset dynamically grouped into a video, which has
-        # no `frames` field to unwind.
+        # when set, the clip's "frames" are this dynamic group's ordered
+        # samples rather than a video sample's `frames` field
         dynamic_group = data.get("dynamicGroup")
 
         # `end_frame` is served inclusively, so the window's last frame is
@@ -126,14 +124,8 @@ class Frames(HTTPEndpoint):
     ):
         """Serves a window of a dynamic group's ordered samples as "frames".
 
-        For an image dataset dynamically grouped into a video (ImaVid), the
-        clip has no `frames` field — each "frame" is a sample of the dynamic
-        group. ``get_view(dynamic_group=...)`` selects that group's ordered
-        samples; we window and project them like the video path does.
-
-        The documents are served as stored. The i-th document is frame
-        ``range[0] + i``; the client derives that from ``range`` rather than
-        the server writing an artificial frame number into a real sample.
+        The documents are served as stored; the i-th document is frame
+        ``range[0] + i``, which the client derives from ``range``.
         """
         view = await fosv.get_view(
             dataset,

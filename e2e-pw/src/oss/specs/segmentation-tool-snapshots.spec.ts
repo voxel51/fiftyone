@@ -1,25 +1,13 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Visual smoke tests for each segmentation tool. Each test creates a
- * deterministic mask render and snapshots the canvas, so regressions in
- * mask shape / color / position / antialiasing surface as pixel diffs.
- *
- * Stability:
- *   - Fixed class "cat" everywhere → deterministic label color (fiftyone
- *     hashes label strings to colors).
- *   - Mouse moved off-canvas before each snapshot (see
- *     `SampleCanvasAsserter.hasScreenshot`).
- *   - AI test right-clicks to finalize the keypoint session before
- *     snapshotting so the indefinite ripple animation isn't captured
- *     mid-cycle.
- *   - Merge test pre-seeds two adjacent mask detections via Python so the
- *     merge operates on a known starting state — independent of the brush
- *     or pen flow.
- *
- * Baselines are generated with `yarn playwright test --update-snapshots`
- * on the first run and should be captured on the platform CI runs against
- * (linux/Chromium) to avoid drift between local and CI.
+ * Visual smoke tests for each segmentation tool: each test creates a
+ * deterministic mask render and snapshots the canvas, so regressions in mask
+ * shape, color, position or antialiasing surface as pixel diffs. Determinism
+ * comes from the fixed class "cat" (label colors hash the string), moving the
+ * mouse off-canvas before snapshotting, finalizing the AI keypoint session so
+ * its ripple isn't captured, and pre-seeding the merge test's two masks, with
+ * baselines captured on the CI platform (linux/Chromium).
  */
 
 import { expect, test as base } from "src/oss/fixtures";

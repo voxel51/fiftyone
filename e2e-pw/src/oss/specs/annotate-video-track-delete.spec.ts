@@ -1,12 +1,10 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Whole-track delete on the video-annotation surface. The sidebar / keyboard
- * delete is PER-FRAME (it removes only the current frame's instance — the track
- * persists on other frames). Deleting an entire track is the timeline track's
- * right-click context menu → "Delete track", which removes the instance's label
- * on every frame in one engine transaction. The removal survives a true
- * round-trip (fresh browser context) via autosave.
+ * Whole-track delete on the video surface: the sidebar/keyboard delete is
+ * per-frame, so a whole track is deleted from the timeline row's context menu,
+ * removing the instance's label on every frame in one engine transaction. The
+ * removal survives a fresh browser context via autosave.
  */
 import { test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -38,7 +36,8 @@ test.afterAll(async ({ foWebServer }) => {
 test.beforeEach(async ({ datasetFactory }) => {
   // one tracked vehicle (index=1) on every frame; no TDs to keep the timeline
   // to a single object track.
-  await datasetFactory.createVideoDataset({
+  await datasetFactory.createDataset({
+    mediaType: "video",
     datasetName,
     ...videoAnnotationSeed({
       withEvents: false,

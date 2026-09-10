@@ -12,8 +12,7 @@ let mockIsImageDynamicGroupVideo = false;
 
 vi.mock("@fiftyone/state", () => ({
   useModalSample: () => mockModalSample,
-  // an ImaVid (image dynamic group video) modal sample is owned by the video
-  // surface, exactly like a video sample
+  // an image dynamic group video modal sample is owned by the video surface
   useIsImageDynamicGroupVideo: () => mockIsImageDynamicGroupVideo,
   // the 3D scene sample (stable/non-suspending variant); when its id differs
   // from the modal sample a second store is registered, otherwise the set
@@ -90,8 +89,7 @@ describe("useSyncAnnotationEngine", () => {
   });
 
   it("skips an image dynamic-group video modal sample — the video surface owns it", () => {
-    // an ImaVid frame is an image sample, but the whole group plays through
-    // the video surface, which owns its (composite) store
+    // the whole group plays through the video surface, which owns its store
     mockModalSample = { sample: { _id: "iv1", media_type: "image" } };
     mockSceneSample = undefined;
     mockIsImageDynamicGroupVideo = true;

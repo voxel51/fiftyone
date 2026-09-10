@@ -1,136 +1,45 @@
 import type { ToolbarActionGroup } from "@fiftyone/components";
+import { usePlayhead } from "@fiftyone/playback";
 import { useModalSample } from "@fiftyone/state";
 import { Icon, IconName, Size } from "@voxel51/voodo";
-import { useAtomValue } from "jotai";
 import { useMemo } from "react";
-import { usePlayhead } from "@fiftyone/playback";
-import { resolveFrameCount } from "../utils/frameCount";
-import {
-  labelSchemaData,
-  useModalSampleFrameRate,
-  useTemporalDetectionFieldPaths,
-  useVisibleLabelSchemas,
-} from "../state/accessors";
-import {
-  useSelectedTemporalDetectionField,
-  useSelectedTrackIds,
-  useSelectionIsInstanceTrack,
-  useSelectionIsKeyframeable,
-  useSelectedInstanceTrackField,
-} from "../state/useVideoInteraction";
-import { useCurrentFrame } from "../state/useCurrentFrame";
-import { useFrameKeyframeState } from "./useFrameKeyframeState";
-import { useVideoSurfaceActions } from "./useVideoSurfaceActions";
 import { AiTrackUpsellButton } from "../components/AiTrackUpsellButton";
+import { KeyframeDiamondIcon } from "../components/KeyframeDiamondIcon";
+import { useCurrentFrame } from "../state/useCurrentFrame";
+import { resolveFrameCount } from "../utils/frameCount";
+import { useTemporalDetectionTarget } from "./useTemporalDetectionTarget";
+import { useTrackSelectionGates } from "./useTrackSelectionGates";
+import { useVideoSurfaceActions } from "./useVideoSurfaceActions";
 
 /**
- * Small SVG diamond glyph used by the Mark Keyframe toolbar button. Filled
- * matches a keyframe present at the playhead on the selected track; outlined
- * is the absent / no-selection state. Mirrors the lane's rotated-square
- * keyframe marker so the toolbar reads as "this glyph = a keyframe".
- */
-const DiamondIcon = ({ filled }: { filled: boolean }) => (
-  <svg
-    width="14"
-    height="14"
-    viewBox="0 0 14 14"
-    aria-hidden="true"
-    focusable="false"
-    style={{ display: "block" }}
-  >
-    <rect
-      x="3.05"
-      y="3.05"
-      width="7.9"
-      height="7.9"
-      transform="rotate(45 7 7)"
-      fill={filled ? "currentColor" : "none"}
-      stroke="currentColor"
-      strokeWidth="1.4"
-      strokeLinejoin="miter"
-    />
-  </svg>
-);
-
-/**
- * Builds the data-driven config for the video annotation toolbar, mirroring
- * the `ToolbarActionGroup` pattern used by `ActionToolbar` (segmentation, 3D).
- *
- * This hook is the single extension point for toolbar functionality: to add a
- * button, append a {@link ToolbarActionItem} to a group's `actions` (or add a
- * new group). Each item owns its own enablement, tooltip, and dispatch, so the
- * renderer stays dumb and the toolbar doesn't grow into a monolith as features
- * land. Reactive to the visual playhead and the intentional-selection atom, so
- * enabled state and tooltips track the user scrubbing / selecting in real time.
- *
- * Mount inside the surface's `<PlaybackProvider>` + command bus (it is, via
- * `FrameLabelsTracks`).
+ * Data-driven config for the video annotation toolbar; each item owns its own
+ * enablement, tooltip, and dispatch. Mount inside the surface's
+ * `<PlaybackProvider>` and command bus.
  */
 export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
   const actions = useVideoSurfaceActions();
   const playhead = usePlayhead();
   const playheadFrame = useCurrentFrame();
-  const selected = useSelectedTrackIds();
   const modalSample = useModalSample();
 
-  // Resolve from the dataset schema, narrowed to the schema-active set.
-  const tdFieldPaths = useTemporalDetectionFieldPaths();
-  const visible = useVisibleLabelSchemas();
-  const selectedTdField = useSelectedTemporalDetectionField();
+  const {
+    fieldPath: tdFieldPath,
+    defaultLabel: tdDefaultLabel,
+    fps,
+    hasUsableFps,
+    canCreate: canCreateTd,
+  } = useTemporalDetectionTarget();
 
-  const tdFieldPath = useMemo(() => {
-    // Sample-level only — temporal detections are video-level; the create
-    // command targets a top-level field path. Honor schema activity so a
-    // deactivated field isn't a create target, matching the detection path.
-    const active = tdFieldPaths.filter(
-      (p) => !p.startsWith("frames.") && visible.has(p),
-    );
-
-    // Prefer the field of the TD the user is editing;
-    // else the first active field.
-    if (selectedTdField && active.includes(selectedTdField)) {
-      return selectedTdField;
-    }
-
-    return active[0] ?? null;
-  }, [tdFieldPaths, visible, selectedTdField]);
-  const fps = useModalSampleFrameRate(modalSample);
-  const hasUsableFps = Number.isFinite(fps) && fps !== undefined && fps > 0;
-  const canCreateTd = !!tdFieldPath && hasUsableFps;
-
-  // Default class for a freshly-created TemporalDetection: schema's `default`
-  // if set, else the first declared class. Mirrors `buildNewLabelData` in
-  // core's createNew.ts so the surface matches the sidebar's create flow.
-  const tdSchema = useAtomValue(labelSchemaData(tdFieldPath ?? ""));
-  const tdSchemaDefault = tdSchema?.label_schema?.default;
-  const tdDefaultLabel: string | undefined =
-    typeof tdSchemaDefault === "string"
-      ? tdSchemaDefault
-      : tdSchema?.label_schema?.classes?.[0];
-
-  // Selection is keyed on the engine instanceId.
-  const selectedIds = useMemo(() => Array.from(selected), [selected]);
-  const hasSelection = selectedIds.length > 0;
-
-  // Type gates: keyframes are detections-only; split also admits polylines.
-  // Both are false on TD / classification selections.
-  const selectionIsKeyframeable = useSelectionIsKeyframeable();
-  const selectionIsInstanceTrack = useSelectionIsInstanceTrack();
-  // the selected track's OWN frames field — split must not default to the
-  // stream's primary field, which no-ops on a polyline track
-  const selectedTrackField = useSelectedInstanceTrackField();
-
-  // Reactive: filled when the (single) selected track has a keyframe at the
-  // current playhead. Outline otherwise (no selection, multi-selection, or no
-  // detection on this frame). See {@link useFrameKeyframeState}.
-  const isKeyframeAtPlayhead = useFrameKeyframeState(selectedIds, playhead);
-
-  // Mark Keyframe needs a detection selection.
-  const canMarkKeyframe = hasSelection && selectionIsKeyframeable;
-
-  // split needs one instance-track (detection / polyline) + a playhead frame
-  const canSplit =
-    selectedIds.length === 1 && selectionIsInstanceTrack && hasUsableFps;
+  const {
+    selectedIds,
+    hasSelection,
+    selectionIsKeyframeable,
+    selectionIsInstanceTrack,
+    selectedTrackField,
+    isKeyframeAtPlayhead,
+    canMarkKeyframe,
+    canSplit,
+  } = useTrackSelectionGates(playhead, hasUsableFps);
 
   return useMemo<ToolbarActionGroup[]>(
     () => [
@@ -142,17 +51,14 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
             id: "create-temporal-detection",
             label: "New TD",
             icon: <Icon name={IconName.Add} size={Size.Sm} />,
-            // Disabled with an explanation rather than hidden: on a dataset
-            // with no TemporalDetections field, a button that simply is not
-            // there tells the user nothing about why.
+            // disabled with an explanation rather than hidden
             tooltip: canCreateTd
               ? `Create a TemporalDetection on \`${tdFieldPath}\``
               : "No TemporalDetections field on this dataset",
             isDisabled: !canCreateTd,
             onClick: () => {
               if (!canCreateTd || !tdFieldPath || !fps) return;
-              // Default: 1-second window starting at the playhead frame,
-              // capped at the video's last frame.
+              // a 1-second window from the playhead, capped at the last frame
               const startFrame = playheadFrame;
               const endFrame = Math.min(
                 startFrame + Math.round(fps),
@@ -168,7 +74,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
           {
             id: "mark-keyframe",
             label: "Mark Keyframe",
-            icon: <DiamondIcon filled={isKeyframeAtPlayhead} />,
+            icon: <KeyframeDiamondIcon filled={isKeyframeAtPlayhead} />,
             shortcut: "K",
             tooltip: !hasSelection
               ? "Select a label to mark a keyframe"
@@ -206,15 +112,11 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
             },
           },
           {
-            // Upsell for AI-powered object tracking (not in the OSS app): an
-            // always-present, disabled-styled button whose only action is a
-            // hover callout. Owns its own presentation via the custom-component
-            // hatch; onClick is a required no-op.
+            // upsell for AI tracking (not in the OSS app); the toolbar renders
+            // `customComponent`, so `onClick` is an unreachable required no-op
             id: "ai-track",
             label: "AI Track",
             icon: <Icon name={IconName.AI} size={Size.Sm} />,
-            // Required by the item type but unreachable — the toolbar renders
-            // `customComponent` instead of wiring `onClick`.
             onClick: () => {},
             customComponent: <AiTrackUpsellButton />,
           },

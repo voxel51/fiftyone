@@ -1,7 +1,7 @@
 /**
- * The committed-store contract the engine federates.
- * `Sample` (via {@link SampleLabelStore}) is the sample-level implementation;
- * a frame-indexed `FrameStore` is another. Stores never know about each other.
+ * The committed-store contract the engine federates; {@link SampleLabelStore}
+ * and the frame-indexed `FrameStore` implement it. Stores never know about
+ * each other.
  */
 
 import type { JSONDeltas, LabelData, LabelType } from "@fiftyone/utilities";
@@ -22,10 +22,8 @@ import type { LabelRef } from "../identity/ref";
 export type LabelChangeKind = "update" | "delete" | "reset";
 
 /**
- * A store's transient state, captured opaquely for transaction rollback. Each
- * store defines its own concrete shape; the engine only round-trips a snapshot
- * back to the same store's {@link LabelStore.restore}, so the type is opaque to
- * everyone else. A store narrows `unknown` → its own shape once, in `restore`.
+ * A store's transient state, captured opaquely for transaction rollback. The
+ * engine only round-trips it to the same store's {@link LabelStore.restore}.
  */
 export type StoreSnapshot = unknown;
 
@@ -59,30 +57,23 @@ export const isWholeSampleReset = (change: LabelChange): boolean =>
   change.kind === "reset" && change.ref.path === "";
 
 /**
- * A custom persistence transport for one store's JSON-patch deltas.
- *
- * Registered against the store's sample id via
- * `engine.registerPersistenceAdapter`; persistence routes the store's patch
- * through it instead of the standard modal-sample PATCH. Resolves `true` on
- * success (the caller then reconciles the deltas as persisted) and `false`
- * on failure; version conflicts throw, like the standard transport.
+ * A custom persistence transport for one store's JSON-patch deltas. Resolves
+ * `true` on success and `false` on failure; version conflicts throw.
  */
 export type PersistenceAdapter = (deltas: JSONDeltas) => Promise<boolean>;
 
 /**
- * The committed source of truth for one (sample, shape-region).
- *
- * Resolution order: transient wins, else source, else undefined.
- * `snapshot`/`restore` cover transient state + dirty flags ONLY — source data
- * is untouched by transactions by definition.
+ * The committed source of truth for one (sample, shape-region); transient wins
+ * over source on read. `snapshot`/`restore` cover transient state and dirty
+ * flags only.
  */
 export interface LabelStore {
   readonly sample: string;
 
-  /** True while the store's source seed is still in flight — present reads
-   *  are provisional and an empty result means "loading", not "no labels".
-   *  Absent ≡ never loading (synchronously-seeded stores). Implementations
-   *  must notify display subscribers when this flips. */
+  /**
+   * True while the seed is in flight; implementations notify display
+   * subscribers on flips.
+   */
   isLoading?(): boolean;
 
   // resolution

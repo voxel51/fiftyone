@@ -1,11 +1,10 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * The video-annotation tracks drawer opens CLOSED by default (a global user
- * preference persisted across samples). While closed, a track's interval bar
- * stays mounted but non-interactive; it becomes clickable again only after
- * pinning the row into the header or opening the drawer. This covers both
- * routes back to an actionable track.
+ * The video tracks drawer opens closed by default (a persisted user
+ * preference), and a closed drawer keeps a track's interval bar mounted but
+ * non-interactive. Pinning the row into the header or opening the drawer are
+ * the two routes back to an actionable track.
  */
 import { test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -36,7 +35,8 @@ test.afterAll(async ({ foWebServer }) => {
 test.beforeEach(async ({ datasetFactory }) => {
   // one tracked vehicle (index=1) on every frame; no TDs so the timeline holds
   // a single object track.
-  await datasetFactory.createVideoDataset({
+  await datasetFactory.createDataset({
+    mediaType: "video",
     datasetName,
     ...videoAnnotationSeed({
       withEvents: false,

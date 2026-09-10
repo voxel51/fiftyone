@@ -1,25 +1,13 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Video annotation on a GROUPED dataset (an image slice + a video slice):
- *
- *  - the Annotate tab is available and the video slice mounts the video
- *    annotation surface (guards the grouped-video gating + the ModalLooker /
- *    engine-store fixes — a grouped video slice is decided per-sample, not from
- *    the dataset-level media type);
- *  - the per-slice schema filter narrows the dataset-wide active schema to what
- *    the open slice supports: the video slice offers frame detections +
- *    sample-level classification + temporal detections but NOT sample-level
- *    spatial detections; the image slice offers sample-level detections +
- *    classification but NOT frame fields or temporal detections;
- *  - editing in EACH slice writes to THAT slice's own sample — the guard against
- *    the sample-scope regression (a surface resolving its sample via the ambient
- *    sole store throws / mis-scopes once a grouped modal registers a second
- *    store; every surface must scope to its own sample).
- *
- * One group: image slice (`image`) + video slice (`video`, the default). Fixed
- * sample ids so an edit's autosave PATCH can be checked against the slice it
- * must land on. Re-seeded per test so a persisting edit can't leak into the next.
+ * Video annotation on a grouped dataset (image + video slice): the video slice
+ * mounts the video surface, the per-slice schema filter offers each slice only
+ * the fields it supports (frame detections, classification and temporal
+ * detections on video; sample detections and classification on image), and
+ * editing in each slice PATCHes that slice's own sample. Fixed sample ids let
+ * the PATCH be checked against its slice, and the dataset is re-seeded per
+ * test.
  */
 import { expect, test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
@@ -75,16 +63,15 @@ const detection = (
 });
 
 /**
- * One group: image slice (`image`) + video slice (`video`, the default, so it
- * is sample 0). The video slice carries a per-frame tracked detection
- * (frames.detections) across all frames + sample-level
- * detections/classification/events; the sample-level detection is present but
- * must be FILTERED OUT of the video annotate schema. The image slice carries a
- * sample-level detection + classification.
+ * One group: the default `video` slice (sample 0) with a per-frame tracked
+ * detection plus sample-level detections/classification/events, and the
+ * `image` slice with a sample-level detection + classification. The video
+ * slice's sample-level detection must be filtered out of its annotate schema.
  */
 const seedDataset = (datasetFactory: typeof DatasetFactory) => {
   const instance = { _id: createId(), _cls: "Instance" };
-  return datasetFactory.createGroupDataset({
+  return datasetFactory.createDataset({
+    mediaType: "group",
     datasetName,
     numGroups: 1,
     slices: [

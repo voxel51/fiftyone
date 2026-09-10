@@ -61,11 +61,9 @@ export class AnnotationEngine {
   readonly interaction: InteractionState;
 
   /**
-   * Derived temporal presence over the pool; ≡ pool when non-temporal. Installed
-   * at construction (default {@link PoolTemporalView}) and swappable per session
-   * via {@link attachTemporal} — a video modal attaches a frame view over its
-   * playback clock and detaches on close, mirroring the store lifecycle. Read
-   * live; mutated only by {@link attachTemporal}/{@link bindTemporalPresence}.
+   * Derived temporal presence over the pool, equal to the pool when
+   * non-temporal. Mutated only by {@link attachTemporal} and
+   * {@link bindTemporalPresence}.
    */
   get temporal(): TemporalView {
     return this._temporal;
@@ -116,11 +114,8 @@ export class AnnotationEngine {
   private gestureEpoch = 0;
 
   /**
-   * @param opts.temporal a factory for the temporal view, given the engine as
-   *   its pool/change source. Defaults to the non-temporal {@link
-   *   PoolTemporalView} (presence ≡ pool) — every image/3D session. A video
-   *   session injects a frame view built over a playback {@link Clock}; the
-   *   factory shape lets it close over the clock without the engine knowing it.
+   * @param opts.temporal factory for the temporal view over the engine's pool;
+   *   defaults to the non-temporal {@link PoolTemporalView}
    */
   constructor(
     opts: { temporal?: (engine: AnnotationEngine) => TemporalView } = {},
@@ -198,14 +193,9 @@ export class AnnotationEngine {
   // ---- registration ----
 
   /**
-   * Register a store (mount-scoped). The engine subscribes both channels:
-   * display relays to the merged display channel; changes buffer inside a
-   * transaction and dispatch ordered at commit.
-   *
-   * Unregistering emits no label changes, but engine-owned ephemera must not
-   * outlive the store: interaction refs to the departed sample are swept (a
-   * synthetic whole-sample-reset GC pass — nothing resolves anymore) and its
-   * undo history drops.
+   * Register a store (mount-scoped) and return its unregister. Unregistering
+   * emits no label changes but sweeps the sample's interaction refs and undo
+   * history.
    */
   registerStore(store: LabelStore): () => void {
     if (this.stores.has(store.sample)) {
@@ -215,8 +205,7 @@ export class AnnotationEngine {
     this.stores.set(store.sample, store);
     const unsubscribeDisplay = store.subscribe(this.onStoreDisplay);
     const unsubscribeChanges = store.subscribeChanges(this.onStoreChanges);
-    // a store appearing changes what resolves — nudge display subscribers
-    // (same contract as attachTemporal)
+    // a store appearing changes what resolves for display subscribers
     this.notifyDisplay();
 
     return () => {
@@ -233,10 +222,8 @@ export class AnnotationEngine {
   }
 
   /**
-   * Whether a sample's labels are readable as truth: its store is registered
-   * and not mid-seed. False means "loading" — an empty present read for the
-   * sample is provisional, not "no labels". Recomputes with the display
-   * channel (registration and {@link LabelStore.isLoading} flips notify it).
+   * Whether a sample's store is registered and not mid-seed. While false, an
+   * empty present read means "loading", not "no labels".
    */
   isSampleReady(sample: string): boolean {
     const store = this.stores.get(sample);
@@ -244,12 +231,8 @@ export class AnnotationEngine {
   }
 
   /**
-   * Register a custom persistence transport for a store's deltas
-   * (mount-scoped, like the store itself). Persistence routes a dirty
-   * store's patch through its adapter when one is registered; otherwise it
-   * falls back to the standard modal-sample PATCH. Lets a surface whose
-   * store spans multiple documents (e.g. a dynamic group played as video,
-   * one document per frame) own the fan-out without the engine knowing.
+   * Register a custom persistence transport for a store's deltas, replacing
+   * the standard modal-sample PATCH. Returns the unregister function.
    */
   registerPersistenceAdapter(
     sample: string,
@@ -406,10 +389,8 @@ export class AnnotationEngine {
   }
 
   /**
-   * Mint a fresh, unique gesture id. Pass it as a transaction's `undoKey` for
-   * every commit a multi-commit gesture makes (directly, or by stamping it on
-   * the events a surface re-emits) so they undo/redo as one unit. Scoped to the
-   * gesture's own writes — nothing else can pick it up.
+   * Mint a fresh, unique gesture id. Pass it as the `undoKey` of every commit a
+   * multi-commit gesture makes so they undo/redo as one unit.
    */
   mintGestureId(): string {
     return `gesture:${(this.gestureEpoch += 1)}`;
@@ -521,9 +502,8 @@ export class AnnotationEngine {
   // ---- bridges ----
 
   /**
-   * Register a retained-mode surface (mount-scoped). The engine derives the
-   * whole read-half: hydration, change reconciliation, presence merge, and
-   * silent interaction application. Returns unregister.
+   * Register a retained-mode surface (mount-scoped) and return its unregister.
+   * The engine derives the whole read-half for it.
    */
   registerBridge<Handle, Descriptor>(
     bridge: SurfaceBridge<Handle, Descriptor>,

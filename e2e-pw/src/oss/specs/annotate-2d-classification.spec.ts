@@ -1,23 +1,10 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Creating and deleting a standalone sample-level Classification. Coverage only
- * exercised a *class change* on an existing detection; this covers the
- * Classification label itself:
- *   - the Classification action creates a label, opens the edit form, and
- *     commits the chosen class through the engine (persisted, true round-trip),
- *   - the classification can be deleted (the undo of that delete is a known
- *     engine gap — see the `test.fixme` below).
- *
- * Persistence is verified in a fresh browser context — a true
- * server round-trip on the sample's `Classification` field.
- *
- * The create form pre-fills `label` with the first class; persistence is gated
- * on an actual `label` value being CHOSEN (consistent with label-creation
- * gating elsewhere — an empty/default classification isn't committed). So these
- * tests assign a NON-default class ("cloudy", the 2nd class) to exercise the
- * real create+persist path; re-selecting the pre-filled default would be a
- * no-op by design.
+ * Creating and deleting a standalone sample-level Classification, verified in
+ * a fresh browser context. The create form pre-fills the first class and
+ * persistence is gated on a class being chosen, so these tests assign the
+ * non-default "cloudy".
  */
 import { Browser, expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -136,12 +123,9 @@ test.describe.serial("2D annotation classification", () => {
     await expectPersistedClassification(browser, fiftyoneLoader, null);
   });
 
-  // KNOWN ENGINE GAP: undoing the delete of a standalone (non-list)
-  // Classification does NOT restore it — the store keeps re-emitting
-  // `remove /<field>` after undo instead of re-adding the label, so the field
-  // stays empty. Single-label delete/undo isn't wired through the engine's
-  // restore the way list labels are. Re-enable once the engine restores a
-  // deleted single label on undo.
+  // KNOWN ENGINE GAP: undoing the delete of a standalone Classification does
+  // not restore it (the store re-emits `remove /<field>` instead of re-adding
+  // the label). Re-enable once the engine restores a deleted single label.
   test.fixme("a classification deletion is undoable", async ({
     browser,
     fiftyoneLoader,

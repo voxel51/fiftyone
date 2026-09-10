@@ -34,7 +34,7 @@ vi.mock("../state/accessors", () => ({
   useColorSeed: () => 0,
 }));
 
-import { useViewportReset } from "./useLighterMediaScene";
+import { useViewportReset } from "./useViewportReset";
 
 const makeScene = (id: string) => ({
   getEventChannel: () => `channel-${id}`,

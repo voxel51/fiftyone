@@ -141,9 +141,10 @@ highlighted UI element is a behavioral difference, not render noise.
 #### Creating Datasets
 
 Always use `DatasetFactory.createDataset` when a test needs a FiftyOne dataset.
-It generates blank PNG images, inserts samples directly into the underlying
-MongoDB collection for performance, and applies any additional schema fields
-and saved views.
+It is discriminated on `mediaType` (`"image"` by default, or `"video"`, `"3d"`,
+`"group"`, `"multimodal"`), generates the media for that kind, inserts samples
+directly into the underlying MongoDB collection for performance, and applies
+any additional schema fields and saved views.
 
 ```ts
 import { DatasetFactory } from "src/shared/dataset-factory";
@@ -176,17 +177,20 @@ await DatasetFactory.createDataset({
 });
 ```
 
-`createVideoDataset`, `create3dDataset` and `createGroupDataset` take the same
-`schema`, `labelSchemas`, `withSampleData` and `savedViews` options and differ
-only in the media generated per sample (`videoOptions`, `sceneOptions`,
-`imageOptions` — each an object or a function of the sample index). A video
-dataset declares frame fields with a `frames.` prefix in `schema`, populates
-frames through `withFrameData(frame, helpers)` (called once per sample and
-frame number) and materializes frame images with `sampleFrames: true`.
-`helpers.mask(width, height)` serializes an all-ones numpy mask.
+Every `mediaType` takes the same `schema`, `labelSchemas`, `withSampleData` and
+`savedViews` options; they differ in the media generated per sample
+(`videoOptions`, `sceneOptions`, `imageOptions` — each an object or a function
+of the sample index) and in the scaffold `withSampleData` receives. The
+`mediaType` literal narrows the accepted options, so `videoOptions` on an image
+dataset is a type error. A video dataset declares frame fields with a `frames.`
+prefix in `schema`, populates frames through `withFrameData(frame, helpers)`
+(called once per sample and frame number) and materializes frame images with
+`sampleFrames: true`. `helpers.mask(width, height)` serializes an all-ones
+numpy mask.
 
 ```ts
-await DatasetFactory.createVideoDataset({
+await DatasetFactory.createDataset({
+    mediaType: "video",
     datasetName: "my-video-dataset",
     videoOptions: { duration: 4 },
     schema: { "frames.detections": "Detections" },

@@ -9,33 +9,17 @@ import { useAnnotatePrerequisites } from "../hooks/useAnnotatePrerequisites";
 import { useModalSampleFrameRate } from "./accessors";
 
 /**
- * The single source of "current frame" for the engine integration on the video
- * surface.
- *
- * The surface drives playback through `PlaybackProvider` / `usePlaybackEngine`
- * (visible position = `useCurrentTime()` seconds), NOT the legacy `useTimeline`
- * timeline-state machinery (which is never created here, so its frame number
- * stays frozen). Everything that needs the live frame — the engine clock,
- * the canvas bridge's `frameOf`, timeline select/hover frame-stamping — must
- * read it from here, converting the playhead seconds to a 1-indexed frame via
- * the shared `frameAt`.
- *
- * Clamped to the clip's real frame range: the engine allows the playhead to
- * rest at exactly `duration` (seek/step clamp inclusively), where an unclamped
- * conversion yields a nonexistent frame N+1 — no labels resolve there while
- * the renderer still shows the last frame, and a gesture stamped there has no
- * member sample to land on. The range comes from the same prerequisites the
- * surface mounts its streams with: video metadata for a native video, the
- * group's member count for an image dataset grouped into a video.
+ * The single source of the current frame for the video surface's engine
+ * integration, converting the committed playback time to a 1-indexed frame via
+ * the shared `frameAt`. Clamped to the clip's real frame range, since the
+ * playhead may rest at exactly `duration`, where an unclamped conversion
+ * yields a nonexistent frame N+1.
  */
 export const useCurrentFrame = (): number => {
   const sample = useModalSample();
-  // The COMMITTED time, not the requested playhead: the engine advances
-  // `currentTime` only after every blocking stream confirms the target is
-  // ready (the html stream's readiness includes a presented-frame drift
-  // check; the bitmap streams gate on delivery). During a scrub the request
-  // runs ahead while the picture holds the last ready frame — overlays, TD
-  // gates, and gesture frame-stamping must hold with it.
+  // the committed time, not the requested playhead: during a scrub the
+  // request runs ahead while the picture holds the last ready frame, and
+  // overlays and gesture frame-stamping must hold with it
   const time = useCurrentTime();
   const fps = useModalSampleFrameRate(sample);
   // undefined while the surface is blocked on metadata: the conversion then

@@ -22,12 +22,9 @@ export interface Annotate3dSeedOptions {
    */
   cuboidSampleIndices?: number[];
   /**
-   * Polyline (3D) classes. Passing this declares + activates a sample-level
-   * `polylines` annotation schema (a `Polylines` field). When omitted the
-   * dataset has no polyline schema (the cuboid-only shape). The active
-   * annotation schema becomes polylines-only unless cuboids are also requested
-   * (a non-empty `cuboidSampleIndices`), so polyline-mode resolves the polyline
-   * field by default.
+   * Polyline (3D) classes; passing them declares + activates a sample-level
+   * `polylines` schema. The active schema becomes polylines-only unless cuboids
+   * are also requested, so polyline mode resolves the polyline field by default.
    */
   polylineClasses?: string[];
   /**
@@ -69,19 +66,15 @@ const COMMON_ATTRIBUTES = [
 ];
 
 /**
- * Builds the `create3dDataset` arguments for a 3D-annotation dataset: a
- * declared + active sample-level `detections` annotation schema and an
- * optional pre-seeded cuboid (`Detection` with 3D geometry) on requested
- * samples.
- *
- * A 3D cuboid is a `Detection` carrying `location` ([x,y,z] center),
- * `dimensions` ([l,w,h]) and `rotation` ([x,y,z] euler) — the same field the
- * `detection3dAdapter` renders on the annotation engine. A 3D polyline carries
- * `points3d` (a list of [x,y,z] segments) as a dynamic attribute — `points`
- * stays empty (it's the 2D field).
+ * Builds the `createDataset({ mediaType: "3d" })` arguments for a
+ * 3D-annotation dataset: an active sample-level `detections` schema plus
+ * optional pre-seeded cuboids
+ * (`location`/`dimensions`/`rotation` on a `Detection`) and polylines
+ * (`points3d` segments, with the 2D `points` empty).
  *
  * @example
- * await datasetFactory.create3dDataset({
+ * await datasetFactory.createDataset({
+ *   mediaType: "3d",
  *   datasetName,
  *   ...annotate3dSeed({ classes: ["car", "truck"], cuboidSampleIndices: [0] }),
  * });

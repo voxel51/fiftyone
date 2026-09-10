@@ -8,9 +8,8 @@ describe("isFrameScopedPath", () => {
   });
 
   it("scopes BARE paths on an image dynamic group played as video", () => {
-    // each "frame" is its own sample, so sample-level paths are the
-    // frame-scoped ones — a dynamic-attribute edit on `boxes` must engage
-    // the track fan-out / forward-fill exactly like `frames.boxes` would
+    // each frame is its own sample, so sample-level paths are the
+    // frame-scoped ones
     expect(isFrameScopedPath("boxes", true)).toBe(true);
     expect(isFrameScopedPath("frames.detections", true)).toBe(false);
   });

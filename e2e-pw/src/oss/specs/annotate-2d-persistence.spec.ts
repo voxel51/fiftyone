@@ -1,14 +1,9 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * 2D annotation EDIT/DELETE persistence: changes made through the sidebar edit
- * form autosave to the server and survive a true round-trip. Each assertion is
- * read back from a BRAND-NEW browser context (no shared client cache), so it
- * proves the engine → autosave → server path, not just in-memory state.
- *
- * The existing 2d-lighter spec covers DRAW persistence; this covers the edit and
- * delete paths (attribute value, geometry, deletion). Operates on the single
- * seeded box so selection is unambiguous in the fresh context.
+ * 2D edit/delete persistence: attribute, geometry and deletion edits made in
+ * the sidebar form autosave and are verified from a brand-new browser
+ * context. Operates on the single seeded box so selection is unambiguous.
  */
 import { Browser, expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";

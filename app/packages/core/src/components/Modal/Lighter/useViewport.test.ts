@@ -95,8 +95,7 @@ vi.mock("@fiftyone/lighter", async () => {
     useLighterEventBus: (_channelId: string) => ({
       dispatch: mockEventBusDispatch,
     }),
-    // Mirrors the real implementation so tests flushing mockRenderCallbacks
-    // drive the settle exactly as production does.
+    // tests flushing mockRenderCallbacks drive the settle as production does
     dispatchAfterPaintSettle: (
       scene: {
         registerRenderCallback: (cb: {

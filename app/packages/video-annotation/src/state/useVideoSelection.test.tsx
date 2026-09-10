@@ -30,7 +30,7 @@ vi.mock("@fiftyone/annotation", async () => {
 import {
   useSelectionIsInstanceTrack,
   useSelectionIsKeyframeable,
-} from "./useVideoInteraction";
+} from "./useVideoSelection";
 
 const TYPE_BY_PATH: Record<string, LabelType> = {
   "frames.detections": LabelType.Detections,
@@ -62,11 +62,8 @@ describe("useSelectionIsKeyframeable (detections + polylines)", () => {
   });
 
   it("is true for a polyline selection", () => {
-    // Polyline tracks interpolate their vertices, so they are keyframeable —
-    // the toolbar's Mark Keyframe must reach them. Keep in step with
-    // `linearAgentFor` in `useVideoPropagate`: a type that resolves to a linear
-    // agent there has to be keyframeable here, or interpolation works while
-    // keyframe management stays disabled (and the tooltip lies about it).
+    // polylines interpolate their vertices, so they are keyframeable; keep in
+    // step with `linearAgentFor` in `propagation/propagationShapes`
     const { result } = renderHook(() => useSelectionIsKeyframeable());
     setActive([{ sample: "s1", path: "frames.polylines", instanceId: "p1" }]);
     expect(result.current).toBe(true);

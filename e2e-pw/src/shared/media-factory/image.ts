@@ -3,17 +3,25 @@
  */
 
 import { HorizontalAlign, Jimp, loadFont, VerticalAlign } from "jimp";
+import type { MediaOptions } from "./types";
+import { generateOnce } from "./write";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const fonts = require("jimp/fonts");
 
 /**
- * Options for generating a solid-color PNG.
+ * What to draw in a solid-color PNG; every field has a default.
  */
-export interface ImageOptions {
-  /** The width of the image in pixels. */
-  width: number;
-  /** The height of the image in pixels. */
-  height: number;
+export interface ImageSpec {
+  /**
+   * The width of the image in pixels.
+   * @default 50
+   */
+  width?: number;
+  /**
+   * The height of the image in pixels.
+   * @default 50
+   */
+  height?: number;
   /**
    * The background fill color as a CSS hex string.
    * @default "#00ddff"
@@ -31,88 +39,59 @@ export interface ImageOptions {
   hideLogs?: boolean;
 }
 
-export const DEFAULT_IMAGE_OPTIONS: ImageOptions = {
-  fillColor: "white",
+export type ImageOptions = MediaOptions & ImageSpec;
+
+export const DEFAULT_IMAGE_SPEC: Required<
+  Pick<ImageSpec, "width" | "height" | "fillColor">
+> = {
   width: 50,
   height: 50,
+  fillColor: "#00ddff",
 };
 
 /**
- * Generates a PNG image at the specified path, with optional fill color
- * and centered watermark text.
- *
- * @param options - Configuration for image generation.
- * @param options.outputPath - The absolute or relative file path where the image
- *   will be saved. Must include a file extension (e.g. `/tmp/dataset/0.png`).
- * @param options.width - The width of the image in pixels.
- * @param options.height - The height of the image in pixels.
- * @param options.fillColor - The background color of the image as a CSS hex string.
- *   @default "#00ddff"
- * @param options.watermarkString - Optional text to render centered over the image
- *   using a 10px black sans-serif font. If omitted, no text is rendered.
- * @param options.hideLogs - When `true`, suppresses console output for both the
- *   start and completion log messages.
- *   @default false
- *
- * @returns A `Promise` that resolves when the image has been written to disk.
+ * Generates a PNG at `outputPath` (which must carry an extension) with an
+ * optional fill color and centered watermark text.
  *
  * @example
- * // Minimal usage
- * await createImage({
- *   outputPath: "/tmp/images/sample.png",
- *   width: 128,
- *   height: 128,
- * });
- *
- * @example
- * // With all options
  * await createImage({
  *   outputPath: "/tmp/images/42.png",
  *   width: 256,
  *   height: 256,
  *   fillColor: "#ff0000",
  *   watermarkString: "42",
- *   hideLogs: true,
  * });
  */
-export const createImage = async (
-  options: ImageOptions & {
-    /** The absolute or relative file path where the image will be saved. */
-    outputPath: string;
-  },
-) => {
-  const { width, height, outputPath, fillColor, hideLogs } = options;
-  const startTime = performance.now();
+export const createImage = async (options: ImageOptions): Promise<void> => {
+  const { outputPath, width, height, fillColor, watermarkString, hideLogs } = {
+    ...DEFAULT_IMAGE_SPEC,
+    ...options,
+  };
 
-  if (!hideLogs) {
-    console.log(`Creating image with options: ${JSON.stringify(options)}`);
-  }
+  await generateOnce(
+    "Image",
+    options,
+    async () => {
+      const image = new Jimp({ width, height, color: fillColor });
 
-  const image = new Jimp({ width, height, color: fillColor ?? "#00ddff" });
+      if (watermarkString) {
+        const font = await loadFont(fonts.SANS_10_BLACK);
+        image.print({
+          font,
+          x: 0,
+          y: 0,
+          text: {
+            text: watermarkString,
+            alignmentX: HorizontalAlign.CENTER,
+            alignmentY: VerticalAlign.MIDDLE,
+          },
+          maxWidth: width,
+          maxHeight: height,
+        });
+      }
 
-  if (options.watermarkString) {
-    const font = await loadFont(fonts.SANS_10_BLACK);
-    image.print({
-      font,
-      x: 0,
-      y: 0,
-      text: {
-        text: options.watermarkString,
-        alignmentX: HorizontalAlign.CENTER,
-        alignmentY: VerticalAlign.MIDDLE,
-      },
-      maxWidth: width,
-      maxHeight: height,
-    });
-  }
-
-  await image.write(outputPath as `${string}.${string}`);
-  const endTime = performance.now();
-  const timeTaken = endTime - startTime;
-
-  if (!hideLogs) {
-    console.log(
-      `Image generation, path = ${outputPath}, completed in ${timeTaken} milliseconds`,
-    );
-  }
+      await image.write(outputPath as `${string}.${string}`);
+    },
+    hideLogs,
+  );
 };

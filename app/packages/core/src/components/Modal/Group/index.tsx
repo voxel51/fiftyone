@@ -75,11 +75,8 @@ const Group = () => {
     }
   }, [actions, is3dVisible, isMainVisible, isPinned]);
 
-  // An image dataset dynamically grouped into a video is annotated through the
-  // video surface, which replaces the entire group view (carousel, paginated
-  // element bar, big looker) with its own media + timeline. The modal sample
-  // read lives in the child so sparse groups, whose active slice can lack a
-  // sample, never evaluate it here.
+  // the video surface replaces the entire group view; the modal sample read
+  // lives in the child so a sparse group's missing slice never evaluates here
   if (isAnnotateMode && isImageDynamicGroupVideo) {
     return <AnnotateDynamicGroupVideo />;
   }

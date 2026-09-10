@@ -1,20 +1,12 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Temporal-detection (TD) create / edit / delete on the video-annotation
- * surface, all engine-routed:
- *
- *  - create + edit: the "New TD" toolbar action mints a sample-level TD at the
- *    playhead; selecting it opens the editor and a class assigns through the
- *    engine and persists.
- *  - mid-list delete id-preservation (guards step-4 `idAlignedListDelta`):
- *    deleting the MIDDLE of three TDs must not renumber/rewrite the siblings.
- *    The sample-level list diff is id-aligned, so the surviving two keep their
- *    exact `_id`s and labels across a true round-trip (fresh browser context).
- *    The regression this guards rewrote a sibling's `_id` on a mid-list delete.
- *
- * Seeded with the three demo events (approach [1,6] / pass [7,13] /
- * depart [14,20] over a 20-frame clip), re-seeded per test for isolation.
+ * Temporal-detection (TD) create/edit/delete on the video surface: the "New TD"
+ * action mints a TD at the playhead whose class assigns and persists, and
+ * deleting the middle of three TDs leaves the siblings' `_id`s and labels
+ * intact across a fresh browser context (the list diff is id-aligned).
+ * Re-seeded per test with the demo events approach [1,6] / pass [7,13] /
+ * depart [14,20].
  */
 import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -60,7 +52,8 @@ test.afterAll(async ({ foWebServer }) => {
 
 test.beforeEach(async ({ datasetFactory }) => {
   // three TDs: approach [1,6], pass [7,13], depart [14,20].
-  await datasetFactory.createVideoDataset({
+  await datasetFactory.createDataset({
+    mediaType: "video",
     datasetName,
     ...videoAnnotationSeed(),
   });

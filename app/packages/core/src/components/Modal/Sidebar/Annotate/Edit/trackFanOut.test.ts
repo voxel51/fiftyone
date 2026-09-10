@@ -71,9 +71,8 @@ describe("buildForwardFill", () => {
   const dynRef = (frame: number): LabelRef => frameRef(frame);
 
   it("forward-fills a BARE-path track (image dynamic group played as video)", () => {
-    // dgva frame occurrences live on sample-level paths, not `frames.*` —
-    // the fill must be namespace-agnostic once the caller's frame-scope gate
-    // (isFrameScopedPath) admits the field
+    // dgva frame occurrences live on sample-level paths, so the fill must be
+    // namespace-agnostic
     const bareRef = (frame: number): LabelRef => ({
       sample: "s1",
       path: "boxes",

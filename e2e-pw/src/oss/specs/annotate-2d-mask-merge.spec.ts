@@ -1,17 +1,11 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * 2D mask MERGE (the segmentation Merge tool) — brush-free. Two masked
- * detections are seeded; with the Merge tool active, a target-click then a
- * source-click merges the source's mask into the target and DELETES the source.
- * The whole gesture (target bbox + async mask re-encode + source delete) is one
- * coalesced undo unit (a single `gestureId`), so:
- *   - the source is absorbed (label count 2 → 1) and the merge persists,
- *   - a single undo restores the source (count → 2).
- *
- * The seeded detections carry `_cls` so their embedded masks decode (see
- * annotate-2d-mask.spec.ts). Merge needs ≥2 masked detections in the field for
- * the tool to enable.
+ * 2D mask merge with the segmentation Merge tool: a target-click then a
+ * source-click folds the source's mask into the target and deletes the source
+ * as one undo unit, so the label count drops 2 → 1, persists, and a single
+ * undo restores it. The seeded detections carry `_cls` so their embedded masks
+ * decode, and merge needs ≥2 masked detections to enable.
  */
 import { Browser, expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";

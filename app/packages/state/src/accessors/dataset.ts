@@ -109,10 +109,8 @@ export const useGroupSlices = (mediaTypes: GroupSliceMediaType[]): string[] => {
 };
 
 /**
- * Whether the current view is an image dataset dynamically grouped into a
- * video — i.e. an ordered dynamic group whose underlying samples are images
- * (ImaVid). Such a view reports a "group" media type with no slices, but is
- * annotatable like its underlying image samples.
+ * Whether the current view is an ordered dynamic group over image samples
+ * (ImaVid). Such a view reports a "group" media type with no slices.
  *
  * @returns True if the current view is an image-backed dynamic group video
  */

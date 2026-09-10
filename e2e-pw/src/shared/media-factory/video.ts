@@ -3,31 +3,34 @@
  */
 
 import { spawnSync } from "child_process";
-import fs from "fs";
 import path from "path";
 import { Duration } from "src/oss/utils";
+import type { MediaOptions } from "./types";
+import { generateOnce } from "./write";
 
 /**
- * Options for generating a solid-color video via ffmpeg.
+ * What to record in a solid-color video via ffmpeg; every field has a default.
  */
-export interface VideoOptions {
+export interface VideoSpec {
   /** Duration of the video in seconds. */
-  duration: number;
+  duration?: number;
   /** Width of the video in pixels. */
-  width: number;
+  width?: number;
   /** Height of the video in pixels. */
-  height: number;
+  height?: number;
   /** Frame rate of the video in frames per second. */
-  frameRate: number;
+  frameRate?: number;
   /** Background color of the video as a CSS hex string (e.g. `"#ff0000"`). */
-  color: string;
+  color?: string;
   /** When `true`, muxes in a sine-tone audio track. */
-  audio: boolean;
+  audio?: boolean;
   /** Container and codec: `webm` (VP8) or `mp4` (VP9, faststart). */
-  container: "webm" | "mp4";
+  container?: "webm" | "mp4";
 }
 
-export const DEFAULT_VIDEO_OPTIONS: VideoOptions = {
+export type VideoOptions = MediaOptions & VideoSpec;
+
+export const DEFAULT_VIDEO_SPEC: Required<VideoSpec> = {
   duration: 2,
   width: 64,
   height: 64,
@@ -40,17 +43,10 @@ export const DEFAULT_VIDEO_OPTIONS: VideoOptions = {
 const CONTAINERS = new Set(["webm", "mp4"]);
 
 /**
- * Generates a solid-color video file using ffmpeg, optionally carrying a
- * sine-tone audio track, and returns the path written.
- *
- * `outputPath` may name the container by extension (`clip.webm`) or omit it,
- * in which case `container` picks the extension. The video codec follows the
- * container (VP8/`.webm`, VP9/`.mp4`) at a target bitrate of 1Mbps and
- * `yuv420p` pixel format; audio, when requested, is Opus. The ffmpeg process
- * is run synchronously via a shell subprocess with a 10-second timeout.
- *
- * A clip that already exists at the resolved path is reused: dataset media
- * paths are unique per run, so a repeat call is a re-seed of the same clip.
+ * Generates a solid-color video via ffmpeg (VP8/`.webm` or VP9/`.mp4`, 1Mbps
+ * `yuv420p`, optional Opus sine tone) and returns the path written;
+ * `outputPath` may name the container by extension or omit it. An existing
+ * clip at the resolved path is reused.
  *
  * @example
  * await createVideo({
@@ -63,25 +59,27 @@ const CONTAINERS = new Set(["webm", "mp4"]);
  *   container: "webm",
  * });
  */
-export const createVideo = async ({
-  outputPath,
-  ...options
-}: Partial<VideoOptions> & { outputPath: string }): Promise<string> => {
-  const extension = path.extname(outputPath).slice(1);
-  const { duration, width, height, frameRate, color, audio, container } = {
-    ...DEFAULT_VIDEO_OPTIONS,
-    ...(CONTAINERS.has(extension) ? { container: extension } : {}),
+export const createVideo = async (options: VideoOptions): Promise<string> => {
+  const extension = path.extname(options.outputPath).slice(1);
+  const {
+    outputPath,
+    duration,
+    width,
+    height,
+    frameRate,
+    color,
+    audio,
+    container,
+  } = {
+    ...DEFAULT_VIDEO_SPEC,
+    ...(CONTAINERS.has(extension)
+      ? { container: extension as VideoSpec["container"] }
+      : {}),
     ...options,
-  } as VideoOptions;
+  };
   const resolvedPath = outputPath.endsWith(`.${container}`)
     ? outputPath
     : `${outputPath}.${container}`;
-
-  if (fs.existsSync(resolvedPath)) {
-    return resolvedPath;
-  }
-
-  const startTime = performance.now();
 
   const isMp4 = container === "mp4";
   const inputs = [
@@ -102,16 +100,12 @@ export const createVideo = async ({
     .filter(Boolean)
     .join(" ");
 
-  spawnSync(ffmpegCommand, {
-    shell: true,
-    timeout: Duration.Seconds(10),
+  await generateOnce("Video", { ...options, outputPath: resolvedPath }, () => {
+    spawnSync(ffmpegCommand, {
+      shell: true,
+      timeout: Duration.Seconds(10),
+    });
   });
-
-  const endTime = performance.now();
-  const timeTaken = endTime - startTime;
-  console.log(
-    `Video generation, path = ${resolvedPath}, completed in ${timeTaken} milliseconds`,
-  );
 
   return resolvedPath;
 };

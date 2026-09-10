@@ -54,13 +54,10 @@ export const useVideoLighterEngineBridge = (
   // bridge (clear + rehydrate); the playhead value is read live at call time
   const getFrame = useCurrentFrameGetter();
 
-  // Stamp the playhead frame only onto frame-scoped paths (`frames.*` on real
-  // video, bare paths on a dynamic group). A sample-level temporal detection
-  // sharing this scene must stay frame-less so its engine ref matches the
-  // sidebar / timeline; stamping a frame would make each surface address a
-  // different occurrence and break cross-surface select. A frame-less ref on a
-  // frame-scoped path is worse than a mismatch: the `FrameStore` silently
-  // drops its writes, so gesture commits never land.
+  // Stamp the playhead frame only onto frame-scoped paths; a sample-level
+  // temporal detection sharing this scene must stay frame-less so its engine
+  // ref matches the sidebar and timeline. A frame-less ref on a frame-scoped
+  // path is worse: the `FrameStore` silently drops its writes.
   const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
   const frameOf = useCallback(
     (path: string) =>

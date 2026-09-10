@@ -172,10 +172,9 @@ const VideoAnnotationSurfaceForSample: React.FC<
   const surfaceHeight = dimensions.bounds?.height ?? 0;
   const timelineMaxSize = useTimelineMaxSize(surfaceHeight);
 
-  // Resolved top-level media URL. The `html` tile binds to it and the `extract`
-  // source decodes it in a worker; the `fetch` source resolves per-frame URLs
-  // instead and ignores it. A dynamic-group ImaVid sample's URL is an image,
-  // not a video source — never expose it as one.
+  // Resolved top-level media URL for the `html` and `extract` sources; the
+  // `fetch` source resolves per-frame URLs instead. A dynamic-group sample's
+  // URL is an image, never a video source.
   const videoSrc = useMemo(() => {
     if (isImageDynamicGroupVideo) {
       return null;

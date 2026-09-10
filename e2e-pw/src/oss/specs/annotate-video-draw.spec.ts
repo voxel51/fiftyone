@@ -1,11 +1,10 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Per-frame detection drawing on the video-annotation surface: drawing a box in
- * detection mode adds a track to the timeline, the freshly-drawn box opens its
- * edit form, assigning a class commits it through the engine, and the frame
- * label survives a true round-trip (fresh browser context). Foundational
- * coverage for video on the annotation engine.
+ * Per-frame detection drawing on the video surface: a box drawn in detection
+ * mode adds a timeline track, opens its edit form, commits on class assignment,
+ * and survives a fresh browser context. Foundational coverage for video on the
+ * annotation engine.
  */
 import { Browser, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -28,7 +27,8 @@ const test = base.extend<{ modal: ModalPom }>({
 test.beforeAll(async ({ foWebServer, datasetFactory }) => {
   await foWebServer.startWebServer();
   // clean slate (no pre-seeded tracks): drawing is the only object track.
-  await datasetFactory.createVideoDataset({
+  await datasetFactory.createDataset({
+    mediaType: "video",
     datasetName,
     ...videoAnnotationSeed(),
   });

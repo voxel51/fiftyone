@@ -27,16 +27,9 @@ export interface ImaVidImageStreamOptions extends FrameBitmapStreamOptions {
   view: Stage[];
   /** Group slice name, when the dataset is grouped. */
   groupSlice?: string | null;
-  /**
-   * Dynamic-group value, when the clip is a dynamic group rather than a video
-   * sample. Routes `/frames` to that group's ordered samples (ImaVid for an
-   * image dataset grouped into a video).
-   */
+  /** Dynamic-group value; routes `/frames` to that group's ordered samples. */
   dynamicGroup?: string | null;
-  /**
-   * The dataset's modal media field (default `filepath`) — the field each
-   * frame's media path is read from, and the value the header displays.
-   */
+  /** The dataset's modal media field (default `filepath`), read for each frame's media path. */
   mediaField?: string;
 }
 

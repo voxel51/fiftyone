@@ -2,38 +2,51 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { createFo3d } from "./fo3d";
-import { createPly } from "./ply";
+import { createFo3d, type SceneNode } from "./fo3d";
+import { createPcd, type PcdSpec } from "./pcd";
+import { createPly, type PlySpec } from "./ply";
+import type { MediaOptions } from "./types";
 
 /**
- * Options for a `.fo3d` scene wrapping a single generated PLY mesh.
+ * The assets composed into a `.fo3d` scene: PLY meshes and PCD point clouds,
+ * each generated from its own spec. Defaults to one cube mesh.
  */
-export interface SceneOptions {
-  /** Geometry of the PLY asset. */
-  shape: "cube" | "point-cloud";
-  /** Point count for `point-cloud` shapes. */
-  numPoints?: number;
-  /** RGB vertex color of the PLY asset. */
-  color?: [number, number, number];
+export interface SceneSpec {
+  meshes?: PlySpec[];
+  pointClouds?: PcdSpec[];
 }
 
-export const DEFAULT_SCENE_OPTIONS: SceneOptions = { shape: "cube" };
+export type SceneOptions = MediaOptions & SceneSpec;
+
+export const DEFAULT_SCENE_SPEC: SceneSpec = { meshes: [{}] };
 
 /**
- * Writes `<outputPath>.ply` and a `<outputPath>.fo3d` scene referencing it,
- * and returns the scene path. A single cube is enough geometry for the 3D
- * viewer to mount and frame the scene.
+ * Writes each asset as `<outputPath>-<i>.ply` / `.pcd` and a `<outputPath>.fo3d`
+ * scene referencing them, and returns the scene path.
  *
  * @example
  * const scenePath = createScene({ outputPath: "/tmp/scenes/0" });
  */
 export const createScene = ({
   outputPath,
-  ...options
-}: Partial<SceneOptions> & { outputPath: string }): string => {
-  const plyPath = `${outputPath}.ply`;
+  meshes,
+  pointClouds,
+}: SceneOptions): string => {
+  const spec =
+    meshes || pointClouds ? { meshes, pointClouds } : DEFAULT_SCENE_SPEC;
+  const nodes: SceneNode[] = [
+    ...(spec.meshes ?? []).map((mesh, index): SceneNode => {
+      const assetPath = `${outputPath}-${index}.ply`;
+      createPly({ outputPath: assetPath, ...mesh });
+      return { type: "PlyMesh", assetPath };
+    }),
+    ...(spec.pointClouds ?? []).map((pointCloud, index): SceneNode => {
+      const assetPath = `${outputPath}-${index}.pcd`;
+      createPcd({ outputPath: assetPath, ...pointCloud });
+      return { type: "PointCloud", assetPath };
+    }),
+  ];
   const scenePath = `${outputPath}.fo3d`;
-  createPly({ outputPath: plyPath, ...DEFAULT_SCENE_OPTIONS, ...options });
-  createFo3d({ outputPath: scenePath, plyPath });
+  createFo3d({ outputPath: scenePath, nodes });
   return scenePath;
 };

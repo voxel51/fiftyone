@@ -107,15 +107,10 @@ def run_length_encode_values(
 def resolve_label_list_field(
     dataset, field: str, dynamic_group: bool = False
 ) -> t.Optional[str]:
-    """The label-list subfield for a label field, or ``None`` for a single label.
+    """The label-list subfield of ``field``, or ``None`` for a single label.
 
-    A ``Detections`` field stores its labels under ``detections``, ``Polylines``
-    under ``polylines``, and so on; the index unwinds that list. A single-label
-    field (e.g. ``Detection``) has no list and is unwound directly.
-
-    ``dynamic_group`` selects which schema to resolve against: a video's labels
-    live on the frame schema, but a dynamic group's "frames" are samples, so its
-    labels live on the sample schema.
+    ``dynamic_group`` resolves against the sample schema, since a dynamic
+    group's "frames" are samples.
     """
     schema = (
         dataset.get_field_schema()
@@ -152,15 +147,9 @@ def index_post_pipeline(
     the values is near-free; the cost the column adds is the pushed array, paid
     only for the attributes the caller asks for.
 
-    When ``dynamic_group`` is set the input is the dynamic group's ordered
-    *samples* rather than a video's flattened frames (an image dataset grouped
-    into a video / ImaVid). The frame number is each sample's 1-indexed rank in
-    the group — relying on the input being pre-ordered, which
-    ``get_dynamic_group`` guarantees — read straight from the unwound rank, so
-    nothing is written into the sample document (which may carry a real
-    ``frame_number`` of its own). The label field is read at sample level; its
-    ``$field.list`` shape is identical to a flattened frame field, so the
-    unwind/group are unchanged.
+    When ``dynamic_group`` is set the input is the group's ordered samples,
+    and the frame number is each sample's 1-indexed rank read from the
+    unwound array index rather than written into the document.
     """
     labels_expr = "$%s.%s" % (field, list_field) if list_field else "$" + field
     fn_expr: t.Any = "$frame_number"
@@ -294,13 +283,11 @@ async def aggregate_index(
 ) -> t.Dict[str, dict]:
     """Run the per-instance index aggregation for each requested field.
 
-    ``view`` already selects the clip's frames: the single video sample (and
-    ``frames_only`` flattens its frames), or — when ``dynamic_group`` is set —
-    the dynamic group's ordered samples, each treated as a frame. Returns
+    ``view`` already selects the clip's frames: the single video sample, or
+    the dynamic group's ordered samples when ``dynamic_group`` is set. Returns
     ``{field: {"instances": [...]}}`` with frame numbers and ObjectIds still
-    raw — the route stringifies on the way out. ``dynamic_attributes`` adds the
-    per-instance ``attributeSegments`` value runs (see
-    :func:`build_instance_index`).
+    raw; ``dynamic_attributes`` adds the per-instance ``attributeSegments``
+    value runs (see :func:`build_instance_index`).
     """
     collection = foo.get_async_db_conn()[view._dataset._sample_collection_name]
 
@@ -333,9 +320,8 @@ class VideoLabelsIndex(HTTPEndpoint):
         sample_id = data.get("sampleId")
         fields = data.get("fields") or []
         dynamic_attributes = data.get("dynamicAttributes") or []
-        # When set, the clip is a dynamic group (an image dataset grouped into a
-        # video) rather than a video sample; its "frames" are the group's
-        # ordered samples and the index is built over them.
+        # when set, the clip's "frames" are this dynamic group's ordered
+        # samples rather than a video sample's frames
         dynamic_group = data.get("dynamicGroup")
 
         if dynamic_group is not None:
@@ -384,9 +370,8 @@ class VideoLabelsWindow(HTTPEndpoint):
         extended = data.get("extended", None)
         sample_id = data.get("sampleId")
         fields = data.get("fields") or []
-        # When set, the clip is a dynamic group (an image dataset grouped into a
-        # video); the window is that group's ordered samples in the requested
-        # range rather than a video sample's `frames` field.
+        # when set, the window is this dynamic group's ordered samples in the
+        # requested range rather than a video sample's frames
         dynamic_group = data.get("dynamicGroup")
 
         if dynamic_group is not None:
@@ -461,13 +446,10 @@ async def aggregate_window(
     """Read field-projected label payloads for the windowed frames.
 
     Returns ``{frame_number: {field: payload}}`` keyed by stringified frame
-    number, dropping fields a frame doesn't carry. ``view`` already selects the
-    sample and limits the frame range (via ``support`` or a ``$filter`` stage).
-
-    When ``dynamic_group`` is set the "frames" are the dynamic group's ordered
-    samples (already windowed by the caller via ``skip``/``limit``); they carry
-    sample-level label fields and no ``frame_number``, so the i-th sample is
-    keyed as ``start_frame + i``.
+    number, dropping fields a frame doesn't carry; when ``dynamic_group`` is
+    set the i-th windowed sample is keyed as ``start_frame + i``. ``view``
+    already selects the sample and limits the frame range (via ``support`` or
+    a ``$filter`` stage).
     """
     fields = list(fields)
     project = {field: True for field in fields}

@@ -505,14 +505,9 @@ const Actions = ({ hidden = false }: { hidden?: boolean }) => {
     !current3dAnnotationMode;
   const areThreeDActionsVisible = is3dDataset || is3dSamplePinned;
 
-  // For group datasets the 2D-vs-3D decision depends on the resolved annotation
-  // slice, which isn't known until the group's sample data loads. Withhold the
-  // slice-dependent tools until then so a 3D sample never flashes 2D tools.
-  // Non-group datasets resolve immediately and don't gate. A dynamic group
-  // over a non-group dataset reports the "group" media type as a view
-  // artifact — it has no slices to resolve, so waiting would withhold the
-  // tools forever. A dynamic group over a group dataset does have slices (a
-  // 3D one, possibly) and waits like any other group.
+  // group datasets withhold slice-dependent tools until the annotation slice
+  // resolves, so a 3D sample never flashes 2D tools; a dynamic group over a
+  // non-group dataset has no slices and must not gate
   const isGroupDataset = useIsGroupDataset();
   const isDynamic = useRecoilValue(isNonNestedDynamicGroup);
   const [groupAnnotationSliceReady] = useGroupAnnotationSliceReady();

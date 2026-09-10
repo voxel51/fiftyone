@@ -2,168 +2,20 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import {
-  UNDEFINED_LIGHTER_SCENE_ID,
-  dispatchAfterPaintSettle,
-  useLighterEventBus,
-  useLighterEventHandler,
-  useLighterSetupWithPixi,
-} from "@fiftyone/lighter";
+import { useLighterSetupWithPixi } from "@fiftyone/lighter";
 import { useModalLookerOptions } from "@fiftyone/state";
+import { type DependencyList, type RefObject, useMemo } from "react";
 import {
-  type DependencyList,
-  type RefObject,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-import { singletonCanvas } from "../../../core/src/components/Modal/Lighter/SharedCanvas";
-import { ExternalCanonicalMedia } from "../media/ExternalCanonicalMedia";
-import { useColorScheme, useColorSeed } from "../state/accessors";
+  type Dimensions,
+  type LighterScene,
+  useAttachedSingletonCanvas,
+  useCanonicalMediaInstall,
+  useSceneColorScheme,
+  useSceneInteractionFlags,
+} from "./useLighterSceneSetup";
+import { useViewportReset } from "./useViewportReset";
 
-/** Intrinsic media resolution the canonical-media overlay is sized to. */
-interface Dimensions {
-  w: number;
-  h: number;
-}
-
-type LighterScene = ReturnType<typeof useLighterSetupWithPixi>["scene"];
-
-/**
- * Attach the SINGLETON Lighter canvas into `hostRef`. One
- * SharedPixiApplication per page binds to the first canvas it sees; a fresh
- * canvas would leave Pixi rendering to the old (image-modal) one.
- */
-function useAttachedSingletonCanvas(
-  hostRef: RefObject<HTMLDivElement | null>,
-): HTMLCanvasElement | null {
-  const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
-
-  useEffect(() => {
-    const host = hostRef.current;
-    if (!host) {
-      return undefined;
-    }
-
-    setCanvas(singletonCanvas.getCanvas(host));
-
-    return () => {
-      singletonCanvas.detach();
-    };
-  }, [hostRef]);
-
-  return canvas;
-}
-
-/** Keep the scene's color mapping in sync with the FiftyOne color scheme. */
-function useSceneColorScheme(scene: LighterScene, sceneId: string): void {
-  const scheme = useColorScheme();
-  const seed = useColorSeed();
-
-  useEffect(() => {
-    if (!scene || scene.getSceneId() !== sceneId) {
-      return;
-    }
-
-    scene.updateColorMappingContext({ colorScheme: scheme, seed });
-  }, [scene, sceneId, scheme, seed]);
-}
-
-/**
- * Install a no-pixel canonical-media overlay sized to `dims`. Lighter draws
- * overlays relative to it. Returns whether the current scene's media is
- * installed — overlays added before it exists have no coordinate context.
- */
-function useCanonicalMediaInstall(
-  scene: LighterScene,
-  sceneId: string,
-  dims: Dimensions | null,
-): boolean {
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    setReady(false);
-  }, [sceneId]);
-
-  useEffect(() => {
-    if (!scene || !dims) {
-      return;
-    }
-
-    if (scene.getSceneId() !== sceneId) {
-      return;
-    }
-
-    const media = new ExternalCanonicalMedia({
-      width: dims.w,
-      height: dims.h,
-    });
-
-    scene.addOverlay(media);
-    scene.setCanonicalMedia(media);
-    setReady(true);
-  }, [scene, sceneId, dims]);
-
-  return ready;
-}
-
-/**
- * Reset the viewport to the resting IDENTITY frame once the renderer and the
- * canonical media's real bounds are both ready. Identity (not `fitToContent`,
- * which frames the labels' bbox) keeps the letterboxed media aligned with
- * world coordinates. Bounds arrive via ResizeObserver after layout, so we gate
- * on the `bounds-changed` event rather than renderer-ready alone (which races
- * a zero-size scene).
- *
- * After the reset settles on-canvas, dispatches
- * `lighter:viewport-init-complete` — the same reveal signal the image modal's
- * `useViewport` emits — so tiles can stay hidden until overlays are painted at
- * their final transform.
- */
-export function useViewportReset(scene: LighterScene, sceneId: string): void {
-  // Readiness is recorded per scene id: a re-minted scene starts over, so a
-  // signal the previous scene raised can never open the new one early
-  const [rendererReadyFor, setRendererReadyFor] = useState<string | null>(null);
-  const [mediaBoundsReadyFor, setMediaBoundsReadyFor] = useState<string | null>(
-    null,
-  );
-  const useEventHandler = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
-  );
-  const eventBus = useLighterEventBus(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
-  );
-
-  useEventHandler(
-    "lighter:renderer-ready",
-    useCallback(() => setRendererReadyFor(sceneId), [sceneId]),
-  );
-
-  useEventHandler(
-    "lighter:canonical-media-bounds-changed",
-    useCallback(() => setMediaBoundsReadyFor(sceneId), [sceneId]),
-  );
-
-  useEffect(() => {
-    if (
-      !scene ||
-      rendererReadyFor !== sceneId ||
-      mediaBoundsReadyFor !== sceneId
-    ) {
-      return;
-    }
-
-    if (scene.getSceneId() !== sceneId) {
-      return;
-    }
-
-    scene.resetZoomPan();
-    dispatchAfterPaintSettle(scene, () =>
-      eventBus.dispatch("lighter:viewport-init-complete", {}),
-    );
-  }, [scene, sceneId, rendererReadyFor, mediaBoundsReadyFor, eventBus]);
-}
+export { useViewportReset };
 
 /**
  * Owns the Lighter scene lifecycle shared by both video-annotation tiles:
@@ -176,7 +28,7 @@ export function useViewportReset(scene: LighterScene, sceneId: string): void {
  * source; pass nothing for a once-per-mount scene).
  *
  * Returns the scene plus whether its canonical media is installed; feed
- * `canonicalMediaReady` into {@link useVideoAnnotationSyncBundle}..
+ * `canonicalMediaReady` into {@link useVideoAnnotationSyncBundle}.
  */
 export function useLighterMediaScene({
   hostRef,
@@ -234,31 +86,7 @@ export function useLighterMediaScene({
 
   const { scene } = useLighterSetupWithPixi(canvas, options, sceneId);
 
-  // Applied per scene, so a re-minted scene (new source) comes back read-only
-  // too. Not order-sensitive against overlay installation: `setReadOnly` stores
-  // the flag on the scene, re-walks the overlays already present, and
-  // `Scene2D.addOverlay` applies it to every later arrival. So overlays
-  // installed before this effect (the sync bundles run as child components, and
-  // child effects fire ahead of this one) are still stripped of their move
-  // affordances.
-  useEffect(() => {
-    if (!scene || scene.getSceneId() !== sceneId) {
-      return;
-    }
-    scene.setReadOnly(readOnly);
-  }, [scene, sceneId, readOnly]);
-
-  // Same per-scene application as `readOnly` above, and for the same reason: a
-  // re-minted scene (new source) starts out single-select and has to be told
-  // again. Selection is scene state rather than an overlay affordance, so
-  // unlike read-only this one needs no walk over the overlays.
-  useEffect(() => {
-    if (!scene || scene.getSceneId() !== sceneId) {
-      return;
-    }
-    scene.setMultipleSelection(multipleSelection);
-  }, [scene, sceneId, multipleSelection]);
-
+  useSceneInteractionFlags(scene, sceneId, { readOnly, multipleSelection });
   useSceneColorScheme(scene, sceneId);
   const canonicalMediaReady = useCanonicalMediaInstall(scene, sceneId, dims);
   useViewportReset(scene, sceneId);

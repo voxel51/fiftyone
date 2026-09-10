@@ -1,13 +1,7 @@
 /**
- * The per-frame label-field path convention.
- *
- * The annotation schema, the engine, the form, and the canvas all address a
- * video sample's per-frame label field by its full dataset path,
- * `frames.<field>` — one shared namespace. The only place that needs the
- * relative `<field>` is the {@link FrameStore} when it addresses a field
- * *inside* a per-frame document (a frame doc stores `detections`, not
- * `frames.detections`); `toSchemaField` is that internal mapping. Sample-level
- * fields carry no prefix and pass through unchanged.
+ * The per-frame label-field path convention: everything addresses a frame
+ * field by its full `frames.<field>` dataset path. Only the {@link FrameStore}
+ * needs the relative `<field>` inside a frame document, via `toSchemaField`.
  */
 
 export const FRAMES_PREFIX = "frames.";
@@ -19,11 +13,9 @@ export const toSchemaField = (enginePath: string): string =>
     : enginePath;
 
 /**
- * Whether `path` addresses per-frame labels, per the dual path namespace: a
- * real video's frame labels live under `frames.*` (bare paths there are
- * sample-level, e.g. temporal detections), while an image dataset dynamically
- * grouped into a video (ImaVid) has no `frames.*` namespace — each "frame" is
- * a sample, so its bare sample-level paths are the frame-scoped ones.
+ * Whether `path` addresses per-frame labels. A real video's frame labels live
+ * under `frames.*`; in an image dynamic group video each frame is a sample, so
+ * its bare paths are the frame-scoped ones.
  */
 export const isFrameScopedPath = (
   path: string,

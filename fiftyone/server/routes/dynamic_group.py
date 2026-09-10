@@ -36,8 +36,7 @@ def parse_group_token(
     """Parses the ``If-Match`` group version token from the request.
 
     The token is ``"<max last_modified_at ISO>|<member count>"``, optionally
-    base64-encoded. The two components pin the group's state: any member
-    write bumps the max, and membership changes move the count.
+    base64-encoded.
 
     Args:
         request: The request
@@ -68,21 +67,6 @@ def parse_group_token(
         raise HTTPException(
             status_code=400, detail="Invalid If-Match header"
         ) from err
-
-
-#: Sentinel "max last_modified_at" for a group whose members all lack the
-#: field — legacy samples never written through the app. The client mints
-#: the same value, so the first write validates and stamps real values.
-GROUP_EPOCH = datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)
-
-
-def _group_max_lmt(
-    lmts: List[Optional[datetime.datetime]],
-) -> datetime.datetime:
-    """The group token's max ``last_modified_at``: the max over members that
-    have one, or :data:`GROUP_EPOCH` when none do."""
-    known = [lmt for lmt in lmts if lmt is not None]
-    return max(known) if known else GROUP_EPOCH
 
 
 def generate_group_etag(
@@ -133,13 +117,9 @@ class DynamicGroup(HTTPEndpoint):
         """Applies JSON-patch deltas to members of a dynamic group under a
         single group version token.
 
-        The group — not each member — is the concurrency container: the
-        ``If-Match`` token pins the whole group's state, mirroring a video
-        sample's single-ETag semantics. Members are written sequentially with
-        per-member compare-and-swap; a swap that loses a race fails the whole
-        request with a 412 carrying a fresh group token, and the client
-        re-applies against refreshed state (the deltas are id-aligned, so a
-        retry after a partial write converges).
+        The group, not each member, is the concurrency container; a member
+        swap that loses a race fails the whole request with a 412 carrying a
+        fresh group token.
 
         Args:
             request: Starlette request with ``dataset_id`` in path params
@@ -171,8 +151,7 @@ class DynamicGroup(HTTPEndpoint):
                 status_code=400, detail="Invalid If-Match header"
             )
 
-        # Everything from here is synchronous SDK work against the database;
-        # it runs off the event loop
+        # synchronous SDK work runs off the event loop
         return await run_sync_task(self._patch, dataset_id, data, token)
 
     def _patch(
@@ -191,17 +170,10 @@ class DynamicGroup(HTTPEndpoint):
         )
 
         member_ids, lmts = get_group_state(view)
-        # Each member's swap must be pinned to the state the group token was
-        # validated against, not to a re-read of the member: a writer that
-        # slipped in between would otherwise be overwritten with a 200
+        # each member's swap is pinned to the state the group token was
+        # validated against, not to a re-read of the member
         lmt_by_id = dict(zip(member_ids, lmts))
-        # A member missing `last_modified_at` cannot pin the group's state;
-        # it is also invisible to the client's token, so exclude it from the
-        # max on both sides rather than crashing the comparison. A group with
-        # NO known values (legacy samples never written through the app)
-        # pins to the epoch — the client mints the same sentinel, and the
-        # first successful write stamps real values
-        max_lmt, count = _group_max_lmt(lmts), len(member_ids)
+        max_lmt, count = max(lmts), len(member_ids)
 
         if_max_lmt, if_count = token
         if count != if_count or not datetimes_match(max_lmt, if_max_lmt):
@@ -247,16 +219,14 @@ class DynamicGroup(HTTPEndpoint):
             try:
                 save_sample(sample, lmt_by_id[sample_id])
             except DbVersionMismatchError:
-                # A member moved between the group validation and its swap.
-                # The whole request fails with GROUP-shaped state — the
-                # per-member ETag the decorator would emit must not be
-                # mistaken for a group token.
+                # a member moved between the group validation and its swap;
+                # fail with group-shaped state, not the decorator's member ETag
                 return self._version_mismatch(view)
 
             samples.append(utils.json.serialize(sample))
 
         member_ids, lmts = get_group_state(view)
-        etag = generate_group_etag(_group_max_lmt(lmts), len(member_ids))
+        etag = generate_group_etag(max(lmts), len(member_ids))
 
         return utils.json.JSONResponse(
             {"samples": samples}, headers={"ETag": etag}
@@ -271,19 +241,13 @@ class DynamicGroup(HTTPEndpoint):
                 "members": [
                     {
                         "id": _id,
-                        "last_modified_at": (
-                            lmt.isoformat() if lmt is not None else None
-                        ),
+                        "last_modified_at": lmt.isoformat(),
                     }
                     for _id, lmt in zip(member_ids, lmts)
                 ]
             },
             status_code=412,
-            headers={
-                "ETag": generate_group_etag(
-                    _group_max_lmt(lmts), len(member_ids)
-                )
-            },
+            headers={"ETag": generate_group_etag(max(lmts), len(member_ids))},
         )
 
 

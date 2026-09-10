@@ -1,15 +1,11 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Paging between video samples on the annotation surface. Regression guard for
- * the next/prev "a store for sample X is already registered" crash: on a sample
- * switch the 3D-scene store registration raced the video surface's own store
- * while the modal id was settling. Paging forward then back must re-home the
- * engine store cleanly — the surface re-renders each sample's own track and no
- * duplicate-store error is thrown.
- *
- * The modal is opened from the GRID (not a deep link) so it carries the sample
- * sequence — a deep-linked single sample has no next/previous sibling.
+ * Paging between video samples on the annotation surface must re-home the
+ * engine store cleanly, guarding the "a store for sample X is already
+ * registered" crash where the 3D-scene registration raced the video surface's
+ * store. The modal is opened from the grid, since a deep-linked sample has no
+ * next/previous sibling.
  */
 import { expect, test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
@@ -29,7 +25,8 @@ test.beforeAll(async ({ foWebServer, datasetFactory }) => {
   await foWebServer.startWebServer();
   // both samples carry their own tracked instance, so the object track id
   // differs between samples — a reliable "the surface switched" signal.
-  await datasetFactory.createVideoDataset({
+  await datasetFactory.createDataset({
+    mediaType: "video",
     datasetName,
     numSamples: 2,
     videoOptions: (index) => (index === 1 ? { color: "#a05030" } : {}),

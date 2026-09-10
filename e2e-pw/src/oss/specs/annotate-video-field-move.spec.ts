@@ -1,16 +1,11 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Moving a video track between per-frame fields of the same type. Image
- * field-move was covered; video was not. Two same-type frame Detections fields
- * (`frames.detections`, `frames.predictions`) give the Edit-form field dropdown
- * a destination, so a track move:
- *   - re-homes the whole track onto the destination frame field and persists
- *     across a true server round-trip,
- *   - round-trips through undo/redo on the shared engine stack.
- *
- * Assertions are RELATIVE to the track's current field (read first), so the
- * serial tests don't depend on each other's end state.
+ * Moving a video track between same-type frame fields (`frames.detections`,
+ * `frames.predictions`) through the edit-form dropdown: the whole track
+ * re-homes, persists across a fresh browser context, and undoes/redoes.
+ * Assertions are relative to the track's current field so the serial tests
+ * don't depend on each other's end state.
  */
 import { Browser, expect, test as base, type Page } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -96,7 +91,8 @@ test.describe.serial("video annotation field move", () => {
       withEvents: false,
       trackedSampleIndices: [0],
     });
-    await datasetFactory.createVideoDataset({
+    await datasetFactory.createDataset({
+      mediaType: "video",
       datasetName,
       ...seed,
       schema: {

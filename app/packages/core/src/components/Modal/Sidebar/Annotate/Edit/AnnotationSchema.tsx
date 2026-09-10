@@ -159,9 +159,8 @@ const useHandleSchemaChange = (readOnly: boolean) => {
   const sample = useActiveAnnotationSampleId();
   const parseFieldValue = useParseFieldValue();
   const [currentLabel, setCurrentLabel] = useAtom(current);
-  // Frame-scoped is namespace-dependent: `frames.*` on a real video, BARE
-  // paths on an image dynamic group played as video — start-with `frames.`
-  // alone would skip the track fan-out / forward-fill on a dynamic group.
+  // frame-scoped paths are `frames.*` on a real video but bare paths on an
+  // image dynamic group video
   const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
 
   const configRef = useRef(config);

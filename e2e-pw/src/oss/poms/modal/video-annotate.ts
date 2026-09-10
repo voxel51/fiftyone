@@ -2,15 +2,11 @@ import { expect, Locator, Page } from "src/oss/fixtures";
 import { ModalPom } from ".";
 
 /**
- * The video-annotation surface: the ImaVid media tile, the timeline of
- * per-instance frame-label tracks + temporal-detection (TD) interval rows, and
- * the playback controls (from `@fiftyone/playback`). Composes with the shared
- * modal POMs (`modal.sidebar.annotate` / `modal.sidebar.edit` /
- * `modal.sampleCanvas`) — only the video-specific timeline/playback affordances
- * live here.
- *
- * Timeline tracks expose `data-track-id`: an object track's id is the engine
- * `instanceId`; a TD track's id is `td-<field>-<detectionId>`.
+ * The video-annotation surface: the ImaVid tile, the timeline of per-instance
+ * frame-label tracks and temporal-detection (TD) rows, and the playback
+ * controls, composing with the shared modal POMs. Tracks expose
+ * `data-track-id`: an object track's id is the engine `instanceId`, a TD
+ * track's is `td-<field>-<detectionId>`.
  */
 export class VideoAnnotatePom {
   readonly page: Page;
@@ -94,10 +90,9 @@ export class VideoAnnotatePom {
   }
 
   /**
-   * The value-segment bars within a sub-track row — one per coalesced run of an
-   * equal attribute value. The bar `title` carries the value (e.g. "off").
-   * Scoped to the first row copy (`track` uses `.first()`), since a pinned row
-   * mounts in both the timeline header and the drawer body on this base.
+   * The value-segment bars within a sub-track row, one per coalesced run of an
+   * equal attribute value, with the value in the bar `title`. Scoped to the
+   * first row copy since a pinned row mounts in both the header and the drawer.
    */
   segmentBars(subTrackId: string): Locator {
     return this.track(subTrackId).locator(
@@ -147,10 +142,8 @@ export class VideoAnnotatePom {
 
   /**
    * Pin an object track so its row stays in the always-visible timeline header
-   * once the drawer closes. The pin button only mounts while the row is
-   * rendered, so open the drawer to reach it, pin, then restore the closed
-   * default — the pinned row remains in the header, ready for interaction
-   * without the drawer open. Call once from the closed default.
+   * once the drawer closes. The pin button mounts only while the row renders,
+   * so this opens the drawer, pins, and restores the closed default.
    */
   async pinTrack(trackId: string) {
     await this.openTracksDrawer();
@@ -506,11 +499,10 @@ class VideoAnnotateAsserter {
   }
 
   /**
-   * Assert a track's interval bar is (not) actionable. A closed drawer keeps the
-   * bar mounted and on-screen but non-interactive; pinning the row into the
-   * header or opening the drawer makes it clickable again. Actionability — not
-   * mere visibility — is what timeline interactions (clicks, context menus)
-   * actually depend on.
+   * Assert a track's interval bar is (not) actionable, which is what clicks and
+   * context menus depend on rather than mere visibility. A closed drawer keeps
+   * the bar mounted but non-interactive; pinning or opening the drawer makes it
+   * clickable.
    */
   async trackBarActionable(trackId: string, actionable = true) {
     const bar = this.va.trackBar(trackId);

@@ -2,7 +2,6 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-// Moved into the engine package so the annotate form (core) can apply the
-// same dual-namespace rule; re-exported here for the surface's existing
-// imports.
+// re-export for the surface's imports; the rule lives in the engine so the
+// annotate form applies it too
 export { isFrameScopedPath } from "@fiftyone/annotation";

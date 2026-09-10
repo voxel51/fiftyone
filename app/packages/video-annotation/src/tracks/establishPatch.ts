@@ -3,17 +3,11 @@
  */
 
 /**
- * The identity/keyframe fields a freshly-drawn track anchor must carry, given
- * the drawn label's current state.
- *
- * - `keyframe: true` — the drawn frame is the track's first keyframe.
- * - `instance` — the auto-extend mints `instance: {_id: <anchor instanceId>}`
- *   on every filler frame, but a drawn label is born with none; without
- *   stamping it here the persisted track excludes its own first frame (track
- *   rows group strictly by `instance`). Skipped for index-addressed tracks
- *   (`track-<index>` ids), whose identity is the persisted `index`.
- *
- * Empty object when nothing is missing.
+ * The `keyframe`/`instance` fields a freshly drawn track anchor is missing:
+ * the drawn frame is the track's first keyframe, and track rows group by
+ * `instance`, so an anchor born without one is excluded from its own track.
+ * Index-addressed (`track-<index>`) tracks are skipped; their identity is the
+ * persisted `index`.
  */
 export const establishPatchFor = (
   source: { keyframe?: unknown; instance?: unknown },

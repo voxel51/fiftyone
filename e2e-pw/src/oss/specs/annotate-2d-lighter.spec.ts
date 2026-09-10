@@ -133,10 +133,9 @@ test.describe.serial("2D Lighter annotation", () => {
     await expectLabelsCount(modal, before + 1);
     await saved;
 
-    // verify from a BRAND-NEW context (no shared client cache) — proves the box
-    // round-tripped to the server, and exercises load-time bridge hydration on a
-    // clean load. (A mid-test page.reload() can't be used: the app uses relative
-    // asset paths, so reloading a nested /datasets/... URL 404s its bundle.)
+    // verify from a brand-new context (no shared client cache): proves the box
+    // round-tripped and exercises load-time bridge hydration. A mid-test reload
+    // can't be used because a nested dataset URL 404s its relative bundle.
     const context = await browser.newContext();
     const freshPage = await context.newPage();
 

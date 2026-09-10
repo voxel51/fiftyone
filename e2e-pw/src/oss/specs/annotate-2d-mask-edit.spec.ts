@@ -1,24 +1,12 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Editing an EXISTING 2D segmentation mask with the brush tool. The covered
- * mask specs only create-from-scratch and full-remove; this exercises the
- * incremental brush strokes on an already-painted mask:
- *   - an "Add" stroke that extends beyond the mask grows the pixel count and
- *     persists,
- *   - a "Remove" stroke erases pixels and is undoable on the engine stack.
- *
- * Mask state is verified in a fresh browser context — a true server
- * round-trip. The Add stroke grows the masked region beyond the seed bbox, so
- * the persisted bounding box widening is the grow signal there. The Remove
- * stroke is asserted on COVERAGE FRACTION (`maskCoverage`), NOT raw pixels: the
- * mask is re-rasterized to the overlay's pixel resolution on commit (e.g. 50×50
- * → ~124×165), so the raw count rises even when the painted area shrinks — only
- * the coverage fraction reflects the erase.
- *
- * The seeded detection carries `_cls`: the server's mask encoder only converts
- * an embedded numpy `mask` to the zlib-base64 the app decodes when the label's
- * `_cls` is a mask class (see annotate-2d-mask).
+ * Editing an existing 2D mask with the brush, verified in a fresh browser
+ * context: an Add stroke past the seed bbox widens the persisted bounding box,
+ * a Remove stroke lowers the covered fraction and is undoable. Coverage, not
+ * raw pixels, is compared because the mask is re-rasterized to the overlay's
+ * resolution on commit, and the seeded detection carries `_cls` so its numpy
+ * mask decodes.
  */
 import { Browser, expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";

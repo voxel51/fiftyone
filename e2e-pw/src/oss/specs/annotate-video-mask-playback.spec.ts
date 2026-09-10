@@ -1,17 +1,12 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * A painted instance mask is a keyframe on the draw frame only; the box
- * auto-extends forward as non-keyframe filler. As the playhead moves onto a
- * filler frame, the track's overlay carries the box but NOT the mask — so the
- * mask must visibly clear (guards the `DetectionOverlay.applyLabel` fix: a frame
- * label whose `mask` is `undefined` — not just `null` — clears the stale mask).
- *
- * The sidebar mask preview is the render-level signal: it mounts only when the
- * selected label's live overlay reports `hasMask()`, so its presence on the
- * keyframe and absence on a filler frame proves the overlay paints/clears the
- * mask with the playhead. Detection-box draw + auto-extend are covered in
- * `annotate-video-auto-extend.spec.ts`.
+ * A painted instance mask is a keyframe on the draw frame only, so on an
+ * auto-extended filler frame the overlay carries the box but must clear the
+ * mask (a frame label whose `mask` is `undefined` clears the stale one). The
+ * sidebar mask preview mounts only when the live overlay reports `hasMask()`,
+ * so its presence on the keyframe and absence on a filler frame is the
+ * render-level signal.
  */
 import { expect, test as base, type Page } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -35,7 +30,8 @@ test.beforeAll(async ({ foWebServer, datasetFactory }) => {
   // 40 frames @ 10fps — the 30-frame auto-extend stays clear of the clip end.
   // Clean slate (no pre-seeded tracks) with the detections schema active, so
   // segmentation mode is enterable and the first paint creates the only track.
-  await datasetFactory.createVideoDataset({
+  await datasetFactory.createDataset({
+    mediaType: "video",
     datasetName,
     videoOptions: { duration: 4 },
     ...videoAnnotationSeed({

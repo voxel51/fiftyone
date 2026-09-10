@@ -1,20 +1,11 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Undo/redo on the video-annotation surface, driven through the global command
- * stack (the engine is a producer/applicator of value-based entries, not the
- * undo authority). This exercises the parts unique to that wiring:
- *
- *  - a freshly-drawn track is ONE undo unit: the box plus its auto-extended
- *    frames coalesce, so a single undo removes the whole track (not one frame),
- *    and redo restores it;
- *  - undo/redo route through the KEYBOARD (Ctrl+Z / Ctrl+Shift+Z), proving the
- *    default command-context bindings reach the annotate stack;
- *  - a track-wide class edit is one undo unit (the fan-out reverts together);
- *  - a whole-track delete undoes to a restored track.
- *
- * Re-seeded per test (one tracked instance, class `vehicle`, on every frame) so a
- * persisting edit in one test can't leak into the next.
+ * Undo/redo on the video surface through the global command stack: a
+ * freshly-drawn track (box plus auto-extended frames) is one undo unit,
+ * keyboard Ctrl+Z / Ctrl+Shift+Z reach the annotate stack, a track-wide class
+ * edit reverts together, and a whole-track delete undoes to a restored track.
+ * Re-seeded per test with one tracked `vehicle` on every frame.
  */
 import { test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -78,7 +69,8 @@ const savedResponse = (page: Page) =>
 // re-seed per test: one tracked instance (vehicle) present on every frame.
 // 20 frames @ 10fps — a drawn box auto-extends ~30, clamped to the clip.
 test.beforeEach(async ({ datasetFactory }) => {
-  await datasetFactory.createVideoDataset({
+  await datasetFactory.createDataset({
+    mediaType: "video",
     datasetName,
     ...videoAnnotationSeed({
       withEvents: false,

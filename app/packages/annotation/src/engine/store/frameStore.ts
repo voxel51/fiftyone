@@ -107,8 +107,7 @@ export class FrameStore implements LabelStore {
     return this.loading;
   }
 
-  /** Flip the seed-in-flight state (see {@link LabelStore.isLoading}). The
-   *  owner drives this from its source stream. */
+  /** Flip the seed-in-flight state (see {@link LabelStore.isLoading}). */
   setLoading(loading: boolean): void {
     if (this.loading === loading) {
       return;
@@ -129,10 +128,8 @@ export class FrameStore implements LabelStore {
       );
     }
 
-    // A frameless ref still identifies one label: the surface's selection
-    // refs carry no frame, and the interaction GC's read-through liveness
-    // check resolves through here — answering undefined deselected every
-    // frame label on the next sample-level reset (any modal data refresh)
+    // the surface's selection refs carry no frame; answering undefined would
+    // deselect every frame label on the next sample-level reset
     for (const frame of this.frames()) {
       const hit = this.listAt(frame, ref.path).find(
         (label) => addressIdOf(label) === ref.instanceId,

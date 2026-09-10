@@ -1,21 +1,11 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Dynamic-attribute propagation on the video-annotation surface. An attribute
- * declared `dynamic` in the `frames.detections` schema carries per-frame
- * meaning, so a sidebar edit does NOT fan across the whole track (that is the
- * static-attribute behaviour, guarded by `track-edit`). Instead it forward-fills
- * from the edited frame:
- *
- *  - editing at frame F sets `[F, end]`, leaving frames before F untouched;
- *  - a later edit creates a change boundary, and a subsequent edit before it
- *    fills only up to that boundary (sample-and-hold), preserving the later
- *    segment;
- *  - the whole forward-fill is a single engine transaction — one undo step.
- *
- * The dataset is re-seeded per test (one tracked `vehicle` instance with a
- * dynamic `turn_signal` attribute = "off" on every frame) so a persisting edit
- * can't leak into the next test.
+ * Dynamic-attribute propagation on the video surface: an attribute declared
+ * `dynamic` forward-fills from the edited frame instead of fanning across the
+ * track, a later edit creates a boundary that an earlier edit fills up to
+ * (sample-and-hold), and the fill is one undo step. Re-seeded per test with one
+ * tracked `vehicle` carrying `turn_signal` = "off" on every frame.
  */
 import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -98,7 +88,8 @@ const setSignal = async (modal: ModalPom, page: Page, choice: string) => {
 // re-seed per test: one tracked instance carrying turn_signal="off" everywhere.
 // 20 frames @ 10fps — long enough to fill several frames forward.
 test.beforeEach(async ({ datasetFactory }) => {
-  await datasetFactory.createVideoDataset({
+  await datasetFactory.createDataset({
+    mediaType: "video",
     datasetName,
     ...videoAnnotationSeed({
       withEvents: false,

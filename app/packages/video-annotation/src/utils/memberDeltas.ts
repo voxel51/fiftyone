@@ -1,9 +1,9 @@
 import type { JSONDeltas } from "@fiftyone/utilities";
 
 /**
- * A store's JSON-patch split for a dynamic group played as video: frame ops
- * rebased onto their member sample's root, and the ops that never addressed
- * a frame (sample-level labels), which stay on the modal sample.
+ * A composite video-store patch split for a dynamic group: frame ops rebased
+ * onto their member sample's root, and sample-level ops that stay on the
+ * modal sample.
  */
 export interface MemberDeltas {
   /** Ops per frame number, pointers rebased from `/frames/<n>/X` to `/X`. */
@@ -15,14 +15,9 @@ export interface MemberDeltas {
 const FRAME_POINTER = /^\/frames\/(\d+)(\/.+)$/;
 
 /**
- * Split a composite video-store patch into per-frame member patches.
- *
- * The FrameStore emits `/frames/<n>/<field>/...` pointers because it models
- * the clip as one video document. For a dynamic group each "frame" is its own
- * top-level image sample, so the `/frames/<n>` prefix is an addressing
- * artifact: dropping it yields the pointer into the member sample, and `n`
- * picks which member. Ops with a `from` pointer (move/copy) must not cross
- * frames — a cross-frame move is two samples' writes and is rejected.
+ * Split a composite video-store patch into per-frame member patches. Each
+ * dynamic-group "frame" is its own sample, so `/frames/<n>` is an addressing
+ * prefix: `n` picks the member and the remainder is the pointer into it.
  */
 export const splitMemberDeltas = (deltas: JSONDeltas): MemberDeltas => {
   const byFrame = new Map<number, JSONDeltas>();

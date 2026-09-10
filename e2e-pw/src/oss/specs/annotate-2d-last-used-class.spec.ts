@@ -1,11 +1,9 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Last-used class propagation: after changing a drawn detection's class in the
- * sidebar form, the NEXT drawn detection defaults to that class. Regression for
- * a step-3 defect where the form's class edit reached the engine but never the
- * surface-owned draft slot, so the next draw kept the OLD default class
- * (fixed in AnnotationSchema.tsx: sync the draft slot on commit when isNew).
+ * Last-used class: after changing a drawn detection's class in the sidebar
+ * form, the next drawn detection defaults to that class. Guards the form's
+ * class edit reaching the surface-owned draft slot, not only the engine.
  */
 import { test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";

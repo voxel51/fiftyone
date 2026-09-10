@@ -1,20 +1,12 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Polyline keyframe interpolation on the video-annotation surface, and — the
- * reason this spec exists — whether the CANVAS shows it.
- *
- * Reported: draw a polyline, scrub forward, drag a vertex (promoting a second
- * keyframe), then scrub back through the span. The interpolated frames are
- * correct in the store (verified against mongo) and Explore mode draws them, but
- * the annotate canvas keeps painting the shape it already had — until the
- * playhead leaves the track's extent entirely and comes back, which unmounts and
- * re-mounts the overlay.
- *
- * So the two halves are asserted separately:
- *   1. the interpolation itself — geometry moves between the keyframes
- *   2. the projection — what the overlay actually holds at those frames
- * A pass on (1) with a failure on (2) is precisely the reported bug.
+ * Polyline keyframe interpolation on the video surface and whether the canvas
+ * shows it: after a second keyframe, scrubbing back through the span was
+ * correct in the store and in Explore but the annotate canvas kept its stale
+ * shape. The interpolation (geometry moves between keyframes) and the
+ * projection (what the overlay holds) are asserted separately, so a pass on the
+ * first with a failure on the second is the reported bug.
  */
 import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -54,7 +46,8 @@ test.afterAll(async ({ foWebServer }) => {
 });
 
 test.beforeEach(async ({ datasetFactory }) => {
-  await datasetFactory.createVideoDataset({
+  await datasetFactory.createDataset({
+    mediaType: "video",
     datasetName,
     // .mp4 so the surface takes the mp4/native decode path the reported clip
     // uses; ~180 frames @ 30fps, matching the reported clip's shape (the
@@ -154,10 +147,10 @@ const centroidY = (points: [number, number][] | undefined): number => {
 };
 
 /**
- * Container coordinates are not overlay coordinates: the clip is letterboxed, so
- * the canvas applies an affine to reach image space. Derive it from the draw
- * itself — the same three points, expressed both ways. Sorting each set by x
- * pairs them, since the overlay does not preserve draw order.
+ * Container coordinates are not overlay coordinates: the letterboxed clip gets
+ * an affine into image space, derived here from the draw's three points
+ * expressed both ways. Each set is sorted by x to pair them, since the overlay
+ * does not preserve draw order.
  */
 const deriveToContainer = (
   drawnOverlayPoints: [number, number][],

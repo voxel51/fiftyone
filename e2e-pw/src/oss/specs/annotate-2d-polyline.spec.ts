@@ -1,16 +1,10 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Creating and deleting a 2D polyline on the image surface. Image polyline was
- * previously read-only in coverage (only video polyline create was tested):
- *   - activating polyline mode and clicking vertices self-creates a Polyline,
- *     opens the edit form, commits on class assignment, and persists across a
- *     true server round-trip (fresh browser context),
- *   - the polyline can be deleted, and the delete is undoable on the engine
- *     stack.
- *
- * The polyline self-creates through the same `usePolylineMode` creation handler
- * the video surface uses; here it runs on the image (Lighter) canvas.
+ * Creating and deleting a 2D polyline on the image surface: polyline-mode
+ * vertex clicks self-create a Polyline, class assignment commits it and
+ * persists across a fresh browser context, and its delete undoes. The same
+ * `usePolylineMode` creation handler as video runs here on the Lighter canvas.
  */
 import { Browser, expect, test as base, type Page } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";

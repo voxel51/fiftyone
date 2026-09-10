@@ -265,7 +265,7 @@ engine took ownership of writes and persistence.
 
 ```
 src/
-├── components/      # React UI: surface, tiles, timeline, top bar, toolbar, status
+├── components/      # React UI: surface, tiles, timeline, toolbar, status
 ├── streams/         # PlaybackStreamBase data sources (read-only seed) + handles + worker
 ├── sync/            # the reconcilers left after the engine took the canvas/sidebar
 ├── tracks/          # engine-sourced timeline-row builders + drag/extent + identity

@@ -1,17 +1,11 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Create round-trip for non-box label types on the video-annotation surface:
- * drawing a polyline and painting an instance mask each add a track, open the
- * edit form, commit through the engine on class assignment, and survive a true
- * round-trip (fresh browser context).
- *
- * The video surface wires these the same way the image surface does, but
- * through its own bridge: polylines self-create via the
- * `usePolylineModeInstaller` creation handler; a brush stroke with nothing
- * selected fires `lighter:overlay-create`, which opens a fresh masked detection
- * (segmentation mode) on the engine frame path. Detection-box draw is covered
- * separately (`annotate-video-draw.spec.ts`).
+ * Create round-trip for non-box labels on the video surface: drawing a polyline
+ * and painting an instance mask each add a track, open the edit form, commit on
+ * class assignment, and survive a fresh browser context. Polylines self-create
+ * through `usePolylineModeInstaller` and an unselected brush stroke opens a
+ * fresh masked detection via `lighter:overlay-create`.
  */
 import { Browser, test as base, type Page } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -85,7 +79,8 @@ test.describe.serial("video non-box label create", () => {
   // these run serially against one dataset, so a persisted draw from one test
   // would otherwise leave a stray track that the next test's count picks up.
   test.beforeEach(async ({ datasetFactory }) => {
-    await datasetFactory.createVideoDataset({
+    await datasetFactory.createDataset({
+      mediaType: "video",
       datasetName,
       ...videoAnnotationSeed({
         withPolylineField: true,

@@ -1,27 +1,11 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * 2D segmentation-mask lifecycle WITHOUT a paint brush, across BOTH mask
- * representations — an embedded numpy `mask` and an on-disk `mask_path` (the
- * two valid forms, with slightly different decode paths). A detection is seeded
- * WITH a mask, so we exercise the mask-commit channel (`overlay.removeMask()` →
- * `overlay-commit-requested` → engine commit + undo + autosave) through removal,
- * which is a real committed diff:
- *   - selecting a masked detection enters segmentation mode,
- *   - removing the mask drops it, in one autosave patch,
- *   - the removal is undoable/redoable on the engine stack,
- *   - the removal persists across a true server round-trip.
- *
- * NOT covered (needs a segmentation-brush harness that doesn't exist yet):
- * painting a mask and draw-box→add-mask→undo (an empty `initMask()` is a no-op
- * at the engine level — no committed diff, no undo entry).
- *
- * Seeded detections carry `_cls`: the server's mask encoder only converts an
- * embedded numpy `mask` to the zlib-base64 the app decodes when the label's
- * `_cls` is a mask class.
- *
- * Mask presence is read off the label menu: "Remove mask" shows for a masked
- * detection, "Add mask" for a maskless one (`Edit/Header.tsx`).
+ * 2D mask lifecycle without a brush, for both an embedded numpy `mask` and an
+ * on-disk `mask_path`: selecting a masked detection enters segmentation mode,
+ * and removing the mask is one autosave patch that undoes/redoes and persists.
+ * Mask presence is read off the label menu ("Remove mask" vs "Add mask"), and
+ * seeded detections carry `_cls` so the embedded mask decodes.
  */
 import fs from "node:fs";
 import { Browser, expect, test as base } from "src/oss/fixtures";

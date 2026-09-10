@@ -1,14 +1,10 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Pen-tool round-trip: enter segmentation mode, draw a polygon mask via the
- * pen tool, commit it (right-click), wait for auto-save to flush, reload the
- * page, then query the persisted sample from Python to verify a Detection
- * with a non-empty mask was saved.
- *
- * This is the primary data-integrity test for the manual segmentation flow.
- * Anything that breaks the lighter → delta-supplier → patchSample chain or
- * the pen handler's commit path should make this fail.
+ * Pen-tool round-trip: draw a polygon mask in segmentation mode, commit with a
+ * right-click, wait for autosave, reload, and verify the persisted detection
+ * renders a non-empty mask. Anything breaking the lighter → delta-supplier →
+ * patchSample chain or the pen commit path fails here.
  */
 
 import { expect, test as base } from "src/oss/fixtures";
@@ -33,10 +29,8 @@ const test = base.extend<{
   },
 });
 
-// Minimal Detections schema. `label` is implicit (via `classes`) and `mask`
-// is the rendered mask payload — not a schema-declared attribute. The pen
-// tool creates the mask at runtime; the schema only needs to declare the
-// field as `detections` with available classes.
+// minimal Detections schema: `label` is implicit via `classes` and the mask
+// is created at runtime, not a schema-declared attribute
 const schema: LabelSchema = {
   type: "detections",
   classes: ["cat", "dog"],

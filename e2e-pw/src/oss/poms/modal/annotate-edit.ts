@@ -225,10 +225,9 @@ export class ModalAnnotateEditPom {
   }
 
   /**
-   * Select a choice from a SmartForm select field, e.g. the label class. The
-   * SmartForm widget renders a voodo `Select` (a Headless UI combobox): click the
-   * combobox trigger, then the option. The options list mounts in a document-level
-   * portal, so the option is targeted off `page`, not the field container.
+   * Select a choice from a SmartForm select field (a voodo `Select` combobox):
+   * click the trigger, then the option, which mounts in a document-level portal
+   * and is targeted off `page`.
    *
    * @param path The field path (e.g. "label")
    * @param choice The visible choice label to select (e.g. "dog")
@@ -240,10 +239,9 @@ export class ModalAnnotateEditPom {
   }
 
   /**
-   * The field-move dropdown (the label's destination field). It's a MUI
-   * `Select` rendered through SchemaIO's `DropdownView`, scoped by the
-   * `annotate-field-select` wrapper so it doesn't collide with the class
-   * combobox. Its visible text is the current field name.
+   * The field-move dropdown (the label's destination field): a MUI `Select`
+   * scoped by the `annotate-field-select` wrapper so it doesn't collide with
+   * the class combobox. Its visible text is the current field name.
    */
   get fieldSelect() {
     return this.locator
@@ -353,10 +351,9 @@ class ModalAnnotateEditAsserter {
   }
 
   /**
-   * Assert whether the edited detection currently has a mask. Read off the label
-   * menu, which shows "Remove mask" for a masked detection and "Add mask" for a
-   * maskless one (`Edit/Header.tsx` `isMaskDetection`). Opens then closes the
-   * menu (Escape) so it leaves no state behind.
+   * Assert whether the edited detection has a mask, read off the label menu
+   * ("Remove mask" for a masked detection, "Add mask" otherwise). Opens then
+   * closes the menu with Escape so it leaves no state behind.
    *
    * @param hasMask Whether the detection is expected to have a mask
    */

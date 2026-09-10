@@ -1,23 +1,10 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Rendering of non-box label types on the video-annotation surface. A sample is
- * seeded with TWO existing per-frame tracks — a detection carrying an instance
- * mask, and a polyline — across two active `frames.*` label fields. Both must
- * render: the multi-field frame seed registers every active per-frame label
- * field (not just `frames.detections`) with its real `LabelType`, so the engine
- * holds polylines + masks and the surface-agnostic engine→lighter bridge paints
- * them and the sidebar lists them.
- *
- * Read signals (semantic, engine-derived):
- *   - the sidebar lists a row per present label across ALL active frame fields
- *     (`useEntries` walks `engine.getPresent()` filtered by active schema +
- *     a known `getLabelType`) — a polyline only lists when its field is
- *     registered + seeded, so listing it proves the multi-field seed.
- *   - mask presence is read off the label menu (`Edit/Header.tsx`): "Remove
- *     mask" for a masked detection, "Add mask" for a maskless one.
- *
- * Create/paint round-trips (drawing a polyline, painting a mask) live in
+ * Rendering of non-box labels on the video surface: a masked detection track
+ * and a polyline track across two active `frames.*` fields both list in the
+ * sidebar (proving every active per-frame field registers with its real label
+ * type) and the mask shows in the label menu. Create round-trips live in
  * `annotate-video-label-types-create.spec.ts`.
  */
 import { expect, test as base, type Page } from "src/oss/fixtures";
@@ -43,7 +30,8 @@ test.beforeAll(async ({ foWebServer, datasetFactory }) => {
   await foWebServer.startWebServer();
   // sample 0: a masked detection track (vehicle) + a polyline track (person),
   // each a single instance present on every frame.
-  await datasetFactory.createVideoDataset({
+  await datasetFactory.createDataset({
+    mediaType: "video",
     datasetName,
     ...videoAnnotationSeed({
       trackedSampleIndices: [0],

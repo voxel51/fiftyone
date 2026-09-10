@@ -151,11 +151,9 @@ export class ModalAnnotateSidebarPom {
    * @param slice The slice name to select
    */
   async selectAnnotationSlice(slice: string) {
-    // a non-default (3D) slice can be briefly absent from the selector while
-    // the open group's samples load, and the option list only refreshes when
-    // the popover is reopened. So each retry blurs (closes) then re-clicks
-    // (reopens, re-querying) the selector until the result is clickable. Blur,
-    // not Escape — Escape bubbles to the modal and can close it.
+    // a non-default (3D) slice can be briefly absent while the group's samples
+    // load, and the option list only refreshes on reopen: each retry blurs
+    // (not Escape, which can close the modal) and re-clicks the selector
     await expect(async () => {
       await this.annotationSliceSelector.blur();
       await this.annotationSliceSelector.click();
@@ -214,9 +212,8 @@ export class ModalAnnotateSidebarPom {
   }
 
   /**
-   * Toggle segmentation mode. When inactive this enters segmentation mode
-   * (selecting the Select tool by default). When active it deactivates the
-   * mode.
+   * Toggle segmentation mode: when inactive this enters it (selecting the
+   * Select tool by default), when active it leaves it.
    */
   async segmentationMode() {
     await this.page.getByTestId("segmentation-mode").click();

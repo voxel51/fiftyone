@@ -1,18 +1,11 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Foundational coverage for the 3D (looker-3d) polyline annotation surface — the
- * second 3D annotation archetype after cuboids, and previously uncovered. Opens
- * an `.fo3d` scene carrying a seeded `Polyline` (a `points3d` list of
- * `[x,y,z]` segments) in annotate mode and exercises the deterministic flows:
- * the polyline lists in the sidebar and is selectable, selecting it opens the
- * edit form + the (translate-only) transform gizmo, a class edit persists, and a
- * delete round-trips through undo/redo and persists.
- *
- * Geometry editing on a polyline happens through 3D vertex markers / segment
- * clicks (raycast handles with no DOM selectors), so unlike the cuboid spec
- * there's no deterministic form-driven geometry edit — class edits and the
- * canvas draw are the deterministic surfaces and are what this covers.
+ * 3D (looker-3d) polyline annotation on a seeded `Polyline` (`points3d`
+ * segments): it lists and selects, opens the edit form and translate gizmo, a
+ * class edit persists, and delete round-trips through undo/redo. Vertex
+ * geometry edits have no DOM handles, so class edits and the canvas draw are
+ * the surfaces covered.
  */
 import { Browser, expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -90,7 +83,8 @@ test.describe.serial("3d polyline annotation", () => {
   // Re-seed per test so each delete/undo case starts from a clean polyline
   // (mirrors the cuboid spec).
   test.beforeEach(async ({ datasetFactory, fiftyoneLoader, modal, page }) => {
-    await datasetFactory.create3dDataset({
+    await datasetFactory.createDataset({
+      mediaType: "3d",
       datasetName,
       ...annotate3dSeed({
         // polyline-only active schema (no cuboids requested)
@@ -233,7 +227,8 @@ test.describe.serial("3d polyline annotation", () => {
 // a draw click, so a clean scene makes the gesture deterministic.
 test.describe.serial("3d polyline creation", () => {
   test.beforeEach(async ({ datasetFactory, fiftyoneLoader, modal, page }) => {
-    await datasetFactory.create3dDataset({
+    await datasetFactory.createDataset({
+      mediaType: "3d",
       datasetName,
       ...annotate3dSeed({
         cuboidSampleIndices: [],

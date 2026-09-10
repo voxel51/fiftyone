@@ -1,22 +1,11 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Editing an existing per-frame detection track on the video-annotation surface,
- * all through the annotation engine:
- *
- *  - track-wide fan-out (guards `trackFanOut` / 26cdd69308): a class edit on one
- *    frame fans across every frame of the instance, while geometry
- *    (`bounding_box`) stays per-frame.
- *  - anchor-follows-playhead (guards `d50221164d`): with a track selected, the
- *    edit form re-reads that track's data at each new frame as the playhead
- *    moves — it does NOT freeze on the selection frame's values or deselect.
- *  - selection sync: the canvas, the timeline row, and the sidebar row all drive
- *    the one shared engine selection, so selecting on any surface opens the
- *    editor on the same track.
- *
- * The dataset is re-seeded per test (one tracked instance, class `vehicle`,
- * `bounding_box=[0.3,0.3,0.2,0.2]` on every frame) so a persisting edit in one
- * test can't leak into the next.
+ * Editing an existing per-frame track on the video surface: a class edit fans
+ * across every frame while geometry stays per-frame, the edit form follows the
+ * playhead for the selected track, and canvas, timeline and sidebar drive one
+ * shared selection. Re-seeded per test with one tracked `vehicle` at
+ * `bounding_box=[0.3,0.3,0.2,0.2]` on every frame.
  */
 import { Browser, expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -92,7 +81,8 @@ const savedResponse = (page: Page) =>
 // re-seed per test: one tracked instance (vehicle, index=1) on every frame.
 // 20 frames @ 10fps — long enough to step several frames off the start.
 test.beforeEach(async ({ datasetFactory }) => {
-  await datasetFactory.createVideoDataset({
+  await datasetFactory.createDataset({
+    mediaType: "video",
     datasetName,
     ...videoAnnotationSeed({
       withEvents: false,

@@ -32,10 +32,9 @@ export interface VideoAnnotationSeedOptions {
    */
   secondTrackSampleIndices?: number[];
   /**
-   * Class index (into `classes`) for the SECOND tracked instance. Defaults to 1
-   * (a DIFFERENT class than the first track's `classes[0]`). Set to 0 to make
-   * both tracks share a class — merge is gated to same-class tracks, so a
-   * same-class pair is required to exercise a successful merge.
+   * Class index (into `classes`) for the SECOND tracked instance, 1 by default
+   * so the two tracks differ in class. Set to 0 for a same-class pair, which
+   * merge requires.
    */
   secondTrackClassIndex?: number;
   /**
@@ -52,10 +51,10 @@ export interface VideoAnnotationSeedOptions {
    */
   polylineSampleIndices?: number[];
   /**
-   * Declare the `frames.polylines` field + activate its schema (and seed
-   * empty-but-present polylines on every frame) WITHOUT pre-seeding any track.
-   * Lets a clean-slate create test enter polyline mode and draw the first
-   * polyline. Implied true whenever {@link polylineSampleIndices} is non-empty.
+   * Declare the `frames.polylines` field + activate its schema (with empty
+   * polylines on every frame) without pre-seeding a track, so a clean-slate
+   * test can draw the first polyline. Implied by a non-empty
+   * {@link polylineSampleIndices}.
    */
   withPolylineField?: boolean;
   /**
@@ -66,9 +65,9 @@ export interface VideoAnnotationSeedOptions {
    */
   dynamicAttribute?: { name: string; values: string[] };
   /**
-   * Multiple dynamic attributes (each a dropdown over its `values`, seeded to
-   * `values[0]` on every frame of the tracked detection). Use when a test needs
-   * more than one sub-track row. Takes precedence over {@link dynamicAttribute}.
+   * Multiple dynamic attributes, each a dropdown over its `values` seeded to
+   * `values[0]` on every frame of the tracked detection. Takes precedence over
+   * {@link dynamicAttribute}.
    */
   dynamicAttributes?: Array<{ name: string; values: string[] }>;
 }
@@ -92,15 +91,17 @@ const ID_ATTRIBUTE = {
 };
 
 /**
- * Builds the `createVideoDataset` arguments for a video-annotation dataset:
- * declared frame fields with an active `frames.detections` annotation schema
+ * Builds the `createDataset({ mediaType: "video" })` arguments for a
+ * video-annotation dataset: declared frame fields with an active
+ * `frames.detections` annotation schema
  * (keyed by its real frame path), an active sample-level `events`
  * TemporalDetections schema, materialized per-frame images for the ImaVid
  * tile, and empty-but-present `frames.detections` on every frame so the first
  * draw's JSON patch can append.
  *
  * @example
- * await datasetFactory.createVideoDataset({
+ * await datasetFactory.createDataset({
+ *   mediaType: "video",
  *   datasetName,
  *   ...videoAnnotationSeed({ withEvents: false, trackedSampleIndices: [0] }),
  * });

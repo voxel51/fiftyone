@@ -11,6 +11,7 @@ import {
 } from "@fiftyone/lighter";
 import type { ModalSample } from "@fiftyone/state";
 import { getSampleSrc, useModalLookerOptions } from "@fiftyone/state";
+import { Size, Spinner } from "@voxel51/voodo";
 import { useAtomValue, useSetAtom } from "jotai";
 import React, {
   lazy,
@@ -36,18 +37,15 @@ export interface LighterSampleRendererProps {
   className?: string;
   /** Sample to display */
   sample: ModalSample;
-  /** Notified when the scene becomes safe to show (initial viewport settled
-   * on-canvas) — lets a host drive a loading cover over this renderer. */
-  onRevealChange?: (revealed: boolean) => void;
 }
 
 /**
- * Lighter unit sample renderer with PixiJS renderer.
+ * Lighter unit sample renderer with PixiJS renderer, behind an opaque loading
+ * cover until the scene's initial viewport settles.
  */
 export const LighterSampleRenderer = ({
   className = "",
   sample,
-  onRevealChange,
 }: LighterSampleRendererProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   // unique scene id allows us to destroy/recreate scenes reliably
@@ -66,13 +64,6 @@ export const LighterSampleRenderer = ({
   const onReveal = useCallback(() => setIsRevealed(true), []);
 
   useEffect(() => {
-    // An init failure renders the error panel in place of the scene and no
-    // reveal ever fires — report it as "revealed" so a host's loading cover
-    // drops and the panel is visible instead of an indefinite spinner.
-    onRevealChange?.(isRevealed || initError !== null);
-  }, [isRevealed, initError, onRevealChange]);
-
-  useEffect(() => {
     // sceneId should be deterministic, but unique for a given sample snapshot
     const sample = sampleRef.current;
     setSceneId(
@@ -88,45 +79,60 @@ export const LighterSampleRenderer = ({
 
   if (initError) {
     return (
-      <div className={styles.errorPanel} role="alert" aria-live="assertive">
-        <Suspense fallback={null}>
-          <GpuErrorAnimation />
-        </Suspense>
-        <p className={styles.errorTitle}>WebGL context could not be created</p>
-        <p className={styles.errorMessage}>
-          This is usually caused by an incompatible GPU driver or a browser flag
-          blocking hardware acceleration.
-        </p>
+      <div className={styles.root}>
+        <div className={styles.content}>
+          <div className={styles.errorPanel} role="alert" aria-live="assertive">
+            <Suspense fallback={null}>
+              <GpuErrorAnimation />
+            </Suspense>
+            <p className={styles.errorTitle}>
+              WebGL context could not be created
+            </p>
+            <p className={styles.errorMessage}>
+              This is usually caused by an incompatible GPU driver or a browser
+              flag blocking hardware acceleration.
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div
-      ref={containerRef}
-      onMouseEnter={() => setIsCanvasHovered(true)}
-      onMouseLeave={() => setIsCanvasHovered(false)}
-      className={`lighter-sample-renderer ${className}`}
-      data-cy="lighter-sample-renderer"
-      id="lighter-sample-renderer-container"
-      style={{
-        width: "100%",
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-        minHeight: 0,
-        visibility: isRevealed ? "visible" : "hidden",
-      }}
-    >
-      {containerRef.current && sceneId && (
-        <LighterSetupImpl
-          containerRef={containerRef}
-          sceneId={sceneId}
-          sampleRef={sampleRef}
-          onReveal={onReveal}
-        />
-      )}
-      {isCanvasHovered && <LighterToolbar />}
+    <div className={styles.root}>
+      <div className={styles.content}>
+        <div
+          ref={containerRef}
+          onMouseEnter={() => setIsCanvasHovered(true)}
+          onMouseLeave={() => setIsCanvasHovered(false)}
+          className={`lighter-sample-renderer ${className}`}
+          data-cy="lighter-sample-renderer"
+          id="lighter-sample-renderer-container"
+          style={{
+            width: "100%",
+            height: "100%",
+            display: "flex",
+            flexDirection: "column",
+            minHeight: 0,
+            visibility: isRevealed ? "visible" : "hidden",
+          }}
+        >
+          {containerRef.current && sceneId && (
+            <LighterSetupImpl
+              containerRef={containerRef}
+              sceneId={sceneId}
+              sampleRef={sampleRef}
+              onReveal={onReveal}
+            />
+          )}
+          {isCanvasHovered && <LighterToolbar />}
+        </div>
+        {!isRevealed && (
+          <div className={styles.cover}>
+            <Spinner size={Size.Lg} />
+          </div>
+        )}
+      </div>
     </div>
   );
 };

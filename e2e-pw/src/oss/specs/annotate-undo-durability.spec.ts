@@ -1,15 +1,10 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Undo-stack durability regressions in annotate mode:
- *  - the engine undo stack SURVIVES an autosave (a persist echo emits a
- *    whole-sample reset; it must not wipe undo history), and
- *  - a select-only canvas click records NO phantom undo entry (a select fires
- *    overlay-drag-end → commit; a value-equal commit must not capture an op).
- *
- * Both were real defects fixed in the engine (`engine.ts`: drop undos.clear() on
- * whole-sample reset; skip value-equal ops in captureOps). Only an e2e exercises
- * the real autosave round-trip, so these complement the engine unit tests.
+ * Undo-stack durability in annotate mode: the engine undo stack survives an
+ * autosave (a persist echo's whole-sample reset must not wipe it), and a
+ * select-only canvas click records no phantom undo entry (a value-equal commit
+ * must not capture an op). Only an e2e exercises the real autosave round-trip.
  */
 import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -77,12 +72,10 @@ test.describe.serial("annotate undo durability", () => {
     // a fresh modal (beforeEach reloads) starts with an empty undo stack
     await modal.sidebar.edit.assert.undoIsEnabled(false);
 
-    // click the existing detection on the canvas to SELECT it (no edit). This
-    // fires overlay-drag-end → commit with a value-equal bounding_box; the engine
-    // must skip the no-op op rather than capture a phantom entry. The "pointer"
-    // cursor wait ensures the overlay is HOVERED before the click — lighter
-    // selects the hovered overlay, so a click without a registered hover selects
-    // nothing (matches the canvas-actions spec's overlay-select pattern).
+    // select the existing detection with a canvas click (no edit): it fires
+    // overlay-drag-end → commit with a value-equal bounding_box the engine must
+    // skip. The "pointer" cursor wait ensures the overlay is hovered first,
+    // since lighter selects only a hovered overlay.
     await modal.sampleCanvas.move(0.5, 0.5, "pointer");
     await modal.sampleCanvas.down();
     await modal.sampleCanvas.up();

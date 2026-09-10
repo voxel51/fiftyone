@@ -2,9 +2,9 @@
  * Copyright 2017-2026, Voxel51, Inc.
  *
  * Last-used class on the video surface: after setting a drawn frame detection's
- * class, the NEXT drawn box defaults to that class — not the schema's first
- * class. Exercises last-used resolution in the frame namespace (the field is
- * `frames.detections`), the companion to the 2D last-used-class spec.
+ * class, the next drawn box defaults to that class rather than the schema's
+ * first. The companion to the 2D spec, resolved in the `frames.detections`
+ * namespace.
  */
 import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -27,7 +27,8 @@ test.beforeAll(async ({ foWebServer, datasetFactory }) => {
   await foWebServer.startWebServer();
   // classes: ["vehicle", "person", "road sign"] — "vehicle" is the schema
   // default, so a draw that defaults to "person" proves last-used drove it.
-  await datasetFactory.createVideoDataset({
+  await datasetFactory.createDataset({
+    mediaType: "video",
     datasetName,
     ...videoAnnotationSeed(),
   });

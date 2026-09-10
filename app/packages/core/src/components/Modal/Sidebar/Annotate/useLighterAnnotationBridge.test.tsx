@@ -40,9 +40,8 @@ const enabledFor = (isVideo: boolean, isImageDynamicGroupVideo: boolean) => {
   return bridgeSpy.mock.lastCall?.[0].enabled;
 };
 
-// The video surface mounts its own frame-stamping bridge on the same scene.
-// This bridge must stay off there, or its frame-less selection becomes the
-// anchor after a draw and the track loses its keyframe and auto-extend.
+// The video surface mounts its own frame-stamping bridge on the same scene;
+// this frame-less one must stay off there.
 describe("useLighterAnnotationBridge", () => {
   afterEach(() => bridgeSpy.mockReset());
 

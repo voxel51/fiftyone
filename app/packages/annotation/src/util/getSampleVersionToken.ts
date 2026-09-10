@@ -2,10 +2,9 @@ import { parseTimestamp } from "@fiftyone/core/src/client/util";
 import type { Sample } from "@fiftyone/looker";
 
 /**
- * Freshest server-confirmed `last_modified_at` per sample id, recorded from
- * every write response. The modal sample a token is otherwise read from only
- * catches up after an async refetch, so a second write inside that window
- * would carry the pre-write token and fail the server's If-Match check.
+ * Freshest server-confirmed `last_modified_at` per sample id. The modal sample
+ * only catches up after a refetch, so a write inside that window would
+ * otherwise carry a stale token.
  */
 const confirmed = new Map<string, Date>();
 
@@ -41,13 +40,9 @@ export const recordSampleVersionToken = (
 };
 
 /**
- * Get a version token for a sample.
- *
- * A version token is a string which uniquely identifies a specific version of
- * a sample. The later of the sample's own `last_modified_at` and the version
- * last confirmed by the server for that sample id wins.
- *
- * If a version token cannot be determined, `null` is returned instead.
+ * Get a sample's version token, or `null` when none can be determined. The
+ * later of the sample's `last_modified_at` and the server-confirmed version
+ * for that id wins.
  *
  * @param sample Sample for which to obtain a version token
  */

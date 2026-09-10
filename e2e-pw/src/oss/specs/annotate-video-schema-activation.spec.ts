@@ -1,22 +1,12 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Schema-manager activation gates EVERY annotate surface for a video dataset:
- * deactivating a label field must hide it on the canvas overlays, the timeline
- * tracks, AND the sidebar rows — not just one of them.
- *
- * This guards a fixed bug where only the sidebar consulted the active set: the
- * canvas overlays (engine Lighter bridge) and timeline tracks rendered straight
- * from presence, so a deactivated field stayed painted. The fix gates all three
- * on the sidebar's visible set (annotation-active ∩ explore-active). Covered for
- * both a per-frame field (`frames.detections`, via the engine bridge `paths`
- * scope + the frame-derived tracks) and a sample-level TemporalDetections field
- * (`events`, via the TD overlay sync + the TD track derivation).
- *
- * Seeded (per test, for isolation) with a tracked frame detection on sample 0
- * (one `vehicle` instance on every frame) plus the demo `events` TDs
- * (approach [1,6] / pass [7,13] / depart [14,20] over a 20-frame clip). At the
- * initial frame both fields render everywhere.
+ * Schema-manager activation gates every annotate surface for a video dataset:
+ * deactivating a field must hide it on the canvas overlays, the timeline tracks
+ * and the sidebar rows, for both a per-frame field (`frames.detections`) and a
+ * sample-level TemporalDetections field (`events`). Re-seeded per test with a
+ * tracked `vehicle` on every frame plus the demo events over a 20-frame clip,
+ * so both fields render everywhere at frame 1.
  */
 import { test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -60,7 +50,8 @@ test.beforeEach(async ({ datasetFactory }) => {
   // playhead opens on frame 1, approach in support); both schemas active.
   // Re-seeded per test so activation edits don't leak across the serial
   // dataset.
-  await datasetFactory.createVideoDataset({
+  await datasetFactory.createDataset({
+    mediaType: "video",
     datasetName,
     ...videoAnnotationSeed({
       trackedSampleIndices: [0],

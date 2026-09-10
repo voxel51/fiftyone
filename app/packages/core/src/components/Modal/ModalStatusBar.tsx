@@ -33,12 +33,8 @@ const IconWrap = styled.span`
 `;
 
 /**
- * Floating status / hint display at the top of the modal sample pane.
- * Renders whatever was registered via `useModalStatusBar`'s `setContent`
- * (`@fiftyone/annotation`). Hidden when no content is registered.
- *
- * The bar is mode-agnostic; mode-specific registrar components call
- * `setContent` based on their own state.
+ * Floating status display at the top of the modal sample pane, hidden when
+ * nothing is registered. Mode-agnostic; registrars call `setContent`.
  */
 export const ModalStatusBar = () => {
   const content = useModalStatusBarContent();
