@@ -162,14 +162,6 @@ export const MediaTypeFo3dComponent = () => {
   const assetsGroupRef = useRef<Group | null>(null);
   const threeJsLoadingStatus = useTrackStatus(loadingManager, isSceneReady);
 
-  // e2e draws wait on this before clicking; a scene swap unmounts the
-  // component and resets it through the cleanup
-  const setSceneReady = useSetFo3dSceneReady();
-  useEffect(() => {
-    setSceneReady(isSceneReady && !threeJsLoadingStatus.isLoading);
-    return () => setSceneReady(false);
-  }, [isSceneReady, threeJsLoadingStatus.isLoading, setSceneReady]);
-
   useFo3dCameraControlsConfig({
     cameraControlsRef,
   });
@@ -186,6 +178,21 @@ export const MediaTypeFo3dComponent = () => {
     rootAssetCount,
     isThreeJsLoading: threeJsLoadingStatus.isLoading,
   });
+
+  // e2e draws wait on this before clicking; the top view frames the scene
+  // bounds, so those must be resolved too. A scene swap resets it.
+  const setSceneReady = useSetFo3dSceneReady();
+  useEffect(() => {
+    setSceneReady(
+      isSceneReady && !threeJsLoadingStatus.isLoading && isBoundsResolved,
+    );
+    return () => setSceneReady(false);
+  }, [
+    isSceneReady,
+    threeJsLoadingStatus.isLoading,
+    isBoundsResolved,
+    setSceneReady,
+  ]);
 
   const { upVector, effectiveSceneBoundingBox, contextValue } =
     useFo3dSceneContextState({

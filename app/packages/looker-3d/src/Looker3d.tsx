@@ -20,6 +20,7 @@ import {
   isColormapModalOpenAtom,
   isGridOnAtom,
   isLevaConfigPanelOnAtom,
+  activeSegmentationStateAtom,
   selectedLabelForAnnotationAtom,
 } from "./state";
 import { isPolyline3dOverlay } from "./types";
@@ -68,6 +69,9 @@ export const Looker3d = () => {
     selectedLabelForAnnotationAtom,
   );
   const workingLabel = useWorkingLabel(selectedLabelForAnnotation?._id ?? "");
+  // the in-progress polyline's vertices; the e2e draw helper waits on it
+  const draftVertexCount = useRecoilValue(activeSegmentationStateAtom).vertices
+    .length;
   const selectedVertexCount =
     workingLabel && isPolyline3dOverlay(workingLabel)
       ? workingLabel.data.points3d?.reduce(
@@ -240,6 +244,7 @@ export const Looker3d = () => {
         onMouseMove={update}
         data-cy="looker3d"
         data-cy-selected-vertex-count={selectedVertexCount}
+        data-cy-draft-vertex-count={draftVertexCount}
         data-scene-ready={revealed ? "true" : "false"}
       >
         <MediaTypeFo3dComponent key={looker3dSceneKey} />

@@ -220,12 +220,11 @@ export class ModalAnnotate3dPom {
   }
 
   /**
-   * Draw a polyline by clicking each container-fractional vertex (spaced beyond
-   * the renderer's 200ms double-click window) and committing with a rapid
-   * double-click at the last point, which must stay clear of the first vertex
-   * or the loop closes instead. Like {@link drawCuboid}, clicks raycast onto
-   * the z=0 annotation plane, so pair with a top view and assert creation
-   * rather than exact vertices.
+   * Draw a polyline by clicking each container-fractional vertex and committing
+   * with Enter; the last point must stay clear of the first or the loop closes
+   * instead. Like {@link drawCuboid}, clicks raycast onto the z=0 annotation
+   * plane, so pair with a top view and assert creation rather than exact
+   * vertices.
    */
   async drawPolyline(points: Array<[number, number]>) {
     if (points.length < 2) {
@@ -242,25 +241,20 @@ export class ModalAnnotate3dPom {
       box.y + box.height * fy,
     ];
 
-    // place each vertex with a single click, spaced beyond the ~200ms
-    // double-click window so none reads as a commit
-    for (const point of points) {
+    // each click must register as a vertex before the next lands
+    for (const [index, point] of points.entries()) {
       const [x, y] = toScreen(point);
       await this.page.mouse.move(x, y);
       await this.page.mouse.down();
       await this.page.mouse.up();
-      // the double-click window is itself a timeout; spacing is the semantics
-      // eslint-disable-next-line playwright/no-wait-for-timeout
-      await this.page.waitForTimeout(250);
+      await expect(this.container).toHaveAttribute(
+        "data-cy-draft-vertex-count",
+        String(index + 1),
+      );
     }
 
-    // commit with a rapid double-click at the last vertex
-    const [lx, ly] = toScreen(points[points.length - 1]);
-    await this.page.mouse.move(lx, ly);
-    await this.page.mouse.down();
-    await this.page.mouse.up();
-    await this.page.mouse.down();
-    await this.page.mouse.up();
+    // Enter commits the segment; a double-click would ride on wall-clock timing
+    await this.page.keyboard.press("Enter");
   }
 }
 
