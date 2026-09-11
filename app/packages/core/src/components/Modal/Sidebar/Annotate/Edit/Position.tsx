@@ -15,13 +15,13 @@ import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
 import { useAnnotationContext } from "./useAnnotationContext";
 
-const createInput = (name: string, readOnly?: boolean) => {
+const createInput = (name: string, readOnly?: boolean, label = name) => {
   return {
     [name]: {
       type: "number",
       view: {
         name: "View",
-        label: name,
+        label,
         component: "FieldView",
         readOnly,
       },
@@ -163,7 +163,7 @@ export default function Position({ readOnly = false }: PositionProps) {
           type: "object",
           view: createStack(),
           properties: {
-            ...createInput("rotation", readOnly),
+            ...createInput("rotation", readOnly, "rotation (radians)"),
           },
         },
       },
