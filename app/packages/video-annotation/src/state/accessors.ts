@@ -16,7 +16,9 @@ import {
   selectedMediaField,
   State,
   useCurrentDatasetId,
+  useDynamicGroupOrderBy,
   useIsImageDynamicGroupVideo,
+  usePrimitiveFieldPaths,
   view,
 } from "@fiftyone/state";
 import { isFrameScopedPath } from "./framePaths";
@@ -167,6 +169,44 @@ export const useFrameLabelFields = (): Record<string, LabelType> => {
 
     return fields;
   }, [contentKey]);
+};
+
+/**
+ * Schema-active primitive paths whose values live on the frame, so the sidebar
+ * reads them at the playhead: `frames.*` on a real video, the bare sample
+ * fields when an image dataset is grouped into a video.
+ */
+export const toFramePrimitivePaths = (
+  active: readonly string[],
+  primitivePaths: readonly string[],
+  isImageDynamicGroupVideo: boolean,
+  orderBy: string | null = null,
+): string[] =>
+  [
+    ...new Set([
+      ...primitivePaths.filter(
+        (path) =>
+          active.includes(path) &&
+          isFrameScopedPath(path, isImageDynamicGroupVideo),
+      ),
+      // the group's order-by value reads on the timeline, active or not
+      ...(isImageDynamicGroupVideo && orderBy ? [orderBy] : []),
+    ]),
+  ].sort();
+
+export const useFramePrimitivePaths = (): readonly string[] => {
+  const active = useAtomValue(activeLabelSchemas);
+  const primitivePaths = usePrimitiveFieldPaths();
+  const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
+  const paths = toFramePrimitivePaths(
+    active ?? [],
+    primitivePaths,
+    isImageDynamicGroupVideo,
+    useDynamicGroupOrderBy(),
+  );
+  // content-keyed: a new array identity re-registers the FrameStore
+  const contentKey = paths.join(",");
+  return useMemoOne(() => paths, [contentKey]);
 };
 
 /** The dataset's modal media field (default `filepath`), which locates each frame's media. */

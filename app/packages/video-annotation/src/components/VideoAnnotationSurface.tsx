@@ -21,6 +21,7 @@ import { useSyncAnnotationVideoStore } from "../hooks/useSyncAnnotationVideoStor
 import { useVideoLighterEngineBridge } from "../hooks/useVideoLighterEngineBridge";
 import {
   useFrameLabelFields,
+  useFramePrimitivePaths,
   useVisibleLabelSchemas,
 } from "../state/accessors";
 import { useFollowAnchorFrame } from "../state/useFollowAnchorFrame";
@@ -37,6 +38,7 @@ import {
   AnnotatePrerequisiteNotice,
 } from "./AnnotatePrerequisiteNotice";
 import { FrameLabelsTracks, RegisterFrameLabels } from "./FrameLabels";
+import { FrameReadout } from "./FrameReadout";
 import { ImaVidLighterTile } from "./ImaVidLighterTile";
 import { RegisterImaVidImage } from "./RegisterImaVidImage";
 import { RegisterTimelineAudio } from "./RegisterTimelineAudio";
@@ -304,6 +306,7 @@ const VideoAnnotationSurfaceForSample: React.FC<
             sample={sample}
             maxSize={timelineMaxSize}
             extraActions={<VideoAnnotationToolbar />}
+            readouts={<FrameReadout />}
             onReadyChange={setTracksReady}
           />
         )}
@@ -373,7 +376,12 @@ const VideoAnnotationHandlerRegistration: React.FC = () => {
   useSyncAnnotationFrameClock();
   const labelTypes = useFrameLabelFields();
   const visiblePaths = useVisibleLabelSchemas();
-  useSyncAnnotationVideoStore({ labelTypes, sampleLevelPaths: visiblePaths });
+  const valuePaths = useFramePrimitivePaths();
+  useSyncAnnotationVideoStore({
+    labelTypes,
+    sampleLevelPaths: visiblePaths,
+    valuePaths,
+  });
   // after the clock + store: the bridge reconciles against the FrameTemporalView
   // and a seeded frame store, not the degenerate pool view
   useVideoLighterEngineBridge(visiblePaths);

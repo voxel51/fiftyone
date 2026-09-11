@@ -18,6 +18,8 @@ export interface SyncVideoStoreOptions {
   labelTypes: Record<string, LabelType>;
   /** Sample-level label paths whose resolution re-announces the sample-level backing. */
   sampleLevelPaths: ReadonlySet<string>;
+  /** Frame-scoped primitive paths whose per-frame values the store serves. Default none. */
+  valuePaths?: readonly string[];
   /** Fetch every frame up front for consumers that walk the whole clip; `warmupAll` competes with playback. Default `true`. */
   seedWholeClip?: boolean;
 }
@@ -28,9 +30,12 @@ export interface SyncVideoStoreOptions {
  * `/frames` stream plus a {@link SampleLabelStore} over the shared `Sample`.
  * Must be mounted under the modal scope where the labels stream is published.
  */
+const NO_VALUE_PATHS: readonly string[] = [];
+
 export const useSyncAnnotationVideoStore = ({
   labelTypes,
   sampleLevelPaths,
+  valuePaths = NO_VALUE_PATHS,
   seedWholeClip = true,
 }: SyncVideoStoreOptions): void => {
   const engine = useAnnotationEngine();
@@ -50,7 +55,11 @@ export const useSyncAnnotationVideoStore = ({
 
     // Not gated on active frame fields: the composite store also owns the
     // sample-level labels, so activation gates rendering, never the store
-    const frames = new FrameStore(sampleId, { labelTypes, loading: true });
+    const frames = new FrameStore(sampleId, {
+      labelTypes,
+      valuePaths,
+      loading: true,
+    });
     const sampleLevel = new SampleLabelStore(sampleId, getSample(sampleId));
     const store = new VideoLabelStore(sampleId, frames, sampleLevel);
     const unregister = engine.registerStore(store);
@@ -60,6 +69,7 @@ export const useSyncAnnotationVideoStore = ({
       frames,
       stream,
       labelTypes,
+      valuePaths,
       seedWholeClip,
     );
     carry.restore(frames, sampleId);
@@ -71,7 +81,16 @@ export const useSyncAnnotationVideoStore = ({
       sampleLevel.dispose();
       sampleLevelRef.current = null;
     };
-  }, [engine, sampleId, labelTypes, getSample, stream, seedWholeClip, carry]);
+  }, [
+    engine,
+    sampleId,
+    labelTypes,
+    valuePaths,
+    getSample,
+    stream,
+    seedWholeClip,
+    carry,
+  ]);
 
   // Once a sample-level label becomes resolvable (or its type settles), the
   // Lighter bridge mounts its overlay and the temporal view refreshes its

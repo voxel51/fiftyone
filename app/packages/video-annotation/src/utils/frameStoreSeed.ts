@@ -1,7 +1,7 @@
 import type { FrameStore } from "@fiftyone/annotation";
 import type { LabelType } from "@fiftyone/utilities";
 import type { useFrameLabelsStream } from "../streams/frameLabelsStream";
-import { parseFramesData } from "../streams/framesData";
+import { parseFramesData, parseFrameValues } from "../streams/framesData";
 
 type FrameLabelsStream = NonNullable<ReturnType<typeof useFrameLabelsStream>>;
 
@@ -14,6 +14,7 @@ export const seedFrameStore = (
   frames: FrameStore,
   stream: FrameLabelsStream,
   labelTypes: Record<string, LabelType>,
+  valuePaths: readonly string[],
   seedWholeClip: boolean,
 ): (() => void) => {
   let torndown = false;
@@ -23,8 +24,13 @@ export const seedFrameStore = (
     }
   };
 
-  const seed = () =>
-    frames.setData(parseFramesData(stream.cachedFrames(), labelTypes));
+  const seed = () => {
+    const cached = stream.cachedFrames();
+    frames.setData(
+      parseFramesData(cached, labelTypes),
+      parseFrameValues(cached, valuePaths),
+    );
+  };
   const unsubscribe = stream.subscribeToEdits(() => {
     seed();
     settle();

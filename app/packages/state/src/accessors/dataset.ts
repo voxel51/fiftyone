@@ -4,6 +4,7 @@ import {
   dataset,
   datasetId,
   datasetName,
+  dynamicGroupParameters,
   fieldSchema,
   groupMediaTypes,
   isGroup,
@@ -120,3 +121,10 @@ export const useIsImageDynamicGroupVideo = (): boolean => {
 
   return orderedDynamicGroup && parentMediaType === MEDIA_TYPE_IMAGE;
 };
+
+/**
+ * The field the current dynamic group is ordered by, or null when the view is
+ * not a dynamic group or the group is unordered.
+ */
+export const useDynamicGroupOrderBy = (): string | null =>
+  useRecoilValue(dynamicGroupParameters)?.orderBy ?? null;

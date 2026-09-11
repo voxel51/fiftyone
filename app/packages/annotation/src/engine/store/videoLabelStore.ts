@@ -81,6 +81,10 @@ export class VideoLabelStore implements LabelStore {
     return this.route(path).getLabelType(path);
   }
 
+  getFrameValue(path: string, frame: number): unknown {
+    return this.frames.getFrameValue?.(path, frame);
+  }
+
   enumerateLabels(kinds: readonly LabelType[]): LabelRef[] {
     return [
       ...this.frames.enumerateLabels(kinds),

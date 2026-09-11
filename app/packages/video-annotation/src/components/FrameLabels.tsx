@@ -10,6 +10,7 @@ import {
   useDynamicAttributeNamesGetter,
   useDynamicGroupValue,
   useFrameLabelFields,
+  useFramePrimitivePaths,
   useGroupSlice,
   useModalSampleFrameRate,
   useModalSampleId,
@@ -174,6 +175,8 @@ type TemporalDetectionColorResolver = (
 const toPerFrameField = (field: string): string =>
   field.startsWith("frames.") ? field.slice("frames.".length) : field;
 
+const NO_FIELDS: readonly string[] = [];
+
 /**
  * Reads the params needed to construct a real `/frames`-backed labels
  * stream, waits until duration is known (so we can derive `frameCount`),
@@ -228,6 +231,10 @@ export const RegisterFrameLabels: React.FC<{
   const exploreLabelFields = useExploreFrameLabelFields();
   const labelFields =
     mode === "explore" ? exploreLabelFields : annotationLabelFields;
+  // Annotate also streams the frame-scoped primitives the sidebar shows at the
+  // playhead; Explore reads those from the modal sample.
+  const framePrimitivePaths = useFramePrimitivePaths();
+  const primitiveFields = mode === "explore" ? NO_FIELDS : framePrimitivePaths;
 
   const frameRate = useModalSampleFrameRate(sample);
   const ready =
@@ -250,6 +257,7 @@ export const RegisterFrameLabels: React.FC<{
     ...new Set([
       frameField,
       ...Object.keys(labelFields).map(toPerFrameField).sort(),
+      ...primitiveFields.map(toPerFrameField),
     ]),
   ];
 
@@ -641,6 +649,8 @@ export const FrameLabelsTracks: React.FC<{
    * fit / JSON / help buttons here.
    */
   trailingActions?: React.ReactNode;
+  /** Clock-adjacent readouts, forwarded to the controls row. */
+  readouts?: React.ReactNode;
   /**
    * Which surface's per-frame field set the object tracks come from. Same
    * choice, and for the same reason, as {@link RegisterFrameLabels}' — the
@@ -654,6 +664,7 @@ export const FrameLabelsTracks: React.FC<{
   maxSize,
   extraActions,
   trailingActions,
+  readouts,
   mode = "annotate",
   onReadyChange,
 }) => {
@@ -765,6 +776,7 @@ export const FrameLabelsTracks: React.FC<{
         scrollerRef={timelineScroller}
         extraActions={extraActions}
         trailingActions={trailingActions}
+        readouts={readouts}
         loaded={timelineLoaded}
         maxSize={maxSize}
         drawerOpen={drawerOpen}

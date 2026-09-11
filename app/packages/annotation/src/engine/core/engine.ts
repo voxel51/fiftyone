@@ -20,7 +20,11 @@ import { InteractionState } from "../interaction/interactionState";
 import type { SignalHandler } from "../signals/signalPipe";
 import { SignalPipe } from "../signals/signalPipe";
 import { PoolTemporalView } from "../temporal/poolTemporalView";
-import type { PresenceListener, TemporalView } from "../temporal/types";
+import type {
+  PresenceListener,
+  TemporalView,
+  FrameListener,
+} from "../temporal/types";
 import { DispatchGuard } from "./dispatchGuard";
 import type {
   UndoCommitListener,
@@ -76,7 +80,9 @@ export class AnnotationEngine {
    *  (not on the view) so a subscription taken before the frame view is
    *  attached still receives its clock events. */
   private presenceListeners = new Set<PresenceListener>();
+  private frameListeners = new Set<FrameListener>();
   private temporalPresenceUnsub: (() => void) | undefined;
+  private temporalFrameUnsub: (() => void) | undefined;
 
   private signals: SignalPipe;
 
@@ -174,12 +180,27 @@ export class AnnotationEngine {
     };
   }
 
-  /** (Re)bind the internal forwarder to the current temporal view. */
+  /** The playhead's frame changed; the same forwarding contract as presence. */
+  subscribeFrame(listener: FrameListener): () => void {
+    this.frameListeners.add(listener);
+
+    return () => {
+      this.frameListeners.delete(listener);
+    };
+  }
+
+  /** (Re)bind the internal forwarders to the current temporal view. */
   private bindTemporalPresence(): void {
     this.temporalPresenceUnsub?.();
     this.temporalPresenceUnsub = this.temporal.subscribePresence((events) => {
       for (const listener of this.presenceListeners) {
         listener(events);
+      }
+    });
+    this.temporalFrameUnsub?.();
+    this.temporalFrameUnsub = this.temporal.subscribeFrame((frame) => {
+      for (const listener of this.frameListeners) {
+        listener(frame);
       }
     });
   }
@@ -279,6 +300,11 @@ export class AnnotationEngine {
     frame?: number;
   }): LabelData[] {
     return this.stores.get(ref.sample)?.listLabels(ref.path, ref.frame) ?? [];
+  }
+
+  /** A per-frame non-label field's value at a frame (see `LabelStore.getFrameValue`). */
+  getFrameValue(ref: { sample: string; path: string; frame: number }): unknown {
+    return this.stores.get(ref.sample)?.getFrameValue?.(ref.path, ref.frame);
   }
 
   /** Frame numbers edited this session for a sample (empty for non-frame stores). */

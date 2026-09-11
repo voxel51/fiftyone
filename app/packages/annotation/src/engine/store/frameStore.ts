@@ -23,7 +23,9 @@
  * the next `getJsonPatch` re-emits idempotently.
  *
  * Handles list-label frame fields (Detections/Keypoints/…). The server
- * echo/seed payload is the flat {@link FramesData} shape.
+ * echo/seed payload is the flat {@link FramesData} shape. Registered per-frame
+ * primitive fields (`valuePaths`) ride alongside as a read-only source layer
+ * seeded from the same frame documents.
  */
 
 import type { JSONDeltas, LabelData, LabelType } from "@fiftyone/utilities";
@@ -60,11 +62,18 @@ interface FrameSnapshot {
 /** Flat per-frame seed/echo shape: `{ [frame]: { [path]: elements } }`. */
 export type FramesData = Record<number, Record<string, LabelData[]>>;
 
+/** Flat per-frame primitive values: `{ [frame]: { [path]: value } }`; unset fields are absent. */
+export type FrameValuesData = Record<number, Record<string, unknown>>;
+
 export interface FrameStoreOptions {
   /** Frame-agnostic label paths → type, e.g. `{ "frames.detections": Detections }`. */
   labelTypes: Record<string, LabelType>;
+  /** Frame-agnostic non-label paths whose per-frame values the store serves. */
+  valuePaths?: readonly string[];
   /** Initial server frames. */
   data?: FramesData;
+  /** Initial per-frame primitive values. */
+  values?: FrameValuesData;
   /** Start in the seed-in-flight state (see {@link LabelStore.isLoading}). */
   loading?: boolean;
 }
@@ -89,9 +98,12 @@ export class FrameStore implements LabelStore {
   readonly sample: string;
 
   private readonly labelTypes: Record<string, LabelType>;
+  private readonly valuePaths: readonly string[];
   private source = new Map<number, FrameDoc>();
   /** Copy-on-write overlay of edited frames; presence here === dirty. */
   private working = new Map<number, FrameDoc>();
+  /** Server truth for the registered primitive paths, per frame. */
+  private valueSource = new Map<number, Map<string, unknown>>();
   private readonly displayListeners = new Set<DisplayListener>();
   private readonly changeListeners = new Set<ChangeListener>();
   private loading = false;
@@ -99,7 +111,9 @@ export class FrameStore implements LabelStore {
   constructor(sample: string, options: FrameStoreOptions) {
     this.sample = sample;
     this.labelTypes = options.labelTypes;
+    this.valuePaths = options.valuePaths ?? [];
     this.source = this.parse(options.data ?? {});
+    this.valueSource = this.parseValues(options.values ?? {});
     this.loading = options.loading ?? false;
   }
 
@@ -158,6 +172,14 @@ export class FrameStore implements LabelStore {
 
   getLabelType(path: string): LabelType {
     return this.labelTypes[path] ?? ("Unknown" as LabelType);
+  }
+
+  getFrameValue(path: string, frame: number): unknown {
+    if (!this.valuePaths.includes(path)) {
+      return undefined;
+    }
+
+    return this.valueSource.get(frame)?.get(path);
   }
 
   enumerateLabels(kinds: readonly LabelType[]): LabelRef[] {
@@ -480,7 +502,11 @@ export class FrameStore implements LabelStore {
    * wins) emits nothing for its own label. Initial hydration mounts via the
    * bridge's registration reconcile; here newcomers fall out as `update` adds.
    */
-  setData(data: Record<string, unknown>): void {
+  setData(data: Record<string, unknown>, values?: FrameValuesData): void {
+    if (values) {
+      this.valueSource = this.parseValues(values);
+    }
+
     const prevSource = this.source;
     const next = this.parse(data as FramesData);
 
@@ -519,6 +545,7 @@ export class FrameStore implements LabelStore {
   clear(): void {
     this.source = new Map();
     this.working = new Map();
+    this.valueSource = new Map();
     this.emit([wholeSampleReset(this.sample)]);
   }
 
@@ -647,6 +674,26 @@ export class FrameStore implements LabelStore {
 
       for (const [path, list] of Object.entries(byPath)) {
         doc.set(path, [...list]);
+      }
+
+      frames.set(Number(key), doc);
+    }
+
+    return frames;
+  }
+
+  private parseValues(
+    data: FrameValuesData,
+  ): Map<number, Map<string, unknown>> {
+    const frames = new Map<number, Map<string, unknown>>();
+
+    for (const [key, byPath] of Object.entries(data)) {
+      const doc = new Map<string, unknown>();
+
+      for (const path of this.valuePaths) {
+        if (byPath[path] !== undefined) {
+          doc.set(path, byPath[path]);
+        }
       }
 
       frames.set(Number(key), doc);

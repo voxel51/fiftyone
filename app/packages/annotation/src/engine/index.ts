@@ -39,7 +39,11 @@ export type {
 } from "./store/types";
 export { isWholeSampleReset, wholeSampleReset } from "./store/types";
 export { SampleLabelStore } from "./store/sampleLabelStore";
-export type { FramesData, FrameStoreOptions } from "./store/frameStore";
+export type {
+  FramesData,
+  FrameStoreOptions,
+  FrameValuesData,
+} from "./store/frameStore";
 export { FrameStore } from "./store/frameStore";
 export { VideoLabelStore } from "./store/videoLabelStore";
 
@@ -115,6 +119,7 @@ export type {
 } from "./react/hooks";
 export {
   useEngineSelector,
+  useFrameValue,
   useInteraction,
   useSignalValue,
   useSurfaceActions,

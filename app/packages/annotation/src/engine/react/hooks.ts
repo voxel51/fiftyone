@@ -38,7 +38,10 @@ export type InteractionReads = Pick<
   InteractionState,
   "getActive" | "isActive" | "getAnchor" | "getHovered" | "isHovered"
 >;
-export type TemporalReads = Pick<TemporalView, "getPresent" | "isPresent">;
+export type TemporalReads = Pick<
+  TemporalView,
+  "getPresent" | "isPresent" | "frame"
+>;
 
 export type Equals<T> = (a: T, b: T) => boolean;
 
@@ -123,27 +126,30 @@ export const useInteraction = <T>(
   );
 };
 
-/** Select from temporal presence. Presence ≡ pool when non-temporal. */
+/** Select from temporal presence and the playhead. Presence ≡ pool when non-temporal. */
 export const useTemporal = <T>(
   engine: AnnotationEngine,
   selector: (reads: TemporalReads) => T,
   equals?: Equals<T>,
 ): T => {
-  // presence events don't bump the engine version; a local counter folds
-  // them into the snapshot key (sum of monotonic counters is monotonic)
+  // presence and frame events don't bump the engine version; a local counter
+  // folds them into the snapshot key (sum of monotonic counters is monotonic)
   const presenceVersion = useRef(0);
 
   const subscribe = useCallback(
     (listener: () => void) => {
-      const unsubscribeDisplay = engine.subscribe(listener);
-      const unsubscribePresence = engine.subscribePresence(() => {
+      const tick = () => {
         presenceVersion.current++;
         listener();
-      });
+      };
+      const unsubscribeDisplay = engine.subscribe(listener);
+      const unsubscribePresence = engine.subscribePresence(tick);
+      const unsubscribeFrame = engine.subscribeFrame(tick);
 
       return () => {
         unsubscribeDisplay();
         unsubscribePresence();
+        unsubscribeFrame();
       };
     },
     [engine],
@@ -156,6 +162,22 @@ export const useTemporal = <T>(
     equals,
   );
 };
+
+/**
+ * A registered per-frame field's value under the playhead, read the way the
+ * label rows are. `undefined` off the frame view or until that frame streams.
+ */
+export const useFrameValue = (
+  engine: AnnotationEngine,
+  sample: string,
+  path: string | null,
+): unknown =>
+  useTemporal(engine, (t) => {
+    const frame = t.frame();
+    return frame === undefined || path === null
+      ? undefined
+      : engine.getFrameValue({ sample, path, frame });
+  });
 
 /**
  * Watch a label's live signal value for one topic+key — the firehose render

@@ -81,6 +81,11 @@ export interface LabelStore {
   listLabels(path: string, frame?: number): LabelData[];
   getLabelType(path: string): LabelType;
 
+  /** A registered per-frame non-label field's value at `frame`; `undefined`
+   *  when the store is not frame-indexed, the path is not registered, the
+   *  frame is not loaded, or the field is unset. */
+  getFrameValue?(path: string, frame: number): unknown;
+
   /** Current refs across this store's label paths, filtered to `kinds` — the
    *  per-store half of `engine.enumerateLabels` (hydration). */
   enumerateLabels(kinds: readonly LabelType[]): LabelRef[];

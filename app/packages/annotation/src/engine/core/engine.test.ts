@@ -21,6 +21,8 @@ const makeFakeTemporal = () => {
   const view: TemporalView = {
     isTemporal: true,
     getPresent: () => [],
+    frame: () => 1,
+    subscribeFrame: () => () => undefined,
     isPresent: () => true,
     subscribePresence: (l) => {
       listeners.add(l);
