@@ -26,6 +26,16 @@ export class VideoAnnotatePom {
     return this.page.getByTestId("timeline-frame-readout");
   }
 
+  /** The timeline clock; in frame display it reads `#frame / #total`. */
+  get clock(): Locator {
+    return this.page.locator('[data-testid="timeline-playhead-time"]');
+  }
+
+  /** Switch the clock between elapsed time and frame numbers. */
+  async toggleClockDisplay() {
+    await this.clock.click();
+  }
+
   /**
    * Wait until the video-annotation surface has mounted AND the timeline
    * has committed its tracks (`data-timeline-loaded="true"` — stamped once
@@ -198,8 +208,8 @@ export class VideoAnnotatePom {
   }
 
   /**
-   * Frame start times (seconds) of a track's keyframe markers, ascending. The
-   * row must be mounted (drawer open or pinned).
+   * Times (seconds) of a track's keyframe markers, ascending: a frame's start,
+   * or the bar's end for a track's last frame. The row must be mounted.
    */
   async keyframeTimes(trackId: string): Promise<number[]> {
     const times = await this.page
@@ -490,6 +500,11 @@ class VideoAnnotateAsserter {
   /** The frame readout shows `text`, e.g. `#4 / #20`. */
   async frameReadout(text: string) {
     await expect(this.va.frameReadout).toHaveText(text);
+  }
+
+  /** The clock shows `text`. */
+  async clock(text: string) {
+    await expect(this.va.clock).toHaveText(text);
   }
 
   /** Assert the number of object (frame-label) tracks on the timeline. */

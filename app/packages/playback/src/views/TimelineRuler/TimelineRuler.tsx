@@ -75,10 +75,16 @@ function tickLabel(
   t: number,
   mode: TimelineMode,
   conversion: TimelineDisplayConversion,
+  duration: number,
 ): string {
   if (mode.kind === "duration") return durationTickLabel(t);
   const displayValue = conversion.toDisplay(t);
-  if (mode.kind === "sequence") return `${Math.round(displayValue as number)}`;
+  if (mode.kind === "sequence") {
+    // no number past the frame count: counting from 1, the end boundary
+    // starts no frame
+    const frame = Math.round(displayValue as number);
+    return frame > Math.round(duration * mode.fps) ? "" : `${frame}`;
+  }
   // absolute: HH:MM:SS.mmm — a full date is redundant tick-over-tick.
   return formatTimeOfDay(displayValue as Date);
 }
@@ -450,7 +456,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
                 left: `${((t - viewStart) / viewDuration) * 100}%`,
               }}
             >
-              {tickLabel(t, mode, displayConversion)}
+              {tickLabel(t, mode, displayConversion, duration)}
             </span>
           ))}
         </div>

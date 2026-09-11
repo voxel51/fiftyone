@@ -85,6 +85,16 @@ describe("PlayheadTime", () => {
     expect(screen.getByText("#5 / #10")).toBeTruthy();
   });
 
+  it("counts frames from 1 when the mode asks, with the total as the frame count", () => {
+    renderTime(1, 0.5, { kind: "sequence", fps: 10, firstFrame: 1 });
+    expect(screen.getByText("#6 / #10")).toBeTruthy();
+  });
+
+  it("reads the last frame, not the boundary after it, at the very end", () => {
+    renderTime(1, 1, { kind: "sequence", fps: 10, firstFrame: 1 });
+    expect(screen.getByText("#10 / #10")).toBeTruthy();
+  });
+
   it("renders date-qualified wall-clock time in absolute mode", () => {
     renderTime(2, 1, { kind: "absolute", epochAnchorMs: 10_000 });
     expect(

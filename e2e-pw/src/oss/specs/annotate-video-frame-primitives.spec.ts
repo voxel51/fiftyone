@@ -81,6 +81,10 @@ test("frame primitives follow the playhead and the frame number is read-only", a
   await sidebar.assert.primitiveValue("frames.frame_number", "4");
   await modal.videoAnnotate.assert.frameReadout("#4 / #20");
 
+  // the clock's frame display counts from 1 as well
+  await modal.videoAnnotate.toggleClockDisplay();
+  await modal.videoAnnotate.assert.clock("#4 / #20");
+
   await sidebar.assert.primitiveReadOnly("frames.frame_number", true);
   await sidebar.assert.primitiveReadOnly("frames.weather", false);
 });

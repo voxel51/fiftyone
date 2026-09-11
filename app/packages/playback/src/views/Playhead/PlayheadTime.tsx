@@ -35,7 +35,17 @@ const PlayheadTime: React.FC = () => {
   // here so the readout never shows `NaN`.
   const safeDuration = duration ?? 0;
   const safePlayhead = Math.min(playhead, safeDuration);
-  const label = `${formatDisplayValue(toDisplay(safePlayhead), mode)} / ${formatDisplayValue(toDisplay(safeDuration), mode)}`;
+  // In frame mode the total is the frame count, and the playhead at the very
+  // end sits on the last frame rather than on the boundary after it.
+  const total =
+    mode.kind === "sequence"
+      ? Math.round(safeDuration * mode.fps)
+      : toDisplay(safeDuration);
+  const current =
+    mode.kind === "sequence"
+      ? Math.min(toDisplay(safePlayhead) as number, total as number)
+      : toDisplay(safePlayhead);
+  const label = `${formatDisplayValue(current, mode)} / ${formatDisplayValue(total, mode)}`;
 
   const readout = (
     <Text

@@ -211,7 +211,12 @@ const VideoAnnotationSurfaceForSample: React.FC<
 
   // Sequence mode gives the readout a frame domain to switch into.
   const mode = useMemo<TimelineMode>(
-    () => ({ kind: "sequence", fps: prerequisites.frameRate as number }),
+    () => ({
+      kind: "sequence",
+      fps: prerequisites.frameRate as number,
+      // FiftyOne frame numbers start at 1
+      firstFrame: 1,
+    }),
     [prerequisites.frameRate],
   );
 

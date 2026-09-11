@@ -112,6 +112,10 @@ test("primitives follow the playhead and the order-by field is read-only", async
     `#3 / #${FRAMES} (${timestampAt(3)})`,
   );
 
+  // the clock's frame display counts from 1 as well
+  await modal.videoAnnotate.toggleClockDisplay();
+  await modal.videoAnnotate.assert.clock(`#3 / #${FRAMES}`);
+
   // only the order-by field is reserved; a plain frame_number field edits
   await sidebar.assert.primitiveReadOnly("timestamp", true);
   await sidebar.assert.primitiveReadOnly("frame_number", false);
