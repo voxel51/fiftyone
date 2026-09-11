@@ -3742,6 +3742,10 @@ class ConstructionSiteTraversabilityDataset(FiftyOneDataset):
     halved onto the same clock, so every visual and 3D stream in an episode
     shares one rate.
 
+    Every episode carries the camera's intrinsics and the transforms
+    placing the camera and the LiDAR on the robot, taken from the
+    calibration the authors publish alongside their annotated frames.
+
     The recordings were made on working sites and contain site personnel
     and vehicles in the camera streams.
 
@@ -3758,13 +3762,13 @@ class ConstructionSiteTraversabilityDataset(FiftyOneDataset):
         session = fo.launch_app(dataset, view=view)
 
     Dataset size
-        18.45 GB
+        18.14 GB
     """
 
     _REPO_ID = "Voxel51/Construction-Site-Traversability"
     # Pinned so a loaded dataset is reproducible; the default branch is
     # mutable and could change media, labels or size underneath a user
-    _REVISION = "6bbf633a1b46b8867307feb83c9e4983eeb8b812"
+    _REVISION = "c52c1418239df91b24f530e6475851d52a172ff8"
 
     @property
     def name(self):
