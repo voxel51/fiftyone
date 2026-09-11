@@ -13,7 +13,7 @@ const test = base.extend<{
   modal: async ({ page, eventUtils }, use) => {
     await use(new ModalPom(page, eventUtils));
   },
-  datasetName: async ({ annotateSDK, datasetFactory }, use, testInfo) => {
+  datasetName: async ({ datasetFactory }, use, testInfo) => {
     const name = getUniqueDatasetNameWithPrefix(
       `detection-mode-${testInfo.title.replace(/\s+/g, "-")}`,
     );
@@ -23,15 +23,15 @@ const test = base.extend<{
       schema: {
         detections: "Detections",
       },
+      labelSchemas: {
+        detections: {
+          type: "detections",
+          classes: [],
+          attributes: [],
+          component: "dropdown",
+        },
+      },
     });
-
-    await annotateSDK.updateLabelSchema(name, "detections", {
-      type: "detections",
-      classes: [],
-      attributes: [],
-      component: "dropdown",
-    });
-    await annotateSDK.addFieldToActiveLabelSchema(name, "detections");
 
     await use(name);
   },

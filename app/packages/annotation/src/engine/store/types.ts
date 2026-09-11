@@ -1,7 +1,7 @@
 /**
- * The committed-store contract the engine federates.
- * `Sample` (via {@link SampleLabelStore}) is the sample-level implementation;
- * a frame-indexed `FrameStore` is another. Stores never know about each other.
+ * The committed-store contract the engine federates; {@link SampleLabelStore}
+ * and the frame-indexed `FrameStore` implement it. Stores never know about
+ * each other.
  */
 
 import type { JSONDeltas, LabelData, LabelType } from "@fiftyone/utilities";
@@ -22,10 +22,8 @@ import type { LabelRef } from "../identity/ref";
 export type LabelChangeKind = "update" | "delete" | "reset";
 
 /**
- * A store's transient state, captured opaquely for transaction rollback. Each
- * store defines its own concrete shape; the engine only round-trips a snapshot
- * back to the same store's {@link LabelStore.restore}, so the type is opaque to
- * everyone else. A store narrows `unknown` → its own shape once, in `restore`.
+ * A store's transient state, captured opaquely for transaction rollback. The
+ * engine only round-trips it to the same store's {@link LabelStore.restore}.
  */
 export type StoreSnapshot = unknown;
 
@@ -59,19 +57,34 @@ export const isWholeSampleReset = (change: LabelChange): boolean =>
   change.kind === "reset" && change.ref.path === "";
 
 /**
- * The committed source of truth for one (sample, shape-region).
- *
- * Resolution order: transient wins, else source, else undefined.
- * `snapshot`/`restore` cover transient state + dirty flags ONLY — source data
- * is untouched by transactions by definition.
+ * A custom persistence transport for one store's JSON-patch deltas. Resolves
+ * `true` on success and `false` on failure; version conflicts throw.
+ */
+export type PersistenceAdapter = (deltas: JSONDeltas) => Promise<boolean>;
+
+/**
+ * The committed source of truth for one (sample, shape-region); transient wins
+ * over source on read. `snapshot`/`restore` cover transient state and dirty
+ * flags only.
  */
 export interface LabelStore {
   readonly sample: string;
+
+  /**
+   * True while the seed is in flight; implementations notify display
+   * subscribers on flips.
+   */
+  isLoading?(): boolean;
 
   // resolution
   getLabel(ref: LabelRef): LabelData | undefined;
   listLabels(path: string, frame?: number): LabelData[];
   getLabelType(path: string): LabelType;
+
+  /** A registered per-frame non-label field's value at `frame`; `undefined`
+   *  when the store is not frame-indexed, the path is not registered, the
+   *  frame is not loaded, or the field is unset. */
+  getFrameValue?(path: string, frame: number): unknown;
 
   /** Current refs across this store's label paths, filtered to `kinds` — the
    *  per-store half of `engine.enumerateLabels` (hydration). */

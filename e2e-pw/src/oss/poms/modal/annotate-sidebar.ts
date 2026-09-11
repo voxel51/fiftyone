@@ -22,6 +22,35 @@ export class ModalAnnotateSidebarPom {
     );
   }
 
+  /** Label rows of the active-labels list, each carrying `data-cy-label` / `data-cy-path`. */
+  get labelRows(): Locator {
+    return this.locator.locator("[data-cy^='annotate-label-']");
+  }
+
+  /** Label rows of the field at `path` (e.g. `weather`, `instances`). */
+  labelRowsFor(path: string): Locator {
+    return this.locator.locator(
+      `[data-cy^='annotate-label-'][data-cy-path='${path}']`,
+    );
+  }
+
+  /** Label rows whose text is `labelText`. */
+  labelRow(labelText: string): Locator {
+    return this.locator.locator(
+      `[data-cy^='annotate-label-'][data-cy-label='${labelText}']`,
+    );
+  }
+
+  /** The PRIMITIVES row for the field at `path`, carrying `data-cy-read-only`. */
+  primitiveEntry(path: string): Locator {
+    return this.locator.getByTestId(`annotate-primitive-${path}`);
+  }
+
+  /** The formatted value shown on the PRIMITIVES row for `path`. */
+  primitiveValue(path: string): Locator {
+    return this.primitiveEntry(path).getByTestId("annotate-primitive-value");
+  }
+
   /**
    * Get the count of active labels in the sidebar
    *
@@ -132,11 +161,9 @@ export class ModalAnnotateSidebarPom {
    * @param slice The slice name to select
    */
   async selectAnnotationSlice(slice: string) {
-    // a non-default (3D) slice can be briefly absent from the selector while
-    // the open group's samples load, and the option list only refreshes when
-    // the popover is reopened. So each retry blurs (closes) then re-clicks
-    // (reopens, re-querying) the selector until the result is clickable. Blur,
-    // not Escape — Escape bubbles to the modal and can close it.
+    // a non-default (3D) slice can be briefly absent while the group's samples
+    // load, and the option list only refreshes on reopen: each retry blurs
+    // (not Escape, which can close the modal) and re-clicks the selector
     await expect(async () => {
       await this.annotationSliceSelector.blur();
       await this.annotationSliceSelector.click();
@@ -195,9 +222,8 @@ export class ModalAnnotateSidebarPom {
   }
 
   /**
-   * Toggle segmentation mode. When inactive this enters segmentation mode
-   * (selecting the Select tool by default). When active it deactivates the
-   * mode.
+   * Toggle segmentation mode: when inactive this enters it (selecting the
+   * Select tool by default), when active it leaves it.
    */
   async segmentationMode() {
     await this.page.getByTestId("segmentation-mode").click();
@@ -270,6 +296,20 @@ class ModalAnnotateSidebarAsserter {
         "sidebar-group-Labels-toggle",
       ),
     ).toHaveAttribute("data-testid", "AddIcon");
+  }
+
+  /** The PRIMITIVES row for `path` shows `value`. */
+  async primitiveValue(path: string, value: string) {
+    await expect(this.modalAnnotateSidebar.primitiveValue(path)).toHaveText(
+      value,
+    );
+  }
+
+  /** The PRIMITIVES row for `path` is (not) editable. */
+  async primitiveReadOnly(path: string, readOnly: boolean) {
+    await expect(
+      this.modalAnnotateSidebar.primitiveEntry(path),
+    ).toHaveAttribute("data-cy-read-only", readOnly ? "true" : "false");
   }
 
   /**

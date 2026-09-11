@@ -1,31 +1,8 @@
 /**
- * Worker that owns `POST /frames` + per-image fetch + `createImageBitmap`
- * decode for `ImaVidImageStream`. Moves both the JSON parse and the
- * pixel decode off the main thread; ImageBitmaps are transferred back
- * (zero-copy) so the main thread can `drawImage` them onto a canvas
- * without a re-decode.
- *
- * Auth handling: on `init` we install `@fiftyone/utilities`'s fetch
- * singleton inside the worker scope with the same `(origin, headers,
- * pathPrefix)` the main thread uses. `/frames` requests then flow
- * through `getFrames` exactly as they do on the main thread. Token
- * refresh would require an `updateHeaders` message (looker's worker
- * has the same gap; deferred until needed).
- *
- * Wire protocol (all messages have a `type`):
- *
- *   main → worker:
- *     { type: "init", origin, pathPrefix, headers }      // once at start
- *     { type: "fetchChunk", reqId, request }             // per chunk
- *
- *   worker → main:
- *     { type: "frameReady", reqId, frameNumber, bitmap, width, height, meta: { src } }
- *     { type: "chunkDone", reqId, range }                // all frames in chunk processed
- *     { type: "chunkFailed", reqId, error }              // top-level fetch / parse failure
- *
- * The worker → main messages follow the shared {@link ./frameWorkerProtocol}
- * so the `FrameBitmapStream` base can consume this and the WebCodecs worker
- * through one contract.
+ * Worker that fetches `/frames` chunks plus their images and decodes them to
+ * transferable ImageBitmaps for `ImaVidImageStream`. Messages to the main
+ * thread follow {@link ./frameWorkerProtocol}; `init` installs the main
+ * thread's fetch configuration, and token refresh is not supported.
  */
 
 /// <reference lib="webworker" />
@@ -94,8 +71,22 @@ async function handleFetchChunk(msg: FetchChunkMessage): Promise<void> {
 
   // Kick off every frame's fetch+decode in parallel; post each one as
   // soon as it's ready so the main-thread cache fills incrementally.
+  const mediaField =
+    (msg.request as { mediaField?: string })?.mediaField ?? "filepath";
+
+  // A dynamic group's documents are real samples, served as stored: the
+  // i-th one is frame `range[0] + i`. A video's frame documents carry their
+  // own number.
+  const [rangeStart] = frames.range;
   await Promise.all(
-    frames.frames.map((frame) => decodeAndDispatch(msg.reqId, frame)),
+    frames.frames.map((frame, i) =>
+      decodeAndDispatch(
+        msg.reqId,
+        frame,
+        mediaField,
+        msg.request.dynamicGroup ? rangeStart + i : frame.frame_number,
+      ),
+    ),
   );
 
   postOutbound({
@@ -107,19 +98,27 @@ async function handleFetchChunk(msg: FetchChunkMessage): Promise<void> {
 
 async function decodeAndDispatch(
   reqId: number,
-  frame: { frame_number: number; filepath?: string },
+  frame: { frame_number: number; media_url?: string } & Record<string, unknown>,
+  mediaField: string,
+  frameNumber: number,
 ): Promise<void> {
-  if (!frame.filepath || typeof frame.filepath !== "string") {
+  const mediaPath = frame[mediaField];
+  if (!mediaPath || typeof mediaPath !== "string") {
     return;
   }
 
-  const src = resolveMediaSrc(frame.filepath);
+  // An enterprise server signs cloud media into `media_url`, leaving the
+  // media field's own value untouched for display
+  const src = resolveMediaSrc(
+    typeof frame.media_url === "string" ? frame.media_url : mediaPath,
+  );
 
   let bitmap: ImageBitmap;
   try {
-    // Match `<img src>` semantics for the media GET: no custom
-    // headers, default credentials
-    const r = await fetch(src, { mode: "cors" });
+    // CORS fetch: createImageBitmap needs a non-opaque response. `cache:
+    // "reload"` bypasses an opaque entry a crossOrigin-less `<img>` load of the
+    // same URL may have cached, which would fail the CORS check here.
+    const r = await fetch(src, { mode: "cors", cache: "reload" });
 
     if (!r.ok) {
       throw new Error(`image fetch failed: ${r.status}`);
@@ -131,7 +130,7 @@ async function decodeAndDispatch(
     // Skip — main-thread treats this frame as missing and the engine
     // re-requests on the next prefetch tick.
     console.error(
-      `[framesWorker] decode failed for frame ${frame.frame_number}`,
+      `[framesWorker] decode failed for frame ${frameNumber}`,
       error,
     );
 
@@ -142,11 +141,13 @@ async function decodeAndDispatch(
     {
       type: "frameReady",
       reqId,
-      frameNumber: frame.frame_number,
+      frameNumber,
       bitmap,
       width: bitmap.width,
       height: bitmap.height,
-      meta: { src },
+      // the header filename shows the media field's raw value, never a signed
+      // URL
+      meta: { src, filepath: mediaPath },
     },
     [bitmap],
   );

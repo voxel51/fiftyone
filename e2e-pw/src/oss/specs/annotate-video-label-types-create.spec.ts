@@ -1,17 +1,11 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Create round-trip for non-box label types on the video-annotation surface:
- * drawing a polyline and painting an instance mask each add a track, open the
- * edit form, commit through the engine on class assignment, and survive a true
- * round-trip (fresh browser context).
- *
- * The video surface wires these the same way the image surface does, but
- * through its own bridge: polylines self-create via the
- * `usePolylineModeInstaller` creation handler; a brush stroke with nothing
- * selected fires `lighter:overlay-create`, which opens a fresh masked detection
- * (segmentation mode) on the engine frame path. Detection-box draw is covered
- * separately (`annotate-video-draw.spec.ts`).
+ * Create round-trip for non-box labels on the video surface: drawing a polyline
+ * and painting an instance mask each add a track, open the edit form, commit on
+ * class assignment, and survive a fresh browser context. Polylines self-create
+ * through `usePolylineModeInstaller` and an unselected brush stroke opens a
+ * fresh masked detection via `lighter:overlay-create`.
  */
 import { Browser, test as base, type Page } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -25,7 +19,6 @@ const datasetName = getUniqueDatasetNameWithPrefix(
 
 /** Fixed ObjectId addressing the first sample (so we can deep-link the modal). */
 const id = "000000000000000000000000";
-const clip = `/tmp/${datasetName}.webm`;
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -33,16 +26,8 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
-  await mediaFactory.createVideo({
-    outputPath: clip,
-    duration: 2,
-    width: 64,
-    height: 64,
-    frameRate: 10,
-    color: "#3050a0",
-  });
 });
 
 test.afterAll(async ({ foWebServer }) => {
@@ -92,11 +77,73 @@ test.describe.serial("video non-box label create", () => {
   // Re-seed a clean slate per test (polylines field + schema active, no tracks):
   // these run serially against one dataset, so a persisted draw from one test
   // would otherwise leave a stray track that the next test's count picks up.
-  test.beforeEach(async ({ videoAnnotateSDK }) => {
-    await videoAnnotateSDK.seed({
+  test.beforeEach(async ({ datasetFactory }) => {
+    await datasetFactory.createDataset({
+      mediaType: "video",
       datasetName,
-      videoPaths: [clip],
-      withPolylineField: true,
+      sampleFrames: true,
+      schema: {
+        "frames.detections": "Detections",
+        "frames.detections.detections.instance": "Instance",
+        "frames.detections.detections.keyframe": "BooleanField",
+        "frames.detections.detections.propagation": "DictField",
+        "frames.polylines": "Polylines",
+        "frames.polylines.polylines.instance": "Instance",
+        "frames.polylines.polylines.keyframe": "BooleanField",
+        "frames.polylines.polylines.propagation": "DictField",
+        events: "TemporalDetections",
+      },
+      labelSchemas: {
+        "frames.detections": {
+          type: "detections",
+          component: "dropdown",
+          classes: ["vehicle", "person", "road sign"],
+          attributes: [
+            { name: "id", type: "id", component: "text", read_only: true },
+            { name: "tags", type: "list<str>", component: "text" },
+            { name: "confidence", type: "float", component: "text" },
+            { name: "index", type: "int", component: "text" },
+            { name: "mask_path", type: "str", component: "text" },
+          ],
+        },
+        "frames.polylines": {
+          type: "polylines",
+          component: "dropdown",
+          classes: ["vehicle", "person", "road sign"],
+          attributes: [
+            { name: "id", type: "id", component: "text", read_only: true },
+            { name: "index", type: "int", component: "text" },
+          ],
+        },
+        events: {
+          type: "temporaldetections",
+          component: "dropdown",
+          classes: ["approach", "pass", "depart"],
+          attributes: [
+            { name: "id", type: "id", component: "text", read_only: true },
+          ],
+        },
+      },
+      // three events split the clip into thirds
+      withSampleData: ({ numFrames }, { label }) => {
+        const a = Math.max(1, Math.floor(numFrames / 3));
+        const b = Math.max(a + 1, Math.floor((2 * numFrames) / 3));
+        return {
+          events: label.temporalDetections([
+            label.temporalDetection({ label: "approach", support: [1, a] }),
+            label.temporalDetection({ label: "pass", support: [a + 1, b] }),
+            label.temporalDetection({
+              label: "depart",
+              support: [b + 1, numFrames],
+            }),
+          ]),
+        };
+      },
+      // present-but-empty on every frame, so the first draw's patch can append
+      withFrameData: (_, { label }) => ({
+        detections: label.detections([]),
+        polylines: label.polylines([]),
+      }),
     });
   });
 

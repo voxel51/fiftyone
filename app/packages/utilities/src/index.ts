@@ -608,6 +608,11 @@ export const formatDateTime = (
 
   const options = buildDateTimeOpts(timeZone);
 
+  // show the precision the value carries: milliseconds when it has them
+  if (timeStamp % MS) {
+    options.fractionalSecondDigits = 3;
+  }
+
   if (!(timeStamp % S)) {
     delete options.second;
   }
@@ -620,9 +625,13 @@ export const formatDateTime = (
     delete options.hour;
   }
 
-  return new Intl.DateTimeFormat("en-ZA", options)
-    .format(timeStamp)
-    .replaceAll("/", "-");
+  return (
+    new Intl.DateTimeFormat("en-ZA", options)
+      .format(timeStamp)
+      .replaceAll("/", "-")
+      // the locale writes the fraction with a comma
+      .replace(/,(\d{3})$/, ".$1")
+  );
 };
 
 export const formatLongDateTime = (

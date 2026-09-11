@@ -1,3 +1,4 @@
+import { resolveTransformMode } from "../../annotation/transform-archetype";
 import * as fos from "@fiftyone/state";
 import { TransformControls } from "@react-three/drei";
 import type { TransformControls as TransformControlsImpl } from "three-stdlib";
@@ -51,9 +52,13 @@ export const Transformable = ({
   const groupRef = useRef<THREE.Group>(null);
 
   const modalMode = useAtomValue(fos.modalMode);
-  const transformMode = useRecoilValue(transformModeAtom);
+  const preferredTransformMode = useRecoilValue(transformModeAtom);
   const currentArchetypeSelectedForTransform = useRecoilValue(
     currentArchetypeSelectedForTransformAtom,
+  );
+  const transformMode = resolveTransformMode(
+    currentArchetypeSelectedForTransform,
+    preferredTransformMode,
   );
   const [isCurrentlyTransforming, setIsCurrentlyTransforming] = useRecoilState(
     isCurrentlyTransformingAtom,

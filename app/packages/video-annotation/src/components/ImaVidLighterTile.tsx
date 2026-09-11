@@ -1,3 +1,4 @@
+import { useViewportInitReveal } from "@fiftyone/lighter";
 import React, { useEffect, useRef, useState } from "react";
 import { useStream } from "@fiftyone/playback";
 import { useLighterMediaScene } from "../hooks/useLighterMediaScene";
@@ -83,7 +84,9 @@ function usePaintFrameToCanvas(
  * may serve the same bitmap again (a revisited frame) and
  * `transferFromImageBitmap` would consume it.
  */
-export const ImaVidLighterTile: React.FC = () => {
+export const ImaVidLighterTile: React.FC<{
+  onRevealChange?: (revealed: boolean) => void;
+}> = ({ onRevealChange }) => {
   const sourceId = IMAVID_STREAM_ID;
 
   const lighterHostRef = useRef<HTMLDivElement | null>(null);
@@ -109,6 +112,11 @@ export const ImaVidLighterTile: React.FC = () => {
     canonicalMediaReady,
     mediaRef: frameCanvasRef,
   });
+
+  const revealed = useViewportInitReveal(scene);
+  useEffect(() => {
+    onRevealChange?.(revealed);
+  }, [revealed, onRevealChange]);
 
   return (
     <div className={styles.body}>

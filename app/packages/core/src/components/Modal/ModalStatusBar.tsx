@@ -1,3 +1,4 @@
+import { useModalStatusBarContent } from "@fiftyone/annotation";
 import {
   Align,
   Orientation,
@@ -7,14 +8,8 @@ import {
   TextColor,
   TextVariant,
 } from "@voxel51/voodo";
-import { atom, PrimitiveAtom, useAtomValue, useSetAtom } from "jotai";
-import { ReactElement, ReactNode, useMemo } from "react";
+import { ReactNode } from "react";
 import styled from "styled-components";
-
-export type StatusContent = ReactElement | null;
-
-const initialContent: StatusContent = null;
-const statusContentAtom: PrimitiveAtom<StatusContent> = atom(initialContent);
 
 const Container = styled.div`
   position: absolute;
@@ -38,30 +33,13 @@ const IconWrap = styled.span`
 `;
 
 /**
- * Floating status / hint display at the top of the modal sample pane.
- * Renders whatever was registered via {@link useModalStatusBar}'s
- * `setContent`. Hidden when no content is registered.
- *
- * The bar is mode-agnostic; mode-specific registrar components call
- * `setContent` based on their own state.
+ * Floating status display at the top of the modal sample pane, hidden when
+ * nothing is registered. Mode-agnostic; registrars call `setContent`.
  */
 export const ModalStatusBar = () => {
-  const content = useAtomValue(statusContentAtom);
+  const content = useModalStatusBarContent();
   if (!content) return null;
   return <Container data-cy="modal-status-bar">{content}</Container>;
-};
-
-/**
- * Hook for mode-specific status registrars. Call `setContent(<XStatus />)`
- * when the mode becomes active, `setContent(null)` when it leaves.
- *
- * Last-writer-wins; rely on conditional mounting so at most one writer is
- * mounted at a time and React's commit ordering (cleanup before next mount)
- * handles transitions.
- */
-export const useModalStatusBar = () => {
-  const setContent = useSetAtom(statusContentAtom);
-  return useMemo(() => ({ setContent }), [setContent]);
 };
 
 /**

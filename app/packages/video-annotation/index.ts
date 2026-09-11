@@ -35,8 +35,6 @@ export {
   usePublishImaVidImageStream,
 } from "./src/streams/imaVidImageStreamHandle";
 export { PropagationStatusItem } from "./src/components/PropagationStatusItem";
-export { useVideoAnnotationStatus } from "./src/state/videoAnnotationStatus";
-export type { VideoAnnotationStatusContent } from "./src/state/videoAnnotationStatus";
 export { resolvePropagationTarget } from "./src/propagation/propagationTarget";
 export type { PropagationTarget } from "./src/propagation/propagationTarget";
 export { resolveTrackExtentEdit } from "./src/tracks/trackExtentEdit";

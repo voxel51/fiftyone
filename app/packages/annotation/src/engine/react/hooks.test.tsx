@@ -8,6 +8,9 @@ import {
   useSurfaceActions,
   useTemporal,
 } from "./hooks";
+import { AnnotationEngine } from "../core/engine";
+import { FrameTemporalView } from "../temporal/frameTemporalView";
+import type { Clock } from "../temporal/types";
 import { makeDet, makeEngine, ref } from "../testing/fixtures";
 
 describe("useEngineSelector", () => {
@@ -127,6 +130,30 @@ describe("useTemporal", () => {
       engine.createLabel("ground_truth", { label: "bird" });
     });
     expect(result.current).toBe(2);
+  });
+
+  it("follows the playhead's frame with nothing present", () => {
+    let time = 1;
+    const listeners = new Set<(t: number) => void>();
+    const clock: Clock = {
+      getTime: () => time,
+      subscribe: (l) => {
+        listeners.add(l);
+        return () => listeners.delete(l);
+      },
+    };
+    const engine = new AnnotationEngine({
+      temporal: (e) => new FrameTemporalView(e, clock, (t) => t),
+    });
+
+    const { result } = renderHook(() => useTemporal(engine, (t) => t.frame()));
+    expect(result.current).toBe(1);
+
+    act(() => {
+      time = 4;
+      for (const l of listeners) l(4);
+    });
+    expect(result.current).toBe(4);
   });
 });
 

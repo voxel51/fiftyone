@@ -8,8 +8,11 @@ import {
   useColorSeed,
   useDatasetName,
   useDynamicAttributeNamesGetter,
+  useDynamicGroupValue,
   useFrameLabelFields,
+  useFramePrimitivePaths,
   useGroupSlice,
+  useModalSampleFrameRate,
   useModalSampleId,
   useView,
   useLabelSchemasLoaded,
@@ -50,11 +53,11 @@ import {
   type TrackExpansion,
 } from "../tracks/useTrackExpansion";
 import { LABELS_STREAM_ID } from "../utils/ids";
-import { getModalSampleFrameRate } from "../utils/modalSample";
 import { resolveTrackExtentEdit } from "../tracks/trackExtentEdit";
 import { useVideoTrackDecorator } from "../tracks/useVideoTrackDecorator";
-import { useScrollTrackToAnchor } from "../state/useVideoInteraction";
+import { useScrollTrackToAnchor } from "../state/useScrollTrackToAnchor";
 import { useCurrentFrameGetter } from "../state/useCurrentFrame";
+import { getModalSampleFrameRate } from "../utils/modalSample";
 import { useTimelineDrawerOpen } from "../state/useTimelineDrawer";
 import {
   useVideoSurfaceActions,
@@ -172,6 +175,8 @@ type TemporalDetectionColorResolver = (
 const toPerFrameField = (field: string): string =>
   field.startsWith("frames.") ? field.slice("frames.".length) : field;
 
+const NO_FIELDS: readonly string[] = [];
+
 /**
  * Reads the params needed to construct a real `/frames`-backed labels
  * stream, waits until duration is known (so we can derive `frameCount`),
@@ -212,6 +217,7 @@ export const RegisterFrameLabels: React.FC<{
   const view = useView();
   const slice = useGroupSlice();
   const sampleId = useModalSampleId();
+  const dynamicGroup = useDynamicGroupValue();
   // Source of truth for which per-frame list this stream reads + patches.
   // Default while the schema resolves avoids a tear-down/re-mount churn.
   const activeField = useActiveDetectionField() ?? DEFAULT_FRAME_FIELD;
@@ -225,8 +231,12 @@ export const RegisterFrameLabels: React.FC<{
   const exploreLabelFields = useExploreFrameLabelFields();
   const labelFields =
     mode === "explore" ? exploreLabelFields : annotationLabelFields;
+  // Annotate also streams the frame-scoped primitives the sidebar shows at the
+  // playhead; Explore reads those from the modal sample.
+  const framePrimitivePaths = useFramePrimitivePaths();
+  const primitiveFields = mode === "explore" ? NO_FIELDS : framePrimitivePaths;
 
-  const frameRate = getModalSampleFrameRate(sample);
+  const frameRate = useModalSampleFrameRate(sample);
   const ready =
     duration > 0 &&
     !!sampleId &&
@@ -247,6 +257,7 @@ export const RegisterFrameLabels: React.FC<{
     ...new Set([
       frameField,
       ...Object.keys(labelFields).map(toPerFrameField).sort(),
+      ...primitiveFields.map(toPerFrameField),
     ]),
   ];
 
@@ -258,8 +269,8 @@ export const RegisterFrameLabels: React.FC<{
   // discard the move's unsaved edits. The primary follows in place via
   // `setPrimaryField` (below); only adding/removing a field re-mounts.
   const fieldSetKey = [...frameFields].sort().join(",");
-  const key = `${sampleId}|${dataset}|${
-    slice ?? ""
+  const key = `${sampleId}|${dataset}|${slice ?? ""}|${
+    dynamicGroup ?? ""
   }|${frameRate}|${frameCount}|${fieldSetKey}`;
 
   return (
@@ -268,6 +279,7 @@ export const RegisterFrameLabels: React.FC<{
       sampleId={sampleId}
       dataset={dataset}
       view={view}
+      dynamicGroup={dynamicGroup}
       frameCount={frameCount}
       frameRate={frameRate}
       frameField={frameField}
@@ -282,6 +294,7 @@ interface FrameLabelsRegistrationProps {
   sampleId: string;
   dataset: string;
   view: Stage[];
+  dynamicGroup: string | null;
   frameCount: number;
   frameRate: number;
   frameField: string;
@@ -301,6 +314,7 @@ const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
       sampleId: props.sampleId,
       dataset: props.dataset,
       view: props.view,
+      dynamicGroup: props.dynamicGroup,
       frameCount: props.frameCount,
       frameRate: props.frameRate,
       frameField: props.frameField,
@@ -437,7 +451,7 @@ function useTrackDecorator({
   const actions = useVideoSurfaceActions();
   const stream = useFrameLabelsStream();
   const getCurrentFrame = useCurrentFrameGetter();
-  const fps = getModalSampleFrameRate(sample);
+  const fps = useModalSampleFrameRate(sample);
   const snapStepSec =
     Number.isFinite(fps) && fps && fps > 0 ? 1 / fps : undefined;
 
@@ -635,18 +649,24 @@ export const FrameLabelsTracks: React.FC<{
    * fit / JSON / help buttons here.
    */
   trailingActions?: React.ReactNode;
+  /** Clock-adjacent readouts, forwarded to the controls row. */
+  readouts?: React.ReactNode;
   /**
    * Which surface's per-frame field set the object tracks come from. Same
    * choice, and for the same reason, as {@link RegisterFrameLabels}' — the
    * rows have to describe the fields the stream actually fetched.
    */
   mode?: "annotate" | "explore";
+  /** Reports whether the frame tracks have resolved for the current sample. */
+  onReadyChange?: (ready: boolean) => void;
 }> = ({
   sample,
   maxSize,
   extraActions,
   trailingActions,
+  readouts,
   mode = "annotate",
+  onReadyChange,
 }) => {
   const { resolveObjectColor, resolveTemporalDetectionColor } =
     useTrackColorResolvers();
@@ -694,7 +714,6 @@ export const FrameLabelsTracks: React.FC<{
   );
   const timelineLoaded =
     schemasLoaded && (frameTracksResolved || !hasFrameFields);
-
   // Object tracks (with their sub-tracks interleaved) followed by TD tracks.
   const tracks = useMemo(
     () => [...frameTracks, ...temporalDetectionTracks],
@@ -730,6 +749,9 @@ export const FrameLabelsTracks: React.FC<{
   // synchronously and would otherwise trip the empty→ready flip before frame
   // tracks land, leaving frame tracks unpinned.
   const ready = frameTracksResolved;
+  useEffect(() => {
+    onReadyChange?.(ready);
+  }, [ready, onReadyChange]);
 
   // Filled by TimelineWithTracks; the drawer is virtualized, so revealing a
   // row has to go through the list rather than the DOM.
@@ -754,6 +776,7 @@ export const FrameLabelsTracks: React.FC<{
         scrollerRef={timelineScroller}
         extraActions={extraActions}
         trailingActions={trailingActions}
+        readouts={readouts}
         loaded={timelineLoaded}
         maxSize={maxSize}
         drawerOpen={drawerOpen}

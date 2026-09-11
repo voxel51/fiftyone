@@ -1,6 +1,11 @@
 import { is3d } from "@fiftyone/utilities";
 import { useMemo } from "react";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import {
+  type CallbackInterface,
+  type Snapshot,
+  useRecoilCallback,
+  useRecoilValue,
+} from "recoil";
 import {
   groupMediaIsCarouselVisibleSetting,
   groupMediaIsMain2DViewerVisibleSetting,
@@ -14,6 +19,48 @@ import type { ModalSample } from "../recoil/modal";
 import * as internals from "../recoil/renderConfig3d.atoms";
 
 type RenderConfig3dSampleMap = Record<string, ModalSample>;
+
+/**
+ * Pins a 3D slice when none is pinned. An existing declared pin is kept: a
+ * concurrent focusSlice owns which slice that is, and this snapshot may predate
+ * its write.
+ */
+const ensurePinned = async (
+  snapshot: Snapshot,
+  set: CallbackInterface["set"],
+) => {
+  const all3dSlices = await snapshot.getPromise(internals.all3dSlices);
+  const currentPinnedSlice = await snapshot.getPromise(
+    internals.pinned3DSampleSlice,
+  );
+
+  if (currentPinnedSlice && all3dSlices.includes(currentPinnedSlice)) {
+    set(internals.is3dPinned, true);
+    return;
+  }
+
+  const samples = await snapshot.getPromise(internals.all3dSlicesToSampleMap);
+  const currentActive3dSlices = await snapshot.getPromise(
+    internals.active3dSlices,
+  );
+  const currentRealFo3dSlices = await snapshot.getPromise(
+    internals.realFo3dSlices,
+  );
+  const { nextActive3dSlices, nextPinnedSlice } = resolveNormalized3dSelection({
+    active3dSlices: currentActive3dSlices,
+    all3dSlices,
+    pinnedSlice: currentPinnedSlice,
+    realFo3dSlices: currentRealFo3dSlices,
+    samples,
+  });
+
+  if (!areSlicesEqual(currentActive3dSlices, nextActive3dSlices)) {
+    set(internals.active3dSlices, nextActive3dSlices);
+  }
+
+  set(internals.pinned3DSampleSlice, nextPinnedSlice);
+  set(internals.is3dPinned, Boolean(nextPinnedSlice));
+};
 
 /**
  * Derived 3D modal state exposed by {@link useRenderConfig3dState}.
@@ -74,7 +121,9 @@ export type RenderConfig3dActions = {
   /** Pins or unpins the current 3D selection while preserving invariants. */
   setPinned: (pinned: boolean) => Promise<void>;
   /** Updates the persisted visibility setting for the 3D viewer. */
-  setVisible: (visible: boolean) => void;
+  setVisible: (visible: boolean) => Promise<void>;
+  /** Updates the persisted visibility setting for the main 2D viewer. */
+  setMainViewerVisible: (visible: boolean) => Promise<void>;
   /** Adds or removes a 3D slice from the active rendering set. */
   toggleSlice: (sliceName: string, enabled: boolean) => Promise<void>;
 };
@@ -198,34 +247,7 @@ export const useRenderConfig3dActions = (): RenderConfig3dActions => {
           return;
         }
 
-        const samples = await snapshot.getPromise(
-          internals.all3dSlicesToSampleMap,
-        );
-        const all3dSlices = await snapshot.getPromise(internals.all3dSlices);
-        const currentActive3dSlices = await snapshot.getPromise(
-          internals.active3dSlices,
-        );
-        const currentPinnedSlice = await snapshot.getPromise(
-          internals.pinned3DSampleSlice,
-        );
-        const currentRealFo3dSlices = await snapshot.getPromise(
-          internals.realFo3dSlices,
-        );
-        const { nextActive3dSlices, nextPinnedSlice } =
-          resolveNormalized3dSelection({
-            active3dSlices: currentActive3dSlices,
-            all3dSlices,
-            pinnedSlice: currentPinnedSlice,
-            realFo3dSlices: currentRealFo3dSlices,
-            samples,
-          });
-
-        if (!areSlicesEqual(currentActive3dSlices, nextActive3dSlices)) {
-          set(internals.active3dSlices, nextActive3dSlices);
-        }
-
-        set(internals.pinned3DSampleSlice, nextPinnedSlice);
-        set(internals.is3dPinned, Boolean(nextPinnedSlice));
+        await ensurePinned(snapshot, set);
       },
     [],
   );
@@ -285,6 +307,17 @@ export const useRenderConfig3dActions = (): RenderConfig3dActions => {
 
         if (!nextPinnedSlice) {
           set(internals.is3dPinned, false);
+          return;
+        }
+
+        const threeDVisible = await snapshot.getPromise(
+          internals.groupMedia3dVisibleSetting,
+        );
+        const mainVisible = await snapshot.getPromise(
+          groupMediaIsMain2DViewerVisibleSetting,
+        );
+        if (threeDVisible && !mainVisible) {
+          set(internals.is3dPinned, true);
         }
       },
     [],
@@ -337,9 +370,29 @@ export const useRenderConfig3dActions = (): RenderConfig3dActions => {
   );
 
   const setVisible = useRecoilCallback(
-    ({ set }) =>
-      (visible: boolean) => {
+    ({ snapshot, set }) =>
+      async (visible: boolean) => {
+        const mainVisible = await snapshot.getPromise(
+          groupMediaIsMain2DViewerVisibleSetting,
+        );
         set(internals.groupMedia3dVisibleSetting, visible);
+        if (visible && !mainVisible) {
+          await ensurePinned(snapshot, set);
+        }
+      },
+    [],
+  );
+
+  const setMainViewerVisible = useRecoilCallback(
+    ({ snapshot, set }) =>
+      async (visible: boolean) => {
+        const threeDVisible = await snapshot.getPromise(
+          internals.groupMedia3dVisibleSetting,
+        );
+        set(groupMediaIsMain2DViewerVisibleSetting, visible);
+        if (!visible && threeDVisible) {
+          await ensurePinned(snapshot, set);
+        }
       },
     [],
   );
@@ -395,6 +448,7 @@ export const useRenderConfig3dActions = (): RenderConfig3dActions => {
       setFo3dContent,
       setPinned,
       setVisible,
+      setMainViewerVisible,
       toggleSlice,
     }),
     [
@@ -404,6 +458,7 @@ export const useRenderConfig3dActions = (): RenderConfig3dActions => {
       setFo3dContent,
       setPinned,
       setVisible,
+      setMainViewerVisible,
       toggleSlice,
     ],
   );

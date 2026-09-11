@@ -25,18 +25,19 @@ import { useAnnotationEngine, useThreeDSceneSampleId } from "../state";
 type PersistenceResult = boolean | null;
 
 /**
+ * The persist in flight per engine. Each persist waits for the previous one
+ * so a second write never reads deltas and a version token the first has not
+ * yet reconciled.
+ */
+const inFlight = new WeakMap<object, Promise<unknown>>();
+
+/**
  * Hook which provides a callback to persist all pending annotation deltas.
+ * Each dirty sample is written through its own binding (version token and
+ * refresh); generated patches views keep their own path.
  *
- * A grouped modal renders more than one sample at once (the selected slice and
- * the pinned 3D scene), each its own engine store. The engine emits one patch
- * per dirty sample, and each is written through a binding keyed to that sample
- * (its own version token + refresh). Generated (patches) views are
- * single-sample and carry label metadata, so they keep their own path.
- *
- * @returns A callback that persists annotation deltas and returns:
- *   - `true` if persistence was successful
- *   - `false` if persistence was unsuccessful
- *   - `null` if no changes were pending
+ * @returns A callback resolving `true` on success, `false` on failure, `null`
+ *   when nothing was pending
  */
 export const usePersistAnnotationDeltas =
   (): (() => Promise<PersistenceResult>) => {
@@ -46,21 +47,12 @@ export const usePersistAnnotationDeltas =
     const eventBus = useAnnotationEventBus();
     const isGenerated = useRecoilValue(isGeneratedView);
 
-    // the pinned 3D scene is a distinct sample; patch it through its own
-    // binding (version token + refresh keyed to that sample). Inert unless a
-    // grouped modal actually renders a separate 3D scene.
-    //
-    // STABLE (non-suspending) variant of the same 3D interaction sample: this
-    // hook is now reached from the broad Lighter renderer path (useBridge →
-    // useDeleteAnnotation), where the suspending `useInteraction3dSample` would
-    // hang the modal on "Pixelating…". Until the 3D group query settles it reads
-    // `undefined`, which matches `sceneId` below so the 3D branch stays inert.
+    // the pinned 3D scene is a distinct sample patched through its own binding;
+    // the non-suspending 3D sample reads `undefined` until the group query
+    // settles, matching `sceneId` so the 3D branch stays inert
     const modalId = useModalSample()?.sample?._id;
-    // The task's unit of work: the GRID anchor sample id, stable across
-    // group-slice and 3D-pin changes. Non-generated label ops attribute
-    // to it so grouped-modal edits (the second camera, the pinned 3D
-    // scene) reach the submit delta and the trail under the same key the
-    // subtask, the delta peek, and the tracker focus already use.
+    // the grid anchor sample id, stable across group-slice and 3D-pin changes,
+    // so grouped-modal edits attribute to one key
     const anchorSampleId = useRecoilValue(nullableModalSampleId) ?? undefined;
     const sceneId = useThreeDSceneSampleId();
     const threeDScene = useStableInteraction3dSample();
@@ -75,7 +67,7 @@ export const usePersistAnnotationDeltas =
       generatedDatasetName: null,
     });
 
-    return useCallback(async () => {
+    const persist = useCallback(async (): Promise<PersistenceResult> => {
       // generated (patches) views are single-sample and route through
       // first-edited-label metadata, so the backend can find the source label
       if (isGenerated) {
@@ -137,7 +129,10 @@ export const usePersistAnnotationDeltas =
 
       let success = true;
       for (const entry of patches) {
-        const patch = entry.sample === sceneId ? patch3d : patchSelected;
+        // a store with its own transport owns the write
+        const patch =
+          engine.getPersistenceAdapter(entry.sample) ??
+          (entry.sample === sceneId ? patch3d : patchSelected);
 
         const ok = await patch(entry.deltas, {
           attributionSampleId: anchorSampleId,
@@ -165,4 +160,15 @@ export const usePersistAnnotationDeltas =
       sceneId,
       supplyAnnotationDeltas,
     ]);
+
+    return useCallback(() => {
+      const prior = inFlight.get(engine) ?? Promise.resolve();
+      const run = prior.then(persist);
+      inFlight.set(
+        engine,
+        run.catch(() => undefined),
+      );
+
+      return run;
+    }, [engine, persist]);
   };

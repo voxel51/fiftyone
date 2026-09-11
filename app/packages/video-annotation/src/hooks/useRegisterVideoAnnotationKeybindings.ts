@@ -2,7 +2,7 @@ import { KnownContexts, useKeyBindings } from "@fiftyone/commands";
 import { useLighter } from "@fiftyone/lighter";
 import { useRef } from "react";
 import { usePlayhead } from "@fiftyone/playback";
-import { useSelectionIsKeyframeable } from "../state/useVideoInteraction";
+import { useSelectionIsKeyframeable } from "../state/useVideoSelection";
 import { useVideoSurfaceActions } from "./useVideoSurfaceActions";
 
 /**

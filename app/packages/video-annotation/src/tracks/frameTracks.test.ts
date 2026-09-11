@@ -225,6 +225,29 @@ describe("buildPerInstanceTracks", () => {
     const intervals = tracks[0].events.filter((e) => e.endSec !== undefined);
     expect(intervals).toHaveLength(2);
   });
+
+  it("draws a keyframe on a track's last frame at the bar's end", () => {
+    const det = (keyframe: boolean): LabelData => ({
+      _id: "doc-1",
+      _cls: "Detection",
+      label: "person",
+      index: 1,
+      keyframe,
+      instance: { _cls: "Instance", _id: "runner" },
+    });
+    // Present 1-3; keyframes on the first and last frames.
+    const tracks = build(5, {
+      1: [det(true)],
+      2: [det(false)],
+      3: [det(true)],
+    });
+
+    const markers = tracks[0].events
+      .filter((e) => e.endSec === undefined)
+      .map((e) => e.startSec)
+      .sort((a, b) => a - b);
+    expect(markers).toEqual([0, 3 / FPS]);
+  });
 });
 
 describe("segmentAttribute", () => {

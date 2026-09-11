@@ -2,29 +2,38 @@ import { expect, Locator, Page } from "src/oss/fixtures";
 import { ModalPom } from ".";
 
 /**
- * The video-annotation surface: the ImaVid media tile, the timeline of
- * per-instance frame-label tracks + temporal-detection (TD) interval rows, and
- * the playback controls (from `@fiftyone/playback`). Composes with the shared
- * modal POMs (`modal.sidebar.annotate` / `modal.sidebar.edit` /
- * `modal.sampleCanvas`) — only the video-specific timeline/playback affordances
- * live here.
- *
- * Timeline tracks expose `data-track-id`: an object track's id is the engine
- * `instanceId`; a TD track's id is `td-<field>-<detectionId>`.
+ * The video-annotation surface: the ImaVid tile, the timeline of per-instance
+ * frame-label tracks and temporal-detection (TD) rows, and the playback
+ * controls, composing with the shared modal POMs. Tracks expose
+ * `data-track-id`: an object track's id is the engine `instanceId`, a TD
+ * track's is `td-<field>-<detectionId>`.
  */
 export class VideoAnnotatePom {
   readonly page: Page;
   readonly modal: ModalPom;
   readonly assert: VideoAnnotateAsserter;
-  readonly topBar: Locator;
-  readonly statusSlot: Locator;
+  readonly surface: Locator;
 
   constructor(page: Page, modal: ModalPom) {
     this.page = page;
     this.modal = modal;
     this.assert = new VideoAnnotateAsserter(this);
-    this.topBar = page.getByTestId("video-annotation-top-bar");
-    this.statusSlot = page.getByTestId("video-annotation-status-slot");
+    this.surface = page.getByTestId("video-annotation-surface");
+  }
+
+  /** The dynamic group's order-by value beside the clock, `(value)`. */
+  get orderByReadout(): Locator {
+    return this.page.getByTestId("timeline-order-by-readout");
+  }
+
+  /** The timeline clock; in frame display it reads `#frame / #total`. */
+  get clock(): Locator {
+    return this.page.locator('[data-testid="timeline-playhead-time"]');
+  }
+
+  /** Switch the clock between elapsed time and frame numbers. */
+  async toggleClockDisplay() {
+    await this.clock.click();
   }
 
   /**
@@ -34,7 +43,10 @@ export class VideoAnnotatePom {
    * this are deterministic single-shots; no polling required.
    */
   async waitForSurface() {
-    await expect(this.topBar).toBeVisible();
+    await expect(this.surface).toBeVisible();
+    // the surface stays under an opaque cover until media, store and tracks
+    // are ready; clicks before that land on the cover
+    await expect(this.surface).toHaveAttribute("data-revealed", "true");
     await expect(
       this.page.locator('[data-timeline-loaded="true"]'),
     ).toBeAttached();
@@ -96,10 +108,9 @@ export class VideoAnnotatePom {
   }
 
   /**
-   * The value-segment bars within a sub-track row — one per coalesced run of an
-   * equal attribute value. The bar `title` carries the value (e.g. "off").
-   * Scoped to the first row copy (`track` uses `.first()`), since a pinned row
-   * mounts in both the timeline header and the drawer body on this base.
+   * The value-segment bars within a sub-track row, one per coalesced run of an
+   * equal attribute value, with the value in the bar `title`. Scoped to the
+   * first row copy since a pinned row mounts in both the header and the drawer.
    */
   segmentBars(subTrackId: string): Locator {
     return this.track(subTrackId).locator(
@@ -149,10 +160,8 @@ export class VideoAnnotatePom {
 
   /**
    * Pin an object track so its row stays in the always-visible timeline header
-   * once the drawer closes. The pin button only mounts while the row is
-   * rendered, so open the drawer to reach it, pin, then restore the closed
-   * default — the pinned row remains in the header, ready for interaction
-   * without the drawer open. Call once from the closed default.
+   * once the drawer closes. The pin button mounts only while the row renders,
+   * so this opens the drawer, pins, and restores the closed default.
    */
   async pinTrack(trackId: string) {
     await this.openTracksDrawer();
@@ -179,6 +188,38 @@ export class VideoAnnotatePom {
   /** The human-readable interval span shown in a track bar's `title` tooltip. */
   async trackBarTitle(trackId: string): Promise<string> {
     return (await this.trackBar(trackId).getAttribute("title")) ?? "";
+  }
+
+  /**
+   * A track's presence intervals in seconds, read off its rendered lane. The
+   * row must be mounted (drawer open or pinned).
+   */
+  async trackIntervals(
+    trackId: string,
+  ): Promise<Array<{ start: number; end: number }>> {
+    return this.page
+      .locator(`[data-track-id="${trackId}"] [data-event-kind="interval"]`)
+      .evaluateAll((bars) =>
+        bars.map((bar) => ({
+          start: Number(bar.getAttribute("data-event-start")),
+          end: Number(bar.getAttribute("data-event-end")),
+        })),
+      );
+  }
+
+  /**
+   * Times (seconds) of a track's keyframe markers, ascending: a frame's start,
+   * or the bar's end for a track's last frame. The row must be mounted.
+   */
+  async keyframeTimes(trackId: string): Promise<number[]> {
+    const times = await this.page
+      .locator(`[data-track-id="${trackId}"] [data-event-kind="point"]`)
+      .evaluateAll((markers) =>
+        markers.map((marker) =>
+          Number(marker.getAttribute("data-event-start")),
+        ),
+      );
+    return times.sort((a, b) => a - b);
   }
 
   /**
@@ -456,6 +497,16 @@ export class VideoAnnotatePom {
 class VideoAnnotateAsserter {
   constructor(private readonly va: VideoAnnotatePom) {}
 
+  /** The order-by readout shows `text`, e.g. `(30)`. */
+  async orderByReadout(text: string) {
+    await expect(this.va.orderByReadout).toHaveText(text);
+  }
+
+  /** The clock shows `text`. */
+  async clock(text: string) {
+    await expect(this.va.clock).toHaveText(text);
+  }
+
   /** Assert the number of object (frame-label) tracks on the timeline. */
   async objectTrackCount(expected: number) {
     await expect
@@ -478,11 +529,10 @@ class VideoAnnotateAsserter {
   }
 
   /**
-   * Assert a track's interval bar is (not) actionable. A closed drawer keeps the
-   * bar mounted and on-screen but non-interactive; pinning the row into the
-   * header or opening the drawer makes it clickable again. Actionability — not
-   * mere visibility — is what timeline interactions (clicks, context menus)
-   * actually depend on.
+   * Assert a track's interval bar is (not) actionable, which is what clicks and
+   * context menus depend on rather than mere visibility. A closed drawer keeps
+   * the bar mounted but non-interactive; pinning or opening the drawer makes it
+   * clickable.
    */
   async trackBarActionable(trackId: string, actionable = true) {
     const bar = this.va.trackBar(trackId);

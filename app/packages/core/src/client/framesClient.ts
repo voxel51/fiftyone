@@ -28,6 +28,8 @@ export type GetFramesRequest = {
   frameCount: number;
   /** Group slice name, when the dataset is grouped. */
   slice?: string | null;
+  /** Dynamic-group value; the group's ordered samples are served as frames. */
+  dynamicGroup?: string | null;
   /** Optional extended view stages. */
   extended?: unknown;
   /**
@@ -36,6 +38,8 @@ export type GetFramesRequest = {
    * document when a caller needs just a few fields (e.g. `["filepath"]`).
    */
   fields?: string[];
+  /** The media field frame media is read from (default `filepath`). */
+  mediaField?: string;
 };
 
 /**

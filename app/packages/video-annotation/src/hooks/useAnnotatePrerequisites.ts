@@ -1,4 +1,9 @@
 import type { ModalSample } from "@fiftyone/state";
+import { useIsImageDynamicGroupVideo } from "@fiftyone/state";
+import {
+  useDynamicGroupElementCount,
+  useModalSampleFrameRate,
+} from "../state/accessors";
 import { resolveFrameCount } from "../utils/frameCount";
 import { getModalSampleFrameRate } from "../utils/modalSample";
 
@@ -24,19 +29,38 @@ export interface AnnotatePrerequisites {
 }
 
 /**
- * Resolve the one prerequisite every decode strategy needs up front: a
- * positive fps + a frame count (from `total_frame_count`, else
- * `duration * fps`). Absent when `VideoMetadata` wasn't computed → `metadata`
- * block, which the surface renders as an actionable prompt instead of mounting
- * a stream that would throw.
- *
- * Whether per-frame images were materialized is not a prerequisite: it's one
- * input to the decode-strategy resolver (fetch vs. extract vs. the `<video>`
- * tile), not a hard gate — see {@link useDecodeStrategy}.
+ * Resolve the sample's positive fps and frame count (`total_frame_count`, else
+ * `duration * fps`; the group's element count for an image dynamic group).
+ * Either missing is a `metadata` block the surface renders as a prompt.
  */
 export const useAnnotatePrerequisites = (
   sample: ModalSample,
 ): AnnotatePrerequisites => {
+  // An image dataset grouped into a video has no VideoMetadata: its frame
+  // rate is the dataset's target rate and its frame count is the group's
+  // element count. Both hooks run unconditionally to keep hook order stable.
+  const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
+  const imaVidFrameRate = useModalSampleFrameRate(sample);
+  const elementCount = useDynamicGroupElementCount(isImageDynamicGroupVideo);
+
+  if (isImageDynamicGroupVideo) {
+    const ok =
+      Number.isFinite(imaVidFrameRate) &&
+      imaVidFrameRate > 0 &&
+      elementCount !== null &&
+      elementCount > 0;
+
+    if (!ok) {
+      return { status: "blocked", blocker: "metadata" };
+    }
+
+    return {
+      status: "ready",
+      frameRate: imaVidFrameRate,
+      frameCount: elementCount,
+    };
+  }
+
   const frameRate = getModalSampleFrameRate(sample);
   const hasFrameRate =
     frameRate !== undefined && Number.isFinite(frameRate) && frameRate > 0;

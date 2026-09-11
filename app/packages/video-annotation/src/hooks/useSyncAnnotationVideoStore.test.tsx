@@ -6,7 +6,7 @@
  * The composite store's sample-level hydration nudge, and the override Explore
  * needs to make it fire.
  *
- * `useHydrateSampleLevelOverlays` exists because the load-time consumers — the
+ * `useOnSampleLevelLabelsChange` exists because the load-time consumers — the
  * engine's Lighter bridge and the temporal view's presence cache — run once
  * when the surface mounts, BEFORE the shared `Sample`'s schema has resolved a
  * field's label type. While the type reads `Unknown` the field is excluded, and
@@ -89,7 +89,10 @@ vi.mock("../streams/frameLabelsStream", () => ({
   }),
 }));
 
-vi.mock("../streams/framesData", () => ({ parseFramesData: () => ({}) }));
+vi.mock("../streams/framesData", () => ({
+  parseFramesData: () => ({}),
+  parseFrameValues: () => ({}),
+}));
 
 vi.mock("../state/accessors", () => ({
   useFrameLabelFields: () => ({}),
@@ -101,9 +104,13 @@ import { useSyncAnnotationVideoStore } from "./useSyncAnnotationVideoStore";
 const Harness = ({
   sampleLevelPaths,
 }: {
-  sampleLevelPaths?: ReadonlySet<string>;
+  sampleLevelPaths: ReadonlySet<string>;
 }) => {
-  useSyncAnnotationVideoStore({}, { seedWholeClip: false, sampleLevelPaths });
+  useSyncAnnotationVideoStore({
+    labelTypes: {},
+    sampleLevelPaths,
+    seedWholeClip: false,
+  });
   return null;
 };
 
@@ -122,28 +129,14 @@ describe("useSyncAnnotationVideoStore sample-level hydration nudge", () => {
     expect(h.resync).toHaveBeenCalled();
   });
 
-  it("does NOT resync on the annotation default, which is empty in Explore", () => {
-    // The regression itself. `useVisibleLabelSchemas()` is empty until the
-    // Annotate sidebar loads the schemas, so the signature is "" and the
-    // effect bails — which is why the override exists.
-    render(<Harness />);
+  it("does NOT resync when the supplied path set is empty", () => {
+    // An empty set yields an empty signature and the effect bails.
+    render(<Harness sampleLevelPaths={new Set()} />);
 
     expect(h.resync).not.toHaveBeenCalled();
   });
 
-  it("falls back to the annotation set when no override is given", () => {
-    // Annotate's path must keep working: the override is additive, not a
-    // replacement of the default behavior.
-    h.state.annotationVisible = ["cls"];
-
-    render(<Harness />);
-
-    expect(h.resync).toHaveBeenCalled();
-  });
-
-  it("builds the signature from the override, not the annotation set", () => {
-    h.state.annotationVisible = ["ignored"];
-
+  it("builds the signature from the supplied paths only", () => {
     render(<Harness sampleLevelPaths={new Set(["cls"])} />);
 
     expect(h.listLabelsCalls).toContain("cls");

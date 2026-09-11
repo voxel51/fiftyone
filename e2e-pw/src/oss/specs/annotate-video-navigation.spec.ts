@@ -1,15 +1,11 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Paging between video samples on the annotation surface. Regression guard for
- * the next/prev "a store for sample X is already registered" crash: on a sample
- * switch the 3D-scene store registration raced the video surface's own store
- * while the modal id was settling. Paging forward then back must re-home the
- * engine store cleanly — the surface re-renders each sample's own track and no
- * duplicate-store error is thrown.
- *
- * The modal is opened from the GRID (not a deep link) so it carries the sample
- * sequence — a deep-linked single sample has no next/previous sibling.
+ * Paging between video samples on the annotation surface must re-home the
+ * engine store cleanly, guarding the "a store for sample X is already
+ * registered" crash where the 3D-scene registration raced the video surface's
+ * store. The modal is opened from the grid, since a deep-linked sample has no
+ * next/previous sibling.
  */
 import { expect, test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
@@ -17,8 +13,6 @@ import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-video-nav");
-const clip0 = `/tmp/${datasetName}-0.webm`;
-const clip1 = `/tmp/${datasetName}-1.webm`;
 
 const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   grid: async ({ page, eventUtils }, use) => use(new GridPom(page, eventUtils)),
@@ -26,30 +20,70 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
     use(new ModalPom(page, eventUtils)),
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory, videoAnnotateSDK }) => {
+test.beforeAll(async ({ foWebServer, datasetFactory }) => {
   await foWebServer.startWebServer();
-  await mediaFactory.createVideo({
-    outputPath: clip0,
-    duration: 2,
-    width: 64,
-    height: 64,
-    frameRate: 10,
-    color: "#3050a0",
-  });
-  await mediaFactory.createVideo({
-    outputPath: clip1,
-    duration: 2,
-    width: 64,
-    height: 64,
-    frameRate: 10,
-    color: "#a05030",
-  });
   // both samples carry their own tracked instance, so the object track id
   // differs between samples — a reliable "the surface switched" signal.
-  await videoAnnotateSDK.seed({
+  await datasetFactory.createDataset({
+    mediaType: "video",
     datasetName,
-    videoPaths: [clip0, clip1],
-    trackedSampleIndices: [0, 1],
+    numSamples: 2,
+    videoOptions: (index) => (index === 1 ? { color: "#a05030" } : {}),
+    sampleFrames: true,
+    schema: {
+      "frames.detections": "Detections",
+      "frames.detections.detections.instance": "Instance",
+      "frames.detections.detections.keyframe": "BooleanField",
+      "frames.detections.detections.propagation": "DictField",
+      events: "TemporalDetections",
+    },
+    labelSchemas: {
+      "frames.detections": {
+        type: "detections",
+        component: "dropdown",
+        classes: ["vehicle", "person", "road sign"],
+        attributes: [
+          { name: "id", type: "id", component: "text", read_only: true },
+          { name: "tags", type: "list<str>", component: "text" },
+          { name: "confidence", type: "float", component: "text" },
+          { name: "index", type: "int", component: "text" },
+          { name: "mask_path", type: "str", component: "text" },
+        ],
+      },
+      events: {
+        type: "temporaldetections",
+        component: "dropdown",
+        classes: ["approach", "pass", "depart"],
+        attributes: [
+          { name: "id", type: "id", component: "text", read_only: true },
+        ],
+      },
+    },
+    // three events split the clip into thirds
+    withSampleData: ({ numFrames }, { label }) => {
+      const a = Math.max(1, Math.floor(numFrames / 3));
+      const b = Math.max(a + 1, Math.floor((2 * numFrames) / 3));
+      return {
+        events: label.temporalDetections([
+          label.temporalDetection({ label: "approach", support: [1, a] }),
+          label.temporalDetection({ label: "pass", support: [a + 1, b] }),
+          label.temporalDetection({
+            label: "depart",
+            support: [b + 1, numFrames],
+          }),
+        ]),
+      };
+    },
+    withFrameData: ({ sampleIndex }, { label }) => ({
+      detections: label.detections([
+        label.detection({
+          label: "vehicle",
+          bounding_box: [0.3, 0.3, 0.2, 0.2],
+          index: 1,
+          instance: label.instance(`${sampleIndex}-vehicle-1`),
+        }),
+      ]),
+    }),
   });
 });
 

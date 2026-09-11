@@ -1,17 +1,36 @@
-import { getSampleSrc, useDimensions } from "@fiftyone/state";
+import {
+  getSampleSrc,
+  useDimensions,
+  useIsImageDynamicGroupVideo,
+} from "@fiftyone/state";
 import type { ModalSample } from "@fiftyone/state";
+import {
+  useActiveSampleId,
+  useAnnotationEngine,
+  useEngineSelector,
+} from "@fiftyone/annotation";
+import { Size, Spinner } from "@voxel51/voodo";
 import React, { useMemo, useState } from "react";
 import { useAutoInterpolate } from "../hooks/useAutoInterpolate";
 import { useEndPointSessionOnFrameChange } from "../hooks/useEndPointSessionOnFrameChange";
 import { useRegisterVideoAnnotationKeybindings } from "../hooks/useRegisterVideoAnnotationKeybindings";
 import { useRegisterVideoSegmentBitmap } from "../hooks/useRegisterVideoSegmentBitmap";
 import { useSyncAnnotationFrameClock } from "../hooks/useSyncAnnotationFrameClock";
+import { useDynamicGroupPersistence } from "../hooks/useDynamicGroupPersistence";
 import { useSyncAnnotationVideoStore } from "../hooks/useSyncAnnotationVideoStore";
 import { useVideoLighterEngineBridge } from "../hooks/useVideoLighterEngineBridge";
-import { useFollowAnchorFrame } from "../state/useVideoInteraction";
+import {
+  useFrameLabelFields,
+  useFramePrimitivePaths,
+  useVisibleLabelSchemas,
+} from "../state/accessors";
+import { useFollowAnchorFrame } from "../state/useFollowAnchorFrame";
 import { useAnnotatePrerequisites } from "../hooks/useAnnotatePrerequisites";
 import { useDecodeStrategy } from "../hooks/useDecodeStrategy";
-import type { DecodeStrategy } from "../utils/decodeStrategy";
+import {
+  type DecodeStrategy,
+  parseForcedStrategy,
+} from "../utils/decodeStrategy";
 import { useTimelineMaxSize } from "../hooks/useTimelineMaxSize";
 import { PlaybackProvider, type TimelineMode } from "@fiftyone/playback";
 import {
@@ -19,6 +38,7 @@ import {
   AnnotatePrerequisiteNotice,
 } from "./AnnotatePrerequisiteNotice";
 import { FrameLabelsTracks, RegisterFrameLabels } from "./FrameLabels";
+import { OrderByReadout } from "./OrderByReadout";
 import { ImaVidLighterTile } from "./ImaVidLighterTile";
 import { RegisterImaVidImage } from "./RegisterImaVidImage";
 import { RegisterTimelineAudio } from "./RegisterTimelineAudio";
@@ -27,7 +47,6 @@ import {
   SyntheticTrackTimeline,
 } from "./SyntheticLabels";
 import { VideoAnnotationToolbar } from "./VideoAnnotationToolbar";
-import { VideoAnnotationTopBar } from "./VideoAnnotationTopBar";
 import { LighterVideo } from "./LighterVideo";
 import styles from "./VideoAnnotationSurface.module.css";
 
@@ -59,6 +78,8 @@ interface MediaProps {
   videoSrc: string | null;
   /** Demuxer verdict on audio-track presence; undefined = unknown. */
   hasAudio?: boolean;
+  /** Reports whether the tile's viewport has initialized and painted. */
+  onRevealChange: (revealed: boolean) => void;
 }
 
 interface RegistrarProps {
@@ -83,11 +104,19 @@ interface RegistrarProps {
  * (see `AUDIO_ONLY_STRATEGIES` below).
  */
 const STRATEGY_TILE: Record<DecodeStrategy, React.FC<MediaProps>> = {
-  extract: () => <ImaVidLighterTile />,
-  fetch: () => <ImaVidLighterTile />,
-  html: ({ videoSrc, hasAudio }) =>
+  extract: ({ onRevealChange }) => (
+    <ImaVidLighterTile onRevealChange={onRevealChange} />
+  ),
+  fetch: ({ onRevealChange }) => (
+    <ImaVidLighterTile onRevealChange={onRevealChange} />
+  ),
+  html: ({ videoSrc, hasAudio, onRevealChange }) =>
     videoSrc ? (
-      <LighterVideo videoSrc={videoSrc} hasAudio={hasAudio} />
+      <LighterVideo
+        videoSrc={videoSrc}
+        hasAudio={hasAudio}
+        onRevealChange={onRevealChange}
+      />
     ) : (
       <div className={styles.empty}>No media URL on this sample.</div>
     ),
@@ -152,7 +181,15 @@ const VideoAnnotationSurfaceForSample: React.FC<
   VideoAnnotationSurfaceProps
 > = ({ sample }) => {
   const labelsMode = useLabelsMode();
+  const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
   const prerequisites = useAnnotatePrerequisites(sample);
+
+  // ImaVid write path: frame edits fan out to the group's member samples
+  // under one group version token. Inert for native video.
+  useDynamicGroupPersistence({
+    enabled: isImageDynamicGroupVideo,
+    frameCount: prerequisites.frameCount,
+  });
 
   // Measure the surface so the timeline body caps at a fraction of it: past the
   // cap the drawer scrolls internally instead of growing into the media area.
@@ -160,26 +197,57 @@ const VideoAnnotationSurfaceForSample: React.FC<
   const surfaceHeight = dimensions.bounds?.height ?? 0;
   const timelineMaxSize = useTimelineMaxSize(surfaceHeight);
 
-  // Resolved top-level media URL. The `html` tile binds to it and the `extract`
-  // source decodes it in a worker; the `fetch` source resolves per-frame URLs
-  // instead and ignores it.
+  // Resolved top-level media URL for the `html` and `extract` sources; the
+  // `fetch` source resolves per-frame URLs instead. A dynamic-group sample's
+  // URL is an image, never a video source.
   const videoSrc = useMemo(() => {
+    if (isImageDynamicGroupVideo) {
+      return null;
+    }
+
     const url = sample.urls?.[0]?.url;
     return url ? getSampleSrc(url) : null;
-  }, [sample]);
+  }, [sample, isImageDynamicGroupVideo]);
 
-  // Sequence mode gives the readout a frame domain to switch into.
+  // Annotation is frame-based: the clock and ruler count frames by default,
+  // with elapsed time one click away on the clock.
   const mode = useMemo<TimelineMode>(
-    () => ({ kind: "sequence", fps: prerequisites.frameRate as number }),
+    () => ({
+      kind: "sequence",
+      fps: prerequisites.frameRate as number,
+      // FiftyOne frame numbers start at 1
+      firstFrame: 1,
+    }),
     [prerequisites.frameRate],
+  );
+
+  // A `?video-decode=` URL override wins over the surface's own choice; read
+  // once at mount.
+  const [urlForcedStrategy] = useState<DecodeStrategy | undefined>(() =>
+    typeof window === "undefined"
+      ? undefined
+      : parseForcedStrategy(window.location.search),
   );
 
   // Decide the decode strategy up front. Runs unconditionally (before the gates
   // below) to keep hook order stable across the resolving → resolved transition.
+  // One cover over media and timeline: the tile's viewport, the frame store
+  // and the tracks all report in, and nothing shows until every one is ready.
+  const [mediaRevealed, setMediaRevealed] = useState(false);
+  const [tracksReady, setTracksReady] = useState(false);
+  const engine = useAnnotationEngine();
+  const activeSampleId = useActiveSampleId();
+  const storeReady = useEngineSelector(
+    engine,
+    (reads) => activeSampleId !== null && reads.isSampleReady(activeSampleId),
+  );
+
   const resolution = useDecodeStrategy({
     videoSrc,
     frameCount: prerequisites.frameCount,
     enabled: prerequisites.status === "ready",
+    force:
+      urlForcedStrategy ?? (isImageDynamicGroupVideo ? "fetch" : undefined),
   });
 
   // Metadata gate: without a frame count no strategy can mount, so show an
@@ -190,7 +258,6 @@ const VideoAnnotationSurfaceForSample: React.FC<
         ref={dimensions.ref as React.RefObject<HTMLDivElement>}
         className={styles.root}
       >
-        <VideoAnnotationTopBar sample={sample} />
         <div className={styles.media}>
           <AnnotatePrerequisiteNotice blocker={prerequisites.blocker} />
         </div>
@@ -206,7 +273,6 @@ const VideoAnnotationSurfaceForSample: React.FC<
         ref={dimensions.ref as React.RefObject<HTMLDivElement>}
         className={styles.root}
       >
-        <VideoAnnotationTopBar sample={sample} />
         <div className={styles.media}>
           <AnnotatePrerequisiteChecking />
         </div>
@@ -217,17 +283,28 @@ const VideoAnnotationSurfaceForSample: React.FC<
   const strategy = resolution.strategy;
   const Tile = STRATEGY_TILE[strategy];
   const Registrar = STRATEGY_REGISTRAR[strategy];
+  const hasMedia = strategy !== "html" || videoSrc !== null;
+  const revealed =
+    (mediaRevealed || !hasMedia) &&
+    (labelsMode === "synthetic" || tracksReady) &&
+    storeReady;
+  const hidden = revealed ? undefined : { visibility: "hidden" as const };
 
   const layout = (
     <div
       ref={dimensions.ref as React.RefObject<HTMLDivElement>}
       className={styles.root}
+      data-cy="video-annotation-surface"
+      data-revealed={revealed}
     >
-      <VideoAnnotationTopBar sample={sample} />
-      <div className={styles.media}>
-        <Tile videoSrc={videoSrc} hasAudio={resolution.hasAudio} />
+      <div className={styles.media} style={hidden}>
+        <Tile
+          videoSrc={videoSrc}
+          hasAudio={resolution.hasAudio}
+          onRevealChange={setMediaRevealed}
+        />
       </div>
-      <div className={styles.timeline}>
+      <div className={styles.timeline} style={hidden}>
         {labelsMode === "synthetic" ? (
           <SyntheticTrackTimeline />
         ) : (
@@ -235,9 +312,16 @@ const VideoAnnotationSurfaceForSample: React.FC<
             sample={sample}
             maxSize={timelineMaxSize}
             extraActions={<VideoAnnotationToolbar />}
+            readouts={<OrderByReadout />}
+            onReadyChange={setTracksReady}
           />
         )}
       </div>
+      {!revealed && (
+        <div className={styles.cover}>
+          <Spinner size={Size.Lg} />
+        </div>
+      )}
     </div>
   );
 
@@ -275,7 +359,7 @@ const VideoAnnotationSurfaceForSample: React.FC<
     // Annotation wants the playhead to rest on a real frame after a pause or
     // scrub-drag, so the labels snapshot and any keyframe op align to a frame.
     // Scrubbing stays continuous — only the settle position snaps.
-    <PlaybackProvider snapToFrameOnSettle mode={mode} defaultDisplay="duration">
+    <PlaybackProvider snapToFrameOnSettle mode={mode}>
       <VideoAnnotationHandlerRegistration />
       {AUDIO_ONLY_STRATEGIES.has(strategy) && (
         <RegisterTimelineAudio
@@ -296,10 +380,17 @@ const VideoAnnotationSurfaceForSample: React.FC<
  */
 const VideoAnnotationHandlerRegistration: React.FC = () => {
   useSyncAnnotationFrameClock();
-  useSyncAnnotationVideoStore();
+  const labelTypes = useFrameLabelFields();
+  const visiblePaths = useVisibleLabelSchemas();
+  const valuePaths = useFramePrimitivePaths();
+  useSyncAnnotationVideoStore({
+    labelTypes,
+    sampleLevelPaths: visiblePaths,
+    valuePaths,
+  });
   // after the clock + store: the bridge reconciles against the FrameTemporalView
   // and a seeded frame store, not the degenerate pool view
-  useVideoLighterEngineBridge();
+  useVideoLighterEngineBridge(visiblePaths);
   useRegisterVideoAnnotationKeybindings();
   // expose the active ImaVid frame to the SAM2 agent for click-to-segment
   useRegisterVideoSegmentBitmap();

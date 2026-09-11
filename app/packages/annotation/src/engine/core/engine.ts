@@ -9,6 +9,7 @@ import type {
   DisplayListener,
   LabelChange,
   LabelStore,
+  PersistenceAdapter,
   StoreSnapshot,
 } from "../store/types";
 import { ReconcileOpts, wholeSampleReset } from "../store/types";
@@ -19,7 +20,11 @@ import { InteractionState } from "../interaction/interactionState";
 import type { SignalHandler } from "../signals/signalPipe";
 import { SignalPipe } from "../signals/signalPipe";
 import { PoolTemporalView } from "../temporal/poolTemporalView";
-import type { PresenceListener, TemporalView } from "../temporal/types";
+import type {
+  PresenceListener,
+  TemporalView,
+  FrameListener,
+} from "../temporal/types";
 import { DispatchGuard } from "./dispatchGuard";
 import type {
   UndoCommitListener,
@@ -60,11 +65,9 @@ export class AnnotationEngine {
   readonly interaction: InteractionState;
 
   /**
-   * Derived temporal presence over the pool; ≡ pool when non-temporal. Installed
-   * at construction (default {@link PoolTemporalView}) and swappable per session
-   * via {@link attachTemporal} — a video modal attaches a frame view over its
-   * playback clock and detaches on close, mirroring the store lifecycle. Read
-   * live; mutated only by {@link attachTemporal}/{@link bindTemporalPresence}.
+   * Derived temporal presence over the pool, equal to the pool when
+   * non-temporal. Mutated only by {@link attachTemporal} and
+   * {@link bindTemporalPresence}.
    */
   get temporal(): TemporalView {
     return this._temporal;
@@ -77,11 +80,14 @@ export class AnnotationEngine {
    *  (not on the view) so a subscription taken before the frame view is
    *  attached still receives its clock events. */
   private presenceListeners = new Set<PresenceListener>();
+  private frameListeners = new Set<FrameListener>();
   private temporalPresenceUnsub: (() => void) | undefined;
+  private temporalFrameUnsub: (() => void) | undefined;
 
   private signals: SignalPipe;
 
   private stores = new Map<string, LabelStore>();
+  private persistenceAdapters = new Map<string, PersistenceAdapter>();
   private displayListeners = new Set<DisplayListener>();
   private changeListeners = new Set<ChangeListener>();
   private bookkeepingHooks = new Set<BookkeepingHook>();
@@ -114,11 +120,8 @@ export class AnnotationEngine {
   private gestureEpoch = 0;
 
   /**
-   * @param opts.temporal a factory for the temporal view, given the engine as
-   *   its pool/change source. Defaults to the non-temporal {@link
-   *   PoolTemporalView} (presence ≡ pool) — every image/3D session. A video
-   *   session injects a frame view built over a playback {@link Clock}; the
-   *   factory shape lets it close over the clock without the engine knowing it.
+   * @param opts.temporal factory for the temporal view over the engine's pool;
+   *   defaults to the non-temporal {@link PoolTemporalView}
    */
   constructor(
     opts: { temporal?: (engine: AnnotationEngine) => TemporalView } = {},
@@ -177,12 +180,27 @@ export class AnnotationEngine {
     };
   }
 
-  /** (Re)bind the internal forwarder to the current temporal view. */
+  /** The playhead's frame changed; the same forwarding contract as presence. */
+  subscribeFrame(listener: FrameListener): () => void {
+    this.frameListeners.add(listener);
+
+    return () => {
+      this.frameListeners.delete(listener);
+    };
+  }
+
+  /** (Re)bind the internal forwarders to the current temporal view. */
   private bindTemporalPresence(): void {
     this.temporalPresenceUnsub?.();
     this.temporalPresenceUnsub = this.temporal.subscribePresence((events) => {
       for (const listener of this.presenceListeners) {
         listener(events);
+      }
+    });
+    this.temporalFrameUnsub?.();
+    this.temporalFrameUnsub = this.temporal.subscribeFrame((frame) => {
+      for (const listener of this.frameListeners) {
+        listener(frame);
       }
     });
   }
@@ -196,14 +214,9 @@ export class AnnotationEngine {
   // ---- registration ----
 
   /**
-   * Register a store (mount-scoped). The engine subscribes both channels:
-   * display relays to the merged display channel; changes buffer inside a
-   * transaction and dispatch ordered at commit.
-   *
-   * Unregistering emits no label changes, but engine-owned ephemera must not
-   * outlive the store: interaction refs to the departed sample are swept (a
-   * synthetic whole-sample-reset GC pass — nothing resolves anymore) and its
-   * undo history drops.
+   * Register a store (mount-scoped) and return its unregister. Unregistering
+   * emits no label changes but sweeps the sample's interaction refs and undo
+   * history.
    */
   registerStore(store: LabelStore): () => void {
     if (this.stores.has(store.sample)) {
@@ -213,17 +226,54 @@ export class AnnotationEngine {
     this.stores.set(store.sample, store);
     const unsubscribeDisplay = store.subscribe(this.onStoreDisplay);
     const unsubscribeChanges = store.subscribeChanges(this.onStoreChanges);
+    // a store appearing changes what resolves for display subscribers
+    this.notifyDisplay();
 
     return () => {
       this.stores.delete(store.sample);
       unsubscribeDisplay();
       unsubscribeChanges();
+      this.notifyDisplay();
       this.interaction.gc(
         [wholeSampleReset(store.sample)],
         (ref) => this.getLabel(ref) !== undefined,
       );
       this.emitUndoDrop(this.undos.dropSample(store.sample));
     };
+  }
+
+  /**
+   * Whether a sample's store is registered and not mid-seed. While false, an
+   * empty present read means "loading", not "no labels".
+   */
+  isSampleReady(sample: string): boolean {
+    const store = this.stores.get(sample);
+    return store !== undefined && !(store.isLoading?.() ?? false);
+  }
+
+  /**
+   * Register a custom persistence transport for a store's deltas, replacing
+   * the standard modal-sample PATCH. Returns the unregister function.
+   */
+  registerPersistenceAdapter(
+    sample: string,
+    adapter: PersistenceAdapter,
+  ): () => void {
+    if (this.persistenceAdapters.has(sample)) {
+      throw new Error(
+        `a persistence adapter for sample '${sample}' is registered`,
+      );
+    }
+
+    this.persistenceAdapters.set(sample, adapter);
+
+    return () => {
+      this.persistenceAdapters.delete(sample);
+    };
+  }
+
+  getPersistenceAdapter(sample: string): PersistenceAdapter | undefined {
+    return this.persistenceAdapters.get(sample);
   }
 
   // ---- routed reads ----
@@ -250,6 +300,11 @@ export class AnnotationEngine {
     frame?: number;
   }): LabelData[] {
     return this.stores.get(ref.sample)?.listLabels(ref.path, ref.frame) ?? [];
+  }
+
+  /** A per-frame non-label field's value at a frame (see `LabelStore.getFrameValue`). */
+  getFrameValue(ref: { sample: string; path: string; frame: number }): unknown {
+    return this.stores.get(ref.sample)?.getFrameValue?.(ref.path, ref.frame);
   }
 
   /** Frame numbers edited this session for a sample (empty for non-frame stores). */
@@ -360,10 +415,8 @@ export class AnnotationEngine {
   }
 
   /**
-   * Mint a fresh, unique gesture id. Pass it as a transaction's `undoKey` for
-   * every commit a multi-commit gesture makes (directly, or by stamping it on
-   * the events a surface re-emits) so they undo/redo as one unit. Scoped to the
-   * gesture's own writes — nothing else can pick it up.
+   * Mint a fresh, unique gesture id. Pass it as the `undoKey` of every commit a
+   * multi-commit gesture makes so they undo/redo as one unit.
    */
   mintGestureId(): string {
     return `gesture:${(this.gestureEpoch += 1)}`;
@@ -475,9 +528,8 @@ export class AnnotationEngine {
   // ---- bridges ----
 
   /**
-   * Register a retained-mode surface (mount-scoped). The engine derives the
-   * whole read-half: hydration, change reconciliation, presence merge, and
-   * silent interaction application. Returns unregister.
+   * Register a retained-mode surface (mount-scoped) and return its unregister.
+   * The engine derives the whole read-half for it.
    */
   registerBridge<Handle, Descriptor>(
     bridge: SurfaceBridge<Handle, Descriptor>,

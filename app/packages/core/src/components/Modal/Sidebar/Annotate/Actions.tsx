@@ -17,6 +17,7 @@ import {
 } from "@fiftyone/looker-3d/src/state/accessors";
 import {
   is3DDataset,
+  isNonNestedDynamicGroup,
   isVideoDataset,
   useIs3dPinned,
   useIsGroupDataset,
@@ -504,13 +505,14 @@ const Actions = ({ hidden = false }: { hidden?: boolean }) => {
     !current3dAnnotationMode;
   const areThreeDActionsVisible = is3dDataset || is3dSamplePinned;
 
-  // For group datasets the 2D-vs-3D decision depends on the resolved annotation
-  // slice, which isn't known until the group's sample data loads. Withhold the
-  // slice-dependent tools until then so a 3D sample never flashes 2D tools.
-  // Non-group datasets resolve immediately and don't gate.
+  // group datasets withhold slice-dependent tools until the annotation slice
+  // resolves, so a 3D sample never flashes 2D tools; a dynamic group over a
+  // non-group dataset has no slices and must not gate
   const isGroupDataset = useIsGroupDataset();
+  const isDynamic = useRecoilValue(isNonNestedDynamicGroup);
   const [groupAnnotationSliceReady] = useGroupAnnotationSliceReady();
-  const toolsResolved = !isGroupDataset || groupAnnotationSliceReady;
+  const toolsResolved =
+    !isGroupDataset || isDynamic || groupAnnotationSliceReady;
 
   const deactivateAll = useDeactivateAllModes();
 

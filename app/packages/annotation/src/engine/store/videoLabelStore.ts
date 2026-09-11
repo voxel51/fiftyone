@@ -60,6 +60,13 @@ export class VideoLabelStore implements LabelStore {
     this.sampleLevel = sampleLevel;
   }
 
+  isLoading(): boolean {
+    return (
+      (this.frames.isLoading?.() ?? false) ||
+      (this.sampleLevel.isLoading?.() ?? false)
+    );
+  }
+
   // ---- resolution ----
 
   getLabel(ref: LabelRef): LabelData | undefined {
@@ -72,6 +79,10 @@ export class VideoLabelStore implements LabelStore {
 
   getLabelType(path: string): LabelType {
     return this.route(path).getLabelType(path);
+  }
+
+  getFrameValue(path: string, frame: number): unknown {
+    return this.frames.getFrameValue?.(path, frame);
   }
 
   enumerateLabels(kinds: readonly LabelType[]): LabelRef[] {

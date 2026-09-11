@@ -81,6 +81,18 @@ export const Container = styled.div`
   overflow-x: hidden;
 `;
 
+/* Opaque cover over the scene until it is parsed, its assets have loaded and
+   the first camera look-at has settled; nothing is interactive before that. */
+export const LoadingCover = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-content-bg-card-1);
+`;
+
 export const StatusBarRootContainer = styled.div`
   position: absolute;
   bottom: 3em;

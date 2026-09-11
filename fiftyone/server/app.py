@@ -155,6 +155,10 @@ if _allowed_origins:
                 "accept-ranges",
                 "content-range",
                 "content-length",
+                # ETag carries the annotation version token and is not
+                # CORS-safelisted; without this a cross-origin app reads
+                # null and every follow-up save fails its version check
+                "etag",
             ],
         )
     )

@@ -32,11 +32,19 @@ export class PoolTemporalView implements TemporalView {
     return this.pool.enumerateLabels(ALL_LABEL_TYPES);
   }
 
+  frame(): undefined {
+    return undefined;
+  }
+
   isPresent(ref: LabelRef): boolean {
     return this.pool.getLabel(ref) !== undefined;
   }
 
   subscribePresence(): () => void {
+    return () => undefined;
+  }
+
+  subscribeFrame(): () => void {
     return () => undefined;
   }
 }

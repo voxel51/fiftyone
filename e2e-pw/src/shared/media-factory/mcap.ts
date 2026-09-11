@@ -8,6 +8,7 @@ import path from "node:path";
 import { deflateSync } from "node:zlib";
 import { Root } from "protobufjs";
 import descriptor from "protobufjs/ext/descriptor";
+import type { MediaOptions } from "./types";
 
 const TEXT_ENCODER = new TextEncoder();
 const NANOSECONDS_PER_SECOND = 1_000_000_000n;
@@ -115,17 +116,21 @@ interface FixtureDefinition {
   readonly messages: readonly FixtureMessage[];
 }
 
+/** Which MCAP correctness fixture to record. */
+export interface McapSpec {
+  readonly kind: McapFixtureKind;
+  /** Empty leading channels used to vary otherwise recording-local ids. */
+  readonly channelIdOffset?: number;
+}
+
+export type McapOptions = MediaOptions & McapSpec;
+
 /** Writes one deterministic, indexed, uncompressed MCAP correctness fixture. */
 export async function createMcapFixture({
   channelIdOffset = 0,
   kind,
   outputPath,
-}: {
-  /** Empty leading channels used to vary otherwise recording-local ids. */
-  readonly channelIdOffset?: number;
-  readonly kind: McapFixtureKind;
-  readonly outputPath: string;
-}): Promise<McapFixtureReport> {
+}: McapOptions): Promise<McapFixtureReport> {
   const definition = fixtureDefinition(kind);
   if (!Number.isInteger(channelIdOffset) || channelIdOffset < 0) {
     throw new Error("channel id offset must be a non-negative integer");
