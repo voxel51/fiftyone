@@ -292,6 +292,8 @@ test.describe.serial("3d cuboid creation", () => {
     // replaces the label list), so verify creation through the form, then
     // assign a distinct class and let it autosave
     await modal.sidebar.edit.assert.verifyFieldValue("label", "car");
+    // the draw's own autosave must land first, or it satisfies the waiter below
+    await modal.sidebar.annotate.waitForSavesSettled();
     const saved = page.waitForResponse(
       (r) =>
         /\/sample\//.test(r.url()) &&

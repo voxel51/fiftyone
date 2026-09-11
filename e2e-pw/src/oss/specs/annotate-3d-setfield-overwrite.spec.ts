@@ -21,6 +21,9 @@ const id = "000000000000000000000000";
 
 /** Saved-view slug applying the `set_field` projection. */
 const viewSlug = "set-field-note";
+// a stage-less saved view: the shared server session carries the projected
+// view to every new page, so the fresh context must ask for the base explicitly
+const baseSlug = "base";
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -50,7 +53,7 @@ const inFreshContext = async (
   try {
     const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
     await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
-      searchParams: new URLSearchParams({ id }),
+      searchParams: new URLSearchParams({ id, view: baseSlug }),
     });
     await freshModal.assert.isOpen();
     await verify(freshModal);
@@ -96,6 +99,7 @@ test.describe.serial("3d annotate set_field overwrite", () => {
         note: "db-original",
       }),
       savedViews: {
+        [baseSlug]: "dataset.view()",
         [viewSlug]:
           'dataset.set_field("note", F("note").upper()).set_field("detections.detections.confidence", 0.99)',
       },
