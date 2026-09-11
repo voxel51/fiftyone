@@ -21,6 +21,11 @@ export class VideoAnnotatePom {
     this.surface = page.getByTestId("video-annotation-surface");
   }
 
+  /** The `#frame / #total` readout beside the timeline clock. */
+  get frameReadout(): Locator {
+    return this.page.getByTestId("timeline-frame-readout");
+  }
+
   /**
    * Wait until the video-annotation surface has mounted AND the timeline
    * has committed its tracks (`data-timeline-loaded="true"` — stamped once
@@ -481,6 +486,11 @@ export class VideoAnnotatePom {
 
 class VideoAnnotateAsserter {
   constructor(private readonly va: VideoAnnotatePom) {}
+
+  /** The frame readout shows `text`, e.g. `#4 / #20`. */
+  async frameReadout(text: string) {
+    await expect(this.va.frameReadout).toHaveText(text);
+  }
 
   /** Assert the number of object (frame-label) tracks on the timeline. */
   async objectTrackCount(expected: number) {

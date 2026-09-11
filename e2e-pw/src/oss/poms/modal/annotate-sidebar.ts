@@ -41,6 +41,16 @@ export class ModalAnnotateSidebarPom {
     );
   }
 
+  /** The PRIMITIVES row for the field at `path`, carrying `data-cy-read-only`. */
+  primitiveEntry(path: string): Locator {
+    return this.locator.getByTestId(`annotate-primitive-${path}`);
+  }
+
+  /** The formatted value shown on the PRIMITIVES row for `path`. */
+  primitiveValue(path: string): Locator {
+    return this.primitiveEntry(path).getByTestId("annotate-primitive-value");
+  }
+
   /**
    * Get the count of active labels in the sidebar
    *
@@ -286,6 +296,20 @@ class ModalAnnotateSidebarAsserter {
         "sidebar-group-Labels-toggle",
       ),
     ).toHaveAttribute("data-testid", "AddIcon");
+  }
+
+  /** The PRIMITIVES row for `path` shows `value`. */
+  async primitiveValue(path: string, value: string) {
+    await expect(this.modalAnnotateSidebar.primitiveValue(path)).toHaveText(
+      value,
+    );
+  }
+
+  /** The PRIMITIVES row for `path` is (not) editable. */
+  async primitiveReadOnly(path: string, readOnly: boolean) {
+    await expect(
+      this.modalAnnotateSidebar.primitiveEntry(path),
+    ).toHaveAttribute("data-cy-read-only", readOnly ? "true" : "false");
   }
 
   /**
