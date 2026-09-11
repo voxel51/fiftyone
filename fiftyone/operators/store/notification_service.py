@@ -15,8 +15,7 @@ from threading import Thread
 from typing import Callable, Dict, List, Optional, Set
 
 from bson import ObjectId
-from pymongo.asynchronous.collection import AsyncCollection
-from pymongo.asynchronous.database import AsyncDatabase
+from motor.motor_asyncio import AsyncIOMotorCollection, AsyncIOMotorDatabase
 from pymongo.errors import OperationFailure
 
 import fiftyone.core.odm as foo
@@ -115,8 +114,8 @@ class MongoChangeStreamNotificationService(ChangeStreamNotificationService):
         # we init this in start(), which runs in a dedicated event loop
         # init-ing it in ctor or in global might cause wrong binding
         self.dedicated_event_loop: Optional[asyncio.AbstractEventLoop] = None
-        self._async_db: AsyncDatabase = None
-        self._collection_async: AsyncCollection = None
+        self._async_db: AsyncIOMotorDatabase = None
+        self._collection_async: AsyncIOMotorCollection = None
         self._last_poll_time: datetime = None
         self.is_running: bool = False
 
@@ -293,8 +292,8 @@ class MongoChangeStreamNotificationService(ChangeStreamNotificationService):
         pipeline = []
 
         # full_document="updateLookup" is required to get the full document in the change stream
-        # https://pymongo.readthedocs.io/en/stable/api/pymongo/asynchronous/change_stream.html
-        async with await self._collection_async.watch(
+        # https://motor.readthedocs.io/en/stable/api-asyncio/asyncio_motor_change_stream.html
+        async with self._collection_async.watch(
             pipeline, full_document="updateLookup"
         ) as stream:
             if self._stop_event and self._stop_event.is_set():

@@ -8,7 +8,7 @@ FiftyOne Server dataloader
 from dataclasses import dataclass
 import typing as t
 
-from pymongo.asynchronous.database import AsyncDatabase
+import motor.motor_asyncio as mtr
 from strawberry.dataloader import DataLoader
 
 from fiftyone.server.data import Info, T
@@ -29,7 +29,7 @@ dataloaders: t.Dict[type, DataLoaderConfig] = {}
 def get_dataloader(
     cls: t.Type[T],
     config: DataLoaderConfig,
-    db: AsyncDatabase,
+    db: mtr.AsyncIOMotorDatabase,
 ) -> DataLoader[str, t.Optional[T]]:
     async def load_items(
         keys: t.List[str],
