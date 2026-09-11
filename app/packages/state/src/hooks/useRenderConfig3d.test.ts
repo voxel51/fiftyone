@@ -308,37 +308,6 @@ describe("useRenderConfig3d split hooks", () => {
     expect(stateStore.values.pinned3DSampleSlice).toBe("lidar");
   });
 
-  it("focuses a point-cloud slice as the scene when an fo3d slice is active", async () => {
-    const sceneSample = buildModalSample("scene-id", "/tmp/scene.fo3d");
-    const lidarSample = buildModalSample("lidar-id", "/tmp/lidar.pcd");
-
-    setState({
-      is3dPinned: true,
-      pinned3DSampleSlice: "scene",
-      active3dSlices: ["scene"],
-      all3dSlices: ["scene", "lidar"],
-      realFo3dSlices: ["scene"],
-      groupMediaTypesMap: { scene: "3d", lidar: "point-cloud" },
-      all3dSlicesToSampleMap: {
-        scene: sceneSample,
-        lidar: lidarSample,
-      },
-    });
-
-    const { result } = renderHook(() => useRenderConfig3dHooks());
-
-    await result.current.actions.focusSlice("lidar");
-
-    expect(stateStore.values.active3dSlices).toEqual(["lidar"]);
-    expect(stateStore.values.pinned3DSampleSlice).toBe("lidar");
-    expect(stateStore.values.is3dPinned).toBe(true);
-
-    await result.current.actions.focusSlice("scene");
-
-    expect(stateStore.values.active3dSlices).toEqual(["scene", "lidar"]);
-    expect(stateStore.values.pinned3DSampleSlice).toBe("scene");
-  });
-
   it("focuses non-3d slices by hiding the 3d viewer and clearing the pin", async () => {
     setState({
       is3dPinned: true,

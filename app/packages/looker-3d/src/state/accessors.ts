@@ -25,6 +25,7 @@ import {
   selectedLabelForAnnotationAtom,
   showCuboidOrientationAtom,
   transformModeAtom,
+  fo3dSceneReadyAtom,
 } from "./recoil";
 
 /**
@@ -43,6 +44,9 @@ export const useCurrent3dAnnotationMode = () => {
  *
  * @returns A function that accepts the annotation mode to set
  */
+/** Set whether the fo3d scene is parsed, camera-ready and fully loaded. */
+export const useSetFo3dSceneReady = () => useSetRecoilState(fo3dSceneReadyAtom);
+
 export const useSetCurrent3dAnnotationMode = () => {
   const setMode = useSetRecoilState(current3dAnnotationModeAtom);
 

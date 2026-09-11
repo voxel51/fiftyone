@@ -25,7 +25,10 @@ import {
   useTrackStatus,
 } from "../hooks";
 import type { Looker3dSettings } from "../settings";
-import { useCurrent3dAnnotationMode } from "../state/accessors";
+import {
+  useCurrent3dAnnotationMode,
+  useSetFo3dSceneReady,
+} from "../state/accessors";
 import {
   FO3D_CAMERA_LIFECYCLE,
   FO3D_CAMERA_LIFECYCLE_ACTION,
@@ -158,6 +161,14 @@ export const MediaTypeFo3dComponent = () => {
   const cameraControlsRef = useRef<Fo3dCameraControls | null>(null);
   const assetsGroupRef = useRef<Group | null>(null);
   const threeJsLoadingStatus = useTrackStatus(loadingManager, isSceneReady);
+
+  // e2e draws wait on this before clicking; a scene swap unmounts the
+  // component and resets it through the cleanup
+  const setSceneReady = useSetFo3dSceneReady();
+  useEffect(() => {
+    setSceneReady(isSceneReady && !threeJsLoadingStatus.isLoading);
+    return () => setSceneReady(false);
+  }, [isSceneReady, threeJsLoadingStatus.isLoading, setSceneReady]);
 
   useFo3dCameraControlsConfig({
     cameraControlsRef,

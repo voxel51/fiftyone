@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { ActionBar } from "./action-bar";
 import { useWorkingLabel } from "./annotation/store/working";
+import { CAMERA_LOOK_AT_SETTLED_EVENT } from "./constants";
 import { Container } from "./containers";
 import { Fo3dErrorBoundary } from "./ErrorBoundary";
 import { Leva } from "./fo3d/Leva";
@@ -14,6 +15,7 @@ import { getLooker3dRenderKey } from "./looker3d-render-key";
 import {
   currentActionAtom,
   fo3dContainsBackground,
+  fo3dSceneReadyAtom,
   isColormapModalOpenAtom,
   isGridOnAtom,
   isLevaConfigPanelOnAtom,
@@ -100,6 +102,17 @@ export const Looker3d = () => {
     activeFo3dSlice,
     renderContext,
   });
+
+  // the first look-at settle after a scene (re)mount makes the view
+  // raycastable; the e2e draw helpers gate on it through `data-scene-ready`
+  const sceneReady = useRecoilValue(fo3dSceneReadyAtom);
+  const [cameraSettledKey, setCameraSettledKey] = useState<string | null>(null);
+  useEffect(() => {
+    const onSettled = () => setCameraSettledKey(looker3dSceneKey);
+    document.addEventListener(CAMERA_LOOK_AT_SETTLED_EVENT, onSettled);
+    return () =>
+      document.removeEventListener(CAMERA_LOOK_AT_SETTLED_EVENT, onSettled);
+  }, [looker3dSceneKey]);
 
   useHotkey(
     "KeyG",
@@ -215,6 +228,9 @@ export const Looker3d = () => {
         onMouseMove={update}
         data-cy="looker3d"
         data-cy-selected-vertex-count={selectedVertexCount}
+        data-scene-ready={
+          sceneReady && cameraSettledKey === looker3dSceneKey ? "true" : "false"
+        }
       >
         <MediaTypeFo3dComponent key={looker3dSceneKey} />
         <ActionBar

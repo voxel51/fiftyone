@@ -14,10 +14,10 @@ vi.mock("@fiftyone/state", () => ({
   useModalSample: () => mockModalSample,
   // an image dynamic group video modal sample is owned by the video surface
   useIsImageDynamicGroupVideo: () => mockIsImageDynamicGroupVideo,
-  // the 3D scene sample (stable/non-suspending variant); when its id differs
-  // from the modal sample a second store is registered, otherwise the set
-  // collapses to one
-  useStableSceneSample3d: () => mockSceneSample,
+  // the annotated 3D sample (stable/non-suspending variant); when its id
+  // differs from the modal sample a second store is registered, otherwise the
+  // set collapses to one
+  useStableInteraction3dSample: () => mockSceneSample,
   useCurrentSampleId: () => mockModalSample?.sample?._id ?? null,
 }));
 

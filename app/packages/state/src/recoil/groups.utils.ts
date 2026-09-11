@@ -164,28 +164,6 @@ export const resolvePinned3dSlice = ({
 };
 
 /**
- * Narrows a focused 3D selection so the focused slice is the scene: an fo3d
- * slice left active would remain the scene sample, so a focused direct slice
- * (e.g. a point cloud) drops every fo3d slice.
- */
-export const focusActive3dSlices = ({
-  activeSlices,
-  focusedSlice,
-  realFo3dSlices,
-}: {
-  activeSlices: string[];
-  focusedSlice: string;
-  realFo3dSlices: string[];
-}) => {
-  const fo3dSliceSet = new Set(realFo3dSlices);
-  if (fo3dSliceSet.has(focusedSlice)) {
-    return activeSlices;
-  }
-
-  return activeSlices.filter((slice) => !fo3dSliceSet.has(slice));
-};
-
-/**
  * Resolves the normalized grouped 3D selection after slice availability changes.
  */
 export const resolveNormalized3dSelection = ({
