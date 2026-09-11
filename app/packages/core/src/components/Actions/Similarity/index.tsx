@@ -1,3 +1,4 @@
+import { Anchor } from "@voxel51/voodo";
 import { PillButton } from "@fiftyone/components";
 import { executeOperator } from "@fiftyone/operators";
 import { useOutsideClick, useSimilarityType } from "@fiftyone/state";
@@ -61,7 +62,7 @@ const Similarity = ({
         key={"button"}
         icon={icon}
         open={open}
-        tooltipPlacement={modal ? "bottom" : "top"}
+        tooltipPlacement={modal ? Anchor.Bottom : Anchor.Top}
         onClick={togglePopover}
         highlight={open}
         title={`Sort by ${

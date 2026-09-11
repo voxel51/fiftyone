@@ -1,4 +1,4 @@
-import { IconButton, Tooltip } from "@fiftyone/components";
+import { IconButton } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { ModalMode, useModalMode } from "@fiftyone/state";
 import { isHoveringAnyLabelWithInstanceConfig } from "@fiftyone/state/src/jotai";
@@ -9,7 +9,7 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { Typography } from "@mui/material";
 import { animated, useSpring } from "@react-spring/web";
-import { Orientation, Spacing, Stack } from "@voxel51/voodo";
+import { Anchor, Orientation, Spacing, Stack, Tooltip } from "@voxel51/voodo";
 import React, {
   useCallback,
   useEffect,
@@ -265,7 +265,11 @@ export const ContentItem = ({
       <VisibilityIconContainer>
         {isVisibilityIconVisible && (
           <IconButton onClick={hideThisItem} size="small">
-            <Tooltip text="Hide this label" placement="bottom-center">
+            <Tooltip
+              anchor={Anchor.Bottom}
+              content="Hide this label"
+              style={{ display: "flex" }}
+            >
               <VisibilityOffIcon fontSize="small" />
             </Tooltip>
           </IconButton>
@@ -500,7 +504,11 @@ const HiddenItemRow = ({
       <VisibilityIconContainer>
         {showUnhideIcon && (
           <IconButton onClick={unHideItem} size="small">
-            <Tooltip text="Show this label" placement="bottom-center">
+            <Tooltip
+              anchor={Anchor.Bottom}
+              content="Show this label"
+              style={{ display: "flex" }}
+            >
               <VisibilityIcon fontSize="small" />
             </Tooltip>
           </IconButton>

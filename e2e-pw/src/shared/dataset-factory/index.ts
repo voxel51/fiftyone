@@ -7,7 +7,9 @@ import path from "path";
 import { OssLoader } from "src/oss/fixtures/loader";
 import { createImage } from "../media-factory/image";
 import { createFo3d } from "../media-factory/fo3d";
+import { createPcd } from "../media-factory/pcd";
 import { createPly } from "../media-factory/ply";
+import { createVideo } from "../media-factory/video";
 import { createId, ensureDirExists, indexToId } from "../utils";
 
 /**
@@ -128,6 +130,14 @@ interface DatasetOptions {
   numbered?: boolean;
 
   /**
+   * The media type of every sample. Image samples are backed by generated
+   * PNGs ({@link imageOptions}); video samples by generated `.webm` clips
+   * ({@link videoOptions}).
+   * @default "image"
+   */
+  mediaType?: "image" | "video";
+
+  /**
    * Options for generating or rendering images associated with samples.
    * @default { fillColor: "white", width: 50, height: 50 }
    */
@@ -140,6 +150,60 @@ interface DatasetOptions {
 
     /** The height of the image in pixels. */
     height: number;
+  };
+
+  /**
+   * Options for the solid-color clips backing video samples. Only used
+   * when `mediaType` is `"video"`.
+   * @default { color: "#3050a0", duration: 1, frameRate: 5, width: 64, height: 64 }
+   */
+  videoOptions?: {
+    color: string;
+    duration: number;
+    frameRate: number;
+    width: number;
+    height: number;
+  };
+
+  /**
+   * Frame-level schema for video datasets, keyed by frame field path
+   * (without the `frames.` prefix). Label types map to embedded documents
+   * exactly like {@link DatasetOptions.schema}.
+   *
+   * @example
+   * frameSchema: { detections: "Detections" }
+   */
+  frameSchema?: {
+    [path: string]: FieldType;
+  };
+
+  /**
+   * `dataset.app_config` attributes to set, keyed by attribute name.
+   *
+   * @example
+   * appConfig: { disable_frame_filtering: true }
+   */
+  appConfig?: JSONObject;
+
+  /**
+   * `fo.ColorScheme` keyword arguments for `dataset.app_config.color_scheme`.
+   *
+   * @example
+   * colorScheme: { color_by: "instance", color_pool: ["red", "green"] }
+   */
+  colorScheme?: JSONObject;
+
+  /**
+   * Field descriptions and info dicts to attach to declared fields, keyed by
+   * field path (nested paths like `metadata.width` are allowed).
+   *
+   * @example
+   * fieldMetadata: {
+   *   ground_truth: { description: "ground_truth description", info: { owner: "bob" } },
+   * }
+   */
+  fieldMetadata?: {
+    [path: string]: { description?: string; info?: JSONObject };
   };
 
   /**
@@ -237,20 +301,61 @@ interface DatasetOptions {
  *   withSampleData: ({ index }, { createId }) => ({ _id: createId(indexToId(index)), hello: "world"  }),
  * });
  */
+/**
+ * Renders `dataset.add_sample_field` / `dataset.add_frame_field` calls for a
+ * schema map, mapping label types to `EmbeddedDocumentField`.
+ */
+const renderAddFields = (
+  method: "add_sample_field" | "add_frame_field",
+  schema: { [path: string]: FieldType },
+) => {
+  const addFields: string[] = [];
+  for (const path in schema) {
+    let embeddedDocType: Label | "None" = "None";
+    let fieldType: string = schema[path];
+
+    if (isLabelType(fieldType)) {
+      embeddedDocType = fieldType;
+      fieldType = "EmbeddedDocumentField";
+    }
+
+    addFields.push(`
+    dataset.${method}(
+        "${path}", fo.${fieldType},
+        embedded_doc_type=${
+          embeddedDocType !== "None" ? "fo." : ""
+        }${embeddedDocType}
+    )`);
+  }
+  return addFields;
+};
+
 const createDataset = (() => {
   const loader = new OssLoader();
   return async ({
+    appConfig = {},
+    colorScheme,
     datasetName,
+    fieldMetadata = {},
+    frameSchema = {},
     imageOptions = {
       fillColor: "white",
       width: 50,
       height: 50,
     },
     labelSchemas = {},
+    mediaType = "image",
     numSamples = 1,
     numbered = false,
     savedViews = {},
     schema = {},
+    videoOptions = {
+      color: "#3050a0",
+      duration: 1,
+      frameRate: 5,
+      width: 64,
+      height: 64,
+    },
     withSampleData = () => ({}),
   }: DatasetOptions) => {
     if (!Number.isInteger(numSamples)) {
@@ -270,14 +375,17 @@ const createDataset = (() => {
     const outputDir = path.join(os.tmpdir(), datasetName);
     await ensureDirExists(outputDir);
 
+    const extension = mediaType === "video" ? "webm" : "png";
     for (let index = 0; index < numSamples; index++) {
-      const filepath = path.join(outputDir, `${index}.png`);
+      const filepath = path.join(outputDir, `${index}.${extension}`);
       promises.push(
-        createImage({
-          outputPath: filepath,
-          watermarkString: numbered ? index.toString() : undefined,
-          ...imageOptions,
-        }),
+        mediaType === "video"
+          ? createVideo({ outputPath: filepath, ...videoOptions })
+          : createImage({
+              outputPath: filepath,
+              watermarkString: numbered ? index.toString() : undefined,
+              ...imageOptions,
+            }),
       );
       const _id = indexToId(index);
       const sampleScaffold = {
@@ -293,24 +401,10 @@ const createDataset = (() => {
     }
 
     await Promise.all(promises);
-    const addFields = [];
-    for (const path in schema) {
-      let embeddedDocType: Label | "None" = "None";
-      let fieldType: string = schema[path];
-
-      if (isLabelType(fieldType)) {
-        embeddedDocType = fieldType;
-        fieldType = "EmbeddedDocumentField";
-      }
-
-      addFields.push(`
-    dataset.add_sample_field(
-        "${path}", fo.${fieldType},
-        embedded_doc_type=${
-          embeddedDocType !== "None" ? "fo." : ""
-        }${embeddedDocType}
-    )`);
-    }
+    const addFields = [
+      ...renderAddFields("add_sample_field", schema),
+      ...renderAddFields("add_frame_field", frameSchema),
+    ];
 
     await loader.executePythonCode(`
     from datetime import datetime
@@ -323,7 +417,7 @@ const createDataset = (() => {
 
     dataset = fo.Dataset("${datasetName}")
     dataset.add_sample_field("index", fo.IntField)
-    dataset.media_type = "image"
+    dataset.media_type = "${mediaType}"
     dataset.persistent = True
 
     now = datetime.now()
@@ -338,26 +432,32 @@ const createDataset = (() => {
 
     # also a hack
     ${sampleData.join("\n    ")}
-    
+
     for idx in range(0, ${numSamples}):
         sample = fo.Sample(
             _id=ObjectId(f"{idx:024x}"),
-            filepath=os.path.join("${outputDir}", f"{idx}.png"),
+            filepath=os.path.join("${outputDir}", f"{idx}.${extension}"),
             index=idx
         )
         sample.created_at = now
         sample.last_modified_at = now
         samples.append(sample)
-    
+
     # ensure the "fixed" IDs are used so linking by sample ID is easy works
     # requires a direct call to dataset._make_dict
     dataset._sample_collection.insert_many(
         [
-            dict(**dataset._make_dict(sample, include_id=True), **data)
+            {**dataset._make_dict(sample, include_id=True), **data}
             for sample, data in zip(samples, sample_data)
         ]
     )
-    
+    ${
+      mediaType === "video"
+        ? `
+    # video lookers read frame rate and dimensions from VideoMetadata
+    dataset.compute_metadata()`
+        : ""
+    }
     ${
       Object.keys(labelSchemas).length
         ? `label_schemas = json.loads('${JSON.stringify(labelSchemas)}')
@@ -366,22 +466,190 @@ const createDataset = (() => {
     dataset.active_label_schemas = list(label_schemas.keys())`
         : ""
     }
+    ${
+      Object.keys(fieldMetadata).length
+        ? `field_metadata = json.loads('${JSON.stringify(fieldMetadata)}')
+    for path, meta in field_metadata.items():
+        field = dataset.get_field(path)
+        if "description" in meta:
+            field.description = meta["description"]
+        if "info" in meta:
+            field.info = meta["info"]
+        field.save()`
+        : ""
+    }
+    ${
+      Object.keys(appConfig).length
+        ? `for key, value in json.loads('${JSON.stringify(appConfig)}').items():
+        setattr(dataset.app_config, key, value)
+    dataset.save()`
+        : ""
+    }
+    ${
+      colorScheme
+        ? `dataset.app_config.color_scheme = fo.ColorScheme(
+        **json.loads('${JSON.stringify(colorScheme)}')
+    )
+    dataset.save()`
+        : ""
+    }
 
     ${Object.entries(savedViews)
       .map(([name, view]) => {
         return `dataset.save_view("${name}", ${view})`;
       })
-      .join("\n")}
+      .join("\n    ")}
     `);
   };
 })();
+
+/**
+ * A detection to seed through {@link createDetectionsDataset}. A bare string
+ * is shorthand for `{ label }`. Omitted bounding boxes are laid out on a
+ * deterministic 3x3 grid so overlays on one sample do not stack.
+ */
+export type SyntheticDetection =
+  | string
+  | {
+      label: string;
+      confidence?: number;
+      boundingBox?: [number, number, number, number];
+    };
+
+/**
+ * Per-sample data for {@link createDetectionsDataset}.
+ */
+export interface DetectionsSampleSpec {
+  /**
+   * Detections keyed by `fo.Detections` field name.
+   *
+   * @example
+   * { ground_truth: ["cat", "dog"], predictions: [{ label: "cat", confidence: 0.9 }] }
+   */
+  detections?: { [field: string]: SyntheticDetection[] };
+
+  /** Sample tags. */
+  tags?: string[];
+
+  /**
+   * Scalar field values keyed by field path. Declare their types via
+   * {@link DetectionsDatasetOptions.schema}.
+   */
+  fields?: JSONObject;
+}
+
+export interface DetectionsDatasetOptions extends Omit<
+  DatasetOptions,
+  "frameSchema" | "mediaType" | "numSamples" | "videoOptions" | "withSampleData"
+> {
+  /** One entry per sample, in grid order. */
+  samples: DetectionsSampleSpec[];
+
+  /**
+   * `fo.Detections` fields to declare. Defaults to every field named in
+   * {@link samples}; list them explicitly when a field should exist on the
+   * schema without any sample populating it.
+   */
+  detectionFields?: string[];
+}
+
+const defaultBoundingBox = (
+  position: number,
+): [number, number, number, number] => {
+  const cell = position % 9;
+  return [
+    0.05 + (cell % 3) * 0.3,
+    0.05 + Math.floor(cell / 3) * 0.3,
+    0.25,
+    0.25,
+  ];
+};
+
+/**
+ * Creates an image dataset whose samples carry `fo.Detections` fields, sample
+ * tags, and optional scalar fields, all specified per sample. Label documents
+ * get their own ids so patches views and label tagging behave like a real
+ * dataset.
+ *
+ * @example
+ * await DatasetFactory.createDetectionsDataset({
+ *   datasetName: "detections",
+ *   schema: { uniqueness: "FloatField" },
+ *   samples: [
+ *     {
+ *       detections: {
+ *         ground_truth: ["bird", "cat"],
+ *         predictions: [{ label: "bird", confidence: 0.9 }],
+ *       },
+ *       tags: ["validation"],
+ *       fields: { uniqueness: 0.7 },
+ *     },
+ *   ],
+ * });
+ */
+const createDetectionsDataset = async ({
+  detectionFields,
+  samples,
+  schema = {},
+  ...options
+}: DetectionsDatasetOptions) => {
+  const fields =
+    detectionFields ??
+    Array.from(
+      new Set(
+        samples.flatMap((sample) => Object.keys(sample.detections ?? {})),
+      ),
+    );
+
+  const detectionsSchema: { [path: string]: FieldType } = {};
+  for (const field of fields) {
+    detectionsSchema[field] = "Detections";
+  }
+
+  await createDataset({
+    ...options,
+    numSamples: samples.length,
+    schema: { ...detectionsSchema, ...schema },
+    withSampleData: ({ index }, { createId }) => {
+      const {
+        detections = {},
+        fields: scalars = {},
+        tags = [],
+      } = samples[index];
+      const data: JSONObject = { ...scalars, tags };
+
+      for (const field of fields) {
+        data[field] = {
+          _cls: "Detections",
+          detections: (detections[field] ?? []).map((detection, position) => {
+            const spec =
+              typeof detection === "string" ? { label: detection } : detection;
+            const document: JSONObject = {
+              _id: createId(),
+              _cls: "Detection",
+              label: spec.label,
+              bounding_box: spec.boundingBox ?? defaultBoundingBox(position),
+              tags: [],
+            };
+            if (spec.confidence !== undefined) {
+              document.confidence = spec.confidence;
+            }
+            return document;
+          }),
+        };
+      }
+
+      return data;
+    },
+  });
+};
 
 /**
  * A single slice in a group dataset: a name and its media type.
  */
 export interface GroupSliceConfig {
   name: string;
-  mediaType: "image" | "3d";
+  mediaType: "image" | "3d" | "point-cloud";
 }
 
 const DEFAULT_GROUP_SLICES: GroupSliceConfig[] = [
@@ -390,12 +658,28 @@ const DEFAULT_GROUP_SLICES: GroupSliceConfig[] = [
   { name: "3d", mediaType: "3d" },
 ];
 
+const GROUP_MEDIA_TYPE_CONSTANTS: {
+  [T in GroupSliceConfig["mediaType"]]: string;
+} = {
+  image: "fom.IMAGE",
+  "3d": "fom.THREE_D",
+  "point-cloud": "fom.POINT_CLOUD",
+};
+
+const GROUP_MEDIA_EXTENSIONS: { [T in GroupSliceConfig["mediaType"]]: string } =
+  {
+    image: "png",
+    "3d": "fo3d",
+    "point-cloud": "pcd",
+  };
+
 /**
  * Creates a FiftyOne group dataset with configurable slices.
  *
  * Image slices are backed by generated PNGs. 3D slices are backed by a
- * PLY mesh wrapped in a `.fo3d` scene file. The default slice layout is
- * `left` (image), `right` (image), and `3d` (fo3d).
+ * PLY mesh wrapped in a `.fo3d` scene file. Point-cloud slices are backed by
+ * a `.pcd` file holding a small cubic grid of points. The default slice
+ * layout is `left` (image), `right` (image), and `3d` (fo3d).
  *
  * @example
  * await DatasetFactory.createGroupDataset({
@@ -403,8 +687,10 @@ const DEFAULT_GROUP_SLICES: GroupSliceConfig[] = [
  *   numGroups: 4,
  *   slices: [
  *     { name: "left", mediaType: "image" },
- *     { name: "pcd", mediaType: "3d" },
+ *     { name: "pcd", mediaType: "point-cloud" },
  *   ],
+ *   withSampleData: ({ index }) => ({ scene_id: Math.floor(index / 2) }),
+ *   savedViews: { dynamic: 'dataset.group_by("scene_id")' },
  * });
  */
 const createGroupDataset = (() => {
@@ -412,14 +698,29 @@ const createGroupDataset = (() => {
   return async ({
     datasetName,
     numGroups = 3,
+    savedViews = {},
     slices = DEFAULT_GROUP_SLICES,
+    withSampleData = () => ({}),
   }: {
     datasetName: string;
     numGroups?: number;
+    /** Saved views, as in {@link DatasetOptions.savedViews}. */
+    savedViews?: { [name: string]: string };
     slices?: GroupSliceConfig[];
+    /**
+     * Extra scalar fields for each sample, given the group index and the
+     * slice name. New top-level fields are added to the schema on insert.
+     */
+    withSampleData?: (sample: { index: number; slice: string }) => JSONObject;
   }) => {
     const outputDir = path.join(os.tmpdir(), datasetName);
     await ensureDirExists(outputDir);
+
+    const mediaPath = (slice: GroupSliceConfig, index: number) =>
+      path.join(
+        outputDir,
+        `${slice.name}-${index}.${GROUP_MEDIA_EXTENSIONS[slice.mediaType]}`,
+      );
 
     // Generate media files for each group × slice combination
     const imagePromises: Promise<void>[] = [];
@@ -428,13 +729,19 @@ const createGroupDataset = (() => {
         if (slice.mediaType === "image") {
           imagePromises.push(
             createImage({
-              outputPath: path.join(outputDir, `${slice.name}-${i}.png`),
+              outputPath: mediaPath(slice, i),
               fillColor: "#22577a",
               width: 128,
               height: 128,
               hideLogs: true,
             }),
           );
+        } else if (slice.mediaType === "point-cloud") {
+          createPcd({
+            outputPath: mediaPath(slice, i),
+            shape: "cube",
+            numPoints: 27,
+          });
         } else {
           const plyPath = path.join(outputDir, `${slice.name}-${i}.ply`);
           createPly({
@@ -443,7 +750,7 @@ const createGroupDataset = (() => {
             color: [96, 208, 255],
           });
           createFo3d({
-            outputPath: path.join(outputDir, `${slice.name}-${i}.fo3d`),
+            outputPath: mediaPath(slice, i),
             plyPath,
           });
         }
@@ -457,27 +764,21 @@ const createGroupDataset = (() => {
       samples: slices.map((slice) => ({
         name: slice.name,
         mediaType: slice.mediaType,
-        filepath:
-          slice.mediaType === "image"
-            ? path.join(outputDir, `${slice.name}-${i}.png`)
-            : path.join(outputDir, `${slice.name}-${i}.fo3d`),
+        filepath: mediaPath(slice, i),
+        data: withSampleData({ index: i, slice: slice.name }),
       })),
     }));
 
-    const has3dSlices = slices.some((s) => s.mediaType === "3d");
+    const hasNonImageSlices = slices.some((s) => s.mediaType !== "image");
     const seedMediaTypes = slices
-      .map((s) =>
-        s.mediaType === "3d"
-          ? `"${s.name}": fom.THREE_D`
-          : `"${s.name}": fom.IMAGE`,
-      )
+      .map((s) => `"${s.name}": ${GROUP_MEDIA_TYPE_CONSTANTS[s.mediaType]}`)
       .join(", ");
     const defaultSlice = slices[0]?.name ?? "left";
 
     await loader.executePythonCode(`
 import json
 import fiftyone as fo
-${has3dSlices ? "import fiftyone.core.media as fom" : ""}
+${hasNonImageSlices ? "import fiftyone.core.media as fom" : ""}
 
 specs = json.loads(r'''${JSON.stringify(groupSpecs)}''')
 
@@ -486,7 +787,7 @@ dataset.add_group_field("group", default="${defaultSlice}")
 dataset.persistent = True
 
 ${
-  has3dSlices
+  hasNonImageSlices
     ? `
 def seed_group_media_types(dataset, group_media_types):
     current = dict(dataset._doc.group_media_types or {})
@@ -506,12 +807,17 @@ for spec in specs:
         kwargs = dict(
             filepath=sample_spec["filepath"],
             group=group.element(sample_spec["name"]),
+            **sample_spec["data"],
         )
         if sample_spec["mediaType"] == "3d":
             kwargs["media_type"] = "3d"
         samples.append(fo.Sample(**kwargs))
 
 dataset.add_samples(samples)
+
+${Object.entries(savedViews)
+  .map(([name, view]) => `dataset.save_view("${name}", ${view})`)
+  .join("\n")}
     `);
   };
 })();
@@ -589,11 +895,13 @@ sample.save()
  * import { DatasetFactory } from "./dataset-factory";
  *
  * await DatasetFactory.createDataset({ datasetName: "test-dataset" });
+ * await DatasetFactory.createDetectionsDataset({ datasetName, samples });
  * await DatasetFactory.createGroupDataset({ datasetName: "my-groups" });
  * await DatasetFactory.seedDetections({ datasetName, field, detections });
  */
 export const DatasetFactory = {
   createDataset,
+  createDetectionsDataset,
   createGroupDataset,
   seedDetections,
 };

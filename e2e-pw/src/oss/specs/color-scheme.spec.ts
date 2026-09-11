@@ -30,7 +30,7 @@ const test = base.extend<{
   },
 });
 
-const quickstartColorByField = getUniqueDatasetNameWithPrefix("quickstart");
+const colorByFieldDataset = getUniqueDatasetNameWithPrefix("color-by-field");
 
 const dummyDatasetColorByInstance = getUniqueDatasetNameWithPrefix(
   "dummy-color-by-instance",
@@ -40,44 +40,42 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  await fiftyoneLoader.loadZooDataset("quickstart", quickstartColorByField, {
-    max_samples: 5,
+  await datasetFactory.createDetectionsDataset({
+    datasetName: colorByFieldDataset,
+    numbered: true,
+    samples: ["bird", "cat", "dog", "horse", "person"].map((label) => ({
+      detections: { ground_truth: [label] },
+      tags: ["validation"],
+    })),
   });
 
-  await fiftyoneLoader.executePythonCode(`
-      import fiftyone as fo
-      import random
-      quickstart_color_by_field = fo.load_dataset("${quickstartColorByField}")      
-
-      n = len(quickstart_color_by_field)
-      labels = ["foo", "bar", "spam", "eggs"]
-      collaborators = ["alice", "bob", "charlie", "peter", "susan"]
-
-      # Add label attributes of each primitive type
-      patches = quickstart_color_by_field.to_patches("ground_truth")
-      p = len(patches)
-
-      quickstart_color_by_field.add_sample_field("ground_truth.detections.str_field", fo.StringField)
-      patches.set_values("ground_truth.str_field", [labels[index % 4] for index in range(p)])
-
-      dummy_color_by_instance = fo.Dataset("${dummyDatasetColorByInstance}")
-      dummy_color_by_instance.persistent = True
-      dummy_color_by_instance.add_sample(
-        fo.Sample(
-          filepath="dummy.png",
-          ground_truth=fo.Detections(detections=[fo.Detection(label="foo")])
-        )
-      )
-      dummy_color_by_instance.app_config.color_scheme = fo.ColorScheme(color_by="instance", color_pool=["red", "green", "blue", "yellow", "purple", "orange", "brown", "pink", "gray", "black", "white"])
-      dummy_color_by_instance.save()
-    `);
+  await datasetFactory.createDetectionsDataset({
+    datasetName: dummyDatasetColorByInstance,
+    samples: [{ detections: { ground_truth: ["foo"] } }],
+    colorScheme: {
+      color_by: "instance",
+      color_pool: [
+        "red",
+        "green",
+        "blue",
+        "yellow",
+        "purple",
+        "orange",
+        "brown",
+        "pink",
+        "gray",
+        "black",
+        "white",
+      ],
+    },
+  });
 });
 
-test.describe.serial("color scheme basic functionality with quickstart", () => {
+test.describe.serial("color scheme basic functionality", () => {
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, quickstartColorByField);
+    await fiftyoneLoader.waitUntilGridVisible(page, colorByFieldDataset);
   });
 
   test("update color by value mode, use tag as colorByAttribute", async ({

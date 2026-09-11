@@ -1,5 +1,5 @@
-import { Tooltip } from "@fiftyone/components";
 import { QuestionMark } from "@mui/icons-material";
+import { Anchor, Tooltip } from "@voxel51/voodo";
 import { useTheme } from "styled-components";
 
 const TimedOut = ({ queryTime }: { queryTime: number }) => {
@@ -13,10 +13,11 @@ const TimedOut = ({ queryTime }: { queryTime: number }) => {
       }}
     >
       <Tooltip
-        placement="top-center"
-        text={`Count query timed out at ${queryTime} second${
+        anchor={Anchor.Top}
+        content={`Count query timed out at ${queryTime} second${
           queryTime > 1 ? "s" : ""
         }`}
+        style={{ display: "flex" }}
       >
         <QuestionMark
           style={{

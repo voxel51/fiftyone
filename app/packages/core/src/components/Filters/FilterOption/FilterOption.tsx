@@ -1,5 +1,5 @@
-import { Tooltip } from "@fiftyone/components";
 import { IconButton } from "@mui/material";
+import { Anchor, Tooltip } from "@voxel51/voodo";
 import Color from "color";
 import React from "react";
 import type { RecoilState } from "recoil";
@@ -76,8 +76,9 @@ const FilterOption: React.FC<Props> = ({
             />
           </IconButton>
           <Tooltip
-            text={selected ?? ""}
-            placement={modal ? "left-start" : "right-start"}
+            anchor={modal ? Anchor.Left : Anchor.Right}
+            content={selected ?? ""}
+            style={{ minWidth: 0 }}
           >
             <Text
               onClick={() => setOpen(!open)}

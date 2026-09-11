@@ -3,7 +3,16 @@ import { GridPom } from "src/oss/poms/grid";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
-const datasetName = getUniqueDatasetNameWithPrefix("smoke-quickstart");
+const datasetName = getUniqueDatasetNameWithPrefix("smoke-sidebar");
+
+// "bottle" appears in exactly one sample
+const GROUND_TRUTH = [
+  ["bottle", "cup", "person"],
+  ["cat", "person"],
+  ["horse", "person"],
+  ["cup", "cat"],
+  ["horse"],
+];
 
 const test = base.extend<{ sidebar: SidebarPom; grid: GridPom }>({
   sidebar: async ({ page }, use) => {
@@ -14,15 +23,31 @@ const test = base.extend<{ sidebar: SidebarPom; grid: GridPom }>({
   },
 });
 
+// the pointer rests on the toggle after the click and its tooltip opens over
+// the grid after a delay; rest the pointer on the entry count, which has no
+// hover behavior, so the tooltip cannot land in a grid screenshot
+const enterVisibilityMode = async (sidebar: SidebarPom, grid: GridPom) => {
+  const mode = await sidebar.toggleSidebarMode();
+  await grid.entryCounts.hover();
+  await sidebar.asserter.modeTooltipHidden(mode);
+};
+
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
 
-  await fiftyoneLoader.loadZooDataset("quickstart", datasetName, {
-    max_samples: 5,
+  await datasetFactory.createDetectionsDataset({
+    datasetName,
+    numbered: true,
+    samples: GROUND_TRUTH.map((labels) => ({
+      detections: {
+        ground_truth: labels,
+        predictions: [{ label: labels[0], confidence: 0.9 }],
+      },
+    })),
   });
 });
 
@@ -60,7 +85,7 @@ test.describe.serial("sidebar-filter-visibility", () => {
     );
 
     // go to visibility mode
-    await sidebar.toggleSidebarMode();
+    await enterVisibilityMode(sidebar, grid);
 
     // test case: visibility mode - show label
     await sidebar.applyLabelFromList(["cat"], "show-label");
@@ -106,7 +131,7 @@ test.describe.serial("sidebar-filter-visibility", () => {
     );
 
     // Test with visibility mode:
-    await sidebar.toggleSidebarMode();
+    await enterVisibilityMode(sidebar, grid);
 
     // test case: visibility mode - show label
     await sidebar.applyLabelFromList(["cup"], "show-label");
@@ -150,7 +175,7 @@ test.describe.serial("sidebar-filter-visibility", () => {
     });
 
     // Test with visibility mode:
-    await sidebar.toggleSidebarMode();
+    await enterVisibilityMode(sidebar, grid);
 
     // test case: visibility mode - show label
     await sidebar.applyLabelFromList(["cup"], "show-label");
@@ -193,7 +218,7 @@ test.describe.serial("sidebar-filter-visibility", () => {
     );
 
     // Test the visibility mode:
-    await sidebar.toggleSidebarMode();
+    await enterVisibilityMode(sidebar, grid);
 
     // test case: visibility mode - show label
     await sidebar.applyLabelFromList(["horse"], "show-label");

@@ -70,7 +70,7 @@ async function deleteSavedView(savedViews: SavedViewsPom, slug: string) {
   }
 }
 
-const datasetName = getUniqueDatasetNameWithPrefix("quickstart-saved-views");
+const datasetName = getUniqueDatasetNameWithPrefix("saved-views");
 
 const test = base.extend<{ savedViews: SavedViewsPom }>({
   savedViews: async ({ page }, use) => {

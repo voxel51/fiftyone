@@ -1,9 +1,10 @@
-import { Popout, Tooltip, useTheme } from "@fiftyone/components/src/components";
+import { Popout, useTheme } from "@fiftyone/components/src/components";
 import * as fos from "@fiftyone/state";
 import { useOutsideClick } from "@fiftyone/state";
 import { Field } from "@fiftyone/utilities";
 import KeyboardArrowDownOutlinedIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
 import KeyboardArrowUpOutlinedIcon from "@mui/icons-material/KeyboardArrowUpOutlined";
+import { Anchor, Tooltip } from "@voxel51/voodo";
 import React from "react";
 import useMeasure from "react-use-measure";
 import { useRecoilValue } from "recoil";
@@ -57,8 +58,8 @@ const OpacityAttribute: React.FC<Prop> = ({ fields }) => {
     <div>
       <ActionDiv ref={ref}>
         <Tooltip
-          text={"You can select an FloatField to use for opacity"}
-          placement={"bottom-center"}
+          anchor={Anchor.Bottom}
+          content="You can select an FloatField to use for opacity"
         >
           <SelectButton
             onClick={() => setOpen((o) => !o)}
