@@ -19,6 +19,7 @@
         "@mapbox/mapbox-gl-draw": "1.5.1",
         "@turf/boolean-contains": "^6.5.0",
         "lodash.throttle": "^4.1.1",
+        "lru-cache": "catalog:",
         "mapbox-gl": "^2.9.2",
         "react-map-gl": "^7.0.18",
         "use-resize-observer": "catalog:"

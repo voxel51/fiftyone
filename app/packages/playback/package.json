@@ -21,6 +21,7 @@
         "@voxel51/voodo": "catalog:",
         "jotai": "catalog:",
         "jotai-optics": "^0.4.0",
+        "lru-cache": "catalog:",
         "optics-ts": "^2.4.1",
         "react-virtuoso": "^4.12.5",
         "vite-plugin-svgr": "catalog:"

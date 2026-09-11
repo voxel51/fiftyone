@@ -47,6 +47,7 @@
         "jotai-effect": "catalog:",
         "jotai-family": "catalog:",
         "lodash": "catalog:",
+        "lru-cache": "catalog:",
         "resize-observer-polyfill": "catalog:"
     }
 }
