@@ -42,7 +42,7 @@
         "@fiftyone/utilities": "*",
         "@microsoft/fetch-event-source": "catalog:",
         "@voxel51/voodo": "catalog:",
-        "html2canvas": "1.0.0-rc.7",
+        "html2canvas": "1.4.1",
         "jotai": "catalog:",
         "jotai-effect": "catalog:",
         "jotai-family": "catalog:",
