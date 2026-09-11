@@ -5,7 +5,7 @@ FiftyOne Release Notes
 
 FiftyOne Enterprise 2.25.0
 --------------------------
-*Released September 9, 2026*
+*Released September 11, 2026*
 
 Includes all updates from :ref:`FiftyOne 1.22.0 <release-notes-v1.22.0>`, plus:
 
@@ -39,13 +39,14 @@ Includes all updates from :ref:`FiftyOne 1.22.0 <release-notes-v1.22.0>`, plus:
   the Metrics contributors table, and an All datasets Metrics scope that
   covers every dataset you can access
 - Fixes: workflow runs no longer get stuck when a stage step fails, task
-  counts stay accurate, and the MCP server starts reliably
+  counts stay accurate, samples deleted while a workflow is running are
+  skipped instead of blocking the task, and the MCP server starts reliably
 
 .. _release-notes-v1.22.0:
 
 FiftyOne 1.22.0
 ---------------
-*Released September 9, 2026*
+*Released September 11, 2026*
 
 App
 ^^^
@@ -53,12 +54,16 @@ App
   with synchronized camera streams and frame-by-frame state and action values
   `#8363 <https://github.com/voxel51/fiftyone/pull/8363>`_
 - **Video timeline in Explore mode**: scrub video samples and see their
-  frame-level labels on the timeline without entering Annotate
-  `#8342 <https://github.com/voxel51/fiftyone/pull/8342>`_
+  frame-level labels on the timeline without entering Annotate. Sample-level
+  classifications show in the viewer as they do for images
+  `#8342 <https://github.com/voxel51/fiftyone/pull/8342>`_,
+  `#8424 <https://github.com/voxel51/fiftyone/pull/8424>`_
 - **Audio in the multimodal viewer**: play a recording's audio tracks in
   sync with the timeline, with per-track volume, mute, and a mixer. Long
-  recordings play without loading the whole track first
-  `#8274 <https://github.com/voxel51/fiftyone/pull/8274>`_
+  recordings play without loading the whole track first, and each audio
+  tile keeps its chosen track as you move between samples
+  `#8274 <https://github.com/voxel51/fiftyone/pull/8274>`_,
+  `#8409 <https://github.com/voxel51/fiftyone/pull/8409>`_
 - Polyline tracks on video interpolate between keyframes, like detection
   tracks
   `#8380 <https://github.com/voxel51/fiftyone/pull/8380>`_
