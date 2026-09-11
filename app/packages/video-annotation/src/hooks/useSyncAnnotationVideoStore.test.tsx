@@ -89,7 +89,10 @@ vi.mock("../streams/frameLabelsStream", () => ({
   }),
 }));
 
-vi.mock("../streams/framesData", () => ({ parseFramesData: () => ({}) }));
+vi.mock("../streams/framesData", () => ({
+  parseFramesData: () => ({}),
+  parseFrameValues: () => ({}),
+}));
 
 vi.mock("../state/accessors", () => ({
   useFrameLabelFields: () => ({}),

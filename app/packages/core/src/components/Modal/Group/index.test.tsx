@@ -141,17 +141,10 @@ describe("Group", () => {
     cleanup();
   });
 
-  it("pins 3d when the main viewer is hidden and the 3d viewer is visible", async () => {
+  // the 3D pin invariant is owned by the render-config actions, not this view
+  it("does not touch the 3d pin itself", async () => {
     mockState.values.groupMediaIsMain2DViewerVisible = false;
 
-    render(<Group />);
-
-    await waitFor(() => {
-      expect(mockState.setPinned).toHaveBeenCalledWith(true);
-    });
-  });
-
-  it("does not repin 3d when the main viewer is still visible", async () => {
     render(<Group />);
 
     await waitFor(() => {
