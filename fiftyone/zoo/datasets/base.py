@@ -3737,7 +3737,9 @@ class HiltiSLAMChallenge2023Dataset(FiftyOneDataset):
     over from 2022, with five global-shutter cameras, a Hesai PandarXT-32
     LiDAR and an inertial unit, and a tracked drilling robot carrying four
     OAK-D stereo pairs, a RoboSense BPearl hemispherical LiDAR and an Xsens
-    MTi-670. A surveyor measured reference positions along every run.
+    MTi-670. A surveyor measured reference positions along every run, and
+    every episode carries them at the instants they were measured along
+    with the rig's calibrated frame tree.
 
     Camera frames are published at 10 Hz on both rigs, on the LiDAR's clock.
     The handheld cameras record at 40 Hz and every fourth frame is kept; the
@@ -3767,7 +3769,7 @@ class HiltiSLAMChallenge2023Dataset(FiftyOneDataset):
     _REPO_ID = "Voxel51/Hilti-SLAM-Challenge-2023"
     # Pinned so a loaded dataset is reproducible; the default branch is
     # mutable and could change media, labels or size underneath a user
-    _REVISION = "44459951696f1eb2f3cbf0a57b31203762f7b918"
+    _REVISION = "d3f9dee92d6ad9ae59930390ffe45af4b37d1497"
 
     @property
     def name(self):
