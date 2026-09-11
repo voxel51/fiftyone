@@ -12,7 +12,6 @@ import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
-import { annotate3dSeed } from "./annotate-3d/seed";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-3d-setfield");
 
@@ -83,20 +82,41 @@ test.describe.serial("3d annotate set_field overwrite", () => {
     //   - `detections.detections.confidence` (a label attr ON the edited cuboid):
     //     0.10 in DB, 0.99 projected — rides the SAME label the user edits, so it
     //     is the strongest clobber vector for the field-level (SampleField) save.
-    const seed = annotate3dSeed({
-      classes: ["car", "truck", "pedestrian"],
-      cuboidSampleIndices: [0],
-      detectionAttributes: [{ name: "confidence", type: "float" }],
-      cuboidAttributeValues: { confidence: 0.1 },
-    });
     await datasetFactory.createDataset({
       mediaType: "3d",
       datasetName,
-      ...seed,
-      schema: { ...seed.schema, note: "StringField" },
-      withSampleData: (scaffold, helpers) => ({
-        ...seed.withSampleData(scaffold, helpers),
+      schema: {
+        detections: "Detections",
+        "detections.detections.location": "ListField<FloatField>",
+        "detections.detections.dimensions": "ListField<FloatField>",
+        "detections.detections.rotation": "ListField<FloatField>",
+        "detections.detections.confidence": "FloatField",
+        note: "StringField",
+      },
+      labelSchemas: {
+        detections: {
+          type: "detections",
+          component: "dropdown",
+          classes: ["car", "truck", "pedestrian"],
+          attributes: [
+            { name: "id", type: "id", component: "text", read_only: true },
+            { name: "tags", type: "list<str>", component: "text" },
+            { name: "confidence", type: "float", component: "text" },
+          ],
+        },
+      },
+      withSampleData: (_, { label }) => ({
         note: "db-original",
+        detections: label.detections([
+          label.detection({
+            label: "car",
+            bounding_box: [],
+            location: [0, 0, 0],
+            dimensions: [2, 2, 2],
+            rotation: [0, 0, 0],
+            confidence: 0.1,
+          }),
+        ]),
       }),
       savedViews: {
         [baseSlug]: "dataset.view()",

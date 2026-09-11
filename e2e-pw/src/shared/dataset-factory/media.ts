@@ -19,6 +19,7 @@ import {
   type VideoSpec,
 } from "../media-factory/video";
 import { createId, ensureDirExists, indexToId } from "../utils";
+import { makeLabelBuilders } from "./labels";
 import type {
   FrameScaffold,
   FrameSpec,
@@ -27,7 +28,12 @@ import type {
   PerSample,
 } from "./types";
 
-export const helpers: Helpers = { createId, mask: createMask };
+/** The helpers for one dataset build; instance identities do not leak across builds. */
+export const makeHelpers = (): Helpers => ({
+  createId,
+  mask: createMask,
+  label: makeLabelBuilders(),
+});
 
 export const resolve = <T>(
   options: PerSample<T> | undefined,
@@ -114,7 +120,10 @@ export const frameSpecs = (
   sampleId: string,
   sampleIndex: number,
   numFrames: number,
-  withFrameData?: (frame: FrameScaffold, helpers: Helpers) => JSONObject,
+  withFrameData:
+    | ((frame: FrameScaffold, helpers: Helpers) => JSONObject)
+    | undefined,
+  helpers: Helpers,
 ): FrameSpec[] =>
   withFrameData
     ? Array.from({ length: numFrames }, (_, i) => {

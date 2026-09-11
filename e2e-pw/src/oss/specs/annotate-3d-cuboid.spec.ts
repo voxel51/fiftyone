@@ -11,7 +11,6 @@ import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
-import { annotate3dSeed } from "./annotate-3d/seed";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-3d-cuboid");
 
@@ -83,9 +82,35 @@ test.describe.serial("3d cuboid annotation", () => {
     await datasetFactory.createDataset({
       mediaType: "3d",
       datasetName,
-      ...annotate3dSeed({
-        classes: ["car", "truck", "pedestrian"],
-        cuboidSampleIndices: [0],
+      schema: {
+        detections: "Detections",
+        "detections.detections.location": "ListField<FloatField>",
+        "detections.detections.dimensions": "ListField<FloatField>",
+        "detections.detections.rotation": "ListField<FloatField>",
+      },
+      labelSchemas: {
+        detections: {
+          type: "detections",
+          component: "dropdown",
+          classes: ["car", "truck", "pedestrian"],
+          attributes: [
+            { name: "id", type: "id", component: "text", read_only: true },
+            { name: "tags", type: "list<str>", component: "text" },
+          ],
+        },
+      },
+      // one seeded cuboid at the origin; the grid looker reads the declared
+      // bounding_box list even on a 3D detection
+      withSampleData: (_, { label }) => ({
+        detections: label.detections([
+          label.detection({
+            label: "car",
+            bounding_box: [],
+            location: [0, 0, 0],
+            dimensions: [2, 2, 2],
+            rotation: [0, 0, 0],
+          }),
+        ]),
       }),
     });
     await openAnnotate(fiftyoneLoader, modal, page);
@@ -260,9 +285,25 @@ test.describe.serial("3d cuboid creation", () => {
     await datasetFactory.createDataset({
       mediaType: "3d",
       datasetName,
-      ...annotate3dSeed({
-        classes: ["car", "truck", "pedestrian"],
-        cuboidSampleIndices: [],
+      schema: {
+        detections: "Detections",
+        "detections.detections.location": "ListField<FloatField>",
+        "detections.detections.dimensions": "ListField<FloatField>",
+        "detections.detections.rotation": "ListField<FloatField>",
+      },
+      labelSchemas: {
+        detections: {
+          type: "detections",
+          component: "dropdown",
+          classes: ["car", "truck", "pedestrian"],
+          attributes: [
+            { name: "id", type: "id", component: "text", read_only: true },
+            { name: "tags", type: "list<str>", component: "text" },
+          ],
+        },
+      },
+      withSampleData: (_, { label }) => ({
+        detections: label.detections([]),
       }),
     });
     await openAnnotate(fiftyoneLoader, modal, page);

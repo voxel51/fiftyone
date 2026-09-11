@@ -16,12 +16,12 @@ import { EventUtils } from "src/shared/event-utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
 import type { DatasetFactory } from "src/shared/dataset-factory";
 import type { Page } from "src/oss/fixtures";
-import { videoAnnotationSeed } from "./annotate-video/seed";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-video-track-split-merge",
 );
 const id = "000000000000000000000000";
+const CLASSES = ["vehicle", "person", "road sign"];
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -42,17 +42,50 @@ test.afterAll(async ({ foWebServer }) => {
 const seedTwoTracks = (
   datasetFactory: typeof DatasetFactory,
   secondTrackClassIndex = 1,
-) =>
-  datasetFactory.createDataset({
+) => {
+  const secondClass = CLASSES[secondTrackClassIndex];
+  return datasetFactory.createDataset({
     mediaType: "video",
     datasetName,
-    ...videoAnnotationSeed({
-      withEvents: false,
-      trackedSampleIndices: [0],
-      secondTrackSampleIndices: [0],
-      secondTrackClassIndex,
+    sampleFrames: true,
+    schema: {
+      "frames.detections": "Detections",
+      "frames.detections.detections.instance": "Instance",
+      "frames.detections.detections.keyframe": "BooleanField",
+      "frames.detections.detections.propagation": "DictField",
+    },
+    labelSchemas: {
+      "frames.detections": {
+        type: "detections",
+        component: "dropdown",
+        classes: CLASSES,
+        attributes: [
+          { name: "id", type: "id", component: "text", read_only: true },
+          { name: "tags", type: "list<str>", component: "text" },
+          { name: "confidence", type: "float", component: "text" },
+          { name: "index", type: "int", component: "text" },
+          { name: "mask_path", type: "str", component: "text" },
+        ],
+      },
+    },
+    withFrameData: (_, { label }) => ({
+      detections: label.detections([
+        label.detection({
+          label: "vehicle",
+          bounding_box: [0.3, 0.3, 0.2, 0.2],
+          index: 1,
+          instance: label.instance("vehicle-1"),
+        }),
+        label.detection({
+          label: secondClass,
+          bounding_box: [0.55, 0.55, 0.2, 0.2],
+          index: 2,
+          instance: label.instance(`${secondClass}-2`),
+        }),
+      ]),
     }),
   });
+};
 
 test.beforeEach(async ({ datasetFactory }) => {
   // default: cross-class (vehicle + person) — used by split + merge-gating.
@@ -268,10 +301,65 @@ test.describe.serial("video annotation track split / merge", () => {
     await datasetFactory.createDataset({
       mediaType: "video",
       datasetName,
-      ...videoAnnotationSeed({
-        withEvents: false,
-        trackedSampleIndices: [0],
-        polylineSampleIndices: [0],
+      sampleFrames: true,
+      schema: {
+        "frames.detections": "Detections",
+        "frames.detections.detections.instance": "Instance",
+        "frames.detections.detections.keyframe": "BooleanField",
+        "frames.detections.detections.propagation": "DictField",
+        "frames.polylines": "Polylines",
+        "frames.polylines.polylines.instance": "Instance",
+        "frames.polylines.polylines.keyframe": "BooleanField",
+        "frames.polylines.polylines.propagation": "DictField",
+      },
+      labelSchemas: {
+        "frames.detections": {
+          type: "detections",
+          component: "dropdown",
+          classes: CLASSES,
+          attributes: [
+            { name: "id", type: "id", component: "text", read_only: true },
+            { name: "tags", type: "list<str>", component: "text" },
+            { name: "confidence", type: "float", component: "text" },
+            { name: "index", type: "int", component: "text" },
+            { name: "mask_path", type: "str", component: "text" },
+          ],
+        },
+        "frames.polylines": {
+          type: "polylines",
+          component: "dropdown",
+          classes: CLASSES,
+          attributes: [
+            { name: "id", type: "id", component: "text", read_only: true },
+            { name: "index", type: "int", component: "text" },
+          ],
+        },
+      },
+      withFrameData: (_, { label }) => ({
+        detections: label.detections([
+          label.detection({
+            label: "vehicle",
+            bounding_box: [0.3, 0.3, 0.2, 0.2],
+            index: 1,
+            instance: label.instance("vehicle-1"),
+          }),
+        ]),
+        polylines: label.polylines([
+          label.polyline({
+            label: "person",
+            points: [
+              [
+                [0.2, 0.2],
+                [0.5, 0.2],
+                [0.35, 0.5],
+              ],
+            ],
+            closed: true,
+            filled: false,
+            index: 2,
+            instance: label.instance("polyline-person-2"),
+          }),
+        ]),
       }),
     });
 

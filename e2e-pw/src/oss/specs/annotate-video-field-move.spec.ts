@@ -12,7 +12,6 @@ import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
-import { videoAnnotationSeed } from "./annotate-video/seed";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-video-field-move");
 
@@ -87,22 +86,32 @@ test.describe.serial("video annotation field move", () => {
   test.beforeEach(async ({ datasetFactory }) => {
     // a second per-frame Detections field (`frames.predictions`), active, so
     // the field-move dropdown offers it as a destination
-    const seed = videoAnnotationSeed({
-      withEvents: false,
-      trackedSampleIndices: [0],
-    });
     await datasetFactory.createDataset({
       mediaType: "video",
       datasetName,
-      ...seed,
+      sampleFrames: true,
       schema: {
-        ...seed.schema,
+        "frames.detections": "Detections",
+        "frames.detections.detections.instance": "Instance",
+        "frames.detections.detections.keyframe": "BooleanField",
+        "frames.detections.detections.propagation": "DictField",
         "frames.predictions": "Detections",
         "frames.predictions.detections.keyframe": "BooleanField",
         "frames.predictions.detections.propagation": "DictField",
       },
       labelSchemas: {
-        ...seed.labelSchemas,
+        "frames.detections": {
+          type: "detections",
+          component: "dropdown",
+          classes: CLASSES,
+          attributes: [
+            { name: "id", type: "id", component: "text", read_only: true },
+            { name: "tags", type: "list<str>", component: "text" },
+            { name: "confidence", type: "float", component: "text" },
+            { name: "index", type: "int", component: "text" },
+            { name: "mask_path", type: "str", component: "text" },
+          ],
+        },
         "frames.predictions": {
           type: "detections",
           component: "dropdown",
@@ -113,6 +122,17 @@ test.describe.serial("video annotation field move", () => {
           classes: CLASSES,
         },
       },
+      // one tracked vehicle on every frame
+      withFrameData: (_, { label }) => ({
+        detections: label.detections([
+          label.detection({
+            label: "vehicle",
+            bounding_box: [0.3, 0.3, 0.2, 0.2],
+            index: 1,
+            instance: label.instance("vehicle-1"),
+          }),
+        ]),
+      }),
     });
   });
 

@@ -12,7 +12,6 @@ import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
 import type { Page } from "src/oss/fixtures";
-import { videoAnnotationSeed } from "./annotate-video/seed";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-video-dynamic-attr",
@@ -91,10 +90,46 @@ test.beforeEach(async ({ datasetFactory }) => {
   await datasetFactory.createDataset({
     mediaType: "video",
     datasetName,
-    ...videoAnnotationSeed({
-      withEvents: false,
-      trackedSampleIndices: [0],
-      dynamicAttribute: { name: ATTR, values: ["off", "left", "right"] },
+    sampleFrames: true,
+    schema: {
+      "frames.detections": "Detections",
+      "frames.detections.detections.instance": "Instance",
+      "frames.detections.detections.keyframe": "BooleanField",
+      "frames.detections.detections.propagation": "DictField",
+      [`frames.detections.detections.${ATTR}`]: "StringField",
+    },
+    labelSchemas: {
+      "frames.detections": {
+        type: "detections",
+        component: "dropdown",
+        classes: ["vehicle", "person", "road sign"],
+        attributes: [
+          { name: "id", type: "id", component: "text", read_only: true },
+          { name: "tags", type: "list<str>", component: "text" },
+          { name: "confidence", type: "float", component: "text" },
+          { name: "index", type: "int", component: "text" },
+          { name: "mask_path", type: "str", component: "text" },
+          {
+            name: ATTR,
+            type: "str",
+            component: "dropdown",
+            values: ["off", "left", "right"],
+            dynamic: true,
+          },
+        ],
+      },
+    },
+    // one tracked vehicle on every frame, turn_signal "off" throughout
+    withFrameData: (_, { label }) => ({
+      detections: label.detections([
+        label.detection({
+          label: "vehicle",
+          bounding_box: [0.3, 0.3, 0.2, 0.2],
+          index: 1,
+          instance: label.instance("vehicle-1"),
+          [ATTR]: "off",
+        }),
+      ]),
     }),
   });
 });

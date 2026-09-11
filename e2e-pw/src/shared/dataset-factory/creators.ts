@@ -7,8 +7,8 @@ import { build } from "./build";
 import {
   frameSpecs,
   generateMedia,
-  helpers,
   imageMedia,
+  makeHelpers,
   indices,
   mcapMedia,
   pcdMedia,
@@ -78,6 +78,7 @@ const createImageDataset = async ({
   schema = {},
   withSampleData = () => ({}),
 }: ImageDatasetOptions) => {
+  const helpers = makeHelpers();
   if (!Number.isInteger(numSamples)) {
     throw new Error(
       `Expected 'numSamples' to be an integer, but got ${numSamples}`,
@@ -152,6 +153,7 @@ const createGroupDataset = async ({
   withFrameData,
   withSampleData = () => ({}),
 }: GroupDatasetOptions) => {
+  const helpers = makeHelpers();
   const entries = Array.from({ length: numGroups }, (_, groupIndex) => {
     const groupId = createId().$oid;
     return slices.map((slice) => ({ groupId, groupIndex, slice }));
@@ -206,7 +208,7 @@ const createGroupDataset = async ({
     frames: media.flatMap(({ _id, index, numFrames }) =>
       numFrames === undefined
         ? []
-        : frameSpecs(_id, index, numFrames, withFrameData),
+        : frameSpecs(_id, index, numFrames, withFrameData, helpers),
     ),
     sampleFrames,
     schema,
@@ -242,6 +244,7 @@ const createVideoDataset = async ({
   withFrameData,
   withSampleData = () => ({}),
 }: VideoDatasetOptions) => {
+  const helpers = makeHelpers();
   const media = await generateMedia(datasetName, indices(numSamples), (index) =>
     videoMedia({ ...resolve(videoOptions, index) }),
   );
@@ -255,7 +258,7 @@ const createVideoDataset = async ({
       data: withSampleData({ _id, filepath, index, numFrames }, helpers),
     })),
     frames: media.flatMap(({ _id, index, numFrames }) =>
-      frameSpecs(_id, index, numFrames, withFrameData),
+      frameSpecs(_id, index, numFrames, withFrameData, helpers),
     ),
     sampleFrames,
     schema,
@@ -290,6 +293,7 @@ const create3dDataset = async ({
   schema,
   withSampleData = () => ({}),
 }: Dataset3dOptions) => {
+  const helpers = makeHelpers();
   const media = await generateMedia(datasetName, indices(numSamples), (index) =>
     sceneMedia({ ...resolve(sceneOptions, index) }),
   );
@@ -324,6 +328,7 @@ const createMultimodalDataset = async ({
   schema,
   withSampleData = () => ({}),
 }: MultimodalDatasetOptions) => {
+  const helpers = makeHelpers();
   const media = await generateMedia(datasetName, indices(numSamples), (index) =>
     mcapMedia({ kind: "tiny-episode-a", ...resolve(mcapOptions, index) }),
   );

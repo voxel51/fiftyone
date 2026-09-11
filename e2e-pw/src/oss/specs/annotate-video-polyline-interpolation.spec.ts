@@ -13,7 +13,6 @@ import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
 import type { Page } from "src/oss/fixtures";
-import { videoAnnotationSeed } from "./annotate-video/seed";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-video-polyline-interp",
@@ -54,13 +53,60 @@ test.beforeEach(async ({ datasetFactory }) => {
     // 10fps/40-frame variant of this spec passes, so frame rate / clip length
     // is a suspect)
     videoOptions: { container: "mp4", duration: 6, frameRate: 30 },
-    ...videoAnnotationSeed({
-      withEvents: false,
-      // schema only: this spec draws the first polyline itself
-      withPolylineField: true,
-      // the reported sample carried several other polyline tracks; a pre-seeded
-      // track makes the drawn one share the surface, as it did there
-      polylineSampleIndices: [0],
+    sampleFrames: true,
+    schema: {
+      "frames.detections": "Detections",
+      "frames.detections.detections.instance": "Instance",
+      "frames.detections.detections.keyframe": "BooleanField",
+      "frames.detections.detections.propagation": "DictField",
+      "frames.polylines": "Polylines",
+      "frames.polylines.polylines.instance": "Instance",
+      "frames.polylines.polylines.keyframe": "BooleanField",
+      "frames.polylines.polylines.propagation": "DictField",
+    },
+    labelSchemas: {
+      "frames.detections": {
+        type: "detections",
+        component: "dropdown",
+        classes: ["vehicle", "person", "road sign"],
+        attributes: [
+          { name: "id", type: "id", component: "text", read_only: true },
+          { name: "tags", type: "list<str>", component: "text" },
+          { name: "confidence", type: "float", component: "text" },
+          { name: "index", type: "int", component: "text" },
+          { name: "mask_path", type: "str", component: "text" },
+        ],
+      },
+      "frames.polylines": {
+        type: "polylines",
+        component: "dropdown",
+        classes: ["vehicle", "person", "road sign"],
+        attributes: [
+          { name: "id", type: "id", component: "text", read_only: true },
+          { name: "index", type: "int", component: "text" },
+        ],
+      },
+    },
+    // the reported sample carried several other polyline tracks; a pre-seeded
+    // track makes the drawn one share the surface, as it did there
+    withFrameData: (_, { label }) => ({
+      detections: label.detections([]),
+      polylines: label.polylines([
+        label.polyline({
+          label: "person",
+          points: [
+            [
+              [0.2, 0.2],
+              [0.5, 0.2],
+              [0.35, 0.5],
+            ],
+          ],
+          closed: true,
+          filled: false,
+          index: 2,
+          instance: label.instance("person-polyline-2"),
+        }),
+      ]),
     }),
   });
 });

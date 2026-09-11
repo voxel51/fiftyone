@@ -6,6 +6,7 @@ import { createDataset } from "./creators";
 import { updateLabelSchema } from "./helpers";
 
 export type * from "./types";
+export type { LabelBuilders } from "./labels";
 
 /**
  * Factory for creating FiftyOne datasets in test and fixture contexts.

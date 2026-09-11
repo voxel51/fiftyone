@@ -12,7 +12,6 @@ import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
-import { annotate3dSeed } from "./annotate-3d/seed";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-3d-polyline");
 
@@ -86,11 +85,44 @@ test.describe.serial("3d polyline annotation", () => {
     await datasetFactory.createDataset({
       mediaType: "3d",
       datasetName,
-      ...annotate3dSeed({
-        // polyline-only active schema (no cuboids requested)
-        cuboidSampleIndices: [],
-        polylineClasses,
-        polylineSampleIndices: [0],
+      // polyline-only active schema: detections is declared but not activated
+      schema: {
+        detections: "Detections",
+        "detections.detections.location": "ListField<FloatField>",
+        "detections.detections.dimensions": "ListField<FloatField>",
+        "detections.detections.rotation": "ListField<FloatField>",
+        polylines: "Polylines",
+        "polylines.polylines.points3d":
+          "ListField<ListField<ListField<FloatField>>>",
+      },
+      labelSchemas: {
+        polylines: {
+          type: "polylines",
+          component: "dropdown",
+          classes: polylineClasses,
+          attributes: [
+            { name: "id", type: "id", component: "text", read_only: true },
+            { name: "tags", type: "list<str>", component: "text" },
+          ],
+        },
+      },
+      withSampleData: (_, { label }) => ({
+        detections: label.detections([]),
+        polylines: label.polylines([
+          label.polyline({
+            label: polylineClasses[0],
+            points: [],
+            points3d: [
+              [
+                [0, 0, 0],
+                [1, 0, 0],
+                [1, 1, 0],
+              ],
+            ],
+            closed: false,
+            filled: false,
+          }),
+        ]),
       }),
     });
     await openAnnotate(fiftyoneLoader, modal, page);
@@ -230,10 +262,29 @@ test.describe.serial("3d polyline creation", () => {
     await datasetFactory.createDataset({
       mediaType: "3d",
       datasetName,
-      ...annotate3dSeed({
-        cuboidSampleIndices: [],
-        polylineClasses,
-        polylineSampleIndices: [],
+      schema: {
+        detections: "Detections",
+        "detections.detections.location": "ListField<FloatField>",
+        "detections.detections.dimensions": "ListField<FloatField>",
+        "detections.detections.rotation": "ListField<FloatField>",
+        polylines: "Polylines",
+        "polylines.polylines.points3d":
+          "ListField<ListField<ListField<FloatField>>>",
+      },
+      labelSchemas: {
+        polylines: {
+          type: "polylines",
+          component: "dropdown",
+          classes: polylineClasses,
+          attributes: [
+            { name: "id", type: "id", component: "text", read_only: true },
+            { name: "tags", type: "list<str>", component: "text" },
+          ],
+        },
+      },
+      withSampleData: (_, { label }) => ({
+        detections: label.detections([]),
+        polylines: label.polylines([]),
       }),
     });
     await openAnnotate(fiftyoneLoader, modal, page);

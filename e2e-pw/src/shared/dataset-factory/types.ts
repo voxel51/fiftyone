@@ -7,6 +7,7 @@ import type { McapSpec } from "../media-factory/mcap";
 import type { PcdSpec } from "../media-factory/pcd";
 import type { SceneSpec } from "../media-factory/scene";
 import type { VideoSpec } from "../media-factory/video";
+import type { LabelBuilders } from "./labels";
 
 /**
  * Represents a minimal, unpopulated dataset sample scaffold.
@@ -76,6 +77,9 @@ export interface Helpers {
    * stores a numpy `mask` (e.g. `fo.Detection(mask=np.ones((h, w), bool))`).
    */
   mask: (width: number, height: number) => JSONObject;
+
+  /** Label document builders; see {@link LabelBuilders}. */
+  label: LabelBuilders;
 }
 
 /**

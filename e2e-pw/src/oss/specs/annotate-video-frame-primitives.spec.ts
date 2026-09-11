@@ -10,7 +10,6 @@ import { test as base } from "src/oss/fixtures";
 import type { Page } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
-import { videoAnnotationSeed } from "./annotate-video/seed";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-video-frame-primitives",
@@ -27,24 +26,44 @@ const test = base.extend<{ modal: ModalPom }>({
 
 test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  const seed = videoAnnotationSeed({
-    withEvents: false,
-    trackedSampleIndices: [0],
-  });
   await datasetFactory.createDataset({
     mediaType: "video",
     datasetName,
-    schema: { ...seed.schema, "frames.weather": "StringField" },
+    sampleFrames: true,
+    schema: {
+      "frames.detections": "Detections",
+      "frames.detections.detections.instance": "Instance",
+      "frames.detections.detections.keyframe": "BooleanField",
+      "frames.detections.detections.propagation": "DictField",
+      "frames.weather": "StringField",
+    },
     labelSchemas: {
-      ...seed.labelSchemas,
+      "frames.detections": {
+        type: "detections",
+        component: "dropdown",
+        classes: ["vehicle", "person", "road sign"],
+        attributes: [
+          { name: "id", type: "id", component: "text", read_only: true },
+          { name: "tags", type: "list<str>", component: "text" },
+          { name: "confidence", type: "float", component: "text" },
+          { name: "index", type: "int", component: "text" },
+          { name: "mask_path", type: "str", component: "text" },
+        ],
+      },
       "frames.weather": { type: "str", component: "text" },
       "frames.frame_number": { type: "int", component: "text" },
     },
-    sampleFrames: seed.sampleFrames,
-    withSampleData: seed.withSampleData,
-    withFrameData: (frame, helpers) => ({
-      ...seed.withFrameData(frame, helpers),
-      weather: weatherAt(frame.frameNumber),
+    // one tracked vehicle on every frame, plus a per-frame weather primitive
+    withFrameData: ({ frameNumber }, { label }) => ({
+      detections: label.detections([
+        label.detection({
+          label: "vehicle",
+          bounding_box: [0.3, 0.3, 0.2, 0.2],
+          index: 1,
+          instance: label.instance("vehicle-1"),
+        }),
+      ]),
+      weather: weatherAt(frameNumber),
     }),
   });
 });

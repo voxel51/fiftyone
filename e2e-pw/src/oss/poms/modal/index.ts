@@ -341,6 +341,15 @@ export class ModalPom {
     await this.clickOnLooker3d();
   }
 
+  /** Chrome hidden from 3D screenshots: the action bar, selection bar, and panels. */
+  get looker3dScreenshotMasks(): Locator[] {
+    return [
+      this.locator.getByTestId("looker3d-action-bar"),
+      this.locator.getByTestId("selectable-bar"),
+      this.locator.getByTestId("panel-container"),
+    ];
+  }
+
   async clickOnLooker() {
     return this.looker.click();
   }

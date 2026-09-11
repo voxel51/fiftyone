@@ -12,7 +12,6 @@ import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
-import { videoAnnotationSeed } from "./annotate-video/seed";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-video-label-types-create",
@@ -82,8 +81,68 @@ test.describe.serial("video non-box label create", () => {
     await datasetFactory.createDataset({
       mediaType: "video",
       datasetName,
-      ...videoAnnotationSeed({
-        withPolylineField: true,
+      sampleFrames: true,
+      schema: {
+        "frames.detections": "Detections",
+        "frames.detections.detections.instance": "Instance",
+        "frames.detections.detections.keyframe": "BooleanField",
+        "frames.detections.detections.propagation": "DictField",
+        "frames.polylines": "Polylines",
+        "frames.polylines.polylines.instance": "Instance",
+        "frames.polylines.polylines.keyframe": "BooleanField",
+        "frames.polylines.polylines.propagation": "DictField",
+        events: "TemporalDetections",
+      },
+      labelSchemas: {
+        "frames.detections": {
+          type: "detections",
+          component: "dropdown",
+          classes: ["vehicle", "person", "road sign"],
+          attributes: [
+            { name: "id", type: "id", component: "text", read_only: true },
+            { name: "tags", type: "list<str>", component: "text" },
+            { name: "confidence", type: "float", component: "text" },
+            { name: "index", type: "int", component: "text" },
+            { name: "mask_path", type: "str", component: "text" },
+          ],
+        },
+        "frames.polylines": {
+          type: "polylines",
+          component: "dropdown",
+          classes: ["vehicle", "person", "road sign"],
+          attributes: [
+            { name: "id", type: "id", component: "text", read_only: true },
+            { name: "index", type: "int", component: "text" },
+          ],
+        },
+        events: {
+          type: "temporaldetections",
+          component: "dropdown",
+          classes: ["approach", "pass", "depart"],
+          attributes: [
+            { name: "id", type: "id", component: "text", read_only: true },
+          ],
+        },
+      },
+      // three events split the clip into thirds
+      withSampleData: ({ numFrames }, { label }) => {
+        const a = Math.max(1, Math.floor(numFrames / 3));
+        const b = Math.max(a + 1, Math.floor((2 * numFrames) / 3));
+        return {
+          events: label.temporalDetections([
+            label.temporalDetection({ label: "approach", support: [1, a] }),
+            label.temporalDetection({ label: "pass", support: [a + 1, b] }),
+            label.temporalDetection({
+              label: "depart",
+              support: [b + 1, numFrames],
+            }),
+          ]),
+        };
+      },
+      // present-but-empty on every frame, so the first draw's patch can append
+      withFrameData: (_, { label }) => ({
+        detections: label.detections([]),
+        polylines: label.polylines([]),
       }),
     });
   });

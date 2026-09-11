@@ -9,7 +9,6 @@ import {
   getPlyCube,
   getPlyPointCloud,
 } from "./fo3d-ascii-asset-factory/ply-factory";
-import { getScreenshotMasks } from "./threed-utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("fo3d-ply");
 
@@ -81,7 +80,7 @@ test.describe.serial("fo3d-ply", () => {
   });
 
   test("PLY scene is rendered correctly", async ({ modal, grid, page }) => {
-    const mask = getScreenshotMasks(modal);
+    const mask = modal.looker3dScreenshotMasks;
     await page.evaluate(() => {
       localStorage.setItem("fo-3d-annotation-tips-dismissed", "true");
     });
