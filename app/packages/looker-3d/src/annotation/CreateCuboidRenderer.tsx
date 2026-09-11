@@ -1,9 +1,12 @@
 import { useAnnotationEventBus } from "@fiftyone/annotation";
+import * as fos from "@fiftyone/state";
 import { objectId } from "@fiftyone/utilities";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { useEmptyCanvasInteraction } from "../hooks/use-empty-canvas-interaction";
+import { useFo3dContext } from "../fo3d/context";
+import { transformCuboidToNativeFrame } from "../fo3d/direct-pcd-world-alignment";
 import { useScenePointClouds } from "../hooks/use-scene-point-clouds";
 import { useSelect3DLabelForAnnotation } from "../hooks/useSelect3DLabelForAnnotation";
 import type { CuboidCreationState } from "../types";
@@ -45,6 +48,8 @@ export const CreateCuboidRenderer = ({
   ignoreEffects = false,
 }: CreateCuboidRendererProps) => {
   const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
+  const sceneSampleId = fos.useStableSceneSample3d()?.sample?._id;
+  const { directPcdWorldTransformsBySampleId } = useFo3dContext();
   const [isCreatingCuboid, setIsCreatingCuboid] =
     useRecoilState(isCreatingCuboidAtom);
   const selectForAnnotation = useSelect3DLabelForAnnotation();
@@ -188,11 +193,17 @@ export const CreateCuboidRenderer = ({
 
         const labelClass = getDefaultLabel(currentActiveField, workingDoc);
 
-        const transformData: CuboidTransformData = {
+        const worldTransformData: CuboidTransformData = {
           location: roundTuple(fittedCuboid.location),
           dimensions: roundTuple(fittedCuboid.dimensions),
           quaternion: roundTuple(previewCuboid.quaternion),
         };
+        const nativeToWorld = sceneSampleId
+          ? directPcdWorldTransformsBySampleId[sceneSampleId]
+          : undefined;
+        const transformData = nativeToWorld
+          ? transformCuboidToNativeFrame(worldTransformData, nativeToWorld)
+          : worldTransformData;
 
         createCuboid(labelId, transformData, currentActiveField, labelClass);
 
@@ -234,6 +245,8 @@ export const CreateCuboidRenderer = ({
       setTransformMode,
       resetCuboidCreation,
       workingDoc,
+      sceneSampleId,
+      directPcdWorldTransformsBySampleId,
     ],
   );
 

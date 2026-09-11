@@ -391,6 +391,7 @@ packages/state/src/hooks/useGroupEntries.ts
 packages/state/src/hooks/useHoveredSample.ts
 packages/state/src/hooks/useIsMediaType.ts
 packages/state/src/hooks/useMutation.ts
+packages/state/src/hooks/useOnSelectLabel.test.ts
 packages/state/src/hooks/useOnSelectLabel.ts
 packages/state/src/hooks/useOnShiftClickLabel.ts
 packages/state/src/hooks/usePanel.ts

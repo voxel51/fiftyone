@@ -23,10 +23,13 @@ export type {
 // --- Per-tile state -------------------------------------------------------
 export { registeredTilesAtom, tileSelectionAtom } from "./lib/atoms";
 export {
+  useSetTileHeaderExtra,
   useSetTileSelection,
   useSetTileTitle,
   useSetTileTitleHighlighted,
   useTileDuplicator,
+  useTileHeaderExtra,
+  useTileHeaderExtraFor,
   useTileSelection,
   useTileSelectionFor,
   useTileTitle,

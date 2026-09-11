@@ -6,23 +6,22 @@ Database utilities.
 |
 """
 
+import asyncio
 import atexit
 import dataclasses
 from datetime import datetime
+import json
 import logging
 from multiprocessing.pool import ThreadPool
 import os
 from typing import Tuple
 
-import asyncio
-from bson import json_util, ObjectId
+from bson import ObjectId, json_util
 from bson.codec_options import CodecOptions
 import mongoengine
-
+import motor.motor_asyncio as mtr
 from packaging.version import Version
 import pymongo
-from pymongo.asynchronous.collection import AsyncCollection
-
 from pymongo.errors import (
     BulkWriteError,
     OperationFailure,
@@ -32,13 +31,12 @@ from pymongo.errors import (
 import pytz
 
 import eta.core.utils as etau
-
 import fiftyone as fo
 import fiftyone.constants as foc
-import fiftyone.migrations as fom
 from fiftyone.core.config import FiftyOneConfigError
 import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
+import fiftyone.migrations as fom
 
 foa = fou.lazy_import("fiftyone.core.annotation")
 fob = fou.lazy_import("fiftyone.core.brain")
@@ -241,11 +239,19 @@ def establish_db_conn(config):
 
 
 def _is_client_closed(client):
-    # handles both sync and async pymongo clients
+    # check if the pymongo or motor client is closed or None
     if client is None:
         return True
 
-    return getattr(client, "_closed", False)
+    # check pymongo client
+    if getattr(client, "_closed", False):
+        return True
+
+    # check motor client
+    if isinstance(client, mtr.AsyncIOMotorClient):
+        return getattr(client.delegate, "_closed", False)
+
+    return False
 
 
 def _connect():
@@ -267,27 +273,13 @@ def _disconnect():
             ...
     if _async_client:
         try:
-            _close_async_client(_async_client)
+            _async_client.close()
         except Exception:
             ...
 
     _client = None
     _async_client = None
     mongoengine.disconnect_all()
-
-
-def _close_async_client(client) -> None:
-    # AsyncMongoClient.close() is a coroutine, but disconnects happen in
-    # sync contexts
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = None
-
-    if loop is not None:
-        loop.create_task(client.close())
-    else:
-        asyncio.run(client.close())
 
 
 def _async_connect(use_global=False):
@@ -298,7 +290,7 @@ def _async_connect(use_global=False):
     global _async_client
     if not use_global or _is_client_closed(_async_client):
         global _connection_kwargs
-        client = pymongo.AsyncMongoClient(
+        client = mtr.AsyncIOMotorClient(
             **_connection_kwargs, appname=foc.DATABASE_APPNAME
         )
 
@@ -377,7 +369,7 @@ def aggregate(
 
     Args:
         collection: a ``pymongo.collection.Collection`` or
-            ``pymongo.asynchronous.collection.AsyncCollection``
+            ``motor.motor_asyncio.AsyncIOMotorCollection``
         pipelines: a MongoDB aggregation pipeline or a list of pipelines
         hints (None): a corresponding index hint or list of index hints for
             each pipeline
@@ -385,10 +377,8 @@ def aggregate(
 
     Returns:
         -   If a single pipeline is provided, a
-            ``pymongo.command_cursor.CommandCursor`` or an awaitable
-            resolving to a
-            ``pymongo.asynchronous.command_cursor.AsyncCommandCursor`` is
-            returned
+            ``pymongo.command_cursor.CommandCursor`` or
+            ``motor.motor_asyncio.AsyncIOMotorCommandCursor`` is returned
 
         -   If multiple pipelines are provided, each cursor is extracted into
             a list and the list of lists is returned
@@ -407,7 +397,7 @@ def aggregate(
     if maxTimeMS:
         kwargs["maxTimeMS"] = maxTimeMS
 
-    if isinstance(collection, AsyncCollection):
+    if isinstance(collection, mtr.AsyncIOMotorCollection):
         if num_pipelines == 1 and not is_list:
             if hints[0]:
                 kwargs["hint"] = hints[0]
@@ -482,8 +472,7 @@ async def _do_async_aggregate(collection, pipeline, hint, **kwargs):
     if hint:
         next_kwargs["hint"] = hint
 
-    cursor = await collection.aggregate(pipeline, **next_kwargs)
-    return [i async for i in cursor]
+    return [i async for i in collection.aggregate(pipeline, **next_kwargs)]
 
 
 def ensure_connection():
@@ -529,7 +518,7 @@ def get_async_db_client(use_global=False):
         use_global: whether to use the global client singleton
 
     Returns:
-        a ``pymongo.AsyncMongoClient``
+        a ``motor.motor_asyncio.AsyncIOMotorClient``
     """
     return _async_connect(use_global)
 
@@ -538,7 +527,7 @@ def get_async_db_conn(use_global=False):
     """Returns an async connection to the database.
 
     Returns:
-        a ``pymongo.asynchronous.database.AsyncDatabase``
+        a ``motor.motor_asyncio.AsyncIOMotorDatabase``
     """
     db = get_async_db_client(use_global=use_global)[fo.config.database_name]
     return _apply_options(db)
@@ -950,7 +939,10 @@ def export_collection(
             progress callback function to invoke instead
     """
     if num_docs is None:
-        num_docs = len(docs)
+        try:
+            num_docs = len(docs)
+        except TypeError:
+            pass
 
     if json_dir_or_path.endswith(".json"):
         _export_collection_single(
@@ -971,9 +963,10 @@ def _export_collection_single(docs, json_path, key, num_docs, progress=None):
             total=num_docs, iters_str="docs", progress=progress
         ) as pb:
             for idx, doc in pb(enumerate(docs, 1)):
-                f.write(json_util.dumps(doc))
-                if idx < num_docs:
+                if idx > 1:
                     f.write(",")
+
+                f.write(json_util.dumps(doc))
 
         f.write("]}")
 
@@ -1016,21 +1009,110 @@ def import_collection(json_dir_or_path, key="documents"):
         a tuple of
 
         -   an iterable of BSON documents
-        -   the number of documents
+        -   the number of documents, if this can be known a priori
     """
     if json_dir_or_path.endswith(".json"):
-        return _import_collection_single(json_dir_or_path, key)
+        docs = _import_collection_single(json_dir_or_path, key)
+        return docs, None
 
     return _import_collection_multi(json_dir_or_path)
 
 
 def _import_collection_single(json_path, key):
-    with open(json_path, "r") as f:
-        docs = json_util.loads(f.read()).get(key, [])
+    decoder = json.JSONDecoder(object_hook=json_util.object_hook)
+    chunk_size = 64 * 1024
 
-    num_docs = len(docs)
+    with open(json_path, "r", encoding="utf-8") as file:
+        buffer = ""
+        position = 0
+        eof = False
 
-    return docs, num_docs
+        def _read_more():
+            nonlocal buffer, position, eof
+            if position:
+                buffer = buffer[position:]
+                position = 0
+
+            chunk = file.read(chunk_size)
+            if chunk:
+                buffer += chunk
+            else:
+                eof = True
+
+        def _skip_whitespace():
+            nonlocal position
+            while True:
+                while position < len(buffer) and buffer[position].isspace():
+                    position += 1
+
+                if position < len(buffer) or eof:
+                    return
+
+                _read_more()
+
+        def _consume(expected):
+            nonlocal position
+            _skip_whitespace()
+            if position >= len(buffer):
+                raise ValueError("Malformed JSON collection")
+
+            actual = buffer[position]
+            if actual != expected:
+                raise ValueError(
+                    "Malformed JSON collection: expected '%s'" % expected
+                )
+
+            position += 1
+
+        def _decode_value():
+            nonlocal position
+            while True:
+                _skip_whitespace()
+                try:
+                    value, position = decoder.raw_decode(buffer, position)
+                    return value
+                except json.JSONDecodeError as exc:
+                    if eof:
+                        raise ValueError("Malformed JSON collection") from exc
+
+                    _read_more()
+
+        _read_more()
+        _consume("{")
+        imported_key = _decode_value()
+        if imported_key != key:
+            raise ValueError(
+                "JSON collection does not contain the expected '%s' key" % key
+            )
+
+        _consume(":")
+        _consume("[")
+        first = True
+        while True:
+            _skip_whitespace()
+            if position >= len(buffer):
+                raise ValueError("Malformed JSON collection")
+
+            if buffer[position] == "]":
+                position += 1
+                break
+
+            if not first:
+                _consume(",")
+
+            yield _decode_value()
+            first = False
+
+        _consume("}")
+        while True:
+            _skip_whitespace()
+            if position < len(buffer):
+                raise ValueError("Malformed JSON collection")
+
+            if eof:
+                break
+
+            _read_more()
 
 
 def _import_collection_multi(json_dir):
@@ -1088,7 +1170,9 @@ def insert_documents(
             for batch in batcher:
                 batch = list(batch)
                 res = coll.insert_many(batch, ordered=ordered)
-                ids.extend(b["_id"] for b in batch)
+                batch_ids = [b["_id"] for b in batch]
+                ids.extend(batch_ids)
+
                 if hasattr(res, "nBytes") and hasattr(
                     batcher, "set_encoding_ratio"
                 ):
@@ -1937,7 +2021,7 @@ def get_indexed_values(
 
     Args:
         collection: a ``pymongo.collection.Collection`` or
-            ``pymongo.asynchronous.collection.AsyncCollection``
+            ``motor.motor_asyncio.AsyncIOMotorCollection``
         field_or_fields: the field name or list of field names to retrieve.
         index_key (None): the name of the index to use. If None, the default
             index name will be constructed from the field name(s).

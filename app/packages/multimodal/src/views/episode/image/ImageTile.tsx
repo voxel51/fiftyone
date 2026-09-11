@@ -21,6 +21,10 @@ import type {
 } from "../../../ir";
 import { SCENE_SOURCE_METADATA, SCENE_SOURCE_TYPE } from "../../../ir";
 import { useSceneSourcesByType } from "../../../scene-inventory/react";
+import {
+  isSharedEncodedVideoVisualization,
+  sharedVideoRejectionMessage,
+} from "../../../video/types";
 import { VISUALIZATION_KIND } from "../../../visualization";
 import { ImagePanel } from "../../../visualization/media-2d/ImagePanel";
 import { VideoPanel } from "../../../visualization/media-2d/VideoPanel";
@@ -52,6 +56,7 @@ import {
   usePreferredImageTileStream,
   usePublishImageTileBinding,
 } from "../tiles/tile-source-bindings";
+import { useRegisterTileMediaSurface } from "../tiles/tile-media-surfaces";
 import ImageAnnotationOverlay from "./ImageAnnotationOverlay";
 import DepthHoverOverlay from "./DepthHoverOverlay";
 import ImageProjectionOverlay from "./ImageProjectionOverlay";
@@ -92,6 +97,7 @@ import {
 import { projectionStreamsForHover } from "./hover-projection-streams";
 import { useSourcePoster } from "./source-poster-context";
 import { shouldPresentDestinationPoster } from "./destination-poster";
+import { usePublishVisibleStreams } from "../stream-discovery/visible-streams";
 
 const IMAGE_FIT = "contain";
 const EMPTY_PROJECTION_STREAMS: readonly string[] = [];
@@ -514,6 +520,11 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     pointCloudProjection.streams,
     pointCloudStreams,
   ]);
+  usePublishVisibleStreams([
+    ...activeStreams,
+    ...selectedProjectionStreams,
+    ...(explicitCalibrationStream ? [explicitCalibrationStream] : []),
+  ]);
   const projectionGeometry =
     effectiveImageDims &&
     playbackFrame &&
@@ -599,6 +610,28 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
         : undefined,
     imageSize: effectiveImageDims,
     resetKey: `${stream}\n${cameraProjection.display}\n${rectifiedViewActive}`,
+  });
+  // The pan/zoom hook keeps the surface element to itself; tee its ref so
+  // the media-surface registry (external overlays) can portal into it.
+  const [mediaSurfaceElement, setMediaSurfaceElement] =
+    useState<HTMLDivElement | null>(null);
+  const { surfaceRef: panZoomSurfaceRef } = imagePanZoom;
+  const mediaSurfaceRef = useCallback(
+    (element: HTMLDivElement | null) => {
+      panZoomSurfaceRef(element);
+      setMediaSurfaceElement(element);
+    },
+    [panZoomSurfaceRef],
+  );
+  useRegisterTileMediaSurface({
+    element: mediaSurfaceElement,
+    source: selectedImageSource,
+    imageSize: effectiveImageDims,
+    fit: IMAGE_FIT,
+    viewTransform: imagePanZoom.viewTransform,
+    // The committed frame, not the requested one: decoding keeps the previous
+    // pixels visible, and an overlay must target what is actually on screen.
+    contentTimeNs: committedImageContentTimeNs,
   });
   const toggleLabelStream = useCallback(
     (labelStream: string, checked: boolean) => {
@@ -913,12 +946,12 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
           onPointerDown={imagePanZoom.onPointerDown}
           onPointerMove={imagePanZoom.onPointerMove}
           onPointerUp={imagePanZoom.onPointerUp}
-          ref={imagePanZoom.surfaceRef}
+          ref={mediaSurfaceRef}
           style={imagePanZoom.surfaceStyle}
         >
           {frame && playbackFrame ? (
             frame.kind === "encoded-video" ? (
-              frame.codec === "h264" ? (
+              isSharedEncodedVideoVisualization(frame) ? (
                 <VideoPanel
                   canvasSurface="modal-image"
                   className={styles.panel}
@@ -938,7 +971,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
                 />
               ) : (
                 <div className={styles.panel} role="alert">
-                  Video codec {frame.codec} is unsupported
+                  {sharedVideoRejectionMessage(frame)}
                 </div>
               )
             ) : (

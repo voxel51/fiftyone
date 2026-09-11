@@ -1,3 +1,4 @@
+import { useTrackEvent } from "@fiftyone/analytics";
 import {
   useAutoSave,
   useRegisterAnnotationEventHandlers,
@@ -44,7 +45,7 @@ import { Sidebar } from "./Sidebar";
 import { SegmentationToolbar } from "./Sidebar/Annotate/Edit/SegmentationToolbar";
 import { useAnnotationStatus } from "./Sidebar/Annotate/Edit/useAnnotationStatus";
 import { useAnnotationTracking } from "./Sidebar/Annotate/useAnnotationTracking";
-import { TooltipInfo } from "./TooltipInfo";
+import { TooltipInfoBoundary } from "./TooltipInfoBoundary";
 import {
   useLookerHelpers,
   useShowClassicSidebar,
@@ -154,6 +155,25 @@ const Modal = () => {
 
   const { jsonPanel, helpPanel } = useLookerHelpers();
 
+  const trackEvent = useTrackEvent();
+  const trackBoundaryError = useCallback(
+    (error: Error) => {
+      // same event the @fiftyone/components ErrorBoundary emits, so errors
+      // caught by these raw boundaries still reach analytics. Nested errors
+      // (e.g. AggregateError) can hold arbitrary values, so guard against
+      // throwing while reporting the original throw
+      const nested = (error as Error & { errors?: unknown })?.errors;
+      trackEvent("uncaught_app_error", {
+        error: error?.message || error?.name || error,
+        stack: error?.stack,
+        messages: Array.isArray(nested)
+          ? nested.map((e) => (e instanceof Error ? e.message : String(e)))
+          : undefined,
+      });
+    },
+    [trackEvent],
+  );
+
   const modalCloseHandler = useRecoilCallback(
     ({ snapshot, set }) =>
       async () => {
@@ -238,10 +258,21 @@ const Modal = () => {
           (mediaType && is3d(mediaType)) ||
           is3dVisible
         ) {
-          // we handle close logic in modal + other places
+          // A mounted looker or 3D viewer owns its own Escape handling and
+          // calls `modalCloseHandler` itself once it decides Escape should
+          // close rather than, e.g., clear a selection first.
           return;
         }
 
+        // Video Explore mounts no looker at all (`VideoTimelineSurface`
+        // paints through Lighter), so `activeLookerRef.current` is never set
+        // there and this call is what actually closes the modal on that
+        // surface. "Clear the selection on the first Escape" still happens —
+        // it is implemented as a separate, higher-priority `Escape` binding
+        // in `useVideoExploreKeybindings.ts` that is enabled only while a
+        // selection exists, so `KeyManager` runs it INSTEAD of the default
+        // close binding and this handler is never reached until the
+        // selection is empty.
         await modalCloseHandler();
       },
     [is3dVisible, modalCloseHandler],
@@ -344,16 +375,31 @@ const Modal = () => {
         onClick={onClickModalWrapper}
         data-cy="modal"
       >
-        <Actions />
+        {/* Overlay chrome gets its own boundary: a render throw here (e.g. a
+            failing browser-storage read behind a cosmetic preference) must
+            not unmount the modal itself. Shows the error in the overlay's
+            place and resets on navigation like the main boundary. */}
+        <ReactErrorBoundary
+          FallbackComponent={ModalErrorFallback}
+          onError={trackBoundaryError}
+          resetKeys={[modalSelector?.id, modalSelector?.groupId]}
+        >
+          <Actions />
+        </ReactErrorBoundary>
         {isAnnotationEnabled && (
           <Suspense>
             <AnnotationHandlerRegistration />
           </Suspense>
         )}
-        <TooltipInfo />
+        <TooltipInfoBoundary
+          FallbackComponent={ModalErrorFallback}
+          onError={trackBoundaryError}
+          resetKeys={[modalSelector?.id, modalSelector?.groupId]}
+        />
         <ModalContainer data-cy="modal-content" style={{ ...screenParams }}>
           <ReactErrorBoundary
             FallbackComponent={ModalErrorFallback}
+            onError={trackBoundaryError}
             resetKeys={[modalSelector?.id, modalSelector?.groupId]}
           >
             <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />

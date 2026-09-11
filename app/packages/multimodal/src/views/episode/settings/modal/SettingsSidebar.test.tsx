@@ -470,7 +470,7 @@ describe("SettingsSidebar", () => {
     ).toBeTruthy();
     expect(screen.getByText("/lidar/top")).toBeTruthy();
     expect(screen.getByText("/imu")).toBeTruthy();
-    expect(screen.getByText("8 msgs · 29.97 Hz · Plot · Raw")).toBeTruthy();
+    expect(screen.getByText("8 messages · 29.97 Hz · Plot · Raw")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Inspect /imu" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "3D /lidar/top" })).toBeTruthy();
     expect(
@@ -479,11 +479,11 @@ describe("SettingsSidebar", () => {
     expect(screen.queryByRole("button", { name: /Open 3D/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /^Open / })).toBeNull();
     expect(
-      screen.getByRole("button", { name: "Inspect /broken" }),
-    ).toBeTruthy();
+      screen.queryByRole("button", { name: "Inspect /broken" }),
+    ).toBeNull();
     expect(
-      screen.getByRole("button", { name: "Inspect /binary" }),
-    ).toBeTruthy();
+      screen.queryByRole("button", { name: "Inspect /binary" }),
+    ).toBeNull();
     expect(screen.queryByText("Inspectable")).toBeNull();
     expect(screen.getByText("Schema unavailable")).toBeTruthy();
     expect(screen.getByText("Encoding unsupported")).toBeTruthy();
@@ -549,6 +549,98 @@ describe("SettingsSidebar", () => {
     );
   });
 
+  it("labels video-backed image tiles as Video and omits unavailable count metadata", () => {
+    renderSidebar({
+      sources: [
+        {
+          id: "camera",
+          label: "camera",
+          sourceName: "observation.images.camera",
+          type: SCENE_SOURCE_TYPE.IMAGE,
+        },
+      ],
+      streams: [
+        {
+          ...stream("observation.images.camera", {
+            approxRateHz: 2,
+            decodeStatus: "decodable",
+            encoding: "mp4",
+            id: "camera",
+            schema: "h264",
+          }),
+          kind: "video",
+          metadata: {
+            [SCENE_SOURCE_METADATA.SOURCE_NAME]: "observation.images.camera",
+            [SCENE_SOURCE_METADATA.TYPE]: SCENE_SOURCE_TYPE.IMAGE,
+            [STREAM_METADATA.INSPECTABLE]: "false",
+          },
+        },
+      ],
+    });
+
+    fireEvent.click(screen.getByRole("tab", { name: "Streams" }));
+    expect(
+      screen.getByRole("button", { name: "Video observation.images.camera" }),
+    ).toBeTruthy();
+    expect(screen.getByText("2 Hz · Image")).toBeTruthy();
+    expect(
+      screen.queryByRole("button", {
+        name: "Inspect observation.images.camera",
+      }),
+    ).toBeNull();
+  });
+
+  it("renders LeRobot recording details without episode timestamps", () => {
+    renderSidebar({
+      recordingFacts: {
+        durationNs: "1000000000",
+        format: "lerobot",
+        messageCount: "30",
+        lerobot: {
+          codebaseVersion: "v3.0",
+          episodeIndex: "7",
+          featureCount: 8,
+          fps: 30,
+          logicalRowCount: 30,
+          mediaFeatureCount: 2,
+          robotType: "so101",
+          taskLabels: ["pick up cube"],
+          videoCodecs: ["h264"],
+        },
+        startTimeNs: "0",
+        endTimeNs: "1000000000",
+      },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Recording LEROBOT/ }));
+    expect(screen.queryByText("Start time")).toBeNull();
+    expect(screen.queryByText("End time")).toBeNull();
+    expect(screen.queryByText("Messages")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /LeRobot details/ }));
+    expect(screen.getByText("Logical rows")).toBeTruthy();
+    expect(screen.getAllByText("30")).toHaveLength(2);
+    expect(screen.getByText("v3.0")).toBeTruthy();
+    expect(screen.getByText("pick up cube")).toBeTruthy();
+  });
+
+  it("omits empty LeRobot recording details", () => {
+    renderSidebar({
+      recordingFacts: {
+        durationNs: "1000000000",
+        endTimeNs: "1000000000",
+        format: "lerobot",
+        lerobot: {},
+        startTimeNs: "0",
+      },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Recording LEROBOT/ }));
+
+    expect(
+      screen.queryByRole("button", { name: /LeRobot details/ }),
+    ).toBeNull();
+  });
+
   it("opens GPS streams in a Map panel without leaving Streams", () => {
     const { probeState } = renderSidebar({
       streams: [
@@ -563,7 +655,7 @@ describe("SettingsSidebar", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: "Streams" }));
 
-    expect(screen.getByText("5 msgs · Map · Raw")).toBeTruthy();
+    expect(screen.getByText("5 messages · Map · Raw")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "3D /gps" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Map /gps" }));
 
@@ -738,7 +830,7 @@ function stream(
     schema,
   }: {
     readonly approxRateHz?: number;
-    readonly count: string;
+    readonly count?: string;
     readonly decodeStatus: string;
     readonly encoding: string;
     readonly id?: string;
@@ -748,13 +840,15 @@ function stream(
   const sceneType = testSceneType(schema);
   return {
     ...(approxRateHz !== undefined ? { approxRateHz } : {}),
-    count: Number(count),
+    ...(count === undefined ? {} : { count: Number(count) }),
     id,
     kind: "unknown",
     metadata: {
       [SCENE_SOURCE_METADATA.SOURCE_NAME]: name,
       ...(sceneType ? { [SCENE_SOURCE_METADATA.TYPE]: sceneType } : {}),
       [STREAM_METADATA.DECODE_STATUS]: decodeStatus,
+      [STREAM_METADATA.INSPECTABLE]:
+        decodeStatus === "decodable" ? "true" : "false",
       [STREAM_METADATA.ENCODING]: encoding,
       [STREAM_METADATA.SCHEMA_NAME]: schema,
     },

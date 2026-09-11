@@ -5,6 +5,7 @@ FiftyOne Zoo models provided by :mod:`torchvision:torchvision.models`.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import contextlib
 import inspect
 import logging
@@ -17,7 +18,6 @@ import fiftyone.zoo.models as fozm
 
 fou.ensure_torch()
 import torchvision
-
 
 logger = logging.getLogger(__name__)
 

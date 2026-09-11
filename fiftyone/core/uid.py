@@ -5,12 +5,12 @@ Utilities for usage analytics.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 import os
 import uuid
 
 import fiftyone.constants as foc
-
 
 logger = logging.getLogger(__name__)
 

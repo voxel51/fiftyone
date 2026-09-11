@@ -81,6 +81,7 @@ const openAnnotate = async (
   });
   await modal.assert.isOpen();
   await modal.sidebar.switchMode("annotate");
+  await modal.waitForLighterReady();
   await modal.sidebar.annotate.segmentationMode();
   await modal.sidebar.annotate.assert.segmentationModeIsActive();
 };

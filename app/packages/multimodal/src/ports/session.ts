@@ -24,12 +24,18 @@ import type {
   EpisodeTransformTopologyEdgeObservation,
   EpisodeTransformTopologyFrameUse,
 } from "../ir";
+import type { StateActionCapability } from "./state-action";
 
 /** Four proven scheduling lanes exposed by every episode session. */
 export type ReadPriority = "bulk" | "current" | "idle" | "playback";
 
 /** One cloneable byte read request issued by a format adapter. */
 export interface ByteResourceReadRequest {
+  /** How the read may be widened; an exact read for random access. */
+  readonly cachePolicy?: {
+    readonly blockFill?: boolean;
+    readonly readahead?: boolean;
+  };
   readonly range: ByteRange;
   readonly signal?: AbortSignal;
   readonly source: ByteSourceDescriptor;
@@ -397,10 +403,11 @@ export interface NumericSeriesSliceSelection {
 export interface NumericSeriesSliceRequest {
   readonly absoluteBudget: ReadWorkBudget;
   readonly absoluteMaxChunks: number;
+  /** Absolute-time-aligned aggregate resolution requested by the viewport. */
+  readonly bucketDurationNs: bigint;
   readonly budget: ReadWorkBudget;
   readonly continuation?: ReadContinuation;
   readonly maxChunks: number;
-  readonly maxPointsPerField?: number;
   readonly preferredTimeNs?: bigint;
   readonly selections: readonly NumericSeriesSliceSelection[];
   readonly signal?: AbortSignal;
@@ -411,6 +418,8 @@ export interface NumericSeriesSliceRequest {
 export interface NumericSeriesSliceResult {
   readonly continuation?: ReadContinuation;
   readonly coverageByStream: ReadonlyMap<StreamId, readonly TimeWindow[]>;
+  /** Earliest timestamp not yet inspected by a chronological continuation. */
+  readonly resumeAtNs?: bigint;
   /** Exact unreadable source spans, distinct from successfully inspected coverage. */
   readonly unavailableByStream?: ReadonlyMap<StreamId, readonly TimeWindow[]>;
   readonly series: readonly NumericSeriesResult[];
@@ -432,6 +441,12 @@ export interface RawRecordCapability {
      */
     readonly intent?: "background" | "paused-inspection" | "export";
     readonly prune?: RawRecordPruneBudgets;
+    /**
+     * Selects whether the adapter should decode the record body or return only
+     * message metadata. Metadata reads are intended for callers such as size
+     * estimators that only need payload byte counts.
+     */
+    readonly select?: "metadata" | "record";
     readonly signal?: AbortSignal;
     readonly stream: StreamId;
     readonly timestampNs: bigint;
@@ -485,6 +500,7 @@ export interface EpisodeSession {
   readonly playback?: PlaybackReadCapability;
   readonly pointCloudProjection?: PointCloudProjectionCapability;
   readonly rawRecords?: RawRecordCapability;
+  readonly stateAction?: StateActionCapability;
   readonly synchronizedRead?: SynchronizedReadAcceleration;
   readonly terminology?: EpisodeTerminology;
   readonly transformRead?: TransformReadAcceleration;

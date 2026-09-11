@@ -1,5 +1,5 @@
 import { act, renderHook } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useBrowserStorage } from "./useBrowserStorage";
 
 // Utility wrapper for cleaner access
@@ -191,5 +191,69 @@ describe("useBrowserStorage", () => {
       expect(result.current.value).toBe(51);
       expect(localStorage.getItem("test-key")).toBe("51");
     });
+  });
+});
+
+describe("storage failures", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("falls back to the initial value when reads throw", () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("NS_ERROR_FAILURE");
+    });
+
+    const { result } = renderHook(() => useTestableState("broken", "default"));
+
+    expect(result.current.value).toBe("default");
+  });
+
+  it("keeps in-memory state when writes throw", () => {
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("NS_ERROR_FAILURE");
+    });
+
+    const { result } = renderHook(() => useTestableState("broken", "default"));
+
+    act(() => {
+      result.current.setState("next");
+    });
+
+    expect(result.current.value).toBe("next");
+  });
+
+  it("falls back to the initial value on corrupt stored JSON", () => {
+    localStorage.setItem("corrupt", "{not json");
+
+    const { result } = renderHook(() => useTestableState("corrupt", "default"));
+
+    expect(result.current.value).toBe("default");
+  });
+
+  it("works in-memory when the storage accessor itself throws", () => {
+    const original = Object.getOwnPropertyDescriptor(window, "localStorage");
+    Object.defineProperty(window, "localStorage", {
+      configurable: true,
+      get() {
+        throw new Error("NS_ERROR_FAILURE");
+      },
+    });
+
+    try {
+      const { result } = renderHook(() => useTestableState("gone", "default"));
+
+      expect(result.current.value).toBe("default");
+
+      act(() => {
+        result.current.setState("next");
+      });
+
+      expect(result.current.value).toBe("next");
+    } finally {
+      if (original) {
+        Object.defineProperty(window, "localStorage", original);
+      }
+    }
   });
 });

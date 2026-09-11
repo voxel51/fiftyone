@@ -34,7 +34,9 @@ const colorForTag = vi.hoisted(() => vi.fn(() => "#123456"));
 
 vi.mock("@fiftyone/state", () => ({
   useActiveTemporalTagFilterValues: () => [],
+  useSyncTemporalTagResults: () => undefined,
   useTemporalTagColor: () => colorForTag,
+  useTemporalTagValues: () => [],
 }));
 
 vi.mock("../../../temporal-tags", () => ({

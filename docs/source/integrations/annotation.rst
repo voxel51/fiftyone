@@ -1089,7 +1089,7 @@ three classes with the appropriate abstract methods implemented:
 .. note::
 
     Refer to the
-    `fiftyone.utils.cvat <https://github.com/voxel51/fiftyone/blob/develop/fiftyone/utils/cvat.py>`_
+    `fiftyone.utils.cvat <https://github.com/voxel51/fiftyone/blob/main/fiftyone/utils/cvat.py>`_
     module for an example of how the above subclasses are implemented for the
     CVAT backend.
 

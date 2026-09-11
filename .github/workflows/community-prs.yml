@@ -71,7 +71,7 @@ jobs:
 
             if (from) {
               body.push(
-                `Community pull requests target the \`community\` branch, so I've changed this PR's base from \`${from}\` to \`community\`. Your changes are unaffected — a maintainer integrates \`community\` into \`develop\`.`,
+                `Community pull requests target the \`community\` branch, so I've changed this PR's base from \`${from}\` to \`community\`. Your changes are unaffected — a maintainer integrates \`community\` into \`main\`.`,
                 '',
               );
             }
@@ -81,7 +81,7 @@ jobs:
               '',
               '- [ ] You filled out the PR template above, completely to the best of your knowledge',
               '- [ ] You include tests (if applicable)',
-              '- [ ] You read the [contribution guide](https://github.com/voxel51/fiftyone/blob/develop/CONTRIBUTING.md#community-pull-requests)',
+              '- [ ] You read the [contribution guide](https://github.com/voxel51/fiftyone/blob/main/CONTRIBUTING.md#community-pull-requests)',
               '',
               '**Helpful resources:**',
               '- 📖 [FiftyOne Documentation](https://docs.voxel51.com/)',

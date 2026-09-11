@@ -24,6 +24,10 @@ import {
   scene3dTilePlaybackSettingsAtom,
   type Scene3dTilePlaybackSettingsByTile,
 } from "../scene/tile/scene-3d-tile-state";
+import {
+  persistedAudioTileBindingsAtom,
+  persistedImageTileBindingsAtom,
+} from "../tiles/tile-source-bindings";
 import { cameraScopeKey } from "../scope/camera-scope";
 import { updateSidebarPreferences } from "../settings/sidebar-preferences";
 import { semanticSourceKey } from "../settings/semantic-source";
@@ -75,6 +79,7 @@ function renderLayoutHook(
       availableTileTypes: tileTypesFor({
         hasNumericSeries: true,
         hasRawRecords: true,
+        hasStateAction: false,
         hasTransformTopology: false,
         sourceTypes: sources.map((source) => source.type),
       }),
@@ -752,6 +757,7 @@ describe("useModalLayout", () => {
           availableTileTypes: tileTypesFor({
             hasNumericSeries: true,
             hasRawRecords: true,
+            hasStateAction: false,
             hasTransformTopology: false,
             sourceTypes: SCENE_SOURCES.map((source) => source.type),
           }),
@@ -1087,6 +1093,125 @@ describe("ModalLayoutPersistence", () => {
 
     unmount();
     expect(readModalLayout("dataset-a")?.expandedTileId).toBe("camera-default");
+  });
+
+  function TileRemovalDriver({ tileId }: { tileId: string | null }) {
+    const { removeTile } = useTiling();
+    // This effect drives pane removal from test props — stand-in for the
+    // user closing a tile.
+    useEffect(() => {
+      if (tileId) removeTile(tileId);
+    }, [removeTile, tileId]);
+    return null;
+  }
+
+  function BindingSeeder({
+    audio,
+    image,
+  }: {
+    readonly audio: Readonly<Record<string, string>>;
+    readonly image: Readonly<Record<string, string>>;
+  }) {
+    const store = useStore();
+    // This effect stands in for mounted panes having published their
+    // durable bindings; it runs before the pruning effect below it. Each
+    // map only ever holds its own kind's tile ids — a pruning pass sees
+    // only the live tiles of its kind, so a foreign id there reads as
+    // stale.
+    useEffect(() => {
+      store.set(persistedImageTileBindingsAtom, image);
+      store.set(persistedAudioTileBindingsAtom, audio);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+    return null;
+  }
+
+  function BindingsProbe({
+    onValue,
+  }: {
+    readonly onValue: (value: {
+      readonly audio: Readonly<Record<string, string>>;
+      readonly image: Readonly<Record<string, string>>;
+    }) => void;
+  }) {
+    const audio = useAtomValue(persistedAudioTileBindingsAtom);
+    const image = useAtomValue(persistedImageTileBindingsAtom);
+    // This effect exposes atom updates to the test assertion.
+    useEffect(() => {
+      onValue({ audio, image });
+    }, [audio, image, onValue]);
+    return null;
+  }
+
+  // Audio panes persist a durable binding the same way image panes do, so
+  // both maps have to be pruned on pane removal — a leftover entry would
+  // resurrect a closed pane's topic on the next pane to reuse its id.
+  describe("pruning durable tile bindings", () => {
+    const FOUR_TILES = {
+      "audio-1": { title: "Audio", render: () => null },
+      "audio-2": { title: "Audio compare", render: () => null },
+      "image-1": { title: "Camera", render: () => null },
+      "image-2": { title: "Camera compare", render: () => null },
+    };
+    const SEEDED_AUDIO = { "audio-1": "mic_front", "audio-2": "mic_rear" };
+    const SEEDED_IMAGE = { "image-1": "cam_front", "image-2": "cam_rear" };
+
+    function renderWithRemoval(
+      removedTileId: string | null,
+      seeds: {
+        readonly audio?: Readonly<Record<string, string>>;
+        readonly image?: Readonly<Record<string, string>>;
+      } = {},
+    ) {
+      const values: Array<{
+        readonly audio: Readonly<Record<string, string>>;
+        readonly image: Readonly<Record<string, string>>;
+      }> = [];
+      const view = render(
+        <TilingProvider initialTiles={FOUR_TILES}>
+          <BindingSeeder
+            audio={seeds.audio ?? SEEDED_AUDIO}
+            image={seeds.image ?? SEEDED_IMAGE}
+          />
+          <ModalLayoutPersistence datasetId="dataset-a" />
+          <TileRemovalDriver tileId={removedTileId} />
+          <BindingsProbe onValue={(value) => values.push(value)} />
+        </TilingProvider>,
+      );
+      return { latest: () => values.at(-1), view };
+    }
+
+    it("keeps every binding while its pane is still in the layout", () => {
+      const { latest } = renderWithRemoval(null);
+      expect(latest()?.image).toEqual(SEEDED_IMAGE);
+      expect(latest()?.audio).toEqual(SEEDED_AUDIO);
+    });
+
+    it("drops an audio binding when its pane leaves the layout", () => {
+      const { latest } = renderWithRemoval("audio-2");
+      expect(latest()?.audio).toEqual({
+        "audio-1": "mic_front",
+      });
+    });
+
+    it("drops an image binding when its pane leaves the layout", () => {
+      const { latest } = renderWithRemoval("image-2");
+      expect(latest()?.image).toEqual({
+        "image-1": "cam_front",
+      });
+    });
+
+    it("prunes each tile kind against its own live panes, not every pane", () => {
+      // Both maps are keyed by tile id, so each pass has to be told which
+      // kind it reconciles. An image id in the audio map is stale by
+      // construction — an audio pane never binds one — and a pass that
+      // measured against every live tile would keep it.
+      const { latest } = renderWithRemoval(null, {
+        audio: { ...SEEDED_AUDIO, "image-1": "cam_front" },
+      });
+      expect(latest()?.audio).toEqual(SEEDED_AUDIO);
+      expect(latest()?.image).toEqual(SEEDED_IMAGE);
+    });
   });
 
   it("does not persist a layout the user never edited", () => {

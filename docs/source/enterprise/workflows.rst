@@ -222,3 +222,173 @@ conversation follows the work as it moves through the pipeline.
 
 .. image:: https://cdn.voxel51.com/enterprise/workflows/workflows_discussion.webp
    :alt: Discussion panel attached to a reviewed sample
+
+----
+
+.. _enterprise-workflows-metrics:
+
+How to: Understand Metrics
+--------------------------
+
+Each workflow has a **Metrics** tab that answers the question *"how is this
+work going?"* — how much has been produced, by whom, at what quality, and
+at what pace. The numbers are built from the same submissions and review
+decisions your team makes while
+:ref:`working on tasks <enterprise-workflows-task-mode>`.
+
+.. image:: https://cdn.voxel51.com/enterprise/workflows/workflows_metrics_board.webp
+   :alt: The Metrics tab showing the trend chart, summary cards, and the per-person table
+
+.. note::
+
+    Metrics are powered by activity tracking, which must be enabled on
+    your deployment. If the board stays empty while work is clearly
+    happening, contact your admin.
+
+Choosing a Scope
+~~~~~~~~~~~~~~~~
+
+The selector in the top-left corner controls how much work the board
+aggregates:
+
+- **This workflow** — only the workflow you are viewing.
+- **This dataset** — every workflow on this dataset that you have access
+  to.
+- **All datasets** — every workflow across all datasets that you have
+  access to.
+
+The stage filter next to it adapts to the scope. Within **This workflow**
+you can drill into any individual stage of the pipeline — for example,
+*Annotate*, *First review*, and *Final review* in a two-tier pipeline. In
+the two aggregated scopes, stages combine by type instead: **All stages**,
+**Annotate**, or **Review**.
+
+.. image:: https://cdn.voxel51.com/enterprise/workflows/workflows_metrics_scope_filters.webp
+   :alt: Scope selector and stage filters on the Metrics board
+
+Reading the Board
+~~~~~~~~~~~~~~~~~
+
+The chart plots the selected **Metric** (for example, *Labels / day*) over
+the selected **Period**, with the total and per-day average summarized in
+the corner. Below it, four cards summarize the scope:
+
+- **Labels submitted** — labels included in submitted samples, net of
+  deletions.
+- **Samples submitted** — unique samples submitted.
+- **Avg time / label** — active working time divided by labels submitted;
+  shows a dash when the scope contains no labels (or no tracked time) yet.
+- **Active people** — how many people did work in the current scope and
+  period.
+
+The board syncs periodically — the *"Synced …"* timestamp in the toolbar
+shows how fresh the numbers are, and the refresh button pulls the latest.
+
+The Per-Person Table
+~~~~~~~~~~~~~~~~~~~~
+
+Below the cards, one row per person per assigned stage breaks the same
+numbers down. Rows measure **throughput**: an annotator's submissions and
+a reviewer's decisions both count as work, so someone who annotates in
+one stage and reviews in another appears once per role.
+
+Alongside the volume columns (**Samples**, **Labels touched**, **Added**,
+**Deleted**, **Modified**) and pace columns (**Total time**,
+**Avg time / sample**, **Trend**), a row carries two quality columns —
+**First-pass approval** and **Rejection rate** — reflecting how the work
+that person shipped from that stage fared in later review: an annotator's
+submissions, or, in pipelines where one review follows another, a
+reviewer's approvals (see *Who Reviews What in Longer Pipelines* below).
+Use the **Columns** menu to choose which columns are shown. A dash means
+the value is not available yet — for example, an annotator none of whose
+submissions has been reviewed.
+
+.. image:: https://cdn.voxel51.com/enterprise/workflows/workflows_metrics_table.webp
+   :alt: Per-person metrics table with volume, quality, and pace columns
+
+Quality: First-Pass Approval and Rejection Rate
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**First-pass approval rate** — of the submissions that have been reviewed
+at least once, the fraction whose *first* review decision was an approval.
+It answers *"how often is this work right the first time?"* — later
+re-reviews never change it.
+
+**Rejection rate** — of *all* review decisions made on the work, the
+fraction that were rejections. It is cumulative: every decision counts,
+including re-reviews of reworked samples, so it falls as fixed work gets
+approved.
+
+Both rates ignore pending work: submissions that nobody has reviewed yet
+sit outside the denominator entirely rather than dragging the rate down.
+
+A worked example: an annotator submits 3 samples, and a reviewer approves
+2 and rejects 1:
+
+- First-pass approval: 2 of 3 first decisions were approvals — **67%**.
+- Rejection rate: 1 of 3 decisions was a rejection — **33%**.
+
+The rejected sample is then reworked, resubmitted, and approved:
+
+- First-pass approval **stays 67%** — that sample's first decision was
+  still a rejection, and first decisions are a permanent record.
+- Rejection rate **falls to 25%** — 1 rejection out of 4 total decisions.
+
+Who Reviews What in Longer Pipelines
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In a pipeline with several annotate and review stages, each review stage
+judges the work that reaches it — and a reviewer's own approvals can be
+judged by a later review in turn. Consider a six-stage pipeline:
+
+.. code-block:: text
+
+    Annotate 1 → Annotate 2 → Review 1 → Annotate 3 → Review 2 → Review 3
+
+- **Review 1** is the first review after Annotate 1 *and* Annotate 2, so
+  its decisions judge the combined work of both stages — each label counts
+  toward the person who authored it.
+- **Review 2** judges the new work from Annotate 3.
+- **Review 3** follows another review directly, so it re-judges what
+  passed Review 2: its decisions reflect on Annotate 3's labels *and* on
+  Review 2's approvals.
+
+When Review 3 rejects a sample that Review 2 approved, the rejection
+counts against Review 2's row as well — which is why a *review* stage can
+itself show a rejection rate. This is how a two-tier review pipeline
+surfaces reviewer quality, not just annotator quality.
+
+How Time Is Measured
+~~~~~~~~~~~~~~~~~~~~
+
+All time metrics — **Total time**, **Avg time / label**, and
+**Avg time / sample** — are built from *active working time*, measured in
+the browser while a person has a sample open as part of a task:
+
+- **Presence is inferred from input.** Pointer, keyboard, wheel, and
+  touch activity mark you as present. Short pauses between inputs count
+  in full — reading and inspecting a sample is work — but once a pause
+  reaches a minute with no input, the clock rewinds to the last moment
+  of activity and stops. Stepping away never inflates the numbers.
+- **Hidden tabs never count.** Switching to another tab or window stops
+  the clock immediately; returning to the tab restarts it.
+- **Time follows the sample and the role.** Working time is credited to
+  the specific sample being worked on and to the stage where the work
+  happens, so annotate time and review time are tracked separately —
+  the same person shows separate times in an Annotate row and a Review
+  row.
+- **A dash means no measurable time.** Time metrics show a dash rather
+  than a zero when there is no tracked active time in the selected scope.
+
+What Counts (and What Doesn't)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Only **submitted** work counts. Labels edited but never submitted stay
+  off the board.
+- Labels are counted net of deletions: a label added and then deleted
+  before submitting nets to zero.
+- A sample approved with no labels counts as a submitted sample with zero
+  labels — the board reads *Samples 1 / Labels 0*, not nothing.
+- **Skip** is not a submission.
+- Rates never punish waiting: one reviewed-and-approved submission with
+  ten more still pending reads *100% first-pass approval*, not 9%.

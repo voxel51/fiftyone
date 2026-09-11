@@ -5,6 +5,7 @@ FiftyOne repository factory.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from fiftyone.factory.repos.delegated_operation_doc import (
     DelegatedOperationDocument,
 )

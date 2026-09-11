@@ -3429,6 +3429,7 @@
                 }
             },
             "tags": [
+                "text-embeddings",
                 "classification",
                 "logits",
                 "embeddings",
@@ -3950,6 +3951,7 @@
                 }
             },
             "tags": [
+                "text-embeddings",
                 "classification",
                 "logits",
                 "embeddings",
@@ -3990,6 +3992,7 @@
                 }
             },
             "tags": [
+                "text-embeddings",
                 "classification",
                 "logits",
                 "embeddings",
@@ -4077,6 +4080,7 @@
                 }
             },
             "tags": [
+                "text-embeddings",
                 "segmentation",
                 "embeddings",
                 "torch",
@@ -5122,6 +5126,7 @@
                 }
             },
             "tags": [
+                "text-embeddings",
                 "classification",
                 "logits",
                 "embeddings",
@@ -11027,6 +11032,7 @@
                 "gpu": { "support": true }
             },
             "tags": [
+                "text-embeddings",
                 "classification",
                 "torch",
                 "official",
@@ -11064,6 +11070,7 @@
                 "gpu": { "support": true }
             },
             "tags": [
+                "text-embeddings",
                 "classification",
                 "torch",
                 "official",
@@ -11101,6 +11108,7 @@
                 "gpu": { "support": true }
             },
             "tags": [
+                "text-embeddings",
                 "classification",
                 "torch",
                 "official",
@@ -11665,7 +11673,13 @@
                 "cpu": { "support": true },
                 "gpu": { "support": true }
             },
-            "tags": ["embeddings", "vlm", "torch", "transformer"],
+            "tags": [
+                "embeddings",
+                "text-embeddings",
+                "vlm",
+                "torch",
+                "transformer"
+            ],
             "training_data": [],
             "date_added": "2026-01-22 12:00:00"
         },
@@ -11695,7 +11709,13 @@
                 "cpu": { "support": true },
                 "gpu": { "support": true }
             },
-            "tags": ["embeddings", "vlm", "torch", "transformer"],
+            "tags": [
+                "embeddings",
+                "text-embeddings",
+                "vlm",
+                "torch",
+                "transformer"
+            ],
             "training_data": [],
             "date_added": "2026-01-22 12:00:00"
         },

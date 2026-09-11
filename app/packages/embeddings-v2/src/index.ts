@@ -30,7 +30,6 @@ export {
   registerEmbeddingsPanelExtension,
   type ColorColumnSource,
   type EmbeddingsPanelExtension,
-  type ExtraInteractionMode,
   type GeometryLoader,
   type HoverAction,
   type LassoStageInput,

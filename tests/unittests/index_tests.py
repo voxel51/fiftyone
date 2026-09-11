@@ -5,6 +5,7 @@ FiftyOne Server index related unit test
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import typing as t
 from dataclasses import asdict
 import unittest

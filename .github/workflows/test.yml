@@ -6,7 +6,7 @@ on:
       python-versions:
         description: JSON array of Python versions for the Python test matrix
         type: string
-        default: '["3.10", "3.11", "3.12", "3.13", "3.14"]'
+        default: '["3.10", "3.11", "3.12", "3.13"]'
 
 jobs:
   test-app:
@@ -14,7 +14,7 @@ jobs:
     timeout-minutes: 90
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           # yarn install runs PR-controlled lifecycle scripts
           persist-credentials: false
@@ -25,16 +25,16 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Setup node 22
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
 
       - name: Prepare yarn
         uses: ./.github/actions/setup-yarn
 
       - name: Cache
         id: node-cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             app/node_modules
@@ -72,7 +72,7 @@ jobs:
         shell: bash
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           # yarn install runs PR-controlled lifecycle scripts
           persist-credentials: false

@@ -1,12 +1,15 @@
 import { Input, InputType, Size } from "@voxel51/voodo";
 import React, { useMemo, useState } from "react";
 import { useSceneInventory } from "../../../../scene-inventory/react";
-import { SCENE_SOURCE_TYPE, type StreamDescriptor } from "../../../../ir";
+import {
+  SCENE_SOURCE_TYPE,
+  STREAM_CATEGORY,
+  type StreamDescriptor,
+} from "../../../../ir/manifest";
 import type { EpisodeTerminology } from "../../../../ports";
 import {
   STREAM_CAPABILITY,
   STREAM_CAPABILITY_LABEL,
-  STREAM_CATEGORY,
   STREAM_CATEGORY_LABEL,
   STREAM_CATEGORY_ORDER,
   STREAM_SUPPORT_LABEL,
@@ -142,6 +145,13 @@ function StreamRow({
   const capabilitySummary = row.capabilities
     .map((capability) => STREAM_CAPABILITY_LABEL[capability])
     .join(" · ");
+  const metadataSummary = [
+    row.countLabel,
+    row.rateLabel,
+    capabilitySummary || null,
+  ]
+    .filter((value): value is string => value !== null)
+    .join(" · ");
 
   return (
     <div className={styles.streamRow} title={streamDetails(row)}>
@@ -152,11 +162,7 @@ function StreamRow({
         ) : null}
       </div>
       <div className={styles.streamMetaLine}>
-        <span className={styles.streamMeta}>
-          {row.countLabel}
-          {row.rateLabel ? ` · ${row.rateLabel}` : ""}
-          {capabilitySummary ? ` · ${capabilitySummary}` : ""}
-        </span>
+        <span className={styles.streamMeta}>{metadataSummary}</span>
         <div className={styles.streamActions}>
           {actions.map((action) => (
             <button
@@ -201,9 +207,9 @@ function streamActionsForRow(
 
   if (row.sourceType === SCENE_SOURCE_TYPE.IMAGE) {
     actions.push({
-      ariaLabel: `Image ${row.sourceName}`,
+      ariaLabel: `${row.kind === "video" ? "Video" : "Image"} ${row.sourceName}`,
       id: "image",
-      label: "Image",
+      label: row.kind === "video" ? "Video" : "Image",
       onClick: () => handlers.openImageTile(row.streamId),
     });
   }
@@ -238,16 +244,18 @@ function streamActionsForRow(
     });
   }
 
-  actions.push({
-    ariaLabel: `Inspect ${row.sourceName}`,
-    id: "inspect",
-    label: "Inspect",
-    onClick: () =>
-      handlers.openRawMessageTile({
-        sourceName: row.sourceName,
-        streamId: row.streamId,
-      }),
-  });
+  if (row.canInspect) {
+    actions.push({
+      ariaLabel: `Inspect ${row.sourceName}`,
+      id: "inspect",
+      label: "Inspect",
+      onClick: () =>
+        handlers.openRawMessageTile({
+          sourceName: row.sourceName,
+          streamId: row.streamId,
+        }),
+    });
+  }
 
   return actions;
 }

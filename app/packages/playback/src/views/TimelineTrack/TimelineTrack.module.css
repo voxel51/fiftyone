@@ -94,6 +94,27 @@
   min-width: 0;
 }
 
+/*
+ * Where a row came from, shown beside its name once it is pinned.
+ *
+ * The pinned section is a flat list — it deliberately loses the section
+ * grouping, because it is "the rows I am watching", not a view of the tree — so
+ * this is the only thing left saying which group a row belongs to. Sized and
+ * coloured to stay subordinate to the name, and never allowed to squeeze it:
+ * the name ellipsises first.
+ */
+.secondaryLabel {
+  /* Shrinkable and capped: a long section name must not push the row's own
+     name out of the column. The name still gives way first, since it has
+     `flex: 1` against this one's `flex: 0 1 auto`. */
+  flex: 0 1 auto;
+  max-width: 40%;
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Pin button stays visible — at half opacity when unpinned so it's
    discoverable, full opacity when pinned (or on hover). */
 .pinButton {

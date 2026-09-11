@@ -34,6 +34,36 @@
   position: absolute;
 }
 
+.nativePoster,
+.nativeVideo {
+  height: 100%;
+  inset: 0;
+  object-fit: cover;
+  pointer-events: none;
+  position: absolute;
+  visibility: hidden;
+  width: 100%;
+}
+
+.nativePoster {
+  z-index: 1;
+}
+
+.nativeVideo {
+  z-index: 2;
+}
+
+.nativeVideoError {
+  background: rgba(16, 17, 20, 0.82);
+  bottom: 8px;
+  left: 50%;
+  max-width: calc(100% - 16px);
+  padding: 3px 6px;
+  position: absolute;
+  transform: translateX(-50%);
+  z-index: 3;
+}
+
 .pointCloud {
   cursor: default;
 }
@@ -70,4 +100,43 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/*
+ * Opens the modal from a point-cloud tile.
+ *
+ * Point-cloud previews consume the click themselves — it orbits the camera —
+ * so they are the one tile kind that needs an explicit way in. Top-right, well
+ * clear of the interval lane along the bottom edge. Revealed on hover where
+ * there is a real pointer, always visible on touch.
+ */
+.openModalButton {
+  align-items: center;
+  background: rgba(18, 18, 18, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 6px;
+  color: #f5f5f5;
+  display: flex;
+  height: 22px;
+  justify-content: center;
+  opacity: 1;
+  pointer-events: auto;
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  width: 22px;
+  z-index: 20;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .openModalButton {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .root:hover .openModalButton,
+  .root:focus-within .openModalButton {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }

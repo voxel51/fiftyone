@@ -16,14 +16,18 @@ import React, {
   useState,
 } from "react";
 import PlaybackShell from "./PlaybackShell";
-import type {
-  ByteSourceDescriptor,
-  EpisodeRecordingFacts,
-  StreamDescriptor,
+import RegisterMcapAudioStreams from "../audio/RegisterMcapAudioStreams";
+import {
+  SCENE_SOURCE_TYPE,
+  type ByteSourceDescriptor,
+  type EpisodeRecordingFacts,
+  type StreamDescriptor,
 } from "../../../ir";
 import type { SceneSource } from "../../../scene-inventory";
 import { sceneSourcesFromStreamDescriptors } from "../../../stream-selection/scene-sources";
 import { episodeSourceAccessKey } from "../../../runtime/episode-resources";
+import { recordSessionSourceFacts } from "../../../runtime/source-facts-service";
+import type { SourceFactsScope } from "../../../runtime/source-facts";
 import { EpisodePlaybackStoreProvider } from "../../../runtime/react/playback-store-context";
 import { useSourceBootstrap } from "../../../runtime/react/source-bootstrap";
 import { createScheduledSourceReadBudgetAccount } from "../../../runtime/scheduled-read-budget-account";
@@ -62,11 +66,12 @@ import { MapViewportScopeProvider } from "../map/viewport/context";
 import { NumericSeriesProvider } from "../plots/numeric-series-context";
 import { PoseTrajectoriesProvider } from "../scene/entities/pose-trajectories-context";
 import { RawMessageProvider } from "../raw/raw-message-context";
+import { StateActionProvider } from "../state-action/state-action-context";
 import { SceneUpdateHistoryProvider } from "../scene/entities/scene-update-history-context";
 import { SelectionHotkeys } from "../interaction/selection/selected-object";
 import AddTileMenu from "./AddTileMenu";
 import { tileTypesFor, getTileDefinition } from "./tile-catalog";
-import RightSidebar from "./RightSidebar";
+import RightSidebarWithTrays from "./RightSidebarWithTrays";
 import styles from "./ModalRenderer.module.css";
 import { NetworkHealthTracker, NetworkStatusPill } from "./NetworkStatus";
 import { FullHistoryInterestsProvider } from "../playback/full-history-interests";
@@ -90,6 +95,11 @@ import {
   SourcePosterProvider,
   type SourcePosterValue,
 } from "../image/source-poster-context";
+import { useEpisodeHeaderActions } from "../../../extensions/episode-actions";
+import {
+  VisibleStreamsProvider,
+  useVisibleStreamIds,
+} from "../stream-discovery/visible-streams";
 
 const EMPTY_MANUAL_TILE_TITLES: Record<string, string> = {};
 export const TRANSITION_STATUS_DELAY_MS = 200;
@@ -97,6 +107,7 @@ export const TRANSITION_STATUS_DELAY_MS = 200;
 interface ReadyInventory {
   readonly hasNumericSeries: boolean;
   readonly hasRawRecords: boolean;
+  readonly hasStateAction: boolean;
   readonly hasTransformTopology: boolean;
   readonly recordingFacts?: EpisodeRecordingFacts;
   readonly sources: readonly SceneSource[];
@@ -114,13 +125,29 @@ type PosterImage = Extract<
 export interface SourcePlaybackProps {
   readonly cameraPreferenceField?: string;
   readonly children?: React.ReactNode;
+  /**
+   * Override for the right sidebar, forwarded to the playback shell. Defaults
+   * to {@link RightSidebarWithTrays}. A surface that shouldn't host trays —
+   * the grid-surface MCAP Explorer, which plays a local file with no dataset
+   * sample behind it — passes the plain {@link RightSidebar} instead.
+   */
+  readonly rightSidebar?:
+    | React.ReactNode
+    | ((state: { open: boolean }) => React.ReactNode);
   readonly session: EpisodeSession | null;
   readonly sessionError?: string | null;
   /** Track ids to start pinned to the timeline (e.g. from a grid tag filter). */
   readonly defaultPinnedTrackIds?: readonly string[];
   /** Per-row timeline decoration contributed by timeline sources. */
   readonly decorateTrack?: TemporalTagTimelineProps["decorateTrack"];
+  /** Ruler overlay composed from timeline sources. */
+  readonly timelineRulerOverlay?: (labelWidth: number) => React.ReactNode;
   readonly fileName: string;
+  /** Present only for the dataset sample modal, never the Explorer. */
+  readonly episodeContext?: {
+    readonly datasetId: string;
+    readonly sampleId: string;
+  };
   readonly headerActions?: React.ReactNode;
   /** Capture time to open the recording at, ahead of the first-data tick.
    * Set to an embeddings match so opening a matched tile lands on it. */
@@ -128,6 +155,8 @@ export interface SourcePlaybackProps {
   readonly layoutScopeKey?: string;
   /** Host selected a new sample whose media descriptor is still resolving. */
   readonly navigationPending?: boolean;
+  /** Dataset-wide tag labels for the creation popup's dropdown. */
+  readonly existingTags?: TemporalTagTimelineProps["existingTags"];
   readonly onTagCreate?: TemporalTagTimelineProps["onTagCreate"];
   readonly onTagUpdate?: TemporalTagTimelineProps["onTagUpdate"];
   readonly onTagDelete?: NonNullable<
@@ -138,6 +167,7 @@ export interface SourcePlaybackProps {
   /** Optional maximum expanded track-body height. */
   readonly timelineDrawerMaxSize?: number;
   readonly source: ByteSourceDescriptor | null;
+  readonly sourceFactsScope?: SourceFactsScope;
   readonly tracks?: readonly Track[];
 }
 
@@ -146,24 +176,35 @@ export interface SourcePlaybackProps {
  * feed it a byte source; it owns inventory loading, episode providers, tiling,
  * layout persistence, and the playback chrome around the discovered streams.
  */
-export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
+export const SourcePlayback: React.FC<SourcePlaybackProps> = (props) => (
+  <VisibleStreamsProvider>
+    <SourcePlaybackContent {...props} />
+  </VisibleStreamsProvider>
+);
+
+const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
   cameraPreferenceField,
   children,
   defaultPinnedTrackIds,
   decorateTrack,
+  timelineRulerOverlay,
   fileName,
+  episodeContext,
   headerActions,
   initialSeekTimeNs,
   layoutScopeKey,
   navigationPending = false,
+  existingTags,
   onTagCreate,
   onTagUpdate,
   onTagDelete,
   onTimelineDrawerOpenChange,
   timelineDrawerMaxSize,
+  rightSidebar,
   session,
   sessionError = null,
   source,
+  sourceFactsScope,
   tracks,
 }) => {
   const imageAspectRatiosRef = useRef<Record<string, number>>({});
@@ -198,6 +239,18 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
       releaseRetainedImageTextures();
     };
   }, []);
+
+  // This effect records authoritative session metadata off the ready path.
+  useEffect(() => {
+    if (
+      session &&
+      source &&
+      sourceFactsScope &&
+      session.manifest.episodeId === source.sourceId
+    ) {
+      recordSessionSourceFacts(source, sourceFactsScope, session);
+    }
+  }, [session, source, sourceFactsScope]);
 
   const { status, error, sources, streams, streamCount } =
     useSceneInventoryState({
@@ -243,6 +296,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
         ? {
             hasNumericSeries: session?.numericSeries !== undefined,
             hasRawRecords: session?.rawRecords !== undefined,
+            hasStateAction: session?.stateAction !== undefined,
             hasTransformTopology: session?.transformTopology !== undefined,
             recordingFacts: session?.manifest?.recordingFacts,
             sources,
@@ -255,6 +309,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
       session?.numericSeries,
       session?.rawRecords,
       session?.manifest?.recordingFacts,
+      session?.stateAction,
       session?.transformTopology,
       session?.terminology,
       sources,
@@ -271,6 +326,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
     return {
       hasNumericSeries: false,
       hasRawRecords: false,
+      hasStateAction: false,
       hasTransformTopology: false,
       recordingFacts: manifest.recordingFacts,
       sources,
@@ -319,6 +375,26 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
   const shellInventory = destinationInventory ?? retainedShellInventory;
   const shellSources = shellInventory?.sources ?? sources;
   const shellStreams = shellInventory?.streams ?? streams;
+  // Audio deliberately does NOT contribute `Track` rows to the main timeline
+  // for now — audio lives in the toolbar's volume/mixer controls only, and is
+  // to be reintroduced as a timeline track later.
+  //
+  // Worth knowing when it comes back: `TimelineWithTracks` gates its whole
+  // Drawer (drag handle, chevron, trailing actions) on `tracks.length > 0`,
+  // and `useAudio()`'s roster does not feed that count. So a recording whose
+  // only streams are audio now shows no timeline chrome at all — which is the
+  // gap those synthetic rows existed to close.
+  // The transitioning gate clears when `onPlayheadDataReady` fires, which
+  // requires a stream registered with the demand-driven buffered-read system
+  // to cover the playhead. Audio sources decode through their own one-shot
+  // read (`useMcapAudioStream`) and never participate, so a recording whose
+  // only sources are audio has nothing that can ever satisfy that signal and
+  // would stay masked forever. There is also nothing to preview in that case.
+  const hasPreviewableSource = useMemo(
+    () =>
+      shellSources.some((source) => source.type !== SCENE_SOURCE_TYPE.AUDIO),
+    [shellSources],
+  );
   const resolvedTimelineMode = useMemo(
     () => resolveTimelineMode(shellStreams),
     [shellStreams],
@@ -370,6 +446,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
       tileTypesFor({
         hasNumericSeries: shellInventory?.hasNumericSeries ?? false,
         hasRawRecords: shellInventory?.hasRawRecords ?? false,
+        hasStateAction: shellInventory?.hasStateAction ?? false,
         hasTransformTopology: shellInventory?.hasTransformTopology ?? false,
         sourceTypes: shellSources.map((source) => source.type),
       }),
@@ -379,6 +456,10 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
   const effectiveLayoutScopeKey =
     layoutScopeKey ??
     (source ? `episode-source:${source.sourceId}` : undefined);
+  // Pins are a user choice, so they outlive the modal that made them
+  const pinPersistKey = effectiveLayoutScopeKey
+    ? `episode-pins:${effectiveLayoutScopeKey}`
+    : undefined;
   const cameraViewStateScopeKey =
     cameraScopeKey(effectiveLayoutScopeKey, cameraPreferenceField) ??
     effectiveLayoutScopeKey;
@@ -454,7 +535,10 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
   const transitioning =
     navigationPending ||
     readyInventory === null ||
-    presentedSourceKey !== sourceKey;
+    // See `hasPreviewableSource`: an audio-only recording never publishes a
+    // playhead-data-ready tick, so this would otherwise latch "transitioning"
+    // forever.
+    (hasPreviewableSource && presentedSourceKey !== sourceKey);
 
   return (
     <div
@@ -478,151 +562,202 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
               <SceneUpdateHistoryProvider>
                 <NumericSeriesProvider>
                   <RawMessageProvider>
-                    <LogConsoleProvider
-                      budgetAccount={sourceReadBudgetAccount}
-                      session={readyInventory ? session : null}
-                      sourceKey={playbackSource ? sourceAccessKey : null}
-                    >
-                      <DataStreamProvider
-                        expectedSourceKey={
-                          playbackSource ? sourceAccessKey : null
-                        }
+                    <StateActionProvider>
+                      <LogConsoleProvider
+                        budgetAccount={sourceReadBudgetAccount}
+                        session={readyInventory ? session : null}
+                        sourceKey={playbackSource ? sourceAccessKey : null}
                       >
-                        <SourceVideoPlaybackProvider
-                          sourceKey={playbackSource ? sourceAccessKey : null}
+                        <DataStreamProvider
+                          expectedSourceKey={
+                            playbackSource ? sourceAccessKey : null
+                          }
                         >
-                          <SourceResourceBoundary />
-                          <Scene3dViewSettingsProvider
-                            defaultTrackingMode={defaultTrackingMode}
-                            preferredCameraTargetFrameId={
-                              preferredCameraTargetFrameId
-                            }
-                            preferredWorldFrameId={preferredWorldFrameId}
-                            sceneUpAxis={sceneUpAxis}
-                            setDefaultTrackingMode={onDefaultTrackingModeChange}
-                            setPreferredCameraTargetFrameId={
-                              onPreferredCameraTargetFrameIdChange
-                            }
-                            setPreferredWorldFrameId={
-                              onPreferredWorldFrameIdChange
-                            }
-                            setSceneUpAxis={onSceneUpAxisChange}
+                          <SourceVideoPlaybackProvider
+                            sourceKey={playbackSource ? sourceAccessKey : null}
                           >
-                            <ImageAspectRatioProvider
-                              onChange={onImageAspectRatioChange}
+                            <SourceResourceBoundary />
+                            <Scene3dViewSettingsProvider
+                              defaultTrackingMode={defaultTrackingMode}
+                              preferredCameraTargetFrameId={
+                                preferredCameraTargetFrameId
+                              }
+                              preferredWorldFrameId={preferredWorldFrameId}
+                              sceneUpAxis={sceneUpAxis}
+                              setDefaultTrackingMode={
+                                onDefaultTrackingModeChange
+                              }
+                              setPreferredCameraTargetFrameId={
+                                onPreferredCameraTargetFrameIdChange
+                              }
+                              setPreferredWorldFrameId={
+                                onPreferredWorldFrameIdChange
+                              }
+                              setSceneUpAxis={onSceneUpAxisChange}
                             >
-                              <PlaybackShell
-                                key={playbackShellKey}
-                                fileName={fileName}
-                                decorateTrack={decorateTrack}
-                                headerCaption={headerCaption}
-                                headerActions={
-                                  <HeaderActions
-                                    actions={headerActions}
-                                    loading={
-                                      transitioning && !hasTerminalTransition
+                              <ImageAspectRatioProvider
+                                onChange={onImageAspectRatioChange}
+                              >
+                                <PlaybackShell
+                                  key={playbackShellKey}
+                                  fileName={fileName}
+                                  decorateTrack={decorateTrack}
+                                  timelineRulerOverlay={timelineRulerOverlay}
+                                  headerCaption={headerCaption}
+                                  headerActions={
+                                    <HeaderActions
+                                      actions={
+                                        episodeContext &&
+                                        session?.manifest &&
+                                        source ? (
+                                          <>
+                                            {headerActions}
+                                            <EpisodeHeaderActions
+                                              context={episodeContext}
+                                              rawRecords={session.rawRecords}
+                                              recordingFacts={
+                                                session.manifest.recordingFacts
+                                              }
+                                              source={source}
+                                              streams={shellStreams}
+                                              timeRange={
+                                                session.manifest.timeRange
+                                              }
+                                              transformTopology={
+                                                session.manifest
+                                                  .transformTopology
+                                              }
+                                            />
+                                          </>
+                                        ) : (
+                                          headerActions
+                                        )
+                                      }
+                                      loading={
+                                        transitioning && !hasTerminalTransition
+                                      }
+                                    />
+                                  }
+                                  addTileMenu={
+                                    <AddTileMenu
+                                      tileTypes={availableTileTypes}
+                                    />
+                                  }
+                                  timelineReadouts={<TimestampReadout />}
+                                  sceneSources={shellSources}
+                                  mode={playbackTimelineMode}
+                                  deselectFocusedTileOnRepeatSelect={false}
+                                  initialTiles={initialTiles}
+                                  initialManualTileTitles={
+                                    initialManualTileTitles
+                                  }
+                                  autoLayoutStrategy={autoLayoutStrategy}
+                                  initialLayout={initialLayout}
+                                  initialExpandedTileId={initialExpandedTileId}
+                                  resetTiles={resetTiles}
+                                  resetManualTileTitles={
+                                    EMPTY_MANUAL_TILE_TITLES
+                                  }
+                                  resetLayoutStrategy={autoLayoutStrategy}
+                                  tracks={
+                                    tracks && tracks.length > 0
+                                      ? [...tracks]
+                                      : undefined
+                                  }
+                                  defaultPinnedTrackIds={
+                                    defaultPinnedTrackIds &&
+                                    defaultPinnedTrackIds.length > 0
+                                      ? [...defaultPinnedTrackIds]
+                                      : undefined
+                                  }
+                                  pinPersistKey={pinPersistKey}
+                                  onTagDelete={onTagDelete}
+                                  leftSidebar={
+                                    <SettingsSidebar
+                                      onTimelineSamplingRateChange={
+                                        onTimelineSamplingRateChange
+                                      }
+                                      recordingFacts={
+                                        destinationInventory?.recordingFacts
+                                      }
+                                      streams={
+                                        destinationInventory?.streams ?? []
+                                      }
+                                      terminology={
+                                        destinationInventory?.terminology
+                                      }
+                                      timelineSamplingRateHz={
+                                        timelineSamplingRateHz
+                                      }
+                                    />
+                                  }
+                                  mainOverlay={
+                                    hasTerminalTransition ? (
+                                      <PlaybackState
+                                        error={status === "error"}
+                                        text={transitionMessage}
+                                      />
+                                    ) : null
+                                  }
+                                  rightSidebar={
+                                    // `null` explicitly removes the sidebar,
+                                    // so only an absent prop takes the
+                                    // default.
+                                    rightSidebar === undefined
+                                      ? ({ open }) => (
+                                          <RightSidebarWithTrays
+                                            sidebarOpen={open}
+                                          />
+                                        )
+                                      : rightSidebar
+                                  }
+                                  sharedImageWebGpuViews
+                                  defaultRightOpen={false}
+                                  defaultLeftOpen={defaultLeftOpen}
+                                  onLeftOpenChange={onLeftOpenChange}
+                                  leftSidebarWidth={defaultLeftSidebarWidth}
+                                  onLeftSidebarWidthChange={
+                                    onLeftSidebarWidthChange
+                                  }
+                                  existingTags={existingTags}
+                                  onTagCreate={onTagCreate}
+                                  onTagUpdate={onTagUpdate}
+                                  onTimelineDrawerOpenChange={
+                                    onTimelineDrawerOpenChange
+                                  }
+                                  timelineDrawerMaxSize={timelineDrawerMaxSize}
+                                >
+                                  <Streams
+                                    availableTileTypes={availableTileTypes}
+                                    budgetAccount={sourceReadBudgetAccount}
+                                    initialSeekTimeNs={initialSeekTimeNs}
+                                    onPlayheadDataReady={
+                                      handlePlayheadDataReady
                                     }
-                                  />
-                                }
-                                addTileMenu={
-                                  <AddTileMenu tileTypes={availableTileTypes} />
-                                }
-                                timelineExtraActions={<TimestampReadout />}
-                                sceneSources={shellSources}
-                                mode={playbackTimelineMode}
-                                deselectFocusedTileOnRepeatSelect={false}
-                                initialTiles={initialTiles}
-                                initialManualTileTitles={
-                                  initialManualTileTitles
-                                }
-                                autoLayoutStrategy={autoLayoutStrategy}
-                                initialLayout={initialLayout}
-                                initialExpandedTileId={initialExpandedTileId}
-                                resetTiles={resetTiles}
-                                resetManualTileTitles={EMPTY_MANUAL_TILE_TITLES}
-                                resetLayoutStrategy={autoLayoutStrategy}
-                                tracks={
-                                  tracks && tracks.length > 0
-                                    ? [...tracks]
-                                    : undefined
-                                }
-                                defaultPinnedTrackIds={
-                                  defaultPinnedTrackIds &&
-                                  defaultPinnedTrackIds.length > 0
-                                    ? [...defaultPinnedTrackIds]
-                                    : undefined
-                                }
-                                onTagDelete={onTagDelete}
-                                leftSidebar={
-                                  <SettingsSidebar
-                                    onTimelineSamplingRateChange={
-                                      onTimelineSamplingRateChange
-                                    }
-                                    recordingFacts={
-                                      destinationInventory?.recordingFacts
-                                    }
-                                    streams={
-                                      destinationInventory?.streams ?? []
-                                    }
-                                    terminology={
-                                      destinationInventory?.terminology
-                                    }
+                                    session={readyInventory ? session : null}
+                                    source={playbackSource}
                                     timelineSamplingRateHz={
                                       timelineSamplingRateHz
                                     }
                                   />
-                                }
-                                mainOverlay={
-                                  hasTerminalTransition ? (
-                                    <PlaybackState
-                                      error={status === "error"}
-                                      text={transitionMessage}
-                                    />
-                                  ) : null
-                                }
-                                rightSidebar={<RightSidebar />}
-                                sharedImageWebGpuViews
-                                defaultRightOpen={false}
-                                defaultLeftOpen={defaultLeftOpen}
-                                onLeftOpenChange={onLeftOpenChange}
-                                leftSidebarWidth={defaultLeftSidebarWidth}
-                                onLeftSidebarWidthChange={
-                                  onLeftSidebarWidthChange
-                                }
-                                onTagCreate={onTagCreate}
-                                onTagUpdate={onTagUpdate}
-                                onTimelineDrawerOpenChange={
-                                  onTimelineDrawerOpenChange
-                                }
-                                timelineDrawerMaxSize={timelineDrawerMaxSize}
-                              >
-                                <Streams
-                                  availableTileTypes={availableTileTypes}
-                                  budgetAccount={sourceReadBudgetAccount}
-                                  initialSeekTimeNs={initialSeekTimeNs}
-                                  onPlayheadDataReady={handlePlayheadDataReady}
-                                  session={readyInventory ? session : null}
-                                  source={playbackSource}
-                                  timelineSamplingRateHz={
-                                    timelineSamplingRateHz
-                                  }
-                                />
-                                <NetworkHealthTracker
-                                  playback={session?.playback ?? null}
-                                />
-                                <SelectionHotkeys />
-                                <ExtensionRuntimeBoundary>
-                                  {children}
-                                </ExtensionRuntimeBoundary>
-                                <ModalLayoutPersistence
-                                  datasetId={effectiveLayoutScopeKey}
-                                />
-                              </PlaybackShell>
-                            </ImageAspectRatioProvider>
-                          </Scene3dViewSettingsProvider>
-                        </SourceVideoPlaybackProvider>
-                      </DataStreamProvider>
-                    </LogConsoleProvider>
+                                  <NetworkHealthTracker
+                                    playback={session?.playback ?? null}
+                                  />
+                                  <RegisterMcapAudioStreams />
+                                  <SelectionHotkeys />
+                                  <ExtensionRuntimeBoundary>
+                                    {children}
+                                  </ExtensionRuntimeBoundary>
+                                  <ModalLayoutPersistence
+                                    datasetId={effectiveLayoutScopeKey}
+                                  />
+                                </PlaybackShell>
+                              </ImageAspectRatioProvider>
+                            </Scene3dViewSettingsProvider>
+                          </SourceVideoPlaybackProvider>
+                        </DataStreamProvider>
+                      </LogConsoleProvider>
+                    </StateActionProvider>
                   </RawMessageProvider>
                 </NumericSeriesProvider>
               </SceneUpdateHistoryProvider>
@@ -633,6 +768,47 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
     </div>
   );
 };
+
+function EpisodeHeaderActions({
+  context,
+  rawRecords,
+  recordingFacts,
+  source,
+  streams,
+  timeRange,
+  transformTopology,
+}: {
+  readonly context: NonNullable<SourcePlaybackProps["episodeContext"]>;
+  readonly rawRecords: EpisodeSession["rawRecords"];
+  readonly recordingFacts: EpisodeSession["manifest"]["recordingFacts"];
+  readonly source: ByteSourceDescriptor;
+  readonly streams: readonly StreamDescriptor[];
+  readonly timeRange: NonNullable<EpisodeSession["manifest"]>["timeRange"];
+  readonly transformTopology: NonNullable<
+    EpisodeSession["manifest"]
+  >["transformTopology"];
+}) {
+  const actions = useEpisodeHeaderActions();
+  const visibleStreamIds = useVisibleStreamIds();
+  return (
+    <>
+      {actions.map(({ Component, id }) => (
+        <Component
+          datasetId={context.datasetId}
+          key={`${context.datasetId}:${context.sampleId}:${id}`}
+          rawRecords={rawRecords}
+          recordingFacts={recordingFacts}
+          sampleId={context.sampleId}
+          source={source}
+          streams={streams}
+          timeRange={timeRange}
+          transformTopology={transformTopology}
+          visibleStreamIds={visibleStreamIds}
+        />
+      ))}
+    </>
+  );
+}
 
 /** State shared within the current dataset/media-field inspection session. */
 const PlaybackSessionStateProviders: React.FC<{

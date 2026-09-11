@@ -129,6 +129,7 @@ export const MediaTypeFo3dComponent = () => {
   const loadingManager = useMemo(() => new LoadingManager(), []);
 
   const {
+    directPcdWorldTransformsBySampleId,
     foScene,
     isLoading: isParsingFo3d,
     loadError,
@@ -186,6 +187,7 @@ export const MediaTypeFo3dComponent = () => {
       loadingManager,
       cameraLifecycleState,
       isSceneReady,
+      directPcdWorldTransformsBySampleId,
     });
 
   const { shouldRenderMultiPanelView, currentRenderPath } = useFo3dPanelRouting(

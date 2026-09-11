@@ -222,8 +222,9 @@ export function createInlineMcapResourceClient(
       reader.dispose?.();
     }
   };
-  // Exact Browse operations keep one source reader so adjacent selections
-  // share initialized indexes and the reader-owned decompressed-chunk cache.
+  // Exact Browse and metadata-only operations keep one source reader so
+  // adjacent selections share initialized indexes and the reader-owned
+  // decompressed-chunk cache.
   const withCachedReader = async <Value>(
     source: McapReadTimelineRangeRequest["source"],
     signal: AbortSignal,
@@ -372,15 +373,20 @@ export function createInlineMcapResourceClient(
       const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
       return withRawRecordDeadline(
         readOptions?.signal ?? options.readSignal?.current ?? undefined,
-        (signal) =>
-          withRequestReader(request.source, signal, (reader) =>
+        (signal) => {
+          const withReader =
+            request.select === "metadata"
+              ? withCachedReader
+              : withRequestReader;
+          return withReader(request.source, signal, (reader) =>
             readMcapRawMessageRecord({
               reader,
               request,
               signal,
               timeline,
             }),
-          ),
+          );
+        },
       );
     },
 

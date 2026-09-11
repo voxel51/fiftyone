@@ -11,7 +11,7 @@ import type {
   LabelStore,
   StoreSnapshot,
 } from "../store/types";
-import { wholeSampleReset } from "../store/types";
+import { ReconcileOpts, wholeSampleReset } from "../store/types";
 import { registerBridgeLoop } from "../bridge/bridgeLoop";
 import type { AdapterMap, SurfaceBridge } from "../bridge/types";
 import type { EntityId } from "../identity/entityId";
@@ -533,9 +533,12 @@ export class AnnotationEngine {
     }
   }
 
-  reconcilePersisted(results: { sample: string; deltas: JSONDeltas }[]): void {
+  reconcilePersisted(
+    results: { sample: string; deltas: JSONDeltas }[],
+    opts?: ReconcileOpts,
+  ): void {
     for (const { sample, deltas } of results) {
-      this.stores.get(sample)?.reconcilePersisted(deltas);
+      this.stores.get(sample)?.reconcilePersisted(deltas, opts);
     }
   }
 

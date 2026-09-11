@@ -7,6 +7,17 @@ export * from "./src/lib/timeline/use-timeline";
 export * from "./src/lib/timeline/use-timeline-viz-utils";
 export * from "./src/lib/timeline/utils";
 export * from "./src/lib/playback/PlaybackProvider";
+export {
+  useCurrentPublishedFrame,
+  useCurrentPublishedFrameGetter,
+  usePublishCurrentFrame,
+} from "./src/lib/playback/frame-handle";
+export {
+  useIsPlaybackPlaying,
+  usePublishIsPlaying,
+  usePublishPauseHandle,
+  useRequestPlaybackPause,
+} from "./src/lib/playback/pause-handle";
 export * from "./src/lib/playback/playback-store-context";
 export * from "./src/lib/playback/use-playback-state";
 export * from "./src/lib/playback/use-stream";
@@ -23,9 +34,13 @@ export type {
 export * from "./src/lib/tracks/TrackProvider";
 export * from "./src/views/Timeline/Timeline";
 export { default as TimelineWithTracks } from "./src/views/TimelineWithTracks/TimelineWithTracks";
-export type { TimelineWithTracksProps } from "./src/views/TimelineWithTracks/TimelineWithTracks";
+export type {
+  TimelineTracksScroller,
+  TimelineWithTracksProps,
+} from "./src/views/TimelineWithTracks/TimelineWithTracks";
 export type {
   NormalizedEvent,
+  TimelineTrackProps,
   TrackEventMenuItem,
 } from "./src/views/TimelineTrack/TimelineTrack";
 export type {
@@ -43,12 +58,16 @@ export {
   PlaybackProvider,
   useMode,
   usePlayback,
+  useTimelineModeControl,
 } from "./src/lib/playback/PlaybackProvider";
+export type { TimelineModeControl } from "./src/lib/playback/PlaybackProvider";
 export {
   useCurrentTime,
   useDuration,
   useIsPlaying,
   usePlayhead,
+  useViewEnd,
+  useViewStart,
 } from "./src/lib/playback/use-playback-state";
 export {
   createTimelineDisplayConversion,
@@ -58,14 +77,30 @@ export type {
   TimelineDisplayConversion,
   TimelineDisplayValue,
 } from "./src/lib/playback/timeline-display";
+export { laneLeftCalc } from "./src/views/utils/timeline-utils";
+export { formatTime } from "./src/views/TimelineControls/timeline-controls-utils";
 export { usePlaybackStream } from "./src/lib/playback/use-playback-stream";
 export type { AudioAvailability } from "./src/lib/playback/atoms";
 export { useAudioStream } from "./src/lib/playback/use-audio-stream";
+export { useAudio } from "./src/lib/playback/use-audio";
+export { useEffectiveTrackVolume } from "./src/lib/playback/use-audio-state";
+export { usePlaybackStore } from "./src/lib/playback/playback-store-context";
+export { setAudioAvailable } from "./src/lib/playback/store-access";
+export type {
+  AudioContextValue,
+  AudioSourceKind,
+  AudioTrackDescriptor,
+  AudioTrackHandle,
+} from "./src/lib/playback/use-audio";
+export { default as AudioControls } from "./src/views/TimelineControls/AudioControls";
+export { default as TimelineRuler } from "./src/views/TimelineRuler/TimelineRuler";
+export type { TimelineRulerProps } from "./src/views/TimelineRuler/TimelineRuler";
 export {
   usePresentedMediaTime,
   useVideoStream,
 } from "./src/lib/playback/use-video-stream";
 export { useVideoSync } from "./src/lib/playback/use-video-sync";
+export { useVideoElementAudio } from "./src/lib/playback/use-video-audio";
 export { useActivateStream, useStream } from "./src/lib/playback/use-stream";
 export { frameAt } from "./src/lib/playback/utils";
 export { PlaybackStreamBase } from "./src/lib/playback/stream-base";

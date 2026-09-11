@@ -28,7 +28,7 @@ jsx-lexer==2.0.1
 libsass==0.23.0
 myst-parser==5.1.0
 nbsphinx==0.9.8
-pydata-sphinx-theme==0.20.0
+pydata-sphinx-theme==0.21.0
 sphinx-autobuild==2025.8.25
 sphinx-tabs==3.5.0
 sphinx-design==0.7.0
@@ -38,5 +38,5 @@ sphinxcontrib-jquery==4.1
 sphinx-pushfeedback==0.1.8
 sphinx-docsearch==0.3.1
 sphinx-remove-toctrees==1.0.0.post1
-sphinx-autoapi==3.8.0
+sphinx-autoapi==3.8.1
 sphinx-sitemap==2.9.0

@@ -6,3 +6,5 @@ export * from "./errors";
 export * from "./numeric-series";
 /** Public episode-session data-plane contracts. */
 export * from "./session";
+/** Exact single-row state/action inspection contract. */
+export * from "./state-action";

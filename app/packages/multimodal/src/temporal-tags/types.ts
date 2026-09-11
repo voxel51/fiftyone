@@ -1,5 +1,12 @@
 import type { LoadStatus } from "../runtime";
 
+/** Stable REST values shared with the multimodal time-track contract. */
+export const TEMPORAL_TAG_INDEX_TYPE = {
+  SEQUENCE: 1,
+  DURATION_NS: 2,
+  TIMESTAMP_NS: 3,
+} as const;
+
 /** Load state for tag React hooks. */
 export type TemporalTagsStatus = LoadStatus;
 

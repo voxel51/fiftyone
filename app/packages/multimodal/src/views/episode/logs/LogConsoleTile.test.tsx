@@ -184,6 +184,7 @@ vi.mock("@fiftyone/playback", () => ({
 
 vi.mock("@fiftyone/tiling", () => ({
   useSetTileTitle: () => mocks.setTileTitle,
+  useTileId: () => "logs-1",
 }));
 
 vi.mock("@voxel51/voodo", () => ({

@@ -571,9 +571,11 @@ def _apply_image_model_to_frames_single(
                             frame = sample.frames[video_reader.frame_number]
 
                             _field_mapping = {
-                                k: v[len("frames.") :]
-                                if v.startswith("frames.")
-                                else v
+                                k: (
+                                    v[len("frames.") :]
+                                    if v.startswith("frames.")
+                                    else v
+                                )
                                 for k, v in field_mapping.items()
                             }
 
@@ -678,9 +680,11 @@ def _apply_image_model_to_frames_batch(
                             # This will be removed in the future when GetItem/dataloaders support video readers.
                             _frames = [sample.frames[fn] for fn in fns]
                             _field_mapping = {
-                                k: v[len("frames.") :]
-                                if v.startswith("frames.")
-                                else v
+                                k: (
+                                    v[len("frames.") :]
+                                    if v.startswith("frames.")
+                                    else v
+                                )
                                 for k, v in field_mapping.items()
                             }
 
@@ -2139,7 +2143,14 @@ def _parse_batch_size(batch_size, model, use_data_loader):
         batch_size = fo.config.default_batch_size
 
     if batch_size is not None and batch_size > 1 and model.ragged_batches:
-        logger.warning("Model does not support batching")
+        # Not a statement about the model: `ragged_batches` says its
+        # transforms may return differently-shaped tensors, which is a
+        # property of their configuration and often a flag the caller can set
+        logger.warning(
+            "Ignoring batch_size=%d: this model's transforms may return "
+            "tensors of different sizes, which cannot be batched",
+            batch_size,
+        )
         batch_size = None
 
     if use_data_loader and batch_size is None:

@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { render, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { EmbeddingsView } from "./EmbeddingsView";
+import { EmbeddingsView, type EmbeddingsViewHandle } from "./EmbeddingsView";
+import type { EmbeddingsChartCallbacks } from "./EmbeddingsChart";
 import type { EmbeddingPoint } from "./types";
 
 // The chart needs a real WebGL context; for wrapper plumbing tests a
@@ -16,8 +17,11 @@ class MockChart {
   setRenderSettings = vi.fn();
   setInteractionMode = vi.fn();
   resetCamera = vi.fn();
+  projectPoint = vi.fn(() => ({ x: 12, y: 34 }));
   destroy = vi.fn();
-  constructor() {
+  readonly callbacks: EmbeddingsChartCallbacks;
+  constructor(_host: HTMLElement, callbacks: EmbeddingsChartCallbacks) {
+    this.callbacks = callbacks;
     instances.push(this);
   }
 }
@@ -70,12 +74,7 @@ describe("EmbeddingsView prop plumbing", () => {
   });
 
   it("exposes camera reset and selection clearing through the handle", async () => {
-    const ref = {
-      current: null as null | {
-        resetCamera(): void;
-        clearSelection(): void;
-      },
-    };
+    const ref = { current: null as null | EmbeddingsViewHandle };
     render(<EmbeddingsView ref={ref} points={POINTS} />);
     await waitFor(() => expect(instances.length).toBeGreaterThan(0));
     const chart = instances[instances.length - 1];
@@ -87,6 +86,32 @@ describe("EmbeddingsView prop plumbing", () => {
     ref.current?.clearSelection();
     // The explicit clear drops both layers, not just the host one
     expect(chart.clearSelection).toHaveBeenCalled();
+
+    // Host chrome anchored to a point asks the chart where that point is
+    // NOW; the wrapper holds no coordinates of its own
+    expect(ref.current?.projectPoint(1)).toEqual({ x: 12, y: 34 });
+    expect(chart.projectPoint).toHaveBeenCalledWith(1);
+  });
+
+  it("answers no position through a handle whose chart has not loaded", async () => {
+    // The lazy chunk lands a tick after mount; chrome that asks in between
+    // must get "nowhere", never a stale or invented pixel
+    const ref = { current: null as null | EmbeddingsViewHandle };
+    render(<EmbeddingsView ref={ref} points={POINTS} />);
+
+    expect(ref.current?.projectPoint(0)).toBeNull();
+  });
+
+  it("tells the host when the camera moves", async () => {
+    // A point-anchored ring only follows if the host hears about the move
+    const onCameraChange = vi.fn();
+    render(<EmbeddingsView points={POINTS} onCameraChange={onCameraChange} />);
+    await waitFor(() => expect(instances.length).toBeGreaterThan(0));
+    const chart = instances[instances.length - 1];
+
+    chart.callbacks.onCameraChange?.();
+
+    expect(onCameraChange).toHaveBeenCalled();
   });
 
   it("forwards mode changes to the chart", async () => {
@@ -119,6 +144,36 @@ describe("EmbeddingsView prop plumbing", () => {
 
     rerender(<EmbeddingsView points={POINTS} colors={null} />);
     await waitFor(() => expect(chart.setColors).toHaveBeenLastCalledWith(null));
+  });
+
+  it("forwards shared cell-ordinal membership without materializing a mask", async () => {
+    // A facet layout shares ONE ordinal array across cells; the chart fills
+    // its own GPU mask from it, so no per-cell Uint8Array is ever built here
+    const ordinals = Int16Array.from([2, 5]);
+    render(
+      <EmbeddingsView points={POINTS} visible={{ ordinals, ordinal: 5 }} />,
+    );
+    await waitFor(() => expect(instances.length).toBeGreaterThan(0));
+    const chart = instances[instances.length - 1];
+
+    await waitFor(() => expect(chart.setVisible).toHaveBeenCalled());
+    expect(chart.setVisible).toHaveBeenLastCalledWith({ ordinals, ordinal: 5 });
+  });
+
+  it("drops stale cell-ordinal membership whose length mismatches", async () => {
+    const { rerender } = render(<EmbeddingsView points={POINTS} />);
+    await waitFor(() => expect(instances.length).toBeGreaterThan(0));
+    const chart = instances[instances.length - 1];
+    await waitFor(() => expect(chart.setData).toHaveBeenCalled());
+    chart.setVisible.mockClear();
+
+    rerender(
+      <EmbeddingsView
+        points={POINTS}
+        visible={{ ordinals: Int16Array.from([0, 1, 0]), ordinal: 0 }}
+      />,
+    );
+    expect(chart.setVisible).not.toHaveBeenCalled();
   });
 
   it("drops a stale mask whose length mismatches the points", async () => {

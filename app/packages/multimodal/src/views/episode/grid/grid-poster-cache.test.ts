@@ -6,6 +6,7 @@ import {
   defaultGridPosterCacheBudgetBytes,
   gridPosterCacheKey,
   gridPosterFreshness,
+  gridPreviewStateKey,
   pointCloudPoseKey,
   shouldReplaceGridPoster,
   type GridPosterCacheEntry,
@@ -65,25 +66,38 @@ describe("grid poster cache", () => {
   it("copies admitted bytes and stream metadata", () => {
     const bytes = new Uint8Array([1, 2]);
     const streams = ["/camera"];
+    const provider = providerMetadata();
     const cache = createGridPosterCache({ maxSizeBytes: 1_000 });
-    cache.put("copy", { ...entry(bytes), streamSourceNames: streams });
+    cache.put("copy", {
+      ...entry(bytes),
+      provider,
+      streamSourceNames: streams,
+    });
     bytes[0] = 9;
     streams[0] = "/changed";
+    provider.variant = "changed";
 
     expect(cache.get("copy")).toMatchObject({
       bytes: new Uint8Array([1, 2]),
+      provider: { variant: "frame" },
       streamSourceNames: ["/camera"],
     });
   });
 
   it("separates every render-semantic key field", () => {
-    const base = {
+    const previewIdentity = {
       datasetId: "dataset-a",
       mediaField: "recording",
       selectedSourceName: null,
       source: source("one", "etag-a"),
     };
+    const base = { ...previewIdentity, imageFit: "cover" as const };
     const key = gridPosterCacheKey(base);
+    const containKey = gridPosterCacheKey({ ...base, imageFit: "contain" });
+    expect(containKey).not.toBe(key);
+    const stateKey = gridPreviewStateKey(previewIdentity);
+    expect(stateKey).not.toBe(key);
+    expect(stateKey).not.toBe(containKey);
     expect(gridPosterCacheKey({ ...base, datasetId: "dataset-b" })).not.toBe(
       key,
     );
@@ -97,6 +111,9 @@ describe("grid poster cache", () => {
     expect(gridPosterCacheKey({ ...base, posterStartTimeNs: 42n })).not.toBe(
       key,
     );
+    expect(
+      gridPosterCacheKey({ ...base, providerRevision: "revision-a" }),
+    ).not.toBe(key);
     expect(
       gridPosterCacheKey({ ...base, source: source("two", "etag-a") }),
     ).not.toBe(key);
@@ -114,6 +131,7 @@ describe("grid poster cache", () => {
   it("keeps signed access URLs out of persistent poster identity", () => {
     const base = {
       datasetId: "dataset-a",
+      imageFit: "cover" as const,
       mediaField: "recording",
       selectedSourceName: null,
     };
@@ -197,6 +215,46 @@ describe("grid poster cache", () => {
     ).toBe(true);
   });
 
+  it("treats provided quality as static-ready without replacing captured quality", () => {
+    const provided = entry([1], {
+      height: 64,
+      provider: providerMetadata(),
+      sourceKind: "point-cloud",
+      width: 64,
+    });
+    expect(
+      gridPosterFreshness(
+        provided,
+        { height: 512, width: 512 },
+        pointCloudPoseKey(null),
+      ),
+    ).toBe("fresh");
+    expect(
+      gridPosterFreshness(
+        provided,
+        { height: 64, width: 64 },
+        pointCloudPoseKey({ position: [1, 2, 3], target: [0, 0, 0] }),
+      ),
+    ).toBe("stale-pose");
+    expect(
+      shouldReplaceGridPoster(
+        entry([2], { height: 512, width: 512 }),
+        provided,
+      ),
+    ).toBe(false);
+    expect(shouldReplaceGridPoster(provided, entry([2]))).toBe(true);
+    expect(
+      shouldReplaceGridPoster(
+        entry([3], { height: 32, width: 32 }),
+        entry([4], {
+          height: 64,
+          provider: providerMetadata(),
+          width: 64,
+        }),
+      ),
+    ).toBe(false);
+  });
+
   it("uses the fallback and adaptive browser budgets", () => {
     vi.stubGlobal("navigator", {});
     expect(defaultGridPosterCacheBudgetBytes()).toBe(64 * 1024 * 1024);
@@ -228,4 +286,15 @@ function entry(
 
 function source(id: string, etag?: string): ByteSourceDescriptor {
   return { etag, sourceId: id, url: `https://example.test/${id}.mcap` };
+}
+
+function providerMetadata() {
+  return {
+    artifactIdentity: "artifact",
+    id: "test:posters",
+    mediaKind: "image" as const,
+    policyVersion: "image-grid-poster-v1",
+    revision: "revision",
+    variant: "frame",
+  };
 }

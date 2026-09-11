@@ -33,6 +33,9 @@ export function useColorColumn(
   /** A column fetch is in flight — the field's first hit aggregates
    * server-side and can take seconds at scale, so hosts show progress */
   loading: boolean;
+  /** More CHOICES are still coming (see ColorColumnSource.pending), as
+   * opposed to a column being fetched for one of them */
+  choicesLoading: boolean;
   error: string | null;
 } {
   const [choices, setChoices] = useState<string[]>([]);
@@ -55,8 +58,9 @@ export function useColorColumn(
   useEffect(() => {
     // The previous run's fields must not populate the new run's menu
     setChoices([]);
-    if (source) {
-      setChoices(source.choices);
+    const currentSource = sourceRef.current;
+    if (currentSource) {
+      setChoices(currentSource.choices);
       return undefined;
     }
     if (!datasetName || !run) return undefined;
@@ -67,7 +71,10 @@ export function useColorColumn(
     return () => {
       stale = true;
     };
-  }, [datasetName, run, source]);
+    // Through the ref and the semantic key, never the source's identity: an
+    // extension recreates its source every render, and setChoices under an
+    // identity dependency re-rendered into an infinite loop
+  }, [datasetName, run, hasSource, sourceRevision]);
 
   useEffect(() => {
     setValues(null);
@@ -88,13 +95,22 @@ export function useColorColumn(
 
     const currentSource = sourceRef.current;
     if (currentSource) {
+      // Releases this hook's interest in the column when the field is
+      // superseded or the host unmounts, so a cancellable source can stop
+      // working on a color nobody wants anymore
+      const interest = new AbortController();
       currentSource
-        .resolve(colorField, (partial) => !stale && apply(partial))
+        .resolve(
+          colorField,
+          (partial) => !stale && apply(partial),
+          interest.signal,
+        )
         .then((final) => !stale && apply(final))
         .catch((e) => !stale && setError(String(e)))
         .finally(() => !stale && setLoading(false));
       return () => {
         stale = true;
+        interest.abort();
       };
     }
 
@@ -111,5 +127,15 @@ export function useColorColumn(
     };
   }, [datasetName, brainKey, colorField, hasSource, sourceRevision]);
 
-  return { choices, values, meta, loading, error };
+  // Read straight off the source, not held in state: it is a pass-through
+  // flag, and mirroring it into state would leave the spinner a render behind
+  // the list it describes
+  return {
+    choices,
+    values,
+    meta,
+    loading,
+    choicesLoading: Boolean(source?.pending),
+    error,
+  };
 }

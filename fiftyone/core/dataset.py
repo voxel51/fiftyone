@@ -7,33 +7,35 @@ FiftyOne datasets.
 """
 
 from collections import defaultdict
-import copy
-from functools import partial
+from collections.abc import Mapping
 import contextlib
+import copy
+from datetime import datetime
 import fnmatch
+from functools import partial
 import itertools
 import logging
 import numbers
 import os
 import random
 import string
-from datetime import datetime
 from typing import Optional
 
+from bson import DBRef, ObjectId, json_util
 import cachetools
+import mongoengine.errors as moe
+from pymongo import DeleteMany, InsertOne, ReplaceOne, UpdateMany, UpdateOne
+from pymongo.errors import BulkWriteError, CursorNotFound, OperationFailure
+
 import eta.core.serial as etas
 import eta.core.utils as etau
-import mongoengine.errors as moe
-from bson import DBRef, ObjectId, json_util
-from pymongo import DeleteMany, InsertOne, ReplaceOne, UpdateMany, UpdateOne
-from pymongo.errors import BulkWriteError, CursorNotFound
-
 import fiftyone as fo
 import fiftyone.constants as focn
-import fiftyone.core.camera as focam
 import fiftyone.core.annotation as foa
+import fiftyone.core.camera as focam
 import fiftyone.core.collections as foc
 import fiftyone.core.expressions as foe
+from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
 import fiftyone.core.groups as fog
@@ -41,26 +43,28 @@ import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fome
 import fiftyone.core.odm as foo
+from fiftyone.core.odm.dataset import DatasetAppConfig
 import fiftyone.core.sample as fos
+from fiftyone.core.singletons import DatasetSingleton
 import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 import fiftyone.migrations as fomi
-from fiftyone.core.expressions import ViewField as F
-from fiftyone.core.odm.dataset import DatasetAppConfig
-from fiftyone.core.singletons import DatasetSingleton
 
 fot = fou.lazy_import("fiftyone.core.stages")
 foud = fou.lazy_import("fiftyone.utils.data")
 food = fou.lazy_import("fiftyone.operators.delegated")
 foos = fou.lazy_import("fiftyone.operators.store")
 fota = fou.lazy_import("fiftyone.core.tags")
+fmm = fou.lazy_import("fiftyone.multimodal.media_reference.field_model")
 
 
 _SUMMARY_FIELD_KEY = "_summary_field"
 _AUTO_TRANSFORMATION_MAX_INTERMEDIATES = 2
-
 logger = logging.getLogger(__name__)
+
+#: Mongo's error code for dropping an index that is not there
+_INDEX_NOT_FOUND = 27
 
 
 class DatasetNotFoundError(ValueError):
@@ -390,12 +394,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             query = {"_id": oid}
         except:
             oid = None
-            query = {"filepath": id_filepath_slice}
+            if self._contains_media_references():
+                query = {"media_reference.key": id_filepath_slice}
+            else:
+                query = {"filepath": id_filepath_slice}
 
         d = self._sample_collection.find_one(query)
 
         if d is None:
-            field = "ID" if oid is not None else "filepath"
+            if oid is not None:
+                field = "ID"
+            elif self._contains_media_references():
+                field = "media-reference key"
+            else:
+                field = "filepath"
+
             raise KeyError(
                 "No sample found with %s '%s'" % (field, id_filepath_slice)
             )
@@ -521,6 +534,104 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             field_doc._set_created_at(datetime.utcnow())
 
             self._doc.sample_fields[idx] = field_doc
+
+    @property
+    def media_sources(self):
+        """The media sources this dataset records, one per referenced source.
+
+        Each is a dict describing where a source is and what every episode of
+        it shares. A sample's ``media_reference`` is ``<source key>/<episode>``
+        and names one of them.
+
+        The list is a copy; use an importer to record sources.
+        """
+        return list(fmm._media_sources_by_id(self).values())
+
+    def _contains_media_references(self):
+        """Whether this dataset's samples are media-reference-backed: it
+        records at least one media source.
+
+        Read from the roots table, which stays with the document: a source is
+        only ever recorded by interning the root it sits under, so this holds
+        without reading the sources themselves.
+        """
+        return bool(self._doc._media_roots)
+
+    def _record_media_sources(self, entries, overwrite=True):
+        """Records media sources on this dataset, merged by source id. The
+        first recorded source turns the dataset reference-backed.
+
+        An entry naming an absolute ``loc`` is filed under a root: identical
+        roots are stored once, so relocating a whole tree is one edit.
+        """
+        entries = list(entries)
+        if not entries:
+            return
+
+        if not self._contains_media_references():
+            self._adopt_reference_identity()
+
+        fmm._load_media_tables(self._doc)
+        entries = fmm._intern_media_sources(self._doc, entries)
+        _merge_media_sources(self._doc, entries, overwrite=overwrite)
+        fmm._sweep_media_tables(self._doc)
+        self._doc.save()
+
+    def _adopt_reference_identity(self):
+        """Switches an empty filepath dataset to reference identity: the
+        sparse key index replaces the filepath indexes, and filepath leaves
+        the schema."""
+        if len(self) > 0:
+            raise ValueError(
+                "A dataset cannot mix filepath-backed and "
+                "media-reference-backed samples"
+            )
+
+        indexes = self._sample_collection.index_information()
+        matching_indexes = [
+            (name, index)
+            for name, index in indexes.items()
+            if index.get("key") == [("media_reference.key", 1)]
+        ]
+        valid_index = len(matching_indexes) == 1 and all(
+            index.get("sparse") and not index.get("unique", False)
+            for _, index in matching_indexes
+        )
+        if not valid_index:
+            for name, _ in matching_indexes:
+                self._sample_collection.drop_index(name)
+
+            self._sample_collection.create_index(
+                "media_reference.key", sparse=True
+            )
+
+        filepath_indexes = [
+            name
+            for name, index in indexes.items()
+            # Every filepath index is inactive in reference mode, including
+            # compound indexes created before the empty dataset was adopted
+            # as reference-backed
+            if any(field == "filepath" for field, _ in index.get("key", ()))
+        ]
+
+        # the reference identity replaces the filepath in the schema
+        self._doc.sample_fields = [
+            field
+            for field in self._doc.sample_fields
+            if field.name != "filepath"
+        ] + [
+            foo.SampleFieldDocument.from_field(
+                self._sample_doc_cls._fields["media_reference"]
+            )
+        ]
+        self._doc.save()
+        for index_name in filepath_indexes:
+            # a concurrent adoption may already have dropped it
+            try:
+                self._sample_collection.drop_index(index_name)
+            except OperationFailure as e:
+                if e.code != _INDEX_NOT_FOUND:
+                    raise
 
     def _init_frames(self):
         if self._frame_doc_cls is not None:
@@ -3284,6 +3395,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _rename_sample_fields(self, field_mapping, view=None):
         sample_collection = self if view is None else view
+        _validate_media_field_edits(
+            sample_collection,
+            list(field_mapping) + list(field_mapping.values()),
+        )
 
         paths, new_paths = zip(*field_mapping.items())
         self._sample_doc_cls._rename_fields(
@@ -3369,6 +3484,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _clone_sample_fields(self, field_mapping, view=None):
         sample_collection = self if view is None else view
+        _validate_media_field_edits(
+            sample_collection,
+            list(field_mapping) + list(field_mapping.values()),
+        )
 
         paths, new_paths = zip(*field_mapping.items())
         self._sample_doc_cls._clone_fields(sample_collection, paths, new_paths)
@@ -3455,6 +3574,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         sample_collection = self if view is None else view
 
         field_names = _to_list(field_names)
+        _validate_media_field_edits(sample_collection, field_names)
         self._sample_doc_cls._clear_fields(sample_collection, field_names)
 
         fos.Sample._reload_docs(self._sample_collection_name)
@@ -3602,6 +3722,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _delete_sample_fields(self, field_names, error_level):
         field_names = _to_list(field_names)
+        _validate_media_field_edits(self, field_names)
         self._sample_doc_cls._delete_fields(
             field_names, error_level=error_level
         )
@@ -4121,6 +4242,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             the ID of the sample in the dataset
         """
+        # One sample takes the same identity check as a batch: a reference
+        # naming a source this dataset does not record is unresolvable
+        (sample,) = _validate_media_source_iterable(self, [sample])
         sample = self._transform_sample(
             sample,
             expand_schema=expand_schema,
@@ -4178,6 +4302,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         if num_samples is None:
             num_samples = samples
+
+        samples = _validate_media_source_iterable(self, samples)
 
         transform_fn = partial(
             self._transform_sample,
@@ -4283,6 +4409,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             -   a list of IDs of the samples that were added to this dataset
         """
         dicts = [doc for _, doc in samples_and_docs]
+
         try:
             # adds `_id` to each dict
             res = self._sample_collection.insert_many(dicts)
@@ -4309,6 +4436,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         progress=None,
         num_samples=None,
     ):
+        samples = _validate_media_source_iterable(self, samples)
+
         transform_fn = partial(
             self._transform_sample,
             expand_schema=expand_schema,
@@ -4505,7 +4634,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def merge_sample(
         self,
         sample,
-        key_field="filepath",
+        key_field=None,
         skip_existing=False,
         insert_new=True,
         fields=None,
@@ -4520,8 +4649,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """Merges the fields of the given sample into this dataset.
 
         By default, the sample is merged with an existing sample with the same
-        absolute ``filepath``, if one exists. Otherwise a new sample is
-        inserted. You can customize this behavior via the ``key_field``,
+        filepath or media reference key, if one exists. Otherwise a new sample
+        is inserted. You can customize this behavior via the ``key_field``,
         ``skip_existing``, and ``insert_new`` parameters.
 
         The behavior of this method is highly customizable. By default, all
@@ -4547,8 +4676,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             sample: a :class:`fiftyone.core.sample.Sample`
-            key_field ("filepath"): the sample field to use to decide whether
-                to join with an existing sample
+            key_field (None): the sample field to use to decide whether to join
+                with an existing sample. By default, ``filepath`` or
+                ``media_reference`` is used according to the dataset's
+                media identity
             skip_existing (False): whether to skip existing samples (True) or
                 merge them (False)
             insert_new (True): whether to insert new samples (True) or skip
@@ -4581,14 +4712,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dynamic (False): whether to declare dynamic embedded document
                 fields
         """
-        try:
-            if self.media_type == fom.GROUP:
-                view = self.select_group_slices(_allow_mixed=True)
-            else:
-                view = self
+        if key_field is None:
+            key_field = _resolve_media_merge_key(self, sample)
 
+        if self.media_type == fom.GROUP:
+            view = self.select_group_slices(_allow_mixed=True)
+        else:
+            view = self
+
+        try:
             existing_sample = view.one(F(key_field) == sample[key_field])
         except ValueError:
+            existing_sample = None
+
+        if existing_sample is None:
             if insert_new:
                 self.add_sample(
                     sample,
@@ -4616,7 +4753,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def merge_samples(
         self,
         samples,
-        key_field="filepath",
+        key_field=None,
         key_fcn=None,
         skip_existing=False,
         insert_new=True,
@@ -4642,9 +4779,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             See :meth:`add_collection` if you want to add samples from one
             collection to another dataset without a uniqueness constraint.
 
-        By default, samples with the same absolute ``filepath`` are merged, but
-        you can customize this behavior via the ``key_field`` and ``key_fcn``
-        parameters. For example, you could set
+        By default, samples with the same filepath or media reference key are
+        merged, but you can customize this behavior via the ``key_field`` and
+        ``key_fcn`` parameters. For example, you could set
         ``key_fcn = lambda sample: os.path.basename(sample.filepath)`` to merge
         samples with the same base filename.
 
@@ -4674,8 +4811,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection` or
                 iterable of :class:`fiftyone.core.sample.Sample` instances
-            key_field ("filepath"): the sample field to use to decide whether
-                to join with an existing sample
+            key_field (None): the sample field to use to decide whether to join
+                with an existing sample. By default, ``filepath`` or
+                ``media_reference`` is used according to the dataset's
+                media identity
             key_fcn (None): a function that accepts a
                 :class:`fiftyone.core.sample.Sample` instance and computes a
                 key to decide if two samples should be merged. If a ``key_fcn``
@@ -4686,16 +4825,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 them (False)
             fields (None): an optional field or iterable of fields to which to
                 restrict the merge. If provided, fields other than these are
-                omitted from ``samples`` when merging or adding samples. One
-                exception is that ``filepath`` is always included when adding
-                new samples, since the field is required. This can also be a
+                omitted from ``samples`` when merging or adding samples. The
+                active media source is always included when adding new
+                samples, since it is required. This can also be a
                 dict mapping field names of the input collection to field names
                 of this dataset
             omit_fields (None): an optional field or iterable of fields to
                 exclude from the merge. If provided, these fields are omitted
                 from ``samples``, if present, when merging or adding samples.
-                One exception is that ``filepath`` is always included when
-                adding new samples, since the field is required
+                The active media source is always included when adding new
+                samples, since it is required
             merge_lists (True): whether to merge the elements of list fields
                 (e.g., ``tags``) and label list fields (e.g.,
                 :class:`fiftyone.core.labels.Detections` fields) rather than
@@ -4732,6 +4871,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 provided, this is computed (if possible) via ``len(samples)``
                 if needed for progress tracking
         """
+        if (
+            key_fcn is None
+            and key_field is None
+            and isinstance(samples, foc.SampleCollection)
+        ):
+            key_field = _resolve_media_merge_key(self, samples)
         if fields is not None:
             if etau.is_str(fields):
                 fields = [fields]
@@ -4757,7 +4902,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             expand_schema = False
 
-        # If we're merging a collection, use aggregation pipelines
         if isinstance(samples, foc.SampleCollection) and key_fcn is None:
             _merge_samples_pipeline(
                 samples,
@@ -4782,6 +4926,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if key_fcn is None:
             tmp = Dataset()
+            if self._contains_media_references():
+                # The staging dataset must record what this one does, or a
+                # reference-backed sample cannot be staged at all
+                tmp._record_media_sources(
+                    fmm._media_sources_by_id(self).values()
+                )
 
             try:
                 tmp.add_samples(
@@ -6494,7 +6644,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         labels_path=None,
         label_field=None,
         tags=None,
-        key_field="filepath",
+        key_field=None,
         key_fcn=None,
         skip_existing=False,
         insert_new=True,
@@ -6539,9 +6689,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         See :ref:`this guide <loading-common-datasets>` for example usages
         of this method and descriptions of the available dataset types.
 
-        By default, samples with the same absolute ``filepath`` are merged, but
-        you can customize this behavior via the ``key_field`` and ``key_fcn``
-        parameters. For example, you could set
+        By default, samples with the same filepath or media reference key are
+        merged, but you can customize this behavior via the ``key_field`` and
+        ``key_fcn`` parameters. For example, you could set
         ``key_fcn = lambda sample: os.path.basename(sample.filepath)`` to merge
         samples with the same base filename.
 
@@ -6625,8 +6775,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
-            key_field ("filepath"): the sample field to use to decide whether
-                to join with an existing sample
+            key_field (None): the sample field to use to decide whether to join
+                with an existing sample. By default, ``filepath`` or
+                ``media_reference`` is used according to the media source
+                of the samples
             key_fcn (None): a function that accepts a
                 :class:`fiftyone.core.sample.Sample` instance and computes a
                 key to decide if two samples should be merged. If a ``key_fcn``
@@ -6637,16 +6789,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 them (False)
             fields (None): an optional field or iterable of fields to which to
                 restrict the merge. If provided, fields other than these are
-                omitted from ``samples`` when merging or adding samples. One
-                exception is that ``filepath`` is always included when adding
-                new samples, since the field is required. This can also be a
+                omitted from ``samples`` when merging or adding samples. The
+                active media source is always included when adding new
+                samples, since it is required. This can also be a
                 dict mapping field names of the input collection to field names
                 of this dataset
             omit_fields (None): an optional field or iterable of fields to
                 exclude from the merge. If provided, these fields are omitted
-                from imported samples, if present. One exception is that
-                ``filepath`` is always included when adding new samples, since
-                the field is required
+                from imported samples, if present. The active media source is
+                always included when adding new samples, since it is required
             merge_lists (True): whether to merge the elements of list fields
                 (e.g., ``tags``) and label list fields (e.g.,
                 :class:`fiftyone.core.labels.Detections` fields) rather than
@@ -6836,7 +6987,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         labels_path=None,
         label_field=None,
         tags=None,
-        key_field="filepath",
+        key_field=None,
         key_fcn=None,
         skip_existing=False,
         insert_new=True,
@@ -6879,9 +7030,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             attempted via the ``patool`` package, which supports many formats
             but may require that additional system packages be installed.
 
-        By default, samples with the same absolute ``filepath`` are merged, but
-        you can customize this behavior via the ``key_field`` and ``key_fcn``
-        parameters. For example, you could set
+        By default, samples with the same filepath or media reference key are
+        merged, but you can customize this behavior via the ``key_field`` and
+        ``key_fcn`` parameters. For example, you could set
         ``key_fcn = lambda sample: os.path.basename(sample.filepath)`` to merge
         samples with the same base filename.
 
@@ -6963,8 +7114,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
-            key_field ("filepath"): the sample field to use to decide whether
-                to join with an existing sample
+            key_field (None): the sample field to use to decide whether to join
+                with an existing sample. By default, ``filepath`` or
+                ``media_reference`` is used according to the media source
+                of the samples
             key_fcn (None): a function that accepts a
                 :class:`fiftyone.core.sample.Sample` instance and computes a
                 key to decide if two samples should be merged. If a ``key_fcn``
@@ -6975,16 +7128,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 them (False)
             fields (None): an optional field or iterable of fields to which to
                 restrict the merge. If provided, fields other than these are
-                omitted from ``samples`` when merging or adding samples. One
-                exception is that ``filepath`` is always included when adding
-                new samples, since the field is required. This can also be a
+                omitted from ``samples`` when merging or adding samples. The
+                active media source is always included when adding new
+                samples, since it is required. This can also be a
                 dict mapping field names of the input collection to field names
                 of this dataset
             omit_fields (None): an optional field or iterable of fields to
                 exclude from the merge. If provided, these fields are omitted
-                from imported samples, if present. One exception is that
-                ``filepath`` is always included when adding new samples, since
-                the field is required
+                from imported samples, if present. The active media source is
+                always included when adding new samples, since it is required
             merge_lists (True): whether to merge the elements of list fields
                 (e.g., ``tags``) and label list fields (e.g.,
                 :class:`fiftyone.core.labels.Detections` fields) rather than
@@ -7106,7 +7258,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         dataset_importer,
         label_field=None,
         tags=None,
-        key_field="filepath",
+        key_field=None,
         key_fcn=None,
         skip_existing=False,
         insert_new=True,
@@ -7136,9 +7288,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         importing datasets in custom formats by defining your own
         :class:`DatasetImporter <fiftyone.utils.data.importers.DatasetImporter>`.
 
-        By default, samples with the same absolute ``filepath`` are merged, but
-        you can customize this behavior via the ``key_field`` and ``key_fcn``
-        parameters. For example, you could set
+        By default, samples with the same filepath or media reference key are
+        merged, but you can customize this behavior via the ``key_field`` and
+        ``key_fcn`` parameters. For example, you could set
         ``key_fcn = lambda sample: os.path.basename(sample.filepath)`` to merge
         samples with the same base filename.
 
@@ -7183,8 +7335,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
-            key_field ("filepath"): the sample field to use to decide whether
-                to join with an existing sample
+            key_field (None): the sample field to use to decide whether to join
+                with an existing sample. By default, ``filepath`` or
+                ``media_reference`` is used according to the media source
+                of the samples
             key_fcn (None): a function that accepts a
                 :class:`fiftyone.core.sample.Sample` instance and computes a
                 key to decide if two samples should be merged. If a ``key_fcn``
@@ -7195,16 +7349,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 them (False)
             fields (None): an optional field or iterable of fields to which to
                 restrict the merge. If provided, fields other than these are
-                omitted from ``samples`` when merging or adding samples. One
-                exception is that ``filepath`` is always included when adding
-                new samples, since the field is required. This can also be a
+                omitted from ``samples`` when merging or adding samples. The
+                active media source is always included when adding new
+                samples, since it is required. This can also be a
                 dict mapping field names of the input collection to field names
                 of this dataset
             omit_fields (None): an optional field or iterable of fields to
                 exclude from the merge. If provided, these fields are omitted
-                from imported samples, if present. One exception is that
-                ``filepath`` is always included when adding new samples, since
-                the field is required
+                from imported samples, if present. The active media source is
+                always included when adding new samples, since it is required
             merge_lists (True): whether to merge the elements of list fields
                 (e.g., ``tags``) and label list fields (e.g.,
                 :class:`fiftyone.core.labels.Detections` fields) rather than
@@ -7994,6 +8147,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             progress=progress,
             **kwargs,
         )
+
         return dataset
 
     @classmethod
@@ -8631,6 +8785,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         dataset._doc.info = d.get("info", {})
 
+        # A serialized entry names where its source is; recording files it
+        # under this dataset's own table of roots, which a raw assignment
+        # would leave unfiled and unresolvable
+        dataset._record_media_sources(d.get("_media_sources") or [])
+
         dataset._doc.classes = d.get("classes", {})
         dataset._doc.default_classes = d.get("default_classes", [])
 
@@ -8660,12 +8819,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         dataset.save()
 
         def parse_sample(sd):
-            if rel_dir and not os.path.isabs(sd["filepath"]):
+            filepath = sd.get("filepath", None)
+            if rel_dir and filepath and not os.path.isabs(filepath):
                 sd["filepath"] = os.path.join(rel_dir, sd["filepath"])
 
             if (media_type == fom.VIDEO) or (
                 media_type == fom.GROUP
-                and fom.get_media_type(sd["filepath"]) == fom.VIDEO
+                and filepath
+                and fom.get_media_type(filepath) == fom.VIDEO
             ):
                 frames = sd.pop("frames", {})
 
@@ -9430,9 +9591,12 @@ def _create_dataset(
     sample_doc_cls = _create_sample_document_cls(obj, sample_collection_name)
 
     # pylint: disable=no-member
+    # A new dataset is filepath-backed; the reference identity is declared
+    # only when it adopts one
     sample_fields = [
         foo.SampleFieldDocument.from_field(field)
-        for field in sample_doc_cls._fields.values()
+        for name, field in sample_doc_cls._fields.items()
+        if name != "media_reference"
     ]
 
     if _clips:
@@ -9945,7 +10109,14 @@ def _load_dataset(obj, name, virtual=False):
 def _do_load_dataset(obj, name):
     # pylint: disable=no-member
     db = foo.get_db_conn()
-    res = db.datasets.find_one({"name": name})
+    # Media sources and their layouts are read only when something resolves
+    # media, which this document is loaded far too often to pay for. The
+    # roots table stays: it is small and says whether there is anything to
+    # fetch
+    res = db.datasets.find_one(
+        {"name": name},
+        {"_media_sources": 0, "_media_source_layouts": 0},
+    )
     if not res:
         raise DatasetNotFoundError(name)
     dataset_doc = foo.DatasetDocument.from_dict(res)
@@ -10265,7 +10436,24 @@ def _save_view(view, fields=None):
         )
 
     if not all_fields:
-        edited_fields &= set(fields)
+        edited_fields = {
+            e
+            for e in edited_fields
+            if any(e == f or e.startswith(f + ".") for f in fields)
+        }
+
+    media_identity_mode = _get_media_identity_mode(dataset)
+    if media_identity_mode == "reference" and any(
+        isinstance(stage, fot.Mongo) for stage in view._stages
+    ):
+        raise fmm.UnsupportedMediaReferenceOperation(
+            "Saving raw Mongo stages is not supported for media-reference "
+            "datasets"
+        )
+
+    _validate_media_field_edits(
+        dataset, edited_fields, media_identity_mode=media_identity_mode
+    )
 
     for field in edited_fields:
         if dataset._is_read_only_field(field):
@@ -10296,7 +10484,6 @@ def _save_view(view, fields=None):
     #
 
     pipeline = view._pipeline(detach_frames=True, detach_groups=True)
-
     if sample_fields:
         project = {f: True for f in sample_fields}
         project["last_modified_at"] = now
@@ -10376,9 +10563,16 @@ def _merge_dataset_doc(
     merge_info=True,
     overwrite_info=False,
 ):
+    if isinstance(collection_or_doc, foc.SampleCollection):
+        src_doc = collection_or_doc._root_dataset._doc
+    else:
+        src_doc = collection_or_doc
+
     #
     # Merge schemas
     #
+
+    _handle_incoming_media_source(dataset, src_doc)
 
     src_media_type = collection_or_doc.media_type
 
@@ -10393,12 +10587,12 @@ def _merge_dataset_doc(
     if isinstance(collection_or_doc, foc.SampleCollection):
         # Respects filtered schemas, if any
         same_dataset = collection_or_doc._root_dataset is dataset
-        doc = collection_or_doc._root_dataset._doc
+        doc = src_doc
         schema = collection_or_doc.get_field_schema()
         frame_schema = collection_or_doc.get_frame_field_schema() or {}
     else:
         same_dataset = False
-        doc = collection_or_doc
+        doc = src_doc
         schema = {f.name: f.to_field() for f in doc.sample_fields}
         frame_schema = {f.name: f.to_field() for f in doc.frame_fields or []}
 
@@ -10556,6 +10750,21 @@ def _merge_dataset_doc(
             curr_doc.default_skeleton = doc.default_skeleton
 
     curr_doc.save()
+
+
+def _merge_media_sources(doc, sources, overwrite=True):
+    """Merges media-source entries into a dataset document by source id."""
+    by_id = {
+        media_source["id"]: index
+        for index, media_source in enumerate(doc._media_sources)
+    }
+    for media_source in sources:
+        index = by_id.get(media_source["id"])
+        if index is None:
+            by_id[media_source["id"]] = len(doc._media_sources)
+            doc._media_sources.append(dict(media_source))
+        elif overwrite:
+            doc._media_sources[index] = dict(media_source)
 
 
 def _update_no_overwrite(d, dnew):
@@ -10906,22 +11115,30 @@ def _make_merge_samples_generator(
     overwrite=True,
     expand_schema=True,
 ):
-    # When inserting new samples, `filepath` cannot be excluded
+    # When inserting new samples, their media identity cannot be excluded
     if insert_new:
+        identity_field = (
+            "media_reference"
+            if dataset._contains_media_references()
+            else "filepath"
+        )
+
         if isinstance(fields, dict):
             insert_fields = fields.copy()
-            insert_fields["filepath"] = "filepath"
+            insert_fields[identity_field] = identity_field
         elif fields is not None:
             insert_fields = fields.copy()
-            if "filepath" not in insert_fields:
-                insert_fields = ["filepath"] + insert_fields
+            if identity_field not in insert_fields:
+                insert_fields = [identity_field] + insert_fields
         else:
             insert_fields = None
 
         insert_omit_fields = omit_fields
         if insert_omit_fields is not None:
             insert_omit_fields = [
-                f for f in insert_omit_fields if f != "filepath"
+                field
+                for field in insert_omit_fields
+                if field != identity_field
             ]
 
     for sample in samples:
@@ -11016,6 +11233,11 @@ def _merge_samples_pipeline(
     default_fields.discard("id")
 
     sample_pipeline = []
+    identity_field = (
+        "media_reference"
+        if src_collection._contains_media_references()
+        else "filepath"
+    )
 
     if fields is not None:
         project = {key_field: True}
@@ -11031,7 +11253,10 @@ def _merge_samples_pipeline(
         if insert_new:
             # Must include default fields when new samples may be inserted.
             # Any extra fields here are omitted in `when_matched` pipeline
-            project["filepath"] = True
+            if key_field == "media_reference":
+                project.pop(key_field, None)
+
+            project[identity_field] = True
             project["_rand"] = True
             project["_media_type"] = True
 
@@ -11748,6 +11973,206 @@ def _get_media_type(sample):
             return fom.GROUP
 
     return sample.media_type
+
+
+def _resolve_media_merge_key(dataset, samples):
+    mode = _get_media_identity_mode(samples)
+    if mode is None:
+        mode = _get_media_identity_mode(dataset)
+
+    if mode == "reference":
+        return "media_reference"
+
+    return "filepath"
+
+
+def _handle_incoming_media_source(dataset, samples):
+    """An incoming collection keeps the dataset to one media identity, and a
+    reference-backed one brings its media sources along."""
+    mode = _get_media_identity_mode(samples)
+    if mode is None:
+        return
+
+    if mode == "filepath":
+        if dataset._contains_media_references():
+            raise ValueError(
+                "A dataset cannot mix filepath-backed and "
+                "media-reference-backed samples"
+            )
+
+        return
+
+    _adopt_media_sources(dataset, samples)
+    if not dataset._contains_media_references():
+        raise ValueError(
+            "Dataset '%s' records no media sources. Add a source with "
+            "add_dir(), or add samples from a dataset that records theirs; "
+            "a reference resolves only through a recorded source"
+            % dataset.name
+        )
+
+
+class _MediaTables:
+    """The tables a document dict files its sources under, for a dict that is
+    written to the database whole rather than through a dataset."""
+
+    def __init__(self):
+        self._media_roots = []
+        self._media_source_layouts = []
+
+
+def _file_dict_media_sources(dataset_dict):
+    """Files a document dict's source entries under its own tables.
+
+    A bundle names where each source is and how it is read; the dataset
+    stores each of those once and names it, and this dict is written to the
+    database whole, so the filing has to happen here rather than through the
+    dataset.
+    """
+    media_sources = dataset_dict.get("_media_sources") or []
+    if not any("loc" in media_source for media_source in media_sources):
+        return
+
+    tables = _MediaTables()
+    dataset_dict["_media_sources"] = fmm._intern_media_sources(
+        tables, media_sources
+    )
+    dataset_dict["_media_roots"] = tables._media_roots
+    dataset_dict["_media_source_layouts"] = tables._media_source_layouts
+
+
+def _adopt_media_sources(dataset, samples):
+    """Carries the media sources of another dataset, or of a collection of its
+    samples, into this dataset, so their references stay resolvable wherever
+    the samples land. Each sample carries its own reference."""
+    # Entries carry where their source is, not the root id its own dataset
+    # files it under; recording files them under this dataset's roots
+    if isinstance(samples, foc.SampleCollection):
+        media_sources = fmm._media_sources_by_id(
+            samples._root_dataset
+        ).values()
+    elif isinstance(samples, foo.DatasetDocument):
+        media_sources = fmm._located_media_sources(samples)
+    elif isinstance(samples, dict):
+        media_sources = samples.get("_media_sources") or []
+    else:
+        return
+
+    media_sources = list(media_sources)
+
+    if not media_sources:
+        return
+
+    recorded = fmm._media_sources_by_id(dataset)
+    new_media_sources = [
+        media_source
+        for media_source in media_sources
+        if media_source.get("id") not in recorded
+    ]
+    if new_media_sources:
+        dataset._record_media_sources(new_media_sources, overwrite=False)
+
+
+def _get_media_identity_mode(samples):
+    if isinstance(samples, (fos.Sample, fos.SampleView)):
+        if samples._doc.get_field("media_reference") is not None:
+            return "reference"
+
+        return "filepath"
+
+    if isinstance(samples, foc.SampleCollection):
+        if samples._contains_media_references():
+            return "reference"
+
+        return "filepath"
+
+    if isinstance(samples, foo.DatasetDocument):
+        # the roots table stays with a lean-loaded document; its sources are
+        # read only when something resolves media
+        return "reference" if samples._media_roots else "filepath"
+
+    if isinstance(samples, dict):
+        return "reference" if samples.get("_media_sources") else "filepath"
+
+    return None
+
+
+def _validate_media_source_iterable(dataset, samples):
+    """One identity check per add: the first sample says whether the batch is
+    file-backed or reference-backed, and a reference-backed batch from another
+    dataset brings that dataset's media sources along. The rest of the samples
+    are not read."""
+    samples = iter(samples)
+    first = next(samples, None)
+    if first is None:
+        return
+
+    mode = _get_media_identity_mode(first)
+    if mode == "filepath" and dataset._contains_media_references():
+        raise ValueError(
+            "A dataset cannot mix filepath-backed and "
+            "media-reference-backed samples"
+        )
+
+    if mode != "reference":
+        yield first
+        yield from samples
+        return
+
+    src_dataset = getattr(first, "_dataset", None)
+    if src_dataset is not None and src_dataset._doc.id != dataset._doc.id:
+        _adopt_media_sources(dataset, src_dataset)
+
+    if not dataset._contains_media_references():
+        raise ValueError(
+            "Dataset '%s' records no media sources. Add a source with "
+            "add_dir(), or add samples from a dataset that records "
+            "theirs; a reference resolves only through a recorded source"
+            % dataset.name
+        )
+
+    # Read once, checked per sample as it streams past: a batch is only as
+    # resolvable as its least resolvable reference
+    recorded = fmm._recorded_media_source_ids(dataset)
+    yield _validated_media_source(dataset, first, recorded)
+    for sample in samples:
+        yield _validated_media_source(dataset, sample, recorded)
+
+
+def _validated_media_source(dataset, sample, recorded):
+    """The sample, once it is reference-backed and its reference names a
+    source the dataset records. Only the batch's first sample decided the
+    mode, so a later sample of the other kind is caught here."""
+    reference = getattr(sample, "media_reference", None)
+    if reference is None:
+        raise ValueError(
+            "A dataset cannot mix filepath-backed and "
+            "media-reference-backed samples"
+        )
+
+    source_id = getattr(reference, "source_id", None)
+    if source_id is not None and source_id not in recorded:
+        raise ValueError(
+            "Dataset '%s' does not record media source '%s'. Add the source "
+            "with add_dir() rather than add_samples(), so the dataset records "
+            "where its bytes are" % (dataset.name, source_id)
+        )
+
+    return sample
+
+
+def _validate_media_field_edits(
+    sample_collection, field_names, media_identity_mode=None
+):
+    roots = {field.split(".", 1)[0] for field in field_names}
+    if media_identity_mode is None:
+        media_identity_mode = _get_media_identity_mode(sample_collection)
+
+    reference_mode = media_identity_mode == "reference"
+    if "media_reference" in roots or ("filepath" in roots and reference_mode):
+        raise fmm.UnsupportedMediaReferenceOperation(
+            "Media source fields cannot be edited on reference-backed samples"
+        )
 
 
 def _get_group_field(schema):

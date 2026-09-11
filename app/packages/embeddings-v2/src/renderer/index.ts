@@ -18,6 +18,7 @@ export type {
   Bounds,
   CameraAdapter,
   CameraAdapterFactory,
+  CellMembership,
   EmbeddingPoint,
   HoverHit,
   InteractionMode,

@@ -5,6 +5,7 @@ Session definitions for interacting with the FiftyOne App.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import types
 
 from .session import close_app, launch_app, Session

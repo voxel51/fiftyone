@@ -142,6 +142,7 @@ export async function readMcapRawMessageRecord({
   };
 
   const selected = await selectMessageAtOrBefore({
+    metadataOnly: request.select === "metadata",
     reader,
     timeline,
     timeNs: request.timeNs,
@@ -155,29 +156,35 @@ export async function readMcapRawMessageRecord({
       ...base,
       status: "empty",
       validFromNs: 0n,
-      validUntilNs: await probeNextMessageTimeNs({
-        afterNs: request.timeNs,
-        fallbackNs: request.timeNs + FALLBACK_VALIDITY_STEP_NS,
-        reader,
-        timeline,
-        topic: topicChannel.topic,
-        channelId: topicChannel.id,
-        signal,
-      }),
+      validUntilNs:
+        request.select === "metadata"
+          ? request.timeNs + FALLBACK_VALIDITY_STEP_NS
+          : await probeNextMessageTimeNs({
+              afterNs: request.timeNs,
+              fallbackNs: request.timeNs + FALLBACK_VALIDITY_STEP_NS,
+              reader,
+              timeline,
+              topic: topicChannel.topic,
+              channelId: topicChannel.id,
+              signal,
+            }),
     };
   }
 
   const { entry, message } = selected;
   const messageTimeNs = timeline.messageTimeNs(message);
-  const validUntilNs = await probeNextMessageTimeNs({
-    afterNs: messageTimeNs,
-    fallbackNs: request.timeNs + FALLBACK_VALIDITY_STEP_NS,
-    reader,
-    timeline,
-    topic: topicChannel.topic,
-    channelId: topicChannel.id,
-    signal,
-  });
+  const validUntilNs =
+    request.select === "metadata"
+      ? messageTimeNs + FALLBACK_VALIDITY_STEP_NS
+      : await probeNextMessageTimeNs({
+          afterNs: messageTimeNs,
+          fallbackNs: request.timeNs + FALLBACK_VALIDITY_STEP_NS,
+          reader,
+          timeline,
+          topic: topicChannel.topic,
+          channelId: topicChannel.id,
+          signal,
+        });
 
   return rawRecordResultForMessage({
     base,
@@ -188,6 +195,7 @@ export async function readMcapRawMessageRecord({
     message,
     prune: request.prune,
     reader,
+    select: request.select,
     validFromNs: messageTimeNs,
     validUntilNs,
   });
@@ -241,6 +249,7 @@ function rawRecordResultForMessage({
   message,
   prune,
   reader,
+  select,
   validFromNs,
   validUntilNs,
 }: {
@@ -254,10 +263,10 @@ function rawRecordResultForMessage({
   readonly message: McapRawMessage;
   readonly prune?: McapReadRawMessageRecordRequest["prune"];
   readonly reader: McapIndexedReaderLike;
+  readonly select?: McapReadRawMessageRecordRequest["select"];
   readonly validFromNs: bigint;
   readonly validUntilNs: bigint;
 }): McapRawMessageRecordResult {
-  assertRawRecordMessageInputBound(message.data.byteLength);
   // A topic can span channels with different schemas; decode the exact
   // message through its own channel rather than the topic representative.
   const channel = reader.channelsById.get(message.channelId);
@@ -279,6 +288,10 @@ function rawRecordResultForMessage({
     validFromNs,
     validUntilNs,
   };
+  if (select === "metadata") {
+    return { ...metadata, status: "ok" };
+  }
+  assertRawRecordMessageInputBound(message.data.byteLength);
   const decoderResolution = genericRecordDecoderResolutionForChannel(
     reader,
     channel,
@@ -319,6 +332,7 @@ function rawRecordResultForMessage({
  */
 async function selectMessageAtOrBefore({
   channelId,
+  metadataOnly,
   reader,
   timeline,
   timeNs,
@@ -326,6 +340,7 @@ async function selectMessageAtOrBefore({
   signal,
 }: {
   readonly channelId: number;
+  readonly metadataOnly: boolean;
   readonly reader: McapIndexedReaderLike;
   readonly timeline: McapTimelineStrategy;
   readonly timeNs: bigint;
@@ -374,6 +389,7 @@ async function selectMessageAtOrBefore({
       return selectMessageForIndexedEntries({
         candidates,
         channelId,
+        metadataOnly,
         reader,
         signal,
         topic,
@@ -522,12 +538,14 @@ function assertExactIndexedEntryAddressable(
 async function selectMessageForIndexedEntries({
   candidates,
   channelId,
+  metadataOnly,
   reader,
   signal,
   topic,
 }: {
   readonly candidates: readonly McapIndexedMessageTime[];
   readonly channelId: number;
+  readonly metadataOnly: boolean;
   readonly reader: McapIndexedReaderLike;
   readonly signal?: AbortSignal;
   readonly topic: string;
@@ -541,7 +559,9 @@ async function selectMessageForIndexedEntries({
     let selectedIndex = -1;
     for (const [index, message] of messages.entries()) {
       throwIfAborted(signal);
-      assertRawRecordMessageInputBound(message.data.byteLength);
+      if (!metadataOnly) {
+        assertRawRecordMessageInputBound(message.data.byteLength);
+      }
       if (message.channelId !== channelId) continue;
       const selected = messages[selectedIndex];
       if (!selected || isPreferredSameTimeMessage(message, selected)) {
@@ -587,7 +607,9 @@ async function selectMessageForIndexedEntries({
       throwIfAborted(signal);
       materializedMessageCount += 1;
       materializedBytes += message.data.byteLength;
-      assertRawRecordMessageInputBound(message.data.byteLength);
+      if (!metadataOnly) {
+        assertRawRecordMessageInputBound(message.data.byteLength);
+      }
       assertRawRecordFallbackWorkBound(
         materializedMessageCount,
         materializedBytes,

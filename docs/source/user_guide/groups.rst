@@ -1070,6 +1070,10 @@ If the group contains 3D slices, the righthand side of the modal will contain a
    :alt: groups-modal
    :align: center
 
+When a group contains multiple direct PCD slices, you can use
+:ref:`static transforms <grouped-pcd-world-alignment>` to display their point
+clouds and 3D cuboids in a shared world frame.
+
 By default, the filters sidebar shows statistics for **only** the group slice
 that currently has focus in the grid/modal. In the grid view, the active slice
 is denoted by the selector in the upper-right corner of the grid, and in the

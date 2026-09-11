@@ -79,9 +79,11 @@ export function useTimelineSections(sections: readonly TimelineSection[]): {
 
     const headerIds = new Set<string>();
     const sectionByChildId = new Map<string, string>();
+    const sectionLabelById = new Map<string, string>();
     const tracks: Track[] = [];
     for (const section of nonEmpty) {
       const header = sectionHeader(section);
+      sectionLabelById.set(header.id, section.label);
       if (sourceByTrackId.has(header.id)) {
         throw new Error(
           `Timeline section header id collides with a track: ${header.id}`,
@@ -110,6 +112,16 @@ export function useTimelineSections(sections: readonly TimelineSection[]): {
 
         const headerId = sectionByChildId.get(track.id);
         const sourceDecoration = decorateSourceTrack(track, pinned);
+        if (pinned && headerId) {
+          // The pinned list is flat, so the header that would have said which
+          // group this row belongs to is not above it any more. Name the
+          // section beside the row instead.
+          return {
+            ...sourceDecoration,
+            secondaryLabel:
+              sourceDecoration.secondaryLabel ?? sectionLabelById.get(headerId),
+          };
+        }
         if (!pinned && headerId) {
           return {
             ...sourceDecoration,

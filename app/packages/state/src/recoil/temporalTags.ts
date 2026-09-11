@@ -1,7 +1,7 @@
 import { getFetchFunctionExtended } from "@fiftyone/utilities";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { atom, selector, useRecoilValue, useSetRecoilState } from "recoil";
-import { filters } from "./filters";
+import { useActiveFilterValues } from "./filters";
 import { isModalActive } from "./modal";
 import { activeField } from "./schema";
 import { datasetId } from "./selectors";
@@ -82,29 +82,41 @@ export const useSyncTemporalTagResults = (): void => {
   const modalActive = useRecoilValue(isModalActive);
   const wasModalActive = useRef(modalActive);
 
+  // Shared across both call sites below (mount/dataset-change and
+  // modal-close), which can overlap: the dataset-change effect can still be
+  // in flight when the modal closes and re-triggers `load`. A `cancelled`
+  // flag scoped to a single call can't see a *later* call — only this
+  // counter, bumped by every call, can tell an in-flight response that it is
+  // no longer the latest one and let it drop its result instead of
+  // clobbering fresher data.
+  const requestGenerationRef = useRef(0);
+
   const load = useCallback(() => {
+    const generation = ++requestGenerationRef.current;
+    const isStale = () => requestGenerationRef.current !== generation;
+
     if (!currentDatasetId) {
       // No active dataset — clear any stale results from a prior one.
       setResults({ results: [], count: null });
-      return undefined;
+      return;
     }
 
-    let cancelled = false;
+    // Clear the prior dataset's results immediately — otherwise
+    // `useTemporalTagValues` keeps returning the old dataset's vocabulary
+    // until this fetch resolves.
+    setResults({ results: [], count: null });
+
     fetchTemporalTagResults(currentDatasetId)
       .then((results) => {
-        if (!cancelled) {
+        if (!isStale()) {
           setResults(results);
         }
       })
       .catch(() => {
-        if (!cancelled) {
+        if (!isStale()) {
           setResults({ results: [], count: null });
         }
       });
-
-    return () => {
-      cancelled = true;
-    };
     // `setResults` is a stable Recoil setter.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentDatasetId]);
@@ -117,7 +129,7 @@ export const useSyncTemporalTagResults = (): void => {
   useEffect(() => {
     const closed = wasModalActive.current && !modalActive;
     wasModalActive.current = modalActive;
-    return closed ? load() : undefined;
+    if (closed) load();
   }, [modalActive, load]);
 };
 
@@ -128,23 +140,29 @@ export const useTemporalTagsFieldActive = (): boolean =>
   useRecoilValue(activeField({ modal: false, path: TEMPORAL_TAGS_FIELD }));
 
 /**
+ * Every temporal-tag value defined on the current dataset. Populated by
+ * {@link useSyncTemporalTagResults}; empty until that has run, so callers
+ * that need it should call the sync hook too.
+ */
+export const useTemporalTagValues = (): string[] => {
+  const { results } = useRecoilValue(temporalTagResults);
+  return useMemo(() => {
+    const values = results
+      .map(({ value }) => value)
+      .filter((value): value is string => !!value);
+    return values.length ? values : NO_VALUES;
+  }, [results]);
+};
+
+/**
  * Tag values the grid is currently filtering *for* via the temporal-tags
  * filter — inclusive selections only (empty when the filter is unset or set to
  * exclude). Used to auto-pin the matching timeline tracks when a sample is
  * opened from a temporal-tag-filtered grid.
+ *
+ * Nothing here is tag-specific beyond the path, so the body lives in
+ * `filters.ts` as {@link useActiveFilterValues} and is shared with the other
+ * interval sources that pin the same way.
  */
-export const useActiveTemporalTagFilterValues = (): string[] => {
-  const current = useRecoilValue(filters);
-  return useMemo(() => {
-    const filter = current?.[TEMPORAL_TAGS_FIELD] as
-      | { values?: (string | null)[]; exclude?: boolean }
-      | undefined;
-    if (!filter || filter.exclude) {
-      return NO_VALUES;
-    }
-    const values = (filter.values ?? []).filter(
-      (value): value is string => typeof value === "string",
-    );
-    return values.length ? values : NO_VALUES;
-  }, [current]);
-};
+export const useActiveTemporalTagFilterValues = (): string[] =>
+  useActiveFilterValues(TEMPORAL_TAGS_FIELD);

@@ -19,6 +19,26 @@ export interface ExtensionRegistry<Extension extends OrderedExtension> {
 }
 
 /**
+ * How a domain answers a second registration claiming an id it already holds.
+ *
+ * `throw` (the default) treats it as an architectural error, so product
+ * behavior can never depend on import order.
+ *
+ * `replace` lets the newcomer win. Pick it only for a domain whose
+ * registration module is evaluated by a bundler that gives it no disposal
+ * hook: `import.meta.hot` compiles to `undefined` under Next/SWC, so such a
+ * module cannot unregister itself before its replacement is evaluated, and a
+ * re-evaluation would otherwise throw on a re-registration it has no way to
+ * avoid. Placement stays `order`-driven either way — replacement changes only
+ * which implementation answers an id, never where it renders.
+ */
+export type DuplicateIdPolicy = "throw" | "replace";
+
+export interface ExtensionRegistryOptions {
+  readonly duplicateIdPolicy?: DuplicateIdPolicy;
+}
+
+/**
  * Creates a deterministic registry backed by a stable global symbol slot.
  *
  * The slot is supplied by each public extension domain because its exact name
@@ -27,6 +47,7 @@ export interface ExtensionRegistry<Extension extends OrderedExtension> {
 export function createExtensionRegistry<Extension extends OrderedExtension>(
   slot: symbol,
   duplicateKind: string,
+  { duplicateIdPolicy = "throw" }: ExtensionRegistryOptions = {},
 ): ExtensionRegistry<Extension> {
   const globalRegistry = globalThis as Record<PropertyKey, unknown>;
   const state = (globalRegistry[slot] ??=
@@ -49,7 +70,7 @@ export function createExtensionRegistry<Extension extends OrderedExtension>(
     register(extension) {
       const existing = state.extensions.get(extension.id);
       if (existing === extension) return () => undefined;
-      if (existing) {
+      if (existing && duplicateIdPolicy === "throw") {
         throw new Error(`Duplicate ${duplicateKind} id: ${extension.id}`);
       }
 

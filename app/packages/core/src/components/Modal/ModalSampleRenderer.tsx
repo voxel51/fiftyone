@@ -3,6 +3,7 @@ import {
   getComponent,
   getMatchingSampleRenderer,
   getSampleRendererComponent,
+  hasSampleRendererSource,
   isSampleRendererModalPersistent,
   PluginComponentType,
   SampleRendererProps,
@@ -114,7 +115,11 @@ export const ModalSampleRenderer = React.memo(
       ? getComponent<SampleRendererProps>(matchedRenderer.name)
       : null;
 
-    if (!matchedRenderer || !ctx.media.url || !canonicalRenderer) {
+    if (
+      !matchedRenderer ||
+      !hasSampleRendererSource(ctx.media) ||
+      !canonicalRenderer
+    ) {
       return <MetadataLooker sample={sample} />;
     }
 

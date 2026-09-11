@@ -37,6 +37,7 @@ import { useMapTileSettings, useSetMapTileSettings } from "./tile-state";
 import { useMapViewportScope } from "../viewport/context";
 import MapTileSettings from "./MapTileSettings";
 import { usePublishFullHistoryStreams } from "../../playback/full-history-interests";
+import { usePublishVisibleStreams } from "../../stream-discovery/visible-streams";
 
 const MapTile: React.FC<EpisodeTileProps> = () => {
   const tileId = useTileId();
@@ -76,6 +77,7 @@ const MapTile: React.FC<EpisodeTileProps> = () => {
     () => allStreams.filter((stream) => enabledStreams.has(stream)),
     [allStreams, enabledStreams],
   );
+  usePublishVisibleStreams(visibleStreams);
   usePublishFullHistoryStreams("location", visibleStreams);
   const locationFrames =
     useStreamContentFrames<LocationVisualization>(visibleStreams);

@@ -163,3 +163,9 @@
   top: -3px;
   width: 6px;
 }
+
+/* Layout-neutral: the wrapper exists only to catch right-clicks, so it must
+   not become a box between the ruler and whatever lays the ruler out. */
+.contextMenuWrap {
+  display: contents;
+}

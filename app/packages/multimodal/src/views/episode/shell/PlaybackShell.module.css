@@ -21,8 +21,11 @@
 
 /* The shared canvas sits below the mosaic DOM. Its tracked views can only
    show through when the window shell stops painting an opaque card; tile
-   bodies that do not use the shared stage retain their own backgrounds. */
-.sharedViewStage :global(.mosaic .mosaic-window) {
+   bodies that do not use the shared stage retain their own backgrounds.
+   The doubled class out-specifies the tiling package's equal-specificity
+   card background: webpack orders extracted CSS chunks per build, so an
+   order-decided tie made production builds paint tiles opaque. */
+.sharedViewStage.sharedViewStage :global(.mosaic .mosaic-window) {
   background: transparent;
 }
 

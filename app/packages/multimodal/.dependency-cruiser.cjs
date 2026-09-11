@@ -10,18 +10,20 @@ const DECODERS = `${SRC}decoders/`;
 const ENTERPRISE = `${SRC}enterprise/`;
 const EPISODE = `${SRC}views/episode/`;
 const EPISODE_INDEX = `${EPISODE}index\\.ts$`;
+const EPISODE_SETTINGS_CONTROLS_INDEX = `${EPISODE}settings/controls/index\\.ts$`;
 const EPISODE_MAP_RENDERING = `${EPISODE}map/rendering/`;
 const EXTENSIONS = `${SRC}extensions/`;
+const GRID_OVERLAY = `${SRC}grid-overlay/`;
 const EXTENSION_HOST = `${EXTENSIONS}host/`;
 const INJECT = `${SRC}inject/`;
 const INJECT_ENTRY = `${INJECT}index\\.ts$`;
 const IR = `${SRC}ir/`;
 const OBSERVABILITY = `${SRC}observability/`;
+const AUDIO = `${SRC}audio/`;
 const PORTS = `${SRC}ports/`;
 const QUERY = `${SRC}query/`;
 const RUNTIME = `${SRC}runtime/`;
-const POINT_CLOUD_RUNTIME_LEAVES =
-  `${RUNTIME}point-cloud-(channel-encoding|render-payload)\\.ts$`;
+const POINT_CLOUD_RUNTIME_LEAVES = `${RUNTIME}point-cloud-(channel-encoding|render-payload)\\.ts$`;
 const SCENE_INVENTORY = `${SRC}scene-inventory/`;
 const SCHEMAS = `${SRC}schemas/`;
 const STREAM_SELECTION = `${SRC}stream-selection/`;
@@ -35,9 +37,12 @@ const VIEW_SESSION = `${VIEWS}session/`;
 const VISUALIZATION = `${SRC}visualization/`;
 
 const ENTERPRISE_SHARED_FACADES =
-  `${SRC}(extensions/(timeline|tiles)/(index|runtime)\\.ts$|` +
-  `extensions/mcap-explorer/index\\.ts$|` +
-  `query/bytes/index\\.ts$|visualization/index\\.ts$)`;
+  `${SRC}(extensions/(grid-posters|timeline|tiles)/(index|runtime)\\.ts$|` +
+  `extensions/episode-intervals/index\\.ts$|` +
+  `extensions/(mcap-explorer|episode-actions)/index\\.ts$|` +
+  `ir/index\\.ts$|query/bytes/index\\.ts$|temporal-tags/index\\.ts$|` +
+  `utils/(bigint|cancellation|relative-time)\\.ts$|` +
+  `views/episode/settings/controls/index\\.ts$|visualization/index\\.ts$)`;
 const FORMAT_VENDORS =
   "(^|/)node_modules/(@mcap|@foxglove|hyparquet|mp4box)(/|$)|" +
   "^(@mcap/|@foxglove/|hyparquet$|mp4box$)";
@@ -180,7 +185,7 @@ module.exports = {
       severity: "error",
       from: {
         path: SRC,
-        pathNot: `${VIEWS}|${INJECT}|${TEST_MODULE}`,
+        pathNot: `${VIEWS}|${INJECT}|${ENTERPRISE}|${TEST_MODULE}`,
       },
       to: { path: VIEWS, reachable: true },
     },
@@ -201,7 +206,10 @@ module.exports = {
         path: SRC,
         pathNot: `${EPISODE}|${VIEWS_ENTRY}|${TEST_MODULE}`,
       },
-      to: { path: EPISODE, pathNot: EPISODE_INDEX },
+      to: {
+        path: EPISODE,
+        pathNot: `${EPISODE_INDEX}|${EPISODE_SETTINGS_CONTROLS_INDEX}`,
+      },
     },
     {
       // Keep episode implementation domains off their own public barrel so
@@ -219,8 +227,7 @@ module.exports = {
       from: { path: EPISODE_MAP_RENDERING, pathNot: TEST_MODULE },
       to: {
         path: SRC,
-        pathNot:
-          `${EPISODE}map/|${VISUALIZATION}|${IR}|${OBSERVABILITY}|${UTILS}`,
+        pathNot: `${EPISODE}map/|${VISUALIZATION}|${IR}|${OBSERVABILITY}|${UTILS}`,
       },
     },
     {
@@ -233,6 +240,16 @@ module.exports = {
         path: SRC,
         pathNot: `${SRC}(views/session|runtime|ports|ir|utils)/`,
       },
+    },
+
+    {
+      // Keep format-neutral audio (PCM -> peaks, Web Audio playback)
+      // independent of any container or adapter, so a non-MCAP audio dataset
+      // drives it by supplying only an `AudioLoader`.
+      name: "audio-imports-only-audio-foundations",
+      severity: "error",
+      from: { path: AUDIO, pathNot: TEST_MODULE },
+      to: { path: SRC, pathNot: `${SRC}(audio|codecs|ir|utils)/` },
     },
 
     {
@@ -268,7 +285,10 @@ module.exports = {
       name: "extensions-import-only-extension-foundations",
       severity: "error",
       from: { path: EXTENSIONS, pathNot: TEST_MODULE },
-      to: { path: SRC, pathNot: `${SRC}(extensions|runtime|ports|ir)/` },
+      to: {
+        path: SRC,
+        pathNot: `${SRC}(extensions|runtime|ports|ir|stream-selection)/`,
+      },
     },
     {
       // Keep the injection namespace a composition root that wires only views,
@@ -355,6 +375,19 @@ module.exports = {
       to: { path: SRC, pathNot: `${SRC}(stream-selection|ir|utils)/` },
     },
     {
+      // The grid tile's interval lane composes the episode-interval seam over
+      // the one open-source source (temporal tags) and the runtime's episode
+      // time range. It is presentation only: nothing else may hang off it, and
+      // it may not reach product views or source adapters.
+      name: "grid-overlay-imports-only-interval-sources",
+      severity: "error",
+      from: { path: GRID_OVERLAY, pathNot: TEST_MODULE },
+      to: {
+        path: SRC,
+        pathNot: `${SRC}(grid-overlay|extensions/episode-intervals|temporal-tags)/`,
+      },
+    },
+    {
       // Keep temporal-tag contributions format-neutral and dependent only on
       // runtime timing capabilities plus shared IR values.
       name: "temporal-tags-import-only-temporal-foundations",
@@ -378,7 +411,7 @@ module.exports = {
       from: { path: VIEWS, pathNot: TEST_MODULE },
       to: {
         path: SRC,
-        pathNot: `${SRC}(views|runtime|observability|ports|scene-inventory|visualization|video|extensions|temporal-tags|ir|stream-selection|utils)/`,
+        pathNot: `${SRC}(views|runtime|observability|ports|scene-inventory|visualization|video|extensions|temporal-tags|ir|stream-selection|utils|audio)/`,
       },
     },
     {

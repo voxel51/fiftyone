@@ -6056,6 +6056,12 @@ specify the desired transformation. The ``chain_via`` parameter enables
 composing transformations through intermediate frames (e.g., camera → ego →
 world).
 
+Transform edges can come from |StaticTransform| or
+:class:`StaticTransformRef <fiftyone.core.camera.StaticTransformRef>` fields on
+the sample, or from ``dataset.static_transforms``. A sample-level transform
+takes precedence over a dataset-level transform for the same source and target
+frames.
+
 Resolution precedence for extrinsics is:
 
 1.  Direct ``source_frame -> target_frame`` match
@@ -6141,6 +6147,90 @@ stored at the sample level:
         target_frame="world",
         chain_via=["ego"],
     )
+
+.. _grouped-pcd-world-alignment:
+
+Aligning grouped point clouds in the App
+----------------------------------------
+
+The App can display direct PCD slices from the same group in a shared world
+frame. Each PCD slice name is its native sensor frame. For example, the points
+and 3D labels on the ``lidar_left`` slice are stored in the ``lidar_left``
+frame.
+
+When you open a group in the App, FiftyOne resolves each active PCD slice from
+its native frame to ``world``. The transform can be direct or an unambiguous
+chain through intermediate frames such as ``ego``:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset.static_transforms = {
+        "lidar_left::ego": fo.StaticTransform(
+            translation=[0.0, 0.75, 1.8],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="lidar_left",
+            target_frame="ego",
+        ),
+        "lidar_right::ego": fo.StaticTransform(
+            translation=[0.0, -0.75, 1.8],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="lidar_right",
+            target_frame="ego",
+        ),
+        "ego::world": fo.StaticTransform(
+            translation=[0.0, 0.0, 0.0],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="ego",
+            target_frame="world",
+        ),
+    }
+    dataset.save()
+
+The source frame names must match the PCD slice names. ``world`` is the fixed
+display target; intermediate frame names have no special meaning to the
+resolver.
+
+The usual :ref:`calibration precedence <resolving-calibration>` applies. You
+can store a transform inline on a PCD slice sample when that group needs its
+own calibration:
+
+.. code-block:: python
+    :linenos:
+
+    sample = dataset.first()
+    group = dataset.get_group(sample.group.id)
+    lidar_left = group["lidar_left"]
+
+    # Overrides dataset.static_transforms["lidar_left::ego"] for this sample
+    lidar_left["extrinsics"] = fo.StaticTransform(
+        translation=[0.0, 0.8, 1.8],
+        quaternion=[0.0, 0.0, 0.0, 1.0],
+        source_frame="lidar_left",
+        target_frame="ego",
+    )
+    lidar_left.save()
+
+Resolution for a slice uses that slice's sample-level transforms together with
+the dataset-level graph. It does not use inline transforms from sibling slice
+samples.
+
+FiftyOne applies the resolved transform to the PCD and its supported 3D
+cuboids. The **Annotating Slice** remains the only writable target. When you
+create or edit a cuboid in the world-aligned view, FiftyOne transforms its
+center and orientation back into that slice's native frame before saving it.
+Cuboid dimensions do not change, and labels do not need their own frame field.
+
+If the dataset has no static transform configuration, direct PCD slices keep
+their native coordinates. Once transforms are configured, every active PCD
+slice must have one unambiguous path to ``world``. The App reports slices that
+cannot be resolved instead of placing them at the origin.
+
+This behavior applies to grouped ``point-cloud`` slices whose media paths point
+directly to PCD files. It does not combine dataset transforms with coordinate
+hierarchies authored inside FO3D scenes.
 
 .. _camera-projection:
 

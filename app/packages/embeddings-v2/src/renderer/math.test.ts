@@ -4,6 +4,7 @@ import {
   clampToHome,
   fitRect,
   nearestPoint,
+  projectPoint,
   panRect,
   pointInPolygon,
   pxToData,
@@ -287,5 +288,52 @@ describe("nearestPoint", () => {
   it("skips points at or behind the camera (w <= 0)", () => {
     const behind = cols([[0, 0, 1]]);
     expect(nearestPoint(behind, NEGATIVE_W, 100, 100, 50, 50, 100)).toBeNull();
+  });
+});
+
+describe("projectPoint", () => {
+  // Same NDC points as above: on a 100x100 viewport (0,0) is screen (50,50)
+  // and (0.5,0.5) is (75,25)
+  const data = cols([
+    [0, 0],
+    [0.5, 0.5],
+  ]);
+
+  it("agrees with the hit-test on where a point is drawn", () => {
+    // The ring and the hover card are anchored from these two paths; a
+    // disagreement puts the ring off the point the reader picked
+    const hit = nearestPoint(data, IDENTITY, 100, 100, 75, 25, 8);
+    const at = projectPoint(data, IDENTITY, 100, 100, 1);
+    expect(at?.x).toBeCloseTo(hit?.x ?? NaN);
+    expect(at?.y).toBeCloseTo(hit?.y ?? NaN);
+  });
+
+  it("follows the point when the projection moves", () => {
+    // Half-scale about the origin: the point at screen (75,25) closes on
+    // the center, which is exactly what a zoom out does
+    // prettier-ignore
+    const zoomedOut = [
+      0.5, 0, 0, 0,
+      0, 0.5, 0, 0,
+      0, 0, 1, 0,
+      0, 0, 0, 1,
+    ];
+    expect(projectPoint(data, zoomedOut, 100, 100, 1)).toEqual({
+      x: 62.5,
+      y: 37.5,
+    });
+  });
+
+  it.each([
+    ["an index past the last point", 2],
+    ["a negative index", -1],
+    ["a fractional index", 0.5],
+  ])("has no position for %s", (_name, index) => {
+    expect(projectPoint(data, IDENTITY, 100, 100, index)).toBeNull();
+  });
+
+  it("has no position for a point at or behind the camera (w <= 0)", () => {
+    const behind = cols([[0, 0, 1]]);
+    expect(projectPoint(behind, NEGATIVE_W, 100, 100, 0)).toBeNull();
   });
 });

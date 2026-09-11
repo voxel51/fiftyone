@@ -7,6 +7,7 @@ dataset.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import defaultdict
 import csv
 from glob import glob
@@ -28,7 +29,6 @@ import fiftyone.core.labels as fol
 import fiftyone.utils.aws as foua
 import fiftyone.utils.data as foud
 import fiftyone.utils.image as foui
-
 
 logger = logging.getLogger(__name__)
 

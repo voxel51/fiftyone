@@ -273,3 +273,154 @@ describe("useHoverInfo", () => {
     expect(result.current.hover).toBeNull();
   });
 });
+
+describe("useHoverInfo: freezing the card", () => {
+  /** Resident detail, so the card exists synchronously — the multimodal
+   * path, and the one the freeze is for. */
+  const detail = (h: HoverHit): HoverContent => ({
+    hit: h,
+    src: null,
+    value: null,
+    filename: null,
+    header: { title: `ep${h.index}` },
+  });
+
+  const frozen = () => {
+    const view = renderHook(
+      ({ field, run }: { field: string | null; run: string }) =>
+        useHoverInfo("ds", run, field, mediaUrl, undefined, detail),
+      { initialProps: { field: "label" as string | null, run: "viz" } },
+    );
+    act(() => view.result.current.handleHover(hit(1)));
+    act(() => view.result.current.pinHover());
+    return view;
+  };
+
+  it("holds the card against every later hover", () => {
+    // The reader is aiming at the card's own button; points crossed on the
+    // way must not rewrite what they are aiming at
+    const { result } = frozen();
+    expect(result.current.pinned).toBe(true);
+
+    act(() => result.current.handleHover(hit(2)));
+    act(() => result.current.handleHover(null));
+
+    expect(result.current.hover?.header?.title).toBe("ep1");
+    expect(result.current.pinned).toBe(true);
+  });
+
+  it("freezes nothing when no card is showing", () => {
+    // A click on empty space would otherwise lock the hover into a state
+    // nothing can be read from and only Escape could leave
+    const { result } = renderHook(() =>
+      useHoverInfo("ds", "viz", "label", mediaUrl, undefined, detail),
+    );
+
+    act(() => result.current.pinHover());
+
+    expect(result.current.pinned).toBe(false);
+    expect(result.current.hover).toBeNull();
+  });
+
+  it("rebuilds the card for the pin, and only for the pin", () => {
+    // The click is the only place work too expensive for a hover belongs —
+    // a seek and a decode per point crossed while gliding over a dense
+    // cloud is exactly what this gate exists to prevent
+    const localDetail = vi.fn(
+      (h: HoverHit, pinned?: boolean): HoverContent => ({
+        hit: h,
+        src: null,
+        value: null,
+        filename: null,
+        header: { title: pinned ? "pinned" : "hovered" },
+      }),
+    );
+    const { result } = renderHook(() =>
+      useHoverInfo("ds", "viz", "label", mediaUrl, undefined, localDetail),
+    );
+
+    act(() => result.current.handleHover(hit(1)));
+    expect(localDetail).toHaveBeenLastCalledWith(hit(1));
+    expect(result.current.hover?.header?.title).toBe("hovered");
+
+    act(() => result.current.pinHover());
+
+    expect(localDetail).toHaveBeenLastCalledWith(hit(1), true);
+    expect(result.current.hover?.header?.title).toBe("pinned");
+  });
+
+  it("asks for no pinned detail when nothing is showing", () => {
+    const localDetail = vi.fn(() => null);
+    const { result } = renderHook(() =>
+      useHoverInfo("ds", "viz", "label", mediaUrl, undefined, localDetail),
+    );
+
+    act(() => result.current.pinHover());
+
+    expect(localDetail).not.toHaveBeenCalled();
+  });
+
+  it("re-rings the card's point even when the live hit was lost", () => {
+    // Every pointerdown drops the hover, so this IS the click path: the ring
+    // clears at once, the card stays up on its clear timer, and the pin lands
+    // between the two — with nothing ringed unless it re-anchors
+    const view = renderHook(
+      ({ field, run }: { field: string | null; run: string }) =>
+        useHoverInfo("ds", run, field, mediaUrl, undefined, detail),
+      { initialProps: { field: "label" as string | null, run: "viz" } },
+    );
+    act(() => view.result.current.handleHover(hit(1)));
+    act(() => view.result.current.handleHover(null));
+    expect(view.result.current.hoverHit).toBeNull();
+
+    act(() => view.result.current.pinHover());
+
+    expect(view.result.current.hoverHit).toMatchObject({ index: 1 });
+    expect(view.result.current.pinned).toBe(true);
+  });
+
+  it("follows its own point through a camera move", () => {
+    // The ring is the only thing marking what was clicked; anchored to a
+    // place rather than a point, it slides off the moment the reader pans
+    const { result } = frozen();
+
+    act(() => result.current.handleHover({ ...hit(1), x: 40, y: 50 }));
+
+    expect(result.current.hoverHit).toMatchObject({ index: 1, x: 40, y: 50 });
+    expect(result.current.hover?.hit).toMatchObject({ x: 40, y: 50 });
+    expect(result.current.pinned).toBe(true);
+  });
+
+  it("releases on request, and hovers again after", () => {
+    const { result } = frozen();
+
+    act(() => result.current.unpinHover());
+    expect(result.current.pinned).toBe(false);
+    expect(result.current.hover).toBeNull();
+
+    act(() => result.current.handleHover(hit(2)));
+    expect(result.current.hover?.header?.title).toBe("ep2");
+  });
+
+  it.each([
+    [
+      "the run changes",
+      (view: ReturnType<typeof frozen>) =>
+        view.rerender({ field: "label", run: "viz2" }),
+    ],
+    [
+      "the color field changes",
+      (view: ReturnType<typeof frozen>) =>
+        view.rerender({ field: "other", run: "viz" }),
+    ],
+  ])("releases when %s under it", (_name, change) => {
+    // The card would otherwise go on describing a point the plot no longer
+    // has, frozen where nothing can dislodge it
+    const view = frozen();
+
+    act(() => change(view));
+
+    expect(view.result.current.pinned).toBe(false);
+    expect(view.result.current.hover).toBeNull();
+  });
+});

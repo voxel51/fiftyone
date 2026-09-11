@@ -5,6 +5,7 @@ Core plugin methods.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from dataclasses import dataclass
 import json
 import logging

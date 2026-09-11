@@ -73,6 +73,33 @@ describe("multimodal query clients", () => {
     });
   });
 
+  it("aborts an in-flight HTTP HEAD probe with its caller", async () => {
+    let transportSignal: AbortSignal | undefined;
+    const client = createHttpByteClient(async (config) => {
+      transportSignal = config.signal;
+      if (config.signal?.aborted) {
+        throw new Error("transport aborted");
+      }
+      return new Promise((_resolve, reject) => {
+        config.signal?.addEventListener(
+          "abort",
+          () => reject(new Error("transport aborted")),
+          { once: true },
+        );
+      });
+    });
+    const controller = new AbortController();
+    const pending = client.stat?.(
+      { sourceId: "source:1", url: "bytes://source/default" },
+      controller.signal,
+    );
+
+    controller.abort();
+
+    await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+    expect(transportSignal?.aborted).toBe(true);
+  });
+
   it("captures normalized ETag validators from HEAD and ranged responses", async () => {
     const { extendedFetch } = createFetchMock(
       {

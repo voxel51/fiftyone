@@ -5,11 +5,11 @@ Wrapper around an arbitrary command that cleans up subprocesses.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import subprocess
 import sys
 
 import psutil
-
 
 try:
     subprocess.check_call(sys.argv[1:])

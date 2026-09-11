@@ -8,6 +8,7 @@ FiftyOne Server samples pagination
 
 import asyncio
 import collections
+import logging
 
 import strawberry as gql
 import typing as t
@@ -18,14 +19,20 @@ from fiftyone.core.dataset import Dataset
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.stages as fos
+import fiftyone.core.storage as focs
 from fiftyone.core.utils import run_sync_task
 
 from fiftyone.server.filters import SampleFilter
 import fiftyone.server.metadata as fosm
+from fiftyone.multimodal.media_reference.field_model import (
+    resolve_sample_media,
+)
 from fiftyone.server.paginator import Connection, Edge, PageInfo
 from fiftyone.server.scalars import BSON, JSON, BSONArray
 from fiftyone.server.utils import from_dict
 import fiftyone.server.view as fosv
+
+logger = logging.getLogger(__name__)
 
 
 @gql.type
@@ -123,13 +130,12 @@ async def paginate_samples(
 
     pipeline = await get_samples_pipeline(view, sample_filter)
     maxTimeMS = max_query_time * 1000 if max_query_time else None
-    cursor = await foo.aggregate(
+    samples = await foo.aggregate(
         foo.get_async_db_conn()[view._dataset._sample_collection_name],
         pipeline,
         hint,
         maxTimeMS=maxTimeMS,
-    )
-    samples = await cursor.to_list(first + 1)
+    ).to_list(first + 1)
 
     more = False
     if len(samples) > first:
@@ -155,6 +161,41 @@ async def paginate_samples(
         ]
     )
 
+    media_by_sample, located = await resolve_sample_media(view, nodes)
+    # An object under a source this server reads is reached through where the
+    # source is, which the dataset names once; only the rest needs a location
+    # of its own on this page
+    unaddressable = {
+        asset_id: path
+        for asset_id, path in located.items()
+        if focs.get_file_system(path) is not focs.FileSystem.LOCAL
+    }
+    media_srcs = (
+        await run_sync_task(_media_asset_srcs, unaddressable)
+        if unaddressable
+        else {}
+    )
+    for node in nodes:
+        media = media_by_sample.get(str(node.sample["_id"]))
+        if media is None:
+            continue
+
+        # Everything the sample's media is made of, so nothing it is
+        # opened in has to ask the server for what it was already given.
+        # Only an object the browser cannot reach on its own carries a
+        # location; the rest are composed from where their source is
+        node.sample["_media"] = {
+            "assets": [
+                (
+                    {**asset, "src": media_srcs[asset["id"]]}
+                    if asset["id"] in media_srcs
+                    else asset
+                )
+                for asset in media.assets
+            ],
+            "poster": media.poster_id,
+        }
+
     edges = []
     for idx, node in enumerate(nodes):
         edges.append(
@@ -175,6 +216,15 @@ async def paginate_samples(
     )
 
 
+def _media_asset_srcs(unaddressable):
+    """A location for each object on the page the browser cannot reach on its
+    own, by asset id. This server reaches every object it is asked for, so
+    there are none.
+    """
+    srcs = {}
+    return srcs
+
+
 async def _create_sample_item(
     dataset: SampleCollection,
     sample: t.Dict,
@@ -184,17 +234,27 @@ async def _create_sample_item(
     *,
     additional_media_fields: t.Optional[t.Tuple] = None,
 ) -> SampleItem:
-    media_type = fom.get_media_type(sample["filepath"])
-    cls = MEDIA_TYPES[media_type]
-
-    metadata = await fosm.get_metadata(
-        dataset,
-        sample,
-        media_type,
-        metadata_cache,
-        url_cache,
-        additional_media_fields=additional_media_fields,
-    )
+    transported_sample = sample
+    if sample.get("media_reference") is not None:
+        # Transported as stored; the page resolves media for all of its
+        # reference-backed samples at once afterwards
+        media_type = sample["_media_type"]
+        metadata = {"urls": [], "aspect_ratio": 1}
+        cls = MEDIA_TYPES[media_type]
+    else:
+        media_type = fom.get_media_type(sample["filepath"])
+        metadata = await fosm.get_metadata(
+            dataset,
+            sample,
+            media_type,
+            metadata_cache,
+            url_cache,
+            additional_media_fields=additional_media_fields,
+            skip_metadata_read=(
+                pagination_data and media_type == fom.MULTIMODAL
+            ),
+        )
+        cls = MEDIA_TYPES[media_type]
 
     if cls == VideoSample:
         metadata = dict(**metadata, frame_number=sample.get("frame_number", 1))
@@ -204,7 +264,14 @@ async def _create_sample_item(
     if not pagination_data:
         _id = f"{_id}-modal"
 
-    return from_dict(cls, {"id": _id, "sample": sample, **metadata})
+    return from_dict(
+        cls,
+        {
+            "id": _id,
+            "sample": transported_sample,
+            **metadata,
+        },
+    )
 
 
 async def get_samples_pipeline(

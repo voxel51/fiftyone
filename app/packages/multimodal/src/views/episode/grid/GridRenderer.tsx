@@ -1,5 +1,6 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
-import { Size, Spinner } from "@voxel51/voodo";
+import { multimodalGridFit, type MultimodalGridFit } from "@fiftyone/state";
+import { Clickable, Icon, IconName, Size, Spinner } from "@voxel51/voodo";
 import {
   useCallback,
   useEffect,
@@ -8,6 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useRecoilValue } from "recoil";
 import {
   BitmapCanvasHost,
   BitmapImageView,
@@ -19,7 +21,9 @@ import { retainedBinaryBytes } from "../../../runtime";
 import { VideoPlaybackManager } from "../../../video/playback-manager";
 import { PushVideoAccessUnitReader } from "../../../video/push-reader";
 import { VideoPlaybackManagerProvider } from "../../../video/react";
+import { REORDERED_VIDEO_DECODE_LOOKAHEAD_NS } from "../../../video/stream-engine";
 import type { VideoStreamLease } from "../../../video/playback-manager";
+import { isSharedEncodedVideoVisualization } from "../../../video/types";
 import { PointCloudPanel } from "../../../visualization/composition";
 import { acquireGridLiveLease } from "../../../visualization/webgpu/webgpu-live-lease";
 import { renderPointCloudSnapshot } from "../../../visualization/scene-3d/gpu/webgpu-snapshot-renderer";
@@ -41,6 +45,7 @@ import {
   getGridPosterCache,
   gridPosterCacheKey,
   gridPosterFreshness,
+  gridPreviewStateKey,
   pointCloudPoseKey,
   recordGridPosterDiagnostic,
   type GridPosterCacheEntry,
@@ -48,12 +53,14 @@ import {
 } from "./grid-poster-cache";
 import { captureGridPoster } from "./grid-poster-codec";
 import type { PointCloudCameraPose } from "../../../visualization/scene-3d";
+import { useGridPosterCache } from "./use-grid-poster-cache";
 import {
-  useGridPosterCache,
-  type GridPosterCacheLookupStatus,
-} from "./use-grid-poster-cache";
+  useGridPosterProviderDescriptor,
+  useProvidedGridPoster,
+} from "./use-grid-poster-provider";
+import { useHydratedSourceFacts } from "./use-hydrated-source-facts";
+import { LeRobotGridHoverVideo } from "./LeRobotGridHoverVideo";
 
-const IMAGE_FIT = "cover";
 // Trailing debounce for shared-pose and cell-resize re-snapshots: orbiting
 // the one hovered cell staleness-marks every visible point-cloud cell, so
 // the debounce is what coalesces that churn into one serial snapshot burst.
@@ -73,6 +80,32 @@ const stopGridActivationPropagation = (
 };
 
 /**
+ * Explicit way into the modal for a tile whose own surface takes the click.
+ *
+ * Only point-cloud previews get one: their click orbits the camera, so grid
+ * activation is suppressed and there would otherwise be no way to open the
+ * sample from the tile. Every other tile kind opens by being clicked, which is
+ * why this is the renderer's call to make rather than the grid's.
+ */
+const OpenModalButton = ({ openModal }: { readonly openModal: () => void }) => (
+  <Clickable
+    aria-label="Open sample modal"
+    className={classes.openModalButton}
+    onClick={(event) => {
+      // The tile suppresses grid activation, so this must not read as a click
+      // on the point cloud either.
+      event.preventDefault();
+      event.stopPropagation();
+      openModal();
+    }}
+    role="button"
+    title="Open sample modal"
+  >
+    <Icon name={IconName.Fullscreen} size={Size.Sm} />
+  </Clickable>
+);
+
+/**
  * Grid renderer for episode-backed multimodal samples. Shows one camera
  * preview frame and plays the stream while hovered.
  */
@@ -81,13 +114,22 @@ export function GridRenderer({
   isGridActive = true,
   onRetainedBytesChange,
 }: SampleRendererProps) {
-  const { byteSource: source, episodeSource } = useStableEpisodeSource(ctx);
+  const imageFit = useRecoilValue(multimodalGridFit);
+  const {
+    byteSource: source,
+    episodeSource,
+    sourceFactsScope,
+  } = useStableEpisodeSource(ctx);
   const gridCameraScopeKey =
     cameraScopeKey(ctx.dataset.datasetId, ctx.media?.field) ??
     ctx.dataset.datasetId;
   const [rootElement, setRootElement] = useState<HTMLDivElement | null>(null);
   const [hovered, setHovered] = useState(false);
+  // Visible tiles keep their poster, video element and session while the
+  // modal is open; only new playback is gated on the grid being active, so
+  // closing the modal rebuilds nothing
   const visible = useGridRendererVisibility(rootElement, isGridActive);
+  const interactive = visible && isGridActive;
   const sampleId = useMemo(() => {
     const sample = ctx.sample.sample as { _id?: string; id?: string };
     return sample._id ?? sample.id;
@@ -99,18 +141,36 @@ export function GridRenderer({
   // matched window, so both the requested time and preferred stream belong to
   // the poster cache identity.
   const firstMatch = useSampleRendererFirstMatch(ctx);
-  const cacheKey = useMemo(
+  const [cameraPose, setCameraPose] = useGridCameraPose(
+    gridCameraScopeKey,
+    visible,
+  );
+  const providerDescriptor = useGridPosterProviderDescriptor(
+    ctx.dataset.datasetId,
+    sampleId,
+    visible,
+  );
+  const providerCacheScope = providerDescriptor.resolved
+    ? JSON.stringify([
+        providerDescriptor.resolved.provider.id,
+        providerDescriptor.resolved.descriptor.cacheRevision,
+      ])
+    : undefined;
+  // A precomputed poster may exist but is never expected to: the tile opens
+  // its own preview at once and takes a provider's poster only if one arrives
+  const previewIdentity = useMemo(
     () =>
       source
-        ? gridPosterCacheKey({
+        ? {
             datasetId: ctx.dataset.datasetId,
             mediaField: ctx.media?.field,
             mediaPath: ctx.media?.path,
             posterSourceName: firstMatch?.stream,
             posterStartTimeNs: firstMatch?.startNs,
+            providerRevision: providerCacheScope,
             selectedSourceName,
             source,
-          })
+          }
         : null,
     [
       ctx.dataset.datasetId,
@@ -118,9 +178,21 @@ export function GridRenderer({
       ctx.media?.path,
       firstMatch?.startNs,
       firstMatch?.stream,
+      providerCacheScope,
       selectedSourceName,
       source,
     ],
+  );
+  const previewStateKey = useMemo(
+    () => (previewIdentity ? gridPreviewStateKey(previewIdentity) : null),
+    [previewIdentity],
+  );
+  const cacheKey = useMemo(
+    () =>
+      previewIdentity
+        ? gridPosterCacheKey({ ...previewIdentity, imageFit })
+        : null,
+    [imageFit, previewIdentity],
   );
   const { entry: cachedPoster, status: cacheLookupStatus } = useGridPosterCache(
     cacheKey,
@@ -140,26 +212,43 @@ export function GridRenderer({
     if (cachedPoster) getGridPosterCache().touch(cacheKey);
     recordGridPosterDiagnostic(cachedPoster ? "hits" : "misses");
   }, [cacheKey, cacheLookupStatus, cachedPoster]);
-  const [cameraPose, setCameraPose] = useGridCameraPose(
-    gridCameraScopeKey,
-    visible,
-  );
+  const providedPosterLookup = useProvidedGridPoster({
+    cacheKey,
+    cameraPose,
+    enabled: visible && cacheLookupStatus === "miss" && cachedPoster === null,
+    posterStartTimeNs: firstMatch?.startNs ?? null,
+    resolved: providerDescriptor.resolved,
+    selectedSourceName,
+  });
+  const effectivePoster = cachedPoster ?? providedPosterLookup.entry;
   const rootSize = useElementCssSize(rootElement);
   const poseKey = pointCloudPoseKey(cameraPose);
   const freshness = useMemo<GridPosterFreshness | null>(
     () =>
-      cachedPoster && rootSize
-        ? gridPosterFreshness(cachedPoster, rootSize, poseKey)
+      effectivePoster && rootSize
+        ? gridPosterFreshness(effectivePoster, rootSize, poseKey)
         : null,
-    [cachedPoster, poseKey, rootSize],
+    [effectivePoster, poseKey, rootSize],
   );
+  const coldTierLoading =
+    cacheLookupStatus === "loading" ||
+    providedPosterLookup.status === "loading";
   const previewSessionDemand = usePreviewSessionDemand({
     cacheKey,
-    cacheLookupStatus,
-    cachedPoster,
+    cachedPoster: effectivePoster,
+    coldTierLoading,
     freshness,
     hovered,
     sourceId: source?.sourceId ?? null,
+    visible,
+  });
+  useHydratedSourceFacts({
+    // A provider-answered tile skips the preview session exactly like a cache
+    // hit, so it needs the same facts republish
+    cachedPoster: effectivePoster,
+    previewSessionDemand,
+    source,
+    sourceFactsScope,
     visible,
   });
   const gridVideoPlayback = useGridVideoPlayback(source?.sourceId ?? null);
@@ -169,10 +258,12 @@ export function GridRenderer({
     previewSessionDemand,
   );
   const preview = useGridPreview({
-    cacheRequestKey: cacheKey,
-    cachedPoster,
+    cacheRequestKey: previewStateKey,
+    cachedPoster: effectivePoster,
     enabled: visible,
+    episodeId: sampleId,
     hovered,
+    initialVideoDecodeLookaheadNs: REORDERED_VIDEO_DECODE_LOOKAHEAD_NS,
     onReadResult: gridVideoPlayback.onReadResult,
     posterStartTimeNs: firstMatch?.startNs ?? null,
     posterSourceName: firstMatch?.stream ?? null,
@@ -181,6 +272,7 @@ export function GridRenderer({
     previewSessionStatus: previewSession.status,
     selectedSourceName,
     source,
+    sourceFactsScope,
   });
   const registerStreams = useRegisterGridStreams();
   const stableStreams = useStableGridStreams(preview.streamSourceNames);
@@ -195,14 +287,30 @@ export function GridRenderer({
   const playbackIntent = usePlaybackHoverIntent(
     preview.pause,
     preview.play,
-    visible,
+    interactive,
     setHovered,
   );
+  // The modal covers the grid without a mouseleave, so a tile that was
+  // playing when it opened would keep decoding underneath it
+  const pausePreview = preview.pause;
+  useEffect(() => {
+    if (interactive) return;
+    setHovered(false);
+    pausePreview();
+  }, [interactive, pausePreview]);
   const [surfaceRetention, setSurfaceRetention] = useState<{
     readonly bytes: number;
     readonly owner: EpisodePosterFrame | GridPosterCacheEntry;
   } | null>(null);
   const displayOwner = preview.frame ?? preview.cachedPoster;
+  const [nativeSurfaceRetainedBytes, setNativeSurfaceRetainedBytes] =
+    useState(0);
+  const [nativeVideoError, setNativeVideoError] = useState<string | null>(null);
+  // This effect clears a native-playback failure when the selected episode
+  // video changes so a previous source cannot poison the next preview.
+  useEffect(() => {
+    setNativeVideoError(null);
+  }, [preview.nativeVideo]);
   const surfaceRetainedBytes =
     surfaceRetention && surfaceRetention.owner === displayOwner
       ? surfaceRetention.bytes
@@ -220,10 +328,10 @@ export function GridRenderer({
     },
     [displayOwner],
   );
-  const capturedTokensRef = useRef(new Set<string>());
-  useEffect(() => {
-    capturedTokensRef.current.clear();
-  }, [cacheKey]);
+  const capturedTokensRef = useRef<{
+    readonly cacheKey: string | null;
+    readonly tokens: Set<string>;
+  }>({ cacheKey: null, tokens: new Set() });
   const handlePosterCanvasCommitted = useCallback(
     (
       capturedSourceKind: "image" | "point-cloud",
@@ -232,6 +340,10 @@ export function GridRenderer({
       snapshotPoseKey?: string,
     ) => {
       if (!cacheKey) return;
+      if (capturedTokensRef.current.cacheKey !== cacheKey) {
+        capturedTokensRef.current = { cacheKey, tokens: new Set() };
+      }
+      const capturedTokens = capturedTokensRef.current.tokens;
       const capturePoseKey =
         capturedSourceKind === "point-cloud" ? snapshotPoseKey : undefined;
       if (capturedSourceKind === "point-cloud" && !capturePoseKey) return;
@@ -241,8 +353,8 @@ export function GridRenderer({
         size.width,
         size.height,
       ]);
-      if (capturedTokensRef.current.has(token)) return;
-      capturedTokensRef.current.add(token);
+      if (capturedTokens.has(token)) return;
+      capturedTokens.add(token);
       captureGridPoster({
         entry: {
           height: size.height,
@@ -265,13 +377,40 @@ export function GridRenderer({
       preview.streamSourceNames,
     ],
   );
+  // An AV1 poster arrives through the native <video>, so "ready with no
+  // decoded frame" is still loading until that element has painted
+  const [nativePosterPainted, setNativePosterPainted] = useState(false);
+  const nativeVideoKey = preview.nativeVideo
+    ? `${preview.nativeVideo.source.sourceId}:${preview.nativeVideo.startTimeSeconds}`
+    : null;
+  useEffect(() => {
+    setNativePosterPainted(false);
+  }, [nativeVideoKey]);
+  const handleNativePosterCanvasCommitted = useCallback(
+    (canvas: HTMLCanvasElement, size: BitmapDrawSize) => {
+      setNativePosterPainted(true);
+      handlePosterCanvasCommitted("image", canvas, size);
+    },
+    [handlePosterCanvasCommitted],
+  );
+  const handleNativeVideoError = useCallback(
+    (error: Error) => setNativeVideoError(error.message),
+    [],
+  );
 
   // This effect keeps the grid cache's retained-byte estimate current.
   useEffect(() => {
     onRetainedBytesChange?.(
-      retainedBinaryBytes(preview.frame) + surfaceRetainedBytes,
+      retainedBinaryBytes(preview.frame) +
+        surfaceRetainedBytes +
+        nativeSurfaceRetainedBytes,
     );
-  }, [onRetainedBytesChange, preview.frame, surfaceRetainedBytes]);
+  }, [
+    nativeSurfaceRetainedBytes,
+    onRetainedBytesChange,
+    preview.frame,
+    surfaceRetainedBytes,
+  ]);
 
   // This effect registers the sample's previewable streams for grid controls.
   useEffect(() => {
@@ -291,6 +430,9 @@ export function GridRenderer({
       onPointerLeave={playbackIntent.leave}
       ref={setRootElement}
     >
+      {blocksGridActivation && ctx.openModal ? (
+        <OpenModalButton openModal={ctx.openModal} />
+      ) : null}
       {preview.frame ? (
         <VideoPlaybackManagerProvider manager={gridVideoPlayback.manager}>
           <PreviewFrame
@@ -302,6 +444,7 @@ export function GridRenderer({
             cameraPose={cameraPose}
             frame={preview.frame}
             hovered={hovered}
+            imageFit={imageFit}
             onCameraPoseChange={setCameraPose}
             onCanvasCommitted={handlePosterCanvasCommitted}
             onSurfaceRetainedBytesChange={handleSurfaceRetainedBytesChange}
@@ -312,17 +455,33 @@ export function GridRenderer({
         <BitmapImageView
           bytes={preview.cachedPoster.bytes}
           className={classes.imagePanel}
-          fit={IMAGE_FIT}
+          fit={imageFit}
           mimeType={preview.cachedPoster.mimeType}
           onBitmapRetainedBytesChange={handleSurfaceRetainedBytesChange}
         />
-      ) : (
+      ) : preview.nativeVideo &&
+        nativePosterPainted &&
+        !nativeVideoError ? null : (
         <PreviewStatus
-          error={preview.error}
+          error={nativeVideoError ?? preview.error}
           hasPreviewStreams={preview.hasPreviewStreams}
-          status={preview.status}
+          status={
+            nativeVideoError
+              ? "error"
+              : preview.nativeVideo
+                ? "loading"
+                : preview.status
+          }
         />
       )}
+      {nativeVideoError && (preview.frame || preview.cachedPoster) ? (
+        <div
+          className={`${classes.error} ${classes.nativeVideoError}`}
+          role="alert"
+        >
+          {nativeVideoError}
+        </div>
+      ) : null}
       {preview.frame && preview.isBuffering ? (
         <span
           className={classes.bufferingIndicator}
@@ -330,6 +489,19 @@ export function GridRenderer({
         >
           <Spinner size={Size.Xs} />
         </span>
+      ) : null}
+      {preview.nativeVideo ? (
+        <LeRobotGridHoverVideo
+          active={visible}
+          capturePoster={!preview.frame && !preview.cachedPoster}
+          key={`${preview.nativeVideo.source.sourceId}:${preview.nativeVideo.codec}:${preview.nativeVideo.startTimeSeconds}:${preview.nativeVideo.endTimeSeconds}`}
+          onCanvasCommitted={handleNativePosterCanvasCommitted}
+          onError={handleNativeVideoError}
+          onPresentedTimeSeconds={preview.presentNativeTimeSeconds}
+          onSurfaceRetainedBytesChange={setNativeSurfaceRetainedBytes}
+          playing={preview.isPlaying}
+          video={preview.nativeVideo}
+        />
       ) : null}
     </div>
   );
@@ -343,7 +515,7 @@ interface GridVideoPlaybackController {
 }
 
 /**
- * Pushes every H.264 access unit into one mounted source/stream engine, even
+ * Pushes every supported video access unit into one source/stream engine, even
  * when the 12fps grid presentation policy skips the corresponding React
  * frame. The bitmap consumer then subscribes to that same engine.
  */
@@ -386,21 +558,32 @@ function useGridVideoPlayback(sourceKey: string | null): {
 
   const onReadResult = useCallback((result: EpisodePreviewReadResult) => {
     const controller = controllerRef.current;
-    const image = result.frame?.kind === "image" ? result.frame.image : null;
     const stream = result.streamId;
-    if (
-      !controller ||
-      !image ||
-      image.kind !== "encoded-video" ||
-      image.codec !== "h264" ||
-      image.h264.hasFrame === false ||
-      !stream
-    ) {
-      return;
+    if (!controller || !stream) return;
+
+    const frames = result.videoDecodeRunway?.length
+      ? result.videoDecodeRunway
+      : result.frame
+        ? [result.frame]
+        : [];
+    let pushed = false;
+    for (const frame of frames) {
+      const image = frame.kind === "image" ? frame.image : null;
+      if (
+        !image ||
+        image.kind !== "encoded-video" ||
+        !isSharedEncodedVideoVisualization(image)
+      ) {
+        continue;
+      }
+      const timeNs =
+        image.timestampNs ??
+        (frame === result.frame ? result.frameTimeNs : undefined);
+      if (timeNs === undefined) continue;
+      controller.reader.push(stream, { frame: image, timeNs });
+      pushed = true;
     }
-    const timeNs = image.timestampNs ?? result.frameTimeNs;
-    if (timeNs === undefined) return;
-    controller.reader.push(stream, { frame: image, timeNs });
+    if (!pushed) return;
 
     let lease = controller.leases.get(stream);
     if (!lease) {
@@ -422,10 +605,17 @@ function useGridRendererVisibility(
 
   // This effect tracks whether the mounted renderer is near the grid viewport.
   useEffect(() => {
-    if (!element || !gridActive) {
+    if (!element) {
       setIntersecting(false);
       return undefined;
     }
+    // The grid is hidden behind the modal, so an observer left running would
+    // report every tile gone. Stop watching rather than correct for it after
+    // the fact: what was visible when the modal opened stays visible until it
+    // closes, which is what keeps posters and sessions alive underneath it.
+    // Reading the stale value back on reactivation instead would drop demand
+    // for a render and release the session the modal was holding open.
+    if (!gridActive) return undefined;
     if (typeof IntersectionObserver === "undefined") {
       setIntersecting(element.isConnected);
       return undefined;
@@ -442,7 +632,7 @@ function useGridRendererVisibility(
     return () => observer.disconnect();
   }, [element, gridActive]);
 
-  return gridActive && intersecting;
+  return intersecting;
 }
 
 function useElementCssSize(
@@ -477,16 +667,16 @@ function useElementCssSize(
 
 function usePreviewSessionDemand({
   cacheKey,
-  cacheLookupStatus,
   cachedPoster,
+  coldTierLoading,
   freshness,
   hovered,
   sourceId,
   visible,
 }: {
   readonly cacheKey: string | null;
-  readonly cacheLookupStatus: GridPosterCacheLookupStatus;
   readonly cachedPoster: GridPosterCacheEntry | null;
+  readonly coldTierLoading: boolean;
   readonly freshness: GridPosterFreshness | null;
   readonly hovered: boolean;
   readonly sourceId: string | null;
@@ -534,7 +724,7 @@ function usePreviewSessionDemand({
     // already-demanded same-source session stays open across key transitions.
     demanded =
       hovered ||
-      cacheLookupStatus !== "loading" ||
+      !coldTierLoading ||
       (committedDemandRef.current.demanded &&
         committedDemandRef.current.sourceId === sourceId);
   } else if (latched || hovered) {
@@ -623,6 +813,7 @@ function PreviewFrame({
   cameraPose,
   frame,
   hovered,
+  imageFit,
   onCameraPoseChange,
   onCanvasCommitted,
   onSurfaceRetainedBytesChange,
@@ -633,6 +824,7 @@ function PreviewFrame({
   readonly cameraPose: PointCloudCameraPose | null;
   readonly frame: EpisodePosterFrame;
   readonly hovered: boolean;
+  readonly imageFit: MultimodalGridFit;
   readonly onCameraPoseChange: (pose: PointCloudCameraPose | null) => void;
   readonly onCanvasCommitted: (
     sourceKind: "image" | "point-cloud",
@@ -650,13 +842,17 @@ function PreviewFrame({
       cameraPose={cameraPose}
       frame={frame}
       hovered={hovered}
+      imageFit={imageFit}
       onCameraPoseChange={onCameraPoseChange}
       onCanvasCommitted={onCanvasCommitted}
       onSurfaceRetainedBytesChange={onSurfaceRetainedBytesChange}
     />
   ) : (
     <ImagePreviewFrame
+      cachedPoster={cachedPoster}
       frame={frame}
+      imageFit={imageFit}
+      hovered={hovered}
       onCanvasCommitted={onCanvasCommitted}
       onSurfaceRetainedBytesChange={onSurfaceRetainedBytesChange}
       videoStream={videoStream}
@@ -676,6 +872,7 @@ function PointCloudPreviewFrame({
   cameraPose,
   frame,
   hovered,
+  imageFit,
   onCameraPoseChange,
   onCanvasCommitted,
   onSurfaceRetainedBytesChange,
@@ -685,6 +882,7 @@ function PointCloudPreviewFrame({
   readonly cameraPose: PointCloudCameraPose | null;
   readonly frame: Extract<EpisodePosterFrame, { kind: "point-cloud" }>;
   readonly hovered: boolean;
+  readonly imageFit: MultimodalGridFit;
   readonly onCameraPoseChange: (pose: PointCloudCameraPose | null) => void;
   readonly onCanvasCommitted: (
     sourceKind: "image" | "point-cloud",
@@ -932,7 +1130,7 @@ function PointCloudPreviewFrame({
         <BitmapImageView
           bytes={cachedPoster.bytes}
           className={classes.imagePanel}
-          fit={IMAGE_FIT}
+          fit={imageFit}
           mimeType={cachedPoster.mimeType}
           onBitmapRetainedBytesChange={onSurfaceRetainedBytesChange}
         />
@@ -940,7 +1138,7 @@ function PointCloudPreviewFrame({
       <BitmapCanvasHost
         bitmap={snapshot?.bitmap ?? null}
         className={classes.imagePanel}
-        fit={IMAGE_FIT}
+        fit={imageFit}
         onCanvasCommitted={(canvas, size) =>
           onCanvasCommitted("point-cloud", canvas, size, snapshot?.poseKey)
         }
@@ -968,12 +1166,18 @@ function PointCloudPreviewFrame({
 }
 
 function ImagePreviewFrame({
+  cachedPoster,
   frame,
+  imageFit,
+  hovered,
   onCanvasCommitted,
   onSurfaceRetainedBytesChange,
   videoStream,
 }: {
+  readonly cachedPoster: GridPosterCacheEntry | null;
   readonly frame: Extract<EpisodePosterFrame, { kind: "image" }>;
+  readonly imageFit: MultimodalGridFit;
+  readonly hovered: boolean;
   readonly onCanvasCommitted: (
     sourceKind: "image" | "point-cloud",
     canvas: HTMLCanvasElement,
@@ -982,19 +1186,55 @@ function ImagePreviewFrame({
   readonly onSurfaceRetainedBytesChange: (bytes: number) => void;
   readonly videoStream: string | null;
 }) {
+  const [committedKind, setCommittedKind] = useState<
+    Extract<EpisodePosterFrame, { kind: "image" }>["image"]["kind"] | null
+  >(null);
+  const [fallbackRetainedBytes, setFallbackRetainedBytes] = useState(0);
+  const [frameRetainedBytes, setFrameRetainedBytes] = useState(0);
+  const showFallback =
+    cachedPoster !== null && committedKind !== frame.image.kind;
+
+  // This effect reports both canvases while a cached poster covers the first
+  // decode from a newly mounted image family.
+  useEffect(() => {
+    onSurfaceRetainedBytesChange(
+      frameRetainedBytes + (showFallback ? fallbackRetainedBytes : 0),
+    );
+  }, [
+    fallbackRetainedBytes,
+    frameRetainedBytes,
+    onSurfaceRetainedBytesChange,
+    showFallback,
+  ]);
+
   // GPU-free bitmap path: image preview cells hold zero WebGPU devices (the
-  // modal's ImagePanel is untouched).
+  // modal's ImagePanel is untouched). Keep the last poster under a newly
+  // mounted decode family so encoded-image -> encoded-video hover handoff
+  // cannot expose an empty canvas while its first presentation is pending.
   return (
-    <BitmapImageFrameView
-      className={classes.imagePanel}
-      fit={IMAGE_FIT}
-      frame={frame.image}
-      onCanvasCommitted={(canvas, size) =>
-        onCanvasCommitted("image", canvas, size)
-      }
-      onBitmapRetainedBytesChange={onSurfaceRetainedBytesChange}
-      videoSessionKey={videoStream ?? undefined}
-    />
+    <>
+      {showFallback ? (
+        <BitmapImageView
+          bytes={cachedPoster.bytes}
+          className={classes.imagePanel}
+          fit={imageFit}
+          mimeType={cachedPoster.mimeType}
+          onBitmapRetainedBytesChange={setFallbackRetainedBytes}
+        />
+      ) : null}
+      <BitmapImageFrameView
+        className={classes.imagePanel}
+        fit={imageFit}
+        frame={frame.image}
+        onCanvasCommitted={(canvas, size) => {
+          setCommittedKind(frame.image.kind);
+          onCanvasCommitted("image", canvas, size);
+        }}
+        onBitmapRetainedBytesChange={setFrameRetainedBytes}
+        videoPriority={hovered ? "playing" : "visible"}
+        videoSessionKey={videoStream ?? undefined}
+      />
+    </>
   );
 }
 
@@ -1035,6 +1275,12 @@ function previewStatusMessage(
 
   if (status === "unavailable") {
     return "No data available for this stream";
+  }
+
+  // A tile whose session never opened is not an episode without streams:
+  // reporting it as one hides every source that failed to resolve
+  if (status === "idle") {
+    return "Preview did not start";
   }
 
   return hasPreviewStreams ? "No preview frames" : "No preview streams";
