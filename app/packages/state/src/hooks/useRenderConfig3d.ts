@@ -8,6 +8,7 @@ import {
 } from "../recoil/groups";
 import {
   areSlicesEqual,
+  focusActive3dSlices,
   resolveNormalized3dSelection,
 } from "../recoil/groups.utils";
 import type { ModalSample } from "../recoil/modal";
@@ -380,7 +381,14 @@ export const useRenderConfig3dActions = (): RenderConfig3dActions => {
         set(internals.groupMedia3dVisibleSetting, true);
         set(groupMediaIsMain2DViewerVisibleSetting, false);
         set(groupMediaIsCarouselVisibleSetting, false);
-        set(internals.active3dSlices, nextActive3dSlices);
+        set(
+          internals.active3dSlices,
+          focusActive3dSlices({
+            activeSlices: nextActive3dSlices,
+            focusedSlice: sliceName,
+            realFo3dSlices: currentRealFo3dSlices,
+          }),
+        );
         set(internals.pinned3DSampleSlice, sliceName);
         set(internals.is3dPinned, true);
       },

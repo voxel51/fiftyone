@@ -2,6 +2,7 @@ import type { ModalSample } from "./modal";
 import { describe, expect, it } from "vitest";
 import {
   areSlicesEqual,
+  focusActive3dSlices,
   getGroupSampleMediaPath,
   getRepresentative3dSlice,
   normalizeActive3dSlices,
@@ -86,6 +87,26 @@ describe("groups.utils", () => {
         realFo3dSlices: ["scene-a", "scene-b"],
       }),
     ).toEqual(["lidar", "scene-b"]);
+  });
+
+  it("drops fo3d slices when a direct 3d slice is focused", () => {
+    expect(
+      focusActive3dSlices({
+        activeSlices: ["pcd", "fo3d"],
+        focusedSlice: "pcd",
+        realFo3dSlices: ["fo3d"],
+      }),
+    ).toEqual(["pcd"]);
+  });
+
+  it("keeps direct slices active when an fo3d slice is focused", () => {
+    expect(
+      focusActive3dSlices({
+        activeSlices: ["fo3d", "pcd"],
+        focusedSlice: "fo3d",
+        realFo3dSlices: ["fo3d"],
+      }),
+    ).toEqual(["fo3d", "pcd"]);
   });
 
   it("rebuilds a valid selection from available slices", () => {
