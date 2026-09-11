@@ -1025,6 +1025,20 @@ export class InteractionManager {
               handler: interactiveHandler,
             });
           }
+        } else if (interactionState === "ROTATING") {
+          // Rotation has no selection-click ambiguity (the pointer went down
+          // ON the rotate handle) and a meaningful angle change can ride on a
+          // sub-threshold pointer move, so it finalizes outside the spatial
+          // drag gate — on any real angular delta instead.
+          const rotation = handler.getRotation?.() ?? 0;
+          if (Math.abs((startRotation ?? 0) - rotation) > 1e-4) {
+            this.eventBus.dispatch("lighter:overlay-rotate-end", {
+              id: handler.id,
+              overlayId: handler.overlay?.id ?? handler.id,
+              startRotation: startRotation ?? 0,
+              rotation,
+            });
+          }
         } else if (this.isSpatialDragEvent(event)) {
           // A press that set DRAGGING/RESIZE on pointer-down but never crossed
           // the click threshold is a selection click (or a sub-threshold
@@ -1032,20 +1046,11 @@ export class InteractionManager {
           // pointer-down. Emitting a finalize here would commit a no-op edit
           // and, on video, promote the frame to a keyframe. Gate on the same
           // spatial drag threshold the click path uses.
-          if (interactionState === "ROTATING") {
-            this.eventBus.dispatch("lighter:overlay-rotate-end", {
-              id: handler.id,
-              overlayId: handler.overlay?.id ?? handler.id,
-              startRotation: startRotation ?? 0,
-              rotation: handler.getRotation?.() ?? 0,
-            });
-          } else {
-            const type =
-              interactionState === "DRAGGING"
-                ? "lighter:overlay-drag-end"
-                : "lighter:overlay-resize-end";
-            this.eventBus.dispatch(type, detail);
-          }
+          const type =
+            interactionState === "DRAGGING"
+              ? "lighter:overlay-drag-end"
+              : "lighter:overlay-resize-end";
+          this.eventBus.dispatch(type, detail);
         }
       }
 

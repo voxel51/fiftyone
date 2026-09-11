@@ -237,9 +237,11 @@ export default function Position({ readOnly = false }: PositionProps) {
 
           // write `rotation` only when it carries signal — a nonzero value, or
           // zeroing out a stored scalar. Never stamp 0 onto boxes that were
-          // never rotated (and never clobber a 3D `[x, y, z]` list).
+          // never rotated, and never replace a 3D `[x, y, z]` rotation list
+          // with a scalar.
           const storedRotation = engine.getLabel(ref)?.rotation;
           const rotationData =
+            !Array.isArray(storedRotation) &&
             typeof rotation === "number" &&
             (rotation !== 0 || typeof storedRotation === "number")
               ? { rotation }

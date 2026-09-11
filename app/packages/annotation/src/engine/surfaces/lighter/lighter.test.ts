@@ -603,4 +603,16 @@ describe("detectionAdapter.toLabel rotation", () => {
       rotation: [0, -1.56, 0],
     });
   });
+
+  it("preserves a stored scalar on masked overlays (render-suppressed 0)", () => {
+    const overlay = {
+      ...makeOverlay({ _id: "d1", label: "cat", rotation: 1.25 }, 0),
+      hasMask: () => true,
+    } as unknown as BaseOverlay;
+
+    // getRotation() reports 0 for masks; the stored value must survive
+    expect(detectionAdapter.toLabel(overlay)).toMatchObject({
+      rotation: 1.25,
+    });
+  });
 });
