@@ -125,6 +125,12 @@ test.describe.serial("2D rotated bounding boxes", () => {
     await expect
       .poll(() => fieldNum(modal, "rotation.rotation"))
       .toBeCloseTo(SEEDED_ROTATION, 4);
+
+    // the box actually RENDERS rotated (45deg), with the rotate handle —
+    // the form assertions above only prove the value reached the sidebar
+    await modal.sampleCanvas.assert.hasScreenshot(
+      "rotated-detection-selected.png",
+    );
   });
 
   test("a rotation edit persists across a fresh load", async ({
@@ -170,7 +176,8 @@ test.describe.serial("2D rotated bounding boxes", () => {
     });
   });
 
-  test("editing an unrotated box never stamps a rotation attribute", async ({
+  test("editing an unrotated box round-trips with zero rotation", async ({
+    browser,
     fiftyoneLoader,
     modal,
     page,
@@ -184,16 +191,18 @@ test.describe.serial("2D rotated bounding boxes", () => {
       .toBeCloseTo(0.123, 4);
     await saved;
 
-    // the geometry edit round-tripped WITHOUT acquiring a rotation attribute
-    await fiftyoneLoader.executePythonCode(`
-import fiftyone as fo
-
-dataset = fo.load_dataset("${datasetName}")
-sample = dataset.first()
-dog = [d for d in sample.detections.detections if d.label == "dog"][0]
-
-assert abs(dog.bounding_box[0] - 0.123) < 1e-4, dog.bounding_box
-assert getattr(dog, "rotation", None) is None, dog
-    `);
+    // the geometry edit round-trips and the box stays unrotated. (That the
+    // `rotation` attribute is never even STAMPED onto an unrotated box — a
+    // stronger claim than the 0 this form shows for an absent attribute — is
+    // pinned by the detectionAdapter unit tests.)
+    await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
+      await freshModal.sidebar.annotate.selectActiveLabel("dog", 0);
+      await expect
+        .poll(() => fieldNum(freshModal, "position.x"))
+        .toBeCloseTo(0.123, 4);
+      await expect
+        .poll(() => fieldNum(freshModal, "rotation.rotation"))
+        .toBeCloseTo(0, 4);
+    });
   });
 });
