@@ -27,6 +27,7 @@ import type {
   ViewportState,
 } from "../types";
 import { parseColorWithAlpha } from "../utils/color";
+import { clipPolygonToRect } from "../utils/geometry";
 import type { ImageOptions, ImageSource, Renderer2D } from "./Renderer2D";
 import { sharedPixiApp } from "./SharedPixiApplication";
 import { DashLine } from "./pixi-renderer-utils/dashed-line";
@@ -219,11 +220,31 @@ export class PixiRenderer2D implements Renderer2D {
     graphics.fill();
   }
 
+  /**
+   * Rotates `graphics` around the center of `bounds` — shapes are drawn in
+   * world coordinates, so pivoting at the center re-anchors the rotation
+   * there.
+   */
+  private applyRotation(
+    graphics: PIXI.Graphics,
+    bounds: Rect,
+    rotation?: number,
+  ): void {
+    if (!rotation) return;
+
+    const cx = bounds.x + bounds.width / 2;
+    const cy = bounds.y + bounds.height / 2;
+    graphics.pivot.set(cx, cy);
+    graphics.position.set(cx, cy);
+    graphics.rotation = rotation;
+  }
+
   drawHandles(
     bounds: Rect,
     width: number,
     color: number | string,
     containerId: string,
+    rotation?: number,
   ): void {
     width *= HANDLE_FACTOR / this.getScale();
     const graphics = new PIXI.Graphics();
@@ -232,6 +253,7 @@ export class PixiRenderer2D implements Renderer2D {
     this.drawBoxes(graphics, bounds, width + outline, color, HANDLE_ALPHA);
     this.drawBoxes(graphics, bounds, width, HANDLE_COLOR, HANDLE_ALPHA);
 
+    this.applyRotation(graphics, bounds, rotation);
     this.addToContainer(graphics, containerId);
   }
 
@@ -239,6 +261,7 @@ export class PixiRenderer2D implements Renderer2D {
     bounds: Rect,
     canonicalMediaBounds: Rect,
     containerId: string,
+    rotation?: number,
   ): void {
     const mask = new PIXI.Graphics();
     mask.rect(
@@ -249,6 +272,37 @@ export class PixiRenderer2D implements Renderer2D {
     );
     mask.setFillStyle({ color: SELECTED_COLOR, alpha: SELECTED_ALPHA });
     mask.fill();
+
+    if (rotation) {
+      // Rotated cutout: punch the rotated corners as a polygon, CLIPPED to
+      // the media bounds. The punch is an earcut hole, and earcut requires
+      // holes to lie inside the outer shape — a corner escaping the media
+      // rect otherwise breaks the triangulation and leaks stray dark
+      // triangles into the scrim.
+      const cx = bounds.x + bounds.width / 2;
+      const cy = bounds.y + bounds.height / 2;
+      const cos = Math.cos(rotation);
+      const sin = Math.sin(rotation);
+      const corners = [
+        [-bounds.width / 2, -bounds.height / 2],
+        [bounds.width / 2, -bounds.height / 2],
+        [bounds.width / 2, bounds.height / 2],
+        [-bounds.width / 2, bounds.height / 2],
+      ].map(([x, y]) => ({
+        x: cx + x * cos - y * sin,
+        y: cy + x * sin + y * cos,
+      }));
+
+      const clipped = clipPolygonToRect(corners, canonicalMediaBounds);
+      if (clipped.length >= 3) {
+        mask.poly(clipped.flatMap((p) => [p.x, p.y]));
+        mask.cut();
+      }
+
+      mask.eventMode = "none";
+      this.addToContainer(mask, containerId);
+      return;
+    }
 
     const x = Math.max(bounds.x, canonicalMediaBounds.x);
     const y = Math.max(bounds.y, canonicalMediaBounds.y);
@@ -271,7 +325,12 @@ export class PixiRenderer2D implements Renderer2D {
     this.addToContainer(mask, containerId);
   }
 
-  drawRect(bounds: Rect, style: DrawStyle, containerId: string): void {
+  drawRect(
+    bounds: Rect,
+    style: DrawStyle,
+    containerId: string,
+    rotation?: number,
+  ): void {
     const graphics = new PIXI.Graphics();
     const width = (style.lineWidth || 1) / this.getScale();
 
@@ -304,6 +363,7 @@ export class PixiRenderer2D implements Renderer2D {
       }
     }
 
+    this.applyRotation(graphics, bounds, rotation);
     this.addToContainer(graphics, containerId);
   }
 

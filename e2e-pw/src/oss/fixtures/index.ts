@@ -133,13 +133,17 @@ export const test = customFixtures.extend<CustomFixturesWithPage>({
         return;
       }
 
+      // 127.0.0.1, not localhost: the servers bind IPv4, and on hosts where
+      // localhost resolves to ::1 first (macOS) the browser can fail the
+      // IPv6 attempt without falling back. The startup health check already
+      // probes 127.0.0.1 — navigation should match it.
       await use(
-        `http://localhost:${process.env.FIFTYONE_DEFAULT_APP_PORT ?? 5193}`,
+        `http://127.0.0.1:${process.env.FIFTYONE_DEFAULT_APP_PORT ?? 5193}`,
       );
       return;
     }
 
-    await use(`http://localhost:${fiftyoneServerPort}`);
+    await use(`http://127.0.0.1:${fiftyoneServerPort}`);
   },
 });
 

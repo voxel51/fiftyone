@@ -857,6 +857,7 @@ function extractDetections(
       _id: det._id ?? det.id ?? undefined,
       label: det.label ?? "",
       bounding_box: det.bounding_box,
+      rotation: typeof det.rotation === "number" ? det.rotation : undefined,
       index: det.index,
       instance: det.instance ?? undefined,
       keyframe: det.keyframe ?? false,

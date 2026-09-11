@@ -65,6 +65,8 @@ const toSyntheticBox = (label: LabelData): SyntheticBox => ({
   _id: label._id,
   label: (label.label as string) ?? "",
   bounding_box: label.bounding_box as [number, number, number, number],
+  // scalar 2D rotation only — a 3D detection's [x, y, z] list is not lerped
+  rotation: typeof label.rotation === "number" ? label.rotation : undefined,
   index: label.index as number | undefined,
   instance: label.instance as SyntheticBox["instance"],
   keyframe: (label.keyframe as boolean) ?? false,

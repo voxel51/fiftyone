@@ -136,6 +136,78 @@ export function distanceFromLineSegment(
 }
 
 /**
+ * Clips a polygon against an axis-aligned rectangle (Sutherland–Hodgman).
+ * Returns the clipped polygon's vertices in order — possibly more vertices
+ * than the input where edges cross the rectangle, or fewer than 3 (an empty
+ * array in the degenerate case) when the polygon lies outside it.
+ */
+export function clipPolygonToRect(
+  polygon: Point[],
+  rect: { x: number; y: number; width: number; height: number },
+): Point[] {
+  // inside-tests and line parameters for the rect's four half-planes
+  const planes: Array<{
+    inside: (p: Point) => boolean;
+    intersect: (a: Point, b: Point) => Point;
+  }> = [
+    {
+      inside: (p) => p.x >= rect.x,
+      intersect: (a, b) => intersectVertical(a, b, rect.x),
+    },
+    {
+      inside: (p) => p.x <= rect.x + rect.width,
+      intersect: (a, b) => intersectVertical(a, b, rect.x + rect.width),
+    },
+    {
+      inside: (p) => p.y >= rect.y,
+      intersect: (a, b) => intersectHorizontal(a, b, rect.y),
+    },
+    {
+      inside: (p) => p.y <= rect.y + rect.height,
+      intersect: (a, b) => intersectHorizontal(a, b, rect.y + rect.height),
+    },
+  ];
+
+  let output = polygon;
+  for (const { inside, intersect } of planes) {
+    const input = output;
+    output = [];
+
+    for (let i = 0; i < input.length; i++) {
+      const current = input[i];
+      const previous = input[(i + input.length - 1) % input.length];
+      const currentInside = inside(current);
+      const previousInside = inside(previous);
+
+      if (currentInside) {
+        if (!previousInside) {
+          output.push(intersect(previous, current));
+        }
+        output.push(current);
+      } else if (previousInside) {
+        output.push(intersect(previous, current));
+      }
+    }
+
+    if (output.length === 0) {
+      return [];
+    }
+  }
+
+  return output.length >= 3 ? output : [];
+}
+
+function intersectVertical(a: Point, b: Point, x: number): Point {
+  const t = (x - a.x) / (b.x - a.x);
+  return { x, y: a.y + t * (b.y - a.y) };
+}
+
+function intersectHorizontal(a: Point, b: Point, y: number): Point {
+  const t = (y - a.y) / (b.y - a.y);
+  return { x: a.x + t * (b.x - a.x), y };
+}
+
+/**
  * Tests whether a point lies inside a polygon using the ray-casting algorithm.
  * The polygon is defined by an ordered list of vertices; the last vertex is
  * implicitly connected back to the first.

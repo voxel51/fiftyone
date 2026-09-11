@@ -558,3 +558,61 @@ describe("lighter bridge gated mounts (deferred mask_path decode)", () => {
     unregister();
   });
 });
+
+describe("detectionAdapter.toLabel rotation", () => {
+  const makeOverlay = (
+    label: Record<string, unknown>,
+    rotation: number,
+  ): BaseOverlay =>
+    ({
+      id: "d1",
+      field: "ground_truth",
+      label,
+      relativeBounds: { x: 0.1, y: 0.2, width: 0.3, height: 0.4 },
+      hasMask: () => false,
+      getPendingMask: () => undefined,
+      getRotation: () => rotation,
+    }) as unknown as BaseOverlay;
+
+  it("persists the overlay's nonzero rotation", () => {
+    const overlay = makeOverlay({ _id: "d1", label: "cat" }, 1.25);
+
+    expect(detectionAdapter.toLabel(overlay)).toMatchObject({ rotation: 1.25 });
+  });
+
+  it("writes 0 over a stale stored scalar when rotated back square", () => {
+    const overlay = makeOverlay({ _id: "d1", label: "cat", rotation: 1.25 }, 0);
+
+    expect(detectionAdapter.toLabel(overlay)).toMatchObject({ rotation: 0 });
+  });
+
+  it("never stamps rotation onto a box that was never rotated", () => {
+    const overlay = makeOverlay({ _id: "d1", label: "cat" }, 0);
+
+    expect(detectionAdapter.toLabel(overlay)).not.toHaveProperty("rotation");
+  });
+
+  it("leaves a 3D [x, y, z] rotation list untouched", () => {
+    const overlay = makeOverlay(
+      { _id: "d1", label: "cat", rotation: [0, -1.56, 0] },
+      // the overlay reports 0 for a list-valued rotation
+      0,
+    );
+
+    expect(detectionAdapter.toLabel(overlay)).toMatchObject({
+      rotation: [0, -1.56, 0],
+    });
+  });
+
+  it("preserves a stored scalar on masked overlays (render-suppressed 0)", () => {
+    const overlay = {
+      ...makeOverlay({ _id: "d1", label: "cat", rotation: 1.25 }, 0),
+      hasMask: () => true,
+    } as unknown as BaseOverlay;
+
+    // getRotation() reports 0 for masks; the stored value must survive
+    expect(detectionAdapter.toLabel(overlay)).toMatchObject({
+      rotation: 1.25,
+    });
+  });
+});

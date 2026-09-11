@@ -120,6 +120,8 @@ export interface InteractionHandler {
   isDragging?(): boolean;
   /** Returns true if the handler is being resized. */
   isResizing?(): boolean;
+  /** Returns true if the handler is being rotated. */
+  isRotating?(): boolean;
   /** Returns true if the handler is selected. */
   isSelected?(): boolean;
   /** Returns true if a new DetectionOverlay is being created. */
@@ -159,6 +161,10 @@ export interface InteractionHandler {
   getMoveStartPosition?(): Point | undefined;
   /** Returns the position from the start of handler movement */
   getMoveStartBounds?(): Rect | undefined;
+  /** Returns the rotation (radians) from the start of a rotation gesture */
+  getMoveStartRotation?(): number | undefined;
+  /** Returns the current rotation, in radians */
+  getRotation?(): number;
   /** Returns the overlay associated with the manager. */
   getOverlay?(): BaseOverlay | undefined;
   /** Called when a pointer-down occurs on this handler. */
@@ -826,7 +832,12 @@ export class InteractionManager {
 
       if (handler.isInteracting?.()) {
         // Emit move event with bounds information
-        if (TypeGuards.isSpatial(handler)) {
+        if (handler.isRotating?.()) {
+          this.eventBus.dispatch("lighter:overlay-rotate-move", {
+            id: handler.id,
+            rotation: handler.getRotation?.() ?? 0,
+          });
+        } else if (TypeGuards.isSpatial(handler)) {
           const type = handler.isDragging?.()
             ? "lighter:overlay-drag-move"
             : "lighter:overlay-resize-move";
@@ -973,6 +984,8 @@ export class InteractionManager {
       const interactionState = handler.getInteractionState?.();
       const startBounds = handler.getMoveStartBounds?.();
       const startPosition = handler.getMoveStartPosition?.();
+      // read before onPointerUp resets the gesture state
+      const startRotation = handler.getMoveStartRotation?.();
 
       // Handle drag end
       handler.onPointerUp?.({
@@ -1010,6 +1023,20 @@ export class InteractionManager {
             this.eventBus.dispatch("lighter:overlay-establish", {
               ...detail,
               handler: interactiveHandler,
+            });
+          }
+        } else if (interactionState === "ROTATING") {
+          // Rotation has no selection-click ambiguity (the pointer went down
+          // ON the rotate handle) and a meaningful angle change can ride on a
+          // sub-threshold pointer move, so it finalizes outside the spatial
+          // drag gate — on any real angular delta instead.
+          const rotation = handler.getRotation?.() ?? 0;
+          if (Math.abs((startRotation ?? 0) - rotation) > 1e-4) {
+            this.eventBus.dispatch("lighter:overlay-rotate-end", {
+              id: handler.id,
+              overlayId: handler.overlay?.id ?? handler.id,
+              startRotation: startRotation ?? 0,
+              rotation,
             });
           }
         } else if (this.isSpatialDragEvent(event)) {

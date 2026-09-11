@@ -96,3 +96,61 @@ describe("PropagationBrowserAgent.infer", () => {
     }
   });
 });
+
+describe("PropagationBrowserAgent.infer rotation", () => {
+  const run = async (left: SyntheticBox, right: SyntheticBox) => {
+    const agent = new PropagationBrowserAgent();
+    const context: PropagationContext = {
+      ...baseContext,
+      fromFrame: 0,
+      toFrame: 10,
+      parentKeyframes: [left, right],
+    };
+
+    return (await agent.infer(
+      context,
+    )) as SyncInferenceResult<PropagationInferenceResult>;
+  };
+
+  const rotated = (
+    id: string,
+    bbox: [number, number, number, number],
+    rotation?: number,
+  ): SyntheticBox => ({ ...keyframe(id, bbox), rotation });
+
+  it("lerps rotation along the shortest arc between rotated keyframes", async () => {
+    // 350° → 10° turns 20° through zero, not 340° backwards
+    const from = (350 * Math.PI) / 180;
+    const to = (10 * Math.PI) / 180;
+    const result = await run(
+      rotated("instance-inst-1", [0.1, 0.1, 0.2, 0.2], from),
+      rotated("instance-inst-1", [0.1, 0.1, 0.2, 0.2], to),
+    );
+
+    const midpoint = result.response.perFrame.find((e) => e.frameNumber === 5);
+    const rotation = midpoint?.detection.rotation as number;
+    // shortest arc passes through 0° at the midpoint
+    expect(Math.min(rotation, 2 * Math.PI - rotation)).toBeCloseTo(0);
+  });
+
+  it("lerps against 0 when only one keyframe carries a rotation", async () => {
+    const result = await run(
+      rotated("instance-inst-1", [0.1, 0.1, 0.2, 0.2], 1.0),
+      rotated("instance-inst-1", [0.1, 0.1, 0.2, 0.2], undefined),
+    );
+
+    const midpoint = result.response.perFrame.find((e) => e.frameNumber === 5);
+    expect(midpoint?.detection.rotation).toBeCloseTo(0.5);
+  });
+
+  it("emits no rotation attribute when neither keyframe carries one", async () => {
+    const result = await run(
+      keyframe("instance-inst-1", [0.0, 0.0, 0.1, 0.1]),
+      keyframe("instance-inst-1", [1.0, 1.0, 0.1, 0.1]),
+    );
+
+    for (const { detection } of result.response.perFrame) {
+      expect(detection).not.toHaveProperty("rotation");
+    }
+  });
+});
