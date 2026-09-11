@@ -647,12 +647,15 @@ export const FrameLabelsTracks: React.FC<{
    * rows have to describe the fields the stream actually fetched.
    */
   mode?: "annotate" | "explore";
+  /** Reports whether the frame tracks have resolved for the current sample. */
+  onReadyChange?: (ready: boolean) => void;
 }> = ({
   sample,
   maxSize,
   extraActions,
   trailingActions,
   mode = "annotate",
+  onReadyChange,
 }) => {
   const { resolveObjectColor, resolveTemporalDetectionColor } =
     useTrackColorResolvers();
@@ -735,6 +738,9 @@ export const FrameLabelsTracks: React.FC<{
   // synchronously and would otherwise trip the empty→ready flip before frame
   // tracks land, leaving frame tracks unpinned.
   const ready = frameTracksResolved;
+  useEffect(() => {
+    onReadyChange?.(ready);
+  }, [ready, onReadyChange]);
 
   // Filled by TimelineWithTracks; the drawer is virtualized, so revealing a
   // row has to go through the list rather than the DOM.

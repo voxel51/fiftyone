@@ -4,6 +4,12 @@ import {
   useIsImageDynamicGroupVideo,
 } from "@fiftyone/state";
 import type { ModalSample } from "@fiftyone/state";
+import {
+  useActiveSampleId,
+  useAnnotationEngine,
+  useEngineSelector,
+} from "@fiftyone/annotation";
+import { Size, Spinner } from "@voxel51/voodo";
 import React, { useMemo, useState } from "react";
 import { useAutoInterpolate } from "../hooks/useAutoInterpolate";
 import { useEndPointSessionOnFrameChange } from "../hooks/useEndPointSessionOnFrameChange";
@@ -70,6 +76,8 @@ interface MediaProps {
   videoSrc: string | null;
   /** Demuxer verdict on audio-track presence; undefined = unknown. */
   hasAudio?: boolean;
+  /** Reports whether the tile's viewport has initialized and painted. */
+  onRevealChange: (revealed: boolean) => void;
 }
 
 interface RegistrarProps {
@@ -94,11 +102,19 @@ interface RegistrarProps {
  * (see `AUDIO_ONLY_STRATEGIES` below).
  */
 const STRATEGY_TILE: Record<DecodeStrategy, React.FC<MediaProps>> = {
-  extract: () => <ImaVidLighterTile />,
-  fetch: () => <ImaVidLighterTile />,
-  html: ({ videoSrc, hasAudio }) =>
+  extract: ({ onRevealChange }) => (
+    <ImaVidLighterTile onRevealChange={onRevealChange} />
+  ),
+  fetch: ({ onRevealChange }) => (
+    <ImaVidLighterTile onRevealChange={onRevealChange} />
+  ),
+  html: ({ videoSrc, hasAudio, onRevealChange }) =>
     videoSrc ? (
-      <LighterVideo videoSrc={videoSrc} hasAudio={hasAudio} />
+      <LighterVideo
+        videoSrc={videoSrc}
+        hasAudio={hasAudio}
+        onRevealChange={onRevealChange}
+      />
     ) : (
       <div className={styles.empty}>No media URL on this sample.</div>
     ),
@@ -207,6 +223,17 @@ const VideoAnnotationSurfaceForSample: React.FC<
 
   // Decide the decode strategy up front. Runs unconditionally (before the gates
   // below) to keep hook order stable across the resolving → resolved transition.
+  // One cover over media and timeline: the tile's viewport, the frame store
+  // and the tracks all report in, and nothing shows until every one is ready.
+  const [mediaRevealed, setMediaRevealed] = useState(false);
+  const [tracksReady, setTracksReady] = useState(false);
+  const engine = useAnnotationEngine();
+  const activeSampleId = useActiveSampleId();
+  const storeReady = useEngineSelector(
+    engine,
+    (reads) => activeSampleId !== null && reads.isSampleReady(activeSampleId),
+  );
+
   const resolution = useDecodeStrategy({
     videoSrc,
     frameCount: prerequisites.frameCount,
@@ -248,17 +275,28 @@ const VideoAnnotationSurfaceForSample: React.FC<
   const strategy = resolution.strategy;
   const Tile = STRATEGY_TILE[strategy];
   const Registrar = STRATEGY_REGISTRAR[strategy];
+  const hasMedia = strategy !== "html" || videoSrc !== null;
+  const revealed =
+    (mediaRevealed || !hasMedia) &&
+    (labelsMode === "synthetic" || tracksReady) &&
+    storeReady;
+  const hidden = revealed ? undefined : { visibility: "hidden" as const };
 
   const layout = (
     <div
       ref={dimensions.ref as React.RefObject<HTMLDivElement>}
       className={styles.root}
       data-cy="video-annotation-surface"
+      data-revealed={revealed}
     >
-      <div className={styles.media}>
-        <Tile videoSrc={videoSrc} hasAudio={resolution.hasAudio} />
+      <div className={styles.media} style={hidden}>
+        <Tile
+          videoSrc={videoSrc}
+          hasAudio={resolution.hasAudio}
+          onRevealChange={setMediaRevealed}
+        />
       </div>
-      <div className={styles.timeline}>
+      <div className={styles.timeline} style={hidden}>
         {labelsMode === "synthetic" ? (
           <SyntheticTrackTimeline />
         ) : (
@@ -266,9 +304,15 @@ const VideoAnnotationSurfaceForSample: React.FC<
             sample={sample}
             maxSize={timelineMaxSize}
             extraActions={<VideoAnnotationToolbar />}
+            onReadyChange={setTracksReady}
           />
         )}
       </div>
+      {!revealed && (
+        <div className={styles.cover}>
+          <Spinner size={Size.Lg} />
+        </div>
+      )}
     </div>
   );
 

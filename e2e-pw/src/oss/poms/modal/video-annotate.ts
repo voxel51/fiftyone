@@ -29,6 +29,9 @@ export class VideoAnnotatePom {
    */
   async waitForSurface() {
     await expect(this.surface).toBeVisible();
+    // the surface stays under an opaque cover until media, store and tracks
+    // are ready; clicks before that land on the cover
+    await expect(this.surface).toHaveAttribute("data-revealed", "true");
     await expect(
       this.page.locator('[data-timeline-loaded="true"]'),
     ).toBeAttached();
