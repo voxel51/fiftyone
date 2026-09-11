@@ -8,13 +8,15 @@ import {
   datasetName,
   dynamicGroupsElementCount,
   dynamicGroupsTargetFrameRate,
+  field,
   fieldPaths,
   groupByFieldValue,
   groupSlice,
-  type ModalSample,
   modalSampleId,
   selectedMediaField,
   State,
+  timeZone,
+  type ModalSample,
   useCurrentDatasetId,
   useDynamicGroupOrderBy,
   useIsImageDynamicGroupVideo,
@@ -255,3 +257,10 @@ export {
   useDynamicAttributeNamesGetter,
   labelSchemaData,
 } from "../../../core/src/components/Modal/Sidebar/Annotate/state";
+
+/** The dataset's display time zone. */
+export const useTimeZone = (): string => useRecoilValue(timeZone);
+
+/** A field's `ftype`, or undefined when the path is not in the schema. */
+export const useFieldType = (path: string | null): string | undefined =>
+  useRecoilValue(field(path ?? ""))?.ftype;

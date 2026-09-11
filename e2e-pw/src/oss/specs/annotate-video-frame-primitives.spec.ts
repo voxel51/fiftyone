@@ -3,7 +3,8 @@
  *
  * Frame-scoped primitives in the annotate sidebar follow the playhead. A
  * video's `frames.*` fields read from the frame under the playhead, and the
- * clip's own clock, `frames.frame_number`, is listed read-only.
+ * clip's own clock, `frames.frame_number`, is listed read-only. The timeline
+ * clock counts frames from 1.
  */
 import { test as base } from "src/oss/fixtures";
 import type { Page } from "src/oss/fixtures";
@@ -71,7 +72,8 @@ test("frame primitives follow the playhead and the frame number is read-only", a
   const sidebar = modal.sidebar.annotate;
   await sidebar.assert.primitiveValue("frames.weather", weatherAt(1));
   await sidebar.assert.primitiveValue("frames.frame_number", "1");
-  await modal.videoAnnotate.assert.frameReadout("#1 / #20");
+  // the current frame pads to the total's width
+  await modal.videoAnnotate.assert.clock("# 1 / #20");
 
   await blur(page);
   for (let i = 0; i < 3; i++) {
@@ -79,11 +81,7 @@ test("frame primitives follow the playhead and the frame number is read-only", a
   }
   await sidebar.assert.primitiveValue("frames.weather", weatherAt(4));
   await sidebar.assert.primitiveValue("frames.frame_number", "4");
-  await modal.videoAnnotate.assert.frameReadout("#4 / #20");
-
-  // the clock's frame display counts from 1 as well
-  await modal.videoAnnotate.toggleClockDisplay();
-  await modal.videoAnnotate.assert.clock("#4 / #20");
+  await modal.videoAnnotate.assert.clock("# 4 / #20");
 
   await sidebar.assert.primitiveReadOnly("frames.frame_number", true);
   await sidebar.assert.primitiveReadOnly("frames.weather", false);

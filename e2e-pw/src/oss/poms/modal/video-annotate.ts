@@ -21,9 +21,9 @@ export class VideoAnnotatePom {
     this.surface = page.getByTestId("video-annotation-surface");
   }
 
-  /** The `#frame / #total` readout beside the timeline clock. */
-  get frameReadout(): Locator {
-    return this.page.getByTestId("timeline-frame-readout");
+  /** The dynamic group's order-by value beside the clock, `(value)`. */
+  get orderByReadout(): Locator {
+    return this.page.getByTestId("timeline-order-by-readout");
   }
 
   /** The timeline clock; in frame display it reads `#frame / #total`. */
@@ -497,9 +497,9 @@ export class VideoAnnotatePom {
 class VideoAnnotateAsserter {
   constructor(private readonly va: VideoAnnotatePom) {}
 
-  /** The frame readout shows `text`, e.g. `#4 / #20`. */
-  async frameReadout(text: string) {
-    await expect(this.va.frameReadout).toHaveText(text);
+  /** The order-by readout shows `text`, e.g. `(30)`. */
+  async orderByReadout(text: string) {
+    await expect(this.va.orderByReadout).toHaveText(text);
   }
 
   /** The clock shows `text`. */

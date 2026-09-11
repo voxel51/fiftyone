@@ -45,7 +45,13 @@ const PlayheadTime: React.FC = () => {
     mode.kind === "sequence"
       ? Math.min(toDisplay(safePlayhead) as number, total as number)
       : toDisplay(safePlayhead);
-  const label = `${formatDisplayValue(current, mode)} / ${formatDisplayValue(total, mode)}`;
+  // the frame number pads to the total's width so a digit rolling over never
+  // shifts the row
+  const currentText =
+    mode.kind === "sequence"
+      ? `#${String(current).padStart(String(total).length, "\u00a0")}`
+      : formatDisplayValue(current, mode);
+  const label = `${currentText} / ${formatDisplayValue(total, mode)}`;
 
   const readout = (
     <Text

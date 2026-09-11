@@ -4,7 +4,7 @@
  * An image dataset grouped into an ordered video keeps each frame's primitives
  * on its own sample. The annotate sidebar reads them from the sample under the
  * playhead, the group's order-by field is listed read-only, and the timeline
- * readout shows the frame with the real order-by value beside it.
+ * clock counts frames with the real order-by value beside it.
  */
 import { test as base } from "src/oss/fixtures";
 import type { Page } from "src/oss/fixtures";
@@ -97,9 +97,8 @@ test("primitives follow the playhead and the order-by field is read-only", async
   const sidebar = modal.sidebar.annotate;
   await sidebar.assert.primitiveValue("weather", weatherAt(1));
   await sidebar.assert.primitiveValue("timestamp", String(timestampAt(1)));
-  await modal.videoAnnotate.assert.frameReadout(
-    `#1 / #${FRAMES} (${timestampAt(1)})`,
-  );
+  await modal.videoAnnotate.assert.clock(`#1 / #${FRAMES}`);
+  await modal.videoAnnotate.assert.orderByReadout(`(${timestampAt(1)})`);
 
   await blur(page);
   for (let i = 0; i < 2; i++) {
@@ -108,13 +107,8 @@ test("primitives follow the playhead and the order-by field is read-only", async
   await sidebar.assert.primitiveValue("weather", weatherAt(3));
   await sidebar.assert.primitiveValue("timestamp", String(timestampAt(3)));
   await sidebar.assert.primitiveValue("frame_number", "3");
-  await modal.videoAnnotate.assert.frameReadout(
-    `#3 / #${FRAMES} (${timestampAt(3)})`,
-  );
-
-  // the clock's frame display counts from 1 as well
-  await modal.videoAnnotate.toggleClockDisplay();
   await modal.videoAnnotate.assert.clock(`#3 / #${FRAMES}`);
+  await modal.videoAnnotate.assert.orderByReadout(`(${timestampAt(3)})`);
 
   // only the order-by field is reserved; a plain frame_number field edits
   await sidebar.assert.primitiveReadOnly("timestamp", true);

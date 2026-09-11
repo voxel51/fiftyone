@@ -38,7 +38,7 @@ import {
   AnnotatePrerequisiteNotice,
 } from "./AnnotatePrerequisiteNotice";
 import { FrameLabelsTracks, RegisterFrameLabels } from "./FrameLabels";
-import { FrameReadout } from "./FrameReadout";
+import { OrderByReadout } from "./OrderByReadout";
 import { ImaVidLighterTile } from "./ImaVidLighterTile";
 import { RegisterImaVidImage } from "./RegisterImaVidImage";
 import { RegisterTimelineAudio } from "./RegisterTimelineAudio";
@@ -209,7 +209,8 @@ const VideoAnnotationSurfaceForSample: React.FC<
     return url ? getSampleSrc(url) : null;
   }, [sample, isImageDynamicGroupVideo]);
 
-  // Sequence mode gives the readout a frame domain to switch into.
+  // Annotation is frame-based: the clock and ruler count frames by default,
+  // with elapsed time one click away on the clock.
   const mode = useMemo<TimelineMode>(
     () => ({
       kind: "sequence",
@@ -311,7 +312,7 @@ const VideoAnnotationSurfaceForSample: React.FC<
             sample={sample}
             maxSize={timelineMaxSize}
             extraActions={<VideoAnnotationToolbar />}
-            readouts={<FrameReadout />}
+            readouts={<OrderByReadout />}
             onReadyChange={setTracksReady}
           />
         )}
@@ -358,7 +359,7 @@ const VideoAnnotationSurfaceForSample: React.FC<
     // Annotation wants the playhead to rest on a real frame after a pause or
     // scrub-drag, so the labels snapshot and any keyframe op align to a frame.
     // Scrubbing stays continuous — only the settle position snaps.
-    <PlaybackProvider snapToFrameOnSettle mode={mode} defaultDisplay="duration">
+    <PlaybackProvider snapToFrameOnSettle mode={mode}>
       <VideoAnnotationHandlerRegistration />
       {AUDIO_ONLY_STRATEGIES.has(strategy) && (
         <RegisterTimelineAudio
