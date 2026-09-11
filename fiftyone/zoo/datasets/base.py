@@ -4286,7 +4286,8 @@ class HiltiSLAMChallenge2022Dataset(FiftyOneDataset):
     construction site in Schaan, Liechtenstein, and nine through the
     Sheldonian Theatre in Oxford. A surveyor measured reference positions
     along every run, and three runs also carry a continuous reference
-    trajectory.
+    trajectory. Every episode carries the reference at the instants it was
+    measured, along with the rig's calibrated frame tree.
 
     Camera frames are published at 10 Hz, on the LiDAR's clock, rather than
     the 40 Hz the bags record. ``exp23_the_sheldonian_slam`` is one run
@@ -4312,7 +4313,7 @@ class HiltiSLAMChallenge2022Dataset(FiftyOneDataset):
     _REPO_ID = "Voxel51/Hilti-SLAM-Challenge-2022"
     # Pinned so a loaded dataset is reproducible; the default branch is
     # mutable and could change media, labels or size underneath a user
-    _REVISION = "876a688bd21fb59656707b4bfe4e8bc9b7d5dd35"
+    _REVISION = "c01eba3665f841bc47701be477130c3c03d4ac92"
 
     @property
     def name(self):
