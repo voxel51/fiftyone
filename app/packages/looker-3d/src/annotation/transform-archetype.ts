@@ -73,3 +73,10 @@ export const canTransformArchetypeUseMode = (
 
   return mode === "translate";
 };
+
+/** The mode the archetype can actually use; translate is valid for every archetype. */
+export const resolveTransformMode = (
+  archetype: Archetype3d | null,
+  mode: TransformMode,
+): TransformMode =>
+  canTransformArchetypeUseMode(archetype, mode) ? mode : "translate";
