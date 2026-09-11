@@ -3251,10 +3251,50 @@ Rotated bounding boxes
     :oss_version: 0.20.0
     :enterprise_version: 1.2
 
-You can store and visualize rotated bounding boxes in FiftyOne using the
+You can represent a rotated (oriented) bounding box natively by adding a
+scalar ``rotation`` attribute to a 2D |Detection|:
+
+.. code-block:: python
+    :linenos:
+
+    import math
+
+    import fiftyone as fo
+
+    detection = fo.Detection(
+        label="vehicle",
+        bounding_box=[0.4, 0.4, 0.2, 0.2],
+        rotation=math.pi / 4,  # radians
+    )
+
+The ``rotation`` defines the angle in ``[0, 2 * pi)`` that the box is rotated
+around its center, applied in pixel space, where positive values rotate the
+box clockwise as displayed. The ``bounding_box`` continues to describe the
+unrotated box.
+
+The App renders rotated detections natively, and in
+:ref:`annotate mode <annotate-tab>` a selected box provides a rotate
+handle (hold ``Shift`` to snap to 15° increments). For video datasets,
+rotation is interpolated between keyframes along the shortest arc.
+
+.. note::
+
+    Rotation is ignored for detections with
+    :ref:`instance masks <instance-segmentation>`, which are stored relative
+    to the unrotated box.
+
+Alternatively, you can represent rotated boxes as polylines using the
 :meth:`Polyline.from_rotated_box() <fiftyone.core.labels.Polyline.from_rotated_box>`
 method, which accepts rotated boxes described by their center coordinates,
 width/height, and counter-clockwise rotation, in radians.
+
+.. note::
+
+    "Counter-clockwise" here and "clockwise as displayed" above describe the
+    **same** rotation: a positive angle rotates counter-clockwise in standard
+    math coordinates (y-axis up) and clockwise on screen in image coordinates
+    (y-axis down). The same angle value produces the same rendered box through
+    either API.
 
 .. note::
 
