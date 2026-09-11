@@ -24,7 +24,7 @@ const AddTileMenu: React.FC<{
           <MenuIconTextItem
             key={type}
             data-testid={`episode-add-tile-${type === TILE_TYPE.RAW ? "message" : type}`}
-            icon={definition.icon}
+            icon={<definition.icon />}
             text={definition.typeLabel}
             onClick={() => {
               addTile(

@@ -1,5 +1,5 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
-import { IconName } from "@voxel51/voodo";
+import { GridViewIcon } from "@voxel51/voodo";
 import { Provider as JotaiProvider, createStore } from "jotai";
 import React from "react";
 import { afterEach, describe, expect, it } from "vitest";
@@ -28,7 +28,7 @@ const makeEntry = (
 ): RegisteredTile => ({
   type,
   typeLabel,
-  icon: IconName.GridView,
+  icon: GridViewIcon,
   Tile: DummyTile,
 });
 
