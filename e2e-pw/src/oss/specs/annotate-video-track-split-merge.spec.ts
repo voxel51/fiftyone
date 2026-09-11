@@ -141,16 +141,16 @@ const expectSplitPersisted = async (
     totalFrames / fps,
   );
 
-  const keyframes = async (trackId: string) =>
-    (await va.keyframeTimes(trackId)).map(toFrame);
+  // a keyframe on a track's last frame draws at the bar's end, one on its
+  // first frame at the bar's start
   expect(
-    await keyframes(head),
+    await va.keyframeTimes(head),
     "head's last frame is its only keyframe",
-  ).toEqual([cut - 1]);
+  ).toEqual([headSpan.end]);
   expect(
-    await keyframes(tail),
+    await va.keyframeTimes(tail),
     "tail's first frame is its only keyframe",
-  ).toEqual([cut]);
+  ).toEqual([tailSpan.start]);
 
   // overlay ids are the timeline's track ids (`instance-<id>`)
   for (let frame = 1; frame <= totalFrames; frame++) {
