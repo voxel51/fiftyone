@@ -13,6 +13,11 @@ Includes all updates from :ref:`FiftyOne 1.22.0 <release-notes-v1.22.0>`, plus:
   episode's sensor streams and explore them in a new embeddings plot. Find
   similar moments by text, point, or lasso, and click a point to jump the
   timeline there
+- **Annotation Metrics**: a Metrics tab on every annotation workflow shows
+  labeling throughput, time per sample and per label, and rejection rate for
+  each contributor, with trend charts by metric and period and a breakdown
+  by stage. Scope the board to one workflow, one dataset, or all datasets you
+  can access. Labelers see metrics for the workflows they are part of
 - **Spatiotemporal comments**: anchor Discussion threads to a point or box
   on a sample, video frame, or multimodal episode
 - **FiftyOne Agent built in**: the Agent is available directly in the
@@ -30,14 +35,13 @@ Includes all updates from :ref:`FiftyOne 1.22.0 <release-notes-v1.22.0>`, plus:
 - **Custom workflow stages**: build your own annotation workflow stages in
   Python and use them in the workflow editor alongside the built-in stages
 - Agentic Labeling adds Find samples, a text similarity search that suggests
-  example and test samples, and Qwen3.8 support
+  example and test samples
 - Filter multimodal datasets on events, signals, and label tags, and see
   where each matched on the episode timeline
 - Export a single episode as MCAP, load LeRobot datasets from cloud storage,
   and set up projections faster with clear status in Settings
-- Annotation workflows: a per-sample In progress status, labeler names in
-  the Metrics contributors table, and an All datasets Metrics scope that
-  covers every dataset you can access
+- Annotation workflows: added an In progress status for Annotate and Review
+  workflow stages
 - Fixes: workflow runs no longer get stuck when a stage step fails, task
   counts stay accurate, samples deleted while a workflow is running are
   skipped instead of blocking the task, and the MCP server starts reliably
