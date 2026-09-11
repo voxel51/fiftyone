@@ -16,9 +16,6 @@ import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-2d-mask-merge");
 const id = "000000000000000000000000";
 
-const isSamplePatch = (method: string) =>
-  ["POST", "PATCH", "PUT"].includes(method);
-
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
     await use(new ModalPom(page, eventUtils));
@@ -105,7 +102,6 @@ test.describe.serial("2D annotation mask merge", () => {
     browser,
     fiftyoneLoader,
     modal,
-    page,
   }) => {
     await modal.sidebar.annotate.assert.verifyActiveLabelsCount(2);
 
@@ -117,16 +113,13 @@ test.describe.serial("2D annotation mask merge", () => {
 
     // First click sets the target (cat mask); the second merges the source
     // (dog mask) into it and deletes the source.
-    const saved = page.waitForResponse(
-      (r) => /\/sample\//.test(r.url()) && isSamplePatch(r.request().method()),
-    );
     await modal.sampleCanvas.move(0.24, 0.5);
     await modal.sampleCanvas.down();
     await modal.sampleCanvas.up();
     await modal.sampleCanvas.move(0.69, 0.5);
     await modal.sampleCanvas.down();
     await modal.sampleCanvas.up();
-    await saved;
+    await modal.sidebar.annotate.waitForSavesSettled();
 
     // The source detection is absorbed + deleted → one label remains, persisted.
     await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
@@ -140,7 +133,6 @@ test.describe.serial("2D annotation mask merge", () => {
     browser,
     fiftyoneLoader,
     modal,
-    page,
   }) => {
     await modal.sidebar.annotate.selectActiveLabel("cat", 0);
     await modal.sidebar.edit.assert.inSegmentationMode(true);
@@ -152,15 +144,13 @@ test.describe.serial("2D annotation mask merge", () => {
     await modal.sampleCanvas.move(0.69, 0.5);
     await modal.sampleCanvas.down();
     await modal.sampleCanvas.up();
+    await modal.sidebar.annotate.waitForSavesSettled();
 
     // The target bbox + async mask re-encode + source delete coalesce under one
     // gestureId, so a SINGLE undo fully restores the source.
     await modal.sidebar.edit.assert.undoIsEnabled();
-    const restored = page.waitForResponse(
-      (r) => /\/sample\//.test(r.url()) && isSamplePatch(r.request().method()),
-    );
     await modal.sidebar.edit.undo();
-    await restored;
+    await modal.sidebar.annotate.waitForSavesSettled();
 
     await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
       await expect

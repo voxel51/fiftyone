@@ -7,7 +7,7 @@
  * from `modalId` through the 3D-scene discriminator, and each slice carries a
  * distinct detection count so a leak changes the asserted count.
  */
-import { Browser, expect, test as base } from "src/oss/fixtures";
+import { expect, Page, test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
@@ -111,25 +111,20 @@ const seedDataset = (datasetFactory: typeof DatasetFactory) =>
 
 /**
  * The persisted detection classes per group slice (sorted, so the comparison
- * is order-independent), read off the annotate sidebar of a brand-new browser
- * context. Confirms an edit landed only on its own slice's sample.
+ * is order-independent), read off the annotate sidebar in a second tab that
+ * deep-links to the open group. The editing tab keeps its undo history.
  */
 const expectPersistedSliceClasses = async (
-  browser: Browser,
+  page: Page,
   fiftyoneLoader: AbstractFiftyoneLoader,
   expected: Record<SliceName, string[]>,
 ) => {
-  const context = await browser.newContext();
-  const freshPage = await context.newPage();
+  const readPage = await page.context().newPage();
   try {
-    const eventUtils = new EventUtils(freshPage);
-    const grid = new GridPom(freshPage, eventUtils);
-    const modal = new ModalPom(freshPage, eventUtils);
-    await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName);
-    await freshPage.evaluate(() =>
-      window.localStorage.setItem("fo-3d-annotation-tips-dismissed", "true"),
-    );
-    await grid.openFirstSample();
+    const modal = new ModalPom(readPage, new EventUtils(readPage));
+    await fiftyoneLoader.waitUntilGridVisible(readPage, datasetName, {
+      searchParams: new URL(page.url()).searchParams,
+    });
     await modal.waitForSampleLoadDomAttribute(true);
     await modal.sidebar.switchMode("annotate");
     for (const slice of SLICE_NAMES) {
@@ -150,7 +145,7 @@ const expectPersistedSliceClasses = async (
       );
     }
   } finally {
-    await context.close();
+    await readPage.close();
   }
 };
 
@@ -210,10 +205,10 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
   // slice is selected must be written to THAT slice's sample only — the other
   // slices' samples are untouched. A write leak would mutate the wrong sample.
   test("editing a label on the 2D image slice persists only to that slice", async ({
-    browser,
     grid,
     modal,
     fiftyoneLoader,
+    page,
   }) => {
     await grid.openFirstSample();
     await modal.sidebar.switchMode("annotate");
@@ -233,7 +228,7 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     await modal.sidebar.annotate.waitForSavesSettled();
 
     // only the image sample changed (now one dog + one cat); 3D slices untouched
-    await expectPersistedSliceClasses(browser, fiftyoneLoader, {
+    await expectPersistedSliceClasses(page, fiftyoneLoader, {
       image: ["cat", "dog"],
       mesh: ["cat"],
       cloud: ["cat", "cat", "cat"],
@@ -241,10 +236,10 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
   });
 
   test("creating a detection on the 2D image slice persists only to that slice", async ({
-    browser,
     grid,
     modal,
     fiftyoneLoader,
+    page,
   }) => {
     await grid.openFirstSample();
     await modal.sidebar.switchMode("annotate");
@@ -270,7 +265,7 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     await modal.sidebar.annotate.waitForSavesSettled();
 
     // the new "dog" detection lands on the image sample only — 3D slices untouched
-    await expectPersistedSliceClasses(browser, fiftyoneLoader, {
+    await expectPersistedSliceClasses(page, fiftyoneLoader, {
       image: ["cat", "cat", "dog"],
       mesh: ["cat"],
       cloud: ["cat", "cat", "cat"],
@@ -278,10 +273,10 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
   });
 
   test("editing a cuboid on the 3D mesh slice persists only to that slice", async ({
-    browser,
     grid,
     modal,
     fiftyoneLoader,
+    page,
   }) => {
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute(true);
@@ -306,7 +301,7 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     await modal.sidebar.annotate.waitForSavesSettled();
 
     // only the mesh sample changed; image + cloud untouched
-    await expectPersistedSliceClasses(browser, fiftyoneLoader, {
+    await expectPersistedSliceClasses(page, fiftyoneLoader, {
       image: ["cat", "cat"],
       mesh: ["dog"],
       cloud: ["cat", "cat", "cat"],
@@ -314,10 +309,10 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
   });
 
   test("creating a cuboid on the 3D mesh slice persists only to that slice", async ({
-    browser,
     grid,
     modal,
     fiftyoneLoader,
+    page,
   }) => {
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute(true);
@@ -353,7 +348,7 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
 
     // the created "dog" cuboid lands on the mesh sample only — the seeded "cat"
     // stays and image + cloud are untouched
-    await expectPersistedSliceClasses(browser, fiftyoneLoader, {
+    await expectPersistedSliceClasses(page, fiftyoneLoader, {
       image: ["cat", "cat"],
       mesh: ["cat", "dog"],
       cloud: ["cat", "cat", "cat"],
@@ -361,10 +356,10 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
   });
 
   test("deleting a cuboid on the 3D mesh slice persists, and undo/redo round-trip — all only on that slice", async ({
-    browser,
     grid,
     modal,
     fiftyoneLoader,
+    page,
   }) => {
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute(true);
@@ -386,7 +381,7 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     await saved;
 
     // the delete persists to the mesh sample only — image + cloud untouched
-    await expectPersistedSliceClasses(browser, fiftyoneLoader, {
+    await expectPersistedSliceClasses(page, fiftyoneLoader, {
       image: ["cat", "cat"],
       mesh: [],
       cloud: ["cat", "cat", "cat"],
@@ -396,7 +391,7 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     saved = modal.sidebar.annotate.waitForPatch();
     await modal.sidebar.edit.undo();
     await saved;
-    await expectPersistedSliceClasses(browser, fiftyoneLoader, {
+    await expectPersistedSliceClasses(page, fiftyoneLoader, {
       image: ["cat", "cat"],
       mesh: ["cat"],
       cloud: ["cat", "cat", "cat"],
@@ -406,7 +401,7 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     saved = modal.sidebar.annotate.waitForPatch();
     await modal.sidebar.edit.redo();
     await saved;
-    await expectPersistedSliceClasses(browser, fiftyoneLoader, {
+    await expectPersistedSliceClasses(page, fiftyoneLoader, {
       image: ["cat", "cat"],
       mesh: [],
       cloud: ["cat", "cat", "cat"],
@@ -414,10 +409,10 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
   });
 
   test("deleting a label on the 2D image slice persists, and undo/redo round-trip — all only on that slice", async ({
-    browser,
     grid,
     modal,
     fiftyoneLoader,
+    page,
   }) => {
     await grid.openFirstSample();
     await modal.sidebar.switchMode("annotate");
@@ -437,7 +432,7 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     await saved;
 
     // the delete persists to the image sample only — 3D slices untouched
-    await expectPersistedSliceClasses(browser, fiftyoneLoader, {
+    await expectPersistedSliceClasses(page, fiftyoneLoader, {
       image: ["cat"],
       mesh: ["cat"],
       cloud: ["cat", "cat", "cat"],
@@ -447,7 +442,7 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     saved = modal.sidebar.annotate.waitForPatch();
     await modal.sidebar.edit.undo();
     await saved;
-    await expectPersistedSliceClasses(browser, fiftyoneLoader, {
+    await expectPersistedSliceClasses(page, fiftyoneLoader, {
       image: ["cat", "cat"],
       mesh: ["cat"],
       cloud: ["cat", "cat", "cat"],
@@ -457,7 +452,7 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     saved = modal.sidebar.annotate.waitForPatch();
     await modal.sidebar.edit.redo();
     await saved;
-    await expectPersistedSliceClasses(browser, fiftyoneLoader, {
+    await expectPersistedSliceClasses(page, fiftyoneLoader, {
       image: ["cat"],
       mesh: ["cat"],
       cloud: ["cat", "cat", "cat"],

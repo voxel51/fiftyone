@@ -30,8 +30,12 @@ export class ModalAnnotate3dPom {
    */
   async waitForSurface() {
     await expect(this.container).toBeVisible();
-    await this.modal.looker3dControls.waitForAllAssetsLoaded();
-    await this.assert.sceneReady();
+    // arm first, then read the state once: a reveal that already happened
+    // shows in the attribute, one still to come fires the armed event
+    const ready = await this.modal.eventUtils.arm("looker3d-scene-ready");
+    if ((await this.container.getAttribute("data-scene-ready")) !== "true") {
+      await ready.received;
+    }
   }
 
   /** Switch the modal into ANNOTATE mode (the explore/annotate toggle). */
@@ -200,7 +204,6 @@ export class ModalAnnotate3dPom {
     if (points.length !== 3) {
       throw new Error("a cuboid draw is exactly three clicks");
     }
-    await this.assert.sceneReady();
 
     const box = await this.canvas.boundingBox();
     if (!box) {
@@ -228,7 +231,6 @@ export class ModalAnnotate3dPom {
     if (points.length < 2) {
       throw new Error("a polyline draw needs at least two clicks");
     }
-    await this.assert.sceneReady();
 
     const box = await this.canvas.boundingBox();
     if (!box) {
@@ -275,18 +277,6 @@ class ModalAnnotate3dAsserter {
     return visible
       ? await expect(plane).toBeVisible()
       : await expect(plane).toBeHidden();
-  }
-
-  /**
-   * Assert the fo3d scene is parsed, every asset loader has resolved and the
-   * initial camera look-at has settled, so canvas clicks raycast the real view.
-   */
-  async sceneReady() {
-    await expect(this.pom.container).toHaveAttribute(
-      "data-scene-ready",
-      "true",
-      { timeout: 20_000 },
-    );
   }
 
   /** Assert cuboid-draw mode is active (Create Cuboid button highlighted). */
