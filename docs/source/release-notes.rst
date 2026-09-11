@@ -24,7 +24,9 @@ Includes all updates from :ref:`FiftyOne 1.22.0 <release-notes-v1.22.0>`, plus:
   gateways and custom endpoints, use cloud-managed credentials instead of
   entering API keys in the App, set organization, user, and dataset-level
   instructions, configure a default model with per-user overrides, and
-  see LLM usage and cost by user and model
+  see LLM usage and cost by user and model. Admins can also create and
+  manage custom Agent skills, duplicate and customize built-in skills, and
+  review skills the Agent proposes before they are saved
 - **Custom workflow stages**: build your own annotation workflow stages in
   Python and use them in the workflow editor alongside the built-in stages
 - Agentic Labeling adds Find samples, a text similarity search that suggests
@@ -34,8 +36,8 @@ Includes all updates from :ref:`FiftyOne 1.22.0 <release-notes-v1.22.0>`, plus:
 - Export a single episode as MCAP, load LeRobot datasets from cloud storage,
   and set up projections faster with clear status in Settings
 - Annotation workflows: a per-sample In progress status, labeler names in
-  the Metrics contributors table, and samples deleted mid-run are skipped
-  automatically
+  the Metrics contributors table, and an All datasets Metrics scope that
+  covers every dataset you can access
 - Fixes: workflow runs no longer get stuck when a stage step fails, task
   counts stay accurate, and the MCP server starts reliably
 
@@ -110,8 +112,6 @@ Core
 - **LeRobot v3 datasets**: load LeRobot datasets with the new
   `LeRobotDataset` type
   `#8341 <https://github.com/voxel51/fiftyone/pull/8341>`_
-- Added support for Python 3.14, and `motor` is no longer a dependency
-  `#8212 <https://github.com/voxel51/fiftyone/pull/8212>`_
 - Fixed `map_samples()` occasionally losing results from its final batch
   `#8343 <https://github.com/voxel51/fiftyone/pull/8343>`_
 - Fixed saving dates and other untyped values in `dataset.info`
