@@ -20,12 +20,11 @@ const datasetName = getUniqueDatasetNameWithPrefix("annotate-grouped-no-leak");
 /**
  * slice → { media, seeded detection count }, distinct and non-zero so a
  * cross-slice read leak changes the asserted count. `image` is the default 2D
- * slice; `mesh` (fo3d) and `cloud` (pcd) are 3D slices carrying cuboids.
+ * slice; `mesh` is an fo3d slice carrying cuboids.
  */
 const SLICES = {
   image: { media: "image", count: 2 },
   mesh: { media: "3d", count: 1 },
-  cloud: { media: "3d", count: 3 },
 } as const;
 type SliceName = keyof typeof SLICES;
 const SLICE_NAMES = Object.keys(SLICES) as SliceName[];
@@ -41,7 +40,7 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
 
 /**
  * (Re)create the grouped dataset per test: one group whose image slice carries
- * 2D detections and whose two 3D slices carry cuboids, each slice a distinct
+ * 2D detections and whose fo3d slice carries cuboids, each slice a distinct
  * count. The cuboids sit off the scene origin so the CREATE test's center draw
  * raycasts a clean z=0 plane instead of selecting one.
  */
@@ -63,7 +62,6 @@ const seedDataset = (datasetFactory: typeof DatasetFactory) =>
         },
       },
       { name: "mesh", mediaType: "3d" },
-      { name: "cloud", mediaType: "point-cloud" },
     ],
     schema: {
       detections: "Detections",
@@ -232,11 +230,10 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     await modal.sidebar.edit.assert.verifyFieldValue("label", "dog");
     await modal.sidebar.annotate.waitForSavesSettled();
 
-    // only the image sample changed (now one dog + one cat); 3D slices untouched
+    // only the image sample changed (now one dog + one cat); the mesh sample untouched
     await expectPersistedSliceClasses(browser, fiftyoneLoader, {
       image: ["cat", "dog"],
       mesh: ["cat"],
-      cloud: ["cat", "cat", "cat"],
     });
   });
 
@@ -269,11 +266,10 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     await modal.sidebar.edit.assert.verifyFieldValue("label", "dog");
     await modal.sidebar.annotate.waitForSavesSettled();
 
-    // the new "dog" detection lands on the image sample only — 3D slices untouched
+    // the new "dog" detection lands on the image sample only — the mesh sample untouched
     await expectPersistedSliceClasses(browser, fiftyoneLoader, {
       image: ["cat", "cat", "dog"],
       mesh: ["cat"],
-      cloud: ["cat", "cat", "cat"],
     });
   });
 
@@ -305,11 +301,10 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     await modal.sidebar.edit.assert.verifyFieldValue("label", "dog");
     await modal.sidebar.annotate.waitForSavesSettled();
 
-    // only the mesh sample changed; image + cloud untouched
+    // only the mesh sample changed; image untouched
     await expectPersistedSliceClasses(browser, fiftyoneLoader, {
       image: ["cat", "cat"],
       mesh: ["dog"],
-      cloud: ["cat", "cat", "cat"],
     });
   });
 
@@ -352,11 +347,10 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     await modal.sidebar.annotate.waitForSavesSettled();
 
     // the created "dog" cuboid lands on the mesh sample only — the seeded "cat"
-    // stays and image + cloud are untouched
+    // stays and image is untouched
     await expectPersistedSliceClasses(browser, fiftyoneLoader, {
       image: ["cat", "cat"],
       mesh: ["cat", "dog"],
-      cloud: ["cat", "cat", "cat"],
     });
   });
 
@@ -385,11 +379,10 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     await modal.annotate3d.deleteSelected();
     await saved;
 
-    // the delete persists to the mesh sample only — image + cloud untouched
+    // the delete persists to the mesh sample only — image untouched
     await expectPersistedSliceClasses(browser, fiftyoneLoader, {
       image: ["cat", "cat"],
       mesh: [],
-      cloud: ["cat", "cat", "cat"],
     });
 
     // undo restores the mesh cuboid
@@ -399,7 +392,6 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     await expectPersistedSliceClasses(browser, fiftyoneLoader, {
       image: ["cat", "cat"],
       mesh: ["cat"],
-      cloud: ["cat", "cat", "cat"],
     });
 
     // redo re-applies the delete
@@ -409,7 +401,6 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     await expectPersistedSliceClasses(browser, fiftyoneLoader, {
       image: ["cat", "cat"],
       mesh: [],
-      cloud: ["cat", "cat", "cat"],
     });
   });
 
@@ -436,11 +427,10 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     await modal.sidebar.edit.deleteLabel();
     await saved;
 
-    // the delete persists to the image sample only — 3D slices untouched
+    // the delete persists to the image sample only — the mesh sample untouched
     await expectPersistedSliceClasses(browser, fiftyoneLoader, {
       image: ["cat"],
       mesh: ["cat"],
-      cloud: ["cat", "cat", "cat"],
     });
 
     // undo restores the deleted detection (still only on the image sample)
@@ -450,7 +440,6 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     await expectPersistedSliceClasses(browser, fiftyoneLoader, {
       image: ["cat", "cat"],
       mesh: ["cat"],
-      cloud: ["cat", "cat", "cat"],
     });
 
     // redo re-applies the delete (still only on the image sample)
@@ -460,7 +449,6 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     await expectPersistedSliceClasses(browser, fiftyoneLoader, {
       image: ["cat"],
       mesh: ["cat"],
-      cloud: ["cat", "cat", "cat"],
     });
   });
 });

@@ -259,6 +259,7 @@ test.describe.serial("3d polyline creation", () => {
     if (!(await modal.annotate3d.isNewSegmentActive())) {
       await modal.annotate3d.startSegment();
     }
+    await modal.annotate3d.assert.newSegmentActive(true);
     await modal.annotate3d.drawPolyline([
       [0.4, 0.4],
       [0.6, 0.4],
