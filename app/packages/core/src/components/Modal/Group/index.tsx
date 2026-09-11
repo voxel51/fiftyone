@@ -20,11 +20,7 @@ const AnnotateDynamicGroupVideo = () => {
 const Group = () => {
   const dynamic = useRecoilValue(fos.isDynamicGroup);
   const only3d = useRecoilValue(fos.only3d);
-  const is3dVisible = fos.useIs3dVisible();
   const isLooker3DVisible = fos.useIs3dVisibleSetting();
-  const isPinned = fos.useIs3dPinned();
-  const actions = fos.useRenderConfig3dActions();
-  const isMainVisible = useRecoilValue(fos.groupMediaIsMain2DViewerVisible);
 
   const isNestedDynamicGroup = useRecoilValue(fos.isNestedDynamicGroup);
   const isOrderedDynamicGroup = useRecoilValue(fos.isOrderedDynamicGroup);
@@ -68,12 +64,6 @@ const Group = () => {
     setDynamicGroupsViewMode,
     setIsMainLookerVisible,
   ]);
-
-  useEffect(() => {
-    if (is3dVisible && !isMainVisible && !isPinned) {
-      void actions.setPinned(true);
-    }
-  }, [actions, is3dVisible, isMainVisible, isPinned]);
 
   // the video surface replaces the entire group view; the modal sample read
   // lives in the child so a sparse group's missing slice never evaluates here

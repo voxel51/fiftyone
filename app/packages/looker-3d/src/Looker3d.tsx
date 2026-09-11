@@ -4,8 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { ActionBar } from "./action-bar";
 import { useWorkingLabel } from "./annotation/store/working";
-import { CAMERA_LOOK_AT_SETTLED_EVENT } from "./constants";
-import { Container } from "./containers";
+import { CAMERA_LOOK_AT_SETTLED_EVENT, SCENE_READY_EVENT } from "./constants";
+import { LoadingDots } from "@fiftyone/components";
+import { Container, LoadingCover } from "./containers";
 import { Fo3dErrorBoundary } from "./ErrorBoundary";
 import { Leva } from "./fo3d/Leva";
 import { MediaTypeFo3dComponent } from "./fo3d/MediaTypeFo3d";
@@ -214,6 +215,17 @@ export const Looker3d = () => {
     };
   }, [clear, isHovering]);
 
+  const revealed = sceneReady && cameraSettledKey === looker3dSceneKey;
+  useEffect(() => {
+    if (revealed) {
+      document.dispatchEvent(
+        new CustomEvent(SCENE_READY_EVENT, {
+          detail: { sceneKey: looker3dSceneKey },
+        }),
+      );
+    }
+  }, [revealed, looker3dSceneKey]);
+
   if (!sample) return null;
 
   if (!shouldRenderFo3dComponent) {
@@ -228,11 +240,14 @@ export const Looker3d = () => {
         onMouseMove={update}
         data-cy="looker3d"
         data-cy-selected-vertex-count={selectedVertexCount}
-        data-scene-ready={
-          sceneReady && cameraSettledKey === looker3dSceneKey ? "true" : "false"
-        }
+        data-scene-ready={revealed ? "true" : "false"}
       >
         <MediaTypeFo3dComponent key={looker3dSceneKey} />
+        {!revealed && (
+          <LoadingCover>
+            <LoadingDots />
+          </LoadingCover>
+        )}
         <ActionBar
           onMouseEnter={() => {
             hoveringRef.current = true;
