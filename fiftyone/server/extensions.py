@@ -10,11 +10,11 @@ import traceback
 
 from graphql import GraphQLError
 from strawberry.extensions import SchemaExtension
-from strawberry.utils.await_maybe import AwaitableOrValue
 
 
 class EndSession(SchemaExtension):
-    async def on_request_end(self) -> AwaitableOrValue[None]:
+    def on_operation(self):
+        yield
         result = self.execution_context.result
         if getattr(result, "errors", None):
             result.errors = [
