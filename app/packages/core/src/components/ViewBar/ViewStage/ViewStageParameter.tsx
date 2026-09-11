@@ -60,6 +60,7 @@ const ObjectEditorContainer = animated(styled.div`
   margin-left: -1px;
   overflow: visible;
   display: flex;
+  align-items: center;
   border: 1px solid pink;
   border-style: solid;
   z-index: 800;
