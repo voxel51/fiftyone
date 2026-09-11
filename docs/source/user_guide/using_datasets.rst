@@ -3290,6 +3290,14 @@ width/height, and counter-clockwise rotation, in radians.
 
 .. note::
 
+    "Counter-clockwise" here and "clockwise as displayed" above describe the
+    **same** rotation: a positive angle rotates counter-clockwise in standard
+    math coordinates (y-axis up) and clockwise on screen in image coordinates
+    (y-axis down). The same angle value produces the same rendered box through
+    either API.
+
+.. note::
+
     FiftyOne stores vertex coordinates as floats in `[0, 1]` relative to the
     dimensions of the image.
 
