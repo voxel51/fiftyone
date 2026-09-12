@@ -3726,6 +3726,83 @@ class RoboLabDataset(FiftyOneDataset):
         return dataset_type, num_samples, None
 
 
+class HiltiTrimbleSLAMChallenge2026Dataset(FiftyOneDataset):
+    """The Hilti x Trimble SLAM Challenge 2026 recordings, as native
+    ``.mcap`` episodes.
+
+    The fourth Hilti challenge drops the multi-sensor rig of the earlier
+    years for a single consumer 360 camera, and adds the building's own
+    floor plans. A run is solved twice over, once as plain SLAM in whatever
+    frame the system likes, and once as localization in the coordinates of
+    the drawing the building was made from.
+
+    The recordings are an Insta360 ONE RS 1-Inch 360 Edition: two roughly
+    200-degree fisheye lenses at 1472x1440 and 30 Hz, back to back, with a
+    1000 Hz inertial unit inside the body. The lenses are published as they
+    were recorded rather than stitched into a panorama, since the two
+    optical centres are 40 mm apart.
+
+    Thirty runs cover ten floors of one active construction site, recorded
+    on eight dates between May and December 2025, with eight of the floors
+    walked more than once. Every run has a continuous 6-DoF reference
+    trajectory solved by a LiDAR-inertial system carried alongside, and a
+    measured starting pose in its floor plan's own coordinates.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("hilti-trimble-slam-challenge-2026")
+
+        # Every run on one floor, in the order they were recorded
+        view = dataset.match({"floor": "floor_UG1"}).sort_by("recorded")
+
+        session = fo.launch_app(dataset, view=view)
+
+    Dataset size
+        130.54 GB
+    """
+
+    _REPO_ID = "Voxel51/Hilti-Trimble-SLAM-Challenge-2026"
+    # Pinned so a loaded dataset is reproducible; the default branch is
+    # mutable and could change media, labels or size underneath a user
+    _REVISION = "c7a2746c81f8abf43f7c9f56f0abc0f00b00dcfc"
+
+    @property
+    def name(self):
+        return "hilti-trimble-slam-challenge-2026"
+
+    @property
+    def license(self):
+        return "CC-BY-NC-SA-3.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "slam", "localization", "imu")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        logger.info("Downloading %s from the Hugging Face Hub", self._REPO_ID)
+        hfh.snapshot_download(
+            repo_id=self._REPO_ID,
+            repo_type="dataset",
+            revision=self._REVISION,
+            local_dir=dataset_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
 AVAILABLE_DATASETS = {
     "activitynet-100": ActivityNet100Dataset,
     "activitynet-200": ActivityNet200Dataset,
@@ -3737,6 +3814,7 @@ AVAILABLE_DATASETS = {
     "coco-2017": COCO2017Dataset,
     "egocentric-emg-force": EgocentricEMGForceDataset,
     "fiw": FIWDataset,
+    "hilti-trimble-slam-challenge-2026": HiltiTrimbleSLAMChallenge2026Dataset,
     "hmdb51": HMDB51Dataset,
     "imagenet-sample": ImageNetSampleDataset,
     "kinetics-400": Kinetics400Dataset,
