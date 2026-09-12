@@ -3726,6 +3726,82 @@ class RoboLabDataset(FiftyOneDataset):
         return dataset_type, num_samples, None
 
 
+class SpectralWasteSegmentationDataset(FiftyOneDataset):
+    """The labeled split of SpectralWaste, as a grouped RGB and
+    hyperspectral dataset.
+
+    The frames come from a working waste-sorting plant, looking down at the
+    conveyor as material passes. Each is captured twice over, once in
+    colour and once by a shortwave infrared camera reading 224 bands from
+    about 900 to 1700 nm. Material that looks identical in colour separates
+    in the infrared, which is what makes the pairing worth having.
+
+    Each sample is a group of three slices: ``rgb``, the colour frame;
+    ``hsi``, a false-colour rendering of the cube built from three bands
+    across the sensor's range; and ``cube``, the 224-band cube itself as a
+    TIFF. The two viewable slices each carry a segmentation mask over six
+    waste categories.
+
+    The release draws its annotations on the colour frame and transfers
+    them onto the hyperspectral one. Every sample carries
+    ``mask_agreement``, how far the two foregrounds overlap, which runs
+    high for the bulky categories and low for the thin ones.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("spectralwaste-segmentation")
+
+        # Frames where the transferred mask held
+        view = dataset.match({"mask_agreement": {"$gte": 0.7}})
+
+        session = fo.launch_app(dataset, view=view)
+
+    Dataset size
+        25.25 GB
+    """
+
+    _REPO_ID = "Voxel51/SpectralWaste-Segmentation"
+    # Pinned so a loaded dataset is reproducible; the default branch is
+    # mutable and could change media, labels or size underneath a user
+    _REVISION = "2a39311aa1e3d7c511ff9c1941265e6b654415de"
+
+    @property
+    def name(self):
+        return "spectralwaste-segmentation"
+
+    @property
+    def license(self):
+        return "CC-BY-4.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "hyperspectral", "segmentation", "robotics")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        logger.info("Downloading %s from the Hugging Face Hub", self._REPO_ID)
+        hfh.snapshot_download(
+            repo_id=self._REPO_ID,
+            repo_type="dataset",
+            revision=self._REVISION,
+            local_dir=dataset_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
 AVAILABLE_DATASETS = {
     "activitynet-100": ActivityNet100Dataset,
     "activitynet-200": ActivityNet200Dataset,
@@ -3758,6 +3834,7 @@ AVAILABLE_DATASETS = {
     "quickstart-3d": Quickstart3DDataset,
     "robolab": RoboLabDataset,
     "sama-coco": SamaCOCODataset,
+    "spectralwaste-segmentation": SpectralWasteSegmentationDataset,
     "tii-ratm-drone-racing": TIIRATMDroneRacingDataset,
     "ucf101": UCF101Dataset,
 }
