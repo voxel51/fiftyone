@@ -205,3 +205,54 @@ class TestTextFieldViewType(unittest.TestCase):
 
         self.assertTrue(view_json["multiline"])
         self.assertEqual(view_json["rows"], 5)
+
+
+class TestViewType(unittest.TestCase):
+    def test_show_actions_defaults_true(self):
+        self.assertTrue(types.View().to_json()["show_actions"])
+
+    def test_show_actions_false(self):
+        view = types.View(show_actions=False)
+        self.assertFalse(view.to_json()["show_actions"])
+
+
+class TestPortalViewType(unittest.TestCase):
+    def test_serialize_target(self):
+        view = types.PortalView(target=types.PromptArea.POPOVER)
+
+        dict_rep = view.to_json()
+
+        self.assertEqual(dict_rep["name"], "PortalView")
+        self.assertEqual(dict_rep["target"], "popover")
+
+    def test_serialize_full_screen_target(self):
+        view = types.PortalView(target=types.PromptArea.FULL_SCREEN)
+
+        self.assertEqual(view.to_json()["target"], "full-screen")
+
+    def test_invalid_target_raises(self):
+        with self.assertRaises(ValueError):
+            types.PortalView(target="popover")
+
+    def test_component_passthrough(self):
+        view = types.PortalView(
+            target=types.PromptArea.POPOVER, component="CustomComponent"
+        )
+
+        self.assertEqual(view.to_json()["component"], "CustomComponent")
+
+
+class TestDrawerViewType(unittest.TestCase):
+    def test_serialize_is_backwards_compatible(self):
+        for placement, target in [
+            ("left", "drawer-left"),
+            ("right", "drawer-right"),
+        ]:
+            dict_rep = types.DrawerView(placement=placement).to_json()
+            self.assertEqual(dict_rep["name"], "DrawerView")
+            self.assertEqual(dict_rep["placement"], placement)
+            self.assertEqual(dict_rep["target"], target)
+
+    def test_invalid_placement_raises(self):
+        with self.assertRaises(ValueError):
+            types.DrawerView(placement="up")

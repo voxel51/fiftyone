@@ -596,6 +596,7 @@ type ViewProps = {
   caption?: string;
   space?: number;
   name?: string;
+  target?: string;
   [key: string]: ViewPropertyTypes;
 };
 
@@ -610,6 +611,7 @@ export class View {
     this.caption = options.caption;
     this.space = options.space;
     this.componentsProps = options.componentsProps;
+    this.target = options.target;
     this.name = "View";
     this.options = options;
   }
@@ -619,6 +621,7 @@ export class View {
   space?: number;
   name?: string;
   componentsProps?: unknown;
+  target?: string;
   static fromJSON(json: ViewProps) {
     return new View(json);
   }
@@ -1368,6 +1371,13 @@ export enum Places {
   MAP_SECONDARY_ACTIONS = "map-secondary-actions",
   DISPLAY_OPTIONS = "display-options",
   HEADER_ACTIONS = "header-actions",
+}
+
+export enum PromptArea {
+  DrawerLeft = "drawer-left",
+  DrawerRight = "drawer-right",
+  Popover = "popover",
+  FullScreen = "full-screen",
 }
 
 // NOTE: keys should always match fiftyone/operators/types.py
