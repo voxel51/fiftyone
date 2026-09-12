@@ -3387,6 +3387,11 @@ class PortalView(View):
         super().__init__(**kwargs)
         self.target = target
 
+    def clone(self):
+        return PortalView(
+            target=self.target, container=self.container, **self._kwargs
+        )
+
     def to_json(self):
         return {**super().to_json(), "target": self.target.to_json()}
 
@@ -3423,6 +3428,9 @@ class DrawerView(PortalView):
             else PromptArea.DRAWER_RIGHT
         )
         super().__init__(target=target, **kwargs)
+
+    def clone(self):
+        return DrawerView(container=self.container, **self._kwargs)
 
 
 class IconButtonView(Button):

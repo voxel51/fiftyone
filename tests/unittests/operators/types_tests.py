@@ -234,6 +234,11 @@ class TestPortalViewType(unittest.TestCase):
         with self.assertRaises(ValueError):
             types.PortalView(target="popover")
 
+    def test_clone_preserves_target(self):
+        view = types.PortalView(target=types.PromptArea.POPOVER)
+
+        self.assertEqual(view.clone().target, types.PromptArea.POPOVER)
+
     def test_component_passthrough(self):
         view = types.PortalView(
             target=types.PromptArea.POPOVER, component="CustomComponent"
@@ -256,3 +261,10 @@ class TestDrawerViewType(unittest.TestCase):
     def test_invalid_placement_raises(self):
         with self.assertRaises(ValueError):
             types.DrawerView(placement="up")
+
+    def test_clone_preserves_placement_and_target(self):
+        view = types.DrawerView(placement="left")
+        cloned = view.clone()
+
+        self.assertEqual(cloned.to_json()["placement"], "left")
+        self.assertEqual(cloned.target, types.PromptArea.DRAWER_LEFT)

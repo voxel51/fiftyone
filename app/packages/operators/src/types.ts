@@ -596,7 +596,7 @@ type ViewProps = {
   caption?: string;
   space?: number;
   name?: string;
-  target?: string;
+  target?: PromptArea;
   [key: string]: ViewPropertyTypes;
 };
 
@@ -621,7 +621,7 @@ export class View {
   space?: number;
   name?: string;
   componentsProps?: unknown;
-  target?: string;
+  target?: PromptArea;
   static fromJSON(json: ViewProps) {
     return new View(json);
   }
