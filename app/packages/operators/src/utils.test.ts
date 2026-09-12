@@ -267,6 +267,22 @@ describe("getOperatorPromptConfigs", () => {
     expect(customPrompt).toBeNull();
     expect(customPromptName).toBeUndefined();
   });
+
+  it("hides onSubmit and onCancel when promptView.show_actions is false", () => {
+    const onSubmit = vi.fn();
+    const cancel = vi.fn();
+    const configs = getOperatorPromptConfigs(
+      createOperatorPromptOptions({
+        showPrompt: true,
+        onSubmit,
+        cancel,
+        inputFields: { view: {} },
+        promptView: { show_actions: false },
+      }),
+    );
+    expect(configs.onSubmit).toBeUndefined();
+    expect(configs.onCancel).toBeUndefined();
+  });
 });
 
 function createOperatorPromptOptions(

@@ -1315,6 +1315,7 @@ class View(object):
         componentsProps (None): dict for providing props to components rendered
             by a view
         container (None): the container (instance of :class:`BaseType`) of the view
+        show_actions (True): whether to show the prompt's submit/cancel actions
     """
 
     def __init__(self, container=None, **kwargs):
@@ -1327,6 +1328,7 @@ class View(object):
         self.component = kwargs.get("component", None)
         self.componentsProps = kwargs.get("componentsProps", None)
         self.container = container
+        self.show_actions = kwargs.get("show_actions", True)
         self._kwargs = kwargs
 
     def clone(self):
@@ -1350,6 +1352,7 @@ class View(object):
             "container": (
                 self.container.to_json() if self.container else None
             ),
+            "show_actions": self.show_actions,
             **self.kwargs_to_json(),
         }
 
@@ -3342,7 +3345,53 @@ class DashboardView(View):
         }
 
 
-class DrawerView(View):
+class PromptArea(enum.Enum):
+    """The areas available for placing an operator prompt in the FiftyOne
+    App.
+    """
+
+    DRAWER_LEFT = "drawer-left"
+    DRAWER_RIGHT = "drawer-right"
+    POPOVER = "popover"
+    FULL_SCREEN = "full-screen"
+
+    def to_json(self):
+        return self.value
+
+
+class PortalView(View):
+    """Renders an operator prompt in a named area of the FiftyOne App,
+    rather than the default modal.
+
+    Examples::
+
+        import fiftyone.operators.types as types
+
+        # in resolve_input
+        inputs = types.Object()
+        inputs.str("message", label="Message")
+        prompt = types.PortalView(target=types.PromptArea.POPOVER)
+        return types.Property(inputs, view=prompt)
+
+    Args:
+        target: a :class:`PromptArea` value specifying where to render the
+            prompt
+    """
+
+    def __init__(self, target=None, **kwargs):
+        if not isinstance(target, PromptArea):
+            raise ValueError(
+                "target must be a PromptArea value, found %r" % (target,)
+            )
+
+        super().__init__(**kwargs)
+        self.target = target
+
+    def to_json(self):
+        return {**super().to_json(), "target": self.target.to_json()}
+
+
+class DrawerView(PortalView):
     """Renders an operator prompt as a left or right side drawer.
 
     Examples::
@@ -3367,7 +3416,13 @@ class DrawerView(View):
         placement = kwargs.get("placement", None)
         if placement not in ["left", "right"]:
             raise ValueError('placement must be either "left" or "right".')
-        super().__init__(**kwargs)
+
+        target = (
+            PromptArea.DRAWER_LEFT
+            if placement == "left"
+            else PromptArea.DRAWER_RIGHT
+        )
+        super().__init__(target=target, **kwargs)
 
 
 class IconButtonView(Button):
