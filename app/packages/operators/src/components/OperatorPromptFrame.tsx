@@ -22,8 +22,9 @@ export default function OperatorPromptFrame(props: {
   prompt: OperatorPromptType;
   dataCyPrefix: string;
   contentStyle?: CSSProperties;
+  titleId?: string;
 }) {
-  const { prompt, dataCyPrefix, contentStyle } = props;
+  const { prompt, dataCyPrefix, contentStyle, titleId } = props;
   const { title, ...otherConfigs } = getOperatorPromptConfigs(prompt);
 
   return (
@@ -39,7 +40,7 @@ export default function OperatorPromptFrame(props: {
         />
       </Clickable>
       <Stack style={{ padding: 8 }}>
-        <OperatorPromptHeader title={title} />
+        <OperatorPromptHeader title={title} id={titleId} />
       </Stack>
       <div
         data-cy={`${dataCyPrefix}-content`}
