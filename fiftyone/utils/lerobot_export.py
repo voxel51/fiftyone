@@ -37,6 +37,7 @@ from fiftyone.utils.lerobot import (
 import fiftyone.core.storage as fos
 import fiftyone.utils.data.exporters as foue
 from fiftyone.utils.lerobot import (
+    _episode_tasks,
     _format_source_path,
     _list_episode_shards,
     _load_info,
@@ -185,7 +186,7 @@ def _write_lerobot_export(export_dir, specs):
             data_asset.path, spec.episode["global_rows"], source_data_tables
         )
         source_rows = source_table.to_pylist()
-        tasks = list(source_episode_row.get("tasks") or [])
+        tasks = _episode_tasks(source_episode_row)
         for task in tasks:
             task_indexes.setdefault(task, len(task_indexes))
 
@@ -238,6 +239,9 @@ def _write_lerobot_export(export_dir, specs):
         episode_output_rows = source_table.to_pylist()
 
         episode_row = dict(source_episode_row)
+        if "tasks" in episode_row:
+            episode_row["tasks"] = tasks
+
         episode_row["episode_index"] = output_episode_index
         episode_row["length"] = len(source_rows)
         episode_row["dataset_from_index"] = episode_start
