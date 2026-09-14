@@ -153,21 +153,30 @@ export const useIsGroupDataset = () => {
 export type GroupSliceMediaType = "video" | "3d" | "image" | "multimodal";
 
 /**
- * Hook which provides a function to get the default keypoint skeleton for a
- * given field.
+ * The registry key a field path resolves its skeleton under.
  *
- * Skeletons are registered under the dataset's top-level field name, so a
- * frame path (`frames.keypoints`) resolves through its last segment —
- * matching how the legacy looker overlay resolves them. Falls back to the
- * dataset's default skeleton when the field has none of its own.
+ * Skeletons are registered against the dataset's TOP-LEVEL field name, so a
+ * frame path (`frames.keypoints`) has to resolve through its last segment.
+ * Without it a frame keypoint field misses the registry entirely and falls
+ * through to the dataset default, which is null for most datasets.
+ *
+ * Exported so the rule can be tested on its own: the hook around it is a
+ * `useRecoilCallback`, and exercising that would mean importing Recoil into a
+ * test during the Recoil->Jotai freeze.
+ */
+export const skeletonFieldKey = (field: string): string =>
+  field.split(".").slice(-1)[0];
+
+/**
+ * Hook which provides a function to get the default keypoint skeleton for a
+ * given field. Falls back to the dataset's default skeleton when the field
+ * has none of its own.
  */
 export const useGetKeypointSkeleton = () => {
   return useRecoilCallback(
     ({ snapshot }) =>
       (field: string) =>
-        snapshot
-          .getLoadable(skeleton(field.split(".").slice(-1)[0]))
-          .getValue(),
+        snapshot.getLoadable(skeleton(skeletonFieldKey(field))).getValue(),
     [],
   );
 };
