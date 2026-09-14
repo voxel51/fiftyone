@@ -5,6 +5,7 @@ import { VideoAnnotationSurface } from "@fiftyone/video-annotation";
 import { useAtomValue } from "jotai";
 import React from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
+import { DynamicGroupVideoTimelineSurface } from "./DynamicGroupVideoTimelineSurface";
 import { ImaVidLookerReact } from "./ImaVidLooker";
 import { LighterSampleRenderer } from "./Lighter/LighterSampleRenderer";
 import { ModalSampleRenderer } from "./ModalSampleRenderer";
@@ -89,6 +90,7 @@ const ModalLookerContent = React.memo(
       fos.shouldRenderImaVidLooker(true),
     );
     const isAnnotate = mode === fos.ModalMode.ANNOTATE;
+    const lighterDynamicGroupVideo = fos.useLighterDynamicGroupVideo();
 
     const modalMediaField = useRecoilValue(fos.selectedMediaField(true));
     const selectedMedia = fos.resolveMediaFieldLooker({
@@ -106,6 +108,10 @@ const ModalLookerContent = React.memo(
     );
 
     if (shouldRenderImavid) {
+      if (lighterDynamicGroupVideo && !isAnnotate) {
+        return <DynamicGroupVideoTimelineSurface sample={sample} />;
+      }
+
       return (
         <ImaVidLookerReact
           sample={sample}
