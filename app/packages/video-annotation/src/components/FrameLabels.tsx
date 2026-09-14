@@ -22,7 +22,6 @@ import {
   useExploreFrameLabelFields,
   useExploreTemporalDetectionFieldPaths,
 } from "../state/exploreFrameLabelFields";
-import { useEngineTemporalSample } from "../sync/useTemporalOverlaySync";
 import { useWarmupThenSeek } from "../hooks/useWarmupThenSeek";
 import {
   TimelineWithTracks,
@@ -57,17 +56,19 @@ import { resolveTrackExtentEdit } from "../tracks/trackExtentEdit";
 import { useVideoTrackDecorator } from "../tracks/useVideoTrackDecorator";
 import { useScrollTrackToAnchor } from "../state/useScrollTrackToAnchor";
 import { useCurrentFrameGetter } from "../state/useCurrentFrame";
-import { getModalSampleFrameRate } from "../utils/modalSample";
 import { useTimelineDrawerOpen } from "../state/useTimelineDrawer";
 import {
   useVideoSurfaceActions,
   type VideoSurfaceActions,
 } from "../hooks/useVideoSurfaceActions";
 import {
-  buildTemporalDetectionTracks,
   type TemporalDetectionEventData,
   type TemporalDetectionLabelLike,
 } from "../tracks/temporalDetectionTracks";
+import {
+  type TemporalDetectionColorResolver,
+  useTemporalDetectionTracks,
+} from "../tracks/useTemporalDetectionTracks";
 import { VideoFrameLabelsStream } from "../streams/VideoFrameLabelsStream";
 
 const DEFAULT_FRAME_FIELD = "frames.detections";
@@ -164,12 +165,6 @@ function mergeTargetsFor(
     omitted: Math.max(0, ranked.length - MAX_MERGE_TARGETS),
   };
 }
-
-/** Resolves the row color for a temporal-detection track. */
-type TemporalDetectionColorResolver = (
-  path: string,
-  label: TemporalDetectionLabelLike,
-) => string;
 
 /** Strip the `frames.` prefix so the value matches what `/frames` returns. */
 const toPerFrameField = (field: string): string =>
@@ -353,55 +348,6 @@ const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
 
   return <>{children}</>;
 };
-
-/**
- * Derive TD tracks from the engine — the authoritative, reactive TD source.
- * Reading it directly means a `support` / label edit (sidebar or timeline drag)
- * rebuilds the rows immediately. The prior scene-overlay read only re-derived on
- * an overlay add/remove, so an in-place support edit left the timeline stale;
- * `useTemporalOverlaySync` keeps the canvas overlays in step from the same source.
- */
-function useTemporalDetectionTracks(
-  sample: ModalSample | undefined,
-  resolveColor: TemporalDetectionColorResolver,
-  /**
-   * Explore's active TD field set. Same override, same reason, as
-   * {@link useTemporalOverlaySync}'s: `useVisibleLabelSchemas()` stays empty
-   * in an Explore-only session, which without this dropped every TD row from
-   * the timeline exactly as it dropped every TD box from the canvas.
-   */
-  exploreVisible?: ReadonlySet<string>,
-): Track[] {
-  const temporalSample = useEngineTemporalSample();
-  const frameRate = getModalSampleFrameRate(sample);
-  const annotationVisible = useVisibleLabelSchemas();
-  const visible = exploreVisible ?? annotationVisible;
-
-  return useMemo(() => {
-    if (
-      frameRate === undefined ||
-      !Number.isFinite(frameRate) ||
-      frameRate <= 0
-    ) {
-      return [];
-    }
-
-    // Only fields visible in the sidebar — a deactivated TD field drops its
-    // timeline rows, matching the canvas + sidebar.
-    const visibleSample: Record<string, unknown> = {};
-    for (const [path, value] of Object.entries(temporalSample)) {
-      if (visible.has(path)) {
-        visibleSample[path] = value;
-      }
-    }
-
-    return buildTemporalDetectionTracks({
-      sample: visibleSample,
-      fps: frameRate,
-      resolveColor,
-    });
-  }, [temporalSample, frameRate, resolveColor, visible]);
-}
 
 /** Build the row-color resolvers, kept in lock-step with the overlays. */
 function useTrackColorResolvers(): {
