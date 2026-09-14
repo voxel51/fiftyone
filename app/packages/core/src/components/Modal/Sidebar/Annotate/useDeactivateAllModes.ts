@@ -3,6 +3,7 @@ import { useCallback } from "react";
 import { useClassificationMode } from "./Edit/useClassificationMode";
 import { useDetectionMode } from "./Edit/useDetectionMode";
 import { usePolylineMode } from "./Edit/usePolylineMode";
+import { useRegressionMode } from "./Edit/useRegressionMode";
 import { useSegmentationMode } from "./Edit/useSegmentationMode";
 
 /**
@@ -16,6 +17,7 @@ export const useDeactivateAllModes = () => {
   const { deactivateDetectionMode } = useDetectionMode();
   const { deactivateSegmentationMode } = useSegmentationMode();
   const { deactivatePolylineMode } = usePolylineMode();
+  const { deactivateRegressionMode } = useRegressionMode();
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
 
   return useCallback(() => {
@@ -23,11 +25,13 @@ export const useDeactivateAllModes = () => {
     deactivateDetectionMode();
     deactivateSegmentationMode();
     deactivatePolylineMode();
+    deactivateRegressionMode();
     setCurrent3dAnnotationMode(null);
   }, [
     deactivateClassificationMode,
     deactivateDetectionMode,
     deactivatePolylineMode,
+    deactivateRegressionMode,
     deactivateSegmentationMode,
     setCurrent3dAnnotationMode,
   ]);

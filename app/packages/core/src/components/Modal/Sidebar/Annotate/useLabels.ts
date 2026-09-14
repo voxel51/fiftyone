@@ -199,6 +199,7 @@ const SINGULAR: Partial<Record<EngineLabelType, LabelType>> = {
   [EngineLabelType.Keypoints]: "Keypoint",
   [EngineLabelType.Polyline]: "Polyline",
   [EngineLabelType.Polylines]: "Polyline",
+  [EngineLabelType.Regression]: "Regression",
 };
 
 const byLabelName = (a: AnnotationLabel, b: AnnotationLabel) =>

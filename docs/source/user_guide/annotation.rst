@@ -42,6 +42,7 @@ In-App annotation within FiftyOne supports datasets containing the following med
 * :ref:`Labels <basics-labels>`
 
   * ``Classification``
+  * ``Regression``
   * ``Detections``
   * ``Instance segmentations``
   * ``2D Polylines and Polygons``

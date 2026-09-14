@@ -5,6 +5,8 @@ import type {
   KeypointLabel,
   KeypointOverlay,
   PolylineOverlay,
+  RegressionLabel,
+  RegressionOverlay,
   TemporalLabel,
   TemporalOverlay,
 } from "@fiftyone/lighter";
@@ -148,6 +150,12 @@ export interface ClassificationAnnotationLabel extends Label {
   type: "Classification";
 }
 
+export interface RegressionAnnotationLabel extends Label {
+  data: RegressionLabel;
+  overlay: RegressionOverlay;
+  type: "Regression";
+}
+
 export interface DetectionAnnotationLabel extends Label {
   data: DetectionLabel;
   overlay: DetectionOverlay;
@@ -180,6 +188,7 @@ export interface TemporalDetectionAnnotationLabel extends Label {
 
 export type AnnotationLabel =
   | ClassificationAnnotationLabel
+  | RegressionAnnotationLabel
   | DetectionAnnotationLabel
   | Detection3DAnnotationLabel
   | PolylineAnnotationLabel

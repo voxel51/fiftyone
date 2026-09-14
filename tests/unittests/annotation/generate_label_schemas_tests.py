@@ -120,6 +120,34 @@ class GenerateLabelSchemaTests(unittest.TestCase):
         )
 
     @drop_datasets
+    def test_generate_regression_field_label_schema(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(
+            fo.Sample(
+                filepath="image.png",
+                regression_field=fo.Regression(value=0.5),
+            )
+        )
+
+        # no `label` subfield, so no classes and no component
+        self.assertEqual(
+            generate_label_schemas(dataset, "regression_field"),
+            {
+                "attributes": [
+                    {
+                        "name": "id",
+                        "type": "id",
+                        "component": "text",
+                        "read_only": True,
+                    },
+                    {"name": "tags", "type": "list<str>", "component": "text"},
+                    {"name": "value", "type": "float", "component": "text"},
+                ],
+                "type": "regression",
+            },
+        )
+
+    @drop_datasets
     def test_generate_detection_field_label_schema(self):
         dataset = fo.Dataset()
         dataset.add_sample(

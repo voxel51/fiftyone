@@ -198,7 +198,11 @@ SUPPORTED_DOC_TYPES = {
     fomm.ImageMetadata,
     fomm.SceneMetadata,
 }
-SUPPORTED_LABEL_TYPES = {fol.Classification, fol.Classifications}
+SUPPORTED_LABEL_TYPES = {
+    fol.Classification,
+    fol.Classifications,
+    fol.Regression,
+}
 SUPPORTED_LABEL_TYPES_BY_MEDIA_TYPE = {
     fom.IMAGE: {
         fol.Detection,

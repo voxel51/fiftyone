@@ -59,6 +59,7 @@ import {
 import { useClassificationMode } from "./Edit/useClassificationMode";
 import { useDetectionMode } from "./Edit/useDetectionMode";
 import { usePolylineMode } from "./Edit/usePolylineMode";
+import { useRegressionMode } from "./Edit/useRegressionMode";
 import { useSegmentationMode } from "./Edit/useSegmentationMode";
 import { useAnnotationUndoRedo } from "./useAnnotationUndoRedo";
 import { useDeactivateAllModes } from "./useDeactivateAllModes";
@@ -213,6 +214,30 @@ const Classification = () => {
         className={disabled ? "disabled" : ""}
       >
         <ClassificationIcon />
+      </Square>
+    </Tooltip>
+  );
+};
+
+const Regression = () => {
+  const { regressionModeActive, disabled, tooltip, activateRegressionMode } =
+    useRegressionMode();
+  const deactivateAll = useDeactivateAll();
+
+  return (
+    <Tooltip anchor={Anchor.Top} content={<Text>{tooltip}</Text>} portal>
+      <Square
+        $active={regressionModeActive}
+        data-cy="create-regression"
+        data-cy-active={regressionModeActive}
+        onClick={() => {
+          if (disabled) return;
+          deactivateAll();
+          if (!regressionModeActive) activateRegressionMode();
+        }}
+        className={disabled ? "disabled" : ""}
+      >
+        <Icon name={IconName.Slider} size={Size.Md} />
       </Square>
     </Tooltip>
   );
@@ -550,6 +575,7 @@ const Actions = ({ hidden = false }: { hidden?: boolean }) => {
           {isVideo ? (
             <>
               <Classification />
+              <Regression />
               <Detection />
               <Segmentation />
               <Polyline />
@@ -557,6 +583,7 @@ const Actions = ({ hidden = false }: { hidden?: boolean }) => {
           ) : (
             <>
               <Classification />
+              <Regression />
               {toolsResolved &&
                 (areThreeDActionsVisible ? (
                   <>
