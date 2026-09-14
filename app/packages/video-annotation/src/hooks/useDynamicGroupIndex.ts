@@ -8,6 +8,7 @@ import {
   getFrames,
 } from "../../../core/src/client/framesClient";
 import { type DateTime, parseTimestamp } from "../../../core/src/client/util";
+import { usePublishDynamicGroupMemberIndex } from "../state/dynamicGroupMemberIndex";
 
 /** Ordered member ids (position i ↔ frame i+1) and the group version token the next write validates against. */
 export interface GroupWriteState {
@@ -73,6 +74,15 @@ export const useDynamicGroupIndex = ({
   const readyRef = useRef<Promise<void> | null>(null);
   // bumped on each (re)mount so a stale fetch cannot land its state
   const generation = useRef(0);
+  const publishIndex = usePublishDynamicGroupMemberIndex();
+  // the sidebar reads the member order too (spatial comments key on it)
+  const setState = useCallback(
+    (state: GroupWriteState | null) => {
+      stateRef.current = state;
+      publishIndex(state?.index ?? null);
+    },
+    [publishIndex],
+  );
 
   const loadIndex = useCallback((): Promise<void> => {
     const requested = generation.current;
@@ -97,7 +107,7 @@ export const useDynamicGroupIndex = ({
         // served in group order: the i-th document is the member behind frame i + 1
         const frames = response.frames;
 
-        stateRef.current = {
+        setState({
           index: frames.map((frame) => String(frame._id)),
           token: toGroupToken(
             frames.map(
@@ -105,7 +115,7 @@ export const useDynamicGroupIndex = ({
                 parseTimestamp(frame.last_modified_at as DateTime) as Date,
             ),
           ),
-        };
+        });
       })
       .catch((err) => {
         console.error("failed to load dynamic group member index", err);
@@ -113,7 +123,7 @@ export const useDynamicGroupIndex = ({
 
     readyRef.current = request;
     return request;
-  }, [sampleId, dataset, view, slice, dynamicGroup, frameCount]);
+  }, [sampleId, dataset, view, slice, dynamicGroup, frameCount, setState]);
 
   useEffect(() => {
     if (!active) {
@@ -121,15 +131,15 @@ export const useDynamicGroupIndex = ({
     }
 
     generation.current += 1;
-    stateRef.current = null;
+    setState(null);
     void loadIndex();
 
     return () => {
       generation.current += 1;
-      stateRef.current = null;
+      setState(null);
       readyRef.current = null;
     };
-  }, [active, loadIndex]);
+  }, [active, loadIndex, setState]);
 
   return useMemo(
     () => ({
@@ -137,14 +147,16 @@ export const useDynamicGroupIndex = ({
       getState: () => stateRef.current,
       commit: (token) => {
         const current = stateRef.current;
+        // dropping the write state only forces a token refetch; the member
+        // order the sidebar reads is unchanged, so it stays published
         stateRef.current =
           token && current ? { index: current.index, token } : null;
       },
       replace: (index, token) => {
-        stateRef.current = { index, token };
+        setState({ index, token });
       },
       loadIndex,
     }),
-    [loadIndex],
+    [loadIndex, setState],
   );
 };

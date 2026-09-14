@@ -14,6 +14,8 @@ export {
   FrameLabelsTracks,
   RegisterFrameLabels,
 } from "./src/components/FrameLabels";
+export { useDynamicGroupMemberIndex } from "./src/state/dynamicGroupMemberIndex";
+export type { DynamicGroupMemberIndex } from "./src/state/dynamicGroupMemberIndex";
 export { SyntheticLabelStream } from "./src/streams/SyntheticLabelStream";
 export type {
   FrameLabelSnapshot,
