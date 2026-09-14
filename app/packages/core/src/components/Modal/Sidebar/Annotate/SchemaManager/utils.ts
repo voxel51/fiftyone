@@ -664,7 +664,9 @@ export const hasAttributeFormError = (errors: AttributeFormErrors): boolean =>
 
 /**
  * Auto-adjust the component type to match the current classes.
- * - Classes present + component is "text" → switch to "radio" or "dropdown"
+ * - Classes present + component is "text" (or unset) → "radio" or "dropdown"
+ *   by class count
+ * - Classes present + explicit "radio"/"dropdown" → preserved as chosen
  * - Classes removed + component is "radio"/"dropdown" → switch to "text"
  */
 export const reconcileComponent = (
@@ -674,7 +676,7 @@ export const reconcileComponent = (
   const hasClasses = classes && classes.length > 0;
 
   if (hasClasses) {
-    if (component === "text") {
+    if (!component || component === "text") {
       return {
         ...config,
         component:
