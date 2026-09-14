@@ -1126,6 +1126,49 @@ def _import_collection_multi(json_dir):
     return docs, len(json_paths)
 
 
+#: Callables consulted before each batch of documents is written. Empty by
+#: default: nothing in open source registers one, and an empty registry
+#: costs a list check per batch.
+#:
+#: See :func:`register_insert_admitter`.
+_insert_admitters = []
+
+
+def register_insert_admitter(admitter):
+    """Registers a callable consulted before each batch insert.
+
+    Each registered admitter is called as ``admitter(collection_name,
+    num_docs)`` immediately before the batch is written. An admitter that
+    raises refuses the write, and the exception propagates to the caller,
+    so an admitter is a gate rather than an observer and should raise a
+    type the caller can recognize.
+
+    Registering here covers every writer that goes through
+    :func:`insert_documents`, which is one place rather than the several
+    that call it.
+
+    Args:
+        admitter: a callable with signature ``admitter(collection_name,
+            num_docs)`` that raises to refuse the write
+    """
+    if admitter not in _insert_admitters:
+        _insert_admitters.append(admitter)
+
+
+def _admit_insert(collection_name, num_docs):
+    """Consults every registered admitter, in registration order.
+
+    Nothing here catches: an admitter refuses by raising, so its exception
+    must reach the caller that asked for the write.
+
+    Args:
+        collection_name: the name of the collection being written to
+        num_docs: the number of documents about to be written
+    """
+    for admitter in _insert_admitters:
+        admitter(collection_name, num_docs)
+
+
 def insert_documents(
     docs,
     coll,
@@ -1169,6 +1212,12 @@ def insert_documents(
         with batcher:
             for batch in batcher:
                 batch = list(batch)
+
+                # The batch is already materialized, so this count is exact
+                # even when `docs` is a generator and `num_docs` was never
+                # provided
+                _admit_insert(coll.name, len(batch))
+
                 res = coll.insert_many(batch, ordered=ordered)
                 batch_ids = [b["_id"] for b in batch]
                 ids.extend(batch_ids)
