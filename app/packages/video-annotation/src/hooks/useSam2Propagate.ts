@@ -72,7 +72,7 @@ export const useSam2Propagate = () => {
         const frame = imageStream.getValue(time);
 
         if (!frame) {
-          throw new Error(`ImaVid frame ${frameNumber} unavailable`);
+          throw new Error(`Dynamic group frame ${frameNumber} unavailable`);
         }
 
         return frame.bitmap;

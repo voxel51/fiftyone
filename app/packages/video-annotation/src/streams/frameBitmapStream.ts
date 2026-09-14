@@ -20,7 +20,7 @@ import type {
 } from "./frameWorkerProtocol";
 
 /**
- * What the stream publishes per committed frame. Consumers (the ImaVid tile,
+ * What the stream publishes per committed frame. Consumers (the dynamic group tile,
  * SAM2 propagation) draw `bitmap`; `frameNumber` / `sampleId` identify which
  * frame this is for commands / persistence.
  */
@@ -28,7 +28,7 @@ export interface FrameBitmap<M = unknown> {
   bitmap: ImageBitmap;
   frameNumber: number;
   sampleId: string;
-  /** Source-specific frame metadata (e.g. the ImaVid frame's src/filepath). */
+  /** Source-specific frame metadata (e.g. the dynamic group frame's src/filepath). */
   meta: M;
 }
 
