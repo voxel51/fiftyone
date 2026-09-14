@@ -16,7 +16,7 @@ from collections import Counter
 from copy import copy, deepcopy
 from datetime import date, datetime, timedelta
 from functools import partial
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import eta.core.utils as etau
 import numpy as np
@@ -5046,6 +5046,99 @@ class DatasetTests(unittest.TestCase):
                     actual_extrinsics.quaternion[i],
                     expected_extrinsics.quaternion[i],
                 )
+
+
+class _AdmissionSample:
+    """A sample stand-in for the batch write paths."""
+
+    def __init__(self, sample_id=None):
+        self.id = sample_id
+        self._id = ObjectId(sample_id) if sample_id is not None else None
+        self.media_type = fom.IMAGE
+
+    def _set_backing_doc(self, doc, dataset=None):
+        pass
+
+
+class SampleBatchAdmissionTests(unittest.TestCase):
+    """These batch writes go straight to pymongo rather than through
+    ``insert_documents``, so they consult the insert admitters
+    themselves."""
+
+    def setUp(self):
+        self._admitters = list(foo.database._insert_admitters)
+        foo.database._insert_admitters.clear()
+
+        self.calls = []
+        foo.database.register_insert_admitter(
+            lambda name, num_docs: self.calls.append((name, num_docs))
+        )
+
+    def tearDown(self):
+        foo.database._insert_admitters[:] = self._admitters
+
+    def _make_dataset(self):
+        dataset = MagicMock()
+        dataset._sample_collection_name = "samples.test"
+        return dataset
+
+    def test_add_samples_batch(self):
+        dataset = self._make_dataset()
+        samples_and_docs = [
+            (_AdmissionSample(), {"_id": ObjectId(), "filepath": "im.png"})
+            for _ in range(3)
+        ]
+
+        fo.Dataset._add_samples_batch(dataset, samples_and_docs)
+
+        self.assertEqual(self.calls, [("samples.test", 3)])
+
+    def test_upsert_samples_batch_counts_inserts_only(self):
+        dataset = self._make_dataset()
+        existing = _AdmissionSample(sample_id=str(ObjectId()))
+        samples_and_docs = [
+            (existing, {"_id": existing._id, "filepath": "im1.png"}),
+            (_AdmissionSample(), {"_id": ObjectId(), "filepath": "im2.png"}),
+            (_AdmissionSample(), {"_id": ObjectId(), "filepath": "im3.png"}),
+        ]
+
+        fo.Dataset._upsert_samples_batch(dataset, samples_and_docs)
+
+        # replacing an existing sample adds nothing, so only the two new
+        # samples are counted
+        self.assertEqual(self.calls, [("samples.test", 2)])
+        self.assertEqual(
+            len(dataset._sample_collection.bulk_write.mock_calls), 1
+        )
+
+    def test_upsert_samples_batch_with_no_inserts(self):
+        dataset = self._make_dataset()
+        existing = _AdmissionSample(sample_id=str(ObjectId()))
+        samples_and_docs = [
+            (existing, {"_id": existing._id, "filepath": "im1.png"})
+        ]
+
+        fo.Dataset._upsert_samples_batch(dataset, samples_and_docs)
+
+        self.assertEqual(self.calls, [("samples.test", 0)])
+
+    def test_refused_batch_is_not_written(self):
+        foo.database._insert_admitters.clear()
+
+        def admitter(name, num_docs):
+            raise ValueError("refused")
+
+        foo.database.register_insert_admitter(admitter)
+
+        dataset = self._make_dataset()
+        samples_and_docs = [
+            (_AdmissionSample(), {"_id": ObjectId(), "filepath": "im.png"})
+        ]
+
+        with self.assertRaises(ValueError):
+            fo.Dataset._add_samples_batch(dataset, samples_and_docs)
+
+        dataset._sample_collection.insert_many.assert_not_called()
 
 
 class DatasetExtrasTests(unittest.TestCase):

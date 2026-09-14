@@ -4283,6 +4283,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             -   a list of IDs of the samples that were added to this dataset
         """
         dicts = [doc for _, doc in samples_and_docs]
+
+        # This path writes through pymongo directly rather than through
+        # `insert_documents`, so it consults the registry itself
+        foo.database._admit_insert(self._sample_collection_name, len(dicts))
+
         try:
             # adds `_id` to each dict
             res = self._sample_collection.insert_many(dicts)
@@ -4410,12 +4415,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 where the dict is the sample's backing document
         """
         ops = []
+        inserts = 0
         for sample, d in samples_and_docs:
             if sample.id:
                 ops.append(ReplaceOne({"_id": sample._id}, d, upsert=True))
             else:
                 d.pop("_id", None)
                 ops.append(InsertOne(d))  # adds `_id` to dict
+                inserts += 1
+
+        # Only the inserts are new documents; a replace of an existing
+        # sample is an edit, not an addition
+        foo.database._admit_insert(self._sample_collection_name, inserts)
 
         try:
             self._sample_collection.bulk_write(ops, ordered=False)
