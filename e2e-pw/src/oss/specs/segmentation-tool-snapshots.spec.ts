@@ -191,12 +191,23 @@ test.describe.serial("segmentation tool snapshots", () => {
         await openAnnotate(freshModal, freshPage, fiftyoneLoader, datasetName);
         const rows = freshModal.sidebar.annotate.labelRowsFor("instances");
         await expect(rows).toHaveCount(1);
-        // two full 0.2 x 0.2 masks at x = 0.25 and x = 0.55 merge into one
-        // box spanning both, 0.5 wide, with the 0.1 gap between them empty
+        // the two full 0.2 x 0.2 masks at x = 0.25 and x = 0.55 merge into
+        // one mask re-rasterized at display resolution (the 640x480 image at
+        // 826.67 x 620 px): a 414 x 124 px canvas whose box is the union of
+        // the two, snapped to that raster, with the gap between them empty
         await rows.click();
         await freshModal.sidebar.edit.assert.hasMaskPreview();
-        await freshModal.sidebar.edit.assert.boundingBox([0.25, 0.4, 0.5, 0.2]);
-        await freshModal.sidebar.edit.assert.maskPreviewCoverage(0.8);
+        await freshModal.sidebar.edit.assert.boundingBox([
+          "0.24959677419354837",
+          "0.4",
+          "0.5008064516129033",
+          "0.2",
+        ]);
+        await freshModal.sidebar.edit.assert.mask({
+          width: 414,
+          height: 124,
+          opaque: 41044,
+        });
       } finally {
         await context.close();
       }

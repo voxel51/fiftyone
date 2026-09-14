@@ -106,35 +106,6 @@ export class ModalAnnotateEditPom {
   }
 
   /**
-   * Opaque pixel count of the rendered mask preview — the sidebar's picture of
-   * the selected detection's mask. Zero until the mask has decoded.
-   */
-  async maskPreviewPixels(): Promise<number> {
-    return this.page
-      .getByTestId("annotate-mask-preview")
-      .locator("canvas")
-      .evaluate((canvas: HTMLCanvasElement) => {
-        const context = canvas.getContext("2d");
-        if (!context) {
-          return 0;
-        }
-        const { data } = context.getImageData(
-          0,
-          0,
-          canvas.width,
-          canvas.height,
-        );
-        let opaque = 0;
-        for (let i = 3; i < data.length; i += 4) {
-          if (data[i] > 0) {
-            opaque++;
-          }
-        }
-        return opaque;
-      });
-  }
-
-  /**
    * Covered fraction of the rendered mask preview: opaque pixels over the area
    * the mask is drawn into (its own size fit to the preview), so it compares
    * across mask resolutions. Zero until the mask has decoded.
@@ -236,25 +207,6 @@ export class ModalAnnotateEditPom {
     const container = this.getFieldContainer(path);
     await container.getByRole("combobox").click();
     await this.page.getByRole("option", { name: choice }).click();
-  }
-
-  /**
-   * The edited detection's relative bounding box as the form shows it,
-   * `[x, y, width, height]`. Waits for the inputs to populate.
-   */
-  async readBoundingBox(): Promise<[number, number, number, number]> {
-    const values: number[] = [];
-    for (const path of [
-      "position.x",
-      "position.y",
-      "dimensions.width",
-      "dimensions.height",
-    ]) {
-      const input = await this.getField(path);
-      await expect(input).not.toHaveValue("");
-      values.push(Number(await input.inputValue()));
-    }
-    return values as [number, number, number, number];
   }
 
   /**
@@ -377,37 +329,43 @@ class ModalAnnotateEditAsserter {
   }
 
   /**
-   * Assert the covered fraction of the painted mask, within ±0.05: 1 for a
-   * mask that fills its box, less for one with holes or a union of boxes.
+   * Assert the painted mask exactly: its native pixel size and how many of
+   * those pixels are opaque. The preview stamps all three on its canvas.
    *
-   * @param expected The expected opaque fraction of the mask's own area
+   * @param mask `width` and `height` in mask pixels, `opaque` pixel count
    */
-  async maskPreviewCoverage(expected: number) {
-    await this.maskPreviewDrawn();
-    expect(await this.modalAnnotateEdit.maskPreviewCoverage()).toBeCloseTo(
-      expected,
-      1,
+  async mask(mask: { width: number; height: number; opaque: number }) {
+    const canvas = this.modalAnnotateEdit.page
+      .getByTestId("annotate-mask-preview")
+      .locator("canvas");
+    await expect(canvas).toHaveAttribute("data-mask-width", String(mask.width));
+    await expect(canvas).toHaveAttribute(
+      "data-mask-height",
+      String(mask.height),
+    );
+    await expect(canvas).toHaveAttribute(
+      "data-mask-opaque",
+      String(mask.opaque),
     );
   }
 
   /**
-   * Assert the edited detection's relative bounding box as the form shows it,
-   * each side within ±0.005.
+   * Assert the edited detection's relative bounding box exactly as the form
+   * shows it.
    *
-   * @param box `[x, y, width, height]` in relative coordinates
+   * @param box `[x, y, width, height]` as the form's input strings
    */
-  async boundingBox([x, y, width, height]: [number, number, number, number]) {
-    const fields: Array<[string, number]> = [
+  async boundingBox([x, y, width, height]: [string, string, string, string]) {
+    const fields: Array<[string, string]> = [
       ["position.x", x],
       ["position.y", y],
       ["dimensions.width", width],
       ["dimensions.height", height],
     ];
     for (const [path, value] of fields) {
-      const input = await this.modalAnnotateEdit.getField(path);
-      // populated first, then compared once
-      await expect(input).not.toHaveValue("");
-      expect(Number(await input.inputValue())).toBeCloseTo(value, 2);
+      await expect(await this.modalAnnotateEdit.getField(path)).toHaveValue(
+        value,
+      );
     }
   }
 

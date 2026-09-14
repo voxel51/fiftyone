@@ -112,8 +112,8 @@ test.describe.serial("segmentation AI (SAM2) round-trip", () => {
       // {0.4, 0.4, 0.2, 0.2}, so that is exactly what must have persisted
       await rows.click();
       await fresh.sidebar.edit.assert.hasMaskPreview();
-      await fresh.sidebar.edit.assert.boundingBox([0.4, 0.4, 0.2, 0.2]);
-      await fresh.sidebar.edit.assert.maskPreviewCoverage(1);
+      await fresh.sidebar.edit.assert.boundingBox(["0.4", "0.4", "0.2", "0.2"]);
+      await fresh.sidebar.edit.assert.mask({ width: 8, height: 8, opaque: 64 });
     } finally {
       await context.close();
     }

@@ -37,6 +37,25 @@ const StyledCanvas = styled.canvas`
 
 const PREVIEW_SIZE = 256;
 
+/** Opaque pixels of `source` at its native resolution, before preview scaling. */
+function countOpaque(
+  source: CanvasImageSource,
+  width: number,
+  height: number,
+): number {
+  const native = new OffscreenCanvas(width, height);
+  const ctx = native.getContext("2d");
+  if (!ctx) return 0;
+
+  ctx.drawImage(source, 0, 0);
+  const { data } = ctx.getImageData(0, 0, width, height);
+  let opaque = 0;
+  for (let i = 3; i < data.length; i += 4) {
+    if (data[i] > 0) opaque++;
+  }
+  return opaque;
+}
+
 /**
  * Draws a {@link CanvasImageSource} to the preview canvas as a monochrome mask.
  */
@@ -53,6 +72,7 @@ function drawPreview(
   canvas.height = PREVIEW_SIZE;
   canvas.dataset.maskWidth = String(srcWidth);
   canvas.dataset.maskHeight = String(srcHeight);
+  canvas.dataset.maskOpaque = String(countOpaque(source, srcWidth, srcHeight));
 
   const scale = Math.min(PREVIEW_SIZE / srcWidth, PREVIEW_SIZE / srcHeight);
   const drawW = Math.round(srcWidth * scale);

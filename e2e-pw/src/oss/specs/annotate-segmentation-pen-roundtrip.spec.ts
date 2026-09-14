@@ -112,23 +112,25 @@ test.describe.serial("segmentation pen-tool round-trip", () => {
       const rows = fresh.sidebar.annotate.labelRowsFor("instances");
       await expect(rows).toHaveCount(1);
 
-      // the pen rectangle spanned [0.4, 0.6] on both axes. The rasterized
-      // polygon runs a stroke's width outside the click points (sized in
-      // screen pixels, so not a fixed fraction), so its box encloses that
-      // square within a small pad, and the mask fills the box.
+      // the pen rectangle spanned [0.4, 0.6] of the canvas on both axes. The
+      // 640x480 image fits the 920x620 canvas's height, so vertically the
+      // clicks are 0.4 and 0.6 of the image; horizontally the media is
+      // letterboxed 46.67 px in, so 0.4 of the canvas is 241/620 of the image
+      // and the square is 138/620 wide. The mask is rasterized at display
+      // resolution: 184 x 124 px, all of it filled.
       await rows.click();
       await fresh.sidebar.edit.assert.hasMaskPreview();
-      const [x, y, width, height] = await fresh.sidebar.edit.readBoundingBox();
-      const padding = 0.02;
-      expect(x).toBeLessThanOrEqual(0.4);
-      expect(x).toBeGreaterThan(0.4 - padding);
-      expect(y).toBeLessThanOrEqual(0.4);
-      expect(y).toBeGreaterThan(0.4 - padding);
-      expect(x + width).toBeGreaterThanOrEqual(0.6);
-      expect(x + width).toBeLessThan(0.6 + padding);
-      expect(y + height).toBeGreaterThanOrEqual(0.6);
-      expect(y + height).toBeLessThan(0.6 + padding);
-      await fresh.sidebar.edit.assert.maskPreviewCoverage(1);
+      await fresh.sidebar.edit.assert.boundingBox([
+        "0.38870967741935486",
+        "0.4",
+        "0.22258064516129034",
+        "0.2",
+      ]);
+      await fresh.sidebar.edit.assert.mask({
+        width: 184,
+        height: 124,
+        opaque: 22816,
+      });
     } finally {
       await context.close();
     }

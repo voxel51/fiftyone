@@ -168,24 +168,25 @@ test("aligns grouped direct PCDs in world and writes cuboids back to the native 
   await modal.annotate3d.assert.labelListed("world-created");
   await modal.annotate3d.selectLabel("world-created");
 
-  const geometry = async (axis: GeometryAxis) =>
-    Number(await modal.annotate3d.getGeometry(axis));
-  // the geometry inputs populate once the selected label's form mounts
-  await expect(modal.annotate3d.geometryField("x")).not.toHaveValue("");
-  expect(await geometry("x")).toBeCloseTo(2, 1);
-  expect(await geometry("y")).toBeCloseTo(-23.15, 1);
-  expect(await geometry("rz")).toBeCloseTo(Math.PI / 2, 1);
-  // the draw was a screen-space square under the top view, so the footprint's
-  // aspect is the canvas's. Creation fits the height to the lattice points
-  // under the footprint (2nd to 98th percentile of their z, a 4-unit span)
-  // plus the fit's 0.05 margin on each side.
-  const [lx, ly, lz] = await Promise.all([
-    geometry("lx"),
-    geometry("ly"),
-    geometry("lz"),
-  ]);
-  const canvas = await modal.annotate3d.canvas.boundingBox();
-  expect(canvas).not.toBeNull();
-  expect(lx / ly).toBeCloseTo(canvas!.width / canvas!.height, 1);
-  expect(lz).toBeCloseTo(4.1, 2);
+  // the form shows two decimals. Position and yaw come from the world
+  // alignment; the footprint is the screen-space square under the top view
+  // projected into the lidar frame, and creation fits the height to the
+  // lattice points under it (2nd to 98th percentile of their z, a 4-unit
+  // span, plus the fit's 0.05 margin on each side).
+  const geometry: Record<GeometryAxis, string> = {
+    x: "2.00",
+    y: "-23.15",
+    z: "2.00",
+    lx: "13.64",
+    ly: "9.25",
+    lz: "4.10",
+    rx: "0.00",
+    ry: "0.00",
+    rz: "1.57",
+  };
+  for (const [axis, value] of Object.entries(geometry)) {
+    await expect(
+      modal.annotate3d.geometryField(axis as GeometryAxis),
+    ).toHaveValue(value);
+  }
 });
