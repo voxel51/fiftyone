@@ -6,9 +6,9 @@ import { PlaybackProvider, type TimelineMode } from "@fiftyone/playback";
 import * as fos from "@fiftyone/state";
 import {
   FrameLabelsTracks,
-  ImaVidLighterTile,
+  DynamicGroupLighterTile,
   RegisterFrameLabels,
-  RegisterImaVidImage,
+  RegisterDynamicGroupImage,
   RegisterVideoExploreLabels,
   useAnnotatePrerequisites,
   useTimelineMaxSize,
@@ -28,8 +28,8 @@ export interface DynamicGroupVideoTimelineSurfaceProps {
 /**
  * The Explore surface for an image dataset grouped into an ordered group and
  * viewed as a video: `VideoTimelineSurface` with the `<video>` replaced by the
- * `/frames` image stream and a read-only `ImaVidLighterTile`. The legacy
- * ImaVid looker stays reachable through `fos.legacyImaVidLooker`.
+ * `/frames` image stream and a read-only `DynamicGroupLighterTile`. The legacy
+ * ImaVid looker stays reachable through `fos.legacyDynamicGroupLooker`.
  */
 export const DynamicGroupVideoTimelineSurface: React.FC<
   DynamicGroupVideoTimelineSurfaceProps
@@ -102,7 +102,7 @@ const SurfaceForSample: React.FC<DynamicGroupVideoTimelineSurfaceProps> = ({
       {/* The image stream is the timeline's duration source, so it wraps the
           labels registrar, which gates on `useDuration() > 0`. The registrar
           stays a childless sibling so its wrapper swap remounts nothing. */}
-      <RegisterImaVidImage
+      <RegisterDynamicGroupImage
         source="fetch"
         frameCount={prerequisites.frameCount as number}
         frameRate={prerequisites.frameRate as number}
@@ -115,7 +115,10 @@ const SurfaceForSample: React.FC<DynamicGroupVideoTimelineSurfaceProps> = ({
           className={styles.root}
         >
           <div ref={mediaRef} className={styles.media} data-cy="looker">
-            <ImaVidLighterTile mode="explore" onRevealChange={onRevealChange} />
+            <DynamicGroupLighterTile
+              mode="explore"
+              onRevealChange={onRevealChange}
+            />
           </div>
           <div className={styles.timeline}>
             <FrameLabelsTracks
@@ -126,7 +129,7 @@ const SurfaceForSample: React.FC<DynamicGroupVideoTimelineSurfaceProps> = ({
             />
           </div>
         </div>
-      </RegisterImaVidImage>
+      </RegisterDynamicGroupImage>
     </PlaybackProvider>
   );
 };

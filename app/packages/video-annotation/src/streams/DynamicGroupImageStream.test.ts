@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ImaVidImageStream } from "./ImaVidImageStream";
+import { DynamicGroupImageStream } from "./DynamicGroupImageStream";
 
 interface WorkerMessage {
   type: string;
@@ -42,7 +42,7 @@ const fetchChunks = (w: FakeWorker) =>
   w.posted.filter((m) => m.type === "fetchChunk");
 
 const makeStream = () =>
-  new ImaVidImageStream({
+  new DynamicGroupImageStream({
     id: "test",
     sampleId: "s1",
     dataset: "d1",
@@ -61,7 +61,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("ImaVidImageStream failed-frame handling", () => {
+describe("DynamicGroupImageStream failed-frame handling", () => {
   it("treats frames that settle without a bitmap as terminally ready and never re-requests them", () => {
     const stream = makeStream();
     const worker = FakeWorker.instances[0];

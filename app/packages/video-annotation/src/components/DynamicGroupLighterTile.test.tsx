@@ -64,12 +64,12 @@ vi.mock("./SurfaceSync", () => ({
   },
 }));
 
-import { ImaVidLighterTile } from "./ImaVidLighterTile";
+import { DynamicGroupLighterTile } from "./DynamicGroupLighterTile";
 
 const sceneOptions = () =>
   lighterMediaScene.mock.calls.at(-1)?.[0] as Record<string, unknown>;
 
-describe("ImaVidLighterTile", () => {
+describe("DynamicGroupLighterTile", () => {
   afterEach(cleanup);
 
   beforeEach(() => {
@@ -81,7 +81,7 @@ describe("ImaVidLighterTile", () => {
   });
 
   it("explore: read-only filtered scene, tooltip, selection bridge, explore sync, playhead frame", () => {
-    render(<ImaVidLighterTile mode="explore" />);
+    render(<DynamicGroupLighterTile mode="explore" />);
 
     expect(sceneOptions()).toMatchObject({
       readOnly: true,
@@ -102,14 +102,14 @@ describe("ImaVidLighterTile", () => {
     expect(props.canonicalMediaReady).toBe(true);
     // the frame canvas is what the media transform keeps in step
     expect(props.mediaRef.current).toBe(
-      document.querySelector("[data-cy='imavid-frame-canvas']"),
+      document.querySelector("[data-cy='dynamic-group-frame-canvas']"),
     );
 
     expect(publishFrame).toHaveBeenCalledWith(7);
   });
 
   it("annotate (default): writable single-select scene, no tooltip or bridge, annotate sync", () => {
-    render(<ImaVidLighterTile />);
+    render(<DynamicGroupLighterTile />);
 
     expect(sceneOptions()).toMatchObject({
       readOnly: false,

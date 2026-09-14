@@ -63,7 +63,7 @@ interface InflightEntry {
 }
 
 /**
- * Abstract chunked bitmap stream for ImaVid-style playback: a decode worker
+ * Abstract chunked bitmap stream for dynamic group playback: a decode worker
  * fills an LRU of decoded frame bitmaps keyed by frame number, off the main
  * thread; the tile renders them one-per-commit via a single engine clock (so
  * media + overlays stay lock-step).

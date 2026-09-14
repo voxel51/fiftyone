@@ -1,6 +1,6 @@
 /**
  * Worker that fetches `/frames` chunks plus their images and decodes them to
- * transferable ImageBitmaps for `ImaVidImageStream`. Messages to the main
+ * transferable ImageBitmaps for `DynamicGroupImageStream`. Messages to the main
  * thread follow {@link ./frameWorkerProtocol}; `init` installs the main
  * thread's fetch configuration, and token refresh is not supported.
  */

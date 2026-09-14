@@ -40,8 +40,8 @@ import {
 } from "./AnnotatePrerequisiteNotice";
 import { FrameLabelsTracks, RegisterFrameLabels } from "./FrameLabels";
 import { OrderByReadout } from "./OrderByReadout";
-import { ImaVidLighterTile } from "./ImaVidLighterTile";
-import { RegisterImaVidImage } from "./RegisterImaVidImage";
+import { DynamicGroupLighterTile } from "./DynamicGroupLighterTile";
+import { RegisterDynamicGroupImage } from "./RegisterDynamicGroupImage";
 import { RegisterTimelineAudio } from "./RegisterTimelineAudio";
 import {
   RegisterSyntheticLabels,
@@ -106,10 +106,10 @@ interface RegistrarProps {
  */
 const STRATEGY_TILE: Record<DecodeStrategy, React.FC<MediaProps>> = {
   extract: ({ onRevealChange }) => (
-    <ImaVidLighterTile onRevealChange={onRevealChange} />
+    <DynamicGroupLighterTile onRevealChange={onRevealChange} />
   ),
   fetch: ({ onRevealChange }) => (
-    <ImaVidLighterTile onRevealChange={onRevealChange} />
+    <DynamicGroupLighterTile onRevealChange={onRevealChange} />
   ),
   html: ({ videoSrc, hasAudio, onRevealChange }) =>
     videoSrc ? (
@@ -135,14 +135,14 @@ const AUDIO_ONLY_STRATEGIES: ReadonlySet<DecodeStrategy> =
 
 const STRATEGY_REGISTRAR: Record<DecodeStrategy, React.FC<RegistrarProps>> = {
   extract: ({ children, ...props }) => (
-    <RegisterImaVidImage source="extract" {...props}>
+    <RegisterDynamicGroupImage source="extract" {...props}>
       {children}
-    </RegisterImaVidImage>
+    </RegisterDynamicGroupImage>
   ),
   fetch: ({ children, ...props }) => (
-    <RegisterImaVidImage source="fetch" {...props}>
+    <RegisterDynamicGroupImage source="fetch" {...props}>
       {children}
-    </RegisterImaVidImage>
+    </RegisterDynamicGroupImage>
   ),
   html: ({ children }) => <>{children}</>,
 };
@@ -168,7 +168,7 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
   sample,
 }) => (
   // One mount per sample. Everything below is resolved from the sample at mount
-  // and never rebuilt: the frame stream `RegisterImaVidImage` constructs, the
+  // and never rebuilt: the frame stream `RegisterDynamicGroupImage` constructs, the
   // decode strategy the probes settle on, and `PlaybackProvider`'s engine mode.
   // The modal renders this component in place across sample navigation, so
   // without the key the next sample inherits the previous one's stream.

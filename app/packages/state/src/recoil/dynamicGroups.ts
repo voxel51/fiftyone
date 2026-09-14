@@ -258,13 +258,13 @@ export const isImageDynamicGroupVideo = selector<boolean>({
 /**
  * Opt out of the Lighter timeline surface for an image dataset's dynamic
  * group video in the modal and render the legacy ImaVid looker instead;
- * persisted in browser storage under the key `legacyImaVidLooker`.
+ * persisted in browser storage under the key `legacyDynamicGroupLooker`.
  */
-export const legacyImaVidLooker = atom<boolean>({
-  key: "legacyImaVidLooker",
+export const legacyDynamicGroupLooker = atom<boolean>({
+  key: "legacyDynamicGroupLooker",
   default: false,
   effects: [
-    getBrowserStorageEffectForKey<boolean>("legacyImaVidLooker", {
+    getBrowserStorageEffectForKey<boolean>("legacyDynamicGroupLooker", {
       valueClass: "boolean",
     }),
   ],
@@ -280,5 +280,5 @@ export const lighterDynamicGroupVideo = selector<boolean>({
   get: ({ get }) =>
     get(shouldRenderImaVidLooker(true)) &&
     get(isImageDynamicGroupVideo) &&
-    !get(legacyImaVidLooker),
+    !get(legacyDynamicGroupLooker),
 });
