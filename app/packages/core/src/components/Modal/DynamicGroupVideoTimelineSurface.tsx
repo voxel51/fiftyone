@@ -26,11 +26,9 @@ export interface DynamicGroupVideoTimelineSurfaceProps {
 }
 
 /**
- * The Explore surface for an image dataset dynamically grouped into an ordered
- * group and viewed as a video: `VideoTimelineSurface` with the `<video>`
- * replaced by `RegisterImaVidImage` (duration + frame bitmaps from `/frames`)
- * and `ImaVidLighterTile`, read-only. The frame rate and count come from
- * `useAnnotatePrerequisites`, shared with the annotation surface; the legacy
+ * The Explore surface for an image dataset grouped into an ordered group and
+ * viewed as a video: `VideoTimelineSurface` with the `<video>` replaced by the
+ * `/frames` image stream and a read-only `ImaVidLighterTile`. The legacy
  * ImaVid looker stays reachable through `fos.legacyImaVidLooker`.
  */
 export const DynamicGroupVideoTimelineSurface: React.FC<
@@ -102,9 +100,8 @@ const SurfaceForSample: React.FC<DynamicGroupVideoTimelineSurfaceProps> = ({
   return (
     <PlaybackProvider mode={mode}>
       {/* The image stream is the timeline's duration source, so it wraps the
-          labels registrar, which gates on `useDuration() > 0`. That registrar
-          is a childless sibling of the layout so its wrapper swap remounts
-          nothing, as in `VideoTimelineSurface`. */}
+          labels registrar, which gates on `useDuration() > 0`. The registrar
+          stays a childless sibling so its wrapper swap remounts nothing. */}
       <RegisterImaVidImage
         source="fetch"
         frameCount={prerequisites.frameCount as number}
