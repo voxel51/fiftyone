@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@fiftyone/core/src/client", () => {

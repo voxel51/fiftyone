@@ -1,4 +1,8 @@
 /**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
+/**
  * Diamond glyph for the Mark Keyframe toolbar button, matching the lane's
  * keyframe marker. Filled when a keyframe sits at the playhead.
  */

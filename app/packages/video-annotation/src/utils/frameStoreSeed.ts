@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import type { FrameStore } from "@fiftyone/annotation";
 import type { LabelType } from "@fiftyone/utilities";
 import type { useFrameLabelsStream } from "../streams/frameLabelsStream";

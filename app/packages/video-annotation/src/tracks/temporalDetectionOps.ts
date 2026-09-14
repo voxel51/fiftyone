@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import type { LabelRef } from "@fiftyone/annotation";
 import type { LabelData } from "@fiftyone/utilities";
 import type { SurfaceActions } from "./frameReader";

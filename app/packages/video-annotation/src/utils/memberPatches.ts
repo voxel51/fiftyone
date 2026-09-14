@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import type { JSONDeltas } from "@fiftyone/utilities";
 import type { DynamicGroupMemberPatch } from "../../../core/src/client/annotationClient";
 import { splitMemberDeltas } from "./memberDeltas";

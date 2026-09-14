@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import { describe, expect, it } from "vitest";
 import type { JSONDeltas } from "@fiftyone/utilities";
 import { splitMemberDeltas } from "./memberDeltas";

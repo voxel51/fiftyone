@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import { useModalSample } from "@fiftyone/state";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";

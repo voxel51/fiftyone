@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import type { AnnotationEngine } from "@fiftyone/annotation";
 import { useIsPatchesView } from "@fiftyone/state";
 import { useCallback, useRef } from "react";

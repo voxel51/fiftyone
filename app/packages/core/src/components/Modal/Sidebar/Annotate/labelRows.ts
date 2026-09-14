@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import type { AnnotationLabel, AnnotationLabelData } from "@fiftyone/state";
 import { LabelType as EngineLabelType } from "@fiftyone/utilities";
 import type { LabelType } from "./Edit/useAnnotationContext";

@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import { frameAt } from "@fiftyone/playback";
 import type { LabelData } from "@fiftyone/utilities";
 import { makeReaderResolver, type SurfaceOpsDeps } from "./frameReader";

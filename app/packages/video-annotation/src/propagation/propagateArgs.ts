@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import type { LabelData } from "@fiftyone/utilities";
 
 /** A track's label at a frame, read through the engine. */

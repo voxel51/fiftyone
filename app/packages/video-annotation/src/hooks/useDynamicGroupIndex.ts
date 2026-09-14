@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   type GetFramesRequest,

@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import type { AnnotationLabel, AnnotationLabelData } from "@fiftyone/state";
 import { getDefaultStore, useSetAtom } from "jotai";
 import { useAtomCallback } from "jotai/utils";

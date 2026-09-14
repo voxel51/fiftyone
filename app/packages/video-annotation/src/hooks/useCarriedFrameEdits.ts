@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import type { FrameStore } from "@fiftyone/annotation";
 import { useMemo, useRef } from "react";
 
