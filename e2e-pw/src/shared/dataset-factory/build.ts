@@ -42,7 +42,7 @@ function isLabelType(fieldType: string): fieldType is Label {
 
 export interface BuildOptions extends Pick<
   BaseDatasetOptions,
-  "datasetName" | "labelSchemas" | "savedViews" | "schema"
+  "datasetName" | "labelSchemas" | "savedViews" | "schema" | "staticTransforms"
 > {
   mediaType: "image" | "video" | "3d" | "multimodal" | "group";
   samples: SampleSpec[];
@@ -87,9 +87,10 @@ export const build = (() => {
     samples,
     savedViews = {},
     schema = {},
+    staticTransforms = [],
   }: BuildOptions) => {
     const payload = writeToTmpFile(
-      JSON.stringify({ samples, frames, labelSchemas }),
+      JSON.stringify({ samples, frames, labelSchemas, staticTransforms }),
       "json",
     );
     const hasVideo =
@@ -113,6 +114,7 @@ from bson import ObjectId, json_util
 
 import fiftyone as fo
 from fiftyone import ViewField as F
+from fiftyone.core.camera import StaticTransform
 
 with open("${payload}") as f:
     payload = json_util.loads(f.read())
@@ -127,6 +129,9 @@ ${mediaTypeCode}
 ${Object.entries(schema)
   .map(([fieldPath, fieldType]) => addField(fieldPath, fieldType))
   .join("\n")}
+
+for transform in payload["staticTransforms"]:
+    dataset.add_static_transform(StaticTransform(**transform))
 
 now = datetime.now()
 

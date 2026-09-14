@@ -75,6 +75,7 @@ const createImageDataset = async ({
   numSamples = 1,
   numbered = false,
   savedViews,
+  staticTransforms,
   schema = {},
   withSampleData = () => ({}),
 }: ImageDatasetOptions) => {
@@ -108,6 +109,7 @@ const createImageDataset = async ({
     schema: { index: "IntField", ...schema },
     labelSchemas,
     savedViews,
+    staticTransforms,
   });
 };
 
@@ -146,6 +148,7 @@ const createGroupDataset = async ({
   pcdOptions,
   sampleFrames = false,
   savedViews,
+  staticTransforms,
   sceneOptions = { meshes: [{ color: [96, 208, 255] }] },
   schema,
   slices = DEFAULT_GROUP_SLICES,
@@ -214,6 +217,7 @@ const createGroupDataset = async ({
     schema,
     labelSchemas,
     savedViews,
+    staticTransforms,
   });
 };
 
@@ -239,6 +243,7 @@ const createVideoDataset = async ({
   numSamples = 1,
   sampleFrames = false,
   savedViews,
+  staticTransforms,
   schema,
   videoOptions,
   withFrameData,
@@ -264,6 +269,7 @@ const createVideoDataset = async ({
     schema,
     labelSchemas,
     savedViews,
+    staticTransforms,
   });
 };
 
@@ -289,6 +295,7 @@ const create3dDataset = async ({
   labelSchemas,
   numSamples = 1,
   savedViews,
+  staticTransforms,
   sceneOptions,
   schema,
   withSampleData = () => ({}),
@@ -309,6 +316,7 @@ const create3dDataset = async ({
     schema,
     labelSchemas,
     savedViews,
+    staticTransforms,
   });
 };
 
@@ -325,6 +333,7 @@ const createMultimodalDataset = async ({
   mcapOptions,
   numSamples = 1,
   savedViews,
+  staticTransforms,
   schema,
   withSampleData = () => ({}),
 }: MultimodalDatasetOptions) => {
@@ -344,5 +353,6 @@ const createMultimodalDataset = async ({
     schema,
     labelSchemas,
     savedViews,
+    staticTransforms,
   });
 };

@@ -3,7 +3,6 @@
  */
 
 import { createDataset } from "./creators";
-import { updateLabelSchema } from "./helpers";
 
 export type * from "./types";
 export type { LabelBuilders } from "./labels";
@@ -22,9 +21,7 @@ export type { LabelBuilders } from "./labels";
  * await DatasetFactory.createDataset({ mediaType: "video", datasetName: "my-videos" });
  * await DatasetFactory.createDataset({ mediaType: "3d", datasetName: "my-scenes" });
  * await DatasetFactory.createDataset({ mediaType: "multimodal", datasetName: "my-episodes" });
- * await DatasetFactory.updateLabelSchema({ datasetName, field, schema });
  */
 export const DatasetFactory = {
   createDataset,
-  updateLabelSchema,
 };

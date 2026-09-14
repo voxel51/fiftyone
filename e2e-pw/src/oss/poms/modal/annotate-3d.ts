@@ -321,7 +321,16 @@ class ModalAnnotate3dAsserter {
   }
 }
 
-type GeometryAxis = "x" | "y" | "z" | "lx" | "ly" | "lz" | "rx" | "ry" | "rz";
+export type GeometryAxis =
+  | "x"
+  | "y"
+  | "z"
+  | "lx"
+  | "ly"
+  | "lz"
+  | "rx"
+  | "ry"
+  | "rz";
 
 type ToolbarActionId =
   | "create-cuboid"

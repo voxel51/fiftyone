@@ -140,6 +140,20 @@ export type JSONObject = { [key: string]: JSONValue };
  */
 export type LabelSchema = JSONObject;
 
+/** Keyword arguments of `fiftyone.core.camera.StaticTransform`. */
+export interface StaticTransform {
+  source_frame: string;
+
+  /** @default "world" */
+  target_frame?: string;
+
+  /** `[tx, ty, tz]` @default [0, 0, 0] */
+  translation?: number[];
+
+  /** Scalar-last `[qx, qy, qz, qw]` @default [0, 0, 0, 1] */
+  quaternion?: number[];
+}
+
 /**
  * Field paths mapped to their types. A path under `frames.` declares a frame
  * field on a video dataset; nested paths (`ground_truth.detections.keyframe`)
@@ -207,6 +221,17 @@ export interface BaseDatasetOptions<S extends SampleScaffold = SampleScaffold> {
    * }
    */
   labelSchemas?: { [field: string]: LabelSchema };
+
+  /**
+   * Static transforms between coordinate frames, each added with
+   * `dataset.add_static_transform(StaticTransform(**transform))`.
+   *
+   * @example
+   * staticTransforms: [
+   *   { source_frame: "lidar", target_frame: "ego", translation: [1.5, 0, 1.2] },
+   * ]
+   */
+  staticTransforms?: StaticTransform[];
 
   /**
    * Populates a sample: receives its scaffold and returns the sample's field
