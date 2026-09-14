@@ -335,12 +335,8 @@ test.describe("polyline track deletion on video", () => {
     await modal.sampleCanvas.click(BODY[0], BODY[1]);
     await page.keyboard.press("Backspace");
 
-    await expect
-      .poll(
-        () => polylineIds(modal),
-        "the drawn track should leave the canvas on the first press",
-      )
-      .not.toContain(id);
+    // the drawn track leaves the canvas on the first press
+    await modal.videoAnnotate.assert.canvasRendersOverlay(id, false);
     await modal.videoAnnotate.assert.objectTrackCount(1);
     // the delete flushes before the test ends
     await modal.sidebar.annotate.waitForSavesSettled();

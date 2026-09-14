@@ -193,9 +193,10 @@ test.describe.serial("segmentation tool snapshots", () => {
         await expect(rows).toHaveCount(1);
         await rows.click();
         await freshModal.sidebar.edit.assert.hasMaskPreview();
-        await expect
-          .poll(() => freshModal.sidebar.edit.maskPreviewPixels())
-          .toBeGreaterThan(0);
+        await freshModal.sidebar.edit.assert.maskPreviewDrawn();
+        expect(
+          await freshModal.sidebar.edit.maskPreviewPixels(),
+        ).toBeGreaterThan(0);
       } finally {
         await context.close();
       }

@@ -137,17 +137,10 @@ test("aligns grouped direct PCDs in world and writes cuboids back to the native 
   await modal.looker3dControls.setTopView();
   await modal.looker3dControls.toggleGridHelper();
 
-  await expect
-    .poll(
-      async () => {
-        const visiblePixels = await countOuterBandPixels(
-          modal.annotate3d.canvas,
-        );
-        return Math.min(visiblePixels.left, visiblePixels.right);
-      },
-      { timeout: 10_000 },
-    )
-    .toBeGreaterThan(30);
+  // both slices are painted once the top view has rendered (`setTopView`
+  // resolves on the settled frame), so one read of the outer bands suffices
+  const visiblePixels = await countOuterBandPixels(modal.annotate3d.canvas);
+  expect(Math.min(visiblePixels.left, visiblePixels.right)).toBeGreaterThan(30);
 
   await modal.sidebar.switchMode("annotate");
   await modal.sidebar.annotate.selectAnnotationSlice("lidar_left");
@@ -177,9 +170,11 @@ test("aligns grouped direct PCDs in world and writes cuboids back to the native 
 
   const geometry = async (axis: GeometryAxis) =>
     Number(await modal.annotate3d.getGeometry(axis));
-  await expect.poll(() => geometry("x")).toBeCloseTo(2, 1);
-  await expect.poll(() => geometry("y")).toBeCloseTo(-23.15, 1);
-  await expect.poll(() => geometry("rz")).toBeCloseTo(Math.PI / 2, 1);
+  // the geometry inputs populate once the selected label's form mounts
+  await expect(modal.annotate3d.geometryField("x")).not.toHaveValue("");
+  expect(await geometry("x")).toBeCloseTo(2, 1);
+  expect(await geometry("y")).toBeCloseTo(-23.15, 1);
+  expect(await geometry("rz")).toBeCloseTo(Math.PI / 2, 1);
   for (const axis of ["lx", "ly", "lz"] as const) {
     expect(await geometry(axis)).toBeGreaterThan(0);
   }

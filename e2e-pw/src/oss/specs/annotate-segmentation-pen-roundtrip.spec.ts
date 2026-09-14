@@ -116,9 +116,8 @@ test.describe.serial("segmentation pen-tool round-trip", () => {
       // catches "the field saved but the mask is empty".
       await rows.first().click();
       await fresh.sidebar.edit.assert.hasMaskPreview();
-      await expect
-        .poll(() => fresh.sidebar.edit.maskPreviewPixels())
-        .toBeGreaterThan(0);
+      await fresh.sidebar.edit.assert.maskPreviewDrawn();
+      expect(await fresh.sidebar.edit.maskPreviewPixels()).toBeGreaterThan(0);
     } finally {
       await context.close();
     }

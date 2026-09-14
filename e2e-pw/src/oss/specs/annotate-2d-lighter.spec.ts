@@ -6,7 +6,7 @@
  * engine-derived sidebar list + edit form (not screenshots) so the checks pin
  * behavior rather than pixels.
  */
-import { expect, test as base } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { SampleCanvasType } from "src/oss/poms/modal/sample-canvas";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
@@ -60,11 +60,9 @@ test.beforeEach(async ({ fiftyoneLoader, modal, page }) => {
   await modal.sidebar.switchMode("annotate");
 });
 
-/** Poll the engine-derived Labels count until it settles on `expected`. */
+/** The engine-derived Labels count, once it settles on `expected`. */
 const expectLabelsCount = async (modal: ModalPom, expected: number) => {
-  await expect
-    .poll(() => modal.sidebar.annotate.getActiveLabelsCount())
-    .toBe(expected);
+  await modal.sidebar.annotate.assert.hasActiveLabelsCount(expected);
 };
 
 /** Draw a detection box across the given relative corners (annotate mode). */
