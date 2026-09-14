@@ -163,6 +163,20 @@ export class MockRenderer2D implements Renderer2D {
     });
   }
 
+  /**
+   * The mock records calls rather than holding display objects, so a rebuild
+   * pass has nothing to pool. `beginRebuild` clears the container's recorded
+   * draws, which keeps assertions reading "what this pass drew" — the same
+   * thing `dispose` used to give them.
+   */
+  beginRebuild(containerId: string): void {
+    this.containers.delete(containerId);
+  }
+
+  endRebuild(_containerId: string): void {
+    // nothing to trim: the mock allocates nothing
+  }
+
   dispose(containerId: string): void {
     this.containers.delete(containerId);
   }

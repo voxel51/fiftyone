@@ -28,9 +28,9 @@ import { Scene2D } from "./Scene2D";
 const stubResourceLoader = {} as ResourceLoader;
 
 /**
- * Records the order of renderer calls. `dispose` is what every overlay's
- * `renderImpl` issues before rebuilding, so a dispose with no following draw
- * inside the same pass is precisely the visible hole.
+ * Records the order of renderer calls. Every overlay paints inside a rebuild
+ * pass, so `begin` with no matching `end` inside the same tick is precisely
+ * the window a present could catch mid-repaint.
  */
 const makeRenderer = () => {
   const calls: string[] = [];
@@ -43,6 +43,8 @@ const makeRenderer = () => {
     addTickHandler: (onFrame: () => void) => {
       tick = onFrame;
     },
+    beginRebuild: (id: string) => calls.push(`begin:${id}`),
+    endRebuild: (id: string) => calls.push(`end:${id}`),
     dispose: (id: string) => calls.push(`dispose:${id}`),
     drawRect: (_b: unknown, _s: unknown, id: string) =>
       calls.push(`draw:${id}`),
@@ -97,8 +99,10 @@ describe("Scene2D render loop phase contract", () => {
     // the assertion that matters: the work is already done, BEFORE any
     // microtask has had a chance to run
     const duringTick = [...renderer.calls];
-    expect(duringTick).toContain("dispose:a");
-    expect(duringTick).toContain("dispose:b");
+    expect(duringTick).toContain("begin:a");
+    expect(duringTick).toContain("end:a");
+    expect(duringTick).toContain("begin:b");
+    expect(duringTick).toContain("end:b");
 
     // draining microtasks must add nothing — anything appearing here would be
     // a mutation Pixi's render for this pass could not have seen
@@ -108,7 +112,7 @@ describe("Scene2D render loop phase contract", () => {
     expect(renderer.calls).toEqual(duringTick);
   });
 
-  it("rebuilds each disposed container before the tick returns", () => {
+  it("closes every overlay's rebuild pass before the tick returns", () => {
     const renderer = makeRenderer();
     const scene = makeScene(renderer);
     scene.startRenderLoop();
@@ -117,12 +121,19 @@ describe("Scene2D render loop phase contract", () => {
 
     renderer.fireTick();
 
-    // a dispose is only safe if its redraw lands in the same pass; a trailing
-    // dispose is the hole a present would catch
+    // an open pass is the hole a present would catch: the container is
+    // mid-repaint, with stale slots not yet trimmed
     const last = renderer.calls[renderer.calls.length - 1];
-    expect(last).not.toBe("dispose:a");
-    expect(renderer.calls.indexOf("dispose:a")).toBeLessThan(
+    expect(last).not.toBe("begin:a");
+    expect(renderer.calls.indexOf("begin:a")).toBeLessThan(
+      renderer.calls.indexOf("end:a"),
+    );
+    // and the overlay's own drawing happened between the two
+    expect(renderer.calls.indexOf("begin:a")).toBeLessThan(
       renderer.calls.lastIndexOf("draw:a"),
+    );
+    expect(renderer.calls.lastIndexOf("draw:a")).toBeLessThan(
+      renderer.calls.indexOf("end:a"),
     );
   });
 
@@ -183,7 +194,8 @@ describe("Scene2D render loop phase contract", () => {
     });
 
     expect(() => renderer.fireTick()).not.toThrow();
-    expect(renderer.calls).toContain("dispose:a");
+    expect(renderer.calls).toContain("begin:a");
+    expect(renderer.calls).toContain("end:a");
 
     consoleError.mockRestore();
   });

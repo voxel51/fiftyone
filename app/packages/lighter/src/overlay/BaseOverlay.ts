@@ -145,7 +145,21 @@ export abstract class BaseOverlay<
     // Store the current style for use in other methods
     this.currentStyle = style || undefined;
 
-    this.renderImpl(renderer, meta);
+    // Open a rebuild pass around the paint so `renderImpl` can redraw
+    // declaratively — list your draws, top to bottom — while the renderer
+    // reuses the display objects the last pass left behind and discards
+    // whatever this one did not reach. Wrapping here rather than inside each
+    // `renderImpl` is what makes the early returns (`if (!style) return`)
+    // safe: the pass still closes.
+    renderer.beginRebuild(this.containerId);
+
+    const result = this.renderImpl(renderer, meta);
+
+    if (result instanceof Promise) {
+      return result.finally(() => renderer.endRebuild(this.containerId));
+    }
+
+    renderer.endRebuild(this.containerId);
   }
 
   /**
