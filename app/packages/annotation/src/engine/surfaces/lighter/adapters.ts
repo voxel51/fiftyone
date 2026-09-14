@@ -20,7 +20,7 @@ import type {
   KeypointLabel,
   PolylineOverlay,
 } from "@fiftyone/lighter";
-import type { DetectionLabel } from "@fiftyone/looker";
+import type { DetectionLabel, KeypointSkeleton } from "@fiftyone/looker";
 import type { LabelData } from "@fiftyone/utilities";
 import { hasValidBounds, LabelType } from "@fiftyone/utilities";
 
@@ -48,6 +48,15 @@ export interface LighterDescriptor {
 }
 
 export type LighterAdapter = LabelKindAdapter<BaseOverlay, LighterDescriptor>;
+
+/**
+ * App state the Lighter adapters need but the engine must not reach for
+ * itself — injected by the surface hook, which owns the React binding.
+ */
+export interface LighterAdapterDeps {
+  /** Resolves the keypoint skeleton for a label path (e.g. `frames.keypoints`). */
+  getSkeleton?: (field: string) => KeypointSkeleton | null;
+}
 
 const toRect = (boundingBox: number[]) => ({
   x: boundingBox[0],
@@ -141,10 +150,25 @@ export const classificationAdapter: LighterAdapter = {
   toLabel: (overlay) => withoutId(overlay.label as Record<string, unknown>),
 };
 
-export const keypointAdapter: LighterAdapter = {
+/**
+ * Skeleton edges are what make a keypoint label draw as a figure rather than a
+ * cloud of dots: each edge path is a list of indices into `label.points`, which
+ * is exactly Lighter's `connections` shape. The resolver is injected (the
+ * engine stays free of app state) — omit it and keypoints render unconnected,
+ * which is right for a dataset with no skeleton.
+ */
+export const makeKeypointAdapter = (
+  deps: LighterAdapterDeps = {},
+): LighterAdapter => ({
   buildHandle: (ref, label) => ({
     factoryKey: "keypoint",
-    options: { id: ref.instanceId, field: ref.path, label },
+    options: {
+      id: ref.instanceId,
+      field: ref.path,
+      label,
+      connections: deps.getSkeleton?.(ref.path)?.edges ?? [],
+      closed: false,
+    },
   }),
 
   updateHandle: (overlay, label) => {
@@ -152,7 +176,10 @@ export const keypointAdapter: LighterAdapter = {
   },
 
   toLabel: (overlay) => withoutId(overlay.label as Record<string, unknown>),
-};
+});
+
+/** Skeleton-less keypoint adapter — points only. */
+export const keypointAdapter: LighterAdapter = makeKeypointAdapter();
 
 export const polylineAdapter: LighterAdapter = {
   // 2D vertices are what this surface draws — Polyline3D (shared `_cls`,
@@ -183,16 +210,26 @@ export const polylineAdapter: LighterAdapter = {
 };
 
 /**
- * The full Lighter adapter map. Single and list kinds share an adapter — the
- * engine routes by `getLabelType(ref.path)`, the overlay shape is identical.
+ * Builds the full Lighter adapter map. Single and list kinds share an adapter —
+ * the engine routes by `getLabelType(ref.path)`, the overlay shape is
+ * identical. Only the keypoint adapter reads `deps`; the rest are constants.
+ *
+ * The result MUST be memoized by the caller: a new identity re-registers the
+ * bridge loop.
  */
-export const lighterAdapters: AdapterMap<BaseOverlay, LighterDescriptor> = {
+export const makeLighterAdapters = (
+  deps: LighterAdapterDeps = {},
+): AdapterMap<BaseOverlay, LighterDescriptor> => ({
   [LabelType.Detection]: detectionAdapter,
   [LabelType.Detections]: detectionAdapter,
   [LabelType.Classification]: classificationAdapter,
   [LabelType.Classifications]: classificationAdapter,
-  [LabelType.Keypoint]: keypointAdapter,
-  [LabelType.Keypoints]: keypointAdapter,
+  [LabelType.Keypoint]: makeKeypointAdapter(deps),
+  [LabelType.Keypoints]: makeKeypointAdapter(deps),
   [LabelType.Polyline]: polylineAdapter,
   [LabelType.Polylines]: polylineAdapter,
-};
+});
+
+/** The dependency-free map — keypoints render unconnected. */
+export const lighterAdapters: AdapterMap<BaseOverlay, LighterDescriptor> =
+  makeLighterAdapters();
