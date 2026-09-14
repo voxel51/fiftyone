@@ -428,10 +428,6 @@ export class DetectionOverlay
         this.containerId,
         rotation,
       );
-
-      if (this.canRotate()) {
-        this.drawRotateHandle(renderer, style.strokeStyle);
-      }
     }
 
     const showLabel = !this.hasMask() || hoverStrokeColor || overlayStrokeColor;
@@ -474,6 +470,17 @@ export class DetectionOverlay
       );
     }
 
+    // drawn after the label header so the handle paints above it — children
+    // of a container render in insertion order
+    if (
+      this.isSelected() &&
+      style.strokeStyle &&
+      (this.isDraggable || this.isResizeable) &&
+      this.canRotate()
+    ) {
+      this.drawRotateHandle(renderer, style.strokeStyle);
+    }
+
     this.emitLoaded();
   }
 
@@ -501,7 +508,9 @@ export class DetectionOverlay
     );
     renderer.drawPoint(
       knobCenter,
-      ROTATE_HANDLE_RADIUS / scale,
+      // drawPoint's radius is in screen pixels (it compensates for zoom
+      // internally) — do NOT divide by scale here
+      ROTATE_HANDLE_RADIUS,
       { fillStyle: strokeStyle, strokeStyle: "#ffffff", lineWidth: 1 },
       this.containerId,
     );
