@@ -106,40 +106,13 @@ export class ModalPom {
   async hideControls() {
     const controls = this.locator.getByTestId("looker-controls");
 
-    // Check if controls exist (might not exist in annotate mode)
-    const controlsCount = await controls.count();
-    if (controlsCount === 0) {
+    // controls may not exist (annotate mode); `c` toggles them
+    if ((await controls.count()) === 0 || (await controls.isHidden())) {
       return;
     }
 
-    let isHidden = false;
-    let attempts = 0;
-    const maxAttempts = 10;
-
-    // Keep pressing "c" until controls are hidden
-    while (!isHidden && attempts < maxAttempts) {
-      const currentStyle = await controls
-        .evaluate((e) => {
-          const s = getComputedStyle(e);
-          return { opacity: s.opacity, height: s.height };
-        })
-        .catch(() => ({ opacity: "1", height: "auto" }));
-
-      if (
-        parseFloat(currentStyle.opacity) === 0 ||
-        currentStyle.height === "0px"
-      ) {
-        isHidden = true;
-        break;
-      }
-
-      await this.page.keyboard.press("c");
-      // Controls take time to hide
-      // eslint-disable-next-line playwright/no-wait-for-timeout
-      await this.page.waitForTimeout(300);
-
-      attempts++;
-    }
+    await this.page.keyboard.press("c");
+    await expect(controls).toBeHidden();
   }
 
   async toggleSelection(isPcd = false) {
@@ -275,15 +248,8 @@ export class ModalPom {
     await looker.click({ position: { x: 10, y: 60 } });
 
     // wait for slice to change
-    await this.page.waitForFunction(
-      ({ currentSlice, groupField }) => {
-        const slice = document.querySelector(
-          `[data-cy="sidebar-entry-${groupField}"]`,
-        )?.textContent;
-        return slice !== currentSlice;
-      },
-      { currentSlice, groupField },
-      { timeout: SAMPLE_LOAD_TIMEOUT },
+    await expect(this.sidebar.getSidebarEntry(groupField)).not.toHaveText(
+      currentSlice,
     );
     return this.waitForSampleLoadDomAttribute(allowErrorInfo);
   }
@@ -293,7 +259,7 @@ export class ModalPom {
     if (!(await this.isFullscreen())) {
       await this.locator.getByTestId("action-toggle-fullscreen").click();
     }
-    await expect.poll(() => this.isFullscreen()).toBe(true);
+    await this.assert.isFullscreen();
   }
 
   async close({ ignoreError } = { ignoreError: false }) {
@@ -305,7 +271,7 @@ export class ModalPom {
 
       if (await this.isFullscreen()) {
         await this.locator.getByTestId("action-toggle-fullscreen").click();
-        await expect.poll(() => this.isFullscreen()).toBe(false);
+        await this.assert.isFullscreen(false);
       }
 
       await this.page.click("body", { position: { x: 0, y: 0 } });
@@ -355,39 +321,19 @@ export class ModalPom {
   }
 
   async waitForSampleLoadDomAttribute(allowErrorInfo = false) {
-    return this.page.waitForFunction(
-      (allowErrorInfo) => {
-        if (
-          allowErrorInfo &&
-          document.querySelector(
-            "[data-cy=modal-looker-container] [data-cy=looker-error-info]",
-          )
-        ) {
-          return true;
-        }
-
-        // Any surface may raise the marker: the lookers set it on their
-        // canvas, the plain video surface sets it on the `<video>`.
-        return !!document.querySelector(
-          `[data-cy=modal-looker-container] [canvas-loaded="true"]`,
-        );
-      },
-      allowErrorInfo,
-      { timeout: SAMPLE_LOAD_TIMEOUT },
-    );
+    // any surface may raise the marker: the lookers set it on their canvas,
+    // the plain video surface sets it on the `<video>`
+    const loaded = this.modalContainer.locator('[canvas-loaded="true"]');
+    const target = allowErrorInfo
+      ? loaded.or(this.modalContainer.getByTestId("looker-error-info"))
+      : loaded;
+    await expect(target.first()).toBeAttached({ timeout: SAMPLE_LOAD_TIMEOUT });
   }
 
   async waitForLighterReady() {
-    return this.page.waitForFunction(
-      () =>
-        (
-          document.querySelector(
-            `[data-cy=lighter-sample-renderer]`,
-          ) as HTMLElement | null
-        )?.style.visibility === "visible",
-      undefined,
-      { timeout: Duration.Seconds(20) },
-    );
+    await expect(this.page.getByTestId("lighter-sample-renderer")).toBeVisible({
+      timeout: SAMPLE_LOAD_TIMEOUT,
+    });
   }
 
   private async isFullscreen() {
@@ -450,10 +396,17 @@ class ModalAsserter {
     title: string,
     { pinned }: { pinned: boolean } = { pinned: false },
   ) {
-    await expect
-      .poll(async () => this.modalPom.modalSamplePluginTitle, {
-        timeout: 5000,
-      })
-      .toBe(pinned ? `📌 ${title}` : title);
+    await expect(
+      this.modalPom.locator.getByTestId("panel-tab-fo-sample-modal-plugin"),
+    ).toHaveText(pinned ? `📌 ${title}` : title);
+  }
+
+  /** The modal fills the viewport (its content is styled 100% x 100%). */
+  async isFullscreen(fullscreen = true) {
+    const content = this.modalPom.modalContent;
+    const full = /width:\s*100%;.*height:\s*100%/;
+    return fullscreen
+      ? await expect(content).toHaveAttribute("style", full)
+      : await expect(content).not.toHaveAttribute("style", full);
   }
 }

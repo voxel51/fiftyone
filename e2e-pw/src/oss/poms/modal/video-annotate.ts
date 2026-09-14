@@ -73,15 +73,30 @@ export class VideoAnnotatePom {
     );
   }
 
+  /** Object (frame-label) track rows: not TD rows, not attribute sub-tracks. */
+  get objectTracks(): Locator {
+    return this.page.locator(
+      '[data-track-id]:not([data-track-id^="td-"]):not([data-track-id*="::"])',
+    );
+  }
+
+  /** Temporal-detection track rows (`td-…`). */
+  get temporalTracks(): Locator {
+    return this.page.locator('[data-track-id^="td-"]');
+  }
+
+  /** Dynamic-attribute sub-track rows under a parent object track. */
+  subTracks(parentId: string): Locator {
+    return this.page.locator(`[data-track-id^="${parentId}::"]`);
+  }
+
   /**
    * Wait until at least one object track has built (timeline warmup is async),
    * then return the first object track's id. Use instead of indexing
    * `objectTrackIds()` directly right after the surface mounts.
    */
   async firstObjectTrackId(): Promise<string> {
-    await expect
-      .poll(async () => (await this.objectTrackIds()).length)
-      .toBeGreaterThan(0);
+    await expect(this.objectTracks.first()).toBeAttached();
     return (await this.objectTrackIds())[0];
   }
 
@@ -351,6 +366,14 @@ export class VideoAnnotatePom {
       .locator("[data-cy^='annotate-label-']");
   }
 
+  /** The listed label rows under a schema path (e.g. `frames.detections`). */
+  labelRowsFor(path: string): Locator {
+    return this.page
+      .getByTestId("modal")
+      .getByTestId("sidebar")
+      .locator(`[data-cy^='annotate-label-'][data-cy-path='${path}']`);
+  }
+
   /** A listed label row by its class text (e.g. "approach", "vehicle"). */
   labelRow(labelText: string): Locator {
     return this.page
@@ -509,23 +532,28 @@ class VideoAnnotateAsserter {
 
   /** Assert the number of object (frame-label) tracks on the timeline. */
   async objectTrackCount(expected: number) {
-    await expect
-      .poll(async () => (await this.va.objectTrackIds()).length)
-      .toBe(expected);
+    await expect(this.va.objectTracks).toHaveCount(expected);
   }
 
   /** Assert the number of temporal-detection rows on the timeline. */
   async temporalTrackCount(expected: number) {
-    await expect
-      .poll(async () => (await this.va.temporalTrackIds()).length)
-      .toBe(expected);
+    await expect(this.va.temporalTracks).toHaveCount(expected);
   }
 
   /** Assert a track with the given id is present on the timeline. */
   async hasTrack(trackId: string, present = true) {
-    await expect
-      .poll(async () => (await this.va.trackIds()).includes(trackId))
-      .toBe(present);
+    const track = this.va.track(trackId);
+    return present
+      ? await expect(track).toBeAttached()
+      : await expect(track).toHaveCount(0);
+  }
+
+  /** Assert the sub-track rows under a parent, by attribute name. */
+  async subTracks(parentId: string, attrs: string[]) {
+    await expect(this.va.subTracks(parentId)).toHaveCount(attrs.length);
+    for (const attr of attrs) {
+      await expect(this.va.track(`${parentId}::${attr}`)).toBeAttached();
+    }
   }
 
   /**
@@ -559,22 +587,62 @@ class VideoAnnotateAsserter {
 
   /** Assert a label (by class text) is / isn't listed in the annotate sidebar. */
   async labelListed(labelText: string, listed = true) {
-    await expect
-      .poll(async () => (await this.va.listedLabels()).includes(labelText))
-      .toBe(listed);
+    const row = this.va.labelRow(labelText);
+    return listed
+      ? await expect(row.first()).toBeVisible()
+      : await expect(row).toHaveCount(0);
   }
 
   /** Assert the number of label rows currently listed in the annotate sidebar. */
   async listedLabelCount(expected: number) {
-    await expect
-      .poll(async () => (await this.va.listedLabels()).length)
-      .toBe(expected);
+    await expect(this.va.labelRows).toHaveCount(expected);
   }
 
-  /** Assert whether the canvas currently renders any overlay for `field`. */
+  /** Assert the sidebar lists (or does not list) any label under `path`. */
+  async listsPath(path: string, listed = true) {
+    const rows = this.va.labelRowsFor(path);
+    return listed
+      ? await expect(rows).not.toHaveCount(0)
+      : await expect(rows).toHaveCount(0);
+  }
+
+  /**
+   * Assert whether the canvas currently renders any overlay for `field`. The
+   * surface mirrors its PIXI overlays' fields onto `data-cy-scene-overlay-fields`
+   * (space separated), since the overlays themselves have no DOM.
+   */
   async canvasRendersField(field: string, rendered = true) {
-    await expect
-      .poll(async () => (await this.va.canvasOverlayFields()).includes(field))
-      .toBe(rendered);
+    const pattern = new RegExp(`(^| )${field}( |$)`);
+    return rendered
+      ? await expect(this.va.surface).toHaveAttribute(
+          "data-cy-scene-overlay-fields",
+          pattern,
+        )
+      : await expect(this.va.surface).not.toHaveAttribute(
+          "data-cy-scene-overlay-fields",
+          pattern,
+        );
+  }
+
+  /** Assert whether the canvas renders the overlay with `id`. */
+  async canvasRendersOverlay(id: string, rendered = true) {
+    const pattern = new RegExp(`(^| )${id}( |$)`);
+    return rendered
+      ? await expect(this.va.surface).toHaveAttribute(
+          "data-cy-scene-overlay-ids",
+          pattern,
+        )
+      : await expect(this.va.surface).not.toHaveAttribute(
+          "data-cy-scene-overlay-ids",
+          pattern,
+        );
+  }
+
+  /** Assert the surface shows the sample with `sampleId`. */
+  async showsSample(sampleId: string) {
+    await expect(this.va.surface).toHaveAttribute(
+      "data-cy-sample-id",
+      sampleId,
+    );
   }
 }

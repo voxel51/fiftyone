@@ -73,9 +73,9 @@ export class SavedViewsPom {
   }
 
   async saveViewInputs({ name, description, color, newColor }: SaveViewParams) {
-    await this.nameInput().fill(name, { timeout: 2000 });
-    await this.descriptionInput().fill(description, { timeout: 2000 });
-    await this.colorInput(color).click({ timeout: 2000 });
+    await this.nameInput().fill(name);
+    await this.descriptionInput().fill(description);
+    await this.colorInput(color).click();
     await this.colorOption(newColor).click();
   }
 
@@ -144,7 +144,7 @@ export class SavedViewsPom {
 
   async openSelect() {
     // need to force click otherwise intercepted by material-ui backdrop
-    await this.selector.click({ timeout: 2000, force: true });
+    await this.selector.click({ force: true });
   }
 
   async openCreateModal(
@@ -155,7 +155,7 @@ export class SavedViewsPom {
     if (!isSelectAlreadyOpen) {
       await this.openSelect();
     }
-    await this.saveNewViewBtn.click({ timeout: 2000 });
+    await this.saveNewViewBtn.click();
   }
 
   async savedViewCount(name: string) {
@@ -347,24 +347,12 @@ class SavedViewAsserter {
     await this.svp.searchInput().clear();
     await this.svp.searchInput().pressSequentially(term);
 
-    if (expectedResult.length) {
-      await this.svp
-        .savedViewOption(expectedResult[0])
-        .waitFor({ state: "visible", timeout: 1000 });
-
-      expectedResult.forEach(async (slug: string) => {
-        await expect(this.svp.savedViewOption(slug)).toBeVisible();
-      });
+    for (const slug of expectedResult) {
+      await expect(this.svp.savedViewOption(slug)).toBeVisible();
     }
 
-    if (excluded.length) {
-      await this.svp
-        .savedViewOption(excluded[1])
-        .waitFor({ state: "hidden", timeout: 1000 });
-
-      excluded.forEach(async (slug: string) => {
-        await expect(this.svp.savedViewOption(slug).first()).toBeHidden();
-      });
+    for (const slug of excluded) {
+      await expect(this.svp.savedViewOption(slug).first()).toBeHidden();
     }
   }
 

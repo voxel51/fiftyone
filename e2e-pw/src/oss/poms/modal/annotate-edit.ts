@@ -321,14 +321,40 @@ class ModalAnnotateEditAsserter {
   }
 
   /**
-   * Verify a field's value
+   * Verify a field's value. Retries until the input reflects it, so a value
+   * that lands after an engine commit, undo, or hydration echo is awaited
+   * rather than read once.
    *
    * @param path The field path
    * @param expectedValue The expected field value
    */
-  async verifyFieldValue(path: string, expectedValue: string) {
-    const actualValue = await this.modalAnnotateEdit.getFieldValue(path);
-    expect(actualValue).toBe(expectedValue);
+  async verifyFieldValue(path: string, expectedValue: string | RegExp) {
+    await expect(await this.modalAnnotateEdit.getField(path)).toHaveValue(
+      expectedValue,
+    );
+  }
+
+  /**
+   * Verify the field the edited label belongs to, as the field dropdown shows
+   * it. Retries across a move, undo, or redo re-homing the label.
+   *
+   * @param field The expected field path
+   */
+  async currentField(field: string) {
+    await expect(this.modalAnnotateEdit.fieldSelect).toHaveText(field);
+  }
+
+  /**
+   * Assert the mask preview has painted a decoded mask. The preview mounts
+   * blank and stamps its canvas with the mask dimensions on the first real
+   * draw, so reads of its pixels are only meaningful after this.
+   */
+  async maskPreviewDrawn() {
+    await expect(
+      this.modalAnnotateEdit.page
+        .getByTestId("annotate-mask-preview")
+        .locator("canvas"),
+    ).toHaveAttribute("data-mask-width", /^[1-9]\d*$/);
   }
 
   /**

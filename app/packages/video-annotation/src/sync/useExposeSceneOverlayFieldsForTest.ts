@@ -3,7 +3,11 @@
  */
 
 import type { useLighterSetupWithPixi } from "@fiftyone/lighter";
-import { useEffect } from "react";
+import {
+  UNDEFINED_LIGHTER_SCENE_ID,
+  useLighterEventHandler,
+} from "@fiftyone/lighter";
+import { useCallback, useEffect } from "react";
 
 type Scene = ReturnType<typeof useLighterSetupWithPixi>["scene"];
 
@@ -36,15 +40,56 @@ declare global {
 }
 
 /**
- * Publish the scene's live overlay fields on `window` for e2e assertions. A
- * read-only probe — it never drives app behavior; the hook owns the global's
- * lifecycle and clears it on scene change / unmount.
+ * The DOM mirror of the scene's overlay set: `data-cy-scene-overlay-fields`
+ * and `data-cy-scene-overlay-ids` (space separated) on the surface element, so
+ * a spec can assert what the canvas paints with a locator instead of a poll.
+ */
+const stampSceneOverlays = (scene: NonNullable<Scene>) => {
+  const surface = document.querySelector(
+    '[data-cy="video-annotation-surface"]',
+  );
+  if (!surface) {
+    return;
+  }
+
+  const overlays = scene.getAllOverlays();
+  surface.setAttribute(
+    "data-cy-scene-overlay-fields",
+    Array.from(new Set(overlays.map((o) => o.field))).join(" "),
+  );
+  surface.setAttribute(
+    "data-cy-scene-overlay-ids",
+    overlays.map((o) => o.id).join(" "),
+  );
+};
+
+/**
+ * Publish the scene's live overlay fields on `window` for e2e assertions, and
+ * mirror the overlay set onto the surface's DOM attributes. A read-only probe —
+ * it never drives app behavior; the hook owns the global's lifecycle and
+ * clears it on scene change / unmount.
  */
 export const useExposeSceneOverlayFieldsForTest = (scene: Scene): void => {
+  const on = useLighterEventHandler(
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
+  );
+
+  // after the scene has applied the add/remove, not during its dispatch
+  const stamp = useCallback(() => {
+    if (scene) {
+      queueMicrotask(() => stampSceneOverlays(scene));
+    }
+  }, [scene]);
+
+  on("lighter:overlay-added", stamp);
+  on("lighter:overlay-removed", stamp);
+
   useEffect(() => {
     if (!scene) {
       return undefined;
     }
+
+    stampSceneOverlays(scene);
 
     window.__FO_PLAYWRIGHT_SCENE_OVERLAY_FIELDS = () =>
       Array.from(new Set(scene.getAllOverlays().map((o) => o.field)));
