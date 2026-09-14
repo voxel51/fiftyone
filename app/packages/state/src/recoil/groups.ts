@@ -31,6 +31,7 @@ import {
   imaVidLookerState,
   isDynamicGroup,
   isNestedDynamicGroup,
+  lighterDynamicGroupVideo,
   shouldRenderImaVidLooker,
 } from "./dynamicGroups";
 import { ModalSample, modalLooker, modalSample, modalSelector } from "./modal";
@@ -441,7 +442,7 @@ export const activeModalSample = selector({
 export const activeModalSidebarSample = selector({
   key: "activeModalSidebarSample",
   get: ({ get }) => {
-    if (get(shouldRenderImaVidLooker(true))) {
+    if (get(shouldRenderImaVidLooker(true)) && !get(lighterDynamicGroupVideo)) {
       const currentFrameNumber = get(imaVidLookerState("currentFrameNumber"));
 
       if (!currentFrameNumber) {
