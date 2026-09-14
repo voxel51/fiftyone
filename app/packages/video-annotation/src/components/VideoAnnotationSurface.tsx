@@ -95,12 +95,12 @@ interface RegistrarProps {
  * Add a strategy by adding a row here + a branch in `resolveDecodeStrategy`.
  *
  * `TILE` picks the media element; `REGISTRAR` wraps the surface with the stream
- * that drives the timeline's duration (`extract`/`fetch` register an ImaVid
+ * that drives the timeline's duration (`extract`/`fetch` register a dynamic group
  * frame stream; `html` registers nothing — the `<video>` element is its own
  * clock source).
  *
  * Audio follows the same split. The `html` tile's `<video>` already holds the
- * sound, so `LighterVideo` plays it from that element; only the ImaVid paths,
+ * sound, so `LighterVideo` plays it from that element; only the dynamic group paths,
  * which have no media element of their own, mount a separate audio element
  * (see `AUDIO_ONLY_STRATEGIES` below).
  */
@@ -124,7 +124,7 @@ const STRATEGY_TILE: Record<DecodeStrategy, React.FC<MediaProps>> = {
 };
 
 /**
- * Strategies whose timeline needs its own `HTMLAudioElement`: the ImaVid
+ * Strategies whose timeline needs its own `HTMLAudioElement`: the dynamic group
  * paths render decoded frames or per-frame images, so nothing on the surface
  * is playing the source container's audio track. The `html` tile is excluded
  * deliberately — a second element over the same URL there would fetch and
@@ -186,7 +186,7 @@ const VideoAnnotationSurfaceForSample: React.FC<
   useReportAnnotationSurface(isImageDynamicGroupVideo ? "dgva" : "video");
   const prerequisites = useAnnotatePrerequisites(sample);
 
-  // ImaVid write path: frame edits fan out to the group's member samples
+  // dynamic group write path: frame edits fan out to the group's member samples
   // under one group version token. Inert for native video.
   useDynamicGroupPersistence({
     enabled: isImageDynamicGroupVideo,
@@ -327,7 +327,7 @@ const VideoAnnotationSurfaceForSample: React.FC<
     </div>
   );
 
-  // Both registrars run against the same PlaybackProvider. In the ImaVid
+  // Both registrars run against the same PlaybackProvider. In the dynamic group
   // (`extract`/`fetch`) path the image stream is the timeline's duration source
   // (analogous to `<video>` in the `html` tile), so it has to mount OUTSIDE the
   // labels registrar — `RegisterFrameLabels` gates on `useDuration() > 0` and
@@ -394,7 +394,7 @@ const VideoAnnotationHandlerRegistration: React.FC = () => {
   // and a seeded frame store, not the degenerate pool view
   useVideoLighterEngineBridge(visiblePaths);
   useRegisterVideoAnnotationKeybindings();
-  // expose the active ImaVid frame to the SAM2 agent for click-to-segment
+  // expose the active dynamic group frame to the SAM2 agent for click-to-segment
   useRegisterVideoSegmentBitmap();
   // a point session belongs to the frame it started on; end it on a move
   useEndPointSessionOnFrameChange();

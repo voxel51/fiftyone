@@ -8,7 +8,7 @@ import { useDynamicGroupImageStream } from "../streams/dynamicGroupImageStreamHa
 import { useCurrentFrameGetter } from "../state/useCurrentFrame";
 
 /**
- * Register the active ImaVid frame as the browser SAM2 agent's bitmap source so
+ * Register the active dynamic group frame as the browser SAM2 agent's bitmap source so
  * interactive click-to-segment runs on the decoded frame the surface already
  * holds — not the sample's `mediaUrl`, which for a video is the container file
  * (decoding it as an image fails). Mirrors the propagation path's
