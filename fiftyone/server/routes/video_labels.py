@@ -156,8 +156,10 @@ def index_post_pipeline(
     rank_stages: t.List[dict] = []
     if dynamic_group:
         # Fold the ordered samples into one array and unwind it with its
-        # index; the documents come back under `docs`, untouched
+        # index. Only the label field is folded: the array is one document
+        # and a large group's full samples would breach the 16MB BSON limit.
         rank_stages = [
+            {"$project": {field: True}},
             {"$group": {"_id": None, "docs": {"$push": "$$ROOT"}}},
             {"$unwind": {"path": "$docs", "includeArrayIndex": "rank"}},
         ]
