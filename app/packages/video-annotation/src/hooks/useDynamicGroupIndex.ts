@@ -75,7 +75,7 @@ export const useDynamicGroupIndex = ({
   // bumped on each (re)mount so a stale fetch cannot land its state
   const generation = useRef(0);
   const publishIndex = usePublishDynamicGroupMemberIndex();
-  // the sidebar reads the member order too (spatial comments key on it)
+  // the member order is published for readers outside the write path
   const setState = useCallback(
     (state: GroupWriteState | null) => {
       stateRef.current = state;
