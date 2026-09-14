@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { LABEL_TYPE_OPTIONS, LABEL_TYPE_OPTIONS_VIDEO } from "./constants";
 import {
   createDefaultFormData,
+  defaultClassesComponent,
   formatAttributeCount,
   formatSchemaCount,
   getAttributeTypeLabel,
@@ -194,6 +195,16 @@ describe("getLabelTypeOptions", () => {
 
   it("limits a sample-level video field to clip-level types", () => {
     expect(getLabelTypeOptions("video", false)).toBe(LABEL_TYPE_OPTIONS_VIDEO);
+  });
+});
+
+describe("defaultClassesComponent", () => {
+  const classes = (n: number) => Array.from({ length: n }, (_, i) => `c${i}`);
+
+  it("is radio up to the threshold and dropdown past it", () => {
+    expect(defaultClassesComponent([])).toBe("radio");
+    expect(defaultClassesComponent(classes(5))).toBe("radio");
+    expect(defaultClassesComponent(classes(6))).toBe("dropdown");
   });
 });
 

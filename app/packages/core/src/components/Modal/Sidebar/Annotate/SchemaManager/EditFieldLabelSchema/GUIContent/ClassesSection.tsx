@@ -97,11 +97,11 @@ interface ClassesSectionProps {
   classes: string[];
   attributeCount: number;
   /** Input type the annotate sidebar renders the classes with */
-  component?: ClassesComponent;
+  component: ClassesComponent;
   onAddClass: (name: string) => void;
   onEditClass: (oldName: string, newName: string) => void;
   onDeleteClass: (name: string) => void;
-  onComponentChange?: (component: ClassesComponent) => void;
+  onComponentChange: (component: ClassesComponent) => void;
   onOrderChange?: (newOrder: string[]) => void;
 }
 
@@ -240,7 +240,7 @@ const ClassesSection = ({
                     icon={opt.icon}
                     label={opt.label}
                     isSelected={component === opt.id}
-                    onClick={() => onComponentChange?.(opt.id)}
+                    onClick={() => onComponentChange(opt.id)}
                   />
                 ))}
               </Stack>

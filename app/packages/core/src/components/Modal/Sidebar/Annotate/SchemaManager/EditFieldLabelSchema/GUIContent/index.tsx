@@ -20,6 +20,7 @@ import {
 import { useFieldType } from "../../hooks";
 import { EditSectionHeader, EmptyStateBox, Section } from "../../styled";
 import {
+  defaultClassesComponent,
   reconcileComponent,
   type AttributeConfig,
   type SchemaConfigType,
@@ -62,10 +63,12 @@ const GUIContent = ({
   );
   // What the annotate sidebar will render the classes with: an explicit
   // radio/dropdown choice, else the class-count default applied on save.
-  const classesComponent = useMemo(() => {
+  const classesComponent = useMemo<ClassesComponent>(() => {
     const component = config ? reconcileComponent(config).component : undefined;
-    return isClassesComponent(component) ? component : undefined;
-  }, [config]);
+    return isClassesComponent(component)
+      ? component
+      : defaultClassesComponent(classes);
+  }, [classes, config]);
 
   const handleAddClass = useCallback(
     (name: string) => {

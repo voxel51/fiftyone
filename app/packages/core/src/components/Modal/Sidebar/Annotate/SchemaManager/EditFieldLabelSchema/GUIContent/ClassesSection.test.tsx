@@ -100,6 +100,7 @@ describe("ClassesSection input type", () => {
       <ClassesSection
         {...baseProps}
         classes={[]}
+        component="radio"
         onComponentChange={vi.fn()}
       />,
     );
