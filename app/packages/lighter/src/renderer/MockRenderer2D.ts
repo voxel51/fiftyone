@@ -170,7 +170,16 @@ export class MockRenderer2D implements Renderer2D {
    * thing `dispose` used to give them.
    */
   beginRebuild(containerId: string): void {
+    // Clear the recorded draw but KEEP the container's visibility: `hide` and
+    // `show` are independent of what a pass draws, so dropping the entry
+    // wholesale would silently un-hide an overlay on its next repaint.
+    const visible = this.containers.get(containerId)?.visible;
+
     this.containers.delete(containerId);
+
+    if (visible !== undefined) {
+      this.containers.set(containerId, { visible });
+    }
   }
 
   endRebuild(_containerId: string): void {

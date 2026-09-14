@@ -1177,8 +1177,7 @@ export class PixiRenderer2D implements Renderer2D {
     while (container.children.length > cursor) {
       const child = container.children[container.children.length - 1];
       container.removeChild(child);
-      this.releaseSpriteTexture(containerId, child);
-      child.destroy({ children: true });
+      this.destroyChild(containerId, child);
     }
   }
 
@@ -1214,8 +1213,7 @@ export class PixiRenderer2D implements Renderer2D {
       // this pass draws a different kind of object here — swap in place so the
       // slots below keep their objects
       container.removeChildAt(index);
-      this.releaseSpriteTexture(containerId, existing);
-      existing.destroy({ children: true });
+      this.destroyChild(containerId, existing);
       container.addChildAt(created, index);
     } else {
       container.addChild(created);
@@ -1287,12 +1285,17 @@ export class PixiRenderer2D implements Renderer2D {
       () => new PIXI.Sprite(texture),
       (existing) => {
         if (existing.texture !== texture) {
-          // the slot's previous texture is unreachable once swapped out; if we
-          // minted it, it has to go with it or it leaks until dispose
-          this.releaseSpriteTexture(containerId, existing);
+          // Assign FIRST, then release: releasing destroys the old texture,
+          // and doing that while the sprite still points at it leaves a
+          // window where the sprite references destroyed GPU memory.
+          const previous = existing.texture;
           existing.texture = texture;
+          this.releaseTexture(containerId, previous);
         }
         this.resetDisplayObject(existing);
+        // `drawImage` sets tint only when asked, so a reused sprite would
+        // otherwise keep the last mask's color.
+        existing.tint = 0xffffff;
       },
       addToForeground,
     );
@@ -1302,6 +1305,23 @@ export class PixiRenderer2D implements Renderer2D {
     }
 
     return sprite;
+  }
+
+  /**
+   * Tear down a display object this pass is finished with.
+   *
+   * `context: true` is load-bearing. In Pixi 8.13 `Graphics.destroy(options)`
+   * frees its owned `GraphicsContext` only when `options` is falsy or
+   * `options.context === true` — `{ children: true }` hits neither branch. And
+   * it is the context's own `destroy` event that evicts its entry from
+   * `GraphicsContextSystem`'s `_gpuContextHash`, so trimming a slot without it
+   * leaves the GPU batch data behind: the exact leak this pooling exists to
+   * avoid. `destroyed` flips either way, so a test asserting that alone does
+   * not notice.
+   */
+  private destroyChild(containerId: string, child: PIXI.Container): void {
+    this.releaseSpriteTexture(containerId, child);
+    child.destroy({ children: true, context: true });
   }
 
   /**
@@ -1316,20 +1336,25 @@ export class PixiRenderer2D implements Renderer2D {
       return;
     }
 
+    this.releaseTexture(containerId, element.texture);
+  }
+
+  /** Destroys one texture, if this renderer minted it for this container. */
+  private releaseTexture(containerId: string, texture: PIXI.Texture): void {
     const tracked = this.ownedTextures.get(containerId);
 
     if (!tracked) {
       return;
     }
 
-    const index = tracked.indexOf(element.texture);
+    const index = tracked.indexOf(texture);
 
     if (index === -1) {
       return;
     }
 
     tracked.splice(index, 1);
-    element.texture.destroy(true);
+    texture.destroy(true);
   }
 
   private trackOwnedTexture(containerId: string, texture: PIXI.Texture): void {
@@ -1424,7 +1449,13 @@ export class PixiRenderer2D implements Renderer2D {
 
   getBounds(containerId: string): Rect | undefined {
     const container = this.containers.get(containerId);
-    if (container) {
+
+    // A pass that drew nothing leaves the container in place but empty, where
+    // before pooling it would have been disposed. Pixi reports an EMPTY
+    // container's bounds as infinite (minX = Infinity, width = -Infinity),
+    // which `getMouseDistance` turns into NaN and sorts unpredictably. No
+    // children means no bounds, same as no container.
+    if (container && container.children.length > 0) {
       const bounds = container.getBounds();
       return {
         x: bounds.x,
