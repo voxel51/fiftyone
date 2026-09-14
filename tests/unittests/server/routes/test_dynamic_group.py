@@ -17,7 +17,7 @@ import fiftyone.core.labels as fol
 
 import fiftyone.server.routes.dynamic_group as ford
 
-from dynamic_group_fixtures import (
+from server.routes.dynamic_group_fixtures import (
     fixture_dataset,
     fixture_stages,
     fixture_group_view,
