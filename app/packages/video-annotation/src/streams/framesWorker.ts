@@ -107,7 +107,7 @@ async function decodeAndDispatch(
     return;
   }
 
-  // An enterprise server signs cloud media into `media_url`, leaving the
+  // A downstream server may sign cloud media into `media_url`, leaving the
   // media field's own value untouched for display
   const src = resolveMediaSrc(
     typeof frame.media_url === "string" ? frame.media_url : mediaPath,

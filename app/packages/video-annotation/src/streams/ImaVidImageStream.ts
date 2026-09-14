@@ -91,8 +91,8 @@ export class ImaVidImageStream extends FrameBitmapStream<ImaVidFrameMeta> {
       slice: this.groupSlice ?? undefined,
       dynamicGroup: this.dynamicGroup ?? undefined,
       // The image stream only needs each frame's media path; project to it so
-      // `/frames` doesn't ship every label field per frame. An enterprise
-      // server signs the named field's cloud path into `media_url`.
+      // `/frames` doesn't ship every label field per frame. A downstream
+      // server may sign the named field's cloud path into `media_url`.
       fields: [this.mediaField],
       mediaField: this.mediaField,
     };
