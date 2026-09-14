@@ -10,7 +10,11 @@ import {
   useViewportInitReveal,
 } from "@fiftyone/lighter";
 import type { ModalSample } from "@fiftyone/state";
-import { getSampleSrc, useModalLookerOptions } from "@fiftyone/state";
+import {
+  getSampleSrc,
+  useModalLookerOptions,
+  useReportAnnotationSurface,
+} from "@fiftyone/state";
 import { Size, Spinner } from "@voxel51/voodo";
 import { useAtomValue, useSetAtom } from "jotai";
 import React, {
@@ -47,6 +51,7 @@ export const LighterSampleRenderer = ({
   className = "",
   sample,
 }: LighterSampleRendererProps) => {
+  useReportAnnotationSurface("image");
   const containerRef = useRef<HTMLDivElement>(null);
   // unique scene id allows us to destroy/recreate scenes reliably
   const [sceneId, setSceneId] = useState<string | null>(null);

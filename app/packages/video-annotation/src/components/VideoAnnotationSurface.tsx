@@ -2,6 +2,7 @@ import {
   getSampleSrc,
   useDimensions,
   useIsImageDynamicGroupVideo,
+  useReportAnnotationSurface,
 } from "@fiftyone/state";
 import type { ModalSample } from "@fiftyone/state";
 import {
@@ -182,6 +183,7 @@ const VideoAnnotationSurfaceForSample: React.FC<
 > = ({ sample }) => {
   const labelsMode = useLabelsMode();
   const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
+  useReportAnnotationSurface(isImageDynamicGroupVideo ? "dgva" : "video");
   const prerequisites = useAnnotatePrerequisites(sample);
 
   // ImaVid write path: frame edits fan out to the group's member samples

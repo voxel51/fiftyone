@@ -100,6 +100,9 @@ export const Looker3d = () => {
     modalMode === fos.ModalMode.ANNOTATE && !(isGroup && isMain2DViewerVisible)
       ? "annotate-focused"
       : "default";
+  fos.useReportAnnotationSurface(
+    renderContext === "annotate-focused" ? "3d" : null,
+  );
 
   const looker3dSceneKey = getLooker3dRenderKey({
     modalSampleId: thisSampleId,
