@@ -14,12 +14,7 @@ import type {
  * Types of image sources that can be rendered.
  */
 export type ImageSourceType =
-  | "html-image"
-  | "canvas"
-  | "texture"
-  | "image-data"
-  | "bitmap"
-  | "custom";
+  "html-image" | "canvas" | "texture" | "image-data" | "bitmap" | "custom";
 
 /**
  * Generic image source that can be any image-like object.
@@ -137,6 +132,19 @@ export interface Renderer2D {
     options: ImageOptions | undefined,
     containerId: string,
   ): void;
+
+  /**
+   * Opens a repaint pass for one container. Draws issued between this and
+   * {@link endRebuild} claim the container's existing display objects in
+   * order, resetting them rather than allocating replacements; `endRebuild`
+   * discards whatever the pass did not reach. Outside a pass, draws append.
+   *
+   * Callers do not normally invoke these — `BaseOverlay.render` wraps every
+   * overlay's paint, so an early return inside `renderImpl` still closes the
+   * pass.
+   */
+  beginRebuild(containerId: string): void;
+  endRebuild(containerId: string): void;
 
   dispose(containerId: string): void;
   hide(containerId: string): void;
