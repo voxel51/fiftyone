@@ -80,11 +80,7 @@ export type ResizeRegion =
   | "RESIZE_NW";
 
 export type InteractionState =
-  | ResizeRegion
-  | "NONE"
-  | "DRAGGING"
-  | "SETTING"
-  | "PAINTING";
+  ResizeRegion | "NONE" | "DRAGGING" | "SETTING" | "PAINTING";
 
 export const NO_BOUNDS = { x: NaN, y: NaN, width: NaN, height: NaN };
 
@@ -270,9 +266,6 @@ export class DetectionOverlay
   }
 
   protected renderImpl(renderer: Renderer2D, renderMeta: RenderMeta): void {
-    // Dispose of old elements before creating new ones
-    renderer.dispose(this.containerId);
-
     const style = this.currentStyle;
 
     if (!style) return;
