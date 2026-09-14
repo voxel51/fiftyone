@@ -191,12 +191,12 @@ test.describe.serial("segmentation tool snapshots", () => {
         await openAnnotate(freshModal, freshPage, fiftyoneLoader, datasetName);
         const rows = freshModal.sidebar.annotate.labelRowsFor("instances");
         await expect(rows).toHaveCount(1);
+        // two full 0.2 x 0.2 masks at x = 0.25 and x = 0.55 merge into one
+        // box spanning both, 0.5 wide, with the 0.1 gap between them empty
         await rows.click();
         await freshModal.sidebar.edit.assert.hasMaskPreview();
-        await freshModal.sidebar.edit.assert.maskPreviewDrawn();
-        expect(
-          await freshModal.sidebar.edit.maskPreviewPixels(),
-        ).toBeGreaterThan(0);
+        await freshModal.sidebar.edit.assert.boundingBox([0.25, 0.4, 0.5, 0.2]);
+        await freshModal.sidebar.edit.assert.maskPreviewCoverage(0.8);
       } finally {
         await context.close();
       }

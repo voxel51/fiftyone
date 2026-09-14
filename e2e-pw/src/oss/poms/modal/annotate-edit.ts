@@ -239,6 +239,25 @@ export class ModalAnnotateEditPom {
   }
 
   /**
+   * The edited detection's relative bounding box as the form shows it,
+   * `[x, y, width, height]`. Waits for the inputs to populate.
+   */
+  async readBoundingBox(): Promise<[number, number, number, number]> {
+    const values: number[] = [];
+    for (const path of [
+      "position.x",
+      "position.y",
+      "dimensions.width",
+      "dimensions.height",
+    ]) {
+      const input = await this.getField(path);
+      await expect(input).not.toHaveValue("");
+      values.push(Number(await input.inputValue()));
+    }
+    return values as [number, number, number, number];
+  }
+
+  /**
    * The field-move dropdown (the label's destination field): a MUI `Select`
    * scoped by the `annotate-field-select` wrapper so it doesn't collide with
    * the class combobox. Its visible text is the current field name.
@@ -355,6 +374,41 @@ class ModalAnnotateEditAsserter {
         .getByTestId("annotate-mask-preview")
         .locator("canvas"),
     ).toHaveAttribute("data-mask-width", /^[1-9]\d*$/);
+  }
+
+  /**
+   * Assert the covered fraction of the painted mask, within ±0.05: 1 for a
+   * mask that fills its box, less for one with holes or a union of boxes.
+   *
+   * @param expected The expected opaque fraction of the mask's own area
+   */
+  async maskPreviewCoverage(expected: number) {
+    await this.maskPreviewDrawn();
+    expect(await this.modalAnnotateEdit.maskPreviewCoverage()).toBeCloseTo(
+      expected,
+      1,
+    );
+  }
+
+  /**
+   * Assert the edited detection's relative bounding box as the form shows it,
+   * each side within ±0.005.
+   *
+   * @param box `[x, y, width, height]` in relative coordinates
+   */
+  async boundingBox([x, y, width, height]: [number, number, number, number]) {
+    const fields: Array<[string, number]> = [
+      ["position.x", x],
+      ["position.y", y],
+      ["dimensions.width", width],
+      ["dimensions.height", height],
+    ];
+    for (const [path, value] of fields) {
+      const input = await this.modalAnnotateEdit.getField(path);
+      // populated first, then compared once
+      await expect(input).not.toHaveValue("");
+      expect(Number(await input.inputValue())).toBeCloseTo(value, 2);
+    }
   }
 
   /**

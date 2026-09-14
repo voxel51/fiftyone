@@ -110,14 +110,25 @@ test.describe.serial("segmentation pen-tool round-trip", () => {
       await fresh.waitForSampleLoadDomAttribute();
       await fresh.sidebar.switchMode("annotate");
       const rows = fresh.sidebar.annotate.labelRowsFor("instances");
-      expect(await rows.count()).toBeGreaterThanOrEqual(1);
+      await expect(rows).toHaveCount(1);
 
-      // Pen polygon covered ~20% × 20% of the image; a non-empty rendered mask
-      // catches "the field saved but the mask is empty".
-      await rows.first().click();
+      // the pen rectangle spanned [0.4, 0.6] on both axes. The rasterized
+      // polygon runs a stroke's width outside the click points (sized in
+      // screen pixels, so not a fixed fraction), so its box encloses that
+      // square within a small pad, and the mask fills the box.
+      await rows.click();
       await fresh.sidebar.edit.assert.hasMaskPreview();
-      await fresh.sidebar.edit.assert.maskPreviewDrawn();
-      expect(await fresh.sidebar.edit.maskPreviewPixels()).toBeGreaterThan(0);
+      const [x, y, width, height] = await fresh.sidebar.edit.readBoundingBox();
+      const padding = 0.02;
+      expect(x).toBeLessThanOrEqual(0.4);
+      expect(x).toBeGreaterThan(0.4 - padding);
+      expect(y).toBeLessThanOrEqual(0.4);
+      expect(y).toBeGreaterThan(0.4 - padding);
+      expect(x + width).toBeGreaterThanOrEqual(0.6);
+      expect(x + width).toBeLessThan(0.6 + padding);
+      expect(y + height).toBeGreaterThanOrEqual(0.6);
+      expect(y + height).toBeLessThan(0.6 + padding);
+      await fresh.sidebar.edit.assert.maskPreviewCoverage(1);
     } finally {
       await context.close();
     }

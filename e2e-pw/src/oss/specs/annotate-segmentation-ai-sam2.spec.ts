@@ -106,14 +106,14 @@ test.describe.serial("segmentation AI (SAM2) round-trip", () => {
       await fresh.waitForSampleLoadDomAttribute();
       await fresh.sidebar.switchMode("annotate");
       const rows = fresh.sidebar.annotate.labelRowsFor("instances");
-      expect(await rows.count()).toBeGreaterThanOrEqual(1);
+      await expect(rows).toHaveCount(1);
 
-      // Mock worker's 8x8 all-foreground mask → a non-empty rendered mask.
-      // Loose lower bound catches "field saved but mask empty".
-      await rows.first().click();
+      // the mock worker answers with an 8x8 all-foreground mask at box
+      // {0.4, 0.4, 0.2, 0.2}, so that is exactly what must have persisted
+      await rows.click();
       await fresh.sidebar.edit.assert.hasMaskPreview();
-      await fresh.sidebar.edit.assert.maskPreviewDrawn();
-      expect(await fresh.sidebar.edit.maskPreviewPixels()).toBeGreaterThan(0);
+      await fresh.sidebar.edit.assert.boundingBox([0.4, 0.4, 0.2, 0.2]);
+      await fresh.sidebar.edit.assert.maskPreviewCoverage(1);
     } finally {
       await context.close();
     }

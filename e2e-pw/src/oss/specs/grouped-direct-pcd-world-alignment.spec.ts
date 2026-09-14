@@ -175,7 +175,17 @@ test("aligns grouped direct PCDs in world and writes cuboids back to the native 
   expect(await geometry("x")).toBeCloseTo(2, 1);
   expect(await geometry("y")).toBeCloseTo(-23.15, 1);
   expect(await geometry("rz")).toBeCloseTo(Math.PI / 2, 1);
-  for (const axis of ["lx", "ly", "lz"] as const) {
-    expect(await geometry(axis)).toBeGreaterThan(0);
-  }
+  // the draw was a screen-space square under the top view, so the footprint's
+  // aspect is the canvas's. Creation fits the height to the lattice points
+  // under the footprint (2nd to 98th percentile of their z, a 4-unit span)
+  // plus the fit's 0.05 margin on each side.
+  const [lx, ly, lz] = await Promise.all([
+    geometry("lx"),
+    geometry("ly"),
+    geometry("lz"),
+  ]);
+  const canvas = await modal.annotate3d.canvas.boundingBox();
+  expect(canvas).not.toBeNull();
+  expect(lx / ly).toBeCloseTo(canvas!.width / canvas!.height, 1);
+  expect(lz).toBeCloseTo(4.1, 2);
 });
