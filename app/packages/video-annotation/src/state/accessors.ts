@@ -21,6 +21,7 @@ import {
   EMBEDDED_DOCUMENT_FIELD,
   LabelType,
   POLYLINE,
+  REGRESSION_FIELD,
   type Stage,
   TEMPORAL_DETECTIONS_FIELD,
 } from "@fiftyone/utilities";
@@ -80,7 +81,8 @@ export const useTemporalDetectionFieldPaths = () =>
 
 /**
  * Schema paths of the dataset's SAMPLE-level classification fields, single and
- * list alike.
+ * list alike, plus Regression fields — Lighter renders all three as the same
+ * top-left chip.
  *
  * `space: SAMPLE` is what keeps the `frames.*` namespace out. A per-frame
  * classification is the `FrameStore`'s to paint (see
@@ -93,7 +95,11 @@ export const useSampleClassificationFieldPaths = () =>
     fieldPaths({
       space: State.SPACE.SAMPLE,
       ftype: EMBEDDED_DOCUMENT_FIELD,
-      embeddedDocType: [CLASSIFICATION_FIELD, CLASSIFICATIONS_FIELD],
+      embeddedDocType: [
+        CLASSIFICATION_FIELD,
+        CLASSIFICATIONS_FIELD,
+        REGRESSION_FIELD,
+      ],
     }),
   );
 

@@ -13,6 +13,7 @@ export enum LabelType {
   Keypoints = "Keypoints",
   Polyline = "Polyline",
   Polylines = "Polylines",
+  Regression = "Regression",
   TemporalDetection = "TemporalDetection",
   TemporalDetections = "TemporalDetections",
   Unknown = "Unknown",

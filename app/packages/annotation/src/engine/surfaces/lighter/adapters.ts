@@ -191,6 +191,8 @@ export const lighterAdapters: AdapterMap<BaseOverlay, LighterDescriptor> = {
   [LabelType.Detections]: detectionAdapter,
   [LabelType.Classification]: classificationAdapter,
   [LabelType.Classifications]: classificationAdapter,
+  // a Regression is the same chip with `value` in place of `label`
+  [LabelType.Regression]: classificationAdapter,
   [LabelType.Keypoint]: keypointAdapter,
   [LabelType.Keypoints]: keypointAdapter,
   [LabelType.Polyline]: polylineAdapter,

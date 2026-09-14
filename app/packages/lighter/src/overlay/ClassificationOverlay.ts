@@ -24,6 +24,14 @@ export interface ClassificationOptions {
   label: RawLookerLabel;
 }
 
+/** The fields the chip reads off a `Classification` or `Regression`. */
+type ChipLabel = NonNullable<RawLookerLabel> & {
+  _cls?: string;
+  label?: string;
+  value?: number;
+  confidence?: number;
+};
+
 /**
  * Per-channel registry of active classification overlays.
  * Keyed by event channel so overlays from different scenes don't interfere.
@@ -45,7 +53,8 @@ function getChannelMap(
 }
 
 /**
- * Classification overlay implementation with selection support.
+ * Classification overlay implementation with selection support. A
+ * `Regression` label renders through the same chip, showing its `value`.
  */
 export class ClassificationOverlay extends BaseOverlay implements Selectable {
   private isSelectedState = false;
@@ -62,12 +71,30 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
     getChannelMap(this.channel).set(this.id, this);
   }
 
+  private get chip(): ChipLabel | null {
+    return this.label as ChipLabel | null;
+  }
+
+  private get isRegression(): boolean {
+    return this.chip?._cls === "Regression";
+  }
+
+  /** The chip's primary text: a Regression's `value`, else the class name. */
+  private get primaryText(): string | undefined {
+    if (this.isRegression) {
+      const value = this.chip?.value;
+      return value === null || value === undefined ? undefined : `${value}`;
+    }
+
+    return this.chip?.label || undefined;
+  }
+
   // The "stack index" is the order in which Classifications are drawn to the scene.
   // They are displayed vertically in the upper-left of the scene and sorted alphabetically by label class.
   private getStackIndex(): number {
     const siblings = getChannelMap(this.channel);
     const alphabetical = [...siblings.values()].sort((a, b) =>
-      (a.label?.label ?? "").localeCompare(b.label?.label ?? ""),
+      (a.primaryText ?? "").localeCompare(b.primaryText ?? ""),
     );
 
     return alphabetical.indexOf(this);
@@ -107,16 +134,19 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
     const { x, y } = renderMeta.canonicalMediaBounds;
     const labelPosition = { x, y };
 
-    const hasLabel = !!this.label?.label;
+    const primary = this.primaryText;
+    const hasLabel = primary !== undefined;
 
     const confidence =
-      this.label?.confidence && !isNaN(this.label.confidence)
-        ? this.label.confidence
+      this.chip?.confidence && !isNaN(this.chip.confidence)
+        ? this.chip.confidence
         : "";
 
     const textToDraw = hasLabel
-      ? `${this.label?.label} ${confidence}`.trim()
-      : "select classification...";
+      ? `${primary} ${confidence}`.trim()
+      : this.isRegression
+        ? "no value"
+        : "select classification...";
 
     const outlineDash = this.isSelected()
       ? TAB_DASH_SELECTED
@@ -185,7 +215,7 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
       color: this.getCurrentStyle()?.fillStyle ?? "#ffffff",
       field: this.field || "unknown",
       label: this.label,
-      type: "Classification",
+      type: this.isRegression ? "Regression" : "Classification",
     };
   }
 
@@ -198,5 +228,10 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
     }
 
     super.destroy();
+  }
+
+  /** Test-only: forget every channel's stack. */
+  static _resetRegistry(): void {
+    channelRegistry.clear();
   }
 }
