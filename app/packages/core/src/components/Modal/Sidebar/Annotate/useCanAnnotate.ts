@@ -1,14 +1,14 @@
 import {
   canAnnotate,
   isGeneratedView,
-  isNestedDynamicGroup,
-  isDynamicGroup,
   isPatchesView,
-  isQueryPerformantDynamicGroup,
   mediaType,
   readOnly,
   useGroupSlices,
+  useIsDynamicGroup,
   useIsGroupDataset,
+  useIsNestedDynamicGroup,
+  useIsQueryPerformantDynamicGroup,
 } from "@fiftyone/state";
 import { isAnnotationSupported, isMultimodal } from "@fiftyone/utilities";
 import { useRecoilValue } from "recoil";
@@ -46,9 +46,9 @@ export default function useCanAnnotate(): CanAnnotateResult {
   const isUnsupportedGeneratedView = isGenerated && !isPatches;
   const hasSlices = useHasAnnotationSupportedSlices();
   const isGroup = useIsGroupDataset();
-  const isDynamic = useRecoilValue(isDynamicGroup);
-  const isNestedDynamic = useRecoilValue(isNestedDynamicGroup);
-  const isQueryPerformant = useRecoilValue(isQueryPerformantDynamicGroup);
+  const isDynamic = useIsDynamicGroup();
+  const isNestedDynamic = useIsNestedDynamicGroup();
+  const isQueryPerformant = useIsQueryPerformantDynamicGroup();
 
   // hide tab entirely if user lacks edit permission or feature disabled
   if (isReadOnlySnapshot || !canAnnotateEnabled) {

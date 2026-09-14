@@ -26,11 +26,11 @@ import {
   selectedLabelForAnnotationAtom,
   selectedPolylineVertexAtom,
   snapCloseAutomaticallyAtom,
-  transformModeAtom,
 } from "../../state";
 import {
   useCurrent3dAnnotationMode,
   useResetSelected3dAnnotationLabel,
+  useTransformModeState,
 } from "../../state/accessors";
 import {
   isDetection3dDocument,
@@ -98,8 +98,7 @@ export const useAnnotationActions = () => {
     currentArchetypeSelectedForTransform,
     setCurrentArchetypeSelectedForTransform,
   ] = useRecoilState(currentArchetypeSelectedForTransformAtom);
-  const [preferredTransformMode, setTransformMode] =
-    useRecoilState(transformModeAtom);
+  const [preferredTransformMode, setTransformMode] = useTransformModeState();
   const [selectedPoint, setSelectedPoint] = useRecoilState(
     selectedPolylineVertexAtom,
   );

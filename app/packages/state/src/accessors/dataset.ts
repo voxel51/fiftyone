@@ -14,6 +14,7 @@ import {
   skeleton,
   State,
 } from "../recoil";
+import { isPatchesView } from "../recoil/view";
 
 /**
  * Get the current dataset ID.
@@ -128,3 +129,6 @@ export const useIsImageDynamicGroupVideo = (): boolean => {
  */
 export const useDynamicGroupOrderBy = (): string | null =>
   useRecoilValue(dynamicGroupParameters)?.orderBy ?? null;
+
+/** Whether the current view is a patches view. */
+export const useIsPatchesView = (): boolean => useRecoilValue(isPatchesView);

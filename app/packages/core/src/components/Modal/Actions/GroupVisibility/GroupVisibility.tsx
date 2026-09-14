@@ -21,9 +21,7 @@ export default ({
   const [isCarouselVisible, setIsCarouselVisible] = useRecoilState(
     fos.groupMediaIsCarouselVisibleSetting,
   );
-  const isMainVisible = useRecoilValue(
-    fos.groupMediaIsMain2DViewerVisibleSetting,
-  );
+  const isMainVisible = fos.useIsGroupMain2dViewerVisibleSetting();
   const isNestedDynamicGroup = useRecoilValue(fos.isNestedDynamicGroup);
   const shouldRenderImaVid = useRecoilValue(fos.shouldRenderImaVidLooker(true));
   const dynamicGroupsViewMode = useRecoilValue(fos.dynamicGroupsViewMode(true));

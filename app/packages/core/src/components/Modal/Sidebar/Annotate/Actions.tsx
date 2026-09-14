@@ -17,10 +17,10 @@ import {
 } from "@fiftyone/looker-3d/src/state/accessors";
 import {
   is3DDataset,
-  isNonNestedDynamicGroup,
   isVideoDataset,
   useIs3dPinned,
   useIsGroupDataset,
+  useIsNonNestedDynamicGroup,
 } from "@fiftyone/state";
 import {
   DETECTION,
@@ -509,7 +509,7 @@ const Actions = ({ hidden = false }: { hidden?: boolean }) => {
   // resolves, so a 3D sample never flashes 2D tools; a dynamic group over a
   // non-group dataset has no slices and must not gate
   const isGroupDataset = useIsGroupDataset();
-  const isDynamic = useRecoilValue(isNonNestedDynamicGroup);
+  const isDynamic = useIsNonNestedDynamicGroup();
   const [groupAnnotationSliceReady] = useGroupAnnotationSliceReady();
   const toolsResolved =
     !isGroupDataset || isDynamic || groupAnnotationSliceReady;

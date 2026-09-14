@@ -1,7 +1,6 @@
 import type { AnnotationEngine } from "@fiftyone/annotation";
-import { isPatchesView } from "@fiftyone/state";
+import { useIsPatchesView } from "@fiftyone/state";
 import { useCallback, useRef } from "react";
-import { useRecoilValue } from "recoil";
 import { SINGULAR } from "./labelRows";
 import { useSetEntranceLabel } from "./useAnnotationContextManager";
 
@@ -18,7 +17,7 @@ export const usePatchLabelEntrance = ({
   active: string[] | null;
   sampleId: string | null | undefined;
 }): (() => void) => {
-  const isPatches = useRecoilValue(isPatchesView);
+  const isPatches = useIsPatchesView();
   const setEntranceLabel = useSetEntranceLabel();
   const enteredFor = useRef<string | null>(null);
 

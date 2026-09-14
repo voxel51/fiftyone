@@ -10,8 +10,8 @@ import { FO_USER_DATA } from "../../constants";
 import {
   currentArchetypeSelectedForTransformAtom,
   isCurrentlyTransformingAtom,
-  transformModeAtom,
 } from "../../state";
+import { useTransformMode } from "../../state/accessors";
 import type { Archetype3d, TransformProps } from "../../types";
 
 type TransformableProps = {
@@ -52,7 +52,7 @@ export const Transformable = ({
   const groupRef = useRef<THREE.Group>(null);
 
   const modalMode = useAtomValue(fos.modalMode);
-  const preferredTransformMode = useRecoilValue(transformModeAtom);
+  const preferredTransformMode = useTransformMode();
   const currentArchetypeSelectedForTransform = useRecoilValue(
     currentArchetypeSelectedForTransformAtom,
   );

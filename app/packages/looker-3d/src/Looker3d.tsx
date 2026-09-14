@@ -16,13 +16,15 @@ import { getLooker3dRenderKey } from "./looker3d-render-key";
 import {
   currentActionAtom,
   fo3dContainsBackground,
-  fo3dSceneReadyAtom,
   isColormapModalOpenAtom,
   isGridOnAtom,
   isLevaConfigPanelOnAtom,
-  activeSegmentationStateAtom,
-  selectedLabelForAnnotationAtom,
 } from "./state";
+import {
+  useActiveSegmentationVertexCount,
+  useCurrentSelected3dAnnotationLabel,
+  useFo3dSceneReady,
+} from "./state/accessors";
 import { isPolyline3dOverlay } from "./types";
 
 /**
@@ -65,13 +67,10 @@ export const Looker3d = () => {
 
   const thisSampleId = useRecoilValue(fos.modalSampleId);
 
-  const selectedLabelForAnnotation = useRecoilValue(
-    selectedLabelForAnnotationAtom,
-  );
+  const selectedLabelForAnnotation = useCurrentSelected3dAnnotationLabel();
   const workingLabel = useWorkingLabel(selectedLabelForAnnotation?._id ?? "");
   // the in-progress polyline's vertices; the e2e draw helper waits on it
-  const draftVertexCount = useRecoilValue(activeSegmentationStateAtom).vertices
-    .length;
+  const draftVertexCount = useActiveSegmentationVertexCount();
   const selectedVertexCount =
     workingLabel && isPolyline3dOverlay(workingLabel)
       ? workingLabel.data.points3d?.reduce(
@@ -110,7 +109,7 @@ export const Looker3d = () => {
 
   // the first look-at settle after a scene (re)mount makes the view
   // raycastable; the e2e draw helpers gate on it through `data-scene-ready`
-  const sceneReady = useRecoilValue(fo3dSceneReadyAtom);
+  const sceneReady = useFo3dSceneReady();
   const [cameraSettledKey, setCameraSettledKey] = useState<string | null>(null);
   useEffect(() => {
     const onSettled = () => setCameraSettledKey(looker3dSceneKey);
