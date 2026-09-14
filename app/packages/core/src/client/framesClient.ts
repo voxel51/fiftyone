@@ -87,7 +87,7 @@ const doFetch = <A, R>(
  *
  * This is a thin wrapper around `POST /frames` — the same endpoint
  * powers per-frame label loading (`VideoFrameLabelsStream`) and ImaVid
- * per-frame image loading (`ImaVidImageStream`). Two parallel calls
+ * per-frame image loading (`DynamicGroupImageStream`). Two parallel calls
  * against the same chunk are fine; HTTP/2 multiplexes and the server
  * doesn't keep state between them. Coalescing them into a single
  * request is on the fast-follow list.

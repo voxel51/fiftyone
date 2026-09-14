@@ -7,20 +7,20 @@ import {
 } from "./frameBitmapStream";
 import type { FrameReadyMessage } from "./frameWorkerProtocol";
 
-/** Per-frame metadata the ImaVid `/frames` source carries. */
-export interface ImaVidFrameMeta {
+/** Per-frame metadata the dynamic group `/frames` source carries. */
+export interface DynamicGroupFrameMeta {
   src: string;
   /** Source media path of this frame's sample (drives the header filename). */
   filepath: string;
 }
 
 /**
- * What the ImaVid stream publishes per frame. Alias of the shared
+ * What the dynamic group stream publishes per frame. Alias of the shared
  * {@link FrameBitmap} — kept for the tile's existing import.
  */
-export type ImaVidImageFrame = FrameBitmap<ImaVidFrameMeta>;
+export type DynamicGroupImageFrame = FrameBitmap<DynamicGroupFrameMeta>;
 
-export interface ImaVidImageStreamOptions extends FrameBitmapStreamOptions {
+export interface DynamicGroupImageStreamOptions extends FrameBitmapStreamOptions {
   /** Current dataset name (POST /frames requires it). */
   dataset: string;
   /** Active view stages — same shape sent on every dataset query. */
@@ -34,7 +34,7 @@ export interface ImaVidImageStreamOptions extends FrameBitmapStreamOptions {
 }
 
 /**
- * Image stream backed by `POST /frames` for ImaVid-style playback
+ * Image stream backed by `POST /frames` for dynamic group playback
  * (`to_frames(sample_frames=True)` data — one materialized image per frame).
  *
  * The JSON fetch and per-image fetch+decode both run inside a `framesWorker`
@@ -43,14 +43,14 @@ export interface ImaVidImageStreamOptions extends FrameBitmapStreamOptions {
  * / readiness machinery lives in {@link FrameBitmapStream}; this subclass only
  * supplies the `/frames` source.
  */
-export class ImaVidImageStream extends FrameBitmapStream<ImaVidFrameMeta> {
+export class DynamicGroupImageStream extends FrameBitmapStream<DynamicGroupFrameMeta> {
   private readonly dataset: string;
   private readonly view: Stage[];
   private readonly groupSlice: string | null;
   private readonly dynamicGroup: string | null;
   private readonly mediaField: string;
 
-  constructor(opts: ImaVidImageStreamOptions) {
+  constructor(opts: DynamicGroupImageStreamOptions) {
     super(opts);
     this.dataset = opts.dataset;
     this.view = opts.view;
@@ -98,8 +98,8 @@ export class ImaVidImageStream extends FrameBitmapStream<ImaVidFrameMeta> {
     };
   }
 
-  protected override toMeta(msg: FrameReadyMessage): ImaVidFrameMeta {
-    const meta = msg.meta as Partial<ImaVidFrameMeta> | undefined;
+  protected override toMeta(msg: FrameReadyMessage): DynamicGroupFrameMeta {
+    const meta = msg.meta as Partial<DynamicGroupFrameMeta> | undefined;
     return { src: meta?.src ?? "", filepath: meta?.filepath ?? "" };
   }
 }

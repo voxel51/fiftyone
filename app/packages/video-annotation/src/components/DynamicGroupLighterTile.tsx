@@ -3,9 +3,9 @@ import React, { useEffect, useRef, useState } from "react";
 import { useStream } from "@fiftyone/playback";
 import { useLighterMediaScene } from "../hooks/useLighterMediaScene";
 import { useVideoAnnotationSyncBundle } from "../hooks/useVideoAnnotationSyncBundle";
-import { IMAVID_STREAM_ID } from "../utils/ids";
-import type { ImaVidImageFrame } from "../streams/ImaVidImageStream";
-import styles from "./ImaVidLighterTile.module.css";
+import { DYNAMIC_GROUP_STREAM_ID } from "../utils/ids";
+import type { DynamicGroupImageFrame } from "../streams/DynamicGroupImageStream";
+import styles from "./DynamicGroupLighterTile.module.css";
 
 interface ImageDimensions {
   w: number;
@@ -21,7 +21,7 @@ interface ImageDimensions {
  * Smoothing is disabled around the draw so pixel-exact frames don't blur.
  */
 function usePaintFrameToCanvas(
-  frame: ImaVidImageFrame | undefined,
+  frame: DynamicGroupImageFrame | undefined,
   canvasRef: React.RefObject<HTMLCanvasElement | null>,
 ): ImageDimensions | null {
   const [dims, setDims] = useState<ImageDimensions | null>(null);
@@ -77,24 +77,24 @@ function usePaintFrameToCanvas(
 }
 
 /**
- * ImaVid tile — draws each frame's `ImageBitmap` (decoded off-main in
+ * Dynamic group tile — draws each frame's `ImageBitmap` (decoded off-main in
  * `framesWorker`) into a `<canvas>` and overlays Lighter on top.
  *
  * Drawn via 2D `drawImage`, not a `bitmaprenderer` context, because the LRU
  * may serve the same bitmap again (a revisited frame) and
  * `transferFromImageBitmap` would consume it.
  */
-export const ImaVidLighterTile: React.FC<{
+export const DynamicGroupLighterTile: React.FC<{
   onRevealChange?: (revealed: boolean) => void;
 }> = ({ onRevealChange }) => {
-  const sourceId = IMAVID_STREAM_ID;
+  const sourceId = DYNAMIC_GROUP_STREAM_ID;
 
   const lighterHostRef = useRef<HTMLDivElement | null>(null);
   const frameCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Latest decoded frame; the image stream dedupes on frameNumber so this
   // only changes when the frame actually changes.
-  const frame = useStream<ImaVidImageFrame>(sourceId);
+  const frame = useStream<DynamicGroupImageFrame>(sourceId);
 
   const imageDims = usePaintFrameToCanvas(frame, frameCanvasRef);
 
@@ -102,7 +102,7 @@ export const ImaVidLighterTile: React.FC<{
   const { scene, canonicalMediaReady } = useLighterMediaScene({
     hostRef: lighterHostRef,
     dims: imageDims,
-    sceneIdPrefix: "imavid-anno",
+    sceneIdPrefix: "dynamic-group-video",
   });
 
   // Overlay / sidebar sync. `frameCanvasRef` keeps the frame canvas
@@ -123,7 +123,7 @@ export const ImaVidLighterTile: React.FC<{
       <canvas
         ref={frameCanvasRef}
         className={styles.frame}
-        data-cy="imavid-frame-canvas"
+        data-cy="dynamic-group-frame-canvas"
       />
       <div ref={lighterHostRef} className={styles.lighterHost} />
     </div>

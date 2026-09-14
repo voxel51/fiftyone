@@ -70,8 +70,8 @@ vi.mock("../streams/frameLabelsStream", () => ({
   }),
 }));
 
-vi.mock("../streams/imaVidImageStreamHandle", () => ({
-  useImaVidImageStream: () => ({}),
+vi.mock("../streams/dynamicGroupImageStreamHandle", () => ({
+  useDynamicGroupImageStream: () => ({}),
 }));
 
 vi.mock("../propagation/useApplyPropagationResult", () => ({

@@ -40,13 +40,13 @@ export const useAnnotatePrerequisites = (
   // rate is the dataset's target rate and its frame count is the group's
   // element count. Both hooks run unconditionally to keep hook order stable.
   const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
-  const imaVidFrameRate = useModalSampleFrameRate(sample);
+  const dynamicGroupFrameRate = useModalSampleFrameRate(sample);
   const elementCount = useDynamicGroupElementCount(isImageDynamicGroupVideo);
 
   if (isImageDynamicGroupVideo) {
     const ok =
-      Number.isFinite(imaVidFrameRate) &&
-      imaVidFrameRate > 0 &&
+      Number.isFinite(dynamicGroupFrameRate) &&
+      dynamicGroupFrameRate > 0 &&
       elementCount !== null &&
       elementCount > 0;
 
@@ -56,7 +56,7 @@ export const useAnnotatePrerequisites = (
 
     return {
       status: "ready",
-      frameRate: imaVidFrameRate,
+      frameRate: dynamicGroupFrameRate,
       frameCount: elementCount,
     };
   }

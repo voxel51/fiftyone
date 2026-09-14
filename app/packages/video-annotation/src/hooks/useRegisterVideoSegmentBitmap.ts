@@ -4,7 +4,7 @@ import {
   useSetSegmentBitmapSource,
 } from "@fiftyone/annotation";
 import { useCallback } from "react";
-import { useImaVidImageStream } from "../streams/imaVidImageStreamHandle";
+import { useDynamicGroupImageStream } from "../streams/dynamicGroupImageStreamHandle";
 import { useCurrentFrameGetter } from "../state/useCurrentFrame";
 
 /**
@@ -22,7 +22,7 @@ import { useCurrentFrameGetter } from "../state/useCurrentFrame";
  * **Mount once** in the video surface, inside the `<PlaybackProvider>`.
  */
 export const useRegisterVideoSegmentBitmap = (): void => {
-  const imageStream = useImaVidImageStream();
+  const imageStream = useDynamicGroupImageStream();
   const getFrame = useCurrentFrameGetter();
   const { sampleId } = useSampleDescriptor();
 

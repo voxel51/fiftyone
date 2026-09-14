@@ -12,7 +12,7 @@ import { PropagationStatusItem } from "../components/PropagationStatusItem";
 import type { PropagateArgs } from "../propagation/propagateArgs";
 import { isSam2Agent, toSyntheticBox } from "../propagation/propagationShapes";
 import { useApplyPropagatedDetection } from "../propagation/useApplyPropagationResult";
-import { useImaVidImageStream } from "../streams/imaVidImageStreamHandle";
+import { useDynamicGroupImageStream } from "../streams/dynamicGroupImageStreamHandle";
 import { useResolvePropagationAgent } from "./useResolvePropagationAgent";
 
 /**
@@ -22,7 +22,7 @@ import { useResolvePropagationAgent } from "./useResolvePropagationAgent";
  */
 export const useSam2Propagate = () => {
   const engine = useAnnotationEngine();
-  const imageStream = useImaVidImageStream();
+  const imageStream = useDynamicGroupImageStream();
   const resolveAgent = useResolvePropagationAgent();
   const sampleDescriptor = useSampleDescriptor();
   const applyPropagatedDetection = useApplyPropagatedDetection();
