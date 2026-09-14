@@ -136,6 +136,17 @@ export interface RenderCallback {
 }
 
 /**
+ * Rejects a thenable return.
+ *
+ * `callback: () => void` is not enough on its own: TypeScript lets a
+ * `Promise`-returning function satisfy a `() => void` signature, so an `async`
+ * callback would type-check and then silently reintroduce the phase inversion
+ * this loop exists to prevent. Applied at `registerRenderCallback`, where the
+ * return type is inferable, it fails at the call site instead.
+ */
+type NotPromise<T> = T extends PromiseLike<unknown> ? never : T;
+
+/**
  * 2D scene that manages overlays, rendering, selection, coordinate system, and undo/redo operations.
  */
 export class Scene2D {
@@ -1153,14 +1164,17 @@ export class Scene2D {
    * @param callback - The callback configuration.
    * @returns A function to unregister the callback.
    */
-  registerRenderCallback(
-    callback: Omit<RenderCallback, "id"> & { id?: string },
+  registerRenderCallback<R>(
+    callback: Omit<RenderCallback, "id" | "callback"> & {
+      id?: string;
+      callback: () => NotPromise<R>;
+    },
   ): () => void {
     const id = callback.id || `render-callback-${Date.now()}-${Math.random()}`;
 
     const renderCallback: RenderCallback = {
       id,
-      callback: callback.callback,
+      callback: callback.callback as () => void,
       phase: callback.phase,
     };
 

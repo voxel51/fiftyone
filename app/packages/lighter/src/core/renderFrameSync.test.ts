@@ -149,6 +149,21 @@ describe("Scene2D render loop phase contract", () => {
     expect(order).toEqual(["before", "after"]);
   });
 
+  it("rejects an async render callback at the type level", () => {
+    const renderer = makeRenderer();
+    const scene = makeScene(renderer);
+
+    scene.registerRenderCallback({
+      phase: "after",
+      // @ts-expect-error — a Promise-returning callback would suspend the
+      // frame and reintroduce the phase inversion; `() => void` alone does
+      // not reject it, so the guard lives on this signature.
+      callback: async () => {
+        await Promise.resolve();
+      },
+    });
+  });
+
   it("keeps painting after a render callback throws", () => {
     const renderer = makeRenderer();
     const scene = makeScene(renderer);
