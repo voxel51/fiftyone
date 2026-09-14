@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { MenuTextItem } from "@voxel51/voodo";
+import { GridViewIcon, MenuTextItem } from "@voxel51/voodo";
 import React, { useEffect } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { TilingProvider, useTiling } from "../../lib/TilingProvider";
@@ -15,7 +15,7 @@ function RegisterCameraKind() {
       registerTile({
         type: "camera",
         typeLabel: "Camera",
-        icon: null,
+        icon: GridViewIcon,
         Tile: CameraTile,
       }),
     [registerTile],

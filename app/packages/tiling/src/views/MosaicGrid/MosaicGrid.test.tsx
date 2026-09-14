@@ -1,3 +1,4 @@
+import { GridViewIcon } from "@voxel51/voodo";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -26,13 +27,13 @@ const RegisterTileKinds: React.FC = () => {
     const cleanupCamera = registerTile({
       type: "cam",
       typeLabel: "Camera",
-      icon: null,
+      icon: GridViewIcon,
       Tile: CameraTile,
     });
     const cleanupLidar = registerTile({
       type: "lidar",
       typeLabel: "Lidar",
-      icon: null,
+      icon: GridViewIcon,
       Tile: LidarTile,
     });
     return () => {

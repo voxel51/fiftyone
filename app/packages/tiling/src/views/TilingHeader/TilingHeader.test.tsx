@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { IconName, MenuTextItem } from "@voxel51/voodo";
+import { EmbeddingsIcon, GridViewIcon, MenuTextItem } from "@voxel51/voodo";
 import React, { useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -149,13 +149,13 @@ describe("TilingHeader", () => {
             {
               type: "camera",
               typeLabel: "Camera",
-              icon: IconName.GridView,
+              icon: GridViewIcon,
               Tile: CameraTile,
             },
             {
               type: "lidar",
               typeLabel: "Lidar",
-              icon: IconName.Embeddings,
+              icon: EmbeddingsIcon,
               Tile: LidarTile,
             },
           ]}
@@ -178,7 +178,7 @@ describe("TilingHeader", () => {
             {
               type: "camera",
               typeLabel: "Camera",
-              icon: IconName.GridView,
+              icon: GridViewIcon,
               Tile: CameraTile,
             },
           ]}
@@ -204,7 +204,7 @@ describe("TilingHeader", () => {
             {
               type: "camera",
               typeLabel: "Camera",
-              icon: IconName.GridView,
+              icon: GridViewIcon,
               Tile: CameraTile,
             },
           ]}

@@ -2,13 +2,15 @@ import {
   Button,
   Dropdown,
   DropdownAnchor,
-  IconName,
+  GridViewIcon,
   MenuIconTextItem,
   MenuSeparator,
+  RefreshIcon,
   Size,
   Text,
   TextColor,
   TextVariant,
+  UndoIcon,
   Variant,
 } from "@voxel51/voodo";
 import clsx from "clsx";
@@ -80,12 +82,12 @@ const TilingHeader: React.FC<TilingHeaderProps> = ({
       {addTileMenu ?? <DefaultAddTileMenuItems />}
       <MenuSeparator />
       <MenuIconTextItem
-        icon={IconName.Refresh}
+        icon={<RefreshIcon />}
         text="Auto Layout"
         onClick={autoLayout}
       />
       <MenuIconTextItem
-        icon={IconName.Undo}
+        icon={<UndoIcon />}
         text="Reset Layout"
         onClick={resetLayout}
       />
@@ -123,7 +125,7 @@ const TilingHeader: React.FC<TilingHeaderProps> = ({
                   variant={Variant.Secondary}
                   size={Size.Xs}
                   data-testid="tiling-header-add-tile"
-                  leadingIcon={IconName.GridView}
+                  leadingIcon={GridViewIcon}
                   aria-label="Layout"
                   title="Layout"
                 >

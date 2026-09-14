@@ -1,4 +1,14 @@
-import { IconName } from "@voxel51/voodo";
+import {
+  EmbeddingsIcon,
+  GridViewIcon,
+  type IconProps,
+  InsightsIcon,
+  JSONIcon,
+  LogsIcon,
+  PolylineIcon,
+  VolumeUpIcon,
+  WorkspacesIcon,
+} from "@voxel51/voodo";
 import {
   getEpisodeTileExtension,
   getEpisodeTileExtensions,
@@ -24,7 +34,7 @@ export type { EpisodeTileProps, TileType } from "../tiles/tile-types";
 export type { EpisodeTileAvailability } from "../../../extensions/tiles/types";
 
 interface TileDefinition {
-  readonly icon: IconName;
+  readonly icon: React.ComponentType<IconProps>;
   readonly isAvailable: (facts: EpisodeTileAvailability) => boolean;
   readonly order: number;
   readonly Tile: React.ComponentType<EpisodeTileProps>;
@@ -41,7 +51,7 @@ const THREE_D_SOURCE_TYPES = new Set<string>([
 /** Built-in tile catalog in explicit product order. */
 const BUILT_IN_TILE_BY_TYPE: Record<BuiltInTileType, TileDefinition> = {
   [TILE_TYPE.AUDIO]: {
-    icon: IconName.VolumeUp,
+    icon: VolumeUpIcon,
     isAvailable: ({ sourceTypes }) =>
       sourceTypes.includes(SCENE_SOURCE_TYPE.AUDIO),
     order: 15,
@@ -49,7 +59,7 @@ const BUILT_IN_TILE_BY_TYPE: Record<BuiltInTileType, TileDefinition> = {
     typeLabel: "Audio",
   },
   [TILE_TYPE.IMAGE]: {
-    icon: IconName.GridView,
+    icon: GridViewIcon,
     isAvailable: ({ sourceTypes }) =>
       sourceTypes.includes(SCENE_SOURCE_TYPE.IMAGE),
     order: 10,
@@ -57,7 +67,7 @@ const BUILT_IN_TILE_BY_TYPE: Record<BuiltInTileType, TileDefinition> = {
     typeLabel: "Image",
   },
   [TILE_TYPE.LOG]: {
-    icon: IconName.Logs,
+    icon: LogsIcon,
     isAvailable: ({ sourceTypes }) =>
       sourceTypes.includes(SCENE_SOURCE_TYPE.LOG),
     order: 40,
@@ -65,7 +75,7 @@ const BUILT_IN_TILE_BY_TYPE: Record<BuiltInTileType, TileDefinition> = {
     typeLabel: "Logs",
   },
   [TILE_TYPE.MAP]: {
-    icon: IconName.Polyline,
+    icon: PolylineIcon,
     isAvailable: ({ sourceTypes }) =>
       sourceTypes.includes(SCENE_SOURCE_TYPE.LOCATION),
     order: 30,
@@ -73,7 +83,7 @@ const BUILT_IN_TILE_BY_TYPE: Record<BuiltInTileType, TileDefinition> = {
     typeLabel: "Map",
   },
   [TILE_TYPE.THREE_D]: {
-    icon: IconName.Embeddings,
+    icon: EmbeddingsIcon,
     isAvailable: ({ sourceTypes }) =>
       sourceTypes.some((sourceType) => THREE_D_SOURCE_TYPES.has(sourceType)),
     order: 20,
@@ -81,21 +91,21 @@ const BUILT_IN_TILE_BY_TYPE: Record<BuiltInTileType, TileDefinition> = {
     typeLabel: "3D",
   },
   [TILE_TYPE.PLOT]: {
-    icon: IconName.Insights,
+    icon: InsightsIcon,
     isAvailable: ({ hasNumericSeries }) => hasNumericSeries,
     order: 50,
     Tile: PlotTile,
     typeLabel: "Plot",
   },
   [TILE_TYPE.TRANSFORMS]: {
-    icon: IconName.Workspaces,
+    icon: WorkspacesIcon,
     isAvailable: ({ hasTransformTopology }) => hasTransformTopology,
     order: 55,
     Tile: TransformGraphTile,
     typeLabel: "Transforms",
   },
   [TILE_TYPE.RAW]: {
-    icon: IconName.JSON,
+    icon: JSONIcon,
     isAvailable: ({ hasRawRecords }) => hasRawRecords,
     order: 60,
     Tile: RawMessageTile,
@@ -117,7 +127,7 @@ function isBuiltInTileType(type: string): type is BuiltInTileType {
  * a build with more tile kinds).
  */
 export function getTileDefinition(type: string): {
-  icon: IconName;
+  icon: React.ComponentType<IconProps>;
   order: number;
   typeLabel: string;
   Tile: React.ComponentType<EpisodeTileProps>;
