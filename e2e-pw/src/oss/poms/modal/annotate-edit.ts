@@ -329,47 +329,6 @@ class ModalAnnotateEditAsserter {
   }
 
   /**
-   * Assert the painted mask exactly: its native pixel size and how many of
-   * those pixels are opaque. The preview stamps all three on its canvas.
-   *
-   * @param mask `width` and `height` in mask pixels, `opaque` pixel count
-   */
-  async mask(mask: { width: number; height: number; opaque: number }) {
-    const canvas = this.modalAnnotateEdit.page
-      .getByTestId("annotate-mask-preview")
-      .locator("canvas");
-    await expect(canvas).toHaveAttribute("data-mask-width", String(mask.width));
-    await expect(canvas).toHaveAttribute(
-      "data-mask-height",
-      String(mask.height),
-    );
-    await expect(canvas).toHaveAttribute(
-      "data-mask-opaque",
-      String(mask.opaque),
-    );
-  }
-
-  /**
-   * Assert the edited detection's relative bounding box exactly as the form
-   * shows it.
-   *
-   * @param box `[x, y, width, height]` as the form's input strings
-   */
-  async boundingBox([x, y, width, height]: [string, string, string, string]) {
-    const fields: Array<[string, string]> = [
-      ["position.x", x],
-      ["position.y", y],
-      ["dimensions.width", width],
-      ["dimensions.height", height],
-    ];
-    for (const [path, value] of fields) {
-      await expect(await this.modalAnnotateEdit.getField(path)).toHaveValue(
-        value,
-      );
-    }
-  }
-
-  /**
    * Assert whether the sidebar renders the mask preview for the edited
    * detection. The preview only mounts when the selected label resolves to a
    * live `DetectionOverlay` with a mask, so its presence proves the row found

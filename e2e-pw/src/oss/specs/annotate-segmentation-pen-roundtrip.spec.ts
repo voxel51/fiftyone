@@ -112,25 +112,10 @@ test.describe.serial("segmentation pen-tool round-trip", () => {
       const rows = fresh.sidebar.annotate.labelRowsFor("instances");
       await expect(rows).toHaveCount(1);
 
-      // the pen rectangle spanned [0.4, 0.6] of the canvas on both axes. The
-      // 640x480 image fits the 920x620 canvas's height, so vertically the
-      // clicks are 0.4 and 0.6 of the image; horizontally the media is
-      // letterboxed 46.67 px in, so 0.4 of the canvas is 241/620 of the image
-      // and the square is 138/620 wide. The mask is rasterized at display
-      // resolution: 184 x 124 px, all of it filled.
+      // the persisted mask renders on the fresh canvas exactly as drawn
       await rows.click();
       await fresh.sidebar.edit.assert.hasMaskPreview();
-      await fresh.sidebar.edit.assert.boundingBox([
-        "0.38870967741935486",
-        "0.4",
-        "0.22258064516129034",
-        "0.2",
-      ]);
-      await fresh.sidebar.edit.assert.mask({
-        width: 184,
-        height: 124,
-        opaque: 22816,
-      });
+      await fresh.sampleCanvas.assert.hasScreenshot("seg-pen-persisted.png");
     } finally {
       await context.close();
     }

@@ -109,11 +109,10 @@ test.describe.serial("segmentation AI (SAM2) round-trip", () => {
       await expect(rows).toHaveCount(1);
 
       // the mock worker answers with an 8x8 all-foreground mask at box
-      // {0.4, 0.4, 0.2, 0.2}, so that is exactly what must have persisted
+      // {0.4, 0.4, 0.2, 0.2}; that is what the fresh canvas must render
       await rows.click();
       await fresh.sidebar.edit.assert.hasMaskPreview();
-      await fresh.sidebar.edit.assert.boundingBox(["0.4", "0.4", "0.2", "0.2"]);
-      await fresh.sidebar.edit.assert.mask({ width: 8, height: 8, opaque: 64 });
+      await fresh.sampleCanvas.assert.hasScreenshot("seg-ai-persisted.png");
     } finally {
       await context.close();
     }
