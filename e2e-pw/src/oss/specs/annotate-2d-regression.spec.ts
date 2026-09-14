@@ -8,7 +8,8 @@
  *   - the regression can be deleted.
  *
  * Persistence is read back from Python (`getRegressionState`) — a true server
- * round-trip on the sample's `Regression` field.
+ * round-trip on the sample's `Regression` field — once the sample PATCH that
+ * carries the change has been answered.
  */
 import { expect, test as base, type Page } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -20,12 +21,19 @@ const datasetName = getUniqueDatasetNameWithPrefix("annotate-2d-regression");
 const id = "000000000000000000000000";
 
 const FIELD = "score";
+const VALUE = "0.75";
 
-const savedSample = (page: Page) =>
+/**
+ * The sample write whose body carries `fragment`. Creating a chip already
+ * writes an empty label, so the write we care about is matched on content,
+ * not on being the next one.
+ */
+const savedSample = (page: Page, fragment: string) =>
   page.waitForResponse(
     (r) =>
       /\/sample\//.test(r.url()) &&
-      ["POST", "PATCH", "PUT"].includes(r.request().method()),
+      ["POST", "PATCH", "PUT"].includes(r.request().method()) &&
+      (r.request().postData() ?? "").includes(fragment),
   );
 
 /** Clear the sample's regression so each serial test starts empty. */
@@ -83,45 +91,30 @@ test.describe.serial("2D annotation regression", () => {
     // the new regression opens its edit form with a numeric value input and
     // no class picker; typing a value commits it.
     await expect(modal.sidebar.edit.getFieldContainer("label")).toBeHidden();
-    const saved = savedSample(page);
-    await modal.sidebar.edit.setFieldValue("value", "0.75");
-    await modal.sidebar.edit.assert.verifyFieldValue("value", "0.75");
+    const saved = savedSample(page, VALUE);
+    await modal.sidebar.edit.setFieldValue("value", VALUE);
+    await modal.sidebar.edit.assert.verifyFieldValue("value", VALUE);
     await saved;
 
-    // true round-trip: the field holds the typed value. Generous timeout —
-    // the edit autosaves on the next tick and each poll round-trips Python.
-    await expect
-      .poll(
-        async () =>
-          (await annotateSDK.getRegressionState(datasetName, FIELD)).value,
-        { timeout: 15_000 },
-      )
-      .toBe(0.75);
+    // true round-trip: the field holds the typed value
+    expect(
+      (await annotateSDK.getRegressionState(datasetName, FIELD)).value,
+    ).toBe(Number(VALUE));
   });
 
   test("a regression can be deleted", async ({ annotateSDK, modal, page }) => {
     await modal.sidebar.annotate.createRegression();
-    const saved = savedSample(page);
-    await modal.sidebar.edit.setFieldValue("value", "0.75");
+    const saved = savedSample(page, VALUE);
+    await modal.sidebar.edit.setFieldValue("value", VALUE);
     await saved;
-    await expect
-      .poll(
-        async () =>
-          (await annotateSDK.getRegressionState(datasetName, FIELD)).value,
-        { timeout: 15_000 },
-      )
-      .toBe(0.75);
 
     // the new regression is selected (form open) — delete it.
-    const deleted = savedSample(page);
+    const deleted = savedSample(page, '"remove"');
     await modal.sidebar.edit.deleteLabel();
     await deleted;
-    await expect
-      .poll(
-        async () =>
-          (await annotateSDK.getRegressionState(datasetName, FIELD)).present,
-        { timeout: 15_000 },
-      )
-      .toBe(false);
+
+    expect(
+      (await annotateSDK.getRegressionState(datasetName, FIELD)).present,
+    ).toBe(false);
   });
 });
