@@ -622,7 +622,7 @@ export const useVideoSurfaceActions = (): VideoSurfaceActions => {
       sampleId && stream && stream.fps
         ? {
             sample: sampleId,
-            path: stream.labelsPath,
+            path: `frames.${stream.labelsField}`,
             fps: stream.fps,
             totalFrames: stream.totalFrames ?? 0,
           }

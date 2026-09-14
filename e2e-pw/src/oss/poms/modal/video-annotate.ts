@@ -16,13 +16,15 @@ export class VideoAnnotatePom {
   readonly page: Page;
   readonly modal: ModalPom;
   readonly assert: VideoAnnotateAsserter;
-  readonly surface: Locator;
+  readonly topBar: Locator;
+  readonly statusSlot: Locator;
 
   constructor(page: Page, modal: ModalPom) {
     this.page = page;
     this.modal = modal;
     this.assert = new VideoAnnotateAsserter(this);
-    this.surface = page.getByTestId("video-annotation-surface");
+    this.topBar = page.getByTestId("video-annotation-top-bar");
+    this.statusSlot = page.getByTestId("video-annotation-status-slot");
   }
 
   /**
@@ -32,7 +34,7 @@ export class VideoAnnotatePom {
    * this are deterministic single-shots; no polling required.
    */
   async waitForSurface() {
-    await expect(this.surface).toBeVisible();
+    await expect(this.topBar).toBeVisible();
     await expect(
       this.page.locator('[data-timeline-loaded="true"]'),
     ).toBeAttached();

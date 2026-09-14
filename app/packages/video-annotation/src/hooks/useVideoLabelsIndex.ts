@@ -46,13 +46,12 @@ export function useVideoLabelsIndex(
     let cancelled = false;
     setState(EMPTY);
 
-    const { sampleId, dataset, view, dynamicGroup } = stream.labelQuery();
+    const { sampleId, dataset, view } = stream.labelQuery();
 
     void getVideoLabelsIndex({
       sampleId,
       dataset,
       view,
-      dynamicGroup: dynamicGroup ?? undefined,
       fields: fields.map(toPerFrameField),
       dynamicAttributes,
     })

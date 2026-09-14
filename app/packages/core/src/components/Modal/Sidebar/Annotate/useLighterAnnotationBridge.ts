@@ -4,7 +4,6 @@ import {
 } from "@fiftyone/annotation";
 import {
   useCurrentDatasetId,
-  useIsImageDynamicGroupVideo,
   useIsVideo,
   useModalSample,
 } from "@fiftyone/state";
@@ -35,16 +34,11 @@ export const useLighterAnnotationBridge = (): void => {
   const interactionPolicy = useLighterInteractionPolicy();
   const dataset = useCurrentDatasetId() ?? "";
 
-  // A video sample shares the global lighter scene atom but is owned by the
+  // a video sample shares the global lighter scene atom but is owned by the
   // video surface's own frame-locked bridge — disable this one so its handlers
   // don't bind to the video tile's scene (the video bridge stamps the frame;
-  // this one would mis-route writes frame-agnostically). An image dataset
-  // dynamically grouped into a video is the same surface with image samples:
-  // with both bridges mounted, this one's frame-less selection became the
-  // anchor after a draw, so the track never got its keyframe or auto-extend.
+  // this one would mis-route writes frame-agnostically)
   const isVideo = useIsVideo();
-  const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
-  const isVideoSurface = isVideo || isImageDynamicGroupVideo;
 
   const sampleId = modalSample?.sample?._id ?? "";
 
@@ -103,7 +97,7 @@ export const useLighterAnnotationBridge = (): void => {
     paths,
     resolveMediaUrl,
     interactionPolicy,
-    enabled: !isVideoSurface,
+    enabled: !isVideo,
   });
 
   // overlay read-only flags are Lighter-surface state — owned here, off the

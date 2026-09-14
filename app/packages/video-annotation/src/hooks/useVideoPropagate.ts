@@ -7,7 +7,6 @@ import {
   useActiveSampleId,
   useAgentRegistry,
   useAnnotationEngine,
-  useModalStatusBar,
   useSampleDescriptor,
 } from "@fiftyone/annotation";
 import {
@@ -22,6 +21,7 @@ import {
   useApplyPropagatedDetection,
   useApplyPropagationResult,
 } from "../propagation/useApplyPropagationResult";
+import { useVideoAnnotationStatus } from "../state/videoAnnotationStatus";
 import { useFrameLabelsStream } from "../streams/frameLabelsStream";
 import { useImaVidImageStream } from "../streams/imaVidImageStreamHandle";
 
@@ -107,8 +107,7 @@ interface PropagateArgs {
   instanceId: string;
   fromFrame: number;
   toFrame: number;
-  /** Resolved label path of the active stream — `frames.<field>` on real
-   * video, bare on a dynamic group. Never reconstruct `frames.<field>`. */
+  /** Frames-field path of the active stream. */
   path: string;
   /** Reads the track's box at a frame through the engine. */
   at: FrameReader;
@@ -141,7 +140,7 @@ const useSam2Propagate = () => {
   const resolveAgent = useResolveAgent();
   const sampleDescriptor = useSampleDescriptor();
   const applyPropagatedDetection = useApplyPropagatedDetection();
-  const { setContent: setStatusContent } = useModalStatusBar();
+  const { setContent: setStatusContent } = useVideoAnnotationStatus();
 
   return useCallback(
     async (args: PropagateArgs): Promise<boolean> => {
@@ -325,8 +324,7 @@ export const useVideoPropagate = () => {
 
       // the track's own frame field — a non-primary track (e.g. a polyline)
       // re-lerps in place; defaults to the stream's primary field
-      // (labelsPath: `frames.<field>` for a video, bare for a dynamic group)
-      const path = pathOverride ?? stream.labelsPath;
+      const path = pathOverride ?? `frames.${stream.labelsField}`;
       const at: FrameReader = (frame) =>
         engine.getLabel({ sample: sampleId, path, instanceId, frame });
 

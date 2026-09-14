@@ -7,4 +7,3 @@ export * from "./useLighterEventBus";
 export * from "./useLighterEventHandler";
 export { useLighterSetupWithPixi } from "./useLighterSetup";
 export type { LighterOptions } from "./useLighterSetup";
-export * from "./useViewportInitReveal";

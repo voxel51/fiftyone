@@ -3,13 +3,12 @@
  */
 
 import {
+  FRAMES_PREFIX,
   useActiveSampleId,
   useAnnotationEngine,
   useAnnotationEventBus,
 } from "@fiftyone/annotation";
-import { useIsImageDynamicGroupVideo } from "@fiftyone/state";
 import { useCallback } from "react";
-import { isFrameScopedPath } from "../state/framePaths";
 import { useCurrentFrameGetter } from "../state/useCurrentFrame";
 
 /**
@@ -31,11 +30,10 @@ export const useKeyframePromotionOnEdit = (): ((
   const sample = useActiveSampleId();
   const getFrame = useCurrentFrameGetter();
   const eventBus = useAnnotationEventBus();
-  const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
 
   return useCallback(
     (overlayId, path, undoKey) => {
-      if (!isFrameScopedPath(path, isImageDynamicGroupVideo)) {
+      if (!path.startsWith(FRAMES_PREFIX)) {
         return;
       }
 
@@ -79,6 +77,6 @@ export const useKeyframePromotionOnEdit = (): ((
         undoKey,
       });
     },
-    [engine, eventBus, getFrame, isImageDynamicGroupVideo, sample],
+    [engine, eventBus, getFrame, sample],
   );
 };

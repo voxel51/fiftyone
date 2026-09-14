@@ -1,4 +1,4 @@
-import { MEDIA_TYPE_IMAGE, is3d, type Schema } from "@fiftyone/utilities";
+import { is3d, type Schema } from "@fiftyone/utilities";
 import { useMemo } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import {
@@ -9,8 +9,6 @@ import {
   fieldSchema,
   groupMediaTypes,
   isGroup,
-  isOrderedDynamicGroup,
-  parentMediaTypeSelector,
   selectedMediaField,
   skeleton,
   stageDefinitions,
@@ -186,21 +184,6 @@ export const useGroupSlices = (mediaTypes: GroupSliceMediaType[]): string[] => {
       }),
     )
     .map(({ name }) => name);
-};
-
-/**
- * Whether the current view is an image dataset dynamically grouped into a
- * video — i.e. an ordered dynamic group whose underlying samples are images
- * (ImaVid). Such a view reports a "group" media type with no slices, but is
- * annotatable like its underlying image samples.
- *
- * @returns True if the current view is an image-backed dynamic group video
- */
-export const useIsImageDynamicGroupVideo = (): boolean => {
-  const orderedDynamicGroup = useRecoilValue(isOrderedDynamicGroup);
-  const parentMediaType = useRecoilValue(parentMediaTypeSelector);
-
-  return orderedDynamicGroup && parentMediaType === MEDIA_TYPE_IMAGE;
 };
 
 /**

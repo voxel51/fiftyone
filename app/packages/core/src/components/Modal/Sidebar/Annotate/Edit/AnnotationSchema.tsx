@@ -1,13 +1,9 @@
 import {
-  isFrameScopedPath,
+  FRAMES_PREFIX,
   useActiveAnnotationSampleId,
   useAnnotationEngine,
 } from "@fiftyone/annotation";
-import {
-  expandPath,
-  field,
-  useIsImageDynamicGroupVideo,
-} from "@fiftyone/state";
+import { expandPath, field } from "@fiftyone/state";
 import type { LabelData } from "@fiftyone/utilities";
 import { FLOAT_FIELD, INT_FIELD } from "@fiftyone/utilities";
 import { useAtom } from "jotai";
@@ -159,10 +155,6 @@ const useHandleSchemaChange = (readOnly: boolean) => {
   const sample = useActiveAnnotationSampleId();
   const parseFieldValue = useParseFieldValue();
   const [currentLabel, setCurrentLabel] = useAtom(current);
-  // Frame-scoped is namespace-dependent: `frames.*` on a real video, BARE
-  // paths on an image dynamic group played as video — start-with `frames.`
-  // alone would skip the track fan-out / forward-fill on a dynamic group.
-  const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
 
   const configRef = useRef(config);
   const dataRef = useRef(data);
@@ -205,7 +197,7 @@ const useHandleSchemaChange = (readOnly: boolean) => {
       // label is still a draft, so `editingRef` is null (the anchor binds only
       // committed labels) yet `field` is correctly `frames.<field>`.
       const editingRef = editingRefRef.current;
-      const isFrameField = isFrameScopedPath(field, isImageDynamicGroupVideo);
+      const isFrameField = field.startsWith(FRAMES_PREFIX);
       const instanceId =
         editingRef?.instanceId ?? (data as { _id?: string })?._id ?? overlay.id;
       // A frame-field draft has no anchor frame; resolve the playhead occurrence
@@ -333,13 +325,7 @@ const useHandleSchemaChange = (readOnly: boolean) => {
         } as NonNullable<typeof live>);
       }
     },
-    [
-      engine,
-      isImageDynamicGroupVideo,
-      parseFieldValue,
-      readOnly,
-      setCurrentLabel,
-    ],
+    [engine, parseFieldValue, readOnly, setCurrentLabel],
   );
 };
 

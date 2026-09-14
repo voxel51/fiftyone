@@ -24,12 +24,10 @@ import type {
  * SAM2 propagation) draw `bitmap`; `frameNumber` / `sampleId` identify which
  * frame this is for commands / persistence.
  */
-export interface FrameBitmap<M = unknown> {
+export interface FrameBitmap {
   bitmap: ImageBitmap;
   frameNumber: number;
   sampleId: string;
-  /** Source-specific frame metadata (e.g. the ImaVid frame's src/filepath). */
-  meta: M;
 }
 
 export interface FrameBitmapStreamOptions {
@@ -82,9 +80,9 @@ interface InflightEntry {
  * `bufferState` reports `ready` only once a frame's bitmap has landed, so the
  * engine never renders a half-decoded frame.
  */
-export abstract class FrameBitmapStream<M = unknown> extends PlaybackStreamBase<
-  FrameBitmap<M>
-> {
+export abstract class FrameBitmapStream<
+  M = unknown,
+> extends PlaybackStreamBase<FrameBitmap> {
   protected readonly sampleId: string;
   protected readonly frameCount: number;
   protected readonly frameRate: number;
@@ -250,7 +248,7 @@ export abstract class FrameBitmapStream<M = unknown> extends PlaybackStreamBase<
     }
   }
 
-  getValue(time: number): FrameBitmap<M> | null {
+  getValue(time: number): FrameBitmap | null {
     const frame = this.timeToFrame(time);
     const entry = this.cache.get(frame);
     if (!entry) {
@@ -261,7 +259,6 @@ export abstract class FrameBitmapStream<M = unknown> extends PlaybackStreamBase<
       bitmap: entry.bitmap,
       frameNumber: frame,
       sampleId: this.sampleId,
-      meta: entry.meta,
     };
   }
 

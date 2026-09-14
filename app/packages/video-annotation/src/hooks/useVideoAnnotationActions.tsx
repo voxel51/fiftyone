@@ -5,9 +5,9 @@ import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { usePlayhead } from "@fiftyone/playback";
 import { resolveFrameCount } from "../utils/frameCount";
+import { getModalSampleFrameRate } from "../utils/modalSample";
 import {
   labelSchemaData,
-  useModalSampleFrameRate,
   useTemporalDetectionFieldPaths,
   useVisibleLabelSchemas,
 } from "../state/accessors";
@@ -16,7 +16,6 @@ import {
   useSelectedTrackIds,
   useSelectionIsInstanceTrack,
   useSelectionIsKeyframeable,
-  useSelectedInstanceTrackField,
 } from "../state/useVideoInteraction";
 import { useCurrentFrame } from "../state/useCurrentFrame";
 import { useFrameKeyframeState } from "./useFrameKeyframeState";
@@ -94,7 +93,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
 
     return active[0] ?? null;
   }, [tdFieldPaths, visible, selectedTdField]);
-  const fps = useModalSampleFrameRate(modalSample);
+  const fps = getModalSampleFrameRate(modalSample);
   const hasUsableFps = Number.isFinite(fps) && fps !== undefined && fps > 0;
   const canCreateTd = !!tdFieldPath && hasUsableFps;
 
@@ -116,9 +115,6 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
   // Both are false on TD / classification selections.
   const selectionIsKeyframeable = useSelectionIsKeyframeable();
   const selectionIsInstanceTrack = useSelectionIsInstanceTrack();
-  // the selected track's OWN frames field — split must not default to the
-  // stream's primary field, which no-ops on a polyline track
-  const selectedTrackField = useSelectedInstanceTrackField();
 
   // Reactive: filled when the (single) selected track has a keyframe at the
   // current playhead. Outline otherwise (no selection, multi-selection, or no
@@ -198,11 +194,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
                 return;
               }
 
-              actions.splitTrack(
-                selectedIds[0],
-                playheadFrame,
-                selectedTrackField ?? undefined,
-              );
+              actions.splitTrack(selectedIds[0], playheadFrame);
             },
           },
           {
@@ -234,7 +226,6 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
       playhead,
       playheadFrame,
       selectedIds,
-      selectedTrackField,
       selectionIsInstanceTrack,
       selectionIsKeyframeable,
       tdDefaultLabel,

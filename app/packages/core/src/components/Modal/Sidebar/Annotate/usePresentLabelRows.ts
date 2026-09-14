@@ -53,11 +53,7 @@ export const usePresentLabelRows = (): LabelRow[] | null => {
   return useTemporal(
     engine,
     (t): LabelRow[] | null => {
-      // Sample-not-ready (store unregistered or mid-seed — e.g. a video's
-      // /frames source still fetching) means an empty present read is
-      // "loading", not "no labels". Registration and isLoading flips notify
-      // the display channel, so this recomputes when the store settles.
-      if (!ready || !engine.isSampleReady(sampleId)) {
+      if (!ready) {
         return null;
       }
 

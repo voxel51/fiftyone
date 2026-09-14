@@ -1,21 +1,9 @@
 import * as fos from "@fiftyone/state";
-import { VideoAnnotationSurface } from "@fiftyone/video-annotation";
 import { useEffect } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
-import { Loading } from "@fiftyone/components";
 import { DynamicGroup } from "./DynamicGroup";
 import GroupSample3d from "./GroupSample3d";
 import { GroupView } from "./GroupView";
-
-const AnnotateDynamicGroupVideo = () => {
-  const modalSample = fos.useModalSample();
-
-  if (!modalSample) {
-    return <Loading>Pixelating...</Loading>;
-  }
-
-  return <VideoAnnotationSurface sample={modalSample} />;
-};
 
 const Group = () => {
   const dynamic = useRecoilValue(fos.isDynamicGroup);
@@ -32,7 +20,6 @@ const Group = () => {
     fos.groupMediaIsCarouselVisibleSetting,
   );
   const isAnnotateMode = fos.useModalMode() === fos.ModalMode.ANNOTATE;
-  const isImageDynamicGroupVideo = fos.useIsImageDynamicGroupVideo();
 
   const [dynamicGroupsViewMode, setDynamicGroupsViewMode] = useRecoilState(
     fos.dynamicGroupsViewMode(true),
@@ -74,15 +61,6 @@ const Group = () => {
       void actions.setPinned(true);
     }
   }, [actions, is3dVisible, isMainVisible, isPinned]);
-
-  // An image dataset dynamically grouped into a video is annotated through the
-  // video surface, which replaces the entire group view (carousel, paginated
-  // element bar, big looker) with its own media + timeline. The modal sample
-  // read lives in the child so sparse groups, whose active slice can lack a
-  // sample, never evaluate it here.
-  if (isAnnotateMode && isImageDynamicGroupVideo) {
-    return <AnnotateDynamicGroupVideo />;
-  }
 
   if (dynamic) {
     return <DynamicGroup />;
