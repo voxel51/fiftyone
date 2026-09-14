@@ -160,6 +160,31 @@ describe("Scene2D render loop phase contract", () => {
     expect(order).toEqual(["before", "after"]);
   });
 
+  it("closes an overlay's rebuild pass even when its paint throws", () => {
+    // `executeOverlayRender` catches the error; an open pass would strand the
+    // cursor and every slot past it until some later successful repaint
+    const renderer = makeRenderer();
+    const scene = makeScene(renderer);
+    scene.startRenderLoop();
+
+    const overlay = makeDetection("a");
+    (overlay as unknown as { renderImpl: () => void }).renderImpl = () => {
+      throw new Error("boom");
+    };
+    scene.addOverlay(overlay);
+
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
+    expect(() => renderer.fireTick()).not.toThrow();
+
+    expect(renderer.calls).toContain("begin:a");
+    expect(renderer.calls).toContain("end:a");
+
+    consoleError.mockRestore();
+  });
+
   it("rejects an async render callback at the type level", () => {
     const renderer = makeRenderer();
     const scene = makeScene(renderer);

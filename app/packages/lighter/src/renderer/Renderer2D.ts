@@ -14,7 +14,12 @@ import type {
  * Types of image sources that can be rendered.
  */
 export type ImageSourceType =
-  "html-image" | "canvas" | "texture" | "image-data" | "bitmap" | "custom";
+  | "html-image"
+  | "canvas"
+  | "texture"
+  | "image-data"
+  | "bitmap"
+  | "custom";
 
 /**
  * Generic image source that can be any image-like object.
