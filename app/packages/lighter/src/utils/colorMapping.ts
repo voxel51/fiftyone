@@ -7,6 +7,7 @@ import type { ColorSchemeInput } from "@fiftyone/relay";
 import { COLOR_BY, getColor } from "@fiftyone/utilities";
 import { SELECTED_DASH_LENGTH } from "../constants";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
+import type { MaskTargets } from "./segmentationPalette";
 
 // White for info (selection, here)
 const INFO_COLOR = "#FFFFFF";
@@ -16,6 +17,14 @@ const HOVER_COLOR = "#FFFFFF";
 export interface ColorMappingContext {
   colorScheme: ColorSchemeInput;
   seed: number;
+  /**
+   * Per-field mask targets (`dataset.mask_targets`), keyed by field path.
+   * Only segmentation coloring reads these; every other overlay resolves a
+   * single color per label and never consults them.
+   */
+  maskTargets?: Record<string, MaskTargets>;
+  /** `dataset.default_mask_targets`, for fields with none of their own. */
+  defaultMaskTargets?: MaskTargets;
 }
 
 export interface StrokeStyles {
