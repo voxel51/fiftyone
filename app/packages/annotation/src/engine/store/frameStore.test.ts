@@ -2,7 +2,8 @@
  * The frame-indexed LabelStore: identity (track = `instance._id`, distinct from
  * the per-frame doc `_id`), mutation, transaction rollback/undo through the
  * engine, the id-aligned `/frames/<n>/<field>` persistence (including
- * shift-safety), `setData` re-baseline + GC, and an end-to-end run with the
+ * shift-safety), `setData` re-baseline + GC, `mergeData`'s windowed seed, and
+ * an end-to-end run with the
  * FrameTemporalView + a frame-locked bridge.
  */
 
@@ -487,6 +488,163 @@ describe("FrameStore setData: re-baseline + GC", () => {
     expect(store.getLabel(ref("A", 1))?.bounding_box).toEqual([
       0.2, 0.2, 0.5, 0.5,
     ]);
+  });
+});
+
+describe("FrameStore mergeData: windowed seed", () => {
+  it("leaves frames outside the window untouched", () => {
+    // The whole point: a landed chunk must not be able to erase the rest of
+    // the clip, which is what made `setData` unusable as a per-chunk seed.
+    const store = makeStore({
+      1: { [PATH]: [det("doc-1", "A", [0, 0, 1, 1], "cat")] },
+      500: { [PATH]: [det("doc-500", "Z", [9, 9, 9, 9], "truck")] },
+    });
+
+    store.mergeData({
+      2: { [PATH]: [det("doc-2", "B", [2, 2, 2, 2], "dog")] },
+    });
+
+    expect(store.getLabel(ref("A", 1))?.label).toBe("cat");
+    expect(store.getLabel(ref("Z", 500))?.label).toBe("truck");
+    expect(store.getLabel(ref("B", 2))?.label).toBe("dog");
+  });
+
+  it("emits one targeted change for a newly landed frame and nothing else", () => {
+    const store = makeStore({
+      1: { [PATH]: [det("doc-1", "A", [0, 0, 1, 1], "cat")] },
+    });
+
+    const emitted: Array<{ ref: LabelRef; kind: string }> = [];
+    store.subscribeChanges((changes) =>
+      emitted.push(...(changes as Array<{ ref: LabelRef; kind: string }>)),
+    );
+
+    store.mergeData({
+      2: { [PATH]: [det("doc-2", "B", [2, 2, 2, 2], "dog")] },
+    });
+
+    // `update`, not `add` — same as `setData`: newcomers fall out of the
+    // displayed diff as updates, and initial mounting is the bridge's
+    // registration reconcile, not this emission.
+    expect(emitted).toEqual([{ ref: ref("B", 2), kind: "update" }]);
+  });
+
+  it("emits a delete when a landed frame carries an empty list for the path", () => {
+    // A frame the window OMITS is not news; a frame it carries as empty is a
+    // genuine removal. `parseFramesData` writes every registered path for
+    // every frame it is handed, which is what makes the two distinguishable.
+    const store = makeStore({
+      3: { [PATH]: [det("doc-3", "C", [3, 3, 3, 3], "bus")] },
+    });
+
+    const emitted: Array<{ ref: LabelRef; kind: string }> = [];
+    store.subscribeChanges((changes) =>
+      emitted.push(...(changes as Array<{ ref: LabelRef; kind: string }>)),
+    );
+
+    store.mergeData({ 3: { [PATH]: [] } });
+
+    expect(emitted).toEqual([{ ref: ref("C", 3), kind: "delete" }]);
+    expect(store.getLabel(ref("C", 3))).toBeUndefined();
+  });
+
+  it("emits nothing when the window re-lands frames that already match", () => {
+    // Chunks can be re-fetched (a field toggle rebuilds the stream over a warm
+    // cache). A no-op reconcile still walks the canvas, so silence matters.
+    const store = makeStore({
+      1: { [PATH]: [det("doc-1", "A", [0, 0, 1, 1], "cat")] },
+    });
+
+    const emitted: unknown[] = [];
+    store.subscribeChanges((changes) => emitted.push(...changes));
+
+    store.mergeData({
+      1: { [PATH]: [det("doc-1", "A", [0, 0, 1, 1], "cat")] },
+    });
+
+    expect(emitted).toEqual([]);
+  });
+
+  it("skips the display tick entirely when the window changes nothing", () => {
+    // Emitting an EMPTY change list is not the same as not emitting: the
+    // display listeners fire either way, and each tick walks the canvas. On a
+    // warm cache most re-landed windows are no-ops, so this is the common case.
+    const store = makeStore({
+      1: { [PATH]: [det("doc-1", "A", [0, 0, 1, 1], "cat")] },
+    });
+
+    let ticks = 0;
+    store.subscribe(() => {
+      ticks++;
+    });
+
+    store.mergeData({
+      1: { [PATH]: [det("doc-1", "A", [0, 0, 1, 1], "cat")] },
+    });
+
+    expect(ticks).toBe(0);
+
+    // A window that DOES move something still ticks.
+    store.mergeData({
+      1: { [PATH]: [det("doc-1", "A", [5, 5, 5, 5], "cat")] },
+    });
+
+    expect(ticks).toBe(1);
+  });
+
+  it("does NOT reproject a frame with an edit in progress", () => {
+    // Same guarantee `setData` gives: working shadows source, so a window
+    // landing under a live gesture must not clobber it.
+    const store = makeStore({
+      1: { [PATH]: [det("doc-1", "A", [0, 0, 1, 1], "cat")] },
+    });
+
+    store.updateLabel(ref("A", 1), { bounding_box: [0.2, 0.2, 0.5, 0.5] });
+
+    const emitted: unknown[] = [];
+    store.subscribeChanges((changes) => emitted.push(...changes));
+
+    store.mergeData({
+      1: { [PATH]: [det("doc-1", "A", [0, 0, 1, 1], "cat")] },
+    });
+
+    expect(emitted).toEqual([]);
+    expect(store.getLabel(ref("A", 1))?.bounding_box).toEqual([
+      0.2, 0.2, 0.5, 0.5,
+    ]);
+  });
+
+  it("clears the dirty flag when the window echoes the saved value", () => {
+    const store = makeStore({
+      1: { [PATH]: [det("doc-1", "A", [0, 0, 1, 1], "cat")] },
+    });
+
+    store.updateLabel(ref("A", 1), { label: "dog" });
+    expect(store.isDirty()).toBe(true);
+
+    store.mergeData({
+      1: { [PATH]: [det("doc-1", "A", [0, 0, 1, 1], "dog")] },
+    });
+
+    expect(store.isDirty()).toBe(false);
+  });
+
+  it("leaves a dirty frame outside the window dirty", () => {
+    // The GC walks only the window's frames. An overlay over an untouched
+    // source frame cannot have changed dirtiness here, and sweeping the whole
+    // overlay per chunk would reintroduce the cost this method removes.
+    const store = makeStore({
+      1: { [PATH]: [det("doc-1", "A", [0, 0, 1, 1], "cat")] },
+    });
+
+    store.updateLabel(ref("A", 1), { label: "dog" });
+
+    store.mergeData({
+      9: { [PATH]: [det("doc-9", "I", [9, 9, 9, 9], "van")] },
+    });
+
+    expect(store.isDirty()).toBe(true);
+    expect(store.getLabel(ref("A", 1))?.label).toBe("dog");
   });
 });
 
