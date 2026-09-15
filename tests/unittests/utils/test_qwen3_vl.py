@@ -15,6 +15,7 @@ import PIL.Image
 import pytest
 import numpy as np
 import torch
+from types import SimpleNamespace
 from unittest import mock
 
 import fiftyone as fo
@@ -1132,6 +1133,80 @@ class TestFrameListMetadata:
 
         assert len(processor.calls) == 1
         assert not hasattr(model, "_call_convention")
+
+
+class StubHiddenModel:
+    """A model whose forward takes the logits knob, and records the call."""
+
+    def __init__(self, dim=4):
+        self.calls = []
+        self.dim = dim
+        self.device = torch.device("cpu")
+
+    def forward(
+        self,
+        input_ids=None,
+        output_hidden_states=None,
+        return_dict=None,
+        logits_to_keep=0,
+    ):
+        raise NotImplementedError
+
+    def __call__(self, **kwargs):
+        self.calls.append(kwargs)
+        return SimpleNamespace(
+            hidden_states=[torch.zeros(1, 2, self.dim)],
+            logits=None,
+        )
+
+
+class StubOldHiddenModel(StubHiddenModel):
+    """An older transformers whose forward cannot be told."""
+
+    def forward(
+        self, input_ids=None, output_hidden_states=None, return_dict=None
+    ):
+        raise NotImplementedError
+
+
+class TestTheEmbeddingForward:
+    """An embedding reads one hidden state and never a logit, so the LM head
+    must not be run over the vocabulary at every position."""
+
+    @staticmethod
+    def _model_with(inner):
+        model = object.__new__(Qwen3VLModel)
+        model._model = inner
+        return model
+
+    def test_the_head_is_asked_for_one_position(self):
+        inner = StubHiddenModel()
+
+        self._model_with(inner)._hidden_forward(
+            {"input_ids": torch.zeros(1, 2, dtype=torch.long)}
+        )
+
+        assert inner.calls[0]["logits_to_keep"] == 1
+        assert inner.calls[0]["output_hidden_states"] is True
+
+    def test_a_transformers_that_cannot_be_told_is_not_told(self):
+        inner = StubOldHiddenModel()
+
+        self._model_with(inner)._hidden_forward(
+            {"input_ids": torch.zeros(1, 2, dtype=torch.long)}
+        )
+
+        assert "logits_to_keep" not in inner.calls[0]
+
+    def test_the_signature_is_read_once(self):
+        inner = StubHiddenModel()
+        model = self._model_with(inner)
+        inputs = {"input_ids": torch.zeros(1, 2, dtype=torch.long)}
+
+        model._hidden_forward(inputs)
+        model._hidden_forward(inputs)
+
+        assert model.__dict__["_logits_kept_cached"] == 1
 
 
 def _tiny_checkpoint(tmp_path, max_shard_size):
