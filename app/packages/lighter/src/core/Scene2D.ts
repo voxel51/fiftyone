@@ -44,6 +44,8 @@ import type {
 } from "../types";
 import { generateColorFromId } from "../utils/color";
 import type { ColorMappingContext } from "../utils/colorMapping";
+import { resolveSegmentationPalette } from "../utils/segmentationPalette";
+import { SegmentationOverlay } from "../overlay/SegmentationOverlay";
 import { getOverlayColor } from "../utils/colorMapping";
 import { CoordinateSystem2D } from "./CoordinateSystem2D";
 import {
@@ -1087,6 +1089,17 @@ export class Scene2D {
       return null;
     }
 
+    // A segmentation is colored per target rather than per label, so it needs
+    // the whole palette rather than one stroke color. Resolved here because
+    // the scene owns the color context; riding the style means a color change
+    // reaches it through the same dirty-then-repaint path as everything else.
+    if (overlay instanceof SegmentationOverlay) {
+      return {
+        opacity: this.sceneOptions?.alpha ?? 1,
+        segmentationPalette: this.resolveSegmentationPaletteFor(overlay.field),
+      };
+    }
+
     let strokeStyle: string;
 
     // Use FiftyOne color scheme if available, otherwise fallback to simple ID-based color
@@ -1140,6 +1153,30 @@ export class Scene2D {
    * and the rebuild shows a hole. Staying synchronous is what keeps the whole
    * frame — dispose included — inside one pass, invisible to the present.
    */
+  /**
+   * The palette for one segmentation field: its own mask targets when the
+   * dataset defines them, else the dataset-wide default. Returns undefined
+   * before a color context has arrived, which the overlay reads as "do not
+   * paint yet" rather than painting uncolored.
+   */
+  private resolveSegmentationPaletteFor(field: string | undefined) {
+    const context = this.colorMappingContext;
+
+    if (!context || !field) {
+      return undefined;
+    }
+
+    const maskTargets =
+      context.maskTargets?.[field] ?? context.defaultMaskTargets;
+
+    return resolveSegmentationPalette(
+      field,
+      context.colorScheme,
+      context.seed,
+      maskTargets,
+    );
+  }
+
   public async startRenderLoop(): Promise<void> {
     if (this.isRenderLoopActive) {
       return;

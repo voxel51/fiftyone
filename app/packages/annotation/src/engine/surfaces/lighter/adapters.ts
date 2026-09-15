@@ -32,7 +32,12 @@ import type { AdapterMap, LabelKindAdapter } from "../../bridge/types";
  * mechanically enforces `overlay.id === instanceId`).
  */
 export interface LighterDescriptor {
-  factoryKey: "detection" | "classification" | "polyline" | "keypoint";
+  factoryKey:
+    | "detection"
+    | "classification"
+    | "polyline"
+    | "keypoint"
+    | "segmentation";
   options: { id: string; field: string; label: LabelData } & Record<
     string,
     unknown
@@ -181,6 +186,25 @@ export const makeKeypointAdapter = (
 /** Skeleton-less keypoint adapter — points only. */
 export const keypointAdapter: LighterAdapter = makeKeypointAdapter();
 
+export const segmentationAdapter: LighterAdapter = {
+  // An in-database mask is what this surface can paint. A `mask_path`-only
+  // segmentation needs a resolved media URL, which the video surface has no
+  // resolver for yet — failing the requirement leaves it unmounted rather than
+  // mounting an overlay that silently paints nothing.
+  renders: (label) => Boolean(label.mask),
+
+  buildHandle: (ref, label) => ({
+    factoryKey: "segmentation",
+    options: { id: ref.instanceId, field: ref.path, label },
+  }),
+
+  updateHandle: (overlay, label) => {
+    overlay.applyLabel(label as Parameters<BaseOverlay["applyLabel"]>[0]);
+  },
+
+  toLabel: (overlay) => withoutId(overlay.label as Record<string, unknown>),
+};
+
 export const polylineAdapter: LighterAdapter = {
   // 2D vertices are what this surface draws — Polyline3D (shared `_cls`,
   // `points3d` only) fails the requirement
@@ -228,6 +252,7 @@ export const makeLighterAdapters = (
   [LabelType.Keypoints]: makeKeypointAdapter(deps),
   [LabelType.Polyline]: polylineAdapter,
   [LabelType.Polylines]: polylineAdapter,
+  [LabelType.Segmentation]: segmentationAdapter,
 });
 
 /** The dependency-free map — keypoints render unconnected. */
