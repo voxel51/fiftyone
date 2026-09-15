@@ -1098,6 +1098,7 @@ export class Scene2D {
     if (overlay instanceof SegmentationOverlay) {
       return {
         opacity: this.sceneOptions?.alpha ?? 1,
+        isSelected: overlay.isSelected(),
         segmentationPalette: this.resolveSegmentationPaletteFor(overlay.field),
       };
     }
@@ -1106,6 +1107,7 @@ export class Scene2D {
     if (overlay instanceof HeatmapOverlay) {
       return {
         opacity: this.sceneOptions?.alpha ?? 1,
+        isSelected: overlay.isSelected(),
         heatmapPalette: this.resolveHeatmapPaletteFor(overlay),
       };
     }
