@@ -43,6 +43,16 @@ interface LeRobotGridHoverVideoProps {
   readonly onPresentedTimeSeconds?: (mediaTimeSeconds: number) => void;
   readonly onSurfaceRetainedBytesChange: (bytes: number) => void;
   readonly playing: boolean;
+  /**
+   * Where to move the element's clock to, in its own media seconds, carrying
+   * the id of the request that asked. The element owns its clock, so a seek
+   * from outside — a click on the tile's interval lane — can only reach it as
+   * a prop; the id is what makes asking twice for the same instant two seeks.
+   */
+  readonly seek?: {
+    readonly requestId: number;
+    readonly timeSeconds: number;
+  } | null;
   readonly video: EpisodePreviewNativeVideo;
 }
 
@@ -55,6 +65,7 @@ export function LeRobotGridHoverVideo({
   onPresentedTimeSeconds,
   onSurfaceRetainedBytesChange,
   playing,
+  seek,
   video,
 }: LeRobotGridHoverVideoProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -324,6 +335,28 @@ export function LeRobotGridHoverVideo({
     startTimeSeconds,
     wantsMedia,
   ]);
+
+  // This effect moves the element's clock to a requested instant.
+  //
+  // Separate from the lifecycle effect above so that a seek does not tear the
+  // media down and rebuild it. Nothing further is needed to present the
+  // result: the `seeked` listener and the frame callback both already run on
+  // whatever the element lands on.
+  const seekRequestId = seek?.requestId;
+  const seekTimeSeconds = seek?.timeSeconds;
+  useEffect(() => {
+    if (seekRequestId === undefined || seekTimeSeconds === undefined) return;
+    const element = videoRef.current;
+    // No source means no clock to move; the lifecycle effect will start the
+    // element at the episode's beginning when the lease is granted.
+    if (!element?.getAttribute("src")) return;
+    element.currentTime = Math.min(
+      Math.max(seekTimeSeconds, startTimeSeconds),
+      // The episode's last instant is not part of it — landing exactly on the
+      // end would read as "ran out" and wrap straight back to the start.
+      Math.max(endTimeSeconds - START_TIME_EPSILON_SECONDS, startTimeSeconds),
+    );
+  }, [endTimeSeconds, seekRequestId, seekTimeSeconds, startTimeSeconds]);
 
   // This effect releases the captured poster surface when the grid cell is no
   // longer visible, even if the component remains mounted by virtualization.

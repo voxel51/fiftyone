@@ -13,8 +13,9 @@
      lighter still (in colour) on those. Slightly transparent so the preview
      reads faintly behind. */
   background: rgba(16, 17, 20, 0.86);
-  /* The bar itself stays passive so hover-to-play reaches the cell beneath;
-     only the lane below opts back in, to track the pointer. */
+  /* The bar stays passive so hover-to-play reaches the cell beneath: both the
+     hover readout and click-to-seek are driven by listeners on the tile, which
+     decide by this element's rectangle rather than by capturing the pointer. */
   pointer-events: none;
 }
 
@@ -63,9 +64,10 @@
   position: relative;
   width: 100%;
   /* Stays passive, like the bar around it. The ghost playhead follows the
-     pointer via a listener on the tile instead of by capturing it here:
-     capturing would take the pointer off the cell above and cut hover-playback
-     off the moment you moved onto an interval to look at it. */
+     pointer, and a click seeks, via listeners on the tile instead of by
+     capturing the pointer here: capturing would take the pointer off the cell
+     above and cut hover-playback off the moment you moved onto an interval to
+     look at it. */
   pointer-events: none;
 }
 
@@ -103,8 +105,9 @@
 
 /*
  * Where the pointer is, as a readable position on the lane's axis: it is what
- * the name row above is describing. A readout, not a control — the lane takes
- * no clicks, so this never becomes a playhead.
+ * the name row above is describing, and where a click will move the tile to.
+ * The lane itself still takes no pointer events; the click is caught on the
+ * tile, so this stays a preview of the seek rather than the control for it.
  */
 .ghost {
   position: absolute;
