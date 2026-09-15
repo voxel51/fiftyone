@@ -1,5 +1,3 @@
-import { useGridSelection } from "@fiftyone/state/src/selection";
-import { Text, TextVariant } from "@voxel51/voodo";
 import { LoadingDots, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { isGroup as isGroupAtom } from "@fiftyone/state";
@@ -79,7 +77,6 @@ const Zoom = () => {
 };
 
 const Header = () => {
-  const selection = useGridSelection();
   const isGroup = useRecoilValue(isGroupAtom);
   const groupSlices = useRecoilValue(fos.groupSlices);
   const shouldShowSliceSelector = useMemo(
@@ -98,17 +95,7 @@ const Header = () => {
             </RightDiv>
           }
         >
-          {selection.enabled ? (
-            <Text variant={TextVariant.Sm} style={{ whiteSpace: "nowrap" }}>
-              {selection.loading
-                ? "Resolving…"
-                : selection.error
-                  ? "Scope unavailable"
-                  : `${selection.groups.filter((group) => !group.unavailable).length} episodes`}
-            </Text>
-          ) : (
-            <ResourceCount />
-          )}
+          <ResourceCount />
         </Suspense>
         <GridHeaderSampleRendererControls />
         {shouldShowSliceSelector && (
