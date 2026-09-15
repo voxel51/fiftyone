@@ -179,6 +179,13 @@ export class ModalAnnotateSidebarPom {
   }
 
   /**
+   * Click the Regression action button
+   */
+  async createRegression() {
+    await this.page.getByTestId("create-regression").click();
+  }
+
+  /**
    * Activate detection mode for a label type (e.g. "Detections")
    *
    * @param labelType The label type to activate detection mode for

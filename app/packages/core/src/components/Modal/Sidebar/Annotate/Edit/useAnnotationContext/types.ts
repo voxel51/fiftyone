@@ -5,6 +5,7 @@ import {
   DETECTION,
   KEYPOINT,
   POLYLINE,
+  REGRESSION,
 } from "@fiftyone/utilities";
 import type { BaseOverlay, OverlayFactory, Scene2D } from "@fiftyone/lighter";
 import type { PrimitiveAtom } from "jotai";
@@ -14,7 +15,8 @@ export type LabelType =
   | typeof CLASSIFICATION
   | typeof DETECTION
   | typeof POLYLINE
-  | typeof KEYPOINT;
+  | typeof KEYPOINT
+  | typeof REGRESSION;
 
 /** Fields the annotation-context consumers actually read off the schema. */
 export interface LabelSchema {

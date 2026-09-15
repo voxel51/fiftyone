@@ -208,4 +208,52 @@ export class AnnotateSDK {
     fs.unlinkSync(resultFile);
     return JSON.parse(raw) as { present: boolean; label: string | null };
   }
+
+  /**
+   * Reads back the persisted state of a sample-level `Regression` field on a
+   * single sample. Use to verify a regression create/delete round-trip.
+   *
+   * @param dataset The dataset name
+   * @param field The `Regression` field to inspect
+   * @param options.sampleIndex Index into the dataset's sample order (default 0)
+   */
+  async getRegressionState(
+    dataset: string,
+    field: string,
+    options: { sampleIndex?: number } = {},
+  ): Promise<{ present: boolean; value: number | null }> {
+    const sampleIndex = options.sampleIndex ?? 0;
+    const resultFile = path.join(
+      os.tmpdir(),
+      `regression-state-${Date.now()}-${Math.random()
+        .toString(36)
+        .substring(2)}.json`,
+    );
+
+    await this.loader.executePythonCode(`
+      import json
+      import fiftyone as fo
+
+      dataset = fo.load_dataset("${dataset}")
+      view = dataset.skip(${sampleIndex})
+      sample = view.first() if len(view) > 0 else None
+
+      result = {"present": False, "value": None}
+      if sample is not None:
+        try:
+          reg_field = sample.get_field("${field}")
+        except Exception:
+          reg_field = None
+        if reg_field is not None:
+          result["present"] = True
+          result["value"] = getattr(reg_field, "value", None)
+
+      with open("${resultFile}", "w") as f:
+        json.dump(result, f)
+    `);
+
+    const raw = fs.readFileSync(resultFile, "utf-8");
+    fs.unlinkSync(resultFile);
+    return JSON.parse(raw) as { present: boolean; value: number | null };
+  }
 }

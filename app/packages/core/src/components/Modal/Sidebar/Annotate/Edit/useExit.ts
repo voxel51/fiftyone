@@ -7,6 +7,7 @@ import {
   hasValidBounds,
   KEYPOINT,
   POLYLINE,
+  REGRESSION,
 } from "@fiftyone/utilities";
 import { useCallback } from "react";
 import { usePrimitiveController } from "./useActivePrimitive";
@@ -14,8 +15,9 @@ import { useAnnotationContext } from "./useAnnotationContext";
 
 /**
  * True when the user has produced something to commit — a picked class, a
- * drawn bbox, or placed points. Used to distinguish a real (but possibly
- * label-less) annotation from a "clicked create but didn't draw" dummy.
+ * typed value, a drawn bbox, or placed points. Used to distinguish a real
+ * (but possibly label-less) annotation from a "clicked create but didn't
+ * draw" dummy.
  */
 const hasDrawnContent = (
   label: AnnotationLabel,
@@ -42,6 +44,8 @@ const hasDrawnContent = (
     case POLYLINE:
     case KEYPOINT:
       return (label.data.points?.length ?? 0) > 0;
+    case REGRESSION:
+      return typeof label.data.value === "number";
     default:
       return false;
   }

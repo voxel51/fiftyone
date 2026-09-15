@@ -72,6 +72,14 @@ export const Keypoint = ({ fill }: { fill: string }) => {
   );
 };
 
+export const Regression = ({ fill }: { fill: string }) => {
+  return (
+    <Container style={{ color: fill }}>
+      <Icon name={IconName.Slider} size={Size.Md} />
+    </Container>
+  );
+};
+
 export const TemporalDetection = ({ fill }: { fill: string }) => {
   return (
     <Container>
@@ -122,6 +130,7 @@ export const ICONS = {
   polylines: Polyline,
   keypoint: Keypoint,
   keypoints: Keypoint,
+  regression: Regression,
   temporaldetection: TemporalDetection,
   temporaldetections: TemporalDetection,
 };

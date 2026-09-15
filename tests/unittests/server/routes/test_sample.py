@@ -127,6 +127,9 @@ class TestSampleRoutes:
             fol.Classifications,
         )
         dataset.add_sample_field(
+            "empty_regression", fo.EmbeddedDocumentField, fol.Regression
+        )
+        dataset.add_sample_field(
             "empty_detection", fo.EmbeddedDocumentField, fol.Detection
         )
         dataset.add_sample_field(
@@ -399,6 +402,7 @@ class TestSampleRoutes:
     @pytest.mark.asyncio
     async def test_patch_init_fields(self, mutator, mock_request, sample):
         new_classification = _create_dummy_instance(fol.Classification)
+        new_regression = _create_dummy_instance(fol.Regression)
         new_detection = _create_dummy_instance(fol.Detection)
         new_polyline = _create_dummy_instance(fol.Polyline)
 
@@ -412,6 +416,11 @@ class TestSampleRoutes:
                 "op": "add",
                 "path": "/empty_classifications/classifications/0",
                 "value": new_classification,
+            },
+            {
+                "op": "add",
+                "path": "/empty_regression",
+                "value": new_regression,
             },
             {
                 "op": "add",
@@ -470,6 +479,7 @@ class TestSampleRoutes:
             response_dict["empty_classifications"]["classifications"][0]
             == new_classification
         )
+        assert response_dict["empty_regression"] == new_regression
         assert response_dict["empty_detection"] == new_detection
         assert (
             response_dict["empty_detections"]["detections"][0] == new_detection

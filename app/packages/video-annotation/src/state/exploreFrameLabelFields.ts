@@ -105,7 +105,8 @@ export const useExploreFrameLabelPaths = (): ReadonlySet<string> => {
 };
 
 /**
- * The SAMPLE-level classification fields Explore should paint.
+ * The SAMPLE-level classification fields Explore should paint. Regression
+ * fields ride along: they render as the same chip through the same adapter.
  *
  * A sample Classification is not `frames.*`, so {@link useExploreFrameLabelPaths}
  * — which exists to keep the per-frame namespace the `FrameStore` owns — can

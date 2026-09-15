@@ -5,6 +5,7 @@ import {
   DETECTION,
   KEYPOINT,
   POLYLINE,
+  REGRESSION,
   TEMPORAL_DETECTION,
 } from "@fiftyone/utilities";
 import {
@@ -16,6 +17,8 @@ import {
   KeypointOverlay,
   PolylineOptions,
   PolylineOverlay,
+  RegressionOptions,
+  RegressionOverlay,
   TemporalOptions,
   TemporalOverlay,
   decodeMaskPath,
@@ -59,6 +62,19 @@ export const useCreateAnnotationLabel = () => {
           ClassificationOptions,
           ClassificationOverlay
         >("classification", {
+          field,
+          id: data._id,
+          label: data,
+        });
+
+        return { data, overlay, path: field, type };
+      }
+
+      if (type === REGRESSION) {
+        const overlay = overlayFactory.create<
+          RegressionOptions,
+          RegressionOverlay
+        >("regression", {
           field,
           id: data._id,
           label: data,

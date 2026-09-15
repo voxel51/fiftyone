@@ -45,6 +45,7 @@ def get_supported_app_annotation_fields(sample_collection):
             :class:`fiftyone.core.labels.Classifications`
         -   ``detection``: :class:`fiftyone.core.labels.Detection`
         -   ``detections``: :class:`fiftyone.core.labels.Detections`
+        -   ``regression``: :class:`fiftyone.core.labels.Regression`
 
     Supported ``3d`` label types are:
         -   ``classification``:
@@ -53,6 +54,7 @@ def get_supported_app_annotation_fields(sample_collection):
             :class:`fiftyone.core.labels.Classifications`
         -   ``polyline``: :class:`fiftyone.core.labels.Polyline`
         -   ``polylines``: :class:`fiftyone.core.labels.Polylines`
+        -   ``regression``: :class:`fiftyone.core.labels.Regression`
 
     Args:
         sample_collection: a

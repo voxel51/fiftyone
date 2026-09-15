@@ -984,6 +984,24 @@ class LabelSchemaValidationTests(unittest.TestCase):
             allow_new_fields=True,
         )
 
+        # label type without classes
+        validate_label_schemas(
+            dataset,
+            {
+                "attributes": [
+                    {
+                        "name": "value",
+                        "component": "text",
+                        "type": "float",
+                    },
+                ],
+                "type": "regression",
+            },
+            fields="new_field",
+            allow_new_attrs=True,
+            allow_new_fields=True,
+        )
+
         # dot.notation
         validate_label_schemas(
             dataset,

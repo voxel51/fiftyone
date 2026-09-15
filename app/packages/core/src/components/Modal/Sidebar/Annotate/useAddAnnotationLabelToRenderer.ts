@@ -10,6 +10,7 @@ import {
   DETECTION,
   KEYPOINT,
   POLYLINE,
+  REGRESSION,
 } from "@fiftyone/utilities";
 import { useCallback } from "react";
 
@@ -21,7 +22,7 @@ export const useAddAnnotationLabelToRenderer = () => {
 
   return useCallback(
     (label: AnnotationLabel) => {
-      if (label.type === CLASSIFICATION) {
+      if (label.type === CLASSIFICATION || label.type === REGRESSION) {
         addOverlay(label.overlay);
       } else if (label.type === DETECTION) {
         addOverlay(label.overlay as DetectionOverlay);

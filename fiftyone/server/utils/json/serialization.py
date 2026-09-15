@@ -53,6 +53,7 @@ def deserialize(value: Any) -> Any:
                         fol.Detections,
                         fol.Polyline,
                         fol.Polylines,
+                        fol.Regression,
                         fol.TemporalDetection,
                         fol.TemporalDetections,
                     )

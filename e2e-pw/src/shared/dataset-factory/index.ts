@@ -48,7 +48,8 @@ type Label =
   | "Detection"
   | "Detections"
   | "Polyline"
-  | "Polylines";
+  | "Polylines"
+  | "Regression";
 
 /**
  * All supported field types for dataset schema definitions.
@@ -88,6 +89,7 @@ const LABEL_TYPES = new Set([
   "Detections",
   "Polyline",
   "Polylines",
+  "Regression",
 ]);
 
 /**

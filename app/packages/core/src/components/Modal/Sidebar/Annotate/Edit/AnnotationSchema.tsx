@@ -5,7 +5,7 @@ import {
 } from "@fiftyone/annotation";
 import { expandPath, field } from "@fiftyone/state";
 import type { LabelData } from "@fiftyone/utilities";
-import { FLOAT_FIELD, INT_FIELD } from "@fiftyone/utilities";
+import { FLOAT_FIELD, INT_FIELD, REGRESSION } from "@fiftyone/utilities";
 import { useAtom } from "jotai";
 import { isEqual } from "lodash";
 import { useCallback, useMemo, useRef } from "react";
@@ -34,6 +34,7 @@ const useSchema = (readOnly: boolean) => {
   const { selected } = useAnnotationContext();
   const config = selected?.schema ?? null;
   const data = selected?.data;
+  const type = selected?.type ?? null;
   const isLabelReadOnly = config?.read_only;
   const effectiveReadOnly = readOnly || isLabelReadOnly;
 
@@ -70,8 +71,11 @@ const useSchema = (readOnly: boolean) => {
     // rejects. Fall back to a free-form text input until the dataset has a
     // configured class list; taxonomy-backed fields always use a dropdown.
     const hasClasses = (config?.classes?.length ?? 0) > 0;
-    const properties: Record<string, SchemaType | undefined> = {
-      label: generatePrimitiveSchema("label", {
+    const properties: Record<string, SchemaType | undefined> = {};
+
+    // a Regression has no class; its `value` arrives as a plain attribute
+    if (type !== REGRESSION) {
+      properties.label = generatePrimitiveSchema("label", {
         type: "str",
         component: taxonomy
           ? "dropdown"
@@ -81,8 +85,8 @@ const useSchema = (readOnly: boolean) => {
         values: taxonomy ? [] : config?.classes || [],
         taxonomy,
         readOnly: effectiveReadOnly,
-      }),
-    };
+      });
+    }
 
     for (const [name, attr] of visibleAttributes) {
       properties[name] = generatePrimitiveSchema(name, {
@@ -104,7 +108,7 @@ const useSchema = (readOnly: boolean) => {
     };
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visibleKey, config, effectiveReadOnly]);
+  }, [visibleKey, config, effectiveReadOnly, type]);
 };
 
 const useParseFieldValue = () => {

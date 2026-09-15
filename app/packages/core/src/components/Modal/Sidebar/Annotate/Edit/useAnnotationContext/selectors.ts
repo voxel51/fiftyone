@@ -8,6 +8,7 @@ import {
   KEYPOINTS,
   POLYLINE,
   POLYLINES,
+  REGRESSION,
 } from "@fiftyone/utilities";
 import { atom } from "jotai";
 import { atomFamily } from "jotai/utils";
@@ -33,12 +34,14 @@ const IS_CLASSIFICATION = new Set([CLASSIFICATION, CLASSIFICATIONS]);
 const IS_DETECTION = new Set([DETECTION, DETECTIONS]);
 const IS_POLYLINE = new Set([POLYLINE, POLYLINES]);
 const IS_KEYPOINT = new Set([KEYPOINT, KEYPOINTS]);
+const IS_REGRESSION = new Set([REGRESSION]);
 const IS_LIST = new Set([CLASSIFICATIONS, DETECTIONS, POLYLINES, KEYPOINTS]);
 const IS = {
   [CLASSIFICATION]: IS_CLASSIFICATION,
   [DETECTION]: IS_DETECTION,
   [POLYLINE]: IS_POLYLINE,
   [KEYPOINT]: IS_KEYPOINT,
+  [REGRESSION]: IS_REGRESSION,
 };
 
 export const current = atom(

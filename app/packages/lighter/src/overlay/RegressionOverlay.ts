@@ -11,33 +11,33 @@ import type { Point, RawLookerLabel, RenderMeta } from "../types";
 
 import { LABEL_ARCHETYPE_PRIORITY } from "../constants";
 
-export type ClassificationLabel = NonNullable<RawLookerLabel> & {
-  label?: string;
+export type RegressionLabel = NonNullable<RawLookerLabel> & {
+  value?: number | null;
   confidence?: number;
 };
 
 /**
- * Options for creating a classification overlay.
+ * Options for creating a regression overlay.
  */
-export interface ClassificationOptions {
+export interface RegressionOptions {
   id: string;
   field: string;
-  label: RawLookerLabel;
+  label: RegressionLabel;
 }
 
 /**
- * A `Classification` chip in the scene's shared top-left stack: the class
- * name, then its confidence.
+ * A `Regression` chip in the scene's shared top-left stack: the numeric
+ * value, then its confidence.
  */
-export class ClassificationOverlay
-  extends BaseOverlay<ClassificationLabel>
+export class RegressionOverlay
+  extends BaseOverlay<RegressionLabel>
   implements Selectable
 {
   private isSelectedState = false;
   private channel: string | undefined = undefined;
 
-  constructor(options: ClassificationOptions) {
-    super(options.id, options.field, options.label as ClassificationLabel);
+  constructor(options: RegressionOptions) {
+    super(options.id, options.field, options.label);
   }
 
   setEventChannel(eventChannel: string | undefined): void {
@@ -47,16 +47,17 @@ export class ClassificationOverlay
     chipStackFor(this.channel).add(this);
   }
 
-  /** The stack's sort key. */
+  /** The stack's sort key; zero is a value, null is not. */
   get chipText(): string | undefined {
-    return this.label?.label || undefined;
+    const value = this.label?.value;
+    return value === null || value === undefined ? undefined : `${value}`;
   }
 
-  public get label(): ClassificationLabel {
+  public get label(): RegressionLabel {
     return super.label;
   }
 
-  public set label(value: ClassificationLabel) {
+  public set label(value: RegressionLabel) {
     super.label = value;
 
     chipStackFor(this.channel).markAllDirty();
@@ -67,7 +68,7 @@ export class ClassificationOverlay
   }
 
   getOverlayType(): string {
-    return "ClassificationOverlay";
+    return "RegressionOverlay";
   }
 
   get containerId() {
@@ -82,7 +83,7 @@ export class ClassificationOverlay
 
     drawLabelChip(renderer, this.containerId, style, renderMeta, {
       text: this.chipText,
-      placeholder: "select classification...",
+      placeholder: "no value",
       confidence: this.label?.confidence,
       stackIndex: chipStackFor(this.channel).indexOf(this),
       selected: this.isSelected(),
@@ -110,7 +111,7 @@ export class ClassificationOverlay
   }
 
   getSelectionPriority(): number {
-    return LABEL_ARCHETYPE_PRIORITY.CLASSIFICATION;
+    return LABEL_ARCHETYPE_PRIORITY.REGRESSION;
   }
 
   getTooltipInfo(): {
@@ -123,7 +124,7 @@ export class ClassificationOverlay
       color: this.getCurrentStyle()?.fillStyle ?? "#ffffff",
       field: this.field || "unknown",
       label: this.label,
-      type: "Classification",
+      type: "Regression",
     };
   }
 
