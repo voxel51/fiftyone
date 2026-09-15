@@ -1360,10 +1360,10 @@ class LeRobotEpisodeSession implements EpisodeSession {
         }
       });
     }
-    throwIfAborted(signal);
-    const index = await cached;
-    throwIfAborted(signal);
-    return index;
+    // The parse is shared and signal-free so concurrent readers reuse it; this
+    // caller still races its own cancellation against it, rather than waiting
+    // out a header read it no longer needs. `timeline()` shares the pattern.
+    return waitForSharedRead(cached, signal);
   }
 
   private enumerateNumericFields(streams: readonly string[] | undefined) {

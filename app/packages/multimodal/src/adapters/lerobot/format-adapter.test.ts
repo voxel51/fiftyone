@@ -1046,21 +1046,38 @@ describe("LeRobot format adapter", () => {
   it("rejects an open cancelled while resolving codecs", async () => {
     // The resolver swallows header failures so a bad asset cannot block
     // opening; an abort is not one of those and must still cancel the open.
+    // The header read is held open, so this fails if the open waits out a
+    // shared parse it no longer needs instead of racing its own signal.
     const controller = new AbortController();
+    let releaseHeaderRead: (() => void) | undefined;
+    const heldHeaderRead = new Promise<void>((resolve) => {
+      releaseHeaderRead = resolve;
+    });
     const abortingIo: ByteResources = {
       readBytes: async (request) => {
-        if (request.source.sourceId === "video") controller.abort();
+        if (request.source.sourceId === "video") {
+          controller.abort();
+          await heldHeaderRead;
+        }
         return io.readBytes(request);
       },
     };
 
-    await expect(
-      createLeRobotFormatAdapter({ readParquetObjects }).open(
-        source,
-        abortingIo,
-        { signal: controller.signal },
+    const opening = createLeRobotFormatAdapter({ readParquetObjects }).open(
+      source,
+      abortingIo,
+      { signal: controller.signal },
+    );
+    const outcome = await Promise.race([
+      opening.then(
+        () => "opened",
+        () => "rejected",
       ),
-    ).rejects.toThrow();
+      new Promise((resolve) => setTimeout(() => resolve("still pending"), 250)),
+    ]);
+    releaseHeaderRead?.();
+
+    expect(outcome).toBe("rejected");
   });
 
   it("names a codec the client cannot decode instead of reading nothing", async () => {
