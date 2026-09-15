@@ -173,7 +173,11 @@ export class PolylineOverlay extends KeypointOverlay {
     this.setConnections(connections);
     this.setClosed(this.polylineClosed);
 
-    super.applyLabel(label as unknown as KeypointLabel);
+    // Set the label directly (as the constructor does) rather than chaining
+    // through KeypointOverlay.applyLabel: that override ingests `points` as
+    // flat [x, y] pairs, which would clobber the flattened segment geometry
+    // applied above (polyline `points` is nested per-segment).
+    this.label = label as unknown as KeypointLabel;
   }
 
   override getSelectionPriority(): number {

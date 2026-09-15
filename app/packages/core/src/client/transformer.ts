@@ -63,10 +63,30 @@ const BinaryTransformer: FieldTransformer = {
   },
 };
 
+/**
+ * Convert serialized bson non-finite doubles (`{ $numberDouble: "NaN" }`) to
+ * the string convention GraphQL sample reads use (`"nan"` / `"inf"` /
+ * `"-inf"`, see `NONFINITE` in `@fiftyone/looker`). Finite values (which bson
+ * only wraps in explicit-typing modes) pass through as plain numbers.
+ */
+const NumberDoubleTransformer: FieldTransformer = {
+  canTransform: (data: unknown): boolean => {
+    return isObject(data) && "$numberDouble" in data;
+  },
+  transform: (data: unknown): string | number => {
+    const value = Number((data as { $numberDouble: string }).$numberDouble);
+    if (Number.isNaN(value)) return "nan";
+    if (value === Infinity) return "inf";
+    if (value === -Infinity) return "-inf";
+    return value;
+  },
+};
+
 const fieldTransformers = [
   DateTimeTransformer,
   ObjectIdTransformer,
   BinaryTransformer,
+  NumberDoubleTransformer,
 ];
 
 /**
@@ -118,6 +138,38 @@ export const transformSampleData = (
 const OBJECT_ID_PATTERN = /^[0-9a-f]{24}$/;
 const OBJECT_ID_FIELDS = new Set(["_id", "_sample_id"]);
 
+// Fields whose values may legitimately hold non-finite floats (a skipped or
+// occluded keypoint node is `[NaN, NaN]`, see the keypoints user guide). The
+// conversion below is gated to these keys so a string field that happens to
+// contain "nan" is never touched.
+const NONFINITE_FIELDS = new Set(["points", "confidence"]);
+const NONFINITE_STRINGS: Record<string, string> = {
+  nan: "NaN",
+  inf: "Infinity",
+  "-inf": "-Infinity",
+};
+
+/**
+ * Convert a non-finite value in a `NONFINITE_FIELDS` context to bson extended
+ * JSON (`{ $numberDouble: "NaN" }`), which `bson.json_util.loads` decodes to
+ * a real `float("nan")` server-side. Handles both representations the App
+ * holds: `"nan"`-style strings (as delivered by sample reads) and real
+ * non-finite numbers. Returns `undefined` when no conversion applies.
+ */
+const toNumberDouble = (
+  data: unknown,
+): { $numberDouble: string } | undefined => {
+  if (typeof data === "string" && data in NONFINITE_STRINGS) {
+    return { $numberDouble: NONFINITE_STRINGS[data] };
+  }
+
+  if (typeof data === "number" && !Number.isFinite(data)) {
+    return { $numberDouble: String(data) };
+  }
+
+  return undefined;
+};
+
 /**
  * Convert a value to MongoDB Extended JSON format.
  *
@@ -139,8 +191,17 @@ export const toExtendedJson = (data: unknown, fieldName?: string): unknown => {
     return { $oid: data };
   }
 
+  if (fieldName && NONFINITE_FIELDS.has(fieldName)) {
+    const numberDouble = toNumberDouble(data);
+    if (numberDouble) {
+      return numberDouble;
+    }
+  }
+
   if (Array.isArray(data)) {
-    return data.map((item) => toExtendedJson(item));
+    // Keep the field context: coordinates sit inside nested arrays under
+    // their field's key (e.g. `points: [[x, y], ...]`).
+    return data.map((item) => toExtendedJson(item, fieldName));
   }
 
   if (isObject(data)) {

@@ -45,6 +45,34 @@ export type KeypointLabel = RawLookerLabel & {
 };
 
 /**
+ * Normalizes one raw label point to a finite `[x, y]` pair, or a `[NaN, NaN]`
+ * hole. Sample reads deliver missing/occluded nodes as `"nan"`-style strings
+ * (see `NONFINITE` in `@fiftyone/looker`) and in-app edits hold real `NaN`s;
+ * either way a point with any non-finite coordinate is a hole. Holes keep
+ * their index — for skeleton-indexed keypoints, position in `points` is the
+ * node's identity — and every geometry consumer (bounds, edges, rendering,
+ * hit-testing) skips them.
+ */
+const sanitizePoint = (point: readonly unknown[]): [number, number] => {
+  const x = point[0];
+  const y = point[1];
+  if (
+    typeof x === "number" &&
+    Number.isFinite(x) &&
+    typeof y === "number" &&
+    Number.isFinite(y)
+  ) {
+    return [x, y];
+  }
+
+  return [NaN, NaN];
+};
+
+/** Whether an absolute point is drawable/hit-testable (not a hole). */
+const isFinitePoint = (point: Point): boolean =>
+  Number.isFinite(point.x) && Number.isFinite(point.y);
+
+/**
  * Options for creating a keypoint overlay.
  *
  * The `connections` and `closed` fields control how points relate to each other,
@@ -179,7 +207,7 @@ export class KeypointOverlay
     super(options.id, options.field, options.label);
     this.#points = (options.label?.points ?? []).map((p) => ({
       id: uuidv4(),
-      position: [...p] as [number, number],
+      position: sanitizePoint(p),
     }));
     this.connections = options.connections ?? [];
     this.closed = options.closed ?? false;
@@ -191,6 +219,31 @@ export class KeypointOverlay
 
   getOverlayType(): string {
     return "KeypointOverlay";
+  }
+
+  /**
+   * Applies label state, rebuilding point geometry from `label.points` (cf.
+   * {@link PolylineOverlay.applyLabel}); without this, Sample→overlay
+   * reconciliation would update `label` but leave stale geometry on screen.
+   * Points keep their entry ids by index so sub-selection and pending
+   * point-command references survive a reconciliation.
+   */
+  override applyLabel(label: KeypointLabel): void {
+    this.#points = (label?.points ?? []).map((position, i) => ({
+      id: this.#points[i]?.id ?? uuidv4(),
+      position: sanitizePoint(position),
+      variant: this.#points[i]?.variant,
+    }));
+
+    if (
+      this.selectedPointIndex !== null &&
+      this.selectedPointIndex >= this.#points.length
+    ) {
+      this.selectedPointIndex = null;
+    }
+
+    this.markDirty();
+    super.applyLabel(label);
   }
 
   // ---------------------------------------------------------------------------
@@ -253,11 +306,15 @@ export class KeypointOverlay
       maxX = -Infinity,
       maxY = -Infinity;
     for (const p of pts) {
+      // Holes ([NaN, NaN] points) have no extent
+      if (!isFinitePoint(p)) continue;
       if (p.x < minX) minX = p.x;
       if (p.x > maxX) maxX = p.x;
       if (p.y < minY) minY = p.y;
       if (p.y > maxY) maxY = p.y;
     }
+
+    if (minX === Infinity) return NO_BOUNDS;
 
     const pad = KEYPOINT_HIT_RADIUS / currentScale;
     this._boundsCache = {
@@ -292,11 +349,17 @@ export class KeypointOverlay
       maxY = -Infinity;
 
     for (const p of this.#points) {
+      // Holes ([NaN, NaN] points) have no extent
+      if (!Number.isFinite(p.position[0]) || !Number.isFinite(p.position[1])) {
+        continue;
+      }
       if (p.position[0] < minX) minX = p.position[0];
       if (p.position[0] > maxX) maxX = p.position[0];
       if (p.position[1] < minY) minY = p.position[1];
       if (p.position[1] > maxY) maxY = p.position[1];
     }
+
+    if (minX === Infinity) return NO_BOUNDS;
 
     this._relativeBoundsCache = {
       x: minX,
@@ -333,11 +396,21 @@ export class KeypointOverlay
   protected collectEdgeSegments(absPoints: Point[]): Array<[Point, Point]> {
     const segments: Array<[Point, Point]> = [];
     const len = absPoints.length;
+    const canConnect = (fromIdx: number, toIdx: number): boolean =>
+      fromIdx >= 0 &&
+      fromIdx < len &&
+      toIdx >= 0 &&
+      toIdx < len &&
+      // Edges touching a hole ([NaN, NaN] point) are not drawn; the
+      // remaining edges of the path still are (cf. looker's skeletons)
+      isFinitePoint(absPoints[fromIdx]) &&
+      isFinitePoint(absPoints[toIdx]);
+
     for (const path of this.connections) {
       for (let i = 1; i < path.length; i++) {
         const fromIdx = path[i - 1];
         const toIdx = path[i];
-        if (fromIdx >= 0 && fromIdx < len && toIdx >= 0 && toIdx < len) {
+        if (canConnect(fromIdx, toIdx)) {
           segments.push([absPoints[fromIdx], absPoints[toIdx]]);
         }
       }
@@ -345,7 +418,7 @@ export class KeypointOverlay
       if (this.closed && path.length > 2) {
         const firstIdx = path[0];
         const lastIdx = path[path.length - 1];
-        if (firstIdx >= 0 && firstIdx < len && lastIdx >= 0 && lastIdx < len) {
+        if (canConnect(lastIdx, firstIdx)) {
           segments.push([absPoints[lastIdx], absPoints[firstIdx]]);
         }
       }
@@ -442,7 +515,11 @@ export class KeypointOverlay
       return;
     }
 
-    const lastPoint = ctx.absPoints[ctx.absPoints.length - 1];
+    // Anchor the preview to the last drawable point (holes are skipped)
+    const lastPoint = ctx.absPoints.findLast(isFinitePoint);
+    if (!lastPoint) {
+      return;
+    }
     renderer.drawLine(
       lastPoint,
       this.previewPoint,
@@ -476,6 +553,10 @@ export class KeypointOverlay
     let selectedVariant: string | undefined;
 
     for (let i = 0; i < ctx.absPoints.length; i++) {
+      // Holes ([NaN, NaN] points) are not drawn
+      if (!isFinitePoint(ctx.absPoints[i])) {
+        continue;
+      }
       // When hovered, every point renders in its sub-selected state, so
       // there's no need to peel out the explicitly-selected point.
       if (!ctx.isHovered && this.selectedPointIndex === i) {
@@ -496,12 +577,17 @@ export class KeypointOverlay
     // beneath the solid point markers. Owners drive their own animation
     // timing and frame invalidation.
     if (this.renderEffects.size > 0) {
-      const effectPoints: KeypointEffectPoint[] = ctx.absPoints.map(
-        (position, i) => ({
-          id: this.#points[i].id,
-          position,
-          variant: this.#points[i].variant,
-        }),
+      const effectPoints: KeypointEffectPoint[] = ctx.absPoints.flatMap(
+        (position, i) =>
+          isFinitePoint(position)
+            ? [
+                {
+                  id: this.#points[i].id,
+                  position,
+                  variant: this.#points[i].variant,
+                },
+              ]
+            : [],
       );
 
       const effectContext: KeypointEffectContext = {
@@ -803,11 +889,12 @@ export class KeypointOverlay
 
   /**
    * Returns the id of the point at the given flat-array index, or `null` if
-   * the index is out of range.
+   * the index is out of range. Public so skeleton-indexed consumers (guided
+   * keypoint placement) can address a node's point by its skeleton index.
    *
    * @param index Flat-array index across all points.
    */
-  protected getPointIdAt(index: number): string | null {
+  getPointIdAt(index: number): string | null {
     if (index < 0 || index >= this.#points.length) {
       return null;
     }
