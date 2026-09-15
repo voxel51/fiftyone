@@ -291,11 +291,18 @@ export class VideoStreamEngine {
           });
           units = await this.readForwardChain(cursorTimeNs, intent, signal);
           this.observeForwardCadence(cursorTimeNs, units);
-          const knownSameEpoch = this.gopIndex.sameEpoch(
+          // Contiguity is already established here, so a keyframe in the
+          // chain is ordinary forward progress, not a discontinuity - a
+          // decoder fed a continuous chain needs no reset to cross one, and
+          // `ensureDecoder` still disposes on a real codec-string change.
+          // Only a *known* epoch change earns a reset: treating "not yet
+          // indexed" as discontinuous tore the decoder down on every window
+          // refill for streams that carry a keyframe every other frame.
+          const epochChanged = this.gopIndex.knownDifferentEpoch(
             cursorTimeNs,
             intent.timeNs,
           );
-          if (!knownSameEpoch && units.some((unit) => unit.frame.keyframe)) {
+          if (epochChanged && units.some((unit) => unit.frame.keyframe)) {
             this.decoder.resetForDiscontinuity();
             units = runwayStartingAtLastKeyframe(units, intent.timeNs);
           }

@@ -46,6 +46,9 @@ interface BaseEncodedVideoVisualization {
   readonly timestampNs?: bigint;
 }
 
+/** Codec families the encoded-video contract names. */
+export type EncodedVideoCodec = "av1" | "h264" | "h265" | "unknown" | "vp9";
+
 /**
  * Encoded H.264 access unit decoded from one message.
  */
@@ -57,12 +60,40 @@ export interface EncodedH264VideoVisualization extends BaseEncodedVideoVisualiza
     readonly pps?: Uint8Array;
     readonly sps?: Uint8Array;
   };
+  readonly hevc?: never;
+  readonly undecodable?: never;
 }
 
 /** AV1 temporal unit carried directly from an ISO BMFF sample. */
 export interface EncodedAv1VideoVisualization extends BaseEncodedVideoVisualization {
   readonly codec: "av1";
   readonly h264?: never;
+  readonly hevc?: never;
+  readonly undecodable?: never;
+}
+
+/** Annex B HEVC access unit with the parameter sets a decoder needs in band. */
+export interface EncodedHevcVideoVisualization extends BaseEncodedVideoVisualization {
+  readonly codec: "h265";
+  readonly h264?: never;
+  readonly hevc: {
+    readonly codecString?: string;
+    /** VPS/SPS/PPS from the container's `hvcC`, Annex B framed. */
+    readonly parameterSets?: Uint8Array;
+  };
+  readonly undecodable?: never;
+}
+
+/**
+ * An access unit no decoder in this client can take. It deliberately carries no
+ * decoder payload; `format` names the codec so every renderer can report which
+ * one rather than waiting for frames that will never decode.
+ */
+export interface UndecodableVideoVisualization extends BaseEncodedVideoVisualization {
+  readonly codec: EncodedVideoCodec;
+  readonly h264?: never;
+  readonly hevc?: never;
+  readonly undecodable: true;
 }
 
 /**
@@ -73,10 +104,8 @@ export interface EncodedAv1VideoVisualization extends BaseEncodedVideoVisualizat
 export type EncodedVideoVisualization =
   | EncodedH264VideoVisualization
   | EncodedAv1VideoVisualization
-  | (BaseEncodedVideoVisualization & {
-      readonly codec: "h265" | "vp9";
-      readonly h264?: never;
-    });
+  | EncodedHevcVideoVisualization
+  | UndecodableVideoVisualization;
 
 /**
  * Raw image pixels normalized by a decoder. Ordinary color images carry

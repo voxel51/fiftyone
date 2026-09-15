@@ -970,7 +970,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
                   viewTransform={imagePanZoom.viewTransform}
                 />
               ) : (
-                <div className={styles.panel} role="alert">
+                <div className={styles.codecRejection} role="alert">
                   {sharedVideoRejectionMessage(frame)}
                 </div>
               )

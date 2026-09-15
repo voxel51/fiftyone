@@ -1062,7 +1062,7 @@ class FakeDecoderActor implements VideoDecoderActor {
       const firstFrame = units[0]?.frame;
       this.configuredCodec =
         (firstFrame?.codec === "h264"
-          ? firstFrame.h264.codecString
+          ? firstFrame.h264?.codecString
           : undefined) ?? "avc1.4D001F";
       const output = fakeVideoFrame();
       this.outputs.push(output);

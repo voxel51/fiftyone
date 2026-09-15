@@ -15,6 +15,11 @@ import {
   collectBatches,
   defineEpisodeSessionContractTests,
 } from "../../testing/adapter-contract";
+import { resetVideoCodecSupport } from "../../codecs/video-codec-support";
+import {
+  isSharedEncodedVideoVisualization,
+  sharedVideoRejectionMessage,
+} from "../../video/types";
 import { detectLeRobotSample } from "./descriptor";
 import { createLeRobotFormatAdapter } from "./format-adapter";
 
@@ -276,6 +281,37 @@ function descriptor(assetId: string): ByteSourceDescriptor {
     url: `memory://${asset.id}`,
   };
 }
+
+const hevcDeclaredInfoBytes = new TextEncoder().encode(
+  JSON.stringify({
+    ...info,
+    features: {
+      ...info.features,
+      "observation.images.test": {
+        ...info.features["observation.images.test"],
+        info: { "video.codec": "hevc", "video.fps": 2 },
+      },
+    },
+  }),
+);
+
+const hevcDeclaredIo: ByteResources = {
+  readBytes: async (request) => {
+    if (request.source.sourceId !== "info") return io.readBytes(request);
+    const start = Number(request.range.offset);
+    return {
+      bytes: hevcDeclaredInfoBytes.slice(
+        start,
+        start + Number(request.range.length),
+      ),
+      range: request.range,
+      source: {
+        ...request.source,
+        sizeBytes: hevcDeclaredInfoBytes.byteLength.toString(),
+      },
+    };
+  },
+};
 
 const readParquetObjects = vi.fn(
   async (options: {
@@ -929,6 +965,131 @@ describe("LeRobot format adapter", () => {
       ).toBeGreaterThan(0);
     } finally {
       session.dispose();
+    }
+  });
+
+  it("names a codec the client cannot decode instead of reading nothing", async () => {
+    // Before this, a camera whose codec had no decoder produced no frames at
+    // all, so the modal held four spinners and a 0:00 timeline indefinitely.
+    resetVideoCodecSupport();
+    vi.stubGlobal("VideoDecoder", {
+      isConfigSupported: async () => ({ supported: false }),
+    });
+    try {
+      const session = await createLeRobotFormatAdapter({
+        readParquetObjects,
+      }).open(source, io);
+      try {
+        expect(
+          session.manifest.streams.find(
+            (stream) => stream.id === "lerobot:observation.images.test",
+          )?.metadata,
+        ).toMatchObject({ "stream.decode_status": "unsupported-encoding" });
+
+        const batches = await collectBatches(
+          session.read({
+            streams: ["lerobot:observation.images.test"],
+            window: session.manifest.timeRange,
+          }),
+        );
+        const visualization = batches[0]?.frames[0]?.output.visualization;
+        expect(visualization).toMatchObject({
+          format: expect.stringMatching(/^avc1\./),
+          kind: "encoded-video",
+          undecodable: true,
+        });
+        if (visualization?.kind !== "encoded-video") {
+          throw new Error("Expected an encoded-video visualization");
+        }
+        expect(isSharedEncodedVideoVisualization(visualization)).toBe(false);
+        expect(sharedVideoRejectionMessage(visualization)).toContain(
+          visualization.format,
+        );
+        // Naming the codec must not cost the payload the client cannot use
+        expect(visualization.bytes.byteLength).toBe(0);
+      } finally {
+        session.dispose();
+      }
+    } finally {
+      vi.unstubAllGlobals();
+      resetVideoCodecSupport();
+    }
+  });
+
+  it.each([
+    { decodeStatus: "decodable", supported: true },
+    { decodeStatus: "unsupported-encoding", supported: false },
+  ])(
+    "offers an HEVC camera as $decodeStatus when the client answers $supported",
+    async ({ decodeStatus, supported }) => {
+      // HEVC used to be refused on the declared name alone, so a camera this
+      // client decodes natively never reached a decoder.
+      resetVideoCodecSupport();
+      vi.stubGlobal("VideoDecoder", {
+        isConfigSupported: async () => ({ supported }),
+      });
+      try {
+        const session = await createLeRobotFormatAdapter({
+          readParquetObjects,
+        }).open(source, hevcDeclaredIo);
+        try {
+          expect(
+            session.manifest.streams.find(
+              (stream) => stream.id === "lerobot:observation.images.test",
+            )?.metadata,
+          ).toMatchObject({ "stream.decode_status": decodeStatus });
+        } finally {
+          session.dispose();
+        }
+      } finally {
+        vi.unstubAllGlobals();
+        resetVideoCodecSupport();
+      }
+    },
+  );
+
+  it("opens Auto on a color camera rather than the alphabetically first depth one", async () => {
+    const rankedAssets: readonly AssetDescriptor[] = [
+      videoAsset("depth", "observation.depth_linear.cam", "1"),
+      videoAsset("color", "observation.images.wrist", "1"),
+    ];
+    const rankedSource: EpisodeSource = {
+      ...source,
+      assets: {
+        list: async () => rankedAssets,
+        resolve: async (assetId: string) => ({
+          sourceId: assetId,
+          url: `memory://${assetId}`,
+        }),
+      },
+    };
+    const rankedIo: ByteResources = {
+      readBytes: async ({ range, source: byteSource }) => {
+        const start = Number(range.offset);
+        return {
+          bytes: tinyMp4Bytes.slice(start, start + Number(range.length)),
+          range,
+          source: {
+            ...byteSource,
+            sizeBytes: tinyMp4Bytes.byteLength.toString(),
+          },
+        };
+      },
+    };
+    const preview = await createLeRobotFormatAdapter({
+      readParquetObjects,
+    }).openPreview?.(rankedSource, rankedIo);
+    if (!preview) throw new Error("LeRobot preview session is unavailable");
+    try {
+      await expect(preview.read()).resolves.toMatchObject({
+        streamSourceName: "observation.images.wrist",
+        streamSourceNames: [
+          "observation.images.wrist",
+          "observation.depth_linear.cam",
+        ],
+      });
+    } finally {
+      preview.dispose();
     }
   });
 

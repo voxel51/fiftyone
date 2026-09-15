@@ -373,6 +373,12 @@ function supportStatusFor({
   readonly frameTransform: boolean;
   readonly sourceType: SceneSourceType | null;
 }): StreamSupportStatus {
+  // Encoding comes first: a camera whose codec has no decoder here is still a
+  // renderable *kind* of stream, and reporting it as supported was the sidebar
+  // agreeing with a tile that could never show a picture.
+  if (decodeStatus === "unsupported-encoding") {
+    return "encoding-unsupported";
+  }
   if (sourceType !== null || frameTransform) {
     return "renderable";
   }
@@ -381,9 +387,6 @@ function supportStatusFor({
   }
   if (decodeStatus === "schema-unavailable") {
     return "schema-unavailable";
-  }
-  if (decodeStatus === "unsupported-encoding") {
-    return "encoding-unsupported";
   }
   return "no-decoder";
 }

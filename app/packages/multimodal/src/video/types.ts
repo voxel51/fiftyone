@@ -1,6 +1,8 @@
 import type {
   EncodedAv1VideoVisualization,
   EncodedH264VideoVisualization,
+  EncodedHevcVideoVisualization,
+  EncodedVideoCodec,
   EncodedVideoVisualization,
 } from "../ir";
 
@@ -18,26 +20,56 @@ export interface H264AccessUnit extends EncodedVideoAccessUnit {
 /** Codec subset implemented by the shared synchronized WebCodecs pipeline. */
 export type SharedEncodedVideoVisualization =
   | EncodedH264VideoVisualization
-  | EncodedAv1VideoVisualization;
+  | EncodedAv1VideoVisualization
+  | EncodedHevcVideoVisualization;
+
+/** User-facing codec names; blank where only the format string identifies it. */
+const VIDEO_CODEC_LABEL: Readonly<Record<EncodedVideoCodec, string>> = {
+  av1: "AV1",
+  h264: "H.264",
+  h265: "HEVC",
+  unknown: "",
+  vp9: "VP9",
+};
 
 /** Whether the shared synchronized decoder supports this encoded frame. */
 export function isSharedEncodedVideoVisualization(
   frame: EncodedVideoVisualization,
 ): frame is SharedEncodedVideoVisualization {
+  if (frame.undecodable) return false;
   return (
     frame.codec === "av1" ||
-    (frame.codec === "h264" && frame.h264.hasFrame !== false)
+    (frame.codec === "h264" &&
+      frame.h264 !== undefined &&
+      frame.h264.hasFrame !== false) ||
+    (frame.codec === "h265" && frame.hevc !== undefined)
   );
 }
 
-/** Explains why an encoded frame rejected by shared playback is unavailable. */
+/** How an encoded frame's codec reads in user-facing copy. */
+export function encodedVideoCodecName(
+  frame: EncodedVideoVisualization,
+): string {
+  const label = VIDEO_CODEC_LABEL[frame.codec];
+  return label || frame.format || "unrecognized";
+}
+
+/**
+ * Explains why an encoded frame rejected by shared playback is unavailable.
+ * Names the exact codec string: "unsupported" without it leaves the user
+ * guessing whether the file is broken, slow, or simply the wrong encoding.
+ */
 export function sharedVideoRejectionMessage(
   frame: EncodedVideoVisualization,
 ): string {
-  if (frame.codec === "h264" && frame.h264.hasFrame === false) {
+  if (frame.codec === "h264" && frame.h264?.hasFrame === false) {
     return "H.264 video frame data is unavailable";
   }
-  return `Video codec ${frame.codec} is unsupported`;
+  const label = VIDEO_CODEC_LABEL[frame.codec];
+  const named = label
+    ? `${label} video ('${frame.format}')`
+    : `Video codec '${frame.format}'`;
+  return `${named} cannot be decoded in this browser. Transcode this camera to H.264 or AV1 to view it.`;
 }
 
 /** Presentation copy that no longer owns a WebCodecs decoder surface. */

@@ -1,4 +1,5 @@
 import { parquetReadObjects, type AsyncBuffer } from "hyparquet";
+import { compressors } from "hyparquet-compressors";
 import {
   createFile,
   MP4BoxBuffer,
@@ -74,6 +75,15 @@ import {
   streamTimeBoundsFromManifest,
   type ResolvedPlaybackWindow,
 } from "../../ports/playback-policy";
+import { annexBFromNalUnits } from "../../codecs/annexb";
+import {
+  annexBDecoderCodecString,
+  isVideoCodecFamilySupported,
+  isVideoCodecSupported,
+  videoCodecFamily as codecFamily,
+  warmVideoCodecSupport,
+} from "../../codecs/video-codec-support";
+import { isNonColorImageStreamName } from "../../stream-selection";
 import { throwIfAborted } from "../../utils/cancellation";
 import {
   maxBigInt,
@@ -233,15 +243,37 @@ interface AvcConfiguration {
   readonly SPS?: readonly { readonly data?: ArrayLike<number> }[];
 }
 
+/** One `hvcC` NAL array: mp4box hangs `nalu_type` off the array itself. */
+interface HevcNaluArray extends ReadonlyArray<{
+  readonly data?: ArrayLike<number>;
+}> {
+  readonly nalu_type?: number;
+}
+
+interface HevcConfiguration {
+  readonly lengthSizeMinusOne?: number;
+  readonly nalu_arrays?: readonly HevcNaluArray[];
+}
+
 interface Mp4SampleDescription {
   readonly avcC?: AvcConfiguration;
+  readonly hvcC?: HevcConfiguration;
 }
+
+/** HEVC parameter-set NAL unit types, in the order a decoder expects them. */
+const HEVC_PARAMETER_SET_NAL_TYPES = [32, 33, 34] as const;
 
 /** Creates the Parquet + range-addressed MP4 LeRobot v3 episode adapter. */
 export function createLeRobotFormatAdapter(
   options: CreateLeRobotFormatAdapterOptions = {},
 ): FormatAdapter {
-  const readObjects = options.readParquetObjects ?? parquetReadObjects;
+  // LeRobot v3 writes its data shards ZSTD-compressed by default, which bare
+  // hyparquet cannot decode; without these the timeline read fails and the
+  // episode never opens. Fewer transferred bytes over a remote source too.
+  const readObjects =
+    options.readParquetObjects ??
+    ((readOptions: ParquetReaderOptions) =>
+      parquetReadObjects({ compressors, ...readOptions }));
   const stateActionSlabLimits =
     options.stateActionSlabLimits ?? DEFAULT_STATE_ACTION_SLAB_LIMITS;
   // The episode's own summary comes with the manifest; the source's
@@ -257,7 +289,12 @@ export function createLeRobotFormatAdapter(
   ) => {
     throwIfAborted(openOptions?.signal);
     const episode = requireEpisode(source);
-    const assets = await source.assets.list(openOptions);
+    // Stream descriptors are built synchronously, so the client's decoder
+    // capability has to be on hand before the session exists
+    const [assets] = await Promise.all([
+      source.assets.list(openOptions),
+      warmVideoCodecSupport(),
+    ]);
     // A poster needs only the cameras and the frame rate the sample already
     // holds; only the full session reads the source's info.json
     const info = lean
@@ -464,12 +501,21 @@ class LeRobotEpisodePreviewSession implements EpisodePreviewSession {
     // A stream that declared no codec is routed by its MP4 header: H.264
     // takes the frame decoder, whose posters are cached; the rest play
     // natively
+    const declaredFamily = codecFamily(
+      selected.metadata?.["lerobot.codec"] ?? "",
+    );
+    const headerFamily =
+      selected.kind === STREAM_KIND.VIDEO && declaredFamily === "unknown"
+        ? await this.session.videoCodecFamily(selected.id, options.signal)
+        : declaredFamily;
+    // An unrecognized codec has no native path either, so it takes the frame
+    // decoder too: the poster it yields carries the codec name, where coming
+    // back empty left the cell saying only that there was no data
     const decoderPath =
       isGridFrameDecoderCameraStream(selected) ||
       (selected.kind === STREAM_KIND.VIDEO &&
-        codecFamily(selected.metadata?.["lerobot.codec"] ?? "") === "unknown" &&
-        (await this.session.videoCodecFamily(selected.id, options.signal)) ===
-          "h264");
+        declaredFamily === "unknown" &&
+        (headerFamily === "h264" || headerFamily === "unknown"));
     let frames: readonly DecodedFrame[] = [];
     if (decoderPath) {
       for await (const batch of this.session.read({
@@ -911,46 +957,79 @@ class LeRobotEpisodeSession implements EpisodeSession {
     // must agree with it, and a poster session declares none
     const declared = codecFamily(videoCodec(binding.feature));
     const index = await this.readVideoIndex(binding, request.signal);
-    const declaredCodec = codecFamily(index.track.codec);
-    if (declared !== "unknown" && declared !== declaredCodec) {
+    const codecString = index.track.codec;
+    const trackCodec = codecFamily(codecString);
+    if (declared !== "unknown" && declared !== trackCodec) {
       throw new Error(
-        `LeRobot video codec mismatch: manifest '${videoCodec(binding.feature)}', MP4 '${index.track.codec}'`,
+        `LeRobot video codec mismatch: manifest '${videoCodec(binding.feature)}', MP4 '${codecString}'`,
       );
     }
-    if (declaredCodec !== "h264" && declaredCodec !== "av1") return [];
     const samples = selectVideoSamples(index, binding, request.window);
     if (!samples.length) return [];
+    const rateHz =
+      optionalNumber(binding.feature.info?.["video.fps"]) ?? this.info.fps;
+    const boundaryToleranceNs = secondsToNs(0.5 / rateHz);
+    // Only these three have a WebCodecs path here, and the client decides
+    // whether it can take this exact codec string. A refusal still yields
+    // frames - payload-free ones - so the tile names the codec instead of
+    // buffering on a stream that will never produce a picture.
+    const decodable =
+      (trackCodec === "h264" ||
+        trackCodec === "h265" ||
+        trackCodec === "av1") &&
+      (await isVideoCodecSupported(annexBDecoderCodecString(codecString)));
+    if (!decodable) {
+      return samples
+        .map((sample) =>
+          videoFrame({
+            binding,
+            boundaryToleranceNs,
+            // Each frame owns its buffer: resource hints transfer them, and a
+            // shared one would detach after the first frame crossed
+            bytes: new Uint8Array(0),
+            decodable: false,
+            index,
+            parameterSets: {},
+            sample,
+            streamId,
+          }),
+        )
+        .filter((frame): frame is DecodedFrame => frame !== null);
+    }
+    const description = samples[0].description as Mp4SampleDescription;
+    const avc = trackCodec === "h264" ? description.avcC : undefined;
+    const hevc = trackCodec === "h265" ? description.hvcC : undefined;
+    const lengthSize = ((avc ?? hevc)?.lengthSizeMinusOne ?? 3) + 1;
+    const parameterSets: VideoParameterSets = {
+      ...avcParameterSets(avc),
+      ...(hevc ? { hevc: hevcParameterSets(hevc) } : {}),
+    };
     const bytes = await this.readSampleSpan(
       binding.asset,
       samples,
       request.signal,
     );
-    const avc =
-      declaredCodec === "h264"
-        ? (samples[0].description as Mp4SampleDescription).avcC
-        : undefined;
-    const lengthSize = (avc?.lengthSizeMinusOne ?? 3) + 1;
-    const parameterSets = avcParameterSets(avc);
-    const rateHz =
-      optionalNumber(binding.feature.info?.["video.fps"]) ?? this.info.fps;
-    const boundaryToleranceNs = secondsToNs(0.5 / rateHz);
     return samples
       .map((sample) => {
         const offset = sample.offset - samples[0].offset;
-        return videoFrame(
-          streamId,
+        return videoFrame({
           binding,
-          index,
-          sample,
           boundaryToleranceNs,
-          declaredCodec === "h264"
-            ? mp4SampleToAnnexB(
-                bytes.subarray(offset, offset + sample.size),
-                lengthSize,
-              )
-            : bytes.slice(offset, offset + sample.size),
+          // AV1 temporal units are carried as stored; H.264 and HEVC are
+          // length-prefixed in the container and Annex B to the decoder
+          bytes:
+            trackCodec === "av1"
+              ? bytes.slice(offset, offset + sample.size)
+              : mp4SampleToAnnexB(
+                  bytes.subarray(offset, offset + sample.size),
+                  lengthSize,
+                ),
+          decodable: true,
+          index,
           parameterSets,
-        );
+          sample,
+          streamId,
+        });
       })
       .filter((frame): frame is DecodedFrame => frame !== null);
   }
@@ -2103,15 +2182,25 @@ function selectVideoSamples(
   return index.samples.slice(startDecode, lastDecode + 1);
 }
 
-function videoFrame(
-  streamId: string,
-  binding: VideoBinding,
-  index: VideoIndex,
-  sample: Sample,
-  boundaryToleranceNs: bigint,
-  bytes: Uint8Array,
-  parameterSets: { readonly pps?: Uint8Array; readonly sps?: Uint8Array },
-): DecodedFrame | null {
+function videoFrame({
+  binding,
+  boundaryToleranceNs,
+  bytes,
+  decodable,
+  index,
+  parameterSets,
+  sample,
+  streamId,
+}: {
+  readonly binding: VideoBinding;
+  readonly boundaryToleranceNs: bigint;
+  readonly bytes: Uint8Array;
+  readonly decodable: boolean;
+  readonly index: VideoIndex;
+  readonly parameterSets: VideoParameterSets;
+  readonly sample: Sample;
+  readonly streamId: string;
+}): DecodedFrame | null {
   if (index.track.timescale <= 0) return null;
   const presentationSeconds = videoPresentationSeconds(index, sample);
   // The selector's from_timestamp is frame_index / fps as a float; the MP4
@@ -2137,14 +2226,19 @@ function videoFrame(
   const decodeTimestampNs = secondsToNs(
     sample.dts / index.track.timescale - binding.fromSeconds,
   );
-  const visualization = encodedVideo(
-    index.track.codec,
+  const visualization = encodedVideo({
     bytes,
-    sample.is_sync,
-    timestampNs,
-    decodeTimestampNs,
+    codecString: index.track.codec,
+    decodable,
+    // Only when it genuinely differs: the field means "decode order differs
+    // from presentation order", and consumers read its presence as "this
+    // stream is reordered". Declaring it on an in-order stream put every
+    // keyframe through a seek runway and a decoder reset.
+    ...(decodeTimestampNs === timestampNs ? {} : { decodeTimestampNs }),
+    keyframe: sample.is_sync,
     parameterSets,
-  );
+    timestampNs,
+  });
   const output: DecodedOutput = {
     resourceHints: {
       sizeBytes: bytes.byteLength,
@@ -2164,44 +2258,93 @@ function videoFrame(
   };
 }
 
-function encodedVideo(
-  codecString: string,
-  bytes: Uint8Array,
-  keyframe: boolean,
-  timestampNs: bigint,
-  decodeTimestampNs: bigint,
-  parameterSets: { readonly pps?: Uint8Array; readonly sps?: Uint8Array },
-): EncodedVideoVisualization {
+function encodedVideo({
+  bytes,
+  codecString,
+  decodable,
+  decodeTimestampNs,
+  keyframe,
+  parameterSets,
+  timestampNs,
+}: {
+  readonly bytes: Uint8Array;
+  readonly codecString: string;
+  readonly decodable: boolean;
+  readonly decodeTimestampNs?: bigint;
+  readonly keyframe: boolean;
+  readonly parameterSets: VideoParameterSets;
+  readonly timestampNs: bigint;
+}): EncodedVideoVisualization {
   const codec = codecFamily(codecString);
+  const base = {
+    bytes,
+    ...(decodeTimestampNs === undefined ? {} : { decodeTimestampNs }),
+    format: codecString,
+    keyframe,
+    kind: VISUALIZATION_KIND.ENCODED_VIDEO,
+    timestampNs,
+  } as const;
+  if (!decodable) {
+    // Named, not silent: renderers report the codec off `format` rather than
+    // holding a tile open for a picture no decoder here will produce
+    return { ...base, codec, undecodable: true };
+  }
   if (codec === "h264") {
     return {
-      bytes,
+      ...base,
       codec,
-      decodeTimestampNs,
-      format: codecString,
       h264: {
         codecString,
         hasFrame: true,
         ...(keyframe && parameterSets.pps ? { pps: parameterSets.pps } : {}),
         ...(keyframe && parameterSets.sps ? { sps: parameterSets.sps } : {}),
       },
-      keyframe,
-      kind: VISUALIZATION_KIND.ENCODED_VIDEO,
-      timestampNs,
     };
   }
-  if (codec === "unknown") {
-    throw new Error(`Unsupported LeRobot video codec '${codecString}'`);
+  if (codec === "h265") {
+    return {
+      ...base,
+      codec,
+      hevc: {
+        // `format` keeps the container's own string for reporting; the decoder
+        // is configured with the fourcc that matches Annex B input
+        codecString: annexBDecoderCodecString(codecString),
+        ...(keyframe && parameterSets.hevc
+          ? { parameterSets: parameterSets.hevc }
+          : {}),
+      },
+    };
   }
-  return {
-    bytes,
-    codec,
-    decodeTimestampNs,
-    format: codecString,
-    keyframe,
-    kind: VISUALIZATION_KIND.ENCODED_VIDEO,
-    timestampNs,
-  };
+  // Callers only mark the three codecs above decodable; naming anything else
+  // beats handing a renderer a payload it has no contract for
+  return codec === "av1"
+    ? { ...base, codec }
+    : { ...base, codec, undecodable: true };
+}
+
+/** Out-of-band parameter sets a decoder needs inlined per access unit. */
+interface VideoParameterSets {
+  /** VPS/SPS/PPS from `hvcC`, Annex B framed. */
+  readonly hevc?: Uint8Array;
+  readonly pps?: Uint8Array;
+  readonly sps?: Uint8Array;
+}
+
+/**
+ * VPS/SPS/PPS from the track's `hvcC`, Annex B framed. WebCodecs is configured
+ * without an out-of-band description, so these travel in band.
+ */
+function hevcParameterSets(hevc: HevcConfiguration): Uint8Array | undefined {
+  const units = HEVC_PARAMETER_SET_NAL_TYPES.flatMap((naluType) =>
+    (hevc.nalu_arrays ?? [])
+      .filter((array) => array.nalu_type === naluType)
+      .flatMap((array) =>
+        array.flatMap((nalu) =>
+          nalu.data ? [Uint8Array.from(nalu.data)] : [],
+        ),
+      ),
+  );
+  return annexBFromNalUnits(units);
 }
 
 function videoPresentationSeconds(index: VideoIndex, sample: Sample) {
@@ -2296,7 +2439,7 @@ function mp4SampleToAnnexB(bytes: Uint8Array, lengthSize: number): Uint8Array {
     }
     offset += lengthSize;
     if (length <= 0 || offset + length > bytes.byteLength) {
-      throw new Error("Malformed H.264 sample in LeRobot MP4 asset");
+      throw new Error("Malformed video sample in LeRobot MP4 asset");
     }
     const unit = bytes.subarray(offset, offset + length);
     units.push(unit);
@@ -2304,7 +2447,7 @@ function mp4SampleToAnnexB(bytes: Uint8Array, lengthSize: number): Uint8Array {
     offset += length;
   }
   if (offset !== bytes.byteLength || !units.length) {
-    throw new Error("Malformed H.264 access unit in LeRobot MP4 asset");
+    throw new Error("Malformed video access unit in LeRobot MP4 asset");
   }
   const output = new Uint8Array(total);
   offset = 0;
@@ -2457,9 +2600,10 @@ function videoStream(
   const codec = videoCodec(feature);
   const family = codecFamily(codec);
   // A poster session knows no codec until the MP4's own header says it; the
-  // browser-native path reads that header and decides
-  const supported =
-    family === "h264" || family === "av1" || family === "unknown";
+  // browser-native path reads that header and decides. Everything else is the
+  // client's own answer, so a camera this browser can decode is never refused
+  // on a declared name alone.
+  const supported = family === "unknown" || isVideoCodecFamilySupported(family);
   return {
     approxRateHz: optionalNumber(feature.info?.["video.fps"]) ?? fps,
     id: binding.streamId,
@@ -2670,20 +2814,32 @@ function isPreviewableCameraStream(stream: StreamDescriptor) {
   return (
     stream.kind === STREAM_KIND.VIDEO &&
     stream.metadata?.[SCENE_SOURCE_METADATA.TYPE] === SCENE_SOURCE_TYPE.IMAGE &&
-    (family === "av1" || family === "unknown")
+    // Native playback answers for these, and its codec support is the
+    // browser's own - wider than WebCodecs for HEVC on some platforms
+    (family === "av1" || family === "h265" || family === "unknown")
   );
 }
 
+/**
+ * Auto's pick, ranked rather than alphabetical: a named primary/front camera
+ * first, then any color camera, since a depth or IR feed sorting first leaves
+ * the grid showing a near-black tile for a source whose RGB cameras are fine.
+ */
 function comparePreviewStreams(
   left: StreamDescriptor,
   right: StreamDescriptor,
 ) {
-  const preference = (stream: StreamDescriptor) =>
-    /(?:^|[._/-])(primary|front)(?:$|[._/-])/i.test(stream.sourceName) ? 0 : 1;
   return (
-    preference(left) - preference(right) ||
+    previewStreamPreference(left) - previewStreamPreference(right) ||
     left.sourceName.localeCompare(right.sourceName)
   );
+}
+
+function previewStreamPreference(stream: StreamDescriptor) {
+  if (/(?:^|[._/-])(primary|front)(?:$|[._/-])/i.test(stream.sourceName)) {
+    return 0;
+  }
+  return isNonColorImageStreamName(stream.sourceName) ? 2 : 1;
 }
 
 function posterFrame(frame: DecodedFrame): EpisodePosterFrame | null {
@@ -2830,17 +2986,6 @@ function sniffImageMimeType(bytes: Uint8Array) {
 
 function videoCodec(feature: LeRobotFeature) {
   return stringValue(feature.info?.["video.codec"]) ?? "unknown";
-}
-
-function codecFamily(
-  codec: string,
-): "av1" | "h264" | "h265" | "unknown" | "vp9" {
-  const normalized = codec.toLowerCase();
-  if (/^(?:av01|av1)/.test(normalized)) return "av1";
-  if (/^(?:hvc1|hev1|h265|hevc)/.test(normalized)) return "h265";
-  if (/^(?:vp09|vp9)/.test(normalized)) return "vp9";
-  if (/^(?:avc1|avc3|h264)/.test(normalized)) return "h264";
-  return "unknown";
 }
 
 function streamIdForFeature(feature: string) {

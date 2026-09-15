@@ -2183,6 +2183,7 @@ __metadata:
     date-fns: "npm:^4.1.0"
     fake-indexeddb: "npm:^6.2.5"
     hyparquet: "npm:^1.26.2"
+    hyparquet-compressors: "npm:^1.1.1"
     jotai: "catalog:"
     lru-cache: "catalog:"
     maplibre-gl: "npm:^6.0.0"
@@ -11306,6 +11307,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"fzstd@npm:0.1.1":
+  version: 0.1.1
+  resolution: "fzstd@npm:0.1.1"
+  checksum: 10/455b968aeb764f06d9c39a5c8b45eefd645f7ee9129896e890eafb8ab367482f8495de12907021a32f6544494305a42a2056c30c63efac06181e6efcdab3fe78
+  languageName: node
+  linkType: hard
+
 "gensync@npm:^1.0.0-beta.2":
   version: 1.0.0-beta.2
   resolution: "gensync@npm:1.0.0-beta.2"
@@ -12162,6 +12170,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"hyparquet-compressors@npm:^1.1.1":
+  version: 1.1.1
+  resolution: "hyparquet-compressors@npm:1.1.1"
+  dependencies:
+    fzstd: "npm:0.1.1"
+    hysnappy: "npm:1.0.0"
+  checksum: 10/a03085183b52dec738205625eb97e58ab9584e10ff4254eb27f7f52929d70a6c49a0aa038c25247225b134a8e6da8f15632cd41a63aee640dc0aae7c3c0ea074
+  languageName: node
+  linkType: hard
+
 "hyparquet@npm:^1.26.2":
   version: 1.26.2
   resolution: "hyparquet@npm:1.26.2"
@@ -12173,6 +12191,13 @@ __metadata:
   version: 1.0.4
   resolution: "hyphenate-style-name@npm:1.0.4"
   checksum: 10/d37883e6b7e1be62e1ddae29cac83fa59fb93c068bc8eb1561585439adbad91dcf7e264ee2a82c4378fc58049f7bd853544a4a81bf00d4aff717f641052323e7
+  languageName: node
+  linkType: hard
+
+"hysnappy@npm:1.0.0":
+  version: 1.0.0
+  resolution: "hysnappy@npm:1.0.0"
+  checksum: 10/71f9239065e71078a1f0a12ec150c9532db0f8ae6fc89f51753924942df07ba208c249573f12947d7744a250af6133b61a96bb70c88bd371768495da4d86d53e
   languageName: node
   linkType: hard
 
