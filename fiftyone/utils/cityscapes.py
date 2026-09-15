@@ -89,6 +89,15 @@ def parse_cityscapes_dataset(
     if images_extra_zip_path and "train_extra" in _splits:
         _extract_extra_images(images_extra_zip_path, images_dir)
 
+    if "train_extra" in _splits and not os.path.isdir(
+        os.path.join(images_dir, "train_extra")
+    ):
+        _raise_cityscapes_error(
+            "The requested 'train_extra' split requires '%s' or an "
+            "already-extracted train_extra images directory."
+            % _IMAGES_EXTRA_ZIP
+        )
+
     if fine_annos_zip_path:
         fine_annos_dir = _extract_fine_annos(fine_annos_zip_path, scratch_dir)
     else:

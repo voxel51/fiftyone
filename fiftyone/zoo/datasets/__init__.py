@@ -202,12 +202,12 @@ def download_zoo_dataset(
             -   a publicly accessible URL of an archive (eg zip or tar) file
         split (None) a split to download, if applicable. Typical values are
             ``("train", "validation", "test")``. If neither ``split`` nor
-            ``splits`` are provided, all available splits are downloaded.
+            ``splits`` are provided, the default splits are downloaded.
             Consult the documentation for the :class:`ZooDataset` you specified
             to see the supported splits
         splits (None): a list of splits to download, if applicable. Typical
             values are ``("train", "validation", "test")``. If neither
-            ``split`` nor ``splits`` are provided, all available splits are
+            ``split`` nor ``splits`` are provided, the default splits are
             downloaded. Consult the documentation for the :class:`ZooDataset`
             you specified to see the supported splits
         overwrite (False): whether to overwrite any existing files
@@ -298,12 +298,12 @@ def load_zoo_dataset(
             -   a publicly accessible URL of an archive (eg zip or tar) file
         split (None) a split to load, if applicable. Typical values are
             ``("train", "validation", "test")``. If neither ``split`` nor
-            ``splits`` are provided, all available splits are loaded. Consult
+            ``splits`` are provided, the default splits are loaded. Consult
             the documentation for the :class:`ZooDataset` you specified to see
             the supported splits
         splits (None): a list of splits to load, if applicable. Typical values
             are ``("train", "validation", "test")``. If neither ``split`` nor
-            ``splits`` are provided, all available splits are loaded. Consult
+            ``splits`` are provided, the default splits are loaded. Consult
             the documentation for the :class:`ZooDataset` you specified to see
             the supported splits
         label_field (None): the label field (or prefix, if the dataset contains
@@ -1254,11 +1254,11 @@ class ZooDataset(object):
         Args:
             dataset_dir: the directory in which to construct the dataset
             split (None) a split to download, if applicable. If neither
-                ``split`` nor ``splits`` are provided, the full dataset is
+                ``split`` nor ``splits`` are provided, the default splits are
                 downloaded
             splits (None): a list of splits to download, if applicable. If
-                neither ``split`` nor ``splits`` are provided, the full dataset
-                is  downloaded
+                neither ``split`` nor ``splits`` are provided, the default splits
+                are downloaded
             cleanup (True): whether to cleanup any temporary files generated
                 during download
 
