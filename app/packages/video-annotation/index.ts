@@ -2,6 +2,11 @@ export { VideoAnnotationSurface } from "./src/components/VideoAnnotationSurface"
 export { useVfcClockSource } from "./src/hooks/useVfcClockSource";
 export { LighterVideo } from "./src/components/LighterVideo";
 export { RegisterVideoExploreLabels } from "./src/components/RegisterVideoExploreLabels";
+// The image-dynamic-group ("ImaVid") media path, so the modal's Explore
+// surface can mount it read-only against the same frame stream.
+export { DynamicGroupLighterTile } from "./src/components/DynamicGroupLighterTile";
+export { RegisterDynamicGroupImage } from "./src/components/RegisterDynamicGroupImage";
+export { useAnnotatePrerequisites } from "./src/hooks/useAnnotatePrerequisites";
 export { RegisterTimelineAudio } from "./src/components/RegisterTimelineAudio";
 export type {
   LighterVideoMode,

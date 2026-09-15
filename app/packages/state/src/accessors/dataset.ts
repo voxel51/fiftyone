@@ -1,4 +1,4 @@
-import { MEDIA_TYPE_IMAGE, is3d } from "@fiftyone/utilities";
+import { is3d } from "@fiftyone/utilities";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import {
   dataset,
@@ -8,8 +8,7 @@ import {
   fieldSchema,
   groupMediaTypes,
   isGroup,
-  isOrderedDynamicGroup,
-  parentMediaTypeSelector,
+  isImageDynamicGroupVideo,
   selectedMediaField,
   skeleton,
   State,
@@ -120,12 +119,8 @@ export const useParentMediaType = (): string =>
  *
  * @returns True if the current view is an image-backed dynamic group video
  */
-export const useIsImageDynamicGroupVideo = (): boolean => {
-  const orderedDynamicGroup = useRecoilValue(isOrderedDynamicGroup);
-  const parentMediaType = useRecoilValue(parentMediaTypeSelector);
-
-  return orderedDynamicGroup && parentMediaType === MEDIA_TYPE_IMAGE;
-};
+export const useIsImageDynamicGroupVideo = (): boolean =>
+  useRecoilValue(isImageDynamicGroupVideo);
 
 /**
  * The field the current dynamic group is ordered by, or null when the view is

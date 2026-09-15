@@ -1,10 +1,13 @@
 import { useViewportInitReveal } from "@fiftyone/lighter";
 import React, { useEffect, useRef, useState } from "react";
-import { useStream } from "@fiftyone/playback";
+import { usePublishCurrentFrame, useStream } from "@fiftyone/playback";
+import { useLighterSelectionBridge } from "../../../core/src/components/Modal/Lighter/useLighterSelectionEventHandler";
+import { useLighterTooltipEventHandler } from "../../../core/src/components/Modal/Lighter/useLighterTooltipEventHandler";
 import { useLighterMediaScene } from "../hooks/useLighterMediaScene";
-import { useVideoAnnotationSyncBundle } from "../hooks/useVideoAnnotationSyncBundle";
+import { useCurrentFrame } from "../state/useCurrentFrame";
 import { DYNAMIC_GROUP_STREAM_ID } from "../utils/ids";
 import type { DynamicGroupImageFrame } from "../streams/DynamicGroupImageStream";
+import { AnnotateSync, ExploreSync, type SurfaceMode } from "./SurfaceSync";
 import styles from "./DynamicGroupLighterTile.module.css";
 
 interface ImageDimensions {
@@ -77,17 +80,34 @@ function usePaintFrameToCanvas(
 }
 
 /**
+ * Publish the playhead frame for consumers outside the `PlaybackProvider`:
+ * the modal's action bar is a sibling of the media container, and its label
+ * selection has to agree with the canvas about which frame is current.
+ */
+const PublishPlayheadFrame: React.FC = () => {
+  usePublishCurrentFrame(useCurrentFrame());
+  return null;
+};
+
+/**
  * Dynamic group tile — draws each frame's `ImageBitmap` (decoded off-main in
  * `framesWorker`) into a `<canvas>` and overlays Lighter on top.
  *
  * Drawn via 2D `drawImage`, not a `bitmaprenderer` context, because the LRU
  * may serve the same bitmap again (a revisited frame) and
  * `transferFromImageBitmap` would consume it.
+ *
+ * `mode` picks the same halves `LighterVideo` does: `annotate` (the default)
+ * arms the editing sync bundle on a writable scene, while `explore` locks the
+ * scene read-only with the sidebar's filters applied and wires the tooltip,
+ * the `fos.selectedLabels` bridge and the published playhead frame.
  */
 export const DynamicGroupLighterTile: React.FC<{
+  mode?: SurfaceMode;
   onRevealChange?: (revealed: boolean) => void;
-}> = ({ onRevealChange }) => {
+}> = ({ mode = "annotate", onRevealChange }) => {
   const sourceId = DYNAMIC_GROUP_STREAM_ID;
+  const explore = mode === "explore";
 
   const lighterHostRef = useRef<HTMLDivElement | null>(null);
   const frameCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -99,24 +119,27 @@ export const DynamicGroupLighterTile: React.FC<{
   const imageDims = usePaintFrameToCanvas(frame, frameCanvasRef);
 
   // Scene lifecycle: once-per-mount scene; `dims` from the decoded bitmap.
+  // The explore flags are the ones `LighterVideo` sets, for the same reasons.
   const { scene, canonicalMediaReady } = useLighterMediaScene({
     hostRef: lighterHostRef,
     dims: imageDims,
     sceneIdPrefix: "dynamic-group-video",
-  });
-
-  // Overlay / sidebar sync. `frameCanvasRef` keeps the frame canvas
-  // zoomed/panned with the Lighter viewport so scroll-zoom scales the picture.
-  useVideoAnnotationSyncBundle({
-    scene,
-    canonicalMediaReady,
-    mediaRef: frameCanvasRef,
+    readOnly: explore,
+    multipleSelection: explore,
+    filterLabels: explore,
   });
 
   const revealed = useViewportInitReveal(scene);
   useEffect(() => {
     onRevealChange?.(revealed);
   }, [revealed, onRevealChange]);
+
+  // Explore only, routed at the undefined channel otherwise: Annotate never
+  // had a tooltip, and its selection belongs to the annotation engine.
+  useLighterTooltipEventHandler(explore ? scene : null);
+  useLighterSelectionBridge(explore ? scene : null);
+
+  const Sync = explore ? ExploreSync : AnnotateSync;
 
   return (
     <div className={styles.body}>
@@ -126,6 +149,15 @@ export const DynamicGroupLighterTile: React.FC<{
         data-cy="dynamic-group-frame-canvas"
       />
       <div ref={lighterHostRef} className={styles.lighterHost} />
+      {/* Overlay / sidebar sync. `frameCanvasRef` keeps the frame canvas
+          zoomed/panned with the Lighter viewport so scroll-zoom scales the
+          picture. */}
+      <Sync
+        scene={scene}
+        canonicalMediaReady={canonicalMediaReady}
+        mediaRef={frameCanvasRef}
+      />
+      {explore && <PublishPlayheadFrame />}
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import { useViewportInitReveal } from "@fiftyone/lighter";
-import React, { type RefObject, useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import {
   usePlayback,
   usePublishCurrentFrame,
@@ -12,35 +12,11 @@ import { useLighterTooltipEventHandler } from "../../../core/src/components/Moda
 import { useLighterMediaScene } from "../hooks/useLighterMediaScene";
 import { useCurrentFrame } from "../state/useCurrentFrame";
 import { useVfcClockSource } from "../hooks/useVfcClockSource";
-import { useVideoAnnotationSyncBundle } from "../hooks/useVideoAnnotationSyncBundle";
-import { useVideoExploreSyncBundle } from "../hooks/useVideoExploreSyncBundle";
 import { VIDEO_STREAM_ID } from "../utils/ids";
+import { AnnotateSync, ExploreSync, type SurfaceMode } from "./SurfaceSync";
 import styles from "./LighterVideo.module.css";
 
-/** Which sync bundle this arms. Explore is the read-only half. */
-export type LighterVideoMode = "annotate" | "explore";
-
-interface SyncProps {
-  scene: ReturnType<typeof useLighterMediaScene>["scene"];
-  canonicalMediaReady: boolean;
-  mediaRef: RefObject<HTMLVideoElement | null>;
-}
-
-/**
- * Null-rendering hosts for the two sync bundles. Which bundle runs is a
- * per-surface choice, and hooks cannot be called conditionally — so the
- * choice becomes which component is rendered, and each one's hooks
- * stay unconditional inside it.
- */
-const AnnotateSync: React.FC<SyncProps> = (props) => {
-  useVideoAnnotationSyncBundle(props);
-  return null;
-};
-
-const ExploreSync: React.FC<SyncProps> = (props) => {
-  useVideoExploreSyncBundle(props);
-  return null;
-};
+export type LighterVideoMode = SurfaceMode;
 
 export interface LighterVideoProps {
   /** Resolved media URL for the video. */
