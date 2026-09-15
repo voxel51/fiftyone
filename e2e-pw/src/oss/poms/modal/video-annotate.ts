@@ -18,6 +18,8 @@ export class VideoAnnotatePom {
   readonly assert: VideoAnnotateAsserter;
   readonly topBar: Locator;
   readonly statusSlot: Locator;
+  /** The `<canvas>` the decoded media frame is painted into. */
+  readonly frameCanvas: Locator;
 
   constructor(page: Page, modal: ModalPom) {
     this.page = page;
@@ -25,6 +27,12 @@ export class VideoAnnotatePom {
     this.assert = new VideoAnnotateAsserter(this);
     this.topBar = page.getByTestId("video-annotation-top-bar");
     this.statusSlot = page.getByTestId("video-annotation-status-slot");
+    this.frameCanvas = page.getByTestId("imavid-frame-canvas");
+  }
+
+  /** The painted media frame as a PNG data URL: an exact per-pixel identity. */
+  async frameCanvasImage(): Promise<string> {
+    return this.frameCanvas.evaluate((el: HTMLCanvasElement) => el.toDataURL());
   }
 
   /**
