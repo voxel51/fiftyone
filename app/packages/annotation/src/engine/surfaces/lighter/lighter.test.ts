@@ -2,7 +2,12 @@ import type { BaseOverlay, OverlayFactory, Scene2D } from "@fiftyone/lighter";
 import { decodeMaskPath } from "@fiftyone/lighter";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { detectionAdapter, polylineAdapter } from "./adapters";
+import {
+  detectionAdapter,
+  keypointAdapter,
+  makeKeypointAdapter,
+  polylineAdapter,
+} from "./adapters";
 import { lighterAdapters } from "./adapters";
 import type { LighterBridgeDeps } from "./lighterBridge";
 import { createLighterBridge } from "./lighterBridge";
@@ -175,6 +180,44 @@ describe("lighter adapters", () => {
     expect(
       detectionAdapter.toLabel(overlay as unknown as BaseOverlay),
     ).toMatchObject({ mask: null, mask_path: null });
+  });
+
+  it("keypoint buildHandle carries the field's skeleton edges as connections", () => {
+    const edges = [
+      [9, 6, 3, 4, 5, 7, 12],
+      [0, 4, 8],
+    ];
+    const getSkeleton = vi.fn(() => ({ labels: ["head"], edges }));
+
+    const descriptor = makeKeypointAdapter({ getSkeleton }).buildHandle(
+      ref("frames.keypoints", "k1"),
+      { _id: "k1", label: "person", points: [] },
+    );
+
+    expect(getSkeleton).toHaveBeenCalledWith("frames.keypoints");
+    expect(descriptor.factoryKey).toBe("keypoint");
+    expect(descriptor.options.id).toBe("k1");
+    expect(descriptor.options.connections).toEqual(edges);
+    // a skeleton is a figure, never a closed polygon
+    expect(descriptor.options.closed).toBe(false);
+  });
+
+  it("keypoint buildHandle falls back to unconnected points without a skeleton", () => {
+    // no resolver at all — the dependency-free map
+    expect(
+      keypointAdapter.buildHandle(ref("keypoints", "k1"), {
+        _id: "k1",
+        points: [],
+      }).options.connections,
+    ).toEqual([]);
+
+    // a resolver that finds nothing for this field
+    expect(
+      makeKeypointAdapter({ getSkeleton: () => null }).buildHandle(
+        ref("keypoints", "k1"),
+        { _id: "k1", points: [] },
+      ).options.connections,
+    ).toEqual([]);
   });
 
   it("polyline toLabel reads nested points and flags", () => {
