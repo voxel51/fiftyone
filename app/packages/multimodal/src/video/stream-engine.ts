@@ -17,7 +17,7 @@ import type {
 } from "./types";
 import {
   VIDEO_INTENT_PRIORITY_WEIGHT,
-  VideoDecoderFailureError,
+  VideoCodecUnsupportedError,
   VideoDependencyWaitError,
   VideoIntentCancelledError,
 } from "./types";
@@ -693,7 +693,9 @@ export class VideoStreamEngine {
       });
       return;
     }
-    if (error instanceof VideoDecoderFailureError) this.codecFaulted = true;
+    // Only an unroutable codec is fatal for every target on this stream; the
+    // timeouts and submission faults its base class covers stay seek-recoverable
+    if (error instanceof VideoCodecUnsupportedError) this.codecFaulted = true;
     this.publish({
       diagnostic: {
         code: "decode",

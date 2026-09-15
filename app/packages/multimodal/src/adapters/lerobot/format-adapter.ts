@@ -875,21 +875,35 @@ class LeRobotEpisodeSession implements EpisodeSession {
    * timestamp rather than a refusal, which is indistinguishable from loading.
    */
   async resolveUnknownVideoCodecs(signal?: AbortSignal): Promise<void> {
-    const refused = new Map<string, string>();
-    for (const [streamId, binding] of this.videoBindings) {
-      if (codecFamily(videoCodec(binding.feature)) !== "unknown") continue;
-      try {
-        const codecString = (await this.readVideoIndex(binding, signal)).track
-          .codec;
-        const routable =
-          DECODER_PATH_FAMILIES.has(codecFamily(codecString)) &&
-          (await isVideoCodecSupported(annexBDecoderCodecString(codecString)));
-        if (!routable) refused.set(streamId, codecString);
-      } catch {
-        // An unreadable header is its own failure elsewhere; opening the
-        // episode must not depend on this correction succeeding
-      }
-    }
+    // One exact header read per camera, concurrently: the byte client bounds
+    // its own fills, and serially these are a round trip each added to open
+    const resolved = await Promise.all(
+      [...this.videoBindings].map(async ([streamId, binding]) => {
+        const declared = codecFamily(videoCodec(binding.feature));
+        // A declared family off the decoder path is already reported
+        // unsupported, and the header cannot make it routable
+        if (declared !== "unknown" && !DECODER_PATH_FAMILIES.has(declared)) {
+          return null;
+        }
+        try {
+          const codecString = (await this.readVideoIndex(binding, signal)).track
+            .codec;
+          const routable =
+            DECODER_PATH_FAMILIES.has(codecFamily(codecString)) &&
+            (await isVideoCodecSupported(
+              annexBDecoderCodecString(codecString),
+            ));
+          return routable ? null : ([streamId, codecString] as const);
+        } catch {
+          // An unreadable header is its own failure elsewhere; opening the
+          // episode must not depend on this correction succeeding
+          return null;
+        }
+      }),
+    );
+    const refused = new Map(
+      resolved.filter((entry): entry is readonly [string, string] => !!entry),
+    );
     if (refused.size === 0) return;
     this.manifest = {
       ...this.manifest,

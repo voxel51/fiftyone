@@ -8,6 +8,7 @@ import {
   encodedVideoCodecName,
   isSharedEncodedVideoVisualization,
   sharedVideoRejectionMessage,
+  VideoCodecUnsupportedError,
   VideoDecoderFailureError,
   VideoDependencyWaitError,
   VideoIntentCancelledError,
@@ -99,7 +100,7 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
       // re-request, and the reread returns the same refused units from cache -
       // a retry loop with no I/O in it to yield the main thread.
       if (units.length > 0) {
-        throw new VideoDecoderFailureError(
+        throw new VideoCodecUnsupportedError(
           sharedVideoRejectionMessage(units[0].frame),
         );
       }
@@ -342,7 +343,7 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
     const support =
       await this.environment.VideoDecoder.isConfigSupported(config);
     if (!support.supported) {
-      throw new VideoDecoderFailureError(
+      throw new VideoCodecUnsupportedError(
         `${encodedVideoCodecName(unit.frame)} codec '${nextCodec}' is unsupported`,
       );
     }

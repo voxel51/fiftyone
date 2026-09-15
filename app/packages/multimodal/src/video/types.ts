@@ -250,6 +250,17 @@ export class VideoDecoderFailureError extends Error {
   }
 }
 
+/**
+ * A codec this client cannot decode at all. Terminal, unlike the timeouts and
+ * submission faults its base class also covers, so a seek must not retry it.
+ */
+export class VideoCodecUnsupportedError extends VideoDecoderFailureError {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    setErrorName(this, "VideoCodecUnsupportedError");
+  }
+}
+
 export class VideoSchedulerClosedError extends Error {
   constructor() {
     super("Video scheduler closed");
