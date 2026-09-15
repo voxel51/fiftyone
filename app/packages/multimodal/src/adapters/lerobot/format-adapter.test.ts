@@ -1043,6 +1043,26 @@ describe("LeRobot format adapter", () => {
     }
   });
 
+  it("rejects an open cancelled while resolving codecs", async () => {
+    // The resolver swallows header failures so a bad asset cannot block
+    // opening; an abort is not one of those and must still cancel the open.
+    const controller = new AbortController();
+    const abortingIo: ByteResources = {
+      readBytes: async (request) => {
+        if (request.source.sourceId === "video") controller.abort();
+        return io.readBytes(request);
+      },
+    };
+
+    await expect(
+      createLeRobotFormatAdapter({ readParquetObjects }).open(
+        source,
+        abortingIo,
+        { signal: controller.signal },
+      ),
+    ).rejects.toThrow();
+  });
+
   it("names a codec the client cannot decode instead of reading nothing", async () => {
     // Reading nothing is indistinguishable from reading slowly: the modal
     // holds spinners and a 0:00 timeline indefinitely

@@ -895,8 +895,9 @@ class LeRobotEpisodeSession implements EpisodeSession {
             ));
           return routable ? null : ([streamId, codecString] as const);
         } catch {
-          // An unreadable header is its own failure elsewhere; opening the
-          // episode must not depend on this correction succeeding
+          // A cancelled open must not resolve a session; every other header
+          // failure is reported elsewhere and must not block opening
+          throwIfAborted(signal);
           return null;
         }
       }),
