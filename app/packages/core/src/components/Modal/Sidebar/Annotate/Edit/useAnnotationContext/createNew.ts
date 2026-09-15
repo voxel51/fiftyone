@@ -4,16 +4,21 @@ import type {
   DetectionLabel,
   DetectionOverlayOptions,
   DetectionOverlay,
+  KeypointLabel,
+  KeypointOptions,
+  KeypointOverlay,
   PolylineLabel,
   PolylineOptions,
   PolylineOverlay,
 } from "@fiftyone/lighter";
 import { InteractiveDetectionHandler } from "@fiftyone/lighter";
 import type { ClassificationLabel } from "@fiftyone/looker";
+import type { KeypointSkeleton } from "@fiftyone/looker/src/state";
 import type { AnnotationLabel } from "@fiftyone/state";
 import {
   CLASSIFICATION,
   DETECTION,
+  KEYPOINT,
   type LabelData,
   objectId,
   POLYLINE,
@@ -22,6 +27,22 @@ import { getDefaultStore } from "jotai";
 import { isFieldReadOnly, labelSchemaData } from "../../state";
 import { defaultField } from "./selectors";
 import type { CreateDeps, CreateOptions, LabelType } from "./types";
+
+/**
+ * Number of nodes a skeleton defines: the node-label count when labels are
+ * present (they are optional in the SDK), otherwise inferred from the highest
+ * edge index. Zero means the field is free-form.
+ */
+export const skeletonNodeCount = (
+  skeleton: KeypointSkeleton | null,
+): number => {
+  if (!skeleton) return 0;
+  if (skeleton.labels?.length) return skeleton.labels.length;
+  if (skeleton.edges?.length) {
+    return Math.max(...skeleton.edges.flat()) + 1;
+  }
+  return 0;
+};
 
 /**
  * Build a new annotation label and attach its overlay to the scene.
@@ -123,6 +144,66 @@ export function createNewLabel(
     } as AnnotationLabel;
   }
 
+  if (type === KEYPOINT) {
+    const readOnly = isFieldReadOnly(store.get(labelSchemaData(field)));
+    const skeleton = deps.getSkeleton(field);
+    const nodeCount = skeletonNodeCount(skeleton);
+
+    // Skeleton fields are fixed-length: every node exists from the start as a
+    // [NaN, NaN] hole and guided placement fills holes in node order, so a
+    // node's index (= its identity) never changes. Free-form fields start
+    // empty and grow point by point.
+    const points: [number, number][] = nodeCount
+      ? Array.from({ length: nodeCount }, () => [NaN, NaN])
+      : [];
+    if (options?.origin) {
+      if (nodeCount) {
+        points[0] = options.origin;
+      } else {
+        points.push(options.origin);
+      }
+    }
+
+    const keypointData = { ...data, points } as KeypointLabel;
+    const overlay = overlayFactory.create<KeypointOptions, KeypointOverlay>(
+      "keypoint",
+      {
+        field,
+        id,
+        label: keypointData,
+        connections: skeleton?.edges ?? [],
+        closed: false,
+        draggable: !readOnly,
+        // Skeleton nodes are cleared back to holes, never deleted — deleting
+        // would shift indices and break node identity
+        deletable: !readOnly && nodeCount === 0,
+        selectable: true,
+      },
+    );
+    addOverlay(overlay, true);
+    scene?.selectOverlay(id, { ignoreSideEffects: true });
+
+    // Write the new label through to the engine immediately (cf. the
+    // Classification branch above): constructor-baked points dispatch no
+    // events, so nothing else commits the initial state. Sample-level fields
+    // only — on video, frame-level creation is announced by the keypoint
+    // mode's `lighter:overlay-establish` dispatch, which lets the video
+    // surface establish the track first (cf. the polyline creation flow).
+    if (sample && !field.startsWith("frames.")) {
+      engine.updateLabel(
+        { sample, path: field, instanceId: id },
+        keypointData as unknown as Partial<LabelData>,
+      );
+    }
+
+    return {
+      data: keypointData,
+      overlay,
+      path: field,
+      type,
+    } as AnnotationLabel;
+  }
+
   return null;
 }
 
@@ -164,7 +245,9 @@ export function buildNewLabelData(
           ? "Detection"
           : type === POLYLINE
             ? "Polyline"
-            : undefined,
+            : type === KEYPOINT
+              ? "Keypoint"
+              : undefined,
     _id: labelId,
     ...defaults,
     ...(labelValue && { label: labelValue }),
@@ -177,6 +260,12 @@ export function buildNewLabelData(
       ...data,
       points: options?.origin ? [[options.origin]] : [],
     };
+  }
+
+  if (type === KEYPOINT) {
+    // Skeleton-aware seeding (holes per node) happens in createNewLabel,
+    // where the skeleton is resolvable; this default covers other callers.
+    return { ...data, points: options?.origin ? [options.origin] : [] };
   }
 
   return data;

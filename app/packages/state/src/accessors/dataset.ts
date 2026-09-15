@@ -9,6 +9,7 @@ import {
   fieldSchema,
   groupMediaTypes,
   isGroup,
+  isPatchesView,
   selectedMediaField,
   skeleton,
   stageDefinitions,
@@ -46,6 +47,14 @@ export const useCurrentDatasetName = (): string | null =>
  */
 export const useSampleSchema = () =>
   useRecoilValue(fieldSchema({ space: State.SPACE.SAMPLE }));
+
+/**
+ * Whether the current view is a patches view (`to_patches()` /
+ * `to_evaluation_patches()`).
+ *
+ * @returns true when the view is a patches view
+ */
+export const useIsPatchesView = (): boolean => useRecoilValue(isPatchesView);
 
 /**
  * The dataset's media type, with group datasets reporting `group` — matching

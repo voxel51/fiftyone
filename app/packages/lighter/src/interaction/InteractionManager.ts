@@ -22,6 +22,7 @@ import type { SelectionManager } from "../selection/SelectionManager";
 import { resolveSelectionClick } from "./resolveSelectionClick";
 import type { Point, Rect } from "../types";
 import { buildBrushCursor } from "./buildBrushCursor";
+import { GuidedKeypointHandler } from "./GuidedKeypointHandler";
 import { InteractiveCreationHandler } from "./InteractiveCreationHandler";
 import { InteractiveDetectionHandler } from "./InteractiveDetectionHandler";
 import { InteractiveKeypointHandler } from "./InteractiveKeypointHandler";
@@ -69,6 +70,7 @@ export type EmptyCanvasClickHandler = (
 function isSelfManagedInteractiveHandler(handler: InteractionHandler): boolean {
   return (
     handler instanceof InteractiveKeypointHandler ||
+    handler instanceof GuidedKeypointHandler ||
     handler instanceof InteractivePolylineHandler ||
     handler instanceof InteractivePenHandler ||
     handler instanceof InteractiveCreationHandler

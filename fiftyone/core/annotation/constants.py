@@ -203,6 +203,8 @@ SUPPORTED_LABEL_TYPES_BY_MEDIA_TYPE = {
     fom.IMAGE: {
         fol.Detection,
         fol.Detections,
+        fol.Keypoint,
+        fol.Keypoints,
         fol.Polyline,
         fol.Polylines,
     },
@@ -210,6 +212,8 @@ SUPPORTED_LABEL_TYPES_BY_MEDIA_TYPE = {
     fom.VIDEO: {
         fol.Detection,
         fol.Detections,
+        fol.Keypoint,
+        fol.Keypoints,
         fol.Polyline,
         fol.Polylines,
         fol.TemporalDetection,
@@ -235,6 +239,8 @@ TRACK_LABEL_TYPES = (
 SPATIAL_LABEL_TYPES = (
     fol.Detection,
     fol.Detections,
+    fol.Keypoint,
+    fol.Keypoints,
     fol.Polyline,
     fol.Polylines,
 )

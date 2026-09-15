@@ -14,6 +14,10 @@ import { useRecoilValue } from "recoil";
 import { useAnnotationContext } from "../Sidebar/Annotate/Edit/useAnnotationContext";
 import { useDetectionMode } from "../Sidebar/Annotate/Edit/useDetectionMode";
 import {
+  useKeypointMode,
+  useKeypointModeInstaller,
+} from "../Sidebar/Annotate/Edit/useKeypointMode";
+import {
   usePolylineMode,
   usePolylineModeInstaller,
 } from "../Sidebar/Annotate/Edit/usePolylineMode";
@@ -44,8 +48,10 @@ export const useBridge = (scene: Scene2D | null) => {
   const segmentationMode = useSegmentationMode();
   const detectionMode = useDetectionMode();
   const polylineMode = usePolylineMode();
+  const keypointMode = useKeypointMode();
 
   usePolylineModeInstaller();
+  useKeypointModeInstaller();
 
   useEventHandler(
     "lighter:overlay-removed",
@@ -148,7 +154,12 @@ export const useBridge = (scene: Scene2D | null) => {
         polylineMode.deactivatePolylineMode();
         return;
       }
-    }, [detectionMode, polylineMode, segmentationMode]),
+
+      if (keypointMode.keypointModeActive) {
+        keypointMode.deactivateKeypointMode();
+        return;
+      }
+    }, [detectionMode, keypointMode, polylineMode, segmentationMode]),
   );
 
   useEventHandler(

@@ -16,6 +16,10 @@ import { useCallback } from "react";
 import { useAnnotationContext } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
 import { useDetectionMode } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useDetectionMode";
 import {
+  useKeypointMode,
+  useKeypointModeInstaller,
+} from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useKeypointMode";
+import {
   usePolylineMode,
   usePolylineModeInstaller,
 } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/usePolylineMode";
@@ -34,6 +38,7 @@ type RegisterLighterHandler = ReturnType<typeof useLighterEventHandler>;
 type DetectionMode = ReturnType<typeof useDetectionMode>;
 type SegmentationMode = ReturnType<typeof useSegmentationMode>;
 type PolylineMode = ReturnType<typeof usePolylineMode>;
+type KeypointMode = ReturnType<typeof useKeypointMode>;
 
 /** Schema-driven TD check: a field whose label type is a temporal detection. */
 const isTemporalDetectionType = (type: LabelType): boolean =>
@@ -230,11 +235,13 @@ const useRegisterModeQuitHandlers = ({
   detectionMode,
   segmentationMode,
   polylineMode,
+  keypointMode,
 }: {
   registerHandler: RegisterLighterHandler;
   detectionMode: DetectionMode;
   segmentationMode: SegmentationMode;
   polylineMode: PolylineMode;
+  keypointMode: KeypointMode;
 }): void => {
   registerHandler(
     "lighter:detection-mode-quit",
@@ -267,8 +274,13 @@ const useRegisterModeQuitHandlers = ({
 
       if (polylineMode.polylineModeActive) {
         polylineMode.deactivatePolylineMode();
+        return;
       }
-    }, [detectionMode, segmentationMode, polylineMode]),
+
+      if (keypointMode.keypointModeActive) {
+        keypointMode.deactivateKeypointMode();
+      }
+    }, [detectionMode, segmentationMode, polylineMode, keypointMode]),
   );
 };
 
@@ -310,10 +322,12 @@ const useRegisterTrackDeletedHandler = ({
   detectionMode,
   segmentationMode,
   polylineMode,
+  keypointMode,
 }: {
   detectionMode: DetectionMode;
   segmentationMode: SegmentationMode;
   polylineMode: PolylineMode;
+  keypointMode: KeypointMode;
 }): void => {
   useAnnotationEventHandler(
     "annotation:trackDeleted",
@@ -327,7 +341,11 @@ const useRegisterTrackDeletedHandler = ({
       if (polylineMode.polylineModeActive) {
         polylineMode.deactivatePolylineMode();
       }
-    }, [detectionMode, segmentationMode, polylineMode]),
+
+      if (keypointMode.keypointModeActive) {
+        keypointMode.deactivateKeypointMode();
+      }
+    }, [detectionMode, segmentationMode, polylineMode, keypointMode]),
   );
 };
 
@@ -361,6 +379,7 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
   const detectionMode = useDetectionMode();
   const segmentationMode = useSegmentationMode();
   const polylineMode = usePolylineMode();
+  const keypointMode = useKeypointMode();
 
   useRegisterDrawHandler({ registerHandler, detectionMode, segmentationMode });
   useRegisterDrawEstablishHandler({ registerHandler });
@@ -370,6 +389,7 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
     detectionMode,
     segmentationMode,
     polylineMode,
+    keypointMode,
   });
   useRegisterPointSelectionFinalizeHandler({
     registerHandler,
@@ -379,10 +399,13 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
     detectionMode,
     segmentationMode,
     polylineMode,
+    keypointMode,
   });
 
-  // Polylines self-create through an InteractiveCreationHandler the installer
-  // mounts on the scene (the image surface gets this via `useBridge`); without
-  // it polyline mode toggles but a canvas click draws nothing.
+  // Polylines and keypoints self-create through an InteractiveCreationHandler
+  // their installers mount on the scene (the image surface gets these via
+  // `useBridge`); without them the mode toggles but a canvas click draws
+  // nothing.
   usePolylineModeInstaller();
+  useKeypointModeInstaller();
 };
