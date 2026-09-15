@@ -688,16 +688,46 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
             )
             inputs = inputs.to(self._model.device)
 
-            with torch.no_grad():
-                outputs = self._model(
-                    **inputs,
-                    output_hidden_states=True,
-                    return_dict=True,
-                )
-
-            embeddings.append(self._postprocess_embedding(outputs))
+            embeddings.append(
+                self._postprocess_embedding(self._hidden_forward(inputs))
+            )
 
         return np.vstack(embeddings)
+
+    @property
+    def _logits_kept(self):
+        """How many positions the LM head is asked for, or ``None`` when this
+        transformers cannot be told.
+
+        An embedding reads one position's hidden state and never a logit,
+        but the head runs over a 152k vocabulary at every position by
+        default — the largest allocation in the forward, 12GB of it on a
+        batch that otherwise fits.
+        """
+        kept = self.__dict__.get("_logits_kept_cached")
+        if kept is None:
+            import inspect
+
+            kept = self.__dict__["_logits_kept_cached"] = (
+                1
+                if "logits_to_keep"
+                in inspect.signature(self._model.forward).parameters
+                else 0
+            )
+
+        return kept or None
+
+    def _hidden_forward(self, inputs):
+        """The forward every embedding path runs: hidden states, no logits."""
+        kept = self._logits_kept
+        extra = {} if kept is None else {"logits_to_keep": kept}
+        with torch.no_grad():
+            return self._model(
+                **inputs,
+                output_hidden_states=True,
+                return_dict=True,
+                **extra,
+            )
 
     @staticmethod
     def _final_hidden(outputs):
@@ -889,14 +919,9 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
             for k, v in inputs.items()
         }
 
-        with torch.no_grad():
-            outputs = self._model(
-                **inputs,
-                output_hidden_states=True,
-                return_dict=True,
-            )
-
-        return self._postprocess_embedding(outputs).squeeze(0)
+        return self._postprocess_embedding(
+            self._hidden_forward(inputs)
+        ).squeeze(0)
 
     def embed_prepared_all(self, inputs_list):
         """Forwards several :meth:`prepare_frames` clips as ONE batch and
@@ -933,14 +958,7 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
             k: v.to(self._model.device) if hasattr(v, "to") else v
             for k, v in merged.items()
         }
-        with torch.no_grad():
-            outputs = self._model(
-                **merged,
-                output_hidden_states=True,
-                return_dict=True,
-            )
-
-        return self._postprocess_embedding(outputs)
+        return self._postprocess_embedding(self._hidden_forward(merged))
 
     def embed_prompt(self, prompt):
         """Generates an embedding for the given text prompt.
@@ -997,13 +1015,14 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
             inputs = inputs.to(self._model.device)
 
             # A text tower returns its final hidden state as a matter of
-            # course, so the stack is asked for only where it is the only way
-            # to reach it
-            extra = (
-                {} if self.config.text_only else {"output_hidden_states": True}
-            )
-            with torch.no_grad():
-                outputs = self._model(**inputs, return_dict=True, **extra)
+            # course and runs no LM head, so it is forwarded as loaded. The
+            # full model carries the head, so it takes the same forward every
+            # other embedding path does.
+            if self.config.text_only:
+                with torch.no_grad():
+                    outputs = self._model(**inputs, return_dict=True)
+            else:
+                outputs = self._hidden_forward(inputs)
 
             embeddings.append(self._postprocess_embedding(outputs))
 
