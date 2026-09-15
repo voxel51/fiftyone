@@ -199,6 +199,10 @@ Cleanup removes only that run’s generated samples, recorded output files, and
 matching FiftyOne custom run. Its manifest remains as an audit record. The demo
 source images and original samples remain available.
 
+Close the cleanup result and any earlier augmentation result with **Close** or
+**Done**. If the grid still shows the output-only view, remove its **Select**
+view stage to see the original samples again.
+
 If you later remove the demo dataset, use its printed unique name and handle
 the printed source directory separately. Run cleanup does not delete demo
 sources.
