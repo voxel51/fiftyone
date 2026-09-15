@@ -9,6 +9,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const decodeMaskPath = vi.hoisted(() => vi.fn());
 vi.mock("../utils/maskPathDecoding", () => ({ decodeMaskPath }));
 
+import { LABEL_ARCHETYPE_PRIORITY } from "../constants";
 import { CONTAINS } from "../core/containment";
 import type { RenderMeta } from "../types";
 import { FAILED_PATH_DECODE_COOLDOWN_MS } from "../utils/pathDecodeCooldown";
@@ -89,6 +90,7 @@ const OFFSET_META: RenderMeta = {
 
 const makeRenderer = () => ({
   drawImage: vi.fn(),
+  drawRect: vi.fn(),
   beginRebuild: vi.fn(),
   endRebuild: vi.fn(),
   dispose: vi.fn(),
@@ -450,6 +452,88 @@ describe("SegmentationOverlay", () => {
     await Promise.resolve();
 
     expect(overlay.getIsDirty()).toBe(false);
+  });
+
+  describe("selection", () => {
+    it("draws no outline when unselected", () => {
+      const overlay = makeOverlay();
+      render(overlay);
+
+      expect(renderer.drawRect).not.toHaveBeenCalled();
+    });
+
+    it("outlines the media when selected", () => {
+      // a mask covers the whole frame and has no shape of its own, so the
+      // media rect is the only honest boundary to draw
+      const overlay = makeOverlay();
+      overlay.setSelected(true);
+      render(overlay);
+
+      expect(renderer.drawRect).toHaveBeenCalled();
+      const [bounds] = renderer.drawRect.mock.calls[0];
+      expect(bounds).toEqual(META.canonicalMediaBounds);
+    });
+
+    it("draws a solid stroke under a dashed one", () => {
+      const overlay = makeOverlay();
+      overlay.setSelected(true);
+      render(overlay);
+
+      const [, solid] = renderer.drawRect.mock.calls[0];
+      const [, dashed] = renderer.drawRect.mock.calls[1];
+
+      expect(solid.dashPattern).toBeUndefined();
+      expect(dashed.dashPattern?.length).toBeGreaterThan(0);
+      expect(dashed.strokeStyle).not.toBe(solid.strokeStyle);
+    });
+
+    it("repaints when selection changes", () => {
+      // the outline is part of the paint, so a clean overlay would keep the
+      // stale one
+      const overlay = makeOverlay();
+      render(overlay);
+      overlay.markClean();
+
+      overlay.setSelected(true);
+
+      expect(overlay.getIsDirty()).toBe(true);
+    });
+
+    it("does not repaint when the selection state is unchanged", () => {
+      const overlay = makeOverlay();
+      overlay.setSelected(true);
+      render(overlay);
+      overlay.markClean();
+
+      overlay.setSelected(true);
+
+      expect(overlay.getIsDirty()).toBe(false);
+    });
+
+    it("toggles", () => {
+      const overlay = makeOverlay();
+
+      expect(overlay.toggleSelected()).toBe(true);
+      expect(overlay.isSelected()).toBe(true);
+      expect(overlay.toggleSelected()).toBe(false);
+      expect(overlay.isSelected()).toBe(false);
+    });
+
+    it("ranks below every bounded label, and above the media", () => {
+      // it covers the whole frame, so a click inside a box that happens to
+      // lie over it has to reach the box
+      const overlay = makeOverlay();
+
+      expect(overlay.getSelectionPriority()).toBe(
+        LABEL_ARCHETYPE_PRIORITY.SEGMENTATION,
+      );
+      expect(overlay.getSelectionPriority()).toBeLessThan(
+        LABEL_ARCHETYPE_PRIORITY.BOUNDING_BOX,
+      );
+      expect(overlay.getSelectionPriority()).toBeGreaterThan(
+        LABEL_ARCHETYPE_PRIORITY.IMAGE,
+      );
+    });
   });
 
   it("says so once when no resolver was supplied", () => {

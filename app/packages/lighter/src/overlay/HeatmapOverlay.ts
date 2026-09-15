@@ -5,9 +5,16 @@
 import type { OverlayMask } from "@fiftyone/looker/src/numpy";
 import { HEATMAP } from "@fiftyone/utilities";
 
+import {
+  LABEL_ARCHETYPE_PRIORITY,
+  SELECTED_DASH_LENGTH,
+  STROKE_WIDTH,
+} from "../constants";
 import { CONTAINS } from "../core/containment";
 import type { Renderer2D } from "../renderer/Renderer2D";
+import type { Selectable } from "../selection/Selectable";
 import type { Point, RawLookerLabel, Rect, RenderMeta } from "../types";
+import { getSimpleStrokeStyles } from "../utils/colorMapping";
 import { createMaskCanvas } from "../utils/createMaskCanvas";
 import { maskSourceOf } from "../utils/maskSource";
 import { toRelativePoint } from "../utils/mediaPoint";
@@ -47,7 +54,10 @@ export interface HeatmapOverlayOptions {
  * segmentation's pixels name categories, a heatmap's carry magnitude. That is
  * why 0 is background in both, and why everything else differs.
  */
-export class HeatmapOverlay extends BaseOverlay<HeatmapLabel> {
+export class HeatmapOverlay
+  extends BaseOverlay<HeatmapLabel>
+  implements Selectable
+{
   #canvas?: HTMLCanvasElement;
   /** Per-pixel values behind `#canvas`, for the tooltip. */
   #values?: Float64Array;
@@ -99,7 +109,9 @@ export class HeatmapOverlay extends BaseOverlay<HeatmapLabel> {
   #failedSource?: string | OverlayMask;
   #failedPalette?: string;
 
-  public cursor = "default";
+  #isSelectedState = false;
+
+  public cursor = "pointer";
 
   constructor(options: HeatmapOverlayOptions) {
     super(options.id, options.field, options.label);
@@ -151,6 +163,55 @@ export class HeatmapOverlay extends BaseOverlay<HeatmapLabel> {
       { opacity: style.opacity ?? 1 },
       this.containerId,
     );
+
+    this.renderSelection(renderer, meta, palette);
+  }
+
+  /**
+   * Selection outline: a solid stroke in the field's color around the media,
+   * with a dashed light stroke over it.
+   *
+   * A map has no shape to outline — it covers the whole frame — so the
+   * media rect is the only honest boundary to draw, which is what the grid
+   * does for these types too. Drawn in ONE color even when the pixels are
+   * colored per value: the outline says "this label is selected", and picking
+   * one target's color to say it would be arbitrary.
+   */
+  private renderSelection(
+    renderer: Renderer2D,
+    meta: RenderMeta,
+    palette: HeatmapPalette,
+  ): void {
+    if (!this.#isSelectedState) {
+      return;
+    }
+
+    const strokeColor = palette.fieldColor;
+
+    renderer.drawRect(
+      meta.canonicalMediaBounds,
+      { strokeStyle: strokeColor, lineWidth: STROKE_WIDTH },
+      this.containerId,
+    );
+
+    const { overlayStrokeColor, overlayDash } = getSimpleStrokeStyles({
+      isSelected: true,
+      strokeColor,
+      isHovered: false,
+      dashLength: SELECTED_DASH_LENGTH,
+    });
+
+    if (overlayStrokeColor && overlayDash) {
+      renderer.drawRect(
+        meta.canonicalMediaBounds,
+        {
+          strokeStyle: overlayStrokeColor,
+          lineWidth: STROKE_WIDTH,
+          dashPattern: [overlayDash, overlayDash],
+        },
+        this.containerId,
+      );
+    }
   }
 
   private ensureRaster(palette: HeatmapPalette): HTMLCanvasElement | undefined {
@@ -371,6 +432,33 @@ export class HeatmapOverlay extends BaseOverlay<HeatmapLabel> {
   applyLabel(label: HeatmapLabel): void {
     super.applyLabel(label);
     this.markDirty();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Selectable
+  // ---------------------------------------------------------------------------
+
+  isSelected(): boolean {
+    return this.#isSelectedState;
+  }
+
+  setSelected(selected: boolean): void {
+    if (this.#isSelectedState === selected) {
+      return;
+    }
+
+    this.#isSelectedState = selected;
+    // the outline is part of the paint, so the pass has to run again
+    this.markDirty();
+  }
+
+  toggleSelected(): boolean {
+    this.setSelected(!this.#isSelectedState);
+    return this.#isSelectedState;
+  }
+
+  getSelectionPriority(): number {
+    return LABEL_ARCHETYPE_PRIORITY.HEATMAP;
   }
 
   /** Drops the raster and everything hit-testing answers from. */
