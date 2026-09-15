@@ -16,6 +16,7 @@ import {
   packIntervals,
   UNPLACED,
   useEpisodePlayheadNs,
+  useEpisodeSeek,
   useEpisodeTimeRange,
 } from "../extensions/episode-intervals";
 import { temporalTagIntervalSource } from "./temporal-tag-interval-source";
@@ -125,6 +126,7 @@ function IntervalLane({
   const [hoverNs, setHoverNs] = useState<number | null>(null);
   const barRef = useRef<HTMLDivElement | null>(null);
   const laneRef = useRef<HTMLDivElement | null>(null);
+  const seek = useEpisodeSeek(episodeId, timeRange);
   const [tile, setTile] = useState<HTMLElement | null>(null);
   const attachToTile = useCallback((sentinel: HTMLElement | null) => {
     setTile(sentinel?.closest<HTMLElement>(TILE_SELECTOR) ?? null);
@@ -175,6 +177,61 @@ function IntervalLane({
       tile.removeEventListener("mousemove", onMove);
       tile.removeEventListener("mouseleave", onLeave);
     };
+  }, [tile]);
+
+  // Read through a ref for the same reason the span is: the listener below is
+  // bound once per tile and must not re-subscribe as the episode's range
+  // arrives or the tile is pointed at another sample.
+  const seekRef = useRef(seek);
+  seekRef.current = seek;
+
+  // This effect turns a click on the bar into a seek instead of letting it open
+  // the modal.
+  //
+  // Bound on the tile in the CAPTURE phase, which is the only place it can be:
+  // the bar is `pointer-events: none` — deliberately, so that reaching for it
+  // does not cut hover playback off — so the click's target is the preview
+  // underneath it, and by the time the event bubbles it is indistinguishable
+  // from a click on the tile. Capturing lets the bar's own rectangle decide,
+  // exactly as it does for the hover readout, and stop the event before the
+  // grid cell that would open the sample ever sees it.
+  useEffect(() => {
+    if (!tile) return undefined;
+
+    const onClick = (event: globalThis.MouseEvent) => {
+      // A modified click is the grid's, not ours: those are how a tile is
+      // added to a selection.
+      if (event.metaKey || event.shiftKey || event.ctrlKey || event.altKey) {
+        return;
+      }
+
+      const bar = barRef.current;
+      const lane = laneRef.current;
+      const requestSeek = seekRef.current;
+      if (!bar || !lane || !requestSeek) return;
+
+      const overlay = bar.getBoundingClientRect();
+      if (
+        event.clientX < overlay.left ||
+        event.clientX > overlay.right ||
+        event.clientY < overlay.top ||
+        event.clientY > overlay.bottom
+      ) {
+        return;
+      }
+
+      const { left, width } = lane.getBoundingClientRect();
+      if (width <= 0) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      requestSeek(
+        clamp((event.clientX - left) / width, 0, 1) * domainSpanRef.current,
+      );
+    };
+
+    tile.addEventListener("click", onClick, { capture: true });
+    return () => tile.removeEventListener("click", onClick, { capture: true });
   }, [tile]);
 
   // The sentinel is how the tile is found, so it is rendered unconditionally:

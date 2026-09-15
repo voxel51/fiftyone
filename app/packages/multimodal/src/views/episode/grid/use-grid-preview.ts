@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import {
   type ByteSourceDescriptor,
   type EpisodePosterFrame,
@@ -10,11 +16,14 @@ import type { EpisodePreviewSession } from "../../../ports";
 import {
   EpisodePreviewPlaybackScheduler,
   episodePreviewPlaybackDelayMs,
+  getEpisodeSeek,
   publishEpisodePlayhead,
   publishEpisodePreviewBootstrap,
   publishEpisodeTimeRange,
   recordPreviewSourceFacts,
   releaseEpisodePlayhead,
+  releaseEpisodeSeek,
+  subscribeEpisodeSeek,
   type SourceFactsScope,
 } from "../../../runtime";
 import { errorMessage } from "../status/error-message";
@@ -56,6 +65,20 @@ export interface GridPreviewState extends GridPreviewSnapshot {
    * below, so nothing else can keep the published playhead moving.
    */
   presentNativeTimeSeconds(mediaTimeSeconds: number): void;
+  /**
+   * Where a native-video surface has been asked to move to, on its own media
+   * clock, or null when nothing has asked.
+   *
+   * A seek reaches the decoded-preview path by restarting its read loop from
+   * the requested instant, which a media element has no equivalent of — the
+   * element owns its own clock, so the request has to travel out to whoever
+   * mounted it. Carries the request id so that asking twice for the same
+   * instant is two seeks rather than one.
+   */
+  readonly nativeSeek: {
+    readonly requestId: number;
+    readonly timeSeconds: number;
+  } | null;
 }
 
 /**
@@ -256,6 +279,30 @@ export function useGridPreview({
     [],
   );
   const nextStartTimeNsRef = useRef<bigint | undefined>(undefined);
+
+  // Seek requests arrive from the interval lane, which is painted by the
+  // grid's footer column and so has no React path to this tile. Same seam as
+  // the playhead above, travelling the other way.
+  const subscribeSeek = useCallback(
+    (listener: () => void) =>
+      episodeId ? subscribeEpisodeSeek(episodeId, listener) : () => undefined,
+    [episodeId],
+  );
+  const seekRequest = useSyncExternalStore(
+    subscribeSeek,
+    () => (episodeId ? getEpisodeSeek(episodeId) : null),
+    () => null,
+  );
+  const [seekGeneration, setSeekGeneration] = useState(0);
+  // Read by the playback loop when it (re)starts: a seek has to re-anchor the
+  // scheduler rather than carry the last presented frame's time across the
+  // jump, which would bill the whole gap as playback debt and stall the tile.
+  const seekPendingRef = useRef(false);
+  const [nativeSeek, setNativeSeek] = useState<{
+    readonly requestId: number;
+    readonly timeSeconds: number;
+  } | null>(null);
+  const nativeVideoActive = state.nativeVideo !== null;
   const {
     finish: finishBuffering,
     start: startBuffering,
@@ -267,6 +314,48 @@ export function useGridPreview({
       setPlaying(true);
     }
   }, [enabled]);
+
+  // This effect applies a seek asked for from outside this tree — a click on
+  // the interval lane. The request is withdrawn as it is applied, so that a
+  // tile scrolled out and re-mounted against the same episode does not replay
+  // a jump the user made minutes ago.
+  //
+  // Playback is started as well as moved: the lane can only be clicked while
+  // the tile is hovered, which is the same gesture that plays it, so a tile
+  // that lands on the requested instant and then sits frozen there would read
+  // as the click having half worked.
+  useEffect(() => {
+    if (!enabled || !episodeId || !seekRequest) return;
+    releaseEpisodeSeek(episodeId);
+
+    if (nativeVideoActive) {
+      const anchor = nativeAnchorRef.current;
+      if (!anchor) return;
+      setNativeSeek({
+        requestId: seekRequest.requestId,
+        timeSeconds:
+          anchor.startTimeSeconds +
+          Number(seekRequest.timestampNs - anchor.anchorNs) / 1e9,
+      });
+      setPlaying(true);
+      return;
+    }
+
+    nextStartTimeNsRef.current = seekRequest.timestampNs;
+    seekPendingRef.current = true;
+    setPlaying(true);
+    // Restarts the playback loop below, which aborts whatever read is in
+    // flight and begins again from the instant just written.
+    setSeekGeneration((generation) => generation + 1);
+  }, [enabled, episodeId, nativeVideoActive, seekRequest]);
+
+  // This effect withdraws an unapplied request when the tile stops presenting.
+  useEffect(
+    () => () => {
+      if (episodeId) releaseEpisodeSeek(episodeId);
+    },
+    [episodeId],
+  );
 
   // An explicit grid selection always wins. The poster's preferred stream is
   // then asked for OUTRIGHT — never gated on `streamSourceNames`, which is
@@ -475,7 +564,15 @@ export function useGridPreview({
       readonly result: EpisodePreviewReadResult;
     } | null = null;
     const playbackScheduler = new EpisodePreviewPlaybackScheduler();
-    playbackScheduler.reset(frameTimeNsRef.current, performance.now());
+    // A seek starts a fresh anchor: the frame last presented is on the far
+    // side of the jump, and pacing the next one against it would ask the loop
+    // to wait out the whole gap before showing anything.
+    const seeked = seekPendingRef.current;
+    seekPendingRef.current = false;
+    playbackScheduler.reset(
+      seeked ? undefined : frameTimeNsRef.current,
+      performance.now(),
+    );
 
     const presentResult = async (
       result: EpisodePreviewReadResult,
@@ -596,6 +693,7 @@ export function useGridPreview({
     playing,
     previewSession,
     publishEpisodeRange,
+    seekGeneration,
     setFrameTimeNs,
     source,
     sourceFactsScope,
@@ -612,6 +710,7 @@ export function useGridPreview({
     ...visibleState,
     isBuffering,
     isPlaying: enabled && stateOwnerKey === cacheRequestKey && playing,
+    nativeSeek,
     pause,
     play,
     presentNativeTimeSeconds,

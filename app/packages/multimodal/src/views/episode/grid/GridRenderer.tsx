@@ -484,7 +484,11 @@ export function GridRenderer({
       ) : null}
       {preview.frame && preview.isBuffering ? (
         <span
-          className={classes.bufferingIndicator}
+          className={
+            blocksGridActivation
+              ? `${classes.bufferingIndicator} ${classes.bufferingIndicatorBesideButton}`
+              : classes.bufferingIndicator
+          }
           data-testid="episode-grid-buffering-indicator"
         >
           <Spinner size={Size.Xs} />
@@ -500,6 +504,7 @@ export function GridRenderer({
           onPresentedTimeSeconds={preview.presentNativeTimeSeconds}
           onSurfaceRetainedBytesChange={setNativeSurfaceRetainedBytes}
           playing={preview.isPlaying}
+          seek={preview.nativeSeek}
           video={preview.nativeVideo}
         />
       ) : null}
