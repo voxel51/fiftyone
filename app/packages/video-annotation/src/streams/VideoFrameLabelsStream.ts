@@ -64,6 +64,13 @@ export interface VideoFrameLabelsStreamOptions {
 const DEFAULT_CHUNK_SIZE = 60;
 const DEFAULT_FRAME_FIELD = "detections";
 
+/**
+ * Notified when a window fetch lands, with the server-clamped frame range it
+ * covered. The range is what lets a subscriber seed incrementally instead of
+ * re-reading the whole cache on every chunk.
+ */
+export type FrameLabelsEditListener = (range: [number, number]) => void;
+
 /** localStorage key + Vite env var for the mask gate toggle (see below). */
 const MASK_GATE_LOCALSTORAGE_KEY = "fo:maskGate";
 
@@ -103,15 +110,36 @@ const MASK_GATE_ENABLED = readMaskGateEnabled();
  * capacity, since held masks are exempt from eviction.
  */
 /**
- * Chunks `prefetch` will start in one nudge.
+ * Chunk requests this stream will keep in flight at once, across EVERY path
+ * that fetches — `prefetch`'s windowed nudge and `warmupAll`'s whole-clip
+ * seed share this one budget.
  *
  * Enough to stay ahead of real-time playback across a network round-trip
  * (each chunk is `chunkSize` frames — 2s at 30fps — so this is several
- * seconds of headroom), while staying far below the browser's per-origin
+ * seconds of headroom), while staying below the browser's per-origin
  * connection limit so the <video> element's own range requests still get
  * through.
+ *
+ * Shared rather than per-path on purpose: two independent caps of four are a
+ * cap of eight, which is the whole per-origin pool on HTTP/1.1 and leaves the
+ * video nothing. `prefetch` dispatches synchronously and `warmupAll` awaits
+ * capacity, so when they contend the playhead's window wins — which is the
+ * priority we want.
  */
 const MAX_CHUNKS_IN_FLIGHT = 4;
+
+/**
+ * The slice of {@link MAX_CHUNKS_IN_FLIGHT} a whole-clip `warmupAll` may hold.
+ *
+ * One below the cap, so there is always a slot the playhead's own window can
+ * take without waiting for a background request to land. Without the reserve,
+ * warmup can legally hold all four and `prefetch` — which never blocks — finds
+ * the budget full and issues nothing, stalling a `blocking` stream on labels
+ * while the seed fetches frames minutes away from where the user is looking.
+ *
+ * The seed is background work by definition; the clock is not.
+ */
+const WARMUP_MAX_CHUNKS_IN_FLIGHT = MAX_CHUNKS_IN_FLIGHT - 1;
 
 /** Seconds of labels to keep fetched ahead of the playhead. */
 const LABEL_LOOKAHEAD_SECONDS = 12;
@@ -147,6 +175,15 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
 
   private readonly cache = new Map<number, FrameDoc>();
   private readonly inflight = new Map<number, Promise<void>>();
+  /**
+   * Live chunk fetches, one entry per request rather than per frame — the
+   * unit {@link MAX_CHUNKS_IN_FLIGHT} is counted in. `inflight` is keyed by
+   * frame and so holds `chunkSize` entries for the same request, which is the
+   * wrong thing to measure a connection budget with.
+   */
+  private readonly liveChunks = new Set<Promise<void>>();
+  /** Set when the surface tears down, to stop an in-progress `warmupAll`. */
+  private warmupCancelled = false;
   private readonly fetchedRanges: Array<[number, number]> = [];
   /**
    * Frames whose masks are decoded AND borrowed, keyed to the sources borrowed
@@ -176,7 +213,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   // re-seeds from `cachedFrames()` on this signal (via `subscribeToEdits`);
   // the stream itself holds no edit state — it is a read-only window seed
   // and the engine owns all label mutations.
-  private readonly editListeners = new Set<() => void>();
+  private readonly editListeners = new Set<FrameLabelsEditListener>();
 
   constructor(opts: VideoFrameLabelsStreamOptions) {
     super(opts.id, {
@@ -233,16 +270,33 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   }
 
   /**
-   * Resolve once every frame in [1, frameCount] is cached. Coalesces
-   * against any in-flight chunks; otherwise walks the range in chunk-
-   * sized strides and dispatches fetches in parallel. Expensive over long
-   * clips; used for one-shot full-clip analyses (e.g. timeline tracks).
+   * Resolve once every frame in [1, frameCount] is cached. Coalesces against
+   * any in-flight chunks; otherwise walks the range in chunk-sized strides,
+   * keeping at most {@link MAX_CHUNKS_IN_FLIGHT} requests outstanding.
+   *
+   * The pacing is the point. This used to dispatch every chunk in the clip at
+   * once: a ten-minute 30fps clip is 300 simultaneous POSTs to the same origin
+   * the `<video>` element is pulling its bytes from, so the video's own range
+   * requests queued behind them and the picture buffered slowly. The total
+   * bytes are unchanged — this is still a whole-clip read — but they now
+   * arrive over a handful of connections instead of seizing the pool.
+   *
+   * Still expensive over long clips by construction; used for one-shot
+   * full-clip analyses and for the engine consumers that walk every frame
+   * (propagation, interpolation, track ops). A read-only surface should not
+   * call it at all — see `seedWholeClip`.
    */
   async warmupAll(): Promise<void> {
-    const promises: Promise<void>[] = [];
+    this.warmupCancelled = false;
+
+    const coalesced: Promise<void>[] = [];
     let f = 1;
 
     while (f <= this.frameCount) {
+      if (this.warmupCancelled) {
+        return;
+      }
+
       if (this.cache.has(f)) {
         f++;
         continue;
@@ -250,16 +304,58 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
 
       const inflight = this.inflight.get(f);
       if (inflight) {
-        promises.push(inflight);
+        coalesced.push(inflight);
         f += this.chunkSize;
         continue;
       }
 
-      promises.push(this.fetchChunk(f));
+      // Yield until the shared budget has room. `prefetch` dispatches
+      // synchronously and never awaits, so it takes capacity ahead of this
+      // loop whenever the playhead needs a window — deliberate: a stalled
+      // clock is visible and a slower background seed is not.
+      await this.awaitChunkCapacity(WARMUP_MAX_CHUNKS_IN_FLIGHT);
+
+      // Re-test after the await: a prefetch may have claimed this frame, or
+      // the surface may have torn down, while we waited.
+      if (this.warmupCancelled) {
+        return;
+      }
+
+      if (this.cache.has(f) || this.isInflight(f)) {
+        continue;
+      }
+
+      coalesced.push(this.fetchChunk(f));
       f += this.chunkSize;
     }
 
-    await Promise.all(promises);
+    await Promise.all(coalesced);
+  }
+
+  /**
+   * Abandon an in-progress {@link warmupAll}.
+   *
+   * Unbounded warmup was self-limiting — it had issued everything before a
+   * modal could close. A paced one outlives the surface that asked for it, so
+   * the teardown has to say stop, or closing a long video keeps fetching its
+   * labels into a store nothing reads. Requests already in flight are left to
+   * settle into the cache; only the dispatch loop stops.
+   */
+  cancelWarmup(): void {
+    this.warmupCancelled = true;
+  }
+
+  /**
+   * Resolve once the shared chunk budget is below `limit`, leaving room for
+   * another request. Callers pass their own ceiling so background work can
+   * hold less of the budget than the playhead is allowed to.
+   */
+  private async awaitChunkCapacity(limit: number): Promise<void> {
+    while (this.liveChunks.size >= limit) {
+      // `fetchChunk` never rejects (`doFetch` swallows and logs), so racing
+      // the live set cannot throw here.
+      await Promise.race([...this.liveChunks]);
+    }
   }
 
   /** Total frames in the clip — useful for callers iterating the cache. */
@@ -274,6 +370,31 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
    */
   cachedFrames(): FrameDoc[] {
     return [...this.cache.values()];
+  }
+
+  /**
+   * The cached documents within `[startFrame, endFrame]` — the incremental
+   * counterpart to {@link cachedFrames}, for seeding just the range a fetch
+   * reported. Walks the range rather than the cache, so its cost is the
+   * window's size and not the clip's.
+   *
+   * Frames in the range with no cached document are simply absent; the seed
+   * writes the whole range, so a frame that genuinely has no labels still
+   * reads as empty downstream.
+   */
+  cachedFramesIn(range: [number, number]): FrameDoc[] {
+    const [startFrame, endFrame] = range;
+    const frames: FrameDoc[] = [];
+
+    for (let f = Math.max(1, startFrame); f <= endFrame; f++) {
+      const doc = this.cache.get(f);
+
+      if (doc) {
+        frames.push(doc);
+      }
+    }
+
+    return frames;
   }
 
   /** Frame rate the stream was constructed with, in fps. */
@@ -642,18 +763,21 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
     // once and crowded the <video>'s own byte fetch off the connection pool.
     // The point here is to stay a few chunks ahead of the playhead, not to
     // load the clip.
-    let issued = 0;
+    //
+    // Counted against `liveChunks` — the budget the whole stream shares —
+    // rather than against requests issued by THIS call. A local count would
+    // let a nudge add four on top of whatever `warmupAll` already had open,
+    // which is the pool exhaustion this cap exists to prevent.
     for (let f = startFrame; f <= endFrame; f += 1) {
+      if (this.liveChunks.size >= MAX_CHUNKS_IN_FLIGHT) {
+        return;
+      }
+
       if (this.cache.has(f) || this.isInflight(f)) {
         continue;
       }
 
       void this.fetchChunk(f);
-      issued += 1;
-
-      if (issued >= MAX_CHUNKS_IN_FLIGHT) {
-        return;
-      }
 
       // `fetchChunk` covers `chunkSize` frames from `f`, so the next missing
       // frame cannot be nearer than that — skip ahead instead of re-testing
@@ -727,16 +851,16 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
    * unsubscribe function. Used to re-seed an external store (the engine's
    * frame store) whenever the `/frames` cache changes.
    */
-  subscribeToEdits(listener: () => void): () => void {
+  subscribeToEdits(listener: FrameLabelsEditListener): () => void {
     this.editListeners.add(listener);
     return () => {
       this.editListeners.delete(listener);
     };
   }
 
-  private notifyEdits(): void {
+  private notifyEdits(range: [number, number]): void {
     for (const listener of this.editListeners) {
-      listener();
+      listener(range);
     }
   }
 
@@ -763,13 +887,20 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
       return;
     }
 
-    const promise = this.doFetch(startFrame, numFrames).finally(() => {
-      for (let f = startFrame; f < startFrame + numFrames; f++) {
-        if (this.inflight.get(f) === promise) {
-          this.inflight.delete(f);
+    const promise: Promise<void> = this.doFetch(startFrame, numFrames).finally(
+      () => {
+        for (let f = startFrame; f < startFrame + numFrames; f++) {
+          if (this.inflight.get(f) === promise) {
+            this.inflight.delete(f);
+          }
         }
-      }
-    });
+
+        this.liveChunks.delete(promise);
+      },
+    );
+
+    // One entry per REQUEST — this is what the shared budget counts.
+    this.liveChunks.add(promise);
 
     for (let f = startFrame; f < startFrame + numFrames; f++) {
       this.inflight.set(f, promise);
@@ -810,7 +941,11 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
       mergeRange(this.fetchedRanges, result.range);
 
       if (landed > 0) {
-        this.notifyEdits();
+        // The SERVER-clamped range, not the frames we happened to write: a
+        // frame inside it with no labels is absent from the payload but is
+        // still news, and the seed has to see it as honestly empty rather
+        // than as not-yet-fetched.
+        this.notifyEdits(result.range);
       }
     } catch (error) {
       // Surface but don't crash — the engine will keep asking; subsequent
