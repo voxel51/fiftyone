@@ -657,6 +657,39 @@ class TestPromptMixinMocked:
         assert call_kwargs["output_hidden_states"] is True
         assert call_kwargs["return_dict"] is True
 
+    def test_a_full_model_prompt_asks_the_head_for_one_position(self):
+        # The mocked model's signature is what decides whether the knob is
+        # passed, so it has to spell the parameter out
+        model = self._make_model_with_mock_processor()
+
+        def forward(
+            input_ids=None,
+            attention_mask=None,
+            output_hidden_states=None,
+            return_dict=None,
+            logits_to_keep=0,
+        ):
+            raise NotImplementedError
+
+        model._model.forward = forward
+
+        model.embed_prompt("test")
+
+        assert model._model.call_args[1]["logits_to_keep"] == 1
+
+    def test_a_text_tower_prompt_is_asked_for_neither(self):
+        # A text tower runs no LM head and returns its final hidden state
+        # already, so asking it for either is asking for something it has no
+        # parameter to answer
+        model = self._make_model_with_mock_processor()
+        model.config.text_only = True
+
+        model.embed_prompt("test")
+
+        call_kwargs = model._model.call_args[1]
+        assert "logits_to_keep" not in call_kwargs
+        assert "output_hidden_states" not in call_kwargs
+
     def test_embed_prompts_multiple_calls_processor_per_prompt(self):
         model = self._make_model_with_mock_processor()
         model.embed_prompts(["a", "b", "c"])

@@ -1015,13 +1015,14 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
             inputs = inputs.to(self._model.device)
 
             # A text tower returns its final hidden state as a matter of
-            # course, so the stack is asked for only where it is the only way
-            # to reach it
-            extra = (
-                {} if self.config.text_only else {"output_hidden_states": True}
-            )
-            with torch.no_grad():
-                outputs = self._model(**inputs, return_dict=True, **extra)
+            # course and runs no LM head, so it is forwarded as loaded. The
+            # full model carries the head, so it takes the same forward every
+            # other embedding path does.
+            if self.config.text_only:
+                with torch.no_grad():
+                    outputs = self._model(**inputs, return_dict=True)
+            else:
+                outputs = self._hidden_forward(inputs)
 
             embeddings.append(self._postprocess_embedding(outputs))
 
