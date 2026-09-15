@@ -25,11 +25,16 @@ export type { MaskTargets };
 export interface SegmentationPalette {
   /**
    * One color for every target. Set when coloring by field, and also when the
-   * field has exactly one mask target — looker treats a single-target mask as
-   * a field-colored mask regardless of mode, since there is nothing to
-   * distinguish.
+   * field has exactly one mask target — a single-target mask carries no
+   * distinction worth coloring by, so it reads as field-colored either way.
    */
   uniformColor?: string;
+  /**
+   * The field's own color, resolved in every mode. `uniformColor` is unset
+   * when coloring by value, but the selection outline still needs one color
+   * to draw the whole mask in.
+   */
+  fieldColor: string;
   /** Explicit per-target colors, from `maskTargetsColors` settings. */
   targetColors: Record<number, string>;
   /** Targets that may paint. Empty means "no restriction". */
@@ -94,15 +99,18 @@ export const resolveSegmentationPalette = (
 
   const pool = colorScheme.colorPool ?? [];
 
+  const fieldColor = setting?.fieldColor ?? getColor(pool, seed, path);
+
   // A single-target mask carries no distinction worth coloring by value, so
-  // looker paints it as one field-colored region in either mode.
+  // it paints as one field-colored region in either mode.
   const uniform =
     colorBy === COLOR_BY.FIELD || targetKeys.length === 1
-      ? (setting?.fieldColor ?? getColor(pool, seed, path))
+      ? fieldColor
       : undefined;
 
   return {
     uniformColor: uniform,
+    fieldColor,
     // field settings win over the dataset-wide defaults
     targetColors: {
       ...byTarget(colorScheme.defaultMaskTargetsColors),
@@ -164,6 +172,7 @@ const rampColor = (target: number, palette: SegmentationPalette): string => {
 export const paletteKey = (palette: SegmentationPalette): string =>
   JSON.stringify([
     palette.uniformColor ?? null,
+    palette.fieldColor,
     palette.targetColors,
     [...palette.allowedTargets].sort((a, b) => a - b),
     palette.pool,
