@@ -13,6 +13,7 @@ import {
   type LabelData,
   LabelType,
   type SyntheticBox,
+  type SyntheticKeypoint,
   type SyntheticPolyline,
 } from "@fiftyone/utilities";
 import { createElement, useCallback } from "react";
@@ -35,14 +36,19 @@ const isBoxFieldType = (type: LabelType): boolean =>
 const isPolylineFieldType = (type: LabelType): boolean =>
   type === LabelType.Polyline || type === LabelType.Polylines;
 
+/** Node-bearing keypoint fields — their nodes interpolate (holes preserved). */
+const isKeypointFieldType = (type: LabelType): boolean =>
+  type === LabelType.Keypoint || type === LabelType.Keypoints;
+
 /**
  * Agent id handling linear interpolation for a field's geometry, or `null` when
- * the field has nothing this pipeline knows how to lerp (keypoints, temporal
- * detections, classifications).
+ * the field has nothing this pipeline knows how to lerp (temporal detections,
+ * classifications).
  */
 const linearAgentFor = (type: LabelType): string | null => {
   if (isBoxFieldType(type)) return "propagate-linear";
   if (isPolylineFieldType(type)) return "propagate-linear-polyline";
+  if (isKeypointFieldType(type)) return "propagate-linear-keypoint";
   return null;
 };
 
@@ -56,6 +62,17 @@ const toSyntheticPolyline = (label: LabelData): SyntheticPolyline => ({
   filled: label.filled as boolean | undefined,
   index: label.index as number | undefined,
   instance: label.instance as SyntheticPolyline["instance"],
+  keyframe: (label.keyframe as boolean) ?? false,
+});
+
+/** The engine's stored keypoint as the shape the keypoint agent consumes. */
+const toSyntheticKeypoint = (label: LabelData): SyntheticKeypoint => ({
+  id: label._id,
+  _id: label._id,
+  label: (label.label as string) ?? "",
+  points: label.points as SyntheticKeypoint["points"],
+  index: label.index as number | undefined,
+  instance: label.instance as SyntheticKeypoint["instance"],
   keyframe: (label.keyframe as boolean) ?? false,
 });
 
@@ -262,8 +279,9 @@ const useLinearPropagate = () => {
         return false;
       }
 
-      // Which linear agent (bbox or polyline) was resolved from the field type
-      // by `useVideoPropagate`; polylines carry `points` instead of a bbox.
+      // Which linear agent (bbox, polyline, or keypoint) was resolved from the
+      // field type by `useVideoPropagate`; polylines and keypoints carry
+      // `points` instead of a bbox.
       const agentId = args.linearAgentId ?? "propagate-linear";
       const agent = await resolveAgent(agentId);
 
@@ -274,7 +292,9 @@ const useLinearPropagate = () => {
       const toKeyframe =
         agentId === "propagate-linear-polyline"
           ? toSyntheticPolyline
-          : toSyntheticBox;
+          : agentId === "propagate-linear-keypoint"
+            ? toSyntheticKeypoint
+            : toSyntheticBox;
 
       const context: PropagationContext = {
         sampleDescriptor,
@@ -329,9 +349,10 @@ export const useVideoPropagate = () => {
         engine.getLabel({ sample: sampleId, path, instanceId, frame });
 
       // Resolve the field's geometry to a linear agent — bboxes lerp their
-      // `bounding_box`, polylines their vertices. Anything else (keypoints, TDs,
-      // classifications) has nothing this pipeline can lerp. Gate on the schema
-      // type, not the presence of geometry on the label.
+      // `bounding_box`, polylines their vertices, keypoints their nodes.
+      // Anything else (TDs, classifications) has nothing this pipeline can
+      // lerp. Gate on the schema type, not the presence of geometry on the
+      // label.
       const linearAgentId = linearAgentFor(engine.getLabelType(path));
 
       if (!linearAgentId) {
