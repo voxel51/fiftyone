@@ -29,7 +29,9 @@
  * chunk request for presentation frames `[start, start+n)` is snapped back to
  * the keyframe at/-before the earliest of those frames in DECODE order, and we
  * decode forward through the latest. Lead-in frames are emitted as bonus —
- * they're already decoded and help scrub-back.
+ * they're already decoded and help scrub-back. The sync table is not trusted
+ * blindly: a snap target whose bytes are not a keyframe is demoted and the
+ * snap retried from the previous one (see {@link ./sampleKeyframe}).
  *
  * Scope: MP4 / H.264 first (mp4box + the common `avcC`/`hvcC`/`av1C`/`vpcC`
  * description boxes). Other containers/codecs are follow-ons gated on
@@ -50,6 +52,11 @@ import {
   presentationStart,
   presentedInOrder,
 } from "./editList";
+import {
+  isKeyframeSample,
+  type KeyframeProbe,
+  keyframeProbe,
+} from "./sampleKeyframe";
 import {
   ByteRangeCache,
   type ByteRange,
@@ -109,6 +116,8 @@ let keyframeIndices: number[] = [];
 /** Presentation-timestamp (µs) → 1-indexed frame number. */
 const microsToFrame = new Map<number, number>();
 let config: VideoDecoderConfig | null = null;
+/** Reads keyframe-ness from sample bytes for the demuxed codec. */
+let probe: KeyframeProbe = { family: "other", nalLengthSize: 4 };
 let totalFrames = 0;
 
 /** Resolved media URL + fetch headers for the source video (set on init). */
@@ -200,6 +209,10 @@ async function initSampleTable(
   const { file, track } = await streamMoov(src, headers);
 
   config = buildDecoderConfig(file, track);
+  probe = keyframeProbe(
+    config.codec,
+    config.description as Uint8Array | undefined,
+  );
 
   const support = await VideoDecoder.isConfigSupported(config);
   if (!support.supported) {
@@ -458,11 +471,8 @@ async function runJob(msg: FetchChunkMessage): Promise<void> {
     return;
   }
 
-  const kf = keyframeAtOrBefore(dStart);
-
-  // Fetch just the bytes for this GOP span (keyframe → last needed sample).
-  const range = spanByteRange(decodeOrder, kf, dEnd);
-  if (!range) {
+  const gop = await fetchGopSpan(dStart, dEnd);
+  if (!gop) {
     post({
       type: "chunkDone",
       reqId: msg.reqId,
@@ -471,8 +481,7 @@ async function runJob(msg: FetchChunkMessage): Promise<void> {
     return;
   }
 
-  const span = await fetchSpanBuffer(range);
-
+  const { kf, span } = gop;
   const dec = ensureDecoder();
   dec.configure(config as VideoDecoderConfig);
 
@@ -487,12 +496,13 @@ async function runJob(msg: FetchChunkMessage): Promise<void> {
 
   for (let i = kf; i <= dEnd; i++) {
     const s = decodeOrder[i];
+    const data = sliceSampleBytes(span.buffer, span.fileStart, s);
     dec.decode(
       new EncodedVideoChunk({
-        type: s.isSync ? "key" : "delta",
+        type: isTrueKeyframe(s, data) ? "key" : "delta",
         timestamp: s.tsMicros,
         duration: s.durMicros,
-        data: sliceSampleBytes(span.buffer, span.fileStart, s),
+        data,
       }),
     );
   }
@@ -509,6 +519,70 @@ interface SpanBuffer {
   buffer: ArrayBuffer;
   /** Absolute file offset of `buffer[0]` (`0` for a whole-file buffer). */
   fileStart: number;
+}
+
+/**
+ * Snap decode-order span `[dStart, dEnd]` back to a keyframe and fetch its
+ * bytes (keyframe → last needed sample). The snap target must really be a
+ * keyframe: a sync-table entry whose bytes say otherwise is demoted and the
+ * snap retried from the previous keyframe, since the decoder would reject the
+ * chunk outright. Returns `null` when the span covers no samples.
+ */
+async function fetchGopSpan(
+  dStart: number,
+  dEnd: number,
+): Promise<{ kf: number; span: SpanBuffer } | null> {
+  let kf = keyframeAtOrBefore(dStart);
+
+  for (;;) {
+    const range = spanByteRange(decodeOrder, kf, dEnd);
+    if (!range) {
+      return null;
+    }
+
+    const span = await fetchSpanBuffer(range);
+    const first = decodeOrder[kf];
+    if (
+      isTrueKeyframe(
+        first,
+        sliceSampleBytes(span.buffer, span.fileStart, first),
+      )
+    ) {
+      return { kf, span };
+    }
+
+    if (kf === 0) {
+      throw new Error(
+        `no keyframe at or before decode index ${dStart}: the first sample ` +
+          "is not a keyframe",
+      );
+    }
+
+    kf = keyframeAtOrBefore(kf - 1);
+  }
+}
+
+/**
+ * Keyframe-ness of a sample by its bytes, falling back to the container's sync
+ * flag for codecs we do not inspect. A sync flag the bytes contradict is
+ * cleared so later snaps skip the sample.
+ */
+function isTrueKeyframe(s: DemuxedSample, data: Uint8Array): boolean {
+  const byBytes = isKeyframeSample(data, probe);
+  if (byBytes === null) {
+    return s.isSync;
+  }
+
+  if (s.isSync && !byBytes) {
+    s.isSync = false;
+    keyframeIndices = keyframeIndices.filter((k) => k !== s.decodeIndex);
+    console.warn(
+      `[videoDecodeWorker] sample ${s.decodeIndex} is flagged sync but is ` +
+        "not a keyframe; decoding from the previous keyframe",
+    );
+  }
+
+  return byBytes;
 }
 
 /**
