@@ -163,6 +163,9 @@
         "uplot": "^1.6.32"
     },
     "devDependencies": {
+        "@fiftyone/spaces": "workspace:*",
+        "@mui/material": "catalog:",
+        "@react-spring/web": "catalog:",
         "@types/react": "catalog:",
         "@types/three": "^0.182.0",
         "babel-plugin-relay": "catalog:",
