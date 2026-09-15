@@ -37,7 +37,7 @@ function rangeSummary(group: EpisodeSelection) {
         ]
       : [],
   );
-  return `${ranges.length} segments: ${ranges.slice(0, 2).join("; ")}${ranges.length > 2 ? "; …" : ""}`;
+  return `${ranges.length} segment${ranges.length === 1 ? "" : "s"}: ${ranges.slice(0, 2).join("; ")}${ranges.length > 2 ? "; …" : ""}`;
 }
 
 /** A single episode's captured scope, with explicit replacement and accumulation. */
@@ -82,7 +82,9 @@ export default function SelectionCard({
             color: cssVar.color.text.fg,
           }}
         >
-          {full ? "Full episode" : `${group.members.length} segments`}
+          {full
+            ? "Full episode"
+            : `${group.members.length} segment${group.members.length === 1 ? "" : "s"}`}
         </span>
       </button>
       <div className={styles.cardControls}>

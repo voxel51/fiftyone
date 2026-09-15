@@ -166,7 +166,8 @@ function SubsetDialog({
         {capture.source === "explicit"
           ? "Captured selection"
           : "Captured all current results"}
-        : {full} full episodes · {segments} segments
+        : {full} full episode{full === 1 ? "" : "s"} · {segments} segment
+        {segments === 1 ? "" : "s"}
       </p>
       <p>Membership stays fixed. Media and annotations remain live.</p>
       {!result && (

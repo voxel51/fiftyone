@@ -99,7 +99,7 @@ const Header = () => {
           }
         >
           {selection.enabled ? (
-            <Text variant={TextVariant.Sm}>
+            <Text variant={TextVariant.Sm} style={{ whiteSpace: "nowrap" }}>
               {selection.loading
                 ? "Resolving…"
                 : selection.error
