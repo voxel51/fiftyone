@@ -168,8 +168,8 @@ export const useLighterEngineBridge = ({
   // a new map identity re-registers the bridge loop, so keep it memoized on
   // the (stable) resolver alone
   const adapters = useMemo(
-    () => makeLighterAdapters({ getSkeleton }),
-    [getSkeleton],
+    () => makeLighterAdapters({ getSkeleton, resolveMediaUrl }),
+    [getSkeleton, resolveMediaUrl],
   );
 
   const surface = useSurfaceBridge({
