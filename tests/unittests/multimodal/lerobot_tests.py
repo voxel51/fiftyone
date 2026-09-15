@@ -94,11 +94,10 @@ def lerobot_import(dataset_name):
             dataset_dir=root,
             dataset_type=fot.LeRobotDataset,
             name=name or dataset_name("lerobot"),
+            persistent=True,
             **kwargs,
         )
-        # Survives a concurrent delete_non_persistent_datasets() elsewhere;
-        # teardown deletes it by name regardless
-        dataset.persistent = True
+
         return dataset
 
     return _make
