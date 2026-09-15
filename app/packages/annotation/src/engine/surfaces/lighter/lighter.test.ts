@@ -7,6 +7,7 @@ import {
   keypointAdapter,
   makeKeypointAdapter,
   polylineAdapter,
+  segmentationAdapter,
 } from "./adapters";
 import { lighterAdapters } from "./adapters";
 import type { LighterBridgeDeps } from "./lighterBridge";
@@ -218,6 +219,29 @@ describe("lighter adapters", () => {
         { _id: "k1", points: [] },
       ).options.connections,
     ).toEqual([]);
+  });
+
+  it("segmentation buildHandle passes the label through whole", () => {
+    const descriptor = segmentationAdapter.buildHandle(
+      ref("frames.segmentation", "field:frames.segmentation"),
+      { _id: "field:frames.segmentation", _cls: "Segmentation", mask: "b64" },
+    );
+
+    expect(descriptor.factoryKey).toBe("segmentation");
+    expect(descriptor.options.id).toBe("field:frames.segmentation");
+    expect(descriptor.options.field).toBe("frames.segmentation");
+    expect(descriptor.options.label).toMatchObject({ mask: "b64" });
+  });
+
+  it("segmentation renders only what it can actually paint", () => {
+    // a mask_path-only segmentation needs a resolved media URL this surface
+    // has no resolver for; failing the requirement leaves it unmounted rather
+    // than mounting an overlay that silently paints nothing
+    expect(segmentationAdapter.renders?.({ _id: "s", mask: "b64" })).toBe(true);
+    expect(
+      segmentationAdapter.renders?.({ _id: "s", mask_path: "/m.png" }),
+    ).toBe(false);
+    expect(segmentationAdapter.renders?.({ _id: "s" })).toBe(false);
   });
 
   it("polyline toLabel reads nested points and flags", () => {

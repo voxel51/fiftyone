@@ -130,6 +130,21 @@ export {
   type ColorMappingContext,
 } from "./utils/colorMapping";
 export { decodeMaskPath } from "./utils/maskPathDecoding";
+export {
+  colorForTarget,
+  paletteKey,
+  resolveSegmentationPalette,
+} from "./utils/segmentationPalette";
+export type {
+  MaskTargets,
+  SegmentationPalette,
+} from "./utils/segmentationPalette";
+export { rasterizeSegmentation } from "./utils/segmentationRaster";
+export { SegmentationOverlay } from "./overlay/SegmentationOverlay";
+export type {
+  SegmentationLabel,
+  SegmentationOverlayOptions,
+} from "./overlay/SegmentationOverlay";
 export { MaskBitmapCache, maskBitmapCache } from "./utils/maskBitmapCache";
 export type { MaskSource } from "./utils/maskBitmapCache";
 export { maskSourceOf } from "./utils/maskSource";

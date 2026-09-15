@@ -2,6 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import type { MaskTargets } from "@fiftyone/lighter";
 import {
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighterEventHandler,
@@ -18,7 +19,11 @@ import {
 } from "react";
 import { singletonCanvas } from "../../../core/src/components/Modal/Lighter/SharedCanvas";
 import { ExternalCanonicalMedia } from "../media/ExternalCanonicalMedia";
-import { useColorScheme, useColorSeed } from "../state/accessors";
+import {
+  useColorScheme,
+  useColorSeed,
+  useMaskTargets,
+} from "../state/accessors";
 
 /** Intrinsic media resolution the canonical-media overlay is sized to. */
 interface Dimensions {
@@ -58,14 +63,33 @@ function useAttachedSingletonCanvas(
 function useSceneColorScheme(scene: LighterScene, sceneId: string): void {
   const scheme = useColorScheme();
   const seed = useColorSeed();
+  // Segmentation coloring is per mask target, so the palette needs the
+  // dataset's mask targets alongside the scheme.
+  const maskTargets = useMaskTargets();
 
   useEffect(() => {
     if (!scene || scene.getSceneId() !== sceneId) {
       return;
     }
 
-    scene.updateColorMappingContext({ colorScheme: scheme, seed });
-  }, [scene, sceneId, scheme, seed]);
+    scene.updateColorMappingContext({
+      colorScheme: scheme,
+      seed,
+      // `State.Targets` is number-keyed and looker's `IntMaskTargets` is
+      // string-keyed; they describe the same JSON, but TypeScript will not
+      // relate the two index signatures.
+      maskTargets: maskTargets.fields as Record<string, MaskTargets>,
+      defaultMaskTargets: maskTargets.defaults as MaskTargets,
+    });
+
+    // Storing the context does not repaint anything by itself — overlays
+    // render only while dirty, and an existing overlay is clean. Without this
+    // a color-scheme change reached only overlays mounted afterwards, so the
+    // colors on screen silently disagreed with the sidebar.
+    for (const overlay of scene.getAllOverlays()) {
+      overlay.markDirty();
+    }
+  }, [scene, sceneId, scheme, seed, maskTargets]);
 }
 
 /**

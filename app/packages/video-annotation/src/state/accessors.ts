@@ -10,6 +10,7 @@ import {
   groupSlice,
   modalSampleId,
   State,
+  targets,
   useCurrentDatasetId,
   view,
 } from "@fiftyone/state";
@@ -49,6 +50,13 @@ export const useColorScheme = () => useRecoilValue(colorScheme);
 
 /** Color seed used for instance / field color hashing. */
 export const useColorSeed = () => useRecoilValue(colorSeed);
+
+/**
+ * Dataset mask targets, per field and the dataset-wide default. Segmentation
+ * coloring is per target rather than per label, so the palette needs these
+ * alongside the color scheme.
+ */
+export const useMaskTargets = () => useRecoilValue(targets);
 
 /** Current dataset name. */
 export const useDatasetName = () => useRecoilValue(datasetName);
