@@ -2,7 +2,6 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { frameAt } from "@fiftyone/playback";
 import type { LabelData } from "@fiftyone/utilities";
 import { makeReaderResolver, type SurfaceOpsDeps } from "./frameReader";
 import { instanceIdFromTrackId } from "./trackIdentity";
@@ -10,15 +9,14 @@ import { instanceIdFromTrackId } from "./trackIdentity";
 /** Per-frame track ops (keyframes, fills, trims, shifts, deletes, attributes). */
 export const makeTrackOps = (deps: SurfaceOpsDeps) => {
   const { actions, eventBus, engine } = deps;
-  const { path, fps, totalFrames } = deps.ctx;
+  const { path, totalFrames } = deps.ctx;
   const readerFor = makeReaderResolver(deps);
 
-  const markKeyframe = (time: number, trackIds: readonly string[]): void => {
+  const markKeyframe = (frame: number, trackIds: readonly string[]): void => {
     if (trackIds.length === 0) {
       return;
     }
 
-    const frame = frameAt(time, fps, totalFrames);
     const changed: {
       trackId: string;
       instanceId: string;

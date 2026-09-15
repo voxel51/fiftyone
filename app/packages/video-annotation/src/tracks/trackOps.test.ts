@@ -2,7 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   PATH,
   deps,
@@ -13,8 +13,6 @@ import {
   resetHarness,
 } from "./opsTestHarness";
 import { makeTrackOps, type TrackOps } from "./trackOps";
-
-vi.mock("@fiftyone/playback", () => ({ frameAt: (time: number) => time }));
 
 let ops: TrackOps;
 
