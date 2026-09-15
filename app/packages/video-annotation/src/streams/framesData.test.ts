@@ -11,6 +11,7 @@ import type { FrameDocLike } from "./framesData";
 import {
   ELEMENT_CLS,
   parseFramesData,
+  parseFrameValues,
   PROJECTABLE_FRAME_LABEL_TYPES,
 } from "./framesData";
 
@@ -219,5 +220,40 @@ describe("per-frame label type coverage", () => {
     );
 
     expect(data[1]).toEqual({});
+  });
+});
+
+describe("parseFrameValues", () => {
+  it("keys a video's frame field by its frames.-prefixed path", () => {
+    const values = parseFrameValues(
+      [
+        { frame_number: 1, weather: "rain" },
+        { frame_number: 2, weather: "sun" },
+      ],
+      ["frames.weather"],
+    );
+
+    expect(values).toEqual({
+      1: { "frames.weather": "rain" },
+      2: { "frames.weather": "sun" },
+    });
+  });
+
+  it("reads a dynamic group's bare sample field under the same name", () => {
+    const values = parseFrameValues(
+      [{ frame_number: 1, timestamp: 12.5 }],
+      ["timestamp"],
+    );
+
+    expect(values).toEqual({ 1: { timestamp: 12.5 } });
+  });
+
+  it("treats null and missing fields as unset, keeping falsy values", () => {
+    const values = parseFrameValues(
+      [{ frame_number: 1, a: null, c: 0, d: false }],
+      ["a", "b", "c", "d"],
+    );
+
+    expect(values).toEqual({ 1: { c: 0, d: false } });
   });
 });

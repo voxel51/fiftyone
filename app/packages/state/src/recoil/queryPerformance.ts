@@ -150,7 +150,7 @@ export const indexInfo = foq.graphQLSyncFragmentAtom<foq.indexesFragment$key>(
 const indexKeysMatch = (one: string[], two: string[]) =>
   one.length <= two.length && [...one].every((o) => two.includes(o));
 
-const isQueryPerformantDynamicGroup = selector({
+export const isQueryPerformantDynamicGroup = selector({
   key: "isQueryPerformantDynamicGroup",
   get: ({ get }) => {
     return (

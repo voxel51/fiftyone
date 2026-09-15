@@ -1,16 +1,20 @@
-import { is3d } from "@fiftyone/utilities";
+import { MEDIA_TYPE_IMAGE, is3d } from "@fiftyone/utilities";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import {
   dataset,
   datasetId,
   datasetName,
+  dynamicGroupParameters,
   fieldSchema,
   groupMediaTypes,
   isGroup,
+  isOrderedDynamicGroup,
+  parentMediaTypeSelector,
   selectedMediaField,
   skeleton,
   State,
 } from "../recoil";
+import { isPatchesView } from "../recoil/view";
 
 /**
  * Get the current dataset ID.
@@ -105,3 +109,30 @@ export const useGroupSlices = (mediaTypes: GroupSliceMediaType[]): string[] => {
     )
     .map(({ name }) => name);
 };
+
+/** The media type of a dynamic group's members, or the dataset's own media type. */
+export const useParentMediaType = (): string =>
+  useRecoilValue(parentMediaTypeSelector);
+
+/**
+ * Whether the current view is an ordered dynamic group over image samples
+ * (ImaVid). Such a view reports a "group" media type with no slices.
+ *
+ * @returns True if the current view is an image-backed dynamic group video
+ */
+export const useIsImageDynamicGroupVideo = (): boolean => {
+  const orderedDynamicGroup = useRecoilValue(isOrderedDynamicGroup);
+  const parentMediaType = useRecoilValue(parentMediaTypeSelector);
+
+  return orderedDynamicGroup && parentMediaType === MEDIA_TYPE_IMAGE;
+};
+
+/**
+ * The field the current dynamic group is ordered by, or null when the view is
+ * not a dynamic group or the group is unordered.
+ */
+export const useDynamicGroupOrderBy = (): string | null =>
+  useRecoilValue(dynamicGroupParameters)?.orderBy ?? null;
+
+/** Whether the current view is a patches view. */
+export const useIsPatchesView = (): boolean => useRecoilValue(isPatchesView);

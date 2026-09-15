@@ -1,30 +1,32 @@
 import {
   groupMediaIsMain2DViewerVisible,
-  useStableSceneSample3d,
+  useStableInteraction3dSample,
 } from "@fiftyone/state";
 import { useRecoilValue } from "recoil";
 import { useActiveSampleId } from "./useSample";
 
 /**
- * The 3D scene's OWN sample id — the document rendered in the 3D viewer —
- * stable across 2D-slice selection; `undefined` before the 3D group query
- * settles.
+ * The annotated 3D sample's id — the pinned (representative) 3D slice's
+ * document, stable across 2D-slice selection; `undefined` before the 3D group
+ * query settles.
  *
- * Sourced from the STABLE (Loadable) scene-sample selector: it never suspends,
- * so consumers render immediately and pick up the scene once its query lands.
- * The suspending `useSceneSample3d`/`useInteraction3dSample` here would block
- * the whole sidebar and hang the modal on "Pixelating…".
+ * Sourced from the STABLE (Loadable) interaction-sample selector, which prefers
+ * `pinned3DSampleSlice`: pinning a point-cloud slice beside an fo3d slice
+ * annotates the point cloud while the fo3d scene stays rendered. It never
+ * suspends, so consumers render immediately and pick up the sample once its
+ * query lands; the suspending variants would hang the modal on "Pixelating…".
  *
- * Single raw source of truth for "which sample is the 3D scene" — the bridge
- * keys its writes off this directly; {@link useThreeDSceneSampleId} narrows it
- * to the grouped-distinct case for store registration.
+ * Single raw source of truth for "which 3D sample is annotated" — the bridge,
+ * the working store key, and the scene hydration all key off this directly;
+ * {@link useThreeDSceneSampleId} narrows it to the grouped-distinct case for
+ * store registration.
  *
  * MUST stay out of the foundational `useSample*` accessors (it reads 3D modal
  * state) — wiring 3D selectors into those put GraphQL on the core load path and
  * hung the modal.
  */
 export const useSceneSampleId = (): string | undefined =>
-  useStableSceneSample3d()?.sample?._id;
+  useStableInteraction3dSample()?.sample?._id;
 
 /**
  * The scene's sample id WHEN it is a distinct document from the selected 2D

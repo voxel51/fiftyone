@@ -20,14 +20,16 @@ import type {
 } from "./frameWorkerProtocol";
 
 /**
- * What the stream publishes per committed frame. Consumers (the ImaVid tile,
+ * What the stream publishes per committed frame. Consumers (the dynamic group tile,
  * SAM2 propagation) draw `bitmap`; `frameNumber` / `sampleId` identify which
  * frame this is for commands / persistence.
  */
-export interface FrameBitmap {
+export interface FrameBitmap<M = unknown> {
   bitmap: ImageBitmap;
   frameNumber: number;
   sampleId: string;
+  /** Source-specific frame metadata (e.g. the dynamic group frame's src/filepath). */
+  meta: M;
 }
 
 export interface FrameBitmapStreamOptions {
@@ -61,7 +63,7 @@ interface InflightEntry {
 }
 
 /**
- * Abstract chunked bitmap stream for ImaVid-style playback: a decode worker
+ * Abstract chunked bitmap stream for dynamic group playback: a decode worker
  * fills an LRU of decoded frame bitmaps keyed by frame number, off the main
  * thread; the tile renders them one-per-commit via a single engine clock (so
  * media + overlays stay lock-step).
@@ -80,9 +82,9 @@ interface InflightEntry {
  * `bufferState` reports `ready` only once a frame's bitmap has landed, so the
  * engine never renders a half-decoded frame.
  */
-export abstract class FrameBitmapStream<
-  M = unknown,
-> extends PlaybackStreamBase<FrameBitmap> {
+export abstract class FrameBitmapStream<M = unknown> extends PlaybackStreamBase<
+  FrameBitmap<M>
+> {
   protected readonly sampleId: string;
   protected readonly frameCount: number;
   protected readonly frameRate: number;
@@ -248,7 +250,7 @@ export abstract class FrameBitmapStream<
     }
   }
 
-  getValue(time: number): FrameBitmap | null {
+  getValue(time: number): FrameBitmap<M> | null {
     const frame = this.timeToFrame(time);
     const entry = this.cache.get(frame);
     if (!entry) {
@@ -259,6 +261,7 @@ export abstract class FrameBitmapStream<
       bitmap: entry.bitmap,
       frameNumber: frame,
       sampleId: this.sampleId,
+      meta: entry.meta,
     };
   }
 

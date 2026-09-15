@@ -1,20 +1,21 @@
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ *
+ * Two point-cloud slices with different static transforms render aligned in
+ * the world frame, and a cuboid drawn there is written back in the native
+ * frame of the slice being annotated.
+ */
 import { Jimp } from "jimp";
 import { expect, Locator, test as base } from "src/oss/fixtures";
-import type { AnnotateSDK } from "src/oss/fixtures/annotate-sdk";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
+import type { GeometryAxis } from "src/oss/poms/modal/annotate-3d";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
-import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
   "grouped-direct-pcd-world-alignment",
 );
-const leftPcdPath = path.join(os.tmpdir(), `${datasetName}-lidar-left.pcd`);
-const rightPcdPath = path.join(os.tmpdir(), `${datasetName}-lidar-right.pcd`);
-const TEMP_FILE_PATHS = [leftPcdPath, rightPcdPath];
+const QUARTER_TURN = [0, 0, 0.7071067811865476, 0.7071067811865476];
 
 const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   grid: async ({ page, eventUtils }, use) => {
@@ -24,120 +25,6 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
     await use(new ModalPom(page, eventUtils));
   },
 });
-
-type PersistedCuboid = {
-  dimensions: number[];
-  label: string;
-  location: number[];
-  rotation: number[];
-};
-
-const seedDataset = async (
-  fiftyoneLoader: AbstractFiftyoneLoader,
-  annotateSDK: AnnotateSDK,
-) => {
-  await fiftyoneLoader.executePythonCode(`
-import fiftyone as fo
-import fiftyone.core.media as fom
-from fiftyone.core.camera import StaticTransform
-
-if fo.dataset_exists("${datasetName}"):
-    fo.delete_dataset("${datasetName}")
-
-dataset = fo.Dataset("${datasetName}")
-dataset.add_group_field("group", default="lidar_left")
-dataset._doc.group_media_types = {
-    "lidar_left": fom.POINT_CLOUD,
-    "lidar_right": fom.POINT_CLOUD,
-}
-dataset.static_transforms = {
-    "lidar_left::ego": StaticTransform(
-        translation=[-8.0, 0.0, 0.0],
-        quaternion=[0.0, 0.0, 0.7071067811865476, 0.7071067811865476],
-        source_frame="lidar_left",
-        target_frame="ego",
-    ),
-    "ego::world": StaticTransform(
-        translation=[0.0, 0.0, 0.0],
-        quaternion=[0.0, 0.0, 0.0, 1.0],
-        source_frame="ego",
-        target_frame="world",
-    ),
-    "lidar_right::world": StaticTransform(
-        translation=[8.0, 0.0, 0.0],
-        quaternion=[0.0, 0.0, 0.0, 1.0],
-        source_frame="lidar_right",
-        target_frame="world",
-    ),
-}
-
-group = fo.Group()
-left = fo.Sample(
-    filepath=${JSON.stringify(leftPcdPath)},
-    media_type="point-cloud",
-    group=group.element("lidar_left"),
-    detections=fo.Detections(
-        detections=[
-            fo.Detection(
-                label="seeded-left",
-                location=[1.5, 1.5, 1.5],
-                dimensions=[2.0, 2.0, 2.0],
-                rotation=[0.0, 0.0, 0.0],
-            )
-        ]
-    ),
-)
-right = fo.Sample(
-    filepath=${JSON.stringify(rightPcdPath)},
-    media_type="point-cloud",
-    group=group.element("lidar_right"),
-)
-dataset.add_samples([left, right])
-dataset.persistent = True
-  `);
-
-  await annotateSDK.updateLabelSchema(datasetName, "detections", {
-    type: "detections",
-    classes: ["seeded-left", "world-created"],
-    attributes: [],
-    component: "dropdown",
-  });
-  await annotateSDK.addFieldToActiveLabelSchema(datasetName, "detections");
-};
-
-const readLeftCuboids = async (
-  fiftyoneLoader: AbstractFiftyoneLoader,
-): Promise<PersistedCuboid[]> => {
-  const resultFile = path.join(
-    os.tmpdir(),
-    `grouped-world-cuboids-${datasetName}.json`,
-  );
-
-  await fiftyoneLoader.executePythonCode(`
-import json
-import fiftyone as fo
-
-dataset = fo.load_dataset("${datasetName}")
-sample = dataset.select_group_slices("lidar_left").first()
-cuboids = []
-for detection in sample.detections.detections:
-    cuboids.append({
-        "label": detection.label,
-        "location": list(detection.location),
-        "dimensions": list(detection.dimensions),
-        "rotation": list(detection.rotation),
-    })
-
-with open(${JSON.stringify(resultFile)}, "w") as f:
-    json.dump(cuboids, f)
-  `);
-
-  const result = JSON.parse(
-    fs.readFileSync(resultFile, "utf-8"),
-  ) as PersistedCuboid[];
-  fs.rmSync(resultFile, { force: true });
-  return result;
-};
 
 const countOuterBandPixels = async (canvas: Locator) => {
   const screenshot = await canvas.screenshot();
@@ -172,44 +59,63 @@ const countOuterBandPixels = async (canvas: Locator) => {
   };
 };
 
-test.beforeAll(
-  async ({ annotateSDK, fiftyoneLoader, foWebServer, mediaFactory }) => {
-    await foWebServer.startWebServer();
-    mediaFactory.createPcd({
-      outputPath: leftPcdPath,
-      shape: "cube",
-      numPoints: 216,
-    });
-    mediaFactory.createPcd({
-      outputPath: rightPcdPath,
-      shape: "cube",
-      numPoints: 216,
-    });
-    await seedDataset(fiftyoneLoader, annotateSDK);
-  },
-);
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
+  await foWebServer.startWebServer();
+  await datasetFactory.createDataset({
+    mediaType: "group",
+    datasetName,
+    numGroups: 1,
+    slices: [
+      { name: "lidar_left", mediaType: "point-cloud" },
+      { name: "lidar_right", mediaType: "point-cloud" },
+    ],
+    schema: {
+      detections: "Detections",
+      "detections.detections.location": "ListField<FloatField>",
+      "detections.detections.dimensions": "ListField<FloatField>",
+      "detections.detections.rotation": "ListField<FloatField>",
+    },
+    labelSchemas: {
+      detections: {
+        type: "detections",
+        classes: ["seeded-left", "world-created"],
+        attributes: [],
+        component: "dropdown",
+      },
+    },
+    // the left lidar reaches world through a yawed ego frame, the right directly
+    staticTransforms: [
+      {
+        source_frame: "lidar_left",
+        target_frame: "ego",
+        translation: [-8, 0, 0],
+        quaternion: QUARTER_TURN,
+      },
+      { source_frame: "ego", target_frame: "world" },
+      {
+        source_frame: "lidar_right",
+        target_frame: "world",
+        translation: [8, 0, 0],
+      },
+    ],
+    withSampleData: ({ slice }, { label }) =>
+      slice === "lidar_left"
+        ? {
+            detections: label.detections([
+              label.detection({
+                label: "seeded-left",
+                location: [1.5, 1.5, 1.5],
+                dimensions: [2, 2, 2],
+                rotation: [0, 0, 0],
+              }),
+            ]),
+          }
+        : {},
+  });
+});
 
-test.afterAll(async ({ fiftyoneLoader, foWebServer }) => {
-  try {
-    await fiftyoneLoader.executePythonCode(`
-import fiftyone as fo
-
-if fo.dataset_exists("${datasetName}"):
-    fo.delete_dataset("${datasetName}")
-    `);
-  } catch (error) {
-    void error;
-  }
-
-  try {
-    await foWebServer.stopWebServer();
-  } catch (error) {
-    void error;
-  }
-
-  for (const filePath of TEMP_FILE_PATHS) {
-    fs.rmSync(filePath, { force: true });
-  }
+test.afterAll(async ({ foWebServer }) => {
+  await foWebServer.stopWebServer();
 });
 
 test("aligns grouped direct PCDs in world and writes cuboids back to the native slice", async ({
@@ -260,27 +166,7 @@ test("aligns grouped direct PCDs in world and writes cuboids back to the native 
   await modal.sidebar.edit.selectFieldChoice("label", "world-created");
   await modal.sidebar.annotate.waitForSavesSettled();
 
-  let createdCuboid: PersistedCuboid | undefined;
-  await expect
-    .poll(
-      async () => {
-        const cuboids = await readLeftCuboids(fiftyoneLoader);
-        createdCuboid = cuboids.find(
-          (cuboid) => cuboid.label === "world-created",
-        );
-        return createdCuboid;
-      },
-      { timeout: 20_000 },
-    )
-    .toBeTruthy();
-
-  expect(createdCuboid).toBeDefined();
-  expect(createdCuboid!.location[0]).toBeCloseTo(2, 1);
-  expect(createdCuboid!.location[1]).toBeCloseTo(-23.15, 1);
-  expect(createdCuboid!.rotation[2]).toBeCloseTo(Math.PI / 2, 1);
-  expect(createdCuboid!.dimensions.every((value) => value > 0)).toBe(true);
-
-  const persistedX = createdCuboid!.location[0];
+  // reopening reads the saved cuboid back in lidar_left's native frame
   await modal.close();
   await grid.openFirstSample();
   await modal.sidebar.switchMode("annotate");
@@ -288,9 +174,13 @@ test("aligns grouped direct PCDs in world and writes cuboids back to the native 
   await modal.annotate3d.waitForSurface();
   await modal.annotate3d.assert.labelListed("world-created");
   await modal.annotate3d.selectLabel("world-created");
-  await expect
-    .poll(async () =>
-      Number(await modal.annotate3d.geometryField("x").inputValue()),
-    )
-    .toBeCloseTo(persistedX, 2);
+
+  const geometry = async (axis: GeometryAxis) =>
+    Number(await modal.annotate3d.getGeometry(axis));
+  await expect.poll(() => geometry("x")).toBeCloseTo(2, 1);
+  await expect.poll(() => geometry("y")).toBeCloseTo(-23.15, 1);
+  await expect.poll(() => geometry("rz")).toBeCloseTo(Math.PI / 2, 1);
+  for (const axis of ["lx", "ly", "lz"] as const) {
+    expect(await geometry(axis)).toBeGreaterThan(0);
+  }
 });

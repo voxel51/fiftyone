@@ -141,9 +141,10 @@ highlighted UI element is a behavioral difference, not render noise.
 #### Creating Datasets
 
 Always use `DatasetFactory.createDataset` when a test needs a FiftyOne dataset.
-It generates blank PNG images, inserts samples directly into the underlying
-MongoDB collection for performance, and applies any additional schema fields
-and saved views.
+It is discriminated on `mediaType` (`"image"` by default, or `"video"`, `"3d"`,
+`"group"`, `"multimodal"`), generates the media for that kind, inserts samples
+directly into the underlying MongoDB collection for performance, and applies
+any additional schema fields and saved views.
 
 ```ts
 import { DatasetFactory } from "src/shared/dataset-factory";
@@ -175,6 +176,46 @@ await DatasetFactory.createDataset({
     }),
 });
 ```
+
+Every `mediaType` takes the same `schema`, `labelSchemas`, `withSampleData` and
+`savedViews` options; they differ in the media generated per sample
+(`videoOptions`, `sceneOptions`, `imageOptions` — each an object or a function
+of the sample index) and in the scaffold `withSampleData` receives. The
+`mediaType` literal narrows the accepted options, so `videoOptions` on an image
+dataset is a type error. A video dataset declares frame fields with a `frames.`
+prefix in `schema`, populates frames through `withFrameData(frame, helpers)`
+(called once per sample and frame number) and materializes frame images with
+`sampleFrames: true`. `helpers.mask(width, height)` serializes an all-ones
+numpy mask.
+
+Every attribute a `withSampleData`/`withFrameData` document carries must be
+declared in `schema`, including dynamic label attributes such as a cuboid's
+`detections.detections.location` (`"ListField<FloatField>"`) or a polyline's
+`points3d` (`"ListField<ListField<ListField<FloatField>>>"`); seeding fails
+with the undeclared paths and their inferred types otherwise.
+
+```ts
+await DatasetFactory.createDataset({
+    mediaType: "video",
+    datasetName: "my-video-dataset",
+    videoOptions: { duration: 4 },
+    schema: { "frames.detections": "Detections" },
+    withFrameData: (_, { createId }) => ({
+        detections: {
+            _cls: "Detections",
+            detections: [{ _id: createId(), _cls: "Detection", label: "cat" }],
+        },
+    }),
+    sampleFrames: true,
+});
+```
+
+Verify persistence the way a user would see it: await the edit's sample-save
+response, then assert from a fresh browser context on what the app renders.
+Group slices may be `image`, `3d` or `video` (with per-slice media options);
+video slices take `withFrameData` and `sampleFrames` too. Recipes shared by a
+spec family (the video-annotation and 3D seeds) live beside the specs in
+`src/oss/specs/annotate-*/`.
 
 Each sample is automatically assigned a stable, index-derived `_id` of the form
 `000000000000000000000000` (zero-padded 24-character hex). This makes it easy

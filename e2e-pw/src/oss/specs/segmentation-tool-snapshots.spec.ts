@@ -1,50 +1,65 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Visual smoke tests for each segmentation tool. Each test creates a
- * deterministic mask render and snapshots the canvas, so regressions in
- * mask shape / color / position / antialiasing surface as pixel diffs.
- *
- * Stability:
- *   - Fixed class "cat" everywhere → deterministic label color (fiftyone
- *     hashes label strings to colors).
- *   - Mouse moved off-canvas before each snapshot (see
- *     `SampleCanvasAsserter.hasScreenshot`).
- *   - AI test right-clicks to finalize the keypoint session before
- *     snapshotting so the indefinite ripple animation isn't captured
- *     mid-cycle.
- *   - Merge test pre-seeds two adjacent mask detections via Python so the
- *     merge operates on a known starting state — independent of the brush
- *     or pen flow.
- *
- * Baselines are generated with `yarn playwright test --update-snapshots`
- * on the first run and should be captured on the platform CI runs against
- * (linux/Chromium) to avoid drift between local and CI.
+ * Visual smoke tests for each segmentation tool: each test creates a
+ * deterministic mask render and snapshots the canvas, so regressions in mask
+ * shape, color, position or antialiasing surface as pixel diffs. Determinism
+ * comes from the fixed class "cat" (label colors hash the string), moving the
+ * mouse off-canvas before snapshotting, finalizing the AI keypoint session so
+ * its ripple isn't captured, and pre-seeding the merge test's two masks, with
+ * baselines captured on the CI platform (linux/Chromium).
  */
 
 import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import type {
+  ImageDatasetOptions,
+  LabelSchema,
+} from "src/shared/dataset-factory";
+import { EventUtils } from "src/shared/event-utils";
 
 const SAMPLE_ID = "000000000000000000000000";
 
-const schema: Record<string, unknown> = {
+const schema: LabelSchema = {
   type: "detections",
   classes: ["cat"],
   attributes: [],
   component: "dropdown",
 };
 
+// Two adjacent masked cats for the merge test to operate on.
+const twoMaskedCats: Pick<ImageDatasetOptions, "withSampleData"> = {
+  withSampleData: (_, { createId, mask }) => ({
+    instances: {
+      _cls: "Detections",
+      detections: [
+        [0.25, 0.4, 0.2, 0.2],
+        [0.55, 0.4, 0.2, 0.2],
+      ].map((bounding_box) => ({
+        _id: createId(),
+        _cls: "Detection",
+        tags: [] as string[],
+        label: "cat",
+        bounding_box,
+        mask: mask(50, 50),
+      })),
+    },
+  }),
+};
+
 const test = base.extend<{
   modal: ModalPom;
   datasetName: string;
+  seed: Pick<ImageDatasetOptions, "withSampleData">;
 }>({
+  seed: [{}, { option: true }],
   modal: async ({ page, eventUtils }, use) => {
     await use(new ModalPom(page, eventUtils));
   },
   // Fresh dataset per test. Uses the test title so each baseline is
   // colocated with its corresponding dataset's render.
-  datasetName: async ({ annotateSDK, datasetFactory }, use, testInfo) => {
+  datasetName: async ({ datasetFactory, seed }, use, testInfo) => {
     const name = getUniqueDatasetNameWithPrefix(
       `seg-snap-${testInfo.title.replace(/\s+/g, "-")}`,
     );
@@ -53,10 +68,11 @@ const test = base.extend<{
       datasetName: name,
       imageOptions: { fillColor: "white", width: 640, height: 480 },
       schema: { instances: "Detections" },
+      labelSchemas: {
+        instances: schema,
+      },
+      ...seed,
     });
-
-    await annotateSDK.updateLabelSchema(name, "instances", schema);
-    await annotateSDK.addFieldToActiveLabelSchema(name, "instances");
 
     await use(name);
   },
@@ -117,7 +133,6 @@ test.describe.serial("segmentation tool snapshots", () => {
   });
 
   test("ai", async ({
-    annotateSDK,
     datasetName,
     fiftyoneLoader,
     mockSam2Worker,
@@ -133,11 +148,11 @@ test.describe.serial("segmentation tool snapshots", () => {
 
     // One positive point near the center; mock worker returns a
     // deterministic 8x8 all-foreground mask at bbox {0.4, 0.4, 0.2, 0.2}.
-    await modal.sampleCanvas.click(0.5, 0.5);
-
     // inference runs in a worker: settlement alone reads "settled" before
-    // the label exists, so wait on the persisted state itself
-    await annotateSDK.waitForDetectionCount(datasetName, "instances");
+    // the label exists, so arm the autosave response that will carry it
+    const saved = modal.sidebar.annotate.waitForPatch();
+    await modal.sampleCanvas.click(0.5, 0.5);
+    await saved;
 
     // Right-click to finalize the AI session: destroys the keypoint
     // overlay (and its ripple animation), leaving only the mask render.
@@ -146,45 +161,44 @@ test.describe.serial("segmentation tool snapshots", () => {
     await modal.sampleCanvas.assert.hasScreenshot("seg-ai-mask.png");
   });
 
-  test("merge", async ({
-    annotateSDK,
-    datasetFactory,
-    datasetName,
-    fiftyoneLoader,
-    modal,
-    page,
-  }) => {
-    // Pre-seed two adjacent mask detections so the merge test operates on a
-    // known starting state — independent of the brush/pen flows.
-    await datasetFactory.seedDetections({
+  test.describe("merge", () => {
+    test.use({ seed: twoMaskedCats });
+
+    test("merge", async ({
+      browser,
       datasetName,
-      field: "instances",
-      detections: [
-        { label: "cat", boundingBox: [0.25, 0.4, 0.2, 0.2], maskSize: 50 },
-        { label: "cat", boundingBox: [0.55, 0.4, 0.2, 0.2], maskSize: 50 },
-      ],
+      fiftyoneLoader,
+      modal,
+      page,
+    }) => {
+      await openAnnotate(modal, page, fiftyoneLoader, datasetName);
+      await modal.sidebar.annotate.pickTool("Merge");
+
+      // Click the first detection to set as merge target, then the second
+      // detection to merge into the target.
+      await modal.sampleCanvas.click(0.35, 0.5);
+      await modal.sampleCanvas.click(0.65, 0.5);
+
+      await modal.sidebar.annotate.waitForSavesSettled();
+
+      await modal.sampleCanvas.assert.hasScreenshot("seg-merge-union.png");
+
+      // Sanity check: the merge persisted the pair as a single masked detection.
+      const context = await browser.newContext();
+      const freshPage = await context.newPage();
+      try {
+        const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+        await openAnnotate(freshModal, freshPage, fiftyoneLoader, datasetName);
+        const rows = freshModal.sidebar.annotate.labelRowsFor("instances");
+        await expect(rows).toHaveCount(1);
+        await rows.click();
+        await freshModal.sidebar.edit.assert.hasMaskPreview();
+        await expect
+          .poll(() => freshModal.sidebar.edit.maskPreviewPixels())
+          .toBeGreaterThan(0);
+      } finally {
+        await context.close();
+      }
     });
-    // Annotate the freshly-saved sample.
-    void annotateSDK; // unused — kept so per-test fixture creation still runs
-
-    await openAnnotate(modal, page, fiftyoneLoader, datasetName);
-    await modal.sidebar.annotate.pickTool("Merge");
-
-    // Click the first detection to set as merge target, then the second
-    // detection to merge into the target.
-    await modal.sampleCanvas.click(0.35, 0.5);
-    await modal.sampleCanvas.click(0.65, 0.5);
-
-    await modal.sidebar.annotate.waitForSavesSettled();
-
-    await modal.sampleCanvas.assert.hasScreenshot("seg-merge-union.png");
-
-    // Sanity check: the merge collapsed the pair into a single detection.
-    const state = await annotateSDK.getDetectionsState(
-      datasetName,
-      "instances",
-    );
-    expect(state.count).toBe(1);
-    expect(state.maskPixels).toBeGreaterThan(0);
   });
 });

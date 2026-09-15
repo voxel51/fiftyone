@@ -1,4 +1,8 @@
-import { type FramesData, toSchemaField } from "@fiftyone/annotation";
+import {
+  type FramesData,
+  type FrameValuesData,
+  toSchemaField,
+} from "@fiftyone/annotation";
 import {
   type LabelData,
   LabelType,
@@ -98,6 +102,34 @@ export const parseFramesData = (
         | undefined;
       const elements = field?.[spec.listChild] ?? [];
       frame[spec.path] = elements.map((el) => toLabelData(el, spec.cls));
+    }
+
+    out[doc.frame_number] = frame;
+  }
+
+  return out;
+};
+
+/**
+ * Project the registered per-frame primitive fields into the flat
+ * {@link FrameValuesData} the {@link FrameStore} serves: `{ [frame_number]:
+ * { "<path>": value } }`, keyed by the same frame-agnostic path the sidebar
+ * reads. The window route omits unset fields, and `null` reads the same way.
+ */
+export const parseFrameValues = (
+  docs: Iterable<FrameDocLike>,
+  valuePaths: readonly string[],
+): FrameValuesData => {
+  const out: FrameValuesData = {};
+
+  for (const doc of docs) {
+    const frame: Record<string, unknown> = {};
+
+    for (const path of valuePaths) {
+      const value = doc[toSchemaField(path)];
+      if (value !== undefined && value !== null) {
+        frame[path] = value;
+      }
     }
 
     out[doc.frame_number] = frame;

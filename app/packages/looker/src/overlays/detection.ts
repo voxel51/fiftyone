@@ -94,6 +94,11 @@ export default class DetectionOverlay<
       return CONTAINS.NONE;
     }
 
+    // a 3D detection has no 2D box to hit-test
+    if (!this.label.bounding_box) {
+      return CONTAINS.NONE;
+    }
+
     const [bx, by, bw, bh] = this.getDrawnBBox(state);
 
     const [px, py] = state.pixelCoordinates;
@@ -157,6 +162,10 @@ export default class DetectionOverlay<
   }
 
   getMouseDistance(state: Readonly<State>): number {
+    if (!this.label.bounding_box) {
+      return Infinity;
+    }
+
     const [px, py] = state.pixelCoordinates;
     const [bx, by, bw, bh] = this.getDrawnBBox(state);
 
