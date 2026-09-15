@@ -84,18 +84,27 @@ export interface Renderer2D {
   resetTickHandler(): void;
 
   // Drawing methods
+  // `rotation` (radians, clockwise on screen) rotates the drawn shape around
+  // the center of `bounds` — used for oriented bounding boxes.
   drawHandles(
     bounds: Rect,
     width: number,
     color: number | string,
     containerId: string,
+    rotation?: number,
   ): void;
   drawScrim(
     bounds: Rect,
     canonicalMediaBounds: Rect,
     containerId: string,
+    rotation?: number,
   ): void;
-  drawRect(bounds: Rect, style: DrawStyle, containerId: string): void;
+  drawRect(
+    bounds: Rect,
+    style: DrawStyle,
+    containerId: string,
+    rotation?: number,
+  ): void;
   drawText(
     text: string,
     position: Point,

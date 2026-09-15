@@ -11,6 +11,7 @@ import {
 } from "@fiftyone/events";
 import { AddOverlayCommand } from "../commands/AddOverlayCommand";
 import { MoveOverlayCommand } from "../commands/MoveOverlayCommand";
+import { RotateOverlayCommand } from "../commands/RotateOverlayCommand";
 import { PaintStrokeCommand } from "../commands/PaintStrokeCommand";
 import { RemoveOverlayCommand } from "../commands/RemoveOverlayCommand";
 import { DetectionOverlay } from "../overlay/DetectionOverlay";
@@ -40,6 +41,7 @@ import type {
   Hoverable,
   Point,
   Rect,
+  Rotatable,
   Spatial,
 } from "../types";
 import { generateColorFromId } from "../utils/color";
@@ -71,6 +73,11 @@ export const TypeGuards = {
   isSpatial: (
     body: BaseOverlay | InteractionHandler,
   ): body is BaseOverlay & Spatial => "bounds" in body,
+
+  isRotatable: (
+    body: BaseOverlay | InteractionHandler,
+  ): body is BaseOverlay & Rotatable =>
+    "getRotation" in body && "setRotation" in body,
 
   isInteractionHandler: (value: unknown): value is InteractionHandler =>
     typeof value === "object" &&
@@ -313,6 +320,28 @@ export class Scene2D {
           CommandContextManager.instance()
             .getActiveContext()
             .pushUndoable(moveCommand);
+        }
+      }
+    });
+
+    // Listen for OVERLAY_ROTATE_END events to push undo/redo commands
+    this.registerEventHandler("lighter:overlay-rotate-end", (event) => {
+      if (this.externalUndoAuthority) return;
+
+      const overlay = this.getOverlay(event.overlayId);
+      if (overlay && TypeGuards.isRotatable(overlay)) {
+        const { startRotation, rotation } = event;
+
+        if (Math.abs(startRotation - rotation) > 1e-4) {
+          const rotateCommand = new RotateOverlayCommand(
+            overlay,
+            event.overlayId,
+            startRotation,
+            rotation,
+          );
+          CommandContextManager.instance()
+            .getActiveContext()
+            .pushUndoable(rotateCommand);
         }
       }
     });

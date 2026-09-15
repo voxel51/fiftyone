@@ -288,6 +288,7 @@ export const useLighterEngineBridge = ({
   // resize / keypoint are single synchronous commits (no tail) and stay plain.
   on("lighter:overlay-drag-end", commitOverlay);
   on("lighter:overlay-resize-end", commitOverlay);
+  on("lighter:overlay-rotate-end", commitOverlay);
   on("lighter:overlay-paint-end", commitWithMaskTail);
   on("lighter:overlay-establish", establishOverlay);
   on("lighter:keypoint-point-added", commitOverlay);
@@ -325,6 +326,7 @@ export const useLighterEngineBridge = ({
       engine.publishSignal<GeometrySignal>(GEOMETRY_SIGNAL, key, {
         kind: "2d",
         bounds: { x: b.x, y: b.y, width: b.width, height: b.height },
+        rotation: overlay.getRotation(),
       });
     },
     [dataset, engine, sample, scene],
@@ -332,6 +334,7 @@ export const useLighterEngineBridge = ({
 
   on("lighter:overlay-drag-move", publishGeometry);
   on("lighter:overlay-resize-move", publishGeometry);
+  on("lighter:overlay-rotate-move", publishGeometry);
 
   useLighterPreviewSync(
     engine,
