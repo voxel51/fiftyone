@@ -6,6 +6,9 @@ import type { OverlayMask } from "@fiftyone/looker/src/numpy";
 import type { ColorSchemeInput } from "@fiftyone/relay";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const decodeMaskPath = vi.hoisted(() => vi.fn());
+vi.mock("../utils/maskPathDecoding", () => ({ decodeMaskPath }));
+
 import { CONTAINS } from "../core/containment";
 import type { RenderMeta } from "../types";
 import { resolveHeatmapPalette } from "../utils/heatmapPalette";
@@ -58,6 +61,9 @@ const map = (values: number[]): OverlayMask =>
 const BASE64_MAP =
   "eJyb7BfqGxDJyFDGUK2eklqcXKRupaBek2SorqOgnpZfVFKUmBefX5SSChJ3S8wpTgWKF2ckFqQC+RoWhjoKRqaaOgq1CmQCLkZGBuyAEQJwSmDKMmIAnBJQKZIkGIeLBCOdJIaNRwZOgnHkSjAOE4mBDMRBmW2pWCRTTwJnRUE9CdJrKepJ4KwkGZABTglkSQwJqBw2cbAclAYAWfUiKw==";
 
+/** A decoded map standing in for what `decodeMaskPath` returns. */
+const mapFixture = () => map([0, 1, 1, 0]);
+
 const META: RenderMeta = {
   canonicalMediaBounds: { x: 0, y: 0, width: 100, height: 100 },
 };
@@ -86,6 +92,7 @@ describe("HeatmapOverlay", () => {
 
   beforeEach(() => {
     renderer = makeRenderer();
+    decodeMaskPath.mockReset();
     vi.restoreAllMocks();
   });
 
@@ -290,6 +297,117 @@ describe("HeatmapOverlay", () => {
     expect(consoleError).toHaveBeenCalledTimes(1);
   });
 
+  it("decodes an on-disk map through the supplied resolver", async () => {
+    const resolveUrl = vi.fn(() => "/media?filepath=/m.png");
+    decodeMaskPath.mockResolvedValue(mapFixture());
+
+    const overlay = new HeatmapOverlay({
+      id: "heatmap-disk",
+      field: FIELD,
+      label: { _id: "d", _cls: "Heatmap", map_path: "/m.png" },
+      resolveUrl,
+    });
+
+    // the first paint has nothing yet: the decode is asynchronous
+    render(overlay);
+    expect(renderer.drawImage).not.toHaveBeenCalled();
+    expect(resolveUrl).toHaveBeenCalledWith("/m.png");
+
+    await vi.waitFor(() => expect(overlay.getIsDirty()).toBe(true));
+
+    render(overlay);
+    expect(renderer.drawImage).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not restart a decode already in flight", async () => {
+    let resolveDecode: (value: unknown) => void = () => undefined;
+    decodeMaskPath.mockReturnValue(
+      new Promise((resolve) => {
+        resolveDecode = resolve;
+      }),
+    );
+
+    const overlay = new HeatmapOverlay({
+      id: "heatmap-inflight",
+      field: FIELD,
+      label: { _id: "d", _cls: "Heatmap", map_path: "/m.png" },
+      resolveUrl: () => "/media?filepath=/m.png",
+    });
+
+    // every frame of playback repaints; each must not fire its own fetch
+    render(overlay);
+    render(overlay);
+    render(overlay);
+
+    expect(decodeMaskPath).toHaveBeenCalledTimes(1);
+
+    resolveDecode(mapFixture());
+  });
+
+  it("discards a decode whose label has moved on", async () => {
+    // a scrub, or simply the next frame: adopting a stale decode would paint
+    // one frame's map over another
+    let resolveDecode: (value: unknown) => void = () => undefined;
+    decodeMaskPath.mockReturnValue(
+      new Promise((resolve) => {
+        resolveDecode = resolve;
+      }),
+    );
+
+    const overlay = new HeatmapOverlay({
+      id: "heatmap-stale",
+      field: FIELD,
+      label: { _id: "d", _cls: "Heatmap", map_path: "/old.png" },
+      resolveUrl: () => "/media?filepath=/old.png",
+    });
+
+    render(overlay);
+
+    overlay.applyLabel({
+      _id: "d",
+      _cls: "Heatmap",
+      map_path: "/new.png",
+    });
+
+    resolveDecode(mapFixture());
+    await Promise.resolve();
+
+    renderer.drawImage.mockClear();
+    render(overlay);
+
+    // the stale decode must not have been adopted for the new path
+    expect(renderer.drawImage).not.toHaveBeenCalled();
+  });
+
+  it("retries after a failed decode instead of giving up for good", async () => {
+    // `decodeMaskPath` returns undefined on failure and caches nothing, so
+    // pinning the path to that result would mean a transient network error
+    // hides the map for the rest of the clip
+    decodeMaskPath.mockResolvedValueOnce(undefined);
+
+    const overlay = new HeatmapOverlay({
+      id: "heatmap-retry",
+      field: FIELD,
+      label: { _id: "d", _cls: "Heatmap", map_path: "/m.png" },
+      resolveUrl: () => "/media?filepath=/m.png",
+    });
+
+    render(overlay);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(renderer.drawImage).not.toHaveBeenCalled();
+
+    decodeMaskPath.mockResolvedValue(mapFixture());
+
+    render(overlay);
+    await vi.waitFor(() => expect(overlay.getIsDirty()).toBe(true));
+    render(overlay);
+
+    expect(decodeMaskPath).toHaveBeenCalledTimes(2);
+    expect(renderer.drawImage).toHaveBeenCalled();
+  });
+
   it("stops answering hit tests once the inline map is gone", () => {
     const overlay = makeOverlay();
 
@@ -342,21 +460,22 @@ describe("HeatmapOverlay", () => {
     expect(renderer.drawImage).toHaveBeenCalledTimes(1);
   });
 
-  it("says so once when the map is only on disk", () => {
+  it("says so once when no resolver was supplied", () => {
     const consoleWarn = vi
       .spyOn(console, "warn")
       .mockImplementation(() => undefined);
 
     const overlay = new HeatmapOverlay({
-      id: "heat-disk",
+      id: "heatmap-noresolver",
       field: FIELD,
-      label: { _id: "heat-disk", _cls: "Heatmap", map_path: "/m.png" },
+      label: { _id: "d", _cls: "Heatmap", map_path: "/m.png" },
     });
 
     render(overlay);
     render(overlay);
 
     expect(renderer.drawImage).not.toHaveBeenCalled();
+    // a per-frame warning would flood the console during playback
     expect(consoleWarn).toHaveBeenCalledTimes(1);
   });
 });

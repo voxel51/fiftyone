@@ -3,6 +3,7 @@
  */
 
 import type { OverlayMask } from "@fiftyone/looker/src/numpy";
+import { HEATMAP } from "@fiftyone/utilities";
 
 import { CONTAINS } from "../core/containment";
 import type { Renderer2D } from "../renderer/Renderer2D";
@@ -15,6 +16,7 @@ import {
   type HeatmapPalette,
 } from "../utils/heatmapPalette";
 import { rasterizeHeatmap } from "../utils/heatmapRaster";
+import { decodeMaskPath } from "../utils/maskPathDecoding";
 import { BaseOverlay } from "./BaseOverlay";
 
 export type HeatmapLabel = RawLookerLabel & {
@@ -29,6 +31,11 @@ export interface HeatmapOverlayOptions {
   id: string;
   field: string;
   label: HeatmapLabel;
+  /**
+   * Turns the label's raw `map_path` into a fetchable URL. Without one, an
+   * on-disk map cannot be loaded and the overlay paints nothing.
+   */
+  resolveUrl?: (raw: string) => string | undefined;
 }
 
 /**
@@ -58,6 +65,15 @@ export class HeatmapOverlay extends BaseOverlay<HeatmapLabel> {
 
   #warnedUnsupported = false;
 
+  /** Resolves the label's raw `map_path` into a fetchable URL. */
+  readonly #resolveUrl?: (raw: string) => string | undefined;
+
+  /** The map decoded from `map_path`, and the path it came from. */
+  #decodedFromPath?: OverlayMask;
+  #decodedPath?: string;
+  /** The path a decode is in flight for, so a repaint does not restart it. */
+  #decodingPath?: string;
+
   /**
    * The (source, palette) that failed to rasterize.
    *
@@ -77,6 +93,7 @@ export class HeatmapOverlay extends BaseOverlay<HeatmapLabel> {
 
   constructor(options: HeatmapOverlayOptions) {
     super(options.id, options.field, options.label);
+    this.#resolveUrl = options.resolveUrl;
   }
 
   getOverlayType(): string {
@@ -89,7 +106,7 @@ export class HeatmapOverlay extends BaseOverlay<HeatmapLabel> {
   }
 
   hasValidBounds(): boolean {
-    return Boolean(this.label?.map);
+    return Boolean(this.label?.map ?? this.label?.map_path);
   }
 
   protected renderImpl(renderer: Renderer2D, meta: RenderMeta): void {
@@ -127,21 +144,17 @@ export class HeatmapOverlay extends BaseOverlay<HeatmapLabel> {
   }
 
   private ensureRaster(palette: HeatmapPalette): HTMLCanvasElement | undefined {
-    // Normalized rather than read straight off the label: `/frames` sends a
-    // base64 string, but the GraphQL sample payload sends the same map as
-    // `{ $binary: { base64 } }`, and this surface receives both. An unwrapped
-    // `$binary` is truthy, so it would reach the rasterizer as an object with
-    // no `channels` and fail there instead of painting.
-    const source = maskSourceOf(this.label?.map);
+    const source = this.resolveSource();
 
     if (!source) {
-      // The label no longer carries an inline map — it became `map_path`-only,
-      // or lost its map entirely. Stopping at the paint is not enough: the
-      // values behind the last raster are what `valueAt` and `containsPoint`
-      // answer from, so leaving them would let an invisible overlay keep
-      // swallowing clicks for a heatmap that is no longer there.
+      // Nothing resolvable right now: no inline map, and either no `map_path`
+      // at all or one still decoding. Stopping at the paint is not enough —
+      // the values behind the last raster are what `valueAt` and
+      // `containsPoint` answer from, so leaving them would let an invisible
+      // overlay go on swallowing clicks for a heatmap that is not on screen.
+      // Clearing keeps the hit test honest about what is actually painted; a
+      // path decode that lands repaints and repopulates it.
       this.clearRaster();
-      this.warnUnsupportedOnce();
       return undefined;
     }
 
@@ -192,15 +205,98 @@ export class HeatmapOverlay extends BaseOverlay<HeatmapLabel> {
     return this.#canvas;
   }
 
-  private warnUnsupportedOnce(): void {
-    if (this.#warnedUnsupported || !this.label?.map_path) {
+  /**
+   * The map to rasterize: the inline one when the label carries it, else
+   * whatever the last `map_path` decode produced.
+   *
+   * An on-disk map resolves asynchronously, so the first paint after the path
+   * changes has nothing to draw. Starting the decode here rather than gating
+   * the MOUNT on it is what makes this work per frame: the overlay is one
+   * handle reused across the clip, so a gated mount would tear it down and
+   * rebuild it on every playhead step.
+   */
+  private resolveSource(): string | OverlayMask | undefined {
+    // Normalized rather than read straight off the label: `/frames` sends a
+    // base64 string, but the GraphQL sample payload sends the same map as
+    // `{ $binary: { base64 } }`, and this surface receives both. An unwrapped
+    // `$binary` is truthy, so it would reach the rasterizer as an object with
+    // no `channels` and fail there instead of painting.
+    const inline = maskSourceOf(this.label?.map);
+
+    if (inline) {
+      return inline;
+    }
+
+    const path = this.label?.map_path;
+
+    if (!path) {
+      return undefined;
+    }
+
+    if (this.#decodedPath === path) {
+      return this.#decodedFromPath;
+    }
+
+    this.startDecode(path);
+
+    return undefined;
+  }
+
+  /** Fetch + decode an on-disk map, then repaint. */
+  private startDecode(path: string): void {
+    if (this.#decodingPath === path) {
+      return;
+    }
+
+    const url = this.#resolveUrl?.(path);
+
+    if (!url) {
+      this.warnUnresolvableOnce();
+      return;
+    }
+
+    this.#decodingPath = path;
+
+    void decodeMaskPath(url, this.field ?? "", HEATMAP)
+      .then((decoded) => {
+        // The label may have moved on while this was in flight — a scrub, or
+        // simply the next frame. Adopting a stale decode would paint the
+        // wrong frame's map.
+        if (this.label?.map_path !== path) {
+          return;
+        }
+
+        // Only remember a SUCCESSFUL decode. `decodeMaskPath` returns
+        // undefined on a fetch or decode failure and caches nothing, so
+        // recording the path here would pin the overlay to that one failure
+        // for the life of the clip — a transient network error and the map
+        // never appears again. Leaving it unrecorded lets the next repaint
+        // try once more.
+        if (!decoded) {
+          return;
+        }
+
+        this.#decodedFromPath = decoded;
+        this.#decodedPath = path;
+        this.markDirty();
+      })
+      .finally(() => {
+        if (this.#decodingPath === path) {
+          this.#decodingPath = undefined;
+        }
+      });
+  }
+
+  /** Said once per overlay — a per-frame warning would flood playback. */
+  private warnUnresolvableOnce(): void {
+    if (this.#warnedUnsupported) {
       return;
     }
 
     this.#warnedUnsupported = true;
     console.warn(
-      `[heatmap] "${this.field}" stores its map at map_path, which this ` +
-        "surface cannot resolve yet; nothing will paint for it",
+      `[heatmap] "${this.field}" stores its map at map_path, but this ` +
+        "surface supplied no way to resolve it to a URL; nothing will paint",
     );
   }
 
@@ -270,6 +366,8 @@ export class HeatmapOverlay extends BaseOverlay<HeatmapLabel> {
   }
 
   destroy(): void {
+    this.#decodedFromPath = undefined;
+    this.#decodedPath = undefined;
     this.clearRaster();
     this.#mediaBounds = undefined;
     super.destroy();
