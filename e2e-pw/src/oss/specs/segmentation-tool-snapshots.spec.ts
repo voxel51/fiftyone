@@ -191,11 +191,13 @@ test.describe.serial("segmentation tool snapshots", () => {
         await openAnnotate(freshModal, freshPage, fiftyoneLoader, datasetName);
         const rows = freshModal.sidebar.annotate.labelRowsFor("instances");
         await expect(rows).toHaveCount(1);
+        // the merged mask renders on the fresh canvas as the union it was
+        // snapshotted as above
         await rows.click();
         await freshModal.sidebar.edit.assert.hasMaskPreview();
-        await expect
-          .poll(() => freshModal.sidebar.edit.maskPreviewPixels())
-          .toBeGreaterThan(0);
+        await freshModal.sampleCanvas.assert.hasScreenshot(
+          "seg-merge-persisted.png",
+        );
       } finally {
         await context.close();
       }

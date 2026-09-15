@@ -110,7 +110,7 @@ export class SidebarPom {
   async changeSliderStartValue(field: string, textA: string, textB: string) {
     const sliderStart = this.getSliderIndicator(field, textA);
     const sliderMidPoint = this.getSliderIndicator(field, textB, true);
-    await sliderStart.dragTo(sliderMidPoint, { timeout: 1000 });
+    await sliderStart.dragTo(sliderMidPoint);
   }
 
   async getActiveMode() {
@@ -270,15 +270,15 @@ class SidebarAsserter {
   }
 
   async assertSidebarGroupIsHidden(groupName: string) {
-    await expect(this.sb.groupField(groupName)).toBeHidden({ timeout: 1000 });
+    await expect(this.sb.groupField(groupName)).toBeHidden();
   }
 
   async assertAddGroupVisible() {
-    await expect(this.sb.addGroupField).toBeVisible({ timeout: 1000 });
+    await expect(this.sb.addGroupField).toBeVisible();
   }
 
   async assertAddGroupHidden() {
-    await expect(this.sb.addGroupField).toBeHidden({ timeout: 1000 });
+    await expect(this.sb.addGroupField).toBeHidden();
   }
 
   async assertCanDragFieldToGroup(fieldName: string, groupName: string) {

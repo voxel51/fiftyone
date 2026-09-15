@@ -19,11 +19,9 @@ const datasetName = getUniqueDatasetNameWithPrefix("annotate-2d-mask-edit");
 /** Fixed ObjectId addressing the single sample (so we can deep-link the modal). */
 const id = "000000000000000000000000";
 
-/** The rendered mask preview's covered fraction once the mask has decoded. */
+/** The rendered mask preview's covered fraction once the mask has painted. */
 const maskCoverage = async (modal: ModalPom) => {
-  await expect
-    .poll(() => modal.sidebar.edit.maskPreviewCoverage())
-    .toBeGreaterThan(0);
+  await modal.sidebar.edit.assert.maskPreviewDrawn();
   return modal.sidebar.edit.maskPreviewCoverage();
 };
 

@@ -110,15 +110,12 @@ test.describe.serial("segmentation pen-tool round-trip", () => {
       await fresh.waitForSampleLoadDomAttribute();
       await fresh.sidebar.switchMode("annotate");
       const rows = fresh.sidebar.annotate.labelRowsFor("instances");
-      expect(await rows.count()).toBeGreaterThanOrEqual(1);
+      await expect(rows).toHaveCount(1);
 
-      // Pen polygon covered ~20% × 20% of the image; a non-empty rendered mask
-      // catches "the field saved but the mask is empty".
-      await rows.first().click();
+      // the persisted mask renders on the fresh canvas exactly as drawn
+      await rows.click();
       await fresh.sidebar.edit.assert.hasMaskPreview();
-      await expect
-        .poll(() => fresh.sidebar.edit.maskPreviewPixels())
-        .toBeGreaterThan(0);
+      await fresh.sampleCanvas.assert.hasScreenshot("seg-pen-persisted.png");
     } finally {
       await context.close();
     }

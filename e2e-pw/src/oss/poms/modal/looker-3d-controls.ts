@@ -34,21 +34,22 @@ export class Looker3DControlsPom {
       .click();
   }
 
+  /**
+   * Wait until every scene asset has loaded and the scene has rendered with
+   * its settled camera. Arm the ready event before reading the state once: a
+   * reveal that already happened shows in the attribute, one still to come
+   * fires the armed event.
+   */
   async waitForAllAssetsLoaded() {
-    await this.page.waitForFunction(
-      (SUCCESS_MSG_INJECTED) => {
-        const logs = document.querySelector(
-          "[data-cy=looker3d-logs-action-bar]",
-        );
-        return logs?.textContent === SUCCESS_MSG_INJECTED;
-      },
-      SUCCESS_MSG,
-      { timeout: 10000 },
-    );
-    // takes a bit of time for 3d assets to mount after load
-    // todo: figure out if we can emit event on canvas paint
-    // eslint-disable-next-line playwright/no-wait-for-timeout
-    await this.page.waitForTimeout(150);
+    await expect(
+      this.locator.getByTestId("looker3d-logs-action-bar"),
+    ).toHaveText(SUCCESS_MSG);
+
+    const looker3d = this.modal.locator.getByTestId("looker3d");
+    const ready = await this.modal.eventUtils.arm("looker3d-scene-ready");
+    if ((await looker3d.getAttribute("data-scene-ready")) !== "true") {
+      await ready.received;
+    }
   }
 
   /**
@@ -63,8 +64,13 @@ export class Looker3DControlsPom {
     await settled.received;
   }
 
+  /** Move to the ego view; resolves once a frame has rendered the new camera. */
   async setEgoView() {
+    const settled = await this.modal.eventUtils.arm(
+      "looker3d-camera-look-at-settled",
+    );
     await this.locator.getByTestId("looker-3d-set-ego-view").click();
+    await settled.received;
   }
 
   async toggleGridHelper() {

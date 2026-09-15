@@ -6,7 +6,7 @@
  * first. The companion to the 2D spec, resolved in the `frames.detections`
  * namespace.
  */
-import { expect, test as base } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
@@ -127,9 +127,7 @@ test.describe.serial("video annotation last-used class", () => {
     // the next drawn box defaults to the last-used class ("person"), not the
     // schema's first class ("vehicle")
     await drawBox(modal, [0.1, 0.1], [0.3, 0.3]);
-    await expect
-      .poll(() => modal.sidebar.edit.getCurrentField())
-      .toBe("frames.detections");
+    await modal.sidebar.edit.assert.currentField("frames.detections");
     await modal.sidebar.edit.assert.verifyFieldValue("label", "person");
   });
 });

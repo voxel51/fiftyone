@@ -56,14 +56,12 @@ export class EpisodePom {
     await expect(this.scope.getByText(fileName, { exact: true })).toBeVisible({
       timeout: READY_TIMEOUT,
     });
-    await expect
-      .poll(
-        () => this.shell.getAttribute("data-episode-source-transitioning"),
-        {
-          timeout: READY_TIMEOUT,
-        },
-      )
-      .toBeNull();
+    // the attribute is present only while a source swap is in flight
+    await expect(this.shell).not.toHaveAttribute(
+      "data-episode-source-transitioning",
+      /.*/,
+      { timeout: READY_TIMEOUT },
+    );
     await expect(
       byDataTestId(this.scope, "episode-preparing-scaffold"),
     ).toBeHidden();
@@ -100,13 +98,21 @@ export class EpisodePom {
   ): Promise<Readonly<Record<string, number>>> {
     const inputs = await this.openViewpointInputs(tileTitle);
     const previousPose = await this.readCameraPoseInputs(inputs);
+    const previousRaw: Record<string, string> = {};
+    for (const name of Object.keys(previousPose)) {
+      previousRaw[name] = await inputs
+        .getByRole("spinbutton", { name })
+        .inputValue();
+    }
     await this.blurActiveElement();
     await this.page.keyboard.press("e");
-    await expect
-      .poll(() => this.readCameraPoseInputs(inputs), {
-        timeout: READY_TIMEOUT,
-      })
-      .not.toEqual(previousPose);
+    // the ego view moves the camera, so every pose input leaves its old value
+    for (const [name, raw] of Object.entries(previousRaw)) {
+      await expect(inputs.getByRole("spinbutton", { name })).not.toHaveValue(
+        raw,
+        { timeout: READY_TIMEOUT },
+      );
+    }
     return this.readCameraPoseInputs(inputs);
   }
 
@@ -117,11 +123,9 @@ export class EpisodePom {
     const inputs = await this.openViewpointInputs(tileTitle);
     for (const [name, value] of Object.entries(expected)) {
       const input = inputs.getByRole("spinbutton", { name });
-      await expect
-        .poll(() => input.inputValue().then(Number.parseFloat), {
-          timeout: READY_TIMEOUT,
-        })
-        .toBeCloseTo(value, 6);
+      // populated first, then compared once at 6-digit precision
+      await expect(input).not.toHaveValue("", { timeout: READY_TIMEOUT });
+      expect(Number.parseFloat(await input.inputValue())).toBeCloseTo(value, 6);
     }
   }
 

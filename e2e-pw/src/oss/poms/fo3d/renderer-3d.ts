@@ -221,12 +221,14 @@ class Renderer3dAsserter {
   async expectSomethingToRender(
     minRenderedPixels = DEFAULT_MIN_RENDERED_PIXELS,
   ) {
-    await expect(this.renderer3dPom.looker3d).toBeVisible();
-
-    await expect
-      .poll(async () => this.renderer3dPom.countRenderedPixels(), {
-        timeout: 5000,
-      })
-      .toBeGreaterThan(minRenderedPixels);
+    // scene-ready = assets loaded, camera settled, revealed — the frame is
+    // painted, so one pixel count is enough
+    await expect(this.renderer3dPom.looker3d).toHaveAttribute(
+      "data-scene-ready",
+      "true",
+    );
+    expect(await this.renderer3dPom.countRenderedPixels()).toBeGreaterThan(
+      minRenderedPixels,
+    );
   }
 }

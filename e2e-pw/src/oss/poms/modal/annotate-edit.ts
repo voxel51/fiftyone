@@ -106,35 +106,6 @@ export class ModalAnnotateEditPom {
   }
 
   /**
-   * Opaque pixel count of the rendered mask preview — the sidebar's picture of
-   * the selected detection's mask. Zero until the mask has decoded.
-   */
-  async maskPreviewPixels(): Promise<number> {
-    return this.page
-      .getByTestId("annotate-mask-preview")
-      .locator("canvas")
-      .evaluate((canvas: HTMLCanvasElement) => {
-        const context = canvas.getContext("2d");
-        if (!context) {
-          return 0;
-        }
-        const { data } = context.getImageData(
-          0,
-          0,
-          canvas.width,
-          canvas.height,
-        );
-        let opaque = 0;
-        for (let i = 3; i < data.length; i += 4) {
-          if (data[i] > 0) {
-            opaque++;
-          }
-        }
-        return opaque;
-      });
-  }
-
-  /**
    * Covered fraction of the rendered mask preview: opaque pixels over the area
    * the mask is drawn into (its own size fit to the preview), so it compares
    * across mask resolutions. Zero until the mask has decoded.
@@ -321,14 +292,40 @@ class ModalAnnotateEditAsserter {
   }
 
   /**
-   * Verify a field's value
+   * Verify a field's value. Retries until the input reflects it, so a value
+   * that lands after an engine commit, undo, or hydration echo is awaited
+   * rather than read once.
    *
    * @param path The field path
    * @param expectedValue The expected field value
    */
-  async verifyFieldValue(path: string, expectedValue: string) {
-    const actualValue = await this.modalAnnotateEdit.getFieldValue(path);
-    expect(actualValue).toBe(expectedValue);
+  async verifyFieldValue(path: string, expectedValue: string | RegExp) {
+    await expect(await this.modalAnnotateEdit.getField(path)).toHaveValue(
+      expectedValue,
+    );
+  }
+
+  /**
+   * Verify the field the edited label belongs to, as the field dropdown shows
+   * it. Retries across a move, undo, or redo re-homing the label.
+   *
+   * @param field The expected field path
+   */
+  async currentField(field: string) {
+    await expect(this.modalAnnotateEdit.fieldSelect).toHaveText(field);
+  }
+
+  /**
+   * Assert the mask preview has painted a decoded mask. The preview mounts
+   * blank and stamps its canvas with the mask dimensions on the first real
+   * draw, so reads of its pixels are only meaningful after this.
+   */
+  async maskPreviewDrawn() {
+    await expect(
+      this.modalAnnotateEdit.page
+        .getByTestId("annotate-mask-preview")
+        .locator("canvas"),
+    ).toHaveAttribute("data-mask-width", /^[1-9]\d*$/);
   }
 
   /**

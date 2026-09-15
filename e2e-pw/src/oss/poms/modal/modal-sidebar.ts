@@ -1,5 +1,4 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
-import { Duration } from "src/oss/utils";
 import { ModalAnnotateEditPom } from "./annotate-edit";
 import { ModalAnnotateSidebarPom } from "./annotate-sidebar";
 
@@ -236,25 +235,14 @@ class ModalSidebarAsserter {
   }
 
   /**
-   * Waits until a sidebar entry's text content equals the expected value, with
-   * a 5-second timeout.
+   * Waits until a sidebar entry's text content equals the expected value.
    *
    * @param key - The key identifier of the sidebar entry to watch
    * @param value - The expected text content to wait for
    * @returns A promise that resolves when the entry text matches the expected value
    */
   async waitUntilSidebarEntryTextEquals(key: string, value: string) {
-    return this.modalSidebarPom.page.waitForFunction(
-      ({ key_, value_ }: { key_: string; value_: string }) => {
-        // a not-yet-mounted entry is "not equal yet", not a crash
-        return (
-          document.querySelector(`[data-cy='sidebar-entry-${key_}']`)
-            ?.textContent === value_
-        );
-      },
-      { key_: key, value_: value },
-      { timeout: 5000 },
-    );
+    await expect(this.modalSidebarPom.getSidebarEntry(key)).toHaveText(value);
   }
 
   /**
@@ -307,26 +295,13 @@ class ModalSidebarAsserter {
   }
 
   /**
-   * Waits until the sample tag count in the sidebar equals the expected count,
-   * with a 1-second timeout
+   * Waits until the sample tag count in the sidebar equals the expected count.
    *
    * @param count - The expected number of sample tags
    */
   async verifySampleTagCount(count: number) {
-    await this.modalSidebarPom.page.waitForFunction(
-      (count_) => {
-        // a not-yet-mounted entry is "not equal yet", not a crash
-        return (
-          Number(
-            document.querySelector("#modal [data-cy='sidebar-entry-tags']")
-              ?.textContent,
-          ) === count_
-        );
-      },
-      count,
-      {
-        timeout: Duration.Seconds(1),
-      },
+    await expect(this.modalSidebarPom.getSidebarEntry("tags")).toHaveText(
+      String(count),
     );
   }
 
@@ -352,28 +327,16 @@ class ModalSidebarAsserter {
   }
 
   /**
-   * Waits until the label tag count in the sidebar equals the expected count,
-   * with a 1-second timeout.
+   * Waits until the label tag count in the sidebar equals the expected count,.
    *
    * @param count - The expected number of label tags
    */
   async verifyLabelTagCount(count: number) {
-    await this.modalSidebarPom.page.waitForFunction(
-      (count_) => {
-        // a not-yet-mounted entry is "not equal yet", not a crash
-        return (
-          Number(
-            document.querySelector(
-              "#modal [data-cy='sidebar-field-container-_label_tags'] [data-cy='entry-count-all']",
-            )?.textContent,
-          ) === count_
-        );
-      },
-      count,
-      {
-        timeout: Duration.Seconds(1),
-      },
-    );
+    await expect(
+      this.modalSidebarPom.page.locator(
+        "#modal [data-cy='sidebar-field-container-_label_tags'] [data-cy='entry-count-all']",
+      ),
+    ).toHaveText(String(count));
   }
 
   /**

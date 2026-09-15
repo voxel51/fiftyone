@@ -137,17 +137,10 @@ test("aligns grouped direct PCDs in world and writes cuboids back to the native 
   await modal.looker3dControls.setTopView();
   await modal.looker3dControls.toggleGridHelper();
 
-  await expect
-    .poll(
-      async () => {
-        const visiblePixels = await countOuterBandPixels(
-          modal.annotate3d.canvas,
-        );
-        return Math.min(visiblePixels.left, visiblePixels.right);
-      },
-      { timeout: 10_000 },
-    )
-    .toBeGreaterThan(30);
+  // both slices are painted once the top view has rendered (`setTopView`
+  // resolves on the settled frame), so one read of the outer bands suffices
+  const visiblePixels = await countOuterBandPixels(modal.annotate3d.canvas);
+  expect(Math.min(visiblePixels.left, visiblePixels.right)).toBeGreaterThan(30);
 
   await modal.sidebar.switchMode("annotate");
   await modal.sidebar.annotate.selectAnnotationSlice("lidar_left");
@@ -175,12 +168,25 @@ test("aligns grouped direct PCDs in world and writes cuboids back to the native 
   await modal.annotate3d.assert.labelListed("world-created");
   await modal.annotate3d.selectLabel("world-created");
 
-  const geometry = async (axis: GeometryAxis) =>
-    Number(await modal.annotate3d.getGeometry(axis));
-  await expect.poll(() => geometry("x")).toBeCloseTo(2, 1);
-  await expect.poll(() => geometry("y")).toBeCloseTo(-23.15, 1);
-  await expect.poll(() => geometry("rz")).toBeCloseTo(Math.PI / 2, 1);
-  for (const axis of ["lx", "ly", "lz"] as const) {
-    expect(await geometry(axis)).toBeGreaterThan(0);
+  // the form shows two decimals. Position and yaw come from the world
+  // alignment; the footprint is the screen-space square under the top view
+  // projected into the lidar frame, and creation fits the height to the
+  // lattice points under it (2nd to 98th percentile of their z, a 4-unit
+  // span, plus the fit's 0.05 margin on each side).
+  const geometry: Record<GeometryAxis, string> = {
+    x: "2.00",
+    y: "-23.15",
+    z: "2.00",
+    lx: "13.64",
+    ly: "9.25",
+    lz: "4.10",
+    rx: "0.00",
+    ry: "0.00",
+    rz: "1.57",
+  };
+  for (const [axis, value] of Object.entries(geometry)) {
+    await expect(
+      modal.annotate3d.geometryField(axis as GeometryAxis),
+    ).toHaveValue(value);
   }
 });

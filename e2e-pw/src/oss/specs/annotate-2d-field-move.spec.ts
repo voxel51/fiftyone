@@ -149,7 +149,7 @@ test.describe.serial("2D annotation field move", () => {
 
       // The move deselected the label; re-select to read its new home.
       await reselect(modal);
-      await expect.poll(() => modal.sidebar.edit.getCurrentField()).toBe(to);
+      await modal.sidebar.edit.assert.currentField(to);
 
       // One transaction → exactly one autosave patch (empty ticks are filtered).
       expect(patches).toBe(1);
@@ -161,12 +161,12 @@ test.describe.serial("2D annotation field move", () => {
     await modal.sidebar.edit.assert.undoIsEnabled();
     await modal.sidebar.edit.undo();
     await reselect(modal);
-    await expect.poll(() => modal.sidebar.edit.getCurrentField()).toBe(from);
+    await modal.sidebar.edit.assert.currentField(from);
 
     await modal.sidebar.edit.assert.redoIsEnabled();
     await modal.sidebar.edit.redo();
     await reselect(modal);
-    await expect.poll(() => modal.sidebar.edit.getCurrentField()).toBe(to);
+    await modal.sidebar.edit.assert.currentField(to);
   });
 
   test("a field move persists across a fresh load", async ({
@@ -187,13 +187,11 @@ test.describe.serial("2D annotation field move", () => {
     await saved;
 
     await reselect(modal);
-    await expect.poll(() => modal.sidebar.edit.getCurrentField()).toBe(to);
+    await modal.sidebar.edit.assert.currentField(to);
 
     await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
       await freshModal.sidebar.annotate.selectActiveLabel("cat", 0);
-      await expect
-        .poll(() => freshModal.sidebar.edit.getCurrentField())
-        .toBe(to);
+      await freshModal.sidebar.edit.assert.currentField(to);
     });
   });
 });

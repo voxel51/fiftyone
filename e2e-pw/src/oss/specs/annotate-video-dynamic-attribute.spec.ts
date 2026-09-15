@@ -7,7 +7,7 @@
  * (sample-and-hold), and the fill is one undo step. Re-seeded per test with one
  * tracked `vehicle` carrying `turn_signal` = "off" on every frame.
  */
-import { expect, test as base } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
@@ -75,7 +75,7 @@ const stepFrames = async (modal: ModalPom, page: Page, delta: number) => {
 
 /** Assert the selected track's `turn_signal` value at the current frame. */
 const assertSignal = async (modal: ModalPom, expected: string) =>
-  expect.poll(() => modal.sidebar.edit.getFieldValue(ATTR)).toBe(expected);
+  modal.sidebar.edit.assert.verifyFieldValue(ATTR, expected);
 
 /** Commit a `turn_signal` choice at the current frame and await the save. */
 const setSignal = async (modal: ModalPom, page: Page, choice: string) => {
