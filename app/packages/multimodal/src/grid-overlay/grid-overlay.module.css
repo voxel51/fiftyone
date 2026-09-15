@@ -2,7 +2,13 @@
   /* Flows at the bottom of the tile's footer column, beneath the tag bubbles. */
   box-sizing: border-box;
   width: 100%;
-  padding: 5px 6px;
+  /*
+   * No padding above the lane: every pixel between the preview and the track
+   * bars belongs to the readout, and the readout is not always there. Carrying
+   * it here instead left a band of empty bar above the tracks at every moment
+   * the readout had nothing to name, which is most of them.
+   */
+  padding: 0 6px 5px;
   /* The darkest of the three layers — tracks sit lighter on this, intervals
      lighter still (in colour) on those. Slightly transparent so the preview
      reads faintly behind. */
@@ -21,7 +27,10 @@
   gap: 6px;
   overflow: hidden;
   height: 12px;
+  /* Owns the gap to the preview above and to the lane below, so both close up
+     with it when there is nothing to read out. */
   margin-bottom: 3px;
+  padding-top: 5px;
   font-size: 9px;
   line-height: 12px;
   white-space: nowrap;

@@ -509,7 +509,11 @@ export function GridRenderer({
       ) : null}
       {preview.frame && preview.isBuffering ? (
         <span
-          className={classes.bufferingIndicator}
+          className={
+            blocksGridActivation
+              ? `${classes.bufferingIndicator} ${classes.bufferingIndicatorBesideButton}`
+              : classes.bufferingIndicator
+          }
           data-testid="episode-grid-buffering-indicator"
         >
           <Spinner size={Size.Xs} />
