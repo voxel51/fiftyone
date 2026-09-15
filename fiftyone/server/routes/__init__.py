@@ -28,6 +28,7 @@ from .plugins import Plugins
 from .runtime_assets import RuntimeAssetRoutes
 from .sample import SampleRoutes
 from .screenshot import Screenshot
+from .selection import SelectionRoutes
 from .sort import Sort
 from .tag import Tag
 from .tagging import Tagging
@@ -52,6 +53,7 @@ routes = (
     + OperatorRoutes
     + RuntimeAssetRoutes
     + SampleRoutes
+    + SelectionRoutes
     + [
         ("/aggregate", Aggregate),
         ("/event", Event),

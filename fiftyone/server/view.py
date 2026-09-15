@@ -169,6 +169,12 @@ def get_view(
                 desc=desc,
             )
 
+        selection_scope = (filters or {}).get("_selection_scope")
+        if selection_scope:
+            from fiftyone.server.selection import constrain_view
+
+            view = constrain_view(view, selection_scope)
+
         return view
 
     if awaitable:
