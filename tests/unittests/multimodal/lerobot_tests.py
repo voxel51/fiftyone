@@ -14,10 +14,9 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import unittest
+import uuid
 from unittest import mock
 
-from decorators import drop_datasets
 import pytest
 
 import fiftyone as fo
@@ -44,6 +43,95 @@ import fiftyone.utils.lerobot_export as foule
 
 pa = pytest.importorskip("pyarrow")
 papq = pytest.importorskip("pyarrow.parquet")
+
+
+@pytest.fixture()
+def created_datasets():
+    """Yields the list the factories below record their dataset names in, and
+    deletes exactly those names afterwards.
+
+    Shared by every factory in this module so one test's datasets are torn
+    down together, however it created them.
+    """
+    names = []
+
+    yield names
+
+    failures = []
+    for name in names:
+        try:
+            if fo.dataset_exists(name):
+                fo.delete_dataset(name)
+        except Exception as error:
+            failures.append((name, error))
+
+    if failures:
+        raise RuntimeError("could not delete %r" % (failures,))
+
+
+@pytest.fixture()
+def dataset_name(created_datasets):
+    """Yields a factory for a unique dataset name, registered before it exists.
+
+    Registered up front because the operation being named is allowed to fail,
+    and a rejected import still leaves its dataset behind.
+    """
+
+    def _name(prefix):
+        name = "%s_%s" % (prefix, uuid.uuid4().hex[:8])
+        created_datasets.append(name)
+        return name
+
+    return _name
+
+
+@pytest.fixture()
+def lerobot_import(dataset_name):
+    """Yields a factory that imports a directory as a LeRobot source."""
+
+    def _make(root, name=None, **kwargs):
+        dataset = fo.Dataset.from_dir(
+            dataset_dir=root,
+            dataset_type=fot.LeRobotDataset,
+            name=name or dataset_name("lerobot"),
+            **kwargs,
+        )
+        # Survives a concurrent delete_non_persistent_datasets() elsewhere;
+        # teardown deletes it by name regardless
+        dataset.persistent = True
+        return dataset
+
+    return _make
+
+
+@pytest.fixture()
+def native_import(dataset_name):
+    """The same, for reading back a ``FiftyOneDataset`` bundle."""
+
+    def _make(root, name=None, **kwargs):
+        dataset = fo.Dataset.from_dir(
+            dataset_dir=root,
+            dataset_type=fot.FiftyOneDataset,
+            name=name or dataset_name("native"),
+            **kwargs,
+        )
+        dataset.persistent = True
+        return dataset
+
+    return _make
+
+
+@pytest.fixture()
+def empty_dataset(dataset_name):
+    """Yields a factory for an empty dataset a test fills in itself."""
+
+    def _make(prefix):
+        dataset = fo.Dataset(name=dataset_name(prefix))
+        dataset.persistent = True
+        return dataset
+
+    return _make
+
 
 _VIDEO_FEATURE = "observation.images.front"
 
@@ -143,6 +231,14 @@ def _write_v3_source(root, version="v3.2", episodes=10):
     return video_path
 
 
+def _write_malformed_info(root):
+    """A source whose ``info.json`` is not JSON at all."""
+    info_path = os.path.join(root, "meta", "info.json")
+    os.makedirs(os.path.dirname(info_path), exist_ok=True)
+    with open(info_path, "w") as file:
+        file.write("{malformed")
+
+
 def _write_json(path, value):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w") as file:
@@ -168,14 +264,6 @@ def _read_parquet(path):
     """
     with open(path, "rb") as file:
         return papq.read_table(pa.BufferReader(file.read()))
-
-
-def _import(root, **kwargs):
-    return fo.Dataset.from_dir(
-        dataset_dir=root,
-        dataset_type=fot.LeRobotDataset,
-        **kwargs,
-    )
 
 
 def _source_locs(dataset):
@@ -227,19 +315,15 @@ def _put_sources(dataset, entries, loc=None):
 _VIDEO_FEATURE = "observation.images.front"
 
 
-def _delete_when_done(dataset):
-    """Deletes a dataset the sweep between tests will not: only
-    non-persistent datasets are swept, and this one has to outlive a child
-    process that clears those as it connects."""
-    if fo.dataset_exists(dataset.name):
-        fo.delete_dataset(dataset.name)
+def _paginate(dataset, first=20, after=None):
+    """The page the grid receives, as ``paginate_samples`` builds it.
 
-
-def _paginate(dataset, first=20):
-    """The page the grid receives, as ``paginate_samples`` builds it."""
+    ``after`` is the previous page's ``end_cursor``, which is how the grid
+    asks for the page that follows it.
+    """
     from fiftyone.server.samples import paginate_samples
 
-    return asyncio.run(paginate_samples(dataset.name, [], None, first))
+    return asyncio.run(paginate_samples(dataset.name, [], None, first, after))
 
 
 def _page_media(page):
@@ -250,43 +334,42 @@ def _page_media(page):
     }
 
 
-class LeRobotImporterTests(unittest.TestCase):
-    @drop_datasets
+class TestLeRobotImporter:
     def test_source_format_selects_importer_before_reference_construction(
-        self,
+        self, lerobot_import, dataset_name
     ):
         with tempfile.TemporaryDirectory() as root:
             _write_v3_source(root, version="v2.1")
             importer, _ = foud.build_dataset_importer(
                 fot.LeRobotDataset, dataset_dir=root
             )
-            self.assertIsInstance(importer, LeRobotDatasetImporter)
+            assert isinstance(importer, LeRobotDatasetImporter)
 
+            name = dataset_name("source-format")
             with mock.patch.object(
                 LeRobotEpisodeReference,
                 "__init__",
                 side_effect=AssertionError("constructed a reference"),
-            ), self.assertRaises(UnsupportedLeRobotVersionError):
-                _import(root, name="source-format-before-reference")
+            ), pytest.raises(UnsupportedLeRobotVersionError):
+                lerobot_import(root, name=name)
 
-            self.assertTrue(
-                fo.dataset_exists("source-format-before-reference")
-            )
+            assert fo.dataset_exists(name)
 
-    @drop_datasets
-    def test_multishard_ten_episode_import_and_relocation(self):
+    def test_multishard_ten_episode_import_and_relocation(
+        self, lerobot_import
+    ):
         with tempfile.TemporaryDirectory() as root:
             _write_v3_source(root)
-            dataset = _import(root, max_samples=10)
+            dataset = lerobot_import(root, max_samples=10)
 
-            self.assertEqual(len(dataset), 10)
+            assert len(dataset) == 10
             references = [sample.media_reference for sample in dataset]
-            self.assertEqual(len({r.key for r in references}), 10)
+            assert len({r.key for r in references}) == 10
             resolved = fmm._resolve_media_references(
                 dataset,
                 {str(i): r.to_mongo() for i, r in enumerate(references)},
             )
-            self.assertEqual(
+            assert (
                 len(
                     {
                         asset.path
@@ -294,29 +377,23 @@ class LeRobotImporterTests(unittest.TestCase):
                         for asset in entry.assets
                         if asset.description.role.value == "video-stream"
                     }
-                ),
-                1,
-            )
-            self.assertTrue(
-                all(
-                    not hasattr(reference, "dataset_root")
-                    for reference in references
                 )
+                == 1
             )
-            self.assertEqual(dataset.info["lerobot"]["format_major"], 3)
-            self.assertEqual(
-                dataset.info["lerobot"]["imported_episode_count"], 10
+            assert all(
+                not hasattr(reference, "dataset_root")
+                for reference in references
             )
-            self.assertNotIn("source_identity", dataset.info["lerobot"])
-            self.assertNotIn("source_fingerprint", dataset.info["lerobot"])
-            self.assertNotIn(
-                "source_binding_required", dataset.info["lerobot"]
-            )
+            assert dataset.info["lerobot"]["format_major"] == 3
+            assert dataset.info["lerobot"]["imported_episode_count"] == 10
+            assert "source_identity" not in dataset.info["lerobot"]
+            assert "source_fingerprint" not in dataset.info["lerobot"]
+            assert "source_binding_required" not in dataset.info["lerobot"]
 
             episode = references[7]
 
-            selected = _import(root, episodes=[7, 2], max_samples=1)
-            self.assertEqual(selected.values("episode_index"), [7])
+            selected = lerobot_import(root, episodes=[7, 2], max_samples=1)
+            assert selected.values("episode_index") == [7]
 
             relocated_root = root + "-relocated"
             shutil.copytree(root, relocated_root)
@@ -324,78 +401,86 @@ class LeRobotImporterTests(unittest.TestCase):
             try:
                 _put_sources(dataset, entries, loc=relocated_root)
                 locs = _source_locs(dataset)
-                self.assertEqual(
-                    _located(locs[episode.source_id]), _located(relocated_root)
+                assert _located(locs[episode.source_id]) == _located(
+                    relocated_root
                 )
                 resolved = fmm._resolve_media_references(
                     dataset, {"e": episode.to_mongo()}
                 )["e"].assets
-                self.assertTrue(
-                    all(
-                        _located(asset.path).startswith(
-                            _located(relocated_root)
-                        )
-                        and os.path.isfile(asset.path)
-                        for asset in resolved
-                    )
+                assert all(
+                    _located(asset.path).startswith(_located(relocated_root))
+                    and os.path.isfile(asset.path)
+                    for asset in resolved
                 )
             finally:
                 _put_sources(dataset, entries)
                 shutil.rmtree(relocated_root)
 
-    @drop_datasets
-    def test_version_and_structure_rejection(self):
-        cases = [
-            ("v2.1", UnsupportedLeRobotVersionError),
-            ("v4.0", UnsupportedLeRobotVersionError),
-            ("not-a-version", MalformedMediaSourceError),
-        ]
-        for index, (version, error_type) in enumerate(cases):
-            with self.subTest(
-                version=version
-            ), tempfile.TemporaryDirectory() as root:
-                _write_v3_source(root, version=version)
-                name = "invalid-version-%d" % index
-                with self.assertRaises(error_type):
-                    _import(root, name=name)
-                self.assertTrue(fo.dataset_exists(name))
-
+    @pytest.mark.parametrize(
+        "write_source,error_type",
+        [
+            pytest.param(
+                lambda root: _write_v3_source(root, version="v2.1"),
+                UnsupportedLeRobotVersionError,
+                id="version-below-v3",
+            ),
+            pytest.param(
+                lambda root: _write_v3_source(root, version="v4.0"),
+                UnsupportedLeRobotVersionError,
+                id="version-above-v3",
+            ),
+            pytest.param(
+                lambda root: _write_v3_source(root, version="not-a-version"),
+                MalformedMediaSourceError,
+                id="unparsable-version",
+            ),
+            pytest.param(
+                lambda root: None,
+                MalformedMediaSourceError,
+                id="no-info-json",
+            ),
+            pytest.param(
+                _write_malformed_info,
+                MalformedMediaSourceError,
+                id="malformed-info-json",
+            ),
+        ],
+    )
+    def test_version_and_structure_rejection(
+        self, write_source, error_type, lerobot_import, dataset_name
+    ):
         with tempfile.TemporaryDirectory() as root:
-            name = "missing-info"
-            with self.assertRaises(MalformedMediaSourceError):
-                _import(root, name=name)
-            self.assertTrue(fo.dataset_exists(name))
+            write_source(root)
+            name = dataset_name("rejected")
+            with pytest.raises(error_type):
+                lerobot_import(root, name=name)
 
-        with tempfile.TemporaryDirectory() as root:
-            info_path = os.path.join(root, "meta", "info.json")
-            os.makedirs(os.path.dirname(info_path), exist_ok=True)
-            with open(info_path, "w") as file:
-                file.write("{malformed")
-            name = "malformed-info"
-            with self.assertRaises(MalformedMediaSourceError):
-                _import(root, name=name)
-            self.assertTrue(fo.dataset_exists(name))
+            # a rejected import still leaves the dataset it was given
+            assert fo.dataset_exists(name)
 
-    def test_path_templates_reject_field_traversal(self):
-        templates = (
+    @pytest.mark.parametrize(
+        "template",
+        [
             "data/{chunk_index.__class__}/file.parquet",
             "data/{chunk_index:100000000d}/file.parquet",
             "data/{chunk_index:>16}/file.parquet",
             "data/" + "x" * 4096,
-        )
-        for template in templates:
-            with self.subTest(template=template), self.assertRaisesRegex(
-                MalformedMediaSourceError,
-                "Invalid LeRobot source path template",
-            ):
-                foul._format_source_path(template, chunk_index=0)
+        ],
+    )
+    def test_path_templates_reject_field_traversal(self, template):
+        with pytest.raises(
+            MalformedMediaSourceError,
+            match="Invalid LeRobot source path template",
+        ):
+            foul._format_source_path(template, chunk_index=0)
 
-        with self.assertRaisesRegex(
-            MalformedMediaSourceError, "produced an invalid path"
+    def test_a_template_that_formats_to_an_overlong_path_is_rejected(self):
+        with pytest.raises(
+            MalformedMediaSourceError, match="produced an invalid path"
         ):
             foul._format_source_path("{video_key}", video_key="x" * 4097)
 
-    def test_info_features_and_video_timestamps_are_typed(self):
+    def test_info_features_must_hold_objects(self):
         info = {
             "codebase_version": "v3.2",
             "data_path": "data/{file_index:03d}.parquet",
@@ -404,11 +489,14 @@ class LeRobotImporterTests(unittest.TestCase):
             "total_episodes": 1,
             "video_path": "videos/{file_index:03d}.mp4",
         }
-        with self.assertRaisesRegex(
-            MalformedMediaSourceError, "features must contain objects"
+        with pytest.raises(
+            MalformedMediaSourceError, match="features must contain objects"
         ):
             foul._validate_v3_info(info)
 
+    def test_a_video_timestamp_that_is_not_a_float_is_rejected(
+        self, lerobot_import
+    ):
         with tempfile.TemporaryDirectory() as root:
             _write_v3_source(root, episodes=2)
             episodes_path = os.path.join(
@@ -417,57 +505,57 @@ class LeRobotImporterTests(unittest.TestCase):
             rows = _read_parquet(episodes_path).to_pylist()
             rows[0]["videos/%s/from_timestamp" % _VIDEO_FEATURE] = "invalid"
             _write_parquet(episodes_path, rows)
-            with self.assertRaisesRegex(
-                MalformedMediaSourceError, "must be a float column"
+            with pytest.raises(
+                MalformedMediaSourceError, match="must be a float column"
             ):
-                _import(root)
+                lerobot_import(root)
 
     def test_source_paths_remain_posix_across_platforms(self):
-        self.assertEqual(
+        assert (
             foul._format_source_path(
                 "data/chunk-{chunk_index:03d}/file-{file_index:03d}.parquet",
                 chunk_index=1,
                 file_index=2,
-            ),
-            "data/chunk-001/file-002.parquet",
+            )
+            == "data/chunk-001/file-002.parquet"
         )
         with mock.patch.object(foul.os, "sep", "\\"):
-            self.assertEqual(
+            assert (
                 foul._relative_to_root(
                     r"C:\dataset\meta\episodes\part-000.parquet",
                     r"C:\dataset",
-                ),
-                "meta/episodes/part-000.parquet",
+                )
+                == "meta/episodes/part-000.parquet"
             )
 
-        with self.assertRaisesRegex(
-            MalformedMediaSourceError, "non-canonical path"
+        with pytest.raises(
+            MalformedMediaSourceError, match="non-canonical path"
         ):
             foul._format_source_path(
                 r"data\chunk-{chunk_index:03d}\file.parquet",
                 chunk_index=0,
             )
 
-    @drop_datasets
-    def test_unfinalized_parquet_has_actionable_error(self):
+    def test_unfinalized_parquet_has_actionable_error(
+        self, lerobot_import, dataset_name
+    ):
         with tempfile.TemporaryDirectory() as root:
             _write_v3_source(root)
             shard = os.path.join(root, "meta", "episodes", "part-001.parquet")
             with open(shard, "wb") as file:
                 file.write(b"recording was not finalized")
 
-            name = "bad-footer"
-            with self.assertRaisesRegex(
-                UnfinalizedMediaSourceError, "finalize or repair"
+            name = dataset_name("bad-footer")
+            with pytest.raises(
+                UnfinalizedMediaSourceError, match="finalize or repair"
             ):
-                _import(root, name=name)
-            self.assertTrue(fo.dataset_exists(name))
+                lerobot_import(root, name=name)
+            assert fo.dataset_exists(name)
 
-    @drop_datasets
-    def test_typed_missing_source_errors(self):
+    def test_typed_missing_source_errors(self, lerobot_import):
         with tempfile.TemporaryDirectory() as root:
             _write_v3_source(root)
-            dataset = _import(root, max_samples=1)
+            dataset = lerobot_import(root, max_samples=1)
             sample = dataset.first()
             reference = sample.media_reference
 
@@ -475,25 +563,23 @@ class LeRobotImporterTests(unittest.TestCase):
             try:
                 # the sample still reaches the grid; only its media is absent
                 page = _paginate(dataset)
-                self.assertEqual(_page_media(page), {sample.id: None})
-                with self.assertRaises(MissingMediaRootError):
+                assert _page_media(page) == {sample.id: None}
+                with pytest.raises(MissingMediaRootError):
                     fmm._resolve_media_references(
                         dataset, {"r": reference.to_mongo()}
                     )
             finally:
                 _put_sources(dataset, entries)
 
-    @drop_datasets
-    def test_source_binding_survives_a_fresh_server_process(self):
+    def test_source_binding_survives_a_fresh_server_process(
+        self, lerobot_import
+    ):
         with tempfile.TemporaryDirectory() as root:
             _write_v3_source(root)
-            dataset = _import(root, max_samples=1)
             # a fresh process clears non-persistent datasets as it connects,
-            # and this one has to still be there when the child reads it.
-            # Restored below, since only non-persistent datasets are swept
-            # between tests
-            dataset.persistent = True
-            self.addCleanup(_delete_when_done, dataset)
+            # and this one has to still be there when the child reads it. The
+            # tracker imports it persistent, and deletes it by name afterwards
+            dataset = lerobot_import(root, max_samples=1)
             script = """
 import asyncio
 import os
@@ -533,9 +619,8 @@ print(os.path.join(sources[source_id], *path.split('/')))
 
             # import records the source's real location, so that is what a
             # reader is handed back
-            self.assertEqual(
-                _located(run()),
-                _located(os.path.join(root, "meta", "info.json")),
+            assert _located(run()) == _located(
+                os.path.join(root, "meta", "info.json")
             )
 
             entries = list(fmm._media_sources_by_id(dataset).values())
@@ -545,11 +630,8 @@ print(os.path.join(sources[source_id], *path.split('/')))
                 _put_sources(dataset, entries, loc=relocated_root)
                 # a process that recorded nothing reads the source's current
                 # location out of the dataset, not a location it remembered
-                self.assertEqual(
-                    _located(run()),
-                    _located(
-                        os.path.join(relocated_root, "meta", "info.json")
-                    ),
+                assert _located(run()) == _located(
+                    os.path.join(relocated_root, "meta", "info.json")
                 )
 
             _put_sources(dataset, entries)
@@ -565,17 +647,18 @@ print(os.path.join(sources[source_id], *path.split('/')))
                 # names keys, so neither can name the machine's source root
                 for filename in ("samples.json", "media_sources.json"):
                     with open(os.path.join(export_root, filename)) as file:
-                        self.assertNotIn(root, file.read())
+                        assert root not in file.read()
 
 
-class LeRobotExporterTests(unittest.TestCase):
-    @drop_datasets
-    def test_export_materializes_each_selected_data_table_once(self):
+class TestLeRobotExporter:
+    def test_export_materializes_each_selected_data_table_once(
+        self, lerobot_import
+    ):
         with tempfile.TemporaryDirectory() as temp_dir:
             source_root = os.path.join(temp_dir, "source")
             export_root = os.path.join(temp_dir, "export")
             _write_v3_source(source_root, episodes=4)
-            dataset = _import(source_root)
+            dataset = lerobot_import(source_root)
 
             with mock.patch.object(
                 foule, "_open_parquet", wraps=foule._open_parquet
@@ -591,7 +674,7 @@ class LeRobotExporterTests(unittest.TestCase):
                 for call in open_parquet.call_args_list
                 if call.args[1] == "episode data"
             ]
-            self.assertEqual(len(data_reads), 1)
+            assert len(data_reads) == 1
 
     def test_official_reader_validation_reports_stderr(self):
         error = subprocess.CalledProcessError(
@@ -607,18 +690,17 @@ class LeRobotExporterTests(unittest.TestCase):
             foule.subprocess,
             "run",
             side_effect=error,
-        ), self.assertRaisesRegex(
+        ), pytest.raises(
             MalformedMediaSourceError,
-            "invalid episode coordinates",
+            match="invalid episode coordinates",
         ):
             foule._validate_with_official_lerobot("/unused", 1)
 
-    @unittest.skipUnless(
-        importlib.util.find_spec("lerobot") is not None,
-        "official LeRobot reader is not installed",
+    @pytest.mark.skipif(
+        importlib.util.find_spec("lerobot") is None,
+        reason="official LeRobot reader is not installed",
     )
-    @drop_datasets
-    def test_official_reader_opens_exported_coordinates(self):
+    def test_official_reader_opens_exported_coordinates(self, lerobot_import):
         from lerobot.datasets.lerobot_dataset import (  # pylint: disable=import-error
             LeRobotDataset,
             LeRobotDatasetMetadata,
@@ -628,7 +710,7 @@ class LeRobotExporterTests(unittest.TestCase):
             source_root = os.path.join(temp_dir, "source")
             export_root = os.path.join(temp_dir, "export")
             _write_v3_source(source_root, episodes=4)
-            dataset = _import(source_root, episodes=[1, 3])
+            dataset = lerobot_import(source_root, episodes=[1, 3])
             dataset.export(
                 export_dir=export_root,
                 dataset_type=fot.LeRobotDataset,
@@ -645,20 +727,18 @@ class LeRobotExporterTests(unittest.TestCase):
                 episodes=[0, 1],
                 download_videos=False,
             )
-            self.assertEqual(metadata.total_episodes, 2)
-            self.assertEqual(
-                {int(value) for value in official.hf_dataset["episode_index"]},
-                {0, 1},
-            )
-            self.assertEqual(int(official.hf_dataset[0]["frame_index"]), 0)
+            assert metadata.total_episodes == 2
+            assert {
+                int(value) for value in official.hf_dataset["episode_index"]
+            } == {0, 1}
+            assert int(official.hf_dataset[0]["frame_index"]) == 0
 
-    @drop_datasets
-    def test_self_contained_selected_episode_export(self):
+    def test_self_contained_selected_episode_export(self, lerobot_import):
         with tempfile.TemporaryDirectory() as temp_dir:
             source_root = os.path.join(temp_dir, "source")
             export_root = os.path.join(temp_dir, "export")
             source_video = _write_v3_source(source_root, episodes=4)
-            dataset = _import(source_root)
+            dataset = lerobot_import(source_root)
             selected = dataset.select(
                 dataset.match({"episode_index": {"$in": [1, 3]}}).values("id")
             )
@@ -669,24 +749,24 @@ class LeRobotExporterTests(unittest.TestCase):
                 export_media=True,
             )
 
-            exported = _import(export_root)
-            self.assertEqual(exported.values("episode_index"), [0, 1])
-            self.assertEqual(exported.values("length"), [2, 2])
+            exported = lerobot_import(export_root)
+            assert exported.values("episode_index") == [0, 1]
+            assert exported.values("length") == [2, 2]
             with open(os.path.join(export_root, "meta", "info.json")) as file:
                 info = json.load(file)
 
-            self.assertEqual(info["total_episodes"], 2)
-            self.assertEqual(info["total_frames"], 4)
+            assert info["total_episodes"] == 2
+            assert info["total_frames"] == 4
             data_path = info["data_path"].format(chunk_index=0, file_index=0)
             data = _read_parquet(os.path.join(export_root, data_path))
-            self.assertEqual(data["index"].to_pylist(), [0, 1, 2, 3])
-            self.assertEqual(data["episode_index"].to_pylist(), [0, 0, 1, 1])
-            self.assertEqual(data["frame_index"].to_pylist(), [0, 1, 0, 1])
+            assert data["index"].to_pylist() == [0, 1, 2, 3]
+            assert data["episode_index"].to_pylist() == [0, 0, 1, 1]
+            assert data["frame_index"].to_pylist() == [0, 1, 0, 1]
             with open(os.path.join(export_root, "meta", "stats.json")) as file:
                 statistics = json.load(file)
 
-            self.assertIn("observation.state", statistics)
-            self.assertEqual(statistics["index"]["min"], [0])
+            assert "observation.state" in statistics
+            assert statistics["index"]["min"] == [0]
 
             episodes = _read_parquet(
                 os.path.join(
@@ -697,17 +777,12 @@ class LeRobotExporterTests(unittest.TestCase):
                     "file-000.parquet",
                 )
             )
-            self.assertEqual(
-                episodes["meta/episodes/chunk_index"].to_pylist(), [0, 0]
-            )
-            self.assertEqual(
-                episodes["meta/episodes/file_index"].to_pylist(), [0, 0]
-            )
-            self.assertEqual(
-                episodes["videos/%s/file_index" % _VIDEO_FEATURE].to_pylist(),
-                [0, 0],
-            )
-            self.assertIn("stats/index/min", episodes.column_names)
+            assert episodes["meta/episodes/chunk_index"].to_pylist() == [0, 0]
+            assert episodes["meta/episodes/file_index"].to_pylist() == [0, 0]
+            assert episodes[
+                "videos/%s/file_index" % _VIDEO_FEATURE
+            ].to_pylist() == [0, 0]
+            assert "stats/index/min" in episodes.column_names
 
             exported_video = os.path.join(
                 export_root,
@@ -719,7 +794,7 @@ class LeRobotExporterTests(unittest.TestCase):
             with open(source_video, "rb") as source_file, open(
                 exported_video, "rb"
             ) as exported_file:
-                self.assertEqual(exported_file.read(), source_file.read())
+                assert exported_file.read() == source_file.read()
 
             second_export_root = os.path.join(temp_dir, "second-export")
             selected.export(
@@ -731,12 +806,9 @@ class LeRobotExporterTests(unittest.TestCase):
             resolved = fmm._resolve_media_references(
                 exported, {"e": exported_reference.to_mongo()}
             )["e"].assets
-            self.assertTrue(
-                all(os.path.isfile(asset.path) for asset in resolved)
-            )
+            assert all(os.path.isfile(asset.path) for asset in resolved)
 
-    @drop_datasets
-    def test_export_preserves_arrow_types_timestamps_and_permissions(self):
+    def test_export_preserves_arrow_types_and_timestamps(self, lerobot_import):
         # Windows will not unlink a file a handle is still open on, and the
         # exported Parquet outlives this block; the assertions below are what
         # the test is for, not the teardown
@@ -766,7 +838,7 @@ class LeRobotExporterTests(unittest.TestCase):
                 }
             )
             papq.write_table(source_table, data_path)
-            dataset = _import(source_root)
+            dataset = lerobot_import(source_root)
 
             previous_umask = os.umask(0o077)
             try:
@@ -782,56 +854,52 @@ class LeRobotExporterTests(unittest.TestCase):
                     export_root, "data", "chunk-000", "file-000.parquet"
                 )
             )
-            self.assertEqual(
-                exported_table.schema.field("observation.state").type,
-                state_type,
+            assert (
+                exported_table.schema.field("observation.state").type
+                == state_type
             )
-            self.assertEqual(
-                exported_table.schema.field("timestamp").type, pa.float32()
+            assert (
+                exported_table.schema.field("timestamp").type == pa.float32()
             )
-            self.assertEqual(
-                exported_table["timestamp"].to_pylist(),
-                source_table["timestamp"].to_pylist(),
+            assert (
+                exported_table["timestamp"].to_pylist()
+                == source_table["timestamp"].to_pylist()
             )
             if os.name == "posix":
-                self.assertEqual(os.stat(export_root).st_mode & 0o777, 0o700)
+                assert os.stat(export_root).st_mode & 0o777 == 0o700
 
-            aggregate = foule._aggregate_episode_statistics(
-                [
-                    {
-                        "stats/camera/min": [0],
-                        "stats/camera/max": [1],
-                        "stats/camera/mean": [0.5],
-                        "stats/camera/std": [0.5],
-                        "stats/camera/count": [2],
-                        "stats/camera/q50": [0.5],
-                    },
-                    {
-                        "stats/camera/min": [100],
-                        "stats/camera/max": [100],
-                        "stats/camera/mean": [100],
-                        "stats/camera/std": [0],
-                        "stats/camera/count": [1],
-                        "stats/camera/q50": [100],
-                    },
-                ],
-                "camera",
-            )
-            self.assertNotIn("q50", aggregate)
+    def test_a_quantile_no_reader_can_recombine_is_not_aggregated(self):
+        aggregate = foule._aggregate_episode_statistics(
+            [
+                {
+                    "stats/camera/min": [0],
+                    "stats/camera/max": [1],
+                    "stats/camera/mean": [0.5],
+                    "stats/camera/std": [0.5],
+                    "stats/camera/count": [2],
+                    "stats/camera/q50": [0.5],
+                },
+                {
+                    "stats/camera/min": [100],
+                    "stats/camera/max": [100],
+                    "stats/camera/mean": [100],
+                    "stats/camera/std": [0],
+                    "stats/camera/count": [1],
+                    "stats/camera/q50": [100],
+                },
+            ],
+            "camera",
+        )
 
-    @drop_datasets
-    def test_export_modes_and_partial_failures(self):
+        assert "q50" not in aggregate
+
+    def test_a_failed_export_leaves_what_it_had_already_written(
+        self, lerobot_import
+    ):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = os.path.join(temp_dir, "source")
             _write_v3_source(root, episodes=2)
-            dataset = _import(root)
-
-            valid_destination = os.path.join(temp_dir, "existing")
-            dataset.export(
-                export_dir=valid_destination,
-                dataset_type=fot.LeRobotDataset,
-            )
-            info_path = os.path.join(valid_destination, "meta", "info.json")
+            dataset = lerobot_import(root)
 
             failed_destination = os.path.join(temp_dir, "failed")
             failed_marker = os.path.join(failed_destination, "partial.txt")
@@ -846,52 +914,92 @@ class LeRobotExporterTests(unittest.TestCase):
                 foule,
                 "_write_lerobot_export",
                 side_effect=write_then_fail,
-            ), self.assertRaisesRegex(RuntimeError, "export failed"):
+            ), pytest.raises(RuntimeError, match="export failed"):
                 dataset.export(
                     export_dir=failed_destination,
                     dataset_type=fot.LeRobotDataset,
                 )
 
             with open(failed_marker) as file:
-                self.assertEqual(file.read(), "partial export")
+                assert file.read() == "partial export"
 
-            obsolete_path = os.path.join(valid_destination, "obsolete")
+    def test_overwriting_an_export_clears_what_the_last_one_left(
+        self, lerobot_import
+    ):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = os.path.join(temp_dir, "source")
+            _write_v3_source(root, episodes=2)
+            dataset = lerobot_import(root)
+
+            destination = os.path.join(temp_dir, "existing")
+            dataset.export(
+                export_dir=destination,
+                dataset_type=fot.LeRobotDataset,
+            )
+
+            obsolete_path = os.path.join(destination, "obsolete")
             with open(obsolete_path, "w") as file:
                 file.write("old export")
+
             dataset.export(
-                export_dir=valid_destination,
+                export_dir=destination,
                 dataset_type=fot.LeRobotDataset,
                 overwrite=True,
             )
-            self.assertFalse(os.path.exists(obsolete_path))
-            modes = (
-                (False, "use FiftyOneDataset to preserve thin references"),
-                (0, "set export_media=True"),
-                ("move", "LeRobot sources are shared and cannot be moved"),
-                ("symlink", "LeRobot exports must be self-contained"),
-                (
-                    "manifest",
-                    "use FiftyOneDataset for a thin-reference export",
-                ),
-            )
-            for index, (mode, suggestion) in enumerate(modes):
-                destination = os.path.join(temp_dir, "mode-%d" % index)
-                with self.subTest(mode=mode), self.assertRaises(
-                    ValueError
-                ) as context:
-                    dataset.export(
-                        export_dir=destination,
-                        dataset_type=fot.LeRobotDataset,
-                        export_media=mode,
-                    )
-                error = context.exception.__cause__
-                self.assertIsInstance(error, UnsupportedLeRobotExportModeError)
-                self.assertEqual(error.export_media, mode)
-                self.assertIn(suggestion, str(error))
-                self.assertFalse(os.path.exists(destination))
 
-    @drop_datasets
-    def test_export_rejects_frames_without_declared_tasks(self):
+            assert not os.path.exists(obsolete_path)
+
+    @pytest.mark.parametrize(
+        "mode,suggestion",
+        [
+            pytest.param(
+                False,
+                "use FiftyOneDataset to preserve thin references",
+                id="no-media",
+            ),
+            pytest.param(0, "set export_media=True", id="falsy-no-media"),
+            pytest.param(
+                "move",
+                "LeRobot sources are shared and cannot be moved",
+                id="move",
+            ),
+            pytest.param(
+                "symlink",
+                "LeRobot exports must be self-contained",
+                id="symlink",
+            ),
+            pytest.param(
+                "manifest",
+                "use FiftyOneDataset for a thin-reference export",
+                id="manifest",
+            ),
+        ],
+    )
+    def test_an_unsupported_export_mode_is_refused_before_anything_is_written(
+        self, mode, suggestion, lerobot_import
+    ):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = os.path.join(temp_dir, "source")
+            _write_v3_source(root, episodes=2)
+            dataset = lerobot_import(root)
+
+            destination = os.path.join(temp_dir, "destination")
+            with pytest.raises(ValueError) as context:
+                dataset.export(
+                    export_dir=destination,
+                    dataset_type=fot.LeRobotDataset,
+                    export_media=mode,
+                )
+
+            error = context.value.__cause__
+            assert isinstance(error, UnsupportedLeRobotExportModeError)
+            assert error.export_media == mode
+            assert suggestion in str(error)
+            assert not os.path.exists(destination)
+
+    def test_export_rejects_frames_without_declared_tasks(
+        self, lerobot_import
+    ):
         with tempfile.TemporaryDirectory() as temp_dir:
             source_root = os.path.join(temp_dir, "source")
             export_root = os.path.join(temp_dir, "export")
@@ -915,26 +1023,27 @@ class LeRobotExporterTests(unittest.TestCase):
                     row["tasks"] = []
                 _write_parquet(path, rows)
 
-            dataset = _import(source_root)
-            with self.assertRaisesRegex(
-                MalformedMediaSourceError, "declared task"
+            dataset = lerobot_import(source_root)
+            with pytest.raises(
+                MalformedMediaSourceError, match="declared task"
             ):
                 dataset.export(
                     export_dir=export_root,
                     dataset_type=fot.LeRobotDataset,
                 )
 
-            self.assertFalse(os.path.exists(export_root))
+            assert not os.path.exists(export_root)
 
 
-class MediaAssetLifecycleTests(unittest.TestCase):
-    @drop_datasets
-    def test_native_reference_planning_scales_with_unique_resources(self):
+class TestMediaAssetLifecycle:
+    def test_native_reference_planning_scales_with_unique_resources(
+        self, lerobot_import, native_import
+    ):
         with tempfile.TemporaryDirectory() as temp_dir:
             source_root = os.path.join(temp_dir, "source")
             output_root = os.path.join(temp_dir, "native")
             _write_v3_source(source_root, episodes=4)
-            dataset = _import(source_root)
+            dataset = lerobot_import(source_root)
 
             references = {
                 episode_index: dataset.match({"episode_index": episode_index})
@@ -954,7 +1063,7 @@ class MediaAssetLifecycleTests(unittest.TestCase):
             selected = dataset.match({"episode_index": {"$in": [1, 3]}})
             occurrence_count = len(selected)
             reference_count = len(set(selected.values("media_reference.key")))
-            self.assertEqual((occurrence_count, reference_count), (8, 2))
+            assert (occurrence_count, reference_count) == (8, 2)
 
             materialized_calls = []
             export_reference_asset = foud.MediaExporter.export_reference_asset
@@ -988,28 +1097,18 @@ class MediaAssetLifecycleTests(unittest.TestCase):
             ):
                 selected.export(dataset_exporter=exporter)
 
-            self.assertEqual(len(reference_plans), 1)
+            assert len(reference_plans) == 1
             plan = reference_plans[0]
-            self.assertEqual(
-                len(plan.occurrences),
-                occurrence_count,
-            )
-            self.assertEqual(len(plan.references), reference_count)
-            self.assertEqual(
-                len(materialized_calls),
-                len(plan.assets),
-            )
-            self.assertEqual(
-                len(materialized_calls), len(set(materialized_calls))
-            )
+            assert len(plan.occurrences) == occurrence_count
+            assert len(plan.references) == reference_count
+            assert len(materialized_calls) == len(plan.assets)
+            assert len(materialized_calls) == len(set(materialized_calls))
             usages_by_asset = {}
             for usage in plan.usages:
                 usages_by_asset.setdefault(usage.asset_key, 0)
                 usages_by_asset[usage.asset_key] += 1
 
-            self.assertLessEqual(
-                max(usages_by_asset.values()), reference_count
-            )
+            assert max(usages_by_asset.values()) <= reference_count
 
             import_collection = foudi.foo.import_collection
             with mock.patch.object(
@@ -1023,10 +1122,7 @@ class MediaAssetLifecycleTests(unittest.TestCase):
                     "native import must not scan inserted samples"
                 ),
             ):
-                imported = fo.Dataset.from_dir(
-                    dataset_dir=output_root,
-                    dataset_type=fot.FiftyOneDataset,
-                )
+                imported = native_import(output_root)
 
             sample_reads = [
                 call
@@ -1037,19 +1133,19 @@ class MediaAssetLifecycleTests(unittest.TestCase):
             ]
             # the bundle's samples are read once, not once to observe and
             # again to insert
-            self.assertEqual(len(sample_reads), 1)
-            self.assertEqual(len(imported), occurrence_count)
-            self.assertEqual(
-                imported.count_values("media_reference.key"),
-                selected.count_values("media_reference.key"),
-            )
+            assert len(sample_reads) == 1
+            assert len(imported) == occurrence_count
+            assert imported.count_values(
+                "media_reference.key"
+            ) == selected.count_values("media_reference.key")
 
-    @drop_datasets
-    def test_collection_media_paths_use_one_deduplicated_reference_plan(self):
+    def test_collection_media_paths_use_one_deduplicated_reference_plan(
+        self, lerobot_import
+    ):
         with tempfile.TemporaryDirectory() as temp_dir:
             source_root = os.path.join(temp_dir, "source")
             _write_v3_source(source_root, episodes=4)
-            dataset = _import(source_root)
+            dataset = lerobot_import(source_root)
 
             references = {
                 episode_index: dataset.match({"episode_index": episode_index})
@@ -1081,13 +1177,13 @@ class MediaAssetLifecycleTests(unittest.TestCase):
                 paths = selected._get_media_paths()
 
             build_plan.assert_called_once_with(selected, resolve=True)
-            self.assertEqual(source_read.call_count, 1)
-            self.assertEqual(len(paths), len(set(paths)))
-            self.assertTrue(all(os.path.isfile(path) for path in paths))
+            assert source_read.call_count == 1
+            assert len(paths) == len(set(paths))
+            assert all(os.path.isfile(path) for path in paths)
 
             nested_paths = selected._get_media_paths(flat=False)
-            self.assertEqual(len(nested_paths), occurrence_count)
-            self.assertTrue(all(paths for paths in nested_paths))
+            assert len(nested_paths) == occurrence_count
+            assert all(paths for paths in nested_paths)
 
             with mock.patch(
                 "fiftyone.core.collections.foma._build_reference_asset_plan",
@@ -1095,51 +1191,47 @@ class MediaAssetLifecycleTests(unittest.TestCase):
                     "include_assets=False must not build a reference plan"
                 ),
             ):
-                self.assertEqual(
-                    selected._get_media_paths(include_assets=False), []
-                )
-                self.assertEqual(
-                    selected._get_media_paths(
-                        include_assets=False, flat=False
-                    ),
-                    [[] for _ in range(occurrence_count)],
-                )
+                assert selected._get_media_paths(include_assets=False) == []
+                assert selected._get_media_paths(
+                    include_assets=False, flat=False
+                ) == [[] for _ in range(occurrence_count)]
 
-            filepath_dataset = fo.Dataset()
-            filepath_dataset.add_samples(
-                [
-                    fo.Sample(filepath="/tmp/one.png"),
-                    fo.Sample(filepath="/tmp/one.png"),
-                    fo.Sample(filepath="/tmp/two.png"),
-                ]
-            )
-            with mock.patch(
-                "fiftyone.core.collections.foma._build_reference_asset_plan",
-                side_effect=AssertionError(
-                    "filepath mode must not build a reference plan"
-                ),
-            ):
-                self.assertEqual(
-                    filepath_dataset._get_media_paths(),
-                    [
-                        os.path.abspath("/tmp/one.png"),
-                        os.path.abspath("/tmp/one.png"),
-                        os.path.abspath("/tmp/two.png"),
-                    ],
-                )
+    def test_a_filepath_collection_never_builds_a_reference_plan(
+        self, empty_dataset
+    ):
+        filepath_dataset = empty_dataset("filepath")
+        filepath_dataset.add_samples(
+            [
+                fo.Sample(filepath="/tmp/one.png"),
+                fo.Sample(filepath="/tmp/one.png"),
+                fo.Sample(filepath="/tmp/two.png"),
+            ]
+        )
+        with mock.patch(
+            "fiftyone.core.collections.foma._build_reference_asset_plan",
+            side_effect=AssertionError(
+                "filepath mode must not build a reference plan"
+            ),
+        ):
+            assert filepath_dataset._get_media_paths() == [
+                os.path.abspath("/tmp/one.png"),
+                os.path.abspath("/tmp/one.png"),
+                os.path.abspath("/tmp/two.png"),
+            ]
 
-    @drop_datasets
-    def test_selected_view_native_materialization_deduplicates_assets(self):
+    def test_selected_view_native_materialization_deduplicates_assets(
+        self, lerobot_import, native_import
+    ):
         with tempfile.TemporaryDirectory() as temp_dir:
             source_root = os.path.join(temp_dir, "source")
             output_root = os.path.join(temp_dir, "native")
             _write_v3_source(source_root, episodes=4)
-            dataset = _import(source_root)
+            dataset = lerobot_import(source_root)
             selected = dataset.match({"episode_index": {"$in": [1, 3]}})
 
-            self.assertEqual(
-                selected.first().get_media_key(),
-                selected.first().media_reference.key,
+            assert (
+                selected.first().get_media_key()
+                == selected.first().media_reference.key
             )
             selected.export(
                 export_dir=output_root,
@@ -1152,44 +1244,39 @@ class MediaAssetLifecycleTests(unittest.TestCase):
                 for filename in filenames
                 if filename.endswith(".mp4")
             ]
-            self.assertEqual(len(materialized_videos), 1)
+            assert len(materialized_videos) == 1
 
             manifest_path = os.path.join(output_root, "media_sources.json")
             with open(manifest_path) as file:
                 manifest = json.load(file)
 
-            self.assertEqual(set(manifest), {"versions", "sources"})
-            self.assertEqual(len(manifest["sources"]), 1)
-            self.assertIsNotNone(manifest["sources"][0]["relative_root"])
-            self.assertNotIn(source_root, json.dumps(manifest))
+            assert set(manifest) == {"versions", "sources"}
+            assert len(manifest["sources"]) == 1
+            assert manifest["sources"][0]["relative_root"] is not None
+            assert source_root not in json.dumps(manifest)
 
-            imported = fo.Dataset.from_dir(
-                dataset_dir=output_root,
-                dataset_type=fot.FiftyOneDataset,
-            )
-            self.assertEqual(sorted(imported.values("episode_index")), [1, 3])
-            self.assertNotIn("media_reference_sources", imported.info)
+            imported = native_import(output_root)
+            assert sorted(imported.values("episode_index")) == [1, 3]
+            assert "media_reference_sources" not in imported.info
             source = manifest["sources"][0]
-            self.assertEqual(set(source), {"kind", "id", "relative_root"})
+            assert set(source) == {"kind", "id", "relative_root"}
             bundle_source_root = os.path.realpath(
                 os.path.join(output_root, source["relative_root"])
             )
             # a source this import created resolves through the bundle's
             # copy, not the exporting machine's location
-            self.assertEqual(
-                _located(_source_locs(imported)[source["id"]]),
-                _located(bundle_source_root),
+            assert _located(_source_locs(imported)[source["id"]]) == _located(
+                bundle_source_root
             )
 
-    @drop_datasets
-    def test_native_thin_materialized_and_unsupported_modes(self):
+    def test_a_thin_bundle_copies_nothing_and_names_no_source_root(
+        self, lerobot_import
+    ):
         with tempfile.TemporaryDirectory() as temp_dir:
             source_root = os.path.join(temp_dir, "source")
             thin_root = os.path.join(temp_dir, "thin")
-            materialized_root = os.path.join(temp_dir, "materialized")
             _write_v3_source(source_root, episodes=3)
-            dataset = _import(source_root, episodes=[0, 2])
-            reference = dataset.first().media_reference
+            dataset = lerobot_import(source_root, episodes=[0, 2])
 
             dataset.export(
                 export_dir=thin_root,
@@ -1199,133 +1286,167 @@ class MediaAssetLifecycleTests(unittest.TestCase):
             with open(os.path.join(thin_root, "media_sources.json")) as file:
                 thin_manifest = json.load(file)
 
-            self.assertEqual(set(thin_manifest), {"versions", "sources"})
+            assert set(thin_manifest) == {"versions", "sources"}
             # a thin bundle copies nothing, so no source has a location in it
-            self.assertTrue(
-                all(
-                    source["relative_root"] is None
-                    for source in thin_manifest["sources"]
-                )
+            assert all(
+                source["relative_root"] is None
+                for source in thin_manifest["sources"]
             )
             # samples carry source-keyed paths and the bundle manifest names
             # keys, so neither can name the machine's source root
             for filename in ("samples.json", "media_sources.json"):
                 with open(os.path.join(thin_root, filename)) as file:
-                    self.assertNotIn(source_root, file.read())
+                    assert source_root not in file.read()
 
-            for index, (filename, message) in enumerate(
-                (("media_sources.json", "media-source manifest"),)
-            ):
-                incomplete_root = os.path.join(
-                    temp_dir, "incomplete-%d" % index
-                )
-                shutil.copytree(thin_root, incomplete_root)
-                os.remove(os.path.join(incomplete_root, filename))
-                incomplete_name = "incomplete-native-reference-%d" % index
-                with self.assertRaisesRegex(ValueError, message):
-                    fo.Dataset.from_dir(
-                        dataset_dir=incomplete_root,
-                        dataset_type=fot.FiftyOneDataset,
-                        name=incomplete_name,
-                    )
-                self.assertTrue(fo.dataset_exists(incomplete_name))
-
-            thin_import = fo.Dataset.from_dir(
-                dataset_dir=thin_root,
+    def test_a_bundle_without_its_manifest_is_refused(
+        self, lerobot_import, native_import, dataset_name
+    ):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            source_root = os.path.join(temp_dir, "source")
+            thin_root = os.path.join(temp_dir, "thin")
+            incomplete_root = os.path.join(temp_dir, "incomplete")
+            _write_v3_source(source_root, episodes=3)
+            lerobot_import(source_root, episodes=[0, 2]).export(
+                export_dir=thin_root,
                 dataset_type=fot.FiftyOneDataset,
+                export_media=False,
             )
-            self.assertNotIn("media_reference_sources", thin_import.info)
-            # a thin bundle carries its source locations, so the import can
-            # resolve without being told where the source is
-            self.assertEqual(_source_locs(thin_import), _source_locs(dataset))
+
+            shutil.copytree(thin_root, incomplete_root)
+            os.remove(os.path.join(incomplete_root, "media_sources.json"))
+
+            name = dataset_name("incomplete-native")
+            with pytest.raises(ValueError, match="media-source manifest"):
+                native_import(incomplete_root, name=name)
+
+            assert fo.dataset_exists(name)
+
+    def test_a_thin_bundle_resolves_without_being_told_where_its_source_is(
+        self, lerobot_import, native_import
+    ):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            source_root = os.path.join(temp_dir, "source")
+            thin_root = os.path.join(temp_dir, "thin")
             rebound_root = os.path.join(temp_dir, "rebound")
+            _write_v3_source(source_root, episodes=3)
+            dataset = lerobot_import(source_root, episodes=[0, 2])
+            dataset.export(
+                export_dir=thin_root,
+                dataset_type=fot.FiftyOneDataset,
+                export_media=False,
+            )
+
+            thin_import = native_import(thin_root)
+
+            assert "media_reference_sources" not in thin_import.info
+            assert _source_locs(thin_import) == _source_locs(dataset)
+
             thin_import.export(
                 export_dir=rebound_root,
                 dataset_type=fot.FiftyOneDataset,
                 export_media=True,
             )
-            self.assertTrue(os.path.isdir(rebound_root))
+            assert os.path.isdir(rebound_root)
+
+    def test_a_materialized_bundle_rebinds_its_source_onto_itself(
+        self, lerobot_import, native_import
+    ):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            source_root = os.path.join(temp_dir, "source")
+            materialized_root = os.path.join(temp_dir, "materialized")
+            _write_v3_source(source_root, episodes=3)
+            dataset = lerobot_import(source_root, episodes=[0, 2])
+            reference = dataset.first().media_reference
 
             dataset.export(
                 export_dir=materialized_root,
                 dataset_type=fot.FiftyOneDataset,
                 export_media=True,
             )
-            materialized_import = fo.Dataset.from_dir(
-                dataset_dir=materialized_root,
-                dataset_type=fot.FiftyOneDataset,
-            )
-            # the bundle rebinds the source onto itself, not the original
-            self.assertTrue(
-                _located(
-                    _source_locs(materialized_import)[reference.source_id]
-                ).startswith(_located(materialized_root))
-            )
-            self.assertNotIn(
-                "media_reference_sources", materialized_import.info
-            )
+            materialized_import = native_import(materialized_root)
+
+            assert _located(
+                _source_locs(materialized_import)[reference.source_id]
+            ).startswith(_located(materialized_root))
+            assert "media_reference_sources" not in materialized_import.info
             index = materialized_import.get_index_information()[
                 "media_reference.key"
             ]
-            self.assertFalse(index.get("unique", False))
-            self.assertTrue(index["sparse"])
+            # several samples may name one episode, so the key repeats
+            assert not index.get("unique", False)
+            assert index["sparse"]
 
+    def test_a_materialized_bundle_exports_back_out_as_lerobot(
+        self, lerobot_import, native_import
+    ):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            source_root = os.path.join(temp_dir, "source")
+            materialized_root = os.path.join(temp_dir, "materialized")
             roundtrip_root = os.path.join(temp_dir, "roundtrip")
-            materialized_import.export(
+            _write_v3_source(source_root, episodes=3)
+            lerobot_import(source_root, episodes=[0, 2]).export(
+                export_dir=materialized_root,
+                dataset_type=fot.FiftyOneDataset,
+                export_media=True,
+            )
+
+            native_import(materialized_root).export(
                 export_dir=roundtrip_root,
                 dataset_type=fot.LeRobotDataset,
             )
-            roundtrip = fo.Dataset.from_dir(
-                dataset_dir=roundtrip_root,
-                dataset_type=fot.LeRobotDataset,
-            )
-            self.assertEqual(sorted(roundtrip.values("episode_index")), [0, 1])
 
-            for mode_index, mode in enumerate(("move", "symlink", "manifest")):
-                destination = os.path.join(
-                    temp_dir, "unsupported-%d" % mode_index
-                )
-                with self.subTest(mode=mode), self.assertRaises(ValueError):
-                    dataset.export(
-                        export_dir=destination,
-                        dataset_type=fot.FiftyOneDataset,
-                        export_media=mode,
-                    )
-                self.assertEqual(
-                    os.path.isdir(destination), mode in ("move", "symlink")
+            roundtrip = lerobot_import(roundtrip_root)
+            assert sorted(roundtrip.values("episode_index")) == [0, 1]
+
+    @pytest.mark.parametrize(
+        "mode,leaves_a_directory",
+        [
+            pytest.param("move", True, id="move"),
+            pytest.param("symlink", True, id="symlink"),
+            pytest.param("manifest", False, id="manifest"),
+        ],
+    )
+    def test_an_unsupported_native_export_mode_is_refused(
+        self, mode, leaves_a_directory, lerobot_import
+    ):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            source_root = os.path.join(temp_dir, "source")
+            destination = os.path.join(temp_dir, "unsupported")
+            _write_v3_source(source_root, episodes=3)
+            dataset = lerobot_import(source_root, episodes=[0, 2])
+
+            with pytest.raises(ValueError):
+                dataset.export(
+                    export_dir=destination,
+                    dataset_type=fot.FiftyOneDataset,
+                    export_media=mode,
                 )
 
-    @drop_datasets
-    def test_native_materialization_failure_leaves_partial_export(self):
+            assert os.path.isdir(destination) == leaves_a_directory
+
+    def test_native_materialization_failure_leaves_partial_export(
+        self, lerobot_import
+    ):
         with tempfile.TemporaryDirectory() as temp_dir:
             source_root = os.path.join(temp_dir, "source")
             export_root = os.path.join(temp_dir, "export")
             _write_v3_source(source_root, episodes=2)
-            dataset = _import(source_root)
+            dataset = lerobot_import(source_root)
 
             with mock.patch.object(
                 foud.MediaExporter,
                 "export_reference_asset",
                 side_effect=RuntimeError("materializer failed"),
             ):
-                with self.assertRaisesRegex(
-                    RuntimeError, "materializer failed"
-                ):
+                with pytest.raises(RuntimeError, match="materializer failed"):
                     dataset.export(
                         export_dir=export_root,
                         dataset_type=fot.FiftyOneDataset,
                         export_media=True,
                     )
 
-            self.assertTrue(os.path.isdir(export_root))
-            self.assertTrue(
-                os.path.isfile(os.path.join(export_root, "samples.json"))
+            assert os.path.isdir(export_root)
+            assert os.path.isfile(os.path.join(export_root, "samples.json"))
+            assert not os.path.isfile(
+                os.path.join(export_root, "media_sources.json")
             )
-            self.assertFalse(
-                os.path.isfile(os.path.join(export_root, "media_sources.json"))
-            )
-
-
-if __name__ == "__main__":
-    fo.config.show_progress_bars = False
-    unittest.main(verbosity=2)
