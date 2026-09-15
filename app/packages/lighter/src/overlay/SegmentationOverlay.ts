@@ -3,6 +3,7 @@
  */
 
 import type { OverlayMask } from "@fiftyone/looker/src/numpy";
+import { SEGMENTATION } from "@fiftyone/utilities";
 
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { Point, RawLookerLabel, Rect, RenderMeta } from "../types";
@@ -13,6 +14,7 @@ import {
 } from "../utils/segmentationPalette";
 import type { RasterizedSegmentation } from "../utils/segmentationRaster";
 import { rasterizeSegmentation } from "../utils/segmentationRaster";
+import { decodeMaskPath } from "../utils/maskPathDecoding";
 import { BaseOverlay } from "./BaseOverlay";
 
 export type SegmentationLabel = RawLookerLabel & {
@@ -25,6 +27,11 @@ export interface SegmentationOverlayOptions {
   id: string;
   field: string;
   label: SegmentationLabel;
+  /**
+   * Turns the label's raw `mask_path` into a fetchable URL. Without one, an
+   * on-disk mask cannot be loaded and the overlay paints nothing.
+   */
+  resolveUrl?: (raw: string) => string | undefined;
 }
 
 /**
@@ -62,6 +69,15 @@ export class SegmentationOverlay extends BaseOverlay<SegmentationLabel> {
   /** Logged at most once per overlay — a per-frame warning would flood. */
   #warnedUnsupported = false;
 
+  /** Resolves the label's raw `mask_path` into a fetchable URL. */
+  readonly #resolveUrl?: (raw: string) => string | undefined;
+
+  /** The mask decoded from `mask_path`, and the path it came from. */
+  #decodedFromPath?: OverlayMask;
+  #decodedPath?: string;
+  /** The path a decode is in flight for, so a repaint does not restart it. */
+  #decodingPath?: string;
+
   /**
    * The (source, palette) that failed to rasterize.
    *
@@ -75,6 +91,7 @@ export class SegmentationOverlay extends BaseOverlay<SegmentationLabel> {
 
   constructor(options: SegmentationOverlayOptions) {
     super(options.id, options.field, options.label);
+    this.#resolveUrl = options.resolveUrl;
   }
 
   getOverlayType(): string {
@@ -90,7 +107,7 @@ export class SegmentationOverlay extends BaseOverlay<SegmentationLabel> {
   }
 
   hasValidBounds(): boolean {
-    return Boolean(this.label?.mask);
+    return Boolean(this.label?.mask ?? this.label?.mask_path);
   }
 
   protected renderImpl(renderer: Renderer2D, meta: RenderMeta): void {
@@ -131,10 +148,9 @@ export class SegmentationOverlay extends BaseOverlay<SegmentationLabel> {
   private ensureRaster(
     palette: SegmentationPalette,
   ): HTMLCanvasElement | undefined {
-    const source = this.label?.mask;
+    const source = this.resolveSource();
 
     if (!source) {
-      this.warnUnsupportedOnce();
       return undefined;
     }
 
@@ -192,19 +208,92 @@ export class SegmentationOverlay extends BaseOverlay<SegmentationLabel> {
   }
 
   /**
-   * `mask_path` masks live on disk and need a resolved media URL to fetch.
-   * The video surface supplies no URL resolver yet, so rather than paint
-   * nothing and leave the user wondering, say so once.
+   * The mask to rasterize: the inline one when the label carries it, else
+   * whatever the last `mask_path` decode produced.
+   *
+   * An on-disk mask resolves asynchronously, so the first paint after the
+   * path changes has nothing to draw. Starting the decode here rather than
+   * gating the MOUNT on it is what makes this work per frame: the overlay is
+   * one handle reused across the clip, so a gated mount would tear it down
+   * and rebuild it on every playhead step.
    */
-  private warnUnsupportedOnce(): void {
-    if (this.#warnedUnsupported || !this.label?.mask_path) {
+  private resolveSource(): string | OverlayMask | undefined {
+    const inline = this.label?.mask;
+
+    if (inline) {
+      return inline;
+    }
+
+    const path = this.label?.mask_path;
+
+    if (!path) {
+      return undefined;
+    }
+
+    if (this.#decodedPath === path) {
+      return this.#decodedFromPath;
+    }
+
+    this.startDecode(path);
+
+    return undefined;
+  }
+
+  /** Fetch + decode an on-disk mask, then repaint. */
+  private startDecode(path: string): void {
+    if (this.#decodingPath === path) {
+      return;
+    }
+
+    const url = this.#resolveUrl?.(path);
+
+    if (!url) {
+      this.warnUnresolvableOnce();
+      return;
+    }
+
+    this.#decodingPath = path;
+
+    void decodeMaskPath(url, this.field ?? "", SEGMENTATION)
+      .then((decoded) => {
+        // The label may have moved on while this was in flight — a scrub, or
+        // simply the next frame. Adopting a stale decode would paint the
+        // wrong frame's mask.
+        if (this.label?.mask_path !== path) {
+          return;
+        }
+
+        // Only remember a SUCCESSFUL decode. `decodeMaskPath` returns
+        // undefined on a fetch or decode failure and caches nothing, so
+        // recording the path here would pin the overlay to that one failure
+        // for the life of the clip — a transient network error and the mask
+        // never appears again. Leaving it unrecorded lets the next repaint
+        // try once more.
+        if (!decoded) {
+          return;
+        }
+
+        this.#decodedFromPath = decoded;
+        this.#decodedPath = path;
+        this.markDirty();
+      })
+      .finally(() => {
+        if (this.#decodingPath === path) {
+          this.#decodingPath = undefined;
+        }
+      });
+  }
+
+  /** Said once per overlay — a per-frame warning would flood playback. */
+  private warnUnresolvableOnce(): void {
+    if (this.#warnedUnsupported) {
       return;
     }
 
     this.#warnedUnsupported = true;
     console.warn(
-      `[segmentation] "${this.field}" stores its mask at mask_path, which ` +
-        "this surface cannot resolve yet; nothing will paint for it",
+      `[segmentation] "${this.field}" stores its mask at mask_path, but this ` +
+        "surface supplied no way to resolve it to a URL; nothing will paint",
     );
   }
 
@@ -240,6 +329,8 @@ export class SegmentationOverlay extends BaseOverlay<SegmentationLabel> {
   }
 
   destroy(): void {
+    this.#decodedFromPath = undefined;
+    this.#decodedPath = undefined;
     this.#canvas = undefined;
     this.#targets = undefined;
     super.destroy();

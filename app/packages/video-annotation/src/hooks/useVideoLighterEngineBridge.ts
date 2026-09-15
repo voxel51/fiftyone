@@ -9,6 +9,7 @@ import {
   useLighterEngineBridge,
 } from "@fiftyone/annotation";
 import { useGetKeypointSkeleton } from "@fiftyone/state";
+import { getSampleSrc } from "@fiftyone/state";
 import { useCallback } from "react";
 import { useDatasetId, useVisibleLabelSchemas } from "../state/accessors";
 import { useCurrentFrameGetter } from "../state/useCurrentFrame";
@@ -40,6 +41,18 @@ export const useVideoLighterEngineBridge = (
   const engine = useAnnotationEngine();
   // skeleton edges drive keypoint connections; stable across renders
   const getSkeleton = useGetKeypointSkeleton();
+
+  /**
+   * A frame label's `mask_path` / `map_path` is a raw filesystem path; the
+   * media route serves it. Unlike the image modal there is no per-sample
+   * `sources` map to consult — a frame's mask is not a sample media field —
+   * so the raw path is resolved directly.
+   */
+  const resolveMediaUrl = useCallback(
+    ({ raw }: { raw: string }) =>
+      typeof raw === "string" && raw.length > 0 ? getSampleSrc(raw) : undefined,
+    [],
+  );
   const sample = useActiveSampleId();
   const dataset = useDatasetId();
 
@@ -84,5 +97,6 @@ export const useVideoLighterEngineBridge = (
     onEstablishCommit: stashEstablishKey,
     onEditCommit,
     getSkeleton,
+    resolveMediaUrl,
   });
 };
