@@ -27,8 +27,6 @@ logger = logging.getLogger(__name__)
 def _ensure_muse_glimmer():
     fou.ensure_package("transformers>=5.15.0")
     fou.ensure_package("accelerate")
-    # 4-bit NF4 loading; the model is 59.6 GB at bf16
-    fou.ensure_package("bitsandbytes")
 
 
 transformers = fou.lazy_import("transformers", callback=_ensure_muse_glimmer)
@@ -64,7 +62,14 @@ class MuseGlimmerOutputProcessor(fout.OutputProcessor):
     :class:`fiftyone.core.labels.Detections` instances.
     """
 
-    def __call__(self, output, frame_size, confidence_thresh=None, **kwargs):
+    def __call__(
+        self,
+        output,
+        frame_size,
+        confidence_thresh=None,
+        classes=None,
+        **kwargs,
+    ):
         """Processes model output into detections.
 
         Args:
@@ -72,6 +77,8 @@ class MuseGlimmerOutputProcessor(fout.OutputProcessor):
                 tokens retained so channel boundaries are visible
             frame_size: a ``(width, height)`` tuple
             confidence_thresh: optional confidence threshold (unused for VLM)
+            classes (None): an optional iterable of classes to use to filter
+                the detections
             **kwargs: additional keyword arguments
 
         Returns:
@@ -81,6 +88,8 @@ class MuseGlimmerOutputProcessor(fout.OutputProcessor):
         for raw_output in output:
             answer = self._extract_answer(raw_output)
             detections = self._parse_detections(answer, frame_size)
+            if classes is not None:
+                detections = [d for d in detections if d.label in classes]
             results.append(fol.Detections(detections=detections))
         return results
 
@@ -215,10 +224,10 @@ class MuseGlimmerModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
             reasons before answering and the reasoning cannot be disabled,
             so the budget covers both channels
         load_in_4bit (True): whether to load the language model with
-            4-bit NF4 quantization on GPU; the vision encoder stays
-            bf16. The full bf16 weights are 59.6 GB; 4-bit loading fits
-            24 GB cards. Set to False to load bf16 on hardware that can
-            hold it
+            4-bit NF4 quantization on GPU, which requires ``bitsandbytes``;
+            the vision encoder stays bf16. The full bf16 weights are 59.6 GB;
+            4-bit loading fits 24 GB cards. Set to False to load bf16 on
+            hardware that can hold it
     """
 
     def __init__(self, d):
@@ -281,6 +290,8 @@ class MuseGlimmerModel(fout.TorchImageModel):
         kwargs = {"torch_dtype": torch.bfloat16}
 
         if self._using_gpu and config.load_in_4bit:
+            fou.ensure_package("bitsandbytes")
+
             # bitsandbytes dispatches through accelerate, so quantized
             # loads always use a device map. The vision tower stays bf16:
             # its forward casts pixels to its own weight dtype, which 4-bit

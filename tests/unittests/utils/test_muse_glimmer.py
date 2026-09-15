@@ -289,6 +289,22 @@ class TestMuseGlimmerOutputProcessorCall:
         assert len(results[1].detections) == 0
         assert len(results[2].detections) == 0
 
+    def test_classes_filter_detections(self):
+        """Detections outside the requested classes are dropped"""
+        processor = MuseGlimmerOutputProcessor()
+        raw = (
+            " to=self<|message|>Reasoning.<|eom|>"
+            "<|start|>assistant to=user<|message|>"
+            '[{"label": "bear", "bbox_2d": [0, 0, 500, 500]}, '
+            '{"label": "cat", "bbox_2d": [500, 500, 900, 900]}]<|eot|>'
+        )
+
+        filtered = processor([raw], (1000, 1000), classes=["bear"])
+        unfiltered = processor([raw], (1000, 1000))
+
+        assert [d.label for d in filtered[0].detections] == ["bear"]
+        assert [d.label for d in unfiltered[0].detections] == ["bear", "cat"]
+
 
 class TestMuseGlimmerModelConfig:
     """Test MuseGlimmerModelConfig"""
@@ -315,3 +331,23 @@ class TestMuseGlimmerModelConfig:
         assert config.classes == ["person", "car"]
         assert config.max_new_tokens == 2048
         assert config.load_in_4bit is False
+
+
+class TestMuseGlimmerRequirements:
+    """Test the packages the lazy transformers import requires"""
+
+    def test_bitsandbytes_is_not_required_up_front(self, monkeypatch):
+        """bitsandbytes is needed only for 4-bit GPU loading"""
+        import fiftyone.utils.muse_glimmer as fomg
+
+        required = []
+        monkeypatch.setattr(
+            fomg.fou,
+            "ensure_package",
+            lambda req, **kwargs: required.append(req),
+        )
+
+        fomg._ensure_muse_glimmer()
+
+        assert "accelerate" in required
+        assert not any(r.startswith("bitsandbytes") for r in required)
