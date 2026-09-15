@@ -1,7 +1,16 @@
 import { renderHook } from "@testing-library/react";
-import { useRecoilValue } from "recoil";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { resolveOperatorURI } from "./operators";
+
+// Recoil is fully mocked below, so the real module is never used — but
+// importing it to get a typed handle for `vi.mocked` still trips the
+// Recoil-freeze lint rule, which CI fails on. Hoisting the mock gives the same
+// handle without the import.
+const recoil = vi.hoisted(() => ({
+  useRecoilState: vi.fn(),
+  useRecoilValue: vi.fn(),
+  useSetRecoilState: vi.fn(),
+}));
 
 vi.mock("@fiftyone/state", () => ({}));
 
@@ -9,11 +18,7 @@ vi.mock("@fiftyone/plugins", () => ({
   pluginsLoaderAtom: "pluginsLoaderAtom",
 }));
 
-vi.mock("recoil", () => ({
-  useRecoilState: vi.fn(),
-  useRecoilValue: vi.fn(),
-  useSetRecoilState: vi.fn(),
-}));
+vi.mock("recoil", () => recoil);
 
 vi.mock("./operators", () => ({
   ExecutionContext: vi.fn(),
@@ -43,7 +48,7 @@ describe("operator availability hooks", () => {
   });
 
   it("resolves bare URIs and reacts when definitions register", () => {
-    vi.mocked(useRecoilValue).mockReturnValue([]);
+    recoil.useRecoilValue.mockReturnValue([]);
     const uris = ["missing", "list_workspaces"];
     const { result, rerender } = renderHook(() => ({
       available: useOperatorAvailability("list_workspaces"),
@@ -56,7 +61,7 @@ describe("operator availability hooks", () => {
       exists: false,
     });
 
-    vi.mocked(useRecoilValue).mockReturnValue([
+    recoil.useRecoilValue.mockReturnValue([
       { value: "@voxel51/operators/list_workspaces" },
     ]);
     rerender();
