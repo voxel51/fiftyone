@@ -87,8 +87,8 @@
         "vite-plugin-relay": "catalog:"
     },
     "peerDependencies": {
-        "react": "18.2.0",
-        "react-dom": "18.2.0",
+        "react": "*",
+        "react-dom": "*",
         "react-is": "*"
     }
 }

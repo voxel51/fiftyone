@@ -1834,8 +1834,8 @@ __metadata:
     vite: "catalog:"
     vite-plugin-relay: "catalog:"
   peerDependencies:
-    react: 18.2.0
-    react-dom: 18.2.0
+    react: "*"
+    react-dom: "*"
     react-is: "*"
   languageName: unknown
   linkType: soft
@@ -2027,7 +2027,7 @@ __metadata:
     typescript: "catalog:"
     uuid: "catalog:"
   peerDependencies:
-    react: ^18.0.0
+    react: "*"
   languageName: unknown
   linkType: soft
 
