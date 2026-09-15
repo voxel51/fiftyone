@@ -25,6 +25,16 @@ import { useAnnotationEngine, useThreeDSceneSampleId } from "../state";
 type PersistenceResult = boolean | null;
 
 /**
+ * The persist in flight per engine. Writers (the autosave tick, a delete's
+ * immediate flush) are independent callers, so without this two writes can
+ * interleave: the second computes its deltas and version token before the
+ * first's response has been reconciled, re-sends what the first already
+ * wrote, and fails the server's If-Match check. Each persist waits for the
+ * previous one, then reads the engine fresh.
+ */
+const inFlight = new WeakMap<object, Promise<unknown>>();
+
+/**
  * Hook which provides a callback to persist all pending annotation deltas.
  *
  * A grouped modal renders more than one sample at once (the selected slice and
@@ -75,7 +85,7 @@ export const usePersistAnnotationDeltas =
       generatedDatasetName: null,
     });
 
-    return useCallback(async () => {
+    const persist = useCallback(async (): Promise<PersistenceResult> => {
       // generated (patches) views are single-sample and route through
       // first-edited-label metadata, so the backend can find the source label
       if (isGenerated) {
@@ -165,4 +175,15 @@ export const usePersistAnnotationDeltas =
       sceneId,
       supplyAnnotationDeltas,
     ]);
+
+    return useCallback(() => {
+      const prior = inFlight.get(engine) ?? Promise.resolve();
+      const run = prior.then(persist);
+      inFlight.set(
+        engine,
+        run.catch(() => undefined),
+      );
+
+      return run;
+    }, [engine, persist]);
   };
