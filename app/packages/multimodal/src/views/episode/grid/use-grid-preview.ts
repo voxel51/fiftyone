@@ -40,6 +40,8 @@ export interface GridPreviewSnapshot {
   readonly streamSourceName: string | null;
   readonly streamSourceNames: readonly string[];
   readonly status: GridPreviewStatus;
+  /** Codec of a selected stream nothing here can decode, when there is one. */
+  readonly unsupportedCodec: string | null;
 }
 
 /**
@@ -109,6 +111,7 @@ const IDLE_PREVIEW_STATE: GridPreviewSnapshot = {
   streamId: null,
   streamSourceName: null,
   streamSourceNames: [],
+  unsupportedCodec: null,
   status: "idle",
 } as const;
 
@@ -636,6 +639,7 @@ function seededSnapshot(
     streamSourceName: cachedPoster.streamSourceName,
     streamSourceNames: cachedPoster.streamSourceNames,
     status: "ready",
+    unsupportedCodec: null,
   };
 }
 
@@ -757,6 +761,7 @@ function snapshotFromResult(
     streamSourceName: result.streamSourceName,
     streamSourceNames: result.streamSourceNames,
     status: result.status,
+    unsupportedCodec: result.unsupportedCodec ?? null,
   };
 }
 

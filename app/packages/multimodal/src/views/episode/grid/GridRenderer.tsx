@@ -23,7 +23,11 @@ import { PushVideoAccessUnitReader } from "../../../video/push-reader";
 import { VideoPlaybackManagerProvider } from "../../../video/react";
 import { REORDERED_VIDEO_DECODE_LOOKAHEAD_NS } from "../../../video/stream-engine";
 import type { VideoStreamLease } from "../../../video/playback-manager";
-import { isSharedEncodedVideoVisualization } from "../../../video/types";
+import {
+  isSharedEncodedVideoVisualization,
+  sharedVideoRejectionMessage,
+  unsupportedVideoCodecMessage,
+} from "../../../video/types";
 import { PointCloudPanel } from "../../../visualization/composition";
 import { acquireGridLiveLease } from "../../../visualization/webgpu/webgpu-live-lease";
 import { renderPointCloudSnapshot } from "../../../visualization/scene-3d/gpu/webgpu-snapshot-renderer";
@@ -397,6 +401,16 @@ export function GridRenderer({
     (error: Error) => setNativeVideoError(error.message),
     [],
   );
+  const posterImage =
+    preview.frame?.kind === "image" ? preview.frame.image : null;
+  const codecRejection =
+    posterImage !== null &&
+    posterImage.kind === "encoded-video" &&
+    !isSharedEncodedVideoVisualization(posterImage)
+      ? sharedVideoRejectionMessage(posterImage)
+      : preview.unsupportedCodec
+        ? unsupportedVideoCodecMessage(preview.unsupportedCodec)
+        : null;
 
   // This effect keeps the grid cache's retained-byte estimate current.
   useEffect(() => {
@@ -433,7 +447,11 @@ export function GridRenderer({
       {blocksGridActivation && ctx.openModal ? (
         <OpenModalButton openModal={ctx.openModal} />
       ) : null}
-      {preview.frame ? (
+      {codecRejection ? (
+        <div className={classes.codecRejection} role="alert">
+          {codecRejection}
+        </div>
+      ) : preview.frame ? (
         <VideoPlaybackManagerProvider manager={gridVideoPlayback.manager}>
           <PreviewFrame
             // Image dimensions are per camera stream; remount to drop stale
