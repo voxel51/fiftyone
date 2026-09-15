@@ -90,6 +90,13 @@
     :tags: image,classification
 
 .. customcarditem::
+    :header: Hilti SLAM Challenge 2023
+    :description: Fifteen multi-session runs across three construction sites in native MCAP format, from a five-camera handheld rig and an eight-camera tracked drilling robot, each with LiDAR, IMU and surveyed reference positions.
+    :link: datasets/hilti_slam_challenge_2023.html
+    :image: ../_images/hilti-slam-challenge-2023.png
+    :tags: multimodal,mcap,slam,lidar,imu
+
+.. customcarditem::
     :header: HMDB51
     :description: Action recognition dataset with 6,766 video clips across 51 action classes. Collected from movies and web videos with realistic human actions and diverse scenarios.
     :link: datasets/hmdb51.html
