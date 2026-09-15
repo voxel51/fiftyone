@@ -37,7 +37,8 @@ export interface LighterDescriptor {
     | "classification"
     | "polyline"
     | "keypoint"
-    | "segmentation";
+    | "segmentation"
+    | "heatmap";
   options: { id: string; field: string; label: LabelData } & Record<
     string,
     unknown
@@ -223,6 +224,23 @@ export const segmentationAdapter: LighterAdapter = {
   toLabel: (overlay) => withoutId(overlay.label as Record<string, unknown>),
 };
 
+export const heatmapAdapter: LighterAdapter = {
+  // As with segmentation: an in-database map is what this surface can paint,
+  // and a `map_path`-only heatmap has no resolvable URL here.
+  renders: (label) => Boolean(label.map),
+
+  buildHandle: (ref, label) => ({
+    factoryKey: "heatmap",
+    options: { id: ref.instanceId, field: ref.path, label },
+  }),
+
+  updateHandle: (overlay, label) => {
+    overlay.applyLabel(label as Parameters<BaseOverlay["applyLabel"]>[0]);
+  },
+
+  toLabel: (overlay) => withoutId(overlay.label as Record<string, unknown>),
+};
+
 export const polylineAdapter: LighterAdapter = {
   // 2D vertices are what this surface draws — Polyline3D (shared `_cls`,
   // `points3d` only) fails the requirement
@@ -271,6 +289,7 @@ export const makeLighterAdapters = (
   [LabelType.Polyline]: polylineAdapter,
   [LabelType.Polylines]: polylineAdapter,
   [LabelType.Segmentation]: segmentationAdapter,
+  [LabelType.Heatmap]: heatmapAdapter,
 });
 
 /** The dependency-free map — keypoints render unconnected. */

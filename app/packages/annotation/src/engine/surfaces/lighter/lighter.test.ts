@@ -6,6 +6,7 @@ import {
   detectionAdapter,
   keypointAdapter,
   makeKeypointAdapter,
+  heatmapAdapter,
   polylineAdapter,
   segmentationAdapter,
 } from "./adapters";
@@ -242,6 +243,26 @@ describe("lighter adapters", () => {
       segmentationAdapter.renders?.({ _id: "s", mask_path: "/m.png" }),
     ).toBe(false);
     expect(segmentationAdapter.renders?.({ _id: "s" })).toBe(false);
+  });
+
+  it("heatmap renders only what it can actually paint", () => {
+    expect(heatmapAdapter.renders?.({ _id: "h", map: "b64" })).toBe(true);
+    expect(heatmapAdapter.renders?.({ _id: "h", map_path: "/m.png" })).toBe(
+      false,
+    );
+
+    const descriptor = heatmapAdapter.buildHandle(
+      ref("frames.heatmap", "field:frames.heatmap"),
+      {
+        _id: "field:frames.heatmap",
+        _cls: "Heatmap",
+        map: "b64",
+        range: [0, 1],
+      },
+    );
+
+    expect(descriptor.factoryKey).toBe("heatmap");
+    expect(descriptor.options.label).toMatchObject({ range: [0, 1] });
   });
 
   it("polyline toLabel reads nested points and flags", () => {

@@ -47,6 +47,8 @@ import type {
 import { generateColorFromId } from "../utils/color";
 import type { ColorMappingContext } from "../utils/colorMapping";
 import { resolveSegmentationPalette } from "../utils/segmentationPalette";
+import { resolveHeatmapPalette } from "../utils/heatmapPalette";
+import { HeatmapOverlay } from "../overlay/HeatmapOverlay";
 import { SegmentationOverlay } from "../overlay/SegmentationOverlay";
 import { getOverlayColor } from "../utils/colorMapping";
 import { CoordinateSystem2D } from "./CoordinateSystem2D";
@@ -1129,6 +1131,14 @@ export class Scene2D {
       };
     }
 
+    // Same reasoning as a segmentation: colored per value, not per label.
+    if (overlay instanceof HeatmapOverlay) {
+      return {
+        opacity: this.sceneOptions?.alpha ?? 1,
+        heatmapPalette: this.resolveHeatmapPaletteFor(overlay),
+      };
+    }
+
     let strokeStyle: string;
 
     // Use FiftyOne color scheme if available, otherwise fallback to simple ID-based color
@@ -1203,6 +1213,25 @@ export class Scene2D {
       context.colorScheme,
       context.seed,
       maskTargets,
+    );
+  }
+
+  /**
+   * The palette for one heatmap. Its declared `range` lives on the label, not
+   * the color scheme, so the overlay is read rather than just its field.
+   */
+  private resolveHeatmapPaletteFor(overlay: HeatmapOverlay) {
+    const context = this.colorMappingContext;
+
+    if (!context || !overlay.field) {
+      return undefined;
+    }
+
+    return resolveHeatmapPalette(
+      overlay.field,
+      context.colorScheme,
+      context.seed,
+      overlay.label?.range,
     );
   }
 
