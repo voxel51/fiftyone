@@ -110,6 +110,10 @@ export const useGroupSlices = (mediaTypes: GroupSliceMediaType[]): string[] => {
     .map(({ name }) => name);
 };
 
+/** The media type of a dynamic group's members, or the dataset's own media type. */
+export const useParentMediaType = (): string =>
+  useRecoilValue(parentMediaTypeSelector);
+
 /**
  * Whether the current view is an ordered dynamic group over image samples
  * (ImaVid). Such a view reports a "group" media type with no slices.

@@ -9,6 +9,7 @@ import {
   useIsGroupDataset,
   useIsNestedDynamicGroup,
   useIsQueryPerformantDynamicGroup,
+  useParentMediaType,
 } from "@fiftyone/state";
 import { isAnnotationSupported, isMultimodal } from "@fiftyone/utilities";
 import { useRecoilValue } from "recoil";
@@ -49,6 +50,11 @@ export default function useCanAnnotate(): CanAnnotateResult {
   const isDynamic = useIsDynamicGroup();
   const isNestedDynamic = useIsNestedDynamicGroup();
   const isQueryPerformant = useIsQueryPerformantDynamicGroup();
+  // a dynamic group view reports the "group" media type; its members' type is
+  // what annotation support depends on. Nested groups keep the dataset logic.
+  const isDynamicVideo = isDynamic && !isNestedDynamic;
+  const parentMediaType = useParentMediaType();
+  const memberMediaType = isDynamicVideo ? parentMediaType : currentMediaType;
 
   // hide tab entirely if user lacks edit permission or feature disabled
   if (isReadOnlySnapshot || !canAnnotateEnabled) {
@@ -58,8 +64,21 @@ export default function useCanAnnotate(): CanAnnotateResult {
     };
   }
 
-  // nested dynamic groups fall through to the group dataset logic below
-  if (isDynamic && !isNestedDynamic) {
+  if ((!isGroup || isDynamicVideo) && isMultimodal(memberMediaType)) {
+    return {
+      showAnnotationTab: true,
+      disabledReason: "multimodalDataset",
+    };
+  }
+
+  if (isGenerated && isUnsupportedGeneratedView) {
+    return {
+      showAnnotationTab: true,
+      disabledReason: "generatedView",
+    };
+  }
+
+  if (isDynamicVideo) {
     return {
       showAnnotationTab: true,
       disabledReason: isQueryPerformant
@@ -75,24 +94,10 @@ export default function useCanAnnotate(): CanAnnotateResult {
     };
   }
 
-  if (!isGroup && isMultimodal(currentMediaType)) {
-    return {
-      showAnnotationTab: true,
-      disabledReason: "multimodalDataset",
-    };
-  }
-
   if (!isGroup && !isAnnotationSupported(currentMediaType)) {
     return {
       showAnnotationTab: true,
       disabledReason: "videoDataset",
-    };
-  }
-
-  if (isGenerated && isUnsupportedGeneratedView) {
-    return {
-      showAnnotationTab: true,
-      disabledReason: "generatedView",
     };
   }
 
