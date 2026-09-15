@@ -140,6 +140,17 @@ export type {
 } from "./utils/segmentationPalette";
 export { rasterizeSegmentation } from "./utils/segmentationRaster";
 export { SegmentationOverlay } from "./overlay/SegmentationOverlay";
+export { HeatmapOverlay } from "./overlay/HeatmapOverlay";
+export type {
+  HeatmapLabel,
+  HeatmapOverlayOptions,
+} from "./overlay/HeatmapOverlay";
+export {
+  heatmapPaletteKey,
+  resolveHeatmapPalette,
+} from "./utils/heatmapPalette";
+export type { HeatmapPalette } from "./utils/heatmapPalette";
+export { rasterizeHeatmap } from "./utils/heatmapRaster";
 export type {
   SegmentationLabel,
   SegmentationOverlayOptions,

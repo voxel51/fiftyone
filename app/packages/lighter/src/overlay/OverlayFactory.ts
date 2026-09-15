@@ -5,6 +5,7 @@
 import type { BaseOverlay } from "./BaseOverlay";
 import { DetectionOverlay } from "./DetectionOverlay";
 import { ClassificationOverlay } from "./ClassificationOverlay";
+import { HeatmapOverlay } from "./HeatmapOverlay";
 import { ImageOverlay } from "./ImageOverlay";
 import { KeypointOverlay } from "./KeypointOverlay";
 import { PolylineOverlay } from "./PolylineOverlay";
@@ -39,6 +40,7 @@ export class OverlayFactory {
     factory.register("keypoint", (opts) => new KeypointOverlay(opts));
     factory.register("polyline", (opts) => new PolylineOverlay(opts));
     factory.register("segmentation", (opts) => new SegmentationOverlay(opts));
+    factory.register("heatmap", (opts) => new HeatmapOverlay(opts));
     factory.register("temporal", (opts) => new TemporalOverlay(opts));
 
     return factory;
