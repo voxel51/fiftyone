@@ -27,13 +27,16 @@ import {
   cssVar,
 } from "@voxel51/voodo";
 import { useEffect, useRef, useState } from "react";
+import { useRegisterSelectionActions } from "./useRegisterSelectionActions";
 import SubsetBrowser from "./SubsetBrowser";
 import SelectionCard from "./SelectionCard";
 import styles from "./SelectionTray.module.css";
 
 /** Persistent scope summary, grouped captures, and contributed actions. */
 export default function SelectionTray() {
+  useRegisterSelectionActions();
   const selection = useGridSelection();
+  const { refresh } = fos.useGridViewScope();
   const [boundary, setBoundary] = useGridSelectionBoundary();
   const clearTemporalTags = fos.useClearTemporalTagConstraint();
   const actions = useGridSelectionActions();
@@ -73,7 +76,7 @@ export default function SelectionTray() {
       active = false;
       controller.current?.abort();
     };
-  }, [selection.datasetId]);
+  }, [selection.datasetId, refresh]);
 
   const context: GridSelectionActionContext = {
     datasetId: selection.datasetId,
@@ -315,7 +318,7 @@ export default function SelectionTray() {
           .filter((action) => action.placement === "primary")
           .map(({ Component, ...action }) => (
             <Component
-              key={action.id}
+              key={`${selection.datasetId}:${action.id}`}
               context={context}
               disabledReason={gridActionDisabledReason(
                 { ...action, Component },
@@ -330,7 +333,7 @@ export default function SelectionTray() {
           >
             {overflow.map((action) => (
               <action.Component
-                key={action.id}
+                key={`${selection.datasetId}:${action.id}`}
                 context={context}
                 disabledReason={gridActionDisabledReason(action, context)}
               />

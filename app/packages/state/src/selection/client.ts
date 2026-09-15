@@ -3,6 +3,7 @@ import type {
   EpisodeSelection,
   SelectionBoundary,
   SelectionCounts,
+  SelectionMember,
 } from "./types";
 
 /** Serializable scope resolved independently of grid pagination. */
@@ -102,6 +103,25 @@ export async function getSelectionAvailability(
       path: `/dataset/${encodeURIComponent(datasetId)}/selection/availability`,
       body: { episodeIds },
       signal,
+    })
+  ).response;
+}
+
+/** Inspect or apply an idempotent tag change to fixed membership. */
+export async function selectionTagsRequest(
+  datasetId: string,
+  members: readonly SelectionMember[],
+  change?: { tag: string; add: boolean },
+  target: "members" | "labels" = "members",
+) {
+  return (
+    await getFetchFunctionExtended()<
+      unknown,
+      { counts: SelectionCounts; tags: string[]; labels: number | null }
+    >({
+      method: "POST",
+      path: `/dataset/${encodeURIComponent(datasetId)}/selection/tags`,
+      body: { members, change, target },
     })
   ).response;
 }

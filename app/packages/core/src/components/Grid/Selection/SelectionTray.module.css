@@ -91,3 +91,36 @@
   overflow: auto;
   padding: 0;
 }
+
+.tagPicker {
+  width: min(360px, calc(100vw - 24px));
+  max-height: min(580px, 80vh);
+  overflow: auto;
+}
+
+.tagModes {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0;
+}
+.tagList {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  border: 0;
+  min-height: 96px;
+  max-height: 240px;
+  overflow: auto;
+  padding: 8px 0;
+}
+.tagList button {
+  justify-content: flex-start;
+  min-height: 40px;
+}
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}

@@ -1,5 +1,5 @@
 import {
-  registerGridSelectionAction,
+  type GridSelectionAction,
   type GridSelectionActionContext,
 } from "@fiftyone/multimodal/extensions/grid-selection";
 import {
@@ -302,22 +302,14 @@ function SubsetDialog({
   );
 }
 
-/** Mount once at the OSS dataset page to contribute its persistence action. */
-export function SubsetActionRegistration() {
-  // This effect owns registration, including disposal on unmount and hot reload.
-  useEffect(
-    () =>
-      registerGridSelectionAction({
-        id: "fiftyone:add-to-subset",
-        order: 10,
-        label: "Add to subset",
-        placement: "primary",
-        supports: (mediaType) => ["video", "multimodal"].includes(mediaType),
-        scope: "explicit-or-results",
-        memberKinds: ["episode", "segment"],
-        Component: AddToSubset,
-      }),
-    [],
-  );
-  return null;
-}
+/** Common persistence action for both product shells. */
+export const addToSubsetAction: GridSelectionAction = {
+  id: "fiftyone:add-to-subset",
+  order: 10,
+  label: "Add to subset",
+  placement: "primary",
+  supports: (mediaType) => ["video", "multimodal"].includes(mediaType),
+  scope: "explicit-or-results",
+  memberKinds: ["episode", "segment"],
+  Component: AddToSubset,
+};

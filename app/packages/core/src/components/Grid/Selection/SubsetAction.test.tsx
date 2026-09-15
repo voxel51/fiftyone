@@ -6,11 +6,8 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { beforeAll, expect, it, vi } from "vitest";
-import {
-  useGridSelectionActions,
-  type GridSelectionActionContext,
-} from "@fiftyone/multimodal/extensions/grid-selection";
-import { SubsetActionRegistration } from "./SubsetAction";
+import { type GridSelectionActionContext } from "@fiftyone/multimodal/extensions/grid-selection";
+import { addToSubsetAction } from "./SubsetAction";
 
 const { request } = vi.hoisted(() => ({ request: vi.fn() }));
 vi.mock("@fiftyone/state/src/selection", async () => ({
@@ -30,14 +27,8 @@ beforeAll(() => {
 });
 
 function Host({ context }: { context: GridSelectionActionContext }) {
-  const action = useGridSelectionActions().find(
-    (item) => item.id === "fiftyone:add-to-subset",
-  );
   return (
-    <>
-      <SubsetActionRegistration />
-      {action && <action.Component context={context} disabledReason={null} />}
-    </>
+    <addToSubsetAction.Component context={context} disabledReason={null} />
   );
 }
 

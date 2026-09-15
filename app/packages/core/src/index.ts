@@ -8,6 +8,4 @@ export * from "./plugins";
 export * from "./utils/labels";
 export * from "./utils/links";
 
-export { SubsetActionRegistration } from "./components/Grid/Selection/SubsetAction";
-
 export { EmptyDatasetSelection } from "./components/Grid/Selection/EmptyDatasetSelection";

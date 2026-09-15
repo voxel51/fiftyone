@@ -2,6 +2,9 @@ import { is3d, type Schema } from "@fiftyone/utilities";
 import { useMemo } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import {
+  anyTagging,
+  canTagSamplesOrLabels,
+  readOnly,
   dataset,
   datasetId,
   datasetName,
@@ -238,4 +241,18 @@ export function useIsConvertedView() {
   const frames = useRecoilValue(isFramesView);
   const patches = useRecoilValue(isPatchesView);
   return clips || frames || patches;
+}
+
+/** Shared tagging policy, including Enterprise session permissions. */
+export function useSelectionTagDisabledReason(): string | null {
+  const permission = useRecoilValue(canTagSamplesOrLabels);
+  const locked = useRecoilValue(readOnly);
+  const tagging = useRecoilValue(anyTagging);
+  if (locked) return "This session is read-only";
+  if (!permission.enabled)
+    return (
+      permission.message?.replace("#action", "tag episodes or segments") ??
+      "Tagging is not permitted"
+    );
+  return tagging ? "Another tagging operation is in progress" : null;
 }

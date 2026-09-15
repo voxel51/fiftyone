@@ -4,6 +4,7 @@ import { atom, selector, useRecoilValue, useSetRecoilState } from "recoil";
 import { useActiveFilterValues } from "./filters";
 import { isModalActive } from "./modal";
 import { activeField } from "./schema";
+import { refresher } from "./atoms";
 import { datasetId } from "./selectors";
 import { TEMPORAL_TAGS_FIELD } from "./sidebar";
 
@@ -78,6 +79,7 @@ export const fetchTemporalTagResults = async (
  */
 export const useSyncTemporalTagResults = (): void => {
   const currentDatasetId = useRecoilValue(datasetId);
+  const refresh = useRecoilValue(refresher);
   const setResults = useSetRecoilState(temporalTagResultsAtom);
   const modalActive = useRecoilValue(isModalActive);
   const wasModalActive = useRef(modalActive);
@@ -119,7 +121,7 @@ export const useSyncTemporalTagResults = (): void => {
       });
     // `setResults` is a stable Recoil setter.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentDatasetId]);
+  }, [currentDatasetId, refresh]);
 
   // Initial load and on dataset change.
   useEffect(() => load(), [load]);

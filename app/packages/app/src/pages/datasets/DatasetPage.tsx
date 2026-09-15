@@ -9,7 +9,6 @@ import {
   DatasetGridRendererFailover,
   QueryPerformanceToast,
   SchemaManagerOutlet,
-  SubsetActionRegistration,
   Snackbar,
   Starter,
 } from "@fiftyone/core";
@@ -126,7 +125,6 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
             a legitimate first-step workflow. SchemaManagerOutlet doesn't
             depend on `datasetQueryContext.Provider`. */}
         <SchemaManagerOutlet />
-        <SubsetActionRegistration />
         {isEmpty ? (
           <div
             style={{ display: "flex", flexDirection: "column", height: "100%" }}
