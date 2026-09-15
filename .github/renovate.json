@@ -39,8 +39,18 @@
         },
         {
             "matchManagers": ["npm"],
-            "groupName": "app-dependencies",
             "addLabels": ["app"]
+        },
+        {
+            "matchManagers": ["npm"],
+            "matchUpdateTypes": ["patch", "pin", "digest"],
+            "groupName": "app-dependencies"
+        },
+        {
+            "matchManagers": ["npm"],
+            "matchUpdateTypes": ["minor"],
+            "matchCurrentVersion": "<1.0.0",
+            "enabled": false
         },
         {
             "matchManagers": ["github-actions"],
