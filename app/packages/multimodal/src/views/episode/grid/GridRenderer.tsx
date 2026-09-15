@@ -504,6 +504,7 @@ export function GridRenderer({
           onPresentedTimeSeconds={preview.presentNativeTimeSeconds}
           onSurfaceRetainedBytesChange={setNativeSurfaceRetainedBytes}
           playing={preview.isPlaying}
+          seek={preview.nativeSeek}
           video={preview.nativeVideo}
         />
       ) : null}
