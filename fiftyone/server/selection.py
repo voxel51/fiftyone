@@ -12,16 +12,21 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.selection as fosel
 import fiftyone.core.storage as fost
+import fiftyone.core.subsets as fosub
 import fiftyone.core.tags as fot
 import fiftyone.server.view as fosv
 
 
 def resolve_candidates(dataset, request):
     """Resolves all scoped members once, including unloaded parent episodes."""
+    boundary = request.get("boundary", {})
+    filters = copy.deepcopy(request.get("filters", {}))
+    if boundary.get("subsetId"):
+        filters["_selection_scope"] = boundary
     view = fosv.get_view(
         dataset,
         stages=request.get("view"),
-        filters=copy.deepcopy(request.get("filters", {})),
+        filters=filters,
         extended_stages=copy.deepcopy(request.get("extendedStages", {})),
         sort_by=request.get("sortBy"),
         desc=request.get("desc", False),
@@ -31,8 +36,24 @@ def resolve_candidates(dataset, request):
         "multimodal",
     ):
         raise ValueError("Selection requires an episode-preserving view")
-    boundary = request.get("boundary", {})
-    members = candidate_members(view, boundary.get("provider"))
+    members = scoped_members(view, boundary)
+    missing = []
+    if boundary.get("subsetId"):
+        allowed = subset_boundary(dataset, boundary)
+        present = set(
+            dataset.select({m["episodeId"] for m in allowed}).values("id")
+        )
+        missing = [m for m in allowed if m["episodeId"] not in present]
+        # Missing parents cannot be evaluated against live criteria. Retain them
+        # as separate placeholders; never claim a filtered add captured them.
+        constrained = bool(
+            request.get("view")
+            or request.get("filters")
+            or request.get("extendedStages")
+            or boundary.get("provider")
+        )
+        if missing and not constrained:
+            members += missing
     sample_ids = {m["episodeId"] for m in members}
     samples = {
         sample.id: sample_details(sample, dataset)
@@ -40,8 +61,20 @@ def resolve_candidates(dataset, request):
     }
     return {
         "groups": fosel.group_members(members, samples),
+        "unavailableGroups": fosel.group_members(missing, {}),
         "counts": fosel.count_members(members, sample_ids - samples.keys()),
     }
+
+
+def selection_availability(dataset, episode_ids):
+    """Resolves live display metadata without changing captured membership."""
+    result = {episode_id: {"unavailable": True} for episode_id in episode_ids}
+    for sample in dataset.select(episode_ids):
+        result[sample.id] = {
+            "unavailable": False,
+            **sample_details(sample, dataset),
+        }
+    return result
 
 
 def sample_details(sample, dataset):
@@ -90,8 +123,72 @@ def candidate_members(view, provider=None):
 
 def constrain_view(view, boundary):
     """Constrains grid pagination to complete provider results."""
-    members = candidate_members(view, boundary.get("provider"))
+    members = scoped_members(view, boundary)
     return view.select({m["episodeId"] for m in members})
+
+
+def subset_boundary(dataset, boundary):
+    """Selects a member kind without ever promoting saved segments."""
+    subset_id = boundary["subsetId"]
+    scope = boundary.get("subsetScope")
+    if scope is None:
+        members = fosub.subset_members(dataset, subset_id)
+        kinds = {m["kind"] for m in members}
+        if len(kinds) > 1:
+            raise ValueError(
+                "Choose Whole episodes or Saved segments for this mixed subset"
+            )
+        return members
+    return fosub.subset_members(dataset, subset_id, scope)
+
+
+def scoped_members(view, boundary):
+    """Applies current matches within the saved time and stream boundary."""
+    if not boundary.get("subsetId"):
+        return candidate_members(view, boundary.get("provider"))
+    allowed = subset_boundary(view._dataset, boundary)
+    if boundary.get("provider"):
+        return fosel.intersect_members(
+            candidate_members(view, boundary["provider"]), allowed
+        )
+    by_episode = {}
+    for member in allowed:
+        by_episode.setdefault(member["episodeId"], []).append(member)
+    return [
+        m
+        for episode_id in view.values("id")
+        for m in by_episode.get(episode_id, [])
+    ]
+
+
+def validate_subset_stages(stages, extended_stages):
+    """Fails closed for pipelines not yet supported inside a saved subset."""
+    supported = {
+        "Match",
+        "MatchTags",
+        "Exists",
+        "Select",
+        "Exclude",
+        "SortBy",
+        "Limit",
+        "Skip",
+        "FilterLabels",
+        "FilterField",
+        "SelectFields",
+        "ExcludeFields",
+        "SelectLabels",
+        "ExcludeLabels",
+        "MatchLabels",
+    }
+    classes = [stage["_cls"] for stage in stages or []] + list(
+        extended_stages or {}
+    )
+    for cls in classes:
+        if cls not in {"fiftyone.core.stages." + name for name in supported}:
+            raise ValueError(
+                "Stage %s is not supported within a saved subset; remove it or return to the dataset"
+                % cls.rsplit(".", 1)[-1]
+            )
 
 
 def provider_options(dataset):
@@ -101,12 +198,14 @@ def provider_options(dataset):
         embedded_doc_type=fol.TemporalDetections,
     )
     return {
-        "eventFields": list(fields),
+        "eventFields": list(fields) if dataset.media_type == "video" else [],
         "temporalTags": sorted(fot.count_temporal_tags(dataset)),
     }
 
 
 def _event_members(view, provider):
+    if view.media_type != "video":
+        raise ValueError("Frame event ranges require a video source")
     field = provider["field"]
     schema = view.get_field_schema()
     if (

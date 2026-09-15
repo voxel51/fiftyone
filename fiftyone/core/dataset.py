@@ -56,6 +56,7 @@ foud = fou.lazy_import("fiftyone.utils.data")
 food = fou.lazy_import("fiftyone.operators.delegated")
 foos = fou.lazy_import("fiftyone.operators.store")
 fota = fou.lazy_import("fiftyone.core.tags")
+fosub = fou.lazy_import("fiftyone.core.subsets")
 fmm = fou.lazy_import("fiftyone.multimodal.media_reference.field_model")
 
 
@@ -10220,6 +10221,7 @@ def _delete_dataset_extras(dataset):
     svc.cleanup()
 
     fota.delete_for_dataset_id(dataset_id)
+    fosub.delete_for_dataset_id(dataset_id)
 
 
 def _clone_collection(

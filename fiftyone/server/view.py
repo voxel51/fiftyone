@@ -133,10 +133,25 @@ def get_view(
         if isinstance(dataset, str):
             dataset = fod.load_dataset(dataset, reload=reload)
 
-        if view_name is not None:
-            return dataset.load_saved_view(view_name)
+        selection_scope = (filters or {}).get("_selection_scope")
+        if selection_scope and selection_scope.get("subsetId"):
+            from fiftyone.server.selection import (
+                subset_boundary,
+                validate_subset_stages,
+            )
 
-        if stages:
+            if view_name is not None or dynamic_group is not None:
+                raise ValueError(
+                    "Open the saved view pipeline explicitly within this subset"
+                )
+            validate_subset_stages(stages, extended_stages)
+            members = subset_boundary(dataset, selection_scope)
+            view = dataset.select({m["episodeId"] for m in members})
+            for stage in stages or []:
+                view = view._add_view_stage(fosg.ViewStage._from_dict(stage))
+        elif view_name is not None:
+            return dataset.load_saved_view(view_name)
+        elif stages:
             view = fov.DatasetView._build(dataset, stages)
         else:
             view = dataset.view()
