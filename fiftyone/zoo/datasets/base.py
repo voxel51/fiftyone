@@ -3726,6 +3726,84 @@ class RoboLabDataset(FiftyOneDataset):
         return dataset_type, num_samples, None
 
 
+class ConstructionSiteTraversabilityDataset(FiftyOneDataset):
+    """Construction-site recordings from an autonomous mobile robot, as
+    native ``.mcap`` episodes.
+
+    A tracked mobile robot drives closed loops through two active
+    construction sites carrying an OAK-D colour and range camera, a Livox
+    3D LiDAR, two inertial units and a u-blox GNSS receiver, with a
+    LiDAR-inertial odometry estimate and the wheel encoders recorded
+    alongside them. The runs revisit the same ground, which is what makes
+    them useful for loop closure and for traversability work.
+
+    Four sessions and 105 minutes of driving over 9,760 m of ground. The
+    colour camera and the LiDAR both run at 10 Hz and the range camera is
+    halved onto the same clock, so every visual and 3D stream in an episode
+    shares one rate.
+
+    Every episode carries the camera's intrinsics and the transforms
+    placing the camera and the LiDAR on the robot, taken from the
+    calibration the authors publish alongside their annotated frames.
+
+    The recordings were made on working sites and contain site personnel
+    and vehicles in the camera streams.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("construction-site-traversability")
+
+        # The longest run
+        view = dataset.sort_by("duration", reverse=True)
+
+        session = fo.launch_app(dataset, view=view)
+
+    Dataset size
+        18.14 GB
+    """
+
+    _REPO_ID = "Voxel51/Construction-Site-Traversability"
+    # Pinned so a loaded dataset is reproducible; the default branch is
+    # mutable and could change media, labels or size underneath a user
+    _REVISION = "c52c1418239df91b24f530e6475851d52a172ff8"
+
+    @property
+    def name(self):
+        return "construction-site-traversability"
+
+    @property
+    def license(self):
+        return "CC-BY-NC-4.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "robotics", "lidar", "depth", "gnss")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        logger.info("Downloading %s from the Hugging Face Hub", self._REPO_ID)
+        hfh.snapshot_download(
+            repo_id=self._REPO_ID,
+            repo_type="dataset",
+            revision=self._REVISION,
+            local_dir=dataset_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
 AVAILABLE_DATASETS = {
     "activitynet-100": ActivityNet100Dataset,
     "activitynet-200": ActivityNet200Dataset,
@@ -3735,6 +3813,7 @@ AVAILABLE_DATASETS = {
     "cityscapes": CityscapesDataset,
     "coco-2014": COCO2014Dataset,
     "coco-2017": COCO2017Dataset,
+    "construction-site-traversability": ConstructionSiteTraversabilityDataset,
     "egocentric-emg-force": EgocentricEMGForceDataset,
     "fiw": FIWDataset,
     "hmdb51": HMDB51Dataset,
