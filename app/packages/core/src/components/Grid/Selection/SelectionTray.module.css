@@ -1,0 +1,66 @@
+.tray {
+  flex: 0 0 auto;
+  position: relative;
+  min-width: 0;
+}
+.resize {
+  height: 6px;
+  cursor: ns-resize;
+  touch-action: none;
+}
+.cards {
+  display: flex;
+  overflow: auto;
+  min-height: 80px;
+  max-height: 40vh;
+  box-sizing: border-box;
+}
+.card {
+  flex: 0 0 220px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.preview {
+  position: relative;
+  flex: 1;
+  min-height: 30px;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+.preview video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  inset: 0;
+}
+.preview span {
+  position: relative;
+  display: inline-block;
+  padding: 4px 8px;
+}
+.cardControls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.summary {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}

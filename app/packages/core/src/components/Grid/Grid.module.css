@@ -29,10 +29,17 @@
 }
 
 .gridContainer {
-  display: block;
+  display: flex;
+  flex-direction: column;
   height: 100%;
   position: relative;
   width: 100%;
+}
+
+.gridViewport {
+  flex: 1;
+  min-height: 0;
+  position: relative;
 }
 
 .fallingPixels {

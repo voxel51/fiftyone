@@ -1,5 +1,6 @@
 import type { Hide, ID, Show } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
+import { useGridSelection } from "@fiftyone/state/src/selection";
 import { useCallback, useMemo, useRef } from "react";
 import type { LookerCache } from "./types";
 import useFontSize from "./useFontSize";
@@ -22,6 +23,9 @@ export default function useRenderer({
   const createLooker = fos.useCreateLooker(false, true, lookerOptions);
   const getFontSize = useFontSize(id);
   const selectSample = useSelectSample(records);
+  const selection = useGridSelection();
+  const selectionRef = useRef(selection);
+  selectionRef.current = selection;
   const sampleRenderer = useGridCustomRendererItem(createLooker);
 
   // `showItem` must stay stable even as the sample renderer hook refreshes.
@@ -71,6 +75,10 @@ export default function useRenderer({
         id,
         getFontSize(),
       );
+      if (selectionRef.current.enabled)
+        item.updateOptions({
+          selected: selectionRef.current.selected.has(key),
+        });
 
       item.addEventListener("selectthumbnail", ({ detail }) =>
         selectSample.current?.(detail),

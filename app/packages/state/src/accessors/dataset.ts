@@ -6,10 +6,14 @@ import {
   datasetId,
   datasetName,
   expressionCatalog,
+  extendedStages,
+  filters,
   fieldSchema,
   groupMediaTypes,
+  gridSortBy,
   isGroup,
   selectedMediaField,
+  refresher,
   skeleton,
   stageDefinitions,
   State,
@@ -198,3 +202,29 @@ export const useStageDefinitions = () => useRecoilValue(stageDefinitions);
 
 /** The applied view's stages. */
 export const useView = (): State.Stage[] => useRecoilValue(view);
+
+/** Current grid pipeline inputs, without pagination or explicit selection. */
+export function useGridViewScope() {
+  return {
+    view: useView(),
+    filters: useRecoilValue(filters),
+    extendedStages: useRecoilValue(extendedStages),
+    sort: useRecoilValue(gridSortBy),
+    refresh: useRecoilValue(refresher),
+  };
+}
+
+/** Clears the range-producing temporal tag constraint when returning to episodes. */
+export function useClearTemporalTagConstraint() {
+  return useRecoilCallback(
+    ({ set }) =>
+      () => {
+        set(filters, (current) => {
+          const next = { ...current };
+          delete next._temporal_tags;
+          return next;
+        });
+      },
+    [],
+  );
+}

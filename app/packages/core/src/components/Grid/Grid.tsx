@@ -2,6 +2,10 @@ import styles from "./Grid.module.css";
 
 import Spotlight from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
+import {
+  useGridSelection,
+  useLoadGridSelection,
+} from "@fiftyone/state/src/selection";
 import React, { useState } from "react";
 import { useRecoilValue } from "recoil";
 import { useMemoOne } from "use-memo-one";
@@ -26,11 +30,14 @@ import useScrollLocation from "./useScrollLocation";
 import useSpotlightPager from "./useSpotlightPager";
 import useUpdates from "./useUpdates";
 import useZoomSetting from "./useZoomSetting";
+import SelectionTray from "./Selection/SelectionTray";
 
 const MAX_INSTANCES = 200;
 const MAX_ROWS = 200;
 
 function Grid() {
+  useLoadGridSelection();
+  const selection = useGridSelection();
   const id = useMemoOne(() => uuid(), []);
   const pixels = useMemoOne(() => uuid(), []);
   const spacing = useRecoilValue(gridSpacing);
@@ -73,8 +80,8 @@ function Grid() {
   // through a ref so their identities are not rebuild triggers — a transient
   // identity change from an unrelated state update must not destroy and
   // recreate the grid
-  const refs = React.useRef({ get, page, renderer, setSample });
-  refs.current = { get, page, renderer, setSample };
+  const refs = React.useRef({ get, page, renderer, setSample, selection });
+  refs.current = { get, page, renderer, setSample, selection };
 
   const spotlight = useMemoOne(() => {
     /** SPOTLIGHT REFRESHER */
@@ -100,7 +107,16 @@ function Grid() {
       spacing,
 
       get: (next) => refs.current.page(next),
-      onItemClick: (item) => refs.current.setSample(item),
+      onItemClick: (item) => {
+        if (
+          refs.current.selection.enabled &&
+          (item.event.ctrlKey || item.event.metaKey)
+        ) {
+          refs.current.selection.toggle(item.item.id.description);
+          return undefined;
+        }
+        return refs.current.setSample(item);
+      },
       rowAspectRatioThreshold: zoom,
     });
   }, [cache, autosizing, maxBytes, reset, resizing, spacing, zoom]);
@@ -112,8 +128,11 @@ function Grid() {
 
   return (
     <div className={styles.gridContainer}>
-      <div id={id} className={styles.spotlightGrid} data-cy="fo-grid" />
-      <div id={pixels} className={styles.fallingPixels} />
+      <div className={styles.gridViewport}>
+        <div id={id} className={styles.spotlightGrid} data-cy="fo-grid" />
+        <div id={pixels} className={styles.fallingPixels} />
+      </div>
+      {selection.enabled && <SelectionTray key={selection.datasetId} />}
     </div>
   );
 }

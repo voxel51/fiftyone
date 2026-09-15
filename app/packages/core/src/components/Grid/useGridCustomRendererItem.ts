@@ -11,6 +11,7 @@ import {
 } from "@fiftyone/plugins";
 import type { ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
+import { useGridSelection } from "@fiftyone/state/src/selection";
 import type React from "react";
 import { useCallback, useMemo, useRef } from "react";
 import {
@@ -26,6 +27,9 @@ export function useGridCustomRendererItem(
   createDefaultLooker: ReturnType<typeof fos.useCreateLooker>,
 ) {
   const dataset = fos.useCurrentDataset();
+  const selection = useGridSelection();
+  const selectionRef = useRef(selection);
+  selectionRef.current = selection;
   const schema = fos.useSampleSchema();
   const trackEvent = useTrackEvent();
 
@@ -50,7 +54,9 @@ export function useGridCustomRendererItem(
   const isSampleSelected = useRecoilCallback(
     ({ snapshot }) =>
       (sampleId: string) =>
-        snapshot.getLoadable(fos.selectedSamples).getValue().has(sampleId),
+        selectionRef.current.enabled
+          ? selectionRef.current.selected.has(sampleId)
+          : snapshot.getLoadable(fos.selectedSamples).getValue().has(sampleId),
     [],
   );
 

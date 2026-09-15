@@ -73,6 +73,10 @@ vi.mock("@fiftyone/analytics", () => ({
   useTrackEvent: () => trackEvent,
 }));
 
+vi.mock("@fiftyone/state/src/selection", () => ({
+  useGridSelection: () => ({ enabled: false, selected: new Map() }),
+}));
+
 // GridTagBubbles reaches for looker/schema hooks this test's minimal
 // @fiftyone/state mock doesn't provide; it's irrelevant to selection wiring.
 vi.mock("./GridTagBubbles", () => ({

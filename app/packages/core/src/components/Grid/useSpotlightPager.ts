@@ -2,6 +2,10 @@ import { zoomAspectRatio } from "@fiftyone/looker";
 import * as foq from "@fiftyone/relay";
 import type { ID, Response } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
+import {
+  useGridSelectionBoundary,
+  useGridSelectionDataset,
+} from "@fiftyone/state/src/selection";
 import type { Schema } from "@fiftyone/utilities";
 import { useMemo, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
@@ -65,6 +69,8 @@ const useSpotlightPager = ({
 }) => {
   const environment = useRelayEnvironment();
   const pager = useRecoilValue(pageSelector);
+  const [boundary] = useGridSelectionBoundary();
+  const { enabled: selectionEnabled } = useGridSelectionDataset();
   const zoom = useRecoilValue(zoomSelector);
   const handleError = useErrorHandler();
   const store: SampleStore = useMemo(() => new WeakMap(), []);
@@ -82,6 +88,11 @@ const useSpotlightPager = ({
     ({ snapshot }) => {
       return async (pageNumber: number) => {
         const variables = pager(pageNumber, PAGE_SIZE);
+        if (selectionEnabled)
+          variables.filters = {
+            ...variables.filters,
+            _selection_scope: boundary,
+          };
         let subscription: Subscription;
         const schema = await snapshot.getPromise(
           fos.fieldSchema({ space: fos.State.SPACE.SAMPLE }),
@@ -139,7 +150,16 @@ const useSpotlightPager = ({
         });
       };
     },
-    [environment, handleError, handleTimeout, pager, store, zoom],
+    [
+      environment,
+      handleError,
+      handleTimeout,
+      pager,
+      store,
+      zoom,
+      selectionEnabled,
+      boundary,
+    ],
   );
 
   return { page, records, store };
