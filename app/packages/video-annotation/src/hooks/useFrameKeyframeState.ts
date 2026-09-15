@@ -65,7 +65,7 @@ export const useFrameKeyframeState = (
   const activePath = engine.interaction
     .getActive()
     .find((ref) => ref.instanceId === instanceId)?.path;
-  const path = activePath ?? `frames.${stream.labelsField}`;
+  const path = activePath ?? stream.labelsPath;
 
   const det = engine.getLabel({ sample: sampleId, path, instanceId, frame });
   return det?.keyframe === true;

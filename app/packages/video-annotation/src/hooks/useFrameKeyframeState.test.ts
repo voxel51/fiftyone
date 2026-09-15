@@ -54,7 +54,7 @@ beforeEach(() => {
   streamRef.current = {
     fps: 30,
     totalFrames: 100,
-    labelsField: "detections",
+    labelsPath: "frames.detections",
   };
   sampleIdRef.current = "sample-1";
   activeRefs.current = [];
@@ -163,6 +163,20 @@ describe("useFrameKeyframeState", () => {
     expect(result.current).toBe(true);
     expect(getLabelMock).toHaveBeenCalledWith(
       expect.objectContaining({ path: "frames.detections" }),
+    );
+  });
+
+  it("reads the bare primary path in a dynamic group video", () => {
+    // each frame is a member image, so the stream's primary path has no
+    // `frames.` prefix; a hardcoded one would read a field that does not exist
+    streamRef.current = { fps: 30, totalFrames: 100, labelsPath: "detections" };
+    getLabelMock.mockReturnValue({ keyframe: true });
+
+    const { result } = renderHook(() => useFrameKeyframeState(["a"], 0));
+
+    expect(result.current).toBe(true);
+    expect(getLabelMock).toHaveBeenCalledWith(
+      expect.objectContaining({ path: "detections" }),
     );
   });
 });
