@@ -42,7 +42,11 @@ import {
   ExecutionCallbackOptions,
   OperatorExecutorOptions,
 } from "./ts";
-import { generateOperatorSessionId, optimizeCtx } from "./utils";
+import {
+  generateOperatorSessionId,
+  optimizeCtx,
+  stringifyError,
+} from "./utils";
 import { ValidationContext } from "./validation";
 
 export const promptingOperatorState = atom({
@@ -1232,7 +1236,7 @@ export function useOperatorExecutor(
         });
         const isAbortError =
           e.name === "AbortError" || e instanceof DOMException;
-        const msg = e.message || "Failed to execute an operation";
+        const msg = stringifyError(e, "Failed to execute an operation");
         if (!isAbortError) {
           setError(e);
           setResult(null);
