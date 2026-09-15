@@ -21,23 +21,14 @@
         "react-relay": "catalog:"
     },
     "devDependencies": {
-        "@mui/icons-material": "catalog:",
-        "@mui/material": "catalog:",
-        "jotai": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:",
-        "react-error-boundary": "catalog:",
         "react-is": "catalog:",
-        "recoil": "catalog:",
-        "recoil-relay": "catalog:",
-        "relay-runtime": "catalog:",
-        "styled-components": "catalog:",
         "vite": "catalog:"
     },
     "packageManager": "yarn@4.9.1",
     "peerDependencies": {
         "react": "*",
-        "react-dom": "*",
-        "recoil": "*"
+        "react-dom": "*"
     }
 }

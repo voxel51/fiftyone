@@ -16,30 +16,22 @@
         "@fiftyone/components": "*",
         "@fiftyone/plugins": "*",
         "@fiftyone/state": "*",
+        "@mui/icons-material": "catalog:",
+        "@mui/material": "catalog:",
         "plotly.js": "^3.1.1",
+        "recoil": "catalog:",
+        "styled-components": "catalog:",
         "use-resize-observer": "catalog:"
     },
     "devDependencies": {
         "@types/react": "catalog:",
         "@vitejs/plugin-react": "catalog:",
-        "jotai": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:",
-        "react-error-boundary": "catalog:",
-        "react-relay": "catalog:",
-        "recoil": "catalog:",
-        "recoil-relay": "catalog:",
-        "relay-runtime": "catalog:",
-        "styled-components": "catalog:",
         "vite": "catalog:",
         "vite-plugin-externals": "catalog:"
     },
     "fiftyone": {
         "script": "dist/index.umd.js"
-    },
-    "peerDependencies": {
-        "@mui/icons-material": "*",
-        "react-error-boundary": "*",
-        "recoil": "*"
     }
 }

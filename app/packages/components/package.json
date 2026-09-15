@@ -30,25 +30,14 @@
         "prettier": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:",
-        "react-error-boundary": "catalog:",
         "react-is": "catalog:",
-        "react-relay": "catalog:",
-        "recoil": "catalog:",
-        "recoil-relay": "catalog:",
-        "relay-runtime": "catalog:",
         "storybook": "catalog:",
         "typescript": "catalog:",
         "typescript-plugin-css-modules": "^5.1.0",
         "vite": "catalog:"
     },
     "peerDependencies": {
-        "jotai": "*",
-        "re-resizable": "*",
-        "react": "*",
-        "react-markdown": "*",
-        "react-relay": "*",
-        "recoil": "*",
-        "styled-components": "*"
+        "react": "*"
     },
     "dependencies": {
         "@emotion/react": "catalog:",
@@ -65,10 +54,13 @@
         "framer-motion": "^6.2.7",
         "material-icons": "^1.13.12",
         "re-resizable": "catalog:",
+        "react-error-boundary": "catalog:",
         "react-input-autosize": "catalog:",
         "react-laag": "catalog:",
         "react-markdown": "catalog:",
         "react-syntax-highlighter": "catalog:",
-        "react-use": "^17.5.1"
+        "react-use": "^17.5.1",
+        "recoil": "catalog:",
+        "styled-components": "catalog:"
     }
 }

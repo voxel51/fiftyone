@@ -17,14 +17,19 @@
         "@emotion/styled": "catalog:",
         "@miris-inc/core": "latest",
         "@miris-inc/three": "latest",
+        "@mui/icons-material": "catalog:",
+        "@mui/material": "catalog:",
+        "@react-spring/web": "catalog:",
         "@react-three/drei": "^9.122.0",
         "@react-three/fiber": "catalog:",
         "@sparkjsdev/spark": "2.1.0",
         "chroma-js": "^3.1.2",
+        "jotai": "catalog:",
         "leva": "^0.9.36",
         "lodash": "catalog:",
         "r3f-perf": "^7.2.3",
         "react-color": "catalog:",
+        "recoil": "catalog:",
         "styled-components": "catalog:",
         "three": "patch:three@npm%3A0.185.1#~/.yarn/patches/three-npm-0.185.1-e07195d8b4.patch",
         "tunnel-rat": "^0.1.2"
@@ -42,11 +47,5 @@
         "react-dom": "catalog:",
         "vite": "catalog:",
         "vite-plugin-externals": "catalog:"
-    },
-    "peerDependencies": {
-        "@mui/icons-material": "*",
-        "@mui/material": "*",
-        "@react-spring/web": "*",
-        "recoil": "*"
     }
 }
