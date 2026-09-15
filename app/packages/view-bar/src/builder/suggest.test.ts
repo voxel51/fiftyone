@@ -352,6 +352,17 @@ describe("completeField", () => {
     expect(done.offset).toBe("F(label)".length);
   });
 
+  it("replaces the rest of the path when the caret is inside it", () => {
+    const source = 'F("confidence") > 3';
+    const done = completeField(
+      source,
+      { typed: "conf", start: 3 },
+      "confidence",
+    );
+    expect(done.source).toBe('F("confidence") > 3');
+    expect(done.offset).toBe('F("confidence")'.length);
+  });
+
   it("replaces a deeper typed path", () => {
     const source = 'F("ground_truth.la';
     const done = completeField(

@@ -569,7 +569,7 @@
     },
     {
         "name": "date_compare",
-        "python": "F('created_at') > datetime.utcfromtimestamp(1577836800000.0 / 1000)",
+        "python": "F('created_at') > datetime.fromtimestamp(1577836800000.0 / 1000, timezone.utc)",
         "ast": {
             "t": "call",
             "op": "__gt__",

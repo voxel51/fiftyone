@@ -4484,6 +4484,27 @@ class ViewStageTests(unittest.TestCase):
         self.assertIsInstance(decoded._filter, dict)
         self.assertEqual(decoded._get_mongo_expr(), stage._get_mongo_expr())
 
+    def test_undecodable_envelope_falls_back_to_mongo(self):
+        stage = fosg.Match(F("num") > 0.5)
+        d = stage._serialize()
+        # A newer build may pass an operator a keyword this one lacks without
+        # the version changing; that must not make the view unloadable
+        d["_expr_asts"]["filter"][foea.AST_KEY]["node"]["kwargs"] = {
+            "unknown": {"t": "lit", "v": 1}
+        }
+
+        decoded = fosg.ViewStage._from_dict(d)
+        self.assertIsInstance(decoded._filter, dict)
+        self.assertEqual(decoded._get_mongo_expr(), stage._get_mongo_expr())
+
+    def test_envelope_key_without_a_payload_is_not_an_envelope(self):
+        value = {foea.AST_KEY: "x"}
+        self.assertFalse(foea.is_envelope(value))
+
+        stage = fosg.MapValues("f", value)
+        decoded = fosg.ViewStage._from_dict(stage._serialize())
+        self.assertEqual(decoded._map, value)
+
     def test_compound_sort_records_each_expression(self):
         dataset = self._setUp_envelopes()
         view = dataset.sort_by([(F("num") * 2, 1), ("filepath", -1)])

@@ -119,9 +119,55 @@ describe("parse", () => {
       });
     });
 
+    it("mirrors a comparison whose literal is on the left", () => {
+      expect(parse("3 < F('conf')")).toEqual({
+        t: "call",
+        op: "__gt__",
+        self: { t: "field", path: "conf" },
+        args: [{ t: "lit", v: 3 }],
+        kwargs: {},
+      });
+      expect(parse("3 == F('conf')")).toMatchObject({
+        op: "__eq__",
+        self: { path: "conf" },
+      });
+    });
+
+    it("refuses a number raised to an expression", () => {
+      const source = "2 ** F('a')";
+      expect(() => parse(source)).toThrow(/cannot be raised/);
+      expect(tryParse(source)).toMatchObject({
+        error: { offset: at(source, "**") },
+      });
+    });
+
+    it("reads a chained comparison as a conjunction", () => {
+      expect(parse("1 < F('conf') < 5")).toEqual({
+        t: "call",
+        op: "__and__",
+        self: {
+          t: "call",
+          op: "__gt__",
+          self: { t: "field", path: "conf" },
+          args: [{ t: "lit", v: 1 }],
+          kwargs: {},
+        },
+        args: [
+          {
+            t: "call",
+            op: "__lt__",
+            self: { t: "field", path: "conf" },
+            args: [{ t: "lit", v: 5 }],
+            kwargs: {},
+          },
+        ],
+        kwargs: {},
+      });
+    });
+
     it("reads a plain datetime call as a date", () => {
       // What the date picker inserts; prints back canonically as
-      // datetime.utcfromtimestamp
+      // datetime.fromtimestamp(..., timezone.utc)
       expect(parse("datetime(2026, 7, 29)")).toEqual({
         t: "lit",
         v: Date.UTC(2026, 6, 29),
@@ -163,6 +209,48 @@ describe("parse", () => {
       expect(parse("F('x') == False")).toMatchObject({
         args: [{ t: "lit", v: false }],
       });
+    });
+
+    it("reads a signed exponent, as print writes one", () => {
+      const source = "F('a') > 1e-7";
+      expect(parse(source)).toMatchObject({ args: [{ t: "lit", v: 1e-7 }] });
+      expect(print(parse("F('a') > 0.0000001"))).toBe(source);
+    });
+
+    it("reads Python escape sequences", () => {
+      expect(parse("F('a') == 'x\\ny'")).toMatchObject({
+        args: [{ t: "lit", v: "x\ny" }],
+      });
+      expect(parse("F('a') == 'it\\'s'")).toMatchObject({
+        args: [{ t: "lit", v: "it's" }],
+      });
+      expect(parse("F('a') == '\\x41\\u00e9\\101'")).toMatchObject({
+        args: [{ t: "lit", v: "AéA" }],
+      });
+      // Python keeps an escape it does not know, backslash included
+      expect(parse("F('a') == '\\q'")).toMatchObject({
+        args: [{ t: "lit", v: "\\q" }],
+      });
+    });
+
+    it("round trips a string with escapes", () => {
+      const source = "F('a') == 'x\\ny\\t\\\\'";
+      expect(print(parse(source))).toBe(source);
+    });
+
+    it("reads both spellings of a UTC timestamp", () => {
+      const aware = parse(
+        "F('d') > datetime.fromtimestamp(1577836800000 / 1000, timezone.utc)",
+      );
+      expect(aware).toMatchObject({
+        args: [{ t: "lit", v: 1577836800000, as: "date" }],
+      });
+      expect(
+        parse("F('d') > datetime.utcfromtimestamp(1577836800000 / 1000)"),
+      ).toEqual(aware);
+      expect(() =>
+        parse("datetime.fromtimestamp(1 / 1000, timezone.est)"),
+      ).toThrow(/timezone.utc/);
     });
 
     it("reads a signed number as one literal", () => {

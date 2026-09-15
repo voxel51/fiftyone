@@ -442,7 +442,7 @@ def to_envelope(expr: "ViewExpression") -> Envelope:
 
 def is_envelope(value: Any) -> bool:
     """Whether a serialized value is an expression envelope."""
-    return isinstance(value, dict) and AST_KEY in value
+    return isinstance(value, dict) and isinstance(value.get(AST_KEY), dict)
 
 
 def from_envelope(value: Envelope) -> "ViewExpression":

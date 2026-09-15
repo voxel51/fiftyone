@@ -323,7 +323,11 @@ const ViewBarInner: React.FC<{
 
       const hydrated = workingStagesFromView(currentView);
       dispatch({ type: "hydrate", stages: hydrated });
+      // Hydrated ids are positional, so nothing keyed by the old ones carries
+      // over to whichever stage now holds each position
       setEditingId(null);
+      setModeOverrides({});
+      setTouched(new Set());
       // Whatever was in transit has landed (or been superseded externally)
       setInFlight(null);
     };
@@ -694,12 +698,21 @@ const ViewBarInner: React.FC<{
     // Rebuild the bar from exactly what was sent, so an applied expression
     // reopens printed from its envelope — `F("x")` as typed becomes the
     // canonical `F('x')` — without waiting on any echo from the server
-    dispatch({ type: "hydrate", stages: workingStagesFromView(serialized) });
+    dispatch({
+      type: "hydrate",
+      stages: workingStagesFromView(serialized).map((stage, i) => ({
+        ...stage,
+        // Each stage keeps its id, so its chosen modes and touched params
+        // stay with it rather than with its position
+        id: state.stages[i]?.id ?? stage.id,
+      })),
+    });
     // The keyboard moves to where the next stage starts
     focusLastSlot(true);
   }, [
     paramErrors,
     serializeWorking,
+    state.stages,
     inFlightFingerprint,
     setView,
     trackEvent,
@@ -823,6 +836,8 @@ const ViewBarInner: React.FC<{
     setInFlight(inFlightFingerprint([]));
     trackEvent("view_bar_view_cleared");
     dispatch({ type: "hydrate", stages: [] });
+    setModeOverrides({});
+    setTouched(new Set());
   }, [setView, inFlightFingerprint, trackEvent]);
 
   const submitLanguageQuery = useCallback(

@@ -390,10 +390,13 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
   React.useEffect(() => {
     setDismissed(false);
   }, [value, offset]);
+  // Keyed on what the rows are, not the array: `entries` is rebuilt on every
+  // parent render, and that must not lose the row the user arrowed to
+  const entryIds = entries.map((entry) => entry.id).join("\n");
   React.useEffect(() => {
     setActive(0);
     setNavigated(false);
-  }, [entries]);
+  }, [entryIds]);
 
   React.useEffect(() => {
     if (!followKeyboard.current) return;

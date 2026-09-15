@@ -368,9 +368,10 @@ export const completeField = (
   const quote = source[start - 1];
   const quoted = quote === '"' || quote === "'";
 
-  // Whatever already follows the typed path is kept; the quote and paren are
-  // consumed from it when present and written when not
-  let rest = source.slice(start + typed.length);
+  // The caret may sit mid-path — `F("conf‸idence")` — so the rest of the path
+  // goes with the typed part. What follows it is kept, with the quote and
+  // paren consumed when present and written when not
+  let rest = source.slice(start + typed.length).replace(/^[A-Za-z0-9_.]*/, "");
   let closer = "";
 
   if (quoted) {

@@ -37,6 +37,18 @@ describe("print", () => {
     },
   );
 
+  it("writes strings as Python's repr does", () => {
+    expect(print({ t: "lit", v: "x\ny\t\\" })).toBe("'x\\ny\\t\\\\'");
+    expect(print({ t: "lit", v: "it's" })).toBe('"it\'s"');
+    expect(print({ t: "lit", v: "\x01" })).toBe("'\\x01'");
+  });
+
+  it("writes a date in the zone-aware form Python renders", () => {
+    expect(print({ t: "lit", v: 1577836800000, as: "date" })).toBe(
+      "datetime.fromtimestamp(1577836800000 / 1000, timezone.utc)",
+    );
+  });
+
   it("honors the variable names it is given", () => {
     const field: Node = { t: "field", path: "x" };
     expect(print(field, { fieldVar: "Field" })).toBe("Field('x')");

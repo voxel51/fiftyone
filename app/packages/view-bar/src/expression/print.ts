@@ -203,7 +203,7 @@ const parens = (
  */
 const literal = (value: unknown, as?: "date" | "timedelta"): string => {
   if (as === "date") {
-    return `datetime.utcfromtimestamp(${value} / 1000)`;
+    return `datetime.fromtimestamp(${value} / 1000, timezone.utc)`;
   }
 
   if (as === "timedelta") {
@@ -227,8 +227,23 @@ const literal = (value: unknown, as?: "date" | "timedelta"): string => {
   return String(value);
 };
 
-/** Python's preferred string quoting. */
-const quote = (value: string): string =>
-  value.includes("'") && !value.includes('"')
-    ? `"${value.replace(/\\/g, "\\\\")}"`
-    : `'${value.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
+const ESCAPES: Record<string, string> = {
+  "\\": "\\\\",
+  "\n": "\\n",
+  "\r": "\\r",
+  "\t": "\\t",
+};
+
+/** Python's `repr` of a string: its quoting, and its escapes. */
+const quote = (value: string): string => {
+  const mark = value.includes("'") && !value.includes('"') ? '"' : "'";
+  let out = mark;
+  for (const char of value) {
+    if (char === mark) out += `\\${mark}`;
+    else if (char in ESCAPES) out += ESCAPES[char];
+    else if (char < " " || char === "\x7f") {
+      out += `\\x${char.charCodeAt(0).toString(16).padStart(2, "0")}`;
+    } else out += char;
+  }
+  return out + mark;
+};

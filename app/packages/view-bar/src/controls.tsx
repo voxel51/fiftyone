@@ -115,6 +115,53 @@ const asList = (value: unknown): string[] => {
   return typeof value === "string" && value ? [value] : [];
 };
 
+/** The items a comma-separated entry names so far. */
+const parseList = (text: string): string[] =>
+  text
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+/**
+ * Comma-separated entry for a list param. The text stays the user's own while
+ * they type: projecting `cat,` to `["cat"]` and rendering that back would eat
+ * the comma before a second item could follow it.
+ */
+const ListInput: React.FC<{
+  value: unknown;
+  placeholder: string;
+  invalid?: boolean;
+  disabled?: boolean;
+  onChange: (items: string[]) => void;
+}> = ({ value, placeholder, invalid, disabled, onChange }) => {
+  const external = asList(value).join(", ");
+  const [text, setText] = React.useState(external);
+  // A value arriving from outside replaces the text; the user's own edits
+  // already project to it
+  React.useEffect(() => {
+    setText((current) =>
+      parseList(current).join("\n") === parseList(external).join("\n")
+        ? current
+        : external,
+    );
+  }, [external]);
+
+  return (
+    <Input
+      error={invalid}
+      disabled={disabled}
+      size={Size.Sm}
+      {...NO_BROWSER_SUGGESTIONS}
+      value={text}
+      placeholder={placeholder}
+      onChange={(e) => {
+        setText(e.target.value);
+        onChange(parseList(e.target.value));
+      }}
+    />
+  );
+};
+
 const ParamControl: React.FC<ParamInputProps> = ({
   param,
   value,
@@ -278,25 +325,15 @@ const ParamControl: React.FC<ParamInputProps> = ({
       );
 
     case "stringList":
-      // Comma-separated entry; trimmed on parse. For multi-select
-      // typeahead we'd need a known options set — strings are
-      // free-form so a textual list is the simplest honest input.
+      // Strings are free-form, so there is no options set for a typeahead; a
+      // textual list is the simplest honest input
       return (
-        <Input
-          error={invalid}
+        <ListInput
+          invalid={invalid}
           disabled={disabled}
-          size={Size.Sm}
-          {...NO_BROWSER_SUGGESTIONS}
-          value={asList(value).join(", ")}
+          value={value}
           placeholder={`${placeholder} (comma separated)`}
-          onChange={(e) =>
-            onChange(
-              e.target.value
-                .split(",")
-                .map((s) => s.trim())
-                .filter(Boolean),
-            )
-          }
+          onChange={onChange}
         />
       );
 
@@ -316,21 +353,12 @@ const ParamControl: React.FC<ParamInputProps> = ({
 
     case "idList":
       return (
-        <Input
-          error={invalid}
+        <ListInput
+          invalid={invalid}
           disabled={disabled}
-          size={Size.Sm}
-          {...NO_BROWSER_SUGGESTIONS}
-          value={asList(value).join(", ")}
+          value={value}
           placeholder={`${placeholder} (id, id, …)`}
-          onChange={(e) =>
-            onChange(
-              e.target.value
-                .split(",")
-                .map((s) => s.trim())
-                .filter(Boolean),
-            )
-          }
+          onChange={onChange}
         />
       );
 

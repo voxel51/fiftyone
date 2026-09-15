@@ -93,6 +93,16 @@ const REFLECTED: Record<string, string> = {
   __or__: "__ror__",
 };
 
+/** Comparison with a bare literal on the left: `3 < F("a")` is `F("a") > 3`. */
+const MIRRORED: Record<string, string> = {
+  __eq__: "__eq__",
+  __ne__: "__ne__",
+  __lt__: "__gt__",
+  __le__: "__ge__",
+  __gt__: "__lt__",
+  __ge__: "__le__",
+};
+
 /** Builtins that lower to a dunder on the expression. */
 const BUILTINS: Record<string, string> = {
   abs: "__abs__",
@@ -100,6 +110,49 @@ const BUILTINS: Record<string, string> = {
   len: "__len__",
   "math.ceil": "__ceil__",
   "math.floor": "__floor__",
+};
+
+const ESCAPES: Record<string, string> = {
+  "\\": "\\",
+  "'": "'",
+  '"': '"',
+  n: "\n",
+  r: "\r",
+  t: "\t",
+  a: "\x07",
+  b: "\b",
+  f: "\f",
+  v: "\v",
+};
+
+const HEX_WIDTH: Record<string, number> = { x: 2, u: 4, U: 8 };
+
+/**
+ * Reads the Python escape sequence whose backslash sits at `at`. Returns the
+ * text it stands for and the offset just past it; an escape Python does not
+ * recognize is kept verbatim, as Python keeps it.
+ */
+const escape = (source: string, at: number): [string, number] => {
+  const next = source[at + 1];
+  if (next in ESCAPES) return [ESCAPES[next], at + 2];
+
+  const octal = /^[0-7]{1,3}/.exec(source.slice(at + 1, at + 4));
+  if (octal) {
+    return [
+      String.fromCodePoint(parseInt(octal[0], 8)),
+      at + 1 + octal[0].length,
+    ];
+  }
+
+  const width = HEX_WIDTH[next];
+  if (width) {
+    const digits = source.slice(at + 2, at + 2 + width);
+    if (digits.length === width && /^[0-9a-fA-F]+$/.test(digits)) {
+      return [String.fromCodePoint(parseInt(digits, 16)), at + 2 + width];
+    }
+  }
+
+  return [`\\${next}`, at + 2];
 };
 
 const tokenize = (source: string): Token[] => {
@@ -120,8 +173,14 @@ const tokenize = (source: string): Token[] => {
       let value = "";
       while (i < source.length && source[i] !== char) {
         if (source[i] === "\\") {
-          i += 1;
-          if (i >= source.length) break;
+          if (i + 1 >= source.length) {
+            i = source.length;
+            break;
+          }
+          const [text, after] = escape(source, i);
+          value += text;
+          i = after;
+          continue;
         }
         value += source[i];
         i += 1;
@@ -136,7 +195,12 @@ const tokenize = (source: string): Token[] => {
 
     if (/[0-9]/.test(char)) {
       const start = i;
-      while (i < source.length && /[0-9._eE]/.test(source[i])) {
+      // An exponent may carry a sign: `String(1e-7)` is how print writes one
+      while (
+        i < source.length &&
+        (/[0-9._eE]/.test(source[i]) ||
+          (/[+-]/.test(source[i]) && /[eE]/.test(source[i - 1])))
+      ) {
         i += 1;
       }
       const text = source.slice(start, i);
@@ -266,22 +330,30 @@ class Parser {
     return this.comparison();
   }
 
+  /**
+   * A chain `a < b < c` means `(a < b) & (b < c)`, as it does in Python: the
+   * middle operand is shared, not compared against a boolean.
+   */
   private comparison(): Node {
     let left = this.bitOr();
+    let chain: Node | undefined;
     for (;;) {
       const token = this.peek();
       const op = token.kind === "op" ? COMPARISONS[token.value] : undefined;
-      if (!op) return left;
+      if (!op) return chain ?? left;
       this.next();
-      left = this.binary(op, left, this.bitOr());
+      const right = this.bitOr();
+      const compared = this.binary(op, left, right, token.start);
+      chain = chain ? callNode("__and__", chain, [compared]) : compared;
+      left = right;
     }
   }
 
   private bitOr(): Node {
     let left = this.bitAnd();
     while (this.at("|")) {
-      this.next();
-      left = this.binary("__or__", left, this.bitAnd());
+      const { start } = this.next();
+      left = this.binary("__or__", left, this.bitAnd(), start);
     }
     return left;
   }
@@ -289,8 +361,8 @@ class Parser {
   private bitAnd(): Node {
     let left = this.additive();
     while (this.at("&")) {
-      this.next();
-      left = this.binary("__and__", left, this.additive());
+      const { start } = this.next();
+      left = this.binary("__and__", left, this.additive(), start);
     }
     return left;
   }
@@ -303,7 +375,12 @@ class Parser {
         return left;
       }
       this.next();
-      left = this.binary(ARITHMETIC[token.value], left, this.multiplicative());
+      left = this.binary(
+        ARITHMETIC[token.value],
+        left,
+        this.multiplicative(),
+        token.start,
+      );
     }
   }
 
@@ -315,7 +392,12 @@ class Parser {
         return left;
       }
       this.next();
-      left = this.binary(ARITHMETIC[token.value], left, this.unary());
+      left = this.binary(
+        ARITHMETIC[token.value],
+        left,
+        this.unary(),
+        token.start,
+      );
     }
   }
 
@@ -344,19 +426,28 @@ class Parser {
   private power(): Node {
     const base = this.postfix();
     if (this.at("**")) {
-      this.next();
-      return this.binary("__pow__", base, this.unary());
+      const { start } = this.next();
+      return this.binary("__pow__", base, this.unary(), start);
     }
     return base;
   }
 
   /**
    * Builds an operator node, reflecting when the left operand is a bare literal
-   * — `2 - F("a")` is what Python dispatches to `F("a").__rsub__(2)`.
+   * — `2 - F("a")` is what Python dispatches to `F("a").__rsub__(2)`, and
+   * `3 < F("a")` is `F("a") > 3`. A literal raised to an expression has no
+   * expression form at all.
    */
-  private binary(op: string, left: Node, right: Node): Node {
-    if (isBareLiteral(left) && !isBareLiteral(right) && REFLECTED[op]) {
-      return callNode(REFLECTED[op], right, [left]);
+  private binary(op: string, left: Node, right: Node, at: number): Node {
+    if (isBareLiteral(left) && !isBareLiteral(right)) {
+      const flipped = REFLECTED[op] ?? MIRRORED[op];
+      if (flipped) return callNode(flipped, right, [left]);
+      if (op === "__pow__") {
+        throw new ExpressionSyntaxError(
+          "A number cannot be raised to an expression",
+          at,
+        );
+      }
     }
     return callNode(op, left, [right]);
   }
@@ -559,9 +650,10 @@ class Parser {
   }
 
   /**
-   * `datetime.utcfromtimestamp(<ms> / 1000)` and
+   * `datetime.fromtimestamp(<ms> / 1000, timezone.utc)` and
    * `timedelta(milliseconds=<ms>)` — how {@link print} renders the two literals
-   * JSON cannot carry natively.
+   * JSON cannot carry natively. The deprecated `utcfromtimestamp` spelling is
+   * the same instant and still reads.
    */
   private temporal(kind: string, start: number): Node {
     if (kind === "timedelta") {
@@ -578,7 +670,7 @@ class Parser {
 
     // `datetime(y, m, d[, h, min, s])` — how a person writes a date, and what
     // the date picker inserts. It parses to the same millisecond literal the
-    // canonical `datetime.utcfromtimestamp(<ms> / 1000)` form does.
+    // canonical `datetime.fromtimestamp(<ms> / 1000, timezone.utc)` form does.
     if (this.at("(")) {
       const { args } = this.callArgs();
       const parts = args.map((arg) => {
@@ -606,25 +698,38 @@ class Parser {
 
     this.expect("op", ".");
     const method = this.expect("name").value;
-    if (method !== "utcfromtimestamp") {
+    if (method !== "fromtimestamp" && method !== "utcfromtimestamp") {
       throw new ExpressionSyntaxError(`Unsupported datetime.${method}`, start);
     }
-    const { args } = this.callArgs();
-    const seconds = args[0];
+    this.expect("op", "(");
+    const seconds = this.expression();
+    // `timezone.utc` is the only zone a view expression date is written in
+    if (this.eat(",")) {
+      const zone = this.expect("name");
+      this.expect("op", ".");
+      const member = this.expect("name").value;
+      if (zone.value !== "timezone" || member !== "utc") {
+        throw new ExpressionSyntaxError(
+          "Dates are written in timezone.utc",
+          zone.start,
+        );
+      }
+    }
+    this.expect("op", ")");
     // print() renders `<ms> / 1000`, which parses as a division node
     if (
-      seconds?.t === "call" &&
+      seconds.t === "call" &&
       seconds.op === "__truediv__" &&
       seconds.self.t === "lit" &&
       typeof seconds.self.v === "number"
     ) {
       return { t: "lit", v: seconds.self.v, as: "date" };
     }
-    if (seconds?.t === "lit" && typeof seconds.v === "number") {
+    if (seconds.t === "lit" && typeof seconds.v === "number") {
       return { t: "lit", v: seconds.v * 1000, as: "date" };
     }
     throw new ExpressionSyntaxError(
-      "datetime.utcfromtimestamp() takes a number",
+      `datetime.${method}() takes a number`,
       start,
     );
   }

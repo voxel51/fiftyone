@@ -432,9 +432,9 @@ class ViewStage(object):
 
             try:
                 kwargs[name] = _overlay_expressions(kwargs[name], envelope)
-            except ValueError:
-                # A tree this build doesn't understand; the lowered MongoDB
-                # already in `kwargs` remains correct
+            except Exception:
+                # A tree this build can't rebuild, whatever the cause; the
+                # lowered MongoDB already in `kwargs` remains correct
                 pass
 
         stage = view_stage_cls(**kwargs)
@@ -534,11 +534,9 @@ def _decode_expressions(value):
     if foea.is_envelope(value):
         try:
             return foea.from_envelope(value)
-        except ValueError:
-            # Not actually ours — a raw dict that happens to carry the key,
-            # or an envelope from a newer syntax than this build reads.
-            # Either way it passes through untouched, as every dict did
-            # before envelopes existed.
+        except Exception:
+            # Not ours, or a tree this build can't rebuild; it passes through
+            # untouched, as every dict did before envelopes existed
             return value
 
     if isinstance(value, dict):
