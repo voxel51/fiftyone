@@ -60,7 +60,11 @@ describe("embeddedDocTypeToLabelType", () => {
   });
 
   it("falls back to Unknown for unrecognized or empty input", () => {
-    expect(embeddedDocTypeToLabelType("fiftyone.core.labels.Heatmap")).toBe(
+    expect(embeddedDocTypeToLabelType("fiftyone.core.labels.GeoLocation")).toBe(
+      LabelType.Unknown,
+    );
+    // a real label class the taxonomy does not model
+    expect(embeddedDocTypeToLabelType("fiftyone.core.labels.Regression")).toBe(
       LabelType.Unknown,
     );
     expect(embeddedDocTypeToLabelType(null)).toBe(LabelType.Unknown);
