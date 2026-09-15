@@ -23,6 +23,10 @@
         "fs-extra": "^10.1.0",
         "lodash": "catalog:",
         "prettier": "catalog:",
+        "react": "catalog:",
         "vite": "catalog:"
+    },
+    "peerDependencies": {
+        "react": "*"
     }
 }

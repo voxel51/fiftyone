@@ -1552,7 +1552,10 @@ __metadata:
     fs-extra: "npm:^10.1.0"
     lodash: "catalog:"
     prettier: "catalog:"
+    react: "catalog:"
     vite: "catalog:"
+  peerDependencies:
+    react: "*"
   languageName: unknown
   linkType: soft
 
@@ -1561,6 +1564,10 @@ __metadata:
   resolution: "@fiftyone/analytics@workspace:packages/analytics"
   dependencies:
     "@segment/analytics-next": "npm:^1.70.0"
+    react: "catalog:"
+    recoil: "catalog:"
+  peerDependencies:
+    react: "*"
   languageName: unknown
   linkType: soft
 
@@ -1568,19 +1575,25 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/annotation@workspace:packages/annotation"
   dependencies:
+    "@fiftyone/commands": "workspace:*"
+    "@fiftyone/events": "workspace:*"
     "@testing-library/dom": "catalog:"
     "@testing-library/react": "catalog:"
     "@types/lodash": "catalog:"
     "@typescript-eslint/eslint-plugin": "npm:^6.0.0"
     "@typescript-eslint/parser": "npm:^6.0.0"
     "@vitejs/plugin-react": "catalog:"
+    "@voxel51/voodo": "catalog:"
     babel-plugin-relay: "catalog:"
     eslint: "catalog:"
+    jotai: "catalog:"
     jsdom: "npm:^26.0.0"
     lodash: "catalog:"
     onnxruntime-web: "catalog:"
     react: "catalog:"
     react-dom: "catalog:"
+    react-is: "catalog:"
+    recoil: "catalog:"
     typescript: "catalog:"
     uuid: "catalog:"
     vite: "catalog:"
@@ -1588,11 +1601,9 @@ __metadata:
     vite-plugin-relay: "catalog:"
     vitest: "catalog:"
   peerDependencies:
-    "@fiftyone/commands": "*"
-    "@fiftyone/events": "*"
-    "@voxel51/voodo": "*"
-    jotai: "*"
     react: "*"
+    react-dom: "*"
+    react-is: "*"
   languageName: unknown
   linkType: soft
 
@@ -1613,6 +1624,7 @@ __metadata:
     "@fiftyone/utilities": "npm:*"
     "@fiftyone/video-annotation": "workspace:*"
     "@fiftyone/view-bar": "npm:*"
+    "@mui/material": "catalog:"
     "@types/lodash": "catalog:"
     "@types/mime": "catalog:"
     "@types/react": "catalog:"
@@ -1651,8 +1663,6 @@ __metadata:
     vite-plugin-relay: "catalog:"
     vite-plugin-svgr: "catalog:"
     vite-plugin-wasm: "catalog:"
-  peerDependencies:
-    "@mui/icons-material": "*"
   languageName: unknown
   linkType: soft
 
@@ -1730,24 +1740,18 @@ __metadata:
     react-is: "catalog:"
     react-laag: "catalog:"
     react-markdown: "catalog:"
-    react-relay: "catalog:"
     react-syntax-highlighter: "catalog:"
     react-use: "npm:^17.5.1"
     recoil: "catalog:"
-    recoil-relay: "catalog:"
-    relay-runtime: "catalog:"
     storybook: "catalog:"
+    styled-components: "catalog:"
     typescript: "catalog:"
     typescript-plugin-css-modules: "npm:^5.1.0"
     vite: "catalog:"
   peerDependencies:
-    jotai: "*"
-    re-resizable: "*"
     react: "*"
-    react-markdown: "*"
-    react-relay: "*"
-    recoil: "*"
-    styled-components: "*"
+    react-dom: "*"
+    react-is: "*"
   languageName: unknown
   linkType: soft
 
@@ -1755,6 +1759,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/core@workspace:packages/core"
   dependencies:
+    "@fiftyone/annotation": "workspace:*"
     "@fiftyone/components": "npm:*"
     "@fiftyone/feature-flags": "npm:*"
     "@fiftyone/flashlight": "npm:*"
@@ -1765,6 +1770,7 @@ __metadata:
     "@fiftyone/spotlight": "npm:*"
     "@fiftyone/state": "npm:*"
     "@fiftyone/utilities": "npm:*"
+    "@fiftyone/video-annotation": "workspace:*"
     "@monaco-editor/react": "npm:^4.5.0"
     "@mui/icons-material": "catalog:"
     "@mui/material": "catalog:"
@@ -1828,13 +1834,9 @@ __metadata:
     vite: "catalog:"
     vite-plugin-relay: "catalog:"
   peerDependencies:
-    "@fiftyone/annotation": "*"
-    "@fiftyone/video-annotation": "*"
-    "@mui/icons-material": "*"
-    "@mui/material": "*"
-    "@react-spring/web": "*"
-    react: 18.2.0
-    react-dom: 18.2.0
+    react: "*"
+    react-dom: "*"
+    react-is: "*"
   languageName: unknown
   linkType: soft
 
@@ -1850,28 +1852,22 @@ __metadata:
     "@fiftyone/utilities": "npm:*"
     "@mui/icons-material": "catalog:"
     "@mui/material": "catalog:"
-    "@react-spring/web": "catalog:"
     "@testing-library/dom": "catalog:"
     "@testing-library/react": "catalog:"
     "@types/react": "catalog:"
     "@types/react-dom": "catalog:"
     "@types/three": "npm:^0.182.0"
     "@voxel51/voodo": "catalog:"
-    jotai: "catalog:"
     react: "catalog:"
     react-dom: "catalog:"
-    react-error-boundary: "catalog:"
     react-is: "catalog:"
-    react-relay: "catalog:"
     recoil: "catalog:"
-    recoil-relay: "catalog:"
-    relay-runtime: "catalog:"
-    styled-components: "catalog:"
     three: "npm:^0.182.0"
     vitest: "catalog:"
   peerDependencies:
     react: "*"
-    recoil: "*"
+    react-dom: "*"
+    react-is: "*"
   languageName: unknown
   linkType: soft
 
@@ -1883,25 +1879,23 @@ __metadata:
     "@fiftyone/components": "npm:*"
     "@fiftyone/plugins": "npm:*"
     "@fiftyone/state": "npm:*"
+    "@mui/icons-material": "catalog:"
+    "@mui/material": "catalog:"
     "@types/react": "catalog:"
     "@vitejs/plugin-react": "catalog:"
-    jotai: "catalog:"
     plotly.js: "npm:^3.1.1"
     react: "catalog:"
     react-dom: "catalog:"
-    react-error-boundary: "catalog:"
-    react-relay: "catalog:"
+    react-is: "catalog:"
     recoil: "catalog:"
-    recoil-relay: "catalog:"
-    relay-runtime: "catalog:"
     styled-components: "catalog:"
     use-resize-observer: "catalog:"
     vite: "catalog:"
     vite-plugin-externals: "catalog:"
   peerDependencies:
-    "@mui/icons-material": "*"
-    react-error-boundary: "*"
-    recoil: "*"
+    react: "*"
+    react-dom: "*"
+    react-is: "*"
   languageName: unknown
   linkType: soft
 
@@ -1920,13 +1914,12 @@ __metadata:
     react: "catalog:"
     react-dom: "catalog:"
     typescript: "catalog:"
+    uuid: "catalog:"
     vite: "catalog:"
     vite-plugin-externals: "catalog:"
     vitest: "catalog:"
   peerDependencies:
-    jotai: "*"
     react: "*"
-    uuid: "*"
   languageName: unknown
   linkType: soft
 
@@ -1941,6 +1934,7 @@ __metadata:
     "@typescript-eslint/parser": "npm:^6.0.0"
     "@vitejs/plugin-react": "catalog:"
     eslint: "catalog:"
+    jotai: "catalog:"
     jsdom: "npm:^26.0.0"
     react: "catalog:"
     react-dom: "catalog:"
@@ -1949,7 +1943,6 @@ __metadata:
     vite-plugin-externals: "catalog:"
     vitest: "catalog:"
   peerDependencies:
-    jotai: "*"
     react: "*"
   languageName: unknown
   linkType: soft
@@ -2022,18 +2015,19 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/lighter@workspace:packages/lighter"
   dependencies:
+    "@fiftyone/commands": "workspace:*"
+    "@fiftyone/events": "workspace:*"
     "@typescript-eslint/eslint-plugin": "npm:^6.0.0"
     "@typescript-eslint/parser": "npm:^6.0.0"
     eslint: "catalog:"
+    jotai: "catalog:"
     lru-cache: "catalog:"
     pixi.js: "npm:^8.13.1"
+    react: "catalog:"
     typescript: "catalog:"
+    uuid: "catalog:"
   peerDependencies:
-    "@fiftyone/commands": "*"
-    "@fiftyone/events": "*"
-    jotai: "*"
-    react: ^18.0.0
-    react-dom: ^18.0.0
+    react: "*"
   languageName: unknown
   linkType: soft
 
@@ -2045,6 +2039,9 @@ __metadata:
     "@emotion/styled": "catalog:"
     "@miris-inc/core": "npm:latest"
     "@miris-inc/three": "npm:latest"
+    "@mui/icons-material": "catalog:"
+    "@mui/material": "catalog:"
+    "@react-spring/web": "catalog:"
     "@react-three/drei": "npm:^9.122.0"
     "@react-three/fiber": "catalog:"
     "@sparkjsdev/spark": "npm:2.1.0"
@@ -2056,6 +2053,7 @@ __metadata:
     "@types/three": "npm:^0.176.0"
     "@vitejs/plugin-react": "catalog:"
     chroma-js: "npm:^3.1.2"
+    jotai: "catalog:"
     leva: "npm:^0.9.36"
     lodash: "catalog:"
     nodemon: "npm:^3.0.3"
@@ -2063,16 +2061,15 @@ __metadata:
     react: "catalog:"
     react-color: "catalog:"
     react-dom: "catalog:"
+    recoil: "catalog:"
     styled-components: "catalog:"
     three: "patch:three@npm%3A0.185.1#~/.yarn/patches/three-npm-0.185.1-e07195d8b4.patch"
     tunnel-rat: "npm:^0.1.2"
     vite: "catalog:"
     vite-plugin-externals: "catalog:"
   peerDependencies:
-    "@mui/icons-material": "*"
-    "@mui/material": "*"
-    "@react-spring/web": "*"
-    recoil: "*"
+    react: "*"
+    react-dom: "*"
   languageName: unknown
   linkType: soft
 
@@ -2095,12 +2092,11 @@ __metadata:
     mime: "catalog:"
     monotone-convex-hull-2d: "npm:^1.0.1"
     prettier: "catalog:"
+    relay-runtime: "catalog:"
     typescript: "catalog:"
     typescript-plugin-css-modules: "npm:^5.1.0"
     uuid: "catalog:"
     vite: "catalog:"
-  peerDependencies:
-    jotai: "*"
   languageName: unknown
   linkType: soft
 
@@ -2113,6 +2109,8 @@ __metadata:
     "@fiftyone/plugins": "npm:*"
     "@fiftyone/state": "npm:*"
     "@mapbox/mapbox-gl-draw": "npm:1.4.3"
+    "@mui/icons-material": "catalog:"
+    "@mui/material": "catalog:"
     "@turf/boolean-contains": "npm:^6.5.0"
     "@types/mapbox-gl": "npm:^2.7.4"
     "@types/mapbox__mapbox-gl-draw": "npm:^1.2.5"
@@ -2120,31 +2118,20 @@ __metadata:
     "@types/react-map-gl": "npm:^6.1.3"
     "@types/robust-point-in-polygon": "npm:^1.0.2"
     "@vitejs/plugin-react": "catalog:"
-    jotai: "catalog:"
     lodash.throttle: "npm:^4.1.1"
     mapbox-gl: "npm:^2.9.2"
     react: "catalog:"
     react-dom: "catalog:"
-    react-error-boundary: "catalog:"
+    react-is: "catalog:"
     react-map-gl: "npm:^7.0.18"
-    react-relay: "catalog:"
     recoil: "catalog:"
-    recoil-relay: "catalog:"
-    relay-runtime: "catalog:"
-    styled-components: "catalog:"
     use-resize-observer: "catalog:"
     vite: "catalog:"
     vite-plugin-externals: "catalog:"
   peerDependencies:
-    "@mui/icons-material": "*"
-    jotai: "*"
     react: "*"
     react-dom: "*"
-    react-error-boundary: "*"
-    react-relay: "*"
-    recoil: "*"
-    recoil-relay: "*"
-    styled-components: "*"
+    react-is: "*"
   languageName: unknown
   linkType: soft
 
@@ -2168,6 +2155,7 @@ __metadata:
     "@mcap/core": "patch:@mcap/core@npm%3A2.2.1#~/.yarn/patches/@mcap-core-npm-2.2.1-fdbe7fc61b.patch"
     "@mcap/support": "npm:^1.1.0"
     "@mui/icons-material": "catalog:"
+    "@mui/material": "catalog:"
     "@react-three/drei": "npm:9.105.4"
     "@react-three/fiber": "catalog:"
     "@types/react": "catalog:"
@@ -2189,17 +2177,16 @@ __metadata:
     protobufjs: "npm:^7.6.4"
     react: "catalog:"
     react-dom: "catalog:"
-    react-error-boundary: "catalog:"
     react-is: "catalog:"
-    react-relay: "catalog:"
     recoil: "catalog:"
-    recoil-relay: "catalog:"
-    relay-runtime: "catalog:"
-    styled-components: "catalog:"
     three: "patch:three@npm%3A0.185.1#~/.yarn/patches/three-npm-0.185.1-e07195d8b4.patch"
     uplot: "npm:^1.6.32"
     vite: "catalog:"
     vite-plugin-relay: "catalog:"
+  peerDependencies:
+    react: "*"
+    react-dom: "*"
+    react-is: "*"
   languageName: unknown
   linkType: soft
 
@@ -2208,17 +2195,20 @@ __metadata:
   resolution: "@fiftyone/operators@workspace:packages/operators"
   dependencies:
     "@fiftyone/utilities": "workspace:^"
+    "@mui/icons-material": "catalog:"
+    "@mui/material": "catalog:"
     "@testing-library/dom": "catalog:"
     "@testing-library/react": "catalog:"
     prettier: "catalog:"
     react: "catalog:"
     react-dom: "catalog:"
+    recoil: "catalog:"
+    styled-components: "catalog:"
     vite: "catalog:"
     vitest: "catalog:"
   peerDependencies:
-    "@mui/icons-material": "*"
-    "@mui/material": "*"
     react: "*"
+    react-dom: "*"
   languageName: unknown
   linkType: soft
 
@@ -2242,12 +2232,13 @@ __metadata:
     react-dom: "catalog:"
     react-is: "catalog:"
     react-virtuoso: "npm:^4.12.5"
+    recoil: "catalog:"
+    styled-components: "catalog:"
     typescript: "catalog:"
     typescript-eslint: "catalog:eslint9"
     vite: "catalog:"
     vite-plugin-svgr: "catalog:"
   peerDependencies:
-    "@fiftyone/spaces": "*"
     react: "*"
     react-dom: "*"
     react-is: "*"
@@ -2259,10 +2250,17 @@ __metadata:
   resolution: "@fiftyone/plugins@workspace:packages/plugins"
   dependencies:
     "@fiftyone/utilities": "workspace:^"
+    "@mui/material": "catalog:"
     moment: "npm:^2.29.4"
     prettier: "catalog:"
     react: "catalog:"
+    react-dom: "catalog:"
+    recoil: "catalog:"
+    styled-components: "catalog:"
     vite: "catalog:"
+  peerDependencies:
+    react: "*"
+    react-dom: "*"
   languageName: unknown
   linkType: soft
 
@@ -2283,7 +2281,10 @@ __metadata:
     relay-config: "npm:^12.0.1"
     relay-runtime: "catalog:"
     typescript: "catalog:"
+    uuid: "catalog:"
     vite: "catalog:"
+  peerDependencies:
+    react: "*"
   languageName: unknown
   linkType: soft
 
@@ -2298,35 +2299,20 @@ __metadata:
     "@fiftyone/state": "npm:*"
     "@mui/icons-material": "catalog:"
     "@mui/material": "catalog:"
-    "@react-spring/web": "catalog:"
     "@types/react": "catalog:"
     "@vitejs/plugin-react": "catalog:"
     "@voxel51/voodo": "catalog:"
     jotai: "catalog:"
     react: "catalog:"
     react-dom: "catalog:"
-    react-error-boundary: "catalog:"
     react-is: "catalog:"
-    react-relay: "catalog:"
     recoil: "catalog:"
-    recoil-relay: "catalog:"
-    relay-runtime: "catalog:"
-    styled-components: "catalog:"
     vite: "catalog:"
     vite-plugin-externals: "catalog:"
   peerDependencies:
-    "@mui/icons-material": "*"
-    "@mui/material": "*"
-    "@react-spring/web": "*"
-    jotai: "*"
     react: "*"
     react-dom: "*"
-    react-error-boundary: "*"
     react-is: "*"
-    react-relay: "*"
-    recoil: "*"
-    recoil-relay: "*"
-    styled-components: "*"
   languageName: unknown
   linkType: soft
 
@@ -2334,21 +2320,22 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/spaces@workspace:packages/spaces"
   dependencies:
+    "@mui/icons-material": "catalog:"
+    "@mui/material": "catalog:"
     "@types/sortablejs": "npm:^1.15.0"
     "@vitejs/plugin-react": "catalog:"
     allotment: "npm:^1.17.0"
     react: "catalog:"
     react-dom: "catalog:"
     react-sortablejs: "npm:^6.1.4"
+    recoil: "catalog:"
     sortablejs: "npm:^1.15.0"
+    styled-components: "catalog:"
+    uuid: "catalog:"
     vite: "catalog:"
   peerDependencies:
-    "@mui/icons-material": "*"
-    "@mui/material": "*"
-    "@react-spring/web": "*"
     react: "*"
     react-dom: "*"
-    recoil: "*"
   languageName: unknown
   linkType: soft
 
@@ -2371,6 +2358,8 @@ __metadata:
     "@fiftyone/relay": "npm:*"
     "@fiftyone/utilities": "npm:*"
     "@microsoft/fetch-event-source": "catalog:"
+    "@mui/icons-material": "catalog:"
+    "@mui/material": "catalog:"
     "@testing-library/dom": "catalog:"
     "@testing-library/react": "catalog:"
     "@voxel51/voodo": "catalog:"
@@ -2383,16 +2372,19 @@ __metadata:
     prettier: "catalog:"
     react: "catalog:"
     react-dom: "catalog:"
+    react-error-boundary: "catalog:"
     react-is: "catalog:"
+    react-relay: "catalog:"
+    recoil: "catalog:"
+    recoil-relay: "catalog:"
+    relay-runtime: "catalog:"
     resize-observer-polyfill: "catalog:"
+    uuid: "catalog:"
     vite: "catalog:"
   peerDependencies:
-    jotai: "*"
     react: "*"
-    react-error-boundary: "*"
-    react-relay: "*"
-    recoil: "*"
-    recoil-relay: "*"
+    react-dom: "*"
+    react-is: "*"
   languageName: unknown
   linkType: soft
 
@@ -2429,11 +2421,15 @@ __metadata:
     mime: "catalog:"
     path-browserify: "npm:^1.0.1"
     prettier: "catalog:"
+    react: "catalog:"
+    react-dom: "catalog:"
+    styled-components: "catalog:"
     typescript: "catalog:"
     typescript-plugin-css-modules: "npm:^5.1.0"
     vite: "catalog:"
   peerDependencies:
     react: "*"
+    react-dom: "*"
   languageName: unknown
   linkType: soft
 
@@ -2453,9 +2449,6 @@ __metadata:
     "@fiftyone/state": "workspace:*"
     "@fiftyone/tiling": "workspace:*"
     "@fiftyone/utilities": "workspace:*"
-    "@mui/icons-material": "catalog:"
-    "@mui/material": "catalog:"
-    "@react-spring/web": "catalog:"
     "@types/dom-webcodecs": "npm:^0.1.18"
     "@types/react": "catalog:"
     "@voxel51/voodo": "catalog:"
@@ -2469,17 +2462,15 @@ __metadata:
     mp4box: "npm:^2.4.1"
     react: "catalog:"
     react-dom: "catalog:"
-    react-error-boundary: "catalog:"
     react-is: "catalog:"
-    react-relay: "catalog:"
     recoil: "catalog:"
-    recoil-relay: "catalog:"
-    relay-runtime: "catalog:"
-    styled-components: "catalog:"
     typescript: "catalog:"
     typescript-eslint: "catalog:eslint9"
-    uuid: "catalog:"
     vite: "catalog:"
+  peerDependencies:
+    react: "*"
+    react-dom: "*"
+    react-is: "*"
   languageName: unknown
   linkType: soft
 
@@ -2494,12 +2485,15 @@ __metadata:
     "@fiftyone/state": "npm:*"
     "@fiftyone/utilities": "npm:*"
     "@voxel51/voodo": "catalog:"
+    react: "catalog:"
+    react-dom: "catalog:"
+    react-is: "catalog:"
     react-relay: "catalog:"
-    vite: "npm:^7.3.2"
+    vite: "catalog:"
   peerDependencies:
     react: "*"
     react-dom: "*"
-    recoil: "*"
+    react-is: "*"
   languageName: unknown
   linkType: soft
 
@@ -5166,181 +5160,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@rollup/rollup-android-arm-eabi@npm:4.60.2":
-  version: 4.60.2
-  resolution: "@rollup/rollup-android-arm-eabi@npm:4.60.2"
-  conditions: os=android & cpu=arm
-  languageName: node
-  linkType: hard
-
-"@rollup/rollup-android-arm64@npm:4.60.2":
-  version: 4.60.2
-  resolution: "@rollup/rollup-android-arm64@npm:4.60.2"
-  conditions: os=android & cpu=arm64
-  languageName: node
-  linkType: hard
-
-"@rollup/rollup-darwin-arm64@npm:4.60.2":
-  version: 4.60.2
-  resolution: "@rollup/rollup-darwin-arm64@npm:4.60.2"
-  conditions: os=darwin & cpu=arm64
-  languageName: node
-  linkType: hard
-
-"@rollup/rollup-darwin-x64@npm:4.60.2":
-  version: 4.60.2
-  resolution: "@rollup/rollup-darwin-x64@npm:4.60.2"
-  conditions: os=darwin & cpu=x64
-  languageName: node
-  linkType: hard
-
-"@rollup/rollup-freebsd-arm64@npm:4.60.2":
-  version: 4.60.2
-  resolution: "@rollup/rollup-freebsd-arm64@npm:4.60.2"
-  conditions: os=freebsd & cpu=arm64
-  languageName: node
-  linkType: hard
-
-"@rollup/rollup-freebsd-x64@npm:4.60.2":
-  version: 4.60.2
-  resolution: "@rollup/rollup-freebsd-x64@npm:4.60.2"
-  conditions: os=freebsd & cpu=x64
-  languageName: node
-  linkType: hard
-
-"@rollup/rollup-linux-arm-gnueabihf@npm:4.60.2":
-  version: 4.60.2
-  resolution: "@rollup/rollup-linux-arm-gnueabihf@npm:4.60.2"
-  conditions: os=linux & cpu=arm & libc=glibc
-  languageName: node
-  linkType: hard
-
-"@rollup/rollup-linux-arm-musleabihf@npm:4.60.2":
-  version: 4.60.2
-  resolution: "@rollup/rollup-linux-arm-musleabihf@npm:4.60.2"
-  conditions: os=linux & cpu=arm & libc=musl
-  languageName: node
-  linkType: hard
-
-"@rollup/rollup-linux-arm64-gnu@npm:4.60.2":
-  version: 4.60.2
-  resolution: "@rollup/rollup-linux-arm64-gnu@npm:4.60.2"
-  conditions: os=linux & cpu=arm64 & libc=glibc
-  languageName: node
-  linkType: hard
-
-"@rollup/rollup-linux-arm64-musl@npm:4.60.2":
-  version: 4.60.2
-  resolution: "@rollup/rollup-linux-arm64-musl@npm:4.60.2"
-  conditions: os=linux & cpu=arm64 & libc=musl
-  languageName: node
-  linkType: hard
-
-"@rollup/rollup-linux-loong64-gnu@npm:4.60.2":
-  version: 4.60.2
-  resolution: "@rollup/rollup-linux-loong64-gnu@npm:4.60.2"
-  conditions: os=linux & cpu=loong64 & libc=glibc
-  languageName: node
-  linkType: hard
-
-"@rollup/rollup-linux-loong64-musl@npm:4.60.2":
-  version: 4.60.2
-  resolution: "@rollup/rollup-linux-loong64-musl@npm:4.60.2"
-  conditions: os=linux & cpu=loong64 & libc=musl
-  languageName: node
-  linkType: hard
-
-"@rollup/rollup-linux-ppc64-gnu@npm:4.60.2":
-  version: 4.60.2
-  resolution: "@rollup/rollup-linux-ppc64-gnu@npm:4.60.2"
-  conditions: os=linux & cpu=ppc64 & libc=glibc
-  languageName: node
-  linkType: hard
-
-"@rollup/rollup-linux-ppc64-musl@npm:4.60.2":
-  version: 4.60.2
-  resolution: "@rollup/rollup-linux-ppc64-musl@npm:4.60.2"
-  conditions: os=linux & cpu=ppc64 & libc=musl
-  languageName: node
-  linkType: hard
-
-"@rollup/rollup-linux-riscv64-gnu@npm:4.60.2":
-  version: 4.60.2
-  resolution: "@rollup/rollup-linux-riscv64-gnu@npm:4.60.2"
-  conditions: os=linux & cpu=riscv64 & libc=glibc
-  languageName: node
-  linkType: hard
-
-"@rollup/rollup-linux-riscv64-musl@npm:4.60.2":
-  version: 4.60.2
-  resolution: "@rollup/rollup-linux-riscv64-musl@npm:4.60.2"
-  conditions: os=linux & cpu=riscv64 & libc=musl
-  languageName: node
-  linkType: hard
-
-"@rollup/rollup-linux-s390x-gnu@npm:4.60.2":
-  version: 4.60.2
-  resolution: "@rollup/rollup-linux-s390x-gnu@npm:4.60.2"
-  conditions: os=linux & cpu=s390x & libc=glibc
-  languageName: node
-  linkType: hard
-
-"@rollup/rollup-linux-x64-gnu@npm:4.60.2":
-  version: 4.60.2
-  resolution: "@rollup/rollup-linux-x64-gnu@npm:4.60.2"
-  conditions: os=linux & cpu=x64 & libc=glibc
-  languageName: node
-  linkType: hard
-
-"@rollup/rollup-linux-x64-musl@npm:4.60.2":
-  version: 4.60.2
-  resolution: "@rollup/rollup-linux-x64-musl@npm:4.60.2"
-  conditions: os=linux & cpu=x64 & libc=musl
-  languageName: node
-  linkType: hard
-
-"@rollup/rollup-openbsd-x64@npm:4.60.2":
-  version: 4.60.2
-  resolution: "@rollup/rollup-openbsd-x64@npm:4.60.2"
-  conditions: os=openbsd & cpu=x64
-  languageName: node
-  linkType: hard
-
-"@rollup/rollup-openharmony-arm64@npm:4.60.2":
-  version: 4.60.2
-  resolution: "@rollup/rollup-openharmony-arm64@npm:4.60.2"
-  conditions: os=openharmony & cpu=arm64
-  languageName: node
-  linkType: hard
-
-"@rollup/rollup-win32-arm64-msvc@npm:4.60.2":
-  version: 4.60.2
-  resolution: "@rollup/rollup-win32-arm64-msvc@npm:4.60.2"
-  conditions: os=win32 & cpu=arm64
-  languageName: node
-  linkType: hard
-
-"@rollup/rollup-win32-ia32-msvc@npm:4.60.2":
-  version: 4.60.2
-  resolution: "@rollup/rollup-win32-ia32-msvc@npm:4.60.2"
-  conditions: os=win32 & cpu=ia32
-  languageName: node
-  linkType: hard
-
-"@rollup/rollup-win32-x64-gnu@npm:4.60.2":
-  version: 4.60.2
-  resolution: "@rollup/rollup-win32-x64-gnu@npm:4.60.2"
-  conditions: os=win32 & cpu=x64
-  languageName: node
-  linkType: hard
-
-"@rollup/rollup-win32-x64-msvc@npm:4.60.2":
-  version: 4.60.2
-  resolution: "@rollup/rollup-win32-x64-msvc@npm:4.60.2"
-  conditions: os=win32 & cpu=x64
-  languageName: node
-  linkType: hard
-
 "@segment/analytics-core@npm:1.6.0":
   version: 1.6.0
   resolution: "@segment/analytics-core@npm:1.6.0"
@@ -6232,7 +6051,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/estree@npm:1.0.8, @types/estree@npm:^1.0.0":
+"@types/estree@npm:^1.0.0":
   version: 1.0.8
   resolution: "@types/estree@npm:1.0.8"
   checksum: 10/25a4c16a6752538ffde2826c2cc0c6491d90e69cd6187bef4a006dd2c3c45469f049e643d7e516c515f21484dc3d48fd5c870be158a5beb72f5baf3dc43e4099
@@ -10411,7 +10230,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"esbuild@npm:^0.18.0 || ^0.19.0 || ^0.20.0 || ^0.21.0 || ^0.22.0 || ^0.23.0 || ^0.24.0 || ^0.25.0 || ^0.26.0 || ^0.27.0 || ^0.28.0, esbuild@npm:^0.27.0 || ^0.28.0":
+"esbuild@npm:^0.18.0 || ^0.19.0 || ^0.20.0 || ^0.21.0 || ^0.22.0 || ^0.23.0 || ^0.24.0 || ^0.25.0 || ^0.26.0 || ^0.27.0 || ^0.28.0":
   version: 0.28.1
   resolution: "esbuild@npm:0.28.1"
   dependencies:
@@ -15139,15 +14958,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"nanoid@npm:^3.3.11":
-  version: 3.3.11
-  resolution: "nanoid@npm:3.3.11"
-  bin:
-    nanoid: bin/nanoid.cjs
-  checksum: 10/73b5afe5975a307aaa3c95dfe3334c52cdf9ae71518176895229b8d65ab0d1c0417dd081426134eb7571c055720428ea5d57c645138161e7d10df80815527c48
-  languageName: node
-  linkType: hard
-
 "nanoid@npm:^3.3.16":
   version: 3.3.16
   resolution: "nanoid@npm:3.3.16"
@@ -16265,17 +16075,6 @@ __metadata:
     picocolors: "npm:^1.1.1"
     source-map-js: "npm:^1.2.1"
   checksum: 10/8387f421216696bf62a13e5a270e9fefdafc81e196903c0f8d7653f8bab315367cc2261b3c22cf197e492cb075f31bdfc07fd9c3be1cb165ff3cabe14c5a039a
-  languageName: node
-  linkType: hard
-
-"postcss@npm:^8.5.6":
-  version: 8.5.12
-  resolution: "postcss@npm:8.5.12"
-  dependencies:
-    nanoid: "npm:^3.3.11"
-    picocolors: "npm:^1.1.1"
-    source-map-js: "npm:^1.2.1"
-  checksum: 10/ec6b79b68c363eca3c8ffceb134a4ab637274aee6ac0857614bf7c18d40ce4ce5f9036edec57b7e0be99895724d2599d0ec7328dbd7f407204e7548697b322f1
   languageName: node
   linkType: hard
 
@@ -17796,96 +17595,6 @@ __metadata:
   dependencies:
     "@rollup/plugin-inject": "npm:^4.0.0"
   checksum: 10/501f97f0fcbf7041d738bc59430260e41dde86c7e0ee37dba4ca6b6d1cdcae2c441054b1febc043acc851d80797241ca7ee5bc82e0f55c01d90fcf7fef85d7fe
-  languageName: node
-  linkType: hard
-
-"rollup@npm:^4.43.0":
-  version: 4.60.2
-  resolution: "rollup@npm:4.60.2"
-  dependencies:
-    "@rollup/rollup-android-arm-eabi": "npm:4.60.2"
-    "@rollup/rollup-android-arm64": "npm:4.60.2"
-    "@rollup/rollup-darwin-arm64": "npm:4.60.2"
-    "@rollup/rollup-darwin-x64": "npm:4.60.2"
-    "@rollup/rollup-freebsd-arm64": "npm:4.60.2"
-    "@rollup/rollup-freebsd-x64": "npm:4.60.2"
-    "@rollup/rollup-linux-arm-gnueabihf": "npm:4.60.2"
-    "@rollup/rollup-linux-arm-musleabihf": "npm:4.60.2"
-    "@rollup/rollup-linux-arm64-gnu": "npm:4.60.2"
-    "@rollup/rollup-linux-arm64-musl": "npm:4.60.2"
-    "@rollup/rollup-linux-loong64-gnu": "npm:4.60.2"
-    "@rollup/rollup-linux-loong64-musl": "npm:4.60.2"
-    "@rollup/rollup-linux-ppc64-gnu": "npm:4.60.2"
-    "@rollup/rollup-linux-ppc64-musl": "npm:4.60.2"
-    "@rollup/rollup-linux-riscv64-gnu": "npm:4.60.2"
-    "@rollup/rollup-linux-riscv64-musl": "npm:4.60.2"
-    "@rollup/rollup-linux-s390x-gnu": "npm:4.60.2"
-    "@rollup/rollup-linux-x64-gnu": "npm:4.60.2"
-    "@rollup/rollup-linux-x64-musl": "npm:4.60.2"
-    "@rollup/rollup-openbsd-x64": "npm:4.60.2"
-    "@rollup/rollup-openharmony-arm64": "npm:4.60.2"
-    "@rollup/rollup-win32-arm64-msvc": "npm:4.60.2"
-    "@rollup/rollup-win32-ia32-msvc": "npm:4.60.2"
-    "@rollup/rollup-win32-x64-gnu": "npm:4.60.2"
-    "@rollup/rollup-win32-x64-msvc": "npm:4.60.2"
-    "@types/estree": "npm:1.0.8"
-    fsevents: "npm:~2.3.2"
-  dependenciesMeta:
-    "@rollup/rollup-android-arm-eabi":
-      optional: true
-    "@rollup/rollup-android-arm64":
-      optional: true
-    "@rollup/rollup-darwin-arm64":
-      optional: true
-    "@rollup/rollup-darwin-x64":
-      optional: true
-    "@rollup/rollup-freebsd-arm64":
-      optional: true
-    "@rollup/rollup-freebsd-x64":
-      optional: true
-    "@rollup/rollup-linux-arm-gnueabihf":
-      optional: true
-    "@rollup/rollup-linux-arm-musleabihf":
-      optional: true
-    "@rollup/rollup-linux-arm64-gnu":
-      optional: true
-    "@rollup/rollup-linux-arm64-musl":
-      optional: true
-    "@rollup/rollup-linux-loong64-gnu":
-      optional: true
-    "@rollup/rollup-linux-loong64-musl":
-      optional: true
-    "@rollup/rollup-linux-ppc64-gnu":
-      optional: true
-    "@rollup/rollup-linux-ppc64-musl":
-      optional: true
-    "@rollup/rollup-linux-riscv64-gnu":
-      optional: true
-    "@rollup/rollup-linux-riscv64-musl":
-      optional: true
-    "@rollup/rollup-linux-s390x-gnu":
-      optional: true
-    "@rollup/rollup-linux-x64-gnu":
-      optional: true
-    "@rollup/rollup-linux-x64-musl":
-      optional: true
-    "@rollup/rollup-openbsd-x64":
-      optional: true
-    "@rollup/rollup-openharmony-arm64":
-      optional: true
-    "@rollup/rollup-win32-arm64-msvc":
-      optional: true
-    "@rollup/rollup-win32-ia32-msvc":
-      optional: true
-    "@rollup/rollup-win32-x64-gnu":
-      optional: true
-    "@rollup/rollup-win32-x64-msvc":
-      optional: true
-    fsevents:
-      optional: true
-  bin:
-    rollup: dist/bin/rollup
-  checksum: 10/354041c7d7f745866cc001bb09d157ae8c0602e82311823e724aa85a45c16346a09bd6bced9f773b0a16aba66abaf45e2952ec643e694a4b30df6dc69daa47ce
   languageName: node
   linkType: hard
 
@@ -20378,61 +20087,6 @@ __metadata:
   bin:
     vite: bin/vite.js
   checksum: 10/7278baa0723097a181566a46050f8218bb2c57c559cb68494709b6eb9a9eb332bfbc8fb3638857300eeaedbae37343e131e323da9ebda157e5f9ccfc48eefe02
-  languageName: node
-  linkType: hard
-
-"vite@npm:^7.3.2":
-  version: 7.3.6
-  resolution: "vite@npm:7.3.6"
-  dependencies:
-    esbuild: "npm:^0.27.0 || ^0.28.0"
-    fdir: "npm:^6.5.0"
-    fsevents: "npm:~2.3.3"
-    picomatch: "npm:^4.0.3"
-    postcss: "npm:^8.5.6"
-    rollup: "npm:^4.43.0"
-    tinyglobby: "npm:^0.2.15"
-  peerDependencies:
-    "@types/node": ^20.19.0 || >=22.12.0
-    jiti: ">=1.21.0"
-    less: ^4.0.0
-    lightningcss: ^1.21.0
-    sass: ^1.70.0
-    sass-embedded: ^1.70.0
-    stylus: ">=0.54.8"
-    sugarss: ^5.0.0
-    terser: ^5.16.0
-    tsx: ^4.8.1
-    yaml: ^2.4.2
-  dependenciesMeta:
-    fsevents:
-      optional: true
-  peerDependenciesMeta:
-    "@types/node":
-      optional: true
-    jiti:
-      optional: true
-    less:
-      optional: true
-    lightningcss:
-      optional: true
-    sass:
-      optional: true
-    sass-embedded:
-      optional: true
-    stylus:
-      optional: true
-    sugarss:
-      optional: true
-    terser:
-      optional: true
-    tsx:
-      optional: true
-    yaml:
-      optional: true
-  bin:
-    vite: bin/vite.js
-  checksum: 10/6fcbadb1a409990e1bbd4ff0ff41e763c87049228cdc407984bdca40b96ab32de0f1f70fa62fb1f3ca001a5b90accbbe22ddfad5cc436855058357b3f2141d3b
   languageName: node
   linkType: hard
 

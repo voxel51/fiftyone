@@ -27,6 +27,7 @@
         "lru-cache": "catalog:",
         "mime": "catalog:",
         "monotone-convex-hull-2d": "^1.0.1",
+        "relay-runtime": "catalog:",
         "uuid": "catalog:"
     },
     "devDependencies": {
@@ -39,8 +40,5 @@
         "typescript": "catalog:",
         "typescript-plugin-css-modules": "^5.1.0",
         "vite": "catalog:"
-    },
-    "peerDependencies": {
-        "jotai": "*"
     }
 }
