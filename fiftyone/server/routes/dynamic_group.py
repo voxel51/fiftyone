@@ -15,6 +15,7 @@ from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 
+import fiftyone.core.sample as fos
 from fiftyone.core.utils import run_sync_task
 import fiftyone.server.view as fosv
 from fiftyone.server import decorators, utils
@@ -109,6 +110,46 @@ def get_group_state(view) -> Tuple[List[str], List[datetime.datetime]]:
     return member_ids, lmts
 
 
+def _apply_member_patch(
+    dataset, dynamic_group, members: set, entry
+) -> fos.Sample:
+    """Validates one ``{sampleId, patch}`` entry and applies its ops to the
+    member sample in memory, without saving.
+
+    Raises:
+        HTTPException: If the entry is malformed, addresses a non-member, or
+            its ops fail to apply
+
+    Returns:
+        The patched, unsaved sample
+    """
+    if not isinstance(entry, dict):
+        raise HTTPException(
+            status_code=400,
+            detail="each patches entry must be an object",
+        )
+
+    sample_id = entry.get("sampleId")
+    ops = entry.get("patch")
+
+    if sample_id not in members:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Sample '{sample_id}' is not a member of "
+            f"dynamic group '{dynamic_group}'",
+        )
+
+    if not isinstance(ops, list):
+        raise HTTPException(
+            status_code=400,
+            detail=f"patch for sample '{sample_id}' must be a list",
+        )
+
+    sample = get_sample_from_dataset(dataset, sample_id)
+    _handle_top_level_patch(sample, ops)
+    return sample
+
+
 class DynamicGroup(HTTPEndpoint):
     """Dynamic group endpoints."""
 
@@ -188,36 +229,17 @@ class DynamicGroup(HTTPEndpoint):
             )
             return self._version_mismatch(view)
 
-        members = set(member_ids)
+        # every entry is validated and applied in memory before the first
+        # write, so a bad entry rejects the request with no member written
+        patched = [
+            _apply_member_patch(dataset, dynamic_group, set(member_ids), entry)
+            for entry in patches
+        ]
+
         samples = []
-        for entry in patches:
-            if not isinstance(entry, dict):
-                raise HTTPException(
-                    status_code=400,
-                    detail="each patches entry must be an object",
-                )
-
-            sample_id = entry.get("sampleId")
-            ops = entry.get("patch")
-
-            if sample_id not in members:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Sample '{sample_id}' is not a member of "
-                    f"dynamic group '{dynamic_group}'",
-                )
-
-            if not isinstance(ops, list):
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"patch for sample '{sample_id}' must be a list",
-                )
-
-            sample = get_sample_from_dataset(dataset, sample_id)
-            _handle_top_level_patch(sample, ops)
-
+        for sample in patched:
             try:
-                save_sample(sample, lmt_by_id[sample_id])
+                save_sample(sample, lmt_by_id[sample.id])
             except DbVersionMismatchError:
                 # a member moved between the group validation and its swap;
                 # fail with group-shaped state, not the decorator's member ETag
