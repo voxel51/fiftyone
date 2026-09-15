@@ -29,11 +29,9 @@
         "@typescript-eslint/parser": "^6.0.0",
         "eslint": "catalog:",
         "react": "catalog:",
-        "react-dom": "catalog:",
         "typescript": "catalog:"
     },
     "peerDependencies": {
-        "react": "^18.0.0",
-        "react-dom": "^18.0.0"
+        "react": "^18.0.0"
     }
 }

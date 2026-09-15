@@ -29,7 +29,8 @@
         "vitest": "catalog:"
     },
     "peerDependencies": {
-        "react": "*"
+        "react": "*",
+        "react-dom": "*"
     },
     "dependencies": {
         "@mui/icons-material": "catalog:",

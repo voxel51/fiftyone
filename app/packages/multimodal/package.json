@@ -175,5 +175,10 @@
         "react-is": "catalog:",
         "vite": "catalog:",
         "vite-plugin-relay": "catalog:"
+    },
+    "peerDependencies": {
+        "react": "*",
+        "react-dom": "*",
+        "react-is": "*"
     }
 }

@@ -35,5 +35,8 @@
         "recoil-sync": "^0.2.0",
         "relay-runtime": "catalog:",
         "uuid": "catalog:"
+    },
+    "peerDependencies": {
+        "react": "*"
     }
 }

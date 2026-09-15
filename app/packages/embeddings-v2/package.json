@@ -40,6 +40,8 @@
         "vitest": "catalog:"
     },
     "peerDependencies": {
-        "react": "*"
+        "react": "*",
+        "react-dom": "*",
+        "react-is": "*"
     }
 }

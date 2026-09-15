@@ -35,6 +35,7 @@
         "@vitejs/plugin-react": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:",
+        "react-is": "catalog:",
         "vite": "catalog:",
         "vite-plugin-externals": "catalog:"
     },
@@ -43,6 +44,7 @@
     },
     "peerDependencies": {
         "react": "*",
-        "react-dom": "*"
+        "react-dom": "*",
+        "react-is": "*"
     }
 }

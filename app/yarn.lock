@@ -1552,7 +1552,10 @@ __metadata:
     fs-extra: "npm:^10.1.0"
     lodash: "catalog:"
     prettier: "catalog:"
+    react: "catalog:"
     vite: "catalog:"
+  peerDependencies:
+    react: "*"
   languageName: unknown
   linkType: soft
 
@@ -1599,6 +1602,7 @@ __metadata:
     vitest: "catalog:"
   peerDependencies:
     react: "*"
+    react-dom: "*"
     react-is: "*"
   languageName: unknown
   linkType: soft
@@ -1746,6 +1750,8 @@ __metadata:
     vite: "catalog:"
   peerDependencies:
     react: "*"
+    react-dom: "*"
+    react-is: "*"
   languageName: unknown
   linkType: soft
 
@@ -1830,6 +1836,7 @@ __metadata:
   peerDependencies:
     react: 18.2.0
     react-dom: 18.2.0
+    react-is: "*"
   languageName: unknown
   linkType: soft
 
@@ -1859,6 +1866,8 @@ __metadata:
     vitest: "catalog:"
   peerDependencies:
     react: "*"
+    react-dom: "*"
+    react-is: "*"
   languageName: unknown
   linkType: soft
 
@@ -1877,11 +1886,16 @@ __metadata:
     plotly.js: "npm:^3.1.1"
     react: "catalog:"
     react-dom: "catalog:"
+    react-is: "catalog:"
     recoil: "catalog:"
     styled-components: "catalog:"
     use-resize-observer: "catalog:"
     vite: "catalog:"
     vite-plugin-externals: "catalog:"
+  peerDependencies:
+    react: "*"
+    react-dom: "*"
+    react-is: "*"
   languageName: unknown
   linkType: soft
 
@@ -2010,12 +2024,10 @@ __metadata:
     lru-cache: "catalog:"
     pixi.js: "npm:^8.13.1"
     react: "catalog:"
-    react-dom: "catalog:"
     typescript: "catalog:"
     uuid: "catalog:"
   peerDependencies:
     react: ^18.0.0
-    react-dom: ^18.0.0
   languageName: unknown
   linkType: soft
 
@@ -2055,6 +2067,9 @@ __metadata:
     tunnel-rat: "npm:^0.1.2"
     vite: "catalog:"
     vite-plugin-externals: "catalog:"
+  peerDependencies:
+    react: "*"
+    react-dom: "*"
   languageName: unknown
   linkType: soft
 
@@ -2107,6 +2122,7 @@ __metadata:
     mapbox-gl: "npm:^2.9.2"
     react: "catalog:"
     react-dom: "catalog:"
+    react-is: "catalog:"
     react-map-gl: "npm:^7.0.18"
     recoil: "catalog:"
     use-resize-observer: "catalog:"
@@ -2115,6 +2131,7 @@ __metadata:
   peerDependencies:
     react: "*"
     react-dom: "*"
+    react-is: "*"
   languageName: unknown
   linkType: soft
 
@@ -2166,6 +2183,10 @@ __metadata:
     uplot: "npm:^1.6.32"
     vite: "catalog:"
     vite-plugin-relay: "catalog:"
+  peerDependencies:
+    react: "*"
+    react-dom: "*"
+    react-is: "*"
   languageName: unknown
   linkType: soft
 
@@ -2187,6 +2208,7 @@ __metadata:
     vitest: "catalog:"
   peerDependencies:
     react: "*"
+    react-dom: "*"
   languageName: unknown
   linkType: soft
 
@@ -2261,6 +2283,8 @@ __metadata:
     typescript: "catalog:"
     uuid: "catalog:"
     vite: "catalog:"
+  peerDependencies:
+    react: "*"
   languageName: unknown
   linkType: soft
 
@@ -2359,6 +2383,8 @@ __metadata:
     vite: "catalog:"
   peerDependencies:
     react: "*"
+    react-dom: "*"
+    react-is: "*"
   languageName: unknown
   linkType: soft
 
@@ -2441,6 +2467,10 @@ __metadata:
     typescript: "catalog:"
     typescript-eslint: "catalog:eslint9"
     vite: "catalog:"
+  peerDependencies:
+    react: "*"
+    react-dom: "*"
+    react-is: "*"
   languageName: unknown
   linkType: soft
 
@@ -2463,6 +2493,7 @@ __metadata:
   peerDependencies:
     react: "*"
     react-dom: "*"
+    react-is: "*"
   languageName: unknown
   linkType: soft
 

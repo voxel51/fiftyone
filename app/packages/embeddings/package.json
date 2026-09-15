@@ -28,10 +28,16 @@
         "@vitejs/plugin-react": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:",
+        "react-is": "catalog:",
         "vite": "catalog:",
         "vite-plugin-externals": "catalog:"
     },
     "fiftyone": {
         "script": "dist/index.umd.js"
+    },
+    "peerDependencies": {
+        "react": "*",
+        "react-dom": "*",
+        "react-is": "*"
     }
 }

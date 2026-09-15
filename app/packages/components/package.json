@@ -37,7 +37,9 @@
         "vite": "catalog:"
     },
     "peerDependencies": {
-        "react": "*"
+        "react": "*",
+        "react-dom": "*",
+        "react-is": "*"
     },
     "dependencies": {
         "@emotion/react": "catalog:",

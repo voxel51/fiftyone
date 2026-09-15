@@ -18,7 +18,9 @@
         "README.md"
     ],
     "peerDependencies": {
-        "react": "*"
+        "react": "*",
+        "react-dom": "*",
+        "react-is": "*"
     },
     "devDependencies": {
         "@testing-library/dom": "catalog:",

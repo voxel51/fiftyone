@@ -39,5 +39,10 @@
         "typescript": "catalog:",
         "typescript-eslint": "catalog:eslint9",
         "vite": "catalog:"
+    },
+    "peerDependencies": {
+        "react": "*",
+        "react-dom": "*",
+        "react-is": "*"
     }
 }
