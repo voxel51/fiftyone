@@ -37,6 +37,10 @@ vi.mock("@fiftyone/annotation", async (importOriginal) => {
     useSampleInstanceGetter: () => () => new Sample({ data: {}, schema: {} }),
   };
 });
+vi.mock("@fiftyone/state", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@fiftyone/state")>()),
+  useIsImageDynamicGroupVideo: () => false,
+}));
 vi.mock("../streams/frameLabelsStream", () => ({
   useFrameLabelsStream: () => hoisted.stream,
 }));

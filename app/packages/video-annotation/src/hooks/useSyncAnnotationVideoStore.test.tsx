@@ -81,6 +81,14 @@ vi.mock("@fiftyone/annotation", () => ({
     }),
 }));
 
+vi.mock("@fiftyone/state", () => ({
+  useIsImageDynamicGroupVideo: () => false,
+}));
+
+vi.mock("../state/framePaths", () => ({
+  isFrameScopedPath: (path: string) => path.startsWith("frames."),
+}));
+
 vi.mock("../streams/frameLabelsStream", () => ({
   useFrameLabelsStream: () => ({
     cachedFrames: () => [],
