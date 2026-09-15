@@ -27,6 +27,7 @@ import {
   cssVar,
 } from "@voxel51/voodo";
 import { useEffect, useRef, useState } from "react";
+import SubsetBrowser from "./SubsetBrowser";
 import SelectionCard from "./SelectionCard";
 import styles from "./SelectionTray.module.css";
 
@@ -214,6 +215,7 @@ export default function SelectionTray() {
         className={styles.toolbar}
         style={{ gap: cssVar.spacing.sm, padding: cssVar.spacing.sm }}
       >
+        <SubsetBrowser datasetId={selection.datasetId} />
         <div className={styles.summary} aria-live="polite">
           <Text variant={TextVariant.Md}>
             {explicit
@@ -228,7 +230,9 @@ export default function SelectionTray() {
               <DropdownTrigger size={Size.Xs}>
                 {providerLabel
                   ? `Matching segments · ${providerLabel}`
-                  : "Whole episodes"}
+                  : boundary.subsetScope === "segments"
+                    ? "Saved segments"
+                    : "Whole episodes"}
               </DropdownTrigger>
             }
           >
@@ -239,7 +243,9 @@ export default function SelectionTray() {
                 chooseProvider(undefined);
               }}
             >
-              Whole episodes
+              {boundary.subsetScope === "segments"
+                ? "Saved segments"
+                : "Whole episodes"}
             </MenuTextItem>
             {options.eventFields.map((field) => (
               <MenuTextItem
@@ -341,6 +347,34 @@ export default function SelectionTray() {
           </Button>
         )}
       </div>
+      {selection.unavailableGroups.length > 0 && (
+        <details style={{ padding: cssVar.spacing.sm }}>
+          <summary>
+            {selection.unavailableGroups.length} unavailable saved episodes ·
+            references retained
+          </summary>
+          <p>
+            Missing parents cannot match live filters. Select their saved
+            references explicitly to include them in an add.
+          </p>
+          {selection.unavailableGroups.map((group) => (
+            <Button
+              key={group.episodeId}
+              size={Size.Xs}
+              disabled={selection.selected.has(group.episodeId)}
+              onClick={() => selection.capture(group)}
+            >
+              Select unavailable episode {group.episodeId} ·{" "}
+              {selectionScopeLabel(countSelection([group]))}
+            </Button>
+          ))}
+        </details>
+      )}
+      {counts.unavailable > 0 && (
+        <Text variant={TextVariant.Sm}>
+          {counts.unavailable} unavailable members included in this scope
+        </Text>
+      )}
       {(selection.error || providerError) && (
         <p role="alert">{selection.error || providerError}</p>
       )}

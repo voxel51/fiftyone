@@ -1,6 +1,6 @@
 import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { useGridSelectionBoundary } from "@fiftyone/state/src/selection";
+import { useGridSelectionRequest } from "@fiftyone/state/src/selection";
 import { useEffect } from "react";
 import uuid from "react-uuid";
 import { useRecoilValue } from "recoil";
@@ -8,8 +8,7 @@ import { useMemoOne } from "use-memo-one";
 import { gridAt, gridOffset, gridPage } from "./recoil";
 
 export default function useRefreshers() {
-  const [selectionBoundary] = useGridSelectionBoundary();
-  const selectionBoundaryKey = JSON.stringify(selectionBoundary);
+  const { key: selectionScopeKey } = useGridSelectionRequest();
   const cropToContent = useRecoilValue(fos.cropToContent(false));
   const datasetName = useRecoilValue(fos.datasetName);
   const extendedStagesUnsorted = fos.stringifyObj(
@@ -59,7 +58,7 @@ export default function useRefreshers() {
     view;
     return uuid();
   }, [
-    selectionBoundaryKey,
+    selectionScopeKey,
     datasetName,
     extendedStagesUnsorted,
     filters,

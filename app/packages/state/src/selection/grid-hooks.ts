@@ -4,12 +4,19 @@ import {
   useCurrentDatasetId,
   useDatasetMediaType,
   useGridViewScope,
+  useIsConvertedView,
 } from "../accessors/dataset";
-import { resolveSelection, type SelectionRequest } from "./client";
+import {
+  getSelectionAvailability,
+  resolveSelection,
+  type SelectionRequest,
+} from "./client";
 import {
   useEpisodeSelection,
   useEpisodeSelectionActions,
   useSelectionBoundary,
+  useSelectionScopeRevision,
+  useRefreshSelectionMetadata,
 } from "./hooks";
 import { candidatesAtom } from "./model/atoms";
 import type { EpisodeSelection, SelectionBoundary } from "./types";
@@ -20,10 +27,15 @@ const EMPTY_GROUPS: readonly EpisodeSelection[] = [];
 export function useGridSelectionDataset() {
   const id = useCurrentDatasetId() ?? "";
   const type = useDatasetMediaType() ?? "";
+  const converted = useIsConvertedView();
+  const [boundary] = useSelectionBoundary(id);
   return {
     datasetId: id,
     mediaType: type,
-    enabled: Boolean(id) && ["video", "multimodal"].includes(type),
+    enabled:
+      Boolean(id) &&
+      ["video", "multimodal"].includes(type) &&
+      (!converted || Boolean(boundary.subsetId)),
   };
 }
 
@@ -60,10 +72,15 @@ export function useGridSelectionRequest() {
     sortBy: sort?.field,
     desc: sort?.descending,
   };
-  const key = JSON.stringify(request);
+  const serialized = JSON.stringify(request);
+  const { datasetId } = useGridSelectionDataset();
+  const revision = useSelectionScopeRevision(datasetId);
   return useMemo(
-    () => ({ request: JSON.parse(key) as SelectionRequest, key }),
-    [key],
+    () => ({
+      request: JSON.parse(serialized) as SelectionRequest,
+      key: `${revision}:${serialized}`,
+    }),
+    [serialized, revision],
   );
 }
 
@@ -102,6 +119,10 @@ export function useGridSelection() {
     selected,
     candidates,
     groups,
+    unavailableGroups:
+      state.key === key
+        ? (state.unavailableGroups ?? EMPTY_GROUPS)
+        : EMPTY_GROUPS,
     toggle,
     request,
     loading: state.key !== key || state.loading,
@@ -115,6 +136,22 @@ export function useLoadGridSelection() {
   const { request, key } = useGridSelectionRequest();
   const { refresh } = useGridViewScope();
   const set = useSetAtom(candidatesAtom(id));
+  const selected = useEpisodeSelection(id);
+  const selectedIds = JSON.stringify([...selected.keys()].sort());
+  const refreshMetadata = useRefreshSelectionMetadata(id);
+  // This effect checks live parent availability independently of the current results.
+  useEffect(() => {
+    if (!enabled || selectedIds === "[]") return undefined;
+    const controller = new AbortController();
+    getSelectionAvailability(id, JSON.parse(selectedIds), controller.signal)
+      .then((metadata) => {
+        if (!controller.signal.aborted) refreshMetadata(metadata);
+      })
+      .catch(() => {
+        /* Keep the last known metadata when its refresh is unavailable. */
+      });
+    return () => controller.abort();
+  }, [id, enabled, selectedIds, refresh, key, refreshMetadata]);
   // This effect owns candidate resolution; captures live in a separate atom.
   useEffect(() => {
     if (!enabled) return undefined;
@@ -123,7 +160,13 @@ export function useLoadGridSelection() {
     resolveSelection(id, request, controller.signal)
       .then((result) => {
         if (!controller.signal.aborted)
-          set({ key, groups: result.groups, loading: false, error: null });
+          set({
+            key,
+            groups: result.groups,
+            unavailableGroups: result.unavailableGroups,
+            loading: false,
+            error: null,
+          });
       })
       .catch((error: unknown) => {
         if (!controller.signal.aborted)
@@ -138,4 +181,20 @@ export function useLoadGridSelection() {
       controller.abort();
     };
   }, [id, enabled, key, request, refresh, set]);
+}
+
+/** Keeps a failed scoped page inside the tray so users can change its boundary. */
+export function useGridSelectionPagingError() {
+  const { datasetId } = useGridSelectionDataset();
+  const { key } = useGridSelectionRequest();
+  const set = useSetAtom(candidatesAtom(datasetId));
+  return useCallback(
+    (error: unknown) =>
+      set((current) =>
+        current.key === key
+          ? { ...current, groups: [], loading: false, error: String(error) }
+          : current,
+      ),
+    [key, set],
+  );
 }

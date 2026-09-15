@@ -17,6 +17,7 @@ export interface SelectionRequest {
 
 /** Complete, grouped result membership. */
 export interface SelectionResult {
+  readonly unavailableGroups?: readonly EpisodeSelection[];
   readonly groups: readonly EpisodeSelection[];
   readonly counts: SelectionCounts;
 }
@@ -49,4 +50,58 @@ export async function getSelectionProviders(datasetId: string) {
     path: `/dataset/${encodeURIComponent(datasetId)}/selection`,
   });
   return response.response;
+}
+
+/** A saved subset contains references to live parent episodes. */
+export interface SavedSubset {
+  readonly id: string;
+  readonly name: string;
+  readonly counts: SelectionCounts;
+}
+
+/** Preview and completion use the same units and immutable operation identity. */
+export interface SubsetAddResult {
+  readonly operationId: string;
+  readonly subsetId: string;
+  readonly counts: SelectionCounts;
+  readonly added: number;
+  readonly duplicates: number;
+  readonly provenanceUpdated: number;
+}
+
+/** Dataset-scoped persistence client; retries reuse an already captured operation. */
+export async function subsetRequest<T>(
+  datasetId: string,
+  path: string,
+  body?: unknown,
+): Promise<T> {
+  return (
+    await getFetchFunctionExtended()<unknown, T>({
+      method: body === undefined ? "GET" : "POST",
+      path: `/dataset/${encodeURIComponent(datasetId)}/subsets${path}`,
+      body,
+    })
+  ).response;
+}
+
+/** Refresh live metadata for captured parents, including those outside results. */
+export async function getSelectionAvailability(
+  datasetId: string,
+  episodeIds: readonly string[],
+  signal: AbortSignal,
+) {
+  return (
+    await getFetchFunctionExtended()<
+      unknown,
+      Record<
+        string,
+        Pick<EpisodeSelection, "filepath" | "previewStart" | "unavailable">
+      >
+    >({
+      method: "POST",
+      path: `/dataset/${encodeURIComponent(datasetId)}/selection/availability`,
+      body: { episodeIds },
+      signal,
+    })
+  ).response;
 }

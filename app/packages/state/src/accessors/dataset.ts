@@ -12,6 +12,9 @@ import {
   groupMediaTypes,
   gridSortBy,
   isGroup,
+  isClipsView,
+  isFramesView,
+  isPatchesView,
   selectedMediaField,
   refresher,
   skeleton,
@@ -227,4 +230,12 @@ export function useClearTemporalTagConstraint() {
       },
     [],
   );
+}
+
+/** Whether the view converts parent episodes into another result identity. */
+export function useIsConvertedView() {
+  const clips = useRecoilValue(isClipsView);
+  const frames = useRecoilValue(isFramesView);
+  const patches = useRecoilValue(isPatchesView);
+  return clips || frames || patches;
 }

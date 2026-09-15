@@ -5,6 +5,7 @@ import * as fos from "@fiftyone/state";
 import {
   useGridSelectionBoundary,
   useGridSelectionDataset,
+  useGridSelectionPagingError,
 } from "@fiftyone/state/src/selection";
 import type { Schema } from "@fiftyone/utilities";
 import { useMemo, useRef } from "react";
@@ -71,6 +72,7 @@ const useSpotlightPager = ({
   const pager = useRecoilValue(pageSelector);
   const [boundary] = useGridSelectionBoundary();
   const { enabled: selectionEnabled } = useGridSelectionDataset();
+  const reportSelectionError = useGridSelectionPagingError();
   const zoom = useRecoilValue(zoomSelector);
   const handleError = useErrorHandler();
   const store: SampleStore = useMemo(() => new WeakMap(), []);
@@ -145,7 +147,15 @@ const useSpotlightPager = ({
             complete: () => {
               subscription?.unsubscribe();
             },
-            error: handleError,
+            error: (error) => {
+              if (
+                selectionEnabled &&
+                (boundary.subsetId || boundary.provider)
+              ) {
+                reportSelectionError(error);
+                resolve({ items: [], next: null, previous: null });
+              } else handleError(error);
+            },
           });
         });
       };
@@ -159,6 +169,7 @@ const useSpotlightPager = ({
       zoom,
       selectionEnabled,
       boundary,
+      reportSelectionError,
     ],
   );
 

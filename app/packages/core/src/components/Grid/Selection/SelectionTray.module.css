@@ -64,3 +64,30 @@
   align-items: flex-start;
   gap: 4px;
 }
+.subsetDialog {
+  margin: auto;
+  width: min(560px, 90vw);
+  border-radius: 8px;
+  max-height: 85vh;
+  overflow: auto;
+}
+.subsetCreate,
+.dialogActions {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  margin-top: 16px;
+}
+.dialogActions {
+  justify-content: flex-end;
+}
+
+.subsetTargets {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  border: 0;
+  max-height: 180px;
+  overflow: auto;
+  padding: 0;
+}
