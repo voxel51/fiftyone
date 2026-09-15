@@ -17,6 +17,29 @@ describe("VideoGopIndex", () => {
     expect(index.sameEpoch(10n, 20n)).toBe(false);
   });
 
+  it("separates a real epoch change from one it has not indexed yet", () => {
+    // Forward playback resets the decoder on a config change. Treating "not
+    // indexed" as "changed" tore it down on every window refill for streams
+    // carrying a keyframe every other frame.
+    const index = new VideoGopIndex();
+    index.observe(unit(0, true, "avc1.a"));
+    index.observe(unit(10, true, "avc1.a"));
+    expect(index.knownDifferentEpoch(0n, 10n)).toBe(false);
+
+    index.observe(unit(20, true, "avc1.b"));
+    expect(index.knownDifferentEpoch(0n, 20n)).toBe(true);
+
+    // A cursor that fell out of the bounded working set has no known epoch,
+    // which is not the same as a changed one.
+    const bounded = new VideoGopIndex(2);
+    bounded.observe(unit(0, true, "avc1.a"));
+    bounded.observe(unit(10, true, "avc1.a"));
+    bounded.observe(unit(20, true, "avc1.a"));
+    expect(bounded.keyframeTimeAtOrBefore(5n)).toBeNull();
+    expect(bounded.sameEpoch(5n, 20n)).toBe(false);
+    expect(bounded.knownDifferentEpoch(5n, 20n)).toBe(false);
+  });
+
   it("bounds the sorted keyframe working set around recent observations", () => {
     const index = new VideoGopIndex(2);
     index.observe(unit(0, true));

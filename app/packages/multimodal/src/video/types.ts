@@ -42,7 +42,7 @@ export function isSharedEncodedVideoVisualization(
     (frame.codec === "h264" &&
       frame.h264 !== undefined &&
       frame.h264.hasFrame !== false) ||
-    (frame.codec === "h265" && frame.hevc !== undefined)
+    frame.codec === "h265"
   );
 }
 

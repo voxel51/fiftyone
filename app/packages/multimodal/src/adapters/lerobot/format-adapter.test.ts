@@ -968,6 +968,34 @@ describe("LeRobot format adapter", () => {
     }
   });
 
+  it("declares a decode timestamp only where it differs from presentation", async () => {
+    // Its presence is how consumers detect a reordered stream; declaring it
+    // on an in-order one forced a seek runway and decoder reset per keyframe.
+    const session = await createLeRobotFormatAdapter({
+      readParquetObjects,
+    }).open(source, io);
+    try {
+      const batches = await collectBatches(
+        session.read({
+          streams: ["lerobot:observation.images.test"],
+          window: session.manifest.timeRange,
+        }),
+      );
+      const frames = batches.flatMap((batch) => batch.frames);
+      expect(frames.length).toBeGreaterThan(0);
+      for (const frame of frames) {
+        const visualization = frame.output.visualization;
+        if (visualization?.kind !== "encoded-video") continue;
+        if (visualization.decodeTimestampNs === undefined) continue;
+        expect(visualization.decodeTimestampNs).not.toBe(
+          visualization.timestampNs,
+        );
+      }
+    } finally {
+      session.dispose();
+    }
+  });
+
   it("names a codec the client cannot decode instead of reading nothing", async () => {
     // Before this, a camera whose codec had no decoder produced no frames at
     // all, so the modal held four spinners and a 0:00 timeline indefinitely.
