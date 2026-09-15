@@ -827,6 +827,12 @@ export const operatorsInitializedAtom = atom({
   default: false,
 });
 
+/** The server listing failed, so the registry will not fill in on its own. */
+export const operatorsLoadFailedAtom = atom({
+  key: "operatorsLoadFailedAtom",
+  default: false,
+});
+
 export const availableOperators = selector({
   key: "availableOperators",
   get: ({ get }) => {
