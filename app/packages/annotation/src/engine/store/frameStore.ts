@@ -485,6 +485,72 @@ export class FrameStore implements LabelStore {
     this.emit(this.diffDisplayed(before));
   }
 
+  /**
+   * Merge a WINDOW of the `/frames` stream into the source, leaving every
+   * frame outside it untouched — the incremental counterpart to
+   * {@link setData}.
+   *
+   * Why this exists: the stream notifies on every chunk that lands, and the
+   * seed used to answer by re-reading the stream's entire accumulated cache
+   * and replacing the whole source. That is quadratic in clip length — a
+   * ten-minute 30fps clip is 300 chunks over a cache growing towards 18,000
+   * frames, so opening one video re-parsed frames by the million, on the main
+   * thread, while the user waited. Seeding only the range that actually landed
+   * makes the same load linear.
+   *
+   * Change emission is identical to {@link setData}'s: targeted deltas for
+   * frames whose SOURCE moved and whose displayed projection isn't shadowed by
+   * a still-dirty working overlay. The only difference is which frames are
+   * eligible — here, the ones this window carried.
+   *
+   * Removal semantics follow the caller. A frame the window omits is not a
+   * removal, it is simply news this window doesn't carry; a frame that lands
+   * with an empty list for a path IS a removal and is emitted as one. The
+   * whole-source replacement in {@link setData} is still the right call for a
+   * reseed that redefines the clip (a field or view change).
+   */
+  mergeData(data: Record<string, unknown>): void {
+    const next = this.parse(data as FramesData);
+
+    // Candidates are the window's frames only. Capture the displayed
+    // projection before the source moves, exactly as `setData` does — a
+    // working frame shadows source, so let the displayed diff decide.
+    const before = new Map<number, Map<string, Map<string, LabelData>>>();
+
+    for (const [frame, after] of next) {
+      const prev = this.source.get(frame);
+
+      if (prev === undefined || !this.frameEquals(prev, after)) {
+        before.set(frame, this.displayedById(frame));
+      }
+    }
+
+    if (before.size === 0) {
+      // Every frame in the window already matched source — a re-fetch of a
+      // range we had. Emitting nothing is not just an optimization: a no-op
+      // reconcile still walks the canvas.
+      return;
+    }
+
+    for (const [frame, doc] of next) {
+      this.source.set(frame, doc);
+    }
+
+    // GC only the frames this window touched. A working frame over a source
+    // frame the window didn't carry cannot have changed dirtiness here, so
+    // walking the whole overlay would be the same quadratic this method
+    // exists to remove.
+    for (const frame of next.keys()) {
+      const doc = this.working.get(frame);
+
+      if (doc && this.frameEquals(doc, this.source.get(frame))) {
+        this.working.delete(frame);
+      }
+    }
+
+    this.emit(this.diffDisplayed(before));
+  }
+
   clear(): void {
     this.source = new Map();
     this.working = new Map();
