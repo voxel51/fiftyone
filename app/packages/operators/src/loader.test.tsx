@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   registerBuiltInOperators: vi.fn(),
   registerPanel: vi.fn(),
   setInitialized: vi.fn(),
+  setLoadFailed: vi.fn(),
   setRefreshCount: vi.fn(),
 }));
 
@@ -25,7 +26,9 @@ vi.mock("recoil", () => ({
   useSetRecoilState: vi.fn((atom) =>
     atom === "availableOperatorsRefreshCount"
       ? mocks.setRefreshCount
-      : mocks.setInitialized,
+      : atom === "operatorsLoadFailedAtom"
+        ? mocks.setLoadFailed
+        : mocks.setInitialized,
   ),
 }));
 
@@ -51,6 +54,7 @@ vi.mock("./Panel/register", () => ({
 vi.mock("./state", () => ({
   availableOperatorsRefreshCount: "availableOperatorsRefreshCount",
   operatorsInitializedAtom: "operatorsInitializedAtom",
+  operatorsLoadFailedAtom: "operatorsLoadFailedAtom",
 }));
 
 import { useOperators } from "./loader";
@@ -119,5 +123,15 @@ describe("useOperators lifecycle", () => {
         ([event]) => event === "onDatasetOpen",
       ),
     ).toHaveLength(2);
+  });
+
+  it("publishes a failed listing so consumers stop waiting on it", async () => {
+    mocks.loadOperatorsFromServer.mockRejectedValueOnce(new Error("boom"));
+
+    const { result } = renderHook(() => useOperators());
+
+    await waitFor(() => expect(mocks.setLoadFailed).toHaveBeenCalledWith(true));
+    expect(result.current.hasError).toBe(true);
+    expect(mocks.setInitialized).not.toHaveBeenCalled();
   });
 });
