@@ -17,14 +17,13 @@ const SINGLETONS = ["@voxel51/voodo"];
 /** `catalog:` and the named form `catalog:<group>` both defer to the catalog. */
 const isCatalogRange = (range) => range.startsWith("catalog:");
 
-const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
 /**
- * A `resolutions` selector names its target package last, optionally behind
- * parent descriptors and before a range: `pkg`, `parent/pkg`, `pkg@range`.
+ * The package a `resolutions` selector targets: its last descriptor without
+ * the range. Selectors read `pkg`, `parent/pkg`, `pkg@range` or
+ * `parent@range/pkg@range`, and a scoped name keeps its `@scope/` prefix.
  */
-const targetsIdent = (selector, ident) =>
-  new RegExp(`(^|/)${escapeRegExp(ident)}(@|$)`).test(selector);
+const resolutionTarget = (selector) =>
+  selector.match(/(?:^|\/)(@[^/@]+\/[^/@]+|[^/@]+)(?:@[^/]*)?$/)?.[1];
 
 module.exports = {
   async constraints({ Yarn }) {
@@ -43,7 +42,7 @@ module.exports = {
         for (const selector of Object.keys(
           workspace.manifest.resolutions ?? {},
         )) {
-          if (targetsIdent(selector, ident)) {
+          if (resolutionTarget(selector) === ident) {
             workspace.unset(["resolutions", selector]);
           }
         }
