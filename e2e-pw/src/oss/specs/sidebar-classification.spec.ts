@@ -3,9 +3,7 @@ import { GridPom } from "src/oss/poms/grid";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
-// Labels match the first 5 samples of the cifar10 test split, preserved when
-// migrating away from loadZooDataset (zoo datasets are a bad test pattern:
-// slow, network-dependent, and couple tests to external data).
+// five classification labels; "ship" repeats so a filter matches two samples
 const LABELS = ["cat", "ship", "ship", "airplane", "frog"];
 
 const datasetName = getUniqueDatasetNameWithPrefix("classification-5");

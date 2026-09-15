@@ -23,12 +23,15 @@ async function checkPort(port: number): Promise<boolean> {
     // If an error occurs, check its type.
     socket.once("error", (err: { code: string }) => {
       if (resolved) return;
+      resolved = true;
       // ECONNREFUSED means nothing is listening on that port.
       if (err.code === "ECONNREFUSED") {
-        resolved = true;
         resolve(true); // Port is available.
+      } else if (err.code === "ECONNRESET") {
+        // a listener still held the port but tore down mid-handshake, e.g.
+        // the previous spec's server on this worker draining after SIGTERM
+        resolve(false); // Port is in use.
       } else {
-        resolved = true;
         reject(err);
       }
     });

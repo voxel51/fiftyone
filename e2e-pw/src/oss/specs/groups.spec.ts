@@ -6,10 +6,10 @@ import { ModalPom } from "src/oss/poms/modal";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
-const datasetName = getUniqueDatasetNameWithPrefix("quickstart-groups");
+const datasetName = getUniqueDatasetNameWithPrefix("groups");
 
-const FIRST_SAMPLE_FILENAME = "003037.png";
-const SECOND_SAMPLE_FILENAME = "007195.png";
+const FIRST_SAMPLE_FILENAME = "left-0.png";
+const SECOND_SAMPLE_FILENAME = "left-1.png";
 
 const test = base.extend<{
   grid: GridPom;
@@ -39,15 +39,21 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
 
-  await fiftyoneLoader.loadZooDataset("quickstart-groups", datasetName, {
-    max_samples: 12,
+  await datasetFactory.createGroupDataset({
+    datasetName,
+    numGroups: 4,
+    slices: [
+      { name: "left", mediaType: "image" },
+      { name: "right", mediaType: "image" },
+      { name: "pcd", mediaType: "point-cloud" },
+    ],
   });
 });
 
-test.describe.serial("quickstart-groups", () => {
+test.describe.serial("groups", () => {
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });

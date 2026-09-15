@@ -1,6 +1,6 @@
-import { Tooltip } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { Bolt } from "@mui/icons-material";
+import { Anchor, Tooltip } from "@voxel51/voodo";
 import React, { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
@@ -18,7 +18,7 @@ export const LightningBolt = ({
   tooltip?: string;
 }) => {
   return (
-    <Tooltip placement="top-center" text={tooltip}>
+    <Tooltip anchor={Anchor.Top} content={tooltip} style={{ display: "flex" }}>
       <LightningIcon
         data-cy={"query-performance"}
         style={{ height: 16, marginRight: 2, width: 16, color }}

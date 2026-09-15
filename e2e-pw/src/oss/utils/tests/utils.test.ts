@@ -9,27 +9,27 @@ describe("getStringifiedKwargs", () => {
   it("should return stringified kwargs if kwargs is not empty", () => {
     expect(
       getStringifiedKwargs({
-        dataset_name: "quickstart",
+        dataset_name: "my-dataset",
       }),
-    ).toEqual(`, dataset_name="quickstart"`);
+    ).toEqual(`, dataset_name="my-dataset"`);
   });
 
   it("should return stringified kwargs with multiple kwargs", () => {
     expect(
       getStringifiedKwargs({
-        dataset_name: "quickstart",
+        dataset_name: "my-dataset",
         other_kwarg: "other_value",
       }),
-    ).toEqual(`, dataset_name="quickstart", other_kwarg="other_value"`);
+    ).toEqual(`, dataset_name="my-dataset", other_kwarg="other_value"`);
   });
 
   it("should return stringified kwargs with mixed data type kwargs", () => {
     expect(
       getStringifiedKwargs({
-        dataset_name: "quickstart",
+        dataset_name: "my-dataset",
         int_kwarg: 20,
         bool_kwarg: true,
       }),
-    ).toEqual(`, dataset_name="quickstart", int_kwarg=20, bool_kwarg=True`);
+    ).toEqual(`, dataset_name="my-dataset", int_kwarg=20, bool_kwarg=True`);
   });
 });

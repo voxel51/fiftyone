@@ -18,18 +18,12 @@ const test = base.extend<{
   },
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  await fiftyoneLoader.executePythonCode(`
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset_name = "${datasetName}"
-    dataset = foz.load_zoo_dataset(
-      "quickstart", max_samples=5, dataset_name=dataset_name
-    )
-    dataset.persistent = True
-  `);
+  await datasetFactory.createDetectionsDataset({
+    datasetName,
+    samples: [{ detections: { ground_truth: ["cat"] } }],
+  });
 });
 
 test.afterAll(async ({ foWebServer }) => {

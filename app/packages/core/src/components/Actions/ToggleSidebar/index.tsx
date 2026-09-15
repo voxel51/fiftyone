@@ -1,3 +1,4 @@
+import { Anchor } from "@voxel51/voodo";
 import { PillButton } from "@fiftyone/components";
 import { sidebarVisible } from "@fiftyone/state";
 import { KeyboardArrowLeft, KeyboardArrowRight } from "@mui/icons-material";
@@ -20,7 +21,7 @@ const ToggleSidebar = React.forwardRef<
         setVisible(!visible);
       }}
       title={`${visible ? "Hide" : "Show"} sidebar (s)`}
-      tooltipPlacement={modal ? "bottom" : "top"}
+      tooltipPlacement={modal ? Anchor.Bottom : Anchor.Top}
       open={visible}
       icon={
         visible ? (

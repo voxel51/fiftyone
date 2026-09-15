@@ -1,3 +1,4 @@
+import { Anchor } from "@voxel51/voodo";
 import { PillButton } from "@fiftyone/components";
 import { useOperatorBrowser } from "@fiftyone/operators";
 import { List } from "@mui/icons-material";
@@ -20,7 +21,7 @@ export default ({
           adaptiveMenuItemProps?.closeOverflow?.();
         }}
         title={"Browse operations"}
-        tooltipPlacement={modal ? "bottom" : "top"}
+        tooltipPlacement={modal ? Anchor.Bottom : Anchor.Top}
         data-cy="action-browse-operations"
       />
     </ActionDiv>

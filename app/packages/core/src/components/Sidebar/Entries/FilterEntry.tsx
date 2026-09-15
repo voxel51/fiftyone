@@ -1,8 +1,9 @@
-import { Tooltip, useTheme } from "@fiftyone/components";
+import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { FilterList, Settings, VisibilityOff } from "@mui/icons-material";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import { Box, Typography } from "@mui/material";
+import { Anchor, Text as TooltipText, Tooltip } from "@voxel51/voodo";
 import React from "react";
 import {
   useRecoilState,
@@ -47,8 +48,9 @@ const Filter = () => {
         {isFilterMode && (
           <Box display="flex" onClick={() => setIsFilterMode(false)}>
             <Tooltip
-              text={"Toggle to visibility mode"}
-              placement="bottom-start"
+              anchor={Anchor.Bottom}
+              content="Toggle to visibility mode"
+              style={{ display: "flex" }}
             >
               <FilterList
                 sx={{
@@ -62,8 +64,12 @@ const Filter = () => {
               />
             </Tooltip>
             <Tooltip
-              text="Use the controls below to create filtered views into your data"
-              placement="bottom-start"
+              anchor={Anchor.Bottom}
+              content={
+                <TooltipText data-cy="sidebar-mode-tooltip-filter">
+                  Use the controls below to create filtered views into your data
+                </TooltipText>
+              }
             >
               <Text data-cy="sidebar-mode-status">FILTER</Text>
             </Tooltip>
@@ -71,7 +77,11 @@ const Filter = () => {
         )}
         {!isFilterMode && (
           <Box display="flex" onClick={() => setIsFilterMode(true)}>
-            <Tooltip text="Toggle to filter mode" placement="bottom-start">
+            <Tooltip
+              anchor={Anchor.Bottom}
+              content="Toggle to filter mode"
+              style={{ display: "flex" }}
+            >
               <VisibilityIcon
                 sx={{
                   color: theme.text.tertiary,
@@ -81,8 +91,13 @@ const Filter = () => {
               />
             </Tooltip>
             <Tooltip
-              text="Use the controls below to toggle the visibility of field values in the grid"
-              placement="bottom-start"
+              anchor={Anchor.Bottom}
+              content={
+                <TooltipText data-cy="sidebar-mode-tooltip-visibility">
+                  Use the controls below to toggle the visibility of field
+                  values in the grid
+                </TooltipText>
+              }
             >
               <Text data-cy="sidebar-mode-status">VISIBILITY</Text>
             </Tooltip>
@@ -92,7 +107,7 @@ const Filter = () => {
 
       <Box display="flex" alignItems="center" gap="4px">
         {isFieldVisibilityActive && (
-          <Tooltip text="Clear field selection" placement="bottom-center">
+          <Tooltip anchor={Anchor.Bottom} content="Clear field selection">
             <Box
               data-cy="field-visibility-btn-clear"
               sx={{
@@ -133,9 +148,9 @@ const Filter = () => {
         )}
         {queryPerformance && <QueryPerformanceIcon />}
         <Tooltip
-          text="Change field visibility"
-          placement="bottom-center"
-          data-cy="field-visibility-toggle-tooltip"
+          anchor={Anchor.Bottom}
+          content="Change field visibility"
+          style={{ display: "flex" }}
         >
           <Settings
             data-cy="field-visibility-icon"

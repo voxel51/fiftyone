@@ -26,19 +26,6 @@ export abstract class AbstractFiftyoneLoader {
   protected pythonRunner: PythonRunner;
 
   /**
-   * This method is used to load a dataset from the FiftyOne Zoo.
-   *
-   * @param name name of the dataset to load from the zoo
-   * @param id name of the dataset to be created
-   * @param kwargs optional arguments to be passed to the dataset loader
-   */
-  abstract loadZooDataset(
-    zooDatasetName: string,
-    id: string,
-    kwargs?: Record<string, string | number | boolean>,
-  ): Promise<void>;
-
-  /**
    * This method is used to load datasets that are assumed to be already available in the test hosts.
    *
    * @param name name of the dataset to load

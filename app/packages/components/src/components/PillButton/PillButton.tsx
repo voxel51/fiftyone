@@ -1,13 +1,13 @@
-import { Tooltip, useTheme } from "@fiftyone/components";
+import { useTheme } from "@fiftyone/components";
 import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
-import { TooltipProps } from "@mui/material";
+import { Anchor, Tooltip, TooltipAnchor } from "@voxel51/voodo";
 import { animated, useSpring } from "@react-spring/web";
 import React from "react";
 import styled from "styled-components";
 
 const PillButton = React.forwardRef<
   HTMLButtonElement,
-  PillButtonProps & { tooltipPlacement?: TooltipProps["placement"] }
+  PillButtonProps & { tooltipPlacement?: TooltipAnchor }
 >((props, ref) => {
   const {
     onClick,
@@ -49,7 +49,7 @@ const PillButton = React.forwardRef<
     </PillButtonDiv>
   );
   return title ? (
-    <Tooltip placement={tooltipPlacement ?? "top-center"} text={title}>
+    <Tooltip anchor={tooltipPlacement ?? Anchor.Top} content={title}>
       {children}
     </Tooltip>
   ) : (

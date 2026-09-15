@@ -5,7 +5,20 @@ import { ModalPom } from "src/oss/poms/modal";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
-const datasetName = getUniqueDatasetNameWithPrefix("smoke-quickstart");
+const datasetName = getUniqueDatasetNameWithPrefix("smoke-tagger");
+
+// 21 labels in total; the first two samples carry unique per-sample counts
+// (7 and 5) so their label-tag bubbles can be located
+const SAMPLES = [
+  {
+    ground_truth: ["bird", "bird", "cat"],
+    predictions: ["bird", "bird", "cat", "dog"],
+  },
+  { ground_truth: ["dog", "person"], predictions: ["dog", "person", "cat"] },
+  { ground_truth: ["cat"], predictions: ["cat", "cat"] },
+  { ground_truth: ["horse", "horse"], predictions: ["horse"] },
+  { ground_truth: ["person"], predictions: ["person", "bird"] },
+];
 
 const test = base.extend<{
   grid: GridPom;
@@ -31,11 +44,18 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
 
-  await fiftyoneLoader.loadZooDataset("quickstart", datasetName, {
-    max_samples: 5,
+  await datasetFactory.createDetectionsDataset({
+    datasetName,
+    numbered: true,
+    samples: SAMPLES.map(({ ground_truth, predictions }) => ({
+      detections: {
+        ground_truth,
+        predictions: predictions.map((label) => ({ label, confidence: 0.9 })),
+      },
+    })),
   });
 });
 
@@ -55,7 +75,7 @@ test.describe.serial("tag", () => {
 
     await tagger.setActiveTaggerMode("label");
     const placeHolder2 = await tagger.getTagInputTextPlaceholder("label");
-    expect(placeHolder2.includes(" 143 ")).toBe(true);
+    expect(placeHolder2.includes(" 21 ")).toBe(true);
 
     await grid.actionsRow.toggleTagSamplesOrLabels();
   });
@@ -99,9 +119,9 @@ test.describe.serial("tag", () => {
 
     await gridRefreshedEventPromise.received;
     // verify the bubble in the image
-    // the first sample has 17 label tag count, the second sample has 22 tag count
-    const bubble1 = page.getByTestId("tag-_label_tags-labeltest:-17");
-    const bubble2 = page.getByTestId("tag-_label_tags-labeltest:-22");
+    // the first sample has 7 labels, the second sample has 5
+    const bubble1 = page.getByTestId("tag-_label_tags-labeltest:-7");
+    const bubble2 = page.getByTestId("tag-_label_tags-labeltest:-5");
     await expect(bubble1).toBeVisible();
     await expect(bubble2).toBeVisible();
 

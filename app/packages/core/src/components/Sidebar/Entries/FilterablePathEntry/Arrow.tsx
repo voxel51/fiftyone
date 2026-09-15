@@ -1,6 +1,6 @@
-import { Tooltip } from "@fiftyone/components";
 import KeyboardArrowDown from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowUp from "@mui/icons-material/KeyboardArrowUp";
+import { Anchor, Tooltip } from "@voxel51/voodo";
 import type { RecoilState } from "recoil";
 import { useRecoilState } from "recoil";
 import { useTheme } from "styled-components";
@@ -33,13 +33,14 @@ export default ({
   if (frameFilterDisabledPath) {
     return (
       <Tooltip
-        text={
+        anchor={Anchor.Top}
+        content={
           <DisabledReason
             text={"frame filtering is disabled"}
             href={FRAME_FILTERING_DISABLED}
           />
         }
-        placement="top-center"
+        style={{ display: "flex" }}
       >
         {arrow}
       </Tooltip>
