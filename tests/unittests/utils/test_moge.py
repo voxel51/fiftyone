@@ -228,12 +228,25 @@ class TestMoGeOutputProcessor:
         assert not hasattr(results[0], "normal_map")
         assert not hasattr(results[1], "normal_map")
 
-    def test_mask_is_resized_when_depth_already_matches(self):
+    def test_mask_is_applied_when_depth_already_matches(self):
         processor = self._make_processor()
-        depth = np.ones((4, 4), dtype=np.float32)
-        mask = np.ones((2, 2), dtype=bool)
+        depth = np.array([[1.0, 1.0, 9.0, 9.0]] * 4, dtype=np.float32)
+        mask = np.array([[1, 0], [1, 0]], dtype=bool)
 
         results = processor({"depth": [depth], "mask": [mask]}, (4, 4))
 
         assert results[0].map.shape == (4, 4)
         assert results[0].valid_mask.shape == (4, 4)
+        assert results[0].max_depth == pytest.approx(1.0)
+        assert results[0].map[0, 3] == 0.0
+
+    def test_mask_is_applied_before_depth_is_resized(self):
+        processor = self._make_processor()
+        depth = np.array([[1.0, 9.0], [1.0, 9.0]], dtype=np.float32)
+        mask = np.array([[1, 0], [1, 0]], dtype=bool)
+
+        results = processor({"depth": [depth], "mask": [mask]}, (4, 4))
+
+        assert results[0].valid_mask.shape == (4, 4)
+        assert results[0].max_depth == pytest.approx(1.0)
+        assert results[0].map[0, 3] == 0.0

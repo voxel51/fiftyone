@@ -187,11 +187,22 @@ class MoGeOutputProcessor(fout.OutputProcessor):
             mask = masks[i] if masks is not None and i < len(masks) else None
             if mask is not None:
                 mask = np.asarray(mask) > 0
+                if mask.ndim == 3:
+                    mask = mask[..., 0]
 
             if not np.all(np.isfinite(depth)):
                 depth = np.where(np.isfinite(depth), depth, 0)
 
-            if mask is not None and mask.shape == depth.shape:
+            # The mask is applied at the depth's resolution, before either is
+            # resized to the frame
+            if mask is not None and mask.shape != depth.shape:
+                depth_size = (depth.shape[1], depth.shape[0])
+                mask = (
+                    _resize(mask.astype(np.float32), depth_size, nearest=True)
+                    > 0.5
+                )
+
+            if mask is not None:
                 depth = np.where(mask, depth, 0)
 
             if size is not None and depth.shape[:2] != (height, width):
