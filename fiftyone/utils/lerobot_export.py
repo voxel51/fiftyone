@@ -239,9 +239,7 @@ def _write_lerobot_export(export_dir, specs):
         episode_output_rows = source_table.to_pylist()
 
         episode_row = dict(source_episode_row)
-        if "tasks" in episode_row:
-            episode_row["tasks"] = tasks
-
+        episode_row["tasks"] = tasks
         episode_row["episode_index"] = output_episode_index
         episode_row["length"] = len(source_rows)
         episode_row["dataset_from_index"] = episode_start
