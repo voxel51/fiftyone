@@ -14,6 +14,7 @@ import fiftyone.core.selection as fosel
 import fiftyone.core.storage as fost
 import fiftyone.core.subsets as fosub
 import fiftyone.core.tags as fot
+import fiftyone.server.tags as fostag
 import fiftyone.server.view as fosv
 
 
@@ -322,3 +323,141 @@ def _sample_streams(sample, dataset):
         "This source cannot resolve all streams; use stream-anchored tags "
         "or a range provider with explicit stream IDs"
     )
+
+
+_TAG_INDEX_TYPES = {"sequence": 1, "duration-ns": 2, "timestamp-ns": 3}
+
+
+def tag_selection(dataset, members, change=None, target="members"):
+    """Inspects or tags frozen episode and segment membership.
+
+    Whole episodes use sample tags. Segments use temporal tags on each
+    captured stream. Removal matches exact bounds; overlapping intervals and
+    unselected streams are preserved. Every parent and range is validated
+    before writing, and applying the same change again is idempotent.
+
+    Args:
+        dataset: the source dataset
+        members: captured episode/segment dictionaries
+        change (None): optional ``{"tag": str, "add": bool}`` mutation
+        target ("members"): ``members`` or ``labels`` in whole episodes
+
+    Returns:
+        scope counts and the existing tag values on the captured targets
+    """
+    if target not in ("members", "labels"):
+        raise ValueError("Choose members or labels to tag")
+    members = fosel.normalize_members(members)
+    if target == "labels" and any(m["kind"] == "segment" for m in members):
+        raise ValueError("Label tagging requires whole episodes")
+    if not members or dataset.media_type not in ("video", "multimodal"):
+        raise ValueError("Choose episodes or segments to tag")
+    sample_ids = {member["episodeId"] for member in members}
+    view = dataset.select(sample_ids)
+    if set(view.values("id")) != sample_ids:
+        raise ValueError("Remove unavailable episodes before tagging")
+
+    full = []
+    targets = {}
+    for member in members:
+        sample_id = member["episodeId"]
+        if member["kind"] == "episode":
+            full.append(sample_id)
+            continue
+        bounds = member["range"]
+        index_type = _TAG_INDEX_TYPES.get(bounds["timebase"])
+        if index_type is None:
+            raise ValueError("This segment timebase does not support tags")
+        start, end = int(bounds["start"]), int(bounds["end"])
+        if not -(2**63) <= start < end < 2**63:
+            raise ValueError("Tag bounds must fit signed 64-bit integers")
+        targets.setdefault((sample_id, index_type, start, end), set()).update(
+            bounds["streams"]
+        )
+
+    existing = []
+    if targets:
+        for tag in fot.list_temporal_tags(view):
+            streams = targets.get(
+                (str(tag.sample_id), tag.index_type, tag.start, tag.end)
+            )
+            if streams is None:
+                continue
+            anchors = (
+                {tag.anchor}
+                if tag.anchor
+                else set(_sample_streams(dataset[str(tag.sample_id)], dataset))
+            )
+            if anchors <= streams:
+                existing.append(tag)
+
+    full_view = dataset.select(full)
+    label_count = None
+    if target == "labels":
+        counts, tag_aggs = fostag.build_label_tag_aggregations(full_view)
+        label_count = sum(full_view.aggregate(counts)) if counts else 0
+        histograms = dataset.aggregate(tag_aggs) if tag_aggs else []
+        values = {
+            value
+            for histogram in histograms
+            for value in histogram
+            if value is not None
+        }
+    else:
+        values = set(dataset.distinct("tags")) if full else set()
+    if targets:
+        values.update(fot.count_temporal_tags(dataset))
+    if change is not None:
+        tag_value = change.get("tag")
+        add = change.get("add")
+        if (
+            not isinstance(tag_value, str)
+            or not tag_value.strip()
+            or not isinstance(add, bool)
+        ):
+            raise ValueError("Provide a nonempty tag and an add boolean")
+        tag_value = tag_value.strip()
+        if target == "labels":
+            if not label_count:
+                raise ValueError("No labels in these episodes")
+            if add:
+                full_view.tag_labels(tag_value)
+            else:
+                full_view.untag_labels(tag_value)
+        if targets:
+            if add:
+                fot.add_temporal_tags(
+                    view,
+                    [
+                        fot.TemporalTag(
+                            sample_id=sample_id,
+                            index_type=index_type,
+                            start=start,
+                            end=end,
+                            anchor=stream,
+                            tag=tag_value,
+                        )
+                        for (
+                            sample_id,
+                            index_type,
+                            start,
+                            end,
+                        ), streams in targets.items()
+                        for stream in streams
+                    ],
+                )
+            else:
+                ids = [tag.id for tag in existing if tag.tag == tag_value]
+                if ids:
+                    fot.delete_temporal_tags(view, ids=ids)
+        if full and target == "members":
+            if add:
+                full_view.tag_samples(tag_value)
+            else:
+                full_view.untag_samples(tag_value)
+
+    return {
+        "counts": fosel.count_members(members),
+        "tags": sorted(values),
+        "labels": label_count,
+    }

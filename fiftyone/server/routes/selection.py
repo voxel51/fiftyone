@@ -49,6 +49,24 @@ class SelectionAvailability(HTTPEndpoint):
         )
 
 
+class SelectionTags(HTTPEndpoint):
+    """Reads and edits tags on complete captured membership."""
+
+    @decorators.route
+    async def post(self, request, data):
+        dataset = get_dataset(request.path_params["dataset_id"])
+        try:
+            return await fou.run_sync_task(
+                foss.tag_selection,
+                dataset,
+                data["members"],
+                data.get("change"),
+                data.get("target", "members"),
+            )
+        except (ValueError, KeyError, TypeError, InvalidId) as error:
+            raise HTTPException(400, detail=str(error)) from error
+
+
 class Subsets(HTTPEndpoint):
     """Lists and creates dataset-scoped saved subsets."""
 
@@ -96,6 +114,7 @@ class SubsetAdd(HTTPEndpoint):
 
 SelectionRoutes = [
     ("/dataset/{dataset_id}/selection", SelectionCandidates),
+    ("/dataset/{dataset_id}/selection/tags", SelectionTags),
     ("/dataset/{dataset_id}/selection/availability", SelectionAvailability),
     ("/dataset/{dataset_id}/subsets", Subsets),
     ("/dataset/{dataset_id}/subsets/add", SubsetAdd),
