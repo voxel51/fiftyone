@@ -71,9 +71,8 @@ export class VideoGopIndex {
   }
 
   /**
-   * Whether both sides are indexed and their decoder configurations actually
-   * differ. Distinct from `!sameEpoch`, which is also true when the index
-   * simply has not observed one of them yet.
+   * Whether both sides are indexed and their configurations differ. Distinct
+   * from `!sameEpoch`, which also holds when one side is not yet observed.
    */
   knownDifferentEpoch(leftTimeNs: bigint, rightTimeNs: bigint): boolean {
     const left = this.keyframeAtOrBefore(leftTimeNs);

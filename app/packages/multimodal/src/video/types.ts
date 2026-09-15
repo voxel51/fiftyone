@@ -54,6 +54,12 @@ export function encodedVideoCodecName(
   return label || frame.format || "unrecognized";
 }
 
+/** Codecs the advice can name, so it never suggests transcoding to itself. */
+const TRANSCODE_TARGETS: ReadonlySet<EncodedVideoCodec> = new Set([
+  "av1",
+  "h264",
+]);
+
 /**
  * Explains why an encoded frame rejected by shared playback is unavailable.
  * Names the exact codec string: "unsupported" without it leaves the user
@@ -65,11 +71,24 @@ export function sharedVideoRejectionMessage(
   if (frame.codec === "h264" && frame.h264?.hasFrame === false) {
     return "H.264 video frame data is unavailable";
   }
-  const label = VIDEO_CODEC_LABEL[frame.codec];
+  return unsupportedVideoCodecMessage(frame.format, frame.codec);
+}
+
+/** The refusal copy for a codec string, with no frame needed to carry it. */
+export function unsupportedVideoCodecMessage(
+  codecString: string,
+  codec?: EncodedVideoCodec,
+): string {
+  const family = codec ?? "unknown";
+  const label = VIDEO_CODEC_LABEL[family];
   const named = label
-    ? `${label} video ('${frame.format}')`
-    : `Video codec '${frame.format}'`;
-  return `${named} cannot be decoded in this browser. Transcode this camera to H.264 or AV1 to view it.`;
+    ? `${label} video ('${codecString}')`
+    : `Video codec '${codecString}'`;
+  // A refused H.264 or AV1 stream is a refused profile, not a refused family
+  const advice = TRANSCODE_TARGETS.has(family)
+    ? "Re-encode this camera at a more widely supported profile to view it."
+    : "Transcode this camera to H.264 or AV1 to view it.";
+  return `${named} cannot be decoded in this browser. ${advice}`;
 }
 
 /** Presentation copy that no longer owns a WebCodecs decoder surface. */

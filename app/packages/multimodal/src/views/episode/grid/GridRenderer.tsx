@@ -26,6 +26,7 @@ import type { VideoStreamLease } from "../../../video/playback-manager";
 import {
   isSharedEncodedVideoVisualization,
   sharedVideoRejectionMessage,
+  unsupportedVideoCodecMessage,
 } from "../../../video/types";
 import { PointCloudPanel } from "../../../visualization/composition";
 import { acquireGridLiveLease } from "../../../visualization/webgpu/webgpu-live-lease";
@@ -407,7 +408,9 @@ export function GridRenderer({
     posterImage.kind === "encoded-video" &&
     !isSharedEncodedVideoVisualization(posterImage)
       ? sharedVideoRejectionMessage(posterImage)
-      : null;
+      : preview.unsupportedCodec
+        ? unsupportedVideoCodecMessage(preview.unsupportedCodec)
+        : null;
 
   // This effect keeps the grid cache's retained-byte estimate current.
   useEffect(() => {

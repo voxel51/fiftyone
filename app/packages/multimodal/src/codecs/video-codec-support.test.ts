@@ -29,8 +29,8 @@ function client(
 
 describe("video codec support", () => {
   it("reports the family the client accepts, not a fixed allowlist", async () => {
-    // The client this test describes is the reported one: HEVC decodes, and
-    // MPEG-4 Part 2 does not, which a hardcoded list gets backwards.
+    // The reported client: HEVC decodes and VP9 does not, which a hardcoded
+    // allowlist gets backwards
     await warmVideoCodecSupport(client((codec) => !codec.startsWith("vp09")));
 
     expect(isVideoCodecFamilySupported("h265")).toBe(true);

@@ -273,9 +273,8 @@ describe("buildStreamInventoryRows", () => {
   });
 
   it("reports a camera whose encoding has no decoder as unsupported", () => {
-    // A renderable *kind* of stream is not a playable one: reporting the
-    // camera as supported had the sidebar agreeing with a tile that could
-    // never show a picture.
+    // A renderable *kind* of stream is not a playable one, and saying so has
+    // the sidebar promising a picture the tile can never show
     const camera = stream(
       "/camera/front",
       "sensor_msgs/Image",

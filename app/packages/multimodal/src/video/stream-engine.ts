@@ -17,6 +17,7 @@ import type {
 } from "./types";
 import {
   VIDEO_INTENT_PRIORITY_WEIGHT,
+  VideoDecoderFailureError,
   VideoDependencyWaitError,
   VideoIntentCancelledError,
 } from "./types";
@@ -62,6 +63,7 @@ export class VideoStreamEngine {
   private processing = false;
   private requestedPriority: VideoPlaybackIntent["priority"] | null = null;
   private requestedTargetTimeNs: bigint | null = null;
+  private codecFaulted = false;
   private snapshot: VideoStreamSnapshot = INITIAL_SNAPSHOT;
 
   constructor(
@@ -86,6 +88,11 @@ export class VideoStreamEngine {
 
   request(intent: VideoPlaybackIntent): void {
     if (this.closed) return;
+    // A codec this client cannot decode is fatal for every target on this
+    // stream, so the standing fault answers instead of a reread. Playback
+    // sweeps the playhead, so a fault remembered per target would clear on
+    // the next frame and spin the main thread with no I/O to yield on.
+    if (this.codecFaulted) return;
     this.cache.put(intent);
     this.gopIndex.observe(intent);
     if (
@@ -152,6 +159,7 @@ export class VideoStreamEngine {
     if (this.closed) return;
     this.closed = true;
     this.latestIntent = null;
+    this.codecFaulted = false;
     this.activeController?.abort();
     this.activeController = null;
     this.activeIntent = null;
@@ -291,13 +299,10 @@ export class VideoStreamEngine {
           });
           units = await this.readForwardChain(cursorTimeNs, intent, signal);
           this.observeForwardCadence(cursorTimeNs, units);
-          // Contiguity is already established here, so a keyframe in the
-          // chain is ordinary forward progress, not a discontinuity - a
-          // decoder fed a continuous chain needs no reset to cross one, and
-          // `ensureDecoder` still disposes on a real codec-string change.
-          // Only a *known* epoch change earns a reset: treating "not yet
-          // indexed" as discontinuous tore the decoder down on every window
-          // refill for streams that carry a keyframe every other frame.
+          // Contiguity is established here, so a keyframe in the chain is
+          // forward progress, not a discontinuity. Only a *known* epoch
+          // change earns a reset; treating "not yet indexed" as one tore the
+          // decoder down on every refill of a keyframe-dense stream.
           const epochChanged = this.gopIndex.knownDifferentEpoch(
             cursorTimeNs,
             intent.timeNs,
@@ -688,6 +693,7 @@ export class VideoStreamEngine {
       });
       return;
     }
+    if (error instanceof VideoDecoderFailureError) this.codecFaulted = true;
     this.publish({
       diagnostic: {
         code: "decode",
@@ -709,7 +715,23 @@ export class VideoStreamEngine {
   }
 
   private publish(update: Partial<VideoStreamSnapshot>): void {
-    this.snapshot = { ...this.snapshot, ...update };
+    const next = { ...this.snapshot, ...update };
+    // Consumers re-request on every emit, so emitting a snapshot identical to
+    // the standing one closes a loop: publish, re-request, same failure,
+    // publish. Nothing in that cycle waits on I/O, and each pass caches
+    // another intent, which is the runaway CPU and memory both.
+    if (
+      next.phase === this.snapshot.phase &&
+      next.targetTimeNs === this.snapshot.targetTimeNs &&
+      next.diagnostic?.code === this.snapshot.diagnostic?.code &&
+      next.diagnostic?.message === this.snapshot.diagnostic?.message &&
+      next.presentation === this.snapshot.presentation &&
+      next.presentedTimeNs === this.snapshot.presentedTimeNs
+    ) {
+      this.snapshot = next;
+      return;
+    }
+    this.snapshot = next;
     this.emit();
   }
 

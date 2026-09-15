@@ -82,8 +82,8 @@
   color: var(--color-content-text-destructive);
 }
 
-/* Codec refusal shown where a video surface would go. The codec name is the
-   point of the message, so it wraps and centers instead of being clipped. */
+/* Codec refusal where a video surface would go: the codec name is the point
+   of the message, so it wraps and centers instead of being clipped. */
 .codecRejection {
   align-items: center;
   box-sizing: border-box;

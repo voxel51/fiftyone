@@ -53,6 +53,11 @@ export interface EpisodePreviewReadResult {
   /** Previewable source names suitable for dataset-scoped selection. */
   readonly streamSourceNames: readonly string[];
   readonly status: EpisodePreviewReadStatus;
+  /**
+   * Codec string of a selected stream nothing here can decode. Carried as
+   * data, never as a frame: a frame would enter the decode path and be retried.
+   */
+  readonly unsupportedCodec?: string;
   /** Decode-order access units retained alongside an encoded-video poster. */
   readonly videoDecodeRunway?: readonly EpisodePosterFrame[];
 }

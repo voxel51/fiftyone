@@ -31,9 +31,13 @@ const IMAGE_SUFFIX_TOKENS = new Set([
 
 // TODO: Retire this name heuristic once adapters expose image semantics from a
 // bounded first-message probe. Neither MCAP summary metadata nor LeRobot
-// feature info carries pixel encoding, so unnamed depth streams stay unknown.
+// feature info carries pixel encoding.
 const DEPTH_IMAGE_TOKENS = new Set(["depth", "disparity"]);
-const NON_COLOR_IMAGE_TOKENS = new Set([...DEPTH_IMAGE_TOKENS, "ir"]);
+const NON_COLOR_IMAGE_TOKENS = new Set([
+  ...DEPTH_IMAGE_TOKENS,
+  "infrared",
+  "ir",
+]);
 
 /** Supplies the semantic identity used to group equivalent stream choices. */
 export interface DefaultStreamPreferenceOptions<T> {

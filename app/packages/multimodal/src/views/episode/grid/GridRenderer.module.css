@@ -141,9 +141,8 @@
   }
 }
 
-/* Codec refusal filling a grid cell. Unlike `.error`, which is one-line
-   chrome over a playing poster, this is the cell's whole content: the codec
-   name is the message, so it wraps instead of being clipped. */
+/* Unlike `.error`, one-line chrome over a playing poster, this is the cell's
+   whole content: the codec name is the message, so it wraps unclipped. */
 .codecRejection {
   align-items: center;
   box-sizing: border-box;

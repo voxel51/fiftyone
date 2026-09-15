@@ -1,8 +1,7 @@
 /**
- * Annex B byte-stream framing, shared by the H.264 and HEVC paths. Both carry
- * length-prefixed NAL units inside ISO BMFF samples and both need start-code
- * framing plus in-band parameter sets once a WebCodecs decoder is configured
- * without an out-of-band description.
+ * Annex B byte-stream framing, shared by the H.264 and HEVC paths: both are
+ * length-prefixed in ISO BMFF and both need in-band parameter sets once a
+ * decoder is configured without an out-of-band description.
  */
 
 const START_CODE_LENGTH = 4;

@@ -7,6 +7,7 @@ import type { EncodedVideoAccessUnit, VideoDecoderActor } from "./types";
 import {
   encodedVideoCodecName,
   isSharedEncodedVideoVisualization,
+  sharedVideoRejectionMessage,
   VideoDecoderFailureError,
   VideoDependencyWaitError,
   VideoIntentCancelledError,
@@ -93,6 +94,15 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
     if (signal.aborted) throw new VideoIntentCancelledError();
     const decodable = units.filter(isDecodableUnit).sort(compareUnitDecodeTime);
     if (decodable.length === 0) {
+      // Units that arrived and can never decode are a codec refusal, not a
+      // wait. Reporting them as a dependency wait tells the consumer to
+      // re-request, and the reread returns the same refused units from cache -
+      // a retry loop with no I/O in it to yield the main thread.
+      if (units.length > 0) {
+        throw new VideoDecoderFailureError(
+          sharedVideoRejectionMessage(units[0].frame),
+        );
+      }
       throw new VideoDependencyWaitError("Waiting for a video access unit");
     }
     if (!this.decoder && !decodable[0].frame.keyframe) {
@@ -238,9 +248,6 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
   resetForDiscontinuity(): void {
     if (this.closed) return;
     this.failed = null;
-    this.sps = undefined;
-    this.pps = undefined;
-    this.hevcParameterSets = undefined;
     this.disposeDecoder(
       new VideoDecoderFailureError("Video decoder discontinuity"),
     );
@@ -250,9 +257,6 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
     if (this.closed) return;
     this.closed = true;
     this.disposeDecoder(new Error("Video decoder closed"), false);
-    this.sps = undefined;
-    this.pps = undefined;
-    this.hevcParameterSets = undefined;
   }
 
   private async decodeBatch(
@@ -573,6 +577,12 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
     this.lastSubmittedDecodeTimeNs = null;
     this.lastOutputTimeNs = null;
     this.lastSubmissionTimestampUs = null;
+    // Cached sets belong to the disposed decoder's configuration; a codec
+    // switch that reused them would inline contradictory parameter sets, and
+    // every path to a new decoder starts from a keyframe that carries its own
+    this.sps = undefined;
+    this.pps = undefined;
+    this.hevcParameterSets = undefined;
   }
 
   private chunkData(unit: EncodedVideoAccessUnit): Uint8Array {

@@ -19,11 +19,16 @@ import type {
   CameraVisualization,
   CameraCalibrationVisualization,
 } from "../../../ir";
-import { SCENE_SOURCE_METADATA, SCENE_SOURCE_TYPE } from "../../../ir";
+import {
+  SCENE_SOURCE_METADATA,
+  SCENE_SOURCE_TYPE,
+  STREAM_METADATA,
+} from "../../../ir";
 import { useSceneSourcesByType } from "../../../scene-inventory/react";
 import {
   isSharedEncodedVideoVisualization,
   sharedVideoRejectionMessage,
+  unsupportedVideoCodecMessage,
 } from "../../../video/types";
 import { VISUALIZATION_KIND } from "../../../visualization";
 import { ImagePanel } from "../../../visualization/media-2d/ImagePanel";
@@ -226,6 +231,14 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
 
   // Keep the playback wrapper: `contentTimeNs` is the message identity the
   // shared image-texture cache key needs (bytes identity churns per batch).
+  // No frames arrive for a stream nothing here can decode, and an empty tile
+  // reads as a timestamp gap rather than a permanent refusal
+  const refusedCodec = useMemo(() => {
+    const metadata = images.find((s) => s.id === stream)?.metadata;
+    return metadata?.[STREAM_METADATA.DECODE_STATUS] === "unsupported-encoding"
+      ? metadata[STREAM_METADATA.SCHEMA_NAME]
+      : undefined;
+  }, [images, stream]);
   const playbackFrame = useStreamContentFrame<CameraVisualization>(stream);
   const frame = playbackFrame?.frame ?? null;
   const sourceKey = useDataStream()?.sourceKey ?? "";
@@ -1048,6 +1061,10 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
             />
           ) : null}
           <TileStatusBadge showWarnings={false} streams={activeStreams} />
+        </div>
+      ) : refusedCodec ? (
+        <div className={styles.codecRejection} role="alert">
+          {unsupportedVideoCodecMessage(refusedCodec)}
         </div>
       ) : (
         <TileEmptyState streams={stream ? [stream] : []} />

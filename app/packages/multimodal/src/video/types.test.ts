@@ -28,8 +28,8 @@ describe("encoded video playback rejection", () => {
   });
 
   it("refuses a marked frame whose codec it would otherwise accept", () => {
-    // AV1 needs no payload contract, so the undecodable flag is the only
-    // thing that can reject this - nothing else in the guard looks at it.
+    // AV1 needs no payload contract, so the flag is the only thing in the
+    // guard that can reject this
     const av1: EncodedVideoVisualization = {
       bytes: new Uint8Array(0),
       codec: "av1",
@@ -39,7 +39,10 @@ describe("encoded video playback rejection", () => {
     };
 
     expect(isSharedEncodedVideoVisualization(av1)).toBe(false);
-    expect(sharedVideoRejectionMessage(av1)).toContain("av01.0.04M.08");
+    const message = sharedVideoRejectionMessage(av1);
+    expect(message).toContain("av01.0.04M.08");
+    // Advising a transcode to the codec already in hand reads as a dead end
+    expect(message).not.toContain("Transcode this camera to H.264 or AV1");
   });
 
   it("names a codec it has no label for by its format string", () => {

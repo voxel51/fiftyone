@@ -85,9 +85,9 @@ export interface EncodedHevcVideoVisualization extends BaseEncodedVideoVisualiza
 }
 
 /**
- * An access unit no decoder in this client can take. It deliberately carries no
- * decoder payload; `format` names the codec so every renderer can report which
- * one rather than waiting for frames that will never decode.
+ * An access unit no decoder in this client can take. It carries no decoder
+ * payload; `format` names the codec so a renderer reports which one rather
+ * than waiting for frames that will never decode.
  */
 export interface UndecodableVideoVisualization extends BaseEncodedVideoVisualization {
   readonly codec: EncodedVideoCodec;

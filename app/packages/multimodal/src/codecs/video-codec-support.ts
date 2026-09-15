@@ -1,11 +1,8 @@
 /**
- * Runtime video-decode capability, asked of the client instead of assumed from
- * a codec allowlist.
- *
- * A fixed list is wrong in both directions: it refuses HEVC that the client
- * decodes natively, and it accepts codecs (MPEG-4 Part 2, VP9) that no browser
- * here decodes, leaving the refusal to surface as a read that never completes.
- * `VideoDecoder.isConfigSupported` answers both.
+ * Runtime video-decode capability, asked of the client rather than assumed. A
+ * fixed allowlist is wrong in both directions: it refuses HEVC the client
+ * decodes natively, and accepts codecs it cannot decode at all - whose refusal
+ * then surfaces as a read that never completes.
  */
 
 /** Decoder families a container or manifest codec string classifies into. */
@@ -29,9 +26,8 @@ export interface VideoCodecSupportEnvironment {
 
 /**
  * Representative codec string per family, for the descriptor-time answer taken
- * before any stream's own container header is read. Each is its family's most
- * broadly implemented profile, so a refusal means the family is unavailable
- * rather than one profile being out of reach.
+ * before a stream's container header is read. Each is its family's most broadly
+ * implemented profile, so a refusal condemns the family, not one profile.
  */
 const FAMILY_PROBE_CODEC: Readonly<
   Record<Exclude<VideoCodecFamily, "unknown">, string>
@@ -62,10 +58,9 @@ export function videoCodecFamily(codec: string): VideoCodecFamily {
 }
 
 /**
- * The codec string to configure a decoder with for Annex B input. HEVC's
- * `hvc1` fourcc declares parameter sets out of band only; an Annex B stream
- * carries them in band, which is what `hev1` means, and a client may accept
- * only the fourcc that matches what it is handed.
+ * The codec string to configure a decoder with for Annex B input. `hvc1`
+ * declares HEVC parameter sets out of band and `hev1` in band; a client may
+ * accept only the fourcc matching what it is handed.
  */
 export function annexBDecoderCodecString(codec: string): string {
   return videoCodecFamily(codec) === "h265"
@@ -89,10 +84,9 @@ export async function warmVideoCodecSupport(
 }
 
 /**
- * Whether the client can decode this family at all. Synchronous, so stream
+ * Whether the client can decode this family at all. Synchronous so stream
  * descriptors stay synchronous; before {@link warmVideoCodecSupport} resolves
- * it reports the families this pipeline has always assumed. An unrecognized
- * codec has no family to probe and is never decodable.
+ * it reports the assumed families.
  */
 export function isVideoCodecFamilySupported(family: VideoCodecFamily): boolean {
   if (family === "unknown") return false;
