@@ -844,6 +844,7 @@ export class KeypointOverlay
     const nearestIdx = this.findNearestPointIndex(worldPoint, scale);
 
     if (nearestIdx >= 0) {
+      const changed = this.selectedPointIndex !== nearestIdx;
       this.selectedPointIndex = nearestIdx;
 
       if (this.isDraggable) {
@@ -853,12 +854,16 @@ export class KeypointOverlay
         this.renderer?.disableZoomPan();
       }
 
+      if (changed) this.emitPointSubselect();
       this.markDirty();
       return true;
     }
 
     // Clicked away from any point — clear sub-selection
-    this.selectedPointIndex = null;
+    if (this.selectedPointIndex !== null) {
+      this.selectedPointIndex = null;
+      this.emitPointSubselect();
+    }
     this.markDirty();
     return false;
   }
@@ -1221,6 +1226,36 @@ export class KeypointOverlay
   /** The point index currently carrying the hover emphasis, if any. */
   getHoveredPoint(): number | null {
     return this.hoveredPointIndex;
+  }
+
+  /**
+   * Programmatically sets the per-point sub-selection (the sidebar node
+   * checklist selects nodes through this). Dispatches the same
+   * `keypoint-point-subselect` event a canvas gesture would, so every
+   * listener syncs from one source of truth.
+   */
+  selectPoint(index: number | null): void {
+    const next =
+      index !== null && index >= 0 && index < this.#points.length
+        ? index
+        : null;
+    if (next === this.selectedPointIndex) return;
+    this.selectedPointIndex = next;
+    this.emitPointSubselect();
+    this.markDirty();
+  }
+
+  /** The point index currently sub-selected, if any. */
+  getSelectedPoint(): number | null {
+    return this.selectedPointIndex;
+  }
+
+  private emitPointSubselect(): void {
+    this.eventBus.dispatch("lighter:keypoint-point-subselect", {
+      id: this.id,
+      overlayId: this.id,
+      pointIndex: this.selectedPointIndex,
+    });
   }
 
   /**

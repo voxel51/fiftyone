@@ -225,6 +225,19 @@ export type LighterEventGroup = {
     /** Optional keypoint variant. */
     variant?: string;
   };
+  /**
+   * Emitted when a keypoint overlay's per-point sub-selection changes —
+   * canvas gestures (clicking on/away from a point) and programmatic
+   * selection (the sidebar node checklist) both flow through this, so the
+   * canvas and sidebar stay in sync from a single source of truth.
+   */
+  "lighter:keypoint-point-subselect": {
+    id: string;
+    /** ID of the overlay this event refers to. */
+    overlayId: string;
+    /** Index of the sub-selected point, or null when the selection cleared. */
+    pointIndex: number | null;
+  };
 
   // ============================================================================
   // SELECTION EVENTS

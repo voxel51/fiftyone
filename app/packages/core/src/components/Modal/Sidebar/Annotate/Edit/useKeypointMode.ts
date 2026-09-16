@@ -67,6 +67,16 @@ type ForcedTarget = { overlayId: string; index: number };
 const forcedTargetAtom = atom(null as ForcedTarget | null);
 
 /**
+ * The node currently sub-selected for editing — set by canvas point clicks
+ * and checklist row clicks alike (both flow through the overlay's
+ * `keypoint-point-subselect` event). Drives the checklist row highlight and
+ * the per-node inspector. Keyed to an overlay id so stale selection never
+ * applies to a different label.
+ */
+type SelectedNode = { overlayId: string; index: number };
+const selectedNodeAtom = atom(null as SelectedNode | null);
+
+/**
  * Bumped whenever the selected keypoint's geometry changes (placement, drag,
  * undo), so derived guided state (target node, per-node status) recomputes.
  */
@@ -373,6 +383,25 @@ export const useGuidedKeypoints = () => {
     [overlay, setForced, setSkips, skipped],
   );
 
+  const selectedNode = useAtomValue(selectedNodeAtom);
+  const selectedNodeIndex =
+    overlay && selectedNode?.overlayId === overlay.id
+      ? selectedNode.index
+      : null;
+
+  /**
+   * Sub-select a node for editing (or clear with null). Routed through the
+   * overlay so the canvas and the checklist share one selection — the
+   * overlay dispatches `keypoint-point-subselect`, which the installer
+   * mirrors into sidebar state.
+   */
+  const selectNode = useCallback(
+    (index: number | null) => {
+      overlay?.selectPoint(index);
+    },
+    [overlay],
+  );
+
   return {
     /** Node labels, when the skeleton defines them. */
     nodeLabels: skeleton?.labels ?? null,
@@ -384,6 +413,9 @@ export const useGuidedKeypoints = () => {
     skip,
     clearNode,
     placeNode,
+    /** Node sub-selected for editing (row/canvas click), or null. */
+    selectedNodeIndex,
+    selectNode,
   };
 };
 
@@ -440,6 +472,24 @@ export const useKeypointModeInstaller = (): void => {
   useLighterEvent("lighter:keypoint-point-moved", bumpGuidedEpoch);
   useLighterEvent("lighter:keypoint-point-added", bumpGuidedEpoch);
   useLighterEvent("lighter:keypoint-point-deleted", bumpGuidedEpoch);
+
+  // Mirror the overlay's per-point sub-selection into sidebar state — canvas
+  // point clicks and checklist row clicks both dispatch this event, so the
+  // row highlight and inspector track one source of truth.
+  const setSelectedNode = useSetAtom(selectedNodeAtom);
+  useLighterEvent(
+    "lighter:keypoint-point-subselect",
+    useCallback(
+      (event: { overlayId: string; pointIndex: number | null }) => {
+        setSelectedNode(
+          event.pointIndex === null
+            ? null
+            : { overlayId: event.overlayId, index: event.pointIndex },
+        );
+      },
+      [setSelectedNode],
+    ),
+  );
 
   // Any established overlay counts as finalized: free-form drafts finalize
   // through their handler's double-click establish, which doesn't go through
@@ -500,11 +550,12 @@ export const useKeypointModeInstaller = (): void => {
       }
     }
 
-    // Selection changed to a different overlay: stale skip / Place state
-    // never carries over.
+    // Selection changed to a different overlay: stale skip / Place / node
+    // sub-selection state never carries over.
     if (prev?.overlay?.id !== selected?.overlay?.id) {
       setSkips(null);
       setForced(null);
+      setSelectedNode(null);
     }
   }, [
     removeOverlay,
@@ -512,6 +563,7 @@ export const useKeypointModeInstaller = (): void => {
     selected,
     setForced,
     setKeypointModeActive,
+    setSelectedNode,
     setSkips,
   ]);
 

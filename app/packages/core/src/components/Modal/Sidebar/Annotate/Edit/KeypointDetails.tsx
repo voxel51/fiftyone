@@ -26,14 +26,18 @@ const NodeList = styled.div`
   overflow-y: auto;
 `;
 
-const NodeRow = styled.div<{ $active: boolean }>`
+const NodeRow = styled.div<{ $active: boolean; $selected: boolean }>`
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0.125rem 0.25rem;
   border-radius: var(--radius-xs);
-  background: ${({ $active, theme }) =>
-    $active ? theme.neutral.softBg : "transparent"};
+  background: ${({ $active, $selected, theme }) =>
+    $selected
+      ? theme.primary.softBg
+      : $active
+        ? theme.neutral.softBg
+        : "transparent"};
 `;
 
 type NodeStatus = "placed" | "skipped" | "target" | "pending";
@@ -63,6 +67,8 @@ export const KeypointDetails = () => {
     skip,
     clearNode,
     placeNode,
+    selectedNodeIndex,
+    selectNode,
   } = useGuidedKeypoints();
 
   // Keep the target row visible as placement advances — on a many-node
@@ -147,35 +153,41 @@ export const KeypointDetails = () => {
               key={i}
               ref={status === "target" ? targetRowRef : undefined}
               $active={status === "target"}
+              $selected={i === selectedNodeIndex}
               data-cy={`keypoint-node-${i}`}
               data-cy-status={status}
               onMouseEnter={() => hoverNode(i)}
               onMouseLeave={() => hoverNode(null)}
             >
-              <Stack
-                orientation={Orientation.Row}
-                align={Align.Center}
-                spacing={Spacing.Sm}
+              <Clickable
+                onClick={() => selectNode(i === selectedNodeIndex ? null : i)}
+                data-cy={`keypoint-select-node-${i}`}
               >
-                <Text
-                  color={
-                    status === "pending" || status === "skipped"
-                      ? TextColor.Secondary
-                      : TextColor.Fg
-                  }
+                <Stack
+                  orientation={Orientation.Row}
+                  align={Align.Center}
+                  spacing={Spacing.Sm}
                 >
-                  {STATUS_MARK[status]}
-                </Text>
-                <Text
-                  color={
-                    status === "pending" || status === "skipped"
-                      ? TextColor.Secondary
-                      : TextColor.Fg
-                  }
-                >
-                  {name}
-                </Text>
-              </Stack>
+                  <Text
+                    color={
+                      status === "pending" || status === "skipped"
+                        ? TextColor.Secondary
+                        : TextColor.Fg
+                    }
+                  >
+                    {STATUS_MARK[status]}
+                  </Text>
+                  <Text
+                    color={
+                      status === "pending" || status === "skipped"
+                        ? TextColor.Secondary
+                        : TextColor.Fg
+                    }
+                  >
+                    {name}
+                  </Text>
+                </Stack>
+              </Clickable>
 
               {status === "target" && (
                 <Clickable onClick={skip} data-cy="keypoint-skip-node">

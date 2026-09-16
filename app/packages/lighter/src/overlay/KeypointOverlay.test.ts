@@ -199,3 +199,33 @@ describe("KeypointOverlay.setHoveredPoint", () => {
     expect(overlay.getHoveredPoint()).toBeNull();
   });
 });
+
+describe("KeypointOverlay.selectPoint", () => {
+  it("stores an in-range index and clears on null", () => {
+    const overlay = makeOverlay([
+      [0.1, 0.1],
+      [0.5, 0.5],
+    ]);
+
+    overlay.selectPoint(1);
+    expect(overlay.getSelectedPoint()).toBe(1);
+
+    overlay.selectPoint(null);
+    expect(overlay.getSelectedPoint()).toBeNull();
+  });
+
+  it("treats an out-of-range index as a clear", () => {
+    const overlay = makeOverlay([[0.1, 0.1]]);
+
+    overlay.selectPoint(0);
+    overlay.selectPoint(9);
+    expect(overlay.getSelectedPoint()).toBeNull();
+  });
+
+  it("allows selecting a hole (checklist rows select unplaced nodes)", () => {
+    const overlay = makeOverlay([[0.1, 0.1], HOLE]);
+
+    overlay.selectPoint(1);
+    expect(overlay.getSelectedPoint()).toBe(1);
+  });
+});
