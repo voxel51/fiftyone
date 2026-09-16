@@ -336,14 +336,17 @@ class CreateAndActivateField(foo.Operator):
         label_schema_config = ctx.params.get("label_schema_config", {})
         classes = label_schema_config.get("classes")
 
-        # Determine component based on number of classes
-        if classes and len(classes) > foac.CHECKBOXES_OR_RADIO_THRESHOLD:
-            component = foac.DROPDOWN
-        elif classes is not None and len(classes) == 0:
-            # if the user provided no classes, default to empty dropdown
-            component = foac.DROPDOWN
-        else:
-            component = foac.RADIO
+        # Honor an explicit input type from the form; otherwise pick one
+        # from the number of classes
+        component = label_schema_config.get("component")
+        if component not in (foac.RADIO, foac.DROPDOWN):
+            if classes and len(classes) > foac.CHECKBOXES_OR_RADIO_THRESHOLD:
+                component = foac.DROPDOWN
+            elif classes is not None and len(classes) == 0:
+                # if the user provided no classes, default to empty dropdown
+                component = foac.DROPDOWN
+            else:
+                component = foac.RADIO
 
         # Build label schema
         return {
