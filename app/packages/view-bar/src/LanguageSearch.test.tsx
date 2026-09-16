@@ -12,12 +12,20 @@ import { LANGUAGE_SEARCH_LABEL, LanguageSearch } from "./LanguageSearch";
 
 const noop = () => undefined;
 
+const search = (query: string) => {
+  const field = screen.getByRole("combobox", { name: LANGUAGE_SEARCH_LABEL });
+  fireEvent.focus(field);
+  fireEvent.change(field, { target: { value: query } });
+  fireEvent.keyDown(field, { key: "Enter" });
+};
+
 const renderSearch = (props: { available: boolean; enabled: boolean }) => {
   const onUnavailable = vi.fn();
   const onOpenPanel = vi.fn();
+  const onSubmit = vi.fn();
   render(
     <LanguageSearch
-      onSubmit={noop}
+      onSubmit={onSubmit}
       onUnavailable={onUnavailable}
       history={["cats"]}
       promptKeys={[]}
@@ -29,7 +37,7 @@ const renderSearch = (props: { available: boolean; enabled: boolean }) => {
       {...props}
     />,
   );
-  return { onUnavailable, onOpenPanel };
+  return { onSubmit, onUnavailable, onOpenPanel };
 };
 
 describe("LanguageSearch", () => {
@@ -71,5 +79,35 @@ describe("LanguageSearch", () => {
       screen.getByRole("combobox", { name: LANGUAGE_SEARCH_LABEL }),
     );
     expect(screen.getByRole("option", { name: "cats" })).toBeTruthy();
+  });
+
+  it("opens the panel when a query is submitted with no index", () => {
+    const { onSubmit, onOpenPanel } = renderSearch({
+      available: true,
+      enabled: false,
+    });
+    search("person");
+    expect(onOpenPanel).toHaveBeenCalledTimes(1);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("runs the query when it is submitted with an index", () => {
+    const { onSubmit, onOpenPanel } = renderSearch({
+      available: true,
+      enabled: true,
+    });
+    search("person");
+    expect(onSubmit).toHaveBeenCalledWith("person");
+    expect(onOpenPanel).not.toHaveBeenCalled();
+  });
+
+  it("does nothing when the operator is not registered", () => {
+    const { onSubmit, onOpenPanel } = renderSearch({
+      available: false,
+      enabled: false,
+    });
+    search("person");
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(onOpenPanel).not.toHaveBeenCalled();
   });
 });

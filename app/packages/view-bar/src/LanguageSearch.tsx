@@ -4,8 +4,8 @@
  * Similarity search in the bar: typing a prompt and pressing Enter appends a
  * `SortBySimilarity` stage to the current view. The box always renders —
  * without a prompt-capable index it becomes the on-ramp: its dropdown asks
- * for a similarity index, and its one action opens the Similarity Search
- * panel to create one.
+ * for a similarity index, and both that dropdown's action and Enter open the
+ * Similarity Search panel to create one.
  *
  * The magnifying glass is where the search's settings live (which index, how
  * many results); focusing the input offers the dataset's previous queries.
@@ -101,17 +101,23 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
       .map((h) => ({ id: h, label: h }));
   }, [available, enabled, history, query]);
 
-  // A picked row or committed text: a previous query re-runs, typed text runs
+  // A picked row or committed text: a previous query re-runs, typed text
+  // runs. With no index there is nothing to run, and the query is the reason
+  // to make one — so it opens the panel the empty state points at
   const commit = React.useCallback(
     (option: ComboboxOption | null) => {
-      if (!option || !available || !enabled) return;
+      if (!option || !available) return;
       const text = option.label.trim();
       if (!text) return;
       // The query stays visible — it names the view now loading
       setQuery(text);
+      if (!enabled) {
+        onOpenPanel();
+        return;
+      }
       onSubmit(text);
     },
-    [available, enabled, onSubmit],
+    [available, enabled, onOpenPanel, onSubmit],
   );
 
   return (
@@ -158,7 +164,8 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
         inputValue={query}
         onInputChange={setQuery}
         onChange={commit}
-        allowFreeText={available && enabled}
+        // Committed without an index, the text is a request for one
+        allowFreeText={available}
         // Without the operator there is nothing to open; the click gets an
         // explanation instead
         onOpenChange={(isOpen) => {
