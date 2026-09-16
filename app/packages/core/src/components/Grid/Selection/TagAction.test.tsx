@@ -18,6 +18,7 @@ vi.mock("@fiftyone/state", () => ({
   useSelectionTagDisabledReason: () => mocks.permission,
   useClearTemporalTagConstraint: () => vi.fn(),
   useGridViewScope: () => ({ refresh: 0 }),
+  useSetView: () => vi.fn(),
 }));
 vi.mock("@fiftyone/state/src/selection", async () => ({
   ...(await import("@fiftyone/state/src/selection/model")),

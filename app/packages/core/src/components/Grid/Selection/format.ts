@@ -2,6 +2,7 @@ import type {
   EpisodeSelection,
   SelectionMember,
   SelectionRange,
+  SelectionUnit,
 } from "@fiftyone/state/src/selection";
 
 export type SegmentMember = Extract<SelectionMember, { kind: "segment" }>;
@@ -9,6 +10,11 @@ export type SegmentMember = Extract<SelectionMember, { kind: "segment" }>;
 /** "1 segment", "3 segments". */
 export function plural(count: number, unit: string, units = `${unit}s`) {
   return `${count.toLocaleString()} ${count === 1 ? unit : units}`;
+}
+
+/** "Episode" or "Sample", for titles and menu copy. */
+export function unitTitle(unit: SelectionUnit) {
+  return unit === "episode" ? "Episode" : "Sample";
 }
 
 export function segmentsOf(
@@ -23,18 +29,22 @@ export function isFullEpisode(group: Pick<EpisodeSelection, "members">) {
   return group.members.some((member) => member.kind === "episode");
 }
 
-/** The card descriptor: "Full episode" or "N segments". */
-export function groupDescriptor(group: Pick<EpisodeSelection, "members">) {
-  return isFullEpisode(group)
-    ? "Full episode"
-    : plural(segmentsOf(group).length, "segment");
+/** The card descriptor: "Full episode", "Sample", or "N segments". */
+export function groupDescriptor(
+  group: Pick<EpisodeSelection, "members">,
+  unit: SelectionUnit = "episode",
+) {
+  if (isFullEpisode(group))
+    return unit === "episode" ? "Full episode" : "Sample";
+  return plural(segmentsOf(group).length, "segment");
 }
 
-/** A human title for an episode: its media file name when known. */
+/** A human title for a parent: its media file name when known. */
 export function episodeTitle(
   group: Pick<EpisodeSelection, "episodeId" | "filepath">,
+  unit: SelectionUnit = "episode",
 ) {
-  if (!group.filepath) return `Episode ${group.episodeId.slice(-6)}`;
+  if (!group.filepath) return `${unitTitle(unit)} ${group.episodeId.slice(-6)}`;
   return group.filepath.split(/[\\/]/).pop() || group.filepath;
 }
 

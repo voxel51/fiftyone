@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@fiftyone/state", () => ({
   useClearTemporalTagConstraint: () => vi.fn(),
   useGridViewScope: () => ({ refresh: 0 }),
+  useSetView: () => vi.fn(),
 }));
 vi.mock("@fiftyone/state/src/selection", async () => ({
   ...(await import("@fiftyone/state/src/selection/model")),

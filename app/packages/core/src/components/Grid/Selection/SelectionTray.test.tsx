@@ -13,7 +13,7 @@ import {
 } from "@testing-library/react";
 import { TagIcon } from "@voxel51/voodo";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import ActionEntry, { ActionMenuSlot } from "./ActionEntry";
+import ActionEntry from "./ActionEntry";
 import SelectionTray from "./SelectionTray";
 
 function segment(start: string, end: string) {
@@ -67,6 +67,7 @@ vi.mock("@fiftyone/state", () => ({
   useSetModalState: () => vi.fn(),
   useRefresh: () => vi.fn(),
   useSelectionTagDisabledReason: () => null,
+  useSetView: () => vi.fn(),
   getSampleSrc: (path: string) => path,
 }));
 vi.mock("@fiftyone/state/src/selection", async () => ({
@@ -173,6 +174,22 @@ describe("SelectionTray", () => {
     expect(strip?.getAttribute("aria-hidden")).toBeNull();
   });
 
+  it("offers to undo a clear until a new selection begins", () => {
+    mocks.selection.selected = new Map([["full", fullEpisode]]);
+    mocks.selection.candidates = new Map([["full", fullEpisode]]);
+    const view = render(<SelectionTray />);
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+    expect(mocks.selection.clear).toHaveBeenCalledOnce();
+    mocks.selection.selected = new Map();
+    view.rerender(<SelectionTray />);
+    expect(screen.getByRole("status").textContent).toContain(
+      "Cleared 1 episode",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(mocks.selection.capture).toHaveBeenCalledWith(fullEpisode);
+    expect(screen.queryByRole("button", { name: "Undo" })).toBeNull();
+  });
+
   it("resizes the strip by rows from the keyboard within the pane bounds", () => {
     mocks.selection.selected = new Map([["full", fullEpisode]]);
     render(<SelectionTray />);
@@ -188,18 +205,16 @@ describe("SelectionTray", () => {
     expect(Number(handle.getAttribute("aria-valuenow"))).toBe(initial);
   });
 
-  it("hosts overflow actions in a menu whose rows survive without unmounting the action", async () => {
+  it("keeps overflow actions mounted and reveals their rows in the more panel", async () => {
     const run = vi.fn();
-    const Component = ({ surface, menuHost }: GridSelectionActionProps) => (
-      <ActionMenuSlot host={menuHost}>
-        <ActionEntry
-          label="Export"
-          icon={TagIcon}
-          surface={surface}
-          disabledReason={null}
-          onClick={run}
-        />
-      </ActionMenuSlot>
+    const Component = ({ surface }: GridSelectionActionProps) => (
+      <ActionEntry
+        label="Export"
+        icon={TagIcon}
+        surface={surface}
+        disabledReason={null}
+        onClick={run}
+      />
     );
     const action: GridSelectionAction = {
       id: "test:export",

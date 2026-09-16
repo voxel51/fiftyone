@@ -1,8 +1,10 @@
 import {
   selectionScopeLabel,
   type SelectionCounts,
+  type SelectionUnit,
 } from "@fiftyone/state/src/selection";
 import {
+  Anchor,
   BackgroundColor,
   Button,
   CloseIcon,
@@ -13,6 +15,8 @@ import {
   Text,
   TextColor,
   TextVariant,
+  Tooltip,
+  UndoIcon,
   Variant,
 } from "@voxel51/voodo";
 import { plural } from "./format";
@@ -22,10 +26,14 @@ interface Props {
   /** Whether the scope is an explicit tray selection or all current results. */
   explicit: boolean;
   counts: SelectionCounts;
-  /** Captured episodes that the current results do not contain. */
+  unit: SelectionUnit;
+  /** Captured parents that the current results do not contain. */
   outside: number;
   loading: boolean;
   error: string | null;
+  /** How many parents a just-cleared selection held, while undo is offered. */
+  cleared?: number;
+  onUndo?: () => void;
   onRetry?: () => void;
   onClear?: () => void;
 }
@@ -37,26 +45,57 @@ interface Props {
 export default function SelectionSummary({
   explicit,
   counts,
+  unit,
   outside,
   loading,
   error,
+  cleared,
+  onUndo,
   onRetry,
   onClear,
 }: Props) {
+  const empty = !explicit && !loading && !error && counts.episodes === 0;
   return (
     <div className={styles.summary} aria-live="polite">
-      <Pill
-        size={Size.Xs}
-        backgroundColor={
-          explicit ? BackgroundColor.Selected : BackgroundColor.Raised
-        }
-        color={explicit ? TextColor.Accent : TextColor.Secondary}
-      >
-        {explicit ? `${counts.episodes} selected` : "All results"}
-      </Pill>
+      <span className={styles.scopeGroup}>
+        <Tooltip
+          anchor={Anchor.Top}
+          wrapperClassName={styles.tipWrap}
+          content={
+            <Text variant={TextVariant.Sm}>
+              {explicit
+                ? `Actions apply only to the selected ${unit}s, including any outside the current results.`
+                : `Actions apply to every current result, including ones not loaded in the grid. Select tiles to act on specific ${unit}s.`}
+            </Text>
+          }
+        >
+          <Pill
+            size={Size.Xs}
+            backgroundColor={
+              explicit ? BackgroundColor.Selected : BackgroundColor.Raised
+            }
+            color={explicit ? TextColor.Accent : TextColor.Secondary}
+          >
+            {explicit ? `${counts.episodes} selected` : "All results"}
+          </Pill>
+        </Tooltip>
+        {explicit && onClear && (
+          <Button
+            size={Size.Xs}
+            variant={Variant.Borderless}
+            leadingIcon={CloseIcon}
+            data-tray-clear=""
+            onClick={onClear}
+          >
+            Clear
+          </Button>
+        )}
+      </span>
       <span className={styles.summaryText}>
         {explicit ? (
-          <Text variant={TextVariant.Sm}>{selectionScopeLabel(counts)}</Text>
+          <Text variant={TextVariant.Sm}>
+            {selectionScopeLabel(counts, unit)}
+          </Text>
         ) : error ? (
           <span className={styles.inlineAlert} role="alert">
             <Text variant={TextVariant.Sm} color={TextColor.Destructive}>
@@ -79,12 +118,18 @@ export default function SelectionSummary({
             color={TextColor.Secondary}
             text="Resolving results"
           />
+        ) : empty ? (
+          <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+            No results in this scope
+          </Text>
         ) : (
-          <Text variant={TextVariant.Sm}>{selectionScopeLabel(counts)}</Text>
+          <Text variant={TextVariant.Sm}>
+            {selectionScopeLabel(counts, unit)}
+          </Text>
         )}
         {explicit && outside > 0 && (
           <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-            · {plural(outside, "episode")} not in current results
+            · {plural(outside, unit)} not in current results
           </Text>
         )}
         {counts.unavailable > 0 && (
@@ -101,17 +146,22 @@ export default function SelectionSummary({
             · {error}
           </Text>
         )}
+        {!explicit && cleared && onUndo ? (
+          <span className={styles.inlineAlert} role="status">
+            <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+              · Cleared {plural(cleared, unit)}
+            </Text>
+            <Button
+              size={Size.Xs}
+              variant={Variant.Borderless}
+              leadingIcon={UndoIcon}
+              onClick={onUndo}
+            >
+              Undo
+            </Button>
+          </span>
+        ) : null}
       </span>
-      {explicit && onClear && (
-        <Button
-          size={Size.Xs}
-          variant={Variant.Borderless}
-          leadingIcon={CloseIcon}
-          onClick={onClear}
-        >
-          Clear
-        </Button>
-      )}
     </div>
   );
 }

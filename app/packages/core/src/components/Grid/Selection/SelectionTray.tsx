@@ -7,6 +7,7 @@ import * as fos from "@fiftyone/state";
 import {
   countSelection,
   resolveSelection,
+  selectionUnit,
   useGridSelection,
   useGridSelectionBoundary,
   useInvalidateSelectionScope,
@@ -17,20 +18,19 @@ import {
   ChevronBottomIcon,
   ChevronTopIcon,
   MoreHorizontalIcon,
-  Popover,
-  PopoverAnchor,
   Size,
   Variant,
   useDragDelta,
 } from "@voxel51/voodo";
 import {
+  useEffect,
   useId,
   useRef,
   useState,
   type KeyboardEvent,
   type RefObject,
 } from "react";
-import { episodeTitle } from "./format";
+import { episodeTitle, unitTitle } from "./format";
 import ScopeControls from "./ScopeControls";
 import SelectionCard from "./SelectionCard";
 import SelectionSummary from "./SelectionSummary";
@@ -43,6 +43,8 @@ import {
 } from "./theme";
 import UnavailableReferences from "./UnavailableReferences";
 import { useRegisterSelectionActions } from "./useRegisterSelectionActions";
+
+const UNDO_WINDOW_MS = 10_000;
 
 /** Pointer and keyboard resizing of the card strip, bounded by the grid pane. */
 function useStripResize(root: RefObject<HTMLElement>) {
@@ -89,9 +91,67 @@ function useStripResize(root: RefObject<HTMLElement>) {
   };
 }
 
+const MENU_ROWS = '[role="menuitem"]:not(:disabled)';
+
+/** Arrow-key movement between the rows of the overflow panel. */
+function moveMenuFocus(event: KeyboardEvent<HTMLDivElement>) {
+  const rows = Array.from(
+    event.currentTarget.querySelectorAll<HTMLElement>(MENU_ROWS),
+  );
+  if (!rows.length) return;
+  const current = rows.indexOf(document.activeElement as HTMLElement);
+  const next =
+    event.key === "ArrowDown"
+      ? (current + 1) % rows.length
+      : event.key === "ArrowUp"
+        ? (current - 1 + rows.length) % rows.length
+        : event.key === "Home"
+          ? 0
+          : event.key === "End"
+            ? rows.length - 1
+            : -1;
+  if (next < 0) return;
+  event.preventDefault();
+  rows[next].focus();
+}
+
+/**
+ * The overflow panel is tray-owned rather than a VOODO Dropdown: its actions
+ * must stay mounted while it is closed so the dialogs they open survive, and
+ * menu components unmount their content on close.
+ */
+function useOverflowPanel(anchor: RefObject<HTMLElement>) {
+  const [open, setOpen] = useState(false);
+  const panel = useRef<HTMLDivElement>(null);
+  // This effect closes the panel on Escape or on a press outside it, and
+  // moves focus onto the first row when it opens.
+  useEffect(() => {
+    if (!open) return undefined;
+    const frame = window.requestAnimationFrame(() =>
+      panel.current?.querySelector<HTMLElement>(MENU_ROWS)?.focus(),
+    );
+    const onPointerDown = (event: PointerEvent) => {
+      if (!anchor.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setOpen(false);
+      anchor.current?.querySelector<HTMLElement>("button")?.focus();
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.removeEventListener("pointerdown", onPointerDown, true);
+      document.removeEventListener("keydown", onKeyDown, true);
+    };
+  }, [open, anchor]);
+  return { open, setOpen, panel };
+}
+
 /**
  * The persistent bottom bar that states the action scope, plus the
- * expandable strip of captured episodes. Explicit captures take precedence
+ * expandable strip of captured parents. Explicit captures take precedence
  * over current results; both are resolved completely, never by loaded cards.
  */
 export default function SelectionTray() {
@@ -104,25 +164,31 @@ export default function SelectionTray() {
   const setModalState = fos.useSetModalState();
   const [providerError, setProviderError] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
-  const [menuHost, setMenuHost] = useState<HTMLDivElement | null>(null);
+  const [cleared, setCleared] = useState<readonly EpisodeSelection[] | null>(
+    null,
+  );
   const root = useRef<HTMLElement>(null);
+  const cards = useRef<HTMLDivElement>(null);
+  const more = useRef<HTMLDivElement>(null);
+  const overflowPanel = useOverflowPanel(more);
   const strip = useStripResize(root);
   const stripId = useId();
+  const menuId = useId();
+  const unit = selectionUnit(selection.mediaType);
 
   const captured = [...selection.selected.values()];
   const explicit = captured.length > 0;
   // File names repeat across LeRobot-style episodes; fall back to the id then.
   const nameCounts = new Map<string, number>();
   for (const group of captured) {
-    const name = episodeTitle(group);
+    const name = episodeTitle(group, unit);
     nameCounts.set(name, (nameCounts.get(name) ?? 0) + 1);
   }
   const titleOf = (group: EpisodeSelection) => {
-    const name = episodeTitle(group);
+    const name = episodeTitle(group, unit);
     return group.filepath && (nameCounts.get(name) ?? 0) === 1
       ? name
-      : `Episode …${group.episodeId.slice(-6)}`;
+      : `${unitTitle(unit)} …${group.episodeId.slice(-6)}`;
   };
   const effective = explicit ? captured : selection.groups;
   const counts = countSelection(effective);
@@ -133,6 +199,24 @@ export default function SelectionTray() {
             !group.unavailable && !selection.candidates.has(group.episodeId),
         ).length
       : 0;
+
+  // This effect retires the undo affordance after a pause, or as soon as a
+  // new selection starts after the clear, so a stale undo can never
+  // resurrect old captures over a fresh selection.
+  const undoArmed = useRef(false);
+  useEffect(() => {
+    if (!cleared) {
+      undoArmed.current = false;
+      return undefined;
+    }
+    if (!explicit) undoArmed.current = true;
+    else if (undoArmed.current) {
+      setCleared(null);
+      return undefined;
+    }
+    const timer = window.setTimeout(() => setCleared(null), UNDO_WINDOW_MS);
+    return () => window.clearTimeout(timer);
+  }, [cleared, explicit]);
 
   const context: GridSelectionActionContext = {
     datasetId: selection.datasetId,
@@ -162,6 +246,32 @@ export default function SelectionTray() {
       id: group.episodeId,
       hasNext: false,
       hasPrevious: false,
+    });
+  };
+  const clearAll = () => {
+    setCleared(captured);
+    selection.clear();
+  };
+  const undoClear = () => {
+    cleared?.forEach((group) => selection.capture(group));
+    setCleared(null);
+  };
+  const removeGroup = (episodeId: string) => {
+    const items = Array.from(
+      cards.current?.querySelectorAll<HTMLElement>("[data-episode-id]") ?? [],
+    );
+    const index = items.findIndex(
+      (item) => item.dataset.episodeId === episodeId,
+    );
+    const hadFocus = items[index]?.contains(document.activeElement) ?? false;
+    const neighbor = items[index + 1] ?? items[index - 1];
+    selection.remove(episodeId);
+    if (!hadFocus) return;
+    window.requestAnimationFrame(() => {
+      const target =
+        neighbor?.querySelector<HTMLElement>("[data-card-remove]") ??
+        root.current?.querySelector<HTMLElement>("[data-tray-clear]");
+      target?.focus();
     });
   };
 
@@ -194,18 +304,24 @@ export default function SelectionTray() {
           >
             <span className={styles.grip} />
           </div>
-          <div className={styles.cards} aria-label="Selected episodes">
+          <div
+            ref={cards}
+            role="group"
+            className={styles.cards}
+            aria-label={`Selected ${unit}s`}
+          >
             {captured.map((group) => (
               <SelectionCard
                 key={group.episodeId}
                 group={group}
                 candidate={selection.candidates.get(group.episodeId)}
+                mediaType={selection.mediaType}
                 title={titleOf(group)}
                 open={open}
                 loading={selection.loading}
                 error={selection.error}
                 capture={selection.capture}
-                remove={selection.remove}
+                remove={removeGroup}
               />
             ))}
           </div>
@@ -216,25 +332,30 @@ export default function SelectionTray() {
           <ScopeControls
             datasetId={selection.datasetId}
             mediaType={selection.mediaType}
+            unit={unit}
             onProviderError={setProviderError}
           />
           <UnavailableReferences
             groups={selection.unavailableGroups}
             selected={selection.selected}
             capture={selection.capture}
+            unit={unit}
           />
         </div>
         <SelectionSummary
           explicit={explicit}
           counts={counts}
+          unit={unit}
           outside={outside}
           loading={selection.loading}
           error={selection.error ?? providerError}
+          cleared={cleared?.length}
+          onUndo={undoClear}
           onRetry={() => {
             setProviderError(null);
             invalidate();
           }}
-          onClear={selection.clear}
+          onClear={clearAll}
         />
         <div className={styles.actions}>
           {primary.map((action) => (
@@ -246,48 +367,45 @@ export default function SelectionTray() {
             />
           ))}
           {overflow.length > 0 && (
-            <Popover
-              open={moreOpen}
-              onOpenChange={setMoreOpen}
-              anchor={PopoverAnchor.TopEnd}
-              trigger={
-                <Button
-                  size={Size.Sm}
-                  variant={Variant.Secondary}
-                  leadingIcon={MoreHorizontalIcon}
-                  aria-label="More actions"
-                  aria-haspopup="menu"
-                  aria-expanded={moreOpen}
-                  onClick={() => setMoreOpen((value) => !value)}
-                />
-              }
-            >
+            <div ref={more} className={styles.more}>
+              <Button
+                size={Size.Sm}
+                variant={Variant.Secondary}
+                leadingIcon={MoreHorizontalIcon}
+                aria-label="More actions"
+                aria-haspopup="menu"
+                aria-expanded={overflowPanel.open}
+                aria-controls={menuId}
+                onClick={() => overflowPanel.setOpen((value) => !value)}
+              />
               <div
-                ref={setMenuHost}
+                id={menuId}
+                ref={overflowPanel.panel}
                 role="menu"
                 aria-label="More actions"
                 className={styles.menu}
-                style={trayTheme}
-                onClickCapture={() => setMoreOpen(false)}
-              />
-            </Popover>
+                hidden={!overflowPanel.open}
+                onClickCapture={() => overflowPanel.setOpen(false)}
+                onKeyDown={moveMenuFocus}
+              >
+                {overflow.map((action) => (
+                  <action.Component
+                    key={`${selection.datasetId}:${action.id}`}
+                    context={context}
+                    disabledReason={gridActionDisabledReason(action, context)}
+                    surface="menu"
+                  />
+                ))}
+              </div>
+            </div>
           )}
-          {overflow.map((action) => (
-            <action.Component
-              key={`${selection.datasetId}:${action.id}`}
-              context={context}
-              disabledReason={gridActionDisabledReason(action, context)}
-              surface="menu"
-              menuHost={moreOpen ? menuHost : null}
-            />
-          ))}
           {explicit && (
             <Button
               size={Size.Sm}
               variant={Variant.Icon}
               leadingIcon={collapsed ? ChevronTopIcon : ChevronBottomIcon}
               aria-label={
-                collapsed ? "Show selected episodes" : "Hide selected episodes"
+                collapsed ? `Show selected ${unit}s` : `Hide selected ${unit}s`
               }
               aria-expanded={!collapsed}
               aria-controls={stripId}

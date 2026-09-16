@@ -49,6 +49,7 @@ function Card(props: {
     <SelectionCard
       group={props.group}
       candidate={props.candidate}
+      mediaType="video"
       loading={props.loading ?? false}
       error={null}
       {...handlers}

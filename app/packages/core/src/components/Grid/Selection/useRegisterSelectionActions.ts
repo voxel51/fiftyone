@@ -2,6 +2,7 @@ import { registerGridSelectionAction } from "@fiftyone/multimodal/extensions/gri
 import { useEffect } from "react";
 import { addToSubsetAction } from "./SubsetAction";
 import { tagSelectionAction } from "./TagAction";
+import { hideSelectedAction, showOnlySelectedAction } from "./ViewActions";
 
 let consumers = 0;
 let dispose: (() => void) | undefined;
@@ -11,9 +12,12 @@ export function useRegisterSelectionActions() {
   // This effect keeps actions registered until the last grid or empty view unmounts.
   useEffect(() => {
     if (consumers++ === 0) {
-      const disposers = [addToSubsetAction, tagSelectionAction].map(
-        registerGridSelectionAction,
-      );
+      const disposers = [
+        addToSubsetAction,
+        tagSelectionAction,
+        showOnlySelectedAction,
+        hideSelectedAction,
+      ].map(registerGridSelectionAction);
       dispose = () => disposers.forEach((unregister) => unregister());
     }
     return () => {

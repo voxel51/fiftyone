@@ -2,6 +2,7 @@ import {
   countSelection,
   selectionScopeLabel,
   type EpisodeSelection,
+  type SelectionUnit,
 } from "@fiftyone/state/src/selection";
 import {
   Button,
@@ -16,12 +17,13 @@ import {
   Variant,
   WarningAmberIcon,
 } from "@voxel51/voodo";
-import { plural } from "./format";
+import { plural, unitTitle } from "./format";
 
 interface Props {
   groups: readonly EpisodeSelection[];
   selected: ReadonlyMap<string, EpisodeSelection>;
   capture: (group: EpisodeSelection) => void;
+  unit: SelectionUnit;
 }
 
 /**
@@ -32,6 +34,7 @@ export default function UnavailableReferences({
   groups,
   selected,
   capture,
+  unit,
 }: Props) {
   if (!groups.length) return null;
   return (
@@ -43,19 +46,17 @@ export default function UnavailableReferences({
           variant={Variant.Borderless}
           leadingIcon={WarningAmberIcon}
         >
-          {plural(groups.length, "unavailable saved episode")}
+          {plural(groups.length, `unavailable saved ${unit}`)}
         </Button>
       }
     >
-      <MenuSectionTitle>
-        Saved references without a live episode
-      </MenuSectionTitle>
+      <MenuSectionTitle>{`Saved references without a live ${unit}`}</MenuSectionTitle>
       {groups.map((group) => (
         <MenuIconTextItem
           key={group.episodeId}
           icon={<FolderOffIcon size={Size.Sm} />}
-          text={`Episode …${group.episodeId.slice(-6)}`}
-          subtext={selectionScopeLabel(countSelection([group]))}
+          text={`${unitTitle(unit)} …${group.episodeId.slice(-6)}`}
+          subtext={selectionScopeLabel(countSelection([group]), unit)}
           disabled={selected.has(group.episodeId)}
           onClick={() => capture(group)}
         />

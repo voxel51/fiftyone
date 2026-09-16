@@ -9,8 +9,7 @@ import {
   Variant,
   type IconInput,
 } from "@voxel51/voodo";
-import type { FC, ReactNode } from "react";
-import { createPortal } from "react-dom";
+import type { FC } from "react";
 import styles from "./SelectionTray.module.css";
 
 export interface ActionEntryProps {
@@ -95,19 +94,4 @@ export default function ActionEntry({
   ) : (
     button
   );
-}
-
-/**
- * Renders an action's menu row into the tray's overflow panel while the
- * action itself stays mounted in the toolbar tree, so dialogs it opens
- * survive the panel closing.
- */
-export function ActionMenuSlot({
-  host,
-  children,
-}: {
-  host: HTMLElement | null | undefined;
-  children: ReactNode;
-}) {
-  return host ? createPortal(children, host) : null;
 }

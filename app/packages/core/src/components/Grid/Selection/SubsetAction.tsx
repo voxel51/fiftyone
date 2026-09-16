@@ -6,6 +6,7 @@ import {
 import {
   normalizeSelectionMembers,
   selectionScopeLabel,
+  selectionUnit,
   subsetRequest,
   useInvalidateSelectionScope,
   type SavedSubset,
@@ -35,7 +36,7 @@ import {
   WarningAmberIcon,
 } from "@voxel51/voodo";
 import { useEffect, useId, useState, type FormEvent } from "react";
-import ActionEntry, { ActionMenuSlot } from "./ActionEntry";
+import ActionEntry from "./ActionEntry";
 import { plural } from "./format";
 import { Notice, ScopePill } from "./Notice";
 import styles from "./SelectionTray.module.css";
@@ -44,6 +45,7 @@ import { useOpenSubset } from "./useSubsetScope";
 
 interface Capture {
   datasetId: string;
+  mediaType: string;
   source: GridSelectionActionContext["source"];
   members: readonly SelectionMember[];
 }
@@ -52,7 +54,6 @@ function AddToSubset({
   context,
   disabledReason,
   surface = "toolbar",
-  menuHost,
 }: GridSelectionActionProps) {
   const [capture, setCapture] = useState<Capture | null>(null);
   const [busy, setBusy] = useState(false);
@@ -64,6 +65,7 @@ function AddToSubset({
       const members = normalizeSelectionMembers(await context.resolve());
       setCapture({
         datasetId: context.datasetId,
+        mediaType: context.mediaType,
         source: context.source,
         members,
       });
@@ -93,17 +95,8 @@ function AddToSubset({
   );
   return (
     <>
-      {surface === "menu" ? (
-        <ActionMenuSlot host={menuHost}>
-          {entry}
-          {alert}
-        </ActionMenuSlot>
-      ) : (
-        <>
-          {entry}
-          {alert}
-        </>
-      )}
+      {entry}
+      {alert}
       {capture && (
         <SubsetDialog capture={capture} close={() => setCapture(null)} />
       )}
@@ -239,11 +232,12 @@ function SubsetDialog({
     }
   };
 
+  const unit = selectionUnit(capture.mediaType);
   const full = capture.members.filter((m) => m.kind === "episode").length;
   const segments = capture.members.length - full;
   const scopeText =
     [
-      full && plural(full, "full episode"),
+      full && plural(full, unit === "episode" ? "full episode" : "sample"),
       segments && plural(segments, "segment"),
     ]
       .filter(Boolean)
@@ -325,8 +319,8 @@ function SubsetDialog({
             color={TextColor.Secondary}
             style={{ flexBasis: "100%" }}
           >
-            Captured when this dialog opened; browsing changes will not affect
-            it. Media and annotations stay live.
+            Captured when opened; later browsing changes do not affect it. Media
+            and annotations stay live.
           </Text>
         </div>
         {!result && (
@@ -373,7 +367,7 @@ function SubsetDialog({
                           variant={TextVariant.Xs}
                           color={TextColor.Secondary}
                         >
-                          {selectionScopeLabel(subset.counts)}
+                          {selectionScopeLabel(subset.counts, unit)}
                           {subset.counts.unavailable
                             ? ` · ${subset.counts.unavailable} unavailable`
                             : ""}
@@ -450,8 +444,9 @@ function SubsetDialog({
                   />
                 )}
                 <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-                  Existing members stay. A full episode and its saved segments
-                  are kept as separate members.
+                  {unit === "episode"
+                    ? "Existing members stay. A full episode and its saved segments are kept as separate members."
+                    : "Existing members stay."}
                 </Text>
               </>
             ) : null}
@@ -497,7 +492,7 @@ export const addToSubsetAction: GridSelectionAction = {
   order: 10,
   label: "Add to subset",
   placement: "primary",
-  supports: (mediaType) => ["video", "multimodal"].includes(mediaType),
+  supports: (mediaType) => mediaType !== "group",
   scope: "explicit-or-results",
   memberKinds: ["episode", "segment"],
   Component: AddToSubset,

@@ -1,6 +1,7 @@
 import * as fos from "@fiftyone/state";
 import {
   sameSelection,
+  selectionUnit,
   type EpisodeSelection,
   type useGridSelection,
 } from "@fiftyone/state/src/selection";
@@ -9,6 +10,8 @@ import {
   Button,
   CloseIcon,
   FolderOffIcon,
+  ImageIcon,
+  OpenInNewIcon,
   Pill,
   PlayArrowIcon,
   SemanticColor,
@@ -17,6 +20,7 @@ import {
   TextColor,
   TextVariant,
   Variant,
+  ViewInArIcon,
   VisibilityOffIcon,
   WarningAmberIcon,
 } from "@voxel51/voodo";
@@ -40,6 +44,8 @@ interface Props extends Pick<
 > {
   group: EpisodeSelection;
   candidate?: EpisodeSelection;
+  /** Dataset media type; decides the preview element and the vocabulary. */
+  mediaType: string;
   /** Display name; defaults to the media file name. */
   title?: string;
   open: (group: EpisodeSelection) => Promise<void>;
@@ -72,10 +78,22 @@ function useNearViewport(ref: RefObject<Element>) {
 
 const PLAYABLE = /\.(mp4|m4v|webm|mov|ogv|ogg|mkv|avi)(\?.*)?$/i;
 
-/** One episode's captured scope: full episode or its grouped segments. */
+function previewKind(mediaType: string, filepath: string | undefined) {
+  if (!filepath) return "none" as const;
+  if (mediaType === "image") return "image" as const;
+  if (
+    (mediaType === "video" || mediaType === "multimodal") &&
+    PLAYABLE.test(filepath)
+  )
+    return "video" as const;
+  return "none" as const;
+}
+
+/** One parent's captured scope: the whole sample/episode or grouped segments. */
 export default function SelectionCard({
   group,
   candidate,
+  mediaType,
   title: titleProp,
   open,
   loading,
@@ -86,14 +104,13 @@ export default function SelectionCard({
   const root = useRef<HTMLElement>(null);
   const near = useNearViewport(root);
   const [mediaFailed, setMediaFailed] = useState(false);
-  const playable =
-    Boolean(group.filepath) &&
-    PLAYABLE.test(group.filepath ?? "") &&
-    !mediaFailed;
+  const unit = selectionUnit(mediaType);
+  const temporal = unit === "episode";
+  const kind = mediaFailed ? "none" : previewKind(mediaType, group.filepath);
   const full = isFullEpisode(group);
   const segments = segmentsOf(group);
-  const title = titleProp ?? episodeTitle(group);
-  const descriptor = groupDescriptor(group);
+  const title = titleProp ?? episodeTitle(group, unit);
+  const descriptor = groupDescriptor(group, unit);
   const unavailable = Boolean(group.unavailable);
   const outside = !unavailable && !loading && !error && !candidate;
   const mismatch = Boolean(candidate && !sameSelection(group, candidate));
@@ -104,11 +121,18 @@ export default function SelectionCard({
       : mismatch
         ? "current matches differ"
         : null;
+  const PlaceholderIcon =
+    mediaType === "3d" || mediaType === "point-cloud"
+      ? ViewInArIcon
+      : temporal
+        ? PlayArrowIcon
+        : ImageIcon;
 
   return (
     <article
       ref={root}
       className={styles.card}
+      data-episode-id={group.episodeId}
       data-unavailable={unavailable || undefined}
       data-outside={outside || undefined}
       aria-label={`${title}, ${descriptor}${status ? `, ${status}` : ""}`}
@@ -125,7 +149,7 @@ export default function SelectionCard({
             <span className={styles.placeholder}>
               <FolderOffIcon size={Size.Lg} color={TextColor.Muted} />
             </span>
-          ) : near && playable && group.filepath ? (
+          ) : near && kind === "video" && group.filepath ? (
             <video
               className={styles.media}
               src={fos.getSampleSrc(group.filepath)}
@@ -137,23 +161,41 @@ export default function SelectionCard({
                 event.currentTarget.currentTime = group.previewStart ?? 0;
               }}
             />
+          ) : near && kind === "image" && group.filepath ? (
+            <img
+              className={styles.media}
+              src={fos.getSampleSrc(group.filepath)}
+              alt=""
+              loading="lazy"
+              onError={() => setMediaFailed(true)}
+            />
           ) : (
             <span className={styles.placeholder}>
-              <PlayArrowIcon size={Size.Lg} color={TextColor.Muted} />
+              <PlaceholderIcon size={Size.Lg} color={TextColor.Muted} />
+            </span>
+          )}
+          {!unavailable && kind !== "none" && (
+            <span className={styles.openHint} aria-hidden="true">
+              <span>
+                <OpenInNewIcon size={Size.Sm} />
+              </span>
             </span>
           )}
         </button>
-        <span className={styles.kind}>
-          <Text variant={TextVariant.Label} color={TextColor.Fg}>
-            {descriptor}
-          </Text>
-        </span>
+        {temporal && (
+          <span className={styles.kind}>
+            <Text variant={TextVariant.Label} color={TextColor.Fg}>
+              {descriptor}
+            </Text>
+          </span>
+        )}
         <Button
           variant={Variant.Icon}
           size={Size.Xs}
           className={styles.remove}
           aria-label={`Remove ${title} from selection`}
           leadingIcon={CloseIcon}
+          data-card-remove=""
           onClick={() => remove(group.episodeId)}
         />
         {(unavailable || outside || mismatch) && (
@@ -192,30 +234,32 @@ export default function SelectionCard({
         <Text variant={TextVariant.Sm} className={styles.title} title={title}>
           {title}
         </Text>
-        <div className={styles.metaRow}>
-          {full ? (
-            <Text
-              variant={TextVariant.Xs}
-              color={TextColor.Secondary}
-              className={styles.ellipsis}
-              style={{ flex: 1 }}
-            >
-              Whole episode
-            </Text>
-          ) : (
-            <div className={styles.ranges}>
-              <RangeTrack members={segments} />
+        {temporal && (
+          <div className={styles.metaRow}>
+            {full ? (
               <Text
                 variant={TextVariant.Xs}
                 color={TextColor.Secondary}
                 className={styles.ellipsis}
-                title={listRanges(segments).join("\n")}
+                style={{ flex: 1 }}
               >
-                {formatRanges(segments, 2)}
+                Whole episode
               </Text>
-            </div>
-          )}
-        </div>
+            ) : (
+              <div className={styles.ranges}>
+                <RangeTrack members={segments} />
+                <Text
+                  variant={TextVariant.Xs}
+                  color={TextColor.Secondary}
+                  className={styles.ellipsis}
+                  title={listRanges(segments).join("\n")}
+                >
+                  {formatRanges(segments, 2)}
+                </Text>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </article>
   );

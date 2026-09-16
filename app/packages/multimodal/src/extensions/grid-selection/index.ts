@@ -29,13 +29,11 @@ export interface GridSelectionActionProps {
   readonly disabledReason: string | null;
   /**
    * Where the action renders. Toolbar actions render a button. Overflow
-   * actions stay mounted in the toolbar tree and portal a menu row into
-   * `menuHost` while the overflow panel is open, so dialogs they open
-   * survive the panel closing. Defaults to the toolbar.
+   * actions render a `role="menuitem"` row and stay mounted while the
+   * overflow panel is closed, so dialogs they open survive. Defaults to
+   * the toolbar.
    */
   readonly surface?: "toolbar" | "menu";
-  /** Portal target for the menu row; null while the overflow panel is closed. */
-  readonly menuHost?: HTMLElement | null;
 }
 
 /** An action owns its scope policy and availability in either toolbar location. */
@@ -105,7 +103,9 @@ export function gridActionDisabledReason(
   if (context.error) return context.error;
   if (!context.counts.episodes) return "No members in this scope";
   if (action.scope === "explicit" && context.source !== "explicit")
-    return "Select episodes or segments first";
+    return context.mediaType === "video" || context.mediaType === "multimodal"
+      ? "Select episodes or segments first"
+      : "Select samples first";
   if (
     context.groups.some((group) =>
       group.members.some((member) => !action.memberKinds.includes(member.kind)),

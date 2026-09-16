@@ -7,6 +7,7 @@ import { useRefresh, useSelectionTagDisabledReason } from "@fiftyone/state";
 import {
   normalizeSelectionMembers,
   selectionTagsRequest,
+  selectionUnit,
   useInvalidateSelectionScope,
   type SelectionMember,
 } from "@fiftyone/state/src/selection";
@@ -31,7 +32,7 @@ import {
   WarningAmberIcon,
 } from "@voxel51/voodo";
 import { useState } from "react";
-import ActionEntry, { ActionMenuSlot } from "./ActionEntry";
+import ActionEntry from "./ActionEntry";
 import { plural } from "./format";
 import { Notice, ScopePill } from "./Notice";
 import Segmented from "./Segmented";
@@ -40,6 +41,7 @@ import { trayTheme } from "./theme";
 
 interface Capture {
   datasetId: string;
+  mediaType: string;
   source: GridSelectionActionContext["source"];
   members: readonly SelectionMember[];
   tags: readonly string[];
@@ -49,7 +51,6 @@ function TagSelection({
   context,
   disabledReason,
   surface = "toolbar",
-  menuHost,
 }: GridSelectionActionProps) {
   const permission = useSelectionTagDisabledReason();
   const [capture, setCapture] = useState<Capture | null>(null);
@@ -64,6 +65,7 @@ function TagSelection({
       const { tags } = await selectionTagsRequest(context.datasetId, members);
       setCapture({
         datasetId: context.datasetId,
+        mediaType: context.mediaType,
         source: context.source,
         members,
         tags,
@@ -99,10 +101,8 @@ function TagSelection({
   if (surface === "menu") {
     return (
       <>
-        <ActionMenuSlot host={menuHost}>
-          {entry}
-          {alert}
-        </ActionMenuSlot>
+        {entry}
+        {alert}
         <Modal
           open={Boolean(capture)}
           onClose={() => {
@@ -158,6 +158,8 @@ function TagPicker({
   const [done, setDone] = useState<{ tag: string; mode: Mode } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const unit = selectionUnit(capture.mediaType);
+  const parents = unit === "episode" ? "Episodes" : "Samples";
   const full = capture.members.filter((m) => m.kind === "episode").length;
   const segments = capture.members.length - full;
   const tag = query.trim();
@@ -166,14 +168,14 @@ function TagPicker({
   const known = tags.includes(tag);
   const membersLabel = segments
     ? full
-      ? "Episodes & segments"
+      ? `${parents} & segments`
       : "Segments"
-    : "Episodes";
+    : parents;
   const headline =
     target === "labels"
       ? plural(labelCount ?? 0, "label")
       : [
-          full && plural(full, "full episode"),
+          full && plural(full, unit === "episode" ? "full episode" : "sample"),
           segments && plural(segments, "segment"),
         ]
           .filter(Boolean)
@@ -261,12 +263,16 @@ function TagPicker({
       />
       <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
         {target === "labels"
-          ? "All labels in these whole episodes"
+          ? unit === "episode"
+            ? "All labels in these whole episodes"
+            : "All labels in these samples"
           : segments
             ? full
               ? "Sample tags on episodes; temporal tags on captured ranges and streams"
               : "Temporal tags on the captured ranges and streams"
-            : "Sample tags on the whole episodes"}
+            : unit === "episode"
+              ? "Sample tags on the whole episodes"
+              : "Sample tags on each sample"}
       </Text>
       {!done && (
         <>
@@ -423,7 +429,7 @@ export const tagSelectionAction: GridSelectionAction = {
   order: 20,
   label: "Tag",
   placement: "primary",
-  supports: (mediaType) => ["video", "multimodal"].includes(mediaType),
+  supports: (mediaType) => mediaType !== "group",
   scope: "explicit-or-results",
   memberKinds: ["episode", "segment"],
   unavailable: (context) => {

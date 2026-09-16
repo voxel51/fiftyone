@@ -678,15 +678,32 @@
   gap: var(--tray-space-xs);
 }
 
-/* Overflow action panel: rows are portaled in by persistently mounted actions */
+/* Overflow action panel: tray-owned so its actions stay mounted while closed */
+.more {
+  position: relative;
+  display: inline-flex;
+}
+
 .menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  z-index: 5;
   display: flex;
   flex-direction: column;
   gap: 1px;
   min-width: 224px;
-  padding: 2px;
+  padding: 4px;
+  border: 1px solid var(--tray-border);
+  border-radius: 8px;
+  background: var(--tray-popover);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   font-family: var(--tray-font);
   color: var(--tray-text);
+}
+
+.menu[hidden] {
+  display: none;
 }
 
 .menuRow {
@@ -722,6 +739,48 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+}
+
+/* Count pill and its Clear control stay on one line when the bar wraps */
+.scopeGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+/* Hover affordance that the card body opens the viewer */
+.openHint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--tray-duration-fast) var(--tray-easing);
+}
+
+.openHint > span {
+  display: inline-flex;
+  padding: 6px;
+  border-radius: 999px;
+  background: var(--tray-overlay);
+  color: white;
+}
+
+.open:hover .openHint,
+.open:focus-visible .openHint {
+  opacity: 1;
+}
+
+/* Read-only result unit when there is nothing to switch to */
+.staticScope {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
 }
 
 .visuallyHidden {

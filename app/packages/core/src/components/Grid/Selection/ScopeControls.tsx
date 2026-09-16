@@ -6,6 +6,7 @@ import {
   useGridSelectionBoundary,
   type SavedSubset,
   type SegmentConstraint,
+  type SelectionUnit,
 } from "@fiftyone/state/src/selection";
 import {
   BookmarkIcon,
@@ -19,6 +20,9 @@ import {
   MenuSeparator,
   MenuTextItem,
   Size,
+  Text,
+  TextColor,
+  TextVariant,
   TimelineIcon,
 } from "@voxel51/voodo";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
@@ -28,6 +32,7 @@ import { useOpenSubset } from "./useSubsetScope";
 interface Props {
   datasetId: string;
   mediaType: string;
+  unit: SelectionUnit;
   /** Reports extension provider failures to the tray's summary line. */
   onProviderError: (error: string | null) => void;
 }
@@ -45,12 +50,14 @@ export function providerLabel(provider: SegmentConstraint | undefined) {
 
 /**
  * What is being browsed (dataset or a saved subset) and what unit results
- * take (whole episodes, saved segments, or segments from a source). Neither
- * control touches explicit tray captures.
+ * take (whole parents, saved segments, or segments from a source). Neither
+ * control touches explicit tray captures. The unit control only appears when
+ * there is something to switch to.
  */
 export default function ScopeControls({
   datasetId,
   mediaType,
+  unit,
   onProviderError,
 }: Props) {
   const [boundary, setBoundary] = useGridSelectionBoundary();
@@ -63,7 +70,7 @@ export default function ScopeControls({
   const [options, setOptions] = useState<{
     eventFields: string[];
     temporalTags: string[];
-  }>({ eventFields: [], temporalTags: [] });
+  } | null>(null);
   const controller = useRef<AbortController>();
   const reportError = useRef(onProviderError);
   reportError.current = onProviderError;
@@ -91,7 +98,10 @@ export default function ScopeControls({
         if (active) setOptions(value);
       })
       .catch((cause: unknown) => {
-        if (active) reportError.current(String(cause));
+        if (active) {
+          setOptions({ eventFields: [], temporalTags: [] });
+          reportError.current(String(cause));
+        }
       });
     return () => {
       active = false;
@@ -127,13 +137,17 @@ export default function ScopeControls({
 
   const active = subsets.find((subset) => subset.id === boundary.subsetId);
   const { provider } = boundary;
+  const parents = unit === "episode" ? "Whole episodes" : "Samples";
   const wholeLabel =
-    boundary.subsetScope === "segments" ? "Saved segments" : "Whole episodes";
+    boundary.subsetScope === "segments" ? "Saved segments" : parents;
   const extensions = providers.filter((entry) => entry.supports(mediaType));
+  const eventFields = options?.eventFields ?? [];
+  const temporalTags = options?.temporalTags ?? [];
   const hasSources =
-    options.eventFields.length > 0 ||
-    options.temporalTags.length > 0 ||
-    extensions.length > 0;
+    eventFields.length > 0 || temporalTags.length > 0 || extensions.length > 0;
+  const showUnit =
+    options !== null &&
+    (hasSources || Boolean(provider) || boundary.subsetScope === "segments");
 
   return (
     <>
@@ -176,7 +190,7 @@ export default function ScopeControls({
                 }
                 onClick={() => openSubset(subset.id, "episodes")}
               >
-                {`Whole episodes · ${subset.counts.fullEpisodes}`}
+                {`${parents} · ${subset.counts.fullEpisodes}`}
               </MenuCheckItem>
             )}
             {subset.counts.segments > 0 && (
@@ -205,64 +219,75 @@ export default function ScopeControls({
           </>
         )}
       </Dropdown>
-      <Dropdown
-        anchor={DropdownAnchor.TopStart}
-        trigger={
-          <DropdownTrigger
-            size={Size.Xs}
-            leadingIcon={provider ? TimelineIcon : GridViewIcon}
-          >
-            <span className={styles.truncate}>
-              {provider ? `Segments · ${providerLabel(provider)}` : wholeLabel}
-            </span>
-          </DropdownTrigger>
-        }
-      >
-        <MenuSectionTitle>Results as</MenuSectionTitle>
-        <MenuCheckItem checked={!provider} onClick={() => choose(undefined)}>
-          {wholeLabel}
-        </MenuCheckItem>
-        <MenuSeparator />
-        <MenuSectionTitle>Segments matching</MenuSectionTitle>
-        {options.eventFields.map((field) => (
-          <MenuCheckItem
-            key={`events:${field}`}
-            checked={provider?.kind === "events" && provider.field === field}
-            onClick={() => choose({ kind: "events", field, values: [] })}
-          >
-            {`Events: ${field}`}
+      {showUnit && !hasSources && !provider ? (
+        <span className={styles.staticScope}>
+          <TimelineIcon size={Size.Xs} color={TextColor.Secondary} />
+          <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+            {wholeLabel}
+          </Text>
+        </span>
+      ) : showUnit ? (
+        <Dropdown
+          anchor={DropdownAnchor.TopStart}
+          trigger={
+            <DropdownTrigger
+              size={Size.Xs}
+              leadingIcon={provider ? TimelineIcon : GridViewIcon}
+            >
+              <span className={styles.truncate}>
+                {provider
+                  ? `Segments · ${providerLabel(provider)}`
+                  : wholeLabel}
+              </span>
+            </DropdownTrigger>
+          }
+        >
+          <MenuSectionTitle>Results as</MenuSectionTitle>
+          <MenuCheckItem checked={!provider} onClick={() => choose(undefined)}>
+            {wholeLabel}
           </MenuCheckItem>
-        ))}
-        {options.temporalTags.map((tag) => (
-          <MenuCheckItem
-            key={`tag:${tag}`}
-            checked={
-              provider?.kind === "temporal-tags" &&
-              provider.values.length === 1 &&
-              provider.values[0] === tag
-            }
-            onClick={() => choose({ kind: "temporal-tags", values: [tag] })}
-          >
-            {`Temporal tag: ${tag}`}
-          </MenuCheckItem>
-        ))}
-        {extensions.map((entry) => (
-          <MenuCheckItem
-            key={entry.id}
-            checked={
-              provider?.kind === "ranges" && provider.label === entry.label
-            }
-            onClick={() => void resolveExtension(entry)}
-          >
-            {entry.label}
-          </MenuCheckItem>
-        ))}
-        {!hasSources && (
-          <MenuTextItem disabled>
-            No segment sources in this dataset
-          </MenuTextItem>
-        )}
-      </Dropdown>
+          <MenuSeparator />
+          <MenuSectionTitle>Segments matching</MenuSectionTitle>
+          {eventFields.map((field) => (
+            <MenuCheckItem
+              key={`events:${field}`}
+              checked={provider?.kind === "events" && provider.field === field}
+              onClick={() => choose({ kind: "events", field, values: [] })}
+            >
+              {`Events: ${field}`}
+            </MenuCheckItem>
+          ))}
+          {temporalTags.map((tag) => (
+            <MenuCheckItem
+              key={`tag:${tag}`}
+              checked={
+                provider?.kind === "temporal-tags" &&
+                provider.values.length === 1 &&
+                provider.values[0] === tag
+              }
+              onClick={() => choose({ kind: "temporal-tags", values: [tag] })}
+            >
+              {`Temporal tag: ${tag}`}
+            </MenuCheckItem>
+          ))}
+          {extensions.map((entry) => (
+            <MenuCheckItem
+              key={entry.id}
+              checked={
+                provider?.kind === "ranges" && provider.label === entry.label
+              }
+              onClick={() => void resolveExtension(entry)}
+            >
+              {entry.label}
+            </MenuCheckItem>
+          ))}
+          {!hasSources && (
+            <MenuTextItem disabled>
+              No segment sources in this dataset
+            </MenuTextItem>
+          )}
+        </Dropdown>
+      ) : null}
     </>
   );
 }

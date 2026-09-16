@@ -25,6 +25,7 @@ export const trayTheme = {
   "--tray-strip-bg": cssVar.color.bg.background,
   "--tray-card-bg": cssVar.color.bg.card["2"],
   "--tray-raised": cssVar.color.bg.raised,
+  "--tray-popover": cssVar.color.bg.popover,
   "--tray-overlay": cssVar.color.overlay.heavy,
   "--tray-border": cssVar.color.border.default,
   "--tray-border-strong": cssVar.color.border.strong,
