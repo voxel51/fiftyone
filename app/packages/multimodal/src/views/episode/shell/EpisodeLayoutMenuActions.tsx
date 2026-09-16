@@ -36,7 +36,7 @@ export default function EpisodeLayoutMenuActions({
       <MenuSeparator />
       {!hasSavedLayouts && (
         <Tooltip
-          anchor={Anchor.Right}
+          anchor={Anchor.Left}
           data-testid="saved-layouts-upsell"
           portal
           content={
