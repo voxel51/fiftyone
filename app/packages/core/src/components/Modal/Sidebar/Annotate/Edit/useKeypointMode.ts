@@ -1,3 +1,4 @@
+import { CommandContextManager } from "@fiftyone/commands";
 import {
   GuidedKeypointHandler,
   InteractiveCreationHandler,
@@ -5,6 +6,7 @@ import {
   KeypointOverlay,
   KeypointPointHitAction,
   type KeypointPointHitContext,
+  MoveKeypointPointCommand,
   PolylineOverlay,
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighter,
@@ -15,6 +17,10 @@ import { useGetKeypointSkeleton, useIsPatchesView } from "@fiftyone/state";
 import { KEYPOINT } from "@fiftyone/utilities";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  isKeypointDraftFinalized,
+  markKeypointDraftFinalized,
+} from "./keypointDraftState";
 import { skeletonNodeCount } from "./useAnnotationContext/createNew";
 import {
   type AnnotationContextSelected,
@@ -23,9 +29,6 @@ import {
   useAnnotationFields,
 } from "./useAnnotationContext";
 import useExit from "./useExit";
-
-/** Frame-level field paths (`frames.<field>`) — i.e. video. */
-const FRAMES_PREFIX = "frames.";
 
 /**
  * Whether a 2D keypoint is the current selection. `PolylineOverlay` extends
@@ -52,6 +55,16 @@ type GuidedSkips = { overlayId: string; skipped: number[] };
 // `null as ...` (not an explicit generic) so jotai resolves the writable
 // primitive-atom overload — cf. `mergeTargetIdAtom` in useMergeTool.ts
 const guidedSkipsAtom = atom(null as GuidedSkips | null);
+
+/**
+ * An explicit "place THIS node next" override (the checklist's Place button),
+ * for re-placing a specific hole out of strict order — e.g. a hand coming
+ * back after an occlusion, where strict order would offer some other hole
+ * first. Honored only while that node is still a hole; cleared on placement
+ * and on selection change.
+ */
+type ForcedTarget = { overlayId: string; index: number };
+const forcedTargetAtom = atom(null as ForcedTarget | null);
 
 /**
  * Bumped whenever the selected keypoint's geometry changes (placement, drag,
@@ -84,6 +97,27 @@ export const computeTargetIndex = (
 };
 
 /**
+ * {@link computeTargetIndex} plus the explicit Place override: a forced node
+ * wins while it is still a hole (whatever the skip set says), and strict
+ * order resumes once it is placed. Exported for tests.
+ */
+export const resolveTargetIndex = (
+  overlay: Pick<KeypointOverlay, "getRelativePoints">,
+  nodeCount: number,
+  skipped: readonly number[],
+  forcedIndex: number | null,
+): number | null => {
+  if (forcedIndex !== null && nodeCount > 0) {
+    const point = overlay.getRelativePoints()[forcedIndex];
+    if (point && (!Number.isFinite(point[0]) || !Number.isFinite(point[1]))) {
+      return forcedIndex;
+    }
+  }
+
+  return computeTargetIndex(overlay, nodeCount, skipped);
+};
+
+/**
  * Modifier policy for free-form keypoints: Alt-click on a point deletes it
  * (mirrors polyline mode). Skeleton keypoints never delete points — node
  * index is identity — so this resolver is only wired for free-form fields.
@@ -104,6 +138,7 @@ export const useKeypointMode = () => {
   );
   const isPatchView = useIsPatchesView();
   const { fields } = useAnnotationFields(KEYPOINT);
+  const { createNew, lastUsed, readEditing } = useAnnotationContext();
   const exit = useExit();
   // ref so `deactivateKeypointMode` doesn't churn with every scene render
   const { scene } = useLighter();
@@ -121,10 +156,28 @@ export const useKeypointMode = () => {
         ? "Exit keypoint mode"
         : "Create new keypoints";
 
-  const activateKeypointMode = useCallback(
-    () => setKeypointModeActive(true),
-    [setKeypointModeActive],
-  );
+  /**
+   * Arm the mode AND open a draft immediately (unlike the polyline flow,
+   * which creates on first click): guided placement needs the node checklist
+   * — "0 of N placed", first target highlighted — visible BEFORE the first
+   * click, or the user is aiming blind.
+   *
+   * Creation is ATOMIC: the draft places its nodes silently and persists
+   * once, when every node is placed or explicitly skipped (the installer's
+   * completion watcher dispatches the finalize, which on video also creates
+   * the track). Bailing at any point — mode exit, sample switch, scrub,
+   * modal close — discards the draft; nothing partial ever persists.
+   */
+  const activateKeypointMode = useCallback(() => {
+    setKeypointModeActive(true);
+
+    const field = lastUsed.fieldFor(KEYPOINT);
+    const alreadyEditing = readEditing().isEditing;
+
+    if (!alreadyEditing && field) {
+      createNew(KEYPOINT, { field });
+    }
+  }, [createNew, lastUsed, readEditing, setKeypointModeActive]);
 
   /**
    * Leave keypoint mode, closing any open keypoint edit with it — the same
@@ -180,6 +233,7 @@ export const useGuidedKeypoints = () => {
   const { selected } = useAnnotationContext();
   const getSkeleton = useGetKeypointSkeleton();
   const [skips, setSkips] = useAtom(guidedSkipsAtom);
+  const [forced, setForced] = useAtom(forcedTargetAtom);
   // subscribe: recompute on every geometry change
   useAtomValue(guidedEpochAtom);
   const { scene } = useLighter();
@@ -196,8 +250,11 @@ export const useGuidedKeypoints = () => {
     [overlay, skips],
   );
 
+  const forcedIndex =
+    overlay && forced?.overlayId === overlay.id ? forced.index : null;
+
   const targetIndex = overlay
-    ? computeTargetIndex(overlay, nodeCount, skipped)
+    ? resolveTargetIndex(overlay, nodeCount, skipped, forcedIndex)
     : null;
 
   /**
@@ -209,13 +266,112 @@ export const useGuidedKeypoints = () => {
   const skip = useCallback(() => {
     if (!overlay || targetIndex === null) return;
 
-    const nextSkipped = [...skipped, targetIndex];
+    const nextSkipped = skipped.includes(targetIndex)
+      ? skipped
+      : [...skipped, targetIndex];
     setSkips({ overlayId: overlay.id, skipped: nextSkipped });
+    // Skipping a Place-forced node cancels the force
+    if (forcedIndex === targetIndex) {
+      setForced(null);
+    }
 
     if (computeTargetIndex(overlay, nodeCount, nextSkipped) === null) {
       scene?.exitInteractiveMode();
     }
-  }, [nodeCount, overlay, scene, setSkips, skipped, targetIndex]);
+  }, [
+    forcedIndex,
+    nodeCount,
+    overlay,
+    scene,
+    setForced,
+    setSkips,
+    skipped,
+    targetIndex,
+  ]);
+
+  const bumpGuidedEpoch = useSetAtom(guidedEpochAtom);
+
+  /**
+   * Clear a placed node back to a `[NaN, NaN]` hole — the occlusion control.
+   * A node is never deleted (its index is its identity), only placed or a
+   * hole, so "occluded here" = clear it. On a committed video track this is
+   * an ordinary edit: the clear commits, promotes the current frame to a
+   * keyframe, and the bracketing segments re-lerp — with the hole rule
+   * (either endpoint a hole → the span is a hole), the node vanishes from
+   * this keyframe until the next keyframe that places it again. On a
+   * creation draft the clear is silent and local, like placement.
+   */
+  const clearNode = useCallback(
+    (index: number) => {
+      if (!overlay) return;
+
+      const pointId = overlay.getPointIdAt(index);
+      const from = pointId ? overlay.getPointById(pointId)?.position : null;
+      if (
+        !pointId ||
+        !from ||
+        !Number.isFinite(from[0]) ||
+        !Number.isFinite(from[1])
+      ) {
+        return;
+      }
+
+      const emit = !(selected?.isNew && !isKeypointDraftFinalized(overlay.id));
+      const hole: [number, number] = [NaN, NaN];
+
+      overlay.movePointById(pointId, hole, emit);
+
+      const command = new MoveKeypointPointCommand(
+        overlay,
+        pointId,
+        from,
+        hole,
+        emit,
+      );
+      CommandContextManager.instance().getActiveContext().pushUndoable(command);
+
+      // Clearing IS skipping: the node is deliberately a hole now (occluded),
+      // so the guided cursor passes it rather than immediately re-arming its
+      // placement. Re-placing is explicit — the row's Place button.
+      if (!skipped.includes(index)) {
+        setSkips({ overlayId: overlay.id, skipped: [...skipped, index] });
+      }
+      if (forcedIndex === index) {
+        setForced(null);
+      }
+
+      bumpGuidedEpoch((n) => n + 1);
+    },
+    [
+      bumpGuidedEpoch,
+      forcedIndex,
+      overlay,
+      selected,
+      setForced,
+      setSkips,
+      skipped,
+    ],
+  );
+
+  /**
+   * Aim the next click at a specific hole — the checklist's Place button.
+   * Un-skips the node and force-targets it, so re-placing an occluded node
+   * (a hand coming back into frame) doesn't wait its strict-order turn.
+   */
+  const placeNode = useCallback(
+    (index: number) => {
+      if (!overlay) return;
+
+      if (skipped.includes(index)) {
+        setSkips({
+          overlayId: overlay.id,
+          skipped: skipped.filter((i) => i !== index),
+        });
+      }
+      setForced({ overlayId: overlay.id, index });
+    },
+    [overlay, setForced, setSkips, skipped],
+  );
 
   return {
     /** Node labels, when the skeleton defines them. */
@@ -226,6 +382,8 @@ export const useGuidedKeypoints = () => {
     targetIndex,
     skipped,
     skip,
+    clearNode,
+    placeNode,
   };
 };
 
@@ -255,8 +413,9 @@ export const useKeypointModeInstaller = (): void => {
   // after auto-finish turns a node back into a hole, and the guided handler
   // must reinstall so the next click can re-place it.
   const guidedEpoch = useAtomValue(guidedEpochAtom);
+  const setForced = useSetAtom(forcedTargetAtom);
   const getSkeleton = useGetKeypointSkeleton();
-  const { scene } = useLighter();
+  const { scene, removeOverlay } = useLighter();
   const eventBus = useLighterEventBus(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
   );
@@ -282,6 +441,16 @@ export const useKeypointModeInstaller = (): void => {
   useLighterEvent("lighter:keypoint-point-added", bumpGuidedEpoch);
   useLighterEvent("lighter:keypoint-point-deleted", bumpGuidedEpoch);
 
+  // Any established overlay counts as finalized: free-form drafts finalize
+  // through their handler's double-click establish, which doesn't go through
+  // `finalizeDraft` below. Non-keypoint overlay ids in the set are inert.
+  useLighterEvent(
+    "lighter:overlay-establish",
+    useCallback((event: { overlayId: string }) => {
+      markKeypointDraftFinalized(event.overlayId);
+    }, []),
+  );
+
   const installedHandlerRef = useRef<
     | GuidedKeypointHandler
     | InteractiveKeypointHandler
@@ -298,9 +467,13 @@ export const useKeypointModeInstaller = (): void => {
     installedHandlerRef.current = null;
   }, [scene]);
 
-  // Selection drives the mode: selecting a 2D keypoint activates it,
-  // switching to a different non-keypoint label exits it, deselecting leaves
-  // it armed (mirrors polyline mode).
+  // Selection drives the mode, and — unlike polyline mode — the mode lives
+  // exactly as long as a keypoint is selected: the mode opens a draft on
+  // activation, so "armed with nothing selected" is the aiming-blind state
+  // the eager draft exists to prevent. A background click (deselect) or a
+  // switch to another label therefore exits the mode, and an unfinalized
+  // draft left behind by either is discarded (atomic creation: a bail never
+  // persists, and it should not linger in the scene either).
   const prevSelectedRef = useRef(selected);
   useEffect(() => {
     const prev = prevSelectedRef.current;
@@ -311,16 +484,77 @@ export const useKeypointModeInstaller = (): void => {
 
     if (isKeypoint2d) {
       setKeypointModeActive(true);
-    } else if (wasKeypoint2d && selected?.label) {
+    } else if (wasKeypoint2d) {
       setKeypointModeActive(false);
+
+      // Discard the abandoned draft's scene overlay (deselect paths bypass
+      // useExit's cleanup)
+      const prevId = prev?.overlay?.id;
+      if (
+        prev?.isNew &&
+        prevId &&
+        !isKeypointDraftFinalized(prevId) &&
+        scene?.getOverlay(prevId)
+      ) {
+        removeOverlay(prevId, true);
+      }
     }
 
-    // Selection changed to a different overlay: stale skip state never
-    // carries over.
-    if (selected?.overlay?.id && prev?.overlay?.id !== selected.overlay.id) {
+    // Selection changed to a different overlay: stale skip / Place state
+    // never carries over.
+    if (prev?.overlay?.id !== selected?.overlay?.id) {
       setSkips(null);
+      setForced(null);
     }
-  }, [selected, setKeypointModeActive, setSkips]);
+  }, [
+    removeOverlay,
+    scene,
+    selected,
+    setForced,
+    setKeypointModeActive,
+    setSkips,
+  ]);
+
+  // The edit form's Field picker is how a different skeleton is chosen, so a
+  // field swap on a creation draft RESTARTS it for the new field's skeleton:
+  // hole count and edges follow the field, and any placed nodes are dropped —
+  // a node's index is bound to the old skeleton's semantics (node 3 of a face
+  // is not node 3 of a body), so carrying placements across topologies would
+  // be silent corruption. Committed labels never take this path (their swap
+  // moves engine rows; see Field.tsx).
+  const prevFieldRef = useRef<string | null>(null);
+  useEffect(() => {
+    const field = selected?.field ?? null;
+    const prevField = prevFieldRef.current;
+    prevFieldRef.current = field;
+
+    if (
+      !scene ||
+      !field ||
+      !prevField ||
+      prevField === field ||
+      !is2dKeypointSelected(selected) ||
+      !selected?.isNew ||
+      isKeypointDraftFinalized(selected.overlay?.id ?? "")
+    ) {
+      return;
+    }
+
+    const overlay = scene.getOverlay(selected.overlay?.id ?? "");
+    if (!(overlay instanceof KeypointOverlay)) {
+      return;
+    }
+
+    const skeleton = getSkeleton(field);
+    const nodeCount = skeletonNodeCount(skeleton);
+    overlay.setConnections(skeleton?.edges ?? []);
+    overlay.applyLabel({
+      ...overlay.label,
+      points: Array.from({ length: nodeCount }, () => [NaN, NaN]),
+    });
+    setSkips(null);
+    bumpGuidedEpoch();
+  }, [bumpGuidedEpoch, getSkeleton, scene, selected, setSkips]);
 
   // Stable ref so the creation handler's `onCreate` always sees the latest
   // create function without swapping the installed handler.
@@ -331,11 +565,100 @@ export const useKeypointModeInstaller = (): void => {
   const createKeypointRef = useRef(createKeypoint);
   createKeypointRef.current = createKeypoint;
 
-  // The guided handler resolves its target through this ref so skip updates
-  // take effect without reinstalling the handler.
+  // The guided handler resolves its target through these refs so skip /
+  // Place updates take effect without reinstalling the handler.
   const currentSkips = useAtomValue(guidedSkipsAtom);
   const currentSkipsRef = useRef(currentSkips);
   currentSkipsRef.current = currentSkips;
+  const currentForced = useAtomValue(forcedTargetAtom);
+  const currentForcedRef = useRef(currentForced);
+  currentForcedRef.current = currentForced;
+
+  // Keypoint creation is ATOMIC: draft placements are silent (no commits),
+  // and the one persistence event is this finalize — dispatched when every
+  // node is resolved (placed or explicitly skipped) with at least one placed.
+  // The establish event both commits the label and, on video, creates its
+  // track; a draft abandoned before finalize was never persisted, so every
+  // bail path (mode exit, sample switch, scrub, modal close) is a discard.
+  const finalizeDraft = useCallback(
+    (overlay: KeypointOverlay, data: Record<string, unknown> | undefined) => {
+      if (isKeypointDraftFinalized(overlay.id)) {
+        return;
+      }
+      markKeypointDraftFinalized(overlay.id);
+
+      // Fold the sidebar draft's fields (class, attributes picked mid-draft)
+      // into the overlay label the commit extraction reads, keeping the live
+      // geometry authoritative.
+      overlay.applyLabel({
+        ...overlay.label,
+        ...(data ?? {}),
+        points: overlay.getRelativePoints(),
+      } as typeof overlay.label);
+
+      // The consumers read geometry from the overlay / engine anchor, not
+      // this payload — a zero rect satisfies the event shape
+      const bounds = { x: 0, y: 0, width: 0, height: 0 };
+      eventBus.dispatch("lighter:overlay-establish", {
+        id: "guided-keypoint-finalize",
+        overlayId: overlay.id,
+        handler: installedHandlerRef.current ?? undefined,
+        startBounds: bounds,
+        startPosition: { x: bounds.x, y: bounds.y },
+        bounds,
+      });
+    },
+    [eventBus],
+  );
+
+  // Completion watcher: finalize the selected draft once its guided sequence
+  // resolves. Runs on geometry changes (guidedEpoch) and skip changes.
+  useEffect(() => {
+    if (!scene || !is2dKeypointSelected(selected) || !selected?.isNew) {
+      return;
+    }
+
+    const overlay = scene.getOverlay(selected.overlay?.id ?? "");
+    if (
+      !(overlay instanceof KeypointOverlay) ||
+      isKeypointDraftFinalized(overlay.id)
+    ) {
+      return;
+    }
+
+    const field = selected.field ?? null;
+    const nodeCount = skeletonNodeCount(field ? getSkeleton(field) : null);
+    if (!nodeCount) {
+      // Free-form drafts finalize on double-click (the handler's establish)
+      return;
+    }
+
+    const skipped =
+      currentSkips?.overlayId === overlay.id ? currentSkips.skipped : [];
+    const forcedIndex =
+      currentForced?.overlayId === overlay.id ? currentForced.index : null;
+    // A Place-forced hole keeps the draft open until it's actually placed
+    const complete =
+      resolveTargetIndex(overlay, nodeCount, skipped, forcedIndex) === null;
+    const anyPlaced = overlay
+      .getRelativePoints()
+      .some((p) => Number.isFinite(p[0]) && Number.isFinite(p[1]));
+
+    if (complete && anyPlaced) {
+      finalizeDraft(
+        overlay,
+        selected.data as Record<string, unknown> | undefined,
+      );
+    }
+  }, [
+    currentForced,
+    currentSkips,
+    finalizeDraft,
+    getSkeleton,
+    guidedEpoch,
+    scene,
+    selected,
+  ]);
 
   useEffect(() => {
     if (!scene) {
@@ -371,7 +694,15 @@ export const useKeypointModeInstaller = (): void => {
           const skips = currentSkipsRef.current;
           const skipped =
             skips?.overlayId === targetOverlay.id ? skips.skipped : [];
-          return computeTargetIndex(targetOverlay, nodeCount, skipped);
+          const forced = currentForcedRef.current;
+          const forcedIndex =
+            forced?.overlayId === targetOverlay.id ? forced.index : null;
+          return resolveTargetIndex(
+            targetOverlay,
+            nodeCount,
+            skipped,
+            forcedIndex,
+          );
         };
 
         if (getTarget() === null) {
@@ -392,13 +723,22 @@ export const useKeypointModeInstaller = (): void => {
         const handler = new GuidedKeypointHandler(targetOverlay, {
           getTargetIndex: getTarget,
           onPlaced: () => {
+            // A placement satisfies any Place force (the forced node was the
+            // target, or it got placed some other way — either way, resume
+            // strict order)
+            setForced(null);
             bumpGuidedEpoch();
             // Auto-finish: release the handler once every node is resolved;
-            // the overlay stays selected for editing.
+            // the overlay stays selected for editing. (The completion
+            // watcher finalizes the draft.)
             if (getTarget() === null) {
               exitInstalledHandler();
             }
           },
+          // Draft placements are silent (atomic creation); resuming holes on
+          // an already-committed label emits per placement (edits).
+          silent:
+            !!selected?.isNew && !isKeypointDraftFinalized(targetOverlay.id),
         });
 
         scene.enterInteractiveMode(handler);
@@ -421,6 +761,9 @@ export const useKeypointModeInstaller = (): void => {
         eventBus,
         undefined,
         resolvePointHit,
+        // Draft placements are silent (atomic creation) — the double-click
+        // finish is free-form's finalize; edits on committed labels emit.
+        !!selected?.isNew && !isKeypointDraftFinalized(targetOverlay.id),
       );
 
       scene.enterInteractiveMode(handler);
@@ -438,24 +781,31 @@ export const useKeypointModeInstaller = (): void => {
     const handler = new InteractiveCreationHandler({
       id: "interactive-keypoint-creation-handler",
       onCreate: (worldPoint) => {
-        const rel = scene.absolutePointToRelative(worldPoint);
-        const created = createKeypointRef.current({ origin: [rel.x, rel.y] });
+        const created = createKeypointRef.current({});
 
-        // Frame-level fields (video) must announce the drawn label so the
-        // video surface establishes the track — same dance as the polyline
-        // creation flow (see usePolylineModeInstaller for the reasoning).
-        if (created?.path?.startsWith(FRAMES_PREFIX)) {
-          const bounds = { x: 0, y: 0, width: 0, height: 0 };
-
-          eventBus.dispatch("lighter:overlay-establish", {
-            id: handler.id,
-            overlayId: created.data._id as string,
-            handler,
-            startBounds: bounds,
-            startPosition: { x: bounds.x, y: bounds.y },
-            bounds,
-          });
+        if (!created) {
+          return;
         }
+
+        // Place the creation click's point — SILENTLY: creation is atomic,
+        // so nothing commits until the draft completes (the completion
+        // watcher finalizes skeleton drafts; free-form finalizes on
+        // double-click).
+        const overlay = scene.getOverlay(created.data._id as string);
+        if (!(overlay instanceof KeypointOverlay)) {
+          return;
+        }
+
+        const firstNodeId = overlay.getPointIdAt(0);
+        if (firstNodeId) {
+          // Skeleton draft: the click places node 0 (hole → position)
+          const rel = overlay.absolutePointToRelative(worldPoint);
+          overlay.movePointById(firstNodeId, rel, false);
+        } else {
+          // Free-form draft: the click appends the first point
+          overlay.addPoint(worldPoint, { silent: true });
+        }
+        bumpGuidedEpoch();
       },
     });
 
@@ -463,6 +813,9 @@ export const useKeypointModeInstaller = (): void => {
     installedHandlerRef.current = handler;
   }, [
     bumpGuidedEpoch,
+    // re-runs when Place forces a target on a fully-resolved label, which is
+    // what installs the guided handler for the re-placement click
+    currentForced,
     eventBus,
     exitInstalledHandler,
     getSkeleton,
@@ -474,6 +827,7 @@ export const useKeypointModeInstaller = (): void => {
     // re-runs when the selected track's overlay mounts / unmounts
     sceneEpoch,
     selected,
+    setForced,
   ]);
 
   // Tear down on unmount (scene swap, modal close)

@@ -19,6 +19,7 @@ import {
   CLASSIFICATIONS_FIELD,
   DETECTION,
   EMBEDDED_DOCUMENT_FIELD,
+  KEYPOINT,
   LabelType,
   POLYLINE,
   type Stage,
@@ -144,6 +145,7 @@ export const useLabelSchemasLoaded = (): boolean =>
 export const useFrameLabelFields = (): Record<string, LabelType> => {
   const detectionFields = useAnnotationFields(DETECTION).fields;
   const polylineFields = useAnnotationFields(POLYLINE).fields;
+  const keypointFields = useAnnotationFields(KEYPOINT).fields;
 
   return useMemo(() => {
     const fields: Record<string, LabelType> = {};
@@ -160,8 +162,14 @@ export const useFrameLabelFields = (): Record<string, LabelType> => {
       }
     }
 
+    for (const field of keypointFields) {
+      if (field.startsWith(FRAMES_PREFIX)) {
+        fields[field] = LabelType.Keypoints;
+      }
+    }
+
     return fields;
-  }, [detectionFields, polylineFields]);
+  }, [detectionFields, keypointFields, polylineFields]);
 };
 
 /**

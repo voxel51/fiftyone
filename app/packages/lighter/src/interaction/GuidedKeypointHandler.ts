@@ -22,6 +22,15 @@ export type GuidedKeypointCallbacks = {
   getTargetIndex: () => number | null;
   /** Notification that the node at `index` was just placed. */
   onPlaced: (index: number) => void;
+  /**
+   * When `true`, placements (and their undo/redo) emit no point events and
+   * therefore never commit. Creation drafts place silently — the keypoint
+   * mode persists them once, at completion, via `lighter:overlay-establish`;
+   * a draft abandoned mid-placement is discarded, never half-saved. Resuming
+   * holes on an already-committed label places loudly (each placement is an
+   * edit).
+   */
+  silent?: boolean;
 };
 
 /**
@@ -93,14 +102,17 @@ export class GuidedKeypointHandler implements InteractionHandler {
       return false;
     }
 
-    // Emits `lighter:keypoint-point-moved`, which the engine bridge commits
-    this.overlay.movePointById(pointId, rp);
+    const emit = !this.callbacks.silent;
+
+    // When emitting, `lighter:keypoint-point-moved` drives the engine commit
+    this.overlay.movePointById(pointId, rp, emit);
 
     const command = new MoveKeypointPointCommand(
       this.overlay,
       pointId,
       from,
       rp,
+      emit,
     );
     CommandContextManager.instance().getActiveContext().pushUndoable(command);
     this.pushedCommandIds.add(command.id);
@@ -110,7 +122,10 @@ export class GuidedKeypointHandler implements InteractionHandler {
   }
 
   onMove({ worldPoint }: OverlayEvent): boolean {
-    this.overlay.setPreviewPoint(worldPoint);
+    // Carry the target node so the preview draws the edges this placement
+    // will actually create (from placed skeleton neighbors), not a line from
+    // whatever point happened to land last.
+    this.overlay.setPreviewPoint(worldPoint, this.callbacks.getTargetIndex());
     return true;
   }
 

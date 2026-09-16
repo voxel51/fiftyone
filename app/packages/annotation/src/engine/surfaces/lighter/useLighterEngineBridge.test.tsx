@@ -51,7 +51,13 @@ vi.mock("@fiftyone/lighter", () => ({
 vi.mock("./lighterBridge", () => ({
   createLighterBridge: () => ({ clear: vi.fn() }),
 }));
-vi.mock("./adapters", () => ({ lighterAdapters: {} }));
+vi.mock("./adapters", () => ({
+  lighterAdapters: {},
+  createLighterAdapters: () => ({}),
+}));
+vi.mock("@fiftyone/state", () => ({
+  useGetKeypointSkeleton: () => () => null,
+}));
 vi.mock("./useLighterPreviewSync", () => ({ useLighterPreviewSync: vi.fn() }));
 const mockCommit = vi.fn();
 const mockSelectHandle = vi.fn();

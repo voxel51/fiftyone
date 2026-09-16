@@ -190,6 +190,10 @@ export class KeypointOverlay
   // Preview point for interactive creation (cursor tracking)
   protected previewPoint?: Point | null = null;
 
+  // The skeleton node the preview point would place (guided creation);
+  // null for free-form previews. See setPreviewPoint.
+  protected previewTargetIndex: number | null = null;
+
   // Registered render effects. Invoked once per frame, between point
   // bucket-collection and bucket-draw, so contributions appear behind the
   // solid points. Owners drive frame invalidation and unregister when done.
@@ -515,20 +519,62 @@ export class KeypointOverlay
       return;
     }
 
-    // Anchor the preview to the last drawable point (holes are skipped)
-    const lastPoint = ctx.absPoints.findLast(isFinitePoint);
+    const previewStyle = {
+      strokeStyle: ctx.strokeColor,
+      lineWidth: ctx.lineWidth,
+      dashPattern: [6, 4] as [number, number],
+      opacity: PREVIEW_LINE_OPACITY,
+    };
+
+    // Guided placement: preview the edges the placement will ACTUALLY create
+    // — one dashed line from each PLACED skeleton neighbor of the target
+    // node. A target with no placed neighbors previews nothing (it lands as
+    // a floating point); a line to an unrelated point would be a lie.
+    const target = this.previewTargetIndex;
+    if (target !== null) {
+      for (const path of this.connections) {
+        for (let i = 1; i < path.length; i++) {
+          const neighbor =
+            path[i - 1] === target
+              ? path[i]
+              : path[i] === target
+                ? path[i - 1]
+                : null;
+          if (neighbor === null) {
+            continue;
+          }
+
+          const anchor = ctx.absPoints[neighbor];
+          if (anchor && isFinitePoint(anchor)) {
+            renderer.drawLine(
+              anchor,
+              this.previewPoint,
+              previewStyle,
+              this.containerId,
+            );
+          }
+        }
+      }
+      return;
+    }
+
+    // Free-form: anchor the preview to the last drawable point (holes are
+    // skipped). Reverse loop rather than Array.findLast — this package's TS
+    // lib predates ES2023.
+    let lastPoint: Point | undefined;
+    for (let i = ctx.absPoints.length - 1; i >= 0; i--) {
+      if (isFinitePoint(ctx.absPoints[i])) {
+        lastPoint = ctx.absPoints[i];
+        break;
+      }
+    }
     if (!lastPoint) {
       return;
     }
     renderer.drawLine(
       lastPoint,
       this.previewPoint,
-      {
-        strokeStyle: ctx.strokeColor,
-        lineWidth: ctx.lineWidth,
-        dashPattern: [6, 4],
-        opacity: PREVIEW_LINE_OPACITY,
-      },
+      previewStyle,
       this.containerId,
     );
   }
@@ -864,24 +910,34 @@ export class KeypointOverlay
    *             continuous drag. Subclasses (e.g. `MaskKeypoints`) may gate
    *             dragged placements by a minimum-distance threshold while
    *             always honoring discrete clicks.
+   * @param options.silent - When `true`, adds without dispatching
+   *             `keypoint-point-added` (no engine commit). Keypoint creation
+   *             drafts place silently and commit once, on completion.
    * @returns The id of the new point.
    */
   addPoint(
     worldPoint: Point,
-    options?: { variant?: string; id?: string; dragging?: boolean },
+    options?: {
+      variant?: string;
+      id?: string;
+      dragging?: boolean;
+      silent?: boolean;
+    },
   ): string {
-    const { variant, id } = options ?? {};
+    const { variant, id, silent } = options ?? {};
     const position = this.absolutePointToRelative(worldPoint);
     const entry: KeypointEntry = { id: id ?? uuidv4(), position, variant };
     this.#points.push(entry);
 
-    this.eventBus.dispatch("lighter:keypoint-point-added", {
-      id: this.id,
-      overlayId: this.id,
-      pointId: entry.id,
-      point: { x: position[0], y: position[1] },
-      variant,
-    });
+    if (!silent) {
+      this.eventBus.dispatch("lighter:keypoint-point-added", {
+        id: this.id,
+        overlayId: this.id,
+        pointId: entry.id,
+        point: { x: position[0], y: position[1] },
+        variant,
+      });
+    }
 
     this.markDirty();
     return entry.id;
@@ -948,14 +1004,16 @@ export class KeypointOverlay
    * Removes the point with the given ID.
    *
    * @param pointId - The ID of the point to remove
+   * @param silent - When `true`, removes without dispatching
+   *   `keypoint-point-deleted` (no engine commit); see {@link addPoint}
    */
-  removePointById(pointId: string): void {
+  removePointById(pointId: string, silent = false): void {
     const index = this.#points.findIndex((p) => p.id === pointId);
     if (index === -1) {
       return;
     }
 
-    this.removePoint(index);
+    this.removePoint(index, silent);
   }
 
   /**
@@ -1044,8 +1102,11 @@ export class KeypointOverlay
 
   /**
    * Removes the point at the given index.
+   *
+   * @param silent - When `true`, removes without dispatching
+   *   `keypoint-point-deleted` (no engine commit); see {@link addPoint}
    */
-  removePoint(index: number): void {
+  removePoint(index: number, silent = false): void {
     if (!this.isDeletable) return;
     if (index < 0 || index >= this.#points.length) return;
 
@@ -1069,21 +1130,33 @@ export class KeypointOverlay
       this.selectedPointIndex--;
     }
 
-    this.eventBus.dispatch("lighter:keypoint-point-deleted", {
-      id: this.id,
-      overlayId: this.id,
-      pointId,
-      variant,
-    });
+    if (!silent) {
+      this.eventBus.dispatch("lighter:keypoint-point-deleted", {
+        id: this.id,
+        overlayId: this.id,
+        pointId,
+        variant,
+      });
+    }
 
     this.markDirty();
   }
 
   /**
-   * Sets the preview point for interactive creation (dashed line from last point).
+   * Sets the preview point for interactive creation.
+   *
+   * @param targetIndex - The skeleton node the preview point would place.
+   *   When given, the dashed preview lines are drawn from the node's PLACED
+   *   skeleton neighbors — the edges the placement will actually create — and
+   *   from nothing when no neighbor is placed yet. Without it (free-form),
+   *   one dashed line anchors to the last placed point.
    */
-  setPreviewPoint(worldPoint: Point | null): void {
+  setPreviewPoint(
+    worldPoint: Point | null,
+    targetIndex: number | null = null,
+  ): void {
     this.previewPoint = worldPoint;
+    this.previewTargetIndex = worldPoint === null ? null : targetIndex;
     this.markDirty();
   }
 

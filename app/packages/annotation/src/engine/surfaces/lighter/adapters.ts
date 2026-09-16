@@ -18,9 +18,11 @@ import type {
   DetectionOverlay,
   DetectionOverlayOptions,
   KeypointLabel,
+  KeypointOverlay,
   PolylineOverlay,
 } from "@fiftyone/lighter";
 import type { DetectionLabel } from "@fiftyone/looker";
+import type { KeypointSkeleton } from "@fiftyone/looker/src/state";
 import type { LabelData } from "@fiftyone/utilities";
 import { hasValidBounds, LabelType } from "@fiftyone/utilities";
 
@@ -141,18 +143,52 @@ export const classificationAdapter: LighterAdapter = {
   toLabel: (overlay) => withoutId(overlay.label as Record<string, unknown>),
 };
 
-export const keypointAdapter: LighterAdapter = {
-  buildHandle: (ref, label) => ({
-    factoryKey: "keypoint",
-    options: { id: ref.instanceId, field: ref.path, label },
-  }),
+/** Resolves a field's keypoint skeleton (or the dataset default), or null. */
+export type GetKeypointSkeleton = (field: string) => KeypointSkeleton | null;
+
+/**
+ * Keypoint adapter, parameterized on skeleton lookup so mounted overlays
+ * carry the field's skeleton edges (`connections`) — without it, existing
+ * keypoints render as bare points. `createLighterAdapters` supplies the
+ * lookup; the static {@link lighterAdapters} map has none (edge-less).
+ */
+export const createKeypointAdapter = (
+  getSkeleton?: GetKeypointSkeleton,
+): LighterAdapter => ({
+  buildHandle: (ref, label) => {
+    const skeleton = getSkeleton?.(ref.path) ?? null;
+
+    return {
+      factoryKey: "keypoint",
+      options: {
+        id: ref.instanceId,
+        field: ref.path,
+        label,
+        connections: skeleton?.edges ?? [],
+        draggable: true,
+        // Skeleton nodes are cleared back to [NaN, NaN] holes, never
+        // deleted — a node's index is its identity
+        deletable: !skeleton,
+        selectable: true,
+      },
+    };
+  },
 
   updateHandle: (overlay, label) => {
     overlay.applyLabel(label as unknown as KeypointLabel);
   },
 
-  toLabel: (overlay) => withoutId(overlay.label as Record<string, unknown>),
-};
+  toLabel: (handle) => {
+    const overlay = handle as KeypointOverlay;
+    const label = withoutId(overlay.label as Record<string, unknown>);
+
+    // Live geometry — `overlay.label.points` is a snapshot from creation /
+    // last reconciliation (cf. polylineAdapter). Holes persist as [NaN, NaN].
+    return { ...label, points: overlay.getRelativePoints() };
+  },
+});
+
+export const keypointAdapter: LighterAdapter = createKeypointAdapter();
 
 export const polylineAdapter: LighterAdapter = {
   // 2D vertices are what this surface draws — Polyline3D (shared `_cls`,
@@ -183,16 +219,28 @@ export const polylineAdapter: LighterAdapter = {
 };
 
 /**
- * The full Lighter adapter map. Single and list kinds share an adapter — the
- * engine routes by `getLabelType(ref.path)`, the overlay shape is identical.
+ * Builds the full Lighter adapter map. Single and list kinds share an
+ * adapter — the engine routes by `getLabelType(ref.path)`, the overlay shape
+ * is identical. Pass the skeleton lookup so mounted keypoints carry their
+ * field's skeleton edges.
  */
-export const lighterAdapters: AdapterMap<BaseOverlay, LighterDescriptor> = {
-  [LabelType.Detection]: detectionAdapter,
-  [LabelType.Detections]: detectionAdapter,
-  [LabelType.Classification]: classificationAdapter,
-  [LabelType.Classifications]: classificationAdapter,
-  [LabelType.Keypoint]: keypointAdapter,
-  [LabelType.Keypoints]: keypointAdapter,
-  [LabelType.Polyline]: polylineAdapter,
-  [LabelType.Polylines]: polylineAdapter,
+export const createLighterAdapters = (
+  getSkeleton?: GetKeypointSkeleton,
+): AdapterMap<BaseOverlay, LighterDescriptor> => {
+  const keypoint = createKeypointAdapter(getSkeleton);
+
+  return {
+    [LabelType.Detection]: detectionAdapter,
+    [LabelType.Detections]: detectionAdapter,
+    [LabelType.Classification]: classificationAdapter,
+    [LabelType.Classifications]: classificationAdapter,
+    [LabelType.Keypoint]: keypoint,
+    [LabelType.Keypoints]: keypoint,
+    [LabelType.Polyline]: polylineAdapter,
+    [LabelType.Polylines]: polylineAdapter,
+  };
 };
+
+/** Skeleton-less default map (keypoints mount without edges). */
+export const lighterAdapters: AdapterMap<BaseOverlay, LighterDescriptor> =
+  createLighterAdapters();

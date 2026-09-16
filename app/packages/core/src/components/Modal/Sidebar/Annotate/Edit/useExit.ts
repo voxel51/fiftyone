@@ -1,5 +1,6 @@
 import { useAnnotationEngine } from "@fiftyone/annotation";
 import { DetectionOverlay, useLighter } from "@fiftyone/lighter";
+import { isKeypointDraftFinalized } from "./keypointDraftState";
 import { TypeGuards } from "@fiftyone/lighter/src/core/Scene2D";
 import type { AnnotationLabel } from "@fiftyone/state";
 import {
@@ -21,6 +22,15 @@ const hasDrawnContent = (
   label: AnnotationLabel,
   overlay?: AnnotationLabel["overlay"],
 ): boolean => {
+  if (label.type === KEYPOINT) {
+    // Keypoint creation is ATOMIC (pure discard): a draft persists only via
+    // its completion finalize, so an unfinalized draft is discarded on exit
+    // no matter how many nodes were placed — half a pose is not a smaller
+    // pose. Neither geometry nor the (auto-assigned) class counts as content;
+    // only the finalize does.
+    return isKeypointDraftFinalized(label.data._id as string);
+  }
+
   // A picked class is content on its own and also covers shapes we don't
   // introspect here (e.g. 3D detections).
   if (label.data.label) {
@@ -40,7 +50,6 @@ const hasDrawnContent = (
         hasValidBounds(label.data.bounding_box)
       );
     case POLYLINE:
-    case KEYPOINT:
       return (label.data.points?.length ?? 0) > 0;
     default:
       return false;

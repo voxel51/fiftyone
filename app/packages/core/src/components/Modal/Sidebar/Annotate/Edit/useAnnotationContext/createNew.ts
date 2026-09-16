@@ -152,17 +152,13 @@ export function createNewLabel(
     // Skeleton fields are fixed-length: every node exists from the start as a
     // [NaN, NaN] hole and guided placement fills holes in node order, so a
     // node's index (= its identity) never changes. Free-form fields start
-    // empty and grow point by point.
+    // empty and grow point by point. Placement always flows through the
+    // overlay's point API (movePointById / addPoint), whose events the engine
+    // bridge commits — the engine upserts on the first placement, so an
+    // abandoned draft (nothing placed) never reaches persistence.
     const points: [number, number][] = nodeCount
       ? Array.from({ length: nodeCount }, () => [NaN, NaN])
       : [];
-    if (options?.origin) {
-      if (nodeCount) {
-        points[0] = options.origin;
-      } else {
-        points.push(options.origin);
-      }
-    }
 
     const keypointData = { ...data, points } as KeypointLabel;
     const overlay = overlayFactory.create<KeypointOptions, KeypointOverlay>(
@@ -182,19 +178,6 @@ export function createNewLabel(
     );
     addOverlay(overlay, true);
     scene?.selectOverlay(id, { ignoreSideEffects: true });
-
-    // Write the new label through to the engine immediately (cf. the
-    // Classification branch above): constructor-baked points dispatch no
-    // events, so nothing else commits the initial state. Sample-level fields
-    // only — on video, frame-level creation is announced by the keypoint
-    // mode's `lighter:overlay-establish` dispatch, which lets the video
-    // surface establish the track first (cf. the polyline creation flow).
-    if (sample && !field.startsWith("frames.")) {
-      engine.updateLabel(
-        { sample, path: field, instanceId: id },
-        keypointData as unknown as Partial<LabelData>,
-      );
-    }
 
     return {
       data: keypointData,
@@ -265,7 +248,7 @@ export function buildNewLabelData(
   if (type === KEYPOINT) {
     // Skeleton-aware seeding (holes per node) happens in createNewLabel,
     // where the skeleton is resolvable; this default covers other callers.
-    return { ...data, points: options?.origin ? [options.origin] : [] };
+    return { ...data, points: [] };
   }
 
   return data;

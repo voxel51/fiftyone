@@ -25,7 +25,8 @@ import { encodeEntityId } from "../../identity/entityId";
 import { stampFrame, toLabelRef } from "../../identity/ref";
 import { useSurfaceBridge } from "../../react/useSurfaceBridge";
 import { GEOMETRY_SIGNAL, type GeometrySignal } from "../../signals/geometry";
-import { lighterAdapters } from "./adapters";
+import { useGetKeypointSkeleton } from "@fiftyone/state";
+import { createLighterAdapters } from "./adapters";
 import type { LighterInteractionPolicy } from "./interactionPolicy";
 import type { LighterBridgeDeps } from "./lighterBridge";
 import { createLighterBridge } from "./lighterBridge";
@@ -156,10 +157,19 @@ export const useLighterEngineBridge = ({
     };
   }, [enabled, scene]);
 
+  // Skeleton-aware adapters: mounted keypoints carry their field's skeleton
+  // edges. `useGetKeypointSkeleton` is referentially stable (recoil callback),
+  // so this map — and with it the registered bridge — does not churn.
+  const getSkeleton = useGetKeypointSkeleton();
+  const adapters = useMemo(
+    () => createLighterAdapters(getSkeleton),
+    [getSkeleton],
+  );
+
   const surface = useSurfaceBridge({
     engine,
     bridge,
-    adapters: lighterAdapters,
+    adapters,
   });
 
   const commitOverlay = useCallback(

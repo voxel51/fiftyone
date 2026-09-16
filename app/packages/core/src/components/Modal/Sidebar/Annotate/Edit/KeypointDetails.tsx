@@ -9,6 +9,7 @@ import {
   TextColor,
   TextVariant,
 } from "@voxel51/voodo";
+import { useEffect, useRef } from "react";
 import styled from "styled-components";
 import { useAnnotationContext } from "./useAnnotationContext";
 import { useGuidedKeypoints } from "./useKeypointMode";
@@ -52,8 +53,23 @@ const STATUS_MARK: Record<NodeStatus, string> = {
  */
 export const KeypointDetails = () => {
   const { selected } = useAnnotationContext();
-  const { nodeLabels, nodeCount, points, targetIndex, skipped, skip } =
-    useGuidedKeypoints();
+  const {
+    nodeLabels,
+    nodeCount,
+    points,
+    targetIndex,
+    skipped,
+    skip,
+    clearNode,
+    placeNode,
+  } = useGuidedKeypoints();
+
+  // Keep the target row visible as placement advances — on a many-node
+  // skeleton the next node must never require manual scrolling
+  const targetRowRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    targetRowRef.current?.scrollIntoView({ block: "nearest" });
+  }, [targetIndex]);
 
   // Fall back to the label data when no live overlay is available (e.g. a
   // selected track on a frame outside its extent)
@@ -109,6 +125,7 @@ export const KeypointDetails = () => {
           return (
             <NodeRow
               key={i}
+              ref={status === "target" ? targetRowRef : undefined}
               $active={status === "target"}
               data-cy={`keypoint-node-${i}`}
               data-cy-status={status}
@@ -142,6 +159,26 @@ export const KeypointDetails = () => {
                 <Clickable onClick={skip} data-cy="keypoint-skip-node">
                   <Text color={TextColor.Secondary} variant={TextVariant.Sm}>
                     Skip
+                  </Text>
+                </Clickable>
+              )}
+              {status === "placed" && (
+                <Clickable
+                  onClick={() => clearNode(i)}
+                  data-cy={`keypoint-clear-node-${i}`}
+                >
+                  <Text color={TextColor.Secondary} variant={TextVariant.Sm}>
+                    Clear
+                  </Text>
+                </Clickable>
+              )}
+              {(status === "skipped" || status === "pending") && (
+                <Clickable
+                  onClick={() => placeNode(i)}
+                  data-cy={`keypoint-place-node-${i}`}
+                >
+                  <Text color={TextColor.Secondary} variant={TextVariant.Sm}>
+                    Place
                   </Text>
                 </Clickable>
               )}

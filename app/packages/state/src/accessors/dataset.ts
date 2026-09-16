@@ -163,13 +163,17 @@ export type GroupSliceMediaType = "video" | "3d" | "image" | "multimodal";
 
 /**
  * Hook which provides a function to get the default keypoint skeleton for a
- * given field.
+ * given field. Accepts frame-level paths: `dataset.skeletons` is keyed by
+ * bare field name, so `frames.pose` resolves via its last segment (the same
+ * normalization looker's renderer applies).
  */
 export const useGetKeypointSkeleton = () => {
   return useRecoilCallback(
     ({ snapshot }) =>
       (field: string) =>
-        snapshot.getLoadable(skeleton(field)).getValue(),
+        snapshot
+          .getLoadable(skeleton(field.split(".").slice(-1)[0]))
+          .getValue(),
     [],
   );
 };

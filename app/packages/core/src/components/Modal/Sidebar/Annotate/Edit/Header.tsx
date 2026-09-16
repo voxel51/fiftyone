@@ -1,4 +1,4 @@
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useRef, useState } from "react";
 import { Redo, Round, Undo } from "../Actions";
 
@@ -43,6 +43,7 @@ import { KnownCommands, KnownContexts, useCommand } from "@fiftyone/commands";
 import useColor from "./useColor";
 import useExit from "./useExit";
 import { useDetectionMode } from "./useDetectionMode";
+import { _unsafeKeypointModeActiveAtom } from "./useKeypointMode";
 import { useSegmentationMode } from "./useSegmentationMode";
 import {
   AnnotationSaveIndicator,
@@ -207,11 +208,20 @@ const Header = () => {
   const labelCount = useAtomValue(labels).length;
   const shouldExitToExplore = isPatches && labelCount === 1;
 
+  // Atom write, not deactivateKeypointMode(): the exit cleanup below (scene
+  // interactive-mode exit + onExit's draft discard) is already performed here,
+  // and the mode's own deactivate would run it a second time.
+  const setKeypointModeActive = useSetAtom(_unsafeKeypointModeActiveAtom);
+
   const handleExit = useCallback(() => {
     if (shouldExitToExplore) {
       exitAnnotationMode();
     }
     deactivateDetectionMode();
+    // Backing out of a keypoint edit leaves keypoint mode entirely — the mode
+    // opens a draft on activation, so staying armed would spawn a fresh draft
+    // on the next canvas click right after the user chose to leave.
+    setKeypointModeActive(false);
     scene?.exitInteractiveMode();
     onExit();
   }, [
@@ -220,6 +230,7 @@ const Header = () => {
     onExit,
     deactivateDetectionMode,
     scene,
+    setKeypointModeActive,
   ]);
 
   return (

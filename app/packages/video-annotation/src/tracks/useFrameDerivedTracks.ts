@@ -41,7 +41,8 @@ export function useFrameDerivedTracks(
    *
    * Both gates below derive from the annotation schemas by default, and
    * neither is populated in Explore unless the Schema Manager happens to have
-   * activated them: `useFrameLabelFields` knows only Detections and Polylines,
+   * activated them: `useFrameLabelFields` knows only the types the editor
+   * can create (Detections, Polylines, Keypoints),
    * and `useVisibleLabelSchemas` is annotation-active ∩ explore-active, which
    * is empty when the first half is. That left Explore showing no frame-label
    * tracks at all. When this is supplied it IS the visible set — the sidebar's

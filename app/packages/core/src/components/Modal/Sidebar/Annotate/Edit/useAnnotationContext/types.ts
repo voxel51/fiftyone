@@ -30,10 +30,7 @@ export interface CreateOptions {
   id?: string;
   field?: string;
   labelValue?: string;
-  /**
-   * Polyline: first-vertex seed. Keypoint: position for the first skeleton
-   * node (or first free-form point). Ignored for other types.
-   */
+  /** Polyline only: first-vertex seed. Ignored for other types. */
   origin?: [number, number];
 }
 

@@ -110,25 +110,29 @@ const Field = () => {
           .map((ref) => ({ ref, data: engine.getLabel(ref) }))
           .filter((o): o is { ref: LabelRef; data: LabelData } => !!o.data);
 
-        if (occurrences.length === 0) return;
+        // Zero occurrences is legal: an atomic keypoint creation draft has no
+        // engine rows until it finalizes, so there is nothing to move — but
+        // the sidebar swap below must still happen (the keypoint mode reseeds
+        // the draft for the new field's skeleton off it).
+        if (occurrences.length > 0) {
+          const cls = (source as { _cls: LabelType })._cls;
 
-        const cls = (source as { _cls: LabelType })._cls;
+          engine.transaction(() => {
+            for (const { ref } of occurrences) {
+              engine.deleteLabel(ref);
+            }
 
-        engine.transaction(() => {
-          for (const { ref } of occurrences) {
-            engine.deleteLabel(ref);
-          }
-
-          for (const { ref, data } of occurrences) {
-            engine.updateLabel(
-              { sample: ref.sample, path: to, instanceId, frame: ref.frame },
-              {
-                ...buildNewLabelData(to, cls, { id: instanceId }),
-                ...data,
-              } as Partial<LabelData>,
-            );
-          }
-        });
+            for (const { ref, data } of occurrences) {
+              engine.updateLabel(
+                { sample: ref.sample, path: to, instanceId, frame: ref.frame },
+                {
+                  ...buildNewLabelData(to, cls, { id: instanceId }),
+                  ...data,
+                } as Partial<LabelData>,
+              );
+            }
+          });
+        }
 
         // Best-effort sidebar sync; no-ops when the label isn't selected.
         setCurrentField(to);
