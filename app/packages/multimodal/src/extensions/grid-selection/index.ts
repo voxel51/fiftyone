@@ -22,6 +22,22 @@ export interface GridSelectionActionContext {
   readonly resolve: () => Promise<readonly SelectionMember[]>;
 }
 
+/** Props the tray passes to an action's component. */
+export interface GridSelectionActionProps {
+  readonly context: GridSelectionActionContext;
+  /** Non-null when the declared scope or availability rules block the action. */
+  readonly disabledReason: string | null;
+  /**
+   * Where the action renders. Toolbar actions render a button. Overflow
+   * actions stay mounted in the toolbar tree and portal a menu row into
+   * `menuHost` while the overflow panel is open, so dialogs they open
+   * survive the panel closing. Defaults to the toolbar.
+   */
+  readonly surface?: "toolbar" | "menu";
+  /** Portal target for the menu row; null while the overflow panel is closed. */
+  readonly menuHost?: HTMLElement | null;
+}
+
 /** An action owns its scope policy and availability in either toolbar location. */
 export interface GridSelectionAction {
   readonly id: `${string}:${string}`;
@@ -33,10 +49,7 @@ export interface GridSelectionAction {
   readonly memberKinds: readonly SelectionMember["kind"][];
   /** Return a reason when the complete scope cannot be handled. */
   readonly unavailable?: (context: GridSelectionActionContext) => string | null;
-  readonly Component: ComponentType<{
-    context: GridSelectionActionContext;
-    disabledReason: string | null;
-  }>;
+  readonly Component: ComponentType<GridSelectionActionProps>;
 }
 
 /** A provider publishes complete candidates, never just loaded grid cards. */
