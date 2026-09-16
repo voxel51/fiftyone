@@ -138,6 +138,13 @@ const Field = () => {
         if (occurrences.length > 0) {
           const cls = (source as { _cls: LabelType })._cls;
 
+          // The transaction deletes the anchor's ref (its key includes the
+          // path), so interaction GC prunes the selection and the form —
+          // which follows the anchor — would close mid-edit. Capture the
+          // anchor now and re-point it at the destination after the move,
+          // in both directions, so the edit session survives the swap.
+          const anchor = engine.interaction.getAnchor();
+
           engine.transaction(() => {
             for (const { ref } of occurrences) {
               engine.deleteLabel(ref);
@@ -174,6 +181,10 @@ const Field = () => {
               );
             }
           });
+
+          if (anchor && anchor.instanceId === instanceId) {
+            engine.interaction.setActive([{ ...anchor, path: to }]);
+          }
         }
 
         // Best-effort sidebar sync; no-ops when the label isn't selected.
