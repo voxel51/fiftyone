@@ -1,15 +1,30 @@
+/* The row's flexible middle: the title and selector keep their width on the
+   left, the actions theirs on the right */
+.spacer {
+  flex: 1;
+}
+
 /* The bar takes what the title, selector and right-side actions leave */
 .bar {
   flex: 1;
   min-width: 0;
 }
 
-.spacer {
-  flex: 1;
+/* Where the view bar's stages row lands: the window's width, inset to the
+   header's gutters. Closed, it holds no row and takes no space. */
+.stagesHost {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 8px 0.75rem 0;
 }
 
-/* The right-side actions share the first row's height so they stay level
-   with the search row when the view bar opens its second row */
+.stagesHost:empty {
+  display: none;
+}
+
+/* The right-side actions share the first row's height so they stay level with
+   the title and the selector */
 .actions {
   height: 40px;
 }

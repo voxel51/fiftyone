@@ -19,7 +19,7 @@ import {
   Stack,
   Variant,
 } from "@voxel51/voodo";
-import React, { Suspense, useCallback, useMemo } from "react";
+import React, { Suspense, useCallback, useMemo, useState } from "react";
 import { useFragment, usePaginationFragment } from "react-relay";
 import { useDebounce } from "react-use";
 import { useRecoilValue, useSetRecoilState } from "recoil";
@@ -99,6 +99,9 @@ const Nav: React.FC<
   const setTheme = useSetRecoilState(fos.theme);
   const trackEvent = useTrackEvent();
   const { enterpriseCta, Status, title } = useProduct();
+  // The view bar's search stays in the row; its stages row renders here, under
+  // the row, where it has the window's width
+  const [stagesHost, setStagesHost] = useState<HTMLDivElement | null>(null);
   const toggleTheme = useCallback(() => {
     const nextMode = mode === "dark" ? "light" : "dark";
     setMode(nextMode);
@@ -112,12 +115,17 @@ const Nav: React.FC<
         title={title}
         onRefresh={refresh}
         navChildren={<DatasetSelector useSearch={useSearch} />}
+        belowRow={
+          hasDataset && (
+            <div className={styles.stagesHost} ref={setStagesHost} />
+          )
+        }
       >
         {Status && <Status />}
         {hasDataset ? (
           <Suspense fallback={<div className={styles.spacer} />}>
             <div className={styles.bar}>
-              <ViewBar />
+              <ViewBar stagesHost={stagesHost} />
             </div>
           </Suspense>
         ) : (

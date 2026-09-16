@@ -18,51 +18,54 @@ const Header: React.FC<
     onRefresh?: () => void;
     title: string;
     navChildren?: React.ReactNode;
+    /** Spans the window under the first row, for a surface that needs it. */
+    belowRow?: React.ReactNode;
   }>
-> = ({ children, title, navChildren, onRefresh }) => {
+> = ({ belowRow, children, title, navChildren, onRefresh }) => {
   // Each refresh spins the logo one full turn: the class toggles between two
   // rotations a full turn apart, and the transition carries it there
   const [turned, setTurned] = useState(false);
 
   return (
-    <Stack
-      orientation={Orientation.Row}
-      // Top-aligned: the view bar grows to two rows, and its neighbours stay
-      // on the first one rather than drifting to the middle of the header
-      align={Align.Start}
-      spacing={Spacing.Lg}
-      className={style.header}
-    >
+    <div className={style.header}>
       <Stack
         orientation={Orientation.Row}
         align={Align.Center}
-        spacing={Spacing.Md}
-        className={style.left}
+        spacing={Spacing.Lg}
+        className={style.row}
       >
         <Stack
           orientation={Orientation.Row}
           align={Align.Center}
           spacing={Spacing.Md}
-          className={style.title}
-          data-cy="refresh-fo"
-          onClick={() => {
-            setTurned(!turned);
-            onRefresh && onRefresh();
-          }}
+          className={style.left}
         >
-          <img
-            className={clsx(style.logo, turned && style.turned)}
-            src={logo}
-            alt=""
-          />
-          <Heading level={HeadingLevel.H1} className={style.wordmark}>
-            {title}
-          </Heading>
+          <Stack
+            orientation={Orientation.Row}
+            align={Align.Center}
+            spacing={Spacing.Md}
+            className={style.title}
+            data-cy="refresh-fo"
+            onClick={() => {
+              setTurned(!turned);
+              onRefresh && onRefresh();
+            }}
+          >
+            <img
+              className={clsx(style.logo, turned && style.turned)}
+              src={logo}
+              alt=""
+            />
+            <Heading level={HeadingLevel.H1} className={style.wordmark}>
+              {title}
+            </Heading>
+          </Stack>
+          {navChildren}
         </Stack>
-        {navChildren}
+        {children}
       </Stack>
-      {children}
-    </Stack>
+      {belowRow && <div className={style.belowRow}>{belowRow}</div>}
+    </div>
   );
 };
 

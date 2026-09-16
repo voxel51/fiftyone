@@ -2495,6 +2495,7 @@ __metadata:
     "@fiftyone/state": "npm:*"
     "@fiftyone/utilities": "npm:*"
     "@voxel51/voodo": "catalog:"
+    clsx: "catalog:"
     react-relay: "catalog:"
     vite: "npm:^7.3.2"
   peerDependencies:
