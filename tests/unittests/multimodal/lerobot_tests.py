@@ -567,6 +567,43 @@ print(os.path.join(sources[source_id], *path.split('/')))
                     with open(os.path.join(export_root, filename)) as file:
                         self.assertNotIn(root, file.read())
 
+    @drop_datasets
+    def test_import_source_whose_shards_omit_the_tasks_column(self):
+        """Published v3.0 sources such as ``lerobot/libero`` write no ``tasks``
+        column at all, and the importer has to read them anyway."""
+        with tempfile.TemporaryDirectory() as root:
+            _write_v3_source(root, episodes=2)
+            for name in ("part-000.parquet", "part-001.parquet"):
+                path = os.path.join(root, "meta", "episodes", name)
+                table = _read_parquet(path)
+                _write_parquet(path, table.drop_columns(["tasks"]).to_pylist())
+
+            dataset = _import(root)
+
+            self.assertEqual(len(dataset), 2)
+            for sample in dataset:
+                self.assertEqual(sample.tasks, [])
+                self.assertIsNone(sample.task)
+
+    @drop_datasets
+    def test_import_dedupes_tasks_repeated_once_per_frame(self):
+        """A source converted from v2.1 can repeat an episode's task once per
+        frame instead of listing it once."""
+        with tempfile.TemporaryDirectory() as root:
+            _write_v3_source(root, episodes=2)
+            path = os.path.join(root, "meta", "episodes", "part-000.parquet")
+            rows = _read_parquet(path).to_pylist()
+            for row in rows:
+                row["tasks"] = row["tasks"] * 64
+
+            _write_parquet(path, rows)
+
+            dataset = _import(root)
+
+            sample = dataset.match({"episode_index": 0}).first()
+            self.assertEqual(sample.tasks, ["task-0"])
+            self.assertEqual(sample.task, "task-0")
+
 
 class LeRobotExporterTests(unittest.TestCase):
     @drop_datasets
