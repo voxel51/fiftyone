@@ -5,10 +5,10 @@ import type {
 } from "@fiftyone/multimodal/extensions/grid-selection";
 import { useRefresh, useSelectionTagDisabledReason } from "@fiftyone/state";
 import {
-  memberCounts,
   normalizeSelectionMembers,
   selectionTagsRequest,
   useInvalidateSelectionScope,
+  type SelectionCounts,
   type SelectionScope,
   type SelectionUnit,
   type ViewConversion,
@@ -16,16 +16,14 @@ import {
 import {
   AddIcon,
   Button,
-  CheckCircleOutlineIcon,
   CheckIcon,
   ErrorOutlineIcon,
   Input,
-  Modal,
-  ModalSize,
-  Popover,
-  PopoverAnchor,
+  LoadingDots,
+  RefreshIcon,
   SearchIcon,
   Size,
+  Spinner,
   TagIcon,
   Text,
   TextColor,
@@ -33,13 +31,13 @@ import {
   Variant,
   WarningAmberIcon,
 } from "@voxel51/voodo";
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ActionEntry from "./ActionEntry";
-import { plural, unitTitlePlural } from "./format";
-import { Notice, ScopePill } from "./Notice";
+import ActionSurface from "./ActionSurface";
+import { scopePhrase, unitTitlePlural } from "./format";
+import { Notice } from "./Notice";
 import Segmented from "./Segmented";
 import styles from "./SelectionTray.module.css";
-import { trayTheme } from "./theme";
 
 interface Capture {
   datasetId: string;
@@ -49,8 +47,15 @@ interface Capture {
   view: readonly unknown[];
   source: GridSelectionActionContext["source"];
   scope: SelectionScope;
+  counts: SelectionCounts;
+}
+
+type Target = "members" | "labels";
+
+interface TagState {
   tags: readonly string[];
-  /** Label count when the scope was read in labels mode, else null. */
+  applied: Readonly<Record<string, number>>;
+  targets: number;
   labels: number | null;
 }
 
@@ -63,26 +68,11 @@ function TagSelection({
   const [capture, setCapture] = useState<Capture | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const reason = permission ?? disabledReason;
   const begin = async () => {
     setBusy(true);
     setError(null);
     try {
       const resolved = await context.resolve();
-      const scope: SelectionScope =
-        resolved.kind === "members"
-          ? {
-              kind: "members",
-              members: normalizeSelectionMembers(resolved.members),
-            }
-          : resolved;
-      // Patches are labels, so their picker opens in labels mode.
-      const labelsOnly = context.conversion === "patches";
-      const { tags, labels } = await selectionTagsRequest(
-        context.datasetId,
-        scope,
-        { target: labelsOnly ? "labels" : "members", view: context.view },
-      );
       setCapture({
         datasetId: context.datasetId,
         mediaType: context.mediaType,
@@ -90,9 +80,14 @@ function TagSelection({
         conversion: context.conversion,
         view: context.view,
         source: context.source,
-        scope,
-        tags,
-        labels: labelsOnly ? labels : null,
+        counts: context.counts,
+        scope:
+          resolved.kind === "members"
+            ? {
+                kind: "members",
+                members: normalizeSelectionMembers(resolved.members),
+              }
+            : resolved,
       });
     } catch (cause) {
       setError(String(cause));
@@ -101,199 +96,153 @@ function TagSelection({
     }
   };
   const close = () => setCapture(null);
-  const entry = (
-    <ActionEntry
-      label="Tag"
-      icon={TagIcon}
-      surface={surface}
-      onClick={() => (capture ? close() : void begin())}
-      disabledReason={reason}
-      busy={busy && !capture}
-      busyLabel="Preparing tags…"
-      aria-haspopup="dialog"
-      aria-expanded={Boolean(capture)}
-    />
-  );
-  const alert = error && (
-    <Text role="alert" variant={TextVariant.Xs} color={TextColor.Destructive}>
-      {error}
-    </Text>
-  );
-  const picker = capture && (
-    <TagPicker capture={capture} busy={busy} setBusy={setBusy} close={close} />
-  );
-  if (surface === "menu") {
-    return (
-      <>
-        {entry}
-        {alert}
-        <Modal
-          open={Boolean(capture)}
-          onClose={() => {
-            if (!busy) close();
-          }}
-          title="Tag"
-          size={ModalSize.Sm}
-        >
-          <div style={trayTheme}>{picker}</div>
-        </Modal>
-      </>
-    );
-  }
   return (
     <>
-      <Popover
+      <ActionSurface
         open={Boolean(capture)}
-        onOpenChange={(open) => {
-          if (!open && !busy) close();
-        }}
-        anchor={PopoverAnchor.TopEnd}
-        trigger={entry}
+        onClose={close}
+        title="Tag"
+        surface={surface}
+        trigger={
+          <ActionEntry
+            label="Tag"
+            icon={TagIcon}
+            surface={surface}
+            onClick={() => (capture ? close() : void begin())}
+            disabledReason={permission ?? disabledReason}
+            busy={busy}
+            busyLabel="Preparing…"
+            aria-haspopup="dialog"
+            aria-expanded={Boolean(capture)}
+          />
+        }
       >
-        <div style={trayTheme}>{picker}</div>
-      </Popover>
-      {alert}
+        {capture && <TagPicker capture={capture} />}
+      </ActionSurface>
+      {error && (
+        <Text
+          role="alert"
+          variant={TextVariant.Xs}
+          color={TextColor.Destructive}
+        >
+          {error}
+        </Text>
+      )}
     </>
   );
 }
 
-type Target = "members" | "labels";
-type Mode = "add" | "remove";
-
-function TagPicker({
-  capture,
-  close,
-  busy,
-  setBusy,
-}: {
-  capture: Capture;
-  close: () => void;
-  busy: boolean;
-  setBusy: (value: boolean) => void;
-}) {
+/**
+ * Tags a frozen scope in place. Each row is a tag; a press adds it to every
+ * target, or removes it when every target already carries it. The list
+ * shows what is on all, on some, or on none, so the next press is obvious.
+ */
+function TagPicker({ capture }: { capture: Capture }) {
   const permission = useSelectionTagDisabledReason();
   const invalidate = useInvalidateSelectionScope(capture.datasetId);
   const refresh = useRefresh();
-  const [query, setQuery] = useState("");
+  const { unit, counts } = capture;
+  // Patches are labels, so their picker only tags labels.
   const labelsOnly = capture.conversion === "patches";
   const [target, setTarget] = useState<Target>(
     labelsOnly ? "labels" : "members",
   );
-  const [tags, setTags] = useState(capture.tags);
-  const [labelCount, setLabelCount] = useState<number | null>(capture.labels);
-  const [mode, setMode] = useState<Mode>("add");
-  const [done, setDone] = useState<{ tag: string; mode: Mode } | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const { unit } = capture;
-  const parents = unit.temporal ? "Episodes" : unitTitlePlural(unit);
-  const counts =
-    capture.scope.kind === "members"
-      ? memberCounts(capture.scope.members)
-      : capture.scope.counts;
-  const full = counts.fullEpisodes;
-  const segments = counts.segments;
   // Grouped datasets tag the captured slice by default; every slice on request.
   const grouped = capture.mediaType === "group";
   const [groupScope, setGroupScope] = useState<"slice" | "all">("slice");
-  const groups = grouped ? groupScope : undefined;
-  const tag = query.trim();
-  const needle = tag.toLowerCase();
-  const filtered = tags.filter((value) => value.toLowerCase().includes(needle));
-  const known = tags.includes(tag);
-  const membersLabel = segments
-    ? full
-      ? `${parents} & segments`
-      : "Segments"
-    : parents;
-  const headline =
-    target === "labels"
-      ? plural(labelCount ?? 0, "label")
-      : [
-          full &&
-            (unit.temporal
-              ? plural(full, "full episode")
-              : plural(full, unit.one, unit.many)),
-          segments && plural(segments, "segment"),
-        ]
-          .filter(Boolean)
-          .join(" · ");
-  const canApply =
-    !busy &&
-    !done &&
-    !permission &&
-    tag.length > 0 &&
-    (mode === "add" || known) &&
-    (target !== "labels" || Boolean(labelCount));
+  const options = useMemo(
+    () => ({
+      target,
+      view: capture.view,
+      groups: grouped ? groupScope : undefined,
+    }),
+    [target, capture.view, grouped, groupScope],
+  );
+  const [state, setState] = useState<TagState | null>(null);
+  const [query, setQuery] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const requests = useRef(0);
 
-  const chooseTarget = async (next: Target) => {
-    if (next === target) return;
+  const load = useCallback(async () => {
+    const request = ++requests.current;
+    setState(null);
     setError(null);
-    if (next === "members") {
-      setTarget("members");
-      setTags(capture.tags);
-      setLabelCount(null);
-      return;
-    }
-    setBusy(true);
     try {
       const result = await selectionTagsRequest(
         capture.datasetId,
         capture.scope,
-        {
-          target: "labels",
-          view: capture.view,
-          groups,
-        },
+        options,
       );
-      setTarget("labels");
-      setTags(result.tags);
-      setLabelCount(result.labels);
+      if (request === requests.current) setState(result);
     } catch (cause) {
-      setError(String(cause));
-    } finally {
-      setBusy(false);
+      if (request === requests.current) setError(String(cause));
     }
+  }, [capture.datasetId, capture.scope, options]);
+  // This effect reads the scope's tags when the picker opens and whenever
+  // its target or slice choice changes.
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const tag = query.trim();
+  const needle = tag.toLowerCase();
+  const tags = state?.tags ?? [];
+  const filtered = tags.filter((value) => value.toLowerCase().includes(needle));
+  const known = tags.includes(tag);
+  const total = state?.targets ?? 0;
+  const noLabels = target === "labels" && state !== null && !state.labels;
+  const blocked = Boolean(permission) || !state || noLabels;
+  const stateOf = (value: string): "none" | "some" | "all" => {
+    const count = state?.applied[value] ?? 0;
+    if (count <= 0) return "none";
+    return total > 0 && count >= total ? "all" : "some";
   };
 
-  const apply = async () => {
-    if (!canApply) return;
-    setBusy(true);
+  const change = async (value: string, add: boolean, created = false) => {
+    if (blocked || busy) return;
+    setBusy(value);
     setError(null);
     try {
-      await selectionTagsRequest(capture.datasetId, capture.scope, {
-        change: { tag, add: mode === "add" },
-        target,
-        view: capture.view,
-        groups,
-      });
-      setDone({ tag, mode });
+      const result = await selectionTagsRequest(
+        capture.datasetId,
+        capture.scope,
+        { ...options, change: { tag: value, add } },
+      );
+      setState(result);
+      if (created) setQuery("");
       invalidate();
       refresh();
     } catch (cause) {
       setError(String(cause));
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
+  };
+  const toggle = (value: string) => change(value, stateOf(value) !== "all");
+  const submit = () => {
+    if (!tag) return;
+    if (known) void toggle(tag);
+    else void change(tag, true, true);
   };
 
   return (
-    <div className={`${styles.panel} ${styles.panelWide}`}>
-      <div className={styles.panelHeader}>
-        <Text variant={TextVariant.Md}>Tag</Text>
-        <ScopePill source={capture.source} />
-        <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
-          {headline}
-        </Text>
-      </div>
+    <div className={styles.sheetBody}>
+      <Text
+        variant={TextVariant.Label}
+        color={TextColor.Secondary}
+        className={styles.sheetTitle}
+      >
+        {`Tag ${scopePhrase(capture.source, counts, unit)}`}
+      </Text>
       <Segmented<Target>
-        label="Apply to"
+        label="Tag"
         value={target}
-        disabled={busy || Boolean(done)}
+        disabled={Boolean(busy)}
         options={[
           {
             value: "members",
-            label: membersLabel,
+            label: unit.temporal ? "Episodes" : unitTitlePlural(unit),
             disabledReason: labelsOnly
               ? "Patches are labels; tag them as labels"
               : null,
@@ -301,141 +250,115 @@ function TagPicker({
           {
             value: "labels",
             label: "Labels",
-            disabledReason: segments
+            disabledReason: counts.segments
               ? "Label tagging needs whole episodes"
               : null,
           },
         ]}
-        onChange={(value) => void chooseTarget(value)}
+        onChange={setTarget}
       />
-      <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-        {target === "labels"
-          ? labelsOnly
-            ? "The selected patch labels"
-            : unit.temporal
-              ? "All labels in these whole episodes"
-              : `All labels in these ${unit.many}`
-          : segments
-            ? full
-              ? "Sample tags on episodes; temporal tags on captured ranges and streams"
-              : "Temporal tags on the captured ranges and streams"
-            : unit.temporal
-              ? "Sample tags on the whole episodes"
-              : `Sample tags on each ${unit.one}`}
-      </Text>
-      {!done && (
-        <>
-          <Segmented<Mode>
-            label="Change"
-            value={mode}
-            disabled={busy}
-            options={[
-              { value: "add", label: "Add" },
-              { value: "remove", label: "Remove" },
-            ]}
-            onChange={setMode}
-          />
-          {grouped && (
-            <>
-              <Segmented<"slice" | "all">
-                label="Slices"
-                value={groupScope}
-                disabled={busy}
-                options={[
-                  { value: "slice", label: "This slice" },
-                  { value: "all", label: "All slices" },
-                ]}
-                onChange={setGroupScope}
-              />
-              <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-                {groupScope === "all"
-                  ? "Tags every slice of each selected group"
-                  : "Tags only the selected slice of each group"}
-              </Text>
-            </>
-          )}
-          <Input
-            size={Size.Sm}
-            icon={SearchIcon}
-            aria-label={mode === "add" ? "Find or create a tag" : "Find a tag"}
-            placeholder={mode === "add" ? "Find or create a tag" : "Find a tag"}
-            value={query}
-            disabled={busy}
-            onChange={(event) => setQuery(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                void apply();
-              }
-            }}
-          />
-          <div role="group" aria-label="Tags" className={styles.tagList}>
-            {filtered.map((value) => {
-              const active = value === tag;
-              return (
-                <button
-                  key={value}
-                  type="button"
-                  className={styles.tagRow}
-                  aria-pressed={active}
-                  disabled={busy}
-                  onClick={() => setQuery(value)}
-                >
-                  <TagIcon
-                    size={Size.Sm}
-                    color={active ? TextColor.Accent : TextColor.Secondary}
-                  />
-                  <span className={styles.tagRowText}>{value}</span>
-                  {active && (
-                    <CheckIcon size={Size.Sm} color={TextColor.Accent} />
-                  )}
-                </button>
-              );
-            })}
-            {mode === "add" && tag && !known && (
-              <button
-                type="button"
-                className={styles.tagRow}
-                disabled={busy || !canApply}
-                onClick={() => void apply()}
-              >
-                <AddIcon size={Size.Sm} color={TextColor.Secondary} />
-                <span className={styles.tagRowText}>Create “{tag}”</span>
-              </button>
-            )}
-            {!filtered.length && !(mode === "add" && tag) && (
-              <Text
-                variant={TextVariant.Sm}
-                color={TextColor.Secondary}
-                className={styles.tagEmpty}
-              >
-                {query
-                  ? "No matching tags"
-                  : mode === "add"
-                    ? "Type to create a tag"
-                    : "No tags to remove"}
-              </Text>
-            )}
-          </div>
-          {mode === "remove" && segments > 0 && (
-            <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-              Removes only the exact captured ranges and streams. Overlapping
-              tags stay.
-            </Text>
-          )}
-        </>
+      {grouped && (
+        <Segmented<"slice" | "all">
+          label="Slices"
+          value={groupScope}
+          disabled={Boolean(busy)}
+          options={[
+            { value: "slice", label: "This slice" },
+            { value: "all", label: "All slices" },
+          ]}
+          onChange={setGroupScope}
+        />
       )}
-      {target === "labels" && labelCount === 0 && (
+      <Input
+        size={Size.Md}
+        icon={SearchIcon}
+        aria-label="Create or find tag"
+        placeholder="Create or find tag"
+        value={query}
+        disabled={!state || Boolean(busy)}
+        onChange={(event) => setQuery(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            submit();
+          }
+        }}
+      />
+      <div role="group" aria-label="Tags" className={styles.list}>
+        {!state && !error && (
+          <LoadingDots
+            variant={TextVariant.Sm}
+            color={TextColor.Secondary}
+            text="Loading tags"
+          />
+        )}
+        {filtered.map((value) => {
+          const status = stateOf(value);
+          const count = state?.applied[value] ?? 0;
+          return (
+            <button
+              key={value}
+              type="button"
+              className={styles.row}
+              data-state={status}
+              aria-pressed={status === "all"}
+              disabled={blocked || (Boolean(busy) && busy !== value)}
+              onClick={() => void toggle(value)}
+            >
+              <TagIcon
+                size={Size.Sm}
+                color={
+                  status === "none" ? TextColor.Secondary : TextColor.Accent
+                }
+              />
+              <Text variant={TextVariant.Md} className={styles.rowText}>
+                {value}
+              </Text>
+              {busy === value ? (
+                <Spinner size={Size.Xs} />
+              ) : status === "all" ? (
+                <CheckIcon size={Size.Sm} color={TextColor.Accent} />
+              ) : status === "some" ? (
+                <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+                  {`${count} of ${total}`}
+                </Text>
+              ) : null}
+            </button>
+          );
+        })}
+        {state && tag && !known && (
+          <button
+            type="button"
+            className={styles.row}
+            disabled={blocked || Boolean(busy)}
+            onClick={() => void change(tag, true, true)}
+          >
+            <AddIcon size={Size.Sm} color={TextColor.Secondary} />
+            <Text variant={TextVariant.Md} className={styles.rowText}>
+              {`Create “${tag}”`}
+            </Text>
+          </button>
+        )}
+        {state && !filtered.length && !tag && (
+          <Text
+            variant={TextVariant.Sm}
+            color={TextColor.Secondary}
+            className={styles.listEmpty}
+          >
+            No tags yet. Type a name to create one.
+          </Text>
+        )}
+      </div>
+      {noLabels && (
         <Notice
           tone="warning"
           icon={WarningAmberIcon}
-          title="No labels in these episodes."
+          title={
+            unit.temporal
+              ? "No labels in these episodes."
+              : `No labels in these ${unit.many}.`
+          }
         />
-      )}
-      {error && (
-        <Notice tone="error" icon={ErrorOutlineIcon} role="alert" title={error}>
-          Your captured scope is kept for retry.
-        </Notice>
       )}
       {permission && (
         <Notice
@@ -445,48 +368,25 @@ function TagPicker({
           title={permission}
         />
       )}
-      {done && (
-        <Notice
-          tone="success"
-          icon={CheckCircleOutlineIcon}
-          role="status"
-          title={`${done.mode === "add" ? "Added" : "Removed"} “${done.tag}” ${
-            done.mode === "add" ? "to" : "from"
-          } ${headline}.`}
-        >
-          Selection kept.
+      {error && (
+        <Notice tone="error" icon={ErrorOutlineIcon} role="alert" title={error}>
+          {state
+            ? "Press the tag again to retry."
+            : "Your captured scope is kept for retry."}
         </Notice>
       )}
-      <div className={styles.panelActions}>
-        <Button
-          size={Size.Sm}
-          variant={Variant.Borderless}
-          disabled={busy}
-          onClick={close}
-        >
-          {done ? "Done" : "Cancel"}
-        </Button>
-        {done ? (
+      {error && !state && (
+        <div className={styles.sheetActions}>
           <Button
             size={Size.Sm}
             variant={Variant.Secondary}
-            onClick={() => {
-              setDone(null);
-              setQuery("");
-            }}
+            leadingIcon={RefreshIcon}
+            onClick={() => void load()}
           >
-            Tag another
+            Retry
           </Button>
-        ) : (
-          <Button
-            size={Size.Sm}
-            disabled={!canApply}
-            onClick={() => void apply()}
-          >
-            {busy ? "Applying…" : mode === "add" ? "Add tag" : "Remove tag"}
-          </Button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -494,7 +394,7 @@ function TagPicker({
 /** Shared OSS/Enterprise action for exact episode and segment tagging. */
 export const tagSelectionAction: GridSelectionAction = {
   id: "fiftyone:tag-selection",
-  order: 20,
+  order: 10,
   label: "Tag",
   placement: "primary",
   supports: () => true,

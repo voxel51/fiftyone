@@ -843,7 +843,49 @@ def tag_selection(
         "counts": fosel.count_members(members),
         "tags": sorted(_tag_values(dataset, full_view, full, targets, target)),
         "labels": label_count,
+        "applied": _applied_tags(
+            dataset, view, full_view, full, targets, target
+        ),
+        "targets": (
+            label_count
+            if target == "labels"
+            else len(full) + sum(len(streams) for streams in targets.values())
+        ),
     }
+
+
+def _applied_tags(dataset, view, full_view, full, targets, target):
+    """Counts, per tag, how many scope targets carry it right now.
+
+    A picker compares these with the target total to show a tag as on every
+    target, on some, or on none, and to decide whether a press adds or
+    removes. Sample tags count samples, label tags count labels, and temporal
+    tags count the captured streams whose exact range carries them.
+    """
+    if target == "labels":
+        _, tag_aggs = fostag.build_label_tag_aggregations(full_view)
+        applied = {}
+        for histogram in dataset.aggregate(tag_aggs) if tag_aggs else []:
+            for value, count in histogram.items():
+                if value is not None:
+                    applied[value] = applied.get(value, 0) + count
+        return applied
+    applied = dict(full_view.count_values("tags")) if full else {}
+    if targets:
+        for tag in fot.list_temporal_tags(view):
+            streams = targets.get(
+                (str(tag.sample_id), tag.index_type, tag.start, tag.end)
+            )
+            if streams is None:
+                continue
+            anchors = (
+                {tag.anchor}
+                if tag.anchor
+                else set(_sample_streams(dataset[str(tag.sample_id)], dataset))
+            )
+            if anchors <= streams:
+                applied[tag.tag] = applied.get(tag.tag, 0) + len(anchors)
+    return applied
 
 
 def _tag_converted(scope, sample_ids, change, target):
@@ -885,6 +927,10 @@ def _tag_converted(scope, sample_ids, change, target):
             )
         ),
         "labels": label_count,
+        "applied": _applied_tags(
+            scope._dataset, scope, full_view, list(sample_ids), {}, target
+        ),
+        "targets": label_count if target == "labels" else len(sample_ids),
     }
 
 

@@ -29,6 +29,7 @@ const mocks = vi.hoisted(() => ({
     unit: { one: "sample", many: "samples", temporal: false },
     enabled: true,
     selected: new Map<string, EpisodeSelection>(),
+    counts: null as unknown,
     snapshot: vi.fn(),
     clear: vi.fn(),
   },
@@ -71,6 +72,7 @@ const trigger = () =>
 beforeEach(() => {
   mocks.boundary = {};
   mocks.selection.selected = new Map();
+  mocks.selection.counts = all;
   mocks.selection.snapshot.mockReset();
   mocks.selection.snapshot.mockResolvedValue({
     snapshotId: "snap",
@@ -147,14 +149,16 @@ describe("SamplesScopeTab", () => {
     render(<SamplesScopeTab />);
     fireEvent.click(trigger());
     fireEvent.click(await screen.findByText("New subset…"));
-    await screen.findByText("48 samples");
-    expect(mocks.selection.snapshot).toHaveBeenCalledTimes(1);
+    await screen.findByText("New subset from all 48 samples in view");
+    await waitFor(() =>
+      expect(mocks.selection.snapshot).toHaveBeenCalledTimes(1),
+    );
     fireEvent.change(screen.getByLabelText("New subset name"), {
       target: { value: "Night drives" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Create subset" }));
     await screen.findByRole("status");
-    expect(screen.getByText("Saved 48 members as Night drives.")).toBeTruthy();
+    expect(screen.getByText("Saved 48 samples as Night drives.")).toBeTruthy();
     expect(mocks.request).toHaveBeenCalledWith(
       "dataset",
       "/add",

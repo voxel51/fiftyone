@@ -18,13 +18,20 @@ import fiftyone.core.odm as foo
 import fiftyone.core.selection as fosel
 
 
-def create_subset(dataset, name):
+def create_subset(dataset, name, description=None):
     """Creates a named subset without copying any media or annotations."""
     if not isinstance(name, str) or not name.strip() or len(name) > 200:
         raise ValueError("A subset name must contain 1–200 characters")
+    if description is not None and (
+        not isinstance(description, str) or len(description) > 1000
+    ):
+        raise ValueError(
+            "A subset description must be text of at most 1000 characters"
+        )
     doc = {
         "_dataset_id": dataset._doc.id,
         "name": name.strip(),
+        "description": (description or "").strip() or None,
         "created_at": datetime.now(timezone.utc),
     }
     doc["_id"] = _collection("subsets").insert_one(doc).inserted_id
@@ -236,6 +243,7 @@ def _summary(dataset, doc):
     return {
         "id": str(doc["_id"]),
         "name": doc["name"],
+        "description": doc.get("description"),
         "counts": _counts(dataset, members),
     }
 

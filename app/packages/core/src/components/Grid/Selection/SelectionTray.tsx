@@ -423,7 +423,7 @@ export default function SelectionTray() {
             <div ref={more} className={styles.more}>
               <Button
                 size={Size.Sm}
-                variant={Variant.Secondary}
+                variant={Variant.Borderless}
                 leadingIcon={MoreHorizontalIcon}
                 aria-label="More actions"
                 aria-haspopup="menu"

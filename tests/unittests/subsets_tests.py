@@ -177,6 +177,22 @@ class SubsetTests(unittest.TestCase):
         finally:
             other.delete()
 
+    def test_subsets_carry_an_optional_description(self):
+        created = fosub.create_subset(
+            self.dataset, "Night", "  Frames captured after dusk  "
+        )
+        self.assertEqual(created["description"], "Frames captured after dusk")
+        names = {s["name"]: s for s in fosub.list_subsets(self.dataset)}
+        self.assertEqual(
+            names["Night"]["description"], "Frames captured after dusk"
+        )
+        self.assertIsNone(names["Review"]["description"])
+        self.assertIsNone(
+            fosub.create_subset(self.dataset, "Blank", "  ")["description"]
+        )
+        with self.assertRaises(ValueError):
+            fosub.create_subset(self.dataset, "Long", "x" * 1001)
+
     def test_delete_subset_removes_only_its_records(self):
         other = fosub.create_subset(self.dataset, "Keep")["id"]
         members = [{"episodeId": i, "kind": "episode"} for i in self.ids[:3]]

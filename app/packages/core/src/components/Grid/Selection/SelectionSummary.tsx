@@ -7,7 +7,6 @@ import {
   Anchor,
   Button,
   CloseIcon,
-  LoadingDots,
   RefreshIcon,
   Size,
   Text,
@@ -37,10 +36,10 @@ interface Props {
 }
 
 /**
- * The single line that says what actions will target. It reads as one
- * sentence: the scope and its exact count first, in the accent color when it
- * is an explicit selection; then quieter qualifiers (outside results,
- * unavailable, errors); then the one control that changes it, Clear.
+ * The single line that says what actions will target. With nothing selected
+ * it is an invitation ("Act on all samples in the grid"); with a selection it
+ * is the scope and its exact count in the accent color, then quieter
+ * qualifiers (outside results, unavailable, errors), then Clear.
  */
 export default function SelectionSummary({
   explicit,
@@ -76,23 +75,14 @@ export default function SelectionSummary({
         </Button>
       )}
     </span>
-  ) : loading ? (
-    <LoadingDots
-      variant={TextVariant.Sm}
-      color={TextColor.Secondary}
-      text="Resolving results"
-    />
   ) : empty ? (
     <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
-      No results in this scope
+      {`No ${unit.many} in the grid`}
     </Text>
   ) : (
-    <>
-      <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
-        All results ·
-      </Text>
-      <Text variant={TextVariant.Sm}>{label}</Text>
-    </>
+    <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+      {`Act on all ${unit.many} in the grid`}
+    </Text>
   );
   return (
     <div className={styles.summary} aria-live="polite">

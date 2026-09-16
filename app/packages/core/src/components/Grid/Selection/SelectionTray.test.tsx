@@ -127,10 +127,7 @@ describe("SelectionTray", () => {
   it("states the all-results scope from exact counts, with loading and retryable errors", async () => {
     mocks.selection.counts = countSelection([fullEpisode, segmentEpisode]);
     const view = render(<SelectionTray />);
-    expect(screen.getByText("All results ·")).toBeTruthy();
-    expect(
-      screen.getByText("1 full episode · 2 segments across 1 episode"),
-    ).toBeTruthy();
+    expect(screen.getByText("Act on all episodes in the grid")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Clear" })).toBeNull();
     expect(
       screen.queryByRole("button", { name: /selected episodes/ }),
@@ -139,7 +136,7 @@ describe("SelectionTray", () => {
     mocks.selection.loading = true;
     mocks.selection.counts = null;
     view.rerender(<SelectionTray />);
-    expect(screen.getByText("Resolving results")).toBeTruthy();
+    expect(screen.getByText("Act on all episodes in the grid")).toBeTruthy();
     expect(
       screen
         .getByRole("button", { name: "Add to subset" })
@@ -166,8 +163,7 @@ describe("SelectionTray", () => {
     render(<SelectionTray />);
     fireEvent.click(screen.getByRole("button", { name: "Add to subset" }));
     expect(mocks.selection.snapshot).toHaveBeenCalledOnce();
-    await screen.findByRole("dialog");
-    expect(screen.getAllByText(/All results/)).toHaveLength(2);
+    await screen.findByText(/in view to subset$/);
   });
 
   it("separates card counts from member scope and flags episodes outside the results", () => {

@@ -104,6 +104,7 @@ export async function getSelectionProviders(datasetId: string) {
 export interface SavedSubset {
   readonly id: string;
   readonly name: string;
+  readonly description?: string | null;
   readonly counts: SelectionCounts;
 }
 
@@ -192,7 +193,15 @@ export async function selectionTagsRequest(
   return (
     await getFetchFunctionExtended()<
       unknown,
-      { counts: SelectionCounts; tags: string[]; labels: number | null }
+      {
+        counts: SelectionCounts;
+        tags: string[];
+        labels: number | null;
+        /** How many scope targets carry each tag right now. */
+        applied: Record<string, number>;
+        /** How many targets the scope has: samples, streams, or labels. */
+        targets: number;
+      }
     >({
       method: "POST",
       path: `/dataset/${encodeURIComponent(datasetId)}/selection/tags`,

@@ -297,3 +297,38 @@ class GroupedDatasetTagTests(unittest.TestCase):
         )
         self.assertEqual(flat.count_sample_tags()["whole"], 2)
         self.assertEqual(flat.match_tags("whole").count(), 2)
+
+
+class AppliedTagTests(unittest.TestCase):
+    def setUp(self):
+        self.dataset = fo.Dataset()
+        self.dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/tmp/applied-%d.jpg" % i,
+                    tags=["reviewed"] if i < 2 else [],
+                )
+                for i in range(3)
+            ]
+        )
+
+    def tearDown(self):
+        self.dataset.delete()
+
+    def test_reports_how_many_targets_carry_each_tag(self):
+        members = [
+            {"episodeId": sid, "kind": "episode"}
+            for sid in self.dataset.values("id")
+        ]
+        result = tag_selection(self.dataset, members)
+        self.assertEqual(result["targets"], 3)
+        self.assertEqual(result["applied"], {"reviewed": 2})
+        result = tag_selection(
+            self.dataset, members, {"tag": "reviewed", "add": True}
+        )
+        self.assertEqual(result["applied"], {"reviewed": 3})
+        result = tag_selection(
+            self.dataset, members, {"tag": "reviewed", "add": False}
+        )
+        self.assertEqual(result["applied"], {})
+        self.assertEqual(result["tags"], [])

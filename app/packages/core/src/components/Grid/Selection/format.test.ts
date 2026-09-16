@@ -6,9 +6,43 @@ import {
   groupDescriptor,
   listRanges,
   rangeDomain,
+  scopePhrase,
   streamsLabel,
   type SegmentMember,
 } from "./format";
+
+describe("scopePhrase", () => {
+  const samples = { one: "sample", many: "samples", temporal: false };
+  const counts = (fullEpisodes: number, segments = 0) => ({
+    episodes: fullEpisodes,
+    fullEpisodes,
+    segments,
+    segmentEpisodes: segments ? 1 : 0,
+    unavailable: 0,
+  });
+  it("names every result or the selection, in the unit's own words", () => {
+    expect(scopePhrase("results", counts(16), samples)).toBe(
+      "all 16 samples in view",
+    );
+    expect(scopePhrase("explicit", counts(1), samples)).toBe(
+      "1 selected sample",
+    );
+    expect(
+      scopePhrase("explicit", counts(3), {
+        one: "patch",
+        many: "patches",
+        temporal: false,
+      }),
+    ).toBe("3 selected patches");
+    expect(
+      scopePhrase("explicit", counts(1, 2), {
+        one: "episode",
+        many: "episodes",
+        temporal: true,
+      }),
+    ).toMatch(/^selected 1 full episode · 2 segments/);
+  });
+});
 
 function segment(
   start: string,

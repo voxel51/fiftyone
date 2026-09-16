@@ -132,7 +132,10 @@ class Subsets(HTTPEndpoint):
         dataset = get_dataset(request.path_params["dataset_id"])
         try:
             return await fou.run_sync_task(
-                fosub.create_subset, dataset, data.get("name")
+                fosub.create_subset,
+                dataset,
+                data.get("name"),
+                data.get("description"),
             )
         except ValueError as error:
             raise HTTPException(400, detail=str(error)) from error

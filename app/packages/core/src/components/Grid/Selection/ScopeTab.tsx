@@ -1,5 +1,6 @@
 import * as fos from "@fiftyone/state";
 import {
+  countSelection,
   normalizeSelectionMembers,
   useGridSelection,
   useGridSelectionBoundary,
@@ -18,6 +19,8 @@ import {
   MenuSectionTitle,
   MenuSeparator,
   MenuTextItem,
+  Modal,
+  ModalSize,
   Pill,
   Size,
   Text,
@@ -27,7 +30,7 @@ import {
 import { useState } from "react";
 import DeleteSubsetDialog from "./DeleteSubsetDialog";
 import styles from "./SelectionTray.module.css";
-import { SubsetDialog, type Capture } from "./SubsetAction";
+import { SubsetPanel, type Capture } from "./SubsetAction";
 import { trayTheme } from "./theme";
 import { subsetRows, useOpenSubset, useSavedSubsets } from "./useSubsetScope";
 
@@ -108,6 +111,7 @@ export default function SamplesScopeTab() {
       unit,
       mode: "create",
       source: captured.length ? "explicit" : "results",
+      counts: captured.length ? countSelection(captured) : selection.counts,
       scope: captured.length
         ? {
             kind: "members",
@@ -217,7 +221,16 @@ export default function SamplesScopeTab() {
         )}
       </Dropdown>
       {creating && (
-        <SubsetDialog capture={creating} close={() => setCreating(null)} />
+        <Modal
+          open
+          onClose={() => setCreating(null)}
+          title="New subset"
+          size={ModalSize.Sm}
+        >
+          <div className={styles.sheet} style={trayTheme}>
+            <SubsetPanel capture={creating} close={() => setCreating(null)} />
+          </div>
+        </Modal>
       )}
       {deleting && (
         <DeleteSubsetDialog

@@ -1,6 +1,8 @@
 import {
   EPISODE_UNIT,
+  selectionScopeLabel,
   type EpisodeSelection,
+  type SelectionCounts,
   type SelectionMember,
   type SelectionRange,
   type SelectionUnit,
@@ -16,6 +18,22 @@ export function plural(count: number, unit: string, units = `${unit}s`) {
 /** "Episode", "Sample", "Patch": the unit for titles and menu copy. */
 export function unitTitle(unit: SelectionUnit) {
   return unit.one.charAt(0).toUpperCase() + unit.one.slice(1);
+}
+
+/**
+ * Names a frozen scope inside a panel title: "all 16 samples in view" for
+ * every current result, "3 selected samples" for an explicit selection.
+ */
+export function scopePhrase(
+  source: "explicit" | "results",
+  counts: SelectionCounts,
+  unit: SelectionUnit,
+) {
+  const label = selectionScopeLabel(counts, unit);
+  if (source === "results") return `all ${label} in view`;
+  if (counts.segments) return `selected ${label}`;
+  const noun = counts.fullEpisodes === 1 ? unit.one : unit.many;
+  return `${counts.fullEpisodes} selected ${noun}`;
 }
 
 /** "Episodes", "Samples", "Patches". */

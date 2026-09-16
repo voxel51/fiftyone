@@ -23,9 +23,18 @@ vi.mock("@fiftyone/state", () => ({
 vi.mock("@fiftyone/state/src/selection", async () => ({
   ...(await import("@fiftyone/state/src/selection/model")),
   ...(await import("@fiftyone/state/src/selection/hooks")),
+  ...(await import("@fiftyone/state/src/selection/fold")),
   useGridSelectionBoundary: () => [{}, vi.fn()],
+  useGridSelectionDataset: () => ({
+    datasetId: "dataset",
+    domainId: "dataset",
+    mediaType: "multimodal",
+    conversion: null,
+    unit: { one: "episode", many: "episodes", temporal: true },
+    enabled: true,
+  }),
   selectionTagsRequest: mocks.request,
-  subsetRequest: vi.fn(),
+  subsetRequest: vi.fn(async () => ({ subsets: [] })),
   scopeBody: (scope: {
     kind: string;
     members?: unknown;
@@ -36,9 +45,17 @@ vi.mock("@fiftyone/state/src/selection", async () => ({
       : { snapshotId: scope.snapshotId },
 }));
 
+const unapplied = { tags: ["review"], applied: {}, targets: 1, labels: null };
+const applied = {
+  tags: ["review"],
+  applied: { review: 1 },
+  targets: 1,
+  labels: null,
+};
+
 beforeEach(() => {
   mocks.permission = null;
-  mocks.request.mockReset().mockResolvedValue({ tags: ["review"] });
+  mocks.request.mockReset().mockResolvedValue(unapplied);
   mocks.refresh.mockClear();
 });
 afterEach(() => vi.restoreAllMocks());
@@ -96,15 +113,16 @@ function Host({ value }: { value: GridSelectionActionContext }) {
 }
 const tagButton = () =>
   screen.getByRole("button", { name: "Tag", exact: true });
+const tagRow = () =>
+  screen.getByRole("button", { name: "review", exact: true });
 
-it("retains frozen membership through scope changes, errors, and retries", async () => {
+it("toggles a tag in place, keeping frozen membership through scope changes and retries", async () => {
   const value = context();
   const rendered = render(<Host value={value} />);
   fireEvent.click(
     await screen.findByRole("button", { name: "Tag", exact: true }),
   );
-  await screen.findByRole("dialog");
-  expect(screen.getByText("Selected")).toBeTruthy();
+  await screen.findByText(/^Tag selected/);
   rendered.rerender(
     <Host
       value={{
@@ -118,13 +136,15 @@ it("retains frozen membership through scope changes, errors, and retries", async
       }}
     />,
   );
-  fireEvent.click(screen.getByRole("button", { name: "review", exact: true }));
+  await screen.findByRole("button", { name: "review", exact: true });
   mocks.request.mockRejectedValueOnce(new Error("Connection interrupted"));
-  fireEvent.click(screen.getByRole("button", { name: "Add tag", exact: true }));
+  fireEvent.click(tagRow());
   await screen.findByRole("alert");
-  fireEvent.click(screen.getByRole("button", { name: "Add tag", exact: true }));
-  await screen.findByRole("status");
-  expect(screen.getByRole("status").textContent).toContain("Added “review”");
+  mocks.request.mockResolvedValueOnce(applied);
+  fireEvent.click(tagRow());
+  await waitFor(() =>
+    expect(tagRow().getAttribute("aria-pressed")).toBe("true"),
+  );
   expect(mocks.request.mock.calls[1]).toEqual(mocks.request.mock.calls[2]);
   expect(mocks.request.mock.calls[2]).toEqual([
     "dataset",
@@ -136,7 +156,8 @@ it("retains frozen membership through scope changes, errors, and retries", async
   rendered.unmount();
 });
 
-it("acts on a server snapshot for all results and sends explicit removal intent", async () => {
+it("removes a tag every target already carries, acting on a server snapshot for all results", async () => {
+  mocks.request.mockResolvedValue(applied);
   const snapshot = {
     kind: "snapshot" as const,
     snapshotId: "snap",
@@ -149,16 +170,21 @@ it("acts on a server snapshot for all results and sends explicit removal intent"
   };
   const rendered = render(<Host value={value} />);
   fireEvent.click(await screen.findByRole("button", { name: "Tag" }));
-  await screen.findByText("All results");
+  await screen.findByText(/^Tag all .* in view$/);
+  const row = await screen.findByRole("button", {
+    name: "review",
+    exact: true,
+  });
   expect(mocks.request).toHaveBeenLastCalledWith("dataset", snapshot, {
     target: "members",
     view: [],
   });
-  fireEvent.click(screen.getByRole("radio", { name: "Remove" }));
-  expect(screen.getByText(/exact captured ranges/)).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "review", exact: true }));
-  fireEvent.click(screen.getByRole("button", { name: "Remove tag" }));
-  await screen.findByRole("status");
+  expect(row.getAttribute("aria-pressed")).toBe("true");
+  mocks.request.mockResolvedValueOnce(unapplied);
+  fireEvent.click(row);
+  await waitFor(() =>
+    expect(tagRow().getAttribute("aria-pressed")).toBe("false"),
+  );
   expect(mocks.request).toHaveBeenLastCalledWith("dataset", snapshot, {
     change: { tag: "review", add: false },
     target: "members",
@@ -170,19 +196,25 @@ it("acts on a server snapshot for all results and sends explicit removal intent"
 it("offers to create an unknown tag and applies it on Enter", async () => {
   const rendered = render(<Host value={context()} />);
   fireEvent.click(await screen.findByRole("button", { name: "Tag" }));
-  await screen.findByRole("dialog");
-  const input = screen.getByLabelText("Find or create a tag");
+  await screen.findByRole("button", { name: "review", exact: true });
+  const input = screen.getByLabelText("Create or find tag");
   fireEvent.change(input, { target: { value: "  night " } });
   expect(screen.getByText("Create “night”")).toBeTruthy();
+  mocks.request.mockResolvedValueOnce({
+    ...unapplied,
+    tags: ["night", "review"],
+    applied: { night: 1 },
+  });
   fireEvent.keyDown(input, { key: "Enter" });
-  await screen.findByRole("status");
+  await screen.findByRole("button", { name: "night", exact: true });
   expect(mocks.request).toHaveBeenLastCalledWith("dataset", explicit, {
     change: { tag: "night", add: true },
     target: "members",
     view: [],
   });
-  fireEvent.click(screen.getByRole("button", { name: "Tag another" }));
-  expect(screen.getByLabelText("Find or create a tag")).toBeTruthy();
+  expect(
+    (screen.getByLabelText("Create or find tag") as HTMLInputElement).value,
+  ).toBe("");
   rendered.unmount();
 });
 
@@ -204,21 +236,29 @@ it("lets grouped datasets choose between the active slice and every slice", asyn
   };
   const rendered = render(<Host value={value} />);
   fireEvent.click(await screen.findByRole("button", { name: "Tag" }));
-  await screen.findByRole("dialog");
-  expect(screen.getByText(/only the selected slice/)).toBeTruthy();
+  await screen.findByRole("button", { name: "review", exact: true });
   fireEvent.click(screen.getByRole("radio", { name: "All slices" }));
-  fireEvent.click(screen.getByRole("button", { name: "review", exact: true }));
-  fireEvent.click(screen.getByRole("button", { name: "Add tag", exact: true }));
-  await screen.findByRole("status");
-  expect(mocks.request).toHaveBeenLastCalledWith(
-    "dataset",
-    { kind: "members", members: full },
-    {
-      change: { tag: "review", add: true },
-      target: "members",
-      view: [],
-      groups: "all",
-    },
+  await waitFor(() =>
+    expect(mocks.request).toHaveBeenLastCalledWith(
+      "dataset",
+      { kind: "members", members: full },
+      { target: "members", view: [], groups: "all" },
+    ),
+  );
+  fireEvent.click(
+    await screen.findByRole("button", { name: "review", exact: true }),
+  );
+  await waitFor(() =>
+    expect(mocks.request).toHaveBeenLastCalledWith(
+      "dataset",
+      { kind: "members", members: full },
+      {
+        change: { tag: "review", add: true },
+        target: "members",
+        view: [],
+        groups: "all",
+      },
+    ),
   );
   rendered.unmount();
 });
@@ -271,15 +311,10 @@ it("enforces empty, loading, error, missing-parent, timebase, and permission res
   mocks.permission = null;
   rendered.rerender(<Host value={value} />);
   fireEvent.click(tagButton());
-  await screen.findByRole("dialog");
-  fireEvent.click(screen.getByRole("button", { name: "review", exact: true }));
+  await screen.findByRole("button", { name: "review", exact: true });
   mocks.permission = "Permission revoked";
   rendered.rerender(<Host value={value} />);
-  expect(
-    screen
-      .getByRole("button", { name: "Add tag", exact: true })
-      .hasAttribute("disabled"),
-  ).toBe(true);
+  expect(tagRow().hasAttribute("disabled")).toBe(true);
   expect(mocks.request).toHaveBeenCalledTimes(1);
   rendered.unmount();
 });
@@ -303,11 +338,11 @@ it("tags labels only for whole episodes and handles an empty label scope", async
   const value = context();
   const rendered = render(<Host value={value} />);
   fireEvent.click(await screen.findByRole("button", { name: "Tag" }));
-  await screen.findByRole("dialog");
+  await screen.findByRole("button", { name: "review", exact: true });
   expect(
     screen.getByRole("radio", { name: "Labels" }).hasAttribute("disabled"),
   ).toBe(true);
-  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  fireEvent.click(tagButton());
   const full = [{ episodeId: "episode", kind: "episode" as const }];
   rendered.rerender(
     <Host
@@ -320,25 +355,30 @@ it("tags labels only for whole episodes and handles an empty label scope", async
     />,
   );
   fireEvent.click(tagButton());
-  await screen.findByRole("dialog");
-  mocks.request.mockResolvedValueOnce({ tags: ["review"], labels: 0 });
+  await screen.findByRole("button", { name: "review", exact: true });
+  mocks.request.mockResolvedValueOnce({ ...unapplied, targets: 0, labels: 0 });
   fireEvent.click(screen.getByRole("radio", { name: "Labels" }));
   await screen.findByText("No labels in these episodes.");
-  fireEvent.click(screen.getByRole("button", { name: "review", exact: true }));
-  expect(
-    screen.getByRole("button", { name: "Add tag" }).hasAttribute("disabled"),
-  ).toBe(true);
+  expect(tagRow().hasAttribute("disabled")).toBe(true);
   fireEvent.click(screen.getByRole("radio", { name: "Episodes" }));
-  mocks.request.mockResolvedValueOnce({ tags: ["review"], labels: 2 });
+  await waitFor(() => expect(tagRow().hasAttribute("disabled")).toBe(false));
+  mocks.request.mockResolvedValueOnce({ ...unapplied, targets: 2, labels: 2 });
   fireEvent.click(screen.getByRole("radio", { name: "Labels" }));
-  await screen.findByText("2 labels");
-  fireEvent.click(screen.getByRole("button", { name: "review", exact: true }));
-  fireEvent.click(screen.getByRole("button", { name: "Add tag", exact: true }));
-  await screen.findByRole("status");
-  expect(mocks.request).toHaveBeenLastCalledWith(
-    "dataset",
-    { kind: "members", members: full },
-    { change: { tag: "review", add: true }, target: "labels", view: [] },
+  await waitFor(() =>
+    expect(mocks.request).toHaveBeenLastCalledWith(
+      "dataset",
+      { kind: "members", members: full },
+      { target: "labels", view: [] },
+    ),
+  );
+  await waitFor(() => expect(tagRow().hasAttribute("disabled")).toBe(false));
+  fireEvent.click(tagRow());
+  await waitFor(() =>
+    expect(mocks.request).toHaveBeenLastCalledWith(
+      "dataset",
+      { kind: "members", members: full },
+      { change: { tag: "review", add: true }, target: "labels", view: [] },
+    ),
   );
   rendered.unmount();
 });

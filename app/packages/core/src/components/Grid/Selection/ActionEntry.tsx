@@ -20,6 +20,7 @@ export interface ActionEntryProps {
   disabledReason: string | null;
   busy?: boolean;
   busyLabel?: string;
+  /** Kept for contributed actions; every toolbar action now reads the same. */
   emphasis?: "primary" | "secondary";
   /** Where the action is rendered: the toolbar row or the overflow menu. */
   surface?: "toolbar" | "menu";
@@ -40,7 +41,7 @@ export default function ActionEntry({
   disabledReason,
   busy = false,
   busyLabel,
-  emphasis = "secondary",
+  emphasis: _emphasis = "secondary",
   surface = "toolbar",
   ...aria
 }: ActionEntryProps) {
@@ -73,7 +74,7 @@ export default function ActionEntry({
   const button = (
     <Button
       size={Size.Sm}
-      variant={emphasis === "primary" ? Variant.Primary : Variant.Secondary}
+      variant={Variant.Borderless}
       leadingIcon={icon}
       disabled={disabled}
       aria-busy={busy || undefined}
