@@ -36,6 +36,8 @@ const mocks = vi.hoisted(() => ({
   boundary: {} as SelectionBoundary,
   setBoundary: vi.fn(),
   request: vi.fn(),
+  list: vi.fn(),
+  get: vi.fn(),
   remove: vi.fn(),
 }));
 vi.mock("@fiftyone/state", () => ({
@@ -54,6 +56,8 @@ vi.mock("@fiftyone/state/src/selection", async () => ({
     clear: mocks.selection.clear,
   }),
   subsetRequest: mocks.request,
+  listSubsets: mocks.list,
+  getSubset: mocks.get,
   deleteSubset: mocks.remove,
   scopeBody: (scope: {
     kind: string;
@@ -65,7 +69,12 @@ vi.mock("@fiftyone/state/src/selection", async () => ({
       : { snapshotId: scope.snapshotId },
 }));
 
-const hard = { id: "hard", name: "Hard negatives", counts };
+const hard = {
+  id: "hard",
+  name: "Hard negatives",
+  description: "Frames the model got wrong on the last run",
+  counts,
+};
 const trigger = () =>
   document.querySelector("[data-cy=samples-scope-trigger]") as HTMLElement;
 
@@ -78,6 +87,10 @@ beforeEach(() => {
     snapshotId: "snap",
     counts: all,
   });
+  mocks.list.mockReset();
+  mocks.list.mockResolvedValue({ subsets: [hard], total: 1, count: 1 });
+  mocks.get.mockReset();
+  mocks.get.mockResolvedValue(hard);
   mocks.request.mockReset();
   mocks.request.mockImplementation(
     async (
@@ -85,7 +98,6 @@ beforeEach(() => {
       path: string,
       body?: { phase?: string; name?: string; operationId?: string },
     ) => {
-      if (!path && body === undefined) return { subsets: [hard] };
       if (!path) return { id: "created", name: body?.name, counts: all };
       return {
         operationId: body?.operationId,
@@ -112,8 +124,12 @@ describe("SamplesScopeTab", () => {
     expect(trigger().textContent).toContain("48");
     fireEvent.click(trigger());
     const row = await screen.findByText("Hard negatives");
-    expect(screen.getByText("Saved selection")).toBeTruthy();
+    expect(
+      screen.getByText("Frames the model got wrong on the last run"),
+    ).toBeTruthy();
+    expect(screen.queryByText("Saved selection")).toBeNull();
     expect(screen.getByText("16")).toBeTruthy();
+    expect(screen.queryByLabelText("Search subsets")).toBeNull();
     fireEvent.click(row);
     expect(mocks.selection.clear).toHaveBeenCalledTimes(1);
     expect(mocks.setBoundary).toHaveBeenCalledWith({
@@ -129,6 +145,7 @@ describe("SamplesScopeTab", () => {
       expect(trigger().textContent).toContain("Hard negatives"),
     );
     expect(trigger().textContent).toContain("16");
+    expect(mocks.get).toHaveBeenCalledWith("dataset", "hard");
     fireEvent.click(trigger());
     fireEvent.click(await screen.findByText("Delete Hard negatives…"));
     await screen.findByText("Delete Hard negatives?");
@@ -164,5 +181,54 @@ describe("SamplesScopeTab", () => {
       "/add",
       expect.objectContaining({ phase: "prepare", snapshotId: "snap" }),
     );
+  });
+
+  it("searches and pages the subsets on the server once there are more than five", async () => {
+    const many = Array.from({ length: 12 }, (_, index) => ({
+      id: `s${index}`,
+      name: `Subset ${index}`,
+      counts,
+    }));
+    mocks.list.mockImplementation(
+      async (
+        _dataset: string,
+        options: { search?: string; skip?: number; limit?: number } = {},
+      ) => {
+        const matching = options.search
+          ? many.filter((subset) => subset.name.includes(options.search ?? ""))
+          : many;
+        const skip = options.skip ?? 0;
+        return {
+          subsets: matching.slice(skip, skip + (options.limit ?? 5)),
+          total: matching.length,
+          count: many.length,
+        };
+      },
+    );
+    render(<SamplesScopeTab />);
+    fireEvent.click(trigger());
+    const search = await screen.findByPlaceholderText("Search 12 subsets");
+    expect(await screen.findByText("Subset 0")).toBeTruthy();
+    expect(screen.getByText("Subset 4")).toBeTruthy();
+    expect(screen.queryByText("Subset 5")).toBeNull();
+    expect(screen.getByText("1–5 of 12")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Next subsets" }));
+    expect(await screen.findByText("Subset 5")).toBeTruthy();
+    expect(screen.getByText("6–10 of 12")).toBeTruthy();
+    expect(mocks.list).toHaveBeenLastCalledWith("dataset", {
+      search: undefined,
+      skip: 5,
+      limit: 5,
+    });
+    fireEvent.change(search, { target: { value: "Subset 1" } });
+    expect(await screen.findByText("Subset 10")).toBeTruthy();
+    expect(screen.getByText("Subset 11")).toBeTruthy();
+    expect(screen.queryByText("Subset 2")).toBeNull();
+    expect(screen.queryByText(/of 3$/)).toBeNull();
+    expect(mocks.list).toHaveBeenLastCalledWith("dataset", {
+      search: "Subset 1",
+      skip: 0,
+      limit: 5,
+    });
   });
 });

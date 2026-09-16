@@ -575,6 +575,14 @@
   color: var(--tray-text);
 }
 
+/* The same panel inside a modal takes the modal's width, not its own. */
+.modalSheet {
+  box-sizing: border-box;
+  width: 100%;
+  font-family: var(--tray-font);
+  color: var(--tray-text);
+}
+
 .sheetBody {
   display: flex;
   flex-direction: column;
@@ -650,6 +658,32 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* The scope panel is narrower than the action sheets. */
+.scopeSheet {
+  width: min(360px, calc(100vw - 24px));
+}
+
+/* Descriptions wrap to two lines, then trail off; the title holds the rest. */
+.rowText > .rowClamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  white-space: normal;
+}
+
+.rowDestructive:hover {
+  background: color-mix(in srgb, var(--tray-destructive) 12%, transparent);
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 0 4px;
 }
 
 .rule {
@@ -813,35 +847,6 @@
   .scopeChevron svg {
     transition: none;
   }
-}
-
-.scopeRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  min-width: 240px;
-  text-align: left;
-}
-
-.scopeRowText {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.scopeRowCount {
-  flex: none;
-  font-variant-numeric: tabular-nums;
-}
-
-.staticScope {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  height: 24px;
-  padding: 0 8px;
 }
 
 .visuallyHidden {

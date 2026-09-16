@@ -96,6 +96,8 @@ vi.mock("@fiftyone/state/src/selection", async () => ({
   resolveSelection: vi.fn(async () => ({ groups: [], counts: {} })),
   createSelectionSnapshot: vi.fn(),
   subsetRequest: vi.fn(async () => ({ subsets: [] })),
+  listSubsets: vi.fn(async () => ({ subsets: [], total: 0, count: 0 })),
+  getSubset: vi.fn(async () => null),
   selectionTagsRequest: vi.fn(async () => ({ tags: [] })),
   scopeBody: (scope: {
     kind: string;

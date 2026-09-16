@@ -10,18 +10,14 @@ import {
 import {
   AddIcon,
   BackgroundColor,
+  CheckIcon,
   ChevronBottomIcon,
   DeleteOutlineIcon,
-  Dropdown,
-  DropdownAnchor,
-  MenuCheckItem,
-  MenuIconTextItem,
-  MenuSectionTitle,
-  MenuSeparator,
-  MenuTextItem,
   Modal,
   ModalSize,
   Pill,
+  Popover,
+  PopoverAnchor,
   Size,
   Text,
   TextColor,
@@ -30,45 +26,15 @@ import {
 import { useState } from "react";
 import DeleteSubsetDialog from "./DeleteSubsetDialog";
 import styles from "./SelectionTray.module.css";
+import { scopePhrase } from "./format";
 import { SubsetPanel, type Capture } from "./SubsetAction";
+import SubsetBrowser from "./SubsetBrowser";
 import { trayTheme } from "./theme";
-import { subsetRows, useOpenSubset, useSavedSubsets } from "./useSubsetScope";
-
-function ScopeRow({
-  title,
-  subtitle,
-  count,
-}: {
-  title: string;
-  subtitle?: string;
-  count: number | null;
-}) {
-  return (
-    <span className={styles.scopeRow}>
-      <span className={styles.scopeRowText}>
-        <Text variant={TextVariant.Sm}>{title}</Text>
-        {subtitle && (
-          <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-            {subtitle}
-          </Text>
-        )}
-      </span>
-      {count !== null && (
-        <Text
-          variant={TextVariant.Xs}
-          color={TextColor.Secondary}
-          className={styles.scopeRowCount}
-        >
-          {count.toLocaleString()}
-        </Text>
-      )}
-    </span>
-  );
-}
+import { subsetRows, useOpenSubset, useSavedSubset } from "./useSubsetScope";
 
 /**
  * The samples panel's tab names what the grid is browsing: every sample, or
- * one saved subset. Its menu switches scope, saves the current scope as a
+ * one saved subset. Its panel switches scope, saves the current scope as a
  * new subset, and deletes the open subset. Switching scope always starts a
  * fresh, empty selection.
  */
@@ -77,21 +43,22 @@ export default function SamplesScopeTab() {
   const { datasetId, conversion, unit, enabled } = selection;
   const [boundary] = useGridSelectionBoundary();
   const total = fos.useDatasetSampleCount();
-  const { subsets, error } = useSavedSubsets(enabled ? datasetId : "");
   const openSubset = useOpenSubset(datasetId);
+  const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState<Capture | null>(null);
   const [deleting, setDeleting] = useState<SavedSubset | null>(null);
 
   const scoped = Boolean(boundary.subsetId);
-  const active = scoped
-    ? subsets?.find((subset) => subset.id === boundary.subsetId)
-    : undefined;
+  const { subset: active, loading: activeLoading } = useSavedSubset(
+    enabled ? datasetId : "",
+    boundary.subsetId,
+  );
   const activeScope = boundary.subsetScope ?? "episodes";
   const label = !scoped
     ? "All samples"
     : active
       ? active.name
-      : subsets === null
+      : activeLoading
         ? "Loading subset"
         : "Unavailable subset";
   const count = !scoped
@@ -103,7 +70,12 @@ export default function SamplesScopeTab() {
       : null;
   const selectedCount = selection.selected.size;
 
+  const choose = (subsetId?: string, scope?: "episodes" | "segments") => {
+    setOpen(false);
+    openSubset(subsetId, scope);
+  };
   const beginCreate = () => {
+    setOpen(false);
     const captured = [...selection.selected.values()];
     setCreating({
       datasetId,
@@ -129,18 +101,22 @@ export default function SamplesScopeTab() {
   if (!enabled) return <Text variant={TextVariant.Md}>Samples</Text>;
   return (
     <>
-      <Dropdown
-        anchor={DropdownAnchor.BottomStart}
+      <Popover
+        open={open}
+        onOpenChange={setOpen}
+        anchor={PopoverAnchor.BottomStart}
         trigger={
           <span
             className={styles.scopeTrigger}
             style={trayTheme}
             data-cy="samples-scope-trigger"
+            data-open={open || undefined}
             title={
               scoped
                 ? `Browsing the subset ${label}`
                 : "Browsing every sample in the dataset"
             }
+            onClick={() => setOpen((value) => !value)}
           >
             <Text variant={TextVariant.Md}>{label}</Text>
             {count !== null && (
@@ -159,76 +135,171 @@ export default function SamplesScopeTab() {
           </span>
         }
       >
-        <MenuSectionTitle>Scope</MenuSectionTitle>
-        <MenuCheckItem
-          checked={!scoped}
-          onClick={() => openSubset()}
-          data-cy="samples-scope-all"
+        <div
+          className={`${styles.sheet} ${styles.scopeSheet}`}
+          style={trayTheme}
         >
-          <ScopeRow title="All samples" count={total} />
-        </MenuCheckItem>
-        <MenuSeparator />
-        <MenuSectionTitle>Subsets</MenuSectionTitle>
-        {conversion ? (
-          <MenuTextItem disabled>
-            Subsets are available in the samples view
-          </MenuTextItem>
-        ) : subsets === null ? (
-          <MenuTextItem disabled>Loading subsets…</MenuTextItem>
-        ) : error ? (
-          <MenuTextItem disabled>{error}</MenuTextItem>
-        ) : !subsets.length ? (
-          <MenuTextItem disabled>No saved subsets yet</MenuTextItem>
-        ) : (
-          subsets.flatMap((subset) =>
-            subsetRows(subset, unit).map((row) => (
-              <MenuCheckItem
-                key={`${subset.id}:${row.scope}`}
-                checked={active?.id === subset.id && activeScope === row.scope}
-                onClick={() => openSubset(subset.id, row.scope)}
-                data-cy={`samples-scope-subset-${subset.id}`}
+          <div className={styles.sheetBody}>
+            <Text
+              variant={TextVariant.Label}
+              color={TextColor.Secondary}
+              className={styles.sheetTitle}
+            >
+              Scope
+            </Text>
+            <button
+              type="button"
+              className={styles.row}
+              aria-pressed={!scoped}
+              data-cy="samples-scope-all"
+              onClick={() => choose()}
+            >
+              <span className={styles.rowText}>
+                <Text variant={TextVariant.Md}>All samples</Text>
+              </span>
+              {total !== null && (
+                <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+                  {total.toLocaleString()}
+                </Text>
+              )}
+              {!scoped && <CheckIcon size={Size.Sm} color={TextColor.Accent} />}
+            </button>
+            <hr className={styles.rule} />
+            <Text
+              variant={TextVariant.Label}
+              color={TextColor.Secondary}
+              className={styles.sheetTitle}
+            >
+              Subsets
+            </Text>
+            {conversion ? (
+              <Text
+                variant={TextVariant.Sm}
+                color={TextColor.Secondary}
+                className={styles.listEmpty}
               >
-                <ScopeRow
-                  title={subset.name}
-                  subtitle={row.subtitle}
-                  count={row.count}
+                Subsets are available in the samples view
+              </Text>
+            ) : (
+              <SubsetBrowser
+                datasetId={datasetId}
+                renderSubset={(subset) =>
+                  subsetRows(subset, unit).map((row) => {
+                    const current =
+                      active?.id === subset.id && activeScope === row.scope;
+                    const unavailable = subset.counts.unavailable;
+                    return (
+                      <button
+                        key={`${subset.id}:${row.scope}`}
+                        type="button"
+                        className={styles.row}
+                        aria-pressed={current}
+                        data-cy={`samples-scope-subset-${subset.id}`}
+                        onClick={() => choose(subset.id, row.scope)}
+                      >
+                        <span className={styles.rowText}>
+                          <Text variant={TextVariant.Md}>{subset.name}</Text>
+                          {row.kind && (
+                            <Text
+                              variant={TextVariant.Xs}
+                              color={TextColor.Secondary}
+                            >
+                              {row.kind}
+                            </Text>
+                          )}
+                          {subset.description && (
+                            <Text
+                              variant={TextVariant.Sm}
+                              color={TextColor.Secondary}
+                              className={styles.rowClamp}
+                              title={subset.description}
+                            >
+                              {subset.description}
+                            </Text>
+                          )}
+                          {unavailable > 0 && (
+                            <Text
+                              variant={TextVariant.Xs}
+                              color={TextColor.Warning}
+                            >
+                              {`${unavailable} unavailable`}
+                            </Text>
+                          )}
+                        </span>
+                        <Text
+                          variant={TextVariant.Xs}
+                          color={TextColor.Secondary}
+                        >
+                          {row.count.toLocaleString()}
+                        </Text>
+                        {current && (
+                          <CheckIcon size={Size.Sm} color={TextColor.Accent} />
+                        )}
+                      </button>
+                    );
+                  })
+                }
+              />
+            )}
+            <hr className={styles.rule} />
+            <button
+              type="button"
+              className={styles.row}
+              disabled={Boolean(conversion)}
+              data-cy="samples-scope-new"
+              onClick={beginCreate}
+            >
+              <AddIcon size={Size.Md} color={TextColor.Secondary} />
+              <span className={styles.rowText}>
+                <Text variant={TextVariant.Md}>New subset…</Text>
+                <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+                  {selectedCount
+                    ? `From the ${selectedCount} selected`
+                    : "From all current results"}
+                </Text>
+              </span>
+            </button>
+            {active && (
+              <button
+                type="button"
+                className={`${styles.row} ${styles.rowDestructive}`}
+                data-cy="samples-scope-delete"
+                onClick={() => {
+                  setOpen(false);
+                  setDeleting(active);
+                }}
+              >
+                <DeleteOutlineIcon
+                  size={Size.Md}
+                  color={TextColor.Destructive}
                 />
-              </MenuCheckItem>
-            )),
-          )
-        )}
-        <MenuSeparator />
-        <MenuIconTextItem
-          icon={<AddIcon size={Size.Sm} />}
-          text="New subset…"
-          subtext={
-            selectedCount
-              ? `From the ${selectedCount} selected`
-              : "From all current results"
-          }
-          disabled={Boolean(conversion)}
-          onClick={beginCreate}
-          data-cy="samples-scope-new"
-        />
-        {active && (
-          <MenuIconTextItem
-            destructive
-            icon={<DeleteOutlineIcon size={Size.Sm} />}
-            text={`Delete ${active.name}…`}
-            onClick={() => setDeleting(active)}
-            data-cy="samples-scope-delete"
-          />
-        )}
-      </Dropdown>
+                <span className={styles.rowText}>
+                  <Text variant={TextVariant.Md} color={TextColor.Destructive}>
+                    {`Delete ${active.name}…`}
+                  </Text>
+                </span>
+              </button>
+            )}
+          </div>
+        </div>
+      </Popover>
       {creating && (
         <Modal
           open
           onClose={() => setCreating(null)}
-          title="New subset"
+          title={
+            creating.counts
+              ? `New subset from ${scopePhrase(creating.source, creating.counts, unit)}`
+              : "New subset"
+          }
           size={ModalSize.Sm}
         >
-          <div className={styles.sheet} style={trayTheme}>
-            <SubsetPanel capture={creating} close={() => setCreating(null)} />
+          <div className={styles.modalSheet} style={trayTheme}>
+            <SubsetPanel
+              capture={creating}
+              close={() => setCreating(null)}
+              heading={false}
+            />
           </div>
         </Modal>
       )}

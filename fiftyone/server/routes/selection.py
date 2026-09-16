@@ -123,9 +123,22 @@ class Subsets(HTTPEndpoint):
     @decorators.route
     async def get(self, request):
         dataset = get_dataset(request.path_params["dataset_id"])
-        return {
-            "subsets": await fou.run_sync_task(fosub.list_subsets, dataset)
-        }
+        params = request.query_params
+        try:
+            skip = int(params.get("skip", 0))
+            limit = params.get("limit")
+            limit = int(limit) if limit is not None else None
+        except ValueError as error:
+            raise HTTPException(
+                400, detail="skip and limit must be integers"
+            ) from error
+        return await fou.run_sync_task(
+            fosub.browse_subsets,
+            dataset,
+            params.get("search") or None,
+            skip,
+            limit,
+        )
 
     @decorators.route
     async def post(self, request, data):
@@ -142,7 +155,19 @@ class Subsets(HTTPEndpoint):
 
 
 class Subset(HTTPEndpoint):
-    """Deletes one dataset-scoped saved subset."""
+    """Reads or deletes one dataset-scoped saved subset."""
+
+    @decorators.route
+    async def get(self, request):
+        dataset = get_dataset(request.path_params["dataset_id"])
+        try:
+            return await fou.run_sync_task(
+                fosub.subset_summary,
+                dataset,
+                request.path_params["subset_id"],
+            )
+        except (ValueError, InvalidId) as error:
+            raise HTTPException(400, detail=str(error)) from error
 
     @decorators.route
     async def delete(self, request):

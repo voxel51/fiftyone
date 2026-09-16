@@ -177,6 +177,38 @@ class SubsetTests(unittest.TestCase):
         finally:
             other.delete()
 
+    def test_browse_subsets_searches_names_and_descriptions_and_pages(self):
+        for index in range(6):
+            fosub.create_subset(
+                self.dataset,
+                "Batch %d" % index,
+                "Night drives" if index % 2 else None,
+            )
+        page = fosub.browse_subsets(self.dataset, skip=0, limit=5)
+        self.assertEqual(len(page["subsets"]), 5)
+        self.assertEqual(page["total"], 7)
+        self.assertEqual(page["count"], 7)
+        self.assertEqual(page["subsets"][0]["name"], "Review")
+        rest = fosub.browse_subsets(self.dataset, skip=5, limit=5)
+        self.assertEqual(
+            [s["name"] for s in rest["subsets"]], ["Batch 4", "Batch 5"]
+        )
+        found = fosub.browse_subsets(self.dataset, search="night", limit=5)
+        self.assertEqual(found["total"], 3)
+        self.assertEqual(found["count"], 7)
+        self.assertTrue(
+            all("Night" in s["description"] for s in found["subsets"])
+        )
+        self.assertEqual(
+            fosub.browse_subsets(self.dataset, search="rev")["total"], 1
+        )
+        self.assertEqual(
+            fosub.browse_subsets(self.dataset, search="(")["total"], 0
+        )
+        self.assertEqual(
+            fosub.subset_summary(self.dataset, self.subset)["name"], "Review"
+        )
+
     def test_subsets_carry_an_optional_description(self):
         created = fosub.create_subset(
             self.dataset, "Night", "  Frames captured after dusk  "

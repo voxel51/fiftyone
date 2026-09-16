@@ -134,6 +134,34 @@ export async function subsetRequest<T>(
   ).response;
 }
 
+/** One page of a dataset's subsets, with how many match and how many exist. */
+export interface SubsetPage {
+  readonly subsets: SavedSubset[];
+  readonly total: number;
+  readonly count: number;
+}
+
+/** Pages the dataset's subsets, matching names and descriptions to a search. */
+export function listSubsets(
+  datasetId: string,
+  options: { search?: string; skip?: number; limit?: number } = {},
+) {
+  const params = new URLSearchParams();
+  if (options.search) params.set("search", options.search);
+  if (options.skip) params.set("skip", String(options.skip));
+  if (options.limit) params.set("limit", String(options.limit));
+  const query = params.toString();
+  return subsetRequest<SubsetPage>(datasetId, query ? `?${query}` : "");
+}
+
+/** Reads one subset with its live counts. */
+export function getSubset(datasetId: string, subsetId: string) {
+  return subsetRequest<SavedSubset>(
+    datasetId,
+    `/${encodeURIComponent(subsetId)}`,
+  );
+}
+
 /** Deletes a saved subset; its members' media and annotations are untouched. */
 export function deleteSubset(datasetId: string, subsetId: string) {
   return subsetRequest<{ id: string }>(

@@ -35,6 +35,8 @@ vi.mock("@fiftyone/state/src/selection", async () => ({
   }),
   selectionTagsRequest: mocks.request,
   subsetRequest: vi.fn(async () => ({ subsets: [] })),
+  listSubsets: vi.fn(async () => ({ subsets: [], total: 0, count: 0 })),
+  getSubset: vi.fn(async () => null),
   scopeBody: (scope: {
     kind: string;
     members?: unknown;

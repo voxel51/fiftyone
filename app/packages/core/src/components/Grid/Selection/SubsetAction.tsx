@@ -42,10 +42,11 @@ import ActionSurface from "./ActionSurface";
 import { plural, scopePhrase } from "./format";
 import { Notice } from "./Notice";
 import styles from "./SelectionTray.module.css";
+import SubsetBrowser from "./SubsetBrowser";
 import {
   defaultSubsetScope,
   useOpenSubset,
-  useSavedSubsets,
+  useSavedSubset,
 } from "./useSubsetScope";
 
 /** A frozen scope and how it will be saved. */
@@ -154,13 +155,15 @@ interface Pending {
 export function SubsetPanel({
   capture,
   close,
+  heading: showHeading = true,
 }: {
   capture: Capture;
   close: () => void;
+  /** Off when a surrounding modal already titles the panel. */
+  heading?: boolean;
 }) {
   const invalidate = useInvalidateSelectionScope(capture.datasetId);
   const openSubset = useOpenSubset(capture.datasetId);
-  const { subsets, error: listError } = useSavedSubsets(capture.datasetId);
   const creating = capture.mode === "create";
   const [view, setView] = useState<"list" | "form">(creating ? "form" : "list");
   const [scope, setScope] = useState<SelectionScope | null>(
@@ -203,9 +206,10 @@ export function SubsetPanel({
     : capture.source === "results"
       ? `all ${unit.many} in view`
       : `selected ${unit.many}`;
-  const frozen = capture.frozenId
-    ? subsets?.find((subset) => subset.id === capture.frozenId)
-    : undefined;
+  const { subset: frozen } = useSavedSubset(
+    capture.datasetId,
+    capture.frozenId,
+  );
   const memberNoun = (count: number) =>
     counts?.segments
       ? plural(count, "member")
@@ -268,7 +272,7 @@ export function SubsetPanel({
 
   const title =
     view === "form" ? `New subset from ${phrase}` : `Add ${phrase} to subset`;
-  const heading = (
+  const heading = showHeading ? (
     <Text
       variant={TextVariant.Label}
       color={TextColor.Secondary}
@@ -276,7 +280,7 @@ export function SubsetPanel({
     >
       {title}
     </Text>
-  );
+  ) : null;
   const scopeStatus = scope ? null : scopeError ? (
     <span className={styles.inlineAlert} role="alert">
       <Text variant={TextVariant.Sm} color={TextColor.Destructive}>
@@ -416,48 +420,39 @@ export function SubsetPanel({
     <div className={styles.sheetBody}>
       {heading}
       {scopeStatus}
-      <div role="group" aria-label="Subsets" className={styles.list}>
-        {subsets === null ? (
-          <LoadingDots
-            variant={TextVariant.Sm}
-            color={TextColor.Secondary}
-            text="Loading subsets"
-          />
-        ) : listError ? (
-          <Text variant={TextVariant.Sm} color={TextColor.Destructive}>
-            {listError}
-          </Text>
-        ) : subsets.length === 0 ? (
-          <Text
-            variant={TextVariant.Sm}
-            color={TextColor.Secondary}
-            className={styles.listEmpty}
+      <SubsetBrowser
+        datasetId={capture.datasetId}
+        renderSubset={(subset) => (
+          <button
+            key={subset.id}
+            type="button"
+            className={styles.row}
+            disabled={busy || !scope}
+            onClick={() => void addTo(subset, pending)}
           >
-            No saved subsets yet
-          </Text>
-        ) : (
-          subsets.map((subset) => (
-            <button
-              key={subset.id}
-              type="button"
-              className={styles.row}
-              disabled={busy || !scope}
-              onClick={() => void addTo(subset, pending)}
-            >
-              <FolderIcon size={Size.Md} color={TextColor.Secondary} />
-              <span className={styles.rowText}>
-                <Text variant={TextVariant.Md}>{subset.name}</Text>
-                <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
-                  {selectionScopeLabel(subset.counts, unit)}
-                </Text>
-              </span>
-              {busy && pending?.subset.id === subset.id && (
-                <Spinner size={Size.Xs} />
-              )}
-            </button>
-          ))
+            <FolderIcon size={Size.Md} color={TextColor.Secondary} />
+            <span className={styles.rowText}>
+              <Text variant={TextVariant.Md}>{subset.name}</Text>
+              <Text
+                variant={TextVariant.Sm}
+                color={TextColor.Secondary}
+                className={subset.description ? styles.rowClamp : undefined}
+                title={subset.description ?? undefined}
+              >
+                {subset.description ?? selectionScopeLabel(subset.counts, unit)}
+              </Text>
+            </span>
+            {subset.description && (
+              <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+                {selectionScopeLabel(subset.counts, unit)}
+              </Text>
+            )}
+            {busy && pending?.subset.id === subset.id && (
+              <Spinner size={Size.Xs} />
+            )}
+          </button>
         )}
-      </div>
+      />
       <hr className={styles.rule} />
       <button
         type="button"

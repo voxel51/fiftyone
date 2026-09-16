@@ -34,7 +34,6 @@ import {
 } from "react";
 import FoldCard from "./FoldCard";
 import { episodeTitle, unitTitle } from "./format";
-import ScopeControls from "./ScopeControls";
 import SelectionCard from "./SelectionCard";
 import SelectionSummary from "./SelectionSummary";
 import styles from "./SelectionTray.module.css";
@@ -172,7 +171,6 @@ export default function SelectionTray() {
   const actions = useGridSelectionActions();
   const setExpandedSample = fos.useSetExpandedSample();
   const setModalState = fos.useSetModalState();
-  const [providerError, setProviderError] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState(false);
   const [cleared, setCleared] = useState<readonly EpisodeSelection[] | null>(
     null,
@@ -386,23 +384,13 @@ export default function SelectionTray() {
           unit={unit}
           outside={outside}
           loading={selection.loading}
-          error={selection.error ?? providerError}
+          error={selection.error}
           cleared={cleared?.length}
           onUndo={undoClear}
-          onRetry={() => {
-            setProviderError(null);
-            invalidate();
-          }}
+          onRetry={invalidate}
           onClear={clearAll}
         />
         <div className={styles.scope}>
-          <ScopeControls
-            datasetId={selection.datasetId}
-            mediaType={selection.mediaType}
-            unit={unit}
-            conversion={selection.conversion}
-            onProviderError={setProviderError}
-          />
           <UnavailableReferences
             groups={selection.unavailableGroups}
             selected={selection.selected}

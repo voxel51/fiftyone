@@ -12,6 +12,8 @@ import { addToSubsetAction } from "./SubsetAction";
 
 const mocks = vi.hoisted(() => ({
   request: vi.fn(),
+  list: vi.fn(),
+  get: vi.fn(),
   openBoundary: vi.fn(),
 }));
 vi.mock("@fiftyone/state", () => ({
@@ -33,6 +35,8 @@ vi.mock("@fiftyone/state/src/selection", async () => ({
     enabled: true,
   }),
   subsetRequest: mocks.request,
+  listSubsets: mocks.list,
+  getSubset: mocks.get,
   scopeBody: (scope: {
     kind: string;
     members?: unknown;
@@ -94,6 +98,12 @@ function Host({ context: value }: { context: GridSelectionActionContext }) {
 
 beforeEach(() => {
   mocks.request.mockReset();
+  mocks.list.mockReset().mockResolvedValue({
+    subsets: [review],
+    total: 1,
+    count: 1,
+  });
+  mocks.get.mockReset().mockResolvedValue(null);
   mocks.openBoundary.mockReset();
 });
 afterEach(cleanup);
@@ -190,6 +200,7 @@ it("adds all results from a snapshot token instead of member ids", async () => {
 });
 
 it("creates a subset with a description from the form and can open it", async () => {
+  mocks.list.mockResolvedValue({ subsets: [], total: 0, count: 0 });
   mocks.request.mockImplementation(
     async (_dataset: string, path: string, body?: Body) => {
       if (!path && body === undefined) return { subsets: [] };
@@ -232,6 +243,7 @@ it("creates a subset with a description from the form and can open it", async ()
 });
 
 it("saves a new subset instead of changing the open one", async () => {
+  mocks.get.mockResolvedValue({ id: "open", name: "Hard negatives", counts });
   mocks.request.mockImplementation(
     async (_dataset: string, path: string, body?: Body) => {
       if (!path && body === undefined)

@@ -10,6 +10,7 @@ import copy
 from datetime import datetime, timezone
 import hashlib
 import json
+import re
 
 from bson import ObjectId
 from pymongo.errors import DuplicateKeyError
@@ -40,12 +41,35 @@ def create_subset(dataset, name, description=None):
 
 def list_subsets(dataset):
     """Lists only the current dataset's subsets, including empty subsets."""
-    return [
-        _summary(dataset, doc)
-        for doc in _collection("subsets")
-        .find({"_dataset_id": dataset._doc.id})
-        .sort("created_at", 1)
-    ]
+    return browse_subsets(dataset)["subsets"]
+
+
+def browse_subsets(dataset, search=None, skip=0, limit=None):
+    """Pages the current dataset's subsets, optionally matching a search.
+
+    Names and descriptions match case-insensitively. The result carries the
+    page, how many subsets match, and how many the dataset has in all, so a
+    picker knows whether search is worth offering.
+    """
+    collection = _collection("subsets")
+    base = {"_dataset_id": dataset._doc.id}
+    query = dict(base)
+    if search and search.strip():
+        pattern = {"$regex": re.escape(search.strip()), "$options": "i"}
+        query["$or"] = [{"name": pattern}, {"description": pattern}]
+    cursor = collection.find(query).sort("created_at", 1).skip(max(0, skip))
+    if limit is not None:
+        cursor = cursor.limit(max(1, limit))
+    return {
+        "subsets": [_summary(dataset, doc) for doc in cursor],
+        "total": collection.count_documents(query),
+        "count": collection.count_documents(base),
+    }
+
+
+def subset_summary(dataset, subset_id):
+    """One dataset-scoped subset with its live counts."""
+    return _summary(dataset, get_subset(dataset, subset_id))
 
 
 def get_subset(dataset, subset_id):

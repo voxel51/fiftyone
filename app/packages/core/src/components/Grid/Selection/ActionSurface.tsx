@@ -27,7 +27,7 @@ export default function ActionSurface({
       <>
         {trigger}
         <Modal open={open} onClose={onClose} title={title} size={ModalSize.Sm}>
-          <div className={styles.sheet} style={trayTheme}>
+          <div className={styles.modalSheet} style={trayTheme}>
             {children}
           </div>
         </Modal>
