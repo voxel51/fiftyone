@@ -17,10 +17,6 @@ import { useGetKeypointSkeleton, useIsPatchesView } from "@fiftyone/state";
 import { KEYPOINT } from "@fiftyone/utilities";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  isKeypointDraftFinalized,
-  markKeypointDraftFinalized,
-} from "./keypointDraftState";
 import { skeletonNodeCount } from "./useAnnotationContext/createNew";
 import {
   type AnnotationContextSelected,
@@ -43,6 +39,16 @@ const is2dKeypointSelected = (
 
 const keypointModeActiveAtom = atom<boolean>(false);
 export { keypointModeActiveAtom as _unsafeKeypointModeActiveAtom };
+
+/**
+ * Session-scoped set of keypoint overlay ids whose `lighter:overlay-establish`
+ * has been dispatched. On a video frame field the FIRST committed placement of
+ * a new label must establish it exactly once — establish is what births the
+ * track (first keyframe, auto-extend, form handoff) — while every later
+ * placement is an ordinary per-point edit. Ids are ~24 bytes and creations are
+ * user actions — bounded in practice.
+ */
+const establishedKeypoints = new Set<string>();
 
 /**
  * Guided-placement state for the selected skeleton keypoint: the nodes the
@@ -172,11 +178,10 @@ export const useKeypointMode = () => {
    * — "0 of N placed", first target highlighted — visible BEFORE the first
    * click, or the user is aiming blind.
    *
-   * Creation is ATOMIC: the draft places its nodes silently and persists
-   * once, when every node is placed or explicitly skipped (the installer's
-   * completion watcher dispatches the finalize, which on video also creates
-   * the track). Bailing at any point — mode exit, sample switch, scrub,
-   * modal close — discards the draft; nothing partial ever persists.
+   * The draft is scene-only until the first placement: every placement
+   * commits (the engine upserts the label on the first one, like polylines),
+   * so a bail before any placement leaves nothing behind, and a bail after
+   * one keeps exactly what was placed.
    */
   const activateKeypointMode = useCallback(() => {
     setKeypointModeActive(true);
@@ -307,8 +312,7 @@ export const useGuidedKeypoints = () => {
    * track this is an ordinary edit: the clear commits, promotes the current
    * frame to a keyframe, and the bracketing segments re-lerp — with the hole
    * rule (either endpoint a hole → the span is a hole), the node vanishes
-   * from this keyframe until the next keyframe that places it again. On a
-   * creation draft the clear is silent and local, like placement.
+   * from this keyframe until the next keyframe that places it again.
    */
   const clearNode = useCallback(
     (index: number) => {
@@ -325,17 +329,16 @@ export const useGuidedKeypoints = () => {
         return;
       }
 
-      const emit = !(selected?.isNew && !isKeypointDraftFinalized(overlay.id));
       const hole: [number, number] = [NaN, NaN];
 
-      overlay.movePointById(pointId, hole, emit);
+      overlay.movePointById(pointId, hole, true);
 
       const command = new MoveKeypointPointCommand(
         overlay,
         pointId,
         from,
         hole,
-        emit,
+        true,
       );
       CommandContextManager.instance().getActiveContext().pushUndoable(command);
 
@@ -351,15 +354,7 @@ export const useGuidedKeypoints = () => {
 
       bumpGuidedEpoch((n) => n + 1);
     },
-    [
-      bumpGuidedEpoch,
-      forcedIndex,
-      overlay,
-      selected,
-      setForced,
-      setSkips,
-      skipped,
-    ],
+    [bumpGuidedEpoch, forcedIndex, overlay, setForced, setSkips, skipped],
   );
 
   /**
@@ -416,11 +411,16 @@ export const useGuidedKeypoints = () => {
     selectedNodeIndex,
     selectNode,
     /**
-     * True while the label is an unfinalized creation draft — the per-node
-     * inspector hides during placement (attributes come after geometry).
+     * True while a new label has nothing placed yet — it exists only in the
+     * scene (the first placement is what commits it), so attribute edits
+     * have no label to land on and the per-node inspector hides.
      */
     isDraft:
-      !!selected?.isNew && !!overlay && !isKeypointDraftFinalized(overlay.id),
+      !!selected?.isNew &&
+      !!overlay &&
+      !overlay
+        .getRelativePoints()
+        .some((p) => Number.isFinite(p[0]) && Number.isFinite(p[1])),
   };
 };
 
@@ -456,7 +456,7 @@ export const useKeypointModeInstaller = (): void => {
   const eventBus = useLighterEventBus(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
   );
-  const { selected, createNew } = useAnnotationContext();
+  const { selected, createNew, readEditing } = useAnnotationContext();
   const useLighterEvent = useLighterEventHandler(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
   );
@@ -496,13 +496,13 @@ export const useKeypointModeInstaller = (): void => {
     ),
   );
 
-  // Any established overlay counts as finalized: free-form drafts finalize
-  // through their handler's double-click establish, which doesn't go through
-  // `finalizeDraft` below. Non-keypoint overlay ids in the set are inert.
+  // Any establish counts, wherever it came from (the first-placement
+  // dispatch below, or a free-form handler's double-click finish), so a
+  // label is never established twice. Non-keypoint overlay ids are inert.
   useLighterEvent(
     "lighter:overlay-establish",
     useCallback((event: { overlayId: string }) => {
-      markKeypointDraftFinalized(event.overlayId);
+      establishedKeypoints.add(event.overlayId);
     }, []),
   );
 
@@ -526,9 +526,9 @@ export const useKeypointModeInstaller = (): void => {
   // exactly as long as a keypoint is selected: the mode opens a draft on
   // activation, so "armed with nothing selected" is the aiming-blind state
   // the eager draft exists to prevent. A background click (deselect) or a
-  // switch to another label therefore exits the mode, and an unfinalized
-  // draft left behind by either is discarded (atomic creation: a bail never
-  // persists, and it should not linger in the scene either).
+  // switch to another label therefore exits the mode. A new label with
+  // nothing placed exists only in the scene (the first placement is the
+  // commit), so a bail discards its overlay rather than leaving a ghost.
   const prevSelectedRef = useRef(selected);
   useEffect(() => {
     const prev = prevSelectedRef.current;
@@ -545,11 +545,14 @@ export const useKeypointModeInstaller = (): void => {
       // Discard the abandoned draft's scene overlay (deselect paths bypass
       // useExit's cleanup)
       const prevId = prev?.overlay?.id;
+      const prevOverlay = prevId ? scene?.getOverlay(prevId) : undefined;
       if (
         prev?.isNew &&
         prevId &&
-        !isKeypointDraftFinalized(prevId) &&
-        scene?.getOverlay(prevId)
+        prevOverlay instanceof KeypointOverlay &&
+        !prevOverlay
+          .getRelativePoints()
+          .some((p) => Number.isFinite(p[0]) && Number.isFinite(p[1]))
       ) {
         removeOverlay(prevId, true);
       }
@@ -573,12 +576,12 @@ export const useKeypointModeInstaller = (): void => {
   ]);
 
   // The edit form's Field picker is how a different skeleton is chosen, so a
-  // field swap on a creation draft RESTARTS it for the new field's skeleton:
-  // hole count and edges follow the field, and any placed nodes are dropped —
-  // a node's index is bound to the old skeleton's semantics (node 3 of a face
-  // is not node 3 of a body), so carrying placements across topologies would
-  // be silent corruption. Committed labels never take this path (their swap
-  // moves engine rows; see Field.tsx).
+  // field swap on a NOTHING-PLACED draft RESTARTS it for the new field's
+  // skeleton: hole count and edges follow the field, and there is nothing to
+  // carry — a node's index is bound to the old skeleton's semantics (node 3
+  // of a face is not node 3 of a body). A label with placements is already
+  // committed (per-point commits), so its swap moves engine rows instead
+  // (see Field.tsx) and never takes this path.
   const prevFieldRef = useRef<string | null>(null);
   useEffect(() => {
     const field = selected?.field ?? null;
@@ -591,14 +594,20 @@ export const useKeypointModeInstaller = (): void => {
       !prevField ||
       prevField === field ||
       !is2dKeypointSelected(selected) ||
-      !selected?.isNew ||
-      isKeypointDraftFinalized(selected.overlay?.id ?? "")
+      !selected?.isNew
     ) {
       return;
     }
 
     const overlay = scene.getOverlay(selected.overlay?.id ?? "");
     if (!(overlay instanceof KeypointOverlay)) {
+      return;
+    }
+    if (
+      overlay
+        .getRelativePoints()
+        .some((p) => Number.isFinite(p[0]) && Number.isFinite(p[1]))
+    ) {
       return;
     }
 
@@ -631,25 +640,40 @@ export const useKeypointModeInstaller = (): void => {
   const currentForcedRef = useRef(currentForced);
   currentForcedRef.current = currentForced;
 
-  // Keypoint creation is ATOMIC: draft placements are silent (no commits),
-  // and the one persistence event is this finalize — dispatched when every
-  // node is resolved (placed or explicitly skipped) with at least one placed.
-  // The establish event both commits the label and, on video, creates its
-  // track; a draft abandoned before finalize was never persisted, so every
-  // bail path (mode exit, sample switch, scrub, modal close) is a discard.
-  const finalizeDraft = useCallback(
-    (overlay: KeypointOverlay, data: Record<string, unknown> | undefined) => {
-      if (isKeypointDraftFinalized(overlay.id)) {
+  // Per-point commits: every emitted point event already committed through
+  // the engine bridge (the first one upserts the label). On a video FRAME
+  // field, a new label's first placement must ALSO establish the overlay —
+  // establish is what births the track (first keyframe, auto-extend, form
+  // handoff) — exactly once, mirroring the polyline creation flow. Image
+  // fields need no establish: the point commit is the whole story.
+  const establishOnFirstPlacement = useCallback(
+    (event: { overlayId: string }) => {
+      // Fresh snapshot: the creation handler's first placement fires this in
+      // the same tick `createNew` selected the label, before any re-render.
+      const editing = readEditing().selected;
+      if (
+        !editing?.isNew ||
+        !is2dKeypointSelected(editing) ||
+        editing.overlay?.id !== event.overlayId ||
+        !editing.field?.startsWith(FRAMES_PREFIX) ||
+        establishedKeypoints.has(event.overlayId)
+      ) {
         return;
       }
-      markKeypointDraftFinalized(overlay.id);
 
-      // Fold the sidebar draft's fields (class, attributes picked mid-draft)
-      // into the overlay label the commit extraction reads, keeping the live
-      // geometry authoritative.
+      const overlay = scene?.getOverlay(event.overlayId);
+      if (!(overlay instanceof KeypointOverlay)) {
+        return;
+      }
+
+      establishedKeypoints.add(overlay.id);
+
+      // Fold the sidebar draft's fields (class, attributes picked before the
+      // first placement) into the overlay label the commit extraction reads,
+      // keeping the live geometry authoritative.
       overlay.applyLabel({
         ...overlay.label,
-        ...(data ?? {}),
+        ...((editing.data as Record<string, unknown>) ?? {}),
         points: overlay.getRelativePoints(),
       } as typeof overlay.label);
 
@@ -657,7 +681,7 @@ export const useKeypointModeInstaller = (): void => {
       // this payload — a zero rect satisfies the event shape
       const bounds = { x: 0, y: 0, width: 0, height: 0 };
       eventBus.dispatch("lighter:overlay-establish", {
-        id: "guided-keypoint-finalize",
+        id: "guided-keypoint-establish",
         overlayId: overlay.id,
         handler: installedHandlerRef.current ?? undefined,
         startBounds: bounds,
@@ -665,57 +689,10 @@ export const useKeypointModeInstaller = (): void => {
         bounds,
       });
     },
-    [eventBus],
+    [eventBus, readEditing, scene],
   );
-
-  // Completion watcher: finalize the selected draft once its guided sequence
-  // resolves. Runs on geometry changes (guidedEpoch) and skip changes.
-  useEffect(() => {
-    if (!scene || !is2dKeypointSelected(selected) || !selected?.isNew) {
-      return;
-    }
-
-    const overlay = scene.getOverlay(selected.overlay?.id ?? "");
-    if (
-      !(overlay instanceof KeypointOverlay) ||
-      isKeypointDraftFinalized(overlay.id)
-    ) {
-      return;
-    }
-
-    const field = selected.field ?? null;
-    const nodeCount = skeletonNodeCount(field ? getSkeleton(field) : null);
-    if (!nodeCount) {
-      // Free-form drafts finalize on double-click (the handler's establish)
-      return;
-    }
-
-    const skipped =
-      currentSkips?.overlayId === overlay.id ? currentSkips.skipped : [];
-    const forcedIndex =
-      currentForced?.overlayId === overlay.id ? currentForced.index : null;
-    // A Place-forced hole keeps the draft open until it's actually placed
-    const complete =
-      resolveTargetIndex(overlay, nodeCount, skipped, forcedIndex) === null;
-    const anyPlaced = overlay
-      .getRelativePoints()
-      .some((p) => Number.isFinite(p[0]) && Number.isFinite(p[1]));
-
-    if (complete && anyPlaced) {
-      finalizeDraft(
-        overlay,
-        selected.data as Record<string, unknown> | undefined,
-      );
-    }
-  }, [
-    currentForced,
-    currentSkips,
-    finalizeDraft,
-    getSkeleton,
-    guidedEpoch,
-    scene,
-    selected,
-  ]);
+  useLighterEvent("lighter:keypoint-point-moved", establishOnFirstPlacement);
+  useLighterEvent("lighter:keypoint-point-added", establishOnFirstPlacement);
 
   useEffect(() => {
     if (!scene) {
@@ -786,16 +763,11 @@ export const useKeypointModeInstaller = (): void => {
             setForced(null);
             bumpGuidedEpoch();
             // Auto-finish: release the handler once every node is resolved;
-            // the overlay stays selected for editing. (The completion
-            // watcher finalizes the draft.)
+            // the overlay stays selected for editing.
             if (getTarget() === null) {
               exitInstalledHandler();
             }
           },
-          // Draft placements are silent (atomic creation); resuming holes on
-          // an already-committed label emits per placement (edits).
-          silent:
-            !!selected?.isNew && !isKeypointDraftFinalized(targetOverlay.id),
         });
 
         scene.enterInteractiveMode(handler);
@@ -818,9 +790,6 @@ export const useKeypointModeInstaller = (): void => {
         eventBus,
         undefined,
         resolvePointHit,
-        // Draft placements are silent (atomic creation) — the double-click
-        // finish is free-form's finalize; edits on committed labels emit.
-        !!selected?.isNew && !isKeypointDraftFinalized(targetOverlay.id),
       );
 
       scene.enterInteractiveMode(handler);
@@ -844,10 +813,9 @@ export const useKeypointModeInstaller = (): void => {
           return;
         }
 
-        // Place the creation click's point — SILENTLY: creation is atomic,
-        // so nothing commits until the draft completes (the completion
-        // watcher finalizes skeleton drafts; free-form finalizes on
-        // double-click).
+        // Place the creation click's point, emitting: the point event is the
+        // label's first commit (the bridge upserts), and on a frame field
+        // `establishOnFirstPlacement` births the track off it.
         const overlay = scene.getOverlay(created.data._id as string);
         if (!(overlay instanceof KeypointOverlay)) {
           return;
@@ -855,12 +823,12 @@ export const useKeypointModeInstaller = (): void => {
 
         const firstNodeId = overlay.getPointIdAt(0);
         if (firstNodeId) {
-          // Skeleton draft: the click places node 0 (hole → position)
+          // Skeleton field: the click places node 0 (hole → position)
           const rel = overlay.absolutePointToRelative(worldPoint);
-          overlay.movePointById(firstNodeId, rel, false);
+          overlay.movePointById(firstNodeId, rel, true);
         } else {
-          // Free-form draft: the click appends the first point
-          overlay.addPoint(worldPoint, { silent: true });
+          // Free-form field: the click appends the first point
+          overlay.addPoint(worldPoint);
         }
         bumpGuidedEpoch();
       },

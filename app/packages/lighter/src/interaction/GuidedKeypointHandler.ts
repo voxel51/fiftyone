@@ -22,15 +22,6 @@ export type GuidedKeypointCallbacks = {
   getTargetIndex: () => number | null;
   /** Notification that the node at `index` was just placed. */
   onPlaced: (index: number) => void;
-  /**
-   * When `true`, placements (and their undo/redo) emit no point events and
-   * therefore never commit. Creation drafts place silently — the keypoint
-   * mode persists them once, at completion, via `lighter:overlay-establish`;
-   * a draft abandoned mid-placement is discarded, never half-saved. Resuming
-   * holes on an already-committed label places loudly (each placement is an
-   * edit).
-   */
-  silent?: boolean;
 };
 
 /**
@@ -102,17 +93,16 @@ export class GuidedKeypointHandler implements InteractionHandler {
       return false;
     }
 
-    const emit = !this.callbacks.silent;
-
-    // When emitting, `lighter:keypoint-point-moved` drives the engine commit
-    this.overlay.movePointById(pointId, rp, emit);
+    // `lighter:keypoint-point-moved` drives the engine commit — every
+    // placement commits (the engine upserts the label on the first one)
+    this.overlay.movePointById(pointId, rp, true);
 
     const command = new MoveKeypointPointCommand(
       this.overlay,
       pointId,
       from,
       rp,
-      emit,
+      true,
     );
     CommandContextManager.instance().getActiveContext().pushUndoable(command);
     this.pushedCommandIds.add(command.id);

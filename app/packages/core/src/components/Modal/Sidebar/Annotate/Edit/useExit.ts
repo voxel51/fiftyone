@@ -1,6 +1,9 @@
 import { useAnnotationEngine } from "@fiftyone/annotation";
-import { DetectionOverlay, useLighter } from "@fiftyone/lighter";
-import { isKeypointDraftFinalized } from "./keypointDraftState";
+import {
+  DetectionOverlay,
+  KeypointOverlay,
+  useLighter,
+} from "@fiftyone/lighter";
 import { TypeGuards } from "@fiftyone/lighter/src/core/Scene2D";
 import type { AnnotationLabel } from "@fiftyone/state";
 import {
@@ -23,12 +26,17 @@ const hasDrawnContent = (
   overlay?: AnnotationLabel["overlay"],
 ): boolean => {
   if (label.type === KEYPOINT) {
-    // Keypoint creation is ATOMIC (pure discard): a draft persists only via
-    // its completion finalize, so an unfinalized draft is discarded on exit
-    // no matter how many nodes were placed — half a pose is not a smaller
-    // pose. Neither geometry nor the (auto-assigned) class counts as content;
-    // only the finalize does.
-    return isKeypointDraftFinalized(label.data._id as string);
+    // A placed node is content: each placement already committed (per-point
+    // commits), so exit keeps whatever was placed. Skeleton holes ([NaN,
+    // NaN]) don't count, and neither does the auto-assigned class — an
+    // eager all-holes draft is the "clicked create but didn't draw" dummy.
+    const points =
+      overlay instanceof KeypointOverlay
+        ? overlay.getRelativePoints()
+        : ((label.data.points as [number, number][] | undefined) ?? []);
+    return points.some(
+      (p) => Number.isFinite(p?.[0]) && Number.isFinite(p?.[1]),
+    );
   }
 
   // A picked class is content on its own and also covers shapes we don't
