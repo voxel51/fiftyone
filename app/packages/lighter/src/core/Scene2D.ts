@@ -122,12 +122,29 @@ export interface OverlayOrderOptions {
 
 /**
  * Interface for render callbacks that can be registered to run during the render loop.
+ *
+ * SYNCHRONOUS by contract. The frame runs inside Pixi's ticker, ahead of
+ * Pixi's own LOW-priority render in the same pass — a callback that suspended
+ * the frame would push every scene-graph mutation past that render, which is
+ * exactly the phase inversion this loop exists to avoid. Work that must await
+ * belongs off the render path.
  */
 export interface RenderCallback {
   id: string;
-  callback: () => void | Promise<void>;
+  callback: () => void;
   phase: "before" | "after";
 }
+
+/**
+ * Rejects a thenable return.
+ *
+ * `callback: () => void` is not enough on its own: TypeScript lets a
+ * `Promise`-returning function satisfy a `() => void` signature, so an `async`
+ * callback would type-check and then silently reintroduce the phase inversion
+ * this loop exists to prevent. Applied at `registerRenderCallback`, where the
+ * return type is inferable, it fails at the call site instead.
+ */
+type NotPromise<T> = T extends PromiseLike<unknown> ? never : T;
 
 /**
  * 2D scene that manages overlays, rendering, selection, coordinate system, and undo/redo operations.
@@ -1109,14 +1126,28 @@ export class Scene2D {
     return finalStyle;
   }
 
+  /**
+   * The tick handler is SYNCHRONOUS, and must stay that way.
+   *
+   * Pixi's `TickerPlugin` registers its own `render` on this same ticker at
+   * `UPDATE_PRIORITY.LOW`, while this handler sits at the default `NORMAL` —
+   * so one ticker pass is meant to run "mutate the scene graph, then present
+   * it". An `async` handler returns at its first `await` and hands the rest of
+   * the frame to the microtask queue, which drains AFTER the ticker's
+   * synchronous phase — i.e. after Pixi has already presented. Every overlay
+   * mutation then lands a phase late, and because overlays paint by disposing
+   * their container and rebuilding it, any present caught between the dispose
+   * and the rebuild shows a hole. Staying synchronous is what keeps the whole
+   * frame — dispose included — inside one pass, invisible to the present.
+   */
   public async startRenderLoop(): Promise<void> {
     if (this.isRenderLoopActive) {
       return;
     }
 
     this.isRenderLoopActive = true;
-    this.config.renderer.addTickHandler(async () => {
-      await this.renderFrame();
+    this.config.renderer.addTickHandler(() => {
+      this.renderFrame();
     });
   }
 
@@ -1133,14 +1164,17 @@ export class Scene2D {
    * @param callback - The callback configuration.
    * @returns A function to unregister the callback.
    */
-  registerRenderCallback(
-    callback: Omit<RenderCallback, "id"> & { id?: string },
+  registerRenderCallback<R>(
+    callback: Omit<RenderCallback, "id" | "callback"> & {
+      id?: string;
+      callback: () => NotPromise<R>;
+    },
   ): () => void {
     const id = callback.id || `render-callback-${Date.now()}-${Math.random()}`;
 
     const renderCallback: RenderCallback = {
       id,
-      callback: callback.callback,
+      callback: callback.callback as () => void,
       phase: callback.phase,
     };
 
@@ -1162,19 +1196,14 @@ export class Scene2D {
    * Executes render callbacks for a specific phase.
    * @param phase - The phase to execute callbacks for.
    */
-  private async executeRenderCallbacks(
-    phase: "before" | "after",
-  ): Promise<void> {
+  private executeRenderCallbacks(phase: "before" | "after"): void {
     const callbacks = Array.from(this.renderCallbacks.values()).filter(
       (callback) => callback.phase === phase,
     );
 
     for (const callback of callbacks) {
       try {
-        const result = callback.callback();
-        if (result instanceof Promise) {
-          await result;
-        }
+        callback.callback();
       } catch (error) {
         console.error(`Error in render callback ${callback.id}:`, error);
         // Continue with other callbacks even if one fails
@@ -1662,16 +1691,16 @@ export class Scene2D {
   /**
    * Renders a single frame.
    */
-  private async renderFrame(): Promise<void> {
+  private renderFrame(): void {
     // Execute before-render callbacks
-    await this.executeRenderCallbacks("before");
+    this.executeRenderCallbacks("before");
 
     for (const overlayId of this.overlayOrder) {
       this.renderOverlay(overlayId);
     }
 
     // Execute after-render callbacks
-    await this.executeRenderCallbacks("after");
+    this.executeRenderCallbacks("after");
   }
 
   /**
