@@ -1,3 +1,4 @@
+import { type GridSelectionActionContext } from "@fiftyone/multimodal/extensions/grid-selection";
 import {
   act,
   fireEvent,
@@ -5,45 +6,63 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { beforeAll, expect, it, vi } from "vitest";
-import { type GridSelectionActionContext } from "@fiftyone/multimodal/extensions/grid-selection";
+import { beforeEach, expect, it, vi } from "vitest";
 import { addToSubsetAction } from "./SubsetAction";
 
-const { request } = vi.hoisted(() => ({ request: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  request: vi.fn(),
+  openBoundary: vi.fn(),
+}));
+vi.mock("@fiftyone/state", () => ({
+  useClearTemporalTagConstraint: () => vi.fn(),
+  useGridViewScope: () => ({ refresh: 0 }),
+}));
 vi.mock("@fiftyone/state/src/selection", async () => ({
   ...(await import("@fiftyone/state/src/selection/model")),
   ...(await import("@fiftyone/state/src/selection/hooks")),
-  subsetRequest: request,
+  useGridSelectionBoundary: () => [{}, mocks.openBoundary],
+  subsetRequest: mocks.request,
 }));
 
-beforeAll(() => {
-  // jsdom has no native dialog lifecycle; keep its open state visible to the test.
-  HTMLDialogElement.prototype.showModal = function () {
-    this.setAttribute("open", "");
-  };
-  HTMLDialogElement.prototype.close = function () {
-    this.removeAttribute("open");
-  };
-});
+const counts = {
+  episodes: 1,
+  fullEpisodes: 1,
+  segments: 0,
+  segmentEpisodes: 0,
+  unavailable: 0,
+};
+const original = [{ episodeId: "original", kind: "episode" as const }];
 
-function Host({ context }: { context: GridSelectionActionContext }) {
-  return (
-    <addToSubsetAction.Component context={context} disabledReason={null} />
-  );
+function context(
+  overrides: Partial<GridSelectionActionContext> = {},
+): GridSelectionActionContext {
+  return {
+    datasetId: "dataset",
+    mediaType: "video",
+    source: "explicit",
+    counts,
+    groups: [{ episodeId: "original", members: original }],
+    loading: false,
+    error: null,
+    boundary: {},
+    resolve: vi.fn(async () => original),
+    ...overrides,
+  };
 }
 
+function Host({ context: value }: { context: GridSelectionActionContext }) {
+  return <addToSubsetAction.Component context={value} disabledReason={null} />;
+}
+
+beforeEach(() => {
+  mocks.request.mockReset();
+  mocks.openBoundary.mockReset();
+});
+
 it("retries the captured members and operation after scope changes and partial failures", async () => {
-  const original = [{ episodeId: "original", kind: "episode" as const }];
-  const counts = {
-    episodes: 1,
-    fullEpisodes: 1,
-    segments: 0,
-    segmentEpisodes: 0,
-    unavailable: 0,
-  };
   let previewAttempt = 0,
     applyAttempt = 0;
-  request.mockImplementation(
+  mocks.request.mockImplementation(
     async (
       _dataset: string,
       path: string,
@@ -64,43 +83,32 @@ it("retries the captured members and operation after scope changes and partial f
       };
     },
   );
-  const resolve = vi.fn(async () => original);
-  const context: GridSelectionActionContext = {
-    datasetId: "dataset",
-    mediaType: "video",
-    source: "explicit",
-    counts,
-    groups: [{ episodeId: "original", members: original }],
-    loading: false,
-    error: null,
-    boundary: {},
-    resolve,
-  };
-  const view = render(<Host context={context} />);
-  fireEvent.click(await screen.findByText("Add to subset"));
+  const value = context();
+  const view = render(<Host context={value} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Add to subset" }));
   await screen.findByRole("dialog");
+  expect(screen.getByText("Selected")).toBeTruthy();
   view.rerender(
     <Host
-      context={{
-        ...context,
+      context={context({
         source: "results",
         resolve: async () => [{ episodeId: "new-result", kind: "episode" }],
-      }}
+      })}
     />,
   );
-  fireEvent.click(await screen.findByText(/Review ·/));
-  fireEvent.click(await screen.findByText("Retry preview"));
-  fireEvent.click(await screen.findByText("Add captured members"));
-  fireEvent.click(await screen.findByText("Retry captured add"));
+  fireEvent.click(await screen.findByRole("radio", { name: /Review/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "Retry preview" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Add 1 member" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Retry add" }));
   await waitFor(() =>
     expect(screen.getByRole("status").textContent).toContain(
-      "Added 1 new members",
+      "Added 1 new member to Review",
     ),
   );
-  const prepares = request.mock.calls.filter(
+  const prepares = mocks.request.mock.calls.filter(
     (call) => call[2]?.phase === "prepare",
   );
-  const applies = request.mock.calls.filter(
+  const applies = mocks.request.mock.calls.filter(
     (call) => call[2]?.phase === "apply",
   );
   expect(prepares).toHaveLength(2);
@@ -109,6 +117,74 @@ it("retries the captured members and operation after scope changes and partial f
   expect(prepares[0][2].members).toEqual(original);
   expect(applies[0][2]).toEqual(applies[1][2]);
   expect(applies[0][2].operationId).toBe(prepares[0][2].operationId);
-  expect(resolve).toHaveBeenCalledOnce();
+  expect(value.resolve).toHaveBeenCalledOnce();
+  act(() => view.unmount());
+});
+
+it("creates a subset inline, previews it, and can open it after adding", async () => {
+  mocks.request.mockImplementation(
+    async (
+      _dataset: string,
+      path: string,
+      body?: { phase?: string; name?: string; operationId?: string },
+    ) => {
+      if (!path && body === undefined) return { subsets: [] };
+      if (!path)
+        return { id: "created", name: body?.name, counts: { ...counts } };
+      return {
+        operationId: body?.operationId,
+        subsetId: "created",
+        counts,
+        added: 1,
+        duplicates: 0,
+        provenanceUpdated: 0,
+      };
+    },
+  );
+  const view = render(<Host context={context()} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Add to subset" }));
+  await screen.findByText(/No saved subsets yet/);
+  fireEvent.change(screen.getByLabelText("New subset name"), {
+    target: { value: "  Night drives " },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Create" }));
+  expect(
+    (await screen.findByRole("radio", { name: /Night drives/ })).getAttribute(
+      "aria-checked",
+    ),
+  ).toBe("true");
+  expect(mocks.request).toHaveBeenCalledWith("dataset", "", {
+    name: "Night drives",
+  });
+  fireEvent.click(await screen.findByRole("button", { name: "Add 1 member" }));
+  await screen.findByRole("status");
+  fireEvent.click(screen.getByRole("button", { name: "Open subset" }));
+  expect(mocks.openBoundary).toHaveBeenCalledWith({
+    subsetId: "created",
+    subsetScope: "episodes",
+  });
+  act(() => view.unmount());
+});
+
+it("shows an already-in-subset state instead of an add button when nothing is new", async () => {
+  mocks.request.mockImplementation(async (_dataset: string, path: string) => {
+    if (!path) return { subsets: [{ id: "subset", name: "Review", counts }] };
+    return {
+      operationId: "op",
+      subsetId: "subset",
+      counts,
+      added: 0,
+      duplicates: 1,
+      provenanceUpdated: 0,
+    };
+  });
+  const view = render(<Host context={context()} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Add to subset" }));
+  fireEvent.click(await screen.findByRole("radio", { name: /Review/ }));
+  const button = await screen.findByRole("button", {
+    name: "Already in subset",
+  });
+  expect(button.hasAttribute("disabled")).toBe(true);
+  expect(screen.getByText("already in subset")).toBeTruthy();
   act(() => view.unmount());
 });
