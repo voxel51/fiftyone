@@ -3,6 +3,9 @@ import type { KeypointAnnotationLabel } from "@fiftyone/state";
 import {
   Align,
   Clickable,
+  FormField,
+  Input,
+  InputType,
   Orientation,
   Spacing,
   Stack,
@@ -10,8 +13,9 @@ import {
   TextColor,
   TextVariant,
 } from "@voxel51/voodo";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import styled from "styled-components";
+import { useHandleSchemaChange } from "./AnnotationSchema";
 import { useAnnotationContext } from "./useAnnotationContext";
 import { useGuidedKeypoints } from "./useKeypointMode";
 
@@ -49,6 +53,102 @@ const STATUS_MARK: Record<NodeStatus, string> = {
   pending: "○",
 };
 
+const InspectorPanel = styled.div`
+  margin-top: 0.375rem;
+  padding-top: 0.375rem;
+  border-top: 1px solid ${({ theme }) => theme.neutral.softBorder};
+`;
+
+interface NodeInspectorProps {
+  name: string;
+  placed: boolean;
+  confidence: number | null;
+  readOnly: boolean;
+  onCommitConfidence: (value: number | null) => void;
+}
+
+/**
+ * Pinned per-node editor below the checklist (deliberately outside its
+ * scroll region — the node list is height-capped, so an inline accordion
+ * would clip its own form). Confidence is the core per-point attribute
+ * (`Keypoint.confidence`, parallel to `points`); edits commit on blur/Enter
+ * through the same engine transaction the schema form uses.
+ */
+const NodeInspector = ({
+  name,
+  placed,
+  confidence,
+  readOnly,
+  onCommitConfidence,
+}: NodeInspectorProps) => {
+  const [draft, setDraft] = useState(
+    confidence === null ? "" : String(confidence),
+  );
+
+  // External changes (undo, another client) refresh the field; while typing,
+  // `confidence` only moves on our own blur-commit, so this never fights the
+  // user's keystrokes
+  useEffect(() => {
+    setDraft(confidence === null ? "" : String(confidence));
+  }, [confidence]);
+
+  const commit = () => {
+    if (readOnly || !placed) return;
+    if (draft.trim() === "") {
+      if (confidence !== null) onCommitConfidence(null);
+      return;
+    }
+    const parsed = Number.parseFloat(draft);
+    if (!Number.isFinite(parsed)) {
+      setDraft(confidence === null ? "" : String(confidence));
+      return;
+    }
+    const clamped = Math.min(1, Math.max(0, parsed));
+    setDraft(String(clamped));
+    if (clamped !== confidence) onCommitConfidence(clamped);
+  };
+
+  return (
+    <InspectorPanel data-cy="keypoint-node-inspector">
+      <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+        <Stack
+          orientation={Orientation.Row}
+          align={Align.Center}
+          spacing={Spacing.Sm}
+        >
+          <Text>{name}</Text>
+          <Text color={TextColor.Secondary} variant={TextVariant.Sm}>
+            {placed ? "placed" : "not placed"}
+          </Text>
+        </Stack>
+        <FormField
+          label="confidence"
+          disabled={readOnly || !placed}
+          control={
+            <Input
+              type={InputType.Number}
+              min={0}
+              max={1}
+              step={0.01}
+              value={draft}
+              disabled={readOnly || !placed}
+              placeholder={placed ? "0–1" : "no point"}
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={commit}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  (e.target as HTMLInputElement).blur();
+                }
+              }}
+              data-cy="keypoint-confidence-input"
+            />
+          }
+        />
+      </Stack>
+    </InspectorPanel>
+  );
+};
+
 /**
  * Keypoint edit details. For skeleton fields, a per-node checklist driven by
  * the label's live geometry — a node is placed iff its point is finite (holes
@@ -69,7 +169,27 @@ export const KeypointDetails = () => {
     placeNode,
     selectedNodeIndex,
     selectNode,
+    isDraft,
   } = useGuidedKeypoints();
+
+  const isReadOnly = selected?.isFieldReadOnly ?? false;
+  const handleSchemaChange = useHandleSchemaChange(isReadOnly);
+
+  // Core per-point attribute: `confidence` is a float list parallel to
+  // `points` (absent entries are null; the NaN wire encoding covers it)
+  const confidences =
+    (selected?.data as { confidence?: (number | null)[] } | null)?.confidence ??
+    null;
+
+  const setNodeConfidence = useCallback(
+    (index: number, value: number | null) => {
+      const next = Array.from({ length: nodeCount }, (_, i) =>
+        i === index ? value : (confidences?.[i] ?? null),
+      );
+      void handleSchemaChange({ confidence: next });
+    },
+    [confidences, handleSchemaChange, nodeCount],
+  );
 
   // Keep the target row visible as placement advances — on a many-node
   // skeleton the next node must never require manual scrolling
@@ -220,6 +340,21 @@ export const KeypointDetails = () => {
           );
         })}
       </NodeList>
+
+      {selectedNodeIndex !== null && !isDraft && (
+        <NodeInspector
+          key={`${selected?.overlay?.id ?? ""}-${selectedNodeIndex}`}
+          name={
+            nodeLabels?.[selectedNodeIndex] ?? `point ${selectedNodeIndex + 1}`
+          }
+          placed={isPlaced(currentPoints[selectedNodeIndex])}
+          confidence={confidences?.[selectedNodeIndex] ?? null}
+          readOnly={isReadOnly}
+          onCommitConfidence={(value) =>
+            setNodeConfidence(selectedNodeIndex, value)
+          }
+        />
+      )}
     </Stack>
   );
 };

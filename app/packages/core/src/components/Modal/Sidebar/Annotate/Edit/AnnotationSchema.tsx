@@ -5,7 +5,7 @@ import {
 } from "@fiftyone/annotation";
 import { expandPath, field } from "@fiftyone/state";
 import type { LabelData } from "@fiftyone/utilities";
-import { FLOAT_FIELD, INT_FIELD } from "@fiftyone/utilities";
+import { FLOAT_FIELD, INT_FIELD, KEYPOINT } from "@fiftyone/utilities";
 import { useAtom } from "jotai";
 import { isEqual } from "lodash";
 import { useCallback, useMemo, useRef } from "react";
@@ -134,6 +134,12 @@ const useParseFieldValue = () => {
   );
 };
 
+/** Keypoint per-point parallel lists — per-frame on video tracks, like `points`. */
+const KEYPOINT_PER_FRAME_KEYS: ReadonlySet<string> = new Set([
+  "confidence",
+  "visible",
+]);
+
 /**
  * Handles form changes: parses field types, clears values for attributes
  * whose visible entry changed, and commits the edit to the engine — the
@@ -144,12 +150,13 @@ const useParseFieldValue = () => {
  * Volatile atoms (config, data, overlay, field) are read via refs so that
  * the returned callback keeps a stable identity across data changes.
  */
-const useHandleSchemaChange = (readOnly: boolean) => {
+export const useHandleSchemaChange = (readOnly: boolean) => {
   const { selected } = useAnnotationContext();
   const config = selected?.schema ?? null;
   const data = selected?.data;
   const overlay = selected?.overlay;
   const field = selected?.field ?? null;
+  const labelType = selected?.type ?? null;
   const editingRef = selected?.ref ?? null;
   const engine = useAnnotationEngine();
   const sample = useActiveAnnotationSampleId();
@@ -160,6 +167,7 @@ const useHandleSchemaChange = (readOnly: boolean) => {
   const dataRef = useRef(data);
   const overlayRef = useRef(overlay);
   const fieldRef = useRef(field);
+  const labelTypeRef = useRef(labelType);
   const editingRefRef = useRef(editingRef);
   const currentLabelRef = useRef(currentLabel);
   const sampleRef = useRef(sample);
@@ -167,6 +175,7 @@ const useHandleSchemaChange = (readOnly: boolean) => {
   dataRef.current = data;
   overlayRef.current = overlay;
   fieldRef.current = field;
+  labelTypeRef.current = labelType;
   editingRefRef.current = editingRef;
   currentLabelRef.current = currentLabel;
   sampleRef.current = sample;
@@ -282,9 +291,14 @@ const useHandleSchemaChange = (readOnly: boolean) => {
           .map((attr) => attr.name as string),
       );
 
+      // A keypoint's per-point parallel lists follow `points` frame by frame,
+      // so on a video track they stay on the edited frame like geometry does
+      const extraPerFrameKeys =
+        labelTypeRef.current === KEYPOINT ? KEYPOINT_PER_FRAME_KEYS : undefined;
+
       const { trackPartial, dynamicPartial }: TrackEditSplit =
         isFrameField && ref.frame != null
-          ? splitTrackEdit(persistableValue, dynamicKeys)
+          ? splitTrackEdit(persistableValue, dynamicKeys, extraPerFrameKeys)
           : { trackPartial: {}, dynamicPartial: {} };
 
       // the anchor frame's pre-edit value — `updateLabel` has not run yet, so the

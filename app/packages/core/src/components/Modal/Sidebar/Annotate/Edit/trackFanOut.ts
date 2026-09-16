@@ -36,16 +36,21 @@ export interface TrackEditSplit {
  * geometry + identity. A key named in `dynamicKeys` carries per-frame meaning
  * (it may change within the track), so it propagates forward from the edited
  * frame rather than across the whole track; everything else is track-level.
+ *
+ * `extraPerFrameKeys` marks additional keys as per-frame for this label type —
+ * keypoints pass their per-point parallel lists (`confidence`, `visible`),
+ * which follow `points` frame by frame exactly like geometry does.
  */
 export const splitTrackEdit = (
   value: Record<string, unknown>,
   dynamicKeys: ReadonlySet<string>,
+  extraPerFrameKeys?: ReadonlySet<string>,
 ): TrackEditSplit => {
   const trackPartial: Record<string, unknown> = {};
   const dynamicPartial: Record<string, unknown> = {};
 
   for (const [key, keyValue] of Object.entries(value)) {
-    if (PER_FRAME_KEYS.has(key)) {
+    if (PER_FRAME_KEYS.has(key) || extraPerFrameKeys?.has(key)) {
       continue;
     }
 

@@ -416,6 +416,12 @@ export const useGuidedKeypoints = () => {
     /** Node sub-selected for editing (row/canvas click), or null. */
     selectedNodeIndex,
     selectNode,
+    /**
+     * True while the label is an unfinalized creation draft — the per-node
+     * inspector hides during placement (attributes come after geometry).
+     */
+    isDraft:
+      !!selected?.isNew && !!overlay && !isKeypointDraftFinalized(overlay.id),
   };
 };
 
