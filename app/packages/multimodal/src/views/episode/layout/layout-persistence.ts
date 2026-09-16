@@ -182,7 +182,7 @@ const modalLayoutStore = createTimestampLruScopedStore<
   },
   key: STORAGE_KEY,
   maxScopes: MAX_DATASET_ENTRIES,
-  sanitizeScope: sanitizeEntry,
+  sanitizeScope: sanitizeModalLayout,
   scopeField: "byDataset",
   serializeScope: (layout) => ({ ...layout }),
   storage: () => globalThis.localStorage,
@@ -206,7 +206,9 @@ export function isValidMosaicLayout(node: unknown): node is MosaicNode<string> {
 }
 
 /** Field-by-field sanitization of one persisted entry. */
-function sanitizeEntry(raw: unknown): PersistedModalLayout | undefined {
+export function sanitizeModalLayout(
+  raw: unknown,
+): PersistedModalLayout | undefined {
   if (typeof raw !== "object" || raw === null) return undefined;
   const candidate = raw as Record<string, unknown>;
   return {
@@ -217,9 +219,10 @@ function sanitizeEntry(raw: unknown): PersistedModalLayout | undefined {
       typeof candidate.leftSidebarOpen === "boolean"
         ? candidate.leftSidebarOpen
         : undefined,
-    layout: isValidMosaicLayout(candidate.layout)
-      ? candidate.layout
-      : undefined,
+    layout:
+      candidate.layout === null || isValidMosaicLayout(candidate.layout)
+        ? candidate.layout
+        : undefined,
     logSettings: sanitizeLogSettings(candidate.logSettings),
     mapSettings: sanitizeMapSettings(candidate.mapSettings),
     plotSeries: sanitizePlotSeries(candidate.plotSeries),
@@ -710,7 +713,7 @@ function stripDatasetScopedLayoutFields(
 function sanitizedFallbackLayout(
   raw: unknown,
 ): PersistedModalLayout | undefined {
-  const entry = sanitizeEntry(raw);
+  const entry = sanitizeModalLayout(raw);
   if (!entry) {
     return undefined;
   }
@@ -735,4 +738,12 @@ export function tileTypeFromId(tileId: string): string | null {
   }
 
   return tileId.slice(0, finalDashIndex);
+}
+
+/** Replaces one local layout after the previous viewer has flushed its writes. */
+export function replaceModalLayout(
+  layout: PersistedModalLayout,
+  datasetKey: string,
+): void {
+  modalLayoutStore.updateScope(datasetKey, () => layout);
 }

@@ -108,6 +108,13 @@ describe("useModalLayout", () => {
   });
   afterEach(() => cleanup());
 
+  it("restores an explicitly empty layout without adding default tiles", () => {
+    writeModalLayout({ layout: null }, "empty");
+    const { result } = renderLayoutHook(SCENE_SOURCES, "empty");
+    expect(result.current.initialLayout).toBeNull();
+    expect(result.current.initialTiles).toEqual({});
+  });
+
   it("derives resolver defaults with a deliberate arrangement", () => {
     const { result } = renderLayoutHook(SCENE_SOURCES);
     expect(Object.keys(result.current.initialTiles)).toEqual([
@@ -1232,5 +1239,200 @@ describe("ModalLayoutPersistence", () => {
     });
     unmount();
     expect(readModalLayout("dataset-a")).toBeNull();
+  });
+});
+
+describe("portable viewer capture and apply", () => {
+  beforeEach(() => localStorage.clear());
+  afterEach(() => cleanup());
+
+  it("captures live tile settings before debounce and applies after old writes flush", async () => {
+    const { PortableLayoutHost, usePortableLayoutControls } =
+      await import("./PortableLayoutHost");
+    const { serializePortableLayout, parsePortableLayout } =
+      await import("./portable-layout");
+    const { DEFAULT_SIDEBAR_PREFERENCES, readSidebarPreferences } =
+      await import("../settings/sidebar-preferences");
+    const { plotTileSeriesAtom } = await import("../plots/plot-tile-state");
+    let controls: ReturnType<typeof usePortableLayoutControls>;
+    let change: (() => void) | undefined;
+    const incoming = serializePortableLayout(
+      { layout: "image-2", tileTitles: { "image-2": "Front" } },
+      { sceneUpAxis: "y" },
+      {
+        ...DEFAULT_SIDEBAR_PREFERENCES,
+        tiles: {
+          "image-2": {
+            imageSourceKey: JSON.stringify(["image", "/missing-camera"]),
+          },
+        },
+      },
+    );
+    function Harness() {
+      controls = usePortableLayoutControls();
+      const store = useStore();
+      const tiling = useTiling();
+      change = () => {
+        store.set(plotTileSeriesAtom, {
+          "plot-1": [{ stream: "/speed", fieldPath: "x", color: "#ff0000" }],
+        });
+        tiling.setLayout("plot-1");
+      };
+      return (
+        <ModalLayoutPersistence
+          datasetId="portable-test"
+          cameraPreferenceField="filepath"
+        />
+      );
+    }
+    function Viewer() {
+      const saved = readModalLayout("portable-test");
+      return (
+        <TilingProvider
+          initialTiles={{
+            "plot-1": { title: "Plot", render: () => null },
+          }}
+          initialLayout={saved?.layout ?? "image-1"}
+        >
+          <Harness />
+        </TilingProvider>
+      );
+    }
+    render(
+      <PortableLayoutHost scopeKey="portable-test" mediaField="filepath">
+        <Viewer />
+      </PortableLayoutHost>,
+    );
+    act(() => change?.());
+    if (!controls) throw new Error("Missing layout controls");
+    const snapshot = parsePortableLayout(controls.capture());
+    expect(snapshot.modal.layout).toBe("plot-1");
+    expect(snapshot.modal.plotSeries?.["plot-1"]?.[0].stream).toBe("/speed");
+    act(() => controls?.apply(incoming));
+    expect(readModalLayout("portable-test")?.layout).toBe("image-2");
+    expect(readModalLayout("portable-test")?.plotSeries).toBeUndefined();
+    expect(
+      readCameraPreferences("portable-test", "filepath")?.sceneUpAxis,
+    ).toBe("y");
+    expect(
+      readSidebarPreferences(cameraScopeKey("portable-test", "filepath")).tiles[
+        "image-2"
+      ]?.imageSourceKey,
+    ).toContain("/missing-camera");
+  });
+
+  it("keeps the change key stable through apply, remount, and camera re-expression, but not user edits", async () => {
+    const { PortableLayoutHost, usePortableLayoutControls } =
+      await import("./PortableLayoutHost");
+    const { parsePortableLayout, serializePortableLayout } =
+      await import("./portable-layout");
+    const { DEFAULT_SIDEBAR_PREFERENCES } =
+      await import("../settings/sidebar-preferences");
+    const { plotTileSeriesAtom } = await import("../plots/plot-tile-state");
+    const scope = cameraScopeKey("portable-key", "filepath");
+    const composition = (
+      relativePosition: readonly [number, number, number],
+    ) => ({
+      kind: "target-relative" as const,
+      relativePosition,
+      relativeTarget: [11.6, -14.1, 4.15] as const,
+      rotationMode: "position" as const,
+      sceneUpAxis: "z" as const,
+      targetFrameId: "base_link",
+      trackingMode: "position" as const,
+    });
+    const incoming = serializePortableLayout(
+      { layout: "plot-1" },
+      { sceneUpAxis: "z" },
+      {
+        ...DEFAULT_SIDEBAR_PREFERENCES,
+        camera: {
+          cameraNavigationMode: "relative",
+          navigationCompositions: [composition([365.97, 150.39, 331.22])],
+          renderableSourceKeys: ['["point-cloud","/LIDAR_TOP"]'],
+        },
+      },
+    );
+    let controls: ReturnType<typeof usePortableLayoutControls>;
+    let store: ReturnType<typeof useStore> | undefined;
+    let mounts = 0;
+    function Harness() {
+      controls = usePortableLayoutControls();
+      store = useStore();
+      useEffect(() => {
+        mounts += 1;
+      }, []);
+      return (
+        <ModalLayoutPersistence
+          datasetId="portable-key"
+          cameraPreferenceField="filepath"
+        />
+      );
+    }
+    function Viewer() {
+      const saved = readModalLayout("portable-key");
+      return (
+        <TilingProvider
+          initialTiles={{ "plot-1": { title: "Plot", render: () => null } }}
+          initialLayout={saved?.layout ?? "plot-1"}
+        >
+          <Harness />
+        </TilingProvider>
+      );
+    }
+    render(
+      <PortableLayoutHost scopeKey="portable-key" mediaField="filepath">
+        <Viewer />
+      </PortableLayoutHost>,
+    );
+    if (!controls) throw new Error("Missing layout controls");
+    const baseline = controls.changeKey(incoming);
+    act(() => controls?.apply(incoming));
+    expect(mounts).toBe(2);
+    // A clean restore through the real storage and capture path is not a change.
+    expect(controls.changeKey(controls.capture())).toBe(baseline);
+
+    // The durable camera store re-records the composition from the live pose
+    // after the restore resolves; the numbers differ, the intent does not.
+    act(() =>
+      updateSidebarPreferences(scope, (current) => ({
+        ...current,
+        camera: {
+          ...current.camera,
+          navigationCompositions: [composition([-461.52, -198.12, 107.33])],
+          renderableSourceKeys: [
+            '["point-cloud","/LIDAR_TOP"]',
+            '["map-layer","/map"]',
+          ],
+        },
+      })),
+    );
+    expect(controls.changeKey(controls.capture())).toBe(baseline);
+    expect(
+      parsePortableLayout(controls.capture()).preferences.camera
+        .navigationCompositions[0],
+    ).toMatchObject({ relativePosition: [-461.52, -198.12, 107.33] });
+
+    // Deliberate settings are changes: navigation mode and live tile config.
+    act(() =>
+      updateSidebarPreferences(scope, (current) => ({
+        ...current,
+        camera: { ...current.camera, cameraNavigationMode: "absolute" },
+      })),
+    );
+    expect(controls.changeKey(controls.capture())).not.toBe(baseline);
+    act(() =>
+      updateSidebarPreferences(scope, (current) => ({
+        ...current,
+        camera: { ...current.camera, cameraNavigationMode: "relative" },
+      })),
+    );
+    expect(controls.changeKey(controls.capture())).toBe(baseline);
+    act(() =>
+      store?.set(plotTileSeriesAtom, {
+        "plot-1": [{ stream: "/speed", fieldPath: "x", color: "#ff0000" }],
+      }),
+    );
+    expect(controls.changeKey(controls.capture())).not.toBe(baseline);
   });
 });

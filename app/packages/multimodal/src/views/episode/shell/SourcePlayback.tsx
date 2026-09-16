@@ -5,7 +5,13 @@ import {
   type TemporalTagTimelineProps,
   type Track,
 } from "@fiftyone/playback";
-import { Size, Spinner } from "@voxel51/voodo";
+import {
+  IconName,
+  MenuIconTextItem,
+  MenuSeparator,
+  Size,
+  Spinner,
+} from "@voxel51/voodo";
 import clsx from "clsx";
 import React, {
   useCallback,
@@ -85,6 +91,10 @@ import {
   collectPlaybackDeviceCapabilities,
 } from "../layout/playback-layout";
 import {
+  PortableLayoutHost,
+  usePortableLayoutControls,
+} from "../layout/PortableLayoutHost";
+import {
   ModalLayoutPersistence,
   useModalLayout,
 } from "../layout/use-modal-layout";
@@ -95,7 +105,10 @@ import {
   SourcePosterProvider,
   type SourcePosterValue,
 } from "../image/source-poster-context";
-import { useEpisodeHeaderActions } from "../../../extensions/episode-actions";
+import {
+  useEpisodeHeaderActions,
+  type EpisodeHeaderActionId,
+} from "../../../extensions/episode-actions";
 import {
   VisibleStreamsProvider,
   useVisibleStreamIds,
@@ -178,9 +191,22 @@ export interface SourcePlaybackProps {
  */
 export const SourcePlayback: React.FC<SourcePlaybackProps> = (props) => (
   <VisibleStreamsProvider>
-    <SourcePlaybackContent {...props} />
+    <PortableLayoutHost
+      scopeKey={layoutScopeFor(props.layoutScopeKey, props.source)}
+      mediaField={props.cameraPreferenceField}
+    >
+      <SourcePlaybackContent {...props} />
+    </PortableLayoutHost>
   </VisibleStreamsProvider>
 );
+
+// Capture, restore, and local persistence must resolve the same scope.
+function layoutScopeFor(
+  override: string | undefined,
+  source: ByteSourceDescriptor | null,
+): string | undefined {
+  return override ?? (source ? `episode-source:${source.sourceId}` : undefined);
+}
 
 const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
   cameraPreferenceField,
@@ -453,9 +479,7 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
     [shellInventory, shellSources],
   );
   const playbackSource = readyInventory && !navigationPending ? source : null;
-  const effectiveLayoutScopeKey =
-    layoutScopeKey ??
-    (source ? `episode-source:${source.sourceId}` : undefined);
+  const effectiveLayoutScopeKey = layoutScopeFor(layoutScopeKey, source);
   // Pins are a user choice, so they outlive the modal that made them
   const pinPersistKey = effectiveLayoutScopeKey
     ? `episode-pins:${effectiveLayoutScopeKey}`
@@ -463,6 +487,21 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
   const cameraViewStateScopeKey =
     cameraScopeKey(effectiveLayoutScopeKey, cameraPreferenceField) ??
     effectiveLayoutScopeKey;
+  const layoutActionScope = JSON.stringify([
+    episodeContext?.datasetId,
+    episodeContext?.sampleId,
+    cameraViewStateScopeKey,
+    source?.sourceId,
+  ]);
+  const [layoutAction, setLayoutAction] = useState<{
+    id: EpisodeHeaderActionId;
+    scope: string;
+  } | null>(null);
+  const activeLayoutAction =
+    layoutAction?.scope === layoutActionScope ? layoutAction.id : null;
+  // This effect clears the dialog selection so returning to a previous
+  // dataset or media field does not reopen its closed dialog.
+  useEffect(() => setLayoutAction(null), [layoutActionScope]);
   const sizeLabel = sourceSizeLabel(source?.sizeBytes);
   const headerCaption = useMemo(
     () => (sizeLabel ? <HeaderCaption sizeLabel={sizeLabel} /> : null),
@@ -614,6 +653,12 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
                                             {headerActions}
                                             <EpisodeHeaderActions
                                               context={episodeContext}
+                                              activeLayoutAction={
+                                                activeLayoutAction
+                                              }
+                                              onCloseLayoutAction={() =>
+                                                setLayoutAction(null)
+                                              }
                                               rawRecords={session.rawRecords}
                                               recordingFacts={
                                                 session.manifest.recordingFacts
@@ -639,9 +684,23 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
                                     />
                                   }
                                   addTileMenu={
-                                    <AddTileMenu
-                                      tileTypes={availableTileTypes}
-                                    />
+                                    <>
+                                      <AddTileMenu
+                                        tileTypes={availableTileTypes}
+                                      />
+                                      {episodeContext &&
+                                        session?.manifest &&
+                                        source && (
+                                          <EpisodeLayoutMenuActions
+                                            onSelect={(id) =>
+                                              setLayoutAction({
+                                                id,
+                                                scope: layoutActionScope,
+                                              })
+                                            }
+                                          />
+                                        )}
+                                    </>
                                   }
                                   timelineReadouts={<TimestampReadout />}
                                   sceneSources={shellSources}
@@ -750,6 +809,9 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
                                   </ExtensionRuntimeBoundary>
                                   <ModalLayoutPersistence
                                     datasetId={effectiveLayoutScopeKey}
+                                    cameraPreferenceField={
+                                      cameraPreferenceField
+                                    }
                                   />
                                 </PlaybackShell>
                               </ImageAspectRatioProvider>
@@ -770,6 +832,8 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
 };
 
 function EpisodeHeaderActions({
+  activeLayoutAction,
+  onCloseLayoutAction,
   context,
   rawRecords,
   recordingFacts,
@@ -778,6 +842,8 @@ function EpisodeHeaderActions({
   timeRange,
   transformTopology,
 }: {
+  readonly activeLayoutAction: EpisodeHeaderActionId | null;
+  readonly onCloseLayoutAction: () => void;
   readonly context: NonNullable<SourcePlaybackProps["episodeContext"]>;
   readonly rawRecords: EpisodeSession["rawRecords"];
   readonly recordingFacts: EpisodeSession["manifest"]["recordingFacts"];
@@ -789,13 +855,23 @@ function EpisodeHeaderActions({
   >["transformTopology"];
 }) {
   const actions = useEpisodeHeaderActions();
+  const layouts = usePortableLayoutControls();
   const visibleStreamIds = useVisibleStreamIds();
   return (
     <>
-      {actions.map(({ Component, id }) => (
+      {actions.map(({ Component, id, layoutMenuLabel }) => (
         <Component
           datasetId={context.datasetId}
-          key={`${context.datasetId}:${context.sampleId}:${id}`}
+          layouts={layouts}
+          layoutMenu={
+            layoutMenuLabel
+              ? {
+                  open: activeLayoutAction === id,
+                  onClose: onCloseLayoutAction,
+                }
+              : undefined
+          }
+          key={`${context.datasetId}:${context.sampleId}:${layouts?.scopeKey}:${id}`}
           rawRecords={rawRecords}
           recordingFacts={recordingFacts}
           sampleId={context.sampleId}
@@ -804,6 +880,30 @@ function EpisodeHeaderActions({
           timeRange={timeRange}
           transformTopology={transformTopology}
           visibleStreamIds={visibleStreamIds}
+        />
+      ))}
+    </>
+  );
+}
+
+function EpisodeLayoutMenuActions({
+  onSelect,
+}: {
+  readonly onSelect: (id: EpisodeHeaderActionId) => void;
+}) {
+  const actions = useEpisodeHeaderActions().filter(
+    (action) => action.layoutMenuLabel,
+  );
+  if (!actions.length) return null;
+  return (
+    <>
+      <MenuSeparator />
+      {actions.map((action) => (
+        <MenuIconTextItem
+          icon={action.layoutMenuIcon ?? IconName.Puzzle}
+          key={action.id}
+          onClick={() => onSelect(action.id)}
+          text={action.layoutMenuLabel ?? ""}
         />
       ))}
     </>
