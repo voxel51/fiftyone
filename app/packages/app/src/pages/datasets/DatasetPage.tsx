@@ -21,6 +21,7 @@ import { usePreloadedQuery } from "react-relay";
 import { useRecoilValue } from "recoil";
 import { graphql } from "relay-runtime";
 import Nav from "../../components/Nav";
+import { useProduct } from "../../product";
 import type { Route } from "../../routing";
 import style from "../index.module.css";
 import type { DatasetPageQuery } from "./__generated__/DatasetPageQuery.graphql";
@@ -113,6 +114,7 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
 
   const count = useRecoilValue(fos.datasetSampleCount);
   const isEmpty = count === 0;
+  const { Panels } = useProduct();
 
   return (
     <Nav fragment={data} hasDataset={!isEmpty}>
@@ -130,6 +132,7 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
           <datasetQueryContext.Provider value={data}>
             <OperatorCore />
             <Dataset />
+            {Panels && <Panels />}
           </datasetQueryContext.Provider>
         )}
       </div>

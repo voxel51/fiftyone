@@ -24,7 +24,6 @@ export type {
   ToolbarActionItem,
   ToolbarActionGroup,
 } from "./ActionToolbar";
-export { default as Header } from "./Header";
 export { default as HelpPanel } from "./HelpPanel";
 export { default as HelpTooltip } from "./HelpTooltip";
 export { default as IconButton } from "./IconButton";

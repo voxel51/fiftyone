@@ -19,7 +19,7 @@
         "@fiftyone/tiling": "workspace:*",
         "@fiftyone/utilities": "workspace:*",
         "@voxel51/voodo": "catalog:",
-        "clsx": "^2.1.0",
+        "clsx": "catalog:",
         "jotai": "catalog:",
         "lru-cache": "catalog:",
         "mp4box": "^2.4.1"
