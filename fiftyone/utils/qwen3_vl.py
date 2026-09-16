@@ -1125,11 +1125,12 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
             return fields
 
     def prepare_video_tensor(self, frames, fps=None):
-        """The CPU-free half of a clip embed: runs the processor over frames
-        that are ALREADY a ``(T, 3, H, W)`` uint8 tensor, on whatever device
-        they sit on, returning model inputs on that same device.
+        """The CPU-free half of embedding a video segment: runs the
+        processor over frames that are ALREADY a ``(T, 3, H, W)`` uint8
+        tensor, on whatever device they sit on, returning model inputs on
+        that same device.
 
-        The clip is handed over whole with its capture rate, and the
+        The segment is handed over whole with its capture rate, and the
         processor applies the checkpoint's own video policy from its
         ``video_preprocessor_config`` (its sampling rate, frame bounds and
         pixel budget) exactly as it does to a video file. Nothing here
@@ -1138,8 +1139,8 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
         Args:
             frames: a ``(T, 3, H, W)`` uint8 ``torch.Tensor``, RGB, in
                 capture order
-            fps (None): the clip's capture rate. ``None`` or non-positive
-                reports ``config.video_fps``
+            fps (None): the segment's capture rate. ``None`` or
+                non-positive reports ``config.video_fps``
 
         Returns:
             an opaque inputs object for :meth:`embed_prepared`
@@ -1228,12 +1229,13 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
         """One processor call, in whichever convention this transformers
         version takes.
 
-        With ``sample`` the frames are a whole clip and the processor picks
-        from them by its own configured policy; without it they are already
-        the intended selection and must not be resampled toward its default
-        rate. Either way the metadata carries the clip's REAL rate, which
-        the processor otherwise assumes to be 24fps. Tried richest first:
-        older processors take neither kwarg and never resample.
+        With ``sample`` the frames are a whole video segment and the
+        processor picks from them by its own configured policy; without it
+        they are already the intended selection and must not be resampled
+        toward its default rate. Either way the metadata carries the real
+        rate, which the processor otherwise assumes to be 24fps. Tried
+        richest first: older processors take neither kwarg and never
+        resample.
         """
         metadata = {"video_metadata": [self._video_metadata(n_frames, fps)]}
         if sample:

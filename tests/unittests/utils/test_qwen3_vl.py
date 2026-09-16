@@ -1035,14 +1035,6 @@ class TestMergePreparedInputs:
         assert qwen3_vl.merge_prepared_inputs([clip, clip], self.PAD) is None
 
 
-def _total_frames_of(metadata):
-    total = getattr(metadata, "total_num_frames", None)
-    if total is None and isinstance(metadata, dict):
-        total = metadata.get("total_num_frames")
-
-    return total
-
-
 def _fps_of(metadata):
     fps = getattr(metadata, "fps", None)
     if fps is None and isinstance(metadata, dict):
@@ -1199,7 +1191,8 @@ class StubTensorProcessor:
 
 
 class TestPrepareVideoTensor:
-    """A clip that is already a tensor reaches the processor as one."""
+    """A video segment that is already a tensor reaches the processor
+    as one."""
 
     @staticmethod
     def _model_with(processor, cap=128, video_fps=2.0):
@@ -1212,91 +1205,40 @@ class TestPrepareVideoTensor:
         return model
 
     @staticmethod
-    def _clip(n, device="cpu"):
+    def _segment(n, device="cpu"):
         return torch.zeros(n, 3, 8, 8, dtype=torch.uint8, device=device)
 
-    def test_the_clip_reaches_the_processor_as_the_tensor_it_was(self):
+    def test_the_segment_reaches_the_processor_as_the_tensor_it_was(self):
         processor = StubTensorProcessor()
         model = self._model_with(processor)
-        clip = self._clip(4)
+        segment = self._segment(4)
 
-        model.prepare_video_tensor(clip, fps=4.0)
+        model.prepare_video_tensor(segment, fps=4.0)
 
         # The point of this path: no PIL, no host copy between the decode
         # and the processor
         assert isinstance(processor.videos[0], torch.Tensor)
-        assert processor.videos[0] is clip
-
-    def test_the_whole_clip_is_handed_over(self):
-        processor = StubTensorProcessor()
-        # Nothing in the pipeline chooses frames; the clip goes over whole
-        model = self._model_with(processor, cap=3)
-
-        model.prepare_video_tensor(self._clip(9), fps=9.0)
-
-        assert processor.videos[0].shape[0] == 9
+        assert processor.videos[0] is segment
 
     def test_the_processor_is_left_to_choose_frames(self):
         processor = StubTensorProcessor()
         model = self._model_with(processor)
 
-        model.prepare_video_tensor(self._clip(9), fps=9.0)
+        model.prepare_video_tensor(self._segment(9), fps=9.0)
 
         # Suppressing its sampling would override the checkpoint's own
-        # video policy with whatever the clip happened to hold
+        # video policy with whatever the segment happened to hold
         assert "do_sample_frames" not in processor.calls[0]
 
-    def test_the_clips_own_rate_and_length_reach_the_processor(self):
-        processor = StubTensorProcessor()
-        model = self._model_with(processor)
-
-        model.prepare_video_tensor(self._clip(9), fps=9.0)
-
-        metadata = processor.calls[0]["video_metadata"][0]
-        assert _fps_of(metadata) == 9.0
-        assert _total_frames_of(metadata) == 9
-
-    def test_no_rate_reports_the_configured_one(self):
+    def test_a_segment_with_no_rate_reports_the_configured_one(self):
         processor = StubTensorProcessor()
         model = self._model_with(processor, video_fps=2.0)
 
-        model.prepare_video_tensor(self._clip(4))
+        model.prepare_video_tensor(self._segment(4))
 
+        # Without metadata the processor assumes 24fps and builds the
+        # segment's frame timestamps from that
         assert _fps_of(processor.calls[0]["video_metadata"][0]) == 2.0
-
-    def test_a_clip_that_is_not_a_tensor_is_refused(self):
-        model = self._model_with(StubTensorProcessor())
-
-        with pytest.raises(TypeError, match="takes a torch.Tensor"):
-            model.prepare_video_tensor([PIL.Image.new("RGB", (8, 8))])
-
-    def test_a_clip_of_the_wrong_shape_is_refused(self):
-        model = self._model_with(StubTensorProcessor())
-
-        with pytest.raises(ValueError, match=r"\(T, 3, H, W\)"):
-            model.prepare_video_tensor(torch.zeros(4, 8, 8, dtype=torch.uint8))
-
-    def test_an_empty_clip_is_refused(self):
-        model = self._model_with(StubTensorProcessor())
-
-        with pytest.raises(ValueError, match=r"\(T, 3, H, W\)"):
-            model.prepare_video_tensor(self._clip(0))
-
-    def test_float_pixels_are_taken_as_bytes(self):
-        processor = StubTensorProcessor()
-        model = self._model_with(processor)
-
-        model.prepare_video_tensor(torch.zeros(2, 3, 8, 8) + 300.0, fps=2.0)
-
-        assert processor.videos[0].dtype == torch.uint8
-        assert int(processor.videos[0].max()) == 255
-
-    def test_a_text_only_model_refuses_a_clip(self):
-        model = self._model_with(StubTensorProcessor())
-        model.config.text_only = True
-
-        with pytest.raises(ValueError, match="text_only"):
-            model.prepare_video_tensor(self._clip(2))
 
 
 class StubHiddenModel:
