@@ -58,9 +58,23 @@ NAME = "name"
 PRECISION = "precision"
 RANGE = "range"
 READ_ONLY = "read_only"
+SCOPE = "scope"
 TAXONOMY = "taxonomy"
 TYPE = "type"
 VALUES = "values"
+
+
+### Attribute scopes
+#
+# An attribute of a keypoint label schema may be scoped to the whole label
+# (the default; ``scope`` absent or "field") or to the individual points
+# ("point"). A point-scoped attribute declares its ELEMENT type (e.g.
+# ``bool``) and is stored as a list parallel to ``points``.
+
+
+FIELD_SCOPE = "field"
+POINT_SCOPE = "point"
+SCOPES = {FIELD_SCOPE, POINT_SCOPE}
 
 
 ### Acceptable component types
@@ -245,6 +259,14 @@ SPATIAL_LABEL_TYPES = (
     fol.Polylines,
 )
 SUPPORTED_LISTS_OF_PRIMITIVES = (
+    fof.FloatField,
+    fof.IntField,
+    fof.StringField,
+)
+# Element field types a point-scoped keypoint attribute may have (stored as a
+# ListField of the element type, parallel to ``points``)
+SUPPORTED_POINT_ATTRIBUTE_FIELDS = (
+    fof.BooleanField,
     fof.FloatField,
     fof.IntField,
     fof.StringField,

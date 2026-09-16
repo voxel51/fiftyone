@@ -296,10 +296,19 @@ def generate_label_schemas(sample_collection, fields=None, scan_samples=True):
     return schema
 
 
-def _generate_field_label_schema(collection, field_name, scan_samples):
+def _generate_field_label_schema(
+    collection, field_name, scan_samples, point_scope=False
+):
     field = collection.get_field(field_name)
     read_only = field.read_only
-    _type = foau.get_type(field)
+
+    if point_scope:
+        # A point-scoped attribute is stored as a list parallel to `points`;
+        # its schema declares the ELEMENT type (e.g. `bool`, which has no
+        # list<> spelling at all)
+        _type = foac.FIELD_TYPE_TO_TYPES[type(field.field)]
+    else:
+        _type = foau.get_type(field)
 
     if _type == foac.LABEL:
         # classes are essentially a 'str' type
@@ -312,6 +321,8 @@ def _generate_field_label_schema(collection, field_name, scan_samples):
     settings = {
         foac.TYPE: _type,
     }
+    if point_scope:
+        settings[foac.SCOPE] = foac.POINT_SCOPE
 
     component = foac.DEFAULT_COMPONENTS[_type]
     if component:
@@ -331,7 +342,16 @@ def _generate_field_label_schema(collection, field_name, scan_samples):
         fn = _handle_str
 
     if fn:
-        return fn(collection, field_name, is_list, settings, scan_samples)
+        # A point-scoped attribute is EDITED per element (one value per
+        # point), so its component/settings follow the element type, not the
+        # list widgets
+        return fn(
+            collection,
+            field_name,
+            is_list and not point_scope,
+            settings,
+            scan_samples,
+        )
 
     if is_list:
         raise ValueError(f"unsupported field {field_name}: {field}")
@@ -392,9 +412,23 @@ def _generate_field_label_schema(collection, field_name, scan_samples):
             # the form boundary.
             continue
 
+        # A keypoint's scalar-list subfields (e.g. its per-point `confidence`)
+        # are lists PARALLEL to `points` — one entry per point — so they
+        # generate as point-scoped attributes of the element type. `tags` is
+        # the one label-level list every label carries.
+        point_scope = (
+            field.document_type is fol.Keypoint
+            and f.name != "tags"
+            and isinstance(f, fof.ListField)
+            and isinstance(f.field, foac.SUPPORTED_POINT_ATTRIBUTE_FIELDS)
+        )
+
         try:
             attributes[f.name] = _generate_field_label_schema(
-                collection, f"{field_name}.{f.name}", scan_samples
+                collection,
+                f"{field_name}.{f.name}",
+                scan_samples,
+                point_scope=point_scope,
             )
         except ValueError:
             logger.debug(f"Field '{f.name}' is not supported")
