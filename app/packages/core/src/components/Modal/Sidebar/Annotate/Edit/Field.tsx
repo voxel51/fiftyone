@@ -5,7 +5,11 @@ import {
   useCreateCommand,
 } from "@fiftyone/commands";
 import { useIsWorkingInitialized } from "@fiftyone/looker-3d";
-import { isPatchesView, useUnboundStateRef } from "@fiftyone/state";
+import {
+  isPatchesView,
+  useGetKeypointSkeleton,
+  useUnboundStateRef,
+} from "@fiftyone/state";
 import type { LabelData } from "@fiftyone/utilities";
 import { useCallback, useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
@@ -16,7 +20,10 @@ import {
   useAnnotationContext,
   useAnnotationFields,
 } from "./useAnnotationContext";
-import { buildNewLabelData } from "./useAnnotationContext/createNew";
+import {
+  buildNewLabelData,
+  skeletonNodeCount,
+} from "./useAnnotationContext/createNew";
 
 const createSchema = (
   choices: string[],
@@ -59,6 +66,7 @@ const Field = () => {
     [disabled, fields, isPatches],
   );
   const engine = useAnnotationEngine();
+  const getSkeleton = useGetKeypointSkeleton();
   const nextFieldValue = useRef(currentFieldValue);
   const labelId = currentLabel?.overlay?.id;
   const currentLabelRef = useUnboundStateRef(currentLabel);
@@ -84,6 +92,19 @@ const Field = () => {
       const instanceId =
         (source as { instance?: { _id?: string } } | undefined)?.instance
           ?._id ?? source?._id;
+
+      // A keypoint's field swap ERASES its geometry: a node's index is bound
+      // to its skeleton's semantics (node 3 of a face is not node 3 of a
+      // body), so carrying placements across topologies would be silent
+      // corruption. The erase rides the move's own undo unit — the original
+      // per-occurrence data is captured on the forward move (keyed by
+      // sample + frame; the path changes across the move) and the reverse
+      // move restores it verbatim.
+      const isKeypoint =
+        (source as { _cls?: string } | undefined)?._cls === "Keypoint";
+      const captured = new Map<string, LabelData>();
+      const occurrenceKey = (ref: LabelRef) =>
+        `${ref.sample}:${ref.frame ?? ""}`;
 
       // Atomic move between fields, ALL through the engine: drop EVERY
       // occurrence of the track from the source field and re-home it (with its
@@ -123,11 +144,32 @@ const Field = () => {
             }
 
             for (const { ref, data } of occurrences) {
+              let payload: Partial<LabelData> = data;
+              if (isKeypoint && to === newField) {
+                // Forward move: capture, then write the destination
+                // skeleton's holes (free-form: no points) and drop the
+                // per-point parallel lists the erased geometry anchored
+                captured.set(occurrenceKey(ref), data);
+                const nodeCount = skeletonNodeCount(getSkeleton(to) ?? null);
+                const {
+                  confidence: _confidence,
+                  visible: _visible,
+                  ...rest
+                } = data as Record<string, unknown>;
+                payload = {
+                  ...rest,
+                  points: Array.from({ length: nodeCount }, () => [NaN, NaN]),
+                } as Partial<LabelData>;
+              } else if (isKeypoint) {
+                // Reverse move (undo): restore the captured original
+                payload = captured.get(occurrenceKey(ref)) ?? data;
+              }
+
               engine.updateLabel(
                 { sample: ref.sample, path: to, instanceId, frame: ref.frame },
                 {
                   ...buildNewLabelData(to, cls, { id: instanceId }),
-                  ...data,
+                  ...payload,
                 } as Partial<LabelData>,
               );
             }
@@ -143,7 +185,14 @@ const Field = () => {
         () => move(oldField, newField),
         () => move(newField, oldField),
       );
-    }, [currentLabelRef, engine, setCurrentField, labelId, currentFieldValue]),
+    }, [
+      currentLabelRef,
+      engine,
+      getSkeleton,
+      setCurrentField,
+      labelId,
+      currentFieldValue,
+    ]),
     () => true,
   );
 

@@ -575,13 +575,13 @@ export const useKeypointModeInstaller = (): void => {
     setSkips,
   ]);
 
-  // The edit form's Field picker is how a different skeleton is chosen, so a
-  // field swap on a NOTHING-PLACED draft RESTARTS it for the new field's
-  // skeleton: hole count and edges follow the field, and there is nothing to
-  // carry — a node's index is bound to the old skeleton's semantics (node 3
-  // of a face is not node 3 of a body). A label with placements is already
-  // committed (per-point commits), so its swap moves engine rows instead
-  // (see Field.tsx) and never takes this path.
+  // The edit form's Field picker is how a different skeleton is chosen. A
+  // committed label's swap moves its engine rows AND erases its geometry as
+  // one undoable unit (see Field.tsx — a node's index is bound to the old
+  // skeleton's semantics, so node 3 of a face is not node 3 of a body); a
+  // nothing-placed draft has no rows to move and reseeds locally here. Either
+  // way the per-node UI state (skips, Place force, sub-selection) is bound to
+  // the old skeleton and never carries over.
   const prevFieldRef = useRef<string | null>(null);
   useEffect(() => {
     const field = selected?.field ?? null;
@@ -593,9 +593,17 @@ export const useKeypointModeInstaller = (): void => {
       !field ||
       !prevField ||
       prevField === field ||
-      !is2dKeypointSelected(selected) ||
-      !selected?.isNew
+      !is2dKeypointSelected(selected)
     ) {
+      return;
+    }
+
+    setSkips(null);
+    setForced(null);
+    setSelectedNode(null);
+    bumpGuidedEpoch();
+
+    if (!selected?.isNew) {
       return;
     }
 
@@ -603,6 +611,9 @@ export const useKeypointModeInstaller = (): void => {
     if (!(overlay instanceof KeypointOverlay)) {
       return;
     }
+    // Anything placed = already committed; Field.tsx handled the move+erase
+    // and the bridge re-homes the overlay. (Post-erase this reseed would be
+    // an identical no-op anyway.)
     if (
       overlay
         .getRelativePoints()
@@ -618,9 +629,16 @@ export const useKeypointModeInstaller = (): void => {
       ...overlay.label,
       points: Array.from({ length: nodeCount }, () => [NaN, NaN]),
     });
-    setSkips(null);
     bumpGuidedEpoch();
-  }, [bumpGuidedEpoch, getSkeleton, scene, selected, setSkips]);
+  }, [
+    bumpGuidedEpoch,
+    getSkeleton,
+    scene,
+    selected,
+    setForced,
+    setSelectedNode,
+    setSkips,
+  ]);
 
   // Stable ref so the creation handler's `onCreate` always sees the latest
   // create function without swapping the installed handler.
