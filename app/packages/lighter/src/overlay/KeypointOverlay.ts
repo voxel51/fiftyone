@@ -8,6 +8,7 @@ import {
   EDGE_THRESHOLD,
   HOVERED_DASH_LENGTH,
   KEYPOINT_HIT_RADIUS,
+  KEYPOINT_OCCLUDED_OPACITY,
   KEYPOINT_RADIUS,
   KEYPOINT_SELECTED_RADIUS,
   LABEL_ARCHETYPE_PRIORITY,
@@ -42,6 +43,13 @@ export type KeypointLabel = RawLookerLabel & {
   label: string;
   points: [number, number][];
   confidence?: number[];
+  /**
+   * Per-point COCO visibility flags (0 = not labeled, 1 = placed but
+   * occluded, 2 = visible), parallel to `points`. Optional — FiftyOne's COCO
+   * codec round-trips it; labels that never touch occlusion don't carry it.
+   * A v=1 point renders dimmed.
+   */
+  visible?: (number | null)[];
 };
 
 /**
@@ -606,6 +614,10 @@ export class KeypointOverlay
     };
 
     const buckets = new Map<string | undefined, Point[]>();
+    // Occluded points (COCO v=1 in the label's `visible` list) draw dimmed —
+    // present but explicitly "not visible here"
+    const occludedBuckets = new Map<string | undefined, Point[]>();
+    const visibleFlags = this.label?.visible;
     let selectedPoint: Point | undefined;
     let selectedVariant: string | undefined;
     let hoveredPoint: Point | undefined;
@@ -631,11 +643,12 @@ export class KeypointOverlay
         continue;
       }
       const v = this.#points[i].variant;
-      const bucket = buckets.get(v);
+      const target = visibleFlags?.[i] === 1 ? occludedBuckets : buckets;
+      const bucket = target.get(v);
       if (bucket) {
         bucket.push(ctx.absPoints[i]);
       } else {
-        buckets.set(v, [ctx.absPoints[i]]);
+        target.set(v, [ctx.absPoints[i]]);
       }
     }
 
@@ -675,6 +688,16 @@ export class KeypointOverlay
     for (const [variant, pts] of buckets) {
       const pointStyle = resolvePointStyle(variant);
       renderer.drawPoints(pts, pointRadius, pointStyle, this.containerId);
+    }
+
+    for (const [variant, pts] of occludedBuckets) {
+      const pointStyle = resolvePointStyle(variant);
+      renderer.drawPoints(
+        pts,
+        pointRadius,
+        { ...pointStyle, opacity: KEYPOINT_OCCLUDED_OPACITY },
+        this.containerId,
+      );
     }
 
     // When hovered, overlay an inner white highlight on every point so each

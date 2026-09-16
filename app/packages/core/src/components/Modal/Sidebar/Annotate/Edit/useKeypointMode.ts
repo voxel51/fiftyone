@@ -17,6 +17,7 @@ import { useGetKeypointSkeleton, useIsPatchesView } from "@fiftyone/state";
 import { KEYPOINT } from "@fiftyone/utilities";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useHandleSchemaChange } from "./AnnotationSchema";
 import {
   isKeypointDraftFinalized,
   markKeypointDraftFinalized,
@@ -239,6 +240,56 @@ export const useKeypointMode = () => {
  * status itself is derived from the overlay's live geometry — a node is
  * "placed" iff its point is finite.
  */
+/** A label's per-point `visible` list (COCO semantics: 0/1/2), if present. */
+const getVisibleList = (data: unknown): (number | null)[] | null | undefined =>
+  (data as { visible?: (number | null)[] } | null | undefined)?.visible;
+
+/**
+ * Writer for the per-point `visible` list — the COCO visibility convention
+ * (0 = not labeled, 1 = placed but occluded, 2 = visible) that FiftyOne's
+ * COCO codec already round-trips. The list is materialized lazily: labels
+ * that never touch occlusion never carry it (`materialize` gates creating
+ * it; an existing list is always maintained so entries don't go stale).
+ * Draft edits stay in sidebar data (atomic creation — `finalizeDraft` folds
+ * them into the establish); committed labels write through the same engine
+ * transaction the schema form uses.
+ */
+const useWriteNodeVisibility = () => {
+  const { readEditing, setData } = useAnnotationContext();
+  const handleSchemaChange = useHandleSchemaChange(false);
+
+  return useCallback(
+    (
+      overlay: KeypointOverlay,
+      index: number,
+      value: 0 | 1 | 2,
+      materialize: boolean,
+    ) => {
+      const editing = readEditing();
+      const existing = getVisibleList(editing.selected?.data);
+      if (!existing && !materialize) {
+        return;
+      }
+
+      const next = overlay.getRelativePoints().map((p, i) => {
+        if (i === index) return value;
+        const current = existing?.[i];
+        if (current != null) return current;
+        return Number.isFinite(p[0]) && Number.isFinite(p[1]) ? 2 : 0;
+      });
+
+      const isDraft =
+        !!editing.selected?.isNew && !isKeypointDraftFinalized(overlay.id);
+      if (isDraft) {
+        setData({ visible: next });
+      } else {
+        void handleSchemaChange({ visible: next });
+      }
+    },
+    [handleSchemaChange, readEditing, setData],
+  );
+};
+
 export const useGuidedKeypoints = () => {
   const { selected } = useAnnotationContext();
   const getSkeleton = useGetKeypointSkeleton();
@@ -247,6 +298,7 @@ export const useGuidedKeypoints = () => {
   // subscribe: recompute on every geometry change
   useAtomValue(guidedEpochAtom);
   const { scene } = useLighter();
+  const writeNodeVisibility = useWriteNodeVisibility();
 
   const overlay = is2dKeypointSelected(selected)
     ? (selected?.overlay as KeypointOverlay)
@@ -350,6 +402,10 @@ export const useGuidedKeypoints = () => {
         setForced(null);
       }
 
+      // A cleared node is v=0 in the COCO `visible` convention — maintain an
+      // existing list so its entry doesn't claim a point that is now a hole
+      writeNodeVisibility(overlay, index, 0, false);
+
       bumpGuidedEpoch((n) => n + 1);
     },
     [
@@ -360,6 +416,7 @@ export const useGuidedKeypoints = () => {
       setForced,
       setSkips,
       skipped,
+      writeNodeVisibility,
     ],
   );
 
@@ -390,6 +447,20 @@ export const useGuidedKeypoints = () => {
       : null;
 
   /**
+   * Mark a placed node occluded (COCO v=1: position estimated, not visible)
+   * or visible again (v=2) — the inspector's occluded toggle. Materializes
+   * the `visible` list on first use.
+   */
+  const setNodeOccluded = useCallback(
+    (index: number, occluded: boolean) => {
+      if (!overlay) return;
+      writeNodeVisibility(overlay, index, occluded ? 1 : 2, true);
+      bumpGuidedEpoch((n) => n + 1);
+    },
+    [bumpGuidedEpoch, overlay, writeNodeVisibility],
+  );
+
+  /**
    * Sub-select a node for editing (or clear with null). Routed through the
    * overlay so the canvas and the checklist share one selection — the
    * overlay dispatches `keypoint-point-subselect`, which the installer
@@ -416,6 +487,7 @@ export const useGuidedKeypoints = () => {
     /** Node sub-selected for editing (row/canvas click), or null. */
     selectedNodeIndex,
     selectNode,
+    setNodeOccluded,
     /**
      * True while the label is an unfinalized creation draft — the per-node
      * inspector hides during placement (attributes come after geometry).
@@ -623,6 +695,12 @@ export const useKeypointModeInstaller = (): void => {
   const createKeypointRef = useRef(createKeypoint);
   createKeypointRef.current = createKeypoint;
 
+  // Ref-routed so the installed handler always writes through the latest
+  // closure without reinstalling (cf. createKeypointRef)
+  const writeNodeVisibility = useWriteNodeVisibility();
+  const writeNodeVisibilityRef = useRef(writeNodeVisibility);
+  writeNodeVisibilityRef.current = writeNodeVisibility;
+
   // The guided handler resolves its target through these refs so skip /
   // Place updates take effect without reinstalling the handler.
   const currentSkips = useAtomValue(guidedSkipsAtom);
@@ -780,7 +858,16 @@ export const useKeypointModeInstaller = (): void => {
 
         const handler = new GuidedKeypointHandler(targetOverlay, {
           getTargetIndex: getTarget,
-          onPlaced: () => {
+          onPlaced: (index, options) => {
+            // ⇧Click placement is "here, but occluded" (COCO v=1) —
+            // materialize the `visible` list for it; a plain placement only
+            // maintains an existing list (v=2) so entries never go stale
+            writeNodeVisibilityRef.current(
+              targetOverlay,
+              index,
+              options?.occluded ? 1 : 2,
+              !!options?.occluded,
+            );
             // A placement satisfies any Place force (the forced node was the
             // target, or it got placed some other way — either way, resume
             // strict order)
