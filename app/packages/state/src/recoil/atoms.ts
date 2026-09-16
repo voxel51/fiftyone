@@ -19,6 +19,7 @@ import { GRID_SPACES_DEFAULT, sessionAtom } from "../session";
 import { collapseFields } from "../utils";
 import { getBrowserStorageEffectForKey } from "./customEffects";
 import { groupMediaTypesSet } from "./groups";
+import type { SelectionBoundary } from "../selection/types";
 import type { SelectionType } from "./types";
 import {
   DEFAULT_LABEL_SELECTION_STYLE,
@@ -201,6 +202,16 @@ export const selectedLabels = sessionAtom({
 export const selectedSamples = sessionAtom({
   key: "selectedSamples",
   default: new Map<string, SelectionType>(),
+});
+
+/**
+ * The selection tray's browsing boundary (a saved subset, a segment source),
+ * mirrored here so legacy view-scoped queries such as entry and sidebar
+ * counts describe the same scope the grid pages do. The tray owns it.
+ */
+export const selectionScopeBoundary = atom<SelectionBoundary | null>({
+  key: "selectionScopeBoundary",
+  default: null,
 });
 
 export const selectedSampleObjects = atom<Map<string, Sample>>({

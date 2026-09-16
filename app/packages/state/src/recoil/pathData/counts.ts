@@ -1,6 +1,7 @@
 import { VALID_KEYPOINTS } from "@fiftyone/utilities";
 import { selectorFamily, waitForAll } from "recoil";
-import { aggregation } from "../aggregations";
+import { aggregation, constrainsScope } from "../aggregations";
+import { selectionScopeBoundary } from "../atoms";
 import { datasetSampleCount } from "../dataset";
 import * as filterAtoms from "../filters";
 import { queryPerformance } from "../queryPerformance";
@@ -25,11 +26,14 @@ export const count = selectorFamily({
       value?: string | null;
     }) =>
     ({ get }): number => {
+      // The estimated dataset count is only right when nothing narrows the
+      // results: no view, no filters, and no saved subset or segment source.
       if (
         !params.modal &&
         (params.path === "" || params.path === "_") &&
         !get(viewAtoms.view).length &&
-        get(queryPerformance)
+        get(queryPerformance) &&
+        !constrainsScope(get(selectionScopeBoundary))
       ) {
         if (
           !get(filterAtoms.hasFilters(false)) ||

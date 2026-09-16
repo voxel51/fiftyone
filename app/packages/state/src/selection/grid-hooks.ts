@@ -6,6 +6,7 @@ import {
   useGridGroupSlice,
   useGridViewScope,
   useLegacySelectedSamples,
+  useSetSelectionScopeBoundary,
 } from "../accessors/dataset";
 import {
   createSelectionSnapshot,
@@ -357,6 +358,23 @@ export function reconcileSelection(
     capture: legacy.filter((id) => !trayIds.has(id)),
     remove: tray.filter((id) => !legacyIds.has(id)),
   };
+}
+
+/**
+ * Mount once in the grid. Publishes the tray's browsing boundary to the
+ * legacy session so view-scoped queries (entry counts, sidebar counts)
+ * describe the same scope the grid pages do.
+ */
+export function useSyncSelectionScope() {
+  const { enabled } = useGridSelectionDataset();
+  const [boundary] = useGridSelectionBoundary();
+  const setScope = useSetSelectionScopeBoundary();
+  // This effect mirrors the boundary whenever it changes.
+  useEffect(() => {
+    setScope(enabled ? boundary : null);
+  }, [enabled, boundary, setScope]);
+  // This effect withdraws the boundary when the grid unmounts.
+  useEffect(() => () => setScope(null), [setScope]);
 }
 
 /**

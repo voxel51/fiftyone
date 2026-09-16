@@ -1,7 +1,12 @@
 import { is3d, type Schema } from "@fiftyone/utilities";
 import { useMemo } from "react";
-import { useRecoilCallback, useRecoilState, useRecoilValue } from "recoil";
-import { selectedSamples } from "../recoil/atoms";
+import {
+  useRecoilCallback,
+  useRecoilState,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
+import { selectedSamples, selectionScopeBoundary } from "../recoil/atoms";
 import { groupSlice } from "../recoil/groups";
 import {
   anyTagging,
@@ -221,6 +226,11 @@ export function useGridViewScope() {
     sort: useRecoilValue(gridSortBy),
     refresh: useRecoilValue(refresher),
   };
+}
+
+/** Publishes the tray's browsing boundary for legacy view-scoped queries. */
+export function useSetSelectionScopeBoundary() {
+  return useSetRecoilState(selectionScopeBoundary);
 }
 
 /** The dataset's estimated sample count, before any view stage or filter. */
