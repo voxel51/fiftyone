@@ -29,6 +29,13 @@ export interface ByteRange {
   end: number;
 }
 
+/** A slice of the source file plus the absolute offset its byte 0 maps to. */
+export interface SpanBuffer {
+  buffer: ArrayBuffer;
+  /** Absolute file offset of `buffer[0]` (`0` for a whole-file buffer). */
+  fileStart: number;
+}
+
 /**
  * Smallest byte range covering samples `[startIndex, endIndex]` (inclusive,
  * order-agnostic) of `samples`. Since a GOP's samples are usually — but not
