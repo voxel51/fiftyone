@@ -1,102 +1,101 @@
-import { ExternalLink, Toast, useTheme } from "@fiftyone/components";
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ *
+ * The App's own notices: errors, links, and messages it raises through Recoil.
+ */
+
 import * as fos from "@fiftyone/state";
-import { Launch } from "@mui/icons-material";
-import { Button } from "@mui/material";
+import {
+  Anchor,
+  Button,
+  LaunchIcon,
+  Size,
+  Toast,
+  Variant,
+} from "@voxel51/voodo";
 import { SnackbarProvider } from "notistack";
+import type { ReactNode } from "react";
+import { useEffect, useRef } from "react";
 import { useRecoilState } from "recoil";
+
+import styles from "./Snackbar.module.css";
 
 const SNACK_VISIBLE_DURATION = 5000;
 
-const Link = ({ link, message }: { link: string; message: string }) => {
-  const theme = useTheme();
-  return (
-    <ExternalLink style={{ color: theme.text.primary }} href={link}>
-      {message}
-      <Launch style={{ height: "1rem", marginTop: 4.5, marginLeft: 1 }} />
-    </ExternalLink>
-  );
-};
+const Notice = ({
+  children,
+  dismiss,
+}: {
+  children: ReactNode;
+  dismiss: () => void;
+}) => {
+  // Notices see themselves out, where a voodo toast stays until it is closed.
+  // One timer per notice: the ref keeps a re-render from re-arming it.
+  const dismissRef = useRef(dismiss);
+  dismissRef.current = dismiss;
+  useEffect(() => {
+    const timeout = setTimeout(
+      () => dismissRef.current(),
+      SNACK_VISIBLE_DURATION,
+    );
+    return () => clearTimeout(timeout);
+  }, []);
 
-const LAYOUT = {
-  bottom: "50px !important",
-  vertical: "bottom",
-  horizontal: "center",
-};
-
-const Dismiss = ({ onClick }: { onClick: () => void }) => {
-  const theme = useTheme();
   return (
-    <div>
-      <Button
-        data-cy="btn-dismiss-alert"
-        variant="contained"
-        size="small"
-        onClick={() => {
-          onClick();
-        }}
-        sx={{
-          marginLeft: "auto",
-          backgroundColor: theme.primary.main,
-          color: theme.text.primary,
-          boxShadow: 0,
-        }}
-      >
-        Dismiss
-      </Button>
-    </div>
+    <Toast
+      open
+      anchor={Anchor.Bottom}
+      className={styles.notice}
+      description={children}
+      onClose={dismiss}
+      action={
+        <Button
+          data-cy="btn-dismiss-alert"
+          variant={Variant.Primary}
+          size={Size.Sm}
+          onClick={dismiss}
+        >
+          Dismiss
+        </Button>
+      }
+    />
   );
 };
 
 function SnackbarErrors() {
   const [snackErrors, setSnackErrors] = useRecoilState(fos.snackbarErrors);
 
-  return snackErrors.length ? (
-    <Toast
-      duration={SNACK_VISIBLE_DURATION}
-      layout={LAYOUT}
-      message={<div style={{ width: "100%" }}>{snackErrors}</div>}
-      onHandleClose={() => setSnackErrors([])}
-      primary={() => {
-        return <Dismiss onClick={() => setSnackErrors([])} />;
-      }}
-    />
-  ) : null;
+  if (!snackErrors.length) return null;
+
+  return <Notice dismiss={() => setSnackErrors([])}>{snackErrors}</Notice>;
 }
 
 function SnackbarLinks() {
   const [snackLink, setSnackLink] = useRecoilState(fos.snackbarLink);
 
-  return snackLink ? (
-    <Toast
-      duration={SNACK_VISIBLE_DURATION}
-      layout={LAYOUT}
-      message={
-        <div style={{ width: "100%" }}>
-          <Link {...snackLink} />
-        </div>
-      }
-      onHandleClose={() => setSnackLink(null)}
-      primary={() => {
-        return <Dismiss onClick={() => setSnackLink(null)} />;
-      }}
-    />
-  ) : null;
+  if (!snackLink) return null;
+
+  return (
+    <Notice dismiss={() => setSnackLink(null)}>
+      <a
+        className={styles.link}
+        href={snackLink.link}
+        target="_blank"
+        rel="noreferrer"
+      >
+        {snackLink.message}
+        <LaunchIcon size={Size.Sm} />
+      </a>
+    </Notice>
+  );
 }
 
 function SnackbarMessage() {
   const [message, setSnackMessage] = useRecoilState(fos.snackbarMessage);
 
-  return message ? (
-    <Toast
-      duration={SNACK_VISIBLE_DURATION}
-      layout={LAYOUT}
-      message={<div style={{ width: "100%" }}>{message}</div>}
-      onHandleClose={() => setSnackMessage(null)}
-      primary={() => {
-        return <Dismiss onClick={() => setSnackMessage(null)} />;
-      }}
-    />
-  ) : null;
+  if (!message) return null;
+
+  return <Notice dismiss={() => setSnackMessage(null)}>{message}</Notice>;
 }
 
 export default function Snackbar() {
@@ -105,6 +104,7 @@ export default function Snackbar() {
       <SnackbarErrors />
       <SnackbarLinks />
       <SnackbarMessage />
+      {/* The host for `useNotification`, which is its own queue */}
       <SnackbarProvider />
     </>
   );

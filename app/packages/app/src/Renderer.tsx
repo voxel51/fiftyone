@@ -5,7 +5,7 @@
 import type { Queries } from "./makeRoutes";
 import type { Entry } from "./routing";
 
-import { Pending } from "@fiftyone/components";
+import { Pending } from "@fiftyone/core";
 import { subscribe } from "@fiftyone/relay";
 import {
   isModalActive,

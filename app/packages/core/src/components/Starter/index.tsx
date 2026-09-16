@@ -1,22 +1,32 @@
-import { CodeTabs, Loading, scrollable } from "@fiftyone/components";
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ *
+ * What a dataset-less App offers: how to get one, and the Python to do it.
+ */
+
 import { OperatorCore, useOperators } from "@fiftyone/operators";
 import {
   useOperatorBrowser,
   useOperatorExecutor,
   usePromptOperatorInput,
 } from "@fiftyone/operators/src/state";
-import { datasetName as datasetNameAtom } from "@fiftyone/state";
+import { useCurrentDatasetName } from "@fiftyone/state";
 import {
-  Button,
-  ButtonProps,
+  Align,
   Divider,
-  Link,
-  LinkProps,
+  Orientation,
+  Spacing,
   Stack,
-  Typography,
-} from "@mui/material";
+  Text,
+  TextColor,
+  TextVariant,
+} from "@voxel51/voodo";
+import type { PropsWithChildren } from "react";
 import { useCallback, useMemo } from "react";
-import { useRecoilValue } from "recoil";
+
+import styles from "./Starter.module.css";
+import CodeBlock from "../CodeBlock";
+import LoadingScreen from "../LoadingScreen";
 import { CONTENT_BY_MODE } from "./content";
 
 const CREATE_DATASET_OPERATOR = "@voxel51/utils/create_dataset";
@@ -31,82 +41,74 @@ const INSTALL_IO_PLUGIN_LABEL = "@voxel51/io";
 export function Starter(props: StarterPropsType) {
   const { mode } = props;
   const { isLoading } = useOperators(true);
-  const datasetName = useRecoilValue(datasetNameAtom);
+  const datasetName = useCurrentDatasetName();
 
   if (!mode) return null;
 
-  if (isLoading) return <Loading>Pixelating...</Loading>;
+  if (isLoading) return <LoadingScreen />;
 
   const { code, codeTitle, learnMoreLabel, learnMoreLink, title } =
     CONTENT_BY_MODE[mode];
 
-  const codeWithDataset = code.replace("$CURRENT_DATASET_NAME", datasetName);
+  const codeWithDataset = code.replace(
+    "$CURRENT_DATASET_NAME",
+    datasetName ?? "",
+  );
   const isSelectDataset = mode === "SELECT_DATASET";
 
   return (
     <>
       <OperatorCore />
       <Stack
-        spacing={6}
-        divider={<Divider sx={{ width: "100%" }} />}
-        sx={{
-          fontWeight: "normal",
-          alignItems: "center",
-          width: "100%",
-          py: 8,
-          overflow: "auto",
-        }}
-        className={scrollable}
+        orientation={Orientation.Column}
+        align={Align.Center}
+        spacing={Spacing.Xl}
+        className={styles.page}
       >
-        <Stack alignItems="center" spacing={1}>
-          <Typography sx={{ fontSize: 16 }}>{title}</Typography>
+        <Stack
+          orientation={Orientation.Column}
+          align={Align.Center}
+          spacing={Spacing.Xs}
+        >
+          <Text variant={TextVariant.Lg}>{title}</Text>
           {isSelectDataset && (
-            <Typography color="text.secondary">
+            <Text color={TextColor.Secondary}>
               You can use the selector above to open an existing dataset
-            </Typography>
+            </Text>
           )}
           <StarterSubtitle {...props} />
           {!isSelectDataset && (
-            <Typography color="text.secondary">
-              <Link
-                href={learnMoreLink}
-                target="_blank"
-                sx={{
-                  textDecoration: "underline",
-                  ":hover": { textDecoration: "none" },
-                }}
-              >
-                Learn more
-              </Link>
+            <Text color={TextColor.Secondary}>
+              <ProseLink href={learnMoreLink}>Learn more</ProseLink>
               &nbsp;{learnMoreLabel}
-            </Typography>
+            </Text>
           )}
         </Stack>
-        <Stack alignItems="center">
-          <Typography sx={{ fontSize: 16 }}>{codeTitle}</Typography>
-          <Typography sx={{ pb: 2 }} color="text.secondary">
+        <Divider className={styles.divider} />
+        <Stack
+          orientation={Orientation.Column}
+          align={Align.Center}
+          spacing={Spacing.Xs}
+          className={styles.codeSection}
+        >
+          <Text variant={TextVariant.Lg}>{codeTitle}</Text>
+          <Text color={TextColor.Secondary} className={styles.codeSubtitle}>
             You can use Python to&nbsp;
             {mode === "ADD_DATASET" && (
               <>
-                <InvertedUnderlineLink href={learnMoreLink} target="_blank">
-                  load data
-                </InvertedUnderlineLink>
+                <ProseLink href={learnMoreLink}>load data</ProseLink>
                 &nbsp;into FiftyOne
               </>
             )}
             {isSelectDataset && <>load a dataset in the App</>}
             {mode === "ADD_SAMPLE" && (
               <>
-                <InvertedUnderlineLink href={learnMoreLink} target="_blank">
-                  add samples
-                </InvertedUnderlineLink>
+                <ProseLink href={learnMoreLink}>add samples</ProseLink>
                 &nbsp;to this dataset
               </>
             )}
-          </Typography>
-          <CodeTabs
-            tabs={[{ id: "python", label: "Python", code: codeWithDataset }]}
-          />
+          </Text>
+          <CodeBlock code={codeWithDataset} />
         </Stack>
       </Stack>
     </>
@@ -117,7 +119,6 @@ export function StarterSubtitle(props: StarterPropsType) {
   const { mode } = props;
   const browser = useOperatorBrowser();
   const isAddSample = mode === "ADD_SAMPLE";
-
   const hasOperator = useCallback(
     (uri: string) => {
       if (Array.isArray(browser.choices)) {
@@ -161,7 +162,7 @@ export function StarterSubtitle(props: StarterPropsType) {
     : CREATE_DATASET_OPERATOR;
 
   return (
-    <Typography color="text.secondary">
+    <Text color={TextColor.Secondary}>
       {hasRequiredOperator ? (
         <>
           <OperatorLauncher uri={OPERATOR_URI} />
@@ -171,16 +172,14 @@ export function StarterSubtitle(props: StarterPropsType) {
         <>
           Did you know? You can {installActionLabel} in the App by installing
           the&nbsp;
-          <InvertedUnderlineLink href={installLink} target="_blank">
-            {installLabel}
-          </InvertedUnderlineLink>
+          <ProseLink href={installLink}>{installLabel}</ProseLink>
           &nbsp;plugin
         </>
       )}
       , or&nbsp;
-      <ButtonLink onClick={browser.toggle}>browse operations</ButtonLink> for
+      <ProseButton onClick={browser.toggle}>browse operations</ProseButton> for
       other options
-    </Typography>
+    </Text>
   );
 }
 
@@ -198,38 +197,32 @@ export function OperatorLauncher(props: OperatorLauncherPropsType) {
     }
   }, [prompt, promptForInput, uri, execute]);
 
-  return <ButtonLink onClick={handleClick}>Click here</ButtonLink>;
+  return <ProseButton onClick={handleClick}>Click here</ProseButton>;
 }
-// todo: generalize and re-use elsewhere
-export function ButtonLink(props: ButtonProps) {
+
+/** A link inside a sentence: underlined, losing the rule on hover. */
+function ProseLink({ children, href }: PropsWithChildren<{ href: string }>) {
   return (
-    <Button
-      {...props}
-      sx={{
-        p: 0,
-        textTransform: "none",
-        fontSize: "inherit",
-        lineHeight: "inherit",
-        verticalAlign: "baseline",
-        color: (theme) => theme.palette.text.primary,
-        textDecoration: "underline",
-        ...(props?.sx || {}),
-      }}
-    />
+    <a
+      className={styles.proseLink}
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+    >
+      {children}
+    </a>
   );
 }
 
-// todo: generalize and re-use elsewhere
-export function InvertedUnderlineLink(props: LinkProps) {
+/** Reads as a link inside a sentence, acts as a button. */
+function ProseButton({
+  children,
+  onClick,
+}: PropsWithChildren<{ onClick: () => void }>) {
   return (
-    <Link
-      {...props}
-      sx={{
-        textDecoration: "underline",
-        ":hover": { textDecoration: "none" },
-        ...(props?.sx || {}),
-      }}
-    />
+    <button className={styles.proseButton} type="button" onClick={onClick}>
+      {children}
+    </button>
   );
 }
 
