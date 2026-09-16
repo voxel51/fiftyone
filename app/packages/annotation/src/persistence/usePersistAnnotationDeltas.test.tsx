@@ -15,6 +15,12 @@ import {
 
 let engine: TestEngine;
 const refreshSample = vi.fn();
+// generated-view state, switchable per test
+let generatedView = false;
+let supplied: { deltas: unknown[]; metadata: unknown } = {
+  deltas: [],
+  metadata: null,
+};
 
 vi.mock("@fiftyone/state", () => ({
   isGeneratedView: "isGeneratedView",
@@ -30,11 +36,11 @@ vi.mock("@fiftyone/state", () => ({
 
 vi.mock("recoil", () => ({
   useRecoilValue: (key: string) =>
-    key === "isGeneratedView" ? false : undefined,
+    key === "isGeneratedView" ? generatedView : undefined,
 }));
 
 vi.mock("./useAnnotationDeltaSupplier", () => ({
-  useAnnotationDeltaSupplier: () => () => ({ deltas: [], metadata: null }),
+  useAnnotationDeltaSupplier: () => () => supplied,
 }));
 
 vi.mock("../state", () => ({
@@ -77,6 +83,8 @@ describe("usePersistAnnotationDeltas", () => {
     refreshSample.mockReset();
     clearSampleVersions();
     engine = makeEngine();
+    generatedView = false;
+    supplied = { deltas: [], metadata: null };
   });
 
   it("serializes independent hook instances (autosave and a delete's flush) per engine", async () => {
@@ -169,9 +177,7 @@ describe("usePersistAnnotationDeltas", () => {
     expect(patchCalls()[1].deltas).toEqual([B]);
   });
 
-  it("runs onFailure when the persist reports failure without throwing", async () => {
-    // doPatchSample swallows a failure past the request itself (here the app
-    // refresh) and reports `false`
+  it("does not report failure (or roll back) when only the local refresh fails after the server applied the patch", async () => {
     vi.mocked(patchSample).mockResolvedValue({
       sample: serverSample(T1) as never,
       versionToken: "etag-T1",
@@ -188,9 +194,33 @@ describe("usePersistAnnotationDeltas", () => {
 
     engine.stage(A);
 
+    // the server deleted the label; restoring it locally would diverge
+    expect(await persist({ onFailure })).toBe(true);
+    expect(onFailure).not.toHaveBeenCalled();
+    expect(engine.reconcilePersisted).toHaveBeenCalledTimes(1);
+    // the server's version was still recorded for the next persist
+    engine.stage(B);
+    await persist();
+    expect(patchCalls()[1].versionToken).toBe("etag-T1");
+    consoleError.mockRestore();
+  });
+
+  it("runs onFailure inside the queued unit when the persist reports failure without throwing", async () => {
+    // the generated-view path reports `false` (no throw) when the label
+    // metadata the backend needs is missing
+    generatedView = true;
+    supplied = { deltas: [A], metadata: null };
+    const consoleWarn = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+    const persist = renderHook(() => usePersistAnnotationDeltas()).result
+      .current;
+    const onFailure = vi.fn();
+
     expect(await persist({ onFailure })).toBe(false);
     expect(onFailure).toHaveBeenCalledTimes(1);
-    consoleError.mockRestore();
+    expect(patchSample).not.toHaveBeenCalled();
+    consoleWarn.mockRestore();
   });
 
   it("resolves null without a request when nothing is pending", async () => {

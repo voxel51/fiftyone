@@ -149,22 +149,30 @@ export const doPatchSample = async ({
       }
 
       if (updatedSample) {
-        // transform response data to match the graphql sample format
-        const cleanedSample = transformSampleData(updatedSample);
-        postSample = cleanedSample;
-        // the server's version is the next persist's token, whether this
-        // patch landed or lost a version race
-        recordSampleVersion({
-          sample: cleanedSample,
-          versionToken: updatedVersionToken,
-        });
-        if (isSampleIsh(cleanedSample)) {
-          refreshSample(cleanedSample as Sample);
-        } else {
-          console.error(
-            "response data does not adhere to sample format",
-            cleanedSample,
-          );
+        // The server has answered — its state is settled. Applying that
+        // answer locally must not change the outcome we report: a failure
+        // here would read as "the server rejected the patch" and roll back a
+        // change the server already made.
+        try {
+          // transform response data to match the graphql sample format
+          const cleanedSample = transformSampleData(updatedSample);
+          postSample = cleanedSample;
+          // the server's version is the next persist's token, whether this
+          // patch landed or lost a version race
+          recordSampleVersion({
+            sample: cleanedSample,
+            versionToken: updatedVersionToken,
+          });
+          if (isSampleIsh(cleanedSample)) {
+            refreshSample(cleanedSample as Sample);
+          } else {
+            console.error(
+              "response data does not adhere to sample format",
+              cleanedSample,
+            );
+          }
+        } catch (error) {
+          console.error("failed to apply the patched sample locally", error);
         }
       } else {
         console.warn("received empty sample data; deltas may be stale");
