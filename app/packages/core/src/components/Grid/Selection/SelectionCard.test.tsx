@@ -1,10 +1,21 @@
 import type { EpisodeSelection } from "@fiftyone/state/src/selection";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import SelectionCard from "./SelectionCard";
 
 vi.mock("@fiftyone/state", () => ({
   getSampleSrc: (path: string) => `media://${path}`,
+}));
+vi.mock("./RendererPreview", () => ({
+  default: ({ node }: { node: { id: string } }) => (
+    <div data-grid-tile="" data-node-id={node.id} />
+  ),
 }));
 
 function segment(start: string, end: string) {
@@ -142,5 +153,33 @@ describe("SelectionCard", () => {
   it("does not flag an episode as outside the results while its match is unknown", () => {
     render(<Card group={captured} />);
     expect(screen.queryByText("Not in results")).toBeNull();
+  });
+
+  it("draws a multimodal sample with the grid's own renderer node", async () => {
+    const node = {
+      id: "episode",
+      sample: { _id: "episode", filepath: "/logs/drive.mcap" },
+      urls: [{ field: "filepath", url: "/logs/drive.mcap" }],
+      aspectRatio: 1,
+    };
+    const { container } = render(
+      <SelectionCard
+        group={{ ...full, filepath: "/logs/drive.mcap", node }}
+        candidate={null}
+        mediaType="multimodal"
+        unit={{ one: "episode", many: "episodes", temporal: true }}
+        {...handlers}
+      />,
+    );
+    await waitFor(() =>
+      expect(
+        container
+          .querySelector("[data-grid-tile]")
+          ?.getAttribute("data-node-id"),
+      ).toBe("episode"),
+    );
+    expect(
+      screen.getByRole("button", { name: "Open drive.mcap" }),
+    ).toBeTruthy();
   });
 });

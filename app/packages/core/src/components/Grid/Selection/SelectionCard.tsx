@@ -24,7 +24,14 @@ import {
   VisibilityOffIcon,
   WarningAmberIcon,
 } from "@voxel51/voodo";
-import { useEffect, useRef, useState, type RefObject } from "react";
+import {
+  Suspense,
+  lazy,
+  useEffect,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import {
   episodeTitle,
   formatRanges,
@@ -37,6 +44,9 @@ import {
 import MismatchPopover from "./MismatchPopover";
 import RangeTrack from "./RangeTrack";
 import styles from "./SelectionTray.module.css";
+
+// The plugin renderer graph is heavy; only multimodal cards pay for it.
+const RendererPreview = lazy(() => import("./RendererPreview"));
 
 type Selection = ReturnType<typeof useGridSelection>;
 interface Props extends Pick<Selection, "capture" | "remove"> {
@@ -104,6 +114,8 @@ export default function SelectionCard({
   const [mediaFailed, setMediaFailed] = useState(false);
   const temporal = unit.temporal;
   const kind = mediaFailed ? "none" : previewKind(mediaType, group.filepath);
+  const rendered = mediaType === "multimodal" && Boolean(group.node);
+  const hasPreview = rendered || kind !== "none";
   const full = isFullEpisode(group);
   const segments = segmentsOf(group);
   const title = titleProp ?? episodeTitle(group, unit);
@@ -149,6 +161,23 @@ export default function SelectionCard({
             <span className={styles.placeholder}>
               <FolderOffIcon size={Size.Lg} color={TextColor.Muted} />
             </span>
+          ) : near && rendered && group.node ? (
+            <Suspense
+              fallback={
+                <span className={styles.placeholder}>
+                  <PlaceholderIcon size={Size.Lg} color={TextColor.Muted} />
+                </span>
+              }
+            >
+              <RendererPreview
+                node={group.node}
+                fallback={
+                  <span className={styles.placeholder}>
+                    <PlaceholderIcon size={Size.Lg} color={TextColor.Muted} />
+                  </span>
+                }
+              />
+            </Suspense>
           ) : near && kind === "video" && group.filepath ? (
             <video
               className={styles.media}
@@ -174,7 +203,7 @@ export default function SelectionCard({
               <PlaceholderIcon size={Size.Lg} color={TextColor.Muted} />
             </span>
           )}
-          {!unavailable && kind !== "none" && (
+          {!unavailable && hasPreview && (
             <span className={styles.openHint} aria-hidden="true">
               <span>
                 <OpenInNewIcon size={Size.Sm} />

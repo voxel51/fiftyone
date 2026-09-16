@@ -241,6 +241,12 @@
   transition: opacity var(--tray-duration-fast) var(--tray-easing);
 }
 
+.rendererHost {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
 .placeholder {
   display: flex;
   align-items: center;

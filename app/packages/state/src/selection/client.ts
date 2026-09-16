@@ -144,7 +144,10 @@ export async function getSelectionAvailability(
       unknown,
       Record<
         string,
-        Pick<EpisodeSelection, "filepath" | "previewStart" | "unavailable">
+        Pick<
+          EpisodeSelection,
+          "filepath" | "previewStart" | "unavailable" | "groupId" | "node"
+        >
       >
     >({
       method: "POST",

@@ -6,6 +6,7 @@ Episode selection identity and complete scope resolution tests.
 |
 """
 
+import asyncio
 import unittest
 
 from bson import ObjectId
@@ -15,6 +16,7 @@ import fiftyone.core.selection as fosel
 import fiftyone.core.tags as fot
 from datetime import datetime
 
+import fiftyone.server.samples as foses
 from fiftyone.server import selection as foss
 from fiftyone.server.selection import (
     create_snapshot,
@@ -167,6 +169,20 @@ class ImageSelectionTests(unittest.TestCase):
             ["/tmp/image-%d.jpg" % i for i in range(3)],
         )
         self.assertEqual(result["unavailableGroups"], [])
+
+    def test_grid_nodes_for_ids_carry_the_grid_sample_and_urls(self):
+        ids = self.dataset.values("id")[:2]
+        nodes = asyncio.run(foses.sample_nodes_for_ids(self.dataset, ids))
+        self.assertEqual(sorted(nodes), sorted(ids))
+        node = nodes[ids[0]]
+        self.assertEqual(str(node.id), ids[0])
+        self.assertEqual(
+            node.sample["filepath"], self.dataset[ids[0]].filepath
+        )
+        self.assertEqual([url.field for url in node.urls], ["filepath"])
+        self.assertEqual(
+            asyncio.run(foses.sample_nodes_for_ids(self.dataset, [])), {}
+        )
 
 
 class ConvertedViewSelectionTests(unittest.TestCase):

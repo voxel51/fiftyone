@@ -45,6 +45,8 @@ const segmentEpisode: EpisodeSelection = {
 };
 
 const mocks = vi.hoisted(() => ({
+  setExpandedSample: vi.fn(async () => undefined),
+  setModalState: vi.fn(async () => undefined),
   selection: {
     datasetId: "dataset",
     domainId: "dataset",
@@ -72,8 +74,8 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@fiftyone/state", () => ({
   useGridViewScope: () => ({ refresh: 0 }),
   useClearTemporalTagConstraint: () => vi.fn(),
-  useSetExpandedSample: () => vi.fn(),
-  useSetModalState: () => vi.fn(),
+  useSetExpandedSample: () => mocks.setExpandedSample,
+  useSetModalState: () => mocks.setModalState,
   useRefresh: () => vi.fn(),
   useSelectionTagDisabledReason: () => null,
   useSetView: () => vi.fn(),
@@ -183,6 +185,49 @@ describe("SelectionTray", () => {
     expect(screen.getByText("· 1 episode not in current results")).toBeTruthy();
     expect(screen.getByText("Not in results")).toBeTruthy();
     expect(screen.getAllByRole("article")).toHaveLength(2);
+  });
+
+  it("opens a card with its group and walks the captured cards from the modal", async () => {
+    const grouped = { ...fullEpisode, groupId: "group-a" };
+    mocks.selection.selected = new Map([
+      ["full", grouped],
+      ["seg", segmentEpisode],
+    ]);
+    mocks.selection.candidates = new Map([
+      ["full", grouped],
+      ["seg", segmentEpisode],
+    ]);
+    render(<SelectionTray />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Open full.mp4" }));
+    });
+    expect(mocks.setExpandedSample).toHaveBeenCalledWith({
+      id: "full",
+      groupId: "group-a",
+      hasNext: true,
+      hasPrevious: false,
+    });
+    const [navigation] = mocks.setModalState.mock.calls[0] as unknown as [
+      {
+        next: () => Promise<unknown>;
+        previous: () => Promise<unknown>;
+        peek: (offset: number) => Promise<unknown>;
+      },
+    ];
+    await expect(navigation.next()).resolves.toEqual({
+      id: "seg",
+      groupId: undefined,
+      hasNext: false,
+      hasPrevious: true,
+    });
+    await expect(navigation.next()).resolves.toMatchObject({ id: "seg" });
+    await expect(navigation.previous()).resolves.toEqual({
+      id: "full",
+      groupId: "group-a",
+      hasNext: true,
+      hasPrevious: false,
+    });
+    await expect(navigation.peek(1)).resolves.toBeNull();
   });
 
   it("does not flag captured parents whose details are still unknown", () => {

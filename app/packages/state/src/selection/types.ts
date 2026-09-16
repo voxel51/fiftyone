@@ -24,6 +24,17 @@ export type SelectionMember = {
   | { readonly kind: "segment"; readonly range: SelectionRange }
 );
 
+/** A grid page's sample node, so previews can reuse the grid's renderer. */
+export interface GridSampleNode {
+  readonly id: string;
+  readonly sample: { readonly _id: string; readonly [key: string]: unknown };
+  readonly urls?: readonly {
+    readonly field: string;
+    readonly url: string | null;
+  }[];
+  readonly aspectRatio?: number | null;
+}
+
 /** The tray has exactly one exclusive scope per episode. */
 export interface EpisodeSelection {
   readonly episodeId: string;
@@ -33,6 +44,10 @@ export interface EpisodeSelection {
   readonly unavailable?: boolean;
   /** Present when the card stands for a whole dynamic group of parents. */
   readonly group?: { readonly label: string; readonly size: number };
+  /** The group this sample belongs to, in a grouped dataset. */
+  readonly groupId?: string;
+  /** The grid's own node when a plugin renderer draws this sample's tile. */
+  readonly node?: GridSampleNode;
 }
 
 /** Built-in providers resolve on the server; extensions supply complete ranges. */

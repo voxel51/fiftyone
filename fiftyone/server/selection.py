@@ -390,6 +390,14 @@ def sample_details_map(dataset, sample_ids, clips=False):
                 details["previewStart"] = max(support[0] - 1, 0) / rate
             result[sample_id] = details
         return result
+    if dataset.media_type == "group" and dataset.group_field:
+        ids, filepaths, group_ids = view.values(
+            ["id", "filepath", dataset.group_field + ".id"]
+        )
+        return {
+            sample_id: {"filepath": filepath, "groupId": group_id}
+            for sample_id, filepath, group_id in zip(ids, filepaths, group_ids)
+        }
     ids, filepaths = view.values(["id", "filepath"])
     return {
         sample_id: {"filepath": filepath}

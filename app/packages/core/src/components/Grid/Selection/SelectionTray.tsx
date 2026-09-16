@@ -253,12 +253,31 @@ export default function SelectionTray() {
   const overflow = available.filter((action) => action.placement === "more");
 
   const open = async (group: EpisodeSelection) => {
-    await setModalState();
-    await setExpandedSample({
-      id: group.episodeId,
-      hasNext: false,
-      hasPrevious: false,
+    // Open exactly as the grid does: with the sample's group, and a cursor
+    // that walks the captured cards for the modal's next and previous.
+    const cards = captured;
+    let position = Math.max(
+      0,
+      cards.findIndex((card) => card.episodeId === group.episodeId),
+    );
+    const locate = (index: number) => ({
+      id: cards[index].episodeId,
+      groupId: cards[index].groupId,
+      hasNext: index < cards.length - 1,
+      hasPrevious: index > 0,
     });
+    await setModalState({
+      next: async (offset = 1) => {
+        position = Math.min(cards.length - 1, position + offset);
+        return locate(position);
+      },
+      previous: async (offset = 1) => {
+        position = Math.max(0, position - offset);
+        return locate(position);
+      },
+      peek: async () => null,
+    });
+    await setExpandedSample(locate(position));
   };
   const clearAll = () => {
     setCleared(captured);

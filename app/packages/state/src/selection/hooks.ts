@@ -56,7 +56,10 @@ export function useRefreshSelectionMetadata(datasetId: string) {
     (
       metadata: Record<
         string,
-        Pick<EpisodeSelection, "filepath" | "previewStart" | "unavailable">
+        Pick<
+          EpisodeSelection,
+          "filepath" | "previewStart" | "unavailable" | "groupId" | "node"
+        >
       >,
     ) =>
       set(

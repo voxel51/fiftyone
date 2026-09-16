@@ -36,8 +36,9 @@ const onSetViewName: RegisteredSetter =
       },
     });
 
+    // Sample selection survives view changes; the selection tray marks
+    // captured samples that leave the results.
     sessionRef.current.selectedLabels = [];
-    sessionRef.current.selectedSamples = new Map();
     sessionRef.current.sampleSelectionStyle = DEFAULT_SELECTION_STYLE;
     sessionRef.current.fieldVisibilityStage = undefined;
     router.history.push(
