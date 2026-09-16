@@ -10,6 +10,7 @@ import {
   dataset,
   datasetId,
   datasetName,
+  datasetSampleCount,
   expressionCatalog,
   extendedStages,
   filters,
@@ -220,6 +221,11 @@ export function useGridViewScope() {
     sort: useRecoilValue(gridSortBy),
     refresh: useRecoilValue(refresher),
   };
+}
+
+/** The dataset's estimated sample count, before any view stage or filter. */
+export function useDatasetSampleCount() {
+  return useRecoilValue(datasetSampleCount);
 }
 
 /** Clears the range-producing temporal tag constraint when returning to episodes. */

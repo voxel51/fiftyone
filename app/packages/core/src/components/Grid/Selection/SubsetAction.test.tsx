@@ -22,6 +22,14 @@ vi.mock("@fiftyone/state/src/selection", async () => ({
   ...(await import("@fiftyone/state/src/selection/model")),
   ...(await import("@fiftyone/state/src/selection/hooks")),
   useGridSelectionBoundary: () => [{}, mocks.openBoundary],
+  useGridSelectionDataset: () => ({
+    datasetId: "dataset",
+    domainId: "dataset",
+    mediaType: "video",
+    conversion: null,
+    unit: { one: "episode", many: "episodes", temporal: true },
+    enabled: true,
+  }),
   subsetRequest: mocks.request,
   scopeBody: (scope: {
     kind: string;
@@ -217,6 +225,64 @@ it("creates a subset inline, previews it, and can open it after adding", async (
     subsetId: "created",
     subsetScope: "episodes",
   });
+  act(() => view.unmount());
+});
+
+it("saves a new subset instead of changing the open one", async () => {
+  mocks.request.mockImplementation(
+    async (
+      _dataset: string,
+      path: string,
+      body?: { phase?: string; name?: string; operationId?: string },
+    ) => {
+      if (!path && body === undefined)
+        return { subsets: [{ id: "open", name: "Hard negatives", counts }] };
+      if (!path)
+        return { id: "created", name: body?.name, counts: { ...counts } };
+      return {
+        operationId: body?.operationId,
+        subsetId: "created",
+        counts,
+        added: 1,
+        duplicates: 0,
+        provenanceUpdated: 0,
+      };
+    },
+  );
+  const view = render(
+    <Host
+      context={context({
+        boundary: { subsetId: "open", subsetScope: "episodes" },
+      })}
+    />,
+  );
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Save as new subset" }),
+  );
+  await screen.findByText(/Hard negatives is a saved selection/);
+  expect(screen.queryByRole("radiogroup")).toBeNull();
+  expect(
+    screen
+      .getByRole("button", { name: "Create subset" })
+      .hasAttribute("disabled"),
+  ).toBe(true);
+  fireEvent.change(screen.getByLabelText("New subset name"), {
+    target: { value: "Night drives" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Create subset" }));
+  await screen.findByRole("status");
+  expect(screen.getByText("Saved 1 member as Night drives.")).toBeTruthy();
+  expect(
+    mocks.request.mock.calls.map((call) => [
+      call[1],
+      call[2]?.phase ?? call[2]?.name,
+    ]),
+  ).toEqual([
+    ["", undefined],
+    ["", "Night drives"],
+    ["/add", "prepare"],
+    ["/add", "apply"],
+  ]);
   act(() => view.unmount());
 });
 

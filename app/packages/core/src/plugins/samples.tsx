@@ -7,6 +7,7 @@ import { useRecoilValue, useResetRecoilState } from "recoil";
 import styled from "styled-components";
 import Grid from "../components/Grid";
 import Header from "../components/Grid/Header";
+import SamplesScopeTab from "../components/Grid/Selection/ScopeTab";
 
 const Container = styled.div`
   position: relative;
@@ -29,7 +30,11 @@ registerComponent({
   type: PluginComponentType.Panel,
   Icon: AppsIcon,
   activator: () => true,
-  panelOptions: { TabIndicator, priority: BUILT_IN_PANEL_PRIORITY_CONST },
+  panelOptions: {
+    TabIndicator,
+    TabLabel: SamplesScopeTab,
+    priority: BUILT_IN_PANEL_PRIORITY_CONST,
+  },
 });
 
 function TabIndicator() {

@@ -138,6 +138,22 @@ class Subsets(HTTPEndpoint):
             raise HTTPException(400, detail=str(error)) from error
 
 
+class Subset(HTTPEndpoint):
+    """Deletes one dataset-scoped saved subset."""
+
+    @decorators.route
+    async def delete(self, request):
+        dataset = get_dataset(request.path_params["dataset_id"])
+        try:
+            return await fou.run_sync_task(
+                fosub.delete_subset,
+                dataset,
+                request.path_params["subset_id"],
+            )
+        except (ValueError, InvalidId) as error:
+            raise HTTPException(400, detail=str(error)) from error
+
+
 class SubsetAdd(HTTPEndpoint):
     """Freezes and applies an add with a reusable operation identity."""
 
@@ -172,4 +188,5 @@ SelectionRoutes = [
     ("/dataset/{dataset_id}/selection/availability", SelectionAvailability),
     ("/dataset/{dataset_id}/subsets", Subsets),
     ("/dataset/{dataset_id}/subsets/add", SubsetAdd),
+    ("/dataset/{dataset_id}/subsets/{subset_id}", Subset),
 ]

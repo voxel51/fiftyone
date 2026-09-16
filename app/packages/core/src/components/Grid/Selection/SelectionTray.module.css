@@ -781,6 +781,36 @@
 }
 
 /* Read-only result unit when there is nothing to switch to */
+/* The samples tab's scope trigger sits inline with the panel icon. */
+.scopeTrigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  white-space: nowrap;
+}
+
+.scopeRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-width: 240px;
+  text-align: left;
+}
+
+.scopeRowText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.scopeRowCount {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
 .staticScope {
   display: inline-flex;
   align-items: center;

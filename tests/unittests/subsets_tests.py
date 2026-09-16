@@ -177,6 +177,37 @@ class SubsetTests(unittest.TestCase):
         finally:
             other.delete()
 
+    def test_delete_subset_removes_only_its_records(self):
+        other = fosub.create_subset(self.dataset, "Keep")["id"]
+        members = [{"episodeId": i, "kind": "episode"} for i in self.ids[:3]]
+        operation = str(uuid4())
+        fosub.prepare_add(self.dataset, self.subset, operation, members)
+        fosub.apply_add(self.dataset, operation)
+        kept = str(uuid4())
+        fosub.prepare_add(self.dataset, other, kept, members[:1])
+        fosub.apply_add(self.dataset, kept)
+        self.assertEqual(
+            fosub.delete_subset(self.dataset, self.subset)["id"], self.subset
+        )
+        self.assertEqual(
+            [s["name"] for s in fosub.list_subsets(self.dataset)], ["Keep"]
+        )
+        db = foo.get_db_conn()
+        self.assertEqual(
+            db["subset_members"].count_documents({"subset_id": self.subset}), 0
+        )
+        self.assertEqual(
+            db["subset_operations"].count_documents(
+                {"subset_id": self.subset}
+            ),
+            0,
+        )
+        self.assertEqual(len(fosub.subset_members(self.dataset, other)), 1)
+        with self.assertRaises(ValueError):
+            fosub.delete_subset(self.dataset, self.subset)
+        with self.assertRaises(ValueError):
+            fosub.delete_subset(fo.Dataset(), other)
+
     def test_dataset_deletion_cleans_only_its_subset_records(self):
         self.add([_episode(self.ids[0])])
         other = fo.Dataset()

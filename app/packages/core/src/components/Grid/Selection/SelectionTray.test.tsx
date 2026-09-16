@@ -85,6 +85,7 @@ vi.mock("@fiftyone/state/src/selection", async () => ({
   ...(await import("@fiftyone/state/src/selection/model")),
   ...(await import("@fiftyone/state/src/selection/hooks")),
   useGridSelection: () => mocks.selection,
+  useGridSelectionDataset: () => mocks.selection,
   useGridSelectionBoundary: () => [{}, vi.fn()],
   useInvalidateSelectionScope: () => mocks.invalidate,
   getSelectionProviders: vi.fn(async () => ({

@@ -122,14 +122,25 @@ export async function subsetRequest<T>(
   datasetId: string,
   path: string,
   body?: unknown,
+  method?: "GET" | "POST" | "DELETE",
 ): Promise<T> {
   return (
     await getFetchFunctionExtended()<unknown, T>({
-      method: body === undefined ? "GET" : "POST",
+      method: method ?? (body === undefined ? "GET" : "POST"),
       path: `/dataset/${encodeURIComponent(datasetId)}/subsets${path}`,
       body,
     })
   ).response;
+}
+
+/** Deletes a saved subset; its members' media and annotations are untouched. */
+export function deleteSubset(datasetId: string, subsetId: string) {
+  return subsetRequest<{ id: string }>(
+    datasetId,
+    `/${encodeURIComponent(subsetId)}`,
+    undefined,
+    "DELETE",
+  );
 }
 
 /** Refresh live metadata for captured parents, including those outside results. */

@@ -51,6 +51,24 @@ def get_subset(dataset, subset_id):
     return doc
 
 
+def delete_subset(dataset, subset_id):
+    """Deletes a subset and its frozen records; media and annotations stay."""
+    subset_id = str(get_subset(dataset, subset_id)["_id"])
+    query = {"_dataset_id": dataset._doc.id, "subset_id": subset_id}
+    operations = _collection("subset_operations")
+    keys = [doc["_id"] for doc in operations.find(query, {"_id": 1})]
+    if keys:
+        _collection("subset_candidates").delete_many(
+            {"operation_id": {"$in": keys}}
+        )
+        operations.delete_many({"_id": {"$in": keys}})
+    _collection("subset_members").delete_many(query)
+    _collection("subsets").delete_one(
+        {"_id": ObjectId(subset_id), "_dataset_id": dataset._doc.id}
+    )
+    return {"id": subset_id}
+
+
 def subset_members(dataset, subset_id, scope=None):
     """Reads frozen membership; deleted parent references remain stored."""
     subset_id = str(get_subset(dataset, subset_id)["_id"])

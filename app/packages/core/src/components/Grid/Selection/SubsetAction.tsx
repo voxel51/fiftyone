@@ -25,6 +25,7 @@ import {
   Input,
   LibraryAddIcon,
   LoadingDots,
+  LockIcon,
   Modal,
   ModalSize,
   OpenInNewIcon,
@@ -37,20 +38,26 @@ import {
   Variant,
   WarningAmberIcon,
 } from "@voxel51/voodo";
-import { useEffect, useId, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useId, useState, type FormEvent } from "react";
 import ActionEntry from "./ActionEntry";
 import { plural } from "./format";
 import { Notice, ScopePill } from "./Notice";
 import styles from "./SelectionTray.module.css";
 import { trayTheme } from "./theme";
-import { useOpenSubset } from "./useSubsetScope";
+import { defaultSubsetScope, useOpenSubset } from "./useSubsetScope";
 
-interface Capture {
+/** A frozen scope and how it will be saved. */
+export interface Capture {
   datasetId: string;
   mediaType: string;
   unit: SelectionUnit;
   source: GridSelectionActionContext["source"];
-  scope: SelectionScope;
+  /** The members to save, or how to freeze them once the dialog is open. */
+  scope: SelectionScope | (() => Promise<SelectionScope>);
+  /** Add into an existing subset, or save only as a new one. */
+  mode: "add" | "create";
+  /** The open subset, which is a saved selection and cannot change. */
+  frozenId?: string;
 }
 
 function AddToSubset({
@@ -61,6 +68,9 @@ function AddToSubset({
   const [capture, setCapture] = useState<Capture | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Inside an open subset the only write is a new subset: the open one is a
+  // saved selection and never changes underneath the person browsing it.
+  const frozenId = context.boundary.subsetId;
   const begin = async () => {
     setBusy(true);
     setError(null);
@@ -79,6 +89,8 @@ function AddToSubset({
         unit: context.unit,
         source: context.source,
         scope,
+        mode: frozenId ? "create" : "add",
+        frozenId,
       });
     } catch (cause) {
       setError(String(cause));
@@ -88,7 +100,7 @@ function AddToSubset({
   };
   const entry = (
     <ActionEntry
-      label="Add to subset"
+      label={frozenId ? "Save as new subset" : "Add to subset"}
       icon={LibraryAddIcon}
       emphasis="primary"
       surface={surface}
@@ -139,7 +151,12 @@ function Stat({
   );
 }
 
-function SubsetDialog({
+/**
+ * Adds a frozen scope to a subset, or saves it as a new one. Every step keeps
+ * its identity (created subset, operation, preview) so a retry after a
+ * partial failure continues instead of duplicating work.
+ */
+export function SubsetDialog({
   capture,
   close,
 }: {
@@ -149,6 +166,11 @@ function SubsetDialog({
   const invalidate = useInvalidateSelectionScope(capture.datasetId);
   const openSubset = useOpenSubset(capture.datasetId);
   const targetsId = useId();
+  const creating = capture.mode === "create";
+  const [scope, setScope] = useState<SelectionScope | null>(
+    typeof capture.scope === "function" ? null : capture.scope,
+  );
+  const [scopeError, setScopeError] = useState<string | null>(null);
   const [subsets, setSubsets] = useState<readonly SavedSubset[] | null>(null);
   const [listError, setListError] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -161,6 +183,21 @@ function SubsetDialog({
   const [result, setResult] = useState<SubsetAddResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const freeze = useCallback(async () => {
+    if (typeof capture.scope !== "function") return;
+    setScopeError(null);
+    try {
+      setScope(await capture.scope());
+    } catch (cause) {
+      setScopeError(String(cause));
+    }
+  }, [capture]);
+  // This effect freezes a deferred scope (all current results as a server
+  // snapshot) as soon as the dialog opens, so exact counts show before saving.
+  useEffect(() => {
+    void freeze();
+  }, [freeze]);
 
   // This effect loads the dataset's subsets once for this frozen capture.
   useEffect(() => {
@@ -184,6 +221,7 @@ function SubsetDialog({
     subsetId: string;
     operationId: string;
   }) => {
+    if (!scope) return;
     setBusy(true);
     setError(null);
     setPreview(null);
@@ -193,7 +231,7 @@ function SubsetDialog({
         await subsetRequest<SubsetAddResult>(capture.datasetId, "/add", {
           phase: "prepare",
           ...pending,
-          ...scopeBody(capture.scope),
+          ...scopeBody(scope),
         }),
       );
     } catch (cause) {
@@ -242,14 +280,55 @@ function SubsetDialog({
       setBusy(false);
     }
   };
+  /** Create, freeze, and add in one go; a retry resumes after the last step that succeeded. */
+  const saveAsNew = async () => {
+    if (!scope || (!target && !name.trim())) return;
+    setBusy(true);
+    setError(null);
+    try {
+      let subset = target;
+      if (!subset) {
+        subset = await subsetRequest<SavedSubset>(capture.datasetId, "", {
+          name: name.trim(),
+        });
+        setTarget(subset);
+        invalidate();
+      }
+      const pending = operation ?? {
+        subsetId: subset.id,
+        operationId: crypto.randomUUID(),
+      };
+      setOperation(pending);
+      if (!preview)
+        setPreview(
+          await subsetRequest<SubsetAddResult>(capture.datasetId, "/add", {
+            phase: "prepare",
+            ...pending,
+            ...scopeBody(scope),
+          }),
+        );
+      setResult(
+        await subsetRequest<SubsetAddResult>(capture.datasetId, "/add", {
+          phase: "apply",
+          operationId: pending.operationId,
+        }),
+      );
+      invalidate();
+    } catch (cause) {
+      setError(String(cause));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const { unit } = capture;
-  const counts =
-    capture.scope.kind === "members"
-      ? memberCounts(capture.scope.members)
-      : capture.scope.counts;
-  const full = counts.fullEpisodes;
-  const segments = counts.segments;
+  const counts = scope
+    ? scope.kind === "members"
+      ? memberCounts(scope.members)
+      : scope.counts
+    : null;
+  const full = counts?.fullEpisodes ?? 0;
+  const segments = counts?.segments ?? 0;
   const scopeText =
     [
       full &&
@@ -260,6 +339,9 @@ function SubsetDialog({
     ]
       .filter(Boolean)
       .join(" · ") || "0 members";
+  const frozen = capture.frozenId
+    ? subsets?.find((subset) => subset.id === capture.frozenId)
+    : undefined;
   const nothingNew =
     preview !== null && preview.added === 0 && preview.provenanceUpdated === 0;
   const applyLabel = busy
@@ -271,6 +353,7 @@ function SubsetDialog({
         : preview?.provenanceUpdated
           ? "Update provenance"
           : "Already in subset";
+  const saveLabel = busy ? "Saving…" : error ? "Retry" : "Create subset";
 
   const footer = (
     <div className={styles.footerActions}>
@@ -288,14 +371,23 @@ function SubsetDialog({
           variant={Variant.Secondary}
           leadingIcon={OpenInNewIcon}
           onClick={() => {
-            openSubset(target.id, segments && !full ? "segments" : "episodes");
+            openSubset(target.id, defaultSubsetScope(result.counts));
             close();
           }}
         >
           Open subset
         </Button>
       )}
-      {!result && !preview && operation && error && (
+      {!result && creating && (
+        <Button
+          size={Size.Sm}
+          disabled={busy || !scope || (!target && !name.trim())}
+          onClick={() => void saveAsNew()}
+        >
+          {saveLabel}
+        </Button>
+      )}
+      {!result && !creating && !preview && operation && error && (
         <Button
           size={Size.Sm}
           variant={Variant.Secondary}
@@ -306,7 +398,7 @@ function SubsetDialog({
           Retry preview
         </Button>
       )}
-      {!result && preview && operation && (
+      {!result && !creating && preview && operation && (
         <Button
           size={Size.Sm}
           disabled={busy || nothingNew}
@@ -324,14 +416,42 @@ function SubsetDialog({
       onClose={() => {
         if (!busy) close();
       }}
-      title="Add to subset"
+      title={
+        creating
+          ? frozen || capture.frozenId
+            ? "Save as new subset"
+            : "New subset"
+          : "Add to subset"
+      }
       size={ModalSize.Md}
       footer={footer}
     >
       <div className={styles.dialogBody} style={trayTheme}>
         <div className={styles.scopeCard}>
           <ScopePill source={capture.source} />
-          <Text variant={TextVariant.Md}>{scopeText}</Text>
+          {scope ? (
+            <Text variant={TextVariant.Md}>{scopeText}</Text>
+          ) : scopeError ? (
+            <span className={styles.inlineAlert} role="alert">
+              <Text variant={TextVariant.Sm} color={TextColor.Destructive}>
+                {scopeError}
+              </Text>
+              <Button
+                size={Size.Xs}
+                variant={Variant.Borderless}
+                leadingIcon={RefreshIcon}
+                onClick={() => void freeze()}
+              >
+                Retry
+              </Button>
+            </span>
+          ) : (
+            <LoadingDots
+              variant={TextVariant.Sm}
+              color={TextColor.Secondary}
+              text="Freezing scope"
+            />
+          )}
           <Text
             variant={TextVariant.Xs}
             color={TextColor.Secondary}
@@ -341,7 +461,48 @@ function SubsetDialog({
             and annotations stay live.
           </Text>
         </div>
-        {!result && (
+        {creating && capture.frozenId && !result && (
+          <Notice
+            tone="info"
+            icon={LockIcon}
+            title={`${frozen?.name ?? "The open subset"} is a saved selection and can't be changed.`}
+          >
+            Save this scope as a new subset instead.
+          </Notice>
+        )}
+        {!result && creating && (
+          <form
+            className={styles.section}
+            onSubmit={(event) => {
+              event.preventDefault();
+              void saveAsNew();
+            }}
+          >
+            <Text variant={TextVariant.Label} color={TextColor.Secondary}>
+              New subset
+            </Text>
+            <Input
+              size={Size.Sm}
+              aria-label="New subset name"
+              placeholder="Subset name"
+              value={target?.name ?? name}
+              disabled={busy || Boolean(target)}
+              onChange={(event) => setName(event.target.value)}
+            />
+            {target && (busy || error) && (
+              <Text
+                variant={TextVariant.Xs}
+                color={TextColor.Secondary}
+                aria-live="polite"
+              >
+                {busy
+                  ? `Saving to ${target.name}…`
+                  : `${target.name} was created; retry to finish saving its members.`}
+              </Text>
+            )}
+          </form>
+        )}
+        {!result && !creating && (
           <div className={styles.section}>
             <Text
               id={targetsId}
@@ -372,7 +533,7 @@ function SubsetDialog({
                       role="radio"
                       aria-checked={checked}
                       className={styles.target}
-                      disabled={busy}
+                      disabled={busy || !scope}
                       onClick={() => choose(subset)}
                     >
                       <BookmarkIcon
@@ -419,14 +580,14 @@ function SubsetDialog({
                 size={Size.Sm}
                 variant={Variant.Secondary}
                 leadingIcon={AddIcon}
-                disabled={busy || !name.trim()}
+                disabled={busy || !name.trim() || !scope}
               >
                 Create
               </Button>
             </form>
           </div>
         )}
-        {!result && target && (
+        {!result && !creating && target && (
           <div className={styles.section} aria-live="polite">
             <Text variant={TextVariant.Label} color={TextColor.Secondary}>
               Adding to {target.name}
@@ -475,7 +636,11 @@ function SubsetDialog({
             tone="success"
             icon={CheckCircleOutlineIcon}
             role="status"
-            title={`Added ${plural(result.added, "new member")} to ${target.name}.`}
+            title={
+              creating
+                ? `Saved ${plural(result.added, "member")} as ${target.name}.`
+                : `Added ${plural(result.added, "new member")} to ${target.name}.`
+            }
           >
             {[
               result.duplicates
