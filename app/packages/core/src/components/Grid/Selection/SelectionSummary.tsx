@@ -56,12 +56,12 @@ export default function SelectionSummary({
   const empty = !explicit && !loading && !error && counts.episodes === 0;
   const label = selectionScopeLabel(counts, unit);
   const sentence = explicit ? (
-    <Text variant={TextVariant.Sm} color={TextColor.Accent}>
+    <Text variant={TextVariant.Md} color={TextColor.Accent}>
       {`${label} selected`}
     </Text>
   ) : error ? (
     <span className={styles.inlineAlert} role="alert">
-      <Text variant={TextVariant.Sm} color={TextColor.Destructive}>
+      <Text variant={TextVariant.Md} color={TextColor.Destructive}>
         {error}
       </Text>
       {onRetry && (
@@ -76,11 +76,11 @@ export default function SelectionSummary({
       )}
     </span>
   ) : empty ? (
-    <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+    <Text variant={TextVariant.Md} color={TextColor.Secondary}>
       {`No ${unit.many} in the grid`}
     </Text>
   ) : (
-    <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+    <Text variant={TextVariant.Md} color={TextColor.Secondary}>
       {`Act on all ${unit.many} in the grid`}
     </Text>
   );
