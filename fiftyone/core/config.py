@@ -82,7 +82,7 @@ class FiftyOneConfig(EnvConfig):
             d,
             "database_admin",
             env_var="FIFTYONE_DATABASE_ADMIN",
-            default=True,
+            default=False,
         )
         self.database_dir = self.parse_path(
             d,
