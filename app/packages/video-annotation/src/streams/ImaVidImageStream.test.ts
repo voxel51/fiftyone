@@ -41,7 +41,7 @@ class FakeWorker {
 const fetchChunks = (w: FakeWorker) =>
   w.posted.filter((m) => m.type === "fetchChunk");
 
-const makeStream = () =>
+const makeStream = (maxBytes?: number) =>
   new ImaVidImageStream({
     id: "test",
     sampleId: "s1",
@@ -50,6 +50,24 @@ const makeStream = () =>
     frameCount: 120,
     frameRate: 30,
     chunkSize: 4,
+    maxBytes,
+  });
+
+/** Land one decoded frame so the cache learns the frame size. */
+const landFrame = (
+  worker: FakeWorker,
+  reqId: number,
+  frameNumber: number,
+  size: number,
+) =>
+  worker.emit({
+    type: "frameReady",
+    reqId,
+    frameNumber,
+    bitmap: { close: vi.fn() },
+    width: size,
+    height: size,
+    meta: { src: "f.png" },
   });
 
 beforeEach(() => {
@@ -90,6 +108,58 @@ describe("ImaVidImageStream failed-frame handling", () => {
     // ...and re-prefetching the same range issues no further fetch.
     stream.prefetch([0, 0]);
     expect(fetchChunks(worker)).toHaveLength(1);
+
+    stream.destroy();
+  });
+});
+
+describe("ImaVidImageStream decode-ahead budget", () => {
+  it("requests a full chunk until the frame size is known", () => {
+    const stream = makeStream(160_000);
+    const worker = FakeWorker.instances[0];
+
+    stream.prefetch([0, 3]);
+    expect(fetchChunks(worker)[0].request!.numFrames).toBe(4);
+
+    stream.destroy();
+  });
+
+  it("stops decoding ahead of what the cache can hold", () => {
+    // A 100x100 frame is 40_000 bytes, so this budget holds four; half of that
+    // capacity is the forward budget, leaving room for frames behind.
+    const stream = makeStream(160_000);
+    const worker = FakeWorker.instances[0];
+
+    // The first chunk lands in full, so nothing ahead is still in flight.
+    stream.prefetch([0, 3]);
+    const first = fetchChunks(worker)[0];
+    for (let frame = 1; frame <= 4; frame++) {
+      landFrame(worker, first.reqId!, frame, 100);
+    }
+
+    // Playhead at frame 5, asking for three seconds: the budget allows two
+    // frames ahead, split across the chunks it keeps in flight, so the
+    // request is for far less than the configured chunk.
+    stream.prefetch([4 / 30, 3]);
+    const second = fetchChunks(worker)[1];
+    expect(second.request!.frameNumber).toBe(5);
+    expect(second.request!.numFrames).toBe(1);
+
+    stream.destroy();
+  });
+
+  it("keeps the full chunk when frames are small next to the budget", () => {
+    const stream = makeStream(1e9);
+    const worker = FakeWorker.instances[0];
+
+    stream.prefetch([0, 3]);
+    const first = fetchChunks(worker)[0];
+    for (let frame = 1; frame <= 4; frame++) {
+      landFrame(worker, first.reqId!, frame, 100);
+    }
+
+    stream.prefetch([4 / 30, 3]);
+    expect(fetchChunks(worker)[1].request!.numFrames).toBe(4);
 
     stream.destroy();
   });

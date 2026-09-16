@@ -18,7 +18,7 @@ export interface CachedFrameBitmap<M = unknown> {
 }
 
 /** Default cache cap — 1 GB of decoded pixels, matching looker's ImaVid path. */
-const DEFAULT_MAX_BYTES = 1e9;
+export const DEFAULT_MAX_BYTES = 1e9;
 
 /**
  * LRU of decoded frame bitmaps keyed by 1-indexed frame number. Entries are
