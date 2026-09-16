@@ -62,6 +62,15 @@ const MUTED_STATUSES: ReadonlySet<NodeStatus> = new Set([
   "occluded",
 ]);
 
+// Fixed-width cell so the node name never shifts when the status mark
+// changes glyph (✓ → ◑ etc. — the glyphs have different natural widths)
+const MarkCell = styled.span`
+  display: inline-flex;
+  width: 1.25rem;
+  justify-content: center;
+  flex-shrink: 0;
+`;
+
 const InspectorPanel = styled.div`
   margin-top: 0.375rem;
   padding-top: 0.375rem;
@@ -124,6 +133,9 @@ const NodeInspector = ({
   return (
     <InspectorPanel data-cy="keypoint-node-inspector">
       <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+        <Text color={TextColor.Secondary} variant={TextVariant.Sm}>
+          selected point
+        </Text>
         <Stack
           orientation={Orientation.Row}
           align={Align.Center}
@@ -154,6 +166,7 @@ const NodeInspector = ({
               min={0}
               max={1}
               step={0.01}
+              style={{ width: "100%" }}
               value={draft}
               disabled={readOnly || !placed}
               placeholder={placed ? "0–1" : "no point"}
@@ -388,15 +401,17 @@ export const KeypointDetails = () => {
                   align={Align.Center}
                   spacing={Spacing.Sm}
                 >
-                  <Text
-                    color={
-                      MUTED_STATUSES.has(status)
-                        ? TextColor.Secondary
-                        : TextColor.Fg
-                    }
-                  >
-                    {STATUS_MARK[status]}
-                  </Text>
+                  <MarkCell>
+                    <Text
+                      color={
+                        MUTED_STATUSES.has(status)
+                          ? TextColor.Secondary
+                          : TextColor.Fg
+                      }
+                    >
+                      {STATUS_MARK[status]}
+                    </Text>
+                  </MarkCell>
                   <Text
                     color={
                       MUTED_STATUSES.has(status)

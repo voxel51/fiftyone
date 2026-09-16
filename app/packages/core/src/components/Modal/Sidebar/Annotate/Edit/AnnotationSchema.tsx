@@ -34,6 +34,7 @@ const useSchema = (readOnly: boolean) => {
   const { selected } = useAnnotationContext();
   const config = selected?.schema ?? null;
   const data = selected?.data;
+  const labelType = selected?.type ?? null;
   const isLabelReadOnly = config?.read_only;
   const effectiveReadOnly = readOnly || isLabelReadOnly;
 
@@ -46,6 +47,12 @@ const useSchema = (readOnly: boolean) => {
     return allAttributes.reduce((map, attr) => {
       if (!attr.name || attr.name === "id" || attr.name === "attributes")
         return map;
+      // A keypoint's per-point parallel lists are edited node-by-node in the
+      // KeypointDetails inspector, never as label-level values — a second
+      // "confidence" here both duplicates that field and invites corrupting
+      // the list through a free-text input.
+      if (labelType === KEYPOINT && KEYPOINT_PER_FRAME_KEYS.has(attr.name))
+        return map;
       if (map.has(attr.name)) return map;
       if (
         evaluateWhen(attr.when, (data ?? {}) as Record<string, unknown>) ||
@@ -55,7 +62,7 @@ const useSchema = (readOnly: boolean) => {
       }
       return map;
     }, new Map<string, AttributeConfig>());
-  }, [allAttributes, data]);
+  }, [allAttributes, data, labelType]);
 
   // Key on the winning entry's index, not its name: same-name variants must
   // bust the schema memo when the active one swaps (Toyota model -> Honda).

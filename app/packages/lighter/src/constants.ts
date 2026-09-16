@@ -65,7 +65,7 @@ export const KEYPOINT_SELECTED_RADIUS = 8;
 export const KEYPOINT_HIT_RADIUS = 10;
 export const PREVIEW_LINE_OPACITY = 0.6;
 /** Dim factor for occluded points (COCO v=1 in a label's `visible` list). */
-export const KEYPOINT_OCCLUDED_OPACITY = 0.55;
+export const KEYPOINT_OCCLUDED_OPACITY = 0.3;
 
 /**
  * Settings related to the keypoint ripple animation.
