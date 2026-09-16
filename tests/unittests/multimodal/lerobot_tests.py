@@ -648,8 +648,9 @@ print(os.path.join(sources[source_id], *path.split('/')))
                     with open(os.path.join(export_root, filename)) as file:
                         assert root not in file.read()
 
-    @drop_datasets
-    def test_import_source_whose_shards_omit_the_tasks_column(self):
+    def test_import_source_whose_shards_omit_the_tasks_column(
+        self, lerobot_import
+    ):
         """Published v3.0 sources such as ``lerobot/libero`` write no ``tasks``
         column at all, and the importer has to read them anyway."""
         with tempfile.TemporaryDirectory() as root:
@@ -659,15 +660,16 @@ print(os.path.join(sources[source_id], *path.split('/')))
                 table = _read_parquet(path)
                 _write_parquet(path, table.drop_columns(["tasks"]).to_pylist())
 
-            dataset = _import(root)
+            dataset = lerobot_import(root)
 
-            self.assertEqual(len(dataset), 2)
+            assert len(dataset) == 2
             for sample in dataset:
-                self.assertEqual(sample.tasks, [])
-                self.assertIsNone(sample.task)
+                assert sample.tasks == []
+                assert sample.task is None
 
-    @drop_datasets
-    def test_import_dedupes_tasks_repeated_once_per_frame(self):
+    def test_import_dedupes_tasks_repeated_once_per_frame(
+        self, lerobot_import
+    ):
         """A source converted from v2.1 can repeat an episode's task once per
         frame instead of listing it once."""
         with tempfile.TemporaryDirectory() as root:
@@ -679,11 +681,11 @@ print(os.path.join(sources[source_id], *path.split('/')))
 
             _write_parquet(path, rows)
 
-            dataset = _import(root)
+            dataset = lerobot_import(root)
 
             sample = dataset.match({"episode_index": 0}).first()
-            self.assertEqual(sample.tasks, ["task-0"])
-            self.assertEqual(sample.task, "task-0")
+            assert sample.tasks == ["task-0"]
+            assert sample.task == "task-0"
 
 
 class TestLeRobotExporter:
