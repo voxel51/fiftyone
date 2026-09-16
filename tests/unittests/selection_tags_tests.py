@@ -172,3 +172,26 @@ class SelectionTagTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ImageTagTests(unittest.TestCase):
+    def setUp(self):
+        self.dataset = fo.Dataset()
+        self.ids = self.dataset.add_samples(
+            [fo.Sample(filepath="/tmp/image-%d.jpg" % i) for i in range(2)]
+        )
+
+    def tearDown(self):
+        self.dataset.delete()
+
+    def test_image_samples_receive_sample_tags(self):
+        members = [{"episodeId": self.ids[0], "kind": "episode"}]
+        result = tag_selection(
+            self.dataset, members, {"tag": "review", "add": True}
+        )
+        self.assertEqual(result["counts"]["fullEpisodes"], 1)
+        self.assertIn("review", result["tags"])
+        self.assertEqual(self.dataset[self.ids[0]].tags, ["review"])
+        self.assertEqual(self.dataset[self.ids[1]].tags, [])
+        tag_selection(self.dataset, members, {"tag": "review", "add": False})
+        self.assertEqual(self.dataset[self.ids[0]].tags, [])

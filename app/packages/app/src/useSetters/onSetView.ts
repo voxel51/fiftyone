@@ -17,6 +17,13 @@ import { pendingEntry } from "../Renderer";
 import { resolveURL } from "../utils";
 import type { RegisteredSetter } from "./registerSetter";
 
+/** View stages after which a selected sample id no longer names a result. */
+const CONVERTING_STAGE =
+  /\.(ToPatches|ToEvaluationPatches|ToFrames|ToClips|ToTrajectories)$/;
+
+const convertsSampleIdentity = (stages: State.Stage[]) =>
+  stages.some((stage) => CONVERTING_STAGE.test(stage._cls));
+
 const onSetView: RegisteredSetter =
   ({ environment, handleError, router, sessionRef }) =>
   ({ get, set }, value: State.Stage[]) => {
@@ -66,7 +73,11 @@ const onSetView: RegisteredSetter =
         }
 
         sessionRef.current.selectedLabels = [];
-        sessionRef.current.selectedSamples = new Map();
+        // The selection tray marks samples that leave the results, so a view
+        // change keeps the sample selection unless the view changes what a
+        // sample is.
+        if (convertsSampleIdentity(view))
+          sessionRef.current.selectedSamples = new Map();
         sessionRef.current.fieldVisibilityStage = undefined;
         router.history.push(
           resolveURL({

@@ -145,16 +145,37 @@ export function countSelection(
   };
 }
 
+/** Parent unit vocabulary: temporal media has episodes, other media has samples. */
+export type SelectionUnit = "episode" | "sample";
+
+export function selectionUnit(mediaType: string): SelectionUnit {
+  return mediaType === "video" || mediaType === "multimodal"
+    ? "episode"
+    : "sample";
+}
+
+function count(value: number, unit: string, units = `${unit}s`) {
+  return `${value} ${value === 1 ? unit : units}`;
+}
+
 /** Human-readable units shared by the tray and action previews. */
-export function selectionScopeLabel(counts: SelectionCounts): string {
+export function selectionScopeLabel(
+  counts: SelectionCounts,
+  unit: SelectionUnit = "episode",
+): string {
   const parts = [];
   if (counts.fullEpisodes)
     parts.push(
-      `${counts.fullEpisodes} full episode${counts.fullEpisodes === 1 ? "" : "s"}`,
+      unit === "episode"
+        ? count(counts.fullEpisodes, "full episode")
+        : count(counts.fullEpisodes, "sample"),
     );
   if (counts.segments)
     parts.push(
-      `${counts.segments} segment${counts.segments === 1 ? "" : "s"} across ${counts.segmentEpisodes} episode${counts.segmentEpisodes === 1 ? "" : "s"}`,
+      `${count(counts.segments, "segment")} across ${count(
+        counts.segmentEpisodes,
+        unit,
+      )}`,
     );
-  return parts.join(" · ") || "0 members";
+  return parts.join(" · ") || (unit === "episode" ? "0 members" : "0 samples");
 }

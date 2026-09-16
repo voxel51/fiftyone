@@ -32,11 +32,11 @@ def resolve_candidates(dataset, request):
         sort_by=request.get("sortBy"),
         desc=request.get("desc", False),
     )
-    if view._dataset is not dataset or view.media_type not in (
-        "video",
-        "multimodal",
-    ):
-        raise ValueError("Selection requires an episode-preserving view")
+    if view._dataset is not dataset or view.media_type == "group":
+        raise ValueError(
+            "Selection requires a sample-preserving view of an ungrouped "
+            "dataset"
+        )
     members = scoped_members(view, boundary)
     missing = []
     if boundary.get("subsetId"):
@@ -56,10 +56,7 @@ def resolve_candidates(dataset, request):
         if missing and not constrained:
             members += missing
     sample_ids = {m["episodeId"] for m in members}
-    samples = {
-        sample.id: sample_details(sample, dataset)
-        for sample in dataset.select(sample_ids)
-    }
+    samples = sample_details_map(dataset, sample_ids)
     return {
         "groups": fosel.group_members(members, samples),
         "unavailableGroups": fosel.group_members(missing, {}),
@@ -76,6 +73,22 @@ def selection_availability(dataset, episode_ids):
             **sample_details(sample, dataset),
         }
     return result
+
+
+def sample_details_map(dataset, sample_ids):
+    """Resolves display metadata for many parents with a single projection.
+
+    Plain media only needs each sample's filepath, so avoid loading full
+    documents; media-reference datasets resolve their preview asset per sample.
+    """
+    view = dataset.select(sample_ids)
+    if not dataset._contains_media_references():
+        ids, filepaths = view.values(["id", "filepath"])
+        return {
+            sample_id: {"filepath": filepath}
+            for sample_id, filepath in zip(ids, filepaths)
+        }
+    return {sample.id: sample_details(sample, dataset) for sample in view}
 
 
 def sample_details(sample, dataset):
@@ -350,8 +363,8 @@ def tag_selection(dataset, members, change=None, target="members"):
     members = fosel.normalize_members(members)
     if target == "labels" and any(m["kind"] == "segment" for m in members):
         raise ValueError("Label tagging requires whole episodes")
-    if not members or dataset.media_type not in ("video", "multimodal"):
-        raise ValueError("Choose episodes or segments to tag")
+    if not members or dataset.media_type == "group":
+        raise ValueError("Choose samples or segments to tag")
     sample_ids = {member["episodeId"] for member in members}
     view = dataset.select(sample_ids)
     if set(view.values("id")) != sample_ids:
@@ -394,19 +407,8 @@ def tag_selection(dataset, members, change=None, target="members"):
     full_view = dataset.select(full)
     label_count = None
     if target == "labels":
-        counts, tag_aggs = fostag.build_label_tag_aggregations(full_view)
+        counts, _ = fostag.build_label_tag_aggregations(full_view)
         label_count = sum(full_view.aggregate(counts)) if counts else 0
-        histograms = dataset.aggregate(tag_aggs) if tag_aggs else []
-        values = {
-            value
-            for histogram in histograms
-            for value in histogram
-            if value is not None
-        }
-    else:
-        values = set(dataset.distinct("tags")) if full else set()
-    if targets:
-        values.update(fot.count_temporal_tags(dataset))
     if change is not None:
         tag_value = change.get("tag")
         add = change.get("add")
@@ -458,6 +460,24 @@ def tag_selection(dataset, members, change=None, target="members"):
 
     return {
         "counts": fosel.count_members(members),
-        "tags": sorted(values),
+        "tags": sorted(_tag_values(dataset, full_view, full, targets, target)),
         "labels": label_count,
     }
+
+
+def _tag_values(dataset, full_view, full, targets, target):
+    """Lists tag values relevant to the scope, after any change was applied."""
+    if target == "labels":
+        _, tag_aggs = fostag.build_label_tag_aggregations(full_view)
+        histograms = dataset.aggregate(tag_aggs) if tag_aggs else []
+        values = {
+            value
+            for histogram in histograms
+            for value in histogram
+            if value is not None
+        }
+    else:
+        values = set(dataset.distinct("tags")) if full else set()
+    if targets:
+        values.update(fot.count_temporal_tags(dataset))
+    return values

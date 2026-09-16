@@ -1,6 +1,7 @@
 import { is3d, type Schema } from "@fiftyone/utilities";
 import { useMemo } from "react";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import { useRecoilCallback, useRecoilState, useRecoilValue } from "recoil";
+import { selectedSamples } from "../recoil/atoms";
 import {
   anyTagging,
   canTagSamplesOrLabels,
@@ -255,4 +256,13 @@ export function useSelectionTagDisabledReason(): string | null {
       "Tagging is not permitted"
     );
   return tagging ? "Another tagging operation is in progress" : null;
+}
+
+/**
+ * The legacy selected-samples session, read and written as one accessor so
+ * the grid selection tray can stay in step with lookers, the modal, and
+ * operators without new Recoil usage elsewhere.
+ */
+export function useLegacySelectedSamples() {
+  return useRecoilState(selectedSamples);
 }

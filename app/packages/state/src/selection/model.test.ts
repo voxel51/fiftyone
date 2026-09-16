@@ -4,6 +4,8 @@ import {
   normalizeSelectionMembers,
   sameSelection,
   updateEpisodeSelection,
+  selectionScopeLabel,
+  selectionUnit,
 } from "./model";
 import type { EpisodeSelection, SelectionMember } from "./types";
 
@@ -97,5 +99,33 @@ describe("episode selection", () => {
     expect(() => normalizeSelectionMembers([segment("1", "1")])).toThrow(
       "half-open",
     );
+  });
+});
+
+describe("unit vocabulary", () => {
+  it("speaks in samples for non-temporal media and episodes otherwise", () => {
+    expect(selectionUnit("image")).toBe("sample");
+    expect(selectionUnit("3d")).toBe("sample");
+    expect(selectionUnit("video")).toBe("episode");
+    expect(selectionUnit("multimodal")).toBe("episode");
+    const counts = {
+      episodes: 3,
+      fullEpisodes: 2,
+      segments: 4,
+      segmentEpisodes: 1,
+      unavailable: 0,
+    };
+    expect(selectionScopeLabel(counts)).toBe(
+      "2 full episodes · 4 segments across 1 episode",
+    );
+    expect(selectionScopeLabel({ ...counts, segments: 0 }, "sample")).toBe(
+      "2 samples",
+    );
+    expect(
+      selectionScopeLabel(
+        { ...counts, fullEpisodes: 0, segments: 0 },
+        "sample",
+      ),
+    ).toBe("0 samples");
   });
 });

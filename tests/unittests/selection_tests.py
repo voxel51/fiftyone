@@ -137,3 +137,37 @@ def _segment(episode, start, end, provider="events"):
             "provenance": [{"provider": provider, "source": "field"}],
         },
     }
+
+
+class ImageSelectionTests(unittest.TestCase):
+    def setUp(self):
+        self.dataset = fo.Dataset()
+        self.dataset.add_samples(
+            [fo.Sample(filepath="/tmp/image-%d.jpg" % i) for i in range(3)]
+        )
+
+    def tearDown(self):
+        self.dataset.delete()
+
+    def test_images_resolve_as_whole_samples_with_filepaths(self):
+        result = resolve_candidates(self.dataset, {})
+        self.assertEqual(result["counts"]["fullEpisodes"], 3)
+        self.assertEqual(result["counts"]["segments"], 0)
+        self.assertEqual(
+            sorted(group["filepath"] for group in result["groups"]),
+            ["/tmp/image-%d.jpg" % i for i in range(3)],
+        )
+        self.assertEqual(result["unavailableGroups"], [])
+
+    def test_grouped_datasets_are_rejected(self):
+        dataset = fo.Dataset()
+        dataset.add_group_field("group", default="left")
+        group = fo.Group()
+        dataset.add_sample(
+            fo.Sample(filepath="/tmp/left.jpg", group=group.element("left"))
+        )
+        try:
+            with self.assertRaises(ValueError):
+                resolve_candidates(dataset, {})
+        finally:
+            dataset.delete()
