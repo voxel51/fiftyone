@@ -8,6 +8,7 @@ import type { Sample } from "@fiftyone/looker";
 import { NotFoundError } from "@fiftyone/utilities";
 import { isSampleIsh } from "@fiftyone/looker/src/util";
 import type { OpType } from "../types";
+import { recordSampleVersion } from "./sampleVersionTokens";
 
 export type DoPatchSampleArgs = {
   sample: Sample | null;
@@ -111,6 +112,8 @@ export const doPatchSample = async ({
   if (sampleDeltas.length > 0) {
     try {
       let updatedSample: Sample;
+      // the ETag of the response that carried `updatedSample`
+      let updatedVersionToken: string | null = null;
       // For generated views, use _sample_id so that the sampleId and datasetId
       // always refer to the persistent source.
       const sampleId = isGenerated
@@ -130,6 +133,7 @@ export const doPatchSample = async ({
           generatedSampleId: isGenerated ? sample._id : undefined,
         });
         updatedSample = response.sample;
+        updatedVersionToken = response.versionToken;
       } catch (err) {
         // catch and defer any HTTP errors
         caughtErr = err;
@@ -140,6 +144,7 @@ export const doPatchSample = async ({
         // and any pending changes will be re-attempted on the next patch
         if (err instanceof VersionMismatchError) {
           updatedSample = err.responseBody as Sample;
+          updatedVersionToken = err.versionToken ?? null;
         }
       }
 
@@ -147,6 +152,12 @@ export const doPatchSample = async ({
         // transform response data to match the graphql sample format
         const cleanedSample = transformSampleData(updatedSample);
         postSample = cleanedSample;
+        // the server's version is the next persist's token, whether this
+        // patch landed or lost a version race
+        recordSampleVersion({
+          sample: cleanedSample,
+          versionToken: updatedVersionToken,
+        });
         if (isSampleIsh(cleanedSample)) {
           refreshSample(cleanedSample as Sample);
         } else {
