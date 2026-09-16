@@ -12,7 +12,7 @@ from bson import ObjectId
 
 import fiftyone as fo
 import fiftyone.core.tags as fot
-from fiftyone.server.selection import tag_selection
+from fiftyone.server.selection import resolve_scope, tag_selection
 
 
 def _segment(
@@ -251,3 +251,49 @@ class ConvertedViewTagTests(unittest.TestCase):
                 "members",
                 stages=self.stages,
             )
+
+
+class GroupedDatasetTagTests(unittest.TestCase):
+    def setUp(self):
+        self.dataset = fo.Dataset()
+        self.dataset.add_group_field("group", default="left")
+        for i in range(2):
+            group = fo.Group()
+            self.dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/tmp/left-%d.jpg" % i,
+                        group=group.element("left"),
+                    ),
+                    fo.Sample(
+                        filepath="/tmp/right-%d.jpg" % i,
+                        group=group.element("right"),
+                    ),
+                ]
+            )
+
+    def tearDown(self):
+        self.dataset.delete()
+
+    def test_active_slice_is_the_unit_and_tags_can_reach_every_slice(self):
+        scope = resolve_scope(self.dataset, {"slice": "right"})
+        self.assertEqual(scope["counts"]["fullEpisodes"], 2)
+        right_ids = self.dataset.select_group_slices("right").values("id")
+        described = resolve_scope(
+            self.dataset, {"slice": "right", "episodeIds": right_ids[:1]}
+        )
+        self.assertEqual(
+            [g["filepath"] for g in described["groups"]], ["/tmp/right-0.jpg"]
+        )
+        members = [{"episodeId": right_ids[0], "kind": "episode"}]
+        tag_selection(self.dataset, members, {"tag": "slice", "add": True})
+        flat = self.dataset.select_group_slices(_allow_mixed=True)
+        self.assertEqual(flat.count_sample_tags(), {"slice": 1})
+        tag_selection(
+            self.dataset,
+            members,
+            {"tag": "whole", "add": True},
+            group_scope="all",
+        )
+        self.assertEqual(flat.count_sample_tags()["whole"], 2)
+        self.assertEqual(flat.match_tags("whole").count(), 2)

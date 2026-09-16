@@ -114,7 +114,7 @@ function Grid() {
           refs.current.selection.enabled &&
           (item.event.ctrlKey || item.event.metaKey)
         ) {
-          refs.current.selection.toggle(item.item.id.description);
+          void refs.current.selection.toggle(item.item.id.description);
           return undefined;
         }
         return refs.current.setSample(item);

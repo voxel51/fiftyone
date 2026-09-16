@@ -7,78 +7,335 @@ Resolution of complete grid selection scopes, independent of pagination.
 """
 
 import copy
+from datetime import datetime, timedelta, timezone
+
+from bson import ObjectId
 
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
+import fiftyone.core.odm as foo
 import fiftyone.core.selection as fosel
+import fiftyone.core.stages as fosg
 import fiftyone.core.storage as fost
 import fiftyone.core.subsets as fosub
 import fiftyone.core.tags as fot
+from fiftyone.server.filters import GroupElementFilter, SampleFilter
 import fiftyone.server.tags as fostag
 import fiftyone.server.view as fosv
+
+SNAPSHOT_TTL = timedelta(hours=1)
+SNAPSHOT_CHUNK = 5000
+GROUP_BY_STAGE = "fiftyone.core.stages.GroupBy"
+
+
+def _flatten_dynamic_groups(stages):
+    """Serialized stages with every dynamic GroupBy made flat."""
+    result = []
+    for stage in stages or []:
+        if isinstance(stage, dict) and stage.get("_cls") == GROUP_BY_STAGE:
+            stage = copy.deepcopy(stage)
+            kwargs = dict(stage.get("kwargs") or [])
+            kwargs["flat"] = True
+            stage["kwargs"] = [list(item) for item in kwargs.items()]
+        result.append(stage)
+    return result
+
+
+def _scoped_view(dataset, request, flat=False):
+    """Builds the view the grid shows: stages, filters, and the active slice.
+
+    Returns the view, the browsing boundary, and whether the view converts
+    samples into other elements (patches, frames, clips).
+    """
+    boundary = request.get("boundary") or {}
+    filters = copy.deepcopy(request.get("filters") or {})
+    if boundary.get("subsetId"):
+        filters["_selection_scope"] = boundary
+    stages = request.get("view")
+    if flat:
+        stages = _flatten_dynamic_groups(stages)
+    slice_name = request.get("slice")
+    sample_filter = (
+        SampleFilter(
+            group=GroupElementFilter(slice=slice_name, slices=[slice_name])
+        )
+        if slice_name
+        else None
+    )
+    view = fosv.get_view(
+        dataset,
+        stages=stages,
+        filters=filters,
+        extended_stages=copy.deepcopy(request.get("extendedStages") or {}),
+        sample_filter=sample_filter,
+        sort_by=request.get("sortBy"),
+        desc=request.get("desc", False),
+    )
+    converted = view._dataset is not dataset
+    if converted and (boundary.get("subsetId") or boundary.get("provider")):
+        # Patches, frames, and clips views regenerate their own ids, so they
+        # select their own elements; subsets and segment sources stay in the
+        # samples view.
+        raise ValueError(
+            "Saved subsets and segment sources are available in the "
+            "samples view"
+        )
+    return view, boundary, converted
+
+
+def _dynamic_group_stage(view):
+    for stage in view._stages:
+        if isinstance(stage, fosg.GroupBy) and not stage.flat:
+            return stage
+    return None
+
+
+def _expands_groups(request, boundary, group_stage):
+    return (
+        group_stage is not None
+        and request.get("expand") == "dynamic-groups"
+        and not boundary.get("provider")
+        and not boundary.get("subsetId")
+    )
+
+
+def _constrained(request, boundary):
+    return bool(
+        request.get("view")
+        or request.get("filters")
+        or request.get("extendedStages")
+        or boundary.get("provider")
+    )
+
+
+def _missing_subset_members(dataset, boundary):
+    """Saved references whose parent no longer exists."""
+    allowed = subset_boundary(dataset, boundary)
+    present = set(
+        fosel.select_parents(
+            dataset, {m["episodeId"] for m in allowed}
+        ).values("id")
+    )
+    return [m for m in allowed if m["episodeId"] not in present]
+
+
+def _scope_members(dataset, view, boundary, converted, request):
+    """Enumerates the complete scope server-side. Never sent to the browser."""
+    if converted:
+        return candidate_members(view), []
+    group_stage = _dynamic_group_stage(view)
+    if _expands_groups(request, boundary, group_stage):
+        flat, _, _ = _scoped_view(dataset, request, flat=True)
+        return candidate_members(flat), []
+    members = scoped_members(view, boundary)
+    missing = []
+    if boundary.get("subsetId"):
+        missing = _missing_subset_members(dataset, boundary)
+        # Missing parents cannot be evaluated against live criteria. Retain them
+        # as separate placeholders; never claim a filtered add captured them.
+        if missing and not _constrained(request, boundary):
+            members = members + missing
+    return members, missing
+
+
+def _whole_counts(total, samples=None):
+    return {
+        "episodes": total,
+        "fullEpisodes": total if samples is None else samples,
+        "segments": 0,
+        "segmentEpisodes": 0,
+        "unavailable": 0,
+    }
+
+
+def _dynamic_group_details(dataset, view, request, group_stage, wanted):
+    """One card per dynamic group: the representative's media, every sample."""
+    if not wanted:
+        return []
+    flat, _, _ = _scoped_view(dataset, request, flat=True)
+    expr, _ = group_stage._get_group_expr(view)
+    values = {
+        str(doc["_id"]): doc.get("_group")
+        for doc in flat.select(wanted)._aggregate(
+            pipeline=[
+                {"$addFields": {"_group": expr}},
+                {"$project": {"_id": True, "_group": True}},
+            ]
+        )
+    }
+    details = sample_details_map(dataset, list(values))
+    groups = []
+    for rep_id, value in values.items():
+        ids = view.get_dynamic_group(value).values("id")
+        groups.append(
+            {
+                "episodeId": rep_id,
+                "members": [
+                    {"episodeId": sid, "kind": "episode"} for sid in ids
+                ],
+                "group": {"label": str(value), "size": len(ids)},
+                **details.get(rep_id, {}),
+            }
+        )
+    return groups
+
+
+def resolve_scope(dataset, request):
+    """Counts the complete scope and describes only the requested parents.
+
+    Browsing never enumerates every member for the browser. ``episodeIds``
+    limits the returned groups to the parents the tray needs: selected cards
+    and clicked tiles. Missing saved references are reported separately.
+    """
+    view, boundary, converted = _scoped_view(dataset, request)
+    wanted = [
+        i for i in request.get("episodeIds") or [] if ObjectId.is_valid(i)
+    ]
+    group_stage = None if converted else _dynamic_group_stage(view)
+    if converted or not (boundary.get("subsetId") or boundary.get("provider")):
+        total = view.count()
+        if _expands_groups(request, boundary, group_stage):
+            flat, _, _ = _scoped_view(dataset, request, flat=True)
+            return {
+                "groups": _dynamic_group_details(
+                    dataset, view, request, group_stage, wanted
+                ),
+                "unavailableGroups": [],
+                "counts": _whole_counts(total, flat.count()),
+            }
+        groups = []
+        if wanted:
+            target = view._dataset if converted else dataset
+            present = view.select(wanted).values("id")
+            samples = sample_details_map(
+                target, present, clips=converted and view._is_clips
+            )
+            groups = fosel.group_members(
+                [{"episodeId": i, "kind": "episode"} for i in present],
+                samples,
+            )
+        return {
+            "groups": groups,
+            "unavailableGroups": [],
+            "counts": _whole_counts(total),
+        }
+    members, missing = _scope_members(
+        dataset, view, boundary, converted, request
+    )
+    sample_ids = {m["episodeId"] for m in members}
+    present = set(fosel.select_parents(dataset, sample_ids).values("id"))
+    wanted_set = set(wanted)
+    described = [m for m in members if m["episodeId"] in wanted_set]
+    samples = sample_details_map(dataset, {m["episodeId"] for m in described})
+    return {
+        "groups": fosel.group_members(described, samples),
+        "unavailableGroups": fosel.group_members(missing, {}),
+        "counts": fosel.count_members(members, sample_ids - present),
+    }
 
 
 def resolve_candidates(dataset, request):
     """Resolves all scoped members once, including unloaded parent episodes."""
-    boundary = request.get("boundary", {})
-    filters = copy.deepcopy(request.get("filters", {}))
-    if boundary.get("subsetId"):
-        filters["_selection_scope"] = boundary
-    view = fosv.get_view(
-        dataset,
-        stages=request.get("view"),
-        filters=filters,
-        extended_stages=copy.deepcopy(request.get("extendedStages", {})),
-        sort_by=request.get("sortBy"),
-        desc=request.get("desc", False),
+    view, boundary, converted = _scoped_view(dataset, request)
+    members, missing = _scope_members(
+        dataset, view, boundary, converted, request
     )
-    if view.media_type == "group":
-        raise ValueError("Selection is not available for grouped datasets yet")
-    if view._dataset is not dataset:
-        # Patches, frames, and clips views regenerate their own ids, so they
-        # select their own elements; subsets and segment sources stay in the
-        # samples view.
-        if boundary.get("subsetId") or boundary.get("provider"):
-            raise ValueError(
-                "Saved subsets and segment sources are available in the "
-                "samples view"
-            )
-        members = candidate_members(view)
-        samples = sample_details_map(
-            view._dataset,
-            {m["episodeId"] for m in members},
-            clips=view._is_clips,
-        )
-        return {
-            "groups": fosel.group_members(members, samples),
-            "unavailableGroups": [],
-            "counts": fosel.count_members(members),
-        }
-    members = scoped_members(view, boundary)
-    missing = []
-    if boundary.get("subsetId"):
-        allowed = subset_boundary(dataset, boundary)
-        present = set(
-            dataset.select({m["episodeId"] for m in allowed}).values("id")
-        )
-        missing = [m for m in allowed if m["episodeId"] not in present]
-        # Missing parents cannot be evaluated against live criteria. Retain them
-        # as separate placeholders; never claim a filtered add captured them.
-        constrained = bool(
-            request.get("view")
-            or request.get("filters")
-            or request.get("extendedStages")
-            or boundary.get("provider")
-        )
-        if missing and not constrained:
-            members += missing
     sample_ids = {m["episodeId"] for m in members}
-    samples = sample_details_map(dataset, sample_ids)
+    target = view._dataset if converted else dataset
+    samples = sample_details_map(
+        target, sample_ids, clips=converted and view._is_clips
+    )
     return {
         "groups": fosel.group_members(members, samples),
         "unavailableGroups": fosel.group_members(missing, {}),
         "counts": fosel.count_members(members, sample_ids - samples.keys()),
     }
+
+
+def create_snapshot(dataset, request):
+    """Resolves the complete scope once and freezes it server-side.
+
+    The browser receives only a token and exact counts. Actions apply and
+    retry against the token, so later browsing changes cannot move their
+    targets. Abandoned snapshots expire.
+    """
+    view, boundary, converted = _scoped_view(dataset, request)
+    members, missing = _scope_members(
+        dataset, view, boundary, converted, request
+    )
+    members = fosel.normalize_members(members)
+    unavailable = {m["episodeId"] for m in missing}
+    now = datetime.now(timezone.utc)
+    doc = {
+        "_id": ObjectId(),
+        "_dataset_id": dataset._doc.id,
+        "created_at": now,
+        "expires_at": now + SNAPSHOT_TTL,
+        "count": len(members),
+        "view": request.get("view") or [],
+        "counts": fosel.count_members(members, unavailable),
+    }
+    chunks = _collection("selection_snapshot_members")
+    for index, start in enumerate(range(0, len(members), SNAPSHOT_CHUNK)):
+        chunks.insert_one(
+            {
+                "snapshot_id": doc["_id"],
+                "_dataset_id": dataset._doc.id,
+                "index": index,
+                "expires_at": doc["expires_at"],
+                "members": members[start : start + SNAPSHOT_CHUNK],
+            }
+        )
+    _collection("selection_snapshots").insert_one(doc)
+    return {"snapshotId": str(doc["_id"]), "counts": doc["counts"]}
+
+
+def _expired(doc):
+    expires = doc["expires_at"]
+    if expires.tzinfo is None:
+        expires = expires.replace(tzinfo=timezone.utc)
+    return expires < datetime.now(timezone.utc)
+
+
+def load_snapshot(dataset, snapshot_id):
+    """Returns a frozen scope's members and the view they were read in."""
+    if not ObjectId.is_valid(snapshot_id):
+        raise ValueError("Unknown capture")
+    doc = _collection("selection_snapshots").find_one(
+        {"_id": ObjectId(snapshot_id), "_dataset_id": dataset._doc.id}
+    )
+    if doc is None or _expired(doc):
+        raise ValueError("This capture has expired; open the action again")
+    members = [
+        member
+        for chunk in _collection("selection_snapshot_members")
+        .find({"snapshot_id": doc["_id"]})
+        .sort("index", 1)
+        for member in chunk["members"]
+    ]
+    if len(members) != doc["count"]:
+        raise ValueError("This capture is incomplete; open the action again")
+    return members, doc
+
+
+def resolve_members(dataset, data):
+    """Members for an action: explicit members, or a frozen server snapshot.
+
+    Returns the members and the serialized view they belong to.
+    """
+    if data.get("snapshotId"):
+        members, doc = load_snapshot(dataset, data["snapshotId"])
+        return members, doc.get("view") or None
+    return data["members"], data.get("view")
+
+
+def _collection(name):
+    collection = foo.get_db_conn()[name]
+    collection.create_index("_dataset_id")
+    collection.create_index("expires_at", expireAfterSeconds=0)
+    if name == "selection_snapshot_members":
+        collection.create_index([("snapshot_id", 1), ("index", 1)])
+    return collection
 
 
 def view_dataset(dataset, stages=None):
@@ -117,7 +374,7 @@ def sample_details_map(dataset, sample_ids, clips=False):
     documents; media-reference datasets resolve their preview asset per sample.
     Clips also carry their first frame so previews start inside the clip.
     """
-    view = dataset.select(sample_ids)
+    view = fosel.select_parents(dataset, sample_ids)
     if dataset._contains_media_references():
         return {sample.id: sample_details(sample, dataset) for sample in view}
     if clips:
@@ -391,7 +648,12 @@ _TAG_INDEX_TYPES = {"sequence": 1, "duration-ns": 2, "timestamp-ns": 3}
 
 
 def tag_selection(
-    dataset, members, change=None, target="members", stages=None
+    dataset,
+    members,
+    change=None,
+    target="members",
+    stages=None,
+    group_scope="slice",
 ):
     """Inspects or tags frozen episode and segment membership.
 
@@ -408,6 +670,8 @@ def tag_selection(
         stages (None): the serialized view stages the members were captured
             in; a converted view (patches, frames, clips) tags its own
             elements, as the App's legacy tagger does
+        group_scope ("slice"): for grouped datasets, ``slice`` tags only the
+            captured samples and ``all`` tags every slice of their groups
 
     Returns:
         scope counts and the existing tag values on the captured targets
@@ -417,7 +681,7 @@ def tag_selection(
     members = fosel.normalize_members(members)
     if target == "labels" and any(m["kind"] == "segment" for m in members):
         raise ValueError("Label tagging requires whole episodes")
-    if not members or dataset.media_type == "group":
+    if not members:
         raise ValueError("Choose samples or segments to tag")
     sample_ids = {member["episodeId"] for member in members}
     scope = fosv.get_view(dataset, stages=stages) if stages else dataset
@@ -425,9 +689,17 @@ def tag_selection(
         if any(m["kind"] == "segment" for m in members):
             raise ValueError("Segments are tagged in the samples view")
         return _tag_converted(scope, sample_ids, change, target)
-    view = dataset.select(sample_ids)
+    view = fosel.select_parents(dataset, sample_ids)
     if set(view.values("id")) != sample_ids:
         raise ValueError("Remove unavailable episodes before tagging")
+    if dataset.media_type == "group" and group_scope == "all":
+        # Every slice of the captured samples' groups becomes a whole member.
+        group_ids = view.values(dataset.group_field + ".id")
+        view = dataset.select_groups(group_ids).select_group_slices(
+            _allow_mixed=True
+        )
+        sample_ids = set(view.values("id"))
+        members = [{"episodeId": sid, "kind": "episode"} for sid in sample_ids]
 
     full = []
     targets = {}
@@ -463,7 +735,7 @@ def tag_selection(
             if anchors <= streams:
                 existing.append(tag)
 
-    full_view = dataset.select(full)
+    full_view = fosel.select_parents(dataset, full)
     label_count = None
     if target == "labels":
         counts, _ = fostag.build_label_tag_aggregations(full_view)

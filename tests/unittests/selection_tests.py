@@ -13,8 +13,14 @@ from bson import ObjectId
 import fiftyone as fo
 import fiftyone.core.selection as fosel
 import fiftyone.core.tags as fot
+from datetime import datetime
+
+from fiftyone.server import selection as foss
 from fiftyone.server.selection import (
+    create_snapshot,
+    load_snapshot,
     resolve_candidates,
+    resolve_scope,
     selection_availability,
 )
 
@@ -162,19 +168,6 @@ class ImageSelectionTests(unittest.TestCase):
         )
         self.assertEqual(result["unavailableGroups"], [])
 
-    def test_grouped_datasets_are_rejected(self):
-        dataset = fo.Dataset()
-        dataset.add_group_field("group", default="left")
-        group = fo.Group()
-        dataset.add_sample(
-            fo.Sample(filepath="/tmp/left.jpg", group=group.element("left"))
-        )
-        try:
-            with self.assertRaises(ValueError):
-                resolve_candidates(dataset, {})
-        finally:
-            dataset.delete()
-
 
 class ConvertedViewSelectionTests(unittest.TestCase):
     def setUp(self):
@@ -227,3 +220,85 @@ class ConvertedViewSelectionTests(unittest.TestCase):
                     },
                 },
             )
+
+
+class LazyScopeAndSnapshotTests(unittest.TestCase):
+    def setUp(self):
+        self.dataset = fo.Dataset()
+        self.dataset.add_samples(
+            [fo.Sample(filepath="/tmp/lazy-%d.jpg" % i) for i in range(3)]
+        )
+
+    def tearDown(self):
+        self.dataset.delete()
+
+    def test_browsing_returns_counts_and_only_requested_parents(self):
+        result = resolve_scope(self.dataset, {})
+        self.assertEqual(result["groups"], [])
+        self.assertEqual(result["counts"]["fullEpisodes"], 3)
+        wanted = self.dataset.values("id")[:1] + [str(ObjectId())]
+        described = resolve_scope(self.dataset, {"episodeIds": wanted})
+        self.assertEqual(
+            [group["episodeId"] for group in described["groups"]], wanted[:1]
+        )
+        self.assertEqual(described["groups"][0]["filepath"], "/tmp/lazy-0.jpg")
+
+    def test_snapshot_freezes_the_scope_until_it_expires(self):
+        snapshot = create_snapshot(self.dataset, {})
+        self.assertEqual(snapshot["counts"]["fullEpisodes"], 3)
+        self.dataset.delete_samples(self.dataset.first().id)
+        members, doc = load_snapshot(self.dataset, snapshot["snapshotId"])
+        self.assertEqual(len(members), 3)
+        self.assertEqual(doc["count"], 3)
+        self.assertEqual(
+            resolve_scope(self.dataset, {})["counts"]["episodes"], 2
+        )
+        other = fo.Dataset()
+        try:
+            with self.assertRaises(ValueError):
+                load_snapshot(other, snapshot["snapshotId"])
+        finally:
+            other.delete()
+        foss._collection("selection_snapshots").update_one(
+            {"_id": ObjectId(snapshot["snapshotId"])},
+            {"$set": {"expires_at": datetime(2000, 1, 1)}},
+        )
+        with self.assertRaises(ValueError):
+            load_snapshot(self.dataset, snapshot["snapshotId"])
+        with self.assertRaises(ValueError):
+            load_snapshot(self.dataset, "not-an-id")
+
+
+class DynamicGroupSelectionTests(unittest.TestCase):
+    def setUp(self):
+        self.dataset = fo.Dataset()
+        self.dataset.add_samples(
+            [
+                fo.Sample(filepath="/tmp/dg-%d.jpg" % i, scene=i % 2)
+                for i in range(5)
+            ]
+        )
+        self.stages = [fo.GroupBy("scene")._serialize()]
+
+    def tearDown(self):
+        self.dataset.delete()
+
+    def test_whole_dynamic_groups_are_the_unit(self):
+        request = {"view": self.stages, "expand": "dynamic-groups"}
+        result = resolve_scope(self.dataset, request)
+        self.assertEqual(result["counts"]["episodes"], 2)
+        self.assertEqual(result["counts"]["fullEpisodes"], 5)
+        representative = self.dataset.group_by("scene").first().id
+        details = resolve_scope(
+            self.dataset, {**request, "episodeIds": [representative]}
+        )
+        (group,) = details["groups"]
+        self.assertEqual(group["episodeId"], representative)
+        self.assertEqual(group["group"]["size"], len(group["members"]))
+        self.assertIn(group["group"]["size"], (2, 3))
+        self.assertTrue(all(m["kind"] == "episode" for m in group["members"]))
+        snapshot = create_snapshot(self.dataset, request)
+        members, _ = load_snapshot(self.dataset, snapshot["snapshotId"])
+        self.assertEqual(len(members), 5)
+        plain = resolve_scope(self.dataset, {"view": self.stages})
+        self.assertEqual(plain["counts"]["fullEpisodes"], 2)

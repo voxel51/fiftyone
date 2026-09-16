@@ -31,6 +31,8 @@ export interface EpisodeSelection {
   readonly filepath?: string;
   readonly previewStart?: number;
   readonly unavailable?: boolean;
+  /** Present when the card stands for a whole dynamic group of parents. */
+  readonly group?: { readonly label: string; readonly size: number };
 }
 
 /** Built-in providers resolve on the server; extensions supply complete ranges. */

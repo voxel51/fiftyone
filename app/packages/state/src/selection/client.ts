@@ -14,23 +14,27 @@ export interface SelectionRequest {
   readonly boundary: SelectionBoundary;
   readonly sortBy?: string;
   readonly desc?: boolean;
+  /** Active group slice, so grouped datasets count what the grid shows. */
+  readonly slice?: string;
+  /** Dynamic-group views select whole groups when set. */
+  readonly expand?: "dynamic-groups";
 }
 
-/** Complete, grouped result membership. */
+/** Exact scope counts, plus details for the parents named in `episodeIds`. */
 export interface SelectionResult {
   readonly unavailableGroups?: readonly EpisodeSelection[];
   readonly groups: readonly EpisodeSelection[];
   readonly counts: SelectionCounts;
 }
 
-/** Resolve every result in the current scope, with no loaded-card limit. */
+/** Count the scope and describe only the requested parents, never every member. */
 export async function resolveSelection(
   datasetId: string,
-  request: SelectionRequest,
+  request: SelectionRequest & { readonly episodeIds?: readonly string[] },
   signal?: AbortSignal,
 ): Promise<SelectionResult> {
   const response = await getFetchFunctionExtended()<
-    SelectionRequest,
+    typeof request,
     SelectionResult
   >({
     method: "POST",
@@ -39,6 +43,49 @@ export async function resolveSelection(
     signal,
   });
   return response.response;
+}
+
+/** A frozen server-side copy of the complete scope for one bulk action. */
+export interface SelectionSnapshot {
+  readonly snapshotId: string;
+  readonly counts: SelectionCounts;
+}
+
+/** Resolve all results once on the server; later browsing cannot move them. */
+export async function createSelectionSnapshot(
+  datasetId: string,
+  request: SelectionRequest,
+  signal?: AbortSignal,
+): Promise<SelectionSnapshot> {
+  const response = await getFetchFunctionExtended()<
+    SelectionRequest,
+    SelectionSnapshot
+  >({
+    method: "POST",
+    path: `/dataset/${encodeURIComponent(datasetId)}/selection/snapshots`,
+    body: request,
+    signal,
+  });
+  return response.response;
+}
+
+/** What an action targets: captured members, or a snapshot of all results. */
+export type SelectionScope =
+  | {
+      readonly kind: "members";
+      readonly members: readonly SelectionMember[];
+    }
+  | {
+      readonly kind: "snapshot";
+      readonly snapshotId: string;
+      readonly counts: SelectionCounts;
+    };
+
+/** Request fields naming a scope for the tag and subset routes. */
+export function scopeBody(scope: SelectionScope) {
+  return scope.kind === "members"
+    ? { members: scope.members }
+    : { snapshotId: scope.snapshotId };
 }
 
 /** Discover concrete built-in provider choices without selecting them. */
@@ -108,13 +155,20 @@ export async function getSelectionAvailability(
   ).response;
 }
 
-/** Inspect or apply an idempotent tag change to fixed membership. */
+export interface SelectionTagOptions {
+  readonly change?: { tag: string; add: boolean };
+  readonly target?: "members" | "labels";
+  /** The serialized view the scope was captured in. */
+  readonly view?: readonly unknown[];
+  /** Grouped datasets: tag only the captured slice samples, or every slice. */
+  readonly groups?: "slice" | "all";
+}
+
+/** Inspect or apply an idempotent tag change to a frozen scope. */
 export async function selectionTagsRequest(
   datasetId: string,
-  members: readonly SelectionMember[],
-  change?: { tag: string; add: boolean },
-  target: "members" | "labels" = "members",
-  view?: readonly unknown[],
+  scope: SelectionScope,
+  options: SelectionTagOptions = {},
 ) {
   return (
     await getFetchFunctionExtended()<
@@ -123,7 +177,13 @@ export async function selectionTagsRequest(
     >({
       method: "POST",
       path: `/dataset/${encodeURIComponent(datasetId)}/selection/tags`,
-      body: { members, change, target, view },
+      body: {
+        ...scopeBody(scope),
+        change: options.change,
+        target: options.target ?? "members",
+        view: options.view,
+        groups: options.groups,
+      },
     })
   ).response;
 }

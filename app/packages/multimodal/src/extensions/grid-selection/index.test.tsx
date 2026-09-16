@@ -30,7 +30,10 @@ const context: GridSelectionActionContext = {
     segmentEpisodes: 0,
     unavailable: 0,
   },
-  resolve: async () => [{ episodeId: "one", kind: "episode" }],
+  resolve: async () => ({
+    kind: "members",
+    members: [{ episodeId: "one", kind: "episode" }],
+  }),
 };
 const action: GridSelectionAction = {
   id: "test:action",
@@ -81,7 +84,7 @@ describe("grid action and provider contributions", () => {
         { ...action, scope: "explicit-or-results", memberKinds: ["segment"] },
         context,
       ),
-    ).toContain("every selected member");
+    ).toContain("does not support");
     expect(action.supports("multimodal")).toBe(false);
   });
 

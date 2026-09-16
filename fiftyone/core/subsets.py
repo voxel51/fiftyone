@@ -224,7 +224,7 @@ def _summary(dataset, doc):
 
 def _counts(dataset, members):
     ids = {member["episodeId"] for member in members}
-    present = set(dataset.select(ids).values("id"))
+    present = set(fosel.select_parents(dataset, ids).values("id"))
     return fosel.count_members(members, ids - present)
 
 

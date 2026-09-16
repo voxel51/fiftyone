@@ -5,10 +5,11 @@ import type {
 } from "@fiftyone/multimodal/extensions/grid-selection";
 import { useRefresh, useSelectionTagDisabledReason } from "@fiftyone/state";
 import {
+  memberCounts,
   normalizeSelectionMembers,
   selectionTagsRequest,
   useInvalidateSelectionScope,
-  type SelectionMember,
+  type SelectionScope,
   type SelectionUnit,
   type ViewConversion,
 } from "@fiftyone/state/src/selection";
@@ -47,7 +48,7 @@ interface Capture {
   conversion: ViewConversion | null;
   view: readonly unknown[];
   source: GridSelectionActionContext["source"];
-  members: readonly SelectionMember[];
+  scope: SelectionScope;
   tags: readonly string[];
   /** Label count when the scope was read in labels mode, else null. */
   labels: number | null;
@@ -67,15 +68,20 @@ function TagSelection({
     setBusy(true);
     setError(null);
     try {
-      const members = normalizeSelectionMembers(await context.resolve());
+      const resolved = await context.resolve();
+      const scope: SelectionScope =
+        resolved.kind === "members"
+          ? {
+              kind: "members",
+              members: normalizeSelectionMembers(resolved.members),
+            }
+          : resolved;
       // Patches are labels, so their picker opens in labels mode.
       const labelsOnly = context.conversion === "patches";
       const { tags, labels } = await selectionTagsRequest(
         context.datasetId,
-        members,
-        undefined,
-        labelsOnly ? "labels" : "members",
-        context.view,
+        scope,
+        { target: labelsOnly ? "labels" : "members", view: context.view },
       );
       setCapture({
         datasetId: context.datasetId,
@@ -84,7 +90,7 @@ function TagSelection({
         conversion: context.conversion,
         view: context.view,
         source: context.source,
-        members,
+        scope,
         tags,
         labels: labelsOnly ? labels : null,
       });
@@ -181,8 +187,16 @@ function TagPicker({
 
   const { unit } = capture;
   const parents = unit.temporal ? "Episodes" : unitTitlePlural(unit);
-  const full = capture.members.filter((m) => m.kind === "episode").length;
-  const segments = capture.members.length - full;
+  const counts =
+    capture.scope.kind === "members"
+      ? memberCounts(capture.scope.members)
+      : capture.scope.counts;
+  const full = counts.fullEpisodes;
+  const segments = counts.segments;
+  // Grouped datasets tag the captured slice by default; every slice on request.
+  const grouped = capture.mediaType === "group";
+  const [groupScope, setGroupScope] = useState<"slice" | "all">("slice");
+  const groups = grouped ? groupScope : undefined;
   const tag = query.trim();
   const needle = tag.toLowerCase();
   const filtered = tags.filter((value) => value.toLowerCase().includes(needle));
@@ -225,10 +239,12 @@ function TagPicker({
     try {
       const result = await selectionTagsRequest(
         capture.datasetId,
-        capture.members,
-        undefined,
-        "labels",
-        capture.view,
+        capture.scope,
+        {
+          target: "labels",
+          view: capture.view,
+          groups,
+        },
       );
       setTarget("labels");
       setTags(result.tags);
@@ -245,13 +261,12 @@ function TagPicker({
     setBusy(true);
     setError(null);
     try {
-      await selectionTagsRequest(
-        capture.datasetId,
-        capture.members,
-        { tag, add: mode === "add" },
+      await selectionTagsRequest(capture.datasetId, capture.scope, {
+        change: { tag, add: mode === "add" },
         target,
-        capture.view,
-      );
+        view: capture.view,
+        groups,
+      });
       setDone({ tag, mode });
       invalidate();
       refresh();
@@ -320,6 +335,25 @@ function TagPicker({
             ]}
             onChange={setMode}
           />
+          {grouped && (
+            <>
+              <Segmented<"slice" | "all">
+                label="Slices"
+                value={groupScope}
+                disabled={busy}
+                options={[
+                  { value: "slice", label: "This slice" },
+                  { value: "all", label: "All slices" },
+                ]}
+                onChange={setGroupScope}
+              />
+              <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+                {groupScope === "all"
+                  ? "Tags every slice of each selected group"
+                  : "Tags only the selected slice of each group"}
+              </Text>
+            </>
+          )}
           <Input
             size={Size.Sm}
             icon={SearchIcon}
@@ -463,7 +497,7 @@ export const tagSelectionAction: GridSelectionAction = {
   order: 20,
   label: "Tag",
   placement: "primary",
-  supports: (mediaType) => mediaType !== "group",
+  supports: () => true,
   scope: "explicit-or-results",
   memberKinds: ["episode", "segment"],
   unavailable: (context) => {

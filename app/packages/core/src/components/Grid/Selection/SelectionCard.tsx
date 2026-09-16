@@ -31,6 +31,7 @@ import {
   groupDescriptor,
   isFullEpisode,
   listRanges,
+  plural,
   segmentsOf,
 } from "./format";
 import MismatchPopover from "./MismatchPopover";
@@ -38,12 +39,10 @@ import RangeTrack from "./RangeTrack";
 import styles from "./SelectionTray.module.css";
 
 type Selection = ReturnType<typeof useGridSelection>;
-interface Props extends Pick<
-  Selection,
-  "loading" | "error" | "capture" | "remove"
-> {
+interface Props extends Pick<Selection, "capture" | "remove"> {
   group: EpisodeSelection;
-  candidate?: EpisodeSelection;
+  /** Current match for this parent: a group, null when outside the results, undefined while unknown. */
+  candidate?: EpisodeSelection | null;
   /** Dataset media type; decides the preview element. */
   mediaType: string;
   /** Vocabulary for the parent unit in the current view. */
@@ -79,15 +78,13 @@ function useNearViewport(ref: RefObject<Element>) {
 }
 
 const PLAYABLE = /\.(mp4|m4v|webm|mov|ogv|ogg|mkv|avi)(\?.*)?$/i;
+const IMAGE = /\.(jpe?g|png|gif|webp|bmp|tiff?|heic|avif)(\?.*)?$/i;
 
+/** Grouped datasets mix media per slice, so the file itself decides. */
 function previewKind(mediaType: string, filepath: string | undefined) {
   if (!filepath) return "none" as const;
-  if (mediaType === "image") return "image" as const;
-  if (
-    (mediaType === "video" || mediaType === "multimodal") &&
-    PLAYABLE.test(filepath)
-  )
-    return "video" as const;
+  if (mediaType === "image" || IMAGE.test(filepath)) return "image" as const;
+  if (PLAYABLE.test(filepath)) return "video" as const;
   return "none" as const;
 }
 
@@ -99,8 +96,6 @@ export default function SelectionCard({
   unit,
   title: titleProp,
   open,
-  loading,
-  error,
   capture,
   remove,
 }: Props) {
@@ -112,9 +107,12 @@ export default function SelectionCard({
   const full = isFullEpisode(group);
   const segments = segmentsOf(group);
   const title = titleProp ?? episodeTitle(group, unit);
-  const descriptor = groupDescriptor(group, unit);
+  const dynamicGroup = group.group;
+  const descriptor = dynamicGroup
+    ? `Group of ${plural(dynamicGroup.size, unit.one, unit.many)}`
+    : groupDescriptor(group, unit);
   const unavailable = Boolean(group.unavailable);
-  const outside = !unavailable && !loading && !error && !candidate;
+  const outside = !unavailable && candidate === null;
   const mismatch = Boolean(candidate && !sameSelection(group, candidate));
   const status = unavailable
     ? "unavailable"
@@ -184,10 +182,10 @@ export default function SelectionCard({
             </span>
           )}
         </button>
-        {temporal && (
+        {(temporal || dynamicGroup) && (
           <span className={styles.kind}>
             <Text variant={TextVariant.Label} color={TextColor.Fg}>
-              {descriptor}
+              {dynamicGroup ? "Group" : descriptor}
             </Text>
           </span>
         )}
@@ -236,9 +234,19 @@ export default function SelectionCard({
         <Text variant={TextVariant.Sm} className={styles.title} title={title}>
           {title}
         </Text>
-        {temporal && (
+        {(temporal || dynamicGroup) && (
           <div className={styles.metaRow}>
-            {full ? (
+            {dynamicGroup ? (
+              <Text
+                variant={TextVariant.Xs}
+                color={TextColor.Secondary}
+                className={styles.ellipsis}
+                style={{ flex: 1 }}
+                title={dynamicGroup.label}
+              >
+                {`${plural(dynamicGroup.size, unit.one, unit.many)} · ${dynamicGroup.label}`}
+              </Text>
+            ) : full ? (
               <Text
                 variant={TextVariant.Xs}
                 color={TextColor.Secondary}

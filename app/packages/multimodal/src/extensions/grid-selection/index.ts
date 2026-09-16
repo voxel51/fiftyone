@@ -1,3 +1,4 @@
+import type { SelectionScope } from "@fiftyone/state/src/selection/client";
 import type {
   SelectionUnit,
   ViewConversion,
@@ -17,7 +18,9 @@ export interface GridSelectionActionContext {
   readonly datasetId: string;
   readonly mediaType: string;
   readonly source: "explicit" | "results";
+  /** Exact counts for the whole scope, never just the loaded cards. */
   readonly counts: SelectionCounts;
+  /** Captured cards for an explicit scope; empty when acting on all results. */
   readonly groups: readonly EpisodeSelection[];
   readonly loading: boolean;
   readonly error: string | null;
@@ -28,8 +31,11 @@ export interface GridSelectionActionContext {
   readonly conversion: ViewConversion | null;
   /** The serialized view stages the scope was read in. */
   readonly view: readonly unknown[];
-  /** Resolves the complete scope, including unloaded and out-of-results members. */
-  readonly resolve: () => Promise<readonly SelectionMember[]>;
+  /**
+   * Names the complete scope once: the captured members, or a server-side
+   * snapshot of all current results that later browsing cannot change.
+   */
+  readonly resolve: () => Promise<SelectionScope>;
 }
 
 /** Props the tray passes to an action's component. */
@@ -116,11 +122,12 @@ export function gridActionDisabledReason(
     return context.unit.temporal
       ? "Select episodes or segments first"
       : `Select ${context.unit.many} first`;
+  if (context.counts.segments > 0 && !action.memberKinds.includes("segment"))
+    return "This action does not support segments";
   if (
-    context.groups.some((group) =>
-      group.members.some((member) => !action.memberKinds.includes(member.kind)),
-    )
+    context.counts.fullEpisodes > 0 &&
+    !action.memberKinds.includes("episode")
   )
-    return "This action does not support every selected member kind";
+    return `This action does not support whole ${context.unit.many}`;
   return action.unavailable?.(context) ?? null;
 }

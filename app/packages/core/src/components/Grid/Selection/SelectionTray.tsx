@@ -6,11 +6,11 @@ import {
 import * as fos from "@fiftyone/state";
 import {
   countSelection,
-  resolveSelection,
   useGridSelection,
   useGridSelectionBoundary,
   useInvalidateSelectionScope,
   type EpisodeSelection,
+  type SelectionCounts,
 } from "@fiftyone/state/src/selection";
 import {
   Button,
@@ -44,6 +44,13 @@ import UnavailableReferences from "./UnavailableReferences";
 import { useRegisterSelectionActions } from "./useRegisterSelectionActions";
 
 const UNDO_WINDOW_MS = 10_000;
+const EMPTY_COUNTS: SelectionCounts = {
+  episodes: 0,
+  fullEpisodes: 0,
+  segments: 0,
+  segmentEpisodes: 0,
+  unavailable: 0,
+};
 
 /** Pointer and keyboard resizing of the card strip, bounded by the grid pane. */
 function useStripResize(root: RefObject<HTMLElement>) {
@@ -189,13 +196,15 @@ export default function SelectionTray() {
       ? name
       : `${unitTitle(unit)} …${group.episodeId.slice(-6)}`;
   };
-  const effective = explicit ? captured : selection.groups;
-  const counts = countSelection(effective);
+  const counts = explicit
+    ? countSelection(captured)
+    : (selection.counts ?? EMPTY_COUNTS);
   const outside =
     explicit && !selection.loading && !selection.error
       ? captured.filter(
           (group) =>
-            !group.unavailable && !selection.candidates.has(group.episodeId),
+            !group.unavailable &&
+            selection.candidates.get(group.episodeId) === null,
         ).length
       : 0;
 
@@ -222,7 +231,7 @@ export default function SelectionTray() {
     mediaType: selection.mediaType,
     source: explicit ? "explicit" : "results",
     counts,
-    groups: effective,
+    groups: explicit ? captured : [],
     loading: !explicit && selection.loading,
     error: !explicit ? selection.error : null,
     boundary,
@@ -231,10 +240,11 @@ export default function SelectionTray() {
     view: selection.request.view,
     resolve: async () =>
       explicit
-        ? captured.flatMap((group) => group.members)
-        : (
-            await resolveSelection(selection.datasetId, selection.request)
-          ).groups.flatMap((group) => group.members),
+        ? {
+            kind: "members",
+            members: captured.flatMap((group) => group.members),
+          }
+        : { kind: "snapshot", ...(await selection.snapshot()) },
   };
   const available = actions.filter((action) =>
     action.supports(selection.mediaType),
@@ -321,8 +331,6 @@ export default function SelectionTray() {
                 unit={unit}
                 title={titleOf(group)}
                 open={open}
-                loading={selection.loading}
-                error={selection.error}
                 capture={selection.capture}
                 remove={removeGroup}
               />

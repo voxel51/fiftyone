@@ -2,6 +2,7 @@ import { is3d, type Schema } from "@fiftyone/utilities";
 import { useMemo } from "react";
 import { useRecoilCallback, useRecoilState, useRecoilValue } from "recoil";
 import { selectedSamples } from "../recoil/atoms";
+import { groupSlice } from "../recoil/groups";
 import {
   anyTagging,
   canTagSamplesOrLabels,
@@ -265,4 +266,9 @@ export function useSelectionTagDisabledReason(): string | null {
  */
 export function useLegacySelectedSamples() {
   return useRecoilState(selectedSamples);
+}
+
+/** The active group slice the grid shows, or null outside grouped datasets. */
+export function useGridGroupSlice(): string | null {
+  return useRecoilValue(groupSlice);
 }

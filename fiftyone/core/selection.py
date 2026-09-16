@@ -138,6 +138,16 @@ def intersect_members(candidates, allowed):
     return normalize_members(result)
 
 
+def select_parents(collection, ids):
+    """Selects parents by id, reaching into every slice of a grouped dataset."""
+    import fiftyone.core.view as fov
+
+    ids = list(ids)
+    if collection.media_type == "group":
+        return fov.make_optimized_select_view(collection, ids, flatten=True)
+    return collection.select(ids)
+
+
 def group_members(members, samples=None):
     """Groups stored members without changing full/segment coexistence."""
     groups = {}

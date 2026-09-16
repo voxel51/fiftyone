@@ -1,18 +1,31 @@
 import { atom, type SetStateAction } from "jotai";
 import { atomFamily } from "jotai-family";
 import { isPersistentDomain } from "../model";
-import type { EpisodeSelection, SelectionBoundary } from "../types";
+import type {
+  EpisodeSelection,
+  SelectionBoundary,
+  SelectionCounts,
+} from "../types";
 
 export interface CandidateState {
-  readonly unavailableGroups?: readonly EpisodeSelection[];
   readonly key: string;
-  readonly groups: readonly EpisodeSelection[];
+  /** Exact counts for the whole scope, or null while resolving. */
+  readonly counts: SelectionCounts | null;
+  readonly unavailableGroups?: readonly EpisodeSelection[];
+  /** Details for captured parents; null marks one outside the scope. */
+  readonly candidates: ReadonlyMap<string, EpisodeSelection | null>;
   readonly error: string | null;
   readonly loading: boolean;
 }
 
 export const candidatesAtom = atomFamily((_datasetId: string) =>
-  atom<CandidateState>({ key: "", groups: [], loading: true, error: null }),
+  atom<CandidateState>({
+    key: "",
+    counts: null,
+    candidates: new Map(),
+    loading: true,
+    error: null,
+  }),
 );
 
 type Captures = ReadonlyMap<string, EpisodeSelection>;

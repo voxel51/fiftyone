@@ -4,12 +4,14 @@ import {
   type GridSelectionActionProps,
 } from "@fiftyone/multimodal/extensions/grid-selection";
 import {
+  memberCounts,
   normalizeSelectionMembers,
+  scopeBody,
   selectionScopeLabel,
   subsetRequest,
   useInvalidateSelectionScope,
   type SavedSubset,
-  type SelectionMember,
+  type SelectionScope,
   type SelectionUnit,
   type SubsetAddResult,
 } from "@fiftyone/state/src/selection";
@@ -48,7 +50,7 @@ interface Capture {
   mediaType: string;
   unit: SelectionUnit;
   source: GridSelectionActionContext["source"];
-  members: readonly SelectionMember[];
+  scope: SelectionScope;
 }
 
 function AddToSubset({
@@ -63,13 +65,20 @@ function AddToSubset({
     setBusy(true);
     setError(null);
     try {
-      const members = normalizeSelectionMembers(await context.resolve());
+      const resolved = await context.resolve();
+      const scope: SelectionScope =
+        resolved.kind === "members"
+          ? {
+              kind: "members",
+              members: normalizeSelectionMembers(resolved.members),
+            }
+          : resolved;
       setCapture({
         datasetId: context.datasetId,
         mediaType: context.mediaType,
         unit: context.unit,
         source: context.source,
-        members,
+        scope,
       });
     } catch (cause) {
       setError(String(cause));
@@ -86,7 +95,7 @@ function AddToSubset({
       onClick={() => void begin()}
       disabledReason={disabledReason}
       busy={busy}
-      busyLabel="Capturing scope…"
+      busyLabel="Preparing scope…"
       aria-haspopup="dialog"
     />
   );
@@ -184,7 +193,7 @@ function SubsetDialog({
         await subsetRequest<SubsetAddResult>(capture.datasetId, "/add", {
           phase: "prepare",
           ...pending,
-          members: capture.members,
+          ...scopeBody(capture.scope),
         }),
       );
     } catch (cause) {
@@ -235,8 +244,12 @@ function SubsetDialog({
   };
 
   const { unit } = capture;
-  const full = capture.members.filter((m) => m.kind === "episode").length;
-  const segments = capture.members.length - full;
+  const counts =
+    capture.scope.kind === "members"
+      ? memberCounts(capture.scope.members)
+      : capture.scope.counts;
+  const full = counts.fullEpisodes;
+  const segments = counts.segments;
   const scopeText =
     [
       full &&
@@ -497,7 +510,7 @@ export const addToSubsetAction: GridSelectionAction = {
   order: 10,
   label: "Add to subset",
   placement: "primary",
-  supports: (mediaType) => mediaType !== "group",
+  supports: () => true,
   scope: "explicit-or-results",
   memberKinds: ["episode", "segment"],
   unavailable: (context) =>

@@ -111,11 +111,8 @@ export default (records: Records) => {
               ? removeRange(get(records, symbol.description), ids, records)
               : addRange(get(records, symbol.description), ids, records);
             for (const id of ids) if (!next.has(id)) selection.remove(id);
-            for (const id of next) {
-              const candidate = selection.candidates.get(id);
-              if (!ids.has(id) && candidate) selection.capture(candidate);
-            }
-          } else selection.toggle(sampleId);
+            void selection.select([...next].filter((id) => !ids.has(id)));
+          } else void selection.toggle(sampleId);
           return;
         }
 

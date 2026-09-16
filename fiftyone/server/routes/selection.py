@@ -18,16 +18,32 @@ from fiftyone.server.utils.datasets import get_dataset
 
 
 class SelectionCandidates(HTTPEndpoint):
-    """Resolves the complete current result scope."""
+    """Counts the current result scope and describes requested parents."""
 
     @decorators.route
     async def post(self, request, data):
-        """Returns grouped candidates and actual member counts."""
+        """Returns exact scope counts plus groups for ``episodeIds`` only."""
         dataset = get_dataset(request.path_params["dataset_id"])
         try:
-            return await fou.run_sync_task(
-                foss.resolve_candidates, dataset, data
-            )
+            return await fou.run_sync_task(foss.resolve_scope, dataset, data)
+        except ValueError as error:
+            raise HTTPException(400, detail=str(error)) from error
+
+    @decorators.route
+    async def get(self, request):
+        """Returns built-in provider options."""
+        dataset = get_dataset(request.path_params["dataset_id"])
+        return await fou.run_sync_task(foss.provider_options, dataset)
+
+
+class SelectionSnapshots(HTTPEndpoint):
+    """Freezes the complete result scope server-side for a bulk action."""
+
+    @decorators.route
+    async def post(self, request, data):
+        dataset = get_dataset(request.path_params["dataset_id"])
+        try:
+            return await fou.run_sync_task(foss.create_snapshot, dataset, data)
         except ValueError as error:
             raise HTTPException(400, detail=str(error)) from error
 
@@ -59,13 +75,17 @@ class SelectionTags(HTTPEndpoint):
     async def post(self, request, data):
         dataset = get_dataset(request.path_params["dataset_id"])
         try:
+            members, stages = await fou.run_sync_task(
+                foss.resolve_members, dataset, data
+            )
             return await fou.run_sync_task(
                 foss.tag_selection,
                 dataset,
-                data["members"],
+                members,
                 data.get("change"),
                 data.get("target", "members"),
-                data.get("view"),
+                stages,
+                data.get("groups", "slice"),
             )
         except (ValueError, KeyError, TypeError, InvalidId) as error:
             raise HTTPException(400, detail=str(error)) from error
@@ -100,12 +120,15 @@ class SubsetAdd(HTTPEndpoint):
         dataset = get_dataset(request.path_params["dataset_id"])
         try:
             if data.get("phase") == "prepare":
+                members, _ = await fou.run_sync_task(
+                    foss.resolve_members, dataset, data
+                )
                 return await fou.run_sync_task(
                     fosub.prepare_add,
                     dataset,
                     data["subsetId"],
                     data["operationId"],
-                    data["members"],
+                    members,
                 )
             if data.get("phase") == "apply":
                 return await fou.run_sync_task(
@@ -118,6 +141,7 @@ class SubsetAdd(HTTPEndpoint):
 
 SelectionRoutes = [
     ("/dataset/{dataset_id}/selection", SelectionCandidates),
+    ("/dataset/{dataset_id}/selection/snapshots", SelectionSnapshots),
     ("/dataset/{dataset_id}/selection/tags", SelectionTags),
     ("/dataset/{dataset_id}/selection/availability", SelectionAvailability),
     ("/dataset/{dataset_id}/subsets", Subsets),

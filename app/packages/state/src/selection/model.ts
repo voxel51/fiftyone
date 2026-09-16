@@ -105,7 +105,8 @@ export function updateEpisodeSelection(
   }
   if (
     !candidate.members.length ||
-    candidate.members.some((m) => m.episodeId !== candidate.episodeId)
+    (!candidate.group &&
+      candidate.members.some((m) => m.episodeId !== candidate.episodeId))
   )
     throw new Error("An episode capture must contain its own members");
   if (
@@ -249,4 +250,33 @@ export function selectionScopeLabel(
       )}`,
     );
   return parts.join(" · ") || (unit.temporal ? "0 members" : `0 ${unit.many}`);
+}
+
+/** Counts for a flat member list, as a frozen scope reports them. */
+export function memberCounts(
+  members: readonly SelectionMember[],
+): SelectionCounts {
+  const segments = members.filter((member) => member.kind === "segment");
+  return {
+    episodes: new Set(members.map((member) => member.episodeId)).size,
+    fullEpisodes: members.length - segments.length,
+    segments: segments.length,
+    segmentEpisodes: new Set(segments.map((member) => member.episodeId)).size,
+    unavailable: 0,
+  };
+}
+
+const GROUP_BY_STAGE = "fiftyone.core.stages.GroupBy";
+
+/** Whether the view groups samples dynamically, so a tile stands for a group. */
+export function hasDynamicGroups(stages: readonly unknown[]) {
+  return stages.some((stage) => {
+    if (typeof stage !== "object" || stage === null) return false;
+    const { _cls, kwargs } = stage as { _cls?: unknown; kwargs?: unknown };
+    if (_cls !== GROUP_BY_STAGE || !Array.isArray(kwargs)) return false;
+    const flat = kwargs.find(
+      (entry) => Array.isArray(entry) && entry[0] === "flat",
+    ) as [string, unknown] | undefined;
+    return !flat?.[1];
+  });
 }

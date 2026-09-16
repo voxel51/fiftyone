@@ -1,12 +1,14 @@
 import { useAtomValue, useSetAtom } from "jotai";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   useCurrentDatasetId,
   useDatasetMediaType,
+  useGridGroupSlice,
   useGridViewScope,
   useLegacySelectedSamples,
 } from "../accessors/dataset";
 import {
+  createSelectionSnapshot,
   getSelectionAvailability,
   resolveSelection,
   type SelectionRequest,
@@ -18,13 +20,19 @@ import {
   useSelectionScopeRevision,
   useRefreshSelectionMetadata,
 } from "./hooks";
-import { selectionDomainId, selectionUnit, viewConversion } from "./model";
-import { candidatesAtom } from "./model/atoms";
+import {
+  hasDynamicGroups,
+  selectionDomainId,
+  selectionUnit,
+  viewConversion,
+} from "./model";
+import { candidatesAtom, type CandidateState } from "./model/atoms";
 import type { EpisodeSelection, SelectionBoundary } from "./types";
 
 const EMPTY_GROUPS: readonly EpisodeSelection[] = [];
+const NO_CANDIDATES: ReadonlyMap<string, EpisodeSelection | null> = new Map();
 
-/** Current dataset identity and supported grid media. */
+/** Current dataset identity, selection domain, and vocabulary. */
 export function useGridSelectionDataset() {
   const id = useCurrentDatasetId() ?? "";
   const type = useDatasetMediaType() ?? "";
@@ -38,7 +46,7 @@ export function useGridSelectionDataset() {
     mediaType: type,
     conversion: kind,
     unit: selectionUnit(type, kind),
-    enabled: Boolean(id) && Boolean(type) && type !== "group",
+    enabled: Boolean(id) && Boolean(type),
   };
 }
 
@@ -58,7 +66,7 @@ export function useGridSelectionBoundary() {
   return [effective, setBoundary] as const;
 }
 
-/** Capturable request preserves the current pipeline and provider boundary. */
+/** Capturable request: the pipeline, provider boundary, and active slice. */
 export function useGridSelectionRequest() {
   const [boundary] = useGridSelectionBoundary();
   const {
@@ -67,6 +75,7 @@ export function useGridSelectionRequest() {
     extendedStages: extended,
     sort,
   } = useGridViewScope();
+  const slice = useGridGroupSlice();
   const request: SelectionRequest = {
     view: stages ?? [],
     filters: currentFilters,
@@ -74,6 +83,8 @@ export function useGridSelectionRequest() {
     boundary,
     sortBy: sort?.field,
     desc: sort?.descending,
+    slice: slice ?? undefined,
+    expand: hasDynamicGroups(stages ?? []) ? "dynamic-groups" : undefined,
   };
   const serialized = JSON.stringify(request);
   const { datasetId } = useGridSelectionDataset();
@@ -87,7 +98,33 @@ export function useGridSelectionRequest() {
   );
 }
 
-/** Reads only current candidates; an old response never becomes a new scope. */
+/** Whole-parent scopes describe a clicked tile without a server round trip. */
+export function isPlainScope(request: SelectionRequest) {
+  return (
+    !request.boundary.provider && !request.boundary.subsetId && !request.expand
+  );
+}
+
+function wholeParent(id: string): EpisodeSelection {
+  return { episodeId: id, members: [{ episodeId: id, kind: "episode" }] };
+}
+
+function withCandidates(
+  state: CandidateState,
+  ids: readonly string[],
+  groups: readonly EpisodeSelection[],
+): CandidateState {
+  const candidates = new Map(state.candidates);
+  for (const id of ids) candidates.set(id, null);
+  for (const group of groups) candidates.set(group.episodeId, group);
+  return { ...state, candidates };
+}
+
+/**
+ * Reads the scope's exact counts and the details fetched for captured
+ * parents. Clicking a tile resolves only that tile; nothing enumerates the
+ * whole scope in the browser.
+ */
 export function useGridSelection() {
   const dataset = useGridSelectionDataset();
   const { key, request } = useGridSelectionRequest();
@@ -96,51 +133,74 @@ export function useGridSelection() {
   const { capture, remove, clear } = useEpisodeSelectionActions(
     dataset.domainId,
   );
-  const groups =
-    state.key === key && !state.loading && !state.error
-      ? state.groups
-      : EMPTY_GROUPS;
-  const candidates = useMemo(
-    () => new Map(groups.map((group) => [group.episodeId, group])),
-    [groups],
+  const current = state.key === key && !state.loading && !state.error;
+  const resolveCandidates = useCallback(
+    async (ids: readonly string[]) => {
+      if (isPlainScope(request))
+        return new Map(ids.map((id) => [id, wholeParent(id)] as const));
+      const result = await resolveSelection(dataset.datasetId, {
+        ...request,
+        episodeIds: ids,
+      });
+      return new Map(
+        result.groups.map((group) => [group.episodeId, group] as const),
+      );
+    },
+    [dataset.datasetId, request],
+  );
+  const select = useCallback(
+    async (ids: readonly string[]) => {
+      const fresh = ids.filter((id) => !selected.has(id));
+      if (!fresh.length) return;
+      for (const group of (await resolveCandidates(fresh)).values())
+        capture(group);
+    },
+    [selected, resolveCandidates, capture],
   );
   const toggle = useCallback(
-    (id: string) => {
+    async (id: string) => {
       if (selected.has(id)) remove(id);
-      else {
-        const candidate = candidates.get(id);
-        if (candidate) capture(candidate);
-      }
+      else await select([id]);
     },
-    [selected, candidates, capture, remove],
+    [selected, remove, select],
+  );
+  const snapshot = useCallback(
+    (signal?: AbortSignal) =>
+      createSelectionSnapshot(dataset.datasetId, request, signal),
+    [dataset.datasetId, request],
   );
   return {
     ...dataset,
     capture,
     remove,
     clear,
+    select,
+    toggle,
+    snapshot,
     selected,
-    candidates,
-    groups,
+    candidates: current ? state.candidates : NO_CANDIDATES,
+    counts: current ? state.counts : null,
     unavailableGroups:
       state.key === key
         ? (state.unavailableGroups ?? EMPTY_GROUPS)
         : EMPTY_GROUPS,
-    toggle,
     request,
     loading: state.key !== key || state.loading,
     error: state.key === key ? state.error : null,
   };
 }
 
-/** Mount once in the grid to resolve complete candidates on scope changes. */
+/** Mount once in the grid: counts per scope, details only for captured parents. */
 export function useLoadGridSelection() {
   const { datasetId: id, domainId, enabled } = useGridSelectionDataset();
   const { request, key } = useGridSelectionRequest();
   const { refresh } = useGridViewScope();
   const set = useSetAtom(candidatesAtom(domainId));
+  const state = useAtomValue(candidatesAtom(domainId));
   const selected = useEpisodeSelection(domainId);
   const selectedIds = JSON.stringify([...selected.keys()].sort());
+  const latestSelected = useRef(selectedIds);
+  latestSelected.current = selectedIds;
   const refreshMetadata = useRefreshSelectionMetadata(domainId);
   const stages = request.view;
   // This effect checks live parent availability independently of the current results.
@@ -161,27 +221,43 @@ export function useLoadGridSelection() {
       });
     return () => controller.abort();
   }, [id, enabled, selectedIds, refresh, key, refreshMetadata, stages]);
-  // This effect owns candidate resolution; captures live in a separate atom.
+  // This effect counts the scope and describes the captured parents whenever
+  // the scope changes. It never enumerates every member for the browser.
   useEffect(() => {
     if (!enabled) return undefined;
     const controller = new AbortController();
-    set({ key, groups: [], loading: true, error: null });
-    resolveSelection(id, request, controller.signal)
+    const ids: string[] = JSON.parse(latestSelected.current);
+    set({
+      key,
+      counts: null,
+      candidates: new Map(),
+      loading: true,
+      error: null,
+    });
+    resolveSelection(id, { ...request, episodeIds: ids }, controller.signal)
       .then((result) => {
-        if (!controller.signal.aborted)
-          set({
-            key,
-            groups: result.groups,
-            unavailableGroups: result.unavailableGroups,
-            loading: false,
-            error: null,
-          });
+        if (controller.signal.aborted) return;
+        set(
+          withCandidates(
+            {
+              key,
+              counts: result.counts,
+              unavailableGroups: result.unavailableGroups,
+              candidates: new Map(),
+              loading: false,
+              error: null,
+            },
+            ids,
+            result.groups,
+          ),
+        );
       })
       .catch((error: unknown) => {
         if (!controller.signal.aborted)
           set({
             key,
-            groups: [],
+            counts: null,
+            candidates: new Map(),
             loading: false,
             error: error instanceof Error ? error.message : String(error),
           });
@@ -190,6 +266,30 @@ export function useLoadGridSelection() {
       controller.abort();
     };
   }, [id, enabled, key, request, refresh, set]);
+  // This effect describes parents captured after the scope resolved, without
+  // recounting the scope.
+  useEffect(() => {
+    if (!enabled || state.key !== key || state.loading || state.error)
+      return undefined;
+    const missing = (JSON.parse(selectedIds) as string[]).filter(
+      (sampleId) => !state.candidates.has(sampleId),
+    );
+    if (!missing.length) return undefined;
+    const controller = new AbortController();
+    resolveSelection(id, { ...request, episodeIds: missing }, controller.signal)
+      .then((result) => {
+        if (!controller.signal.aborted)
+          set((current) =>
+            current.key === key
+              ? withCandidates(current, missing, result.groups)
+              : current,
+          );
+      })
+      .catch(() => {
+        /* Details are advisory; the next scope change retries. */
+      });
+    return () => controller.abort();
+  }, [enabled, id, key, request, selectedIds, state, set]);
 }
 
 /** Keeps a failed scoped page inside the tray so users can change its boundary. */
@@ -201,7 +301,7 @@ export function useGridSelectionPagingError() {
     (error: unknown) =>
       set((current) =>
         current.key === key
-          ? { ...current, groups: [], loading: false, error: String(error) }
+          ? { ...current, counts: null, loading: false, error: String(error) }
           : current,
       ),
     [key, set],
@@ -265,31 +365,57 @@ export function reconcileSelection(
  * all see the one selection the tray shows.
  */
 export function useSyncLegacySelection() {
-  const { domainId: id, enabled } = useGridSelectionDataset();
-  const { key } = useGridSelectionRequest();
+  const { datasetId, domainId: id, enabled } = useGridSelectionDataset();
+  const { key, request } = useGridSelectionRequest();
   const selected = useEpisodeSelection(id);
   const { capture, remove } = useEpisodeSelectionActions(id);
-  const candidates = useAtomValue(candidatesAtom(id));
+  const state = useAtomValue(candidatesAtom(id));
   const [legacy, setLegacy] = useLegacySelectedSamples();
   const previous = useRef<{ tray: string[]; legacy: string[] } | null>(null);
+  const [verified, setVerified] = useState<{
+    key: string;
+    ids: ReadonlySet<string>;
+  } | null>(null);
   const trayIds = useMemo(() => [...selected.keys()].sort(), [selected]);
   const legacyIds = useMemo(() => [...legacy.keys()].sort(), [legacy]);
-  // This effect forgets the last agreement when the dataset changes so a
-  // stale selection from another dataset is never adopted.
+  // This effect forgets the last agreement when the domain changes so a
+  // stale selection from another dataset or view is never adopted.
   useEffect(() => {
     previous.current = null;
+    setVerified(null);
   }, [id]);
+  // This effect confirms, once per scope, that a legacy selection seen at
+  // first sight belongs to this scope before the tray adopts it.
+  useEffect(() => {
+    if (!enabled || previous.current !== null) return undefined;
+    if (trayIds.length || !legacyIds.length || verified?.key === key)
+      return undefined;
+    const controller = new AbortController();
+    resolveSelection(
+      datasetId,
+      { ...request, episodeIds: legacyIds },
+      controller.signal,
+    )
+      .then((result) => {
+        if (!controller.signal.aborted)
+          setVerified({
+            key,
+            ids: new Set(result.groups.map((group) => group.episodeId)),
+          });
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setVerified({ key, ids: new Set() });
+      });
+    return () => controller.abort();
+  }, [enabled, datasetId, key, request, trayIds, legacyIds, verified]);
   // This effect reconciles the two selection stores after either one changes.
   useEffect(() => {
     if (!enabled) return;
-    const settled = candidates.key === key && !candidates.loading;
     const plan = reconcileSelection(
       previous.current,
       trayIds,
       legacyIds,
-      settled
-        ? new Set(candidates.groups.map((group) => group.episodeId))
-        : null,
+      verified?.key === key ? verified.ids : null,
     );
     if (plan.kind === "wait") return;
     if (plan.kind === "push") {
@@ -305,17 +431,9 @@ export function useSyncLegacySelection() {
       return;
     }
     if (plan.kind === "adopt") {
-      const groups = new Map(
-        candidates.groups.map((group) => [group.episodeId, group]),
-      );
       for (const sampleId of plan.remove) remove(sampleId);
       for (const sampleId of plan.capture)
-        capture(
-          groups.get(sampleId) ?? {
-            episodeId: sampleId,
-            members: [{ episodeId: sampleId, kind: "episode" }],
-          },
-        );
+        capture(state.candidates.get(sampleId) ?? wholeParent(sampleId));
       previous.current = { tray: legacyIds, legacy: legacyIds };
       return;
     }
@@ -326,7 +444,8 @@ export function useSyncLegacySelection() {
     trayIds,
     legacyIds,
     legacy,
-    candidates,
+    verified,
+    state.candidates,
     capture,
     remove,
     setLegacy,

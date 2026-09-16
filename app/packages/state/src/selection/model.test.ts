@@ -6,7 +6,9 @@ import {
   updateEpisodeSelection,
   EPISODE_UNIT,
   SAMPLE_UNIT,
+  hasDynamicGroups,
   isPersistentDomain,
+  memberCounts,
   selectionDomainId,
   selectionScopeLabel,
   selectionUnit,
@@ -157,5 +159,44 @@ describe("selection domains", () => {
     expect(domain).toContain("ground_truth");
     expect(isPersistentDomain(domain)).toBe(false);
     expect(isPersistentDomain(selectionDomainId("dataset", null))).toBe(true);
+  });
+});
+
+describe("scope helpers", () => {
+  it("counts flat member lists and recognizes dynamic group views", () => {
+    expect(
+      memberCounts([
+        { episodeId: "a", kind: "episode" },
+        {
+          episodeId: "b",
+          kind: "segment",
+          range: {
+            start: "0",
+            end: "1",
+            timebase: "sequence",
+            streams: ["filepath"],
+            provenance: [],
+          },
+        },
+      ]),
+    ).toEqual({
+      episodes: 2,
+      fullEpisodes: 1,
+      segments: 1,
+      segmentEpisodes: 1,
+      unavailable: 0,
+    });
+    const groupBy = (flat: boolean) => ({
+      _cls: "fiftyone.core.stages.GroupBy",
+      kwargs: [
+        ["field_or_expr", "scene"],
+        ["flat", flat],
+      ],
+    });
+    expect(hasDynamicGroups([groupBy(false)])).toBe(true);
+    expect(hasDynamicGroups([groupBy(true)])).toBe(false);
+    expect(hasDynamicGroups([{ _cls: "fiftyone.core.stages.Limit" }])).toBe(
+      false,
+    );
   });
 });

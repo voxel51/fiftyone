@@ -23,6 +23,14 @@ vi.mock("@fiftyone/state/src/selection", async () => ({
   ...(await import("@fiftyone/state/src/selection/hooks")),
   useGridSelectionBoundary: () => [{}, mocks.openBoundary],
   subsetRequest: mocks.request,
+  scopeBody: (scope: {
+    kind: string;
+    members?: unknown;
+    snapshotId?: string;
+  }) =>
+    scope.kind === "members"
+      ? { members: scope.members }
+      : { snapshotId: scope.snapshotId },
 }));
 
 const counts = {
@@ -49,7 +57,7 @@ function context(
     unit: { one: "episode", many: "episodes", temporal: true },
     conversion: null,
     view: [],
-    resolve: vi.fn(async () => original),
+    resolve: vi.fn(async () => ({ kind: "members", members: original })),
     ...overrides,
   };
 }
@@ -96,7 +104,11 @@ it("retries the captured members and operation after scope changes and partial f
     <Host
       context={context({
         source: "results",
-        resolve: async () => [{ episodeId: "new-result", kind: "episode" }],
+        resolve: async () => ({
+          kind: "snapshot",
+          snapshotId: "later",
+          counts,
+        }),
       })}
     />,
   );
@@ -119,9 +131,47 @@ it("retries the captured members and operation after scope changes and partial f
   expect(applies).toHaveLength(2);
   expect(prepares[0][2]).toEqual(prepares[1][2]);
   expect(prepares[0][2].members).toEqual(original);
+  expect(prepares[0][2].snapshotId).toBeUndefined();
   expect(applies[0][2]).toEqual(applies[1][2]);
   expect(applies[0][2].operationId).toBe(prepares[0][2].operationId);
   expect(value.resolve).toHaveBeenCalledOnce();
+  act(() => view.unmount());
+});
+
+it("prepares an all-results add from a snapshot token instead of member ids", async () => {
+  mocks.request.mockImplementation(
+    async (_dataset: string, path: string, body?: { operationId: string }) => {
+      if (!path) return { subsets: [{ id: "subset", name: "Review", counts }] };
+      return {
+        operationId: body?.operationId,
+        subsetId: "subset",
+        counts: { ...counts, fullEpisodes: 120, episodes: 120 },
+        added: 120,
+        duplicates: 0,
+        provenanceUpdated: 0,
+      };
+    },
+  );
+  const value = context({
+    source: "results",
+    resolve: vi.fn(async () => ({
+      kind: "snapshot",
+      snapshotId: "snap",
+      counts: { ...counts, fullEpisodes: 120, episodes: 120 },
+    })),
+  });
+  const view = render(<Host context={value} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Add to subset" }));
+  await screen.findByRole("dialog");
+  expect(screen.getByText("All results")).toBeTruthy();
+  expect(screen.getByText("120 full episodes")).toBeTruthy();
+  fireEvent.click(await screen.findByRole("radio", { name: /Review/ }));
+  await screen.findByRole("button", { name: "Add 120 members" });
+  const prepare = mocks.request.mock.calls.find(
+    (call) => call[2]?.phase === "prepare",
+  );
+  expect(prepare?.[2]).toMatchObject({ snapshotId: "snap" });
+  expect(prepare?.[2].members).toBeUndefined();
   act(() => view.unmount());
 });
 

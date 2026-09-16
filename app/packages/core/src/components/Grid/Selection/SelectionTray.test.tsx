@@ -3,7 +3,11 @@ import {
   type GridSelectionAction,
   type GridSelectionActionProps,
 } from "@fiftyone/multimodal/extensions/grid-selection";
-import type { EpisodeSelection } from "@fiftyone/state/src/selection";
+import {
+  countSelection,
+  type EpisodeSelection,
+  type SelectionCounts,
+} from "@fiftyone/state/src/selection";
 import {
   act,
   cleanup,
@@ -49,8 +53,8 @@ const mocks = vi.hoisted(() => ({
     unit: { one: "episode", many: "episodes", temporal: true },
     enabled: true,
     selected: new Map<string, EpisodeSelection>(),
-    candidates: new Map<string, EpisodeSelection>(),
-    groups: [] as EpisodeSelection[],
+    candidates: new Map<string, EpisodeSelection | null>(),
+    counts: null as SelectionCounts | null,
     unavailableGroups: [] as EpisodeSelection[],
     loading: false,
     error: null as string | null,
@@ -59,6 +63,8 @@ const mocks = vi.hoisted(() => ({
     remove: vi.fn(),
     clear: vi.fn(),
     toggle: vi.fn(),
+    select: vi.fn(),
+    snapshot: vi.fn(),
   },
   invalidate: vi.fn(),
 }));
@@ -84,17 +90,28 @@ vi.mock("@fiftyone/state/src/selection", async () => ({
     temporalTags: [],
   })),
   resolveSelection: vi.fn(async () => ({ groups: [], counts: {} })),
+  createSelectionSnapshot: vi.fn(),
   subsetRequest: vi.fn(async () => ({ subsets: [] })),
   selectionTagsRequest: vi.fn(async () => ({ tags: [] })),
+  scopeBody: (scope: {
+    kind: string;
+    members?: unknown;
+    snapshotId?: string;
+  }) =>
+    scope.kind === "members"
+      ? { members: scope.members }
+      : { snapshotId: scope.snapshotId },
 }));
 
 beforeEach(() => {
   mocks.selection.selected = new Map();
   mocks.selection.candidates = new Map();
-  mocks.selection.groups = [];
+  mocks.selection.counts = null;
   mocks.selection.loading = false;
   mocks.selection.error = null;
   mocks.selection.clear.mockClear();
+  mocks.selection.capture.mockClear();
+  mocks.selection.snapshot.mockReset();
   mocks.invalidate.mockClear();
 });
 afterEach(() => {
@@ -103,8 +120,8 @@ afterEach(() => {
 });
 
 describe("SelectionTray", () => {
-  it("states the all-results scope with accurate units, loading, and retryable errors", async () => {
-    mocks.selection.groups = [fullEpisode, segmentEpisode];
+  it("states the all-results scope from exact counts, with loading and retryable errors", async () => {
+    mocks.selection.counts = countSelection([fullEpisode, segmentEpisode]);
     const view = render(<SelectionTray />);
     expect(screen.getByText("All results")).toBeTruthy();
     expect(
@@ -116,6 +133,7 @@ describe("SelectionTray", () => {
     ).toBeNull();
 
     mocks.selection.loading = true;
+    mocks.selection.counts = null;
     view.rerender(<SelectionTray />);
     expect(screen.getByText("Resolving results")).toBeTruthy();
     expect(
@@ -135,13 +153,28 @@ describe("SelectionTray", () => {
     view.unmount();
   });
 
+  it("freezes all results as a server snapshot when an action opens", async () => {
+    mocks.selection.counts = countSelection([fullEpisode]);
+    mocks.selection.snapshot.mockResolvedValue({
+      snapshotId: "snap",
+      counts: countSelection([fullEpisode]),
+    });
+    render(<SelectionTray />);
+    fireEvent.click(screen.getByRole("button", { name: "Add to subset" }));
+    expect(mocks.selection.snapshot).toHaveBeenCalledOnce();
+    await screen.findByRole("dialog");
+    expect(screen.getAllByText("All results")).toHaveLength(2);
+  });
+
   it("separates card counts from member scope and flags episodes outside the results", () => {
     mocks.selection.selected = new Map([
       ["full", fullEpisode],
       ["seg", segmentEpisode],
     ]);
-    mocks.selection.candidates = new Map([["full", fullEpisode]]);
-    mocks.selection.groups = [fullEpisode];
+    mocks.selection.candidates = new Map([
+      ["full", fullEpisode],
+      ["seg", null],
+    ]);
     render(<SelectionTray />);
     expect(screen.getByText("2 selected")).toBeTruthy();
     expect(
@@ -150,6 +183,14 @@ describe("SelectionTray", () => {
     expect(screen.getByText("· 1 episode not in current results")).toBeTruthy();
     expect(screen.getByText("Not in results")).toBeTruthy();
     expect(screen.getAllByRole("article")).toHaveLength(2);
+  });
+
+  it("does not flag captured parents whose details are still unknown", () => {
+    mocks.selection.selected = new Map([["full", fullEpisode]]);
+    mocks.selection.candidates = new Map();
+    render(<SelectionTray />);
+    expect(screen.queryByText(/not in current results/)).toBeNull();
+    expect(screen.queryByText("Not in results")).toBeNull();
   });
 
   it("collapses the strip without touching the selection, and clears separately", () => {
@@ -233,7 +274,7 @@ describe("SelectionTray", () => {
     act(() => {
       dispose = registerGridSelectionAction(action);
     });
-    mocks.selection.groups = [fullEpisode];
+    mocks.selection.counts = countSelection([fullEpisode]);
     render(<SelectionTray />);
     expect(screen.queryByRole("menuitem")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "More actions" }));

@@ -42,8 +42,7 @@ const handlers = {
 
 function Card(props: {
   group: EpisodeSelection;
-  candidate?: EpisodeSelection;
-  loading?: boolean;
+  candidate?: EpisodeSelection | null;
 }) {
   return (
     <SelectionCard
@@ -51,8 +50,6 @@ function Card(props: {
       candidate={props.candidate}
       mediaType="video"
       unit={{ one: "episode", many: "episodes", temporal: true }}
-      loading={props.loading ?? false}
-      error={null}
       {...handlers}
     />
   );
@@ -120,7 +117,7 @@ describe("SelectionCard", () => {
   });
 
   it("distinguishes out-of-results and unavailable episodes while keeping them actionable", () => {
-    const view = render(<Card group={captured} />);
+    const view = render(<Card group={captured} candidate={null} />);
     expect(screen.getByText("Not in results")).toBeTruthy();
     expect(
       screen
@@ -128,7 +125,7 @@ describe("SelectionCard", () => {
         .hasAttribute("disabled"),
     ).toBe(false);
     view.unmount();
-    render(<Card group={{ ...full, unavailable: true }} />);
+    render(<Card group={{ ...full, unavailable: true }} candidate={null} />);
     expect(screen.getByText("Unavailable")).toBeTruthy();
     expect(screen.queryByText("Not in results")).toBeNull();
     expect(
@@ -142,8 +139,8 @@ describe("SelectionCard", () => {
     expect(handlers.remove).toHaveBeenCalledWith("episode");
   });
 
-  it("does not flag an episode as outside the results while they resolve", () => {
-    render(<Card group={captured} loading />);
+  it("does not flag an episode as outside the results while its match is unknown", () => {
+    render(<Card group={captured} />);
     expect(screen.queryByText("Not in results")).toBeNull();
   });
 });

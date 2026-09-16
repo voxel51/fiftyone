@@ -26,6 +26,14 @@ vi.mock("@fiftyone/state/src/selection", async () => ({
   useGridSelectionBoundary: () => [{}, vi.fn()],
   selectionTagsRequest: mocks.request,
   subsetRequest: vi.fn(),
+  scopeBody: (scope: {
+    kind: string;
+    members?: unknown;
+    snapshotId?: string;
+  }) =>
+    scope.kind === "members"
+      ? { members: scope.members }
+      : { snapshotId: scope.snapshotId },
 }));
 
 beforeEach(() => {
@@ -35,20 +43,22 @@ beforeEach(() => {
 });
 afterEach(() => vi.restoreAllMocks());
 
-function context(): GridSelectionActionContext {
-  const members = [
-    {
-      episodeId: "episode",
-      kind: "segment" as const,
-      range: {
-        start: "9007199254740993",
-        end: "9007199254741003",
-        timebase: "timestamp-ns",
-        streams: ["camera"],
-        provenance: [],
-      },
+const members = [
+  {
+    episodeId: "episode",
+    kind: "segment" as const,
+    range: {
+      start: "9007199254740993",
+      end: "9007199254741003",
+      timebase: "timestamp-ns",
+      streams: ["camera"],
+      provenance: [],
     },
-  ];
+  },
+];
+const explicit = { kind: "members" as const, members };
+
+function context(): GridSelectionActionContext {
   return {
     datasetId: "dataset",
     mediaType: "multimodal",
@@ -67,7 +77,7 @@ function context(): GridSelectionActionContext {
     unit: { one: "episode", many: "episodes", temporal: true },
     conversion: null,
     view: [],
-    resolve: vi.fn(async () => members),
+    resolve: vi.fn(async () => explicit),
   };
 }
 function Host({ value }: { value: GridSelectionActionContext }) {
@@ -97,7 +107,15 @@ it("retains frozen membership through scope changes, errors, and retries", async
   expect(screen.getByText("Selected")).toBeTruthy();
   rendered.rerender(
     <Host
-      value={{ ...value, source: "results", resolve: vi.fn(async () => []) }}
+      value={{
+        ...value,
+        source: "results",
+        resolve: vi.fn(async () => ({
+          kind: "snapshot" as const,
+          snapshotId: "other",
+          counts: value.counts,
+        })),
+      }}
     />,
   );
   fireEvent.click(screen.getByRole("button", { name: "review", exact: true }));
@@ -110,33 +128,42 @@ it("retains frozen membership through scope changes, errors, and retries", async
   expect(mocks.request.mock.calls[1]).toEqual(mocks.request.mock.calls[2]);
   expect(mocks.request.mock.calls[2]).toEqual([
     "dataset",
-    value.groups[0].members,
-    { tag: "review", add: true },
-    "members",
-    [],
+    explicit,
+    { change: { tag: "review", add: true }, target: "members", view: [] },
   ]);
   expect(value.resolve).toHaveBeenCalledOnce();
   expect(mocks.refresh).toHaveBeenCalledOnce();
   rendered.unmount();
 });
 
-it("uses complete result membership and sends explicit removal intent", async () => {
-  const value = { ...context(), source: "results" as const };
+it("acts on a server snapshot for all results and sends explicit removal intent", async () => {
+  const snapshot = {
+    kind: "snapshot" as const,
+    snapshotId: "snap",
+    counts: context().counts,
+  };
+  const value = {
+    ...context(),
+    source: "results" as const,
+    resolve: vi.fn(async () => snapshot),
+  };
   const rendered = render(<Host value={value} />);
   fireEvent.click(await screen.findByRole("button", { name: "Tag" }));
   await screen.findByText("All results");
+  expect(mocks.request).toHaveBeenLastCalledWith("dataset", snapshot, {
+    target: "members",
+    view: [],
+  });
   fireEvent.click(screen.getByRole("radio", { name: "Remove" }));
   expect(screen.getByText(/exact captured ranges/)).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "review", exact: true }));
   fireEvent.click(screen.getByRole("button", { name: "Remove tag" }));
   await screen.findByRole("status");
-  expect(mocks.request).toHaveBeenLastCalledWith(
-    "dataset",
-    value.groups[0].members,
-    { tag: "review", add: false },
-    "members",
-    [],
-  );
+  expect(mocks.request).toHaveBeenLastCalledWith("dataset", snapshot, {
+    change: { tag: "review", add: false },
+    target: "members",
+    view: [],
+  });
   rendered.unmount();
 });
 
@@ -149,15 +176,50 @@ it("offers to create an unknown tag and applies it on Enter", async () => {
   expect(screen.getByText("Create “night”")).toBeTruthy();
   fireEvent.keyDown(input, { key: "Enter" });
   await screen.findByRole("status");
-  expect(mocks.request).toHaveBeenLastCalledWith(
-    "dataset",
-    expect.anything(),
-    { tag: "night", add: true },
-    "members",
-    [],
-  );
+  expect(mocks.request).toHaveBeenLastCalledWith("dataset", explicit, {
+    change: { tag: "night", add: true },
+    target: "members",
+    view: [],
+  });
   fireEvent.click(screen.getByRole("button", { name: "Tag another" }));
   expect(screen.getByLabelText("Find or create a tag")).toBeTruthy();
+  rendered.unmount();
+});
+
+it("lets grouped datasets choose between the active slice and every slice", async () => {
+  const full = [{ episodeId: "episode", kind: "episode" as const }];
+  const value = {
+    ...context(),
+    mediaType: "group",
+    counts: {
+      episodes: 1,
+      fullEpisodes: 1,
+      segments: 0,
+      segmentEpisodes: 0,
+      unavailable: 0,
+    },
+    groups: [{ episodeId: "episode", members: full }],
+    unit: { one: "sample", many: "samples", temporal: false },
+    resolve: vi.fn(async () => ({ kind: "members" as const, members: full })),
+  };
+  const rendered = render(<Host value={value} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Tag" }));
+  await screen.findByRole("dialog");
+  expect(screen.getByText(/only the selected slice/)).toBeTruthy();
+  fireEvent.click(screen.getByRole("radio", { name: "All slices" }));
+  fireEvent.click(screen.getByRole("button", { name: "review", exact: true }));
+  fireEvent.click(screen.getByRole("button", { name: "Add tag", exact: true }));
+  await screen.findByRole("status");
+  expect(mocks.request).toHaveBeenLastCalledWith(
+    "dataset",
+    { kind: "members", members: full },
+    {
+      change: { tag: "review", add: true },
+      target: "members",
+      view: [],
+      groups: "all",
+    },
+  );
   rendered.unmount();
 });
 
@@ -251,8 +313,9 @@ it("tags labels only for whole episodes and handles an empty label scope", async
     <Host
       value={{
         ...value,
+        counts: { ...value.counts, fullEpisodes: 1, segments: 0 },
         groups: [{ episodeId: "episode", members: full }],
-        resolve: async () => full,
+        resolve: async () => ({ kind: "members", members: full }),
       }}
     />,
   );
@@ -274,10 +337,8 @@ it("tags labels only for whole episodes and handles an empty label scope", async
   await screen.findByRole("status");
   expect(mocks.request).toHaveBeenLastCalledWith(
     "dataset",
-    full,
-    { tag: "review", add: true },
-    "labels",
-    [],
+    { kind: "members", members: full },
+    { change: { tag: "review", add: true }, target: "labels", view: [] },
   );
   rendered.unmount();
 });
