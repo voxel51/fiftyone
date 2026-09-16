@@ -6,6 +6,9 @@ import {
 import * as fos from "@fiftyone/state";
 import {
   countSelection,
+  FOLD_STEP,
+  foldWindow,
+  useFoldRevealed,
   useGridSelection,
   useGridSelectionBoundary,
   useInvalidateSelectionScope,
@@ -29,6 +32,7 @@ import {
   type KeyboardEvent,
   type RefObject,
 } from "react";
+import FoldCard from "./FoldCard";
 import { episodeTitle, unitTitle } from "./format";
 import ScopeControls from "./ScopeControls";
 import SelectionCard from "./SelectionCard";
@@ -184,6 +188,13 @@ export default function SelectionTray() {
 
   const captured = [...selection.selected.values()];
   const explicit = captured.length > 0;
+  // Long selections fold to their first and last cards; each press on the
+  // fold reveals a chunk from both ends. The loader shares this state so it
+  // describes only the rendered ends.
+  const folding = useFoldRevealed(selection.domainId);
+  const fold = foldWindow(captured, folding.revealed);
+  const folded = fold.hidden > 0;
+  const reveal = Math.min(fold.hidden, 2 * FOLD_STEP);
   // File names repeat across LeRobot-style episodes; fall back to the id then.
   const nameCounts = new Map<string, number>();
   for (const group of captured) {
@@ -281,12 +292,26 @@ export default function SelectionTray() {
   };
   const clearAll = () => {
     setCleared(captured);
+    folding.reset();
     selection.clear();
   };
   const undoClear = () => {
     cleared?.forEach((group) => selection.capture(group));
     setCleared(null);
   };
+  const renderCard = (group: EpisodeSelection) => (
+    <SelectionCard
+      key={group.episodeId}
+      group={group}
+      candidate={selection.candidates.get(group.episodeId)}
+      mediaType={selection.mediaType}
+      unit={unit}
+      title={titleOf(group)}
+      open={open}
+      capture={selection.capture}
+      remove={removeGroup}
+    />
+  );
   const removeGroup = (episodeId: string) => {
     const items = Array.from(
       cards.current?.querySelectorAll<HTMLElement>("[data-episode-id]") ?? [],
@@ -341,19 +366,16 @@ export default function SelectionTray() {
             className={styles.cards}
             aria-label={`Selected ${unit.many}`}
           >
-            {captured.map((group) => (
-              <SelectionCard
-                key={group.episodeId}
-                group={group}
-                candidate={selection.candidates.get(group.episodeId)}
-                mediaType={selection.mediaType}
+            {fold.head.map(renderCard)}
+            {folded && (
+              <FoldCard
+                hidden={fold.hidden}
+                reveal={reveal}
                 unit={unit}
-                title={titleOf(group)}
-                open={open}
-                capture={selection.capture}
-                remove={removeGroup}
+                onReveal={() => folding.reveal(FOLD_STEP)}
               />
-            ))}
+            )}
+            {fold.tail.map(renderCard)}
           </div>
         </div>
       )}

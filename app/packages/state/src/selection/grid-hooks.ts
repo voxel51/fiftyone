@@ -17,10 +17,12 @@ import {
 import {
   useEpisodeSelection,
   useEpisodeSelectionActions,
+  useFoldRevealed,
   useSelectionBoundary,
   useSelectionScopeRevision,
   useRefreshSelectionMetadata,
 } from "./hooks";
+import { foldWindow } from "./fold";
 import {
   hasDynamicGroups,
   selectionDomainId,
@@ -191,7 +193,21 @@ export function useGridSelection() {
   };
 }
 
-/** Mount once in the grid: counts per scope, details only for captured parents. */
+/** The captured parents a strip renders: all of them, or a folded strip's two ends. */
+export function renderedCaptures(
+  selected: ReadonlyMap<string, EpisodeSelection>,
+  revealed: number,
+) {
+  const ids = [...selected.keys()];
+  const { head, hidden, tail } = foldWindow(ids, revealed);
+  return hidden ? [...head, ...tail] : ids;
+}
+
+/**
+ * Mount once in the grid: counts per scope, details only for the captured
+ * parents the strip renders. A folded strip shows its two ends, so a
+ * thousand captures never turn into a thousand-parent details request.
+ */
 export function useLoadGridSelection() {
   const { datasetId: id, domainId, enabled } = useGridSelectionDataset();
   const { request, key } = useGridSelectionRequest();
@@ -199,7 +215,10 @@ export function useLoadGridSelection() {
   const set = useSetAtom(candidatesAtom(domainId));
   const state = useAtomValue(candidatesAtom(domainId));
   const selected = useEpisodeSelection(domainId);
-  const selectedIds = JSON.stringify([...selected.keys()].sort());
+  const { revealed } = useFoldRevealed(domainId);
+  const selectedIds = JSON.stringify(
+    renderedCaptures(selected, revealed).sort(),
+  );
   const latestSelected = useRef(selectedIds);
   latestSelected.current = selectedIds;
   const refreshMetadata = useRefreshSelectionMetadata(domainId);

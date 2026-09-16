@@ -1,7 +1,12 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { updateEpisodeSelection } from "./model";
-import { boundaryAtom, selectionAtom, scopeRevisionAtom } from "./model/atoms";
+import {
+  boundaryAtom,
+  foldRevealedAtom,
+  selectionAtom,
+  scopeRevisionAtom,
+} from "./model/atoms";
 import type { EpisodeSelection } from "./types";
 
 /** Read dataset-isolated captures. Browsing changes never rewrite this map. */
@@ -83,6 +88,18 @@ export function useRefreshSelectionMetadata(datasetId: string) {
 /** Version of live subset membership used to invalidate candidate and grid reads. */
 export function useSelectionScopeRevision(datasetId: string) {
   return useAtomValue(scopeRevisionAtom(datasetId));
+}
+
+/** How far a folded strip has been revealed, with controls to reveal more or reset. */
+export function useFoldRevealed(datasetId: string) {
+  const revealed = useAtomValue(foldRevealedAtom(datasetId));
+  const set = useSetAtom(foldRevealedAtom(datasetId));
+  const reveal = useCallback(
+    (count: number) => set((current) => current + count),
+    [set],
+  );
+  const reset = useCallback(() => set(0), [set]);
+  return { revealed, reveal, reset };
 }
 
 /** Refresh scope after an additive write or an explicit reopen. */

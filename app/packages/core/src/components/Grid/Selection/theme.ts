@@ -70,6 +70,7 @@ export const trayTheme = {
   "--tray-duration-fast": cssVar.transition.duration.fast,
   "--tray-easing": cssVar.transition.easing.out,
   "--tray-card-w": `${CARD_WIDTH}px`,
+  "--tray-card-w-min": `${CARD_MIN_WIDTH}px`,
   "--tray-card-h": `${CARD_HEIGHT}px`,
   "--tray-preview-h": `${CARD_PREVIEW_HEIGHT}px`,
   "--tray-strip-gap": `${STRIP_GAP}px`,

@@ -84,6 +84,7 @@ vi.mock("@fiftyone/state", () => ({
 vi.mock("@fiftyone/state/src/selection", async () => ({
   ...(await import("@fiftyone/state/src/selection/model")),
   ...(await import("@fiftyone/state/src/selection/hooks")),
+  ...(await import("@fiftyone/state/src/selection/fold")),
   useGridSelection: () => mocks.selection,
   useGridSelectionDataset: () => mocks.selection,
   useGridSelectionBoundary: () => [{}, vi.fn()],
@@ -228,6 +229,31 @@ describe("SelectionTray", () => {
       hasPrevious: false,
     });
     await expect(navigation.peek(1)).resolves.toBeNull();
+  });
+
+  it("folds long selections to their first and last cards and reveals more in chunks", () => {
+    const many: EpisodeSelection[] = Array.from({ length: 120 }, (_, i) => ({
+      episodeId: `e${i}`,
+      filepath: `/videos/e${i}.mp4`,
+      members: [{ episodeId: `e${i}`, kind: "episode" as const }],
+    }));
+    mocks.selection.selected = new Map(many.map((g) => [g.episodeId, g]));
+    mocks.selection.candidates = new Map(many.map((g) => [g.episodeId, g]));
+    render(<SelectionTray />);
+    expect(screen.getAllByRole("article")).toHaveLength(100);
+    expect(screen.getByText("e49.mp4")).toBeTruthy();
+    expect(screen.queryByText("e50.mp4")).toBeNull();
+    expect(screen.getByText("e70.mp4")).toBeTruthy();
+    expect(screen.getByText("120 full episodes selected")).toBeTruthy();
+    const fold = screen.getByRole("button", {
+      name: "Show 20 more of 20 hidden episodes",
+    });
+    expect(fold.textContent).toContain("20 more");
+    fireEvent.click(fold);
+    expect(screen.getAllByRole("article")).toHaveLength(120);
+    expect(
+      screen.queryByRole("button", { name: /hidden episodes/ }),
+    ).toBeNull();
   });
 
   it("does not flag captured parents whose details are still unknown", () => {

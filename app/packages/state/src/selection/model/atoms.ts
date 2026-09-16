@@ -91,3 +91,5 @@ export const boundaryAtom = atomFamily((_datasetId: string) =>
   atom<SelectionBoundary>({}),
 );
 export const scopeRevisionAtom = atomFamily((_datasetId: string) => atom(0));
+/** How many extra captures each end of a folded strip has revealed. */
+export const foldRevealedAtom = atomFamily((_datasetId: string) => atom(0));

@@ -153,6 +153,46 @@
   min-width: 0;
 }
 
+/* The fold between the first and last cards of a long selection. */
+.fold {
+  box-sizing: border-box;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: var(--tray-card-w-min);
+  height: var(--tray-card-h);
+  margin: 0;
+  padding: 8px;
+  border: 1px dashed var(--tray-border-strong);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--tray-text);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    border-color var(--tray-duration-fast) var(--tray-easing),
+    background-color var(--tray-duration-fast) var(--tray-easing);
+}
+
+.fold:hover,
+.fold:focus-visible {
+  background: var(--tray-raised);
+  border-color: var(--tray-accent);
+}
+
+.fold:focus-visible {
+  outline: 2px solid var(--tray-focus);
+  outline-offset: 2px;
+}
+
+.foldAction {
+  margin-top: 4px;
+}
+
 /* ---------------------------------------------------------------------------
  * Episode card
  * ------------------------------------------------------------------------- */
