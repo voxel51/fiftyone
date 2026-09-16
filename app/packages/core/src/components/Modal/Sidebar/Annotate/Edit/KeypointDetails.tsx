@@ -1,3 +1,4 @@
+import { KeypointOverlay, useLighter } from "@fiftyone/lighter";
 import type { KeypointAnnotationLabel } from "@fiftyone/state";
 import {
   Align,
@@ -9,7 +10,7 @@ import {
   TextColor,
   TextVariant,
 } from "@voxel51/voodo";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import styled from "styled-components";
 import { useAnnotationContext } from "./useAnnotationContext";
 import { useGuidedKeypoints } from "./useKeypointMode";
@@ -71,6 +72,25 @@ export const KeypointDetails = () => {
     targetRowRef.current?.scrollIntoView({ block: "nearest" });
   }, [targetIndex]);
 
+  // Hovering a node row emphasizes its point on the canvas (a static radius
+  // bump — deliberately no animation), answering "which dot is this node?"
+  // on dense skeletons. Holes draw nothing, so hovering a skipped/pending
+  // row is naturally a no-op.
+  const { scene } = useLighter();
+  const overlayId = selected?.overlay?.id;
+  const hoverNode = useCallback(
+    (index: number | null) => {
+      const overlay = overlayId ? scene?.getOverlay(overlayId) : undefined;
+      if (overlay instanceof KeypointOverlay) {
+        overlay.setHoveredPoint(index);
+      }
+    },
+    [overlayId, scene],
+  );
+  // Never leave a stale emphasis behind when this panel unmounts or the
+  // selection moves to another label
+  useEffect(() => () => hoverNode(null), [hoverNode]);
+
   // Fall back to the label data when no live overlay is available (e.g. a
   // selected track on a frame outside its extent)
   const dataPoints = (selected?.data as KeypointAnnotationLabel["data"] | null)
@@ -129,6 +149,8 @@ export const KeypointDetails = () => {
               $active={status === "target"}
               data-cy={`keypoint-node-${i}`}
               data-cy-status={status}
+              onMouseEnter={() => hoverNode(i)}
+              onMouseLeave={() => hoverNode(null)}
             >
               <Stack
                 orientation={Orientation.Row}

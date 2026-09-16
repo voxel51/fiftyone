@@ -139,3 +139,63 @@ describe("KeypointOverlay.applyLabel", () => {
     expect(points[1][0]).toBeNaN();
   });
 });
+
+describe("KeypointOverlay.setHoveredPoint", () => {
+  it("stores an in-range index and clears on null", () => {
+    const overlay = makeOverlay([
+      [0.1, 0.1],
+      [0.5, 0.5],
+    ]);
+
+    overlay.setHoveredPoint(1);
+    expect(overlay.getHoveredPoint()).toBe(1);
+
+    overlay.setHoveredPoint(null);
+    expect(overlay.getHoveredPoint()).toBeNull();
+  });
+
+  it("treats an out-of-range index as a clear", () => {
+    const overlay = makeOverlay([[0.1, 0.1]]);
+
+    overlay.setHoveredPoint(0);
+    overlay.setHoveredPoint(5);
+    expect(overlay.getHoveredPoint()).toBeNull();
+  });
+
+  it("keeps a hole index (nothing draws, but state is valid)", () => {
+    const overlay = makeOverlay([[0.1, 0.1], HOLE]);
+
+    overlay.setHoveredPoint(1);
+    expect(overlay.getHoveredPoint()).toBe(1);
+  });
+
+  it("shifts with point removal and clears when the hovered point is removed", () => {
+    const overlay = makeOverlay([
+      [0.1, 0.1],
+      [0.5, 0.5],
+      [0.9, 0.9],
+    ]);
+
+    overlay.setHoveredPoint(2);
+    overlay.removePoint(0, true);
+    expect(overlay.getHoveredPoint()).toBe(1);
+
+    overlay.removePoint(1, true);
+    expect(overlay.getHoveredPoint()).toBeNull();
+  });
+
+  it("clamps when applyLabel shrinks the point list", () => {
+    const overlay = makeOverlay([
+      [0.1, 0.1],
+      [0.5, 0.5],
+    ]);
+
+    overlay.setHoveredPoint(1);
+    overlay.applyLabel({
+      label: "person",
+      points: [[0.1, 0.1]],
+    } as KeypointLabel);
+
+    expect(overlay.getHoveredPoint()).toBeNull();
+  });
+});

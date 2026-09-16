@@ -182,6 +182,11 @@ export class KeypointOverlay
   // Per-point sub-selection
   protected selectedPointIndex: number | null = null;
 
+  // Transient per-point hover emphasis (the sidebar node checklist hovers
+  // rows through setHoveredPoint). Purely visual — never persisted, never
+  // part of hit-testing.
+  protected hoveredPointIndex: number | null = null;
+
   // Drag state for individual points
   private dragPointIndex: number | null = null;
   private moveStartScreenPoint?: Point;
@@ -244,6 +249,12 @@ export class KeypointOverlay
       this.selectedPointIndex >= this.#points.length
     ) {
       this.selectedPointIndex = null;
+    }
+    if (
+      this.hoveredPointIndex !== null &&
+      this.hoveredPointIndex >= this.#points.length
+    ) {
+      this.hoveredPointIndex = null;
     }
 
     this.markDirty();
@@ -597,6 +608,8 @@ export class KeypointOverlay
     const buckets = new Map<string | undefined, Point[]>();
     let selectedPoint: Point | undefined;
     let selectedVariant: string | undefined;
+    let hoveredPoint: Point | undefined;
+    let hoveredVariant: string | undefined;
 
     for (let i = 0; i < ctx.absPoints.length; i++) {
       // Holes ([NaN, NaN] points) are not drawn
@@ -608,6 +621,13 @@ export class KeypointOverlay
       if (!ctx.isHovered && this.selectedPointIndex === i) {
         selectedPoint = ctx.absPoints[i];
         selectedVariant = this.#points[i].variant;
+        continue;
+      }
+      // Per-point hover emphasis (drawn larger below); selection wins when
+      // both land on the same point
+      if (!ctx.isHovered && this.hoveredPointIndex === i) {
+        hoveredPoint = ctx.absPoints[i];
+        hoveredVariant = this.#points[i].variant;
         continue;
       }
       const v = this.#points[i].variant;
@@ -668,6 +688,17 @@ export class KeypointOverlay
           this.containerId,
         );
       }
+    }
+
+    // Hovered point: static radius bump only — the inner-highlight ring
+    // look stays reserved for the selected point
+    if (hoveredPoint) {
+      renderer.drawPoint(
+        hoveredPoint,
+        KEYPOINT_SELECTED_RADIUS,
+        resolvePointStyle(hoveredVariant),
+        this.containerId,
+      );
     }
 
     // Draw selected point at larger radius + inner highlight (separate calls)
@@ -987,6 +1018,9 @@ export class KeypointOverlay
     ) {
       this.selectedPointIndex++;
     }
+    if (this.hoveredPointIndex !== null && this.hoveredPointIndex >= clamped) {
+      this.hoveredPointIndex++;
+    }
 
     this.eventBus.dispatch("lighter:keypoint-point-added", {
       id: this.id,
@@ -1129,6 +1163,14 @@ export class KeypointOverlay
     ) {
       this.selectedPointIndex--;
     }
+    if (this.hoveredPointIndex === index) {
+      this.hoveredPointIndex = null;
+    } else if (
+      this.hoveredPointIndex !== null &&
+      this.hoveredPointIndex > index
+    ) {
+      this.hoveredPointIndex--;
+    }
 
     if (!silent) {
       this.eventBus.dispatch("lighter:keypoint-point-deleted", {
@@ -1161,6 +1203,27 @@ export class KeypointOverlay
   }
 
   /**
+   * Sets the transient hover emphasis on a single point (the sidebar node
+   * checklist hovers rows through this). The hovered point renders with a
+   * static radius bump — deliberately no animation. Out-of-range indices
+   * clear the emphasis; a hole index is kept but draws nothing.
+   */
+  setHoveredPoint(index: number | null): void {
+    const next =
+      index !== null && index >= 0 && index < this.#points.length
+        ? index
+        : null;
+    if (next === this.hoveredPointIndex) return;
+    this.hoveredPointIndex = next;
+    this.markDirty();
+  }
+
+  /** The point index currently carrying the hover emphasis, if any. */
+  getHoveredPoint(): number | null {
+    return this.hoveredPointIndex;
+  }
+
+  /**
    * Registers a custom render effect. The effect is invoked once per frame
    * during {@link renderImpl}, behind the points themselves. Returns a
    * teardown function; {@link unregisterEffect} is also available for callers
@@ -1186,6 +1249,7 @@ export class KeypointOverlay
   clearPoints(): void {
     this.#points = [];
     this.selectedPointIndex = null;
+    this.hoveredPointIndex = null;
     this.dragPointIndex = null;
     this.previewPoint = null;
     this.markDirty();
