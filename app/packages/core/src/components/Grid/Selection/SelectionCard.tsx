@@ -5,18 +5,32 @@ import {
   type useGridSelection,
 } from "@fiftyone/state/src/selection";
 import {
+  BackgroundColor,
   Button,
-  Dropdown,
-  DropdownAnchor,
-  DropdownTrigger,
-  MenuTextItem,
-  MenuSectionTitle,
+  CloseIcon,
+  FolderOffIcon,
+  Pill,
+  PlayArrowIcon,
+  SemanticColor,
   Size,
   Text,
+  TextColor,
   TextVariant,
   Variant,
-  cssVar,
+  VisibilityOffIcon,
+  WarningAmberIcon,
 } from "@voxel51/voodo";
+import { useEffect, useRef, useState, type RefObject } from "react";
+import {
+  episodeTitle,
+  formatRanges,
+  groupDescriptor,
+  isFullEpisode,
+  listRanges,
+  segmentsOf,
+} from "./format";
+import MismatchPopover from "./MismatchPopover";
+import RangeTrack from "./RangeTrack";
 import styles from "./SelectionTray.module.css";
 
 type Selection = ReturnType<typeof useGridSelection>;
@@ -26,118 +40,182 @@ interface Props extends Pick<
 > {
   group: EpisodeSelection;
   candidate?: EpisodeSelection;
+  /** Display name; defaults to the media file name. */
+  title?: string;
   open: (group: EpisodeSelection) => Promise<void>;
 }
 
-function rangeSummary(group: EpisodeSelection) {
-  const ranges = group.members.flatMap((member) =>
-    member.kind === "segment"
-      ? [
-          `[${member.range.start}, ${member.range.end}) ${member.range.timebase}`,
-        ]
-      : [],
-  );
-  return `${ranges.length} segment${ranges.length === 1 ? "" : "s"}: ${ranges.slice(0, 2).join("; ")}${ranges.length > 2 ? "; …" : ""}`;
+/** Defers thumbnail media until the card is near the strip's viewport. */
+function useNearViewport(ref: RefObject<Element>) {
+  const [near, setNear] = useState(false);
+  // This effect observes the card so large selections only load visible media.
+  useEffect(() => {
+    const element = ref.current;
+    if (!element || typeof IntersectionObserver === "undefined") {
+      setNear(true);
+      return undefined;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setNear(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "240px" },
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [ref]);
+  return near;
 }
 
-/** A single episode's captured scope, with explicit replacement and accumulation. */
+const PLAYABLE = /\.(mp4|m4v|webm|mov|ogv|ogg|mkv|avi)(\?.*)?$/i;
+
+/** One episode's captured scope: full episode or its grouped segments. */
 export default function SelectionCard({
   group,
   candidate,
+  title: titleProp,
   open,
   loading,
   error,
   capture,
   remove,
 }: Props) {
-  const mismatch = candidate && !sameSelection(group, candidate);
-  const full = group.members[0]?.kind === "episode";
+  const root = useRef<HTMLElement>(null);
+  const near = useNearViewport(root);
+  const [mediaFailed, setMediaFailed] = useState(false);
+  const playable =
+    Boolean(group.filepath) &&
+    PLAYABLE.test(group.filepath ?? "") &&
+    !mediaFailed;
+  const full = isFullEpisode(group);
+  const segments = segmentsOf(group);
+  const title = titleProp ?? episodeTitle(group);
+  const descriptor = groupDescriptor(group);
+  const unavailable = Boolean(group.unavailable);
+  const outside = !unavailable && !loading && !error && !candidate;
+  const mismatch = Boolean(candidate && !sameSelection(group, candidate));
+  const status = unavailable
+    ? "unavailable"
+    : outside
+      ? "not in current results"
+      : mismatch
+        ? "current matches differ"
+        : null;
+
   return (
     <article
+      ref={root}
       className={styles.card}
-      style={{
-        border: `1px solid ${cssVar.color.border.active}`,
-        background: cssVar.color.bg.background,
-      }}
+      data-unavailable={unavailable || undefined}
+      data-outside={outside || undefined}
+      aria-label={`${title}, ${descriptor}${status ? `, ${status}` : ""}`}
     >
-      <button
-        className={styles.preview}
-        aria-label={`Open episode ${group.episodeId}`}
-        disabled={group.unavailable}
-        onClick={() => open(group)}
-      >
-        {group.filepath && (
-          <video
-            src={fos.getSampleSrc(group.filepath)}
-            muted
-            preload="metadata"
-            onLoadedMetadata={(event) => {
-              event.currentTarget.currentTime = group.previewStart ?? 0;
-            }}
-          />
-        )}
-        <span
-          style={{
-            background: cssVar.color.bg.card[1],
-            color: cssVar.color.text.fg,
-          }}
+      <div className={styles.preview}>
+        <button
+          type="button"
+          className={styles.open}
+          aria-label={unavailable ? `${title} is unavailable` : `Open ${title}`}
+          disabled={unavailable}
+          onClick={() => void open(group)}
         >
-          {full
-            ? "Full episode"
-            : `${group.members.length} segment${group.members.length === 1 ? "" : "s"}`}
+          {unavailable ? (
+            <span className={styles.placeholder}>
+              <FolderOffIcon size={Size.Lg} color={TextColor.Muted} />
+            </span>
+          ) : near && playable && group.filepath ? (
+            <video
+              className={styles.media}
+              src={fos.getSampleSrc(group.filepath)}
+              muted
+              playsInline
+              preload="metadata"
+              onError={() => setMediaFailed(true)}
+              onLoadedMetadata={(event) => {
+                event.currentTarget.currentTime = group.previewStart ?? 0;
+              }}
+            />
+          ) : (
+            <span className={styles.placeholder}>
+              <PlayArrowIcon size={Size.Lg} color={TextColor.Muted} />
+            </span>
+          )}
+        </button>
+        <span className={styles.kind}>
+          <Text variant={TextVariant.Label} color={TextColor.Fg}>
+            {descriptor}
+          </Text>
         </span>
-      </button>
-      <div className={styles.cardControls}>
-        {group.unavailable ? (
-          <Text variant={TextVariant.Sm}>Unavailable</Text>
-        ) : !loading && !error && !candidate ? (
-          <Text variant={TextVariant.Sm}>Not in current results</Text>
-        ) : null}
-        {mismatch && (
-          <Dropdown
-            anchor={DropdownAnchor.TopStart}
-            trigger={
-              <DropdownTrigger size={Size.Xs}>
-                Different matches
-              </DropdownTrigger>
-            }
-          >
-            <MenuSectionTitle>
-              {`Selected: ${full ? "Full episode" : rangeSummary(group)}`}
-            </MenuSectionTitle>
-            <MenuSectionTitle>
-              {`Current: ${
-                candidate.members[0]?.kind === "episode"
-                  ? "Full episode"
-                  : rangeSummary(candidate)
-              }`}
-            </MenuSectionTitle>
-            <MenuTextItem onClick={() => capture(candidate)}>
-              Replace selection
-            </MenuTextItem>
-            <MenuTextItem
-              disabled={full || candidate.members[0]?.kind === "episode"}
-              title={
-                full
-                  ? "Already covered by full episode"
-                  : candidate.members[0]?.kind === "episode"
-                    ? "Replace to select the full episode"
-                    : undefined
-              }
-              onClick={() => capture(candidate, "add")}
-            >
-              Add matching segments
-            </MenuTextItem>
-          </Dropdown>
-        )}
         <Button
+          variant={Variant.Icon}
           size={Size.Xs}
-          variant={Variant.Borderless}
-          aria-label={`Remove episode ${group.episodeId} from selection`}
+          className={styles.remove}
+          aria-label={`Remove ${title} from selection`}
+          leadingIcon={CloseIcon}
           onClick={() => remove(group.episodeId)}
-        >
-          Remove
-        </Button>
+        />
+        {(unavailable || outside || mismatch) && (
+          <div className={styles.flags}>
+            {mismatch && candidate && (
+              <MismatchPopover
+                group={group}
+                candidate={candidate}
+                capture={capture}
+              />
+            )}
+            {unavailable && (
+              <Pill
+                size={Size.Xs}
+                icon={WarningAmberIcon}
+                backgroundColor={SemanticColor.Warning}
+                color={TextColor.Fg}
+              >
+                Unavailable
+              </Pill>
+            )}
+            {outside && (
+              <Pill
+                size={Size.Xs}
+                icon={VisibilityOffIcon}
+                backgroundColor={BackgroundColor.CardElevated}
+                color={TextColor.Secondary}
+              >
+                Not in results
+              </Pill>
+            )}
+          </div>
+        )}
+      </div>
+      <div className={styles.meta}>
+        <Text variant={TextVariant.Sm} className={styles.title} title={title}>
+          {title}
+        </Text>
+        <div className={styles.metaRow}>
+          {full ? (
+            <Text
+              variant={TextVariant.Xs}
+              color={TextColor.Secondary}
+              className={styles.ellipsis}
+              style={{ flex: 1 }}
+            >
+              Whole episode
+            </Text>
+          ) : (
+            <div className={styles.ranges}>
+              <RangeTrack members={segments} />
+              <Text
+                variant={TextVariant.Xs}
+                color={TextColor.Secondary}
+                className={styles.ellipsis}
+                title={listRanges(segments).join("\n")}
+              >
+                {formatRanges(segments, 2)}
+              </Text>
+            </div>
+          )}
+        </div>
       </div>
     </article>
   );
