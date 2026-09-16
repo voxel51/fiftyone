@@ -36,6 +36,7 @@ export { default as useLookerStore } from "./useLookerStore";
 export { default as useMutation } from "./useMutation";
 export { default as useNotification } from "./useNotification";
 export * from "./useOnSelectLabel";
+export { useToggleInstanceLabelsAcrossFrames } from "./useOnShiftClickLabel";
 export { default as usePanel } from "./usePanel";
 export { default as useQueryPerformance } from "./useQueryPerformance";
 export { default as useRefresh } from "./useRefresh";

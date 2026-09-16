@@ -112,19 +112,21 @@ export class SelectionManager {
     this.selectedOverlays.add(id);
     overlay.setSelected(true);
 
+    const isShiftPressed = event?.shiftKey || false;
+
     this.eventBus.dispatch("lighter:overlay-select", {
       id,
       // point not relevant yet
       point: { x: 0, y: 0 },
       ignoreSideEffects,
-      isShiftPressed: event?.shiftKey || false,
+      isShiftPressed,
     });
 
     // Carries the flag the same way `deselect` does. A programmatic select —
     // the "Manage selected" menu applying its choice to the scene — is an echo
     // of state its caller has already settled, so a listener that mirrors this
     // event somewhere else must be able to tell it from a click.
-    this.emitSelectionChanged([id], [], ignoreSideEffects);
+    this.emitSelectionChanged([id], [], ignoreSideEffects, isShiftPressed);
   }
 
   /**
@@ -133,7 +135,7 @@ export class SelectionManager {
    * @param options - Optional selection options.
    */
   deselect(id: string, options: SelectionOptions = {}): void {
-    const { ignoreSideEffects = false } = options;
+    const { event, ignoreSideEffects = false } = options;
     const overlay = this.selectableOverlays.get(id);
     if (!overlay) return;
 
@@ -143,12 +145,15 @@ export class SelectionManager {
     this.selectedOverlays.delete(id);
     overlay.setSelected(false);
 
+    const isShiftPressed = event?.shiftKey || false;
+
     this.eventBus.dispatch("lighter:overlay-deselect", {
       id,
       ignoreSideEffects,
+      isShiftPressed,
     });
 
-    this.emitSelectionChanged([], [id], ignoreSideEffects);
+    this.emitSelectionChanged([], [id], ignoreSideEffects, isShiftPressed);
   }
 
   /**
@@ -230,6 +235,7 @@ export class SelectionManager {
     selectedIds: string[],
     deselectedIds: string[],
     ignoreSideEffects = false,
+    isShiftPressed = false,
   ): void {
     if (selectedIds.length === 0 && deselectedIds.length === 0) return;
 
@@ -237,6 +243,7 @@ export class SelectionManager {
       selectedIds,
       deselectedIds,
       ignoreSideEffects,
+      isShiftPressed,
     });
   }
 
