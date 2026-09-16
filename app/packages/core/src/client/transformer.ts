@@ -171,6 +171,28 @@ const toNumberDouble = (
 };
 
 /**
+ * Field context for a json-patch delta value: the last non-index segment of
+ * the delta's path names the field the value lands in, which the encoders in
+ * {@link toExtendedJson} gate on. A delta targeting a sub-path (e.g.
+ * `.../points/3`) carries a bare value with no surrounding key to recurse
+ * through, so the context must come from the path.
+ */
+export const patchPathFieldContext = (path?: string): string | undefined => {
+  if (!path) {
+    return undefined;
+  }
+
+  const segments = path.split("/").filter(Boolean);
+  for (let i = segments.length - 1; i >= 0; i--) {
+    if (!/^\d+$/.test(segments[i]) && segments[i] !== "-") {
+      return segments[i];
+    }
+  }
+
+  return undefined;
+};
+
+/**
  * Convert a value to MongoDB Extended JSON format.
  *
  * This is the inverse of the {@link ObjectIdTransformer}: it converts plain
@@ -191,6 +213,15 @@ export const toExtendedJson = (data: unknown, fieldName?: string): unknown => {
     return { $oid: data };
   }
 
+  // A non-finite NUMBER is unambiguous — encode it wherever it appears, or
+  // JSON.stringify silently turns it into null (a delta targeting a sub-path
+  // like `.../points/3` carries a bare array with no field key to gate on).
+  if (typeof data === "number" && !Number.isFinite(data)) {
+    return { $numberDouble: String(data) };
+  }
+
+  // "nan"-style STRINGS stay gated to the non-finite fields so a string
+  // field that happens to contain "nan" is never touched
   if (fieldName && NONFINITE_FIELDS.has(fieldName)) {
     const numberDouble = toNumberDouble(data);
     if (numberDouble) {

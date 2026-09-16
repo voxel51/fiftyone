@@ -11,7 +11,7 @@ import {
   NotFoundError,
 } from "@fiftyone/utilities";
 import * as jsonpatch from "fast-json-patch";
-import { toExtendedJson } from "./transformer";
+import { patchPathFieldContext, toExtendedJson } from "./transformer";
 import { encodeURIPath, parseETag } from "./util";
 
 /**
@@ -179,7 +179,15 @@ export const patchSample = async (
     : encodeURIPath(pathParts);
 
   const deltas = request.deltas.map((delta) =>
-    "value" in delta ? { ...delta, value: toExtendedJson(delta.value) } : delta,
+    "value" in delta
+      ? {
+          ...delta,
+          // Seed the field context from the patch path: a delta targeting a
+          // sub-path (`.../points/3`) carries a bare value whose non-finite
+          // entries have no surrounding key to gate the encoding on
+          value: toExtendedJson(delta.value, patchPathFieldContext(delta.path)),
+        }
+      : delta,
   );
 
   const response = await doFetch<JSONDeltas, Sample>({

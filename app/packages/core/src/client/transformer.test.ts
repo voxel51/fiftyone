@@ -3,7 +3,11 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { toExtendedJson, transformSampleData } from "./transformer";
+import {
+  patchPathFieldContext,
+  toExtendedJson,
+  transformSampleData,
+} from "./transformer";
 
 describe("transformSampleData", () => {
   it("unwraps a $binary envelope to its base64 string", () => {
@@ -157,5 +161,44 @@ describe("toExtendedJson", () => {
       _id: { $oid: "0123456789abcdef01234567" },
       points: [[{ $numberDouble: "NaN" }, { $numberDouble: "NaN" }]],
     });
+  });
+
+  it("converts bare non-finite numbers with no field context", () => {
+    // A delta targeting a sub-path (`.../points/3`) carries a bare array;
+    // without conversion JSON.stringify would null the NaNs
+    expect(toExtendedJson([NaN, NaN])).toEqual([
+      { $numberDouble: "NaN" },
+      { $numberDouble: "NaN" },
+    ]);
+    expect(toExtendedJson(NaN)).toEqual({ $numberDouble: "NaN" });
+  });
+
+  it("converts 'nan' strings under a path-seeded field context", () => {
+    expect(toExtendedJson(["nan", "nan"], "points")).toEqual([
+      { $numberDouble: "NaN" },
+      { $numberDouble: "NaN" },
+    ]);
+  });
+});
+
+describe("patchPathFieldContext", () => {
+  it("names the field a sub-path delta lands in", () => {
+    expect(patchPathFieldContext("/frames/12/face5/keypoints/0/points/3")).toBe(
+      "points",
+    );
+    expect(patchPathFieldContext("/pose/keypoints/0/points")).toBe("points");
+    expect(patchPathFieldContext("/pose/keypoints/0/confidence/2")).toBe(
+      "confidence",
+    );
+    expect(patchPathFieldContext("/ground_truth/detections/-")).toBe(
+      "detections",
+    );
+    expect(patchPathFieldContext("/label")).toBe("label");
+  });
+
+  it("handles empty and index-only paths", () => {
+    expect(patchPathFieldContext(undefined)).toBeUndefined();
+    expect(patchPathFieldContext("")).toBeUndefined();
+    expect(patchPathFieldContext("/0/1")).toBeUndefined();
   });
 });

@@ -25,6 +25,11 @@ const isPlaced = (point: readonly unknown[] | undefined): boolean =>
   typeof point[1] === "number" &&
   Number.isFinite(point[1]);
 
+// Unset per-point entries are NaN in the label (and "nan" strings on reads);
+// the inspector shows them as empty
+const toFiniteOrNull = (value: unknown): number | null =>
+  typeof value === "number" && Number.isFinite(value) ? value : null;
+
 const NodeList = styled.div`
   max-height: 16rem;
   overflow-y: auto;
@@ -210,15 +215,18 @@ export const KeypointDetails = () => {
   const handleSchemaChange = useHandleSchemaChange(isReadOnly);
 
   // Core per-point attribute: `confidence` is a float list parallel to
-  // `points` (absent entries are null; the NaN wire encoding covers it)
+  // `points`. Unset entries are NaN, never null — the ODM's
+  // ListField(FloatField) cannot LOAD null elements (the whole document
+  // fails to hydrate server-side), while NaN round-trips through the wire
+  // encoding like point holes do. Reads may deliver NaN as "nan" strings.
   const confidences =
-    (selected?.data as { confidence?: (number | null)[] } | null)?.confidence ??
-    null;
+    (selected?.data as { confidence?: (number | string | null)[] } | null)
+      ?.confidence ?? null;
 
   const setNodeConfidence = useCallback(
     (index: number, value: number | null) => {
       const next = Array.from({ length: nodeCount }, (_, i) =>
-        i === index ? value : (confidences?.[i] ?? null),
+        i === index ? (value ?? NaN) : (confidences?.[i] ?? NaN),
       );
       void handleSchemaChange({ confidence: next });
     },
@@ -392,7 +400,7 @@ export const KeypointDetails = () => {
             nodeLabels?.[selectedNodeIndex] ?? `point ${selectedNodeIndex + 1}`
           }
           placed={isPlaced(currentPoints[selectedNodeIndex])}
-          confidence={confidences?.[selectedNodeIndex] ?? null}
+          confidence={toFiniteOrNull(confidences?.[selectedNodeIndex])}
           readOnly={isReadOnly}
           onCommitConfidence={(value) =>
             setNodeConfidence(selectedNodeIndex, value)
