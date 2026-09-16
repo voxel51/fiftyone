@@ -127,12 +127,7 @@ export const KeypointGuidedStatus = ({
       Place: {nodeName}
     </Text>
     <Separator />
-    <InstructionList
-      instructions={[
-        `${placedCount}/${nodeCount} placed`,
-        "Shift + click to place occluded",
-      ]}
-    />
+    <InstructionList instructions={[`${placedCount}/${nodeCount} placed`]} />
   </Stack>
 );
 

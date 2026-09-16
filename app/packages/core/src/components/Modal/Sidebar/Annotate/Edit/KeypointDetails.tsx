@@ -12,7 +12,6 @@ import {
   Text,
   TextColor,
   TextVariant,
-  Toggle,
 } from "@voxel51/voodo";
 import { useCallback, useEffect, useRef, useState } from "react";
 import styled from "styled-components";
@@ -51,25 +50,20 @@ const NodeRow = styled.div<{ $active: boolean; $selected: boolean }>`
   }
 `;
 
-type NodeStatus = "placed" | "occluded" | "skipped" | "target" | "pending";
+type NodeStatus = "placed" | "skipped" | "target" | "pending";
 
 const STATUS_MARK: Record<NodeStatus, string> = {
   placed: "✓",
-  occluded: "◑",
   skipped: "–",
   target: "▸",
   pending: "○",
 };
 
 /** Statuses rendered in the muted text color. */
-const MUTED_STATUSES: ReadonlySet<NodeStatus> = new Set([
-  "pending",
-  "skipped",
-  "occluded",
-]);
+const MUTED_STATUSES: ReadonlySet<NodeStatus> = new Set(["pending", "skipped"]);
 
 // Fixed-width cell so the node name never shifts when the status mark
-// changes glyph (✓ → ◑ etc. — the glyphs have different natural widths)
+// changes glyph (✓ → ▸ etc. — the glyphs have different natural widths)
 const MarkCell = styled.span`
   display: inline-flex;
   width: 1.25rem;
@@ -98,11 +92,9 @@ const InspectorPanel = styled.div`
 interface NodeInspectorProps {
   name: string;
   placed: boolean;
-  occluded: boolean;
   confidence: number | null;
   readOnly: boolean;
   onCommitConfidence: (value: number | null) => void;
-  onToggleOccluded: (occluded: boolean) => void;
 }
 
 /**
@@ -115,11 +107,9 @@ interface NodeInspectorProps {
 const NodeInspector = ({
   name,
   placed,
-  occluded,
   confidence,
   readOnly,
   onCommitConfidence,
-  onToggleOccluded,
 }: NodeInspectorProps) => {
   const [draft, setDraft] = useState(
     confidence === null ? "" : String(confidence),
@@ -161,20 +151,9 @@ const NodeInspector = ({
         >
           <Text>{name}</Text>
           <Text color={TextColor.Secondary} variant={TextVariant.Sm}>
-            {placed
-              ? occluded
-                ? "placed · occluded"
-                : "placed"
-              : "not placed"}
+            {placed ? "placed" : "not placed"}
           </Text>
         </Stack>
-        <Toggle
-          label="occluded"
-          checked={occluded}
-          disabled={readOnly || !placed}
-          onChange={onToggleOccluded}
-          data-cy="keypoint-occluded-toggle"
-        />
         <FormField
           label="confidence"
           disabled={readOnly || !placed}
@@ -224,7 +203,6 @@ export const KeypointDetails = () => {
     placeNode,
     selectedNodeIndex,
     selectNode,
-    setNodeOccluded,
     isDraft,
   } = useGuidedKeypoints();
 
@@ -236,11 +214,6 @@ export const KeypointDetails = () => {
   const confidences =
     (selected?.data as { confidence?: (number | null)[] } | null)?.confidence ??
     null;
-
-  // Per-point COCO visibility flags (0/1/2), parallel to `points`; optional —
-  // v=1 marks a placed-but-occluded node (dimmed dot, muted row)
-  const visibleFlags =
-    (selected?.data as { visible?: (number | null)[] } | null)?.visible ?? null;
 
   const setNodeConfidence = useCallback(
     (index: number, value: number | null) => {
@@ -305,9 +278,6 @@ export const KeypointDetails = () => {
   const skippedCount = skipped.filter(
     (i) => !isPlaced(currentPoints[i]),
   ).length;
-  const occludedCount = currentPoints.filter(
-    (p, i) => isPlaced(p) && visibleFlags?.[i] === 1,
-  ).length;
 
   return (
     <Stack
@@ -317,7 +287,6 @@ export const KeypointDetails = () => {
     >
       <Text color={TextColor.Secondary} variant={TextVariant.Sm}>
         {placedCount} of {nodeCount} placed
-        {occludedCount > 0 ? ` · ${occludedCount} occluded` : ""}
         {skippedCount > 0 ? ` · ${skippedCount} skipped` : ""}
       </Text>
 
@@ -325,9 +294,7 @@ export const KeypointDetails = () => {
         {Array.from({ length: nodeCount }, (_, i) => {
           const placed = isPlaced(currentPoints[i]);
           const status: NodeStatus = placed
-            ? visibleFlags?.[i] === 1
-              ? "occluded"
-              : "placed"
+            ? "placed"
             : i === targetIndex
               ? "target"
               : skipped.includes(i)
@@ -387,7 +354,7 @@ export const KeypointDetails = () => {
                   </Text>
                 </RowAction>
               )}
-              {(status === "placed" || status === "occluded") && (
+              {status === "placed" && (
                 <RowAction
                   onClick={(e) => {
                     e.stopPropagation();
@@ -425,14 +392,10 @@ export const KeypointDetails = () => {
             nodeLabels?.[selectedNodeIndex] ?? `point ${selectedNodeIndex + 1}`
           }
           placed={isPlaced(currentPoints[selectedNodeIndex])}
-          occluded={visibleFlags?.[selectedNodeIndex] === 1}
           confidence={confidences?.[selectedNodeIndex] ?? null}
           readOnly={isReadOnly}
           onCommitConfidence={(value) =>
             setNodeConfidence(selectedNodeIndex, value)
-          }
-          onToggleOccluded={(occluded) =>
-            setNodeOccluded(selectedNodeIndex, occluded)
           }
         />
       )}

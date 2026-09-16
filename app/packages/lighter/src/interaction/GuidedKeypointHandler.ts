@@ -20,12 +20,8 @@ export type GuidedKeypointCallbacks = {
    * node is resolved (placed or skipped) and clicks should fall through.
    */
   getTargetIndex: () => number | null;
-  /**
-   * Notification that the node at `index` was just placed. `occluded` is
-   * true for a ⇧Click — "the node is here, but not visible" (COCO v=1); the
-   * owner records it in the label's per-point `visible` list.
-   */
-  onPlaced: (index: number, options?: { occluded?: boolean }) => void;
+  /** Notification that the node at `index` was just placed. */
+  onPlaced: (index: number) => void;
   /**
    * When `true`, placements (and their undo/redo) emit no point events and
    * therefore never commit. Creation drafts place silently — the keypoint
@@ -81,7 +77,7 @@ export class GuidedKeypointHandler implements InteractionHandler {
     return false;
   }
 
-  onPointerDown({ worldPoint, event }: OverlayEvent): boolean {
+  onPointerDown({ worldPoint }: OverlayEvent): boolean {
     const rp = this.overlay.absolutePointToRelative(worldPoint);
 
     // Reject placements outside the sample: relative coordinates run [0, 1]
@@ -121,7 +117,7 @@ export class GuidedKeypointHandler implements InteractionHandler {
     CommandContextManager.instance().getActiveContext().pushUndoable(command);
     this.pushedCommandIds.add(command.id);
 
-    this.callbacks.onPlaced(index, { occluded: !!event?.shiftKey });
+    this.callbacks.onPlaced(index);
     return true;
   }
 
