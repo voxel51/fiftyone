@@ -5,6 +5,8 @@ import CallMerge from "@mui/icons-material/CallMerge";
 import Timeline from "@mui/icons-material/Timeline";
 import {
   Align,
+  Icon,
+  IconName,
   Orientation,
   Size,
   Spacing,
@@ -84,6 +86,77 @@ export const PolylineProgressStatus = ({
     </Stack>
   );
 };
+
+/** Dot-separated instruction fragments (cf. {@link PolylineProgressStatus}). */
+const InstructionList = ({
+  instructions,
+}: {
+  instructions: string[];
+}): ReactElement => (
+  <Stack orientation={Orientation.Row} spacing={Spacing.Md}>
+    {instructions.map((text, idx) => (
+      <Stack
+        key={text}
+        orientation={Orientation.Row}
+        spacing={Spacing.Md}
+        align={Align.Center}
+      >
+        <Text color={TextColor.Secondary}>{text}</Text>
+        {idx < instructions.length - 1 && <Separator />}
+      </Stack>
+    ))}
+  </Stack>
+);
+
+export const KeypointGuidedStatus = ({
+  nodeName,
+  placedCount,
+  nodeCount,
+}: {
+  nodeName: string;
+  placedCount: number;
+  nodeCount: number;
+}): ReactElement => (
+  <Stack
+    orientation={Orientation.Row}
+    align={Align.Center}
+    spacing={Spacing.Md}
+  >
+    <Icon name={IconName.Embeddings} size={Size.Sm} />
+    <Text variant={TextVariant.Md} color={TextColor.Fg}>
+      Place: {nodeName}
+    </Text>
+    <Separator />
+    <InstructionList
+      instructions={[
+        `${placedCount}/${nodeCount} placed`,
+        "Shift + click to place occluded",
+        "S to skip",
+      ]}
+    />
+  </Stack>
+);
+
+export const KeypointResolvedStatus = (): ReactElement => (
+  <InstructionList
+    instructions={[
+      "All nodes resolved",
+      "Drag a point to adjust",
+      "Click a point to edit its attributes",
+      "V to toggle occluded",
+    ]}
+  />
+);
+
+export const KeypointFreeformStatus = (): ReactElement => (
+  <InstructionList
+    instructions={[
+      "Click to add a point",
+      "Double-click to finish",
+      "Alt + click to delete a point",
+    ]}
+  />
+);
 
 export const MergeInitialStatus = (): ReactElement => (
   <StatusItem

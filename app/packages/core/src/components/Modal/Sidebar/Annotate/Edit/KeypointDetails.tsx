@@ -256,6 +256,70 @@ export const KeypointDetails = () => {
   // A skeleton is at most a few dozen nodes; no memoization needed
   const placedCount = currentPoints.filter((p) => isPlaced(p)).length;
 
+  // Keyboard shortcuts while a keypoint is being edited (this panel mounts
+  // exactly as long as one is selected): S skips the guided target; V toggles
+  // occluded on the sub-selected placed node. Focused inputs swallow keys
+  // first — same rule as the canvas InteractionManager. State rides a ref so
+  // the document listener registers once per mount.
+  const shortcutStateRef = useRef({
+    targetIndex,
+    selectedNodeIndex,
+    currentPoints,
+    visibleFlags,
+    isReadOnly,
+    skip,
+    setNodeOccluded,
+  });
+  shortcutStateRef.current = {
+    targetIndex,
+    selectedNodeIndex,
+    currentPoints,
+    visibleFlags,
+    isReadOnly,
+    skip,
+    setNodeOccluded,
+  };
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) {
+        return;
+      }
+      const el = document.activeElement as HTMLElement | null;
+      if (
+        el &&
+        (el.tagName === "INPUT" ||
+          el.tagName === "TEXTAREA" ||
+          el.contentEditable === "true")
+      ) {
+        return;
+      }
+
+      const state = shortcutStateRef.current;
+
+      if (event.key === "s" && state.targetIndex !== null) {
+        state.skip();
+        event.preventDefault();
+        return;
+      }
+
+      if (
+        event.key === "v" &&
+        !state.isReadOnly &&
+        state.selectedNodeIndex !== null &&
+        isPlaced(state.currentPoints[state.selectedNodeIndex])
+      ) {
+        state.setNodeOccluded(
+          state.selectedNodeIndex,
+          state.visibleFlags?.[state.selectedNodeIndex] !== 1,
+        );
+        event.preventDefault();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   if (!nodeCount) {
     return (
       <Stack
