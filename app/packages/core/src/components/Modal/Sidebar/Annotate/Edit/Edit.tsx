@@ -1,7 +1,8 @@
 import { DetectionLabel } from "@fiftyone/looker";
 import { useClearModal } from "@fiftyone/state";
 import { DETECTION, KEYPOINT, POLYLINE } from "@fiftyone/utilities";
-import { useEffect } from "react";
+import { Text, TextColor, TextVariant } from "@voxel51/voodo";
+import { ReactNode, useEffect } from "react";
 import styled from "styled-components";
 import { isDetection3d } from "../../../../../utils/labels";
 import AnnotationSchema from "./AnnotationSchema";
@@ -41,6 +42,48 @@ const Content = styled.div`
   flex-direction: column;
   row-gap: 0.5rem;
 `;
+
+const SectionHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+`;
+
+const SectionTitle = styled(Text)`
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+`;
+
+const SectionRule = styled.div`
+  flex: 1;
+  border-top: 1px solid ${({ theme }) => theme.neutral.softBorder};
+`;
+
+/**
+ * Captioned attribute-scope group. Keypoints carry attributes at two scopes —
+ * the whole label (e.g. `label`) and the individual point (e.g. per-point
+ * `confidence`) — and their form fields look alike, so each scope's block is
+ * set off under its own rule-off caption.
+ */
+const ScopeSection = ({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) => (
+  <section>
+    <SectionHeader>
+      <SectionTitle variant={TextVariant.Sm} color={TextColor.Secondary}>
+        {title}
+      </SectionTitle>
+      <SectionRule />
+    </SectionHeader>
+    {children}
+  </section>
+);
 
 export default function Edit() {
   const { selected } = useAnnotationContext();
@@ -111,11 +154,22 @@ export default function Edit() {
           <Position3d readOnly={isReadOnly} />
         )}
         {type === POLYLINE && <PolylineDetails />}
-        {type === KEYPOINT && <KeypointDetails />}
+        {type === KEYPOINT && (
+          <ScopeSection title="Points">
+            <KeypointDetails />
+          </ScopeSection>
+        )}
         {isTemporalDetection && (
           <TemporalDetectionDetails readOnly={isReadOnly} />
         )}
-        {field && <AnnotationSchema readOnly={isReadOnly} />}
+        {field &&
+          (type === KEYPOINT ? (
+            <ScopeSection title="Label attributes">
+              <AnnotationSchema readOnly={isReadOnly} />
+            </ScopeSection>
+          ) : (
+            <AnnotationSchema readOnly={isReadOnly} />
+          ))}
         {isMaskDetection && <MaskPreview />}
       </Content>
     </ContentContainer>
