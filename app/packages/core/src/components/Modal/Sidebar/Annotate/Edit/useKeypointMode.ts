@@ -774,6 +774,7 @@ export const useKeypointModeInstaller = (): void => {
 
         const handler = new GuidedKeypointHandler(targetOverlay, {
           getTargetIndex: getTarget,
+          getNodeLabel: (index) => skeleton?.labels?.[index] ?? null,
           onPlaced: () => {
             // A placement satisfies any Place force (the forced node was the
             // target, or it got placed some other way — either way, resume

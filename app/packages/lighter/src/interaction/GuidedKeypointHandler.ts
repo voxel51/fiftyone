@@ -22,6 +22,12 @@ export type GuidedKeypointCallbacks = {
   getTargetIndex: () => number | null;
   /** Notification that the node at `index` was just placed. */
   onPlaced: (index: number) => void;
+  /**
+   * Display name for a skeleton node, drawn as a cursor tag while aiming so
+   * the user knows which node the next click places. Optional — skeletons
+   * without node labels tag nothing.
+   */
+  getNodeLabel?: (index: number) => string | null;
 };
 
 /**
@@ -114,8 +120,14 @@ export class GuidedKeypointHandler implements InteractionHandler {
   onMove({ worldPoint }: OverlayEvent): boolean {
     // Carry the target node so the preview draws the edges this placement
     // will actually create (from placed skeleton neighbors), not a line from
-    // whatever point happened to land last.
-    this.overlay.setPreviewPoint(worldPoint, this.callbacks.getTargetIndex());
+    // whatever point happened to land last — plus the node's name as a
+    // cursor tag.
+    const target = this.callbacks.getTargetIndex();
+    this.overlay.setPreviewPoint(
+      worldPoint,
+      target,
+      target === null ? null : (this.callbacks.getNodeLabel?.(target) ?? null),
+    );
     return true;
   }
 

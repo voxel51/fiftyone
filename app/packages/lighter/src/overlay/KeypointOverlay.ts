@@ -199,6 +199,9 @@ export class KeypointOverlay
   // null for free-form previews. See setPreviewPoint.
   protected previewTargetIndex: number | null = null;
 
+  // Target node's name, drawn as a tag by the cursor. See setPreviewPoint.
+  protected previewLabel: string | null = null;
+
   // Registered render effects. Invoked once per frame, between point
   // bucket-collection and bucket-draw, so contributions appear behind the
   // solid points. Owners drive frame invalidation and unregister when done.
@@ -463,6 +466,7 @@ export class KeypointOverlay
     this.renderEdges(renderer, ctx);
     this.renderPreviewLine(renderer, ctx);
     this.renderPoints(renderer, ctx);
+    this.renderPreviewLabel(renderer, ctx);
     this.renderLabelText(renderer, ctx);
 
     this.emitLoaded();
@@ -716,6 +720,32 @@ export class KeypointOverlay
         this.containerId,
       );
     }
+  }
+
+  /**
+   * Cursor tag during guided placement: the target node's name rides just
+   * below-right of the preview point, so the user knows which node the next
+   * click places without looking away at the checklist. Screen-constant
+   * offset (world units shrink as the user zooms in).
+   */
+  protected renderPreviewLabel(
+    renderer: Renderer2D,
+    ctx: KeypointRenderContext,
+  ): void {
+    if (!this.previewPoint || !this.previewLabel?.length) return;
+
+    const scale = this.renderer?.getScale() ?? 1;
+    const gap = KEYPOINT_SELECTED_RADIUS / scale;
+    renderer.drawText(
+      this.previewLabel,
+      { x: this.previewPoint.x + gap, y: this.previewPoint.y + gap },
+      {
+        fontColor: "#ffffff",
+        backgroundColor: ctx.style.fillStyle || ctx.style.strokeStyle || "#000",
+        anchor: { vertical: "top", horizontal: "left" },
+      },
+      this.containerId,
+    );
   }
 
   protected renderLabelText(
@@ -1197,13 +1227,18 @@ export class KeypointOverlay
    *   skeleton neighbors — the edges the placement will actually create — and
    *   from nothing when no neighbor is placed yet. Without it (free-form),
    *   one dashed line anchors to the last placed point.
+   * @param label - Name of the target node, drawn as a tag by the cursor so
+   *   the user knows which node the next click places without looking away
+   *   at the checklist.
    */
   setPreviewPoint(
     worldPoint: Point | null,
     targetIndex: number | null = null,
+    label: string | null = null,
   ): void {
     this.previewPoint = worldPoint;
     this.previewTargetIndex = worldPoint === null ? null : targetIndex;
+    this.previewLabel = worldPoint === null ? null : label;
     this.markDirty();
   }
 
@@ -1287,6 +1322,7 @@ export class KeypointOverlay
     this.hoveredPointIndex = null;
     this.dragPointIndex = null;
     this.previewPoint = null;
+    this.previewLabel = null;
     this.markDirty();
   }
 
@@ -1310,6 +1346,7 @@ export class KeypointOverlay
     this.selectedPointIndex = null;
     this.dragPointIndex = null;
     this.previewPoint = null;
+    this.previewLabel = null;
     this.markDirty();
   }
 
