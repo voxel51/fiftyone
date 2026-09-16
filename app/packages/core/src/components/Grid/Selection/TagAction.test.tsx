@@ -64,6 +64,9 @@ function context(): GridSelectionActionContext {
     loading: false,
     error: null,
     boundary: {},
+    unit: { one: "episode", many: "episodes", temporal: true },
+    conversion: null,
+    view: [],
     resolve: vi.fn(async () => members),
   };
 }
@@ -110,6 +113,7 @@ it("retains frozen membership through scope changes, errors, and retries", async
     value.groups[0].members,
     { tag: "review", add: true },
     "members",
+    [],
   ]);
   expect(value.resolve).toHaveBeenCalledOnce();
   expect(mocks.refresh).toHaveBeenCalledOnce();
@@ -131,6 +135,7 @@ it("uses complete result membership and sends explicit removal intent", async ()
     value.groups[0].members,
     { tag: "review", add: false },
     "members",
+    [],
   );
   rendered.unmount();
 });
@@ -149,6 +154,7 @@ it("offers to create an unknown tag and applies it on Enter", async () => {
     expect.anything(),
     { tag: "night", add: true },
     "members",
+    [],
   );
   fireEvent.click(screen.getByRole("button", { name: "Tag another" }));
   expect(screen.getByLabelText("Find or create a tag")).toBeTruthy();
@@ -271,6 +277,7 @@ it("tags labels only for whole episodes and handles an empty label scope", async
     full,
     { tag: "review", add: true },
     "labels",
+    [],
   );
   rendered.unmount();
 });

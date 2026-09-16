@@ -4,8 +4,13 @@ import {
   normalizeSelectionMembers,
   sameSelection,
   updateEpisodeSelection,
+  EPISODE_UNIT,
+  SAMPLE_UNIT,
+  isPersistentDomain,
+  selectionDomainId,
   selectionScopeLabel,
   selectionUnit,
+  viewConversion,
 } from "./model";
 import type { EpisodeSelection, SelectionMember } from "./types";
 
@@ -104,10 +109,15 @@ describe("episode selection", () => {
 
 describe("unit vocabulary", () => {
   it("speaks in samples for non-temporal media and episodes otherwise", () => {
-    expect(selectionUnit("image")).toBe("sample");
-    expect(selectionUnit("3d")).toBe("sample");
-    expect(selectionUnit("video")).toBe("episode");
-    expect(selectionUnit("multimodal")).toBe("episode");
+    expect(selectionUnit("image")).toEqual(SAMPLE_UNIT);
+    expect(selectionUnit("3d")).toEqual(SAMPLE_UNIT);
+    expect(selectionUnit("video")).toEqual(EPISODE_UNIT);
+    expect(selectionUnit("multimodal")).toEqual(EPISODE_UNIT);
+    expect(selectionUnit("image", "patches").many).toBe("patches");
+    expect(selectionUnit("video", "clips")).toMatchObject({
+      one: "clip",
+      temporal: false,
+    });
     const counts = {
       episodes: 3,
       fullEpisodes: 2,
@@ -118,14 +128,34 @@ describe("unit vocabulary", () => {
     expect(selectionScopeLabel(counts)).toBe(
       "2 full episodes · 4 segments across 1 episode",
     );
-    expect(selectionScopeLabel({ ...counts, segments: 0 }, "sample")).toBe(
+    expect(selectionScopeLabel({ ...counts, segments: 0 }, SAMPLE_UNIT)).toBe(
       "2 samples",
     );
     expect(
       selectionScopeLabel(
         { ...counts, fullEpisodes: 0, segments: 0 },
-        "sample",
+        SAMPLE_UNIT,
       ),
     ).toBe("0 samples");
+  });
+});
+
+describe("selection domains", () => {
+  it("keys converted views by their exact conversion and keeps them in memory", () => {
+    const patches = {
+      _cls: "fiftyone.core.stages.ToPatches",
+      kwargs: [["field", "ground_truth"]],
+    };
+    const conversion = viewConversion([
+      { _cls: "fiftyone.core.stages.Limit", kwargs: [["limit", 5]] },
+      patches,
+    ]);
+    expect(conversion?.kind).toBe("patches");
+    expect(viewConversion([{ _cls: "fiftyone.core.stages.Limit" }])).toBeNull();
+    const domain = selectionDomainId("dataset", conversion?.key ?? null);
+    expect(domain).not.toBe("dataset");
+    expect(domain).toContain("ground_truth");
+    expect(isPersistentDomain(domain)).toBe(false);
+    expect(isPersistentDomain(selectionDomainId("dataset", null))).toBe(true);
   });
 });

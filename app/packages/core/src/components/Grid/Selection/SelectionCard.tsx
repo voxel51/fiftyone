@@ -1,8 +1,8 @@
 import * as fos from "@fiftyone/state";
 import {
   sameSelection,
-  selectionUnit,
   type EpisodeSelection,
+  type SelectionUnit,
   type useGridSelection,
 } from "@fiftyone/state/src/selection";
 import {
@@ -44,8 +44,10 @@ interface Props extends Pick<
 > {
   group: EpisodeSelection;
   candidate?: EpisodeSelection;
-  /** Dataset media type; decides the preview element and the vocabulary. */
+  /** Dataset media type; decides the preview element. */
   mediaType: string;
+  /** Vocabulary for the parent unit in the current view. */
+  unit: SelectionUnit;
   /** Display name; defaults to the media file name. */
   title?: string;
   open: (group: EpisodeSelection) => Promise<void>;
@@ -94,6 +96,7 @@ export default function SelectionCard({
   group,
   candidate,
   mediaType,
+  unit,
   title: titleProp,
   open,
   loading,
@@ -104,8 +107,7 @@ export default function SelectionCard({
   const root = useRef<HTMLElement>(null);
   const near = useNearViewport(root);
   const [mediaFailed, setMediaFailed] = useState(false);
-  const unit = selectionUnit(mediaType);
-  const temporal = unit === "episode";
+  const temporal = unit.temporal;
   const kind = mediaFailed ? "none" : previewKind(mediaType, group.filepath);
   const full = isFullEpisode(group);
   const segments = segmentsOf(group);

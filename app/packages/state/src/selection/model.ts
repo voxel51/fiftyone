@@ -145,13 +145,83 @@ export function countSelection(
   };
 }
 
-/** Parent unit vocabulary: temporal media has episodes, other media has samples. */
-export type SelectionUnit = "episode" | "sample";
+/** Vocabulary for the parent unit of a selection scope. */
+export interface SelectionUnit {
+  readonly one: string;
+  readonly many: string;
+  /** Whether segments within the parent are meaningful. */
+  readonly temporal: boolean;
+}
 
-export function selectionUnit(mediaType: string): SelectionUnit {
+export const EPISODE_UNIT: SelectionUnit = {
+  one: "episode",
+  many: "episodes",
+  temporal: true,
+};
+export const SAMPLE_UNIT: SelectionUnit = {
+  one: "sample",
+  many: "samples",
+  temporal: false,
+};
+
+/** Which converted view a stage list produces. */
+export type ViewConversion = "patches" | "frames" | "clips";
+
+const CONVERTED_UNITS: Record<ViewConversion, SelectionUnit> = {
+  patches: { one: "patch", many: "patches", temporal: false },
+  frames: { one: "frame", many: "frames", temporal: false },
+  clips: { one: "clip", many: "clips", temporal: false },
+};
+
+const CONVERTING_STAGES: Record<string, ViewConversion> = {
+  "fiftyone.core.stages.ToPatches": "patches",
+  "fiftyone.core.stages.ToEvaluationPatches": "patches",
+  "fiftyone.core.stages.ToFrames": "frames",
+  "fiftyone.core.stages.ToClips": "clips",
+  "fiftyone.core.stages.ToTrajectories": "clips",
+};
+
+/**
+ * The last converting stage in a view, with a key naming its exact
+ * configuration, or null for a samples view.
+ */
+export function viewConversion(
+  stages: readonly unknown[],
+): { kind: ViewConversion; key: string } | null {
+  let found: { kind: ViewConversion; key: string } | null = null;
+  for (const stage of stages) {
+    if (typeof stage !== "object" || stage === null) continue;
+    const { _cls, kwargs } = stage as { _cls?: unknown; kwargs?: unknown };
+    if (typeof _cls !== "string") continue;
+    const kind = CONVERTING_STAGES[_cls];
+    if (kind)
+      found = { kind, key: `${_cls}:${JSON.stringify(kwargs ?? null)}` };
+  }
+  return found;
+}
+
+/** Temporal media speaks in episodes; converted views in their own element. */
+export function selectionUnit(
+  mediaType: string,
+  conversion: ViewConversion | null = null,
+): SelectionUnit {
+  if (conversion) return CONVERTED_UNITS[conversion];
   return mediaType === "video" || mediaType === "multimodal"
-    ? "episode"
-    : "sample";
+    ? EPISODE_UNIT
+    : SAMPLE_UNIT;
+}
+
+/** Captures are isolated per dataset and, in converted views, per conversion. */
+export function selectionDomainId(
+  datasetId: string,
+  conversionKey: string | null,
+) {
+  return conversionKey ? `${datasetId}|${conversionKey}` : datasetId;
+}
+
+/** Converted views regenerate their ids, so only the samples view persists. */
+export function isPersistentDomain(domainId: string) {
+  return !domainId.includes("|");
 }
 
 function count(value: number, unit: string, units = `${unit}s`) {
@@ -161,21 +231,22 @@ function count(value: number, unit: string, units = `${unit}s`) {
 /** Human-readable units shared by the tray and action previews. */
 export function selectionScopeLabel(
   counts: SelectionCounts,
-  unit: SelectionUnit = "episode",
+  unit: SelectionUnit = EPISODE_UNIT,
 ): string {
   const parts = [];
   if (counts.fullEpisodes)
     parts.push(
-      unit === "episode"
+      unit.temporal
         ? count(counts.fullEpisodes, "full episode")
-        : count(counts.fullEpisodes, "sample"),
+        : count(counts.fullEpisodes, unit.one, unit.many),
     );
   if (counts.segments)
     parts.push(
       `${count(counts.segments, "segment")} across ${count(
         counts.segmentEpisodes,
-        unit,
+        unit.one,
+        unit.many,
       )}`,
     );
-  return parts.join(" · ") || (unit === "episode" ? "0 members" : "0 samples");
+  return parts.join(" · ") || (unit.temporal ? "0 members" : `0 ${unit.many}`);
 }

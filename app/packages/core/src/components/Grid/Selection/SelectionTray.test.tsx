@@ -43,7 +43,10 @@ const segmentEpisode: EpisodeSelection = {
 const mocks = vi.hoisted(() => ({
   selection: {
     datasetId: "dataset",
+    domainId: "dataset",
     mediaType: "video",
+    conversion: null,
+    unit: { one: "episode", many: "episodes", temporal: true },
     enabled: true,
     selected: new Map<string, EpisodeSelection>(),
     candidates: new Map<string, EpisodeSelection>(),
@@ -51,7 +54,7 @@ const mocks = vi.hoisted(() => ({
     unavailableGroups: [] as EpisodeSelection[],
     loading: false,
     error: null as string | null,
-    request: {},
+    request: { view: [] },
     capture: vi.fn(),
     remove: vi.fn(),
     clear: vi.fn(),

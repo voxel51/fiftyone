@@ -7,7 +7,6 @@ import * as fos from "@fiftyone/state";
 import {
   countSelection,
   resolveSelection,
-  selectionUnit,
   useGridSelection,
   useGridSelectionBoundary,
   useInvalidateSelectionScope,
@@ -174,7 +173,7 @@ export default function SelectionTray() {
   const strip = useStripResize(root);
   const stripId = useId();
   const menuId = useId();
-  const unit = selectionUnit(selection.mediaType);
+  const { unit } = selection;
 
   const captured = [...selection.selected.values()];
   const explicit = captured.length > 0;
@@ -227,6 +226,9 @@ export default function SelectionTray() {
     loading: !explicit && selection.loading,
     error: !explicit ? selection.error : null,
     boundary,
+    unit,
+    conversion: selection.conversion,
+    view: selection.request.view,
     resolve: async () =>
       explicit
         ? captured.flatMap((group) => group.members)
@@ -308,7 +310,7 @@ export default function SelectionTray() {
             ref={cards}
             role="group"
             className={styles.cards}
-            aria-label={`Selected ${unit}s`}
+            aria-label={`Selected ${unit.many}`}
           >
             {captured.map((group) => (
               <SelectionCard
@@ -316,6 +318,7 @@ export default function SelectionTray() {
                 group={group}
                 candidate={selection.candidates.get(group.episodeId)}
                 mediaType={selection.mediaType}
+                unit={unit}
                 title={titleOf(group)}
                 open={open}
                 loading={selection.loading}
@@ -333,6 +336,7 @@ export default function SelectionTray() {
             datasetId={selection.datasetId}
             mediaType={selection.mediaType}
             unit={unit}
+            conversion={selection.conversion}
             onProviderError={setProviderError}
           />
           <UnavailableReferences
@@ -405,7 +409,9 @@ export default function SelectionTray() {
               variant={Variant.Icon}
               leadingIcon={collapsed ? ChevronTopIcon : ChevronBottomIcon}
               aria-label={
-                collapsed ? `Show selected ${unit}s` : `Hide selected ${unit}s`
+                collapsed
+                  ? `Show selected ${unit.many}`
+                  : `Hide selected ${unit.many}`
               }
               aria-expanded={!collapsed}
               aria-controls={stripId}

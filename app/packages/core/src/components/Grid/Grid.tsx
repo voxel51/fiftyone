@@ -134,7 +134,7 @@ function Grid() {
         <div id={id} className={styles.spotlightGrid} data-cy="fo-grid" />
         <div id={pixels} className={styles.fallingPixels} />
       </div>
-      {selection.enabled && <SelectionTray key={selection.datasetId} />}
+      {selection.enabled && <SelectionTray key={selection.domainId} />}
     </div>
   );
 }

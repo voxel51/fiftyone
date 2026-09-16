@@ -7,9 +7,10 @@ import { useRefresh, useSelectionTagDisabledReason } from "@fiftyone/state";
 import {
   normalizeSelectionMembers,
   selectionTagsRequest,
-  selectionUnit,
   useInvalidateSelectionScope,
   type SelectionMember,
+  type SelectionUnit,
+  type ViewConversion,
 } from "@fiftyone/state/src/selection";
 import {
   AddIcon,
@@ -33,7 +34,7 @@ import {
 } from "@voxel51/voodo";
 import { useState } from "react";
 import ActionEntry from "./ActionEntry";
-import { plural } from "./format";
+import { plural, unitTitlePlural } from "./format";
 import { Notice, ScopePill } from "./Notice";
 import Segmented from "./Segmented";
 import styles from "./SelectionTray.module.css";
@@ -42,9 +43,14 @@ import { trayTheme } from "./theme";
 interface Capture {
   datasetId: string;
   mediaType: string;
+  unit: SelectionUnit;
+  conversion: ViewConversion | null;
+  view: readonly unknown[];
   source: GridSelectionActionContext["source"];
   members: readonly SelectionMember[];
   tags: readonly string[];
+  /** Label count when the scope was read in labels mode, else null. */
+  labels: number | null;
 }
 
 function TagSelection({
@@ -62,13 +68,25 @@ function TagSelection({
     setError(null);
     try {
       const members = normalizeSelectionMembers(await context.resolve());
-      const { tags } = await selectionTagsRequest(context.datasetId, members);
+      // Patches are labels, so their picker opens in labels mode.
+      const labelsOnly = context.conversion === "patches";
+      const { tags, labels } = await selectionTagsRequest(
+        context.datasetId,
+        members,
+        undefined,
+        labelsOnly ? "labels" : "members",
+        context.view,
+      );
       setCapture({
         datasetId: context.datasetId,
         mediaType: context.mediaType,
+        unit: context.unit,
+        conversion: context.conversion,
+        view: context.view,
         source: context.source,
         members,
         tags,
+        labels: labelsOnly ? labels : null,
       });
     } catch (cause) {
       setError(String(cause));
@@ -151,15 +169,18 @@ function TagPicker({
   const invalidate = useInvalidateSelectionScope(capture.datasetId);
   const refresh = useRefresh();
   const [query, setQuery] = useState("");
-  const [target, setTarget] = useState<Target>("members");
+  const labelsOnly = capture.conversion === "patches";
+  const [target, setTarget] = useState<Target>(
+    labelsOnly ? "labels" : "members",
+  );
   const [tags, setTags] = useState(capture.tags);
-  const [labelCount, setLabelCount] = useState<number | null>(null);
+  const [labelCount, setLabelCount] = useState<number | null>(capture.labels);
   const [mode, setMode] = useState<Mode>("add");
   const [done, setDone] = useState<{ tag: string; mode: Mode } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const unit = selectionUnit(capture.mediaType);
-  const parents = unit === "episode" ? "Episodes" : "Samples";
+  const { unit } = capture;
+  const parents = unit.temporal ? "Episodes" : unitTitlePlural(unit);
   const full = capture.members.filter((m) => m.kind === "episode").length;
   const segments = capture.members.length - full;
   const tag = query.trim();
@@ -175,7 +196,10 @@ function TagPicker({
     target === "labels"
       ? plural(labelCount ?? 0, "label")
       : [
-          full && plural(full, unit === "episode" ? "full episode" : "sample"),
+          full &&
+            (unit.temporal
+              ? plural(full, "full episode")
+              : plural(full, unit.one, unit.many)),
           segments && plural(segments, "segment"),
         ]
           .filter(Boolean)
@@ -204,6 +228,7 @@ function TagPicker({
         capture.members,
         undefined,
         "labels",
+        capture.view,
       );
       setTarget("labels");
       setTags(result.tags);
@@ -225,6 +250,7 @@ function TagPicker({
         capture.members,
         { tag, add: mode === "add" },
         target,
+        capture.view,
       );
       setDone({ tag, mode });
       invalidate();
@@ -250,7 +276,13 @@ function TagPicker({
         value={target}
         disabled={busy || Boolean(done)}
         options={[
-          { value: "members", label: membersLabel },
+          {
+            value: "members",
+            label: membersLabel,
+            disabledReason: labelsOnly
+              ? "Patches are labels; tag them as labels"
+              : null,
+          },
           {
             value: "labels",
             label: "Labels",
@@ -263,16 +295,18 @@ function TagPicker({
       />
       <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
         {target === "labels"
-          ? unit === "episode"
-            ? "All labels in these whole episodes"
-            : "All labels in these samples"
+          ? labelsOnly
+            ? "The selected patch labels"
+            : unit.temporal
+              ? "All labels in these whole episodes"
+              : `All labels in these ${unit.many}`
           : segments
             ? full
               ? "Sample tags on episodes; temporal tags on captured ranges and streams"
               : "Temporal tags on the captured ranges and streams"
-            : unit === "episode"
+            : unit.temporal
               ? "Sample tags on the whole episodes"
-              : "Sample tags on each sample"}
+              : `Sample tags on each ${unit.one}`}
       </Text>
       {!done && (
         <>

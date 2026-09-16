@@ -17,6 +17,9 @@ const context: GridSelectionActionContext = {
   loading: false,
   error: null,
   boundary: {},
+  unit: { one: "episode", many: "episodes", temporal: true },
+  conversion: null,
+  view: [],
   groups: [
     { episodeId: "one", members: [{ episodeId: "one", kind: "episode" }] },
   ],

@@ -64,8 +64,8 @@ export default function SelectionSummary({
           content={
             <Text variant={TextVariant.Sm}>
               {explicit
-                ? `Actions apply only to the selected ${unit}s, including any outside the current results.`
-                : `Actions apply to every current result, including ones not loaded in the grid. Select tiles to act on specific ${unit}s.`}
+                ? `Actions apply only to the selected ${unit.many}, including any outside the current results.`
+                : `Actions apply to every current result, including ones not loaded in the grid. Select tiles to act on specific ${unit.many}.`}
             </Text>
           }
         >
@@ -129,7 +129,7 @@ export default function SelectionSummary({
         )}
         {explicit && outside > 0 && (
           <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-            · {plural(outside, unit)} not in current results
+            · {plural(outside, unit.one, unit.many)} not in current results
           </Text>
         )}
         {counts.unavailable > 0 && (
@@ -149,7 +149,7 @@ export default function SelectionSummary({
         {!explicit && cleared && onUndo ? (
           <span className={styles.inlineAlert} role="status">
             <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-              · Cleared {plural(cleared, unit)}
+              · Cleared {plural(cleared, unit.one, unit.many)}
             </Text>
             <Button
               size={Size.Xs}

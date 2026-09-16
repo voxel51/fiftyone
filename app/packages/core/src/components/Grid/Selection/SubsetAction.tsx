@@ -6,11 +6,11 @@ import {
 import {
   normalizeSelectionMembers,
   selectionScopeLabel,
-  selectionUnit,
   subsetRequest,
   useInvalidateSelectionScope,
   type SavedSubset,
   type SelectionMember,
+  type SelectionUnit,
   type SubsetAddResult,
 } from "@fiftyone/state/src/selection";
 import {
@@ -46,6 +46,7 @@ import { useOpenSubset } from "./useSubsetScope";
 interface Capture {
   datasetId: string;
   mediaType: string;
+  unit: SelectionUnit;
   source: GridSelectionActionContext["source"];
   members: readonly SelectionMember[];
 }
@@ -66,6 +67,7 @@ function AddToSubset({
       setCapture({
         datasetId: context.datasetId,
         mediaType: context.mediaType,
+        unit: context.unit,
         source: context.source,
         members,
       });
@@ -232,12 +234,15 @@ function SubsetDialog({
     }
   };
 
-  const unit = selectionUnit(capture.mediaType);
+  const { unit } = capture;
   const full = capture.members.filter((m) => m.kind === "episode").length;
   const segments = capture.members.length - full;
   const scopeText =
     [
-      full && plural(full, unit === "episode" ? "full episode" : "sample"),
+      full &&
+        (unit.temporal
+          ? plural(full, "full episode")
+          : plural(full, unit.one, unit.many)),
       segments && plural(segments, "segment"),
     ]
       .filter(Boolean)
@@ -444,7 +449,7 @@ function SubsetDialog({
                   />
                 )}
                 <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-                  {unit === "episode"
+                  {unit.temporal
                     ? "Existing members stay. A full episode and its saved segments are kept as separate members."
                     : "Existing members stay."}
                 </Text>
@@ -495,5 +500,9 @@ export const addToSubsetAction: GridSelectionAction = {
   supports: (mediaType) => mediaType !== "group",
   scope: "explicit-or-results",
   memberKinds: ["episode", "segment"],
+  unavailable: (context) =>
+    context.conversion
+      ? "Saved subsets are available in the samples view"
+      : null,
   Component: AddToSubset,
 };

@@ -50,6 +50,7 @@ function Card(props: {
       group={props.group}
       candidate={props.candidate}
       mediaType="video"
+      unit={{ one: "episode", many: "episodes", temporal: true }}
       loading={props.loading ?? false}
       error={null}
       {...handlers}

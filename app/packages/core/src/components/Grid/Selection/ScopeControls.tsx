@@ -7,6 +7,7 @@ import {
   type SavedSubset,
   type SegmentConstraint,
   type SelectionUnit,
+  type ViewConversion,
 } from "@fiftyone/state/src/selection";
 import {
   BookmarkIcon,
@@ -26,6 +27,7 @@ import {
   TimelineIcon,
 } from "@voxel51/voodo";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { unitTitlePlural } from "./format";
 import styles from "./SelectionTray.module.css";
 import { useOpenSubset } from "./useSubsetScope";
 
@@ -33,6 +35,8 @@ interface Props {
   datasetId: string;
   mediaType: string;
   unit: SelectionUnit;
+  /** Converted views select their own elements; subsets and sources stay in the samples view. */
+  conversion: ViewConversion | null;
   /** Reports extension provider failures to the tray's summary line. */
   onProviderError: (error: string | null) => void;
 }
@@ -58,6 +62,7 @@ export default function ScopeControls({
   datasetId,
   mediaType,
   unit,
+  conversion,
   onProviderError,
 }: Props) {
   const [boundary, setBoundary] = useGridSelectionBoundary();
@@ -91,6 +96,7 @@ export default function ScopeControls({
   // This effect loads subset names and built-in segment sources for the
   // dataset, and cancels any in-flight extension provider on dataset changes.
   useEffect(() => {
+    if (conversion) return undefined;
     let active = true;
     void loadSubsets();
     getSelectionProviders(datasetId)
@@ -107,7 +113,7 @@ export default function ScopeControls({
       active = false;
       controller.current?.abort();
     };
-  }, [datasetId, refresh, loadSubsets]);
+  }, [datasetId, refresh, loadSubsets, conversion]);
 
   const choose = (provider: SegmentConstraint | undefined) => {
     controller.current?.abort();
@@ -137,7 +143,7 @@ export default function ScopeControls({
 
   const active = subsets.find((subset) => subset.id === boundary.subsetId);
   const { provider } = boundary;
-  const parents = unit === "episode" ? "Whole episodes" : "Samples";
+  const parents = unit.temporal ? "Whole episodes" : unitTitlePlural(unit);
   const wholeLabel =
     boundary.subsetScope === "segments" ? "Saved segments" : parents;
   const extensions = providers.filter((entry) => entry.supports(mediaType));
@@ -148,6 +154,16 @@ export default function ScopeControls({
   const showUnit =
     options !== null &&
     (hasSources || Boolean(provider) || boundary.subsetScope === "segments");
+
+  if (conversion)
+    return (
+      <span className={styles.staticScope}>
+        <GridViewIcon size={Size.Xs} color={TextColor.Secondary} />
+        <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+          {`${unitTitlePlural(unit)} view`}
+        </Text>
+      </span>
+    );
 
   return (
     <>

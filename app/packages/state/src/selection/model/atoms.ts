@@ -1,5 +1,6 @@
 import { atom, type SetStateAction } from "jotai";
 import { atomFamily } from "jotai-family";
+import { isPersistentDomain } from "../model";
 import type { EpisodeSelection, SelectionBoundary } from "../types";
 
 export interface CandidateState {
@@ -60,15 +61,16 @@ function writeCaptures(datasetId: string, value: Captures) {
   }
 }
 
-/** Dataset-isolated captures, mirrored to session storage per tab. */
+/** Domain-isolated captures; the samples view mirrors them to session storage. */
 export const selectionAtom = atomFamily((datasetId: string) => {
-  const base = atom<Captures>(readCaptures(datasetId));
+  const persistent = isPersistentDomain(datasetId);
+  const base = atom<Captures>(persistent ? readCaptures(datasetId) : new Map());
   return atom(
     (get) => get(base),
     (get, set, update: SetStateAction<Captures>) => {
       const next = typeof update === "function" ? update(get(base)) : update;
       set(base, next);
-      writeCaptures(datasetId, next);
+      if (persistent) writeCaptures(datasetId, next);
     },
   );
 });

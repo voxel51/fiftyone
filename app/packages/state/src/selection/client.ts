@@ -90,6 +90,7 @@ export async function getSelectionAvailability(
   datasetId: string,
   episodeIds: readonly string[],
   signal: AbortSignal,
+  view?: readonly unknown[],
 ) {
   return (
     await getFetchFunctionExtended()<
@@ -101,7 +102,7 @@ export async function getSelectionAvailability(
     >({
       method: "POST",
       path: `/dataset/${encodeURIComponent(datasetId)}/selection/availability`,
-      body: { episodeIds },
+      body: { episodeIds, view },
       signal,
     })
   ).response;
@@ -113,6 +114,7 @@ export async function selectionTagsRequest(
   members: readonly SelectionMember[],
   change?: { tag: string; add: boolean },
   target: "members" | "labels" = "members",
+  view?: readonly unknown[],
 ) {
   return (
     await getFetchFunctionExtended()<
@@ -121,7 +123,7 @@ export async function selectionTagsRequest(
     >({
       method: "POST",
       path: `/dataset/${encodeURIComponent(datasetId)}/selection/tags`,
-      body: { members, change, target },
+      body: { members, change, target, view },
     })
   ).response;
 }

@@ -195,3 +195,59 @@ class ImageTagTests(unittest.TestCase):
         self.assertEqual(self.dataset[self.ids[1]].tags, [])
         tag_selection(self.dataset, members, {"tag": "review", "add": False})
         self.assertEqual(self.dataset[self.ids[0]].tags, [])
+
+
+class ConvertedViewTagTests(unittest.TestCase):
+    def setUp(self):
+        self.dataset = fo.Dataset()
+        self.dataset.add_sample(
+            fo.Sample(
+                filepath="/tmp/patches.jpg",
+                ground_truth=fo.Detections(
+                    detections=[
+                        fo.Detection(label="a", bounding_box=[0, 0, 0.5, 0.5]),
+                        fo.Detection(
+                            label="b", bounding_box=[0.5, 0.5, 0.5, 0.5]
+                        ),
+                    ]
+                ),
+            )
+        )
+        self.stages = [fo.ToPatches("ground_truth")._serialize()]
+
+    def tearDown(self):
+        self.dataset.delete()
+
+    def test_patch_label_tags_reach_the_source_labels(self):
+        patch_ids = self.dataset.to_patches("ground_truth").values("id")
+        members = [{"episodeId": patch_ids[0], "kind": "episode"}]
+        result = tag_selection(
+            self.dataset,
+            members,
+            {"tag": "review", "add": True},
+            "labels",
+            stages=self.stages,
+        )
+        self.assertEqual(result["labels"], 1)
+        self.assertIn("review", result["tags"])
+        tags = [d.tags for d in self.dataset.first().ground_truth.detections]
+        self.assertEqual(sorted(len(t) for t in tags), [0, 1])
+        with self.assertRaises(ValueError):
+            tag_selection(
+                self.dataset,
+                [
+                    {
+                        "episodeId": patch_ids[0],
+                        "kind": "segment",
+                        "range": {
+                            "start": "0",
+                            "end": "1",
+                            "timebase": "sequence",
+                            "streams": ["filepath"],
+                        },
+                    }
+                ],
+                None,
+                "members",
+                stages=self.stages,
+            )

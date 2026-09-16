@@ -45,7 +45,10 @@ class SelectionAvailability(HTTPEndpoint):
     async def post(self, request, data):
         dataset = get_dataset(request.path_params["dataset_id"])
         return await fou.run_sync_task(
-            foss.selection_availability, dataset, data["episodeIds"]
+            foss.selection_availability,
+            dataset,
+            data["episodeIds"],
+            data.get("view"),
         )
 
 
@@ -62,6 +65,7 @@ class SelectionTags(HTTPEndpoint):
                 data["members"],
                 data.get("change"),
                 data.get("target", "members"),
+                data.get("view"),
             )
         except (ValueError, KeyError, TypeError, InvalidId) as error:
             raise HTTPException(400, detail=str(error)) from error

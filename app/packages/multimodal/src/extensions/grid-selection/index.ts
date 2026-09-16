@@ -1,4 +1,8 @@
 import type {
+  SelectionUnit,
+  ViewConversion,
+} from "@fiftyone/state/src/selection/model";
+import type {
   EpisodeSelection,
   SelectionBoundary,
   SelectionCounts,
@@ -18,6 +22,12 @@ export interface GridSelectionActionContext {
   readonly loading: boolean;
   readonly error: string | null;
   readonly boundary: SelectionBoundary;
+  /** Vocabulary for the parent unit in the current view. */
+  readonly unit: SelectionUnit;
+  /** The converted view kind, or null in the samples view. */
+  readonly conversion: ViewConversion | null;
+  /** The serialized view stages the scope was read in. */
+  readonly view: readonly unknown[];
   /** Resolves the complete scope, including unloaded and out-of-results members. */
   readonly resolve: () => Promise<readonly SelectionMember[]>;
 }
@@ -103,9 +113,9 @@ export function gridActionDisabledReason(
   if (context.error) return context.error;
   if (!context.counts.episodes) return "No members in this scope";
   if (action.scope === "explicit" && context.source !== "explicit")
-    return context.mediaType === "video" || context.mediaType === "multimodal"
+    return context.unit.temporal
       ? "Select episodes or segments first"
-      : "Select samples first";
+      : `Select ${context.unit.many} first`;
   if (
     context.groups.some((group) =>
       group.members.some((member) => !action.memberKinds.includes(member.kind)),

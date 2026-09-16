@@ -46,6 +46,9 @@ function context(
     loading: false,
     error: null,
     boundary: {},
+    unit: { one: "episode", many: "episodes", temporal: true },
+    conversion: null,
+    view: [],
     resolve: vi.fn(async () => original),
     ...overrides,
   };

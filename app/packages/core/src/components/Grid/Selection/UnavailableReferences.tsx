@@ -46,11 +46,11 @@ export default function UnavailableReferences({
           variant={Variant.Borderless}
           leadingIcon={WarningAmberIcon}
         >
-          {plural(groups.length, `unavailable saved ${unit}`)}
+          {plural(groups.length, `unavailable saved ${unit.one}`)}
         </Button>
       }
     >
-      <MenuSectionTitle>{`Saved references without a live ${unit}`}</MenuSectionTitle>
+      <MenuSectionTitle>{`Saved references without a live ${unit.one}`}</MenuSectionTitle>
       {groups.map((group) => (
         <MenuIconTextItem
           key={group.episodeId}

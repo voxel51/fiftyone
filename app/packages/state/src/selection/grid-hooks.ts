@@ -4,7 +4,6 @@ import {
   useCurrentDatasetId,
   useDatasetMediaType,
   useGridViewScope,
-  useIsConvertedView,
   useLegacySelectedSamples,
 } from "../accessors/dataset";
 import {
@@ -19,6 +18,7 @@ import {
   useSelectionScopeRevision,
   useRefreshSelectionMetadata,
 } from "./hooks";
+import { selectionDomainId, selectionUnit, viewConversion } from "./model";
 import { candidatesAtom } from "./model/atoms";
 import type { EpisodeSelection, SelectionBoundary } from "./types";
 
@@ -28,23 +28,24 @@ const EMPTY_GROUPS: readonly EpisodeSelection[] = [];
 export function useGridSelectionDataset() {
   const id = useCurrentDatasetId() ?? "";
   const type = useDatasetMediaType() ?? "";
-  const converted = useIsConvertedView();
-  const [boundary] = useSelectionBoundary(id);
+  const { view } = useGridViewScope();
+  const conversion = useMemo(() => viewConversion(view ?? []), [view]);
+  const kind = conversion?.kind ?? null;
   return {
     datasetId: id,
+    /** Captures are isolated per dataset and, in converted views, per conversion. */
+    domainId: selectionDomainId(id, conversion?.key ?? null),
     mediaType: type,
-    enabled:
-      Boolean(id) &&
-      Boolean(type) &&
-      type !== "group" &&
-      (!converted || Boolean(boundary.subsetId)),
+    conversion: kind,
+    unit: selectionUnit(type, kind),
+    enabled: Boolean(id) && Boolean(type) && type !== "group",
   };
 }
 
 /** Active range constraints include positive temporal-tag sidebar filters. */
 export function useGridSelectionBoundary() {
-  const { datasetId: id } = useGridSelectionDataset();
-  const [boundary, setBoundary] = useSelectionBoundary(id);
+  const { domainId } = useGridSelectionDataset();
+  const [boundary, setBoundary] = useSelectionBoundary(domainId);
   const { filters: currentFilters } = useGridViewScope();
   const tags = currentFilters._temporal_tags;
   const values = Array.isArray(tags?.values)
@@ -90,10 +91,10 @@ export function useGridSelectionRequest() {
 export function useGridSelection() {
   const dataset = useGridSelectionDataset();
   const { key, request } = useGridSelectionRequest();
-  const state = useAtomValue(candidatesAtom(dataset.datasetId));
-  const selected = useEpisodeSelection(dataset.datasetId);
+  const state = useAtomValue(candidatesAtom(dataset.domainId));
+  const selected = useEpisodeSelection(dataset.domainId);
   const { capture, remove, clear } = useEpisodeSelectionActions(
-    dataset.datasetId,
+    dataset.domainId,
   );
   const groups =
     state.key === key && !state.loading && !state.error
@@ -134,18 +135,24 @@ export function useGridSelection() {
 
 /** Mount once in the grid to resolve complete candidates on scope changes. */
 export function useLoadGridSelection() {
-  const { datasetId: id, enabled } = useGridSelectionDataset();
+  const { datasetId: id, domainId, enabled } = useGridSelectionDataset();
   const { request, key } = useGridSelectionRequest();
   const { refresh } = useGridViewScope();
-  const set = useSetAtom(candidatesAtom(id));
-  const selected = useEpisodeSelection(id);
+  const set = useSetAtom(candidatesAtom(domainId));
+  const selected = useEpisodeSelection(domainId);
   const selectedIds = JSON.stringify([...selected.keys()].sort());
-  const refreshMetadata = useRefreshSelectionMetadata(id);
+  const refreshMetadata = useRefreshSelectionMetadata(domainId);
+  const stages = request.view;
   // This effect checks live parent availability independently of the current results.
   useEffect(() => {
     if (!enabled || selectedIds === "[]") return undefined;
     const controller = new AbortController();
-    getSelectionAvailability(id, JSON.parse(selectedIds), controller.signal)
+    getSelectionAvailability(
+      id,
+      JSON.parse(selectedIds),
+      controller.signal,
+      stages,
+    )
       .then((metadata) => {
         if (!controller.signal.aborted) refreshMetadata(metadata);
       })
@@ -153,7 +160,7 @@ export function useLoadGridSelection() {
         /* Keep the last known metadata when its refresh is unavailable. */
       });
     return () => controller.abort();
-  }, [id, enabled, selectedIds, refresh, key, refreshMetadata]);
+  }, [id, enabled, selectedIds, refresh, key, refreshMetadata, stages]);
   // This effect owns candidate resolution; captures live in a separate atom.
   useEffect(() => {
     if (!enabled) return undefined;
@@ -187,9 +194,9 @@ export function useLoadGridSelection() {
 
 /** Keeps a failed scoped page inside the tray so users can change its boundary. */
 export function useGridSelectionPagingError() {
-  const { datasetId } = useGridSelectionDataset();
+  const { domainId } = useGridSelectionDataset();
   const { key } = useGridSelectionRequest();
-  const set = useSetAtom(candidatesAtom(datasetId));
+  const set = useSetAtom(candidatesAtom(domainId));
   return useCallback(
     (error: unknown) =>
       set((current) =>
@@ -258,7 +265,7 @@ export function reconcileSelection(
  * all see the one selection the tray shows.
  */
 export function useSyncLegacySelection() {
-  const { datasetId: id, enabled } = useGridSelectionDataset();
+  const { domainId: id, enabled } = useGridSelectionDataset();
   const { key } = useGridSelectionRequest();
   const selected = useEpisodeSelection(id);
   const { capture, remove } = useEpisodeSelectionActions(id);

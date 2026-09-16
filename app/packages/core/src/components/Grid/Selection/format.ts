@@ -1,8 +1,9 @@
-import type {
-  EpisodeSelection,
-  SelectionMember,
-  SelectionRange,
-  SelectionUnit,
+import {
+  EPISODE_UNIT,
+  type EpisodeSelection,
+  type SelectionMember,
+  type SelectionRange,
+  type SelectionUnit,
 } from "@fiftyone/state/src/selection";
 
 export type SegmentMember = Extract<SelectionMember, { kind: "segment" }>;
@@ -12,9 +13,14 @@ export function plural(count: number, unit: string, units = `${unit}s`) {
   return `${count.toLocaleString()} ${count === 1 ? unit : units}`;
 }
 
-/** "Episode" or "Sample", for titles and menu copy. */
+/** "Episode", "Sample", "Patch": the unit for titles and menu copy. */
 export function unitTitle(unit: SelectionUnit) {
-  return unit === "episode" ? "Episode" : "Sample";
+  return unit.one.charAt(0).toUpperCase() + unit.one.slice(1);
+}
+
+/** "Episodes", "Samples", "Patches". */
+export function unitTitlePlural(unit: SelectionUnit) {
+  return unit.many.charAt(0).toUpperCase() + unit.many.slice(1);
 }
 
 export function segmentsOf(
@@ -32,17 +38,17 @@ export function isFullEpisode(group: Pick<EpisodeSelection, "members">) {
 /** The card descriptor: "Full episode", "Sample", or "N segments". */
 export function groupDescriptor(
   group: Pick<EpisodeSelection, "members">,
-  unit: SelectionUnit = "episode",
+  unit: SelectionUnit = EPISODE_UNIT,
 ) {
   if (isFullEpisode(group))
-    return unit === "episode" ? "Full episode" : "Sample";
+    return unit.temporal ? "Full episode" : unitTitle(unit);
   return plural(segmentsOf(group).length, "segment");
 }
 
 /** A human title for a parent: its media file name when known. */
 export function episodeTitle(
   group: Pick<EpisodeSelection, "episodeId" | "filepath">,
-  unit: SelectionUnit = "episode",
+  unit: SelectionUnit = EPISODE_UNIT,
 ) {
   if (!group.filepath) return `${unitTitle(unit)} ${group.episodeId.slice(-6)}`;
   return group.filepath.split(/[\\/]/).pop() || group.filepath;

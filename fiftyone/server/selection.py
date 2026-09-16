@@ -32,11 +32,28 @@ def resolve_candidates(dataset, request):
         sort_by=request.get("sortBy"),
         desc=request.get("desc", False),
     )
-    if view._dataset is not dataset or view.media_type == "group":
-        raise ValueError(
-            "Selection requires a sample-preserving view of an ungrouped "
-            "dataset"
+    if view.media_type == "group":
+        raise ValueError("Selection is not available for grouped datasets yet")
+    if view._dataset is not dataset:
+        # Patches, frames, and clips views regenerate their own ids, so they
+        # select their own elements; subsets and segment sources stay in the
+        # samples view.
+        if boundary.get("subsetId") or boundary.get("provider"):
+            raise ValueError(
+                "Saved subsets and segment sources are available in the "
+                "samples view"
+            )
+        members = candidate_members(view)
+        samples = sample_details_map(
+            view._dataset,
+            {m["episodeId"] for m in members},
+            clips=view._is_clips,
         )
+        return {
+            "groups": fosel.group_members(members, samples),
+            "unavailableGroups": [],
+            "counts": fosel.count_members(members),
+        }
     members = scoped_members(view, boundary)
     missing = []
     if boundary.get("subsetId"):
@@ -64,31 +81,63 @@ def resolve_candidates(dataset, request):
     }
 
 
-def selection_availability(dataset, episode_ids):
+def view_dataset(dataset, stages=None):
+    """Returns the collection that owns the ids shown by the given stages.
+
+    A converted view (patches, frames, clips) generates its own dataset, so
+    ids captured there resolve against it rather than the source dataset.
+    """
+    if not stages:
+        return dataset
+    return fosv.get_view(dataset, stages=stages)._dataset
+
+
+def selection_availability(dataset, episode_ids, stages=None):
     """Resolves live display metadata without changing captured membership."""
+    target = view_dataset(dataset, stages)
     result = {episode_id: {"unavailable": True} for episode_id in episode_ids}
-    for sample in dataset.select(episode_ids):
-        result[sample.id] = {
-            "unavailable": False,
-            **sample_details(sample, dataset),
-        }
+    present = sample_details_map(
+        target, episode_ids, clips=target is not dataset and _is_clips(target)
+    )
+    for sample_id, details in present.items():
+        result[sample_id] = {"unavailable": False, **details}
     return result
 
 
-def sample_details_map(dataset, sample_ids):
+def _is_clips(generated_dataset):
+    return generated_dataset.media_type == "video" and bool(
+        generated_dataset.get_field("support")
+    )
+
+
+def sample_details_map(dataset, sample_ids, clips=False):
     """Resolves display metadata for many parents with a single projection.
 
     Plain media only needs each sample's filepath, so avoid loading full
     documents; media-reference datasets resolve their preview asset per sample.
+    Clips also carry their first frame so previews start inside the clip.
     """
     view = dataset.select(sample_ids)
-    if not dataset._contains_media_references():
-        ids, filepaths = view.values(["id", "filepath"])
-        return {
-            sample_id: {"filepath": filepath}
-            for sample_id, filepath in zip(ids, filepaths)
-        }
-    return {sample.id: sample_details(sample, dataset) for sample in view}
+    if dataset._contains_media_references():
+        return {sample.id: sample_details(sample, dataset) for sample in view}
+    if clips:
+        ids, filepaths, supports, rates = view.values(
+            ["id", "filepath", "support", "metadata.frame_rate"]
+        )
+        result = {}
+        for sample_id, filepath, support, rate in zip(
+            ids, filepaths, supports, rates
+        ):
+            details = {"filepath": filepath}
+            if support and rate:
+                details["previewStart"] = max(support[0] - 1, 0) / rate
+            result[sample_id] = details
+        return result
+    ids, filepaths = view.values(["id", "filepath"])
+    return {
+        sample_id: {"filepath": filepath}
+        for sample_id, filepath in zip(ids, filepaths)
+    }
 
 
 def sample_details(sample, dataset):
@@ -341,7 +390,9 @@ def _sample_streams(sample, dataset):
 _TAG_INDEX_TYPES = {"sequence": 1, "duration-ns": 2, "timestamp-ns": 3}
 
 
-def tag_selection(dataset, members, change=None, target="members"):
+def tag_selection(
+    dataset, members, change=None, target="members", stages=None
+):
     """Inspects or tags frozen episode and segment membership.
 
     Whole episodes use sample tags. Segments use temporal tags on each
@@ -354,6 +405,9 @@ def tag_selection(dataset, members, change=None, target="members"):
         members: captured episode/segment dictionaries
         change (None): optional ``{"tag": str, "add": bool}`` mutation
         target ("members"): ``members`` or ``labels`` in whole episodes
+        stages (None): the serialized view stages the members were captured
+            in; a converted view (patches, frames, clips) tags its own
+            elements, as the App's legacy tagger does
 
     Returns:
         scope counts and the existing tag values on the captured targets
@@ -366,6 +420,11 @@ def tag_selection(dataset, members, change=None, target="members"):
     if not members or dataset.media_type == "group":
         raise ValueError("Choose samples or segments to tag")
     sample_ids = {member["episodeId"] for member in members}
+    scope = fosv.get_view(dataset, stages=stages) if stages else dataset
+    if scope._dataset is not dataset:
+        if any(m["kind"] == "segment" for m in members):
+            raise ValueError("Segments are tagged in the samples view")
+        return _tag_converted(scope, sample_ids, change, target)
     view = dataset.select(sample_ids)
     if set(view.values("id")) != sample_ids:
         raise ValueError("Remove unavailable episodes before tagging")
@@ -461,6 +520,48 @@ def tag_selection(dataset, members, change=None, target="members"):
     return {
         "counts": fosel.count_members(members),
         "tags": sorted(_tag_values(dataset, full_view, full, targets, target)),
+        "labels": label_count,
+    }
+
+
+def _tag_converted(scope, sample_ids, change, target):
+    """Tags patches, frames, or clips exactly as the legacy grid tagger does."""
+    full_view = scope.select(sample_ids)
+    if set(full_view.values("id")) != sample_ids:
+        raise ValueError("Remove unavailable items before tagging")
+    label_count = None
+    if target == "labels":
+        counts, _ = fostag.build_label_tag_aggregations(full_view)
+        label_count = sum(full_view.aggregate(counts)) if counts else 0
+    if change is not None:
+        tag_value = change.get("tag")
+        add = change.get("add")
+        if (
+            not isinstance(tag_value, str)
+            or not tag_value.strip()
+            or not isinstance(add, bool)
+        ):
+            raise ValueError("Provide a nonempty tag and an add boolean")
+        tag_value = tag_value.strip()
+        if target == "labels":
+            if not label_count:
+                raise ValueError("No labels in these items")
+            if add:
+                full_view.tag_labels(tag_value)
+            else:
+                full_view.untag_labels(tag_value)
+        elif add:
+            full_view.tag_samples(tag_value)
+        else:
+            full_view.untag_samples(tag_value)
+    members = [{"episodeId": sid, "kind": "episode"} for sid in sample_ids]
+    return {
+        "counts": fosel.count_members(members),
+        "tags": sorted(
+            _tag_values(
+                scope._dataset, full_view, list(sample_ids), {}, target
+            )
+        ),
         "labels": label_count,
     }
 

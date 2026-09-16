@@ -13,7 +13,10 @@ from bson import ObjectId
 import fiftyone as fo
 import fiftyone.core.selection as fosel
 import fiftyone.core.tags as fot
-from fiftyone.server.selection import resolve_candidates
+from fiftyone.server.selection import (
+    resolve_candidates,
+    selection_availability,
+)
 
 
 class SelectionIdentityTests(unittest.TestCase):
@@ -171,3 +174,56 @@ class ImageSelectionTests(unittest.TestCase):
                 resolve_candidates(dataset, {})
         finally:
             dataset.delete()
+
+
+class ConvertedViewSelectionTests(unittest.TestCase):
+    def setUp(self):
+        self.dataset = fo.Dataset()
+        self.dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/tmp/patches-%d.jpg" % i,
+                    ground_truth=fo.Detections(
+                        detections=[
+                            fo.Detection(
+                                label="thing",
+                                bounding_box=[0.1, 0.1, 0.2, 0.2],
+                            )
+                            for _ in range(i + 1)
+                        ]
+                    ),
+                )
+                for i in range(2)
+            ]
+        )
+        self.stages = [fo.ToPatches("ground_truth")._serialize()]
+
+    def tearDown(self):
+        self.dataset.delete()
+
+    def test_patches_select_their_own_ids_with_parent_media(self):
+        result = resolve_candidates(self.dataset, {"view": self.stages})
+        self.assertEqual(result["counts"]["fullEpisodes"], 3)
+        self.assertEqual(
+            sorted({group["filepath"] for group in result["groups"]}),
+            ["/tmp/patches-0.jpg", "/tmp/patches-1.jpg"],
+        )
+        patch_ids = [group["episodeId"] for group in result["groups"]]
+        self.assertNotIn(patch_ids[0], self.dataset.values("id"))
+        availability = selection_availability(
+            self.dataset, patch_ids[:1] + [str(ObjectId())], self.stages
+        )
+        self.assertFalse(availability[patch_ids[0]]["unavailable"])
+        self.assertTrue(list(availability.values())[1]["unavailable"])
+
+    def test_converted_views_refuse_subsets_and_sources(self):
+        with self.assertRaises(ValueError):
+            resolve_candidates(
+                self.dataset,
+                {
+                    "view": self.stages,
+                    "boundary": {
+                        "provider": {"kind": "temporal-tags", "values": ["x"]}
+                    },
+                },
+            )
