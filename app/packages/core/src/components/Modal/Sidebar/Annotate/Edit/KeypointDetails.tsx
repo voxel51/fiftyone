@@ -77,6 +77,18 @@ const MarkCell = styled.span`
   flex-shrink: 0;
 `;
 
+// Row action (Skip / Clear / Place): its own hover pill, so the affordance
+// reads as a button distinct from the row's select-on-click
+const RowAction = styled(Clickable)`
+  padding: 0.125rem 0.375rem;
+  border-radius: var(--radius-xs);
+  flex-shrink: 0;
+
+  &:hover {
+    background: ${({ theme }) => theme.primary.softBg};
+  }
+`;
+
 const InspectorPanel = styled.div`
   margin-top: 0.375rem;
   padding-top: 0.375rem;
@@ -275,70 +287,6 @@ export const KeypointDetails = () => {
   // A skeleton is at most a few dozen nodes; no memoization needed
   const placedCount = currentPoints.filter((p) => isPlaced(p)).length;
 
-  // Keyboard shortcuts while a keypoint is being edited (this panel mounts
-  // exactly as long as one is selected): S skips the guided target; V toggles
-  // occluded on the sub-selected placed node. Focused inputs swallow keys
-  // first — same rule as the canvas InteractionManager. State rides a ref so
-  // the document listener registers once per mount.
-  const shortcutStateRef = useRef({
-    targetIndex,
-    selectedNodeIndex,
-    currentPoints,
-    visibleFlags,
-    isReadOnly,
-    skip,
-    setNodeOccluded,
-  });
-  shortcutStateRef.current = {
-    targetIndex,
-    selectedNodeIndex,
-    currentPoints,
-    visibleFlags,
-    isReadOnly,
-    skip,
-    setNodeOccluded,
-  };
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) {
-        return;
-      }
-      const el = document.activeElement as HTMLElement | null;
-      if (
-        el &&
-        (el.tagName === "INPUT" ||
-          el.tagName === "TEXTAREA" ||
-          el.contentEditable === "true")
-      ) {
-        return;
-      }
-
-      const state = shortcutStateRef.current;
-
-      if (event.key === "s" && state.targetIndex !== null) {
-        state.skip();
-        event.preventDefault();
-        return;
-      }
-
-      if (
-        event.key === "v" &&
-        !state.isReadOnly &&
-        state.selectedNodeIndex !== null &&
-        isPlaced(state.currentPoints[state.selectedNodeIndex])
-      ) {
-        state.setNodeOccluded(
-          state.selectedNodeIndex,
-          state.visibleFlags?.[state.selectedNodeIndex] !== 1,
-        );
-        event.preventDefault();
-      }
-    };
-
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, []);
-
   if (!nodeCount) {
     return (
       <Stack
@@ -427,7 +375,7 @@ export const KeypointDetails = () => {
               </Stack>
 
               {status === "target" && (
-                <Clickable
+                <RowAction
                   onClick={(e) => {
                     e.stopPropagation();
                     skip();
@@ -437,10 +385,10 @@ export const KeypointDetails = () => {
                   <Text color={TextColor.Secondary} variant={TextVariant.Sm}>
                     Skip
                   </Text>
-                </Clickable>
+                </RowAction>
               )}
               {(status === "placed" || status === "occluded") && (
-                <Clickable
+                <RowAction
                   onClick={(e) => {
                     e.stopPropagation();
                     clearNode(i);
@@ -450,10 +398,10 @@ export const KeypointDetails = () => {
                   <Text color={TextColor.Secondary} variant={TextVariant.Sm}>
                     Clear
                   </Text>
-                </Clickable>
+                </RowAction>
               )}
               {(status === "skipped" || status === "pending") && (
-                <Clickable
+                <RowAction
                   onClick={(e) => {
                     e.stopPropagation();
                     placeNode(i);
@@ -463,7 +411,7 @@ export const KeypointDetails = () => {
                   <Text color={TextColor.Secondary} variant={TextVariant.Sm}>
                     Place
                   </Text>
-                </Clickable>
+                </RowAction>
               )}
             </NodeRow>
           );

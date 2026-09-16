@@ -131,7 +131,6 @@ export const KeypointGuidedStatus = ({
       instructions={[
         `${placedCount}/${nodeCount} placed`,
         "Shift + click to place occluded",
-        "S to skip",
       ]}
     />
   </Stack>
@@ -143,7 +142,6 @@ export const KeypointResolvedStatus = (): ReactElement => (
       "All nodes resolved",
       "Drag a point to adjust",
       "Click a point to edit its attributes",
-      "V to toggle occluded",
     ]}
   />
 );
