@@ -30,7 +30,11 @@
  * the keyframe at/-before the earliest of those frames in DECODE order, and we
  * decode forward through the latest. Lead-in frames are emitted as bonus —
  * they're already decoded and help scrub-back. The sync table is verified
- * against sample bytes before a snap relies on it (see {@link KeyframeIndex}).
+ * against sample bytes before a snap relies on it (see {@link KeyframeIndex}),
+ * and a chunk that starts right after the previous one continues the open
+ * decoder instead of snapping back (see {@link DecodeSession}). A decoder
+ * holds finished frames until later input arrives, so chunks are settled by
+ * attributing frames as they land, not by flushing at each boundary.
  *
  * Scope: MP4 / H.264 first (mp4box + the common `avcC`/`hvcC`/`av1C`/`vpcC`
  * description boxes). Other containers/codecs are follow-ons gated on
@@ -51,6 +55,7 @@ import {
   presentationStart,
   presentedInOrder,
 } from "./editList";
+import { DecodeSession } from "./decodeSession";
 import { KeyframeIndex } from "./keyframeIndex";
 import { keyframeProbe } from "./sampleKeyframe";
 import {
@@ -137,19 +142,26 @@ let unsupportedReason: string | null = null;
 /** Chunk requests that arrived before demux finished. */
 const pendingChunks: FetchChunkMessage[] = [];
 
-let decoder: VideoDecoder | null = null;
+let session: DecodeSession | null = null;
 
-/** The chunk decode currently in flight; output callback reads it. */
+/**
+ * How long after the last sample is fed to force the decoder's held frames
+ * out. During playback the next chunk's input pushes them along; this covers
+ * the tail, when nothing more is coming.
+ */
+const IDLE_FLUSH_MS = 120;
+/** A chunk being decoded: the frames it still owes, and their bitmap work. */
 interface Job {
   reqId: number;
   startFrame: number;
   endFrame: number;
-  kf: number;
-  dEnd: number;
+  /** Frame numbers this chunk has yet to see out of the decoder. */
+  expected: Set<number>;
   pending: Promise<void>[];
 }
-let currentJob: Job | null = null;
-/** Serializes decode jobs — the decoder is single, stateful. */
+/** Chunks fed to the decoder and not yet settled, oldest first. */
+let jobs: Job[] = [];
+let idleFlushTimer: ReturnType<typeof setTimeout> | null = null;
 let jobChain: Promise<void> = Promise.resolve();
 
 self.addEventListener("message", (event: MessageEvent<FrameWorkerInbound>) => {
@@ -427,21 +439,41 @@ function drainPending(): void {
   }
 }
 
-/** Chain a chunk decode after any in-flight one (the decoder is single). */
+/**
+ * Feeding the decoder is serialized, because the decoder is single and
+ * stateful. Fetching a chunk's bytes is not, and it is the slow half, so it
+ * starts the moment the request arrives and runs while the chunk ahead is
+ * still decoding.
+ */
 function enqueueJob(msg: FetchChunkMessage): void {
+  const prepared = prepareSpan(msg);
   jobChain = jobChain
-    .then(() => runJob(msg))
+    .then(() => runJob(msg, prepared))
     .catch((error) => {
       postFailed(msg.reqId, errorMessage(error));
     });
 }
 
-async function runJob(msg: FetchChunkMessage): Promise<void> {
+/** A chunk's decode-order span, with the bytes covering it already in flight. */
+interface PreparedSpan {
+  startFrame: number;
+  endFrame: number;
+  dStart: number;
+  dEnd: number;
+  span: Promise<SpanBuffer | null>;
+}
+
+/**
+ * Resolve which samples a request needs and start fetching them. The span
+ * assumes the decoder will still be where this chunk begins, which is the
+ * sequential-playback case; a chunk that turns out to need a keyframe snap
+ * fetches the longer span when it is fed.
+ */
+function prepareSpan(msg: FetchChunkMessage): PreparedSpan {
   const request = msg.request as NativeChunkRequest;
   const startFrame = request.startFrame;
   const endFrame = Math.min(startFrame + request.numFrames - 1, totalFrames);
 
-  // Presentation range → decode-order span → keyframe snap.
   let dStart = Number.POSITIVE_INFINITY;
   let dEnd = -1;
   for (let frame = startFrame; frame <= endFrame; frame++) {
@@ -454,6 +486,28 @@ async function runJob(msg: FetchChunkMessage): Promise<void> {
     dEnd = Math.max(dEnd, sample.decodeIndex);
   }
 
+  return {
+    startFrame,
+    endFrame,
+    dStart,
+    dEnd,
+    // A failed speculative fetch is not an error yet: the feed step decides,
+    // and may need a different span anyway.
+    span:
+      dEnd < 0
+        ? Promise.resolve(null)
+        : fetchFrom(dStart, dEnd)
+            .then((result) => result?.span ?? null)
+            .catch(() => null),
+  };
+}
+
+async function runJob(
+  msg: FetchChunkMessage,
+  prepared: PreparedSpan,
+): Promise<void> {
+  const { startFrame, endFrame, dStart, dEnd } = prepared;
+
   if (dEnd < 0) {
     // Nothing to decode (out-of-range request) — settle the chunk cleanly.
     post({
@@ -464,14 +518,21 @@ async function runJob(msg: FetchChunkMessage): Promise<void> {
     return;
   }
 
-  // Fetch just the bytes for this GOP span (keyframe → last needed sample),
-  // snapping back past any sync flag the sample's own bytes contradict.
-  const gop = await keyframes.resolveGop(dStart, (kf) => {
-    const range = spanByteRange(decodeOrder, kf, dEnd);
-    return range
-      ? fetchSpanBuffer(range).then((span) => ({ kf, span }))
-      : Promise.resolve(null);
-  });
+  const dec = ensureSession();
+  // Nothing is idle while a chunk is being prepared: an idle flush landing
+  // mid-fetch would end continuity behind this job's back.
+  cancelIdleFlush();
+
+  // The speculative fetch covers this span; it is enough only if the decoder
+  // is still where the chunk begins. Read that AFTER the fetch, since a
+  // flush during it moves the decoder. Otherwise snap back to a verified
+  // keyframe, which needs the longer span.
+  const ready = await prepared.span;
+  const continuing = dec.canContinue(dStart);
+  const gop =
+    continuing && ready
+      ? { kf: dStart, span: ready }
+      : await keyframes.resolveGop(dStart, (kf) => fetchFrom(kf, dEnd));
   if (!gop) {
     post({
       type: "chunkDone",
@@ -482,18 +543,36 @@ async function runJob(msg: FetchChunkMessage): Promise<void> {
   }
 
   const { kf, span } = gop;
+  if (kf !== dStart || !dec.canContinue(dStart)) {
+    // A restart discards whatever the decoder still holds, so let the frames
+    // already fed arrive and settle their chunks first.
+    await flushOutstanding();
+    dec.restart(config as VideoDecoderConfig);
+  }
 
-  const dec = ensureDecoder();
-  dec.configure(config as VideoDecoderConfig);
-
-  currentJob = {
+  const job: Job = {
     reqId: msg.reqId,
     startFrame,
     endFrame,
-    kf,
-    dEnd,
+    expected: new Set<number>(),
     pending: [],
   };
+  for (let frame = startFrame; frame <= endFrame; frame++) {
+    if (byFrameNumber[frame - 1]) {
+      job.expected.add(frame);
+    }
+  }
+
+  if (job.expected.size === 0) {
+    post({
+      type: "chunkDone",
+      reqId: msg.reqId,
+      range: [startFrame, endFrame],
+    });
+    return;
+  }
+
+  jobs.push(job);
 
   for (let i = kf; i <= dEnd; i++) {
     const s = decodeOrder[i];
@@ -505,14 +584,63 @@ async function runJob(msg: FetchChunkMessage): Promise<void> {
         duration: s.durMicros,
         data,
       }),
+      i,
     );
   }
 
-  await dec.flush();
-  await Promise.all(currentJob.pending);
+  // The decoder keeps the tail of this chunk until the next one is fed; the
+  // idle flush covers the case where no next chunk comes.
+  scheduleIdleFlush();
+}
 
-  post({ type: "chunkDone", reqId: msg.reqId, range: [startFrame, endFrame] });
-  currentJob = null;
+/**
+ * Report a chunk complete once every frame it owed has been posted. Frames the
+ * decoder never produced leave the chunk short, and the stream marks those
+ * frames failed off the back of this message.
+ */
+async function settleJob(job: Job): Promise<void> {
+  if (!jobs.includes(job)) {
+    return;
+  }
+
+  jobs = jobs.filter((j) => j !== job);
+  await Promise.all(job.pending);
+  post({
+    type: "chunkDone",
+    reqId: job.reqId,
+    range: [job.startFrame, job.endFrame],
+  });
+}
+
+function cancelIdleFlush(): void {
+  if (idleFlushTimer !== null) {
+    clearTimeout(idleFlushTimer);
+    idleFlushTimer = null;
+  }
+}
+
+function scheduleIdleFlush(): void {
+  cancelIdleFlush();
+
+  idleFlushTimer = setTimeout(() => {
+    idleFlushTimer = null;
+    void flushOutstanding();
+  }, IDLE_FLUSH_MS);
+}
+
+/** Force out the frames the decoder holds, then settle whatever is still owed. */
+async function flushOutstanding(): Promise<void> {
+  cancelIdleFlush();
+
+  if (!session || jobs.length === 0) {
+    return;
+  }
+
+  await session.flush();
+
+  for (const job of [...jobs]) {
+    await settleJob(job);
+  }
 }
 
 /**
@@ -591,30 +719,48 @@ async function fetchWholeFile(): Promise<ArrayBuffer> {
   return wholeFileBuffer;
 }
 
-function ensureDecoder(): VideoDecoder {
-  if (decoder) {
-    return decoder;
+/** Bytes for decode-order samples `[kf, dEnd]`, or `null` when there are none. */
+async function fetchFrom(
+  kf: number,
+  dEnd: number,
+): Promise<{ kf: number; span: SpanBuffer } | null> {
+  const range = spanByteRange(decodeOrder, kf, dEnd);
+  if (!range) {
+    return null;
   }
 
-  decoder = new VideoDecoder({
-    output: onDecoderOutput,
-    // A decoder error fails the current chunk; the base re-requests it on the
-    // next prefetch, so there is nothing to recover here.
-    error: () => {},
-  });
+  return { kf, span: await fetchSpanBuffer(range) };
+}
 
-  return decoder;
+function ensureSession(): DecodeSession {
+  if (!session) {
+    session = new DecodeSession(onDecoderOutput, () => {
+      // The frames already fed will never arrive; settle their chunks so the
+      // stream can mark them failed instead of waiting forever.
+      for (const job of [...jobs]) {
+        void settleJob(job);
+      }
+    });
+  }
+
+  return session;
 }
 
 function onDecoderOutput(frame: VideoFrame): void {
-  const job = currentJob;
   const frameNumber = microsToFrame.get(frame.timestamp);
+  const job =
+    frameNumber == null
+      ? undefined
+      : jobs.find((j) => j.expected.has(frameNumber));
 
-  if (job == null || frameNumber == null) {
-    // A frame we can't place (stray timestamp) — drop it; never leak.
+  if (frameNumber == null || !job) {
+    // Lead-in from a keyframe snap, or a timestamp we can't place — drop it;
+    // never leak.
     frame.close();
     return;
   }
+
+  job.expected.delete(frameNumber);
 
   const width = frame.displayWidth;
   const height = frame.displayHeight;
@@ -645,6 +791,10 @@ function onDecoderOutput(frame: VideoFrame): void {
     });
 
   job.pending.push(p);
+
+  if (job.expected.size === 0) {
+    void settleJob(job);
+  }
 }
 
 function post(msg: FrameWorkerOutbound, transfer?: Transferable[]): void {
