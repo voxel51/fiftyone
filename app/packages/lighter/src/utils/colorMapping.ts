@@ -2,7 +2,10 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { getLabelColor } from "@fiftyone/looker/src/overlays/util";
+import {
+  getLabelColor,
+  getPointColorByValue,
+} from "@fiftyone/looker/src/overlays/util";
 import type { ColorSchemeInput } from "@fiftyone/relay";
 import { COLOR_BY, getColor } from "@fiftyone/utilities";
 import { SELECTED_DASH_LENGTH } from "../constants";
@@ -34,29 +37,32 @@ export interface StrokeStyles {
  * Use this when you need to color a UI element by the same rules the
  * overlay would use but don't have a {@link BaseOverlay} instance.
  */
+/** Convert a ColorSchemeInput context to looker's Coloring interface. */
+const toColoring = (context: ColorMappingContext) => ({
+  by:
+    (context.colorScheme.colorBy?.toLocaleLowerCase() as
+      | COLOR_BY.FIELD
+      | COLOR_BY.INSTANCE
+      | COLOR_BY.VALUE) || COLOR_BY.FIELD,
+  pool: context.colorScheme.colorPool,
+  scale: [],
+  seed: context.seed,
+  defaultMaskTargets: undefined,
+  defaultMaskTargetsColors: [
+    ...(context.colorScheme.defaultMaskTargetsColors || []),
+  ],
+  maskTargets: {},
+  points: context.colorScheme.multicolorKeypoints || false,
+  targets: [],
+});
+
 export function getLabelColorFromContext(
   path: string,
   label: unknown,
   context: ColorMappingContext,
 ): string {
   // Convert ColorSchemeInput to Coloring interface
-  const coloring = {
-    by:
-      (context.colorScheme.colorBy?.toLocaleLowerCase() as
-        | COLOR_BY.FIELD
-        | COLOR_BY.INSTANCE
-        | COLOR_BY.VALUE) || COLOR_BY.FIELD,
-    pool: context.colorScheme.colorPool,
-    scale: [],
-    seed: context.seed,
-    defaultMaskTargets: undefined,
-    defaultMaskTargetsColors: [
-      ...(context.colorScheme.defaultMaskTargetsColors || []),
-    ],
-    maskTargets: {},
-    points: context.colorScheme.multicolorKeypoints || false,
-    targets: [],
-  };
+  const coloring = toColoring(context);
 
   // Handle case when label is null or undefined
   if (!label) {
@@ -106,6 +112,68 @@ export function getLabelColorFromContext(
     is3D,
     embeddedDocType,
   });
+}
+
+/**
+ * Per-point colors for a keypoint label under color-by-value: when the
+ * field's `colorByAttribute` names a per-point list (parallel to `points`),
+ * every point resolves its own color — explicit value colors first, else the
+ * color pool keyed by the value. Returns null when per-point resolution does
+ * not apply (not a Keypoint, not color-by-value, or the attribute is not a
+ * parallel list); the overlay then renders every point in the label color.
+ * Shares the resolver with the classic looker so the two surfaces agree.
+ */
+export function getKeypointPointColors(
+  path: string,
+  label: unknown,
+  context: ColorMappingContext,
+): (string | null)[] | null {
+  const typedLabel = label as Record<string, unknown> | null;
+  if (!typedLabel || typedLabel["_cls"] !== "Keypoint") {
+    return null;
+  }
+
+  const points = typedLabel["points"];
+  if (!Array.isArray(points) || points.length === 0) {
+    return null;
+  }
+
+  const rawField = (context.colorScheme.fields || []).find(
+    (f) => f.path === path,
+  );
+  if (!rawField?.colorByAttribute) {
+    return null;
+  }
+
+  const coloring = toColoring(context);
+  const field = {
+    ...rawField,
+    colorByAttribute: rawField.colorByAttribute || undefined,
+    fieldColor: rawField.fieldColor || undefined,
+    maskTargetsColors: rawField.maskTargetsColors
+      ? [...rawField.maskTargetsColors]
+      : undefined,
+    valueColors: rawField.valueColors ? [...rawField.valueColors] : undefined,
+  };
+
+  const resolve = (index: number) =>
+    getPointColorByValue({
+      coloring,
+      // structural casts — the same shapes getLabelColor accepts above
+      field: field as Parameters<typeof getPointColorByValue>[0]["field"],
+      label: typedLabel as Parameters<typeof getPointColorByValue>[0]["label"],
+      index,
+      numPoints: points.length,
+    });
+
+  // The resolver returns null only when per-point coloring doesn't apply,
+  // and applicability is list-shape only — uniform across indices
+  const first = resolve(0);
+  if (first === null) {
+    return null;
+  }
+
+  return points.map((_, i) => (i === 0 ? first : resolve(i)));
 }
 
 /**

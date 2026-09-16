@@ -202,6 +202,11 @@ export class KeypointOverlay
   // Target node's name, drawn as a tag by the cursor. See setPreviewPoint.
   protected previewLabel: string | null = null;
 
+  // Per-point fill overrides (color-by-value on a per-point attribute),
+  // parallel to the point list; null entries / a null list keep the overlay
+  // color. See setPointColors.
+  private pointColorOverrides: (string | null)[] | null = null;
+
   // Registered render effects. Invoked once per frame, between point
   // bucket-collection and bucket-draw, so contributions appear behind the
   // solid points. Owners drive frame invalidation and unregister when done.
@@ -609,22 +614,36 @@ export class KeypointOverlay
       return { ...defaultPointStyle, ...override };
     };
 
+    // Per-point color-by-value fills (see setPointColors); a stale list
+    // (length drift mid-edit, before the next style resolution) is ignored
+    // rather than misassigned
+    const pointColors =
+      this.pointColorOverrides?.length === ctx.absPoints.length
+        ? this.pointColorOverrides
+        : null;
+
     const buckets = new Map<string | undefined, Point[]>();
+    // Value-colored points bucket by resolved fill instead of variant
+    const colorBuckets = new Map<string, Point[]>();
     let selectedPoint: Point | undefined;
     let selectedVariant: string | undefined;
+    let selectedFill: string | null = null;
     let hoveredPoint: Point | undefined;
     let hoveredVariant: string | undefined;
+    let hoveredFill: string | null = null;
 
     for (let i = 0; i < ctx.absPoints.length; i++) {
       // Holes ([NaN, NaN] points) are not drawn
       if (!isFinitePoint(ctx.absPoints[i])) {
         continue;
       }
+      const fill = pointColors?.[i] ?? null;
       // When hovered, every point renders in its sub-selected state, so
       // there's no need to peel out the explicitly-selected point.
       if (!ctx.isHovered && this.selectedPointIndex === i) {
         selectedPoint = ctx.absPoints[i];
         selectedVariant = this.#points[i].variant;
+        selectedFill = fill;
         continue;
       }
       // Per-point hover emphasis (drawn larger below); selection wins when
@@ -632,6 +651,16 @@ export class KeypointOverlay
       if (!ctx.isHovered && this.hoveredPointIndex === i) {
         hoveredPoint = ctx.absPoints[i];
         hoveredVariant = this.#points[i].variant;
+        hoveredFill = fill;
+        continue;
+      }
+      if (fill) {
+        const bucket = colorBuckets.get(fill);
+        if (bucket) {
+          bucket.push(ctx.absPoints[i]);
+        } else {
+          colorBuckets.set(fill, [ctx.absPoints[i]]);
+        }
         continue;
       }
       const v = this.#points[i].variant;
@@ -680,11 +709,19 @@ export class KeypointOverlay
       const pointStyle = resolvePointStyle(variant);
       renderer.drawPoints(pts, pointRadius, pointStyle, this.containerId);
     }
+    for (const [fill, pts] of colorBuckets) {
+      renderer.drawPoints(
+        pts,
+        pointRadius,
+        { ...defaultPointStyle, fillStyle: fill },
+        this.containerId,
+      );
+    }
 
     // When hovered, overlay an inner white highlight on every point so each
     // vertex matches the sub-selected appearance.
     if (ctx.isHovered) {
-      for (const [, pts] of buckets) {
+      for (const pts of [...buckets.values(), ...colorBuckets.values()]) {
         renderer.drawPoints(
           pts,
           KEYPOINT_RADIUS,
@@ -700,7 +737,9 @@ export class KeypointOverlay
       renderer.drawPoint(
         hoveredPoint,
         KEYPOINT_SELECTED_RADIUS,
-        resolvePointStyle(hoveredVariant),
+        hoveredFill
+          ? { ...resolvePointStyle(hoveredVariant), fillStyle: hoveredFill }
+          : resolvePointStyle(hoveredVariant),
         this.containerId,
       );
     }
@@ -710,7 +749,9 @@ export class KeypointOverlay
       renderer.drawPoint(
         selectedPoint,
         KEYPOINT_SELECTED_RADIUS,
-        resolvePointStyle(selectedVariant),
+        selectedFill
+          ? { ...resolvePointStyle(selectedVariant), fillStyle: selectedFill }
+          : resolvePointStyle(selectedVariant),
         this.containerId,
       );
       renderer.drawPoint(
@@ -1445,5 +1486,16 @@ export class KeypointOverlay
 
   getDeletable(): boolean {
     return this.isDeletable;
+  }
+
+  /**
+   * Sets per-point fill overrides (color-by-value on a per-point attribute),
+   * parallel to the point list; `null` entries and a `null` list keep the
+   * overlay color. Stored silently — the scene calls this during style
+   * resolution, inside the render pass, just before the overlay draws, so
+   * marking dirty here would re-render every frame.
+   */
+  setPointColors(colors: (string | null)[] | null): void {
+    this.pointColorOverrides = colors;
   }
 }

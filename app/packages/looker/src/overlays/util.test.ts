@@ -1,6 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 
-import { getLabelAttributesText, shouldShowLabelTag } from "./util";
+import { COLOR_BY, getColor } from "@fiftyone/utilities";
+import type { Coloring, CustomizeColor } from "../state";
+import type { RegularLabel } from "./base";
+import {
+  getLabelAttributesText,
+  getPointColorByValue,
+  shouldShowLabelTag,
+} from "./util";
 
 describe("shouldShowLabelTag", () => {
   it("handles missing tags and overlapping tags when filtering labels", () => {
@@ -52,5 +59,121 @@ describe("getLabelAttributesText", () => {
       "cat",
     );
     expect(getLabelAttributesText(label, ["notes", "missing"])).toBe("");
+  });
+});
+
+describe("getPointColorByValue", () => {
+  beforeAll(() => {
+    // isValidColor uses CSS.supports, which the node test environment lacks
+    vi.stubGlobal("CSS", {
+      supports: (_property: string, value: string) =>
+        /^#[0-9a-f]{6}$/i.test(value),
+    });
+  });
+
+  const coloring = {
+    by: COLOR_BY.VALUE,
+    pool: ["#111111", "#222222", "#333333"],
+    seed: 0,
+  } as unknown as Coloring;
+
+  const field = {
+    path: "pose",
+    colorByAttribute: "occluded",
+    valueColors: [
+      { value: "true", color: "#ff0000" },
+      { value: "none", color: "#00ff00" },
+    ],
+  } as CustomizeColor;
+
+  const label = {
+    label: "person",
+    points: [
+      [0.1, 0.1],
+      [0.2, 0.2],
+      [0.3, 0.3],
+    ],
+    occluded: [true, false, null],
+  } as unknown as RegularLabel;
+
+  it("resolves each point by its own list entry", () => {
+    const args = { coloring, field, label, numPoints: 3 };
+    // explicit value color, case-insensitive bool match
+    expect(getPointColorByValue({ ...args, index: 0 })).toBe("#ff0000");
+    // no value color for false — pool color keyed by the value
+    expect(getPointColorByValue({ ...args, index: 1 })).toBe(
+      getColor(coloring.pool, coloring.seed, false),
+    );
+    // none/null/undefined settings match null entries
+    expect(getPointColorByValue({ ...args, index: 2 })).toBe("#00ff00");
+  });
+
+  it("does not apply outside color-by-value", () => {
+    expect(
+      getPointColorByValue({
+        coloring: { ...coloring, by: COLOR_BY.FIELD } as Coloring,
+        field,
+        label,
+        index: 0,
+        numPoints: 3,
+      }),
+    ).toBeNull();
+  });
+
+  it("does not apply without a configured attribute", () => {
+    expect(
+      getPointColorByValue({
+        coloring,
+        field: { path: "pose" } as CustomizeColor,
+        label,
+        index: 0,
+        numPoints: 3,
+      }),
+    ).toBeNull();
+    expect(
+      getPointColorByValue({
+        coloring,
+        field: undefined,
+        label,
+        index: 0,
+        numPoints: 3,
+      }),
+    ).toBeNull();
+  });
+
+  it("does not apply when the attribute is not a parallel list", () => {
+    // scalar attribute
+    expect(
+      getPointColorByValue({
+        coloring,
+        field: { ...field, colorByAttribute: "label" } as CustomizeColor,
+        label,
+        index: 0,
+        numPoints: 3,
+      }),
+    ).toBeNull();
+    // list of the wrong length
+    expect(
+      getPointColorByValue({
+        coloring,
+        field,
+        label: { ...label, occluded: [true] } as unknown as RegularLabel,
+        index: 0,
+        numPoints: 3,
+      }),
+    ).toBeNull();
+  });
+
+  it("falls back to the pool keyed by value without value colors", () => {
+    const bare = { ...field, valueColors: undefined } as CustomizeColor;
+    expect(
+      getPointColorByValue({
+        coloring,
+        field: bare,
+        label,
+        index: 0,
+        numPoints: 3,
+      }),
+    ).toBe(getColor(coloring.pool, coloring.seed, true));
   });
 });

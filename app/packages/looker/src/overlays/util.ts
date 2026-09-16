@@ -322,6 +322,54 @@ const getLabelColorByValue = ({
 };
 
 /**
+ * Per-point color for a keypoint under color-by-value: when the field's
+ * `colorByAttribute` names a per-point list (parallel to `points`), each
+ * point colors by its own entry — an explicit value color when one matches,
+ * else the color pool keyed by the value. Returns null when per-point
+ * resolution does not apply (not color-by-value, no attribute configured,
+ * or the attribute is not a parallel list) and the caller falls back to
+ * whole-label behavior.
+ */
+export const getPointColorByValue = ({
+  coloring,
+  field,
+  label,
+  index,
+  numPoints,
+}: {
+  coloring: Coloring;
+  field?: CustomizeColor;
+  label: RegularLabel;
+  index: number;
+  numPoints: number;
+}): string | null => {
+  if (coloring.by !== COLOR_BY.VALUE || !field?.colorByAttribute) {
+    return null;
+  }
+
+  const list = (label as Record<string, unknown>)[field.colorByAttribute];
+  if (!Array.isArray(list) || list.length !== numPoints) {
+    return null;
+  }
+
+  const value = list[index] as string | number | boolean | null | undefined;
+
+  const valueColor = field.valueColors?.find((pair) => {
+    const setting = pair.value?.toString().toLowerCase();
+    if (["none", "null", "undefined"].includes(setting)) {
+      return value == null;
+    }
+    return setting === value?.toString().toLowerCase();
+  })?.color;
+
+  if (isValidColor(valueColor)) {
+    return valueColor;
+  }
+
+  return getColor(coloring.pool, coloring.seed, value ?? null);
+};
+
+/**
  * Four possible cases for stroke style if it's a label _with an instance_:
  * 1. Label is neither selected nor hovered: default color
  * 2. Label is hovered: white stroke
