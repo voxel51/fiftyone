@@ -37,12 +37,18 @@ const NodeRow = styled.div<{ $active: boolean; $selected: boolean }>`
   justify-content: space-between;
   padding: 0.125rem 0.25rem;
   border-radius: var(--radius-xs);
+  cursor: pointer;
   background: ${({ $active, $selected, theme }) =>
     $selected
       ? theme.primary.softBg
       : $active
         ? theme.neutral.softBg
         : "transparent"};
+
+  &:hover {
+    background: ${({ $selected, theme }) =>
+      $selected ? theme.primary.softBg : theme.neutral.softBg};
+  }
 `;
 
 type NodeStatus = "placed" | "occluded" | "skipped" | "target" | "pending";
@@ -391,27 +397,14 @@ export const KeypointDetails = () => {
               data-cy-status={status}
               onMouseEnter={() => hoverNode(i)}
               onMouseLeave={() => hoverNode(null)}
+              onClick={() => selectNode(i === selectedNodeIndex ? null : i)}
             >
-              <Clickable
-                onClick={() => selectNode(i === selectedNodeIndex ? null : i)}
-                data-cy={`keypoint-select-node-${i}`}
+              <Stack
+                orientation={Orientation.Row}
+                align={Align.Center}
+                spacing={Spacing.Sm}
               >
-                <Stack
-                  orientation={Orientation.Row}
-                  align={Align.Center}
-                  spacing={Spacing.Sm}
-                >
-                  <MarkCell>
-                    <Text
-                      color={
-                        MUTED_STATUSES.has(status)
-                          ? TextColor.Secondary
-                          : TextColor.Fg
-                      }
-                    >
-                      {STATUS_MARK[status]}
-                    </Text>
-                  </MarkCell>
+                <MarkCell>
                   <Text
                     color={
                       MUTED_STATUSES.has(status)
@@ -419,13 +412,28 @@ export const KeypointDetails = () => {
                         : TextColor.Fg
                     }
                   >
-                    {name}
+                    {STATUS_MARK[status]}
                   </Text>
-                </Stack>
-              </Clickable>
+                </MarkCell>
+                <Text
+                  color={
+                    MUTED_STATUSES.has(status)
+                      ? TextColor.Secondary
+                      : TextColor.Fg
+                  }
+                >
+                  {name}
+                </Text>
+              </Stack>
 
               {status === "target" && (
-                <Clickable onClick={skip} data-cy="keypoint-skip-node">
+                <Clickable
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    skip();
+                  }}
+                  data-cy="keypoint-skip-node"
+                >
                   <Text color={TextColor.Secondary} variant={TextVariant.Sm}>
                     Skip
                   </Text>
@@ -433,7 +441,10 @@ export const KeypointDetails = () => {
               )}
               {(status === "placed" || status === "occluded") && (
                 <Clickable
-                  onClick={() => clearNode(i)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    clearNode(i);
+                  }}
                   data-cy={`keypoint-clear-node-${i}`}
                 >
                   <Text color={TextColor.Secondary} variant={TextVariant.Sm}>
@@ -443,7 +454,10 @@ export const KeypointDetails = () => {
               )}
               {(status === "skipped" || status === "pending") && (
                 <Clickable
-                  onClick={() => placeNode(i)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    placeNode(i);
+                  }}
                   data-cy={`keypoint-place-node-${i}`}
                 >
                   <Text color={TextColor.Secondary} variant={TextVariant.Sm}>
