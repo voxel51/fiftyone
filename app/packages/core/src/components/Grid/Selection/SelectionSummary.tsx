@@ -5,11 +5,9 @@ import {
 } from "@fiftyone/state/src/selection";
 import {
   Anchor,
-  BackgroundColor,
   Button,
   CloseIcon,
   LoadingDots,
-  Pill,
   RefreshIcon,
   Size,
   Text,
@@ -39,8 +37,10 @@ interface Props {
 }
 
 /**
- * The single line that says what actions will target. The leading pill makes
- * "all current results" and "your selection" unmistakable at a glance.
+ * The single line that says what actions will target. It reads as one
+ * sentence: the scope and its exact count first, in the accent color when it
+ * is an explicit selection; then quieter qualifiers (outside results,
+ * unavailable, errors); then the one control that changes it, Clear.
  */
 export default function SelectionSummary({
   explicit,
@@ -55,9 +55,48 @@ export default function SelectionSummary({
   onClear,
 }: Props) {
   const empty = !explicit && !loading && !error && counts.episodes === 0;
+  const label = selectionScopeLabel(counts, unit);
+  const sentence = explicit ? (
+    <Text variant={TextVariant.Sm} color={TextColor.Accent}>
+      {`${label} selected`}
+    </Text>
+  ) : error ? (
+    <span className={styles.inlineAlert} role="alert">
+      <Text variant={TextVariant.Sm} color={TextColor.Destructive}>
+        {error}
+      </Text>
+      {onRetry && (
+        <Button
+          size={Size.Xs}
+          variant={Variant.Borderless}
+          leadingIcon={RefreshIcon}
+          onClick={onRetry}
+        >
+          Retry
+        </Button>
+      )}
+    </span>
+  ) : loading ? (
+    <LoadingDots
+      variant={TextVariant.Sm}
+      color={TextColor.Secondary}
+      text="Resolving results"
+    />
+  ) : empty ? (
+    <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+      No results in this scope
+    </Text>
+  ) : (
+    <>
+      <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+        All results ·
+      </Text>
+      <Text variant={TextVariant.Sm}>{label}</Text>
+    </>
+  );
   return (
     <div className={styles.summary} aria-live="polite">
-      <span className={styles.scopeGroup}>
+      <span className={styles.summaryText}>
         <Tooltip
           anchor={Anchor.Top}
           wrapperClassName={styles.tipWrap}
@@ -69,64 +108,8 @@ export default function SelectionSummary({
             </Text>
           }
         >
-          <Pill
-            size={Size.Xs}
-            backgroundColor={
-              explicit ? BackgroundColor.Selected : BackgroundColor.Raised
-            }
-            color={explicit ? TextColor.Accent : TextColor.Secondary}
-          >
-            {explicit ? `${counts.episodes} selected` : "All results"}
-          </Pill>
+          <span className={styles.summaryText}>{sentence}</span>
         </Tooltip>
-        {explicit && onClear && (
-          <Button
-            size={Size.Xs}
-            variant={Variant.Borderless}
-            leadingIcon={CloseIcon}
-            data-tray-clear=""
-            onClick={onClear}
-          >
-            Clear
-          </Button>
-        )}
-      </span>
-      <span className={styles.summaryText}>
-        {explicit ? (
-          <Text variant={TextVariant.Sm}>
-            {selectionScopeLabel(counts, unit)}
-          </Text>
-        ) : error ? (
-          <span className={styles.inlineAlert} role="alert">
-            <Text variant={TextVariant.Sm} color={TextColor.Destructive}>
-              {error}
-            </Text>
-            {onRetry && (
-              <Button
-                size={Size.Xs}
-                variant={Variant.Borderless}
-                leadingIcon={RefreshIcon}
-                onClick={onRetry}
-              >
-                Retry
-              </Button>
-            )}
-          </span>
-        ) : loading ? (
-          <LoadingDots
-            variant={TextVariant.Sm}
-            color={TextColor.Secondary}
-            text="Resolving results"
-          />
-        ) : empty ? (
-          <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
-            No results in this scope
-          </Text>
-        ) : (
-          <Text variant={TextVariant.Sm}>
-            {selectionScopeLabel(counts, unit)}
-          </Text>
-        )}
         {explicit && outside > 0 && (
           <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
             · {plural(outside, unit.one, unit.many)} not in current results
@@ -162,6 +145,17 @@ export default function SelectionSummary({
           </span>
         ) : null}
       </span>
+      {explicit && onClear && (
+        <Button
+          size={Size.Xs}
+          variant={Variant.Borderless}
+          leadingIcon={CloseIcon}
+          data-tray-clear=""
+          onClick={onClear}
+        >
+          Clear
+        </Button>
+      )}
     </div>
   );
 }

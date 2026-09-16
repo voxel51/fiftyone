@@ -114,7 +114,7 @@
   align-items: center;
   flex-wrap: wrap;
   gap: var(--tray-space-xs) var(--tray-space-sm);
-  flex: 1 1 240px;
+  flex: 0 1 auto;
   min-width: 0;
 }
 
@@ -748,13 +748,6 @@
 }
 
 /* Count pill and its Clear control stay on one line when the bar wraps */
-.scopeGroup {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  white-space: nowrap;
-}
-
 /* Hover affordance that the card body opens the viewer */
 .openHint {
   position: absolute;
@@ -788,6 +781,40 @@
   gap: 6px;
   padding: 2px 0;
   white-space: nowrap;
+}
+
+/* Tighter than the default pill so the count reads as a badge, not a label. */
+.scopeTrigger .scopeCount {
+  font-size: 11px;
+  line-height: 16px;
+  padding: 0 6px;
+}
+
+/* Bare icons size from their container; make the switch affordance visible. */
+.scopeChevron {
+  display: inline-flex;
+  align-items: center;
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.scopeChevron svg {
+  width: 16px;
+  height: 16px;
+  transition: transform var(--tray-duration-fast) var(--tray-easing);
+}
+
+/* Headless UI marks the open trigger; the chevron flips to point at the menu. */
+[data-open] .scopeChevron svg,
+[aria-expanded="true"] .scopeChevron svg {
+  transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scopeChevron svg {
+    transition: none;
+  }
 }
 
 .scopeRow {

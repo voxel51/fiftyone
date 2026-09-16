@@ -126,7 +126,7 @@ describe("SelectionTray", () => {
   it("states the all-results scope from exact counts, with loading and retryable errors", async () => {
     mocks.selection.counts = countSelection([fullEpisode, segmentEpisode]);
     const view = render(<SelectionTray />);
-    expect(screen.getByText("All results")).toBeTruthy();
+    expect(screen.getByText("All results ·")).toBeTruthy();
     expect(
       screen.getByText("1 full episode · 2 segments across 1 episode"),
     ).toBeTruthy();
@@ -166,7 +166,7 @@ describe("SelectionTray", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add to subset" }));
     expect(mocks.selection.snapshot).toHaveBeenCalledOnce();
     await screen.findByRole("dialog");
-    expect(screen.getAllByText("All results")).toHaveLength(2);
+    expect(screen.getAllByText(/All results/)).toHaveLength(2);
   });
 
   it("separates card counts from member scope and flags episodes outside the results", () => {
@@ -179,9 +179,8 @@ describe("SelectionTray", () => {
       ["seg", null],
     ]);
     render(<SelectionTray />);
-    expect(screen.getByText("2 selected")).toBeTruthy();
     expect(
-      screen.getByText("1 full episode · 2 segments across 1 episode"),
+      screen.getByText("1 full episode · 2 segments across 1 episode selected"),
     ).toBeTruthy();
     expect(screen.getByText("· 1 episode not in current results")).toBeTruthy();
     expect(screen.getByText("Not in results")).toBeTruthy();
@@ -254,7 +253,7 @@ describe("SelectionTray", () => {
     fireEvent.click(toggle);
     expect(strip?.getAttribute("aria-hidden")).toBe("true");
     expect(strip?.style.height).toBe("0px");
-    expect(screen.getByText("1 selected")).toBeTruthy();
+    expect(screen.getByText("1 full episode selected")).toBeTruthy();
     expect(mocks.selection.clear).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Clear" }));
     expect(mocks.selection.clear).toHaveBeenCalledOnce();

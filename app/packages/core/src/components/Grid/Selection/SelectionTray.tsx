@@ -358,21 +358,6 @@ export default function SelectionTray() {
         </div>
       )}
       <div className={styles.bar}>
-        <div className={styles.scope}>
-          <ScopeControls
-            datasetId={selection.datasetId}
-            mediaType={selection.mediaType}
-            unit={unit}
-            conversion={selection.conversion}
-            onProviderError={setProviderError}
-          />
-          <UnavailableReferences
-            groups={selection.unavailableGroups}
-            selected={selection.selected}
-            capture={selection.capture}
-            unit={unit}
-          />
-        </div>
         <SelectionSummary
           explicit={explicit}
           counts={counts}
@@ -388,6 +373,21 @@ export default function SelectionTray() {
           }}
           onClear={clearAll}
         />
+        <div className={styles.scope}>
+          <ScopeControls
+            datasetId={selection.datasetId}
+            mediaType={selection.mediaType}
+            unit={unit}
+            conversion={selection.conversion}
+            onProviderError={setProviderError}
+          />
+          <UnavailableReferences
+            groups={selection.unavailableGroups}
+            selected={selection.selected}
+            capture={selection.capture}
+            unit={unit}
+          />
+        </div>
         <div className={styles.actions}>
           {primary.map((action) => (
             <action.Component

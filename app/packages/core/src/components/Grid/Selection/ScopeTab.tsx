@@ -28,6 +28,7 @@ import { useState } from "react";
 import DeleteSubsetDialog from "./DeleteSubsetDialog";
 import styles from "./SelectionTray.module.css";
 import { SubsetDialog, type Capture } from "./SubsetAction";
+import { trayTheme } from "./theme";
 import { subsetRows, useOpenSubset, useSavedSubsets } from "./useSubsetScope";
 
 function ScopeRow({
@@ -129,6 +130,7 @@ export default function SamplesScopeTab() {
         trigger={
           <span
             className={styles.scopeTrigger}
+            style={trayTheme}
             data-cy="samples-scope-trigger"
             title={
               scoped
@@ -142,11 +144,14 @@ export default function SamplesScopeTab() {
                 size={Size.Xs}
                 backgroundColor={BackgroundColor.Raised}
                 color={TextColor.Secondary}
+                className={styles.scopeCount}
               >
                 {count.toLocaleString()}
               </Pill>
             )}
-            <ChevronBottomIcon size={Size.Xs} color={TextColor.Secondary} />
+            <span className={styles.scopeChevron} aria-hidden="true">
+              <ChevronBottomIcon size={Size.Sm} color={TextColor.Secondary} />
+            </span>
           </span>
         }
       >

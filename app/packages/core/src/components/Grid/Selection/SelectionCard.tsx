@@ -211,7 +211,7 @@ export default function SelectionCard({
             </span>
           )}
         </button>
-        {(temporal || dynamicGroup) && (
+        {(dynamicGroup || (temporal && !full)) && (
           <span className={styles.kind}>
             <Text variant={TextVariant.Label} color={TextColor.Fg}>
               {dynamicGroup ? "Group" : descriptor}
