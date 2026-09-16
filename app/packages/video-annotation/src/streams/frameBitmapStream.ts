@@ -10,7 +10,8 @@ import {
   type BufferReadiness,
   type PlaybackStore,
 } from "@fiftyone/playback";
-import { FrameBitmapCache } from "./frameBitmapCache";
+import { DEFAULT_MAX_BYTES, FrameBitmapCache } from "./frameBitmapCache";
+import { FrameByteBudget } from "./frameByteBudget";
 import { mergeRange, toSecondRanges } from "./fetchedRanges";
 import type {
   ChunkDoneMessage,
@@ -55,6 +56,14 @@ export interface FrameBitmapStreamOptions {
 
 const DEFAULT_CHUNK_SIZE = 60;
 
+/**
+ * Chunks the decode-ahead window is split into. Fetching a chunk's bytes does
+ * not need the decoder, so several requests in flight keep the decoder fed
+ * while the next chunk is still arriving — which is the difference between
+ * smooth playback and stalling once the media is remote.
+ */
+const CHUNKS_IN_FLIGHT = 3;
+
 interface InflightEntry {
   promise: Promise<void>;
   resolve: () => void;
@@ -87,6 +96,14 @@ export abstract class FrameBitmapStream<
   protected readonly frameCount: number;
   protected readonly frameRate: number;
   protected readonly chunkSize: number;
+  /**
+   * Sizes the chunk and how far ahead of the playhead this stream works, from
+   * what a decoded frame actually costs. A 1920x1200 frame is 9MB, so the
+   * default budget holds under two seconds of it at 60fps — far less than the
+   * lookahead asks for, and past that the cache evicts each frame before it is
+   * drawn.
+   */
+  private readonly budget: FrameByteBudget;
 
   protected readonly cache: FrameBitmapCache<M>;
   private readonly inflight = new Map<number, InflightEntry>();
@@ -121,6 +138,12 @@ export abstract class FrameBitmapStream<
     this.frameRate = opts.frameRate;
     this.chunkSize = opts.chunkSize ?? DEFAULT_CHUNK_SIZE;
     this.cache = new FrameBitmapCache<M>(opts.maxBytes);
+    this.budget = new FrameByteBudget({
+      budgetBytes: opts.maxBytes ?? DEFAULT_MAX_BYTES,
+      chunkFrames: this.chunkSize,
+      frameCount: this.frameCount,
+      maxConcurrency: CHUNKS_IN_FLIGHT,
+    });
 
     // `createWorker` is field-independent (just `new Worker(url)`), so it's
     // safe to call from the base constructor before subclass fields are set.
@@ -234,7 +257,11 @@ export abstract class FrameBitmapStream<
   prefetch(range: [number, number]): void {
     const [startSec, endSec] = range;
     const startFrame = this.timeToFrame(startSec);
-    const endFrame = this.timeToFrame(endSec);
+    const window = this.budget.windowFrames();
+    const endFrame = Math.min(
+      this.timeToFrame(endSec),
+      startFrame + window - 1,
+    );
 
     // First missing frame wins — the engine re-calls prefetch as the playhead
     // advances, so we don't fan out here.
@@ -243,7 +270,7 @@ export abstract class FrameBitmapStream<
         continue;
       }
 
-      this.requestChunkStartingAt(f);
+      this.requestChunkStartingAt(f, startFrame + window - f);
       return;
     }
   }
@@ -312,7 +339,10 @@ export abstract class FrameBitmapStream<
     this.postInit(this.worker);
   }
 
-  private requestChunkStartingAt(startFrame: number): void {
+  private requestChunkStartingAt(
+    startFrame: number,
+    maxFrames: number = Number.POSITIVE_INFINITY,
+  ): void {
     if (this.destroyed) {
       return;
     }
@@ -320,8 +350,8 @@ export abstract class FrameBitmapStream<
     this.ensureInit();
 
     const numFrames = Math.min(
-      this.chunkSize,
-      this.frameCount - startFrame + 1,
+      this.budget.chunkLengthAt(startFrame),
+      maxFrames,
     );
     if (numFrames <= 0) {
       return;
@@ -377,6 +407,8 @@ export abstract class FrameBitmapStream<
       return;
     }
 
+    // What this source's frames cost the cache, measured rather than assumed.
+    this.budget.observe(msg.width * msg.height * 4);
     this.cache.set(msg.frameNumber, {
       bitmap: msg.bitmap,
       width: msg.width,
