@@ -5,13 +5,7 @@ import {
   type TemporalTagTimelineProps,
   type Track,
 } from "@fiftyone/playback";
-import {
-  IconName,
-  MenuIconTextItem,
-  MenuSeparator,
-  Size,
-  Spinner,
-} from "@voxel51/voodo";
+import { Size, Spinner } from "@voxel51/voodo";
 import clsx from "clsx";
 import React, {
   useCallback,
@@ -76,6 +70,7 @@ import { StateActionProvider } from "../state-action/state-action-context";
 import { SceneUpdateHistoryProvider } from "../scene/entities/scene-update-history-context";
 import { SelectionHotkeys } from "../interaction/selection/selected-object";
 import AddTileMenu from "./AddTileMenu";
+import EpisodeLayoutMenuActions from "./EpisodeLayoutMenuActions";
 import { tileTypesFor, getTileDefinition } from "./tile-catalog";
 import RightSidebarWithTrays from "./RightSidebarWithTrays";
 import styles from "./ModalRenderer.module.css";
@@ -880,30 +875,6 @@ function EpisodeHeaderActions({
           timeRange={timeRange}
           transformTopology={transformTopology}
           visibleStreamIds={visibleStreamIds}
-        />
-      ))}
-    </>
-  );
-}
-
-function EpisodeLayoutMenuActions({
-  onSelect,
-}: {
-  readonly onSelect: (id: EpisodeHeaderActionId) => void;
-}) {
-  const actions = useEpisodeHeaderActions().filter(
-    (action) => action.layoutMenuLabel,
-  );
-  if (!actions.length) return null;
-  return (
-    <>
-      <MenuSeparator />
-      {actions.map((action) => (
-        <MenuIconTextItem
-          icon={action.layoutMenuIcon ?? IconName.Puzzle}
-          key={action.id}
-          onClick={() => onSelect(action.id)}
-          text={action.layoutMenuLabel ?? ""}
         />
       ))}
     </>

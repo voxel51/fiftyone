@@ -54,5 +54,7 @@ export interface EpisodeHeaderAction {
   readonly layoutMenuLabel?: string;
   /** Icon shown beside `layoutMenuLabel`, matching the built-in items. */
   readonly layoutMenuIcon?: IconName;
+  /** Built-in menu capability supplied by this action. */
+  readonly layoutMenuRole?: "saved-layouts";
   readonly Component: React.ComponentType<EpisodeHeaderActionContext>;
 }
