@@ -38,7 +38,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - name: Setup (UV)
-        uses: astral-sh/setup-uv@v10.0.1
+        uses: astral-sh/setup-uv@v10.1.0
         with:
           python-version: ${{ matrix.python }}
           # TODO: we are unsure if cache is working correctly here
