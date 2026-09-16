@@ -47,6 +47,8 @@ export default function ActionEntry({
 }: ActionEntryProps) {
   const disabled = Boolean(disabledReason) || busy;
   const text = busy ? (busyLabel ?? label) : label;
+  // An action whose panel is open reads as pressed, like a toolbar toggle.
+  const active = aria["aria-expanded"] === true;
   if (surface === "menu") {
     const Icon = typeof icon === "string" ? null : (icon as IconComponent);
     return (
@@ -76,6 +78,7 @@ export default function ActionEntry({
       size={Size.Sm}
       variant={Variant.Borderless}
       leadingIcon={icon}
+      className={active ? styles.actionActive : undefined}
       disabled={disabled}
       aria-busy={busy || undefined}
       onClick={onClick}

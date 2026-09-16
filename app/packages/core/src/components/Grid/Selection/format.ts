@@ -59,7 +59,7 @@ export function groupDescriptor(
   unit: SelectionUnit = EPISODE_UNIT,
 ) {
   if (isFullEpisode(group))
-    return unit.temporal ? "Full episode" : unitTitle(unit);
+    return unit.temporal ? `Full ${unit.one}` : unitTitle(unit);
   return plural(segmentsOf(group).length, "segment");
 }
 

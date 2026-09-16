@@ -120,7 +120,7 @@ export default function ScopeControls({
   };
 
   const { provider } = boundary;
-  const parents = unit.temporal ? "Whole episodes" : unitTitlePlural(unit);
+  const parents = unit.temporal ? `Whole ${unit.many}` : unitTitlePlural(unit);
   const wholeLabel =
     boundary.subsetScope === "segments" ? "Saved segments" : parents;
   const extensions = providers.filter((entry) => entry.supports(mediaType));

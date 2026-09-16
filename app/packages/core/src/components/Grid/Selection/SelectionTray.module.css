@@ -133,6 +133,21 @@
   flex: 0 0 auto;
 }
 
+/* The action whose panel is open stays lit, like a pressed toolbar toggle. */
+.bar .actionActive,
+.bar .actionActive:hover {
+  background: var(--tray-accent-soft);
+  color: var(--tray-accent-text);
+}
+
+.bar .actionActive svg {
+  color: inherit;
+}
+
+.menuRow[aria-expanded="true"] {
+  background: var(--tray-accent-soft);
+}
+
 .truncate {
   display: inline-block;
   max-width: 200px;

@@ -1,4 +1,8 @@
-import type { EpisodeSelection } from "@fiftyone/state/src/selection";
+import { EPISODE_UNIT } from "@fiftyone/state/src/selection";
+import type {
+  EpisodeSelection,
+  SelectionUnit,
+} from "@fiftyone/state/src/selection";
 import {
   Anchor,
   Button,
@@ -29,6 +33,7 @@ import { trayTheme } from "./theme";
 interface Props {
   group: EpisodeSelection;
   candidate: EpisodeSelection;
+  unit: SelectionUnit;
   capture: (candidate: EpisodeSelection, operation?: "replace" | "add") => void;
 }
 
@@ -36,16 +41,20 @@ interface Props {
 export function addDisabledReason(
   group: EpisodeSelection,
   candidate: EpisodeSelection,
+  unit: SelectionUnit = EPISODE_UNIT,
 ) {
-  if (isFullEpisode(group)) return "Already covered by the full episode";
-  if (isFullEpisode(candidate)) return "Replace to select the full episode";
+  if (isFullEpisode(group)) return `Already covered by the full ${unit.one}`;
+  if (isFullEpisode(candidate)) return `Replace to select the full ${unit.one}`;
   return null;
 }
 
 /** The replace action names its destination so scope changes are deliberate. */
-export function replaceLabel(candidate: EpisodeSelection) {
+export function replaceLabel(
+  candidate: EpisodeSelection,
+  unit: SelectionUnit = EPISODE_UNIT,
+) {
   return isFullEpisode(candidate)
-    ? "Replace with full episode"
+    ? `Replace with full ${unit.one}`
     : `Replace with ${plural(segmentsOf(candidate).length, "matching segment")}`;
 }
 
@@ -97,9 +106,14 @@ function Side({
  * Captured ranges differ from what the current results match. Nothing
  * changes until the user chooses to replace or accumulate.
  */
-export default function MismatchPopover({ group, candidate, capture }: Props) {
+export default function MismatchPopover({
+  group,
+  candidate,
+  unit,
+  capture,
+}: Props) {
   const domain = rangeDomain([segmentsOf(group), segmentsOf(candidate)]);
-  const addReason = addDisabledReason(group, candidate);
+  const addReason = addDisabledReason(group, candidate, unit);
   return (
     <Popover
       anchor={PopoverAnchor.TopStart}
@@ -147,7 +161,7 @@ export default function MismatchPopover({ group, candidate, capture }: Props) {
                 close();
               }}
             >
-              {replaceLabel(candidate)}
+              {replaceLabel(candidate, unit)}
             </Button>
             {addReason ? (
               <Tooltip

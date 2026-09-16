@@ -174,7 +174,7 @@ it("adds all results from a snapshot token instead of member ids", async () => {
   });
   const view = render(<Host context={value} />);
   fireEvent.click(await screen.findByRole("button", { name: "Add to subset" }));
-  await screen.findByText("Add all 120 full episodes in view to subset");
+  await screen.findByText("Add all 120 episodes in view to subset");
   fireEvent.click(await screen.findByRole("button", { name: /^Review/ }));
   await waitFor(() =>
     expect(screen.getByRole("status").textContent).toContain(

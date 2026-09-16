@@ -164,6 +164,12 @@ export const SAMPLE_UNIT: SelectionUnit = {
   many: "samples",
   temporal: false,
 };
+/** Videos are samples in FiftyOne's own words, with segments and temporal tags. */
+export const VIDEO_UNIT: SelectionUnit = {
+  one: "sample",
+  many: "samples",
+  temporal: true,
+};
 
 /** Which converted view a stage list produces. */
 export type ViewConversion = "patches" | "frames" | "clips";
@@ -207,9 +213,8 @@ export function selectionUnit(
   conversion: ViewConversion | null = null,
 ): SelectionUnit {
   if (conversion) return CONVERTED_UNITS[conversion];
-  return mediaType === "video" || mediaType === "multimodal"
-    ? EPISODE_UNIT
-    : SAMPLE_UNIT;
+  if (mediaType === "multimodal") return EPISODE_UNIT;
+  return mediaType === "video" ? VIDEO_UNIT : SAMPLE_UNIT;
 }
 
 /** Captures are isolated per dataset and, in converted views, per conversion. */
@@ -235,10 +240,11 @@ export function selectionScopeLabel(
   unit: SelectionUnit = EPISODE_UNIT,
 ): string {
   const parts = [];
+  // "Full" only earns its place next to segments; alone, "2 samples" is clear.
   if (counts.fullEpisodes)
     parts.push(
-      unit.temporal
-        ? count(counts.fullEpisodes, "full episode")
+      unit.temporal && counts.segments
+        ? count(counts.fullEpisodes, `full ${unit.one}`, `full ${unit.many}`)
         : count(counts.fullEpisodes, unit.one, unit.many),
     );
   if (counts.segments)

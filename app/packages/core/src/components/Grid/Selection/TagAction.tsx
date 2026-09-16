@@ -242,7 +242,7 @@ function TagPicker({ capture }: { capture: Capture }) {
         options={[
           {
             value: "members",
-            label: unit.temporal ? "Episodes" : unitTitlePlural(unit),
+            label: unitTitlePlural(unit),
             disabledReason: labelsOnly
               ? "Patches are labels; tag them as labels"
               : null,
@@ -251,7 +251,7 @@ function TagPicker({ capture }: { capture: Capture }) {
             value: "labels",
             label: "Labels",
             disabledReason: counts.segments
-              ? "Label tagging needs whole episodes"
+              ? `Label tagging needs whole ${unit.many}`
               : null,
           },
         ]}
@@ -353,11 +353,7 @@ function TagPicker({ capture }: { capture: Capture }) {
         <Notice
           tone="warning"
           icon={WarningAmberIcon}
-          title={
-            unit.temporal
-              ? "No labels in these episodes."
-              : `No labels in these ${unit.many}.`
-          }
+          title={`No labels in these ${unit.many}.`}
         />
       )}
       {permission && (
@@ -402,7 +398,7 @@ export const tagSelectionAction: GridSelectionAction = {
   memberKinds: ["episode", "segment"],
   unavailable: (context) => {
     if (context.counts.unavailable)
-      return "Remove unavailable episodes before tagging";
+      return `Remove unavailable ${context.unit.many} before tagging`;
     if (
       context.groups.some((group) =>
         group.members.some(

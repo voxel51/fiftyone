@@ -240,7 +240,7 @@ describe("SelectionTray", () => {
     expect(screen.getByText("e49.mp4")).toBeTruthy();
     expect(screen.queryByText("e50.mp4")).toBeNull();
     expect(screen.getByText("e70.mp4")).toBeTruthy();
-    expect(screen.getByText("120 full episodes selected")).toBeTruthy();
+    expect(screen.getByText("120 episodes selected")).toBeTruthy();
     const fold = screen.getByRole("button", {
       name: "Show 20 more of 20 hidden episodes",
     });
@@ -275,7 +275,7 @@ describe("SelectionTray", () => {
     fireEvent.click(toggle);
     expect(strip?.getAttribute("aria-hidden")).toBe("true");
     expect(strip?.style.height).toBe("0px");
-    expect(screen.getByText("1 full episode selected")).toBeTruthy();
+    expect(screen.getByText("1 episode selected")).toBeTruthy();
     expect(mocks.selection.clear).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Clear" }));
     expect(mocks.selection.clear).toHaveBeenCalledOnce();

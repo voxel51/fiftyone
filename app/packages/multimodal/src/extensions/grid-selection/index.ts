@@ -120,7 +120,7 @@ export function gridActionDisabledReason(
   if (!context.counts.episodes) return "No members in this scope";
   if (action.scope === "explicit" && context.source !== "explicit")
     return context.unit.temporal
-      ? "Select episodes or segments first"
+      ? `Select ${context.unit.many} or segments first`
       : `Select ${context.unit.many} first`;
   if (context.counts.segments > 0 && !action.memberKinds.includes("segment"))
     return "This action does not support segments";

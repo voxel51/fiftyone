@@ -247,6 +247,7 @@ export default function SelectionCard({
               <MismatchPopover
                 group={group}
                 candidate={candidate}
+                unit={unit}
                 capture={capture}
               />
             )}
@@ -296,7 +297,7 @@ export default function SelectionCard({
                 className={styles.ellipsis}
                 style={{ flex: 1 }}
               >
-                Whole episode
+                {`Whole ${unit.one}`}
               </Text>
             ) : (
               <div className={styles.ranges}>

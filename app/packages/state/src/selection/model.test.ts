@@ -5,6 +5,7 @@ import {
   sameSelection,
   updateEpisodeSelection,
   EPISODE_UNIT,
+  VIDEO_UNIT,
   SAMPLE_UNIT,
   hasDynamicGroups,
   isPersistentDomain,
@@ -113,7 +114,7 @@ describe("unit vocabulary", () => {
   it("speaks in samples for non-temporal media and episodes otherwise", () => {
     expect(selectionUnit("image")).toEqual(SAMPLE_UNIT);
     expect(selectionUnit("3d")).toEqual(SAMPLE_UNIT);
-    expect(selectionUnit("video")).toEqual(EPISODE_UNIT);
+    expect(selectionUnit("video")).toEqual(VIDEO_UNIT);
     expect(selectionUnit("multimodal")).toEqual(EPISODE_UNIT);
     expect(selectionUnit("image", "patches").many).toBe("patches");
     expect(selectionUnit("video", "clips")).toMatchObject({
