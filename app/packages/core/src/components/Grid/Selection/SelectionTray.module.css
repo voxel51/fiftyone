@@ -76,11 +76,10 @@
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, var(--tray-card-w));
-  grid-auto-rows: var(--tray-card-h);
-  justify-content: start;
-  align-content: start;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  align-content: flex-start;
   gap: var(--tray-strip-gap);
   padding: var(--tray-strip-pad-top) var(--tray-space-sm)
     var(--tray-strip-pad-bottom);
@@ -163,7 +162,9 @@
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  height: 100%;
+  flex: none;
+  width: var(--tray-card-w);
+  height: var(--tray-card-h);
   border-radius: 8px;
   overflow: hidden;
   background: var(--tray-card-bg);
@@ -237,7 +238,7 @@
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   transition: opacity var(--tray-duration-fast) var(--tray-easing);
 }
 

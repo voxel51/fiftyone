@@ -44,6 +44,7 @@ import {
 import MismatchPopover from "./MismatchPopover";
 import RangeTrack from "./RangeTrack";
 import styles from "./SelectionTray.module.css";
+import { cardWidth } from "./theme";
 
 // The plugin renderer graph is heavy; only multimodal cards pay for it.
 const RendererPreview = lazy(() => import("./RendererPreview"));
@@ -112,6 +113,10 @@ export default function SelectionCard({
   const root = useRef<HTMLElement>(null);
   const near = useNearViewport(root);
   const [mediaFailed, setMediaFailed] = useState(false);
+  // Media that arrives without a known ratio reports its own once loaded.
+  const [measured, setMeasured] = useState<number | null>(null);
+  const aspect = group.aspectRatio ?? group.node?.aspectRatio ?? measured;
+  const width = cardWidth(aspect);
   const temporal = unit.temporal;
   const kind = mediaFailed ? "none" : previewKind(mediaType, group.filepath);
   const rendered = mediaType === "multimodal" && Boolean(group.node);
@@ -144,6 +149,7 @@ export default function SelectionCard({
     <article
       ref={root}
       className={styles.card}
+      style={{ width }}
       data-episode-id={group.episodeId}
       data-unavailable={unavailable || undefined}
       data-outside={outside || undefined}
@@ -187,6 +193,9 @@ export default function SelectionCard({
               preload="metadata"
               onError={() => setMediaFailed(true)}
               onLoadedMetadata={(event) => {
+                const { videoWidth, videoHeight } = event.currentTarget;
+                if (videoWidth && videoHeight)
+                  setMeasured(videoWidth / videoHeight);
                 event.currentTarget.currentTime = group.previewStart ?? 0;
               }}
             />
@@ -197,6 +206,11 @@ export default function SelectionCard({
               alt=""
               loading="lazy"
               onError={() => setMediaFailed(true)}
+              onLoad={(event) => {
+                const { naturalWidth, naturalHeight } = event.currentTarget;
+                if (naturalWidth && naturalHeight)
+                  setMeasured(naturalWidth / naturalHeight);
+              }}
             />
           ) : (
             <span className={styles.placeholder}>

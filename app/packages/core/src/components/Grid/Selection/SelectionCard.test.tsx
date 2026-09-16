@@ -155,6 +155,27 @@ describe("SelectionCard", () => {
     expect(screen.queryByText("Not in results")).toBeNull();
   });
 
+  it("keeps one height and sizes the card from the media aspect ratio", () => {
+    const wide = render(
+      <Card group={{ ...full, aspectRatio: 16 / 9 }} candidate={full} />,
+    );
+    expect(screen.getByRole("article").style.width).toBe("188px");
+    wide.unmount();
+    const tall = render(
+      <Card group={{ ...full, aspectRatio: 9 / 16 }} candidate={full} />,
+    );
+    expect(screen.getByRole("article").style.width).toBe("106px");
+    tall.unmount();
+    render(<Card group={full} candidate={full} />);
+    const article = screen.getByRole("article");
+    expect(article.style.width).toBe("208px");
+    const image = article.querySelector("video, img") as HTMLVideoElement;
+    Object.defineProperty(image, "videoWidth", { value: 1600 });
+    Object.defineProperty(image, "videoHeight", { value: 800 });
+    fireEvent.loadedMetadata(image);
+    expect(article.style.width).toBe("212px");
+  });
+
   it("draws a multimodal sample with the grid's own renderer node", async () => {
     const node = {
       id: "episode",

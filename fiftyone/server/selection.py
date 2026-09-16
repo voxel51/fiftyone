@@ -367,42 +367,69 @@ def _is_clips(generated_dataset):
     )
 
 
+_ASPECT_FIELDS = (
+    "metadata.width",
+    "metadata.height",
+    "metadata.frame_width",
+    "metadata.frame_height",
+)
+
+
+def _aspect_ratio(width, height, frame_width, frame_height):
+    """Width over height from image or video metadata, when both are known."""
+    for w, h in ((width, height), (frame_width, frame_height)):
+        if w and h:
+            return w / h
+    return None
+
+
+def _details_rows(view, extra_paths):
+    """Yields one dict of requested values plus the aspect ratio per sample.
+
+    Everything comes from a single projection so rows stay aligned, and only
+    metadata paths the schema declares are requested.
+    """
+    schema = view.get_field_schema(flat=True)
+    aspect_paths = [path for path in _ASPECT_FIELDS if path in schema]
+    paths = ["id", "filepath", *extra_paths, *aspect_paths]
+    for row in zip(*view.values(paths)):
+        values = dict(zip(paths, row))
+        yield values, _aspect_ratio(*[values.get(p) for p in _ASPECT_FIELDS])
+
+
 def sample_details_map(dataset, sample_ids, clips=False):
     """Resolves display metadata for many parents with a single projection.
 
-    Plain media only needs each sample's filepath, so avoid loading full
-    documents; media-reference datasets resolve their preview asset per sample.
-    Clips also carry their first frame so previews start inside the clip.
+    Plain media only needs each sample's filepath and, when metadata knows
+    it, the media aspect ratio so previews can show the whole frame; avoid
+    loading full documents. Media-reference datasets resolve their preview
+    asset per sample. Clips also carry their first frame so previews start
+    inside the clip.
     """
     view = fosel.select_parents(dataset, sample_ids)
     if dataset._contains_media_references():
         return {sample.id: sample_details(sample, dataset) for sample in view}
-    if clips:
-        ids, filepaths, supports, rates = view.values(
-            ["id", "filepath", "support", "metadata.frame_rate"]
-        )
-        result = {}
-        for sample_id, filepath, support, rate in zip(
-            ids, filepaths, supports, rates
-        ):
-            details = {"filepath": filepath}
+    extras = ["support", "metadata.frame_rate"] if clips else []
+    group_path = (
+        dataset.group_field + ".id"
+        if dataset.media_type == "group" and dataset.group_field
+        else None
+    )
+    if group_path:
+        extras.append(group_path)
+    result = {}
+    for values, aspect in _details_rows(view, extras):
+        details = {"filepath": values["filepath"]}
+        if aspect:
+            details["aspectRatio"] = aspect
+        if clips:
+            support, rate = values["support"], values["metadata.frame_rate"]
             if support and rate:
                 details["previewStart"] = max(support[0] - 1, 0) / rate
-            result[sample_id] = details
-        return result
-    if dataset.media_type == "group" and dataset.group_field:
-        ids, filepaths, group_ids = view.values(
-            ["id", "filepath", dataset.group_field + ".id"]
-        )
-        return {
-            sample_id: {"filepath": filepath, "groupId": group_id}
-            for sample_id, filepath, group_id in zip(ids, filepaths, group_ids)
-        }
-    ids, filepaths = view.values(["id", "filepath"])
-    return {
-        sample_id: {"filepath": filepath}
-        for sample_id, filepath in zip(ids, filepaths)
-    }
+        if group_path:
+            details["groupId"] = values[group_path]
+        result[values["id"]] = details
+    return result
 
 
 def sample_details(sample, dataset):
@@ -420,10 +447,25 @@ def sample_details(sample, dataset):
     )
     for asset in resolved[reference["key"]].assets:
         if asset.description.role == MediaAssetRole.VIDEO_STREAM:
-            return {
+            details = {
                 "filepath": asset.path,
                 "previewStart": asset.description.selector.from_timestamp,
             }
+            metadata = sample.metadata
+            aspect = _aspect_ratio(
+                *[
+                    getattr(metadata, name, None)
+                    for name in (
+                        "width",
+                        "height",
+                        "frame_width",
+                        "frame_height",
+                    )
+                ]
+            )
+            if aspect:
+                details["aspectRatio"] = aspect
+            return details
     return {}
 
 

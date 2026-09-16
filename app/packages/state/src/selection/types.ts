@@ -46,6 +46,8 @@ export interface EpisodeSelection {
   readonly group?: { readonly label: string; readonly size: number };
   /** The group this sample belongs to, in a grouped dataset. */
   readonly groupId?: string;
+  /** Width over height of the media, when metadata knows it. */
+  readonly aspectRatio?: number;
   /** The grid's own node when a plugin renderer draws this sample's tile. */
   readonly node?: GridSampleNode;
 }

@@ -58,7 +58,12 @@ export function useRefreshSelectionMetadata(datasetId: string) {
         string,
         Pick<
           EpisodeSelection,
-          "filepath" | "previewStart" | "unavailable" | "groupId" | "node"
+          | "filepath"
+          | "previewStart"
+          | "unavailable"
+          | "groupId"
+          | "node"
+          | "aspectRatio"
         >
       >,
     ) =>

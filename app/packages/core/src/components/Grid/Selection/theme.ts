@@ -5,6 +5,25 @@ import type { CSSProperties } from "react";
 export const CARD_WIDTH = 208;
 export const CARD_HEIGHT = 166;
 export const CARD_PREVIEW_HEIGHT = 106;
+/** Cards keep one height; their width follows the media, within reason. */
+export const CARD_MIN_WIDTH = 106;
+export const CARD_MAX_WIDTH = 320;
+
+/**
+ * The card width that shows the whole media at the fixed preview height.
+ * Unknown or degenerate ratios fall back to the default width, where the
+ * preview letterboxes instead.
+ */
+export function cardWidth(aspectRatio: number | null | undefined) {
+  if (!aspectRatio || !Number.isFinite(aspectRatio) || aspectRatio <= 0)
+    return CARD_WIDTH;
+  return Math.round(
+    Math.min(
+      CARD_MAX_WIDTH,
+      Math.max(CARD_MIN_WIDTH, CARD_PREVIEW_HEIGHT * aspectRatio),
+    ),
+  );
+}
 export const STRIP_GAP = 8;
 export const STRIP_PADDING_TOP = 14;
 export const STRIP_PADDING_BOTTOM = 8;

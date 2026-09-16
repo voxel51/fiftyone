@@ -170,6 +170,18 @@ class ImageSelectionTests(unittest.TestCase):
         )
         self.assertEqual(result["unavailableGroups"], [])
 
+    def test_details_carry_the_media_aspect_ratio_when_metadata_knows_it(self):
+        first, second = self.dataset.values("id")[:2]
+        sample = self.dataset[first]
+        sample.metadata = fo.ImageMetadata(width=640, height=480)
+        sample.save()
+        result = selection_availability(self.dataset, [first, second])
+        self.assertAlmostEqual(result[first]["aspectRatio"], 640 / 480)
+        self.assertNotIn("aspectRatio", result[second])
+        self.assertEqual(
+            result[second]["filepath"], self.dataset[second].filepath
+        )
+
     def test_grid_nodes_for_ids_carry_the_grid_sample_and_urls(self):
         ids = self.dataset.values("id")[:2]
         nodes = asyncio.run(foses.sample_nodes_for_ids(self.dataset, ids))
