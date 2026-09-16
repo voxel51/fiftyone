@@ -150,20 +150,16 @@ const useInitializeViewport = (
 
       /*
        * The goal is to reveal after the image AND all overlays have been painted to the canvas.
-       * On the first tick, Pixi renders the canvas from the current state of its scene graph.
-       * Because renderFrame is async, the renderOverlay() calls that mutate the scene graph (adding
-       * bounding box Graphics objects to the Pixi stage) haven't run yet by the time Pixi renders,
-       * they're suspended in a pending microtask. So the first canvas paint shows nothing (or whatever
-       * was there before). On the second tick, Pixi renders the now-mutated scene graph and the overlays appear.
        *
-       * HACK: We use a double-tick pattern to ensure the reveal is after the image and all overlays
-       * have been painted to the canvas. A cleaner solution may be to make Scene2D.renderFrame
-       * synchronous which would cause scene graph mutations to happen in the same tick as
-       * Pixi's per-tick render. This will not work if an overlay awaits some async task before
-       * mutating the scene graph, but there are no cases of that behavior today.
+       * A double tick is still what that takes, even now that `renderFrame` is
+       * synchronous. An "after" callback runs at the end of the scene's own
+       * ticker pass, which sits at `UPDATE_PRIORITY.NORMAL` — ahead of Pixi's
+       * LOW-priority render in that same pass. So on tick N the scene graph is
+       * complete but nothing has been composited yet; revealing there would
+       * show an empty canvas.
        *
-       * Tick N: wait for the render loop to finish mutating the scene graph
-       * (renderOverlay calls) before registering a second callback.
+       * Tick N: the render loop has finished mutating the scene graph
+       * (renderOverlay calls). Register a second callback and wait.
        */
       const unregister1 = scene.registerRenderCallback({
         phase: "after",
