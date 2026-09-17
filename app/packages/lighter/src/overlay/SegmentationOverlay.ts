@@ -68,8 +68,14 @@ export class SegmentationOverlay extends BaseOverlay<SegmentationLabel> {
    * The reuse check requires a canvas, which a failure leaves unset, so
    * without this a mask that cannot be rasterized is retried — and logged —
    * on EVERY repaint. During playback that is thirty times a second.
+   *
+   * The source is held by identity rather than summarized into a key: a
+   * string compares by value, a decoded `OverlayMask` by reference, and
+   * neither can collide with a different mask the way a length or a literal
+   * `"decoded"` could. A collision here suppresses a perfectly good mask.
    */
-  #failedKey?: string;
+  #failedSource?: string | OverlayMask;
+  #failedPalette?: string;
 
   public cursor = "default";
 
@@ -139,10 +145,9 @@ export class SegmentationOverlay extends BaseOverlay<SegmentationLabel> {
     }
 
     const key = paletteKey(palette);
-    const attempt = `${key}::${typeof source === "string" ? source.length : "decoded"}`;
 
     // Already known bad, and nothing about the inputs has changed.
-    if (this.#failedKey === attempt) {
+    if (this.#failedSource === source && this.#failedPalette === key) {
       return undefined;
     }
 
@@ -173,7 +178,8 @@ export class SegmentationOverlay extends BaseOverlay<SegmentationLabel> {
       this.#maskHeight = height;
       this.#renderedSource = source;
       this.#renderedPalette = key;
-      this.#failedKey = undefined;
+      this.#failedSource = undefined;
+      this.#failedPalette = undefined;
     } catch (error) {
       // A malformed or multi-channel mask must not take the frame down with
       // it — every other overlay in this pass still has to paint.
@@ -185,7 +191,8 @@ export class SegmentationOverlay extends BaseOverlay<SegmentationLabel> {
       this.#targets = undefined;
       this.#renderedSource = source;
       this.#renderedPalette = key;
-      this.#failedKey = attempt;
+      this.#failedSource = source;
+      this.#failedPalette = key;
     }
 
     return this.#canvas;
