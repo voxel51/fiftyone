@@ -73,11 +73,16 @@ export function PortableLayoutHost({
   // writes and camera cleanup. The next mount uses the ordinary restore path.
   useEffect(() => {
     if (!pending) return;
-    const { layout, scope, field } = pending;
-    const cameras = readModalLayout(scope)?.cameraPreferences ?? {};
+    const { layout, scope } = pending;
+    const field = pending.field?.trim();
+    const stored = readModalLayout(scope);
+    const cameras = stored?.cameraPreferences ?? {};
     replaceModalLayout(
       {
         ...layout.modal,
+        defaultCameraPreferences: field
+          ? stored?.defaultCameraPreferences
+          : layout.camera,
         cameraPreferences: field
           ? { ...cameras, [field]: layout.camera }
           : cameras,

@@ -338,15 +338,14 @@ export function useModalLayout({
   const onSceneUpAxisChange = useCallback(
     (axis: Scene3dUpAxis) => {
       setSceneUpAxis(axis);
-      if (datasetId && cameraPreferenceField?.trim()) {
+      if (datasetId) {
         writeCameraPreferences(
           { sceneUpAxis: axis },
           datasetId,
           cameraPreferenceField,
         );
       } else {
-        // Preserve the dataset-scoped fallback when the caller cannot
-        // identify a media field yet.
+        // Preserve the legacy fallback when no source scope is available.
         writeModalLayout({ sceneUpAxis: axis }, datasetId);
       }
     },

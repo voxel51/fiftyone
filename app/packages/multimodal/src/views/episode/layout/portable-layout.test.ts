@@ -32,6 +32,7 @@ describe("portable layouts", () => {
         layout: "image-1",
         expandedTileId: "image-1",
         cameraPreferences: { otherField: { sceneUpAxis: "y" } },
+        defaultCameraPreferences: { preferredWorldFrameId: "standalone" },
       },
       { sceneUpAxis: "z", preferredWorldFrameId: "map" },
       preferences,
@@ -44,6 +45,7 @@ describe("portable layouts", () => {
     expect(json).not.toContain("otherField");
     expect(json).not.toContain("expandedTileId");
     expect(json).not.toContain("cameraPreferences");
+    expect(json).not.toContain("defaultCameraPreferences");
   });
   it("change keys ignore runtime camera re-expression but not user settings", () => {
     // Numbers observed live: the same loaded layout, re-recorded by the 3D
@@ -105,6 +107,20 @@ describe("portable layouts", () => {
       portableLayoutChangeKey(withCamera(saved, { layout: "image-2" })),
     ).not.toBe(baseline);
     expect(() => portableLayoutChangeKey('{"format":"other"}')).toThrow();
+  });
+  it("requires a tile arrangement and accepts an explicitly empty one", () => {
+    expect(
+      parsePortableLayout(
+        serializePortableLayout(
+          { layout: null },
+          {},
+          DEFAULT_SIDEBAR_PREFERENCES,
+        ),
+      ).modal.layout,
+    ).toBeNull();
+    expect(() =>
+      serializePortableLayout({}, {}, DEFAULT_SIDEBAR_PREFERENCES),
+    ).toThrow();
   });
   it("normalizes empty live tile maps before export", () => {
     expect(parsePortableLayout(capture()).modal.layout).toBe("image-1");

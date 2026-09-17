@@ -19,7 +19,7 @@ export interface PortableLayout {
   readonly version: 1;
   readonly modal: Omit<
     PersistedModalLayout,
-    "cameraPreferences" | "expandedTileId"
+    "cameraPreferences" | "defaultCameraPreferences" | "expandedTileId"
   >;
   readonly camera: PersistedCameraPreferences;
   readonly preferences: SidebarPreferences;
@@ -33,6 +33,7 @@ export function serializePortableLayout(
 ): string {
   const {
     cameraPreferences: _camera,
+    defaultCameraPreferences: _defaultCamera,
     expandedTileId: _expanded,
     ...durable
   } = modal;
@@ -76,7 +77,11 @@ export function parsePortableLayout(json: string): PortableLayout {
   if (!isRecord(value.modal) || !isRecord(value.camera))
     throw new Error("The layout settings are invalid.");
   validateTree(value.modal.layout);
-  if ("cameraPreferences" in value.modal || "expandedTileId" in value.modal) {
+  if (
+    "cameraPreferences" in value.modal ||
+    "defaultCameraPreferences" in value.modal ||
+    "expandedTileId" in value.modal
+  ) {
     throw new Error("The layout contains nonportable viewer state.");
   }
   const modal = sanitizeModalLayout(value.modal);
