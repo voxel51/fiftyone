@@ -8,6 +8,8 @@ Use "least capability" principle. Choose the simplest pattern that works:
 - **Context API**: Small bounded tree, static-ish data → `useContext` (keep
   contexts minimal to avoid re-renders)
 - **Atoms**: Reactive global state → Jotai (preferred) or `@fiftyone/reverb`
+  (for state that needs a reset sentinel, value-keyed families or a batched
+  transaction)
 
 ## Atom Rules
 

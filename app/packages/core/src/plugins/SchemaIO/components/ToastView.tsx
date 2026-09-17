@@ -46,7 +46,7 @@ const Toast: React.FC<ToastProps> = ({
   layout = {},
   onHandleClose,
 }) => {
-  const [open, setOpen] = useState(true); // do not use a global store atom for this state
+  const [open, setOpen] = useState(true); // do not use a global atom for this state
 
   const handleClose = (
     event: React.SyntheticEvent<any> | Event,
