@@ -5,8 +5,8 @@ vi.mock("@fiftyone/relay");
 import {
   setMockAtoms,
   TestSelector,
-} from "../../../../__mocks__/@fiftyone/reverb";
-import { TestGraphQLSelectorFamily } from "../../../../__mocks__/@fiftyone/relay";
+} from "../../../reverb/src/__mocks__/index";
+import { TestGraphQLSelectorFamily } from "../../../relay/src/__mocks__/index";
 import * as groups from "./groups";
 
 describe("hasGroupSlices handles nested dynamic groups", () => {

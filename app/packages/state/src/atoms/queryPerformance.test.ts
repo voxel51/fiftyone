@@ -6,8 +6,8 @@ vi.mock("@fiftyone/relay");
 import type {
   TestSelector,
   TestSelectorFamily,
-} from "../../../../__mocks__/@fiftyone/reverb";
-import { setMockAtoms } from "../../../../__mocks__/@fiftyone/reverb";
+} from "../../../reverb/src/__mocks__/index";
+import { setMockAtoms } from "../../../reverb/src/__mocks__/index";
 import * as queryPerformance from "./queryPerformance";
 
 describe("tests query performance selectors", () => {

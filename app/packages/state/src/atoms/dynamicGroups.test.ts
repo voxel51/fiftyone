@@ -6,7 +6,7 @@ import {
   setMockAtoms,
   TestSelector,
   TestSelectorFamily,
-} from "../../../../__mocks__/@fiftyone/reverb";
+} from "../../../reverb/src/__mocks__/index";
 import * as dynamicGroups from "./dynamicGroups";
 
 describe("handles dynamic groups", () => {

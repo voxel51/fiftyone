@@ -5,7 +5,7 @@ vi.mock("@fiftyone/relay");
 import {
   setMockAtoms,
   TestSelectorFamily,
-} from "../../../../../__mocks__/@fiftyone/reverb";
+} from "../../../../reverb/src/__mocks__/index";
 import * as counts from "./counts";
 
 // Tracks every `aggregation(params)` lookup so tests can assert that
