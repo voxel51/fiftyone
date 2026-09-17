@@ -2909,11 +2909,18 @@ function comparePreviewStreams(
   );
 }
 
+/**
+ * Color versus non-color is the outer ranking, so a depth or IR feed never
+ * reaches Auto ahead of a color camera. The front/primary marker only reorders
+ * streams that already share a group.
+ */
 function previewStreamPreference(stream: StreamDescriptor) {
-  if (/(?:^|[._/-])(primary|front)(?:$|[._/-])/i.test(stream.sourceName)) {
-    return 0;
-  }
-  return isNonColorImageStreamName(stream.sourceName) ? 2 : 1;
+  const colorRank = isNonColorImageStreamName(stream.sourceName) ? 2 : 0;
+  return colorRank + (isPrimaryPlacementStreamName(stream.sourceName) ? 0 : 1);
+}
+
+function isPrimaryPlacementStreamName(sourceName: string) {
+  return /(?:^|[._/-])(?:primary|front)(?:$|[._/-])/i.test(sourceName);
 }
 
 function posterFrame(frame: DecodedFrame): EpisodePosterFrame | null {

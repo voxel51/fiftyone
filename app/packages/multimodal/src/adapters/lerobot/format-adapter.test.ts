@@ -1195,10 +1195,11 @@ describe("LeRobot format adapter", () => {
     }
   });
 
-  it("opens Auto on a color camera rather than the alphabetically first depth one", async () => {
+  it("ranks color ahead of depth before applying the front-camera preference", async () => {
     const rankedAssets: readonly AssetDescriptor[] = [
-      videoAsset("depth", "observation.depth_linear.cam", "1"),
+      videoAsset("depth", "observation.depth_linear.front", "1"),
       videoAsset("color", "observation.images.wrist", "1"),
+      videoAsset("colorFront", "observation.images.front", "1"),
     ];
     const rankedSource: EpisodeSource = {
       ...source,
@@ -1229,10 +1230,11 @@ describe("LeRobot format adapter", () => {
     if (!preview) throw new Error("LeRobot preview session is unavailable");
     try {
       await expect(preview.read()).resolves.toMatchObject({
-        streamSourceName: "observation.images.wrist",
+        streamSourceName: "observation.images.front",
         streamSourceNames: [
+          "observation.images.front",
           "observation.images.wrist",
-          "observation.depth_linear.cam",
+          "observation.depth_linear.front",
         ],
       });
     } finally {
