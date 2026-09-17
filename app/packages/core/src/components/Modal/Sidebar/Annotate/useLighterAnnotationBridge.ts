@@ -5,6 +5,7 @@ import {
 import {
   useCurrentDatasetId,
   useGetKeypointSkeleton,
+  useIsImageDynamicGroupVideo,
   useIsVideo,
   useModalSample,
 } from "@fiftyone/state";
@@ -35,6 +36,8 @@ export const useLighterAnnotationBridge = (): void => {
   // the video surface (a video sample or an image dynamic group video) mounts
   // its own frame-stamping bridge; this frame-less one must stay off there
   const isVideo = useIsVideo();
+  const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
+  const isVideoSurface = isVideo || isImageDynamicGroupVideo;
 
   const sampleId = modalSample?.sample?._id ?? "";
 
@@ -94,7 +97,7 @@ export const useLighterAnnotationBridge = (): void => {
     resolveMediaUrl,
     interactionPolicy,
     getSkeleton,
-    enabled: !isVideo,
+    enabled: !isVideoSurface,
   });
 
   // overlay read-only flags are Lighter-surface state — owned here, off the

@@ -29,7 +29,10 @@ vi.mock("@fiftyone/looker/src/util", () => ({
 
 import { patchSample, VersionMismatchError } from "@fiftyone/core/src/client";
 import type { Sample } from "@fiftyone/looker";
-import { getSampleVersionToken } from "./getSampleVersionToken";
+import {
+  clearSampleVersions,
+  resolveSampleVersionToken,
+} from "./sampleVersionTokens";
 import { doPatchSample } from "./labelPersistence";
 
 const LOADED = new Date("2026-09-09T14:16:24.457Z");
@@ -48,7 +51,7 @@ const makeArgs = (id: string) => {
   return {
     sample,
     datasetId: "dataset-1",
-    getVersionToken: () => getSampleVersionToken({ sample }),
+    getVersionToken: () => resolveSampleVersionToken({ sample }),
     refreshSample: vi.fn(),
     sampleDeltas: [{ op: "replace", path: "/label", value: "cat" }] as never,
   };
@@ -56,6 +59,7 @@ const makeArgs = (id: string) => {
 
 describe("doPatchSample version token", () => {
   beforeEach(() => {
+    clearSampleVersions();
     vi.mocked(patchSample).mockReset();
   });
 
@@ -83,9 +87,9 @@ describe("doPatchSample version token", () => {
     await doPatchSample(args);
     await doPatchSample(args);
 
-    expect(vi.mocked(patchSample).mock.calls[1][0].versionToken).toBe(
-      "2026-09-09T14:16:32.520",
-    );
+    // the token is the ETag the server issued, not one derived from the
+    // sample the app still holds
+    expect(vi.mocked(patchSample).mock.calls[1][0].versionToken).toBe("etag");
   });
 
   it("records the server's version from a 412 body", async () => {
@@ -102,6 +106,6 @@ describe("doPatchSample version token", () => {
       VersionMismatchError,
     );
     expect(args.refreshSample).toHaveBeenCalledOnce();
-    expect(args.getVersionToken()).toBe("2026-09-09T14:16:32.520");
+    expect(args.getVersionToken()).toBe("etag");
   });
 });
