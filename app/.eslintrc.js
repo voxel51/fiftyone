@@ -43,6 +43,34 @@ const recoilPaths = [
   },
 ];
 
+// The location model is the one thing both apps route through, so it stays
+// framework-free by rule rather than by intention: a router or a state library
+// reaching in here is how the URL grew five owners in the first place.
+const locationModelPaths = [
+  {
+    name: "react",
+    message:
+      "The location model is framework-free. React belongs in packages/location/src/hooks.tsx.",
+  },
+  {
+    name: "react-dom",
+    message: "The location model is framework-free.",
+  },
+  {
+    name: "history",
+    message:
+      "The location model may not assume a history implementation. Write an Adapter instead.",
+  },
+];
+
+const locationModelPatterns = [
+  {
+    group: ["next", "next/*"],
+    message:
+      "The location model may not assume a router. Write an Adapter in the host app instead.",
+  },
+];
+
 const muiPatterns = [
   {
     group: ["@mui/icons-material", "@mui/icons-material/*"],
@@ -206,6 +234,21 @@ module.exports = {
       files: bothAllowlist,
       rules: {
         "no-restricted-imports": "off",
+      },
+    },
+    {
+      // The framework-free half of @fiftyone/location. Last so nothing
+      // re-opens it, and it re-declares both freezes for the same reason the
+      // overrides above do.
+      files: ["packages/location/src/model/**"],
+      rules: {
+        "no-restricted-imports": [
+          "warn",
+          {
+            paths: [...recoilPaths, ...locationModelPaths],
+            patterns: [...muiPatterns, ...locationModelPatterns],
+          },
+        ],
       },
     },
   ],
