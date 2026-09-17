@@ -50,6 +50,38 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K = T[" $data"]>(
   const value = atom({
     ...options,
     default: fragmentOptions.default,
+    /**
+     * The effect below owns live updates, but it cannot set a value before
+     * the first read returns, so a read resolves the fragment from the
+     * current page itself.
+     */
+    resolve: () => {
+      if (isTest) {
+        return fragmentOptions.default;
+      }
+
+      try {
+        const { pageQuery } = getPageQuery();
+        const resolved = resolveFragmentChain(
+          pageQuery.data,
+          fragmentOptions.fragments,
+          fragmentOptions.keys,
+          pageQuery.preloadedQuery.environment,
+        );
+
+        if (resolved.missing || !resolved.context || resolved.data === null) {
+          return fragmentOptions.default;
+        }
+
+        const data = resolved.data as T[" $data"];
+
+        return fragmentOptions.read
+          ? fragmentOptions.read(data, null)
+          : (data as K);
+      } catch {
+        return fragmentOptions.default;
+      }
+    },
     effects: [
       ...(options.effects || []),
       ({ setSelf, trigger }) => {
