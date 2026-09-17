@@ -226,13 +226,11 @@ export class PixiRenderer2D implements Renderer2D {
     containerId: string,
   ): void {
     width *= HANDLE_FACTOR / this.getScale();
-    const graphics = new PIXI.Graphics();
+    const graphics = this.acquireGraphics(containerId);
     const outline = (2 * HANDLE_OUTLINE) / this.getScale();
 
     this.drawBoxes(graphics, bounds, width + outline, color, HANDLE_ALPHA);
     this.drawBoxes(graphics, bounds, width, HANDLE_COLOR, HANDLE_ALPHA);
-
-    this.addToContainer(graphics, containerId);
   }
 
   drawScrim(
@@ -240,7 +238,7 @@ export class PixiRenderer2D implements Renderer2D {
     canonicalMediaBounds: Rect,
     containerId: string,
   ): void {
-    const mask = new PIXI.Graphics();
+    const mask = this.acquireGraphics(containerId);
     mask.rect(
       canonicalMediaBounds.x,
       canonicalMediaBounds.y,
@@ -267,12 +265,10 @@ export class PixiRenderer2D implements Renderer2D {
     mask.cut();
 
     mask.eventMode = "none";
-
-    this.addToContainer(mask, containerId);
   }
 
   drawRect(bounds: Rect, style: DrawStyle, containerId: string): void {
-    const graphics = new PIXI.Graphics();
+    const graphics = this.acquireGraphics(containerId);
     const width = (style.lineWidth || 1) / this.getScale();
 
     if (style.fillStyle) {
@@ -303,20 +299,17 @@ export class PixiRenderer2D implements Renderer2D {
         graphics.stroke();
       }
     }
-
-    this.addToContainer(graphics, containerId);
   }
 
   /**
    * Draws border of background of 'drawText'
    */
   private drawBorder(
+    border: PIXI.Graphics,
     bounds: Rect,
     options: TextOptions | undefined,
-    containerId: string,
   ): void {
     if (options?.dashline) {
-      const border = new PIXI.Graphics();
       const dashline = options.dashline;
       const { lineWidth, strokeStyle } = dashline;
       const scaledLineWidth = lineWidth / this.getScale();
@@ -373,8 +366,6 @@ export class PixiRenderer2D implements Renderer2D {
         .lineTo(corners[1].x, corners[1].y)
         .lineTo(corners[2].x, corners[2].y)
         .lineTo(corners[3].x, corners[3].y, !options.tab);
-
-      this.addToContainer(border, containerId);
     }
   }
 
@@ -382,13 +373,12 @@ export class PixiRenderer2D implements Renderer2D {
    * Draws background of 'drawText'
    */
   private drawBackground(
+    background: PIXI.Graphics,
+    border: PIXI.Graphics | undefined,
     bounds: Rect,
     options: TextOptions | undefined,
-    containerId: string,
   ): void {
     if (options?.backgroundColor) {
-      const background = new PIXI.Graphics();
-
       if (options?.rounded) {
         const radius = options?.rounded / this.getScale();
 
@@ -429,8 +419,9 @@ export class PixiRenderer2D implements Renderer2D {
           .fill(options.backgroundColor);
       }
 
-      this.addToContainer(background, containerId);
-      this.drawBorder(bounds, options, containerId);
+      if (border) {
+        this.drawBorder(border, bounds, options);
+      }
     }
   }
 
@@ -536,7 +527,21 @@ export class PixiRenderer2D implements Renderer2D {
       wordWrapWidth: options?.maxWidth || 200,
     });
 
-    const pixiText = new PIXI.Text({ text, style: textStyle });
+    // Slot order IS z-order, so the background and its border have to claim
+    // their slots before the text does — even though their geometry can only
+    // be computed after the glyphs are measured. Claiming and painting are
+    // separate steps precisely so that ordering survives: a Graphics renders
+    // whatever geometry it holds at frame time, no matter when it was issued.
+    // Both conditions read from `options` alone, so they are known up front.
+    const background = options?.backgroundColor
+      ? this.acquireGraphics(containerId)
+      : undefined;
+    const border =
+      options?.backgroundColor && options?.dashline
+        ? this.acquireGraphics(containerId)
+        : undefined;
+
+    const pixiText = this.acquireText(containerId, text, textStyle);
     pixiText.scale.set(1 / this.getScale());
 
     const textBounds = pixiText.getLocalBounds();
@@ -555,8 +560,9 @@ export class PixiRenderer2D implements Renderer2D {
     pixiText.x = txt.x;
     pixiText.y = txt.y;
 
-    this.drawBackground(bg, options, containerId);
-    this.addToContainer(pixiText, containerId);
+    if (background) {
+      this.drawBackground(background, border, bg, options);
+    }
 
     return bg;
   }
@@ -567,7 +573,7 @@ export class PixiRenderer2D implements Renderer2D {
     style: DrawStyle,
     containerId: string,
   ): void {
-    const graphics = new PIXI.Graphics();
+    const graphics = this.acquireGraphics(containerId);
     const scaledRadius = radius / this.getScale();
 
     // PixiJS v8: fill() consumes the current path, so stroke needs its own
@@ -588,8 +594,6 @@ export class PixiRenderer2D implements Renderer2D {
       });
       graphics.stroke();
     }
-
-    this.addToContainer(graphics, containerId);
   }
 
   drawPoints(
@@ -599,7 +603,7 @@ export class PixiRenderer2D implements Renderer2D {
     containerId: string,
   ): void {
     if (centers.length === 0) return;
-    const graphics = new PIXI.Graphics();
+    const graphics = this.acquireGraphics(containerId);
     const scaledRadius = radius / this.getScale();
 
     const fillParsed = style.fillStyle
@@ -632,14 +636,12 @@ export class PixiRenderer2D implements Renderer2D {
       });
       graphics.stroke();
     }
-
-    this.addToContainer(graphics, containerId);
   }
 
   drawPolygon(points: Point[], style: DrawStyle, containerId: string): void {
     if (points.length < 3) return;
 
-    const graphics = new PIXI.Graphics();
+    const graphics = this.acquireGraphics(containerId);
 
     const fillParsed = style.fillStyle
       ? parseColorWithAlpha(style.fillStyle)
@@ -675,8 +677,6 @@ export class PixiRenderer2D implements Renderer2D {
       });
       graphics.stroke();
     }
-
-    this.addToContainer(graphics, containerId);
   }
 
   drawLines(
@@ -685,7 +685,7 @@ export class PixiRenderer2D implements Renderer2D {
     containerId: string,
   ): void {
     if (segments.length === 0) return;
-    const graphics = new PIXI.Graphics();
+    const graphics = this.acquireGraphics(containerId);
     const { color, alpha } = parseColorWithAlpha(
       style.strokeStyle || "#000000",
     );
@@ -714,8 +714,6 @@ export class PixiRenderer2D implements Renderer2D {
       }
       graphics.stroke();
     }
-
-    this.addToContainer(graphics, containerId);
   }
 
   drawLine(
@@ -724,7 +722,7 @@ export class PixiRenderer2D implements Renderer2D {
     style: DrawStyle,
     containerId: string,
   ): void {
-    const graphics = new PIXI.Graphics();
+    const graphics = this.acquireGraphics(containerId);
     const { color, alpha } = parseColorWithAlpha(
       style.strokeStyle || "#000000",
     );
@@ -749,8 +747,6 @@ export class PixiRenderer2D implements Renderer2D {
       graphics.lineTo(end.x, end.y);
       graphics.stroke();
     }
-
-    this.addToContainer(graphics, containerId);
   }
 
   drawImage(
@@ -759,75 +755,76 @@ export class PixiRenderer2D implements Renderer2D {
     options: ImageOptions | undefined,
     containerId: string,
   ): void {
-    let sprite: PIXI.Sprite;
+    // Resolve the texture first, then claim the slot: an unresolvable source
+    // must bail without consuming one, or every later draw in the pass would
+    // shift up a slot and reuse the wrong object.
+    let texture: PIXI.Texture;
+    // whether WE minted it, and so must destroy it when the slot moves on —
+    // a texture handed in from outside belongs to the caller
+    let owned = false;
+
     switch (image.type) {
       case "texture":
-        if (image.texture) {
-          sprite = new PIXI.Sprite(image.texture);
-        } else {
+        if (!image.texture) {
           return;
         }
+        texture = image.texture;
         break;
       case "canvas":
-        if (image.canvas) {
-          // 'skipCache: true'
-          const texture = PIXI.Texture.from(image.canvas, true);
-          texture.source.update();
-          texture.source.scaleMode = "nearest";
-          sprite = new PIXI.Sprite(texture);
-          this.trackOwnedTexture(containerId, texture);
-        } else {
+        if (!image.canvas) {
           return;
         }
+        // 'skipCache: true'
+        texture = PIXI.Texture.from(image.canvas, true);
+        texture.source.update();
+        texture.source.scaleMode = "nearest";
+        owned = true;
         break;
       case "html-image":
-        if (image.src) {
-          const texture = PIXI.Texture.from(image.src);
-          sprite = new PIXI.Sprite(texture);
-        } else {
+        if (!image.src) {
           return;
         }
+        texture = PIXI.Texture.from(image.src);
         break;
-      case "image-data":
-        if (image.imageData) {
-          const canvas = document.createElement("canvas");
-          canvas.width = image.imageData.width;
-          canvas.height = image.imageData.height;
-          const ctx = canvas.getContext("2d");
-          if (ctx) {
-            ctx.putImageData(image.imageData, 0, 0);
-            const texture = PIXI.Texture.from(canvas);
-            sprite = new PIXI.Sprite(texture);
-          } else {
-            return;
-          }
-        } else {
+      case "image-data": {
+        if (!image.imageData) {
           return;
         }
+        const canvas = document.createElement("canvas");
+        canvas.width = image.imageData.width;
+        canvas.height = image.imageData.height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          return;
+        }
+        ctx.putImageData(image.imageData, 0, 0);
+        // 'skipCache: true' — the canvas is ours and nothing else can reuse it
+        texture = PIXI.Texture.from(canvas, true);
+        owned = true;
         break;
+      }
       case "bitmap":
-        if (image.bitmap) {
-          const texture = PIXI.Texture.from(image.bitmap);
-          sprite = new PIXI.Sprite(texture);
-        } else {
+        if (!image.bitmap) {
           return;
         }
+        texture = PIXI.Texture.from(image.bitmap);
         break;
       case "custom":
-        if (image.custom) {
-          try {
-            const texture = PIXI.Texture.from(image.custom);
-            sprite = new PIXI.Sprite(texture);
-          } catch (error) {
-            return;
-          }
-        } else {
+        if (!image.custom) {
+          return;
+        }
+        try {
+          texture = PIXI.Texture.from(image.custom);
+        } catch {
           return;
         }
         break;
       default:
         return;
     }
+
+    const sprite = this.acquireSprite(containerId, texture, owned, false);
+
     sprite.x = destination.x;
     sprite.y = destination.y;
     sprite.width = destination.width;
@@ -848,7 +845,6 @@ export class PixiRenderer2D implements Renderer2D {
         sprite.tint = options.tint;
       }
     }
-    this.addToContainer(sprite, containerId, false);
   }
 
   /**
@@ -1120,12 +1116,12 @@ export class PixiRenderer2D implements Renderer2D {
    * @param addToForeground - Whether to add the element to the foreground container.
    * If false, adds the element to the background container.
    */
-  private addToContainer(
-    element: PIXI.Container | PIXI.Graphics | PIXI.Text | PIXI.Sprite,
+  private getOrCreateContainer(
     containerId: string,
-    addToForeground: boolean = true,
-  ): void {
+    addToForeground: boolean,
+  ): PIXI.Container {
     let container = this.containers.get(containerId);
+
     if (!container) {
       container = new PIXI.Container();
       this.containers.set(containerId, container);
@@ -1136,7 +1132,231 @@ export class PixiRenderer2D implements Renderer2D {
         this.backgroundContainer.addChild(container);
       }
     }
-    container.addChild(element);
+
+    return container;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Slot reuse
+  //
+  // An overlay repaints by listing its draw calls in order, and that order is
+  // stable frame to frame — a box draws its rect, then its label background,
+  // then its label. So the Nth draw of one pass can claim the display object
+  // the Nth draw of the previous pass left behind, resetting it instead of
+  // allocating a replacement. `beginRebuild` opens the pass, each draw claims
+  // the next slot, and `endRebuild` destroys whatever the pass did not reach.
+  //
+  // Outside a rebuild pass there is no cursor and every draw appends, which is
+  // how this renderer behaved before pooling existed.
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Per-container write cursor for the pass in progress. An entry means "mid
+   * rebuild"; absent means draws append.
+   */
+  private rebuildCursors = new Map<string, number>();
+
+  beginRebuild(containerId: string): void {
+    this.rebuildCursors.set(containerId, 0);
+  }
+
+  endRebuild(containerId: string): void {
+    const cursor = this.rebuildCursors.get(containerId);
+    this.rebuildCursors.delete(containerId);
+
+    if (cursor === undefined) {
+      return;
+    }
+
+    const container = this.containers.get(containerId);
+
+    if (!container) {
+      return;
+    }
+
+    // Anything past the cursor is left over from a longer previous pass: this
+    // one drew fewer objects, so those slots are stale.
+    while (container.children.length > cursor) {
+      const child = container.children[container.children.length - 1];
+      container.removeChild(child);
+      this.destroyChild(containerId, child);
+    }
+  }
+
+  /**
+   * Claims the next slot, reusing the object already there when its type
+   * matches and creating one otherwise.
+   */
+  private acquireSlot<T extends PIXI.Container>(
+    containerId: string,
+    matches: (child: PIXI.Container) => boolean,
+    create: () => T,
+    reset: (existing: T) => void,
+    addToForeground: boolean,
+  ): T {
+    const container = this.getOrCreateContainer(containerId, addToForeground);
+    const cursor = this.rebuildCursors.get(containerId);
+    const index = cursor ?? container.children.length;
+    const existing = container.children[index];
+
+    if (cursor !== undefined) {
+      this.rebuildCursors.set(containerId, index + 1);
+    }
+
+    if (existing && matches(existing)) {
+      const reused = existing as T;
+      reset(reused);
+      return reused;
+    }
+
+    const created = create();
+
+    if (existing) {
+      // this pass draws a different kind of object here — swap in place so the
+      // slots below keep their objects
+      container.removeChildAt(index);
+      this.destroyChild(containerId, existing);
+      container.addChildAt(created, index);
+    } else {
+      container.addChild(created);
+    }
+
+    return created;
+  }
+
+  /**
+   * A reused display object carries every property the previous pass set on
+   * it, so anything a draw method assigns conditionally has to be returned to
+   * its default here — `eventMode` above all, which `hitTestElement` reads to
+   * skip the scrim. A slot that once held a scrim would otherwise stay
+   * un-hittable for the rest of its life.
+   */
+  private resetDisplayObject(element: PIXI.Container): void {
+    element.eventMode = PIXI.EventSystem.defaultEventMode;
+    element.alpha = 1;
+    element.rotation = 0;
+    element.visible = true;
+    element.position.set(0, 0);
+    element.scale.set(1, 1);
+  }
+
+  private acquireGraphics(
+    containerId: string,
+    addToForeground = true,
+  ): PIXI.Graphics {
+    return this.acquireSlot<PIXI.Graphics>(
+      containerId,
+      (child) => child instanceof PIXI.Graphics,
+      () => new PIXI.Graphics(),
+      (existing) => {
+        existing.clear();
+        this.resetDisplayObject(existing);
+      },
+      addToForeground,
+    );
+  }
+
+  private acquireText(
+    containerId: string,
+    text: string,
+    style: PIXI.TextStyle,
+    addToForeground = true,
+  ): PIXI.Text {
+    return this.acquireSlot<PIXI.Text>(
+      containerId,
+      (child) => child instanceof PIXI.Text,
+      () => new PIXI.Text({ text, style }),
+      (existing) => {
+        existing.text = text;
+        existing.style = style;
+        this.resetDisplayObject(existing);
+      },
+      addToForeground,
+    );
+  }
+
+  private acquireSprite(
+    containerId: string,
+    texture: PIXI.Texture,
+    owned: boolean,
+    addToForeground: boolean,
+  ): PIXI.Sprite {
+    const sprite = this.acquireSlot<PIXI.Sprite>(
+      containerId,
+      (child) => child instanceof PIXI.Sprite,
+      () => new PIXI.Sprite(texture),
+      (existing) => {
+        if (existing.texture !== texture) {
+          // Assign FIRST, then release: releasing destroys the old texture,
+          // and doing that while the sprite still points at it leaves a
+          // window where the sprite references destroyed GPU memory.
+          const previous = existing.texture;
+          existing.texture = texture;
+          this.releaseTexture(containerId, previous);
+        }
+        this.resetDisplayObject(existing);
+        // `drawImage` sets tint only when asked, so a reused sprite would
+        // otherwise keep the last mask's color.
+        existing.tint = 0xffffff;
+      },
+      addToForeground,
+    );
+
+    if (owned) {
+      this.trackOwnedTexture(containerId, texture);
+    }
+
+    return sprite;
+  }
+
+  /**
+   * Tear down a display object this pass is finished with.
+   *
+   * `context: true` is load-bearing. In Pixi 8.13 `Graphics.destroy(options)`
+   * frees its owned `GraphicsContext` only when `options` is falsy or
+   * `options.context === true` — `{ children: true }` hits neither branch. And
+   * it is the context's own `destroy` event that evicts its entry from
+   * `GraphicsContextSystem`'s `_gpuContextHash`, so trimming a slot without it
+   * leaves the GPU batch data behind: the exact leak this pooling exists to
+   * avoid. `destroyed` flips either way, so a test asserting that alone does
+   * not notice.
+   */
+  private destroyChild(containerId: string, child: PIXI.Container): void {
+    this.releaseSpriteTexture(containerId, child);
+    child.destroy({ children: true, context: true });
+  }
+
+  /**
+   * Destroys the texture a sprite slot holds, if this renderer minted it.
+   * A texture handed in from outside (`type: "texture"`) is the caller's.
+   */
+  private releaseSpriteTexture(
+    containerId: string,
+    element: PIXI.Container,
+  ): void {
+    if (!(element instanceof PIXI.Sprite)) {
+      return;
+    }
+
+    this.releaseTexture(containerId, element.texture);
+  }
+
+  /** Destroys one texture, if this renderer minted it for this container. */
+  private releaseTexture(containerId: string, texture: PIXI.Texture): void {
+    const tracked = this.ownedTextures.get(containerId);
+
+    if (!tracked) {
+      return;
+    }
+
+    const index = tracked.indexOf(texture);
+
+    if (index === -1) {
+      return;
+    }
+
+    tracked.splice(index, 1);
+    texture.destroy(true);
   }
 
   private trackOwnedTexture(containerId: string, texture: PIXI.Texture): void {
@@ -1163,6 +1383,7 @@ export class PixiRenderer2D implements Renderer2D {
    * @param containerId - The container ID to dispose
    */
   dispose(containerId: string): void {
+    this.rebuildCursors.delete(containerId);
     this.destroyOwnedTextures(containerId);
     const container = this.containers.get(containerId);
     if (container) {
@@ -1230,7 +1451,13 @@ export class PixiRenderer2D implements Renderer2D {
 
   getBounds(containerId: string): Rect | undefined {
     const container = this.containers.get(containerId);
-    if (container) {
+
+    // A pass that drew nothing leaves the container in place but empty, where
+    // before pooling it would have been disposed. Pixi reports an EMPTY
+    // container's bounds as infinite (minX = Infinity, width = -Infinity),
+    // which `getMouseDistance` turns into NaN and sorts unpredictably. No
+    // children means no bounds, same as no container.
+    if (container && container.children.length > 0) {
       const bounds = container.getBounds();
       return {
         x: bounds.x,
@@ -1299,6 +1526,7 @@ export class PixiRenderer2D implements Renderer2D {
       }
     }
     this.ownedTextures.clear();
+    this.rebuildCursors.clear();
     this.viewport?.destroy({ children: true, context: true });
     this.viewport?.removeChildren();
     this.containers.clear();

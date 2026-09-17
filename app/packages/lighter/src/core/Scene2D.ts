@@ -1790,23 +1790,14 @@ export class Scene2D {
           height: 0,
         };
 
-      const ret = overlay.render(
-        this.config.renderer,
-        this.createOverlayStyle(overlay),
-        {
-          canonicalMediaBounds,
-        },
-      );
+      overlay.render(this.config.renderer, this.createOverlayStyle(overlay), {
+        canonicalMediaBounds,
+      });
 
-      if (ret instanceof Promise) {
-        ret.then(() => {
-          this.renderingState.setStatus(overlayId, OVERLAY_STATUS_PAINTED);
-          overlay.markClean();
-        });
-      } else {
-        this.renderingState.setStatus(overlayId, OVERLAY_STATUS_PAINTED);
-        overlay.markClean();
-      }
+      // `render` is synchronous by contract — a rebuild pass opens and closes
+      // within one call — so the overlay is painted by the time this returns.
+      this.renderingState.setStatus(overlayId, OVERLAY_STATUS_PAINTED);
+      overlay.markClean();
     } catch (error) {
       this.handleRenderError(overlayId, error);
     }
