@@ -22,6 +22,8 @@ import eta.core.utils as etau
 import numpy as np
 import pytz
 from bson import ObjectId
+from pymongo.errors import BulkWriteError
+from pymongo.results import BulkWriteResult, InsertManyResult
 from decorators import drop_datasets, skip_windows
 from freezegun import freeze_time
 from mongoengine import ValidationError
@@ -5110,6 +5112,33 @@ class _AdmissionSample:
         pass
 
 
+class _RecordingAdmitter(foo.InsertAdmitter):
+    """An admitter that remembers what it was asked and what it was told."""
+
+    def __init__(self, refuse=False):
+        self.refuse = refuse
+        self.admitted = []
+        self.recorded = []
+
+    def admit(self, collection_name, num_docs):
+        if self.refuse:
+            raise foo.InsertRefusedError("refused")
+
+        self.admitted.append((collection_name, num_docs))
+
+    def record(self, collection_name, num_docs):
+        self.recorded.append((collection_name, num_docs))
+
+
+def _new_sample_and_doc(filepath="im.png"):
+    return (_AdmissionSample(), {"_id": ObjectId(), "filepath": filepath})
+
+
+def _existing_sample_and_doc(filepath="im.png"):
+    sample = _AdmissionSample(sample_id=str(ObjectId()))
+    return (sample, {"_id": sample._id, "filepath": filepath})
+
+
 class SampleBatchAdmissionTests(unittest.TestCase):
     """These batch writes go straight to pymongo rather than through
     ``insert_documents``, so they consult the insert admitters
@@ -5119,76 +5148,104 @@ class SampleBatchAdmissionTests(unittest.TestCase):
         self._admitters = list(foo.database._insert_admitters)
         foo.database._insert_admitters.clear()
 
-        self.calls = []
-        foo.database.register_insert_admitter(
-            lambda name, num_docs: self.calls.append((name, num_docs))
-        )
+        self.admitter = _RecordingAdmitter()
+        foo.register_insert_admitter(self.admitter)
 
     def tearDown(self):
         foo.database._insert_admitters[:] = self._admitters
 
-    def _make_dataset(self):
+    def _make_dataset(self, num_existing=0):
         dataset = MagicMock()
         dataset._sample_collection_name = "samples.test"
+        dataset._sample_collection.count_documents.return_value = num_existing
         return dataset
+
+    def _inserts(self, dataset, samples_and_docs):
+        dataset._sample_collection.insert_many.return_value = InsertManyResult(
+            [d["_id"] for _, d in samples_and_docs], acknowledged=True
+        )
+
+    def _upserts(self, dataset, inserted=0, upserted=0):
+        dataset._sample_collection.bulk_write.return_value = BulkWriteResult(
+            {"nInserted": inserted, "nUpserted": upserted}, acknowledged=True
+        )
 
     def test_add_samples_batch(self):
         dataset = self._make_dataset()
-        samples_and_docs = [
-            (_AdmissionSample(), {"_id": ObjectId(), "filepath": "im.png"})
-            for _ in range(3)
-        ]
+        samples_and_docs = [_new_sample_and_doc() for _ in range(3)]
+        self._inserts(dataset, samples_and_docs)
 
         fo.Dataset._add_samples_batch(dataset, samples_and_docs)
 
-        self.assertEqual(self.calls, [("samples.test", 3)])
+        self.assertEqual(self.admitter.admitted, [("samples.test", 3)])
+        self.assertEqual(self.admitter.recorded, [("samples.test", 3)])
 
-    def test_upsert_samples_batch_counts_inserts_only(self):
-        dataset = self._make_dataset()
-        existing = _AdmissionSample(sample_id=str(ObjectId()))
-        samples_and_docs = [
-            (existing, {"_id": existing._id, "filepath": "im1.png"}),
-            (_AdmissionSample(), {"_id": ObjectId(), "filepath": "im2.png"}),
-            (_AdmissionSample(), {"_id": ObjectId(), "filepath": "im3.png"}),
-        ]
+    def test_upsert_samples_batch_counts_new_documents(self):
+        # one replace of a sample in the collection, one replace of a sample
+        # whose ID is not, and one explicit insert: two new documents
+        dataset = self._make_dataset(num_existing=1)
+        present = _existing_sample_and_doc("im1.png")
+        absent = _existing_sample_and_doc("im2.png")
+        samples_and_docs = [present, absent, _new_sample_and_doc("im3.png")]
+        self._upserts(dataset, inserted=1, upserted=1)
 
         fo.Dataset._upsert_samples_batch(dataset, samples_and_docs)
 
-        # replacing an existing sample adds nothing, so only the two new
-        # samples are counted
-        self.assertEqual(self.calls, [("samples.test", 2)])
-        self.assertEqual(
-            len(dataset._sample_collection.bulk_write.mock_calls), 1
+        dataset._sample_collection.count_documents.assert_called_once_with(
+            {"_id": {"$in": [present[0]._id, absent[0]._id]}}
         )
+        self.assertEqual(self.admitter.admitted, [("samples.test", 2)])
+        self.assertEqual(self.admitter.recorded, [("samples.test", 2)])
 
-    def test_upsert_samples_batch_with_no_inserts(self):
-        dataset = self._make_dataset()
-        existing = _AdmissionSample(sample_id=str(ObjectId()))
-        samples_and_docs = [
-            (existing, {"_id": existing._id, "filepath": "im1.png"})
-        ]
+    def test_upsert_samples_batch_with_no_new_documents(self):
+        dataset = self._make_dataset(num_existing=1)
+        samples_and_docs = [_existing_sample_and_doc()]
+        self._upserts(dataset)
 
         fo.Dataset._upsert_samples_batch(dataset, samples_and_docs)
 
-        self.assertEqual(self.calls, [("samples.test", 0)])
+        self.assertEqual(self.admitter.admitted, [("samples.test", 0)])
+        self.assertEqual(self.admitter.recorded, [("samples.test", 0)])
+
+    def test_upsert_samples_batch_does_not_count_when_unadmitted(self):
+        # the count of new documents costs a query, which a write nobody
+        # admits never pays
+        foo.database._insert_admitters.clear()
+        dataset = self._make_dataset()
+        samples_and_docs = [_existing_sample_and_doc()]
+        self._upserts(dataset)
+
+        fo.Dataset._upsert_samples_batch(dataset, samples_and_docs)
+
+        dataset._sample_collection.count_documents.assert_not_called()
+        dataset._sample_collection.bulk_write.assert_called_once()
 
     def test_refused_batch_is_not_written(self):
-        foo.database._insert_admitters.clear()
-
-        def admitter(name, num_docs):
-            raise ValueError("refused")
-
-        foo.database.register_insert_admitter(admitter)
+        refusing = _RecordingAdmitter(refuse=True)
+        foo.register_insert_admitter(refusing)
 
         dataset = self._make_dataset()
-        samples_and_docs = [
-            (_AdmissionSample(), {"_id": ObjectId(), "filepath": "im.png"})
-        ]
+        samples_and_docs = [_new_sample_and_doc()]
+
+        with self.assertRaises(foo.InsertRefusedError):
+            fo.Dataset._add_samples_batch(dataset, samples_and_docs)
+
+        dataset._sample_collection.insert_many.assert_not_called()
+        self.assertEqual(self.admitter.recorded, [])
+        self.assertEqual(refusing.recorded, [])
+
+    def test_failed_write_records_what_landed(self):
+        dataset = self._make_dataset()
+        samples_and_docs = [_new_sample_and_doc() for _ in range(3)]
+        dataset._sample_collection.insert_many.side_effect = BulkWriteError(
+            {"nInserted": 2, "writeErrors": [{"errmsg": "duplicate key"}]}
+        )
 
         with self.assertRaises(ValueError):
             fo.Dataset._add_samples_batch(dataset, samples_and_docs)
 
-        dataset._sample_collection.insert_many.assert_not_called()
+        self.assertEqual(self.admitter.admitted, [("samples.test", 3)])
+        self.assertEqual(self.admitter.recorded, [("samples.test", 2)])
 
 
 class DatasetExtrasTests(unittest.TestCase):

@@ -10,6 +10,8 @@ import unittest
 from functools import partial
 
 from bson import ObjectId
+from pymongo.errors import BulkWriteError
+from pymongo.results import InsertManyResult
 
 import fiftyone as fo
 import fiftyone.core.fields as fof
@@ -141,84 +143,173 @@ class GetImpliedFieldKwargsTests(unittest.TestCase):
         self.assertEqual(inner_field_names, {"x", "score"})
 
 
-class _Refused(Exception):
+class _Refused(foo.InsertRefusedError):
     pass
+
+
+class _Admitter(foo.InsertAdmitter):
+    """An admitter that logs every consultation to a shared list."""
+
+    def __init__(self, calls, tag="admitter", refuse=False):
+        self.calls = calls
+        self.tag = tag
+        self.refuse = refuse
+
+    def admit(self, collection_name, num_docs):
+        if self.refuse:
+            raise _Refused
+
+        self.calls.append((self.tag, "admit", collection_name, num_docs))
+
+    def record(self, collection_name, num_docs):
+        self.calls.append((self.tag, "record", collection_name, num_docs))
+
+
+class _IndistinctAdmitter(_Admitter):
+    """An admitter that compares equal to every other."""
+
+    def __eq__(self, other):
+        return True
+
+    __hash__ = object.__hash__
 
 
 class _FakeCollection:
     """A pymongo collection stand-in that records what it was asked to
     write."""
 
-    def __init__(self, name):
+    def __init__(self, name, fail_after=None):
         self.name = name
         self.batch_sizes = []
+        self.fail_after = fail_after
 
     def insert_many(self, docs, ordered=False):
         self.batch_sizes.append(len(docs))
-        return object()
+        if self.fail_after is not None:
+            raise BulkWriteError(
+                {
+                    "nInserted": self.fail_after,
+                    "writeErrors": [{"errmsg": "duplicate key"}],
+                }
+            )
+
+        return InsertManyResult([d["_id"] for d in docs], acknowledged=True)
 
 
 class InsertAdmitterTests(unittest.TestCase):
     def setUp(self):
         self._admitters = list(foo.database._insert_admitters)
         foo.database._insert_admitters.clear()
+        self.calls = []
 
     def tearDown(self):
         foo.database._insert_admitters[:] = self._admitters
 
+    def _admits(self):
+        return [c[1:] for c in self.calls if c[1] == "admit"]
+
+    def _records(self):
+        return [c[1:] for c in self.calls if c[1] == "record"]
+
     def test_no_admitters(self):
         foo.database._admit_insert("samples.test", 10)
+        foo.database._record_insert("samples.test", 10)
+
+    def test_base_admitter_admits_everything(self):
+        foo.register_insert_admitter(foo.InsertAdmitter())
+
+        foo.database._admit_insert("samples.test", 10)
+        foo.database._record_insert("samples.test", 10)
 
     def test_admitter_receives_collection_and_count(self):
-        calls = []
-        foo.database.register_insert_admitter(
-            lambda name, num_docs: calls.append((name, num_docs))
-        )
+        foo.register_insert_admitter(_Admitter(self.calls))
 
         foo.database._admit_insert("samples.test", 7)
+        foo.database._record_insert("samples.test", 5)
 
-        self.assertEqual(calls, [("samples.test", 7)])
+        self.assertEqual(
+            self.calls,
+            [
+                ("admitter", "admit", "samples.test", 7),
+                ("admitter", "record", "samples.test", 5),
+            ],
+        )
 
     def test_admitters_are_consulted_in_registration_order(self):
-        calls = []
-        foo.database.register_insert_admitter(
-            lambda name, num_docs: calls.append("first")
-        )
-        foo.database.register_insert_admitter(
-            lambda name, num_docs: calls.append("second")
-        )
+        foo.register_insert_admitter(_Admitter(self.calls, tag="first"))
+        foo.register_insert_admitter(_Admitter(self.calls, tag="second"))
 
         foo.database._admit_insert("samples.test", 1)
 
-        self.assertEqual(calls, ["first", "second"])
+        self.assertEqual([c[0] for c in self.calls], ["first", "second"])
 
-    def test_registering_twice_admits_once(self):
-        calls = []
+    def test_registering_twice_registers_once(self):
+        admitter = _Admitter(self.calls)
 
-        def admitter(name, num_docs):
-            calls.append((name, num_docs))
-
-        foo.database.register_insert_admitter(admitter)
-        foo.database.register_insert_admitter(admitter)
+        foo.register_insert_admitter(admitter)
+        foo.register_insert_admitter(admitter)
 
         foo.database._admit_insert("samples.test", 1)
 
-        self.assertEqual(calls, [("samples.test", 1)])
+        self.assertEqual(len(self.calls), 1)
+
+    def test_registration_is_by_identity(self):
+        # two distinct admitters that happen to compare equal are two
+        # admitters, and each is consulted
+        foo.register_insert_admitter(_IndistinctAdmitter(self.calls, "one"))
+        foo.register_insert_admitter(_IndistinctAdmitter(self.calls, "two"))
+
+        foo.database._admit_insert("samples.test", 1)
+
+        self.assertEqual([c[0] for c in self.calls], ["one", "two"])
+
+    def test_unregister(self):
+        admitter = _Admitter(self.calls)
+        foo.register_insert_admitter(admitter)
+
+        foo.unregister_insert_admitter(admitter)
+        foo.unregister_insert_admitter(admitter)
+        foo.database._admit_insert("samples.test", 1)
+
+        self.assertEqual(self.calls, [])
 
     def test_refusal_propagates(self):
-        def admitter(name, num_docs):
-            raise _Refused
-
-        foo.database.register_insert_admitter(admitter)
+        foo.register_insert_admitter(_Admitter(self.calls, refuse=True))
 
         with self.assertRaises(_Refused):
             foo.database._admit_insert("samples.test", 1)
 
-    def test_insert_documents_admits_each_batch(self):
-        calls = []
-        foo.database.register_insert_admitter(
-            lambda name, num_docs: calls.append((name, num_docs))
+    def test_insert_documents_admits_the_whole_write_up_front(self):
+        foo.register_insert_admitter(_Admitter(self.calls))
+
+        coll = _FakeCollection("samples.test")
+        docs = [{"_id": ObjectId()} for _ in range(5)]
+
+        foo.insert_documents(
+            docs,
+            coll,
+            batcher=partial(fou.StaticBatcher, batch_size=2),
+            progress=False,
         )
+
+        # the whole write is admitted before anything is written, then each
+        # batch is admitted and recorded as it lands
+        self.assertEqual(coll.batch_sizes, [2, 2, 1])
+        self.assertEqual(
+            self.calls,
+            [
+                ("admitter", "admit", "samples.test", 5),
+                ("admitter", "admit", "samples.test", 2),
+                ("admitter", "record", "samples.test", 2),
+                ("admitter", "admit", "samples.test", 2),
+                ("admitter", "record", "samples.test", 2),
+                ("admitter", "admit", "samples.test", 1),
+                ("admitter", "record", "samples.test", 1),
+            ],
+        )
+
+    def test_insert_documents_admits_each_batch_of_a_generator(self):
+        foo.register_insert_admitter(_Admitter(self.calls))
 
         coll = _FakeCollection("samples.test")
         docs = ({"_id": ObjectId()} for _ in range(5))
@@ -230,19 +321,28 @@ class InsertAdmitterTests(unittest.TestCase):
             progress=False,
         )
 
-        # the counts are the batches actually written, and a generator
-        # input does not hide them
+        # a generator's size is unknown up front, so only the batches are
+        # admitted, each as it is materialized
         self.assertEqual(coll.batch_sizes, [2, 2, 1])
         self.assertEqual(
-            calls,
-            [("samples.test", 2), ("samples.test", 2), ("samples.test", 1)],
+            self._admits(),
+            [
+                ("admit", "samples.test", 2),
+                ("admit", "samples.test", 2),
+                ("admit", "samples.test", 1),
+            ],
+        )
+        self.assertEqual(
+            self._records(),
+            [
+                ("record", "samples.test", 2),
+                ("record", "samples.test", 2),
+                ("record", "samples.test", 1),
+            ],
         )
 
-    def test_insert_documents_does_not_write_a_refused_batch(self):
-        def admitter(name, num_docs):
-            raise _Refused
-
-        foo.database.register_insert_admitter(admitter)
+    def test_insert_documents_does_not_write_a_refused_write(self):
+        foo.register_insert_admitter(_Admitter(self.calls, refuse=True))
 
         coll = _FakeCollection("samples.test")
 
@@ -255,6 +355,22 @@ class InsertAdmitterTests(unittest.TestCase):
             )
 
         self.assertEqual(coll.batch_sizes, [])
+        self.assertEqual(self._records(), [])
+
+    def test_a_failed_write_records_what_landed(self):
+        foo.register_insert_admitter(_Admitter(self.calls))
+
+        coll = _FakeCollection("samples.test", fail_after=1)
+
+        with self.assertRaises(ValueError):
+            foo.insert_documents(
+                [{"_id": ObjectId()} for _ in range(3)],
+                coll,
+                batcher=False,
+                progress=False,
+            )
+
+        self.assertEqual(self._records(), [("record", "samples.test", 1)])
 
 
 class GetIndexedValuesTests(unittest.TestCase):
