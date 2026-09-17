@@ -59,6 +59,8 @@ export type PatchDynamicGroupResponse = {
 /** The fresh group state a dynamic-group 412 carries, in frame order. */
 export type DynamicGroupMismatchBody = {
   members: { id: string; last_modified_at: string }[];
+  /** Members the rejected request had already written, if any. */
+  written?: string[];
 };
 
 export type PatchSampleResponse = {
