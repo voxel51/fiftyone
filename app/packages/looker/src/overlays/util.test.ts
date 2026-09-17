@@ -1,10 +1,11 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
 import { COLOR_BY, getColor } from "@fiftyone/utilities";
-import type { Coloring, CustomizeColor } from "../state";
+import type { Coloring, CustomizeColor, LabelTagColor } from "../state";
 import type { RegularLabel } from "./base";
 import {
   getLabelAttributesText,
+  getLabelColor,
   getPointColorByValue,
   shouldShowLabelTag,
 } from "./util";
@@ -175,5 +176,21 @@ describe("getPointColorByValue", () => {
         numPoints: 3,
       }),
     ).toBe(getColor(coloring.pool, coloring.seed, true));
+  });
+
+  it("label-level color-by-value survives null entries in the list", () => {
+    // regression: a per-point parallel list holds null for unset entries,
+    // and the value-color list matching called toString on each element
+    const color = getLabelColor({
+      coloring,
+      path: "pose",
+      label,
+      isTagged: false,
+      labelTagColors: {} as LabelTagColor,
+      customizeColorSetting: [field],
+      embeddedDocType: "fiftyone.core.labels.Keypoint",
+    });
+    // "true" appears in the list, so its explicit value color wins
+    expect(color).toBe("#ff0000");
   });
 });

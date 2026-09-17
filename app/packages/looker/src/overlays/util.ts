@@ -306,8 +306,9 @@ const getLabelColorByValue = ({
         );
       }
       return Array.isArray(label[key])
-        ? label[key]
-            .map((list) => list.toString())
+        ? // a per-point parallel list holds null for unset entries
+          label[key]
+            .map((item) => item?.toString())
             .includes(l.value?.toString())
         : l.value?.toString() == label[key]?.toString();
     })?.color;
