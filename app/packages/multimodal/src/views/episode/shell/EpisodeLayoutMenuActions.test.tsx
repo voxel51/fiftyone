@@ -24,7 +24,7 @@ afterEach(() => {
 });
 
 describe("saved layouts availability", () => {
-  it("explains the Enterprise-only actions without opening them in OSS", () => {
+  it("explains availability without enabling an unregistered action", () => {
     const onSelect = openMenu();
     const item = screen.getByRole("menuitem", { name: "Saved layouts…" });
     expect(item.getAttribute("disabled")).not.toBeNull();
@@ -34,8 +34,8 @@ describe("saved layouts availability", () => {
     fireEvent.mouseEnter(screen.getByTestId("saved-layouts-upsell"));
     expect(
       screen.getByText(
-        "Save viewer layouts to reuse your setup, import and export layouts as JSON, " +
-          "and share them with your organization. Available only in FiftyOne Enterprise.",
+        "Saved layouts let you reuse and share viewer setups. " +
+          "Available in other product editions.",
       ),
     ).toBeTruthy();
   });

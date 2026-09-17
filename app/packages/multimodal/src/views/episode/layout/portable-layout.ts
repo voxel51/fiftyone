@@ -9,7 +9,7 @@ import {
   type SidebarPreferences,
 } from "../settings/sidebar-preferences";
 
-/** Shared payload limit for capture, file import, and library storage. */
+/** Payload limit for portable layout capture and validation. */
 export const MAX_PORTABLE_LAYOUT_BYTES = 262_144;
 const FORMAT = "fiftyone.multimodal-layout";
 

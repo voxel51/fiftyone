@@ -12,7 +12,7 @@ import type { RawRecordCapability } from "../../ports";
 /** Namespaced identity for an action contributed to the episode header. */
 export type EpisodeHeaderActionId = `${string}:${string}`;
 
-/** Product-neutral access to the viewer's versioned portable JSON format. */
+/** Access to the viewer's versioned portable JSON format. */
 export interface EpisodeLayoutControls {
   readonly scopeKey: string | null;
   readonly maxBytes: number;
@@ -27,7 +27,7 @@ export interface EpisodeLayoutControls {
   readonly changeKey: (json: string) => string;
 }
 
-/** Modal-only facts exposed to product-edition episode actions. */
+/** Modal-only facts exposed to registered episode actions. */
 export interface EpisodeHeaderActionContext {
   readonly datasetId: string;
   readonly layouts?: EpisodeLayoutControls;

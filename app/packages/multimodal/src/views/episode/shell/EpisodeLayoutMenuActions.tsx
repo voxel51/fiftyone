@@ -15,8 +15,8 @@ import {
 } from "../../../extensions/episode-actions";
 
 const SAVED_LAYOUTS_UPSELL =
-  "Save viewer layouts to reuse your setup, import and export layouts as JSON, " +
-  "and share them with your organization. Available only in FiftyOne Enterprise.";
+  "Saved layouts let you reuse and share viewer setups. " +
+  "Available in other product editions.";
 
 /** Renders contributed layout actions or the saved-layouts upgrade prompt. */
 export default function EpisodeLayoutMenuActions({

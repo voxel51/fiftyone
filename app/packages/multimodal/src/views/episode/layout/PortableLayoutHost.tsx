@@ -23,7 +23,7 @@ interface LayoutHost {
 }
 const LayoutContext = createContext<LayoutHost | null>(null);
 
-/** Edition-neutral capture/apply boundary around one playback host. */
+/** Capture/apply boundary around one playback host. */
 export function PortableLayoutHost({
   children,
   scopeKey,
@@ -103,7 +103,7 @@ export function PortableLayoutHost({
   );
 }
 
-/** Domain hook for edition-contributed header actions. */
+/** Domain hook for registered header actions. */
 export function usePortableLayoutControls(): EpisodeLayoutControls | undefined {
   return useContext(LayoutContext)?.controls;
 }
