@@ -54,9 +54,16 @@ import { wholeSampleReset } from "./types";
 /** One frame's labels, keyed by frame-agnostic field path → element list. */
 type FrameDoc = Map<string, LabelData[]>;
 
-/** The store's transient state for transaction rollback: the dirty overlay. */
+/** An edited primitive whose field is to be dropped from the frame document. */
+const DELETED = Symbol("deleted");
+
+/** One frame's edited primitive values; {@link DELETED} marks a removal. */
+type FrameValues = Map<string, unknown>;
+
+/** The store's transient state for transaction rollback: the dirty overlays. */
 interface FrameSnapshot {
   working: Map<number, FrameDoc>;
+  workingValues: Map<number, FrameValues>;
 }
 
 /** Flat per-frame seed/echo shape: `{ [frame]: { [path]: elements } }`. */
@@ -104,6 +111,8 @@ export class FrameStore implements LabelStore {
   private working = new Map<number, FrameDoc>();
   /** Server truth for the registered primitive paths, per frame. */
   private valueSource = new Map<number, Map<string, unknown>>();
+  /** Copy-on-write overlay of edited primitive values; presence === dirty. */
+  private workingValues = new Map<number, Map<string, unknown>>();
   private readonly displayListeners = new Set<DisplayListener>();
   private readonly changeListeners = new Set<ChangeListener>();
   private loading = false;
@@ -177,6 +186,13 @@ export class FrameStore implements LabelStore {
   getFrameValue(path: string, frame: number): unknown {
     if (!this.valuePaths.includes(path)) {
       return undefined;
+    }
+
+    const edited = this.workingValues.get(frame);
+
+    if (edited?.has(path)) {
+      const value = edited.get(path);
+      return value === DELETED ? undefined : value;
     }
 
     return this.valueSource.get(frame)?.get(path);
@@ -260,6 +276,16 @@ export class FrameStore implements LabelStore {
     this.emit([{ ref, kind: "delete" }]);
   }
 
+  /** Edit a registered per-frame primitive at one frame. */
+  setFrameValue(path: string, frame: number, value: unknown): void {
+    this.writeValue(path, frame, value);
+  }
+
+  /** Drop a registered per-frame primitive's field at one frame. */
+  deleteFrameValue(path: string, frame: number): void {
+    this.writeValue(path, frame, DELETED);
+  }
+
   // ---- observability ----
 
   subscribe(listener: DisplayListener): () => void {
@@ -287,17 +313,28 @@ export class FrameStore implements LabelStore {
       working.set(frame, new Map(doc));
     }
 
-    const snapshot: FrameSnapshot = { working };
+    const workingValues = new Map<number, FrameValues>();
+
+    for (const [frame, edited] of this.workingValues) {
+      workingValues.set(frame, new Map(edited));
+    }
+
+    const snapshot: FrameSnapshot = { working, workingValues };
     return snapshot;
   }
 
   restore(snapshot: StoreSnapshot): void {
-    const { working } = snapshot as FrameSnapshot;
+    const { working, workingValues } = snapshot as FrameSnapshot;
 
     this.working = new Map();
+    this.workingValues = new Map();
 
     for (const [frame, doc] of working) {
       this.working.set(frame, new Map(doc));
+    }
+
+    for (const [frame, edited] of workingValues) {
+      this.workingValues.set(frame, new Map(edited));
     }
   }
 
@@ -329,6 +366,41 @@ export class FrameStore implements LabelStore {
       }
     }
 
+    ops.push(...this.valueOps());
+
+    return ops;
+  }
+
+  /** One op per edited per-frame primitive that differs from server truth. */
+  private valueOps(): JSONDeltas {
+    const ops: JSONDeltas = [];
+
+    for (const [frame, edited] of this.workingValues) {
+      const baseline = this.valueSource.get(frame);
+
+      for (const [path, value] of edited) {
+        const pointer = `/frames/${frame}/${toSchemaField(path)}`;
+        const had = baseline?.has(path) ?? false;
+
+        if (value === DELETED) {
+          if (had) {
+            ops.push({ op: "remove", path: pointer });
+          }
+
+          continue;
+        }
+
+        if (!had) {
+          ops.push({ op: "add", path: pointer, value });
+          continue;
+        }
+
+        if (!equalsNormalized(value, baseline?.get(path))) {
+          ops.push({ op: "replace", path: pointer, value });
+        }
+      }
+    }
+
     return ops;
   }
 
@@ -341,11 +413,17 @@ export class FrameStore implements LabelStore {
       }
     }
 
+    for (const [frame, edited] of this.workingValues) {
+      for (const path of edited.keys()) {
+        paths.push(`frames.${frame}.${toSchemaField(path)}`);
+      }
+    }
+
     return paths;
   }
 
   isDirty(): boolean {
-    return this.working.size > 0;
+    return this.working.size > 0 || this.workingValues.size > 0;
   }
 
   /** No-op: frames protect in-flight edits structurally (see {@link reconcilePersisted}). */
@@ -370,6 +448,8 @@ export class FrameStore implements LabelStore {
    */
   reconcilePersisted(deltas: JSONDeltas, _opts?: ReconcileOpts): void {
     const byFrame = new Map<number, JSONDeltas>();
+
+    this.reconcileValues(deltas);
 
     for (const op of deltas) {
       const segments = op.path.split("/").filter(Boolean);
@@ -505,6 +585,7 @@ export class FrameStore implements LabelStore {
   setData(data: Record<string, unknown>, values?: FrameValuesData): void {
     if (values) {
       this.valueSource = this.parseValues(values);
+      this.gcValues();
     }
 
     const prevSource = this.source;
@@ -546,10 +627,100 @@ export class FrameStore implements LabelStore {
     this.source = new Map();
     this.working = new Map();
     this.valueSource = new Map();
+    this.workingValues = new Map();
     this.emit([wholeSampleReset(this.sample)]);
   }
 
   // ---- internals ----
+
+  /**
+   * Fold persisted `/frames/<n>/<field>` primitive ops into server truth and
+   * retire the staged edits they settle.
+   */
+  private reconcileValues(deltas: JSONDeltas): void {
+    let changed = false;
+
+    for (const op of deltas) {
+      const segments = op.path.split("/").filter(Boolean);
+
+      if (segments[0] !== "frames" || segments.length !== 3) {
+        continue;
+      }
+
+      const frame = Number(segments[1]);
+      const path = this.valuePaths.find(
+        (candidate) => toSchemaField(candidate) === segments[2],
+      );
+
+      if (!Number.isFinite(frame) || path === undefined) {
+        continue;
+      }
+
+      let baseline = this.valueSource.get(frame);
+
+      if (!baseline) {
+        baseline = new Map();
+        this.valueSource.set(frame, baseline);
+      }
+
+      if (op.op === "remove") {
+        baseline.delete(path);
+      } else if ("value" in op) {
+        baseline.set(path, op.value);
+      }
+
+      changed = true;
+    }
+
+    if (changed) {
+      this.gcValues();
+    }
+  }
+
+  /** Stage a primitive edit and tell subscribers the frame's value moved. */
+  private writeValue(path: string, frame: number, value: unknown): void {
+    if (!this.valuePaths.includes(path)) {
+      return;
+    }
+
+    let edited = this.workingValues.get(frame);
+
+    if (!edited) {
+      edited = new Map();
+      this.workingValues.set(frame, edited);
+    }
+
+    edited.set(path, value);
+
+    // a primitive is not a label, so there is no LabelChange to report; the
+    // display tick is what re-reads the value
+    for (const listener of this.displayListeners) {
+      listener();
+    }
+  }
+
+  /** Drop staged primitive edits that server truth now agrees with. */
+  private gcValues(): void {
+    for (const [frame, edited] of [...this.workingValues]) {
+      const baseline = this.valueSource.get(frame);
+
+      for (const [path, value] of [...edited]) {
+        const had = baseline?.has(path) ?? false;
+        const settled =
+          value === DELETED
+            ? !had
+            : had && equalsNormalized(value, baseline?.get(path));
+
+        if (settled) {
+          edited.delete(path);
+        }
+      }
+
+      if (edited.size === 0) {
+        this.workingValues.delete(frame);
+      }
+    }
+  }
 
   /** Read-through resolution: the working overlay wins, else source, else []. */
   private listAt(frame: number, path: string): LabelData[] {

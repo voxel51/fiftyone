@@ -879,4 +879,123 @@ describe("FrameStore per-frame primitive values", () => {
 
     expect(store.getFrameValue(VALUE_PATH, 1)).toBeUndefined();
   });
+
+  const seeded = () =>
+    new FrameStore(SAMPLE, {
+      labelTypes: LABEL_TYPES,
+      valuePaths: [VALUE_PATH],
+      values: { 1: { [VALUE_PATH]: "rain" }, 2: {} },
+    });
+
+  it("an edit shadows the seeded value and persists at that frame only", () => {
+    const store = seeded();
+    let notified = 0;
+    store.subscribe(() => {
+      notified++;
+    });
+
+    store.setFrameValue(VALUE_PATH, 1, "sun");
+
+    expect(store.getFrameValue(VALUE_PATH, 1)).toBe("sun");
+    expect(notified).toBe(1);
+    expect(store.isDirty()).toBe(true);
+    expect(store.getJsonPatch()).toEqual([
+      { op: "replace", path: "/frames/1/weather", value: "sun" },
+    ]);
+  });
+
+  it("adds a field the frame never had", () => {
+    const store = seeded();
+
+    store.setFrameValue(VALUE_PATH, 2, "fog");
+
+    expect(store.getJsonPatch()).toEqual([
+      { op: "add", path: "/frames/2/weather", value: "fog" },
+    ]);
+  });
+
+  it("removes a field the frame had, and emits nothing for one it never had", () => {
+    const store = seeded();
+
+    store.deleteFrameValue(VALUE_PATH, 1);
+    store.deleteFrameValue(VALUE_PATH, 2);
+
+    expect(store.getFrameValue(VALUE_PATH, 1)).toBeUndefined();
+    expect(store.getJsonPatch()).toEqual([
+      { op: "remove", path: "/frames/1/weather" },
+    ]);
+  });
+
+  it("an edit back to the seeded value is not a change", () => {
+    const store = seeded();
+
+    store.setFrameValue(VALUE_PATH, 1, "rain");
+
+    expect(store.getJsonPatch()).toEqual([]);
+  });
+
+  it("refuses a path that was not registered", () => {
+    const store = seeded();
+
+    store.setFrameValue("frames.unregistered", 1, "sun");
+
+    expect(store.isDirty()).toBe(false);
+    expect(store.getJsonPatch()).toEqual([]);
+  });
+
+  it("a re-seed that agrees retires the edit", () => {
+    const store = seeded();
+    store.setFrameValue(VALUE_PATH, 1, "sun");
+
+    store.setData(frames({}), { 1: { [VALUE_PATH]: "sun" } });
+
+    expect(store.getFrameValue(VALUE_PATH, 1)).toBe("sun");
+    expect(store.isDirty()).toBe(false);
+    expect(store.getJsonPatch()).toEqual([]);
+  });
+
+  it("an edit made during a save survives a re-seed of the old value", () => {
+    const store = seeded();
+    store.setFrameValue(VALUE_PATH, 1, "sun");
+
+    store.setData(frames({}), { 1: { [VALUE_PATH]: "rain" } });
+
+    expect(store.getFrameValue(VALUE_PATH, 1)).toBe("sun");
+    expect(store.getJsonPatch()).toEqual([
+      { op: "replace", path: "/frames/1/weather", value: "sun" },
+    ]);
+  });
+
+  it("reconciling the persisted op retires the edit without re-emitting it", () => {
+    const store = seeded();
+    store.setFrameValue(VALUE_PATH, 1, "sun");
+
+    store.reconcilePersisted(store.getJsonPatch());
+
+    expect(store.getFrameValue(VALUE_PATH, 1)).toBe("sun");
+    expect(store.isDirty()).toBe(false);
+    expect(store.getJsonPatch()).toEqual([]);
+  });
+
+  it("reconciling a persisted removal retires the deletion", () => {
+    const store = seeded();
+    store.deleteFrameValue(VALUE_PATH, 1);
+
+    store.reconcilePersisted(store.getJsonPatch());
+
+    expect(store.getFrameValue(VALUE_PATH, 1)).toBeUndefined();
+    expect(store.isDirty()).toBe(false);
+    expect(store.getJsonPatch()).toEqual([]);
+  });
+
+  it("a rolled-back transaction discards the edit", () => {
+    const store = seeded();
+    const snapshot = store.snapshot();
+
+    store.setFrameValue(VALUE_PATH, 1, "sun");
+    store.restore(snapshot);
+
+    expect(store.getFrameValue(VALUE_PATH, 1)).toBe("rain");
+    expect(store.isDirty()).toBe(false);
+  });
 });
