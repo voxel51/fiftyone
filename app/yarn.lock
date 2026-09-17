@@ -2294,6 +2294,7 @@ __metadata:
   dependencies:
     "@testing-library/react": "catalog:"
     jotai: "catalog:"
+    jotai-effect: "catalog:"
     jsdom: "npm:^26.0.0"
     react: "catalog:"
     react-dom: "catalog:"
