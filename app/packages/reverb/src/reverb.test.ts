@@ -120,6 +120,45 @@ describe("families", () => {
     expect(store.get(doubled(3))).toBe(6);
     expect(store.get(doubled(4))).toBe(8);
   });
+
+  it("separates parameters JSON alone cannot tell apart", () => {
+    const family = atomFamily<number, unknown>({
+      key: "unequalParams",
+      default: 0,
+    });
+    const store = createStore();
+
+    const distinct = [
+      [new Set([1, 2]), new Set([3])],
+      [new Map([["a", 1]]), new Map([["b", 2]])],
+      [{ at: Number.NaN }, { at: Number.POSITIVE_INFINITY }],
+      [{ at: Number.NaN }, { at: null }],
+    ];
+
+    distinct.forEach(([left, right], index) => {
+      store.set(family(left), index + 1);
+
+      expect(store.get(family(right))).toBe(0);
+      expect(store.get(family(left))).toBe(index + 1);
+    });
+  });
+
+  it("gives structurally equal parameters one member", () => {
+    const family = atomFamily<number, unknown>({
+      key: "equalParams",
+      default: 0,
+    });
+    const store = createStore();
+
+    store.set(family({ modal: true, path: "one" }), 7);
+
+    expect(store.get(family({ path: "one", modal: true }))).toBe(7);
+    expect(store.get(family(new Set(["a"])))).toBe(0);
+
+    store.set(family(new Set(["a"])), 9);
+
+    expect(store.get(family(new Set(["a"])))).toBe(9);
+  });
 });
 
 describe("transaction", () => {

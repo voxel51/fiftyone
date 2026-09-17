@@ -12,17 +12,38 @@ import type {
   ReverbValueReadOnly,
 } from "./types";
 
-/** Sorted so two structurally equal parameters name the same member. */
+/**
+ * Sorted so two structurally equal parameters name the same member. Sets,
+ * maps and non-finite numbers are spelled out because `JSON.stringify` turns
+ * every set and map into `{}` and every one of `NaN`/`Infinity` into `null`,
+ * which would quietly hand unequal parameters the same member.
+ */
 const stableKey = (param: unknown): string =>
-  JSON.stringify(param, (_key, value) =>
-    value && typeof value === "object" && !Array.isArray(value)
+  JSON.stringify(param, (_key, value) => {
+    if (value instanceof Set) {
+      return { set: [...value].map(stableKey).sort() };
+    }
+
+    if (value instanceof Map) {
+      return {
+        map: [...value]
+          .map(([key, held]) => `${stableKey(key)}:${stableKey(held)}`)
+          .sort(),
+      };
+    }
+
+    if (typeof value === "number" && !Number.isFinite(value)) {
+      return `number:${value}`;
+    }
+
+    return value && typeof value === "object" && !Array.isArray(value)
       ? Object.fromEntries(
           Object.entries(value as Record<string, unknown>).sort(([a], [b]) =>
             a < b ? -1 : 1,
           ),
         )
-      : value,
-  ) ?? "undefined";
+      : value;
+  }) ?? "undefined";
 
 export interface Family<P, S> {
   (param: P): S;
