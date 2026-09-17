@@ -133,6 +133,13 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K = T[" $data"]>(
               setter(update);
             });
           } catch (e) {
+            // Resetting on an unreadable fragment keeps a previous dataset's
+            // value from leaking, but it looks identical to a legitimately
+            // empty fragment, so say which happened.
+            console.error(
+              `graphQLSyncFragmentAtom(${options.key}) could not resolve its fragment`,
+              e,
+            );
             setter(null, transactionInterface);
             return undefined;
           }
@@ -208,10 +215,14 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K = T[" $data"]>(
               : (fragmentData as K),
         );
         previousPageData = fragmentData;
-      } catch {
+      } catch (e) {
         // A missing fragment reference or incompatible query shape must not leak
         // state across pages. The normal atom effect can populate the value later
         // if Relay makes the fragment available through a live update.
+        console.error(
+          `graphQLSyncFragmentAtom(${options.key}) could not resolve its fragment on a page transition`,
+          e,
+        );
         reset();
       }
     });

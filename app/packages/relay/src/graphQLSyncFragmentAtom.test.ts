@@ -87,7 +87,7 @@ afterEach(() => {
 describe("graphQLSyncFragmentAtom effect retries", () => {
   test("does not subscribe without a resolved fragment context", async () => {
     const fragmentSubscribe = vi.fn(() => ({ dispose: vi.fn() }));
-    mocks.resolveFragmentChain.mockReturnValueOnce({
+    const resolved = {
       context: {
         FragmentResource: { subscribe: fragmentSubscribe },
         result: {},
@@ -95,7 +95,12 @@ describe("graphQLSyncFragmentAtom effect retries", () => {
       data: { id: "initial" },
       missing: false,
       parent: {},
-    });
+    };
+    // The read-time seed resolves once before the effect mounts and resolves
+    // again, so each takes its own value.
+    mocks.resolveFragmentChain
+      .mockReturnValueOnce(resolved)
+      .mockReturnValueOnce(resolved);
 
     const { subscribe, unmount } = await mountAtomEffect(
       "effect-missing-context",
@@ -131,6 +136,8 @@ describe("graphQLSyncFragmentAtom effect retries", () => {
       result: {},
     };
     mocks.resolveFragmentChain
+      // The read-time seed, which takes the default for a missing fragment.
+      .mockReturnValueOnce({ missing: true })
       .mockReturnValueOnce({ context: retryContext, missing: true })
       .mockReturnValueOnce({
         context: liveContext,
