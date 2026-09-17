@@ -13,6 +13,7 @@
         "@fiftyone/events": "*",
         "@fiftyone/feature-flags": "*",
         "@fiftyone/flashlight": "*",
+        "@fiftyone/location": "*",
         "@fiftyone/looker": "*",
         "@fiftyone/map": "*",
         "@fiftyone/multimodal": "*",

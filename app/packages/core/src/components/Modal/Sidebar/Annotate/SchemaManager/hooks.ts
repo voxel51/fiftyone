@@ -12,10 +12,12 @@ import {
   useNotification,
   usePreferredGroupAnnotationSlice,
 } from "@fiftyone/state";
+import { useLocationParam } from "@fiftyone/location";
 import {
   useSchemaManager,
   type UpdateSchemaRequest,
 } from "../useSchemaManager";
+import { schemaManagerParam } from "../../../../../url/schemaManagerParam";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useAtomCallback } from "jotai/utils";
 import { useReverbCallback, useReverbValue } from "@fiftyone/reverb";
@@ -35,7 +37,6 @@ import {
   managerSchemaDoc,
   managerSchemaDocId,
   removeFromActiveSchemas,
-  schemaManagerDisplayedAtom,
 } from "../state";
 import {
   draftJsonContent,
@@ -76,12 +77,13 @@ export const useCurrentFieldValue = () => {
 // =============================================================================
 
 /**
- * Hook to control the schema manager modal visibility
+ * Hook to control the schema manager modal visibility.
+ *
+ * The URL owns it, so an open modal is a shareable link and back closes it.
  */
 export const useSchemaManagerModal = () => {
-  const [schemaManagerDisplayed, setSchemaManagerDisplayed] = useAtom(
-    schemaManagerDisplayedAtom,
-  );
+  const [schemaManagerDisplayed, setSchemaManagerDisplayed] =
+    useLocationParam(schemaManagerParam);
 
   const openSchemaManager = useCallback(
     () => setSchemaManagerDisplayed(true),

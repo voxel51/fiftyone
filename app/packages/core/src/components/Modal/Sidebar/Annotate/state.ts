@@ -562,8 +562,6 @@ export const removeFromActiveSchemas = atom(
   },
 );
 
-export const schemaManagerDisplayedAtom = atom(false);
-
 /**
  * Check if a field is read-only.
  *
