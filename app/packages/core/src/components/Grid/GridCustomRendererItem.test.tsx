@@ -81,7 +81,7 @@ describe("GridCustomRendererItem", () => {
       looker = new GridCustomRendererItem({
         pluginName: "mcap-renderer",
         Renderer: () => <div data-testid="renderer" />,
-        RecoilBridge: TestBridge,
+        ReverbBridge: TestBridge,
         ctx: {
           ...BASE_CTX,
           media: { ...BASE_CTX.media, mediaType: "multimodal" },
@@ -110,7 +110,7 @@ describe("GridCustomRendererItem", () => {
       looker = new GridCustomRendererItem({
         pluginName: "mcap-renderer",
         Renderer: () => <div data-testid="renderer" />,
-        RecoilBridge: TestBridge,
+        ReverbBridge: TestBridge,
         ctx: {
           ...BASE_CTX,
           media: { ...BASE_CTX.media, mediaType: "multimodal" },
@@ -149,7 +149,7 @@ describe("GridCustomRendererItem", () => {
       looker = new GridCustomRendererItem({
         pluginName: "mcap-renderer",
         Renderer: () => <div data-testid="renderer" />,
-        RecoilBridge: TestBridge,
+        ReverbBridge: TestBridge,
         ctx: {
           ...BASE_CTX,
           media: { ...BASE_CTX.media, mediaType: "multimodal" },
@@ -196,7 +196,7 @@ describe("GridCustomRendererItem", () => {
     const looker = new GridCustomRendererItem({
       pluginName: "pdf-renderer",
       Renderer,
-      RecoilBridge: TestBridge,
+      ReverbBridge: TestBridge,
       ctx: ctx as any,
       symbol: BASE_SYMBOL,
     });
@@ -289,7 +289,7 @@ describe("GridCustomRendererItem", () => {
       clickBehavior: "passthrough",
       pluginName: "passive-renderer",
       Renderer,
-      RecoilBridge: TestBridge,
+      ReverbBridge: TestBridge,
       ctx: BASE_CTX as any,
       symbol: BASE_SYMBOL,
     });
@@ -325,7 +325,7 @@ describe("GridCustomRendererItem", () => {
     const looker = new GridCustomRendererItem({
       pluginName: "broken-renderer",
       Renderer,
-      RecoilBridge: TestBridge,
+      ReverbBridge: TestBridge,
       ctx: BASE_CTX as any,
       symbol: BASE_SYMBOL,
     });
@@ -377,7 +377,7 @@ describe("GridCustomRendererItem", () => {
     const looker = new GridCustomRendererItem({
       pluginName: "pdf-renderer",
       Renderer,
-      RecoilBridge: TestBridge,
+      ReverbBridge: TestBridge,
       ctx: rawSampleCtx as any,
       symbol: BASE_SYMBOL,
     });
@@ -411,7 +411,7 @@ describe("GridCustomRendererItem", () => {
     const looker = new GridCustomRendererItem({
       pluginName: "measured-renderer",
       Renderer,
-      RecoilBridge: TestBridge,
+      ReverbBridge: TestBridge,
       ctx: BASE_CTX as any,
       symbol: BASE_SYMBOL,
     });
@@ -438,7 +438,7 @@ describe("GridCustomRendererItem", () => {
     const looker = new GridCustomRendererItem({
       pluginName: "activity-renderer",
       Renderer,
-      RecoilBridge: ModalBridge,
+      ReverbBridge: ModalBridge,
       ctx: BASE_CTX as any,
       symbol: BASE_SYMBOL,
     });
@@ -464,7 +464,7 @@ describe("GridCustomRendererItem", () => {
     const looker = new GridCustomRendererItem({
       pluginName: "broken-renderer",
       Renderer,
-      RecoilBridge: TestBridge,
+      ReverbBridge: TestBridge,
       ctx: BASE_CTX as any,
       symbol: BASE_SYMBOL,
     });
@@ -496,7 +496,7 @@ describe("GridCustomRendererItem", () => {
     const looker = new GridCustomRendererItem({
       pluginName: "pdf-renderer",
       Renderer,
-      RecoilBridge: TestBridge,
+      ReverbBridge: TestBridge,
       ctx: BASE_CTX as any,
       symbol: BASE_SYMBOL,
       isSampleSelected,
@@ -528,7 +528,7 @@ describe("GridCustomRendererItem", () => {
     const looker = new GridCustomRendererItem({
       pluginName: "pdf-renderer",
       Renderer,
-      RecoilBridge: TestBridge,
+      ReverbBridge: TestBridge,
       ctx: BASE_CTX as any,
       symbol: BASE_SYMBOL,
       isSampleSelected,
@@ -565,7 +565,7 @@ describe("GridCustomRendererItem", () => {
     const looker = new GridCustomRendererItem({
       pluginName: "pdf-renderer",
       Renderer,
-      RecoilBridge: TestBridge,
+      ReverbBridge: TestBridge,
       ctx: BASE_CTX as any,
       symbol: BASE_SYMBOL,
       isSampleSelected,
@@ -595,7 +595,7 @@ describe("GridCustomRendererItem", () => {
     const looker = new GridCustomRendererItem({
       pluginName: "pdf-renderer",
       Renderer,
-      RecoilBridge: TestBridge,
+      ReverbBridge: TestBridge,
       ctx: BASE_CTX as any,
       symbol: BASE_SYMBOL,
     });
@@ -625,7 +625,7 @@ describe("GridCustomRendererItem", () => {
     const looker = new GridCustomRendererItem({
       pluginName: "renderer",
       Renderer: TestRenderer,
-      RecoilBridge: TestBridge,
+      ReverbBridge: TestBridge,
       ctx: BASE_CTX as any,
       symbol: BASE_SYMBOL,
     });

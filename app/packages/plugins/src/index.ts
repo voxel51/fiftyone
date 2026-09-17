@@ -4,7 +4,7 @@ import * as fou from "@fiftyone/utilities";
 import { getFetchFunction, getFetchParameters } from "@fiftyone/utilities";
 import * as _ from "lodash";
 import { useEffect, useMemo } from "react";
-import * as recoil from "@fiftyone/reverb";
+import * as reverb from "@fiftyone/reverb";
 import "./externalize";
 import { usingRegistry } from "./registry";
 import { pluginsLoaderAtom } from "./state";
@@ -120,8 +120,8 @@ async function loadScript(name, url) {
  * A react hook for loading the plugin system.
  */
 export function usePlugins() {
-  const datasetName = recoil.useReverbValue(fos.datasetName);
-  const [state, setState] = recoil.useReverbState(pluginsLoaderAtom);
+  const datasetName = reverb.useReverbValue(fos.datasetName);
+  const [state, setState] = reverb.useReverbState(pluginsLoaderAtom);
   const notify = fos.useNotification();
   const {
     ready: operatorsReady,
@@ -197,8 +197,8 @@ export function usePluginSettings<T>(
   pluginName: string,
   defaults?: Partial<T>,
 ): T {
-  const datasetAppConfig = recoil.useReverbValue(fos.datasetAppConfig);
-  const appConfig = recoil.useReverbValue(fos.config);
+  const datasetAppConfig = reverb.useReverbValue(fos.datasetAppConfig);
+  const appConfig = reverb.useReverbValue(fos.config);
 
   const settings = useMemo(() => {
     const datasetPlugins = _.get(datasetAppConfig, "plugins", {});

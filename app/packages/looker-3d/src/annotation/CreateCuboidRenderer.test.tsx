@@ -143,7 +143,7 @@ describe("CreateCuboidRenderer", () => {
         return [creationStateValue, setCreationState];
       }
 
-      throw new Error(`Unexpected recoil state: ${String(atom)}`);
+      throw new Error(`Unexpected state: ${String(atom)}`);
     });
 
     (useReverbValue as Mock).mockImplementation((atom) => {
@@ -186,7 +186,7 @@ describe("CreateCuboidRenderer", () => {
         return setTransformMode;
       }
 
-      throw new Error(`Unexpected recoil setter: ${String(atom)}`);
+      throw new Error(`Unexpected setter: ${String(atom)}`);
     });
   });
 

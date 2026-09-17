@@ -36,7 +36,7 @@ export function useGridCustomRendererItem(
 
   const selectedMediaField = fos.useSelectedMediaFieldGrid();
 
-  const RecoilBridge = useReverbBridge();
+  const ReverbBridge = useReverbBridge();
   const hasTrackedRendererUsageRef = useRef(false);
 
   // Synchronous, non-hook lookup so a GridCustomRendererItem instance can
@@ -133,8 +133,8 @@ export function useGridCustomRendererItem(
               ?.clickBehavior,
           pluginName: resolvedRenderer.registration.name,
           Renderer: resolvedRenderer.Renderer,
-          RecoilBridge:
-            RecoilBridge as React.ComponentType<React.PropsWithChildren>,
+          ReverbBridge:
+            ReverbBridge as React.ComponentType<React.PropsWithChildren>,
           ctx: resolvedRenderer.ctx,
           symbol: id,
           isSampleSelected,
@@ -159,7 +159,7 @@ export function useGridCustomRendererItem(
     [
       createDefaultItem,
       getResolvedRenderer,
-      RecoilBridge,
+      ReverbBridge,
       trackEvent,
       isSampleSelected,
     ],

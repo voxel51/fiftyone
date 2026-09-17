@@ -47,7 +47,7 @@ import type {
   ResolvedGridPosterProviderDescriptor,
 } from "./use-grid-poster-provider";
 
-// The grid mounts custom renderers under a RecoilBridge, which is what lets
+// The grid mounts custom renderers under a ReverbBridge, which is what lets
 // the tile read the embeddings panel's published match for its episode.
 function render(ui: ReactElement) {
   return renderBare(ui, { wrapper: ReverbRoot });

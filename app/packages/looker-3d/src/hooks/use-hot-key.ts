@@ -1,6 +1,11 @@
 import { useCallback, useEffect } from "react";
-import * as recoil from "@fiftyone/reverb";
-import { useReverbTransaction } from "@fiftyone/reverb";
+import {
+  type GetReverbValue,
+  type SetReverbState,
+  type SnapshotInterface,
+  useReverbCallback,
+  useReverbTransaction,
+} from "@fiftyone/reverb";
 
 const KEYBOARD_EVENT_NAME = "keydown";
 
@@ -9,9 +14,9 @@ type KeyboardEventUnionType = KeyboardEvent & React.KeyboardEvent;
 export const useHotkey = (
   keyCode: string,
   cb: (props: {
-    get: recoil.GetReverbValue;
-    set: recoil.SetReverbState;
-    snapshot: recoil.Snapshot;
+    get: GetReverbValue;
+    set: SetReverbState;
+    snapshot: SnapshotInterface;
   }) => void,
   deps: readonly unknown[] = [],
   props: {
@@ -29,7 +34,7 @@ export const useHotkey = (
   const { useTransaction, ignoreModifiers } = props;
 
   const transactionCb = useReverbTransaction((ctx) => () => cb(ctx), deps);
-  const callbackCb = recoil.useReverbCallback((ctx) => () => cb(ctx), deps);
+  const callbackCb = useReverbCallback((ctx) => () => cb(ctx), deps);
   const decoratedCb = useTransaction ? transactionCb : callbackCb;
 
   const handle = useCallback(

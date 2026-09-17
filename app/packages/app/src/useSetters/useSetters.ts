@@ -23,10 +23,10 @@ const useSetters = (
   sessionRef: MutableRefObject<Session>,
 ) => {
   const handleError = useReverbCallback(
-    ({ set: setRecoil }) =>
+    ({ set }) =>
       async (errors: string[] = []) => {
-        setRecoil(snackbarErrors, errors);
-        setRecoil(pendingEntry, false);
+        set(snackbarErrors, errors);
+        set(pendingEntry, false);
       },
     [],
   );

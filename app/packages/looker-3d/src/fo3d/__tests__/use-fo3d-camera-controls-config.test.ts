@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useFo3dCameraControlsConfig } from "../../hooks/use-fo3d-camera-controls-config";
 import type { Fo3dCameraControls } from "../camera-controls";
 
-const recoilMocks = vi.hoisted(() => ({
+const reverbMocks = vi.hoisted(() => ({
   values: new Map<string, boolean>(),
   setPointCropModifierPressed: vi.fn(),
 }));
@@ -39,8 +39,8 @@ vi.mock("@fiftyone/reverb", async () => {
   return {
     ...actual,
     useReverbValue: (atom: { key?: string }) =>
-      recoilMocks.values.get(atom.key ?? "") ?? false,
-    useSetReverbState: () => recoilMocks.setPointCropModifierPressed,
+      reverbMocks.values.get(atom.key ?? "") ?? false,
+    useSetReverbState: () => reverbMocks.setPointCropModifierPressed,
   };
 });
 
@@ -71,8 +71,8 @@ const makeControls = () => {
 
 describe("useFo3dCameraControlsConfig", () => {
   beforeEach(() => {
-    recoilMocks.values.clear();
-    recoilMocks.setPointCropModifierPressed.mockClear();
+    reverbMocks.values.clear();
+    reverbMocks.setPointCropModifierPressed.mockClear();
   });
 
   it("maps modifiers without letting cmd-left drag pan", () => {
@@ -88,7 +88,7 @@ describe("useFo3dCameraControlsConfig", () => {
       );
     });
     expect(controls.mouseButtons.LEFT).toBe(MOUSE.ROTATE);
-    expect(recoilMocks.setPointCropModifierPressed).toHaveBeenLastCalledWith(
+    expect(reverbMocks.setPointCropModifierPressed).toHaveBeenLastCalledWith(
       true,
     );
 
@@ -96,7 +96,7 @@ describe("useFo3dCameraControlsConfig", () => {
       document.dispatchEvent(new KeyboardEvent("keyup", { code: "ShiftLeft" }));
     });
     expect(controls.mouseButtons.LEFT).toBe(MOUSE.ROTATE);
-    expect(recoilMocks.setPointCropModifierPressed).toHaveBeenLastCalledWith(
+    expect(reverbMocks.setPointCropModifierPressed).toHaveBeenLastCalledWith(
       false,
     );
 
@@ -120,7 +120,7 @@ describe("useFo3dCameraControlsConfig", () => {
       );
     });
     expect(controls.mouseButtons.LEFT).toBe(MOUSE.PAN);
-    expect(recoilMocks.setPointCropModifierPressed).toHaveBeenLastCalledWith(
+    expect(reverbMocks.setPointCropModifierPressed).toHaveBeenLastCalledWith(
       true,
     );
 
@@ -135,14 +135,14 @@ describe("useFo3dCameraControlsConfig", () => {
       document.dispatchEvent(new KeyboardEvent("keyup", { code: "MetaLeft" }));
     });
     expect(controls.mouseButtons.LEFT).toBe(MOUSE.ROTATE);
-    expect(recoilMocks.setPointCropModifierPressed).toHaveBeenLastCalledWith(
+    expect(reverbMocks.setPointCropModifierPressed).toHaveBeenLastCalledWith(
       true,
     );
 
     act(() => {
       document.dispatchEvent(new KeyboardEvent("keyup", { code: "ShiftLeft" }));
     });
-    expect(recoilMocks.setPointCropModifierPressed).toHaveBeenLastCalledWith(
+    expect(reverbMocks.setPointCropModifierPressed).toHaveBeenLastCalledWith(
       false,
     );
 
@@ -150,14 +150,14 @@ describe("useFo3dCameraControlsConfig", () => {
       document.dispatchEvent(new KeyboardEvent("keydown", { code: "AltLeft" }));
     });
     expect(controls.mouseButtons.LEFT).toBe(MOUSE.ROTATE);
-    expect(recoilMocks.setPointCropModifierPressed).toHaveBeenLastCalledWith(
+    expect(reverbMocks.setPointCropModifierPressed).toHaveBeenLastCalledWith(
       true,
     );
 
     act(() => {
       document.dispatchEvent(new KeyboardEvent("keyup", { code: "AltLeft" }));
     });
-    expect(recoilMocks.setPointCropModifierPressed).toHaveBeenLastCalledWith(
+    expect(reverbMocks.setPointCropModifierPressed).toHaveBeenLastCalledWith(
       false,
     );
   });
@@ -169,7 +169,7 @@ describe("useFo3dCameraControlsConfig", () => {
   ])(
     "keeps wheel zoom while annotation interactions own drags for %s",
     (key) => {
-      recoilMocks.values.set(key, true);
+      reverbMocks.values.set(key, true);
       const { controls, cameraControlsRef } = makeControls();
       controls.mouseButtons.LEFT = MOUSE.DOLLY;
 
@@ -184,7 +184,7 @@ describe("useFo3dCameraControlsConfig", () => {
   );
 
   it("restores drag navigation after annotation interactions release controls", () => {
-    recoilMocks.values.set("fo3d-isCurrentlyTransformingAtom", true);
+    reverbMocks.values.set("fo3d-isCurrentlyTransformingAtom", true);
     const { controls, cameraControlsRef } = makeControls();
     const { rerender } = renderHook(() =>
       useFo3dCameraControlsConfig({ cameraControlsRef }),
@@ -193,7 +193,7 @@ describe("useFo3dCameraControlsConfig", () => {
     expect(controls.enableRotate).toBe(false);
     expect(controls.enablePan).toBe(false);
 
-    recoilMocks.values.set("fo3d-isCurrentlyTransformingAtom", false);
+    reverbMocks.values.set("fo3d-isCurrentlyTransformingAtom", false);
     rerender();
 
     expect(controls.enabled).toBe(true);
@@ -214,24 +214,24 @@ describe("useFo3dCameraControlsConfig", () => {
         new KeyboardEvent("keydown", { code: "ShiftLeft" }),
       );
     });
-    expect(recoilMocks.setPointCropModifierPressed).toHaveBeenLastCalledWith(
+    expect(reverbMocks.setPointCropModifierPressed).toHaveBeenLastCalledWith(
       true,
     );
 
-    recoilMocks.setPointCropModifierPressed.mockClear();
-    recoilMocks.values.set("fo3d-isCurrentlyTransformingAtom", true);
+    reverbMocks.setPointCropModifierPressed.mockClear();
+    reverbMocks.values.set("fo3d-isCurrentlyTransformingAtom", true);
     act(() => {
       rerender();
     });
 
-    expect(recoilMocks.setPointCropModifierPressed).not.toHaveBeenCalled();
+    expect(reverbMocks.setPointCropModifierPressed).not.toHaveBeenCalled();
 
     act(() => {
       unmount();
     });
 
-    expect(recoilMocks.setPointCropModifierPressed).toHaveBeenCalledTimes(1);
-    expect(recoilMocks.setPointCropModifierPressed).toHaveBeenLastCalledWith(
+    expect(reverbMocks.setPointCropModifierPressed).toHaveBeenCalledTimes(1);
+    expect(reverbMocks.setPointCropModifierPressed).toHaveBeenLastCalledWith(
       false,
     );
   });

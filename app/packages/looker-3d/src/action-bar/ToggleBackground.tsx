@@ -1,11 +1,11 @@
 import { useTheme } from "@fiftyone/components";
 import WallpaperIcon from "@mui/icons-material/Wallpaper";
-import * as recoil from "@fiftyone/reverb";
+import * as reverb from "@fiftyone/reverb";
 import { ActionItem } from "../containers";
 import { isFo3dBackgroundOnAtom } from "../state";
 
 export const ToggleFo3dBackground = () => {
-  const [isBackgroundOn, setIsBackgroundOn] = recoil.useReverbState(
+  const [isBackgroundOn, setIsBackgroundOn] = reverb.useReverbState(
     isFo3dBackgroundOnAtom,
   );
   const { primary } = useTheme();

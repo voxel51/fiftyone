@@ -5,13 +5,13 @@ import { dataset } from "./dataset";
  * Debug effect that logs when atom value is set.
  *
  * @param options - Configuration options for the logging effect
- * @param options.logPrefix - Custom prefix for log messages. Defaults to "[Recoil Set]"
- * @returns A Recoil atom effect that logs set operations
+ * @param options.logPrefix - Custom prefix for log messages. Defaults to "[Reverb Set]"
+ * @returns An atom effect that logs set operations
  */
 export const logOnSetEffect =
   <T>(options?: { logPrefix?: string }): AtomEffect<T> =>
   ({ onSet, node }) => {
-    const { logPrefix = "[Recoil Set]" } = options || {};
+    const { logPrefix = "[Reverb Set]" } = options || {};
     const atomKey = (node?.key as string) || "atom";
     onSet((newValue, oldValue, isReset) => {
       console.log(`${logPrefix} ${atomKey}:`, {
@@ -23,7 +23,7 @@ export const logOnSetEffect =
   };
 
 /**
- * Recoil effect that syncs atom state with browser storage (localStorage or sessionStorage).
+ * Atom effect that syncs atom state with browser storage (localStorage or sessionStorage).
  * Automatically loads the value from storage on initialization and saves it on every set.
  *
  * @param key - The storage key to use for persisting the value
@@ -36,7 +36,7 @@ export const logOnSetEffect =
  *   This allows per-dataset storage isolation. Defaults to false
  * @param props.useJsonSerialization - If true, uses JSON.stringify/parse for serialization.
  *   Otherwise uses simple string conversion. Defaults to false
- * @returns A Recoil atom effect that syncs the atom with browser storage
+ * @returns An atom effect that syncs the atom with browser storage
  */
 export const getBrowserStorageEffectForKey =
   <T>(

@@ -71,11 +71,11 @@ vi.mock("@fiftyone/reverb", async () => {
         ];
       }
 
-      throw new Error(`Unexpected recoil state: ${node.key}`);
+      throw new Error(`Unexpected state: ${node.key}`);
     },
     useReverbValue: (node: { key: string }) => {
       if (!(node.key in mockState.values)) {
-        throw new Error(`Unexpected recoil value: ${node.key}`);
+        throw new Error(`Unexpected value: ${node.key}`);
       }
 
       return mockState.values[node.key as keyof typeof mockState.values];
@@ -85,7 +85,7 @@ vi.mock("@fiftyone/reverb", async () => {
         return mockState.setMainVisible;
       }
 
-      throw new Error(`Unexpected recoil setter: ${node.key}`);
+      throw new Error(`Unexpected setter: ${node.key}`);
     },
   };
 });

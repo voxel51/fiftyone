@@ -67,14 +67,14 @@ vi.mock("@fiftyone/reverb", async () => {
         return setLogs;
       }
 
-      throw new Error(`Unexpected recoil atom: ${atom.key}`);
+      throw new Error(`Unexpected atom: ${atom.key}`);
     },
     useReverbState: (atom: { key: string }) => {
       if (atom.key === mockAtoms.fo3dLoadingStatusThisSample.key) {
         return [store.loadingStatus, setLoadingStatus];
       }
 
-      throw new Error(`Unexpected recoil atom: ${atom.key}`);
+      throw new Error(`Unexpected atom: ${atom.key}`);
     },
   };
 });

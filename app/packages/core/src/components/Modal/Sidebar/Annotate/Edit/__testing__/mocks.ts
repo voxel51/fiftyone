@@ -112,7 +112,7 @@ export const createMockScene = (overrides?: Partial<MockScene>): MockScene => ({
  * while stubbing `useReverbValue` to return `false`. Without this, a bare
  * mock that strips `atom` crashes anything analytics-adjacent.
  */
-export const recoilPartialMock = async (
+export const reverbPartialMock = async (
   importOriginal: () => Promise<typeof import("@fiftyone/reverb")>,
 ) => ({
   ...(await importOriginal()),
