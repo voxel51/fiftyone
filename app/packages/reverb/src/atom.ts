@@ -2,9 +2,9 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { type Atom, atom as primitive } from "jotai";
+import { type Atom, type Getter, atom as primitive } from "jotai";
 import { resolve } from "./accessors";
-import { type AtomEffect, EffectHost } from "./effects";
+import { effectHost, withEffects } from "./effects";
 import { DefaultValue } from "./sentinel";
 import type { AtomOptions, ReverbState, Write } from "./types";
 
@@ -26,58 +26,42 @@ export function atom<T>(options: AtomOptions<T>): ReverbState<T> {
   const base = primitive<T | typeof UNSET>(deferred ? UNSET : options.default);
   base.debugLabel = `${options.key}/base`;
 
-  const fallback = (get: (state: Atom<unknown>) => unknown): T =>
+  const fallback = (get: Getter): T =>
     deferred
       ? (get(options.default as Atom<unknown>) as T)
       : (options.default as T);
 
-  const host = new EffectHost<T>();
+  const current = (get: Getter): T => {
+    const held = get(base);
+
+    return held === UNSET ? fallback(get) : held;
+  };
+
+  const host = effectHost<T>(options.key);
 
   const state: ReverbState<T> = primitive(
-    (get) => {
-      const held = get(base);
-
-      return held === UNSET ? fallback(get) : held;
-    },
+    (get) => current(get),
     (get, set, next: Write<T>) => {
-      const held = get(base);
-      const previous = held === UNSET ? fallback(get) : held;
+      const previous = current(get);
       const requested = resolve(next, () => previous);
       const isReset = requested instanceof DefaultValue;
       const value = isReset ? fallback(get) : (requested as T);
 
       set(base, value);
-      host.notify(value, isReset ? requested : previous, isReset);
+      get(host).notify(value, isReset ? requested : previous, isReset);
     },
   );
   state.debugLabel = options.key;
 
   const effects = options.effects;
-  if (effects?.length) {
-    base.onMount = (setBase) => {
-      const teardowns = effects.map((effect: AtomEffect<T>) =>
-        effect({
-          node: state,
-          trigger: "get",
-          setSelf: (next) => {
-            const requested = resolve(next, () => options.default as T);
-            setBase(
-              requested instanceof DefaultValue ? UNSET : (requested as T),
-            );
-          },
-          onSet: (listener) => void host.add(listener),
-        }),
-      );
-
-      return () => {
-        for (const teardown of teardowns) {
-          if (typeof teardown === "function") {
-            teardown();
-          }
-        }
-      };
-    };
+  if (!effects?.length) {
+    return state;
   }
 
-  return state;
+  /** Writing `base` rather than the state is what keeps `onSet` silent. */
+  return withEffects<T>(state, host, effects, (read, write, next) => {
+    const requested = resolve(next, () => current(read));
+
+    write(base, requested instanceof DefaultValue ? UNSET : (requested as T));
+  });
 }

@@ -229,4 +229,44 @@ describe("hooks", () => {
     // A per-render member would read back 0 here.
     expect(screen.getByRole("status").textContent).toBe("1");
   });
+  it("keeps one root's effect listeners out of another root's writes", async () => {
+    const seen: Array<[string, number]> = [];
+    const label = atom({ key: "rootLabel", default: "?" });
+    const tracked = atom({
+      key: "trackedByRoot",
+      default: 0,
+      effects: [
+        ({ getLoadable, onSet }) => {
+          const root = getLoadable(label).getValue();
+
+          onSet((next) => seen.push([root, next]));
+        },
+      ],
+    });
+
+    const Component = () => {
+      const [value, setValue] = useReverbState(tracked);
+
+      return (
+        <button type="button" onClick={() => setValue(value + 1)}>
+          {useReverbValue(label)}
+        </button>
+      );
+    };
+
+    render(
+      <>
+        <ReverbRoot initializeState={({ set }) => set(label, "left")}>
+          <Component />
+        </ReverbRoot>
+        <ReverbRoot initializeState={({ set }) => set(label, "right")}>
+          <Component />
+        </ReverbRoot>
+      </>,
+    );
+
+    await act(async () => screen.getByText("left").click());
+
+    expect(seen).toEqual([["left", 1]]);
+  });
 });

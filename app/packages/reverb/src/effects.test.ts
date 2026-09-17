@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { atom } from "./atom";
 import type { AtomEffect } from "./effects";
 import { atomFamily } from "./family";
+import { selector } from "./selector";
 import { DEFAULT_VALUE, DefaultValue } from "./sentinel";
 
 describe("atom effects", () => {
@@ -154,5 +155,150 @@ describe("atom effects", () => {
     store.sub(state, () => undefined);
 
     expect(store.get(state)).toBe("default");
+  });
+  it("does not notify one store's listener for another store's write", () => {
+    const seen: Array<[string, string]> = [];
+    const name = atom<string>({ key: "storeName", default: "?" });
+    const state = atom<string>({
+      key: "isolated",
+      default: "initial",
+      effects: [
+        ({ getLoadable, onSet }) => {
+          const store = getLoadable(name).getValue();
+
+          onSet((next) => seen.push([store, next]));
+        },
+      ],
+    });
+
+    const a = createStore();
+    const b = createStore();
+    a.set(name, "A");
+    b.set(name, "B");
+    a.sub(state, () => undefined);
+    b.sub(state, () => undefined);
+
+    a.set(state, "written-in-a");
+    expect(seen).toEqual([["A", "written-in-a"]]);
+
+    b.set(state, "written-in-b");
+    expect(seen).toEqual([
+      ["A", "written-in-a"],
+      ["B", "written-in-b"],
+    ]);
+  });
+
+  it("resolves a sibling from its own store through getPromise", async () => {
+    const sibling = atom<string>({ key: "sibling", default: "default" });
+    const reads: Array<Promise<string>> = [];
+    const state = atom<string>({
+      key: "siblingReader",
+      default: "",
+      effects: [({ getPromise }) => void reads.push(getPromise(sibling))],
+    });
+
+    const a = createStore();
+    const b = createStore();
+    a.set(sibling, "from-a");
+    b.set(sibling, "from-b");
+    a.sub(state, () => undefined);
+    b.sub(state, () => undefined);
+
+    await expect(Promise.all(reads)).resolves.toEqual(["from-a", "from-b"]);
+  });
+
+  it("reads a pending sibling as loading, then resolves it", async () => {
+    let settle: (value: string) => void = () => undefined;
+    const pending = new Promise<string>((resolve) => {
+      settle = resolve;
+    });
+    const deferred = selector<string>({
+      key: "deferred",
+      get: () => pending as never,
+    });
+
+    const states: string[] = [];
+    const promises: Array<Promise<string>> = [];
+    const state = atom<number>({
+      key: "loadableReader",
+      default: 0,
+      effects: [
+        ({ getLoadable, getPromise }) => {
+          states.push(getLoadable(deferred).state);
+          promises.push(getPromise(deferred));
+        },
+      ],
+    });
+
+    createStore().sub(state, () => undefined);
+    expect(states).toEqual(["loading"]);
+
+    settle("ready");
+    await expect(promises[0]).resolves.toBe("ready");
+  });
+
+  it("does not re-run when a sibling it read changes", () => {
+    let runs = 0;
+    const sibling = atom<string>({ key: "untracked", default: "one" });
+    const state = atom<string>({
+      key: "untrackedReader",
+      default: "",
+      effects: [
+        ({ getLoadable }) => {
+          runs += 1;
+          getLoadable(sibling);
+        },
+      ],
+    });
+
+    const store = createStore();
+    store.sub(state, () => undefined);
+    store.set(sibling, "two");
+
+    expect(runs).toBe(1);
+  });
+
+  it("writes to its own store through a setSelf captured by the effect", () => {
+    const captured = new Map<string, (next: string) => void>();
+    const name = atom<string>({ key: "capturedStoreName", default: "?" });
+    const state = atom<string>({
+      key: "capturedSetSelf",
+      default: "initial",
+      effects: [
+        ({ getLoadable, setSelf }) =>
+          void captured.set(getLoadable(name).getValue(), setSelf),
+      ],
+    });
+
+    const a = createStore();
+    const b = createStore();
+    a.set(name, "A");
+    b.set(name, "B");
+    a.sub(state, () => undefined);
+    b.sub(state, () => undefined);
+
+    captured.get("A")?.("late-a");
+
+    expect(a.get(state)).toBe("late-a");
+    expect(b.get(state)).toBe("initial");
+  });
+
+  it("stops notifying a listener once the atom goes inactive", () => {
+    const seen: string[] = [];
+    const state = atom<string>({
+      key: "detached",
+      default: "a",
+      effects: [({ onSet }) => onSet((next) => seen.push(next))],
+    });
+
+    const store = createStore();
+    const unsubscribe = store.sub(state, () => undefined);
+    store.set(state, "b");
+    unsubscribe();
+    store.set(state, "c");
+    store.sub(state, () => undefined);
+    store.set(state, "d");
+
+    expect(seen).toEqual(["b", "d"]);
   });
 });
