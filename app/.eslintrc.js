@@ -12,6 +12,39 @@ const muiAllowlist = fs
   .map((line) => line.trim())
   .filter((line) => line && !line.startsWith("#"));
 
+// Shrinking allow-list for reading the store straight from a component. See
+// .reverb-allowlist.txt for the rationale; remove files from it as they move
+// to a semantic hook instead of adding to it.
+const reverbAllowlist = fs
+  .readFileSync(path.join(__dirname, ".reverb-allowlist.txt"), "utf-8")
+  .split("\n")
+  .map((line) => line.trim())
+  .filter((line) => line && !line.startsWith("#"));
+
+// Files on both lists, so the per-rule overrides below can exempt them from
+// both without exempting either list from the other rule.
+const bothAllowlist = reverbAllowlist.filter((file) =>
+  muiAllowlist.includes(file),
+);
+
+// The store is defined and exposed here, so these own the direct imports.
+const storePackages = [
+  "packages/state/**",
+  "packages/relay/**",
+  "packages/reverb/**",
+];
+
+// Both rules share the no-restricted-imports rule name, and an ESLint override
+// replaces a rule's config rather than merging it. Keep each one's config
+// separate so an override can re-apply just the one that still applies.
+const reverbPaths = [
+  {
+    name: "@fiftyone/reverb",
+    message:
+      "Components should not read or write the store directly. Use a well-defined semantic hook from @fiftyone/state, or add one there. See .reverb-allowlist.txt.",
+  },
+];
+
 const muiPatterns = [
   {
     group: ["@mui/icons-material", "@mui/icons-material/*"],
@@ -87,7 +120,10 @@ module.exports = {
       },
     ],
     "react/prop-types": 0,
-    "no-restricted-imports": ["warn", { patterns: muiPatterns }],
+    "no-restricted-imports": [
+      "warn",
+      { paths: reverbPaths, patterns: muiPatterns },
+    ],
   },
   settings: {
     react: {
@@ -147,9 +183,33 @@ module.exports = {
       },
     },
     {
+      // @fiftyone/state, @fiftyone/relay and @fiftyone/reverb define the store
+      // and the hooks over it, so they import it directly. The MUI rule still
+      // applies to them.
+      files: storePackages,
+      rules: {
+        "no-restricted-imports": ["warn", { patterns: muiPatterns }],
+      },
+    },
+    {
       // Files not yet migrated off MUI. Shrink .mui-allowlist.txt as files
       // move to @voxel51/voodo rather than adding to it.
       files: muiAllowlist,
+      rules: {
+        "no-restricted-imports": ["warn", { paths: reverbPaths }],
+      },
+    },
+    {
+      // Files still reading the store directly. Shrink .reverb-allowlist.txt
+      // as files move to a semantic hook rather than adding to it.
+      files: reverbAllowlist,
+      rules: {
+        "no-restricted-imports": ["warn", { patterns: muiPatterns }],
+      },
+    },
+    {
+      // On both lists, so neither rule applies.
+      files: bothAllowlist,
       rules: {
         "no-restricted-imports": "off",
       },
