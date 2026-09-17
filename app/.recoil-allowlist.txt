@@ -143,7 +143,6 @@ packages/core/src/components/Modal/Group/DynamicGroup/index.tsx
 packages/core/src/components/Modal/Group/DynamicGroup/NestedGroup/index.tsx
 packages/core/src/components/Modal/Group/DynamicGroup/NonNestedGroup/index.tsx
 packages/core/src/components/Modal/Group/DynamicGroup/pagination/index.tsx
-packages/core/src/components/Modal/Group/DynamicGroup/pagination/PaginationComponentWithTooltip.tsx
 packages/core/src/components/Modal/Group/DynamicGroup/useDynamicGroupSamples.ts
 packages/core/src/components/Modal/Group/EnsureGroupSample.tsx
 packages/core/src/components/Modal/Group/GroupCarousel.tsx
