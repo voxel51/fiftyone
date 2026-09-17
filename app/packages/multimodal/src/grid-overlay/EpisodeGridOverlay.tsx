@@ -136,8 +136,16 @@ function IntervalLane({
   const domainSpan = model?.domainSpan ?? 1;
   const hitToleranceNs = domainSpan * HIT_TOLERANCE;
   // Read through a ref so a changing span never re-subscribes the listener.
+  //
+  // Written after commit rather than during render: the listeners below are
+  // bound to the committed tile, so a render that is thrown away — or one
+  // React has not committed yet — must not be able to move the value they
+  // read. A click can only arrive after commit, so the ref is never stale by
+  // the time either listener fires.
   const domainSpanRef = useRef(domainSpan);
-  domainSpanRef.current = domainSpan;
+  useLayoutEffect(() => {
+    domainSpanRef.current = domainSpan;
+  }, [domainSpan]);
 
   // This effect follows the pointer while it is over the overlay, projected
   // onto the lane's horizontal axis. Listening on the tile rather than on the
@@ -183,7 +191,9 @@ function IntervalLane({
   // bound once per tile and must not re-subscribe as the episode's range
   // arrives or the tile is pointed at another sample.
   const seekRef = useRef(seek);
-  seekRef.current = seek;
+  useLayoutEffect(() => {
+    seekRef.current = seek;
+  }, [seek]);
 
   // This effect turns a click on the bar into a seek instead of letting it open
   // the modal.
