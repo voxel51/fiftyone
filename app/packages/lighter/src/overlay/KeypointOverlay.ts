@@ -8,7 +8,9 @@ import {
   EDGE_THRESHOLD,
   HOVERED_DASH_LENGTH,
   KEYPOINT_HIT_RADIUS,
+  KEYPOINT_OUTLINE_WIDTH,
   KEYPOINT_RADIUS,
+  KEYPOINT_SELECTED_OUTLINE_WIDTH,
   KEYPOINT_SELECTED_RADIUS,
   LABEL_ARCHETYPE_PRIORITY,
   PREVIEW_LINE_OPACITY,
@@ -603,10 +605,15 @@ export class KeypointOverlay
     renderer: Renderer2D,
     ctx: KeypointRenderContext,
   ): void {
+    // Point outlines are independent of the overlay's line width (which
+    // sizes the edges); a whole-label hover renders every point in its
+    // sub-selected state, so the thick selected outline applies across
     const defaultPointStyle: DrawStyle = {
       fillStyle: ctx.strokeColor,
       strokeStyle: "#ffffff",
-      lineWidth: ctx.lineWidth,
+      lineWidth: ctx.isHovered
+        ? KEYPOINT_SELECTED_OUTLINE_WIDTH
+        : KEYPOINT_OUTLINE_WIDTH,
     };
 
     const resolvePointStyle = (variant: string | undefined): DrawStyle => {
@@ -718,21 +725,8 @@ export class KeypointOverlay
       );
     }
 
-    // When hovered, overlay an inner white highlight on every point so each
-    // vertex matches the sub-selected appearance.
-    if (ctx.isHovered) {
-      for (const pts of [...buckets.values(), ...colorBuckets.values()]) {
-        renderer.drawPoints(
-          pts,
-          KEYPOINT_RADIUS,
-          { fillStyle: "#ffffff" },
-          this.containerId,
-        );
-      }
-    }
-
-    // Hovered point: static radius bump only — the inner-highlight ring
-    // look stays reserved for the selected point
+    // Hovered point: static radius bump only — the thick-outline look
+    // stays reserved for the selected point
     if (hoveredPoint) {
       renderer.drawPoint(
         hoveredPoint,
@@ -744,20 +738,19 @@ export class KeypointOverlay
       );
     }
 
-    // Draw selected point at larger radius + inner highlight (separate calls)
+    // Selected point: the white outline thickens OUTWARD — total radius
+    // grows while the point's color stays visible in the core
     if (selectedPoint) {
+      const selectedStyle = {
+        ...resolvePointStyle(selectedVariant),
+        lineWidth: KEYPOINT_SELECTED_OUTLINE_WIDTH,
+      };
       renderer.drawPoint(
         selectedPoint,
         KEYPOINT_SELECTED_RADIUS,
         selectedFill
-          ? { ...resolvePointStyle(selectedVariant), fillStyle: selectedFill }
-          : resolvePointStyle(selectedVariant),
-        this.containerId,
-      );
-      renderer.drawPoint(
-        selectedPoint,
-        KEYPOINT_RADIUS,
-        { fillStyle: "#ffffff" },
+          ? { ...selectedStyle, fillStyle: selectedFill }
+          : selectedStyle,
         this.containerId,
       );
     }
