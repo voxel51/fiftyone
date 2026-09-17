@@ -623,6 +623,21 @@ export const useOperatorPrompt = () => {
     // re-fire every render because hooks is rebuilt each time
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serializedParams, executor.isExecuting]);
+  // Validation only runs inside a resolve, and a change to an inert field
+  // never resolves, so its errors are checked here against the last resolved
+  // inputs
+  const serializedAllParams = useMemo(() => JSON.stringify(params), [params]);
+  useEffect(() => {
+    if (
+      inertPaths.length === 0 ||
+      !resolvedIO.input ||
+      serializedParams !== serializedResolvedParams
+    ) {
+      return;
+    }
+    validateThrottled(ctx, resolvedIO.input);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serializedAllParams]);
   const resolveOutputFields = useCallback(async () => {
     ctx.hooks = hooks;
     const result = new OperatorResult(operator, executor.result, null, null);
