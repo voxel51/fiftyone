@@ -270,9 +270,6 @@ export class DetectionOverlay
   }
 
   protected renderImpl(renderer: Renderer2D, renderMeta: RenderMeta): void {
-    // Dispose of old elements before creating new ones
-    renderer.dispose(this.containerId);
-
     const style = this.currentStyle;
 
     if (!style) return;

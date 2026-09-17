@@ -155,3 +155,308 @@ describe("PixiRenderer2D graphics context lifecycle", () => {
     expect(internal.containers.get("c1").children).toHaveLength(1);
   });
 });
+
+describe("PixiRenderer2D slot reuse", () => {
+  const STYLE = { strokeStyle: "#ffffff", lineWidth: 1 };
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const childrenOf = (internal: any, id: string): PIXI.Container[] =>
+    internal.containers.get(id).children;
+
+  it("repaints into the same display objects across passes", () => {
+    const { renderer, internal } = makeRenderer();
+
+    renderer.beginRebuild("c1");
+    renderer.drawRect(BOUNDS, STYLE, "c1");
+    renderer.drawRect(BOUNDS, STYLE, "c1");
+    renderer.endRebuild("c1");
+
+    const first = [...childrenOf(internal, "c1")];
+    expect(first).toHaveLength(2);
+
+    renderer.beginRebuild("c1");
+    renderer.drawRect(BOUNDS, STYLE, "c1");
+    renderer.drawRect(BOUNDS, STYLE, "c1");
+    renderer.endRebuild("c1");
+
+    const second = childrenOf(internal, "c1");
+    expect(second).toHaveLength(2);
+    // the point of the whole change: same objects, not replacements
+    expect(second[0]).toBe(first[0]);
+    expect(second[1]).toBe(first[1]);
+    expect(first[0].destroyed).toBe(false);
+  });
+
+  it("clears reused geometry so a pass never inherits the last one's shapes", () => {
+    const { renderer, internal } = makeRenderer();
+
+    renderer.beginRebuild("c1");
+    renderer.drawRect(BOUNDS, STYLE, "c1");
+    renderer.endRebuild("c1");
+
+    const graphics = childrenOf(internal, "c1")[0] as PIXI.Graphics;
+    const clear = vi.spyOn(graphics, "clear");
+
+    renderer.beginRebuild("c1");
+    renderer.drawRect(BOUNDS, STYLE, "c1");
+    renderer.endRebuild("c1");
+
+    expect(clear).toHaveBeenCalled();
+  });
+
+  it("trims the slots a shorter pass does not reach", () => {
+    const { renderer, internal } = makeRenderer();
+
+    renderer.beginRebuild("c1");
+    renderer.drawRect(BOUNDS, STYLE, "c1");
+    renderer.drawRect(BOUNDS, STYLE, "c1");
+    renderer.drawRect(BOUNDS, STYLE, "c1");
+    renderer.endRebuild("c1");
+
+    const stale = childrenOf(internal, "c1")[2];
+
+    renderer.beginRebuild("c1");
+    renderer.drawRect(BOUNDS, STYLE, "c1");
+    renderer.endRebuild("c1");
+
+    expect(childrenOf(internal, "c1")).toHaveLength(1);
+    expect(stale.destroyed).toBe(true);
+  });
+
+  it("restores eventMode on reuse, so a scrim's slot stays hit-testable", () => {
+    const { renderer, internal } = makeRenderer();
+
+    // pass 1: a scrim, which opts itself out of hit-testing
+    renderer.beginRebuild("c1");
+    renderer.drawScrim(BOUNDS, BOUNDS, "c1");
+    renderer.endRebuild("c1");
+
+    expect(childrenOf(internal, "c1")[0].eventMode).toBe("none");
+
+    // pass 2: an ordinary rect claims that same slot
+    renderer.beginRebuild("c1");
+    renderer.drawRect(BOUNDS, STYLE, "c1");
+    renderer.endRebuild("c1");
+
+    // inheriting "none" would leave the overlay permanently unclickable
+    expect(childrenOf(internal, "c1")[0].eventMode).not.toBe("none");
+  });
+
+  it("swaps in place when a slot's object type changes", () => {
+    const { renderer, internal } = makeRenderer();
+
+    renderer.beginRebuild("c1");
+    renderer.drawRect(BOUNDS, STYLE, "c1");
+    renderer.drawRect(BOUNDS, STYLE, "c1");
+    renderer.endRebuild("c1");
+
+    const trailing = childrenOf(internal, "c1")[1];
+
+    // second slot is a Sprite this time; the first stays a Graphics
+    const canvas = document.createElement("canvas");
+    canvas.width = 8;
+    canvas.height = 8;
+
+    renderer.beginRebuild("c1");
+    renderer.drawRect(BOUNDS, STYLE, "c1");
+    renderer.drawImage({ type: "canvas", canvas }, BOUNDS, undefined, "c1");
+    renderer.endRebuild("c1");
+
+    const children = childrenOf(internal, "c1");
+    expect(children).toHaveLength(2);
+    expect(children[0]).toBeInstanceOf(PIXI.Graphics);
+    expect(children[1]).toBeInstanceOf(PIXI.Sprite);
+    expect(trailing.destroyed).toBe(true);
+  });
+
+  it("keeps drawText's background beneath its glyphs", () => {
+    const { renderer, internal } = makeRenderer();
+
+    // glyph measurement needs a real 2D context, which jsdom lacks; the
+    // geometry is irrelevant here, only which slot each object lands in
+    vi.spyOn(PIXI.Text.prototype, "getLocalBounds").mockReturnValue({
+      width: 10,
+      height: 10,
+    } as never);
+
+    renderer.beginRebuild("c1");
+    renderer.drawText(
+      "hi",
+      { x: 0, y: 0 },
+      { backgroundColor: "#000000" },
+      "c1",
+    );
+    renderer.endRebuild("c1");
+
+    // slot order is z-order: background first, then the text on top
+    const children = childrenOf(internal, "c1");
+    expect(children[0]).toBeInstanceOf(PIXI.Graphics);
+    expect(children[children.length - 1]).toBeInstanceOf(PIXI.Text);
+  });
+
+  it("keeps nested passes independent, so a sub-overlay cannot disturb its parent", () => {
+    // DetectionOverlay paints its MaskKeypoints from inside its own pass; the
+    // two hold different container ids, and each cursor is keyed by id
+    const { renderer, internal } = makeRenderer();
+
+    renderer.beginRebuild("parent");
+    renderer.drawRect(BOUNDS, STYLE, "parent");
+
+    renderer.beginRebuild("child");
+    renderer.drawRect(BOUNDS, STYLE, "child");
+    renderer.endRebuild("child");
+
+    // the parent's cursor survived the nested pass: this is its second slot,
+    // not a reuse of its first
+    renderer.drawRect(BOUNDS, STYLE, "parent");
+    renderer.endRebuild("parent");
+
+    expect(childrenOf(internal, "parent")).toHaveLength(2);
+    expect(childrenOf(internal, "child")).toHaveLength(1);
+  });
+
+  it("frees a trimmed slot's GraphicsContext, not just the Graphics", () => {
+    // Pixi 8 frees an owned context only for `options.context === true`;
+    // `{ children: true }` hits neither branch, and it is the context's own
+    // destroy event that evicts its `_gpuContextHash` entry. Without this the
+    // GPU batch data survives every trim — the leak this pooling exists to
+    // avoid. `destroyed` flips either way, so assert on the context.
+    const { renderer, internal } = makeRenderer();
+
+    renderer.beginRebuild("c1");
+    renderer.drawRect(BOUNDS, STYLE, "c1");
+    renderer.drawRect(BOUNDS, STYLE, "c1");
+    renderer.endRebuild("c1");
+
+    const stale = childrenOf(internal, "c1")[1] as PIXI.Graphics;
+    const contextDestroy = vi.spyOn(stale.context, "destroy");
+
+    renderer.beginRebuild("c1");
+    renderer.drawRect(BOUNDS, STYLE, "c1");
+    renderer.endRebuild("c1");
+
+    expect(contextDestroy).toHaveBeenCalled();
+  });
+
+  it("frees the context of a slot replaced by a different type", () => {
+    const { renderer, internal } = makeRenderer();
+
+    renderer.beginRebuild("c1");
+    renderer.drawRect(BOUNDS, STYLE, "c1");
+    renderer.endRebuild("c1");
+
+    const replaced = childrenOf(internal, "c1")[0] as PIXI.Graphics;
+    const contextDestroy = vi.spyOn(replaced.context, "destroy");
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 8;
+    canvas.height = 8;
+
+    renderer.beginRebuild("c1");
+    renderer.drawImage({ type: "canvas", canvas }, BOUNDS, undefined, "c1");
+    renderer.endRebuild("c1");
+
+    expect(contextDestroy).toHaveBeenCalled();
+  });
+
+  it("never leaves a sprite pointing at a destroyed texture", () => {
+    // releasing destroys the texture, so the new one has to be assigned first
+    const { renderer, internal } = makeRenderer();
+    const canvasOf = (seed: number) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 8 + seed;
+      canvas.height = 8;
+      return canvas;
+    };
+
+    renderer.beginRebuild("c1");
+    renderer.drawImage(
+      { type: "canvas", canvas: canvasOf(0) },
+      BOUNDS,
+      undefined,
+      "c1",
+    );
+    renderer.endRebuild("c1");
+
+    const sprite = childrenOf(internal, "c1")[0] as PIXI.Sprite;
+
+    renderer.beginRebuild("c1");
+    renderer.drawImage(
+      { type: "canvas", canvas: canvasOf(1) },
+      BOUNDS,
+      undefined,
+      "c1",
+    );
+    renderer.endRebuild("c1");
+
+    expect(sprite.texture.destroyed).toBe(false);
+  });
+
+  it("resets tint when reusing a sprite", () => {
+    // drawImage sets tint only when asked, so a reused sprite would keep the
+    // previous mask's color
+    const { renderer, internal } = makeRenderer();
+    const canvas = document.createElement("canvas");
+    canvas.width = 8;
+    canvas.height = 8;
+
+    renderer.beginRebuild("c1");
+    renderer.drawImage(
+      { type: "canvas", canvas },
+      BOUNDS,
+      { tint: "#ff0000" },
+      "c1",
+    );
+    renderer.endRebuild("c1");
+
+    renderer.beginRebuild("c1");
+    renderer.drawImage({ type: "canvas", canvas }, BOUNDS, undefined, "c1");
+    renderer.endRebuild("c1");
+
+    const sprite = childrenOf(internal, "c1")[0] as PIXI.Sprite;
+    expect(sprite.tint).toBe(0xffffff);
+  });
+
+  it("reports no bounds for a container a pass left empty", () => {
+    // Pixi reports an empty container's bounds as infinite, which
+    // `getMouseDistance` turns into NaN. Before pooling the container would
+    // have been disposed and `getBounds` returned undefined.
+    const { renderer } = makeRenderer();
+
+    renderer.beginRebuild("c1");
+    renderer.drawRect(BOUNDS, STYLE, "c1");
+    renderer.endRebuild("c1");
+
+    expect(renderer.getBounds("c1")).toBeDefined();
+
+    renderer.beginRebuild("c1");
+    renderer.endRebuild("c1");
+
+    expect(renderer.getBounds("c1")).toBeUndefined();
+  });
+
+  it("appends when no rebuild pass is open, as it did before pooling", () => {
+    const { renderer, internal } = makeRenderer();
+
+    renderer.drawRect(BOUNDS, STYLE, "c1");
+    renderer.drawRect(BOUNDS, STYLE, "c1");
+
+    expect(childrenOf(internal, "c1")).toHaveLength(2);
+  });
+
+  it("holds one container and one child across many repaint passes", () => {
+    const { renderer, internal } = makeRenderer();
+
+    for (let frame = 0; frame < 50; frame++) {
+      renderer.beginRebuild("c1");
+      renderer.drawRect(BOUNDS, STYLE, "c1");
+      renderer.endRebuild("c1");
+    }
+
+    expect(internal.containers.size).toBe(1);
+    expect(childrenOf(internal, "c1")).toHaveLength(1);
+  });
+});
