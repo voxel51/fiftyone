@@ -1,11 +1,11 @@
-import { Disposable } from "react-relay";
-import { KeyTypeData } from "react-relay/relay-hooks/helpers";
 import {
   atom,
-  AtomOptions,
-  ReadWriteSelectorOptions,
-  TransactionInterface_UNSTABLE,
-} from "recoil";
+  type AtomOptions,
+  type ReadWriteSelectorOptions,
+  type TransactionInterface,
+} from "@fiftyone/reverb";
+import { Disposable } from "react-relay";
+import { KeyTypeData } from "react-relay/relay-hooks/helpers";
 import { GraphQLTaggedNode, OperationType } from "relay-runtime";
 import { KeyType } from "relay-runtime/lib/store/readInlineData";
 import { selectorWithEffect } from "./selectorWithEffect";
@@ -28,7 +28,7 @@ export type GraphQLSyncFragmentSyncAtomOptions<T extends KeyType, K> = {
 const isTest = typeof process !== "undefined" && process.env.MODE === "test";
 
 /**
- * Creates a recoil atom synced with a relay fragment via its path in a query.
+ * Creates an atom synced with a relay fragment via its path in a query.
  * If the fragment path cannot be read from given the parent fragment keys and
  * the optional final read function, the atom's default value will be used.
  *
@@ -40,7 +40,7 @@ const isTest = typeof process !== "undefined" && process.env.MODE === "test";
  *    in every Writer transaction, including transitions published before this
  *    atom has an active consumer.
  *
- * The second path prevents a long-lived RecoilRoot from exposing a retained
+ * The second path prevents a long-lived root from exposing a retained
  * value from the previous dataset while the next dataset's consumers mount.
  */
 export function graphQLSyncFragmentAtom<T extends KeyType, K = T[" $data"]>(
@@ -53,7 +53,7 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K = T[" $data"]>(
     effects: [
       ...(options.effects || []),
       ({ setSelf, trigger }) => {
-        // recoil state should be initialized via RecoilRoot's initializeState
+        // state should be initialized through the root's initializeState
         // during tests
         if (isTest) return undefined;
 
@@ -63,10 +63,7 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K = T[" $data"]>(
         const { pageQuery, subscribe } = getPageQuery();
         let disposable: Disposable | undefined = undefined;
         let previous: null | T[" $data"] = null;
-        const setter = (
-          d: null | T[" $data"],
-          int?: TransactionInterface_UNSTABLE,
-        ) => {
+        const setter = (d: null | T[" $data"], int?: TransactionInterface) => {
           const set = int ? (v: K) => int.set(value, v) : setSelf;
           set(
             fragmentOptions.read && d !== null
@@ -81,7 +78,7 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K = T[" $data"]>(
 
         const run = (
           page: PageQuery<OperationType>,
-          transactionInterface?: TransactionInterface_UNSTABLE,
+          transactionInterface?: TransactionInterface,
         ): Disposable | undefined => {
           const preloadedQuery = page.preloadedQuery;
           try {
@@ -154,7 +151,7 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K = T[" $data"]>(
 
   /*
    * The effect subscription above exists only after this atom is initialized
-   * in the current consumer lifecycle. The application keeps its RecoilRoot
+   * in the current consumer lifecycle. The application keeps its root
    * mounted while routing between datasets, so a page can be published while
    * a particular atom has no mounted consumer even though its previous value
    * is still observable through retained selector state.
@@ -171,7 +168,7 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K = T[" $data"]>(
    * baseline. An active atom may therefore receive the same page from both
    * paths, but both writes are derived from the identical page payload.
    */
-  // Match the atom effect above: tests initialize Recoil state directly and do
+  // Match the atom effect above: tests initialize state directly and do
   // not participate in the runtime Writer synchronization lifecycle.
   if (!isTest) {
     let previousPageData: null | T[" $data"] = null;

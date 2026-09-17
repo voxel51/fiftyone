@@ -2278,7 +2278,6 @@ __metadata:
     prettier: "catalog:"
     react: "catalog:"
     react-relay: "catalog:"
-    recoil: "catalog:"
     relay-compiler: "catalog:"
     relay-compiler-language-typescript: "npm:^15.0.1"
     relay-config: "npm:^12.0.1"

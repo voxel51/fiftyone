@@ -1,7 +1,7 @@
 import { cleanup, render } from "@testing-library/react";
 import { createElement } from "react";
-import { RecoilRoot, useRecoilValue } from "recoil";
-import type { TransactionInterface_UNSTABLE } from "recoil";
+import { ReverbRoot, useReverbValue } from "@fiftyone/reverb";
+import type { TransactionInterface } from "@fiftyone/reverb";
 import type { GraphQLTaggedNode, OperationType } from "relay-runtime";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { PageQuery } from "./Writer";
@@ -45,7 +45,7 @@ const createPageSync = async (
   );
   const subscriber = mocks.registerPageSync.mock.calls[0][1] as (
     page: PageQuery<OperationType>,
-    transaction: TransactionInterface_UNSTABLE,
+    transaction: TransactionInterface,
   ) => void;
 
   return { subscriber, value };
@@ -60,12 +60,12 @@ const mountAtomEffect = async (key: string) => {
     { key },
   );
   const Reader = () => {
-    useRecoilValue(value);
+    useReverbValue(value);
     return null;
   };
 
   return {
-    ...render(createElement(RecoilRoot, null, createElement(Reader))),
+    ...render(createElement(ReverbRoot, null, createElement(Reader))),
     subscribe,
   };
 };
@@ -157,7 +157,7 @@ describe("graphQLSyncFragmentAtom page synchronization", () => {
     const set = vi.fn();
     mocks.resolveFragmentChain.mockReturnValue({ missing: true });
 
-    subscriber(page, { set } as unknown as TransactionInterface_UNSTABLE);
+    subscriber(page, { set } as unknown as TransactionInterface);
 
     expect(set).toHaveBeenCalledWith(value, defaultValue);
   });
@@ -172,7 +172,7 @@ describe("graphQLSyncFragmentAtom page synchronization", () => {
       throw new Error("incompatible fragment");
     });
 
-    subscriber(page, { set } as unknown as TransactionInterface_UNSTABLE);
+    subscriber(page, { set } as unknown as TransactionInterface);
 
     expect(set).toHaveBeenCalledWith(value, defaultValue);
   });
@@ -188,7 +188,7 @@ describe("graphQLSyncFragmentAtom page synchronization", () => {
     const set = vi.fn();
     const transaction = {
       set,
-    } as unknown as TransactionInterface_UNSTABLE;
+    } as unknown as TransactionInterface;
     mocks.resolveFragmentChain
       .mockReturnValueOnce({ data: first, missing: false })
       .mockReturnValueOnce({ data: second, missing: false });
@@ -218,7 +218,7 @@ describe("graphQLSyncFragmentAtom page synchronization", () => {
     });
     const transaction = {
       set: vi.fn(),
-    } as unknown as TransactionInterface_UNSTABLE;
+    } as unknown as TransactionInterface;
     mocks.resolveFragmentChain
       .mockReturnValueOnce({ data: first, missing: false })
       .mockReturnValueOnce({ missing: true })

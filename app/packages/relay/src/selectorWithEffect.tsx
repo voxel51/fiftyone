@@ -1,13 +1,13 @@
-import React from "react";
 import {
-  ReadOnlySelectorOptions,
-  ReadWriteSelectorOptions,
-  RecoilState,
+  type ReadOnlySelectorOptions,
+  type ReadWriteSelectorOptions,
+  type ReverbState,
   selector,
-} from "recoil";
+} from "@fiftyone/reverb";
+import React from "react";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type Setter = ReadWriteSelectorOptions<any>["set"];
+// The registry is keyed by string, so a setter cannot be typed per item.
+export type Setter = ReadWriteSelectorOptions<never>["set"];
 
 let effectStore_INTERNAL: Map<string, Setter>;
 
@@ -25,7 +25,7 @@ export function SelectorEffectContext({
 const isTest = typeof process !== "undefined" && process.env.MODE === "test";
 
 /**
- * Wraps a Recoil selector so writes can be routed through the setter registry
+ * Wraps a selector so writes can be routed through the setter registry
  * provided by {@link SelectorEffectContext}.
  *
  * This is useful when a piece of state is primarily derived from another atom
@@ -36,7 +36,7 @@ const isTest = typeof process !== "undefined" && process.env.MODE === "test";
  * - looks up a matching setter from the effect store using `itemKey` or
  *   `options.key`
  * - optionally transforms the write payload via `options.set`
- * - optionally mirrors the final value into `state` for local Recoil updates
+ * - optionally mirrors the final value into `state` for local updates
  */
 export function selectorWithEffect<T>(
   {
@@ -46,7 +46,7 @@ export function selectorWithEffect<T>(
     set?:
       | ((...params: Parameters<ReadWriteSelectorOptions<T>["set"]>) => T)
       | boolean;
-    state?: RecoilState<T>;
+    state?: ReverbState<T>;
   },
   itemKey?: string,
 ) {
