@@ -287,7 +287,7 @@ export const useValueColor = (path: string) => useReverbValue(valueColor(path));
  *
  * Takes the paths up front rather than returning a `(path) => color` closure
  * the way {@link temporalTagColor} does: {@link valueColor} reads schema and
- * color-scheme state per path through Recoil, which cannot be evaluated lazily
+ * color-scheme state per path through the store, which cannot be evaluated lazily
  * inside a plain function.
  */
 const pathValueColors = selectorFamily<

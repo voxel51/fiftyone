@@ -13,7 +13,7 @@ import { SubscribableMap } from "./utils/SubscribableMap";
 const { COLOR_OPTIONS } = constants;
 
 // a react hook for managing the state of all spaces in the app
-// it should use recoil to persist the tree
+// it should use the store to persist the tree
 export const spacesAtom = atom<{
   [spaceId: string]: SpaceNodeJSON | undefined;
 }>({

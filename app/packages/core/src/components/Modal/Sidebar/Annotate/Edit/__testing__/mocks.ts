@@ -104,7 +104,7 @@ export const createMockScene = (overrides?: Partial<MockScene>): MockScene => ({
   ...overrides,
 });
 
-// ---- recoil partial-mock factory --------------------------------------------
+// ---- store partial-mock factory --------------------------------------------
 
 /**
  * Partial mock for `vi.mock("@fiftyone/reverb", ...)`. Preserves the real exports

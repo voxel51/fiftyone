@@ -107,7 +107,7 @@ export const useLighterSelectionEventHandler = (
         // already settled the atom themselves or must not touch it:
         //
         // - the "Manage selected" menu applies its choice to the scene with
-        //   `ignoreSideEffects` after writing recoil, so acting here would
+        //   `ignoreSideEffects` after writing state, so acting here would
         //   re-toggle every label it just selected;
         // - removing an overlay drops its selection as a side effect of
         //   removal. A track leaving the current frame must NOT deselect its

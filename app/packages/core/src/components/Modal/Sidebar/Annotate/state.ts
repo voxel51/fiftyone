@@ -26,8 +26,8 @@ export const labelSchemaData = atomFamily((field: string) => {
 export const activeLabelSchemas = atom<string[] | null>(null);
 
 /**
- * Mirror of Recoil activeFields({ modal: true }), written by Sidebar.tsx.
- * Can't read Recoil from inside a Jotai atom's getter, so we need the data
+ * Mirror of activeFields({ modal: true }), written by Sidebar.tsx.
+ * A plain Jotai getter cannot reach this state, so we need the data
  * bridged into a Jotai atom. null means not yet initialized — in that case
  * visibleLabelSchemas treats the explore set as empty (only primitive fields
  * pass through).
@@ -35,9 +35,9 @@ export const activeLabelSchemas = atom<string[] | null>(null);
 export const exploreActiveFields = atom<string[] | null>(null);
 
 /**
- * Media type of the group slice currently being annotated, mirrored from Recoil
+ * Media type of the group slice currently being annotated, mirrored from
  * by `useSyncAnnotationSliceMediaType`. null when the dataset isn't grouped — in
- * that case visibleLabelSchemas applies no per-slice filtering. Recoil can't be
+ * that case visibleLabelSchemas applies no per-slice filtering. It can't be
  * read from inside a Jotai getter, so the slice media type is bridged in (same
  * pattern as exploreActiveFields).
  */

@@ -60,7 +60,7 @@ export const viewDialogContent = atom({
  *
  * Displays a dialog that lets the user set a view name, description, and color,
  * and create, update, or delete a saved view. Synchronizes local form state
- * with recoil atom `viewDialogContent` and calls provided callbacks on success.
+ * with store atom `viewDialogContent` and calls provided callbacks on success.
  *
  * @param props.onEditSuccess - Called with the saved view and a boolean indicating whether the slug changed after a successful create or update.
  * @param props.onDeleteSuccess - Called with the slug of the deleted view after a successful delete.

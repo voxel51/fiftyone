@@ -11,7 +11,7 @@ import { useLoadingStatus } from "./use-loading-status";
 export const ALL_LOADING_COMPLETE = "All loading complete!";
 const noop = () => undefined;
 
-/** Tracks THREE loading-manager events and mirrors status/logs into Recoil. */
+/** Tracks THREE loading-manager events and mirrors status/logs into the store. */
 export const useTrackStatus = (
   loadingManager: LoadingManager | null,
   isSceneReady = false,

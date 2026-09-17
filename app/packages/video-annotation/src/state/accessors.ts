@@ -37,9 +37,9 @@ import {
 } from "../../../core/src/components/Modal/Sidebar/Annotate/state";
 
 /**
- * Read accessors for the external recoil / jotai atoms the video surface
+ * Read accessors for the external Reverb / Jotai atoms the video surface
  * consumes. The rest of the package depends on these hooks rather than on
- * recoil / jotai or the foreign atoms' module paths, so there's a single
+ * Reverb / Jotai or the foreign atoms' module paths, so there's a single
  * seam to update if an upstream atom moves or changes shape — and the
  * surrounding code reads as plain hooks, not state-library plumbing.
  */

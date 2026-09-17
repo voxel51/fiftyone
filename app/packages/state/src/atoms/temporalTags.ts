@@ -78,7 +78,7 @@ export const fetchTemporalTagResults = async (
 
 /**
  * Loads temporal-tag value counts for the active dataset into the results atom.
- * Encapsulates all Recoil + fetch access so the filter component never touches
+ * Encapsulates all store and fetch access so the filter component never touches
  * atoms directly. Call once from the temporal-tags sidebar filter.
  */
 export const useSyncTemporalTagResults = (): void => {
@@ -122,7 +122,7 @@ export const useSyncTemporalTagResults = (): void => {
           setResults({ results: [], count: null });
         }
       });
-    // `setResults` is a stable Recoil setter.
+    // `setResults` is a stable setter.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentDatasetId]);
 

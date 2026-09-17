@@ -20,7 +20,7 @@ describe("temporalTagColor", () => {
           valueColors: [{ value: "pedestrian", color: "#3b82f6" }],
         },
       },
-      // colorMap is a selector returning the fallback generator; the recoil
+      // colorMap is a selector returning the fallback generator; the
       // mock invokes this to produce the generator function.
       colorMap: () => (value: string) => `fallback:${value}`,
     });

@@ -24,7 +24,7 @@ interface SidebarExpandedParams {
  * Returns whether the given sidebar path is currently expanded.
  *
  * Prefer this over reading `fos.sidebarExpanded` directly so that
- * call sites remain decoupled from the underlying recoil atom.
+ * call sites remain decoupled from the underlying store atom.
  */
 export const useSidebarExpanded = (params: SidebarExpandedParams): boolean =>
   useReverbValue(sidebarExpanded(params));

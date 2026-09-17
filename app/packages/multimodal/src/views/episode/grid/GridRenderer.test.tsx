@@ -92,7 +92,7 @@ type PublishedWindows = Record<
 
 function renderWithMatches(ui: ReactElement, byEpisode: PublishedWindows) {
   // The published selection reaches tiles through the extensions/timeline store
-  // (their own React roots), not through this Recoil tree
+  // (their own React roots), not through this store tree
   publishMcapEmbeddingSelection({ byEpisode });
   return render(ui);
 }

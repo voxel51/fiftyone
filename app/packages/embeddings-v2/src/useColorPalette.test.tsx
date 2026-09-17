@@ -175,7 +175,7 @@ const RUN: VisualizationRun = {
 };
 
 /** The pair as PlotView composes them: the fetched column, then its palette
- * and built colors — a real (mocked) fetch feeding a real Recoil-driven
+ * and built colors — a real (mocked) fetch feeding a real store-driven
  * palette resolution, so a mismatch between what one hook returns and what
  * the other expects fails here even if each hook's own tests pass. */
 const useColumnWithColors = (

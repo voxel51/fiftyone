@@ -1,7 +1,7 @@
 import type { ReverbState } from "@fiftyone/reverb";
 
 /**
- * The set/reset surface a participant receives — the SAME Recoil transaction
+ * The set/reset surface a participant receives — the SAME transaction
  * {@link ./useResetExtendedSelection} resets the core selection atoms in, so
  * a participant's writes land in one commit with them. Atoms are untyped
  * here: participants own atoms this package has never heard of.

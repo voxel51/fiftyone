@@ -1083,7 +1083,7 @@ class DocEnumerationMember extends DocFragment {
 class DocVar extends DocFragment {
   static kind = () => "Variable";
   group() {
-    if (this.type().isRecoil()) {
+    if (this.type().isReverb()) {
       return "State";
     }
     return "Variables";
@@ -1100,7 +1100,7 @@ class DocVar extends DocFragment {
   writeContent(file) {
     const type = this.type();
 
-    if (type.isRecoil()) {
+    if (type.isReverb()) {
       const ex = type.isReadOnly()
         ? `const ${this.get("name")} = useReverbValue(fos.${this.label()});`
         : `const [${this.get("name")}, set${capitalize(
@@ -1262,18 +1262,18 @@ class DocType extends DocFragment {
   types() {
     return this.mapArray("types", DocType);
   }
-  isRecoil() {
+  isReverb() {
     return this.get("package") === "@fiftyone/reverb";
   }
-  isRecoilWritable() {
+  isReverbWritable() {
     return this.get("name") === "ReverbState";
   }
-  isRecoilReadOnly() {
+  isReverbReadOnly() {
     return this.get("name") === "ReverbValueReadOnly";
   }
   isReadOnly() {
     if (this.get("operator") === "readonly") return true;
-    if (this.isRecoilReadOnly()) return true;
+    if (this.isReverbReadOnly()) return true;
     if (
       this.isGeneric() &&
       this.typeArguments().length === 1 &&

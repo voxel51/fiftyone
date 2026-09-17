@@ -235,7 +235,7 @@ export function usePanelLoading(
     (loading: boolean, targetId?: string) => {
       setPanelsLoadingState((panelsLoading) => {
         const finalId = targetId || panelId;
-        // Dedupe: returning the same reference skips the Recoil write and
+        // Dedupe: returning the same reference skips the store write and
         // avoids re-rendering every subscriber when the value is unchanged.
         if (panelsLoading.get(finalId) === loading) return panelsLoading;
         // Also skip writing `false` for a key that doesn't exist yet — a

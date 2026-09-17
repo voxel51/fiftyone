@@ -7,13 +7,13 @@ Use "least capability" principle. Choose the simplest pattern that works:
 - **Local State**: UI-only, resets with component → `useState`, `useReducer`
 - **Context API**: Small bounded tree, static-ish data → `useContext` (keep
   contexts minimal to avoid re-renders)
-- **Atoms**: Reactive global state → Jotai (preferred) or Recoil (legacy)
+- **Atoms**: Reactive global state → Jotai (preferred) or `@fiftyone/reverb`
 
 ## Atom Rules
 
 1. **Never export atoms directly**. Treat atoms as implementation details.
 2. **Only export domain hooks** that read/mutate atoms. No raw `useAtomValue`,
-   `useSetAtomValue`, `useRecoilValue`, or `useSetRecoilValue` in components.
+   `useSetAtomValue`, `useReverbValue`, or `useSetReverbState` in components.
 3. **Domain hook patterns**:
     - `use<Feature>()`: Read API, must be idempotent (e.g., `useLighter()`,
       `useTimeline()`)

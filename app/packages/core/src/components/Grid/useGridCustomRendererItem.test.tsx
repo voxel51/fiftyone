@@ -5,7 +5,7 @@ import { GridCustomRendererItem } from "./GridCustomRendererItem";
 import { useGridCustomRendererItem } from "./useGridCustomRendererItem";
 
 // Mutated per-test to control what the mocked `useReverbCallback`-derived
-// selection lookup reports, without depending on a real Recoil store.
+// selection lookup reports, without depending on a real store.
 let currentSelectedSampleIds = new Set<string>();
 
 const {

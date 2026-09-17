@@ -2,7 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  *
  * Thin accessor hooks for the modal's 3D render state. Read-only wrappers
- * over the recoil atoms/selectors in `recoil/renderConfig3d.atoms.ts` and a
+ * over the atoms/selectors in `atoms/renderConfig3d.atoms.ts` and a
  * few related group selectors.
  *
  * Composite/mutation hooks (`useRenderConfig3dState`,

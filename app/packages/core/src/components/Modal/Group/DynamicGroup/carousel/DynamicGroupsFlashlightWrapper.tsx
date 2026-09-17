@@ -158,8 +158,7 @@ const useCreateFlashlight = (
 const usePageParams = () => {
   const dataset = useReverbValue(fos.datasetName);
 
-  // groupByFieldValue is still a recoil selector, so its live read needs a
-  // recoil callback alongside the reverb one.
+  // groupByFieldValue is a selector, so its live read needs a callback.
   const getDynamicGroup = useReverbCallback(
     ({ snapshot }) =>
       () =>

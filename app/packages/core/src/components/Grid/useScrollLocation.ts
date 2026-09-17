@@ -55,7 +55,7 @@ export default function useScrollLocation(pageReset: string) {
     [getKey],
   );
 
-  // when scrolling ends, use set to save the grid location to recoil
+  // when scrolling ends, use set to save the grid location to the store
   const set = useReverbTransaction(
     ({ set }) =>
       (location: ScrollLocation) => {

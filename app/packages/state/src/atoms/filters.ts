@@ -67,7 +67,7 @@ export const filters = (() => {
 
 export { activeFilterValues } from "./activeFilterValues";
 
-/** Recoil-bound {@link activeFilterValues} for the grid's filter set. */
+/** store-bound {@link activeFilterValues} for the grid's filter set. */
 export const useActiveFilterValues = (path: string): string[] => {
   const current = useReverbValue(filters);
   return useMemo(() => activeFilterValues(current, path), [current, path]);

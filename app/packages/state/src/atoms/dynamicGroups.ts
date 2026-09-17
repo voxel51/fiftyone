@@ -106,9 +106,7 @@ export const imaVidLookerState = atomFamily<any, string>({
       let unsubscribe;
 
       onSet((_newValue) => {
-        // note: resetRecoilState is not triggering `onSet` in effect,
-        // see https://github.com/facebookexperimental/Recoil/issues/2183
-        // replace with `useResetRecoileState` when fixed
+        // A reset does not reach `onSet`, so write the default explicitly.
 
         // if (!isReset) {
         //   throw new Error("cannot set ima-vid state directly");

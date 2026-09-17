@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { TransactionInterface } from "@fiftyone/reverb";
 
 // The regression under test: the bookmark's post-save reset runs inside a
-// Recoil transaction, where atom effects don't fire, so it must clear the
+// transaction, where atom effects don't fire, so it must clear the
 // extended selection through the shared transaction-safe mechanism — a bare
 // reset leaves the fragment-read mirror to resurrect the selection on the
 // refetch the save itself triggers.

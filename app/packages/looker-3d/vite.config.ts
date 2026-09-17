@@ -7,7 +7,7 @@ import { viteExternalsPlugin } from "vite-plugin-externals";
 // rewrites react / react-dom / @fiftyone/reverb / @fiftyone/state to `window.*` globals
 // for the plugin bundle, which in a test run resolves to a shim that throws
 // "window is not defined" at import time — silently preventing every test file
-// that imports React or Recoil from loading at all.
+// that imports React or Reverb from loading at all.
 const isTest = process.env.VITEST === "true" || process.env.NODE_ENV === "test";
 const isPluginBuild = !isTest && process.env.STANDALONE !== "true";
 

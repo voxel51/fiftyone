@@ -111,7 +111,7 @@ describe("useActivePlugins: runtime behavior", () => {
 
   it("does not crash when rendered without a store or Writer context", () => {
     // No ReverbRoot wrapping the renderHook — proves the hook touches no
-    // recoil state. If this starts failing, a hidden subscription has crept
+    // store state. If this starts failing, a hidden subscription has crept
     // back in.
     register("probe", () => true);
     expect(() =>

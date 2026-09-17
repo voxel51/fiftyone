@@ -70,8 +70,7 @@ export const useInitializeImaVidSubscriptions = () => {
   const subscribeToImaVidStateChanges = useReverbCallback(
     ({ set }) =>
       () => {
-        // note: resetRecoilState is not triggering `onSet` in effect,
-        // see https://github.com/facebookexperimental/Recoil/issues/2183
+        // A reset does not reach `onSet`, so write the default explicitly.
         // replace with `useResetReverbState` when fixed
 
         // this setter is to trigger onSet effect that kicks-off the subscription to frame number

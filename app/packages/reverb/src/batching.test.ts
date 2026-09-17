@@ -6,7 +6,7 @@ import { atom, createStore } from "jotai";
 import { describe, expect, it } from "vitest";
 
 /**
- * The shim replaces Recoil's transaction with a write-only atom. These assert
+ * A transaction is a write-only atom. These assert
  * the two properties that substitution depends on, so a jotai upgrade that
  * changes them fails here rather than as a torn read in the grid.
  */

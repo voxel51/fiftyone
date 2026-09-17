@@ -71,7 +71,7 @@ export default <T extends AbstractLooker<BaseState>>(
     dynamicGroupsTargetFrameRate,
   );
 
-  // callback to get the latest promise inside another recoil callback
+  // callback to get the latest promise inside another callback
   // gets around the limitation of the fact that snapshot inside callback refs to the committed state at the time
   const getPromise = useReverbCallback(
     ({ snapshot: { getPromise } }) => getPromise,

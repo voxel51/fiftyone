@@ -491,7 +491,7 @@ export class GridCustomRendererItem {
     // real selectedSamples atom.
     //
     // Known trade-off: the selection click handler applies its toggle to
-    // `this.selected` optimistically, before the Recoil write it dispatches
+    // `this.selected` optimistically, before the store write it dispatches
     // has actually committed (that round-trip is async). If this exact
     // instance were detached and reattached inside that narrow window, this
     // reconciliation would read the not-yet-committed snapshot and revert the

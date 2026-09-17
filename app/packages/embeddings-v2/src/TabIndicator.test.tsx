@@ -56,7 +56,7 @@ describe("TabIndicator", () => {
     fireEvent.click(pill);
 
     // Clearing is a request through the nonce — the plot view owns the
-    // actual teardown (chart state + Recoil selection atoms)
+    // actual teardown (chart state + selection atoms)
     expect(screen.getByTestId("nonce").textContent).toBe("1");
   });
 

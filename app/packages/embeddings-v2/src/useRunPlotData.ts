@@ -189,7 +189,7 @@ export interface RunPlotData {
 /**
  * Composes all per-run state for a visualization run. Only this hook (and
  * its child hooks) touch App state — atom values in, setters out — so it
- * renderHook-tests without Recoil the same way the child hooks do.
+ * renderHook-tests without a store the same way the child hooks do.
  */
 export function useRunPlotData(
   datasetName: string | null,
@@ -206,7 +206,7 @@ export function useRunPlotData(
   // ONE commit per selection. Written as separate setters, each write
   // invalidated the App's view on its own and fired a full sidebar
   // aggregation round — several identical round trips for a single lasso.
-  // Recoil batches every set made inside a callback into one commit, and
+  // A callback commits every set made inside it at once, and
   // the extension's decorator joins the same commit.
   const publishSelection: PublishSelection = useReverbCallback(
     ({ set, reset }) =>
@@ -684,7 +684,7 @@ export function useRunPlotData(
   // click arrives)
   // The extension syncs its own selection artifacts to the legend filter
   // (e.g. marking the shown classes on linked views). Ref so the memoized
-  // recoil callback always calls the freshest closure, never a stale one
+  // callback always calls the freshest closure, never a stale one
   const onLegendFilterChangeRef = useRef(features.onLegendFilterChange);
   onLegendFilterChangeRef.current = features.onLegendFilterChange;
 

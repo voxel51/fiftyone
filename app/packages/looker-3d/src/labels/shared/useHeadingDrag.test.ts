@@ -5,7 +5,7 @@ import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as THREE from "three";
 
-// `useHeadingDrag` pulls in recoil, r3f and `@fiftyone/*` packages that aren't
+// `useHeadingDrag` pulls in the store, r3f and `@fiftyone/*` packages that aren't
 // safely importable in isolation under vitest. Mock the boundaries so this
 // exercises only the hook's own orchestration: gating, pointer capture, the
 // window-listener lifecycle, and commit-vs-cancel on release. The geometry and
@@ -37,7 +37,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../../state", async () => {
-  // resolves to the mocked recoil below, so the accessor hooks share its
+  // resolves to the mocked store below, so the accessor hooks share its
   // reactive stand-in and the `mocks.setAtom` spy
   const { useReverbValue, useSetReverbState } =
     (await import("@fiftyone/reverb")) as unknown as {
@@ -57,7 +57,7 @@ vi.mock("../../state", async () => {
   };
 });
 
-// A minimally reactive recoil stand-in: writes notify subscribers so consumers
+// A minimally reactive store stand-in: writes notify subscribers so consumers
 // re-render and re-read, which is what makes the shared target-face atom
 // observable from the hook's return value.
 vi.mock("@fiftyone/reverb", async () => {
@@ -92,7 +92,7 @@ vi.mock("@fiftyone/reverb", async () => {
           mocks.atomValues.set(atom, next);
           mocks.setAtom(atom, next);
 
-          // Only notify on a real change, again matching recoil, so a
+          // Only notify on a real change, again matching the store, so a
           // no-op write can't drive a render loop.
           if (next !== previous) {
             for (const listener of listeners) {

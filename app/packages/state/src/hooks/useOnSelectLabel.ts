@@ -70,8 +70,8 @@ export function useOnSelectLabel() {
 /**
  * Read accessors and one mutation primitive for the modal's label selection,
  * living here for the same reason {@link fos.useOnSelectLabel} does: the
- * selection is Recoil state, and surfaces that drive it should not have to
- * import Recoil to do so (see `.recoil-allowlist.txt`).
+ * selection is store state, and surfaces that drive it should not have to
+ * reach the store to do so.
  */
 
 /** The ids of every currently selected label. */

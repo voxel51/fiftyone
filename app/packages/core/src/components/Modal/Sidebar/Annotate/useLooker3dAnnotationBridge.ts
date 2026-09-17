@@ -24,7 +24,7 @@ import { visibleLabelSchemas } from "./state";
  * sample id so a grouped modal's 3D labels never land on the selected 2D slice.
  *
  * The working store is the surface's "scene": the injected {@link WorkingStore3d}
- * is its Recoil binding. Mount once at the annotation root, after
+ * is its state binding. Mount once at the annotation root, after
  * `useSyncAnnotationEngine`.
  *
  * The WRITE-half is the registered SurfaceController: `operations.ts` commits
@@ -47,7 +47,7 @@ export const useLooker3dAnnotationBridge = (): void => {
   );
 
   // store.get reads the latest doc without re-creating the (stable) store —
-  // the recoil mutators are useReverbCallback-stable, the doc rides a ref
+  // the mutators are useReverbCallback-stable, the doc rides a ref
   const doc = useWorkingDoc();
   const docRef = useRef(doc);
   docRef.current = doc;

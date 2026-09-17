@@ -122,7 +122,7 @@ type UseFo3dReturnType = {
 
 /**
  * Parses the active fo3d sample into a typed scene graph and keeps
- * normalized raw scene content in Recoil for downstream consumers.
+ * normalized raw scene content in the store for downstream consumers.
  */
 export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
   const mediaField = useReverbValue(fos.selectedMediaField(true));
@@ -350,7 +350,7 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
     return normalizeFo3dRawData(rawData, fo3dRoot);
   }, [rawData, fo3dRoot]);
 
-  // This effect writes normalized fo3d content into Recoil state.
+  // This effect writes normalized fo3d content into store state.
   useEffect(() => {
     setFo3dContent(normalizedRawData);
   }, [normalizedRawData, setFo3dContent]);

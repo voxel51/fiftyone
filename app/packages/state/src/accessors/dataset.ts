@@ -161,8 +161,8 @@ export type GroupSliceMediaType = "video" | "3d" | "image" | "multimodal";
  * through to the dataset default, which is null for most datasets.
  *
  * Exported so the rule can be tested on its own: the hook around it is a
- * `useReverbCallback`, and exercising that would mean importing Recoil into a
- * test during the Recoil->Jotai freeze.
+ * `useReverbCallback`, and exercising that would mean reaching the store from
+ * a test.
  */
 export const skeletonFieldKey = (field: string): string =>
   field.split(".").slice(-1)[0];

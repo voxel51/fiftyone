@@ -1,5 +1,5 @@
 /**
- * Recoil state atoms for camera frustum visualization.
+ * store state atoms for camera frustum visualization.
  */
 
 import { getBrowserStorageEffectForKey } from "@fiftyone/state/src/atoms/customEffects";

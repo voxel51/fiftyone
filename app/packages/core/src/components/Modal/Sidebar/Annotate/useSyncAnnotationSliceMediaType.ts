@@ -9,7 +9,7 @@ import { annotationSliceMediaType } from "./state";
  * `annotationSliceMediaType` atom, so `visibleLabelSchemas` can narrow the
  * dataset-wide schema to what the open slice supports (a grouped dataset's
  * active schema is a superset across slices). Writes null for a non-grouped
- * dataset — no per-slice filtering then. Recoil can't be read from inside a
+ * dataset — no per-slice filtering then. It can't be read from inside a
  * Jotai getter, hence this mirror (same pattern as exploreActiveFields).
  *
  * Mount once at the annotation root.

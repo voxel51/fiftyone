@@ -35,7 +35,7 @@ export const nonfiniteData = selectorFamily({
       }
 
       // Fetch the field's aggregation and its parent's concurrently:
-      // reading them with sequential ``get``s makes Recoil suspend on
+      // reading them with sequential ``get``s makes a selector suspend on
       // the first, then fire the second only after it resolves — a
       // waterfall that doubles latency when each aggregation is
       // expensive (large datasets, cold caches, slower backends).

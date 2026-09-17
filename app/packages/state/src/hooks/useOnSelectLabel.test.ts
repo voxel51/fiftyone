@@ -181,7 +181,7 @@ describe("useApplySelectedLabelsDelta", () => {
 });
 
 describe("label selection read accessors", () => {
-  it("exposes the selected ids without the caller touching recoil", () => {
+  it("exposes the selected ids without the caller touching the store", () => {
     const { result } = renderHook(() => useSelectedLabelIds(), {
       wrapper: wrapper({
         "label-a": { field: "f", sampleId: "s1" },
