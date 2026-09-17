@@ -145,6 +145,8 @@ type SessionAtomOptions<K extends keyof Session> = {
   effects?: AtomOptions<Session[K]>["effects"];
 };
 
+type SessionWriter = <T>(state: ReverbState<T>, value: T) => void;
+
 let sessionRef: Session;
 let setterRef: Setter;
 
@@ -195,6 +197,37 @@ export const useSessionSetter = () => {
 
 const isTest = typeof process !== "undefined" && process.env.MODE === "test";
 
+/**
+ * Syncs every session atom from the session object on each published page.
+ * Registered here rather than per atom: an atom's effect only runs once
+ * something subscribes, and on a reload the server's state can arrive first,
+ * leaving the atom holding whatever its first read resolved.
+ */
+/**
+ * Writes every session atom from the session object. A first read can only
+ * seed from whatever the session held at that moment, and on a reload the
+ * page is loaded rather than published — so nothing else would run.
+ */
+export const syncSessionState = (write: SessionWriter) => {
+  if (isTest) {
+    return;
+  }
+
+  for (const key of Object.keys(registered) as (keyof Session)[]) {
+    const entry = registered[key];
+
+    if (!entry) {
+      continue;
+    }
+
+    const value = sessionRef?.[key];
+
+    write(entry.state, value === undefined ? entry.fallback : value);
+  }
+};
+
+subscribe((_, { set }) => syncSessionState(set));
+
 export function sessionAtom<K extends keyof Session>(
   options: SessionAtomOptions<K>,
 ) {
@@ -229,15 +262,7 @@ export function sessionAtom<K extends keyof Session>(
           );
         }
 
-        return subscribe((_, { set }) => {
-          assertValue();
-          set(
-            value,
-            sessionRef[options.key] === undefined
-              ? options.default
-              : sessionRef[options.key],
-          );
-        });
+        return undefined;
       },
     ],
   });

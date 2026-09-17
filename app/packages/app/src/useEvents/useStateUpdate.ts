@@ -6,9 +6,10 @@ import type { EventHandlerHook } from "./registerEvent";
 
 import { env } from "@fiftyone/utilities";
 import { useCallback } from "react";
-import { useSetReverbState } from "@fiftyone/reverb";
+import { useSetReverbState, useReverbStore } from "@fiftyone/reverb";
 import { getDatasetName, getParam, resolveURL } from "../utils";
 import { AppReadyState } from "./registerEvent";
+import { syncSessionState } from "@fiftyone/state";
 import { appReadyState, processState } from "./utils";
 
 const useStateUpdate: EventHandlerHook = ({
@@ -17,6 +18,7 @@ const useStateUpdate: EventHandlerHook = ({
   session,
 }) => {
   const setReadyState = useSetReverbState(appReadyState);
+  const store = useReverbStore();
 
   return useCallback(
     (payload: { state: { [key: string]: unknown } }) => {
@@ -41,12 +43,17 @@ const useStateUpdate: EventHandlerHook = ({
 
       if (readyStateRef.current !== AppReadyState.OPEN) {
         router.history.replace(path, state);
-        router.load().then(() => setReadyState(AppReadyState.OPEN));
+        router.load().then(() => {
+          // The first page is loaded rather than published, so the session
+          // atoms have had nothing to sync them.
+          syncSessionState(store.set);
+          setReadyState(AppReadyState.OPEN);
+        });
       } else {
         router.history.push(path, state);
       }
     },
-    [readyStateRef, router, session, setReadyState],
+    [readyStateRef, router, session, setReadyState, store],
   );
 };
 
