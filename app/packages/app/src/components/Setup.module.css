@@ -1,0 +1,36 @@
+/* The setup page: a scrolling sheet under the header, its content column
+   centered at 80% width. Surfaces and code colors are design-system tokens. */
+.page {
+  width: 100%;
+  overflow: auto;
+  background: var(--color-content-bg-background);
+  border-top: 1px solid var(--color-content-border-default);
+}
+
+.content {
+  width: 80%;
+  padding: 3rem 1rem;
+  margin: 0 auto;
+}
+
+.tabs {
+  margin: 1em 0 3em 0;
+  border-bottom: 2px solid var(--color-content-border-default);
+}
+
+.code {
+  margin: 0;
+  padding: 2rem;
+  overflow: auto;
+  border-radius: var(--radius-sm);
+  background: var(--color-content-code-bg);
+  border: 1px solid var(--color-content-code-border);
+  color: var(--color-content-code-text);
+  font-family: monospace;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.links {
+  flex: 1;
+}

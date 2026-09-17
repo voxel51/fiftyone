@@ -13,8 +13,9 @@ type SettleScene = Pick<Scene2D, "registerRenderCallback">;
 
 /**
  * Run `dispatch` once the scene graph's current state has been composited to
- * the canvas. HACK: `renderFrame` is async, so the first tick after a change
- * paints the stale graph; the second tick composites the mutations.
+ * the canvas. An "after" callback runs at the end of the scene's own ticker
+ * pass, ahead of Pixi's lower-priority render in that same pass, so tick N has
+ * the graph complete with nothing presented yet and tick N+1 has it on canvas.
  */
 export function dispatchAfterPaintSettle(
   scene: SettleScene,

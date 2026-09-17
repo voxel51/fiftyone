@@ -16,11 +16,7 @@ export {
   toLabelRef,
   TRACK_INDEX_PREFIX,
 } from "./identity/ref";
-export {
-  FRAMES_PREFIX,
-  isFrameScopedPath,
-  toSchemaField,
-} from "./identity/framePath";
+export { FRAMES_PREFIX, toSchemaField } from "./identity/framePath";
 export type { EntityId, EntityIdentity } from "./identity/entityId";
 export {
   decodeEntityId,
@@ -35,7 +31,6 @@ export type {
   LabelChange,
   LabelChangeKind,
   LabelStore,
-  PersistenceAdapter,
 } from "./store/types";
 export { isWholeSampleReset, wholeSampleReset } from "./store/types";
 export { SampleLabelStore } from "./store/sampleLabelStore";
@@ -89,7 +84,11 @@ export { useSurfaceBridge } from "./react/useSurfaceBridge";
 
 // Lighter surface
 export type { LighterDescriptor } from "./surfaces/lighter/adapters";
-export { lighterAdapters } from "./surfaces/lighter/adapters";
+export {
+  lighterAdapters,
+  makeLighterAdapters,
+} from "./surfaces/lighter/adapters";
+export type { LighterAdapterDeps } from "./surfaces/lighter/adapters";
 export type { LighterBridgeDeps } from "./surfaces/lighter/lighterBridge";
 export { createLighterBridge } from "./surfaces/lighter/lighterBridge";
 export type { LighterInteractionPolicy } from "./surfaces/lighter/interactionPolicy";

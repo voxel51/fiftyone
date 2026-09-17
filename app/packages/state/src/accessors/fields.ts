@@ -23,6 +23,11 @@ export const useLabelFields = (params: { space?: State.SPACE } = {}) =>
 export const usePrimitiveFieldPaths = (): string[] =>
   useRecoilValue(fieldPaths({ ftype: PRIMITIVE_FTYPES }));
 
+/** Field paths of the dataset's schema, filtered by `params` (see `fieldPaths`). */
+export const useFieldPaths = (
+  params: Parameters<typeof fieldPaths>[0],
+): string[] => useRecoilValue(fieldPaths(params));
+
 /**
  * A field's `ftype`, or undefined when the path is not in the schema.
  */

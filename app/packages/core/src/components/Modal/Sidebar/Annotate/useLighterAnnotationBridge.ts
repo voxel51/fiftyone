@@ -4,7 +4,7 @@ import {
 } from "@fiftyone/annotation";
 import {
   useCurrentDatasetId,
-  useIsImageDynamicGroupVideo,
+  useGetKeypointSkeleton,
   useIsVideo,
   useModalSample,
 } from "@fiftyone/state";
@@ -25,6 +25,8 @@ import { useSyncOverlayReadOnly } from "./useSyncOverlayReadOnly";
  */
 export const useLighterAnnotationBridge = (): void => {
   const engine = useAnnotationEngine();
+  // skeleton edges drive keypoint connections; stable across renders
+  const getSkeleton = useGetKeypointSkeleton();
   const modalSample = useModalSample();
   const active = useAtomValue(visibleLabelSchemas);
   const interactionPolicy = useLighterInteractionPolicy();
@@ -33,8 +35,6 @@ export const useLighterAnnotationBridge = (): void => {
   // the video surface (a video sample or an image dynamic group video) mounts
   // its own frame-stamping bridge; this frame-less one must stay off there
   const isVideo = useIsVideo();
-  const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
-  const isVideoSurface = isVideo || isImageDynamicGroupVideo;
 
   const sampleId = modalSample?.sample?._id ?? "";
 
@@ -93,7 +93,8 @@ export const useLighterAnnotationBridge = (): void => {
     paths,
     resolveMediaUrl,
     interactionPolicy,
-    enabled: !isVideoSurface,
+    getSkeleton,
+    enabled: !isVideo,
   });
 
   // overlay read-only flags are Lighter-surface state — owned here, off the
