@@ -229,28 +229,21 @@ class GetSimilarLabelsFrameCollection(HTTPEndpoint):
                 status_code=400,
             )
 
-        num_frames_str = data.get("numFrames")
+        num_frames = data.get("numFrames")
 
-        if not num_frames_str:
-            return JSONResponse(
-                {
-                    "error": "numFrames is required",
-                },
-                status_code=400,
-            )
+        if num_frames is not None:
+            try:
+                num_frames = int(num_frames)
 
-        try:
-            num_frames = int(num_frames_str)
-
-            if num_frames <= 0:
-                raise ValueError
-        except ValueError:
-            return JSONResponse(
-                {
-                    "error": "numFrames must be a positive integer greater than 0",
-                },
-                status_code=400,
-            )
+                if num_frames <= 0:
+                    raise ValueError
+            except (TypeError, ValueError):
+                return JSONResponse(
+                    {
+                        "error": "numFrames must be a positive integer greater than 0",
+                    },
+                    status_code=400,
+                )
 
         dataset = data.get("dataset")
 
@@ -275,11 +268,9 @@ class GetSimilarLabelsFrameCollection(HTTPEndpoint):
         stages = data.get("view", [])
         extended = data.get("extended", None)
 
-        start_frame = 1
-
-        end_frame = num_frames
-
-        support = None if stages else [start_frame, end_frame]
+        # Without a frame count, or with view stages that already scope the
+        # frames, every frame of the sample is scanned
+        support = None if stages or num_frames is None else [1, num_frames]
 
         view = await fosv.get_view(
             dataset, stages=stages, extended_stages=extended, awaitable=True
@@ -309,6 +300,6 @@ class GetSimilarLabelsFrameCollection(HTTPEndpoint):
                 "count": len(label_id_map),
                 "instance_id": instance_id,
                 "label_id_map": label_id_map,
-                "range": [start_frame, end_frame],
+                "range": None if num_frames is None else [1, num_frames],
             }
         )

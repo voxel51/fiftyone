@@ -22,8 +22,8 @@ class Selectable {
 
 describe("SelectionManager", () => {
   it("emits correct select and deselect events", async () => {
-    const bus = getEventBus<LighterEventGroup>();
-    const manager = new SelectionManager();
+    const bus = getEventBus<LighterEventGroup>("sel-events");
+    const manager = new SelectionManager("sel-events");
     manager.addSelectable(new Selectable());
     const selectDetail = await new Promise((resolve) => {
       bus.on("lighter:overlay-select", (payload) => resolve(payload));
@@ -46,12 +46,13 @@ describe("SelectionManager", () => {
     expect(deselectDetail).toStrictEqual({
       id: "id",
       ignoreSideEffects: true,
+      isShiftPressed: false,
     });
   });
 
   it("removes selected overlay and emits deselect events", async () => {
-    const bus = getEventBus<LighterEventGroup>();
-    const manager = new SelectionManager();
+    const bus = getEventBus<LighterEventGroup>("sel-remove");
+    const manager = new SelectionManager("sel-remove");
     const selectable = new Selectable();
     manager.addSelectable(selectable);
 
@@ -75,12 +76,14 @@ describe("SelectionManager", () => {
     expect(deselectDetail).toStrictEqual({
       id: "id",
       ignoreSideEffects: true,
+      isShiftPressed: false,
     });
 
     expect(selectionChangedDetail).toStrictEqual({
       selectedIds: [],
       deselectedIds: ["id"],
       ignoreSideEffects: true,
+      isShiftPressed: false,
     });
 
     expect(manager.getSelectedIds()).not.toContain("id");
@@ -200,6 +203,7 @@ describe("SelectionManager — selection-changed side-effect flag", () => {
       selectedIds: ["a"],
       deselectedIds: [],
       ignoreSideEffects: true,
+      isShiftPressed: false,
     });
   });
 
@@ -217,6 +221,44 @@ describe("SelectionManager — selection-changed side-effect flag", () => {
       selectedIds: ["a"],
       deselectedIds: [],
       ignoreSideEffects: false,
+      isShiftPressed: false,
     });
+  });
+});
+
+describe("SelectionManager — shift gesture", () => {
+  /**
+   * A shift-click on a tracked instance means "the whole track", and the
+   * listener that widens the selection sees only `selection-changed`, so the
+   * flag has to ride on it — both when toggling in and when toggling out.
+   */
+  it("reports the shift key on the way in and on the way out", () => {
+    const bus = getEventBus<LighterEventGroup>("sel-shift");
+    const manager = new SelectionManager("sel-shift");
+    manager.addSelectable(new Overlay("a"));
+
+    const payloads: unknown[] = [];
+    bus.on("lighter:selection-changed", (payload) => {
+      payloads.push(payload);
+    });
+
+    const event = { shiftKey: true } as PointerEvent;
+    manager.toggle("a", { event });
+    manager.toggle("a", { event });
+
+    expect(payloads).toStrictEqual([
+      {
+        selectedIds: ["a"],
+        deselectedIds: [],
+        ignoreSideEffects: false,
+        isShiftPressed: true,
+      },
+      {
+        selectedIds: [],
+        deselectedIds: ["a"],
+        ignoreSideEffects: false,
+        isShiftPressed: true,
+      },
+    ]);
   });
 });

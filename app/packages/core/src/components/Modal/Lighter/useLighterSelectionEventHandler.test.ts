@@ -23,8 +23,12 @@ const selection = vi.hoisted(() => ({
   },
 }));
 
+/** The track-wide selection the state package owns; only the ask is checked here. */
+const toggleInstance = vi.hoisted(() => vi.fn());
+
 vi.mock("@fiftyone/state", () => ({
   useModalSampleId: () => "s1",
+  useToggleInstanceLabelsAcrossFrames: () => toggleInstance,
   useSelectedLabelIds: () => selection.ids,
   useApplySelectedLabelsDelta:
     () =>
@@ -62,7 +66,11 @@ const { useLighterSelectionEventHandler, useSelectedLabelsSceneSync } =
 type Overlay = {
   id: string;
   field?: string;
-  label?: { _id?: string; frame_number?: number } | null;
+  label?: {
+    _id?: string;
+    frame_number?: number;
+    instance?: { _id?: string } | null;
+  } | null;
 };
 
 /** A scene rendering `overlays`, addressable the way the hook addresses them. */
@@ -79,6 +87,18 @@ const frameOverlay = (id: string, labelId: string, frame = 7): Overlay => ({
   label: { _id: labelId, frame_number: frame },
 });
 
+/** A frame detection on a tracked instance. */
+const trackedOverlay = (
+  id: string,
+  labelId: string,
+  instanceId: string,
+  frame = 7,
+): Overlay => ({
+  id,
+  field: "frames.detections",
+  label: { _id: labelId, frame_number: frame, instance: { _id: instanceId } },
+});
+
 const mount = (scene: never, initial: Record<string, unknown> = {}) => {
   selection.reset(initial);
   return renderHook(() => useLighterSelectionEventHandler(scene));
@@ -88,6 +108,7 @@ const fire = (payload: {
   selectedIds?: string[];
   deselectedIds?: string[];
   ignoreSideEffects?: boolean;
+  isShiftPressed?: boolean;
 }) =>
   act(() => {
     handlers.get("lighter:selection-changed")?.({
@@ -191,6 +212,62 @@ describe("useLighterSelectionEventHandler", () => {
     expect(selection.map).toEqual({
       "label-td": { field: "events", sampleId: "s1", type: "default" },
     });
+  });
+
+  it("shift-click on a tracked instance selects the label and asks for its track", async () => {
+    mount(makeScene([trackedOverlay("inst-a", "label-a", "track-1", 12)]));
+
+    await fire({ selectedIds: ["inst-a"], isShiftPressed: true });
+
+    expect(selection.map).toEqual({
+      "label-a": {
+        field: "frames.detections",
+        sampleId: "s1",
+        type: "default",
+        instanceId: "track-1",
+        frameNumber: 12,
+      },
+    });
+    expect(toggleInstance).toHaveBeenCalledExactlyOnceWith({
+      sampleId: "s1",
+      instanceId: "track-1",
+      field: "frames.detections",
+      select: true,
+    });
+  });
+
+  it("shift-click on a selected tracked instance asks to drop its track", async () => {
+    mount(makeScene([trackedOverlay("inst-a", "label-a", "track-1")]), {
+      "label-a": { field: "frames.detections", sampleId: "s1" },
+    });
+
+    await fire({ deselectedIds: ["inst-a"], isShiftPressed: true });
+
+    expect(selection.map).toEqual({});
+    expect(toggleInstance).toHaveBeenCalledExactlyOnceWith({
+      sampleId: "s1",
+      instanceId: "track-1",
+      field: "frames.detections",
+      select: false,
+    });
+  });
+
+  it("a plain click on a tracked instance touches one occurrence only", async () => {
+    mount(makeScene([trackedOverlay("inst-a", "label-a", "track-1")]));
+
+    await fire({ selectedIds: ["inst-a"] });
+
+    expect(Object.keys(selection.map)).toEqual(["label-a"]);
+    expect(toggleInstance).not.toHaveBeenCalled();
+  });
+
+  it("shift-click on a label with no instance is a plain click", async () => {
+    mount(makeScene([frameOverlay("inst-a", "label-a")]));
+
+    await fire({ selectedIds: ["inst-a"], isShiftPressed: true });
+
+    expect(Object.keys(selection.map)).toEqual(["label-a"]);
+    expect(toggleInstance).not.toHaveBeenCalled();
   });
 
   it("does nothing when the scene no longer holds the overlay", async () => {
