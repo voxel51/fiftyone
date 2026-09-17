@@ -134,5 +134,16 @@ export const useIsImageDynamicGroupVideo = (): boolean => {
 export const useDynamicGroupOrderBy = (): string | null =>
   useRecoilValue(dynamicGroupParameters)?.orderBy ?? null;
 
+/**
+ * The field the current dynamic group is grouped by, or null when the view is
+ * not a dynamic group. A group built from an expression or a list of fields
+ * has no single field to name, so it reads null too.
+ */
+export const useDynamicGroupGroupBy = (): string | null => {
+  const groupBy = useRecoilValue(dynamicGroupParameters)?.groupBy;
+
+  return typeof groupBy === "string" ? groupBy : null;
+};
+
 /** Whether the current view is a patches view. */
 export const useIsPatchesView = (): boolean => useRecoilValue(isPatchesView);
