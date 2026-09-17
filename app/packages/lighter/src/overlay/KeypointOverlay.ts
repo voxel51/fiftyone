@@ -725,15 +725,20 @@ export class KeypointOverlay
       );
     }
 
-    // Hovered point: static radius bump only — the thick-outline look
-    // stays reserved for the selected point
+    // Hovered point: same emphasis as selection — the white outline
+    // thickens OUTWARD while the color core stays the size of an
+    // unselected point
     if (hoveredPoint) {
+      const hoveredStyle = {
+        ...resolvePointStyle(hoveredVariant),
+        lineWidth: KEYPOINT_SELECTED_OUTLINE_WIDTH,
+      };
       renderer.drawPoint(
         hoveredPoint,
         KEYPOINT_SELECTED_RADIUS,
         hoveredFill
-          ? { ...resolvePointStyle(hoveredVariant), fillStyle: hoveredFill }
-          : resolvePointStyle(hoveredVariant),
+          ? { ...hoveredStyle, fillStyle: hoveredFill }
+          : hoveredStyle,
         this.containerId,
       );
     }
