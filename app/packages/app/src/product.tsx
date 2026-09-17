@@ -2,9 +2,11 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import type { RouteCodec } from "@fiftyone/location";
 import { useCurrentDatasetName } from "@fiftyone/state";
 import type React from "react";
 import { useState, useSyncExternalStore } from "react";
+import { appRoutes } from "./location/routes";
 
 /** What a product contributes to the App shell. */
 export interface Product {
@@ -20,6 +22,11 @@ export interface Product {
   readonly Panels?: React.ComponentType;
   /** The name to show for the loaded dataset. */
   readonly useDatasetDisplayName: () => string | null;
+  /**
+   * What this product's paths mean. Erased at the slot because the slot is not
+   * generic; a product keeps its own typed reference for its own code.
+   */
+  readonly routes: RouteCodec<unknown>;
 }
 
 const OPEN_SOURCE: Product = {
@@ -27,6 +34,7 @@ const OPEN_SOURCE: Product = {
   title: "FiftyOne",
   enterpriseCta: true,
   useDatasetDisplayName: useCurrentDatasetName,
+  routes: appRoutes,
 };
 
 interface ProductState {
@@ -91,6 +99,19 @@ export const useDatasetDisplayName = (): string | null => {
   const [useName] = useState(() => state.product.useDatasetDisplayName);
 
   return useName();
+};
+
+/**
+ * What this product's paths mean.
+ *
+ * Captured once for the same reason `useDatasetDisplayName` is: a product
+ * registers before the shell's first render, and swapping the codec mid-life
+ * would reinterpret every URL already on screen.
+ */
+export const useProductRoutes = (): RouteCodec<unknown> => {
+  const [routes] = useState(() => state.product.routes);
+
+  return routes;
 };
 
 /** Test-only reset, kept out of what the shell imports. */

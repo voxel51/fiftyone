@@ -21,8 +21,8 @@ import { RecoilRoot } from "recoil";
 import Network from "./Network";
 import "./index.css";
 import "@voxel51/voodo/theme.css";
-import { appRoutes } from "./location/routes";
 import { historyAdapter } from "./location/historyAdapter";
+import { useProductRoutes } from "./product";
 import { useRouter } from "./routing";
 
 if (
@@ -50,14 +50,12 @@ const App: React.FC = () => {
   // store — and a notebook's memory history works the same as a browser's.
   // Attached to the bridge so the inputs that are not clicks, a server-pushed
   // state change or an operator, write through the path a click does.
+  const routes = useProductRoutes();
   const location = useMemo(() => {
-    const store = createLocationStore(
-      historyAdapter(context.history),
-      appRoutes,
-    );
+    const store = createLocationStore(historyAdapter(context.history), routes);
     locationBridge.attach(store);
     return store;
-  }, [context]);
+  }, [context, routes]);
 
   return (
     <LocationProvider store={location}>
