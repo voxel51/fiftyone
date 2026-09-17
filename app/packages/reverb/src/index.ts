@@ -5,9 +5,11 @@
 export { atom } from "./atom";
 export { atomFamily, selectorFamily, type Family } from "./family";
 export {
+  useAssertedReverbValue,
   useResetReverbState,
   useReverbCallback,
   useReverbState,
+  useReverbStore,
   useReverbStateLoadable,
   useReverbValue,
   useReverbValueLoadable,

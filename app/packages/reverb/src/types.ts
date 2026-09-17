@@ -49,6 +49,11 @@ export interface MutableSnapshot {
 export interface AtomOptions<T> {
   key: string;
   default: T;
+  /**
+   * Computes the value on read until a write lands. An effect cannot set a
+   * value before the first read returns, so state fed by one needs this.
+   */
+  resolve?: () => T;
   effects?: AtomEffect<T>[];
   /** Accepted and ignored; nothing here freezes a value. */
   dangerouslyAllowMutability?: boolean;

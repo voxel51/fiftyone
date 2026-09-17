@@ -29,6 +29,22 @@ export const useSetReverbState = <T>(
 
 export const useReverbState = <T>(state: ReverbState<T>) => useAtom(state);
 
+/** The store this subtree reads and writes, for callers outside a hook. */
+export const useReverbStore = () => useStore();
+
+/** Reads state that must already hold a value, throwing when it does not. */
+export function useAssertedReverbValue<T>(
+  state: ReverbValue<T>,
+): NonNullable<T> {
+  const value = useAtomValue(state);
+
+  if (!value) {
+    throw new Error(`${state.debugLabel ?? "state"} is not defined`);
+  }
+
+  return value as NonNullable<T>;
+}
+
 export const useResetReverbState = <T>(state: ReverbState<T>): (() => void) => {
   const set = useSetAtom(state);
 

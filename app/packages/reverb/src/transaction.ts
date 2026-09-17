@@ -39,8 +39,14 @@ export function runTransaction<Return>(
   // The atom erases the body's return type; this call site restores it.
   const result = store.set(transaction, body) as Return;
 
-  for (const observer of observers) {
-    observer(store);
+  if (observers.size) {
+    // Deferred: a transaction can run during render, and an observer that
+    // sets state would then update a component mid-render.
+    queueMicrotask(() => {
+      for (const observer of observers) {
+        observer(store);
+      }
+    });
   }
 
   return result;

@@ -24,13 +24,20 @@ export function atom<T>(options: AtomOptions<T>): ReverbState<T> {
    * derived read — so hold the written value separately and fall back to it.
    */
   const deferred = isState(options.default);
-  const base = primitive<T | typeof UNSET>(deferred ? UNSET : options.default);
+  const base = primitive<T | typeof UNSET>(
+    deferred || options.resolve ? UNSET : options.default,
+  );
   base.debugLabel = `${options.key}/base`;
 
-  const fallback = (get: Getter): T =>
-    deferred
+  const fallback = (get: Getter): T => {
+    if (options.resolve) {
+      return options.resolve();
+    }
+
+    return deferred
       ? (get(options.default as Atom<unknown>) as T)
       : (options.default as T);
+  };
 
   const current = (get: Getter): T => {
     const held = get(base);

@@ -2,7 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { createStore } from "jotai";
+import { atom as primitiveAtom, createStore } from "jotai";
 import { describe, expect, it } from "vitest";
 import { atom } from "./atom";
 import { atomFamily, selectorFamily } from "./family";
@@ -247,5 +247,29 @@ describe("selector", () => {
     expect(store.get(derived)).toBe(6);
     store.set(source, 5);
     expect(store.get(derived)).toBe(15);
+  });
+});
+
+describe("pending dependencies", () => {
+  it("suspends a selector rather than handing it a promise", async () => {
+    let settle: (value: number[]) => void = () => undefined;
+    const source = primitiveAtom<number[]>(
+      new Promise<number[]>((r) => {
+        settle = r;
+      }) as unknown as number[],
+    );
+
+    const derived = selector<number | undefined>({
+      key: "findsInPending",
+      // would throw "find is not a function" if handed the promise
+      get: ({ get }) => get(source).find((n) => n > 1),
+    });
+
+    const store = createStore();
+    const read = store.get(derived);
+    expect(read).toBeInstanceOf(Promise);
+
+    settle([1, 2, 3]);
+    await expect(read).resolves.toBe(2);
   });
 });
