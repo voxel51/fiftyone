@@ -2,15 +2,19 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { type PrimitiveAtom, atom as primitive } from "jotai";
+import { type Getter, type PrimitiveAtom, atom as primitive } from "jotai";
 import { accessors, resolve } from "./accessors";
+import { named } from "./named";
 import type {
   ReadOnlySelectorOptions,
   ReadWriteSelectorOptions,
   ReverbState,
+  ReverbValue,
   ReverbValueReadOnly,
   Write,
 } from "./types";
+
+const AWAIT = Symbol("await");
 
 /** Each selector's private epoch, bumped to force a recomputation. */
 const epochs = new WeakMap<object, PrimitiveAtom<number>>();
@@ -29,12 +33,57 @@ export function selector<T>(
   const epoch = primitive(0);
   epoch.debugLabel = `${options.key}/epoch`;
 
-  const read = primitive((get) => {
-    get(epoch);
+  /**
+   * A pending dependency suspends the whole read rather than handing a promise
+   * to `options.get`. Each settled value is remembered so the re-run makes
+   * progress instead of meeting the same promise again.
+   */
+  const compute = (
+    get: Getter,
+    settled: Map<object, unknown>,
+  ): T | Promise<T> => {
+    let awaiting: { state: object; promise: Promise<unknown> } | undefined;
 
-    return options.get({ get: (state) => get(state) });
-  });
-  read.debugLabel = options.key;
+    try {
+      return options.get({
+        get: <V>(state: ReverbValue<V>): V => {
+          if (settled.has(state)) {
+            return settled.get(state) as V;
+          }
+
+          const value = get(state);
+
+          if (value instanceof Promise) {
+            awaiting = { state, promise: value };
+            throw AWAIT;
+          }
+
+          return value as V;
+        },
+      });
+    } catch (thrown) {
+      if (thrown !== AWAIT || !awaiting) {
+        throw thrown;
+      }
+
+      const { state, promise } = awaiting;
+
+      return promise.then((value) => {
+        settled.set(state, value);
+
+        return compute(get, settled);
+      }) as Promise<T>;
+    }
+  };
+
+  const read = named(
+    primitive((get) => {
+      get(epoch);
+
+      return compute(get, new Map());
+    }),
+    options.key,
+  );
 
   epochs.set(read, epoch);
 
@@ -46,16 +95,22 @@ export function selector<T>(
    * The sentinel reaches `options.set` unchanged. Substituting a default here
    * would skip the write path a reset is expected to run.
    */
-  const state: ReverbState<T> = primitive(
-    (get) => get(read),
-    (get, set, next: Write<T>) => {
-      options.set(
-        accessors(get, set),
-        resolve(next, () => get(read)),
-      );
-    },
+  /**
+   * A pending read is typed away here: jotai hands a consumer the settled
+   * value through Suspense, so a reader never observes the promise.
+   */
+  const state = named(
+    primitive(
+      (get) => get(read) as T,
+      (get, set, next: Write<T>) => {
+        options.set(
+          accessors(get, set),
+          resolve(next, () => get(read) as T),
+        );
+      },
+    ),
+    options.key,
   );
-  state.debugLabel = options.key;
   epochs.set(state, epoch);
 
   return state;
@@ -88,4 +143,7 @@ export function waitForAll<T>(
 
 /** State whose value never changes. */
 export const constSelector = <T>(value: T): ReverbValueReadOnly<T> =>
-  primitive(() => value);
+  named(
+    primitive(() => value),
+    "constSelector",
+  );

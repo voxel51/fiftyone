@@ -3,6 +3,7 @@
  */
 
 import { Provider, getDefaultStore } from "jotai";
+import type { Store } from "./transaction";
 import type React from "react";
 import { useState } from "react";
 import { DEFAULT_VALUE } from "./sentinel";
@@ -11,6 +12,8 @@ import type { MutableSnapshot } from "./types";
 interface ReverbRootProps {
   children?: React.ReactNode;
   initializeState?: (mutable: MutableSnapshot) => void;
+  /** Isolates this root's state. Tests pass one so they do not share writes. */
+  store?: Store;
 }
 
 /**
@@ -18,9 +21,13 @@ interface ReverbRootProps {
  * `getDefaultStore()` directly, and a second store would leave those reads
  * looking at values React never wrote.
  */
-export const ReverbRoot = ({ children, initializeState }: ReverbRootProps) => {
+export const ReverbRoot = ({
+  children,
+  initializeState,
+  store: provided,
+}: ReverbRootProps) => {
   const [store] = useState(() => {
-    const shared = getDefaultStore();
+    const shared = provided ?? getDefaultStore();
 
     initializeState?.({
       set: (state, next) => shared.set(state, next),

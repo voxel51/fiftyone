@@ -5,6 +5,7 @@
 import { type Atom, type Getter, atom as primitive } from "jotai";
 import { resolve } from "./accessors";
 import { effectHost, withEffects } from "./effects";
+import { named } from "./named";
 import { DefaultValue } from "./sentinel";
 import type { AtomOptions, ReverbState, Write } from "./types";
 
@@ -39,19 +40,21 @@ export function atom<T>(options: AtomOptions<T>): ReverbState<T> {
 
   const host = effectHost<T>(options.key);
 
-  const state: ReverbState<T> = primitive(
-    (get) => current(get),
-    (get, set, next: Write<T>) => {
-      const previous = current(get);
-      const requested = resolve(next, () => previous);
-      const isReset = requested instanceof DefaultValue;
-      const value = isReset ? fallback(get) : (requested as T);
+  const state = named(
+    primitive(
+      (get) => current(get),
+      (get, set, next: Write<T>) => {
+        const previous = current(get);
+        const requested = resolve(next, () => previous);
+        const isReset = requested instanceof DefaultValue;
+        const value = isReset ? fallback(get) : (requested as T);
 
-      set(base, value);
-      get(host).notify(value, isReset ? requested : previous, isReset);
-    },
+        set(base, value);
+        get(host).notify(value, isReset ? requested : previous, isReset);
+      },
+    ),
+    options.key,
   );
-  state.debugLabel = options.key;
 
   const effects = options.effects;
   if (!effects?.length) {
@@ -59,9 +62,12 @@ export function atom<T>(options: AtomOptions<T>): ReverbState<T> {
   }
 
   /** Writing `base` rather than the state is what keeps `onSet` silent. */
-  return withEffects<T>(state, host, effects, (read, write, next) => {
-    const requested = resolve(next, () => current(read));
+  return named(
+    withEffects<T>(state, host, effects, (read, write, next) => {
+      const requested = resolve(next, () => current(read));
 
-    write(base, requested instanceof DefaultValue ? UNSET : (requested as T));
-  });
+      write(base, requested instanceof DefaultValue ? UNSET : (requested as T));
+    }),
+    options.key,
+  );
 }

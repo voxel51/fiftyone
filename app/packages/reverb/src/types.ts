@@ -12,9 +12,11 @@ export type Write<T> = T | DefaultValue | ((previous: T) => T | DefaultValue);
 
 export type ReverbValue<T> = Atom<T>;
 
-export type ReverbValueReadOnly<T> = Atom<T>;
+export type ReverbValueReadOnly<T> = Atom<T> & { key: string };
 
-export type ReverbState<T> = WritableAtom<T, [Write<T>], void>;
+export type ReverbState<T> = WritableAtom<T, [Write<T>], void> & {
+  key: string;
+};
 
 export type SetterOrUpdater<T> = (next: Write<T>) => void;
 
