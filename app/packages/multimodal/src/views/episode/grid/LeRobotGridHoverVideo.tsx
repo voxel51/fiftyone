@@ -72,6 +72,14 @@ export function LeRobotGridHoverVideo({
   const posterRef = useRef<HTMLCanvasElement | null>(null);
   const posterReadyRef = useRef(false);
   const requestRef = useRef<GridNativeVideoLeaseRequest | null>(null);
+  /**
+   * A seek that arrived before the element had a source, clamped and ready to
+   * apply. The lease can queue behind other tiles, so the request routinely
+   * lands while there is no clock to move; without this the element would
+   * later start at the episode's beginning and the clicked instant would be
+   * lost. Consumed once, by the first start after the source is assigned.
+   */
+  const pendingSeekRef = useRef<number | null>(null);
   const onCanvasCommittedRef = useLatestRef(onCanvasCommitted);
   const onErrorRef = useLatestRef(onError);
   const onPresentedTimeSecondsRef = useLatestRef(onPresentedTimeSeconds);
@@ -151,7 +159,13 @@ export function LeRobotGridHoverVideo({
       setShowingVideo(false);
       cancelPendingFrame();
       element?.pause();
-      element.currentTime = startTimeSeconds;
+      // A seek that could not be applied while the lease was queued is spent
+      // here, on the first start after the source lands. Taken exactly once,
+      // so the `ended` wrap and the past-the-end restart below still go to
+      // the episode's beginning as they should.
+      const pending = pendingSeekRef.current;
+      pendingSeekRef.current = null;
+      element.currentTime = pending ?? startTimeSeconds;
       scheduleFrame();
       if (playing) play();
       else schedulePosterRetry();
@@ -334,17 +348,29 @@ export function LeRobotGridHoverVideo({
   const seekRequestId = seek?.requestId;
   const seekTimeSeconds = seek?.timeSeconds;
   useEffect(() => {
-    if (seekRequestId === undefined || seekTimeSeconds === undefined) return;
-    const element = videoRef.current;
-    // No source means no clock to move; the lifecycle effect will start the
-    // element at the episode's beginning when the lease is granted.
-    if (!element?.getAttribute("src")) return;
-    element.currentTime = Math.min(
+    if (seekRequestId === undefined || seekTimeSeconds === undefined) {
+      // The request was withdrawn, or this tile was pointed at another
+      // episode. Either way a target held for a queued lease is now a time on
+      // media this element is not going to play.
+      pendingSeekRef.current = null;
+      return;
+    }
+    const target = Math.min(
       Math.max(seekTimeSeconds, startTimeSeconds),
       // The episode's last instant is not part of it — landing exactly on the
       // end would read as "ran out" and wrap straight back to the start.
       Math.max(endTimeSeconds - START_TIME_EPSILON_SECONDS, startTimeSeconds),
     );
+    const element = videoRef.current;
+    // No source means no clock to move yet: the lease is still queued behind
+    // another tile. Hold the target so the start that follows the grant lands
+    // on it instead of the episode's beginning.
+    if (!element?.getAttribute("src")) {
+      pendingSeekRef.current = target;
+      return;
+    }
+    pendingSeekRef.current = null;
+    element.currentTime = target;
   }, [endTimeSeconds, seekRequestId, seekTimeSeconds, startTimeSeconds]);
 
   // This effect releases the captured poster surface when the grid cell is no

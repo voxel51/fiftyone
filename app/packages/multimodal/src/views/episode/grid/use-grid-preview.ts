@@ -383,6 +383,10 @@ export function useGridPreview({
     // A refusal belongs to one source and one stream; carrying it across
     // either would keep falling back for a stream this source does preview
     refusedPosterSourceRef.current = null;
+    // A native seek is a time on THIS source's timeline, anchored to this
+    // episode. Carrying it across an identity change would hand the next
+    // preview a target computed against media it is not playing.
+    setNativeSeek(null);
     finishBuffering();
     setPlaying(false);
     setStateOwnerKey(cacheRequestKey);
