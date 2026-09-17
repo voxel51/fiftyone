@@ -19,6 +19,7 @@ import {
   evaluateWhen,
   isWhenFulfillable,
 } from "./evaluateWhen";
+import { getKeypointPointKeys } from "./keypointPointAttributes";
 import { generatePrimitiveSchema } from "./schemaHelpers";
 import type { TrackEditSplit } from "./trackFanOut";
 import {
@@ -43,16 +44,21 @@ const useSchema = (readOnly: boolean) => {
     [config],
   );
 
+  // A keypoint's per-point parallel lists (reserved names plus schema
+  // attributes with point scope) are edited node-by-node in the
+  // KeypointDetails inspector, never as label-level values — a second
+  // "confidence" here both duplicates that field and invites corrupting
+  // the list through a free-text input.
+  const pointKeys = useMemo(
+    () => (labelType === KEYPOINT ? getKeypointPointKeys(allAttributes) : null),
+    [labelType, allAttributes],
+  );
+
   const visibleAttributes = useMemo(() => {
     return allAttributes.reduce((map, attr) => {
       if (!attr.name || attr.name === "id" || attr.name === "attributes")
         return map;
-      // A keypoint's per-point parallel lists are edited node-by-node in the
-      // KeypointDetails inspector, never as label-level values — a second
-      // "confidence" here both duplicates that field and invites corrupting
-      // the list through a free-text input.
-      if (labelType === KEYPOINT && KEYPOINT_PER_FRAME_KEYS.has(attr.name))
-        return map;
+      if (pointKeys?.has(attr.name)) return map;
       if (map.has(attr.name)) return map;
       if (
         evaluateWhen(attr.when, (data ?? {}) as Record<string, unknown>) ||
@@ -62,7 +68,7 @@ const useSchema = (readOnly: boolean) => {
       }
       return map;
     }, new Map<string, AttributeConfig>());
-  }, [allAttributes, data, labelType]);
+  }, [allAttributes, data, pointKeys]);
 
   // Key on the winning entry's index, not its name: same-name variants must
   // bust the schema memo when the active one swaps (Toyota model -> Honda).
@@ -140,12 +146,6 @@ const useParseFieldValue = () => {
     [],
   );
 };
-
-/** Keypoint per-point parallel lists — per-frame on video tracks, like `points`. */
-const KEYPOINT_PER_FRAME_KEYS: ReadonlySet<string> = new Set([
-  "confidence",
-  "visible",
-]);
 
 /**
  * Handles form changes: parses field types, clears values for attributes
@@ -301,7 +301,9 @@ export const useHandleSchemaChange = (readOnly: boolean) => {
       // A keypoint's per-point parallel lists follow `points` frame by frame,
       // so on a video track they stay on the edited frame like geometry does
       const extraPerFrameKeys =
-        labelTypeRef.current === KEYPOINT ? KEYPOINT_PER_FRAME_KEYS : undefined;
+        labelTypeRef.current === KEYPOINT
+          ? getKeypointPointKeys(allAttributes)
+          : undefined;
 
       const { trackPartial, dynamicPartial }: TrackEditSplit =
         isFrameField && ref.frame != null

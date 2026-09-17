@@ -7,15 +7,26 @@ import {
   Input,
   InputType,
   Orientation,
+  Select,
+  Size,
   Spacing,
   Stack,
   Text,
   TextColor,
   TextVariant,
+  Toggle,
 } from "@voxel51/voodo";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import styled from "styled-components";
 import { useHandleSchemaChange } from "./AnnotationSchema";
+import {
+  buildPointAttributeList,
+  CONFIDENCE_FALLBACK_SPEC,
+  getPointAttributeSpecs,
+  toPointAttributeValue,
+  type PointAttributeSpec,
+  type PointAttributeValue,
+} from "./keypointPointAttributes";
 import { useAnnotationContext } from "./useAnnotationContext";
 import { useGuidedKeypoints } from "./useKeypointMode";
 
@@ -24,11 +35,6 @@ const isPlaced = (point: readonly unknown[] | undefined): boolean =>
   Number.isFinite(point[0]) &&
   typeof point[1] === "number" &&
   Number.isFinite(point[1]);
-
-// Unset per-point entries are NaN in the label (and "nan" strings on reads);
-// the inspector shows them as empty
-const toFiniteOrNull = (value: unknown): number | null =>
-  typeof value === "number" && Number.isFinite(value) ? value : null;
 
 const NodeList = styled.div`
   max-height: 16rem;
@@ -94,99 +100,277 @@ const InspectorPanel = styled.div`
   border-top: 1px solid ${({ theme }) => theme.neutral.softBorder};
 `;
 
+interface AttributeInputProps {
+  spec: PointAttributeSpec;
+  value: PointAttributeValue;
+  placed: boolean;
+  disabled: boolean;
+  onCommit: (value: PointAttributeValue) => void;
+}
+
+/**
+ * Number editor for float/int point attributes; commits on blur/Enter,
+ * clamped to the attribute's range when it declares one. An empty field
+ * commits null, which the write path stores as the type's hole filler.
+ */
+const NumberAttributeInput = ({
+  spec,
+  value,
+  placed,
+  disabled,
+  onCommit,
+}: AttributeInputProps) => {
+  const current = typeof value === "number" ? value : null;
+  const [draft, setDraft] = useState(current === null ? "" : String(current));
+
+  // External changes (undo, another client) refresh the field; while typing,
+  // the value only moves on our own blur-commit, so this never fights the
+  // user's keystrokes
+  useEffect(() => {
+    setDraft(current === null ? "" : String(current));
+  }, [current]);
+
+  const commit = () => {
+    if (disabled) return;
+    if (draft.trim() === "") {
+      if (current !== null) onCommit(null);
+      return;
+    }
+    const parsed = Number.parseFloat(draft);
+    if (!Number.isFinite(parsed)) {
+      setDraft(current === null ? "" : String(current));
+      return;
+    }
+    let next = spec.type === "int" ? Math.trunc(parsed) : parsed;
+    if (spec.range) {
+      next = Math.min(spec.range[1], Math.max(spec.range[0], next));
+    }
+    setDraft(String(next));
+    if (next !== current) onCommit(next);
+  };
+
+  return (
+    <FormField
+      label={spec.name}
+      disabled={disabled}
+      control={
+        <Input
+          type={InputType.Number}
+          min={spec.range?.[0]}
+          max={spec.range?.[1]}
+          step={spec.type === "int" ? 1 : 0.01}
+          style={{ width: "100%" }}
+          value={draft}
+          disabled={disabled}
+          placeholder={
+            placed
+              ? spec.range
+                ? `${spec.range[0]}–${spec.range[1]}`
+                : "number"
+              : "no point"
+          }
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              (e.target as HTMLInputElement).blur();
+            }
+          }}
+          data-cy={`keypoint-${spec.name}-input`}
+        />
+      }
+    />
+  );
+};
+
+/**
+ * Free-text editor for str point attributes without a values list; commits
+ * on blur/Enter. An empty field commits null (unset).
+ */
+const TextAttributeInput = ({
+  spec,
+  value,
+  placed,
+  disabled,
+  onCommit,
+}: AttributeInputProps) => {
+  const current = typeof value === "string" ? value : null;
+  const [draft, setDraft] = useState(current ?? "");
+
+  useEffect(() => {
+    setDraft(current ?? "");
+  }, [current]);
+
+  const commit = () => {
+    if (disabled) return;
+    if (draft === "") {
+      if (current !== null) onCommit(null);
+      return;
+    }
+    if (draft !== current) onCommit(draft);
+  };
+
+  return (
+    <FormField
+      label={spec.name}
+      disabled={disabled}
+      control={
+        <Input
+          type={InputType.Text}
+          style={{ width: "100%" }}
+          value={draft}
+          disabled={disabled}
+          placeholder={placed ? "value" : "no point"}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              (e.target as HTMLInputElement).blur();
+            }
+          }}
+          data-cy={`keypoint-${spec.name}-input`}
+        />
+      }
+    />
+  );
+};
+
+/** One point attribute editor, dispatched on the schema's element type. */
+const PointAttributeField = ({
+  spec,
+  value,
+  placed,
+  readOnly,
+  onCommit,
+}: Omit<AttributeInputProps, "disabled"> & { readOnly: boolean }) => {
+  const disabled = readOnly || !placed || !!spec.readOnly;
+
+  if (spec.type === "bool") {
+    return (
+      <Stack
+        orientation={Orientation.Row}
+        align={Align.Center}
+        spacing={Spacing.Sm}
+      >
+        <Text>{spec.name}</Text>
+        <Toggle
+          checked={value === true}
+          onChange={(checked: boolean) => onCommit(checked)}
+          size={Size.Sm}
+          disabled={disabled}
+          data-cy={`keypoint-${spec.name}-toggle`}
+        />
+      </Stack>
+    );
+  }
+
+  if (spec.type === "str" && spec.values?.length) {
+    return (
+      <FormField
+        label={spec.name}
+        disabled={disabled}
+        control={
+          <Select
+            exclusive
+            portal
+            value={typeof value === "string" ? value : ""}
+            onChange={(next) => {
+              if (typeof next === "string") onCommit(next);
+            }}
+            options={(spec.values ?? []).map((v) => ({
+              id: String(v),
+              data: { label: String(v) },
+            }))}
+            disabled={disabled}
+          />
+        }
+      />
+    );
+  }
+
+  if (spec.type === "str") {
+    return (
+      <TextAttributeInput
+        spec={spec}
+        value={value}
+        placed={placed}
+        disabled={disabled}
+        onCommit={onCommit}
+      />
+    );
+  }
+
+  return (
+    <NumberAttributeInput
+      spec={spec}
+      value={value}
+      placed={placed}
+      disabled={disabled}
+      onCommit={onCommit}
+    />
+  );
+};
+
 interface NodeInspectorProps {
   name: string;
   placed: boolean;
-  confidence: number | null;
+  index: number;
+  attributes: PointAttributeSpec[];
+  data: Record<string, unknown> | null | undefined;
   readOnly: boolean;
-  onCommitConfidence: (value: number | null) => void;
+  onCommit: (spec: PointAttributeSpec, value: PointAttributeValue) => void;
 }
 
 /**
  * Pinned per-node editor below the checklist (deliberately outside its
  * scroll region — the node list is height-capped, so an inline accordion
- * would clip its own form). Confidence is the core per-point attribute
- * (`Keypoint.confidence`, parallel to `points`); edits commit on blur/Enter
- * through the same engine transaction the schema form uses.
+ * would clip its own form). Renders one editor per point-scoped attribute
+ * (parallel lists, see keypointPointAttributes.ts); edits commit through
+ * the same engine transaction the schema form uses.
  */
 const NodeInspector = ({
   name,
   placed,
-  confidence,
+  index,
+  attributes,
+  data,
   readOnly,
-  onCommitConfidence,
-}: NodeInspectorProps) => {
-  const [draft, setDraft] = useState(
-    confidence === null ? "" : String(confidence),
-  );
-
-  // External changes (undo, another client) refresh the field; while typing,
-  // `confidence` only moves on our own blur-commit, so this never fights the
-  // user's keystrokes
-  useEffect(() => {
-    setDraft(confidence === null ? "" : String(confidence));
-  }, [confidence]);
-
-  const commit = () => {
-    if (readOnly || !placed) return;
-    if (draft.trim() === "") {
-      if (confidence !== null) onCommitConfidence(null);
-      return;
-    }
-    const parsed = Number.parseFloat(draft);
-    if (!Number.isFinite(parsed)) {
-      setDraft(confidence === null ? "" : String(confidence));
-      return;
-    }
-    const clamped = Math.min(1, Math.max(0, parsed));
-    setDraft(String(clamped));
-    if (clamped !== confidence) onCommitConfidence(clamped);
-  };
-
-  return (
-    <InspectorPanel data-cy="keypoint-node-inspector">
-      <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+  onCommit,
+}: NodeInspectorProps) => (
+  <InspectorPanel data-cy="keypoint-node-inspector">
+    <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+      <Text color={TextColor.Secondary} variant={TextVariant.Sm}>
+        selected point
+      </Text>
+      <Stack
+        orientation={Orientation.Row}
+        align={Align.Center}
+        spacing={Spacing.Sm}
+      >
+        <Text>{name}</Text>
         <Text color={TextColor.Secondary} variant={TextVariant.Sm}>
-          selected point
+          {placed ? "placed" : "not placed"}
         </Text>
-        <Stack
-          orientation={Orientation.Row}
-          align={Align.Center}
-          spacing={Spacing.Sm}
-        >
-          <Text>{name}</Text>
-          <Text color={TextColor.Secondary} variant={TextVariant.Sm}>
-            {placed ? "placed" : "not placed"}
-          </Text>
-        </Stack>
-        <FormField
-          label="confidence"
-          disabled={readOnly || !placed}
-          control={
-            <Input
-              type={InputType.Number}
-              min={0}
-              max={1}
-              step={0.01}
-              style={{ width: "100%" }}
-              value={draft}
-              disabled={readOnly || !placed}
-              placeholder={placed ? "0–1" : "no point"}
-              onChange={(e) => setDraft(e.target.value)}
-              onBlur={commit}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  (e.target as HTMLInputElement).blur();
-                }
-              }}
-              data-cy="keypoint-confidence-input"
-            />
-          }
-        />
       </Stack>
-    </InspectorPanel>
-  );
-};
+      {attributes.map((spec) => {
+        const list = data?.[spec.name];
+        return (
+          <PointAttributeField
+            key={spec.name}
+            spec={spec}
+            value={toPointAttributeValue(
+              spec.type,
+              Array.isArray(list) ? list[index] : undefined,
+            )}
+            placed={placed}
+            readOnly={readOnly}
+            onCommit={(value) => onCommit(spec, value)}
+          />
+        );
+      })}
+    </Stack>
+  </InspectorPanel>
+);
 
 /**
  * Keypoint edit details. For skeleton fields, a per-node checklist driven by
@@ -213,24 +397,37 @@ export const KeypointDetails = () => {
 
   const isReadOnly = selected?.isFieldReadOnly ?? false;
   const handleSchemaChange = useHandleSchemaChange(isReadOnly);
+  const config = selected?.schema ?? null;
 
-  // Core per-point attribute: `confidence` is a float list parallel to
-  // `points`. Unset entries are NaN, never null — the ODM's
-  // ListField(FloatField) cannot LOAD null elements (the whole document
-  // fails to hydrate server-side), while NaN round-trips through the wire
-  // encoding like point holes do. Reads may deliver NaN as "nan" strings.
-  const confidences =
-    (selected?.data as { confidence?: (number | string | null)[] } | null)
-      ?.confidence ?? null;
+  // The inspector's editors: the schema's point-scoped attributes, with
+  // confidence offered even when no schema declares it
+  const pointAttributes = useMemo(() => {
+    const declared = getPointAttributeSpecs(
+      Array.isArray(config?.attributes) ? config.attributes : undefined,
+    );
+    return declared.some((spec) => spec.name === "confidence")
+      ? declared
+      : [CONFIDENCE_FALLBACK_SPEC, ...declared];
+  }, [config]);
 
-  const setNodeConfidence = useCallback(
-    (index: number, value: number | null) => {
-      const next = Array.from({ length: nodeCount }, (_, i) =>
-        i === index ? (value ?? NaN) : (confidences?.[i] ?? NaN),
+  const labelData = selected?.data as Record<string, unknown> | null;
+
+  // Commits the full-length parallel list — unset entries take the element
+  // type's hole filler (see keypointPointAttributes.ts for why float uses
+  // NaN and the other types use null)
+  const setNodeAttribute = useCallback(
+    (spec: PointAttributeSpec, index: number, value: PointAttributeValue) => {
+      const existing = labelData?.[spec.name];
+      const next = buildPointAttributeList(
+        spec.type,
+        Array.isArray(existing) ? existing : undefined,
+        nodeCount,
+        index,
+        value,
       );
-      void handleSchemaChange({ confidence: next });
+      void handleSchemaChange({ [spec.name]: next });
     },
-    [confidences, handleSchemaChange, nodeCount],
+    [labelData, handleSchemaChange, nodeCount],
   );
 
   // Keep the target row visible as placement advances — on a many-node
@@ -400,10 +597,12 @@ export const KeypointDetails = () => {
             nodeLabels?.[selectedNodeIndex] ?? `point ${selectedNodeIndex + 1}`
           }
           placed={isPlaced(currentPoints[selectedNodeIndex])}
-          confidence={toFiniteOrNull(confidences?.[selectedNodeIndex])}
+          index={selectedNodeIndex}
+          attributes={pointAttributes}
+          data={labelData}
           readOnly={isReadOnly}
-          onCommitConfidence={(value) =>
-            setNodeConfidence(selectedNodeIndex, value)
+          onCommit={(spec, value) =>
+            setNodeAttribute(spec, selectedNodeIndex, value)
           }
         />
       )}
