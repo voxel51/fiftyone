@@ -23,10 +23,13 @@ type RawElement = RawDetection | RawPolyline | RawKeypoint | RawClassification;
  * A raw `/frames` singleton field value. Unlike a list element this arrives
  * with its `_cls` already stamped by the server, so nothing has to be inferred
  * from a registration table.
+ *
+ * `_id` only: `/frames` ships raw Mongo documents through `foj.stringify`,
+ * which turns an ObjectId into a string but never renames the key, so the
+ * un-prefixed `id` spelling the list types also carry cannot reach here.
  */
 interface RawSingleton {
   _id?: string;
-  id?: string;
   _cls?: string;
   [key: string]: unknown;
 }
@@ -213,7 +216,7 @@ const toSingletonLabelData = (
 ): LabelData => ({
   ...value,
   _id: singletonAddressId(path),
-  _docId: value._id ?? value.id ?? "",
+  _docId: value._id ?? "",
   _cls: value._cls ?? "",
 });
 
