@@ -127,8 +127,8 @@ async function decodeAndDispatch(
     const blob = await r.blob();
     bitmap = await createImageBitmap(blob);
   } catch (error) {
-    // Skip — main-thread treats this frame as missing and the engine
-    // re-requests on the next prefetch tick.
+    // Skip — the main thread treats this frame as missing and re-requests it
+    // on a later prefetch tick, for a bounded number of attempts.
     console.error(
       `[framesWorker] decode failed for frame ${frameNumber}`,
       error,
