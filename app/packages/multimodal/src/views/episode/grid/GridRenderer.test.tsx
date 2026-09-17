@@ -8,6 +8,7 @@ import {
 } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { ReverbRoot, useSetReverbState } from "@fiftyone/reverb";
+import { createStore } from "jotai";
 import { multimodalGridFit } from "@fiftyone/state";
 import { publishMcapEmbeddingSelection } from "../../../extensions/timeline";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -50,12 +51,19 @@ import type {
 // The grid mounts custom renderers under a ReverbBridge, which is what lets
 // the tile read the embeddings panel's published match for its episode.
 function render(ui: ReactElement) {
-  return renderBare(ui, { wrapper: ReverbRoot });
+  return renderBare(ui, {
+    wrapper: ({ children }) => (
+      <ReverbRoot store={createStore()}>{children}</ReverbRoot>
+    ),
+  });
 }
 
 function renderWithGridFit(ui: ReactElement, fit: "contain" | "cover") {
   return renderBare(
-    <ReverbRoot initializeState={({ set }) => set(multimodalGridFit, fit)}>
+    <ReverbRoot
+      store={createStore()}
+      initializeState={({ set }) => set(multimodalGridFit, fit)}
+    >
       {ui}
     </ReverbRoot>,
   );
@@ -65,7 +73,7 @@ let setGridFit: ((fit: "contain" | "cover") => void) | null = null;
 
 function renderWithMutableGridFit(ui: ReactElement) {
   return renderBare(
-    <ReverbRoot>
+    <ReverbRoot store={createStore()}>
       <GridFitController />
       {ui}
     </ReverbRoot>,

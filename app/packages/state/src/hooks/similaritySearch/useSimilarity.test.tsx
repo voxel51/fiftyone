@@ -1,6 +1,7 @@
 import { renderHook } from "@testing-library/react";
 import React from "react";
 import { ReverbRoot } from "@fiftyone/reverb";
+import { createStore } from "jotai";
 
 import * as fos from "@fiftyone/state";
 import { afterEach, describe, expect, test, vi } from "vitest";
@@ -10,13 +11,14 @@ const TEST_DS = {
   mediaType: "image",
 };
 
-const getReverbRoot = (
+const getRoot = (
   type: "selectedSample" | "selectedLabel" | "activeImageSort" | "default",
   modal = false,
 ) => {
   const Root: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
     return (
       <ReverbRoot
+        store={createStore()}
         initializeState={({ set }) => {
           set(fos.dataset, TEST_DS);
           if (type === "selectedSample") {
@@ -65,7 +67,7 @@ describe("similarity search helper text and icon are correct", () => {
   test("Default state show text similarity search", async () => {
     const { result } = renderHook(
       () => fos.useSimilarityType({ isImageSearch: true }),
-      { wrapper: getReverbRoot("default") },
+      { wrapper: getRoot("default") },
     );
     expect(result.current.text).toBe("Sort by text similarity");
     expect(result.current.showImageSimilarityIcon).toBe(false);
@@ -75,7 +77,7 @@ describe("similarity search helper text and icon are correct", () => {
     const { result } = renderHook(
       // isImageSearch is false/true does not impact this test scenario
       () => fos.useSimilarityType({ isImageSearch: false }),
-      { wrapper: getReverbRoot("selectedSample") },
+      { wrapper: getRoot("selectedSample") },
     );
     expect(result.current.text).toBe("Search by image similarity");
     expect(result.current.showImageSimilarityIcon).toBe(true);
@@ -84,7 +86,7 @@ describe("similarity search helper text and icon are correct", () => {
   test("when an image similarity is done and extended stage has sorting setting, should show image icon", () => {
     const { result } = renderHook(
       () => fos.useSimilarityType({ isImageSearch: true }),
-      { wrapper: getReverbRoot("activeImageSort") },
+      { wrapper: getRoot("activeImageSort") },
     );
     expect(result.current.text).toBe("Search by image similarity");
     expect(result.current.showImageSimilarityIcon).toBe(true);
@@ -93,7 +95,7 @@ describe("similarity search helper text and icon are correct", () => {
   test("when an text similarity is done and extended stage has sorting setting, should show text icon", () => {
     const { result } = renderHook(
       () => fos.useSimilarityType({ isImageSearch: false }),
-      { wrapper: getReverbRoot("activeImageSort") },
+      { wrapper: getRoot("activeImageSort") },
     );
     expect(result.current.text).toBe("Sort by text similarity");
     expect(result.current.showImageSimilarityIcon).toBe(false);
@@ -104,7 +106,7 @@ describe("similarity search helper text and icon are correct", () => {
     const { result } = renderHook(
       () => fos.useSimilarityType({ isImageSearch: false }),
       {
-        wrapper: getReverbRoot("selectedLabel", true),
+        wrapper: getRoot("selectedLabel", true),
       },
     );
     expect(result.current.text).toBe("Search by image similarity");
