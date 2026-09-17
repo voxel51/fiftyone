@@ -798,7 +798,9 @@ export class PixiRenderer2D implements Renderer2D {
           return;
         }
         ctx.putImageData(image.imageData, 0, 0);
-        texture = PIXI.Texture.from(canvas);
+        // 'skipCache: true' — the canvas is ours and nothing else can reuse it
+        texture = PIXI.Texture.from(canvas, true);
+        owned = true;
         break;
       }
       case "bitmap":
