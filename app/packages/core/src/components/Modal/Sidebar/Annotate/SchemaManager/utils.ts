@@ -83,6 +83,10 @@ export interface AttributeConfig {
   // Attribute value may vary frame-to-frame within a track; drives sub-track
   // rows and excludes the attribute from whole-track propagation.
   dynamic?: boolean;
+  // Keypoint fields only: "point" scopes the attribute to individual points
+  // (stored as a list parallel to `points`, with `type` the ELEMENT type,
+  // edited from the per-node inspector). Absent or "field" = label-level.
+  scope?: "field" | "point";
   when?: AttributeCondition;
   _source?: string;
   taxonomy?: string;
@@ -125,6 +129,7 @@ export interface AttributeFormData {
   listDefault: (string | number)[]; // For list types
   read_only: boolean;
   dynamic: boolean;
+  scope: "field" | "point";
   when?: AttributeCondition;
   _source?: string;
   valuesMode: ValuesMode;
@@ -310,6 +315,7 @@ export const createDefaultFormData = (): AttributeFormData => ({
   listDefault: [],
   read_only: false,
   dynamic: false,
+  scope: "field",
   valuesMode: VALUES_MODE.simple,
 });
 
@@ -346,6 +352,7 @@ export const toFormData = (config: AttributeConfig): AttributeFormData => {
     listDefault,
     read_only: config.read_only || false,
     dynamic: config.dynamic || false,
+    scope: config.scope === "point" ? "point" : "field",
     when: config.when,
     _source: config._source,
     valuesMode: config.taxonomy ? VALUES_MODE.taxonomy : VALUES_MODE.simple,
@@ -398,6 +405,9 @@ export const toAttributeConfig = (data: AttributeFormData): AttributeConfig => {
     }
   }
 
+  // Omitted for field scope: absent means label-level, keeping schemas clean
+  const scope = data.scope === "point" ? ("point" as const) : undefined;
+
   if (data.valuesMode === VALUES_MODE.taxonomy) {
     return {
       name: data.name.trim(),
@@ -406,6 +416,7 @@ export const toAttributeConfig = (data: AttributeFormData): AttributeConfig => {
       range,
       read_only: data.read_only || undefined,
       dynamic: data.dynamic || undefined,
+      scope,
       taxonomy: data.taxonomy,
     };
   }
@@ -416,9 +427,12 @@ export const toAttributeConfig = (data: AttributeFormData): AttributeConfig => {
     component: data.component || undefined,
     values: values?.length ? values : undefined,
     range,
-    default: defaultValue,
+    // No defaults for point scope: label-creation defaults apply scalar
+    // values, and a per-point list has no meaningful scalar default
+    default: scope ? undefined : defaultValue,
     read_only: data.read_only || undefined,
     dynamic: data.dynamic || undefined,
+    scope,
   };
 };
 

@@ -19,12 +19,15 @@ interface AddAttributeCardProps {
   existingAttributes: string[];
   onSave: (config: AttributeConfig) => void;
   onCancel: () => void;
+  /** Keypoint fields only: offer the per-point scope toggle */
+  allowPointScope?: boolean;
 }
 
 const AddAttributeCard = ({
   existingAttributes,
   onSave,
   onCancel,
+  allowPointScope = false,
 }: AddAttributeCardProps) => {
   const [formState, setFormState] = useState<AttributeFormData>(
     createDefaultFormData(),
@@ -60,6 +63,7 @@ const AddAttributeCard = ({
       canSave={canSave}
       onSave={handleSave}
       onCancel={onCancel}
+      allowPointScope={allowPointScope}
     />
   );
 };

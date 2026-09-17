@@ -39,6 +39,8 @@ interface AttributesSectionProps {
   onEditAttribute: (oldName: string, config: AttributeConfig) => void;
   onDeleteAttribute: (name: string) => void;
   onOrderChange?: (newOrder: AttributeConfig[]) => void;
+  /** Keypoint fields only: offer the per-point scope toggle */
+  allowPointScope?: boolean;
 }
 
 const AttributesSection = ({
@@ -47,6 +49,7 @@ const AttributesSection = ({
   onEditAttribute,
   onDeleteAttribute,
   onOrderChange,
+  allowPointScope = false,
 }: AttributesSectionProps) => {
   const [isAdding, setIsAdding] = useState(false);
   const [editingAttribute, setEditingAttribute] = useState<string | null>(null);
@@ -132,6 +135,7 @@ const AttributesSection = ({
           canDrag: true,
           isEditing: true,
           readOnly: !!config._source,
+          allowPointScope,
         });
       }
 
@@ -160,6 +164,9 @@ const AttributesSection = ({
               <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
                 {secondaryParts.join(" · ")}
               </Text>
+              {config.scope === "point" && (
+                <Pill size={Size.Md}>Per-point</Pill>
+              )}
               {config.read_only && <Pill size={Size.Md}>Read-only</Pill>}
               {config.dynamic && <Pill size={Size.Md}>Dynamic</Pill>}
               {config._source && <Pill size={Size.Md}>{config._source}</Pill>}
@@ -170,6 +177,7 @@ const AttributesSection = ({
       };
     });
   }, [
+    allowPointScope,
     attributes,
     editingAttribute,
     editingFormState,
@@ -212,6 +220,7 @@ const AttributesSection = ({
           existingAttributes={existingAttributeNames}
           onSave={handleAddSave}
           onCancel={() => setIsAdding(false)}
+          allowPointScope={allowPointScope}
         />
       )}
 

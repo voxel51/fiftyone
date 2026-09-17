@@ -243,6 +243,10 @@ export const BOOL_DEFAULT_OPTIONS = [
 // List types
 export const LIST_TYPES = ["list<str>", "list<int>", "list<float>"];
 
+// Element types a point-scoped keypoint attribute may declare (its storage is
+// a list of the element type, parallel to `points`)
+export const POINT_SCOPE_TYPES = ["bool", "float", "int", "str"];
+
 // Primitive field types - full Python class names from @fiftyone/utilities
 // Used to check if a field is a primitive type (not a label type like Detection)
 export const PRIMITIVE_FIELD_CLASSES = new Set([

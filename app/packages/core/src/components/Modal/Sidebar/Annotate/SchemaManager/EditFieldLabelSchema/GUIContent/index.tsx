@@ -198,6 +198,7 @@ const GUIContent = ({
         onEditAttribute={handleEditAttribute}
         onDeleteAttribute={handleDeleteAttribute}
         onOrderChange={handleAttributeOrderChange}
+        allowPointScope={fType === "Keypoint" || fType === "Keypoints"}
       />
     </>
   );

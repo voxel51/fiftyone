@@ -153,6 +153,53 @@ describe("dynamic attribute flag", () => {
   });
 });
 
+describe("attribute scope", () => {
+  it("defaults to field scope for a new attribute", () => {
+    expect(createDefaultFormData().scope).toBe("field");
+  });
+
+  it("hydrates the form from a point-scoped config", () => {
+    const form = toFormData({
+      name: "occluded",
+      type: "bool",
+      scope: "point",
+    });
+    expect(form.scope).toBe("point");
+  });
+
+  it("defaults the form to field scope when the config omits scope", () => {
+    expect(toFormData({ name: "color", type: "str" }).scope).toBe("field");
+  });
+
+  it("serializes point scope and omits field scope", () => {
+    const point = toAttributeConfig({
+      ...createDefaultFormData(),
+      name: "occluded",
+      type: "bool",
+      scope: "point",
+    });
+    expect(point.scope).toBe("point");
+
+    const field = toAttributeConfig({
+      ...createDefaultFormData(),
+      name: "color",
+      type: "str",
+    });
+    expect(field.scope).toBeUndefined();
+  });
+
+  it("drops the default value for point scope", () => {
+    const config = toAttributeConfig({
+      ...createDefaultFormData(),
+      name: "occluded",
+      type: "bool",
+      scope: "point",
+      default: "true",
+    });
+    expect(config.default).toBeUndefined();
+  });
+});
+
 describe("validateFieldName", () => {
   it("rejects '.' for non-video media", () => {
     expect(validateFieldName("frames.detections", null, "image")).toMatch(

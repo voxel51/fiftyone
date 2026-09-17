@@ -22,6 +22,7 @@ import {
   ATTRIBUTE_TYPE_LABELS,
   ATTRIBUTE_TYPE_OPTIONS,
   BOOL_DEFAULT_OPTIONS,
+  POINT_SCOPE_TYPES,
 } from "../../constants";
 import { VALUES_MODE, type AttributeFormData } from "../../utils";
 import OntologyPicker from "../OntologyPicker";
@@ -38,6 +39,11 @@ interface AttributeFormContentProps {
   nameError: string | null;
   /** When true, name and type are rendered as read-only text */
   isEditing?: boolean;
+  /**
+   * Keypoint fields only: offer the field-level vs point-level scope toggle.
+   * A point-scoped attribute stores one value per skeleton point.
+   */
+  allowPointScope?: boolean;
 }
 
 const AttributeFormContent = ({
@@ -45,6 +51,7 @@ const AttributeFormContent = ({
   onFormStateChange,
   nameError,
   isEditing = false,
+  allowPointScope = false,
 }: AttributeFormContentProps) => {
   const {
     // Derived state
@@ -52,6 +59,7 @@ const AttributeFormContent = ({
     isIntegerType,
     isListType,
     isFromOntology,
+    isPointScope,
     isTaxonomyEligible,
     whenPreview,
     supportsDefault,
@@ -77,9 +85,16 @@ const AttributeFormContent = ({
     handleListDefaultChange,
     handleReadOnlyChange,
     handleDynamicChange,
+    handleScopeChange,
     handleValuesModeChange,
     handleTaxonomyChange,
   } = useAttributeForm({ formState, onFormStateChange });
+
+  // Point scope declares the ELEMENT type (storage is a parallel list), so
+  // the type picker offers only the scalar types
+  const typeOptions = isPointScope
+    ? ATTRIBUTE_TYPE_OPTIONS.filter((opt) => POINT_SCOPE_TYPES.includes(opt.id))
+    : ATTRIBUTE_TYPE_OPTIONS;
 
   const {
     ontologies: taxonomies,
@@ -153,7 +168,7 @@ const AttributeFormContent = ({
                     handleTypeChange(value);
                   }
                 }}
-                options={ATTRIBUTE_TYPE_OPTIONS}
+                options={typeOptions}
               />
             }
           />
@@ -234,26 +249,65 @@ const AttributeFormContent = ({
         </Text>
       </Stack>
 
-      {/* Section 2b: Dynamic toggle */}
-      <Stack orientation={Orientation.Column} spacing={Spacing.None}>
-        <Stack
-          orientation={Orientation.Row}
-          spacing={Spacing.Sm}
-          align={Align.Center}
-        >
-          <Text variant={TextVariant.Md}>Dynamic</Text>
-          <Toggle
-            checked={formState.dynamic}
-            onChange={handleDynamicChange}
-            size={Size.Md}
-            disabled={isFromOntology}
-          />
+      {/* Section 2b: Dynamic toggle — point-scoped attributes are inherently
+          per-frame on video, so the flag doesn't apply */}
+      {!isPointScope && (
+        <Stack orientation={Orientation.Column} spacing={Spacing.None}>
+          <Stack
+            orientation={Orientation.Row}
+            spacing={Spacing.Sm}
+            align={Align.Center}
+          >
+            <Text variant={TextVariant.Md}>Dynamic</Text>
+            <Toggle
+              checked={formState.dynamic}
+              onChange={handleDynamicChange}
+              size={Size.Md}
+              disabled={isFromOntology}
+            />
+          </Stack>
+          <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+            When enabled, the value can change across frames and appears as its
+            own timeline sub-track.
+          </Text>
         </Stack>
-        <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
-          When enabled, the value can change across frames and appears as its
-          own timeline sub-track.
-        </Text>
-      </Stack>
+      )}
+
+      {/* Section 2c: Per-point scope toggle (keypoint fields only). Scope is
+          fixed after creation — flipping it would change the stored shape
+          (scalar vs parallel list) under existing values. */}
+      {(allowPointScope || isPointScope) &&
+        (isEditing ? (
+          <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
+            <Text variant={TextVariant.Md} color={TextColor.Secondary}>
+              Scope:
+            </Text>
+            <Text variant={TextVariant.Md}>
+              {isPointScope ? "Per point" : "Whole label"}
+            </Text>
+          </Stack>
+        ) : (
+          <Stack orientation={Orientation.Column} spacing={Spacing.None}>
+            <Stack
+              orientation={Orientation.Row}
+              spacing={Spacing.Sm}
+              align={Align.Center}
+            >
+              <Text variant={TextVariant.Md}>Per-point</Text>
+              <Toggle
+                checked={isPointScope}
+                onChange={handleScopeChange}
+                size={Size.Md}
+                disabled={isFromOntology}
+                data-cy="attribute-point-scope-toggle"
+              />
+            </Stack>
+            <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+              When enabled, the attribute stores one value per skeleton point
+              and is edited from the point inspector.
+            </Text>
+          </Stack>
+        ))}
 
       {/* Section 3: Input type */}
       <FormField
