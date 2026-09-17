@@ -7,6 +7,8 @@ import { MoveKeypointPointCommand } from "../commands/MoveKeypointPointCommand";
 import {
   EDGE_THRESHOLD,
   HOVERED_DASH_LENGTH,
+  KEYPOINT_HALO_OPACITY,
+  KEYPOINT_HALO_WIDTH,
   KEYPOINT_HIT_RADIUS,
   KEYPOINT_OUTLINE_WIDTH,
   KEYPOINT_RADIUS,
@@ -714,9 +716,16 @@ export class KeypointOverlay
       : KEYPOINT_RADIUS;
     for (const [variant, pts] of buckets) {
       const pointStyle = resolvePointStyle(variant);
+      this.drawPointHalo(renderer, pts, pointRadius, pointStyle.lineWidth ?? 0);
       renderer.drawPoints(pts, pointRadius, pointStyle, this.containerId);
     }
     for (const [fill, pts] of colorBuckets) {
+      this.drawPointHalo(
+        renderer,
+        pts,
+        pointRadius,
+        defaultPointStyle.lineWidth ?? 0,
+      );
       renderer.drawPoints(
         pts,
         pointRadius,
@@ -733,6 +742,12 @@ export class KeypointOverlay
         ...resolvePointStyle(hoveredVariant),
         lineWidth: KEYPOINT_SELECTED_OUTLINE_WIDTH,
       };
+      this.drawPointHalo(
+        renderer,
+        [hoveredPoint],
+        KEYPOINT_SELECTED_RADIUS,
+        KEYPOINT_SELECTED_OUTLINE_WIDTH,
+      );
       renderer.drawPoint(
         hoveredPoint,
         KEYPOINT_SELECTED_RADIUS,
@@ -750,6 +765,12 @@ export class KeypointOverlay
         ...resolvePointStyle(selectedVariant),
         lineWidth: KEYPOINT_SELECTED_OUTLINE_WIDTH,
       };
+      this.drawPointHalo(
+        renderer,
+        [selectedPoint],
+        KEYPOINT_SELECTED_RADIUS,
+        KEYPOINT_SELECTED_OUTLINE_WIDTH,
+      );
       renderer.drawPoint(
         selectedPoint,
         KEYPOINT_SELECTED_RADIUS,
@@ -759,6 +780,30 @@ export class KeypointOverlay
         this.containerId,
       );
     }
+  }
+
+  /**
+   * Contrast halo: a soft black hairline drawn just OUTSIDE a point's white
+   * outline. The white outline keeps points visible on dark imagery; the
+   * halo covers light imagery. Stroke-only, so it never touches the color
+   * core, and screen-space like the outlines.
+   */
+  protected drawPointHalo(
+    renderer: Renderer2D,
+    points: Point[],
+    radius: number,
+    outlineWidth: number,
+  ): void {
+    renderer.drawPoints(
+      points,
+      radius + (outlineWidth + KEYPOINT_HALO_WIDTH) / 2,
+      {
+        strokeStyle: "#000000",
+        lineWidth: KEYPOINT_HALO_WIDTH,
+        opacity: KEYPOINT_HALO_OPACITY,
+      },
+      this.containerId,
+    );
   }
 
   /**

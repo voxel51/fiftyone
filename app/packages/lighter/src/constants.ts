@@ -69,6 +69,10 @@ export const KEYPOINT_RADIUS = 6;
 export const KEYPOINT_SELECTED_RADIUS = 7;
 export const KEYPOINT_OUTLINE_WIDTH = 1.5;
 export const KEYPOINT_SELECTED_OUTLINE_WIDTH = 3.5;
+// Soft black hairline just outside the white outline: the white ring gives
+// contrast on dark imagery, the halo covers light imagery
+export const KEYPOINT_HALO_WIDTH = 1;
+export const KEYPOINT_HALO_OPACITY = 0.5;
 export const KEYPOINT_HIT_RADIUS = 10;
 export const PREVIEW_LINE_OPACITY = 0.6;
 

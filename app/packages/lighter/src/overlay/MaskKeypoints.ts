@@ -223,6 +223,12 @@ export class MaskKeypoints extends KeypointOverlay {
     }
 
     if (regularPoints.length > 0) {
+      this.drawPointHalo(
+        renderer,
+        regularPoints,
+        KEYPOINT_RADIUS,
+        KEYPOINT_OUTLINE_WIDTH,
+      );
       renderer.drawPoints(
         regularPoints,
         KEYPOINT_RADIUS,
@@ -234,6 +240,12 @@ export class MaskKeypoints extends KeypointOverlay {
     // Selected point: the white outline thickens OUTWARD — total radius
     // grows while the point's color stays visible in the core
     if (selectedPoint) {
+      this.drawPointHalo(
+        renderer,
+        [selectedPoint],
+        KEYPOINT_SELECTED_RADIUS,
+        KEYPOINT_SELECTED_OUTLINE_WIDTH,
+      );
       renderer.drawPoint(
         selectedPoint,
         KEYPOINT_SELECTED_RADIUS,
