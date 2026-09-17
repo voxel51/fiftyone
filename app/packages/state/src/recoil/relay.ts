@@ -1,3 +1,3 @@
-import { EnvironmentKey } from "recoil-relay";
+import { EnvironmentKey } from "@fiftyone/relay";
 
 export const RelayEnvironmentKey = new EnvironmentKey("Relay Environment");
