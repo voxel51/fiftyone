@@ -5,22 +5,34 @@ deliberately narrow: state is declared with `atom` or `selector`, read and
 written through hooks, and grouped into families when it is keyed by a
 parameter.
 
+**A component does not import this package.** It calls a semantic hook —
+`useActiveFields({ modal: true })`, not
+`useReverbValue(activeFields({ modal: true }))` — and those hooks live in
+`@fiftyone/state` next to the state they read. A lint rule restricts direct
+imports to `@fiftyone/state`, `@fiftyone/relay` and this package; everywhere
+else carries a shrinking allow-list of the files that still do.
+
+So the API below is the one you use when **defining** state and the hook over
+it. Adding a hook to `@fiftyone/state` is always the right move, and needs no
+exception.
+
 ```ts
 import { atom, selector, useReverbValue } from "@fiftyone/reverb";
 
 const count = atom<number>({ key: "count", default: 0 });
 
 const doubled = selector<number>({
-  key: "doubled",
-  get: ({ get }) => get(count) * 2,
+    key: "doubled",
+    get: ({ get }) => get(count) * 2,
 });
 
-const Component = () => <span>{useReverbValue(doubled)}</span>;
+// The only export a consumer sees.
+export const useDoubled = () => useReverbValue(doubled);
 ```
 
-Do not export atoms from a package. Export a domain hook that reads or writes
-one, the way `@fiftyone/state` does — see
-[CODING_STANDARDS.md](../../CODING_STANDARDS.md).
+Keep the atoms unexported: they are an implementation detail of the hook, and
+exporting one invites a component to read it. See
+[CODING_STANDARDS.md](../../CODING_STANDARDS.md) for the full rule.
 
 ### State
 
@@ -55,9 +67,10 @@ and `clear` drop members.
 #### [`hooks`](./src/hooks.ts)
 
 `useReverbValue`, `useReverbState`, `useSetReverbState` and
-`useResetReverbState` subscribe a component. `useAssertedReverbValue` throws
-when the value is absent, for call sites where that is a bug rather than a
-state to render. `useReverbValueLoadable` and `useReverbStateLoadable` expose a
+`useResetReverbState` subscribe a consumer, and are what a semantic hook is
+built from. `useAssertedReverbValue` throws when the value is absent, for call
+sites where that is a bug rather than a state to render.
+`useReverbValueLoadable` and `useReverbStateLoadable` expose a
 [`Loadable`](./src/loadable.ts) instead of suspending.
 
 `useReverbCallback` and [`useReverbTransaction`](./src/transaction.ts) hand a
