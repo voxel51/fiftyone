@@ -22,15 +22,15 @@ import {
 import { useEffect, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRelayEnvironment } from "react-relay";
-import { useRecoilCallback, useRecoilValue } from "recoil";
-import { dynamicGroupsElementCount, selectedMediaField } from "../recoil";
-import { sampleSelectionStyle, selectedSamples } from "../recoil/atoms";
-import * as dynamicGroupAtoms from "../recoil/dynamicGroups";
-import * as schemaAtoms from "../recoil/schema";
-import { datasetName, dynamicGroupsTargetFrameRate } from "../recoil/selectors";
-import { State } from "../recoil/types";
-import { getSampleSrc, resolveSelectionIcon } from "../recoil/utils";
-import * as viewAtoms from "../recoil/view";
+import { useReverbCallback, useReverbValue } from "@fiftyone/reverb";
+import { dynamicGroupsElementCount, selectedMediaField } from "../atoms";
+import { sampleSelectionStyle, selectedSamples } from "../atoms/atoms";
+import * as dynamicGroupAtoms from "../atoms/dynamicGroups";
+import * as schemaAtoms from "../atoms/schema";
+import { datasetName, dynamicGroupsTargetFrameRate } from "../atoms/selectors";
+import { State } from "../atoms/types";
+import { getSampleSrc, resolveSelectionIcon } from "../atoms/utils";
+import * as viewAtoms from "../atoms/view";
 import { getNormalizedUrls } from "../utils";
 import { resolveMediaFieldLooker } from "./media-field-lookers";
 import { useOnShiftClickLabel } from "./useOnShiftClickLabel";
@@ -44,36 +44,36 @@ export default <T extends AbstractLooker<BaseState>>(
 ) => {
   const abortControllerRef = useRef(new AbortController());
   const environment = useRelayEnvironment();
-  const selected = useRecoilValue(selectedSamples);
-  const style = useRecoilValue(sampleSelectionStyle);
-  const isClip = useRecoilValue(viewAtoms.isClipsView);
-  const isFrame = useRecoilValue(viewAtoms.isFramesView);
-  const isPatch = useRecoilValue(viewAtoms.isPatchesView);
+  const selected = useReverbValue(selectedSamples);
+  const style = useReverbValue(sampleSelectionStyle);
+  const isClip = useReverbValue(viewAtoms.isClipsView);
+  const isFrame = useReverbValue(viewAtoms.isFramesView);
+  const isPatch = useReverbValue(viewAtoms.isPatchesView);
   const handleError = useErrorHandler();
 
-  const view = useRecoilValue(viewAtoms.view);
-  const dataset = useRecoilValue(datasetName);
-  const mediaField = useRecoilValue(selectedMediaField(isModal));
+  const view = useReverbValue(viewAtoms.view);
+  const dataset = useReverbValue(datasetName);
+  const mediaField = useReverbValue(selectedMediaField(isModal));
 
-  const fieldSchema = useRecoilValue(
+  const fieldSchema = useReverbValue(
     schemaAtoms.fieldSchema({ space: State.SPACE.SAMPLE }),
   );
-  const frameFieldSchema = useRecoilValue(
+  const frameFieldSchema = useReverbValue(
     schemaAtoms.fieldSchema({ space: State.SPACE.FRAME }),
   );
 
-  const shouldRenderImaVidLooker = useRecoilValue(
+  const shouldRenderImaVidLooker = useReverbValue(
     dynamicGroupAtoms.shouldRenderImaVidLooker(isModal),
   );
 
-  const isDynamicGroup = useRecoilValue(dynamicGroupAtoms.isDynamicGroup);
-  const dynamicGroupsTargetFrameRateValue = useRecoilValue(
+  const isDynamicGroup = useReverbValue(dynamicGroupAtoms.isDynamicGroup);
+  const dynamicGroupsTargetFrameRateValue = useReverbValue(
     dynamicGroupsTargetFrameRate,
   );
 
   // callback to get the latest promise inside another recoil callback
   // gets around the limitation of the fact that snapshot inside callback refs to the committed state at the time
-  const getPromise = useRecoilCallback(
+  const getPromise = useReverbCallback(
     ({ snapshot: { getPromise } }) => getPromise,
     [],
   );
@@ -87,7 +87,7 @@ export default <T extends AbstractLooker<BaseState>>(
 
   const getOnShiftClickLabelCallback = useOnShiftClickLabel();
 
-  const create = useRecoilCallback(
+  const create = useReverbCallback(
     ({ snapshot }) =>
       (
         { frameNumber, frameRate, sample, urls: rawUrls, symbol },

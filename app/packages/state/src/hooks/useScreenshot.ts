@@ -1,6 +1,6 @@
 import { getFetchFunction, sendEvent } from "@fiftyone/utilities";
 import { useCallback, useContext } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 
 import * as fos from "../";
 
@@ -9,7 +9,7 @@ const SCREENSHOT_QUALITY = 0.25;
 export const useScreenshot = (
   context: "ipython" | "colab" | "databricks" | undefined,
 ) => {
-  const subscription = useRecoilValue(fos.stateSubscription);
+  const subscription = useReverbValue(fos.stateSubscription);
 
   const fitSVGs = useCallback(() => {
     const svgElements = document.body.querySelectorAll("svg");

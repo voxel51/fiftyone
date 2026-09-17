@@ -7,7 +7,7 @@ import {
   useLabelsContext,
 } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate";
 import { useCallback } from "react";
-import { useRecoilCallback, useSetRecoilState } from "recoil";
+import { useReverbCallback, useSetReverbState } from "@fiftyone/reverb";
 import {
   recordLastCreatedLabel,
   useCuboidOperations,
@@ -24,7 +24,7 @@ import { useSelect3DLabelForAnnotation } from "./useSelect3DLabelForAnnotation";
 export const use3dAnnotationEventHandlers = () => {
   const { updateCuboid } = useCuboidOperations();
   const { updatePolyline } = usePolylineOperations();
-  const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
+  const setHoveredLabel = useSetReverbState(hoveredLabelAtom);
   const select3DLabelForAnnotation = useSelect3DLabelForAnnotation();
   const { updateLabelData } = useLabelsContext();
 
@@ -35,7 +35,7 @@ export const use3dAnnotationEventHandlers = () => {
     [select3DLabelForAnnotation],
   );
 
-  const handleSidebarValueUpdated = useRecoilCallback(
+  const handleSidebarValueUpdated = useReverbCallback(
     ({ snapshot }) =>
       async (payload: { value: Record<string, unknown> }) => {
         const { _id, ...updates } = payload.value;

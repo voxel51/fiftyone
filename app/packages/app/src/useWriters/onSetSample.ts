@@ -2,10 +2,9 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import type { setSampleMutation } from "@fiftyone/relay";
+import { setSample, type setSampleMutation } from "@fiftyone/relay";
 import type { RegisteredWriter } from "./registerWriter";
 
-import { setSample } from "@fiftyone/relay";
 import { env } from "@fiftyone/utilities";
 import { commitMutation } from "relay-runtime";
 

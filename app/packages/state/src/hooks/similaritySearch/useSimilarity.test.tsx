@@ -1,6 +1,6 @@
 import { renderHook } from "@testing-library/react";
 import React from "react";
-import { RecoilRoot } from "recoil";
+import { ReverbRoot } from "@fiftyone/reverb";
 
 import * as fos from "@fiftyone/state";
 import { afterEach, describe, expect, test, vi } from "vitest";
@@ -16,7 +16,7 @@ const getRecoilRoot = (
 ) => {
   const Root: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
     return (
-      <RecoilRoot
+      <ReverbRoot
         initializeState={({ set }) => {
           set(fos.dataset, TEST_DS);
           if (type === "selectedSample") {
@@ -51,7 +51,7 @@ const getRecoilRoot = (
         }}
       >
         {children}
-      </RecoilRoot>
+      </ReverbRoot>
     );
   };
   return Root;

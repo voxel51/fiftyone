@@ -1,7 +1,7 @@
 import { currentSlice, groupMediaTypesMap, isGroup } from "@fiftyone/state";
 import { useSetAtom } from "jotai";
 import { useEffect } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { annotationSliceMediaType } from "./state";
 
 /**
@@ -15,9 +15,9 @@ import { annotationSliceMediaType } from "./state";
  * Mount once at the annotation root.
  */
 export const useSyncAnnotationSliceMediaType = (): void => {
-  const grouped = useRecoilValue(isGroup);
-  const slice = useRecoilValue(currentSlice(true));
-  const mediaTypes = useRecoilValue(groupMediaTypesMap);
+  const grouped = useReverbValue(isGroup);
+  const slice = useReverbValue(currentSlice(true));
+  const mediaTypes = useReverbValue(groupMediaTypesMap);
   const setSliceMediaType = useSetAtom(annotationSliceMediaType);
 
   useEffect(() => {

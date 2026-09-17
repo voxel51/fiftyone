@@ -13,7 +13,7 @@ import ThreeSixtyIcon from "@mui/icons-material/ThreeSixty";
 import PolylineIcon from "@mui/icons-material/Timeline";
 import { Typography } from "@mui/material";
 import { useCallback, useEffect, useMemo } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useReverbState, useReverbValue } from "@fiftyone/reverb";
 import * as THREE from "three";
 import { useFo3dContext } from "../../fo3d/context";
 import {
@@ -90,34 +90,34 @@ const SELECTED_VERTEX_ESCAPE_SHORTCUT_PRIORITY = 200;
 const EXIT_EDIT_ESCAPE_SHORTCUT_PRIORITY = 100;
 
 export const useAnnotationActions = () => {
-  const selectedLabelForAnnotation = useRecoilValue(
+  const selectedLabelForAnnotation = useReverbValue(
     selectedLabelForAnnotationAtom,
   );
   const [
     currentArchetypeSelectedForTransform,
     setCurrentArchetypeSelectedForTransform,
-  ] = useRecoilState(currentArchetypeSelectedForTransformAtom);
-  const [transformMode, setTransformMode] = useRecoilState(transformModeAtom);
-  const [selectedPoint, setSelectedPoint] = useRecoilState(
+  ] = useReverbState(currentArchetypeSelectedForTransformAtom);
+  const [transformMode, setTransformMode] = useReverbState(transformModeAtom);
+  const [selectedPoint, setSelectedPoint] = useReverbState(
     selectedPolylineVertexAtom,
   );
-  const isActivelySegmenting = useRecoilValue(isActivelySegmentingSelector);
+  const isActivelySegmenting = useReverbValue(isActivelySegmentingSelector);
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const isCuboidAnnotateActive = current3dAnnotationMode === "cuboid";
   const isPolylineAnnotateActive = current3dAnnotationMode === "polyline";
   const [isCreatingCuboid, setIsCreatingCuboid] =
-    useRecoilState(isCreatingCuboidAtom);
-  const [segmentState, setSegmentState] = useRecoilState(
+    useReverbState(isCreatingCuboidAtom);
+  const [segmentState, setSegmentState] = useReverbState(
     activeSegmentationStateAtom,
   );
-  const [snapCloseAutomatically, setSnapCloseAutomatically] = useRecoilState(
+  const [snapCloseAutomatically, setSnapCloseAutomatically] = useReverbState(
     snapCloseAutomaticallyAtom,
   );
   const editing = useAnnotationContext().isEditing;
   const [editSegmentsMode, setEditSegmentsMode] =
-    useRecoilState(editSegmentsModeAtom);
+    useReverbState(editSegmentsModeAtom);
   const [annotationPlane, setAnnotationPlane] =
-    useRecoilState(annotationPlaneAtom);
+    useReverbState(annotationPlaneAtom);
   const { sceneBoundingBox, upVector } = useFo3dContext();
   const { deleteCuboid } = useCuboidOperations();
   const { deletePolyline, updatePolylinePoints } = usePolylineOperations();

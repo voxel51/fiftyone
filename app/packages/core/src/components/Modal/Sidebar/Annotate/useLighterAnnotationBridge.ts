@@ -8,7 +8,7 @@ import {
   useIsVideo,
   useModalSample,
 } from "@fiftyone/state";
-import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
+import { getSampleSrc } from "@fiftyone/state/src/atoms/utils";
 import { getNormalizedUrls } from "@fiftyone/state/src/utils";
 import { LABEL_LISTS_MAP } from "@fiftyone/utilities";
 import { useAtomValue } from "jotai";

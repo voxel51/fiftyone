@@ -30,14 +30,17 @@ vi.mock("@fiftyone/state", async () => {
   };
 });
 
-vi.mock("recoil", async () => {
-  const actual = await vi.importActual<typeof import("recoil")>("recoil");
+vi.mock("@fiftyone/reverb", async () => {
+  const actual =
+    await vi.importActual<typeof import("@fiftyone/reverb")>(
+      "@fiftyone/reverb",
+    );
 
   return {
     ...actual,
-    useRecoilValue: (atom: { key?: string }) =>
+    useReverbValue: (atom: { key?: string }) =>
       recoilMocks.values.get(atom.key ?? "") ?? false,
-    useSetRecoilState: () => recoilMocks.setPointCropModifierPressed,
+    useSetReverbState: () => recoilMocks.setPointCropModifierPressed,
   };
 });
 

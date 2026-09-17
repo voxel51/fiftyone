@@ -1,5 +1,5 @@
 import { field } from "@fiftyone/state";
-import { atom, selector } from "recoil";
+import { atom, selector } from "@fiftyone/reverb";
 import { ACTIVE_FIELD } from "./utils";
 
 export const activeColorEntry = atom<{ path: string } | ACTIVE_FIELD | null>({

@@ -21,9 +21,9 @@ vi.mock("@fiftyone/utilities", () => ({
   isPrimitiveString: (value: unknown) => typeof value === "string",
 }));
 
-vi.mock("recoil", () => ({
-  useRecoilValue: vi.fn(() => mocks.datasetName),
-  useSetRecoilState: vi.fn((atom) =>
+vi.mock("@fiftyone/reverb", () => ({
+  useReverbValue: vi.fn(() => mocks.datasetName),
+  useSetReverbState: vi.fn((atom) =>
     atom === "availableOperatorsRefreshCount"
       ? mocks.setRefreshCount
       : atom === "operatorsLoadFailedAtom"

@@ -2,7 +2,7 @@ import {
   groupMediaIsMain2DViewerVisible,
   useStableSceneSample3d,
 } from "@fiftyone/state";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { useActiveSampleId } from "./useSample";
 
 /**
@@ -64,7 +64,7 @@ export const useActiveAnnotationSampleId = (): string => {
   const sceneId = useThreeDSceneSampleId();
   const modalId = useActiveSampleId();
 
-  const annotating2dSlice = useRecoilValue(groupMediaIsMain2DViewerVisible);
+  const annotating2dSlice = useReverbValue(groupMediaIsMain2DViewerVisible);
 
   return sceneId && !annotating2dSlice ? sceneId : modalId;
 };

@@ -1,6 +1,6 @@
 import { atom, useAtom } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { useOperatorExecutor } from "@fiftyone/operators";
 import { useExecutionStoreSubscribe } from "@fiftyone/core/src/subscription/useExecutionStoreSubscribe";
 import { usePanelId } from "@fiftyone/spaces";
@@ -44,8 +44,8 @@ export const useRuns = (): UseRunsResult => {
   const lastPanelId = useRef<string | undefined>();
   const lastDatasetName = useRef<string | null | undefined>();
   const panelId = usePanelId();
-  const datasetName = useRecoilValue(datasetNameAtom);
-  const datasetId = useRecoilValue(datasetIdAtom);
+  const datasetName = useReverbValue(datasetNameAtom);
+  const datasetId = useReverbValue(datasetIdAtom);
   const { execute: fetchRuns } = useOperatorExecutor(LIST_RUNS_OPERATOR_URI);
 
   // ── Coalescing refresh mechanism ───────────────────────────────

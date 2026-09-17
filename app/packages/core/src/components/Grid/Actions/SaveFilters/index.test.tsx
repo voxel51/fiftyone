@@ -2,7 +2,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
-import type { TransactionInterface_UNSTABLE } from "recoil";
+import type { TransactionInterface } from "@fiftyone/reverb";
 
 // The regression under test: the bookmark's post-save reset runs inside a
 // Recoil transaction, where atom effects don't fire, so it must clear the
@@ -12,7 +12,7 @@ import type { TransactionInterface_UNSTABLE } from "recoil";
 
 type SubscribeCallback = (
   page: unknown,
-  transaction: Pick<TransactionInterface_UNSTABLE, "set" | "reset">,
+  transaction: Pick<TransactionInterface, "set" | "reset">,
 ) => void;
 
 const captured: { subscription: SubscribeCallback | null } = {
@@ -47,13 +47,13 @@ const fosMock = vi.hoisted(() => ({
 }));
 vi.mock("@fiftyone/state", () => fosMock);
 
-vi.mock("recoil", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("recoil")>()),
+vi.mock("@fiftyone/reverb", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@fiftyone/reverb")>()),
   selector: (config: unknown) => config,
-  useRecoilValue: (state: unknown) =>
+  useReverbValue: (state: unknown) =>
     // `savingFilters` reads false; the bookmark-visibility selector true
     state !== fosMock.savingFilters,
-  useRecoilCallback: (factory: (i: unknown) => () => Promise<void>) =>
+  useReverbCallback: (factory: (i: unknown) => () => Promise<void>) =>
     factory({
       set: vi.fn(),
       snapshot: {

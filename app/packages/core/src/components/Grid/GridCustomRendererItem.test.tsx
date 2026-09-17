@@ -6,7 +6,7 @@ import {
 } from "@fiftyone/state";
 import { registerMcapGridOverlay } from "@fiftyone/multimodal/extensions/timeline";
 import React from "react";
-import { RecoilRoot } from "recoil";
+import { ReverbRoot } from "@fiftyone/reverb";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GridCustomRendererItem } from "./GridCustomRendererItem";
 
@@ -44,12 +44,12 @@ const RGBA_BYTES_PER_PIXEL = 4;
 const MIN_GRID_RENDERER_SIZE_BYTES = 1;
 
 const TestBridge = ({ children }: React.PropsWithChildren) => (
-  <RecoilRoot>{children}</RecoilRoot>
+  <ReverbRoot>{children}</ReverbRoot>
 );
 const ModalBridge = ({ children }: React.PropsWithChildren) => (
-  <RecoilRoot initializeState={({ set }) => set(modalSelector, { id: "1" })}>
+  <ReverbRoot initializeState={({ set }) => set(modalSelector, { id: "1" })}>
     {children}
-  </RecoilRoot>
+  </ReverbRoot>
 );
 
 const getSelectControl = (host: HTMLElement) =>

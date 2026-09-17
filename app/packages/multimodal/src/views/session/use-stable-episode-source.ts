@@ -1,7 +1,7 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
 import { mediaSources as mediaSourcesState } from "@fiftyone/state";
 import { useMemo, useRef } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 
 import type { ByteSourceDescriptor } from "../../ir";
 import type { EpisodeSource } from "../../ports";
@@ -50,7 +50,7 @@ export function useStableEpisodeSource(ctx: SampleRendererProps["ctx"]): {
   const mediaReference = ctx.media?.mediaReference;
   // Read here rather than where a page arrives: the modal fetches its own
   // sample, so hydrating at the pagers would leave it with unlocated assets
-  const mediaSources = useRecoilValue(mediaSourcesState);
+  const mediaSources = useReverbValue(mediaSourcesState);
   // A reference-backed tile's byte source is the one video the samples page
   // delivered with it; a file-backed sample's is its media path
   const next = mediaReference

@@ -13,7 +13,7 @@
  * the opaque `extState` slot its source hook hands its features hook back.
  */
 import { useSyncExternalStore, type ReactNode } from "react";
-import type { CallbackInterface } from "recoil";
+import type { CallbackInterface } from "@fiftyone/reverb";
 import type { HoverContent } from "./HoverCard";
 import type { CategoricalFilter } from "./legendFilter";
 import type {

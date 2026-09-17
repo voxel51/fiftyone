@@ -13,10 +13,7 @@ import type { ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import type React from "react";
 import { useCallback, useMemo, useRef } from "react";
-import {
-  useRecoilBridgeAcrossReactRoots_UNSTABLE,
-  useRecoilCallback,
-} from "recoil";
+import { useReverbBridge, useReverbCallback } from "@fiftyone/reverb";
 import { GridCustomRendererItem } from "./GridCustomRendererItem";
 
 type GridSampleResult = SampleRendererSampleLike;
@@ -39,7 +36,7 @@ export function useGridCustomRendererItem(
 
   const selectedMediaField = fos.useSelectedMediaFieldGrid();
 
-  const RecoilBridge = useRecoilBridgeAcrossReactRoots_UNSTABLE();
+  const RecoilBridge = useReverbBridge();
   const hasTrackedRendererUsageRef = useRef(false);
 
   // Synchronous, non-hook lookup so a GridCustomRendererItem instance can
@@ -47,7 +44,7 @@ export function useGridCustomRendererItem(
   // it's reattached from the cache (e.g. after scrolling out of and back into
   // the shown viewport) instead of trusting a value it hasn't been updated
   // with while offscreen.
-  const isSampleSelected = useRecoilCallback(
+  const isSampleSelected = useReverbCallback(
     ({ snapshot }) =>
       (sampleId: string) =>
         snapshot.getLoadable(fos.selectedSamples).getValue().has(sampleId),

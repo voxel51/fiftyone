@@ -8,7 +8,7 @@ import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
 import { Resizable } from "re-resizable";
 import React, { useState } from "react";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import { useReverbCallback, useReverbValue } from "@fiftyone/reverb";
 import styles from "../../../../../packages/components/src/scrollable.module.css";
 import { resizeHandle } from "./../Sidebar/InteractiveSidebar/style.module.css";
 import { activeColorEntry } from "./state";
@@ -18,7 +18,7 @@ const WIDTH = 230;
 
 const SidebarList: React.FC = () => {
   const theme = useTheme();
-  const activeEntry = useRecoilValue(activeColorEntry);
+  const activeEntry = useReverbValue(activeColorEntry);
   if (!activeEntry) {
     throw new Error("entry not defined in color modal");
   }
@@ -26,7 +26,7 @@ const SidebarList: React.FC = () => {
   const [width, setWidth] = useState(WIDTH);
   // Temporal tags are a multimodal-only concept, so only surface the color
   // entry for multimodal datasets (matches the sidebar filter gating).
-  const isMultimodal = useRecoilValue(fos.isMultimodalDataset);
+  const isMultimodal = useReverbValue(fos.isMultimodalDataset);
   const stableGroup = [
     { paths: [ACTIVE_FIELD.GLOBAL, ACTIVE_FIELD.JSON], name: "general" },
     {
@@ -40,7 +40,7 @@ const SidebarList: React.FC = () => {
       name: "tags",
     },
   ];
-  const fieldGroups = useRecoilValue(
+  const fieldGroups = useReverbValue(
     fos.sidebarGroups({ modal: false, loading: false }),
   )
     .filter((g) => g.name !== "tags")
@@ -57,7 +57,7 @@ const SidebarList: React.FC = () => {
     setGroupOpen((prev) => ({ ...prev, [idx]: !prev[idx] }));
   };
 
-  const onSelectField = useRecoilCallback(
+  const onSelectField = useReverbCallback(
     ({ set }) =>
       async (value: ACTIVE_FIELD | { path: string }) => {
         set(activeColorEntry, value);

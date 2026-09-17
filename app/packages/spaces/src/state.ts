@@ -1,6 +1,6 @@
 import { constants } from "@fiftyone/state";
 import { ReactNode } from "react";
-import { atom, selectorFamily } from "recoil";
+import { atom, selectorFamily } from "@fiftyone/reverb";
 import {
   PanelIdToScopeType,
   PanelStateParameter,

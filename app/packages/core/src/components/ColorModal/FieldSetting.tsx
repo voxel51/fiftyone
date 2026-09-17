@@ -15,9 +15,9 @@ import { TwitterPicker } from "react-color";
 import {
   DefaultValue,
   selectorFamily,
-  useRecoilState,
-  useRecoilValue,
-} from "recoil";
+  useReverbState,
+  useReverbValue,
+} from "@fiftyone/reverb";
 import Checkbox from "../Common/Checkbox";
 import Input from "../Common/Input";
 import {
@@ -84,17 +84,17 @@ export const fieldColorSetting = selectorFamily<
 const FieldSetting = ({ path }: { path: string }) => {
   const wrapperRef = React.useRef<HTMLDivElement>(null);
   const pickerRef = React.useRef<TwitterPicker>(null);
-  const field = useRecoilValue(fos.field(path));
+  const field = useReverbValue(fos.field(path));
 
   if (!field) {
     throw new Error(`path ${path} is not a field`);
   }
 
-  const { colorPool, fields } = useRecoilValue(fos.colorScheme);
-  const [setting, setSetting] = useRecoilState(fieldColorSetting(path));
-  const coloring = useRecoilValue(fos.coloring);
+  const { colorPool, fields } = useReverbValue(fos.colorScheme);
+  const [setting, setSetting] = useReverbState(fieldColorSetting(path));
+  const coloring = useReverbValue(fos.coloring);
 
-  const colorMap = useRecoilValue(fos.colorMap);
+  const colorMap = useReverbValue(fos.colorMap);
   const [showFieldPicker, setShowFieldPicker] = useState(false);
   const [input, setInput] = useState(setting?.fieldColor);
   const [colors, setColors] = useState(colorPool || []);

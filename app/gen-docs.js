@@ -1102,10 +1102,10 @@ class DocVar extends DocFragment {
 
     if (type.isRecoil()) {
       const ex = type.isReadOnly()
-        ? `const ${this.get("name")} = useRecoilValue(fos.${this.label()});`
+        ? `const ${this.get("name")} = useReverbValue(fos.${this.label()});`
         : `const [${this.get("name")}, set${capitalize(
             this.get("name"),
-          )}] = useRecoilState(fos.${this.label()});`;
+          )}] = useReverbState(fos.${this.label()});`;
       const desc = new FragmentDescription();
       for (const T of type.typeArguments()) {
         T.addToDescription(desc, this.label());
@@ -1263,13 +1263,13 @@ class DocType extends DocFragment {
     return this.mapArray("types", DocType);
   }
   isRecoil() {
-    return this.get("package") === "recoil";
+    return this.get("package") === "@fiftyone/reverb";
   }
   isRecoilWritable() {
-    return this.get("name") === "RecoilState";
+    return this.get("name") === "ReverbState";
   }
   isRecoilReadOnly() {
-    return this.get("name") === "RecoilValueReadOnly";
+    return this.get("name") === "ReverbValueReadOnly";
   }
   isReadOnly() {
     if (this.get("operator") === "readonly") return true;

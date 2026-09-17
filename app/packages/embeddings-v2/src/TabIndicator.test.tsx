@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { RecoilRoot, useRecoilValue } from "recoil";
+import { ReverbRoot, useReverbValue } from "@fiftyone/reverb";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   clearSelectionNonceState,
@@ -27,7 +27,7 @@ vi.mock("@fiftyone/components", () => ({
 }));
 
 function NonceProbe() {
-  const nonce = useRecoilValue(clearSelectionNonceState);
+  const nonce = useReverbValue(clearSelectionNonceState);
   return <span data-testid="nonce">{nonce}</span>;
 }
 
@@ -36,19 +36,19 @@ describe("TabIndicator", () => {
 
   it("renders nothing without a selection", () => {
     const { container } = render(
-      <RecoilRoot>
+      <ReverbRoot>
         <TabIndicator />
-      </RecoilRoot>,
+      </ReverbRoot>,
     );
     expect(container.textContent).toBe("");
   });
 
   it("shows the count and requests a clear on click", () => {
     render(
-      <RecoilRoot initializeState={({ set }) => set(selectionCountState, 1234)}>
+      <ReverbRoot initializeState={({ set }) => set(selectionCountState, 1234)}>
         <TabIndicator />
         <NonceProbe />
-      </RecoilRoot>,
+      </ReverbRoot>,
     );
 
     // The pill carries the plot selection's size, formatted
@@ -64,14 +64,14 @@ describe("TabIndicator", () => {
     // The pill sits beside the grid, which counts samples; the point
     // count (one sample can own many points) is only the fallback
     render(
-      <RecoilRoot
+      <ReverbRoot
         initializeState={({ set }) => {
           set(selectionCountState, 1234);
           set(selectionSampleCountState, 3);
         }}
       >
         <TabIndicator />
-      </RecoilRoot>,
+      </ReverbRoot>,
     );
 
     expect(screen.getByText("3")).toBeDefined();

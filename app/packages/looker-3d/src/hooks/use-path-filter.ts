@@ -1,10 +1,10 @@
 import { type PathFilterSelector, pathFilter } from "@fiftyone/state";
 import { useRef } from "react";
-import { useRecoilValueLoadable } from "recoil";
+import { useReverbValueLoadable } from "@fiftyone/reverb";
 
 export const usePathFilter = (): PathFilterSelector => {
   const fn = useRef<PathFilterSelector>(() => true);
-  const loaded = useRecoilValueLoadable(pathFilter(true));
+  const loaded = useReverbValueLoadable(pathFilter(true));
 
   if (loaded.state === "hasValue") {
     fn.current = loaded.contents;

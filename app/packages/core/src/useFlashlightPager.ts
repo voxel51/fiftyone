@@ -6,7 +6,7 @@ import { Schema } from "@fiftyone/utilities";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { VariablesOf, fetchQuery, useRelayEnvironment } from "react-relay";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 
 const PAGE_SIZE = 20;
 
@@ -48,7 +48,7 @@ const useFlashlightPager = (
   const environment = useRelayEnvironment();
   const [isEmpty, setIsEmpty] = useState(false);
   const handleError = useErrorHandler();
-  const schema = useRecoilValue(
+  const schema = useReverbValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE }),
   );
 

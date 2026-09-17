@@ -1,30 +1,34 @@
 import * as fos from "@fiftyone/state";
 import { useEffect } from "react";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import {
+  useReverbState,
+  useReverbValue,
+  useSetReverbState,
+} from "@fiftyone/reverb";
 import { DynamicGroup } from "./DynamicGroup";
 import GroupSample3d from "./GroupSample3d";
 import { GroupView } from "./GroupView";
 
 const Group = () => {
-  const dynamic = useRecoilValue(fos.isDynamicGroup);
-  const only3d = useRecoilValue(fos.only3d);
+  const dynamic = useReverbValue(fos.isDynamicGroup);
+  const only3d = useReverbValue(fos.only3d);
   const is3dVisible = fos.useIs3dVisible();
   const isLooker3DVisible = fos.useIs3dVisibleSetting();
   const isPinned = fos.useIs3dPinned();
   const actions = fos.useRenderConfig3dActions();
-  const isMainVisible = useRecoilValue(fos.groupMediaIsMain2DViewerVisible);
+  const isMainVisible = useReverbValue(fos.groupMediaIsMain2DViewerVisible);
 
-  const isNestedDynamicGroup = useRecoilValue(fos.isNestedDynamicGroup);
-  const isOrderedDynamicGroup = useRecoilValue(fos.isOrderedDynamicGroup);
-  const isCarouselVisible = useRecoilValue(
+  const isNestedDynamicGroup = useReverbValue(fos.isNestedDynamicGroup);
+  const isOrderedDynamicGroup = useReverbValue(fos.isOrderedDynamicGroup);
+  const isCarouselVisible = useReverbValue(
     fos.groupMediaIsCarouselVisibleSetting,
   );
   const isAnnotateMode = fos.useModalMode() === fos.ModalMode.ANNOTATE;
 
-  const [dynamicGroupsViewMode, setDynamicGroupsViewMode] = useRecoilState(
+  const [dynamicGroupsViewMode, setDynamicGroupsViewMode] = useReverbState(
     fos.dynamicGroupsViewMode(true),
   );
-  const setIsMainLookerVisible = useSetRecoilState(
+  const setIsMainLookerVisible = useSetReverbState(
     fos.groupMediaIsMain2DViewerVisibleSetting,
   );
 

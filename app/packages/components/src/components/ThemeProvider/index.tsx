@@ -4,7 +4,7 @@ import {
   experimental_extendTheme as extendMuiTheme,
 } from "@mui/material/styles";
 import React from "react";
-import { useRecoilValue, useRecoilValueLoadable } from "recoil";
+import { useReverbValue, useReverbValueLoadable } from "@fiftyone/reverb";
 import { ThemeContext as LegacyTheme } from "styled-components";
 
 function dynamicTheme(accessor: string) {
@@ -307,7 +307,7 @@ let theme = extendMuiTheme({
 });
 
 export const useTheme = () => {
-  return theme.colorSchemes[useRecoilValue(fos.theme)].palette;
+  return theme.colorSchemes[useReverbValue(fos.theme)].palette;
 };
 
 export const useFont = () => {
@@ -318,7 +318,7 @@ const ThemeProvider: React.FC<
   React.PropsWithChildren<{ customTheme?: typeof theme }>
 > = ({ children, customTheme }) => {
   if (customTheme) theme = customTheme;
-  const loadable = useRecoilValueLoadable(fos.theme);
+  const loadable = useReverbValueLoadable(fos.theme);
   const current = loadable.state === "hasValue" ? loadable.contents : "dark";
 
   // Sync dark class on document element for design-system components

@@ -1,5 +1,5 @@
 import { subscribe } from "@fiftyone/relay";
-import { useRecoilCallback } from "recoil";
+import { useReverbCallback } from "@fiftyone/reverb";
 import {
   extendedStages,
   filters,
@@ -8,10 +8,10 @@ import {
   selectedSamples,
   view,
   viewStateForm_INTERNAL,
-} from "../recoil";
+} from "../atoms";
 
 export default function useToClips() {
-  return useRecoilCallback(
+  return useReverbCallback(
     ({ set, snapshot }) =>
       async (field) => {
         set(patching, true);

@@ -3,7 +3,7 @@ import * as fos from "@fiftyone/state";
 import { Launch } from "@mui/icons-material";
 import { Button } from "@mui/material";
 import { SnackbarProvider } from "notistack";
-import { useRecoilState } from "recoil";
+import { useReverbState } from "@fiftyone/reverb";
 
 const SNACK_VISIBLE_DURATION = 5000;
 
@@ -48,7 +48,7 @@ const Dismiss = ({ onClick }: { onClick: () => void }) => {
 };
 
 function SnackbarErrors() {
-  const [snackErrors, setSnackErrors] = useRecoilState(fos.snackbarErrors);
+  const [snackErrors, setSnackErrors] = useReverbState(fos.snackbarErrors);
 
   return snackErrors.length ? (
     <Toast
@@ -64,7 +64,7 @@ function SnackbarErrors() {
 }
 
 function SnackbarLinks() {
-  const [snackLink, setSnackLink] = useRecoilState(fos.snackbarLink);
+  const [snackLink, setSnackLink] = useReverbState(fos.snackbarLink);
 
   return snackLink ? (
     <Toast
@@ -84,7 +84,7 @@ function SnackbarLinks() {
 }
 
 function SnackbarMessage() {
-  const [message, setSnackMessage] = useRecoilState(fos.snackbarMessage);
+  const [message, setSnackMessage] = useReverbState(fos.snackbarMessage);
 
   return message ? (
     <Toast

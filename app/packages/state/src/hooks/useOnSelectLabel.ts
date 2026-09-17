@@ -2,7 +2,7 @@ import {
   LabelToggledEvent,
   selectiveRenderingEventBus,
 } from "@fiftyone/looker";
-import * as recoil from "recoil";
+import * as recoil from "@fiftyone/reverb";
 import * as fos from "..";
 
 export interface SelectEvent {
@@ -18,7 +18,7 @@ export interface SelectEvent {
 }
 
 export function useOnSelectLabel() {
-  return recoil.useRecoilCallback(
+  return recoil.useReverbCallback(
     ({ set, snapshot }) =>
       async ({
         detail: {
@@ -76,11 +76,11 @@ export function useOnSelectLabel() {
 
 /** The ids of every currently selected label. */
 export const useSelectedLabelIds = (): ReadonlySet<string> =>
-  recoil.useRecoilValue(fos.selectedLabelIds);
+  recoil.useReverbValue(fos.selectedLabelIds);
 
 /** The sample the modal is showing. */
 export const useModalSampleId = (): string =>
-  recoil.useRecoilValue(fos.modalSampleId);
+  recoil.useReverbValue(fos.modalSampleId);
 
 /** A change to the selection, expressed as labels in and label ids out. */
 export interface SelectedLabelsDelta {
@@ -101,7 +101,7 @@ export interface SelectedLabelsDelta {
  * a fresh identity and kick those observers off again for no reason.
  */
 export const useApplySelectedLabelsDelta = () =>
-  recoil.useRecoilCallback(
+  recoil.useReverbCallback(
     ({ snapshot, set }) =>
       ({ add = [], remove = [] }: SelectedLabelsDelta) => {
         const labels = {

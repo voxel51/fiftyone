@@ -35,7 +35,7 @@ const VerticalDivider = styled.div`
 import { labels } from "../useLabels";
 import * as fos from "@fiftyone/state";
 import { isGeneratedView } from "@fiftyone/state";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { useSchemaManagerModal } from "../SchemaManager/hooks";
 import { useAnnotationContext } from "./useAnnotationContext";
 
@@ -60,12 +60,12 @@ const LabelHamburgerMenu = () => {
   );
 
   // Permission and read-only state
-  const canEditLabels = useRecoilValue(fos.canEditLabels);
+  const canEditLabels = useReverbValue(fos.canEditLabels);
   const { selected, setData, setEditingMask } = useAnnotationContext();
   const engine = useAnnotationEngine();
   const currentFieldIsReadOnly = selected?.isFieldReadOnly ?? false;
   const { openSchemaManager } = useSchemaManagerModal();
-  const isGenerated = useRecoilValue(isGeneratedView);
+  const isGenerated = useReverbValue(isGeneratedView);
 
   // Mask state
   const type = selected?.type ?? null;
@@ -203,7 +203,7 @@ const Header = () => {
   const currentFieldIsReadOnly = selected?.isFieldReadOnly ?? false;
 
   // In patches view with single label, clicking back should go to explore mode
-  const isPatches = useRecoilValue(fos.isPatchesView);
+  const isPatches = useReverbValue(fos.isPatchesView);
   const labelCount = useAtomValue(labels).length;
   const shouldExitToExplore = isPatches && labelCount === 1;
 

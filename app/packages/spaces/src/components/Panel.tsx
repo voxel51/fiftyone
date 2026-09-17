@@ -1,7 +1,7 @@
 import { CenteredStack, scrollable } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import React, { useEffect } from "react";
-import { useSetRecoilState } from "recoil";
+import { useSetReverbState } from "@fiftyone/reverb";
 import { PANEL_LOADING_TIMEOUT } from "../constants";
 import { PanelContext } from "../contexts";
 import { useReactivePanel } from "../hooks";
@@ -17,7 +17,7 @@ function Panel(props: PanelProps) {
   const panel = useReactivePanel(panelName);
   const dimensions = fos.useDimensions();
   const pending = fos.useTimeout(PANEL_LOADING_TIMEOUT);
-  const setPanelIdToScope = useSetRecoilState(panelIdToScopeAtom);
+  const setPanelIdToScope = useSetReverbState(panelIdToScopeAtom);
   const scope = isModalPanel ? "modal" : "grid";
 
   useEffect(() => {

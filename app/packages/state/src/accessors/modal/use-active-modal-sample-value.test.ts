@@ -2,6 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  * @vitest-environment jsdom
  */
+import { useAssertedReverbValue } from "@fiftyone/reverb";
 import { renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -48,30 +49,33 @@ const stateStore = vi.hoisted(() => ({
   values: {} as Record<string, unknown>,
 }));
 
-vi.mock("../../recoil/groups", () => mockSelectors);
-vi.mock("../../recoil/schema", () => mockSchema);
-vi.mock("../../recoil/sidebar", () => mockSidebar);
-vi.mock("../../recoil/modal", () => mockErrors);
+vi.mock("../../atoms/groups", () => mockSelectors);
+vi.mock("../../atoms/schema", () => mockSchema);
+vi.mock("../../atoms/sidebar", () => mockSidebar);
+vi.mock("../../atoms/modal", () => mockErrors);
 
-vi.mock("../../recoil/utils", async () => {
+vi.mock("../../atoms/utils", async () => {
   const actual =
-    await vi.importActual<typeof import("../../recoil/utils")>(
-      "../../recoil/utils",
+    await vi.importActual<typeof import("../../atoms/utils")>(
+      "../../atoms/utils",
     );
   return {
     ...actual,
-    useAssertedRecoilValue: (node: { key: string }) =>
+    useAssertedReverbValue: (node: { key: string }) =>
       stateStore.values[node.key] ?? { __asserted: node.key },
   };
 });
 
-vi.mock("recoil", async () => {
-  const actual = await vi.importActual<typeof import("recoil")>("recoil");
+vi.mock("@fiftyone/reverb", async () => {
+  const actual =
+    await vi.importActual<typeof import("@fiftyone/reverb")>(
+      "@fiftyone/reverb",
+    );
   return {
     ...actual,
-    useRecoilValueLoadable: (node: { key: string }) =>
+    useReverbValueLoadable: (node: { key: string }) =>
       stateStore.loadables[node.key] ?? { state: "loading" },
-    useRecoilValue: (node: { key: string }) => stateStore.values[node.key],
+    useReverbValue: (node: { key: string }) => stateStore.values[node.key],
   };
 });
 

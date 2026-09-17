@@ -1,4 +1,4 @@
-import { atom, useRecoilState, useRecoilValue } from "recoil";
+import { atom, useReverbState, useReverbValue } from "@fiftyone/reverb";
 import * as fos from "@fiftyone/state";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import { useBrainResultInfo } from "./useBrainResultInfo";
@@ -16,10 +16,10 @@ export function usePlotSelection() {
   const brainResultInfo = useBrainResultInfo();
   const patchesField = brainResultInfo?.config?.patchesField;
   const resetExtendedSelection = useResetExtendedSelection();
-  const [{ selection, scope }, setExtendedSelection] = useRecoilState(
+  const [{ selection, scope }, setExtendedSelection] = useReverbState(
     fos.extendedSelection,
   );
-  const [selectedSamples, setSelectedSamples] = useRecoilState(
+  const [selectedSamples, setSelectedSamples] = useReverbState(
     fos.selectedSamples,
   );
   const [plotSelection, setPlotSelection] = usePanelStatePartial(
@@ -27,9 +27,9 @@ export function usePlotSelection() {
     [],
     true,
   );
-  const [, setLassoPoints] = useRecoilState(atoms.lassoPoints);
-  const selectedPatchIds = useRecoilValue(fos.selectedPatchIds(patchesField));
-  const selectedPatchSampleIds = useRecoilValue(fos.selectedPatchSamples);
+  const [, setLassoPoints] = useReverbState(atoms.lassoPoints);
+  const selectedPatchIds = useReverbValue(fos.selectedPatchIds(patchesField));
+  const selectedPatchSampleIds = useReverbValue(fos.selectedPatchSamples);
   function handleSelected(
     selectedResults,
     lassoPoints: { x: number[]; y: number[] },

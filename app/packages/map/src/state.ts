@@ -4,7 +4,7 @@ import {
   sampleFields,
   theme,
 } from "@fiftyone/state";
-import { atom, selector } from "recoil";
+import { atom, selector } from "@fiftyone/reverb";
 import { SELECTION_SCOPE } from "./constants";
 
 export interface Settings {

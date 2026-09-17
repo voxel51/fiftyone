@@ -3,7 +3,7 @@ import * as fos from "@fiftyone/state";
 import { useBrowserStorage } from "@fiftyone/state";
 import { Resizable } from "re-resizable";
 import React from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { DynamicGroupsFlashlightWrapper } from "./DynamicGroupsFlashlightWrapper";
 
 const MAX_CAROUSEL_HEIGHT = 600;
@@ -15,7 +15,7 @@ export const DynamicGroupCarousel = React.memo(() => {
   );
 
   const theme = useTheme();
-  const isMainVisible = useRecoilValue(
+  const isMainVisible = useReverbValue(
     fos.groupMediaIsMain2DViewerVisibleSetting,
   );
 

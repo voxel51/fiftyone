@@ -1,6 +1,6 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { StrictMode, type ReactNode } from "react";
-import { RecoilRoot } from "recoil";
+import { ReverbRoot } from "@fiftyone/reverb";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SparkRendererProvider, useSparkRenderer } from "./SparkRendererRoot";
 import { SPARK_MAX_STANDARD_DEVIATIONS } from "./constants";
@@ -73,9 +73,9 @@ const SplatConsumer = ({
 };
 
 const TestScene = ({ children }: { children?: ReactNode }) => (
-  <RecoilRoot>
+  <ReverbRoot>
     <SparkRendererProvider>{children}</SparkRendererProvider>
-  </RecoilRoot>
+  </ReverbRoot>
 );
 
 afterEach(() => {

@@ -2,7 +2,7 @@
  * Read-only hook for frustum state.
  */
 
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { frustumsVisibleAtom } from "../../state";
 
 /**
@@ -10,7 +10,7 @@ import { frustumsVisibleAtom } from "../../state";
  * @returns Object with frustum state values
  */
 export function useFrustums() {
-  const isVisible = useRecoilValue(frustumsVisibleAtom);
+  const isVisible = useReverbValue(frustumsVisibleAtom);
 
   return { isVisible };
 }

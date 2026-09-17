@@ -5,7 +5,7 @@ import {
 } from "@fiftyone/state";
 import { getFetchFunction } from "@fiftyone/utilities";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { extractNative2dLabels } from "./native2d/parse";
 import type { Native2dLabel } from "./native2d/types";
 
@@ -38,7 +38,7 @@ export const useImageSlicesIfAvailable = (
   const [sliceLabels, setSliceLabels] = useState<
     Record<string, Native2dLabel[]>
   >({});
-  const dataset = useRecoilValue(datasetId);
+  const dataset = useReverbValue(datasetId);
 
   const hasGroup = Boolean(sample?.sample?.group?._id);
   const groupId = sample?.sample?.group?._id;

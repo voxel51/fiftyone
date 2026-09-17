@@ -39,33 +39,33 @@ const mocks = vi.hoisted(() => ({
 vi.mock("../../state", async () => {
   // resolves to the mocked recoil below, so the accessor hooks share its
   // reactive stand-in and the `mocks.setAtom` spy
-  const { useRecoilValue, useSetRecoilState } =
-    (await import("recoil")) as unknown as {
-      useRecoilValue: (atom: symbol) => unknown;
-      useSetRecoilState: (atom: symbol) => (value: unknown) => void;
+  const { useReverbValue, useSetReverbState } =
+    (await import("@fiftyone/reverb")) as unknown as {
+      useReverbValue: (atom: symbol) => unknown;
+      useSetReverbState: (atom: symbol) => (value: unknown) => void;
     };
 
   return {
     hoveredHeadingTargetFaceAtom: mocks.atoms.hoveredHeadingTargetFaceAtom,
     isCurrentlyTransformingAtom: mocks.atoms.isCurrentlyTransformingAtom,
     useHoveredHeadingTargetFace: () =>
-      useRecoilValue(mocks.atoms.hoveredHeadingTargetFaceAtom),
+      useReverbValue(mocks.atoms.hoveredHeadingTargetFaceAtom),
     useSetHoveredHeadingTargetFace: () =>
-      useSetRecoilState(mocks.atoms.hoveredHeadingTargetFaceAtom),
+      useSetReverbState(mocks.atoms.hoveredHeadingTargetFaceAtom),
     useSetIsCurrentlyTransforming: () =>
-      useSetRecoilState(mocks.atoms.isCurrentlyTransformingAtom),
+      useSetReverbState(mocks.atoms.isCurrentlyTransformingAtom),
   };
 });
 
 // A minimally reactive recoil stand-in: writes notify subscribers so consumers
 // re-render and re-read, which is what makes the shared target-face atom
 // observable from the hook's return value.
-vi.mock("recoil", async () => {
+vi.mock("@fiftyone/reverb", async () => {
   const React = await import("react");
   const listeners = new Set<() => void>();
 
   return {
-    useRecoilValue: (atom: symbol) => {
+    useReverbValue: (atom: symbol) => {
       const [, bump] = React.useState(0);
 
       React.useEffect(() => {
@@ -80,7 +80,7 @@ vi.mock("recoil", async () => {
     },
     // Must be referentially stable, like the real one: a fresh setter each
     // render would invalidate every callback and effect built on it and spin.
-    useSetRecoilState: (atom: symbol) =>
+    useSetReverbState: (atom: symbol) =>
       React.useCallback(
         (value: unknown) => {
           const previous = mocks.atomValues.get(atom);

@@ -32,12 +32,12 @@ const bothAllowlist = recoilAllowlist.filter((file) =>
 // config separate so an override can re-apply just the one that still applies.
 const recoilPaths = [
   {
-    name: "recoil",
+    name: "@fiftyone/reverb",
     message:
       "New Recoil usage is frozen during the Recoil->Jotai migration. Use an existing @fiftyone/state accessor hook, or add a new Jotai atom. See .recoil-allowlist.txt.",
   },
   {
-    name: "recoil-relay",
+    name: "@fiftyone/relay",
     message:
       "New recoil-relay usage is frozen during the Recoil->Jotai migration. See .recoil-allowlist.txt.",
   },

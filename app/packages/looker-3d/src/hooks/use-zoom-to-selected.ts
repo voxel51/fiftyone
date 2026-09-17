@@ -1,5 +1,5 @@
 import * as fos from "@fiftyone/state";
-import { useRecoilCallback } from "recoil";
+import { useReverbCallback } from "@fiftyone/reverb";
 import { Vector3, type Box3, type PerspectiveCamera } from "three";
 import { renderModelSelector } from "../annotation/store";
 import {
@@ -38,7 +38,7 @@ export const useZoomToSelected = ({
   cameraControlsRef,
   useLegacyCoordinates = false,
 }: UseZoomToSelectedProps) => {
-  const handleZoomToSelected = useRecoilCallback(
+  const handleZoomToSelected = useReverbCallback(
     ({ snapshot }) =>
       async () => {
         if (!upVector || !cameraControlsRef.current) {

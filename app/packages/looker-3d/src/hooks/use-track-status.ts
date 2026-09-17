@@ -1,6 +1,6 @@
 import type { LoadingManager } from "three";
 import { useEffect, useRef } from "react";
-import { useRecoilState, useSetRecoilState } from "recoil";
+import { useReverbState, useSetReverbState } from "@fiftyone/reverb";
 import {
   fo3dAssetsParseStatusThisSample,
   fo3dLoadingStatusThisSample,
@@ -17,8 +17,8 @@ export const useTrackStatus = (
   isSceneReady = false,
 ) => {
   const loadingStatusView = useLoadingStatus();
-  const setLogs = useSetRecoilState(fo3dAssetsParseStatusThisSample);
-  const [loadingStatusState, setLoadingStatus] = useRecoilState(
+  const setLogs = useSetReverbState(fo3dAssetsParseStatusThisSample);
+  const [loadingStatusState, setLoadingStatus] = useReverbState(
     fo3dLoadingStatusThisSample,
   );
 

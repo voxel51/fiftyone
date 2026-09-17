@@ -7,7 +7,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import type { ReactElement } from "react";
-import { RecoilRoot, useSetRecoilState } from "recoil";
+import { ReverbRoot, useSetReverbState } from "@fiftyone/reverb";
 import { multimodalGridFit } from "@fiftyone/state";
 import { publishMcapEmbeddingSelection } from "../../../extensions/timeline";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -50,14 +50,14 @@ import type {
 // The grid mounts custom renderers under a RecoilBridge, which is what lets
 // the tile read the embeddings panel's published match for its episode.
 function render(ui: ReactElement) {
-  return renderBare(ui, { wrapper: RecoilRoot });
+  return renderBare(ui, { wrapper: ReverbRoot });
 }
 
 function renderWithGridFit(ui: ReactElement, fit: "contain" | "cover") {
   return renderBare(
-    <RecoilRoot initializeState={({ set }) => set(multimodalGridFit, fit)}>
+    <ReverbRoot initializeState={({ set }) => set(multimodalGridFit, fit)}>
       {ui}
-    </RecoilRoot>,
+    </ReverbRoot>,
   );
 }
 
@@ -65,15 +65,15 @@ let setGridFit: ((fit: "contain" | "cover") => void) | null = null;
 
 function renderWithMutableGridFit(ui: ReactElement) {
   return renderBare(
-    <RecoilRoot>
+    <ReverbRoot>
       <GridFitController />
       {ui}
-    </RecoilRoot>,
+    </ReverbRoot>,
   );
 }
 
 function GridFitController() {
-  setGridFit = useSetRecoilState(multimodalGridFit);
+  setGridFit = useSetReverbState(multimodalGridFit);
   return null;
 }
 

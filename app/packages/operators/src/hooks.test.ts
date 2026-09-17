@@ -1,5 +1,5 @@
 import { renderHook } from "@testing-library/react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { resolveOperatorURI } from "./operators";
 
@@ -9,10 +9,10 @@ vi.mock("@fiftyone/plugins", () => ({
   pluginsLoaderAtom: "pluginsLoaderAtom",
 }));
 
-vi.mock("recoil", () => ({
-  useRecoilState: vi.fn(),
-  useRecoilValue: vi.fn(),
-  useSetRecoilState: vi.fn(),
+vi.mock("@fiftyone/reverb", () => ({
+  useReverbState: vi.fn(),
+  useReverbValue: vi.fn(),
+  useSetReverbState: vi.fn(),
 }));
 
 vi.mock("./operators", () => ({
@@ -43,7 +43,7 @@ describe("operator availability hooks", () => {
   });
 
   it("resolves bare URIs and reacts when definitions register", () => {
-    vi.mocked(useRecoilValue).mockReturnValue([]);
+    vi.mocked(useReverbValue).mockReturnValue([]);
     const uris = ["missing", "list_workspaces"];
     const { result, rerender } = renderHook(() => ({
       available: useOperatorAvailability("list_workspaces"),
@@ -56,7 +56,7 @@ describe("operator availability hooks", () => {
       exists: false,
     });
 
-    vi.mocked(useRecoilValue).mockReturnValue([
+    vi.mocked(useReverbValue).mockReturnValue([
       { value: "@voxel51/operators/list_workspaces" },
     ]);
     rerender();

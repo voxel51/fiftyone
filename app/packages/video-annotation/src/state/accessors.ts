@@ -26,7 +26,7 @@ import {
 } from "@fiftyone/utilities";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import {
   useAnnotationContext,
   useAnnotationFields,
@@ -45,33 +45,33 @@ import {
  */
 
 /** Active color scheme (`@fiftyone/state`). */
-export const useColorScheme = () => useRecoilValue(colorScheme);
+export const useColorScheme = () => useReverbValue(colorScheme);
 
 /** Color seed used for instance / field color hashing. */
-export const useColorSeed = () => useRecoilValue(colorSeed);
+export const useColorSeed = () => useReverbValue(colorSeed);
 
 /** Current dataset name. */
-export const useDatasetName = () => useRecoilValue(datasetName);
+export const useDatasetName = () => useReverbValue(datasetName);
 
 /** Current dataset id — the `EntityId` namespace for engine signal keys. */
 export const useDatasetId = (): string => useCurrentDatasetId() ?? "";
 
 /** Active group slice, or `null` when the dataset isn't grouped. */
-export const useGroupSlice = () => useRecoilValue(groupSlice);
+export const useGroupSlice = () => useReverbValue(groupSlice);
 
 /** Id of the sample open in the modal. */
-export const useModalSampleId = () => useRecoilValue(modalSampleId);
+export const useModalSampleId = () => useReverbValue(modalSampleId);
 
 /**
  * Active view stages, narrowed to the `utilities` `Stage` shape the streams
  * expect. `fos.view` is typed as `State.Stage[]`; the two are structurally
  * compatible. Empty array when no view is applied.
  */
-export const useView = (): Stage[] => (useRecoilValue(view) ?? []) as Stage[];
+export const useView = (): Stage[] => (useReverbValue(view) ?? []) as Stage[];
 
 /** Schema paths of the dataset's temporal-detections fields. */
 export const useTemporalDetectionFieldPaths = () =>
-  useRecoilValue(
+  useReverbValue(
     fieldPaths({
       ftype: EMBEDDED_DOCUMENT_FIELD,
       embeddedDocType: TEMPORAL_DETECTIONS_FIELD,
@@ -89,7 +89,7 @@ export const useTemporalDetectionFieldPaths = () =>
  * here would scope the same path twice, once per owner.
  */
 export const useSampleClassificationFieldPaths = () =>
-  useRecoilValue(
+  useReverbValue(
     fieldPaths({
       space: State.SPACE.SAMPLE,
       ftype: EMBEDDED_DOCUMENT_FIELD,

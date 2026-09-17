@@ -11,7 +11,7 @@ import {
 } from "@fiftyone/state";
 import { type MutableRefObject, useMemo } from "react";
 import type { Environment } from "react-relay";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import { useReverbCallback, useReverbValue } from "@fiftyone/reverb";
 import { pendingEntry } from "../Renderer";
 import type { Queries } from "../makeRoutes";
 import type { RoutingContext } from "../routing";
@@ -22,7 +22,7 @@ const useSetters = (
   router: RoutingContext<Queries>,
   sessionRef: MutableRefObject<Session>,
 ) => {
-  const handleError = useRecoilCallback(
+  const handleError = useReverbCallback(
     ({ set: setRecoil }) =>
       async (errors: string[] = []) => {
         setRecoil(snackbarErrors, errors);
@@ -30,7 +30,7 @@ const useSetters = (
       },
     [],
   );
-  const subscription = useRecoilValue(stateSubscription);
+  const subscription = useReverbValue(stateSubscription);
   const setter = useSessionSetter();
 
   return useMemo(() => {

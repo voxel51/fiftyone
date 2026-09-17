@@ -13,10 +13,10 @@ import IconButton from "@mui/material/IconButton";
 import { useCallback, useEffect, useState } from "react";
 import {
   atom,
-  useRecoilState,
-  useRecoilValue,
-  useResetRecoilState,
-} from "recoil";
+  useReverbState,
+  useReverbValue,
+  useResetReverbState,
+} from "@fiftyone/reverb";
 import { viewDialogOpen } from ".";
 import { shouldToggleBookMarkIconOnSelector } from "../../Grid/Actions/SaveFilters";
 import {
@@ -78,9 +78,9 @@ export default function ViewDialog(props: Props) {
     id,
   } = props;
   const theme = useTheme();
-  const [isOpen, setIsOpen] = useRecoilState<boolean>(viewDialogOpen);
-  const viewContent = useRecoilValue(viewDialogContent);
-  const resetViewContent = useResetRecoilState(viewDialogContent);
+  const [isOpen, setIsOpen] = useReverbState<boolean>(viewDialogOpen);
+  const viewContent = useReverbValue(viewDialogContent);
+  const resetViewContent = useResetReverbState(viewDialogContent);
   const {
     name: initialName,
     description: initialDescription,
@@ -131,10 +131,10 @@ export default function ViewDialog(props: Props) {
     }
   }, [viewContent]);
 
-  const view = useRecoilValue(fos.view);
-  const extendedStagesExists = useRecoilValue(extendedStages);
+  const view = useReverbValue(fos.view);
+  const extendedStagesExists = useReverbValue(extendedStages);
   const extendedViewExists =
-    useRecoilValue(shouldToggleBookMarkIconOnSelector) ||
+    useReverbValue(shouldToggleBookMarkIconOnSelector) ||
     !!extendedStagesExists;
 
   const {

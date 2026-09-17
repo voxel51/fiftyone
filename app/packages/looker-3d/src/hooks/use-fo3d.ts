@@ -5,7 +5,7 @@ import {
   isWrappableDirect3dSamplePath,
 } from "@fiftyone/utilities";
 import { useEffect, useMemo, useState } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import type { FoScene } from "../fo3d/render-types";
 import type { DirectPcdWorldTransforms } from "../fo3d/direct-pcd-world-alignment";
 import {
@@ -125,8 +125,8 @@ type UseFo3dReturnType = {
  * normalized raw scene content in Recoil for downstream consumers.
  */
 export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
-  const mediaField = useRecoilValue(fos.selectedMediaField(true));
-  const isGroup = useRecoilValue(fos.isGroup);
+  const mediaField = useReverbValue(fos.selectedMediaField(true));
+  const isGroup = useReverbValue(fos.isGroup);
   const group3dState = fos.useRenderConfig3dState();
   const { setFo3dContent } = fos.useRenderConfig3dActions();
   const fetchFo3d = useFo3dFetcher();

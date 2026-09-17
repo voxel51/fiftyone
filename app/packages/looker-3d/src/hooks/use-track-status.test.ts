@@ -40,8 +40,11 @@ vi.mock("./use-loading-status", () => ({
   }),
 }));
 
-vi.mock("recoil", async () => {
-  const actual = await vi.importActual<typeof import("recoil")>("recoil");
+vi.mock("@fiftyone/reverb", async () => {
+  const actual =
+    await vi.importActual<typeof import("@fiftyone/reverb")>(
+      "@fiftyone/reverb",
+    );
 
   const setLogs = (value: unknown) => {
     store.logs =
@@ -59,14 +62,14 @@ vi.mock("recoil", async () => {
 
   return {
     ...actual,
-    useSetRecoilState: (atom: { key: string }) => {
+    useSetReverbState: (atom: { key: string }) => {
       if (atom.key === mockAtoms.fo3dAssetsParseStatusThisSample.key) {
         return setLogs;
       }
 
       throw new Error(`Unexpected recoil atom: ${atom.key}`);
     },
-    useRecoilState: (atom: { key: string }) => {
+    useReverbState: (atom: { key: string }) => {
       if (atom.key === mockAtoms.fo3dLoadingStatusThisSample.key) {
         return [store.loadingStatus, setLoadingStatus];
       }

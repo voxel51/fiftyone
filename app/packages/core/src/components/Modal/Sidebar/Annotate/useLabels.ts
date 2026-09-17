@@ -16,7 +16,7 @@ import { LabelType as EngineLabelType } from "@fiftyone/utilities";
 import { atom, getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { splitAtom, useAtomCallback } from "jotai/utils";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import type { LabelType } from "./Edit/useAnnotationContext";
 import { activeLabelSchemas, visibleLabelSchemas } from "./state";
 import { useSetEntranceLabel } from "./useAnnotationContextManager";
@@ -251,7 +251,7 @@ export default function useLabels() {
   const engine = useAnnotationEngine();
   const { scene } = useLighter();
   const active = useAtomValue(visibleLabelSchemas);
-  const isPatches = useRecoilValue(isPatchesView);
+  const isPatches = useReverbValue(isPatchesView);
   const setEntranceLabel = useSetEntranceLabel();
   const setLoading = useSetAtom(labelsState);
 

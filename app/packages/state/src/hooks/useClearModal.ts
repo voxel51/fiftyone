@@ -1,7 +1,7 @@
-import { useRecoilCallback, useSetRecoilState } from "recoil";
+import { useReverbCallback, useSetReverbState } from "@fiftyone/reverb";
 
 import { useCallback } from "react";
-import * as fos from "../recoil";
+import * as fos from "../atoms";
 
 /**
  * A react hook that allows clearing the modal state.
@@ -20,8 +20,8 @@ import * as fos from "../recoil";
  */
 
 export default () => {
-  const setModal = useSetRecoilState(fos.modalSelector);
-  const close = useRecoilCallback(
+  const setModal = useSetReverbState(fos.modalSelector);
+  const close = useReverbCallback(
     ({ reset, set, snapshot }) =>
       async () => {
         const fullscreen = await snapshot.getPromise(fos.fullscreen);

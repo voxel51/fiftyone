@@ -32,10 +32,10 @@ vi.mock("@fiftyone/components", () => ({
   ErrorBoundary: ({ children }: { children: React.ReactNode }) => children,
 }));
 
-vi.mock("recoil", () => ({
-  useRecoilValue: () => "filepath",
-  useRecoilValueLoadable: () => harness.loadable,
-  useSetRecoilState: () => () => undefined,
+vi.mock("@fiftyone/reverb", () => ({
+  useReverbValue: () => "filepath",
+  useReverbValueLoadable: () => harness.loadable,
+  useSetReverbState: () => () => undefined,
 }));
 
 vi.mock("./Sample2D", () => ({

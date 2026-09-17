@@ -18,7 +18,7 @@ import {
 } from "../useSchemaManager";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useAtomCallback } from "jotai/utils";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import { useReverbCallback, useReverbValue } from "@fiftyone/reverb";
 import { isEqual } from "lodash";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -224,7 +224,7 @@ export const useIsFieldActive = (field: string) => {
  * in the Annotate sidebar via `visibleLabelSchemas`.
  */
 export const useAddToExploreActiveFields = () => {
-  return useRecoilCallback(
+  return useReverbCallback(
     ({ set }) =>
       (field: string) => {
         set(activeField({ modal: true, path: field }), true);
@@ -667,9 +667,9 @@ export const useExitNewFieldMode = () => {
  * For group datasets, resolves to the preferred annotation slice's media type.
  */
 export const useMediaType = () => {
-  const datasetMediaType = useRecoilValue(mediaType);
-  const isGroupDataset = useRecoilValue(isGroup);
-  const sliceMediaTypesMap = useRecoilValue(groupMediaTypesMap);
+  const datasetMediaType = useReverbValue(mediaType);
+  const isGroupDataset = useReverbValue(isGroup);
+  const sliceMediaTypesMap = useReverbValue(groupMediaTypesMap);
   const [preferredSlice] = usePreferredGroupAnnotationSlice();
 
   if (isGroupDataset && preferredSlice && sliceMediaTypesMap[preferredSlice]) {
@@ -684,8 +684,8 @@ export const useMediaType = () => {
  * Returns whether the dataset is large and the scan sample limit.
  */
 export const useIsLargeDataset = () => {
-  const count = useRecoilValue(datasetSampleCount);
-  const maxSearch = useRecoilValue(queryPerformanceMaxSearch);
+  const count = useReverbValue(datasetSampleCount);
+  const maxSearch = useReverbValue(queryPerformanceMaxSearch);
   return { isLargeDataset: (count ?? 0) > maxSearch, scanLimit: maxSearch };
 };
 

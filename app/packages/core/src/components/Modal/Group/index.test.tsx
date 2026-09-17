@@ -55,12 +55,15 @@ vi.mock("@fiftyone/state", () => ({
   useModalMode: () => mockState.modalMode,
 }));
 
-vi.mock("recoil", async () => {
-  const actual = await vi.importActual<typeof import("recoil")>("recoil");
+vi.mock("@fiftyone/reverb", async () => {
+  const actual =
+    await vi.importActual<typeof import("@fiftyone/reverb")>(
+      "@fiftyone/reverb",
+    );
 
   return {
     ...actual,
-    useRecoilState: (node: { key: string }) => {
+    useReverbState: (node: { key: string }) => {
       if (node.key === "dynamicGroupsViewMode") {
         return [
           mockState.values.dynamicGroupsViewMode,
@@ -70,14 +73,14 @@ vi.mock("recoil", async () => {
 
       throw new Error(`Unexpected recoil state: ${node.key}`);
     },
-    useRecoilValue: (node: { key: string }) => {
+    useReverbValue: (node: { key: string }) => {
       if (!(node.key in mockState.values)) {
         throw new Error(`Unexpected recoil value: ${node.key}`);
       }
 
       return mockState.values[node.key as keyof typeof mockState.values];
     },
-    useSetRecoilState: (node: { key: string }) => {
+    useSetReverbState: (node: { key: string }) => {
       if (node.key === "groupMediaIsMain2DViewerVisibleSetting") {
         return mockState.setMainVisible;
       }

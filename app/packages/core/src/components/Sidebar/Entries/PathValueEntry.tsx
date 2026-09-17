@@ -12,9 +12,10 @@ import React, { Suspense, useMemo, useState } from "react";
 import {
   atomFamily,
   selectorFamily,
-  useRecoilState,
-  useRecoilValue,
-} from "recoil";
+  useAssertedReverbValue,
+  useReverbState,
+  useReverbValue,
+} from "@fiftyone/reverb";
 import styled from "styled-components";
 import { prettify } from "../../../utils/generic";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
@@ -85,10 +86,10 @@ const ScalarValueEntry = ({
   const { backgroundColor } = useSpring({
     backgroundColor: theme.background.level1,
   });
-  const color = useRecoilValue(fos.pathColor(path));
-  const field = useRecoilValue(fos.field(path));
+  const color = useReverbValue(fos.pathColor(path));
+  const field = useReverbValue(fos.field(path));
   const pseudoField = makePseudoField(path);
-  const [expanded, setExpanded] = useRecoilState(expandedPathValueEntry(path));
+  const [expanded, setExpanded] = useReverbState(expandedPathValueEntry(path));
 
   return (
     <RegularEntry
@@ -160,15 +161,15 @@ const ListValueEntry = ({
   const [expanded, setExpanded] = useState(false);
   const Arrow = expanded ? KeyboardArrowUp : KeyboardArrowDown;
 
-  const color = useRecoilValue(fos.pathColor(path));
+  const color = useReverbValue(fos.pathColor(path));
   const theme = useTheme();
   const { backgroundColor } = useSpring({
     backgroundColor: theme.background.level1,
   });
-  const field = useRecoilValue(fos.field(path));
+  const field = useReverbValue(fos.field(path));
   const pseudoField = makePseudoField(path);
   const { ftype, subfield, embeddedDocType } =
-    useRecoilValue(fos.field(path)) ?? makePseudoField(path);
+    useReverbValue(fos.field(path)) ?? makePseudoField(path);
 
   return (
     <RegularEntry
@@ -262,10 +263,8 @@ const LengthLoadable = ({ path }: { path: string }) => {
 
 const ListLoadable = ({ path }: { path: string }) => {
   const data = useActiveModalSampleValue<Primitive[]>(path);
-  const { fields, ftype, subfield } = fos.useAssertedRecoilValue(
-    fos.field(path),
-  );
-  const timeZone = useRecoilValue(fos.timeZone);
+  const { fields, ftype, subfield } = useAssertedReverbValue(fos.field(path));
+  const timeZone = useReverbValue(fos.timeZone);
 
   const field = subfield || ftype;
   if (!field) {
@@ -298,7 +297,7 @@ const ListLoadable = ({ path }: { path: string }) => {
 const SlicesListLoadable = ({ path }: { path: string }) => {
   const values = useSlicesData<(string | number | null)[]>(path);
   const theme = useTheme();
-  const textExpanded = useRecoilValue(expandedPathValueEntry(path));
+  const textExpanded = useReverbValue(expandedPathValueEntry(path));
 
   return (
     <>
@@ -327,11 +326,11 @@ const SlicesListLoadable = ({ path }: { path: string }) => {
 const SlicesLoadable = ({ path }: { path: string }) => {
   const values = useSlicesData<string | number | null>(path);
 
-  const { ftype } = useRecoilValue(fos.field(path)) ?? makePseudoField(path);
-  const color = useRecoilValue(fos.pathColor(path));
-  const timeZone = useRecoilValue(fos.timeZone);
+  const { ftype } = useReverbValue(fos.field(path)) ?? makePseudoField(path);
+  const color = useReverbValue(fos.pathColor(path));
+  const timeZone = useReverbValue(fos.timeZone);
   const theme = useTheme();
-  const textExpanded = useRecoilValue(expandedPathValueEntry(path));
+  const textExpanded = useReverbValue(expandedPathValueEntry(path));
 
   return (
     <>
@@ -383,8 +382,8 @@ const useSlicesData = <T,>(path: string) => {
 
   const data = { ...activeSampleMap } as object;
 
-  const target = fos.useAssertedRecoilValue(fos.field(keys[0]));
-  const isList = useRecoilValue(fos.isOfDocumentFieldList(path));
+  const target = useAssertedReverbValue(fos.field(keys[0]));
+  const isList = useReverbValue(fos.isOfDocumentFieldList(path));
   for (const slice of slices) {
     data[slice] = fos.pullSidebarValue(
       target,
@@ -412,9 +411,9 @@ const LoadableValue = ({
 }) => {
   const none = value == null;
   const { fields, ftype } =
-    useRecoilValue(fos.field(path)) ?? makePseudoField(path);
-  const color = useRecoilValue(fos.pathColor(path));
-  const timeZone = useRecoilValue(fos.timeZone);
+    useReverbValue(fos.field(path)) ?? makePseudoField(path);
+  const color = useReverbValue(fos.pathColor(path));
+  const timeZone = useReverbValue(fos.timeZone);
 
   const formatted = useMemo(
     () => format({ fields, ftype, timeZone, value }),
@@ -460,7 +459,7 @@ const PathValueEntry = ({
   const active3dSlices = fos.useActive3dSlices();
   const isPinned = fos.useIs3dPinned();
   const slices = isPinned && (active3dSlices?.length || 1) > 1;
-  const isScalar = useRecoilValue(isScalarValue(path));
+  const isScalar = useReverbValue(isScalarValue(path));
 
   return (
     <div

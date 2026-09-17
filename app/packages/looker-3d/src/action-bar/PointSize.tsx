@@ -3,7 +3,7 @@ import PointSizeIcon from "@mui/icons-material/ScatterPlot";
 import { Checkbox, FormControlLabel } from "@mui/material";
 import Slider from "@mui/material/Slider";
 import { useCallback, useMemo, useState } from "react";
-import * as recoil from "recoil";
+import * as recoil from "@fiftyone/reverb";
 import { ACTION_SET_POINT_SIZE } from "../constants";
 import { ActionItem } from "../containers";
 import {
@@ -18,9 +18,9 @@ const VALID_FLOAT_REGEX = /^([0-9]+([.][0-9]*)?|[.][0-9]+)$/;
 
 export const PointSizeSlider = () => {
   const theme = useTheme();
-  const [pointSize, setPointSize] = recoil.useRecoilState(currentPointSizeAtom);
+  const [pointSize, setPointSize] = recoil.useReverbState(currentPointSizeAtom);
   const [isPointSizeAttenuated, setIsPointSizeAttenuated] =
-    recoil.useRecoilState(isPointSizeAttenuatedAtom);
+    recoil.useReverbState(isPointSizeAttenuatedAtom);
 
   const pointSizeNum = useMemo(() => Number(pointSize), [pointSize]);
 
@@ -120,7 +120,7 @@ export const PointSizeSlider = () => {
 };
 
 export const SetPointSizeButton = () => {
-  const [currentAction, setAction] = recoil.useRecoilState(currentActionAtom);
+  const [currentAction, setAction] = recoil.useReverbState(currentActionAtom);
 
   const handleClick = useCallback(
     (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {

@@ -1,9 +1,9 @@
-import { useRecoilTransaction_UNSTABLE } from "recoil";
+import { useReverbTransaction } from "@fiftyone/reverb";
 import {
   clearExtendedSelectionMirror,
   extendedSelection,
   extendedSelectionOverrideStage,
-} from "../recoil/atoms";
+} from "../atoms/atoms";
 import {
   runExtendedSelectionResetParticipants,
   type ExtendedSelectionResetInterface,
@@ -27,7 +27,7 @@ export function resetExtendedSelectionTransaction(
 }
 
 export default function useResetExtendedSelection() {
-  return useRecoilTransaction_UNSTABLE(
+  return useReverbTransaction(
     ({ set, reset }) =>
       () =>
         resetExtendedSelectionTransaction({ set, reset }),

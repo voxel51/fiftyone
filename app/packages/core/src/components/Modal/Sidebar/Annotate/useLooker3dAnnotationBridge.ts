@@ -47,7 +47,7 @@ export const useLooker3dAnnotationBridge = (): void => {
   );
 
   // store.get reads the latest doc without re-creating the (stable) store —
-  // the recoil mutators are useRecoilCallback-stable, the doc rides a ref
+  // the recoil mutators are useReverbCallback-stable, the doc rides a ref
   const doc = useWorkingDoc();
   const docRef = useRef(doc);
   docRef.current = doc;

@@ -4,7 +4,6 @@ import { useReverbCallback, useReverbValue } from "@fiftyone/reverb";
 import * as fos from "@fiftyone/state";
 import { get } from "lodash";
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
-import { useRecoilCallback, useRecoilValue } from "recoil";
 import useFlashlightPager from "../../../../../useFlashlightPager";
 import useSetDynamicGroupSample from "./useSetDynamicGroupSample";
 
@@ -108,7 +107,7 @@ const useCreateFlashlight = (
   page: (page: number) => Promise<Response<number>>,
   store: fos.LookerStore<fos.Lookers>,
 ) => {
-  const modalSampleId = useRecoilValue(fos.modalSampleId);
+  const modalSampleId = useReverbValue(fos.modalSampleId);
   const highlight = useCallback(
     (sample) => sample._id === modalSampleId,
     [modalSampleId],
@@ -117,7 +116,7 @@ const useCreateFlashlight = (
   const selectSample = useRef(select);
   selectSample.current = select;
   const options = fos.useLookerOptions(true);
-  const field = useRecoilValue(fos.dynamicGroupParameters);
+  const field = useReverbValue(fos.dynamicGroupParameters);
   const setSample = useSetDynamicGroupSample();
   const createLooker = fos.useCreateLooker(
     true,
@@ -161,7 +160,7 @@ const usePageParams = () => {
 
   // groupByFieldValue is still a recoil selector, so its live read needs a
   // recoil callback alongside the reverb one.
-  const getDynamicGroup = useRecoilCallback(
+  const getDynamicGroup = useReverbCallback(
     ({ snapshot }) =>
       () =>
         snapshot.getPromise(fos.groupByFieldValue),
@@ -210,7 +209,7 @@ export const DynamicGroupsFlashlightWrapper = React.memo(() => {
   const key = fos.useGroupByFieldValue();
   const lastIdentity = useRef<string | undefined>(undefined);
   const [flashlight, setFlashlight] = useState<Flashlight<number> | null>(null);
-  const mediaField = useRecoilValue(fos.selectedMediaField(true));
+  const mediaField = useReverbValue(fos.selectedMediaField(true));
 
   useEffect(() => {
     if (key === undefined) return;
@@ -230,8 +229,8 @@ export const DynamicGroupsFlashlightWrapper = React.memo(() => {
     }
   }, [flashlight, id]);
 
-  const selected = useRecoilValue(fos.selectedSamples);
-  const style = useRecoilValue(fos.sampleSelectionStyle);
+  const selected = useReverbValue(fos.selectedSamples);
+  const style = useReverbValue(fos.sampleSelectionStyle);
   useUpdateItems(flashlight, store, options, highlight, selected, style);
 
   return (

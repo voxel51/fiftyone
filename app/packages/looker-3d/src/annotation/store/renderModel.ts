@@ -1,6 +1,6 @@
 import { ModalMode, useModalMode } from "@fiftyone/state";
 import { useMemo } from "react";
-import { selector, useRecoilValue } from "recoil";
+import { selector, useReverbValue } from "@fiftyone/reverb";
 import { isDetection, isPolyline } from "../../types";
 import type { ReconciledDetection3D, ReconciledPolyline3D } from "../types";
 import { transientAtom } from "./transient";
@@ -168,7 +168,7 @@ export const renderModelSelector = selector<RenderModel>({
  */
 export function useRenderModel(): RenderModel {
   const mode = useModalMode();
-  const renderModel = useRecoilValue(renderModelSelector);
+  const renderModel = useReverbValue(renderModelSelector);
 
   // In explore mode, we return an empty model since rendering
   // uses the loader directly via ThreeDLabels
@@ -211,6 +211,6 @@ export function useRenderPolyline(
  * Hook that returns whether the working store is initialized.
  */
 export function useIsWorkingInitialized(): boolean {
-  const workingState = useRecoilValue(workingAtom);
+  const workingState = useReverbValue(workingAtom);
   return workingState.initialized;
 }

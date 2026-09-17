@@ -6,7 +6,7 @@ import type { EventHandlerHook } from "./registerEvent";
 
 import { env } from "@fiftyone/utilities";
 import { useCallback } from "react";
-import { useSetRecoilState } from "recoil";
+import { useSetReverbState } from "@fiftyone/reverb";
 import { getDatasetName, getParam, resolveURL } from "../utils";
 import { AppReadyState } from "./registerEvent";
 import { appReadyState, processState } from "./utils";
@@ -16,7 +16,7 @@ const useStateUpdate: EventHandlerHook = ({
   readyStateRef,
   session,
 }) => {
-  const setReadyState = useSetRecoilState(appReadyState);
+  const setReadyState = useSetReverbState(appReadyState);
 
   return useCallback(
     (payload: { state: { [key: string]: unknown } }) => {

@@ -10,14 +10,18 @@ import {
 } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { useMemo, useRef } from "react";
-import { useRecoilValue, useRecoilValueLoadable, type Loadable } from "recoil";
+import {
+  useReverbValue,
+  useReverbValueLoadable,
+  type Loadable,
+} from "@fiftyone/reverb";
 
 /**
  * Returns a stable subtree key for a modal renderer that opts into persistence.
  * Renderer changes and native/metadata fallbacks still remount the subtree.
  */
 export function useModalSampleRendererPersistenceKey(): string | null {
-  return usePersistenceKey(useRecoilValueLoadable(fos.modalSample));
+  return usePersistenceKey(useReverbValueLoadable(fos.modalSample));
 }
 
 function usePersistenceKey(
@@ -26,7 +30,7 @@ function usePersistenceKey(
   const dataset = fos.useCurrentDataset();
   const schema = fos.useModalSampleSchema();
   const retainedKeyRef = useRef<string | null>(null);
-  const modalMediaField = useRecoilValue(fos.selectedMediaField(true));
+  const modalMediaField = useReverbValue(fos.selectedMediaField(true));
   const { isDisabled: isDatasetRendererDisabled } =
     fos.useGridCustomRendererFailover(dataset?.name);
   const activatorCtx = useMemo(() => ({ dataset, schema }), [dataset, schema]);
@@ -81,7 +85,7 @@ export function useRetainedModalSample(): {
   sample: fos.ModalSample;
   transitioning: boolean;
 } {
-  const sampleLoadable = useRecoilValueLoadable(fos.modalSample);
+  const sampleLoadable = useReverbValueLoadable(fos.modalSample);
   const persistenceKey = usePersistenceKey(sampleLoadable);
   const retainedSampleRef = useRef<fos.ModalSample | null>(null);
 

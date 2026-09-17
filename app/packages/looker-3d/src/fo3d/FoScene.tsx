@@ -7,7 +7,7 @@ import {
   useEffect,
   useMemo,
 } from "react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useReverbValue, useSetReverbState } from "@fiftyone/reverb";
 import { Fo3dErrorBoundary } from "../ErrorBoundary";
 import { PANEL_ORDER_VISIBILITY } from "../constants";
 import { useUrlModifier } from "../hooks/use-fo3d-fetcher";
@@ -415,9 +415,9 @@ export const FoSceneComponent = ({ scene, pointCloudCrop }: FoSceneProps) => {
     persistVisibility(visibilityMap);
   }, [visibilityMap, persistVisibility]);
 
-  const isFo3dBackgroundOn = useRecoilValue(isFo3dBackgroundOnAtom);
+  const isFo3dBackgroundOn = useReverbValue(isFo3dBackgroundOnAtom);
 
-  const setFo3dContainsBackground = useSetRecoilState(fo3dContainsBackground);
+  const setFo3dContainsBackground = useSetReverbState(fo3dContainsBackground);
 
   // This effect synchronizes background availability with the active scene.
   useEffect(() => {
