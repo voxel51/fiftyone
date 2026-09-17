@@ -12,6 +12,7 @@ import {
   DefaultValue,
   atom,
   atomFamily,
+  noWait,
   selector,
   selectorFamily,
 } from "recoil";
@@ -403,10 +404,26 @@ export const modalGroupIdLookup = graphQLSelector<
  * The group id of the modal sample: the modal selector's own group id when
  * the opener supplied one, otherwise resolved from the sample itself via
  * {@link modalGroupIdLookup}.
+ *
+ * A failed lookup (transport error, query timeout) degrades to `null` rather
+ * than poisoning every group-scoped consumer, including the synchronous
+ * `getLoadable(groupId).getValue()` read in the modal. A pending lookup
+ * still suspends as usual.
  */
 export const groupId = selector<string | null>({
   key: "groupId",
-  get: ({ get }) => get(modalSelector)?.groupId || get(modalGroupIdLookup),
+  get: ({ get }) => {
+    const explicit = get(modalSelector)?.groupId;
+    if (explicit) {
+      return explicit;
+    }
+
+    if (get(noWait(modalGroupIdLookup)).state === "hasError") {
+      return null;
+    }
+
+    return get(modalGroupIdLookup);
+  },
 });
 
 export const refreshGroupQuery = atom<number>({

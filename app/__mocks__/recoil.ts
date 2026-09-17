@@ -13,6 +13,16 @@ export function setMockAtoms(newMockValues: { [key: string]: any }) {
 }
 
 export const getValue = (atom) => {
+  // ``noWait`` resolves its dependency into a settled loadable here (the mock
+  // has no pending state): a throwing mock value becomes ``hasError``.
+  if (atom && atom.__noWait) {
+    try {
+      return { state: "hasValue", contents: getValue(atom.dep) };
+    } catch (error) {
+      return { state: "hasError", contents: error };
+    }
+  }
+
   // ``waitForAll`` resolves its dependencies eagerly here (the mock has no
   // async/loadable machinery): map ``getValue`` over the deps, preserving the
   // array/object shape the caller passed.
@@ -63,6 +73,10 @@ const setValue = (atom, value) => {
     mockValues[atom.key] = value instanceof Function ? value(current) : value;
   }
 };
+
+export function noWait<T>(dep: T) {
+  return { __noWait: true, dep };
+}
 
 export function waitForAll<T>(deps: T) {
   return { __waitForAll: true, deps };

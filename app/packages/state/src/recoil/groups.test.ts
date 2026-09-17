@@ -248,4 +248,14 @@ describe("groupId", () => {
     setMockAtoms({ __modalSelector_selector: null, modalGroupIdLookup: null });
     expect(testGroupId()).toBeNull();
   });
+
+  it("degrades to null when the lookup request fails", () => {
+    setMockAtoms({
+      __modalSelector_selector: { id: "sample-id", groupId: null },
+      modalGroupIdLookup: () => {
+        throw new Error("network error");
+      },
+    });
+    expect(testGroupId()).toBeNull();
+  });
 });
