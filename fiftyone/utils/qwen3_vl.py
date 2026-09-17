@@ -1133,12 +1133,19 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
         The segment is handed over whole with its capture rate, and the
         processor applies the checkpoint's own video policy from its
         ``video_preprocessor_config`` (its sampling rate, frame bounds and
-        pixel budget) exactly as it does to a video file. Nothing here
-        chooses frames.
+        pixel budget) exactly as it does to a video file. The one bound
+        applied here is ``config.max_video_frames``, which a segment past
+        it is thinned evenly across its whole length to meet, so the same
+        setting means the same thing on this path as on :meth:`embed` and
+        :meth:`prepare_frames`. It is FiftyOne's own knob and the
+        checkpoint's ``max_frames`` is a separate one; they merely share a
+        default of 768.
 
         Args:
             frames: a ``(T, 3, H, W)`` uint8 ``torch.Tensor``, RGB, in
-                capture order
+                capture order. Another dtype is rejected rather than
+                converted: only the caller knows whether its values run 0-1
+                or 0-255, and the two convert to different pictures
             fps (None): the segment's capture rate. ``None`` or
                 non-positive reports ``config.video_fps``
 
@@ -1159,11 +1166,31 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
             )
 
         if frames.dtype != torch.uint8:
-            frames = frames.clamp(0, 255).to(torch.uint8)
+            raise ValueError("expected a uint8 tensor; got %s" % frames.dtype)
 
         capture_fps = (
             fps if fps is not None and fps > 0 else self.config.video_fps
         )
+
+        n_frames = int(frames.shape[0])
+        cap = self.config.max_video_frames
+        if n_frames > cap:
+            indices = np.linspace(0, n_frames - 1, cap).round().astype(int)
+            frames = frames[torch.as_tensor(indices, device=frames.device)]
+            # The kept frames span the whole segment, so the rate they stand
+            # for is their count over it. The processor reads the segment's
+            # duration off this rate; left at the capture rate it would take
+            # the thinned segment for a shorter one and sample it down again
+            capture_fps = capture_fps * cap / n_frames
+            if not self._warned_frame_cap:
+                self._warned_frame_cap = True
+                logger.warning(
+                    "Segment has %d frames; thinning to max_video_frames="
+                    "%d. Raise it to embed the segment at full rate.",
+                    n_frames,
+                    cap,
+                )
+
         text = self._video_prompt()
         return self._run_processor(
             text,

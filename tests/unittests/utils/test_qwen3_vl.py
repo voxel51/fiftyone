@@ -1240,6 +1240,49 @@ class TestPrepareVideoTensor:
         # segment's frame timestamps from that
         assert _fps_of(processor.calls[0]["video_metadata"][0]) == 2.0
 
+    @staticmethod
+    def _counted_segment(n):
+        """A segment whose every frame carries its own index as its pixel
+        value, so which frames survived is readable off the tensor."""
+        counts = torch.arange(n, dtype=torch.uint8)
+        return counts.view(n, 1, 1, 1).expand(n, 3, 8, 8).contiguous()
+
+    def test_a_segment_past_the_cap_is_thinned_across_its_whole_length(self):
+        processor = StubTensorProcessor()
+        model = self._model_with(processor, cap=8)
+
+        model.prepare_video_tensor(self._counted_segment(200), fps=20.0)
+
+        kept = processor.videos[0][:, 0, 0, 0].tolist()
+        assert len(kept) == 8
+        # Evenly spread and still reaching both ends: a stride would shed a
+        # whole multiple and stop well short of the segment's last frame
+        assert kept == [0, 28, 57, 85, 114, 142, 171, 199]
+
+    def test_thinning_lowers_the_rate_the_segment_is_reported_at(self):
+        processor = StubTensorProcessor()
+        model = self._model_with(processor, cap=8)
+
+        model.prepare_video_tensor(self._counted_segment(200), fps=20.0)
+
+        # 8 frames standing for the same 10 seconds the 200 did. Left at the
+        # capture rate the processor reads the thinned segment as 0.4s long
+        # and samples it down a second time, to its 4-frame minimum
+        metadata = processor.calls[0]["video_metadata"][0]
+        assert _fps_of(metadata) == pytest.approx(0.8)
+
+    def test_a_segment_that_is_not_uint8_is_refused(self):
+        processor = StubTensorProcessor()
+        model = self._model_with(processor)
+        segment = torch.zeros(4, 3, 8, 8, dtype=torch.float32)
+
+        # Converting it would need the pixel range, which only the caller
+        # knows: a 0-1 float segment converts to an all-black one
+        with pytest.raises(ValueError, match="uint8"):
+            model.prepare_video_tensor(segment, fps=4.0)
+
+        assert not processor.calls
+
 
 class StubHiddenModel:
     """A model whose forward takes the logits knob, and records the call."""
