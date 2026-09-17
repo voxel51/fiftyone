@@ -95,12 +95,28 @@ test.describe.serial("segmentation pen-tool round-trip", () => {
 
     await modal.sampleCanvas.rightClick(0.5, 0.5);
 
-    // ── 3. Wait for autosave to flush, then exit the edit form ──────────────
-    // The pen commit leaves the new detection selected; the create toolbar is
-    // hidden while editing, so exit via the edit form rather than the toolbar.
+    // ── 3. The commit right-click also closes the edit form ─────────────────
+    // One right-click commits the polygon AND returns to the label list with
+    // segmentation mode still armed (the same cadence as brush / box /
+    // polyline), so the next click starts a NEW mask rather than extending
+    // this one. A second right-click then leaves the mode for Select.
+    await modal.sidebar.edit.assert.isClosed();
+    await modal.sidebar.annotate.assert.segmentationModeIsActive();
+
+    // the next polygon is a NEW detection, not more polygons on the last one
+    await modal.sampleCanvas.click(0.7, 0.7);
+    await modal.sampleCanvas.click(0.8, 0.7);
+    await modal.sampleCanvas.click(0.8, 0.8);
+    await modal.sidebar.edit.assert.isOpen();
+    await modal.sampleCanvas.rightClick(0.5, 0.5);
+    await modal.sidebar.edit.assert.isClosed();
+    await annotateSDK.waitForDetectionCount(datasetName, "instances", 2);
+
     await modal.sidebar.annotate.waitForSavesSettled();
 
-    await modal.sidebar.edit.exitToList();
+    await modal.sampleCanvas.rightClick(0.5, 0.5);
+    await modal.sidebar.annotate.assert.segmentationModeIsActive(false);
+    await modal.sidebar.annotate.assert.selectIsActive();
 
     // ── 4. Reload the page; verify it doesn't drop the persisted Detection ──
     await page.reload();
