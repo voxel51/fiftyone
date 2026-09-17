@@ -246,6 +246,7 @@ export default function PlotView({
             onChange={(value) =>
               setColorField(value !== NONE_FIELD ? value : null)
             }
+            footer={features.colorByFooter}
           />
           {streamField && (
             <Tooltip
