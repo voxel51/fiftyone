@@ -2271,14 +2271,14 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/relay@workspace:packages/relay"
   dependencies:
-    "@recoiljs/refine": "npm:^0.1.1"
+    "@fiftyone/reverb": "workspace:*"
     "@types/react-relay": "catalog:"
     "@types/relay-runtime": "catalog:"
+    jotai: "catalog:"
     prettier: "catalog:"
     react: "catalog:"
     react-relay: "catalog:"
     recoil: "catalog:"
-    recoil-sync: "npm:^0.2.0"
     relay-compiler: "catalog:"
     relay-compiler-language-typescript: "npm:^15.0.1"
     relay-config: "npm:^12.0.1"
@@ -2288,7 +2288,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/reverb@workspace:packages/reverb":
+"@fiftyone/reverb@workspace:*, @fiftyone/reverb@workspace:packages/reverb":
   version: 0.0.0-use.local
   resolution: "@fiftyone/reverb@workspace:packages/reverb"
   dependencies:
@@ -4909,13 +4909,6 @@ __metadata:
   peerDependencies:
     react: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
   checksum: 10/e2bbb014e03b71d7b5743d0ec0754e213dd954724fe8dcdbdca2af752eb59cfac6380f561ee3a7bcef3935963b18f086305994be93936dbc9894cbe18ab22850
-  languageName: node
-  linkType: hard
-
-"@recoiljs/refine@npm:^0.1.1":
-  version: 0.1.1
-  resolution: "@recoiljs/refine@npm:0.1.1"
-  checksum: 10/7c322fb452c760027f5e582c33beb92b8bf9fa2f1035ad12106ac3abf7e68e06eef3145807ad56c6e9d9fc70e7a0f022b17b4634e4f81ca3dbaaf3b14db8f371
   languageName: node
   linkType: hard
 
@@ -17294,18 +17287,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"recoil-sync@npm:^0.2.0":
-  version: 0.2.0
-  resolution: "recoil-sync@npm:0.2.0"
-  dependencies:
-    "@recoiljs/refine": "npm:^0.1.1"
-    transit-js: "npm:^0.8.874"
-  peerDependencies:
-    recoil: ">=0.7.3"
-  checksum: 10/ecc19c0b37e8e3e493876b0c62a58733326fdb0ea96cb65d8127122a258011b3a81dc7d2350abfd603903b5ba278b6c6ea2f0ec5bd0a160922f39cc22abb34f0
-  languageName: node
-  linkType: hard
-
 "recoil@npm:0.7.7":
   version: 0.7.7
   resolution: "recoil@npm:0.7.7"
@@ -19432,13 +19413,6 @@ __metadata:
   version: 0.0.3
   resolution: "tr46@npm:0.0.3"
   checksum: 10/8f1f5aa6cb232f9e1bdc86f485f916b7aa38caee8a778b378ffec0b70d9307873f253f5cbadbe2955ece2ac5c83d0dc14a77513166ccd0a0c7fe197e21396695
-  languageName: node
-  linkType: hard
-
-"transit-js@npm:^0.8.874":
-  version: 0.8.874
-  resolution: "transit-js@npm:0.8.874"
-  checksum: 10/8d796c960acc9b06d9816103d9a0da1640d81437d9e055556bf9cbedb976134f51edeb970d87f58ad1361feb5355822cc43a9fa2890cb9a37c089e4dd6bb54c1
   languageName: node
   linkType: hard
 

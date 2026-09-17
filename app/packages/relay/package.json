@@ -31,8 +31,8 @@
         "vite": "catalog:"
     },
     "dependencies": {
-        "@recoiljs/refine": "^0.1.1",
-        "react-relay": "catalog:",
-        "recoil-sync": "^0.2.0"
+        "@fiftyone/reverb": "workspace:*",
+        "jotai": "catalog:",
+        "react-relay": "catalog:"
     }
 }
