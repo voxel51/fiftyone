@@ -74,10 +74,9 @@ export const count = selectorFamily({
         }
 
         if (split.length < 2) {
-          // this will never resolve, which allows for incoming schema changes
-          // this shouldn't be necessary, but there is a mismatch between
-          // aggs and schema when there is a field change
-          throw new Promise(() => undefined);
+          // Never resolves, which rides out the window where aggregations and
+          // schema disagree after a field change.
+          return new Promise<number>(() => undefined);
         }
 
         const parent = split.slice(0, split.length - 1).join(".");
