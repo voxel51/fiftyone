@@ -1607,6 +1607,7 @@ __metadata:
     "@fiftyone/core": "npm:*"
     "@fiftyone/events": "npm:*"
     "@fiftyone/feature-flags": "npm:*"
+    "@fiftyone/location": "npm:*"
     "@fiftyone/multimodal": "npm:*"
     "@fiftyone/relay": "npm:*"
     "@fiftyone/state": "npm:*"
@@ -1759,6 +1760,7 @@ __metadata:
     "@fiftyone/components": "npm:*"
     "@fiftyone/feature-flags": "npm:*"
     "@fiftyone/flashlight": "npm:*"
+    "@fiftyone/location": "npm:*"
     "@fiftyone/looker": "npm:*"
     "@fiftyone/map": "npm:*"
     "@fiftyone/multimodal": "npm:*"
@@ -2035,6 +2037,19 @@ __metadata:
     jotai: "*"
     react: ^18.0.0
     react-dom: ^18.0.0
+  languageName: unknown
+  linkType: soft
+
+"@fiftyone/location@npm:*, @fiftyone/location@workspace:packages/location":
+  version: 0.0.0-use.local
+  resolution: "@fiftyone/location@workspace:packages/location"
+  dependencies:
+    react: "catalog:"
+    typescript: "catalog:"
+    vite: "catalog:"
+    vitest: "catalog:"
+  peerDependencies:
+    react: "*"
   languageName: unknown
   linkType: soft
 
