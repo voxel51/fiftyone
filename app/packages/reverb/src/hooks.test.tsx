@@ -17,6 +17,8 @@ import {
   useReverbValueLoadable,
   useSetReverbState,
 } from "./hooks";
+import { getDefaultStore } from "jotai";
+import { DEFAULT_VALUE } from "./sentinel";
 import { ReverbRoot } from "./root";
 import { selector } from "./selector";
 
@@ -27,8 +29,12 @@ const doubled = selector<number>({
 });
 
 // Auto-cleanup only registers when vitest globals are on, which depends on
-// which config picked the file up.
-afterEach(cleanup);
+// which config picked the file up. State is reset too: every root shares one
+// store, so a module-level atom carries its value into the next case.
+afterEach(() => {
+  cleanup();
+  getDefaultStore().set(count, DEFAULT_VALUE);
+});
 
 describe("hooks", () => {
   it("reads and writes through a root", async () => {
@@ -229,44 +235,40 @@ describe("hooks", () => {
     // A per-render member would read back 0 here.
     expect(screen.getByRole("status").textContent).toBe("1");
   });
-  it("keeps one root's effect listeners out of another root's writes", async () => {
-    const seen: Array<[string, number]> = [];
-    const label = atom({ key: "rootLabel", default: "?" });
+  it("shares one store between roots", async () => {
+    const seen: number[] = [];
     const tracked = atom({
-      key: "trackedByRoot",
+      key: "trackedAcrossRoots",
       default: 0,
-      effects: [
-        ({ getLoadable, onSet }) => {
-          const root = getLoadable(label).getValue();
-
-          onSet((next) => seen.push([root, next]));
-        },
-      ],
+      effects: [({ onSet }) => onSet((next) => seen.push(next))],
     });
 
-    const Component = () => {
+    const Component = ({ label }: { label: string }) => {
       const [value, setValue] = useReverbState(tracked);
 
       return (
         <button type="button" onClick={() => setValue(value + 1)}>
-          {useReverbValue(label)}
+          {`${label}:${value}`}
         </button>
       );
     };
 
     render(
       <>
-        <ReverbRoot initializeState={({ set }) => set(label, "left")}>
-          <Component />
+        <ReverbRoot>
+          <Component label="left" />
         </ReverbRoot>
-        <ReverbRoot initializeState={({ set }) => set(label, "right")}>
-          <Component />
+        <ReverbRoot>
+          <Component label="right" />
         </ReverbRoot>
       </>,
     );
 
-    await act(async () => screen.getByText("left").click());
+    await act(async () => screen.getByText("left:0").click());
 
-    expect(seen).toEqual([["left", 1]]);
+    // Non-React code reads through the default store, so a second store would
+    // leave it looking at values React never wrote.
+    expect(screen.getByText("right:1")).toBeTruthy();
+    expect(seen).toEqual([1]);
   });
 });

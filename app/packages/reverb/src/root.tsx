@@ -2,7 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { Provider, createStore } from "jotai";
+import { Provider, getDefaultStore } from "jotai";
 import type React from "react";
 import { useState } from "react";
 import { DEFAULT_VALUE } from "./sentinel";
@@ -13,16 +13,21 @@ interface ReverbRootProps {
   initializeState?: (mutable: MutableSnapshot) => void;
 }
 
+/**
+ * The default store, not a fresh one: non-React code reaches state through
+ * `getDefaultStore()` directly, and a second store would leave those reads
+ * looking at values React never wrote.
+ */
 export const ReverbRoot = ({ children, initializeState }: ReverbRootProps) => {
   const [store] = useState(() => {
-    const created = createStore();
+    const shared = getDefaultStore();
 
     initializeState?.({
-      set: (state, next) => created.set(state, next),
-      reset: (state) => created.set(state, DEFAULT_VALUE),
+      set: (state, next) => shared.set(state, next),
+      reset: (state) => shared.set(state, DEFAULT_VALUE),
     });
 
-    return created;
+    return shared;
   });
 
   return <Provider store={store}>{children}</Provider>;
