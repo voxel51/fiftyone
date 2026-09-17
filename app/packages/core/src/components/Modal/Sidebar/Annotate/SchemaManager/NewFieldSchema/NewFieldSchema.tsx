@@ -268,9 +268,8 @@ const NewFieldSchema = () => {
       setLabelSchemasData(label_schemas);
       setActiveFields(active_label_schemas);
 
-      // Add the new field to exploreActiveFields so it's
-      // immediately visible (visibleLabelSchemas intersects
-      // activeLabelSchemas with exploreActiveFields).
+      // Activate the new field in the Explore sidebar so it's immediately
+      // visible (visibleLabelSchemas intersects the two active sets).
       addToExploreActiveFields(trimmedName);
 
       refreshSchema();

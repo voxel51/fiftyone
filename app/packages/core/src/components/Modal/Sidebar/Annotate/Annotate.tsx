@@ -35,7 +35,6 @@ import {
 } from "@fiftyone/annotation";
 import { useLighterAnnotationBridge } from "./useLighterAnnotationBridge";
 import { useLooker3dAnnotationBridge } from "./useLooker3dAnnotationBridge";
-import { useSyncAnnotationSliceMediaType } from "./useSyncAnnotationSliceMediaType";
 import { Box } from "@mui/material";
 
 /** Persists (per browser) the user's dismissal of the video-AI upsell. */
@@ -170,7 +169,6 @@ const Annotate = ({ disabledReason, loadSchemas }: AnnotateProps) => {
   useSyncModalSample();
   useSync3dModalSample();
   useSyncAnnotationEngine();
-  useSyncAnnotationSliceMediaType();
   useEngineUndoableBridge();
   useLighterAnnotationBridge();
   useLooker3dAnnotationBridge();

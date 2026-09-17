@@ -218,10 +218,8 @@ export const useIsFieldActive = (field: string) => {
 /**
  * Hook that returns a callback to activate a field in the Explore sidebar.
  *
- * Sets the `activeField` source of truth. The Sidebar.tsx
- * sync effect automatically propagates this change to the
- * Jotai `exploreActiveFields` atom, ensuring the field becomes visible
- * in the Annotate sidebar via `visibleLabelSchemas`.
+ * `visibleLabelSchemas` reads the Explore active fields, so activating a field
+ * here also makes it visible in the Annotate sidebar.
  */
 export const useAddToExploreActiveFields = () => {
   return useReverbCallback(
