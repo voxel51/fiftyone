@@ -400,8 +400,9 @@ class Qwen3VLModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         normalize_embeddings (True): whether to L2 normalize embeddings
         video_fps (2.0): frame sampling rate for video inputs; Qwen3-VL's
             default is 2.0 FPS. Lower values = fewer frames = faster
-        max_video_frames (128): maximum frames to sample from a video;
-            prevents OOM on long videos. Matches qwen-vl-utils MAX_FRAMES.
+        max_video_frames (768): maximum frames to sample from a video;
+            prevents OOM on long videos. Matches the Qwen3-VL video
+            processor's own ``max_frames``.
         mode (None): the media type mode, "image" or "video"; if None,
             defaults to the dataset's media type at inference time
         text_only (False): whether to load ONLY the language tower, for a
@@ -430,7 +431,7 @@ class Qwen3VLModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
                 f"video_fps must be positive, got {self.video_fps}"
             )
         self.max_video_frames = self.parse_int(
-            d, "max_video_frames", default=128
+            d, "max_video_frames", default=768
         )
         if self.max_video_frames <= 0:
             raise ValueError(
@@ -1123,8 +1124,99 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
         except TypeError:
             return fields
 
+    def prepare_video_tensor(self, frames, fps=None):
+        """The CPU-free half of embedding a video segment: runs the
+        processor over frames that are ALREADY a ``(T, 3, H, W)`` uint8
+        tensor, on whatever device they sit on, returning model inputs on
+        that same device.
+
+        The segment is handed over whole with its capture rate, and the
+        processor applies the checkpoint's own video policy from its
+        ``video_preprocessor_config`` (its sampling rate, frame bounds and
+        pixel budget) exactly as it does to a video file. The one bound
+        applied here is ``config.max_video_frames``, which a segment past
+        it is thinned evenly across its whole length to meet, so the same
+        setting means the same thing on this path as on :meth:`embed` and
+        :meth:`prepare_frames`. It is FiftyOne's own knob and the
+        checkpoint's ``max_frames`` is a separate one; they merely share a
+        default of 768.
+
+        Args:
+            frames: a ``(T, 3, H, W)`` uint8 ``torch.Tensor``, RGB, in
+                capture order. Another dtype is rejected rather than
+                converted: only the caller knows whether its values run 0-1
+                or 0-255, and the two convert to different pictures
+            fps (None): the segment's capture rate. ``None`` or
+                non-positive reports ``config.video_fps``
+
+        Returns:
+            an opaque inputs object for :meth:`embed_prepared`
+        """
+        self._require_vision()
+        if not isinstance(frames, torch.Tensor):
+            raise TypeError(
+                "prepare_video_tensor takes a torch.Tensor; got %s"
+                % type(frames).__name__
+            )
+
+        if frames.ndim != 4 or frames.shape[1] != 3 or not frames.shape[0]:
+            raise ValueError(
+                "expected a non-empty (T, 3, H, W) tensor; got %s"
+                % (tuple(frames.shape),)
+            )
+
+        if frames.dtype != torch.uint8:
+            raise ValueError("expected a uint8 tensor; got %s" % frames.dtype)
+
+        capture_fps = (
+            fps if fps is not None and fps > 0 else self.config.video_fps
+        )
+
+        n_frames = int(frames.shape[0])
+        cap = self.config.max_video_frames
+        if n_frames > cap:
+            indices = np.linspace(0, n_frames - 1, cap).round().astype(int)
+            frames = frames[torch.as_tensor(indices, device=frames.device)]
+            # The kept frames span the whole segment, so the rate they stand
+            # for is their count over it. The processor reads the segment's
+            # duration off this rate; left at the capture rate it would take
+            # the thinned segment for a shorter one and sample it down again
+            capture_fps = capture_fps * cap / n_frames
+            if not self._warned_frame_cap:
+                self._warned_frame_cap = True
+                logger.warning(
+                    "Segment has %d frames; thinning to max_video_frames="
+                    "%d. Raise it to embed the segment at full rate.",
+                    n_frames,
+                    cap,
+                )
+
+        text = self._video_prompt()
+        return self._run_processor(
+            text,
+            None,
+            [frames],
+            int(frames.shape[0]),
+            capture_fps,
+            sample=True,
+        )
+
+    def _video_prompt(self):
+        """The chat-templated prompt carrying one video placeholder."""
+        return self._processor.apply_chat_template(
+            [
+                {
+                    "role": "user",
+                    "content": [{"type": "video", "video": "clip"}],
+                }
+            ],
+            tokenize=False,
+            add_generation_prompt=False,
+        )
+
     def _prepare_frame_list(self, frames, fps):
-        """Runs the processor over one clip, returning host-side inputs.
+        """Runs the processor over one clip of separate frames, returning
+        host-side inputs.
 
         Args:
             frames: a list of prepared frames (e.g. PIL images), in order
@@ -1154,18 +1246,32 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
             tokenize=False,
             add_generation_prompt=False,
         )
-        # These frames are already the intended selection, so the processor
-        # must not resample them toward ITS default rate — and it should
-        # build its frame timestamps from the clip's REAL rate rather than
-        # the 24fps it assumes when no metadata rides along. Tried richest
-        # first: older processors take neither kwarg and never resample.
-        attempts = [
-            {
-                "do_sample_frames": False,
-                "video_metadata": [self._video_metadata(len(frames), fps)],
-            },
-            {"do_sample_frames": False},
-        ]
+        return self._run_processor(
+            text, image_inputs, video_inputs, len(frames), fps
+        )
+
+    def _run_processor(
+        self, text, image_inputs, video_inputs, n_frames, fps, sample=False
+    ):
+        """One processor call, in whichever convention this transformers
+        version takes.
+
+        With ``sample`` the frames are a whole video segment and the
+        processor picks from them by its own configured policy; without it
+        they are already the intended selection and must not be resampled
+        toward its default rate. Either way the metadata carries the real
+        rate, which the processor otherwise assumes to be 24fps. Tried
+        richest first: older processors take neither kwarg and never
+        resample.
+        """
+        metadata = {"video_metadata": [self._video_metadata(n_frames, fps)]}
+        if sample:
+            attempts = [metadata]
+        else:
+            attempts = [
+                {"do_sample_frames": False, **metadata},
+                {"do_sample_frames": False},
+            ]
         # The convention is a fact about the processor VERSION, so a failed
         # richer attempt — which can die mid-processor after real work — is
         # skipped for every clip after the first
