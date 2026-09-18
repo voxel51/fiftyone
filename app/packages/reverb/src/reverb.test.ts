@@ -269,6 +269,39 @@ describe("selector", () => {
 });
 
 describe("pending dependencies", () => {
+  it("tracks a dependency read after an awaited one", async () => {
+    const slow = atom<Promise<number>>({
+      key: "trackSlow",
+      default: Promise.resolve(1),
+    });
+    const after = atom<number>({ key: "trackAfter", default: 10 });
+    const sum = selector<number>({
+      key: "trackSum",
+      get: ({ get }) => get(slow) + get(after),
+    });
+    const store = createStore();
+
+    // Subscribed, so the value is cached and only a tracked dependency
+    // invalidates it. `after` is reached only once the awaited dependency
+    // settles, which is outside the pass that registers dependencies.
+    let notified = 0;
+    const unsubscribe = store.sub(sum, () => void notified++);
+
+    expect(await store.get(sum)).toBe(11);
+    await Promise.resolve();
+
+    // Count only what the write below causes, not the initial settle.
+    const settled = notified;
+
+    store.set(after, 20);
+    await Promise.resolve();
+
+    expect(notified).toBeGreaterThan(settled);
+    expect(await store.get(sum)).toBe(21);
+
+    unsubscribe();
+  });
+
   it("suspends a selector rather than handing it a promise", async () => {
     let settle: (value: number[]) => void = () => undefined;
     const source = primitiveAtom<number[]>(
