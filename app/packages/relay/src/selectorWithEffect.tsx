@@ -1,17 +1,27 @@
 import {
+  atom,
   type ReadOnlySelectorOptions,
   type ReadWriteSelectorOptions,
   type ReverbState,
   selector,
+  useSetReverbState,
 } from "@fiftyone/reverb";
-import React from "react";
+import React, { useEffect } from "react";
 
 // The registry is keyed by string, so a setter cannot be typed per item. The
 // value is the top type rather than `never`, which would narrow every setter's
 // parameter to the reset sentinel alone.
 export type Setter = ReadWriteSelectorOptions<unknown>["set"];
 
-let effectStore_INTERNAL: Map<string, Setter>;
+/**
+ * Held in the store rather than at module scope: a host that renders
+ * concurrent requests in one process has a store per render, and one shared
+ * map would let a write from one render reach another's setters.
+ */
+const effectSetters = atom<Map<string, Setter>>({
+  key: "__selectorEffectSetters",
+  default: new Map(),
+});
 
 export function SelectorEffectContext({
   setters,
@@ -19,7 +29,9 @@ export function SelectorEffectContext({
 }: React.PropsWithChildren<{
   setters: Map<string, Setter>;
 }>) {
-  effectStore_INTERNAL = setters;
+  const hold = useSetReverbState(effectSetters);
+
+  useEffect(() => hold(setters), [hold, setters]);
 
   return <>{children}</>;
 }
@@ -56,7 +68,7 @@ export function selectorWithEffect<T>(
     ...options,
     set: (...params) => {
       const key = itemKey || options.key;
-      const set = effectStore_INTERNAL?.get(key);
+      const set = params[0].get(effectSetters)?.get(key);
       if (!isTest && !set) {
         throw new Error(`No setter for selector '${key}' found`);
       }
