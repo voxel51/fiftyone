@@ -3,7 +3,7 @@
  */
 
 import type { Getter } from "jotai";
-import { loadable } from "./loadable";
+import { loadableFrom } from "./loadable";
 import type { Store } from "./transaction";
 import type { ReverbValue, SnapshotInterface } from "./types";
 
@@ -12,7 +12,8 @@ import type { ReverbValue, SnapshotInterface } from "./types";
  * that landed in between. Both members are bound so callers may destructure.
  */
 export const snapshotFrom = (read: Getter): SnapshotInterface => ({
-  getLoadable: <T>(state: ReverbValue<T>) => loadable(read(state) as T),
+  getLoadable: <T>(state: ReverbValue<T>) =>
+    loadableFrom<T>(() => read(state) as T),
   getPromise: <T>(state: ReverbValue<T>) =>
     Promise.resolve(read(state) as T | Promise<T>),
 });

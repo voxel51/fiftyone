@@ -8,6 +8,7 @@ import { atom } from "./atom";
 import { atomFamily, selectorFamily } from "./family";
 import { loadable, stableLoadable } from "./loadable";
 import { selector } from "./selector";
+import { snapshot } from "./snapshot";
 import { DEFAULT_VALUE, DefaultValue } from "./sentinel";
 import { runTransaction } from "./transaction";
 
@@ -287,6 +288,24 @@ describe("selector", () => {
     expect(store.get(derived)).toBe(6);
     store.set(source, 5);
     expect(store.get(derived)).toBe(15);
+  });
+});
+
+describe("snapshot", () => {
+  it("reports a throwing selector as an error loadable", () => {
+    const failure = new Error("nope");
+    const broken = selector<number>({
+      key: "snapshotThrows",
+      get: () => {
+        throw failure;
+      },
+    });
+    const store = createStore();
+
+    const result = snapshot(store).getLoadable(broken);
+
+    expect(result.state).toBe("hasError");
+    expect(result.contents).toBe(failure);
   });
 });
 

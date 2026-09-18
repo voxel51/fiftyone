@@ -82,6 +82,23 @@ export function loadable<T>(raw: T | Promise<T>): Loadable<T> {
   return outcome.ok ? value(outcome.value as T) : error<T>(outcome.error);
 }
 
+/**
+ * A read that throws is an error loadable, not an escaping throw — a caller
+ * asking for a loadable is asking not to be thrown at. A thrown promise is a
+ * suspend rather than a failure, so it stays loading.
+ */
+export function loadableFrom<T>(read: () => T | Promise<T>): Loadable<T> {
+  try {
+    return loadable(read());
+  } catch (thrown) {
+    if (thrown instanceof Promise) {
+      return loadable(thrown as Promise<T>);
+    }
+
+    return error<T>(thrown);
+  }
+}
+
 const cache = new WeakMap<
   object,
   { raw: unknown; result: Loadable<unknown> }
