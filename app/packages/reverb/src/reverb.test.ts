@@ -65,6 +65,24 @@ describe("reset", () => {
       }, 1);
     });
   });
+
+  it("keeps following a state-backed default after a reset", () => {
+    const source = atom<number>({ key: "resetSource", default: 1 });
+    const follower = atom<number>({ key: "resetFollower", default: source });
+    const store = createStore();
+
+    expect(store.get(follower)).toBe(1);
+
+    store.set(follower, 99);
+    expect(store.get(follower)).toBe(99);
+
+    store.set(follower, DEFAULT_VALUE);
+    expect(store.get(follower)).toBe(1);
+
+    // The default is state, so the reset has to leave it tracking.
+    store.set(source, 2);
+    expect(store.get(follower)).toBe(2);
+  });
 });
 
 describe("updater form", () => {

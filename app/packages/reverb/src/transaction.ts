@@ -21,13 +21,25 @@ const transaction = primitive(null, (get, set, body: Body) =>
 
 type Observer = (store: Store) => void;
 
-const observers = new Set<Observer>();
+/**
+ * Keyed by store rather than held in one set: a host that renders concurrent
+ * requests in one process has a store per render, and a shared set would let
+ * one render's observers see another's writes.
+ */
+const observers = new WeakMap<Store, Set<Observer>>();
 
 /** Observers see writes made through a transaction or callback, not every set. */
-export const observeTransactions = (observer: Observer) => {
-  observers.add(observer);
+export const observeTransactions = (store: Store, observer: Observer) => {
+  let held = observers.get(store);
 
-  return () => void observers.delete(observer);
+  if (!held) {
+    held = new Set();
+    observers.set(store, held);
+  }
+
+  held.add(observer);
+
+  return () => void held.delete(observer);
 };
 
 /** Commits every write in `body` as one batch. Writes after an await are not
@@ -39,11 +51,13 @@ export function runTransaction<Return>(
   // The atom erases the body's return type; this call site restores it.
   const result = store.set(transaction, body) as Return;
 
-  if (observers.size) {
+  const held = observers.get(store);
+
+  if (held?.size) {
     // Deferred: a transaction can run during render, and an observer that
     // sets state would then update a component mid-render.
     queueMicrotask(() => {
-      for (const observer of observers) {
+      for (const observer of held) {
         observer(store);
       }
     });

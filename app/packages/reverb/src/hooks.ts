@@ -38,7 +38,7 @@ export function useAssertedReverbValue<T>(
 ): NonNullable<T> {
   const value = useAtomValue(state);
 
-  if (!value) {
+  if (value === undefined || value === null) {
     throw new Error(`${state.debugLabel ?? "state"} is not defined`);
   }
 

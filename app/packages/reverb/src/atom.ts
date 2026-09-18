@@ -5,7 +5,7 @@
 import { type Atom, type Getter, atom as primitive } from "jotai";
 import { resolve } from "./accessors";
 import { effectHost, withEffects } from "./effects";
-import { named } from "./named";
+import { isReverb, named } from "./named";
 import { DefaultValue } from "./sentinel";
 import type { AtomOptions, ReverbState, Write } from "./types";
 
@@ -15,8 +15,7 @@ import type { AtomOptions, ReverbState, Write } from "./types";
  */
 const UNSET = Symbol("unset");
 
-const isState = (value: unknown): value is Atom<unknown> =>
-  typeof value === "object" && value !== null && "read" in value;
+const isState = (value: unknown): value is Atom<unknown> => isReverb(value);
 
 export function atom<T>(options: AtomOptions<T>): ReverbState<T> {
   /**
@@ -25,7 +24,8 @@ export function atom<T>(options: AtomOptions<T>): ReverbState<T> {
    */
   const deferred = isState(options.default);
   const base = primitive<T | typeof UNSET>(
-    deferred || options.resolve ? UNSET : options.default,
+    // `deferred` having been checked, the remaining branch is a plain value.
+    deferred || options.resolve ? UNSET : (options.default as T),
   );
   base.debugLabel = `${options.key}/base`;
 
@@ -56,7 +56,9 @@ export function atom<T>(options: AtomOptions<T>): ReverbState<T> {
         const isReset = requested instanceof DefaultValue;
         const value = isReset ? fallback(get) : (requested as T);
 
-        set(base, value);
+        // A reset stores UNSET rather than the resolved value: a default
+        // that is itself state has to keep tracking it afterwards.
+        set(base, isReset ? UNSET : value);
         get(host).notify(value, isReset ? requested : previous, isReset);
       },
     ),

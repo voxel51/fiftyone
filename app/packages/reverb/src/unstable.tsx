@@ -36,10 +36,14 @@ export const useReverbSnapshot = (): SnapshotInterface => {
 export function useTransactionObserver(
   observer: (accessors: { snapshot: SnapshotInterface }) => void,
 ): void {
+  const store = useStore();
+
   useEffect(
     () =>
-      observeTransactions((store) => observer({ snapshot: snapshot(store) })),
-    [observer],
+      observeTransactions(store, (current) =>
+        observer({ snapshot: snapshot(current) }),
+      ),
+    [observer, store],
   );
 }
 

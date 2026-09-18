@@ -48,7 +48,8 @@ export interface MutableSnapshot {
 
 export interface AtomOptions<T> {
   key: string;
-  default: T;
+  /** Another piece of state reads through to it, and keeps tracking it. */
+  default: T | ReverbValueReadOnly<T>;
   /**
    * Computes the value on read until a write lands. An effect cannot set a
    * value before the first read returns, so state fed by one needs this.
