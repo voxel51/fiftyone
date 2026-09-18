@@ -13,37 +13,57 @@ import type {
 } from "./types";
 
 /**
- * Sorted so two structurally equal parameters name the same member. Sets,
- * maps and non-finite numbers are spelled out because `JSON.stringify` turns
- * every set and map into `{}` and every one of `NaN`/`Infinity` into `null`,
- * which would quietly hand unequal parameters the same member.
+ * A canonical encoding of the parameter, tagged by type so no two unequal
+ * parameters can produce the same key. `JSON.stringify` alone cannot do this:
+ * it renders every set and map as `{}` and each of `NaN`/`Infinity` as `null`,
+ * and any marker embedded in its output is a shape a plain object could also
+ * produce.
  */
-const stableKey = (param: unknown): string =>
-  JSON.stringify(param, (_key, value) => {
-    if (value instanceof Set) {
-      return { set: [...value].map(stableKey).sort() };
-    }
+const stableKey = (param: unknown): string => {
+  if (param === null) return "z";
+  if (param === undefined) return "u";
 
-    if (value instanceof Map) {
-      return {
-        map: [...value]
-          .map(([key, held]) => `${stableKey(key)}:${stableKey(held)}`)
-          .sort(),
-      };
-    }
+  switch (typeof param) {
+    case "string":
+      return `s:${param}`;
+    case "number":
+      return Number.isFinite(param) ? `n:${param}` : `f:${param}`;
+    case "boolean":
+      return `b:${param}`;
+    case "bigint":
+      return `g:${param}`;
+    default:
+      break;
+  }
 
-    if (typeof value === "number" && !Number.isFinite(value)) {
-      return `number:${value}`;
-    }
+  if (Array.isArray(param)) {
+    return `a:[${param.map(stableKey).join(",")}]`;
+  }
 
-    return value && typeof value === "object" && !Array.isArray(value)
-      ? Object.fromEntries(
-          Object.entries(value as Record<string, unknown>).sort(([a], [b]) =>
-            a < b ? -1 : 1,
-          ),
-        )
-      : value;
-  }) ?? "undefined";
+  if (param instanceof Set) {
+    return `S:[${[...param].map(stableKey).sort().join(",")}]`;
+  }
+
+  if (param instanceof Map) {
+    return `M:[${[...param]
+      .map(([key, held]) => `${stableKey(key)}=>${stableKey(held)}`)
+      .sort()
+      .join(",")}]`;
+  }
+
+  if (param instanceof Date) {
+    return `d:${param.getTime()}`;
+  }
+
+  if (typeof param === "object") {
+    return `o:{${Object.entries(param as Record<string, unknown>)
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([key, held]) => `${key}:${stableKey(held)}`)
+      .join(",")}}`;
+  }
+
+  return `x:${String(param)}`;
+};
 
 export interface Family<P, S> {
   (param: P): S;

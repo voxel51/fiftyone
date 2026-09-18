@@ -161,6 +161,28 @@ describe("families", () => {
     });
   });
 
+  it("separates a set from an object shaped like its encoding", () => {
+    const family = atomFamily<number, unknown>({
+      key: "encodingParams",
+      default: 0,
+    });
+    const store = createStore();
+
+    const collisions = [
+      [new Set(["a"]), { set: ['"a"'] }],
+      [Number.NaN, "number:NaN"],
+      [1, "1"],
+      [null, "null"],
+    ];
+
+    collisions.forEach(([left, right], index) => {
+      store.set(family(left), index + 1);
+
+      expect(store.get(family(right))).toBe(0);
+      expect(store.get(family(left))).toBe(index + 1);
+    });
+  });
+
   it("gives structurally equal parameters one member", () => {
     const family = atomFamily<number, unknown>({
       key: "equalParams",
@@ -277,7 +299,9 @@ describe("pending dependencies", () => {
     const after = atom<number>({ key: "trackAfter", default: 10 });
     const sum = selector<number>({
       key: "trackSum",
-      get: ({ get }) => get(slow) + get(after),
+      // A pending dependency suspends and the read resumes with the settled
+      // value, which the types do not model.
+      get: ({ get }) => (get(slow) as unknown as number) + get(after),
     });
     const store = createStore();
 
