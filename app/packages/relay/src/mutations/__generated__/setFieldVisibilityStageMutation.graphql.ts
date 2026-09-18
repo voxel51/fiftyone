@@ -1,17 +1,16 @@
 /**
- * @generated SignedSource<<030c363b6286e739c631c4b28feb43a2>>
+ * @generated SignedSource<<799546693a6b3d231a5c215defc096f9>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { ConcreteRequest, Mutation } from 'relay-runtime';
+import { ConcreteRequest } from 'relay-runtime';
 export type setFieldVisibilityStageMutation$variables = {
-  session?: string | null;
-  stage?: object | null;
+  session?: string | null | undefined;
+  stage?: object | null | undefined;
   subscription: string;
 };
 export type setFieldVisibilityStageMutation$data = {
@@ -66,27 +65,27 @@ v3 = [
 return {
   "fragment": {
     "argumentDefinitions": [
-      (v0/*: any*/),
-      (v1/*: any*/),
-      (v2/*: any*/)
+      (v0/*:: as any*/),
+      (v1/*:: as any*/),
+      (v2/*:: as any*/)
     ],
     "kind": "Fragment",
     "metadata": null,
     "name": "setFieldVisibilityStageMutation",
-    "selections": (v3/*: any*/),
+    "selections": (v3/*:: as any*/),
     "type": "Mutation",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
     "argumentDefinitions": [
-      (v2/*: any*/),
-      (v0/*: any*/),
-      (v1/*: any*/)
+      (v2/*:: as any*/),
+      (v0/*:: as any*/),
+      (v1/*:: as any*/)
     ],
     "kind": "Operation",
     "name": "setFieldVisibilityStageMutation",
-    "selections": (v3/*: any*/)
+    "selections": (v3/*:: as any*/)
   },
   "params": {
     "cacheID": "9825597b80da566f3836d4f7e93d3f3e",

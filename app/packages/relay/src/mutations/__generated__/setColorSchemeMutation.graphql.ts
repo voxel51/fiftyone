@@ -1,35 +1,34 @@
 /**
- * @generated SignedSource<<36015550e66963d6bfedabd36c78686e>>
+ * @generated SignedSource<<b35126820272b52322db063312955dde>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { ConcreteRequest, Mutation } from 'relay-runtime';
+import { ConcreteRequest } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type ColorSchemeInput = {
-  colorBy?: string | null;
+  colorBy?: string | null | undefined;
   colorPool: ReadonlyArray<string>;
-  colorscales?: ReadonlyArray<ColorscaleInput> | null;
-  defaultColorscale?: DefaultColorscaleInput | null;
-  defaultMaskTargetsColors?: ReadonlyArray<MaskColorInput> | null;
-  fields?: ReadonlyArray<CustomizeColorInput> | null;
-  id?: string | null;
-  labelTags?: LabelTagColorInput | null;
-  multicolorKeypoints?: boolean | null;
-  opacity?: number | null;
-  showSkeletons?: boolean | null;
-  temporalTags?: TemporalTagColorInput | null;
+  colorscales?: ReadonlyArray<ColorscaleInput> | null | undefined;
+  defaultColorscale?: DefaultColorscaleInput | null | undefined;
+  defaultMaskTargetsColors?: ReadonlyArray<MaskColorInput> | null | undefined;
+  fields?: ReadonlyArray<CustomizeColorInput> | null | undefined;
+  id?: string | null | undefined;
+  labelTags?: LabelTagColorInput | null | undefined;
+  multicolorKeypoints?: boolean | null | undefined;
+  opacity?: number | null | undefined;
+  showSkeletons?: boolean | null | undefined;
+  temporalTags?: TemporalTagColorInput | null | undefined;
 };
 export type CustomizeColorInput = {
-  colorByAttribute?: string | null;
-  fieldColor?: string | null;
-  maskTargetsColors?: ReadonlyArray<MaskColorInput> | null;
+  colorByAttribute?: string | null | undefined;
+  fieldColor?: string | null | undefined;
+  maskTargetsColors?: ReadonlyArray<MaskColorInput> | null | undefined;
   path: string;
-  valueColors?: ReadonlyArray<ValueColorInput> | null;
+  valueColors?: ReadonlyArray<ValueColorInput> | null | undefined;
 };
 export type ValueColorInput = {
   color: string;
@@ -40,25 +39,25 @@ export type MaskColorInput = {
   intTarget: number;
 };
 export type LabelTagColorInput = {
-  fieldColor?: string | null;
-  valueColors?: ReadonlyArray<ValueColorInput> | null;
+  fieldColor?: string | null | undefined;
+  valueColors?: ReadonlyArray<ValueColorInput> | null | undefined;
 };
 export type TemporalTagColorInput = {
-  fieldColor?: string | null;
-  valueColors?: ReadonlyArray<ValueColorInput> | null;
+  fieldColor?: string | null | undefined;
+  valueColors?: ReadonlyArray<ValueColorInput> | null | undefined;
 };
 export type ColorscaleInput = {
-  list?: ReadonlyArray<ColorscaleListInput> | null;
-  name?: string | null;
+  list?: ReadonlyArray<ColorscaleListInput> | null | undefined;
+  name?: string | null | undefined;
   path: string;
 };
 export type ColorscaleListInput = {
   color: string;
-  value?: number | null;
+  value?: number | null | undefined;
 };
 export type DefaultColorscaleInput = {
-  list?: ReadonlyArray<ColorscaleListInput> | null;
-  name?: string | null;
+  list?: ReadonlyArray<ColorscaleListInput> | null | undefined;
+  name?: string | null | undefined;
 };
 export type setColorSchemeMutation$variables = {
   colorScheme: ColorSchemeInput;
@@ -126,14 +125,14 @@ v6 = {
   "name": "valueColors",
   "plural": true,
   "selections": [
-    (v4/*: any*/),
-    (v5/*: any*/)
+    (v4/*:: as any*/),
+    (v5/*:: as any*/)
   ],
   "storageKey": null
 },
 v7 = [
-  (v3/*: any*/),
-  (v6/*: any*/)
+  (v3/*:: as any*/),
+  (v6/*:: as any*/)
 ],
 v8 = [
   {
@@ -143,7 +142,7 @@ v8 = [
     "name": "intTarget",
     "storageKey": null
   },
-  (v4/*: any*/)
+  (v4/*:: as any*/)
 ],
 v9 = {
   "alias": null,
@@ -160,8 +159,8 @@ v10 = {
   "name": "list",
   "plural": true,
   "selections": [
-    (v5/*: any*/),
-    (v4/*: any*/)
+    (v5/*:: as any*/),
+    (v4/*:: as any*/)
   ],
   "storageKey": null
 },
@@ -182,8 +181,8 @@ v12 = {
 return {
   "fragment": {
     "argumentDefinitions": [
-      (v0/*: any*/),
-      (v1/*: any*/)
+      (v0/*:: as any*/),
+      (v1/*:: as any*/)
     ],
     "kind": "Fragment",
     "metadata": null,
@@ -191,7 +190,7 @@ return {
     "selections": [
       {
         "alias": null,
-        "args": (v2/*: any*/),
+        "args": (v2/*:: as any*/),
         "concreteType": "ColorScheme",
         "kind": "LinkedField",
         "name": "setColorScheme",
@@ -212,15 +211,15 @@ return {
   "kind": "Request",
   "operation": {
     "argumentDefinitions": [
-      (v1/*: any*/),
-      (v0/*: any*/)
+      (v1/*:: as any*/),
+      (v0/*:: as any*/)
     ],
     "kind": "Operation",
     "name": "setColorSchemeMutation",
     "selections": [
       {
         "alias": null,
-        "args": (v2/*: any*/),
+        "args": (v2/*:: as any*/),
         "concreteType": "ColorScheme",
         "kind": "LinkedField",
         "name": "setColorScheme",
@@ -275,7 +274,7 @@ return {
             "kind": "LinkedField",
             "name": "labelTags",
             "plural": false,
-            "selections": (v7/*: any*/),
+            "selections": (v7/*:: as any*/),
             "storageKey": null
           },
           {
@@ -285,7 +284,7 @@ return {
             "kind": "LinkedField",
             "name": "temporalTags",
             "plural": false,
-            "selections": (v7/*: any*/),
+            "selections": (v7/*:: as any*/),
             "storageKey": null
           },
           {
@@ -295,7 +294,7 @@ return {
             "kind": "LinkedField",
             "name": "defaultMaskTargetsColors",
             "plural": true,
-            "selections": (v8/*: any*/),
+            "selections": (v8/*:: as any*/),
             "storageKey": null
           },
           {
@@ -306,9 +305,9 @@ return {
             "name": "defaultColorscale",
             "plural": false,
             "selections": [
-              (v9/*: any*/),
-              (v10/*: any*/),
-              (v11/*: any*/)
+              (v9/*:: as any*/),
+              (v10/*:: as any*/),
+              (v11/*:: as any*/)
             ],
             "storageKey": null
           },
@@ -320,10 +319,10 @@ return {
             "name": "colorscales",
             "plural": true,
             "selections": [
-              (v12/*: any*/),
-              (v9/*: any*/),
-              (v10/*: any*/),
-              (v11/*: any*/)
+              (v12/*:: as any*/),
+              (v9/*:: as any*/),
+              (v10/*:: as any*/),
+              (v11/*:: as any*/)
             ],
             "storageKey": null
           },
@@ -342,9 +341,9 @@ return {
                 "name": "colorByAttribute",
                 "storageKey": null
               },
-              (v3/*: any*/),
-              (v12/*: any*/),
-              (v6/*: any*/),
+              (v3/*:: as any*/),
+              (v12/*:: as any*/),
+              (v6/*:: as any*/),
               {
                 "alias": null,
                 "args": null,
@@ -352,7 +351,7 @@ return {
                 "kind": "LinkedField",
                 "name": "maskTargetsColors",
                 "plural": true,
-                "selections": (v8/*: any*/),
+                "selections": (v8/*:: as any*/),
                 "storageKey": null
               }
             ],

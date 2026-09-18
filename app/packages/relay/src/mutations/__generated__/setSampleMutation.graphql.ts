@@ -1,18 +1,17 @@
 /**
- * @generated SignedSource<<dc58fb5c73cdd04bcc7f4030e281e2ae>>
+ * @generated SignedSource<<f3939a0b3b7b55d1a5c94f6a4c30aa2c>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { ConcreteRequest, Mutation } from 'relay-runtime';
+import { ConcreteRequest } from 'relay-runtime';
 export type setSampleMutation$variables = {
-  groupId?: string | null;
-  id?: string | null;
-  session?: string | null;
+  groupId?: string | null | undefined;
+  id?: string | null | undefined;
+  session?: string | null | undefined;
   subscription: string;
 };
 export type setSampleMutation$data = {
@@ -77,29 +76,29 @@ v4 = [
 return {
   "fragment": {
     "argumentDefinitions": [
-      (v0/*: any*/),
-      (v1/*: any*/),
-      (v2/*: any*/),
-      (v3/*: any*/)
+      (v0/*:: as any*/),
+      (v1/*:: as any*/),
+      (v2/*:: as any*/),
+      (v3/*:: as any*/)
     ],
     "kind": "Fragment",
     "metadata": null,
     "name": "setSampleMutation",
-    "selections": (v4/*: any*/),
+    "selections": (v4/*:: as any*/),
     "type": "Mutation",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
     "argumentDefinitions": [
-      (v3/*: any*/),
-      (v2/*: any*/),
-      (v0/*: any*/),
-      (v1/*: any*/)
+      (v3/*:: as any*/),
+      (v2/*:: as any*/),
+      (v0/*:: as any*/),
+      (v1/*:: as any*/)
     ],
     "kind": "Operation",
     "name": "setSampleMutation",
-    "selections": (v4/*: any*/)
+    "selections": (v4/*:: as any*/)
   },
   "params": {
     "cacheID": "afa49913ba9c5d963bfc59671f856e56",

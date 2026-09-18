@@ -1,23 +1,22 @@
 /**
- * @generated SignedSource<<0cb770c001251345fcf2f0a021830c27>>
+ * @generated SignedSource<<52fa6575e0a5923888377773a3a4d65c>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { ConcreteRequest, Query } from 'relay-runtime';
+import { ConcreteRequest } from 'relay-runtime';
 export type ExtendedViewForm = {
-  filters?: object | null;
-  mixed?: boolean | null;
-  sampleIds?: ReadonlyArray<string> | null;
-  slice?: string | null;
+  filters?: object | null | undefined;
+  mixed?: boolean | null | undefined;
+  sampleIds?: ReadonlyArray<string> | null | undefined;
+  slice?: string | null | undefined;
 };
 export type countValuesQuery$variables = {
   dataset: string;
-  form?: ExtendedViewForm | null;
+  form?: ExtendedViewForm | null | undefined;
   path: string;
   view: Array;
 };
@@ -25,13 +24,13 @@ export type countValuesQuery$data = {
   readonly aggregate: ReadonlyArray<{
     readonly __typename: "BoolCountValuesResponse";
     readonly values: ReadonlyArray<{
-      readonly bool: boolean | null;
+      readonly bool: boolean | null | undefined;
       readonly value: number;
     }>;
   } | {
     readonly __typename: "StrCountValuesResponse";
     readonly values: ReadonlyArray<{
-      readonly str: string | null;
+      readonly str: string | null | undefined;
       readonly value: number;
     }>;
   } | {
@@ -139,7 +138,7 @@ v5 = [
             "name": "values",
             "plural": true,
             "selections": [
-              (v4/*: any*/),
+              (v4/*:: as any*/),
               {
                 "alias": "bool",
                 "args": null,
@@ -165,7 +164,7 @@ v5 = [
             "name": "values",
             "plural": true,
             "selections": [
-              (v4/*: any*/),
+              (v4/*:: as any*/),
               {
                 "alias": "str",
                 "args": null,
@@ -187,29 +186,29 @@ v5 = [
 return {
   "fragment": {
     "argumentDefinitions": [
-      (v0/*: any*/),
-      (v1/*: any*/),
-      (v2/*: any*/),
-      (v3/*: any*/)
+      (v0/*:: as any*/),
+      (v1/*:: as any*/),
+      (v2/*:: as any*/),
+      (v3/*:: as any*/)
     ],
     "kind": "Fragment",
     "metadata": null,
     "name": "countValuesQuery",
-    "selections": (v5/*: any*/),
+    "selections": (v5/*:: as any*/),
     "type": "Query",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
     "argumentDefinitions": [
-      (v0/*: any*/),
-      (v3/*: any*/),
-      (v2/*: any*/),
-      (v1/*: any*/)
+      (v0/*:: as any*/),
+      (v3/*:: as any*/),
+      (v2/*:: as any*/),
+      (v1/*:: as any*/)
     ],
     "kind": "Operation",
     "name": "countValuesQuery",
-    "selections": (v5/*: any*/)
+    "selections": (v5/*:: as any*/)
   },
   "params": {
     "cacheID": "3e068aebda42556ce84561090eabb51d",

@@ -1,17 +1,16 @@
 /**
- * @generated SignedSource<<731932d054263aebf4143c0d4b01dd45>>
+ * @generated SignedSource<<48ce54398d6a15c0228df0c8bdb50a6f>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { Fragment, ReaderFragment } from 'relay-runtime';
+import { ReaderFragment } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type mediaTypeFragment$data = {
-  readonly mediaType: string | null;
+  readonly mediaType: string | null | undefined;
   readonly " $fragmentType": "mediaTypeFragment";
 };
 export type mediaTypeFragment$key = {

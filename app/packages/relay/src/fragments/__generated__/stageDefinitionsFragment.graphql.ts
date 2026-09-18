@@ -1,21 +1,20 @@
 /**
- * @generated SignedSource<<f8d4fee60980098bd6cbf5b21655b02c>>
+ * @generated SignedSource<<b45df972be3badaeeefceaf918c571b7>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { Fragment, ReaderFragment } from 'relay-runtime';
+import { ReaderFragment } from 'relay-runtime';
 export type StageParameterChoiceSource = "CONSTANTS" | "EVALUATION_KEYS" | "FIELDS" | "FREE_TEXT" | "GROUP_SLICES" | "SIMILARITY_KEYS" | "%future added value";
 export type StageParameterFieldExistence = "ANY" | "EXISTING" | "EXISTING_ROOT" | "%future added value";
 export type StageParameterFieldLevel = "ANY" | "FRAME" | "SAMPLE" | "%future added value";
 import { FragmentRefs } from "relay-runtime";
 export type stageDefinitionsFragment$data = {
   readonly stageDefinitions: ReadonlyArray<{
-    readonly description: string | null;
+    readonly description: string | null | undefined;
     readonly mediaTypes: ReadonlyArray<string>;
     readonly name: string;
     readonly params: ReadonlyArray<{
@@ -29,11 +28,11 @@ export type stageDefinitionsFragment$data = {
         readonly source: StageParameterChoiceSource;
         readonly values: ReadonlyArray<string>;
       };
-      readonly default: string | null;
-      readonly description: string | null;
+      readonly default: string | null | undefined;
+      readonly description: string | null | undefined;
       readonly name: string;
       readonly nullable: boolean;
-      readonly placeholder: string | null;
+      readonly placeholder: string | null | undefined;
       readonly required: boolean;
       readonly tokens: ReadonlyArray<string>;
       readonly type: string;
@@ -75,8 +74,8 @@ return {
       "name": "stageDefinitions",
       "plural": true,
       "selections": [
-        (v0/*: any*/),
-        (v1/*: any*/),
+        (v0/*:: as any*/),
+        (v1/*:: as any*/),
         {
           "alias": null,
           "args": null,
@@ -92,7 +91,7 @@ return {
           "name": "params",
           "plural": true,
           "selections": [
-            (v0/*: any*/),
+            (v0/*:: as any*/),
             {
               "alias": null,
               "args": null,
@@ -135,7 +134,7 @@ return {
               "name": "placeholder",
               "storageKey": null
             },
-            (v1/*: any*/),
+            (v1/*:: as any*/),
             {
               "alias": null,
               "args": null,

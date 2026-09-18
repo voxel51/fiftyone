@@ -1,14 +1,13 @@
 /**
- * @generated SignedSource<<3418f3a64dd42b5bb03902b1011e1e7f>>
+ * @generated SignedSource<<6f942ae38282cb2922927ab94fb435a7>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { ConcreteRequest, Query } from 'relay-runtime';
+import { ConcreteRequest } from 'relay-runtime';
 export type viewBarSchemaQuery$variables = {
   name: string;
   view: Array;
@@ -16,16 +15,16 @@ export type viewBarSchemaQuery$variables = {
 export type viewBarSchemaQuery$data = {
   readonly schemaForViewStages: {
     readonly fieldSchema: ReadonlyArray<{
-      readonly embeddedDocType: string | null;
+      readonly embeddedDocType: string | null | undefined;
       readonly ftype: string;
       readonly path: string;
-      readonly subfield: string | null;
+      readonly subfield: string | null | undefined;
     }>;
     readonly frameFieldSchema: ReadonlyArray<{
-      readonly embeddedDocType: string | null;
+      readonly embeddedDocType: string | null | undefined;
       readonly ftype: string;
       readonly path: string;
-      readonly subfield: string | null;
+      readonly subfield: string | null | undefined;
     }>;
   };
 };
@@ -104,7 +103,7 @@ v2 = [
         "kind": "LinkedField",
         "name": "fieldSchema",
         "plural": true,
-        "selections": (v1/*: any*/),
+        "selections": (v1/*:: as any*/),
         "storageKey": null
       },
       {
@@ -114,7 +113,7 @@ v2 = [
         "kind": "LinkedField",
         "name": "frameFieldSchema",
         "plural": true,
-        "selections": (v1/*: any*/),
+        "selections": (v1/*:: as any*/),
         "storageKey": null
       }
     ],
@@ -123,20 +122,20 @@ v2 = [
 ];
 return {
   "fragment": {
-    "argumentDefinitions": (v0/*: any*/),
+    "argumentDefinitions": (v0/*:: as any*/),
     "kind": "Fragment",
     "metadata": null,
     "name": "viewBarSchemaQuery",
-    "selections": (v2/*: any*/),
+    "selections": (v2/*:: as any*/),
     "type": "Query",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
-    "argumentDefinitions": (v0/*: any*/),
+    "argumentDefinitions": (v0/*:: as any*/),
     "kind": "Operation",
     "name": "viewBarSchemaQuery",
-    "selections": (v2/*: any*/)
+    "selections": (v2/*:: as any*/)
   },
   "params": {
     "cacheID": "425ecf201106108159ae2a6fe89e5160",

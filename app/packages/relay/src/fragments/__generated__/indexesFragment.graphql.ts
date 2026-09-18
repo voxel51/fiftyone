@@ -1,14 +1,13 @@
 /**
- * @generated SignedSource<<39713965fa461d36cfb4e87942cc977d>>
+ * @generated SignedSource<<613674e8cf473712cef7f244b44f76c9>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { Fragment, ReaderFragment } from 'relay-runtime';
+import { ReaderFragment } from 'relay-runtime';
 export type IndexType = "asc" | "desc" | "%future added value";
 import { FragmentRefs } from "relay-runtime";
 export type indexesFragment$data = {
@@ -18,24 +17,24 @@ export type indexesFragment$data = {
       readonly type: IndexType;
     }>;
     readonly name: string;
-    readonly unique: boolean | null;
+    readonly unique: boolean | null | undefined;
     readonly wildcardProjection: {
       readonly fields: ReadonlyArray<string>;
       readonly inclusion: boolean;
-    } | null;
-  }> | null;
+    } | null | undefined;
+  }> | null | undefined;
   readonly sampleIndexes: ReadonlyArray<{
     readonly key: ReadonlyArray<{
       readonly field: string;
       readonly type: IndexType;
     }>;
     readonly name: string;
-    readonly unique: boolean | null;
+    readonly unique: boolean | null | undefined;
     readonly wildcardProjection: {
       readonly fields: ReadonlyArray<string>;
       readonly inclusion: boolean;
-    } | null;
-  }> | null;
+    } | null | undefined;
+  }> | null | undefined;
   readonly " $fragmentType": "indexesFragment";
 };
 export type indexesFragment$key = {
@@ -123,7 +122,7 @@ return {
       "kind": "LinkedField",
       "name": "frameIndexes",
       "plural": true,
-      "selections": (v0/*: any*/),
+      "selections": (v0/*:: as any*/),
       "storageKey": null
     },
     {
@@ -133,7 +132,7 @@ return {
       "kind": "LinkedField",
       "name": "sampleIndexes",
       "plural": true,
-      "selections": (v0/*: any*/),
+      "selections": (v0/*:: as any*/),
       "storageKey": null
     }
   ],

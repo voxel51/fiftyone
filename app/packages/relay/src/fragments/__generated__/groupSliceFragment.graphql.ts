@@ -1,17 +1,16 @@
 /**
- * @generated SignedSource<<32da4a60fc1273eb4e2be6cb8cd339a0>>
+ * @generated SignedSource<<2eef8f65a543e8999fed3ad7a26985b7>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { Fragment, ReaderFragment } from 'relay-runtime';
+import { ReaderFragment } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type groupSliceFragment$data = {
-  readonly defaultGroupSlice: string | null;
+  readonly defaultGroupSlice: string | null | undefined;
   readonly " $fragmentType": "groupSliceFragment";
 };
 export type groupSliceFragment$key = {
