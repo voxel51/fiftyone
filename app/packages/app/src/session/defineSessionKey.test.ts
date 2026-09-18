@@ -8,6 +8,9 @@ import { EVENTS } from "../useEvents/registerEvent";
 import { REGISTERED_SETTERS } from "../useSetters/registerSetter";
 import { REGISTERED_WRITERS } from "../useWriters/registerWriter";
 import { sessionKeys } from "./defineSessionKey";
+import "../useEvents";
+import "../useSetters";
+import "../useWriters";
 import "./index";
 
 describe("defined session fields", () => {
@@ -33,6 +36,52 @@ describe("defined session fields", () => {
         expect(REGISTERED_WRITERS[field.key]).toBeTruthy();
       }
     }
+  });
+
+  it("keeps every registration the three registries had", () => {
+    // The set before the three registries were folded into one. A field that
+    // silently stops being registered is the failure this catches.
+    expect(new Set(Object.keys(EVENTS))).toEqual(
+      new Set([
+        "deactivate_notebook_cell",
+        "refresh",
+        "select_labels",
+        "select_samples",
+        "set_color_scheme",
+        "set_field_visibility_stage",
+        "set_group_slice",
+        "set_label_selection_style",
+        "set_sample",
+        "set_sample_selection_style",
+        "set_spaces",
+        "state_update",
+      ]),
+    );
+
+    expect(new Set(REGISTERED_SETTERS.keys())).toEqual(
+      new Set([
+        "colorScheme",
+        "datasetName",
+        "fieldVisibilityStage",
+        "refresh",
+        "similarityParameters",
+        "view",
+        "viewName",
+      ]),
+    );
+
+    expect(new Set(Object.keys(REGISTERED_WRITERS))).toEqual(
+      new Set([
+        "labelSelectionStyle",
+        "modalFilters",
+        "modalSelector",
+        "sampleSelectionStyle",
+        "selectedLabels",
+        "selectedSamples",
+        "sessionGroupSlice",
+        "sessionSpaces",
+      ]),
+    );
   });
 
   it("names the server's message when it handles one", () => {
