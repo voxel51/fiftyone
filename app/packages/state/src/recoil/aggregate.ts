@@ -1,5 +1,8 @@
-import { aggregate, aggregateQuery } from "@fiftyone/relay";
-import { graphQLSelectorFamily } from "recoil-relay";
+import {
+  aggregate,
+  aggregateQuery,
+  graphQLSelectorFamily,
+} from "@fiftyone/relay";
 import { VariablesOf } from "relay-runtime";
 import { ResponseFrom } from "../utils";
 import { RelayEnvironmentKey } from "./relay";
@@ -23,5 +26,5 @@ export const aggregateSelectorFamily = graphQLSelectorFamily<
         aggregations: paths.map((path) => ({ count: { field: path } })),
       };
     },
-  mapResponse: (data) => data,
+  mapResponse: (data: ResponseFrom<aggregateQuery>) => data,
 });

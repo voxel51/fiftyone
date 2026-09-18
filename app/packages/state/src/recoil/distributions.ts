@@ -1,6 +1,7 @@
 import {
   countValues as countValuesGraphQL,
   countValuesQuery,
+  graphQLSelectorFamily,
   histogramValues as histogramValuesGraphQL,
   histogramValuesQuery,
 } from "@fiftyone/relay";
@@ -26,7 +27,6 @@ import {
 } from "@fiftyone/utilities";
 import { VariablesOf } from "react-relay";
 import { selector, selectorFamily } from "recoil";
-import { graphQLSelectorFamily } from "recoil-relay";
 import { extendedSelection } from "./atoms";
 import { filters } from "./filters";
 import { groupSlice, groupStatistics } from "./groups";
@@ -94,7 +94,7 @@ const histogramValuesData = graphQLSelectorFamily<
         form: get(extendedViewForm),
       };
     },
-  mapResponse: (data) => data.aggregate[0],
+  mapResponse: (data: histogramValuesQuery["response"]) => data.aggregate[0],
 });
 
 export const countValues = selectorFamily({

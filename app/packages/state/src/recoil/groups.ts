@@ -2,6 +2,7 @@ import { ImaVidLooker } from "@fiftyone/looker";
 import * as foq from "@fiftyone/relay";
 import {
   datasetFragment,
+  graphQLSelectorFamily,
   graphQLSyncFragmentAtom,
   groupSliceFragment,
   groupSliceFragment$key,
@@ -15,7 +16,6 @@ import {
   selector,
   selectorFamily,
 } from "recoil";
-import { graphQLSelectorFamily } from "recoil-relay";
 import { getSessionRef, sessionAtom } from "../session";
 import type { ResponseFrom } from "../utils";
 import {
