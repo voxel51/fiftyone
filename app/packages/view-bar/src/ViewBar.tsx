@@ -209,6 +209,9 @@ const ViewBarInner: React.FC<{
   // over an unmodified result view REPLACES the search (via the run's
   // recorded base) instead of refining 25 results down to 25 results.
   const pendingSearchRunId = React.useRef<string | null>(null);
+  // Whether a view has already landed, so the one a direct URL loads with is
+  // told apart from a change made while the page is up
+  const viewLoaded = React.useRef(false);
   const lastSearch = React.useRef<{
     runId: string;
     viewFp: string;
@@ -294,6 +297,10 @@ const ViewBarInner: React.FC<{
     // `reveal` separates a view that arrived from a rollback to the one
     // already applied, which is not a change and shows nothing new
     const hydrate = (reveal: boolean) => {
+      // The view a direct URL loads with is what was navigated to, not news
+      // that broke while the user was looking — only a later one reveals
+      const loaded = viewLoaded.current;
+      viewLoaded.current = true;
       const fromSearch = pendingSearchRunId.current !== null;
       // A just-searched run owns the arriving view; any other view change
       // supersedes the chain and a next search targets the view as-is
@@ -335,7 +342,7 @@ const ViewBarInner: React.FC<{
       setInFlight(null);
       // The search says what it did in the box it was typed in; every other
       // source — entering patches, an operator, a saved view — shows its work
-      if (reveal && !fromSearch && hydrated.length > 0) {
+      if (reveal && loaded && !fromSearch && hydrated.length > 0) {
         setStagesOpen(true);
       }
     };
