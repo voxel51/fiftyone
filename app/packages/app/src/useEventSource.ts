@@ -6,7 +6,7 @@ import type { Session } from "@fiftyone/state";
 import { stateSubscription, useClearModal } from "@fiftyone/state";
 import { env, getEventSource } from "@fiftyone/utilities";
 import type { MutableRefObject } from "react";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRecoilState, useRecoilValue } from "recoil";
 import type { Queries } from "./makeRoutes";
@@ -16,6 +16,9 @@ import { AppReadyState } from "./useEvents/registerEvent";
 import { appReadyState } from "./useEvents/utils";
 import { getDatasetName, getParam } from "./utils";
 
+/** How long a disconnected App waits before reaching for the server again. */
+const RECONNECT_INTERVAL = 2000;
+
 const useEventSource = (
   router: RoutingContext<Queries>,
   session: MutableRefObject<Session>,
@@ -23,7 +26,12 @@ const useEventSource = (
   const [readyState, setReadyState] = useRecoilState(appReadyState);
   const readyStateRef = useRef<AppReadyState>(readyState);
   readyStateRef.current = readyState;
-  const controller = useMemo(() => new AbortController(), []);
+  const [attempt, setAttempt] = useState(0);
+  // Each attempt gets its own controller, so opening a new stream aborts the
+  // one that gave up
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new attempt is
+  // exactly when a new controller is wanted
+  const controller = useMemo(() => new AbortController(), [attempt]);
   const subscription = useRecoilValue(stateSubscription);
   const { subscriptions, handler } = useEvents(
     controller,
@@ -75,6 +83,7 @@ const useEventSource = (
       controller.abort();
     };
   }, [
+    attempt,
     clearModal,
     controller,
     handleError,
@@ -83,6 +92,19 @@ const useEventSource = (
     subscription,
     subscriptions,
   ]);
+
+  // The stream stops retrying on its own after a few failures, which leaves a
+  // session the user can restart showing "not connected" forever. Keep
+  // reaching for it while that page is up, and say nothing until it answers.
+  useEffect(() => {
+    if (readyState !== AppReadyState.CLOSED) return undefined;
+
+    const timeout = setTimeout(
+      () => setAttempt((previous) => previous + 1),
+      RECONNECT_INTERVAL,
+    );
+    return () => clearTimeout(timeout);
+  }, [attempt, readyState]);
 
   return readyState;
 };
