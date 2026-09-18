@@ -134,6 +134,27 @@ export const resolveTargetIndex = (
 };
 
 /**
+ * The first hole strictly below `fromIndex`, whatever the skip set says.
+ * A satisfied Place force chains downward through it: going back to fill
+ * skipped nodes walks the rest of the list instead of stopping after one
+ * placement. `null` when no hole remains below. Exported for tests.
+ */
+export const nextHoleBelow = (
+  overlay: Pick<KeypointOverlay, "getRelativePoints">,
+  nodeCount: number,
+  fromIndex: number,
+): number | null => {
+  const points = overlay.getRelativePoints();
+  for (let i = fromIndex + 1; i < nodeCount && i < points.length; i++) {
+    if (!Number.isFinite(points[i][0]) || !Number.isFinite(points[i][1])) {
+      return i;
+    }
+  }
+
+  return null;
+};
+
+/**
  * Modifier policy for free-form keypoints: Alt-click on a point deletes it
  * (mirrors polyline mode). Skeleton keypoints never delete points — node
  * index is identity — so this resolver is only wired for free-form fields.
@@ -285,9 +306,11 @@ export const useGuidedKeypoints = () => {
       ? skipped
       : [...skipped, targetIndex];
     setSkips({ overlayId: overlay.id, skipped: nextSkipped });
-    // Skipping a Place-forced node cancels the force
+    // Skipping a Place-forced node keeps the chain walking: the force moves
+    // to the next hole down the list, or ends at the bottom
     if (forcedIndex === targetIndex) {
-      setForced(null);
+      const next = nextHoleBelow(overlay, nodeCount, targetIndex);
+      setForced(next === null ? null : { overlayId: overlay.id, index: next });
     }
 
     if (computeTargetIndex(overlay, nodeCount, nextSkipped) === null) {
@@ -776,10 +799,22 @@ export const useKeypointModeInstaller = (): void => {
           getTargetIndex: getTarget,
           getNodeLabel: (index) => skeleton?.labels?.[index] ?? null,
           onPlaced: () => {
-            // A placement satisfies any Place force (the forced node was the
-            // target, or it got placed some other way — either way, resume
-            // strict order)
-            setForced(null);
+            // A satisfied Place force CHAINS: the target advances to the
+            // next hole down the list (skipped or not), so going back to
+            // fill skipped nodes walks the list instead of stopping after
+            // one placement. No hole below ends the chain and strict order
+            // resumes.
+            const forced = currentForcedRef.current;
+            const forcedIndex =
+              forced?.overlayId === targetOverlay.id ? forced.index : null;
+            if (forcedIndex !== null) {
+              const next = nextHoleBelow(targetOverlay, nodeCount, forcedIndex);
+              setForced(
+                next === null
+                  ? null
+                  : { overlayId: targetOverlay.id, index: next },
+              );
+            }
             bumpGuidedEpoch();
             // Auto-finish: release the handler once every node is resolved;
             // the overlay stays selected for editing.

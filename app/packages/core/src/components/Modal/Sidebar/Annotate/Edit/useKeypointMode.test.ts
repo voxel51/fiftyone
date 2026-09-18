@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { computeTargetIndex, resolveTargetIndex } from "./useKeypointMode";
+import {
+  computeTargetIndex,
+  nextHoleBelow,
+  resolveTargetIndex,
+} from "./useKeypointMode";
 import { skeletonNodeCount } from "./useAnnotationContext/createNew";
 
 const overlayWith = (points: [number, number][]) => ({
@@ -67,6 +71,28 @@ describe("resolveTargetIndex", () => {
     expect(resolveTargetIndex(overlay, 3, [1], null)).toBeNull();
     // …until Place forces it
     expect(resolveTargetIndex(overlay, 3, [1], 1)).toBe(1);
+  });
+});
+
+describe("nextHoleBelow", () => {
+  it("finds the next hole below, including skipped ones", () => {
+    const overlay = overlayWith([[0.1, 0.1], HOLE, [0.9, 0.9], HOLE]);
+    expect(nextHoleBelow(overlay, 4, 1)).toBe(3);
+  });
+
+  it("starts strictly below the given index", () => {
+    const overlay = overlayWith([HOLE, HOLE, HOLE]);
+    expect(nextHoleBelow(overlay, 3, 0)).toBe(1);
+  });
+
+  it("returns null at the bottom of the list", () => {
+    const overlay = overlayWith([HOLE, [0.5, 0.5], [0.9, 0.9]]);
+    expect(nextHoleBelow(overlay, 3, 0)).toBeNull();
+  });
+
+  it("never scans past the skeleton's node count", () => {
+    const overlay = overlayWith([[0.1, 0.1], [0.5, 0.5], HOLE]);
+    expect(nextHoleBelow(overlay, 2, 0)).toBeNull();
   });
 });
 
