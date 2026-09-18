@@ -115,7 +115,6 @@ const InspectorHeading = styled(Heading)`
 interface AttributeInputProps {
   spec: PointAttributeSpec;
   value: PointAttributeValue;
-  placed: boolean;
   disabled: boolean;
   onCommit: (value: PointAttributeValue) => void;
 }
@@ -128,7 +127,6 @@ interface AttributeInputProps {
 const NumberAttributeInput = ({
   spec,
   value,
-  placed,
   disabled,
   onCommit,
 }: AttributeInputProps) => {
@@ -175,11 +173,7 @@ const NumberAttributeInput = ({
           value={draft}
           disabled={disabled}
           placeholder={
-            placed
-              ? spec.range
-                ? `${spec.range[0]}–${spec.range[1]}`
-                : "number"
-              : "no point"
+            spec.range ? `${spec.range[0]}–${spec.range[1]}` : "number"
           }
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}
@@ -202,7 +196,6 @@ const NumberAttributeInput = ({
 const TextAttributeInput = ({
   spec,
   value,
-  placed,
   disabled,
   onCommit,
 }: AttributeInputProps) => {
@@ -232,7 +225,7 @@ const TextAttributeInput = ({
           style={{ width: "100%" }}
           value={draft}
           disabled={disabled}
-          placeholder={placed ? "value" : "no point"}
+          placeholder="value"
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}
           onKeyDown={(e) => {
@@ -247,15 +240,18 @@ const TextAttributeInput = ({
   );
 };
 
-/** One point attribute editor, dispatched on the schema's element type. */
+/**
+ * One point attribute editor, dispatched on the schema's element type.
+ * Placement does not gate editing — an unplaced point can carry attribute
+ * values (they live at its index in the parallel list either way).
+ */
 const PointAttributeField = ({
   spec,
   value,
-  placed,
   readOnly,
   onCommit,
 }: Omit<AttributeInputProps, "disabled"> & { readOnly: boolean }) => {
-  const disabled = readOnly || !placed || !!spec.readOnly;
+  const disabled = readOnly || !!spec.readOnly;
 
   if (spec.type === "bool") {
     return (
@@ -370,12 +366,17 @@ const NodeInspector = ({
               spec.type,
               Array.isArray(list) ? list[index] : undefined,
             )}
-            placed={placed}
             readOnly={readOnly}
             onCommit={(value) => onCommit(spec, value)}
           />
         );
       })}
+      {!placed && (
+        <Text color={TextColor.Secondary} variant={TextVariant.Sm}>
+          This point has no coordinate yet. Place it to set x and y — its
+          attributes are saved either way.
+        </Text>
+      )}
     </Stack>
   </InspectorPanel>
 );
