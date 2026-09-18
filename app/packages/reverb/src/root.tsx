@@ -16,6 +16,9 @@ interface ReverbRootProps {
   store?: Store;
 }
 
+/** Stores already initialized, so a repeated mount pass does not write twice. */
+const initialized = new WeakSet<Store>();
+
 /**
  * The default store, not a fresh one: non-React code reaches state through
  * `getDefaultStore()` directly, and a second store would leave those reads
@@ -26,16 +29,22 @@ export const ReverbRoot = ({
   initializeState,
   store: provided,
 }: ReverbRootProps) => {
-  const [store] = useState(() => {
-    const shared = provided ?? getDefaultStore();
+  const [store] = useState(() => provided ?? getDefaultStore());
 
-    initializeState?.({
-      set: (state, next) => shared.set(state, next),
-      reset: (state) => shared.set(state, DEFAULT_VALUE),
+  /**
+   * Tracked against the store rather than in a ref, because React renders a
+   * component twice on mount in development and both passes are mounts, so a
+   * ref is fresh each time. The store outlives both, so an initializer
+   * written as an update would otherwise apply twice.
+   */
+  if (initializeState && !initialized.has(store)) {
+    initialized.add(store);
+
+    initializeState({
+      set: (state, next) => store.set(state, next),
+      reset: (state) => store.set(state, DEFAULT_VALUE),
     });
-
-    return shared;
-  });
+  }
 
   return <Provider store={store}>{children}</Provider>;
 };

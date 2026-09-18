@@ -5,8 +5,9 @@
  */
 
 import { act, cleanup, render, screen } from "@testing-library/react";
-import { useState } from "react";
+import { StrictMode, useState } from "react";
 import { afterEach, describe, expect, it } from "vitest";
+import { createStore } from "jotai";
 import { atom } from "./atom";
 import { atomFamily } from "./family";
 import {
@@ -270,5 +271,27 @@ describe("hooks", () => {
     // leave it looking at values React never wrote.
     expect(screen.getByText("right:1")).toBeTruthy();
     expect(seen).toEqual([1]);
+  });
+});
+
+describe("root initialization", () => {
+  it("initializes once under StrictMode", () => {
+    const count = atom<number>({ key: "strictCount", default: 0 });
+    const store = createStore();
+
+    render(
+      <StrictMode>
+        <ReverbRoot
+          store={store}
+          initializeState={({ set }) => set(count, (value) => value + 1)}
+        >
+          <span />
+        </ReverbRoot>
+      </StrictMode>,
+    );
+
+    // React calls a component body and a useState initializer twice in
+    // development, and the store outlives both.
+    expect(store.get(count)).toBe(1);
   });
 });
