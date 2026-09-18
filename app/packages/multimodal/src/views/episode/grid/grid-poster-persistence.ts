@@ -381,7 +381,17 @@ function validEntry(entry: GridPosterCacheEntry): boolean {
     entry.streamSourceNames.every((name) => typeof name === "string") &&
     (entry.pointCloudPoseKey === undefined ||
       typeof entry.pointCloudPoseKey === "string") &&
+    validTimeRange(entry.timeRange) &&
     validProviderMetadata(entry.provider)
+  );
+}
+
+function validTimeRange(timeRange: GridPosterCacheEntry["timeRange"]): boolean {
+  return (
+    timeRange === undefined ||
+    (typeof timeRange.startNs === "bigint" &&
+      typeof timeRange.endNs === "bigint" &&
+      timeRange.endNs >= timeRange.startNs)
   );
 }
 

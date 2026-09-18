@@ -149,7 +149,14 @@ export function LeRobotGridHoverVideo({
       if (posterCaptured || !capturePoster) return true;
       const width = element.videoWidth;
       const height = element.videoHeight;
-      if (width <= 0 || height <= 0 || element.readyState < 2) return false;
+      if (
+        width <= 0 ||
+        height <= 0 ||
+        element.readyState < 2 ||
+        element.seeking
+      ) {
+        return false;
+      }
       const context = poster.getContext("2d");
       if (!context) throw new Error("Unable to create native video poster");
       poster.width = width;

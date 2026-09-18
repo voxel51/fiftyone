@@ -332,6 +332,45 @@ const readParquetObjects = vi.fn(
   },
 );
 
+function av1ByteResources(): ByteResources {
+  const av1Info = {
+    ...info,
+    features: {
+      ...info.features,
+      "observation.images.test": {
+        ...info.features["observation.images.test"],
+        info: { "video.codec": "av1", "video.fps": 2 },
+      },
+    },
+  };
+  const av1InfoBytes = new TextEncoder().encode(JSON.stringify(av1Info));
+  return {
+    readBytes: async (request) => {
+      const start = Number(request.range.offset);
+      const end = start + Number(request.range.length);
+      if (request.source.sourceId === "video") {
+        return {
+          bytes: tinyAv1Mp4Bytes.slice(start, end),
+          range: request.range,
+          source: {
+            ...request.source,
+            sizeBytes: tinyAv1Mp4Bytes.byteLength.toString(),
+          },
+        };
+      }
+      if (request.source.sourceId !== "info") return io.readBytes(request);
+      return {
+        bytes: av1InfoBytes.slice(start, end),
+        range: request.range,
+        source: {
+          ...request.source,
+          sizeBytes: av1InfoBytes.byteLength.toString(),
+        },
+      };
+    },
+  };
+}
+
 defineEpisodeSessionContractTests({
   createSession: () =>
     createLeRobotFormatAdapter({ readParquetObjects }).open(source, io),
@@ -871,48 +910,34 @@ describe("LeRobot format adapter", () => {
     }
   });
 
+  it("reports the instant a native preview seeks to, not the one requested", async () => {
+    const preview = await createLeRobotFormatAdapter({
+      readParquetObjects,
+    }).openPreview?.(source, av1ByteResources());
+    if (!preview) throw new Error("LeRobot preview session is unavailable");
+    try {
+      await expect(
+        preview.read({
+          sourceName: "observation.images.test",
+          startTimeNs: 5_000_000_000n,
+        }),
+      ).resolves.toMatchObject({
+        frame: null,
+        frameTimeNs: 1_000_000_000n,
+        nativeVideo: { endTimeSeconds: 1, startTimeSeconds: 1 },
+        status: "ready",
+      });
+    } finally {
+      preview.dispose();
+    }
+  });
+
   it("keeps AV1 grid previews native while demuxing modal access units", async () => {
-    const av1Info = {
-      ...info,
-      features: {
-        ...info.features,
-        "observation.images.test": {
-          ...info.features["observation.images.test"],
-          info: { "video.codec": "av1", "video.fps": 2 },
-        },
-      },
-    };
-    const av1InfoBytes = new TextEncoder().encode(JSON.stringify(av1Info));
-    const av1Source: typeof source = source;
-    const av1Io: ByteResources = {
-      readBytes: async (request) => {
-        const start = Number(request.range.offset);
-        const end = start + Number(request.range.length);
-        if (request.source.sourceId === "video") {
-          return {
-            bytes: tinyAv1Mp4Bytes.slice(start, end),
-            range: request.range,
-            source: {
-              ...request.source,
-              sizeBytes: tinyAv1Mp4Bytes.byteLength.toString(),
-            },
-          };
-        }
-        if (request.source.sourceId !== "info") return io.readBytes(request);
-        return {
-          bytes: av1InfoBytes.slice(start, end),
-          range: request.range,
-          source: {
-            ...request.source,
-            sizeBytes: av1InfoBytes.byteLength.toString(),
-          },
-        };
-      },
-    };
+    const av1Io = av1ByteResources();
     const adapter = createLeRobotFormatAdapter({
       readParquetObjects,
     });
-    const preview = await adapter.openPreview?.(av1Source, av1Io);
+    const preview = await adapter.openPreview?.(source, av1Io);
     if (!preview) throw new Error("LeRobot preview session is unavailable");
     try {
       await expect(
@@ -936,7 +961,7 @@ describe("LeRobot format adapter", () => {
       preview.dispose();
     }
 
-    const session = await adapter.open(av1Source, av1Io);
+    const session = await adapter.open(source, av1Io);
     try {
       expect(
         session.manifest.streams.find(

@@ -62,6 +62,8 @@ import {
   useGridPosterProviderDescriptor,
   useProvidedGridPoster,
 } from "./use-grid-poster-provider";
+import { peekSourceBootstrap } from "../../../runtime";
+import { episodeIdOf } from "../../../runtime/episode-identity";
 import { useHydratedSourceFacts } from "./use-hydrated-source-facts";
 import { LeRobotGridHoverVideo } from "./LeRobotGridHoverVideo";
 
@@ -134,10 +136,7 @@ export function GridRenderer({
   // closing the modal rebuilds nothing
   const visible = useGridRendererVisibility(rootElement, isGridActive);
   const interactive = visible && isGridActive;
-  const sampleId = useMemo(() => {
-    const sample = ctx.sample.sample as { _id?: string; id?: string };
-    return sample._id ?? sample.id;
-  }, [ctx.sample.sample]);
+  const sampleId = episodeIdOf(ctx);
   const [selectedStream] = useGridSelectedStream(ctx.dataset.name);
   const selectedSourceName =
     selectedStream === GRID_STREAM_AUTO ? null : selectedStream;
@@ -167,6 +166,7 @@ export function GridRenderer({
       source
         ? {
             datasetId: ctx.dataset.datasetId,
+            episodeId: sampleId,
             mediaField: ctx.media?.field,
             mediaPath: ctx.media?.path,
             posterSourceName: firstMatch?.stream,
@@ -183,6 +183,7 @@ export function GridRenderer({
       firstMatch?.startNs,
       firstMatch?.stream,
       providerCacheScope,
+      sampleId,
       selectedSourceName,
       source,
     ],
@@ -250,6 +251,7 @@ export function GridRenderer({
     // A provider-answered tile skips the preview session exactly like a cache
     // hit, so it needs the same facts republish
     cachedPoster: effectivePoster,
+    episodeId: sampleId,
     previewSessionDemand,
     source,
     sourceFactsScope,
@@ -368,6 +370,9 @@ export function GridRenderer({
           streamId: preview.streamId,
           streamSourceName: preview.streamSourceName,
           streamSourceNames: preview.streamSourceNames,
+          ...(source
+            ? { timeRange: peekSourceBootstrap(source)?.timeRange }
+            : {}),
           width: size.width,
         },
         key: cacheKey,
@@ -379,6 +384,7 @@ export function GridRenderer({
       preview.streamId,
       preview.streamSourceName,
       preview.streamSourceNames,
+      source,
     ],
   );
   // An AV1 poster arrives through the native <video>, so "ready with no

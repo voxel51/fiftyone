@@ -465,6 +465,7 @@ describe("GridRenderer", () => {
     expect(vi.mocked(useGridPreview).mock.lastCall?.[0].cacheRequestKey).toBe(
       gridPreviewStateKey({
         datasetId: "dataset-id",
+        episodeId: "1",
         mediaField: undefined,
         selectedSourceName: null,
         source,
