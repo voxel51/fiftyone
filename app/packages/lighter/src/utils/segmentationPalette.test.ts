@@ -121,6 +121,36 @@ describe("resolveSegmentationPalette", () => {
     expect(colorForTarget(2, palette)).toBe("#333333");
   });
 
+  it("resolves fieldColor by value too, where the outline is its only color", () => {
+    // `uniformColor` is undefined in this mode, so `fieldColor` is the one
+    // color the selection outline can draw the whole mask in. Resolving it
+    // only in field mode would still satisfy every other case in this file
+    // and hand `drawRect` an undefined `strokeStyle`.
+    const fallback = resolveSegmentationPalette(
+      PATH,
+      scheme({ colorBy: "value" }),
+      SEED,
+      TARGETS,
+    );
+
+    expect(fallback.uniformColor).toBeUndefined();
+    expect(fallback.fieldColor).toBe(getColor(POOL, SEED, PATH));
+
+    // and a field's own setting still wins over the hashed fallback
+    const custom = resolveSegmentationPalette(
+      PATH,
+      scheme({
+        colorBy: "value",
+        fields: [{ path: PATH, fieldColor: "#abcdef" }],
+      } as Partial<ColorSchemeInput>),
+      SEED,
+      TARGETS,
+    );
+
+    expect(custom.uniformColor).toBeUndefined();
+    expect(custom.fieldColor).toBe("#abcdef");
+  });
+
   it("uses a field's custom color for the whole mask in field mode", () => {
     const palette = resolveSegmentationPalette(
       PATH,
