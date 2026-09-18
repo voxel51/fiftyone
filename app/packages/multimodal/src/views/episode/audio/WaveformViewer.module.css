@@ -38,7 +38,7 @@
 }
 
 .label {
-  align-items: start;
+  align-items: flex-start;
   display: flex;
   font-size: 10px;
   font-variant-numeric: tabular-nums;
