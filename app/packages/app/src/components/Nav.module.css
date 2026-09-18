@@ -1,9 +1,3 @@
-/* The row's flexible middle: the title and selector keep their width on the
-   left, the actions theirs on the right */
-.spacer {
-  flex: 1;
-}
-
 /* The bar takes what the title, selector and right-side actions leave */
 .bar {
   flex: 1;
@@ -24,7 +18,9 @@
 }
 
 /* The right-side actions share the first row's height so they stay level with
-   the title and the selector */
+   the title and the selector, and hold the right edge when no view bar is
+   there to take up the slack */
 .actions {
   height: 40px;
+  margin-left: auto;
 }

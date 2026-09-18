@@ -122,14 +122,12 @@ const Nav: React.FC<
         }
       >
         {Status && <Status />}
-        {hasDataset ? (
-          <Suspense fallback={<div className={styles.spacer} />}>
+        {hasDataset && (
+          <Suspense fallback={null}>
             <div className={styles.bar}>
               <ViewBar stagesHost={stagesHost} />
             </div>
           </Suspense>
-        ) : (
-          <div className={styles.spacer} />
         )}
         <Stack
           orientation={Orientation.Row}
