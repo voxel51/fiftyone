@@ -6,9 +6,11 @@ FiftyOne sample-related unit tests.
 |
 """
 
+import gc
 import os
 import tempfile
 import unittest
+import weakref
 
 from bson import Binary, ObjectId, SON
 import numpy as np
@@ -570,6 +572,26 @@ class SampleCollectionTests(unittest.TestCase):
         self.assertIsInstance(dataset.last(), fo.Sample)
         self.assertIsInstance(dataset.view().first(), fos.SampleView)
         self.assertIsInstance(dataset.view().last(), fos.SampleView)
+
+    @drop_datasets
+    def test_mutate_field_on_temporary_sample(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(fo.Sample("test.png"))
+
+        dataset.first()["tags"].append("tag")
+
+        sample = dataset.first()
+        self.assertEqual(sample.tags, ["tag"])
+
+        tags = sample.tags
+        sample_ref = weakref.ref(sample)
+        del sample
+        gc.collect()
+        self.assertIsNotNone(sample_ref())
+
+        del tags
+        gc.collect()
+        self.assertIsNone(sample_ref())
 
 
 class VideoSampleTests(unittest.TestCase):
