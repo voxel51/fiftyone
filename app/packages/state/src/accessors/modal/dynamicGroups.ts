@@ -8,6 +8,7 @@ import {
   isDynamicGroup,
   isNestedDynamicGroup,
   isNonNestedDynamicGroup,
+  lighterDynamicGroupVideo,
 } from "../../recoil/dynamicGroups";
 import { isQueryPerformantDynamicGroup } from "../../recoil/queryPerformance";
 import { dynamicGroupsElementCount } from "../../recoil/pathData/groups";
@@ -68,3 +69,7 @@ export const useIsNonNestedDynamicGroup = (): boolean =>
 /** Whether the dynamic group is ordered with a fixed order-by key, so paging it is indexed. */
 export const useIsQueryPerformantDynamicGroup = (): boolean =>
   Boolean(useRecoilValue(isQueryPerformantDynamicGroup));
+
+/** Whether the modal draws the dynamic group video with a Lighter surface rather than the ImaVid looker. */
+export const useLighterDynamicGroupVideo = (): boolean =>
+  useRecoilValue(lighterDynamicGroupVideo);

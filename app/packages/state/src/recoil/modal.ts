@@ -7,7 +7,11 @@ import type { Lookers } from "../hooks";
 import { ComputeCoordinatesReturnType } from "../hooks/useTooltip";
 import { ModalSelector, sessionAtom } from "../session";
 import { ResponseFrom } from "../utils";
-import { imaVidLookerState, shouldRenderImaVidLooker } from "./dynamicGroups";
+import {
+  imaVidLookerState,
+  lighterDynamicGroupVideo,
+  shouldRenderImaVidLooker,
+} from "./dynamicGroups";
 import {
   activeModalSidebarSample,
   groupId,
@@ -34,7 +38,7 @@ export const modalLooker = atom<Lookers | null>({
 export const sidebarSampleId = selector<null | string>({
   key: "sidebarSampleId",
   get: ({ get }) => {
-    if (get(shouldRenderImaVidLooker(true))) {
+    if (get(shouldRenderImaVidLooker(true)) && !get(lighterDynamicGroupVideo)) {
       const thisFrameNumber = get(imaVidLookerState("currentFrameNumber"));
       const isPlaying = get(imaVidLookerState("playing"));
       const isSeeking = get(imaVidLookerState("seeking"));

@@ -4,8 +4,10 @@ import {
   EMBEDDED_DOCUMENT_FIELD,
   GROUP,
   LIST_FIELD,
+  MEDIA_TYPE_IMAGE,
 } from "@fiftyone/utilities";
 import { atom, atomFamily, selector, selectorFamily } from "recoil";
+import { getBrowserStorageEffectForKey } from "./customEffects";
 import {
   currentSlice,
   groupSlice,
@@ -240,4 +242,43 @@ export const shouldRenderImaVidLooker = selectorFamily({
         get(dynamicGroupsViewMode(modal)) === "video"
       );
     },
+});
+
+/**
+ * Whether the current view is an ordered dynamic group over image samples:
+ * such a view reports a "group" media type with no slices.
+ */
+export const isImageDynamicGroupVideo = selector<boolean>({
+  key: "isImageDynamicGroupVideo",
+  get: ({ get }) =>
+    get(isOrderedDynamicGroup) &&
+    get(parentMediaTypeSelector) === MEDIA_TYPE_IMAGE,
+});
+
+/**
+ * Opt out of the Lighter timeline surface for an image dataset's dynamic
+ * group video in the modal and render the legacy ImaVid looker instead;
+ * persisted in browser storage under the key `legacyDynamicGroupLooker`.
+ */
+export const legacyDynamicGroupLooker = atom<boolean>({
+  key: "legacyDynamicGroupLooker",
+  default: false,
+  effects: [
+    getBrowserStorageEffectForKey<boolean>("legacyDynamicGroupLooker", {
+      valueClass: "boolean",
+    }),
+  ],
+});
+
+/**
+ * Whether the modal's dynamic group video is drawn by a Lighter surface rather
+ * than the ImaVid looker: an image dataset's group, unless the legacy looker
+ * is opted into.
+ */
+export const lighterDynamicGroupVideo = selector<boolean>({
+  key: "lighterDynamicGroupVideo",
+  get: ({ get }) =>
+    get(shouldRenderImaVidLooker(true)) &&
+    get(isImageDynamicGroupVideo) &&
+    !get(legacyDynamicGroupLooker),
 });
