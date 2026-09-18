@@ -285,6 +285,20 @@ const getLabelColorByValue = ({
   let key;
   if (field) {
     key = getLabelColorKey(field, label, is3D, embeddedDocType);
+
+    // A keypoint per-point parallel list colors POINTS individually (see
+    // getPointColorByValue) — one point's entry must not recolor the whole
+    // label (edges, tag), so the label falls back to its own value
+    const points = (label as { points?: unknown }).points;
+    if (
+      embeddedDocType?.includes("Keypoint") &&
+      Array.isArray(label[key]) &&
+      Array.isArray(points) &&
+      (label[key] as unknown[]).length === points.length
+    ) {
+      key = "label";
+    }
+
     // use the first value as the fallback value to get color,
     // if it's a listField
     const fallbackValue =
@@ -322,40 +336,57 @@ const getLabelColorByValue = ({
   }
 };
 
+interface PointColorArgs {
+  coloring: Coloring;
+  field?: CustomizeColor;
+  /** The label document — only its attribute lists are read. */
+  label: object;
+  numPoints: number;
+}
+
 /**
- * Per-point color for a keypoint under color-by-value: when the field's
- * `colorByAttribute` names a per-point list (parallel to `points`), each
- * point colors by its own entry — an explicit value color when one matches,
- * else the color pool keyed by the value. Returns null when per-point
- * resolution does not apply (not color-by-value, no attribute configured,
- * or the attribute is not a parallel list) and the caller falls back to
- * whole-label behavior.
+ * The per-point value list when color-by-value applies: color-by-value is on
+ * and the field's `colorByAttribute` names a list parallel to `points`.
  */
-export const getPointColorByValue = ({
+const getPointValueList = ({
   coloring,
   field,
   label,
-  index,
   numPoints,
-}: {
-  coloring: Coloring;
-  field?: CustomizeColor;
-  label: RegularLabel;
-  index: number;
-  numPoints: number;
-}): string | null => {
+}: PointColorArgs): unknown[] | null => {
   if (coloring.by !== COLOR_BY.VALUE || !field?.colorByAttribute) {
     return null;
   }
 
   const list = (label as Record<string, unknown>)[field.colorByAttribute];
-  if (!Array.isArray(list) || list.length !== numPoints) {
+  return Array.isArray(list) && list.length === numPoints ? list : null;
+};
+
+/** Whether per-point color-by-value applies to a keypoint. */
+export const pointColorByValueApplies = (args: PointColorArgs): boolean =>
+  getPointValueList(args) !== null;
+
+/**
+ * Per-point color for a keypoint under color-by-value: when the field's
+ * `colorByAttribute` names a per-point list (parallel to `points`), each
+ * point colors by its own entry — an explicit value color when one matches,
+ * else the color pool keyed by the value. Returns null when per-point
+ * resolution does not apply (see {@link pointColorByValueApplies}) OR when
+ * this point's entry is unset with no explicit none-row color; either way
+ * the caller falls back to whole-label behavior for the point.
+ */
+export const getPointColorByValue = ({
+  index,
+  ...args
+}: PointColorArgs & { index: number }): string | null => {
+  const list = getPointValueList(args);
+  if (!list) {
     return null;
   }
 
   const value = list[index] as string | number | boolean | null | undefined;
 
-  const valueColor = field.valueColors?.find((pair) => {
+  const valueColor = args.field?.valueColors?.find((pair) => {
     const setting = pair.value?.toString().toLowerCase();
     if (["none", "null", "undefined"].includes(setting)) {
       return value == null;
@@ -367,7 +398,13 @@ export const getPointColorByValue = ({
     return valueColor;
   }
 
-  return getColor(coloring.pool, coloring.seed, value ?? null);
+  // An unset entry is not a value: without an explicit none-row color the
+  // point keeps the label color instead of taking a pool color
+  if (value == null) {
+    return null;
+  }
+
+  return getColor(args.coloring.pool, args.coloring.seed, value);
 };
 
 /**

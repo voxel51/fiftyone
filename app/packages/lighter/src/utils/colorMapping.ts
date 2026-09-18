@@ -5,6 +5,7 @@
 import {
   getLabelColor,
   getPointColorByValue,
+  pointColorByValueApplies,
 } from "@fiftyone/looker/src/overlays/util";
 import type { ColorSchemeInput } from "@fiftyone/relay";
 import { COLOR_BY, getColor } from "@fiftyone/utilities";
@@ -88,7 +89,8 @@ export function getLabelColorFromContext(
       valueColors: field.valueColors ? [...field.valueColors] : undefined,
     }),
   );
-  const embeddedDocType = typedLabel["_cls"];
+  const rawCls = typedLabel["_cls"];
+  const embeddedDocType = typeof rawCls === "string" ? rawCls : "";
   const isPolyline3D =
     "points3d" in typedLabel &&
     Array.isArray(typedLabel["points3d"]) &&
@@ -118,10 +120,11 @@ export function getLabelColorFromContext(
  * Per-point colors for a keypoint label under color-by-value: when the
  * field's `colorByAttribute` names a per-point list (parallel to `points`),
  * every point resolves its own color — explicit value colors first, else the
- * color pool keyed by the value. Returns null when per-point resolution does
- * not apply (not a Keypoint, not color-by-value, or the attribute is not a
- * parallel list); the overlay then renders every point in the label color.
- * Shares the resolver with the classic looker so the two surfaces agree.
+ * color pool keyed by the value; unset entries stay null and keep the label
+ * color. Returns null when per-point resolution does not apply (not a
+ * Keypoint, not color-by-value, or the attribute is not a parallel list);
+ * the overlay then renders every point in the label color. Shares the
+ * resolver with the classic looker so the two surfaces agree.
  */
 export function getKeypointPointColors(
   path: string,
@@ -156,24 +159,23 @@ export function getKeypointPointColors(
     valueColors: rawField.valueColors ? [...rawField.valueColors] : undefined,
   };
 
-  const resolve = (index: number) =>
-    getPointColorByValue({
-      coloring,
-      // structural casts — the same shapes getLabelColor accepts above
-      field: field as Parameters<typeof getPointColorByValue>[0]["field"],
-      label: typedLabel as Parameters<typeof getPointColorByValue>[0]["label"],
-      index,
-      numPoints: points.length,
-    });
+  // structural cast — the same field shape getLabelColor accepts above
+  const resolverArgs = {
+    coloring,
+    field: field as Parameters<typeof getPointColorByValue>[0]["field"],
+    label: typedLabel,
+    numPoints: points.length,
+  };
 
-  // The resolver returns null only when per-point coloring doesn't apply,
-  // and applicability is list-shape only — uniform across indices
-  const first = resolve(0);
-  if (first === null) {
+  // Applicability is list-shape only; a null for an individual point means
+  // "no override" (unset entry) and the overlay keeps the label color there
+  if (!pointColorByValueApplies(resolverArgs)) {
     return null;
   }
 
-  return points.map((_, i) => (i === 0 ? first : resolve(i)));
+  return points.map((_, index) =>
+    getPointColorByValue({ ...resolverArgs, index }),
+  );
 }
 
 /**

@@ -62,13 +62,13 @@ export const HANDLE_OFFSET_Y = 3;
  * outline strokes are centered on the fill edge, so a point's visible color
  * core is radius - outline/2 and its total extent is radius + outline/2.
  * The selected pair keeps the same color core as an unselected point
- * (7 - 3.5/2 = 6 - 1.5/2) — selection thickens the outline OUTWARD instead
- * of covering the color.
+ * (6.5 - 2.5/2 = 6 - 1.5/2) — selection thickens the outline OUTWARD
+ * instead of covering the color.
  */
 export const KEYPOINT_RADIUS = 6;
-export const KEYPOINT_SELECTED_RADIUS = 7;
+export const KEYPOINT_SELECTED_RADIUS = 6.5;
 export const KEYPOINT_OUTLINE_WIDTH = 1.5;
-export const KEYPOINT_SELECTED_OUTLINE_WIDTH = 3.5;
+export const KEYPOINT_SELECTED_OUTLINE_WIDTH = 2.5;
 // Soft black hairline just outside the white outline: the white ring gives
 // contrast on dark imagery, the halo covers light imagery
 export const KEYPOINT_HALO_WIDTH = 1;

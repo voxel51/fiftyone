@@ -178,9 +178,23 @@ describe("getPointColorByValue", () => {
     ).toBe(getColor(coloring.pool, coloring.seed, true));
   });
 
-  it("label-level color-by-value survives null entries in the list", () => {
-    // regression: a per-point parallel list holds null for unset entries,
-    // and the value-color list matching called toString on each element
+  it("unset entries keep the label color without a none-row", () => {
+    const bare = { ...field, valueColors: undefined } as CustomizeColor;
+    expect(
+      getPointColorByValue({
+        coloring,
+        field: bare,
+        label,
+        index: 2,
+        numPoints: 3,
+      }),
+    ).toBeNull();
+  });
+
+  it("label-level color-by-value ignores per-point lists", () => {
+    // One point's entry must not recolor the whole label (edges, tag): the
+    // label falls back to its own value. Also a regression guard — this
+    // path once crashed on the list's null entries.
     const color = getLabelColor({
       coloring,
       path: "pose",
@@ -190,7 +204,6 @@ describe("getPointColorByValue", () => {
       customizeColorSetting: [field],
       embeddedDocType: "fiftyone.core.labels.Keypoint",
     });
-    // "true" appears in the list, so its explicit value color wins
-    expect(color).toBe("#ff0000");
+    expect(color).toBe(getColor(coloring.pool, coloring.seed, "person"));
   });
 });
