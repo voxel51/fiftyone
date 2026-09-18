@@ -72,7 +72,10 @@ const PaginationBarContent = ({
   dynamicGroupCurrentElementIndex: number;
   isPaginationChangeRef: React.RefObject<boolean>;
 }) => {
-  const data = usePreloadedQuery(foq.paginateSamples, queryRef);
+  const data = usePreloadedQuery<foq.paginateSamplesQuery>(
+    foq.paginateSamples,
+    queryRef,
+  );
 
   const dynamicGroupParameters = useRecoilValue(
     fos.dynamicGroupParameters,

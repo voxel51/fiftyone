@@ -1,19 +1,18 @@
 /**
- * @generated SignedSource<<482864a2dd553ff812f6b6138b893bd9>>
+ * @generated SignedSource<<0e5f183819d018cba3d098dddfe67ed8>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { Fragment, ReaderFragment } from 'relay-runtime';
+import { ReaderFragment } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type viewFragment$data = {
-  readonly stages: Array | null;
-  readonly viewCls: string | null;
-  readonly viewName: string | null;
+  readonly stages: Array | null | undefined;
+  readonly viewCls: string | null | undefined;
+  readonly viewName: string | null | undefined;
   readonly " $fragmentType": "viewFragment";
 };
 export type viewFragment$key = {

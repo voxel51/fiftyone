@@ -1,36 +1,35 @@
 /**
- * @generated SignedSource<<1d5f0e4bd707aa4c7a16723c29e7847f>>
+ * @generated SignedSource<<6ea80d6edd3644a77ee418f170d69871>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { ConcreteRequest, Query } from 'relay-runtime';
+import { ConcreteRequest } from 'relay-runtime';
 export type SampleFilter = {
-  group?: GroupElementFilter | null;
-  id?: string | null;
+  group?: GroupElementFilter | null | undefined;
+  id?: string | null | undefined;
 };
 export type GroupElementFilter = {
-  id?: string | null;
-  slice?: string | null;
-  slices?: ReadonlyArray<string> | null;
+  id?: string | null | undefined;
+  slice?: string | null | undefined;
+  slices?: ReadonlyArray<string> | null | undefined;
 };
 export type paginateSamplesQuery$variables = {
-  after?: string | null;
-  count?: number | null;
+  after?: string | null | undefined;
+  count?: number | null | undefined;
   dataset: string;
-  desc?: boolean | null;
-  dynamicGroup?: object | null;
-  extendedStages?: object | null;
+  desc?: boolean | null | undefined;
+  dynamicGroup?: object | null | undefined;
+  extendedStages?: object | null | undefined;
   filter: SampleFilter;
-  filters?: object | null;
-  hint?: string | null;
-  maxQueryTime?: number | null;
-  paginationData?: boolean | null;
-  sortBy?: string | null;
+  filters?: object | null | undefined;
+  hint?: string | null | undefined;
+  maxQueryTime?: number | null | undefined;
+  paginationData?: boolean | null | undefined;
+  sortBy?: string | null | undefined;
   view: Array;
 };
 export type paginateSamplesQuery$data = {
@@ -48,7 +47,7 @@ export type paginateSamplesQuery$data = {
         readonly sample: object;
         readonly urls: ReadonlyArray<{
           readonly field: string;
-          readonly url: string | null;
+          readonly url: string | null | undefined;
         }>;
       } | {
         readonly __typename: "PointCloudSample";
@@ -57,7 +56,7 @@ export type paginateSamplesQuery$data = {
         readonly sample: object;
         readonly urls: ReadonlyArray<{
           readonly field: string;
-          readonly url: string | null;
+          readonly url: string | null | undefined;
         }>;
       } | {
         readonly __typename: "ThreeDSample";
@@ -66,7 +65,7 @@ export type paginateSamplesQuery$data = {
         readonly sample: object;
         readonly urls: ReadonlyArray<{
           readonly field: string;
-          readonly url: string | null;
+          readonly url: string | null | undefined;
         }>;
       } | {
         readonly __typename: "UnknownSample";
@@ -75,7 +74,7 @@ export type paginateSamplesQuery$data = {
         readonly sample: object;
         readonly urls: ReadonlyArray<{
           readonly field: string;
-          readonly url: string | null;
+          readonly url: string | null | undefined;
         }>;
       } | {
         readonly __typename: "VideoSample";
@@ -86,7 +85,7 @@ export type paginateSamplesQuery$data = {
         readonly sample: object;
         readonly urls: ReadonlyArray<{
           readonly field: string;
-          readonly url: string | null;
+          readonly url: string | null | undefined;
         }>;
       } | {
         // This will never be '%other', but we need some
@@ -228,10 +227,10 @@ v17 = {
   "storageKey": null
 },
 v18 = [
-  (v14/*: any*/),
-  (v15/*: any*/),
-  (v16/*: any*/),
-  (v17/*: any*/)
+  (v14/*:: as any*/),
+  (v15/*:: as any*/),
+  (v16/*:: as any*/),
+  (v17/*:: as any*/)
 ],
 v19 = [
   {
@@ -308,7 +307,7 @@ v19 = [
     "name": "samples",
     "plural": false,
     "selections": [
-      (v13/*: any*/),
+      (v13/*:: as any*/),
       {
         "kind": "InlineFragment",
         "selections": [
@@ -367,20 +366,20 @@ v19 = [
                 "name": "node",
                 "plural": false,
                 "selections": [
-                  (v13/*: any*/),
+                  (v13/*:: as any*/),
                   {
                     "kind": "InlineFragment",
-                    "selections": (v18/*: any*/),
+                    "selections": (v18/*:: as any*/),
                     "type": "ImageSample",
                     "abstractKey": null
                   },
                   {
                     "kind": "InlineFragment",
                     "selections": [
-                      (v15/*: any*/),
-                      (v14/*: any*/),
-                      (v16/*: any*/),
-                      (v17/*: any*/)
+                      (v15/*:: as any*/),
+                      (v14/*:: as any*/),
+                      (v16/*:: as any*/),
+                      (v17/*:: as any*/)
                     ],
                     "type": "PointCloudSample",
                     "abstractKey": null
@@ -388,8 +387,8 @@ v19 = [
                   {
                     "kind": "InlineFragment",
                     "selections": [
-                      (v14/*: any*/),
-                      (v15/*: any*/),
+                      (v14/*:: as any*/),
+                      (v15/*:: as any*/),
                       {
                         "alias": null,
                         "args": null,
@@ -404,21 +403,21 @@ v19 = [
                         "name": "frameNumber",
                         "storageKey": null
                       },
-                      (v16/*: any*/),
-                      (v17/*: any*/)
+                      (v16/*:: as any*/),
+                      (v17/*:: as any*/)
                     ],
                     "type": "VideoSample",
                     "abstractKey": null
                   },
                   {
                     "kind": "InlineFragment",
-                    "selections": (v18/*: any*/),
+                    "selections": (v18/*:: as any*/),
                     "type": "ThreeDSample",
                     "abstractKey": null
                   },
                   {
                     "kind": "InlineFragment",
-                    "selections": (v18/*: any*/),
+                    "selections": (v18/*:: as any*/),
                     "type": "UnknownSample",
                     "abstractKey": null
                   }
@@ -439,47 +438,47 @@ v19 = [
 return {
   "fragment": {
     "argumentDefinitions": [
-      (v0/*: any*/),
-      (v1/*: any*/),
-      (v2/*: any*/),
-      (v3/*: any*/),
-      (v4/*: any*/),
-      (v5/*: any*/),
-      (v6/*: any*/),
-      (v7/*: any*/),
-      (v8/*: any*/),
-      (v9/*: any*/),
-      (v10/*: any*/),
-      (v11/*: any*/),
-      (v12/*: any*/)
+      (v0/*:: as any*/),
+      (v1/*:: as any*/),
+      (v2/*:: as any*/),
+      (v3/*:: as any*/),
+      (v4/*:: as any*/),
+      (v5/*:: as any*/),
+      (v6/*:: as any*/),
+      (v7/*:: as any*/),
+      (v8/*:: as any*/),
+      (v9/*:: as any*/),
+      (v10/*:: as any*/),
+      (v11/*:: as any*/),
+      (v12/*:: as any*/)
     ],
     "kind": "Fragment",
     "metadata": null,
     "name": "paginateSamplesQuery",
-    "selections": (v19/*: any*/),
+    "selections": (v19/*:: as any*/),
     "type": "Query",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
     "argumentDefinitions": [
-      (v1/*: any*/),
-      (v0/*: any*/),
-      (v2/*: any*/),
-      (v12/*: any*/),
-      (v6/*: any*/),
-      (v7/*: any*/),
-      (v5/*: any*/),
-      (v10/*: any*/),
-      (v11/*: any*/),
-      (v3/*: any*/),
-      (v8/*: any*/),
-      (v4/*: any*/),
-      (v9/*: any*/)
+      (v1/*:: as any*/),
+      (v0/*:: as any*/),
+      (v2/*:: as any*/),
+      (v12/*:: as any*/),
+      (v6/*:: as any*/),
+      (v7/*:: as any*/),
+      (v5/*:: as any*/),
+      (v10/*:: as any*/),
+      (v11/*:: as any*/),
+      (v3/*:: as any*/),
+      (v8/*:: as any*/),
+      (v4/*:: as any*/),
+      (v9/*:: as any*/)
     ],
     "kind": "Operation",
     "name": "paginateSamplesQuery",
-    "selections": (v19/*: any*/)
+    "selections": (v19/*:: as any*/)
   },
   "params": {
     "cacheID": "327f1451aa00efae6ee9906f4cd8796c",

@@ -1,39 +1,38 @@
 /**
- * @generated SignedSource<<33a9a2f6ce51ef6a0a8a813b7d83957e>>
+ * @generated SignedSource<<94491948b4b78f7fb58fa7c6613e6981>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { ConcreteRequest, Mutation } from 'relay-runtime';
+import { ConcreteRequest } from 'relay-runtime';
 export type SavedViewInfo = {
-  color?: string | null;
-  description?: string | null;
-  name?: string | null;
+  color?: string | null | undefined;
+  description?: string | null | undefined;
+  name?: string | null | undefined;
 };
 export type updateSavedViewMutation$variables = {
-  datasetName?: string | null;
-  session?: string | null;
+  datasetName?: string | null | undefined;
+  session?: string | null | undefined;
   subscription: string;
   updatedInfo: SavedViewInfo;
   viewName: string;
 };
 export type updateSavedViewMutation$data = {
   readonly updateSavedView: {
-    readonly color: string | null;
-    readonly createdAt: number | null;
-    readonly datasetId: string | null;
-    readonly description: string | null;
-    readonly id: string | null;
-    readonly lastLoadedAt: number | null;
-    readonly lastModifiedAt: number | null;
-    readonly name: string | null;
-    readonly slug: string | null;
-    readonly viewStages: ReadonlyArray<string> | null;
-  } | null;
+    readonly color: string | null | undefined;
+    readonly createdAt: number | null | undefined;
+    readonly datasetId: string | null | undefined;
+    readonly description: string | null | undefined;
+    readonly id: string | null | undefined;
+    readonly lastLoadedAt: number | null | undefined;
+    readonly lastModifiedAt: number | null | undefined;
+    readonly name: string | null | undefined;
+    readonly slug: string | null | undefined;
+    readonly viewStages: ReadonlyArray<string> | null | undefined;
+  } | null | undefined;
 };
 export type updateSavedViewMutation = {
   response: updateSavedViewMutation$data;
@@ -178,31 +177,31 @@ v5 = [
 return {
   "fragment": {
     "argumentDefinitions": [
-      (v0/*: any*/),
-      (v1/*: any*/),
-      (v2/*: any*/),
-      (v3/*: any*/),
-      (v4/*: any*/)
+      (v0/*:: as any*/),
+      (v1/*:: as any*/),
+      (v2/*:: as any*/),
+      (v3/*:: as any*/),
+      (v4/*:: as any*/)
     ],
     "kind": "Fragment",
     "metadata": null,
     "name": "updateSavedViewMutation",
-    "selections": (v5/*: any*/),
+    "selections": (v5/*:: as any*/),
     "type": "Mutation",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
     "argumentDefinitions": [
-      (v2/*: any*/),
-      (v1/*: any*/),
-      (v4/*: any*/),
-      (v0/*: any*/),
-      (v3/*: any*/)
+      (v2/*:: as any*/),
+      (v1/*:: as any*/),
+      (v4/*:: as any*/),
+      (v0/*:: as any*/),
+      (v3/*:: as any*/)
     ],
     "kind": "Operation",
     "name": "updateSavedViewMutation",
-    "selections": (v5/*: any*/)
+    "selections": (v5/*:: as any*/)
   },
   "params": {
     "cacheID": "2f4941915ed060fd4742d80c04837a2f",

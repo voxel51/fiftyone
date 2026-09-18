@@ -1,40 +1,39 @@
 /**
- * @generated SignedSource<<04432a274b5a1f3c68bc90c93ac71928>>
+ * @generated SignedSource<<df75e15b04035f6e2e7053dd81397d0b>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { ConcreteRequest, Mutation } from 'relay-runtime';
+import { ConcreteRequest } from 'relay-runtime';
 export type StateForm = {
-  addStages?: Array | null;
-  extended?: object | null;
-  filters?: object | null;
-  labels?: ReadonlyArray<SelectedLabel> | null;
-  sampleIds?: ReadonlyArray<string> | null;
-  slice?: string | null;
+  addStages?: Array | null | undefined;
+  extended?: object | null | undefined;
+  filters?: object | null | undefined;
+  labels?: ReadonlyArray<SelectedLabel> | null | undefined;
+  sampleIds?: ReadonlyArray<string> | null | undefined;
+  slice?: string | null | undefined;
 };
 export type SelectedLabel = {
   field: string;
-  frameNumber?: number | null;
-  instanceId?: string | null;
+  frameNumber?: number | null | undefined;
+  instanceId?: string | null | undefined;
   labelId: string;
   sampleId: string;
-  type?: string | null;
+  type?: string | null | undefined;
 };
 export type setViewMutation$variables = {
   datasetName: string;
   form: StateForm;
-  savedViewSlug?: string | null;
-  session?: string | null;
+  savedViewSlug?: string | null | undefined;
+  session?: string | null | undefined;
   subscription: string;
   view: Array;
 };
 export type setViewMutation$data = {
-  readonly setView: Array | null;
+  readonly setView: Array | null | undefined;
 };
 export type setViewMutation = {
   response: setViewMutation$data;
@@ -115,33 +114,33 @@ v6 = [
 return {
   "fragment": {
     "argumentDefinitions": [
-      (v0/*: any*/),
-      (v1/*: any*/),
-      (v2/*: any*/),
-      (v3/*: any*/),
-      (v4/*: any*/),
-      (v5/*: any*/)
+      (v0/*:: as any*/),
+      (v1/*:: as any*/),
+      (v2/*:: as any*/),
+      (v3/*:: as any*/),
+      (v4/*:: as any*/),
+      (v5/*:: as any*/)
     ],
     "kind": "Fragment",
     "metadata": null,
     "name": "setViewMutation",
-    "selections": (v6/*: any*/),
+    "selections": (v6/*:: as any*/),
     "type": "Mutation",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
     "argumentDefinitions": [
-      (v4/*: any*/),
-      (v3/*: any*/),
-      (v5/*: any*/),
-      (v2/*: any*/),
-      (v0/*: any*/),
-      (v1/*: any*/)
+      (v4/*:: as any*/),
+      (v3/*:: as any*/),
+      (v5/*:: as any*/),
+      (v2/*:: as any*/),
+      (v0/*:: as any*/),
+      (v1/*:: as any*/)
     ],
     "kind": "Operation",
     "name": "setViewMutation",
-    "selections": (v6/*: any*/)
+    "selections": (v6/*:: as any*/)
   },
   "params": {
     "cacheID": "dae4551716ec284706b937f03957c59c",

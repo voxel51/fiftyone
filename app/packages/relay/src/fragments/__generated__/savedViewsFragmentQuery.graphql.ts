@@ -1,14 +1,13 @@
 /**
- * @generated SignedSource<<90aa393a47d07e13093fe4a92696b135>>
+ * @generated SignedSource<<815f8b9c8ecfde0fa8f1516477688fec>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { ConcreteRequest, Query } from 'relay-runtime';
+import { ConcreteRequest } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type savedViewsFragmentQuery$variables = {
   name: string;
@@ -31,7 +30,7 @@ var v0 = [
 ];
 return {
   "fragment": {
-    "argumentDefinitions": (v0/*: any*/),
+    "argumentDefinitions": (v0/*:: as any*/),
     "kind": "Fragment",
     "metadata": null,
     "name": "savedViewsFragmentQuery",
@@ -47,7 +46,7 @@ return {
   },
   "kind": "Request",
   "operation": {
-    "argumentDefinitions": (v0/*: any*/),
+    "argumentDefinitions": (v0/*:: as any*/),
     "kind": "Operation",
     "name": "savedViewsFragmentQuery",
     "selections": [
