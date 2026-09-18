@@ -4,6 +4,7 @@
 
 import { BaseLabel } from "@fiftyone/looker/src/overlays/base";
 
+import type { HeatmapPalette } from "./utils/heatmapPalette";
 import type { SegmentationPalette } from "./utils/segmentationPalette";
 
 /**
@@ -47,6 +48,8 @@ export interface DrawStyle {
    * next paint resolves a new palette, and the mask re-rasterizes.
    */
   segmentationPalette?: SegmentationPalette;
+  /** Resolved colors + range for a heatmap. Carried for the same reason. */
+  heatmapPalette?: HeatmapPalette;
 }
 
 export interface Anchor {
