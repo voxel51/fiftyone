@@ -14,6 +14,7 @@ import {
 } from "../utils/heatmapPalette";
 import { rasterizeHeatmap } from "../utils/heatmapRaster";
 import { decodeMaskPath } from "../utils/maskPathDecoding";
+import { PathDecodeCooldown } from "../utils/pathDecodeCooldown";
 import { BaseOverlay } from "./BaseOverlay";
 
 export type HeatmapLabel = RawLookerLabel & {
@@ -46,7 +47,7 @@ export interface HeatmapOverlayOptions {
 export class HeatmapOverlay extends BaseOverlay<HeatmapLabel> {
   #canvas?: HTMLCanvasElement;
   /** Per-pixel values behind `#canvas`, for the tooltip. */
-  #values?: Float32Array;
+  #values?: Float64Array;
   #width = 0;
   #height = 0;
 
@@ -63,6 +64,15 @@ export class HeatmapOverlay extends BaseOverlay<HeatmapLabel> {
   #decodedPath?: string;
   /** The path a decode is in flight for, so a repaint does not restart it. */
   #decodingPath?: string;
+  /** Paths whose decode just failed; see {@link PathDecodeCooldown}. */
+  readonly #pathCooldown = new PathDecodeCooldown();
+  /**
+   * Set by `destroy`. A decode in flight outlives the overlay that asked
+   * for it, and its continuation would otherwise adopt the result and mark
+   * a disposed overlay dirty, which schedules a render against a renderer
+   * that is already gone.
+   */
+  #destroyed = false;
 
   /**
    * The (source, palette) that failed to rasterize.
@@ -70,8 +80,14 @@ export class HeatmapOverlay extends BaseOverlay<HeatmapLabel> {
    * The reuse check requires a canvas, which a failure leaves unset, so
    * without this a map that cannot be rasterized is retried — and logged — on
    * EVERY repaint. During playback that is thirty times a second.
+   *
+   * The source is held by identity rather than summarized into a key: a string
+   * compares by value, a decoded `OverlayMask` by reference, and neither can
+   * collide with a different map the way a length or a literal `"decoded"`
+   * could. A collision here suppresses a perfectly good map.
    */
-  #failedKey?: string;
+  #failedSource?: string | OverlayMask;
+  #failedPalette?: string;
 
   public cursor = "default";
 
@@ -126,14 +142,21 @@ export class HeatmapOverlay extends BaseOverlay<HeatmapLabel> {
     const source = this.resolveSource();
 
     if (!source) {
+      // Nothing resolvable right now: no inline map, and either no `map_path`
+      // at all or one still decoding. Stopping at the paint is not enough —
+      // the values behind the last raster are what `valueAt` and
+      // `containsPoint` answer from, so leaving them would let an invisible
+      // overlay go on swallowing clicks for a heatmap that is not on screen.
+      // Clearing keeps the hit test honest about what is actually painted; a
+      // path decode that lands repaints and repopulates it.
+      this.clearRaster();
       return undefined;
     }
 
     const key = heatmapPaletteKey(palette);
-    const attempt = `${key}::${typeof source === "string" ? source.length : "decoded"}`;
 
     // Already known bad, and nothing about the inputs has changed.
-    if (this.#failedKey === attempt) {
+    if (this.#failedSource === source && this.#failedPalette === key) {
       return undefined;
     }
 
@@ -161,7 +184,8 @@ export class HeatmapOverlay extends BaseOverlay<HeatmapLabel> {
       this.#height = height;
       this.#renderedSource = source;
       this.#renderedPalette = key;
-      this.#failedKey = undefined;
+      this.#failedSource = undefined;
+      this.#failedPalette = undefined;
     } catch (error) {
       // one malformed map must not take the whole frame down
       console.error(`[heatmap] failed to rasterize "${this.field}":`, error);
@@ -169,7 +193,8 @@ export class HeatmapOverlay extends BaseOverlay<HeatmapLabel> {
       this.#values = undefined;
       this.#renderedSource = source;
       this.#renderedPalette = key;
-      this.#failedKey = attempt;
+      this.#failedSource = source;
+      this.#failedPalette = key;
     }
 
     return this.#canvas;
@@ -209,7 +234,11 @@ export class HeatmapOverlay extends BaseOverlay<HeatmapLabel> {
 
   /** Fetch + decode an on-disk map, then repaint. */
   private startDecode(path: string): void {
-    if (this.#decodingPath === path) {
+    if (this.#decodingPath === path || this.#destroyed) {
+      return;
+    }
+
+    if (this.#pathCooldown.blocked(path)) {
       return;
     }
 
@@ -227,7 +256,7 @@ export class HeatmapOverlay extends BaseOverlay<HeatmapLabel> {
         // The label may have moved on while this was in flight — a scrub, or
         // simply the next frame. Adopting a stale decode would paint the
         // wrong frame's map.
-        if (this.label?.map_path !== path) {
+        if (this.#destroyed || this.label?.map_path !== path) {
           return;
         }
 
@@ -238,6 +267,10 @@ export class HeatmapOverlay extends BaseOverlay<HeatmapLabel> {
         // never appears again. Leaving it unrecorded lets the next repaint
         // try once more.
         if (!decoded) {
+          // Not recorded as decoded — see above — but held off briefly, so a
+          // path that keeps failing costs one attempt a second instead of one
+          // per repaint.
+          this.#pathCooldown.fail(path);
           return;
         }
 
@@ -295,11 +328,26 @@ export class HeatmapOverlay extends BaseOverlay<HeatmapLabel> {
     this.markDirty();
   }
 
-  destroy(): void {
-    this.#decodedFromPath = undefined;
-    this.#decodedPath = undefined;
+  /** Drops the raster and everything hit-testing answers from. */
+  private clearRaster(): void {
     this.#canvas = undefined;
     this.#values = undefined;
+    this.#width = 0;
+    this.#height = 0;
+    this.#renderedSource = undefined;
+    this.#renderedPalette = undefined;
+  }
+
+  destroy(): void {
+    // Flagged before anything is torn down: a decode already in flight
+    // resolves after this, and its continuation reads the flag rather than
+    // adopting a result into a disposed overlay.
+    this.#destroyed = true;
+    this.#decodingPath = undefined;
+    this.#pathCooldown.clear();
+    this.#decodedFromPath = undefined;
+    this.#decodedPath = undefined;
+    this.clearRaster();
     super.destroy();
   }
 }

@@ -10,6 +10,7 @@ const decodeMaskPath = vi.hoisted(() => vi.fn());
 vi.mock("../utils/maskPathDecoding", () => ({ decodeMaskPath }));
 
 import type { RenderMeta } from "../types";
+import { FAILED_PATH_DECODE_COOLDOWN_MS } from "../utils/pathDecodeCooldown";
 import { resolveSegmentationPalette } from "../utils/segmentationPalette";
 import { SegmentationOverlay } from "./SegmentationOverlay";
 
@@ -54,6 +55,21 @@ const mask = (values: number[]): OverlayMask =>
 /** A decoded mask standing in for what `decodeMaskPath` returns. */
 const maskFixture = () => mask([0, 1, 1, 0]);
 
+/**
+ * A movable `Date.now`, so the decode cooldown can be stepped over without
+ * waiting out real time.
+ */
+const clock = {
+  now: 0,
+  advance(ms: number) {
+    this.now += ms;
+  },
+  install() {
+    this.now = Date.now();
+    vi.spyOn(Date, "now").mockImplementation(() => this.now);
+  },
+};
+
 const META: RenderMeta = {
   canonicalMediaBounds: { x: 0, y: 0, width: 100, height: 100 },
 };
@@ -79,6 +95,7 @@ describe("SegmentationOverlay", () => {
     renderer = makeRenderer();
     decodeMaskPath.mockReset();
     vi.restoreAllMocks();
+    clock.install();
   });
 
   const render = (
@@ -311,12 +328,47 @@ describe("SegmentationOverlay", () => {
 
     decodeMaskPath.mockResolvedValue(maskFixture());
 
+    // The retry is held off briefly, so repaints inside the cooldown must not
+    // each start another fetch.
+    render(overlay);
+    render(overlay);
+    expect(decodeMaskPath).toHaveBeenCalledTimes(1);
+
+    clock.advance(FAILED_PATH_DECODE_COOLDOWN_MS);
+
     render(overlay);
     await vi.waitFor(() => expect(overlay.getIsDirty()).toBe(true));
     render(overlay);
 
     expect(decodeMaskPath).toHaveBeenCalledTimes(2);
     expect(renderer.drawImage).toHaveBeenCalled();
+  });
+
+  it("drops a decode that lands after the overlay is destroyed", async () => {
+    let settle: (value: unknown) => void = () => undefined;
+    decodeMaskPath.mockReturnValueOnce(
+      new Promise((resolve) => {
+        settle = resolve;
+      }),
+    );
+
+    const overlay = new SegmentationOverlay({
+      id: "segmentation-retry-destroyed",
+      field: FIELD,
+      label: { _id: "d", _cls: "Segmentation", mask_path: "/m.png" } as never,
+      resolveUrl: () => "/media?filepath=/m.png",
+    });
+
+    render(overlay);
+    overlay.destroy();
+
+    // The fetch outlives the overlay; adopting its result would mark a
+    // disposed overlay dirty and schedule a render against a gone renderer.
+    settle(maskFixture());
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(overlay.getIsDirty()).toBe(false);
   });
 
   it("says so once when no resolver was supplied", () => {

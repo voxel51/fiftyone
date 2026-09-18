@@ -27,7 +27,12 @@ export interface RasterizedHeatmap {
   width: number;
   height: number;
   /** The value under each pixel, for the tooltip. */
-  values: Float32Array;
+  /**
+   * Float64, not Float32: `ARRAY_TYPES` admits `Float64Array` and the 32-bit
+   * integer types, whose values do not all survive a float32 round trip —
+   * 16_777_217 would be reported to the tooltip as 16_777_216.
+   */
+  values: Float64Array;
   /** The range the paint actually used, declared or inferred. */
   range: [number, number];
 }
@@ -39,6 +44,10 @@ export interface RasterizedHeatmap {
  *   map, but that path is untested here and guessing at it would paint
  *   plausible-looking nonsense.
  */
+/** A pixel count has to be a whole positive number small enough to index. */
+const isDimension = (value: number): boolean =>
+  Number.isSafeInteger(value) && value > 0;
+
 export const rasterizeHeatmap = (
   mapData: string | OverlayMask,
   palette: HeatmapPalette,
@@ -57,7 +66,25 @@ export const rasterizeHeatmap = (
     throw new Error(`Unsupported heatmap array type: ${map.arrayType}`);
   }
 
+  // `numpy.parse` copies the shape out of the header without checking it, so a
+  // malformed map can arrive claiming [-1, -1] or [0.5, 2]. The payload check
+  // below alone would pass both — their product is 1, which a one-element
+  // buffer satisfies — and hand the caller dimensions that `createMaskCanvas`
+  // and `ImageData` then reject. Fail here, where the reason can be named.
+  if (map.shape?.length !== 2) {
+    throw new Error(
+      `Expected a 2-D heatmap shape, got ${JSON.stringify(map.shape)}`,
+    );
+  }
+
   const [height, width] = map.shape;
+
+  if (!isDimension(width) || !isDimension(height)) {
+    throw new Error(
+      `Invalid heatmap dimensions: ${JSON.stringify([height, width])}`,
+    );
+  }
+
   const pixels = width * height;
   const source = new ArrayType(map.buffer);
 
@@ -79,7 +106,7 @@ export const rasterizeHeatmap = (
 
   const rgba = new ArrayBuffer(pixels * 4);
   const overlay = new Uint32Array(rgba);
-  const values = new Float32Array(pixels);
+  const values = new Float64Array(pixels);
 
   // `clampedIndex` divides by `stop - start`, so a degenerate range (a
   // constant map, or a `range` the user set to a single value) would make

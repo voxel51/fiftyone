@@ -10,6 +10,7 @@ const decodeMaskPath = vi.hoisted(() => vi.fn());
 vi.mock("../utils/maskPathDecoding", () => ({ decodeMaskPath }));
 
 import type { RenderMeta } from "../types";
+import { FAILED_PATH_DECODE_COOLDOWN_MS } from "../utils/pathDecodeCooldown";
 import { resolveHeatmapPalette } from "../utils/heatmapPalette";
 import { HeatmapOverlay } from "./HeatmapOverlay";
 
@@ -56,6 +57,21 @@ const map = (values: number[]): OverlayMask =>
 /** A decoded map standing in for what `decodeMaskPath` returns. */
 const mapFixture = () => map([0, 1, 1, 0]);
 
+/**
+ * A movable `Date.now`, so the decode cooldown can be stepped over without
+ * waiting out real time.
+ */
+const clock = {
+  now: 0,
+  advance(ms: number) {
+    this.now += ms;
+  },
+  install() {
+    this.now = Date.now();
+    vi.spyOn(Date, "now").mockImplementation(() => this.now);
+  },
+};
+
 const META: RenderMeta = {
   canonicalMediaBounds: { x: 0, y: 0, width: 100, height: 100 },
 };
@@ -81,6 +97,7 @@ describe("HeatmapOverlay", () => {
     renderer = makeRenderer();
     decodeMaskPath.mockReset();
     vi.restoreAllMocks();
+    clock.install();
   });
 
   const render = (
@@ -295,12 +312,99 @@ describe("HeatmapOverlay", () => {
 
     decodeMaskPath.mockResolvedValue(mapFixture());
 
+    // The retry is held off briefly, so repaints inside the cooldown must not
+    // each start another fetch.
+    render(overlay);
+    render(overlay);
+    expect(decodeMaskPath).toHaveBeenCalledTimes(1);
+
+    clock.advance(FAILED_PATH_DECODE_COOLDOWN_MS);
+
     render(overlay);
     await vi.waitFor(() => expect(overlay.getIsDirty()).toBe(true));
     render(overlay);
 
     expect(decodeMaskPath).toHaveBeenCalledTimes(2);
     expect(renderer.drawImage).toHaveBeenCalled();
+  });
+
+  it("drops a decode that lands after the overlay is destroyed", async () => {
+    let settle: (value: unknown) => void = () => undefined;
+    decodeMaskPath.mockReturnValueOnce(
+      new Promise((resolve) => {
+        settle = resolve;
+      }),
+    );
+
+    const overlay = new HeatmapOverlay({
+      id: "heatmap-retry-destroyed",
+      field: FIELD,
+      label: { _id: "d", _cls: "Heatmap", map_path: "/m.png" } as never,
+      resolveUrl: () => "/media?filepath=/m.png",
+    });
+
+    render(overlay);
+    overlay.destroy();
+
+    // The fetch outlives the overlay; adopting its result would mark a
+    // disposed overlay dirty and schedule a render against a gone renderer.
+    settle(mapFixture());
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(overlay.getIsDirty()).toBe(false);
+  });
+
+  it("stops answering hit tests once the inline map is gone", () => {
+    const overlay = makeOverlay();
+
+    render(overlay);
+    expect(overlay.valueAt({ x: 0.75, y: 0.25 })).toBe(0.5);
+    expect(overlay.containsPoint({ x: 0.75, y: 0.25 })).toBe(true);
+
+    // The label keeps its identity but moves its map to disk. The overlay can
+    // no longer paint it, so it must not keep swallowing clicks for the raster
+    // it used to have.
+    overlay.applyLabel({
+      _id: "heat-1",
+      _cls: "Heatmap",
+      map_path: "/m.png",
+    } as never);
+    render(overlay);
+
+    expect(overlay.valueAt({ x: 0.75, y: 0.25 })).toBe(0);
+    expect(overlay.containsPoint({ x: 0.75, y: 0.25 })).toBe(false);
+  });
+
+  it("retries a map that failed under a different map of the same length", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const bad = {
+      channels: 2,
+      arrayType: "Float32Array",
+      shape: [2, 2],
+      buffer: new Float32Array([0, 1, 2, 3]).buffer,
+    } as unknown as OverlayMask;
+
+    const overlay = new HeatmapOverlay({
+      id: "heat-retry",
+      field: FIELD,
+      label: { _id: "heat-retry", _cls: "Heatmap", map: bad } as never,
+    });
+
+    render(overlay);
+    expect(renderer.drawImage).not.toHaveBeenCalled();
+
+    // A different map object, same palette: the failure belonged to the old
+    // one, so this must be rasterized rather than suppressed.
+    overlay.applyLabel({
+      _id: "heat-retry",
+      _cls: "Heatmap",
+      map: map([0, 0.5, 1, 0.25]),
+    } as never);
+    render(overlay);
+
+    expect(renderer.drawImage).toHaveBeenCalledTimes(1);
   });
 
   it("says so once when no resolver was supplied", () => {
