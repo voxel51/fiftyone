@@ -9,7 +9,7 @@ import colorString from "color-string";
 import { cloneDeep } from "lodash";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ChromePicker } from "react-color";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import Input from "../../Common/Input";
 import { Button } from "../../utils";
 import {
@@ -44,8 +44,8 @@ const ValueColorList: React.FC<ValueColorProp> = ({
   );
   const pickerRef = useRef<ChromePicker>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const activePath = useRecoilValue(activeColorPath);
-  const colorScheme = useRecoilValue(fos.colorScheme);
+  const activePath = useReverbValue(activeColorPath);
+  const colorScheme = useReverbValue(fos.colorScheme);
 
   const handleAdd = () => {
     const newValue = {

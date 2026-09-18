@@ -9,7 +9,7 @@ import { FLOAT_FIELD, INT_FIELD } from "@fiftyone/utilities";
 import { useAtom } from "jotai";
 import { isEqual } from "lodash";
 import { useCallback, useMemo, useRef } from "react";
-import { useRecoilCallback } from "recoil";
+import { useReverbCallback } from "@fiftyone/reverb";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
 import type { AttributeConfig } from "../SchemaManager/utils";
@@ -108,7 +108,7 @@ const useSchema = (readOnly: boolean) => {
 };
 
 const useParseFieldValue = () => {
-  return useRecoilCallback(
+  return useReverbCallback(
     ({ snapshot }) =>
       async (currentField: string, path: string, data) => {
         const expanded = await snapshot.getPromise(expandPath(currentField));

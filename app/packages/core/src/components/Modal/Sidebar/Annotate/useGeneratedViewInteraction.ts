@@ -1,7 +1,7 @@
 import type { LighterInteractionPolicy } from "@fiftyone/annotation";
 import { isGeneratedView } from "@fiftyone/state";
 import { useCallback, useMemo, useRef } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 
 /**
  * The generated-view (patches/clips/frames) interaction ownership: edit mode
@@ -10,7 +10,7 @@ import { useRecoilValue } from "recoil";
  * interception (selecting the one label is the normal route).
  */
 export const useGeneratedViewInteraction = (): LighterInteractionPolicy => {
-  const isGenerated = useRecoilValue(isGeneratedView);
+  const isGenerated = useReverbValue(isGeneratedView);
 
   const isGeneratedRef = useRef(isGenerated);
   isGeneratedRef.current = isGenerated;

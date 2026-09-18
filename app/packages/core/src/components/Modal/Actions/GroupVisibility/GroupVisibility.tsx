@@ -2,7 +2,7 @@ import { PopoutSectionTitle } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import type { MutableRefObject, ReactNode } from "react";
 import { useMemo } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useReverbState, useReverbValue } from "@fiftyone/reverb";
 import Popout from "../../../Actions/Popout";
 import Checkbox from "../../../Common/Checkbox";
 
@@ -18,16 +18,16 @@ export default ({
   const threeDSliceExists = fos.useHas3dSlice();
   const isSlotVisible = fos.useIs3dVisibleSetting();
   const actions = fos.useRenderConfig3dActions();
-  const [isCarouselVisible, setIsCarouselVisible] = useRecoilState(
+  const [isCarouselVisible, setIsCarouselVisible] = useReverbState(
     fos.groupMediaIsCarouselVisibleSetting,
   );
-  const [isMainVisible, setIsMainVisible] = useRecoilState(
+  const [isMainVisible, setIsMainVisible] = useReverbState(
     fos.groupMediaIsMain2DViewerVisibleSetting,
   );
-  const isNestedDynamicGroup = useRecoilValue(fos.isNestedDynamicGroup);
-  const shouldRenderImaVid = useRecoilValue(fos.shouldRenderImaVidLooker(true));
-  const dynamicGroupsViewMode = useRecoilValue(fos.dynamicGroupsViewMode(true));
-  const hasGroupSlices = useRecoilValue(fos.hasGroupSlices);
+  const isNestedDynamicGroup = useReverbValue(fos.isNestedDynamicGroup);
+  const shouldRenderImaVid = useReverbValue(fos.shouldRenderImaVidLooker(true));
+  const dynamicGroupsViewMode = useReverbValue(fos.dynamicGroupsViewMode(true));
+  const hasGroupSlices = useReverbValue(fos.hasGroupSlices);
   const isAnnotateMode = fos.useModalMode() === fos.ModalMode.ANNOTATE;
 
   const isSequentialAccessAllowed =

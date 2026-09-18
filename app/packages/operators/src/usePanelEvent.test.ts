@@ -1,7 +1,7 @@
 import { PanelEventError } from "@fiftyone/utilities";
 import { act, renderHook } from "@testing-library/react";
 import React from "react";
-import { RecoilRoot } from "recoil";
+import { ReverbRoot } from "@fiftyone/reverb";
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import usePanelEvent, { usePendingPanelEventError } from "./usePanelEvent";
 
@@ -29,7 +29,7 @@ import { useActivePanelEventsCount } from "./hooks";
 import { executeOperator, OperatorResult } from "./operators";
 
 const TestWrapper = ({ children }: { children: React.ReactNode }) =>
-  React.createElement(RecoilRoot, null, children);
+  React.createElement(ReverbRoot, null, children);
 
 // NOTE: useActivePanelEventsCount has browser dependencies in its transitive dependencies
 //       likely in "./hooks" so we need to mock it

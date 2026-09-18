@@ -3,7 +3,7 @@ import styles from "./Options.module.css";
 import { Link, Selector, useTheme } from "@fiftyone/components";
 import { CenterFocusWeak, Close, Help } from "@mui/icons-material";
 import React from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useReverbState, useReverbValue } from "@fiftyone/reverb";
 import {
   activeField,
   geoFields,
@@ -31,10 +31,10 @@ const Options: React.FC<{
   fitSelectionData: () => void;
 }> = ({ clearSelectionData, fitSelectionData, fitData }) => {
   const theme = useTheme();
-  const [style, setStyle] = useRecoilState(mapStyle);
-  const fields = useRecoilValue(geoFields);
-  const [field, setActiveField] = useRecoilState(activeField);
-  const hasMapSelection = useRecoilValue(hasSelection);
+  const [style, setStyle] = useReverbState(mapStyle);
+  const fields = useReverbValue(geoFields);
+  const [field, setActiveField] = useReverbState(activeField);
+  const hasMapSelection = useReverbValue(hasSelection);
 
   const selectorStyle = {
     background: theme.neutral.softBg,

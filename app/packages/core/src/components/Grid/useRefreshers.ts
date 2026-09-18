@@ -2,32 +2,32 @@ import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { useEffect } from "react";
 import uuid from "react-uuid";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { useMemoOne } from "use-memo-one";
-import { gridAt, gridOffset, gridPage } from "./recoil";
+import { gridAt, gridOffset, gridPage } from "./atoms";
 
 export default function useRefreshers() {
-  const cropToContent = useRecoilValue(fos.cropToContent(false));
-  const datasetName = useRecoilValue(fos.datasetName);
+  const cropToContent = useReverbValue(fos.cropToContent(false));
+  const datasetName = useReverbValue(fos.datasetName);
   const extendedStagesUnsorted = fos.stringifyObj(
-    useRecoilValue(fos.extendedStagesUnsorted),
+    useReverbValue(fos.extendedStagesUnsorted),
   );
   const fieldVisibilityStage = fos.stringifyObj(
-    useRecoilValue(fos.fieldVisibilityStage) || {},
+    useReverbValue(fos.fieldVisibilityStage) || {},
   );
-  const filters = fos.stringifyObj(useRecoilValue(fos.filters));
-  const groupSlice = useRecoilValue(fos.groupSlice);
-  const mediaField = useRecoilValue(fos.selectedMediaField(false));
-  const queryPerformanceSetting = useRecoilValue(fos.queryPerformanceSetting);
-  const refresher = useRecoilValue(fos.refresher);
-  const shouldRenderImaVidLooker = useRecoilValue(
+  const filters = fos.stringifyObj(useReverbValue(fos.filters));
+  const groupSlice = useReverbValue(fos.groupSlice);
+  const mediaField = useReverbValue(fos.selectedMediaField(false));
+  const queryPerformanceSetting = useReverbValue(fos.queryPerformanceSetting);
+  const refresher = useReverbValue(fos.refresher);
+  const shouldRenderImaVidLooker = useReverbValue(
     fos.shouldRenderImaVidLooker(false),
   );
   const similarityParameters = fos.stringifyObj(
-    useRecoilValue(fos.similarityParameters) || {},
+    useReverbValue(fos.similarityParameters) || {},
   );
-  const sort = useRecoilValue(fos.gridSortBy);
-  const view = fos.filterView(useRecoilValue(fos.view) ?? []);
+  const sort = useReverbValue(fos.gridSortBy);
+  const view = fos.filterView(useReverbValue(fos.view) ?? []);
 
   // only reload, attempt to return to the last grid location
   const layoutReset = useMemoOne(() => {

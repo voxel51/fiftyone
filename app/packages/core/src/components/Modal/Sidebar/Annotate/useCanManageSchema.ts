@@ -1,7 +1,7 @@
 import { canManageSchema } from "@fiftyone/state";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 
 export default function useCanManageSchema() {
-  const { enabled } = useRecoilValue(canManageSchema);
+  const { enabled } = useReverbValue(canManageSchema);
   return enabled;
 }

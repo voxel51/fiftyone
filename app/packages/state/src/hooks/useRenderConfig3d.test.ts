@@ -1,6 +1,6 @@
 import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ModalSample } from "../recoil/modal";
+import type { ModalSample } from "../atoms/modal";
 import {
   useRenderConfig3dActions,
   useRenderConfig3dImperativeState,
@@ -44,11 +44,14 @@ const stateStore = vi.hoisted(() => ({
   loadables: {} as Record<string, { state: string; contents: unknown }>,
 }));
 
-vi.mock("../recoil/renderConfig3d.atoms", () => mockInternals);
-vi.mock("../recoil/groups", () => mockGroups);
+vi.mock("../atoms/renderConfig3d.atoms", () => mockInternals);
+vi.mock("../atoms/groups", () => mockGroups);
 
-vi.mock("recoil", async () => {
-  const actual = await vi.importActual<typeof import("recoil")>("recoil");
+vi.mock("@fiftyone/reverb", async () => {
+  const actual =
+    await vi.importActual<typeof import("@fiftyone/reverb")>(
+      "@fiftyone/reverb",
+    );
 
   const getValue = (node: { key: string }) => {
     return stateStore.values[node.key];
@@ -66,13 +69,13 @@ vi.mock("recoil", async () => {
 
   return {
     ...actual,
-    useRecoilValue: (node: { key: string }) => getValue(node),
-    useRecoilValueLoadable: (node: { key: string }) =>
+    useReverbValue: (node: { key: string }) => getValue(node),
+    useReverbValueLoadable: (node: { key: string }) =>
       stateStore.loadables[node.key] ?? {
         state: "hasValue",
         contents: getValue(node),
       },
-    useRecoilCallback:
+    useReverbCallback:
       (
         callback: (interfaceArgs: {
           snapshot: { getPromise: (node: { key: string }) => Promise<unknown> };

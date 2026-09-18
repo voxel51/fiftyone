@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useRecoilState } from "recoil";
+import { useReverbState } from "@fiftyone/reverb";
 import type { BufferGeometry } from "three";
 import { Points, Vector3 } from "three";
 import { useFo3dContext } from "../fo3d/context";
@@ -24,7 +24,7 @@ export const usePointCloudHoverFromRaycast = ({
   pointsRef,
 }: UsePointCloudHoverFromRaycastProps) => {
   const { pointCloudSettings, setHoverMetadata } = useFo3dContext();
-  const [currentHoveredPoint, setCurrentHoveredPoint] = useRecoilState(
+  const [currentHoveredPoint, setCurrentHoveredPoint] = useReverbState(
     currentHoveredPointAtom,
   );
   const raycastResult = useRaycastResult();

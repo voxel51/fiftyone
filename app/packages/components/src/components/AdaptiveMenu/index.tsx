@@ -12,7 +12,7 @@ import React, {
 } from "react";
 import type { MoveEvent, SortableEvent } from "react-sortablejs";
 import { ReactSortable } from "react-sortablejs";
-import { useSetRecoilState } from "recoil";
+import { useSetReverbState } from "@fiftyone/reverb";
 import PillButton from "../PillButton";
 import PopoutButton from "../PopoutButton";
 import { hideOverflowingNodes } from "./utils";
@@ -235,7 +235,7 @@ function MoreItems<T extends AdaptiveMenuItemPropsType>(
 ) {
   const { id, items, onMove, onEnd, onStart, orientation, refresh } = props;
   const [open, setOpen] = React.useState(false);
-  const setEscapeHandlerIds = useSetRecoilState(escapeKeyHandlerIdsAtom);
+  const setEscapeHandlerIds = useSetReverbState(escapeKeyHandlerIdsAtom);
 
   useEffect(() => {
     if (open) {

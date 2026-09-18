@@ -21,9 +21,7 @@
         "jotai": "*",
         "react": "*",
         "react-error-boundary": "*",
-        "react-relay": "*",
-        "recoil": "*",
-        "recoil-relay": "*"
+        "react-relay": "*"
     },
     "devDependencies": {
         "@testing-library/dom": "catalog:",
@@ -39,6 +37,7 @@
     "dependencies": {
         "@fiftyone/looker": "*",
         "@fiftyone/relay": "*",
+        "@fiftyone/reverb": "workspace:*",
         "@fiftyone/utilities": "*",
         "@microsoft/fetch-event-source": "catalog:",
         "@voxel51/voodo": "catalog:",

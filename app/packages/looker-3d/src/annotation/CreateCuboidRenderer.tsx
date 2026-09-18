@@ -2,7 +2,11 @@ import { useAnnotationEventBus } from "@fiftyone/annotation";
 import * as fos from "@fiftyone/state";
 import { objectId } from "@fiftyone/utilities";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import {
+  useReverbState,
+  useReverbValue,
+  useSetReverbState,
+} from "@fiftyone/reverb";
 import * as THREE from "three";
 import { useEmptyCanvasInteraction } from "../hooks/use-empty-canvas-interaction";
 import { useFo3dContext } from "../fo3d/context";
@@ -47,25 +51,25 @@ export const CreateCuboidRenderer = ({
   color = "#00ff00",
   ignoreEffects = false,
 }: CreateCuboidRendererProps) => {
-  const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
+  const currentActiveField = useReverbValue(currentActiveAnnotationField3dAtom);
   const sceneSampleId = fos.useStableSceneSample3d()?.sample?._id;
   const { directPcdWorldTransformsBySampleId } = useFo3dContext();
   const [isCreatingCuboid, setIsCreatingCuboid] =
-    useRecoilState(isCreatingCuboidAtom);
+    useReverbState(isCreatingCuboidAtom);
   const selectForAnnotation = useSelect3DLabelForAnnotation();
   const { selectNewCuboidForTransform, setTransformMode } =
     useCuboidTransformCommands();
   const { createCuboid } = useCuboidOperations();
-  const annotationPlane = useRecoilValue(annotationPlaneAtom);
-  const [creationState, setCreationState] = useRecoilState(
+  const annotationPlane = useReverbValue(annotationPlaneAtom);
+  const [creationState, setCreationState] = useReverbState(
     cuboidCreationStateAtom,
   );
-  const setIsCreatingCuboidPointerDown = useSetRecoilState(
+  const setIsCreatingCuboidPointerDown = useSetReverbState(
     isCreatingCuboidPointerDownAtom,
   );
 
   const setEditingToNewCuboid = useSetEditingToNewCuboid();
-  const workingDoc = useRecoilValue(workingDocSelector);
+  const workingDoc = useReverbValue(workingDocSelector);
   const getScenePointClouds = useScenePointClouds();
 
   const annotationEventBus = useAnnotationEventBus();

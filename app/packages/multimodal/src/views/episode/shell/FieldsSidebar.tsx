@@ -12,7 +12,7 @@ import {
 import { getNestedField } from "@fiftyone/utilities/src/sample/pointer";
 import { Input, InputType, Size } from "@voxel51/voodo";
 import React, { useMemo, useState } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import styles from "./FieldsSidebar.module.css";
 
 // Release-only workaround: `sampleFields` currently merges the Mongo schema
@@ -356,7 +356,7 @@ const FieldsSidebar: React.FC = () => {
   const sampleFields = useSampleFields();
   const activeSample = useActiveModalSample();
   const timeZone = useTimeZone();
-  const fvStage = useRecoilValue(fieldVisibilityStage);
+  const fvStage = useReverbValue(fieldVisibilityStage);
   const [search, setSearch] = useState("");
   const hiddenPaths = useMemo(
     () => new Set<string>(fvStage?.kwargs?.field_names ?? []),

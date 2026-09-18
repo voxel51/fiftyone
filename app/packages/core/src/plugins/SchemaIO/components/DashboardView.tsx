@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { ThemeProvider, useTheme } from "@fiftyone/components";
 import { createRoot } from "react-dom/client";
-import { RecoilRoot } from "recoil";
+import { ReverbRoot } from "@fiftyone/reverb";
 import usePanelEvent from "@fiftyone/operators/src/usePanelEvent";
 import { usePanelId, usePanelState } from "@fiftyone/spaces";
 import useNotification from "@fiftyone/state/src/hooks/useNotification";
@@ -1296,7 +1296,7 @@ export default function DashboardView(props: ViewPropsType) {
       // Render the PNG export component with necessary providers
       // Use gridLayout instead of customLayout to include unsaved changes
       root.render(
-        <RecoilRoot>
+        <ReverbRoot>
           <ThemeProvider>
             <DashboardPNGExport
               schema={schema as ObjectSchemaType}
@@ -1310,7 +1310,7 @@ export default function DashboardView(props: ViewPropsType) {
               customLayout={gridLayout}
             />
           </ThemeProvider>
-        </RecoilRoot>,
+        </ReverbRoot>,
       );
 
       // Wait for the component to render and plots to load

@@ -1,7 +1,7 @@
 import { getSampleSrc, isInMultiPanelViewAtom } from "@fiftyone/state";
 import { useGLTF } from "@react-three/drei";
 import { useMemo, useRef } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { AnimationMixer, type Quaternion, type Vector3 } from "three";
 import { SkeletonUtils } from "three-stdlib";
 import type { GltfAsset } from "../../hooks";
@@ -27,7 +27,7 @@ export const Gltf = ({
   children: React.ReactNode;
 }) => {
   const { fo3dRoot, loadingManager } = useFo3dContext();
-  const isInMultiPanelView = useRecoilValue(isInMultiPanelViewAtom);
+  const isInMultiPanelView = useReverbValue(isInMultiPanelViewAtom);
 
   const gltfUrl = useMemo(
     () =>

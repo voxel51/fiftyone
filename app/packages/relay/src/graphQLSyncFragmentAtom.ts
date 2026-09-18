@@ -198,8 +198,8 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K = T[" $data"]>(
    *
    * Registering at atom-definition time closes that gap. Writer invokes these
    * keyed synchronizers before ordinary effect subscribers and inside the same
-   * Recoil transaction, so dataset identity, media type, fields, and other
-   * fragment-backed state all advance as one snapshot. Keying by the Recoil
+   * transaction, so dataset identity, media type, fields, and other
+   * fragment-backed state all advance as one snapshot. Keying by the
    * atom key also makes module replacement overwrite the prior registration
    * instead of accumulating duplicate callbacks.
    *
@@ -227,7 +227,7 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K = T[" $data"]>(
         );
 
         // A missing parent belongs to the new page. Reset immediately instead
-        // of leaving a valid-looking value from the previous dataset in Recoil.
+        // of leaving a valid-looking value from the previous dataset in the store.
         if (resolved.missing) {
           reset();
           return;

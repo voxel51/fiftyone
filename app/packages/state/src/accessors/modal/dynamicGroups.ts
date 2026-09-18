@@ -2,9 +2,9 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 import { useRef } from "react";
-import { useRecoilValueLoadable } from "recoil";
-import { groupByFieldValue } from "../../recoil/dynamicGroups";
-import { dynamicGroupsElementCount } from "../../recoil/pathData/groups";
+import { useReverbValueLoadable } from "@fiftyone/reverb";
+import { groupByFieldValue } from "../../atoms/dynamicGroups";
+import { dynamicGroupsElementCount } from "../../atoms/pathData/groups";
 
 /**
  * Returns the last settled groupByFieldValue without ever suspending.
@@ -15,7 +15,7 @@ import { dynamicGroupsElementCount } from "../../recoil/pathData/groups";
  * sample navigation. Returns undefined until the first value has settled.
  */
 export const useGroupByFieldValue = (): string | null | undefined => {
-  const loadable = useRecoilValueLoadable(groupByFieldValue);
+  const loadable = useReverbValueLoadable(groupByFieldValue);
   const ref = useRef<string | null | undefined>(
     loadable.state === "hasValue" ? loadable.contents : undefined,
   );
@@ -33,7 +33,7 @@ export const useGroupByFieldValue = (): string | null | undefined => {
  */
 export const useElementsCount = (modal: boolean): number => {
   const value = useGroupByFieldValue() ?? null;
-  const loadable = useRecoilValueLoadable(
+  const loadable = useReverbValueLoadable(
     dynamicGroupsElementCount({ modal, value }),
   );
   const ref = useRef<number>(

@@ -1,7 +1,7 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Entering Annotate clears the Explore 3D selection (Recoil `selectedLabelMap`),
+ * Entering Annotate clears the Explore 3D selection (`selectedLabelMap`),
  * so a cuboid selected in Explore doesn't stay highlighted in Annotate. 3D
  * selection has no DOM signal, so the looker3d container exposes the Explore
  * selection count via `data-cy-selected-label-count`: select the seeded cuboid

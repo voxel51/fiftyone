@@ -26,7 +26,7 @@ const cuboid = (id: string, label = "car"): Working3dLabel =>
     ui: { selected: false, color: "#seed", isNew: false },
   }) as unknown as Working3dLabel;
 
-/** In-memory working store standing in for the Recoil-backed implementation. */
+/** In-memory working store standing in for the store-backed implementation. */
 const makeFakeStore = () => {
   const map = new Map<string, Working3dLabel>();
   const store: WorkingStore3d = {

@@ -1,6 +1,6 @@
 import * as fos from "@fiftyone/state";
 import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
-import { selectorFamily } from "recoil";
+import { selectorFamily } from "@fiftyone/reverb";
 
 /**
  * Returns true if filters should be omitted from tag parameters

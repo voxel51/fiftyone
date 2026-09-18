@@ -24,11 +24,11 @@ import {
   type RefObject,
 } from "react";
 import {
-  useRecoilCallback,
-  useRecoilState,
-  useRecoilValue,
-  useSetRecoilState,
-} from "recoil";
+  useReverbCallback,
+  useReverbState,
+  useReverbValue,
+  useSetReverbState,
+} from "@fiftyone/reverb";
 import {
   CONTINUOUS_RAMPS,
   rampDomain,
@@ -189,16 +189,16 @@ export interface RunPlotData {
 /**
  * Composes all per-run state for a visualization run. Only this hook (and
  * its child hooks) touch App state — atom values in, setters out — so it
- * renderHook-tests without Recoil the same way the child hooks do.
+ * renderHook-tests without a store the same way the child hooks do.
  */
 export function useRunPlotData(
   datasetName: string | null,
   run: VisualizationRun,
 ): RunPlotData {
-  const view = useRecoilValue(fos.view) as unknown[];
-  const filters = useRecoilValue(fos.filters);
-  const isPatchesView = useRecoilValue(fos.isPatchesView);
-  const setOverrideStage = useSetRecoilState(
+  const view = useReverbValue(fos.view) as unknown[];
+  const filters = useReverbValue(fos.filters);
+  const isPatchesView = useReverbValue(fos.isPatchesView);
+  const setOverrideStage = useSetReverbState(
     fos.extendedSelectionOverrideStage,
   );
   const resetExtended = fos.useResetExtendedSelection();
@@ -206,9 +206,9 @@ export function useRunPlotData(
   // ONE commit per selection. Written as separate setters, each write
   // invalidated the App's view on its own and fired a full sidebar
   // aggregation round — several identical round trips for a single lasso.
-  // Recoil batches every set made inside a callback into one commit, and
+  // A callback commits every set made inside it at once, and
   // the extension's decorator joins the same commit.
-  const publishSelection: PublishSelection = useRecoilCallback(
+  const publishSelection: PublishSelection = useReverbCallback(
     ({ set, reset }) =>
       (next, io) => {
         // `io` is a caller's already-open transaction; writing through it
@@ -231,7 +231,7 @@ export function useRunPlotData(
       },
     [],
   );
-  const [selectedSamples, setSelectedSamples] = useRecoilState(
+  const [selectedSamples, setSelectedSamples] = useReverbState(
     fos.selectedSamples,
   );
 
@@ -335,7 +335,7 @@ export function useRunPlotData(
   // loads, exactly like the modal), and useColorPalette resolves the plot's
   // colors from it — so the plot, the modal and the grid's heatmaps cannot
   // disagree.
-  const colorScheme = useRecoilValue(fos.colorScheme);
+  const colorScheme = useReverbValue(fos.colorScheme);
   const setColorScheme = fos.useSetSessionColorScheme();
   const colorscaleTarget =
     colorMeta?.style === "continuous" ? colorField : null;
@@ -404,7 +404,7 @@ export function useRunPlotData(
   // The legend is a view over the App's sidebar filter for the color-by
   // field; its on/off set drives both plot visibility and grid scope. Read
   // here (above the visibility mask) so the mask can honor it.
-  const fieldFilter = useRecoilValue(
+  const fieldFilter = useReverbValue(
     fos.filter({ path: filterPath ?? "", modal: false }),
   );
   const legendFilter = (fieldFilter ?? null) as CategoricalFilter | null;
@@ -638,7 +638,7 @@ export function useRunPlotData(
   // The tab's pill lives outside the panel tree and outlives the plot, so
   // the counts it reads have to be dropped here or it keeps rendering the
   // last selection after the panel is gone
-  const resetPublishedCounts = useRecoilCallback(
+  const resetPublishedCounts = useReverbCallback(
     ({ reset }) =>
       () => {
         reset(selectionCountState);
@@ -684,11 +684,11 @@ export function useRunPlotData(
   // click arrives)
   // The extension syncs its own selection artifacts to the legend filter
   // (e.g. marking the shown classes on linked views). Ref so the memoized
-  // recoil callback always calls the freshest closure, never a stale one
+  // callback always calls the freshest closure, never a stale one
   const onLegendFilterChangeRef = useRef(features.onLegendFilterChange);
   onLegendFilterChangeRef.current = features.onLegendFilterChange;
 
-  const handleLegendClick = useRecoilCallback(
+  const handleLegendClick = useReverbCallback(
     ({ snapshot, set, reset }) =>
       (label: string, solo: boolean) => {
         if (!filterPath || !legend) return;
@@ -711,7 +711,7 @@ export function useRunPlotData(
   const handleLegendToggle = (label: string) => handleLegendClick(label, false);
   const handleLegendSolo = (label: string) => handleLegendClick(label, true);
 
-  const resetLegendFilter = useRecoilCallback(
+  const resetLegendFilter = useReverbCallback(
     ({ set, reset }) =>
       () => {
         if (filterPath) {
@@ -728,7 +728,7 @@ export function useRunPlotData(
   // EVERY sidebar filter and the plot's published selection stage — the
   // full set of mechanisms that can narrow the grid from here. The grid
   // follows the same atoms, so one click restores the whole dataset view.
-  const resetAllFilters = useRecoilCallback(
+  const resetAllFilters = useReverbCallback(
     ({ reset, set }) =>
       () => {
         reset(fos.filters);
@@ -799,9 +799,9 @@ export function useRunPlotData(
   // Deriving it here and writing it back instead meant the write-back
   // clobbered what a selection had just published, so the chip never
   // appeared for anything but a grid checkbox.
-  const publishedCount = useRecoilValue(selectionCountState);
+  const publishedCount = useReverbValue(selectionCountState);
   const chipCount = publishedCount ?? (selectedSamples.size || null);
-  const publishedSampleCount = useRecoilValue(selectionSampleCountState);
+  const publishedSampleCount = useReverbValue(selectionSampleCountState);
   // In the unpublished (grid-checkbox) fallback, the selection size IS a
   // sample count
   const chipSampleCount =
@@ -830,7 +830,7 @@ export function useRunPlotData(
     features.selectionOrigin,
   ]);
 
-  const clearNonce = useRecoilValue(clearSelectionNonceState);
+  const clearNonce = useReverbValue(clearSelectionNonceState);
   const seenClearNonce = useRef(clearNonce);
   useEffect(() => {
     if (clearNonce !== seenClearNonce.current) {

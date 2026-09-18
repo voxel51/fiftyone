@@ -7,7 +7,7 @@ import {
   useState,
   type RefObject,
 } from "react";
-import type { SetterOrUpdater } from "recoil";
+import type { SetterOrUpdater } from "@fiftyone/reverb";
 import type {
   LassoStageInput,
   PublishSelection,

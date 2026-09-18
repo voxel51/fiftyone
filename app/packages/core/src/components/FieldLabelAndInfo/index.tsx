@@ -13,10 +13,10 @@ import React, {
 import ReactDOM from "react-dom";
 import {
   atom,
-  useRecoilState,
-  useRecoilValue,
-  useSetRecoilState,
-} from "recoil";
+  useReverbState,
+  useReverbValue,
+  useSetReverbState,
+} from "@fiftyone/reverb";
 import styled from "styled-components";
 import { ExternalLink } from "../../utils/generic";
 import { activeColorEntry } from "../ColorModal/state";
@@ -66,7 +66,7 @@ function useFieldInfo(field, nested, { expandedPath, color }) {
   const container = useRef();
   const expandedRef = useRef();
   const [open, setOpen] = useState(false);
-  const [selectedField, setSelectedField] = useRecoilState(selectedFieldInfo);
+  const [selectedField, setSelectedField] = useReverbState(selectedFieldInfo);
 
   function onHover() {
     setSelectedField(instanceId);
@@ -251,7 +251,7 @@ function FieldInfoExpanded({
     descTooLong || tooManyInfoKeys,
   );
 
-  const setIsCustomizingColor = useSetRecoilState(activeColorEntry);
+  const setIsCustomizingColor = useSetReverbState(activeColorEntry);
   const updatePosition = () => {
     if (!el.current || !hoverTarget.current) return;
     el.current.style.visibility = "visible";
@@ -259,7 +259,7 @@ function FieldInfoExpanded({
     el.current.style.top = top + "px";
     el.current.style.left = left + "px";
   };
-  const colorSettings = useRecoilValue(coloring);
+  const colorSettings = useReverbValue(coloring);
 
   const colorBy = colorSettings.by;
   const onClickCustomizeColor = () => {
@@ -268,8 +268,8 @@ function FieldInfoExpanded({
   };
 
   useEffect(updatePosition, [field, isCollapsed]);
-  const timeZone = useRecoilValue(fos.timeZone);
-  const disabled = useRecoilValue(fos.isDisabledFilterPath(path));
+  const timeZone = useReverbValue(fos.timeZone);
+  const disabled = useReverbValue(fos.isDisabledFilterPath(path));
 
   return ReactDOM.createPortal(
     <FieldInfoHoverTarget

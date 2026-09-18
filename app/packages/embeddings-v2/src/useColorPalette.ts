@@ -7,7 +7,7 @@
  */
 import * as fos from "@fiftyone/state";
 import { useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import {
   buildColors,
   resolveColorscale,
@@ -30,9 +30,9 @@ export function useColorPalette(
   colorscale: Colorscale;
   colors: Float32Array | null;
 } {
-  const colorScheme = useRecoilValue(fos.colorScheme);
-  const colorMap = useRecoilValue(fos.colorMap);
-  const appScale = useRecoilValue(fos.coloring).scale;
+  const colorScheme = useReverbValue(fos.colorScheme);
+  const colorMap = useReverbValue(fos.colorMap);
+  const appScale = useReverbValue(fos.coloring).scale;
 
   const palette = useMemo(
     () => resolvePalette(field, meta, colorMap, colorScheme.fields),

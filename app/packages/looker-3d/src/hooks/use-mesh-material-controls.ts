@@ -1,6 +1,6 @@
 import { folder, useControls } from "leva";
 import { useMemo, useState } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { PANEL_ORDER_PCD_CONTROLS } from "../constants";
 import { getThreeMaterialFromFo3dMaterial } from "../fo3d/utils";
 import { avoidZFightingAtom } from "../state";
@@ -11,7 +11,7 @@ export const useMeshMaterialControls = (
   foMeshMaterial: FoMeshMaterial,
   omitColorControls = false,
 ) => {
-  const avoidZFighting = useRecoilValue(avoidZFightingAtom);
+  const avoidZFighting = useReverbValue(avoidZFightingAtom);
   const [opacity, setOpacity] = useState(foMeshMaterial.opacity);
   const [renderAsWireframe, setRenderAsWireframe] = useState(
     foMeshMaterial.wireframe,

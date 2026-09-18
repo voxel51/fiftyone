@@ -8,7 +8,7 @@ export default defineConfig({
       formats: ["es"],
     },
     rollupOptions: {
-      external: ["recoil"],
+      external: ["@fiftyone/reverb"],
     },
     target: "es2015",
     minify: false,

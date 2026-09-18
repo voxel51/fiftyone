@@ -1,7 +1,7 @@
 import type { Range } from "@fiftyone/state";
 import { useCallback } from "react";
-import { useRecoilValue } from "recoil";
-import { gridZoom } from "./recoil";
+import { useReverbValue } from "@fiftyone/reverb";
+import { gridZoom } from "./atoms";
 
 const WIDEST = 1200;
 const WIDE = 1000;
@@ -24,7 +24,7 @@ export const ZOOM_RANGE: Range = [-15, -1];
  * aspect ratio to prevent a large number of items from rendering on screen
  */
 export default () => {
-  const zoom = useRecoilValue(gridZoom);
+  const zoom = useReverbValue(gridZoom);
   return useCallback(
     (width: number) => {
       let min = -8;

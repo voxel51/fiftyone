@@ -9,7 +9,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { RecoilRoot, useSetRecoilState } from "recoil";
+import { ReverbRoot, useSetReverbState } from "@fiftyone/reverb";
 import { createFixtureFormatAdapter } from "../../adapters/fixture";
 import type {
   ByteResources,
@@ -232,23 +232,23 @@ describe("fixture adapter through the production grid renderer", () => {
 
 function renderGrid() {
   return render(
-    <RecoilRoot>
+    <ReverbRoot>
       <GridRenderer ctx={rendererContext()} />
-    </RecoilRoot>,
+    </ReverbRoot>,
   );
 }
 
 function renderGridWithFitControls() {
   return render(
-    <RecoilRoot>
+    <ReverbRoot>
       <FitControls />
       <GridRenderer ctx={rendererContext()} />
-    </RecoilRoot>,
+    </ReverbRoot>,
   );
 }
 
 function FitControls() {
-  const setFit = useSetRecoilState(multimodalGridFit);
+  const setFit = useSetReverbState(multimodalGridFit);
   return (
     <>
       <button onClick={() => setFit("contain")} type="button">

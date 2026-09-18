@@ -21,13 +21,13 @@ vi.mock("@fiftyone/utilities", () => ({
   toSlug: (value: string) => value.toLowerCase(),
 }));
 
-vi.mock("recoil", () => ({
-  useRecoilState: vi.fn(() => [
+vi.mock("@fiftyone/reverb", () => ({
+  useReverbState: vi.fn(() => [
     { dataset: "dataset", initialized: false, workspaces: [] },
     mocks.setState,
   ]),
-  useRecoilValue: vi.fn(() => "dataset"),
-  useResetRecoilState: vi.fn(() => mocks.resetState),
+  useReverbValue: vi.fn(() => "dataset"),
+  useResetReverbState: vi.fn(() => mocks.resetState),
 }));
 
 vi.mock("../../state", () => ({

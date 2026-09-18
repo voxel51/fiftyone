@@ -1,6 +1,6 @@
 import type { LoadingManager } from "three";
 import { useEffect, useRef } from "react";
-import { useRecoilState, useSetRecoilState } from "recoil";
+import { useReverbState, useSetReverbState } from "@fiftyone/reverb";
 import {
   fo3dAssetsParseStatusThisSample,
   fo3dLoadingStatusThisSample,
@@ -11,14 +11,14 @@ import { useLoadingStatus } from "./use-loading-status";
 export const ALL_LOADING_COMPLETE = "All loading complete!";
 const noop = () => undefined;
 
-/** Tracks THREE loading-manager events and mirrors status/logs into Recoil. */
+/** Tracks THREE loading-manager events and mirrors status/logs into the store. */
 export const useTrackStatus = (
   loadingManager: LoadingManager | null,
   isSceneReady = false,
 ) => {
   const loadingStatusView = useLoadingStatus();
-  const setLogs = useSetRecoilState(fo3dAssetsParseStatusThisSample);
-  const [loadingStatusState, setLoadingStatus] = useRecoilState(
+  const setLogs = useSetReverbState(fo3dAssetsParseStatusThisSample);
+  const [loadingStatusState, setLoadingStatus] = useReverbState(
     fo3dLoadingStatusThisSample,
   );
 

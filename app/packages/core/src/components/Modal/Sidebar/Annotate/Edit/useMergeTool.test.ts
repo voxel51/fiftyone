@@ -60,8 +60,8 @@ vi.mock("@fiftyone/state", () => ({
   State: { SPACE: { SAMPLE: "sample" } },
 }));
 
-vi.mock("recoil", () => ({
-  useRecoilValue: () => ({}),
+vi.mock("@fiftyone/reverb", () => ({
+  useReverbValue: () => ({}),
 }));
 
 const labelsAtom = atom<Array<{ type: string; data: { mask?: unknown } }>>([

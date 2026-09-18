@@ -22,7 +22,7 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import { useState } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 
 import HeaderLinks from "./HeaderLinks";
 import styles from "./Setup.module.css";
@@ -115,7 +115,7 @@ const TABS = [
 
 const Setup = () => {
   const [activeTab, setActiveTab] = useState<"local" | "remote">("local");
-  const notebook = useRecoilValue(isNotebook);
+  const notebook = useReverbValue(isNotebook);
 
   return (
     <div data-cy="setup-page">

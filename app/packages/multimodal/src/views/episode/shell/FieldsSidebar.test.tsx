@@ -43,8 +43,8 @@ vi.mock("@fiftyone/state", () => ({
   useTimeZone,
 }));
 
-vi.mock("recoil", () => ({
-  useRecoilValue: () => fieldVisibilityStageValue.current,
+vi.mock("@fiftyone/reverb", () => ({
+  useReverbValue: () => fieldVisibilityStageValue.current,
 }));
 
 import FieldsSidebar from "./FieldsSidebar";

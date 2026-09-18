@@ -9,10 +9,10 @@ import {
 } from "@fiftyone/state";
 import React, { MutableRefObject, useCallback, useRef, useState } from "react";
 import {
-  RecoilValueReadOnly,
-  useRecoilValue,
-  useRecoilValueLoadable,
-} from "recoil";
+  ReverbValueReadOnly,
+  useReverbValue,
+  useReverbValueLoadable,
+} from "@fiftyone/reverb";
 import styled from "styled-components";
 import { ModalLooker } from "./ModalLooker";
 import { SelectSampleCheckbox } from "./SelectSampleCheckbox";
@@ -30,7 +30,7 @@ export const SampleWrapper = ({
   sampleAtom = modalSample,
   sample: providedSample,
 }: React.PropsWithChildren<{
-  sampleAtom?: RecoilValueReadOnly<ModalSample>;
+  sampleAtom?: ReverbValueReadOnly<ModalSample>;
   sample?: ModalSample;
 }>) => {
   const [hovering, setHovering] = useState(false);
@@ -58,8 +58,8 @@ export const SampleWrapper = ({
     };
   }, [clear, hovering]);
   const hoveringRef = useRef(false);
-  const recoilSample = useRecoilValueLoadable(sampleAtom);
-  const sample = providedSample ?? recoilSample.getValue();
+  const storedSample = useReverbValueLoadable(sampleAtom);
+  const sample = providedSample ?? storedSample.getValue();
   const { handlers: hoverEventHandlers } = useHoveredSample(sample.sample, {
     update,
     clear,
@@ -87,7 +87,7 @@ export const SampleWrapper = ({
 };
 
 export const Sample2D = () => {
-  const id = useRecoilValue(modalSampleId);
+  const id = useReverbValue(modalSampleId);
   // Renderers that persist across samples keep the looker subtree mounted
   // through navigation; everything else keeps the per-sample remount.
   const { persistenceKey, sample, transitioning } = useRetainedModalSample();

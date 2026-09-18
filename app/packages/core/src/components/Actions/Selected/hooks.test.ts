@@ -8,10 +8,10 @@ import { act, renderHook } from "@testing-library/react";
 import React from "react";
 import {
   DefaultValue,
-  RecoilRoot,
-  useRecoilValue,
+  ReverbRoot,
+  useReverbValue,
   type MutableSnapshot,
-} from "recoil";
+} from "@fiftyone/reverb";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const stubs = vi.hoisted(() => ({
@@ -20,7 +20,7 @@ const stubs = vi.hoisted(() => ({
 }));
 
 vi.mock("@fiftyone/state", async () => {
-  const { atom, selector, DefaultValue: DV } = await import("recoil");
+  const { atom, selector, DefaultValue: DV } = await import("@fiftyone/reverb");
 
   stubs.selectedLabels = atom<any[]>({
     key: "_test/Selected/selectedLabels",
@@ -77,11 +77,11 @@ import {
 type LabelEntry = { sampleId: string; field: string; frameNumber?: number };
 type LabelMap = Record<string, LabelEntry>;
 
-//Creates a RecoilRoot wrapper pre-seeded with `initialMap`.
+//Creates a ReverbRoot wrapper pre-seeded with `initialMap`.
 function makeWrapper(initialMap: LabelMap) {
   return function Wrapper({ children }: { children: React.ReactNode }) {
     return React.createElement(
-      RecoilRoot,
+      ReverbRoot,
       {
         initializeState: ({ set }: MutableSnapshot) => {
           set(stubs.selectedLabelMap, initialMap);
@@ -111,7 +111,7 @@ describe("useUnselectVisible", () => {
           undefined,
           new Set(["label-a", "label-b"]),
         ),
-        map: useRecoilValue(stubs.selectedLabelMap),
+        map: useReverbValue(stubs.selectedLabelMap),
       }),
       { wrapper: makeWrapper(initial) },
     );
@@ -133,7 +133,7 @@ describe("useUnselectVisible", () => {
     const { result } = renderHook(
       () => ({
         callback: useUnselectVisible(undefined, new Set(["label-x"])),
-        map: useRecoilValue(stubs.selectedLabelMap),
+        map: useReverbValue(stubs.selectedLabelMap),
       }),
       { wrapper: makeWrapper(initial) },
     );
@@ -159,7 +159,7 @@ describe("useUnselectVisible", () => {
           undefined,
           new Set(["label-a", "label-b"]),
         ),
-        map: useRecoilValue(stubs.selectedLabelMap),
+        map: useReverbValue(stubs.selectedLabelMap),
       }),
       { wrapper: makeWrapper(initial) },
     );
@@ -219,7 +219,7 @@ describe("useUnselectVisible", () => {
     const { result } = renderHook(
       () => ({
         callback: useUnselectVisible(undefined, new Set(["label-x"])),
-        map: useRecoilValue(stubs.selectedLabelMap),
+        map: useReverbValue(stubs.selectedLabelMap),
       }),
       { wrapper: makeWrapper({}) },
     );
@@ -240,7 +240,7 @@ describe("useUnselectVisible", () => {
     const { result } = renderHook(
       () => ({
         callback: useUnselectVisible(undefined, new Set(["label-a"])),
-        map: useRecoilValue(stubs.selectedLabelMap),
+        map: useReverbValue(stubs.selectedLabelMap),
       }),
       { wrapper: makeWrapper(initial) },
     );
@@ -400,7 +400,7 @@ describe("useClearSelectedLabels", () => {
     const { result } = renderHook(
       () => ({
         callback: useClearSelectedLabels(),
-        map: useRecoilValue(stubs.selectedLabelMap),
+        map: useReverbValue(stubs.selectedLabelMap),
       }),
       {
         wrapper: makeWrapper({

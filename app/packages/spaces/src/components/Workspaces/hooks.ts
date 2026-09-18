@@ -2,15 +2,19 @@ import { executeOperator, useOperatorAvailability } from "@fiftyone/operators";
 import { datasetName } from "@fiftyone/state";
 import { toSlug } from "@fiftyone/utilities";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
+import {
+  useReverbState,
+  useReverbValue,
+  useResetReverbState,
+} from "@fiftyone/reverb";
 import { savedWorkspacesAtom, Workspace } from "../../state";
 import { LIST_WORKSPACES_OPERATOR, LOAD_WORKSPACE_OPERATOR } from "./constants";
 
 export function useWorkspaces() {
-  const [state, setState] = useRecoilState(savedWorkspacesAtom);
-  const resetState = useResetRecoilState(savedWorkspacesAtom);
+  const [state, setState] = useReverbState(savedWorkspacesAtom);
+  const resetState = useResetReverbState(savedWorkspacesAtom);
   const [listWorkspaceExecuting, setListWorkspaceExecuting] = useState(false);
-  const currentDataset = useRecoilValue(datasetName);
+  const currentDataset = useReverbValue(datasetName);
   const listWorkspacesAvailable = useOperatorAvailability(
     LIST_WORKSPACES_OPERATOR,
   );

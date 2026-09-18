@@ -1,13 +1,13 @@
 import { debounce, size } from "lodash";
 import { useCallback, useMemo } from "react";
-import { useRecoilState } from "recoil";
-import { sessionSpaces } from "../recoil";
+import { useReverbState } from "@fiftyone/reverb";
+import { sessionSpaces } from "../atoms";
 
 const SESSION_UPDATE_DEBOUNCE = 500;
 
 const useSessionSpaces = () => {
   const [sessionSpacesState, setSessionSpacesState] =
-    useRecoilState(sessionSpaces);
+    useReverbState(sessionSpaces);
 
   const computedSessionSpaces = useMemo(
     () => toAppFormat(sessionSpacesState),

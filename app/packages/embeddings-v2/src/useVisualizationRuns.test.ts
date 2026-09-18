@@ -6,7 +6,7 @@ import { useVisualizationRuns } from "./useVisualizationRuns";
 const dataset = vi.hoisted(() => ({ current: null as unknown }));
 
 vi.mock("@fiftyone/state", () => ({ dataset: "datasetAtom" }));
-vi.mock("recoil", () => ({ useRecoilValue: () => dataset.current }));
+vi.mock("@fiftyone/reverb", () => ({ useReverbValue: () => dataset.current }));
 
 const brainRun = (key: string, over: Record<string, unknown> = {}) => ({
   key,

@@ -1,16 +1,16 @@
-import { useRecoilTransaction_UNSTABLE } from "recoil";
+import { useReverbTransaction } from "@fiftyone/reverb";
 import {
   clearExtendedSelectionMirror,
   extendedSelection,
   extendedSelectionOverrideStage,
-} from "../recoil/atoms";
+} from "../atoms/atoms";
 import {
   runExtendedSelectionResetParticipants,
   type ExtendedSelectionResetInterface,
 } from "./extendedSelectionReset";
 
 /**
- * Clears every extended-selection layer inside the caller's Recoil
+ * Clears every extended-selection layer inside the caller's
  * transaction. Atom effects do not fire in a transaction, so the mirror the
  * atoms restore themselves from on fragment refetches is cleared explicitly
  * alongside them — any transaction that resets the atoms without this
@@ -27,7 +27,7 @@ export function resetExtendedSelectionTransaction(
 }
 
 export default function useResetExtendedSelection() {
-  return useRecoilTransaction_UNSTABLE(
+  return useReverbTransaction(
     ({ set, reset }) =>
       () =>
         resetExtendedSelectionTransaction({ set, reset }),

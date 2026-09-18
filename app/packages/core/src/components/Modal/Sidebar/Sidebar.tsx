@@ -8,7 +8,7 @@ import {
 } from "@fiftyone/state";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import ExploreSidebar from "../../Sidebar";
 import { createExploreIsDisabled } from "../../Sidebar/InteractiveSidebar";
 import SidebarContainer from "../../Sidebar/SidebarContainer";
@@ -36,8 +36,8 @@ const Explore = () => {
 const Sidebar = () => {
   const mode = useAtomValue(modalMode);
   const { showAnnotationTab, disabledReason } = useCanAnnotate();
-  const datasetNameValue = useRecoilValue(datasetName);
-  const exploreFields = useRecoilValue(
+  const datasetNameValue = useReverbValue(datasetName);
+  const exploreFields = useReverbValue(
     activeFields({ modal: true, expanded: false }),
   );
   const setExploreFields = useSetAtom(exploreActiveFields);
