@@ -100,6 +100,8 @@ const IMAGE_ROLE = "image-payload";
 const TASKS_ROLE = "tasks-metadata";
 const STATISTICS_ROLE = "dataset-statistics";
 const VIDEO_ROLE = "video-stream";
+// Namespaced because a feature names its stream bare: a feature called
+// "rows" would otherwise be this synthetic stream.
 const RAW_STREAM_ID = "lerobot:rows";
 const STATE_FEATURE_NAME = "observation.state";
 const ACTION_FEATURE_NAME = "action";
@@ -487,6 +489,8 @@ class LeRobotEpisodePreviewSession implements EpisodePreviewSession {
         )
       : previewStreams[0];
     const streamSourceNames = previewStreams.map((stream) => stream.sourceName);
+    // The episode's extent is known before any frame is, and the tile's
+    // overlays place their marks against it, so every answer carries it
     const bootstrap = {
       bootstrapManifest: this.session.manifest,
       bootstrapTimeline: {
@@ -665,6 +669,9 @@ class LeRobotEpisodeSession implements EpisodeSession {
       state.assets,
       state.info.fps,
     );
+    // A feature's name IS its stream id, its source name and the parquet
+    // column it reads from. One string under four field names in the port,
+    // never derived from one another.
     const streams = Object.entries(state.info.features).flatMap(
       ([name, feature]): StreamDescriptor[] => {
         if (feature.dtype === "video") {
@@ -944,6 +951,8 @@ class LeRobotEpisodeSession implements EpisodeSession {
       signal,
     });
     throwIfAborted(signal);
+    // Episode-relative in, file-relative out: the element seeks the shared
+    // MP4, in which this episode is one interval
     const startTimeSeconds = Math.min(
       binding.toSeconds,
       Math.max(binding.fromSeconds, binding.fromSeconds + nsToSeconds(startNs)),

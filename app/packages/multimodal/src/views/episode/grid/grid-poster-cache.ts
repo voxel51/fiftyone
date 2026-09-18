@@ -30,6 +30,10 @@ export interface GridPosterCacheEntry {
   readonly streamId: string | null;
   readonly streamSourceName: string | null;
   readonly streamSourceNames: readonly string[];
+  /** The episode's extent, as the read that produced this poster measured
+   * it. A reference-backed episode persists no source facts, so without
+   * this a tile answered from cache knows how long it is only after a read
+   * it does not need to make. */
   readonly timeRange?: TimeWindow;
   readonly width: number;
 }
@@ -86,6 +90,8 @@ export interface GridPosterCacheOptions {
 
 export interface GridPosterKeyParts {
   readonly datasetId: string;
+  /** The episode this tile shows. Episodes of one recording share their
+   * bytes, so this is what separates their posters. */
   readonly episodeId: string | undefined;
   readonly imageFit: MultimodalGridFit;
   readonly mediaField: string | null | undefined;

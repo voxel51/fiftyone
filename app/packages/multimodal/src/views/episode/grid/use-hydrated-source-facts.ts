@@ -33,6 +33,8 @@ export function useHydratedSourceFacts({
   readonly sourceFactsScope: SourceFactsScope | undefined;
   readonly visible: boolean;
 }): void {
+  // A tile answered from the poster cache opens no session, so the extent
+  // its overlays place marks against is the one the poster carries.
   useEffect(() => {
     const range = cachedPoster?.timeRange;
     if (!episodeId || !range || getEpisodeTimeRange(episodeId)) return;

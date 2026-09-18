@@ -149,6 +149,10 @@ export function LeRobotGridHoverVideo({
       if (posterCaptured || !capturePoster) return true;
       const width = element.videoWidth;
       const height = element.videoHeight;
+      // `currentTime` reports the SEEK TARGET the moment it is assigned,
+      // while `readyState` can still describe the position being left. An
+      // episode opens far into a shared file, so capturing before the seek
+      // lands paints a frame that has not been decoded: a black tile.
       if (
         width <= 0 ||
         height <= 0 ||

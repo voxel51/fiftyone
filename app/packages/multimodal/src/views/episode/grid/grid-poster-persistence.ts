@@ -386,6 +386,7 @@ function validEntry(entry: GridPosterCacheEntry): boolean {
   );
 }
 
+/** A range read back off disk, which the episode's overlays are drawn against. */
 function validTimeRange(timeRange: GridPosterCacheEntry["timeRange"]): boolean {
   return (
     timeRange === undefined ||

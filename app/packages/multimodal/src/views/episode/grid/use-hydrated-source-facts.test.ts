@@ -30,6 +30,9 @@ const SCOPE: SourceFactsScope = {
 };
 
 const EPISODE_ID = "episode-a";
+// Deliberately unlike the episode: siblings of a reference-backed recording
+// share one object, so an assertion keyed on either would pass on the other
+// if the fixture made them the same string.
 const SOURCE: ByteSourceDescriptor = {
   sourceId: "shared-recording",
   url: "https://app.example/media?filepath=%2Fdata%2Frun.mcap",
