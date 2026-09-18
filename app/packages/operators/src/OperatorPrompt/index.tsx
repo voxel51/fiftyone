@@ -2,10 +2,12 @@ import { createPortal } from "react-dom";
 import { useRecoilValue } from "recoil";
 import { showOperatorPromptSelector, useOperatorPrompt } from "../state";
 import { BaseStylesProvider } from "../styled-components";
-import { OperatorPromptType } from "../types";
+import { PromptArea } from "../types";
+import { OPERATOR_PROMPT_AREAS } from "../constants";
 import OperatorModalPrompt from "./OperatorModalPrompt";
 import OperatorDrawerPrompt from "./OperatorDrawerPrompt";
-import { OPERATOR_PROMPT_AREAS } from "../constants";
+import OperatorPopoverPrompt from "./OperatorPopoverPrompt";
+import OperatorFullScreenPrompt from "./OperatorFullScreenPrompt";
 
 export default function OperatorPrompt() {
   const show = useRecoilValue(showOperatorPromptSelector);
@@ -22,36 +24,36 @@ export default function OperatorPrompt() {
 
 function DynamicOperatorPrompt() {
   const prompt = useOperatorPrompt();
-  const target = getPromptTarget(prompt);
-  const Component = getPromptComponent(prompt);
+  const target = getPromptTarget(prompt.promptView?.target);
+  const Component = getPromptComponent(prompt.promptView?.target);
 
   return createPortal(<Component prompt={prompt} />, target);
 }
 
 const defaultTargetResolver = () => document.body;
-const targetResolverByName = {
-  DrawerView: (promptView: OperatorPromptType["promptView"]) => {
-    const promptArea =
-      promptView.placement === "left"
-        ? OPERATOR_PROMPT_AREAS.DRAWER_LEFT
-        : OPERATOR_PROMPT_AREAS.DRAWER_RIGHT;
-    return document.getElementById(promptArea);
-  },
+const targetResolverByTarget = {
+  [PromptArea.DrawerLeft]: () =>
+    document.getElementById(OPERATOR_PROMPT_AREAS.DRAWER_LEFT),
+  [PromptArea.DrawerRight]: () =>
+    document.getElementById(OPERATOR_PROMPT_AREAS.DRAWER_RIGHT),
+  [PromptArea.Popover]: () => document.body,
+  [PromptArea.FullScreen]: () => document.body,
 };
-export function getPromptTarget(operatorPrompt: OperatorPromptType) {
-  const { promptView } = operatorPrompt;
+export function getPromptTarget(target: string | undefined) {
   const targetResolver =
-    targetResolverByName[promptView?.name] || defaultTargetResolver;
-  return targetResolver(promptView);
+    targetResolverByTarget[target] || defaultTargetResolver;
+  return targetResolver();
 }
 
 const defaultPromptComponentResolver = () => OperatorModalPrompt;
-const promptComponentByName = {
-  DrawerView: () => OperatorDrawerPrompt,
+const promptComponentByTarget = {
+  [PromptArea.DrawerLeft]: () => OperatorDrawerPrompt,
+  [PromptArea.DrawerRight]: () => OperatorDrawerPrompt,
+  [PromptArea.Popover]: () => OperatorPopoverPrompt,
+  [PromptArea.FullScreen]: () => OperatorFullScreenPrompt,
 };
-export function getPromptComponent(operatorPrompt: OperatorPromptType) {
-  const { promptView } = operatorPrompt;
-  const targetResolver =
-    promptComponentByName[promptView?.name] || defaultPromptComponentResolver;
-  return targetResolver(promptView);
+export function getPromptComponent(target: string | undefined) {
+  const componentResolver =
+    promptComponentByTarget[target] || defaultPromptComponentResolver;
+  return componentResolver();
 }
