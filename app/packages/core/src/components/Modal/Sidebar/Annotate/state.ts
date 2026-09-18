@@ -1,3 +1,8 @@
+import {
+  activeFields,
+  currentSlice,
+  groupMediaTypesMap,
+} from "@fiftyone/state";
 import { atom, useAtom, useAtomValue } from "jotai";
 import { atomFamily } from "jotai/utils";
 import { capitalize } from "lodash";
@@ -24,24 +29,6 @@ export const labelSchemaData = atomFamily((field: string) => {
 });
 
 export const activeLabelSchemas = atom<string[] | null>(null);
-
-/**
- * Mirror of activeFields({ modal: true }), written by Sidebar.tsx.
- * A plain Jotai getter cannot reach this state, so we need the data
- * bridged into a Jotai atom. null means not yet initialized — in that case
- * visibleLabelSchemas treats the explore set as empty (only primitive fields
- * pass through).
- */
-export const exploreActiveFields = atom<string[] | null>(null);
-
-/**
- * Media type of the group slice currently being annotated, mirrored from
- * by `useSyncAnnotationSliceMediaType`. null when the dataset isn't grouped — in
- * that case visibleLabelSchemas applies no per-slice filtering. It can't be
- * read from inside a Jotai getter, so the slice media type is bridged in (same
- * pattern as exploreActiveFields).
- */
-export const annotationSliceMediaType = atom<string | null>(null);
 
 const FRAMES_PREFIX = "frames.";
 const CLASSIFICATION_TYPES = new Set(["classification", "classifications"]);
@@ -92,19 +79,24 @@ const isPathAnnotatableOnSlice = (
 };
 
 /**
- * Intersection of activeLabelSchemas and exploreActiveFields, further narrowed
- * to the paths the current group slice supports (see isPathAnnotatableOnSlice).
- * Display consumers should read this instead of activeLabelSchemas so that
- * hiding a field in the Explore sidebar also hides it in Annotate, and so that
- * navigating between slices only offers schemas valid for the open slice.
+ * Intersection of activeLabelSchemas and the Explore sidebar's active fields,
+ * further narrowed to the paths the current group slice supports (see
+ * isPathAnnotatableOnSlice). Display consumers should read this instead of
+ * activeLabelSchemas so that hiding a field in the Explore sidebar also hides
+ * it in Annotate, and so that navigating between slices only offers schemas
+ * valid for the open slice.
  */
 export const visibleLabelSchemas = atom((get) => {
   const active = get(activeLabelSchemas);
   if (!active) return [];
 
-  const explore = get(exploreActiveFields);
-  const exploreSet = new Set(explore ?? []);
-  const sliceMediaType = get(annotationSliceMediaType);
+  const exploreSet = new Set(get(activeFields({ modal: true })));
+  // `currentSlice` is null unless the dataset is grouped, which is what makes
+  // a non-grouped dataset skip the per-slice filtering below.
+  const slice = get(currentSlice(true));
+  const sliceMediaType = slice
+    ? (get(groupMediaTypesMap)[slice] ?? null)
+    : null;
 
   return active.filter((field) => {
     const type = get(fieldType(field));
