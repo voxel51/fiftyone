@@ -34,11 +34,7 @@ import {
   pointCloudPoseKey,
   type GridPosterCacheEntry,
 } from "./grid-poster-cache";
-import {
-  GridRenderer,
-  HOVER_INTENT_DELAY_MS,
-  PLAYBACK_HOVER_INTENT_DELAY_MS,
-} from "./GridRenderer";
+import { GridRenderer, HOVER_INTENT_DELAY_MS } from "./GridRenderer";
 import classes from "./GridRenderer.module.css";
 import { useGridPreview } from "./use-grid-preview";
 import { useEpisodePreviewSession } from "../../session/use-episode-preview-session";
@@ -964,7 +960,7 @@ describe("GridRenderer", () => {
       expect.objectContaining({ hovered: true }),
     );
     act(() => {
-      vi.advanceTimersByTime(PLAYBACK_HOVER_INTENT_DELAY_MS - 1);
+      vi.advanceTimersByTime(HOVER_INTENT_DELAY_MS - 1);
     });
     expect(previewHarness.preview.play).not.toHaveBeenCalled();
 
@@ -974,13 +970,13 @@ describe("GridRenderer", () => {
       expect.objectContaining({ hovered: false }),
     );
     act(() => {
-      vi.advanceTimersByTime(PLAYBACK_HOVER_INTENT_DELAY_MS);
+      vi.advanceTimersByTime(HOVER_INTENT_DELAY_MS);
     });
     expect(previewHarness.preview.play).not.toHaveBeenCalled();
 
     fireEvent.pointerOver(root);
     act(() => {
-      vi.advanceTimersByTime(PLAYBACK_HOVER_INTENT_DELAY_MS);
+      vi.advanceTimersByTime(HOVER_INTENT_DELAY_MS);
     });
     expect(previewHarness.preview.play).toHaveBeenCalledTimes(1);
   });

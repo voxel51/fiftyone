@@ -461,6 +461,12 @@ function requireInfo(value: Readonly<Record<string, unknown>>): LeRobotInfo {
   return info;
 }
 
+interface ResolvedNativePreviewVideo {
+  /** Episode-relative, clamped into this episode's interval. */
+  readonly startTimeNs: bigint;
+  readonly video: EpisodePreviewNativeVideo;
+}
+
 class LeRobotEpisodePreviewSession implements EpisodePreviewSession {
   private disposed = false;
 
@@ -556,11 +562,12 @@ class LeRobotEpisodePreviewSession implements EpisodePreviewSession {
         break;
       }
     }
-    const nativeVideo = await this.session.resolveNativePreviewVideo(
+    const native = await this.session.resolveNativePreviewVideo(
       selected.id,
       startNs,
       options.signal,
     );
+    const nativeVideo = native?.video;
     this.ensureOpen();
     throwIfAborted(options.signal);
     const decoded = firstFrameAtOrAfter(frames, startNs);
@@ -590,7 +597,7 @@ class LeRobotEpisodePreviewSession implements EpisodePreviewSession {
     return {
       ...bootstrap,
       frame,
-      frameTimeNs: decoded?.timestampNs ?? (nativeVideo ? startNs : undefined),
+      frameTimeNs: decoded?.timestampNs ?? native?.startTimeNs,
       ...(unsupportedCodec ? { unsupportedCodec } : {}),
       ...(nativeVideo ? { nativeVideo } : {}),
       nextStartTimeNs:
@@ -940,7 +947,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
     streamId: string,
     startNs: bigint,
     signal?: AbortSignal,
-  ): Promise<EpisodePreviewNativeVideo | undefined> {
+  ): Promise<ResolvedNativePreviewVideo | undefined> {
     const binding = this.videoBindings.get(streamId);
     if (!binding) return undefined;
     const index = await this.readVideoIndex(binding, signal);
@@ -952,17 +959,21 @@ class LeRobotEpisodeSession implements EpisodeSession {
     });
     throwIfAborted(signal);
     // Episode-relative in, file-relative out: the element seeks the shared
-    // MP4, in which this episode is one interval
-    const startTimeSeconds = Math.min(
-      binding.toSeconds,
-      Math.max(binding.fromSeconds, binding.fromSeconds + nsToSeconds(startNs)),
+    // MP4, in which this episode is one interval. Clamped once, so the seek
+    // and the instant reported for it cannot disagree.
+    const startTimeNs = minBigIntPair(
+      maxBigIntPair(0n, startNs),
+      secondsToNs(binding.toSeconds - binding.fromSeconds),
     );
     return {
-      codec,
-      codecString,
-      endTimeSeconds: binding.toSeconds,
-      source,
-      startTimeSeconds,
+      startTimeNs,
+      video: {
+        codec,
+        codecString,
+        endTimeSeconds: binding.toSeconds,
+        source,
+        startTimeSeconds: binding.fromSeconds + nsToSeconds(startTimeNs),
+      },
     };
   }
 

@@ -63,7 +63,6 @@ import {
   useProvidedGridPoster,
 } from "./use-grid-poster-provider";
 import { peekSourceBootstrap } from "../../../runtime";
-import { episodeIdOf } from "../../../runtime/episode-identity";
 import { useHydratedSourceFacts } from "./use-hydrated-source-facts";
 import { LeRobotGridHoverVideo } from "./LeRobotGridHoverVideo";
 
@@ -77,7 +76,6 @@ const SNAPSHOT_REFRESH_DEBOUNCE_MS = 250;
  */
 export const HOVER_INTENT_DELAY_MS = 120;
 /** Dwell before hover playback starts, avoiding scroll-under-cursor churn. */
-export const PLAYBACK_HOVER_INTENT_DELAY_MS = HOVER_INTENT_DELAY_MS;
 
 const stopGridActivationPropagation = (
   event: React.MouseEvent<HTMLElement>,
@@ -136,7 +134,10 @@ export function GridRenderer({
   // closing the modal rebuilds nothing
   const visible = useGridRendererVisibility(rootElement, isGridActive);
   const interactive = visible && isGridActive;
-  const sampleId = episodeIdOf(ctx);
+  const sampleId = useMemo(() => {
+    const sample = ctx.sample.sample as { _id?: string; id?: string };
+    return sample._id ?? sample.id;
+  }, [ctx.sample.sample]);
   const [selectedStream] = useGridSelectedStream(ctx.dataset.name);
   const selectedSourceName =
     selectedStream === GRID_STREAM_AUTO ? null : selectedStream;
@@ -793,7 +794,7 @@ function usePlaybackHoverIntent(
     timerRef.current = setTimeout(() => {
       timerRef.current = null;
       play();
-    }, PLAYBACK_HOVER_INTENT_DELAY_MS);
+    }, HOVER_INTENT_DELAY_MS);
   }, [cancel, enabled, play, setHovered]);
 
   // This effect cancels hover playback when the grid becomes inactive.
