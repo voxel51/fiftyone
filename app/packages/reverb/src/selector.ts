@@ -129,16 +129,30 @@ export function waitForAll<T>(
     | Record<string, ReverbValueReadOnly<T>>,
 ) {
   if (Array.isArray(states)) {
-    return primitive((get) => states.map((state) => get(state)));
+    return primitive((get) => {
+      const values = states.map((state) => get(state));
+
+      // A pending member is a promise, and the point of reading them together
+      // is to get the values, so the aggregate awaits rather than carrying it.
+      return values.some((value) => value instanceof Promise)
+        ? Promise.all(values)
+        : values;
+    });
   }
 
-  return primitive((get) =>
-    Object.fromEntries(
-      Object.entries(states as Record<string, ReverbValueReadOnly<T>>).map(
-        ([key, state]) => [key, get(state)],
-      ),
-    ),
-  );
+  return primitive((get) => {
+    const entries = Object.entries(
+      states as Record<string, ReverbValueReadOnly<T>>,
+    ).map(([key, state]) => [key, get(state)] as const);
+
+    if (!entries.some(([, value]) => value instanceof Promise)) {
+      return Object.fromEntries(entries);
+    }
+
+    return Promise.all(
+      entries.map(async ([key, value]) => [key, await value] as const),
+    ).then(Object.fromEntries);
+  });
 }
 
 /** State whose value never changes. */

@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { atom } from "./atom";
 import { atomFamily, selectorFamily } from "./family";
 import { loadable, stableLoadable } from "./loadable";
-import { selector } from "./selector";
+import { selector, waitForAll } from "./selector";
 import { snapshot } from "./snapshot";
 import { DEFAULT_VALUE, DefaultValue } from "./sentinel";
 import { runTransaction } from "./transaction";
@@ -288,6 +288,25 @@ describe("selector", () => {
     expect(store.get(derived)).toBe(6);
     store.set(source, 5);
     expect(store.get(derived)).toBe(15);
+  });
+});
+
+describe("waitForAll", () => {
+  it("resolves async members rather than handing back promises", async () => {
+    const slow = atom<Promise<number>>({
+      key: "allSlow",
+      default: Promise.resolve(1),
+    });
+    const quick = atom<number>({ key: "allQuick", default: 2 });
+    const store = createStore();
+
+    const list = await store.get(waitForAll([slow, quick] as never));
+    expect(list).toEqual([1, 2]);
+
+    const shape = await store.get(
+      waitForAll({ slow, quick } as never) as never,
+    );
+    expect(shape).toEqual({ slow: 1, quick: 2 });
   });
 });
 
