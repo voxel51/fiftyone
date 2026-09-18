@@ -29,7 +29,8 @@
  * chunk request for presentation frames `[start, start+n)` is snapped back to
  * the keyframe at/-before the earliest of those frames in DECODE order, and we
  * decode forward through the latest. Lead-in frames are emitted as bonus —
- * they're already decoded and help scrub-back.
+ * they're already decoded and help scrub-back. The sync table is verified
+ * against sample bytes before a snap relies on it (see {@link KeyframeIndex}).
  *
  * Scope: MP4 / H.264 first (mp4box + the common `avcC`/`hvcC`/`av1C`/`vpcC`
  * description boxes). Other containers/codecs are follow-ons gated on
@@ -50,6 +51,8 @@ import {
   presentationStart,
   presentedInOrder,
 } from "./editList";
+import { KeyframeIndex } from "./keyframeIndex";
+import { keyframeProbe } from "./sampleKeyframe";
 import {
   ByteRangeCache,
   type ByteRange,
@@ -57,6 +60,7 @@ import {
   parseContentRangeStart,
   rangeRequestHeader,
   sliceSampleBytes,
+  type SpanBuffer,
   spanByteRange,
 } from "./videoByteRange";
 
@@ -104,8 +108,8 @@ interface DemuxedSample {
 let decodeOrder: DemuxedSample[] = [];
 /** Samples by 1-indexed presentation frame number (`[frame - 1]`). */
 let byFrameNumber: DemuxedSample[] = [];
-/** Decode-order indices of sync (keyframe) samples, ascending. */
-let keyframeIndices: number[] = [];
+/** Keyframes to snap to, verified against their bytes before use. */
+let keyframes = new KeyframeIndex([], keyframeProbe(""));
 /** Presentation-timestamp (µs) → 1-indexed frame number. */
 const microsToFrame = new Map<number, number>();
 let config: VideoDecoderConfig | null = null;
@@ -355,9 +359,11 @@ function buildSampleTable(
     microsToFrame.set(sample.tsMicros, sample.frameNumber);
   });
 
-  keyframeIndices = decodeOrder
-    .filter((s) => s.isSync)
-    .map((s) => s.decodeIndex);
+  const cfg = config as VideoDecoderConfig;
+  keyframes = new KeyframeIndex(
+    decodeOrder,
+    keyframeProbe(cfg.codec, cfg.description as Uint8Array | undefined),
+  );
 
   totalFrames = byFrameNumber.length;
 }
@@ -458,11 +464,15 @@ async function runJob(msg: FetchChunkMessage): Promise<void> {
     return;
   }
 
-  const kf = keyframeAtOrBefore(dStart);
-
-  // Fetch just the bytes for this GOP span (keyframe → last needed sample).
-  const range = spanByteRange(decodeOrder, kf, dEnd);
-  if (!range) {
+  // Fetch just the bytes for this GOP span (keyframe → last needed sample),
+  // snapping back past any sync flag the sample's own bytes contradict.
+  const gop = await keyframes.resolveGop(dStart, (kf) => {
+    const range = spanByteRange(decodeOrder, kf, dEnd);
+    return range
+      ? fetchSpanBuffer(range).then((span) => ({ kf, span }))
+      : Promise.resolve(null);
+  });
+  if (!gop) {
     post({
       type: "chunkDone",
       reqId: msg.reqId,
@@ -471,7 +481,7 @@ async function runJob(msg: FetchChunkMessage): Promise<void> {
     return;
   }
 
-  const span = await fetchSpanBuffer(range);
+  const { kf, span } = gop;
 
   const dec = ensureDecoder();
   dec.configure(config as VideoDecoderConfig);
@@ -487,12 +497,13 @@ async function runJob(msg: FetchChunkMessage): Promise<void> {
 
   for (let i = kf; i <= dEnd; i++) {
     const s = decodeOrder[i];
+    const data = sliceSampleBytes(span.buffer, span.fileStart, s);
     dec.decode(
       new EncodedVideoChunk({
-        type: s.isSync ? "key" : "delta",
+        type: keyframes.chunkType(s, data),
         timestamp: s.tsMicros,
         duration: s.durMicros,
-        data: sliceSampleBytes(span.buffer, span.fileStart, s),
+        data,
       }),
     );
   }
@@ -502,13 +513,6 @@ async function runJob(msg: FetchChunkMessage): Promise<void> {
 
   post({ type: "chunkDone", reqId: msg.reqId, range: [startFrame, endFrame] });
   currentJob = null;
-}
-
-/** A slice of the source file plus the absolute offset its byte 0 maps to. */
-interface SpanBuffer {
-  buffer: ArrayBuffer;
-  /** Absolute file offset of `buffer[0]` (`0` for a whole-file buffer). */
-  fileStart: number;
 }
 
 /**
@@ -641,20 +645,6 @@ function onDecoderOutput(frame: VideoFrame): void {
     });
 
   job.pending.push(p);
-}
-
-/** Largest keyframe decode-index at or before `decodeIndex`. */
-function keyframeAtOrBefore(decodeIndex: number): number {
-  let kf = 0;
-  for (const k of keyframeIndices) {
-    if (k <= decodeIndex) {
-      kf = k;
-    } else {
-      break;
-    }
-  }
-
-  return kf;
 }
 
 function post(msg: FrameWorkerOutbound, transfer?: Transferable[]): void {
