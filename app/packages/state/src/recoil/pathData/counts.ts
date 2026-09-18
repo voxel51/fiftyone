@@ -24,7 +24,7 @@ export const count = selectorFamily({
       lightning?: boolean;
       value?: string | null;
     }) =>
-    ({ get }): number => {
+    ({ get }): number | Promise<number> => {
       if (
         !params.modal &&
         (params.path === "" || params.path === "_") &&
