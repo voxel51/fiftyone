@@ -59,7 +59,7 @@ export function atom<T>(options: AtomOptions<T>): ReverbState<T> {
         // A reset stores UNSET rather than the resolved value: a default
         // that is itself state has to keep tracking it afterwards.
         set(base, isReset ? UNSET : value);
-        get(host).notify(value, isReset ? requested : previous, isReset);
+        get(host).notify(value, previous, isReset);
       },
     ),
     options.key,

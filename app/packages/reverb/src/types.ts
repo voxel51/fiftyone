@@ -3,6 +3,7 @@
  */
 
 import type { Atom, WritableAtom } from "jotai";
+import type { REVERB } from "./named";
 import type { AtomEffect } from "./effects";
 import type { Loadable as LoadableInterface } from "./loadable";
 import type { DefaultValue } from "./sentinel";
@@ -12,11 +13,15 @@ export type Write<T> = T | DefaultValue | ((previous: T) => T | DefaultValue);
 
 export type ReverbValue<T> = Atom<T>;
 
-export type ReverbValueReadOnly<T> = Atom<T> & { key: string };
-
-export type ReverbState<T> = WritableAtom<T, [Write<T>], void> & {
+/** What `named()` stamps on state: a key, and a mark a plain object lacks. */
+export interface Branded {
   key: string;
-};
+  [REVERB]: true;
+}
+
+export type ReverbValueReadOnly<T> = Atom<T> & Branded;
+
+export type ReverbState<T> = WritableAtom<T, [Write<T>], void> & Branded;
 
 export type SetterOrUpdater<T> = (next: Write<T>) => void;
 
