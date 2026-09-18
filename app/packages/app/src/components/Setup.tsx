@@ -4,7 +4,6 @@
  * What the App shows with no session to connect to: how to start one.
  */
 
-import { Header } from "@fiftyone/components";
 import { isNotebook } from "@fiftyone/state";
 import {
   Align,
@@ -24,6 +23,8 @@ import {
 import { useState } from "react";
 import { useRecoilValue } from "recoil";
 
+import { useProduct } from "../product";
+import Header from "./Header";
 import HeaderLinks from "./HeaderLinks";
 import styles from "./Setup.module.css";
 
@@ -34,6 +35,10 @@ const port = (() => {
   return "";
 })();
 
+const Code = ({ children }: { children: string }) => (
+  <pre className={styles.code}>{children}</pre>
+);
+
 const remoteSnippet = `import fiftyone as fo
 
 # Load your FiftyOne dataset
@@ -42,10 +47,6 @@ dataset = fo.load_dataset(...)
 # Launch a remote App instance that you'll connect to from your local machine
 session = fo.launch_app(dataset, remote=True, port=XXXX)
 `;
-
-const Code = ({ children }: { children: string }) => (
-  <pre className={styles.code}>{children}</pre>
-);
 
 const LocalInstructions = () => {
   const localSnippet = `import fiftyone as fo
@@ -83,6 +84,7 @@ fiftyone app connect --destination [<username>@]<hostname> \\
         You can work with data on a remote machine by launching a remote App
         session and connecting to it from your local machine. See{" "}
         <a
+          className={styles.link}
           target="_blank"
           href="https://docs.voxel51.com/user_guide/app.html#remote-sessions"
           rel="noreferrer"
@@ -116,10 +118,11 @@ const TABS = [
 const Setup = () => {
   const [activeTab, setActiveTab] = useState<"local" | "remote">("local");
   const notebook = useRecoilValue(isNotebook);
+  const { title } = useProduct();
 
   return (
-    <div data-cy="setup-page">
-      <Header title={"FiftyOne"}>
+    <div className={styles.setup} data-cy="setup-page">
+      <Header title={title}>
         <Stack
           orientation={Orientation.Row}
           align={Align.Center}
