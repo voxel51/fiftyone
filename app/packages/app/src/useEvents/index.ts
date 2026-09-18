@@ -2,13 +2,13 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import "../session";
 import registerEvent from "./registerEvent";
 import useAppCountUpdate from "./useAppCountUpdate";
 import useDeactivateNotebookCell from "./useDeactivateNotebookCell";
 import useRefresh from "./useRefresh";
 import useSelectLabels from "./useSelectLabels";
 import useSetSelectedSamples from "./useSelectSamples";
-import useSetColorScheme from "./useSetColorScheme";
 import useSetFieldVisibilityStage from "./useSetFieldVisibilityStage";
 import useSetGroupSlice from "./useSetGroupSlice";
 import useSetLabelSelectionStyle from "./useSetLabelSelectionStyle";
@@ -22,7 +22,6 @@ registerEvent("deactivateNotebookCell", useDeactivateNotebookCell);
 registerEvent("refresh", useRefresh);
 registerEvent("selectLabels", useSelectLabels);
 registerEvent("selectSamples", useSetSelectedSamples);
-registerEvent("setColorScheme", useSetColorScheme);
 registerEvent("setGroupSlice", useSetGroupSlice);
 registerEvent("setSample", useSetSample);
 registerEvent("setSpaces", useSetSpaces);

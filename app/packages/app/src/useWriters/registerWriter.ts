@@ -8,7 +8,7 @@ import type { Environment } from "react-relay";
 import type { Queries } from "../makeRoutes";
 import type { RoutingContext } from "../routing";
 
-type WriterKeys = keyof Omit<
+export type WriterKeys = keyof Omit<
   Session,
   | "canModifySidebarGroup"
   | "canCreateNewField"
