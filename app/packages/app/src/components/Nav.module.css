@@ -4,12 +4,23 @@
   min-width: 0;
 }
 
-.spacer {
-  flex: 1;
+/* Where the view bar's stages row lands: the window's width, inset to the
+   header's gutters. Closed, it holds no row and takes no space. */
+.stagesHost {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 8px 0.75rem 0;
 }
 
-/* The right-side actions share the first row's height so they stay level
-   with the search row when the view bar opens its second row */
+.stagesHost:empty {
+  display: none;
+}
+
+/* The right-side actions share the first row's height so they stay level with
+   the title and the selector, and hold the right edge when no view bar is
+   there to take up the slack */
 .actions {
   height: 40px;
+  margin-left: auto;
 }
