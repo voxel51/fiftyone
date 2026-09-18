@@ -1,6 +1,7 @@
 import {
   atom,
   type AtomOptions,
+  type ReverbState,
   type ReadWriteSelectorOptions,
   type TransactionInterface,
 } from "@fiftyone/reverb";
@@ -46,7 +47,7 @@ const isTest = typeof process !== "undefined" && process.env.MODE === "test";
 export function graphQLSyncFragmentAtom<T extends KeyType, K = T[" $data"]>(
   fragmentOptions: GraphQLSyncFragmentSyncAtomOptions<T, K>,
   options: GraphQLSyncFragmentAtomOptions<K>,
-) {
+): ReverbState<K> {
   const value = atom({
     ...options,
     default: fragmentOptions.default,
