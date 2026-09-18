@@ -355,6 +355,58 @@ describe("HeatmapOverlay", () => {
     expect(overlay.getIsDirty()).toBe(false);
   });
 
+  it("stops answering hit tests once the inline map is gone", () => {
+    const overlay = makeOverlay();
+
+    render(overlay);
+    expect(overlay.valueAt({ x: 0.75, y: 0.25 })).toBe(0.5);
+    expect(overlay.containsPoint({ x: 0.75, y: 0.25 })).toBe(true);
+
+    // The label keeps its identity but moves its map to disk. The overlay can
+    // no longer paint it, so it must not keep swallowing clicks for the raster
+    // it used to have.
+    overlay.applyLabel({
+      _id: "heat-1",
+      _cls: "Heatmap",
+      map_path: "/m.png",
+    } as never);
+    render(overlay);
+
+    expect(overlay.valueAt({ x: 0.75, y: 0.25 })).toBe(0);
+    expect(overlay.containsPoint({ x: 0.75, y: 0.25 })).toBe(false);
+  });
+
+  it("retries a map that failed under a different map of the same length", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const bad = {
+      channels: 2,
+      arrayType: "Float32Array",
+      shape: [2, 2],
+      buffer: new Float32Array([0, 1, 2, 3]).buffer,
+    } as unknown as OverlayMask;
+
+    const overlay = new HeatmapOverlay({
+      id: "heat-retry",
+      field: FIELD,
+      label: { _id: "heat-retry", _cls: "Heatmap", map: bad } as never,
+    });
+
+    render(overlay);
+    expect(renderer.drawImage).not.toHaveBeenCalled();
+
+    // A different map object, same palette: the failure belonged to the old
+    // one, so this must be rasterized rather than suppressed.
+    overlay.applyLabel({
+      _id: "heat-retry",
+      _cls: "Heatmap",
+      map: map([0, 0.5, 1, 0.25]),
+    } as never);
+    render(overlay);
+
+    expect(renderer.drawImage).toHaveBeenCalledTimes(1);
+  });
+
   it("says so once when no resolver was supplied", () => {
     const consoleWarn = vi
       .spyOn(console, "warn")
