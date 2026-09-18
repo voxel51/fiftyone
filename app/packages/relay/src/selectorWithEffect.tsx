@@ -6,8 +6,10 @@ import {
 } from "@fiftyone/reverb";
 import React from "react";
 
-// The registry is keyed by string, so a setter cannot be typed per item.
-export type Setter = ReadWriteSelectorOptions<never>["set"];
+// The registry is keyed by string, so a setter cannot be typed per item. The
+// value is the top type rather than `never`, which would narrow every setter's
+// parameter to the reset sentinel alone.
+export type Setter = ReadWriteSelectorOptions<unknown>["set"];
 
 let effectStore_INTERNAL: Map<string, Setter>;
 
