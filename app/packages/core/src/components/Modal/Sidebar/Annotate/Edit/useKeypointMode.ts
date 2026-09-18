@@ -1,3 +1,4 @@
+import { FRAMES_PREFIX } from "@fiftyone/annotation";
 import { CommandContextManager } from "@fiftyone/commands";
 import {
   GuidedKeypointHandler,

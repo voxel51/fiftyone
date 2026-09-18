@@ -301,7 +301,6 @@ const PointAttributeField = ({
       <TextAttributeInput
         spec={spec}
         value={value}
-        placed={placed}
         disabled={disabled}
         onCommit={onCommit}
       />
@@ -312,7 +311,6 @@ const PointAttributeField = ({
     <NumberAttributeInput
       spec={spec}
       value={value}
-      placed={placed}
       disabled={disabled}
       onCommit={onCommit}
     />
@@ -322,6 +320,8 @@ const PointAttributeField = ({
 interface NodeInspectorProps {
   name: string;
   placed: boolean;
+  /** Deliberately passed over — shown in place of "not placed". */
+  skipped: boolean;
   index: number;
   attributes: PointAttributeSpec[];
   data: Record<string, unknown> | null | undefined;
@@ -339,6 +339,7 @@ interface NodeInspectorProps {
 const NodeInspector = ({
   name,
   placed,
+  skipped,
   index,
   attributes,
   data,
@@ -352,7 +353,7 @@ const NodeInspector = ({
           Selected point
         </InspectorHeading>
         <Text color={TextColor.Secondary} variant={TextVariant.Sm}>
-          {placed ? "placed" : "not placed"}
+          {placed ? "placed" : skipped ? "skipped" : "not placed"}
         </Text>
       </InspectorHeader>
       <Text>{name}</Text>
@@ -553,6 +554,11 @@ export const KeypointDetails = () => {
                 >
                   {name}
                 </Text>
+                {status === "target" && (
+                  <Text color={TextColor.Secondary} variant={TextVariant.Sm}>
+                    next
+                  </Text>
+                )}
               </Stack>
 
               {status === "target" && (
@@ -606,6 +612,7 @@ export const KeypointDetails = () => {
             nodeLabels?.[selectedNodeIndex] ?? `point ${selectedNodeIndex + 1}`
           }
           placed={isPlaced(currentPoints[selectedNodeIndex])}
+          skipped={skipped.includes(selectedNodeIndex)}
           index={selectedNodeIndex}
           attributes={pointAttributes}
           data={labelData}

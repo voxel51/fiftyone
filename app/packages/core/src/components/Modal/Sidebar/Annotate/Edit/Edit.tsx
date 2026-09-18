@@ -1,7 +1,13 @@
 import { DetectionLabel } from "@fiftyone/looker";
-import { useClearModal } from "@fiftyone/state";
+import { useClearModal, useGetKeypointSkeleton } from "@fiftyone/state";
 import { DETECTION, KEYPOINT, POLYLINE } from "@fiftyone/utilities";
-import { Heading, HeadingLevel } from "@voxel51/voodo";
+import {
+  Heading,
+  HeadingLevel,
+  Text,
+  TextColor,
+  TextVariant,
+} from "@voxel51/voodo";
 import { ReactNode, useEffect } from "react";
 import styled from "styled-components";
 import { isDetection3d } from "../../../../../utils/labels";
@@ -16,6 +22,7 @@ import Position from "./Position";
 import Position3d from "./Position3d";
 import TemporalDetectionDetails from "./TemporalDetectionDetails";
 import { useAnnotationContext } from "./useAnnotationContext";
+import { skeletonNodeCount } from "./useAnnotationContext/createNew";
 import PrimitiveWrapper from "./PrimitiveWrapper";
 import useActivePrimitive from "./useActivePrimitive";
 import useExit from "./useExit";
@@ -121,6 +128,10 @@ export default function Edit() {
     };
   }, [exit, clear]);
 
+  const getSkeleton = useGetKeypointSkeleton();
+  const skeletonNodes =
+    type === KEYPOINT && field ? skeletonNodeCount(getSkeleton(field)) : 0;
+
   const is3dDetection =
     overlay && isDetection3d(overlay.label as DetectionLabel);
   const isTemporalDetection =
@@ -133,6 +144,11 @@ export default function Edit() {
       <Content>
         <Id />
         {!primitiveEditingActive && <Field />}
+        {!primitiveEditingActive && skeletonNodes > 0 && (
+          <Text color={TextColor.Secondary} variant={TextVariant.Sm}>
+            {skeletonNodes}-point skeleton
+          </Text>
+        )}
         {primitiveEditingActive && <PrimitiveWrapper />}
         {type === DETECTION && overlay && !is3dDetection && (
           <Position readOnly={isReadOnly || isMaskDetection} />
