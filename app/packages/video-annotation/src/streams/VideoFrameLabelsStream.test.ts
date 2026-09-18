@@ -521,6 +521,61 @@ describe("VideoFrameLabelsStream byte budget", () => {
     expect(claimed).toBeLessThan(stream.chunkSize);
   });
 
+  it("covers frames an older, smaller in-flight request never claimed", async () => {
+    // The request covering frame 1 was sized when frames were expensive and
+    // claimed only 1-6. A cheaper response then re-widened the estimate, so
+    // `chunkLengthAt(1)` now reports 60. Striding by that would resume the
+    // walk at 61 and resolve with 7-60 unfetched.
+    const stream = internals(buildStream());
+
+    let settleSmall: () => void = () => undefined;
+    const small = new Promise<void>((resolve) => {
+      settleSmall = resolve;
+    });
+    for (let f = 1; f <= 6; f++) {
+      stream.inflight.set(f, small);
+    }
+    stream.active.add(small);
+
+    const started: number[] = [];
+    stream.fetchChunk = (startFrame: number) => {
+      started.push(startFrame);
+      for (let f = startFrame; f < startFrame + 60; f++) {
+        stream.cache.set(f, {});
+      }
+      return Promise.resolve();
+    };
+
+    const warm = stream.warmupAll();
+    settleSmall();
+    await warm;
+
+    // 7 is what matters: the walk must resume immediately after the in-flight
+    // range, not past a chunk that was never requested.
+    expect(started[0]).toBe(7);
+  });
+
+  it("counts chunks in flight across calls, not within one", async () => {
+    // Two prefetches over different ranges each ran up to the cap on their
+    // own count, so their combined payload could be twice the budget.
+    const stream = internals(buildStream());
+
+    stream.observeCost({ 1: frameOfBytes(2 * 1024 * 1024) }, 1);
+    const cap = stream.maxChunksInFlight();
+
+    let dispatched = 0;
+    stream.doFetch = () => {
+      dispatched += 1;
+      // never settles: everything stays on the wire for the assertion
+      return new Promise<void>(() => undefined);
+    };
+
+    stream.prefetch([timeOfFrame(1, 30), timeOfFrame(20, 30)]);
+    stream.prefetch([timeOfFrame(50, 30), timeOfFrame(70, 30)]);
+
+    expect(dispatched).toBeLessThanOrEqual(cap);
+  });
+
   it("claims only the frames that remain at the end of the clip", () => {
     const stream = internals(buildStream());
 
