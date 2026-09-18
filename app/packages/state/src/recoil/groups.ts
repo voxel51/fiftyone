@@ -12,10 +12,11 @@ import {
   DefaultValue,
   atom,
   atomFamily,
+  noWait,
   selector,
   selectorFamily,
 } from "recoil";
-import { graphQLSelectorFamily } from "recoil-relay";
+import { graphQLSelector, graphQLSelectorFamily } from "recoil-relay";
 import { getSessionRef, sessionAtom } from "../session";
 import type { ResponseFrom } from "../utils";
 import {
@@ -325,9 +326,104 @@ export const groupField = selector<string>({
   get: ({ get }) => get(dataset)?.groupField,
 });
 
-export const groupId = selector<string>({
+/**
+ * Reads the group id off the first sample of a `paginateSamples` response.
+ * Returns `null` when the response carries no sample or no group value.
+ */
+export const readGroupIdFromSamples = (
+  data: ResponseFrom<foq.paginateSamplesQuery>,
+  field: string,
+): string | null => {
+  if (!foq.isPaginateSamplesConnection(data.samples)) {
+    return null;
+  }
+
+  const node = data.samples.edges[0]?.node;
+  if (!node) {
+    return null;
+  }
+
+  const value = getPath(
+    mapSampleResponse(node as ModalSample).sample,
+    `${field}._id`,
+  );
+  return typeof value === "string" ? value : null;
+};
+
+/**
+ * Resolves the group id of the modal sample when the modal was opened with
+ * only a sample id and no group id (task-context Resume / Skip / Submit-advance,
+ * the `open_sample` operator, `?id=` deep links). Without it, every
+ * group-scoped query (the 3D slices, the sidebar aggregations, the 2D slice
+ * itself) runs with a null group id and resolves to the wrong sample or to
+ * nothing.
+ *
+ * The sample is selected across every slice of the current view with an
+ * extended `Select` stage: `SampleFilter.id` is ignored server-side whenever a
+ * group filter is present, and a plain id filter only matches the default
+ * slice.
+ *
+ * Skipped (`null`) when the dataset has no group slices, no modal is open, or
+ * the selector already carries a group id.
+ */
+export const modalGroupIdLookup = graphQLSelector<
+  VariablesOf<foq.paginateSamplesQuery>,
+  string | null
+>({
+  key: "modalGroupIdLookup",
+  environment: RelayEnvironmentKey,
+  query: foq.paginateSamples,
+  default: null,
+  variables: ({ get }) => {
+    const current = get(modalSelector);
+    if (!current?.id || current.groupId || !get(hasGroupSlices)) {
+      return null;
+    }
+
+    const slices = get(groupSlices);
+    if (!slices.length) {
+      return null;
+    }
+
+    return {
+      count: 1,
+      dataset: get(datasetName),
+      view: get(viewAtoms.view),
+      filter: { group: { slice: get(groupSlice), id: null, slices } },
+      extendedStages: {
+        "fiftyone.core.stages.Select": { sample_ids: [current.id] },
+      },
+      paginationData: false,
+    };
+  },
+  mapResponse: (data: ResponseFrom<foq.paginateSamplesQuery>, { get }) =>
+    readGroupIdFromSamples(data, get(groupField)),
+});
+
+/**
+ * The group id of the modal sample: the modal selector's own group id when
+ * the opener supplied one, otherwise resolved from the sample itself via
+ * {@link modalGroupIdLookup}.
+ *
+ * A failed lookup (transport error, query timeout) degrades to `null` rather
+ * than poisoning every group-scoped consumer, including the synchronous
+ * `getLoadable(groupId).getValue()` read in the modal. A pending lookup
+ * still suspends as usual.
+ */
+export const groupId = selector<string | null>({
   key: "groupId",
-  get: ({ get }) => get(modalSelector)?.groupId || null,
+  get: ({ get }) => {
+    const explicit = get(modalSelector)?.groupId;
+    if (explicit) {
+      return explicit;
+    }
+
+    if (get(noWait(modalGroupIdLookup)).state === "hasError") {
+      return null;
+    }
+
+    return get(modalGroupIdLookup);
+  },
 });
 
 export const refreshGroupQuery = atom<number>({
