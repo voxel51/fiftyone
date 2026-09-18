@@ -51,10 +51,7 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 });
 
-test.skip("Built-in operators: set view", async ({
-  viewBar,
-  operatorsBrowser,
-}) => {
+test("Built-in operators: set view", async ({ viewBar, operatorsBrowser }) => {
   await operatorsBrowser.show();
   await operatorsBrowser.search("E2E");
   await operatorsBrowser.choose("E2E: Set view");
