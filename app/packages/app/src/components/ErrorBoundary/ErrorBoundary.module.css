@@ -1,38 +1,6 @@
 .page {
   width: 100%;
   height: 100%;
-  overflow: auto;
-  overscroll-behavior: contain;
-
-  --scrollbar-color: var(--fo-palette-text-tertiary);
-}
-
-@-moz-document url-prefix() {
-  .page {
-    scrollbar-color: var(--scrollbar-color) transparent;
-    scrollbar-width: thin;
-  }
-}
-
-.page::-webkit-scrollbar {
-  height: 14px;
-  width: 14px;
-}
-
-.page::-webkit-scrollbar-corner {
-  background: transparent;
-}
-
-.page::-webkit-scrollbar-track {
-  box-shadow: inset 0 0 14px 14px transparent;
-  height: 14px;
-  width: 14px;
-}
-
-.page::-webkit-scrollbar-thumb {
-  border: solid 3px transparent;
-  border-radius: 0;
-  box-shadow: inset 0 0 8px 8px var(--scrollbar-color);
 }
 
 .content {

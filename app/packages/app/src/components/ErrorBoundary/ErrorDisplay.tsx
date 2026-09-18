@@ -2,6 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { scrollable } from "@fiftyone/components";
 import { CodeBlock } from "@fiftyone/core";
 import { describeAppError } from "@fiftyone/utilities";
 import {
@@ -49,7 +50,7 @@ export default function ErrorDisplay({
   }
 
   return (
-    <div className={styles.page} data-cy="error-boundary">
+    <div className={`${styles.page} ${scrollable}`} data-cy="error-boundary">
       <Stack
         orientation={Orientation.Column}
         spacing={Spacing.Md}

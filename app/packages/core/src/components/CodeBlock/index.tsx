@@ -2,6 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { scrollable } from "@fiftyone/components";
 import { useCurrentTheme } from "@fiftyone/state";
 import {
   Button,
@@ -62,7 +63,7 @@ export default function CodeBlock({
       />
       <SyntaxHighlighter
         showLineNumbers
-        className={styles.code}
+        className={scrollable}
         language={language}
         customStyle={{ margin: 0, lineHeight: 1.75 }}
         // The App's base palette is dark, so an unknown mode falls to dark

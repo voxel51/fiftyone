@@ -4,6 +4,7 @@
  * What a dataset-less App offers: how to get one, and the Python to do it.
  */
 
+import { scrollable } from "@fiftyone/components";
 import { OperatorCore, useOperators } from "@fiftyone/operators";
 import {
   useOperatorBrowser,
@@ -63,7 +64,7 @@ export function Starter(props: StarterPropsType) {
         orientation={Orientation.Column}
         align={Align.Center}
         spacing={Spacing.Xl}
-        className={styles.page}
+        className={`${styles.page} ${scrollable}`}
       >
         <Stack
           orientation={Orientation.Column}
