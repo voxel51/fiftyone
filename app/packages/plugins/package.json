@@ -22,9 +22,17 @@
         "@fiftyone/utilities": "workspace:^",
         "prettier": "catalog:",
         "react": "catalog:",
+        "react-dom": "catalog:",
         "vite": "catalog:"
     },
     "dependencies": {
-        "moment": "^2.29.4"
+        "@mui/material": "catalog:",
+        "moment": "^2.29.4",
+        "recoil": "catalog:",
+        "styled-components": "catalog:"
+    },
+    "peerDependencies": {
+        "react": "*",
+        "react-dom": "*"
     }
 }

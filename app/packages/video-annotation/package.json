@@ -22,13 +22,11 @@
         "clsx": "^2.1.0",
         "jotai": "catalog:",
         "lru-cache": "catalog:",
-        "mp4box": "^2.4.1"
+        "mp4box": "^2.4.1",
+        "recoil": "catalog:"
     },
     "devDependencies": {
         "@eslint/compat": "catalog:",
-        "@mui/icons-material": "catalog:",
-        "@mui/material": "catalog:",
-        "@react-spring/web": "catalog:",
         "@types/dom-webcodecs": "^0.1.18",
         "@types/react": "catalog:",
         "eslint": "catalog:eslint9",
@@ -37,16 +35,14 @@
         "globals": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:",
-        "react-error-boundary": "catalog:",
         "react-is": "catalog:",
-        "react-relay": "catalog:",
-        "recoil": "catalog:",
-        "recoil-relay": "catalog:",
-        "relay-runtime": "catalog:",
-        "styled-components": "catalog:",
         "typescript": "catalog:",
         "typescript-eslint": "catalog:eslint9",
-        "uuid": "catalog:",
         "vite": "catalog:"
+    },
+    "peerDependencies": {
+        "react": "*",
+        "react-dom": "*",
+        "react-is": "*"
     }
 }

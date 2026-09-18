@@ -20,6 +20,8 @@
     "devDependencies": {
         "@types/luxon": "^3.6.2",
         "prettier": "catalog:",
+        "react": "catalog:",
+        "react-dom": "catalog:",
         "typescript": "catalog:",
         "typescript-plugin-css-modules": "^5.1.0",
         "vite": "catalog:"
@@ -33,9 +35,11 @@
         "lru-cache": "catalog:",
         "luxon": "^3.6.1",
         "mime": "catalog:",
-        "path-browserify": "^1.0.1"
+        "path-browserify": "^1.0.1",
+        "styled-components": "catalog:"
     },
     "peerDependencies": {
-        "react": "*"
+        "react": "*",
+        "react-dom": "*"
     }
 }

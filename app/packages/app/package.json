@@ -26,6 +26,7 @@
         "@fiftyone/utilities": "*",
         "@fiftyone/video-annotation": "workspace:*",
         "@fiftyone/view-bar": "*",
+        "@mui/material": "catalog:",
         "@types/react": "catalog:",
         "@use-gesture/react": "10.1.1",
         "@voxel51/voodo": "catalog:",
@@ -66,8 +67,5 @@
         "vite-plugin-relay": "catalog:",
         "vite-plugin-svgr": "catalog:",
         "vite-plugin-wasm": "catalog:"
-    },
-    "peerDependencies": {
-        "@mui/icons-material": "*"
     }
 }

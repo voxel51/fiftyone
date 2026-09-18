@@ -23,16 +23,17 @@
         "vite": "catalog:"
     },
     "dependencies": {
+        "@mui/icons-material": "catalog:",
+        "@mui/material": "catalog:",
         "allotment": "^1.17.0",
         "react-sortablejs": "^6.1.4",
-        "sortablejs": "^1.15.0"
+        "recoil": "catalog:",
+        "sortablejs": "^1.15.0",
+        "styled-components": "catalog:",
+        "uuid": "catalog:"
     },
     "peerDependencies": {
-        "@mui/icons-material": "*",
-        "@mui/material": "*",
-        "@react-spring/web": "*",
         "react": "*",
-        "react-dom": "*",
-        "recoil": "*"
+        "react-dom": "*"
     }
 }

@@ -18,18 +18,14 @@
         "README.md"
     ],
     "peerDependencies": {
-        "jotai": "*",
         "react": "*",
-        "react-error-boundary": "*",
-        "react-relay": "*",
-        "recoil": "*",
-        "recoil-relay": "*"
+        "react-dom": "*",
+        "react-is": "*"
     },
     "devDependencies": {
         "@testing-library/dom": "catalog:",
         "@testing-library/react": "catalog:",
         "babel-plugin-relay": "catalog:",
-        "jotai": "catalog:",
         "prettier": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:",
@@ -41,12 +37,20 @@
         "@fiftyone/relay": "*",
         "@fiftyone/utilities": "*",
         "@microsoft/fetch-event-source": "catalog:",
+        "@mui/icons-material": "catalog:",
+        "@mui/material": "catalog:",
         "@voxel51/voodo": "catalog:",
         "html2canvas": "1.0.0-rc.7",
         "jotai": "catalog:",
         "jotai-effect": "catalog:",
         "jotai-family": "catalog:",
         "lodash": "catalog:",
-        "resize-observer-polyfill": "catalog:"
+        "react-error-boundary": "catalog:",
+        "react-relay": "catalog:",
+        "recoil": "catalog:",
+        "recoil-relay": "catalog:",
+        "relay-runtime": "catalog:",
+        "resize-observer-polyfill": "catalog:",
+        "uuid": "catalog:"
     }
 }

@@ -23,10 +23,11 @@
         "jotai-optics": "^0.4.0",
         "optics-ts": "^2.4.1",
         "react-virtuoso": "^4.12.5",
+        "recoil": "catalog:",
+        "styled-components": "catalog:",
         "vite-plugin-svgr": "catalog:"
     },
     "peerDependencies": {
-        "@fiftyone/spaces": "*",
         "react": "*",
         "react-dom": "*",
         "react-is": "*"
