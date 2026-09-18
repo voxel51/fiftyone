@@ -220,6 +220,16 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
 
   private readonly cache = new Map<number, FrameDoc>();
   private readonly inflight = new Map<number, Promise<void>>();
+  /**
+   * Every fetch currently on the wire.
+   *
+   * The byte budget is a property of the connection, not of a call site, so
+   * counting per call lets `warmupAll` and any number of concurrent
+   * `prefetch` calls each run up to the cap independently and blow it
+   * together. `inflight` cannot stand in for this: it is keyed by frame and
+   * deduplicates overlapping requests, it does not count distinct ones.
+   */
+  private readonly active = new Set<Promise<void>>();
   private readonly fetchedRanges: Array<[number, number]> = [];
   /**
    * Frames whose masks are decoded AND borrowed, keyed to the sources borrowed
@@ -305,7 +315,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
    * chunks in parallel. Expensive over long clips; for one-shot full-clip work.
    */
   async warmupAll(): Promise<void> {
-    const promises: Promise<void>[] = [];
+    const awaited = new Set<Promise<void>>();
     let f = 1;
 
     while (f <= this.frameCount) {
@@ -314,20 +324,37 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
         continue;
       }
 
-      const claimed = Math.max(1, this.chunkLengthAt(f));
-
       const inflight = this.inflight.get(f);
       if (inflight) {
-        promises.push(inflight);
-        f += claimed;
+        // Advance ONE frame, not by `chunkLengthAt`. That reports what a NEW
+        // chunk would claim now; the request already covering `f` was sized
+        // when it was issued, and a cheaper response since then will have
+        // grown the estimate. Striding by the new figure would skip frames
+        // the older, smaller request never covered — 1-6 in flight, the walk
+        // resuming at 61 — and `warmupAll` would resolve with 7-60 unfetched.
+        awaited.add(inflight);
+        f++;
         continue;
       }
 
-      promises.push(this.fetchChunk(f));
+      // Wait for room rather than dispatching the whole clip at once: the
+      // budget is stream-wide, and this is the call that can exceed it by the
+      // widest margin.
+      while (this.active.size >= this.maxChunksInFlight()) {
+        await Promise.race(this.active);
+      }
+
+      // Waiting yields, so another caller may have covered this frame.
+      if (this.cache.has(f) || this.inflight.has(f)) {
+        continue;
+      }
+
+      const claimed = Math.max(1, this.chunkLengthAt(f));
+      awaited.add(this.fetchChunk(f));
       f += claimed;
     }
 
-    await Promise.all(promises);
+    await Promise.all(awaited);
   }
 
   /** Total frames in the clip — useful for callers iterating the cache. */
@@ -707,8 +734,13 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
     // once and crowded the <video>'s own byte fetch off the connection pool.
     // The point here is to stay a few chunks ahead of the playhead, not to
     // load the clip.
-    let issued = 0;
     for (let f = startFrame; f <= endFrame; f += 1) {
+      // Counted across the stream, not across this call: two prefetches for
+      // different ranges would otherwise each run up to the cap.
+      if (this.active.size >= this.maxChunksInFlight()) {
+        return;
+      }
+
       if (this.cache.has(f) || this.isInflight(f)) {
         continue;
       }
@@ -719,11 +751,6 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
       const claimed = this.chunkLengthAt(f);
 
       void this.fetchChunk(f);
-      issued += 1;
-
-      if (issued >= this.maxChunksInFlight()) {
-        return;
-      }
 
       // Skip the frames this chunk just claimed rather than re-testing each.
       // Advancing by the CONFIGURED size instead would stride past frames the
@@ -900,13 +927,18 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
       return;
     }
 
-    const promise = this.doFetch(startFrame, numFrames).finally(() => {
-      for (let f = startFrame; f < startFrame + numFrames; f++) {
-        if (this.inflight.get(f) === promise) {
-          this.inflight.delete(f);
+    const promise: Promise<void> = this.doFetch(startFrame, numFrames).finally(
+      () => {
+        this.active.delete(promise);
+        for (let f = startFrame; f < startFrame + numFrames; f++) {
+          if (this.inflight.get(f) === promise) {
+            this.inflight.delete(f);
+          }
         }
-      }
-    });
+      },
+    );
+
+    this.active.add(promise);
 
     for (let f = startFrame; f < startFrame + numFrames; f++) {
       this.inflight.set(f, promise);
