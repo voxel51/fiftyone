@@ -89,6 +89,15 @@ describe("rankImageSources", () => {
     // Density still dominates; the color preference only breaks ties.
     expect(ranked.map((s) => s.id)).toEqual(["9", "8", "7"]);
   });
+
+  it("reads a spelled-out infrared stream as non-color", () => {
+    const ranked = rankImageSources([
+      imageSource("7", 240, "/cam/infrared"),
+      imageSource("8", 240, "/cam/image_rgb"),
+    ]);
+
+    expect(ranked.map((s) => s.id)).toEqual(["8", "7"]);
+  });
 });
 
 describe("rankDefaultImageSources", () => {

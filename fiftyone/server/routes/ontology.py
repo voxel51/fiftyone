@@ -143,8 +143,7 @@ async def _list_ontology_summaries(
     ]
 
     collection = foo.get_async_db_conn()["ontologies"]
-    cursor = await foo.aggregate(collection, pipeline)
-    summaries = await cursor.to_list(None)
+    summaries = await foo.aggregate(collection, pipeline).to_list(None)
     # Replace BSON datetimes with ISO strings so the JSON response is flat
     # (avoids the default ``{"$date": ...}`` BSON-extended-JSON shape).
     # ``last_modified_at`` may be missing on manually-inserted docs.
@@ -197,8 +196,7 @@ async def _load_taxonomy_doc(
         {"$sort": {"version": -1}},
         {"$limit": 1},
     ]
-    cursor = await foo.aggregate(collection, pipeline)
-    docs = await cursor.to_list(1)
+    docs = await foo.aggregate(collection, pipeline).to_list(1)
     if not docs:
         return None, f"Taxonomy '{name}' not found"
 

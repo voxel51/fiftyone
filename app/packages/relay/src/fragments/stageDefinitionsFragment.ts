@@ -4,11 +4,27 @@ export default graphql`
   fragment stageDefinitionsFragment on Query {
     stageDefinitions {
       name
+      description
+      mediaTypes
       params {
         name
         type
+        tokens
+        nullable
+        required
         default
         placeholder
+        description
+        choices {
+          source
+          values
+          fields {
+            level
+            existence
+            ftypes
+            labelTypes
+          }
+        }
       }
     }
   }

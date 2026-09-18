@@ -173,6 +173,29 @@ export class MockRenderer2D implements Renderer2D {
     });
   }
 
+  /**
+   * The mock records calls rather than holding display objects, so a rebuild
+   * pass has nothing to pool. `beginRebuild` clears the container's recorded
+   * draws, which keeps assertions reading "what this pass drew" — the same
+   * thing `dispose` used to give them.
+   */
+  beginRebuild(containerId: string): void {
+    // Clear the recorded draw but KEEP the container's visibility: `hide` and
+    // `show` are independent of what a pass draws, so dropping the entry
+    // wholesale would silently un-hide an overlay on its next repaint.
+    const visible = this.containers.get(containerId)?.visible;
+
+    this.containers.delete(containerId);
+
+    if (visible !== undefined) {
+      this.containers.set(containerId, { visible });
+    }
+  }
+
+  endRebuild(_containerId: string): void {
+    // nothing to trim: the mock allocates nothing
+  }
+
   dispose(containerId: string): void {
     this.containers.delete(containerId);
   }
