@@ -18,6 +18,7 @@ import {
 import type { RasterizedSegmentation } from "../utils/segmentationRaster";
 import { rasterizeSegmentation } from "../utils/segmentationRaster";
 import { decodeMaskPath } from "../utils/maskPathDecoding";
+import { PathDecodeCooldown } from "../utils/pathDecodeCooldown";
 import { BaseOverlay } from "./BaseOverlay";
 
 export type SegmentationLabel = RawLookerLabel & {
@@ -87,6 +88,15 @@ export class SegmentationOverlay extends BaseOverlay<SegmentationLabel> {
   #decodedPath?: string;
   /** The path a decode is in flight for, so a repaint does not restart it. */
   #decodingPath?: string;
+  /** Paths whose decode just failed; see {@link PathDecodeCooldown}. */
+  readonly #pathCooldown = new PathDecodeCooldown();
+  /**
+   * Set by `destroy`. A decode in flight outlives the overlay that asked
+   * for it, and its continuation would otherwise adopt the result and mark
+   * a disposed overlay dirty, which schedules a render against a renderer
+   * that is already gone.
+   */
+  #destroyed = false;
 
   /**
    * The (source, palette) that failed to rasterize.
@@ -268,7 +278,11 @@ export class SegmentationOverlay extends BaseOverlay<SegmentationLabel> {
 
   /** Fetch + decode an on-disk mask, then repaint. */
   private startDecode(path: string): void {
-    if (this.#decodingPath === path) {
+    if (this.#decodingPath === path || this.#destroyed) {
+      return;
+    }
+
+    if (this.#pathCooldown.blocked(path)) {
       return;
     }
 
@@ -286,7 +300,7 @@ export class SegmentationOverlay extends BaseOverlay<SegmentationLabel> {
         // The label may have moved on while this was in flight — a scrub, or
         // simply the next frame. Adopting a stale decode would paint the
         // wrong frame's mask.
-        if (this.label?.mask_path !== path) {
+        if (this.#destroyed || this.label?.mask_path !== path) {
           return;
         }
 
@@ -297,6 +311,10 @@ export class SegmentationOverlay extends BaseOverlay<SegmentationLabel> {
         // never appears again. Leaving it unrecorded lets the next repaint
         // try once more.
         if (!decoded) {
+          // Not recorded as decoded — see above — but held off briefly, so a
+          // path that keeps failing costs one attempt a second instead of one
+          // per repaint.
+          this.#pathCooldown.fail(path);
           return;
         }
 
@@ -383,6 +401,12 @@ export class SegmentationOverlay extends BaseOverlay<SegmentationLabel> {
   }
 
   destroy(): void {
+    // Flagged before anything is torn down: a decode already in flight
+    // resolves after this, and its continuation reads the flag rather than
+    // adopting a result into a disposed overlay.
+    this.#destroyed = true;
+    this.#decodingPath = undefined;
+    this.#pathCooldown.clear();
     this.#decodedFromPath = undefined;
     this.#decodedPath = undefined;
     this.#canvas = undefined;

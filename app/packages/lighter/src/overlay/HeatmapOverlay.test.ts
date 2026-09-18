@@ -11,6 +11,7 @@ vi.mock("../utils/maskPathDecoding", () => ({ decodeMaskPath }));
 
 import { CONTAINS } from "../core/containment";
 import type { RenderMeta } from "../types";
+import { FAILED_PATH_DECODE_COOLDOWN_MS } from "../utils/pathDecodeCooldown";
 import { resolveHeatmapPalette } from "../utils/heatmapPalette";
 import { HeatmapOverlay } from "./HeatmapOverlay";
 
@@ -64,6 +65,21 @@ const BASE64_MAP =
 /** A decoded map standing in for what `decodeMaskPath` returns. */
 const mapFixture = () => map([0, 1, 1, 0]);
 
+/**
+ * A movable `Date.now`, so the decode cooldown can be stepped over without
+ * waiting out real time.
+ */
+const clock = {
+  now: 0,
+  advance(ms: number) {
+    this.now += ms;
+  },
+  install() {
+    this.now = Date.now();
+    vi.spyOn(Date, "now").mockImplementation(() => this.now);
+  },
+};
+
 const META: RenderMeta = {
   canonicalMediaBounds: { x: 0, y: 0, width: 100, height: 100 },
 };
@@ -94,6 +110,7 @@ describe("HeatmapOverlay", () => {
     renderer = makeRenderer();
     decodeMaskPath.mockReset();
     vi.restoreAllMocks();
+    clock.install();
   });
 
   const render = (
@@ -400,12 +417,47 @@ describe("HeatmapOverlay", () => {
 
     decodeMaskPath.mockResolvedValue(mapFixture());
 
+    // The retry is held off briefly, so repaints inside the cooldown must not
+    // each start another fetch.
+    render(overlay);
+    render(overlay);
+    expect(decodeMaskPath).toHaveBeenCalledTimes(1);
+
+    clock.advance(FAILED_PATH_DECODE_COOLDOWN_MS);
+
     render(overlay);
     await vi.waitFor(() => expect(overlay.getIsDirty()).toBe(true));
     render(overlay);
 
     expect(decodeMaskPath).toHaveBeenCalledTimes(2);
     expect(renderer.drawImage).toHaveBeenCalled();
+  });
+
+  it("drops a decode that lands after the overlay is destroyed", async () => {
+    let settle: (value: unknown) => void = () => undefined;
+    decodeMaskPath.mockReturnValueOnce(
+      new Promise((resolve) => {
+        settle = resolve;
+      }),
+    );
+
+    const overlay = new HeatmapOverlay({
+      id: "heatmap-retry-destroyed",
+      field: FIELD,
+      label: { _id: "d", _cls: "Heatmap", map_path: "/m.png" } as never,
+      resolveUrl: () => "/media?filepath=/m.png",
+    });
+
+    render(overlay);
+    overlay.destroy();
+
+    // The fetch outlives the overlay; adopting its result would mark a
+    // disposed overlay dirty and schedule a render against a gone renderer.
+    settle(mapFixture());
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(overlay.getIsDirty()).toBe(false);
   });
 
   it("stops answering hit tests once the inline map is gone", () => {
