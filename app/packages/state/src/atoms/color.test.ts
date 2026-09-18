@@ -5,7 +5,7 @@ vi.mock("@fiftyone/relay");
 import {
   setMockAtoms,
   TestSelector,
-} from "../../../../__mocks__/@fiftyone/reverb";
+} from "../../../reverb/src/__mocks__/index";
 import * as color from "./color";
 
 describe("temporalTagColor", () => {

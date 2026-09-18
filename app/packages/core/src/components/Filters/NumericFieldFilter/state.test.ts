@@ -5,7 +5,7 @@ vi.mock("@fiftyone/relay");
 import {
   setMockAtoms,
   TestSelectorFamily,
-} from "../../../../../../__mocks__/@fiftyone/reverb";
+} from "../../../../../reverb/src/__mocks__/index";
 import * as state from "./state";
 
 // Tracks every ``nonfiniteData`` read so tests can assert whether the
