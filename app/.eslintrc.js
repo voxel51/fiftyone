@@ -34,6 +34,10 @@ const storePackages = [
   "packages/reverb/**",
 ];
 
+const storeMuiAllowlist = muiAllowlist.filter((file) =>
+  storePackages.some((glob) => file.startsWith(glob.replace("/**", "/"))),
+);
+
 // Both rules share the no-restricted-imports rule name, and an ESLint override
 // replaces a rule's config rather than merging it. Keep each one's config
 // separate so an override can re-apply just the one that still applies.
@@ -210,6 +214,16 @@ module.exports = {
     {
       // On both lists, so neither rule applies.
       files: bothAllowlist,
+      rules: {
+        "no-restricted-imports": "off",
+      },
+    },
+    {
+      // A store package's own file that is also MUI allow-listed. The MUI
+      // override above replaces the store-package one rather than merging
+      // with it, which would otherwise put the store rule back on a file
+      // that defines the store.
+      files: storeMuiAllowlist,
       rules: {
         "no-restricted-imports": "off",
       },
