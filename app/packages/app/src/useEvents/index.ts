@@ -5,27 +5,9 @@
 import "../session";
 import registerEvent from "./registerEvent";
 import useDeactivateNotebookCell from "./useDeactivateNotebookCell";
-import useRefresh from "./useRefresh";
-import useSelectLabels from "./useSelectLabels";
-import useSetSelectedSamples from "./useSelectSamples";
-import useSetFieldVisibilityStage from "./useSetFieldVisibilityStage";
-import useSetGroupSlice from "./useSetGroupSlice";
-import useSetLabelSelectionStyle from "./useSetLabelSelectionStyle";
-import useSetSample from "./useSetSample";
-import useSetSampleSelectionStyle from "./useSetSampleSelectionStyle";
-import useSetSpaces from "./useSetSpaces";
 import useStateUpdate from "./useStateUpdate";
 
 registerEvent("deactivateNotebookCell", useDeactivateNotebookCell);
-registerEvent("refresh", useRefresh);
-registerEvent("selectLabels", useSelectLabels);
-registerEvent("selectSamples", useSetSelectedSamples);
-registerEvent("setGroupSlice", useSetGroupSlice);
-registerEvent("setSample", useSetSample);
-registerEvent("setSpaces", useSetSpaces);
 registerEvent("stateUpdate", useStateUpdate);
-registerEvent("setFieldVisibilityStage", useSetFieldVisibilityStage);
-registerEvent("setLabelSelectionStyle", useSetLabelSelectionStyle);
-registerEvent("setSampleSelectionStyle", useSetSampleSelectionStyle);
 
 export { default } from "./useEvents";

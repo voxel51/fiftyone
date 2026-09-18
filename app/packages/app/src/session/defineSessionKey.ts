@@ -17,7 +17,20 @@ import {
 } from "../useWriters/registerWriter";
 
 /**
- * One declaration per session field, replacing the three registries that kept
+ * Fields the setter registry carries that are not on `Session`: app state the
+ * server owns, written the same way but held elsewhere.
+ */
+export type NonSessionKey =
+  | "datasetName"
+  | "refresh"
+  | "similarityParameters"
+  | "view"
+  | "viewName";
+
+export type FieldKey = keyof Session | NonSessionKey;
+
+/**
+ * One declaration per field, replacing the three registries that kept
  * a field's behavior in three directories under three key spaces.
  *
  * The legs are named for when they run rather than what they touch: `event`
@@ -25,7 +38,7 @@ import {
  * the value, and `onWritten` after it lands. Several of each reach the
  * server, so what they touch does not separate them.
  */
-export interface SessionKey<K extends keyof Session> {
+export interface SessionKey<K extends FieldKey> {
   /** The field, and the identity the rest hangs off. */
   key: K;
   /**
@@ -42,16 +55,16 @@ export interface SessionKey<K extends keyof Session> {
   onWritten?: K extends WriterKeys ? RegisteredWriter<K> : never;
 }
 
-const defined = new Map<string, SessionKey<keyof Session>>();
+const defined = new Map<string, SessionKey<FieldKey>>();
 
-export const defineSessionKey = <K extends keyof Session>(
+export const defineSessionKey = <K extends FieldKey>(
   definition: SessionKey<K>,
 ): SessionKey<K> => {
   if (defined.has(definition.key)) {
     throw new Error(`session field "${definition.key}" is defined twice`);
   }
 
-  defined.set(definition.key, definition as SessionKey<keyof Session>);
+  defined.set(definition.key, definition as SessionKey<FieldKey>);
 
   /**
    * Fills the three registries the hooks already read, so a field moves here
@@ -79,7 +92,7 @@ export const defineSessionKey = <K extends keyof Session>(
 };
 
 /** Every field, for the hooks that drive the three legs. */
-export const sessionKeys = (): readonly SessionKey<keyof Session>[] => [
+export const sessionKeys = (): readonly SessionKey<FieldKey>[] => [
   ...defined.values(),
 ];
 
