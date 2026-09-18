@@ -1246,11 +1246,13 @@ def _admitted_write(collection_name, num_docs, write):
     Returns:
         the result of ``write()``
     """
-    if _insert_admitters:
-        if callable(num_docs):
-            num_docs = num_docs()
+    if not _insert_admitters:
+        return _write(write)
 
-        _admit_insert(collection_name, num_docs)
+    if callable(num_docs):
+        num_docs = num_docs()
+
+    _admit_insert(collection_name, num_docs)
 
     try:
         res = write()
@@ -1262,6 +1264,14 @@ def _admitted_write(collection_name, num_docs, write):
     _record_insert(collection_name, _num_written(res))
 
     return res
+
+
+def _write(write):
+    try:
+        return write()
+    except BulkWriteError as bwe:
+        msg = bwe.details["writeErrors"][0]["errmsg"]
+        raise ValueError(msg) from bwe
 
 
 def _num_written(res):
