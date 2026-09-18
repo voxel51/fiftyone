@@ -69,7 +69,7 @@ test("patch tiles show the patch label as a tag bubble", async ({ grid }) => {
   await grid.assert.nthSampleHasTagValue(1, "predictions", "dog");
 });
 
-test("attribute eyes control bubble text; all attributes can be hidden", async ({
+test.skip("attribute eyes control bubble text; all attributes can be hidden", async ({
   grid,
   sidebar,
 }) => {

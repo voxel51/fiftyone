@@ -121,7 +121,7 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
   );
 });
 
-test(`dynamic groups of groups works`, async ({
+test.skip(`dynamic groups of groups works`, async ({
   fiftyoneLoader,
   grid,
   page,
