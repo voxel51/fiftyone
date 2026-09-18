@@ -45,6 +45,8 @@ export interface LanguageSearchProps {
    * [x] shows even with no stages applied.
    */
   onHasTextChange?: (hasText: boolean) => void;
+  /** The input taking focus — the bar folds its stages row behind it. */
+  onFocus?: () => void;
   /**
    * Whether the similarity search operator may exist — registered, or not yet
    * known to be missing while the registry loads. Known missing, the field
@@ -70,6 +72,7 @@ export interface LanguageSearchProps {
 export const LanguageSearch: React.FC<LanguageSearchProps> = ({
   onSubmit,
   onHasTextChange,
+  onFocus,
   available,
   onUnavailable,
   enabled,
@@ -164,6 +167,7 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
         inputValue={query}
         onInputChange={setQuery}
         onChange={commit}
+        onFocus={onFocus}
         // Committed without an index, the text is a request for one
         allowFreeText={available}
         // Without the operator there is nothing to open; the click gets an
