@@ -1,7 +1,7 @@
 import { DetectionLabel } from "@fiftyone/looker";
 import { useClearModal } from "@fiftyone/state";
 import { DETECTION, KEYPOINT, POLYLINE } from "@fiftyone/utilities";
-import { Text, TextColor, TextVariant } from "@voxel51/voodo";
+import { Heading, HeadingLevel } from "@voxel51/voodo";
 import { ReactNode, useEffect } from "react";
 import styled from "styled-components";
 import { isDetection3d } from "../../../../../utils/labels";
@@ -43,29 +43,21 @@ const Content = styled.div`
   row-gap: 0.5rem;
 `;
 
-const SectionHeader = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.25rem;
-`;
-
-const SectionTitle = styled(Text)`
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  flex-shrink: 0;
-`;
-
-const SectionRule = styled.div`
-  flex: 1;
+const Section = styled.section`
   border-top: 1px solid ${({ theme }) => theme.neutral.softBorder};
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+`;
+
+const SectionHeading = styled(Heading)`
+  margin: 0 0 0.75rem;
 `;
 
 /**
- * Captioned attribute-scope group. Keypoints carry attributes at two scopes —
+ * Headlined attribute-scope group. Keypoints carry attributes at two scopes —
  * the whole label (e.g. `label`) and the individual point (e.g. per-point
- * `confidence`) — and their form fields look alike, so each scope's block is
- * set off under its own rule-off caption.
+ * `confidence`) — and their form fields look alike, so each scope's block
+ * sits under its own ruled-off headline.
  */
 const ScopeSection = ({
   title,
@@ -74,15 +66,10 @@ const ScopeSection = ({
   title: string;
   children: ReactNode;
 }) => (
-  <section>
-    <SectionHeader>
-      <SectionTitle variant={TextVariant.Sm} color={TextColor.Secondary}>
-        {title}
-      </SectionTitle>
-      <SectionRule />
-    </SectionHeader>
+  <Section>
+    <SectionHeading level={HeadingLevel.H4}>{title}</SectionHeading>
     {children}
-  </section>
+  </Section>
 );
 
 export default function Edit() {

@@ -4,6 +4,8 @@ import {
   Align,
   Clickable,
   FormField,
+  Heading,
+  HeadingLevel,
   Input,
   InputType,
   Orientation,
@@ -95,9 +97,19 @@ const RowAction = styled(Clickable)`
 `;
 
 const InspectorPanel = styled.div`
-  margin-top: 0.375rem;
-  padding-top: 0.375rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
   border-top: 1px solid ${({ theme }) => theme.neutral.softBorder};
+`;
+
+const InspectorHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+`;
+
+const InspectorHeading = styled(Heading)`
+  margin: 0;
 `;
 
 interface AttributeInputProps {
@@ -339,19 +351,15 @@ const NodeInspector = ({
 }: NodeInspectorProps) => (
   <InspectorPanel data-cy="keypoint-node-inspector">
     <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
-      <Text color={TextColor.Secondary} variant={TextVariant.Sm}>
-        selected point
-      </Text>
-      <Stack
-        orientation={Orientation.Row}
-        align={Align.Center}
-        spacing={Spacing.Sm}
-      >
-        <Text>{name}</Text>
+      <InspectorHeader>
+        <InspectorHeading level={HeadingLevel.H4}>
+          Selected point
+        </InspectorHeading>
         <Text color={TextColor.Secondary} variant={TextVariant.Sm}>
           {placed ? "placed" : "not placed"}
         </Text>
-      </Stack>
+      </InspectorHeader>
+      <Text>{name}</Text>
       {attributes.map((spec) => {
         const list = data?.[spec.name];
         return (
