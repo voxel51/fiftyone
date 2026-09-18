@@ -6,7 +6,11 @@ import type { OverlayMask } from "@fiftyone/looker/src/numpy";
 import type { ColorSchemeInput } from "@fiftyone/relay";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const decodeMaskPath = vi.hoisted(() => vi.fn());
+vi.mock("../utils/maskPathDecoding", () => ({ decodeMaskPath }));
+
 import type { RenderMeta } from "../types";
+import { FAILED_PATH_DECODE_COOLDOWN_MS } from "../utils/pathDecodeCooldown";
 import { resolveSegmentationPalette } from "../utils/segmentationPalette";
 import { SegmentationOverlay } from "./SegmentationOverlay";
 
@@ -48,6 +52,24 @@ const mask = (values: number[]): OverlayMask =>
     buffer: new Uint8Array(values).buffer,
   }) as unknown as OverlayMask;
 
+/** A decoded mask standing in for what `decodeMaskPath` returns. */
+const maskFixture = () => mask([0, 1, 1, 0]);
+
+/**
+ * A movable `Date.now`, so the decode cooldown can be stepped over without
+ * waiting out real time.
+ */
+const clock = {
+  now: 0,
+  advance(ms: number) {
+    this.now += ms;
+  },
+  install() {
+    this.now = Date.now();
+    vi.spyOn(Date, "now").mockImplementation(() => this.now);
+  },
+};
+
 const META: RenderMeta = {
   canonicalMediaBounds: { x: 0, y: 0, width: 100, height: 100 },
 };
@@ -71,7 +93,9 @@ describe("SegmentationOverlay", () => {
 
   beforeEach(() => {
     renderer = makeRenderer();
+    decodeMaskPath.mockReset();
     vi.restoreAllMocks();
+    clock.install();
   });
 
   const render = (
@@ -201,15 +225,161 @@ describe("SegmentationOverlay", () => {
     expect(consoleError).toHaveBeenCalledTimes(1);
   });
 
-  it("says so once when the mask is only on disk", () => {
+  it("decodes an on-disk mask through the supplied resolver", async () => {
+    const resolveUrl = vi.fn(() => "/media?filepath=/m.png");
+    decodeMaskPath.mockResolvedValue(maskFixture());
+
+    const overlay = new SegmentationOverlay({
+      id: "segmentation-disk",
+      field: FIELD,
+      label: { _id: "d", _cls: "Segmentation", mask_path: "/m.png" },
+      resolveUrl,
+    });
+
+    // the first paint has nothing yet: the decode is asynchronous
+    render(overlay);
+    expect(renderer.drawImage).not.toHaveBeenCalled();
+    expect(resolveUrl).toHaveBeenCalledWith("/m.png");
+
+    await vi.waitFor(() => expect(overlay.getIsDirty()).toBe(true));
+
+    render(overlay);
+    expect(renderer.drawImage).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not restart a decode already in flight", async () => {
+    let resolveDecode: (value: unknown) => void = () => undefined;
+    decodeMaskPath.mockReturnValue(
+      new Promise((resolve) => {
+        resolveDecode = resolve;
+      }),
+    );
+
+    const overlay = new SegmentationOverlay({
+      id: "segmentation-inflight",
+      field: FIELD,
+      label: { _id: "d", _cls: "Segmentation", mask_path: "/m.png" },
+      resolveUrl: () => "/media?filepath=/m.png",
+    });
+
+    // every frame of playback repaints; each must not fire its own fetch
+    render(overlay);
+    render(overlay);
+    render(overlay);
+
+    expect(decodeMaskPath).toHaveBeenCalledTimes(1);
+
+    resolveDecode(maskFixture());
+  });
+
+  it("discards a decode whose label has moved on", async () => {
+    // a scrub, or simply the next frame: adopting a stale decode would paint
+    // one frame's mask over another
+    let resolveDecode: (value: unknown) => void = () => undefined;
+    decodeMaskPath.mockReturnValue(
+      new Promise((resolve) => {
+        resolveDecode = resolve;
+      }),
+    );
+
+    const overlay = new SegmentationOverlay({
+      id: "segmentation-stale",
+      field: FIELD,
+      label: { _id: "d", _cls: "Segmentation", mask_path: "/old.png" },
+      resolveUrl: () => "/media?filepath=/old.png",
+    });
+
+    render(overlay);
+
+    overlay.applyLabel({
+      _id: "d",
+      _cls: "Segmentation",
+      mask_path: "/new.png",
+    });
+
+    resolveDecode(maskFixture());
+    await Promise.resolve();
+
+    renderer.drawImage.mockClear();
+    render(overlay);
+
+    // the stale decode must not have been adopted for the new path
+    expect(renderer.drawImage).not.toHaveBeenCalled();
+  });
+
+  it("retries after a failed decode instead of giving up for good", async () => {
+    // `decodeMaskPath` returns undefined on failure and caches nothing, so
+    // pinning the path to that result would mean a transient network error
+    // hides the mask for the rest of the clip
+    decodeMaskPath.mockResolvedValueOnce(undefined);
+
+    const overlay = new SegmentationOverlay({
+      id: "segmentation-retry",
+      field: FIELD,
+      label: { _id: "d", _cls: "Segmentation", mask_path: "/m.png" },
+      resolveUrl: () => "/media?filepath=/m.png",
+    });
+
+    render(overlay);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(renderer.drawImage).not.toHaveBeenCalled();
+
+    decodeMaskPath.mockResolvedValue(maskFixture());
+
+    // The retry is held off briefly, so repaints inside the cooldown must not
+    // each start another fetch.
+    render(overlay);
+    render(overlay);
+    expect(decodeMaskPath).toHaveBeenCalledTimes(1);
+
+    clock.advance(FAILED_PATH_DECODE_COOLDOWN_MS);
+
+    render(overlay);
+    await vi.waitFor(() => expect(overlay.getIsDirty()).toBe(true));
+    render(overlay);
+
+    expect(decodeMaskPath).toHaveBeenCalledTimes(2);
+    expect(renderer.drawImage).toHaveBeenCalled();
+  });
+
+  it("drops a decode that lands after the overlay is destroyed", async () => {
+    let settle: (value: unknown) => void = () => undefined;
+    decodeMaskPath.mockReturnValueOnce(
+      new Promise((resolve) => {
+        settle = resolve;
+      }),
+    );
+
+    const overlay = new SegmentationOverlay({
+      id: "segmentation-retry-destroyed",
+      field: FIELD,
+      label: { _id: "d", _cls: "Segmentation", mask_path: "/m.png" } as never,
+      resolveUrl: () => "/media?filepath=/m.png",
+    });
+
+    render(overlay);
+    overlay.destroy();
+
+    // The fetch outlives the overlay; adopting its result would mark a
+    // disposed overlay dirty and schedule a render against a gone renderer.
+    settle(maskFixture());
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(overlay.getIsDirty()).toBe(false);
+  });
+
+  it("says so once when no resolver was supplied", () => {
     const consoleWarn = vi
       .spyOn(console, "warn")
       .mockImplementation(() => undefined);
 
     const overlay = new SegmentationOverlay({
-      id: "seg-disk",
+      id: "segmentation-noresolver",
       field: FIELD,
-      label: { _id: "seg-disk", _cls: "Segmentation", mask_path: "/m.png" },
+      label: { _id: "d", _cls: "Segmentation", mask_path: "/m.png" },
     });
 
     render(overlay);
