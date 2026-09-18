@@ -26,8 +26,8 @@ import {
  * `useSyncAnnotationEngine` skips the video sample precisely so this hook can
  * own it.
  *
- * The frame backing is seeded from the active `/frames` stream and re-seeded as
- * chunks land or local edits mutate the cache (via `subscribeToEdits`).
+ * The frame backing is seeded from the active `/frames` stream, then merged
+ * forward per landed window (via `subscribeToEdits`, which carries the range).
  *
  * Must be mounted under the modal scope where the labels stream is published.
  */
@@ -47,14 +47,14 @@ export const useSyncAnnotationVideoStore = (
      * they have to see.
      *
      * Explore must NOT. It is read-only, so nothing walks the whole clip
-     * there, and the cost is paid three times over during playback:
-     * `warmupAll` dispatches every chunk at once with no concurrency cap,
-     * crowding the `<video>`'s own byte fetch off the connection pool; the
-     * stream is `blocking: true`, so the engine's barrier holds the playhead
-     * on every frame those requests haven't reached yet; and each chunk that
-     * lands re-seeds the whole store on the main thread. `prefetch()` — the
-     * windowed path the engine already calls as the playhead advances — is
-     * what should be feeding this surface, and `warmupAll` competes with it.
+     * there, and the cost is real even now that the two worst multipliers are
+     * gone (warmup is paced against the shared chunk budget, and a landed
+     * window seeds only its own frames): it is still a whole-clip read, the
+     * stream is still `blocking: true`, and every chunk it fetches is one the
+     * playhead's own window could have had. `prefetch()` — the windowed path
+     * the engine already calls as the playhead advances — is what should be
+     * feeding this surface, and `warmupAll` competes with it for the same
+     * four connections.
      */
     seedWholeClip?: boolean;
     /**
@@ -114,10 +114,21 @@ export const useSyncAnnotationVideoStore = (
     const unregister = engine.registerStore(store);
     sampleLevelRef.current = sampleLevel;
 
-    const seed = () =>
-      frames.setData(parseFramesData(stream.cachedFrames(), labelTypes));
-    const unsubscribe = stream.subscribeToEdits(seed);
-    seed();
+    // Incremental seed: a landed window re-seeds only the frames it carried.
+    // Re-reading the stream's whole cache here instead made opening a clip
+    // quadratic — every one of N chunks re-parsed the cache accumulated so
+    // far, on the main thread, before the user could interact.
+    const seedRange = (range: [number, number]) =>
+      frames.mergeData(
+        parseFramesData(stream.cachedFramesIn(range), labelTypes),
+      );
+    const unsubscribe = stream.subscribeToEdits(seedRange);
+
+    // The initial seed is still whole-cache, and must be: the stream may
+    // already hold frames from before this store existed (a field toggle
+    // rebuilds the store over a live stream), and those landed with no
+    // listener to hear them.
+    frames.setData(parseFramesData(stream.cachedFrames(), labelTypes));
 
     // Restore edits carried from the prior FrameStore (same sample) after the
     // source seed; the working overlay is source-independent, so it wins. Each
@@ -136,6 +147,12 @@ export const useSyncAnnotationVideoStore = (
       void stream.warmupAll();
     }
 
+    const cancelWarmup = () => {
+      if (seedWholeClip) {
+        stream.cancelWarmup();
+      }
+    };
+
     return () => {
       // Carry unsaved edits to the next FrameStore (this same hook stays
       // mounted across a stream re-mount). Overwrites any prior carry, so a
@@ -143,6 +160,10 @@ export const useSyncAnnotationVideoStore = (
       carry.current = frames.isDirty()
         ? { sampleId, snapshot: frames.snapshot() }
         : null;
+      // Before `unsubscribe`, and it matters: warmup is paced now, so it
+      // outlives the surface unless told to stop, and would keep fetching a
+      // closed video's labels into a store nothing reads.
+      cancelWarmup();
       unsubscribe();
       unregister();
       sampleLevel.dispose();

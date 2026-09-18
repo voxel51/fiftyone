@@ -76,6 +76,56 @@ vi.mock("@fiftyone/lighter", () => ({
   maskSourceOf: (mask?: unknown) => mask ?? undefined,
 }));
 
+/**
+ * Controllable stand-in for the window endpoint. Requests stay open until a
+ * test settles them by hand, which is the only way to observe how many the
+ * stream is holding at once — the property the pacing work is about.
+ */
+const windowFetch = vi.hoisted(() => ({
+  /** `[startFrame, endFrame]` per request, in dispatch order. */
+  calls: [] as Array<[number, number]>,
+  /** Open requests, keyed by start frame. */
+  open: new Map<number, (frames: Record<string, unknown>) => void>(),
+
+  request(req: { startFrame: number; endFrame: number }): Promise<unknown> {
+    this.calls.push([req.startFrame, req.endFrame]);
+
+    return new Promise((resolve) => {
+      this.open.set(req.startFrame, (frames: Record<string, unknown>) => {
+        this.open.delete(req.startFrame);
+        resolve({ frames, range: [req.startFrame, req.endFrame] });
+      });
+    });
+  },
+
+  inFlight(): number {
+    return this.open.size;
+  },
+
+  /**
+   * Settle one open request; defaults to the oldest, and to an empty payload
+   * (a window whose frames carry no labels).
+   */
+  settle(startFrame?: number, frames: Record<string, unknown> = {}): void {
+    const key = startFrame ?? [...this.open.keys()][0];
+    this.open.get(key)?.(frames);
+  },
+
+  starts(): number[] {
+    return this.calls.map(([start]) => start);
+  },
+
+  reset(): void {
+    this.calls = [];
+    this.open.clear();
+  },
+}));
+
+vi.mock("../../../core/src/client/videoLabelsClient", () => ({
+  getVideoLabelsWindow: (req: { startFrame: number; endFrame: number }) =>
+    windowFetch.request(req),
+}));
+
 function buildStream(): VideoFrameLabelsStream {
   return new VideoFrameLabelsStream({
     id: "test",
@@ -412,5 +462,169 @@ describe("VideoFrameLabelsStream mask gate", () => {
 
     expect(maskCache.borrows("mask-a")).toBe(0);
     expect(stream.bufferState(timeOfFrame(10, 30))).toBe("missing");
+  });
+});
+
+describe("VideoFrameLabelsStream fetch pacing", () => {
+  /**
+   * 20 chunks at the default 60-frame chunk size — enough clip to see a cap
+   * bite, which a 100-frame stream (two chunks) never would.
+   */
+  const buildLongStream = (): VideoFrameLabelsStream =>
+    new VideoFrameLabelsStream({
+      id: "test",
+      sampleId: "s",
+      dataset: "d",
+      view: [],
+      frameCount: 1200,
+      frameRate: 30,
+    });
+
+  /**
+   * `warmupAll` advances a chunk per `await`, so its loop needs more than a
+   * tick or two to reach the cap. Generous rather than exact: the assertions
+   * are about the ceiling, not about how fast it gets there.
+   */
+  const settleLoop = async (): Promise<void> => {
+    for (let i = 0; i < 50; i++) {
+      await Promise.resolve();
+    }
+  };
+
+  beforeEach(() => {
+    windowFetch.reset();
+    maskCache.reset();
+  });
+
+  it("warmupAll holds one request below the cap, not the whole clip", async () => {
+    const stream = buildLongStream();
+
+    void stream.warmupAll();
+    await settleLoop();
+
+    // Pre-pacing this was 20 — every chunk in the clip, at once, on the same
+    // origin the <video> fetches its bytes from.
+    expect(windowFetch.inFlight()).toBe(3);
+  });
+
+  it("warmupAll dispatches the next chunk as one lands", async () => {
+    const stream = buildLongStream();
+
+    void stream.warmupAll();
+    await settleLoop();
+    expect(windowFetch.starts()).toEqual([1, 61, 121]);
+
+    windowFetch.settle(1);
+    await settleLoop();
+
+    expect(windowFetch.starts()).toEqual([1, 61, 121, 181]);
+    expect(windowFetch.inFlight()).toBe(3);
+  });
+
+  it("warmupAll eventually covers the whole clip", async () => {
+    const stream = buildLongStream();
+
+    const done = stream.warmupAll();
+
+    for (let i = 0; i < 40; i++) {
+      await settleLoop();
+      windowFetch.settle();
+    }
+
+    await done;
+
+    expect(windowFetch.starts()).toEqual(
+      Array.from({ length: 20 }, (_, i) => i * 60 + 1),
+    );
+  });
+
+  it("leaves a slot for the playhead while a warmup is running", async () => {
+    // The reserve is the point: `prefetch` never blocks, so if warmup could
+    // hold all four the clock would stall on labels while the seed fetched
+    // frames minutes away from the user.
+    const stream = buildLongStream();
+
+    void stream.warmupAll();
+    await settleLoop();
+    expect(windowFetch.inFlight()).toBe(3);
+
+    stream.prefetch([timeOfFrame(601, 30), timeOfFrame(620, 30)]);
+
+    expect(windowFetch.inFlight()).toBe(4);
+    expect(windowFetch.starts()).toContain(601);
+  });
+
+  it("prefetch counts the shared budget, not just its own requests", async () => {
+    const stream = buildLongStream();
+
+    void stream.warmupAll();
+    await settleLoop();
+
+    // A budget local to this call would issue four more on top of warmup's
+    // three, which is the whole per-origin pool on HTTP/1.1.
+    stream.prefetch([timeOfFrame(601, 30), timeOfFrame(1000, 30)]);
+
+    expect(windowFetch.inFlight()).toBe(4);
+  });
+
+  it("cancelWarmup stops the dispatch loop", async () => {
+    const stream = buildLongStream();
+
+    void stream.warmupAll();
+    await settleLoop();
+    const dispatched = windowFetch.starts().length;
+
+    stream.cancelWarmup();
+    windowFetch.settle();
+    await settleLoop();
+
+    // Paced warmup outlives the surface unless told to stop; the unbounded
+    // version was self-limiting because it had issued everything already.
+    expect(windowFetch.starts().length).toBe(dispatched);
+  });
+
+  it("carries the server-clamped landed range to edit subscribers", async () => {
+    // The range is what lets the seed merge just this window instead of
+    // re-reading the stream's whole accumulated cache per chunk.
+    const stream = buildLongStream();
+    const ranges: Array<[number, number]> = [];
+
+    stream.subscribeToEdits((range) => ranges.push(range));
+
+    stream.prefetch([timeOfFrame(1, 30), timeOfFrame(30, 30)]);
+    expect(windowFetch.inFlight()).toBe(1);
+
+    windowFetch.settle(1, {
+      "7": { detections: { detections: [{ _id: "a", label: "car" }] } },
+    });
+    await settleLoop();
+
+    expect(ranges).toEqual([[1, 60]]);
+  });
+
+  it("does not announce a window that landed with no documents", async () => {
+    const stream = buildLongStream();
+    const ranges: Array<[number, number]> = [];
+
+    stream.subscribeToEdits((range) => ranges.push(range));
+
+    stream.prefetch([timeOfFrame(1, 30), timeOfFrame(30, 30)]);
+    windowFetch.settle(1);
+    await settleLoop();
+
+    expect(ranges).toEqual([]);
+  });
+
+  it("cachedFramesIn returns only the window's documents", () => {
+    const stream = buildLongStream();
+
+    for (const frame of [5, 65, 70, 200]) {
+      // @ts-expect-error — test-only: populate the private frame-doc cache
+      stream.cache.set(frame, { frame_number: frame });
+    }
+
+    expect(stream.cachedFramesIn([61, 120]).map((d) => d.frame_number)).toEqual(
+      [65, 70],
+    );
   });
 });
