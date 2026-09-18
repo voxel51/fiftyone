@@ -1,0 +1,22 @@
+.block {
+  position: relative;
+  width: 100%;
+  font-family: "Roboto Mono", monospace;
+  font-size: 14px;
+}
+
+/* The copy button belongs to the code, so it stays out of the way until the
+   pointer is over the block it acts on */
+.copy {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.block:hover .copy,
+.copy:focus-visible {
+  opacity: 1;
+}
