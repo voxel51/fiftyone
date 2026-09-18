@@ -27,7 +27,12 @@ import * as atoms from "./atoms";
 import { configData } from "./config";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
-import { PathEntry, sidebarEntries } from "./sidebar";
+import {
+  LABEL_TAGS_FIELD,
+  PathEntry,
+  TEMPORAL_TAGS_FIELD,
+  sidebarEntries,
+} from "./sidebar";
 import { cloneDeep } from "lodash";
 
 export const datasetColorScheme = graphQLSyncFragmentAtom<
@@ -90,21 +95,25 @@ export const colorMapRGB = selector<(val) => RGB>({
 });
 
 /**
- * Resolver for temporal-tag colors. Temporal tags are ALWAYS colored by value
- * (the tag name), independent of the global color-by mode: each name maps to
- * its configured color, falling back to the seeded hashed pool. Shared by the
- * grid overlay, the timeline tracks, and the filter dots so a tag looks the
- * same everywhere.
+ * Resolver for temporal-tag colors.
+ *
+ * Temporal tags follow the app's color-by setting like every other interval
+ * source does: the `_temporal_tags` field color when coloring by field, and
+ * the tag name's own color — configured, else hashed from the pool — when
+ * coloring by value. They used to be pinned to value coloring whatever the app
+ * was set to, which left a grid tile's marks disagreeing with the Enterprise
+ * events beside them in the same lane.
+ *
+ * This is {@link valueColor} for the temporal-tags path and nothing more; it
+ * stays as its own name because the tag name is not a *path* value the way a
+ * string filter's is, and callers outside `state` should not have to know
+ * which pseudo-path it lives under.
  */
 export const temporalTagColor = selector<(value: string) => string>({
   key: "temporalTagColor",
   get: ({ get }) => {
-    const setting = get(atoms.colorScheme).temporalTags ?? {};
-    const map = get(colorMap);
-    const byValue = new Map(
-      (setting.valueColors ?? []).map((v) => [v.value, v.color]),
-    );
-    return (value: string) => byValue.get(value) ?? map(value);
+    const resolve = get(valueColor(TEMPORAL_TAGS_FIELD));
+    return (value: string) => resolve(value);
   },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
@@ -141,12 +150,15 @@ export const pathColor = selectorFamily<string, string>({
         adjustedPath = path;
       }
 
+      // The two tag pseudo-paths are not sample fields, so their settings sit
+      // beside `fields` on the scheme rather than in it.
+      const scheme = get(atoms.colorScheme);
       const setting =
-        path === "_label_tags"
-          ? get(atoms.colorScheme).labelTags
-          : get(atoms.colorScheme)?.fields?.find(
-              (x) => x.path === adjustedPath,
-            );
+        path === LABEL_TAGS_FIELD
+          ? scheme.labelTags
+          : path === TEMPORAL_TAGS_FIELD
+            ? scheme.temporalTags
+            : scheme?.fields?.find((x) => x.path === adjustedPath);
 
       if (isValidColor(setting?.fieldColor ?? "")) {
         return setting!.fieldColor;
@@ -188,8 +200,12 @@ const valueColoring = (
     valueColors?: readonly { value: string; color: string }[] | null;
   }) => new Map((setting?.valueColors ?? []).map((v) => [v.value, v.color]));
 
-  if (path === "_label_tags") {
+  if (path === LABEL_TAGS_FIELD) {
     return { applies: true, configured: configured(scheme.labelTags) };
+  }
+
+  if (path === TEMPORAL_TAGS_FIELD) {
+    return { applies: true, configured: configured(scheme.temporalTags) };
   }
 
   // A label field owns every path beneath it, and under video the frames
