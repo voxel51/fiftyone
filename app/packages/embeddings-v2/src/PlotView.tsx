@@ -238,8 +238,14 @@ export default function PlotView({
           </span>
           <ColorByMenu
             // Openable while the list is still filling: a dead pill gives a
-            // reader nothing to read, and the panel is where we say why
-            disabled={!choices.length && !choicesLoading}
+            // reader nothing to read, and the panel is where we say why.
+            // A footer is something to DO with no fields -- it is where they
+            // are added -- and it renders only inside the open panel, so
+            // disabling the pill on an empty list would seal off the only
+            // way to get the first one.
+            disabled={
+              !choices.length && !choicesLoading && !features.colorByFooter
+            }
             loading={choicesLoading}
             value={colorField ?? NONE_FIELD}
             options={colorOptions}
