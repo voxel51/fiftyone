@@ -37,13 +37,20 @@ const savedSample = (page: Page) =>
       ["POST", "PATCH", "PUT"].includes(r.request().method()),
   );
 
-/** Clear the sample's polylines so each serial test starts from zero. */
+/** A second triangle, offset so it doesn't overlap {@link TRIANGLE}. */
+const TRIANGLE_2: Array<[number, number]> = TRIANGLE.map(([x, y]) => [
+  x + 0.25,
+  y + 0.25,
+]);
+
+/** Clear the sample's labels so each serial test starts from zero. */
 const clearPolylines = () => `
 import fiftyone as fo
 
 dataset = fo.load_dataset("${datasetName}")
 sample = dataset.first()
 sample.polylines = fo.Polylines(polylines=[])
+sample.detections = None
 sample.save()
 `;
 
@@ -77,6 +84,7 @@ const inFreshContext = async (
     const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
     await freshModal.waitForSampleLoadDomAttribute();
     await freshModal.sidebar.switchMode("annotate");
+    await freshModal.waitForLighterReady();
     await verify(freshModal);
   } finally {
     await context.close();
@@ -91,7 +99,8 @@ test.beforeAll(
       imageOptions: { fillColor: "white", width: 640, height: 480 },
     });
     // The factory only models Detection(s)/Classification(s); declare the
-    // Polylines field directly.
+    // Polylines field directly. A Detections field rides along so the
+    // exit-cadence test below can follow a polyline with a brush stroke.
     await fiftyoneLoader.executePythonCode(`
 import fiftyone as fo
 
@@ -100,6 +109,9 @@ dataset.add_sample_field(
     "polylines", fo.EmbeddedDocumentField, embedded_doc_type=fo.Polylines
 )
 dataset.add_sample_field("polylines.polylines.index", fo.IntField)
+dataset.add_sample_field(
+    "detections", fo.EmbeddedDocumentField, embedded_doc_type=fo.Detections
+)
 dataset.save()
 `);
     await annotateSDK.updateLabelSchema(datasetName, "polylines", {
@@ -109,6 +121,13 @@ dataset.save()
       component: "dropdown",
     });
     await annotateSDK.addFieldToActiveLabelSchema(datasetName, "polylines");
+    await annotateSDK.updateLabelSchema(datasetName, "detections", {
+      type: "detections",
+      classes: ["cat"],
+      attributes: [],
+      component: "dropdown",
+    });
+    await annotateSDK.addFieldToActiveLabelSchema(datasetName, "detections");
   },
 );
 
@@ -125,6 +144,7 @@ test.describe.serial("2D annotation polyline", () => {
     await modal.waitForSampleLoadDomAttribute();
     await modal.assert.isOpen();
     await modal.sidebar.switchMode("annotate");
+    await modal.waitForLighterReady();
   });
 
   test("drawing a polyline creates a labeled polyline that persists", async ({
@@ -151,6 +171,57 @@ test.describe.serial("2D annotation polyline", () => {
       await freshModal.sidebar.annotate.selectActiveLabel("lane", 0);
       await freshModal.sidebar.edit.assert.verifyFieldValue("label", "lane");
     });
+  });
+
+  test("right-click closes the polyline but keeps the tool armed; a second right-click returns to Select", async ({
+    modal,
+  }) => {
+    await modal.sidebar.annotate.polylineMode();
+    await drawPolyline(modal, TRIANGLE);
+    await modal.sidebar.edit.assert.isOpen();
+
+    // tier 2: the open polyline closes, polyline mode stays armed
+    await modal.sampleCanvas.rightClick(0.85, 0.85);
+    await modal.sidebar.edit.assert.isClosed();
+    await modal.sidebar.annotate.assert.polylineModeIsActive();
+
+    // the next click starts a NEW polyline, not the one just closed
+    await drawPolyline(modal, TRIANGLE_2);
+    await modal.sidebar.edit.assert.isOpen();
+    await modal.sampleCanvas.rightClick(0.85, 0.85);
+    await modal.sidebar.edit.assert.isClosed();
+    await modal.sidebar.annotate.assert.polylineModeIsActive();
+    await expect
+      .poll(() => modal.sidebar.annotate.getActiveLabelsCount())
+      .toBe(2);
+
+    // tier 3: nothing open, so right-click leaves the mode for Select
+    await modal.sampleCanvas.rightClick(0.85, 0.85);
+    await modal.sidebar.annotate.assert.polylineModeIsActive(false);
+    await modal.sidebar.annotate.assert.selectIsActive();
+  });
+
+  test("backing out of a polyline edit returns to Select and releases the draw", async ({
+    modal,
+  }) => {
+    await modal.sidebar.annotate.polylineMode();
+    await drawPolyline(modal, TRIANGLE);
+    await modal.sidebar.edit.assert.isOpen();
+
+    // Back closes the form AND leaves polyline mode, exactly like the Select
+    // tool — it used to leave the polyline tool armed.
+    await modal.sidebar.edit.exitToList();
+    await modal.sidebar.annotate.assert.selectIsActive();
+    await modal.sidebar.annotate.assert.polylineModeIsActive(false);
+
+    // The draw must not linger as the scene's selection either: a brush stroke
+    // right after used to read that stale selection as "editing" and painted
+    // nothing, so this stroke has to open a fresh mask detection.
+    await modal.sidebar.annotate.segmentationMode();
+    await modal.sidebar.annotate.pickTool("Brush");
+    await modal.sampleCanvas.drag(0.8, 0.8, 0.85, 0.85);
+    await modal.sidebar.edit.assert.isOpen();
+    await modal.sidebar.annotate.assert.segmentationModeIsActive();
   });
 
   // flaky: intermittently fails on the delete/undo round-trip

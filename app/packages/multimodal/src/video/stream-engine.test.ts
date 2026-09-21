@@ -15,7 +15,11 @@ import type {
   VideoDecoderActor,
   VideoEngineDependencies,
 } from "./types";
-import { VideoIntentCancelledError } from "./types";
+import {
+  VideoCodecUnsupportedError,
+  VideoDecoderFailureError,
+  VideoIntentCancelledError,
+} from "./types";
 
 describe("VideoPlaybackManager and VideoStreamEngine", () => {
   it("shares one authoritative decoder across duplicate 2D/3D consumers", async () => {
@@ -892,6 +896,54 @@ describe("VideoPlaybackManager and VideoStreamEngine", () => {
     lease.release();
   });
 
+  it("keeps seeking after a transient decoder failure", async () => {
+    // The fault latch exists to stop a refused codec being retried forever; a
+    // timeout or submission fault is not that, and latching it strands the
+    // stream for the life of the lease with no way back.
+    const harness = createHarness({
+      beforeDecode: async (_id, targetTimeNs) => {
+        if (targetTimeNs === 1n) {
+          throw new VideoDecoderFailureError(
+            "Timed out waiting for H.264 decoder progress",
+          );
+        }
+      },
+    });
+    const manager = new VideoPlaybackManager("source", harness.dependencies);
+    manager.setReader(rangeReader([accessUnit(1, true), accessUnit(2, true)]));
+    const lease = manager.acquire("/camera");
+
+    lease.request({ ...accessUnit(1, true), priority: "playing" });
+    await vi.waitFor(() => expect(lease.getSnapshot().phase).toBe("faulted"));
+
+    lease.request({ ...accessUnit(2, true), priority: "playing" });
+    await presented(lease, 2n);
+    lease.release();
+  });
+
+  it("stops retrying a codec the client cannot decode", async () => {
+    const harness = createHarness({
+      beforeDecode: async () => {
+        throw new VideoCodecUnsupportedError(
+          "HEVC video ('hev1.2.4.L120.b0') cannot be decoded in this browser.",
+        );
+      },
+    });
+    const manager = new VideoPlaybackManager("source", harness.dependencies);
+    manager.setReader(rangeReader([accessUnit(1, true), accessUnit(2, true)]));
+    const lease = manager.acquire("/camera");
+
+    lease.request({ ...accessUnit(1, true), priority: "playing" });
+    await vi.waitFor(() => expect(lease.getSnapshot().phase).toBe("faulted"));
+    const attempts = harness.decoders[0].decodeCalls.length;
+
+    // Playback sweeps the playhead, so each retry is a new target
+    lease.request({ ...accessUnit(2, true), priority: "playing" });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(harness.decoders[0].decodeCalls.length).toBe(attempts);
+    lease.release();
+  });
+
   it("defensively closes decoder output when presentation copy rejects", async () => {
     const harness = createHarness();
     const manager = new VideoPlaybackManager("source", {
@@ -1062,7 +1114,7 @@ class FakeDecoderActor implements VideoDecoderActor {
       const firstFrame = units[0]?.frame;
       this.configuredCodec =
         (firstFrame?.codec === "h264"
-          ? firstFrame.h264.codecString
+          ? firstFrame.h264?.codecString
           : undefined) ?? "avc1.4D001F";
       const output = fakeVideoFrame();
       this.outputs.push(output);

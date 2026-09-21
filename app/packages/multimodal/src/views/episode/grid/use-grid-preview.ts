@@ -40,6 +40,8 @@ export interface GridPreviewSnapshot {
   readonly streamSourceName: string | null;
   readonly streamSourceNames: readonly string[];
   readonly status: GridPreviewStatus;
+  /** Codec of a selected stream nothing here can decode, when there is one. */
+  readonly unsupportedCodec: string | null;
 }
 
 /**
@@ -81,8 +83,9 @@ export interface UseGridPreviewOptions {
   /** Capture time the still frame should show, instead of the recording
    * start. Set to an embeddings match so the tile posters at the match. */
   readonly posterStartTimeNs?: bigint | null;
-  /** Stream the poster prefers once it is known previewable — a match on a
-   * fused or non-previewable stream falls back to the automatic pick. */
+  /** The stream an embeddings match names. Asked for outright; a stream the
+   * session cannot preview (fused, unsupported) falls back to the automatic
+   * pick. */
   readonly posterSourceName?: string | null;
   readonly previewSession: EpisodePreviewSession | null;
   readonly previewSessionError?: string | null;
@@ -109,6 +112,7 @@ const IDLE_PREVIEW_STATE: GridPreviewSnapshot = {
   streamId: null,
   streamSourceName: null,
   streamSourceNames: [],
+  unsupportedCodec: null,
   status: "idle",
 } as const;
 
@@ -150,8 +154,9 @@ export function useGridPreview({
   const initialLoadInFlightRef = useRef(false);
   // A poster stream this source turned out not to preview. Remembered so the
   // retry falls back to the auto pick instead of asking again forever.
-  const refusedPosterSourceRef = useRef<string | null>(null);
-  const [, setPosterRefusals] = useState(0);
+  const [refusedPosterSource, setRefusedPosterSource] = useState<string | null>(
+    null,
+  );
   const onReadResultRef = useRef(onReadResult);
   onReadResultRef.current = onReadResult;
   const loadedRequestRef = useRef<{
@@ -268,17 +273,12 @@ export function useGridPreview({
     }
   }, [enabled]);
 
-  // An explicit grid selection always wins. The poster's preferred stream is
-  // then asked for OUTRIGHT — never gated on `streamSourceNames`, which is
-  // filled BY a completed read: on the first one it is empty, so the match's
-  // stream was always dropped and the tile postered its auto-picked camera at
-  // the matched instant. A frame from the wrong camera, presented as the one
-  // that matched. The session refuses a stream it cannot preview, and
-  // `refusedPosterSource` below turns that refusal into the auto pick.
-  const posterRefused = refusedPosterSourceRef.current;
+  // Asked for outright, never gated on `streamSourceNames`: that array is
+  // filled BY a completed read, so on the first one it is empty and the
+  // match's stream would be dropped for an auto-picked camera.
   const effectiveSourceName =
     selectedSourceName ??
-    (posterSourceName && posterSourceName !== posterRefused
+    (posterSourceName && posterSourceName !== refusedPosterSource
       ? posterSourceName
       : null);
 
@@ -293,7 +293,7 @@ export function useGridPreview({
     nextStartTimeNsRef.current = undefined;
     // A refusal belongs to one source and one stream; carrying it across
     // either would keep falling back for a stream this source does preview
-    refusedPosterSourceRef.current = null;
+    setRefusedPosterSource(null);
     finishBuffering();
     setPlaying(false);
     setStateOwnerKey(cacheRequestKey);
@@ -381,16 +381,15 @@ export function useGridPreview({
       })
       .then((result) => {
         if (active) {
-          // The session says it cannot preview this stream. Now — with the
-          // inventory it just returned — the auto pick is an informed
-          // fallback rather than a guess made before anything was known.
+          // A different stream answered than was asked for: the refusal.
+          // Not the status, which also reports a window the RIGHT stream
+          // carries no frame in — falling back there shows another camera.
           if (
-            result.status === "unavailable" &&
             effectiveSourceName &&
-            effectiveSourceName === posterSourceName
+            effectiveSourceName !== selectedSourceName &&
+            result.streamSourceName !== effectiveSourceName
           ) {
-            refusedPosterSourceRef.current = posterSourceName;
-            setPosterRefusals((n) => n + 1);
+            setRefusedPosterSource(effectiveSourceName);
           }
           notifyReadResult(onReadResultRef.current, result);
           publishEpisodeRange(publishEpisodePreviewBootstrap(source, result));
@@ -437,16 +436,14 @@ export function useGridPreview({
       controller.abort();
     };
   }, [
-    enabled,
     effectiveSourceName,
+    enabled,
     hovered,
     initialVideoDecodeLookaheadNs,
-    // Read when a refusal is recorded; `effectiveSourceName` already tracks
-    // its value, so listing it changes nothing about when this runs
-    posterSourceName,
     posterStartTimeNs,
     previewSession,
     publishEpisodeRange,
+    selectedSourceName,
     setFrameTimeNs,
     source,
     sourceFactsScope,
@@ -636,6 +633,7 @@ function seededSnapshot(
     streamSourceName: cachedPoster.streamSourceName,
     streamSourceNames: cachedPoster.streamSourceNames,
     status: "ready",
+    unsupportedCodec: null,
   };
 }
 
@@ -757,6 +755,7 @@ function snapshotFromResult(
     streamSourceName: result.streamSourceName,
     streamSourceNames: result.streamSourceNames,
     status: result.status,
+    unsupportedCodec: result.unsupportedCodec ?? null,
   };
 }
 

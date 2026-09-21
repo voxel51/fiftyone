@@ -15,6 +15,7 @@ import PIL.Image
 import pytest
 import numpy as np
 import torch
+from types import SimpleNamespace
 from unittest import mock
 
 import fiftyone as fo
@@ -521,7 +522,7 @@ class TestQwen3VLVideoConfig:
         """Test default video_fps is 2.0"""
         config = Qwen3VLModelConfig({})
         assert config.video_fps == 2.0
-        assert config.max_video_frames == 128
+        assert config.max_video_frames == 768
 
 
 class TestQwen3VLModeValidation:
@@ -655,6 +656,39 @@ class TestPromptMixinMocked:
         call_kwargs = model._model.call_args[1]
         assert call_kwargs["output_hidden_states"] is True
         assert call_kwargs["return_dict"] is True
+
+    def test_a_full_model_prompt_asks_the_head_for_one_position(self):
+        # The mocked model's signature is what decides whether the knob is
+        # passed, so it has to spell the parameter out
+        model = self._make_model_with_mock_processor()
+
+        def forward(
+            input_ids=None,
+            attention_mask=None,
+            output_hidden_states=None,
+            return_dict=None,
+            logits_to_keep=0,
+        ):
+            raise NotImplementedError
+
+        model._model.forward = forward
+
+        model.embed_prompt("test")
+
+        assert model._model.call_args[1]["logits_to_keep"] == 1
+
+    def test_a_text_tower_prompt_is_asked_for_neither(self):
+        # A text tower runs no LM head and returns its final hidden state
+        # already, so asking it for either is asking for something it has no
+        # parameter to answer
+        model = self._make_model_with_mock_processor()
+        model.config.text_only = True
+
+        model.embed_prompt("test")
+
+        call_kwargs = model._model.call_args[1]
+        assert "logits_to_keep" not in call_kwargs
+        assert "output_hidden_states" not in call_kwargs
 
     def test_embed_prompts_multiple_calls_processor_per_prompt(self):
         model = self._make_model_with_mock_processor()
@@ -1001,6 +1035,14 @@ class TestMergePreparedInputs:
         assert qwen3_vl.merge_prepared_inputs([clip, clip], self.PAD) is None
 
 
+def _fps_of(metadata):
+    fps = getattr(metadata, "fps", None)
+    if fps is None and isinstance(metadata, dict):
+        fps = metadata.get("fps")
+
+    return fps
+
+
 def _frames_indices_of(metadata):
     indices = getattr(metadata, "frames_indices", None)
     if indices is None and isinstance(metadata, dict):
@@ -1132,6 +1174,188 @@ class TestFrameListMetadata:
 
         assert len(processor.calls) == 1
         assert not hasattr(model, "_call_convention")
+
+
+class StubTensorProcessor:
+    def __init__(self):
+        self.calls = []
+        self.videos = None
+
+    def apply_chat_template(self, messages, **kwargs):
+        return "clip"
+
+    def __call__(self, text, images, videos, return_tensors, padding, **extra):
+        self.calls.append(extra)
+        self.videos = videos
+        return {"stub": True}
+
+
+class TestPrepareVideoTensor:
+    """A video segment that is already a tensor reaches the processor
+    as one."""
+
+    @staticmethod
+    def _model_with(processor, cap=128, video_fps=2.0):
+        model = object.__new__(Qwen3VLModel)
+        model._processor = processor
+        model._warned_frame_cap = False
+        model.config = mock.MagicMock(
+            text_only=False, max_video_frames=cap, video_fps=video_fps
+        )
+        return model
+
+    @staticmethod
+    def _segment(n, device="cpu"):
+        return torch.zeros(n, 3, 8, 8, dtype=torch.uint8, device=device)
+
+    def test_the_segment_reaches_the_processor_as_the_tensor_it_was(self):
+        processor = StubTensorProcessor()
+        model = self._model_with(processor)
+        segment = self._segment(4)
+
+        model.prepare_video_tensor(segment, fps=4.0)
+
+        # The point of this path: no PIL, no host copy between the decode
+        # and the processor
+        assert isinstance(processor.videos[0], torch.Tensor)
+        assert processor.videos[0] is segment
+
+    def test_the_processor_is_left_to_choose_frames(self):
+        processor = StubTensorProcessor()
+        model = self._model_with(processor)
+
+        model.prepare_video_tensor(self._segment(9), fps=9.0)
+
+        # Suppressing its sampling would override the checkpoint's own
+        # video policy with whatever the segment happened to hold
+        assert "do_sample_frames" not in processor.calls[0]
+
+    def test_a_segment_with_no_rate_reports_the_configured_one(self):
+        processor = StubTensorProcessor()
+        model = self._model_with(processor, video_fps=2.0)
+
+        model.prepare_video_tensor(self._segment(4))
+
+        # Without metadata the processor assumes 24fps and builds the
+        # segment's frame timestamps from that
+        assert _fps_of(processor.calls[0]["video_metadata"][0]) == 2.0
+
+    @staticmethod
+    def _counted_segment(n):
+        """A segment whose every frame carries its own index as its pixel
+        value, so which frames survived is readable off the tensor."""
+        counts = torch.arange(n, dtype=torch.uint8)
+        return counts.view(n, 1, 1, 1).expand(n, 3, 8, 8).contiguous()
+
+    def test_a_segment_past_the_cap_is_thinned_across_its_whole_length(self):
+        processor = StubTensorProcessor()
+        model = self._model_with(processor, cap=8)
+
+        model.prepare_video_tensor(self._counted_segment(200), fps=20.0)
+
+        kept = processor.videos[0][:, 0, 0, 0].tolist()
+        assert len(kept) == 8
+        # Evenly spread and still reaching both ends: a stride would shed a
+        # whole multiple and stop well short of the segment's last frame
+        assert kept == [0, 28, 57, 85, 114, 142, 171, 199]
+
+    def test_thinning_lowers_the_rate_the_segment_is_reported_at(self):
+        processor = StubTensorProcessor()
+        model = self._model_with(processor, cap=8)
+
+        model.prepare_video_tensor(self._counted_segment(200), fps=20.0)
+
+        # 8 frames standing for the same 10 seconds the 200 did. Left at the
+        # capture rate the processor reads the thinned segment as 0.4s long
+        # and samples it down a second time, to its 4-frame minimum
+        metadata = processor.calls[0]["video_metadata"][0]
+        assert _fps_of(metadata) == pytest.approx(0.8)
+
+    def test_a_segment_that_is_not_uint8_is_refused(self):
+        processor = StubTensorProcessor()
+        model = self._model_with(processor)
+        segment = torch.zeros(4, 3, 8, 8, dtype=torch.float32)
+
+        # Converting it would need the pixel range, which only the caller
+        # knows: a 0-1 float segment converts to an all-black one
+        with pytest.raises(ValueError, match="uint8"):
+            model.prepare_video_tensor(segment, fps=4.0)
+
+        assert not processor.calls
+
+
+class StubHiddenModel:
+    """A model whose forward takes the logits knob, and records the call."""
+
+    def __init__(self, dim=4):
+        self.calls = []
+        self.dim = dim
+        self.device = torch.device("cpu")
+
+    def forward(
+        self,
+        input_ids=None,
+        output_hidden_states=None,
+        return_dict=None,
+        logits_to_keep=0,
+    ):
+        raise NotImplementedError
+
+    def __call__(self, **kwargs):
+        self.calls.append(kwargs)
+        return SimpleNamespace(
+            hidden_states=[torch.zeros(1, 2, self.dim)],
+            logits=None,
+        )
+
+
+class StubOldHiddenModel(StubHiddenModel):
+    """An older transformers whose forward cannot be told."""
+
+    def forward(
+        self, input_ids=None, output_hidden_states=None, return_dict=None
+    ):
+        raise NotImplementedError
+
+
+class TestTheEmbeddingForward:
+    """An embedding reads one hidden state and never a logit, so the LM head
+    must not be run over the vocabulary at every position."""
+
+    @staticmethod
+    def _model_with(inner):
+        model = object.__new__(Qwen3VLModel)
+        model._model = inner
+        return model
+
+    def test_the_head_is_asked_for_one_position(self):
+        inner = StubHiddenModel()
+
+        self._model_with(inner)._hidden_forward(
+            {"input_ids": torch.zeros(1, 2, dtype=torch.long)}
+        )
+
+        assert inner.calls[0]["logits_to_keep"] == 1
+        assert inner.calls[0]["output_hidden_states"] is True
+
+    def test_a_transformers_that_cannot_be_told_is_not_told(self):
+        inner = StubOldHiddenModel()
+
+        self._model_with(inner)._hidden_forward(
+            {"input_ids": torch.zeros(1, 2, dtype=torch.long)}
+        )
+
+        assert "logits_to_keep" not in inner.calls[0]
+
+    def test_the_signature_is_read_once(self):
+        inner = StubHiddenModel()
+        model = self._model_with(inner)
+        inputs = {"input_ids": torch.zeros(1, 2, dtype=torch.long)}
+
+        model._hidden_forward(inputs)
+        model._hidden_forward(inputs)
+
+        assert model.__dict__["_logits_kept_cached"] == 1
 
 
 def _tiny_checkpoint(tmp_path, max_shard_size):
