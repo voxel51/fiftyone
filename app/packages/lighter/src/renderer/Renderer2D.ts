@@ -84,18 +84,27 @@ export interface Renderer2D {
   resetTickHandler(): void;
 
   // Drawing methods
+  // `rotation` (radians, clockwise on screen) rotates the drawn shape around
+  // the center of `bounds` — used for oriented bounding boxes.
   drawHandles(
     bounds: Rect,
     width: number,
     color: number | string,
     containerId: string,
+    rotation?: number,
   ): void;
   drawScrim(
     bounds: Rect,
     canonicalMediaBounds: Rect,
     containerId: string,
+    rotation?: number,
   ): void;
-  drawRect(bounds: Rect, style: DrawStyle, containerId: string): void;
+  drawRect(
+    bounds: Rect,
+    style: DrawStyle,
+    containerId: string,
+    rotation?: number,
+  ): void;
   drawText(
     text: string,
     position: Point,
@@ -137,6 +146,19 @@ export interface Renderer2D {
     options: ImageOptions | undefined,
     containerId: string,
   ): void;
+
+  /**
+   * Opens a repaint pass for one container. Draws issued between this and
+   * {@link endRebuild} claim the container's existing display objects in
+   * order, resetting them rather than allocating replacements; `endRebuild`
+   * discards whatever the pass did not reach. Outside a pass, draws append.
+   *
+   * Callers do not normally invoke these — `BaseOverlay.render` wraps every
+   * overlay's paint, so an early return inside `renderImpl` still closes the
+   * pass.
+   */
+  beginRebuild(containerId: string): void;
+  endRebuild(containerId: string): void;
 
   dispose(containerId: string): void;
   hide(containerId: string): void;

@@ -23,10 +23,9 @@ from fiftyone.core.session.events import (
 from fiftyone.server.events.initialize import initialize_listener
 from fiftyone.server.events.state import Listener, get_listeners, get_requests
 
-
-_polling_listener: t.Optional[
-    t.Tuple[str, t.Set[t.Tuple[str, Listener]]]
-] = None
+_polling_listener: t.Optional[t.Tuple[str, t.Set[t.Tuple[str, Listener]]]] = (
+    None
+)
 
 
 async def dispatch_polling_event_listener(

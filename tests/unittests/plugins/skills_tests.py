@@ -15,7 +15,6 @@ import pytest
 import fiftyone.plugins as fop
 import fiftyone.plugins.skills as fps
 
-
 _DEFAULT_APP_CONFIG = {}
 
 _SKILL_MD = """\

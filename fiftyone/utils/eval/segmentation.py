@@ -5,6 +5,7 @@ Segmentation evaluation.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from copy import deepcopy
 import logging
 import inspect
@@ -28,7 +29,6 @@ from .base import (
     BaseEvaluationMethodConfig,
     BaseClassificationResults,
 )
-
 
 logger = logging.getLogger(__name__)
 

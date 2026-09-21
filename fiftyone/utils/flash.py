@@ -6,6 +6,7 @@ Utilities for working with
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import inspect
 import itertools
 
@@ -21,7 +22,6 @@ import flash.image as fi
 import flash.image.detection.output as fdo
 import flash.image.segmentation.output as fso
 import flash.video as fv
-
 
 _SUPPORTED_MODELS = (
     fi.ImageClassifier,

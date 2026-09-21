@@ -5,6 +5,7 @@ FiftyOne plugins constants.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import os
 
 BUILTIN_PLUGINS_DIR = os.path.normpath(

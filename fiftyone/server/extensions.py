@@ -5,6 +5,7 @@ FiftyOne Server extensions
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import traceback
 
 from graphql import GraphQLError

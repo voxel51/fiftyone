@@ -10,7 +10,6 @@ import queue
 import threading
 import time
 
-
 _END = object()
 
 

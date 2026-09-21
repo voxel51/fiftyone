@@ -6,6 +6,7 @@ Utilities for working with the
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from itertools import chain
 import logging
 import os
@@ -18,7 +19,6 @@ import eta.core.web as etaw
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 import fiftyone.utils.youtube as fouy
-
 
 logger = logging.getLogger(__name__)
 

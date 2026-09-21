@@ -5,6 +5,7 @@ Decorator utils for unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from functools import wraps
 import platform
 import unittest

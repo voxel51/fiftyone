@@ -565,9 +565,9 @@ class EvaluationPanel(Panel):
                     }
                 )
         if update_store:
-            pending_evaluations_in_store[
-                dataset_id
-            ] = updated_pending_evaluations_for_dataset_in_stored
+            pending_evaluations_in_store[dataset_id] = (
+                updated_pending_evaluations_for_dataset_in_stored
+            )
             store.set("pending_evaluations", pending_evaluations_in_store)
         ctx.panel.set_data("pending_evaluations", pending_evaluations)
 

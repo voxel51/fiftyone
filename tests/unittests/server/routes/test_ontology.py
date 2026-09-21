@@ -199,17 +199,13 @@ def _save_taxonomy(name, root_dict):
 
 class TestOntologyTaxonomyRoute:
     @pytest.mark.asyncio
-    async def test_unknown_name_404(
-        self, taxonomy_endpoint, taxonomy_request
-    ):
+    async def test_unknown_name_404(self, taxonomy_endpoint, taxonomy_request):
         with pytest.raises(HTTPException) as exc:
             await taxonomy_endpoint.get(taxonomy_request("does_not_exist"))
         assert exc.value.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_non_taxonomy_404(
-        self, taxonomy_endpoint, taxonomy_request
-    ):
+    async def test_non_taxonomy_404(self, taxonomy_endpoint, taxonomy_request):
         from fiftyone.core.ontology import AnnotationOntology
 
         AnnotationOntology(name="some_ao").save()
@@ -241,9 +237,7 @@ class TestOntologyTaxonomyRoute:
         assert body["taxonomy"]["name"] == "vehicle_classes"
         assert body["taxonomy"]["type"] == "taxonomy"
         assert body["taxonomy"]["root"]["name"] == "root"
-        child_names = [
-            c["name"] for c in body["taxonomy"]["root"]["values"]
-        ]
+        child_names = [c["name"] for c in body["taxonomy"]["root"]["values"]]
         assert child_names == ["car", "truck"]
 
     @pytest.mark.asyncio
@@ -275,9 +269,7 @@ class TestOntologyTaxonomyRoute:
         assert names == ["sedan", "suv"]
 
     @pytest.mark.asyncio
-    async def test_unknown_node_404(
-        self, taxonomy_endpoint, taxonomy_request
-    ):
+    async def test_unknown_node_404(self, taxonomy_endpoint, taxonomy_request):
         _save_taxonomy(
             "vehicle_classes", {"name": "root", "values": [{"name": "car"}]}
         )
@@ -300,9 +292,7 @@ class TestOntologyTaxonomyRoute:
         )
 
         response = await taxonomy_endpoint.get(
-            taxonomy_request(
-                "vehicle_classes", query_params={"depth": "0"}
-            )
+            taxonomy_request("vehicle_classes", query_params={"depth": "0"})
         )
 
         body = json.loads(response.body)
@@ -327,9 +317,7 @@ class TestOntologyTaxonomyRoute:
         )
 
         response = await taxonomy_endpoint.get(
-            taxonomy_request(
-                "vehicle_classes", query_params={"depth": "1"}
-            )
+            taxonomy_request("vehicle_classes", query_params={"depth": "1"})
         )
 
         body = json.loads(response.body)
@@ -351,9 +339,7 @@ class TestOntologyTaxonomyRoute:
         )
 
         response = await taxonomy_endpoint.get(
-            taxonomy_request(
-                "vehicle_classes", query_params={"depth": "1"}
-            )
+            taxonomy_request("vehicle_classes", query_params={"depth": "1"})
         )
 
         body = json.loads(response.body)

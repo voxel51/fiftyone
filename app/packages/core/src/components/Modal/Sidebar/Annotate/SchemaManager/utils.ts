@@ -6,6 +6,7 @@ import { is3d } from "@fiftyone/utilities";
 import type { ListItemProps as BaseListItemProps } from "@voxel51/voodo";
 import type { ReactNode } from "react";
 import {
+  type ClassesComponent,
   CLASSES_COMPONENT_THRESHOLD,
   componentNeedsRange,
   componentNeedsValues,
@@ -662,9 +663,15 @@ export const hasAttributeFormError = (errors: AttributeFormErrors): boolean =>
 // Component Reconciliation
 // =============================================================================
 
+/** Class-count default for a label field's classes input type. */
+export const defaultClassesComponent = (classes: string[]): ClassesComponent =>
+  classes.length > CLASSES_COMPONENT_THRESHOLD ? "dropdown" : "radio";
+
 /**
  * Auto-adjust the component type to match the current classes.
- * - Classes present + component is "text" → switch to "radio" or "dropdown"
+ * - Classes present + component is "text" (or unset) → "radio" or "dropdown"
+ *   by class count
+ * - Classes present + explicit "radio"/"dropdown" → preserved as chosen
  * - Classes removed + component is "radio"/"dropdown" → switch to "text"
  */
 export const reconcileComponent = (
@@ -674,12 +681,8 @@ export const reconcileComponent = (
   const hasClasses = classes && classes.length > 0;
 
   if (hasClasses) {
-    if (component === "text") {
-      return {
-        ...config,
-        component:
-          classes.length > CLASSES_COMPONENT_THRESHOLD ? "dropdown" : "radio",
-      };
+    if (!component || component === "text") {
+      return { ...config, component: defaultClassesComponent(classes) };
     }
   } else {
     // Strip empty classes key and reset component to text

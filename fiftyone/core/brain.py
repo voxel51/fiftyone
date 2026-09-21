@@ -5,6 +5,7 @@ Brain method runs framework.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from fiftyone.core.runs import (
     BaseRun,
     BaseRunConfig,

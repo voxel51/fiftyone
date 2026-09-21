@@ -27,6 +27,7 @@ exited.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import argparse
 import collections
 import enum
@@ -41,7 +42,6 @@ import psutil
 
 os.environ["FIFTYONE_DISABLE_SERVICES"] = "1"
 from fiftyone.service.ipc import IPCServer
-
 
 lock = threading.Lock()
 

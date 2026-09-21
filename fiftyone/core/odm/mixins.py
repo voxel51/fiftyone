@@ -646,9 +646,9 @@ class DatasetMixin(object):
             if path in label_schemas:
                 new_label_schemas[new_path] = new_label_schemas.pop(path)
                 if path in active_label_schemas:
-                    active_label_schemas[
-                        active_label_schemas.index(path)
-                    ] = new_path
+                    active_label_schemas[active_label_schemas.index(path)] = (
+                        new_path
+                    )
                 continue
 
             for field in label_schemas:

@@ -5,6 +5,7 @@ Matplotlib plots.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import itertools
 import logging
 
@@ -31,7 +32,6 @@ from .utils import (
     parse_locations,
     parse_scatter_inputs,
 )
-
 
 logger = logging.getLogger(__name__)
 

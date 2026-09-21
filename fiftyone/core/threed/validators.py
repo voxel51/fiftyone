@@ -5,6 +5,7 @@ Simple validator utilities
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import re
 from typing import Any, Optional
 

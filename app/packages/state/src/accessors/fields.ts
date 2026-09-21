@@ -1,5 +1,5 @@
 import { useRecoilValue } from "recoil";
-import { activeFields, labelFields, State } from "../recoil";
+import { activeFields, fieldPaths, labelFields, State } from "../recoil";
 
 /**
  * The field paths currently toggled visible in the sidebar.
@@ -12,3 +12,8 @@ export const useActiveFields = (params: { modal: boolean }) =>
  */
 export const useLabelFields = (params: { space?: State.SPACE } = {}) =>
   useRecoilValue(labelFields(params));
+
+/** Field paths of the dataset's schema, filtered by `params` (see `fieldPaths`). */
+export const useFieldPaths = (
+  params: Parameters<typeof fieldPaths>[0],
+): string[] => useRecoilValue(fieldPaths(params));
