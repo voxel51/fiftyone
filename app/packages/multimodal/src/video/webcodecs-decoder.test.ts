@@ -6,7 +6,11 @@ import type {
 } from "../ir";
 import { VISUALIZATION_KIND } from "../ir";
 import type { EncodedVideoAccessUnit, H264AccessUnit } from "./types";
-import { VideoDecoderFailureError, VideoIntentCancelledError } from "./types";
+import {
+  VideoCodecUnsupportedError,
+  VideoDecoderFailureError,
+  VideoIntentCancelledError,
+} from "./types";
 import {
   MAX_VIDEO_DECODE_IN_FLIGHT,
   VIDEO_DECODE_PROGRESS_TIMEOUT_MS,
@@ -364,15 +368,19 @@ describe("WebCodecsVideoDecoder", () => {
     const harness = fakeWebCodecs({ supported: false });
     const actor = new WebCodecsVideoDecoder(harness.environment);
 
-    await expect(
-      actor.decode([unit(0, true, "avc1.640028")], {
-        signal: new AbortController().signal,
-        targetTimeNs: 0n,
-      }),
-    ).rejects.toMatchObject({
-      message: "H.264 codec 'avc1.640028' is unsupported",
-      name: "VideoDecoderFailureError",
+    const refusal = actor.decode([unit(0, true, "avc1.640028")], {
+      signal: new AbortController().signal,
+      targetTimeNs: 0n,
     });
+
+    await expect(refusal).rejects.toMatchObject({
+      message: "H.264 codec 'avc1.640028' is unsupported",
+      name: "VideoCodecUnsupportedError",
+    });
+    // Terminal, so playback latches it instead of seeking into it again, while
+    // still satisfying every existing decoder-failure handler
+    await expect(refusal).rejects.toBeInstanceOf(VideoCodecUnsupportedError);
+    await expect(refusal).rejects.toBeInstanceOf(VideoDecoderFailureError);
     actor.close();
   });
 
@@ -457,6 +465,47 @@ describe("WebCodecsVideoDecoder AV1", () => {
     output.close();
     actor.close();
   });
+});
+
+describe("WebCodecsVideoDecoder H.264 parameter sets", () => {
+  const SPS = Uint8Array.of(0x67, 0x4d, 0, 0x1f);
+  const PPS = Uint8Array.of(0x68, 0xce);
+  const START_CODE = Uint8Array.of(0, 0, 0, 1);
+  const inlined = (slice: Uint8Array) =>
+    Uint8Array.from([...START_CODE, ...SPS, ...START_CODE, ...PPS, ...slice]);
+
+  it.each([
+    {
+      name: "a keyframe",
+      slice: Uint8Array.of(0, 0, 1, 0x65),
+      targetTimeNs: 0n,
+      units: [unit(0, true)],
+    },
+    {
+      name: "a delta frame",
+      slice: Uint8Array.of(0, 0, 1, 0x41),
+      targetTimeNs: 1n,
+      units: [unit(0, true), unit(1)],
+    },
+  ])(
+    "inlines the container's parameter sets ahead of $name whose bytes carry none",
+    async ({ slice, targetTimeNs, units }) => {
+      const harness = fakeWebCodecs();
+      const actor = new WebCodecsVideoDecoder(harness.environment);
+
+      const output = await actor.decode(units, {
+        signal: new AbortController().signal,
+        targetTimeNs,
+      });
+
+      const submitted = harness.instances[0].decode.mock.calls.at(-1)?.[0] as {
+        readonly data: Uint8Array;
+      };
+      expect(submitted.data).toEqual(inlined(slice));
+      output.close();
+      actor.close();
+    },
+  );
 });
 
 function fakeWebCodecs(

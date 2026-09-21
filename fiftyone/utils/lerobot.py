@@ -89,6 +89,9 @@ _REQUIRED_EPISODE_FIELDS = (
     "data/chunk_index",
     "data/file_index",
 )
+#: Columns a v3.0 shard may omit; read when present, defaulted when not
+_OPTIONAL_EPISODE_FIELDS = ("tasks",)
+
 #: The columns the index pass reads: enough to select episodes and to place
 #: each data file's rows, and nothing of the per-episode statistics that make
 #: metadata rows wide
@@ -348,7 +351,7 @@ class LeRobotDatasetImporter(foud.GenericSampleDatasetImporter):
         fps = float(info["fps"])
         robot_type = info.get("robot_type", None)
         video_features = _video_features(info)
-        columns = list(_REQUIRED_EPISODE_FIELDS) + ["tasks"]
+        columns = list(_REQUIRED_EPISODE_FIELDS)
         for feature_name in video_features:
             columns.extend(_video_columns(feature_name))
 
@@ -358,7 +361,7 @@ class LeRobotDatasetImporter(foud.GenericSampleDatasetImporter):
         def make_sample(row):
             episode_index = row["episode_index"]
             length = row["dataset_to_index"] - row["dataset_from_index"]
-            tasks = list(row["tasks"] or [])
+            tasks = _episode_tasks(row)
             return Sample(
                 media_reference=_lerobot_episode_reference(
                     source.id, episode_index, row, video_features
@@ -383,7 +386,12 @@ class LeRobotDatasetImporter(foud.GenericSampleDatasetImporter):
                 continue
 
             relative_path = _relative_to_root(shard_path, source.root)
-            table = _read_episode_rows(shard_path, relative_path, columns)
+            table = _read_episode_rows(
+                shard_path,
+                relative_path,
+                columns,
+                optional=_OPTIONAL_EPISODE_FIELDS,
+            )
             _validate_episode_schema(
                 table.schema, video_features, relative_path
             )
@@ -416,6 +424,16 @@ class LeRobotDatasetImporter(foud.GenericSampleDatasetImporter):
             )
 
 
+def _episode_tasks(row):
+    """The distinct tasks an episode demonstrates, in first-seen order.
+
+    LeRobot's writer stores these deduplicated, but sources converted from
+    v2.1 can carry one repeat per frame, which would store thousands of
+    copies of a single string.
+    """
+    return list(dict.fromkeys(row.get("tasks") or []))
+
+
 def _lerobot_episode_reference(source_id, episode_index, row, video_features):
     """One episode's stored reference, from its metadata row: the data file
     and global row range, and per camera the video file and time window."""
@@ -437,7 +455,7 @@ def _lerobot_episode_reference(source_id, episode_index, row, video_features):
             ]
             for feature in video_features
         },
-        tasks=list(row["tasks"] or []),
+        tasks=_episode_tasks(row),
     )
 
 
@@ -806,16 +824,18 @@ def _list_episode_shards(root):
     return shards
 
 
-def _read_episode_rows(shard_path, relative_path, columns):
+def _read_episode_rows(shard_path, relative_path, columns, optional=()):
     with _open_parquet(shard_path, "episode metadata") as parquet_file:
-        missing = set(columns) - set(parquet_file.schema_arrow.names)
+        names = set(parquet_file.schema_arrow.names)
+        missing = set(columns) - names
         if missing:
             raise MalformedMediaSourceError(
                 "LeRobot episode metadata shard '%s' is missing fields: %s"
                 % (relative_path, sorted(missing))
             )
 
-        return parquet_file.read(columns=columns)
+        present = list(columns) + [c for c in optional if c in names]
+        return parquet_file.read(columns=present)
 
 
 def _validate_episode_schema(schema, video_features, relative_path):
@@ -838,6 +858,9 @@ def _validate_episode_schema(schema, video_features, relative_path):
 
     # A shard whose every episode has no tasks holds a null or list<null>
     # column, since nothing fixes the element type
+    if "tasks" not in schema.names:
+        return
+
     tasks_type = schema.field("tasks").type
     if not pa.types.is_null(tasks_type) and not (
         (pa.types.is_list(tasks_type) or pa.types.is_large_list(tasks_type))

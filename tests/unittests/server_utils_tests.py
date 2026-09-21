@@ -15,6 +15,20 @@ from fiftyone.server.utils import attach_frame_if_necessary
 from decorators import drop_datasets
 
 
+def _lowered(view):
+    """The serialized stages without their recorded syntax.
+
+    A stage carrying an expression also records the syntax it was written
+    in, under `_expr_asts`. These assertions are about the lowered MongoDB,
+    so the additive key is dropped rather than duplicated into every
+    expected literal.
+    """
+    return [
+        {key: value for key, value in stage.items() if key != "_expr_asts"}
+        for stage in view._serialize(include_uuids=False)
+    ]
+
+
 class TestServerUtils(unittest.TestCase):
     @drop_datasets
     def test_attach_frame_if_necessary(self):
@@ -40,7 +54,7 @@ class TestServerUtils(unittest.TestCase):
             False,
             group_slice="video",
         )
-        serialized = view._serialize(include_uuids=False)
+        serialized = _lowered(view)
         self.assertEqual(is_video, True)
         self.assertEqual(
             serialized,
@@ -106,7 +120,7 @@ class TestServerUtils(unittest.TestCase):
             False,
             group_slice="video",
         )
-        serialized = view._serialize(include_uuids=False)
+        serialized = _lowered(view)
         self.assertEqual(is_video, True)
         self.assertEqual(
             serialized,
