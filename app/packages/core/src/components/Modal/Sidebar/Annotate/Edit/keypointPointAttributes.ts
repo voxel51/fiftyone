@@ -111,23 +111,38 @@ export const toPointAttributeValue = (
 };
 
 /**
- * The unset-entry filler per element type. Float uses NaN — the ODM's
- * ListField(FloatField) cannot LOAD null elements (the whole document fails
- * to hydrate server-side), while NaN round-trips like point holes do. The
- * other types use null: NaN through BooleanField reads back as True
- * (`bool(nan)`), and null both loads cleanly and keeps dynamic field
- * inference on the declared element type.
+ * The unset-entry filler per element type. FiftyOne's convention is
+ * VALUE-FILLED parallel lists — "unset" lives in the point coordinates
+ * (`[NaN, NaN]` holes), never in the attribute lists. The ODM rejects null
+ * elements in typed lists outright (even `null=True` does not relax element
+ * validation). Prior art: the user guide's `occluded=[False, False, True,
+ * False]` example, the COCO codec's `visible` (0 = not labeled), and
+ * `Keypoint.confidence` (NaN, the one type with a real unset value).
  */
-export const pointAttributeHole = (type: PointAttributeType): number | null =>
-  type === "float" ? NaN : null;
+export const pointAttributeHole = (
+  type: PointAttributeType,
+): boolean | number | string => {
+  switch (type) {
+    case "bool":
+      return false;
+    case "float":
+      return NaN;
+    case "int":
+      return 0;
+    case "str":
+      return "";
+  }
+};
 
 /**
  * Build the full-length parallel list for a single-node commit: the edited
  * index takes `value` (null clears it to the hole filler), every other index
  * keeps its existing entry coerced to the element type. Coercion matters on
- * the write path: the wire encoder converts non-finite NUMBERS everywhere
- * but gates `"nan"` STRINGS to reserved field names, so read-side strings
- * must never be echoed back under a custom attribute name.
+ * the write path twice over: read-side `"nan"` strings must never be echoed
+ * back under a custom attribute name (the wire encoder only converts them
+ * for reserved field names), and nulls from imported or pre-declaration data
+ * must be replaced with the type's filler — the ODM rejects null elements
+ * once the dataset field is declared.
  */
 export const buildPointAttributeList = (
   type: PointAttributeType,
@@ -135,7 +150,7 @@ export const buildPointAttributeList = (
   length: number,
   index: number,
   value: PointAttributeValue,
-): PointAttributeValue[] => {
+): (boolean | number | string)[] => {
   const hole = pointAttributeHole(type);
   return Array.from({ length }, (_, i) => {
     const entry =

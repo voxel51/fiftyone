@@ -123,9 +123,21 @@ describe("buildPointAttributeList", () => {
     expect(list[2]).toBeNaN();
   });
 
-  it("fills bool holes with null, never NaN", () => {
+  it("fills bool holes with false, never null or NaN", () => {
     const list = buildPointAttributeList("bool", [true, null], 3, 2, true);
-    expect(list).toEqual([true, null, true]);
+    expect(list).toEqual([true, false, true]);
+  });
+
+  it("replaces nulls from imported data with the type's filler", () => {
+    // the ODM rejects null elements once the dataset field is declared
+    const list = buildPointAttributeList(
+      "bool",
+      [null, true, null],
+      3,
+      1,
+      true,
+    );
+    expect(list).toEqual([false, true, false]);
   });
 
   it("clears the edited index back to the hole filler", () => {
@@ -134,13 +146,17 @@ describe("buildPointAttributeList", () => {
     ).toBeNaN();
     expect(buildPointAttributeList("str", ["a", "b"], 2, 1, null)).toEqual([
       "a",
-      null,
+      "",
+    ]);
+    expect(buildPointAttributeList("bool", [true, true], 2, 1, null)).toEqual([
+      true,
+      false,
     ]);
   });
 
   it("pads to the skeleton length when the existing list is short", () => {
     const list = buildPointAttributeList("int", [4], 3, 1, 7);
-    expect(list).toEqual([4, 7, null]);
+    expect(list).toEqual([4, 7, 0]);
   });
 
   it("has a 0–1 range on the confidence fallback", () => {
