@@ -338,9 +338,9 @@ def _inject_page_meta(app, pagename, templatename, context, doctree):
         lines = app.config.llms_txt_description.splitlines()
         description = lines[0].lstrip("> ").strip() if lines else ""
     context["meta_description"] = description
-    context[
-        "markdown_url"
-    ] = f"{app.config.llms_txt_base_url.rstrip('/')}/{pagename}.md"
+    context["markdown_url"] = (
+        f"{app.config.llms_txt_base_url.rstrip('/')}/{pagename}.md"
+    )
 
 
 def setup(app):

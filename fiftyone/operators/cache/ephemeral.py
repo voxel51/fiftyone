@@ -5,12 +5,13 @@ Execution cache in memory.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from cachetools import LRUCache
 from threading import Lock
 
-
 _EPHEMERAL_CACHE_REGISTRY = {}
 _EPHEMERAL_CACHE_LOCK = Lock()
+
 
 def get_ephemeral_cache(func_id, max_size=None):
     max_size = max_size or 1024

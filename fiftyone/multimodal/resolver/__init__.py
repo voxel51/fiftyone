@@ -8,5 +8,4 @@ Resolver scaffolding for multimodal workflows.
 
 from .base import PlaybackPlanBuilder
 
-
 __all__ = ["PlaybackPlanBuilder"]

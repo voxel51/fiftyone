@@ -522,15 +522,13 @@ myst:
             display_tags = self._format_model_tags(tags)
             display_tags.append("Plugin")
 
-            self._plugin_model_cards.append(
-                f"""
+            self._plugin_model_cards.append(f"""
 .. customcarditem::
     :header: {name}
     :description: {description}
     :link: models/{model_slug}.html
     :tags: {",".join(display_tags)}
-"""
-            )
+""")
             logger.info(f"Generated model docs for {name}")
 
     def extract_plugins_from_readme(self, readme_content: str) -> List[Plugin]:

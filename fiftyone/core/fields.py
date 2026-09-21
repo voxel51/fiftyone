@@ -23,7 +23,6 @@ import fiftyone.core.frame_utils as fofu
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 
-
 fmm = fou.lazy_import("fiftyone.multimodal.media_reference.field_model")
 
 

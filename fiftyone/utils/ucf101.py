@@ -6,6 +6,7 @@ Utilities for working with the
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 import os
 
@@ -13,7 +14,6 @@ import eta.core.utils as etau
 import eta.core.web as etaw
 
 import fiftyone.core.utils as fou
-
 
 logger = logging.getLogger(__name__)
 

@@ -5,13 +5,13 @@ FiftyOne Zoo Datasets provided by ``tensorflow_datasets``.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.types as fot
 import fiftyone.utils.imagenet as foui
 import fiftyone.utils.data as foud
 import fiftyone.zoo.datasets as fozd
-
 
 _TFDS_IMPORT_ERROR = """
 

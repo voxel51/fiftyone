@@ -130,13 +130,12 @@ async def paginate_samples(
 
     pipeline = await get_samples_pipeline(view, sample_filter)
     maxTimeMS = max_query_time * 1000 if max_query_time else None
-    cursor = await foo.aggregate(
+    samples = await foo.aggregate(
         foo.get_async_db_conn()[view._dataset._sample_collection_name],
         pipeline,
         hint,
         maxTimeMS=maxTimeMS,
-    )
-    samples = await cursor.to_list(first + 1)
+    ).to_list(first + 1)
 
     more = False
     if len(samples) > first:
@@ -187,9 +186,11 @@ async def paginate_samples(
         # location; the rest are composed from where their source is
         node.sample["_media"] = {
             "assets": [
-                {**asset, "src": media_srcs[asset["id"]]}
-                if asset["id"] in media_srcs
-                else asset
+                (
+                    {**asset, "src": media_srcs[asset["id"]]}
+                    if asset["id"] in media_srcs
+                    else asset
+                )
                 for asset in media.assets
             ],
             "poster": media.poster_id,

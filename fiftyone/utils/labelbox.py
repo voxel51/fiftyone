@@ -6,6 +6,7 @@ Utilities for working with annotations in
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from copy import copy, deepcopy
 import logging
 import os

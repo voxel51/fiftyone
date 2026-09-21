@@ -5,6 +5,7 @@ FiftyOne group test utils
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import fiftyone as fo
 
 

@@ -6,6 +6,7 @@ Utilities for working with the
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import os
 import logging
 import shutil

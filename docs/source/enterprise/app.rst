@@ -167,6 +167,31 @@ comments on samples that need work while reviewing labels.
 .. image:: https://cdn.voxel51.com/enterprise/app/comments.webp
    :alt: Discussion panel with a comment thread on a sample
 
+.. _enterprise-spatiotemporal-comments:
+
+Spatiotemporal comments
+-----------------------
+
+.. customavailablein::
+    :enterprise_version: 2.25.0
+
+Comments can also be anchored to a point or region on the media itself.
+Click the pin button in the Discussion panel header, then click the sample
+to place a point or drag to mark a region. Each anchor appears as a numbered
+marker on the media. Click a marker to open its thread. Anchors are fixed
+once posted. To move one, delete the comment and place it again.
+
+On videos, an anchor is tied to the current frame. On
+:ref:`grouped datasets <groups>`, it is tied to the current slice. On
+:ref:`multimodal <fiftyone-multimodal>` episodes, it is tied to a tile's
+stream and timestamp. The marker appears only when that frame, slice, or
+timestamp is displayed. The comment's chip in the Discussion panel takes you
+back to it. The video timeline marks every commented frame. Point cloud
+tiles are not supported.
+
+.. image:: https://cdn.voxel51.com/enterprise/app/comments_spatiotemporal.webp
+   :alt: Anchored comments on a video frame, marked on the timeline and listed in the Discussion panel
+
 .. _enterprise-managing-datasets:
 
 Managing a dataset

@@ -4,7 +4,13 @@
  * internal — import them directly for tests/reuse; only the public surface
  * below is re-exported from `@fiftyone/utilities`.
  */
-export { isListLabelType, LabelType, LIST_LABEL_CHILD } from "./labels";
+export {
+  isListLabelType,
+  isSingletonLabelType,
+  LabelType,
+  LIST_LABEL_CHILD,
+  SINGLETON_LABEL_TYPES,
+} from "./labels";
 export type { LabelData } from "./labels";
 // Id-aligned list-delta builder (shift-safe JSON-Patch for label lists); shared
 // by per-frame video labels and temporal detections.

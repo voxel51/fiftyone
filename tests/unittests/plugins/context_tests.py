@@ -141,14 +141,12 @@ class TestPluginRegistration:
             f.write("VALUE = 42\n")
 
         with open(plugin_dir / "__init__.py", "w") as f:
-            f.write(
-                """
+            f.write("""
 from .utils import VALUE
 
 def register(ctx):
     ctx.test_value = VALUE
-"""
-            )
+""")
 
         metadata = {
             "name": "@myorg/myplugin",
@@ -179,8 +177,7 @@ def register(ctx):
             f.write("HELPER_VALUE = 99\n")
 
         with open(plugin_dir / "__init__.py", "w") as f:
-            f.write(
-                """
+            f.write("""
 import importlib
 
 def register(ctx):
@@ -189,8 +186,7 @@ def register(ctx):
         "fiftyone.plugins.orgs.testorg.testplugin.helpers"
     )
     ctx.helper_value = helpers.HELPER_VALUE
-"""
-            )
+""")
 
         metadata = {
             "name": "@testorg/testplugin",

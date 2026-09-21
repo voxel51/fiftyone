@@ -5,6 +5,7 @@ Backing document classes for :class:`fiftyone.core.frame.Frame` instances.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import OrderedDict
 
 from bson import ObjectId
