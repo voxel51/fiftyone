@@ -5,6 +5,7 @@
 import { fetchQuery } from "react-relay";
 import {
   type ConcreteRequest,
+  type Disposable,
   type IEnvironment,
   type Snapshot,
   type Variables,
@@ -35,7 +36,10 @@ export interface QuerySource<TData> {
    * graph for as long as the returned disposer is unused.
    */
   activate(onPayload: () => void): () => void;
-  /** Starts the fetch on the first call. */
+  /**
+   * Starts the fetch on the first call. Reading happens during render, so the
+   * fetch is retained here rather than only in `activate`.
+   */
   read(): TData | Promise<TData>;
 }
 
@@ -98,6 +102,31 @@ export function querySource<TData extends object>(
     }
   };
 
+  /**
+   * Shared by the fetch and by `activate`, and released only once neither
+   * holds it. The fetch is issued from a render, which may be discarded before
+   * anything mounts; without a retain the payload can be collected while this
+   * source has already latched it as its value, and `read` would serve data
+   * the store no longer has.
+   */
+  let retained: Disposable | undefined;
+  let fetching: { unsubscribe(): void } | undefined;
+
+  const retain = () => {
+    retained ??= environment.retain(
+      createOperationDescriptor(request, variables),
+    );
+  };
+
+  const release = () => {
+    if (listeners.size === 0) {
+      fetching?.unsubscribe();
+      fetching = undefined;
+      retained?.dispose();
+      retained = undefined;
+    }
+  };
+
   const start = () => {
     status = "pending";
     promise = new Promise<TData>((resolvePromise, rejectPromise) => {
@@ -107,16 +136,20 @@ export function querySource<TData extends object>(
     // The reference held here outlives the consumer that awaits it.
     void promise.catch(() => undefined);
 
-    fetchQuery<QueryOperation<TData>>(environment, request, variables, {
-      fetchPolicy: "store-or-network",
-    }).subscribe({ error: raise, next: deliver });
+    retain();
+    fetching = fetchQuery<QueryOperation<TData>>(
+      environment,
+      request,
+      variables,
+      { fetchPolicy: "store-or-network" },
+    ).subscribe({ error: raise, next: deliver });
   };
 
   return {
     activate: (onPayload) => {
       const operation = createOperationDescriptor(request, variables);
-      const retained = environment.retain(operation);
-      const subscription = environment.subscribe(
+      retain();
+      const snapshots = environment.subscribe(
         environment.lookup(operation.fragment),
         (next: Snapshot) => {
           const reported = next as Partial<SnapshotErrors> & Snapshot;
@@ -140,8 +173,8 @@ export function querySource<TData extends object>(
 
       return () => {
         listeners.delete(onPayload);
-        subscription.dispose();
-        retained.dispose();
+        snapshots.dispose();
+        release();
       };
     },
     read: () => {
