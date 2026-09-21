@@ -1811,7 +1811,6 @@ __metadata:
     react-laag: "catalog:"
     react-markdown: "catalog:"
     react-relay: "catalog:"
-    react-syntax-highlighter: "catalog:"
     react-use-measure: "catalog:"
     react-uuid: "catalog:"
     recharts: "npm:^2.12.3"
@@ -1886,6 +1885,7 @@ __metadata:
     "@fiftyone/state": "npm:*"
     "@types/react": "catalog:"
     "@vitejs/plugin-react": "catalog:"
+    "@voxel51/voodo": "catalog:"
     jotai: "catalog:"
     plotly.js: "npm:^3.1.1"
     react: "catalog:"
@@ -7415,9 +7415,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@voxel51/voodo@npm:^1.2.0":
-  version: 1.2.0
-  resolution: "@voxel51/voodo@npm:1.2.0"
+"@voxel51/voodo@npm:1.3.0-nav-product-seam.0":
+  version: 1.3.0-nav-product-seam.0
+  resolution: "@voxel51/voodo@npm:1.3.0-nav-product-seam.0"
   dependencies:
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/sortable": "npm:^10.0.0"
@@ -7434,7 +7434,7 @@ __metadata:
     react: ^18.0.0
     react-dom: ^18.0.0
     react-is: ^18.0.0
-  checksum: 10/edeb4caa277a14a89f643b31e389b254e67a43c156934a0a197d4444b22166ff457a97278668d56a9ad0f9d770351e9100ccbc361aed07ffa724d6160199a6af
+  checksum: 10/09504dd7436555fddcfed81edfedf07f79828c26447170dd6f5ca73f619607df2c041112bd6f81245293cf4a9bf5bbc1f23842dfb84249adbc5e510ffccea43a
   languageName: node
   linkType: hard
 
