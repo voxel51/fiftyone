@@ -194,6 +194,11 @@ export class ModalAnnotateSidebarPom {
     await this.page.getByTestId("polyline-mode").click();
   }
 
+  /** Activate keypoint-placement mode (the Keypoint action button). */
+  async keypointMode() {
+    await this.page.getByTestId("keypoint-mode").click();
+  }
+
   /**
    * Toggle segmentation mode. When inactive this enters segmentation mode
    * (selecting the Select tool by default). When active it deactivates the
@@ -371,6 +376,16 @@ class ModalAnnotateSidebarAsserter {
    */
   async detectionModeIsActive(active = true) {
     const button = this.modalAnnotateSidebar.page.getByTestId("detection-mode");
+    await expect(button).toHaveAttribute("data-cy-active", active.toString());
+  }
+
+  /**
+   * Assert that keypoint mode is active or inactive
+   *
+   * @param active Whether keypoint mode should be active (default true)
+   */
+  async keypointModeIsActive(active = true) {
+    const button = this.modalAnnotateSidebar.page.getByTestId("keypoint-mode");
     await expect(button).toHaveAttribute("data-cy-active", active.toString());
   }
 
