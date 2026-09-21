@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { ReverbRoot } from "@fiftyone/reverb";
+import { createStore } from "jotai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const setDatasetSpy = vi.fn();
@@ -28,7 +29,10 @@ const useSearch = () => ({ values: ["quickstart", "quickstart-video"] });
 
 const setup = (applied?: string) =>
   render(
+    // Its own store per render: the root initializes a store once, so tests
+    // sharing the default one would only ever see the first initializer
     <ReverbRoot
+      store={createStore()}
       initializeState={({ set }) => {
         if (applied) set(datasetName, applied);
       }}
