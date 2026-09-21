@@ -2,7 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { Highlighted } from "@fiftyone/core";
+import { Highlighted } from "@fiftyone/components";
 import { OperatorCore, useOperators } from "@fiftyone/operators";
 import {
   Align,

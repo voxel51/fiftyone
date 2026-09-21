@@ -1,3 +1,4 @@
+import { Highlighted } from "@fiftyone/components";
 import { CodeBlock } from "@voxel51/voodo";
 import { Box } from "@mui/material";
 import { useState } from "react";
@@ -20,7 +21,11 @@ export default function UnsupportedView(props) {
         nested
       />
 
-      {show && <CodeBlock code={JSON.stringify(props, null, 2)} lineNumbers />}
+      {show && (
+        <CodeBlock code={JSON.stringify(props, null, 2)} lineNumbers>
+          <Highlighted code={JSON.stringify(props, null, 2)} language="json" />
+        </CodeBlock>
+      )}
     </Box>
   );
 }

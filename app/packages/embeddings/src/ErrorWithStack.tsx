@@ -1,4 +1,5 @@
 import { Typography, Box } from "@mui/material";
+import { Highlighted } from "@fiftyone/components";
 import { CodeBlock } from "@voxel51/voodo";
 
 export default function ErrorWithStack({ error }) {
@@ -26,7 +27,12 @@ export default function ErrorWithStack({ error }) {
           <CodeBlock
             code={error.stack.trim().replace(/\n+/g, "\n")}
             lineNumbers
-          />
+          >
+            <Highlighted
+              code={error.stack.trim().replace(/\n+/g, "\n")}
+              language="javascript"
+            />
+          </CodeBlock>
         </Box>
       )}
     </Box>

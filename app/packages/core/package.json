@@ -46,7 +46,6 @@
         "react-laag": "catalog:",
         "react-markdown": "catalog:",
         "react-relay": "catalog:",
-        "react-syntax-highlighter": "catalog:",
         "react-use-measure": "catalog:",
         "react-uuid": "catalog:",
         "recharts": "^2.12.3",

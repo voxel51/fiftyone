@@ -2,7 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { scrollable } from "@fiftyone/components";
+import { Highlighted, scrollable } from "@fiftyone/components";
 import { describeAppError } from "./describeAppError";
 import {
   Align,
@@ -82,7 +82,11 @@ export default function ErrorDisplay({
             spacing={Spacing.Xs}
           >
             {label && <Text color={TextColor.Secondary}>{label}</Text>}
-            {content && <CodeBlock code={content} />}
+            {content && (
+              <CodeBlock code={content}>
+                <Highlighted code={content} language="javascript" />
+              </CodeBlock>
+            )}
           </Stack>
         ))}
       </Stack>

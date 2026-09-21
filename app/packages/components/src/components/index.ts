@@ -13,6 +13,7 @@ export {
   ENTERPRISE_LEARN_MORE_URL,
 } from "./EnterpriseUpsellCallout";
 export type { EnterpriseUpsellCalloutProps } from "./EnterpriseUpsellCallout";
+export { default as Highlighted } from "./Highlighted";
 export { default as ErrorBoundary, ErrorDisplayMarkup } from "./ErrorBoundary";
 export { default as ExternalLink } from "./ExternalLink";
 export { default as FilterAndSelectionIndicator } from "./FilterAndSelectionIndicator";
