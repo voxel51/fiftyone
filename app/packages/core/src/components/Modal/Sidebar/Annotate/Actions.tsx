@@ -525,6 +525,7 @@ const Actions = ({ hidden = false }: { hidden?: boolean }) => {
   const { detectionModeActive } = useDetectionMode();
   const { segmentationModeActive } = useSegmentationMode();
   const { polylineModeActive } = usePolylineMode();
+  const { keypointModeActive } = useKeypointMode();
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
 
   const noActiveActions =
@@ -532,6 +533,7 @@ const Actions = ({ hidden = false }: { hidden?: boolean }) => {
     !detectionModeActive &&
     !segmentationModeActive &&
     !polylineModeActive &&
+    !keypointModeActive &&
     !current3dAnnotationMode;
   const areThreeDActionsVisible = is3dDataset || is3dSamplePinned;
 

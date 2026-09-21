@@ -1166,7 +1166,7 @@ class PointScopeValidationTests(unittest.TestCase):
     @drop_datasets
     def test_invalid_scope_value_rejected(self):
         dataset = self._make_keypoint_dataset()
-        with self.assertRaises(ExceptionGroup):
+        with self.assertRaises(ExceptionGroup) as ctx:
             validate_label_schemas(
                 dataset,
                 self._keypoint_schema(
@@ -1181,6 +1181,10 @@ class PointScopeValidationTests(unittest.TestCase):
                 ),
                 fields="kp_field",
             )
+
+        # rule-specific message: the group must carry THIS rule's failure,
+        # not just any validation error
+        self.assertIn("invalid 'scope' setting 'vertex'", str(ctx.exception))
 
     @drop_datasets
     def test_point_scope_rejected_on_non_keypoint_field(self):
@@ -1232,7 +1236,7 @@ class PointScopeValidationTests(unittest.TestCase):
     @drop_datasets
     def test_point_scope_new_attribute_requires_element_type(self):
         dataset = self._make_keypoint_dataset()
-        with self.assertRaises(ExceptionGroup):
+        with self.assertRaises(ExceptionGroup) as ctx:
             validate_label_schemas(
                 dataset,
                 self._keypoint_schema(
@@ -1248,6 +1252,13 @@ class PointScopeValidationTests(unittest.TestCase):
                 fields="kp_field",
                 allow_new_attrs=True,
             )
+
+        # rule-specific message: the group must carry THIS rule's failure,
+        # not just any validation error
+        self.assertIn(
+            "point-scoped attributes declare their element type",
+            str(ctx.exception),
+        )
 
 
 class TaxonomySettingValidationTests(unittest.TestCase):

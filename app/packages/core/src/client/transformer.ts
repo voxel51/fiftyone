@@ -3,7 +3,7 @@
  */
 
 import { cloneDeep } from "lodash";
-import { isObject } from "@fiftyone/utilities";
+import { isObject, NONFINITE_FIELDS } from "@fiftyone/utilities";
 
 /**
  * DataTransformer implementations offer conversion from one record type to another.
@@ -138,11 +138,11 @@ export const transformSampleData = (
 const OBJECT_ID_PATTERN = /^[0-9a-f]{24}$/;
 const OBJECT_ID_FIELDS = new Set(["_id", "_sample_id"]);
 
-// Fields whose values may legitimately hold non-finite floats (a skipped or
-// occluded keypoint node is `[NaN, NaN]`, see the keypoints user guide). The
-// conversion below is gated to these keys so a string field that happens to
-// contain "nan" is never touched.
-const NONFINITE_FIELDS = new Set(["points", "confidence"]);
+// The conversion below is gated to the shared `NONFINITE_FIELDS` keys (fields
+// whose values may legitimately hold non-finite floats — a skipped keypoint
+// node is `[NaN, NaN]`) so a string field that happens to contain "nan" is
+// never touched. The same gate governs the compare-side collapse in
+// `@fiftyone/utilities`' `normalizeForCompare`.
 const NONFINITE_STRINGS: Record<string, string> = {
   nan: "NaN",
   inf: "Infinity",

@@ -15,6 +15,7 @@ import { useCallback, useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import AddSchema from "./AddSchema";
+import { getKeypointPointKeys } from "./keypointPointAttributes";
 import {
   type LabelType,
   useAnnotationContext,
@@ -70,6 +71,10 @@ const Field = () => {
   const nextFieldValue = useRef(currentFieldValue);
   const labelId = currentLabel?.overlay?.id;
   const currentLabelRef = useUnboundStateRef(currentLabel);
+  // The SOURCE field's schema declares which keys in the moved data are
+  // per-point parallel lists; read live (like the label) so the move
+  // callback never strips against a stale schema.
+  const schemaAttributesRef = useUnboundStateRef(selected?.schema?.attributes);
 
   const is3DAnnotationStagingInitialized = useIsWorkingInitialized();
 
@@ -154,15 +159,20 @@ const Field = () => {
               let payload: Partial<LabelData> = data;
               if (isKeypoint && to === newField) {
                 // Forward move: capture, then write the destination
-                // skeleton's holes (free-form: no points) and drop the
-                // per-point parallel lists the erased geometry anchored
+                // skeleton's holes (free-form: no points) and drop EVERY
+                // per-point parallel list the erased geometry anchored —
+                // the reserved names plus schema attributes with point
+                // scope, which are keyed by the OLD skeleton's node indices
                 captured.set(occurrenceKey(ref), data);
                 const nodeCount = skeletonNodeCount(getSkeleton(to) ?? null);
-                const {
-                  confidence: _confidence,
-                  visible: _visible,
-                  ...rest
-                } = data as Record<string, unknown>;
+                const pointKeys = getKeypointPointKeys(
+                  schemaAttributesRef.current,
+                );
+                const rest = Object.fromEntries(
+                  Object.entries(data as Record<string, unknown>).filter(
+                    ([key]) => !pointKeys.has(key),
+                  ),
+                );
                 payload = {
                   ...rest,
                   points: Array.from({ length: nodeCount }, () => [NaN, NaN]),
@@ -200,6 +210,7 @@ const Field = () => {
       currentLabelRef,
       engine,
       getSkeleton,
+      schemaAttributesRef,
       setCurrentField,
       labelId,
       currentFieldValue,
