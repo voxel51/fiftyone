@@ -178,9 +178,9 @@ const ViewBarInner: React.FC<{
 
   const [state, dispatch] = useReducer(reducer, initialState);
   // Whether the stages row (the second row, under the search bar) is shown.
-  // Only actions IN the bar open it — the toggle and adding a stage. A view
-  // arriving from outside (a saved view, an operator, the URL, a quick
-  // search landing) stays folded behind the toggle's count badge.
+  // The toggle and adding a stage open it, as does a view arriving from
+  // anywhere but the search — a stage nobody typed is otherwise just the
+  // toggle's count badge, which does not say what happened or how to undo it.
   const [stagesOpen, setStagesOpen] = React.useState(false);
   // Which stage's editor popover is open, by stage id. Only one at
   // a time; clicking another collapses the previous.
@@ -209,6 +209,9 @@ const ViewBarInner: React.FC<{
   // over an unmodified result view REPLACES the search (via the run's
   // recorded base) instead of refining 25 results down to 25 results.
   const pendingSearchRunId = React.useRef<string | null>(null);
+  // Whether a view has already landed, so the one a direct URL loads with is
+  // told apart from a change made while the page is up
+  const viewLoaded = React.useRef(false);
   const lastSearch = React.useRef<{
     runId: string;
     viewFp: string;
@@ -291,7 +294,14 @@ const ViewBarInner: React.FC<{
   const serializeWorkingRef = React.useRef<() => SerializedStage[]>(() => []);
 
   useEffect(() => {
-    const hydrate = () => {
+    // `reveal` separates a view that arrived from a rollback to the one
+    // already applied, which is not a change and shows nothing new
+    const hydrate = (reveal: boolean) => {
+      // The view a direct URL loads with is what was navigated to, not news
+      // that broke while the user was looking — only a later one reveals
+      const loaded = viewLoaded.current;
+      viewLoaded.current = true;
+      const fromSearch = pendingSearchRunId.current !== null;
       // A just-searched run owns the arriving view; any other view change
       // supersedes the chain and a next search targets the view as-is
       if (pendingSearchRunId.current) {
@@ -330,10 +340,15 @@ const ViewBarInner: React.FC<{
       setTouched(new Set());
       // Whatever was in transit has landed (or been superseded externally)
       setInFlight(null);
+      // The search says what it did in the box it was typed in; every other
+      // source — entering patches, an operator, a saved view — shows its work
+      if (reveal && loaded && !fromSearch && hydrated.length > 0) {
+        setStagesOpen(true);
+      }
     };
 
-    hydrate();
-    rollbackViewBar = hydrate;
+    hydrate(true);
+    rollbackViewBar = () => hydrate(false);
     return () => {
       rollbackViewBar = () => undefined;
     };
@@ -983,6 +998,17 @@ const ViewBarInner: React.FC<{
     setStagesOpen(false);
   }, []);
 
+  /**
+   * Clicking back into the search folds the stages row behind it: the search
+   * is where the next view is described, and folding finishes the row's work
+   * the way the toggle does.
+   */
+  const foldForSearchFocus = useCallback(() => {
+    if (stagesRowOpenRef.current) {
+      closeStagesRow();
+    }
+  }, [closeStagesRow]);
+
   const toggleStagesRow = useCallback(() => {
     if (stagesRowOpen) {
       closeStagesRow();
@@ -1055,6 +1081,7 @@ const ViewBarInner: React.FC<{
       <LanguageSearch
         key={`search-${searchEpoch}`}
         onHasTextChange={setSearchHasText}
+        onFocus={foldForSearchFocus}
         onSubmit={submitSearch}
         available={searchOperatorAvailable}
         onUnavailable={notifySearchUnavailable}

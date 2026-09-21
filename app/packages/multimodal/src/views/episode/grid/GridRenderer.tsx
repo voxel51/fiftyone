@@ -62,6 +62,7 @@ import {
   useGridPosterProviderDescriptor,
   useProvidedGridPoster,
 } from "./use-grid-poster-provider";
+import { peekSourceBootstrap } from "../../../runtime";
 import { useHydratedSourceFacts } from "./use-hydrated-source-facts";
 import { LeRobotGridHoverVideo } from "./LeRobotGridHoverVideo";
 
@@ -75,7 +76,6 @@ const SNAPSHOT_REFRESH_DEBOUNCE_MS = 250;
  */
 export const HOVER_INTENT_DELAY_MS = 120;
 /** Dwell before hover playback starts, avoiding scroll-under-cursor churn. */
-export const PLAYBACK_HOVER_INTENT_DELAY_MS = HOVER_INTENT_DELAY_MS;
 
 const stopGridActivationPropagation = (
   event: React.MouseEvent<HTMLElement>,
@@ -167,6 +167,7 @@ export function GridRenderer({
       source
         ? {
             datasetId: ctx.dataset.datasetId,
+            episodeId: sampleId,
             mediaField: ctx.media?.field,
             mediaPath: ctx.media?.path,
             posterSourceName: firstMatch?.stream,
@@ -183,6 +184,7 @@ export function GridRenderer({
       firstMatch?.startNs,
       firstMatch?.stream,
       providerCacheScope,
+      sampleId,
       selectedSourceName,
       source,
     ],
@@ -250,6 +252,7 @@ export function GridRenderer({
     // A provider-answered tile skips the preview session exactly like a cache
     // hit, so it needs the same facts republish
     cachedPoster: effectivePoster,
+    episodeId: sampleId,
     previewSessionDemand,
     source,
     sourceFactsScope,
@@ -368,6 +371,9 @@ export function GridRenderer({
           streamId: preview.streamId,
           streamSourceName: preview.streamSourceName,
           streamSourceNames: preview.streamSourceNames,
+          ...(source
+            ? { timeRange: peekSourceBootstrap(source)?.timeRange }
+            : {}),
           width: size.width,
         },
         key: cacheKey,
@@ -379,6 +385,7 @@ export function GridRenderer({
       preview.streamId,
       preview.streamSourceName,
       preview.streamSourceNames,
+      source,
     ],
   );
   // An AV1 poster arrives through the native <video>, so "ready with no
@@ -787,7 +794,7 @@ function usePlaybackHoverIntent(
     timerRef.current = setTimeout(() => {
       timerRef.current = null;
       play();
-    }, PLAYBACK_HOVER_INTENT_DELAY_MS);
+    }, HOVER_INTENT_DELAY_MS);
   }, [cancel, enabled, play, setHovered]);
 
   // This effect cancels hover playback when the grid becomes inactive.

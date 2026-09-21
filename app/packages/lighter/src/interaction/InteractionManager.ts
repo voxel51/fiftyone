@@ -120,6 +120,8 @@ export interface InteractionHandler {
   isDragging?(): boolean;
   /** Returns true if the handler is being resized. */
   isResizing?(): boolean;
+  /** Returns true if the handler is being rotated. */
+  isRotating?(): boolean;
   /** Returns true if the handler is selected. */
   isSelected?(): boolean;
   /** Returns true if a new DetectionOverlay is being created. */
@@ -159,6 +161,10 @@ export interface InteractionHandler {
   getMoveStartPosition?(): Point | undefined;
   /** Returns the position from the start of handler movement */
   getMoveStartBounds?(): Rect | undefined;
+  /** Returns the rotation (radians) from the start of a rotation gesture */
+  getMoveStartRotation?(): number | undefined;
+  /** Returns the current rotation, in radians */
+  getRotation?(): number;
   /** Returns the overlay associated with the manager. */
   getOverlay?(): BaseOverlay | undefined;
   /** Called when a pointer-down occurs on this handler. */
@@ -841,7 +847,12 @@ export class InteractionManager {
 
       if (handler.isInteracting?.()) {
         // Emit move event with bounds information
-        if (TypeGuards.isSpatial(handler)) {
+        if (handler.isRotating?.()) {
+          this.eventBus.dispatch("lighter:overlay-rotate-move", {
+            id: handler.id,
+            rotation: handler.getRotation?.() ?? 0,
+          });
+        } else if (TypeGuards.isSpatial(handler)) {
           const type = handler.isDragging?.()
             ? "lighter:overlay-drag-move"
             : "lighter:overlay-resize-move";
@@ -988,6 +999,8 @@ export class InteractionManager {
       const interactionState = handler.getInteractionState?.();
       const startBounds = handler.getMoveStartBounds?.();
       const startPosition = handler.getMoveStartPosition?.();
+      // read before onPointerUp resets the gesture state
+      const startRotation = handler.getMoveStartRotation?.();
 
       // Handle drag end
       handler.onPointerUp?.({
@@ -1025,6 +1038,20 @@ export class InteractionManager {
             this.eventBus.dispatch("lighter:overlay-establish", {
               ...detail,
               handler: interactiveHandler,
+            });
+          }
+        } else if (interactionState === "ROTATING") {
+          // Rotation has no selection-click ambiguity (the pointer went down
+          // ON the rotate handle) and a meaningful angle change can ride on a
+          // sub-threshold pointer move, so it finalizes outside the spatial
+          // drag gate — on any real angular delta instead.
+          const rotation = handler.getRotation?.() ?? 0;
+          if (Math.abs((startRotation ?? 0) - rotation) > 1e-4) {
+            this.eventBus.dispatch("lighter:overlay-rotate-end", {
+              id: handler.id,
+              overlayId: handler.overlay?.id ?? handler.id,
+              startRotation: startRotation ?? 0,
+              rotation,
             });
           }
         } else if (this.isSpatialDragEvent(event)) {
@@ -1251,8 +1278,11 @@ export class InteractionManager {
    * Three-tier right-click behavior:
    *
    * 1. **Finalize active editing** (pen polygon, AI point selection) —
-   *    commit the in-progress work to the overlay, keep it selected and
-   *    in editing mode.
+   *    commit the in-progress work to the overlay, then fall through to
+   *    tier 2 so the committed label closes like any other. One right-click
+   *    always lands back on the label list with the mode still armed, so the
+   *    next click starts a NEW label — the same cadence as a brush stroke, a
+   *    drawn box, or a polyline.
    * 2. **Stop editing the current label** (brush/eraser, bbox adjustments) —
    *    deselect the label but remain in the current mode.
    * 3. **Exit the current mode** (detection, segmentation) —
@@ -1294,16 +1324,16 @@ export class InteractionManager {
 
         if (interactiveHandler instanceof InteractivePenHandler) {
           // Replace the per-point undo entries with the single
-          // PaintStrokeCommand emitted by commitPenPolygon. The handler stays
-          // installed so the user can keep drawing more polygons.
+          // PaintStrokeCommand emitted by commitPenPolygon. The handler is
+          // left in place here; the tier 2 deselect below closes the edit and
+          // the pen tool's selection-driven lifecycle tears it down.
           interactiveHandler.pruneCommands();
 
           // The pen handler is already installed by commit time, so the
           // first-click establish path below is skipped — but a brand-new
           // track's first polygon still needs `overlay-establish` to fire
           // (it's the only signal video annotation fans the track across frames
-          // on). Re-emit it here for that first polygon, keeping the handler
-          // installed so the user can keep drawing more polygons.
+          // on). Re-emit it here for that first polygon.
           if (establishingNewTrack && handler.hasValidBounds?.()) {
             this.eventBus.dispatch("lighter:overlay-establish", {
               id: handler.id,
@@ -1330,7 +1360,9 @@ export class InteractionManager {
           });
         }
 
-        return;
+        // Committed — fall through to tier 2 so the label deselects and the
+        // sidebar returns to the list. A second polygon on the SAME mask is
+        // still reachable by re-selecting the mask with the pen tool active.
       }
 
       if (tool === SegmentationTool.AI && interactiveHandler) {
@@ -1345,19 +1377,19 @@ export class InteractionManager {
         if (pointsEstablished) {
           // Tier 1a: points placed — commit. Clear the keypoint scaffolding;
           // the finalize handler re-arms a fresh session (deactivate→activate).
+          // The re-armed keypoint overlay is non-selectable, so the tier 2
+          // deselect below only ever closes the committed detection.
           interactiveHandler.resetOverlay();
           this.removeHandler(interactiveHandler);
 
           this.eventBus.dispatch("lighter:point-selection-finalize", {
             eventId: generateUUID(),
           });
-
-          return;
         }
 
-        // No points placed: leave the keypoint session installed so the user
-        // can keep clicking, and fall through to the no-points right-click
-        // tiers — Tier 2 (deselect the committed label) then Tier 3 (exit mode).
+        // Either way (points committed, or none placed) the keypoint session
+        // is installed for the next click; fall through to Tier 2 (deselect
+        // the committed label) then Tier 3 (exit mode).
       }
     }
 

@@ -299,6 +299,20 @@ class ModalAnnotateEditAsserter {
   constructor(private readonly modalAnnotateEdit: ModalAnnotateEditPom) {}
 
   /**
+   * Verify the edit form is open (a label or primitive is being edited)
+   */
+  async isOpen() {
+    await expect(this.modalAnnotateEdit.backButton).toBeVisible();
+  }
+
+  /**
+   * Verify the edit form is closed (the sidebar shows the label list)
+   */
+  async isClosed() {
+    await expect(this.modalAnnotateEdit.backButton).toBeHidden();
+  }
+
+  /**
    * Verify a field's label
    *
    * @param path The field path

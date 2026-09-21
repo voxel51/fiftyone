@@ -54,14 +54,14 @@ export const useSam2Propagate = () => {
       // before the first tick the model is downloading or encoding
       let tracking = false;
       const render = (done?: number, runTotal?: number) =>
-        setStatusContent(
-          createElement(PropagationStatusItem, {
+        setStatusContent({
+          status: createElement(PropagationStatusItem, {
             label: tracking ? "SAM2 tracking" : "Loading SAM2…",
             done,
             total: runTotal,
             onStop,
           }),
-        );
+        });
       render();
 
       const getFrameBitmap = async (
