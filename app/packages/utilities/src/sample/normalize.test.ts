@@ -33,6 +33,30 @@ describe("normalizeForCompare", () => {
     expect(normalizeForCompare("x")).toBe("x");
     expect(normalizeForCompare(null)).toBeNull();
   });
+
+  it("unwraps extended-JSON $numberDouble wrappers", () => {
+    expect(normalizeForCompare({ $numberDouble: "NaN" })).toBeNaN();
+    expect(normalizeForCompare({ $numberDouble: "Infinity" })).toBe(Infinity);
+    expect(normalizeForCompare({ $numberDouble: "-Infinity" })).toBe(-Infinity);
+    expect(normalizeForCompare({ $numberDouble: "0.5" })).toBe(0.5);
+  });
+
+  it("leaves objects with extra keys beside $numberDouble untouched", () => {
+    const input = { $numberDouble: "NaN", note: "not a wrapper" };
+    expect(normalizeForCompare(input)).toEqual(input);
+  });
+
+  it("collapses the sample-read non-finite strings to numbers", () => {
+    expect(normalizeForCompare("nan")).toBeNaN();
+    expect(normalizeForCompare("inf")).toBe(Infinity);
+    expect(normalizeForCompare("-inf")).toBe(-Infinity);
+  });
+
+  it("leaves ordinary strings alone", () => {
+    expect(normalizeForCompare("nano")).toBe("nano");
+    expect(normalizeForCompare("NaN")).toBe("NaN");
+    expect(normalizeForCompare("constructor")).toBe("constructor");
+  });
 });
 
 describe("equalsNormalized", () => {
@@ -54,5 +78,48 @@ describe("equalsNormalized", () => {
   it("returns false for genuinely different values", () => {
     expect(equalsNormalized({ a: 1 }, { a: 2 })).toBe(false);
     expect(equalsNormalized(undefined, { a: 1 })).toBe(false);
+  });
+
+  it("treats a NaN keypoint hole and its server echo as equal", () => {
+    // the server encodes a skipped node's [NaN, NaN] coordinate as
+    // extended JSON; an unequal compare here re-sends the patch forever
+    expect(
+      equalsNormalized(
+        [
+          [0.4, 0.3],
+          [NaN, NaN],
+        ],
+        [
+          [0.4, 0.3],
+          [{ $numberDouble: "NaN" }, { $numberDouble: "NaN" }],
+        ],
+      ),
+    ).toBe(true);
+  });
+
+  it("still distinguishes different finite values inside wrappers", () => {
+    expect(equalsNormalized([0.4], [{ $numberDouble: "0.5" }])).toBe(false);
+  });
+
+  it("treats a real-NaN hole and its read-shaped 'nan' string as equal", () => {
+    // the PATCH echo rebases the source through the read transformer, which
+    // delivers non-finite doubles as strings; the transient holds real NaN
+    expect(
+      equalsNormalized(
+        [
+          [0.4, 0.3],
+          [NaN, NaN],
+        ],
+        [
+          [0.4, 0.3],
+          ["nan", "nan"],
+        ],
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps distinct non-finite values distinct", () => {
+    expect(equalsNormalized("nan", "inf")).toBe(false);
+    expect(equalsNormalized(NaN, "inf")).toBe(false);
   });
 });
