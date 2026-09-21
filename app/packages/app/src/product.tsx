@@ -2,7 +2,6 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { useOperators } from "@fiftyone/operators";
 import { useCurrentDatasetName } from "@fiftyone/state";
 import type React from "react";
 import { useState, useSyncExternalStore } from "react";
@@ -23,9 +22,10 @@ export interface Product {
   readonly useDatasetDisplayName: () => string | null;
   /**
    * Whether the operators an empty screen offers have been discovered. A
-   * product that scopes operators differently answers for its own scoping.
+   * product that scopes operators differently answers for its own scoping;
+   * without one the screen asks for every operator there is.
    */
-  readonly useOperatorsStatus: () => { hasError: boolean; isLoading: boolean };
+  readonly useOperatorsStatus?: () => { hasError: boolean; isLoading: boolean };
 }
 
 const OPEN_SOURCE: Product = {
@@ -33,7 +33,6 @@ const OPEN_SOURCE: Product = {
   title: "FiftyOne",
   enterpriseCta: true,
   useDatasetDisplayName: useCurrentDatasetName,
-  useOperatorsStatus: () => useOperators(true),
 };
 
 interface ProductState {

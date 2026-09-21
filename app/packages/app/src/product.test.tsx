@@ -3,11 +3,6 @@ import type React from "react";
 import { RecoilRoot, useRecoilCallback } from "recoil";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-// Provide just the surface the seam imports from each package.
-vi.mock("@fiftyone/operators", () => ({
-  useOperators: () => ({ hasError: false, isLoading: false }),
-}));
-
 // The state surface the seam reads.
 vi.mock("@fiftyone/state", async () => {
   const { atom, useRecoilValue } =
@@ -36,7 +31,6 @@ const REGISTERED: Product = {
   title: "A Product",
   enterpriseCta: false,
   useDatasetDisplayName: () => "quickstart (v1)",
-  useOperatorsStatus: () => ({ hasError: false, isLoading: false }),
 };
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (

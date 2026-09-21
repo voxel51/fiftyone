@@ -3,7 +3,7 @@
  */
 
 import { Highlighted } from "@voxel51/voodo/code";
-import { OperatorCore } from "@fiftyone/operators";
+import { OperatorCore, useOperators } from "@fiftyone/operators";
 import {
   Align,
   CodeBlock,
@@ -20,6 +20,8 @@ import type { ReactNode } from "react";
 
 import { useProduct } from "../../product";
 import styles from "./Starter.module.css";
+
+const useEveryOperator = () => useOperators(true);
 
 /**
  * What an empty App offers: what is missing, what to do about it in the App,
@@ -42,7 +44,10 @@ export function Layout({
   // than telling someone to install a plugin they already have. Discovery that
   // failed knows of no operators at all, which reads the same way, so the
   // screen drops the offer instead and keeps the code
-  const { hasError, isLoading } = useProduct().useOperatorsStatus();
+  // A product registers before the first render, so the hook this resolves to
+  // is the same one for the life of the screen
+  const useStatus = useProduct().useOperatorsStatus ?? useEveryOperator;
+  const { hasError, isLoading } = useStatus();
 
   if (isLoading) return <LoadingScreen text="Pixelating" />;
 
