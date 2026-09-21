@@ -2,13 +2,15 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { CodeBlock, LoadingScreen } from "@fiftyone/core";
+import { Highlighted } from "@fiftyone/core";
 import { OperatorCore, useOperators } from "@fiftyone/operators";
 import {
   Align,
+  CodeBlock,
   Divider,
   Orientation,
   Spacing,
+  LoadingScreen,
   Stack,
   Text,
   TextColor,
@@ -39,7 +41,7 @@ export function Layout({
   // than telling someone to install a plugin they already have
   const { isLoading } = useOperators(true);
 
-  if (isLoading) return <LoadingScreen />;
+  if (isLoading) return <LoadingScreen text="Pixelating" />;
 
   return (
     <>
@@ -69,7 +71,9 @@ export function Layout({
           <Text color={TextColor.Secondary} className={styles.codeSubtitle}>
             {codeSubtitle}
           </Text>
-          <CodeBlock code={code} />
+          <CodeBlock code={code} lineNumbers>
+            <Highlighted code={code} />
+          </CodeBlock>
         </Stack>
       </Stack>
     </>

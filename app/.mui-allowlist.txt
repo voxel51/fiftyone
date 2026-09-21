@@ -15,9 +15,7 @@ packages/app/src/Renderer.tsx
 packages/components/src/components/ActionToolbar/ActionToolbar.tsx
 packages/components/src/components/AdaptiveMenu/index.tsx
 packages/components/src/components/CenteredStack/index.tsx
-packages/components/src/components/CodeBlock/index.tsx
 packages/components/src/components/Code/index.tsx
-packages/components/src/components/CodeTabs/index.tsx
 packages/components/src/components/ColoredDot/index.tsx
 packages/components/src/components/CopyButton/index.tsx
 packages/components/src/components/Dialog/index.tsx

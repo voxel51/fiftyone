@@ -1,6 +1,9 @@
 import { Box, Typography } from "@mui/material";
 
-import { CodeBlock, useTheme } from "@fiftyone/components";
+import { useTheme } from "@fiftyone/components";
+import { CodeBlock } from "@voxel51/voodo";
+
+import Highlighted from "../Highlighted";
 
 interface Example {
   title: string;
@@ -61,11 +64,9 @@ export const SchemaSearchHelp = () => {
           </Typography>
           {code && (
             <Box paddingTop="0.25rem">
-              <CodeBlock
-                text={code}
-                language="python"
-                showLineNumbers={false}
-              />
+              <CodeBlock code={code}>
+                <Highlighted code={code} />
+              </CodeBlock>
             </Box>
           )}
         </Box>

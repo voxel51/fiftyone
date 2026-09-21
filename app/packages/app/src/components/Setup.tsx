@@ -4,11 +4,12 @@
  * What the App shows with no session to connect to: how to start one.
  */
 
-import { CodeBlock } from "@fiftyone/core";
+import { Highlighted } from "@fiftyone/core";
 import { isNotebook } from "@fiftyone/state";
 import {
   Align,
   Button,
+  CodeBlock,
   Heading,
   HeadingLevel,
   Justify,
@@ -60,7 +61,9 @@ session = fo.launch_app(dataset, port=${port})
       <Text color={TextColor.Secondary}>
         Here&apos;s how to connect to a local session from Python:
       </Text>
-      <CodeBlock code={localSnippet} />
+      <CodeBlock code={localSnippet} lineNumbers>
+        <Highlighted code={localSnippet} />
+      </CodeBlock>
     </Stack>
   );
 };
@@ -91,9 +94,13 @@ fiftyone app connect --destination [<username>@]<hostname> \\
         for more information.
       </Text>
       <Heading level={HeadingLevel.H3}>On your remote machine</Heading>
-      <CodeBlock code={remoteSnippet} />
+      <CodeBlock code={remoteSnippet} lineNumbers>
+        <Highlighted code={remoteSnippet} />
+      </CodeBlock>
       <Heading level={HeadingLevel.H3}>On your local machine</Heading>
-      <CodeBlock code={bashSnippet} language="bash" />
+      <CodeBlock code={bashSnippet} lineNumbers>
+        <Highlighted code={bashSnippet} language="bash" />
+      </CodeBlock>
     </Stack>
   );
 };

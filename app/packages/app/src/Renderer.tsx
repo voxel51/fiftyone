@@ -5,7 +5,6 @@
 import type { Queries } from "./makeRoutes";
 import type { Entry } from "./routing";
 
-import { Pending } from "@fiftyone/core";
 import { subscribe } from "@fiftyone/relay";
 import {
   isModalActive,
@@ -17,6 +16,7 @@ import {
   viewChangePending,
 } from "@fiftyone/state";
 import { useColorScheme } from "@mui/material";
+import { BackgroundColor, Progress, Size } from "@voxel51/voodo";
 import {
   Suspense,
   useCallback,
@@ -113,7 +113,15 @@ const Renderer = () => {
       <ColorScheme key={"color-scheme"} />
       <Modal key={"modal"} />
       <Route key={"route"} route={routeEntry} />
-      {(pending || viewPending) && <Pending key={"pending"} />}
+      {(pending || viewPending) && (
+        <Progress
+          aria-label="Loading"
+          className="absolute top-0 left-0 z-10"
+          key={"pending"}
+          size={Size.Sm}
+          trackColor={BackgroundColor.Transparent}
+        />
+      )}
     </Suspense>
   );
 };

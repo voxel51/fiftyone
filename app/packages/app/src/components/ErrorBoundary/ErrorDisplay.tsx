@@ -3,12 +3,12 @@
  */
 
 import { scrollable } from "@fiftyone/components";
-import { CodeBlock } from "@fiftyone/core";
 import { describeAppError } from "./describeAppError";
 import {
   Align,
   Button,
   CloseIcon,
+  CodeBlock,
   Heading,
   HeadingLevel,
   Justify,
@@ -82,7 +82,7 @@ export default function ErrorDisplay({
             spacing={Spacing.Xs}
           >
             {label && <Text color={TextColor.Secondary}>{label}</Text>}
-            {content && <CodeBlock code={content} language="javascript" />}
+            {content && <CodeBlock code={content} />}
           </Stack>
         ))}
       </Stack>

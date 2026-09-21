@@ -12,7 +12,7 @@
  * @module Pixelating
  */
 
-import { LoadingScreen } from "@fiftyone/core";
+import { LoadingScreen } from "@voxel51/voodo";
 import React, { useEffect } from "react";
 
 /**
@@ -37,7 +37,7 @@ const Pixelating = React.memo(() => {
     document.dispatchEvent(new GlobalLoadingScreenEvent());
   }, []);
 
-  return <LoadingScreen />;
+  return <LoadingScreen text="Pixelating" />;
 });
 
 Pixelating.displayName = "Pixelating";
