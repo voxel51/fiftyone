@@ -54,7 +54,7 @@ const publish = (): void => {
  */
 export const registerProduct = (product: Product): (() => void) => {
   if (state.product === product) return () => undefined;
-  if (state.product !== OPEN_SOURCE && state.product.id !== product.id) {
+  if (state.product.id !== OPEN_SOURCE.id && state.product.id !== product.id) {
     throw new Error(`A product is already registered: ${state.product.id}`);
   }
 

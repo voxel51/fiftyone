@@ -16,7 +16,7 @@ import { useRecoilValue } from "recoil";
 import { useDatasetDisplayName } from "../product";
 import styles from "./DatasetSelector.module.css";
 
-type UseSearch = (search: string) => { values?: string[]; total?: number };
+type UseSearch = (search: string) => { values: string[]; total?: number };
 
 /**
  * Dataset typeahead on voodo's `Combobox`. The option list is driven by the
