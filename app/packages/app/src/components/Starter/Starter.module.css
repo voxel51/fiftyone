@@ -18,14 +18,12 @@
   padding-bottom: 0.5rem;
 }
 
-.proseLink,
-.proseButton {
+.prose {
   color: inherit;
   text-decoration: underline;
 }
 
-.proseLink:hover,
-.proseButton:hover {
+.prose:hover {
   text-decoration: none;
 }
 

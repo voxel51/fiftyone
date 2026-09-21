@@ -16,4 +16,3 @@ export { default as Snackbar } from "./Snackbar";
 export { default as CodeBlock } from "./CodeBlock";
 export { default as LoadingScreen } from "./LoadingScreen";
 export { default as Pending } from "./Pending";
-export * from "./Starter";
