@@ -92,4 +92,11 @@ describe("describeAppError", () => {
       { label: "Trace", content: "at one\nat two" },
     ]);
   });
+
+  it("describes a thrown value that is not an error", () => {
+    const described = describeAppError(undefined);
+
+    expect(described.title).toBe("Error: undefined");
+    expect(described.notFound).toBe(false);
+  });
 });

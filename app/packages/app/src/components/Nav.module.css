@@ -4,13 +4,12 @@
   min-width: 0;
 }
 
-/* Where the view bar's stages row lands: the window's width, inset to the
-   header's gutters. Closed, it holds no row and takes no space. */
+/* Where the view bar's stages row lands: the window's width, inset by the
+   header row that holds it. Closed, it holds no row and takes no space. */
 .stagesHost {
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  padding: 8px 0.75rem 0;
 }
 
 .stagesHost:empty {

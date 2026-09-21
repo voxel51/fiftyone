@@ -67,7 +67,11 @@ function SnackbarErrors() {
 
   if (!snackErrors.length) return null;
 
-  return <Notice dismiss={() => setSnackErrors([])}>{snackErrors}</Notice>;
+  return (
+    <Notice key={snackErrors.join("\n")} dismiss={() => setSnackErrors([])}>
+      {snackErrors}
+    </Notice>
+  );
 }
 
 function SnackbarLinks() {
@@ -76,7 +80,7 @@ function SnackbarLinks() {
   if (!snackLink) return null;
 
   return (
-    <Notice dismiss={() => setSnackLink(null)}>
+    <Notice key={snackLink.link} dismiss={() => setSnackLink(null)}>
       <a
         className={styles.link}
         href={snackLink.link}
@@ -95,7 +99,11 @@ function SnackbarMessage() {
 
   if (!message) return null;
 
-  return <Notice dismiss={() => setSnackMessage(null)}>{message}</Notice>;
+  return (
+    <Notice key={message} dismiss={() => setSnackMessage(null)}>
+      {message}
+    </Notice>
+  );
 }
 
 export default function Snackbar() {

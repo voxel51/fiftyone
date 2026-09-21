@@ -1,5 +1,4 @@
 import {
-  AppError,
   GraphQLError,
   NetworkError,
   NotFoundError,
@@ -27,7 +26,9 @@ const trim = (content: string): string => content.trim().replace(/\n+/g, "\n");
  * Turns an error into what a display needs, so every surface that reports one
  * reads the same taxonomy rather than re-deriving it.
  */
-export function describeAppError(error: AppError | Error): AppErrorDescription {
+export function describeAppError(raised: unknown): AppErrorDescription {
+  // A component may throw anything, and the boundary hands it over as thrown
+  const error = raised instanceof Error ? raised : new Error(String(raised));
   const title = error.message ? `${error.name}: ${error.message}` : error.name;
 
   if (error instanceof NotFoundError) {
