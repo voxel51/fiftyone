@@ -38,14 +38,16 @@ export function Layout({
   title: string;
 }) {
   // The operators decide what the subtitle offers, so the screen waits rather
-  // than telling someone to install a plugin they already have
-  const { isLoading } = useOperators(true);
+  // than telling someone to install a plugin they already have. Discovery that
+  // failed knows of no operators at all, which reads the same way, so the
+  // screen drops the offer instead and keeps the code
+  const { hasError, isLoading } = useOperators(true);
 
   if (isLoading) return <LoadingScreen text="Pixelating" />;
 
   return (
     <>
-      <OperatorCore />
+      {!hasError && <OperatorCore />}
       <Stack
         orientation={Orientation.Column}
         align={Align.Center}
@@ -58,7 +60,7 @@ export function Layout({
           spacing={Spacing.Xs}
         >
           <Text variant={TextVariant.Lg}>{title}</Text>
-          {subtitle}
+          {!hasError && subtitle}
         </Stack>
         <Divider className={styles.divider} />
         <Stack

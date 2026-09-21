@@ -80,7 +80,10 @@ function SnackbarLinks() {
   if (!snackLink) return null;
 
   return (
-    <Notice key={snackLink.link} dismiss={() => setSnackLink(null)}>
+    <Notice
+      key={`${snackLink.link}\n${snackLink.message}`}
+      dismiss={() => setSnackLink(null)}
+    >
       <a
         className={styles.link}
         href={snackLink.link}
