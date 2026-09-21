@@ -42,7 +42,6 @@ import torchvision
 from torchvision.models.feature_extraction import create_feature_extractor
 from torchvision.transforms import functional as F
 
-
 logger = logging.getLogger(__name__)
 
 

@@ -20,7 +20,6 @@ from fiftyone.core.utils import create_response
 from fiftyone.server import utils
 from fiftyone.server.exceptions import DbVersionMismatchError
 
-
 _BODY_METHOD_NAMES = {"post", "put", "patch"}
 
 

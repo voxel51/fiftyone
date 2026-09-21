@@ -13,7 +13,6 @@ import strawberry as gql
 
 from fiftyone.core.collections import SampleCollection
 
-
 _FRAMES_SLICE = len(SampleCollection._FRAMES_PREFIX)
 _WILDCARD_PROJECTION = "wildcardProjection"
 

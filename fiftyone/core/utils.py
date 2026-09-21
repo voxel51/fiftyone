@@ -52,7 +52,6 @@ from concurrent.futures import ThreadPoolExecutor
 
 import asyncio
 
-
 try:
     import pprintpp as _pprint
     from mongoengine.base.datastructures import BaseDict, BaseList
@@ -80,7 +79,6 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.context as foc
-
 
 logger = logging.getLogger(__name__)
 

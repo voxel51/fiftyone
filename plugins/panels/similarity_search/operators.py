@@ -16,7 +16,7 @@ import fiftyone.operators as foo
 import fiftyone.operators.types as types
 
 from .constants import STORE_NAME, RunStatus
-from .run_manager import RunManager
+from .run_manager import RunManager, build_result_view
 from . import _has_manage_permission
 
 logger = logging.getLogger(__name__)
@@ -120,7 +120,26 @@ class SimilaritySearchOperator(foo.Operator):
                 if is_snapshot or not can_edit:
                     dist_field = None
 
-            view = ctx.target_view(require_flat=True)
+            # A search from an unmodified search-result view replaces the
+            # previous search rather than refining it: target the prior
+            # run's own base, so "dog" typed over the cat results searches
+            # what the cat search searched
+            view = None
+            replace_run_id = ctx.params.get("replace_run_id")
+            if replace_run_id:
+                prev = manager.get_run(replace_run_id)
+                base_stages = prev.get("base_view") if prev else None
+                if base_stages is not None:
+                    from fiftyone.core.view import DatasetView
+
+                    view = DatasetView._build(dataset, base_stages)
+
+            if view is None:
+                view = ctx.target_view(require_flat=True)
+
+            # Recorded flat (pre-patches), so a replacing search of either
+            # kind can rebuild it
+            run_data["base_view"] = view._serialize(include_uuids=False)
 
             ctx.set_progress(0.2, label="Preparing query...")
 
@@ -194,6 +213,14 @@ class SimilaritySearchOperator(foo.Operator):
             run_data["result_count"] = result_count
             run_data["end_time"] = datetime.now(timezone.utc).isoformat()
             manager.set_run(run_id, run_data)
+
+            # Surfaces without the panel (the view bar's typed search) ask
+            # the run to apply itself: the same view the panel's Apply
+            # builds, minus the panel state it cannot touch
+            if ctx.params.get("apply_results"):
+                ctx.ops.clear_selected_samples()
+                ctx.ops.clear_selected_labels()
+                ctx.ops.set_view(build_result_view(ctx, run_data))
 
             ctx.set_progress(1.0, label="Done")
 

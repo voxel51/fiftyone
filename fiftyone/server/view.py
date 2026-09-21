@@ -26,7 +26,6 @@ import fiftyone.core.view as fov
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
 from fiftyone.server.scalars import BSONArray, JSON
 
-
 _LABEL_TAGS = "_label_tags"
 _TEMPORAL_TAGS = "_temporal_tags"
 

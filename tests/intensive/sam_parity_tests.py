@@ -2212,7 +2212,8 @@ class TestSAM3VideoVisualParity(unittest.TestCase):
         self, sample, propagation_direction, prompt_frame_0based
     ):
         """Run visual_predictor directly with box prompts from ``prompt_frame_0based``
-        using the specified propagation direction, mirroring FO's _propagate_visual."""
+        using the specified propagation direction, mirroring FO's _propagate_visual.
+        """
         w = sample.metadata.frame_width
         h = sample.metadata.frame_height
 

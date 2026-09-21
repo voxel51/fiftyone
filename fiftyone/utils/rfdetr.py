@@ -91,9 +91,7 @@ def _normalize_rfdetr_device(device):
     return device
 
 
-def _load_rfdetr_model(
-    model_type: str, device: Optional[str] = None
-) -> Any:
+def _load_rfdetr_model(model_type: str, device: Optional[str] = None) -> Any:
     """Instantiate an RF-DETR model by class name.
 
     The rfdetr package downloads pretrained weights automatically on first
@@ -197,9 +195,7 @@ def _make_frame_detection(
             (x2 - x1) / width,
             (y2 - y1) / height,
         ],
-        "confidence": (
-            float(confidence) if confidence is not None else None
-        ),
+        "confidence": (float(confidence) if confidence is not None else None),
     }
 
     if mask is not None:

@@ -6,6 +6,7 @@ Utilities for working with datasets in
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import defaultdict
 from copy import copy, deepcopy
 from datetime import datetime
@@ -42,7 +43,6 @@ import fiftyone.core.utils as fou
 import fiftyone.utils.annotations as foua
 import fiftyone.utils.data as foud
 import fiftyone.utils.video as fouv
-
 
 logger = logging.getLogger(__name__)
 

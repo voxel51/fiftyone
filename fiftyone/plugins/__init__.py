@@ -5,6 +5,7 @@ FiftyOne plugins.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import types
 
 from .core import (

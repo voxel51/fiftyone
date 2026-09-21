@@ -5,6 +5,7 @@ FiftyOne operator types.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import types
 
 from ._types.pipeline import Pipeline, PipelineRunInfo, PipelineStage

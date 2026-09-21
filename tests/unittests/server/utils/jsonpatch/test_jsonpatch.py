@@ -242,8 +242,13 @@ class TestApplyInstanceId:
 
         result, errors = jsonpatch.apply(
             detections,
-            [{"op": "replace", "path": "/detections/0/instance/_id",
-              "value": new_id}],
+            [
+                {
+                    "op": "replace",
+                    "path": "/detections/0/instance/_id",
+                    "value": new_id,
+                }
+            ],
         )
 
         assert errors == []
@@ -261,10 +266,16 @@ class TestApplyInstanceId:
         result, errors = jsonpatch.apply(
             detections,
             [
-                {"op": "replace", "path": "/detections/0/_id",
-                 "value": str(det1.id)},
-                {"op": "replace", "path": "/detections/0/instance/_id",
-                 "value": str(det1.instance.id)},
+                {
+                    "op": "replace",
+                    "path": "/detections/0/_id",
+                    "value": str(det1.id),
+                },
+                {
+                    "op": "replace",
+                    "path": "/detections/0/instance/_id",
+                    "value": str(det1.instance.id),
+                },
                 {"op": "remove", "path": "/detections/1"},
             ],
         )

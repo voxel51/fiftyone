@@ -5,6 +5,7 @@ Dataset runs framework.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from copy import copy, deepcopy
 import datetime
 import logging
@@ -18,7 +19,6 @@ import fiftyone.constants as foc
 from fiftyone.core.config import Config, Configurable
 from fiftyone.core.odm import patch_runs
 from fiftyone.core.odm.runs import RunDocument
-
 
 logger = logging.getLogger(__name__)
 

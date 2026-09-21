@@ -5,6 +5,7 @@ FiftyOne env secrets provider
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import re
 
 from ..providers.iprovider import ISecretProvider

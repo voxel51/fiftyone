@@ -84,6 +84,8 @@ export interface PersistedModalLayout {
   sceneUpAxis?: Scene3dUpAxis;
   /** Durable 3D conventions, isolated by selected media field. */
   cameraPreferences?: Record<string, PersistedCameraPreferences>;
+  /** Conventions for a standalone source with no selected media field. */
+  defaultCameraPreferences?: PersistedCameraPreferences;
   /** Left sidebar width in px; the shell clamps it on restore. */
   sidebarWidthPx?: number;
   /** Episode data-sampling cadence. Dataset/source-scoped only. */
@@ -155,6 +157,7 @@ const FALLBACK_OMITTED_FIELDS = [
   "logSettings",
   "mapSettings",
   "cameraPreferences",
+  "defaultCameraPreferences",
   "extensionSettings",
   "plotSeries",
   "rawStreams",
@@ -182,7 +185,7 @@ const modalLayoutStore = createTimestampLruScopedStore<
   },
   key: STORAGE_KEY,
   maxScopes: MAX_DATASET_ENTRIES,
-  sanitizeScope: sanitizeEntry,
+  sanitizeScope: sanitizeModalLayout,
   scopeField: "byDataset",
   serializeScope: (layout) => ({ ...layout }),
   storage: () => globalThis.localStorage,
@@ -206,20 +209,26 @@ export function isValidMosaicLayout(node: unknown): node is MosaicNode<string> {
 }
 
 /** Field-by-field sanitization of one persisted entry. */
-function sanitizeEntry(raw: unknown): PersistedModalLayout | undefined {
+export function sanitizeModalLayout(
+  raw: unknown,
+): PersistedModalLayout | undefined {
   if (typeof raw !== "object" || raw === null) return undefined;
   const candidate = raw as Record<string, unknown>;
   return {
     cameraPreferences: sanitizeCameraPreferences(candidate.cameraPreferences),
+    defaultCameraPreferences: sanitizeCameraPreference(
+      candidate.defaultCameraPreferences,
+    ),
     extensionSettings: sanitizeExtensionSettings(candidate.extensionSettings),
     expandedTileId: sanitizeTileId(candidate.expandedTileId),
     leftSidebarOpen:
       typeof candidate.leftSidebarOpen === "boolean"
         ? candidate.leftSidebarOpen
         : undefined,
-    layout: isValidMosaicLayout(candidate.layout)
-      ? candidate.layout
-      : undefined,
+    layout:
+      candidate.layout === null || isValidMosaicLayout(candidate.layout)
+        ? candidate.layout
+        : undefined,
     logSettings: sanitizeLogSettings(candidate.logSettings),
     mapSettings: sanitizeMapSettings(candidate.mapSettings),
     plotSeries: sanitizePlotSeries(candidate.plotSeries),
@@ -315,33 +324,36 @@ function sanitizeCameraPreferences(
     if (Object.keys(result).length >= MAX_CAMERA_PREFERENCE_FIELDS) break;
     const scope = rawScope.trim();
     if (!scope || scope.length > MAX_CAMERA_SCOPE_LENGTH) continue;
-    if (typeof rawPreferences !== "object" || rawPreferences === null) {
-      continue;
-    }
-
-    const candidate = rawPreferences as Record<string, unknown>;
-    const defaultTrackingMode = normalizeTrackingMode(
-      candidate.defaultTrackingMode,
-    );
-    const preferredCameraTargetFrameId = sanitizeFrameId(
-      candidate.preferredCameraTargetFrameId,
-    );
-    const preferredWorldFrameId = sanitizeFrameId(
-      candidate.preferredWorldFrameId,
-    );
-    const sceneUpAxis = normalizeScene3dUpAxis(candidate.sceneUpAxis);
-    const preferences: PersistedCameraPreferences = {
-      ...(defaultTrackingMode ? { defaultTrackingMode } : {}),
-      ...(preferredCameraTargetFrameId ? { preferredCameraTargetFrameId } : {}),
-      ...(preferredWorldFrameId ? { preferredWorldFrameId } : {}),
-      ...(sceneUpAxis ? { sceneUpAxis } : {}),
-    };
-    if (Object.keys(preferences).length > 0) {
-      result[scope] = preferences;
-    }
+    const preferences = sanitizeCameraPreference(rawPreferences);
+    if (preferences) result[scope] = preferences;
   }
 
   return Object.keys(result).length > 0 ? result : undefined;
+}
+
+function sanitizeCameraPreference(
+  value: unknown,
+): PersistedCameraPreferences | undefined {
+  if (typeof value !== "object" || value === null || Array.isArray(value))
+    return undefined;
+  const candidate = value as Record<string, unknown>;
+  const defaultTrackingMode = normalizeTrackingMode(
+    candidate.defaultTrackingMode,
+  );
+  const preferredCameraTargetFrameId = sanitizeFrameId(
+    candidate.preferredCameraTargetFrameId,
+  );
+  const preferredWorldFrameId = sanitizeFrameId(
+    candidate.preferredWorldFrameId,
+  );
+  const sceneUpAxis = normalizeScene3dUpAxis(candidate.sceneUpAxis);
+  const preferences: PersistedCameraPreferences = {
+    ...(defaultTrackingMode ? { defaultTrackingMode } : {}),
+    ...(preferredCameraTargetFrameId ? { preferredCameraTargetFrameId } : {}),
+    ...(preferredWorldFrameId ? { preferredWorldFrameId } : {}),
+    ...(sceneUpAxis ? { sceneUpAxis } : {}),
+  };
+  return Object.keys(preferences).length > 0 ? preferences : undefined;
 }
 
 function sanitizeFrameId(value: unknown): string | undefined {
@@ -662,26 +674,43 @@ export function writeModalLayout(
   );
 }
 
-/** Reads durable 3D conventions for one selected media field. */
+/** Reads durable 3D conventions for a media field or standalone source. */
 export function readCameraPreferences(
   datasetKey: string | undefined,
   mediaField: string | undefined,
 ): PersistedCameraPreferences | null {
   const field = mediaField?.trim();
-  if (!datasetKey || !field) return null;
-  return readModalLayout(datasetKey)?.cameraPreferences?.[field] ?? null;
+  if (!datasetKey) return null;
+  const layout = readModalLayout(datasetKey);
+  return (
+    (field
+      ? layout?.cameraPreferences?.[field]
+      : layout?.defaultCameraPreferences) ?? null
+  );
 }
 
-/** Merges one media field's durable 3D conventions into dataset storage. */
+/** Merges durable 3D conventions without affecting sibling media fields. */
 export function writeCameraPreferences(
   patch: Partial<PersistedCameraPreferences>,
   datasetKey: string | undefined,
   mediaField: string | undefined,
 ): void {
   const field = mediaField?.trim();
-  if (!datasetKey || !field) return;
+  if (!datasetKey) return;
 
   const layout = readModalLayout(datasetKey);
+  if (!field) {
+    writeModalLayout(
+      {
+        defaultCameraPreferences: {
+          ...layout?.defaultCameraPreferences,
+          ...patch,
+        },
+      },
+      datasetKey,
+    );
+    return;
+  }
   const currentByField = layout?.cameraPreferences ?? {};
   const retainedEntries = Object.entries(currentByField)
     .filter(([key]) => key !== field)
@@ -710,7 +739,7 @@ function stripDatasetScopedLayoutFields(
 function sanitizedFallbackLayout(
   raw: unknown,
 ): PersistedModalLayout | undefined {
-  const entry = sanitizeEntry(raw);
+  const entry = sanitizeModalLayout(raw);
   if (!entry) {
     return undefined;
   }
@@ -735,4 +764,12 @@ export function tileTypeFromId(tileId: string): string | null {
   }
 
   return tileId.slice(0, finalDashIndex);
+}
+
+/** Replaces one local layout after the previous viewer has flushed its writes. */
+export function replaceModalLayout(
+  layout: PersistedModalLayout,
+  datasetKey: string,
+): void {
+  modalLayoutStore.updateScope(datasetKey, () => layout);
 }

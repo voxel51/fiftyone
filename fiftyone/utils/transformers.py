@@ -21,14 +21,11 @@ from fiftyone.core.models import EmbeddingsMixin, PromptMixin
 from fiftyone.zoo.models import HasZooModel
 import fiftyone.utils.torch as fout
 
-
 fou.ensure_torch()
 import torch
 
-
 fou.ensure_package("transformers")
 import transformers
-
 
 logger = logging.getLogger(__name__)
 
@@ -674,9 +671,9 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
         if config.entrypoint_args is None:
             config.entrypoint_args = {}
         if not config.entrypoint_args.get("pretrained_model_name_or_path"):
-            config.entrypoint_args[
-                "pretrained_model_name_or_path"
-            ] = config.name_or_path
+            config.entrypoint_args["pretrained_model_name_or_path"] = (
+                config.name_or_path
+            )
 
         config.entrypoint_args["cache_dir"] = fo.config.model_zoo_dir
 
@@ -1657,9 +1654,11 @@ class _HFTransformsHandler:
             elif self.text:
                 res = self.processor(
                     images=args,
-                    text=self.text
-                    if not self.text_per_image
-                    else [self.text for _ in range(num_images)],
+                    text=(
+                        self.text
+                        if not self.text_per_image
+                        else [self.text for _ in range(num_images)]
+                    ),
                     **self.kwargs,
                 )
             else:

@@ -3,7 +3,7 @@
 numpy
 pydicom>=2.2.0
 shapely>=2.1.2
-tensorflow; python_version < "3.14"
-tensorflow-datasets; python_version < "3.14"
+tensorflow
+tensorflow-datasets
 torch
 torchvision
