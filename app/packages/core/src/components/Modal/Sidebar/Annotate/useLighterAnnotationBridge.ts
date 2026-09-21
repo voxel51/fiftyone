@@ -4,6 +4,7 @@ import {
 } from "@fiftyone/annotation";
 import {
   useCurrentDatasetId,
+  useGetKeypointSkeleton,
   useIsVideo,
   useModalSample,
 } from "@fiftyone/state";
@@ -29,6 +30,8 @@ import { useSyncOverlayReadOnly } from "./useSyncOverlayReadOnly";
  */
 export const useLighterAnnotationBridge = (): void => {
   const engine = useAnnotationEngine();
+  // skeleton edges drive keypoint connections; stable across renders
+  const getSkeleton = useGetKeypointSkeleton();
   const modalSample = useModalSample();
   const active = useAtomValue(visibleLabelSchemas);
   const interactionPolicy = useLighterInteractionPolicy();
@@ -97,6 +100,7 @@ export const useLighterAnnotationBridge = (): void => {
     paths,
     resolveMediaUrl,
     interactionPolicy,
+    getSkeleton,
     enabled: !isVideo,
   });
 
