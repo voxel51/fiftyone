@@ -8,6 +8,7 @@ import {
   useAnnotationEngine,
   useLighterEngineBridge,
 } from "@fiftyone/annotation";
+import { useGetKeypointSkeleton } from "@fiftyone/state";
 import { useCallback } from "react";
 import { useDatasetId, useVisibleLabelSchemas } from "../state/accessors";
 import { useCurrentFrameGetter } from "../state/useCurrentFrame";
@@ -37,6 +38,8 @@ export const useVideoLighterEngineBridge = (
   pathsOverride?: ReadonlySet<string>,
 ): void => {
   const engine = useAnnotationEngine();
+  // skeleton edges drive keypoint connections; stable across renders
+  const getSkeleton = useGetKeypointSkeleton();
   const sample = useActiveSampleId();
   const dataset = useDatasetId();
 
@@ -80,5 +83,6 @@ export const useVideoLighterEngineBridge = (
     frameOf,
     onEstablishCommit: stashEstablishKey,
     onEditCommit,
+    getSkeleton,
   });
 };

@@ -149,7 +149,18 @@ export function LeRobotGridHoverVideo({
       if (posterCaptured || !capturePoster) return true;
       const width = element.videoWidth;
       const height = element.videoHeight;
-      if (width <= 0 || height <= 0 || element.readyState < 2) return false;
+      // `currentTime` reports the SEEK TARGET the moment it is assigned,
+      // while `readyState` can still describe the position being left. An
+      // episode opens far into a shared file, so capturing before the seek
+      // lands paints a frame that has not been decoded: a black tile.
+      if (
+        width <= 0 ||
+        height <= 0 ||
+        element.readyState < 2 ||
+        element.seeking
+      ) {
+        return false;
+      }
       const context = poster.getContext("2d");
       if (!context) throw new Error("Unable to create native video poster");
       poster.width = width;

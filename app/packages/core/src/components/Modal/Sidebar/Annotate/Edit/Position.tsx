@@ -15,13 +15,13 @@ import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
 import { useAnnotationContext } from "./useAnnotationContext";
 
-const createInput = (name: string, readOnly?: boolean) => {
+const createInput = (name: string, readOnly?: boolean, label = name) => {
   return {
     [name]: {
       type: "number",
       view: {
         name: "View",
-        label: name,
+        label,
         component: "FieldView",
         readOnly,
       },
@@ -45,6 +45,8 @@ const createStack = () => {
 interface Coordinates {
   position: { x?: number; y?: number };
   dimensions: { width?: number; height?: number };
+  // radians, matching the stored `rotation` attribute
+  rotation: { rotation?: number };
 }
 
 export interface PositionProps {
@@ -55,6 +57,7 @@ export default function Position({ readOnly = false }: PositionProps) {
   const [state, setState] = useState<Coordinates>({
     position: {},
     dimensions: {},
+    rotation: {},
   });
 
   const { selected } = useAnnotationContext();
@@ -85,6 +88,12 @@ export default function Position({ readOnly = false }: PositionProps) {
     ref ? (e.getLabel(ref)?.bounding_box as number[] | undefined) : undefined,
   );
 
+  // scalar 2D rotation in radians; a 3D `[x, y, z]` list reads as undefined
+  const committedRotation = useEngineSelector(engine, (e) => {
+    const rotation = ref ? e.getLabel(ref)?.rotation : undefined;
+    return typeof rotation === "number" ? rotation : undefined;
+  });
+
   useEffect(() => {
     if (!committedBounds || committedBounds.length !== 4) {
       return;
@@ -94,8 +103,9 @@ export default function Position({ readOnly = false }: PositionProps) {
     setState({
       position: { x, y },
       dimensions: { width, height },
+      rotation: { rotation: committedRotation ?? 0 },
     });
-  }, [committedBounds]);
+  }, [committedBounds, committedRotation]);
 
   // LIVE geometry from the engine — the 2D scene publishes mid-drag relative
   // bounds; we render them directly, never touching Lighter. Render-only: the
@@ -118,7 +128,12 @@ export default function Position({ readOnly = false }: PositionProps) {
     }
 
     const { x, y, width, height } = live.bounds;
-    setState({ position: { x, y }, dimensions: { width, height } });
+    const rotation = live.rotation;
+    setState((prev) => ({
+      position: { x, y },
+      dimensions: { width, height },
+      rotation: typeof rotation === "number" ? { rotation } : prev.rotation,
+    }));
   }, [live]);
 
   const schema: SchemaType = useMemo(
@@ -142,6 +157,13 @@ export default function Position({ readOnly = false }: PositionProps) {
           properties: {
             ...createInput("width", readOnly),
             ...createInput("height", readOnly),
+          },
+        },
+        rotation: {
+          type: "object",
+          view: createStack(),
+          properties: {
+            ...createInput("rotation", readOnly, "rotation (radians)"),
           },
         },
       },
@@ -196,11 +218,15 @@ export default function Position({ readOnly = false }: PositionProps) {
             return;
           }
 
+          const rotation = input.rotation?.rotation;
+
           // immediate display of the typed value
-          setState({
+          setState((prev) => ({
             position: { x: merged.x, y: merged.y },
             dimensions: { width: merged.width, height: merged.height },
-          });
+            rotation:
+              typeof rotation === "number" ? { rotation } : prev.rotation,
+          }));
 
           // commit through the engine: it persists (autosave diffs the engine)
           // and the Lighter bridge read-half re-homes the overlay. A bare
@@ -209,8 +235,21 @@ export default function Position({ readOnly = false }: PositionProps) {
           // double-counts the edit on the shared command stack).
           const next = [merged.x, merged.y, merged.width, merged.height];
 
+          // write `rotation` only when it carries signal — a nonzero value, or
+          // zeroing out a stored scalar. Never stamp 0 onto boxes that were
+          // never rotated, and never replace a 3D `[x, y, z]` rotation list
+          // with a scalar.
+          const storedRotation = engine.getLabel(ref)?.rotation;
+          const rotationData =
+            !Array.isArray(storedRotation) &&
+            typeof rotation === "number" &&
+            (rotation !== 0 || typeof storedRotation === "number")
+              ? { rotation }
+              : {};
+
           engine.updateLabel(ref, {
             bounding_box: next,
+            ...rotationData,
           } as Partial<LabelData>);
         }}
       />

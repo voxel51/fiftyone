@@ -1,0 +1,117 @@
+/* Every ancestor of the truncating text has to be allowed to shrink, or the
+   row grows to fit the text instead of clipping it */
+.header {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.ellipsis {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editor {
+  position: relative;
+}
+
+/* The box below swallows no events while disabled, so the cursor that says so
+   lives here — the same one every voodo control shows */
+.notAllowed {
+  cursor: not-allowed;
+}
+
+.frame {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--color-content-border-default);
+  border-radius: var(--radius-sm);
+  /* Monaco's loading state paints nothing, so the box holds the editor's
+     surface color from the first frame */
+  background: var(--color-content-bg-card-1);
+}
+
+.frameInvalid {
+  border-color: var(--color-content-border-error);
+}
+
+/* Disabled means disabled: no clicks, no caret, and the same dimming every
+   other locked control wears */
+.frameDisabled {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.placeholder {
+  position: absolute;
+  top: 7px;
+  left: 10px;
+  /* The click belongs to the editor underneath */
+  pointer-events: none;
+}
+
+.list {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  z-index: 10001;
+  margin-top: 4px;
+  max-height: 240px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  border: 1px solid var(--color-content-border-default);
+  border-radius: var(--radius-sm);
+  background: var(--color-content-bg-card-1);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 45%);
+}
+
+/* A calendar needs more room than a column of one-line rows */
+.listWithDate {
+  max-height: 320px;
+}
+
+.datePicker {
+  padding: 6px;
+}
+
+.row {
+  display: block;
+  padding: 3px 6px;
+  border-radius: var(--radius-xs);
+}
+
+.rowActive {
+  background: var(--color-content-bg-selected);
+}
+
+/* Two classes, so the cursor wins over the affordance `Clickable` carries */
+.row.rowUnavailable {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.signature {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.noShrink {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.shrinkable {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.summary {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
