@@ -1,7 +1,7 @@
 import { useAnalyticsInfo } from "@fiftyone/analytics";
 import { Markdown } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { debounce } from "lodash";
+import { debounce, omit } from "lodash";
 import React, {
   useCallback,
   useEffect,
@@ -23,6 +23,7 @@ import {
 import {
   BROWSER_CONTROL_KEYS,
   RESOLVE_INPUT_VALIDATION_TTL,
+  RESOLVE_LOOP_WINDOW_MS,
   RESOLVE_TYPE_TTL,
 } from "./constants";
 import {
@@ -502,12 +503,23 @@ export const useOperatorPrompt = () => {
     return inputFields?.view;
   }, [inputFields]);
   const params = ctx.params;
+  // A field declaring `resolve_on_change: false` is a plain value the form
+  // never needs the server to react to, so it is left out of the key that
+  // re-resolves a dynamic operator
+  const inertPaths = useMemo(
+    () => collectInertPaths(resolvedIO.input?.type),
+    [resolvedIO.input],
+  );
   const serializedParams = useMemo(() => {
-    return JSON.stringify(params);
-  }, [params]);
+    return JSON.stringify(omit(params, inertPaths));
+  }, [params, inertPaths]);
+  // Compared against `serializedParams` to tell a settled form from one
+  // still resolving, so it must drop the same inert paths
   const serializedResolvedParams = useMemo(() => {
-    return JSON.stringify(resolvedParams);
-  }, [resolvedParams]);
+    return JSON.stringify(
+      resolvedParams ? omit(resolvedParams, inertPaths) : resolvedParams,
+    );
+  }, [resolvedParams, inertPaths]);
   const liteValuesRef = useRef({});
   const promptId = promptingOperator.id;
 
@@ -582,13 +594,50 @@ export const useOperatorPrompt = () => {
     [],
   );
 
+  const recentParams = useRef<{ key: string; at: number }[]>([]);
   useEffect(() => {
     if (executor.isExecuting || executor.hasExecuted) return;
+    // A form whose answer flips its own inputs back and forth requests
+    // forever. Four alternating resolves inside the window is that loop; a
+    // person toggling a field is far slower
+    const recent = recentParams.current;
+    const now = Date.now();
+    if (
+      recent.length >= 3 &&
+      recent[recent.length - 1].key === recent[recent.length - 3].key &&
+      serializedParams === recent[recent.length - 2].key &&
+      now - recent[recent.length - 3].at < RESOLVE_LOOP_WINDOW_MS
+    ) {
+      console.warn(
+        `[operators] ${operatorName} keeps resolving to alternating inputs; ` +
+          "not resolving again until the inputs change",
+      );
+      return;
+    }
+    recentParams.current = [
+      ...recent.slice(-3),
+      { key: serializedParams, at: now },
+    ];
     resolveInputFields();
     // re-resolve inputs only when params change; keying on the resolver would
     // re-fire every render because hooks is rebuilt each time
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serializedParams, executor.isExecuting]);
+  // Validation only runs inside a resolve, and a change to an inert field
+  // never resolves, so its errors are checked here against the last resolved
+  // inputs
+  const serializedAllParams = useMemo(() => JSON.stringify(params), [params]);
+  useEffect(() => {
+    if (
+      inertPaths.length === 0 ||
+      !resolvedIO.input ||
+      serializedParams !== serializedResolvedParams
+    ) {
+      return;
+    }
+    validateThrottled(ctx, resolvedIO.input);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serializedAllParams]);
   const resolveOutputFields = useCallback(async () => {
     ctx.hooks = hooks;
     const result = new OperatorResult(operator, executor.result, null, null);
@@ -824,6 +873,12 @@ export const availableOperatorsRefreshCount = atom({
 
 export const operatorsInitializedAtom = atom({
   key: "operatorsInitializedAtom",
+  default: false,
+});
+
+/** The server listing failed, so the registry will not fill in on its own. */
+export const operatorsLoadFailedAtom = atom({
+  key: "operatorsLoadFailedAtom",
   default: false,
 });
 
@@ -1388,3 +1443,28 @@ export const useViewTargetGroupConstraints = () => {
     slice,
   };
 };
+
+/** Param paths whose field is marked `resolve_on_change: false`, nested
+ * objects included, as `omit` paths. */
+function collectInertPaths(
+  type: unknown,
+  prefix = "",
+  out: string[] = [],
+): string[] {
+  const properties = (type as { properties?: unknown } | null)?.properties;
+  if (!(properties instanceof Map)) return out;
+  for (const [name, property] of properties) {
+    const path = prefix ? `${prefix}.${name}` : name;
+    // The resolved schema keeps each view as raw JSON, so the flag sits on
+    // the view itself; a constructed View keeps it under `options`
+    const view = property?.view;
+    if (
+      view?.resolve_on_change === false ||
+      view?.options?.resolve_on_change === false
+    ) {
+      out.push(path);
+    }
+    collectInertPaths(property?.type, path, out);
+  }
+  return out;
+}

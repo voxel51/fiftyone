@@ -25,7 +25,7 @@ from bson import DBRef, ObjectId, json_util
 import cachetools
 import mongoengine.errors as moe
 from pymongo import DeleteMany, InsertOne, ReplaceOne, UpdateMany, UpdateOne
-from pymongo.errors import BulkWriteError, CursorNotFound, OperationFailure
+from pymongo.errors import CursorNotFound, OperationFailure
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -4410,12 +4410,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         dicts = [doc for _, doc in samples_and_docs]
 
-        try:
-            # adds `_id` to each dict
-            res = self._sample_collection.insert_many(dicts)
-        except BulkWriteError as bwe:
-            msg = bwe.details["writeErrors"][0]["errmsg"]
-            raise ValueError(msg) from bwe
+        # adds `_id` to each dict
+        res = foo.database._admitted_write(
+            self._sample_collection_name,
+            len(dicts),
+            lambda: self._sample_collection.insert_many(dicts),
+        )
 
         for sample, d in samples_and_docs:
             doc = self._sample_dict_to_doc(d)
@@ -4539,18 +4539,31 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 where the dict is the sample's backing document
         """
         ops = []
+        replaced_ids = []
         for sample, d in samples_and_docs:
             if sample.id:
                 ops.append(ReplaceOne({"_id": sample._id}, d, upsert=True))
+                replaced_ids.append(sample._id)
             else:
                 d.pop("_id", None)
                 ops.append(InsertOne(d))  # adds `_id` to dict
 
-        try:
-            self._sample_collection.bulk_write(ops, ordered=False)
-        except BulkWriteError as bwe:
-            msg = bwe.details["writeErrors"][0]["errmsg"]
-            raise ValueError(msg) from bwe
+        def num_new():
+            # A replace whose ID is not in this collection is inserted by the
+            # upsert, so it is as new as an explicit insert
+            existing = 0
+            if replaced_ids:
+                existing = self._sample_collection.count_documents(
+                    {"_id": {"$in": replaced_ids}}
+                )
+
+            return len(ops) - existing
+
+        foo.database._admitted_write(
+            self._sample_collection_name,
+            num_new,
+            lambda: self._sample_collection.bulk_write(ops, ordered=False),
+        )
 
         for sample, d in samples_and_docs:
             doc = self._sample_dict_to_doc(d)
