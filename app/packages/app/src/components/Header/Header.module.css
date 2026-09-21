@@ -26,7 +26,7 @@
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  padding: 8px 0.5rem 0 0;
+  padding: 0 0.5rem 0 0;
 }
 
 /* The row the title and selector share with the view bar's search row */
