@@ -33,6 +33,7 @@ import {
 } from "recoil";
 import { useRouterContext } from "./routing";
 import Pixelating from "./Pixelating";
+import styles from "./Renderer.module.css";
 
 export const pendingEntry = atom<boolean>({
   key: "pendingEntry",
@@ -114,13 +115,13 @@ const Renderer = () => {
       <Modal key={"modal"} />
       <Route key={"route"} route={routeEntry} />
       {(pending || viewPending) && (
-        <Progress
-          aria-label="Loading"
-          className="absolute top-0 left-0 z-10"
-          key={"pending"}
-          size={Size.Sm}
-          trackColor={BackgroundColor.Transparent}
-        />
+        <div className={styles.pending} key={"pending"}>
+          <Progress
+            aria-label="Loading"
+            size={Size.Sm}
+            trackColor={BackgroundColor.Transparent}
+          />
+        </div>
       )}
     </Suspense>
   );
