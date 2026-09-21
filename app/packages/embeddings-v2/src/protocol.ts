@@ -340,6 +340,11 @@ export interface SampleInfo {
   /** Feed through the App's getSampleSrc(); null = no hover media */
   media: string | null;
   value: unknown;
+  /** Relative [x, y, w, h] of the hovered patch within its sample's media,
+   * for cropping the hover card to the patch. Null for sample-level runs —
+   * and for a patch whose label no longer exists, which falls back to the
+   * whole sample rather than failing */
+  bounds: [number, number, number, number] | null;
 }
 
 export async function fetchSampleInfo(

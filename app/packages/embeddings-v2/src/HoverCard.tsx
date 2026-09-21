@@ -20,6 +20,7 @@ import {
 } from "@voxel51/voodo";
 import {
   useEffect,
+  useId,
   useLayoutEffect,
   useRef,
   useState,
@@ -28,6 +29,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import "./panel.css";
+import { patchRect, type Bounds } from "./patchCrop";
 import type { HoverHit } from "./renderer";
 
 // Portaled to body, so the tokens its CSS reads must be declared here
@@ -59,6 +61,10 @@ export interface HoverContent {
   /** Cheap per-point detail (multimodal): label/value rows shown instead of
    * an image, e.g. stream — all held client-side */
   details?: { label: string; value: string }[];
+  /** Relative [x, y, w, h] of the hovered patch within `src`. Set only for
+   * patches runs, where the point is a label and the card must show that
+   * patch rather than its whole parent image */
+  bounds?: Bounds | null;
 }
 
 export default function HoverCard({
@@ -84,10 +90,16 @@ export default function HoverCard({
    * needs a way out that leaving does not provide. */
   onClose?: () => void;
 }) {
-  const { hit, src, value, filename, header, media, details } = content;
-  const [settled, setSettled] = useState<{ src: string; ok: boolean } | null>(
-    null,
-  );
+  const { hit, src, value, filename, header, media, details, bounds } = content;
+  // The natural size comes from the preload below, so cropping to a patch
+  // needs no media metadata from the server (often unpopulated) and no
+  // measurement of the rendered element
+  const [settled, setSettled] = useState<{
+    src: string;
+    ok: boolean;
+    width: number;
+    height: number;
+  } | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
 
@@ -96,6 +108,14 @@ export default function HoverCard({
   const anchorX = origin.left + hit.x;
   const anchorY = origin.top + hit.y;
   const showImage = src !== null && settled?.ok === true;
+  // A patches run's point is a label: crop to it. Sample-level runs, and
+  // patches whose geometry cannot resolve, show the whole image as before
+  const rect =
+    bounds && settled?.ok
+      ? patchRect(bounds, settled.width, settled.height)
+      : null;
+  // Scopes the clip path to this card; two cards can be alive at once
+  const clipId = useId();
   // A variable rather than an inline expression, so the dependency is
   // statically checkable
   const hasAction = action != null;
@@ -138,8 +158,16 @@ export default function HoverCard({
     if (!src) return undefined;
     let stale = false;
     const image = new Image();
-    image.onload = () => !stale && setSettled({ src, ok: true });
-    image.onerror = () => !stale && setSettled({ src, ok: false });
+    image.onload = () =>
+      !stale &&
+      setSettled({
+        src,
+        ok: true,
+        width: image.naturalWidth,
+        height: image.naturalHeight,
+      });
+    image.onerror = () =>
+      !stale && setSettled({ src, ok: false, width: 0, height: 0 });
     image.src = src;
     return () => {
       stale = true;
@@ -205,9 +233,30 @@ export default function HoverCard({
         visibility: pos ? "visible" : "hidden",
       }}
     >
-      {showImage && (
-        <img key={src} src={src} alt="" className="emb-hover-image" />
-      )}
+      {showImage &&
+        (rect && settled ? (
+          // Same frame as a sample thumbnail. The viewBox selects the
+          // patch and `meet` fits and centers it; the clip keeps the
+          // surplus as card surface rather than neighbouring image
+          <svg
+            key={src}
+            className="emb-hover-crop"
+            viewBox={rect.join(" ")}
+            preserveAspectRatio="xMidYMid meet"
+          >
+            <clipPath id={clipId}>
+              <rect x={rect[0]} y={rect[1]} width={rect[2]} height={rect[3]} />
+            </clipPath>
+            <image
+              href={src}
+              width={settled.width}
+              height={settled.height}
+              clipPath={`url(#${clipId})`}
+            />
+          </svg>
+        ) : (
+          <img key={src} src={src} alt="" className="emb-hover-image" />
+        ))}
       {media}
       {header && (
         <div className="emb-hover-header">

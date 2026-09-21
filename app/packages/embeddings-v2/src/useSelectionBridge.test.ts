@@ -727,6 +727,7 @@ describe("useSelectionBridge", () => {
         filepath: null,
         media: null,
         value: null,
+        bounds: null,
       } satisfies SampleInfo);
     });
 
@@ -740,6 +741,7 @@ describe("useSelectionBridge", () => {
       filepath: null,
       media: null,
       value: null,
+      bounds: null,
     } satisfies SampleInfo);
     const opts = options({ patchesField: "ground_truth" });
     const { result } = renderHook(() => useSelectionBridge(opts));
@@ -1029,6 +1031,7 @@ describe("useSelectionBridge", () => {
       filepath: null,
       media: null,
       value: null,
+      bounds: null,
     });
     const opts = options({ patchesField: "ground_truth" });
     const { result } = renderHook(() => useSelectionBridge(opts));
