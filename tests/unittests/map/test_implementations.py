@@ -12,7 +12,6 @@ import pytest
 import fiftyone as fo
 import fiftyone.core.map as fomm
 
-
 INPUT_KEY = "input"
 OUTPUT_KEY = "output"
 WORKERS = 8

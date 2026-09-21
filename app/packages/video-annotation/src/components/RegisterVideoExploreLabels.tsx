@@ -3,12 +3,14 @@
  */
 
 import React from "react";
+import { useSyncModalSample } from "@fiftyone/annotation";
 import { useSyncAnnotationFrameClock } from "../hooks/useSyncAnnotationFrameClock";
 import { useSyncAnnotationVideoStore } from "../hooks/useSyncAnnotationVideoStore";
 import { useVideoLighterEngineBridge } from "../hooks/useVideoLighterEngineBridge";
 import {
   useExploreFrameLabelFields,
-  useExploreFrameLabelPaths,
+  useExploreOverlayPaths,
+  useExploreSampleClassificationPaths,
 } from "../state/exploreFrameLabelFields";
 
 /**
@@ -57,14 +59,34 @@ export const RegisterVideoExploreLabels: React.FC = () => {
   // populated once the Annotate sidebar (or the Schema Manager) has loaded
   // them, so in Explore they are empty and nothing would render.
   const labelTypes = useExploreFrameLabelFields();
-  const paths = useExploreFrameLabelPaths();
+  // The bridge's scope is WIDER than the store's registration: it adds the
+  // sample-level classification fields, which live on the composite store's
+  // `SampleLabelStore` half rather than the `FrameStore`, and which the
+  // frames-only scope used to filter out of hydration entirely.
+  const paths = useExploreOverlayPaths();
+  // The hydration nudge's watch set. Same reason as `paths`: its
+  // annotation-schema default is empty in Explore.
+  const sampleLevelPaths = useExploreSampleClassificationPaths();
 
+  // Hydrate the shared `Sample` (data + schema) that the composite store's
+  // `SampleLabelStore` half reads through. Only the Annotate sidebar mounts
+  // this otherwise, so in an Explore-only session the instance stayed empty:
+  // `SampleLabelStore.labelPaths()` walks `source.getSchema()`, an empty schema
+  // yields no label paths, and the store enumerated NOTHING sample-level — so
+  // the sample Classification was absent from `enumerateLabels` and from the
+  // temporal view's presence set long before scope or adapters came into it.
+  // The instance is shared and the hook is idempotent (it re-sets the same
+  // data/schema), so it is safe alongside Annotate's own mount.
+  useSyncModalSample();
   useSyncAnnotationFrameClock();
   // `seedWholeClip: false` — Explore is read-only, so nothing here walks the
   // whole clip, and the up-front fetch competes with the <video>'s own
   // buffering rather than helping it. The engine's `prefetch` window keeps
   // the store seeded around the playhead instead.
-  useSyncAnnotationVideoStore(labelTypes, { seedWholeClip: false });
+  useSyncAnnotationVideoStore(labelTypes, {
+    seedWholeClip: false,
+    sampleLevelPaths,
+  });
   // after the clock + store, so the bridge reconciles against the
   // FrameTemporalView and a seeded frame store
   useVideoLighterEngineBridge(paths);

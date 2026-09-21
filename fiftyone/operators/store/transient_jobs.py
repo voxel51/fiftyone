@@ -9,7 +9,6 @@ import copy
 import datetime
 import uuid
 
-
 _IMMUTABLE_FIELDS = ("id", "owner", "scope", "payload", "created_at")
 _TERMINAL_STATES = {"completed", "failed", "canceled"}
 

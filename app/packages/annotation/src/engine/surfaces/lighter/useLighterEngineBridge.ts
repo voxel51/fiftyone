@@ -25,7 +25,8 @@ import { encodeEntityId } from "../../identity/entityId";
 import { stampFrame, toLabelRef } from "../../identity/ref";
 import { useSurfaceBridge } from "../../react/useSurfaceBridge";
 import { GEOMETRY_SIGNAL, type GeometrySignal } from "../../signals/geometry";
-import { lighterAdapters } from "./adapters";
+import type { LighterAdapterDeps } from "./adapters";
+import { makeLighterAdapters } from "./adapters";
 import type { LighterInteractionPolicy } from "./interactionPolicy";
 import type { LighterBridgeDeps } from "./lighterBridge";
 import { createLighterBridge } from "./lighterBridge";
@@ -72,6 +73,13 @@ export interface UseLighterEngineBridgeArgs {
    */
   onEditCommit?: (overlayId: string, path: string, undoKey: string) => void;
   /**
+   * Resolves the keypoint skeleton for a label path, supplying the edge paths
+   * keypoint overlays draw as connections. Omit it and keypoints render as
+   * bare points. MUST be referentially stable — a new identity re-registers
+   * the bridge loop. (`useGetKeypointSkeleton` from `@fiftyone/state` is.)
+   */
+  getSkeleton?: LighterAdapterDeps["getSkeleton"];
+  /**
    * Gate the whole surface off without violating hook order: a disabled bridge
    * registers nothing AND binds its gesture handlers to the inert sentinel
    * channel, so a shared scene (the video tile sets the global `lighterSceneAtom`
@@ -91,6 +99,7 @@ export const useLighterEngineBridge = ({
   frameOf,
   onEstablishCommit,
   onEditCommit,
+  getSkeleton,
   enabled = true,
 }: UseLighterEngineBridgeArgs): void => {
   const { scene, overlayFactory } = useLighter();
@@ -156,10 +165,17 @@ export const useLighterEngineBridge = ({
     };
   }, [enabled, scene]);
 
+  // a new map identity re-registers the bridge loop, so keep it memoized on
+  // the (stable) resolver alone
+  const adapters = useMemo(
+    () => makeLighterAdapters({ getSkeleton }),
+    [getSkeleton],
+  );
+
   const surface = useSurfaceBridge({
     engine,
     bridge,
-    adapters: lighterAdapters,
+    adapters,
   });
 
   const commitOverlay = useCallback(
@@ -288,6 +304,7 @@ export const useLighterEngineBridge = ({
   // resize / keypoint are single synchronous commits (no tail) and stay plain.
   on("lighter:overlay-drag-end", commitOverlay);
   on("lighter:overlay-resize-end", commitOverlay);
+  on("lighter:overlay-rotate-end", commitOverlay);
   on("lighter:overlay-paint-end", commitWithMaskTail);
   on("lighter:overlay-establish", establishOverlay);
   on("lighter:keypoint-point-added", commitOverlay);
@@ -325,6 +342,7 @@ export const useLighterEngineBridge = ({
       engine.publishSignal<GeometrySignal>(GEOMETRY_SIGNAL, key, {
         kind: "2d",
         bounds: { x: b.x, y: b.y, width: b.width, height: b.height },
+        rotation: overlay.getRotation(),
       });
     },
     [dataset, engine, sample, scene],
@@ -332,6 +350,7 @@ export const useLighterEngineBridge = ({
 
   on("lighter:overlay-drag-move", publishGeometry);
   on("lighter:overlay-resize-move", publishGeometry);
+  on("lighter:overlay-rotate-move", publishGeometry);
 
   useLighterPreviewSync(
     engine,

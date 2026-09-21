@@ -5,6 +5,7 @@ Session notebook handling.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from dataclasses import dataclass
 import os
 import typing as t
