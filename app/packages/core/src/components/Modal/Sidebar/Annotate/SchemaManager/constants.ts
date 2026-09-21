@@ -171,10 +171,13 @@ export const ATTRIBUTE_TYPE_OPTIONS = Object.entries(ATTRIBUTE_TYPE_LABELS).map(
 // Component options by type
 // Source: https://github.com/voxel51/fiftyone/blob/1b31fce1b7f24af051ffa278a33c5b02dcc2c8e8/fiftyone/core/annotation/constants.py
 
-export const COMPONENT_OPTIONS: Record<
-  string,
-  Array<{ id: string; label: string; icon: IconName }>
-> = {
+export interface ComponentOption {
+  id: string;
+  label: string;
+  icon: IconName;
+}
+
+export const COMPONENT_OPTIONS: Record<string, ComponentOption[]> = {
   // STR_COMPONENTS = {dropdown, radio, text}
   str: [
     { id: "text", label: "Text", icon: IconName.Text },
@@ -348,6 +351,22 @@ export const componentNeedsValues = (component: string): boolean =>
  * Mirrors CHECKBOXES_OR_RADIO_THRESHOLD in annotation/constants.py
  */
 export const CLASSES_COMPONENT_THRESHOLD = 5;
+
+/**
+ * Input types a label field's classes can be rendered with. `text` is not
+ * offered because classes are values and need a values-backed component.
+ */
+export const CLASSES_COMPONENTS = ["radio", "dropdown"] as const;
+
+export type ClassesComponent = (typeof CLASSES_COMPONENTS)[number];
+
+export const isClassesComponent = (value: unknown): value is ClassesComponent =>
+  (CLASSES_COMPONENTS as readonly unknown[]).includes(value);
+
+export const CLASSES_COMPONENT_OPTIONS = COMPONENT_OPTIONS.str.filter(
+  (option): option is ComponentOption & { id: ClassesComponent } =>
+    isClassesComponent(option.id),
+);
 
 /**
  * Get default component for a type

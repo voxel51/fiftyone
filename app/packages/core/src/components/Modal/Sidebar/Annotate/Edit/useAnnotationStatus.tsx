@@ -1,7 +1,4 @@
-import {
-  useInferenceStatus,
-  useToolsContext,
-} from "@fiftyone/annotation/src/agents";
+import { useInferenceStatus } from "@fiftyone/annotation/src/agents";
 import { ANNOTATION_CUBOID } from "@fiftyone/looker-3d/src/constants";
 import { useCurrent3dAnnotationMode } from "@fiftyone/looker-3d/src/state/accessors";
 import type { PolylineAnnotationLabel } from "@fiftyone/state";
@@ -9,17 +6,17 @@ import { useAtomValue } from "jotai";
 import { useEffect, useMemo } from "react";
 import { StatusContent, useModalStatusBar } from "../../../ModalStatusBar";
 import {
-  AISegmentationStatus,
-  BrushStatus,
-  DetectionStatus,
-  KeypointFreeformStatus,
-  KeypointGuidedStatus,
-  KeypointResolvedStatus,
-  MergeInitialStatus,
-  MergeTargetSetStatus,
-  PenStatus,
-  PolylineEntryStatus,
-  PolylineProgressStatus,
+  aiSegmentationStatus,
+  brushStatus,
+  detectionStatus,
+  keypointFreeformStatus,
+  keypointGuidedStatus,
+  keypointResolvedStatus,
+  mergeInitialStatus,
+  mergeTargetSetStatus,
+  penStatus,
+  polylineEntryStatus,
+  polylineProgressStatus,
 } from "./annotationStatusContent";
 import { useAnnotationContext } from "./useAnnotationContext";
 import { _unsafeDetectionModeActiveAtom } from "./useDetectionMode";
@@ -70,75 +67,61 @@ export const useAnnotationStatus = () => {
     progress: inferenceProgress,
     error: inferenceError,
   } = useInferenceStatus();
-  const { positivePoints, negativePoints } = useToolsContext();
   const { selected } = useAnnotationContext();
   const polylineData = (selected?.data ?? null) as
     | PolylineAnnotationLabel["data"]
     | null;
 
   const vertexCount = countVertices(polylineData?.points);
-  const hasAiPoints =
-    (positivePoints?.length ?? 0) + (negativePoints?.length ?? 0) > 0;
   const cuboidModeActive = current3dAnnotationMode === ANNOTATION_CUBOID;
 
   const content = useMemo<StatusContent>(() => {
-    if (cuboidModeActive) return <DetectionStatus isCuboid />;
+    if (cuboidModeActive) return detectionStatus(true);
 
-    if (detectionModeActive) return <DetectionStatus />;
+    if (detectionModeActive) return detectionStatus();
 
     if (segmentationModeActive) {
       switch (tool) {
         case SegmentationTool.Brush:
-          return <BrushStatus />;
+          return brushStatus();
         case SegmentationTool.Pen:
-          return <PenStatus />;
+          return penStatus();
         case SegmentationTool.AI:
-          return (
-            <AISegmentationStatus
-              status={inferenceStatus}
-              progress={inferenceProgress}
-              error={inferenceError}
-              hasPoints={hasAiPoints}
-            />
-          );
+          return aiSegmentationStatus({
+            status: inferenceStatus,
+            progress: inferenceProgress,
+            error: inferenceError,
+          });
         case SegmentationTool.Merge:
-          return mergeTargetId ? (
-            <MergeTargetSetStatus />
-          ) : (
-            <MergeInitialStatus />
-          );
+          return mergeTargetId ? mergeTargetSetStatus() : mergeInitialStatus();
         default:
           return null;
       }
     }
 
     if (polylineModeActive) {
-      if (vertexCount === 0) return <PolylineEntryStatus />;
-      return <PolylineProgressStatus vertexCount={vertexCount} />;
+      if (vertexCount === 0) return polylineEntryStatus();
+      return polylineProgressStatus();
     }
 
     if (keypointModeActive) {
       // Free-form field (no skeleton): click-to-append flow
-      if (keypointNodeCount === 0) return <KeypointFreeformStatus />;
+      if (keypointNodeCount === 0) return keypointFreeformStatus();
 
       if (keypointTargetIndex !== null) {
         const placedCount =
           keypointPoints?.filter(
             (p) => Number.isFinite(p[0]) && Number.isFinite(p[1]),
           ).length ?? 0;
-        return (
-          <KeypointGuidedStatus
-            nodeName={
-              nodeLabels?.[keypointTargetIndex] ??
-              `point ${keypointTargetIndex + 1}`
-            }
-            placedCount={placedCount}
-            nodeCount={keypointNodeCount}
-          />
+        return keypointGuidedStatus(
+          nodeLabels?.[keypointTargetIndex] ??
+            `point ${keypointTargetIndex + 1}`,
+          placedCount,
+          keypointNodeCount,
         );
       }
 
-      return <KeypointResolvedStatus />;
+      return keypointResolvedStatus();
     }
 
     return null;
@@ -152,7 +135,6 @@ export const useAnnotationStatus = () => {
     inferenceStatus,
     inferenceProgress,
     inferenceError,
-    hasAiPoints,
     vertexCount,
     keypointModeActive,
     keypointNodeCount,

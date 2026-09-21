@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import { LABEL_TYPE_OPTIONS, LABEL_TYPE_OPTIONS_VIDEO } from "./constants";
 import {
   createDefaultFormData,
+  defaultClassesComponent,
   formatAttributeCount,
   formatSchemaCount,
   getAttributeTypeLabel,
   getClassNameError,
   getLabelTypeOptions,
+  reconcileComponent,
   toAttributeConfig,
   toFormData,
   validateFieldName,
@@ -240,5 +242,57 @@ describe("getLabelTypeOptions", () => {
 
   it("limits a sample-level video field to clip-level types", () => {
     expect(getLabelTypeOptions("video", false)).toBe(LABEL_TYPE_OPTIONS_VIDEO);
+  });
+});
+
+describe("defaultClassesComponent", () => {
+  const classes = (n: number) => Array.from({ length: n }, (_, i) => `c${i}`);
+
+  it("is radio up to the threshold and dropdown past it", () => {
+    expect(defaultClassesComponent([])).toBe("radio");
+    expect(defaultClassesComponent(classes(5))).toBe("radio");
+    expect(defaultClassesComponent(classes(6))).toBe("dropdown");
+  });
+});
+
+describe("reconcileComponent", () => {
+  const classes = (n: number) => Array.from({ length: n }, (_, i) => `c${i}`);
+
+  it("derives radio for a text component with up to 5 classes", () => {
+    expect(
+      reconcileComponent({ component: "text", classes: classes(5) }).component,
+    ).toBe("radio");
+  });
+
+  it("derives dropdown for a text component with more than 5 classes", () => {
+    expect(
+      reconcileComponent({ component: "text", classes: classes(6) }).component,
+    ).toBe("dropdown");
+  });
+
+  it("treats a missing component like text", () => {
+    expect(reconcileComponent({ classes: classes(30) }).component).toBe(
+      "dropdown",
+    );
+  });
+
+  it("preserves an explicit radio or dropdown regardless of class count", () => {
+    expect(
+      reconcileComponent({ component: "radio", classes: classes(30) })
+        .component,
+    ).toBe("radio");
+    expect(
+      reconcileComponent({ component: "dropdown", classes: classes(2) })
+        .component,
+    ).toBe("dropdown");
+  });
+
+  it("resets to text and strips classes when none remain", () => {
+    expect(reconcileComponent({ component: "radio", classes: [] })).toEqual({
+      component: "text",
+    });
+    expect(reconcileComponent({ component: "text", classes: [] })).toEqual({
+      component: "text",
+    });
   });
 });

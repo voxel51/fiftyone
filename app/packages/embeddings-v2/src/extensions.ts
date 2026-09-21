@@ -243,6 +243,8 @@ export interface RunFeatures {
   hoverAction: HoverAction | null;
   /** Header controls rendered before the color-by menu. */
   headerControls: ReactNode;
+  /** Pinned under the color-by menu's open list. */
+  colorByFooter?: ReactNode;
   /** A non-error notice row under the header (e.g. capped/overflow info). */
   banner: string | null;
   /** A dismissible floating notice over the plot. */

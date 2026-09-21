@@ -79,16 +79,31 @@ describe("toExploreFrameLabelFields", () => {
 
   it("drops types the projection cannot seed", () => {
     // Better to omit than to register: a registered-but-unseeded field is
-    // walked on every frame diff and still paints nothing.
+    // walked on every frame diff and still paints nothing. TemporalDetections
+    // is per-sample, with no per-frame element _cls to project by.
     expect(
       toExploreFrameLabelFields(
-        ["frames.segmentations", "frames.detections"],
+        ["frames.events", "frames.detections"],
         schema({
-          segmentations: "Segmentation",
+          events: "TemporalDetections",
           detections: "Detections",
         }),
       ),
     ).toEqual({ "frames.detections": LabelType.Detections });
+  });
+
+  it("admits singleton label fields", () => {
+    // Segmentation and Heatmap are one document per frame rather than a list,
+    // and project through the singleton branch.
+    expect(
+      toExploreFrameLabelFields(
+        ["frames.segmentation", "frames.heatmap"],
+        schema({ segmentation: "Segmentation", heatmap: "Heatmap" }),
+      ),
+    ).toEqual({
+      "frames.segmentation": LabelType.Segmentation,
+      "frames.heatmap": LabelType.Heatmap,
+    });
   });
 
   it("drops a path the frame schema does not describe", () => {

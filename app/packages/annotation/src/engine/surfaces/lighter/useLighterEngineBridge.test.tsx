@@ -53,10 +53,7 @@ vi.mock("./lighterBridge", () => ({
 }));
 vi.mock("./adapters", () => ({
   lighterAdapters: {},
-  createLighterAdapters: () => ({}),
-}));
-vi.mock("@fiftyone/state", () => ({
-  useGetKeypointSkeleton: () => () => null,
+  makeLighterAdapters: () => ({}),
 }));
 vi.mock("./useLighterPreviewSync", () => ({ useLighterPreviewSync: vi.fn() }));
 const mockCommit = vi.fn();

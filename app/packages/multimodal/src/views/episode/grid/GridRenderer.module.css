@@ -140,3 +140,21 @@
     pointer-events: auto;
   }
 }
+
+/* Unlike `.error`, one-line chrome over a playing poster, this is the cell's
+   whole content: the codec name is the message, so it wraps unclipped. */
+.codecRejection {
+  align-items: center;
+  box-sizing: border-box;
+  color: rgba(255, 120, 120, 0.78);
+  display: flex;
+  font-size: 11px;
+  font-weight: 500;
+  height: 100%;
+  justify-content: center;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  padding: 10px;
+  text-align: center;
+  width: 100%;
+}

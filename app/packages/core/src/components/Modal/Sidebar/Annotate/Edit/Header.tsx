@@ -1,12 +1,8 @@
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import { useCallback, useRef, useState } from "react";
 import { Redo, Round, Undo } from "../Actions";
 
-import {
-  DetectionOverlay,
-  KeypointOverlay,
-  useLighter,
-} from "@fiftyone/lighter";
+import { DetectionOverlay, KeypointOverlay } from "@fiftyone/lighter";
 import { West as Back } from "@mui/icons-material";
 import { Box, Menu, MenuItem } from "@mui/material";
 import {
@@ -45,9 +41,7 @@ import { useAnnotationContext } from "./useAnnotationContext";
 
 import { KnownCommands, KnownContexts, useCommand } from "@fiftyone/commands";
 import useColor from "./useColor";
-import useExit from "./useExit";
-import { useDetectionMode } from "./useDetectionMode";
-import { _unsafeKeypointModeActiveAtom } from "./useKeypointMode";
+import { useDeactivateAllModes } from "../useDeactivateAllModes";
 import { useSegmentationMode } from "./useSegmentationMode";
 import {
   AnnotationSaveIndicator,
@@ -211,9 +205,7 @@ const Header = () => {
   const color = useColor(selected?.overlay ?? undefined);
 
   const { exitAnnotationMode } = useAnnotationController();
-  const onExit = useExit();
-  const { scene } = useLighter();
-  const { deactivateDetectionMode } = useDetectionMode();
+  const deactivateAll = useDeactivateAllModes();
   const currentFieldIsReadOnly = selected?.isFieldReadOnly ?? false;
 
   // In patches view with single label, clicking back should go to explore mode
@@ -221,30 +213,18 @@ const Header = () => {
   const labelCount = useAtomValue(labels).length;
   const shouldExitToExplore = isPatches && labelCount === 1;
 
-  // Atom write, not deactivateKeypointMode(): the exit cleanup below (scene
-  // interactive-mode exit + onExit's draft discard) is already performed here,
-  // and the mode's own deactivate would run it a second time.
-  const setKeypointModeActive = useSetAtom(_unsafeKeypointModeActiveAtom);
-
+  // Back mirrors the toolbar's Select tool: close the open edit AND leave
+  // every creation mode (2D + 3D), so the toolbar lands on Select no matter
+  // which mode opened the form. Each deactivator finalizes its own edit
+  // (exit interactive mode + `useExit`), so nothing else needs to run here.
+  // Deactivating only detection mode, as this did before, left segmentation
+  // and polyline armed after backing out of their edits.
   const handleExit = useCallback(() => {
     if (shouldExitToExplore) {
       exitAnnotationMode();
     }
-    deactivateDetectionMode();
-    // Backing out of a keypoint edit leaves keypoint mode entirely — the mode
-    // opens a draft on activation, so staying armed would spawn a fresh draft
-    // on the next canvas click right after the user chose to leave.
-    setKeypointModeActive(false);
-    scene?.exitInteractiveMode();
-    onExit();
-  }, [
-    shouldExitToExplore,
-    exitAnnotationMode,
-    onExit,
-    deactivateDetectionMode,
-    scene,
-    setKeypointModeActive,
-  ]);
+    deactivateAll();
+  }, [shouldExitToExplore, exitAnnotationMode, deactivateAll]);
 
   return (
     <Row>
