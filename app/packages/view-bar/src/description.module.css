@@ -1,0 +1,5 @@
+/* A literal or a referenced name inside a sentence, sized to sit level with
+   the prose around it */
+.code {
+  font-size: 0.95em;
+}
