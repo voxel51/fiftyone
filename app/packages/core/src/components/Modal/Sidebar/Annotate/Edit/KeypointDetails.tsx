@@ -526,6 +526,7 @@ export const KeypointDetails = () => {
               $selected={i === selectedNodeIndex}
               data-cy={`keypoint-node-${i}`}
               data-cy-status={status}
+              data-cy-selected={i === selectedNodeIndex}
               onMouseEnter={() => hoverNode(i)}
               onMouseLeave={() => hoverNode(null)}
               onClick={() => selectNode(i === selectedNodeIndex ? null : i)}

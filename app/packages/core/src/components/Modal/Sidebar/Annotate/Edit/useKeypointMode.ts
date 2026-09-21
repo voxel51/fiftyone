@@ -52,6 +52,15 @@ export { keypointModeActiveAtom as _unsafeKeypointModeActiveAtom };
 const establishedKeypoints = new Set<string>();
 
 /**
+ * Overlay ids whose establish re-key must re-arm placement ONCE: committing a
+ * video draft swaps the selection through null and back to the track (same
+ * overlay id, new frame-label id), and the mode must survive its own creation
+ * flow. One-shot — consumed by the selection effect's arming decision, so a
+ * later user re-selection of the same track opens passively.
+ */
+const pendingRekeyArm = new Set<string>();
+
+/**
  * Guided-placement state for the selected skeleton keypoint: the nodes the
  * user has skipped this session (skipped nodes stay `[NaN, NaN]` holes in the
  * label — "skipped" only means the guided cursor passes them). Keyed to an
@@ -275,9 +284,23 @@ export const useGuidedKeypoints = () => {
   useAtomValue(guidedEpochAtom);
   const { scene } = useLighter();
 
-  const overlay = is2dKeypointSelected(selected)
+  // The selection context captures its overlay REFERENCE at selection time,
+  // but a settled save rebases the sample and remounts scene overlays — the
+  // captured instance is then detached (its dispatches and geometry edits go
+  // nowhere). Overlay ids are stable across the remount, so resolve the live
+  // instance by id at every use; the captured one is the fallback (e.g. a
+  // track's overlay unmounted off-extent).
+  const contextOverlay = is2dKeypointSelected(selected)
     ? (selected?.overlay as KeypointOverlay)
     : null;
+  const resolveOverlay = useCallback((): KeypointOverlay | null => {
+    if (!contextOverlay) {
+      return null;
+    }
+    const live = scene?.getOverlay(contextOverlay.id);
+    return live instanceof KeypointOverlay ? live : contextOverlay;
+  }, [contextOverlay, scene]);
+  const overlay = resolveOverlay();
   const field = selected?.field ?? null;
   const skeleton = field ? getSkeleton(field) : null;
   const nodeCount = skeletonNodeCount(skeleton);
@@ -301,26 +324,27 @@ export const useGuidedKeypoints = () => {
    * selected for editing).
    */
   const skip = useCallback(() => {
-    if (!overlay || targetIndex === null) return;
+    const target = resolveOverlay();
+    if (!target || targetIndex === null) return;
 
     const nextSkipped = skipped.includes(targetIndex)
       ? skipped
       : [...skipped, targetIndex];
-    setSkips({ overlayId: overlay.id, skipped: nextSkipped });
+    setSkips({ overlayId: target.id, skipped: nextSkipped });
     // Skipping a Place-forced node keeps the chain walking: the force moves
     // to the next hole down the list, or ends at the bottom
     if (forcedIndex === targetIndex) {
-      const next = nextHoleBelow(overlay, nodeCount, targetIndex);
-      setForced(next === null ? null : { overlayId: overlay.id, index: next });
+      const next = nextHoleBelow(target, nodeCount, targetIndex);
+      setForced(next === null ? null : { overlayId: target.id, index: next });
     }
 
-    if (computeTargetIndex(overlay, nodeCount, nextSkipped) === null) {
+    if (computeTargetIndex(target, nodeCount, nextSkipped) === null) {
       scene?.exitInteractiveMode();
     }
   }, [
     forcedIndex,
     nodeCount,
-    overlay,
+    resolveOverlay,
     scene,
     setForced,
     setSkips,
@@ -340,10 +364,11 @@ export const useGuidedKeypoints = () => {
    */
   const clearNode = useCallback(
     (index: number) => {
-      if (!overlay) return;
+      const target = resolveOverlay();
+      if (!target) return;
 
-      const pointId = overlay.getPointIdAt(index);
-      const from = pointId ? overlay.getPointById(pointId)?.position : null;
+      const pointId = target.getPointIdAt(index);
+      const from = pointId ? target.getPointById(pointId)?.position : null;
       if (
         !pointId ||
         !from ||
@@ -355,10 +380,10 @@ export const useGuidedKeypoints = () => {
 
       const hole: [number, number] = [NaN, NaN];
 
-      overlay.movePointById(pointId, hole, true);
+      target.movePointById(pointId, hole, true);
 
       const command = new MoveKeypointPointCommand(
-        overlay,
+        target,
         pointId,
         from,
         hole,
@@ -370,7 +395,7 @@ export const useGuidedKeypoints = () => {
       // guided cursor passes it rather than immediately re-arming its
       // placement. Re-placing is explicit — the row's Place button.
       if (!skipped.includes(index)) {
-        setSkips({ overlayId: overlay.id, skipped: [...skipped, index] });
+        setSkips({ overlayId: target.id, skipped: [...skipped, index] });
       }
       if (forcedIndex === index) {
         setForced(null);
@@ -378,27 +403,39 @@ export const useGuidedKeypoints = () => {
 
       bumpGuidedEpoch((n) => n + 1);
     },
-    [bumpGuidedEpoch, forcedIndex, overlay, setForced, setSkips, skipped],
+    [
+      bumpGuidedEpoch,
+      forcedIndex,
+      resolveOverlay,
+      setForced,
+      setSkips,
+      skipped,
+    ],
   );
 
   /**
    * Aim the next click at a specific hole — the checklist's Place button.
    * Un-skips the node and force-targets it, so re-placing a cleared node
    * (a hand coming back into frame) doesn't wait its strict-order turn.
+   * Also (re)arms keypoint mode: an existing label opens passively, and this
+   * button is its explicit way into placement.
    */
+  const setKeypointModeActive = useSetAtom(keypointModeActiveAtom);
   const placeNode = useCallback(
     (index: number) => {
-      if (!overlay) return;
+      const target = resolveOverlay();
+      if (!target) return;
 
       if (skipped.includes(index)) {
         setSkips({
-          overlayId: overlay.id,
+          overlayId: target.id,
           skipped: skipped.filter((i) => i !== index),
         });
       }
-      setForced({ overlayId: overlay.id, index });
+      setForced({ overlayId: target.id, index });
+      setKeypointModeActive(true);
     },
-    [overlay, setForced, setSkips, skipped],
+    [resolveOverlay, setForced, setKeypointModeActive, setSkips, skipped],
   );
 
   const selectedNode = useAtomValue(selectedNodeAtom);
@@ -415,9 +452,9 @@ export const useGuidedKeypoints = () => {
    */
   const selectNode = useCallback(
     (index: number | null) => {
-      overlay?.selectPoint(index);
+      resolveOverlay()?.selectPoint(index);
     },
-    [overlay],
+    [resolveOverlay],
   );
 
   return {
@@ -553,6 +590,11 @@ export const useKeypointModeInstaller = (): void => {
   // switch to another label therefore exits the mode. A new label with
   // nothing placed exists only in the scene (the first placement is the
   // commit), so a bail discards its overlay rather than leaving a ghost.
+  //
+  // Only a NEW label auto-arms placement. Selecting an EXISTING keypoint
+  // with holes opens it passively — inspection is not an invitation to
+  // place, and arming is explicit (the action button, or a checklist row's
+  // Place button). (Tim, 2026-09-21.)
   const prevSelectedRef = useRef(selected);
   useEffect(() => {
     const prev = prevSelectedRef.current;
@@ -560,9 +602,15 @@ export const useKeypointModeInstaller = (): void => {
 
     const isKeypoint2d = is2dKeypointSelected(selected);
     const wasKeypoint2d = is2dKeypointSelected(prev);
+    const selectionChanged = prev?.overlay?.id !== selected?.overlay?.id;
 
     if (isKeypoint2d) {
-      setKeypointModeActive(true);
+      if (selectionChanged) {
+        setKeypointModeActive(
+          !!selected?.isNew ||
+            pendingRekeyArm.delete(selected?.overlay?.id ?? ""),
+        );
+      }
     } else if (wasKeypoint2d) {
       setKeypointModeActive(false);
 
@@ -584,7 +632,7 @@ export const useKeypointModeInstaller = (): void => {
 
     // Selection changed to a different overlay: stale skip / Place / node
     // sub-selection state never carries over.
-    if (prev?.overlay?.id !== selected?.overlay?.id) {
+    if (selectionChanged) {
       setSkips(null);
       setForced(null);
       setSelectedNode(null);
@@ -709,6 +757,7 @@ export const useKeypointModeInstaller = (): void => {
       }
 
       establishedKeypoints.add(overlay.id);
+      pendingRekeyArm.add(overlay.id);
 
       // Fold the sidebar draft's fields (class, attributes picked before the
       // first placement) into the overlay label the commit extraction reads,
