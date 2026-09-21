@@ -365,6 +365,23 @@ const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
   const onChange = useHandleSchemaChange(readOnly);
   const onLivePreview = useLivePreview(readOnly);
 
+  // SchemaIO echoes the label document wholesale — geometry (`points`,
+  // `bounding_box`) and per-point parallel lists included. Only fields the
+  // form RENDERS may pass: an echoed stale `points` otherwise stomps
+  // freshly-placed geometry on any class/attribute edit (any commits since
+  // the form's `data` snapshot are silently reverted).
+  const formProperties = schema.properties;
+  const handleFormChange = useCallback(
+    (changes: Record<string, unknown>) => {
+      return onChange(
+        Object.fromEntries(
+          Object.entries(changes).filter(([key]) => key in formProperties),
+        ),
+      );
+    },
+    [formProperties, onChange],
+  );
+
   if (!field) throw new Error("no field");
   if (!overlay) throw new Error("no overlay");
 
@@ -389,7 +406,7 @@ const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
         }}
         schema={schema}
         data={displayData}
-        onChange={onChange}
+        onChange={handleFormChange}
       />
     </div>
   );
