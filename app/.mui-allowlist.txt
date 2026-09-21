@@ -8,9 +8,7 @@
 # add new entries for newly-written code — new code should use an existing
 # @voxel51/voodo component/icon, or flag a gap to the Voodoo owners if one
 # doesn't exist yet.
-packages/app/src/components/AnalyticsConsent.tsx
 packages/app/src/components/Nav.tsx
-packages/app/src/components/Teams.tsx
 packages/app/src/Renderer.tsx
 packages/components/src/components/ActionToolbar/ActionToolbar.tsx
 packages/components/src/components/AdaptiveMenu/index.tsx
