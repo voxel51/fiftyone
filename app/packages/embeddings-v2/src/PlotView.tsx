@@ -246,6 +246,7 @@ export default function PlotView({
             onChange={(value) =>
               setColorField(value !== NONE_FIELD ? value : null)
             }
+            footer={features.colorByFooter}
           />
           {streamField && (
             <Tooltip
@@ -436,7 +437,7 @@ export default function PlotView({
           <div className="emb-plot-overlay emb-plot-hint">
             <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
               {mode === "explore"
-                ? "Drag to pan · scroll to zoom · click a point for details"
+                ? "Drag to pan · scroll to zoom"
                 : "Drag to lasso · click points to toggle"}
             </Text>
           </div>

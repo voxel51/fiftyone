@@ -202,7 +202,6 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
       <SpeedControl />
       <PlayheadTime />
       <LoopBounds />
-      <BufferingIndicator />
       {readouts}
 
       {(extraControls || extraActions) && (
@@ -216,6 +215,9 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
           {extraActions}
         </>
       )}
+
+      {/* Last: it comes and goes with every stall, shifting anything after it. */}
+      <BufferingIndicator />
       {(trailingActions || onToggle) && (
         <div className={styles.trailing}>
           {trailingActions ? (
