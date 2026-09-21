@@ -107,7 +107,9 @@ test.describe.serial("segmentation pen-tool round-trip", () => {
     await modal.sidebar.edit.assert.isOpen();
     await modal.sampleCanvas.rightClick(0.5, 0.5);
     await modal.sidebar.edit.assert.isClosed();
-    await annotateSDK.waitForDetectionCount(datasetName, "instances", 2);
+    await expect
+      .poll(() => modal.sidebar.annotate.getActiveLabelsCount())
+      .toBe(2);
 
     await modal.sidebar.annotate.waitForSavesSettled();
 

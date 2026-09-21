@@ -42,7 +42,12 @@ function isLabelType(fieldType: string): fieldType is Label {
 
 export interface BuildOptions extends Pick<
   BaseDatasetOptions,
-  "datasetName" | "labelSchemas" | "savedViews" | "schema" | "staticTransforms"
+  | "datasetName"
+  | "labelSchemas"
+  | "promptableIndexes"
+  | "savedViews"
+  | "schema"
+  | "staticTransforms"
 > {
   mediaType: "image" | "video" | "3d" | "multimodal" | "group";
   samples: SampleSpec[];
@@ -83,6 +88,7 @@ export const build = (() => {
     groupSlices = [],
     labelSchemas = {},
     mediaType,
+    promptableIndexes = [],
     sampleFrames = false,
     samples,
     savedViews = {},
@@ -207,6 +213,26 @@ ${
 ${Object.entries(savedViews)
   .map(([name, view]) => `dataset.save_view("${name}", ${view})`)
   .join("\n")}
+
+${
+  promptableIndexes.length
+    ? `import numpy as np
+import fiftyone.brain as fob
+
+for _key in ${JSON.stringify(promptableIndexes)}:
+    fob.compute_similarity(
+        dataset,
+        embeddings=np.random.RandomState(51).rand(${samples.length}, 8),
+        brain_key=_key,
+        backend="sklearn",
+    )
+    # Naming a model would make compute_similarity load it, and the
+    # quick-search UI reads only this flag.
+    _run_doc = dataset._doc.brain_methods[_key]
+    _run_doc.config["supports_prompts"] = True
+    _run_doc.save()`
+    : ""
+}
 `);
   };
 })();
