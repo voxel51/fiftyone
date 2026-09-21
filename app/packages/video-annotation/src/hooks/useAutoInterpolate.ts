@@ -148,7 +148,13 @@ export const useAutoInterpolate = (): void => {
           const held: Partial<LabelData> | null = !anchor
             ? null
             : Array.isArray(anchor.bounding_box)
-              ? { bounding_box: anchor.bounding_box }
+              ? {
+                  bounding_box: anchor.bounding_box,
+                  // step-hold the box's rotation with its geometry
+                  ...(typeof anchor.rotation === "number"
+                    ? { rotation: anchor.rotation }
+                    : {}),
+                }
               : Array.isArray(anchor.points) &&
                   (anchor.points as unknown[]).length > 0
                 ? {

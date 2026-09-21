@@ -100,6 +100,8 @@ const IMAGE_ROLE = "image-payload";
 const TASKS_ROLE = "tasks-metadata";
 const STATISTICS_ROLE = "dataset-statistics";
 const VIDEO_ROLE = "video-stream";
+// Namespaced because a feature names its stream bare: a feature called
+// "rows" would otherwise be this synthetic stream.
 const RAW_STREAM_ID = "lerobot:rows";
 const STATE_FEATURE_NAME = "observation.state";
 const ACTION_FEATURE_NAME = "action";
@@ -459,6 +461,12 @@ function requireInfo(value: Readonly<Record<string, unknown>>): LeRobotInfo {
   return info;
 }
 
+interface ResolvedNativePreviewVideo {
+  /** Episode-relative, clamped into this episode's interval. */
+  readonly startTimeNs: bigint;
+  readonly video: EpisodePreviewNativeVideo;
+}
+
 class LeRobotEpisodePreviewSession implements EpisodePreviewSession {
   private disposed = false;
 
@@ -487,13 +495,25 @@ class LeRobotEpisodePreviewSession implements EpisodePreviewSession {
         )
       : previewStreams[0];
     const streamSourceNames = previewStreams.map((stream) => stream.sourceName);
+    // The episode's extent is known before any frame is, and the tile's
+    // overlays place their marks against it, so every answer carries it
+    const bootstrap = {
+      bootstrapManifest: this.session.manifest,
+      bootstrapTimeline: {
+        endNs: this.session.manifest.timeRange.endNs,
+        startNs: this.session.manifest.timeRange.startNs,
+        timeDomainId: this.session.manifest.timeDomain.id,
+      },
+      bootstrapTimeRange: this.session.manifest.timeRange,
+    };
     if (!selected) {
       return {
+        ...bootstrap,
         frame: null,
         streamId: null,
         streamSourceName: null,
         streamSourceNames,
-        status: previewStreams.length ? "empty" : "unavailable",
+        status: request.sourceName ? "unavailable" : "empty",
       };
     }
 
@@ -542,10 +562,12 @@ class LeRobotEpisodePreviewSession implements EpisodePreviewSession {
         break;
       }
     }
-    const nativeVideo = await this.session.resolveNativePreviewVideo(
+    const native = await this.session.resolveNativePreviewVideo(
       selected.id,
+      startNs,
       options.signal,
     );
+    const nativeVideo = native?.video;
     this.ensureOpen();
     throwIfAborted(options.signal);
     const decoded = firstFrameAtOrAfter(frames, startNs);
@@ -573,15 +595,9 @@ class LeRobotEpisodePreviewSession implements EpisodePreviewSession {
         ? await this.session.videoTrackCodec(selected.id, options.signal)
         : undefined;
     return {
-      bootstrapManifest: this.session.manifest,
-      bootstrapTimeline: {
-        endNs: this.session.manifest.timeRange.endNs,
-        startNs: this.session.manifest.timeRange.startNs,
-        timeDomainId: this.session.manifest.timeDomain.id,
-      },
-      bootstrapTimeRange: this.session.manifest.timeRange,
+      ...bootstrap,
       frame,
-      frameTimeNs: decoded?.timestampNs,
+      frameTimeNs: decoded?.timestampNs ?? native?.startTimeNs,
       ...(unsupportedCodec ? { unsupportedCodec } : {}),
       ...(nativeVideo ? { nativeVideo } : {}),
       nextStartTimeNs:
@@ -660,9 +676,11 @@ class LeRobotEpisodeSession implements EpisodeSession {
       state.assets,
       state.info.fps,
     );
+    // A feature's name IS its stream id, its source name and the parquet
+    // column it reads from. One string under four field names in the port,
+    // never derived from one another.
     const streams = Object.entries(state.info.features).flatMap(
       ([name, feature]): StreamDescriptor[] => {
-        const streamId = streamIdForFeature(name);
         if (feature.dtype === "video") {
           const asset = findFeatureAsset(state.assets, VIDEO_ROLE, name);
           const selector = asset?.selector;
@@ -679,10 +697,10 @@ class LeRobotEpisodeSession implements EpisodeSession {
             // Parquet timestamps carry sub-nanosecond noise; unrounded, a
             // boundary frame falls outside its own episode's window
             fromSeconds: toNsResolution(selector.fromTimestamp),
-            streamId,
+            streamId: name,
             toSeconds: toNsResolution(selector.toTimestamp),
           };
-          videoBindings.set(streamId, binding);
+          videoBindings.set(name, binding);
           return [
             videoStream(name, feature, binding, timeRange, state.info.fps),
           ];
@@ -690,7 +708,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
         if (feature.dtype === "image") {
           const asset = findFeatureAsset(state.assets, IMAGE_ROLE, name);
           if (!asset) return [unsupportedStream(name, feature, timeRange)];
-          imageBindings.set(streamId, { asset, feature, streamId });
+          imageBindings.set(name, { asset, feature, streamId: name });
           return [
             imageStream(
               name,
@@ -702,7 +720,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
           ];
         }
         if (isNumericFeature(name, feature)) {
-          scalarFeatures.set(streamId, feature);
+          scalarFeatures.set(name, feature);
           return [
             scalarStream(
               name,
@@ -728,13 +746,13 @@ class LeRobotEpisodeSession implements EpisodeSession {
         sourceName: "Episode rows",
         streamId: RAW_STREAM_ID,
       },
-      ...[...scalarFeatures.entries()].map(([streamId, feature]) => ({
+      ...[...scalarFeatures.entries()].map(([featureName, feature]) => ({
         feature,
-        featureName: featureNameForStream(streamId),
+        featureName,
         kind: "feature" as const,
         schemaName: `${feature.dtype}${shapeSuffix(feature.shape)}`,
-        sourceName: featureNameForStream(streamId),
-        streamId,
+        sourceName: featureName,
+        streamId: featureName,
       })),
     ];
     this.manifest = {
@@ -927,8 +945,9 @@ class LeRobotEpisodeSession implements EpisodeSession {
 
   async resolveNativePreviewVideo(
     streamId: string,
+    startNs: bigint,
     signal?: AbortSignal,
-  ): Promise<EpisodePreviewNativeVideo | undefined> {
+  ): Promise<ResolvedNativePreviewVideo | undefined> {
     const binding = this.videoBindings.get(streamId);
     if (!binding) return undefined;
     const index = await this.readVideoIndex(binding, signal);
@@ -939,12 +958,22 @@ class LeRobotEpisodeSession implements EpisodeSession {
       signal,
     });
     throwIfAborted(signal);
+    // Episode-relative in, file-relative out: the element seeks the shared
+    // MP4, in which this episode is one interval. Clamped once, so the seek
+    // and the instant reported for it cannot disagree.
+    const startTimeNs = minBigIntPair(
+      maxBigIntPair(0n, startNs),
+      secondsToNs(binding.toSeconds - binding.fromSeconds),
+    );
     return {
-      codec,
-      codecString,
-      endTimeSeconds: binding.toSeconds,
-      source,
-      startTimeSeconds: binding.fromSeconds,
+      startTimeNs,
+      video: {
+        codec,
+        codecString,
+        endTimeSeconds: binding.toSeconds,
+        source,
+        startTimeSeconds: binding.fromSeconds + nsToSeconds(startTimeNs),
+      },
     };
   }
 
@@ -973,11 +1002,10 @@ class LeRobotEpisodeSession implements EpisodeSession {
   }
 
   private async readScalarFrames(
-    streamId: string,
+    featureName: string,
     feature: LeRobotFeature,
     request: ReadRequest,
   ) {
-    const featureName = featureNameForStream(streamId);
     const timeline = await this.timeline(request.signal);
     const range = rowRangeForWindow(timeline.rows, request.window);
     if (!range) return [];
@@ -989,13 +1017,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
     );
     return rows
       .map((row) =>
-        scalarFrame(
-          streamId,
-          featureName,
-          feature,
-          row,
-          timeline.originSeconds,
-        ),
+        scalarFrame(featureName, feature, row, timeline.originSeconds),
       )
       .filter(
         (frame): frame is DecodedFrame =>
@@ -1004,11 +1026,10 @@ class LeRobotEpisodeSession implements EpisodeSession {
   }
 
   private async readImageFrames(
-    streamId: string,
+    featureName: string,
     binding: ImageBinding,
     request: ReadRequest,
   ) {
-    const featureName = featureNameForStream(streamId);
     const timeline = await this.timeline(request.signal);
     const range = rowRangeForWindow(timeline.rows, request.window);
     if (!range) return [];
@@ -1019,9 +1040,7 @@ class LeRobotEpisodeSession implements EpisodeSession {
       range,
     );
     return rows
-      .map((row) =>
-        imageFrame(streamId, featureName, row, timeline.originSeconds),
-      )
+      .map((row) => imageFrame(featureName, row, timeline.originSeconds))
       .filter(
         (frame): frame is DecodedFrame =>
           frame !== null && inWindow(frame.timestampNs, request.window),
@@ -1371,14 +1390,15 @@ class LeRobotEpisodeSession implements EpisodeSession {
     return Promise.resolve(
       [...this.scalarFeatures.entries()]
         .filter(([stream]) => !requested || requested.has(stream))
-        .map(([streamId, feature]) => ({
+        .map(([featureName, feature]) => ({
           availability: "ready" as const,
           encoding: feature.dtype,
-          fields: scalarFieldNames(featureNameForStream(streamId), feature).map(
-            (path) => ({ path, valueType: feature.dtype }),
-          ),
-          sourceName: featureNameForStream(streamId),
-          streamId,
+          fields: scalarFieldNames(featureName, feature).map((path) => ({
+            path,
+            valueType: feature.dtype,
+          })),
+          sourceName: featureName,
+          streamId: featureName,
         })),
     );
   }
@@ -1391,7 +1411,6 @@ class LeRobotEpisodeSession implements EpisodeSession {
     if (!feature) {
       throw new Error(`Unknown LeRobot numeric stream '${request.stream}'`);
     }
-    const featureName = featureNameForStream(request.stream);
     const timeline = await this.timeline(request.signal);
     const range = rowRangeForWindow(timeline.rows, request.window);
     if (!range) {
@@ -1408,20 +1427,14 @@ class LeRobotEpisodeSession implements EpisodeSession {
       };
     }
     const rows = await this.readRows(
-      ["timestamp", "frame_index", featureName],
+      ["timestamp", "frame_index", request.stream],
       request.signal,
       requireDataAsset(this.state.header),
       range,
     );
     const frames = rows
       .map((row) =>
-        scalarFrame(
-          request.stream,
-          featureName,
-          feature,
-          row,
-          timeline.originSeconds,
-        ),
+        scalarFrame(request.stream, feature, row, timeline.originSeconds),
       )
       .filter(
         (frame): frame is DecodedFrame =>
@@ -1588,12 +1601,8 @@ class LeRobotEpisodeSession implements EpisodeSession {
   }
 
   private createStateActionCapability(): StateActionCapability | undefined {
-    const stateFeature = this.scalarFeatures.get(
-      streamIdForFeature(STATE_FEATURE_NAME),
-    );
-    const actionFeature = this.scalarFeatures.get(
-      streamIdForFeature(ACTION_FEATURE_NAME),
-    );
+    const stateFeature = this.scalarFeatures.get(STATE_FEATURE_NAME);
+    const actionFeature = this.scalarFeatures.get(ACTION_FEATURE_NAME);
     if (!stateFeature && !actionFeature) return undefined;
     const rowCount = this.state.header.rowCount;
     const config: StateActionReadConfig = {
@@ -2543,7 +2552,6 @@ function avcParameterSets(avc: AvcConfiguration | undefined) {
 }
 
 function scalarFrame(
-  streamId: string,
   featureName: string,
   feature: LeRobotFeature,
   row: Record<string, unknown>,
@@ -2574,13 +2582,12 @@ function scalarFrame(
     },
     sequence: optionalInteger(row.frame_index) ?? undefined,
     sourceTimestamps: { lerobot: secondsToNs(seconds) },
-    streamId,
+    streamId: featureName,
     timestampNs,
   };
 }
 
 function imageFrame(
-  streamId: string,
   featureName: string,
   row: Record<string, unknown>,
   originSeconds: number,
@@ -2606,7 +2613,7 @@ function imageFrame(
     },
     sequence: optionalInteger(row.frame_index) ?? undefined,
     sourceTimestamps: { lerobot: secondsToNs(seconds) },
-    streamId,
+    streamId: featureName,
     timestampNs,
   };
 }
@@ -2621,7 +2628,7 @@ function scalarStream(
   return {
     approxRateHz: fps,
     count,
-    id: streamIdForFeature(name),
+    id: name,
     kind: STREAM_KIND.SCALAR,
     metadata: streamMetadata(feature.dtype, feature.dtype, "decodable", {
       [STREAM_METADATA.CATEGORY]: leRobotCategory(name, feature.dtype),
@@ -2647,7 +2654,7 @@ function imageStream(
   return {
     approxRateHz: fps,
     count,
-    id: streamIdForFeature(name),
+    id: name,
     kind: STREAM_KIND.IMAGE,
     metadata: {
       ...streamMetadata("parquet-image", feature.dtype, "decodable"),
@@ -2707,7 +2714,7 @@ function unsupportedStream(
   timeRange: TimeWindow,
 ): StreamDescriptor {
   return {
-    id: streamIdForFeature(name),
+    id: name,
     kind: STREAM_KIND.UNKNOWN,
     metadata: streamMetadata(
       feature.dtype,
@@ -3069,16 +3076,6 @@ function videoCodec(feature: LeRobotFeature) {
   return stringValue(feature.info?.["video.codec"]) ?? "unknown";
 }
 
-function streamIdForFeature(feature: string) {
-  return `lerobot:${feature}`;
-}
-
-function featureNameForStream(stream: string) {
-  return stream.startsWith("lerobot:")
-    ? stream.slice("lerobot:".length)
-    : stream;
-}
-
 function shapeSuffix(shape: readonly number[] | undefined) {
   return shape?.length ? `[${shape.join(",")}]` : "";
 }
@@ -3255,7 +3252,7 @@ function stateActionFeatureSchema(
     }),
     dtype: feature.dtype,
     featureName,
-    numericStreamId: streamIdForFeature(featureName),
+    numericStreamId: featureName,
     shape: feature.shape ?? [],
   };
 }

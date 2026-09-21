@@ -97,9 +97,9 @@ export class ViewBarPom {
   }
 
   /**
-   * Makes the stages of a non-empty bar visible. Only bar-originated actions
-   * open the row on their own (a quick search landing); a view applied from
-   * outside stays folded behind the toggle, so this opens it when needed.
+   * Makes the stages of a non-empty bar visible. A view arriving from
+   * anywhere but the search opens the row on its own, so this is the
+   * idempotent path for the cases that do not.
    */
   async expand() {
     await this.openStages();
