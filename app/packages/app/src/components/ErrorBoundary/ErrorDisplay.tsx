@@ -2,7 +2,8 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { Highlighted, scrollable } from "@fiftyone/components";
+import { scrollable } from "@fiftyone/components";
+import { Highlighted } from "@voxel51/voodo/code";
 import { describeAppError } from "./describeAppError";
 import {
   Align,

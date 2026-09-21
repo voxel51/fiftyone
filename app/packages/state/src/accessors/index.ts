@@ -3,4 +3,3 @@ export * from "./dataset";
 export * from "./fields";
 export * from "./modal";
 export * from "./sidebar";
-export * from "./theme";

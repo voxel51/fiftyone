@@ -1,4 +1,4 @@
-import { Highlighted } from "@fiftyone/components";
+import { Highlighted } from "@voxel51/voodo/code";
 import { CodeBlock } from "@voxel51/voodo";
 import { Box } from "@mui/material";
 import { useState } from "react";

@@ -1,4 +1,5 @@
-import { Highlighted, TooltipProvider } from "@fiftyone/components";
+import { TooltipProvider } from "@fiftyone/components";
+import { Highlighted } from "@voxel51/voodo/code";
 import { CodeBlock } from "@voxel51/voodo";
 import ErrorOutlineOutlinedIcon from "@mui/icons-material/ErrorOutlineOutlined";
 import { Box, Stack, Typography } from "@mui/material";

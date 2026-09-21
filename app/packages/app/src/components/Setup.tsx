@@ -4,7 +4,7 @@
  * What the App shows with no session to connect to: how to start one.
  */
 
-import { Highlighted } from "@fiftyone/components";
+import { Highlighted } from "@voxel51/voodo/code";
 import { isNotebook } from "@fiftyone/state";
 import {
   Align,

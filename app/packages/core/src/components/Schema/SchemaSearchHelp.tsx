@@ -1,6 +1,7 @@
 import { Box, Typography } from "@mui/material";
 
-import { Highlighted, useTheme } from "@fiftyone/components";
+import { useTheme } from "@fiftyone/components";
+import { Highlighted } from "@voxel51/voodo/code";
 import { CodeBlock } from "@voxel51/voodo";
 
 interface Example {

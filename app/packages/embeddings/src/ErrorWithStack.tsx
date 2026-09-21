@@ -1,5 +1,5 @@
 import { Typography, Box } from "@mui/material";
-import { Highlighted } from "@fiftyone/components";
+import { Highlighted } from "@voxel51/voodo/code";
 import { CodeBlock } from "@voxel51/voodo";
 
 export default function ErrorWithStack({ error }) {

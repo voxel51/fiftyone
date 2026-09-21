@@ -20,7 +20,7 @@ import { ErrorBoundary as Boundary, FallbackProps } from "react-error-boundary";
 import scrollableStyles from "../../scrollable.module.css";
 import { CodeBlock } from "@voxel51/voodo";
 
-import Highlighted from "../Highlighted";
+import { Highlighted } from "@voxel51/voodo/code";
 import Loading from "../Loading";
 import style from "./ErrorBoundary.module.css";
 
