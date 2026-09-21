@@ -3,7 +3,7 @@
  */
 
 import { Highlighted } from "@voxel51/voodo/code";
-import { OperatorCore, useOperators } from "@fiftyone/operators";
+import { OperatorCore } from "@fiftyone/operators";
 import {
   Align,
   CodeBlock,
@@ -18,6 +18,7 @@ import {
 } from "@voxel51/voodo";
 import type { ReactNode } from "react";
 
+import { useProduct } from "../../product";
 import styles from "./Starter.module.css";
 
 /**
@@ -41,7 +42,7 @@ export function Layout({
   // than telling someone to install a plugin they already have. Discovery that
   // failed knows of no operators at all, which reads the same way, so the
   // screen drops the offer instead and keeps the code
-  const { hasError, isLoading } = useOperators(true);
+  const { hasError, isLoading } = useProduct().useOperatorsStatus();
 
   if (isLoading) return <LoadingScreen text="Pixelating" />;
 
