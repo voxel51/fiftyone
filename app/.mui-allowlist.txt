@@ -142,7 +142,6 @@ packages/core/src/components/Sidebar/Entries/QueryPerformanceIcon.tsx
 packages/core/src/components/Sidebar/SidebarContainer.tsx
 packages/core/src/components/Sidebar/ViewSelection/styledComponents.tsx
 packages/core/src/components/Sidebar/ViewSelection/ViewDialog.tsx
-packages/core/src/components/Snackbar.tsx
 packages/core/src/components/ViewBar/ViewBar.tsx
 packages/core/src/components/ViewBar/ViewStage/ErrorMessage.tsx
 packages/core/src/components/ViewBar/ViewStage/ViewStageParameter.tsx
