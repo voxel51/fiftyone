@@ -41,9 +41,14 @@ import ClassesSection from "../EditFieldLabelSchema/GUIContent/ClassesSection";
 import PrimitiveFieldContent from "../EditFieldLabelSchema/GUIContent/PrimitiveFieldContent";
 import Footer from "../Footer";
 import { ListContainer } from "../styled";
-import { getLabelTypeOptions, validateFieldName } from "../utils";
+import {
+  defaultClassesComponent,
+  getLabelTypeOptions,
+  validateFieldName,
+} from "../utils";
 
 import {
+  type ClassesComponent,
   ATTRIBUTE_TYPE_OPTIONS,
   CATEGORY_LABEL,
   DEFAULT_DETECTION_ATTRIBUTES_2D,
@@ -73,6 +78,13 @@ const NewFieldSchema = () => {
     DEFAULT_DETECTION_ATTRIBUTES_2D,
   );
   const [newAttributes, setNewAttributes] = useState<Set<string>>(new Set());
+  // Explicit Radio/Dropdown choice for the classes; undefined = class-count
+  // default, which is what the control shows until the user picks one
+  const [classesComponentChoice, setClassesComponentChoice] = useState<
+    ClassesComponent | undefined
+  >(undefined);
+  const classesComponent =
+    classesComponentChoice ?? defaultClassesComponent(classes);
 
   const { createAndActivateField, listSchemas } = useSchemaManager();
   const setLabelSchemasData = useSetLabelSchemasData();
@@ -125,6 +137,7 @@ const NewFieldSchema = () => {
       setAttributes(getDefaultAttributesForType(newType, is3dMedia));
       setNewAttributes(new Set());
       setClasses([]);
+      setClassesComponentChoice(undefined);
     },
     [is3dMedia],
   );
@@ -231,6 +244,9 @@ const NewFieldSchema = () => {
         classes,
         attributes,
         new_attributes: newAttrsArr.length > 0 ? newAttrsArr : undefined,
+        // Send what the form shows. With no classes the control is hidden
+        // and the operator applies its own default.
+        component: classes.length > 0 ? classesComponent : undefined,
       };
     }
 
@@ -276,6 +292,7 @@ const NewFieldSchema = () => {
     canCreate,
     category,
     classes,
+    classesComponent,
     createAndActivateField,
     exitNewFieldMode,
     fieldName,
@@ -391,9 +408,11 @@ const NewFieldSchema = () => {
               <ClassesSection
                 classes={classes}
                 attributeCount={attributes.length}
+                component={classesComponent}
                 onAddClass={handleAddClass}
                 onEditClass={handleEditClass}
                 onDeleteClass={handleDeleteClass}
+                onComponentChange={setClassesComponentChoice}
                 onOrderChange={handleClassOrderChange}
               />
               <AttributesSection
