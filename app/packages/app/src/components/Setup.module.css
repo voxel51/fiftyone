@@ -33,21 +33,6 @@
 
 /* The links share the header's first-row height, so they center on it like
    the nav's actions do rather than riding the top of a top-aligned header */
-.code {
-  margin: 0;
-  padding: 2rem;
-  overflow: auto;
-  border-radius: var(--radius-sm);
-  background: var(--color-content-code-bg);
-  border: 1px solid var(--color-content-code-border);
-  color: var(--color-content-code-text);
-  font-family: monospace;
-  font-size: 1rem;
-  line-height: 1.5;
-}
-
-/* The links share the header's first-row height, so they center on it like
-   the nav's actions do rather than riding the top of a top-aligned header */
 .links {
   flex: 1;
   height: 40px;

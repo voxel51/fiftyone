@@ -2,7 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { Loading } from "@fiftyone/components";
+import { LoadingScreen } from "@fiftyone/core";
 import { usePlugins } from "@fiftyone/plugins";
 import {
   Writer,
@@ -49,7 +49,7 @@ export const SessionContext = React.createContext<Session>(SESSION_DEFAULT);
 
 const Plugins = ({ children }: { children: React.ReactNode }) => {
   const plugins = usePlugins();
-  if (plugins.isLoadingPlugins) return <Loading>Pixelating...</Loading>;
+  if (plugins.isLoadingPlugins) return <LoadingScreen />;
   return <>{children}</>;
 };
 
@@ -66,9 +66,7 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
   return (
     <SessionContext.Provider value={sessionRef.current}>
       {readyState === AppReadyState.CLOSED && <Setup />}
-      {readyState === AppReadyState.CONNECTING && (
-        <Loading>Pixelating...</Loading>
-      )}
+      {readyState === AppReadyState.CONNECTING && <LoadingScreen />}
       {readyState === AppReadyState.OPEN && (
         <Writer<OperationType>
           read={() => {

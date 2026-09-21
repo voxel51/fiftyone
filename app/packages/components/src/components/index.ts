@@ -37,7 +37,6 @@ export { default as Markdown } from "./Markdown";
 export { default as MuiButton } from "./MuiButton";
 export { default as MuiIconFont } from "./MuiIconFont";
 export { default as PanelCTA } from "./PanelCTA";
-export { default as Pending } from "./Pending";
 export { default as PillButton } from "./PillButton";
 export { default as Popout, PopoutDiv } from "./Popout";
 export { default as PopoutButton } from "./PopoutButton";
