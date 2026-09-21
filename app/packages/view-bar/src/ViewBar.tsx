@@ -38,6 +38,8 @@ import {
   TextVariant,
   Tooltip,
 } from "@voxel51/voodo";
+import clsx from "clsx";
+import { createPortal } from "react-dom";
 import React, {
   useCallback,
   useEffect,
@@ -161,7 +163,13 @@ const STILL_IN_BAR = [
 const ViewBarInner: React.FC<{
   /** What this surface may offer; everything, unless the host says less. */
   capabilities?: ViewBarCapabilities;
-}> = ({ capabilities = OPEN_CAPABILITIES }) => {
+  /**
+   * Where the stages row renders, for a host whose search row shares its line
+   * with other chrome and wants the stages to have the window's width. Without
+   * one the row opens under the search, framed with it.
+   */
+  stagesHost?: HTMLElement | null;
+}> = ({ capabilities = OPEN_CAPABILITIES, stagesHost }) => {
   const servedDefs = fos.useStageDefinitions();
   const stageDefs = useMemo(
     () => gateDefinitions(servedDefs as StageDefinition[], capabilities),
@@ -1074,7 +1082,9 @@ const ViewBarInner: React.FC<{
   const gutter = (
     <div
       className={
-        stagesRowOpen ? `${styles.gutter} ${styles.open}` : styles.gutter
+        stagesRowOpen && !stagesHost
+          ? `${styles.gutter} ${styles.open}`
+          : styles.gutter
       }
       style={{ height: CHROME_CONTROL_HEIGHT }}
     >
@@ -1150,105 +1160,103 @@ const ViewBarInner: React.FC<{
     </div>
   );
 
+  const stagesRow = stagesRowOpen && (
+    <Stack
+      orientation={Orientation.Row}
+      spacing={Spacing.None}
+      align={Align.Center}
+      data-cy="view-bar-stages-row"
+      className={clsx(styles.stagesRow, stagesHost && styles.detached)}
+      style={{ height: CHROME_CONTROL_HEIGHT }}
+    >
+      <Stack
+        orientation={Orientation.Row}
+        spacing={Spacing.Xs}
+        align={Align.Center}
+        className={styles.scroller}
+        data-cy="view-bar-scroller"
+      >
+        <InsertSlot
+          index={0}
+          names={insertableNames}
+          describe={describeStage}
+          onInsert={insertStage}
+          onOpen={closeEditor}
+          // An empty row's slot IS the selector, input and all — a
+          // bare "+" alone in the row reads as a rendering failure
+          pinned={state.stages.length === 0}
+        />
+        {state.stages.map((stage, i) => {
+          const def = defsByName.get(stage.cls);
+          if (!def) return null;
+          return (
+            <React.Fragment key={stage.id}>
+              <StageCard
+                errors={visibleErrors.get(stage.id) ?? NO_ERRORS}
+                // A stage holding a rejected value is invalid; one
+                // merely missing required values is incomplete —
+                // orange says "finish me", red says "fix me"
+                invalid={[
+                  ...(paramErrors.byStage.get(stage.id)?.values() ?? []),
+                ].some((message) => message !== "Required")}
+                kinds={activeKinds.get(stage.id) ?? NO_KINDS}
+                onModeChange={(param, kind) => changeMode(stage, param, kind)}
+                stage={stage}
+                definition={def}
+                fieldOptions={
+                  editingId === stage.id ? editingFieldOptions : fieldOptions
+                }
+                allPaths={editingId === stage.id ? editingPaths : fieldPaths}
+                allowedFor={
+                  editingId === stage.id ? editingAllowedFor : allowedFor
+                }
+                choicesFor={choicesFor}
+                operators={operators}
+                fieldKind={
+                  editingId === stage.id ? editingFieldKind : fieldKind
+                }
+                expanded={editingId === stage.id}
+                onToggle={() =>
+                  setEditingId((id) => (id === stage.id ? null : stage.id))
+                }
+                onChange={(name, value) => {
+                  markTouched(stage.id, name);
+                  dispatch({
+                    type: "setKwarg",
+                    id: stage.id,
+                    name,
+                    value,
+                  });
+                }}
+                onCommit={commitStage}
+                onRemove={() => {
+                  if (editingId === stage.id) setEditingId(null);
+                  dispatch({ type: "removeStage", id: stage.id });
+                  // Removing a stage is a finished edit — apply once
+                  // the reducer's state lands (next render)
+                  autoApplyQueued.current = true;
+                }}
+              />
+              <InsertSlot
+                index={i + 1}
+                names={insertableNames}
+                describe={describeStage}
+                onInsert={insertStage}
+                onOpen={closeEditor}
+              />
+            </React.Fragment>
+          );
+        })}
+      </Stack>
+    </Stack>
+  );
+
   return (
     <div className={styles.bar} data-cy="view-bar" onKeyDown={onBarKeyDown}>
       {gutter}
-      {stagesRowOpen && (
-        <Stack
-          orientation={Orientation.Row}
-          spacing={Spacing.None}
-          align={Align.Center}
-          data-cy="view-bar-stages-row"
-          className={styles.stagesRow}
-          style={{ height: CHROME_CONTROL_HEIGHT }}
-        >
-          <Stack
-            orientation={Orientation.Row}
-            spacing={Spacing.Xs}
-            align={Align.Center}
-            className={styles.scroller}
-            data-cy="view-bar-scroller"
-          >
-            <InsertSlot
-              index={0}
-              names={insertableNames}
-              describe={describeStage}
-              onInsert={insertStage}
-              onOpen={closeEditor}
-              // An empty row's slot IS the selector, input and all — a
-              // bare "+" alone in the row reads as a rendering failure
-              pinned={state.stages.length === 0}
-            />
-            {state.stages.map((stage, i) => {
-              const def = defsByName.get(stage.cls);
-              if (!def) return null;
-              return (
-                <React.Fragment key={stage.id}>
-                  <StageCard
-                    errors={visibleErrors.get(stage.id) ?? NO_ERRORS}
-                    // A stage holding a rejected value is invalid; one
-                    // merely missing required values is incomplete —
-                    // orange says "finish me", red says "fix me"
-                    invalid={[
-                      ...(paramErrors.byStage.get(stage.id)?.values() ?? []),
-                    ].some((message) => message !== "Required")}
-                    kinds={activeKinds.get(stage.id) ?? NO_KINDS}
-                    onModeChange={(param, kind) =>
-                      changeMode(stage, param, kind)
-                    }
-                    stage={stage}
-                    definition={def}
-                    fieldOptions={
-                      editingId === stage.id
-                        ? editingFieldOptions
-                        : fieldOptions
-                    }
-                    allPaths={
-                      editingId === stage.id ? editingPaths : fieldPaths
-                    }
-                    allowedFor={
-                      editingId === stage.id ? editingAllowedFor : allowedFor
-                    }
-                    choicesFor={choicesFor}
-                    operators={operators}
-                    fieldKind={
-                      editingId === stage.id ? editingFieldKind : fieldKind
-                    }
-                    expanded={editingId === stage.id}
-                    onToggle={() =>
-                      setEditingId((id) => (id === stage.id ? null : stage.id))
-                    }
-                    onChange={(name, value) => {
-                      markTouched(stage.id, name);
-                      dispatch({
-                        type: "setKwarg",
-                        id: stage.id,
-                        name,
-                        value,
-                      });
-                    }}
-                    onCommit={commitStage}
-                    onRemove={() => {
-                      if (editingId === stage.id) setEditingId(null);
-                      dispatch({ type: "removeStage", id: stage.id });
-                      // Removing a stage is a finished edit — apply once
-                      // the reducer's state lands (next render)
-                      autoApplyQueued.current = true;
-                    }}
-                  />
-                  <InsertSlot
-                    index={i + 1}
-                    names={insertableNames}
-                    describe={describeStage}
-                    onInsert={insertStage}
-                    onOpen={closeEditor}
-                  />
-                </React.Fragment>
-              );
-            })}
-          </Stack>
-        </Stack>
-      )}
+      {stagesHost
+        ? stagesRow && createPortal(stagesRow, stagesHost)
+        : stagesRow}
     </div>
   );
 };
@@ -1261,6 +1269,7 @@ const ViewBarInner: React.FC<{
  */
 const ViewBar: React.FC<{
   capabilities?: ViewBarCapabilities;
+  stagesHost?: HTMLElement | null;
 }> = (props) => {
   const datasetName = fos.useCurrentDatasetName();
   return <ViewBarInner key={datasetName ?? ""} {...props} />;
