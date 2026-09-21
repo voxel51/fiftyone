@@ -16,10 +16,6 @@ vi.mock("@fiftyone/operators", () => ({
   useOperatorAvailability: vi.fn(() => mocks.available),
 }));
 
-vi.mock("../url/useSchemaManagerUrl", () => ({
-  useSchemaManagerUrl: vi.fn(),
-}));
-
 vi.mock("./Modal/Sidebar/Annotate/SchemaManager", () => ({
   default: () => React.createElement("div", null, "schema-manager"),
 }));

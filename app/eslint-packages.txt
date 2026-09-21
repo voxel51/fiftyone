@@ -2,6 +2,7 @@
 # for PRs to be merge-able
 packages/operators
 packages/app
+packages/location
 packages/view-bar
 packages/spotlight
 packages/looker-3d
