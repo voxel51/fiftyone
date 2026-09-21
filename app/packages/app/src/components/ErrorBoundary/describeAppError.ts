@@ -5,7 +5,7 @@ import {
   NotFoundError,
   OperatorError,
   PanelEventError,
-} from "./errors";
+} from "@fiftyone/utilities";
 
 /** One labelled block of an error's detail, rendered as code. */
 export interface AppErrorSection {

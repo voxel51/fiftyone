@@ -6,7 +6,7 @@ import {
   NotFoundError,
   OperatorError,
   PanelEventError,
-} from "./errors";
+} from "@fiftyone/utilities";
 
 describe("describeAppError", () => {
   it("reports a missing route as a message, with nothing to expand", () => {

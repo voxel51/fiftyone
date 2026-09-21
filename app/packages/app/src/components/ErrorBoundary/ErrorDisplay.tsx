@@ -4,7 +4,7 @@
 
 import { scrollable } from "@fiftyone/components";
 import { CodeBlock } from "@fiftyone/core";
-import { describeAppError } from "@fiftyone/utilities";
+import { describeAppError } from "./describeAppError";
 import {
   Align,
   Button,
