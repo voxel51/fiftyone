@@ -30,7 +30,6 @@ from .media_reference import (
     WholeFile,
 )
 
-
 _LAZY_ATTRIBUTES = {
     "DecodedIngestFields": ("decoders", "DecodedIngestFields"),
     "DecodedIngestValue": ("decoders", "DecodedIngestValue"),

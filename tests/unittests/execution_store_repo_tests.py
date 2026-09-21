@@ -109,6 +109,7 @@ class TestInMemoryExecutionStoreRepo(unittest.TestCase):
         explicit = self.repo.get_key(store_name, key)
         self.assertEqual(explicit.expires_at, expires_at)
         self.assertEqual(explicit.policy, KeyPolicy.PERSIST)
+
     def test_update_ttl(self):
         store_name = "ttl_store"
         key = "ttl_key"

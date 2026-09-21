@@ -5,8 +5,8 @@ FiftyOne v0.15.0 admin revision.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import logging
 
+import logging
 
 logger = logging.getLogger(__name__)
 

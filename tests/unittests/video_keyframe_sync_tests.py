@@ -17,16 +17,20 @@ class KeyframeSyncTests(unittest.TestCase):
         )
         sample.frames[1] = fo.Frame(
             filepath="frame1.jpg",
-            detections=fo.Detections(detections=[
-                fo.Detection(
-                    label="car",
-                    bounding_box=[0.1, 0.1, 0.2, 0.2],
-                ),
-            ])
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="car",
+                        bounding_box=[0.1, 0.1, 0.2, 0.2],
+                    ),
+                ]
+            ),
         )
-        sample["events"] = fo.TemporalDetections(detections=[
-            fo.TemporalDetection(label="action", support=[1, 3]),
-        ])
+        sample["events"] = fo.TemporalDetections(
+            detections=[
+                fo.TemporalDetection(label="action", support=[1, 3]),
+            ]
+        )
         self.dataset.add_sample(sample)
         self.sample: fo.Sample = sample
 
@@ -106,8 +110,9 @@ class KeyframeSyncTests(unittest.TestCase):
             [parent_a, parent_b],
         )
 
-
-    def test_keyframe_dynamic_attr_persists_on_temporal_detection(self) -> None:
+    def test_keyframe_dynamic_attr_persists_on_temporal_detection(
+        self,
+    ) -> None:
         td: fo.TemporalDetection = self.sample.events.detections[0]
         td.keyframe = True
         td.propagation = None

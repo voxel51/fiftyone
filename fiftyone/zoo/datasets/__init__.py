@@ -27,7 +27,6 @@ import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 from fiftyone.utils.github import GitHubRepository
 
-
 DATASET_METADATA_FILENAMES = ("fiftyone.yml", "fiftyone.yaml")
 
 logger = logging.getLogger(__name__)

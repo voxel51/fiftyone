@@ -5,6 +5,7 @@ Image utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 import os
 
@@ -14,7 +15,6 @@ import eta.core.utils as etau
 import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
-
 
 logger = logging.getLogger(__name__)
 

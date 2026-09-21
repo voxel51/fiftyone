@@ -68,13 +68,11 @@ class AbstractSecret(ISecret, abc.ABC):
 
     @property
     @abc.abstractmethod
-    def key(self) -> str:
-        ...
+    def key(self) -> str: ...
 
     @property
     @abc.abstractmethod
-    def value(self) -> Union[str, int, bytes]:
-        ...
+    def value(self) -> Union[str, int, bytes]: ...
 
     @property
     @abc.abstractmethod

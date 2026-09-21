@@ -4,6 +4,7 @@ Unit tests for delegated ops doc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import pytest
 
 
