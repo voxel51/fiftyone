@@ -1,13 +1,13 @@
 import * as fos from "@fiftyone/state";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { LightningBolt } from "../Sidebar/Entries/FilterablePathEntry/Icon";
 
 const Icon = ({ color, path }: { color?: string; path: string }) => {
-  const hasFilters = useRecoilValue(fos.hasFilters(false));
-  const filteredIndex = useRecoilValue(
+  const hasFilters = useReverbValue(fos.hasFilters(false));
+  const filteredIndex = useReverbValue(
     fos.pathHasIndexes({ path, withFilters: true }),
   );
-  const pathColor = useRecoilValue(fos.pathColor(path));
+  const pathColor = useReverbValue(fos.pathColor(path));
 
   return (
     <LightningBolt
@@ -23,12 +23,12 @@ export default function useQueryPerformanceIcon(
   path: string,
   color?: string,
 ) {
-  const filteredIndex = useRecoilValue(
+  const filteredIndex = useReverbValue(
     fos.pathHasIndexes({ path, withFilters: true }),
   );
-  const frameField = useRecoilValue(fos.isFrameField(path));
-  const indexed = useRecoilValue(fos.pathHasIndexes({ path }));
-  const queryPerformance = useRecoilValue(fos.queryPerformance);
+  const frameField = useReverbValue(fos.isFrameField(path));
+  const indexed = useReverbValue(fos.pathHasIndexes({ path }));
+  const queryPerformance = useReverbValue(fos.queryPerformance);
 
   const showQueryPerformanceIcon =
     named &&

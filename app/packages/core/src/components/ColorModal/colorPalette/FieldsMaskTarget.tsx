@@ -2,7 +2,7 @@ import { isRgbMaskTargets } from "@fiftyone/looker/src/overlays/util";
 import { MaskColorInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import React, { useCallback, useEffect } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useReverbState, useReverbValue } from "@fiftyone/reverb";
 import Checkbox from "../../Common/Checkbox";
 import { fieldColorSetting } from "../FieldSetting";
 import { FieldCHILD_STYLE, SectionWrapper } from "../ShareStyledDiv";
@@ -15,12 +15,12 @@ import {
 } from "../utils";
 
 const FieldsMaskTargets: React.FC = () => {
-  const maskTargets = useRecoilValue(fos.targets).fields;
+  const maskTargets = useReverbValue(fos.targets).fields;
   const isRGBMask = isRgbMaskTargets(maskTargets);
 
-  const colorScheme = useRecoilValue(fos.colorScheme);
-  const activePath = useRecoilValue(activeColorPath);
-  const [setting, setSetting] = useRecoilState(fieldColorSetting(activePath));
+  const colorScheme = useReverbValue(fos.colorScheme);
+  const activePath = useReverbValue(activeColorPath);
+  const [setting, setSetting] = useReverbState(fieldColorSetting(activePath));
 
   const values = setting?.maskTargetsColors ?? [];
 

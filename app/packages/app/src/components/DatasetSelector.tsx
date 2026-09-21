@@ -11,7 +11,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 
 import { useDatasetDisplayName } from "../product";
 import styles from "./DatasetSelector.module.css";
@@ -27,7 +27,7 @@ const DatasetSelector: React.FC<{
   useSearch: UseSearch;
 }> = ({ useSearch }) => {
   const setDataset = useSetDataset();
-  const dataset = useRecoilValue(datasetName) as string;
+  const dataset = useReverbValue(datasetName) as string;
   // What the field shows. A product may display a dataset under a different
   // name than the one the router loads, which stays `dataset` throughout.
   const displayName = useDatasetDisplayName();

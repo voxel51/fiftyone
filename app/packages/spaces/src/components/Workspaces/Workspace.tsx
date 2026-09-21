@@ -10,13 +10,13 @@ import {
   Stack,
 } from "@mui/material";
 import "allotment/dist/style.css";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useReverbValue, useSetReverbState } from "@fiftyone/reverb";
 import { workspaceEditorStateAtom } from "../../state";
 
 export default function Workspace(props: WorkspacePropsType) {
   const { name, description, color, onClick, onEdit } = props;
-  const setWorkspaceEditorState = useSetRecoilState(workspaceEditorStateAtom);
-  const canEdit = useRecoilValue(canEditWorkspaces);
+  const setWorkspaceEditorState = useSetReverbState(workspaceEditorStateAtom);
+  const canEdit = useReverbValue(canEditWorkspaces);
   const disabled = canEdit.enabled !== true;
   const disabledMsg = canEdit.message;
 

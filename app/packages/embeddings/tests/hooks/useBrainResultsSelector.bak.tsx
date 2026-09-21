@@ -1,7 +1,7 @@
 import * as fos from "@fiftyone/state";
 import { act, renderHook } from "@testing-library/react";
 import React, { useEffect } from "react";
-import { RecoilRoot, useRecoilValue } from "recoil";
+import { ReverbRoot, useReverbValue } from "@fiftyone/reverb";
 import { expect, test } from "vitest";
 import {
   useBrainResult,
@@ -20,7 +20,7 @@ test("useBrainResultSelector", () => {
   const { result } = renderHook(() => useBrainResultsSelector(), {
     wrapper: ({ children }) => {
       return (
-        <RecoilRoot
+        <ReverbRoot
           initializeState={(snapshot) => {
             snapshot.set(fos.dataset, {
               brainMethods: [
@@ -42,7 +42,7 @@ test("useBrainResultSelector", () => {
         >
           <Initializer initialValue="test" />
           {children}
-        </RecoilRoot>
+        </ReverbRoot>
       );
     },
   });

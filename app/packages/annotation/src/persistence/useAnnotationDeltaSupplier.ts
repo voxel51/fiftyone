@@ -1,6 +1,6 @@
 import { isPatchesView } from "@fiftyone/state";
 import { useCallback } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { useSampleInstance } from "../state";
 import type { DeltaSupplier } from "./deltaSupplier";
 
@@ -16,7 +16,7 @@ import type { DeltaSupplier } from "./deltaSupplier";
  */
 export const useAnnotationDeltaSupplier = (): DeltaSupplier => {
   const sample = useSampleInstance();
-  const isGenerated = useRecoilValue(isPatchesView);
+  const isGenerated = useReverbValue(isPatchesView);
 
   return useCallback(() => {
     const deltas = sample.getJsonPatch({ isGenerated });

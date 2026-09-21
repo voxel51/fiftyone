@@ -2,7 +2,7 @@ import { useReset3dAnnotationMode } from "@fiftyone/looker-3d/src/state/accessor
 import { isPatchesView, isVideoDataset } from "@fiftyone/state";
 import { CLASSIFICATION } from "@fiftyone/utilities";
 import { useCallback, useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import {
   useAnnotationContext,
   useAnnotationFields,
@@ -18,9 +18,9 @@ import useExit from "./useExit";
 export const useClassificationMode = () => {
   const annotationContext = useAnnotationContext();
   const onExit = useExit();
-  const isPatchView = useRecoilValue(isPatchesView);
+  const isPatchView = useReverbValue(isPatchesView);
   const reset3dAnnotationMode = useReset3dAnnotationMode();
-  const isVideo = useRecoilValue(isVideoDataset);
+  const isVideo = useReverbValue(isVideoDataset);
   const { fields: allFields } = useAnnotationFields(CLASSIFICATION);
   // On video datasets, only sample-level Classification fields are supported;
   // frame-level (`frames.*`) Classification is not, so it must not appear in

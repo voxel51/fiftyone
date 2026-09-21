@@ -7,7 +7,7 @@ import {
 import * as fos from "@fiftyone/state";
 import { Add } from "@mui/icons-material";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { usePanels, useSpaceNodes } from "../hooks";
 import { AddPanelButtonProps } from "../types";
 import { panelsCompareFn } from "../utils/sort";
@@ -17,7 +17,7 @@ import { Typography, Grid } from "@mui/material";
 
 export default function AddPanelButton({ node, spaceId }: AddPanelButtonProps) {
   const [open, setOpen] = useState(false);
-  const isModalActive = useRecoilValue(fos.isModalActive);
+  const isModalActive = useReverbValue(fos.isModalActive);
   const panelsPredicate = useCallback(
     (panel: PluginComponentRegistration) => {
       const surface = panel.panelOptions?.surfaces;

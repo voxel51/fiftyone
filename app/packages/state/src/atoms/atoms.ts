@@ -1,0 +1,452 @@
+import { Sample } from "@fiftyone/looker/src/state";
+import {
+  datasetFragment,
+  datasetFragment$key,
+  frameFieldsFragment,
+  frameFieldsFragment$data,
+  frameFieldsFragment$key,
+  graphQLSyncFragmentAtom,
+  mediaTypeFragment,
+  mediaTypeFragment$key,
+  sampleFieldsFragment,
+  sampleFieldsFragment$data,
+  sampleFieldsFragment$key,
+} from "@fiftyone/relay";
+import { StrictField, setContains3d } from "@fiftyone/utilities";
+import { DefaultValue, atom, atomFamily, selector } from "@fiftyone/reverb";
+import { ModalSample } from "..";
+import { GRID_SPACES_DEFAULT, sessionAtom } from "../session";
+import { collapseFields } from "../utils";
+import { getBrowserStorageEffectForKey } from "./customEffects";
+import { groupMediaTypesSet } from "./groups";
+import type { SelectionType } from "./types";
+import {
+  DEFAULT_LABEL_SELECTION_STYLE,
+  DEFAULT_SELECTION_STYLE,
+  State,
+} from "./types";
+
+export const refresher = atom<number>({
+  key: "refresher",
+  default: 0,
+});
+
+export const modal = (() => {
+  let modal: ModalSample | null = null;
+  return graphQLSyncFragmentAtom<datasetFragment$key, ModalSample | null>(
+    {
+      fragments: [datasetFragment],
+      keys: ["dataset"],
+      read: (data, previous) => {
+        if (data.id !== previous?.id) {
+          modal = null;
+        }
+
+        return modal;
+      },
+      default: null,
+    },
+    {
+      key: "modal",
+      effects: [
+        ({ onSet }) => {
+          onSet((value) => {
+            modal = value;
+          });
+        },
+      ],
+    },
+  );
+})();
+
+export interface SortResults {
+  count: boolean;
+  asc: boolean;
+}
+
+export const sortFilterResults = atomFamily<SortResults, boolean>({
+  key: "sortFilterResults",
+  default: {
+    count: true,
+    asc: false,
+  },
+});
+
+export const cropToContent = atomFamily<boolean, boolean>({
+  key: "cropToContent",
+  default: true,
+});
+
+export const fullscreen = atom<boolean>({
+  key: "fullscreen",
+  default: false,
+  effects: [
+    getBrowserStorageEffectForKey("fullscreen", { valueClass: "boolean" }),
+  ],
+});
+
+export const showOverlays = atom<boolean>({
+  key: "showOverlays",
+  default: true,
+});
+
+export const showModalNavigationControls = atom<boolean>({
+  key: "showModalNavigationControls",
+  default: true,
+  effects: [
+    getBrowserStorageEffectForKey("showModalNavigationControls", {
+      valueClass: "boolean",
+    }),
+  ],
+});
+
+export const activePlot = atom<string>({
+  key: "activePlot",
+  default: "Labels",
+});
+
+export const loading = atom<boolean>({
+  key: "loading",
+  default: false,
+});
+
+export const snackbarErrors = atom<string[]>({
+  key: "snackbarErrors",
+  default: [],
+});
+
+export const snackbarLink = atom<{ link?: string; message: string } | null>({
+  key: "snackbarLink",
+  default: null,
+});
+
+export const snackbarMessage = atom<string | null>({
+  key: "snackbarMessage",
+  default: null,
+});
+
+// labels: whether label tag or sample tag
+export const tagging = atomFamily<boolean, { modal: boolean; labels: boolean }>(
+  {
+    key: "tagging",
+    default: false,
+  },
+);
+
+export const mediaType = graphQLSyncFragmentAtom<
+  mediaTypeFragment$key,
+  string | null
+>(
+  {
+    fragments: [datasetFragment, mediaTypeFragment],
+    keys: ["dataset"],
+    read: (data) => data.mediaType,
+    default: null,
+  },
+  {
+    key: "mediaType",
+  },
+);
+
+export const flatSampleFields = graphQLSyncFragmentAtom<
+  sampleFieldsFragment$key,
+  sampleFieldsFragment$data["sampleFields"]
+>(
+  {
+    fragments: [datasetFragment, sampleFieldsFragment],
+    keys: ["dataset"],
+    read: (data) => data.sampleFields,
+    default: [],
+  },
+  {
+    key: "flatSampleFields",
+  },
+);
+
+export const sampleFields = selector<StrictField[]>({
+  key: "sampleFields",
+  get: ({ get }) => collapseFields(get(flatSampleFields) || []),
+});
+
+export const flatFrameFields = graphQLSyncFragmentAtom<
+  frameFieldsFragment$key,
+  frameFieldsFragment$data["frameFields"]
+>(
+  {
+    fragments: [datasetFragment, frameFieldsFragment],
+    keys: ["dataset"],
+    read: (data) => data.frameFields,
+    default: [],
+  },
+  {
+    key: "flatFrameFields",
+  },
+);
+
+export const frameFields = selector<StrictField[]>({
+  key: "frameFields",
+  get: ({ get }) => collapseFields(get(flatFrameFields) || []),
+});
+
+export const selectedViewName = atom<string>({
+  key: "selectedViewName",
+  default: null,
+});
+
+export const selectedLabels = sessionAtom({
+  key: "selectedLabels",
+  default: [],
+});
+
+export const selectedSamples = sessionAtom({
+  key: "selectedSamples",
+  default: new Map<string, SelectionType>(),
+});
+
+export const selectedSampleObjects = atom<Map<string, Sample>>({
+  key: "selectedSampleObjects",
+  default: new Map(),
+});
+
+export const sampleSelectionStyle = sessionAtom({
+  key: "sampleSelectionStyle",
+  default: DEFAULT_SELECTION_STYLE,
+});
+
+export const labelSelectionStyle = sessionAtom({
+  key: "labelSelectionStyle",
+  default: DEFAULT_LABEL_SELECTION_STYLE,
+});
+
+// only used in extended view, for tagging purpose
+export const hiddenLabels = atom<State.SelectedLabelMap>({
+  key: "hiddenLabels",
+  default: {},
+});
+
+export const stageInfo = atom({
+  key: "stageInfo",
+  default: undefined,
+});
+
+export const viewCounter = atom({
+  key: "viewCounter",
+  default: 0,
+});
+
+export const DEFAULT_ALPHA = 0.7;
+
+export const colorSeed = atom<number>({
+  key: "colorSeed",
+  default: 0,
+});
+
+export const savedLookerOptions = atom({
+  key: "savedLookerOptions",
+  default: {},
+});
+
+export const patching = atom<boolean>({
+  key: "patching",
+  default: false,
+});
+
+export const savingFilters = atom<boolean>({
+  key: "savingFilters",
+  default: false,
+});
+
+export const similaritySorting = atom<boolean>({
+  key: "similaritySorting",
+  default: false,
+});
+
+// `read` runs on every fragment update, so it must hand back the last write
+// or a refetch drops the selection. Module scope so the reset can clear it.
+let currentSelection = { selection: null };
+let currentOverrideStage = null;
+
+/** Clears what `read` hands back, so a reset survives the next update. */
+export function clearExtendedSelectionMirror(): void {
+  currentSelection = { selection: null };
+  currentOverrideStage = null;
+}
+
+export const extendedSelection = graphQLSyncFragmentAtom<
+  datasetFragment$key,
+  {
+    selection: string[];
+    scope?: string;
+    spatialSelection?: {
+      polygon: Array<Array<number>>;
+      field: string;
+    } | null;
+  }
+>(
+  {
+    fragments: [datasetFragment],
+    keys: ["dataset"],
+    default: { selection: null },
+    read: (data, previous) => {
+      if (previous && data.id !== previous?.id) {
+        currentSelection = { selection: null };
+      }
+
+      return currentSelection;
+    },
+  },
+  {
+    key: "extendedSelection",
+    effects: [
+      ({ onSet }) => {
+        onSet((value) => {
+          currentSelection =
+            value instanceof DefaultValue ? { selection: null } : value;
+        });
+      },
+    ],
+  },
+);
+
+export const extendedSelectionOverrideStage = graphQLSyncFragmentAtom<
+  datasetFragment$key,
+  any
+>(
+  {
+    fragments: [datasetFragment],
+    keys: ["dataset"],
+    default: null,
+    read: (data, previous) => {
+      if (previous && data.id !== previous?.id) {
+        currentOverrideStage = null;
+      }
+
+      return currentOverrideStage;
+    },
+  },
+  {
+    key: "extendedSelectionOverrideStage",
+    effects: [
+      ({ onSet }) => {
+        onSet((value) => {
+          currentOverrideStage = value instanceof DefaultValue ? null : value;
+        });
+      },
+    ],
+  },
+);
+
+export const similarityParameters = (() => {
+  let update = false;
+  let parameters: State.SortBySimilarityParameters | null = null;
+
+  return graphQLSyncFragmentAtom<
+    datasetFragment$key,
+    State.SortBySimilarityParameters
+  >(
+    {
+      fragments: [datasetFragment],
+      keys: ["dataset"],
+      read: (data, previous) => {
+        if (data.id !== previous?.id && !update) {
+          parameters = null;
+        }
+        update = false;
+
+        return parameters;
+      },
+      default: null,
+      selectorEffect: (_, newValue) => {
+        update = true;
+        parameters = newValue instanceof DefaultValue ? null : newValue;
+        return parameters;
+      },
+    },
+    {
+      key: "similarityParameters",
+    },
+  );
+})();
+
+export const modalTopBarVisible = atom<boolean>({
+  key: "modalTopBarVisible",
+  default: true,
+});
+
+export const hoveredSample = atom<Sample>({
+  key: "hoveredSample",
+  default: null,
+});
+
+export const lastLoadedDatasetNameState = atom<string>({
+  key: "lastLoadedDatasetNameState",
+  default: "",
+});
+
+export const lookerPanels = atom({
+  key: "lookerPanels",
+  default: {
+    json: { isOpen: false },
+    help: { isOpen: false },
+  },
+});
+
+export const only3d = selector<boolean>({
+  key: "only3d",
+  get: ({ get }) => {
+    const set = get(groupMediaTypesSet);
+    const has3d = setContains3d(set);
+    return set.size === 1 && has3d;
+  },
+});
+
+export const theme = atom<"dark" | "light">({
+  key: "theme",
+  default: "dark",
+  effects: [getBrowserStorageEffectForKey("mui-mode")],
+});
+
+export const sessionSpaces = sessionAtom({
+  key: "sessionSpaces",
+  default: GRID_SPACES_DEFAULT,
+});
+
+export const colorScheme = sessionAtom({
+  key: "colorScheme",
+});
+
+// sidebar filter vs. visibility mode
+export const isSidebarFilterMode = atom<boolean>({
+  key: "isSidebarFilterMode",
+  default: true,
+});
+
+export const hideNoneValuedFields = atom<boolean>({
+  key: "hideNoneValuedFields",
+  default: false,
+  effects: [
+    getBrowserStorageEffectForKey("hideNoneValuedFields", {
+      valueClass: "boolean",
+    }),
+  ],
+});
+
+export const noneValuedPaths = atom<Record<string, Set<string>>>({
+  key: "noneValuedPaths",
+  default: {},
+});
+
+export const escapeKeyHandlerIdsAtom = atom<Set<string>>({
+  key: "escapeKeyHandlerIdsAtom",
+  default: new Set(),
+});
+
+export const editingFieldAtom = atom<boolean>({
+  key: "editingFieldAtom",
+  default: false,
+});
+
+export const isInMultiPanelViewAtom = atom<boolean>({
+  key: "isInMultiPanelViewAtom",
+  default: false,
+});

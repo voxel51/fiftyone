@@ -1,0 +1,20 @@
+import { selector, selectorFamily } from "@fiftyone/reverb";
+import { labelPaths } from "./schema";
+
+export const labelPathsSet = selector({
+  key: "labelPathsSet",
+  get: ({ get }) => new Set(get(labelPaths({ expanded: false }))),
+});
+
+export const labelPathsSetExpanded = selector({
+  key: "labelPathsSetExpanded",
+  get: ({ get }) => new Set(get(labelPaths({ expanded: true }))),
+});
+
+export const isLabelPath = selectorFamily({
+  key: "isLabelPath",
+  get:
+    (path: string) =>
+    ({ get }) =>
+      get(labelPathsSet).has(path),
+});

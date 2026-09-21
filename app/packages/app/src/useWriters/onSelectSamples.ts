@@ -7,7 +7,7 @@ import {
   type setSelectedSamplesMutation,
 } from "@fiftyone/relay";
 import type { SelectionType } from "@fiftyone/state";
-import { DefaultValue } from "recoil";
+import { DefaultValue } from "@fiftyone/reverb";
 import { commitMutation } from "relay-runtime";
 import type { RegisteredWriter } from "./registerWriter";
 

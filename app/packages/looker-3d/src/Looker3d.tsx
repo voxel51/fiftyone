@@ -1,7 +1,7 @@
 import * as fos from "@fiftyone/state";
 import { is3d, isDirect3dSamplePath, setContains3d } from "@fiftyone/utilities";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useReverbValue, useSetReverbState } from "@fiftyone/reverb";
 import { ActionBar } from "./action-bar";
 import { Container } from "./containers";
 import { Fo3dErrorBoundary } from "./ErrorBoundary";
@@ -23,17 +23,17 @@ import {
  * including legacy point-cloud media types.
  */
 export const Looker3d = () => {
-  const mediaType = useRecoilValue(fos.mediaType);
-  const has3dSlices = setContains3d(useRecoilValue(fos.groupMediaTypesSet));
-  const isDynamicGroup = useRecoilValue(fos.isDynamicGroup);
-  const isGroup = useRecoilValue(fos.isGroup);
+  const mediaType = useReverbValue(fos.mediaType);
+  const has3dSlices = setContains3d(useReverbValue(fos.groupMediaTypesSet));
+  const isDynamicGroup = useReverbValue(fos.isDynamicGroup);
+  const isGroup = useReverbValue(fos.isGroup);
   const modalMode = fos.useModalMode();
-  const isMain2DViewerVisible = useRecoilValue(
+  const isMain2DViewerVisible = useReverbValue(
     fos.groupMediaIsMain2DViewerVisible,
   );
-  const parentMediaType = useRecoilValue(fos.parentMediaTypeSelector);
+  const parentMediaType = useReverbValue(fos.parentMediaTypeSelector);
   const sample = fos.useStableSceneSample3d();
-  const mediaField = useRecoilValue(fos.selectedMediaField(true));
+  const mediaField = useReverbValue(fos.selectedMediaField(true));
   const mediaPath = useMemo(
     () => (sample ? getMediaPathForFo3dSample(sample, mediaField) : null),
     [sample, mediaField],
@@ -52,14 +52,14 @@ export const Looker3d = () => {
   const timeout = useRef<ReturnType<typeof setTimeout>>(null);
   const hoveringRef = useRef(false);
 
-  const setCurrentAction = useSetRecoilState(currentActionAtom);
+  const setCurrentAction = useSetReverbState(currentActionAtom);
 
-  const setFo3dHasBackground = useSetRecoilState(fo3dContainsBackground);
+  const setFo3dHasBackground = useSetReverbState(fo3dContainsBackground);
 
-  const thisSampleId = useRecoilValue(fos.modalSampleId);
+  const thisSampleId = useReverbValue(fos.modalSampleId);
 
   // test affordance: 3D selection has no DOM signal, so expose its count
-  const selectedLabelCount = useRecoilValue(fos.selectedLabels).length;
+  const selectedLabelCount = useReverbValue(fos.selectedLabels).length;
 
   useEffect(() => {
     return () => {

@@ -4,7 +4,7 @@ import * as fos from "@fiftyone/state";
 import { constants } from "@fiftyone/utilities";
 import type { Controller } from "@react-spring/web";
 import React, { useCallback } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
 import MainSpace from "./MainSpace";
 import SchemaSettings from "./Schema/SchemaSettings";
@@ -34,7 +34,7 @@ const TopContainer = styled.div`
 `;
 
 const Sidebar = () => {
-  const disabled = useRecoilValue(fos.disabledCheckboxPaths);
+  const disabled = useReverbValue(fos.disabledCheckboxPaths);
   const renderGridEntry = useCallback(
     (
       key: string,
@@ -137,9 +137,9 @@ const Sidebar = () => {
 };
 
 function SamplesContainer() {
-  const showSidebar = useRecoilValue(fos.sidebarVisible(false));
+  const showSidebar = useReverbValue(fos.sidebarVisible(false));
 
-  const isModalOpen = useRecoilValue(fos.isModalActive);
+  const isModalOpen = useReverbValue(fos.isModalActive);
 
   return (
     <Container>

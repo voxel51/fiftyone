@@ -8,7 +8,7 @@ import * as fos from "@fiftyone/state";
 import { useCursor } from "@react-three/drei";
 import type { ThreeEvent } from "@react-three/fiber";
 import { useCallback, useState } from "react";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import { useReverbCallback, useReverbValue } from "@fiftyone/reverb";
 import { use3dLabelColor } from "../../hooks/use-3d-label-color";
 import { useSimilarLabels3d } from "../../hooks/use-similar-labels-3d";
 import {
@@ -42,9 +42,9 @@ const shouldSuppressLabelTooltip = (
  * Custom hook for managing hover state and cursor behavior
  */
 export const useHoverState = (): HoverState => {
-  const isSegmenting = useRecoilValue(isActivelySegmentingSelector);
+  const isSegmenting = useReverbValue(isActivelySegmentingSelector);
   const [isHovered, setIsHovered] = useState(false);
-  const isEditSegmentsMode = useRecoilValue(editSegmentsModeAtom);
+  const isEditSegmentsMode = useReverbValue(editSegmentsModeAtom);
 
   useCursor(
     isHovered,
@@ -65,7 +65,7 @@ export const useHoverState = (): HoverState => {
  * label once at its call site (see `Cuboid`).
  */
 const useMeshTooltipProps = () => {
-  const onPointerOver = useRecoilCallback(
+  const onPointerOver = useReverbCallback(
     ({ snapshot, set }) =>
       (label: OverlayLabel, e?: ThreeEvent<PointerEvent>) => {
         const selectedLabel = snapshot
@@ -105,7 +105,7 @@ const useMeshTooltipProps = () => {
     [],
   );
 
-  const onPointerOut = useRecoilCallback(
+  const onPointerOut = useReverbCallback(
     ({ snapshot, set }) =>
       (label: OverlayLabel) => {
         const isTooltipLocked = snapshot
@@ -123,7 +123,7 @@ const useMeshTooltipProps = () => {
     [],
   );
 
-  const onPointerMissed = useRecoilCallback(
+  const onPointerMissed = useReverbCallback(
     ({ snapshot, set }) =>
       () => {
         const isTooltipLocked = snapshot
@@ -137,7 +137,7 @@ const useMeshTooltipProps = () => {
     [],
   );
 
-  const onPointerMove = useRecoilCallback(
+  const onPointerMove = useReverbCallback(
     ({ snapshot, set }) =>
       (label: OverlayLabel, e: ThreeEvent<PointerEvent>) => {
         const selectedLabel = snapshot

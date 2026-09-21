@@ -1,6 +1,6 @@
 import { render } from "@testing-library/react";
 import { unstable_act as act } from "react";
-import { useSetRecoilState } from "recoil";
+import { useSetReverbState } from "@fiftyone/reverb";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_FO3D_PERFORMANCE_STATS } from "../../state";
 import { Fo3dPerformanceMonitor } from "../Fo3dPerformanceMonitor";
@@ -43,12 +43,15 @@ vi.mock("@react-three/fiber", () => ({
   useFrame: harness.useFrame,
 }));
 
-vi.mock("recoil", async () => {
-  const actual = await vi.importActual<typeof import("recoil")>("recoil");
+vi.mock("@fiftyone/reverb", async () => {
+  const actual =
+    await vi.importActual<typeof import("@fiftyone/reverb")>(
+      "@fiftyone/reverb",
+    );
 
   return {
     ...actual,
-    useSetRecoilState: vi.fn(),
+    useSetReverbState: vi.fn(),
   };
 });
 
@@ -75,7 +78,7 @@ describe("Fo3dPerformanceMonitor", () => {
     harness.frameCallback = null;
     harness.setPerformanceStats.mockClear();
     harness.useFrame.mockClear();
-    vi.mocked(useSetRecoilState).mockReturnValue(harness.setPerformanceStats);
+    vi.mocked(useSetReverbState).mockReturnValue(harness.setPerformanceStats);
   });
 
   afterEach(() => {

@@ -27,7 +27,6 @@
     "packageManager": "yarn@4.9.1",
     "peerDependencies": {
         "react": "*",
-        "react-dom": "*",
-        "recoil": "*"
+        "react-dom": "*"
     }
 }

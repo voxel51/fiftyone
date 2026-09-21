@@ -1,13 +1,17 @@
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
-import { disabledCheckboxPaths } from "../recoil/sidebar";
-import { sidebarExpanded } from "../recoil/sidebarExpanded";
+import {
+  useReverbState,
+  useReverbValue,
+  useSetReverbState,
+} from "@fiftyone/reverb";
+import { disabledCheckboxPaths } from "../atoms/sidebar";
+import { sidebarExpanded } from "../atoms/sidebarExpanded";
 
 /**
  * Returns the set of field paths that are disabled in the sidebar checkbox list.
  * Includes unsupported field types (DictField, VectorField, etc.) and frame fields that are not labels.
  */
 export const useDisabledCheckboxPaths = (): Set<string> =>
-  useRecoilValue(disabledCheckboxPaths);
+  useReverbValue(disabledCheckboxPaths);
 
 interface SidebarExpandedParams {
   /** The dot-notation field path, e.g. `"ground_truth"` or `"ground_truth.label"`. */
@@ -20,10 +24,10 @@ interface SidebarExpandedParams {
  * Returns whether the given sidebar path is currently expanded.
  *
  * Prefer this over reading `fos.sidebarExpanded` directly so that
- * call sites remain decoupled from the underlying recoil atom.
+ * call sites remain decoupled from the underlying store atom.
  */
 export const useSidebarExpanded = (params: SidebarExpandedParams): boolean =>
-  useRecoilValue(sidebarExpanded(params));
+  useReverbValue(sidebarExpanded(params));
 
 /**
  * Returns a setter for the expanded state of the given sidebar path.
@@ -34,7 +38,7 @@ export const useSidebarExpanded = (params: SidebarExpandedParams): boolean =>
  * setExpanded(true);
  */
 export const useSetSidebarExpanded = (params: SidebarExpandedParams) =>
-  useSetRecoilState(sidebarExpanded(params));
+  useSetReverbState(sidebarExpanded(params));
 
 /**
  * Returns `[expanded, setExpanded]` for the given sidebar path —
@@ -47,4 +51,4 @@ export const useSetSidebarExpanded = (params: SidebarExpandedParams) =>
 export const useSidebarExpandedState = (
   params: SidebarExpandedParams,
 ): [boolean, (value: boolean | ((prev: boolean) => boolean)) => void] =>
-  useRecoilState(sidebarExpanded(params));
+  useReverbState(sidebarExpanded(params));

@@ -1,9 +1,9 @@
 import {
-  useRecoilState,
-  useRecoilValue,
-  useResetRecoilState,
-  useSetRecoilState,
-} from "recoil";
+  useReverbState,
+  useReverbValue,
+  useResetReverbState,
+  useSetReverbState,
+} from "@fiftyone/reverb";
 import {
   activeCursorPanelAtom,
   cuboidLabelLineWidthAtom,
@@ -25,7 +25,7 @@ import {
   selectedLabelForAnnotationAtom,
   showCuboidOrientationAtom,
   transformModeAtom,
-} from "./recoil";
+} from "./atoms";
 
 /**
  * Hook to retrieve the current 3D annotation mode.
@@ -33,7 +33,7 @@ import {
  * @returns The current annotation mode, or null if no mode is active
  */
 export const useCurrent3dAnnotationMode = () => {
-  const mode = useRecoilValue(current3dAnnotationModeAtom);
+  const mode = useReverbValue(current3dAnnotationModeAtom);
 
   return mode;
 };
@@ -44,7 +44,7 @@ export const useCurrent3dAnnotationMode = () => {
  * @returns A function that accepts the annotation mode to set
  */
 export const useSetCurrent3dAnnotationMode = () => {
-  const setMode = useSetRecoilState(current3dAnnotationModeAtom);
+  const setMode = useSetReverbState(current3dAnnotationModeAtom);
 
   return setMode;
 };
@@ -55,7 +55,7 @@ export const useSetCurrent3dAnnotationMode = () => {
  * @returns A function that resets the annotation mode when called
  */
 export const useReset3dAnnotationMode = () => {
-  const reset3dAnnotationMode = useResetRecoilState(
+  const reset3dAnnotationMode = useResetReverbState(
     current3dAnnotationModeAtom,
   );
 
@@ -68,7 +68,7 @@ export const useReset3dAnnotationMode = () => {
  * @returns The selected label, or null if nothing is selected
  */
 export const useCurrentSelected3dAnnotationLabel = () => {
-  return useRecoilValue(selectedLabelForAnnotationAtom);
+  return useReverbValue(selectedLabelForAnnotationAtom);
 };
 
 /**
@@ -77,7 +77,7 @@ export const useCurrentSelected3dAnnotationLabel = () => {
  * @returns A function that clears the selection when called
  */
 export const useResetSelected3dAnnotationLabel = () => {
-  return useResetRecoilState(selectedLabelForAnnotationAtom);
+  return useResetReverbState(selectedLabelForAnnotationAtom);
 };
 
 /**
@@ -86,7 +86,7 @@ export const useResetSelected3dAnnotationLabel = () => {
  * @returns The hovered label identifier (`{ id }`) or null if no label is hovered
  */
 export const useHoveredLabel3d = () => {
-  return useRecoilValue(hoveredLabelAtom);
+  return useReverbValue(hoveredLabelAtom);
 };
 
 /**
@@ -95,15 +95,15 @@ export const useHoveredLabel3d = () => {
  * @returns A function that accepts the new hovered label (or null to clear)
  */
 export const useSetHoveredLabel3d = () => {
-  return useSetRecoilState(hoveredLabelAtom);
+  return useSetReverbState(hoveredLabelAtom);
 };
 
 export const useFo3dPerformanceStats = () => {
-  return useRecoilValue(fo3dPerformanceStatsAtom);
+  return useReverbValue(fo3dPerformanceStatsAtom);
 };
 
 export const useSetFo3dPerformanceStats = () => {
-  return useSetRecoilState(fo3dPerformanceStatsAtom);
+  return useSetReverbState(fo3dPerformanceStatsAtom);
 };
 
 /**
@@ -111,18 +111,18 @@ export const useSetFo3dPerformanceStats = () => {
  * drag). Components consume this rather than the atom directly.
  */
 export const useIsCurrentlyTransforming = () => {
-  return useRecoilValue(isCurrentlyTransformingAtom);
+  return useReverbValue(isCurrentlyTransformingAtom);
 };
 
 export const useSetIsCurrentlyTransforming = () => {
-  return useSetRecoilState(isCurrentlyTransformingAtom);
+  return useSetReverbState(isCurrentlyTransformingAtom);
 };
 
 /**
  * The active transform gizmo mode (translate/rotate/scale).
  */
 export const useTransformMode = () => {
-  return useRecoilValue(transformModeAtom);
+  return useReverbValue(transformModeAtom);
 };
 
 /**
@@ -130,11 +130,11 @@ export const useTransformMode = () => {
  * highlight shows wherever the label is drawn.
  */
 export const useHoveredHeadingTargetFace = () => {
-  return useRecoilValue(hoveredHeadingTargetFaceAtom);
+  return useReverbValue(hoveredHeadingTargetFaceAtom);
 };
 
 export const useSetHoveredHeadingTargetFace = () => {
-  return useSetRecoilState(hoveredHeadingTargetFaceAtom);
+  return useSetReverbState(hoveredHeadingTargetFaceAtom);
 };
 
 /**
@@ -143,7 +143,7 @@ export const useSetHoveredHeadingTargetFace = () => {
  * arrow/face highlight and suppress other transform controls while hovered.
  */
 export const useHeadingUpPreview = () => {
-  return useRecoilValue(headingUpPreviewAtom);
+  return useReverbValue(headingUpPreviewAtom);
 };
 
 /**
@@ -152,7 +152,7 @@ export const useHeadingUpPreview = () => {
  * directly, matching the rest of this module's convention.
  */
 export const useSetHeadingUpPreview = () => {
-  return useSetRecoilState(headingUpPreviewAtom);
+  return useSetReverbState(headingUpPreviewAtom);
 };
 
 /**
@@ -163,35 +163,35 @@ export const useSetHeadingUpPreview = () => {
  * hover that drives the ghost-arrow preview itself).
  */
 export const useHeadingUpEditorHover = () => {
-  return useRecoilValue(headingUpEditorHoverAtom);
+  return useReverbValue(headingUpEditorHoverAtom);
 };
 
 export const useSetHeadingUpEditorHover = () => {
-  return useSetRecoilState(headingUpEditorHoverAtom);
+  return useSetReverbState(headingUpEditorHoverAtom);
 };
 
 export const useCuboidOrientation = () => {
-  return useRecoilValue(showCuboidOrientationAtom);
+  return useReverbValue(showCuboidOrientationAtom);
 };
 
 export const useCuboidOrientationState = () => {
-  return useRecoilState(showCuboidOrientationAtom);
+  return useReverbState(showCuboidOrientationAtom);
 };
 
 export const useActiveCursorPanel = () => {
-  return useRecoilValue(activeCursorPanelAtom);
+  return useReverbValue(activeCursorPanelAtom);
 };
 
 export const useSetActiveCursorPanel = () => {
-  return useSetRecoilState(activeCursorPanelAtom);
+  return useSetReverbState(activeCursorPanelAtom);
 };
 
 export const useFo3dMainPanelPointerDown = () => {
-  return useRecoilValue(isFo3dMainPanelPointerDownAtom);
+  return useReverbValue(isFo3dMainPanelPointerDownAtom);
 };
 
 export const useSetFo3dMainPanelPointerDown = () => {
-  return useSetRecoilState(isFo3dMainPanelPointerDownAtom);
+  return useSetReverbState(isFo3dMainPanelPointerDownAtom);
 };
 
 export const useGlobalCursorCoordinatorActions = () => {
@@ -202,34 +202,34 @@ export const useGlobalCursorCoordinatorActions = () => {
 };
 
 export const useRaycastResult = () => {
-  return useRecoilValue(raycastResultAtom);
+  return useReverbValue(raycastResultAtom);
 };
 
 export const useSetRaycastResult = () => {
-  return useSetRecoilState(raycastResultAtom);
+  return useSetReverbState(raycastResultAtom);
 };
 
 export const useMainPanelNavigationSyncIntents = () => {
   return {
-    mainPanelPanSyncIntent: useRecoilValue(mainPanelPanSyncIntentAtom),
-    mainPanelZoomSyncIntent: useRecoilValue(mainPanelZoomSyncIntentAtom),
+    mainPanelPanSyncIntent: useReverbValue(mainPanelPanSyncIntentAtom),
+    mainPanelZoomSyncIntent: useReverbValue(mainPanelZoomSyncIntentAtom),
   };
 };
 
 export const useMainPanelNavigationSyncEmitterState = () => {
   return {
-    activeCursorPanel: useRecoilValue(activeCursorPanelAtom),
-    raycastResult: useRecoilValue(raycastResultAtom),
-    setMainPanelPanSyncIntent: useSetRecoilState(mainPanelPanSyncIntentAtom),
-    setMainPanelZoomSyncIntent: useSetRecoilState(mainPanelZoomSyncIntentAtom),
+    activeCursorPanel: useReverbValue(activeCursorPanelAtom),
+    raycastResult: useReverbValue(raycastResultAtom),
+    setMainPanelPanSyncIntent: useSetReverbState(mainPanelPanSyncIntentAtom),
+    setMainPanelZoomSyncIntent: useSetReverbState(mainPanelZoomSyncIntentAtom),
   };
 };
 
 export const useCuboidTransformCommands = () => {
-  const setCurrentArchetypeSelectedForTransform = useSetRecoilState(
+  const setCurrentArchetypeSelectedForTransform = useSetReverbState(
     currentArchetypeSelectedForTransformAtom,
   );
-  const setTransformMode = useSetRecoilState(transformModeAtom);
+  const setTransformMode = useSetReverbState(transformModeAtom);
 
   return {
     selectNewCuboidForTransform: () => {
@@ -240,18 +240,18 @@ export const useCuboidTransformCommands = () => {
 };
 
 export const useThreeDLabelState = () => {
-  const [cuboidLineWidth, setCuboidLineWidth] = useRecoilState(
+  const [cuboidLineWidth, setCuboidLineWidth] = useReverbState(
     cuboidLabelLineWidthAtom,
   );
-  const [polylineWidth, setPolylineWidth] = useRecoilState(
+  const [polylineWidth, setPolylineWidth] = useReverbState(
     polylineLabelLineWidthAtom,
   );
 
   return {
     cuboidLineWidth,
     hoveredLabel: useHoveredLabel3d(),
-    isCreatingCuboid: useRecoilValue(isCreatingCuboidAtom),
-    isSegmenting: useRecoilValue(isActivelySegmentingSelector),
+    isCreatingCuboid: useReverbValue(isCreatingCuboidAtom),
+    isSegmenting: useReverbValue(isActivelySegmentingSelector),
     polylineWidth,
     selectedLabelForAnnotation: useCurrentSelected3dAnnotationLabel(),
     setCuboidLineWidth,

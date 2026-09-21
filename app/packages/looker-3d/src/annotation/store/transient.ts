@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import { atom, useRecoilValue, useSetRecoilState } from "recoil";
+import { atom, useReverbValue, useSetReverbState } from "@fiftyone/reverb";
 import type {
   LabelId,
   TransientCuboidState,
@@ -47,7 +47,7 @@ export const transientAtom = atom<TransientStore>({
  * Hook that returns the entire transient store.
  */
 export function useTransientStore(): TransientStore {
-  return useRecoilValue(transientAtom);
+  return useReverbValue(transientAtom);
 }
 
 /**
@@ -56,7 +56,7 @@ export function useTransientStore(): TransientStore {
 export function useTransientCuboid(
   labelId: LabelId,
 ): TransientCuboidState | undefined {
-  const store = useRecoilValue(transientAtom);
+  const store = useReverbValue(transientAtom);
   return store.cuboids[labelId];
 }
 
@@ -66,7 +66,7 @@ export function useTransientCuboid(
 export function useTransientPolyline(
   labelId: LabelId,
 ): TransientPolylineState | undefined {
-  const store = useRecoilValue(transientAtom);
+  const store = useReverbValue(transientAtom);
   return store.polylines[labelId];
 }
 
@@ -74,7 +74,7 @@ export function useTransientPolyline(
  * Hook that returns whether a drag is in progress.
  */
 export function useIsDragInProgress(): boolean {
-  return useRecoilValue(transientAtom).activeDragLabel !== null;
+  return useReverbValue(transientAtom).activeDragLabel !== null;
 }
 
 // =============================================================================
@@ -85,7 +85,7 @@ export function useIsDragInProgress(): boolean {
  * Hook that provides functions to update the transient store.
  */
 export function useUpdateTransient() {
-  const setTransient = useSetRecoilState(transientAtom);
+  const setTransient = useSetReverbState(transientAtom);
 
   /**
    * Updates the transient state for a cuboid.
@@ -205,7 +205,7 @@ export function useStartDrag() {
  * Hook that provides a function to end a drag operation.
  */
 export function useEndDrag() {
-  const setTransient = useSetRecoilState(transientAtom);
+  const setTransient = useSetReverbState(transientAtom);
 
   return useCallback(
     (labelId: LabelId) => {

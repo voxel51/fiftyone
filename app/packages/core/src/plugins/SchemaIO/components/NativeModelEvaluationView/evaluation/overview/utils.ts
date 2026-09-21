@@ -1,5 +1,5 @@
 import { view } from "@fiftyone/state";
-import { useRecoilState } from "recoil";
+import { useReverbState } from "@fiftyone/reverb";
 import {
   CONFUSION_MATRIX_SORT_OPTIONS,
   DEFAULT_BAR_CONFIG,
@@ -9,7 +9,7 @@ import { CLASS_PERFORMANCE_SORT_OPTIONS } from "./constants";
 export function useActiveFilter(evaluation, compareEvaluation) {
   const evalKey = evaluation?.info?.key;
   const compareKey = compareEvaluation?.info?.key;
-  const [stages] = useRecoilState(view);
+  const [stages] = useReverbState(view);
   if (stages?.length >= 1) {
     const stage = stages[0];
     const { _cls, kwargs } = stage;

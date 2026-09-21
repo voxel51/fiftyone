@@ -5,7 +5,7 @@
  * commit them back through the SurfaceController.
  *
  * The store is injected ({@link WorkingStore3d}) so the bridge stays pure and
- * unit-testable; the React wiring hook supplies a Recoil-backed implementation.
+ * unit-testable; the React wiring hook supplies a store-backed implementation.
  * `color` is a coloring-scheme view field the engine's Sample labels lack, so
  * the bridge stamps it at mount via the injected {@link Looker3dBridgeDeps.resolveColor}.
  *
@@ -26,7 +26,7 @@ import type {
 
 /**
  * Imperative access to the 3D working store, scoped to the bridge's sample.
- * The Recoil-backed implementation lives in the wiring hook.
+ * The store-backed implementation lives in the wiring hook.
  */
 export interface WorkingStore3d {
   /** Latest committed entry for `instanceId`, or undefined if absent. */

@@ -2,7 +2,11 @@ import { pluginsLoaderAtom } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { debounce, isEqual } from "lodash";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRecoilValue, useSetRecoilState, useRecoilState } from "recoil";
+import {
+  useReverbValue,
+  useSetReverbState,
+  useReverbState,
+} from "@fiftyone/reverb";
 import { RESOLVE_PLACEMENTS_TTL } from "./constants";
 import {
   ExecutionContext,
@@ -22,22 +26,22 @@ import {
 } from "./state";
 
 function useOperatorThrottledContextSetter() {
-  const datasetName = useRecoilValue(fos.datasetName);
-  const view = useRecoilValue(fos.view);
-  const viewName = useRecoilValue(fos.viewName);
-  const extendedStages = useRecoilValue(fos.extendedStages);
-  const filters = useRecoilValue(fos.filters);
-  const selectedSamples = useRecoilValue(fos.selectedSamples);
-  const sampleSelectionStyle = useRecoilValue(fos.sampleSelectionStyle);
-  const selectedLabels = useRecoilValue(fos.selectedLabels);
-  const groupSlice = useRecoilValue(fos.groupSlice);
+  const datasetName = useReverbValue(fos.datasetName);
+  const view = useReverbValue(fos.view);
+  const viewName = useReverbValue(fos.viewName);
+  const extendedStages = useReverbValue(fos.extendedStages);
+  const filters = useReverbValue(fos.filters);
+  const selectedSamples = useReverbValue(fos.selectedSamples);
+  const sampleSelectionStyle = useReverbValue(fos.sampleSelectionStyle);
+  const selectedLabels = useReverbValue(fos.selectedLabels);
+  const groupSlice = useReverbValue(fos.groupSlice);
   const currentSample = useCurrentSample();
-  const setContext = useSetRecoilState(operatorThrottledContext);
-  const spaces = useRecoilValue(fos.sessionSpaces);
+  const setContext = useSetReverbState(operatorThrottledContext);
+  const spaces = useReverbValue(fos.sessionSpaces);
   const workspaceName = spaces._name;
-  const modal = !!useRecoilValue(fos.modal);
-  const extendedSelection = useRecoilValue(fos.extendedSelection);
-  const activeFields = useRecoilValue(fos.activeFields({ modal }));
+  const modal = !!useReverbValue(fos.modal);
+  const extendedSelection = useReverbValue(fos.extendedSelection);
+  const activeFields = useReverbValue(fos.activeFields({ modal }));
   const setThrottledContext = useMemo(() => {
     return debounce(
       (context) => {
@@ -92,10 +96,10 @@ function isCompleteThrottledContext(
 
 export function useOperatorPlacementsResolver() {
   useOperatorThrottledContextSetter();
-  const context = useRecoilValue(operatorThrottledContext);
-  const operatorsInitialized = useRecoilValue(operatorsInitializedAtom);
-  const pluginsLoaderState = useRecoilValue(pluginsLoaderAtom);
-  const setOperatorPlacementsAtom = useSetRecoilState(operatorPlacementsAtom);
+  const context = useReverbValue(operatorThrottledContext);
+  const operatorsInitialized = useReverbValue(operatorsInitializedAtom);
+  const pluginsLoaderState = useReverbValue(pluginsLoaderAtom);
+  const setOperatorPlacementsAtom = useSetReverbState(operatorPlacementsAtom);
   const [resolving, setResolving] = useState(false);
   const [initialized, setInitialized] = useState(false);
   const lastContext = useRef(null);
@@ -138,7 +142,7 @@ export function useOperatorPlacementsResolver() {
 }
 
 export function useActivePanelEventsCount(id: string) {
-  const [activePanelEventsCount, setActivePanelEventsCount] = useRecoilState(
+  const [activePanelEventsCount, setActivePanelEventsCount] = useReverbState(
     activePanelsEventCountAtom,
   );
   const count = useMemo(() => {
@@ -175,7 +179,7 @@ export function useActivePanelEventsCount(id: string) {
 
 /** Reactively returns the first registered operator URI from a list. */
 export function useFirstExistingUri(uris: string[]) {
-  const operators = useRecoilValue(availableOperators);
+  const operators = useReverbValue(availableOperators);
   const existingUri = uris.find((uri) => {
     const resolvedUri = resolveOperatorURI(uri);
     return operators.some((operator) => operator.value === resolvedUri);
@@ -198,8 +202,8 @@ export function useOperatorAvailability(uri: string) {
  * registry will not fill in on its own.
  */
 export function useOperatorRegistryState(): "loading" | "ready" | "error" {
-  const initialized = useRecoilValue(operatorsInitializedAtom);
-  const failed = useRecoilValue(operatorsLoadFailedAtom);
+  const initialized = useReverbValue(operatorsInitializedAtom);
+  const failed = useReverbValue(operatorsLoadFailedAtom);
   if (initialized) return "ready";
   return failed ? "error" : "loading";
 }

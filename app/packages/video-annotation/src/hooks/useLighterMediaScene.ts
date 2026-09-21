@@ -192,7 +192,7 @@ export function useLighterMediaScene({
    * Apply the sidebar's confidence / label / tag filters and hidden-labels
    * set to the canvas, the way the looker's `Overlay.isShown` did. Off by
    * default (and for Annotate) for the same reason `useModalLookerOptions`
-   * itself defaults `withFilter` to `false`: computing it costs a Recoil
+   * itself defaults `withFilter` to `false`: computing it costs a store
    * read on every filter change, worth paying only where a hidden label is
    * actually meant to disappear rather than stay editable.
    */

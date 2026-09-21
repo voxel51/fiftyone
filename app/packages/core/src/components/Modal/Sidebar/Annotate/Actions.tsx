@@ -47,7 +47,7 @@ import {
   Tooltip,
 } from "@voxel51/voodo";
 import { createContext, useCallback, useContext } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
 import { ItemRight } from "./Components";
 import { useSchemaManagerModal } from "./SchemaManager/hooks";
@@ -479,14 +479,14 @@ export const ThreeDCuboids = () => {
 // removed — the label edit view hides Create while depending on those hooks.
 const Actions = ({ hidden = false }: { hidden?: boolean }) => {
   // This checks if media type of the dataset resolved to 3d
-  const is3dDataset = useRecoilValue(is3DDataset);
+  const is3dDataset = useReverbValue(is3DDataset);
   // Video annotation handles the per-frame spatial label types — boxes,
   // instance masks (Segmentation mode paints onto a detection), and polylines —
   // plus sample-level Classification (the field picker filters frame-level
   // paths out). So the surface shows that set (Select + Classification +
   // Detection + Segmentation + Polyline). Undo/redo are shown — the engine's
   // value-based stack backs them on video too.
-  const isVideo = useRecoilValue(isVideoDataset);
+  const isVideo = useReverbValue(isVideoDataset);
   // This checks if a 3d sample is pinned - is true when media type is `group` with a 3d slice pinned
   const is3dSamplePinned = useIs3dPinned();
 

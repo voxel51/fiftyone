@@ -1,7 +1,7 @@
 import type { Lookers } from "@fiftyone/looker";
 import { LRUCache } from "lru-cache";
 import { useState } from "react";
-import type { ModalSample } from "../recoil";
+import type { ModalSample } from "../atoms";
 
 export type { Lookers };
 

@@ -11,7 +11,7 @@ import { DetectionOverlay, useLighter } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
 import { atom, useAtom, useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { labels, useLabelsContext } from "../useLabels";
 
 const mergeTargetIdAtom = atom(null as string | null);
@@ -54,7 +54,7 @@ export const useMergeTool = (): MergeTool => {
   const engine = useAnnotationEngine();
   const { scene } = useLighter();
   const { getLabelById } = useLabelsContext();
-  const fieldSchema = useRecoilValue(
+  const fieldSchema = useReverbValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE }),
   );
 

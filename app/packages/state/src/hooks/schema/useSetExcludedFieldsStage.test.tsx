@@ -1,6 +1,6 @@
 import React from "react";
 import { renderHook, act } from "@testing-library/react";
-import { RecoilRoot, useRecoilValue } from "recoil";
+import { ReverbRoot, useReverbValue } from "@fiftyone/reverb";
 
 import { afterEach, describe, expect, test, vi } from "vitest";
 import * as fos from "@fiftyone/state";
@@ -15,7 +15,7 @@ const TEST_DS = {
 
 const Root: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
   return (
-    <RecoilRoot
+    <ReverbRoot
       initializeState={({ set }) => {
         set(fos.dataset, TEST_DS);
         set(fos.showNestedFieldsState, false);
@@ -27,7 +27,7 @@ const Root: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
       <RelayEnvironmentProvider environment={new Environment({})}>
         {children}
       </RelayEnvironmentProvider>
-    </RecoilRoot>
+    </ReverbRoot>
   );
 };
 
@@ -51,7 +51,7 @@ describe("useSetShowNestedFields hook used in schema code", () => {
 
         return {
           setFieldVisibilityStage: (stage) => setFieldVisibilityStage(stage),
-          excludedFieldsStage: useRecoilValue(fos.excludedPathsState({})),
+          excludedFieldsStage: useReverbValue(fos.excludedPathsState({})),
         };
       },
       {

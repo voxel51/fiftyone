@@ -1,9 +1,9 @@
 import Flashlight, { Response } from "@fiftyone/flashlight";
 import { Sample, freeVideos } from "@fiftyone/looker";
+import { useReverbCallback, useReverbValue } from "@fiftyone/reverb";
 import * as fos from "@fiftyone/state";
 import { get } from "lodash";
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
-import { selector, useRecoilValue } from "recoil";
 import useFlashlightPager from "../../../../../useFlashlightPager";
 import useSetDynamicGroupSample from "./useSetDynamicGroupSample";
 
@@ -107,7 +107,7 @@ const useCreateFlashlight = (
   page: (page: number) => Promise<Response<number>>,
   store: fos.LookerStore<fos.Lookers>,
 ) => {
-  const modalSampleId = useRecoilValue(fos.modalSampleId);
+  const modalSampleId = useReverbValue(fos.modalSampleId);
   const highlight = useCallback(
     (sample) => sample._id === modalSampleId,
     [modalSampleId],
@@ -116,7 +116,7 @@ const useCreateFlashlight = (
   const selectSample = useRef(select);
   selectSample.current = select;
   const options = fos.useLookerOptions(true);
-  const field = useRecoilValue(fos.dynamicGroupParameters);
+  const field = useReverbValue(fos.dynamicGroupParameters);
   const setSample = useSetDynamicGroupSample();
   const createLooker = fos.useCreateLooker(
     true,
@@ -151,37 +151,40 @@ const useCreateFlashlight = (
 };
 
 /**
- * Recoil selector that builds the paginator callback for the dynamic groups
- * carousel. Captures dataset name at selector evaluation time and reads view
- * and groupByFieldValue from a snapshot at page-fetch time so the pager always
- * uses the current view without becoming a stale closure.
+ * Builds the paginator callback for the dynamic groups carousel. View and group
+ * value are read when a page is fetched rather than subscribed to, so the
+ * callback's identity survives a view change and the carousel is not rebuilt.
  */
-const pageParams = selector({
-  key: "paginateDynamicGroupVariables",
-  get: ({ get, getCallback }) => {
-    const dataset = get(fos.datasetName);
-    if (!dataset) {
-      throw new Error("no dataset");
-    }
+const usePageParams = () => {
+  const dataset = useReverbValue(fos.datasetName);
 
-    return getCallback(
-      ({ snapshot }) =>
-        async (page: number, pageSize: number) => {
-          const params = {
-            dataset,
-            view: await snapshot.getPromise(fos.view),
-          };
-          return {
-            ...params,
-            dynamicGroup: await snapshot.getPromise(fos.groupByFieldValue),
-            filter: {},
-            after: page ? String(page * pageSize - 1) : null,
-            count: pageSize,
-          };
-        },
-    );
-  },
-});
+  // groupByFieldValue is a selector, so its live read needs a callback.
+  const getDynamicGroup = useReverbCallback(
+    ({ snapshot }) =>
+      () =>
+        snapshot.getPromise(fos.groupByFieldValue),
+    [],
+  );
+
+  const pageParams = useReverbCallback(
+    ({ snapshot }) =>
+      async (page: number, pageSize: number) => ({
+        dataset,
+        view: await snapshot.getPromise(fos.view),
+        dynamicGroup: await getDynamicGroup(),
+        filter: {},
+        after: page ? String(page * pageSize - 1) : null,
+        count: pageSize,
+      }),
+    [dataset, getDynamicGroup],
+  );
+
+  if (!dataset) {
+    throw new Error("no dataset");
+  }
+
+  return pageParams;
+};
 
 /**
  * Horizontal Flashlight carousel for a dynamic group's samples.
@@ -195,7 +198,8 @@ export const DynamicGroupsFlashlightWrapper = React.memo(() => {
   const id = useId();
 
   const store = fos.useLookerStore();
-  const { page, reset } = useFlashlightPager(store, pageParams);
+  const pageParams = usePageParams();
+  const { page } = useFlashlightPager(store, pageParams);
   const { createFlashlight, highlight, options } = useCreateFlashlight(
     page,
     store,
@@ -204,16 +208,15 @@ export const DynamicGroupsFlashlightWrapper = React.memo(() => {
   const key = fos.useGroupByFieldValue();
   const lastIdentity = useRef<string | undefined>(undefined);
   const [flashlight, setFlashlight] = useState<Flashlight<number> | null>(null);
-  const mediaField = useRecoilValue(fos.selectedMediaField(true));
+  const mediaField = useReverbValue(fos.selectedMediaField(true));
 
   useEffect(() => {
     if (key === undefined) return;
     const identity = `${mediaField}::${key ?? "null"}`;
     if (lastIdentity.current === identity) return;
     lastIdentity.current = identity;
-    reset();
     setFlashlight(createFlashlight());
-  }, [createFlashlight, key, reset, mediaField]);
+  }, [createFlashlight, key, mediaField]);
 
   useEffect(() => {
     if (flashlight && !flashlight.isAttached()) {
@@ -225,8 +228,8 @@ export const DynamicGroupsFlashlightWrapper = React.memo(() => {
     }
   }, [flashlight, id]);
 
-  const selected = useRecoilValue(fos.selectedSamples);
-  const style = useRecoilValue(fos.sampleSelectionStyle);
+  const selected = useReverbValue(fos.selectedSamples);
+  const style = useReverbValue(fos.sampleSelectionStyle);
   useUpdateItems(flashlight, store, options, highlight, selected, style);
 
   return (

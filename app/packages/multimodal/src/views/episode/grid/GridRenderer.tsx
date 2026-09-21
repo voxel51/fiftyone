@@ -9,7 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import {
   BitmapCanvasHost,
   BitmapImageView,
@@ -118,7 +118,7 @@ export function GridRenderer({
   isGridActive = true,
   onRetainedBytesChange,
 }: SampleRendererProps) {
-  const imageFit = useRecoilValue(multimodalGridFit);
+  const imageFit = useReverbValue(multimodalGridFit);
   const {
     byteSource: source,
     episodeSource,

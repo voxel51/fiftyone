@@ -8,11 +8,11 @@ const refs = vi.hoisted(() => ({
   isVideo: false,
 }));
 
-vi.mock("recoil", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("recoil")>();
+vi.mock("@fiftyone/reverb", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@fiftyone/reverb")>();
   return {
     ...actual,
-    useRecoilValue: (a: unknown) =>
+    useReverbValue: (a: unknown) =>
       a === "__isVideoDataset__" ? refs.isVideo : false,
   };
 });

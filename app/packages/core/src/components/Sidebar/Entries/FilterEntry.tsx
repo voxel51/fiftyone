@@ -5,11 +5,11 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import { Box, Typography } from "@mui/material";
 import React from "react";
 import {
-  useRecoilState,
-  useRecoilValue,
-  useResetRecoilState,
-  useSetRecoilState,
-} from "recoil";
+  useReverbState,
+  useReverbValue,
+  useResetReverbState,
+  useSetReverbState,
+} from "@fiftyone/reverb";
 import styled from "styled-components";
 import QueryPerformanceIcon from "./QueryPerformanceIcon";
 import { FilterInputDiv } from "./utils";
@@ -21,12 +21,12 @@ const Text = styled.div`
 
 const Filter = () => {
   const theme = useTheme();
-  const [isFilterMode, setIsFilterMode] = useRecoilState(
+  const [isFilterMode, setIsFilterMode] = useReverbState(
     fos.isSidebarFilterMode,
   );
 
-  const setSchemaModal = useSetRecoilState(fos.settingsModal);
-  const resetSelectedFieldStages = useResetRecoilState(
+  const setSchemaModal = useSetReverbState(fos.settingsModal);
+  const resetSelectedFieldStages = useResetReverbState(
     fos.fieldVisibilityStage,
   );
 
@@ -39,7 +39,7 @@ const Filter = () => {
   } = fos.useSchemaSettings();
 
   const { setSearchResults } = fos.useSearchSchemaFields(mergedSchema);
-  const queryPerformance = useRecoilValue(fos.queryPerformance);
+  const queryPerformance = useReverbValue(fos.queryPerformance);
 
   return (
     <FilterInputDiv>

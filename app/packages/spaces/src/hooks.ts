@@ -17,11 +17,11 @@ import {
 } from "react";
 import { SortableEvent } from "react-sortablejs";
 import {
-  useRecoilCallback,
-  useRecoilState,
-  useRecoilValue,
-  useSetRecoilState,
-} from "recoil";
+  useReverbCallback,
+  useReverbState,
+  useReverbValue,
+  useSetReverbState,
+} from "@fiftyone/reverb";
 import SpaceTree from "./SpaceTree";
 import { PanelContext } from "./contexts";
 import {
@@ -51,7 +51,7 @@ import { isNullish } from "@fiftyone/utilities";
 type SpacePanelRegistration = PanelRegistration | PlotRegistration;
 
 export function useSpaces(id: string, defaultState?: SpaceNodeJSON) {
-  const [state, setState] = useRecoilState(spaceSelector(id));
+  const [state, setState] = useReverbState(spaceSelector(id));
 
   useEffect(() => {
     if (!state && defaultState) {
@@ -101,7 +101,7 @@ export function useSpaces(id: string, defaultState?: SpaceNodeJSON) {
 export function usePanelsState(
   local?: boolean,
 ): [PanelsStateObject, (newPanelsState: PanelsStateObject) => void] {
-  const [panelsState, setPanelsState] = useRecoilState(
+  const [panelsState, setPanelsState] = useReverbState(
     local ? panelsLocalStateAtom : panelsStateAtom,
   );
 
@@ -133,10 +133,10 @@ export function useSpaceNodes(spaceId: string) {
 export function usePanels(
   predicate?: (panel: SpacePanelRegistration) => boolean,
 ) {
-  const schema = useRecoilValue(
+  const schema = useReverbValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE }),
   );
-  const dataset = useRecoilValue(fos.dataset);
+  const dataset = useReverbValue(fos.dataset);
   const ctx = useMemo(() => ({ schema, dataset }), [schema, dataset]);
   const plots = useActivePlugins(PluginComponentType.Plot, ctx);
   const panels = useActivePlugins(PluginComponentType.Panel, ctx);
@@ -192,7 +192,7 @@ export function useReactivePanel(name: SpaceNodeType) {
  */
 export function usePanelTitle(id?: string) {
   const panelContext = useContext(PanelContext);
-  const [panelTitles, setPanelTitles] = useRecoilState(panelTitlesState);
+  const [panelTitles, setPanelTitles] = useReverbState(panelTitlesState);
 
   const panelId = id || panelContext?.node?.id;
   const panelTitle = panelTitles.get(panelId);
@@ -228,14 +228,14 @@ export function usePanelLoading(
 
   // Subscribe only to this panel's loading state so flips on other panels
   // don't re-render this consumer.
-  const panelLoading = useRecoilValue(panelLoadingSelector(panelId));
-  const setPanelsLoadingState = useSetRecoilState(panelsLoadingStateAtom);
+  const panelLoading = useReverbValue(panelLoadingSelector(panelId));
+  const setPanelsLoadingState = useSetReverbState(panelsLoadingStateAtom);
 
   const setPanelLoading = useCallback(
     (loading: boolean, targetId?: string) => {
       setPanelsLoadingState((panelsLoading) => {
         const finalId = targetId || panelId;
-        // Dedupe: returning the same reference skips the Recoil write and
+        // Dedupe: returning the same reference skips the store write and
         // avoids re-rendering every subscriber when the value is unchanged.
         if (panelsLoading.get(finalId) === loading) return panelsLoading;
         // Also skip writing `false` for a key that doesn't exist yet — a
@@ -270,7 +270,7 @@ export function usePanelState<T>(
   const panelScope = useScope(scope);
   const panelContext = usePanelContext();
   const panelId = id || (panelContext?.node?.id as string);
-  const [state, setState] = useRecoilState<T>(
+  const [state, setState] = useReverbState<T>(
     panelStateSelector({ panelId, local, scope: panelScope }),
   );
   const computedState = state || defaultState;
@@ -280,7 +280,7 @@ export function usePanelState<T>(
 
 export function useSetPanelStateById(local?: boolean, scope?: string) {
   const panelScope = useScope(scope);
-  return useRecoilCallback(
+  return useReverbCallback(
     ({ set, snapshot }) =>
       async (panelId: string, fn: (state: any) => any) => {
         const panelIdToScope = await snapshot.getPromise(panelIdToScopeAtom);
@@ -325,7 +325,7 @@ export function usePanelStateCallback<T>(
   const panelScope = useScope(scope);
   const panelContext = usePanelContext();
   const panelId = panelContext?.node?.id as string;
-  return useRecoilCallback(
+  return useReverbCallback(
     ({ snapshot }) =>
       async () => {
         const panelState = await snapshot.getPromise(
@@ -367,7 +367,7 @@ export function usePanelStateByIdCallback<T>(
   scope?: string,
 ) {
   const panelScope = useScope(scope);
-  return useRecoilCallback(
+  return useReverbCallback(
     ({ snapshot }) =>
       async (panelId: string, ...args) => {
         const panelState = await snapshot.getPromise(
@@ -389,7 +389,7 @@ export function usePanelStateLazy(local?: boolean, scope?: string) {
   const panelContext = usePanelContext();
   const panelId = panelContext?.node?.id as string;
 
-  const resolvePanelState = useRecoilCallback(
+  const resolvePanelState = useReverbCallback(
     ({ snapshot }) =>
       async () =>
         snapshot.getPromise(
@@ -415,7 +415,7 @@ export function usePanelStatePartial<T>(
   const panelScope = useScope(scope);
   const panelContext = usePanelContext();
   const panelId = panelContext?.node?.id as string;
-  const [state, setState] = useRecoilState<T>(
+  const [state, setState] = useReverbState<T>(
     panelStatePartialSelector({ panelId, key, local, scope: panelScope }),
   );
   const computedState = useComputedState(state, defaultState);
@@ -428,8 +428,8 @@ function useComputedState(state: any, defaultState: any) {
 }
 
 export function usePanelTabAutoPosition() {
-  const setPreviousTabGroup = useSetRecoilState(previousTabsGroupAtom);
-  const getPreviousTabGroup = useRecoilCallback(
+  const setPreviousTabGroup = useSetReverbState(previousTabsGroupAtom);
+  const getPreviousTabGroup = useReverbCallback(
     ({ snapshot }) =>
       async () => {
         return snapshot.getPromise(previousTabsGroupAtom);
@@ -503,7 +503,7 @@ function useScope(scope?: string) {
 }
 
 export function usePanelAreaRenderer(areaId: string) {
-  const [currentRenderers, setCurrentRenderers] = useRecoilState(
+  const [currentRenderers, setCurrentRenderers] = useReverbState(
     currentPanelAreasRenderer,
   );
 
@@ -545,7 +545,7 @@ export function usePanelAreaRenderer(areaId: string) {
 }
 
 export function useInitializePanel() {
-  return useRecoilCallback(
+  return useReverbCallback(
     ({ set, snapshot }) =>
       async (
         panelId: string,

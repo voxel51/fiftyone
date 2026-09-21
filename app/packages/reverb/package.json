@@ -1,0 +1,27 @@
+{
+    "name": "@fiftyone/reverb",
+    "version": "1.0.0",
+    "type": "module",
+    "main": "src/index.ts",
+    "scripts": {
+        "test": "vitest"
+    },
+    "dependencies": {
+        "jotai": "catalog:",
+        "jotai-effect": "catalog:"
+    },
+    "devDependencies": {
+        "@testing-library/react": "catalog:",
+        "jsdom": "^26.0.0",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:"
+    },
+    "peerDependencies": {
+        "react": "*"
+    },
+    "exports": {
+        ".": "./src/index.ts"
+    }
+}

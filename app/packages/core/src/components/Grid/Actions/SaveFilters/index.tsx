@@ -2,7 +2,7 @@ import { PillButton } from "@fiftyone/components";
 import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { Bookmark } from "@mui/icons-material";
-import { selector, useRecoilCallback, useRecoilValue } from "recoil";
+import { selector, useReverbCallback, useReverbValue } from "@fiftyone/reverb";
 import Loading from "../../../Actions/Loading";
 import type { ActionProps } from "../../../Actions/types";
 import { ActionDiv, getStringAndNumberProps } from "../../../Actions/utils";
@@ -37,9 +37,9 @@ export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
 });
 
 export default ({ adaptiveMenuItemProps }: ActionProps) => {
-  const loading = useRecoilValue(fos.savingFilters);
+  const loading = useReverbValue(fos.savingFilters);
 
-  const saveFilters = useRecoilCallback(
+  const saveFilters = useReverbCallback(
     ({ snapshot, set }) =>
       async () => {
         const loading = await snapshot.getPromise(fos.savingFilters);
@@ -95,7 +95,7 @@ export default ({ adaptiveMenuItemProps }: ActionProps) => {
     [],
   );
 
-  const shouldToggleBookMarkIconOn = useRecoilValue(
+  const shouldToggleBookMarkIconOn = useReverbValue(
     shouldToggleBookMarkIconOnSelector,
   );
 

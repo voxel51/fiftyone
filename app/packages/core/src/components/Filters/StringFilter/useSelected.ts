@@ -1,12 +1,15 @@
 import * as fos from "@fiftyone/state";
-import type { RecoilValue } from "recoil";
-import { useRecoilValue, useRecoilValueLoadable } from "recoil";
+import {
+  type ReverbValue,
+  useReverbValue,
+  useReverbValueLoadable,
+} from "@fiftyone/reverb";
 import { isBooleanField } from "../state";
 import { CHECKBOX_LIMIT } from "../utils";
 import type { Result } from "./Result";
 import useUseSearch from "./useUseSearch";
 
-export type ResultsAtom = RecoilValue<{
+export type ResultsAtom = ReverbValue<{
   results: Result[];
   count: number | null;
 }>;
@@ -16,11 +19,11 @@ export default function (
   path: string,
   resultsAtom: ResultsAtom,
 ) {
-  const resultsLoadable = useRecoilValueLoadable(resultsAtom);
-  const boolean = useRecoilValue(isBooleanField(path));
+  const resultsLoadable = useReverbValueLoadable(resultsAtom);
+  const boolean = useReverbValue(isBooleanField(path));
   const useSearch = useUseSearch({ modal, path });
-  const queryPerformance = useRecoilValue(fos.queryPerformance);
-  const id = useRecoilValue(fos.isObjectIdField(path));
+  const queryPerformance = useReverbValue(fos.queryPerformance);
+  const id = useReverbValue(fos.isObjectIdField(path));
   if (resultsLoadable.state === "hasError") throw resultsLoadable.contents;
   const results =
     resultsLoadable.state === "hasValue" ? resultsLoadable.contents : null;
@@ -29,7 +32,7 @@ export default function (
   const shown =
     (!modal && queryPerformance) ||
     (resultsLoadable.state !== "loading" && (length >= CHECKBOX_LIMIT || id));
-  const isFrameField = useRecoilValue(fos.isFrameField(path));
+  const isFrameField = useReverbValue(fos.isFrameField(path));
 
   return {
     results,

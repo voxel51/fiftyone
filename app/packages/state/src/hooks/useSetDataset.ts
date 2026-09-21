@@ -1,8 +1,8 @@
-import { useSetRecoilState } from "recoil";
-import { datasetName } from "../recoil";
+import { useSetReverbState } from "@fiftyone/reverb";
+import { datasetName } from "../atoms";
 
 const useSetDataset = () => {
-  return useSetRecoilState(datasetName);
+  return useSetReverbState(datasetName);
 };
 
 export default useSetDataset;

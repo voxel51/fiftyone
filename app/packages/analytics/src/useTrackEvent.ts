@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { analyticsInfo } from "./state";
 import type { AnalyticsInfo } from "./usingAnalytics";
 import usingAnalytics from "./usingAnalytics";
@@ -10,7 +10,7 @@ import usingAnalytics from "./usingAnalytics";
  * service.
  */
 export default function useTrackEvent() {
-  const info = useRecoilValue<AnalyticsInfo>(analyticsInfo);
+  const info = useReverbValue<AnalyticsInfo>(analyticsInfo);
   return useCallback(
     (eventName: string, properties?: Record<string, any>) => {
       try {

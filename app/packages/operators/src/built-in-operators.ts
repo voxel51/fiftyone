@@ -19,11 +19,11 @@ import { toSlug } from "@fiftyone/utilities";
 import copyToClipboard from "copy-to-clipboard";
 import { cloneDeep, merge, set as setValue } from "lodash";
 import {
-  useRecoilCallback,
-  useRecoilState,
-  useRecoilValue,
-  useSetRecoilState,
-} from "recoil";
+  useReverbCallback,
+  useReverbState,
+  useReverbValue,
+  useSetReverbState,
+} from "@fiftyone/reverb";
 import { loadPlugins } from "@fiftyone/plugins";
 import { useOperatorExecutor } from ".";
 import useRefetchableSavedViews from "../../core/src/hooks/useRefetchableSavedViews";
@@ -97,7 +97,7 @@ class ReloadPlugins extends Operator {
   useHooks() {
     return {
       refreshOperators: useRefreshOperators(),
-      datasetName: useRecoilValue(fos.datasetName),
+      datasetName: useReverbValue(fos.datasetName),
     };
   }
   async execute({ hooks }) {
@@ -178,7 +178,7 @@ class OpenPanel extends Operator {
   useHooks(): OpenPanelHooks {
     const availablePanels = usePanels();
     const gridSpaces = useSpaces(FIFTYONE_GRID_SPACES_ID).spaces;
-    const isModalOpen = useRecoilValue(fos.isModalActive);
+    const isModalOpen = useReverbValue(fos.isModalActive);
     const modalSpaces = useSpaces(FIFTYONE_MODAL_SPACES_ID).spaces;
     const openedGridPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
     const openedModalPanels = useSpaceNodes(FIFTYONE_MODAL_SPACES_ID);
@@ -628,7 +628,7 @@ class SetView extends Operator {
     return {
       refetchableSavedViews,
       setView: fos.useSetView(),
-      setViewName: useSetRecoilState(fos.viewName),
+      setViewName: useSetReverbState(fos.viewName),
     };
   }
   async resolveInput(): Promise<types.Property> {
@@ -933,7 +933,7 @@ class SetSpaces extends Operator {
     });
   }
   useHooks() {
-    const setSessionSpacesState = useSetRecoilState(fos.sessionSpaces);
+    const setSessionSpacesState = useSetReverbState(fos.sessionSpaces);
     return { setSessionSpacesState };
   }
   async execute(ctx: ExecutionContext) {
@@ -1260,8 +1260,8 @@ class SetExtendedSelection extends Operator {
   }
   useHooks(): object {
     return {
-      setExtendedSelection: useSetRecoilState(fos.extendedSelection),
-      clearExtendedSelection: useSetRecoilState(fos.extendedSelection),
+      setExtendedSelection: useSetReverbState(fos.extendedSelection),
+      clearExtendedSelection: useSetReverbState(fos.extendedSelection),
       resetExtendedSelection: fos.useResetExtendedSelection(),
     };
   }
@@ -1302,7 +1302,7 @@ export class SetActiveFields extends Operator {
     setActiveFields: (fields: string[]) => void;
   } {
     return {
-      setActiveFields: useRecoilCallback(
+      setActiveFields: useReverbCallback(
         ({ snapshot, set }) =>
           async (fields) => {
             const modal = !!(await snapshot.getPromise(fos.modal));
@@ -1335,7 +1335,7 @@ export class ClearActiveFields extends Operator {
     setActiveFields: (fields: string[]) => void;
   } {
     return {
-      clearActiveFields: useRecoilCallback(({ snapshot, set }) => async () => {
+      clearActiveFields: useReverbCallback(({ snapshot, set }) => async () => {
         const modal = !!(await snapshot.getPromise(fos.modal));
         set(fos.activeFields({ modal }), []);
       }),
@@ -1609,8 +1609,8 @@ class ShowSidebar extends Operator {
     });
   }
   useHooks(): object {
-    const modal = useRecoilValue(fos.modal);
-    const [, setVisible] = useRecoilState(fos.sidebarVisible(!!modal));
+    const modal = useReverbValue(fos.modal);
+    const [, setVisible] = useReverbState(fos.sidebarVisible(!!modal));
     return {
       show: () => setVisible(true),
     };
@@ -1629,8 +1629,8 @@ class HideSidebar extends Operator {
     });
   }
   useHooks(): object {
-    const modal = useRecoilValue(fos.modal);
-    const [, setVisible] = useRecoilState(fos.sidebarVisible(!!modal));
+    const modal = useReverbValue(fos.modal);
+    const [, setVisible] = useReverbState(fos.sidebarVisible(!!modal));
     return {
       hide: () => setVisible(false),
     };
@@ -1649,8 +1649,8 @@ class ToggleSidebar extends Operator {
     });
   }
   useHooks(): object {
-    const modal = useRecoilValue(fos.modal);
-    const [visible, setVisible] = useRecoilState(fos.sidebarVisible(!!modal));
+    const modal = useReverbValue(fos.modal);
+    const [visible, setVisible] = useReverbState(fos.sidebarVisible(!!modal));
     return {
       toggle: () => setVisible(!visible),
     };

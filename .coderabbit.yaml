@@ -27,7 +27,7 @@ reviews:
     - "!**/generated/**"
   path_instructions:
     - path: "**/*.{ts,tsx}"
-      instructions: "Review the Typescript and React code for conformity with best practices in React, Recoil, Graphql, and Typescript. Highlight any deviations."
+      instructions: "Review the Typescript and React code for conformity with best practices in React, Reverb, Graphql, and Typescript. Highlight any deviations."
     - path: "**/*.{py}"
       instructions: "Review the Python code for conformity with best practices in Python3. Highlight any deviations."
   auto_review:

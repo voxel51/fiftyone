@@ -23,12 +23,15 @@ vi.mock("@fiftyone/state", () => ({
   },
 }));
 
-vi.mock("recoil", async () => {
-  const actual = await vi.importActual<typeof import("recoil")>("recoil");
+vi.mock("@fiftyone/reverb", async () => {
+  const actual =
+    await vi.importActual<typeof import("@fiftyone/reverb")>(
+      "@fiftyone/reverb",
+    );
 
   return {
     ...actual,
-    useRecoilValue: (atom: { key?: string }) => {
+    useReverbValue: (atom: { key?: string }) => {
       if (atom?.key === "fo3d-cameraPosition") {
         return hookState.overriddenCameraPosition;
       }

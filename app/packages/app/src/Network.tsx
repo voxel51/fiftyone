@@ -2,11 +2,13 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { RelayEnvironmentContext } from "@fiftyone/relay";
+import {
+  RelayEnvironmentContext,
+  ReverbRelayEnvironment,
+} from "@fiftyone/relay";
 import { RelayEnvironmentKey } from "@fiftyone/state";
 import React from "react";
 import { RelayEnvironmentProvider } from "react-relay";
-import { RecoilRelayEnvironment } from "recoil-relay";
 import type { IEnvironment } from "relay-runtime";
 import Sync from "./Sync";
 import type { Queries } from "./makeRoutes";
@@ -18,7 +20,7 @@ const Network: React.FC<{
 }> = ({ environment, context }) => {
   return (
     <RelayEnvironmentProvider environment={environment}>
-      <RecoilRelayEnvironment
+      <ReverbRelayEnvironment
         environment={environment}
         environmentKey={RelayEnvironmentKey}
       >
@@ -29,7 +31,7 @@ const Network: React.FC<{
             </Sync>
           </RelayEnvironmentContext.Provider>
         </RouterContext.Provider>
-      </RecoilRelayEnvironment>
+      </ReverbRelayEnvironment>
     </RelayEnvironmentProvider>
   );
 };

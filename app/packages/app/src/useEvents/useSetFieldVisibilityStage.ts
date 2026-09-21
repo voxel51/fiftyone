@@ -4,7 +4,7 @@
 
 import { subscribeBefore } from "@fiftyone/relay";
 import { useSessionRef, useSessionSetter } from "@fiftyone/state";
-import { useRecoilCallback } from "recoil";
+import { useReverbCallback } from "@fiftyone/reverb";
 import { pendingEntry } from "../Renderer";
 import { useRouterContext } from "../routing";
 import { resolveURL } from "../utils";
@@ -15,7 +15,7 @@ const useSetFieldVisibilityStage: EventHandlerHook = () => {
   const session = useSessionRef();
 
   const router = useRouterContext();
-  return useRecoilCallback(
+  return useReverbCallback(
     ({ set }) =>
       ({ stage }) => {
         set(pendingEntry, true);

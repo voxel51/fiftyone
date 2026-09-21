@@ -6,9 +6,9 @@ import React, { useCallback, useEffect, useMemo } from "react";
 import {
   DefaultValue,
   selectorFamily,
-  useRecoilState,
-  useRecoilValue,
-} from "recoil";
+  useReverbState,
+  useReverbValue,
+} from "@fiftyone/reverb";
 import { NAME_COLORSCALE } from "../../../utils/links";
 import Checkbox from "../../Common/Checkbox";
 import Input from "../../Common/Input";
@@ -77,10 +77,10 @@ const colorscaleSetting = selectorFamily<
 });
 
 const Colorscale: React.FC = () => {
-  const colorScheme = useRecoilValue(fos.colorScheme);
+  const colorScheme = useReverbValue(fos.colorScheme);
   const setColorScheme = fos.useSetSessionColorScheme();
-  const activePath = useRecoilValue(activeColorPath);
-  const [setting, setSetting] = useRecoilState(colorscaleSetting(activePath));
+  const activePath = useReverbValue(activeColorPath);
+  const [setting, setSetting] = useReverbState(colorscaleSetting(activePath));
 
   const state = useMemo(
     () => ({

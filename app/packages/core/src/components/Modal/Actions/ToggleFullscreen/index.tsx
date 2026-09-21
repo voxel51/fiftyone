@@ -1,10 +1,10 @@
 import { PillButton } from "@fiftyone/components";
 import { fullscreen } from "@fiftyone/state";
 import { Fullscreen, FullscreenExit } from "@mui/icons-material";
-import { useRecoilState } from "recoil";
+import { useReverbState } from "@fiftyone/reverb";
 
 const ToggleFullscreen = () => {
-  const [fullScreen, setFullScreen] = useRecoilState(fullscreen);
+  const [fullScreen, setFullScreen] = useReverbState(fullscreen);
 
   return (
     <PillButton

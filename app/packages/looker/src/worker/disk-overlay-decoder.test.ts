@@ -1,4 +1,4 @@
-import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
+import { getSampleSrc } from "@fiftyone/state/src/atoms/utils";
 import { DETECTIONS, HEATMAP, SEGMENTATION } from "@fiftyone/utilities";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Coloring, CustomizeColor } from "..";
@@ -9,7 +9,7 @@ import { decodeOverlayOnDisk, IntermediateMask } from "./disk-overlay-decoder";
 import { decodeMaskOnDisk } from "./mask-decoder";
 import { enqueueFetch } from "./pooled-fetch";
 
-vi.mock("@fiftyone/state/src/recoil/utils", () => ({
+vi.mock("@fiftyone/state/src/atoms/utils", () => ({
   getSampleSrc: vi.fn(),
 }));
 

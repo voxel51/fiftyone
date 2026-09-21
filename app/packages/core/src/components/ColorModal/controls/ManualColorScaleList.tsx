@@ -9,7 +9,7 @@ import IconButton from "@mui/material/IconButton";
 import { cloneDeep } from "lodash";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ChromePicker } from "react-color";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import Input, { NumberInput } from "../../Common/Input";
 import { Button } from "../../utils";
 import {
@@ -61,8 +61,8 @@ const ManualColorScaleList: React.FC<ManualColorScaleListProp> = ({
   );
   const pickerRef = useRef<ChromePicker>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const activePath = useRecoilValue(activeColorPath) ?? "global";
-  const colorScheme = useRecoilValue(fos.colorScheme);
+  const activePath = useReverbValue(activeColorPath) ?? "global";
+  const colorScheme = useReverbValue(fos.colorScheme);
 
   const handleAdd = () => {
     const newValue = {

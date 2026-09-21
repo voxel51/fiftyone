@@ -20,7 +20,12 @@ import React, {
 } from "react";
 import ReactDOM from "react-dom";
 import Draggable from "react-draggable";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import {
+  useAssertedReverbValue,
+  useReverbState,
+  useReverbValue,
+  useSetReverbState,
+} from "@fiftyone/reverb";
 import styled from "styled-components";
 import { joinStringArray } from "../Filters/utils";
 import { ContentDiv, ContentHeader } from "../utils";
@@ -195,7 +200,7 @@ export const ContentItem = ({
   value?: number | string | string[];
   style?: object;
 }) => {
-  const datasetName = fos.useAssertedRecoilValue(fos.datasetName);
+  const datasetName = useAssertedReverbValue(fos.datasetName);
   const [isVisibilityIconVisible, setIsVisibilityIconVisible] = useState(false);
   const [isThisItemVisible, setIsThisItemVisible] = useState(true);
 
@@ -297,11 +302,11 @@ const TagInfo = ({ tags }: { tags: string[] }) => {
 };
 
 export const TooltipInfo = React.memo(() => {
-  const [isTooltipLocked, setIsTooltipLocked] = useRecoilState(
+  const [isTooltipLocked, setIsTooltipLocked] = useReverbState(
     fos.isTooltipLocked,
   );
-  const detail = useRecoilValue(fos.tooltipDetail);
-  const coords = useRecoilValue(fos.tooltipCoordinates);
+  const detail = useReverbValue(fos.tooltipDetail);
+  const coords = useReverbValue(fos.tooltipCoordinates);
   const position = useMemo(
     () => (detail ? coords : { top: -1000, left: -1000, bottom: "unset" }),
     [coords, detail],
@@ -402,7 +407,7 @@ export const TooltipInfo = React.memo(() => {
 });
 
 const HiddenItems = ({ field }: { field: string }) => {
-  const datasetName = fos.useAssertedRecoilValue(fos.datasetName);
+  const datasetName = useAssertedReverbValue(fos.datasetName);
   const [shouldShowHidden, setShouldShowHidden] = useState(false);
 
   const [currentHiddenLabels, setCurrentHiddenLabels] = useState(
@@ -474,7 +479,7 @@ const HiddenItemRow = ({
   field: string;
   refreshHiddenLabels: () => void;
 }) => {
-  const datasetName = fos.useAssertedRecoilValue(fos.datasetName);
+  const datasetName = useAssertedReverbValue(fos.datasetName);
   const [showUnhideIcon, setShowUnhideIcon] = useState(false);
 
   const unHideItem = useCallback(() => {
@@ -511,10 +516,10 @@ const HiddenItemRow = ({
 };
 
 const Header = ({ title, labelId }: { title: string; labelId: string }) => {
-  const [isTooltipLocked, setIsTooltipLocked] = useRecoilState(
+  const [isTooltipLocked, setIsTooltipLocked] = useReverbState(
     fos.isTooltipLocked,
   );
-  const setTooltipDetail = useSetRecoilState(fos.tooltipDetail);
+  const setTooltipDetail = useSetReverbState(fos.tooltipDetail);
   const canAnnotateField = useCanAnnotateField(title);
   const modalMode = useModalMode();
 
@@ -585,7 +590,7 @@ const CtrlToLock = () => {
 };
 
 const Border = ({ color, id }) => {
-  const selectedLabels = useRecoilValue(fos.selectedLabelIds);
+  const selectedLabels = useReverbValue(fos.selectedLabelIds);
   return (
     <BorderDiv
       style={{
@@ -609,7 +614,7 @@ const AttrBlock = styled.div`
 `;
 
 const useTarget = (field, target) => {
-  const getTarget = useRecoilValue(fos.getTarget);
+  const getTarget = useReverbValue(fos.getTarget);
   return getTarget(field, target);
 };
 

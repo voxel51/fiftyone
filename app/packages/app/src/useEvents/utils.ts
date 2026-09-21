@@ -2,8 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import type { ColorSchemeInput } from "@fiftyone/relay";
-import { subscribeBefore } from "@fiftyone/relay";
+import { type ColorSchemeInput, subscribeBefore } from "@fiftyone/relay";
 import type { SpaceNodeJSON } from "@fiftyone/spaces";
 import type {
   LabelSelectionStyle,
@@ -18,7 +17,7 @@ import {
   ensureColorScheme,
 } from "@fiftyone/state";
 import { env, toCamelCase } from "@fiftyone/utilities";
-import { atom } from "recoil";
+import { atom } from "@fiftyone/reverb";
 import type { DatasetPageQuery } from "../pages/datasets/__generated__/DatasetPageQuery.graphql";
 import type { LocationState } from "../routing";
 import { getParam } from "../utils";

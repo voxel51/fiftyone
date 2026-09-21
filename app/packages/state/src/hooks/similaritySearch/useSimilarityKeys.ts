@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import * as fos from "@fiftyone/state";
 
 /**
@@ -8,7 +8,7 @@ import * as fos from "@fiftyone/state";
  * stable list.
  */
 const useSimilarityKeys = (): string[] => {
-  const { samples, patches } = useRecoilValue(fos.similarityMethods);
+  const { samples, patches } = useReverbValue(fos.similarityMethods);
   return useMemo(
     () =>
       [

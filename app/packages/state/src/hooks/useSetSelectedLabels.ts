@@ -1,8 +1,8 @@
-import { useSetRecoilState } from "recoil";
-import { selectedLabels } from "../recoil";
+import { useSetReverbState } from "@fiftyone/reverb";
+import { selectedLabels } from "../atoms";
 
 const useSetSelectedLabels = () => {
-  return useSetRecoilState(selectedLabels);
+  return useSetReverbState(selectedLabels);
 };
 
 export default useSetSelectedLabels;

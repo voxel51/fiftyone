@@ -11,7 +11,7 @@ import {
   viewStateForm_INTERNAL,
 } from "@fiftyone/state";
 import { rollbackViewBar } from "@fiftyone/view-bar";
-import { DefaultValue } from "recoil";
+import { DefaultValue } from "@fiftyone/reverb";
 import { commitMutation } from "relay-runtime";
 import { pendingEntry } from "../Renderer";
 import { resolveURL } from "../utils";

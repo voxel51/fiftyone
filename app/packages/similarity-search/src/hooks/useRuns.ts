@@ -1,6 +1,6 @@
 import { atom, useAtom } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { useOperatorExecutor } from "@fiftyone/operators";
 import { useExecutionStoreSubscribe } from "@fiftyone/core/src/subscription/useExecutionStoreSubscribe";
 import { usePanelId } from "@fiftyone/spaces";
@@ -44,8 +44,8 @@ export const useRuns = (): UseRunsResult => {
   const lastPanelId = useRef<string | undefined>();
   const lastDatasetName = useRef<string | null | undefined>();
   const panelId = usePanelId();
-  const datasetName = useRecoilValue(datasetNameAtom);
-  const datasetId = useRecoilValue(datasetIdAtom);
+  const datasetName = useReverbValue(datasetNameAtom);
+  const datasetId = useReverbValue(datasetIdAtom);
   const { execute: fetchRuns } = useOperatorExecutor(LIST_RUNS_OPERATOR_URI);
 
   // ── Coalescing refresh mechanism ───────────────────────────────
@@ -66,7 +66,7 @@ export const useRuns = (): UseRunsResult => {
   // mirror the owner value into a ref so refreshRuns() can read it
   // synchronously from SSE callbacks and other non-React contexts.
   // useFilteredRuns subscribes via the same hook; both consumers share
-  // the underlying panel-local Recoil state.
+  // the underlying panel-local store state.
   const [filterState] = usePanelFilterState();
   const ownerFilterRef = useRef(filterState.ownerFilter);
   ownerFilterRef.current = filterState.ownerFilter;
@@ -171,7 +171,7 @@ export const useRuns = (): UseRunsResult => {
   // Subscribe to execution store changes via SSE for auto-refresh.
   // Use a ref for refreshRuns so this callback is stable across
   // fetchRuns identity churn (useOperatorExecutor re-memoizes `execute`
-  // whenever any recoil state read by useExecutionContext changes —
+  // whenever any store state read by useExecutionContext changes —
   // view, filters, selectedSamples, etc).
   const refreshRunsRef = useRef(refreshRuns);
   refreshRunsRef.current = refreshRuns;

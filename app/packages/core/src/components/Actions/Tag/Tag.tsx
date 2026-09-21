@@ -12,14 +12,15 @@ import { useSpring } from "@react-spring/web";
 import numeral from "numeral";
 import type { MutableRefObject } from "react";
 import React, { Suspense, useLayoutEffect, useState } from "react";
-import type { RecoilState, RecoilValue } from "recoil";
 import {
-  useRecoilCallback,
-  useRecoilRefresher_UNSTABLE,
-  useRecoilState,
-  useRecoilValue,
-  useSetRecoilState,
-} from "recoil";
+  type ReverbState,
+  type ReverbValue,
+  useReverbCallback,
+  useReverbRefresher,
+  useReverbState,
+  useReverbValue,
+  useSetReverbState,
+} from "@fiftyone/reverb";
 import styled from "styled-components";
 import { Button } from "../../utils";
 import Checker, { CheckState } from "../Checker";
@@ -65,8 +66,8 @@ const TaggingInput = styled.input`
 
 interface SectionProps {
   countAndPlaceholder: () => [number, string];
-  taggingAtom: RecoilState<boolean>;
-  itemsAtom: RecoilValue<{ [key: string]: number }>;
+  taggingAtom: ReverbState<boolean>;
+  itemsAtom: ReverbValue<{ [key: string]: number }>;
   submit: ({ changes }) => Promise<void>;
   close: () => void;
   labels: boolean;
@@ -80,10 +81,10 @@ const Section = ({
   close,
   labels,
 }: SectionProps) => {
-  const items = useRecoilValue(itemsAtom);
-  const elementNames = useRecoilValue(fos.elementNames);
+  const items = useReverbValue(itemsAtom);
+  const elementNames = useReverbValue(fos.elementNames);
   const theme = useTheme();
-  const [tagging, setTagging] = useRecoilState(taggingAtom);
+  const [tagging, setTagging] = useReverbState(taggingAtom);
   const [value, setValue] = useState("");
   const [count, placeholder] = countAndPlaceholder();
   const disabled = tagging || typeof count !== "number";
@@ -312,7 +313,7 @@ const useTagCallback = (
   targetLabels,
   lookerRef?: React.MutableRefObject<Lookers | undefined>,
 ) => {
-  const setAggs = useSetRecoilState(fos.refresher);
+  const setAggs = useSetReverbState(fos.refresher);
   const setLabels = fos.useSetSelectedLabels();
   const setSamples = fos.useSetSelected();
   const updateSamples = fos.useUpdateSamples();
@@ -322,13 +323,13 @@ const useTagCallback = (
     () => setSamples(new Map()),
     () => setAggs((cur) => cur + 1),
     ...[
-      useRecoilRefresher_UNSTABLE(fos.activeModalSidebarSample),
-      useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: false })),
-      useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: true })),
+      useReverbRefresher(fos.activeModalSidebarSample),
+      useReverbRefresher(tagStatistics({ modal, labels: false })),
+      useReverbRefresher(tagStatistics({ modal, labels: true })),
     ],
   ];
 
-  return useRecoilCallback(
+  return useReverbCallback(
     ({ snapshot, set, reset }) =>
       async ({ changes }) => {
         const isGroup = await snapshot.getPromise(fos.isGroup);
@@ -423,12 +424,12 @@ const useLabelPlaceHolder = (
   elementNames: { plural: string; singular: string },
 ) => {
   return (): [number, string] => {
-    const selectedSamples = useRecoilValue(fos.selectedSamples).size;
-    const selectedLabels = useRecoilValue(fos.selectedLabelIds).size;
-    const selectedLabelCount = useRecoilValue(
+    const selectedSamples = useReverbValue(fos.selectedSamples).size;
+    const selectedLabels = useReverbValue(fos.selectedLabelIds).size;
+    const selectedLabelCount = useReverbValue(
       numItemsInSelection({ labels: true, modal }),
     );
-    const totalLabelCount = useRecoilValue(
+    const totalLabelCount = useReverbValue(
       fos.labelCount({ modal, extended: true }),
     );
     if (modal && selectedLabels) {
@@ -448,15 +449,15 @@ const getUseSamplePlaceHolder = (
   elementNames: { plural: string; singular: string },
 ) => {
   return (): [number, string] => {
-    const selectedSamples = useRecoilValue(fos.selectedSamples).size;
-    const totalSamples = useRecoilValue(
+    const selectedSamples = useReverbValue(fos.selectedSamples).size;
+    const totalSamples = useReverbValue(
       fos.count({ path: "", extended: false, modal }),
     );
-    const filteredSamples = useRecoilValue(
+    const filteredSamples = useReverbValue(
       fos.count({ path: "", extended: true, modal }),
     );
     const count = filteredSamples ?? totalSamples;
-    const itemCount = useRecoilValue(selectedSamplesCount(modal));
+    const itemCount = useReverbValue(selectedSamplesCount(modal));
     if (modal && !selectedSamples) {
       return [itemCount, samplesPlaceholder(count, elementNames)];
     }
@@ -485,7 +486,7 @@ type TaggerProps = {
 
 const Tagger = ({ modal, close, lookerRef, anchorRef }: TaggerProps) => {
   const [labels, setLabels] = useState(modal);
-  const elementNames = useRecoilValue(fos.elementNames);
+  const elementNames = useReverbValue(fos.elementNames);
   const theme = useTheme();
   const sampleProps = useSpring({
     borderBottomColor: labels

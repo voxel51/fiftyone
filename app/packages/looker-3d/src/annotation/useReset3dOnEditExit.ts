@@ -1,6 +1,6 @@
 import { useAnnotationContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
 import { useEffect, useRef } from "react";
-import { useSetRecoilState } from "recoil";
+import { useSetReverbState } from "@fiftyone/reverb";
 import {
   clearTransformStateSelector,
   selectedLabelForAnnotationAtom,
@@ -14,8 +14,8 @@ export function useReset3dOnEditExit() {
   const { selected } = useAnnotationContext();
   const editingLabel = selected?.label;
   const previousRef = useRef(editingLabel);
-  const setSelectedLabel = useSetRecoilState(selectedLabelForAnnotationAtom);
-  const clearTransformState = useSetRecoilState(clearTransformStateSelector);
+  const setSelectedLabel = useSetReverbState(selectedLabelForAnnotationAtom);
+  const clearTransformState = useSetReverbState(clearTransformStateSelector);
 
   useEffect(() => {
     const previous = previousRef.current;

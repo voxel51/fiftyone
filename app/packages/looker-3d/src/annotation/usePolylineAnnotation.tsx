@@ -2,7 +2,7 @@ import { POLYLINE } from "@fiftyone/utilities";
 import { Line as LineDrei } from "@react-three/drei";
 import { ThreeEvent } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useReverbValue, useSetReverbState } from "@fiftyone/reverb";
 import type { Vector3Tuple } from "three";
 import * as THREE from "three";
 import {
@@ -56,9 +56,9 @@ export const usePolylineAnnotation = ({
   const { finalizePolylineDrag, updatePolylinePoints } =
     usePolylineOperations();
 
-  const selectedPoint = useRecoilValue(selectedPolylineVertexAtom);
-  const editSegmentsMode = useRecoilValue(editSegmentsModeAtom);
-  const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
+  const selectedPoint = useReverbValue(selectedPolylineVertexAtom);
+  const editSegmentsMode = useReverbValue(editSegmentsModeAtom);
+  const setHoveredLabel = useSetReverbState(hoveredLabelAtom);
 
   const transformControlsRef = useRef(null);
   const contentRef = useRef<THREE.Group>(null);

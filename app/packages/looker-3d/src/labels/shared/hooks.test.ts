@@ -77,8 +77,8 @@ vi.mock("../../hooks/use-similar-labels-3d", () => ({
   useSimilarLabels3d: vi.fn(),
 }));
 
-vi.mock("recoil", () => ({
-  useRecoilCallback:
+vi.mock("@fiftyone/reverb", () => ({
+  useReverbCallback:
     (fn: (iface: unknown) => (...args: unknown[]) => unknown) =>
     (...args: unknown[]) =>
       fn({
@@ -89,7 +89,7 @@ vi.mock("recoil", () => ({
         },
         set: mocks.setSpy,
       })(...args),
-  useRecoilValue: (atom: symbol) => mocks.atomValues.get(atom),
+  useReverbValue: (atom: symbol) => mocks.atomValues.get(atom),
 }));
 
 import { useEventHandlers } from "./hooks";

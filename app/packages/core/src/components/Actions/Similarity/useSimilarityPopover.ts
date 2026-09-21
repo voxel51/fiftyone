@@ -2,7 +2,11 @@ import { executeOperator } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import { useBrowserStorage } from "@fiftyone/state";
 import { useCallback, useMemo, useState } from "react";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import {
+  useAssertedReverbValue,
+  useReverbCallback,
+  useReverbValue,
+} from "@fiftyone/reverb";
 import {
   PANEL_NAME,
   QUERY_TYPE_IMAGE,
@@ -35,12 +39,12 @@ export default function useSimilarityPopover({
 }: UseSimilarityPopoverProps) {
   const [textQuery, setTextQuery] = useState("");
 
-  const keys = useRecoilValue(
+  const keys = useReverbValue(
     availableSimilarityKeys({ modal, isImageSearch }),
   );
   const hasSimilarityKeys = keys.length > 0;
-  const hasSelectedLabels = useRecoilValue(fos.hasSelectedLabels);
-  const selectedLabelsList = useRecoilValue(fos.selectedLabels);
+  const hasSelectedLabels = useReverbValue(fos.hasSelectedLabels);
+  const selectedLabelsList = useReverbValue(fos.selectedLabels);
 
   const selectedLabelFields = useMemo(() => {
     if (!modal || !hasSelectedLabels) return new Set<string>();
@@ -55,8 +59,8 @@ export default function useSimilarityPopover({
     ? "No similarity index found for the selected label field"
     : "No similarity index available";
 
-  const type = useRecoilValue(sortType(modal));
-  const datasetId = fos.useAssertedRecoilValue(fos.datasetId);
+  const type = useReverbValue(sortType(modal));
+  const datasetId = useAssertedReverbValue(fos.datasetId);
   const [lastUsedBrainKeys, setLastUsedBrainKeys] = useBrowserStorage<
     Record<string, string>
   >("lastUsedBrainKeys", {});
@@ -68,7 +72,7 @@ export default function useSimilarityPopover({
     return keys[0];
   }, [keys, lastUsedBrainKeys, datasetId]);
 
-  const resolvePatchesField = useRecoilCallback(
+  const resolvePatchesField = useReverbCallback(
     ({ snapshot }) =>
       async (brainKey: string) => {
         const methods = await snapshot.getPromise(fos.similarityMethods);
@@ -88,7 +92,7 @@ export default function useSimilarityPopover({
     });
   }, []);
 
-  const handleSearch = useRecoilCallback(
+  const handleSearch = useReverbCallback(
     ({ snapshot, set }) =>
       async () => {
         if (!resolvedBrainKey) return;
@@ -196,7 +200,7 @@ export default function useSimilarityPopover({
     ],
   );
 
-  const handleOpenPanel = useRecoilCallback(
+  const handleOpenPanel = useReverbCallback(
     ({ set }) =>
       () => {
         close();

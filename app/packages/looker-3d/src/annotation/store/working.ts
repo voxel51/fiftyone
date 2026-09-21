@@ -6,10 +6,10 @@ import {
   atomFamily,
   DefaultValue,
   selector,
-  useRecoilCallback,
-  useRecoilValue,
-  useSetRecoilState,
-} from "recoil";
+  useReverbCallback,
+  useReverbValue,
+  useSetReverbState,
+} from "@fiftyone/reverb";
 import type { OverlayLabel } from "../../labels/loader";
 import {
   isDetection,
@@ -103,7 +103,7 @@ export const workingAtom = selector<WorkingState>({
  * viewer's visibility; resets on unmount.
  */
 export function useBindStableSceneSampleId(): void {
-  const setSceneId = useSetRecoilState(stableSceneSampleIdAtom);
+  const setSceneId = useSetReverbState(stableSceneSampleIdAtom);
   const sceneId = fos.useStableSceneSample3d()?.sample?._id;
 
   useEffect(() => {
@@ -164,9 +164,9 @@ function mapOverlaysToLabelId(
  * @param rawOverlays - The baseline raw overlays derived from modalSample
  */
 export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
-  const setWorking = useSetRecoilState(workingAtom);
-  const currentSampleId = useRecoilValue(fos.currentSampleId);
-  const workingState = useRecoilValue(workingAtom);
+  const setWorking = useSetReverbState(workingAtom);
+  const currentSampleId = useReverbValue(fos.currentSampleId);
+  const workingState = useReverbValue(workingAtom);
   const mode = fos.useModalMode();
 
   // This effect initializes working store from overlays when entering annotate mode
@@ -199,7 +199,7 @@ export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
 
   // Patches the working store whenever rawOverlays changes (e.g. coloring,
   // annotation schema, path filter, etc.)
-  const patchWorking = useRecoilCallback(
+  const patchWorking = useReverbCallback(
     ({ snapshot, set }) =>
       (overlays: OverlayLabel[]) => {
         const state = snapshot.getLoadable(workingAtom).getValue();
@@ -296,7 +296,7 @@ export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
  */
 export function useResetWorkingOnModeChange() {
   const mode = fos.useModalMode();
-  const setWorking = useSetRecoilState(workingAtom);
+  const setWorking = useSetReverbState(workingAtom);
 
   useEffect(() => {
     if (mode !== fos.ModalMode.ANNOTATE) {
@@ -314,7 +314,7 @@ export function useResetWorkingOnModeChange() {
  * Hook that returns the working document.
  */
 export function useWorkingDoc(): WorkingDoc {
-  return useRecoilValue(workingDocSelector);
+  return useReverbValue(workingDocSelector);
 }
 
 /**
@@ -355,7 +355,7 @@ export function useWorkingPolylines(): ReconciledPolyline3D[] {
  * Hook that returns a callback to update a label in the working store.
  */
 export function useUpdateWorkingLabel() {
-  return useRecoilCallback(
+  return useReverbCallback(
     ({ set }) =>
       (
         labelId: LabelId,
@@ -426,7 +426,7 @@ export function useUpdateWorkingLabel() {
  * Hook that returns a callback to add a new label to the working store.
  */
 export function useAddWorkingLabel() {
-  return useRecoilCallback(
+  return useReverbCallback(
     ({ set }) =>
       (label: ReconciledDetection3D | ReconciledPolyline3D) => {
         const roundedLabel = isDetection(label)
@@ -457,7 +457,7 @@ export function useAddWorkingLabel() {
  * scope contraction), its working entry goes too.
  */
 export function useRemoveWorkingLabel() {
-  return useRecoilCallback(
+  return useReverbCallback(
     ({ snapshot, set }) =>
       (labelId: LabelId) => {
         // Resolve the scene key from the sync atom and write the family entry

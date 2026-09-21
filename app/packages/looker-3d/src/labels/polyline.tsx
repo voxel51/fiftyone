@@ -2,7 +2,7 @@ import * as fos from "@fiftyone/state";
 import { Line as LineDrei } from "@react-three/drei";
 import type { ThreeEvent } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useReverbValue, useSetReverbState } from "@fiftyone/reverb";
 import * as THREE from "three";
 import { useTransientPolyline } from "../annotation/store";
 import { usePolylineAnnotation } from "../annotation/usePolylineAnnotation";
@@ -49,8 +49,8 @@ export const Polyline = ({
   const meshesRef = useRef<THREE.Mesh[]>([]);
 
   useHoverState();
-  const hoveredLabel = useRecoilValue(hoveredLabelAtom);
-  const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
+  const hoveredLabel = useReverbValue(hoveredLabelAtom);
+  const setHoveredLabel = useSetReverbState(hoveredLabelAtom);
   const isCurrentlyTransforming = useIsCurrentlyTransforming();
   const {
     onPointerOver: onPointerOverForLabel,
@@ -88,7 +88,7 @@ export const Polyline = ({
 
   const isAnnotateMode = fos.useModalMode() === fos.ModalMode.ANNOTATE;
   const isSelectedForAnnotation =
-    useRecoilValue(selectedLabelForAnnotationAtom)?._id === label.data._id;
+    useReverbValue(selectedLabelForAnnotationAtom)?._id === label.data._id;
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
 
   useEffect(() => {

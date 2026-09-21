@@ -12,7 +12,7 @@ import { useMemo, useSyncExternalStore } from "react";
  * a hook that only exists after registration cannot be called under the rules
  * of hooks. The store is inert until something publishes — the hooks answer
  * "no selection" — and it crosses the grid tiles' separate React roots for
- * free, which a context or bridged Recoil atom does not.
+ * free, which a context or bridged store atom does not.
  */
 
 /** One selected window mark: a time span (ns as decimal strings to preserve

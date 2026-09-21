@@ -133,7 +133,7 @@ const LighterSetupImpl = (props: {
 
   const options = useModalLookerOptions();
 
-  // Read activePaths directly from Jotai to bypass Recoil's filterPaths,
+  // Read activePaths directly from Jotai to bypass filterPaths,
   // which strips newly created fields not yet in the GraphQL schema cache
   const jotaiActivePaths = useAtomValue(activeLabelSchemas);
 

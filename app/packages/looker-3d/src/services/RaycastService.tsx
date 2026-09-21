@@ -113,7 +113,7 @@ export const RaycastService = ({
           camera,
           worldPos,
         ),
-        // Note: Recoil freezes objects so can't store the full intersected object...
+        // Note: stored objects are frozen, so not the full intersected object...
         // but we can store the UUID
         intersectedObjectUuid: closest.object.uuid,
         intersectedLabelId,

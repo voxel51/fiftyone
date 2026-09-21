@@ -1,6 +1,6 @@
 import { getSampleSrc, isInMultiPanelViewAtom } from "@fiftyone/state";
 import { useEffect, useMemo, useState } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { Mesh, type Quaternion, type Vector3 } from "three";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader";
 import type { StlAsset } from "../../hooks";
@@ -31,7 +31,7 @@ export const Stl = ({
   children?: React.ReactNode;
 }) => {
   const { fo3dRoot } = useFo3dContext();
-  const isInMultiPanelView = useRecoilValue(isInMultiPanelViewAtom);
+  const isInMultiPanelView = useReverbValue(isInMultiPanelViewAtom);
 
   const stlUrl = useMemo(
     () =>

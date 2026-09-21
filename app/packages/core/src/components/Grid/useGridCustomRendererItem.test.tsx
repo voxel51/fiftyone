@@ -4,8 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GridCustomRendererItem } from "./GridCustomRendererItem";
 import { useGridCustomRendererItem } from "./useGridCustomRendererItem";
 
-// Mutated per-test to control what the mocked `useRecoilCallback`-derived
-// selection lookup reports, without depending on a real Recoil store.
+// Mutated per-test to control what the mocked `useReverbCallback`-derived
+// selection lookup reports, without depending on a real store.
 let currentSelectedSampleIds = new Set<string>();
 
 const {
@@ -79,12 +79,11 @@ vi.mock("./GridTagBubbles", () => ({
   default: () => null,
 }));
 
-vi.mock("recoil", () => ({
-  useRecoilBridgeAcrossReactRoots_UNSTABLE: vi.fn(
-    () =>
-      ({ children }: React.PropsWithChildren) => <>{children}</>,
-  ),
-  useRecoilCallback: (
+vi.mock("@fiftyone/reverb", () => ({
+  useReverbBridge: vi.fn(() => ({ children }: React.PropsWithChildren) => (
+    <>{children}</>
+  )),
+  useReverbCallback: (
     fn: (args: { snapshot: unknown }) => (...args: unknown[]) => unknown,
   ) =>
     fn({

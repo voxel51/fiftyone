@@ -8,7 +8,7 @@ import {
   useIsGroupDataset,
 } from "@fiftyone/state";
 import { isAnnotationSupported, isMultimodal } from "@fiftyone/utilities";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 
 /**
  * Returns true if the current group dataset has at least one slice with a
@@ -33,12 +33,12 @@ export interface CanAnnotateResult {
 }
 
 export default function useCanAnnotate(): CanAnnotateResult {
-  const isReadOnlySnapshot = useRecoilValue(readOnly);
-  const { enabled: canAnnotateEnabled } = useRecoilValue(canAnnotate);
-  const currentMediaType = useRecoilValue(mediaType);
-  const isGenerated = useRecoilValue(isGeneratedView);
+  const isReadOnlySnapshot = useReverbValue(readOnly);
+  const { enabled: canAnnotateEnabled } = useReverbValue(canAnnotate);
+  const currentMediaType = useReverbValue(mediaType);
+  const isGenerated = useReverbValue(isGeneratedView);
 
-  const isPatches = useRecoilValue(isPatchesView);
+  const isPatches = useReverbValue(isPatchesView);
   const isUnsupportedGeneratedView = isGenerated && !isPatches;
   const hasSlices = useHasAnnotationSupportedSlices();
   const isGroup = useIsGroupDataset();

@@ -12,7 +12,7 @@ import * as fou from "@fiftyone/utilities";
 import * as mui from "@mui/material";
 import React from "react";
 import ReactDOM from "react-dom";
-import * as recoil from "recoil";
+import * as reverb from "@fiftyone/reverb";
 import styled from "styled-components";
 import * as three from "three";
 
@@ -20,7 +20,7 @@ declare global {
   interface Window {
     React: typeof React;
     ReactDOM: typeof ReactDOM;
-    recoil: typeof recoil;
+    reverb: typeof reverb;
     __fos__: typeof fos;
     __foc__: typeof foc;
     __fou__: typeof fou;
@@ -49,7 +49,7 @@ if (typeof window !== "undefined") {
   // @ts-ignore
   window.React = React;
   window.ReactDOM = ReactDOM;
-  window.recoil = recoil;
+  window.reverb = reverb;
   window.__fos__ = fos;
   window.__foc__ = foc;
   window.__fou__ = fou;

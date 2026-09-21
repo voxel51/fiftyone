@@ -9,7 +9,7 @@
  * Implementation-wise, this is a tiny external store backed by
  * `sessionStorage`: it tracks failed datasets locally, exposes a forced
  * subscription for the reload path, and uses `useSyncExternalStore` for React
- * reactivity. We do not use Recoil here because state subscription needs to
+ * reactivity. We do not use the store here because state subscription needs to
  * read the forced subscription synchronously outside normal React rendering.
  */
 import { useSyncExternalStore } from "react";

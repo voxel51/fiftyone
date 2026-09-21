@@ -1,11 +1,11 @@
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 
 export type Result = { value: string | null; count: number | null };
 
 const ResultComponent = ({ value: { value, count } }: { value: Result }) => {
-  const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
+  const isFilterMode = useReverbValue(fos.isSidebarFilterMode);
   const theme = useTheme();
   return (
     <div

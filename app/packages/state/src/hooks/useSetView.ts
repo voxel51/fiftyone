@@ -1,8 +1,8 @@
-import { useSetRecoilState } from "recoil";
-import { view } from "../recoil";
+import { useSetReverbState } from "@fiftyone/reverb";
+import { view } from "../atoms";
 
 const useSetView = () => {
-  return useSetRecoilState(view);
+  return useSetReverbState(view);
 };
 
 export default useSetView;

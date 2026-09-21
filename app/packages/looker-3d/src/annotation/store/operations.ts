@@ -3,7 +3,7 @@ import { KnownContexts, usePushUndoable } from "@fiftyone/commands";
 import * as fos from "@fiftyone/state";
 import { DETECTION, POLYLINE } from "@fiftyone/utilities";
 import { useCallback } from "react";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import { useReverbCallback, useReverbValue } from "@fiftyone/reverb";
 import { isDetection, isPolyline } from "../../types";
 import { quaternionToRadians } from "../../utils";
 import type {
@@ -47,7 +47,7 @@ export function useCuboidOperations() {
   const updateLabel = useUpdateWorkingLabel();
   const addLabel = useAddWorkingLabel();
   const endDrag = useEndDrag();
-  const currentSampleId = useRecoilValue(fos.currentSampleId);
+  const currentSampleId = useReverbValue(fos.currentSampleId);
   const { commit, remove } = useLooker3dSurfaceWrite();
 
   /**
@@ -55,7 +55,7 @@ export function useCuboidOperations() {
    * This is the core undoable operation - all cuboid modifications should
    * go through this to ensure proper undo/redo support.
    */
-  const updateCuboid = useRecoilCallback(
+  const updateCuboid = useReverbCallback(
     ({ snapshot }) =>
       async (labelId: LabelId, updates: Partial<Detection3DDocument>) => {
         const working = await snapshot.getPromise(workingAtom);
@@ -113,7 +113,7 @@ export function useCuboidOperations() {
   /**
    * Finalizes a drag operation on a cuboid.
    */
-  const finalizeCuboidDrag = useRecoilCallback(
+  const finalizeCuboidDrag = useReverbCallback(
     ({ snapshot }) =>
       async (labelId: LabelId) => {
         const transientStore = await snapshot.getPromise(transientAtom);
@@ -215,7 +215,7 @@ export function useCuboidOperations() {
   /**
    * Deletes a cuboid label from the working store.
    */
-  const deleteCuboid = useRecoilCallback(
+  const deleteCuboid = useReverbCallback(
     ({ snapshot }) =>
       async (labelId: LabelId) => {
         const working = await snapshot.getPromise(workingAtom);
@@ -261,7 +261,7 @@ export function usePolylineOperations() {
   const updateLabel = useUpdateWorkingLabel();
   const addLabel = useAddWorkingLabel();
   const endDrag = useEndDrag();
-  const currentSampleId = useRecoilValue(fos.currentSampleId);
+  const currentSampleId = useReverbValue(fos.currentSampleId);
   const { commit, remove } = useLooker3dSurfaceWrite();
 
   /**
@@ -269,7 +269,7 @@ export function usePolylineOperations() {
    * This is the core undoable operation - all polyline modifications should
    * go through this to ensure proper undo/redo support.
    */
-  const updatePolyline = useRecoilCallback(
+  const updatePolyline = useReverbCallback(
     ({ snapshot }) =>
       async (labelId: LabelId, updates: Partial<Polyline3DDocument>) => {
         const working = await snapshot.getPromise(workingAtom);
@@ -322,7 +322,7 @@ export function usePolylineOperations() {
   /**
    * Finalizes a drag operation on a polyline.
    */
-  const finalizePolylineDrag = useRecoilCallback(
+  const finalizePolylineDrag = useReverbCallback(
     ({ snapshot }) =>
       async (labelId: LabelId) => {
         const transientStore = await snapshot.getPromise(transientAtom);
@@ -433,7 +433,7 @@ export function usePolylineOperations() {
   /**
    * Deletes a polyline label from the working store.
    */
-  const deletePolyline = useRecoilCallback(
+  const deletePolyline = useReverbCallback(
     ({ snapshot }) =>
       async (labelId: LabelId) => {
         const working = await snapshot.getPromise(workingAtom);

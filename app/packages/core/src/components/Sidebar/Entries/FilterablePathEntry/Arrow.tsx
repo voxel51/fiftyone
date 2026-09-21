@@ -1,8 +1,7 @@
 import { Tooltip } from "@fiftyone/components";
 import KeyboardArrowDown from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowUp from "@mui/icons-material/KeyboardArrowUp";
-import type { RecoilState } from "recoil";
-import { useRecoilState } from "recoil";
+import { type ReverbState, useReverbState } from "@fiftyone/reverb";
 import { useTheme } from "styled-components";
 import { FRAME_FILTERING_DISABLED } from "../../../../utils/links";
 import DisabledReason from "./DisabledReason";
@@ -16,11 +15,11 @@ export default ({
   id: string;
   color?: string;
   disabled?: boolean;
-  expanded: RecoilState<boolean>;
+  expanded: ReverbState<boolean>;
   frameFilterDisabledPath?: boolean;
   unindexed?: boolean;
 }) => {
-  const [isExpanded, setExpanded] = useRecoilState(expanded);
+  const [isExpanded, setExpanded] = useReverbState(expanded);
   const Arrow = isExpanded ? KeyboardArrowUp : KeyboardArrowDown;
   const theme = useTheme();
   const arrow = (

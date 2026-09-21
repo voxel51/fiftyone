@@ -4,12 +4,12 @@ import { act, renderHook } from "@testing-library/react";
 import React from "react";
 import {
   DefaultValue as DV,
-  RecoilRoot,
-  useRecoilValue,
+  ReverbRoot,
+  useReverbValue,
   type MutableSnapshot,
-  type RecoilState,
-  type RecoilValueReadOnly,
-} from "recoil";
+  type ReverbState,
+  type ReverbValueReadOnly,
+} from "@fiftyone/reverb";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /** The shape of the selection atoms, restated so the stubs need no `any`. */
@@ -23,17 +23,17 @@ type LabelData = Omit<SelectedLabel, "labelId">;
 type LabelMap = Record<string, LabelData>;
 
 const stubs = vi.hoisted(() => ({
-  selectedLabels: null as unknown as RecoilState<SelectedLabel[]>,
-  selectedLabelMap: null as unknown as RecoilState<LabelMap>,
-  selectedLabelIds: null as unknown as RecoilValueReadOnly<Set<string>>,
-  modalSampleId: null as unknown as RecoilState<string>,
+  selectedLabels: null as unknown as ReverbState<SelectedLabel[]>,
+  selectedLabelMap: null as unknown as ReverbState<LabelMap>,
+  selectedLabelIds: null as unknown as ReverbValueReadOnly<Set<string>>,
+  modalSampleId: null as unknown as ReverbState<string>,
 }));
 
 // The module under test reaches the atoms through the package index, which is
 // far too heavy to pull into a unit test. Only the atoms are stubbed — the
 // delta logic exercised below is the real thing.
 vi.mock("..", async () => {
-  const { atom, selector } = await import("recoil");
+  const { atom, selector } = await import("@fiftyone/reverb");
 
   stubs.selectedLabels = atom<SelectedLabel[]>({
     key: "_test/OnSelectLabel/selectedLabels",
@@ -93,7 +93,7 @@ const wrapper =
   (initial: LabelMap = {}) =>
   ({ children }: { children: React.ReactNode }) =>
     React.createElement(
-      RecoilRoot,
+      ReverbRoot,
       {
         initializeState: ({ set }: MutableSnapshot) => {
           set(stubs.selectedLabelMap, initial);
@@ -106,7 +106,7 @@ const mount = (initial: LabelMap = {}) =>
   renderHook(
     () => ({
       apply: useApplySelectedLabelsDelta(),
-      map: useRecoilValue(stubs.selectedLabelMap),
+      map: useReverbValue(stubs.selectedLabelMap),
     }),
     { wrapper: wrapper(initial) },
   );
@@ -181,7 +181,7 @@ describe("useApplySelectedLabelsDelta", () => {
 });
 
 describe("label selection read accessors", () => {
-  it("exposes the selected ids without the caller touching recoil", () => {
+  it("exposes the selected ids without the caller touching the store", () => {
     const { result } = renderHook(() => useSelectedLabelIds(), {
       wrapper: wrapper({
         "label-a": { field: "f", sampleId: "s1" },

@@ -1,13 +1,13 @@
 import { pathCanBeOptimized } from "@fiftyone/state";
 import { useEffect } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { QP_WAIT, QueryPerformanceToastEvent } from "../QueryPerformanceToast";
 
 export default function useQueryPerformanceTimeout(
   modal: boolean,
   path: string,
 ) {
-  const shouldOptimize = useRecoilValue(pathCanBeOptimized(path));
+  const shouldOptimize = useReverbValue(pathCanBeOptimized(path));
   useEffect(() => {
     if (modal || !shouldOptimize) {
       return;

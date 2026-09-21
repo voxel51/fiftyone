@@ -1,7 +1,7 @@
 /**
  * The plot's settings, remembered across page loads per (dataset, run).
  *
- * Panel state is Recoil, so it survives view-change remounts and nothing more:
+ * Panel state lives in the store, so it survives view-change remounts and nothing more:
  * a reload dropped every choice back to its default, and the palette, the
  * find-similar limit and the link mode all had to be set again. These are
  * preferences about how to READ a run, not part of its data, so they live in

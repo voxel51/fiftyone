@@ -1,7 +1,7 @@
 import { subscribe } from "@fiftyone/relay";
 import { activeLabelFields } from "@fiftyone/state";
 import { useCallback, useEffect } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { syncAndGetNewLabels } from "./syncAndGetNewLabels";
 
 export type LookerId = string;
@@ -27,7 +27,7 @@ export const useDetectNewActiveLabelFields = ({
 }: {
   modal: boolean;
 }) => {
-  const activeLabelFieldsValue = useRecoilValue(activeLabelFields({ modal }));
+  const activeLabelFieldsValue = useReverbValue(activeLabelFields({ modal }));
 
   // reset for page transitions
   useEffect(() => subscribe(() => clear(modal)), [modal]);

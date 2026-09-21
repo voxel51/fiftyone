@@ -2,7 +2,7 @@ import { Resizable } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { useTheme as useMUITheme } from "@mui/material";
 import type { ReactNode } from "react";
-import { useRecoilState, useResetRecoilState } from "recoil";
+import { useReverbState, useResetReverbState } from "@fiftyone/reverb";
 
 const SidebarContainer = ({
   children,
@@ -11,8 +11,8 @@ const SidebarContainer = ({
   children: ReactNode;
   modal: boolean;
 }) => {
-  const [width, setWidth] = useRecoilState(fos.sidebarWidth(modal));
-  const resetWidth = useResetRecoilState(fos.sidebarWidth(modal));
+  const [width, setWidth] = useReverbState(fos.sidebarWidth(modal));
+  const resetWidth = useResetReverbState(fos.sidebarWidth(modal));
   const muiTheme = useMUITheme();
 
   return (

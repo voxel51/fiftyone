@@ -100,17 +100,17 @@ yarn test-ui
 Generally speaking, new modules and source code should have 100% coverage. If
 you are refactoring or bug fixing older code without tests, please add them.
 
-### Testing Recoil and Recoil Relay
+### Testing Reverb and Relay
 
-Most Recoil and Recoil Relay selectors and hooks are defined in
+Most Reverb and Relay selectors and hooks are defined in
 [`@fiftyone/state`](packages/state). This is a primary way in which data and
 state flows through the App.
 
 #### Selectors and GraphQL Selectors
 
-In order to write unit tests for selectors you must mock `recoil` (and
-`recoil-relay` if GraphQL selectors are being tested, or selectors being tested
-depend on GraphQL selectors).
+In order to write unit tests for selectors you must mock `@fiftyone/reverb`
+(and `@fiftyone/relay` if GraphQL selectors are being tested, or selectors
+being tested depend on GraphQL selectors).
 
 These unit tests are only for testing a selector's `get` and optionally `set`
 methods, treating theme as pure functions.
@@ -126,10 +126,10 @@ asserted from the mock values store after the function is run.
 ```ts
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("recoil");
-vi.mock("recoil-relay");
-// import recoil module(s) for testing after mocking
-import { atom, selectorFamily } from "./recoil";
+vi.mock("@fiftyone/reverb");
+vi.mock("@fiftyone/relay");
+// import state module(s) for testing after mocking
+import { atom, selectorFamily } from "@fiftyone/reverb";
 
 const one = atom<number>({
     key: "one",
@@ -158,7 +158,7 @@ import {
     setMockAtoms,
     TestSelector,
     TestSelectorFamily,
-} from "./__mocks__/recoil";
+} from "../../../reverb/src/__mocks__/index";
 
 describe("my tests", () => {
     const test = <TestSelectorFamily<typeof exampleSelectorFamily>>(
@@ -184,13 +184,13 @@ describe("my tests", () => {
 
 Hooks can be tested with the
 [React Hooks Testing Library](https://react-hooks-testing-library.com/). These
-follow an integration testing pattern as the full recoil graph must be
+follow an integration testing pattern as the full Reverb graph must be
 manipulated to test various outcomes.
 
 ```ts
 import { act, renderHook } from "@testing-library/react-hooks";
 import React from "react";
-import { atom, RecoilRoot, useRecoilValue } from "recoil";
+import { atom, ReverbRoot, useReverbValue } from "@fiftyone/reverb";
 import { expect, test } from "vitest";
 
 const value = atom({
@@ -200,18 +200,18 @@ const value = atom({
 
 const Root: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
     return (
-        <RecoilRoot
+        <ReverbRoot
             initializeState={(snapshot) => {
                 snapshot.set(value, true);
             }}
         >
             {children}
-        </RecoilRoot>
+        </ReverbRoot>
     );
 };
 
 const useHook = () =>
-    useRecoilCallback(
+    useReverbCallback(
         ({ set }) =>
             () =>
                 set(value, false)
@@ -221,7 +221,7 @@ test("Test hook", () => {
     const { result } = renderHook(
         () => ({
             run: useHook(),
-            value: useRecoilValue(value),
+            value: useReverbValue(value),
         }),
         {
             wrapper: Root,

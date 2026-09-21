@@ -4,7 +4,7 @@ import * as fos from "@fiftyone/state";
 import { useMemo } from "react";
 import type { Data } from "plotly.js";
 import Plot from "react-plotly.js";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { tracesToData } from "./tracesToData";
 import { useKeyDown } from "./useKeyDown";
 import { usePlot } from "./usePlot";
@@ -17,10 +17,10 @@ export function EmbeddingsPlot({
   plotSelection,
 }) {
   const theme = useTheme();
-  const getColor = useRecoilValue(fos.colorMap);
-  const fields = useRecoilValue(fos.colorScheme).fields;
-  const colorscheme = useRecoilValue(fos.colorScheme);
-  const configColorscale = useRecoilValue(fos.coloring).scale;
+  const getColor = useReverbValue(fos.colorMap);
+  const fields = useReverbValue(fos.colorScheme).fields;
+  const colorscheme = useReverbValue(fos.colorScheme);
+  const configColorscale = useReverbValue(fos.coloring).scale;
   // The colorscale objects carry a computed `rgb` triples array at runtime
   // that isn't part of the relay Colorscale*Input types; read it through a
   // cast and fall back to the config colorscale when absent.

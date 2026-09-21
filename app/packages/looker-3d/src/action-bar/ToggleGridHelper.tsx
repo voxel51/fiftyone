@@ -5,7 +5,7 @@ import GridOnIcon from "@mui/icons-material/GridOn";
 import { Checkbox, Typography } from "@mui/material";
 import type React from "react";
 import { useCallback, useRef, useState } from "react";
-import { useRecoilState } from "recoil";
+import { useReverbState } from "@fiftyone/reverb";
 import { ActionItem } from "../containers";
 import {
   gridCellSizeAtom,
@@ -23,15 +23,15 @@ const GridConfigurator = () => {
 
   const containerRef = useRef(null);
 
-  const [gridCellSize, setGridCellSize] = useRecoilState(gridCellSizeAtom);
+  const [gridCellSize, setGridCellSize] = useReverbState(gridCellSizeAtom);
   const [gridSectionSize, setGridSectionSize] =
-    useRecoilState(gridSectionSizeAtom);
-  const [gridSize, setGridSize] = useRecoilState(gridSizeAtom);
-  const [isGridInfinitelyLarge, setIsGridInfinitelyLarge] = useRecoilState(
+    useReverbState(gridSectionSizeAtom);
+  const [gridSize, setGridSize] = useReverbState(gridSizeAtom);
+  const [isGridInfinitelyLarge, setIsGridInfinitelyLarge] = useReverbState(
     isGridInfinitelyLargeAtom,
   );
   const [shouldGridFade, setShouldGridFade] =
-    useRecoilState(shouldGridFadeAtom);
+    useReverbState(shouldGridFadeAtom);
 
   if (!isOn) {
     return null;
@@ -109,7 +109,7 @@ const GridConfigurator = () => {
 };
 
 export const ToggleGridHelper = () => {
-  const [isGridOn, setIsGridOn] = useRecoilState(isGridOnAtom);
+  const [isGridOn, setIsGridOn] = useReverbState(isGridOnAtom);
   const [isFirstLoad, setIsFirstLoad] = useState(true);
 
   const { primary } = useTheme();

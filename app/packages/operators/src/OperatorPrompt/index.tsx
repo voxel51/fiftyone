@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { showOperatorPromptSelector, useOperatorPrompt } from "../state";
 import { BaseStylesProvider } from "../styled-components";
 import { OperatorPromptType } from "../types";
@@ -8,7 +8,7 @@ import OperatorDrawerPrompt from "./OperatorDrawerPrompt";
 import { OPERATOR_PROMPT_AREAS } from "../constants";
 
 export default function OperatorPrompt() {
-  const show = useRecoilValue(showOperatorPromptSelector);
+  const show = useReverbValue(showOperatorPromptSelector);
   if (show) {
     return (
       <BaseStylesProvider>

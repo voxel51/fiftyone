@@ -15,7 +15,7 @@ import {
 } from "@mui/material";
 import "allotment/dist/style.css";
 import { useEffect, useMemo, useState } from "react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useReverbValue, useSetReverbState } from "@fiftyone/reverb";
 import { workspaceEditorStateAtom } from "../../state";
 import Workspace from "./Workspace";
 import WorkspaceEditor from "./WorkspaceEditor";
@@ -32,11 +32,11 @@ export default function Workspaces() {
     listWorkspace,
     canInitialize,
   } = useWorkspaces();
-  const setWorkspaceEditorState = useSetRecoilState(workspaceEditorStateAtom);
-  const canEditWorkSpace = useRecoilValue(canEditWorkspaces);
+  const setWorkspaceEditorState = useSetReverbState(workspaceEditorStateAtom);
+  const canEditWorkSpace = useReverbValue(canEditWorkspaces);
   const disabled = canEditWorkSpace.enabled !== true;
   const disabledMsg = canEditWorkSpace.message;
-  const sessionSpacesState = useRecoilValue(sessionSpaces);
+  const sessionSpacesState = useReverbValue(sessionSpaces);
   const currentWorkspaceName = sessionSpacesState._name;
 
   const currentWorkspace = useMemo(() => {

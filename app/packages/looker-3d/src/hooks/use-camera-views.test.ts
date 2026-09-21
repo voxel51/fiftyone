@@ -25,10 +25,10 @@ vi.mock("jotai", () => ({
   useAtomValue: () => "explore",
 }));
 
-vi.mock("recoil", () => ({
-  useRecoilValue: (atom: { key?: string } | null) =>
+vi.mock("@fiftyone/reverb", () => ({
+  useReverbValue: (atom: { key?: string } | null) =>
     atom?.key === "annotationPlaneAtom" ? { enabled: false } : null,
-  useSetRecoilState: () => vi.fn(),
+  useSetReverbState: () => vi.fn(),
 }));
 
 vi.mock("../annotation/store", () => ({

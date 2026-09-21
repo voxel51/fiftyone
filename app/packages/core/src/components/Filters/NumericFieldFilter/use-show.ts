@@ -1,10 +1,10 @@
 import * as fos from "@fiftyone/state";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import * as state from "./state";
 
 export default function useShow(modal: boolean, named: boolean, path: string) {
-  const queryPerformance = useRecoilValue(fos.queryPerformance);
-  const hasBounds = useRecoilValue(
+  const queryPerformance = useReverbValue(fos.queryPerformance);
+  const hasBounds = useReverbValue(
     state.hasBounds({
       path,
       modal,

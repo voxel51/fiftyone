@@ -1,5 +1,9 @@
 import { useEffect } from "react";
-import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
+import {
+  useReverbCallback,
+  useReverbValue,
+  useSetReverbState,
+} from "@fiftyone/reverb";
 import * as fos from "@fiftyone/state";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import { fetchExtendedStage } from "./fetch";
@@ -8,18 +12,18 @@ import { usePointsField } from "./useBrainResult";
 import { shouldResolveSelection } from "./utils";
 
 export default function useExtendedStageEffect() {
-  const datasetName = useRecoilValue(fos.datasetName);
-  const view = useRecoilValue(fos.view);
+  const datasetName = useReverbValue(fos.datasetName);
+  const view = useReverbValue(fos.view);
   const [loadedPlot] = usePanelStatePartial("loadedPlot", null, true);
-  const setOverrideStage = useSetRecoilState(
+  const setOverrideStage = useSetReverbState(
     fos.extendedSelectionOverrideStage,
   );
-  const { selection, spatialSelection } = useRecoilValue(fos.extendedSelection);
-  const getCurrentDataset = useRecoilCallback(({ snapshot }) => async () => {
+  const { selection, spatialSelection } = useReverbValue(fos.extendedSelection);
+  const getCurrentDataset = useReverbCallback(({ snapshot }) => async () => {
     return snapshot.getPromise(fos.datasetName);
   });
-  const slices = useRecoilValue(fos.currentSlices(false));
-  const lassoPoints = useRecoilValue(selectionAtoms.lassoPoints);
+  const slices = useReverbValue(fos.currentSlices(false));
+  const lassoPoints = useReverbValue(selectionAtoms.lassoPoints);
   const [pointsField] = usePointsField();
 
   useEffect(() => {

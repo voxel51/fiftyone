@@ -19,9 +19,9 @@ const refs = vi.hoisted(() => ({
   } & Record<string, unknown>,
 }));
 
-vi.mock("recoil", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("recoil")>();
-  return { ...actual, useRecoilValue: () => false };
+vi.mock("@fiftyone/reverb", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@fiftyone/reverb")>();
+  return { ...actual, useReverbValue: () => false };
 });
 
 vi.mock("@fiftyone/lighter", () => ({

@@ -8,7 +8,7 @@ import { env, getEventSource } from "@fiftyone/utilities";
 import type { MutableRefObject } from "react";
 import { useEffect, useMemo, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useReverbState, useReverbValue } from "@fiftyone/reverb";
 import type { Queries } from "./makeRoutes";
 import type { RoutingContext } from "./routing";
 import useEvents from "./useEvents";
@@ -20,11 +20,11 @@ const useEventSource = (
   router: RoutingContext<Queries>,
   session: MutableRefObject<Session>,
 ) => {
-  const [readyState, setReadyState] = useRecoilState(appReadyState);
+  const [readyState, setReadyState] = useReverbState(appReadyState);
   const readyStateRef = useRef<AppReadyState>(readyState);
   readyStateRef.current = readyState;
   const controller = useMemo(() => new AbortController(), []);
-  const subscription = useRecoilValue(stateSubscription);
+  const subscription = useReverbValue(stateSubscription);
   const { subscriptions, handler } = useEvents(
     controller,
     router,

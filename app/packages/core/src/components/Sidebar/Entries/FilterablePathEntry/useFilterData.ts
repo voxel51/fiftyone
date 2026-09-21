@@ -16,7 +16,7 @@ import {
   withPath,
 } from "@fiftyone/utilities";
 import { useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import type FilterItem from "./FilterItem";
 
 const EXCLUDED = {
@@ -137,17 +137,17 @@ const useFilterData = (
   path: string,
   filter?: (path: string) => boolean,
 ) => {
-  const expandedPath = useRecoilValue(fos.expandPath(path));
-  const color = useRecoilValue(fos.pathColor(path));
-  const field = useRecoilValue(fos.field(path));
-  const fields = useRecoilValue(
+  const expandedPath = useReverbValue(fos.expandPath(path));
+  const color = useReverbValue(fos.pathColor(path));
+  const field = useReverbValue(fos.field(path));
+  const fields = useReverbValue(
     fos.fields({
       path: expandedPath,
       ftype: VALID_PRIMITIVE_TYPES,
     }),
   );
 
-  const skeleton = useRecoilValue(getSkeleton);
+  const skeleton = useReverbValue(getSkeleton);
   return useMemo(() => {
     const data = getFilterItemsProps(
       color,

@@ -9,10 +9,10 @@ import type { OnChangeHandler } from "leva/plugin";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   atomFamily,
-  useRecoilState,
-  useRecoilValue,
-  useSetRecoilState,
-} from "recoil";
+  useReverbState,
+  useReverbValue,
+  useSetReverbState,
+} from "@fiftyone/reverb";
 import { BufferGeometry } from "three";
 import {
   DEFAULT_PCD_SHADING_GRADIENTS_RED_TO_BLUE,
@@ -58,7 +58,7 @@ export const usePcdMaterialControls = (
   defaultMaterial: FoPointcloudMaterialProps,
 ) => {
   const { numPrimaryAssets } = useFo3dContext();
-  const [isColormapModalOpen, setIsColormapModalOpen] = useRecoilState(
+  const [isColormapModalOpen, setIsColormapModalOpen] = useReverbState(
     isColormapModalOpenAtom,
   );
 
@@ -107,7 +107,7 @@ export const usePcdMaterialControls = (
 
   const [opacity] = useState(defaultMaterial.opacity);
 
-  const colorScheme = useRecoilValue(fos.colorScheme);
+  const colorScheme = useReverbValue(fos.colorScheme);
 
   const [colormapOverride, setColormapOverride] = fos.useBrowserStorage<{
     [key: string]: ColorscaleInput["list"];
@@ -164,7 +164,7 @@ export const usePcdMaterialControls = (
     }),
     [name, shadeBy],
   );
-  const setBounds = useSetRecoilState(boundsAtomFamily(thresholdStateKey));
+  const setBounds = useSetReverbState(boundsAtomFamily(thresholdStateKey));
 
   // This effect resets bounds to sanitized min/max for the active shading attribute.
   useEffect(() => {
@@ -320,7 +320,7 @@ export const usePcdMaterialControls = (
 
   const theme = useTheme();
 
-  const [activeThreshold, setActiveThreshold] = useRecoilState(
+  const [activeThreshold, setActiveThreshold] = useReverbState(
     activeThresholdAtomFamily(thresholdStateKey),
   );
 

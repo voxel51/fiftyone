@@ -15,7 +15,7 @@ export const DEFAULT_FILTER_STATE: RunFilterState = {
 /**
  * Shared access to the panel's filter state.
  *
- * State lives in the panels' local (non-persisted) Recoil map keyed by
+ * State lives in the panels' local (non-persisted) map keyed by
  * ``panelId``. When the dataset changes, the workspace loads a fresh
  * panel instance with a new ``panelId``, so the framework handles the
  * "reset on dataset change" behavior for us — no manual effect needed.

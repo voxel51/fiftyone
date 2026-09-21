@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import ClassesSection from "./ClassesSection";
 
 // ComponentTypeButton reads palette colors through @fiftyone/components'
-// useTheme, which needs the app's Recoil graph; stub the palette instead.
+// useTheme, which needs the app's state graph; stub the palette instead.
 vi.mock("@fiftyone/components", () => ({
   useTheme: () => ({
     voxel: { 500: "#ff6d04" },

@@ -1,6 +1,6 @@
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { useColorByField } from "./useLabelSelector";
 
 // a react hook that fetches a list of brain results
@@ -10,7 +10,7 @@ export const usePointsField = () => usePanelStatePartial("pointsField", null);
 
 export function useBrainResultsSelector() {
   const [selected, setSelected] = useBrainResult();
-  const dataset = useRecoilValue(fos.dataset);
+  const dataset = useReverbValue(fos.dataset);
   const [, setColorByField] = useColorByField();
   const [loadingPlotError, setLoadingPlotError] = usePanelStatePartial(
     "loadingPlotError",

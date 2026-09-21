@@ -5,14 +5,14 @@
 import * as fos from "@fiftyone/state";
 import { Alert, AlertTitle } from "@mui/material";
 import { useLayoutEffect } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 
 /**
  * Forces dataset pages onto a fresh FiftyOne subscription after a renderer
  * crash so the rest of the session uses a clean backend-synced state channel.
  */
 export const DatasetGridRendererFailoverReload = () => {
-  const currentSubscription = useRecoilValue(fos.stateSubscription);
+  const currentSubscription = useReverbValue(fos.stateSubscription);
   const { forcedSubscription, hasAnyFailures } =
     fos.useGridCustomRendererFailover();
 
@@ -42,7 +42,7 @@ export const DatasetGridRendererFailoverReload = () => {
 
 /** Banner shown when the session has been switched to the built-in grid renderer. */
 export const DatasetGridRendererFailoverBanner = () => {
-  const currentDatasetName = useRecoilValue(fos.datasetName);
+  const currentDatasetName = useReverbValue(fos.datasetName);
   const gridRendererFailover =
     fos.useGridCustomRendererFailover(currentDatasetName);
   const shouldShowBanner = gridRendererFailover.isBannerVisible;

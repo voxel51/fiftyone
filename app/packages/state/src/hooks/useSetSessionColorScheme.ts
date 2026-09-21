@@ -1,8 +1,8 @@
-import { useSetRecoilState } from "recoil";
-import { colorScheme } from "../recoil";
+import { useSetReverbState } from "@fiftyone/reverb";
+import { colorScheme } from "../atoms";
 
 const useSetSessionColorScheme = () => {
-  return useSetRecoilState(colorScheme);
+  return useSetReverbState(colorScheme);
 };
 
 export default useSetSessionColorScheme;

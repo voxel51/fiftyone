@@ -88,7 +88,7 @@ different act — the server's `existence` axis is what distinguishes them.
   `selectionStart`) and `Select` takes no placeholder. `MenuTextItem` is a
   headlessui menu item and throws outside a `Menu` — use `Clickable` for
   always-open lists.
-- **No new `useRecoilValue` call sites.** State goes through accessor hooks in
+- **No new `useReverbValue` call sites.** State goes through accessor hooks in
   `@fiftyone/state` (`useFieldTypes`, `useDatasetMediaType`).
 - **The pure rules are exported and tested** — `paramModes`, `rows`,
   `appliesTo`, `expressionScope`, `statusOf`, `scopedTo`. Anything decided by

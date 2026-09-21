@@ -50,8 +50,8 @@ vi.mock("@fiftyone/lighter", () => ({
 
 vi.mock("@fiftyone/state", () => ({ isPatchesView: { key: "isPatchesView" } }));
 
-vi.mock("recoil", () => ({
-  useRecoilValue: () => hoisted.isPatchesViewRef.current,
+vi.mock("@fiftyone/reverb", () => ({
+  useReverbValue: () => hoisted.isPatchesViewRef.current,
 }));
 
 vi.mock("./useAnnotationContext", () => ({

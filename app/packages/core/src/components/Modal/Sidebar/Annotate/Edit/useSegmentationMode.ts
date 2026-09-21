@@ -4,7 +4,7 @@
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { atom, useAtom } from "jotai";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 
 import { usePointSelectionSeed } from "@fiftyone/annotation/src/agents";
 import { BaseOverlay, DetectionOverlay, useLighter } from "@fiftyone/lighter";
@@ -64,7 +64,7 @@ export const useSegmentationMode = () => {
   const { selected, createNew } = useAnnotationContext();
   const isEditingMask = selected?.isEditingMask ?? false;
   const onExit = useExit();
-  const isPatchView = useRecoilValue(isPatchesView);
+  const isPatchView = useReverbValue(isPatchesView);
   const { fields } = useAnnotationFields(DETECTION);
   const [segmentationModeActive, setSegmentationModeActive] = useAtom(
     segmentationModeActiveAtom,

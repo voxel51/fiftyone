@@ -3,7 +3,7 @@
 import { MaskColorInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import React, { useCallback, useEffect, useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import Checkbox from "../../Common/Checkbox";
 import { FieldCHILD_STYLE } from "../ShareStyledDiv";
 import IdxColorList from "../controls/IdxColorList";
@@ -14,7 +14,7 @@ import {
 } from "../utils";
 
 const DefaultMaskTargets: React.FC = () => {
-  const colorScheme = useRecoilValue(fos.colorScheme);
+  const colorScheme = useReverbValue(fos.colorScheme);
   const setColorScheme = fos.useSetSessionColorScheme();
   const initialValue = colorScheme.defaultMaskTargetsColors ?? [];
   const values = colorScheme.defaultMaskTargetsColors;

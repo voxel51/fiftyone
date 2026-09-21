@@ -7,7 +7,7 @@ import {
   type setSampleSelectionStyleMutation,
 } from "@fiftyone/relay";
 import { DEFAULT_SELECTION_STYLE } from "@fiftyone/state";
-import { DefaultValue } from "recoil";
+import { DefaultValue } from "@fiftyone/reverb";
 import { commitMutation } from "relay-runtime";
 import type { RegisteredWriter } from "./registerWriter";
 

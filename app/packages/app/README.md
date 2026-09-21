@@ -18,7 +18,7 @@ event name (in came case).
 ### Writing session updates
 
 The core session values are defined in `@fiftyone/state` as `sessionAtom`s.
-When a `sessionAtom` is written to via a `recoil` set call, the value
+When a `sessionAtom` is written to via a `@fiftyone/reverb` set call, the value
 immediately takes effect in the `sessionAtom`. Side effects of writing to the
 atom can be registered in [`./src/useWriter`](./src/useWriters/index.ts). These
 side effects are enumerated by the `RegisteredWriter` type and derive from
@@ -26,7 +26,7 @@ side effects are enumerated by the `RegisteredWriter` type and derive from
 
 ### Updating via Setters
 
-The complex case of handling state updates that affect other recoil state is
+The complex case of handling state updates that affect other Reverb state is
 encapsulated in [`./src/useSetters`](./src/useSetters/). One example of this is
 updating the `view` in the App. The `view` atom in `@fiftyone/state` is
 implemented as a

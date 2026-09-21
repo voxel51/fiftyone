@@ -1,6 +1,6 @@
 import * as fos from "@fiftyone/state";
 import { useCallback } from "react";
-import { selectorFamily, useRecoilValue } from "recoil";
+import { selectorFamily, useReverbValue } from "@fiftyone/reverb";
 import { SuspenseEntryCounts } from "../../Common/CountSubcount";
 
 interface PathEntryCountsProps {
@@ -40,9 +40,9 @@ export const PathEntryCounts = ({ modal, path }: PathEntryCountsProps) => {
     },
     [modal, path],
   );
-  const hasFilters = useRecoilValue(fos.fieldIsFiltered({ modal, path }));
-  const queryPerformance = useRecoilValue(fos.queryPerformance) && !modal;
-  const shown = useRecoilValue(showEntryCounts({ modal, path }));
+  const hasFilters = useReverbValue(fos.fieldIsFiltered({ modal, path }));
+  const queryPerformance = useReverbValue(fos.queryPerformance) && !modal;
+  const shown = useReverbValue(showEntryCounts({ modal, path }));
 
   // empty path means we are showing grid sample count which is always allowed
   // Temporal tags aren't sample fields, so there's no per-sample field count
@@ -112,7 +112,7 @@ export const LabelTagCounts = ({
   modal: boolean;
   tag: string;
 }) => {
-  if (useRecoilValue(fos.queryPerformance)) {
+  if (useReverbValue(fos.queryPerformance)) {
     return null;
   }
   return (

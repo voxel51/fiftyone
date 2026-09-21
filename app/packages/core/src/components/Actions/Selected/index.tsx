@@ -4,7 +4,7 @@ import * as fos from "@fiftyone/state";
 import { Check } from "@mui/icons-material";
 import type { MutableRefObject } from "react";
 import { useEffect, useRef, useState } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import Loading from "../Loading";
 import type { ActionProps } from "../types";
 import { ActionDiv, getStringAndNumberProps } from "../utils";
@@ -22,8 +22,8 @@ export default ({
   const { refresh } = adaptiveMenuItemProps || {};
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const samples = useRecoilValue(fos.selectedSamples);
-  const labels = useRecoilValue(fos.selectedLabelIds);
+  const samples = useReverbValue(fos.selectedSamples);
+  const labels = useReverbValue(fos.selectedLabelIds);
   const ref = useRef<HTMLDivElement>(null);
   fos.useOutsideClick(ref, () => open && setOpen(false));
 

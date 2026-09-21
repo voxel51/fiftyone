@@ -1,7 +1,7 @@
 import * as fos from "@fiftyone/state";
 import type { MutableRefObject } from "react";
 import { useCallback } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { ActionOption } from "../Common";
 import Popout from "../Popout";
 import { useClearSampleSelection, useClearSelectedLabels } from "./hooks";
@@ -13,10 +13,10 @@ export default ({
   anchorRef: MutableRefObject<HTMLElement | null>;
   close: () => void;
 }) => {
-  const elementNames = useRecoilValue(fos.elementNames);
+  const elementNames = useReverbValue(fos.elementNames);
   const clearSelection = useClearSampleSelection(close);
   const setView = fos.useSetView();
-  const selected = useRecoilValue(fos.selectedSamples);
+  const selected = useReverbValue(fos.selectedSamples);
   const addStage = useCallback(
     (name: string) => {
       setView((cur = []) => [
@@ -30,7 +30,7 @@ export default ({
     },
     [close, selected, setView],
   );
-  const selectedLabels = useRecoilValue(fos.selectedLabelIds);
+  const selectedLabels = useReverbValue(fos.selectedLabelIds);
   const items = [
     {
       key: "clear-labels",

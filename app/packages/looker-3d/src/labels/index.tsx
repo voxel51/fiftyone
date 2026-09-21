@@ -18,7 +18,7 @@ import { useAtomValue } from "jotai";
 import { folder, useControls } from "leva";
 import { get as _get } from "lodash";
 import { useCallback, useEffect, useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { Euler, Quaternion, type Vector3Tuple, type Vector4Tuple } from "three";
 import { useIsWorkingInitialized, useRenderModel } from "../annotation/store";
 import type {
@@ -82,10 +82,10 @@ export const ThreeDLabels = ({
 }: ThreeDLabelsProps) => {
   const mode = fos.useModalMode();
   const { directPcdWorldTransformsBySampleId } = useFo3dContext();
-  const schema = useRecoilValue(fieldSchema({ space: fos.State.SPACE.SAMPLE }));
+  const schema = useReverbValue(fieldSchema({ space: fos.State.SPACE.SAMPLE }));
   const annotationSchemas = useAtomValue(activeLabelSchemas);
   const { coloring, selectedLabelTags, customizeColorSetting, labelTagColors } =
-    useRecoilValue(fos.lookerOptions({ withFilter: true, modal: true }));
+    useReverbValue(fos.lookerOptions({ withFilter: true, modal: true }));
   const {
     cuboidLineWidth,
     hoveredLabel,
@@ -104,8 +104,8 @@ export const ThreeDLabels = ({
   );
   const onSelectLabel = fos.useOnSelectLabel();
   const pathFilter = usePathFilter();
-  const colorScheme = useRecoilValue(fos.colorScheme);
-  const selectedLabels = useRecoilValue(fos.selectedLabelMap);
+  const colorScheme = useReverbValue(fos.colorScheme);
+  const selectedLabels = useReverbValue(fos.selectedLabelMap);
   const labelAlpha = globalOpacity ?? colorScheme.opacity;
   const hoverSource = panelId ?? (isMainPanel ? PANEL_ID_MAIN : undefined);
   const onExit = useExit();

@@ -5,7 +5,7 @@ import type Spotlight from "@fiftyone/spotlight";
 import type { ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import { useCallback, useEffect, useRef } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { useDetectNewActiveLabelFields } from "../Sidebar/useDetectNewActiveLabelFields";
 import type { LookerCache } from "./types";
 
@@ -73,8 +73,8 @@ const useItemUpdater = (
   const { getNewFields, removeField } = useDetectNewActiveLabelFields({
     modal: false,
   });
-  const selected = useRecoilValue(fos.selectedSamples);
-  const style = useRecoilValue(fos.sampleSelectionStyle);
+  const selected = useReverbValue(fos.selectedSamples);
+  const style = useReverbValue(fos.sampleSelectionStyle);
 
   return useCallback(
     (fontSize: number, lastColoringKey: string | null) => {

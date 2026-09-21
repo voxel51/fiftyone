@@ -1,6 +1,6 @@
 import React from "react";
 import { vi } from "vitest";
-import { RecoilRoot } from "recoil";
+import { ReverbRoot } from "@fiftyone/reverb";
 
 vi.mock("@fiftyone/spaces", () => ({
   usePanelStateByIdCallback: vi.fn(),
@@ -22,7 +22,7 @@ import { usePanelStateByIdCallback } from "@fiftyone/spaces";
 import { useActivePanelEventsCount } from "./hooks";
 
 export const TestWrapper = ({ children }: { children: React.ReactNode }) => {
-  return React.createElement(RecoilRoot, null, children);
+  return React.createElement(ReverbRoot, null, children);
 };
 
 export const mockUsePanelStateByIdCallback = vi.mocked(

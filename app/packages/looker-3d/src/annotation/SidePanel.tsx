@@ -20,7 +20,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
 import * as THREE from "three";
 import type { MapControls as MapControlsImpl } from "three-stdlib";
@@ -181,7 +181,7 @@ export const SidePanel = ({
   // While a label transform is in progress (e.g. a cuboid face-pull resize
   // started in this panel), suspend panning so the drag doesn't also move the
   // orthographic camera. Mirrors the main panel's controls gating.
-  const isCurrentlyTransforming = useRecoilValue(isCurrentlyTransformingAtom);
+  const isCurrentlyTransforming = useReverbValue(isCurrentlyTransformingAtom);
 
   const gridArea = getSidePanelGridArea(panelId);
   const safeSelectValue = getSafeSidePanelSelectValue({
@@ -427,7 +427,7 @@ const BoundsSideEffectsComponent = ({
   upVector: Vector3 | null;
 }) => {
   const api = useBounds();
-  const selectedLabel = useRecoilValue(selectedLabelForAnnotationAtom);
+  const selectedLabel = useReverbValue(selectedLabelForAnnotationAtom);
   const selectedLabelId = selectedLabel?._id ?? null;
   const previousSelectedLabelIdRef = useRef<string | null>(null);
 

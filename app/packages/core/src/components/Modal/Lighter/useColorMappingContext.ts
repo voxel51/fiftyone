@@ -1,10 +1,10 @@
 import { colorScheme, colorSeed } from "@fiftyone/state";
 import { useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 
 export default function useColorMappingContext() {
-  const currentColorScheme = useRecoilValue(colorScheme);
-  const currentColorSeed = useRecoilValue(colorSeed);
+  const currentColorScheme = useReverbValue(colorScheme);
+  const currentColorSeed = useReverbValue(colorSeed);
   return useMemo(
     () => ({
       colorScheme: currentColorScheme,

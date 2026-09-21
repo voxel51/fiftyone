@@ -1,4 +1,4 @@
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import * as fos from "@fiftyone/state";
 
 type SimilarityTypeProp = {
@@ -6,10 +6,10 @@ type SimilarityTypeProp = {
 };
 // returns the helpertext and icon type based on the similarity sort type (text or image)
 const useSimilarityType = (props: SimilarityTypeProp) => {
-  const hasSelectedSamples = useRecoilValue(fos.hasSelectedSamples);
-  const hasSelectedLabels = useRecoilValue(fos.hasSelectedLabels);
-  const modal = useRecoilValue(fos.isModalActive);
-  const hasSorting = Boolean(useRecoilValue(fos.similarityParameters));
+  const hasSelectedSamples = useReverbValue(fos.hasSelectedSamples);
+  const hasSelectedLabels = useReverbValue(fos.hasSelectedLabels);
+  const modal = useReverbValue(fos.isModalActive);
+  const hasSorting = Boolean(useReverbValue(fos.similarityParameters));
 
   const isImageSearch =
     hasSelectedSamples ||

@@ -1,5 +1,5 @@
 import * as fos from "@fiftyone/state";
-import { useRecoilValue } from "recoil";
+import { useAssertedReverbValue, useReverbValue } from "@fiftyone/reverb";
 import Option from "../FilterOption";
 import * as state from "./state";
 
@@ -12,9 +12,9 @@ function FilterOption({
   modal: boolean;
   path: string;
 }) {
-  const isFiltered = useRecoilValue(fos.fieldIsFiltered({ modal, path }));
-  const hasBounds = useRecoilValue(state.hasBounds({ modal, path }));
-  const field = fos.useAssertedRecoilValue(fos.field(path));
+  const isFiltered = useReverbValue(fos.fieldIsFiltered({ modal, path }));
+  const hasBounds = useReverbValue(state.hasBounds({ modal, path }));
+  const field = useAssertedReverbValue(fos.field(path));
 
   if (!isFiltered || !hasBounds) {
     return null;

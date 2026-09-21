@@ -484,7 +484,7 @@ defines both a JS Panel and a Python operator:
         :linenos:
 
         import * as fos from "@fiftyone/state";
-        import { useRecoilValue } from "recoil";
+        import { useReverbValue } from "@fiftyone/reverb";
         import { useCallback } from "react";
         import { Button } from "@fiftyone/components";
         import {
@@ -501,7 +501,7 @@ defines both a JS Panel and a Python operator:
           const onClickAlert = useCallback(() =>
             executeOperator("@voxel51/hello-world/show_alert")
           );
-          const dataset = useRecoilValue(fos.dataset);
+          const dataset = useReverbValue(fos.dataset);
 
           if (executor.isLoading) return <h3>Loading...</h3>;
           if (executor.result) return <h3>Dataset size: {executor.result.count}</h3>;
@@ -4855,9 +4855,9 @@ Adding a custom Panel
     import AwesomeMap from "react-mapping-library";
 
     function CustomPanel() {
-        const dataset = useRecoilValue(fos.dataset);
-        const view = useRecoilValue(fos.view);
-        const filters = useRecoilValue(fos.filters);
+        const dataset = useReverbValue(fos.dataset);
+        const view = useReverbValue(fos.view);
+        const filters = useReverbValue(fos.filters);
         const [aggregate, points, loading] = foa.useAggregation({
             dataset,
             filters,
@@ -5069,13 +5069,13 @@ For example, if you want to allow users to select samples, you can use the
 ..    :linenos:
 
 ..     import * as fos from '@fiftyone/state'
-..     import * as recoil from 'recoil'
+..     import * as reverb from '@fiftyone/reverb'
 
 ..     // this example demonstrates handling updates to
 ..     // filters/sidebar, but applies to everything
 ..     // listed under "state" below
 ..     function MyPlugin() {
-..       const activeFields = recoil.useRecoilValue(fos.activeFields)
+..       const activeFields = reverb.useReverbValue(fos.activeFields)
 
 ..       return <ul>{activeFields.map(f => <li>{f.name}</li>)}
 ..     }
@@ -5108,10 +5108,10 @@ The example above shows how you can coordinate or surface existing features of
 FiftyOne through your plugin via the `@fiftyone/state` package. This package
 provides hooks to access and modify the state of the FiftyOne App.
 
-Recoil, atoms, and selectors
+Reverb, atoms, and selectors
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You can also use a combination of your own and fiftyone's recoil `atoms` and
+You can also use a combination of your own and fiftyone's Reverb `atoms` and
 `selectors`.
 
 Here's an example the combines both approaches in a hook that you could call
@@ -5120,7 +5120,7 @@ from anywhere where hooks are supported (almost all plugin component types).
 .. code-block:: jsx
     :linenos:
 
-    import {atom, useRecoilValue, useRecoilState} from 'recoil';
+    import {atom, useReverbValue, useReverbState} from '@fiftyone/reverb';
 
     const myPluginmyPluginFieldsState = atom({
         key: 'myPluginFields',
@@ -5128,8 +5128,8 @@ from anywhere where hooks are supported (almost all plugin component types).
     })
 
     function useMyHook() {
-        const dataset = useRecoilValue(fos.dataset);
-        const [fields, setFields] = useRecoilState(myPluginFieldsState);
+        const dataset = useReverbValue(fos.dataset);
+        const [fields, setFields] = useReverbState(myPluginFieldsState);
 
         return {
             dataset,
@@ -5253,12 +5253,12 @@ In a FiftyOne plugin this same query can be performed using the
     import * as fop from "@fiftyone/plugins";
     import * as fos from "@fiftyone/state";
     import * as foa from "@fiftyone/aggregations";
-    import * as recoil from "recoil";
+    import * as reverb from "@fiftyone/reverb";
 
     function useGeoDataNear() {
-        const dataset = useRecoilValue(fos.dataset);
-        const view = useRecoilValue(fos.view);
-        const filters = useRecoilValue(fos.filters);
+        const dataset = useReverbValue(fos.dataset);
+        const view = useReverbValue(fos.view);
+        const filters = useReverbValue(fos.filters);
         const [aggregate, points, isLoading] = foa.useAggregation({
             dataset,
             filters,

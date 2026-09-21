@@ -1,6 +1,6 @@
 import * as fos from "@fiftyone/state";
 import { useCallback, useEffect, useRef } from "react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useReverbValue, useSetReverbState } from "@fiftyone/reverb";
 import { MOUSE } from "three";
 import type { Fo3dCameraControls } from "../fo3d/camera-controls";
 import {
@@ -46,12 +46,12 @@ interface UseFo3dCameraControlsConfigArgs {
 export const useFo3dCameraControlsConfig = ({
   cameraControlsRef,
 }: UseFo3dCameraControlsConfigArgs) => {
-  const isSegmentingPointerDown = useRecoilValue(isSegmentingPointerDownAtom);
-  const isCreatingCuboidPointerDown = useRecoilValue(
+  const isSegmentingPointerDown = useReverbValue(isSegmentingPointerDownAtom);
+  const isCreatingCuboidPointerDown = useReverbValue(
     isCreatingCuboidPointerDownAtom,
   );
-  const isCurrentlyTransforming = useRecoilValue(isCurrentlyTransformingAtom);
-  const setIsPointCropModifierPressed = useSetRecoilState(
+  const isCurrentlyTransforming = useReverbValue(isCurrentlyTransformingAtom);
+  const setIsPointCropModifierPressed = useSetReverbState(
     isFo3dPointCropModifierPressedAtom,
   );
 

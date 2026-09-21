@@ -13,7 +13,7 @@
  * the opaque `extState` slot its source hook hands its features hook back.
  */
 import { useSyncExternalStore, type ReactNode } from "react";
-import type { CallbackInterface } from "recoil";
+import type { CallbackInterface } from "@fiftyone/reverb";
 import type { HoverContent } from "./HoverCard";
 import type { CategoricalFilter } from "./legendFilter";
 import type {
@@ -88,7 +88,7 @@ export interface RunColumnSource {
   extState: unknown;
 }
 
-/** Joins the single Recoil commit a selection publishes in (stage + count +
+/** Joins the single commit a selection publishes in (stage + count +
  * whatever the extension decorates it with — one invalidation, not one per
  * setter). */
 export type SelectionDecorator = (
@@ -96,7 +96,7 @@ export type SelectionDecorator = (
 ) => void;
 
 /** Commits stage + count + the extension's decoration in ONE batched
- * commit (see useRunPlotData). A caller already inside a Recoil transaction
+ * commit (see useRunPlotData). A caller already inside a transaction
  * passes its interface as `io` so the publish joins that commit — a second
  * transaction is a second sidebar-aggregation round. */
 export type PublishSelection = (

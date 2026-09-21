@@ -3,7 +3,7 @@ import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import React, { useEffect, useRef, useState } from "react";
 import { ChromePicker } from "react-color";
-import { selector, useRecoilValue } from "recoil";
+import { selector, useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
 import Checkbox from "../../Common/Checkbox";
 import { isSameArray } from "../utils";
@@ -33,14 +33,14 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
   maxColors = 20,
   style,
 }) => {
-  const colorScheme = useRecoilValue(fos.colorScheme);
+  const colorScheme = useReverbValue(fos.colorScheme);
   const setColorScheme = fos.useSetSessionColorScheme();
   const colors = colorScheme.colorPool;
   const [pickerColor, setPickerColor] = useState<string | null>(null);
 
-  const isUsingDefault = useRecoilValue(isDefaultColorPool);
-  const isUsingColorBlindOption = useRecoilValue(isColorBlindColorPool);
-  const defaultPool = useRecoilValue(fos.config).colorPool;
+  const isUsingDefault = useReverbValue(isDefaultColorPool);
+  const isUsingColorBlindOption = useReverbValue(isColorBlindColorPool);
+  const defaultPool = useReverbValue(fos.config).colorPool;
 
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [showPicker, setShowPicker] = useState(false);

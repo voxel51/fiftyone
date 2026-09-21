@@ -2,7 +2,7 @@ import { Tooltip } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { PaginationItemProps } from "@mui/material";
 import React, { useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 
 export const PaginationComponentWithTooltip = React.memo(
   React.forwardRef(
@@ -19,7 +19,7 @@ export const PaginationComponentWithTooltip = React.memo(
       },
       ref: React.Ref<HTMLDivElement>,
     ) => {
-      const { orderBy } = useRecoilValue(fos.dynamicGroupParameters)!;
+      const { orderBy } = useReverbValue(fos.dynamicGroupParameters)!;
 
       const tooltipText = useMemo(() => {
         if (!orderBy || isButton) {

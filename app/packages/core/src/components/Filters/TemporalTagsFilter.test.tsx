@@ -1,5 +1,5 @@
 import { cleanup, render, screen } from "@testing-library/react";
-import { RecoilRoot } from "recoil";
+import { ReverbRoot } from "@fiftyone/reverb";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const { syncSpy } = vi.hoisted(() => ({ syncSpy: vi.fn() }));
@@ -14,7 +14,9 @@ vi.mock("./StringFilter/StringFilter", () => ({
 // Provide just the @fiftyone/state surface the component imports.
 vi.mock("@fiftyone/state", async () => {
   const { atom, atomFamily } =
-    await vi.importActual<typeof import("recoil")>("recoil");
+    await vi.importActual<typeof import("@fiftyone/reverb")>(
+      "@fiftyone/reverb",
+    );
   const family = (key: string) => atomFamily({ key, default: null });
   return {
     useSyncTemporalTagResults: syncSpy,
@@ -33,14 +35,14 @@ import TemporalTagsFilter from "./TemporalTagsFilter";
 
 const renderFilter = () =>
   render(
-    <RecoilRoot>
+    <ReverbRoot>
       <TemporalTagsFilter
         color="#ffffff"
         path="_temporal_tags"
         modal={false}
         title="temporal tags"
       />
-    </RecoilRoot>,
+    </ReverbRoot>,
   );
 
 describe("TemporalTagsFilter", () => {

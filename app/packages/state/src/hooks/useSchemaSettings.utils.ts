@@ -34,7 +34,7 @@ import {
   VALID_LABEL_TYPES,
   VALID_LIST_LABEL_FIELDS,
 } from "@fiftyone/utilities";
-import type { State } from "../recoil/types";
+import type { State } from "../atoms/types";
 
 type MediaType = State.MediaType;
 

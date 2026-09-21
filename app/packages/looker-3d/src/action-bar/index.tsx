@@ -1,7 +1,7 @@
 import * as fos from "@fiftyone/state";
 import { isFo3dSamplePath } from "@fiftyone/utilities";
 import { useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { Logs } from "../Logs";
 import { SET_EGO_VIEW_EVENT, SET_TOP_VIEW_EVENT } from "../constants";
 import { ActionBarContainer, ActionsBar } from "../containers";
@@ -34,7 +34,7 @@ export const ActionBar = ({
     hasMultipleSlices,
     fo3dContent,
   } = fos.useRenderConfig3dState();
-  const mediaField = useRecoilValue(fos.selectedMediaField(true));
+  const mediaField = useReverbValue(fos.selectedMediaField(true));
   const isFo3d = useMemo(() => {
     const mediaPath = getMediaPathForFo3dSample(sceneSample, mediaField);
 
@@ -44,9 +44,9 @@ export const ActionBar = ({
       isFo3dSamplePath(sceneSample?.sample?.filepath)
     );
   }, [activeFo3dSlice, mediaField, sceneSample]);
-  const isGroup = useRecoilValue(fos.isGroup);
+  const isGroup = useReverbValue(fos.isGroup);
 
-  const fo3dContainsBackground = useRecoilValue(fo3dContainsBackgroundAtom);
+  const fo3dContainsBackground = useReverbValue(fo3dContainsBackgroundAtom);
 
   const jsonPanel = fos.useJSONPanel();
   const helpPanel = fos.useHelpPanel();
