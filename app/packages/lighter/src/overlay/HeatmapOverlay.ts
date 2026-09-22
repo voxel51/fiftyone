@@ -4,9 +4,12 @@
 
 import type { OverlayMask } from "@fiftyone/looker/src/numpy";
 
+import { CONTAINS } from "../core/containment";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { Point, RawLookerLabel, Rect, RenderMeta } from "../types";
 import { createMaskCanvas } from "../utils/createMaskCanvas";
+import { maskSourceOf } from "../utils/maskSource";
+import { toRelativePoint } from "../utils/mediaPoint";
 import {
   heatmapPaletteKey,
   type HeatmapPalette,
@@ -42,6 +45,13 @@ export class HeatmapOverlay extends BaseOverlay<HeatmapLabel> {
   #values?: Float64Array;
   #width = 0;
   #height = 0;
+
+  /**
+   * The media rect the last paint drew into, in canvas pixels. Hit tests
+   * arrive in that space and the map is indexed relative to the media, so
+   * this is what bridges them.
+   */
+  #mediaBounds?: Rect;
 
   #renderedSource?: string | OverlayMask;
   #renderedPalette?: string;
@@ -83,6 +93,11 @@ export class HeatmapOverlay extends BaseOverlay<HeatmapLabel> {
   }
 
   protected renderImpl(renderer: Renderer2D, meta: RenderMeta): void {
+    // Recorded before the early returns: it is the frame's layout, not a
+    // product of this paint, and a hit test can arrive between a palette-less
+    // frame and the next painted one.
+    this.#mediaBounds = meta.canonicalMediaBounds;
+
     const style = this.currentStyle;
 
     if (!style) {
@@ -112,7 +127,12 @@ export class HeatmapOverlay extends BaseOverlay<HeatmapLabel> {
   }
 
   private ensureRaster(palette: HeatmapPalette): HTMLCanvasElement | undefined {
-    const source = this.label?.map;
+    // Normalized rather than read straight off the label: `/frames` sends a
+    // base64 string, but the GraphQL sample payload sends the same map as
+    // `{ $binary: { base64 } }`, and this surface receives both. An unwrapped
+    // `$binary` is truthy, so it would reach the rasterizer as an object with
+    // no `channels` and fail there instead of painting.
+    const source = maskSourceOf(this.label?.map);
 
     if (!source) {
       // The label no longer carries an inline map — it became `map_path`-only,
@@ -184,6 +204,13 @@ export class HeatmapOverlay extends BaseOverlay<HeatmapLabel> {
     );
   }
 
+  /** The value under a canvas pixel point, or 0 outside the map. */
+  valueAtPixel(point: Point): number {
+    const relative = toRelativePoint(point, this.#mediaBounds);
+
+    return relative ? this.valueAt(relative) : 0;
+  }
+
   /** The value under a relative point, or 0 outside the map. */
   valueAt(relative: Point): number {
     if (!this.#values || !this.#width || !this.#height) {
@@ -206,7 +233,25 @@ export class HeatmapOverlay extends BaseOverlay<HeatmapLabel> {
    * meant for an overlay beneath it.
    */
   containsPoint(point: Point): boolean {
-    return this.valueAt(point) !== 0;
+    return this.valueAtPixel(point) !== 0;
+  }
+
+  /**
+   * Without this the base class answers `NONE`, which is what `Scene2D` reads
+   * for hover and for ordering — so a heatmap was never hovered and never
+   * reordered under the cursor, however strong the value under it.
+   */
+  getContainmentLevel(point: Point): CONTAINS {
+    return this.containsPoint(point) ? CONTAINS.CONTENT : CONTAINS.NONE;
+  }
+
+  /**
+   * A heatmap has no edge to measure from: it either carries a value at the
+   * pixel under the cursor or it does not. Zero when it does puts it ahead of
+   * the bounded labels it overlaps, which is how looker orders a dense label.
+   */
+  getMouseDistance(point: Point): number {
+    return this.containsPoint(point) ? 0 : Number.POSITIVE_INFINITY;
   }
 
   applyLabel(label: HeatmapLabel): void {
@@ -226,6 +271,7 @@ export class HeatmapOverlay extends BaseOverlay<HeatmapLabel> {
 
   destroy(): void {
     this.clearRaster();
+    this.#mediaBounds = undefined;
     super.destroy();
   }
 }

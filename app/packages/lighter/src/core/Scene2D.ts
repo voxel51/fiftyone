@@ -1232,6 +1232,7 @@ export class Scene2D {
       context.colorScheme,
       context.seed,
       overlay.label?.range,
+      context.defaultScale,
     );
   }
 

@@ -22,6 +22,7 @@ import { ExternalCanonicalMedia } from "../media/ExternalCanonicalMedia";
 import {
   useColorScheme,
   useColorSeed,
+  useDefaultColorscale,
   useMaskTargets,
 } from "../state/accessors";
 
@@ -66,6 +67,10 @@ function useSceneColorScheme(scene: LighterScene, sceneId: string): void {
   // Segmentation coloring is per mask target, so the palette needs the
   // dataset's mask targets alongside the scheme.
   const maskTargets = useMaskTargets();
+  // Heatmaps color by value against a colorscale; without this the only
+  // scales are the ones a SAVED color scheme carries, so an ordinary dataset
+  // silently painted the field-color opacity ramp instead.
+  const defaultScale = useDefaultColorscale();
 
   useEffect(() => {
     if (!scene || scene.getSceneId() !== sceneId) {
@@ -80,6 +85,7 @@ function useSceneColorScheme(scene: LighterScene, sceneId: string): void {
       // relate the two index signatures.
       maskTargets: maskTargets.fields as Record<string, MaskTargets>,
       defaultMaskTargets: maskTargets.defaults as MaskTargets,
+      defaultScale,
     });
 
     // Storing the context does not repaint anything by itself — overlays
@@ -89,7 +95,7 @@ function useSceneColorScheme(scene: LighterScene, sceneId: string): void {
     for (const overlay of scene.getAllOverlays()) {
       overlay.markDirty();
     }
-  }, [scene, sceneId, scheme, seed, maskTargets]);
+  }, [scene, sceneId, scheme, seed, maskTargets, defaultScale]);
 }
 
 /**

@@ -166,6 +166,52 @@ describe("rasterizeHeatmap — coloring by value", () => {
     ).not.toBe(0);
   });
 
+  it("colors by value from the app config colormap when the scheme has none", () => {
+    // A dataset with no SAVED color scheme has neither a per-field nor a
+    // default colorscale with `rgb` — that field is resolved server-side for
+    // a stored scheme only. Without the config colormap as the last
+    // fallback, the common case silently rendered as field mode while the
+    // sidebar said color by value. Looker's chain ends at `coloring.scale`.
+    const configScale = [
+      [68, 1, 84],
+      [253, 231, 37],
+    ];
+
+    const resolved = resolveHeatmapPalette(
+      PATH,
+      {
+        colorPool: POOL,
+        colorBy: "value",
+        fields: [],
+        colorscales: [],
+        defaultColorscale: { name: "viridis", list: null },
+      } as unknown as ColorSchemeInput,
+      7,
+      null,
+      configScale as never,
+    );
+
+    expect(resolved.mode).toBe("value");
+    expect(resolved.scale).toEqual(configScale);
+  });
+
+  it("prefers a stored colorscale over the app config colormap", () => {
+    const fieldScale = [[1, 2, 3]];
+
+    const resolved = resolveHeatmapPalette(
+      PATH,
+      scheme({
+        colorBy: "value",
+        colorscales: [{ path: PATH, name: "rdbu", rgb: fieldScale }],
+      } as unknown as Partial<ColorSchemeInput>),
+      7,
+      null,
+      [[9, 9, 9]] as never,
+    );
+
+    expect(resolved.scale).toEqual(fieldScale);
+  });
+
   it("prefers a field's own colorscale over the default", () => {
     const fieldScale = [[1, 2, 3]];
     const resolved = resolveHeatmapPalette(
@@ -220,18 +266,37 @@ describe("rasterizeHeatmap — shared rules", () => {
     expect(Number.isFinite(new Uint32Array(rgba)[0])).toBe(true);
   });
 
-  it("rejects a multi-channel map rather than guessing at its channels", () => {
+  it("reads channel 0 of a multi-channel map, as the painter does", () => {
+    // looker has read channel 0 of an RGB heatmap since #2880; the value is
+    // scalar, so the other channels carry nothing to render
+    const { values } = rasterizeHeatmap(
+      {
+        channels: 3,
+        arrayType: "Uint8Array",
+        shape: [1, 2],
+        // channel 0 is [10, 200]; 9s in the channels that must be skipped
+        buffer: new Uint8Array([10, 9, 9, 200, 9, 9]).buffer,
+      } as unknown as OverlayMask,
+      palette(),
+    );
+
+    expect(Array.from(values)).toEqual([10, 200]);
+  });
+
+  it("rejects a multi-channel payload of the wrong length", () => {
+    // the length check has to account for the stride, or a short RGB buffer
+    // reads past its end
     expect(() =>
       rasterizeHeatmap(
         {
           channels: 3,
           arrayType: "Uint8Array",
-          shape: [1, 1],
+          shape: [1, 2],
           buffer: new Uint8Array([1, 2, 3]).buffer,
         } as unknown as OverlayMask,
         palette(),
       ),
-    ).toThrow(/single-channel/);
+    ).toThrow(/length mismatch/);
   });
 
   it("rejects a payload whose length disagrees with its shape", () => {

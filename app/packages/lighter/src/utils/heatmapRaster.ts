@@ -40,9 +40,10 @@ export interface RasterizedHeatmap {
 /**
  * Decode (if base64) + paint a heatmap.
  *
- * @throws If the map is not single-channel. Looker reads channel 0 of an RGB
- *   map, but that path is untested here and guessing at it would paint
- *   plausible-looking nonsense.
+ * A map with more than one channel is read on channel 0, which is what
+ * looker's painter does for an RGB heatmap. The remaining channels carry no
+ * extra information for a heatmap — the value is scalar — so this is a stride
+ * over the buffer rather than a second rendering mode.
  */
 /** A pixel count has to be a whole positive number small enough to index. */
 const isDimension = (value: number): boolean =>
@@ -54,10 +55,10 @@ export const rasterizeHeatmap = (
 ): RasterizedHeatmap => {
   const map = typeof mapData === "string" ? deserialize(mapData) : mapData;
 
-  if (map.channels !== 1) {
-    throw new Error(
-      `Expected a single-channel heatmap, got ${map.channels} channels`,
-    );
+  const channels = map.channels ?? 1;
+
+  if (!Number.isSafeInteger(channels) || channels < 1) {
+    throw new Error(`Invalid heatmap channel count: ${map.channels}`);
   }
 
   const ArrayType = ARRAY_TYPES[map.arrayType];
@@ -88,9 +89,10 @@ export const rasterizeHeatmap = (
   const pixels = width * height;
   const source = new ArrayType(map.buffer);
 
-  if (source.length !== pixels) {
+  if (source.length !== pixels * channels) {
     throw new Error(
-      `Heatmap payload length mismatch: expected ${pixels}, got ${source.length}`,
+      `Heatmap payload length mismatch: expected ${pixels * channels}, got ` +
+        `${source.length}`,
     );
   }
 
@@ -119,7 +121,9 @@ export const rasterizeHeatmap = (
     palette.mode === COLOR_BY.VALUE && palette.scale.length > 0 && hasSpan;
 
   for (let i = 0; i < pixels; i++) {
-    const value = source[i];
+    // Channel 0 for a multi-channel map, the value itself for a plain one.
+    // `channels` is 1 in the ordinary case, so this is the same read.
+    const value = source[i * channels];
 
     values[i] = value;
 

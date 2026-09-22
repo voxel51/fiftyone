@@ -6,6 +6,7 @@ import type { OverlayMask } from "@fiftyone/looker/src/numpy";
 import type { ColorSchemeInput } from "@fiftyone/relay";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { CONTAINS } from "../core/containment";
 import type { RenderMeta } from "../types";
 import { resolveHeatmapPalette } from "../utils/heatmapPalette";
 import { HeatmapOverlay } from "./HeatmapOverlay";
@@ -50,8 +51,20 @@ const map = (values: number[]): OverlayMask =>
     buffer: new Float32Array(values).buffer,
   }) as unknown as OverlayMask;
 
+/**
+ * A real single-channel map as base64 zlib numpy — the form `/frames` sends.
+ * Shared with `maskRaster.test.ts`.
+ */
+const BASE64_MAP =
+  "eJyb7BfqGxDJyFDGUK2eklqcXKRupaBek2SorqOgnpZfVFKUmBefX5SSChJ3S8wpTgWKF2ckFqQC+RoWhjoKRqaaOgq1CmQCLkZGBuyAEQJwSmDKMmIAnBJQKZIkGIeLBCOdJIaNRwZOgnHkSjAOE4mBDMRBmW2pWCRTTwJnRUE9CdJrKepJ4KwkGZABTglkSQwJqBw2cbAclAYAWfUiKw==";
+
 const META: RenderMeta = {
   canonicalMediaBounds: { x: 0, y: 0, width: 100, height: 100 },
+};
+
+/** Letterboxed media: an origin away from 0 and a rect smaller than the canvas. */
+const OFFSET_META: RenderMeta = {
+  canonicalMediaBounds: { x: 40, y: 20, width: 200, height: 100 },
 };
 
 const makeRenderer = () => ({
@@ -78,8 +91,9 @@ describe("HeatmapOverlay", () => {
 
   const render = (
     overlay: HeatmapOverlay,
-    style = { heatmapPalette: palette() },
-  ) => overlay.render(renderer as never, style as never, META);
+    style: unknown = { heatmapPalette: palette() },
+    meta: RenderMeta = META,
+  ) => overlay.render(renderer as never, style as never, meta);
 
   it("draws the rasterized map over the canonical media bounds", () => {
     render(makeOverlay());
@@ -140,8 +154,52 @@ describe("HeatmapOverlay", () => {
     const overlay = makeOverlay([0, 0.5, 1, 0.25]);
     render(overlay);
 
-    expect(overlay.containsPoint({ x: 0.25, y: 0.25 })).toBe(false);
-    expect(overlay.containsPoint({ x: 0.75, y: 0.25 })).toBe(true);
+    // canvas pixels, which is what `InteractionManager` hands an overlay
+    expect(overlay.containsPoint({ x: 25, y: 25 })).toBe(false);
+    expect(overlay.containsPoint({ x: 75, y: 25 })).toBe(true);
+  });
+
+  it("hit-tests in canvas pixels against an offset media rect", () => {
+    // The media is letterboxed: its rect neither starts at the origin nor
+    // spans the canvas. A point read as though it were relative would land a
+    // fraction of a pixel from the map's top-left corner for every click on
+    // screen, which is how this overlay was never hoverable.
+    const overlay = makeOverlay([0, 0.5, 1, 0.25]);
+    render(overlay, undefined, OFFSET_META);
+
+    expect(overlay.containsPoint({ x: 60, y: 30 })).toBe(false);
+    expect(overlay.containsPoint({ x: 160, y: 30 })).toBe(true);
+    expect(overlay.valueAtPixel({ x: 160, y: 30 })).toBeCloseTo(0.5);
+    expect(overlay.valueAtPixel({ x: 60, y: 90 })).toBeCloseTo(1);
+
+    // outside the media rect entirely
+    expect(overlay.containsPoint({ x: 10, y: 30 })).toBe(false);
+    expect(overlay.containsPoint({ x: 300, y: 30 })).toBe(false);
+  });
+
+  it("reports containment and distance so the scene can hover it", () => {
+    // `Scene2D` reads both for hover and for ordering; the base class answers
+    // NONE and a center distance, so a heatmap was never either.
+    const overlay = makeOverlay([0, 0.5, 1, 0.25]);
+    render(overlay);
+
+    expect(overlay.getContainmentLevel({ x: 75, y: 25 })).toBe(
+      CONTAINS.CONTENT,
+    );
+    expect(overlay.getMouseDistance({ x: 75, y: 25 })).toBe(0);
+
+    expect(overlay.getContainmentLevel({ x: 25, y: 25 })).toBe(CONTAINS.NONE);
+    expect(overlay.getMouseDistance({ x: 25, y: 25 })).toBe(
+      Number.POSITIVE_INFINITY,
+    );
+  });
+
+  it("answers nothing before it has been rendered", () => {
+    // no media rect yet, so no pixel can be placed within one
+    const overlay = makeOverlay([0, 0.5, 1, 0.25]);
+
+    expect(overlay.containsPoint({ x: 75, y: 25 })).toBe(false);
+    expect(overlay.getContainmentLevel({ x: 75, y: 25 })).toBe(CONTAINS.NONE);
   });
 
   it("reports the value under a point", () => {
@@ -151,6 +209,53 @@ describe("HeatmapOverlay", () => {
     expect(overlay.valueAt({ x: 0.75, y: 0.25 })).toBeCloseTo(0.5);
     expect(overlay.valueAt({ x: 0.25, y: 0.75 })).toBeCloseTo(1);
     expect(overlay.valueAt({ x: 1.5, y: 0.5 })).toBe(0);
+  });
+
+  it("reads channel 0 of an RGB map, as the painter does", () => {
+    // Three-channel heatmaps exist and looker has read channel 0 of them
+    // since #2880; throwing here dropped the overlay for a map it could
+    // perfectly well paint.
+    const overlay = new HeatmapOverlay({
+      id: "heat-rgb",
+      field: FIELD,
+      label: {
+        _id: "heat-rgb",
+        _cls: "Heatmap",
+        map: {
+          channels: 3,
+          arrayType: "Uint8Array",
+          shape: [1, 2],
+          // channel 0 is [0, 200]; the other channels must not be read
+          buffer: new Uint8Array([0, 9, 9, 200, 9, 9]).buffer,
+        } as unknown as OverlayMask,
+      },
+    });
+
+    render(overlay);
+
+    expect(renderer.drawImage).toHaveBeenCalledTimes(1);
+    expect(overlay.valueAt({ x: 0.25, y: 0.5 })).toBe(0);
+    expect(overlay.valueAt({ x: 0.75, y: 0.5 })).toBe(200);
+  });
+
+  it("paints a map that arrives wrapped in $binary", () => {
+    // `/frames` sends base64, the GraphQL sample payload sends the same map
+    // as `{ $binary: { base64 } }`, and this surface receives both. Unwrapped,
+    // the wrapper is truthy but has no `channels`, so it failed at the
+    // rasterizer instead of painting.
+    const overlay = new HeatmapOverlay({
+      id: "heat-binary",
+      field: FIELD,
+      label: {
+        _id: "heat-binary",
+        _cls: "Heatmap",
+        map: { $binary: { base64: BASE64_MAP } },
+      } as never,
+    });
+
+    render(overlay);
+
+    expect(renderer.drawImage).toHaveBeenCalledTimes(1);
   });
 
   it("survives a map it cannot rasterize", () => {
@@ -165,10 +270,10 @@ describe("HeatmapOverlay", () => {
         _id: "heat-bad",
         _cls: "Heatmap",
         map: {
-          channels: 3,
-          arrayType: "Uint8Array",
+          channels: 1,
+          arrayType: "NotAnArrayType",
           shape: [1, 1],
-          buffer: new Uint8Array([1, 2, 3]).buffer,
+          buffer: new Uint8Array([1]).buffer,
         } as unknown as OverlayMask,
       },
     });
@@ -190,7 +295,7 @@ describe("HeatmapOverlay", () => {
 
     render(overlay);
     expect(overlay.valueAt({ x: 0.75, y: 0.25 })).toBe(0.5);
-    expect(overlay.containsPoint({ x: 0.75, y: 0.25 })).toBe(true);
+    expect(overlay.containsPoint({ x: 75, y: 25 })).toBe(true);
 
     // The label keeps its identity but moves its map to disk. The overlay can
     // no longer paint it, so it must not keep swallowing clicks for the raster
@@ -203,7 +308,7 @@ describe("HeatmapOverlay", () => {
     render(overlay);
 
     expect(overlay.valueAt({ x: 0.75, y: 0.25 })).toBe(0);
-    expect(overlay.containsPoint({ x: 0.75, y: 0.25 })).toBe(false);
+    expect(overlay.containsPoint({ x: 75, y: 25 })).toBe(false);
   });
 
   it("retries a map that failed under a different map of the same length", () => {

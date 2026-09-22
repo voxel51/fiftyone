@@ -44,10 +44,21 @@ export interface HeatmapPalette {
  */
 type WithRgb = { rgb?: number[][] | null };
 
-/** The colorscale for a field: its own, else the dataset default. */
+/**
+ * The colorscale for a field: its own, else the dataset default, else the app
+ * config's colormap.
+ *
+ * That third step is not a nicety. `rgb` is resolved server-side and only
+ * exists on a STORED color scheme, so a dataset with none — the common case —
+ * reaches this with neither of the first two set. Looker has the same three
+ * steps, ending at `coloring.scale`; stopping at two here meant color-by-value
+ * quietly fell back to field mode on any dataset nobody had saved a scheme
+ * for.
+ */
 const resolveScale = (
   path: string,
   colorScheme: ColorSchemeInput,
+  defaultScale: readonly RGB[] | undefined,
 ): readonly RGB[] => {
   const forField = (colorScheme.colorscales ?? []).find(
     (entry) => entry.path === path,
@@ -58,7 +69,7 @@ const resolveScale = (
     | null
     | undefined;
 
-  return (forField?.rgb ?? fallback?.rgb ?? []) as RGB[];
+  return (forField?.rgb ?? fallback?.rgb ?? defaultScale ?? []) as RGB[];
 };
 
 export const resolveHeatmapPalette = (
@@ -66,12 +77,13 @@ export const resolveHeatmapPalette = (
   colorScheme: ColorSchemeInput,
   seed: number,
   range: readonly number[] | null | undefined,
+  defaultScale?: readonly RGB[],
 ): HeatmapPalette => {
   const setting = (colorScheme.fields ?? []).find(
     (field) => field.path === path,
   );
 
-  const scale = resolveScale(path, colorScheme);
+  const scale = resolveScale(path, colorScheme, defaultScale);
 
   const requested =
     (colorScheme.colorBy?.toLowerCase() as COLOR_BY | undefined) ??
