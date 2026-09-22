@@ -89,21 +89,3 @@ export function patchRect(
 
   return [centerX - width / 2, centerY - height / 2, width, height];
 }
-
-/**
- * The patch's rectangle as an SVG `viewBox`.
- *
- * Paired with `preserveAspectRatio="xMidYMid meet"`, this is the whole
- * crop: the browser fits the rectangle into the frame and centers it. No
- * scale, no offset, and no percentage whose basis depends on how the
- * frame got its height.
- */
-export function patchViewBox(
-  bounds: Bounds,
-  mediaWidth: number,
-  mediaHeight: number,
-): string | null {
-  const rect = patchRect(bounds, mediaWidth, mediaHeight);
-
-  return rect ? rect.join(" ") : null;
-}
