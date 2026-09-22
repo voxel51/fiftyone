@@ -42,6 +42,7 @@ import {
   type Scene3dViewStateStore,
 } from "./scene-3d-view-state";
 import { useScene3dViewStateStore } from "./scene-3d-view-state-context";
+import { egoViewCameraPose } from "./scene-3d-view-presets";
 import type { ReferenceTransition } from "../../spatial/frame-transforms/reference-selection";
 import type { FrameTransformsState } from "../../spatial/frame-transforms/use-frame-transforms";
 import type { StreamContentFrame } from "../../playback/use-stream-values";
@@ -121,6 +122,8 @@ export interface Scene3dCameraTrackingRestore {
 export function useScene3dCameraTracking({
   cameraNavigationMode = DEFAULT_SCENE_3D_CAMERA_NAVIGATION_MODE,
   cameraTargetFrameId,
+  cameraTargetIsEgo = false,
+  cameraTargetSettled = true,
   cameraTargetSelectionSource,
   defaultTrackingMode = DEFAULT_SCENE_3D_TRACKING_MODE,
   frameTransforms,
@@ -143,6 +146,10 @@ export function useScene3dCameraTracking({
 }: {
   readonly cameraNavigationMode?: Scene3dCameraNavigationMode;
   readonly cameraTargetFrameId: string;
+  /** True only for an unambiguous ego match within the active component. */
+  readonly cameraTargetIsEgo?: boolean;
+  /** False while a carried user target is waiting to be adopted. */
+  readonly cameraTargetSettled?: boolean;
   readonly cameraTargetSelectionSource: "auto" | "user";
   readonly defaultTrackingMode?: Scene3dTrackingMode;
   readonly frameTransforms: FrameTransformsState;
@@ -197,6 +204,10 @@ export function useScene3dCameraTracking({
   const latestSceneBoundsRef = useRef<PointCloudSceneBoundsSummary | null>(
     null,
   );
+  const startupViewPendingRef = useRef(true);
+  // Untouched scene fits are placeholders, not portable user intent. A
+  // successful restore or startup preset also establishes a view to preserve.
+  const hasAuthoredViewRef = useRef(false);
   const hasRecordedCompositionRef = useRef(false);
   const hasRecordedBoundsCompositionRef = useRef(false);
   const lastProvisionalViewRef = useRef<ProvisionalCameraView | null>(null);
@@ -273,6 +284,19 @@ export function useScene3dCameraTracking({
       recordGateRef.current.sourceKey === sourceKey,
     [sourceKey],
   );
+  const cancelStartupView = useCallback(() => {
+    if (!isCameraEpochActive()) return;
+    startupViewPendingRef.current = false;
+    hasAuthoredViewRef.current = true;
+    pendingCameraViewRestoreRef.current = null;
+    pendingCompositionRestoreRef.current = [];
+  }, [isCameraEpochActive]);
+  const previousUpAxisRef = useRef(sceneUpAxis);
+  // An explicit scene-up change is camera intent even before any drag.
+  useLayoutEffect(() => {
+    if (previousUpAxisRef.current !== sceneUpAxis) cancelStartupView();
+    previousUpAxisRef.current = sceneUpAxis;
+  }, [cancelStartupView, sceneUpAxis]);
   const cameraTargetResolution = useMemo(
     () =>
       resolveCameraTargetPose({
@@ -326,6 +350,7 @@ export function useScene3dCameraTracking({
       // a wrong-frame view on the next sample.
       const gate = recordGateRef.current;
       if (
+        hasAuthoredViewRef.current &&
         gate.sourceKey &&
         gate.worldFrameId &&
         gate.placementStatus === "transformed"
@@ -346,7 +371,8 @@ export function useScene3dCameraTracking({
       anchor: Scene3dCameraTrackingAnchor | null,
       mode = trackingMode,
     ) => {
-      if (placementStatus !== "transformed") return;
+      if (!hasAuthoredViewRef.current || placementStatus !== "transformed")
+        return;
       const compositions = captureScene3dCameraCompositions({
         cameraPose: pose,
         cameraTargetFrameId,
@@ -394,7 +420,12 @@ export function useScene3dCameraTracking({
 
   const applyPendingComposition = useCallback(() => {
     const compositions = pendingCompositionRestoreRef.current;
-    if (compositions.length === 0 || !navigationReferenceSettled) return;
+    if (
+      compositions.length === 0 ||
+      !navigationReferenceSettled ||
+      !cameraTargetSettled
+    )
+      return;
 
     let resolved: Extract<
       ReturnType<typeof resolveScene3dCameraComposition>,
@@ -439,6 +470,8 @@ export function useScene3dCameraTracking({
       return;
     }
 
+    startupViewPendingRef.current = false;
+    hasAuthoredViewRef.current = true;
     lastProvisionalViewRef.current = null;
     hadRecentProvisionalPlacementRef.current = false;
     latestCameraPoseRef.current = resolved.pose;
@@ -455,6 +488,7 @@ export function useScene3dCameraTracking({
     cameraTargetFrameId,
     cameraTargetResolution,
     cameraTargetSelectionSource,
+    cameraTargetSettled,
     frameTransforms,
     navigationReferenceSettled,
     placementStatus,
@@ -581,6 +615,29 @@ export function useScene3dCameraTracking({
   const applyPendingCameraView = useCallback(() => {
     const pending = pendingCameraViewRestoreRef.current;
     if (
+      pending &&
+      navigationReferenceSettled &&
+      cameraTargetSettled &&
+      playbackTimeNs !== undefined &&
+      placementStatus === "transformed" &&
+      pending.worldFrameId !== worldFrameId
+    ) {
+      // A settled incompatible restore cannot reserve startup indefinitely.
+      // Pending reference promotions keep the restore alive until they settle.
+      pendingCameraViewRestoreRef.current = null;
+      const snapshot = viewStateStore.getSnapshot();
+      pendingCompositionRestoreRef.current = scene3dSourceShapeMatches(
+        snapshot.renderableSourceKeys,
+        renderableSourceKeys,
+      )
+        ? snapshot.navigationCompositions
+        : [];
+      if (snapshot.cameraView === pending) {
+        viewStateStore.recordCameraView(null);
+      }
+      return;
+    }
+    if (
       !pending ||
       !scene3dCameraPoseRestoreApplies({
         allowCrossSource: cameraNavigationMode === "absolute",
@@ -595,6 +652,8 @@ export function useScene3dCameraTracking({
     }
 
     pendingCameraViewRestoreRef.current = null;
+    startupViewPendingRef.current = false;
+    hasAuthoredViewRef.current = true;
     lastProvisionalViewRef.current = null;
     hadRecentProvisionalPlacementRef.current = false;
     latestCameraPoseRef.current = pending.pose;
@@ -602,9 +661,14 @@ export function useScene3dCameraTracking({
     recordCameraViewIfEligible(pending.pose);
   }, [
     cameraNavigationMode,
+    cameraTargetSettled,
+    navigationReferenceSettled,
     placementStatus,
+    playbackTimeNs,
     recordCameraViewIfEligible,
+    renderableSourceKeys,
     sourceKey,
+    viewStateStore,
     worldFrameId,
   ]);
 
@@ -712,6 +776,7 @@ export function useScene3dCameraTracking({
       }
       latestCameraPoseRef.current = pose;
       rememberProvisionalCameraPose(pose);
+      if (source !== "initial") cancelStartupView();
       if (source === "initial" || source === "interaction") {
         // Interaction traffic is bookkeeping only: the rig re-bases the
         // anchor imperatively (external-write protocol) and commits at
@@ -722,14 +787,17 @@ export function useScene3dCameraTracking({
       // "focus": recenter and view presets — deliberate one-shot changes.
       // The shell applies the command; the rig observes that application as
       // an external write and re-bases its anchor within the same dispatch.
-      pendingCameraViewRestoreRef.current = null;
-      pendingCompositionRestoreRef.current = [];
+      // Until then, the previous anchor describes the old view and must not
+      // be persisted with the new preset pose.
+      latestAnchorRef.current = null;
+      setAdoptAnchor(null);
       setPoseCommand(pose);
       recordCameraViewIfEligible(pose);
-      recordNavigationComposition(pose, latestAnchorRef.current);
+      recordNavigationComposition(pose, null);
     },
     [
       isCameraEpochActive,
+      cancelStartupView,
       recordCameraViewIfEligible,
       recordNavigationComposition,
       rememberProvisionalCameraPose,
@@ -782,12 +850,11 @@ export function useScene3dCameraTracking({
       // user takes hold, and pin the panel out of fit-fallback. The pin is
       // one-shot — the functional update bails once any command exists, so
       // wheel micro-gestures cost no renders.
-      pendingCameraViewRestoreRef.current = null;
-      pendingCompositionRestoreRef.current = [];
+      cancelStartupView();
       latestCameraPoseRef.current = pose;
       setPoseCommand((current) => current ?? pose);
     },
-    [isCameraEpochActive],
+    [cancelStartupView, isCameraEpochActive],
   );
 
   const onCommit = useCallback(
@@ -798,6 +865,7 @@ export function useScene3dCameraTracking({
       if (!isCameraEpochActive()) {
         return;
       }
+      cancelStartupView();
       latestCameraPoseRef.current = pose;
       latestAnchorRef.current = anchor;
       rememberProvisionalCameraPose(pose);
@@ -805,6 +873,7 @@ export function useScene3dCameraTracking({
       recordNavigationComposition(pose, anchor);
     },
     [
+      cancelStartupView,
       isCameraEpochActive,
       recordCameraViewIfEligible,
       recordNavigationComposition,
@@ -856,6 +925,7 @@ export function useScene3dCameraTracking({
     const previousPose = latestCameraPoseRef.current;
     if (
       previousPose &&
+      hasAuthoredViewRef.current &&
       !pendingCameraViewRestoreRef.current &&
       pendingCompositionRestoreRef.current.length === 0 &&
       previousEpoch.placementStatus === "transformed" &&
@@ -900,6 +970,8 @@ export function useScene3dCameraTracking({
     };
     pendingCameraViewRestoreRef.current = carriedCameraView;
     pendingCompositionRestoreRef.current = navigationCompositions;
+    startupViewPendingRef.current = true;
+    hasAuthoredViewRef.current = false;
     latestCameraPoseRef.current = null;
     latestAnchorRef.current = null;
     latestSceneBoundsRef.current = null;
@@ -947,8 +1019,7 @@ export function useScene3dCameraTracking({
       // A manual mode change is a user decision that supersedes any pending
       // carried-over camera restore; the mode itself is written through to
       // the session view-state store.
-      pendingCameraViewRestoreRef.current = null;
-      pendingCompositionRestoreRef.current = [];
+      cancelStartupView();
       // Freeze the displayed pose into the command channel: switching modes
       // must never move the camera. The rig re-derives its anchor under the
       // new mode from the live camera without moving it; the frozen command
@@ -964,12 +1035,61 @@ export function useScene3dCameraTracking({
       setTrackingMode(mode);
     },
     [
+      cancelStartupView,
       onDefaultTrackingModeChange,
       recordCameraViewIfEligible,
       recordNavigationComposition,
       viewStateStore,
     ],
   );
+
+  // Keep first paint on the existing fit path. This decision uses only the
+  // already loaded playhead and settled reference; it never schedules TF IO.
+  // Restore effects and source-epoch handoff run first. A terminal fallback
+  // consumes startup just like a preset, so later TF arrivals cannot jump.
+  useLayoutEffect(() => {
+    if (
+      !isCameraEpochActive() ||
+      !startupViewPendingRef.current ||
+      !navigationReferenceSettled ||
+      !cameraTargetSettled ||
+      playbackTimeNs === undefined ||
+      placementStatus === "empty" ||
+      pendingCameraViewRestoreRef.current ||
+      pendingCompositionRestoreRef.current.length > 0
+    ) {
+      return;
+    }
+    startupViewPendingRef.current = false;
+    if (
+      !cameraTargetIsEgo ||
+      placementStatus !== "transformed" ||
+      cameraTargetResolution.status !== "resolved" ||
+      cameraTargetResolution.heldEdges?.some(
+        (edge) => edge.ageNs > edge.staleAfterNs,
+      )
+    ) {
+      return;
+    }
+    // The normal focus path applies the preset and lets the rig rebase its
+    // follow anchor. Consume provisional memory so it cannot remap this pose.
+    lastProvisionalViewRef.current = null;
+    hadRecentProvisionalPlacementRef.current = false;
+    handleCameraPoseChange(
+      egoViewCameraPose(cameraTargetResolution.pose, sceneUpAxis),
+      "focus",
+    );
+  }, [
+    cameraTargetIsEgo,
+    cameraTargetResolution,
+    cameraTargetSettled,
+    handleCameraPoseChange,
+    isCameraEpochActive,
+    navigationReferenceSettled,
+    placementStatus,
+    playbackTimeNs,
+    sceneUpAxis,
+  ]);
 
   // This effect records the final view state on unmount, so a sample hop
   // mid-gesture still carries the last displayed composition (write-through
@@ -1022,6 +1142,7 @@ export function useScene3dCameraTracking({
   );
 
   return {
+    cancelStartupView,
     cameraFollowHeldPose,
     cameraTargetResolution,
     cameraTrackingNotice,

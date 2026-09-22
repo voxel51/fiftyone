@@ -24,6 +24,7 @@ import { DEFAULT_POINT_CLOUD_CAMERA_PROJECTION } from "../../../../visualization
 import { PointCloudPanel } from "../../../../visualization/composition/index";
 import {
   type PointCloudCameraPose,
+  type PointCloudCameraProjection,
   type PointCloudPanelRenderStats,
   type SceneRayPanelLayer,
 } from "../../../../visualization/scene-3d/types";
@@ -312,6 +313,8 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
       : null;
   const {
     cameraTargetFrameId,
+    cameraTargetIsEgo,
+    cameraTargetSettled,
     cameraTargetSelectionSource,
     frameIds,
     localActiveComponentFrameIds,
@@ -328,7 +331,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     omittedSourceIds,
     referenceTransition,
     referenceSelectionSource,
-    updateCameraTargetFrameId,
+    updateCameraTargetFrameId: selectCameraTargetFrameId,
     worldFrameId,
   } = useScene3dFrameSelection({
     annotationFrames,
@@ -352,37 +355,6 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     referenceAuthority,
     restore: viewStateRestore,
   });
-  // The reference frame is scene-scoped: publish this tile's controls so
-  // the sidebar's Scene tab can edit them. Selections write through the
-  // modal-wide preference, so concurrent 3D tiles converge on one choice.
-  const sceneFrameControls = useMemo<SceneFrameControls>(
-    () => ({
-      activeComponentFrameIds: localActiveComponentFrameIds,
-      authorityTileId: tileId ?? "",
-      frameIds: localFrameIds,
-      omittedFrameIds: localOmittedFrameIds,
-      omittedSourceIds: localOmittedSourceIds,
-      referenceTransition: localReferenceTransition,
-      updateWorldFrameId: localUpdateWorldFrameId,
-      useRecommendedWorldFrame: localUseRecommendedWorldFrame,
-      worldFrameId: localWorldFrameId,
-      worldFrameSelectionSource: localReferenceSelectionSource,
-    }),
-    [
-      localActiveComponentFrameIds,
-      localFrameIds,
-      localOmittedFrameIds,
-      localOmittedSourceIds,
-      localReferenceTransition,
-      localReferenceSelectionSource,
-      localUseRecommendedWorldFrame,
-      localUpdateWorldFrameId,
-      localWorldFrameId,
-      tileId,
-    ],
-  );
-  useRegisterSceneFrameControls(tileId, sceneFrameControls);
-
   const provisionalStreamId = useMemo(
     () => selectProvisionalPointCloudStream(selectedPointCloudSources, frames),
     [frames, selectedPointCloudSources],
@@ -601,6 +573,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     ],
   );
   const {
+    cancelStartupView,
     cameraFollowHeldPose,
     cameraTrackingNotice,
     getDisplayedCameraPose,
@@ -612,6 +585,8 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     trackingMode,
   } = useScene3dCameraTracking({
     cameraTargetFrameId,
+    cameraTargetIsEgo,
+    cameraTargetSettled,
     cameraTargetSelectionSource,
     defaultTrackingMode,
     frameTransforms,
@@ -634,6 +609,66 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     worldFrameTransition: referenceTransition,
     worldFrameId,
   });
+  const updateCameraTargetFrameId = useCallback(
+    (frameId: string) => {
+      cancelStartupView();
+      selectCameraTargetFrameId(frameId);
+    },
+    [cancelStartupView, selectCameraTargetFrameId],
+  );
+  const updateCameraNavigationMode = useCallback(
+    (mode: Scene3dCameraNavigationMode) => {
+      cancelStartupView();
+      setCameraNavigationMode(mode);
+    },
+    [cancelStartupView],
+  );
+  const updateCameraProjection = useCallback(
+    (projection: PointCloudCameraProjection) => {
+      cancelStartupView();
+      setCameraProjection(projection);
+    },
+    [cancelStartupView],
+  );
+
+  // The reference frame is scene-scoped: publish this tile's controls so
+  // the sidebar's Scene tab can edit them. Selections write through the
+  // modal-wide preference, so concurrent 3D tiles converge on one choice.
+  const sceneFrameControls = useMemo<SceneFrameControls>(
+    () => ({
+      activeComponentFrameIds: localActiveComponentFrameIds,
+      authorityTileId: tileId ?? "",
+      frameIds: localFrameIds,
+      omittedFrameIds: localOmittedFrameIds,
+      omittedSourceIds: localOmittedSourceIds,
+      referenceTransition: localReferenceTransition,
+      updateWorldFrameId: (frameId: string) => {
+        cancelStartupView();
+        localUpdateWorldFrameId(frameId);
+      },
+      useRecommendedWorldFrame: () => {
+        cancelStartupView();
+        localUseRecommendedWorldFrame();
+      },
+      worldFrameId: localWorldFrameId,
+      worldFrameSelectionSource: localReferenceSelectionSource,
+    }),
+    [
+      cancelStartupView,
+      localActiveComponentFrameIds,
+      localFrameIds,
+      localOmittedFrameIds,
+      localOmittedSourceIds,
+      localReferenceTransition,
+      localReferenceSelectionSource,
+      localUseRecommendedWorldFrame,
+      localUpdateWorldFrameId,
+      localWorldFrameId,
+      tileId,
+    ],
+  );
+  useRegisterSceneFrameControls(tileId, sceneFrameControls);
+
   const [cameraRigStore] = useState(() => createScene3dCameraRigStore(rig));
   // This layout effect publishes the latest playback inputs before the canvas
   // paints without turning them into React state inside the R3F tree.
@@ -670,8 +705,8 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     cameraProjection,
     handleCameraPoseChange,
     sceneUpAxis,
-    setCameraNavigationMode,
-    setCameraProjection,
+    setCameraNavigationMode: updateCameraNavigationMode,
+    setCameraProjection: updateCameraProjection,
     tileId,
     viewStateStore,
     viewpointStore,
