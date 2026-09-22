@@ -502,7 +502,14 @@ export function useGridPreview({
                 }
               : null;
           setFrameTimeNs(result.frameTimeNs);
-          nextStartTimeNsRef.current = result.nextStartTimeNs;
+          // A seek asked for while this read was in flight already wrote the
+          // instant the playback loop is to start from — and the loop has not
+          // run yet, because it waits out the initial load. The frame this
+          // read answered with sits before the jump, so taking its successor
+          // here would start playback where the click was not.
+          if (!seekPendingRef.current) {
+            nextStartTimeNsRef.current = result.nextStartTimeNs;
+          }
           setState((current) => resultPreservingCachedPoster(current, result));
           setLoadGeneration((g) => g + 1);
         }

@@ -375,8 +375,10 @@ export function LeRobotGridHoverVideo({
     const element = videoRef.current;
     // No source means no clock to move yet: the lease is still queued behind
     // another tile. Hold the target so the start that follows the grant lands
-    // on it instead of the episode's beginning.
-    if (!element?.getAttribute("src")) {
+    // on it instead of the episode's beginning. A source whose metadata has
+    // not arrived is the same case: the first start runs off `loadedmetadata`
+    // and would write the episode's beginning over anything set before it.
+    if (!element?.getAttribute("src") || element.readyState < 1) {
       pendingSeekRef.current = target;
       return;
     }
