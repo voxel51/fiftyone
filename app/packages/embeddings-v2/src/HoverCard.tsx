@@ -107,13 +107,15 @@ export default function HoverCard({
   // against the viewport using its measured size
   const anchorX = origin.left + hit.x;
   const anchorY = origin.top + hit.y;
-  const showImage = src !== null && settled?.ok === true;
+  // The preload's result, but only for the image the card shows now: a size
+  // settled for an earlier src would crop the new image with the wrong
+  // geometry
+  const loaded = settled?.ok && settled.src === src ? settled : null;
+  const showImage = loaded !== null;
   // A patches run's point is a label: crop to it. Sample-level runs, and
   // patches whose geometry cannot resolve, show the whole image as before
   const rect =
-    bounds && settled?.ok
-      ? patchRect(bounds, settled.width, settled.height)
-      : null;
+    bounds && loaded ? patchRect(bounds, loaded.width, loaded.height) : null;
   // Scopes the clip path to this card; two cards can be alive at once
   const clipId = useId();
   // A variable rather than an inline expression, so the dependency is
@@ -233,29 +235,36 @@ export default function HoverCard({
         visibility: pos ? "visible" : "hidden",
       }}
     >
-      {showImage &&
-        (rect && settled ? (
+      {loaded &&
+        (rect ? (
           // Same frame as a sample thumbnail. The viewBox selects the
           // patch and `meet` fits and centers it; the clip keeps the
-          // surplus as card surface rather than neighbouring image
+          // surplus as card surface rather than neighbouring image.
+          // Decorative, like the <img> it stands in for
           <svg
-            key={src}
+            key={loaded.src}
             className="emb-hover-crop"
             viewBox={rect.join(" ")}
             preserveAspectRatio="xMidYMid meet"
+            aria-hidden="true"
           >
             <clipPath id={clipId}>
               <rect x={rect[0]} y={rect[1]} width={rect[2]} height={rect[3]} />
             </clipPath>
             <image
-              href={src}
-              width={settled.width}
-              height={settled.height}
+              href={loaded.src}
+              width={loaded.width}
+              height={loaded.height}
               clipPath={`url(#${clipId})`}
             />
           </svg>
         ) : (
-          <img key={src} src={src} alt="" className="emb-hover-image" />
+          <img
+            key={loaded.src}
+            src={loaded.src}
+            alt=""
+            className="emb-hover-image"
+          />
         ))}
       {media}
       {header && (
