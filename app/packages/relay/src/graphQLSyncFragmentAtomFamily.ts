@@ -1,11 +1,11 @@
-import { Disposable } from "react-relay";
 import {
-  AtomEffect,
-  AtomFamilyOptions,
-  SerializableParam,
-  TransactionInterface_UNSTABLE,
+  type AtomEffect,
+  type AtomFamilyOptions,
+  type SerializableParam,
+  type TransactionInterface,
   atomFamily,
-} from "recoil";
+} from "@fiftyone/reverb";
+import { Disposable } from "react-relay";
 import { GraphQLTaggedNode, OperationType } from "relay-runtime";
 import { KeyType, KeyTypeData } from "relay-runtime/lib/store/readInlineData";
 import { PageQuery, getPageQuery } from "./Writer";
@@ -35,7 +35,7 @@ export type GraphQLSyncFragmentSyncAtomFamilyOptions<
 const isTest = typeof process !== "undefined" && process.env.MODE === "test";
 
 /**
- * Creates a recoil atom family synced with a relay fragment via its path in a
+ * Creates an atom family synced with a relay fragment via its path in a
  * query. If the fragment path cannot be read from given the parent fragment
  * keys. Includes the optional `sync` parameter to conditionally opt-in to
  * fragment syncing given an atom instance's parameters `P`.
@@ -48,15 +48,15 @@ export function graphQLSyncFragmentAtomFamily<
   fragmentOptions: GraphQLSyncFragmentSyncAtomFamilyOptions<T, K, P>,
   options: GraphQLSyncFragmentAtomFamilyOptions<K, P>,
 ) {
-  const family = atomFamily({
+  const family = atomFamily<K, P>({
     ...options,
     default: fragmentOptions.default,
-    effects: (params) => {
+    effects: (params: P) => {
       const effects =
         !fragmentOptions.sync || fragmentOptions.sync(params)
           ? [
               ({ setSelf, trigger }: Parameters<AtomEffect<K>>[0]) => {
-                // recoil state should be initialized via RecoilRoot's
+                // state should be initialized through the root's
                 // initializeState during tests
                 if (isTest) return;
 
@@ -70,7 +70,7 @@ export function graphQLSyncFragmentAtomFamily<
                 let previous: null | T[" $data"] = null;
                 const setter = (
                   d: null | T[" $data"],
-                  int?: TransactionInterface_UNSTABLE,
+                  int?: TransactionInterface,
                 ) => {
                   const set = int
                     ? (v: K) => int.set(family(params), v)
@@ -87,7 +87,7 @@ export function graphQLSyncFragmentAtomFamily<
 
                 const run = (
                   page: PageQuery<OperationType>,
-                  transactionInterface?: TransactionInterface_UNSTABLE,
+                  transactionInterface?: TransactionInterface,
                 ): Disposable | undefined => {
                   const preloadedQuery = page.preloadedQuery;
                   let data = page.data;

@@ -6,7 +6,7 @@ import { Schema } from "@fiftyone/utilities";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { VariablesOf, fetchQuery, useRelayEnvironment } from "react-relay";
-import { RecoilValueReadOnly, selector, useRecoilValue } from "recoil";
+import { useRecoilValue } from "recoil";
 
 const PAGE_SIZE = 20;
 
@@ -35,24 +35,17 @@ const processSamplePageData = (
   });
 };
 
-export const defaultZoom = selector({
-  key: "defaultZoomCallback",
-  get: () => async () => false,
-});
+export type PageParams = (
+  page: number,
+  pageSize: number,
+) => Promise<VariablesOf<foq.paginateSamplesQuery>>;
 
 const useFlashlightPager = (
   store: fos.LookerStore<fos.Lookers>,
-  pageSelector: RecoilValueReadOnly<
-    (
-      page: number,
-      pageSize: number,
-    ) => Promise<VariablesOf<foq.paginateSamplesQuery>>
-  >,
-  zoomSelector?: RecoilValueReadOnly<() => Promise<boolean>>,
+  page: PageParams,
+  zoom?: () => Promise<boolean>,
 ) => {
   const environment = useRelayEnvironment();
-  const page = useRecoilValue(pageSelector);
-  const zoom = useRecoilValue(zoomSelector || defaultZoom);
   const [isEmpty, setIsEmpty] = useState(false);
   const handleError = useErrorHandler();
   const schema = useRecoilValue(
@@ -62,7 +55,7 @@ const useFlashlightPager = (
   const pager = useMemo(() => {
     return async (pageNumber: number) => {
       const variables = await page(pageNumber, PAGE_SIZE);
-      const zoomValue = await zoom();
+      const zoomValue = zoom ? await zoom() : false;
       return new Promise<Response<number>>((resolve) => {
         const subscription = fetchQuery<foq.paginateSamplesQuery>(
           environment,

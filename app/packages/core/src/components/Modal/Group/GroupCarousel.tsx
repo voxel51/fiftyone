@@ -81,7 +81,8 @@ const Column: React.FC = () => {
   selectSample.current = select;
   const setGroupSample = useSetGroupSample(store);
   const { init, deferred } = fos.useDeferrer();
-  const { isEmpty, reset, page } = useFlashlightPager(store, pageParams);
+  const getPageParams = useRecoilValue(pageParams);
+  const { isEmpty, reset, page } = useFlashlightPager(store, getPageParams);
 
   const [flashlight] = useState(() => {
     const flashlight = new Flashlight({
