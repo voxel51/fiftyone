@@ -1,20 +1,24 @@
-import { is3d, type Schema } from "@fiftyone/utilities";
+import { is3d, MEDIA_TYPE_IMAGE, type Schema } from "@fiftyone/utilities";
 import { useMemo } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import {
   dataset,
   datasetId,
   datasetName,
+  dynamicGroupParameters,
   expressionCatalog,
   fieldSchema,
   groupMediaTypes,
   isGroup,
+  isOrderedDynamicGroup,
+  parentMediaTypeSelector,
   selectedMediaField,
   skeleton,
   stageDefinitions,
   State,
   view,
 } from "../recoil";
+import { isPatchesView } from "../recoil/view";
 
 /**
  * Get the current dataset ID.
@@ -202,12 +206,50 @@ export const useGroupSlices = (mediaTypes: GroupSliceMediaType[]): string[] => {
     .map(({ name }) => name);
 };
 
+/** The media type of a dynamic group's members, or the dataset's own media type. */
+export const useParentMediaType = (): string =>
+  useRecoilValue(parentMediaTypeSelector);
+
 /**
  * The operator catalog the expression editor suggests from, exactly as the
  * server describes it — or null before the query has resolved, which callers
  * treat as "suggest nothing rather than something wrong".
  */
 export const useExpressionCatalog = () => useRecoilValue(expressionCatalog);
+
+/**
+ * Whether the current view is an ordered dynamic group over image samples
+ * (ImaVid). Such a view reports a "group" media type with no slices.
+ *
+ * @returns True if the current view is an image-backed dynamic group video
+ */
+export const useIsImageDynamicGroupVideo = (): boolean => {
+  const orderedDynamicGroup = useRecoilValue(isOrderedDynamicGroup);
+  const parentMediaType = useRecoilValue(parentMediaTypeSelector);
+
+  return orderedDynamicGroup && parentMediaType === MEDIA_TYPE_IMAGE;
+};
+
+/**
+ * The field the current dynamic group is ordered by, or null when the view is
+ * not a dynamic group or the group is unordered.
+ */
+export const useDynamicGroupOrderBy = (): string | null =>
+  useRecoilValue(dynamicGroupParameters)?.orderBy ?? null;
+
+/**
+ * The field the current dynamic group is grouped by, or null when the view is
+ * not a dynamic group. A group built from an expression or a list of fields
+ * has no single field to name, so it reads null too.
+ */
+export const useDynamicGroupGroupBy = (): string | null => {
+  const groupBy = useRecoilValue(dynamicGroupParameters)?.groupBy;
+
+  return typeof groupBy === "string" ? groupBy : null;
+};
+
+/** Whether the current view is a patches view. */
+export const useIsPatchesView = (): boolean => useRecoilValue(isPatchesView);
 
 /** The server's stage descriptors, as `fiftyone/core/stages.py` describes them. */
 export const useStageDefinitions = () => useRecoilValue(stageDefinitions);

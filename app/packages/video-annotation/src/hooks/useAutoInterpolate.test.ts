@@ -47,7 +47,11 @@ vi.mock("@fiftyone/annotation", () => ({
 
 const { streamRef } = vi.hoisted(() => ({
   streamRef: {
-    current: { labelsField: "detections", totalFrames: 3 } as unknown,
+    current: {
+      labelsField: "detections",
+      labelsPath: "frames.detections",
+      totalFrames: 3,
+    } as unknown,
   },
 }));
 
@@ -69,7 +73,11 @@ beforeEach(() => {
   propagate.mockReset();
   updateLabel.mockReset();
   transaction.mockClear();
-  streamRef.current = { labelsField: "detections", totalFrames: 3 };
+  streamRef.current = {
+    labelsField: "detections",
+    labelsPath: "frames.detections",
+    totalFrames: 3,
+  };
   getLabelImpl.current = ({ frame }: { frame: number }) =>
     frame === 1 || frame === 3 ? { keyframe: true } : null;
 });
@@ -92,24 +100,22 @@ describe("useAutoInterpolate (re-lerp)", () => {
     });
 
     expect(propagate).toHaveBeenCalledTimes(2);
-    expect(propagate).toHaveBeenNthCalledWith(
-      1,
-      "i1",
-      1,
-      2,
-      "linear",
-      "g1",
-      "frames.detections",
-    );
-    expect(propagate).toHaveBeenNthCalledWith(
-      2,
-      "i1",
-      2,
-      3,
-      "linear",
-      "g1",
-      "frames.detections",
-    );
+    expect(propagate).toHaveBeenNthCalledWith(1, {
+      instanceId: "i1",
+      fromFrame: 1,
+      toFrame: 2,
+      mode: "linear",
+      undoKey: "g1",
+      path: "frames.detections",
+    });
+    expect(propagate).toHaveBeenNthCalledWith(2, {
+      instanceId: "i1",
+      fromFrame: 2,
+      toFrame: 3,
+      mode: "linear",
+      undoKey: "g1",
+      path: "frames.detections",
+    });
     // A next keyframe exists (frame 3) — no tail step-hold.
     expect(updateLabel).not.toHaveBeenCalled();
   });
@@ -124,15 +130,14 @@ describe("useAutoInterpolate (re-lerp)", () => {
       kind: "set",
     });
 
-    expect(propagate).toHaveBeenNthCalledWith(
-      1,
-      "i1",
-      1,
-      2,
-      "linear",
-      undefined,
-      "frames.detections",
-    );
+    expect(propagate).toHaveBeenNthCalledWith(1, {
+      instanceId: "i1",
+      fromFrame: 1,
+      toFrame: 2,
+      mode: "linear",
+      undoKey: undefined,
+      path: "frames.detections",
+    });
   });
 
   it("is a no-op without a stream", () => {
@@ -155,7 +160,11 @@ describe("useAutoInterpolate (Case C — tail step-hold)", () => {
   it("step-holds non-keyframe filler after the edited last keyframe, coalesced under the edit's undo key", () => {
     // 5 frames: keyframes at 1 and 3 (3 is the last keyframe); 4 and 5 are
     // non-keyframe filler with stale geometry.
-    streamRef.current = { labelsField: "detections", totalFrames: 5 };
+    streamRef.current = {
+      labelsField: "detections",
+      labelsPath: "frames.detections",
+      totalFrames: 5,
+    };
     getLabelImpl.current = ({ frame }: { frame: number }) => {
       if (frame === 1) return { keyframe: true, bounding_box: [0, 0, 1, 1] };
       if (frame === 3)
@@ -180,14 +189,14 @@ describe("useAutoInterpolate (Case C — tail step-hold)", () => {
 
     // Backward bracketing interp (1→3) runs; forward is a no-op (no next KF).
     expect(propagate).toHaveBeenCalledTimes(1);
-    expect(propagate).toHaveBeenCalledWith(
-      "i1",
-      1,
-      3,
-      "linear",
-      "g1",
-      "frames.detections",
-    );
+    expect(propagate).toHaveBeenCalledWith({
+      instanceId: "i1",
+      fromFrame: 1,
+      toFrame: 3,
+      mode: "linear",
+      undoKey: "g1",
+      path: "frames.detections",
+    });
 
     // Tail step-hold: frames 4 and 5 adopt the anchor geometry, keyframe false.
     expect(updateLabel).toHaveBeenCalledTimes(2);
@@ -207,7 +216,11 @@ describe("useAutoInterpolate (Case C — tail step-hold)", () => {
   });
 
   it("step-holds all subsequent frames on a single-keyframe track", () => {
-    streamRef.current = { labelsField: "detections", totalFrames: 3 };
+    streamRef.current = {
+      labelsField: "detections",
+      labelsPath: "frames.detections",
+      totalFrames: 3,
+    };
     getLabelImpl.current = ({ frame }: { frame: number }) => {
       if (frame === 1)
         return { keyframe: true, bounding_box: [0, 0, 0.5, 0.5] };
@@ -312,7 +325,11 @@ describe("useAutoInterpolate (Case C — tail step-hold)", () => {
   });
 
   it("does not step-hold on a keyframe removal", () => {
-    streamRef.current = { labelsField: "detections", totalFrames: 3 };
+    streamRef.current = {
+      labelsField: "detections",
+      labelsPath: "frames.detections",
+      totalFrames: 3,
+    };
     getLabelImpl.current = ({ frame }: { frame: number }) => {
       if (frame === 1) return { keyframe: true, bounding_box: [0, 0, 1, 1] };
       if (frame === 2)

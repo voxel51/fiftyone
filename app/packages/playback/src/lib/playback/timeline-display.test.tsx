@@ -50,6 +50,18 @@ describe("createTimelineDisplayConversion", () => {
     expect(c.quantizeDuringScrub).toBe(true);
   });
 
+  it("sequence mode: counts from firstFrame when a host asks", () => {
+    const c = createTimelineDisplayConversion({
+      kind: "sequence",
+      fps: 10,
+      firstFrame: 1,
+    });
+    expect(c.toDisplay(0)).toBe(1);
+    expect(c.toDisplay(0.3)).toBe(4);
+    expect(c.fromDisplay(1)).toBe(0);
+    expect(c.fromDisplay(4)).toBeCloseTo(0.3);
+  });
+
   it("sequence mode: fromDisplay rounds fractional frames defensively", () => {
     const c = createTimelineDisplayConversion({ kind: "sequence", fps: 10 });
     // frame 2.5 doesn't exist -> rounds to frame 3 (Math.round ties toward +Infinity)
