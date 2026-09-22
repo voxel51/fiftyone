@@ -4,6 +4,7 @@
 
 import { spawnSync } from "child_process";
 import { Duration } from "src/oss/utils";
+import { rewriteSyncTable } from "./mp4SyncTable";
 
 /**
  * Options for generating a video file via ffmpeg.
@@ -26,11 +27,21 @@ interface CreateVideoOptions {
    */
   frameRate: number;
   /**
-   * Background color of the video as a CSS hex string (e.g. `"#ff0000"`).
+   * Background color as a CSS hex string (e.g. `"#ff0000"`), or several: the
+   * clip is then split into equal-duration solid segments of those colors.
    */
-  color: string;
+  color: string | string[];
   /** When `true`, muxes in a sine-tone audio track. */
   audio?: boolean;
+  /** Keyframe interval in frames (ffmpeg `-g`); the encoder default when omitted. */
+  keyframeInterval?: number;
+  /**
+   * Rewrite the mp4 sync-sample table (`stss`) to these 1-indexed sample
+   * numbers, entry for entry, after encoding. Models a container whose
+   * keyframe flags disagree with the bitstream. Must match the table's
+   * existing length; `.mp4` only.
+   */
+  syncSamples?: number[];
   /**
    * Path to the output video file. The extension picks the container and
    * codec: `.webm` (VP8) or `.mp4` (VP9, faststart).
@@ -64,22 +75,55 @@ interface CreateVideoOptions {
 export const createVideo = async (
   options: CreateVideoOptions,
 ): Promise<void> => {
-  const { duration, width, height, frameRate, color, audio, outputPath } =
-    options;
+  const {
+    duration,
+    width,
+    height,
+    frameRate,
+    color,
+    audio,
+    keyframeInterval,
+    syncSamples,
+    outputPath,
+  } = options;
   const startTime = performance.now();
 
   const isMp4 = outputPath.endsWith(".mp4");
+  if (syncSamples && !isMp4) {
+    throw new Error("syncSamples requires an .mp4 output");
+  }
+
+  const colors = Array.isArray(color) ? color : [color];
+  if (colors.length === 0) {
+    throw new Error("color must contain at least one value");
+  }
+
+  const segment = duration / colors.length;
   const inputs = [
-    `-f lavfi -i 'color=c=${color}:s=${width}x${height}'`,
+    ...colors.map(
+      (c) => `-f lavfi -i 'color=c=${c}:s=${width}x${height}:d=${segment}'`,
+    ),
     // Opus requires 48 kHz
     audio ? `-f lavfi -i 'sine=frequency=440:sample_rate=48000'` : "",
   ];
+  // Several colors concatenate into one stream; audio then needs an explicit map.
+  const concat =
+    colors.length > 1
+      ? [
+          `-filter_complex '${colors.map((_, i) => `[${i}:v]`).join("")}` +
+            `concat=n=${colors.length}:v=1:a=0[v]'`,
+          "-map '[v]'",
+          audio ? `-map ${colors.length}:a` : "",
+        ]
+      : [];
   const args = [
+    ...concat,
     `-t ${duration}`,
     `-r ${String(frameRate)}`,
     `-c:v ${isMp4 ? "libvpx-vp9" : "libvpx"}`,
     "-b:v 1M",
     "-pix_fmt yuv420p",
+    keyframeInterval ? `-g ${keyframeInterval}` : "",
     audio ? "-c:a libopus -b:a 64k" : "",
     isMp4 ? "-movflags +faststart" : "",
   ];
@@ -91,6 +135,10 @@ export const createVideo = async (
     shell: true,
     timeout: Duration.Seconds(10),
   });
+
+  if (syncSamples) {
+    rewriteSyncTable(outputPath, syncSamples);
+  }
 
   const endTime = performance.now();
   const timeTaken = endTime - startTime;
