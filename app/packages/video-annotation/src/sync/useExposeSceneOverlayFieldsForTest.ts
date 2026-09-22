@@ -31,6 +31,13 @@ declare global {
       type: string;
       /** Relative [x, y] vertices, for point-bearing overlays. */
       points?: [number, number][];
+      /**
+       * Whether the overlay currently holds the canvas selection. A spec that
+       * drives an edit gesture has to wait for this: selection is what makes a
+       * polyline's vertices grabbable, and a drag that lands before it is
+       * silently a no-op on empty canvas.
+       */
+      selected?: boolean;
     }>;
   }
 }
@@ -51,15 +58,17 @@ export const useExposeSceneOverlayFieldsForTest = (scene: Scene): void => {
 
     window.__FO_PLAYWRIGHT_SCENE_OVERLAY_GEOMETRY = () =>
       scene.getAllOverlays().map((overlay) => {
-        const withPoints = overlay as unknown as {
+        const probed = overlay as unknown as {
           getRelativePoints?: () => [number, number][];
+          isSelected?: () => boolean;
         };
 
         return {
           id: overlay.id,
           field: overlay.field,
           type: overlay.getOverlayType?.() ?? "unknown",
-          points: withPoints.getRelativePoints?.(),
+          points: probed.getRelativePoints?.(),
+          selected: probed.isSelected?.(),
         };
       });
 

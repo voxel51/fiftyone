@@ -469,6 +469,7 @@ export class VideoAnnotatePom {
       field: string;
       type: string;
       points?: [number, number][];
+      selected?: boolean;
     }>
   > {
     return this.page.evaluate(
@@ -480,10 +481,29 @@ export class VideoAnnotatePom {
               field: string;
               type: string;
               points?: [number, number][];
+              selected?: boolean;
             }>;
           }
         ).__FO_PLAYWRIGHT_SCENE_OVERLAY_GEOMETRY?.() ?? [],
     );
+  }
+
+  /**
+   * Wait until the named overlay holds the canvas selection.
+   *
+   * Selection is asynchronous, and it is what makes a polyline's vertices
+   * grabbable — a drag issued before it lands hits empty canvas and moves
+   * nothing at all, with no error anywhere. Gate edit gestures on this.
+   */
+  async waitForOverlaySelected(id: string) {
+    await expect
+      .poll(
+        async () =>
+          (await this.canvasOverlayGeometry()).find((o) => o.id === id)
+            ?.selected ?? false,
+        `overlay ${id} never became selected`,
+      )
+      .toBe(true);
   }
 
   /** The vertices of the single polyline overlay on the canvas, if any. */

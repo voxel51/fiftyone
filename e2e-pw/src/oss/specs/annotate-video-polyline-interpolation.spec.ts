@@ -224,8 +224,14 @@ const dragVertex = async (
   id: string,
   toContainer: (point: [number, number]) => [number, number],
 ) => {
-  // select the overlay first; a vertex is only grabbable once it is drawn
+  // Select the overlay first, and WAIT for it: selection is asynchronous and
+  // it is what makes the vertices grabbable. Dragging before it lands hits
+  // empty canvas, moves nothing, and raises nothing — the geometry read still
+  // returns valid points, so the next assertion reports "the shape should have
+  // moved" and looks like a product bug. That was this spec's CI flake:
+  // `Received: 0`, the shape identical to the last bit.
   await modal.sampleCanvas.click(BODY[0], BODY[1]);
+  await modal.videoAnnotate.waitForOverlaySelected(id);
 
   const live = await pointsOf(modal, id);
   const [vx, vy] = toContainer((live as [number, number][])[0]);
@@ -331,8 +337,10 @@ test.describe("polyline track deletion on video", () => {
     await modal.videoAnnotate.assert.objectTrackCount(2);
 
     // a body click selects the shape without sub-selecting a vertex, so
-    // Backspace reads as "delete the track", not "remove a vertex"
+    // Backspace reads as "delete the track", not "remove a vertex" — and the
+    // press has to wait for the selection, or it lands on nothing
     await modal.sampleCanvas.click(BODY[0], BODY[1]);
+    await modal.videoAnnotate.waitForOverlaySelected(id);
     await page.keyboard.press("Backspace");
 
     await expect
