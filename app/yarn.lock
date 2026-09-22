@@ -2288,6 +2288,23 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@fiftyone/reverb@workspace:packages/reverb":
+  version: 0.0.0-use.local
+  resolution: "@fiftyone/reverb@workspace:packages/reverb"
+  dependencies:
+    "@testing-library/react": "catalog:"
+    jotai: "catalog:"
+    jotai-effect: "catalog:"
+    jsdom: "npm:^26.0.0"
+    react: "catalog:"
+    react-dom: "catalog:"
+    typescript: "catalog:"
+    vitest: "catalog:"
+  peerDependencies:
+    react: "*"
+  languageName: unknown
+  linkType: soft
+
 "@fiftyone/similarity-search@workspace:packages/similarity-search":
   version: 0.0.0-use.local
   resolution: "@fiftyone/similarity-search@workspace:packages/similarity-search"
