@@ -26,6 +26,24 @@ export const supportError = (start: number, stop: number): string | null => {
   return null;
 };
 
+export interface SupportIssue {
+  bound: SupportBound;
+  message: string;
+}
+
 /** The bound the user edited, i.e. where a message belongs. */
 export const changedBound = (current: Span, next: Span): SupportBound =>
   next.stop !== current.stop ? "stop" : "start";
+
+/**
+ * The issue for an edit from the `displayed` span to `next`, placed under the
+ * edited bound. Compared against what is on screen, not the stored span, since
+ * an earlier invalid edit leaves the two apart.
+ */
+export const supportIssue = (
+  displayed: Span,
+  next: Required<Span>,
+): SupportIssue | null => {
+  const message = supportError(next.start, next.stop);
+  return message ? { bound: changedBound(displayed, next), message } : null;
+};

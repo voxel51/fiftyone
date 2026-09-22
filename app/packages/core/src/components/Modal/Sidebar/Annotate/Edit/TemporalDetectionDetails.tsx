@@ -11,9 +11,8 @@ import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
 import {
   type Span,
-  type SupportBound,
-  changedBound,
-  supportError,
+  type SupportIssue,
+  supportIssue,
 } from "./supportValidation";
 import { useAnnotationContext } from "./useAnnotationContext";
 
@@ -43,11 +42,6 @@ const createStack = () => {
     align_y: "top",
   };
 };
-
-interface SupportIssue {
-  bound: SupportBound;
-  message: string;
-}
 
 export interface TemporalDetectionDetailsProps {
   readOnly?: boolean;
@@ -172,12 +166,14 @@ export default function TemporalDetectionDetails({
 
           // an invalid span stays on screen with its message; the stored
           // span is untouched until the typed values agree
-          const message = supportError(merged.start, merged.stop);
-          if (message) {
-            setIssue({ bound: changedBound(current, merged), message });
+          const nextIssue = supportIssue(span, {
+            start: merged.start,
+            stop: merged.stop,
+          });
+          setIssue(nextIssue);
+          if (nextIssue) {
             return;
           }
-          setIssue(null);
 
           // commit through the engine: it persists (autosave diffs the engine)
           // and the timeline re-derives the interval. A bare updateLabel is one

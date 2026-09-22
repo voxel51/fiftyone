@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { changedBound, supportError } from "./supportValidation";
+import { changedBound, supportError, supportIssue } from "./supportValidation";
 
 describe("supportError", () => {
   it("accepts whole frame numbers with start <= stop", () => {
@@ -31,5 +31,26 @@ describe("changedBound", () => {
     expect(changedBound({ start: 1, stop: 10 }, { start: 1, stop: 3 })).toBe(
       "stop",
     );
+  });
+});
+
+describe("supportIssue", () => {
+  it("returns null for a valid edit", () => {
+    expect(supportIssue({ start: 1, stop: 10 }, { start: 2, stop: 10 })).toBe(
+      null,
+    );
+  });
+
+  it("places the message under the bound edited after an invalid edit", () => {
+    // stored [5, 30]; stop typed as 3 leaves [5, 3] on screen
+    expect(supportIssue({ start: 5, stop: 30 }, { start: 5, stop: 3 })).toEqual(
+      { bound: "stop", message: "start must not be after stop" },
+    );
+
+    // the form then sends the full snapshot [4, 3] for a start edit
+    expect(supportIssue({ start: 5, stop: 3 }, { start: 4, stop: 3 })).toEqual({
+      bound: "start",
+      message: "start must not be after stop",
+    });
   });
 });
