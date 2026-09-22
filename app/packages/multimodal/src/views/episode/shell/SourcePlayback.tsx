@@ -168,7 +168,7 @@ export interface SourcePlaybackProps {
   readonly onTagCreate?: TemporalTagTimelineProps["onTagCreate"];
   readonly onTagUpdate?: TemporalTagTimelineProps["onTagUpdate"];
   readonly onTagDelete?: NonNullable<
-    TemporalTagTimelineProps["eventMenuItems"]
+    TemporalTagTimelineProps["tagEventMenuItems"]
   >[number]["onSelect"];
   /** Reports timeline drawer visibility to registered runtime contributions. */
   readonly onTimelineDrawerOpenChange?: (open: boolean) => void;

@@ -24,13 +24,13 @@ const SidebarList: React.FC = () => {
   }
 
   const [width, setWidth] = useState(WIDTH);
-  // Temporal tags are a multimodal-only concept, so only surface the color
-  // entry for multimodal datasets (matches the sidebar filter gating).
-  const isMultimodal = useRecoilValue(fos.isMultimodalDataset);
+  // Matches the sidebar filter gating — the color entry exists for exactly the
+  // datasets whose sidebar offers the temporal-tags filter.
+  const hasTemporalTags = useRecoilValue(fos.supportsTemporalTags);
   const stableGroup = [
     { paths: [ACTIVE_FIELD.GLOBAL, ACTIVE_FIELD.JSON], name: "general" },
     {
-      paths: isMultimodal
+      paths: hasTemporalTags
         ? [
             { path: "tags" },
             { path: "_label_tags" },

@@ -376,7 +376,7 @@ class SampleCollection(object):
     @property
     @hide_from_docs
     def temporal_tags(self):
-        """The multimodal temporal tags for this collection."""
+        """The temporal tags for this collection."""
         return fota.TemporalTags(self)
 
     @property

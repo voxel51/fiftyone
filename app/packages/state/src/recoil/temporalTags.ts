@@ -1,6 +1,6 @@
-import { getFetchFunctionExtended } from "@fiftyone/utilities";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { atom, selector, useRecoilValue, useSetRecoilState } from "recoil";
+import { createTemporalTagsClient } from "../temporal-tags";
 import { useActiveFilterValues } from "./filters";
 import { isModalActive } from "./modal";
 import { activeField } from "./schema";
@@ -40,32 +40,25 @@ export const temporalTagResults = selector<TemporalTagResults>({
   get: ({ get }) => get(temporalTagResultsAtom),
 });
 
-type TemporalTagCountsResponse = { counts: Record<string, number> };
-
 /**
- * Fetches temporal-tag value counts for a dataset from the multimodal tags
- * REST endpoint and shapes them for the string filter. Mirrors the
- * `@fiftyone/multimodal` client's `countDatasetTemporalTags` — duplicated here
- * because `@fiftyone/state` cannot depend on `@fiftyone/multimodal`.
+ * Fetches temporal-tag value counts for a dataset and shapes them for the
+ * string filter.
  */
 export const fetchTemporalTagResults = async (
   datasetId: string,
 ): Promise<TemporalTagResults> => {
-  const fetchFunction = getFetchFunctionExtended();
-  const { response } = await fetchFunction<
-    undefined,
-    TemporalTagCountsResponse
-  >({
-    method: "GET",
-    // `by_sample=true` counts distinct samples per tag (a sample with multiple
-    // intervals of the same tag counts once), matching what selecting the value
-    // filters the grid to.
-    path: `/dataset/${encodeURIComponent(datasetId)}/tags/counts?by_sample=true`,
+  // `bySample` counts distinct samples per tag (a sample with multiple
+  // intervals of the same tag counts once), matching what selecting the value
+  // filters the grid to.
+  const counts = await createTemporalTagsClient().countDatasetTemporalTags({
+    datasetId,
+    bySample: true,
   });
 
-  const results = Object.entries(response.counts ?? {}).map(
-    ([value, count]) => ({ value, count }),
-  );
+  const results = Object.entries(counts ?? {}).map(([value, count]) => ({
+    value,
+    count,
+  }));
   const count = results.reduce((acc, { count }) => acc + (count ?? 0), 0);
 
   return { results, count };

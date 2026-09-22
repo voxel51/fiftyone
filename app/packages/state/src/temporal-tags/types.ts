@@ -1,6 +1,4 @@
-import type { LoadStatus } from "../runtime";
-
-/** Stable REST values shared with the multimodal time-track contract. */
+/** Stable REST values shared with the time-track contract. */
 export const TEMPORAL_TAG_INDEX_TYPE = {
   SEQUENCE: 1,
   DURATION_NS: 2,
@@ -8,7 +6,7 @@ export const TEMPORAL_TAG_INDEX_TYPE = {
 } as const;
 
 /** Load state for tag React hooks. */
-export type TemporalTagsStatus = LoadStatus;
+export type TemporalTagsStatus = "idle" | "loading" | "ready" | "error";
 
 /** Filter for tag list/count/delete queries. */
 export interface TemporalTagFilter {
@@ -95,10 +93,15 @@ export interface ListDatasetTemporalTagsRequest {
 export interface CountDatasetTemporalTagsRequest {
   readonly datasetId: string;
   readonly filter?: TemporalTagFilter;
+  /**
+   * Count the distinct samples carrying each tag rather than every interval,
+   * so a sample tagged twice with the same value counts once.
+   */
+  readonly bySample?: boolean;
 }
 
 /**
- * Client for the multimodal tag route surface.
+ * Client for the temporal tag route surface.
  */
 export interface TemporalTagsClient {
   createSampleTemporalTags(

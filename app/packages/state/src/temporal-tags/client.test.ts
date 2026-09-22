@@ -84,6 +84,30 @@ describe("createTemporalTagsClient", () => {
     expect(url.searchParams.getAll("tags")).toEqual(["review", "interesting"]);
   });
 
+  it("asks for per-sample counts only when `bySample` is set", async () => {
+    const fetchFunction = createFetch({ counts: {} });
+    const client = createTemporalTagsClient({
+      fetchFunction: fetchFunction as never,
+    });
+
+    await client.countDatasetTemporalTags({ datasetId: "dataset-id" });
+    await client.countDatasetTemporalTags({
+      datasetId: "dataset-id",
+      bySample: true,
+      filter: { tags: ["review"] },
+    });
+
+    expect(
+      routeUrl(fetchFunction.mock.calls[0][0].path).searchParams.get(
+        "by_sample",
+      ),
+    ).toBeNull();
+
+    const withSample = routeUrl(fetchFunction.mock.calls[1][0].path);
+    expect(withSample.searchParams.get("by_sample")).toBe("true");
+    expect(withSample.searchParams.getAll("tags")).toEqual(["review"]);
+  });
+
   it("converts create bodies and response tags between app and route shapes", async () => {
     const fetchFunction = createFetch({
       tags: [createTemporalTagDto()],

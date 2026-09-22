@@ -22,8 +22,9 @@ import {
 import { useEngineTemporalSample } from "../sync/useTemporalOverlaySync";
 import { useWarmupThenSeek } from "../hooks/useWarmupThenSeek";
 import {
-  TimelineWithTracks,
+  TemporalTagTimeline,
   TrackProvider,
+  isTemporalTagTrackId,
   type TimelineTracksScroller,
   type Track,
   type TrackEventMenuItem,
@@ -39,6 +40,7 @@ import {
   objectTrackClassOf,
   objectTrackPathOf,
   parseSubTrackId,
+  parseTimelineSubTrackId,
   type PerInstanceLabel,
 } from "../tracks/frameTracks";
 import {
@@ -56,6 +58,7 @@ import { useVideoTrackDecorator } from "../tracks/useVideoTrackDecorator";
 import { useScrollTrackToAnchor } from "../state/useVideoInteraction";
 import { useCurrentFrameGetter } from "../state/useCurrentFrame";
 import { useTimelineDrawerOpen } from "../state/useTimelineDrawer";
+import { useVideoTemporalTags } from "../tracks/useVideoTemporalTags";
 import {
   useVideoSurfaceActions,
   type VideoSurfaceActions,
@@ -96,6 +99,16 @@ type TrackDecoration = BaseTrackDecoration & {
 
 /** Row height (px) for a dynamic-attribute sub-track — shorter than a parent. */
 const SUB_TRACK_ROW_HEIGHT = 22;
+
+/**
+ * Decoration for a temporal-tag row. Tags are sample-scoped intervals with no
+ * engine instance behind them, so none of the frame-addressed edits, merges or
+ * hover links apply; the timeline supplies their own menu. Shared rather than
+ * rebuilt per call so the memoized rows keep hitting.
+ */
+const TEMPORAL_TAG_TRACK_DECORATION: TrackDecoration = {
+  expansionGutter: true,
+};
 
 /**
  * Most "Merge into …" entries to offer on one track's menu.
@@ -509,6 +522,10 @@ function useTrackDecorator({
 
   return useCallback(
     (track: Track): TrackDecoration => {
+      if (isTemporalTagTrackId(track.id)) {
+        return TEMPORAL_TAG_TRACK_DECORATION;
+      }
+
       // A sub-track row links its hover / selection to the PARENT instance and
       // renders as an indented child; it owns no presence-bar edits.
       const sub = parseSubTrackId(track.id);
@@ -614,6 +631,13 @@ function useTrackDecorator({
  * plus one row per `TemporalDetection` (rendered as a `support`-spanning
  * interval). Untracked labels still paint as overlays but get no rows.
  *
+ * Temporal tags ride on the same timeline, which is why this renders
+ * `TemporalTagTimeline` rather than the plain `TimelineWithTracks` it wraps:
+ * that adds the tag-mode button, the range-drag overlay and the creation
+ * popup, and contributes one row per tag value carried by the open sample.
+ * The surfaces this mounts on cover both plain video datasets and the video
+ * slices of grouped ones.
+ *
  * One-shot re-key on the empty→ready transition so `initialPinnedIds` (read
  * only at mount) bootstraps from the real frame-track list; later recolors
  * update through the live `tracks` prop and preserve the user's pin state.
@@ -624,9 +648,9 @@ export const FrameLabelsTracks: React.FC<{
   maxSize?: number;
   /**
    * Host content for the controls row, after the playback cluster. Passed
-   * through to `TimelineWithTracks` rather than assumed here: this component
-   * renders the same read-only track data in Explore and in Annotate, and
-   * only Annotate has editing actions to offer.
+   * through to the timeline rather than assumed here: this component renders
+   * the same read-only track data in Explore and in Annotate, and only
+   * Annotate has editing actions to offer.
    */
   extraActions?: React.ReactNode;
   /**
@@ -695,10 +719,20 @@ export const FrameLabelsTracks: React.FC<{
   const timelineLoaded =
     schemasLoaded && (frameTracksResolved || !hasFrameFields);
 
-  // Object tracks (with their sub-tracks interleaved) followed by TD tracks.
+  const {
+    tracks: temporalTagTracks,
+    existingTags,
+    pinnedTrackIds,
+    tagEventMenuItems,
+    onTagCreate,
+    onTagUpdate,
+  } = useVideoTemporalTags();
+
+  // Object tracks (with their sub-tracks interleaved), then TD tracks, then
+  // the sample's temporal tags.
   const tracks = useMemo(
-    () => [...frameTracks, ...temporalDetectionTracks],
-    [frameTracks, temporalDetectionTracks],
+    () => [...frameTracks, ...temporalDetectionTracks, ...temporalTagTracks],
+    [frameTracks, temporalDetectionTracks, temporalTagTracks],
   );
 
   const expansion = useTrackExpansion();
@@ -707,7 +741,7 @@ export const FrameLabelsTracks: React.FC<{
   const expandableParentIds = useMemo(() => {
     const ids = new Set<string>();
     for (const track of tracks) {
-      const sub = parseSubTrackId(track.id);
+      const sub = parseTimelineSubTrackId(track.id);
       if (sub) {
         ids.add(sub.parentId);
       }
@@ -720,7 +754,7 @@ export const FrameLabelsTracks: React.FC<{
   const visibleTracks = useMemo(
     () =>
       tracks.filter((track) => {
-        const sub = parseSubTrackId(track.id);
+        const sub = parseTimelineSubTrackId(track.id);
         return !sub || expansion.expandedIds.has(sub.parentId);
       }),
     [tracks, expansion.expandedIds],
@@ -731,8 +765,8 @@ export const FrameLabelsTracks: React.FC<{
   // tracks land, leaving frame tracks unpinned.
   const ready = frameTracksResolved;
 
-  // Filled by TimelineWithTracks; the drawer is virtualized, so revealing a
-  // row has to go through the list rather than the DOM.
+  // Filled by the timeline; the drawer is virtualized, so revealing a row has
+  // to go through the list rather than the DOM.
   const timelineScroller = useRef<TimelineTracksScroller | null>(null);
   useScrollTrackToAnchor(timelineScroller);
   const decorateTrack = useTrackDecorator({
@@ -747,9 +781,10 @@ export const FrameLabelsTracks: React.FC<{
       key={ready ? "ready" : "init"}
       tracks={visibleTracks}
       autoPinNewTracks={false}
+      initialPinnedIds={pinnedTrackIds}
       persistKey={persistKey}
     >
-      <TimelineWithTracks
+      <TemporalTagTimeline
         decorateTrack={decorateTrack}
         scrollerRef={timelineScroller}
         extraActions={extraActions}
@@ -758,6 +793,10 @@ export const FrameLabelsTracks: React.FC<{
         maxSize={maxSize}
         drawerOpen={drawerOpen}
         onDrawerOpenChange={setDrawerOpen}
+        existingTags={existingTags}
+        tagEventMenuItems={tagEventMenuItems}
+        onTagCreate={onTagCreate}
+        onTagUpdate={onTagUpdate}
       />
     </TrackProvider>
   );

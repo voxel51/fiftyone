@@ -70,7 +70,7 @@ class TagKind(str, enum.Enum):
 
 
 class TemporalTag(object):
-    """A temporal tag interval on one multimodal sample.
+    """A temporal tag interval on one sample.
 
     Args:
         sample_id: the sample ID this temporal tag applies to
@@ -210,7 +210,7 @@ class TemporalTagNotFoundError(ValueError):
 
 @dataclass(frozen=True)
 class TemporalTagFilter:
-    """Filter for multimodal temporal tag queries.
+    """Filter for temporal tag queries.
 
     Range filters use half-open interval overlap semantics. For example,
     ``start=10, end=20`` matches persisted intervals whose ``start < 20`` and

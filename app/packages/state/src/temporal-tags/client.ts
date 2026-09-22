@@ -105,6 +105,7 @@ export function createTemporalTagsClient(
     async countDatasetTemporalTags({
       datasetId,
       filter,
+      bySample,
     }: CountDatasetTemporalTagsRequest) {
       const response = await fetchFunction<
         undefined,
@@ -114,6 +115,7 @@ export function createTemporalTagsClient(
         path: withFilterQuery(
           `/dataset/${encodeURIComponent(datasetId)}/tags/counts`,
           filter,
+          bySample ? { by_sample: "true" } : undefined,
         ),
       });
 
@@ -196,8 +198,15 @@ export function createTemporalTagsClient(
   };
 }
 
-function withFilterQuery(path: string, filter: TemporalTagFilter | undefined) {
+function withFilterQuery(
+  path: string,
+  filter: TemporalTagFilter | undefined,
+  extra?: Record<string, string>,
+) {
   const params = filterQueryParams(filter);
+  for (const [field, value] of Object.entries(extra ?? {})) {
+    params.append(field, value);
+  }
   const queryString = params.toString();
 
   return queryString ? `${path}?${queryString}` : path;

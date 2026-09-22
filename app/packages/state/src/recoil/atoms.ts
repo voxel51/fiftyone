@@ -12,7 +12,12 @@ import {
   sampleFieldsFragment$data,
   sampleFieldsFragment$key,
 } from "@fiftyone/relay";
-import { StrictField, setContains3d } from "@fiftyone/utilities";
+import {
+  MEDIA_TYPE_MULTIMODAL,
+  MEDIA_TYPE_VIDEO,
+  StrictField,
+  setContains3d,
+} from "@fiftyone/utilities";
 import { DefaultValue, atom, atomFamily, selector } from "recoil";
 import { ModalSample } from "..";
 import { GRID_SPACES_DEFAULT, sessionAtom } from "../session";
@@ -388,6 +393,24 @@ export const lookerPanels = atom({
   default: {
     json: { isOpen: false },
     help: { isOpen: false },
+  },
+});
+
+/**
+ * Whether the dataset has a media surface that can carry temporal tags: one
+ * with a playhead to place an interval on. Multimodal episodes and videos
+ * qualify, and so does a grouped dataset with at least one video slice —
+ * those slices open on the same video surface in the modal.
+ */
+export const supportsTemporalTags = selector<boolean>({
+  key: "supportsTemporalTags",
+  get: ({ get }) => {
+    const type = get(mediaType);
+    return (
+      type === MEDIA_TYPE_MULTIMODAL ||
+      type === MEDIA_TYPE_VIDEO ||
+      get(groupMediaTypesSet).has(MEDIA_TYPE_VIDEO)
+    );
   },
 });
 
