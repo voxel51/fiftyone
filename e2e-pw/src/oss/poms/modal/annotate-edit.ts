@@ -346,6 +346,19 @@ class ModalAnnotateEditAsserter {
   }
 
   /**
+   * Verify a field's value, retrying until the form settles. Use this instead
+   * of {@link verifyFieldValue} whenever the value arrives asynchronously
+   * (form mount, engine commit, autosave round-trip).
+   *
+   * @param path The field path
+   * @param expectedValue The expected field value
+   */
+  async hasFieldValue(path: string, expectedValue: string) {
+    const field = await this.modalAnnotateEdit.getField(path);
+    await expect(field).toHaveValue(expectedValue);
+  }
+
+  /**
    * Assert whether the sidebar renders the mask preview for the edited
    * detection. The preview only mounts when the selected label resolves to a
    * live `DetectionOverlay` with a mask, so its presence proves the row found

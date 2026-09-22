@@ -298,6 +298,13 @@ class ModalAnnotateSidebarAsserter {
     ).toHaveAttribute("data-testid", "AddIcon");
   }
 
+  /** The field at `path` lists exactly `count` label rows. */
+  async labelRowCount(path: string, count: number) {
+    await expect(this.modalAnnotateSidebar.labelRowsFor(path)).toHaveCount(
+      count,
+    );
+  }
+
   /** The PRIMITIVES row for `path` shows `value`. */
   async primitiveValue(path: string, value: string) {
     await expect(this.modalAnnotateSidebar.primitiveValue(path)).toHaveText(
