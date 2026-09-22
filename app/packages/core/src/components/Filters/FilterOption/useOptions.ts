@@ -1,6 +1,6 @@
 import * as fos from "@fiftyone/state";
 import { useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { isBooleanField, isInKeypointsField } from "../state";
 
 export type OptionKey =
@@ -19,10 +19,10 @@ export type Option = {
 };
 
 export default function (modal: boolean, path: string) {
-  const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
-  const isBoolean = useRecoilValue(isBooleanField(path));
-  const isKeypoints = useRecoilValue(isInKeypointsField(path));
-  const isList = useRecoilValue(fos.isInListField(path));
+  const isFilterMode = useReverbValue(fos.isSidebarFilterMode);
+  const isBoolean = useReverbValue(isBooleanField(path));
+  const isKeypoints = useReverbValue(isInKeypointsField(path));
+  const isList = useReverbValue(fos.isInListField(path));
 
   return useMemo(() => {
     //  feature requirements:

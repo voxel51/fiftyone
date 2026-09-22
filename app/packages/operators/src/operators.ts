@@ -4,7 +4,7 @@ import { SpaceNodeJSON } from "@fiftyone/spaces/src/types";
 import { spaceNodeFromJSON } from "@fiftyone/spaces/src/utils";
 import type { SelectionStyle, SelectionType, State } from "@fiftyone/state";
 import { getFetchFunction, isNullish, ServerError } from "@fiftyone/utilities";
-import { CallbackInterface } from "recoil";
+import { CallbackInterface } from "@fiftyone/reverb";
 import { QueueItemStatus, RiskLevel } from "./constants";
 import * as types from "./types";
 import { ExecutionCallback, OperatorExecutorOptions } from "./ts";

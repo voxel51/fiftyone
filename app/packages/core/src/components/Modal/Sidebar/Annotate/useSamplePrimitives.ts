@@ -1,12 +1,12 @@
 import { State, fieldPaths } from "@fiftyone/state";
 import { DICT_FIELD, VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
 import { useAtomValue } from "jotai";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { activeLabelSchemas } from "./state";
 
 const useSamplePrimitives = (): string[] => {
   const activeFields = useAtomValue(activeLabelSchemas);
-  const primitivePaths = useRecoilValue(
+  const primitivePaths = useReverbValue(
     fieldPaths({
       space: State.SPACE.SAMPLE,
       ftype: [...VALID_PRIMITIVE_TYPES, DICT_FIELD],

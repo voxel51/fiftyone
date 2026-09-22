@@ -13,7 +13,7 @@ import {
   selectionIconThumbsup,
   selectionIconX,
 } from "@fiftyone/looker";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 
 interface SelectSampleCheckboxProps {
   sampleId: string;
@@ -34,8 +34,8 @@ const ICON_CLASS_MAP: Record<SelectionIconStyle, string> = {
 export const SelectSampleCheckbox = ({
   sampleId,
 }: SelectSampleCheckboxProps) => {
-  const selectedSamplesMap = useRecoilValue(fos.selectedSamples);
-  const style = useRecoilValue(fos.sampleSelectionStyle);
+  const selectedSamplesMap = useReverbValue(fos.selectedSamples);
+  const style = useReverbValue(fos.sampleSelectionStyle);
   const select = fos.useSelectSample();
 
   const isSelected = selectedSamplesMap.has(sampleId);

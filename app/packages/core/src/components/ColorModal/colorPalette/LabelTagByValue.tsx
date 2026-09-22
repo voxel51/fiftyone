@@ -1,15 +1,15 @@
 import { ValueColorInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import React, { useCallback, useEffect, useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import ValueColorList from "../controls/ValueColorList";
 import { activeColorPath } from "../state";
 import { getRandomColorFromPool } from "../utils";
 import { FieldCHILD_STYLE } from "../ShareStyledDiv";
 
 const LabelTagByValue: React.FC = () => {
-  const colorScheme = useRecoilValue(fos.colorScheme);
-  const activePath = useRecoilValue(activeColorPath);
+  const colorScheme = useReverbValue(fos.colorScheme);
+  const activePath = useReverbValue(activeColorPath);
   const setColorScheme = fos.useSetSessionColorScheme();
 
   const initialValue = colorScheme.labelTags?.valueColors;

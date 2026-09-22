@@ -6,16 +6,16 @@ import type { Schema } from "@fiftyone/utilities";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useMemo, useRef } from "react";
 import {
-  useRecoilState,
-  useRecoilValue,
-  useRecoilValueLoadable,
-  useSetRecoilState,
-} from "recoil";
+  useReverbState,
+  useReverbValue,
+  useReverbValueLoadable,
+  useSetReverbState,
+} from "@fiftyone/reverb";
 import { ModalMode, modalMode } from "../../jotai";
 import { preferredGroupAnnotationSliceAtom } from "../../jotai/group-annotation";
 import type { ModalViewportState } from "../../jotai/modal";
 import { __unsafeModalViewportAtom } from "../../jotai/modal";
-import type { ModalSample } from "../../recoil";
+import type { ModalSample } from "../../atoms";
 import type { Sample } from "@fiftyone/looker";
 import {
   State,
@@ -27,15 +27,15 @@ import {
   modalSample,
   selectedLabelMap,
   selectedMediaField,
-} from "../../recoil";
-import { GroupSampleNotFound } from "../../recoil/modal";
+} from "../../atoms";
+import { GroupSampleNotFound } from "../../atoms/modal";
 
 /**
  * Hook which provides the modal's current active paths,
  * and a setter to update the paths.
  */
 export const useActiveModalFields = () =>
-  useRecoilState(activeFields({ modal: true }));
+  useReverbState(activeFields({ modal: true }));
 
 /**
  * Manager which supports switching modal modes.
@@ -57,7 +57,7 @@ export interface ModalModeController {
  */
 export const useModalModeController = (): ModalModeController => {
   const setMode = useSetAtom(modalMode);
-  const clearSelectedLabels = useSetRecoilState(selectedLabelMap);
+  const clearSelectedLabels = useSetReverbState(selectedLabelMap);
 
   // Explore's 3D selection has no deselect affordance in Annotate, so clear it
   // on entry; 2D entry uses the engine anchor, not this map.
@@ -88,7 +88,7 @@ export const useModalMode = () => useAtomValue(modalMode);
  * return `undefined`.
  */
 export const useModalSample = (): ModalSample | undefined => {
-  const loadable = useRecoilValueLoadable(modalSample);
+  const loadable = useReverbValueLoadable(modalSample);
 
   if (loadable.state === "hasValue") {
     return loadable.contents;
@@ -109,7 +109,7 @@ export const useModalSample = (): ModalSample | undefined => {
  * Returns `undefined` if the modal is closed or the sample is still loading.
  */
 export const useActiveModalSample = (): Sample | undefined => {
-  const loadable = useRecoilValueLoadable(activeModalSample);
+  const loadable = useReverbValueLoadable(activeModalSample);
 
   if (loadable.state === "hasValue") {
     return loadable.contents;
@@ -126,7 +126,7 @@ export const useActiveModalSample = (): Sample | undefined => {
  * all other errors still bubble.
  */
 export const useStableModalSample = (): ModalSample | undefined => {
-  const loadable = useRecoilValueLoadable(modalSample);
+  const loadable = useReverbValueLoadable(modalSample);
   const ref = useRef<ModalSample | undefined>(
     loadable.state === "hasValue" ? loadable.contents : undefined,
   );
@@ -146,7 +146,7 @@ export const useStableModalSample = (): ModalSample | undefined => {
  * Get the current modal sample schema.
  */
 export const useModalSampleSchema = (): Schema =>
-  useRecoilValue(fieldSchema({ space: State.SPACE.SAMPLE }));
+  useReverbValue(fieldSchema({ space: State.SPACE.SAMPLE }));
 
 /**
  * Hook to retrieve the selected media field for the modal view.
@@ -154,7 +154,7 @@ export const useModalSampleSchema = (): Schema =>
  * @returns The selected media field state for the modal
  */
 export const useSelectedMediaFieldModal = () =>
-  useRecoilValue(selectedMediaField(true));
+  useReverbValue(selectedMediaField(true));
 
 /**
  * Get and set the preferred annotation slice for grouped datasets.
@@ -167,7 +167,7 @@ export const usePreferredGroupAnnotationSlice = () =>
  * Gets the current sample ID.
  */
 export const useCurrentSampleId = () => {
-  const loadable = useRecoilValueLoadable(currentSampleId);
+  const loadable = useReverbValueLoadable(currentSampleId);
 
   return loadable.state === "hasValue" ? loadable.contents : null;
 };
@@ -189,7 +189,7 @@ export const useSaveModalViewport = () => useSetAtom(__unsafeModalViewportAtom);
  * @param withFilter - Whether to apply frontend label filtering. Defaults to `false`.
  */
 export const useModalLookerOptions = (withFilter = false) => {
-  return useRecoilValue(lookerOptions({ modal: true, withFilter }));
+  return useReverbValue(lookerOptions({ modal: true, withFilter }));
 };
 
 /**
@@ -197,7 +197,7 @@ export const useModalLookerOptions = (withFilter = false) => {
  */
 export const useModalMediaPath = (): string | null => {
   const sample = useModalSample();
-  const mediaField = useRecoilValue(selectedMediaField(true));
+  const mediaField = useReverbValue(selectedMediaField(true));
 
   if (!sample) {
     return null;

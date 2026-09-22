@@ -1,19 +1,19 @@
-import { useRecoilValue } from "recoil";
-import { activeFields, fieldPaths, labelFields, State } from "../recoil";
+import { useReverbValue } from "@fiftyone/reverb";
+import { activeFields, fieldPaths, labelFields, State } from "../atoms";
 
 /**
  * The field paths currently toggled visible in the sidebar.
  */
 export const useActiveFields = (params: { modal: boolean }) =>
-  useRecoilValue(activeFields(params));
+  useReverbValue(activeFields(params));
 
 /**
  * The label field paths in the dataset schema.
  */
 export const useLabelFields = (params: { space?: State.SPACE } = {}) =>
-  useRecoilValue(labelFields(params));
+  useReverbValue(labelFields(params));
 
 /** Field paths of the dataset's schema, filtered by `params` (see `fieldPaths`). */
 export const useFieldPaths = (
   params: Parameters<typeof fieldPaths>[0],
-): string[] => useRecoilValue(fieldPaths(params));
+): string[] => useReverbValue(fieldPaths(params));

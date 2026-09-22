@@ -15,6 +15,7 @@
         "@fiftyone/components": "*",
         "@fiftyone/operators": "*",
         "@fiftyone/plugins": "*",
+        "@fiftyone/reverb": "workspace:*",
         "@fiftyone/spaces": "*",
         "@fiftyone/state": "*",
         "@voxel51/voodo": "catalog:"
@@ -31,8 +32,6 @@
         "react-error-boundary": "catalog:",
         "react-is": "catalog:",
         "react-relay": "catalog:",
-        "recoil": "catalog:",
-        "recoil-relay": "catalog:",
         "relay-runtime": "catalog:",
         "styled-components": "catalog:",
         "vite": "catalog:",
@@ -51,8 +50,6 @@
         "react-error-boundary": "*",
         "react-is": "*",
         "react-relay": "*",
-        "recoil": "*",
-        "recoil-relay": "*",
         "styled-components": "*"
     }
 }

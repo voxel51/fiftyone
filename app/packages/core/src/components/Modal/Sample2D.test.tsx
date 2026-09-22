@@ -24,10 +24,10 @@ vi.mock("@fiftyone/state", () => ({
   useModalMode: () => "view",
 }));
 
-vi.mock("recoil", () => ({
-  useRecoilValue: (atom: string) =>
+vi.mock("@fiftyone/reverb", () => ({
+  useReverbValue: (atom: string) =>
     atom === "modal-sample-id" ? harness.id : harness.loadable.contents,
-  useRecoilValueLoadable: () => harness.loadable,
+  useReverbValueLoadable: () => harness.loadable,
 }));
 
 vi.mock("./ModalLooker", () => ({

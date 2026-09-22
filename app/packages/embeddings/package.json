@@ -15,6 +15,7 @@
         "@fiftyone/aggregations": "*",
         "@fiftyone/components": "*",
         "@fiftyone/plugins": "*",
+        "@fiftyone/reverb": "workspace:*",
         "@fiftyone/state": "*",
         "plotly.js": "^3.1.1",
         "use-resize-observer": "catalog:"
@@ -27,8 +28,6 @@
         "react-dom": "catalog:",
         "react-error-boundary": "catalog:",
         "react-relay": "catalog:",
-        "recoil": "catalog:",
-        "recoil-relay": "catalog:",
         "relay-runtime": "catalog:",
         "styled-components": "catalog:",
         "vite": "catalog:",
@@ -39,7 +38,6 @@
     },
     "peerDependencies": {
         "@mui/icons-material": "*",
-        "react-error-boundary": "*",
-        "recoil": "*"
+        "react-error-boundary": "*"
     }
 }

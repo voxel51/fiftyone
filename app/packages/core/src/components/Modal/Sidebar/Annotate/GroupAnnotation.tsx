@@ -1,7 +1,7 @@
 import { Selector } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { useCallback, useMemo } from "react";
-import { useRecoilState } from "recoil";
+import { useReverbState } from "@fiftyone/reverb";
 import styled from "styled-components";
 import { useAnnotationContext } from "./Edit/useAnnotationContext";
 import { useApplyAnnotationSliceVisibility } from "./useApplyAnnotationSliceVisibility";
@@ -69,7 +69,7 @@ export default function GroupAnnotation({
   );
 
   const isEditing_ = useAnnotationContext().isEditing;
-  const [modalGroupSlice, setModalGroupSlice] = useRecoilState(
+  const [modalGroupSlice, setModalGroupSlice] = useReverbState(
     fos.modalGroupSlice,
   );
   const applyVisibilityForSlice = useApplyAnnotationSliceVisibility();

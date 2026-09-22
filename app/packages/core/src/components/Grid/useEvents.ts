@@ -5,10 +5,10 @@ import type Spotlight from "@fiftyone/spotlight";
 import type { Rejected } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import { useLayoutEffect } from "react";
-import { useSetRecoilState } from "recoil";
+import { useSetReverbState } from "@fiftyone/reverb";
 import { MANAGING_GRID_MEMORY } from "../../utils/links";
 import { QP_WAIT, QueryPerformanceToastEvent } from "../QueryPerformanceToast";
-import { recommendedGridZoom } from "./recoil";
+import { recommendedGridZoom } from "./atoms";
 import type { LookerCache } from "./types";
 import type { ScrollLocation } from "./useScrollLocation";
 
@@ -27,8 +27,8 @@ export default ({
   set: (location: ScrollLocation) => void;
   spotlight?: Spotlight<number, fos.Sample>;
 }) => {
-  const handleAutosize = useSetRecoilState(fos.snackbarLink);
-  const setRecommendedZoom = useSetRecoilState(recommendedGridZoom);
+  const handleAutosize = useSetReverbState(fos.snackbarLink);
+  const setRecommendedZoom = useSetReverbState(recommendedGridZoom);
 
   useLayoutEffect(() => {
     if (resizing || !spotlight) {

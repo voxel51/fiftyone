@@ -1,7 +1,7 @@
 import { useAnnotationEventBus } from "@fiftyone/annotation";
 import { useFrame, type ThreeEvent } from "@react-three/fiber";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRecoilState, useSetRecoilState } from "recoil";
+import { useReverbState, useSetReverbState } from "@fiftyone/reverb";
 import { Matrix4, Mesh, Object3D, Vector3 } from "three";
 import { Transformable } from "../labels/shared/TransformControls";
 import {
@@ -51,19 +51,19 @@ export const PolylinePointMarker = ({
   const [startMatrix, setStartMatrix] = useState<Matrix4 | null>(null);
   const annotationEventBus = useAnnotationEventBus();
 
-  const [hoveredVertex, setHoveredVertex] = useRecoilState(hoveredVertexAtom);
+  const [hoveredVertex, setHoveredVertex] = useReverbState(hoveredVertexAtom);
 
-  const setTransformMode = useSetRecoilState(transformModeAtom);
+  const setTransformMode = useSetReverbState(transformModeAtom);
 
-  const [selectedPoint, setSelectedPoint] = useRecoilState(
+  const [selectedPoint, setSelectedPoint] = useReverbState(
     selectedPolylineVertexAtom,
   );
-  const setCurrentArchetypeSelectedForTransform = useSetRecoilState(
+  const setCurrentArchetypeSelectedForTransform = useSetReverbState(
     currentArchetypeSelectedForTransformAtom,
   );
 
-  const setSegmentState = useSetRecoilState(activeSegmentationStateAtom);
-  const setEditSegmentsMode = useSetRecoilState(editSegmentsModeAtom);
+  const setSegmentState = useSetReverbState(activeSegmentationStateAtom);
+  const setEditSegmentsMode = useSetReverbState(editSegmentsModeAtom);
 
   const isSelected =
     selectedPoint?.labelId === labelId &&

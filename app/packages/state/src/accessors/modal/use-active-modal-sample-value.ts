@@ -10,12 +10,12 @@
  * @module accessors/modal/use-active-modal-sample-value
  */
 
-import { useRecoilValue, useRecoilValueLoadable } from "recoil";
-import { activeModalSidebarSample } from "../../recoil/groups";
-import { GroupSampleNotFound } from "../../recoil/modal";
-import { field, isOfDocumentFieldList } from "../../recoil/schema";
-import { pullSidebarValue } from "../../recoil/sidebar";
-import { useAssertedRecoilValue } from "../../recoil/utils";
+import { useReverbValue, useReverbValueLoadable } from "@fiftyone/reverb";
+import { activeModalSidebarSample } from "../../atoms/groups";
+import { GroupSampleNotFound } from "../../atoms/modal";
+import { field, isOfDocumentFieldList } from "../../atoms/schema";
+import { pullSidebarValue } from "../../atoms/sidebar";
+import { useAssertedReverbValue } from "@fiftyone/reverb";
 
 /**
  * Sentinel returned by {@link useActiveModalSampleValue} when no real value is
@@ -48,9 +48,9 @@ export type Loading = typeof LOADING;
  */
 export const useActiveModalSampleValue = <T>(path: string): T | Loading => {
   const keys = path.split(".");
-  const loadable = useRecoilValueLoadable(activeModalSidebarSample);
-  const resolvedField = useAssertedRecoilValue(field(keys[0]));
-  const isList = useRecoilValue(isOfDocumentFieldList(path));
+  const loadable = useReverbValueLoadable(activeModalSidebarSample);
+  const resolvedField = useAssertedReverbValue(field(keys[0]));
+  const isList = useReverbValue(isOfDocumentFieldList(path));
 
   if (loadable.state === "loading") {
     return LOADING;

@@ -1,7 +1,7 @@
 import { Loading } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { Suspense, useEffect, useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { SampleWrapper } from "../Sample2D";
 import { Sample3d } from "../Sample3d";
 import { GroupSampleWrapper } from "./GroupSampleWrapper";
@@ -11,7 +11,7 @@ const Sample3dWrapper = () => {
   const isPinned = fos.useIs3dPinned();
   const actions = fos.useRenderConfig3dActions();
   const hover = fos.useHoveredSample(interactionSample?.sample);
-  const hasGroupView = !useRecoilValue(fos.only3d);
+  const hasGroupView = !useReverbValue(fos.only3d);
 
   if (!interactionSample) return null;
 
@@ -36,7 +36,7 @@ export default () => {
   const allSampleMap = fos.useStableAll3dSamplesMap();
   const pinnedSlice = fos.usePinned3dSlice();
   const actions = fos.useRenderConfig3dActions();
-  const modalId = useRecoilValue(fos.modalSampleId);
+  const modalId = useReverbValue(fos.modalSampleId);
   const sampleMapKey = useMemo(
     () => Object.keys(allSampleMap).sort().join(","),
     [allSampleMap],

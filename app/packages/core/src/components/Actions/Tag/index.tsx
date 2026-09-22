@@ -4,7 +4,7 @@ import * as fos from "@fiftyone/state";
 import { LocalOffer } from "@mui/icons-material";
 import type { MutableRefObject } from "react";
 import { useRef, useState } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import Loading from "../Loading";
 import type { ActionProps } from "../types";
 import { ActionDiv, getStringAndNumberProps } from "../utils";
@@ -20,13 +20,13 @@ export default ({
 }) => {
   const [open, setOpen] = useState(false);
   const [available, setAvailable] = useState(true);
-  const labels = useRecoilValue(fos.selectedLabelIds);
-  const samples = useRecoilValue(fos.selectedSamples);
-  const canTag = useRecoilValue(fos.canTagSamplesOrLabels);
+  const labels = useReverbValue(fos.selectedLabelIds);
+  const samples = useReverbValue(fos.selectedSamples);
+  const canTag = useReverbValue(fos.canTagSamplesOrLabels);
   const disableTag = !canTag.enabled;
 
   const selected = labels.size > 0 || samples.size > 0;
-  const tagging = useRecoilValue(fos.anyTagging);
+  const tagging = useReverbValue(fos.anyTagging);
   const ref = useRef<HTMLDivElement>(null);
   fos.useOutsideClick(ref, () => open && setOpen(false));
   const disabled = tagging || disableTag;

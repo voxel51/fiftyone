@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { atom, useAtom } from "jotai";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 
 import { useLighter } from "@fiftyone/lighter";
 import { DETECTION } from "@fiftyone/utilities";
@@ -30,7 +30,7 @@ export const useDetectionMode = () => {
   const [detectionModeActive, setDetectionModeActive] = useAtom(
     detectionModeActiveAtom,
   );
-  const isPatchView = useRecoilValue(isPatchesView);
+  const isPatchView = useReverbValue(isPatchesView);
   const { scene } = useLighter();
   const annotationContext = useAnnotationContext();
   const { selected } = annotationContext;

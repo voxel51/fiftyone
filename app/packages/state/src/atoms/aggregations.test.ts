@@ -1,0 +1,130 @@
+import { describe, expect, it, vi } from "vitest";
+vi.mock("@fiftyone/reverb");
+vi.mock("@fiftyone/relay");
+
+import {
+  setMockAtoms,
+  TestSelectorFamily,
+} from "../../../../__mocks__/@fiftyone/reverb";
+import * as aggregations from "./aggregations";
+import { State } from "./types";
+
+describe("test aggregation path accumulation", () => {
+  it("resolves grouped modal label paths", () => {
+    const testModalSampleAggregationPaths = <
+      TestSelectorFamily<typeof aggregations.modalAggregationPaths>
+    >(<unknown>aggregations.modalAggregationPaths({
+      path: "ground_truth.detections.one",
+    }));
+    setMockAtoms({
+      expandPath: (path) => `${path}.detections`,
+      modalFilterFields: (path) => [
+        path,
+        `${path}.one`,
+        `${path}.two`,
+        `${path}.numeric`,
+      ],
+      isNumericField: (path) => path.endsWith(".numeric"),
+      labelFields: ({ space }) =>
+        space === State.SPACE.SAMPLE
+          ? ["ground_truth", "predictions"]
+          : ["frames.frames_ground_truth", "frames.frames_predictions"],
+      groupId: "groupId",
+    });
+    expect(testModalSampleAggregationPaths()).toStrictEqual([
+      "tags",
+      "ground_truth.detections",
+      "ground_truth.detections.one",
+      "ground_truth.detections.two",
+      "predictions.detections",
+      "predictions.detections.one",
+      "predictions.detections.two",
+    ]);
+
+    const testModalSampleNumericAggregationPaths = <
+      TestSelectorFamily<typeof aggregations.modalAggregationPaths>
+    >(<unknown>aggregations.modalAggregationPaths({
+      path: "ground_truth.detections.numeric",
+    }));
+
+    expect(testModalSampleNumericAggregationPaths()).toStrictEqual([
+      "ground_truth.detections.numeric",
+      "predictions.detections.numeric",
+    ]);
+
+    const testModalFrameAggregationPaths = <
+      TestSelectorFamily<typeof aggregations.modalAggregationPaths>
+    >(<unknown>aggregations.modalAggregationPaths({
+      path: "frames.frames_ground_truth.detections.one",
+    }));
+
+    expect(testModalFrameAggregationPaths()).toStrictEqual([
+      "frames.frames_ground_truth.detections",
+      "frames.frames_ground_truth.detections.one",
+      "frames.frames_ground_truth.detections.two",
+      "frames.frames_predictions.detections",
+      "frames.frames_predictions.detections.one",
+      "frames.frames_predictions.detections.two",
+    ]);
+
+    const testModalFrameNumericAggregationPaths = <
+      TestSelectorFamily<typeof aggregations.modalAggregationPaths>
+    >(<unknown>aggregations.modalAggregationPaths({
+      path: "frames.frames_ground_truth.detections.numeric",
+    }));
+
+    expect(testModalFrameNumericAggregationPaths()).toStrictEqual([
+      "frames.frames_ground_truth.detections.numeric",
+      "frames.frames_predictions.detections.numeric",
+    ]);
+  });
+
+  it("falls back to an empty aggregation list when the query is skipped", () => {
+    const testAggregations = <
+      TestSelectorFamily<typeof aggregations.aggregations>
+    >(<unknown>aggregations.aggregations({
+      extended: false,
+      modal: false,
+      paths: ["ground_truth"],
+    }));
+
+    setMockAtoms({
+      aggregationQuery: () => null,
+      hasFilters: () => false,
+    });
+
+    expect(testAggregations()).toStrictEqual([]);
+  });
+});
+
+describe("extended aggregation requests", () => {
+  const grid = <TestSelectorFamily<typeof aggregations.aggregations>>(
+    (<unknown>aggregations.aggregations({
+      extended: true,
+      modal: false,
+      paths: [""],
+    }))
+  );
+
+  // An extended selection rides in ``extendedStages``, which both the extended
+  // and the unextended query send — so an extended query with no field filters
+  // is a second, identical round trip
+  it.each([
+    ["a lasso selection and no field filters", false, false],
+    ["field filters", true, true],
+  ])("requests extended data with %s: %s", (_name, hasFields, expected) => {
+    let requested: boolean | undefined;
+    setMockAtoms({
+      // A lasso is in play, so the grid "has filters" either way
+      hasFilters: () => true,
+      hasFieldFilters: () => hasFields,
+      aggregationQuery: (params) => {
+        requested = params.extended;
+        return [];
+      },
+    });
+
+    grid();
+    expect(requested).toBe(expected);
+  });
+});

@@ -3,7 +3,7 @@ import type { Sample } from "@fiftyone/state";
 import { selectedSampleObjects, selectedSamples } from "@fiftyone/state";
 import type { SelectionType } from "@fiftyone/state";
 import { useRef } from "react";
-import { useRecoilCallback } from "recoil";
+import { useReverbCallback } from "@fiftyone/reverb";
 import type { Records } from "./useRecords";
 
 export const addRange = (
@@ -93,7 +93,7 @@ export const removeRange = (
 export default (records: Records) => {
   const ref =
     useRef<(params: ThumbnailSelectionDetail<Sample>) => Promise<void>>();
-  ref.current = useRecoilCallback(
+  ref.current = useReverbCallback(
     ({ set, snapshot }) =>
       async (params: ThumbnailSelectionDetail<Sample>) => {
         const { shiftKey, altKey, id: sampleId, sample, symbol } = params;

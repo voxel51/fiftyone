@@ -2,7 +2,7 @@ import type { Lookers } from "@fiftyone/state";
 import { hoveredSample } from "@fiftyone/state";
 import type { MutableRefObject } from "react";
 import { useEffect, useRef } from "react";
-import { selector, useRecoilValue } from "recoil";
+import { selector, useReverbValue } from "@fiftyone/reverb";
 
 export const hoveredSampleId = selector<string>({
   key: "hoveredSampleId",
@@ -16,7 +16,7 @@ export default function (
   id: string,
   looker: Lookers,
 ) {
-  const hoveredId = useRecoilValue(hoveredSampleId);
+  const hoveredId = useReverbValue(hoveredSampleId);
   const ready = useRef(false);
 
   useEffect(() => {

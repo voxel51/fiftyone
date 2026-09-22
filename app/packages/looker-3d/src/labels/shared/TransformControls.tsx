@@ -3,7 +3,7 @@ import { TransformControls } from "@react-three/drei";
 import type { TransformControls as TransformControlsImpl } from "three-stdlib";
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useReverbState, useReverbValue } from "@fiftyone/reverb";
 import * as THREE from "three";
 import { FO_USER_DATA } from "../../constants";
 import {
@@ -51,11 +51,11 @@ export const Transformable = ({
   const groupRef = useRef<THREE.Group>(null);
 
   const modalMode = useAtomValue(fos.modalMode);
-  const transformMode = useRecoilValue(transformModeAtom);
-  const currentArchetypeSelectedForTransform = useRecoilValue(
+  const transformMode = useReverbValue(transformModeAtom);
+  const currentArchetypeSelectedForTransform = useReverbValue(
     currentArchetypeSelectedForTransformAtom,
   );
-  const [isCurrentlyTransforming, setIsCurrentlyTransforming] = useRecoilState(
+  const [isCurrentlyTransforming, setIsCurrentlyTransforming] = useReverbState(
     isCurrentlyTransformingAtom,
   );
   const isAnnotateMode = modalMode === fos.ModalMode.ANNOTATE;

@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import type { TestSelectorFamily } from "../../../../../../__mocks__/recoil";
-import { setMockAtoms } from "../../../../../../__mocks__/recoil";
+import type { TestSelectorFamily } from "../../../../../../__mocks__/@fiftyone/reverb";
+import { setMockAtoms } from "../../../../../../__mocks__/@fiftyone/reverb";
 import * as entryCounts from "./EntryCounts";
 
-vi.mock("recoil");
-vi.mock("recoil-relay");
+vi.mock("@fiftyone/reverb");
+vi.mock("@fiftyone/relay");
 
 const MOCK_NO_RESULT = { count: null, results: [] };
 

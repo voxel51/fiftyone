@@ -1,6 +1,6 @@
 import * as fos from "@fiftyone/state";
 import { useCallback, useEffect, useRef } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import type { Box3, PerspectiveCamera, Vector3 } from "three";
 import { SET_EGO_VIEW_EVENT, SET_TOP_VIEW_EVENT } from "../constants";
 import { resolveViewConfig } from "../fo3d/camera-init";
@@ -36,7 +36,7 @@ export const useFo3dCameraViewEvents = ({
   settings,
   recomputeBounds,
 }: UseFo3dCameraViewEventsArgs) => {
-  const overriddenCameraPosition = useRecoilValue(cameraPositionAtom);
+  const overriddenCameraPosition = useReverbValue(cameraPositionAtom);
 
   const { applyLookAt } = useFo3dCameraLookAt({
     cameraRef,

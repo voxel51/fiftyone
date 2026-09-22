@@ -2,7 +2,7 @@ import { Tooltip } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { Bolt } from "@mui/icons-material";
 import React, { useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
 import Arrow from "./Arrow";
 
@@ -34,13 +34,13 @@ const Lightning = ({
   path: string;
   frameFilteringDisabled: boolean;
 }) => {
-  const color = useRecoilValue(fos.pathColor(path));
-  const compound = useRecoilValue(fos.isCompoundIndexed(path));
-  const expandedPath = useRecoilValue(fos.expandPath(path));
-  const gridOptimized = useRecoilValue(
+  const color = useReverbValue(fos.pathColor(path));
+  const compound = useReverbValue(fos.isCompoundIndexed(path));
+  const expandedPath = useReverbValue(fos.expandPath(path));
+  const gridOptimized = useReverbValue(
     fos.pathHasIndexes({ path, withFilters: true }),
   );
-  const sidebarOptimized = useRecoilValue(
+  const sidebarOptimized = useReverbValue(
     fos.pathHasIndexes({ path, withFilters: false }),
   );
 
@@ -74,16 +74,16 @@ const Lightning = ({
 };
 
 const IconWrapper = ({ modal, path }: { modal: boolean; path: string }) => {
-  const disabled = useRecoilValue(fos.isDisabledFilterPath(path)) && !modal;
-  const expandedPath = useRecoilValue(fos.expandPath(path));
+  const disabled = useReverbValue(fos.isDisabledFilterPath(path)) && !modal;
+  const expandedPath = useReverbValue(fos.expandPath(path));
   const frameFilteringDisabled =
-    useRecoilValue(fos.isDisabledFrameFilterPath(path)) && !modal;
-  const indexed = useRecoilValue(fos.pathHasIndexes({ path }));
-  const filteredIndex = useRecoilValue(
+    useReverbValue(fos.isDisabledFrameFilterPath(path)) && !modal;
+  const indexed = useReverbValue(fos.pathHasIndexes({ path }));
+  const filteredIndex = useReverbValue(
     fos.pathHasIndexes({ path, withFilters: true }),
   );
-  const queryPerformance = useRecoilValue(fos.queryPerformance);
-  const frameField = useRecoilValue(fos.isFrameField(path));
+  const queryPerformance = useReverbValue(fos.queryPerformance);
+  const frameField = useReverbValue(fos.isFrameField(path));
 
   if (queryPerformance && (indexed || filteredIndex) && !modal && !frameField) {
     return (

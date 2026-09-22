@@ -1,7 +1,10 @@
 import { cleanup, render } from "@testing-library/react";
 import { createElement } from "react";
-import { ReverbRoot, useReverbValue } from "@fiftyone/reverb";
-import type { TransactionInterface } from "@fiftyone/reverb";
+import {
+  ReverbRoot,
+  type TransactionInterface,
+  useReverbValue,
+} from "@fiftyone/reverb";
 import type { GraphQLTaggedNode, OperationType } from "relay-runtime";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { PageQuery } from "./Writer";

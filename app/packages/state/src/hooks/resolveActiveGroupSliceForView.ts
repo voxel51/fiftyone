@@ -1,6 +1,6 @@
-import type { Snapshot } from "recoil";
-import { groupSlice, isGroup, view } from "../recoil";
-import type { State } from "../recoil";
+import type { Snapshot } from "@fiftyone/reverb";
+import { groupSlice, isGroup, view } from "../atoms";
+import type { State } from "../atoms";
 
 const SELECT_GROUP_SLICES = "fiftyone.core.stages.SelectGroupSlices";
 

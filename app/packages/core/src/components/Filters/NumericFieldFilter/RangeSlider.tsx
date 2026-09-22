@@ -1,7 +1,7 @@
 import * as fos from "@fiftyone/state";
 import { formatPrimitive } from "@fiftyone/utilities";
 import { useRef } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
 import CommonRangeSlider from "../../Common/RangeSlider";
 import Box from "./Box";
@@ -21,10 +21,10 @@ const Container = styled.div`
 `;
 
 const useNoResults = (path: string) => {
-  const indexed = useRecoilValue(fos.pathHasIndexes({ path }));
-  const queryPerformance = useRecoilValue(fos.queryPerformance);
-  const isOfList = useRecoilValue(fos.isOfDocumentFieldList(path));
-  const isList = useRecoilValue(fos.isListField(path));
+  const indexed = useReverbValue(fos.pathHasIndexes({ path }));
+  const queryPerformance = useReverbValue(fos.queryPerformance);
+  const isOfList = useReverbValue(fos.isOfDocumentFieldList(path));
+  const isList = useReverbValue(fos.isListField(path));
 
   return indexed && queryPerformance && !isOfList && !isList;
 };
@@ -40,13 +40,13 @@ const RangeSlider = ({
   inputs?: boolean;
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const ftype = useRecoilValue(fos.fieldType({ path }));
+  const ftype = useReverbValue(fos.fieldType({ path }));
   const key = path.replace(/[ ,.]/g, "-");
-  const excluded = useRecoilValue(fos.numericExcludeAtom({ modal, path }));
-  const defaultRange = useRecoilValue(state.hasDefaultRange({ modal, path }));
-  const one = useRecoilValue(state.oneBound({ path, modal }));
-  const timeZone = useRecoilValue(fos.timeZone);
-  const hasBounds = useRecoilValue(state.hasBounds({ path, modal }));
+  const excluded = useReverbValue(fos.numericExcludeAtom({ modal, path }));
+  const defaultRange = useReverbValue(state.hasDefaultRange({ modal, path }));
+  const one = useReverbValue(state.oneBound({ path, modal }));
+  const timeZone = useReverbValue(fos.timeZone);
+  const hasBounds = useReverbValue(state.hasBounds({ path, modal }));
   const showSlider = hasBounds && !(excluded && defaultRange);
 
   const noResults = useNoResults(path);

@@ -25,6 +25,7 @@
         "vite": "catalog:"
     },
     "dependencies": {
+        "@fiftyone/reverb": "workspace:*",
         "moment": "^2.29.4"
     }
 }

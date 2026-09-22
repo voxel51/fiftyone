@@ -1,19 +1,19 @@
 import { Selector } from "@fiftyone/components";
 import { groupSlice, groupSlices, useSetGroupSlice } from "@fiftyone/state";
 import { useCallback } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 
 const Slice = ({ value }: { className?: string; value: string }) => {
   return <>{value}</>;
 };
 
 const GroupSlice = () => {
-  const slice = useRecoilValue(groupSlice);
+  const slice = useReverbValue(groupSlice);
   if (!slice) {
     throw new Error("slice not defined");
   }
   const setSlice = useSetGroupSlice();
-  const groupSlicesValue = useRecoilValue(groupSlices);
+  const groupSlicesValue = useReverbValue(groupSlices);
 
   const useSearch = useCallback(
     (search: string) => {

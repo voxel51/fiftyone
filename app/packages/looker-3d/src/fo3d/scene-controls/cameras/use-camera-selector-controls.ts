@@ -6,7 +6,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { useSetRecoilState } from "recoil";
+import { useSetReverbState } from "@fiftyone/reverb";
 import { Vector3, type PerspectiveCamera } from "three";
 import { PANEL_ORDER_CAMERAS } from "../../../constants";
 import { useFetchSampleStaticTransform } from "../../../hooks/use-fetch-sample-static-transform";
@@ -33,7 +33,7 @@ export const useCameraSelectorControls = ({
   cameraControlsRef,
   lookAt,
 }: UseCameraSelectorControlsParams) => {
-  const setCameraPosition = useSetRecoilState(cameraPositionAtom);
+  const setCameraPosition = useSetReverbState(cameraPositionAtom);
   const { fetchAvailableStaticTransforms } = useFetchSampleStaticTransform();
 
   const [cameraOptions, setCameraOptions] = useState<CameraControlOption[]>([]);

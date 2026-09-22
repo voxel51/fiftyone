@@ -1,6 +1,6 @@
 import * as fos from "@fiftyone/state";
 import { useEffect, useRef } from "react";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import { useReverbCallback, useReverbValue } from "@fiftyone/reverb";
 import type { Vector3 } from "three";
 import { SET_ZOOM_TO_SELECTED_EVENT } from "../constants";
 import {
@@ -40,7 +40,7 @@ export const useFo3dInteractionLifecycle = ({
   useLegacyCoordinates = false,
 }: UseFo3dInteractionLifecycleArgs) => {
   const { setAutoRotate } = useFo3dContext();
-  const isActivelySegmenting = useRecoilValue(isActivelySegmentingSelector);
+  const isActivelySegmenting = useReverbValue(isActivelySegmentingSelector);
   const isSceneReady = isFo3dCameraLifecycleReady(cameraLifecycleState);
   const isActivelySegmentingRef = useRef(isActivelySegmenting);
   const setAutoRotateRef = useRef(setAutoRotate);
@@ -53,7 +53,7 @@ export const useFo3dInteractionLifecycle = ({
     setAutoRotateRef.current = setAutoRotate;
   }, [setAutoRotate]);
 
-  const resetActiveNode = useRecoilCallback(
+  const resetActiveNode = useReverbCallback(
     ({ set }) =>
       (event: MouseEvent | null) => {
         // Don't handle right click since that might mean we're panning the camera

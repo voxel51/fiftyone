@@ -167,7 +167,7 @@ select/hover through engine interaction, and the playhead-follows-anchor hook),
 then write the result through the engine),
 [`overlayAdapters/`](src/overlayAdapters) (raw label ↔ Lighter overlay props),
 and [`state/accessors.ts`](src/state/accessors.ts) (the _one_ place foreign
-recoil/jotai atoms are read). Persistence is no longer a video concern — the
+Reverb/Jotai atoms are read). Persistence is no longer a video concern — the
 engine aggregates every registered store's `getJsonPatch()`.
 
 ## How it's wired together

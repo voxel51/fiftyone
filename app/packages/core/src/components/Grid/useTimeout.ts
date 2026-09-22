@@ -1,9 +1,9 @@
 import { snackbarErrors } from "@fiftyone/state";
 import { useCallback } from "react";
-import { useSetRecoilState } from "recoil";
+import { useSetReverbState } from "@fiftyone/reverb";
 
 export default function useTimeout() {
-  const setErrors = useSetRecoilState(snackbarErrors);
+  const setErrors = useSetReverbState(snackbarErrors);
   return useCallback(
     (queryTime: number) => {
       setErrors([

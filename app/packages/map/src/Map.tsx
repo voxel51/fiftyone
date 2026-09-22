@@ -12,7 +12,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import React from "react";
 import Map, { Layer, MapRef, Source } from "react-map-gl";
 
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useReverbState, useReverbValue } from "@fiftyone/reverb";
 import useResizeObserver from "use-resize-observer";
 
 import DrawControl from "./Draw";
@@ -73,10 +73,10 @@ const createSourceData = (
 
 const Panel: React.FC<{}> = () => {
   const theme = foc.useTheme();
-  const dataset = useRecoilValue(fos.dataset);
-  const view = useRecoilValue(fos.view);
-  const filters = useRecoilValue(fos.filters);
-  const unFilteredExtended = useRecoilValue(fos.extendedStages);
+  const dataset = useReverbValue(fos.dataset);
+  const view = useReverbValue(fos.view);
+  const filters = useReverbValue(fos.filters);
+  const unFilteredExtended = useReverbValue(fos.extendedStages);
 
   const extended = React.useMemo(() => {
     return Object.fromEntries(
@@ -91,7 +91,7 @@ const Panel: React.FC<{}> = () => {
     ) as unknown as typeof fos.extendedStages;
   }, [unFilteredExtended]);
 
-  const currentField = useRecoilValue(activeField);
+  const currentField = useReverbValue(activeField);
 
   const { loading } = useFetchGeoLocations({
     dataset,
@@ -100,15 +100,15 @@ const Panel: React.FC<{}> = () => {
     extended,
     path: currentField,
   });
-  const sampleLocationMap = useRecoilValue(sampleLocationMapAtom);
+  const sampleLocationMap = useReverbValue(sampleLocationMapAtom);
 
   const settings = usePluginSettings<Required<Settings>>(
     "map",
     defaultSettings,
   );
 
-  const style = useRecoilValue(mapStyle);
-  const [{ selection }, setExtendedSelection] = useRecoilState(
+  const style = useReverbValue(mapStyle);
+  const [{ selection }, setExtendedSelection] = useReverbState(
     fos.extendedSelection,
   );
   const resetExtendedSelection = useResetExtendedSelection();

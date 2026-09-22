@@ -8,7 +8,7 @@ import {
   useState,
   type ComponentRef,
 } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useReverbState, useReverbValue } from "@fiftyone/reverb";
 import * as THREE from "three";
 import { FO_USER_DATA } from "../constants";
 import { useFo3dContext } from "../fo3d/context";
@@ -32,15 +32,15 @@ export const AnnotationPlane = ({
   panelType = "main",
 }: AnnotationPlaneProps) => {
   const [annotationPlane, setAnnotationPlane] =
-    useRecoilState(annotationPlaneAtom);
+    useReverbState(annotationPlaneAtom);
 
-  const isSegmenting = useRecoilValue(isActivelySegmentingSelector);
-  const [transformMode, setTransformMode] = useRecoilState(transformModeAtom);
+  const isSegmenting = useReverbValue(isActivelySegmentingSelector);
+  const [transformMode, setTransformMode] = useReverbState(transformModeAtom);
 
   const [
     currentArchetypeSelectedForTransform,
     setCurrentArchetypeSelectedForTransform,
-  ] = useRecoilState(currentArchetypeSelectedForTransformAtom);
+  ] = useReverbState(currentArchetypeSelectedForTransformAtom);
 
   const isSelected =
     currentArchetypeSelectedForTransform === "annotation-plane";

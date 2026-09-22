@@ -1,4 +1,4 @@
-import { atom } from "recoil";
+import { atom } from "@fiftyone/reverb";
 
 export const pluginsLoaderAtom = atom<"loading" | "error" | "ready">({
   key: "pluginsLoaderAtom",

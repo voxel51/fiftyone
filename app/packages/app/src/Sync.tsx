@@ -26,7 +26,7 @@ import {
 import type { Action } from "history";
 import React, { useRef } from "react";
 import { useRelayEnvironment } from "react-relay";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import {
   type Environment,
   type OperationType,
@@ -55,7 +55,7 @@ const Plugins = ({ children }: { children: React.ReactNode }) => {
 
 const Sync = ({ children }: { children?: React.ReactNode }) => {
   const environment = useRelayEnvironment();
-  const subscription = useRecoilValue(stateSubscription);
+  const subscription = useReverbValue(stateSubscription);
   const router = useRouterContext();
   const sessionRef = useRef<Session>(SESSION_DEFAULT);
   const setters = useSetters(environment, router, sessionRef);

@@ -6,7 +6,11 @@ import { selectedSamples, useBrowserStorage } from "@fiftyone/state";
 import { get } from "lodash";
 import { Resizable } from "re-resizable";
 import React, { useCallback, useLayoutEffect, useRef, useState } from "react";
-import { selector, useRecoilValue, useRecoilValueLoadable } from "recoil";
+import {
+  selector,
+  useReverbValue,
+  useReverbValueLoadable,
+} from "@fiftyone/reverb";
 import { v4 as uuid } from "uuid";
 import useFlashlightPager from "../../../useFlashlightPager";
 import useSetGroupSample from "./useSetGroupSample";
@@ -59,8 +63,8 @@ const Column: React.FC = () => {
   const store = fos.useLookerStore();
   const opts = fos.useLookerOptions(true);
 
-  const groupField = useRecoilValue(fos.groupField);
-  const currentSlice = useRecoilValue(fos.modalGroupSlice);
+  const groupField = useReverbValue(fos.groupField);
+  const currentSlice = useReverbValue(fos.modalGroupSlice);
   const highlight = useCallback(
     (sample) => get(sample, groupField).name === currentSlice,
     [currentSlice, groupField],
@@ -81,7 +85,7 @@ const Column: React.FC = () => {
   selectSample.current = select;
   const setGroupSample = useSetGroupSample(store);
   const { init, deferred } = fos.useDeferrer();
-  const getPageParams = useRecoilValue(pageParams);
+  const getPageParams = useReverbValue(pageParams);
   const { isEmpty, reset, page } = useFlashlightPager(store, getPageParams);
 
   const [flashlight] = useState(() => {
@@ -121,7 +125,7 @@ const Column: React.FC = () => {
     return flashlight;
   });
 
-  const mediaField = useRecoilValue(fos.selectedMediaField(true));
+  const mediaField = useReverbValue(fos.selectedMediaField(true));
   useLayoutEffect(() => {
     deferred(() => {
       if (!flashlight.isAttached()) {
@@ -140,8 +144,8 @@ const Column: React.FC = () => {
     return () => flashlight.detach();
   }, [flashlight, id]);
 
-  const selected = useRecoilValue(selectedSamples);
-  const style = useRecoilValue(fos.sampleSelectionStyle);
+  const selected = useReverbValue(selectedSamples);
+  const style = useReverbValue(fos.sampleSelectionStyle);
 
   const updateItem = useCallback(
     async (id: string) => {
@@ -163,7 +167,7 @@ const Column: React.FC = () => {
     [highlight, opts, selected, store, style],
   );
 
-  const options = useRecoilValueLoadable(
+  const options = useReverbValueLoadable(
     fos.lookerOptions({ modal: true, withFilter: true }),
   );
   useLayoutEffect(() => {

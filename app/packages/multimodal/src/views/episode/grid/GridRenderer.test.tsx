@@ -7,7 +7,8 @@ import {
   waitFor,
 } from "@testing-library/react";
 import type { ReactElement } from "react";
-import { RecoilRoot, useSetRecoilState } from "recoil";
+import { ReverbRoot, useSetReverbState } from "@fiftyone/reverb";
+import { createStore } from "jotai";
 import { multimodalGridFit } from "@fiftyone/state";
 import { publishMcapEmbeddingSelection } from "../../../extensions/timeline";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -43,17 +44,24 @@ import type {
   ResolvedGridPosterProviderDescriptor,
 } from "./use-grid-poster-provider";
 
-// The grid mounts custom renderers under a RecoilBridge, which is what lets
+// The grid mounts custom renderers under a ReverbBridge, which is what lets
 // the tile read the embeddings panel's published match for its episode.
 function render(ui: ReactElement) {
-  return renderBare(ui, { wrapper: RecoilRoot });
+  return renderBare(ui, {
+    wrapper: ({ children }) => (
+      <ReverbRoot store={createStore()}>{children}</ReverbRoot>
+    ),
+  });
 }
 
 function renderWithGridFit(ui: ReactElement, fit: "contain" | "cover") {
   return renderBare(
-    <RecoilRoot initializeState={({ set }) => set(multimodalGridFit, fit)}>
+    <ReverbRoot
+      store={createStore()}
+      initializeState={({ set }) => set(multimodalGridFit, fit)}
+    >
       {ui}
-    </RecoilRoot>,
+    </ReverbRoot>,
   );
 }
 
@@ -61,15 +69,15 @@ let setGridFit: ((fit: "contain" | "cover") => void) | null = null;
 
 function renderWithMutableGridFit(ui: ReactElement) {
   return renderBare(
-    <RecoilRoot>
+    <ReverbRoot store={createStore()}>
       <GridFitController />
       {ui}
-    </RecoilRoot>,
+    </ReverbRoot>,
   );
 }
 
 function GridFitController() {
-  setGridFit = useSetRecoilState(multimodalGridFit);
+  setGridFit = useSetReverbState(multimodalGridFit);
   return null;
 }
 
@@ -80,7 +88,7 @@ type PublishedWindows = Record<
 
 function renderWithMatches(ui: ReactElement, byEpisode: PublishedWindows) {
   // The published selection reaches tiles through the extensions/timeline store
-  // (their own React roots), not through this Recoil tree
+  // (their own React roots), not through this store tree
   publishMcapEmbeddingSelection({ byEpisode });
   return render(ui);
 }

@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-vi.mock("recoil");
-vi.mock("recoil-relay");
+vi.mock("@fiftyone/reverb");
+vi.mock("@fiftyone/relay");
 
-import type { Snapshot } from "recoil";
-import { getValue, setMockAtoms } from "../../../../__mocks__/recoil";
-import type { State } from "../recoil";
+import type { Snapshot } from "@fiftyone/reverb";
+import { getValue, setMockAtoms } from "../../../../__mocks__/@fiftyone/reverb";
+import type { State } from "../atoms";
 import resolveActiveGroupSliceForView from "./resolveActiveGroupSliceForView";
 
 const SELECT_GROUP_SLICES = "fiftyone.core.stages.SelectGroupSlices";

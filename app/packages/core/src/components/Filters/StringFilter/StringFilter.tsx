@@ -2,8 +2,7 @@ import { Selector, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { COLOR_BY } from "@fiftyone/utilities";
 import React from "react";
-import type { RecoilState } from "recoil";
-import { useRecoilValue } from "recoil";
+import { type ReverbState, useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 import { isInKeypointsField } from "../state";
@@ -41,13 +40,13 @@ const NamedStringFilterHeader = styled.div`
 
 interface Props {
   color: string;
-  excludeAtom: RecoilState<boolean>; // toggles select or exclude
-  isMatchingAtom: RecoilState<boolean>; // toggles match or filter
+  excludeAtom: ReverbState<boolean>; // toggles select or exclude
+  isMatchingAtom: ReverbState<boolean>; // toggles match or filter
   modal: boolean;
   path: string;
   named?: boolean;
   resultsAtom: ResultsAtom;
-  selectedAtom: RecoilState<(string | null)[]>;
+  selectedAtom: ReverbState<(string | null)[]>;
   /**
    * Overrides the per-value color of the checkbox dot for fields whose values
    * are colored by something other than the color scheme's rules for `path`
@@ -84,14 +83,14 @@ const StringFilter = ({
 }: Props) => {
   const name = useName(path);
   const schemeColor = fos.useValueColor(path);
-  const coloringBy = useRecoilValue(fos.colorScheme).colorBy;
+  const coloringBy = useReverbValue(fos.colorScheme).colorBy;
   // Coloring by field leaves the dot on the color the entry passed down: an
   // entry colors every row under it the same, and a nested path can resolve to
   // a different field color than its own entry does.
   const valueColor =
     resultColor ?? (coloringBy === COLOR_BY.VALUE ? schemeColor : undefined);
-  const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
-  const field = useRecoilValue(fos.field(path));
+  const isFilterMode = useReverbValue(fos.isSidebarFilterMode);
+  const field = useReverbValue(fos.field(path));
   const { results, showSearch, useSearch } = useSelected(
     modal,
     path,
@@ -99,13 +98,13 @@ const StringFilter = ({
   );
   const onSelect = useOnSelect(modal, path, selectedAtom);
   const skeleton =
-    useRecoilValue(isInKeypointsField(path)) && name === "points";
+    useReverbValue(isInKeypointsField(path)) && name === "points";
   const theme = useTheme();
 
   const footer = useIncompleteResults(path);
   const icon = useQueryPerformanceIcon(modal, named, path, color);
   const attributeIcon = useLabelAttributeIcon(modal, named, path, color);
-  const queryPerformance = useRecoilValue(fos.queryPerformance);
+  const queryPerformance = useReverbValue(fos.queryPerformance);
   if (named && (!queryPerformance || modal) && !results?.count) {
     return null;
   }

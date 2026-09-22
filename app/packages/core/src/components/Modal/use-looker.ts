@@ -8,7 +8,7 @@ import React, {
   type RefObject,
 } from "react";
 import { useErrorHandler } from "react-error-boundary";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useReverbValue, useSetReverbState } from "@fiftyone/reverb";
 import { v4 as uuid } from "uuid";
 import { useClearSelectedLabels, useShowOverlays } from "./ModalLooker";
 import { useLookerOptionsUpdate, useModalContext } from "./hooks";
@@ -40,8 +40,8 @@ function useLooker<L extends fos.Lookers>({
     undefined,
     true,
   );
-  const selectedMediaField = useRecoilValue(fos.selectedMediaField(true));
-  const colorScheme = useRecoilValue(fos.colorScheme);
+  const selectedMediaField = useReverbValue(fos.selectedMediaField(true));
+  const colorScheme = useReverbValue(fos.colorScheme);
 
   // use a ref for sample data to prevent instance recreation
   //
@@ -125,7 +125,7 @@ function useLooker<L extends fos.Lookers>({
 
   useKeyEvents(initialRef, sample.sample._id, looker);
 
-  const setModalLooker = useSetRecoilState(fos.modalLooker);
+  const setModalLooker = useSetReverbState(fos.modalLooker);
 
   const { setActiveLookerRef } = useModalContext();
 

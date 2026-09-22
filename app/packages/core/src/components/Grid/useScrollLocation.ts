@@ -1,7 +1,7 @@
 import type { ID } from "@fiftyone/spotlight";
 import { useMemo } from "react";
-import { useRecoilCallback, useRecoilTransaction_UNSTABLE } from "recoil";
-import { gridAt, gridOffset, gridPage } from "./recoil";
+import { useReverbCallback, useReverbTransaction } from "@fiftyone/reverb";
+import { gridAt, gridOffset, gridPage } from "./atoms";
 
 export interface ScrollLocation {
   at: ID;
@@ -10,7 +10,7 @@ export interface ScrollLocation {
 }
 
 export default function useScrollLocation(pageReset: string) {
-  const getPage = useRecoilTransaction_UNSTABLE(
+  const getPage = useReverbTransaction(
     ({ get }) =>
       (ref: { current: number | null }) => {
         ref.current = get(gridPage);
@@ -34,7 +34,7 @@ export default function useScrollLocation(pageReset: string) {
     };
   }, [getPage, pageReset]);
 
-  const get = useRecoilCallback(
+  const get = useReverbCallback(
     ({ snapshot }) =>
       () => {
         const key = getKey();
@@ -55,8 +55,8 @@ export default function useScrollLocation(pageReset: string) {
     [getKey],
   );
 
-  // when scrolling ends, use set to save the grid location to recoil
-  const set = useRecoilTransaction_UNSTABLE(
+  // when scrolling ends, use set to save the grid location to the store
+  const set = useReverbTransaction(
     ({ set }) =>
       (location: ScrollLocation) => {
         set(gridPage, location.page);

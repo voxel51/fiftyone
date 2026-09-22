@@ -3,27 +3,31 @@ import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import React, { useEffect } from "react";
 import { useMutation } from "react-relay";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import {
+  useAssertedReverbValue,
+  useReverbValue,
+  useSetReverbState,
+} from "@fiftyone/reverb";
 import { ButtonGroup, ModalActionButtonContainer } from "./ShareStyledDiv";
 import { activeColorEntry } from "./state";
 
 const ColorFooter: React.FC = () => {
-  const canEditCustomColors = useRecoilValue(fos.canEditCustomColors);
+  const canEditCustomColors = useReverbValue(fos.canEditCustomColors);
   const disabled = !canEditCustomColors.enabled;
   const title = disabled
     ? canEditCustomColors.message
     : "Save to dataset app config";
   const setColorScheme = fos.useSetSessionColorScheme();
-  const activeColorModalField = useRecoilValue(activeColorEntry);
-  const setActiveColorModalField = useSetRecoilState(activeColorEntry);
+  const activeColorModalField = useReverbValue(activeColorEntry);
+  const setActiveColorModalField = useSetReverbState(activeColorEntry);
   const [setDatasetColorScheme] =
     useMutation<foq.setDatasetColorSchemeMutation>(foq.setDatasetColorScheme);
-  const colorScheme = useRecoilValue(fos.colorScheme);
-  const datasetName = useRecoilValue(fos.datasetName);
-  const configDefault = useRecoilValue(fos.config);
-  const id = fos.useAssertedRecoilValue(fos.dataset).id;
-  const datasetDefault = useRecoilValue(fos.datasetColorScheme);
-  const subscription = useRecoilValue(fos.stateSubscription);
+  const colorScheme = useReverbValue(fos.colorScheme);
+  const datasetName = useReverbValue(fos.datasetName);
+  const configDefault = useReverbValue(fos.config);
+  const id = useAssertedReverbValue(fos.dataset).id;
+  const datasetDefault = useReverbValue(fos.datasetColorScheme);
+  const subscription = useReverbValue(fos.stateSubscription);
 
   useEffect(
     () => foq.subscribe((_, { set }) => set(activeColorEntry, null)),

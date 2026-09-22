@@ -3,7 +3,7 @@ import { OperatorPlacements, types } from "@fiftyone/operators";
 import { usePanelStatePartial, usePanelTitle } from "@fiftyone/spaces";
 import { distributionPaths } from "@fiftyone/state";
 import { useEffect } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
 import Histogram from "../components/Histogram";
 
@@ -25,7 +25,7 @@ const ControlsContainer = styled.div`
 `;
 
 function usePlotPath() {
-  const paths = useRecoilValue(distributionPaths);
+  const paths = useReverbValue(distributionPaths);
   const [path, setPath] = usePanelStatePartial("path", paths[0]);
 
   useEffect(() => {

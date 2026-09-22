@@ -35,6 +35,7 @@
         "script": "dist/index.umd.js"
     },
     "dependencies": {
+        "@fiftyone/reverb": "workspace:*",
         "lodash": "catalog:",
         "onnxruntime-web": "catalog:"
     },

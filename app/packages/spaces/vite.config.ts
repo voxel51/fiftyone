@@ -15,7 +15,7 @@ export default defineConfig(({ mode }) => {
       viteExternalsPlugin({
         react: "React",
         "react-dom": "ReactDOM",
-        recoil: "recoil",
+        "@fiftyone/reverb": "reverb",
         "@fiftyone/state": "__fos__",
         "@fiftyone/components": "__foc__",
         "@fiftyone/plugins": "__fop__",

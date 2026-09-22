@@ -1,6 +1,6 @@
 import { Box, Snackbar, SnackbarContent } from "@mui/material";
 import React from "react";
-import { atom, useRecoilState } from "recoil";
+import { atom, useReverbState } from "@fiftyone/reverb";
 
 interface ToastProps {
   message: React.ReactNode;
@@ -56,7 +56,7 @@ const Toast: React.FC<ToastProps> = ({
     }),
   };
 
-  const [open, setOpen] = useRecoilState(toastStateAtom); // State management for toast visibility
+  const [open, setOpen] = useReverbState(toastStateAtom); // State management for toast visibility
 
   const handleClose =
     onHandleClose ??
