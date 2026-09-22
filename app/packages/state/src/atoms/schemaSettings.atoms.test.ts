@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { snapshot_UNSTABLE } from "../../../../__mocks__/@fiftyone/reverb";
+import { createStore } from "jotai";
 import * as ss from "./schemaSettings.atoms";
 import { FIELDS } from "../hooks/useSchemaSettings.utils.test";
 
@@ -16,15 +16,12 @@ describe("schema search", () => {
       [FIELDS.FILEPATH_FIELD.path]: FIELDS.FILEPATH_FIELD,
     };
 
-    const testSnapshot = snapshot_UNSTABLE(({ set }) => {
-      set(ss.viewSchemaState, {});
-      set(ss.fieldSchemaState, schemaFields);
-      set(ss.schemaSearchResultList, [FIELDS.ID_FIELD.path]);
-    });
+    const store = createStore();
+    store.set(ss.viewSchemaState, {});
+    store.set(ss.fieldSchemaState, schemaFields);
+    store.set(ss.schemaSearchResultList, [FIELDS.ID_FIELD.path]);
 
-    const contents = testSnapshot.getLoadable(
-      ss.schemaSearchResultList,
-    ).contents;
+    const contents = store.get(ss.schemaSearchResultList);
 
     expect(contents).toEqual([FIELDS.ID_FIELD.path]);
   });
@@ -35,15 +32,12 @@ describe("schema search", () => {
       [FIELDS.FILEPATH_FIELD.path]: FIELDS.FILEPATH_FIELD,
     };
 
-    const testSnapshot = snapshot_UNSTABLE(({ set }) => {
-      set(ss.viewSchemaState, {});
-      set(ss.fieldSchemaState, schemaFields);
-      set(ss.schemaSearchResultList, [NON_EXISTENT_PATH]);
-    });
+    const store = createStore();
+    store.set(ss.viewSchemaState, {});
+    store.set(ss.fieldSchemaState, schemaFields);
+    store.set(ss.schemaSearchResultList, [NON_EXISTENT_PATH]);
 
-    const contents = testSnapshot.getLoadable(
-      ss.schemaSearchResultList,
-    ).contents;
+    const contents = store.get(ss.schemaSearchResultList);
 
     expect(contents).toEqual([]);
   });

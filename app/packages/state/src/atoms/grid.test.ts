@@ -3,8 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@fiftyone/reverb");
 vi.mock("@fiftyone/relay");
 
-import type { TestSelector } from "../../../../__mocks__/@fiftyone/reverb";
-import { setMockAtoms } from "../../../../__mocks__/@fiftyone/reverb";
+import type { TestSelector } from "../../../reverb/src/__mocks__/index";
+import { setMockAtoms } from "../../../reverb/src/__mocks__/index";
 import { multimodalGridFit, type MultimodalGridFit } from "./grid";
 
 type WritableFitSelector = TestSelector<typeof multimodalGridFit> & {

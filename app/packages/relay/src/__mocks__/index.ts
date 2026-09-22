@@ -5,9 +5,9 @@
 import type { SerializableParam } from "@fiftyone/reverb";
 import type { Variables } from "relay-runtime";
 
-export * from "@fiftyone/relay";
+export * from "../index";
 
-import { mockValues } from "./reverb";
+import { mockValues } from "../../../reverb/src/__mocks__/index";
 
 type Resolved<T, TVariables> = {
   (): T;

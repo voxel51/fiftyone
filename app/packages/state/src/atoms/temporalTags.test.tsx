@@ -7,6 +7,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import React from "react";
+import { createStore } from "jotai";
 import {
   ReverbRoot,
   useReverbValue,
@@ -129,7 +130,10 @@ describe("fetchTemporalTagResults", () => {
 describe("useActiveTemporalTagFilterValues", () => {
   const read = (initial: Record<string, unknown>) => {
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <ReverbRoot initializeState={({ set }) => set(filtersAtom, initial)}>
+      <ReverbRoot
+        store={createStore()}
+        initializeState={({ set }) => set(filtersAtom, initial)}
+      >
         {children}
       </ReverbRoot>
     );
@@ -174,7 +178,7 @@ describe("useSyncTemporalTagResults", () => {
 
   const renderSync = () =>
     render(
-      <ReverbRoot>
+      <ReverbRoot store={createStore()}>
         <Harness />
       </ReverbRoot>,
     );
@@ -209,7 +213,7 @@ describe("useSyncTemporalTagResults", () => {
     }
 
     render(
-      <ReverbRoot>
+      <ReverbRoot store={createStore()}>
         <Harness />
         <DatasetControl />
       </ReverbRoot>,
@@ -249,7 +253,7 @@ describe("useSyncTemporalTagResults", () => {
     }
 
     render(
-      <ReverbRoot>
+      <ReverbRoot store={createStore()}>
         <Harness />
         <ModalControl />
       </ReverbRoot>,

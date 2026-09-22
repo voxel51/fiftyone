@@ -5,7 +5,7 @@ vi.mock("@fiftyone/relay");
 import {
   TestSelectorFamily,
   setMockAtoms,
-} from "../../../../__mocks__/@fiftyone/reverb";
+} from "../../../reverb/src/__mocks__/index";
 import { activeFilterValues } from "./activeFilterValues";
 import * as filters from "./filters";
 

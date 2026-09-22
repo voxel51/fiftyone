@@ -6,7 +6,7 @@ import { DICT_FIELD, Field, STRING_FIELD } from "@fiftyone/utilities";
 import {
   TestSelector,
   setMockAtoms,
-} from "../../../../__mocks__/@fiftyone/reverb";
+} from "../../../reverb/src/__mocks__/index";
 import * as sidebar from "./sidebar";
 
 const mockFields = {

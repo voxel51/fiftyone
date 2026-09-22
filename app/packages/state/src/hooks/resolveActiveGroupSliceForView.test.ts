@@ -3,7 +3,7 @@ vi.mock("@fiftyone/reverb");
 vi.mock("@fiftyone/relay");
 
 import type { Snapshot } from "@fiftyone/reverb";
-import { getValue, setMockAtoms } from "../../../../__mocks__/@fiftyone/reverb";
+import { getValue, setMockAtoms } from "../../../reverb/src/__mocks__/index";
 import type { State } from "../atoms";
 import resolveActiveGroupSliceForView from "./resolveActiveGroupSliceForView";
 

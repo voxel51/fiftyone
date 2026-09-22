@@ -9,9 +9,9 @@ import type {
   ReadWriteSelectorOptions,
   ReverbValue,
   SerializableParam,
-} from "@fiftyone/reverb";
+} from "../index";
 
-export * from "@fiftyone/reverb";
+export * from "../index";
 
 /** State stands in as its key alone, so a test addresses it without a store. */
 type Stub = { key: string; params?: unknown };

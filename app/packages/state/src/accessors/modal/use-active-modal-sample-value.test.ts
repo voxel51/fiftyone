@@ -54,18 +54,6 @@ vi.mock("../../atoms/schema", () => mockSchema);
 vi.mock("../../atoms/sidebar", () => mockSidebar);
 vi.mock("../../atoms/modal", () => mockErrors);
 
-vi.mock("../../atoms/utils", async () => {
-  const actual =
-    await vi.importActual<typeof import("../../atoms/utils")>(
-      "../../atoms/utils",
-    );
-  return {
-    ...actual,
-    useAssertedReverbValue: (node: { key: string }) =>
-      stateStore.values[node.key] ?? { __asserted: node.key },
-  };
-});
-
 vi.mock("@fiftyone/reverb", async () => {
   const actual =
     await vi.importActual<typeof import("@fiftyone/reverb")>(
@@ -76,6 +64,8 @@ vi.mock("@fiftyone/reverb", async () => {
     useReverbValueLoadable: (node: { key: string }) =>
       stateStore.loadables[node.key] ?? { state: "loading" },
     useReverbValue: (node: { key: string }) => stateStore.values[node.key],
+    useAssertedReverbValue: (node: { key: string }) =>
+      stateStore.values[node.key] ?? { __asserted: node.key },
   };
 });
 

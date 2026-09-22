@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import type { TestSelectorFamily } from "../../../../../../__mocks__/@fiftyone/reverb";
-import { setMockAtoms } from "../../../../../../__mocks__/@fiftyone/reverb";
+import type { TestSelectorFamily } from "../../../../../reverb/src/__mocks__/index";
+import { setMockAtoms } from "../../../../../reverb/src/__mocks__/index";
 import * as state from "./state";
 
 vi.mock("@fiftyone/reverb");
