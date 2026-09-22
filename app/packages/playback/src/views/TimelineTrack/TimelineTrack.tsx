@@ -786,6 +786,9 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                     key={originalIndex}
                     className={styles.intervalBar}
                     data-event-index={originalIndex}
+                    data-event-kind="interval"
+                    data-event-start={displayStart}
+                    data-event-end={displayEnd}
                     style={{
                       left,
                       width,
@@ -878,6 +881,8 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                   key={originalIndex}
                   className={styles.event}
                   data-event-index={originalIndex}
+                  data-event-kind="point"
+                  data-event-start={pointSec}
                   style={{ left: pct(pointSec), background: eventColor }}
                   title={
                     event.label

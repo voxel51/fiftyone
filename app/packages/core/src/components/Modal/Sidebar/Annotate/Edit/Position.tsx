@@ -10,8 +10,9 @@ import {
 } from "@fiftyone/annotation";
 import { useCurrentDatasetId } from "@fiftyone/state";
 import type { LabelData } from "@fiftyone/utilities";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
+import { setPathUserUnchanged } from "../../../../../plugins/SchemaIO/hooks";
 import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
 import { useAnnotationContext } from "./useAnnotationContext";
 
@@ -49,6 +50,19 @@ interface Coordinates {
   rotation: { rotation?: number };
 }
 
+/** Whether the inputs already show this geometry. */
+const sameGeometry = (shown: number[] | null, committed: number[]) =>
+  shown !== null && committed.every((value, i) => value === shown[i]);
+
+/** The input paths this form owns, released when the engine commits elsewhere. */
+const EDITED_PATHS = [
+  "position.x",
+  "position.y",
+  "dimensions.width",
+  "dimensions.height",
+  "rotation.rotation",
+];
+
 export interface PositionProps {
   readOnly?: boolean;
 }
@@ -59,6 +73,10 @@ export default function Position({ readOnly = false }: PositionProps) {
     dimensions: {},
     rotation: {},
   });
+
+  // The geometry the inputs are currently displaying, as
+  // [x, y, width, height, rotation].
+  const shown = useRef<number[] | null>(null);
 
   const { selected } = useAnnotationContext();
   const overlay = selected?.overlay;
@@ -100,10 +118,24 @@ export default function Position({ readOnly = false }: PositionProps) {
     }
 
     const [x, y, width, height] = committedBounds;
+    const rotation = committedRotation ?? 0;
+    const committed = [x, y, width, height, rotation];
+
+    // The inputs are uncontrolled: `useKey` stops remounting a path once the
+    // user has typed in it, so a drag, an undo or a playhead move would leave
+    // the typed number on screen. Release those paths whenever the engine
+    // holds geometry the inputs are not already showing.
+    if (!sameGeometry(shown.current, committed)) {
+      for (const path of EDITED_PATHS) {
+        setPathUserUnchanged(path);
+      }
+    }
+
+    shown.current = committed;
     setState({
       position: { x, y },
       dimensions: { width, height },
-      rotation: { rotation: committedRotation ?? 0 },
+      rotation: { rotation },
     });
   }, [committedBounds, committedRotation]);
 
@@ -246,6 +278,8 @@ export default function Position({ readOnly = false }: PositionProps) {
             (rotation !== 0 || typeof storedRotation === "number")
               ? { rotation }
               : {};
+
+          shown.current = [...next, rotation ?? state.rotation.rotation ?? 0];
 
           engine.updateLabel(ref, {
             bounding_box: next,
