@@ -1,32 +1,21 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Editing an existing per-frame detection track on the video-annotation surface,
- * all through the annotation engine:
- *
- *  - track-wide fan-out (guards `trackFanOut` / 26cdd69308): a class edit on one
- *    frame fans across every frame of the instance, while geometry
- *    (`bounding_box`) stays per-frame.
- *  - anchor-follows-playhead (guards `d50221164d`): with a track selected, the
- *    edit form re-reads that track's data at each new frame as the playhead
- *    moves — it does NOT freeze on the selection frame's values or deselect.
- *  - selection sync: the canvas, the timeline row, and the sidebar row all drive
- *    the one shared engine selection, so selecting on any surface opens the
- *    editor on the same track.
- *
- * The dataset is re-seeded per test (one tracked instance, class `vehicle`,
- * `bounding_box=[0.3,0.3,0.2,0.2]` on every frame) so a persisting edit in one
- * test can't leak into the next.
+ * Editing an existing per-frame track on the video surface: a class edit fans
+ * across every frame while geometry stays per-frame, the edit form follows the
+ * playhead for the selected track, and canvas, timeline and sidebar drive one
+ * shared selection. Re-seeded per test with one tracked `vehicle` at
+ * `bounding_box=[0.3,0.3,0.2,0.2]` on every frame.
  */
-import { expect, test as base } from "src/oss/fixtures";
+import { Browser, expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import { EventUtils } from "src/shared/event-utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
 import type { Page } from "src/oss/fixtures";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-video-track-edit");
 const id = "000000000000000000000000";
-const clip = `/tmp/${datasetName}.webm`;
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -34,17 +23,8 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
-  // 20 frames @ 10fps — long enough to step several frames off the start.
-  await mediaFactory.createVideo({
-    outputPath: clip,
-    duration: 2,
-    width: 64,
-    height: 64,
-    frameRate: 10,
-    color: "#3050a0",
-  });
 });
 
 test.afterAll(async ({ foWebServer }) => {
@@ -64,6 +44,23 @@ const openAnnotate = async (
   await modal.videoAnnotate.waitForSurface();
 };
 
+/** Verify persisted state from a brand-new browser context (true round-trip). */
+const inFreshContext = async (
+  browser: Browser,
+  fiftyoneLoader: AbstractFiftyoneLoader,
+  verify: (modal: ModalPom) => Promise<void>,
+) => {
+  const context = await browser.newContext();
+  const freshPage = await context.newPage();
+  try {
+    const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+    await openAnnotate(fiftyoneLoader, freshModal, freshPage);
+    await verify(freshModal);
+  } finally {
+    await context.close();
+  }
+};
+
 /** Read a numeric edit-form field value (the sidebar shows relative [0,1]). */
 const fieldNum = async (modal: ModalPom, path: string) =>
   Number(await modal.sidebar.edit.getFieldValue(path));
@@ -81,12 +78,42 @@ const savedResponse = (page: Page) =>
   );
 
 // re-seed per test: one tracked instance (vehicle, index=1) on every frame.
-test.beforeEach(async ({ videoAnnotateSDK }) => {
-  await videoAnnotateSDK.seed({
+// 20 frames @ 10fps — long enough to step several frames off the start.
+test.beforeEach(async ({ datasetFactory }) => {
+  await datasetFactory.createDataset({
+    mediaType: "video",
     datasetName,
-    videoPaths: [clip],
-    withEvents: false,
-    trackedSampleIndices: [0],
+    sampleFrames: true,
+    schema: {
+      "frames.detections": "Detections",
+      "frames.detections.detections.instance": "Instance",
+      "frames.detections.detections.keyframe": "BooleanField",
+      "frames.detections.detections.propagation": "DictField",
+    },
+    labelSchemas: {
+      "frames.detections": {
+        type: "detections",
+        component: "dropdown",
+        classes: ["vehicle", "person", "road sign"],
+        attributes: [
+          { name: "id", type: "id", component: "text", read_only: true },
+          { name: "tags", type: "list<str>", component: "text" },
+          { name: "confidence", type: "float", component: "text" },
+          { name: "index", type: "int", component: "text" },
+          { name: "mask_path", type: "str", component: "text" },
+        ],
+      },
+    },
+    withFrameData: (_, { label }) => ({
+      detections: label.detections([
+        label.detection({
+          label: "vehicle",
+          bounding_box: [0.3, 0.3, 0.2, 0.2],
+          index: 1,
+          instance: label.instance("vehicle-1"),
+        }),
+      ]),
+    }),
   });
 });
 
@@ -192,6 +219,7 @@ test.describe.serial("video annotation track editing", () => {
   });
 
   test("selecting a track on the canvas neither persists nor promotes a keyframe", async ({
+    browser,
     fiftyoneLoader,
     modal,
     page,
@@ -224,22 +252,26 @@ test.describe.serial("video annotation track editing", () => {
     await modal.sampleCanvas.move(0.4, 0.4, "pointer");
     await modal.sampleCanvas.click(0.4, 0.4);
 
-    // the editor opened — selection worked — but more than one autosave cycle
-    // (3s) elapses with zero round-trips: a select is not an edit
+    // the editor opened — selection worked
     await expect(modal.sidebar.edit.backButton).toBeVisible();
-    // proving a negative requires outwaiting the autosave cycle
-    // eslint-disable-next-line playwright/no-wait-for-timeout
-    await page.waitForTimeout(4000);
-    expect(persists).toBe(0);
 
-    // prove the autosave loop is alive (the 0 above wasn't a dead-loop false
-    // negative): a real field edit DOES round-trip
+    // a select is not an edit: the next autosave carries only a real edit. A
+    // class change fans across the track without touching geometry, so a no-op
+    // resize committed by the select would ride the same patch and promote the
+    // frame to a keyframe — which the fresh load below would show
     const saved = savedResponse(page);
-    await modal.sidebar.edit.setFieldValue("position.x", "0.42");
+    await modal.sidebar.edit.selectFieldChoice("label", "person");
     await saved;
-    expect(persists).toBeGreaterThan(0);
-
+    expect(persists).toBe(1);
     page.off("response", countPersist);
+
+    await inFreshContext(browser, fiftyoneLoader, async (fresh) => {
+      const va = fresh.videoAnnotate;
+      await va.assert.labelListed("person");
+      const [trackId] = await va.objectTrackIds();
+      await va.openTracksDrawer();
+      expect(await va.keyframeTimes(trackId)).toEqual([]);
+    });
   });
 
   test("selecting on the canvas, timeline, and sidebar all open the same editor", async ({

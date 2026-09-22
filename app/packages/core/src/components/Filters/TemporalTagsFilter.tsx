@@ -4,7 +4,6 @@ import {
   stringSelectedValuesAtom,
   temporalTagResults,
   useSyncTemporalTagResults,
-  useTemporalTagColor,
 } from "@fiftyone/state";
 import React from "react";
 import StringFilter from "./StringFilter/StringFilter";
@@ -15,6 +14,10 @@ import StringFilter from "./StringFilter/StringFilter";
  * multimodal tags REST endpoint and fed into the shared string filter. Selecting
  * values writes `{ values, exclude }` under the `_temporal_tags` key of the
  * filters atom, which the server resolves in `get_extended_view`.
+ *
+ * The value dots are left to the shared string filter: temporal tags follow
+ * the app's color-by setting like any other path, so there is nothing
+ * tag-specific left to override.
  */
 const TemporalTagsFilter = ({
   path,
@@ -29,7 +32,6 @@ const TemporalTagsFilter = ({
   title: string;
 }) => {
   useSyncTemporalTagResults();
-  const colorForTag = useTemporalTagColor();
 
   return (
     <StringFilter
@@ -40,7 +42,6 @@ const TemporalTagsFilter = ({
       path={path}
       resultsAtom={temporalTagResults}
       selectedAtom={stringSelectedValuesAtom({ modal, path })}
-      resultColor={(value) => colorForTag(value ?? "")}
       {...rest}
     />
   );

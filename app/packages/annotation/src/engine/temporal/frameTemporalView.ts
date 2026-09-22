@@ -29,6 +29,7 @@ import { linkageKey, refKey } from "../identity/ref";
 import type { ChangeListener } from "../store/types";
 import type {
   Clock,
+  FrameListener,
   PresenceEvent,
   PresenceListener,
   TemporalView,
@@ -82,6 +83,9 @@ export class FrameTemporalView implements TemporalView {
   private frameAtTime: (time: number) => number;
 
   private listeners = new Set<PresenceListener>();
+  private frameListeners = new Set<FrameListener>();
+  /** The frame the last clock tick landed on, so same-frame ticks stay silent. */
+  private lastFrame: number;
 
   /** Present refs at the last-observed frame, keyed by linkage (track) identity. */
   private present: Map<string, LabelRef>;
@@ -97,6 +101,7 @@ export class FrameTemporalView implements TemporalView {
     this.reads = reads;
     this.clock = clock;
     this.frameAtTime = frameAtTime;
+    this.lastFrame = this.currentFrame();
     this.present = this.computePresent();
 
     this.unsubscribers.push(this.clock.subscribe(() => this.onClock()));
@@ -111,10 +116,15 @@ export class FrameTemporalView implements TemporalView {
     this.unsubscribers.forEach((unsubscribe) => unsubscribe());
     this.unsubscribers = [];
     this.listeners.clear();
+    this.frameListeners.clear();
   }
 
   getPresent(): readonly LabelRef[] {
     return [...this.present.values()];
+  }
+
+  frame(): number {
+    return this.currentFrame();
   }
 
   isPresent(ref: LabelRef): boolean {
@@ -130,6 +140,14 @@ export class FrameTemporalView implements TemporalView {
 
     return () => {
       this.listeners.delete(listener);
+    };
+  }
+
+  subscribeFrame(listener: FrameListener): () => void {
+    this.frameListeners.add(listener);
+
+    return () => {
+      this.frameListeners.delete(listener);
     };
   }
 
@@ -182,6 +200,14 @@ export class FrameTemporalView implements TemporalView {
   }
 
   private onClock(): void {
+    const frame = this.currentFrame();
+    if (frame !== this.lastFrame) {
+      this.lastFrame = frame;
+      for (const listener of this.frameListeners) {
+        listener(frame);
+      }
+    }
+
     const next = this.computePresent();
     const events: PresenceEvent[] = [];
 

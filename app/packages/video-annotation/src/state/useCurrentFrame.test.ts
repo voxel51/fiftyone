@@ -10,9 +10,14 @@ const DURATION = TOTAL_FRAMES / FPS;
 
 const { source } = vi.hoisted(() => ({
   source: {
-    playhead: 0,
+    committed: 0,
     frameRate: undefined as number | undefined,
     totalFrameCount: undefined as number | undefined,
+    // an image dataset grouped into a video: no video metadata, the frame
+    // rate is the dataset's target and the frame count is the member count
+    isImageDynamicGroupVideo: false,
+    targetFrameRate: 30,
+    elementCount: null as number | null,
   },
 }));
 
@@ -21,7 +26,7 @@ const { source } = vi.hoisted(() => ({
 // source is stubbed.
 vi.mock("@fiftyone/playback", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@fiftyone/playback")>()),
-  usePlayhead: () => source.playhead,
+  useCurrentTime: () => source.committed,
 }));
 
 vi.mock("@fiftyone/state", () => ({
@@ -29,13 +34,24 @@ vi.mock("@fiftyone/state", () => ({
     frameRate: source.frameRate,
     sample: { metadata: { total_frame_count: source.totalFrameCount } },
   }),
+  useIsImageDynamicGroupVideo: () => source.isImageDynamicGroupVideo,
+}));
+
+// The accessors read the dataset's dynamic-group target frame rate and the
+// group's member count through recoil; stub both sources.
+vi.mock("./accessors", () => ({
+  useModalSampleFrameRate: (sample?: { frameRate?: number }) =>
+    sample?.frameRate ??
+    (source.isImageDynamicGroupVideo ? source.targetFrameRate : undefined),
+  useDynamicGroupElementCount: (enabled: boolean) =>
+    enabled ? source.elementCount : null,
 }));
 
 import { useCurrentFrame } from "./useCurrentFrame";
 
 describe("useCurrentFrame", () => {
   it("converts the playhead to a 1-indexed frame", () => {
-    source.playhead = 0;
+    source.committed = 0;
     source.frameRate = FPS;
     source.totalFrameCount = TOTAL_FRAMES;
 
@@ -44,7 +60,7 @@ describe("useCurrentFrame", () => {
   });
 
   it("clamps a playhead resting at duration to the last real frame", () => {
-    source.playhead = DURATION;
+    source.committed = DURATION;
     source.frameRate = FPS;
     source.totalFrameCount = TOTAL_FRAMES;
 
@@ -53,7 +69,7 @@ describe("useCurrentFrame", () => {
   });
 
   it("stays unclamped when the sample has no frame count", () => {
-    source.playhead = DURATION;
+    source.committed = DURATION;
     source.frameRate = FPS;
     source.totalFrameCount = undefined;
 
@@ -62,11 +78,26 @@ describe("useCurrentFrame", () => {
   });
 
   it("returns -1 without a frame rate", () => {
-    source.playhead = 1;
+    source.committed = 1;
     source.frameRate = undefined;
     source.totalFrameCount = TOTAL_FRAMES;
 
     const { result } = renderHook(() => useCurrentFrame());
     expect(result.current).toBe(-1);
+  });
+  it("clamps an image dynamic group to its member count", () => {
+    // no video metadata on an image sample: the clamp must come from the
+    // group, or End at the clip end stamps a frame with no member behind it
+    source.isImageDynamicGroupVideo = true;
+    source.frameRate = undefined;
+    source.totalFrameCount = undefined;
+    source.elementCount = 40;
+    source.committed = 40 / source.targetFrameRate;
+
+    const { result } = renderHook(() => useCurrentFrame());
+    expect(result.current).toBe(40);
+
+    source.isImageDynamicGroupVideo = false;
+    source.elementCount = null;
   });
 });
