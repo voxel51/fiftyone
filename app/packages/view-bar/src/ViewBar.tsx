@@ -148,12 +148,14 @@ const LANGUAGE_SEARCH_K = 25;
 const SIMILARITY_SEARCH_OPERATOR = "@voxel51/panels/similarity_search";
 
 /**
- * Where a press is still "in the bar": the bar itself (both rows), the stage
- * editor and search settings popovers, and any portaled popout — a list, a
- * select menu, a tooltip — that a control in the bar opened.
+ * Where a press is still "in the bar": the bar itself, the stages row — which
+ * a host may place outside the bar — the stage editor and search settings
+ * popovers, and any portaled popout — a list, a select menu, a tooltip — that
+ * a control in the bar opened.
  */
 const STILL_IN_BAR = [
   "[data-cy='view-bar']",
+  "[data-cy='view-bar-stages-row']",
   "[data-cy='view-stage-editor']",
   "[data-cy='view-bar-search-settings']",
   "[data-headlessui-portal]",
