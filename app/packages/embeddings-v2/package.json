@@ -25,29 +25,23 @@
         "@mui/icons-material": "catalog:",
         "@mui/material": "catalog:",
         "@voxel51/voodo": "catalog:",
+        "recoil": "catalog:",
         "three": "^0.182.0"
     },
     "devDependencies": {
-        "@react-spring/web": "catalog:",
         "@testing-library/dom": "catalog:",
         "@testing-library/react": "catalog:",
         "@types/react": "catalog:",
         "@types/react-dom": "catalog:",
         "@types/three": "^0.182.0",
-        "jotai": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:",
-        "react-error-boundary": "catalog:",
         "react-is": "catalog:",
-        "react-relay": "catalog:",
-        "recoil": "catalog:",
-        "recoil-relay": "catalog:",
-        "relay-runtime": "catalog:",
-        "styled-components": "catalog:",
         "vitest": "catalog:"
     },
     "peerDependencies": {
         "react": "*",
-        "recoil": "*"
+        "react-dom": "*",
+        "react-is": "*"
     }
 }

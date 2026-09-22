@@ -29,8 +29,13 @@
         "vitest": "catalog:"
     },
     "peerDependencies": {
-        "@mui/icons-material": "*",
-        "@mui/material": "*",
-        "react": "*"
+        "react": "*",
+        "react-dom": "*"
+    },
+    "dependencies": {
+        "@mui/icons-material": "catalog:",
+        "@mui/material": "catalog:",
+        "recoil": "catalog:",
+        "styled-components": "catalog:"
     }
 }

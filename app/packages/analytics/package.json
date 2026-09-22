@@ -11,6 +11,13 @@
     "main": "./src/index.ts",
     "private": true,
     "dependencies": {
-        "@segment/analytics-next": "^1.70.0"
+        "@segment/analytics-next": "^1.70.0",
+        "recoil": "catalog:"
+    },
+    "peerDependencies": {
+        "react": "*"
+    },
+    "devDependencies": {
+        "react": "catalog:"
     }
 }

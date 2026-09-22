@@ -22,17 +22,21 @@
         "@types/relay-runtime": "catalog:",
         "prettier": "catalog:",
         "react": "catalog:",
-        "recoil": "catalog:",
         "relay-compiler": "catalog:",
         "relay-compiler-language-typescript": "^15.0.1",
         "relay-config": "^12.0.1",
-        "relay-runtime": "catalog:",
         "typescript": "catalog:",
         "vite": "catalog:"
     },
     "dependencies": {
         "@recoiljs/refine": "^0.1.1",
         "react-relay": "catalog:",
-        "recoil-sync": "^0.2.0"
+        "recoil": "catalog:",
+        "recoil-sync": "^0.2.0",
+        "relay-runtime": "catalog:",
+        "uuid": "catalog:"
+    },
+    "peerDependencies": {
+        "react": "*"
     }
 }

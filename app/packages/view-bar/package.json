@@ -21,12 +21,15 @@
         "react-relay": "catalog:"
     },
     "devDependencies": {
-        "vite": "^7.3.2"
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "react-is": "catalog:",
+        "vite": "catalog:"
     },
     "packageManager": "yarn@4.9.1",
     "peerDependencies": {
         "react": "*",
         "react-dom": "*",
-        "recoil": "*"
+        "react-is": "*"
     }
 }

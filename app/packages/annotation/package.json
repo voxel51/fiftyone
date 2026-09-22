@@ -24,8 +24,8 @@
         "jsdom": "^26.0.0",
         "react": "catalog:",
         "react-dom": "catalog:",
+        "react-is": "catalog:",
         "typescript": "catalog:",
-        "uuid": "catalog:",
         "vite": "catalog:",
         "vite-plugin-externals": "catalog:",
         "vite-plugin-relay": "catalog:",
@@ -35,14 +35,18 @@
         "script": "dist/index.umd.js"
     },
     "dependencies": {
+        "@fiftyone/commands": "workspace:*",
+        "@fiftyone/events": "workspace:*",
+        "@voxel51/voodo": "catalog:",
+        "jotai": "catalog:",
         "lodash": "catalog:",
-        "onnxruntime-web": "catalog:"
+        "onnxruntime-web": "catalog:",
+        "recoil": "catalog:",
+        "uuid": "catalog:"
     },
     "peerDependencies": {
-        "@fiftyone/commands": "*",
-        "@fiftyone/events": "*",
-        "@voxel51/voodo": "*",
-        "jotai": "*",
-        "react": "*"
+        "react": "*",
+        "react-dom": "*",
+        "react-is": "*"
     }
 }
