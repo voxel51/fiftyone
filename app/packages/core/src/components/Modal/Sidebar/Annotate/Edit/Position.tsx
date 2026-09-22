@@ -50,6 +50,10 @@ interface Coordinates {
   rotation: { rotation?: number };
 }
 
+/** Whether the inputs already show this geometry. */
+const sameGeometry = (shown: number[] | null, committed: number[]) =>
+  shown !== null && committed.every((value, i) => value === shown[i]);
+
 /** The input paths this form owns, released when the engine commits elsewhere. */
 const EDITED_PATHS = [
   "position.x",
@@ -70,9 +74,9 @@ export default function Position({ readOnly = false }: PositionProps) {
     rotation: {},
   });
 
-  // What this form last wrote, so a commit echoing our own edit is not mistaken
-  // for an external one.
-  const written = useRef<string | null>(null);
+  // The geometry the inputs are currently displaying, as
+  // [x, y, width, height, rotation].
+  const shown = useRef<number[] | null>(null);
 
   const { selected } = useAnnotationContext();
   const overlay = selected?.overlay;
@@ -114,23 +118,25 @@ export default function Position({ readOnly = false }: PositionProps) {
     }
 
     const [x, y, width, height] = committedBounds;
-    setState({
-      position: { x, y },
-      dimensions: { width, height },
-      rotation: { rotation: committedRotation ?? 0 },
-    });
+    const rotation = committedRotation ?? 0;
+    const committed = [x, y, width, height, rotation];
 
     // The inputs are uncontrolled: `useKey` stops remounting a path once the
     // user has typed in it, so a drag, an undo or a playhead move would leave
-    // the typed number on screen. Release those paths when the commit came
-    // from somewhere other than this form.
-    const signature = JSON.stringify([committedBounds, committedRotation]);
-    if (written.current !== signature) {
+    // the typed number on screen. Release those paths whenever the engine
+    // holds geometry the inputs are not already showing.
+    if (!sameGeometry(shown.current, committed)) {
       for (const path of EDITED_PATHS) {
         setPathUserUnchanged(path);
       }
     }
-    written.current = null;
+
+    shown.current = committed;
+    setState({
+      position: { x, y },
+      dimensions: { width, height },
+      rotation: { rotation },
+    });
   }, [committedBounds, committedRotation]);
 
   // LIVE geometry from the engine — the 2D scene publishes mid-drag relative
@@ -273,10 +279,7 @@ export default function Position({ readOnly = false }: PositionProps) {
               ? { rotation }
               : {};
 
-          written.current = JSON.stringify([
-            next,
-            "rotation" in rotationData ? rotationData.rotation : rotation,
-          ]);
+          shown.current = [...next, rotation ?? state.rotation.rotation ?? 0];
 
           engine.updateLabel(ref, {
             bounding_box: next,

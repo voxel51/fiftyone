@@ -85,11 +85,9 @@ export class Looker3DControlsPom {
     await expect(this.sliceSelectorCheckboxes).toHaveCount(0);
   }
 
-
   getSliceCheckbox(slice: string) {
     return this.sliceSelectorCheckboxes.getByTestId(`checkbox-${slice}`);
   }
-
 }
 
 class Looker3DControlsAsserter {

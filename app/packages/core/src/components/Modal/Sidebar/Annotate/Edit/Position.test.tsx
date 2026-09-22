@@ -15,7 +15,10 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { clearUseKeyStores, useKey } from "../../../../../plugins/SchemaIO/hooks";
+import {
+  clearUseKeyStores,
+  useKey,
+} from "../../../../../plugins/SchemaIO/hooks";
 
 const SAMPLE = "sample-1";
 const PATH = "detections";
@@ -93,7 +96,9 @@ vi.mock("../../../../../plugins/SchemaIO", () => ({
       <Field
         path="position.x"
         value={data.position.x}
-        onCommit={(x) => onChange({ ...data, position: { ...data.position, x } })}
+        onCommit={(x) =>
+          onChange({ ...data, position: { ...data.position, x } })
+        }
       />
       <Field
         path="dimensions.width"

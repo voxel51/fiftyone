@@ -38,8 +38,6 @@ export class ModalAnnotate3dPom {
     }
   }
 
-
-
   /**
    * Enter cuboid annotation mode from the sidebar (the 3D Cuboids action). This
    * arms `current3dAnnotationMode`, which mounts the annotation toolbar and
@@ -96,13 +94,10 @@ export class ModalAnnotate3dPom {
     await this.toolbarButton("create-cuboid").click();
   }
 
-
   /** Delete the currently-selected label via the toolbar Delete button. */
   async deleteSelected() {
     await this.toolbarButton("contextual-delete").click();
   }
-
-
 
   /**
    * A Position3d geometry input in the edit form, by axis: position
@@ -120,7 +115,6 @@ export class ModalAnnotate3dPom {
   async setGeometry(axis: GeometryAxis, value: string) {
     await this.geometryField(axis).fill(value);
   }
-
 
   /** Vertex count of the selected 3D polyline, read off the looker3d container. */
   async selectedVertexCount(): Promise<number> {
