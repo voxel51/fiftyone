@@ -36,7 +36,11 @@ test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await datasetFactory.createDataset({
     datasetName,
     imageOptions: { fillColor: "white", width: 640, height: 480 },
-    schema: { detections: "Detections" },
+    schema: {
+      detections: "Detections",
+      // the seeded box carries it, and raw inserts bypass the ODM
+      "detections.detections.rotation": "FloatField",
+    },
     labelSchemas: {
       detections: {
         type: "detections",
