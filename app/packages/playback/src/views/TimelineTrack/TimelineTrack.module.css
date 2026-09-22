@@ -229,3 +229,20 @@
 .resizeHandleEnd {
   right: calc(-1 * var(--resize-buffer));
 }
+
+/* Unknown span: the source has not inspected this time, so nothing can be
+   said about events here. Hatched, below every marker, never interactive. */
+.unknown {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: repeating-linear-gradient(
+    135deg,
+    transparent 0,
+    transparent 4px,
+    rgba(128, 128, 128, 0.28) 4px,
+    rgba(128, 128, 128, 0.28) 6px
+  );
+}

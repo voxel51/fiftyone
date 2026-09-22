@@ -49,6 +49,41 @@ export type TimelineTrackEvent =
       resizable?: boolean;
     };
 
+/** One span of time whose contents are known (inspected/computed). */
+export interface TimelineCoverageRange {
+  startSec: number;
+  endSec: number;
+}
+
+/**
+ * Visible spans that no coverage range accounts for. Ranges are merged and
+ * clipped to the view, so the result is bounded by `coverage.length + 1`
+ * regardless of how much of the recording is unknown.
+ */
+export function unknownCoverageSpans(
+  coverage: readonly TimelineCoverageRange[],
+  viewStart: number,
+  viewEnd: number,
+): TimelineCoverageRange[] {
+  if (viewEnd <= viewStart) return [];
+  const sorted = [...coverage].sort((a, b) => a.startSec - b.startSec);
+  const gaps: TimelineCoverageRange[] = [];
+  let cursor = viewStart;
+  for (const range of sorted) {
+    if (range.endSec < cursor) continue;
+    if (range.startSec > cursor) {
+      gaps.push({
+        startSec: cursor,
+        endSec: Math.min(range.startSec, viewEnd),
+      });
+    }
+    cursor = Math.max(cursor, range.endSec);
+    if (cursor >= viewEnd) break;
+  }
+  if (cursor < viewEnd) gaps.push({ startSec: cursor, endSec: viewEnd });
+  return gaps.filter((gap) => gap.endSec > gap.startSec);
+}
+
 export interface NormalizedEvent {
   startSec: number;
   endSec?: number;
@@ -118,6 +153,15 @@ export interface TimelineTrackProps {
    * is set) or a point.
    */
   events?: TimelineTrackEvent[];
+  /**
+   * Spans whose events are known. When set, every visible span outside them
+   * is hatched as "unknown", so an empty stretch of lane never reads as "no
+   * events" when the source simply has not looked there yet. Omit for tracks
+   * whose events are complete.
+   */
+  coverageRanges?: readonly TimelineCoverageRange[];
+  /** Explain uncovered time when coverage is limited by rendering as well as computation. */
+  coverageGapLabel?: string;
   /** Fired when an event marker / bar is clicked. Typically seeks. */
   onEventClick?: (event: NormalizedEvent) => void;
   /**
@@ -277,6 +321,8 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
   start,
   end,
   events = [],
+  coverageRanges,
+  coverageGapLabel = "Not computed yet",
   onEventClick,
   eventMenuItems,
   label,
@@ -681,6 +727,23 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
           );
         }}
       >
+        {coverageRanges
+          ? unknownCoverageSpans(coverageRanges, viewStart, viewEnd).map(
+              (gap) => (
+                <div
+                  key={`${gap.startSec}:${gap.endSec}`}
+                  aria-hidden="true"
+                  className={styles.unknown}
+                  data-track-unknown
+                  style={{
+                    left: pct(gap.startSec),
+                    width: `${((gap.endSec - gap.startSec) / viewDuration) * 100}%`,
+                  }}
+                  title={coverageGapLabel}
+                />
+              ),
+            )
+          : null}
         {barVisible && (
           <div
             className={styles.bar}

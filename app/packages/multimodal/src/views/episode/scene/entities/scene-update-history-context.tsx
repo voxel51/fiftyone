@@ -96,7 +96,20 @@ export function SceneUpdateHistoryBridge({
 }) {
   const { history: publishedHistory, setHistory } = useContextValue();
   const playbackStore = useContext(PlaybackStoreContext);
-  const streamsKey = [...new Set(sceneAnnotationStreams)].sort().join("\0");
+  // Complete snapshots reconstruct directly from their latest frame. Scanning
+  // history would waste source budget and treat virtual IDs as physical topics.
+  const streamsKey = useMemo(() => {
+    const snapshots = new Set(
+      session?.manifest.streams
+        .filter((stream) => stream.sceneUpdates === "snapshot")
+        .map((stream) => stream.id),
+    );
+    return [
+      ...new Set(sceneAnnotationStreams.filter((id) => !snapshots.has(id))),
+    ]
+      .sort()
+      .join("\0");
+  }, [session?.manifest.streams, sceneAnnotationStreams]);
   const normalizedStreams = useMemo(
     () => (streamsKey ? streamsKey.split("\0") : []),
     [streamsKey],

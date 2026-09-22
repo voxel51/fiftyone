@@ -40,8 +40,13 @@ export type {
 } from "./src/views/TimelineWithTracks/TimelineWithTracks";
 export type {
   NormalizedEvent,
+  TimelineCoverageRange,
   TimelineTrackProps,
   TrackEventMenuItem,
+} from "./src/views/TimelineTrack/TimelineTrack";
+export {
+  default as TimelineTrack,
+  unknownCoverageSpans,
 } from "./src/views/TimelineTrack/TimelineTrack";
 export type {
   TemporalTagCreatePayload,

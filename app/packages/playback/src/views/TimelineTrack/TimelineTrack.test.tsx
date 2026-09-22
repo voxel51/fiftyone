@@ -8,7 +8,10 @@ import {
   usePlaybackStore,
 } from "../../lib/playback/PlaybackProvider";
 import { playheadAtom } from "../../lib/playback/atoms";
-import TimelineTrack, { TimelineTrackProps } from "./TimelineTrack";
+import TimelineTrack, {
+  TimelineTrackProps,
+  unknownCoverageSpans,
+} from "./TimelineTrack";
 import styles from "./TimelineTrack.module.css";
 
 /**
@@ -935,5 +938,62 @@ describe("TimelineTrack", () => {
       expect(onEventEdit).toHaveBeenCalledTimes(1);
       expect(screen.getByTestId("playhead").textContent).toBe("0.000");
     });
+  });
+});
+
+describe("coverage hatching", () => {
+  it("hatches only the visible spans no coverage range accounts for", () => {
+    const { container } = renderTrack({
+      track: {
+        start: undefined,
+        end: undefined,
+        events: [3],
+        coverageRanges: [{ startSec: 2, endSec: 4 }],
+      },
+      duration: 10,
+    });
+    const unknown = container.querySelectorAll("[data-track-unknown]");
+    expect(unknown.length).toBe(2);
+    expect(inlineStyle(unknown[0])).toContain("left: 0%");
+    expect(inlineStyle(unknown[0])).toContain("width: 20%");
+    expect(inlineStyle(unknown[1])).toContain("left: 40%");
+    expect(inlineStyle(unknown[1])).toContain("width: 60%");
+    // Events inside the known span still render on top of the hatching.
+    expect(container.querySelectorAll(`.${styles.event}`).length).toBe(1);
+  });
+
+  it("renders nothing extra when coverage is complete or omitted", () => {
+    const covered = renderTrack({
+      track: { coverageRanges: [{ startSec: 0, endSec: 10 }] },
+      duration: 10,
+    });
+    expect(
+      covered.container.querySelectorAll("[data-track-unknown]").length,
+    ).toBe(0);
+    const plain = renderTrack({ duration: 10 });
+    expect(
+      plain.container.querySelectorAll("[data-track-unknown]").length,
+    ).toBe(0);
+  });
+
+  it("clips and merges coverage so the span count stays bounded", () => {
+    expect(
+      unknownCoverageSpans(
+        [
+          { startSec: 6, endSec: 7 },
+          { startSec: -5, endSec: 1 },
+          { startSec: 0.5, endSec: 2 },
+        ],
+        0,
+        10,
+      ),
+    ).toEqual([
+      { startSec: 2, endSec: 6 },
+      { startSec: 7, endSec: 10 },
+    ]);
+    expect(unknownCoverageSpans([], 3, 3)).toEqual([]);
+    expect(unknownCoverageSpans([], 0, 4)).toEqual([
+      { startSec: 0, endSec: 4 },
+    ]);
   });
 });
