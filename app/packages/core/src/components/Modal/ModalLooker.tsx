@@ -98,6 +98,12 @@ const ModalLookerContent = React.memo(
     });
     const isNative = selectedMedia.nativeLookerType !== null;
     const isVideo = selectedMedia.nativeLookerType === "video";
+    // the branch below that mounts the Lighter renderer is the image surface
+    fos.useReportAnnotationSurface(
+      isAnnotate && isNative && !isVideo && !shouldRenderImavid
+        ? "image"
+        : null,
+    );
 
     if (shouldRenderImavid) {
       return (

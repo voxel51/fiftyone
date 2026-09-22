@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  resolveTransformMode,
   canTransformArchetypeUseMode,
   getSelectedTransformArchetype,
 } from "./transform-archetype";
@@ -71,5 +72,17 @@ describe("transform shortcuts", () => {
     expect(canTransformArchetypeUseMode("point", "rotate")).toBe(false);
     expect(canTransformArchetypeUseMode("polyline", "translate")).toBe(true);
     expect(canTransformArchetypeUseMode(null, "translate")).toBe(false);
+  });
+});
+
+describe("resolveTransformMode", () => {
+  it("keeps a mode the archetype supports", () => {
+    expect(resolveTransformMode("cuboid", "scale")).toBe("scale");
+    expect(resolveTransformMode("annotation-plane", "rotate")).toBe("rotate");
+  });
+
+  it("falls back to translate for a mode the archetype cannot use", () => {
+    expect(resolveTransformMode("polyline", "scale")).toBe("translate");
+    expect(resolveTransformMode("annotation-plane", "scale")).toBe("translate");
   });
 });

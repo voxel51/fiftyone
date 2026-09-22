@@ -103,6 +103,11 @@ export default class DetectionOverlay<
       return CONTAINS.NONE;
     }
 
+    // a 3D detection has no 2D box to hit-test
+    if (!this.label.bounding_box) {
+      return CONTAINS.NONE;
+    }
+
     const rotation = this.getRotation();
     if (rotation) {
       if (
@@ -187,6 +192,10 @@ export default class DetectionOverlay<
   }
 
   getMouseDistance(state: Readonly<State>): number {
+    if (!this.label.bounding_box) {
+      return Infinity;
+    }
+
     const [px, py] = state.pixelCoordinates;
 
     if (this.isInHeader(state)) {

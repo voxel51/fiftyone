@@ -3,28 +3,40 @@ import { spawnSync } from "child_process";
 import { Duration, getPythonCommand } from "src/oss/utils";
 import { dedentPythonCode } from "src/oss/utils/dedent";
 import { writeToTmpFile } from "src/oss/utils/fs";
+import type { MediaOptions } from "./types";
+import { generateOnce } from "./write";
 
-export const createPly = (options: {
-  outputPath: string;
-  shape: "cube" | "point-cloud";
+/**
+ * What to write into a PLY mesh; every field has a default.
+ */
+export interface PlySpec {
+  /**
+   * Geometry: a unit cube or a cubic grid of points.
+   * @default "cube"
+   */
+  shape?: "cube" | "point-cloud";
+  /**
+   * Point count for `point-cloud` shapes.
+   * @default 125
+   */
   numPoints?: number;
+  /**
+   * RGB vertex color.
+   * @default [64, 192, 255]
+   */
   color?: [number, number, number];
-}) => {
-  const {
-    outputPath,
-    shape,
-    numPoints = 125,
-    color = [64, 192, 255],
-  } = options;
-  const serializedOptions = JSON.stringify({
-    outputPath,
-    shape,
-    numPoints,
-    color,
-  });
+}
 
-  const startTime = performance.now();
-  console.log(`Creating ply with options: ${JSON.stringify(options)}`);
+export type PlyOptions = MediaOptions & PlySpec;
+
+export const DEFAULT_PLY_SPEC: Required<PlySpec> = {
+  shape: "cube",
+  numPoints: 125,
+  color: [64, 192, 255],
+};
+
+export const createPly = (options: PlyOptions): void => {
+  const serializedOptions = JSON.stringify({ ...DEFAULT_PLY_SPEC, ...options });
 
   const pythonCode = `
   import json
@@ -103,33 +115,31 @@ export const createPly = (options: {
       f.write(f"{len(face)} " + indices + "\\n")
   `;
 
-  const sourceFilePath = writeToTmpFile(dedentPythonCode(pythonCode), "py");
-  const command = getPythonCommand([JSON.stringify(sourceFilePath)]);
-  const proc = spawnSync(command, {
-    shell: true,
-    timeout: Duration.Seconds(5),
+  generateOnce("Ply", options, () => {
+    const sourceFilePath = writeToTmpFile(dedentPythonCode(pythonCode), "py");
+    const command = getPythonCommand([JSON.stringify(sourceFilePath)]);
+    const proc = spawnSync(command, {
+      shell: true,
+      timeout: Duration.Seconds(5),
+    });
+
+    fs.unlinkSync(sourceFilePath);
+
+    if (proc.error) {
+      throw proc.error;
+    }
+
+    const stderr = proc.stderr ? proc.stderr.toString().trim() : "";
+    if (proc.status !== 0) {
+      throw new Error(
+        `PLY generation failed with exit code ${proc.status}: ${
+          stderr || "unknown error"
+        }`,
+      );
+    }
+
+    if (stderr) {
+      console.warn(stderr);
+    }
   });
-
-  fs.unlinkSync(sourceFilePath);
-
-  if (proc.error) {
-    throw proc.error;
-  }
-
-  const stderr = proc.stderr ? proc.stderr.toString().trim() : "";
-  if (proc.status !== 0) {
-    throw new Error(
-      `PLY generation failed with exit code ${proc.status}: ${
-        stderr || "unknown error"
-      }`,
-    );
-  }
-
-  if (stderr) {
-    console.warn(stderr);
-  }
-
-  const endTime = performance.now();
-  const timeTaken = endTime - startTime;
-  console.log(`Ply generation completed in ${timeTaken} milliseconds`);
 };

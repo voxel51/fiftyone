@@ -31,7 +31,7 @@ const DEFAULT_FACTORY: BrowserAnnotationProviderFactory = (options) =>
 /**
  * Inputs for a SAM2 tracking run. Frame numbers are 1-based (matching the
  * labels stream / mongo frame numbers); `getFrameBitmap` resolves a 1-based
- * frame number to its decoded bitmap (the ImaVid image stream serves these
+ * frame number to its decoded bitmap (the dynamic group image stream serves these
  * from cache — no `<video>` element).
  *
  * Two modes: a *bracketed* run between two keyframes (pass `endKeyframe`), or

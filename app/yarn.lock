@@ -2479,6 +2479,7 @@ __metadata:
     styled-components: "catalog:"
     typescript: "catalog:"
     typescript-eslint: "catalog:eslint9"
+    use-memo-one: "npm:^1.1.3"
     uuid: "catalog:"
     vite: "catalog:"
   languageName: unknown

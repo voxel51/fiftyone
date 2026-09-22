@@ -31,7 +31,8 @@ export type ObjectTrackColorResolver = (
 /**
  * Build the per-instance object tracks from the server distribution index
  * merged with the engine's edited-frame overlay — no whole-clip walk.
- * `resolved` flips true once the index settles, gating the pin bootstrap.
+ * `resolved` flips true once the index settles — at once when there is no
+ * frame field to index — and gates the pin bootstrap.
  */
 export function useFrameDerivedTracks(
   resolveColor: ObjectTrackColorResolver,
@@ -145,7 +146,7 @@ export function useFrameDerivedTracks(
 
   const tracks = useEngineSelector(engine, selectTracks, tracksEqual);
 
-  return { tracks, resolved: loaded };
+  return { tracks, resolved: loaded || allFields.length === 0 };
 }
 
 const EMPTY_TRACKS: Track[] = [];
