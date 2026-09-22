@@ -589,6 +589,8 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     cameraTargetSettled,
     cameraTargetSelectionSource,
     defaultTrackingMode,
+    preferredCameraTargetFrameId,
+    preferredWorldFrameId,
     frameTransforms,
     placementStatus,
     playbackTimeNs,

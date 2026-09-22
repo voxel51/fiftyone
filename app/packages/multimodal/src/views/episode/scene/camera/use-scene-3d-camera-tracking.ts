@@ -129,6 +129,8 @@ export function useScene3dCameraTracking({
   frameTransforms,
   placementStatus,
   playbackTimeNs,
+  preferredCameraTargetFrameId = null,
+  preferredWorldFrameId = null,
   provisionalFrameIds,
   provisionalPlaybackFrame,
   onCameraPoseSample,
@@ -155,6 +157,9 @@ export function useScene3dCameraTracking({
   readonly frameTransforms: FrameTransformsState;
   readonly placementStatus: Scene3dPlacementStatus;
   readonly playbackTimeNs: bigint | undefined;
+  /** Shared user preferences, distinct from resolved automatic frame choices. */
+  readonly preferredCameraTargetFrameId?: string | null;
+  readonly preferredWorldFrameId?: string | null;
   readonly provisionalFrameIds: readonly string[];
   readonly provisionalPlaybackFrame: StreamContentFrame<PointCloudVisualization> | null;
   /** Live pose sink for non-React camera observers such as Viewpoint. */
@@ -287,16 +292,46 @@ export function useScene3dCameraTracking({
   const cancelStartupView = useCallback(() => {
     if (!isCameraEpochActive()) return;
     startupViewPendingRef.current = false;
+  }, [isCameraEpochActive]);
+  const takeCameraControl = useCallback(() => {
+    if (!isCameraEpochActive()) return;
+    startupViewPendingRef.current = false;
     hasAuthoredViewRef.current = true;
     pendingCameraViewRestoreRef.current = null;
     pendingCompositionRestoreRef.current = [];
   }, [isCameraEpochActive]);
-  const previousUpAxisRef = useRef(sceneUpAxis);
-  // An explicit scene-up change is camera intent even before any drag.
+  const previousPreferencesRef = useRef({
+    preferredCameraTargetFrameId,
+    preferredWorldFrameId,
+    sceneUpAxis,
+    sourceKey,
+  });
+  // Shared frame preferences notify every tile, including tiles that delegate
+  // reference controls to another tile. Settings cancel automatic startup,
+  // but do not turn an untouched fit into a user view or discard a restore.
   useLayoutEffect(() => {
-    if (previousUpAxisRef.current !== sceneUpAxis) cancelStartupView();
-    previousUpAxisRef.current = sceneUpAxis;
-  }, [cancelStartupView, sceneUpAxis]);
+    const previous = previousPreferencesRef.current;
+    if (
+      previous.sourceKey === sourceKey &&
+      (previous.sceneUpAxis !== sceneUpAxis ||
+        previous.preferredCameraTargetFrameId !==
+          preferredCameraTargetFrameId ||
+        previous.preferredWorldFrameId !== preferredWorldFrameId)
+    )
+      cancelStartupView();
+    previousPreferencesRef.current = {
+      preferredCameraTargetFrameId,
+      preferredWorldFrameId,
+      sceneUpAxis,
+      sourceKey,
+    };
+  }, [
+    cancelStartupView,
+    preferredCameraTargetFrameId,
+    preferredWorldFrameId,
+    sceneUpAxis,
+    sourceKey,
+  ]);
   const cameraTargetResolution = useMemo(
     () =>
       resolveCameraTargetPose({
@@ -776,7 +811,7 @@ export function useScene3dCameraTracking({
       }
       latestCameraPoseRef.current = pose;
       rememberProvisionalCameraPose(pose);
-      if (source !== "initial") cancelStartupView();
+      if (source !== "initial") takeCameraControl();
       if (source === "initial" || source === "interaction") {
         // Interaction traffic is bookkeeping only: the rig re-bases the
         // anchor imperatively (external-write protocol) and commits at
@@ -797,7 +832,7 @@ export function useScene3dCameraTracking({
     },
     [
       isCameraEpochActive,
-      cancelStartupView,
+      takeCameraControl,
       recordCameraViewIfEligible,
       recordNavigationComposition,
       rememberProvisionalCameraPose,
@@ -850,11 +885,11 @@ export function useScene3dCameraTracking({
       // user takes hold, and pin the panel out of fit-fallback. The pin is
       // one-shot — the functional update bails once any command exists, so
       // wheel micro-gestures cost no renders.
-      cancelStartupView();
+      takeCameraControl();
       latestCameraPoseRef.current = pose;
       setPoseCommand((current) => current ?? pose);
     },
-    [cancelStartupView, isCameraEpochActive],
+    [takeCameraControl, isCameraEpochActive],
   );
 
   const onCommit = useCallback(
@@ -865,7 +900,7 @@ export function useScene3dCameraTracking({
       if (!isCameraEpochActive()) {
         return;
       }
-      cancelStartupView();
+      takeCameraControl();
       latestCameraPoseRef.current = pose;
       latestAnchorRef.current = anchor;
       rememberProvisionalCameraPose(pose);
@@ -873,7 +908,7 @@ export function useScene3dCameraTracking({
       recordNavigationComposition(pose, anchor);
     },
     [
-      cancelStartupView,
+      takeCameraControl,
       isCameraEpochActive,
       recordCameraViewIfEligible,
       recordNavigationComposition,
@@ -1019,7 +1054,7 @@ export function useScene3dCameraTracking({
       // A manual mode change is a user decision that supersedes any pending
       // carried-over camera restore; the mode itself is written through to
       // the session view-state store.
-      cancelStartupView();
+      takeCameraControl();
       // Freeze the displayed pose into the command channel: switching modes
       // must never move the camera. The rig re-derives its anchor under the
       // new mode from the live camera without moving it; the frozen command
@@ -1035,7 +1070,7 @@ export function useScene3dCameraTracking({
       setTrackingMode(mode);
     },
     [
-      cancelStartupView,
+      takeCameraControl,
       onDefaultTrackingModeChange,
       recordCameraViewIfEligible,
       recordNavigationComposition,

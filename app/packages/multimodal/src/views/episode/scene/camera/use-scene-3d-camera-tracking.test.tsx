@@ -1513,6 +1513,58 @@ describe("startup camera policy", () => {
     expect(result.current.poseCommand).toEqual(pose(5));
   });
 
+  it("preserves a pending saved view when a settings change cancels startup", () => {
+    const restore = cameraRestore({
+      navigationCompositions: [targetComposition({})],
+    });
+    const { result, rerender } = renderHook(useScene3dCameraTracking, {
+      initialProps: startupProps({
+        navigationReferenceSettled: false,
+        restore,
+      }),
+    });
+    act(() => {
+      result.current.noteRenderedCameraPose(pose(1));
+      result.current.cancelStartupView();
+    });
+    expect(viewStateStore.getSnapshot().navigationCompositions).toEqual([]);
+    rerender(startupProps({ restore }));
+    expect(result.current.poseCommand).toEqual(pose(5));
+  });
+
+  it.each(["preferredWorldFrameId", "preferredCameraTargetFrameId"] as const)(
+    "cancels startup in every tile when shared %s changes without authoring a fit",
+    (preference) => {
+      const { result, rerender, unmount } = renderHook(
+        useScene3dCameraTracking,
+        {
+          initialProps: startupProps({ navigationReferenceSettled: false }),
+        },
+      );
+      act(() => result.current.noteRenderedCameraPose(pose(1)));
+      rerender(startupProps({ [preference]: "base_link" }));
+      expect(result.current.poseCommand).toBeNull();
+      unmount();
+      expect(viewStateStore.getSnapshot().cameraView).toBeNull();
+      expect(viewStateStore.getSnapshot().navigationCompositions).toEqual([]);
+    },
+  );
+
+  it("does not persist an untouched fit after a local settings change", () => {
+    const { result, rerender, unmount } = renderHook(useScene3dCameraTracking, {
+      initialProps: startupProps({ navigationReferenceSettled: false }),
+    });
+    act(() => {
+      result.current.cancelStartupView();
+      result.current.noteRenderedCameraPose(pose(1));
+    });
+    rerender(startupProps());
+    expect(result.current.poseCommand).toBeNull();
+    unmount();
+    expect(viewStateStore.getSnapshot().cameraView).toBeNull();
+    expect(viewStateStore.getSnapshot().navigationCompositions).toEqual([]);
+  });
+
   it("rearms for a new recording after an untouched fit, but not during an unbound interval", () => {
     const { result, rerender } = renderHook(useScene3dCameraTracking, {
       initialProps: startupProps({ cameraTargetIsEgo: false }),
