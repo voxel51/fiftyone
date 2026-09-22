@@ -6,11 +6,11 @@ import { EMPTY_EPISODE_FRAME_GRAPH_SUMMARY } from "../../../../runtime/frame-tra
 import type { FrameTransformsState } from "../../spatial/frame-transforms/use-frame-transforms";
 import { Scene3dViewControls } from "./Scene3dViewControls";
 import {
-  egoViewCameraPose,
-  topViewCameraPose,
   useScene3dViewShortcuts,
   type Scene3dViewShortcutsOptions,
 } from "./use-scene-3d-view-shortcuts";
+
+import { egoViewCameraPose, topViewCameraPose } from "./scene-3d-view-presets";
 
 afterEach(() => {
   cleanup();
