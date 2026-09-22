@@ -5,6 +5,7 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 
 import eta.core.video as etav

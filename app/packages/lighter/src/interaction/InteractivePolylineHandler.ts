@@ -370,6 +370,19 @@ export class InteractivePolylineHandler implements InteractionHandler {
   }
 
   onPointerUp(_params: OverlayEvent): boolean {
+    // Clear the overlay's own per-point drag state on EVERY pointer-up, not just
+    // at cleanup. The click that selects the polyline runs the overlay's
+    // `onPointerDown` (which sets `dragPointIndex`) before this handler takes
+    // over dispatch, so the matching pointer-up arrives here and the overlay's
+    // state is never released. It reports `isInteracting()` for as long as the
+    // shape stays selected, and the engine bridge treats that as an in-flight
+    // gesture and defers every projection — so scrubbing paints the geometry the
+    // overlay happened to hold (`skip(interacting)` in the bridge loop), which is
+    // the "I only see the most recently drawn state until the playhead leaves the
+    // track" report. Only drag tracking is reset; the vertex sub-selection that
+    // Backspace reads is untouched.
+    this.overlay.cancelPointDrag();
+
     if (this.dragPointId === null) {
       return true;
     }

@@ -1,6 +1,6 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
 import { multimodalGridFit, type MultimodalGridFit } from "@fiftyone/state";
-import { Size, Spinner } from "@voxel51/voodo";
+import { Clickable, Icon, IconName, Size, Spinner } from "@voxel51/voodo";
 import {
   useCallback,
   useEffect,
@@ -23,7 +23,11 @@ import { PushVideoAccessUnitReader } from "../../../video/push-reader";
 import { VideoPlaybackManagerProvider } from "../../../video/react";
 import { REORDERED_VIDEO_DECODE_LOOKAHEAD_NS } from "../../../video/stream-engine";
 import type { VideoStreamLease } from "../../../video/playback-manager";
-import { isSharedEncodedVideoVisualization } from "../../../video/types";
+import {
+  isSharedEncodedVideoVisualization,
+  sharedVideoRejectionMessage,
+  unsupportedVideoCodecMessage,
+} from "../../../video/types";
 import { PointCloudPanel } from "../../../visualization/composition";
 import { acquireGridLiveLease } from "../../../visualization/webgpu/webgpu-live-lease";
 import { renderPointCloudSnapshot } from "../../../visualization/scene-3d/gpu/webgpu-snapshot-renderer";
@@ -58,6 +62,7 @@ import {
   useGridPosterProviderDescriptor,
   useProvidedGridPoster,
 } from "./use-grid-poster-provider";
+import { peekSourceBootstrap } from "../../../runtime";
 import { useHydratedSourceFacts } from "./use-hydrated-source-facts";
 import { LeRobotGridHoverVideo } from "./LeRobotGridHoverVideo";
 
@@ -71,13 +76,38 @@ const SNAPSHOT_REFRESH_DEBOUNCE_MS = 250;
  */
 export const HOVER_INTENT_DELAY_MS = 120;
 /** Dwell before hover playback starts, avoiding scroll-under-cursor churn. */
-export const PLAYBACK_HOVER_INTENT_DELAY_MS = HOVER_INTENT_DELAY_MS;
 
 const stopGridActivationPropagation = (
   event: React.MouseEvent<HTMLElement>,
 ) => {
   event.stopPropagation();
 };
+
+/**
+ * Explicit way into the modal for a tile whose own surface takes the click.
+ *
+ * Only point-cloud previews get one: their click orbits the camera, so grid
+ * activation is suppressed and there would otherwise be no way to open the
+ * sample from the tile. Every other tile kind opens by being clicked, which is
+ * why this is the renderer's call to make rather than the grid's.
+ */
+const OpenModalButton = ({ openModal }: { readonly openModal: () => void }) => (
+  <Clickable
+    aria-label="Open sample modal"
+    className={classes.openModalButton}
+    onClick={(event) => {
+      // The tile suppresses grid activation, so this must not read as a click
+      // on the point cloud either.
+      event.preventDefault();
+      event.stopPropagation();
+      openModal();
+    }}
+    role="button"
+    title="Open sample modal"
+  >
+    <Icon name={IconName.Fullscreen} size={Size.Sm} />
+  </Clickable>
+);
 
 /**
  * Grid renderer for episode-backed multimodal samples. Shows one camera
@@ -99,7 +129,11 @@ export function GridRenderer({
     ctx.dataset.datasetId;
   const [rootElement, setRootElement] = useState<HTMLDivElement | null>(null);
   const [hovered, setHovered] = useState(false);
+  // Visible tiles keep their poster, video element and session while the
+  // modal is open; only new playback is gated on the grid being active, so
+  // closing the modal rebuilds nothing
   const visible = useGridRendererVisibility(rootElement, isGridActive);
+  const interactive = visible && isGridActive;
   const sampleId = useMemo(() => {
     const sample = ctx.sample.sample as { _id?: string; id?: string };
     return sample._id ?? sample.id;
@@ -126,13 +160,14 @@ export function GridRenderer({
         providerDescriptor.resolved.descriptor.cacheRevision,
       ])
     : undefined;
-  const providerDescriptorSettled =
-    providerDescriptor.status === "hit" || providerDescriptor.status === "miss";
+  // A precomputed poster may exist but is never expected to: the tile opens
+  // its own preview at once and takes a provider's poster only if one arrives
   const previewIdentity = useMemo(
     () =>
-      source && providerDescriptorSettled
+      source
         ? {
             datasetId: ctx.dataset.datasetId,
+            episodeId: sampleId,
             mediaField: ctx.media?.field,
             mediaPath: ctx.media?.path,
             posterSourceName: firstMatch?.stream,
@@ -149,7 +184,7 @@ export function GridRenderer({
       firstMatch?.startNs,
       firstMatch?.stream,
       providerCacheScope,
-      providerDescriptorSettled,
+      sampleId,
       selectedSourceName,
       source,
     ],
@@ -202,7 +237,6 @@ export function GridRenderer({
     [effectivePoster, poseKey, rootSize],
   );
   const coldTierLoading =
-    (visible && !providerDescriptorSettled) ||
     cacheLookupStatus === "loading" ||
     providedPosterLookup.status === "loading";
   const previewSessionDemand = usePreviewSessionDemand({
@@ -218,6 +252,7 @@ export function GridRenderer({
     // A provider-answered tile skips the preview session exactly like a cache
     // hit, so it needs the same facts republish
     cachedPoster: effectivePoster,
+    episodeId: sampleId,
     previewSessionDemand,
     source,
     sourceFactsScope,
@@ -233,6 +268,7 @@ export function GridRenderer({
     cacheRequestKey: previewStateKey,
     cachedPoster: effectivePoster,
     enabled: visible,
+    episodeId: sampleId,
     hovered,
     initialVideoDecodeLookaheadNs: REORDERED_VIDEO_DECODE_LOOKAHEAD_NS,
     onReadResult: gridVideoPlayback.onReadResult,
@@ -258,9 +294,17 @@ export function GridRenderer({
   const playbackIntent = usePlaybackHoverIntent(
     preview.pause,
     preview.play,
-    visible,
+    interactive,
     setHovered,
   );
+  // The modal covers the grid without a mouseleave, so a tile that was
+  // playing when it opened would keep decoding underneath it
+  const pausePreview = preview.pause;
+  useEffect(() => {
+    if (interactive) return;
+    setHovered(false);
+    pausePreview();
+  }, [interactive, pausePreview]);
   const [surfaceRetention, setSurfaceRetention] = useState<{
     readonly bytes: number;
     readonly owner: EpisodePosterFrame | GridPosterCacheEntry;
@@ -327,6 +371,9 @@ export function GridRenderer({
           streamId: preview.streamId,
           streamSourceName: preview.streamSourceName,
           streamSourceNames: preview.streamSourceNames,
+          ...(source
+            ? { timeRange: peekSourceBootstrap(source)?.timeRange }
+            : {}),
           width: size.width,
         },
         key: cacheKey,
@@ -338,17 +385,39 @@ export function GridRenderer({
       preview.streamId,
       preview.streamSourceName,
       preview.streamSourceNames,
+      source,
     ],
   );
+  // An AV1 poster arrives through the native <video>, so "ready with no
+  // decoded frame" is still loading until that element has painted
+  const [nativePosterPainted, setNativePosterPainted] = useState(false);
+  const nativeVideoKey = preview.nativeVideo
+    ? `${preview.nativeVideo.source.sourceId}:${preview.nativeVideo.startTimeSeconds}`
+    : null;
+  useEffect(() => {
+    setNativePosterPainted(false);
+  }, [nativeVideoKey]);
   const handleNativePosterCanvasCommitted = useCallback(
-    (canvas: HTMLCanvasElement, size: BitmapDrawSize) =>
-      handlePosterCanvasCommitted("image", canvas, size),
+    (canvas: HTMLCanvasElement, size: BitmapDrawSize) => {
+      setNativePosterPainted(true);
+      handlePosterCanvasCommitted("image", canvas, size);
+    },
     [handlePosterCanvasCommitted],
   );
   const handleNativeVideoError = useCallback(
     (error: Error) => setNativeVideoError(error.message),
     [],
   );
+  const posterImage =
+    preview.frame?.kind === "image" ? preview.frame.image : null;
+  const codecRejection =
+    posterImage !== null &&
+    posterImage.kind === "encoded-video" &&
+    !isSharedEncodedVideoVisualization(posterImage)
+      ? sharedVideoRejectionMessage(posterImage)
+      : preview.unsupportedCodec
+        ? unsupportedVideoCodecMessage(preview.unsupportedCodec)
+        : null;
 
   // This effect keeps the grid cache's retained-byte estimate current.
   useEffect(() => {
@@ -382,7 +451,14 @@ export function GridRenderer({
       onPointerLeave={playbackIntent.leave}
       ref={setRootElement}
     >
-      {preview.frame ? (
+      {blocksGridActivation && ctx.openModal ? (
+        <OpenModalButton openModal={ctx.openModal} />
+      ) : null}
+      {codecRejection ? (
+        <div className={classes.codecRejection} role="alert">
+          {codecRejection}
+        </div>
+      ) : preview.frame ? (
         <VideoPlaybackManagerProvider manager={gridVideoPlayback.manager}>
           <PreviewFrame
             // Image dimensions are per camera stream; remount to drop stale
@@ -408,11 +484,19 @@ export function GridRenderer({
           mimeType={preview.cachedPoster.mimeType}
           onBitmapRetainedBytesChange={handleSurfaceRetainedBytesChange}
         />
-      ) : (
+      ) : preview.nativeVideo &&
+        nativePosterPainted &&
+        !nativeVideoError ? null : (
         <PreviewStatus
           error={nativeVideoError ?? preview.error}
           hasPreviewStreams={preview.hasPreviewStreams}
-          status={nativeVideoError ? "error" : preview.status}
+          status={
+            nativeVideoError
+              ? "error"
+              : preview.nativeVideo
+                ? "loading"
+                : preview.status
+          }
         />
       )}
       {nativeVideoError && (preview.frame || preview.cachedPoster) ? (
@@ -425,7 +509,11 @@ export function GridRenderer({
       ) : null}
       {preview.frame && preview.isBuffering ? (
         <span
-          className={classes.bufferingIndicator}
+          className={
+            blocksGridActivation
+              ? `${classes.bufferingIndicator} ${classes.bufferingIndicatorBesideButton}`
+              : classes.bufferingIndicator
+          }
           data-testid="episode-grid-buffering-indicator"
         >
           <Spinner size={Size.Xs} />
@@ -438,8 +526,10 @@ export function GridRenderer({
           key={`${preview.nativeVideo.source.sourceId}:${preview.nativeVideo.codec}:${preview.nativeVideo.startTimeSeconds}:${preview.nativeVideo.endTimeSeconds}`}
           onCanvasCommitted={handleNativePosterCanvasCommitted}
           onError={handleNativeVideoError}
+          onPresentedTimeSeconds={preview.presentNativeTimeSeconds}
           onSurfaceRetainedBytesChange={setNativeSurfaceRetainedBytes}
           playing={preview.isPlaying}
+          seek={preview.nativeSeek}
           video={preview.nativeVideo}
         />
       ) : null}
@@ -545,10 +635,17 @@ function useGridRendererVisibility(
 
   // This effect tracks whether the mounted renderer is near the grid viewport.
   useEffect(() => {
-    if (!element || !gridActive) {
+    if (!element) {
       setIntersecting(false);
       return undefined;
     }
+    // The grid is hidden behind the modal, so an observer left running would
+    // report every tile gone. Stop watching rather than correct for it after
+    // the fact: what was visible when the modal opened stays visible until it
+    // closes, which is what keeps posters and sessions alive underneath it.
+    // Reading the stale value back on reactivation instead would drop demand
+    // for a render and release the session the modal was holding open.
+    if (!gridActive) return undefined;
     if (typeof IntersectionObserver === "undefined") {
       setIntersecting(element.isConnected);
       return undefined;
@@ -565,7 +662,7 @@ function useGridRendererVisibility(
     return () => observer.disconnect();
   }, [element, gridActive]);
 
-  return gridActive && intersecting;
+  return intersecting;
 }
 
 function useElementCssSize(
@@ -702,7 +799,7 @@ function usePlaybackHoverIntent(
     timerRef.current = setTimeout(() => {
       timerRef.current = null;
       play();
-    }, PLAYBACK_HOVER_INTENT_DELAY_MS);
+    }, HOVER_INTENT_DELAY_MS);
   }, [cancel, enabled, play, setHovered]);
 
   // This effect cancels hover playback when the grid becomes inactive.
@@ -1208,6 +1305,12 @@ function previewStatusMessage(
 
   if (status === "unavailable") {
     return "No data available for this stream";
+  }
+
+  // A tile whose session never opened is not an episode without streams:
+  // reporting it as one hides every source that failed to resolve
+  if (status === "idle") {
+    return "Preview did not start";
   }
 
   return hasPreviewStreams ? "No preview frames" : "No preview streams";

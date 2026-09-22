@@ -31,6 +31,7 @@ import {
 import { SceneInventoryProvider } from "../../../scene-inventory/react/index";
 import type { SceneSource } from "../../../scene-inventory/index";
 import { WebGpuViewStage } from "../../../visualization/webgpu/WebGpuViewStage";
+import { TileMediaEpisodePublisher } from "../tiles/TileMediaEpisodePublisher";
 import styles from "./PlaybackShell.module.css";
 
 const EMPTY_SOURCES: readonly SceneSource[] = [];
@@ -91,8 +92,12 @@ export interface PlaybackShellProps {
   tracks?: Track[];
   /** Track ids that should start pinned to the timeline. */
   defaultPinnedTrackIds?: string[];
+  /** Scope under which the user's pin choices survive closing the modal. */
+  pinPersistKey?: string;
   /** Per-row behavior composed from shared and registered timeline sources. */
   decorateTrack?: TemporalTagTimelineProps["decorateTrack"];
+  /** Ruler overlay composed from registered timeline sources. */
+  timelineRulerOverlay?: (labelWidth: number) => React.ReactNode;
 
   /** Initial tile entries seeded into the embedded TilingProvider. */
   initialTiles?: Record<string, TilingTile>;
@@ -255,7 +260,9 @@ const PlaybackShell: React.FC<PlaybackShellProps> = ({
   timelineTrailingActions,
   tracks,
   defaultPinnedTrackIds,
+  pinPersistKey,
   decorateTrack,
+  timelineRulerOverlay,
   initialTiles,
   initialManualTileTitles,
   autoLayoutStrategy,
@@ -296,6 +303,7 @@ const PlaybackShell: React.FC<PlaybackShellProps> = ({
         tracks={tracks}
         initialPinnedIds={defaultPinnedTrackIds}
         autoPinNewTracks={false}
+        persistKey={pinPersistKey}
       >
         <SceneInventoryProvider sources={sceneSources}>
           <TilingProvider
@@ -310,6 +318,7 @@ const PlaybackShell: React.FC<PlaybackShellProps> = ({
             resetLayoutStrategy={resetLayoutStrategy}
           >
             {children}
+            <TileMediaEpisodePublisher />
             <Layout
               fileName={fileName}
               headerCaption={headerCaption}
@@ -342,6 +351,7 @@ const PlaybackShell: React.FC<PlaybackShellProps> = ({
               // visible below the ruler until the user expands the drawer.
               timelineDrawerDefaultOpen={false}
               decorateTrack={decorateTrack}
+              timelineRulerOverlay={timelineRulerOverlay}
             />
           </TilingProvider>
         </SceneInventoryProvider>
@@ -384,6 +394,7 @@ interface LayoutProps {
   /** Initial open state for the timeline drawer. */
   timelineDrawerDefaultOpen: boolean;
   decorateTrack?: PlaybackShellProps["decorateTrack"];
+  timelineRulerOverlay?: PlaybackShellProps["timelineRulerOverlay"];
 }
 
 function Layout({
@@ -414,6 +425,7 @@ function Layout({
   className,
   timelineDrawerDefaultOpen,
   decorateTrack,
+  timelineRulerOverlay,
 }: LayoutProps) {
   const {
     layout,
@@ -625,6 +637,7 @@ function Layout({
         onDrawerOpenChange={updateTimelineTracksOpen}
         trailingActions={timelineTrailingActions}
         decorateTrack={decorateTrack}
+        rulerOverlay={timelineRulerOverlay}
         readouts={timelineReadouts}
         extraActions={timelineExtraActions}
         existingTags={existingTags}

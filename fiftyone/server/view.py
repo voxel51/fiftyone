@@ -26,7 +26,6 @@ import fiftyone.core.view as fov
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
 from fiftyone.server.scalars import BSONArray, JSON
 
-
 _LABEL_TAGS = "_label_tags"
 _TEMPORAL_TAGS = "_temporal_tags"
 
@@ -412,6 +411,14 @@ def _project_pagination_paths(
         if isinstance(field, (fof.DictField, fof.VectorField))
     ]
 
+    # A media reference is the sample's identity and is delivered whole: its
+    # coordinates are a kind's own, so they are not in the declared schema
+    references = [
+        path
+        for path, field in schema.items()
+        if isinstance(field, fof.MediaReferenceField)
+    ]
+
     selected_fields = ["_group"]  # store dynamic group values
     for path in schema:
         # exclude the field and its children, but not sibling fields that
@@ -420,6 +427,9 @@ def _project_pagination_paths(
             path == exclude or path.startswith(exclude + ".")
             for exclude in excluded
         ):
+            continue
+
+        if any(path.startswith(reference + ".") for reference in references):
             continue
 
         selected_fields.append(path)

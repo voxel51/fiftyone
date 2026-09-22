@@ -27,6 +27,10 @@ export const DatasetGridRendererFailoverReload = () => {
     }
 
     if (currentSubscription === forcedSubscription) {
+      // The reload has landed, so the failure has done its job. Spending it
+      // here is what lets the next load retry the custom renderer instead of
+      // stranding the user on the built-in one until they open a new tab.
+      fos.consumeGridCustomRendererFailover();
       return;
     }
 
@@ -63,8 +67,8 @@ export const DatasetGridRendererFailoverBanner = () => {
       {gridRendererFailover.failure?.datasetName
         ? ` while rendering "${gridRendererFailover.failure.datasetName}"`
         : ""}{" "}
-      so FiftyOne switched this dataset to the built-in grid renderer for the
-      rest of this browser session.
+      so FiftyOne switched this dataset to the built-in grid renderer. Reload
+      the page to try the custom renderer again.
     </Alert>
   );
 };

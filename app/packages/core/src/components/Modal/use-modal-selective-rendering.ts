@@ -1,4 +1,4 @@
-import { ImaVidLooker, VideoLooker } from "@fiftyone/looker";
+import { ImaVidLooker } from "@fiftyone/looker";
 import { getSubscription } from "@fiftyone/looker/src/lookers/imavid/subscribe";
 import { Lookers, useLookerOptions } from "@fiftyone/state";
 import { useEffect, useRef } from "react";
@@ -91,29 +91,4 @@ export const useImavidModalSelectiveRendering = (
 
     (looker as ImaVidLooker).pause();
   }, [lookerOptions]);
-};
-
-export const useVideoModalSelectiveRendering = (
-  id: string,
-  looker: VideoLooker,
-) => {
-  const { getNewFields } = useDetectNewActiveLabelFields({
-    modal: true,
-  });
-
-  const lookerOptions = useLookerOptions(true);
-
-  useEffect(() => {
-    if (!looker) {
-      return;
-    }
-
-    const newFieldsIfAny = getNewFields(id);
-
-    if (newFieldsIfAny) {
-      // todo: no granular refreshing for video looker
-      // it'd require selective re-processing of frames in the buffer
-      looker?.refreshSample();
-    }
-  }, [id, lookerOptions.activePaths, looker, getNewFields]);
 };

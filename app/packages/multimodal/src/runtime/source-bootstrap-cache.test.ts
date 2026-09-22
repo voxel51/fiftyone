@@ -8,7 +8,6 @@ import type {
 import { getEpisodeTimeRange } from "./episode-time-range-registry";
 import {
   getSourceBootstrap,
-  getSourceBootstrapSnapshot,
   getSourceSessionHints,
   peekSourceBootstrap,
   publishCurrentSourceFacts,
@@ -78,7 +77,7 @@ describe("source bootstrap cache", () => {
     // The eviction is a change to THIS source's snapshot: the subscriber
     // re-reads and sees the removal, instead of rendering stale facts
     expect(notified).toBeGreaterThan(0);
-    expect(getSourceBootstrapSnapshot(first)).toBeNull();
+    expect(peekSourceBootstrap(first)).toBeNull();
     unsubscribe();
   });
 
@@ -108,7 +107,7 @@ describe("source bootstrap cache", () => {
       timeDomainId: "recording",
     } as const;
 
-    publishEpisodePreviewBootstrap(source, {
+    const range = publishEpisodePreviewBootstrap(source, {
       bootstrapTimeline: timeline,
       frame: null,
       status: "ready",
@@ -123,10 +122,10 @@ describe("source bootstrap cache", () => {
     });
     expect(peekSourceBootstrap(source)?.timeline).toBe(timeline);
     expect(peekSourceBootstrap(source)?.previewReadComplete).toBe(true);
-    expect(getEpisodeTimeRange(source.sourceId)).toEqual({
-      endNs: 30n,
-      startNs: 10n,
-    });
+    expect(range).toEqual({ endNs: 30n, startNs: 10n });
+    // Handed back for the caller to file under the episode identity; a
+    // `sourceId` is not one.
+    expect(getEpisodeTimeRange(source.sourceId)).toBeNull();
   });
 
   it("retains a bounded marker for a completed posterless preview", () => {

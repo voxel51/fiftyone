@@ -31,6 +31,13 @@ export const imageTileBindingsAtom = atom<ImageTileBindings>({});
  */
 export const persistedImageTileBindingsAtom = atom<ImageTileBindings>({});
 
+/**
+ * Durable preferred source per audio tile — the audio counterpart to
+ * {@link persistedImageTileBindingsAtom}, and the fallback that carries a
+ * pane's choice when there is no dataset scope to persist a semantic key to.
+ */
+export const persistedAudioTileBindingsAtom = atom<ImageTileBindings>({});
+
 /** Subscribe to the current tile→source bindings map. */
 export function useImageTileBindings(): Readonly<Record<string, string>> {
   return useAtomValue(imageTileBindingsAtom);
@@ -47,6 +54,22 @@ export function usePreferredImageTileStream(): string | null | undefined {
   if (!tileId || !scopeKey) return undefined;
   const preferredKey =
     readSidebarPreferences(scopeKey).tiles[tileId]?.imageSourceKey;
+  return preferredKey
+    ? (identity.runtimeIdsForKey(preferredKey)[0] ?? null)
+    : undefined;
+}
+
+/**
+ * Resolves this audio tile's durable semantic preference to a runtime id.
+ * `null` means the preference exists but its source is currently unavailable.
+ */
+export function usePreferredAudioTileStream(): string | null | undefined {
+  const tileId = useTileId();
+  const scopeKey = usePanelVisibilityScope();
+  const identity = useSidebarSourceIdentity();
+  if (!tileId || !scopeKey) return undefined;
+  const preferredKey =
+    readSidebarPreferences(scopeKey).tiles[tileId]?.audioSourceKey;
   return preferredKey
     ? (identity.runtimeIdsForKey(preferredKey)[0] ?? null)
     : undefined;
@@ -131,6 +154,65 @@ export function usePersistImageTileBinding(
         }));
       }
       store.set(persistedImageTileBindingsAtom, (previous) =>
+        previous[tileId] === nextSourceId
+          ? previous
+          : { ...previous, [tileId]: nextSourceId },
+      );
+    },
+    [identity, scopeKey, store, tileId],
+  );
+}
+
+/**
+ * Audio counterpart to {@link usePersistImageTileBinding}: seeds a new audio
+ * pane's durable preference and returns the setter intentional selection
+ * calls. Automatic fallbacks (a sample that lacks the preferred topic) never
+ * reach this, so a later sample can still restore the user's chosen source.
+ */
+export function usePersistAudioTileBinding(
+  sourceId: string,
+): (sourceId: string) => void {
+  const tileId = useTileId();
+  const store = useStore();
+  const scopeKey = usePanelVisibilityScope();
+  const identity = useSidebarSourceIdentity();
+  const preferredRuntimeId = usePreferredAudioTileStream();
+
+  // This effect records pane creation/duplication in durable modal state.
+  useEffect(() => {
+    if (!tileId || !sourceId) return;
+    const runtimeId = preferredRuntimeId ?? sourceId;
+    store.set(persistedAudioTileBindingsAtom, (previous) =>
+      (!scopeKey && previous[tileId]) || previous[tileId] === runtimeId
+        ? previous
+        : { ...previous, [tileId]: runtimeId },
+    );
+    if (!scopeKey || preferredRuntimeId !== undefined) return;
+    const sourceKey = identity.keyForRuntimeId(sourceId);
+    if (!sourceKey) return;
+    updateSidebarPreferences(scopeKey, (current) => ({
+      ...current,
+      tiles: {
+        ...current.tiles,
+        [tileId]: { ...current.tiles[tileId], audioSourceKey: sourceKey },
+      },
+    }));
+  }, [identity, preferredRuntimeId, scopeKey, sourceId, store, tileId]);
+
+  return useCallback(
+    (nextSourceId: string) => {
+      if (!tileId || !nextSourceId) return;
+      const sourceKey = identity.keyForRuntimeId(nextSourceId);
+      if (scopeKey && sourceKey) {
+        updateSidebarPreferences(scopeKey, (current) => ({
+          ...current,
+          tiles: {
+            ...current.tiles,
+            [tileId]: { ...current.tiles[tileId], audioSourceKey: sourceKey },
+          },
+        }));
+      }
+      store.set(persistedAudioTileBindingsAtom, (previous) =>
         previous[tileId] === nextSourceId
           ? previous
           : { ...previous, [tileId]: nextSourceId },
@@ -235,6 +317,32 @@ export function chooseNextImageStream(
     rankedImages[0]?.id ??
     ""
   );
+}
+
+/**
+ * Audio counterpart to {@link resolveAvailableImageStream}. The playback
+ * shell stays mounted across sample navigation and runtime source ids are
+ * positional, so the id a pane bound at mount is meaningless once the next
+ * sample's inventory lands — without this the tile only noticed that its id
+ * was missing and dropped to the first source, so every audio pane snapped
+ * onto the same topic even when the new sample carried the same ones.
+ *
+ * Unlike images there is no collision-avoiding ranked pass: audio panes have
+ * no mounted-bindings registry, and two panes on one topic is not a bug.
+ */
+export function resolveAvailableAudioStream(
+  currentSourceId: string | undefined,
+  preferredSourceId: string | null | undefined,
+  availableAudio: readonly SceneSource[],
+): string | undefined {
+  const available = new Set(availableAudio.map((source) => source.id));
+  if (preferredSourceId && available.has(preferredSourceId)) {
+    return preferredSourceId;
+  }
+  if (currentSourceId && available.has(currentSourceId)) {
+    return currentSourceId;
+  }
+  return availableAudio[0]?.id;
 }
 
 /**

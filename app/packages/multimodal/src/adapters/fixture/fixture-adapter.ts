@@ -134,7 +134,7 @@ class FixtureEpisodePreviewSession implements EpisodePreviewSession {
         streamId: null,
         streamSourceName: null,
         streamSourceNames,
-        status: previewStreams.length > 0 ? "empty" : "unavailable",
+        status: request.sourceName ? "unavailable" : "empty",
       };
     }
     const startNs = request.startTimeNs ?? selected.timeRange.startNs;

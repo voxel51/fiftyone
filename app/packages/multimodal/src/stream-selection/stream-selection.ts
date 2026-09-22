@@ -29,6 +29,16 @@ const IMAGE_SUFFIX_TOKENS = new Set([
   ...PREFERENCE_MARKER_TOKENS,
 ]);
 
+// TODO: Retire this name heuristic once adapters expose image semantics from a
+// bounded first-message probe. Neither MCAP summary metadata nor LeRobot
+// feature info carries pixel encoding.
+const DEPTH_IMAGE_TOKENS = new Set(["depth", "disparity"]);
+const NON_COLOR_IMAGE_TOKENS = new Set([
+  ...DEPTH_IMAGE_TOKENS,
+  "infrared",
+  "ir",
+]);
+
 /** Supplies the semantic identity used to group equivalent stream choices. */
 export interface DefaultStreamPreferenceOptions<T> {
   /** Equivalence is scoped by kind so unrelated stream families never merge. */
@@ -250,6 +260,18 @@ function defaultStreamTokenKey(sourceName: string, kind: string): string[] {
     (token) => !PREFERENCE_MARKER_TOKENS.has(token),
   );
   return withoutMarkers.length > 0 ? withoutMarkers : splitTokens(sourceName);
+}
+
+/** Whether a stream name marks a depth or disparity representation. */
+export function isDepthImageStreamName(sourceName: string): boolean {
+  return splitTokens(sourceName).some((token) => DEPTH_IMAGE_TOKENS.has(token));
+}
+
+/** Whether a stream name marks any non-color representation: depth, or IR. */
+export function isNonColorImageStreamName(sourceName: string): boolean {
+  return splitTokens(sourceName).some((token) =>
+    NON_COLOR_IMAGE_TOKENS.has(token),
+  );
 }
 
 function tokenKeysEqual(left: readonly string[], right: readonly string[]) {

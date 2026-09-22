@@ -24,6 +24,10 @@ import {
   scene3dTilePlaybackSettingsAtom,
   type Scene3dTilePlaybackSettingsByTile,
 } from "../scene/tile/scene-3d-tile-state";
+import {
+  persistedAudioTileBindingsAtom,
+  persistedImageTileBindingsAtom,
+} from "../tiles/tile-source-bindings";
 import { cameraScopeKey } from "../scope/camera-scope";
 import { updateSidebarPreferences } from "../settings/sidebar-preferences";
 import { semanticSourceKey } from "../settings/semantic-source";
@@ -103,6 +107,13 @@ describe("useModalLayout", () => {
     localStorage.clear();
   });
   afterEach(() => cleanup());
+
+  it("restores an explicitly empty layout without adding default tiles", () => {
+    writeModalLayout({ layout: null }, "empty");
+    const { result } = renderLayoutHook(SCENE_SOURCES, "empty");
+    expect(result.current.initialLayout).toBeNull();
+    expect(result.current.initialTiles).toEqual({});
+  });
 
   it("derives resolver defaults with a deliberate arrangement", () => {
     const { result } = renderLayoutHook(SCENE_SOURCES);
@@ -370,12 +381,14 @@ describe("useModalLayout", () => {
     ).toBeUndefined();
   });
 
-  it("falls back to dataset-scoped scene-axis persistence without a media field", () => {
+  it("persists source-scoped scene-axis preferences without a media field", () => {
     const { result } = renderLayoutHook(SCENE_SOURCES, "dataset-a");
 
     act(() => result.current.onSceneUpAxisChange("y"));
 
-    expect(readModalLayout("dataset-a")?.sceneUpAxis).toBe("y");
+    expect(readCameraPreferences("dataset-a", undefined)?.sceneUpAxis).toBe(
+      "y",
+    );
   });
 
   it("restores expanded tile state when the tile survives layout restore", () => {
@@ -733,7 +746,7 @@ describe("useModalLayout", () => {
     expect(read?.sidebarWidthPx).toBe(420);
   });
 
-  it("restores and persists the dataset scene up-axis", () => {
+  it("restores the legacy scene up-axis and persists edits in source conventions", () => {
     writeModalLayout({ sceneUpAxis: "y" }, "dataset-a");
     const { result } = renderLayoutHook(SCENE_SOURCES, "dataset-a");
 
@@ -742,8 +755,13 @@ describe("useModalLayout", () => {
     act(() => result.current.onSceneUpAxisChange("x"));
 
     expect(result.current.sceneUpAxis).toBe("x");
-    expect(readModalLayout("dataset-a")?.sceneUpAxis).toBe("x");
-    expect(readModalLayout("dataset-b")?.sceneUpAxis).toBeUndefined();
+    expect(readCameraPreferences("dataset-a", undefined)?.sceneUpAxis).toBe(
+      "x",
+    );
+    expect(readCameraPreferences("dataset-b", undefined)).toBeNull();
+    expect(
+      renderLayoutHook(SCENE_SOURCES, "dataset-a").result.current.sceneUpAxis,
+    ).toBe("x");
   });
 
   it("resets scene up-axis when switching to an unsaved dataset", () => {
@@ -1091,6 +1109,125 @@ describe("ModalLayoutPersistence", () => {
     expect(readModalLayout("dataset-a")?.expandedTileId).toBe("camera-default");
   });
 
+  function TileRemovalDriver({ tileId }: { tileId: string | null }) {
+    const { removeTile } = useTiling();
+    // This effect drives pane removal from test props — stand-in for the
+    // user closing a tile.
+    useEffect(() => {
+      if (tileId) removeTile(tileId);
+    }, [removeTile, tileId]);
+    return null;
+  }
+
+  function BindingSeeder({
+    audio,
+    image,
+  }: {
+    readonly audio: Readonly<Record<string, string>>;
+    readonly image: Readonly<Record<string, string>>;
+  }) {
+    const store = useStore();
+    // This effect stands in for mounted panes having published their
+    // durable bindings; it runs before the pruning effect below it. Each
+    // map only ever holds its own kind's tile ids — a pruning pass sees
+    // only the live tiles of its kind, so a foreign id there reads as
+    // stale.
+    useEffect(() => {
+      store.set(persistedImageTileBindingsAtom, image);
+      store.set(persistedAudioTileBindingsAtom, audio);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+    return null;
+  }
+
+  function BindingsProbe({
+    onValue,
+  }: {
+    readonly onValue: (value: {
+      readonly audio: Readonly<Record<string, string>>;
+      readonly image: Readonly<Record<string, string>>;
+    }) => void;
+  }) {
+    const audio = useAtomValue(persistedAudioTileBindingsAtom);
+    const image = useAtomValue(persistedImageTileBindingsAtom);
+    // This effect exposes atom updates to the test assertion.
+    useEffect(() => {
+      onValue({ audio, image });
+    }, [audio, image, onValue]);
+    return null;
+  }
+
+  // Audio panes persist a durable binding the same way image panes do, so
+  // both maps have to be pruned on pane removal — a leftover entry would
+  // resurrect a closed pane's topic on the next pane to reuse its id.
+  describe("pruning durable tile bindings", () => {
+    const FOUR_TILES = {
+      "audio-1": { title: "Audio", render: () => null },
+      "audio-2": { title: "Audio compare", render: () => null },
+      "image-1": { title: "Camera", render: () => null },
+      "image-2": { title: "Camera compare", render: () => null },
+    };
+    const SEEDED_AUDIO = { "audio-1": "mic_front", "audio-2": "mic_rear" };
+    const SEEDED_IMAGE = { "image-1": "cam_front", "image-2": "cam_rear" };
+
+    function renderWithRemoval(
+      removedTileId: string | null,
+      seeds: {
+        readonly audio?: Readonly<Record<string, string>>;
+        readonly image?: Readonly<Record<string, string>>;
+      } = {},
+    ) {
+      const values: Array<{
+        readonly audio: Readonly<Record<string, string>>;
+        readonly image: Readonly<Record<string, string>>;
+      }> = [];
+      const view = render(
+        <TilingProvider initialTiles={FOUR_TILES}>
+          <BindingSeeder
+            audio={seeds.audio ?? SEEDED_AUDIO}
+            image={seeds.image ?? SEEDED_IMAGE}
+          />
+          <ModalLayoutPersistence datasetId="dataset-a" />
+          <TileRemovalDriver tileId={removedTileId} />
+          <BindingsProbe onValue={(value) => values.push(value)} />
+        </TilingProvider>,
+      );
+      return { latest: () => values.at(-1), view };
+    }
+
+    it("keeps every binding while its pane is still in the layout", () => {
+      const { latest } = renderWithRemoval(null);
+      expect(latest()?.image).toEqual(SEEDED_IMAGE);
+      expect(latest()?.audio).toEqual(SEEDED_AUDIO);
+    });
+
+    it("drops an audio binding when its pane leaves the layout", () => {
+      const { latest } = renderWithRemoval("audio-2");
+      expect(latest()?.audio).toEqual({
+        "audio-1": "mic_front",
+      });
+    });
+
+    it("drops an image binding when its pane leaves the layout", () => {
+      const { latest } = renderWithRemoval("image-2");
+      expect(latest()?.image).toEqual({
+        "image-1": "cam_front",
+      });
+    });
+
+    it("prunes each tile kind against its own live panes, not every pane", () => {
+      // Both maps are keyed by tile id, so each pass has to be told which
+      // kind it reconciles. An image id in the audio map is stale by
+      // construction — an audio pane never binds one — and a pass that
+      // measured against every live tile would keep it.
+      const { latest } = renderWithRemoval(null, {
+        audio: { ...SEEDED_AUDIO, "image-1": "cam_front" },
+      });
+      expect(latest()?.audio).toEqual(SEEDED_AUDIO);
+      expect(latest()?.image).toEqual(SEEDED_IMAGE);
+    });
+  });
+
   it("does not persist a layout the user never edited", () => {
     // A pruned restore mounts as-is; merely viewing it (and closing the
     // modal) must not overwrite the saved arrangement with the pruned tree.
@@ -1109,5 +1246,230 @@ describe("ModalLayoutPersistence", () => {
     });
     unmount();
     expect(readModalLayout("dataset-a")).toBeNull();
+  });
+});
+
+describe("portable viewer capture and apply", () => {
+  beforeEach(() => localStorage.clear());
+  afterEach(() => cleanup());
+
+  it.each(["filepath", undefined])(
+    "captures live settings and restores camera conventions with field %s",
+    async (field) => {
+      const { PortableLayoutHost, usePortableLayoutControls } =
+        await import("./PortableLayoutHost");
+      const { serializePortableLayout, parsePortableLayout } =
+        await import("./portable-layout");
+      const { DEFAULT_SIDEBAR_PREFERENCES, readSidebarPreferences } =
+        await import("../settings/sidebar-preferences");
+      const { plotTileSeriesAtom } = await import("../plots/plot-tile-state");
+      let controls: ReturnType<typeof usePortableLayoutControls>;
+      let change: (() => void) | undefined;
+      const incoming = serializePortableLayout(
+        { layout: "image-2", tileTitles: { "image-2": "Front" } },
+        {
+          sceneUpAxis: "y",
+          preferredWorldFrameId: "map",
+          preferredCameraTargetFrameId: "base_link",
+          defaultTrackingMode: "heading",
+        },
+        {
+          ...DEFAULT_SIDEBAR_PREFERENCES,
+          tiles: {
+            "image-2": {
+              imageSourceKey: JSON.stringify(["image", "/missing-camera"]),
+            },
+          },
+        },
+      );
+      function Harness() {
+        controls = usePortableLayoutControls();
+        const store = useStore();
+        const tiling = useTiling();
+        change = () => {
+          store.set(plotTileSeriesAtom, {
+            "plot-1": [{ stream: "/speed", fieldPath: "x", color: "#ff0000" }],
+          });
+          tiling.setLayout("plot-1");
+        };
+        return (
+          <ModalLayoutPersistence
+            datasetId="portable-test"
+            cameraPreferenceField={field}
+          />
+        );
+      }
+      function Viewer() {
+        const saved = readModalLayout("portable-test");
+        return (
+          <TilingProvider
+            initialTiles={{
+              "plot-1": { title: "Plot", render: () => null },
+            }}
+            initialLayout={saved?.layout ?? "image-1"}
+          >
+            <Harness />
+          </TilingProvider>
+        );
+      }
+      writeCameraPreferences(
+        { sceneUpAxis: "z" },
+        "portable-test",
+        "other-field",
+      );
+      render(
+        <PortableLayoutHost scopeKey="portable-test" mediaField={field}>
+          <Viewer />
+        </PortableLayoutHost>,
+      );
+      act(() => change?.());
+      if (!controls) throw new Error("Missing layout controls");
+      const snapshot = parsePortableLayout(controls.capture());
+      expect(snapshot.modal.layout).toBe("plot-1");
+      expect(snapshot.modal.plotSeries?.["plot-1"]?.[0].stream).toBe("/speed");
+      act(() => controls?.apply(incoming));
+      expect(readModalLayout("portable-test")?.layout).toBe("image-2");
+      expect(readModalLayout("portable-test")?.plotSeries).toBeUndefined();
+      expect(readCameraPreferences("portable-test", field)?.sceneUpAxis).toBe(
+        "y",
+      );
+      expect(parsePortableLayout(controls.capture()).camera).toEqual(
+        parsePortableLayout(incoming).camera,
+      );
+      expect(readCameraPreferences("portable-test", "other-field")).toEqual({
+        sceneUpAxis: "z",
+      });
+      const restored = renderLayoutHook(SCENE_SOURCES, "portable-test", field);
+      expect(restored.result.current).toMatchObject({
+        sceneUpAxis: "y",
+        preferredWorldFrameId: "map",
+        preferredCameraTargetFrameId: "base_link",
+        defaultTrackingMode: "heading",
+      });
+      act(() => restored.result.current.onSceneUpAxisChange("z"));
+      expect(parsePortableLayout(controls.capture()).camera.sceneUpAxis).toBe(
+        "z",
+      );
+      expect(
+        readSidebarPreferences(cameraScopeKey("portable-test", field)).tiles[
+          "image-2"
+        ]?.imageSourceKey,
+      ).toContain("/missing-camera");
+    },
+  );
+
+  it("keeps the change key stable through apply, remount, and camera re-expression, but not user edits", async () => {
+    const { PortableLayoutHost, usePortableLayoutControls } =
+      await import("./PortableLayoutHost");
+    const { parsePortableLayout, serializePortableLayout } =
+      await import("./portable-layout");
+    const { DEFAULT_SIDEBAR_PREFERENCES } =
+      await import("../settings/sidebar-preferences");
+    const { plotTileSeriesAtom } = await import("../plots/plot-tile-state");
+    const scope = cameraScopeKey("portable-key", "filepath");
+    const composition = (
+      relativePosition: readonly [number, number, number],
+    ) => ({
+      kind: "target-relative" as const,
+      relativePosition,
+      relativeTarget: [11.6, -14.1, 4.15] as const,
+      rotationMode: "position" as const,
+      sceneUpAxis: "z" as const,
+      targetFrameId: "base_link",
+      trackingMode: "position" as const,
+    });
+    const incoming = serializePortableLayout(
+      { layout: "plot-1" },
+      { sceneUpAxis: "z" },
+      {
+        ...DEFAULT_SIDEBAR_PREFERENCES,
+        camera: {
+          cameraNavigationMode: "relative",
+          navigationCompositions: [composition([365.97, 150.39, 331.22])],
+          renderableSourceKeys: ['["point-cloud","/LIDAR_TOP"]'],
+        },
+      },
+    );
+    let controls: ReturnType<typeof usePortableLayoutControls>;
+    let store: ReturnType<typeof useStore> | undefined;
+    let mounts = 0;
+    function Harness() {
+      controls = usePortableLayoutControls();
+      store = useStore();
+      useEffect(() => {
+        mounts += 1;
+      }, []);
+      return (
+        <ModalLayoutPersistence
+          datasetId="portable-key"
+          cameraPreferenceField="filepath"
+        />
+      );
+    }
+    function Viewer() {
+      const saved = readModalLayout("portable-key");
+      return (
+        <TilingProvider
+          initialTiles={{ "plot-1": { title: "Plot", render: () => null } }}
+          initialLayout={saved?.layout ?? "plot-1"}
+        >
+          <Harness />
+        </TilingProvider>
+      );
+    }
+    render(
+      <PortableLayoutHost scopeKey="portable-key" mediaField="filepath">
+        <Viewer />
+      </PortableLayoutHost>,
+    );
+    if (!controls) throw new Error("Missing layout controls");
+    const baseline = controls.changeKey(incoming);
+    act(() => controls?.apply(incoming));
+    expect(mounts).toBe(2);
+    // A clean restore through the real storage and capture path is not a change.
+    expect(controls.changeKey(controls.capture())).toBe(baseline);
+
+    // The durable camera store re-records the composition from the live pose
+    // after the restore resolves; the numbers differ, the intent does not.
+    act(() =>
+      updateSidebarPreferences(scope, (current) => ({
+        ...current,
+        camera: {
+          ...current.camera,
+          navigationCompositions: [composition([-461.52, -198.12, 107.33])],
+          renderableSourceKeys: [
+            '["point-cloud","/LIDAR_TOP"]',
+            '["map-layer","/map"]',
+          ],
+        },
+      })),
+    );
+    expect(controls.changeKey(controls.capture())).toBe(baseline);
+    expect(
+      parsePortableLayout(controls.capture()).preferences.camera
+        .navigationCompositions[0],
+    ).toMatchObject({ relativePosition: [-461.52, -198.12, 107.33] });
+
+    // Deliberate settings are changes: navigation mode and live tile config.
+    act(() =>
+      updateSidebarPreferences(scope, (current) => ({
+        ...current,
+        camera: { ...current.camera, cameraNavigationMode: "absolute" },
+      })),
+    );
+    expect(controls.changeKey(controls.capture())).not.toBe(baseline);
+    act(() =>
+      updateSidebarPreferences(scope, (current) => ({
+        ...current,
+        camera: { ...current.camera, cameraNavigationMode: "relative" },
+      })),
+    );
+    expect(controls.changeKey(controls.capture())).toBe(baseline);
+    act(() =>
+      store?.set(plotTileSeriesAtom, {
+        "plot-1": [{ stream: "/speed", fieldPath: "x", color: "#ff0000" }],
+      }),
+    );
+    expect(controls.changeKey(controls.capture())).not.toBe(baseline);
   });
 });

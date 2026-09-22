@@ -40,7 +40,7 @@ export class ModalPom {
 
   constructor(
     private readonly page: Page,
-    private readonly eventUtils: EventUtils,
+    readonly eventUtils: EventUtils,
   ) {
     this.assert = new ModalAsserter(this);
     this.locator = page.getByTestId("modal");
@@ -341,6 +341,15 @@ export class ModalPom {
     await this.clickOnLooker3d();
   }
 
+  /** Chrome hidden from 3D screenshots: the action bar, selection bar, and panels. */
+  get looker3dScreenshotMasks(): Locator[] {
+    return [
+      this.locator.getByTestId("looker3d-action-bar"),
+      this.locator.getByTestId("selectable-bar"),
+      this.locator.getByTestId("panel-container"),
+    ];
+  }
+
   async clickOnLooker() {
     return this.looker.click();
   }
@@ -357,10 +366,10 @@ export class ModalPom {
           return true;
         }
 
-        return (
-          document
-            .querySelector(`[data-cy=modal-looker-container] canvas`)
-            ?.getAttribute("canvas-loaded") === "true"
+        // Any surface may raise the marker: the lookers set it on their
+        // canvas, the plain video surface sets it on the `<video>`.
+        return !!document.querySelector(
+          `[data-cy=modal-looker-container] [canvas-loaded="true"]`,
         );
       },
       allowErrorInfo,

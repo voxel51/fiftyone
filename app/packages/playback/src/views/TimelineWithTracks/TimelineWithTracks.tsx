@@ -104,16 +104,16 @@ export interface TimelineWithTracksProps {
    */
   extraControls?: React.ReactNode;
   /**
+   * Clock-adjacent host readouts (the absolute/UTC timestamp). Forwarded to
+   * {@link TimelineHeader}'s `readouts`; renders in both layouts.
+   */
+  readouts?: React.ReactNode;
+  /**
    * Optional content rendered inline after the playhead time, preceded by a
    * divider. Forwarded to {@link TimelineHeader}'s `extraActions`; renders in
    * both the empty-timeline and drawer layouts. Readouts belong here — for
    * right-edge buttons use {@link trailingActions}.
    */
-  /**
-   * Clock-adjacent host readouts (the absolute/UTC timestamp). Forwarded to
-   * {@link TimelineHeader}'s `readouts`; renders in both layouts.
-   */
-  readouts?: React.ReactNode;
   extraActions?: React.ReactNode;
   /**
    * Bring-your-own buttons, pinned to the right edge of the controls row
@@ -440,12 +440,10 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   );
 
   const renderUnpinnedTrack = (track: Track | undefined) => {
-    // Virtuoso can ask for an index that the latest `data` no longer holds —
-    // it renders from the range it last measured, so a list that shrinks (the
-    // final track deleted, a filter applied) transiently addresses rows past
-    // the new end. Reading through an undefined row here took the whole tree
-    // down with it.
-    if (!track) return null;
+    // Virtuoso renders from the range it last measured, so a shrinking list
+    // transiently addresses rows past the end. The row still has to measure,
+    // or Virtuoso warns about a zero-sized element.
+    if (!track) return <div style={{ height: estimatedRowHeight }} />;
 
     const extra = decorationFor(track, false);
     return (

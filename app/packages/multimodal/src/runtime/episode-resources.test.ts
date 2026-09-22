@@ -12,9 +12,14 @@ const resourceHarness = vi.hoisted(() => ({
   loadFormatAdapter: vi.fn(),
 }));
 
+vi.mock("../query", () => ({
+  createMultimodalQueryClient: () => ({
+    bytes: resourceHarness.byteResources,
+  }),
+}));
+
 vi.mock("../query/bytes", () => ({
   byteSourceAccessKey: vi.fn(),
-  createDefaultByteClient: () => resourceHarness.byteResources,
 }));
 
 vi.mock("./adapter-registry", () => ({

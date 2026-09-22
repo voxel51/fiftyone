@@ -11,6 +11,7 @@ import {
 } from "@fiftyone/events";
 import { AddOverlayCommand } from "../commands/AddOverlayCommand";
 import { MoveOverlayCommand } from "../commands/MoveOverlayCommand";
+import { RotateOverlayCommand } from "../commands/RotateOverlayCommand";
 import { PaintStrokeCommand } from "../commands/PaintStrokeCommand";
 import { RemoveOverlayCommand } from "../commands/RemoveOverlayCommand";
 import { DetectionOverlay } from "../overlay/DetectionOverlay";
@@ -40,6 +41,7 @@ import type {
   Hoverable,
   Point,
   Rect,
+  Rotatable,
   Spatial,
 } from "../types";
 import { generateColorFromId } from "../utils/color";
@@ -71,6 +73,11 @@ export const TypeGuards = {
   isSpatial: (
     body: BaseOverlay | InteractionHandler,
   ): body is BaseOverlay & Spatial => "bounds" in body,
+
+  isRotatable: (
+    body: BaseOverlay | InteractionHandler,
+  ): body is BaseOverlay & Rotatable =>
+    "getRotation" in body && "setRotation" in body,
 
   isInteractionHandler: (value: unknown): value is InteractionHandler =>
     typeof value === "object" &&
@@ -122,12 +129,29 @@ export interface OverlayOrderOptions {
 
 /**
  * Interface for render callbacks that can be registered to run during the render loop.
+ *
+ * SYNCHRONOUS by contract. The frame runs inside Pixi's ticker, ahead of
+ * Pixi's own LOW-priority render in the same pass — a callback that suspended
+ * the frame would push every scene-graph mutation past that render, which is
+ * exactly the phase inversion this loop exists to avoid. Work that must await
+ * belongs off the render path.
  */
 export interface RenderCallback {
   id: string;
-  callback: () => void | Promise<void>;
+  callback: () => void;
   phase: "before" | "after";
 }
+
+/**
+ * Rejects a thenable return.
+ *
+ * `callback: () => void` is not enough on its own: TypeScript lets a
+ * `Promise`-returning function satisfy a `() => void` signature, so an `async`
+ * callback would type-check and then silently reintroduce the phase inversion
+ * this loop exists to prevent. Applied at `registerRenderCallback`, where the
+ * return type is inferable, it fails at the call site instead.
+ */
+type NotPromise<T> = T extends PromiseLike<unknown> ? never : T;
 
 /**
  * 2D scene that manages overlays, rendering, selection, coordinate system, and undo/redo operations.
@@ -142,6 +166,8 @@ export class Scene2D {
   private overlayOrder: string[] = [];
   private renderingState = new RenderingStateManager();
   private sceneOptions?: SceneOptions;
+  /** See {@link setReadOnly}. */
+  private readOnlyMode = false;
   private selectionManager: SelectionManager;
   private renderCallbacks = new Map<string, RenderCallback>();
   private colorMappingContext?: ColorMappingContext;
@@ -176,6 +202,19 @@ export class Scene2D {
       this.eventChannel,
     );
 
+    // A filtered-out label must not be clickable at its old position, or
+    // hiding it in the sidebar makes empty canvas do something. Set once as a
+    // live closure over `this` rather than re-pushed on every options change:
+    // `shouldShowOverlay` already reads `this.sceneOptions` fresh each call,
+    // so this predicate stays correct as options change without needing its
+    // own update path. `id` may not resolve to a registered overlay at all —
+    // a self-managed draw/paint tool handler is not one — in which case there
+    // is nothing to filter and the handler stays hit-testable.
+    this.interactionManager.setVisibilityPredicate((id) => {
+      const overlay = this.overlays.get(id);
+      return overlay ? this.shouldShowOverlay(overlay) : true;
+    });
+
     this.eventBus = getEventBus<LighterEventGroup>(this.eventChannel);
 
     // Listen for canonical media bounds changes to update coordinate system and overlays
@@ -192,8 +231,15 @@ export class Scene2D {
 
     // Listen for scene options changes to trigger re-rendering
     this.registerEventHandler("lighter:scene-options-changed", (event) => {
-      const { activePaths, showOverlays, alpha } = event;
-      this.updateOptions({ activePaths, showOverlays, alpha });
+      // `updateOptions` REPLACES `sceneOptions` wholesale (see its own doc
+      // comment) — every field this handler receives has to be re-listed
+      // here or it is silently dropped the next time ANY option changes,
+      // `filter` included. `readOnly` avoided this trap entirely by living
+      // in its own field instead of this bag; `filter` doesn't need that,
+      // since it belongs with `activePaths`/`showOverlays` as one more
+      // per-render display option, but it does need to be named here.
+      const { activePaths, showOverlays, alpha, filter } = event;
+      this.updateOptions({ activePaths, showOverlays, alpha, filter });
 
       this.overlays.forEach((overlay) => {
         overlay.markDirty();
@@ -291,6 +337,28 @@ export class Scene2D {
           CommandContextManager.instance()
             .getActiveContext()
             .pushUndoable(moveCommand);
+        }
+      }
+    });
+
+    // Listen for OVERLAY_ROTATE_END events to push undo/redo commands
+    this.registerEventHandler("lighter:overlay-rotate-end", (event) => {
+      if (this.externalUndoAuthority) return;
+
+      const overlay = this.getOverlay(event.overlayId);
+      if (overlay && TypeGuards.isRotatable(overlay)) {
+        const { startRotation, rotation } = event;
+
+        if (Math.abs(startRotation - rotation) > 1e-4) {
+          const rotateCommand = new RotateOverlayCommand(
+            overlay,
+            event.overlayId,
+            startRotation,
+            rotation,
+          );
+          CommandContextManager.instance()
+            .getActiveContext()
+            .pushUndoable(rotateCommand);
         }
       }
     });
@@ -774,6 +842,89 @@ export class Scene2D {
   }
 
   /**
+   * Read-only mode: overlays stay selectable and hoverable, but none of them
+   * can be moved, resized, or drawn. See
+   * {@link InteractionManager.setReadOnly}.
+   *
+   * Deliberately NOT part of {@link SceneOptions}: that object is replaced
+   * wholesale by `updateOptions`, and the `lighter:scene-options-changed`
+   * handler rebuilds it from only `activePaths` / `showOverlays` / `alpha` —
+   * a read-only flag living there would be silently dropped the first time
+   * the sidebar toggled a field. This is a surface-lifetime property, not a
+   * display option, so it gets its own storage.
+   */
+  setReadOnly(readOnly: boolean): void {
+    this.readOnlyMode = readOnly;
+    this.interactionManager.setReadOnly(readOnly);
+    for (const overlay of this.overlays.values()) {
+      this.applyReadOnlyTo(overlay);
+    }
+  }
+
+  /**
+   * Strip an overlay's move affordances while the scene is read-only.
+   *
+   * This is presentation, not enforcement — `InteractionManager` already
+   * refuses the gesture. But `DetectionOverlay` gates its resize handles and
+   * selection scrim on `isDraggable || isResizeable`, so leaving those set
+   * would draw grab handles for a drag that cannot happen. Clearing them
+   * makes a selected label render as a plain highlighted box.
+   *
+   * One-way by design: read-only is a surface-lifetime property, so this
+   * never re-enables anything an overlay opted out of on its own.
+   */
+  private applyReadOnlyTo(overlay: BaseOverlay): void {
+    if (!this.readOnlyMode) {
+      return;
+    }
+    // Not on BaseOverlay — only the spatial overlays that can move define
+    // them, so feature-detect rather than widen the base type.
+    const movable = overlay as Partial<{
+      setDraggable(value: boolean): void;
+      setResizeable(value: boolean): void;
+    }>;
+    movable.setDraggable?.(false);
+    movable.setResizeable?.(false);
+  }
+
+  /** Whether geometry mutation is blocked on this scene. */
+  isReadOnly(): boolean {
+    return this.readOnlyMode;
+  }
+
+  /**
+   * Allows more than one overlay to be selected at a time.
+   *
+   * A surface-lifetime property, stored the same way and for the same reason
+   * as {@link setReadOnly}: `SceneOptions` is replaced wholesale by
+   * `updateOptions`, so a flag living there would be dropped the first time
+   * the sidebar toggled a field.
+   *
+   * On for surfaces that select labels rather than edit them — video Explore,
+   * where clicking boxes builds up `selectedLabels` for tagging. Off for the
+   * annotation surfaces, whose drag / resize / paint handlers act on a single
+   * selected overlay.
+   *
+   * This is the ONE switch for that behavior, and it reaches past the scene:
+   * `InteractionManager` reads it to decide whether a click toggles an overlay
+   * or replaces the selection, and the annotation engine's Lighter bridge
+   * reads it back off the scene to decide whether a click is additive in the
+   * engine's active set. Everything that has to agree about "can this surface
+   * hold several selected labels?" derives from here rather than being told
+   * separately, because a surface that set only some of them would show a
+   * canvas that collapses to one highlighted overlay while the other layers
+   * accumulate.
+   */
+  setMultipleSelection(multipleSelection: boolean): void {
+    this.selectionManager.setMultipleSelection(multipleSelection);
+  }
+
+  /** Whether this scene allows more than one overlay to be selected. */
+  isMultipleSelection(): boolean {
+    return this.selectionManager.isMultipleSelection();
+  }
+
+  /**
    * Determines if overlay order should be recalculated based on cursor position.
    * Only recalculates if the cursor is over a non-canonical overlay.
    * @returns True if overlay order should be recalculated.
@@ -1004,14 +1155,28 @@ export class Scene2D {
     return finalStyle;
   }
 
+  /**
+   * The tick handler is SYNCHRONOUS, and must stay that way.
+   *
+   * Pixi's `TickerPlugin` registers its own `render` on this same ticker at
+   * `UPDATE_PRIORITY.LOW`, while this handler sits at the default `NORMAL` —
+   * so one ticker pass is meant to run "mutate the scene graph, then present
+   * it". An `async` handler returns at its first `await` and hands the rest of
+   * the frame to the microtask queue, which drains AFTER the ticker's
+   * synchronous phase — i.e. after Pixi has already presented. Every overlay
+   * mutation then lands a phase late, and because overlays paint by disposing
+   * their container and rebuilding it, any present caught between the dispose
+   * and the rebuild shows a hole. Staying synchronous is what keeps the whole
+   * frame — dispose included — inside one pass, invisible to the present.
+   */
   public async startRenderLoop(): Promise<void> {
     if (this.isRenderLoopActive) {
       return;
     }
 
     this.isRenderLoopActive = true;
-    this.config.renderer.addTickHandler(async () => {
-      await this.renderFrame();
+    this.config.renderer.addTickHandler(() => {
+      this.renderFrame();
     });
   }
 
@@ -1028,14 +1193,17 @@ export class Scene2D {
    * @param callback - The callback configuration.
    * @returns A function to unregister the callback.
    */
-  registerRenderCallback(
-    callback: Omit<RenderCallback, "id"> & { id?: string },
+  registerRenderCallback<R>(
+    callback: Omit<RenderCallback, "id" | "callback"> & {
+      id?: string;
+      callback: () => NotPromise<R>;
+    },
   ): () => void {
     const id = callback.id || `render-callback-${Date.now()}-${Math.random()}`;
 
     const renderCallback: RenderCallback = {
       id,
-      callback: callback.callback,
+      callback: callback.callback as () => void,
       phase: callback.phase,
     };
 
@@ -1057,19 +1225,14 @@ export class Scene2D {
    * Executes render callbacks for a specific phase.
    * @param phase - The phase to execute callbacks for.
    */
-  private async executeRenderCallbacks(
-    phase: "before" | "after",
-  ): Promise<void> {
+  private executeRenderCallbacks(phase: "before" | "after"): void {
     const callbacks = Array.from(this.renderCallbacks.values()).filter(
       (callback) => callback.phase === phase,
     );
 
     for (const callback of callbacks) {
       try {
-        const result = callback.callback();
-        if (result instanceof Promise) {
-          await result;
-        }
+        callback.callback();
       } catch (error) {
         console.error(`Error in render callback ${callback.id}:`, error);
         // Continue with other callbacks even if one fails
@@ -1105,6 +1268,7 @@ export class Scene2D {
     overlay.setResourceLoader(this.config.resourceLoader);
     overlay.setEventChannel(this.eventChannel);
     overlay.rehydrateMask?.();
+    this.applyReadOnlyTo(overlay);
 
     // Add to internal tracking
     this.overlays.set(overlay.id, overlay);
@@ -1556,16 +1720,16 @@ export class Scene2D {
   /**
    * Renders a single frame.
    */
-  private async renderFrame(): Promise<void> {
+  private renderFrame(): void {
     // Execute before-render callbacks
-    await this.executeRenderCallbacks("before");
+    this.executeRenderCallbacks("before");
 
     for (const overlayId of this.overlayOrder) {
       this.renderOverlay(overlayId);
     }
 
     // Execute after-render callbacks
-    await this.executeRenderCallbacks("after");
+    this.executeRenderCallbacks("after");
   }
 
   /**
@@ -1621,8 +1785,18 @@ export class Scene2D {
     if (this.sceneOptions?.showOverlays === false) return false;
 
     const activePaths = this.sceneOptions?.activePaths;
-    if (activePaths && overlay.field) {
-      return activePaths.includes(overlay.field);
+    if (activePaths && overlay.field && !activePaths.includes(overlay.field)) {
+      return false;
+    }
+
+    // Per-label filter (sidebar confidence / value / tag filters, and hidden
+    // labels — both fold into the one predicate the looker checked in
+    // `Overlay.isShown`). Skipped for a field-less overlay: the canonical
+    // media is already returned above, and any other field-less overlay is
+    // not a label the filter has an opinion about.
+    const filter = this.sceneOptions?.filter;
+    if (filter && overlay.field && !filter(overlay.field, overlay.label)) {
+      return false;
     }
 
     return true;
@@ -1645,23 +1819,14 @@ export class Scene2D {
           height: 0,
         };
 
-      const ret = overlay.render(
-        this.config.renderer,
-        this.createOverlayStyle(overlay),
-        {
-          canonicalMediaBounds,
-        },
-      );
+      overlay.render(this.config.renderer, this.createOverlayStyle(overlay), {
+        canonicalMediaBounds,
+      });
 
-      if (ret instanceof Promise) {
-        ret.then(() => {
-          this.renderingState.setStatus(overlayId, OVERLAY_STATUS_PAINTED);
-          overlay.markClean();
-        });
-      } else {
-        this.renderingState.setStatus(overlayId, OVERLAY_STATUS_PAINTED);
-        overlay.markClean();
-      }
+      // `render` is synchronous by contract — a rebuild pass opens and closes
+      // within one call — so the overlay is painted by the time this returns.
+      this.renderingState.setStatus(overlayId, OVERLAY_STATUS_PAINTED);
+      overlay.markClean();
     } catch (error) {
       this.handleRenderError(overlayId, error);
     }

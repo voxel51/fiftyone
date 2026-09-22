@@ -25,13 +25,11 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fomm
-import fiftyone.core.media_assets as foma
 import fiftyone.core.metadata as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.storage as fos
 import fiftyone.core.threed as fo3d
 import fiftyone.core.utils as fou
-import fiftyone.multimodal.media as fmm
 import fiftyone.utils.eta as foue
 import fiftyone.utils.image as foui
 import fiftyone.utils.patches as foup
@@ -47,6 +45,8 @@ from .parsers import (
 )
 
 fota = fou.lazy_import("fiftyone.core.tags")
+foma = fou.lazy_import("fiftyone.multimodal.media_reference.asset_planning")
+fmm = fou.lazy_import("fiftyone.multimodal.media_reference.field_model")
 
 logger = logging.getLogger(__name__)
 
@@ -1173,6 +1173,7 @@ class MediaExporter(object):
         self._reference_asset_outputs = None
         self._reference_output_keys = None
         self._reference_asset_builder = None
+        self._reference_dataset = None
         self._reference_asset_plan = None
         self._reference_export_root = None
         self._reference_group_field = None
@@ -1304,6 +1305,7 @@ class MediaExporter(object):
             )
 
         self._reference_asset_builder = foma._ReferenceAssetPlanBuilder()
+        self._reference_dataset = sample_collection._root_dataset
         self._reference_export_root = export_root
         self._reference_group_field = (
             sample_collection.group_field
@@ -1396,18 +1398,11 @@ class MediaExporter(object):
             )
 
         plan = self._reference_asset_builder.finalize(
+            dataset=self._reference_dataset,
             resolve=self.export_mode is True,
             allow_unsupported=self.export_mode is False,
         )
         self._reference_asset_plan = plan
-
-        foo.export_document(
-            {"bindings": plan.bindings},
-            fos.join(
-                self._reference_export_root,
-                fmm._MEDIA_REFERENCE_BINDINGS_FILENAME,
-            ),
-        )
 
         materialized_roots = {}
         if self.export_mode is True:
@@ -2038,20 +2033,17 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         self._media_exporter.setup()
 
     def log_collection(self, sample_collection):
-        if sample_collection.media_reference_kind is not None:
+        if sample_collection._contains_media_references():
             self._media_exporter.setup_reference_export(
                 sample_collection, self.export_dir
             )
 
         self._metadata["name"] = sample_collection._dataset.name
         self._metadata["media_type"] = sample_collection.media_type
-        self._metadata[
-            "media_reference_kind"
-        ] = sample_collection.media_reference_kind
         if sample_collection.media_type == fomm.GROUP:
-            self._metadata[
-                "group_media_types"
-            ] = sample_collection.group_media_types
+            self._metadata["group_media_types"] = (
+                sample_collection.group_media_types
+            )
 
         schema = sample_collection._serialize_field_schema()
         self._metadata["sample_fields"] = schema
@@ -2085,27 +2077,27 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
             info["mask_targets"] = sample_collection._serialize_mask_targets()
 
         if sample_collection.default_mask_targets:
-            info[
-                "default_mask_targets"
-            ] = sample_collection._serialize_default_mask_targets()
+            info["default_mask_targets"] = (
+                sample_collection._serialize_default_mask_targets()
+            )
 
         if sample_collection.skeletons:
             info["skeletons"] = sample_collection._serialize_skeletons()
 
         if sample_collection.default_skeleton:
-            info[
-                "default_skeleton"
-            ] = sample_collection._serialize_default_skeleton()
+            info["default_skeleton"] = (
+                sample_collection._serialize_default_skeleton()
+            )
 
         if sample_collection.camera_intrinsics:
-            info[
-                "camera_intrinsics"
-            ] = sample_collection._serialize_camera_intrinsics()
+            info["camera_intrinsics"] = (
+                sample_collection._serialize_camera_intrinsics()
+            )
 
         if sample_collection.static_transforms:
-            info[
-                "static_transforms"
-            ] = sample_collection._serialize_static_transforms()
+            info["static_transforms"] = (
+                sample_collection._serialize_static_transforms()
+            )
 
         if sample_collection.app_config.is_custom():
             info["app_config"] = sample_collection.app_config.to_dict(
@@ -2382,7 +2374,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
     def export_samples(self, sample_collection, progress=None):
         etau.ensure_dir(self.export_dir)
 
-        if sample_collection.media_reference_kind is not None:
+        if sample_collection._contains_media_references():
             self._media_exporter.setup_reference_export(
                 sample_collection, self.export_dir
             )
@@ -2477,6 +2469,14 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         dataset = sample_collection._dataset
         dataset._doc.reload()
         dataset_dict = dataset._doc.to_dict()
+
+        if sample_collection._contains_media_references():
+            # A bundle records the sources its samples name. A whole dataset
+            # records its table, so an empty one exports as reference-backed
+            dataset_dict["_media_sources"] = foc._selected_media_sources(
+                sample_collection
+            )
+
         dataset_dict["saved_views"] = []
         dataset_dict["annotation_runs"] = {}
         dataset_dict["brain_methods"] = {}

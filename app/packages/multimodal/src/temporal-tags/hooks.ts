@@ -2,6 +2,7 @@ import type { SampleRendererProps } from "@fiftyone/plugins";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { errorMessage } from "../utils/errors";
 import { createTemporalTagsClient } from "./client";
+import { invalidateDatasetTemporalTags } from "./dataset-tags";
 import type {
   TemporalTag,
   TemporalTagCreate,
@@ -107,6 +108,7 @@ export function useSampleTemporalTags({
         ...ids,
         temporalTags,
       });
+      invalidateDatasetTemporalTags(datasetId, temporalTagsClient);
       await reload();
 
       return created;
@@ -122,6 +124,7 @@ export function useSampleTemporalTags({
         temporalTagId,
         update,
       });
+      invalidateDatasetTemporalTags(datasetId, temporalTagsClient);
       await reload();
 
       return updated;
@@ -136,6 +139,7 @@ export function useSampleTemporalTags({
         ...ids,
         ids: idsToDelete,
       });
+      invalidateDatasetTemporalTags(datasetId, temporalTagsClient);
       await reload();
 
       return deleted;
@@ -150,6 +154,7 @@ export function useSampleTemporalTags({
         ...ids,
         filter: clearFilter,
       });
+      invalidateDatasetTemporalTags(datasetId, temporalTagsClient);
       await reload();
 
       return deleted;

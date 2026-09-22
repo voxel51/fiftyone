@@ -12,33 +12,23 @@ from importlib import import_module
 # importing media-reference domain values does not load viewer dependencies.
 # pylint: disable=undefined-all-variable
 
-from .media import (
-    DatasetRelativeLocation,
+from .media_reference import (
     InvalidMediaLocationError,
-    LeRobotEpisode,
-    LeRobotImageLocator,
-    LeRobotV3Locator,
-    LeRobotVideoLocator,
     MalformedMediaSourceError,
     MediaAsset,
     MediaAssetRole,
     MediaAssetSelector,
-    MediaReference,
     MediaReferenceError,
     MediaSourceAuthorizationError,
-    MissingMediaReferenceBindingError,
     MissingMediaRootError,
     MovedMediaRootError,
     RowInterval,
     StaleMediaReferenceError,
     UnfinalizedMediaSourceError,
-    UnsupportedLeRobotExportModeError,
     UnsupportedMediaReferenceOperation,
-    UnsupportedLeRobotVersionError,
     VideoTimestampInterval,
     WholeFile,
 )
-
 
 _LAZY_ATTRIBUTES = {
     "DecodedIngestFields": ("decoders", "DecodedIngestFields"),
@@ -75,20 +65,13 @@ def __getattr__(name):
 __all__ = [
     "DecodedIngestFields",
     "DecodedIngestValue",
-    "DatasetRelativeLocation",
     "InvalidMediaLocationError",
-    "LeRobotEpisode",
-    "LeRobotImageLocator",
-    "LeRobotV3Locator",
-    "LeRobotVideoLocator",
     "MalformedMediaSourceError",
     "MediaAsset",
     "MediaAssetRole",
     "MediaAssetSelector",
-    "MediaReference",
     "MediaReferenceError",
     "MediaSourceAuthorizationError",
-    "MissingMediaReferenceBindingError",
     "MissingMediaRootError",
     "MultimodalDecoder",
     "MultimodalPayload",
@@ -98,9 +81,7 @@ __all__ = [
     "RowInterval",
     "StaleMediaReferenceError",
     "UnfinalizedMediaSourceError",
-    "UnsupportedLeRobotExportModeError",
     "UnsupportedMediaReferenceOperation",
-    "UnsupportedLeRobotVersionError",
     "VideoTimestampInterval",
     "WholeFile",
     "clear_decoders",

@@ -235,12 +235,8 @@ class DatasetView(foc.SampleCollection):
 
         return self._dataset.media_type
 
-    @property
-    def media_reference_kind(self):
-        """The kind of media references that this view contains, or None if the
-        view does not contain media references.
-        """
-        return self._dataset.media_reference_kind
+    def _contains_media_references(self):
+        return self._dataset._contains_media_references()
 
     @property
     def group_field(self):

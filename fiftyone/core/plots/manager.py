@@ -5,6 +5,7 @@ Session plot manager.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import datetime
 import itertools
 import logging
@@ -19,7 +20,6 @@ import fiftyone.core.patches as fop
 import fiftyone.core.video as fov
 
 from .base import ResponsivePlot, ViewPlot, InteractivePlot
-
 
 logger = logging.getLogger(__name__)
 

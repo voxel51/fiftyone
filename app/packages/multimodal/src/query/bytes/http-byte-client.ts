@@ -87,7 +87,7 @@ export function createHttpByteClient(
         throw createAbortError(HTTP_BYTE_READ_ABORT_MESSAGE);
       }
 
-      const expectedLength = safeNumber(request.range.length);
+      let expectedLength = safeNumber(request.range.length);
       const endOffset = request.range.offset + request.range.length - 1n;
       const fetchBytes: AbortableFetchFunction =
         fetchFunction ?? getFetchFunctionExtended();
@@ -147,21 +147,32 @@ export function createHttpByteClient(
 
       const contentRangeStart = BigInt(contentRangeMatch[1]);
       const contentRangeEnd = BigInt(contentRangeMatch[2]);
-      if (
-        contentRangeStart > request.range.offset ||
-        contentRangeEnd < request.range.offset + request.range.length - 1n
-      ) {
-        throw new Error(
-          `Expected Content-Range covering ${request.range.offset.toString()}-${
-            request.range.offset + request.range.length - 1n
-          } but received '${contentRange}'`,
-        );
-      }
-
       const totalSizeBytes =
         contentRangeMatch[3] === "*" ? undefined : BigInt(contentRangeMatch[3]);
       if (totalSizeBytes !== undefined && contentRangeEnd >= totalSizeBytes) {
         throw new Error(`Invalid Content-Range header '${contentRange}'`);
+      }
+
+      // A range that runs past the end is answered up to the last byte
+      // (RFC 9110); a caller that did not know the size yet reads the
+      // shorter span and learns the size from the same response.
+      const requestedEnd = request.range.offset + request.range.length - 1n;
+      const truncatedAtEnd =
+        totalSizeBytes !== undefined &&
+        contentRangeEnd === totalSizeBytes - 1n &&
+        contentRangeEnd < requestedEnd;
+      if (
+        contentRangeStart > request.range.offset ||
+        (contentRangeEnd < requestedEnd && !truncatedAtEnd)
+      ) {
+        throw new Error(
+          `Expected Content-Range covering ${request.range.offset.toString()}-${requestedEnd} but received '${contentRange}'`,
+        );
+      }
+      if (truncatedAtEnd) {
+        expectedLength = safeNumber(
+          contentRangeEnd - request.range.offset + 1n,
+        );
       }
 
       const spanLength = safeNumber(contentRangeEnd - contentRangeStart + 1n);
@@ -203,7 +214,9 @@ export function createHttpByteClient(
 
       return {
         bytes,
-        range: request.range,
+        range: truncatedAtEnd
+          ? { length: BigInt(expectedLength), offset: request.range.offset }
+          : request.range,
         source,
       };
     },

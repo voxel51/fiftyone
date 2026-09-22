@@ -826,7 +826,16 @@ class FiftyOneDataset(Dataset):
 
 
 class LeRobotDataset(Dataset):
-    """A LeRobotDataset v3 represented by logical episode samples."""
+    """A LeRobotDataset v3 represented by logical episode samples.
+
+    Import a source with
+    :meth:`fiftyone.core.dataset.Dataset.from_dir`, and add further sources
+    to the same dataset with
+    :meth:`fiftyone.core.dataset.Dataset.add_dir`. Episode samples name their
+    media by ``media_reference``, which resolves only through a source the
+    dataset records, so ``add_samples`` cannot introduce one. See
+    :class:`fiftyone.utils.lerobot.LeRobotDatasetImporter`.
+    """
 
     def get_dataset_importer_cls(self):
         import fiftyone.utils.lerobot as foul

@@ -3,7 +3,10 @@ import { is3d, isDirect3dSamplePath, setContains3d } from "@fiftyone/utilities";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { ActionBar } from "./action-bar";
-import { Container } from "./containers";
+import { useWorkingLabel } from "./annotation/store/working";
+import { CAMERA_LOOK_AT_SETTLED_EVENT, SCENE_READY_EVENT } from "./constants";
+import { LoadingDots } from "@fiftyone/components";
+import { Container, LoadingCover } from "./containers";
 import { Fo3dErrorBoundary } from "./ErrorBoundary";
 import { Leva } from "./fo3d/Leva";
 import { MediaTypeFo3dComponent } from "./fo3d/MediaTypeFo3d";
@@ -17,6 +20,12 @@ import {
   isGridOnAtom,
   isLevaConfigPanelOnAtom,
 } from "./state";
+import {
+  useActiveSegmentationVertexCount,
+  useCurrentSelected3dAnnotationLabel,
+  useFo3dSceneReady,
+} from "./state/accessors";
+import { isPolyline3dOverlay } from "./types";
 
 /**
  * This component renders all supported 3D contexts through the FO3D pipeline,
@@ -58,8 +67,17 @@ export const Looker3d = () => {
 
   const thisSampleId = useRecoilValue(fos.modalSampleId);
 
-  // test affordance: 3D selection has no DOM signal, so expose its count
-  const selectedLabelCount = useRecoilValue(fos.selectedLabels).length;
+  const selectedLabelForAnnotation = useCurrentSelected3dAnnotationLabel();
+  const workingLabel = useWorkingLabel(selectedLabelForAnnotation?._id ?? "");
+  // the in-progress polyline's vertices; the e2e draw helper waits on it
+  const draftVertexCount = useActiveSegmentationVertexCount();
+  const selectedVertexCount =
+    workingLabel && isPolyline3dOverlay(workingLabel)
+      ? workingLabel.data.points3d?.reduce(
+          (count, segment) => count + segment.length,
+          0,
+        )
+      : undefined;
 
   useEffect(() => {
     return () => {
@@ -82,12 +100,26 @@ export const Looker3d = () => {
     modalMode === fos.ModalMode.ANNOTATE && !(isGroup && isMain2DViewerVisible)
       ? "annotate-focused"
       : "default";
+  fos.useReportAnnotationSurface(
+    renderContext === "annotate-focused" ? "3d" : null,
+  );
 
   const looker3dSceneKey = getLooker3dRenderKey({
     modalSampleId: thisSampleId,
     activeFo3dSlice,
     renderContext,
   });
+
+  // the first look-at settle after a scene (re)mount makes the view
+  // raycastable; the e2e draw helpers gate on it through `data-scene-ready`
+  const sceneReady = useFo3dSceneReady();
+  const [cameraSettledKey, setCameraSettledKey] = useState<string | null>(null);
+  useEffect(() => {
+    const onSettled = () => setCameraSettledKey(looker3dSceneKey);
+    document.addEventListener(CAMERA_LOOK_AT_SETTLED_EVENT, onSettled);
+    return () =>
+      document.removeEventListener(CAMERA_LOOK_AT_SETTLED_EVENT, onSettled);
+  }, [looker3dSceneKey]);
 
   useHotkey(
     "KeyG",
@@ -189,6 +221,17 @@ export const Looker3d = () => {
     };
   }, [clear, isHovering]);
 
+  const revealed = sceneReady && cameraSettledKey === looker3dSceneKey;
+  useEffect(() => {
+    if (revealed) {
+      document.dispatchEvent(
+        new CustomEvent(SCENE_READY_EVENT, {
+          detail: { sceneKey: looker3dSceneKey },
+        }),
+      );
+    }
+  }, [revealed, looker3dSceneKey]);
+
   if (!sample) return null;
 
   if (!shouldRenderFo3dComponent) {
@@ -202,9 +245,16 @@ export const Looker3d = () => {
         onMouseOver={update}
         onMouseMove={update}
         data-cy="looker3d"
-        data-cy-selected-label-count={selectedLabelCount}
+        data-cy-selected-vertex-count={selectedVertexCount}
+        data-cy-draft-vertex-count={draftVertexCount}
+        data-scene-ready={revealed ? "true" : "false"}
       >
         <MediaTypeFo3dComponent key={looker3dSceneKey} />
+        {!revealed && (
+          <LoadingCover>
+            <LoadingDots />
+          </LoadingCover>
+        )}
         <ActionBar
           onMouseEnter={() => {
             hoveringRef.current = true;

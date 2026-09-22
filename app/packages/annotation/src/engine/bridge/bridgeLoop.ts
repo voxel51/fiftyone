@@ -210,6 +210,25 @@ export const registerBridgeLoop = <Handle, Descriptor>(
           continue;
         }
 
+        // `lastApplied` is keyed by TRACK, not by ref — one handle per track on a
+        // frame-locked surface — so it may only record a value the handle really
+        // holds, which means only the ref being displayed. A gesture's write
+        // fans out across a track's other frames (keyframe promotion re-lerps the
+        // whole span inside the commit, so those writes arrive here), and
+        // recording one of those would claim the handle already shows a frame it
+        // has never shown. The playhead reaching that frame would then find
+        // `lastApplied` equal to the engine value and skip the apply — leaving the
+        // shape from the edited frame painted there until the overlay unmounts,
+        // which is why scrubbing looked frozen while leaving the track and
+        // returning fixed it.
+        if (
+          bridge.temporal !== "pool" &&
+          engine.temporal.isTemporal &&
+          !engine.temporal.isPresent(change.ref)
+        ) {
+          continue;
+        }
+
         const written = engine.getLabel(change.ref);
 
         if (written) {

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<874aead5c3d083a7692921a6811c6015>>
+ * @generated SignedSource<<efe93d7a0e4876d79fad76678634dba5>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -72,6 +72,7 @@ export type datasetFragment$data = {
       readonly value: string;
     }>;
   }>;
+  readonly mediaSources: object | null;
   readonly mediaType: string | null;
   readonly name: string;
   readonly parentMediaType: string | null;
@@ -215,6 +216,13 @@ return {
       "args": null,
       "kind": "ScalarField",
       "name": "lastLoadedAt",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "mediaSources",
       "storageKey": null
     },
     (v0/*: any*/),
@@ -518,6 +526,6 @@ return {
 };
 })();
 
-(node as any).hash = "0e7782ac2447e52fce829767e05d4f47";
+(node as any).hash = "ca48d00369663cf08a83df441475103c";
 
 export default node;

@@ -197,6 +197,57 @@ function flushAsync(): Promise<void> {
 }
 
 describe("createCachedByteClient cross-context fill locking", () => {
+  it("applies a size learned from a response to later reads of that source", async () => {
+    const seen: (string | undefined)[] = [];
+    const reads: ByteClient = {
+      async readBytes(readRequest) {
+        seen.push(readRequest.source.sizeBytes);
+
+        return {
+          ...fillResult(readRequest),
+          source: { ...readRequest.source, sizeBytes: "4096" },
+        };
+      },
+    };
+    const { client } = createClient({ locks: false, reads });
+
+    await client.readBytes(request({ range: { length: 8n, offset: 0n } }));
+    await client.readBytes(request({ range: { length: 8n, offset: 2048n } }));
+
+    expect(seen).toEqual([undefined, "4096"]);
+  });
+
+  it("keeps a size the source already declares", async () => {
+    const seen: (string | undefined)[] = [];
+    const reads: ByteClient = {
+      async readBytes(readRequest) {
+        seen.push(readRequest.source.sizeBytes);
+
+        return {
+          ...fillResult(readRequest),
+          source: { ...readRequest.source, sizeBytes: "9999" },
+        };
+      },
+    };
+    // Small blocks so the second read is its own fill rather than a hit on a
+    // widened first one.
+    const { client } = createClient({
+      blockSizeBytes: 16,
+      locks: false,
+      reads,
+    });
+    const declared = source({ sizeBytes: "4096" });
+
+    await client.readBytes(
+      request({ range: { length: 8n, offset: 0n }, source: declared }),
+    );
+    await client.readBytes(
+      request({ range: { length: 8n, offset: 2048n }, source: declared }),
+    );
+
+    expect(seen).toEqual(["4096", "4096"]);
+  });
+
   it("single-flights identical fills across clients via lock + persistent handoff", async () => {
     const { manager } = createFakeLockManager();
     const shared = createMemoryByteRangeCache({

@@ -347,6 +347,91 @@ describe("KeyManager", () => {
     expect(state.full?.id).toBe("fo.test.command1");
   });
 
+  /**
+   * The "ladder" a surface builds on a shared key: a high-priority rung that
+   * only applies sometimes, over a default that always does. Video Explore
+   * binds Escape this way — clear the selected labels when there are any,
+   * otherwise let the modal's own Escape close it — which only works if a
+   * DISABLED high-priority rung falls through instead of swallowing the key.
+   */
+  it("falls through a disabled high-priority binding to the enabled default", async () => {
+    let rungApplies = false;
+
+    commandRegistry.registerCommand(
+      "fo.test.rung",
+      async () => {
+        return;
+      },
+      () => rungApplies,
+    );
+    commandRegistry.registerCommand(
+      "fo.test.default",
+      async () => {
+        return;
+      },
+      () => true,
+    );
+
+    keyManager.bindKey("Escape", "fo.test.rung", 1);
+    keyManager.bindKey("Escape", "fo.test.default");
+
+    const press = () =>
+      keyManager.match(new KeyboardEvent("keydown", { key: "Escape" })).full
+        ?.id;
+
+    // rung does not apply -> the default runs untouched
+    expect(press()).toBe("fo.test.default");
+
+    rungApplies = true;
+
+    // rung applies -> it takes the key, and the default does NOT also run
+    expect(press()).toBe("fo.test.rung");
+  });
+
+  /**
+   * The same ladder, bound in PRODUCTION order.
+   *
+   * Every priority test above registers the high-priority rung FIRST, so an
+   * implementation that merely preferred the earliest binding would satisfy
+   * them. Video Explore is the other way round: `ModalClose` binds Escape at
+   * modal mount, and the clear-selection rung re-registers on every selection
+   * change — so the rung is always the LATER registration. Bind them in that
+   * order here, so priority has to be what decides.
+   */
+  it("prefers the higher priority even when it is bound LAST", async () => {
+    let rungApplies = true;
+
+    commandRegistry.registerCommand(
+      "fo.test.default",
+      async () => {
+        return;
+      },
+      () => true,
+    );
+    commandRegistry.registerCommand(
+      "fo.test.rung",
+      async () => {
+        return;
+      },
+      () => rungApplies,
+    );
+
+    // production order: the always-on default first, the rung after
+    keyManager.bindKey("Escape", "fo.test.default");
+    keyManager.bindKey("Escape", "fo.test.rung", 1);
+
+    const press = () =>
+      keyManager.match(new KeyboardEvent("keydown", { key: "Escape" })).full
+        ?.id;
+
+    expect(press()).toBe("fo.test.rung");
+
+    // and it still falls through when the rung stops applying — the half that
+    // keeps Escape able to close the modal once the selection is cleared
+    rungApplies = false;
+    expect(press()).toBe("fo.test.default");
+  });
+
   it("can unbind one duplicate binding without removing the fallback", async () => {
     commandRegistry.registerCommand(
       "fo.test.command1",

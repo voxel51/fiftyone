@@ -34,11 +34,7 @@ import {
   pointCloudPoseKey,
   type GridPosterCacheEntry,
 } from "./grid-poster-cache";
-import {
-  GridRenderer,
-  HOVER_INTENT_DELAY_MS,
-  PLAYBACK_HOVER_INTENT_DELAY_MS,
-} from "./GridRenderer";
+import { GridRenderer, HOVER_INTENT_DELAY_MS } from "./GridRenderer";
 import classes from "./GridRenderer.module.css";
 import { useGridPreview } from "./use-grid-preview";
 import { useEpisodePreviewSession } from "../../session/use-episode-preview-session";
@@ -441,6 +437,18 @@ describe("GridRenderer", () => {
     expect(vi.mocked(useEpisodePreviewSession).mock.lastCall?.[2]).toBe(false);
   });
 
+  // The tile is the only thing that knows which episode it is showing, and the
+  // interval lane is a sibling that reads the playhead and range back by that
+  // identity. Without this the lane has nothing to key on and every tile
+  // silently loses its axis.
+  it("hands the sample's identity to the preview hook as the episode id", () => {
+    render(<GridRenderer ctx={rendererCtx()} />);
+
+    expect(vi.mocked(useGridPreview).mock.lastCall?.[0]).toMatchObject({
+      episodeId: "1",
+    });
+  });
+
   it("keeps provider misses in the non-provider cache namespace", () => {
     const source = {
       sourceId: "provider-miss",
@@ -453,6 +461,7 @@ describe("GridRenderer", () => {
     expect(vi.mocked(useGridPreview).mock.lastCall?.[0].cacheRequestKey).toBe(
       gridPreviewStateKey({
         datasetId: "dataset-id",
+        episodeId: "1",
         mediaField: undefined,
         selectedSourceName: null,
         source,
@@ -608,13 +617,14 @@ describe("GridRenderer", () => {
     expect(screen.getByText(previewHarness.preview.error)).toBeTruthy();
   });
 
-  it("shows idle as an empty no-source state without loading animation", () => {
+  it("separates a session that never opened from a stream-less episode", () => {
     previewHarness.preview.status = "idle";
     previewHarness.preview.hasPreviewStreams = false;
 
     render(<GridRenderer ctx={rendererCtx()} />);
 
-    expect(screen.getByText("No preview streams")).toBeTruthy();
+    expect(screen.getByText("Preview did not start")).toBeTruthy();
+    expect(screen.queryByText("No preview streams")).toBeNull();
     expect(screen.queryByTestId("episode-loading-ascii")).toBeNull();
   });
 
@@ -828,6 +838,64 @@ describe("GridRenderer", () => {
     expect(onContextMenu).toHaveBeenCalledTimes(1);
   });
 
+  it("offers an accessible open-modal button on a point-cloud tile", () => {
+    // A point-cloud preview consumes its own click to orbit the camera, so it
+    // is the one tile kind that needs an explicit way into the modal. The role
+    // and name here are the contract the grid e2e page object locates it by.
+    previewHarness.preview.frame = pointCloudFrame();
+    previewHarness.preview.status = "ready";
+    const openModal = vi.fn();
+
+    render(<GridRenderer ctx={rendererCtx(openModal)} />);
+
+    const button = screen.getByRole("button", { name: "Open sample modal" });
+    fireEvent.click(button);
+
+    expect(openModal).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not offer an open-modal button on a camera tile", () => {
+    // Clicking an image tile already opens the modal, so a button would be
+    // redundant chrome sitting over the preview.
+    previewHarness.preview.frame = imageFrame(new Uint8Array([1]));
+    previewHarness.preview.status = "ready";
+
+    render(<GridRenderer ctx={rendererCtx(vi.fn())} />);
+
+    expect(
+      screen.queryByRole("button", { name: "Open sample modal" }),
+    ).toBeNull();
+  });
+
+  it("omits the button when the grid offers no open-modal capability", () => {
+    previewHarness.preview.frame = pointCloudFrame();
+    previewHarness.preview.status = "ready";
+
+    render(<GridRenderer ctx={rendererCtx()} />);
+
+    expect(
+      screen.queryByRole("button", { name: "Open sample modal" }),
+    ).toBeNull();
+  });
+
+  it("keeps the open-modal click out of the point cloud beneath it", () => {
+    previewHarness.preview.frame = pointCloudFrame();
+    previewHarness.preview.status = "ready";
+    const openModal = vi.fn();
+    const parentClick = vi.fn();
+
+    render(
+      <div onClick={parentClick}>
+        <GridRenderer ctx={rendererCtx(openModal)} />
+      </div>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Open sample modal" }));
+
+    expect(openModal).toHaveBeenCalledTimes(1);
+    expect(parentClick).not.toHaveBeenCalled();
+  });
+
   it("keeps point-cloud tile activation inside the renderer", () => {
     previewHarness.preview.frame = pointCloudFrame();
     previewHarness.preview.status = "ready";
@@ -892,7 +960,7 @@ describe("GridRenderer", () => {
       expect.objectContaining({ hovered: true }),
     );
     act(() => {
-      vi.advanceTimersByTime(PLAYBACK_HOVER_INTENT_DELAY_MS - 1);
+      vi.advanceTimersByTime(HOVER_INTENT_DELAY_MS - 1);
     });
     expect(previewHarness.preview.play).not.toHaveBeenCalled();
 
@@ -902,13 +970,13 @@ describe("GridRenderer", () => {
       expect.objectContaining({ hovered: false }),
     );
     act(() => {
-      vi.advanceTimersByTime(PLAYBACK_HOVER_INTENT_DELAY_MS);
+      vi.advanceTimersByTime(HOVER_INTENT_DELAY_MS);
     });
     expect(previewHarness.preview.play).not.toHaveBeenCalled();
 
     fireEvent.pointerOver(root);
     act(() => {
-      vi.advanceTimersByTime(PLAYBACK_HOVER_INTENT_DELAY_MS);
+      vi.advanceTimersByTime(HOVER_INTENT_DELAY_MS);
     });
     expect(previewHarness.preview.play).toHaveBeenCalledTimes(1);
   });
@@ -1128,7 +1196,7 @@ describe("GridRenderer", () => {
     expect(snapshotHarness.requests).toHaveLength(1);
   });
 
-  it("withdraws preview demand as soon as modal activation makes the grid inactive", async () => {
+  it("keeps its preview session alive under the modal but stops playback", async () => {
     const { rerender } = render(
       <GridRenderer ctx={rendererCtx()} isGridActive />,
     );
@@ -1137,13 +1205,16 @@ describe("GridRenderer", () => {
         enabled: true,
       }),
     );
+    previewHarness.preview.pause.mockClear();
 
+    // The modal covers the grid without a mouseleave
     rerender(<GridRenderer ctx={rendererCtx()} isGridActive={false} />);
 
     expect(vi.mocked(useGridPreview).mock.lastCall?.[0]).toMatchObject({
-      enabled: false,
+      enabled: true,
     });
-    expect(vi.mocked(useEpisodePreviewSession).mock.lastCall?.[2]).toBe(false);
+    expect(vi.mocked(useEpisodePreviewSession).mock.lastCall?.[2]).toBe(true);
+    expect(previewHarness.preview.pause).toHaveBeenCalled();
   });
 
   it("keeps same-source preview demand while a new stream key checks persistence", async () => {
@@ -1303,6 +1374,28 @@ describe("GridRenderer", () => {
     await waitFor(() => expect(bitmapHostHarness.lastBitmap).toBe(current));
   });
 
+  it("tracks the shared pose while the grid is inactive, without reactivating", async () => {
+    previewHarness.preview.frame = pointCloudFrame();
+    previewHarness.preview.status = "ready";
+
+    const { rerender } = render(<GridRenderer ctx={rendererCtx()} />);
+    snapshotHarness.requests[0].resolve(fakeSnapshotBitmap());
+    await waitFor(() => expect(bitmapHostHarness.lastBitmap).not.toBeNull());
+
+    // A tile the modal covers stays visible, so another cell's orbit still
+    // reaches it and no reactivation transition is needed
+    rerender(<GridRenderer ctx={rendererCtx()} isGridActive={false} />);
+    const pose = { position: [1, 2, 3], target: [0, 0, 0] };
+    cameraPoseHarness.pose = pose;
+    rerender(<GridRenderer ctx={rendererCtx()} isGridActive={false} />);
+
+    await waitFor(() => expect(snapshotHarness.requests.length).toBe(2), {
+      timeout: 2_000,
+    });
+    expect(snapshotHarness.requests[1].job.cameraPose).toBe(pose);
+    snapshotHarness.requests[1].resolve(fakeSnapshotBitmap());
+  });
+
   it("re-snapshots after the shared camera pose settles (debounced)", async () => {
     previewHarness.preview.frame = pointCloudFrame();
     previewHarness.preview.status = "ready";
@@ -1325,38 +1418,13 @@ describe("GridRenderer", () => {
 
     snapshotHarness.requests[1].resolve(fakeSnapshotBitmap());
   });
-
-  it("snapshots once on reactivation after the shared pose drifted", () => {
-    vi.useFakeTimers();
-    previewHarness.preview.frame = pointCloudFrame();
-    previewHarness.preview.status = "ready";
-
-    const { rerender } = render(<GridRenderer ctx={rendererCtx()} />);
-    expect(snapshotHarness.requests.length).toBe(1);
-
-    // The cell deactivates, then another cell orbits the shared pose
-    // while this one is dormant.
-    rerender(<GridRenderer ctx={rendererCtx()} isGridActive={false} />);
-    const pose = { position: [1, 2, 3], target: [0, 0, 0] };
-    cameraPoseHarness.pose = pose;
-
-    // Reactivation snapshots immediately at the freshly-read pose...
-    rerender(<GridRenderer ctx={rendererCtx()} isGridActive />);
-    expect(snapshotHarness.requests.length).toBe(2);
-    expect(snapshotHarness.requests[1].job.cameraPose).toBe(pose);
-
-    // ...and the pose-diff debounce adds no duplicate at the same pose.
-    act(() => {
-      vi.advanceTimersByTime(1_000);
-    });
-    expect(snapshotHarness.requests.length).toBe(2);
-  });
 });
 
-function rendererCtx() {
+function rendererCtx(openModal?: () => void) {
   return {
     dataset: { datasetId: "dataset-id", name: "dataset" },
     sample: { sample: { id: "1" } },
+    ...(openModal ? { openModal } : {}),
   } as never;
 }
 

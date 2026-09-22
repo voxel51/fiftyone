@@ -15,6 +15,22 @@ export interface SceneOptions {
   showOverlays?: boolean;
   /** Opacity for overlays */
   alpha?: number;
+  /**
+   * Per-label visibility, sourced from the sidebar's filters (confidence,
+   * label value, tags) and hidden-labels set — the same predicate the looker
+   * checked in `Overlay.isShown` (`overlays/base.ts`, `state.options.filter`).
+   * `undefined` means unfiltered, matching every prior caller that never set
+   * this and must keep painting everything.
+   *
+   * A label failing this is skipped at PAINT time only
+   * (`Scene2D.shouldShowOverlay`); it stays registered and can still be
+   * addressed by id. Hit-testing is a separate concern —
+   * `InteractionManager`'s visibility predicate (set once from
+   * `shouldShowOverlay` at construction, see `Scene2D`'s constructor) is what
+   * keeps a filtered-out label from also being clickable at its last drawn
+   * position.
+   */
+  filter?: (path: string, label: unknown) => boolean;
 }
 
 /**

@@ -56,11 +56,9 @@ import fiftyone.core.fields as fof
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
 import fiftyone.core.storage as fos
-import fiftyone.multimodal.media as fmm
 
 from .document import Document, SerializableDocument
 from .mixins import DatasetMixin, get_default_fields, NoDatasetMixin
-
 
 # Use our own Random object to avoid messing with the user's seed
 _random = random.Random()
@@ -101,8 +99,6 @@ class DatasetSampleDocument(DatasetMixin, Document):
         if self.media_reference is None and not self.filepath:
             raise ValidationError("Field is required: ['filepath']")
 
-        fmm._validate_media_source(self.filepath, self.media_reference)
-
     def _get_repr_fields(self):
         fields = self.field_names
         return fields[:1] + ("media_type",) + fields[1:]
@@ -121,13 +117,12 @@ class NoDatasetSampleDocument(NoDatasetMixin, SerializableDocument):
 
     def __init__(self, **kwargs):
         filepath = kwargs.get("filepath", None)
-        media_reference = kwargs.get("media_reference", None)
+        reference = kwargs.get("media_reference", None)
+        reference_media_type = getattr(reference, "media_type", None)
 
         if filepath is not None:
             filepath = fos.normalize_path(filepath)
             kwargs["filepath"] = filepath
-
-        fmm._validate_media_source(filepath, media_reference)
 
         kwargs["id"] = kwargs.get("id", None)
         kwargs["created_at"] = None
@@ -137,11 +132,12 @@ class NoDatasetSampleDocument(NoDatasetMixin, SerializableDocument):
             kwargs["_rand"] = _generate_rand()
 
         media_type = kwargs.pop("media_type", None)
-        if media_reference is not None:
+        if reference is not None:
             kwargs["_media_type"] = (
                 media_type
                 or kwargs.get("_media_type", None)
-                or media_reference.media_type
+                or reference_media_type
+                or fomm.MULTIMODAL
             )
         else:
             kwargs["_media_type"] = (

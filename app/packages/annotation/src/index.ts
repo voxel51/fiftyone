@@ -10,6 +10,8 @@ export type {
   InferenceResult,
   MediaBitmap,
   PropagatedDetection,
+  PropagatedLabel,
+  PropagatedPolyline,
   PropagationContext,
   PropagationInferenceResult,
 } from "./agents/types";

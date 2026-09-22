@@ -130,8 +130,8 @@ describe("resolveMediaFieldLooker", () => {
         mediaField: "media_reference",
         sample: {
           media_reference: {
-            kind: "lerobot-episode",
-            key: "source:17",
+            _cls: "LeRobotEpisodeReference",
+            key: "lerobot-source/0",
           },
           _media_type: "multimodal",
         },

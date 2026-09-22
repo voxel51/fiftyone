@@ -35,8 +35,24 @@ interface LeRobotGridHoverVideoProps {
     size: BitmapDrawSize,
   ) => void;
   readonly onError: (error: Error) => void;
+  /**
+   * Reports the instant the element is presenting, on its own media clock.
+   * Native playback advances the element rather than the grid's read loop, so
+   * this is the only thing that can keep the tile's published playhead moving.
+   */
+  readonly onPresentedTimeSeconds?: (mediaTimeSeconds: number) => void;
   readonly onSurfaceRetainedBytesChange: (bytes: number) => void;
   readonly playing: boolean;
+  /**
+   * Where to move the element's clock to, in its own media seconds, carrying
+   * the id of the request that asked. The element owns its clock, so a seek
+   * from outside — a click on the tile's interval lane — can only reach it as
+   * a prop; the id is what makes asking twice for the same instant two seeks.
+   */
+  readonly seek?: {
+    readonly requestId: number;
+    readonly timeSeconds: number;
+  } | null;
   readonly video: EpisodePreviewNativeVideo;
 }
 
@@ -46,16 +62,27 @@ export function LeRobotGridHoverVideo({
   capturePoster,
   onCanvasCommitted,
   onError,
+  onPresentedTimeSeconds,
   onSurfaceRetainedBytesChange,
   playing,
+  seek,
   video,
 }: LeRobotGridHoverVideoProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const posterRef = useRef<HTMLCanvasElement | null>(null);
   const posterReadyRef = useRef(false);
   const requestRef = useRef<GridNativeVideoLeaseRequest | null>(null);
+  /**
+   * A seek that arrived before the element had a source, clamped and ready to
+   * apply. The lease can queue behind other tiles, so the request routinely
+   * lands while there is no clock to move; without this the element would
+   * later start at the episode's beginning and the clicked instant would be
+   * lost. Consumed once, by the first start after the source is assigned.
+   */
+  const pendingSeekRef = useRef<number | null>(null);
   const onCanvasCommittedRef = useLatestRef(onCanvasCommitted);
   const onErrorRef = useLatestRef(onError);
+  const onPresentedTimeSecondsRef = useLatestRef(onPresentedTimeSeconds);
   const onSurfaceRetainedBytesChangeRef = useLatestRef(
     onSurfaceRetainedBytesChange,
   );
@@ -132,7 +159,13 @@ export function LeRobotGridHoverVideo({
       setShowingVideo(false);
       cancelPendingFrame();
       element?.pause();
-      element.currentTime = startTimeSeconds;
+      // A seek that could not be applied while the lease was queued is spent
+      // here, on the first start after the source lands. Taken exactly once,
+      // so the `ended` wrap and the past-the-end restart below still go to
+      // the episode's beginning as they should.
+      const pending = pendingSeekRef.current;
+      pendingSeekRef.current = null;
+      element.currentTime = pending ?? startTimeSeconds;
       scheduleFrame();
       if (playing) play();
       else schedulePosterRetry();
@@ -141,7 +174,18 @@ export function LeRobotGridHoverVideo({
       if (posterCaptured || !capturePoster) return true;
       const width = element.videoWidth;
       const height = element.videoHeight;
-      if (width <= 0 || height <= 0 || element.readyState < 2) return false;
+      // `currentTime` reports the SEEK TARGET the moment it is assigned,
+      // while `readyState` can still describe the position being left. An
+      // episode opens far into a shared file, so capturing before the seek
+      // lands paints a frame that has not been decoded: a black tile.
+      if (
+        width <= 0 ||
+        height <= 0 ||
+        element.readyState < 2 ||
+        element.seeking
+      ) {
+        return false;
+      }
       const context = poster.getContext("2d");
       if (!context) throw new Error("Unable to create native video poster");
       poster.width = width;
@@ -184,6 +228,7 @@ export function LeRobotGridHoverVideo({
         try {
           if (!capturePresentedPoster()) schedulePosterRetry();
           setShowingVideo(playing);
+          onPresentedTimeSecondsRef.current?.(element.currentTime);
         } catch (error) {
           fail(error);
         }
@@ -254,6 +299,7 @@ export function LeRobotGridHoverVideo({
       try {
         if (!capturePresentedPoster()) schedulePosterRetry();
         setShowingVideo(playing);
+        onPresentedTimeSecondsRef.current?.(metadata.mediaTime);
         if (playing) scheduleFrame();
       } catch (error) {
         fail(error);
@@ -296,12 +342,49 @@ export function LeRobotGridHoverVideo({
     holderId,
     onCanvasCommittedRef,
     onErrorRef,
+    onPresentedTimeSecondsRef,
     onSurfaceRetainedBytesChangeRef,
     playing,
     sourceUrl,
     startTimeSeconds,
     wantsMedia,
   ]);
+
+  // This effect moves the element's clock to a requested instant.
+  //
+  // Separate from the lifecycle effect above so that a seek does not tear the
+  // media down and rebuild it. Nothing further is needed to present the
+  // result: the `seeked` listener and the frame callback both already run on
+  // whatever the element lands on.
+  const seekRequestId = seek?.requestId;
+  const seekTimeSeconds = seek?.timeSeconds;
+  useEffect(() => {
+    if (seekRequestId === undefined || seekTimeSeconds === undefined) {
+      // The request was withdrawn, or this tile was pointed at another
+      // episode. Either way a target held for a queued lease is now a time on
+      // media this element is not going to play.
+      pendingSeekRef.current = null;
+      return;
+    }
+    const target = Math.min(
+      Math.max(seekTimeSeconds, startTimeSeconds),
+      // The episode's last instant is not part of it — landing exactly on the
+      // end would read as "ran out" and wrap straight back to the start.
+      Math.max(endTimeSeconds - START_TIME_EPSILON_SECONDS, startTimeSeconds),
+    );
+    const element = videoRef.current;
+    // No source means no clock to move yet: the lease is still queued behind
+    // another tile. Hold the target so the start that follows the grant lands
+    // on it instead of the episode's beginning. A source whose metadata has
+    // not arrived is the same case: the first start runs off `loadedmetadata`
+    // and would write the episode's beginning over anything set before it.
+    if (!element?.getAttribute("src") || element.readyState < 1) {
+      pendingSeekRef.current = target;
+      return;
+    }
+    pendingSeekRef.current = null;
+    element.currentTime = target;
+  }, [endTimeSeconds, seekRequestId, seekTimeSeconds, startTimeSeconds]);
 
   // This effect releases the captured poster surface when the grid cell is no
   // longer visible, even if the component remains mounted by virtualization.
@@ -342,6 +425,9 @@ export function LeRobotGridHoverVideo({
       <video
         aria-hidden
         className={classes.nativeVideo}
+        // Without CORS the frame painted from this element taints the poster
+        // canvas and the poster can never be encoded or cached
+        crossOrigin="anonymous"
         data-testid="lerobot-grid-hover-video"
         muted
         playsInline

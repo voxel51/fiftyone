@@ -387,12 +387,12 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
         outputs = []
         for img_idx in range(len(images)):
             out_masks, iou_pred, _ = self._sam_predictor.processor._predict(
-                point_coords=point_coords[img_idx]
-                if point_coords is not None
-                else None,
-                point_labels=point_labels[img_idx]
-                if point_labels is not None
-                else None,
+                point_coords=(
+                    point_coords[img_idx] if point_coords is not None else None
+                ),
+                point_labels=(
+                    point_labels[img_idx] if point_labels is not None else None
+                ),
                 boxes=boxes[img_idx] if boxes is not None else None,
                 mask_input=mask_inputs[img_idx] if mask_inputs else None,
                 multimask_output=multimask_output,

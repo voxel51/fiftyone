@@ -10,7 +10,7 @@ Installs FiftyOne.
 import os
 from setuptools import setup, find_packages
 
-VERSION = "1.22.0"
+VERSION = "1.23.0"
 
 
 def get_version():
@@ -66,12 +66,13 @@ setup(
         "Jinja2>=3,<4",
         "jsonpatch>=1,<2",
         "mongoengine~=0.29.1",  # Keep small bounds on mongo-related libraries
+        "motor~=3.6.0",  # Keep small bounds on mongo-related libraries
         "Pillow>=12.2",
         "plotly>=6.1.1,<7",
         "pprintpp>=0.1,<0.5",
         "psutil>=5,<8",
         "pydash>=6,<9",
-        "pymongo~=4.15.2",  # Keep small bounds on mongo-related libraries
+        "pymongo~=4.9.2",  # Keep small bounds on mongo-related libraries
         "pytz",  # Doesn't follow semver, keep unconstrained
         "PyYAML>=4,<7",
         "regex",  # Doesn't follow semver, keep unconstrained
@@ -95,7 +96,7 @@ setup(
         "scikit-image<1",
         "scipy<2",
         # internal packages
-        "fiftyone-brain>=0.24.0,<0.25",
+        "fiftyone-brain>=0.25.0,<0.26",
         "fiftyone-db>=0.4,<2.0",
         "voxel51-eta>=0.17,<0.18",
     ],
@@ -118,7 +119,6 @@ setup(
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: 3.13",
-        "Programming Language :: Python :: 3.14",
     ],
     entry_points={"console_scripts": ["fiftyone=fiftyone.core.cli:main"]},
     python_requires=">=3.10",

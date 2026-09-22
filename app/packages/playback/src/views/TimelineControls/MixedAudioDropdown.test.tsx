@@ -60,6 +60,14 @@ describe("MixedAudioDropdown", () => {
     expect(screen.queryByTestId("timeline-controls-mixed")).toBeNull();
   });
 
+  it("renders nothing for a single track — the master control already governs it", () => {
+    renderDropdown([{ id: "a", label: "Track A" }]);
+
+    // pins the `<= 1` gate: with `=== 0` the mixer would appear here and
+    // duplicate the master volume control sitting beside it
+    expect(screen.queryByTestId("timeline-controls-mixed")).toBeNull();
+  });
+
   it("renders the trigger and opens a row per registered track", () => {
     renderDropdown([
       { id: "a", label: "Track A" },

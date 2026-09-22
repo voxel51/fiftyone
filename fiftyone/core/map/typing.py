@@ -10,7 +10,6 @@ from typing import Iterator, List, Literal, Protocol, TypeVar
 
 import bson
 
-
 T = TypeVar("T")
 R = TypeVar("R")
 

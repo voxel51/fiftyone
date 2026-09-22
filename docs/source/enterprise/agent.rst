@@ -6,7 +6,7 @@ FiftyOne Agent
 .. default-role:: code
 
 .. customavailablein::
-    :enterprise_version: 2.19.0
+    :enterprise_version: 2.25.0
 
 The FiftyOne Agent is an AI-powered assistant built into the
 :ref:`FiftyOne Enterprise App <enterprise-app>`. It lets you work with your
@@ -32,6 +32,14 @@ _____
 .. image:: https://cdn.voxel51.com/voxel-agent/enterprise/location_agent.webp
    :alt: fiftyone-agent-button-location
    :align: center
+
+.. note::
+
+    The FiftyOne Agent now ships as a built-in feature of the FiftyOne
+    Enterprise App rather than a separately installed plugin. If you
+    installed an earlier standalone version of the Agent plugin, you can
+    remove it once your deployment is upgraded. The built-in version
+    replaces it entirely.
 
 .. _enterprise-agent-providers:
 
@@ -60,7 +68,6 @@ To add a provider, fill in the following fields:
   correct routing when the model name alone is ambiguous
 - **Extra headers** (optional): static key-value HTTP headers sent with every
   request (e.g. ``User-Agent``, project tokens required by your gateway)
-- **Default**: mark this provider as the default
 
 .. image:: https://cdn.voxel51.com/voxel-agent/enterprise/provider_more_details.webp
    :alt: fiftyone-agent-provider-details
@@ -68,11 +75,43 @@ To add a provider, fill in the following fields:
 
 You can click **Test connection** to verify your credentials before saving.
 
+To choose which model new users start with, use the **Default model** picker
+at the top of the Connections list.
+
+.. image:: https://cdn.voxel51.com/voxel-agent/enterprise/agent_default_model.webp
+   :alt: fiftyone-agent-default-model
+   :align: center
+
 .. note::
 
-    Need help configuring a provider? Contact your Customer Success
-    representative, or see :ref:`Secrets <enterprise-secrets>` for how to
-    store API keys securely in your deployment.
+    API keys are automatically stored securely using FiftyOne
+    Enterprise's :ref:`Secrets <enterprise-secrets>` infrastructure. No
+    manual secret configuration is required.
+
+.. _enterprise-agent-permissions:
+
+Permissions
+___________
+
+Any user who can view a dataset can chat with the Agent and ask it to take
+action on that dataset. A few capabilities require additional permissions:
+
+- **Managing connections** (adding, editing, or removing a model provider,
+  or changing the default model) requires the Admin role.
+- **Generating and testing plugins** with the Agent requires the Admin role.
+
+.. image:: https://cdn.voxel51.com/fiftyone-internal-skills/develop_plugin.webp
+   :alt: fiftyone-agent-develop-plugin
+   :align: center
+
+- **Generating and executing SDK code** with the Agent requires a role with
+  API key access enabled. See :ref:`Roles and permissions
+  <enterprise-roles>` for which roles support this by default and how to
+  change it.
+
+.. image:: https://cdn.voxel51.com/fiftyone-internal-skills/write_code.webp
+   :alt: fiftyone-agent-write-code
+   :align: center
 
 .. _enterprise-agent-custom-gateway:
 
@@ -145,6 +184,54 @@ useful for enforcing per-user quotas or audit logging.
     Admins are responsible for ensuring that the configured endpoint's data
     handling and retention align with their organization's privacy policy.
 
+.. _enterprise-agent-instructions:
+
+Custom instructions
+____________________
+
+You can give the Agent standing instructions that are automatically included
+in every conversation, at three scopes:
+
+- **Organization**: written by an admin, applied to every conversation for
+  every user in the deployment
+- **User**: personal instructions that apply only to your own conversations
+- **Dataset**: shared instructions that apply to every conversation involving
+  a specific dataset, for everyone with access to it
+
+.. image:: https://cdn.voxel51.com/voxel-agent/enterprise/agent_instructions.webp
+   :alt: fiftyone-agent-instructions
+   :align: center
+
+Configure instructions from the Agent's settings panel.
+
+.. _enterprise-agent-knowledge:
+
+Grounding answers in the documentation
+______________________________________
+
+The Agent can ground its answers in the live FiftyOne documentation. Before
+answering a question about the SDK, an operator, or an API, it searches a
+knowledge base that stays continuously in sync with the docs, so answers
+reflect the current release and cite the sources they came from.
+
+This is powered by a `Kapa <https://www.kapa.ai>`_ knowledge base hosted by
+Voxel51. To enable it, set the ``KAPA_API_KEY`` secret in your deployment.
+Your customer success contact can provide the key.
+
+.. code-block:: shell
+
+    export KAPA_API_KEY=...
+
+The lookup is optional, and the Agent works without it. We strongly recommend
+enabling it: without the key, FiftyOne questions are answered from the model's
+general knowledge, which is not tied to your version and drifts as the product
+evolves.
+
+.. note::
+
+    No dataset content is sent to the knowledge base. Only the search query
+    the Agent formulates is transmitted.
+
 .. _enterprise-agent-using:
 
 Using the agent
@@ -176,6 +263,84 @@ To return to a previous conversation, click **History**.
    :alt: fiftyone-agent-conversation-history
    :align: center
 
+.. _enterprise-agent-screenshot:
+
+Asking about the current App state
+___________________________________
+
+Click the screenshot icon next to the attach icon in the message box to
+capture what's currently on screen and attach it to your next message.
+
+.. image:: https://cdn.voxel51.com/voxel-agent/enterprise/agent_screenshot_location.webp
+   :alt: fiftyone-agent-screenshot-location
+   :align: center
+
+This lets you ask the Agent about exactly what you're looking at, such as a
+specific sample, a plot, or a 3D scene, without describing it in words. Your
+browser will prompt you to choose what to share before the screenshot is
+attached.
+
+.. image:: https://cdn.voxel51.com/voxel-agent/enterprise/agent_screenshot.webp
+   :alt: fiftyone-agent-screenshot
+   :align: center
+
+If you select one or more samples in the grid first, an additional icon lets
+you attach their images directly, so you can ask the Agent about specific
+samples without describing or searching for them in words. Up to 20 samples
+can be attached at once; if more are selected, only the first 20 are
+attached.
+
+.. image:: https://cdn.voxel51.com/voxel-agent/enterprise/agent_attach_samples.webp
+   :alt: fiftyone-agent-attach-samples
+   :align: center
+
+.. _enterprise-agent-workspace:
+
+Returning to a previous view
+_____________________________
+
+Whenever the Agent changes what you're looking at, such as applying a
+filter, loading a view, or running an operator, that step gets a
+**Load Workspace** button. Click it any time, even after navigating away, to
+instantly restore the App to that exact state.
+
+.. image:: https://cdn.voxel51.com/voxel-agent/enterprise/agent_load_workspace_location.webp
+   :alt: fiftyone-agent-load-workspace-location
+   :align: center
+
+.. _enterprise-agent-delegated-ops:
+
+Tracking delegated operations
+______________________________
+
+When the Agent runs a long-running task as a :ref:`delegated operation
+<enterprise-delegated-operations>`, it appears in a tray showing how many are
+queued, running, completed, and failed, so you can keep chatting while it
+runs in the background.
+
+.. image:: https://cdn.voxel51.com/voxel-agent/enterprise/agent_delegated_ops.webp
+   :alt: fiftyone-agent-delegated-ops
+   :align: center
+
+Click a job in the tray to see its own progress and details.
+
+.. image:: https://cdn.voxel51.com/voxel-agent/enterprise/agent_delegated_ops_detail.webp
+   :alt: fiftyone-agent-delegated-ops-detail
+   :align: center
+
+.. _enterprise-agent-usage:
+
+Usage
+_____
+
+The Agent's settings panel includes a Usage tab showing your own token and
+request counts for the current period. Admins additionally see usage totals
+for the entire organization.
+
+.. image:: https://cdn.voxel51.com/voxel-agent/enterprise/agent_usage.webp
+   :alt: fiftyone-agent-usage
+   :align: center
+
 .. _enterprise-agent-skills:
 
 Skills
@@ -189,11 +354,80 @@ agent exactly how to perform a task, step by step.
    :alt: fiftyone-agent-skills
    :align: center
 
+Open any skill to read its full definition: the description that tells the
+Agent when to use it, and the step-by-step instructions it follows. Built-in
+skills are read-only, so you can always see exactly what the Agent was told
+to do.
+
+Use the toggle on each skill to control which ones the Agent may use. Turning
+a skill off removes it from the Agent's options without deleting anything.
+
+.. _enterprise-agent-skills-editing:
+
+Creating and editing skills
+___________________________
+
+Admins can extend the Agent with their own skills, directly from the settings
+panel. No plugin packaging or deployment step is required.
+
+.. image:: https://cdn.voxel51.com/voxel-agent/enterprise/skill_editor.webp
+   :alt: fiftyone-agent-skill-editor
+   :align: center
+
+Click **Create skill** to write a new one. Every skill needs three things:
+
+- **Name**: lowercase and dash-separated, e.g. ``triage-blurry-images``
+- **Description**: when the Agent should reach for this skill. This is the
+  only thing the Agent sees when choosing between skills, so write it as
+  *when to use this*, not *what this is*
+- **Instructions**: the workflow itself, in Markdown, covering what to check
+  first, which operators to call, and the steps to follow
+
+To adapt a built-in skill, open it and click **Duplicate**. This gives you an
+editable copy, leaving the original untouched. The copy needs its own name and
+its own description: two skills that describe themselves the same way make the
+Agent's choice between them arbitrary.
+
+Once your copy is saved, switch the built-in skill **off** using its toggle.
+The Agent then uses your version instead, and you keep the original in place
+to turn back on or duplicate again later.
+
+To remove a custom skill for good, open it and click **Delete**. You will be
+asked to confirm, and the skill is gone for everyone in the deployment.
+Built-in skills cannot be deleted, only switched off.
+
+.. image:: https://cdn.voxel51.com/voxel-agent/enterprise/skills.webp
+   :alt: fiftyone-agent-skill-toggle
+   :align: center
+
 .. note::
 
-    You can also build and add your own custom skills to extend the agent's
-    capabilities. See :ref:`Developing skills <agents-developing>` for full
-    instructions.
+    Custom skills are stored as a plugin in your deployment, so they can be
+    downloaded and shared like any other plugin. See
+    :ref:`Writing a skill <developing-skills-authoring>` if you would rather
+    author them as files.
+
+.. _enterprise-agent-skills-ask:
+
+Asking the Agent to write a skill
+_________________________________
+
+You can also ask the Agent to write or improve a skill for you, for example
+*"turn the steps we just worked through into a skill"* or *"add a validation
+step to my triage skill"*.
+
+
+.. image:: https://cdn.voxel51.com/voxel-agent/enterprise/skill_agent_authored.webp
+   :alt: fiftyone-agent-skill-review-card
+   :align: center
+
+The Agent never writes a skill on its own. It proposes the change in a review
+card showing exactly what would be added and removed, line by line, against
+the current version. Nothing is saved until you click **Approve**, and
+rejecting leaves the skill exactly as it was.
+
+Built-in skills stay protected here too: if you ask the Agent to change one,
+it will propose a copy instead of modifying the original.
 
 .. customanimatedcta::
     :button_text: Browse Enterprise Skills

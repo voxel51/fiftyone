@@ -31,6 +31,7 @@ from fiftyone.core.state import SampleField, serialize_fields
 import fiftyone.core.uid as fou
 from fiftyone.core.utils import run_sync_task
 import fiftyone.core.view as fov
+import fiftyone.multimodal.media_reference.field_model as fmm
 
 import fiftyone.server.aggregate as fosa
 from fiftyone.server.aggregations import aggregate_resolver
@@ -46,12 +47,16 @@ from fiftyone.server.samples import (
     SampleItem,
     paginate_samples,
 )
+from fiftyone.server.expressions import (
+    view_expression_ast_version,
+    view_expression_field_kinds,
+    view_expression_operators,
+)
 from fiftyone.server.scalars import BSON, BSONArray, JSON
 from fiftyone.server.stage_definitions import stage_definitions
 from fiftyone.server.exceptions import QueryTimeout
 from fiftyone.server.utils import from_dict
 from fiftyone.server.workspace import Workspace
-
 
 ID = gql.scalar(
     t.NewType("ID", str),
@@ -288,6 +293,9 @@ class Dataset:
     default_group_slice: t.Optional[str]
     media_type: t.Optional[str]
     parent_media_type: t.Optional[str]
+    #: Where each media source the browser can address by path is, by
+    #: source id; read once per dataset load
+    media_sources: t.Optional[JSON] = None
     mask_targets: t.List[NamedTargets]
     default_mask_targets: t.Optional[t.List[Target]]
     sample_fields: t.List[SampleField]
@@ -387,7 +395,6 @@ class Dataset:
         )
         doc["group_media_types"] = []
         doc["default_skeletons"] = doc.get("default_skeletons", None)
-
         # gql private fields must always be present
         doc.setdefault("frame_collection_name", None)
 
@@ -626,6 +633,10 @@ class Query(fosa.AggregateQuery):
                 frame_field_schema=[],
             )
 
+    view_expression_operators = gql.field(view_expression_operators)
+    view_expression_field_kinds = gql.field(view_expression_field_kinds)
+    view_expression_ast_version = gql.field(view_expression_ast_version)
+
 
 def _flatten_fields(
     path: t.List[str], fields: t.List[t.Dict]
@@ -683,6 +694,7 @@ async def serialize_dataset(
         doc = dataset._doc.to_dict(no_dereference=True)
         Dataset.modifier(doc)
         data = from_dict(Dataset, doc)
+        data.media_sources = fmm.addressable_media_sources(dataset) or None
         data.view_cls = None
         data.view_name = view_name
         data.saved_view_slug = saved_view_slug

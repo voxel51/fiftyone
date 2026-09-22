@@ -12,6 +12,7 @@ from fiftyone.operators.server import OperatorRoutes
 
 from .aggregate import Aggregate
 from .camera import CameraRoutes
+from .dynamic_group import DynamicGroupRoutes
 from .embeddings import EmbeddingsRoutes
 from .embeddings_v2 import EmbeddingsV2Routes
 from .event import Event
@@ -23,7 +24,6 @@ from .geo import GeoPoints
 from .get_similar_labels_frames import GetSimilarLabelsFrameCollection
 from .groups import GroupsRoutes
 from .media import Media
-from .media_reference import MediaReferenceRoutes
 from .ontology import OntologyAttributes, OntologyTaxonomy, Ontologies
 from .plugins import Plugins
 from .runtime_assets import RuntimeAssetRoutes
@@ -45,10 +45,10 @@ if is_feature_enabled("VFF_MULTIMODAL"):
 # Starlette routes should not be created here. Please leave as tuple definitions
 routes = (
     CameraRoutes
+    + DynamicGroupRoutes
     + EmbeddingsRoutes
     + EmbeddingsV2Routes
     + GroupsRoutes
-    + MediaReferenceRoutes
     + TemporalTagRoutes
     + multimodal_routes
     + OperatorRoutes

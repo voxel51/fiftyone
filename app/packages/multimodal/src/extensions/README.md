@@ -19,6 +19,13 @@ below its tab shell. A tray takes no props: whether a surface hosts trays at
 all is decided where that surface builds its sidebar, so a tray never has to
 interpret facts about where it ended up.
 
+The tile media-surface seam (`tiles/media-surfaces.ts`) publishes where each
+2D-media tile draws its stream, plus the episode's open-tile/seek/pause
+commands. Only views publish; a product entrypoint reads it to overlay a tile's
+media or to send the episode back to a stream and a moment. A timeline
+contribution may also supply a `rulerOverlay`, rendered over the episode ruler
+at the ruler's live label width.
+
 A registry may opt into a `replace` duplicate-id policy when its registration
 module is evaluated by a bundler that gives it no disposal hook. Ordering stays
 `order`-driven regardless, so replacement never changes placement.

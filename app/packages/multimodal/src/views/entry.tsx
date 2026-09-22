@@ -68,8 +68,7 @@ export function registerEpisodeViews(): void {
     activator: (ctx) => ctx.dataset?.mediaType === "multimodal",
     sampleRendererOptions: {
       supports: (ctx) =>
-        ctx.media.extension === "mcap" ||
-        ctx.media.mediaReference?.kind === "lerobot-episode",
+        ctx.media.extension === "mcap" || ctx.media.mediaReference != null,
       modal: { persistAcrossSamples: true },
       grid: {
         clickBehavior: "passthrough",

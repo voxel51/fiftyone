@@ -5,6 +5,7 @@ ActivityNet-style temporal detection evaluation.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 from collections import defaultdict
 
@@ -20,7 +21,6 @@ from .detection import (
     DetectionEvaluationConfig,
     DetectionResults,
 )
-
 
 logger = logging.getLogger(__name__)
 

@@ -77,9 +77,8 @@ async def get_metadata(
     Returns:
         metadata dict
     """
-    media_reference = sample.get("media_reference")
-    if media_reference is not None:
-        cache_key = media_reference["key"]
+    cache_key = sample.get("media_reference")
+    if cache_key is not None:
         if cache_key not in metadata_cache:
             metadata_cache[cache_key] = dict(aspect_ratio=1)
 
@@ -88,7 +87,11 @@ async def get_metadata(
     filepath = sample["filepath"]
     metadata = sample.get("metadata", None)
 
-    (opm_field, detections_fields, additional_fields,) = (
+    (
+        opm_field,
+        detections_fields,
+        additional_fields,
+    ) = (
         additional_media_fields
         if additional_media_fields is not None
         else _get_additional_media_fields(collection)

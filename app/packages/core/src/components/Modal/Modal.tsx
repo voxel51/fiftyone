@@ -258,10 +258,21 @@ const Modal = () => {
           (mediaType && is3d(mediaType)) ||
           is3dVisible
         ) {
-          // we handle close logic in modal + other places
+          // A mounted looker or 3D viewer owns its own Escape handling and
+          // calls `modalCloseHandler` itself once it decides Escape should
+          // close rather than, e.g., clear a selection first.
           return;
         }
 
+        // Video Explore mounts no looker at all (`VideoTimelineSurface`
+        // paints through Lighter), so `activeLookerRef.current` is never set
+        // there and this call is what actually closes the modal on that
+        // surface. "Clear the selection on the first Escape" still happens —
+        // it is implemented as a separate, higher-priority `Escape` binding
+        // in `useVideoExploreKeybindings.ts` that is enabled only while a
+        // selection exists, so `KeyManager` runs it INSTEAD of the default
+        // close binding and this handler is never reached until the
+        // selection is empty.
         await modalCloseHandler();
       },
     [is3dVisible, modalCloseHandler],

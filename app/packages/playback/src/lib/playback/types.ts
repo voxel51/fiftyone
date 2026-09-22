@@ -236,9 +236,9 @@ export interface PlaybackClockSource {
  * - `duration`   — elapsed seconds, YouTube-style. The default; unchanged
  *                  behavior for every existing consumer that doesn't pass
  *                  `mode`.
- * - `sequence`   — frame-index based (frame 0, 1, 2, ...). `fps` derives
- *                  the engine's `nativeStepSeconds` (1/fps) and the
- *                  seconds<->frame-number conversion.
+ * - `sequence`   — frame-index based, counting from `firstFrame` (default
+ *                  0). `fps` derives the engine's `nativeStepSeconds` (1/fps)
+ *                  and the seconds<->frame-number conversion.
  * - `absolute`   — anchored to a real-world clock. `epochAnchorMs` is the
  *                  Unix-epoch millisecond timestamp that internal second 0
  *                  corresponds to; display converts to/from `Date`.
@@ -253,7 +253,12 @@ export interface PlaybackClockSource {
  */
 export type TimelineMode =
   | { kind: "duration" }
-  | { kind: "sequence"; fps: number }
+  | {
+      kind: "sequence";
+      fps: number;
+      /** The number of the first frame; 0 by default, 1 for FiftyOne frame numbers. */
+      firstFrame?: number;
+    }
   | { kind: "absolute"; epochAnchorMs: number };
 
 // ---------------------------------------------------------------------------
@@ -297,6 +302,21 @@ export interface PlaybackConfig {
    * @default { kind: "duration" }
    */
   mode?: TimelineMode;
+  /**
+   * Which domain the ruler and readouts START in when `mode` configures one
+   * of their own (frame numbers, wall-clock timestamps). The user can always
+   * swap with the readout toggle; this only seeds it.
+   *
+   * `"configured"` opens in `mode`'s domain. `"duration"` opens in plain
+   * elapsed time while leaving `mode` — and so the engine's stepping — alone,
+   * which is what a video surface wants: frame-accurate stepping, but a
+   * timecode readout unless the user asks for frame numbers (the looker's
+   * `UseFrameNumberOptionElement` was likewise opt-in).
+   *
+   * Ignored when `mode` is already `duration` — there is nothing to seed.
+   * @default "configured"
+   */
+  defaultDisplay?: "configured" | "duration";
   /**
    * Trailing delay before a seek asks missing blocking streams to prefetch.
    * The visual playhead and commits into already-buffered data stay immediate.

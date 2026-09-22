@@ -1,10 +1,13 @@
 import type { AdapterDescriptor, SampleDescriptor } from "../../ports";
 
+/** The stored reference class a LeRobot episode carries. */
+const LEROBOT_EPISODE_REFERENCE = "LeRobotEpisodeReference";
+
 /** Returns whether lightweight sample facts identify a LeRobot episode. */
 export function detectLeRobotSample(sample: SampleDescriptor): boolean {
   return (
     sample.mediaType === "multimodal" &&
-    sample.mediaReference?.kind === "lerobot-episode"
+    sample.mediaReference?._cls === LEROBOT_EPISODE_REFERENCE
   );
 }
 

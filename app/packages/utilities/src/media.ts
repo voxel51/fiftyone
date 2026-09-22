@@ -19,10 +19,81 @@ export type RecognizedMediaType =
   | NativeMediaType
   | typeof MEDIA_TYPE_MULTIMODAL;
 
-/** Browser-safe logical-media identity supplied by FiftyOne transport. */
+/**
+ * A reference-backed sample's media identity, as one key: the id of the media
+ * source its media comes from, then coordinates of the kind's own choosing.
+ * The source itself is recorded once on the dataset.
+ */
 export type MediaReferenceDescriptor = {
-  readonly kind: string;
   readonly key: string;
+  readonly [coordinate: string]: unknown;
+};
+
+/**
+ * One asset a reference-backed sample selects: what it is, which part of it
+ * the sample uses, and where its bytes are.
+ */
+export type MediaAssetDescriptor = {
+  readonly featureName?: string;
+  readonly id: string;
+  readonly mediaType?: string;
+  readonly role: string;
+  readonly selector: Readonly<Record<string, unknown>>;
+  /** Absent until the page it arrived on says where the object is. */
+  readonly src?: string;
+};
+
+/** What a reference-backed sample's media is made of. */
+export type SampleMediaDescriptor = {
+  readonly assets: readonly MediaAssetDescriptor[];
+  /** The asset the sample's tile plays, or null when it has no video. */
+  readonly poster: string | null;
+};
+
+/**
+ * A sample's media assets with their locations filled in.
+ *
+ * An asset id names its source and its path within that source, so an asset
+ * the server serves is located from where its source is -- read once per
+ * dataset -- rather than from a location repeated on every sample that names
+ * it. An asset that already carries a location keeps the one it arrived
+ * with.
+ */
+export const withMediaAssetSrcs = <T>(
+  sample: T,
+  mediaSources: Readonly<Record<string, string>> | null | undefined,
+): T => {
+  const media = (sample as { _media?: SampleMediaDescriptor } | null)?._media;
+  if (!media) {
+    return sample;
+  }
+
+  return {
+    ...sample,
+    _media: {
+      ...media,
+      assets: media.assets.map((asset) =>
+        asset.src === undefined
+          ? { ...asset, src: composedAssetSrc(asset.id, mediaSources) }
+          : asset,
+      ),
+    },
+  };
+};
+
+const composedAssetSrc = (
+  assetId: string,
+  mediaSources: Readonly<Record<string, string>> | null | undefined,
+): string | undefined => {
+  const separator = assetId.indexOf("/");
+  if (separator <= 0) {
+    return undefined;
+  }
+
+  const source = mediaSources?.[assetId.slice(0, separator)];
+  return source === undefined
+    ? undefined
+    : `${source.replace(/\/+$/, "")}/${assetId.slice(separator + 1)}`;
 };
 
 /** Direct-media extensions decoded by the Gaussian splat viewer. */
