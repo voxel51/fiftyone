@@ -57,6 +57,17 @@ export const useBridge = (scene: Scene2D | null) => {
     "lighter:overlay-removed",
     useCallback(
       (payload) => {
+        // A lifecycle removal is bridge bookkeeping, not the label going away:
+        // a field move re-homes the edited overlay (unmount + remount, same id)
+        // and a scene teardown evicts it. The form follows the engine anchor
+        // for committed labels and holds the draft for uncommitted ones, so
+        // closing it here would drop a fresh keypoint mid-move. User deletes
+        // close the form through `useExit` (see `Annotate/Edit/useDelete`), and
+        // undo-of-creation removes with `lifecycle` unset — still closed below.
+        if (payload.lifecycle) {
+          return;
+        }
+
         // Read at event-handling time to avoid stale closure
         const currentLabel = readEditing().selected?.label;
 
