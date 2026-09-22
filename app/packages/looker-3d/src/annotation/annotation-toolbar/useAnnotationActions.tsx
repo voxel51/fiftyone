@@ -26,11 +26,11 @@ import {
   selectedLabelForAnnotationAtom,
   selectedPolylineVertexAtom,
   snapCloseAutomaticallyAtom,
-  transformModeAtom,
 } from "../../state";
 import {
   useCurrent3dAnnotationMode,
   useResetSelected3dAnnotationLabel,
+  useTransformModeState,
 } from "../../state/accessors";
 import {
   isDetection3dDocument,
@@ -45,6 +45,7 @@ import {
 import {
   canTransformArchetypeUseMode,
   getSelectedTransformArchetype,
+  resolveTransformMode,
 } from "../transform-archetype";
 import type { ToolbarActionGroup, TransformMode } from "../types";
 import { AnnotationPlaneTooltip } from "./AnnotationPlaneTooltip";
@@ -97,7 +98,7 @@ export const useAnnotationActions = () => {
     currentArchetypeSelectedForTransform,
     setCurrentArchetypeSelectedForTransform,
   ] = useRecoilState(currentArchetypeSelectedForTransformAtom);
-  const [transformMode, setTransformMode] = useRecoilState(transformModeAtom);
+  const [preferredTransformMode, setTransformMode] = useTransformModeState();
   const [selectedPoint, setSelectedPoint] = useRecoilState(
     selectedPolylineVertexAtom,
   );
@@ -130,6 +131,10 @@ export const useAnnotationActions = () => {
     selectedLabelForAnnotation,
     selectedPoint,
   });
+  const transformMode = resolveTransformMode(
+    transformActionArchetype,
+    preferredTransformMode,
+  );
 
   const handleTransformModeChange = useCallback(
     (mode: TransformMode) => {

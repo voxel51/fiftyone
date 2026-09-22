@@ -20,7 +20,6 @@ const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-video-rotate-interp",
 );
 const id = "000000000000000000000000";
-const clip = `/tmp/${datasetName}.webm`;
 
 /** Keyframe rotations bracketing 0 rad: 350° and 10°. */
 const LEFT_ROTATION = 6.1;
@@ -32,28 +31,49 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
-  // 40 frames @ 10fps — room for the keyframe pair and the auto-extend
-  await mediaFactory.createVideo({
-    outputPath: clip,
-    duration: 4,
-    width: 64,
-    height: 64,
-    frameRate: 10,
-    color: "#3050a0",
-  });
 });
 
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeEach(async ({ videoAnnotateSDK }) => {
-  await videoAnnotateSDK.seed({
+test.beforeEach(async ({ datasetFactory }) => {
+  // 40 frames @ 10fps — room for the keyframe pair and the auto-extend
+  await datasetFactory.createDataset({
+    mediaType: "video",
     datasetName,
-    videoPaths: [clip],
-    withEvents: false,
+    videoOptions: {
+      duration: 4,
+      width: 64,
+      height: 64,
+      frameRate: 10,
+      color: "#3050a0",
+    },
+    sampleFrames: true,
+    schema: {
+      "frames.detections": "Detections",
+      "frames.detections.detections.instance": "Instance",
+      "frames.detections.detections.keyframe": "BooleanField",
+      "frames.detections.detections.propagation": "DictField",
+    },
+    labelSchemas: {
+      "frames.detections": {
+        type: "detections",
+        component: "dropdown",
+        classes: ["vehicle", "person", "road sign"],
+        attributes: [
+          { name: "id", type: "id", component: "text", read_only: true },
+          { name: "tags", type: "list<str>", component: "text" },
+          { name: "confidence", type: "float", component: "text" },
+          { name: "index", type: "int", component: "text" },
+          { name: "mask_path", type: "str", component: "text" },
+        ],
+      },
+    },
+    // present-but-empty on every frame, so the first draw's patch can append
+    withFrameData: (_, { label }) => ({ detections: label.detections([]) }),
   });
 });
 

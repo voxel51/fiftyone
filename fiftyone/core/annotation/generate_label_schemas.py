@@ -300,7 +300,8 @@ def _generate_field_label_schema(
     collection, field_name, scan_samples, point_scope=False
 ):
     field = collection.get_field(field_name)
-    read_only = field.read_only
+    # a frame's number is the video's clock; it is never edited
+    read_only = field.read_only or isinstance(field, fof.FrameNumberField)
 
     if point_scope:
         # A point-scoped attribute is stored as a list parallel to `points`;

@@ -13,14 +13,15 @@
 import { Browser, expect, test as base, type Page } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import { readKeypointsState } from "src/oss/utils/keypoints";
 import { EventUtils } from "src/shared/event-utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
+import { indexToId } from "src/shared/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-video-keypoint");
 
 /** Fixed ObjectId addressing the first sample (so we can deep-link the modal). */
-const id = "000000000000000000000000";
-const clip = `/tmp/${datasetName}.webm`;
+const id = indexToId(0);
 
 const FIELD = "keypoints";
 
@@ -80,54 +81,36 @@ const inFreshContext = async (
   }
 };
 
-test.beforeAll(
-  async ({
-    annotateSDK,
-    fiftyoneLoader,
-    foWebServer,
-    mediaFactory,
-    videoAnnotateSDK,
-  }) => {
-    await foWebServer.startWebServer();
-    await mediaFactory.createVideo({
-      outputPath: clip,
-      duration: 2,
-      width: 64,
-      height: 64,
-      frameRate: 10,
-      color: "#3050a0",
-    });
-    // clean slate (no pre-seeded tracks): the keypoint is the only track.
-    await videoAnnotateSDK.seed({ datasetName, videoPaths: [clip] });
-    // The seed fixture only models detections/polylines; declare the frame
-    // Keypoints field and its skeleton directly.
-    await fiftyoneLoader.executePythonCode(`
-import fiftyone as fo
-
-dataset = fo.load_dataset("${datasetName}")
-dataset.add_frame_field(
-    "${FIELD}", fo.EmbeddedDocumentField, embedded_doc_type=fo.Keypoints
-)
-dataset.skeletons = {
-    "${FIELD}": fo.KeypointSkeleton(
-        labels=${JSON.stringify(SKELETON_NODES)},
-        edges=[[0, 1], [1, 2]],
-    )
-}
-dataset.save()
-`);
-    await annotateSDK.updateLabelSchema(datasetName, `frames.${FIELD}`, {
-      type: "keypoints",
-      classes: ["person"],
-      attributes: [],
-      component: "dropdown",
-    });
-    await annotateSDK.addFieldToActiveLabelSchema(
-      datasetName,
-      `frames.${FIELD}`,
-    );
-  },
-);
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
+  await foWebServer.startWebServer();
+  // clean slate (no pre-seeded tracks): the keypoint is the only track.
+  await datasetFactory.createDataset({
+    mediaType: "video",
+    datasetName,
+    sampleFrames: true,
+    schema: { [`frames.${FIELD}`]: "Keypoints" },
+    // a skeleton is keyed by the BARE field name, even for a frame field.
+    skeletons: {
+      [FIELD]: {
+        labels: SKELETON_NODES,
+        edges: [
+          [0, 1],
+          [1, 2],
+        ],
+      },
+    },
+    labelSchemas: {
+      [`frames.${FIELD}`]: {
+        type: "keypoints",
+        classes: ["person"],
+        attributes: [],
+        component: "dropdown",
+      },
+    },
+    // present-but-empty on every frame, so the first placement's patch can append
+    withFrameData: (_, { label }) => ({ [FIELD]: label.keypoints([]) }),
+  });
+});
 
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
@@ -135,7 +118,6 @@ test.afterAll(async ({ foWebServer }) => {
 
 test.describe("video keypoint creation", () => {
   test("guided placement creates a track and persists the frame label", async ({
-    annotateSDK,
     browser,
     fiftyoneLoader,
     modal,
@@ -174,7 +156,7 @@ test.describe("video keypoint creation", () => {
 
     // Python read-back from frame 1: placed nodes finite, the skipped node a
     // NaN hole ([null, null] over JSON).
-    const state = await annotateSDK.getKeypointsState(datasetName, FIELD, {
+    const state = await readKeypointsState(fiftyoneLoader, datasetName, FIELD, {
       frameNumber: 1,
     });
     expect(state.present).toBe(true);

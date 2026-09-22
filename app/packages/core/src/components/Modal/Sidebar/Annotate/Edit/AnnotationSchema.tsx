@@ -1,9 +1,13 @@
 import {
-  FRAMES_PREFIX,
+  isFrameScopedPath,
   useActiveAnnotationSampleId,
   useAnnotationEngine,
 } from "@fiftyone/annotation";
-import { expandPath, field } from "@fiftyone/state";
+import {
+  expandPath,
+  field,
+  useIsImageDynamicGroupVideo,
+} from "@fiftyone/state";
 import type { LabelData } from "@fiftyone/utilities";
 import { FLOAT_FIELD, INT_FIELD, KEYPOINT } from "@fiftyone/utilities";
 import { useAtom } from "jotai";
@@ -169,6 +173,9 @@ export const useHandleSchemaChange = (readOnly: boolean) => {
   const sample = useActiveAnnotationSampleId();
   const parseFieldValue = useParseFieldValue();
   const [currentLabel, setCurrentLabel] = useAtom(current);
+  // frame-scoped paths are `frames.*` on a real video but bare paths on an
+  // image dynamic group video
+  const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
 
   const configRef = useRef(config);
   const dataRef = useRef(data);
@@ -213,7 +220,7 @@ export const useHandleSchemaChange = (readOnly: boolean) => {
       // label is still a draft, so `editingRef` is null (the anchor binds only
       // committed labels) yet `field` is correctly `frames.<field>`.
       const editingRef = editingRefRef.current;
-      const isFrameField = field.startsWith(FRAMES_PREFIX);
+      const isFrameField = isFrameScopedPath(field, isImageDynamicGroupVideo);
       const instanceId =
         editingRef?.instanceId ?? (data as { _id?: string })?._id ?? overlay.id;
       // A frame-field draft has no anchor frame; resolve the playhead occurrence
@@ -348,7 +355,13 @@ export const useHandleSchemaChange = (readOnly: boolean) => {
         } as NonNullable<typeof live>);
       }
     },
-    [engine, parseFieldValue, readOnly, setCurrentLabel],
+    [
+      engine,
+      isImageDynamicGroupVideo,
+      parseFieldValue,
+      readOnly,
+      setCurrentLabel,
+    ],
   );
 };
 

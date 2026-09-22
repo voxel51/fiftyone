@@ -20,7 +20,9 @@
 import { expect, test as base, type Page } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import { readKeypointsState } from "src/oss/utils/keypoints";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
+import type { LabelSchema } from "src/shared/dataset-factory";
 import { indexToId } from "src/shared/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
@@ -86,51 +88,56 @@ const openAnnotate = async (
   await modal.waitForLighterReady();
 };
 
-test.beforeAll(
-  async ({ annotateSDK, datasetFactory, fiftyoneLoader, foWebServer }) => {
-    await foWebServer.startWebServer();
-    // one sample per test (see README: prefer per-test samples over serial).
-    await datasetFactory.createDataset({
-      datasetName,
-      numSamples: 2,
-      imageOptions: { fillColor: "white", width: 640, height: 480 },
-    });
-    // The factory only models Detection(s)/Classification(s); declare both
-    // Keypoints fields and their skeletons directly.
-    await fiftyoneLoader.executePythonCode(`
-import fiftyone as fo
-
-dataset = fo.load_dataset("${datasetName}")
-dataset.add_sample_field(
-    "${FIELD}", fo.EmbeddedDocumentField, embedded_doc_type=fo.Keypoints
-)
-dataset.add_sample_field(
-    "${ALT_FIELD}", fo.EmbeddedDocumentField, embedded_doc_type=fo.Keypoints
-)
-dataset.skeletons = {
-    "${FIELD}": fo.KeypointSkeleton(
-        labels=${JSON.stringify(SKELETON_NODES)},
-        edges=[[0, 1], [0, 2], [1, 3], [2, 3]],
-    ),
-    "${ALT_FIELD}": fo.KeypointSkeleton(
-        labels=${JSON.stringify(ALT_SKELETON_NODES)},
-        edges=[[0, 1], [1, 2]],
-    ),
-}
-dataset.save()
-`);
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
+  await foWebServer.startWebServer();
+  // one sample per test (see README: prefer per-test samples over serial).
+  await datasetFactory.createDataset({
+    datasetName,
+    numSamples: 2,
+    imageOptions: { fillColor: "white", width: 640, height: 480 },
+    schema: { [FIELD]: "Keypoints", [ALT_FIELD]: "Keypoints" },
+    skeletons: {
+      [FIELD]: {
+        labels: SKELETON_NODES,
+        edges: [
+          [0, 1],
+          [0, 2],
+          [1, 3],
+          [2, 3],
+        ],
+      },
+      [ALT_FIELD]: {
+        labels: ALT_SKELETON_NODES,
+        edges: [
+          [0, 1],
+          [1, 2],
+        ],
+      },
+    },
     // Both fields share a class list so the dropdown offers the other one.
-    for (const field of [FIELD, ALT_FIELD]) {
-      await annotateSDK.updateLabelSchema(datasetName, field, {
-        type: "keypoints",
-        classes: ["person"],
-        attributes: [],
-        component: "dropdown",
-      });
-      await annotateSDK.addFieldToActiveLabelSchema(datasetName, field);
-    }
-  },
-);
+    labelSchemas: Object.fromEntries(
+      [FIELD, ALT_FIELD].map((field): [string, LabelSchema] => [
+        field,
+        {
+          type: "keypoints",
+          classes: ["person"],
+          attributes: [],
+          component: "dropdown",
+        },
+      ]),
+    ),
+    // The second test opens a PRE-EXISTING, fully placed keypoint; sample 1
+    // is its own, so seeding it at creation is invisible to the first test.
+    withSampleData: ({ index }, { label }) =>
+      index === 1
+        ? {
+            [FIELD]: label.keypoints([
+              label.keypoint({ label: "person", points: SEEDED_POINTS }),
+            ]),
+          }
+        : {},
+  });
+});
 
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
@@ -138,7 +145,6 @@ test.afterAll(async ({ foWebServer }) => {
 
 test.describe("keypoint field swap", () => {
   test("a fresh keypoint survives a field swap and undo restores its placements", async ({
-    annotateSDK,
     fiftyoneLoader,
     modal,
     page,
@@ -202,9 +208,12 @@ test.describe("keypoint field swap", () => {
 
       // Placed nodes are finite; the two never-placed nodes stay NaN holes
       // ([null, null] over JSON).
-      const state = await annotateSDK.getKeypointsState(datasetName, FIELD, {
-        sampleIndex: 0,
-      });
+      const state = await readKeypointsState(
+        fiftyoneLoader,
+        datasetName,
+        FIELD,
+        { sampleIndex: 0 },
+      );
       expect(state.count).toBe(1);
       expect(state.points).toHaveLength(SKELETON_NODES.length);
       for (const index of [0, 1]) {
@@ -215,26 +224,22 @@ test.describe("keypoint field swap", () => {
       expect(state.points[3]).toEqual([null, null]);
 
       // the undone move leaves nothing behind at the destination.
-      const alt = await annotateSDK.getKeypointsState(datasetName, ALT_FIELD, {
-        sampleIndex: 0,
-      });
+      const alt = await readKeypointsState(
+        fiftyoneLoader,
+        datasetName,
+        ALT_FIELD,
+        { sampleIndex: 0 },
+      );
       expect(alt.present).toBe(false);
     });
   });
 
   test("an existing keypoint survives a field swap and undo restores its placements", async ({
-    annotateSDK,
     fiftyoneLoader,
     modal,
     page,
   }) => {
     const edit = modal.sidebar.edit;
-
-    await test.step("seed a fully placed keypoint", async () => {
-      await annotateSDK.seedKeypoints(datasetName, FIELD, SEEDED_POINTS, {
-        sampleIndex: 1,
-      });
-    });
 
     await test.step("open the seeded keypoint from the label list", async () => {
       await openAnnotate(fiftyoneLoader, modal, page, indexToId(1));
@@ -280,9 +285,12 @@ test.describe("keypoint field swap", () => {
 
       // the undo restores the captured original, so every node reads back at
       // the coordinate it was seeded with.
-      const state = await annotateSDK.getKeypointsState(datasetName, FIELD, {
-        sampleIndex: 1,
-      });
+      const state = await readKeypointsState(
+        fiftyoneLoader,
+        datasetName,
+        FIELD,
+        { sampleIndex: 1 },
+      );
       expect(state.count).toBe(1);
       expect(state.points).toHaveLength(SEEDED_POINTS.length);
       for (const [index, [x, y]] of SEEDED_POINTS.entries()) {
@@ -292,9 +300,12 @@ test.describe("keypoint field swap", () => {
         ]);
       }
 
-      const alt = await annotateSDK.getKeypointsState(datasetName, ALT_FIELD, {
-        sampleIndex: 1,
-      });
+      const alt = await readKeypointsState(
+        fiftyoneLoader,
+        datasetName,
+        ALT_FIELD,
+        { sampleIndex: 1 },
+      );
       expect(alt.present).toBe(false);
     });
   });

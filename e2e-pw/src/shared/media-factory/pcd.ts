@@ -5,59 +5,13 @@
 import { spawnSync } from "child_process";
 import { Duration, getPythonCommand } from "src/oss/utils";
 import { dedentPythonCode } from "src/oss/utils/dedent";
+import type { MediaOptions } from "./types";
+import { generateOnce } from "./write";
 
 /**
- * Generates a PCD (Point Cloud Data) file at the specified path using pypcd4,
- * with a configurable number of points arranged in one of two 3D shapes.
- *
- * The Python code is executed synchronously via a shell subprocess with a
- * 5-second timeout. Stderr output from the subprocess is forwarded to
- * `console.error`, and an error is thrown if the subprocess exits nonzero.
- *
- * **Shape layouts:**
- * - `"diagonal"` — Points are arranged along the main diagonal of 3D space,
- *   i.e. `[0,0,0], [1,1,1], ..., [n-1, n-1, n-1]`. Produces exactly
- *   `numPoints` points.
- * - `"cube"` — Points fill a uniform cubic grid. The cube side length is
- *   `floor(numPoints^(1/3))`, so the actual number of points written will be
- *   `floor(numPoints^(1/3))^3`, which may be less than `numPoints`.
- *
- * @param options - Configuration for PCD generation.
- * @param options.outputPath - The file path where the `.pcd` file will be written
- *   (e.g. `/tmp/dataset/scene.pcd`). The directory must already exist.
- * @param options.numPoints - The number of points to generate.
- *   For `"cube"` shape, the actual count is `floor(numPoints^(1/3))^3`.
- * @param options.shape - The spatial arrangement of points. Either `"diagonal"`
- *   or `"cube"`. See shape layouts above.
- * @param options.imputeNaN - Optional configuration for injecting `NaN` values
- *   into specific point coordinates, useful for testing NaN-handling behavior.
- * @param options.imputeNaN.indices - An array of `[pointIndex, coordinateIndex]`
- *   pairs. `pointIndex` selects the point in the generated array and
- *   `coordinateIndex` selects the coordinate (`0`=x, `1`=y, `2`=z) to
- *   set to `NaN`.
- *
- * @example
- * // Diagonal point cloud with 10 points
- * createPcd({
- *   outputPath: "/tmp/scene.pcd",
- *   numPoints: 10,
- *   shape: "diagonal",
- * });
- *
- * @example
- * // Cubic grid with NaN injected at point 0's x-coordinate and point 1's z-coordinate
- * createPcd({
- *   outputPath: "/tmp/scene.pcd",
- *   numPoints: 27,
- *   shape: "cube",
- *   imputeNaN: {
- *     indices: [[0, 0], [1, 2]],
- *   },
- * });
+ * What to write into a PCD point cloud.
  */
-export const createPcd = (options: {
-  /** The file path where the `.pcd` file will be written. */
-  outputPath: string;
+export interface PcdSpec {
   /**
    * The number of points to generate.
    * For `"cube"` shape, actual count will be `floor(numPoints^(1/3))^3`.
@@ -80,11 +34,29 @@ export const createPcd = (options: {
      */
     indices: Array<number[]>;
   };
-}) => {
+}
+
+export type PcdOptions = MediaOptions & PcdSpec;
+
+export const DEFAULT_PCD_SPEC: PcdSpec = { shape: "cube", numPoints: 216 };
+
+/**
+ * Generates a PCD file at `outputPath` with `numPoints` points on the 3D
+ * diagonal (`[i, i, i]`) or filling a cubic grid of side
+ * `floor(numPoints^(1/3))`, via a pypcd4 subprocess with a 5-second timeout.
+ * Stderr is forwarded and a nonzero exit throws.
+ *
+ * @example
+ * createPcd({
+ *   outputPath: "/tmp/scene.pcd",
+ *   numPoints: 27,
+ *   shape: "cube",
+ *   imputeNaN: { indices: [[0, 0], [1, 2]] },
+ * });
+ */
+export const createPcd = (options: PcdOptions): void => {
   const { outputPath, numPoints, imputeNaN } = options;
 
-  const startTime = performance.now();
-  console.log(`Creating pcd with options: ${JSON.stringify(options)}`);
   const pythonCode = `
   import numpy as np
   from pypcd4 import Encoding, PointCloud
@@ -103,24 +75,22 @@ export const createPcd = (options: {
   pc.save("${outputPath}", Encoding.ASCII)
   `;
 
-  const command = getPythonCommand([
-    "-c",
-    `'''${dedentPythonCode(pythonCode)}'''`,
-  ]);
-  const proc = spawnSync(command, {
-    shell: true,
-    timeout: Duration.Seconds(5),
+  generateOnce("Pcd", options, () => {
+    const command = getPythonCommand([
+      "-c",
+      `'''${dedentPythonCode(pythonCode)}'''`,
+    ]);
+    const proc = spawnSync(command, {
+      shell: true,
+      timeout: Duration.Seconds(5),
+    });
+    if (proc.stderr) {
+      console.error(proc.stderr.toString());
+    }
+    if (proc.status !== 0) {
+      throw new Error(
+        `Pcd generation failed with exit code ${proc.status}: ${proc.stderr}`,
+      );
+    }
   });
-  if (proc.stderr) {
-    console.error(proc.stderr.toString());
-  }
-  if (proc.status !== 0) {
-    throw new Error(
-      `Pcd generation failed with exit code ${proc.status}: ${proc.stderr}`,
-    );
-  }
-
-  const endTime = performance.now();
-  const timeTaken = endTime - startTime;
-  console.log(`Pcd generation completed in ${timeTaken} milliseconds`);
 };

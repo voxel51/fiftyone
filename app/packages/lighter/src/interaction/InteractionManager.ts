@@ -211,6 +211,14 @@ export interface InteractionHandler {
   cleanup?(): void;
 }
 
+const isTextEditingElement = (
+  element: Element | null,
+): element is HTMLElement =>
+  element instanceof HTMLElement &&
+  (element.tagName === "INPUT" ||
+    element.tagName === "TEXTAREA" ||
+    element.contentEditable === "true");
+
 /**
  * Manages all interaction events and coordinates with overlays.
  * Now knows about overlays and manages drag state internally.
@@ -392,6 +400,13 @@ export class InteractionManager {
   private handlePointerDown = (event: PointerEvent): void => {
     // ignore right click, handled by `handleRightClick`
     if (event.button === 2) return;
+
+    // A press on the canvas ends text editing elsewhere, as it would if the
+    // handlers below did not preventDefault; keyboard shortcuts then reach the canvas.
+    const active = document.activeElement;
+    if (isTextEditingElement(active)) {
+      active.blur();
+    }
 
     const point = this.getCanvasPoint(event);
     const worldPoint = this.renderer.screenToWorld(point);
@@ -1121,13 +1136,7 @@ export class InteractionManager {
    */
   private handleKeyDown = async (event: KeyboardEvent): Promise<void> => {
     // Check if we're in an input field - don't handle shortcuts there
-    const activeElement = document.activeElement;
-    if (
-      activeElement &&
-      (activeElement.tagName === "INPUT" ||
-        activeElement.tagName === "TEXTAREA" ||
-        (activeElement as HTMLElement).contentEditable === "true")
-    ) {
+    if (isTextEditingElement(document.activeElement)) {
       return;
     }
 
@@ -1172,13 +1181,7 @@ export class InteractionManager {
    */
   private handleKeyUp = (event: KeyboardEvent): void => {
     // Check if we're in an input field - don't handle shortcuts there
-    const activeElement = document.activeElement;
-    if (
-      activeElement &&
-      (activeElement.tagName === "INPUT" ||
-        activeElement.tagName === "TEXTAREA" ||
-        (activeElement as HTMLElement).contentEditable === "true")
-    ) {
+    if (isTextEditingElement(document.activeElement)) {
       return;
     }
 

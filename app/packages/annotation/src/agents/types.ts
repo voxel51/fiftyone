@@ -82,7 +82,7 @@ export type SampleDescriptor = {
 /**
  * An already-decoded frame of the media being annotated, with a stable
  * per-frame key for the encoder-embedding cache. Supplied by surfaces that
- * hold decoded pixels (e.g. the ImaVid video-frame cache) so the agent can run
+ * hold decoded pixels (e.g. the dynamic group video-frame cache) so the agent can run
  * inference on the bitmap instead of fetching + decoding `mediaUrl` — which for
  * a video would be the container file, not an image.
  */

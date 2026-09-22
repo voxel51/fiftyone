@@ -21,6 +21,7 @@
 import { Browser, expect, test as base, type Page } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import { readKeypointsState } from "src/oss/utils/keypoints";
 import { EventUtils } from "src/shared/event-utils";
 import { indexToId } from "src/shared/utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
@@ -83,39 +84,27 @@ const inFreshContext = async (
   }
 };
 
-test.beforeAll(
-  async ({ annotateSDK, datasetFactory, fiftyoneLoader, foWebServer }) => {
-    await foWebServer.startWebServer();
-    // one sample per test (see README: prefer per-test samples over serial).
-    await datasetFactory.createDataset({
-      datasetName,
-      numSamples: 3,
-      imageOptions: { fillColor: "white", width: 640, height: 480 },
-    });
-    // The factory only models Detection(s)/Classification(s); declare the
-    // Keypoints field and its skeleton directly.
-    await fiftyoneLoader.executePythonCode(`
-import fiftyone as fo
-
-dataset = fo.load_dataset("${datasetName}")
-dataset.add_sample_field(
-    "${FIELD}", fo.EmbeddedDocumentField, embedded_doc_type=fo.Keypoints
-)
-dataset.add_sample_field(
-    "${BOX_FIELD}", fo.EmbeddedDocumentField, embedded_doc_type=fo.Detections
-)
-dataset.skeletons = {
-    "${FIELD}": fo.KeypointSkeleton(
-        labels=${JSON.stringify(SKELETON_NODES)},
-        edges=[[0, 1], [0, 2], [1, 3], [2, 3]],
-    )
-}
-dataset.save()
-`);
-    await annotateSDK.updateLabelSchema(
-      datasetName,
-      FIELD,
-      {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
+  await foWebServer.startWebServer();
+  // one sample per test (see README: prefer per-test samples over serial).
+  await datasetFactory.createDataset({
+    datasetName,
+    numSamples: 3,
+    imageOptions: { fillColor: "white", width: 640, height: 480 },
+    schema: { [FIELD]: "Keypoints", [BOX_FIELD]: "Detections" },
+    skeletons: {
+      [FIELD]: {
+        labels: SKELETON_NODES,
+        edges: [
+          [0, 1],
+          [0, 2],
+          [1, 3],
+          [2, 3],
+        ],
+      },
+    },
+    labelSchemas: {
+      [FIELD]: {
         type: "keypoints",
         classes: ["person", "dog"],
         attributes: [
@@ -128,22 +117,39 @@ dataset.save()
         ],
         component: "dropdown",
       },
-      { allowNewAttrs: true },
-    );
-    await annotateSDK.addFieldToActiveLabelSchema(datasetName, FIELD);
-
-    // Active so a seeded box RENDERS and is selectable in annotate mode —
-    // otherwise "the click was not stolen by the box" proves nothing. Only
-    // sample 2 carries a box, so the other tests' samples are unaffected.
-    await annotateSDK.updateLabelSchema(datasetName, BOX_FIELD, {
-      type: "detections",
-      classes: ["box"],
-      attributes: [],
-      component: "dropdown",
-    });
-    await annotateSDK.addFieldToActiveLabelSchema(datasetName, BOX_FIELD);
-  },
-);
+      // Active so the seeded box RENDERS and is selectable in annotate mode —
+      // otherwise "the click was not stolen by the box" proves nothing. Only
+      // sample 2 carries a box, so the other tests' samples are unaffected.
+      [BOX_FIELD]: {
+        type: "detections",
+        classes: ["box"],
+        attributes: [],
+        component: "dropdown",
+      },
+    },
+    // Sample 2's test opens an EXISTING keypoint with nothing placed, over a
+    // box parked under the canvas center: while the mode is unarmed a canvas
+    // click is a plain Select click, so the box is exactly what a stolen
+    // click would open.
+    withSampleData: ({ index }, { label }) =>
+      index === 2
+        ? {
+            [FIELD]: label.keypoints([
+              label.keypoint({
+                label: "person",
+                points: [null, null, null, null],
+              }),
+            ]),
+            [BOX_FIELD]: label.detections([
+              label.detection({
+                label: "box",
+                bounding_box: [0.25, 0.25, 0.5, 0.5],
+              }),
+            ]),
+          }
+        : {},
+  });
+});
 
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
@@ -167,7 +173,6 @@ const openAnnotate = async (
 
 test.describe("2D annotation keypoint", () => {
   test("guided placement with a skip persists points and the NaN hole", async ({
-    annotateSDK,
     browser,
     fiftyoneLoader,
     modal,
@@ -205,7 +210,7 @@ test.describe("2D annotation keypoint", () => {
 
     // Python read-back: placed nodes are finite, the skipped node is a NaN
     // hole ([null, null] over JSON).
-    const state = await annotateSDK.getKeypointsState(datasetName, FIELD);
+    const state = await readKeypointsState(fiftyoneLoader, datasetName, FIELD);
     expect(state.present).toBe(true);
     expect(state.count).toBe(1);
     expect(state.label).toBe("person");
@@ -236,7 +241,6 @@ test.describe("2D annotation keypoint", () => {
   });
 
   test("a point-scoped attribute persists as a value-filled list", async ({
-    annotateSDK,
     fiftyoneLoader,
     modal,
     page,
@@ -258,7 +262,7 @@ test.describe("2D annotation keypoint", () => {
 
     // the write is the FULL parallel list: false fillers, never null — the
     // ODM rejects null elements once the dataset field is declared.
-    const state = await annotateSDK.getKeypointsState(datasetName, FIELD, {
+    const state = await readKeypointsState(fiftyoneLoader, datasetName, FIELD, {
       sampleIndex: 1,
       attributes: ["occluded"],
     });
@@ -278,35 +282,22 @@ kp = sample["${FIELD}"].keypoints[0]
 kp.occluded = list(kp.occluded)
 sample.save()
 `);
-    const declared = await annotateSDK.getKeypointsState(datasetName, FIELD, {
-      sampleIndex: 1,
-      attributes: ["occluded"],
-    });
+    const declared = await readKeypointsState(
+      fiftyoneLoader,
+      datasetName,
+      FIELD,
+      { sampleIndex: 1, attributes: ["occluded"] },
+    );
     expect(declared.attributes.occluded).toEqual([false, true, false, false]);
   });
 
   test("an existing keypoint arms placement from the target row's Place button", async ({
-    annotateSDK,
     fiftyoneLoader,
     modal,
     page,
   }) => {
-    // An existing keypoint with nothing placed, and a box parked under the
-    // canvas center: while the mode is unarmed a canvas click is a plain
-    // Select click, so the box is exactly what a stolen click would open.
-    await annotateSDK.seedKeypoints(
-      datasetName,
-      FIELD,
-      [null, null, null, null],
-      { sampleIndex: 2 },
-    );
-    await annotateSDK.seedDetection(
-      datasetName,
-      BOX_FIELD,
-      [0.25, 0.25, 0.5, 0.5],
-      { sampleIndex: 2 },
-    );
-
+    // sample 2 carries the pre-existing keypoint and the box under it (seeded
+    // at creation).
     await openAnnotate(fiftyoneLoader, modal, page, indexToId(2));
     // the keypoint and the box
     await expect
@@ -336,7 +327,7 @@ sample.save()
     await expect(page.getByText("Edit Detection")).toBeHidden();
 
     await modal.sidebar.annotate.waitForSavesSettled();
-    const state = await annotateSDK.getKeypointsState(datasetName, FIELD, {
+    const state = await readKeypointsState(fiftyoneLoader, datasetName, FIELD, {
       sampleIndex: 2,
     });
     expect(state.points[0][0]).toEqual(expect.any(Number));
