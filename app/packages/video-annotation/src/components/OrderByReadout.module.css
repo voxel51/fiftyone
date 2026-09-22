@@ -1,0 +1,8 @@
+/* Sits in the controls row beside the clock: same inline-flex centering as the
+   clock's own readout, so the two share a baseline. */
+.readout {
+  align-items: center;
+  display: inline-flex;
+  flex-shrink: 0;
+  white-space: nowrap;
+}

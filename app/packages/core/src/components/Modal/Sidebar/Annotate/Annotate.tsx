@@ -57,6 +57,13 @@ const DISABLED_MESSAGES: Record<
     </p>
   ),
   videoDataset: <p>Annotation isn&rsquo;t supported for video datasets.</p>,
+  dynamicGroupNotQueryPerformant: (
+    <p>
+      Annotating dynamic groups requires a query performant view. Group by a
+      field with <code>order_by</code> and <code>order_by_key</code> set, and
+      create a compound unique index on the group and order fields.
+    </p>
+  ),
   multimodalDataset: (
     <p>Annotation isn&rsquo;t supported for multimodal datasets.</p>
   ),
