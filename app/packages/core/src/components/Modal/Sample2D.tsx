@@ -58,8 +58,8 @@ export const SampleWrapper = ({
     };
   }, [clear, hovering]);
   const hoveringRef = useRef(false);
-  const storedSample = useReverbValueLoadable(sampleAtom);
-  const sample = providedSample ?? storedSample.getValue();
+  const loadedSample = useReverbValueLoadable(sampleAtom);
+  const sample = providedSample ?? loadedSample.getValue();
   const { handlers: hoverEventHandlers } = useHoveredSample(sample.sample, {
     update,
     clear,

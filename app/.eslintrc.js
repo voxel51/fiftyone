@@ -3,15 +3,6 @@
 const fs = require("fs");
 const path = require("path");
 
-// Shrinking allow-list for the Recoil->Jotai migration. See
-// .recoil-allowlist.txt for the rationale; remove files from it as they're
-// migrated instead of adding to it.
-const recoilAllowlist = fs
-  .readFileSync(path.join(__dirname, ".recoil-allowlist.txt"), "utf-8")
-  .split("\n")
-  .map((line) => line.trim())
-  .filter((line) => line && !line.startsWith("#"));
-
 // Shrinking allow-list for the MUI->Voodoo migration. See .mui-allowlist.txt
 // for the rationale; remove files from it as they're migrated instead of
 // adding to it.
@@ -21,25 +12,40 @@ const muiAllowlist = fs
   .map((line) => line.trim())
   .filter((line) => line && !line.startsWith("#"));
 
-// Files frozen for both migrations, so the per-migration overrides below can
-// exempt them from both without exempting either list from the other freeze.
-const bothAllowlist = recoilAllowlist.filter((file) =>
+// Shrinking allow-list for reading the store straight from a component. See
+// .reverb-allowlist.txt for the rationale; remove files from it as they move
+// to a semantic hook instead of adding to it.
+const reverbAllowlist = fs
+  .readFileSync(path.join(__dirname, ".reverb-allowlist.txt"), "utf-8")
+  .split("\n")
+  .map((line) => line.trim())
+  .filter((line) => line && !line.startsWith("#"));
+
+// Files on both lists, so the per-rule overrides below can exempt them from
+// both without exempting either list from the other rule.
+const bothAllowlist = reverbAllowlist.filter((file) =>
   muiAllowlist.includes(file),
 );
 
-// The two freezes share the no-restricted-imports rule name, and an ESLint
-// override replaces a rule's config rather than merging it. Keep each freeze's
-// config separate so an override can re-apply just the one that still applies.
-const recoilPaths = [
+// The store is defined and exposed here, so these own the direct imports.
+const storePackages = [
+  "packages/state/**",
+  "packages/relay/**",
+  "packages/reverb/**",
+];
+
+const storeMuiAllowlist = muiAllowlist.filter((file) =>
+  storePackages.some((glob) => file.startsWith(glob.replace("/**", "/"))),
+);
+
+// Both rules share the no-restricted-imports rule name, and an ESLint override
+// replaces a rule's config rather than merging it. Keep each one's config
+// separate so an override can re-apply just the one that still applies.
+const reverbPaths = [
   {
     name: "@fiftyone/reverb",
     message:
-      "New Recoil usage is frozen during the Recoil->Jotai migration. Use an existing @fiftyone/state accessor hook, or add a new Jotai atom. See .recoil-allowlist.txt.",
-  },
-  {
-    name: "@fiftyone/relay",
-    message:
-      "New recoil-relay usage is frozen during the Recoil->Jotai migration. See .recoil-allowlist.txt.",
+      "Components should not read or write the store directly. Use a well-defined semantic hook from @fiftyone/state, or add one there. See .reverb-allowlist.txt.",
   },
 ];
 
@@ -120,7 +126,7 @@ module.exports = {
     "react/prop-types": 0,
     "no-restricted-imports": [
       "warn",
-      { paths: recoilPaths, patterns: muiPatterns },
+      { paths: reverbPaths, patterns: muiPatterns },
     ],
   },
   settings: {
@@ -181,29 +187,43 @@ module.exports = {
       },
     },
     {
-      // Files not yet migrated off Recoil. Shrink .recoil-allowlist.txt as
-      // each migration phase lands rather than adding to it. The MUI freeze
-      // still applies here, so re-declare it.
-      files: recoilAllowlist,
-      excludedFiles: muiAllowlist,
+      // @fiftyone/state, @fiftyone/relay and @fiftyone/reverb define the store
+      // and the hooks over it, so they import it directly. The MUI rule still
+      // applies to them.
+      files: storePackages,
       rules: {
         "no-restricted-imports": ["warn", { patterns: muiPatterns }],
       },
     },
     {
       // Files not yet migrated off MUI. Shrink .mui-allowlist.txt as files
-      // move to @voxel51/voodo rather than adding to it. The Recoil freeze
-      // still applies here, so re-declare it.
+      // move to @voxel51/voodo rather than adding to it.
       files: muiAllowlist,
-      excludedFiles: recoilAllowlist,
       rules: {
-        "no-restricted-imports": ["warn", { paths: recoilPaths }],
+        "no-restricted-imports": ["warn", { paths: reverbPaths }],
       },
     },
     {
-      // On both allowlists: exempt from both freezes until one of them is
-      // migrated, at which point it drops back to a single-list override.
+      // Files still reading the store directly. Shrink .reverb-allowlist.txt
+      // as files move to a semantic hook rather than adding to it.
+      files: reverbAllowlist,
+      rules: {
+        "no-restricted-imports": ["warn", { patterns: muiPatterns }],
+      },
+    },
+    {
+      // On both lists, so neither rule applies.
       files: bothAllowlist,
+      rules: {
+        "no-restricted-imports": "off",
+      },
+    },
+    {
+      // A store package's own file that is also MUI allow-listed. The MUI
+      // override above replaces the store-package one rather than merging
+      // with it, which would otherwise put the store rule back on a file
+      // that defines the store.
+      files: storeMuiAllowlist,
       rules: {
         "no-restricted-imports": "off",
       },
