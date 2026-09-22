@@ -41,14 +41,15 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-const nodeRow = (page: Page, index: number) =>
-  page.getByTestId(`keypoint-node-${index}`);
-
 const expectNodeStatus = (
-  page: Page,
+  modal: ModalPom,
   index: number,
   status: "placed" | "target" | "skipped" | "pending",
-) => expect(nodeRow(page, index)).toHaveAttribute("data-cy-status", status);
+) =>
+  expect(modal.sidebar.edit.keypointNodeRow(index)).toHaveAttribute(
+    "data-cy-status",
+    status,
+  );
 
 /** Open the modal in annotate mode on the deep-linked video sample. */
 const openAnnotate = async (
@@ -130,22 +131,22 @@ test.describe("video keypoint creation", () => {
 
     await modal.sidebar.annotate.keypointMode();
     await modal.sidebar.annotate.assert.keypointModeIsActive();
-    await expectNodeStatus(page, 0, "target");
+    await expectNodeStatus(modal, 0, "target");
 
     // place node 0, skip node 1, place node 2. The establish on first
     // placement re-keys the draft into a track; the mode must survive it.
     await modal.sampleCanvas.click(...PLACEMENTS[0]);
-    await expectNodeStatus(page, 0, "placed");
-    await expectNodeStatus(page, 1, "target");
+    await expectNodeStatus(modal, 0, "placed");
+    await expectNodeStatus(modal, 1, "target");
     await modal.sidebar.annotate.assert.keypointModeIsActive();
 
-    await page.getByTestId("keypoint-skip-node").click();
-    await expectNodeStatus(page, 1, "skipped");
-    await expectNodeStatus(page, 2, "target");
+    await modal.sidebar.edit.skipKeypointNode();
+    await expectNodeStatus(modal, 1, "skipped");
+    await expectNodeStatus(modal, 2, "target");
     await modal.sidebar.annotate.assert.keypointModeIsActive();
 
     await modal.sampleCanvas.click(...PLACEMENTS[2]);
-    await expectNodeStatus(page, 2, "placed");
+    await expectNodeStatus(modal, 2, "placed");
 
     // the creation establishes exactly one object track on the timeline.
     await modal.videoAnnotate.assert.objectTrackCount(1);

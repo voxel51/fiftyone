@@ -53,14 +53,15 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-const nodeRow = (page: Page, index: number) =>
-  page.getByTestId(`keypoint-node-${index}`);
-
 const expectNodeStatus = (
-  page: Page,
+  modal: ModalPom,
   index: number,
   status: "placed" | "target" | "skipped" | "pending",
-) => expect(nodeRow(page, index)).toHaveAttribute("data-cy-status", status);
+) =>
+  expect(modal.sidebar.edit.keypointNodeRow(index)).toHaveAttribute(
+    "data-cy-status",
+    status,
+  );
 
 const inFreshContext = async (
   browser: Browser,
@@ -183,24 +184,24 @@ test.describe("2D annotation keypoint", () => {
     await modal.sidebar.annotate.assert.keypointModeIsActive();
 
     // the mode opens a draft; the checklist targets node 0.
-    await expectNodeStatus(page, 0, "target");
+    await expectNodeStatus(modal, 0, "target");
 
     // guided placement walks the skeleton in order.
     await modal.sampleCanvas.click(...PLACEMENTS[0]);
-    await expectNodeStatus(page, 0, "placed");
-    await expectNodeStatus(page, 1, "target");
+    await expectNodeStatus(modal, 0, "placed");
+    await expectNodeStatus(modal, 1, "target");
 
     await modal.sampleCanvas.click(...PLACEMENTS[1]);
-    await expectNodeStatus(page, 1, "placed");
-    await expectNodeStatus(page, 2, "target");
+    await expectNodeStatus(modal, 1, "placed");
+    await expectNodeStatus(modal, 2, "target");
 
     // skipping leaves a hole and advances the target.
-    await page.getByTestId("keypoint-skip-node").click();
-    await expectNodeStatus(page, 2, "skipped");
-    await expectNodeStatus(page, 3, "target");
+    await modal.sidebar.edit.skipKeypointNode();
+    await expectNodeStatus(modal, 2, "skipped");
+    await expectNodeStatus(modal, 3, "target");
 
     await modal.sampleCanvas.click(...PLACEMENTS[3]);
-    await expectNodeStatus(page, 3, "placed");
+    await expectNodeStatus(modal, 3, "placed");
     await expect(page.getByText("3 of 4 placed · 1 skipped")).toBeVisible();
 
     // assigning a class commits through the edit form.
@@ -227,15 +228,15 @@ test.describe("2D annotation keypoint", () => {
       browser,
       fiftyoneLoader,
       indexToId(0),
-      async (freshModal, freshPage) => {
+      async (freshModal) => {
         await expect
           .poll(() => freshModal.sidebar.annotate.getActiveLabelsCount())
           .toBe(1);
         await freshModal.sidebar.annotate.selectActiveLabel("person", 0);
-        await expectNodeStatus(freshPage, 0, "placed");
-        await expectNodeStatus(freshPage, 1, "placed");
-        await expectNodeStatus(freshPage, 2, "target");
-        await expectNodeStatus(freshPage, 3, "placed");
+        await expectNodeStatus(freshModal, 0, "placed");
+        await expectNodeStatus(freshModal, 1, "placed");
+        await expectNodeStatus(freshModal, 2, "target");
+        await expectNodeStatus(freshModal, 3, "placed");
       },
     );
   });
@@ -252,10 +253,10 @@ test.describe("2D annotation keypoint", () => {
     // place the full skeleton.
     for (const [index, placement] of PLACEMENTS.entries()) {
       await modal.sampleCanvas.click(...placement);
-      await expectNodeStatus(page, index, "placed");
+      await expectNodeStatus(modal, index, "placed");
     }
     // select node 1 and toggle its point-scoped bool in the inspector.
-    await nodeRow(page, 1).click();
+    await modal.sidebar.edit.keypointNodeRow(1).click();
     await expect(page.getByTestId("keypoint-node-inspector")).toBeVisible();
     await page.getByTestId("keypoint-occluded-toggle").click();
     await modal.sidebar.annotate.waitForSavesSettled();
@@ -308,21 +309,21 @@ sample.save()
     // an existing label opens PASSIVELY: node 0 is the target, but nothing is
     // armed, so the row offers Place (Skip alone would be a dead end).
     await modal.sidebar.annotate.assert.keypointModeIsActive(false);
-    await expectNodeStatus(page, 0, "target");
-    await expect(page.getByTestId("keypoint-place-node-0")).toBeVisible();
-    await expect(page.getByTestId("keypoint-skip-node")).toBeHidden();
+    await expectNodeStatus(modal, 0, "target");
+    await expect(modal.sidebar.edit.keypointPlaceButton(0)).toBeVisible();
+    await expect(modal.sidebar.edit.keypointSkipButton).toBeHidden();
 
     // Place arms the mode and force-targets the node; an ARMED target places
     // by canvas click, so Skip becomes the row's only button.
     await modal.sidebar.edit.placeKeypointNode(0);
     await modal.sidebar.annotate.assert.keypointModeIsActive(true);
-    await expect(page.getByTestId("keypoint-skip-node")).toBeVisible();
-    await expect(page.getByTestId("keypoint-place-node-0")).toBeHidden();
+    await expect(modal.sidebar.edit.keypointSkipButton).toBeVisible();
+    await expect(modal.sidebar.edit.keypointPlaceButton(0)).toBeHidden();
 
     // the click places node 0 — it is NOT a Select click on the box under it,
     // which would swap the form to "Edit Detection".
     await modal.sampleCanvas.click(0.5, 0.5);
-    await expectNodeStatus(page, 0, "placed");
+    await expectNodeStatus(modal, 0, "placed");
     await expect(page.getByTestId("keypoint-node-list")).toBeVisible();
     await expect(page.getByText("Edit Detection")).toBeHidden();
 

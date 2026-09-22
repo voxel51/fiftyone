@@ -285,9 +285,19 @@ export class ModalAnnotateEditPom {
       .getByText(/of \d+ placed/);
   }
 
+  /** A node row's Place button (offered while the row is not an armed target). */
+  keypointPlaceButton(index: number) {
+    return this.locator.getByTestId(`keypoint-place-node-${index}`);
+  }
+
+  /** The target row's Skip button (offered while placement is armed). */
+  get keypointSkipButton() {
+    return this.locator.getByTestId("keypoint-skip-node");
+  }
+
   /** Click a node row's Place button (arms placement, force-targets the node). */
   async placeKeypointNode(index: number) {
-    await this.locator.getByTestId(`keypoint-place-node-${index}`).click();
+    await this.keypointPlaceButton(index).click();
   }
 
   /** Click a node row's Clear button (the node becomes a [NaN, NaN] hole). */
@@ -297,7 +307,7 @@ export class ModalAnnotateEditPom {
 
   /** Click the target row's Skip button (guided placement passes the node). */
   async skipKeypointNode() {
-    await this.locator.getByTestId("keypoint-skip-node").click();
+    await this.keypointSkipButton.click();
   }
 
   /**
