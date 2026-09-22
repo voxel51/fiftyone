@@ -243,6 +243,13 @@ export class SegmentationOverlay
     const source = this.resolveSource();
 
     if (!source) {
+      // Nothing resolvable right now: no inline mask, and either no
+      // `mask_path` at all or one still decoding. Stopping at the paint is
+      // not enough — the targets behind the last raster are what `targetAt`
+      // and `containsPoint` answer from, so leaving them would let an
+      // unpainted overlay go on swallowing clicks for a mask that is not on
+      // screen. A path decode that lands repaints and repopulates it.
+      this.clearRaster();
       return undefined;
     }
 
@@ -488,6 +495,16 @@ export class SegmentationOverlay
     return LABEL_ARCHETYPE_PRIORITY.SEGMENTATION;
   }
 
+  /** Drops the raster and everything hit-testing answers from. */
+  private clearRaster(): void {
+    this.#canvas = undefined;
+    this.#targets = undefined;
+    this.#maskWidth = 0;
+    this.#maskHeight = 0;
+    this.#renderedSource = undefined;
+    this.#renderedPalette = undefined;
+  }
+
   destroy(): void {
     // Flagged before anything is torn down: a decode already in flight
     // resolves after this, and its continuation reads the flag rather than
@@ -497,8 +514,7 @@ export class SegmentationOverlay
     this.#pathCooldown.clear();
     this.#decodedFromPath = undefined;
     this.#decodedPath = undefined;
-    this.#canvas = undefined;
-    this.#targets = undefined;
+    this.clearRaster();
     this.#mediaBounds = undefined;
     super.destroy();
   }

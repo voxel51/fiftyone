@@ -239,6 +239,27 @@ describe("rasterizeHeatmap — shared rules", () => {
     }
   });
 
+  it("treats a non-finite value as background in both modes", () => {
+    // A float32 map out of a model can carry NaN or Infinity. In value mode
+    // `clampedIndex` returns NaN, which is not `< 0`, so it would index the
+    // scale with NaN and hand `get32BitColor` an undefined stop to
+    // destructure — taking the whole raster down. In field mode it would be
+    // passed straight through as the opacity.
+    for (const p of [palette(), palette(null, { colorBy: "value" })]) {
+      const { rgba } = rasterizeHeatmap(
+        map([Number.NaN, 0.5, Number.POSITIVE_INFINITY, 1], 2),
+        p,
+      );
+      const pixels = new Uint32Array(rgba);
+
+      expect(pixels[0]).toBe(0);
+      expect(pixels[2]).toBe(0);
+      // the finite neighbours still paint
+      expect(pixels[1]).not.toBe(0);
+      expect(pixels[3]).not.toBe(0);
+    }
+  });
+
   it("reports the value under each pixel for the tooltip", () => {
     const { values } = rasterizeHeatmap(map([0, 0.5, 0.25, 1], 2), palette());
 

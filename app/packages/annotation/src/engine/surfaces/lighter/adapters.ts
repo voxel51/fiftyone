@@ -219,14 +219,17 @@ export const makeKeypointAdapter = (
 export const keypointAdapter: LighterAdapter = makeKeypointAdapter();
 
 /**
- * A segmentation paints from an inline `mask` or from a `mask_path` it loads
- * itself; either is enough to render, so `renders` asks only that one be
- * present.
+ * A segmentation paints from an inline `mask`, or from a `mask_path` it loads
+ * itself — but only where a resolver was supplied to turn that path into a
+ * fetchable URL. Without one the overlay can never decode the path, so the
+ * label stays unmounted rather than mounting an overlay that warns once and
+ * paints nothing for the life of the clip.
  */
 export const makeSegmentationAdapter = (
   deps: LighterAdapterDeps = {},
 ): LighterAdapter => ({
-  renders: (label) => Boolean(label.mask ?? label.mask_path),
+  renders: (label) =>
+    Boolean(label.mask) || Boolean(deps.resolveMediaUrl && label.mask_path),
 
   buildHandle: (ref, label) => ({
     factoryKey: "segmentation",
@@ -258,7 +261,8 @@ export const segmentationAdapter: LighterAdapter = makeSegmentationAdapter();
 export const makeHeatmapAdapter = (
   deps: LighterAdapterDeps = {},
 ): LighterAdapter => ({
-  renders: (label) => Boolean(label.map ?? label.map_path),
+  renders: (label) =>
+    Boolean(label.map) || Boolean(deps.resolveMediaUrl && label.map_path),
 
   buildHandle: (ref, label) => ({
     factoryKey: "heatmap",

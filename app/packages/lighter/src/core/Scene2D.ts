@@ -1181,20 +1181,6 @@ export class Scene2D {
   }
 
   /**
-   * The tick handler is SYNCHRONOUS, and must stay that way.
-   *
-   * Pixi's `TickerPlugin` registers its own `render` on this same ticker at
-   * `UPDATE_PRIORITY.LOW`, while this handler sits at the default `NORMAL` —
-   * so one ticker pass is meant to run "mutate the scene graph, then present
-   * it". An `async` handler returns at its first `await` and hands the rest of
-   * the frame to the microtask queue, which drains AFTER the ticker's
-   * synchronous phase — i.e. after Pixi has already presented. Every overlay
-   * mutation then lands a phase late, and because overlays paint by disposing
-   * their container and rebuilding it, any present caught between the dispose
-   * and the rebuild shows a hole. Staying synchronous is what keeps the whole
-   * frame — dispose included — inside one pass, invisible to the present.
-   */
-  /**
    * The palette for one segmentation field: its own mask targets when the
    * dataset defines them, else the dataset-wide default. Returns undefined
    * before a color context has arrived, which the overlay reads as "do not
@@ -1238,6 +1224,20 @@ export class Scene2D {
     );
   }
 
+  /**
+   * The tick handler is SYNCHRONOUS, and must stay that way.
+   *
+   * Pixi's `TickerPlugin` registers its own `render` on this same ticker at
+   * `UPDATE_PRIORITY.LOW`, while this handler sits at the default `NORMAL` —
+   * so one ticker pass is meant to run "mutate the scene graph, then present
+   * it". An `async` handler returns at its first `await` and hands the rest of
+   * the frame to the microtask queue, which drains AFTER the ticker's
+   * synchronous phase — i.e. after Pixi has already presented. Every overlay
+   * mutation then lands a phase late, and because overlays paint by disposing
+   * their container and rebuilding it, any present caught between the dispose
+   * and the rebuild shows a hole. Staying synchronous is what keeps the whole
+   * frame — dispose included — inside one pass, invisible to the present.
+   */
   public async startRenderLoop(): Promise<void> {
     if (this.isRenderLoopActive) {
       return;

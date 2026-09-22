@@ -245,6 +245,28 @@ describe("SegmentationOverlay", () => {
     expect(overlay.targetAt({ x: 0.25, y: 0.75 })).toBe(2);
   });
 
+  it("stops answering hit tests once the inline mask is gone", () => {
+    const overlay = makeOverlay([0, 1, 2, 1]);
+
+    render(overlay);
+    expect(overlay.targetAt({ x: 0.75, y: 0.25 })).toBe(1);
+    expect(overlay.containsPoint({ x: 75, y: 25 })).toBe(true);
+
+    // The label keeps its identity but moves its mask to disk. The overlay
+    // can no longer paint it, so it must not keep swallowing clicks for the
+    // raster it used to have.
+    overlay.applyLabel({
+      _id: "seg-1",
+      _cls: "Segmentation",
+      mask_path: "/m.png",
+    } as never);
+    render(overlay);
+
+    expect(overlay.targetAt({ x: 0.75, y: 0.25 })).toBe(0);
+    expect(overlay.containsPoint({ x: 75, y: 25 })).toBe(false);
+    expect(overlay.getContainmentLevel({ x: 75, y: 25 })).toBe(CONTAINS.NONE);
+  });
+
   it("reports no target outside the mask", () => {
     const overlay = makeOverlay();
     render(overlay);

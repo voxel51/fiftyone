@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   detectionAdapter,
   keypointAdapter,
+  makeHeatmapAdapter,
   makeKeypointAdapter,
   makeSegmentationAdapter,
   heatmapAdapter,
@@ -235,14 +236,25 @@ describe("lighter adapters", () => {
     expect(descriptor.options.label).toMatchObject({ mask: "b64" });
   });
 
-  it("segmentation renders from either an inline mask or a path", () => {
-    // the overlay loads a mask_path itself, so either source is renderable;
-    // a segmentation with neither has nothing to paint
+  it("segmentation renders a path only where a resolver can fetch it", () => {
+    // the overlay loads a mask_path itself, but only through a supplied
+    // resolver; without one it could never decode the path, so the label
+    // stays unmounted rather than painting nothing. A segmentation with no
+    // source at all has nothing to paint either way.
     expect(segmentationAdapter.renders?.({ _id: "s", mask: "b64" })).toBe(true);
     expect(
       segmentationAdapter.renders?.({ _id: "s", mask_path: "/m.png" }),
-    ).toBe(true);
+    ).toBe(false);
     expect(segmentationAdapter.renders?.({ _id: "s" })).toBe(false);
+
+    const withResolver = makeSegmentationAdapter({
+      resolveMediaUrl: () => "/media?filepath=/m.png",
+    });
+
+    expect(withResolver.renders?.({ _id: "s", mask_path: "/m.png" })).toBe(
+      true,
+    );
+    expect(withResolver.renders?.({ _id: "s" })).toBe(false);
   });
 
   it("segmentation hands the overlay a resolver scoped to its mask_path", () => {
@@ -273,9 +285,15 @@ describe("lighter adapters", () => {
   it("heatmap renders from either an inline map or a path", () => {
     expect(heatmapAdapter.renders?.({ _id: "h", map: "b64" })).toBe(true);
     expect(heatmapAdapter.renders?.({ _id: "h", map_path: "/m.png" })).toBe(
-      true,
+      false,
     );
     expect(heatmapAdapter.renders?.({ _id: "h" })).toBe(false);
+
+    expect(
+      makeHeatmapAdapter({
+        resolveMediaUrl: () => "/media?filepath=/m.png",
+      }).renders?.({ _id: "h", map_path: "/m.png" }),
+    ).toBe(true);
 
     const descriptor = heatmapAdapter.buildHandle(
       ref("frames.heatmap", "field:frames.heatmap"),

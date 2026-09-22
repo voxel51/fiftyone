@@ -127,8 +127,12 @@ export const rasterizeHeatmap = (
 
     values[i] = value;
 
-    // 0 is background in both modes
-    if (value === 0) {
+    // 0 is background in both modes. So is a non-finite value: a NaN has no
+    // position on the scale (`clampedIndex` returns NaN, which is not `< 0`,
+    // so it would index the scale with NaN and hand `get32BitColor` an
+    // undefined stop to destructure) and no meaningful opacity. Float32 maps
+    // out of a model carry them.
+    if (value === 0 || !Number.isFinite(value)) {
       continue;
     }
 
