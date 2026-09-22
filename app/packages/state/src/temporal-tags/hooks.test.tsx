@@ -1,5 +1,5 @@
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
-import { useEffect } from "react";
+import { StrictMode, useEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useSampleTemporalTags } from "./hooks";
 import type {
@@ -218,6 +218,82 @@ describe("useSampleTemporalTags", () => {
       sampleId: "sample-id",
     });
     expect(client.listSampleTemporalTags).toHaveBeenCalledTimes(5);
+  });
+
+  it("loads after StrictMode replays the mount effects", async () => {
+    const client = createTemporalTagsClient({
+      listSampleTemporalTags: vi.fn(async () => [createTemporalTag("tag-a")]),
+    });
+
+    render(
+      <StrictMode>
+        <TemporalTagsHarness
+          options={{
+            client,
+            datasetId: "dataset-id",
+            sampleId: "sample-id",
+          }}
+        />
+      </StrictMode>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("temporal-tags").textContent).toBe(
+        "ready:tag-a:",
+      );
+    });
+  });
+
+  it("keeps a mutation successful when the refresh after it fails", async () => {
+    let listCalls = 0;
+    const client = createTemporalTagsClient({
+      listSampleTemporalTags: vi.fn(async () => {
+        listCalls += 1;
+        if (listCalls > 1) {
+          throw new Error("refresh boom");
+        }
+        return [];
+      }),
+    });
+    let latest!: UseSampleTemporalTagsResult;
+
+    render(
+      <TemporalTagsHarness
+        onState={(state) => {
+          latest = state;
+        }}
+        options={{
+          client,
+          datasetId: "dataset-id",
+          sampleId: "sample-id",
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(latest.status).toBe("ready");
+    });
+
+    await act(async () => {
+      await expect(
+        latest.create([{ end: 2, start: 1, tag: "review" }]),
+      ).resolves.toEqual([createTemporalTag("created")]);
+    });
+    await act(async () => {
+      await expect(
+        latest.update("temporal-tag-id", { end: 3 }),
+      ).resolves.toEqual(createTemporalTag("updated"));
+    });
+    await act(async () => {
+      await expect(latest.delete(["temporal-tag-id"])).resolves.toBe(1);
+    });
+    await act(async () => {
+      await expect(latest.clear({ tags: ["review"] })).resolves.toBe(1);
+    });
+
+    expect(screen.getByTestId("temporal-tags").textContent).toBe(
+      "error::refresh boom",
+    );
   });
 
   it("surfaces client errors", async () => {

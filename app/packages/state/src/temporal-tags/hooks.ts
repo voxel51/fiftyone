@@ -88,16 +88,28 @@ export function useSampleTemporalTags({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [datasetId, filterKey, sampleId, temporalTagsClient]);
 
-  useEffect(() => {
-    void reload().catch(() => undefined);
+  // A refresh that fails leaves the error in hook state, where `reload` put it.
+  // Rejecting here instead would report a completed write as a failure, and the
+  // caller would retry it.
+  const refresh = useCallback(async () => {
+    await reload().catch(() => undefined);
   }, [reload]);
 
+  // Declared before the load effect so the flag is live by the time `reload`
+  // first runs. Refs survive a StrictMode effect replay, so the cleanup's
+  // `false` would otherwise stick and leave the hook unable to set state.
   useEffect(() => {
+    mountedRef.current = true;
+
     return () => {
       mountedRef.current = false;
       requestIdRef.current += 1;
     };
   }, []);
+
+  useEffect(() => {
+    void reload().catch(() => undefined);
+  }, [reload]);
 
   const create = useCallback(
     async (temporalTags: readonly TemporalTagCreate[]) => {
@@ -107,11 +119,11 @@ export function useSampleTemporalTags({
         temporalTags,
       });
       invalidateDatasetTemporalTags(datasetId, temporalTagsClient);
-      await reload();
+      await refresh();
 
       return created;
     },
-    [datasetId, reload, sampleId, temporalTagsClient],
+    [datasetId, refresh, sampleId, temporalTagsClient],
   );
 
   const update = useCallback(
@@ -123,11 +135,11 @@ export function useSampleTemporalTags({
         update,
       });
       invalidateDatasetTemporalTags(datasetId, temporalTagsClient);
-      await reload();
+      await refresh();
 
       return updated;
     },
-    [datasetId, reload, sampleId, temporalTagsClient],
+    [datasetId, refresh, sampleId, temporalTagsClient],
   );
 
   const deleteTags = useCallback(
@@ -138,11 +150,11 @@ export function useSampleTemporalTags({
         ids: idsToDelete,
       });
       invalidateDatasetTemporalTags(datasetId, temporalTagsClient);
-      await reload();
+      await refresh();
 
       return deleted;
     },
-    [datasetId, reload, sampleId, temporalTagsClient],
+    [datasetId, refresh, sampleId, temporalTagsClient],
   );
 
   const clear = useCallback(
@@ -153,11 +165,11 @@ export function useSampleTemporalTags({
         filter: clearFilter,
       });
       invalidateDatasetTemporalTags(datasetId, temporalTagsClient);
-      await reload();
+      await refresh();
 
       return deleted;
     },
-    [datasetId, reload, sampleId, temporalTagsClient],
+    [datasetId, refresh, sampleId, temporalTagsClient],
   );
 
   return {

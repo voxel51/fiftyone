@@ -58,13 +58,18 @@ export function buildTemporalTagTracks(
     byLabel.set(tag.tag, group);
   }
 
-  const sorted = Array.from(byLabel.entries()).sort(([, a], [, b]) => {
-    const newest = (group: TemporalTagInterval[]) =>
-      Math.max(
-        ...group.map((t) => (t.createdAt ? Date.parse(t.createdAt) : 0)),
-      );
-    return newest(b) - newest(a);
-  });
+  const newestByLabel = new Map<string, number>();
+  for (const [label, group] of byLabel) {
+    let newest = 0;
+    for (const tag of group) {
+      newest = Math.max(newest, tag.createdAt ? Date.parse(tag.createdAt) : 0);
+    }
+    newestByLabel.set(label, newest);
+  }
+
+  const sorted = Array.from(byLabel.entries()).sort(
+    ([a], [b]) => (newestByLabel.get(b) ?? 0) - (newestByLabel.get(a) ?? 0),
+  );
 
   return sorted.map(([label, events]) => ({
     id: temporalTagTrackId(label),
