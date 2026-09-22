@@ -26,6 +26,8 @@ import {
   useOpenRawMessageTile,
   type RawMessageTileTarget,
 } from "../../tiles/use-open-raw-message-tile";
+import { useAddFieldToPlot } from "../../commands/use-add-field-to-plot";
+import { useOptionalTrackPinning } from "@fiftyone/playback";
 
 const STREAMS_SEARCH_THRESHOLD = 5;
 
@@ -40,6 +42,9 @@ const StreamsSettings: React.FC<{
   const open3dTile = useOpenTile(TILE_TYPE.THREE_D);
   const openLogTile = useOpenTile(TILE_TYPE.LOG);
   const openMapTile = useOpenTile(TILE_TYPE.MAP);
+  const addFieldToPlot = useAddFieldToPlot();
+  const pinning = useOptionalTrackPinning();
+  const setPinned = pinning?.setPinned;
   const [search, setSearch] = useState("");
   const { plural, singular } = terminology;
   const rows = useMemo(
@@ -70,15 +75,25 @@ const StreamsSettings: React.FC<{
       rows: rowsByCategory.get(category) ?? [],
     })).filter((group) => group.rows.length > 0);
   }, [filteredRows]);
-  const actionHandlers = useMemo(
+  const actionHandlers = useMemo<StreamActionHandlers>(
     () => ({
       open3dTile,
+      addFieldToPlot,
       openImageTile,
       openLogTile,
       openMapTile,
       openRawMessageTile,
+      setPinned,
     }),
-    [open3dTile, openImageTile, openLogTile, openMapTile, openRawMessageTile],
+    [
+      open3dTile,
+      addFieldToPlot,
+      openImageTile,
+      openLogTile,
+      openMapTile,
+      openRawMessageTile,
+      setPinned,
+    ],
   );
 
   return (
@@ -186,10 +201,13 @@ function StreamRow({
 
 interface StreamActionHandlers {
   readonly open3dTile: () => void;
+  readonly addFieldToPlot: (streamId: string, path: string) => void;
   readonly openImageTile: (sourceId: string) => void;
   readonly openLogTile: () => void;
   readonly openMapTile: () => void;
   readonly openRawMessageTile: (target: RawMessageTileTarget) => void;
+  /** Absent when no track timeline surrounds this panel. */
+  readonly setPinned: ((trackId: string, pinned: boolean) => void) | undefined;
 }
 
 interface StreamAction {
@@ -241,6 +259,28 @@ function streamActionsForRow(
       id: "map",
       label: "Map",
       onClick: handlers.openMapTile,
+    });
+  }
+
+  // Adapters may declare direct presentation targets in their inventory.
+  if (row.numericFieldPath !== undefined) {
+    const fieldPath = row.numericFieldPath;
+    actions.push({
+      ariaLabel: `Plot ${row.sourceName}`,
+      id: "plot",
+      label: "Plot",
+      onClick: () => handlers.addFieldToPlot(row.streamId, fieldPath),
+    });
+  }
+
+  if (row.timelineTrackId !== undefined && handlers.setPinned) {
+    const trackId = row.timelineTrackId;
+    const reveal = handlers.setPinned;
+    actions.push({
+      ariaLabel: `Tracks ${row.sourceName}`,
+      id: "tracks",
+      label: "Tracks",
+      onClick: () => reveal(trackId, true),
     });
   }
 

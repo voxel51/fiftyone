@@ -11,8 +11,8 @@ import {
   addPlotSeriesToTile,
   plotTileResetZoomRevisionAtom,
   plotTileSeriesAtom,
-} from "./plot-tile-state";
-import PlotTile from "./PlotTile";
+} from "../plots/plot-tile-state";
+import PlotTile from "../plots/PlotTile";
 import { TILE_TYPE } from "../tiles/tile-types";
 
 /**

@@ -74,6 +74,10 @@ import EpisodeLayoutMenuActions from "./EpisodeLayoutMenuActions";
 import { tileTypesFor, getTileDefinition } from "./tile-catalog";
 import RightSidebarWithTrays from "./RightSidebarWithTrays";
 import styles from "./ModalRenderer.module.css";
+import {
+  useEpisodeSessionExtension,
+  type EpisodeSessionContribution,
+} from "../../../extensions/episode-session";
 import { NetworkHealthTracker, NetworkStatusPill } from "./NetworkStatus";
 import { FullHistoryInterestsProvider } from "../playback/full-history-interests";
 import { SourceVideoPlaybackProvider } from "../playback/video-playback-provider";
@@ -190,10 +194,26 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = (props) => (
       scopeKey={layoutScopeFor(props.layoutScopeKey, props.source)}
       mediaField={props.cameraPreferenceField}
     >
-      <SourcePlaybackContent {...props} />
+      <ExtendedSourcePlayback {...props} />
     </PortableLayoutHost>
   </VisibleStreamsProvider>
 );
+
+function ExtendedSourcePlayback(props: SourcePlaybackProps) {
+  const Extension = useEpisodeSessionExtension();
+  return Extension ? (
+    <Extension
+      session={props.session}
+      datasetId={props.episodeContext?.datasetId}
+    >
+      {(contribution) => (
+        <SourcePlaybackContent {...props} contribution={contribution} />
+      )}
+    </Extension>
+  ) : (
+    <SourcePlaybackContent {...props} />
+  );
+}
 
 // Capture, restore, and local persistence must resolve the same scope.
 function layoutScopeFor(
@@ -203,8 +223,11 @@ function layoutScopeFor(
   return override ?? (source ? `episode-source:${source.sourceId}` : undefined);
 }
 
-const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
+const SourcePlaybackContent: React.FC<
+  SourcePlaybackProps & { readonly contribution?: EpisodeSessionContribution }
+> = ({
   cameraPreferenceField,
+  contribution,
   children,
   defaultPinnedTrackIds,
   decorateTrack,
@@ -222,12 +245,36 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
   onTimelineDrawerOpenChange,
   timelineDrawerMaxSize,
   rightSidebar,
-  session,
+  session: baseSession,
   sessionError = null,
   source,
   sourceFactsScope,
   tracks,
 }) => {
+  const session = contribution ? contribution.session : baseSession;
+  const hasNonSceneStreams =
+    session?.manifest?.streams?.some(
+      (stream) =>
+        (stream.kind === "scalar" && session.numericSeries !== undefined) ||
+        (stream.kind === "events" && session.eventStreams !== undefined),
+    ) ?? false;
+  const composedTracks = useMemo<Track[] | undefined>(() => {
+    const merged = [...(tracks ?? []), ...(contribution?.tracks ?? [])];
+    return merged.length > 0 ? merged : undefined;
+  }, [contribution?.tracks, tracks]);
+  const contributedDecorator = contribution?.decorateTrack;
+  const composedDecorateTrack = useMemo<
+    TemporalTagTimelineProps["decorateTrack"]
+  >(
+    () =>
+      contributedDecorator && decorateTrack
+        ? (track, pinned) => ({
+            ...decorateTrack(track, pinned),
+            ...contributedDecorator(track, pinned),
+          })
+        : (contributedDecorator ?? decorateTrack),
+    [decorateTrack, contributedDecorator],
+  );
   const imageAspectRatiosRef = useRef<Record<string, number>>({});
   const onImageAspectRatioChange = useCallback(
     (tileId: string, aspectRatio: number | null) => {
@@ -264,14 +311,14 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
   // This effect records authoritative session metadata off the ready path.
   useEffect(() => {
     if (
-      session &&
+      baseSession &&
       source &&
       sourceFactsScope &&
-      session.manifest.episodeId === source.sourceId
+      baseSession.manifest.episodeId === source.sourceId
     ) {
-      recordSessionSourceFacts(source, sourceFactsScope, session);
+      recordSessionSourceFacts(source, sourceFactsScope, baseSession);
     }
-  }, [session, source, sourceFactsScope]);
+  }, [baseSession, source, sourceFactsScope]);
 
   const { status, error, sources, streams, streamCount } =
     useSceneInventoryState({
@@ -313,7 +360,7 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
   );
   const readyInventory = useMemo<ReadyInventory | null>(
     () =>
-      status === "ready" && sources.length > 0
+      status === "ready" && (sources.length > 0 || hasNonSceneStreams)
         ? {
             hasNumericSeries: session?.numericSeries !== undefined,
             hasRawRecords: session?.rawRecords !== undefined,
@@ -327,6 +374,7 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
           }
         : null,
     [
+      hasNonSceneStreams,
       session?.numericSeries,
       session?.rawRecords,
       session?.manifest?.recordingFacts,
@@ -530,6 +578,14 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
     resolveTile: getTileDefinition,
     sources: shellSources,
   });
+  const onContributedDrawerChange = contribution?.onTimelineDrawerOpenChange;
+  const handleTimelineDrawerOpenChange = useCallback(
+    (open: boolean) => {
+      onContributedDrawerChange?.(open);
+      onTimelineDrawerOpenChange?.(open);
+    },
+    [onContributedDrawerChange, onTimelineDrawerOpenChange],
+  );
 
   if (!source) {
     return <PlaybackState text="No episode source selected" />;
@@ -552,8 +608,10 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
       />
     );
   }
-  if (sources.length === 0 && !shellInventory) {
-    return (
+  if (sources.length === 0 && !shellInventory && !hasNonSceneStreams) {
+    return contribution?.emptyState ? (
+      <PlaybackState>{contribution.emptyState}</PlaybackState>
+    ) : (
       <PlaybackState
         text={`No previewable streams in this recording (${streamCount.toLocaleString()} streams found)`}
       />
@@ -565,7 +623,8 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
       ? `Failed to read recording: ${error ?? "Unknown error"}`
       : `No previewable streams in this recording (${streamCount.toLocaleString()} streams found)`;
   const hasTerminalTransition =
-    status === "error" || (status === "ready" && sources.length === 0);
+    status === "error" ||
+    (status === "ready" && sources.length === 0 && !hasNonSceneStreams);
   const transitioning =
     navigationPending ||
     readyInventory === null ||
@@ -635,7 +694,7 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
                                 <PlaybackShell
                                   key={playbackShellKey}
                                   fileName={fileName}
-                                  decorateTrack={decorateTrack}
+                                  decorateTrack={composedDecorateTrack}
                                   timelineRulerOverlay={timelineRulerOverlay}
                                   headerCaption={headerCaption}
                                   headerActions={
@@ -646,6 +705,7 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
                                         source ? (
                                           <>
                                             {headerActions}
+                                            {contribution?.headerActions}
                                             <EpisodeHeaderActions
                                               context={episodeContext}
                                               activeLayoutAction={
@@ -670,7 +730,10 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
                                             />
                                           </>
                                         ) : (
-                                          headerActions
+                                          <>
+                                            {headerActions}
+                                            {contribution?.headerActions}
+                                          </>
                                         )
                                       }
                                       loading={
@@ -697,7 +760,12 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
                                         )}
                                     </>
                                   }
-                                  timelineReadouts={<TimestampReadout />}
+                                  timelineReadouts={
+                                    <>
+                                      <TimestampReadout />
+                                      {contribution?.timelineReadouts}
+                                    </>
+                                  }
                                   sceneSources={shellSources}
                                   mode={playbackTimelineMode}
                                   deselectFocusedTileOnRepeatSelect={false}
@@ -713,11 +781,7 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
                                     EMPTY_MANUAL_TILE_TITLES
                                   }
                                   resetLayoutStrategy={autoLayoutStrategy}
-                                  tracks={
-                                    tracks && tracks.length > 0
-                                      ? [...tracks]
-                                      : undefined
-                                  }
+                                  tracks={composedTracks}
                                   defaultPinnedTrackIds={
                                     defaultPinnedTrackIds &&
                                     defaultPinnedTrackIds.length > 0
@@ -777,7 +841,7 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
                                   onTagCreate={onTagCreate}
                                   onTagUpdate={onTagUpdate}
                                   onTimelineDrawerOpenChange={
-                                    onTimelineDrawerOpenChange
+                                    handleTimelineDrawerOpenChange
                                   }
                                   timelineDrawerMaxSize={timelineDrawerMaxSize}
                                 >
@@ -798,6 +862,7 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
                                     playback={session?.playback ?? null}
                                   />
                                   <RegisterMcapAudioStreams />
+                                  {contribution?.timelineContent}
                                   <SelectionHotkeys />
                                   <ExtensionRuntimeBoundary>
                                     {children}

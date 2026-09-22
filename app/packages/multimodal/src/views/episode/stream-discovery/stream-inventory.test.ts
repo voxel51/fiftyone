@@ -15,6 +15,52 @@ import {
 } from "./stream-inventory";
 
 describe("buildStreamInventoryRows", () => {
+  it("treats declared presentation targets as supported surfaces", () => {
+    const sensor = (
+      name: string,
+      kind: StreamDescriptor["kind"],
+      type: string,
+      extra: Record<string, string> = {},
+    ): StreamDescriptor => ({
+      id: `sensors/${name}`,
+      kind,
+      sourceName: `Driving / ${name}`,
+      payload: { encoding: "json", schema: `example.${type}` },
+      numericFieldPath: type === "signal" ? "speed_mps" : undefined,
+      timelineTrackId: type === "events" ? `track:${name}` : undefined,
+      timeRange: { startNs: 0n, endNs: 1n },
+      metadata: {
+        [STREAM_METADATA.INSPECTABLE]: "false",
+        ...extra,
+      },
+    });
+    const rows = buildStreamInventoryRows({
+      sceneSources: [],
+      streams: [
+        sensor("speed", "scalar", "signal"),
+        sensor("hard_braking", "events", "events"),
+        sensor("vehicles", "scene-update", "scene", {
+          [SCENE_SOURCE_METADATA.TYPE]: SCENE_SOURCE_TYPE.SCENE_ANNOTATION,
+        }),
+      ],
+    });
+    const byId = new Map(rows.map((row) => [row.streamId, row]));
+    expect(byId.get("sensors/speed")).toMatchObject({
+      capabilities: [STREAM_CAPABILITY.PLOT],
+      numericFieldPath: "speed_mps",
+      supportStatus: "renderable",
+    });
+    expect(byId.get("sensors/hard_braking")).toMatchObject({
+      capabilities: [STREAM_CAPABILITY.TRACKS],
+      timelineTrackId: "track:hard_braking",
+      supportStatus: "renderable",
+    });
+    expect(byId.get("sensors/vehicles")).toMatchObject({
+      capabilities: [STREAM_CAPABILITY.THREE_D],
+      supportStatus: "renderable",
+    });
+  });
+
   it("keeps stable stream IDs distinct from format source names", () => {
     const camera = {
       ...stream("/camera/front", "sensor_msgs/Image", "ros1", "ros1msg", "12"),

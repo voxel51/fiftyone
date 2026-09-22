@@ -30,7 +30,7 @@ import type {
 import { errorMessage } from "../../../utils/errors";
 import { virtualLogRowRange } from "../../../visualization/logs/log-console-virtualization";
 import { useDataStream } from "../playback/data-stream-context";
-import { useAddFieldToPlot } from "../plots/use-add-field-to-plot";
+import { useAddFieldToPlot } from "../commands/use-add-field-to-plot";
 import { useRegisterTileSettings } from "../tiles/tile-settings-context";
 import type { EpisodeTileProps } from "../tiles/tile-types";
 import tileStyles from "../tiles/Tile.module.css";
