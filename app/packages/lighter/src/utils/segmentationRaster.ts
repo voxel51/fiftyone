@@ -25,6 +25,7 @@ type TypedTargets =
   | Int8Array
   | Int16Array
   | Int32Array;
+import { convertToHex } from "@fiftyone/looker/src/worker/painter";
 import { get32BitColor, hexToRgb } from "@fiftyone/utilities";
 
 import {
@@ -51,7 +52,7 @@ export interface RasterizedSegmentation {
   targets: TypedTargets;
 }
 
-/** `#rrggbb` -> packed 32-bit RGBA, memoized per rasterize pass. */
+/** Any CSS color -> packed 32-bit RGBA, memoized per rasterize pass. */
 const packer = () => {
   const cache = new Map<string, number>();
 
@@ -62,10 +63,21 @@ const packer = () => {
       return hit;
     }
 
-    const rgb = hexToRgb(color);
-    // `hexToRgb` returns null for a non-hex color (a CSS name, an rgb()
-    // string). Opaque white is a visible, honest fallback — silently skipping
-    // the pixel would read as a hole in the mask.
+    // A color scheme's colors are not all `#rrggbb`: a mask-target color can
+    // be any CSS color the user typed, "yellowgreen" included, and `hexToRgb`
+    // reads none of those. The painter normalizes with `convertToHex` for the
+    // same reason, so both surfaces agree on what such a target looks like.
+    // Opaque white remains the fallback for a color neither can parse —
+    // visible and honest, where skipping the pixel would read as a hole in
+    // the mask.
+    let rgb: ReturnType<typeof hexToRgb> | null = null;
+
+    try {
+      rgb = hexToRgb(convertToHex(color));
+    } catch {
+      rgb = null;
+    }
+
     const packed = get32BitColor(rgb ?? [255, 255, 255]);
 
     cache.set(color, packed);
@@ -73,6 +85,10 @@ const packer = () => {
     return packed;
   };
 };
+
+/** A pixel count has to be a whole positive number small enough to index. */
+const isDimension = (value: number): boolean =>
+  Number.isSafeInteger(value) && value > 0;
 
 /**
  * Decode (if base64) + paint a single-channel indexed segmentation mask.
@@ -103,7 +119,31 @@ export const rasterizeSegmentation = (
     throw new Error(`Unsupported mask array type: ${mask.arrayType}`);
   }
 
+  // `numpy.parse` copies the shape out of the header without checking it, so
+  // a malformed mask can arrive claiming [0, 0] or [-1, -1]. The payload
+  // check below passes both — a zero-length buffer satisfies zero pixels —
+  // and the caller then hands 0x0 to `createMaskCanvas` and `ImageData`,
+  // which throw with nothing to say about why. Fail here, where the reason
+  // can be named. Looker guards the same case.
+  if (mask.shape?.length !== 2) {
+    throw new Error(
+      `Expected a 2-D segmentation mask shape, got ${JSON.stringify(
+        mask.shape,
+      )}`,
+    );
+  }
+
   const [height, width] = mask.shape;
+
+  if (!isDimension(width) || !isDimension(height)) {
+    throw new Error(
+      `Invalid segmentation mask dimensions: ${JSON.stringify([
+        height,
+        width,
+      ])}`,
+    );
+  }
+
   const pixels = width * height;
   const source = new ArrayType(mask.buffer);
 

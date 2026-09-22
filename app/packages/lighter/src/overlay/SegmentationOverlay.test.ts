@@ -6,6 +6,7 @@ import type { OverlayMask } from "@fiftyone/looker/src/numpy";
 import type { ColorSchemeInput } from "@fiftyone/relay";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { CONTAINS } from "../core/containment";
 import type { RenderMeta } from "../types";
 import { resolveSegmentationPalette } from "../utils/segmentationPalette";
 import { SegmentationOverlay } from "./SegmentationOverlay";
@@ -39,6 +40,13 @@ const scheme = (overrides: Partial<ColorSchemeInput> = {}): ColorSchemeInput =>
 const palette = (overrides: Partial<ColorSchemeInput> = {}) =>
   resolveSegmentationPalette(FIELD, scheme(overrides), 7, TARGETS);
 
+/**
+ * A real single-channel mask as base64 zlib numpy — the form `/frames` sends.
+ * Shared with `maskRaster.test.ts`.
+ */
+const BASE64_MASK =
+  "eJyb7BfqGxDJyFDGUK2eklqcXKRupaBek2SorqOgnpZfVFKUmBefX5SSChJ3S8wpTgWKF2ckFqQC+RoWhjoKRqaaOgq1CmQCLkZGBuyAEQJwSmDKMmIAnBJQKZIkGIeLBCOdJIaNRwZOgnHkSjAOE4mBDMRBmW2pWCRTTwJnRUE9CdJrKepJ4KwkGZABTglkSQwJqBw2cbAclAYAWfUiKw==";
+
 /** 2x2 single-channel mask. */
 const mask = (values: number[]): OverlayMask =>
   ({
@@ -50,6 +58,11 @@ const mask = (values: number[]): OverlayMask =>
 
 const META: RenderMeta = {
   canonicalMediaBounds: { x: 0, y: 0, width: 100, height: 100 },
+};
+
+/** Letterboxed media: an origin away from 0 and a rect smaller than the canvas. */
+const OFFSET_META: RenderMeta = {
+  canonicalMediaBounds: { x: 40, y: 20, width: 200, height: 100 },
 };
 
 const makeRenderer = () => ({
@@ -76,8 +89,9 @@ describe("SegmentationOverlay", () => {
 
   const render = (
     overlay: SegmentationOverlay,
-    style = { segmentationPalette: palette() },
-  ) => overlay.render(renderer as never, style as never, META);
+    style: unknown = { segmentationPalette: palette() },
+    meta: RenderMeta = META,
+  ) => overlay.render(renderer as never, style as never, meta);
 
   it("draws the rasterized mask over the canonical media bounds", () => {
     render(makeOverlay());
@@ -145,8 +159,55 @@ describe("SegmentationOverlay", () => {
     const overlay = makeOverlay([0, 1, 2, 1]);
     render(overlay);
 
-    expect(overlay.containsPoint({ x: 0.25, y: 0.25 })).toBe(false);
-    expect(overlay.containsPoint({ x: 0.75, y: 0.25 })).toBe(true);
+    // canvas pixels, which is what `InteractionManager` hands an overlay
+    expect(overlay.containsPoint({ x: 25, y: 25 })).toBe(false);
+    expect(overlay.containsPoint({ x: 75, y: 25 })).toBe(true);
+  });
+
+  it("hit-tests in canvas pixels against an offset media rect", () => {
+    // The media is letterboxed: its rect neither starts at the origin nor
+    // spans the canvas. A point read as though it were relative would land a
+    // fraction of a pixel from the mask's top-left corner for every click on
+    // screen, which is how this overlay was never hoverable.
+    const overlay = makeOverlay([0, 1, 2, 1]);
+    render(overlay, undefined, OFFSET_META);
+
+    // top-left cell, target 0
+    expect(overlay.containsPoint({ x: 60, y: 30 })).toBe(false);
+    // top-right cell, target 1
+    expect(overlay.containsPoint({ x: 160, y: 30 })).toBe(true);
+    expect(overlay.targetAtPixel({ x: 160, y: 30 })).toBe(1);
+    // bottom-left cell, target 2
+    expect(overlay.targetAtPixel({ x: 60, y: 90 })).toBe(2);
+
+    // outside the media rect entirely
+    expect(overlay.containsPoint({ x: 10, y: 30 })).toBe(false);
+    expect(overlay.containsPoint({ x: 300, y: 30 })).toBe(false);
+  });
+
+  it("reports containment and distance so the scene can hover it", () => {
+    // `Scene2D` reads both for hover and for ordering; the base class answers
+    // NONE and a center distance, so a mask was never either.
+    const overlay = makeOverlay([0, 1, 2, 1]);
+    render(overlay);
+
+    expect(overlay.getContainmentLevel({ x: 75, y: 25 })).toBe(
+      CONTAINS.CONTENT,
+    );
+    expect(overlay.getMouseDistance({ x: 75, y: 25 })).toBe(0);
+
+    expect(overlay.getContainmentLevel({ x: 25, y: 25 })).toBe(CONTAINS.NONE);
+    expect(overlay.getMouseDistance({ x: 25, y: 25 })).toBe(
+      Number.POSITIVE_INFINITY,
+    );
+  });
+
+  it("answers nothing before it has been rendered", () => {
+    // no media rect yet, so no pixel can be placed within one
+    const overlay = makeOverlay([0, 1, 2, 1]);
+
+    expect(overlay.containsPoint({ x: 75, y: 25 })).toBe(false);
+    expect(overlay.getContainmentLevel({ x: 75, y: 25 })).toBe(CONTAINS.NONE);
   });
 
   it("reports the target index under a point", () => {
@@ -164,6 +225,26 @@ describe("SegmentationOverlay", () => {
 
     expect(overlay.targetAt({ x: -0.1, y: 0.5 })).toBe(0);
     expect(overlay.targetAt({ x: 1.5, y: 0.5 })).toBe(0);
+  });
+
+  it("paints a mask that arrives wrapped in $binary", () => {
+    // `/frames` sends base64, the GraphQL sample payload sends the same mask
+    // as `{ $binary: { base64 } }`, and this surface receives both. Unwrapped,
+    // the wrapper is truthy but has no `channels`, so it failed at the
+    // rasterizer instead of painting.
+    const overlay = new SegmentationOverlay({
+      id: "seg-binary",
+      field: FIELD,
+      label: {
+        _id: "seg-binary",
+        _cls: "Segmentation",
+        mask: { $binary: { base64: BASE64_MASK } },
+      } as never,
+    });
+
+    render(overlay);
+
+    expect(renderer.drawImage).toHaveBeenCalledTimes(1);
   });
 
   it("survives a mask it cannot rasterize", () => {

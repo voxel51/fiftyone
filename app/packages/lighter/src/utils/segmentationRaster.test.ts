@@ -151,6 +151,53 @@ describe("rasterizeSegmentation", () => {
     ).toThrow(/single-channel/);
   });
 
+  it("paints a CSS color name rather than falling back to white", () => {
+    // a mask-target color is whatever the user typed; "yellowgreen" is a
+    // valid CSS color that `hexToRgb` alone reads as null, which used to
+    // paint the whole target opaque white
+    const named = palette(TARGETS, {
+      colorBy: "value",
+      defaultMaskTargetsColors: [{ intTarget: 1, color: "yellowgreen" }],
+    } as Partial<ColorSchemeInput>);
+
+    const { rgba } = rasterizeSegmentation(mask([1, 1, 1, 1], 2), named);
+
+    expect(new Uint32Array(rgba)[0]).toBe(
+      get32BitColor(hexToRgb("#9acd32") as [number, number, number]) >>> 0,
+    );
+  });
+
+  it("rejects a mask with no area instead of failing at the canvas", () => {
+    // `numpy.parse` copies the shape out of the header unchecked, and a
+    // zero-length payload satisfies zero pixels — so this reaches
+    // `createMaskCanvas` and `ImageData`, which throw with nothing to say
+    expect(() =>
+      rasterizeSegmentation(
+        {
+          channels: 1,
+          arrayType: "Uint8Array",
+          shape: [0, 0],
+          buffer: new Uint8Array([]).buffer,
+        } as unknown as OverlayMask,
+        palette(),
+      ),
+    ).toThrow(/dimensions/);
+  });
+
+  it("rejects a shape that is not two dimensions", () => {
+    expect(() =>
+      rasterizeSegmentation(
+        {
+          channels: 1,
+          arrayType: "Uint8Array",
+          shape: [2, 2, 1],
+          buffer: new Uint8Array([1, 2, 3, 4]).buffer,
+        } as unknown as OverlayMask,
+        palette(),
+      ),
+    ).toThrow(/2-D/);
+  });
+
   it("rejects a payload whose length disagrees with its shape", () => {
     expect(() =>
       rasterizeSegmentation(

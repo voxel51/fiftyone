@@ -4,9 +4,12 @@
 
 import type { OverlayMask } from "@fiftyone/looker/src/numpy";
 
+import { CONTAINS } from "../core/containment";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { Point, RawLookerLabel, Rect, RenderMeta } from "../types";
 import { createMaskCanvas } from "../utils/createMaskCanvas";
+import { maskSourceOf } from "../utils/maskSource";
+import { toRelativePoint } from "../utils/mediaPoint";
 import {
   paletteKey,
   type SegmentationPalette,
@@ -55,6 +58,13 @@ export class SegmentationOverlay extends BaseOverlay<SegmentationLabel> {
   #maskWidth = 0;
   #maskHeight = 0;
 
+  /**
+   * The media rect the last paint drew into, in canvas pixels. Hit tests
+   * arrive in that space and the mask is indexed relative to the media, so
+   * this is what bridges them.
+   */
+  #mediaBounds?: Rect;
+
   /** What `#canvas` was built from; a mismatch means re-rasterize. */
   #renderedSource?: string | OverlayMask;
   #renderedPalette?: string;
@@ -100,6 +110,11 @@ export class SegmentationOverlay extends BaseOverlay<SegmentationLabel> {
   }
 
   protected renderImpl(renderer: Renderer2D, meta: RenderMeta): void {
+    // Recorded before the early returns: it is the frame's layout, not a
+    // product of this paint, and a hit test can arrive between a style-less
+    // frame and the next painted one.
+    this.#mediaBounds = meta.canonicalMediaBounds;
+
     const style = this.currentStyle;
 
     if (!style) {
@@ -137,7 +152,12 @@ export class SegmentationOverlay extends BaseOverlay<SegmentationLabel> {
   private ensureRaster(
     palette: SegmentationPalette,
   ): HTMLCanvasElement | undefined {
-    const source = this.label?.mask;
+    // Normalized rather than read straight off the label: `/frames` sends a
+    // base64 string, but the GraphQL sample payload sends the same mask as
+    // `{ $binary: { base64 } }`, and this surface receives both. An unwrapped
+    // `$binary` is truthy, so it would reach the rasterizer as an object with
+    // no `channels` and fail there instead of painting.
+    const source = maskSourceOf(this.label?.mask);
 
     if (!source) {
       this.warnUnsupportedOnce();
@@ -231,13 +251,40 @@ export class SegmentationOverlay extends BaseOverlay<SegmentationLabel> {
     return this.#targets[y * this.#maskWidth + x];
   }
 
+  /** The target index under a canvas pixel point, or 0 for background. */
+  targetAtPixel(point: Point): number {
+    const relative = toRelativePoint(point, this.#mediaBounds);
+
+    return relative ? this.targetAt(relative) : 0;
+  }
+
   /**
    * Only PAINTED pixels count as inside. A segmentation covers the whole
    * media, so reporting its bounds as its hit area would swallow every click
    * meant for an overlay beneath it.
+   *
+   * The point arrives in canvas pixels, like every other overlay's.
    */
   containsPoint(point: Point): boolean {
-    return this.targetAt(point) !== 0;
+    return this.targetAtPixel(point) !== 0;
+  }
+
+  /**
+   * Without this the base class answers `NONE`, which is what `Scene2D` reads
+   * for hover and for ordering — so a mask was never hovered and never
+   * reordered under the cursor, however opaque the pixel under it.
+   */
+  getContainmentLevel(point: Point): CONTAINS {
+    return this.containsPoint(point) ? CONTAINS.CONTENT : CONTAINS.NONE;
+  }
+
+  /**
+   * A mask has no edge to measure from: it either painted the pixel under the
+   * cursor or it did not. Zero when it did puts it ahead of the bounded
+   * labels it overlaps, which is how looker orders a dense label.
+   */
+  getMouseDistance(point: Point): number {
+    return this.containsPoint(point) ? 0 : Number.POSITIVE_INFINITY;
   }
 
   applyLabel(label: SegmentationLabel): void {
@@ -249,6 +296,7 @@ export class SegmentationOverlay extends BaseOverlay<SegmentationLabel> {
   destroy(): void {
     this.#canvas = undefined;
     this.#targets = undefined;
+    this.#mediaBounds = undefined;
     super.destroy();
   }
 }
