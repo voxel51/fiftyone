@@ -13,7 +13,10 @@
  *     a VALUE-FILLED parallel list (false fillers, never null), and the list
  *     survives `add_dynamic_sample_fields()` — the ODM rejects null elements
  *     once the dataset field is declared, so this guards the value-fill
- *     encoding end to end.
+ *     encoding end to end,
+ *   - an EXISTING keypoint opens passively (nothing armed), and the target
+ *     row's Place button is its way into placement: once armed, the canvas
+ *     click places the node instead of selecting the detection underneath it.
  */
 import { Browser, expect, test as base, type Page } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -25,6 +28,12 @@ import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-2d-keypoint");
 
 const FIELD = "keypoints";
+
+/**
+ * A `Detections` field used only to park a box under a placement click, so a
+ * click stolen by the box (the unarmed Select behavior) is observable.
+ */
+const BOX_FIELD = "boxes";
 
 /** The skeleton's node names, in placement order. */
 const SKELETON_NODES = ["nose", "left-eye", "right-eye", "mouth"];
@@ -80,7 +89,7 @@ test.beforeAll(
     // one sample per test (see README: prefer per-test samples over serial).
     await datasetFactory.createDataset({
       datasetName,
-      numSamples: 2,
+      numSamples: 3,
       imageOptions: { fillColor: "white", width: 640, height: 480 },
     });
     // The factory only models Detection(s)/Classification(s); declare the
@@ -91,6 +100,9 @@ import fiftyone as fo
 dataset = fo.load_dataset("${datasetName}")
 dataset.add_sample_field(
     "${FIELD}", fo.EmbeddedDocumentField, embedded_doc_type=fo.Keypoints
+)
+dataset.add_sample_field(
+    "${BOX_FIELD}", fo.EmbeddedDocumentField, embedded_doc_type=fo.Detections
 )
 dataset.skeletons = {
     "${FIELD}": fo.KeypointSkeleton(
@@ -119,6 +131,17 @@ dataset.save()
       { allowNewAttrs: true },
     );
     await annotateSDK.addFieldToActiveLabelSchema(datasetName, FIELD);
+
+    // Active so a seeded box RENDERS and is selectable in annotate mode —
+    // otherwise "the click was not stolen by the box" proves nothing. Only
+    // sample 2 carries a box, so the other tests' samples are unaffected.
+    await annotateSDK.updateLabelSchema(datasetName, BOX_FIELD, {
+      type: "detections",
+      classes: ["box"],
+      attributes: [],
+      component: "dropdown",
+    });
+    await annotateSDK.addFieldToActiveLabelSchema(datasetName, BOX_FIELD);
   },
 );
 
@@ -260,5 +283,66 @@ sample.save()
       attributes: ["occluded"],
     });
     expect(declared.attributes.occluded).toEqual([false, true, false, false]);
+  });
+
+  test("an existing keypoint arms placement from the target row's Place button", async ({
+    annotateSDK,
+    fiftyoneLoader,
+    modal,
+    page,
+  }) => {
+    // An existing keypoint with nothing placed, and a box parked under the
+    // canvas center: while the mode is unarmed a canvas click is a plain
+    // Select click, so the box is exactly what a stolen click would open.
+    await annotateSDK.seedKeypoints(
+      datasetName,
+      FIELD,
+      [null, null, null, null],
+      { sampleIndex: 2 },
+    );
+    await annotateSDK.seedDetection(
+      datasetName,
+      BOX_FIELD,
+      [0.25, 0.25, 0.5, 0.5],
+      { sampleIndex: 2 },
+    );
+
+    await openAnnotate(fiftyoneLoader, modal, page, indexToId(2));
+    // the keypoint and the box
+    await expect
+      .poll(() => modal.sidebar.annotate.getActiveLabelsCount())
+      .toBe(2);
+    await modal.sidebar.annotate.selectActiveLabel("person", 0);
+
+    // an existing label opens PASSIVELY: node 0 is the target, but nothing is
+    // armed, so the row offers Place (Skip alone would be a dead end).
+    await modal.sidebar.annotate.assert.keypointModeIsActive(false);
+    await expectNodeStatus(page, 0, "target");
+    await expect(page.getByTestId("keypoint-place-node-0")).toBeVisible();
+    await expect(page.getByTestId("keypoint-skip-node")).toBeHidden();
+
+    // Place arms the mode and force-targets the node; an ARMED target places
+    // by canvas click, so Skip becomes the row's only button.
+    await modal.sidebar.edit.placeKeypointNode(0);
+    await modal.sidebar.annotate.assert.keypointModeIsActive(true);
+    await expect(page.getByTestId("keypoint-skip-node")).toBeVisible();
+    await expect(page.getByTestId("keypoint-place-node-0")).toBeHidden();
+
+    // the click places node 0 — it is NOT a Select click on the box under it,
+    // which would swap the form to "Edit Detection".
+    await modal.sampleCanvas.click(0.5, 0.5);
+    await expectNodeStatus(page, 0, "placed");
+    await expect(page.getByTestId("keypoint-node-list")).toBeVisible();
+    await expect(page.getByText("Edit Detection")).toBeHidden();
+
+    await modal.sidebar.annotate.waitForSavesSettled();
+    const state = await annotateSDK.getKeypointsState(datasetName, FIELD, {
+      sampleIndex: 2,
+    });
+    expect(state.points[0][0]).toEqual(expect.any(Number));
+    expect(state.points[0][1]).toEqual(expect.any(Number));
+    for (const index of [1, 2, 3]) {
+      expect(state.points[index]).toEqual([null, null]);
+    }
   });
 });

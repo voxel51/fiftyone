@@ -208,6 +208,38 @@ export class ModalAnnotateEditPom {
   }
 
   /**
+   * A row of the keypoint node checklist (`KeypointDetails`), by skeleton node
+   * index. Carries `data-cy-status` (placed | target | skipped | pending) and
+   * `data-cy-selected`.
+   */
+  keypointNodeRow(index: number) {
+    return this.locator.getByTestId(`keypoint-node-${index}`);
+  }
+
+  /** The "N of M placed" summary line above the keypoint node checklist. */
+  get keypointPlacedSummary() {
+    return this.locator
+      .getByTestId("keypoint-node-list")
+      .locator("..")
+      .getByText(/of \d+ placed/);
+  }
+
+  /** Click a node row's Place button (arms placement, force-targets the node). */
+  async placeKeypointNode(index: number) {
+    await this.locator.getByTestId(`keypoint-place-node-${index}`).click();
+  }
+
+  /** Click a node row's Clear button (the node becomes a [NaN, NaN] hole). */
+  async clearKeypointNode(index: number) {
+    await this.locator.getByTestId(`keypoint-clear-node-${index}`).click();
+  }
+
+  /** Click the target row's Skip button (guided placement passes the node). */
+  async skipKeypointNode() {
+    await this.locator.getByTestId("keypoint-skip-node").click();
+  }
+
+  /**
    * The segmentation toolbar's Brush tool button. The toolbar (an on-canvas
    * `ActionToolbar`) renders only while segmentation mode is active and exposes
    * its tools via `aria-label`, so the Brush button's presence is a stable

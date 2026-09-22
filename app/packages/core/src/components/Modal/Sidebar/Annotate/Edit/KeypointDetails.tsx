@@ -21,6 +21,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import styled from "styled-components";
 import { useHandleSchemaChange } from "./AnnotationSchema";
+import { nodeRowAction, type NodeStatus } from "./keypointNodeActions";
 import {
   buildPointAttributeList,
   CONFIDENCE_FALLBACK_SPEC,
@@ -62,8 +63,6 @@ const NodeRow = styled.div<{ $active: boolean; $selected: boolean }>`
       $selected ? theme.primary.softBg : theme.neutral.softBg};
   }
 `;
-
-type NodeStatus = "placed" | "skipped" | "target" | "pending";
 
 const STATUS_MARK: Record<NodeStatus, string> = {
   placed: "✓",
@@ -386,9 +385,11 @@ const NodeInspector = ({
 /**
  * Keypoint edit details. For skeleton fields, a per-node checklist driven by
  * the label's live geometry — a node is placed iff its point is finite (holes
- * are `[NaN, NaN]`, see the keypoints user guide). During guided placement
- * the target row is highlighted and offers Skip; skipped nodes stay holes.
- * Free-form fields (no skeleton) show a point-count summary.
+ * are `[NaN, NaN]`, see the keypoints user guide). The target row is always
+ * highlighted; each row's single action button comes from
+ * {@link nodeRowAction} (Skip on an armed target, Place otherwise, Clear on a
+ * placed node). Skipped nodes stay holes. Free-form fields (no skeleton) show
+ * a point-count summary.
  */
 export const KeypointDetails = () => {
   const { selected } = useAnnotationContext();
@@ -401,6 +402,7 @@ export const KeypointDetails = () => {
     skip,
     clearNode,
     placeNode,
+    modeActive,
     selectedNodeIndex,
     selectNode,
     isDraft,
@@ -516,6 +518,7 @@ export const KeypointDetails = () => {
               : skipped.includes(i)
                 ? "skipped"
                 : "pending";
+          const action = nodeRowAction(status, modeActive);
           const name = nodeLabels?.[i] ?? `point ${i + 1}`;
 
           return (
@@ -563,7 +566,7 @@ export const KeypointDetails = () => {
                 )}
               </Stack>
 
-              {status === "target" && (
+              {action === "skip" && (
                 <RowAction
                   onClick={(e) => {
                     e.stopPropagation();
@@ -576,7 +579,7 @@ export const KeypointDetails = () => {
                   </Text>
                 </RowAction>
               )}
-              {status === "placed" && (
+              {action === "clear" && (
                 <RowAction
                   onClick={(e) => {
                     e.stopPropagation();
@@ -589,7 +592,7 @@ export const KeypointDetails = () => {
                   </Text>
                 </RowAction>
               )}
-              {(status === "skipped" || status === "pending") && (
+              {action === "place" && (
                 <RowAction
                   onClick={(e) => {
                     e.stopPropagation();

@@ -284,6 +284,85 @@ export class AnnotateSDK {
   }
 
   /**
+   * Seeds one `Keypoint` into a sample-level `Keypoints` field so a spec can
+   * open a PRE-EXISTING label (as opposed to creating one through the UI).
+   * A `null` entry becomes a `[nan, nan]` hole — an unplaced skeleton node.
+   * Replaces the field's current contents on that sample.
+   *
+   * @param dataset The dataset name
+   * @param field The sample-level `Keypoints` field (must already exist)
+   * @param points Relative `[x, y]` coordinates per skeleton node, or `null`
+   *   for a hole
+   * @param options.sampleIndex Index into the dataset's sample order (default 0)
+   * @param options.label The keypoint's class (default "person")
+   */
+  async seedKeypoints(
+    dataset: string,
+    field: string,
+    points: Array<[number, number] | null>,
+    options: { sampleIndex?: number; label?: string } = {},
+  ): Promise<void> {
+    const sampleIndex = options.sampleIndex ?? 0;
+    const label = options.label ?? "person";
+
+    await this.loader.executePythonCode(`
+      import json
+      import fiftyone as fo
+
+      dataset = fo.load_dataset("${dataset}")
+      sample = dataset.skip(${sampleIndex}).first()
+      nan = float("nan")
+      raw = json.loads('${JSON.stringify(points)}')
+      points = [(nan, nan) if p is None else (p[0], p[1]) for p in raw]
+      sample["${field}"] = fo.Keypoints(
+        keypoints=[fo.Keypoint(label="${label}", points=points)]
+      )
+      sample.save()
+    `);
+  }
+
+  /**
+   * Seeds one `Detection` into a sample-level `Detections` field, creating the
+   * field if needed. Used to put a box underneath a keypoint placement click
+   * and prove the click is not stolen by the box.
+   *
+   * @param dataset The dataset name
+   * @param field The sample-level `Detections` field
+   * @param boundingBox Relative `[x, y, w, h]`
+   * @param options.sampleIndex Index into the dataset's sample order (default 0)
+   * @param options.label The detection's class (default "box")
+   */
+  async seedDetection(
+    dataset: string,
+    field: string,
+    boundingBox: [number, number, number, number],
+    options: { sampleIndex?: number; label?: string } = {},
+  ): Promise<void> {
+    const sampleIndex = options.sampleIndex ?? 0;
+    const label = options.label ?? "box";
+
+    await this.loader.executePythonCode(`
+      import fiftyone as fo
+
+      dataset = fo.load_dataset("${dataset}")
+      if not dataset.has_sample_field("${field}"):
+        dataset.add_sample_field(
+          "${field}", fo.EmbeddedDocumentField, embedded_doc_type=fo.Detections
+        )
+      sample = dataset.skip(${sampleIndex}).first()
+      sample["${field}"] = fo.Detections(
+        detections=[
+          fo.Detection(
+            label="${label}",
+            bounding_box=${JSON.stringify(boundingBox)},
+          )
+        ]
+      )
+      sample.save()
+    `);
+  }
+
+  /**
    * Reads back the persisted state of a sample-level `Classification` field on a
    * single sample. Use to verify a classification create/delete round-trip.
    *

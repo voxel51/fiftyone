@@ -277,6 +277,7 @@ export const useKeypointMode = () => {
  */
 export const useGuidedKeypoints = () => {
   const { selected } = useAnnotationContext();
+  const modeActive = useAtomValue(keypointModeActiveAtom);
   const getSkeleton = useGetKeypointSkeleton();
   const [skips, setSkips] = useAtom(guidedSkipsAtom);
   const [forced, setForced] = useAtom(forcedTargetAtom);
@@ -461,6 +462,12 @@ export const useGuidedKeypoints = () => {
     /** Node labels, when the skeleton defines them. */
     nodeLabels: skeleton?.labels ?? null,
     nodeCount,
+    /**
+     * Whether keypoint mode is armed — i.e. whether a canvas click places the
+     * target node. Drives the checklist rows' action buttons; an existing
+     * label opens passively, so an unarmed target row offers Place.
+     */
+    modeActive,
     /** Live relative points — `[NaN, NaN]` entries are unplaced holes. */
     points: overlay?.getRelativePoints() ?? null,
     targetIndex,
