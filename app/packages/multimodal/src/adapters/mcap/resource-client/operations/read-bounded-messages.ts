@@ -10,6 +10,8 @@ import type {
   McapReadBoundedMessagesResult,
 } from "../../contracts";
 import { decodeMcapMessage } from "../message-decoder";
+import { genericRecordDecoderForChannel } from "../generic-record-decoder";
+import { messageValue } from "../message-value";
 import type { McapTimelineStrategy } from "../timeline";
 
 /** Decodes one already-admitted raw MCAP grant. */
@@ -53,6 +55,37 @@ export async function readMcapBoundedMessages({
   await consumeMcapBoundedGrant({
     items: result.messages,
     onItem: async (message) => {
+      if (request.representation === "message") {
+        const channel = reader.channelsById.get(message.channelId);
+        const decode =
+          channel &&
+          genericRecordDecoderForChannel(reader, channel, { defaults: true });
+        if (!channel || !decode) {
+          throw new Error(
+            `Cannot read full messages for ${channel?.topic ?? message.channelId}: schema or encoding is unavailable`,
+          );
+        }
+        messages.push({
+          activeTimeline: timeline.id,
+          channelId: message.channelId,
+          decoded: {
+            decoderId: "mcap.message",
+            decoderVersion: "1",
+            output: { message: messageValue(decode(message.data)) },
+            payload: {
+              encoding: channel.messageEncoding,
+              schema: reader.schemasById.get(channel.schemaId)?.name,
+            },
+          },
+          encodedPayloadBytes: message.data.byteLength,
+          logTimeNs: message.logTime,
+          publishTimeNs: message.publishTime,
+          sequence: message.sequence,
+          timelineTimeNs: timeline.messageTimeNs(message),
+          topic: channel.topic,
+        });
+        return;
+      }
       messages.push(
         await decodeMcapMessage({
           decodeClient,

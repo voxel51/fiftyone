@@ -98,8 +98,17 @@ export type RawRecordIndexWindowRequest = {
 
 export type RawRecordStatus = "decode-error" | "empty" | "ok" | "unsupported";
 
+/** Bounded declared schema text from the recording, never inferred from a sample. */
+export interface RawRecordSchema {
+  readonly name: string;
+  readonly encoding: string;
+  readonly text: string;
+  readonly truncated?: boolean;
+}
+
 /** One raw stream record, or a legible degraded outcome, at a playback time. */
 export interface RawRecordResult {
+  readonly schema?: RawRecordSchema;
   /** Present only when the selected record has exact indexed identity. */
   readonly cursor?: RawRecordCursor;
   readonly decodeError?: string;

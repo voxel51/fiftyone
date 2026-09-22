@@ -203,6 +203,38 @@ describe("readMcapRawMessageRecord", () => {
     expect(rawNodeToJson(rootOf(result))).toEqual({ label: "ego", speed: 3.5 });
   });
 
+  it("includes declared schema and scalar defaults only when requested for inspection", async () => {
+    const reader = createReader({
+      messages: [protobufMessage({ label: "ego" }, 1_000_000_000n)],
+    });
+    const request = {
+      source: createSource(),
+      timeNs: 1_000_000_000n,
+      topic: "/telemetry",
+    };
+    const ordinary = await readMcapRawMessageRecord({
+      reader,
+      request,
+      timeline,
+    });
+    expect(ordinary.schema).toBeUndefined();
+    expect(rawNodeToJson(rootOf(ordinary))).toEqual({ label: "ego" });
+    const inspected = await readMcapRawMessageRecord({
+      reader,
+      request: { ...request, includeSchema: true },
+      timeline,
+    });
+    expect(inspected.schema?.encoding).toBe("protobuf");
+    expect(
+      JSON.parse(inspected.schema?.text ?? "{}").types["test.Telemetry"].fields
+        .speed.type,
+    ).toBe("double");
+    expect(rawNodeToJson(rootOf(inspected))).toEqual({
+      label: "ego",
+      speed: 0,
+    });
+  });
+
   it("decodes ros1 messages through embedded message definitions", async () => {
     const reader = createReader({
       channel: createChannel({ messageEncoding: "ros1", topic: "/telemetry" }),

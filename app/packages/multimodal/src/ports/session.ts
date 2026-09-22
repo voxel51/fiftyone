@@ -1,3 +1,4 @@
+import type { EventStreamsCapability } from "./event-streams";
 import type {
   ByteRange,
   ByteSourceDescriptor,
@@ -113,6 +114,8 @@ export type ReadContinuation = object & {
 
 /** One explicit slice requested from a source-scoped budget account. */
 export interface BudgetedReadRequest {
+  /** Full schema-shaped values, independent of visualization support. */
+  readonly representation?: "message";
   /**
    * Optional inclusive admission horizon within the stable request window.
    * Atomic source groups wholly after this time remain behind the returned
@@ -179,6 +182,8 @@ export interface SourceReadBudgetAccount {
 
 /** Optional format-neutral bounded-read surface on an episode session. */
 export interface BoundedReadCapability {
+  /** Whether requests may select full schema-shaped message values. */
+  readonly supportsMessages?: boolean;
   /**
    * Opens the source account once. Omitting the allowance selects the
    * adapter's fixed source policy. Reopening with a different allowance is
@@ -433,6 +438,8 @@ export interface RawRecordCapability {
     readonly signal?: AbortSignal;
   }): Promise<readonly RawRecordStream[]>;
   readRawRecord(request: {
+    /** Includes the recording's declared schema and protobuf scalar defaults. */
+    readonly includeSchema?: boolean;
     readonly includeFullJson?: boolean;
     /**
      * Scheduling attribution. Paused inspection may use an isolated
@@ -453,6 +460,7 @@ export interface RawRecordCapability {
   }): Promise<RawRecordResult>;
   /** Reads one exact indexed record without consulting the playback clock. */
   readRawRecordAtCursor?(request: {
+    readonly includeSchema?: boolean;
     readonly cursor: RawRecordCursor;
     readonly includeFullJson?: boolean;
     /** Whole-message JSON export remains on the bounded bulk lane. */
@@ -494,6 +502,7 @@ export interface EpisodeTerminology {
 
 /** Open, format-neutral episode data plane consumed by the shared runtime. */
 export interface EpisodeSession {
+  readonly eventStreams?: EventStreamsCapability;
   readonly boundedRead?: BoundedReadCapability;
   readonly manifest: EpisodeManifest;
   readonly numericSeries?: NumericSeriesCapability;

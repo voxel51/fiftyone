@@ -20,6 +20,7 @@ export const STREAM_KIND = Object.freeze({
   POINT_CLOUD: "point-cloud",
   POSE: "pose",
   SCALAR: "scalar",
+  EVENTS: "events",
   SCENE_UPDATE: "scene-update",
   TRANSFORM: "transform",
   UNKNOWN: "unknown",
@@ -108,6 +109,12 @@ export interface TransformTopology {
 
 /** One discoverable renderer-neutral stream in an episode. */
 export interface StreamDescriptor {
+  /** Direct plot action for a stream with a single meaningful numeric field. */
+  readonly numericFieldPath?: string;
+  /** Timeline row to pin when opening this stream's events. */
+  readonly timelineTrackId?: string;
+  /** Complete snapshots need no historical delta reconstruction. */
+  readonly sceneUpdates?: "snapshot" | "delta";
   readonly approxRateHz?: number;
   readonly coordinateFrameId?: string;
   readonly count?: number;

@@ -546,6 +546,7 @@ export function createMcapRawRecordCapability({
             ? { channelId: rawTarget.channelId }
             : {}),
           includeFullJson: request.includeFullJson,
+          includeSchema: request.includeSchema,
           prune: request.prune,
           select: request.select,
           source,
@@ -578,6 +579,7 @@ export function createMcapRawRecordCapability({
                   : {}),
                 cursor: request.cursor,
                 includeFullJson: request.includeFullJson,
+                includeSchema: request.includeSchema,
                 prune: request.prune,
                 source,
                 topic: rawTarget.topic,
@@ -641,6 +643,7 @@ function toRawRecordResult(
     payloadBytes: result.encodedPayloadBytes,
     root: result.root,
     schemaName: result.schemaName,
+    schema: result.schema,
     sequence: result.sequence,
     sourceName: result.topic,
     sourceTimestamps:
@@ -910,6 +913,7 @@ class McapEpisodeSession implements EpisodeSession {
     }
     this.streamIdsBySourceName = streamIdsBySourceName;
     this.boundedRead = {
+      supportsMessages: true,
       openAccount: (allowance) => this.openBoundedReadAccount(allowance),
     };
     this.numericSeries = createMcapNumericSeriesCapability({
@@ -1103,6 +1107,9 @@ class McapEpisodeSession implements EpisodeSession {
           continuation: request.continuation,
           endTimeNs: request.window.endNs,
           maxChunks: reservation.maxPhysicalUnits,
+          ...(request.representation
+            ? { representation: request.representation }
+            : {}),
           ...(request.preferredTimeNs !== undefined
             ? { preferredTimeNs: request.preferredTimeNs }
             : {}),

@@ -1,4 +1,9 @@
+import type {
+  NumericSignalVisualization,
+  TrackEventsVisualization,
+} from "./temporal-visualizations";
 import { VISUALIZATION_KIND } from "./visualization-kinds";
+import type { MessageValue } from "./message";
 
 /**
  * Scalar/object metadata emitted by decoders for inspection, filtering, and
@@ -702,6 +707,8 @@ export interface ImageAnnotationsVisualization {
  * contribute metadata, transforms, annotations, or other nonvisual state.
  */
 export type DecodedVisualization =
+  | NumericSignalVisualization
+  | TrackEventsVisualization
   | AudioVisualization
   | CameraCalibrationVisualization
   | EncodedVideoVisualization
@@ -784,6 +791,8 @@ export interface DecodedDiagnostic {
  * Structured decoder output for downstream playback and visualization.
  */
 export interface DecodedOutput {
+  /** Present only for explicitly requested full-message reads. Never pruned. */
+  readonly message?: MessageValue;
   readonly attributes?: Record<string, DecodedAttributeValue>;
   readonly diagnostics?: readonly DecodedDiagnostic[];
   readonly resourceHints?: DecodedResourceHints;

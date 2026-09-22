@@ -465,6 +465,7 @@ function fixtureSceneSourceType(kind: StreamKind): SceneSourceType | undefined {
       return SCENE_SOURCE_TYPE.SCENE_ANNOTATION;
     case STREAM_KIND.AUDIO:
       return SCENE_SOURCE_TYPE.AUDIO;
+    case STREAM_KIND.EVENTS:
     case STREAM_KIND.SCALAR:
     case STREAM_KIND.TRANSFORM:
     case STREAM_KIND.UNKNOWN:
@@ -613,6 +614,7 @@ function fixtureOutput(
           timestampNs,
         },
       };
+    case STREAM_KIND.EVENTS:
     case STREAM_KIND.SCALAR:
       return {
         resourceHints,
