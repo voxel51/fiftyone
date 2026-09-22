@@ -4,9 +4,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PointCloudCameraPose } from "../../../../visualization/scene-3d/index";
 import { EMPTY_EPISODE_FRAME_GRAPH_SUMMARY } from "../../../../runtime/frame-transforms";
 import type { FrameTransformsState } from "../../spatial/frame-transforms/use-frame-transforms";
+import { Scene3dViewControls } from "./Scene3dViewControls";
 import {
   egoViewCameraPose,
-  resolveScene3dEgoFrameId,
   topViewCameraPose,
   useScene3dViewShortcuts,
   type Scene3dViewShortcutsOptions,
@@ -14,38 +14,6 @@ import {
 
 afterEach(() => {
   cleanup();
-});
-
-describe("resolveScene3dEgoFrameId", () => {
-  it("prefers trained ego frame names in preference order", () => {
-    expect(
-      resolveScene3dEgoFrameId({
-        cameraTargetFrameId: "lidar_top",
-        frameIds: ["CAM_FRONT", "base_link", "ego_vehicle", "map"],
-      }),
-    ).toBe("base_link");
-    expect(
-      resolveScene3dEgoFrameId({
-        cameraTargetFrameId: "lidar_top",
-        frameIds: ["CAM_FRONT", "ego_vehicle", "map"],
-      }),
-    ).toBe("ego_vehicle");
-  });
-
-  it("falls back to the camera target frame when no ego name matches", () => {
-    expect(
-      resolveScene3dEgoFrameId({
-        cameraTargetFrameId: "lidar_top",
-        frameIds: ["CAM_FRONT", "lidar_top", "map"],
-      }),
-    ).toBe("lidar_top");
-  });
-
-  it("returns null when nothing resolves", () => {
-    expect(
-      resolveScene3dEgoFrameId({ cameraTargetFrameId: "", frameIds: [] }),
-    ).toBeNull();
-  });
 });
 
 describe("egoViewCameraPose", () => {
@@ -155,6 +123,113 @@ describe("topViewCameraPose", () => {
 });
 
 describe("useScene3dViewShortcuts", () => {
+  it.each(["keyboard", "button"] as const)(
+    "applies the selected target's position and heading via the %s after target changes",
+    (trigger) => {
+      const onApplyCameraPose = vi.fn();
+      const egoTransforms = translationTransforms(10, 0, 0);
+      const resolve = vi.fn<FrameTransformsState["resolve"]>(
+        (sourceFrameId, targetFrameId, timeNs) => {
+          if (sourceFrameId !== "lidar") {
+            return egoTransforms.resolve(sourceFrameId, targetFrameId, timeNs);
+          }
+          return {
+            sourceFrameId,
+            status: "resolved",
+            targetFrameId,
+            transform: {
+              rotation: new Quaternion().setFromAxisAngle(
+                new Vector3(0, 0, 1),
+                Math.PI / 2,
+              ),
+              sourceFrameId,
+              targetFrameId,
+              translation: new Vector3(100, 50, 1),
+            },
+          };
+        },
+      );
+      const options = shortcutOptions({
+        frameTransforms: { ...egoTransforms, resolve },
+        onApplyCameraPose,
+      });
+      const { result, rerender } = renderHook(useScene3dViewShortcuts, {
+        initialProps: options,
+      });
+      const { getByRole } = render(
+        <Scene3dViewControls
+          onEgoView={result.current.applyEgoView}
+          onTopView={result.current.applyTopView}
+        />,
+      );
+      const applyEgoView = () => {
+        if (trigger === "keyboard") {
+          fireEvent.keyDown(window, { code: "KeyE" });
+        } else {
+          fireEvent.click(getByRole("button", { name: "Ego view" }));
+        }
+      };
+
+      // Switching away from the default ego must use the newly selected
+      // frame's heading and position at the current playback time.
+      rerender({
+        ...options,
+        cameraTargetFrameId: "lidar",
+        playbackTimeNs: 42n,
+      });
+      applyEgoView();
+
+      expect(resolve).toHaveBeenLastCalledWith("lidar", "map", 42n);
+      expect(onApplyCameraPose).toHaveBeenCalledTimes(1);
+      const [pose, source] = onApplyCameraPose.mock.calls[0];
+      expect(source).toBe("focus");
+      expect(pose.target).toEqual([100, 50, 1]);
+      expect(pose.position[0]).toBeCloseTo(100);
+      expect(pose.position[1]).toBeCloseTo(28);
+      expect(pose.position[2]).toBeCloseTo(8);
+
+      // The world frame is also a valid target, even without a playback time.
+      rerender({
+        ...options,
+        cameraTargetFrameId: "map",
+        playbackTimeNs: undefined,
+      });
+      applyEgoView();
+
+      expect(onApplyCameraPose).toHaveBeenCalledTimes(2);
+      expect(onApplyCameraPose).toHaveBeenLastCalledWith(
+        { position: [-22, 0, 7], target: [0, 0, 0] },
+        "focus",
+      );
+    },
+  );
+
+  it.each(["missing", "pending"] as const)(
+    "does not substitute a named ego when the selected target is %s",
+    (status) => {
+      const onApplyCameraPose = vi.fn();
+      const egoTransforms = translationTransforms(10, 0, 0);
+      const { result } = renderHook(useScene3dViewShortcuts, {
+        initialProps: shortcutOptions({
+          cameraTargetFrameId: "lidar",
+          frameTransforms: {
+            ...egoTransforms,
+            resolve: (sourceFrameId, targetFrameId, timeNs) =>
+              sourceFrameId === "lidar"
+                ? { sourceFrameId, status, targetFrameId }
+                : egoTransforms.resolve(sourceFrameId, targetFrameId, timeNs),
+          },
+          onApplyCameraPose,
+        }),
+      });
+
+      expect(fireEvent.keyDown(window, { code: "KeyE" })).toBe(true);
+      result.current.applyEgoView();
+
+      expect(onApplyCameraPose).not.toHaveBeenCalled();
+    },
+  );
+
   it("exposes the same camera presets for on-screen controls", () => {
     const onApplyCameraPose = vi.fn();
     const { result } = renderHook(useScene3dViewShortcuts, {
@@ -236,7 +311,7 @@ describe("useScene3dViewShortcuts", () => {
     }
   });
 
-  it("no-ops when neither an ego pose nor a displayed pose resolves", () => {
+  it("no-ops when neither a target pose nor a displayed pose resolves", () => {
     const onApplyCameraPose = vi.fn();
     renderHook(useScene3dViewShortcuts, {
       initialProps: shortcutOptions({
@@ -252,7 +327,7 @@ describe("useScene3dViewShortcuts", () => {
     expect(onApplyCameraPose).not.toHaveBeenCalled();
   });
 
-  it("anchors the top view on the current orbit target without an ego", () => {
+  it("anchors the top view on the current orbit target without a resolved target", () => {
     const onApplyCameraPose = vi.fn();
     renderHook(useScene3dViewShortcuts, {
       initialProps: shortcutOptions({
@@ -309,7 +384,6 @@ function shortcutOptions(
 ): Scene3dViewShortcutsOptions {
   return {
     cameraTargetFrameId: "base_link",
-    frameIds: ["base_link", "lidar", "map"],
     frameTransforms: translationTransforms(10, 0, 0),
     getDisplayedCameraPose: () => displayedPose(),
     isActive: true,

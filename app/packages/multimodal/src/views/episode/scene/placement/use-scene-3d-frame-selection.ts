@@ -33,14 +33,6 @@ import {
   uniqueSortedFrameIds,
 } from "../../../../utils/frame-ids";
 
-/** Frame names considered ego-centric automatic camera targets, in priority order. */
-export const PREFERRED_CAMERA_TARGET_FRAMES = [
-  "base_link",
-  "ego_vehicle",
-  "ego",
-  "vehicle",
-] as const;
-
 /** Whether a rendered frame choice was automatic or explicitly selected. */
 export type FrameSelectionSource = "auto" | "user";
 

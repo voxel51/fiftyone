@@ -678,7 +678,6 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
   });
   const { applyEgoView, applyTopView } = useScene3dViewShortcuts({
     cameraTargetFrameId,
-    frameIds,
     frameTransforms,
     getDisplayedCameraPose,
     isActive: Boolean(tileId && focusedTileId === tileId),
