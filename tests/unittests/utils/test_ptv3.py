@@ -6,8 +6,6 @@ Tests for fiftyone/utils/ptv3.py.
 |
 """
 
-import os
-
 import numpy as np
 import pypcd4
 import pytest
