@@ -6,10 +6,14 @@ Tests for fiftyone/utils/ptv3.py.
 |
 """
 
+import os
+
 import numpy as np
+import pypcd4
 import pytest
 import torch
 
+import fiftyone as fo
 import fiftyone.core.models as fomo
 from fiftyone.utils.ptv3 import (
     PointCloudGetItem,
@@ -322,6 +326,97 @@ class TestGetItem:
         get_item = _make_model().build_get_item()
         assert isinstance(get_item, PointCloudGetItem)
         assert get_item.required_keys == ["filepath"]
+
+    def test_loads_pcd(self, tmp_path):
+        xyz = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]], dtype="float32")
+        path = str(tmp_path / "cloud.pcd")
+        pypcd4.PointCloud.from_xyz_points(xyz).save(path)
+
+        points = PointCloudGetItem()({"filepath": path})
+        assert points.dtype == np.float32
+        np.testing.assert_allclose(points, xyz)
+
+    def test_red_channel_becomes_intensity(self, tmp_path):
+        xyz = np.array([[0, 0, 0], [1, 0, 0]], dtype="float32")
+        rgb = np.array([[255, 0, 0], [0, 0, 255]], dtype="uint8")
+        packed = pypcd4.PointCloud.encode_rgb(rgb)[:, None].astype("float32")
+        path = str(tmp_path / "cloud.pcd")
+        pypcd4.PointCloud.from_xyzrgb_points(np.hstack([xyz, packed])).save(
+            path
+        )
+
+        points = PointCloudGetItem()({"filepath": path})
+        assert points.shape == (2, 4)
+        np.testing.assert_allclose(points[:, 3], [1.0, 0.0])
+
+    def test_rejects_empty_pcd(self, tmp_path):
+        path = str(tmp_path / "empty.pcd")
+        pypcd4.PointCloud.from_xyz_points(np.zeros((0, 3), "float32")).save(
+            path
+        )
+        with pytest.raises(ValueError, match="no points"):
+            PointCloudGetItem()({"filepath": path})
+
+
+class TestComputeEmbeddings:
+    """``compute_embeddings()`` on a point cloud dataset runs the model's
+    ``GetItem`` through the shared data loader."""
+
+    @staticmethod
+    def _dataset(tmp_path, n=3):
+        dataset = fo.Dataset()
+        for i in range(n):
+            path = str(tmp_path / ("cloud%d.pcd" % i))
+            xyz = np.random.rand(20 + i, 3).astype("float32")
+            pypcd4.PointCloud.from_xyz_points(xyz).save(path)
+            dataset.add_sample(fo.Sample(filepath=path))
+
+        return dataset
+
+    def test_returns_stacked_embeddings(self, tmp_path):
+        dataset = self._dataset(tmp_path)
+        model = _make_model(feature_keys=("coord",))
+
+        embeddings = fomo.compute_embeddings(
+            dataset, model, batch_size=2, num_workers=0
+        )
+
+        assert embeddings.shape == (3, 64)
+
+    def test_stores_embeddings_field(self, tmp_path):
+        dataset = self._dataset(tmp_path)
+        model = _make_model(feature_keys=("coord",))
+
+        out = fomo.compute_embeddings(
+            dataset, model, embeddings_field="emb", num_workers=0
+        )
+
+        assert out is None
+        assert all(len(e) == 64 for e in dataset.values("emb"))
+
+    def test_skip_failures_keeps_order(self, tmp_path):
+        dataset = self._dataset(tmp_path)
+        bad = dataset.first()
+        bad.filepath = str(tmp_path / "missing.pcd")
+        bad.save()
+        model = _make_model(feature_keys=("coord",))
+
+        embeddings = fomo.compute_embeddings(
+            dataset, model, skip_failures=True, num_workers=0
+        )
+
+        assert isinstance(embeddings, list)
+        assert len(embeddings) == 3
+        assert embeddings[0] is None
+        assert all(e.shape == (64,) for e in embeddings[1:])
+
+    def test_rejects_image_collection(self, tmp_path):
+        dataset = fo.Dataset()
+        dataset.add_sample(fo.Sample(filepath=str(tmp_path / "img.jpg")))
+        model = _make_model(feature_keys=("coord",))
+
+        with pytest.raises(fo.core.media.MediaTypeError):
+            fomo.compute_embeddings(dataset, model, num_workers=0)
 
 
 class TestEnsurePackages:
