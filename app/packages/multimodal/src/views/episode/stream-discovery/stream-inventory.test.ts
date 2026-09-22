@@ -61,6 +61,25 @@ describe("buildStreamInventoryRows", () => {
     });
   });
 
+  it("does not advertise unsupported encodings as renderable presentation targets", () => {
+    const rows = buildStreamInventoryRows({
+      sceneSources: [],
+      streams: [
+        {
+          id: "speed",
+          sourceName: "Speed",
+          kind: "scalar",
+          numericFieldPath: "speed_mps",
+          timelineTrackId: "track:speed",
+          payload: { encoding: "unsupported" },
+          timeRange: { startNs: 0n, endNs: 1n },
+          metadata: { [STREAM_METADATA.DECODE_STATUS]: "unsupported-encoding" },
+        },
+      ],
+    });
+    expect(rows[0].supportStatus).toBe("encoding-unsupported");
+  });
+
   it("keeps stable stream IDs distinct from format source names", () => {
     const camera = {
       ...stream("/camera/front", "sensor_msgs/Image", "ros1", "ros1msg", "12"),

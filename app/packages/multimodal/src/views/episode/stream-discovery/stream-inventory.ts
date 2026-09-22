@@ -395,14 +395,14 @@ function supportStatusFor({
   readonly frameTransform: boolean;
   readonly sourceType: SceneSourceType | null;
 }): StreamSupportStatus {
-  // Explicit presentation targets are renderable without a scene source.
-  if (numericFieldPath !== undefined || timelineTrackId !== undefined) {
-    return "renderable";
-  }
   // Before the renderable check: a camera whose codec has no decoder here is
   // still a renderable *kind* of stream, and saying so promises a picture
   if (decodeStatus === "unsupported-encoding") {
     return "encoding-unsupported";
+  }
+  // Explicit presentation targets are renderable without a scene source.
+  if (numericFieldPath !== undefined || timelineTrackId !== undefined) {
+    return "renderable";
   }
   if (sourceType !== null || frameTransform) {
     return "renderable";
