@@ -452,9 +452,13 @@ class EmbeddingsV2SampleInfo(HTTPEndpoint):
             except (AttributeError, KeyError, ValueError):
                 value = None
 
+        media = _hover_media(sample)
+
+        # Only an image preview can be cropped: samples with no hover media
+        # (video, 3D) get no box either
         bounds = (
             _patch_bounds(sample, patches_field, point_id)
-            if patches_field is not None
+            if patches_field is not None and media is not None
             else None
         )
 
@@ -462,7 +466,7 @@ class EmbeddingsV2SampleInfo(HTTPEndpoint):
             "id": point_id,
             "sampleId": sample_id,
             "filepath": sample.filepath,
-            "media": _hover_media(sample),
+            "media": media,
             "value": value,
             "bounds": bounds,
         }
