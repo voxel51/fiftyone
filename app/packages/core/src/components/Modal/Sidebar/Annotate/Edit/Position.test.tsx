@@ -1,146 +1,174 @@
-import { describe, expect, it, vi } from "vitest";
-import { setPathUserUnchanged } from "../../../../../plugins/SchemaIO/hooks";
+/**
+ * @vitest-environment jsdom
+ *
+ * The 2D geometry form renders through SchemaIO, whose text inputs are
+ * UNCONTROLLED: they show `defaultValue` and only pick up a new one when
+ * `useKey` hands them a new key, which it stops doing once the user has typed
+ * in that path. These pin that a commit from anywhere else — a drag, an undo,
+ * a playhead move — still reaches the form, while the user's own typing is
+ * left alone.
+ *
+ * SchemaIO's renderer is stood in for below: the real one needs the whole RJSF
+ * registry, and what matters here is its key contract, which the stand-in
+ * reproduces through the real `useKey`.
+ */
+import { cleanup, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { clearUseKeyStores, useKey } from "../../../../../plugins/SchemaIO/hooks";
 
-// Mock the hooks module
-vi.mock("../../../../../plugins/SchemaIO/hooks", () => ({
-  setPathUserUnchanged: vi.fn(),
+const SAMPLE = "sample-1";
+const PATH = "detections";
+const INSTANCE = "instance-1";
+
+/** The engine's stored label; mutating it stands for a commit. */
+let stored: { bounding_box: number[]; rotation?: number };
+
+const updateLabel = vi.fn((_ref: unknown, data: Record<string, unknown>) => {
+  stored = { ...stored, ...data };
+});
+
+vi.mock("@fiftyone/annotation", () => ({
+  GEOMETRY_SIGNAL: "geometry",
+  encodeEntityId: (dataset: string, ref: { instanceId: string }) =>
+    `${dataset}:${ref.instanceId}`,
+  useActiveAnnotationSampleId: () => SAMPLE,
+  useAnnotationEngine: () => ({ getLabel: () => stored, updateLabel }),
+  useEngineSelector: (engine: unknown, selector: (e: unknown) => unknown) =>
+    selector(engine),
+  useSignalValue: () => null,
 }));
 
-describe("Position Component", () => {
-  describe("user changed flags clearing (bug fix)", () => {
-    it("should call setPathUserUnchanged for all input paths when overlay changes", () => {
-      // This test verifies the fix for the bug where inputs don't update after
-      // manual changes when the overlay is moved/resized.
+vi.mock("@fiftyone/state", () => ({ useCurrentDatasetId: () => "dataset-1" }));
 
-      // Simulate what happens in the overlay change handler
-      const clearUserChangedFlags = () => {
-        setPathUserUnchanged("position.x");
-        setPathUserUnchanged("position.y");
-        setPathUserUnchanged("dimensions.width");
-        setPathUserUnchanged("dimensions.height");
-      };
+vi.mock("./useAnnotationContext", () => ({
+  useAnnotationContext: () => ({
+    selected: {
+      ref: { sample: SAMPLE, path: PATH, instanceId: INSTANCE },
+      overlay: { id: INSTANCE, field: PATH },
+    },
+  }),
+}));
 
-      clearUserChangedFlags();
+type Coordinates = {
+  position: { x?: number; y?: number };
+  dimensions: { width?: number; height?: number };
+  rotation: { rotation?: number };
+};
 
-      // Verify that setPathUserUnchanged was called for all input paths
-      expect(setPathUserUnchanged).toHaveBeenCalledWith("position.x");
-      expect(setPathUserUnchanged).toHaveBeenCalledWith("position.y");
-      expect(setPathUserUnchanged).toHaveBeenCalledWith("dimensions.width");
-      expect(setPathUserUnchanged).toHaveBeenCalledWith("dimensions.height");
+/** One uncontrolled input, keyed exactly as `TextFieldView` keys its own. */
+const Field = ({
+  path,
+  value,
+  onCommit,
+}: {
+  path: string;
+  value?: number;
+  onCommit: (next: number) => void;
+}) => {
+  const [key, setUserChanged] = useKey(path, {}, value, true);
 
-      // Verify called exactly 4 times (once for each path)
-      expect(setPathUserUnchanged).toHaveBeenCalledTimes(4);
-    });
+  return (
+    <input
+      key={key}
+      aria-label={path}
+      defaultValue={value}
+      onChange={(e) => {
+        setUserChanged();
+        onCommit(Number(e.target.value));
+      }}
+    />
+  );
+};
 
-    it("should clear flags in the correct order matching the schema structure", () => {
-      vi.clearAllMocks();
+vi.mock("../../../../../plugins/SchemaIO", () => ({
+  SchemaIOComponent: ({
+    data,
+    onChange,
+  }: {
+    data: Coordinates;
+    onChange: (next: Coordinates) => void;
+  }) => (
+    <>
+      <Field
+        path="position.x"
+        value={data.position.x}
+        onCommit={(x) => onChange({ ...data, position: { ...data.position, x } })}
+      />
+      <Field
+        path="dimensions.width"
+        value={data.dimensions.width}
+        onCommit={(width) =>
+          onChange({ ...data, dimensions: { ...data.dimensions, width } })
+        }
+      />
+      <Field
+        path="rotation.rotation"
+        value={data.rotation.rotation}
+        onCommit={(rotation) => onChange({ ...data, rotation: { rotation } })}
+      />
+    </>
+  ),
+}));
 
-      // The paths follow the structure: parent.child
-      // position.x, position.y, dimensions.width, dimensions.height
-      const paths = [
-        "position.x",
-        "position.y",
-        "dimensions.width",
-        "dimensions.height",
-      ];
+import Position from "./Position";
 
-      paths.forEach((path) => setPathUserUnchanged(path));
+const field = (path: string) => screen.getByLabelText(path) as HTMLInputElement;
 
-      // Verify each path was cleared
-      paths.forEach((path) => {
-        expect(setPathUserUnchanged).toHaveBeenCalledWith(path);
-      });
-    });
+beforeEach(() => {
+  stored = { bounding_box: [0.4, 0.4, 0.2, 0.2], rotation: 0.5 };
+  clearUseKeyStores();
+  updateLabel.mockClear();
+});
 
-    it("should handle coordinate updates - position paths", () => {
-      vi.clearAllMocks();
+afterEach(cleanup);
 
-      // When overlay is moved, position changes
-      setPathUserUnchanged("position.x");
-      setPathUserUnchanged("position.y");
+describe("Position", () => {
+  it("shows the geometry the engine holds", () => {
+    render(<Position />);
 
-      expect(setPathUserUnchanged).toHaveBeenCalledWith("position.x");
-      expect(setPathUserUnchanged).toHaveBeenCalledWith("position.y");
-      expect(setPathUserUnchanged).toHaveBeenCalledTimes(2);
-    });
-
-    it("should handle size updates - dimensions paths", () => {
-      vi.clearAllMocks();
-
-      // When overlay is resized, dimensions change
-      setPathUserUnchanged("dimensions.width");
-      setPathUserUnchanged("dimensions.height");
-
-      expect(setPathUserUnchanged).toHaveBeenCalledWith("dimensions.width");
-      expect(setPathUserUnchanged).toHaveBeenCalledWith("dimensions.height");
-      expect(setPathUserUnchanged).toHaveBeenCalledTimes(2);
-    });
+    expect(field("position.x").value).toBe("0.4");
+    expect(field("dimensions.width").value).toBe("0.2");
+    expect(field("rotation.rotation").value).toBe("0.5");
   });
 
-  describe("overlay event handling", () => {
-    it("should handle drag events correctly", () => {
-      // Mock scenario: user manually changes position.x input, then drags overlay
-      vi.clearAllMocks();
+  it("commits a typed value to the engine", async () => {
+    const user = userEvent.setup();
+    render(<Position />);
 
-      // User drags overlay - should clear the user changed flag
-      setPathUserUnchanged("position.x");
-      setPathUserUnchanged("position.y");
+    await user.clear(field("rotation.rotation"));
+    await user.type(field("rotation.rotation"), "1.25");
 
-      expect(setPathUserUnchanged).toHaveBeenCalledTimes(2);
-    });
-
-    it("should handle resize events correctly", () => {
-      // Mock scenario: user manually changes width input, then resizes overlay
-      vi.clearAllMocks();
-
-      // User resizes overlay - should clear the user changed flags
-      setPathUserUnchanged("dimensions.width");
-      setPathUserUnchanged("dimensions.height");
-
-      expect(setPathUserUnchanged).toHaveBeenCalledTimes(2);
-    });
-
-    it("should handle combined drag and resize (bounds changed) events", () => {
-      // Mock scenario: overlay bounds change affects both position and dimensions
-      vi.clearAllMocks();
-
-      // Bounds changed - clear all flags
-      setPathUserUnchanged("position.x");
-      setPathUserUnchanged("position.y");
-      setPathUserUnchanged("dimensions.width");
-      setPathUserUnchanged("dimensions.height");
-
-      expect(setPathUserUnchanged).toHaveBeenCalledTimes(4);
-    });
+    expect(stored.rotation).toBe(1.25);
   });
 
-  describe("schema path structure", () => {
-    it("should use correct nested path format for position fields", () => {
-      vi.clearAllMocks();
+  it("re-syncs a typed field when the engine commits from elsewhere", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<Position />);
 
-      const positionPaths = ["position.x", "position.y"];
+    await user.clear(field("rotation.rotation"));
+    await user.type(field("rotation.rotation"), "1.25");
+    expect(field("rotation.rotation").value).toBe("1.25");
 
-      positionPaths.forEach((path) => {
-        // Verify path follows parent.child pattern
-        expect(path).toMatch(/^position\.(x|y)$/);
-        setPathUserUnchanged(path);
-      });
+    // a drag / undo / playhead move commits geometry this form did not write
+    stored = { bounding_box: [0.1, 0.1, 0.3, 0.3], rotation: 0.75 };
+    rerender(<Position />);
 
-      expect(setPathUserUnchanged).toHaveBeenCalledTimes(2);
-    });
+    expect(field("rotation.rotation").value).toBe("0.75");
+    expect(field("position.x").value).toBe("0.1");
+    expect(field("dimensions.width").value).toBe("0.3");
+  });
 
-    it("should use correct nested path format for dimension fields", () => {
-      vi.clearAllMocks();
+  it("leaves a typed field alone when the commit is the form's own edit", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<Position />);
 
-      const dimensionPaths = ["dimensions.width", "dimensions.height"];
+    await user.clear(field("rotation.rotation"));
+    await user.type(field("rotation.rotation"), "1.25");
 
-      dimensionPaths.forEach((path) => {
-        // Verify path follows parent.child pattern
-        expect(path).toMatch(/^dimensions\.(width|height)$/);
-        setPathUserUnchanged(path);
-      });
+    // the engine echoes exactly what the form just wrote
+    rerender(<Position />);
 
-      expect(setPathUserUnchanged).toHaveBeenCalledTimes(2);
-    });
+    expect(field("rotation.rotation").value).toBe("1.25");
   });
 });

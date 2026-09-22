@@ -10,8 +10,9 @@ import {
 } from "@fiftyone/annotation";
 import { useCurrentDatasetId } from "@fiftyone/state";
 import type { LabelData } from "@fiftyone/utilities";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
+import { setPathUserUnchanged } from "../../../../../plugins/SchemaIO/hooks";
 import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
 import { useAnnotationContext } from "./useAnnotationContext";
 
@@ -49,6 +50,15 @@ interface Coordinates {
   rotation: { rotation?: number };
 }
 
+/** The input paths this form owns, released when the engine commits elsewhere. */
+const EDITED_PATHS = [
+  "position.x",
+  "position.y",
+  "dimensions.width",
+  "dimensions.height",
+  "rotation.rotation",
+];
+
 export interface PositionProps {
   readOnly?: boolean;
 }
@@ -59,6 +69,10 @@ export default function Position({ readOnly = false }: PositionProps) {
     dimensions: {},
     rotation: {},
   });
+
+  // What this form last wrote, so a commit echoing our own edit is not mistaken
+  // for an external one.
+  const written = useRef<string | null>(null);
 
   const { selected } = useAnnotationContext();
   const overlay = selected?.overlay;
@@ -105,6 +119,18 @@ export default function Position({ readOnly = false }: PositionProps) {
       dimensions: { width, height },
       rotation: { rotation: committedRotation ?? 0 },
     });
+
+    // The inputs are uncontrolled: `useKey` stops remounting a path once the
+    // user has typed in it, so a drag, an undo or a playhead move would leave
+    // the typed number on screen. Release those paths when the commit came
+    // from somewhere other than this form.
+    const signature = JSON.stringify([committedBounds, committedRotation]);
+    if (written.current !== signature) {
+      for (const path of EDITED_PATHS) {
+        setPathUserUnchanged(path);
+      }
+    }
+    written.current = null;
   }, [committedBounds, committedRotation]);
 
   // LIVE geometry from the engine — the 2D scene publishes mid-drag relative
@@ -246,6 +272,11 @@ export default function Position({ readOnly = false }: PositionProps) {
             (rotation !== 0 || typeof storedRotation === "number")
               ? { rotation }
               : {};
+
+          written.current = JSON.stringify([
+            next,
+            "rotation" in rotationData ? rotationData.rotation : rotation,
+          ]);
 
           engine.updateLabel(ref, {
             bounding_box: next,

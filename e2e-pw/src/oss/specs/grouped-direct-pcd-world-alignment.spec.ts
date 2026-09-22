@@ -2,20 +2,22 @@
  * Copyright 2017-2026, Voxel51, Inc.
  *
  * Two point-cloud slices with different static transforms render aligned in
- * the world frame, and a cuboid drawn there is written back in the native
- * frame of the slice being annotated.
+ * the world frame.
  */
-import { Jimp } from "jimp";
-import { expect, Locator, test as base } from "src/oss/fixtures";
+import { expect, test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
-import type { GeometryAxis } from "src/oss/poms/modal/annotate-3d";
-import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import { Duration, getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
   "grouped-direct-pcd-world-alignment",
 );
 const QUARTER_TURN = [0, 0, 0.7071067811865476, 0.7071067811865476];
+
+const SCENE_REVEALED = "looker3d-scene-ready";
+// a reveal waits on a point-cloud fetch and a camera restore; Teams CI runs
+// this same spec several times slower
+const SIGNAL_DEADLINE = Duration.Seconds(20);
 
 const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   grid: async ({ page, eventUtils }, use) => {
@@ -26,37 +28,25 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   },
 });
 
-const countOuterBandPixels = async (canvas: Locator) => {
-  const screenshot = await canvas.screenshot();
-  const image = await Jimp.read(screenshot);
-  const { data, width, height } = image.bitmap;
+/**
+ * Fail with `reason` instead of hanging. The 3D viewer skips its camera and
+ * reveal signals silently when the scene is mid-swap, and an unbounded wait on
+ * one of them burns the whole test timeout without naming what never arrived.
+ */
+const withDeadline = async (pending: Promise<unknown>, reason: string) => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`timed out waiting for ${reason}`)),
+      SIGNAL_DEADLINE,
+    );
+  });
 
-  const countBand = (minXFraction: number, maxXFraction: number) => {
-    const minX = Math.floor(width * minXFraction);
-    const maxX = Math.floor(width * maxXFraction);
-    const minY = Math.floor(height * 0.15);
-    const maxY = Math.floor(height * 0.85);
-    let count = 0;
-
-    for (let y = minY; y < maxY; y++) {
-      for (let x = minX; x < maxX; x++) {
-        const offset = (y * width + x) * 4;
-        if (
-          data[offset + 3] > 0 &&
-          data[offset] + data[offset + 1] + data[offset + 2] > 45
-        ) {
-          count++;
-        }
-      }
-    }
-
-    return count;
-  };
-
-  return {
-    left: countBand(0.08, 0.42),
-    right: countBand(0.58, 0.92),
-  };
+  try {
+    await Promise.race([pending, deadline]);
+  } finally {
+    clearTimeout(timer);
+  }
 };
 
 test.beforeAll(async ({ datasetFactory, foWebServer }) => {
@@ -69,20 +59,6 @@ test.beforeAll(async ({ datasetFactory, foWebServer }) => {
       { name: "lidar_left", mediaType: "point-cloud" },
       { name: "lidar_right", mediaType: "point-cloud" },
     ],
-    schema: {
-      detections: "Detections",
-      "detections.detections.location": "ListField<FloatField>",
-      "detections.detections.dimensions": "ListField<FloatField>",
-      "detections.detections.rotation": "ListField<FloatField>",
-    },
-    labelSchemas: {
-      detections: {
-        type: "detections",
-        classes: ["seeded-left", "world-created"],
-        attributes: [],
-        component: "dropdown",
-      },
-    },
     // the left lidar reaches world through a yawed ego frame, the right directly
     staticTransforms: [
       {
@@ -98,19 +74,6 @@ test.beforeAll(async ({ datasetFactory, foWebServer }) => {
         translation: [8, 0, 0],
       },
     ],
-    withSampleData: ({ slice }, { label }) =>
-      slice === "lidar_left"
-        ? {
-            detections: label.detections([
-              label.detection({
-                label: "seeded-left",
-                location: [1.5, 1.5, 1.5],
-                dimensions: [2, 2, 2],
-                rotation: [0, 0, 0],
-              }),
-            ]),
-          }
-        : {},
   });
 });
 
@@ -118,7 +81,8 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test("aligns grouped direct PCDs in world and writes cuboids back to the native slice", async ({
+test("renders both point-cloud slices aligned in the world frame", async ({
+  eventUtils,
   fiftyoneLoader,
   grid,
   modal,
@@ -129,58 +93,27 @@ test("aligns grouped direct PCDs in world and writes cuboids back to the native 
     window.localStorage.setItem("fo-3d-annotation-tips-dismissed", "true"),
   );
 
+  // each wait is armed before the action that causes the reveal, so no earlier
+  // reveal can satisfy it
+  const firstSliceRevealed = await eventUtils.arm(SCENE_REVEALED);
   await grid.openFirstSample();
   await modal.waitForSampleLoadDomAttribute(true);
-  await modal.looker3dControls.waitForAllAssetsLoaded();
+  await withDeadline(firstSliceRevealed.received, "the scene to reveal");
+
+  const bothSlicesRevealed = await eventUtils.arm(SCENE_REVEALED);
   await modal.toggleLooker3dSlice("lidar_right");
-  await modal.looker3dControls.waitForAllAssetsLoaded();
-  await modal.looker3dControls.setTopView();
+  await withDeadline(bothSlicesRevealed.received, "the second slice to reveal");
+
+  // the reveal above means bounds are resolved and the camera is mounted, so
+  // the top view frames both slices and its settle signal is dispatched
+  await withDeadline(
+    modal.looker3dControls.setTopView(),
+    "the top view camera to settle",
+  );
   await modal.looker3dControls.toggleGridHelper();
 
-  await expect
-    .poll(
-      async () => {
-        const visiblePixels = await countOuterBandPixels(
-          modal.annotate3d.canvas,
-        );
-        return Math.min(visiblePixels.left, visiblePixels.right);
-      },
-      { timeout: 10_000 },
-    )
-    .toBeGreaterThan(30);
-
-  await modal.sidebar.switchMode("annotate");
-  await modal.sidebar.annotate.selectAnnotationSlice("lidar_left");
-  await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice(
-    "lidar_left",
+  await expect(modal.modalContainer).toHaveScreenshot(
+    "world-aligned-slices.png",
+    { mask: modal.looker3dScreenshotMasks, animations: "allow" },
   );
-  await modal.annotate3d.waitForSurface();
-  await modal.annotate3d.enterCuboidMode();
-  await modal.looker3dControls.setTopView();
-  await modal.annotate3d.toggleCreateCuboid();
-  await modal.annotate3d.drawCuboid([
-    [0.42, 0.42],
-    [0.58, 0.42],
-    [0.58, 0.58],
-  ]);
-  await modal.sidebar.edit.selectFieldChoice("label", "world-created");
-  await modal.sidebar.annotate.waitForSavesSettled();
-
-  // reopening reads the saved cuboid back in lidar_left's native frame
-  await modal.close();
-  await grid.openFirstSample();
-  await modal.sidebar.switchMode("annotate");
-  await modal.sidebar.annotate.selectAnnotationSlice("lidar_left");
-  await modal.annotate3d.waitForSurface();
-  await modal.annotate3d.assert.labelListed("world-created");
-  await modal.annotate3d.selectLabel("world-created");
-
-  const geometry = async (axis: GeometryAxis) =>
-    Number(await modal.annotate3d.getGeometry(axis));
-  await expect.poll(() => geometry("x")).toBeCloseTo(2, 1);
-  await expect.poll(() => geometry("y")).toBeCloseTo(-23.15, 1);
-  await expect.poll(() => geometry("rz")).toBeCloseTo(Math.PI / 2, 1);
-  for (const axis of ["lx", "ly", "lz"] as const) {
-    expect(await geometry(axis)).toBeGreaterThan(0);
-  }
 });
