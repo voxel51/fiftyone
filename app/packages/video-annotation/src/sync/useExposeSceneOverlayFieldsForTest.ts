@@ -2,7 +2,12 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import type { useLighterSetupWithPixi } from "@fiftyone/lighter";
+import {
+  UNDEFINED_LIGHTER_SCENE_ID,
+  useLighterEventBus,
+  type LighterEventGroup,
+  type useLighterSetupWithPixi,
+} from "@fiftyone/lighter";
 import { useEffect } from "react";
 
 type Scene = ReturnType<typeof useLighterSetupWithPixi>["scene"];
@@ -31,16 +36,25 @@ declare global {
       type: string;
       /** Relative [x, y] vertices, for point-bearing overlays. */
       points?: [number, number][];
-      /**
-       * Whether the overlay currently holds the canvas selection. A spec that
-       * drives an edit gesture has to wait for this: selection is what makes a
-       * polyline's vertices grabbable, and a drag that lands before it is
-       * silently a no-op on empty canvas.
-       */
-      selected?: boolean;
     }>;
   }
 }
+
+/** Lighter events re-dispatched on `document`, where `EventUtils` can arm on them. */
+const FORWARDED_EVENTS: (keyof LighterEventGroup)[] = [
+  "lighter:overlay-click",
+  "lighter:overlay-removed",
+];
+
+// payloads can hold live overlays, which don't serialize to Playwright
+const primitiveFields = (payload: unknown): Record<string, unknown> =>
+  Object.fromEntries(
+    Object.entries((payload ?? {}) as Record<string, unknown>).filter(
+      ([, value]) =>
+        value === null ||
+        (typeof value !== "object" && typeof value !== "function"),
+    ),
+  );
 
 /**
  * Publish the scene's live overlay fields on `window` for e2e assertions. A
@@ -48,6 +62,22 @@ declare global {
  * lifecycle and clears it on scene change / unmount.
  */
 export const useExposeSceneOverlayFieldsForTest = (scene: Scene): void => {
+  const eventBus = useLighterEventBus(
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
+  );
+
+  useEffect(() => {
+    const offs = FORWARDED_EVENTS.map((event) =>
+      eventBus.on(event, (payload: unknown) => {
+        document.dispatchEvent(
+          new CustomEvent(event, { detail: primitiveFields(payload) }),
+        );
+      }),
+    );
+
+    return () => offs.forEach((off) => off());
+  }, [eventBus]);
+
   useEffect(() => {
     if (!scene) {
       return undefined;
@@ -58,17 +88,15 @@ export const useExposeSceneOverlayFieldsForTest = (scene: Scene): void => {
 
     window.__FO_PLAYWRIGHT_SCENE_OVERLAY_GEOMETRY = () =>
       scene.getAllOverlays().map((overlay) => {
-        const probed = overlay as unknown as {
+        const withPoints = overlay as unknown as {
           getRelativePoints?: () => [number, number][];
-          isSelected?: () => boolean;
         };
 
         return {
           id: overlay.id,
           field: overlay.field,
           type: overlay.getOverlayType?.() ?? "unknown",
-          points: probed.getRelativePoints?.(),
-          selected: probed.isSelected?.(),
+          points: withPoints.getRelativePoints?.(),
         };
       });
 

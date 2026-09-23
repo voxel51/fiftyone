@@ -35,11 +35,8 @@ export class UrlPom {
     return this.searchParams.get("view");
   }
 
-  async pageChange<T>(wrap: () => Promise<T>): Promise<T> {
-    const pageChange = await this.eventUtils.arm("page-change");
-    const result = await wrap();
-    await pageChange.received;
-    return result;
+  pageChange<T>(wrap: () => Promise<T>): Promise<T> {
+    return this.eventUtils.after("page-change", wrap);
   }
 
   async back() {

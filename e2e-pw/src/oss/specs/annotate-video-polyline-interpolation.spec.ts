@@ -128,15 +128,32 @@ const openAnnotate = async (
 const blur = (page: Page) =>
   page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
 
+// canvas reads are only valid once the scene has applied the new frame
+const step = (modal: ModalPom, move: () => Promise<void>) =>
+  modal.eventUtils.after("video-annotation-frame-applied", move);
+
+const ofOverlay =
+  (id: string) =>
+  (e: { detail?: unknown }): boolean =>
+    (e.detail as { id?: string } | undefined)?.id === id;
+
+// once received, the overlay is selected whatever its prior state
+const clickOverlay = (modal: ModalPom, id: string) =>
+  modal.eventUtils.after(
+    "lighter:overlay-click",
+    () => modal.sampleCanvas.click(BODY[0], BODY[1]),
+    ofOverlay(id),
+  );
+
 const stepForward = async (modal: ModalPom, n: number) => {
   for (let i = 0; i < n; i++) {
-    await modal.videoAnnotate.stepForward();
+    await step(modal, () => modal.videoAnnotate.stepForward());
   }
 };
 
 const stepBack = async (modal: ModalPom, n: number) => {
   for (let i = 0; i < n; i++) {
-    await modal.videoAnnotate.stepBack();
+    await step(modal, () => modal.videoAnnotate.stepBack());
   }
 };
 
@@ -224,14 +241,8 @@ const dragVertex = async (
   id: string,
   toContainer: (point: [number, number]) => [number, number],
 ) => {
-  // Select the overlay first, and WAIT for it: selection is asynchronous and
-  // it is what makes the vertices grabbable. Dragging before it lands hits
-  // empty canvas, moves nothing, and raises nothing — the geometry read still
-  // returns valid points, so the next assertion reports "the shape should have
-  // moved" and looks like a product bug. That was this spec's CI flake:
-  // `Received: 0`, the shape identical to the last bit.
-  await modal.sampleCanvas.click(BODY[0], BODY[1]);
-  await modal.videoAnnotate.waitForOverlaySelected(id);
+  // a vertex is only grabbable once its overlay is selected
+  await clickOverlay(modal, id);
 
   const live = await pointsOf(modal, id);
   const [vx, vy] = toContainer((live as [number, number][])[0]);
@@ -337,18 +348,15 @@ test.describe("polyline track deletion on video", () => {
     await modal.videoAnnotate.assert.objectTrackCount(2);
 
     // a body click selects the shape without sub-selecting a vertex, so
-    // Backspace reads as "delete the track", not "remove a vertex" — and the
-    // press has to wait for the selection, or it lands on nothing
-    await modal.sampleCanvas.click(BODY[0], BODY[1]);
-    await modal.videoAnnotate.waitForOverlaySelected(id);
-    await page.keyboard.press("Backspace");
+    // Backspace reads as "delete the track", not "remove a vertex"
+    await clickOverlay(modal, id);
 
-    await expect
-      .poll(
-        () => polylineIds(modal),
-        "the drawn track should leave the canvas on the first press",
-      )
-      .not.toContain(id);
+    // received only if the first press deleted the track
+    await modal.eventUtils.after(
+      "lighter:overlay-removed",
+      () => page.keyboard.press("Backspace"),
+      ofOverlay(id),
+    );
     await modal.videoAnnotate.assert.objectTrackCount(1);
     // the delete flushes before the test ends
     await modal.sidebar.annotate.waitForSavesSettled();
