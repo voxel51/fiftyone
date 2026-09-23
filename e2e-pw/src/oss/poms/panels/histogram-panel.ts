@@ -18,17 +18,17 @@ export class HistogramPom {
   }
 
   async selectField(field: string) {
-    const promise = await this.eventUtils.arm(`histogram-${field}`);
-    await this.selector.selectResult(field);
-    await promise.received;
+    await this.eventUtils.after(`histogram-${field}`, () =>
+      this.selector.selectResult(field),
+    );
   }
 
-  // arm BEFORE the action that reloads the histogram (mode switch, panel
-  // foreground); the app fires histograms-loaded on every completed draw.
-  // Pass a path to ignore sibling histograms' draws.
-  async armLoad(path?: string) {
-    return this.eventUtils.arm(
+  // run the action that reloads the histogram (mode switch, panel
+  // foreground); pass a path to ignore sibling histograms' draws
+  afterLoad<T>(action: () => Promise<T>, path?: string): Promise<T> {
+    return this.eventUtils.after(
       "histograms-loaded",
+      action,
       (e) => !path || (e.detail as { path?: string })?.path === path,
     );
   }

@@ -46,10 +46,10 @@ test.describe.serial("Display Options", () => {
     await panel.open("Histograms");
     await panel.bringPanelToForeground("Samples");
     await actionsRow.toggleDisplayOptions();
-    const histogramLoaded = await histogram.armLoad();
-    await actionsRow.displayActions.setSidebarStatisticsMode("group");
-    await panel.bringPanelToForeground("Histograms");
-    await histogramLoaded.received;
+    await histogram.afterLoad(async () => {
+      await actionsRow.displayActions.setSidebarStatisticsMode("group");
+      await panel.bringPanelToForeground("Histograms");
+    });
 
     await histogram.assert.isLoaded();
     await panel.bringPanelToForeground("Samples");

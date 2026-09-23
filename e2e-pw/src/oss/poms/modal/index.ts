@@ -90,8 +90,8 @@ export class ModalPom {
     return this.locator.getByTestId("action-display-options");
   }
 
-  armLookerAttached() {
-    return this.eventUtils.arm("looker-attached");
+  afterLookerAttached<T>(action: () => Promise<T>): Promise<T> {
+    return this.eventUtils.after("looker-attached", action);
   }
 
   getSampleNavigation(direction: "forward" | "backward") {

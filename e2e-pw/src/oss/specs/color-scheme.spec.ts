@@ -92,25 +92,24 @@ test.describe.serial("color scheme basic functionality with quickstart", () => {
     // turn on the sample tag bubble
     await sidebar.clickFieldCheckbox("tags");
     // mount eventListener
-    const gridRefreshedEventPromise = await eventUtils.arm("re-render-tag");
-    // open color modal and modify color in sample tags field and ground_truth
-    await gridActionsRow.toggleColorSettings();
+    await eventUtils.after("re-render-tag", async () => {
+      // open color modal and modify color in sample tags field and ground_truth
+      await gridActionsRow.toggleColorSettings();
 
-    await colorModal.selectActiveField("sample tags");
-    await colorModal.changeColorMode("value");
+      await colorModal.selectActiveField("sample tags");
+      await colorModal.changeColorMode("value");
 
-    await page
-      .getByTitle(`Use custom colors for specific field values`)
-      .first()
-      .click({ force: true });
-    await colorModal.addANewPair("validation", "#9ACD32", 0); // yellow green
-    await colorModal.addANewPair("validation", "#9ACD32", 0); // yellow green
-    await colorModal.addANewPair("validation", "#9ACD32", 0); // yellow green
+      await page
+        .getByTitle(`Use custom colors for specific field values`)
+        .first()
+        .click({ force: true });
+      await colorModal.addANewPair("validation", "#9ACD32", 0); // yellow green
+      await colorModal.addANewPair("validation", "#9ACD32", 0); // yellow green
+      await colorModal.addANewPair("validation", "#9ACD32", 0); // yellow green
 
-    await colorModal.closeColorModal();
+      await colorModal.closeColorModal();
+    });
     const tagBubble = page.getByTestId("tag-validation").first();
-
-    await gridRefreshedEventPromise.received;
 
     // verify validation tag has yellow green as background color
     expect(await tagBubble.getAttribute("style")).toContain(
@@ -119,12 +118,12 @@ test.describe.serial("color scheme basic functionality with quickstart", () => {
 
     // switch dataset to dummy_color_by_instance, and verify that color_by mode is "instance"
     // we're asserting that when dataset is switched, session color settings are reset to default from app config
-    const gridRefreshPromise = await grid.armGridRefresh();
-    await fiftyoneLoader.selectDatasetFromSelector(
-      page,
-      dummyDatasetColorByInstance,
-    );
-    await gridRefreshPromise.received;
+    await grid.run(async () => {
+      await fiftyoneLoader.selectDatasetFromSelector(
+        page,
+        dummyDatasetColorByInstance,
+      );
+    });
 
     // open color modal
     await gridActionsRow.toggleColorSettings();

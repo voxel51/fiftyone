@@ -86,9 +86,9 @@ test.describe.serial("groups video labels", () => {
     // }, testVideoPath2);
 
     // compare screenshot for another slice (v2)
-    const gridRefresPromise = await grid.armGridRefresh();
-    await grid.sliceSelector.selectSlice("v2");
-    await gridRefresPromise.received;
+    await grid.run(async () => {
+      await grid.sliceSelector.selectSlice("v2");
+    });
     // await v2SampleLoadedPromise;
 
     await expect(grid.getNthLooker(0)).toHaveScreenshot("slice-v2.png");
@@ -103,9 +103,9 @@ test.describe.serial("groups video labels", () => {
     // one selected: re-picking the slice already on screen refreshes nothing,
     // and the armed refresh would never arrive.
     if ((await grid.sliceSelector.activeSlice()) !== "v1") {
-      const gridRefresPromise = await grid.armGridRefresh();
-      await grid.sliceSelector.selectSlice("v1");
-      await gridRefresPromise.received;
+      await grid.run(async () => {
+        await grid.sliceSelector.selectSlice("v1");
+      });
     }
 
     await grid.openFirstSample();
@@ -137,17 +137,14 @@ test.describe.serial("groups video labels", () => {
 
     await checkVideo("v1");
 
-    const sampleLoadEventPromiseForv2 = await eventUtils.arm(
+    // change slice and repeat
+    await eventUtils.after(
       "canvas-loaded",
+      () => modal.group.selectNthItemFromCarousel(1),
       (e) =>
         (e.detail as { sampleFilepath?: string })?.sampleFilepath ===
         testVideoPath2,
     );
-
-    // change slice and repeat
-    await modal.group.selectNthItemFromCarousel(1);
-
-    await sampleLoadEventPromiseForv2.received;
 
     await checkVideo("v2");
   });

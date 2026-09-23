@@ -90,9 +90,9 @@ test.describe.serial("default video slice group", () => {
     await modal.assert.verifyCarouselLength(2);
     await modal.close();
 
-    const promise = await grid.armGridRefresh();
-    await grid.selectSlice("image");
-    await promise.received;
+    await grid.run(async () => {
+      await grid.selectSlice("image");
+    });
 
     await grid.assert.isTileCountEqualTo(2);
     await grid.openFirstSample();

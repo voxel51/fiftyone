@@ -148,7 +148,7 @@ export class GridPom {
    * arming BEFORE the action that refreshes the grid, then await the handle's
    * `received` after it.
    */
-  async armGridRefresh(): Promise<ArmedEvent> {
+  private async armGridRefresh(): Promise<ArmedEvent> {
     const unmount = await this.eventUtils.arm("grid-unmount");
     const mount = await this.eventUtils.arm("grid-mount");
     return new ArmedEvent(

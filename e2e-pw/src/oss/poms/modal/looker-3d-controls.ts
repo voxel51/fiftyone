@@ -45,11 +45,9 @@ export class Looker3DControlsPom {
       this.locator.getByTestId("looker3d-logs-action-bar"),
     ).toHaveText(SUCCESS_MSG);
 
-    const looker3d = this.modal.locator.getByTestId("looker3d");
-    const ready = await this.modal.eventUtils.arm("looker3d-scene-ready");
-    if ((await looker3d.getAttribute("data-scene-ready")) !== "true") {
-      await ready.received;
-    }
+    await this.modal.eventUtils.untilPresent(
+      '[data-cy="modal"] [data-cy="looker3d"][data-scene-ready="true"]',
+    );
   }
 
   /**
@@ -57,20 +55,16 @@ export class Looker3DControlsPom {
    * camera, so a following canvas click raycasts against the top view.
    */
   async setTopView() {
-    const settled = await this.modal.eventUtils.arm(
-      "looker3d-camera-look-at-settled",
+    await this.modal.eventUtils.after("looker3d-camera-look-at-settled", () =>
+      this.locator.getByTestId("looker-3d-set-top-view").click(),
     );
-    await this.locator.getByTestId("looker-3d-set-top-view").click();
-    await settled.received;
   }
 
   /** Move to the ego view; resolves once a frame has rendered the new camera. */
   async setEgoView() {
-    const settled = await this.modal.eventUtils.arm(
-      "looker3d-camera-look-at-settled",
+    await this.modal.eventUtils.after("looker3d-camera-look-at-settled", () =>
+      this.locator.getByTestId("looker-3d-set-ego-view").click(),
     );
-    await this.locator.getByTestId("looker-3d-set-ego-view").click();
-    await settled.received;
   }
 
   async toggleGridHelper() {

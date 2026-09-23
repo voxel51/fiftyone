@@ -60,19 +60,21 @@ test("grid remounts exactly once per spaces layout change", async ({
   };
 
   // split: a plain panel open places it side-by-side, splitting the layout
-  const split = await grid.armGridRefresh();
-  const splitAt = await now();
-  await panel.openInSplit("Histograms");
-  await split.received;
+  const splitAt = await grid.run(async () => {
+    const at = await now();
+    await panel.openInSplit("Histograms");
+    return at;
+  });
   await expect(panel.getContent("Histograms")).toBeVisible();
   await expect(grid.getNthTile(0)).toBeVisible();
   await assertCycles(1, { splitAt });
 
   // join: closing the split panel collapses the layout back to a single pane
-  const join = await grid.armGridRefresh();
-  const joinAt = await now();
-  await panel.closeTab("Histograms");
-  await join.received;
+  const joinAt = await grid.run(async () => {
+    const at = await now();
+    await panel.closeTab("Histograms");
+    return at;
+  });
   await expect(panel.getContent("Histograms")).toBeHidden();
   await expect(grid.getNthTile(0)).toBeVisible();
   await assertCycles(2, { splitAt, joinAt });

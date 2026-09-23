@@ -92,18 +92,18 @@ test.describe("MCAP surfaces", () => {
       );
       await modal.episode.expectNoViewerError();
 
-      const lookerAttached = await modal.armLookerAttached();
-      await modal.selectMediaField("thumbnail_path");
-      await lookerAttached.received;
+      await modal.afterLookerAttached(async () => {
+        await modal.selectMediaField("thumbnail_path");
+      });
       await modal.waitForSampleLoadDomAttribute();
       await expectDominantColor(
         modal.modalContainer.locator("canvas"),
         [255, 0, 255],
       );
 
-      const nextLookerAttached = await modal.armLookerAttached();
-      await modal.getSampleNavigation("forward").click();
-      await nextLookerAttached.received;
+      await modal.afterLookerAttached(async () => {
+        await modal.getSampleNavigation("forward").click();
+      });
       await modal.waitForSampleLoadDomAttribute();
       await expectDominantColor(
         modal.modalContainer.locator("canvas"),

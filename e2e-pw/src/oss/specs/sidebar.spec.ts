@@ -42,10 +42,10 @@ test.describe.serial("sidebar-filter-visibility", () => {
     // only show ground_truth (on by default), hide predictions
     await sidebar.clickFieldCheckbox("predictions");
 
-    const entryExpandPromise = await eventUtils.arm("animation-onRest");
-    // select bottle in ground_truth.detections.label
-    await sidebar.clickFieldDropdown("ground_truth");
-    await entryExpandPromise.received;
+    await eventUtils.after("animation-onRest", async () => {
+      // select bottle in ground_truth.detections.label
+      await sidebar.clickFieldDropdown("ground_truth");
+    });
     await sidebar.applyLabelFromList(
       ["bottle"],
       "select-detections-with-label",
@@ -87,10 +87,9 @@ test.describe.serial("sidebar-filter-visibility", () => {
     // only show ground_truth (on by default), hide predictions
     await sidebar.clickFieldCheckbox("predictions");
 
-    const entryExpandPromise = await eventUtils.arm("animation-onRest");
-
-    await sidebar.clickFieldDropdown("ground_truth");
-    await entryExpandPromise.received;
+    await eventUtils.after("animation-onRest", async () => {
+      await sidebar.clickFieldDropdown("ground_truth");
+    });
     await sidebar.applyLabelFromList(
       ["bottle"],
       "exclude-detections-with-label",
@@ -133,17 +132,16 @@ test.describe.serial("sidebar-filter-visibility", () => {
     // only show ground_truth (on by default), hide predictions
     await sidebar.clickFieldCheckbox("predictions");
 
-    const entryExpandPromise = await eventUtils.arm("animation-onRest");
+    await eventUtils.after("animation-onRest", async () => {
+      await sidebar.clickFieldDropdown("ground_truth");
+    });
 
-    await sidebar.clickFieldDropdown("ground_truth");
-    await entryExpandPromise.received;
+    await grid.run(async () => {
+      await sidebar.applyLabelFromList(["bottle"], "show-samples-with-label");
 
-    const gridRefreshPromise = await grid.armGridRefresh();
-    await sidebar.applyLabelFromList(["bottle"], "show-samples-with-label");
-
-    // verify the number of samples in the result
-    await grid.assert.isEntryCountTextEqualTo("1 of 5 samples");
-    await gridRefreshPromise.received;
+      // verify the number of samples in the result
+      await grid.assert.isEntryCountTextEqualTo("1 of 5 samples");
+    });
 
     await expect(grid.getForwardSection()).toHaveScreenshot("show-bottle.png", {
       animations: "allow",
@@ -177,10 +175,9 @@ test.describe.serial("sidebar-filter-visibility", () => {
     // only show ground_truth (on by default), hide predictions
     await sidebar.clickFieldCheckbox("predictions");
 
-    const entryExpandPromise = await eventUtils.arm("animation-onRest");
-
-    await sidebar.clickFieldDropdown("ground_truth");
-    await entryExpandPromise.received;
+    await eventUtils.after("animation-onRest", async () => {
+      await sidebar.clickFieldDropdown("ground_truth");
+    });
     await sidebar.applyLabelFromList(["bottle"], "omit-samples-with-label");
 
     // verify the number of samples in the result

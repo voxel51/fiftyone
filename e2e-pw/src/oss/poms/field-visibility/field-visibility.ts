@@ -190,9 +190,9 @@ export class FieldVisibilityPom {
   }
 
   async submitFieldVisibilityChanges() {
-    const gridRefresh = await this.gridPom.armGridRefresh();
-    await this.applyBtn.click();
-    await gridRefresh.received;
+    await this.gridPom.run(async () => {
+      await this.applyBtn.click();
+    });
   }
 
   async clearFieldVisibilityChanges() {

@@ -149,12 +149,12 @@ test.describe.serial("schema manager", () => {
     await jsonEditor.assert.hasJSON(DEFAULT_LABEL_SCHEMA);
 
     // Unsuccessful validation
-    const invalid = await jsonEditor.armInvalidJSON();
-    await jsonEditor.setJSON({
-      component: "wrong",
-      type: "classification",
+    await jsonEditor.afterInvalidJSON(async () => {
+      await jsonEditor.setJSON({
+        component: "wrong",
+        type: "classification",
+      });
     });
-    await invalid.received;
     await jsonEditor.assert.hasErrors([
       "invalid component 'wrong' for field 'classification'",
     ]);
@@ -164,12 +164,12 @@ test.describe.serial("schema manager", () => {
     await jsonEditor.assert.hasJSON(DEFAULT_LABEL_SCHEMA);
 
     // Successful validation
-    const valid = await jsonEditor.armValidJSON();
-    await jsonEditor.setJSON({
-      component: "text",
-      type: "classification",
+    await jsonEditor.afterValidJSON(async () => {
+      await jsonEditor.setJSON({
+        component: "text",
+        type: "classification",
+      });
     });
-    await valid.received;
 
     // Scan
     await jsonEditor.scan();
