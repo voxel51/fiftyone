@@ -97,14 +97,15 @@ describe("fetchTemporalTagResults", () => {
     expect(count).toBe(3);
   });
 
-  it("hits the dataset tags counts endpoint (by sample) with an encoded id", async () => {
+  it("counts intervals, not the samples carrying them", async () => {
     fetchMock.mockResolvedValue({ response: { counts: {} } });
 
     await fetchTemporalTagResults("my dataset/1");
 
+    // No `by_sample`: every other sidebar tag count reports occurrences.
     expect(fetchMock).toHaveBeenCalledWith({
       method: "GET",
-      path: "/dataset/my%20dataset%2F1/tags/counts?by_sample=true",
+      path: "/dataset/my%20dataset%2F1/tags/counts",
     });
   });
 

@@ -929,12 +929,33 @@ def _match_temporal_tags(
     )
     sample_ids = {str(tag.sample_id) for tag in tags}
 
+    if dataset.media_type == fom.GROUP:
+        # A tag lives on one slice's sample, but the grid shows whichever slice
+        # is active, so selecting sample ids would empty the grid on every
+        # other slice. Match the groups those samples belong to instead.
+        group_ids = _temporal_tag_group_ids(dataset, sample_ids)
+
+        if exclude:
+            return view.exclude_groups(group_ids) if group_ids else view
+
+        return view.select_groups(group_ids)
+
     if exclude:
         # Excluding with no matches leaves the view untouched.
         return view.exclude(sample_ids) if sample_ids else view
 
     # Matching with no matches yields an empty view.
     return view.select(sample_ids)
+
+
+def _temporal_tag_group_ids(dataset, sample_ids) -> list:
+    """The ids of the groups owning `sample_ids`, looked up across every slice."""
+    if not sample_ids:
+        return []
+
+    flat = dataset.select_group_slices(_allow_mixed=True)
+
+    return flat.select(sample_ids).values(dataset.group_field + ".id")
 
 
 def _match_label_tags(view: foc.SampleCollection, label_tags):

@@ -7368,6 +7368,21 @@ class SampleCollection(object):
             for tag in self.temporal_tags.values(filter=tag_filter)
         }
 
+        if self.media_type == fom.GROUP:
+            # A tag lives on one slice's sample, so selecting sample ids would
+            # empty a view of any other slice. Match the owning groups instead.
+            group_ids = []
+            if sample_ids:
+                flat = self.select_group_slices(_allow_mixed=True)
+                group_ids = flat.select(sample_ids).values(
+                    self.group_field + ".id"
+                )
+
+            if bool:
+                return self.select_groups(group_ids)
+
+            return self.exclude_groups(group_ids) if group_ids else self.view()
+
         if bool:
             return self.select(sample_ids)
 

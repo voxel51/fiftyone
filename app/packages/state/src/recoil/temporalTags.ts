@@ -47,12 +47,12 @@ export const temporalTagResults = selector<TemporalTagResults>({
 export const fetchTemporalTagResults = async (
   datasetId: string,
 ): Promise<TemporalTagResults> => {
-  // `bySample` counts distinct samples per tag (a sample with multiple
-  // intervals of the same tag counts once), matching what selecting the value
-  // filters the grid to.
+  // Counts intervals, the way every other sidebar tag count counts items —
+  // `count_label_tags` reports occurrences, not the samples they sit on. A
+  // count is therefore not a promise about how many rows selecting the value
+  // leaves in the grid.
   const counts = await createTemporalTagsClient().countDatasetTemporalTags({
     datasetId,
-    bySample: true,
   });
 
   const results = Object.entries(counts ?? {}).map(([value, count]) => ({

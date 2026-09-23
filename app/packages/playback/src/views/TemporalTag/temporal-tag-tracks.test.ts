@@ -62,14 +62,55 @@ describe("buildTemporalTagTracks", () => {
   it("orders rows by their newest interval so a fresh tag lands on top", () => {
     const tracks = buildTemporalTagTracks(
       [
-        interval({ id: "a", tag: "old", createdAt: "2026-01-01T00:00:00Z" }),
-        interval({ id: "b", tag: "new", createdAt: "2026-06-01T00:00:00Z" }),
-        interval({ id: "c", tag: "old", createdAt: "2026-03-01T00:00:00Z" }),
+        interval({
+          id: "a",
+          tag: "aardvark",
+          createdAt: "2026-01-01T00:00:00Z",
+        }),
+        interval({ id: "b", tag: "zebra", createdAt: "2026-06-01T00:00:00Z" }),
+        interval({
+          id: "c",
+          tag: "aardvark",
+          createdAt: "2026-03-01T00:00:00Z",
+        }),
       ],
       colorForTag,
     );
 
-    expect(tracks.map((track) => track.label)).toEqual(["new", "old"]);
+    expect(tracks.map((track) => track.label)).toEqual(["zebra", "aardvark"]);
+  });
+
+  it("ranks a row by its newest interval, not its oldest or its first", () => {
+    const tracks = buildTemporalTagTracks(
+      [
+        interval({ id: "a", tag: "zebra", createdAt: "2026-06-01T00:00:00Z" }),
+        interval({
+          id: "b",
+          tag: "aardvark",
+          createdAt: "2026-01-01T00:00:00Z",
+        }),
+        interval({
+          id: "c",
+          tag: "aardvark",
+          createdAt: "2026-09-01T00:00:00Z",
+        }),
+      ],
+      colorForTag,
+    );
+
+    expect(tracks.map((track) => track.label)).toEqual(["aardvark", "zebra"]);
+  });
+
+  it("sorts a row whose intervals carry no creation date last", () => {
+    const tracks = buildTemporalTagTracks(
+      [
+        interval({ id: "a", tag: "aardvark" }),
+        interval({ id: "b", tag: "zebra", createdAt: "2026-01-01T00:00:00Z" }),
+      ],
+      colorForTag,
+    );
+
+    expect(tracks.map((track) => track.label)).toEqual(["zebra", "aardvark"]);
   });
 });
 

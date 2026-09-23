@@ -22,10 +22,16 @@ const mockResult = vi.hoisted(
   }),
 );
 const filterValues = vi.hoisted(() => ({ current: [] as string[] }));
+const requestedScope = vi.hoisted(
+  () => ({ current: undefined }) as { current?: Record<string, unknown> },
+);
 
 vi.mock("@fiftyone/state", () => ({
   useActiveTemporalTagFilterValues: () => filterValues.current,
-  useSampleTemporalTags: () => mockResult,
+  useSampleTemporalTags: (options: Record<string, unknown>) => {
+    requestedScope.current = options;
+    return mockResult;
+  },
   useSyncTemporalTagResults: () => undefined,
   useTemporalTagColor: () => () => "#123456",
   useTemporalTagValues: () => ["review"],
@@ -33,7 +39,6 @@ vi.mock("@fiftyone/state", () => ({
 
 vi.mock("../state/accessors", () => ({
   useDatasetId: () => "dataset-id",
-  useModalSampleId: () => "sample-id",
 }));
 
 function makeTag(overrides: Partial<TemporalTag> = {}): TemporalTag {
@@ -52,11 +57,32 @@ afterEach(() => {
   vi.clearAllMocks();
   mockResult.temporalTags = [];
   filterValues.current = [];
+  requestedScope.current = undefined;
 });
 
 describe("useVideoTemporalTags", () => {
+  it("scopes the tags to the sample on screen, not the one the grid opened", () => {
+    // On a grouped dataset these differ: the modal can be switched to the
+    // video slice while the grid stays on another.
+    renderHook(() => useVideoTemporalTags("video-slice-sample"));
+
+    expect(requestedScope.current).toEqual({
+      datasetId: "dataset-id",
+      sampleId: "video-slice-sample",
+    });
+  });
+
+  it("stays unscoped until a sample is on screen", () => {
+    renderHook(() => useVideoTemporalTags(undefined));
+
+    expect(requestedScope.current).toEqual({
+      datasetId: "dataset-id",
+      sampleId: undefined,
+    });
+  });
+
   it("writes a created tag in the nanoseconds the routes store", async () => {
-    const { result } = renderHook(() => useVideoTemporalTags());
+    const { result } = renderHook(() => useVideoTemporalTags("sample-id"));
 
     await result.current.onTagCreate({ start: 1.5, end: 2.25, tag: "review" });
 
@@ -66,7 +92,7 @@ describe("useVideoTemporalTags", () => {
   });
 
   it("writes an edited tag in the same units", async () => {
-    const { result } = renderHook(() => useVideoTemporalTags());
+    const { result } = renderHook(() => useVideoTemporalTags("sample-id"));
 
     await result.current.onTagUpdate({
       id: "tag-id-1",
@@ -83,7 +109,7 @@ describe("useVideoTemporalTags", () => {
   });
 
   it("deletes the tag the right-clicked event carries", async () => {
-    const { result } = renderHook(() => useVideoTemporalTags());
+    const { result } = renderHook(() => useVideoTemporalTags("sample-id"));
     const [deleteItem] = result.current.tagEventMenuItems;
 
     await deleteItem.onSelect(
@@ -97,7 +123,7 @@ describe("useVideoTemporalTags", () => {
   it("pins a row for each value the grid is filtering for", () => {
     filterValues.current = ["review", "blurry"];
 
-    const { result } = renderHook(() => useVideoTemporalTags());
+    const { result } = renderHook(() => useVideoTemporalTags("sample-id"));
 
     expect(result.current.pinnedTrackIds).toEqual([
       temporalTagTrackId("review"),
@@ -112,7 +138,7 @@ describe("useVideoTemporalTags", () => {
       makeTag({ id: "c", tag: "review" }),
     ];
 
-    const { result } = renderHook(() => useVideoTemporalTags());
+    const { result } = renderHook(() => useVideoTemporalTags("sample-id"));
 
     expect(result.current.tracks).toHaveLength(2);
     expect(

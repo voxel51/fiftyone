@@ -21,7 +21,7 @@ import {
   useTemporalTagValues,
 } from "@fiftyone/state";
 import { useCallback, useMemo } from "react";
-import { useDatasetId, useModalSampleId } from "../state/accessors";
+import { useDatasetId } from "../state/accessors";
 
 const NO_IDS: string[] = [];
 
@@ -45,17 +45,21 @@ export interface VideoTemporalTags {
  * Temporal tags for the video sample open in the modal, shaped for
  * `TemporalTagTimeline`.
  *
- * The tag routes are sample-scoped, so this covers a video slice of a grouped
- * dataset as directly as a plain video sample: the modal's sample id is the
- * slice's own, and the tags follow it.
+ * The tag routes are sample-scoped, so the caller passes the id of the sample
+ * actually on screen rather than `modalSampleId`. The two differ on a grouped
+ * dataset: `modalSampleId` is whatever slice the grid was on when the modal
+ * opened, and switching the modal to another slice does not move it, so the
+ * video slice's tags would otherwise be written against the grid slice's
+ * sample.
  *
  * Timeline time is seconds from the start of the video, which is what the
  * `DURATION_NS` index type the routes default to means — no rebasing onto a
  * recording clock, as the multimodal surface has to do.
  */
-export function useVideoTemporalTags(): VideoTemporalTags {
+export function useVideoTemporalTags(
+  sampleId: string | undefined,
+): VideoTemporalTags {
   const datasetId = useDatasetId();
-  const sampleId = useModalSampleId();
   const colorForTag = useTemporalTagColor();
 
   const {

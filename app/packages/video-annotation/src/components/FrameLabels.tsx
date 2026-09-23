@@ -739,7 +739,7 @@ export const FrameLabelsTracks: React.FC<{
     tagEventMenuItems,
     onTagCreate,
     onTagUpdate,
-  } = useVideoTemporalTags();
+  } = useVideoTemporalTags(sample?.id);
 
   // Object tracks (with their sub-tracks interleaved), then TD tracks, then
   // the sample's temporal tags.

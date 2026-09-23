@@ -96,6 +96,145 @@ class TemporalTagGridFilterTests(unittest.TestCase):
         self.assertEqual(set(view.values("id")), {ids[0]})
 
 
+class GroupedTemporalTagGridFilterTests(unittest.TestCase):
+    """A tag written on one slice's sample has to filter every slice.
+
+    The grid shows whichever slice is active, so matching the tagged sample
+    ids alone would empty the grid on every slice but the tagged one.
+    """
+
+    @drop_tags
+    @drop_datasets
+    def test_match_selects_the_group_from_any_slice(self):
+        dataset, groups = _make_tagged_group_dataset()
+
+        for slice_name in ("image", "video"):
+            with self.subTest(slice=slice_name):
+                dataset.group_slice = slice_name
+                view = get_extended_view(
+                    dataset.view(),
+                    filters={_TEMPORAL_TAGS: {"values": ["review"]}},
+                )
+
+                self.assertEqual(view.values("group.id"), [groups[0]])
+
+    @drop_tags
+    @drop_datasets
+    def test_exclude_removes_the_group_from_any_slice(self):
+        dataset, groups = _make_tagged_group_dataset()
+
+        for slice_name in ("image", "video"):
+            with self.subTest(slice=slice_name):
+                dataset.group_slice = slice_name
+                view = get_extended_view(
+                    dataset.view(),
+                    filters={
+                        _TEMPORAL_TAGS: {
+                            "values": ["review"],
+                            "exclude": True,
+                        }
+                    },
+                )
+
+                self.assertEqual(view.values("group.id"), [groups[1]])
+
+    @drop_tags
+    @drop_datasets
+    def test_match_with_no_hits_is_empty_on_every_slice(self):
+        dataset, _ = _make_tagged_group_dataset()
+
+        for slice_name in ("image", "video"):
+            with self.subTest(slice=slice_name):
+                dataset.group_slice = slice_name
+                view = get_extended_view(
+                    dataset.view(),
+                    filters={_TEMPORAL_TAGS: {"values": ["nonexistent"]}},
+                )
+
+                self.assertEqual(len(view), 0)
+
+    @drop_tags
+    @drop_datasets
+    def test_exclude_with_no_hits_keeps_every_group(self):
+        dataset, groups = _make_tagged_group_dataset()
+
+        for slice_name in ("image", "video"):
+            with self.subTest(slice=slice_name):
+                dataset.group_slice = slice_name
+                view = get_extended_view(
+                    dataset.view(),
+                    filters={
+                        _TEMPORAL_TAGS: {
+                            "values": ["nonexistent"],
+                            "exclude": True,
+                        }
+                    },
+                )
+
+                self.assertEqual(set(view.values("group.id")), set(groups))
+
+    @drop_tags
+    @drop_datasets
+    def test_match_temporal_tags_stage_matches_groups(self):
+        dataset, groups = _make_tagged_group_dataset()
+
+        for slice_name in ("image", "video"):
+            with self.subTest(slice=slice_name):
+                dataset.group_slice = slice_name
+
+                self.assertEqual(
+                    dataset.match_temporal_tags(tags=["review"]).values(
+                        "group.id"
+                    ),
+                    [groups[0]],
+                )
+                self.assertEqual(
+                    dataset.match_temporal_tags(
+                        tags=["review"], bool=False
+                    ).values("group.id"),
+                    [groups[1]],
+                )
+
+
+def _make_tagged_group_dataset():
+    """Two groups of an image and a video slice; only the first group's video
+    sample carries the "review" tag."""
+    dataset = fo.Dataset()
+    dataset.add_group_field("group", default="image")
+
+    samples, groups = [], []
+    for idx in range(2):
+        group = fo.Group()
+        groups.append(group.id)
+        samples.append(
+            fo.Sample(
+                filepath="/tmp/temporal-tag-group-%d.jpg" % idx,
+                group=group.element("image"),
+            )
+        )
+        samples.append(
+            fo.Sample(
+                filepath="/tmp/temporal-tag-group-%d.mp4" % idx,
+                group=group.element("video"),
+            )
+        )
+
+    dataset.add_samples(samples)
+
+    # The tag goes on the video slice of the first group, which is not the
+    # default slice the grid opens on.
+    fota.add_temporal_tags(
+        dataset,
+        [
+            fota.TemporalTag(
+                str(samples[1].id), 0, 1, "review", kind=fota.TagKind.TEMPORAL
+            )
+        ],
+    )
+
+    return dataset, groups
+
+
 def _make_tagged_dataset():
     dataset = fo.Dataset()
     samples = [
