@@ -954,6 +954,9 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
       {(frame && playbackFrame) || destinationPoster ? (
         <div
           className={styles.imageStack}
+          // the frame asked for and the frame last painted; equal once shown
+          data-episode-image-committed={committedImage?.contentTimeNs?.toString()}
+          data-episode-image-requested={requestedImageContentTimeNs?.toString()}
           {...hoverProps}
           onPointerCancel={imagePanZoom.onPointerCancel}
           onPointerDown={imagePanZoom.onPointerDown}

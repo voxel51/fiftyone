@@ -19,6 +19,7 @@ import {
 } from "../map/tile/tile-state";
 import { sanitizeTimelineSamplingRateHz } from "../playback/timeline-sampling";
 import { TILE_TYPE } from "../tiles/tile-types";
+import { isE2E } from "@fiftyone/utilities";
 
 /**
  * Persistence for the episode modal's chrome: sidebar visibility, sidebar
@@ -667,11 +668,20 @@ export function writeModalLayout(
       ...current,
       ...patch,
     }));
-    return;
+  } else {
+    modalLayoutStore.updateFallback((current) =>
+      stripDatasetScopedLayoutFields({ ...current, ...patch }),
+    );
   }
-  modalLayoutStore.updateFallback((current) =>
-    stripDatasetScopedLayoutFields({ ...current, ...patch }),
-  );
+
+  // only for browser automation (e2e), which waits on a specific field's save
+  if (isE2E()) {
+    document.dispatchEvent(
+      new CustomEvent("multimodal-layout-saved", {
+        detail: { fields: Object.keys(patch) },
+      }),
+    );
+  }
 }
 
 /** Reads durable 3D conventions for a media field or standalone source. */

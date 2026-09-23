@@ -174,32 +174,18 @@ export class SampleCanvasPom {
    *
    * @param x The x coordinate between [0, 1]
    * @param y The y coordinate between [0, 1]
-   * @param cursor An optional cursor value to expect after moving. When
-   *   provided, the move is retried until the cursor matches. This is
-   *   necessary because the cursor is event-driven — it only updates when a
-   *   mouse event fires — so the underlying state (e.g. detection mode) may
-   *   not have settled yet on the first move attempt.
+   * @param cursor An optional cursor the canvas must show after the move
    */
   async move(x: number, y: number, cursor?: string) {
     const xy = await this.#toScreenCoordinates(x, y);
     this.#mouseX = xy.x;
     this.#mouseY = xy.y;
 
+    await this.page.mouse.move(xy.x, xy.y);
     if (cursor) {
-      // The cursor flag only updates on mouse events, so it can hold a stale
-      // value from a previous hover (e.g. a just-clicked sidebar button).
-      // Reset it so the gate below is only satisfied by a fresh hover-driven
-      // update at the target position — otherwise the click can fire before
-      // the canvas has rendered the element the test intends to hit.
-      await this.page.evaluate(() => {
-        window.__FO_PLAYWRIGHT_CURRENT_CURSOR = "";
-      });
-      await expect(async () => {
-        await this.page.mouse.move(xy.x, xy.y);
-        await this.assert.hasCursor(cursor);
-      }).toPass();
-    } else {
-      await this.page.mouse.move(xy.x, xy.y);
+      // Hover cursors are set by this move's pointer event; a mode's cursor is
+      // stamped on the canvas when the mode installs, even after the move.
+      await expect(this.lighterCanvas).toHaveCSS("cursor", cursor);
     }
   }
 

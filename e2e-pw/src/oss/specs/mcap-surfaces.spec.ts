@@ -11,7 +11,7 @@ import {
   tinyA,
   tinyB,
 } from "src/oss/fixtures/mcap";
-import { getLocatorScreenshotDifference } from "src/oss/utils/screenshot";
+import { EventUtils } from "src/shared/event-utils";
 
 const SOURCE_FACTS_DATABASE_NAME = "fiftyone-multimodal-source-facts";
 
@@ -45,18 +45,19 @@ test.describe("MCAP surfaces", () => {
     modal,
     page,
   }) => {
-    await openMcapModal(grid, modal, sampleIndex.episodeA);
-    await modal.episode.waitForReady(tinyA.fileName);
-    await expect
-      .poll(() => sourceFactsEntryCount(page), { timeout: 10_000 })
-      .toBeGreaterThan(0);
+    // opening the episode persists its source facts
+    await modal.eventUtils.after("multimodal-source-facts-saved", async () => {
+      await openMcapModal(grid, modal, sampleIndex.episodeA);
+      await modal.episode.waitForReady(tinyA.fileName);
+    });
+    expect(await sourceFactsEntryCount(page)).toBeGreaterThan(0);
 
     await modal.close();
     await page.evaluate(async () => {
       await Promise.all((await caches.keys()).map((key) => caches.delete(key)));
     });
     await page.reload();
-    await expect(grid.locator).toBeVisible({ timeout: 30_000 });
+    await grid.locator.waitFor();
 
     const sourceUrl = new RegExp(tinyA.fileName.replace(/\./g, "\\."));
     await page.route(sourceUrl, (route) => route.abort("failed"));
@@ -174,21 +175,16 @@ test.describe("MCAP surfaces", () => {
       await expect(canvas).toHaveAttribute("data-graphics-backend", "webgl2");
 
       const pointPanel = pointTile.locator("[data-point-cloud-rendered-count]");
+      // each frame's points are drawn once the panel's render stats report
+      // them, so every screenshot shows that frame's cloud
       await expectPointCloudSpread(pointPanel, 4, 1);
-      const firstFramePixels = await canvas.screenshot();
+      await expect(canvas).toHaveScreenshot("point-frame-1.png");
       await modal.episode.stepForward();
       await expectPointCloudSpread(pointPanel, 4, 2);
-      await expectPixelDifference(canvas, firstFramePixels, {
-        minimumChangedPixels: 4,
-        minimumSpan: 16,
-      });
-      const secondFramePixels = await canvas.screenshot();
+      await expect(canvas).toHaveScreenshot("point-frame-2.png");
       await modal.episode.stepForward();
       await expectPointCloudSpread(pointPanel, 5, 3);
-      await expectPixelDifference(canvas, secondFramePixels, {
-        minimumChangedPixels: 4,
-        minimumSpan: 16,
-      });
+      await expect(canvas).toHaveScreenshot("point-frame-3.png");
 
       await modal.close();
       await openMcapModal(grid, modal, sampleIndex.sidebarStart);
@@ -205,16 +201,13 @@ test.describe("MCAP surfaces", () => {
         "data-graphics-backend",
         "webgl2",
       );
-      const projectionOff = await imageCanvas.screenshot();
+      await expect(imageCanvas).toHaveScreenshot("projection-off.png");
       await modal.episode.setSidebarToggle(
         "camera/front",
         "Toggle pointcloud projections",
         true,
       );
-      await expectPixelDifference(imageCanvas, projectionOff, {
-        minimumChangedPixels: 4,
-        minimumSpan: 12,
-      });
+      await expect(imageCanvas).toHaveScreenshot("projection-on.png");
 
       await modal.episode.scope
         .getByRole("tab", { name: "Scene", exact: true })
@@ -283,63 +276,22 @@ async function expectPointCloudSpread(
   minimumRenderedCount: number,
   minimumSpreadAxes: number,
 ): Promise<void> {
-  await expect(panel).toBeVisible();
-  await expect
-    .poll(
-      async () => {
-        const count = Number(
-          await panel.getAttribute("data-point-cloud-rendered-count"),
-        );
-        return Number.isFinite(count) ? count : 0;
-      },
-      { timeout: 20_000 },
-    )
-    .toBeGreaterThanOrEqual(minimumRenderedCount);
-  await expect
-    .poll(
-      async () => {
-        const bounds =
-          (await panel.getAttribute("data-point-cloud-bounds-size")) ?? "";
-        return bounds
-          .split(",")
-          .map(Number)
-          .filter((value) => Number.isFinite(value) && value > 0.1).length;
-      },
-      { timeout: 20_000 },
-    )
-    .toBeGreaterThanOrEqual(minimumSpreadAxes);
-}
-
-async function expectPixelDifference(
-  locator: Locator,
-  baseline: Buffer,
-  {
-    minimumChangedPixels,
-    minimumSpan,
-  }: {
-    readonly minimumChangedPixels: number;
-    readonly minimumSpan: number;
-  },
-): Promise<void> {
-  await expect
-    .poll(
-      async () => {
-        const difference = await getLocatorScreenshotDifference(
-          locator,
-          baseline,
-        );
-        return {
-          changed:
-            difference !== null &&
-            difference.changedPixels >= minimumChangedPixels,
-          spanned:
-            difference !== null &&
-            Math.max(difference.width, difference.height) >= minimumSpan,
-        };
-      },
-      { timeout: 20_000 },
-    )
-    .toEqual({ changed: true, spanned: true });
+  await new EventUtils(panel.page()).untilDom(
+    panel,
+    (element, [count, axes]) => {
+      const rendered = Number(
+        element.getAttribute("data-point-cloud-rendered-count"),
+      );
+      const spread = (
+        element.getAttribute("data-point-cloud-bounds-size") ?? ""
+      )
+        .split(",")
+        .map(Number)
+        .filter((value) => Number.isFinite(value) && value > 0.1).length;
+      return rendered >= count && spread >= axes;
+    },
+    [minimumRenderedCount, minimumSpreadAxes] as const,
+  );
 }
 
 async function expectStatsRow(

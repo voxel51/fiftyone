@@ -1,7 +1,4 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
-import { Duration } from "src/oss/utils";
-
-const READY_TIMEOUT = Duration.Seconds(30);
 
 /** Shared user-facing episode interactions for modal and Explorer MCAP hosts. */
 export class EpisodePom {
@@ -52,16 +49,12 @@ export class EpisodePom {
   }
 
   async waitForReady(fileName: string): Promise<void> {
-    await expect(this.shell).toBeVisible({ timeout: READY_TIMEOUT });
-    await expect(this.scope.getByText(fileName, { exact: true })).toBeVisible({
-      timeout: READY_TIMEOUT,
-    });
+    await this.shell.waitFor();
+    await this.scope.getByText(fileName, { exact: true }).waitFor();
     // the attribute is present only while a source swap is in flight
-    await expect(this.shell).not.toHaveAttribute(
-      "data-episode-source-transitioning",
-      /.*/,
-      { timeout: READY_TIMEOUT },
-    );
+    await this.shell
+      .and(this.page.locator(`:not([data-episode-source-transitioning])`))
+      .waitFor();
     await expect(
       byDataTestId(this.scope, "episode-preparing-scaffold"),
     ).toBeHidden();
@@ -72,10 +65,8 @@ export class EpisodePom {
     fileName: string,
     tileTitles: readonly string[],
   ): Promise<void> {
-    await expect(this.shell).toBeVisible({ timeout: READY_TIMEOUT });
-    await expect(this.scope.getByText(fileName, { exact: true })).toBeVisible({
-      timeout: READY_TIMEOUT,
-    });
+    await this.shell.waitFor();
+    await this.scope.getByText(fileName, { exact: true }).waitFor();
     await this.expectTileTitles(tileTitles);
     await expect(
       byDataTestId(this.scope, "episode-preparing-scaffold"),
@@ -100,18 +91,20 @@ export class EpisodePom {
     const previousPose = await this.readCameraPoseInputs(inputs);
     const previousRaw: Record<string, string> = {};
     for (const name of Object.keys(previousPose)) {
-      previousRaw[name] = await inputs
-        .getByRole("spinbutton", { name })
-        .inputValue();
+      // the committed value, as the input reflects it in aria-valuenow
+      previousRaw[name] =
+        (await inputs
+          .getByRole("spinbutton", { name })
+          .getAttribute("aria-valuenow")) ?? "";
     }
     await this.blurActiveElement();
     await this.page.keyboard.press("e");
     // the ego view moves the camera, so every pose input leaves its old value
     for (const [name, raw] of Object.entries(previousRaw)) {
-      await expect(inputs.getByRole("spinbutton", { name })).not.toHaveValue(
-        raw,
-        { timeout: READY_TIMEOUT },
-      );
+      await inputs
+        .getByRole("spinbutton", { name })
+        .and(this.page.locator(`:not([aria-valuenow="${raw}"])`))
+        .waitFor();
     }
     return this.readCameraPoseInputs(inputs);
   }
@@ -124,7 +117,7 @@ export class EpisodePom {
     for (const [name, value] of Object.entries(expected)) {
       const input = inputs.getByRole("spinbutton", { name });
       // populated first, then compared once at 6-digit precision
-      await expect(input).not.toHaveValue("", { timeout: READY_TIMEOUT });
+      await input.and(this.page.locator("[aria-valuenow]")).waitFor();
       expect(Number.parseFloat(await input.inputValue())).toBeCloseTo(value, 6);
     }
   }
@@ -139,7 +132,7 @@ export class EpisodePom {
       name: accessibleName,
       exact: true,
     });
-    await expect(toggle).toBeVisible({ timeout: READY_TIMEOUT });
+    await toggle.waitFor();
     if ((await toggle.isChecked()) !== checked) await toggle.click();
     await this.expectSidebarToggle(tileTitle, accessibleName, checked);
   }
@@ -154,8 +147,10 @@ export class EpisodePom {
       name: accessibleName,
       exact: true,
     });
-    if (checked) await expect(toggle).toBeChecked({ timeout: READY_TIMEOUT });
-    else await expect(toggle).not.toBeChecked({ timeout: READY_TIMEOUT });
+    if (checked)
+      await toggle.and(this.page.locator('[aria-checked="true"]')).waitFor();
+    else
+      await toggle.and(this.page.locator('[aria-checked="false"]')).waitFor();
   }
 
   async setSidebarNumber(
@@ -180,12 +175,10 @@ export class EpisodePom {
     value: number,
   ): Promise<void> {
     await this.openTileSettings(tileTitle);
-    await expect(
-      this.scope.getByRole("spinbutton", {
-        name: accessibleName,
-        exact: true,
-      }),
-    ).toHaveValue(String(value), { timeout: READY_TIMEOUT });
+    await this.scope
+      .getByRole("spinbutton", { name: accessibleName, exact: true })
+      .and(this.page.locator(`[aria-valuenow="${value}"]`))
+      .waitFor();
   }
 
   private async readCameraPoseInputs(
@@ -216,7 +209,7 @@ export class EpisodePom {
       name: tileTitle,
       exact: true,
     });
-    await expect(panelTab).toBeVisible({ timeout: READY_TIMEOUT });
+    await panelTab.waitFor();
     await panelTab.click();
   }
 
@@ -245,7 +238,7 @@ export class EpisodePom {
       .getByRole("button", { name: "Layout", exact: true })
       .click();
     await this.page.locator(`[data-testid="episode-add-tile-${type}"]`).click();
-    await expect(this.tileTitle(title)).toBeVisible({ timeout: READY_TIMEOUT });
+    await this.tileTitle(title).waitFor();
   }
 
   async selectMessageSource(
@@ -257,13 +250,11 @@ export class EpisodePom {
       name: nextTitle,
       exact: true,
     });
-    await expect(source).toBeVisible({ timeout: READY_TIMEOUT });
+    await source.waitFor();
     await source.check();
     this.inspectedStream = nextTitle;
-    await expect(this.tileTitle(nextTitle).first()).toBeVisible({
-      timeout: READY_TIMEOUT,
-    });
-    await expect(this.rawTree).toBeVisible({ timeout: READY_TIMEOUT });
+    await this.tileTitle(nextTitle).first().waitFor();
+    await this.rawTree.waitFor();
   }
 
   async closeTile(title: string): Promise<void> {
@@ -295,19 +286,17 @@ export class EpisodePom {
       .first()
       .getByRole("button", { name: "Exit fullscreen", exact: true })
       .click();
-    await expect(
-      this.tile(title)
-        .first()
-        .getByRole("button", { name: "Fullscreen", exact: true }),
-    ).toBeVisible({ timeout: READY_TIMEOUT });
+    await this.tile(title)
+      .first()
+      .getByRole("button", { name: "Fullscreen", exact: true })
+      .waitFor();
   }
 
   async expectTileFullscreen(title: string): Promise<void> {
-    await expect(
-      this.tile(title)
-        .first()
-        .getByRole("button", { name: "Exit fullscreen", exact: true }),
-    ).toBeVisible({ timeout: READY_TIMEOUT });
+    await this.tile(title)
+      .first()
+      .getByRole("button", { name: "Exit fullscreen", exact: true })
+      .waitFor();
   }
 
   async expectTileCount(count: number): Promise<void> {
@@ -332,20 +321,18 @@ export class EpisodePom {
   ): Promise<void> {
     await this.tileTitle(currentTitle).first().click();
     const source = this.scope.locator('[aria-label="Source"]');
-    await expect(source).toBeVisible({ timeout: READY_TIMEOUT });
+    await source.waitFor();
     await source.click();
     await this.page
       .getByRole("option", { name: nextTitle, exact: true })
       .click();
-    await expect(this.tileTitle(nextTitle).first()).toBeVisible({
-      timeout: READY_TIMEOUT,
-    });
+    await this.tileTitle(nextTitle).first().waitFor();
   }
 
   async expectPaused(): Promise<void> {
-    await expect(
-      this.shell.getByRole("button", { name: "Play", exact: true }),
-    ).toBeVisible({ timeout: READY_TIMEOUT });
+    await this.shell
+      .getByRole("button", { name: "Play", exact: true })
+      .waitFor();
     await expect(
       this.shell.getByRole("button", { name: "Pause", exact: true }),
     ).toHaveCount(0);
@@ -357,20 +344,16 @@ export class EpisodePom {
   ): Promise<void> {
     const tile = this.tile(title);
     const empty = byDataTestId(tile, "episode-tile-empty-state");
-    await expect(empty).toContainText(message, { timeout: READY_TIMEOUT });
+    await empty.filter({ hasText: message }).waitFor();
     await expect(this.image(title)).toHaveCount(0);
   }
 
   async expectPlayhead(text: string): Promise<void> {
-    await expect(this.controls.getByText(text, { exact: true })).toBeVisible({
-      timeout: READY_TIMEOUT,
-    });
+    await this.controls.getByText(text, { exact: true }).waitFor();
   }
 
   async expectUtcTime(time: string): Promise<void> {
-    await expect(this.timestampButton).toHaveText(time, {
-      timeout: READY_TIMEOUT,
-    });
+    await this.timestampButton.filter({ hasText: exactText(time) }).waitFor();
     const timezone = byDataTestId(
       this.timestampReadout,
       "episode-timezone-picker",
@@ -386,19 +369,26 @@ export class EpisodePom {
     if (targetMs === null) {
       throw new Error(`invalid UTC episode timestamp: ${time}`);
     }
-    await expect
-      .poll(
-        async () => {
-          const current = await this.timestampButton.textContent();
-          if (!current) return false;
-          const currentMs = utcDateTimeToMilliseconds(current);
-          if (currentMs === null) return false;
-          const delta = targetMs - currentMs;
-          return delta >= 0 && delta <= maxStepMs;
-        },
-        { timeout: READY_TIMEOUT },
-      )
-      .toBe(true);
+    const inRange = (text: string | null) => {
+      const currentMs = text ? utcDateTimeToMilliseconds(text) : null;
+      if (currentMs === null) return false;
+      const delta = targetMs - currentMs;
+      return delta >= 0 && delta <= maxStepMs;
+    };
+
+    // the seek that preceded this moves the readout once; wait for that move
+    // unless it has already landed
+    let current = await this.timestampButton.textContent();
+    if (!inRange(current)) {
+      await this.timestampButton
+        .filter({ hasNotText: exactText(current ?? "") })
+        .waitFor();
+      current = await this.timestampButton.textContent();
+    }
+    expect(
+      inRange(current),
+      `readout ${current} should be within ${maxStepMs}ms before ${time}`,
+    ).toBe(true);
     if ((await this.timestampButton.textContent()) !== time) {
       await this.stepForward();
     }
@@ -436,12 +426,12 @@ export class EpisodePom {
         exact: true,
       });
       await customOption.click();
-      await expect(customRate).toBeVisible({ timeout: READY_TIMEOUT });
+      await customRate.waitFor();
       // The select opens immediately on focus. Wait for the custom controls to
       // commit, then blur its input directly so portal closure cannot race a
       // document-level Escape with the controlled selection rerender.
       await preset.blur();
-      await expect(customOption).toBeHidden({ timeout: READY_TIMEOUT });
+      await customOption.waitFor({ state: "hidden" });
     }
     await customRate.click();
     await customRate.fill(String(rateHz));
@@ -450,9 +440,7 @@ export class EpisodePom {
       .getByRole("button", { name: "Apply sampling rate" })
       .click();
     await playback.click();
-    await expect(playback).toContainText(`Custom · ${rateHz} Hz`, {
-      timeout: READY_TIMEOUT,
-    });
+    await playback.filter({ hasText: `Custom · ${rateHz} Hz` }).waitFor();
   }
 
   async seekToFraction(fraction: number): Promise<void> {
@@ -539,7 +527,7 @@ export class EpisodePom {
     const clearedTile = this.shell
       .locator("[data-cy=episode-raw-tile]")
       .filter({ hasText: "Choose a stream in the panel settings" });
-    await expect(clearedTile).toBeVisible({ timeout: READY_TIMEOUT });
+    await clearedTile.waitFor();
     await expect(byDataTestId(clearedTile, "episode-raw-tree")).toHaveCount(0);
   }
 
@@ -549,12 +537,12 @@ export class EpisodePom {
       .getByRole("button", { name: "Inspect " + stream, exact: true })
       .click();
     this.inspectedStream = stream;
-    await expect(this.rawTree).toBeVisible({ timeout: READY_TIMEOUT });
+    await this.rawTree.waitFor();
   }
 
   async focusRawTile(stream: string): Promise<void> {
     this.inspectedStream = stream;
-    await expect(this.rawTree).toBeVisible({ timeout: READY_TIMEOUT });
+    await this.rawTree.waitFor();
   }
 
   rawField(path: string): Locator {
@@ -586,13 +574,15 @@ export class EpisodePom {
         : typeof value === "string"
           ? JSON.stringify(value)
           : value;
-    await expect(renderedValue).toHaveText(expected, {
-      timeout: READY_TIMEOUT,
-    });
+    await renderedValue
+      .filter({
+        hasText: typeof expected === "string" ? exactText(expected) : expected,
+      })
+      .waitFor();
   }
 
   async expectRawMeta(value: string | RegExp): Promise<void> {
-    await expect(this.rawMeta).toContainText(value, { timeout: READY_TIMEOUT });
+    await this.rawMeta.filter({ hasText: value }).waitFor();
   }
 
   async expectLogs(
@@ -618,9 +608,7 @@ export class EpisodePom {
     await logs.getByRole("button", { name: "Fullscreen", exact: true }).click();
     await logs.getByRole("button", { name: view, exact: true }).click();
     for (const text of present) {
-      await expect(logs.getByText(text, { exact: true })).toBeVisible({
-        timeout: READY_TIMEOUT,
-      });
+      await logs.getByText(text, { exact: true }).waitFor();
     }
     for (const text of absent) {
       await expect(logs.getByText(text, { exact: true })).toHaveCount(0);
@@ -635,14 +623,14 @@ export class EpisodePom {
   }
 
   async expectUnsupported(streamCount = 1): Promise<void> {
-    await expect(
-      this.state.getByText(
+    await this.state
+      .getByText(
         "No previewable streams in this recording (" +
           streamCount +
           " streams found)",
         { exact: true },
-      ),
-    ).toBeVisible({ timeout: READY_TIMEOUT });
+      )
+      .waitFor();
   }
 
   async expectNoViewerError(): Promise<void> {

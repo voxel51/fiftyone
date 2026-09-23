@@ -8,6 +8,7 @@ import {
   requestResult,
   transactionDone,
 } from "./persistence/indexeddb";
+import { isE2E } from "@fiftyone/utilities";
 
 const MIB = 1024 * 1024;
 /** IndexedDB database owned by the multimodal runtime source-facts tier. */
@@ -251,6 +252,11 @@ async function writeEntry(
     lastAccessedAt,
   } satisfies StoredSourceFactsRecency);
   await transactionDone(transaction);
+
+  // only for browser automation (e2e), which waits on the write
+  if (isE2E()) {
+    document.dispatchEvent(new CustomEvent("multimodal-source-facts-saved"));
+  }
 }
 
 async function touchEntry(

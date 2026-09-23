@@ -9,6 +9,7 @@ import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { getLocatorDominantColorShare } from "src/oss/utils/screenshot";
 import { MCAP_FIXTURE_CONTRACT } from "src/shared/media-factory/mcap";
+import { EventUtils } from "src/shared/event-utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("mcap-correctness");
 export const alternateMediaDatasetName = getUniqueDatasetNameWithPrefix(
@@ -280,12 +281,18 @@ export async function expectDominantColor(
   locator: Locator,
   expected: readonly [number, number, number],
 ): Promise<void> {
-  await expect(locator).toBeVisible();
-  await expect
-    .poll(() => getLocatorDominantColorShare(locator, expected), {
-      timeout: 20_000,
-    })
-    .toBeGreaterThan(0.15);
+  // pixels are only meaningful once the tile has painted the frame it asked for
+  await new EventUtils(locator.page()).untilDom(locator, (element) => {
+    const stack = element.closest("[data-episode-image-requested]");
+    const requested = stack?.getAttribute("data-episode-image-requested");
+    return (
+      !!requested &&
+      requested === stack?.getAttribute("data-episode-image-committed")
+    );
+  });
+  expect(await getLocatorDominantColorShare(locator, expected)).toBeGreaterThan(
+    0.15,
+  );
 }
 
 export { expect } from "src/oss/fixtures";

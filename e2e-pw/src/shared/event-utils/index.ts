@@ -1,4 +1,4 @@
-import { Page } from "@playwright/test";
+import { Locator, Page } from "@playwright/test";
 
 /**
  * Handle for an armed document-event listener. Deliberately not a thenable:
@@ -198,6 +198,45 @@ export class EventUtils {
         source: text?.source ?? null,
         flags: text?.flags ?? "",
       },
+    );
+  }
+
+  /**
+   * Resolve once `predicate(element, arg)` holds for the element `locator`
+   * resolves to, re-checking on every DOM mutation. The predicate runs in the
+   * page, so it must be self-contained (no closure over test variables).
+   */
+  public async untilDom<A>(
+    locator: Locator,
+    predicate: (element: Element, arg: A) => boolean,
+    arg?: A,
+  ): Promise<void> {
+    await locator.waitFor({ state: "attached" });
+    await locator.evaluate(
+      (element, { source, arg_ }) =>
+        new Promise<void>((resolve) => {
+          const check = new Function(`return (${source})`)() as (
+            element: Element,
+            arg: unknown,
+          ) => boolean;
+          if (check(element, arg_)) {
+            resolve();
+            return;
+          }
+          const observer = new MutationObserver(() => {
+            if (check(element, arg_)) {
+              observer.disconnect();
+              resolve();
+            }
+          });
+          observer.observe(element.ownerDocument, {
+            subtree: true,
+            childList: true,
+            attributes: true,
+            characterData: true,
+          });
+        }),
+      { source: predicate.toString(), arg_: arg },
     );
   }
 
