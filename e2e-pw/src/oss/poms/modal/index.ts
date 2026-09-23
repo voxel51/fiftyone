@@ -1,6 +1,5 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
 import { EventUtils } from "src/shared/event-utils";
-import { Duration } from "../../utils";
 import { ModalTaggerPom } from "../action-row/tagger/modal-tagger";
 import { EpisodePom } from "../multimodal/episode";
 import { ModalPanelPom } from "../panels/modal-panel";
@@ -13,8 +12,6 @@ import { ModalSidebarPom } from "./modal-sidebar";
 import { SampleCanvasPom } from "./sample-canvas";
 import { VideoAnnotatePom } from "./video-annotate";
 import { ModalVideoControlsPom } from "./video-controls";
-
-const SAMPLE_LOAD_TIMEOUT = Duration.Seconds(20);
 
 export class ModalPom {
   readonly assert: ModalAsserter;
@@ -173,12 +170,26 @@ export class ModalPom {
 
         if (hasTarget()) return;
 
-        // 384ms is the debounce time for Flashlight's zooming plus two frames of margin
-        const ZOOMING_DEBOUNCE_MS = 384;
+        // each scroll settles in a non-zooming render; one with no page
+        // request pending shows everything in view
+        const settled = () =>
+          new Promise<void>((resolve) => {
+            const onRendered = (e: Event) => {
+              if (!(e as CustomEvent<{ pending: boolean }>).detail.pending) {
+                el.removeEventListener("flashlight-rendered", onRendered);
+                resolve();
+              }
+            };
+            el.addEventListener("flashlight-rendered", onRendered);
+          });
+
         const step = Math.max(el.clientWidth, 200);
-        for (let pos = 0; pos <= el.scrollWidth; pos += step) {
+        for (let pos = step; pos <= el.scrollWidth; pos += step) {
+          const rendered = settled();
+          const before = el.scrollLeft;
           el.scrollTo({ left: pos });
-          await new Promise((r) => setTimeout(r, ZOOMING_DEBOUNCE_MS));
+          if (el.scrollLeft === before) return;
+          await rendered;
           if (hasTarget()) return;
         }
       }, slice);
@@ -323,17 +334,19 @@ export class ModalPom {
   async waitForSampleLoadDomAttribute(allowErrorInfo = false) {
     // any surface may raise the marker: the lookers set it on their canvas,
     // the plain video surface sets it on the `<video>`
-    const loaded = this.modalContainer.locator('[canvas-loaded="true"]');
-    const target = allowErrorInfo
-      ? loaded.or(this.modalContainer.getByTestId("looker-error-info"))
-      : loaded;
-    await expect(target.first()).toBeAttached({ timeout: SAMPLE_LOAD_TIMEOUT });
+    const container = '[data-cy="modal"] [data-cy="modal-looker-container"]';
+    const loaded = `${container} [canvas-loaded="true"]`;
+    await this.eventUtils.untilPresent(
+      allowErrorInfo
+        ? `${loaded}, ${container} [data-cy="looker-error-info"]`
+        : loaded,
+    );
   }
 
   async waitForLighterReady() {
-    await expect(this.page.getByTestId("lighter-sample-renderer")).toBeVisible({
-      timeout: SAMPLE_LOAD_TIMEOUT,
-    });
+    await this.eventUtils.untilPresent(
+      '[data-cy="modal"] [data-cy="lighter-sample-renderer"][style*="visibility: visible"]',
+    );
   }
 
   private async isFullscreen() {

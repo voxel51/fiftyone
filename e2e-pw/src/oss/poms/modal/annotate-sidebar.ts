@@ -1,4 +1,5 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
+import { EventUtils } from "src/shared/event-utils";
 
 /**
  * The modal sidebar's main listing view when in 'Annotate' mode
@@ -79,18 +80,16 @@ export class ModalAnnotateSidebarPom {
 
   /**
    * Wait until every annotation edit has been persisted (no pending deltas,
-   * no in-flight patch). Autosave is an interval tick, so an edit's patch may
-   * start seconds after its commit — call this before handing off to a fresh
-   * load (or ending a test whose edits a sibling depends on); a navigation
-   * that lands earlier destroys the pending save.
+   * no in-flight patch). Call this before handing off to a fresh load (or
+   * ending a test whose edits a sibling depends on); a navigation that lands
+   * earlier destroys the pending save.
    */
   async waitForSavesSettled() {
-    // structural worst case: the edit just missed a tick (3s), its patch
-    // lands, and settlement is confirmed by the following tick (3s) — ~6.5s
-    // plus server round-trips. 10s bounds that chain, it does not pad a race.
-    await expect(
-      this.locator.getByTestId("annotation-save-state"),
-    ).toHaveAttribute("data-settled", "true", { timeout: 10_000 });
+    // every autosave tick ends in this event once nothing is left to save
+    const settled = await new EventUtils(this.page).arm(
+      "annotation:persistenceSettled",
+    );
+    await settled.received;
   }
 
   /**
@@ -161,17 +160,18 @@ export class ModalAnnotateSidebarPom {
    * @param slice The slice name to select
    */
   async selectAnnotationSlice(slice: string) {
-    // a non-default (3D) slice can be briefly absent while the group's samples
-    // load, and the option list only refreshes on reopen: each retry blurs
-    // (not Escape, which can close the modal) and re-clicks the selector
-    await expect(async () => {
-      await this.annotationSliceSelector.blur();
-      await this.annotationSliceSelector.click();
-      await expect(this.annotationSliceResultsContainer).toBeVisible();
-      await this.annotationSliceResultsContainer
-        .getByTestId(`selector-result-${slice}`)
-        .click({ timeout: 3000 });
-    }).toPass({ timeout: 30_000 });
+    // a 3D slice becomes selectable once the group's samples load, and the
+    // option list is computed when it opens, so open it only after that
+    await expect(
+      this.locator.getByTestId("annotation-slice-selector"),
+    ).toHaveAttribute(
+      "data-cy-selectable-slices",
+      new RegExp(`(^| )${slice.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}( |$)`),
+    );
+    await this.annotationSliceSelector.click();
+    await this.annotationSliceResultsContainer
+      .getByTestId(`selector-result-${slice}`)
+      .click();
 
     await expect(this.annotationSliceSelector).toHaveValue(slice);
   }

@@ -72,10 +72,8 @@ const completeFieldAndExpectOperators = async (
   }
 
   // the completed receiver should immediately offer operators
-  await expect(filter).toContainText('F("label")', { timeout: 3000 });
-  await expect(suggestions.filter({ hasText: "==" }).first()).toBeVisible({
-    timeout: 3000,
-  });
+  await expect(filter).toContainText('F("label")');
+  await expect(suggestions.filter({ hasText: "==" }).first()).toBeVisible();
 };
 
 test("operator suggestions follow a mouse-completed field", async ({
