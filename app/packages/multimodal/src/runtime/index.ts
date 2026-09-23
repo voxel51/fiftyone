@@ -71,3 +71,12 @@ export * from "./scheduled-read-budget-account";
 export * from "./progressive-history";
 /** Public decoded episode stream cache. */
 export * from "./episode-stream-cache";
+
+/** Public cooperative scheduling for bounded background computation. */
+export { yieldToTask } from "../utils/task-yield";
+/** Public best-effort IndexedDB connection and transaction helpers. */
+export {
+  createIndexedDbConnection,
+  requestResult,
+  transactionDone,
+} from "./persistence/indexeddb";
