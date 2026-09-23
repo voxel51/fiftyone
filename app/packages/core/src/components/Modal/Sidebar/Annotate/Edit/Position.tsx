@@ -5,6 +5,7 @@ import {
   type LabelRef,
   useActiveAnnotationSampleId,
   useAnnotationEngine,
+  useAnnotationEventBus,
   useEngineSelector,
   useSignalValue,
 } from "@fiftyone/annotation";
@@ -81,6 +82,7 @@ export default function Position({ readOnly = false }: PositionProps) {
   const { selected } = useAnnotationContext();
   const overlay = selected?.overlay;
   const engine = useAnnotationEngine();
+  const eventBus = useAnnotationEventBus();
   const sample = useActiveAnnotationSampleId();
   const dataset = useCurrentDatasetId() ?? "";
 
@@ -261,10 +263,9 @@ export default function Position({ readOnly = false }: PositionProps) {
           }));
 
           // commit through the engine: it persists (autosave diffs the engine)
-          // and the Lighter bridge read-half re-homes the overlay. A bare
-          // updateLabel is one implicit transaction, so the engine bridge pushes
-          // the single value-based undo entry — don't also push our own (that
-          // double-counts the edit on the shared command stack).
+          // and the Lighter bridge read-half re-homes the overlay. The engine
+          // pushes the undo entry; a video surface folds its keyframe promotion
+          // into the same `undoKey`.
           const next = [merged.x, merged.y, merged.width, merged.height];
 
           // write `rotation` only when it carries signal — a nonzero value, or
@@ -281,10 +282,20 @@ export default function Position({ readOnly = false }: PositionProps) {
 
           shown.current = [...next, rotation ?? state.rotation.rotation ?? 0];
 
-          engine.updateLabel(ref, {
-            bounding_box: next,
-            ...rotationData,
-          } as Partial<LabelData>);
+          const undoKey = engine.mintGestureId();
+          engine.transaction(
+            () =>
+              engine.updateLabel(ref, {
+                bounding_box: next,
+                ...rotationData,
+              } as Partial<LabelData>),
+            { undoKey },
+          );
+          eventBus.dispatch("annotation:formGeometryCommitted", {
+            instanceId: ref.instanceId,
+            path: ref.path,
+            undoKey,
+          });
         }}
       />
     </div>

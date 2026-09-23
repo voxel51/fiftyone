@@ -95,6 +95,17 @@ export type AnnotationEventGroup = {
   "annotation:labelEdit": { label: Partial<AnnotationLabel["data"]> };
 
   /**
+   * The sidebar form committed a label's geometry under `undoKey`. Frame-locked
+   * surfaces treat it as they treat a canvas edit: keyframe promotion and a
+   * re-lerp of the adjacent segments, folded into the same undo unit.
+   */
+  "annotation:formGeometryCommitted": {
+    instanceId: string;
+    path: string;
+    undoKey: string;
+  };
+
+  /**
    * Notification event emitted when a label edit is undone.
    */
   "annotation:undoLabelEdit": { label: Partial<AnnotationLabel["data"]> };

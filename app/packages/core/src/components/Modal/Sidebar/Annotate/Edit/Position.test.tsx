@@ -31,12 +31,20 @@ const updateLabel = vi.fn((_ref: unknown, data: Record<string, unknown>) => {
   stored = { ...stored, ...data };
 });
 
+const dispatch = vi.fn();
+
 vi.mock("@fiftyone/annotation", () => ({
   GEOMETRY_SIGNAL: "geometry",
   encodeEntityId: (dataset: string, ref: { instanceId: string }) =>
     `${dataset}:${ref.instanceId}`,
   useActiveAnnotationSampleId: () => SAMPLE,
-  useAnnotationEngine: () => ({ getLabel: () => stored, updateLabel }),
+  useAnnotationEngine: () => ({
+    getLabel: () => stored,
+    updateLabel,
+    mintGestureId: () => "gesture-1",
+    transaction: (fn: () => unknown) => fn(),
+  }),
+  useAnnotationEventBus: () => ({ dispatch }),
   useEngineSelector: (engine: unknown, selector: (e: unknown) => unknown) =>
     selector(engine),
   useSignalValue: () => null,
@@ -124,6 +132,7 @@ beforeEach(() => {
   stored = { bounding_box: [0.4, 0.4, 0.2, 0.2], rotation: 0.5 };
   clearUseKeyStores();
   updateLabel.mockClear();
+  dispatch.mockClear();
 });
 
 afterEach(cleanup);
@@ -145,6 +154,19 @@ describe("Position", () => {
     await user.type(field("rotation.rotation"), "1.25");
 
     expect(stored.rotation).toBe(1.25);
+  });
+
+  it("announces the commit so a video surface can promote the keyframe", async () => {
+    const user = userEvent.setup();
+    render(<Position />);
+
+    await user.clear(field("rotation.rotation"));
+    await user.type(field("rotation.rotation"), "1");
+
+    expect(dispatch).toHaveBeenLastCalledWith(
+      "annotation:formGeometryCommitted",
+      { instanceId: INSTANCE, path: PATH, undoKey: "gesture-1" },
+    );
   });
 
   it("re-syncs a typed field when the engine commits from elsewhere", async () => {

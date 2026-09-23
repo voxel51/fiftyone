@@ -5,6 +5,7 @@
 import {
   useActiveSampleId,
   useAnnotationEngine,
+  useAnnotationEventHandler,
   useLighterEngineBridge,
 } from "@fiftyone/annotation";
 import {
@@ -77,6 +78,16 @@ export const useVideoLighterEngineBridge = (
   // After a box drag / resize commits, promote the touched frame to a keyframe
   // and re-lerp adjacent segments — folded into the edit's undo unit.
   const onEditCommit = useKeyframePromotionOnEdit();
+
+  // a sidebar geometry edit promotes and re-lerps like a canvas edit
+  useAnnotationEventHandler(
+    "annotation:formGeometryCommitted",
+    useCallback(
+      ({ instanceId, path, undoKey }) =>
+        onEditCommit(instanceId, path, undoKey),
+      [onEditCommit],
+    ),
+  );
 
   // Sample-level temporal-detections carry no Lighter adapter, so the loop's
   // kind filter drops them from hydration regardless of scope, but their
