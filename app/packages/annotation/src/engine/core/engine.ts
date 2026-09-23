@@ -307,6 +307,31 @@ export class AnnotationEngine {
     return this.stores.get(ref.sample)?.getFrameValue?.(ref.path, ref.frame);
   }
 
+  /**
+   * Edit a per-frame non-label field at one frame. A dynamic group played as
+   * video keeps each frame's primitives on its own member sample, so this is
+   * what lands the edit on the frame under the playhead.
+   */
+  setFrameValue(
+    ref: { sample: string; path: string; frame: number },
+    value: unknown,
+  ): void {
+    this.transaction(() => {
+      const store = this.requireStore(ref.sample);
+      this.touchStore(store);
+      store.setFrameValue?.(ref.path, ref.frame, value);
+    });
+  }
+
+  /** Drop a per-frame non-label field's value at one frame. */
+  deleteFrameValue(ref: { sample: string; path: string; frame: number }): void {
+    this.transaction(() => {
+      const store = this.requireStore(ref.sample);
+      this.touchStore(store);
+      store.deleteFrameValue?.(ref.path, ref.frame);
+    });
+  }
+
   /** Frame numbers edited this session for a sample (empty for non-frame stores). */
   dirtyFrames(sample: string): number[] {
     return this.stores.get(sample)?.dirtyFrames() ?? [];
@@ -638,10 +663,15 @@ export class AnnotationEngine {
   }
 
   /** First-touch capture: lazy store snapshot + lazy undo before-values. */
-  private touch(store: LabelStore, ref: LabelRef): void {
+  /** Snapshot a store for transaction rollback, with no label to invert. */
+  private touchStore(store: LabelStore): void {
     if (!this.txSnapshots.has(store)) {
       this.txSnapshots.set(store, store.snapshot());
     }
+  }
+
+  private touch(store: LabelStore, ref: LabelRef): void {
+    this.touchStore(store);
 
     if (this.replaying) {
       return;

@@ -91,19 +91,8 @@ export class Looker3DControlsPom {
     await expect(this.sliceSelectorCheckboxes).toHaveCount(0);
   }
 
-  async getSliceSelectorLabel() {
-    const text = await this.sliceSelector.textContent();
-    return text?.replace(/\s+/g, " ").trim() ?? "";
-  }
-
   getSliceCheckbox(slice: string) {
     return this.sliceSelectorCheckboxes.getByTestId(`checkbox-${slice}`);
-  }
-
-  async isSliceChecked(slice: string) {
-    return this.getSliceCheckbox(slice)
-      .locator('input[type="checkbox"]')
-      .isChecked();
   }
 }
 

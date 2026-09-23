@@ -15,8 +15,8 @@ import { makeTrackOps } from "../tracks/trackOps";
 const SURFACE = "video";
 
 export interface VideoSurfaceActions {
-  /** Toggle `keyframe` on each selected track at `time`'s frame, in one undo unit. */
-  markKeyframe(time: number, trackIds: readonly string[]): void;
+  /** Toggle `keyframe` on each selected track at `frame`, in one undo unit. */
+  markKeyframe(frame: number, trackIds: readonly string[]): void;
   /**
    * Fill `targetFrames` with the source frame's box (non-keyframe). Pass
    * `undoKey` to coalesce the fill into a prior commit's undo unit (the

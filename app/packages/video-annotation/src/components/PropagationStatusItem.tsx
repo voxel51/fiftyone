@@ -20,8 +20,8 @@ import React from "react";
  * and `onStop` renders a Stop button.
  *
  * @example
- * setContent(<PropagationStatusItem label="Loading SAM2…" onStop={stop} />);
- * setContent(<PropagationStatusItem label="SAM2 tracking" done={n} total={t} onStop={stop} />);
+ * setContent({ status: <PropagationStatusItem label="Loading SAM2…" onStop={stop} /> });
+ * setContent({ status: <PropagationStatusItem label="SAM2 tracking" done={n} total={t} onStop={stop} /> });
  */
 export const PropagationStatusItem: React.FC<{
   label: string;

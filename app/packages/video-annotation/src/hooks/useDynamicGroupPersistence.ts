@@ -21,7 +21,7 @@ import {
   useGroupSlice,
   useView,
 } from "../state/accessors";
-import { toMemberPatches } from "../utils/memberPatches";
+import { toMemberPatches, writtenMemberDeltas } from "../utils/memberPatches";
 import { useDynamicGroupIndex } from "./useDynamicGroupIndex";
 
 /**
@@ -125,6 +125,18 @@ export const useDynamicGroupPersistence = ({
               | DynamicGroupMismatchBody
               | undefined;
 
+            // a rejection can still have written earlier members; take those
+            // deltas as persisted so the retry cannot re-send them
+            const landed = writtenMemberDeltas(
+              deltas,
+              state.index,
+              body?.written ?? [],
+            );
+
+            if (landed.length > 0) {
+              engine.reconcilePersisted([{ sample: sampleId, deltas: landed }]);
+            }
+
             if (body?.members) {
               group.replace(
                 body.members.map((member) => member.id),
@@ -140,7 +152,16 @@ export const useDynamicGroupPersistence = ({
 
       return rest.length > 0 ? patchSelected(rest) : true;
     },
-    [active, datasetId, dynamicGroup, group, sampleId, view, patchSelected],
+    [
+      active,
+      datasetId,
+      dynamicGroup,
+      engine,
+      group,
+      sampleId,
+      view,
+      patchSelected,
+    ],
   );
 
   useEffect(() => {

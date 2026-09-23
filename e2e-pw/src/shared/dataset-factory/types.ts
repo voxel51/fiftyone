@@ -191,6 +191,18 @@ export interface BaseDatasetOptions<S extends SampleScaffold = SampleScaffold> {
   };
 
   /**
+   * Keys of text-promptable similarity indexes to compute on the dataset.
+   *
+   * Each is a real sklearn similarity index over deterministic random
+   * embeddings, so no model loads and nothing downloads. The recorded model
+   * name marks the index prompt-capable, which lights up every
+   * promptable-index UI affordance. Searching by a sample id executes against
+   * the stored embeddings; free-text prompts would need the real model, so
+   * specs query by id.
+   */
+  promptableIndexes?: string[];
+
+  /**
    * Field paths mapped to their types; label types map to
    * `EmbeddedDocumentField` with the matching `embedded_doc_type`, and paths
    * under `frames.` declare frame fields on video datasets.

@@ -12,7 +12,7 @@ import { PropagationStatusItem } from "../components/PropagationStatusItem";
 import type { PropagateArgs } from "../propagation/propagateArgs";
 import { isSam2Agent, toSyntheticBox } from "../propagation/propagationShapes";
 import { useApplyPropagatedDetection } from "../propagation/useApplyPropagationResult";
-import { useImaVidImageStream } from "../streams/imaVidImageStreamHandle";
+import { useDynamicGroupImageStream } from "../streams/dynamicGroupImageStreamHandle";
 import { useResolvePropagationAgent } from "./useResolvePropagationAgent";
 
 /**
@@ -22,7 +22,7 @@ import { useResolvePropagationAgent } from "./useResolvePropagationAgent";
  */
 export const useSam2Propagate = () => {
   const engine = useAnnotationEngine();
-  const imageStream = useImaVidImageStream();
+  const imageStream = useDynamicGroupImageStream();
   const resolveAgent = useResolvePropagationAgent();
   const sampleDescriptor = useSampleDescriptor();
   const applyPropagatedDetection = useApplyPropagatedDetection();
@@ -54,14 +54,14 @@ export const useSam2Propagate = () => {
       // before the first tick the model is downloading or encoding
       let tracking = false;
       const render = (done?: number, runTotal?: number) =>
-        setStatusContent(
-          createElement(PropagationStatusItem, {
+        setStatusContent({
+          status: createElement(PropagationStatusItem, {
             label: tracking ? "SAM2 tracking" : "Loading SAM2…",
             done,
             total: runTotal,
             onStop,
           }),
-        );
+        });
       render();
 
       const getFrameBitmap = async (
@@ -72,7 +72,7 @@ export const useSam2Propagate = () => {
         const frame = imageStream.getValue(time);
 
         if (!frame) {
-          throw new Error(`ImaVid frame ${frameNumber} unavailable`);
+          throw new Error(`Dynamic group frame ${frameNumber} unavailable`);
         }
 
         return frame.bitmap;

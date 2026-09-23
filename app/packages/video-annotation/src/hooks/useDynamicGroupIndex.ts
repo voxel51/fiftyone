@@ -4,6 +4,7 @@
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
+  type FrameDoc,
   type GetFramesRequest,
   getFrames,
 } from "../../../core/src/client/framesClient";
@@ -21,7 +22,7 @@ export interface GroupWriteState {
  * members' `last_modified_at` values. The trailing `Z` is stripped like
  * {@link getSampleVersionToken} does for the sample token.
  */
-export const toGroupToken = (timestamps: Date[]): string | null => {
+export const toGroupToken = (timestamps: readonly Date[]): string | null => {
   if (timestamps.length === 0) {
     return null;
   }
@@ -32,6 +33,22 @@ export const toGroupToken = (timestamps: Date[]): string | null => {
   );
   const iso = new Date(max).toISOString().replace(/Z$/, "");
   return `${iso}|${timestamps.length}`;
+};
+
+/**
+ * A member's `last_modified_at` as a `Date`. The group token cannot be built
+ * without every member's, so an unreadable one fails the index load by name.
+ */
+const memberTimestamp = (frame: FrameDoc): Date => {
+  const parsed = parseTimestamp(frame.last_modified_at as DateTime | undefined);
+
+  if (!parsed || Number.isNaN(parsed.getTime())) {
+    throw new Error(
+      `dynamic group member ${String(frame._id)} has no readable last_modified_at`,
+    );
+  }
+
+  return parsed;
 };
 
 export interface DynamicGroupIndex {
@@ -109,12 +126,7 @@ export const useDynamicGroupIndex = ({
 
         setState({
           index: frames.map((frame) => String(frame._id)),
-          token: toGroupToken(
-            frames.map(
-              (frame) =>
-                parseTimestamp(frame.last_modified_at as DateTime) as Date,
-            ),
-          ),
+          token: toGroupToken(frames.map(memberTimestamp)),
         });
       })
       .catch((err) => {

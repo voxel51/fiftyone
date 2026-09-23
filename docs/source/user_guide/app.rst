@@ -895,6 +895,29 @@ The view bar makes all of the powerful searching, sorting, and filtering
 operations :ref:`provided by dataset views <using-views>` available directly in
 the App.
 
+The applied view appears as a compact summary chip; hover over it to expand
+the view into its individual stages. Use the ``+`` slot between any two
+stages to insert a stage there: typing filters the available stages, and
+every option describes what its stage does. Clicking anywhere outside the
+bar collapses it back to the summary chip, and the ``x`` at the bar's right
+edge clears the applied view.
+
+Each stage opens as a form generated from its parameters:
+
+-   **Field parameters** offer a picker over the dataset's schema, narrowed
+    to the field types the stage accepts
+-   **Closed-choice parameters** offer the dataset's own values — its group
+    slices, evaluation keys, or similarity indexes
+-   **Expression parameters** accept
+    :ref:`view expressions <querying-samples>` written as Python. The syntax
+    you apply travels with the view, so reopening a stage shows the
+    expression as it was written — including expressions from views saved in
+    Python
+
+The bar is fully keyboard accessible: :kbd:`Enter` finishes a stage and
+applies it, the keyboard lands on the next insert slot, and :kbd:`Esc` closes
+an editor or discards pending work.
+
 .. note::
 
     Any changes to the current view that you make in the view bar are
@@ -905,6 +928,23 @@ the App.
 .. image:: /images/app/app-views2.gif
     :alt: app-views2
     :align: center
+
+.. _app-view-bar-search:
+
+Searching with text
+-------------------
+
+When a dataset has a :ref:`similarity index <brain-similarity>` that
+:ref:`supports text prompts <brain-similarity-text>`, the view bar also
+accepts free-form text: type a query and press :kbd:`Enter` to append a
+:class:`SortBySimilarity <fiftyone.core.stages.SortBySimilarity>` stage
+against the most recently created prompt-capable index. The stage lands in
+the bar as a regular pill, so its index, query, and result count are one
+click away from being adjusted.
+
+For a patches-level index, the view is first converted to patches via
+:class:`ToPatches <fiftyone.core.stages.ToPatches>` so the sort applies in
+patch space.
 
 .. _app-dynamic-groups:
 

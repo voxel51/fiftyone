@@ -1,6 +1,6 @@
 /**
  * Worker that fetches `/frames` chunks plus their images and decodes them to
- * transferable ImageBitmaps for `ImaVidImageStream`. Messages to the main
+ * transferable ImageBitmaps for `DynamicGroupImageStream`. Messages to the main
  * thread follow {@link ./frameWorkerProtocol}; `init` installs the main
  * thread's fetch configuration, and token refresh is not supported.
  */
@@ -127,8 +127,8 @@ async function decodeAndDispatch(
     const blob = await r.blob();
     bitmap = await createImageBitmap(blob);
   } catch (error) {
-    // Skip — main-thread treats this frame as missing and the engine
-    // re-requests on the next prefetch tick.
+    // Skip — the main thread treats this frame as missing and re-requests it
+    // on a later prefetch tick, for a bounded number of attempts.
     console.error(
       `[framesWorker] decode failed for frame ${frameNumber}`,
       error,

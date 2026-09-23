@@ -19,7 +19,7 @@ export interface TrackSelectionGates {
   selectionIsInstanceTrack: boolean;
   /** The selected track's own frames field, when exactly one is selected. */
   selectedTrackField: string | null;
-  /** Whether the single selected track has a keyframe at the playhead. */
+  /** Whether the single selected track has a keyframe at `frame`. */
   isKeyframeAtPlayhead: boolean;
   canMarkKeyframe: boolean;
   canSplit: boolean;
@@ -27,7 +27,7 @@ export interface TrackSelectionGates {
 
 /** Selection-derived enablement for the keyframe and split toolbar actions. */
 export const useTrackSelectionGates = (
-  playhead: number,
+  frame: number,
   hasUsableFps: boolean,
 ): TrackSelectionGates => {
   const selected = useSelectedTrackIds();
@@ -37,7 +37,7 @@ export const useTrackSelectionGates = (
   const selectionIsKeyframeable = useSelectionIsKeyframeable();
   const selectionIsInstanceTrack = useSelectionIsInstanceTrack();
   const selectedTrackField = useSelectedInstanceTrackField();
-  const isKeyframeAtPlayhead = useFrameKeyframeState(selectedIds, playhead);
+  const isKeyframeAtPlayhead = useFrameKeyframeState(selectedIds, frame);
 
   return {
     selectedIds,

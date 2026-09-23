@@ -6,7 +6,16 @@ import { atom, type PrimitiveAtom, useAtomValue, useSetAtom } from "jotai";
 import type { ReactElement } from "react";
 import { useMemo } from "react";
 
-export type StatusContent = ReactElement | null;
+export type StatusContent = {
+  /**
+   * Live state the user cannot read anywhere else — inference progress, a
+   * chosen merge target, an error. Keep it to a few words: instructions belong
+   * in `help`, not here, so the bar stays clear of the panel tabs to its left.
+   */
+  status?: ReactElement;
+  /** Instructions for the active mode, revealed by the help affordance. */
+  help?: ReactElement;
+} | null;
 
 /**
  * Content of the modal status bar. A module-level atom so writers anywhere in
@@ -17,7 +26,7 @@ const statusContentAtom = atom<StatusContent>(
 ) as PrimitiveAtom<StatusContent>;
 
 /**
- * Hook for status registrars: `setContent(<XStatus />)` on enter,
+ * Hook for status registrars: `setContent({ status, help })` on enter,
  * `setContent(null)` on leave. Last-writer-wins, so keep at most one writer
  * mounted.
  */

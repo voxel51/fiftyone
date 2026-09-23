@@ -270,6 +270,20 @@ class ModalAnnotateEditAsserter {
   constructor(private readonly modalAnnotateEdit: ModalAnnotateEditPom) {}
 
   /**
+   * Verify the edit form is open (a label or primitive is being edited)
+   */
+  async isOpen() {
+    await expect(this.modalAnnotateEdit.backButton).toBeVisible();
+  }
+
+  /**
+   * Verify the edit form is closed (the sidebar shows the label list)
+   */
+  async isClosed() {
+    await expect(this.modalAnnotateEdit.backButton).toBeHidden();
+  }
+
+  /**
    * Verify a field's label
    *
    * @param path The field path
@@ -326,6 +340,19 @@ class ModalAnnotateEditAsserter {
         .getByTestId("annotate-mask-preview")
         .locator("canvas"),
     ).toHaveAttribute("data-mask-width", /^[1-9]\d*$/);
+  }
+
+  /**
+   * Verify a field's value, retrying until the form settles. Use this instead
+   * of {@link verifyFieldValue} whenever the value arrives asynchronously
+   * (form mount, engine commit, autosave round-trip).
+   *
+   * @param path The field path
+   * @param expectedValue The expected field value
+   */
+  async hasFieldValue(path: string, expectedValue: string) {
+    const field = await this.modalAnnotateEdit.getField(path);
+    await expect(field).toHaveValue(expectedValue);
   }
 
   /**

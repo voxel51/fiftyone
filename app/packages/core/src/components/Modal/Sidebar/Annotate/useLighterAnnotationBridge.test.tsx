@@ -17,6 +17,7 @@ vi.mock("@fiftyone/state", () => ({
   useIsVideo: () => media.isVideo,
   useIsImageDynamicGroupVideo: () => media.isImageDynamicGroupVideo,
   useModalSample: () => null,
+  useGetKeypointSkeleton: () => () => undefined,
 }));
 vi.mock("@fiftyone/state/src/recoil/utils", () => ({
   getSampleSrc: (value: string) => value,

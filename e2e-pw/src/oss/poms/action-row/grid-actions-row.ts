@@ -43,10 +43,6 @@ export class GridActionsRowPom {
     return this.openAction("action-create-dynamic-groups");
   }
 
-  async toggleSortBySimilarity() {
-    return this.openAction("action-sort-by-similarity");
-  }
-
   async toggleToClipsOrPatches() {
     return this.openAction("action-clips-patches");
   }

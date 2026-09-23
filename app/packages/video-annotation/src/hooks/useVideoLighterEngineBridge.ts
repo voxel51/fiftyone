@@ -7,35 +7,64 @@ import {
   useAnnotationEngine,
   useLighterEngineBridge,
 } from "@fiftyone/annotation";
-import { useIsImageDynamicGroupVideo } from "@fiftyone/state";
+import {
+  useGetKeypointSkeleton,
+  useIsImageDynamicGroupVideo,
+} from "@fiftyone/state";
 import { useCallback } from "react";
-import { useDatasetId } from "../state/accessors";
+import { useDatasetId, useVisibleLabelSchemas } from "../state/accessors";
 import { isFrameScopedPath } from "../state/framePaths";
 import { useCurrentFrameGetter } from "../state/useCurrentFrame";
 import { stashEstablishKey } from "../sync/establishKeyRelay";
 import { useKeyframePromotionOnEdit } from "./useKeyframePromotionOnEdit";
 
 /**
- * Mount the video canvas on the annotation engine via the frame-locked Lighter
- * bridge, stamping the playhead frame onto every frame-scoped ref. Mount inside
- * the surface's `PlaybackProvider`, after the store registration.
+ * Mount the video canvas on the annotation engine. The tile's Lighter scene
+ * registers the engine's frame-locked Lighter bridge — the same contract the
+ * image surface uses — so overlay hydration, reconcile, gesture commits, and
+ * select/hover all route through the engine. The only video-specific input is
+ * `frameOf`: the playhead's current frame, stamped onto every ref so writes and
+ * selection address `(instanceId, frame)` (the `FrameStore` is frame-keyed; the
+ * scene holds one overlay per track, keyed by `instanceId`).
+ *
+ * Mount inside the surface's `PlaybackProvider` (for `useTimeline`) and AFTER
+ * the store registration + frame-clock attach, so the bridge reconciles against
+ * a seeded frame store and the `FrameTemporalView` rather than the degenerate
+ * pool view.
  */
 export const useVideoLighterEngineBridge = (
-  /** Projection scope; dropping a path re-creates the bridge and clears its overlays. */
-  paths: ReadonlySet<string>,
+  /**
+   * Projection scope override. Explore supplies its own (see
+   * `useExploreFrameLabelPaths`) because the annotation-schema default below
+   * is empty outside Annotate mode.
+   */
+  pathsOverride?: ReadonlySet<string>,
 ): void => {
   const engine = useAnnotationEngine();
+  // skeleton edges drive keypoint connections; stable across renders
+  const getSkeleton = useGetKeypointSkeleton();
   const sample = useActiveSampleId();
   const dataset = useDatasetId();
+
+  // The bridge's projection scope = the sidebar's visible set (annotation-active
+  // ∩ explore-active). Deactivating a frame field in the schema manager drops
+  // its path here, the bridge re-creates, and its overlays clear — the canvas
+  // now respects the active schema like the sidebar. Sample-level fields stay
+  // scoped too (a still-active temporal-detection field remains present).
+  // Called unconditionally to keep hook order stable; the override wins.
+  const annotationPaths = useVisibleLabelSchemas();
+  const paths = pathsOverride ?? annotationPaths;
 
   // referentially stable frame reader — a new identity would re-create the
   // bridge (clear + rehydrate); the playhead value is read live at call time
   const getFrame = useCurrentFrameGetter();
 
-  // Stamp the playhead frame only onto frame-scoped paths; a sample-level
-  // temporal detection sharing this scene must stay frame-less so its engine
-  // ref matches the sidebar and timeline. A frame-less ref on a frame-scoped
-  // path is worse: the `FrameStore` silently drops its writes.
+  // Stamp the playhead frame only onto frame-scoped paths (`frames.*`). A
+  // sample-level temporal detection sharing this scene must stay frame-less so
+  // its engine ref matches the sidebar / timeline; stamping a frame would make
+  // each surface address a different occurrence and break cross-surface select.
+  // An image dynamic group inverts the rule: each frame is its own sample, so
+  // the frame-scoped paths are the bare ones, not `frames.*`.
   const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
   const frameOf = useCallback(
     (path: string) =>
@@ -45,10 +74,16 @@ export const useVideoLighterEngineBridge = (
     [getFrame, isImageDynamicGroupVideo],
   );
 
+  // After a box drag / resize commits, promote the touched frame to a keyframe
+  // and re-lerp adjacent segments — folded into the edit's undo unit.
   const onEditCommit = useKeyframePromotionOnEdit();
 
-  // Each draw's gesture key is stashed by overlay id so the auto-extend can
-  // fold its filler into the draw's undo unit.
+  // Sample-level temporal-detections carry no Lighter adapter, so the loop's
+  // kind filter drops them from hydration regardless of scope, but their
+  // select/hover events still route through the bridge (frame-less ref,
+  // instanceId == the TD `_id`). Stash each draw's gesture key by overlay id so
+  // the auto-extend can fold its filler into the draw's undo unit (one Ctrl-Z
+  // removes the whole drawn track).
   useLighterEngineBridge({
     engine,
     sample,
@@ -57,5 +92,6 @@ export const useVideoLighterEngineBridge = (
     frameOf,
     onEstablishCommit: stashEstablishKey,
     onEditCommit,
+    getSkeleton,
   });
 };

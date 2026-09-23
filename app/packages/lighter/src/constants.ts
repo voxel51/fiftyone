@@ -50,6 +50,12 @@ export const FONT_WEIGHT = "bold";
  * settings related to resize handles
  */
 export const EDGE_THRESHOLD = 10;
+/** Screen-px gap between a box's top edge and its rotate handle */
+export const ROTATE_HANDLE_OFFSET = 24;
+/** Screen-px hit/draw radius of the rotate handle knob */
+export const ROTATE_HANDLE_RADIUS = 6;
+/** Shift-key rotation snap increment (15 degrees) */
+export const ROTATION_SNAP = Math.PI / 12;
 export const HANDLE_ALPHA = 0.9;
 export const HANDLE_FACTOR = 3;
 export const HANDLE_COLOR = 0xffffff;

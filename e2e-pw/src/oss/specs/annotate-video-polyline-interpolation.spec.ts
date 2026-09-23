@@ -128,15 +128,32 @@ const openAnnotate = async (
 const blur = (page: Page) =>
   page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
 
+// canvas reads are only valid once the scene has applied the new frame
+const step = (modal: ModalPom, move: () => Promise<void>) =>
+  modal.eventUtils.after("video-annotation-frame-applied", move);
+
+const ofOverlay =
+  (id: string) =>
+  (e: { detail?: unknown }): boolean =>
+    (e.detail as { id?: string } | undefined)?.id === id;
+
+// once received, the overlay is selected whatever its prior state
+const clickOverlay = (modal: ModalPom, id: string) =>
+  modal.eventUtils.after(
+    "lighter:overlay-click",
+    () => modal.sampleCanvas.click(BODY[0], BODY[1]),
+    ofOverlay(id),
+  );
+
 const stepForward = async (modal: ModalPom, n: number) => {
   for (let i = 0; i < n; i++) {
-    await modal.videoAnnotate.stepForward();
+    await step(modal, () => modal.videoAnnotate.stepForward());
   }
 };
 
 const stepBack = async (modal: ModalPom, n: number) => {
   for (let i = 0; i < n; i++) {
-    await modal.videoAnnotate.stepBack();
+    await step(modal, () => modal.videoAnnotate.stepBack());
   }
 };
 
@@ -224,8 +241,8 @@ const dragVertex = async (
   id: string,
   toContainer: (point: [number, number]) => [number, number],
 ) => {
-  // select the overlay first; a vertex is only grabbable once it is drawn
-  await modal.sampleCanvas.click(BODY[0], BODY[1]);
+  // a vertex is only grabbable once its overlay is selected
+  await clickOverlay(modal, id);
 
   const live = await pointsOf(modal, id);
   const [vx, vy] = toContainer((live as [number, number][])[0]);
@@ -332,11 +349,14 @@ test.describe("polyline track deletion on video", () => {
 
     // a body click selects the shape without sub-selecting a vertex, so
     // Backspace reads as "delete the track", not "remove a vertex"
-    await modal.sampleCanvas.click(BODY[0], BODY[1]);
-    await page.keyboard.press("Backspace");
+    await clickOverlay(modal, id);
 
-    // the drawn track leaves the canvas on the first press
-    await modal.videoAnnotate.assert.canvasRendersOverlay(id, false);
+    // received only if the first press deleted the track
+    await modal.eventUtils.after(
+      "lighter:overlay-removed",
+      () => page.keyboard.press("Backspace"),
+      ofOverlay(id),
+    );
     await modal.videoAnnotate.assert.objectTrackCount(1);
     // the delete flushes before the test ends
     await modal.sidebar.annotate.waitForSavesSettled();

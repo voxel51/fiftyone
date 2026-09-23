@@ -38,16 +38,6 @@ export class ModalAnnotate3dPom {
     }
   }
 
-  /** Switch the modal into ANNOTATE mode (the explore/annotate toggle). */
-  async enterAnnotateMode() {
-    await this.page.getByTestId("annotate").click();
-  }
-
-  /** Switch the modal back into EXPLORE mode. */
-  async enterExploreMode() {
-    await this.page.getByTestId("explore").click();
-  }
-
   /**
    * Enter cuboid annotation mode from the sidebar (the 3D Cuboids action). This
    * arms `current3dAnnotationMode`, which mounts the annotation toolbar and
@@ -104,24 +94,9 @@ export class ModalAnnotate3dPom {
     await this.toolbarButton("create-cuboid").click();
   }
 
-  /** Select a transform gizmo mode for the currently-selected label. */
-  async setTransformMode(mode: "translate" | "rotate" | "scale") {
-    await this.toolbarButton(mode).click();
-  }
-
   /** Delete the currently-selected label via the toolbar Delete button. */
   async deleteSelected() {
     await this.toolbarButton("contextual-delete").click();
-  }
-
-  /** Deselect / exit the edit form via the toolbar (Esc-equivalent). */
-  async deselect() {
-    await this.toolbarButton("exit-edit-mode").click();
-  }
-
-  /** Toggle the annotation plane helper. */
-  async toggleAnnotationPlane() {
-    await this.toolbarButton("toggle-annotation-plane").click();
   }
 
   /**
@@ -139,11 +114,6 @@ export class ModalAnnotate3dPom {
   /** Set a Position3d geometry value (commits an undoable engine write). */
   async setGeometry(axis: GeometryAxis, value: string) {
     await this.geometryField(axis).fill(value);
-  }
-
-  /** Read a Position3d geometry input's current value. */
-  async getGeometry(axis: GeometryAxis): Promise<string> {
-    return this.geometryField(axis).inputValue();
   }
 
   /** Vertex count of the selected 3D polyline, read off the looker3d container. */

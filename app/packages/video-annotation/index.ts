@@ -22,20 +22,20 @@ export type {
   SyntheticBox,
 } from "./src/streams/SyntheticLabelStream";
 export {
-  IMAVID_STREAM_ID,
+  DYNAMIC_GROUP_STREAM_ID,
   LABELS_STREAM_ID,
   MAIN_TILE_ID,
   VIDEO_STREAM_ID,
 } from "./src/utils/ids";
 export { getModalSampleFrameRate } from "./src/utils/modalSample";
 export { useTimelineMaxSize } from "./src/hooks/useTimelineMaxSize";
-export { ImaVidImageStream } from "./src/streams/ImaVidImageStream";
-export type { ImaVidImageFrame } from "./src/streams/ImaVidImageStream";
+export { DynamicGroupImageStream } from "./src/streams/DynamicGroupImageStream";
+export type { DynamicGroupImageFrame } from "./src/streams/DynamicGroupImageStream";
 export { useFrameLabelsStream } from "./src/streams/frameLabelsStream";
 export {
-  useImaVidImageStream,
-  usePublishImaVidImageStream,
-} from "./src/streams/imaVidImageStreamHandle";
+  useDynamicGroupImageStream,
+  usePublishDynamicGroupImageStream,
+} from "./src/streams/dynamicGroupImageStreamHandle";
 export { PropagationStatusItem } from "./src/components/PropagationStatusItem";
 export { resolvePropagationTarget } from "./src/propagation/propagationTarget";
 export type { PropagationTarget } from "./src/propagation/propagationTarget";

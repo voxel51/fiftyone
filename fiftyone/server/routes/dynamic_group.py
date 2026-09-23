@@ -15,6 +15,7 @@ from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 
+import fiftyone.core.sample as fos
 from fiftyone.core.utils import run_sync_task
 import fiftyone.server.view as fosv
 from fiftyone.server import decorators, utils
@@ -109,6 +110,46 @@ def get_group_state(view) -> Tuple[List[str], List[datetime.datetime]]:
     return member_ids, lmts
 
 
+def _apply_member_patch(
+    dataset, dynamic_group, members: set, entry
+) -> fos.Sample:
+    """Validates one ``{sampleId, patch}`` entry and applies its ops to the
+    member sample in memory, without saving.
+
+    Raises:
+        HTTPException: If the entry is malformed, addresses a non-member, or
+            its ops fail to apply
+
+    Returns:
+        The patched, unsaved sample
+    """
+    if not isinstance(entry, dict):
+        raise HTTPException(
+            status_code=400,
+            detail="each patches entry must be an object",
+        )
+
+    sample_id = entry.get("sampleId")
+    ops = entry.get("patch")
+
+    if sample_id not in members:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Sample '{sample_id}' is not a member of "
+            f"dynamic group '{dynamic_group}'",
+        )
+
+    if not isinstance(ops, list):
+        raise HTTPException(
+            status_code=400,
+            detail=f"patch for sample '{sample_id}' must be a list",
+        )
+
+    sample = get_sample_from_dataset(dataset, sample_id)
+    _handle_top_level_patch(sample, ops)
+    return sample
+
+
 class DynamicGroup(HTTPEndpoint):
     """Dynamic group endpoints."""
 
@@ -117,9 +158,11 @@ class DynamicGroup(HTTPEndpoint):
         """Applies JSON-patch deltas to members of a dynamic group under a
         single group version token.
 
-        The group, not each member, is the concurrency container; a member
-        swap that loses a race fails the whole request with a 412 carrying a
-        fresh group token.
+        The group, not each member, is the concurrency container. A member
+        that moves before the writes begin fails the whole request with a 412
+        carrying a fresh group token and no member written; one that moves
+        inside the write window 412s with the ids already written, which the
+        client reconciles before retrying.
 
         Args:
             request: Starlette request with ``dataset_id`` in path params
@@ -188,41 +231,34 @@ class DynamicGroup(HTTPEndpoint):
             )
             return self._version_mismatch(view)
 
-        members = set(member_ids)
+        # every entry is validated and applied in memory before the first
+        # write, so a bad entry rejects the request with no member written
+        patched = [
+            _apply_member_patch(dataset, dynamic_group, set(member_ids), entry)
+            for entry in patches
+        ]
+
+        # resolving the patches reads every member, so re-check the group here:
+        # a member that moved while they resolved rejects with nothing written
+        if not self._group_unchanged(view, member_ids, lmts):
+            logger.debug(
+                "Group moved while resolving patches for dynamic group %s",
+                dynamic_group,
+            )
+            return self._version_mismatch(view)
+
         samples = []
-        for entry in patches:
-            if not isinstance(entry, dict):
-                raise HTTPException(
-                    status_code=400,
-                    detail="each patches entry must be an object",
-                )
-
-            sample_id = entry.get("sampleId")
-            ops = entry.get("patch")
-
-            if sample_id not in members:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Sample '{sample_id}' is not a member of "
-                    f"dynamic group '{dynamic_group}'",
-                )
-
-            if not isinstance(ops, list):
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"patch for sample '{sample_id}' must be a list",
-                )
-
-            sample = get_sample_from_dataset(dataset, sample_id)
-            _handle_top_level_patch(sample, ops)
-
+        written = []
+        for sample in patched:
             try:
-                save_sample(sample, lmt_by_id[sample_id])
+                save_sample(sample, lmt_by_id[sample.id])
             except DbVersionMismatchError:
-                # a member moved between the group validation and its swap;
-                # fail with group-shaped state, not the decorator's member ETag
-                return self._version_mismatch(view)
+                # a member moved inside the swap window, so earlier members are
+                # already written; name them so the client reconciles instead
+                # of re-sending deltas that would duplicate their labels
+                return self._version_mismatch(view, written=written)
 
+            written.append(sample.id)
             samples.append(utils.json.serialize(sample))
 
         member_ids, lmts = get_group_state(view)
@@ -232,8 +268,28 @@ class DynamicGroup(HTTPEndpoint):
             {"samples": samples}, headers={"ETag": etag}
         )
 
-    def _version_mismatch(self, view) -> JSONResponse:
-        """Builds the 412 response carrying the group's fresh state."""
+    @staticmethod
+    def _group_unchanged(
+        view,
+        member_ids: List[str],
+        lmts: List[datetime.datetime],
+    ) -> bool:
+        """Whether the group still holds the members and modification times it
+        was validated against."""
+        current_ids, current_lmts = get_group_state(view)
+
+        return current_ids == member_ids and all(
+            datetimes_match(current, expected)
+            for current, expected in zip(current_lmts, lmts)
+        )
+
+    def _version_mismatch(self, view, written=None) -> JSONResponse:
+        """Builds the 412 response carrying the group's fresh state.
+
+        Args:
+            view: the dynamic group's member view
+            written: ids of members this request already wrote, if any
+        """
         member_ids, lmts = get_group_state(view)
 
         return utils.json.JSONResponse(
@@ -244,7 +300,8 @@ class DynamicGroup(HTTPEndpoint):
                         "last_modified_at": lmt.isoformat(),
                     }
                     for _id, lmt in zip(member_ids, lmts)
-                ]
+                ],
+                "written": written or [],
             },
             status_code=412,
             headers={"ETag": generate_group_etag(max(lmts), len(member_ids))},

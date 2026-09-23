@@ -135,6 +135,39 @@ class TestDynamicGroupPatch:
         assert labels == ["cat", "new"]
 
     @pytest.mark.asyncio
+    async def test_bad_entry_leaves_every_member_unwritten(
+        self, mutator, mock_request, stages, members
+    ):
+        """A patch that fails to apply on the second entry 400s before the
+        first entry is written, so a retry of the same deltas is clean."""
+        mock_request.body.return_value = json_payload(
+            body(
+                stages,
+                [
+                    replace_label(members[0], "dog"),
+                    {
+                        "sampleId": str(members[1].id),
+                        "patch": [
+                            {
+                                "op": "replace",
+                                "path": "/detections/detections/5/label",
+                                "value": "dog",
+                            }
+                        ],
+                    },
+                ],
+            )
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            await mutator.patch(mock_request)
+
+        assert exc_info.value.status_code == 400
+
+        members[0].reload()
+        assert members[0]["detections"].detections[0].label == "cat"
+
+    @pytest.mark.asyncio
     async def test_non_member_is_rejected(
         self, mutator, mock_request, dataset, stages
     ):

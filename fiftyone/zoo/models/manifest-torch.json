@@ -3924,6 +3924,62 @@
             "date_added": "2026-02-03 12:00:00"
         },
         {
+            "base_name": "moge-3-vitl-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "MoGe-3 ViT-L (370M): metric monocular geometry from a single image, with depth, a camera-space point map, surface normals and camera intrinsics, refined by a sparse volumetric stage",
+            "source": "https://github.com/microsoft/MoGe",
+            "author": "Lingyu Kong, Ruicheng Li, Ruicheng Wang, et al.",
+            "license": "MIT",
+            "size_bytes": 1481333394,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.moge.MoGeModel",
+                "config": {
+                    "name_or_path": "Ruicheng/moge-3-vitl"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["depth", "3d", "torch", "transformer"],
+            "training_data": [],
+            "date_added": "2026-09-02 12:00:00"
+        },
+        {
+            "base_name": "moge-3-vitg-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "MoGe-3 ViT-g (1.25B): the largest MoGe-3 model for metric monocular geometry, with depth, a camera-space point map, surface normals and camera intrinsics, refined by a sparse volumetric stage",
+            "source": "https://github.com/microsoft/MoGe",
+            "author": "Lingyu Kong, Ruicheng Li, Ruicheng Wang, et al.",
+            "license": "MIT",
+            "size_bytes": 5003249242,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.moge.MoGeModel",
+                "config": {
+                    "name_or_path": "Ruicheng/moge-3-vitg"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["depth", "3d", "torch", "transformer"],
+            "training_data": [],
+            "date_added": "2026-09-02 12:00:00"
+        },
+        {
             "base_name": "zero-shot-classification-transformer-torch",
             "base_filename": null,
             "version": null,
@@ -9582,45 +9638,6 @@
             "date_added": "2024-05-20 19:22:51"
         },
         {
-            "base_name": "yolo-nas-torch",
-            "base_filename": null,
-            "version": null,
-            "description": "AI-designed detector family offering three model variants for diverse deployment scenarios",
-            "source": "https://github.com/Deci-AI/super-gradients",
-            "author": "Shay Aharon, et al.",
-            "license": "Apache 2.0",
-            "size_bytes": null,
-            "default_deployment_config_dict": {
-                "type": "fiftyone.utils.super_gradients.TorchYoloNasModel",
-                "config": {
-                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
-                    "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
-                    "raw_inputs": true
-                }
-            },
-            "requirements": {
-                "packages": ["torch", "torchvision", "super-gradients"],
-                "cpu": {
-                    "support": true
-                },
-                "gpu": {
-                    "support": true
-                }
-            },
-            "tags": ["detection", "torch", "yolo", "official"],
-            "training_data": [
-                {
-                    "name": "MS COCO 2017",
-                    "url": "https://cocodataset.org"
-                },
-                {
-                    "name": "Objects365",
-                    "url": "https://www.objects365.org"
-                }
-            ],
-            "date_added": "2024-01-06 08:51:14"
-        },
-        {
             "base_name": "yolov5x-coco-torch",
             "base_filename": "yolov5x-coco.pt",
             "description": "High-accuracy detector offering top precision for applications where quality is critical",
@@ -11720,6 +11737,36 @@
             "date_added": "2026-01-22 12:00:00"
         },
         {
+            "base_name": "rex-omni-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Vision-language detector that finds any object you name by predicting quantized coordinate tokens",
+            "source": "https://huggingface.co/IDEA-Research/Rex-Omni",
+            "author": "IDEA Research",
+            "license": "IDEA License 1.0 (research-only); based on Qwen2.5-VL under the Qwen RESEARCH LICENSE",
+            "size_bytes": 8131667992,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rex_omni.RexOmniModel",
+                "config": {
+                    "name_or_path": "IDEA-Research/Rex-Omni",
+                    "output_processor_cls": "fiftyone.utils.rex_omni.RexOmniOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=4.49,<5",
+                    "accelerate"
+                ],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["detection", "vlm", "torch", "transformer", "zero-shot"],
+            "training_data": [],
+            "date_added": "2026-06-30 00:00:00"
+        },
+        {
             "base_name": "rfdetr-nano-coco-torch",
             "base_filename": null,
             "version": null,
@@ -12288,6 +12335,62 @@
             "date_added": "2026-07-13 00:00:00"
         },
         {
+            "base_name": "point-transformer-v3-nuscenes-torch",
+            "base_filename": "ptv3-nuscenes-semseg-pt-v3m1-0-base.pth",
+            "version": null,
+            "description": "Point Transformer V3 backbone pretrained on nuScenes LiDAR semantic segmentation; produces embeddings for 3D point cloud samples",
+            "source": "https://github.com/Pointcept/PointTransformerV3",
+            "author": "Xiaoyang Wu, et al.",
+            "license": "MIT",
+            "size_bytes": 554519016,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://huggingface.co/Pointcept/PointTransformerV3/resolve/main/nuscenes-semseg-pt-v3m1-0-base/model/model_best.pth"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ptv3.PointTransformerV3Model",
+                "config": {
+                    "grid_size": 0.05,
+                    "feature_keys": ["coord", "strength"]
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "spconv-cu120",
+                    "torch-scatter",
+                    "timm",
+                    "addict",
+                    "open3d"
+                ],
+                "cpu": {
+                    "support": false
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "embeddings",
+                "3d",
+                "point-cloud",
+                "lidar",
+                "nuscenes",
+                "torch",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "nuScenes",
+                    "url": "https://www.nuscenes.org"
+                }
+            ],
+            "date_added": "2026-06-15 12:00:00"
+        },
+        {
             "base_name": "dinov3-vits16-torch",
             "base_filename": null,
             "version": null,
@@ -12442,6 +12545,157 @@
                 }
             ],
             "date_added": "2026-07-14 12:00:00"
+        },
+        {
+            "base_name": "tipsv2-b14-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "TIPSv2 base vision-language encoder for zero-shot image classification and spatially-aware embeddings",
+            "source": "https://huggingface.co/google/tipsv2-b14",
+            "author": "Google DeepMind",
+            "license": "Apache 2.0",
+            "size_bytes": 784561815,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "google/tipsv2-b14"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=5.14",
+                    "sentencepiece"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "logits",
+                "embeddings",
+                "torch",
+                "transformers",
+                "zero-shot",
+                "official"
+            ],
+            "training_data": [],
+            "date_added": "2026-07-22 00:00:00"
+        },
+        {
+            "base_name": "tipsv2-l14-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "TIPSv2 large vision-language encoder for zero-shot image classification and spatially-aware embeddings",
+            "source": "https://huggingface.co/google/tipsv2-l14",
+            "author": "Google DeepMind",
+            "license": "Apache 2.0",
+            "size_bytes": 1952552415,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "google/tipsv2-l14"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=5.14",
+                    "sentencepiece"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "logits",
+                "embeddings",
+                "torch",
+                "transformers",
+                "zero-shot",
+                "official"
+            ],
+            "training_data": [],
+            "date_added": "2026-07-22 00:00:00"
+        },
+        {
+            "base_name": "qwen3.8-27b-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Hybrid-attention 27B vision-language model for object detection via 2D grounding",
+            "source": "https://huggingface.co/Qwen/Qwen3.8-27B",
+            "author": "Qwen Team, Alibaba",
+            "license": "Apache 2.0",
+            "size_bytes": 55600000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.qwen3_8.Qwen38Model",
+                "config": {
+                    "name_or_path": "Qwen/Qwen3.8-27B",
+                    "output_processor_cls": "fiftyone.utils.qwen3_8.Qwen38OutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=5.8.0",
+                    "accelerate",
+                    "bitsandbytes"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "vlm", "torch", "transformer", "zero-shot"],
+            "training_data": [],
+            "date_added": "2026-08-14 12:00:00"
+        },
+        {
+            "base_name": "muse-glimmer-30b-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Agentic 30B vision-language model for object detection via 2D grounding",
+            "source": "https://huggingface.co/meta-models/Muse-Glimmer-30B",
+            "author": "Meta",
+            "license": "Apache 2.0",
+            "size_bytes": 59600000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.muse_glimmer.MuseGlimmerModel",
+                "config": {
+                    "name_or_path": "meta-models/Muse-Glimmer-30B",
+                    "output_processor_cls": "fiftyone.utils.muse_glimmer.MuseGlimmerOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=5.15.0",
+                    "accelerate"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "vlm", "torch", "transformer", "zero-shot"],
+            "training_data": [],
+            "date_added": "2026-08-10 12:00:00"
         }
     ]
 }

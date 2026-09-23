@@ -95,6 +95,96 @@ class TestDynamicGroupToken:
         assert target["detections"].detections[0].label == "moved"
 
     @pytest.mark.asyncio
+    async def test_member_moved_while_patches_resolve_writes_nothing(
+        self, mutator, mock_request, dataset, stages, members, monkeypatch
+    ):
+        """Resolving the patches reads every member, so a member another
+        client moves meanwhile rejects with no member written."""
+        real_apply = ford._apply_member_patch
+        moved = []
+
+        def move_other_member(dataset_, dynamic_group, member_ids, entry):
+            sample = real_apply(dataset_, dynamic_group, member_ids, entry)
+
+            if not moved:
+                moved.append(True)
+                other = dataset[members[1].id]
+                other["detections"].detections[0].label = "moved"
+                other.save()
+
+            return sample
+
+        monkeypatch.setattr(ford, "_apply_member_patch", move_other_member)
+
+        mock_request.body.return_value = json_payload(
+            body(
+                stages,
+                [
+                    replace_label(members[0], "dog"),
+                    replace_label(members[2], "dog"),
+                ],
+            )
+        )
+
+        #####
+        response = await mutator.patch(mock_request)
+        #####
+
+        assert response.status_code == 412
+        assert json.loads(response.body)["written"] == []
+
+        # neither patched member was written
+        for member in (members[0], members[2]):
+            member.reload()
+            assert member["detections"].detections[0].label == "cat"
+
+    @pytest.mark.asyncio
+    async def test_member_moved_inside_write_window_names_what_was_written(
+        self, mutator, mock_request, dataset, stages, members, monkeypatch
+    ):
+        """The one window that can still write part of a request reports the
+        members it wrote, so the client reconciles them instead of re-sending
+        deltas that would duplicate their labels."""
+        real_save = ford.save_sample
+        saved = []
+
+        def move_next_member(sample, if_last_modified_at):
+            etag = real_save(sample, if_last_modified_at)
+            saved.append(sample.id)
+
+            if len(saved) == 1:
+                other = dataset[members[2].id]
+                other["detections"].detections[0].label = "moved"
+                other.save()
+
+            return etag
+
+        monkeypatch.setattr(ford, "save_sample", move_next_member)
+
+        mock_request.body.return_value = json_payload(
+            body(
+                stages,
+                [
+                    replace_label(members[0], "dog"),
+                    replace_label(members[2], "dog"),
+                ],
+            )
+        )
+
+        #####
+        response = await mutator.patch(mock_request)
+        #####
+
+        assert response.status_code == 412
+        assert json.loads(response.body)["written"] == [str(members[0].id)]
+
+        # the first member's write landed, the interfering write survives
+        members[0].reload()
+        assert members[0]["detections"].detections[0].label == "dog"
+        members[2].reload()
+        assert members[2]["detections"].detections[0].label == "moved"
+
+    @pytest.mark.asyncio
     async def test_membership_change_is_rejected(
         self, mutator, mock_request, dataset, stages, members
     ):

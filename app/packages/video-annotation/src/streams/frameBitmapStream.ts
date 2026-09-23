@@ -19,8 +19,11 @@ import type {
   FrameWorkerOutbound,
 } from "./frameWorkerProtocol";
 
+/** Fetch attempts a frame gets before it is written off as unavailable. */
+export const MAX_FRAME_ATTEMPTS = 3;
+
 /**
- * What the stream publishes per committed frame. Consumers (the ImaVid tile,
+ * What the stream publishes per committed frame. Consumers (the dynamic group tile,
  * SAM2 propagation) draw `bitmap`; `frameNumber` / `sampleId` identify which
  * frame this is for commands / persistence.
  */
@@ -28,7 +31,7 @@ export interface FrameBitmap<M = unknown> {
   bitmap: ImageBitmap;
   frameNumber: number;
   sampleId: string;
-  /** Source-specific frame metadata (e.g. the ImaVid frame's src/filepath). */
+  /** Source-specific frame metadata (e.g. the dynamic group frame's src/filepath). */
   meta: M;
 }
 
@@ -63,7 +66,7 @@ interface InflightEntry {
 }
 
 /**
- * Abstract chunked bitmap stream for ImaVid-style playback: a decode worker
+ * Abstract chunked bitmap stream for dynamic group playback: a decode worker
  * fills an LRU of decoded frame bitmaps keyed by frame number, off the main
  * thread; the tile renders them one-per-commit via a single engine clock (so
  * media + overlays stay lock-step).
@@ -95,11 +98,13 @@ export abstract class FrameBitmapStream<M = unknown> extends PlaybackStreamBase<
   /** reqId → frame numbers that request asked for. */
   private readonly requestFrames = new Map<number, number[]>();
   /**
-   * Frames that settled without a bitmap — unresolvable source, decode error,
-   * or a failed chunk. Terminal: never re-requested, so a bad frame can't drive
-   * an infinite fetch loop. Cleared only on `destroy`.
+   * Frames that settled without a bitmap on every attempt — unresolvable
+   * source, decode error, or a failed chunk. Terminal, so a bad frame can't
+   * drive an infinite fetch loop. Cleared only on `destroy`.
    */
   private readonly failed = new Set<number>();
+  /** Settled-without-a-bitmap attempts per frame, until it turns terminal. */
+  private readonly attempts = new Map<number, number>();
   private readonly fetchedRanges: Array<[number, number]> = [];
 
   private readonly worker: Worker;
@@ -209,6 +214,7 @@ export abstract class FrameBitmapStream<M = unknown> extends PlaybackStreamBase<
     this.inflight.clear();
     this.requestFrames.clear();
     this.failed.clear();
+    this.attempts.clear();
     this.cache.clear();
   }
 
@@ -408,9 +414,9 @@ export abstract class FrameBitmapStream<M = unknown> extends PlaybackStreamBase<
 
   /**
    * Settle any in-flight frames from this request that never received a
-   * `frameReady`. They're marked terminally `failed` so we never re-request
-   * them (else the engine, seeing them perpetually un-ready, re-prefetches
-   * every tick). Anyone awaiting `warmup` unblocks.
+   * `frameReady`. A frame is retried on a later prefetch tick until
+   * `MAX_FRAME_ATTEMPTS`, then turns terminally `failed` so it can't drive an
+   * endless fetch loop. Anyone awaiting `warmup` unblocks either way.
    */
   private resolveOutstandingFrames(reqId: number): void {
     const frames = this.requestFrames.get(reqId);
@@ -426,7 +432,12 @@ export abstract class FrameBitmapStream<M = unknown> extends PlaybackStreamBase<
         continue;
       }
 
-      this.failed.add(f);
+      const attempts = (this.attempts.get(f) ?? 0) + 1;
+      this.attempts.set(f, attempts);
+      if (attempts >= MAX_FRAME_ATTEMPTS) {
+        this.failed.add(f);
+      }
+
       entry.resolve();
       this.inflight.delete(f);
     }

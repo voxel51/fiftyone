@@ -33,6 +33,30 @@ def get_head_dataset_id(dataset):
     return dataset_id
 
 
+def build_result_view(ctx, run_data: Dict[str, Any]):
+    """The view a completed run's results describe.
+
+    Dynamic runs rebuild their serialized stages against the current
+    dataset; static runs select their stored result IDs, in patch space
+    when the run searched a patches index.
+    """
+    result_view_stages = run_data.get("result_view")
+    if result_view_stages:
+        from fiftyone.core.view import DatasetView
+
+        return DatasetView._build(ctx.dataset, result_view_stages)
+
+    base = ctx.dataset
+    if base.media_type == "group":
+        base = base.select_group_slices(_allow_mixed=True)
+
+    patches_field = run_data.get("patches_field")
+    if patches_field:
+        base = base.to_patches(patches_field)
+
+    return base.select(run_data.get("result_ids", []), ordered=True)
+
+
 class RunManager:
     """Manager class for persisting and retrieving similarity search runs."""
 
@@ -40,7 +64,7 @@ class RunManager:
     _OPID_PREFIX = "opid:"
 
     # Fields too large for listing — only needed by get_run / apply_run
-    _HEAVY_FIELDS = {"result_ids", "result_view"}
+    _HEAVY_FIELDS = {"result_ids", "result_view", "base_view"}
 
     def __init__(self, ctx):
         dataset_id = get_head_dataset_id(ctx.dataset)

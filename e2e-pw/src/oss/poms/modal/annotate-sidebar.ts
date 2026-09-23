@@ -298,6 +298,13 @@ class ModalAnnotateSidebarAsserter {
     ).toHaveAttribute("data-testid", "AddIcon");
   }
 
+  /** The field at `path` lists exactly `count` label rows. */
+  async labelRowCount(path: string, count: number) {
+    await expect(this.modalAnnotateSidebar.labelRowsFor(path)).toHaveCount(
+      count,
+    );
+  }
+
   /** The PRIMITIVES row for `path` shows `value`. */
   async primitiveValue(path: string, value: string) {
     await expect(this.modalAnnotateSidebar.primitiveValue(path)).toHaveText(
@@ -422,6 +429,16 @@ class ModalAnnotateSidebarAsserter {
   async segmentationModeIsActive(active = true) {
     const button =
       this.modalAnnotateSidebar.page.getByTestId("segmentation-mode");
+    await expect(button).toHaveAttribute("data-cy-active", active.toString());
+  }
+
+  /**
+   * Assert that polyline mode is active or inactive
+   *
+   * @param active Whether polyline mode should be active (default true)
+   */
+  async polylineModeIsActive(active = true) {
+    const button = this.modalAnnotateSidebar.page.getByTestId("polyline-mode");
     await expect(button).toHaveAttribute("data-cy-active", active.toString());
   }
 

@@ -1,5 +1,4 @@
 import type { ToolbarActionGroup } from "@fiftyone/components";
-import { usePlayhead } from "@fiftyone/playback";
 import { useModalSample } from "@fiftyone/state";
 import { Icon, IconName, Size } from "@voxel51/voodo";
 import { useMemo } from "react";
@@ -18,7 +17,6 @@ import { useVideoSurfaceActions } from "./useVideoSurfaceActions";
  */
 export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
   const actions = useVideoSurfaceActions();
-  const playhead = usePlayhead();
   const playheadFrame = useCurrentFrame();
   const modalSample = useModalSample();
 
@@ -39,7 +37,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
     isKeyframeAtPlayhead,
     canMarkKeyframe,
     canSplit,
-  } = useTrackSelectionGates(playhead, hasUsableFps);
+  } = useTrackSelectionGates(playheadFrame, hasUsableFps);
 
   return useMemo<ToolbarActionGroup[]>(
     () => [
@@ -84,7 +82,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
             isDisabled: !canMarkKeyframe,
             onClick: () => {
               if (!canMarkKeyframe) return;
-              actions.markKeyframe(playhead, selectedIds);
+              actions.markKeyframe(playheadFrame, selectedIds);
             },
           },
           {
@@ -133,7 +131,6 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
       hasUsableFps,
       isKeyframeAtPlayhead,
       modalSample,
-      playhead,
       playheadFrame,
       selectedIds,
       selectedTrackField,

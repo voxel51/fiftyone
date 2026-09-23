@@ -86,6 +86,12 @@ export interface LabelStore {
    *  frame is not loaded, or the field is unset. */
   getFrameValue?(path: string, frame: number): unknown;
 
+  /** Edit a registered per-frame non-label field at `frame`. */
+  setFrameValue?(path: string, frame: number, value: unknown): void;
+
+  /** Drop a registered per-frame non-label field at `frame`. */
+  deleteFrameValue?(path: string, frame: number): void;
+
   /** Current refs across this store's label paths, filtered to `kinds` — the
    *  per-store half of `engine.enumerateLabels` (hydration). */
   enumerateLabels(kinds: readonly LabelType[]): LabelRef[];

@@ -7,8 +7,10 @@ import {
   useActiveSampleId,
   useAnnotationEngine,
   useFrameValue,
+  useTemporal,
 } from "@fiftyone/annotation";
 import {
+  useDynamicGroupGroupBy,
   useDynamicGroupOrderBy,
   useIsImageDynamicGroupVideo,
 } from "@fiftyone/state";
@@ -26,19 +28,29 @@ export const useFramePrimitiveValue = (path: string): Primitive | undefined =>
     | Primitive
     | undefined;
 
+/** The frame under the playhead, or `undefined` outside a temporal view. */
+export const usePlayheadFrame = (): number | undefined =>
+  useTemporal(useAnnotationEngine(), (reads) => reads.frame());
+
 /**
- * Why a frame primitive cannot be edited, or null when it can. The clip's own
- * clock never edits: `frame_number` on a video, and the field an image
- * dataset is ordered by when it plays as a dynamic group.
+ * Why a frame primitive cannot be edited, or null when it can. What defines
+ * the clip never edits: `frame_number` on a video, and the fields an image
+ * dataset is grouped and ordered by when it plays as a dynamic group.
  */
 export const framePrimitiveReadOnlyReason = (
   path: string,
   isImageDynamicGroupVideo: boolean,
   orderBy: string | null,
+  groupBy: string | null,
 ): string | null => {
   if (isImageDynamicGroupVideo) {
-    return orderBy !== null && path === orderBy
-      ? `${path} orders this dynamic group and cannot be edited`
+    if (orderBy !== null && path === orderBy) {
+      return `${path} orders this dynamic group and cannot be edited`;
+    }
+
+    // editing it would move the sample into another group mid-session
+    return groupBy !== null && path === groupBy
+      ? `${path} groups this dynamic group and cannot be edited`
       : null;
   }
 
@@ -52,4 +64,5 @@ export const useFramePrimitiveReadOnlyReason = (path: string): string | null =>
     path,
     useIsImageDynamicGroupVideo(),
     useDynamicGroupOrderBy(),
+    useDynamicGroupGroupBy(),
   );
