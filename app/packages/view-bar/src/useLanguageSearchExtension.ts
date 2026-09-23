@@ -22,6 +22,9 @@ export interface LanguageSearchExtension {
    * doing nothing, when no registered extension searches it.
    */
   run: (index: PromptableSimilarityIndex, query: string, k: number) => boolean;
+  /** Drops the search in flight, if any: it will not publish, and its
+   * pending treatment is released. */
+  cancel: () => void;
   /** Queries run here, most recent first. The bar reads the stored history
    * when it mounts, so these would otherwise be missing until it remounts. */
   recentQueries: readonly string[];
@@ -40,19 +43,18 @@ export const useLanguageSearchExtension = (): LanguageSearchExtension => {
   const searchSeq = useRef(0);
   const inFlight = useRef<number | null>(null);
 
+  const cancel = useCallback(() => {
+    searchSeq.current += 1;
+    if (inFlight.current !== null) {
+      inFlight.current = null;
+      setViewChangePending(false);
+    }
+  }, [setViewChangePending]);
+
   // A search still running when the field goes away (it remounts per
   // dataset) must not publish into the next one, nor leave its pending
   // treatment on
-  useEffect(
-    () => () => {
-      searchSeq.current += 1;
-      if (inFlight.current !== null) {
-        inFlight.current = null;
-        setViewChangePending(false);
-      }
-    },
-    [setViewChangePending],
-  );
+  useEffect(() => cancel, [cancel]);
 
   const run = useCallback(
     (index: PromptableSimilarityIndex, query: string, k: number) => {
@@ -115,5 +117,5 @@ export const useLanguageSearchExtension = (): LanguageSearchExtension => {
     ],
   );
 
-  return { run, recentQueries };
+  return { run, cancel, recentQueries };
 };

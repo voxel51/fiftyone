@@ -3,8 +3,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@fiftyone/state", () => ({ useViewChangePending: () => false }));
 const extensionRun = vi.hoisted(() => vi.fn(() => true));
+const extensionCancel = vi.hoisted(() => vi.fn());
 vi.mock("./useLanguageSearchExtension", () => ({
-  useLanguageSearchExtension: () => ({ run: extensionRun, recentQueries: [] }),
+  useLanguageSearchExtension: () => ({
+    run: extensionRun,
+    cancel: extensionCancel,
+    recentQueries: [],
+  }),
 }));
 vi.mock("./SearchSettingsPopover", () => ({
   SearchSettingsPopover: ({ trigger }: { trigger: React.ReactNode }) => (
@@ -140,5 +145,31 @@ describe("LanguageSearch", () => {
     search("an animal");
     expect(extensionRun).toHaveBeenCalledWith(index, "an animal", 25);
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("drops a running extension search before submitting to the server", () => {
+    extensionCancel.mockClear();
+    const onSubmit = vi.fn();
+    render(
+      <LanguageSearch
+        onSubmit={onSubmit}
+        onUnavailable={noop}
+        available
+        enabled
+        history={[]}
+        promptKeys={[{ key: "clip_sim", patchesField: null, extension: null }]}
+        selectedKey="clip_sim"
+        onSelectKey={noop}
+        k={25}
+        onChangeK={noop}
+        onOpenPanel={noop}
+      />,
+    );
+    search("an animal");
+    expect(onSubmit).toHaveBeenCalledWith("an animal");
+    expect(extensionCancel).toHaveBeenCalledTimes(1);
+    expect(extensionCancel.mock.invocationCallOrder[0]).toBeLessThan(
+      onSubmit.mock.invocationCallOrder[0],
+    );
   });
 });

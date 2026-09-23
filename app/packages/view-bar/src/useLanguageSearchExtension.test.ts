@@ -128,6 +128,20 @@ describe("useLanguageSearchExtension", () => {
     expect(env.setPending).toHaveBeenLastCalledWith(false);
   });
 
+  it("drops a cancelled search that settles later", async () => {
+    const resolve = pendingResult();
+    const { result } = renderHook(() => useLanguageSearchExtension());
+
+    act(() => {
+      result.current.run(INDEX, "an animal", 25);
+      result.current.cancel();
+    });
+    await act(async () => resolve({ stage: STAGE }));
+
+    expect(env.publish).not.toHaveBeenCalled();
+    expect(env.setPending).toHaveBeenLastCalledWith(false);
+  });
+
   it("drops a search still running when the field unmounts", async () => {
     const resolve = pendingResult();
     const { result, unmount } = renderHook(() => useLanguageSearchExtension());

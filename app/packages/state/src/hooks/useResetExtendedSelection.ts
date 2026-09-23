@@ -35,11 +35,12 @@ export default function useResetExtendedSelection() {
 }
 
 /**
- * Publishes a result to the extended selection: its stage narrows the grid
- * without changing the view, and `decorate` writes the publisher's own
- * selection artifacts in the same commit. A callback rather than a
- * transaction, as the embeddings panel's selection does, so the atom's effect
- * keeps the mirror it restores from in step.
+ * Publishes a result to the extended selection, replacing whatever selection
+ * was there: its stage narrows the grid without changing the view, and
+ * `decorate` writes the publisher's own selection artifacts in the same
+ * commit. A callback rather than a transaction, as the embeddings panel's
+ * selection does, so the atoms' effects keep the mirror they restore from in
+ * step.
  */
 export function usePublishExtendedSelection() {
   return useRecoilCallback(
@@ -48,6 +49,11 @@ export function usePublishExtendedSelection() {
         stage: Record<string, Record<string, unknown>>,
         decorate?: (cb: ExtendedSelectionResetInterface) => void,
       ) => {
+        // The previous selection's sample ids still scope the sidebar's
+        // counts and reach operators, and its artifacts stay drawn, unless
+        // they clear before the new stage is written
+        reset(extendedSelection);
+        runExtendedSelectionResetParticipants({ set, reset });
         set(extendedSelectionOverrideStage, stage as never);
         decorate?.({ set, reset });
       },

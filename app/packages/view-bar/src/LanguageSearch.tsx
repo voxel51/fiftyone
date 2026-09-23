@@ -96,8 +96,11 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
   const pending = useViewChangePending();
   // An index a text search extension searches client-side runs here, not
   // through `onSubmit`
-  const { run: runExtensionSearch, recentQueries } =
-    useLanguageSearchExtension();
+  const {
+    run: runExtensionSearch,
+    cancel: cancelExtensionSearch,
+    recentQueries,
+  } = useLanguageSearchExtension();
   const shownHistory = React.useMemo(
     () =>
       recentQueries.reduceRight(
@@ -134,6 +137,9 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
       }
       const index = promptKeys.find((key) => key.key === selectedKey);
       if (index?.extension && runExtensionSearch(index, text, k)) return;
+      // An extension search still running would otherwise publish over the
+      // view this search produces
+      cancelExtensionSearch();
       onSubmit(text);
     },
     [
@@ -144,6 +150,7 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
       promptKeys,
       selectedKey,
       runExtensionSearch,
+      cancelExtensionSearch,
       k,
     ],
   );
