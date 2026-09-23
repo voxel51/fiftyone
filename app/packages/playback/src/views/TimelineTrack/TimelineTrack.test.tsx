@@ -392,6 +392,44 @@ describe("TimelineTrack", () => {
       expect(onTrackClick).toHaveBeenCalledTimes(1);
     });
 
+    it("hands onEventClick the click position so a consumer can anchor a readout to it", () => {
+      const onEventClick = vi.fn();
+      const { container } = renderTrack({
+        track: { start: 0, end: 10, events: [{ startSec: 3 }], onEventClick },
+      });
+      const event = container.querySelector(`.${styles.event}`) as HTMLElement;
+      fireEvent.click(event, { clientX: 250, clientY: 40, detail: 1 });
+      expect(onEventClick).toHaveBeenCalledWith(
+        expect.objectContaining({ startSec: 3 }),
+        { x: 250, y: 40 },
+      );
+    });
+  });
+
+  describe("label actions", () => {
+    it("renders beside the pin and keeps their clicks off the row", () => {
+      const onTrackClick = vi.fn();
+      const onAction = vi.fn();
+      renderTrack({
+        track: {
+          labelWidth: 200,
+          labelActions: <button onClick={onAction}>continue</button>,
+          onPinClick: vi.fn(),
+          onTrackClick,
+        },
+      });
+      const action = screen.getByRole("button", { name: "continue" });
+      expect(action.closest("[data-track-label-actions]")).not.toBeNull();
+      expect(
+        action.compareDocumentPosition(
+          screen.getByRole("button", { name: "Pin track" }),
+        ) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      fireEvent.click(action, { button: 0, detail: 1 });
+      expect(onAction).toHaveBeenCalledTimes(1);
+      expect(onTrackClick).not.toHaveBeenCalled();
+    });
+
     it("right-click on an event marker still fires onContextMenu on the row", () => {
       const onContextMenu = vi.fn();
       const { container } = renderTrack({

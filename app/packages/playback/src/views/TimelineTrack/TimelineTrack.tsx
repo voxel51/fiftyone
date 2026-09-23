@@ -162,8 +162,15 @@ export interface TimelineTrackProps {
   coverageRanges?: readonly TimelineCoverageRange[];
   /** Explain uncovered time when coverage is limited by rendering as well as computation. */
   coverageGapLabel?: string;
-  /** Fired when an event marker / bar is clicked. Typically seeks. */
-  onEventClick?: (event: NormalizedEvent) => void;
+  /**
+   * Fired when an event marker / bar is clicked, after the lane has seeked to
+   * the click. `anchor` is the click's viewport position so a consumer can
+   * open a readout beside the event rather than somewhere unrelated.
+   */
+  onEventClick?: (
+    event: NormalizedEvent,
+    anchor?: { x: number; y: number },
+  ) => void;
   /**
    * Custom items appended (below a separator) to an event's context menu.
    * Each `onSelect` receives the event the menu was opened on — the handler
@@ -183,6 +190,14 @@ export interface TimelineTrackProps {
    * already visible from its position.
    */
   secondaryLabel?: string;
+  /**
+   * Row-level controls rendered in the label column between the secondary
+   * label and the pin button — a "continue" or "retry" affordance for a row
+   * whose source has stopped, for instance. Clicks inside never reach the
+   * row, so they cannot seek or select. Semantic-free: the consumer decides
+   * what belongs here.
+   */
+  labelActions?: React.ReactNode;
   height?: number;
   labelWidth?: number;
   pinned?: boolean;
@@ -327,6 +342,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
   eventMenuItems,
   label,
   secondaryLabel,
+  labelActions,
   height = TIMELINE_TRACK_ROW_HEIGHT,
   labelWidth = 0,
   pinned = false,
@@ -665,6 +681,17 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
               {secondaryLabel}
             </Text>
           )}
+          {labelActions && (
+            <span
+              className={styles.labelActions}
+              data-track-label-actions
+              // A control here acts on the row's source, not on the row: it
+              // must neither select the track nor seek the lane.
+              onClick={(e) => e.stopPropagation()}
+            >
+              {labelActions}
+            </span>
+          )}
           {onPinClick && !isChild && (
             <Button
               variant={Variant.Icon}
@@ -814,7 +841,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                       viewDuration;
                   seek(t);
                 }
-                onEventClick?.(event);
+                onEventClick?.(event, { x: ev.clientX, y: ev.clientY });
               };
               const isInterval = event.endSec !== undefined;
               const isResizable = Boolean(

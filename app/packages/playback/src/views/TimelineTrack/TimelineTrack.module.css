@@ -115,6 +115,15 @@
   white-space: nowrap;
 }
 
+/* Row-level controls beside the pin. They keep their size while the name
+   ellipsises, so an affordance never disappears on a narrow column. */
+.labelActions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 2px;
+}
+
 /* Pin button stays visible — at half opacity when unpinned so it's
    discoverable, full opacity when pinned (or on hover). */
 .pinButton {
