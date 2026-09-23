@@ -1,4 +1,3 @@
-import type { TemporalTagTimelineProps, Track } from "@fiftyone/playback";
 import {
   useSyncExternalStore,
   type ComponentType,
@@ -12,11 +11,6 @@ export interface EpisodeSessionContribution {
   readonly session: EpisodeSession | null;
   readonly headerActions?: ReactNode;
   readonly emptyState?: ReactNode;
-  readonly timelineReadouts?: ReactNode;
-  readonly timelineContent?: ReactNode;
-  readonly tracks?: readonly Track[];
-  readonly decorateTrack?: TemporalTagTimelineProps["decorateTrack"];
-  readonly onTimelineDrawerOpenChange?: (open: boolean) => void;
 }
 
 export interface EpisodeSessionExtensionProps {

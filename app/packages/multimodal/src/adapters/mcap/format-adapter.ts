@@ -876,6 +876,9 @@ class McapEpisodeSession implements EpisodeSession {
   private returnedBatches = 0;
   private budgetAllowance?: ReadWorkBudget;
   private budgetLedger?: SourceReadBudgetLedger;
+  /** A grant was refused since the account opened or the limit was lifted. */
+  private budgetRefused = false;
+  private readonly budgetListeners = new Set<() => void>();
   private readonly streamIdsBySourceName: ReadonlyMap<string, string>;
   private readonly sourceNamesById: ReadonlyMap<string, string>;
 
@@ -1056,6 +1059,7 @@ class McapEpisodeSession implements EpisodeSession {
       reserve: (budget) => {
         const reservation = ledger.reserve(budget, 0);
         if (!reservation) {
+          this.noteBudgetRefused();
           return undefined;
         }
         return {
@@ -1063,7 +1067,28 @@ class McapEpisodeSession implements EpisodeSession {
           commit: (usage, options) => reservation.commit(usage, 0, options),
         };
       },
+      standing: () => ({
+        exhausted: this.budgetRefused,
+        lifted: ledger.lifted(),
+      }),
+      lift: () => {
+        if (ledger.lifted()) return;
+        ledger.lift();
+        this.budgetRefused = false;
+        for (const listener of this.budgetListeners) listener();
+      },
+      subscribe: (listener) => {
+        this.budgetListeners.add(listener);
+        return () => this.budgetListeners.delete(listener);
+      },
     };
+  }
+
+  /** Every account over this source shares one standing, so all of them hear it. */
+  private noteBudgetRefused(): void {
+    if (this.budgetRefused) return;
+    this.budgetRefused = true;
+    for (const listener of this.budgetListeners) listener();
   }
 
   private async readBounded(
@@ -1081,6 +1106,7 @@ class McapEpisodeSession implements EpisodeSession {
       this.boundedPolicy.maxChunksPerGrant,
     );
     if (!reservation) {
+      this.noteBudgetRefused();
       return {
         batches: [],
         ...(request.continuation ? { continuation: request.continuation } : {}),

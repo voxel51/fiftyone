@@ -28,7 +28,19 @@ export interface SourceReadBudgetLedger {
     budget: ReadWorkBudget,
     physicalUnits: number,
   ): PhysicalReadBudgetReservation | undefined;
+  /** Stops refusing reservations for good; the allowance no longer applies. */
+  lift(): void;
+  lifted(): boolean;
 }
+
+/** What `remaining()` reports once the allowance no longer applies. */
+const UNLIMITED: SourceReadBudgetSnapshot = {
+  maxMessages: Number.MAX_SAFE_INTEGER,
+  maxSourceBytes: Number.MAX_SAFE_INTEGER,
+  maxUncompressedBytes: Number.MAX_SAFE_INTEGER,
+  maxWallTimeMs: Number.MAX_SAFE_INTEGER,
+  maxPhysicalUnits: Number.MAX_SAFE_INTEGER,
+};
 
 /**
  * Creates one cumulative source allowance.
@@ -52,28 +64,39 @@ export function createSourceReadBudgetLedger(
     maxPhysicalUnits: physical.maxPhysicalUnits,
   };
   const remaining = { ...initial };
+  let lifted = false;
 
   return {
-    remaining: () => ({ ...remaining }),
+    remaining: () => (lifted ? { ...UNLIMITED } : { ...remaining }),
+    lift: () => {
+      lifted = true;
+    },
+    lifted: () => lifted,
 
     reserve(budget, physicalUnits) {
       assertReadWorkBudget(budget, "read grant");
       assertNonNegativeInteger(physicalUnits, "read grant physicalUnits");
       if (
-        budget.maxMessages > remaining.maxMessages ||
-        budget.maxSourceBytes > remaining.maxSourceBytes ||
-        budget.maxUncompressedBytes > remaining.maxUncompressedBytes ||
-        budget.maxWallTimeMs > remaining.maxWallTimeMs ||
-        physicalUnits > remaining.maxPhysicalUnits
+        !lifted &&
+        (budget.maxMessages > remaining.maxMessages ||
+          budget.maxSourceBytes > remaining.maxSourceBytes ||
+          budget.maxUncompressedBytes > remaining.maxUncompressedBytes ||
+          budget.maxWallTimeMs > remaining.maxWallTimeMs ||
+          physicalUnits > remaining.maxPhysicalUnits)
       ) {
         return undefined;
       }
 
-      remaining.maxMessages -= budget.maxMessages;
-      remaining.maxSourceBytes -= budget.maxSourceBytes;
-      remaining.maxUncompressedBytes -= budget.maxUncompressedBytes;
-      remaining.maxWallTimeMs -= budget.maxWallTimeMs;
-      remaining.maxPhysicalUnits -= physicalUnits;
+      // A lifted ledger still validates every grant's usage against what it
+      // asked for; it just stops keeping score.
+      if (!lifted) {
+        remaining.maxMessages -= budget.maxMessages;
+        remaining.maxSourceBytes -= budget.maxSourceBytes;
+        remaining.maxUncompressedBytes -= budget.maxUncompressedBytes;
+        remaining.maxWallTimeMs -= budget.maxWallTimeMs;
+        remaining.maxPhysicalUnits -= physicalUnits;
+      }
+      const charged = !lifted;
 
       let settled = false;
       return {
@@ -90,7 +113,7 @@ export function createSourceReadBudgetLedger(
             budget,
             physicalUnits,
           );
-          if (options.exact !== true) {
+          if (options.exact !== true || !charged) {
             return;
           }
 

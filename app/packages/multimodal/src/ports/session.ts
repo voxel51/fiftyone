@@ -166,6 +166,14 @@ export interface SourceReadBudgetReservation {
   commit(usage: ReadWorkUsage, options?: { readonly exact?: boolean }): void;
 }
 
+/** Where a recording's cumulative allowance stands for this session. */
+export interface SourceReadBudgetStanding {
+  /** A grant was refused since the account opened or the limit was last lifted. */
+  readonly exhausted: boolean;
+  /** The viewer removed the limit; grants are no longer refused. */
+  readonly lifted: boolean;
+}
+
 /** Source-scoped cumulative allowance shared by every job created from it. */
 export interface SourceReadBudgetAccount {
   createJob(): BudgetedReadJob;
@@ -178,6 +186,16 @@ export interface SourceReadBudgetAccount {
    * demonstrably unused work; conservative settlement retains the charge.
    */
   reserve(budget: ReadWorkBudget): SourceReadBudgetReservation | undefined;
+
+  /** Current standing; changes are announced through `subscribe`. */
+  standing(): SourceReadBudgetStanding;
+  /**
+   * Removes the cumulative limit for the rest of this session. This is the
+   * viewer's explicit choice, never a consumer's: jobs that were refused read
+   * again on their next request.
+   */
+  lift(): void;
+  subscribe(listener: () => void): () => void;
 }
 
 /** Optional format-neutral bounded-read surface on an episode session. */

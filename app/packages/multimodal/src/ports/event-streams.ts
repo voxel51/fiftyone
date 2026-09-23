@@ -1,6 +1,6 @@
 import type { TemporalEvent, TimeWindow } from "../ir";
 
-/** A bounded view of computed events, including explicit computation evidence. */
+/** A bounded view of events and the ranges known to be computed. */
 export interface EventStreamResult {
   readonly streamId: string;
   readonly events: readonly TemporalEvent[];
@@ -8,17 +8,19 @@ export interface EventStreamResult {
   readonly totalCount?: number;
   readonly computedRanges: readonly TimeWindow[];
   readonly truncated: boolean;
-  readonly canContinue: boolean;
+  /** Why coverage stops where it does, when it stops short of the window. */
   readonly message?: string;
 }
 
-/** On-demand event reads. Results are ephemeral and never written to a dataset. */
+/**
+ * On-demand event reads. A read reports what is proven now and lets the
+ * source keep computing toward the window on its own; results are ephemeral
+ * and never written to a dataset.
+ */
 export interface EventStreamsCapability {
   readEvents(request: {
     readonly streams: readonly string[];
     readonly window: TimeWindow;
     readonly signal?: AbortSignal;
-    /** Explicit consent to another bounded computation grant. */
-    readonly continue?: boolean;
   }): Promise<readonly EventStreamResult[]>;
 }
