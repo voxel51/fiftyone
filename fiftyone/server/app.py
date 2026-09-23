@@ -227,6 +227,7 @@ app = Starlette(
             app=Static(
                 directory=os.path.join(os.path.dirname(__file__), "static"),
                 html=True,
+                follow_symlink=fo.app_config.follow_static_symlinks,
             ),
             name="static",
         ),
