@@ -139,6 +139,10 @@ nbsphinx_requirejs_path = ""
 # Don't execute notbooks during the build process
 nbsphinx_execute = "never"
 
+# Copy only the commands from blocks that show prompts, not their output
+copybutton_prompt_text = r"\$ |>>> |> "
+copybutton_prompt_is_regexp = True
+
 # Adds helpful external links to the built HTML
 ref = "main"
 nbsphinx_prolog = """

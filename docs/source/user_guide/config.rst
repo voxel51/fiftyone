@@ -1076,7 +1076,7 @@ For example, you may add the following to your JSON App config
 (`~/.fiftyone/app_config.json`) to register a Mapbox token globally on your
 system:
 
-.. code-block:: text
+.. code-block:: json
 
     {
         "plugins": {

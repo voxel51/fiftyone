@@ -97,7 +97,7 @@ describe a plugin goal, the skill guides the agent through:
 
 **A good first prompt:**
 
-.. code-block:: text
+.. code-block:: none
 
    Build me a FiftyOne operator that shows a histogram of confidence
    scores for predicted labels in the current dataset. Display the
@@ -154,7 +154,7 @@ Before declaring the plugin done, ask your agent to run the
 ``fiftyone-eval-plugin`` skill to catch structural issues and common
 anti-patterns:
 
-.. code-block:: text
+.. code-block:: none
 
    Use the fiftyone-eval-plugin skill to evaluate the plugin we just built.
 

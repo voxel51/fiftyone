@@ -1013,7 +1013,7 @@ You can use the
 the available metadata about a delegated operation, including its inputs,
 execution status, and error stack trace, if applicable.
 
-.. code-block:: text
+.. code-block:: shell
 
     # Print information about a delegated operation
     fiftyone delegated info <id>

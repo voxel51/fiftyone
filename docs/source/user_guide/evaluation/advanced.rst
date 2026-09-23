@@ -516,7 +516,8 @@ evaluation methods will use it.
     add it to your :ref:`evaluation config <evaluation-config>` at
     `~/.fiftyone/evaluation_config.json` as follows:
 
-    .. code-block:: text
+    .. code-block:: json
+        :force:
 
         {
             "default_regression_backend": "<backend>",
@@ -578,7 +579,8 @@ evaluation methods will use it.
     to add it to your :ref:`evaluation config <evaluation-config>` at
     `~/.fiftyone/evaluation_config.json` as follows:
 
-    .. code-block:: text
+    .. code-block:: json
+        :force:
 
         {
             "default_classification_backend": "<backend>",
@@ -645,7 +647,8 @@ evaluation methods will use it.
     add it to your :ref:`evaluation config <evaluation-config>` at
     `~/.fiftyone/evaluation_config.json` as follows:
 
-    .. code-block:: text
+    .. code-block:: json
+        :force:
 
         {
             "default_detection_backend": "<backend>",
@@ -707,7 +710,8 @@ evaluation methods will use it.
     add it to your :ref:`evaluation config <evaluation-config>` at
     `~/.fiftyone/evaluation_config.json` as follows:
 
-    .. code-block:: text
+    .. code-block:: json
+        :force:
 
         {
             "default_segmentation_backend": "<backend>",

@@ -191,7 +191,8 @@ Finally, you can permanently change your default annotation backend by updating
 the `default_backend` key of your :ref:`annotation config <annotation-config>`
 at `~/.fiftyone/annotation_config.json`:
 
-.. code-block:: text
+.. code-block:: json
+    :force:
 
     {
         "default_backend": "<backend>",
@@ -1097,7 +1098,8 @@ The recommended way to expose a custom backend is to add it to your
 :ref:`annotation config <annotation-config>` at
 `~/.fiftyone/annotation_config.json` as follows:
 
-.. code-block:: text
+.. code-block:: json
+    :force:
 
     {
         "default_backend": "<backend>",

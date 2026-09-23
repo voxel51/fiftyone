@@ -67,7 +67,7 @@ Here is a minimal operator that filters samples by confidence:
 
 Once the plugin is installed, an agent can discover and use it naturally:
 
-.. code-block:: text
+.. code-block:: none
 
     "Show me samples with confidence above 0.85"
 

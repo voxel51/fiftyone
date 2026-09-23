@@ -467,7 +467,8 @@ Finally, you can permanently change your default similarity backend by
 updating the `default_similarity_backend` key of your
 :ref:`brain config <brain-config>` at `~/.fiftyone/brain_config.json`:
 
-.. code-block:: text
+.. code-block:: json
+    :force:
 
     {
         "default_similarity_backend": "<backend>",
