@@ -1,3 +1,4 @@
+import { default_app_color } from "@fiftyone/utilities";
 import * as THREE from "three";
 
 import type {
@@ -133,18 +134,9 @@ interface PreparationState {
   readonly segments: MutableSegmentBatch;
 }
 
-const DEFAULT_COLOR_POOL: readonly string[] = [
-  "#ee0000",
-  "#999900",
-  "#009900",
-  "#003300",
-  "#009999",
-  "#000099",
-  "#0066ff",
-  "#6600ff",
-  "#cc33cc",
-  "#777799",
-];
+// The App's default pool, which comes from the design system. This was a
+// hand-copied subset of an older default and drifted the moment that changed.
+const DEFAULT_COLOR_POOL: readonly string[] = default_app_color;
 
 const DEFAULT_LABEL_KEY = "__no-label__";
 const MAX_LABEL_DIST_PX = 200;

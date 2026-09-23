@@ -13,6 +13,9 @@ from packaging.version import Version
 
 from importlib.metadata import metadata
 
+from fiftyone._voodoo_palette import BRAND_PRIMARY, COLOR_POOL
+
+
 CLIENT_TYPE = "fiftyone"
 
 FIFTYONE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -63,21 +66,10 @@ DEV_INSTALL = os.path.isdir(
 RC_INSTALL = "rc" in VERSION
 
 # App configuration
-DEFAULT_APP_COLOR_POOL = [
-    "#ee0000",
-    "#ee6600",
-    "#993300",
-    "#996633",
-    "#999900",
-    "#009900",
-    "#003300",
-    "#009999",
-    "#000099",
-    "#0066ff",
-    "#6600ff",
-    "#cc33cc",
-    "#777799",
-]
+DEFAULT_APP_COLOR_POOL = COLOR_POOL
+
+# Voxel51 brand orange. The one place Python should read it from.
+DEFAULT_BRAND_COLOR = BRAND_PRIMARY
 
 DEFAULT_COLOR_SCHEME = {
     "color_pool": DEFAULT_APP_COLOR_POOL,
