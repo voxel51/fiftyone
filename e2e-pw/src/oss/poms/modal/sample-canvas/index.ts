@@ -29,6 +29,9 @@ export enum SampleCanvasType {
  * All operations use relative [0, 1] coordinates with respect to container,
  * and not the media within it.
  */
+// one wheel gesture of this size zooms Lighter about 1.5x
+const ZOOM_IN_WHEEL_DELTA = 125;
+
 export class SampleCanvasPom {
   readonly assert: SampleCanvasAsserter;
   #box?: Box;
@@ -238,6 +241,16 @@ export class SampleCanvasPom {
     for (let i = 0; i < Math.abs(steps); i++) {
       await this.page.mouse.wheel(0, deltaY);
     }
+  }
+
+  /**
+   * Zoom the Lighter view in about 1.5x at the pointer as one wheel gesture,
+   * returning once Lighter has applied it
+   */
+  async zoomIn() {
+    await this.eventUtils.after("lighter:zoomed", () =>
+      this.page.mouse.wheel(0, -ZOOM_IN_WHEEL_DELTA),
+    );
   }
 
   /**

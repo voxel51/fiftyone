@@ -39,6 +39,28 @@ test.beforeAll(async ({ datasetFactory, foWebServer }) => {
     mediaType: "video",
     datasetName: videoDatasetName,
     sampleFrames: true,
+    schema: {
+      "frames.detections": "Detections",
+      "frames.detections.detections.instance": "Instance",
+      "frames.detections.detections.keyframe": "BooleanField",
+      "frames.detections.detections.propagation": "DictField",
+    },
+    labelSchemas: {
+      "frames.detections": {
+        type: "detections",
+        component: "dropdown",
+        classes: ["box"],
+        attributes: [
+          { name: "id", type: "id", component: "text", read_only: true },
+        ],
+      },
+    },
+    // a solid frame shows no zoom; a centered box makes it visible
+    withFrameData: (_, { label }) => ({
+      detections: label.detections([
+        label.detection({ label: "box", bounding_box: [0.25, 0.25, 0.5, 0.5] }),
+      ]),
+    }),
   });
 });
 
@@ -59,10 +81,11 @@ const zoomPanReset = async (modal: ModalPom, name: string) => {
 
   // the screenshot parks the pointer at the viewport edge
   await canvas.move(0.5, 0.5);
-  await canvas.wheel(7);
+  await canvas.zoomIn();
   await canvas.assert.hasScreenshot(`${name}-zoomed.png`);
 
-  await canvas.drag(0.5, 0.5, 0.7, 0.5);
+  // start off the box: in Annotate a press on it grabs the label
+  await canvas.drag(0.1, 0.9, 0.3, 0.9);
   await canvas.assert.hasScreenshot(`${name}-panned.png`);
 
   // reset returns to exactly the frame the canvas opened with

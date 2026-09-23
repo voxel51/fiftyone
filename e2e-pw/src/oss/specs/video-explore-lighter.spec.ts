@@ -76,11 +76,12 @@ test.describe.serial("video Explore Lighter surface", () => {
     modal,
   }) => {
     await modal.sampleCanvas.move(0.5, 0.5);
-    await modal.sampleCanvas.wheel(7);
+    await modal.sampleCanvas.zoomIn();
     await modal.sampleCanvas.moveMouseToViewportEdge();
     await modal.sampleCanvas.assert.hasScreenshot("video-explore-zoomed.png");
 
-    await modal.sampleCanvas.drag(0.5, 0.5, 0.7, 0.5);
+    // start off the box: in Annotate a press on it grabs the label
+    await modal.sampleCanvas.drag(0.1, 0.9, 0.3, 0.9);
     await modal.sampleCanvas.moveMouseToViewportEdge();
     await modal.sampleCanvas.assert.hasScreenshot("video-explore-panned.png");
   });
