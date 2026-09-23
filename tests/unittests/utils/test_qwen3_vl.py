@@ -1020,6 +1020,17 @@ class TestMergePreparedInputs:
         )
         assert merged["video_grid_thw"].tolist() == [[1, 2, 2], [1, 3, 2]]
 
+    def test_mm_token_type_ids_are_left_padded_as_text(self):
+        # transformers 5's processor adds this key to every clip
+        clip_a = self._clip([1, 2, 3], 4, [1, 2, 2])
+        clip_a["mm_token_type_ids"] = torch.tensor([[0, 2, 2]])
+        clip_b = self._clip([4], 4, [1, 2, 2])
+        clip_b["mm_token_type_ids"] = torch.tensor([[2]])
+
+        merged = qwen3_vl.merge_prepared_inputs([clip_a, clip_b], self.PAD)
+
+        assert merged["mm_token_type_ids"].tolist() == [[0, 2, 2], [0, 0, 2]]
+
     def test_an_unknown_key_refuses_the_merge(self):
         clip = self._clip([1, 2], 4, [1, 2, 2])
         odd = self._clip([3, 4], 4, [1, 2, 2])
