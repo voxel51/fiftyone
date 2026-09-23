@@ -155,14 +155,21 @@ export class GridPom {
       Promise.all([unmount.received, mount.received]).then(
         (): void => undefined,
       ),
+      async () => {
+        await Promise.all([unmount.dispose(), mount.dispose()]);
+      },
     );
   }
 
   async run<T>(wrap: () => Promise<T>): Promise<T> {
     const refresh = await this.armGridRefresh();
-    const result = await wrap();
-    await refresh.received;
-    return result;
+    try {
+      const result = await wrap();
+      await refresh.received;
+      return result;
+    } finally {
+      await refresh.dispose();
+    }
   }
 }
 

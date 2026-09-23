@@ -6,7 +6,19 @@ import { Page } from "@playwright/test";
  * "armed" and "received" indistinguishable to callers.
  */
 export class ArmedEvent {
-  constructor(readonly received: Promise<void>) {}
+  private disposed = false;
+
+  constructor(
+    readonly received: Promise<void>,
+    private readonly teardown: () => Promise<void> = async () => undefined,
+  ) {}
+
+  /** Detach the in-page listener. Idempotent; safe after navigation. */
+  async dispose(): Promise<void> {
+    if (this.disposed) return;
+    this.disposed = true;
+    await this.teardown();
+  }
 }
 
 export interface CountedEvent {
@@ -19,6 +31,8 @@ declare global {
   interface Window {
     /** Per-counter event records installed by {@link EventUtils.counter}. */
     __EVENT_COUNTS__?: Record<string, CountedEvent[]>;
+    /** Detach functions of armed listeners, by exposed-function name. */
+    __FO_ARMED__?: Record<string, () => void>;
     /** The app's event-bus tap (`@fiftyone/events`). */
     __FO_EVENTS__?: {
       tap: (listener: (event: string, data: unknown) => void) => () => void;
@@ -123,15 +137,68 @@ export class EventUtils {
           );
         });
 
+        const armed = (window.__FO_ARMED__ ??= {});
         detach = () => {
           document.removeEventListener(eventName_, onDocument);
           offBus?.();
+          delete armed[exposedFunctionName_];
         };
+        armed[exposedFunctionName_] = detach;
       },
       { eventName_: eventName, exposedFunctionName_: exposedFunctionName },
     );
 
-    return new ArmedEvent(received);
+    return new ArmedEvent(received, () =>
+      this.page
+        .evaluate(
+          (name): void => window.__FO_ARMED__?.[name]?.(),
+          exposedFunctionName,
+        )
+        // a navigated or closed page took the listener with it
+        .catch((): void => undefined),
+    );
+  }
+
+  /**
+   * Resolve once an element matches `selector` (and, given `text`, has text
+   * content matching it), immediately if one already does. Waits on DOM
+   * mutations rather than polling, so it is bounded only by the test timeout —
+   * for state that takes real time to appear (decode, reveal, playback).
+   */
+  public async untilPresent(selector: string, text?: RegExp): Promise<void> {
+    await this.page.evaluate(
+      ({ selector_, source, flags }) =>
+        new Promise<void>((resolve) => {
+          const pattern = source === null ? null : new RegExp(source, flags);
+          const matches = () =>
+            Array.from(document.querySelectorAll(selector_)).some(
+              (el) => !pattern || pattern.test(el.textContent ?? ""),
+            );
+
+          if (matches()) {
+            resolve();
+            return;
+          }
+
+          const observer = new MutationObserver(() => {
+            if (matches()) {
+              observer.disconnect();
+              resolve();
+            }
+          });
+          observer.observe(document, {
+            subtree: true,
+            childList: true,
+            attributes: true,
+            characterData: true,
+          });
+        }),
+      {
+        selector_: selector,
+        source: text?.source ?? null,
+        flags: text?.flags ?? "",
+      },
+    );
   }
 
   /**
@@ -146,9 +213,13 @@ export class EventUtils {
     predicate?: (e: { detail?: unknown }) => boolean,
   ): Promise<T> {
     const armed = await this.arm(eventName, predicate);
-    const result = await action();
-    await armed.received;
-    return result;
+    try {
+      const result = await action();
+      await armed.received;
+      return result;
+    } finally {
+      await armed.dispose();
+    }
   }
 
   /**
