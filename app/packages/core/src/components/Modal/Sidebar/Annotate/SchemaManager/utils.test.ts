@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { LABEL_TYPE_OPTIONS, LABEL_TYPE_OPTIONS_VIDEO } from "./constants";
+import {
+  getDefaultAttributesForType,
+  LABEL_TYPE_OPTIONS,
+  LABEL_TYPE_OPTIONS_3D,
+  LABEL_TYPE_OPTIONS_VIDEO,
+} from "./constants";
 import {
   createDefaultFormData,
   defaultClassesComponent,
@@ -242,6 +247,37 @@ describe("getLabelTypeOptions", () => {
 
   it("limits a sample-level video field to clip-level types", () => {
     expect(getLabelTypeOptions("video", false)).toBe(LABEL_TYPE_OPTIONS_VIDEO);
+  });
+
+  it("offers keypoints for image fields and video frame fields only", () => {
+    const ids = (options: { id: string }[]) => options.map((o) => o.id);
+    expect(ids(getLabelTypeOptions("image"))).toContain("keypoints");
+    expect(ids(getLabelTypeOptions("video", true))).toContain("keypoints");
+    expect(ids(getLabelTypeOptions("video", false))).not.toContain("keypoints");
+    expect(ids(LABEL_TYPE_OPTIONS_3D)).not.toContain("keypoints");
+  });
+});
+
+describe("getDefaultAttributesForType", () => {
+  it("scopes a new keypoints field's confidence to the points", () => {
+    const confidence = getDefaultAttributesForType("keypoints", false).find(
+      (attr) => attr.name === "confidence",
+    );
+    expect(confidence).toEqual({
+      name: "confidence",
+      type: "float",
+      component: "text",
+      scope: "point",
+    });
+  });
+
+  it("keeps label-level confidence for the other label types", () => {
+    for (const type of ["detections", "polylines", "classification"]) {
+      const confidence = getDefaultAttributesForType(type, false).find(
+        (attr) => attr.name === "confidence",
+      );
+      expect(confidence?.scope).toBeUndefined();
+    }
   });
 });
 
