@@ -342,15 +342,31 @@ class SampleCanvasAsserter {
   }
 
   /**
-   * Is the Lighter canvas stacked exactly over the sample's `<video>`, so
-   * labels paint in the media rect. Read once the canvas has settled.
+   * Is the Lighter canvas stacked exactly over the element the surface shows
+   * its media in (`data-lighter-media`), so labels paint in the media rect
    */
-  async lighterCoversVideo() {
-    const [canvas, media] = await Promise.all([
-      this.sampleCanvasPom.lighterCanvas.boundingBox(),
-      this.sampleCanvasPom.locator.locator("video").boundingBox(),
-    ]);
-    expect(canvas).toEqual(media);
+  async lighterCoversMedia() {
+    const boxes = () =>
+      Promise.all([
+        this.sampleCanvasPom.lighterCanvas.boundingBox(),
+        this.sampleCanvasPom.locator
+          .locator("[data-lighter-media]")
+          .boundingBox(),
+      ]);
+
+    // Pixi follows a layout change with a resize; until it lands the canvas
+    // lags its host, so a mismatch then only counts after the resize
+    const resized = await this.sampleCanvasPom.eventUtils.arm("lighter:resize");
+    try {
+      let [canvas, media] = await boxes();
+      if (JSON.stringify(canvas) !== JSON.stringify(media)) {
+        await resized.received;
+        [canvas, media] = await boxes();
+      }
+      expect(canvas).toEqual(media);
+    } finally {
+      await resized.dispose();
+    }
   }
 
   /**

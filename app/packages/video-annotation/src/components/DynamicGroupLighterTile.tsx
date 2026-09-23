@@ -123,6 +123,7 @@ export const DynamicGroupLighterTile: React.FC<{
       <canvas
         ref={frameCanvasRef}
         className={styles.frame}
+        data-lighter-media
         data-cy="dynamic-group-frame-canvas"
       />
       <div ref={lighterHostRef} className={styles.lighterHost} />

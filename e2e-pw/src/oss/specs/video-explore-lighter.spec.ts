@@ -59,9 +59,8 @@ test.describe.serial("video Explore Lighter surface", () => {
     modal,
     page,
   }) => {
-    // the screenshot waits for a stable canvas; its bounds are final after it
     await modal.sampleCanvas.assert.hasScreenshot("video-explore-labels.png");
-    await modal.sampleCanvas.assert.lighterCoversVideo();
+    await modal.sampleCanvas.assert.lighterCoversMedia();
 
     const viewport = page.viewportSize();
     await page.setViewportSize({
@@ -70,7 +69,7 @@ test.describe.serial("video Explore Lighter surface", () => {
     });
 
     await modal.sampleCanvas.assert.hasScreenshot("video-explore-resized.png");
-    await modal.sampleCanvas.assert.lighterCoversVideo();
+    await modal.sampleCanvas.assert.lighterCoversMedia();
   });
 
   test("wheel zooms and drag pans the media with its labels", async ({
