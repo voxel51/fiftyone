@@ -356,6 +356,49 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
     });
   }
 
+  /**
+   * Hands play/pause and frame stepping to an external transport, such as
+   * the modal's shared timeline. Those shortcuts leave this looker's map so
+   * one key press is not handled by both; everything else (zoom, pan, JSON,
+   * help, overlays) stays with the looker.
+   */
+  useExternalTransport(): void {
+    const EXTERNAL = new Set(["Space", ">", "<"]);
+
+    // Assigned, not sent through the updater: updates deep-merge into the
+    // current state, so a map with keys removed would merge back to the full
+    // one. Copied first because the initial map is a module-level constant
+    // shared by every video looker.
+    (this.state as { SHORTCUTS: VideoState["SHORTCUTS"] }).SHORTCUTS =
+      Object.fromEntries(
+        Object.entries(this.state.SHORTCUTS).filter(
+          ([, control]) => !EXTERNAL.has(control.shortcut),
+        ),
+      );
+
+    this.updater({});
+  }
+
+  /**
+   * Moves the playhead to a 1-indexed frame, clamped to the clip, the way
+   * the seek bar does. Lets an external transport (the modal's shared
+   * timeline) drive this looker without reaching into its state.
+   */
+  seekToFrame(frameNumber: number): void {
+    this.updater(
+      ({ duration, config: { frameRate }, frameNumber: current }) => {
+        if (duration === null || !Number.isFinite(frameNumber)) {
+          return {};
+        }
+
+        const total = getFrameNumber(duration, duration, frameRate);
+        const clamped = Math.min(Math.max(1, Math.round(frameNumber)), total);
+
+        return clamped === current ? {} : { frameNumber: clamped };
+      },
+    );
+  }
+
   postProcess(): VideoState {
     if (this.state.seeking) {
       this.state.disableOverlays = true;

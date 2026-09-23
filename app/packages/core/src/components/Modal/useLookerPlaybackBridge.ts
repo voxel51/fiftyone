@@ -1,0 +1,148 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
+import { getFrameNumber, getTime, type VideoLooker } from "@fiftyone/looker";
+import {
+  useIsPlaying,
+  usePlayback,
+  useSeekEvent,
+  useSpeed,
+} from "@fiftyone/playback";
+import * as fos from "@fiftyone/state";
+import { useEffect, useRef, useState } from "react";
+
+const STREAM_ID = "modal-video-looker";
+
+/**
+ * Binds a `VideoLooker` to the surrounding `PlaybackProvider` so the shared
+ * timeline is the looker's transport.
+ *
+ * The looker keeps everything it already owns: the `<video>`, frame
+ * streaming and worker painting, overlays, zoom, pan, tooltips and its
+ * keyboard shortcuts. This hook only carries state across the seam, in both
+ * directions:
+ *
+ * - The looker's frame is the engine's clock. `setClockSource` reads the frame
+ *   the looker is painting, so the playhead lands exactly where the overlays
+ *   are rather than where a wallclock estimate says the video should be.
+ * - The looker's `<video>` registers as a non-blocking stream for its
+ *   duration and buffered ranges, which is what sizes the ruler.
+ * - Timeline play/pause, seeks (scrubs, steps, loop wraps) and speed drive
+ *   the looker. The looker's own `play`/`pause` events (its shortcuts, or
+ *   reaching the end) drive the timeline back.
+ */
+export function useLookerPlaybackBridge(
+  looker: VideoLooker,
+  frameRate: number | undefined,
+): void {
+  const { registerStream, setClockSource, play, pause } = usePlayback();
+  const isPlaying = useIsPlaying();
+  const speed = useSpeed();
+  const seekEvent = useSeekEvent();
+
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [duration, setDuration] = useState(0);
+
+  // Space and , / . belong to the timeline's own bindings on this surface.
+  // Left in the looker too, one press would toggle the engine twice.
+  useEffect(() => {
+    looker.useExternalTransport();
+  }, [looker]);
+
+  // The element exists once the looker has attached, and its duration once
+  // metadata has loaded; the looker's `load` covers both.
+  useEffect(() => {
+    const capture = () => {
+      let video: HTMLVideoElement | undefined;
+      try {
+        video = looker.getVideo();
+      } catch {
+        return;
+      }
+      videoRef.current = video;
+      if (Number.isFinite(video.duration) && video.duration > 0) {
+        setDuration(video.duration);
+      }
+    };
+
+    capture();
+    looker.addEventListener("load", capture);
+
+    return () => {
+      looker.removeEventListener("load", capture);
+      videoRef.current = null;
+    };
+  }, [looker]);
+
+  useEffect(() => {
+    if (!duration) {
+      return undefined;
+    }
+
+    return registerStream({
+      id: STREAM_ID,
+      // The looker paces itself; gating the engine on it again would only
+      // add stalls.
+      blocking: false,
+      duration,
+      nativeStepSeconds: frameRate ? 1 / frameRate : undefined,
+      bufferState: () => "ready",
+      bufferedRanges: () => {
+        const video = videoRef.current;
+        if (!video) {
+          return [];
+        }
+        const ranges: Array<[number, number]> = [];
+        for (let i = 0; i < video.buffered.length; i++) {
+          ranges.push([video.buffered.start(i), video.buffered.end(i)]);
+        }
+        return ranges;
+      },
+    });
+  }, [duration, frameRate, registerStream]);
+
+  // The frame the looker is painting is the time the engine should report.
+  // `null` before the looker has loaded, for which the engine falls back to
+  // its own advance.
+  useEffect(() => {
+    if (!frameRate) {
+      return undefined;
+    }
+
+    return setClockSource({
+      read: () =>
+        looker.state.loaded ? getTime(looker.frameNumber, frameRate) : null,
+    });
+  }, [looker, frameRate, setClockSource]);
+
+  // Timeline -> looker. Both calls are no-ops when the looker already agrees,
+  // so the echo back through the looker's events below settles immediately.
+  useEffect(() => {
+    if (isPlaying) {
+      looker.play();
+    } else {
+      looker.pause();
+    }
+  }, [isPlaying, looker]);
+
+  useEffect(() => {
+    if (!seekEvent || !frameRate || !duration) {
+      return;
+    }
+
+    looker.seekToFrame(getFrameNumber(seekEvent.time, duration, frameRate));
+    // `seq` changes on every event, including a repeat of the same time.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seekEvent?.seq]);
+
+  useEffect(() => {
+    looker.updateOptions({ playbackRate: speed });
+  }, [looker, speed]);
+
+  // Looker -> timeline: its shortcuts, and pausing at the end of the clip.
+  // Looker -> timeline: reaching the end of the clip, and any play/pause the
+  // looker still initiates itself.
+  fos.useEventHandler(looker, "play", play);
+  fos.useEventHandler(looker, "pause", pause);
+}
