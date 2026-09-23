@@ -7,6 +7,7 @@ FiftyOne Server app unit tests.
 """
 
 import os
+import sys
 
 import pytest
 from starlette.applications import Starlette
@@ -17,6 +18,12 @@ import fiftyone as fo
 import fiftyone.server.app as fosa
 
 _INDEX = "<html>app</html>"
+
+# Windows collapses ``..`` before resolving symlinks, so this layout can't be
+# built there
+_posix_only = pytest.mark.skipif(
+    sys.platform == "win32", reason="Windows resolves '..' lexically"
+)
 
 
 def _symlinked_file(tmp_path):
@@ -73,8 +80,8 @@ def test_follow_static_symlinks_env_var(monkeypatch, value, expected):
     [
         (_symlinked_file, True, True),
         (_symlinked_file, False, False),
-        (_symlink_then_parent, True, False),
-        (_symlink_then_parent, False, True),
+        pytest.param(_symlink_then_parent, True, False, marks=_posix_only),
+        pytest.param(_symlink_then_parent, False, True, marks=_posix_only),
     ],
 )
 def test_static_layouts(monkeypatch, tmp_path, layout, follow, served):
