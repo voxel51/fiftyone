@@ -6,7 +6,7 @@ import * as filterAtoms from "../filters";
 import { queryPerformance } from "../queryPerformance";
 import * as schemaAtoms from "../schema";
 import * as selectors from "../selectors";
-import { MATCH_LABEL_TAGS } from "../sidebar";
+import { MATCH_LABEL_TAGS, TEMPORAL_TAGS_FIELD } from "../sidebar";
 import * as viewAtoms from "../view";
 import { booleanCountResults } from "./boolean";
 import { gatherPaths } from "./utils";
@@ -109,6 +109,14 @@ export const counts = selectorFamily({
       // for it should not reach the server
       if (params.path === "_label_tags") {
         return get(cumulativeCounts({ ...params, ...MATCH_LABEL_TAGS }));
+      }
+
+      // _temporal_tags is a pseudo-path too, and not a sample field at all:
+      // aggregating it raises "DatasetView has no field '_temporal_tags'".
+      // Its values come from the tag counts endpoint, via
+      // `temporalTagResults`, not from an aggregation.
+      if (params.path === TEMPORAL_TAGS_FIELD) {
+        return {};
       }
 
       const exists = Boolean(get(schemaAtoms.field(params.path)));

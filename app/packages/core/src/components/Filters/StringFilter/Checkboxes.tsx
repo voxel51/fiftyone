@@ -218,12 +218,19 @@ const Checkboxes = ({
               }
               setSelected([...selectedSet].sort());
             }}
-            subcountAtom={fos.count({
-              modal,
-              path,
-              extended: true,
-              value: value as string,
-            })}
+            subcountAtom={
+              // Temporal tags are not sample fields, so aggregating a
+              // per-value count on the path errors on the server. Their
+              // counts come from the tag counts endpoint instead.
+              path === fos.TEMPORAL_TAGS_FIELD
+                ? undefined
+                : fos.count({
+                    modal,
+                    path,
+                    extended: true,
+                    value: value as string,
+                  })
+            }
           />
         );
       })}

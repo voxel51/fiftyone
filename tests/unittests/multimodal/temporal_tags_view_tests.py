@@ -175,6 +175,34 @@ class GroupedTemporalTagGridFilterTests(unittest.TestCase):
 
     @drop_tags
     @drop_datasets
+    def test_match_survives_a_flattened_collection(self):
+        # `load_view` flattens a grouped collection with
+        # `select_group_slices(_force_mixed=True)` before applying the grid's
+        # filters, and the group view stages do not apply to a flattened view.
+        dataset, groups = _make_tagged_group_dataset()
+        flat = dataset.select_group_slices(_force_mixed=True)
+
+        view = get_extended_view(
+            flat, filters={_TEMPORAL_TAGS: {"values": ["review"]}}
+        )
+
+        self.assertEqual(set(view.values("group.id")), {groups[0]})
+
+    @drop_tags
+    @drop_datasets
+    def test_exclude_survives_a_flattened_collection(self):
+        dataset, groups = _make_tagged_group_dataset()
+        flat = dataset.select_group_slices(_force_mixed=True)
+
+        view = get_extended_view(
+            flat,
+            filters={_TEMPORAL_TAGS: {"values": ["review"], "exclude": True}},
+        )
+
+        self.assertEqual(set(view.values("group.id")), {groups[1]})
+
+    @drop_tags
+    @drop_datasets
     def test_match_temporal_tags_stage_matches_groups(self):
         dataset, groups = _make_tagged_group_dataset()
 

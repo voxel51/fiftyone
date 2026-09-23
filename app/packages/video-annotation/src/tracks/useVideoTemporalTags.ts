@@ -46,7 +46,9 @@ export interface VideoTemporalTags {
  * `TemporalTagTimeline`.
  *
  * The tag routes are sample-scoped, so the caller passes the id of the sample
- * actually on screen rather than `modalSampleId`. The two differ on a grouped
+ * actually on screen rather than `modalSampleId`. It has to be the underlying
+ * sample document's `_id`: the modal's own sample id carries a `-modal`
+ * suffix that the routes reject. The two differ on a grouped
  * dataset: `modalSampleId` is whatever slice the grid was on when the modal
  * opened, and switching the modal to another slice does not move it, so the
  * video slice's tags would otherwise be written against the grid slice's

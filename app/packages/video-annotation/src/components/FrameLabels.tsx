@@ -732,6 +732,8 @@ export const FrameLabelsTracks: React.FC<{
   const schemasLoaded = useLabelSchemasLoaded();
   const ready = frameTracksResolved && (mode === "explore" || schemasLoaded);
 
+  // `sample.sample._id`, not `sample.id`: the modal's sample query suffixes its
+  // id with `-modal`, which the tag routes reject as a malformed ObjectId.
   const {
     tracks: temporalTagTracks,
     existingTags,
@@ -739,7 +741,7 @@ export const FrameLabelsTracks: React.FC<{
     tagEventMenuItems,
     onTagCreate,
     onTagUpdate,
-  } = useVideoTemporalTags(sample?.id);
+  } = useVideoTemporalTags(sample?.sample?._id);
 
   // Object tracks (with their sub-tracks interleaved), then TD tracks, then
   // the sample's temporal tags.

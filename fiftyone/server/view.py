@@ -933,12 +933,19 @@ def _match_temporal_tags(
         # A tag lives on one slice's sample, but the grid shows whichever slice
         # is active, so selecting sample ids would empty the grid on every
         # other slice. Match the groups those samples belong to instead.
+        #
+        # Matched on the group id field rather than with `select_groups`: by
+        # the time the grid's filters are applied the collection has usually
+        # been flattened to the requested slices, and the group stages do not
+        # apply to a flattened view.
         group_ids = _temporal_tag_group_ids(dataset, sample_ids)
+        path = dataset.group_field + "._id"
+        oids = [ObjectId(group_id) for group_id in group_ids]
 
         if exclude:
-            return view.exclude_groups(group_ids) if group_ids else view
+            return view.match({path: {"$nin": oids}}) if oids else view
 
-        return view.select_groups(group_ids)
+        return view.match({path: {"$in": oids}})
 
     if exclude:
         # Excluding with no matches leaves the view untouched.
