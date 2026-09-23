@@ -4,6 +4,8 @@ export { MaskBitmapCache, maskBitmapCache } from "./maskBitmapCache";
 export type { MaskSource } from "./maskBitmapCache";
 export { maskSourceOf } from "./maskSource";
 export { decodeMaskToRaster } from "./maskRaster";
+export { buildHeatmapLut, decodeHeatmapIndices } from "./heatmapIndices";
+export type { DecodedHeatmap } from "./heatmapIndices";
 export { encodeMask } from "./maskEncoding";
 export { maskBounds } from "./maskBounds";
 export type { MaskBounds } from "./maskBounds";

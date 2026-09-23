@@ -119,12 +119,18 @@ describe("SegmentationOverlay", () => {
     meta: RenderMeta = META,
   ) => overlay.render(renderer as never, style as never, meta);
 
-  it("draws the rasterized mask over the canonical media bounds", () => {
-    render(makeOverlay());
+  it("draws the mask as indices plus a palette table over the media bounds", () => {
+    render(makeOverlay([0, 1, 2, 1]));
 
     expect(renderer.drawImage).toHaveBeenCalledTimes(1);
     const [source, bounds] = renderer.drawImage.mock.calls[0];
-    expect(source.type).toBe("canvas");
+    expect(source.type).toBe("indexed");
+    expect(source.indexed.width).toBe(2);
+    expect(source.indexed.height).toBe(2);
+    expect(Array.from(source.indexed.indices)).toEqual([0, 1, 2, 1]);
+    // background stays transparent; painted targets are opaque
+    expect(source.indexed.lut[3]).toBe(0);
+    expect(source.indexed.lut[1 * 4 + 3]).toBe(255);
     expect(bounds).toEqual(META.canonicalMediaBounds);
   });
 
@@ -136,38 +142,40 @@ describe("SegmentationOverlay", () => {
     expect(renderer.drawImage).not.toHaveBeenCalled();
   });
 
-  it("reuses the raster across repaints of the same mask and palette", () => {
+  it("reuses the decoded image across repaints of the same mask and palette", () => {
     const overlay = makeOverlay();
     const style = { segmentationPalette: palette() };
 
     render(overlay, style);
-    const first = renderer.drawImage.mock.calls[0][0].canvas;
+    const first = renderer.drawImage.mock.calls[0][0].indexed;
 
     render(overlay, style);
-    const second = renderer.drawImage.mock.calls[1][0].canvas;
+    const second = renderer.drawImage.mock.calls[1][0].indexed;
 
-    // re-rasterizing per paint would redo a megapixel loop every frame
+    // the renderer uploads by identity, so a same-object repaint costs nothing
     expect(second).toBe(first);
   });
 
-  it("re-rasterizes when the palette changes", () => {
+  it("rebuilds only the palette table when the palette changes", () => {
     const overlay = makeOverlay();
 
     render(overlay, { segmentationPalette: palette({ colorBy: "value" }) });
-    const first = renderer.drawImage.mock.calls[0][0].canvas;
+    const first = renderer.drawImage.mock.calls[0][0].indexed;
 
     render(overlay, { segmentationPalette: palette({ colorBy: "field" }) });
-    const second = renderer.drawImage.mock.calls[1][0].canvas;
+    const second = renderer.drawImage.mock.calls[1][0].indexed;
 
-    expect(second).not.toBe(first);
+    expect(second.lut).not.toBe(first.lut);
+    // no re-decode: a color change must not touch the megapixel indices
+    expect(second.indices).toBe(first.indices);
   });
 
-  it("re-rasterizes when the mask changes", () => {
+  it("re-decodes only the indices when the mask changes", () => {
     const overlay = makeOverlay([0, 1, 2, 1]);
     const style = { segmentationPalette: palette() };
 
     render(overlay, style);
-    const first = renderer.drawImage.mock.calls[0][0].canvas;
+    const first = renderer.drawImage.mock.calls[0][0].indexed;
 
     overlay.applyLabel({
       _id: "seg-1",
@@ -175,8 +183,11 @@ describe("SegmentationOverlay", () => {
       mask: mask([2, 2, 2, 2]),
     });
     render(overlay, style);
+    const second = renderer.drawImage.mock.calls[1][0].indexed;
 
-    expect(renderer.drawImage.mock.calls[1][0].canvas).not.toBe(first);
+    expect(second.indices).not.toBe(first.indices);
+    // an 8-bit table covers every target, so the next frame keeps it
+    expect(second.lut).toBe(first.lut);
   });
 
   it("hit-tests painted pixels only", () => {

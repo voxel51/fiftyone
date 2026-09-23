@@ -11,18 +11,21 @@ import {
   STROKE_WIDTH,
 } from "../constants";
 import { CONTAINS } from "../core/containment";
-import type { Renderer2D } from "../renderer/Renderer2D";
+import type { IndexedImage, Renderer2D } from "../renderer/Renderer2D";
 import type { Selectable } from "../selection/Selectable";
 import type { Point, RawLookerLabel, Rect, RenderMeta } from "../types";
 import { getSimpleStrokeStyles } from "../utils/colorMapping";
-import { createMaskCanvas } from "../utils/createMaskCanvas";
+import {
+  buildHeatmapLut,
+  decodeHeatmapIndices,
+  type DecodedHeatmap,
+} from "../utils/heatmapIndices";
 import { maskSourceOf } from "../utils/maskSource";
 import { toRelativePoint } from "../utils/mediaPoint";
 import {
   heatmapPaletteKey,
   type HeatmapPalette,
 } from "../utils/heatmapPalette";
-import { rasterizeHeatmap } from "../utils/heatmapRaster";
 import { decodeMaskPath } from "../utils/maskPathDecoding";
 import { PathDecodeCooldown } from "../utils/pathDecodeCooldown";
 import { BaseOverlay } from "./BaseOverlay";
@@ -49,20 +52,24 @@ export interface HeatmapOverlayOptions {
 /**
  * A full-media field of continuous values.
  *
- * Shares its shape with {@link SegmentationOverlay} — color baked per pixel,
- * raster cached against source and palette — but not its meaning: a
- * segmentation's pixels name categories, a heatmap's carry magnitude. That is
- * why 0 is background in both, and why everything else differs.
+ * Shares its shape with {@link SegmentationOverlay} — values quantized to
+ * indices, colored on the GPU through a lookup table, both cached against
+ * source and palette — but not its meaning: a segmentation's pixels name
+ * categories, a heatmap's carry magnitude. That is why 0 is background in
+ * both, and why everything else differs.
  */
 export class HeatmapOverlay
   extends BaseOverlay<HeatmapLabel>
   implements Selectable
 {
-  #canvas?: HTMLCanvasElement;
-  /** Per-pixel values behind `#canvas`, for the tooltip. */
-  #values?: Float64Array;
-  #width = 0;
-  #height = 0;
+  /** The quantized map and its color table, as the renderer draws them. */
+  #indexed?: IndexedImage;
+  /** What `#indexed` was quantized from; also answers the tooltip. */
+  #decoded?: DecodedHeatmap;
+  /** The declared range `#decoded` was quantized over. */
+  #decodedRange?: string;
+  /** The (palette, range) `#indexed.lut` was built for. */
+  #lutKey?: string;
 
   /**
    * The media rect the last paint drew into, in canvas pixels. Hit tests
@@ -97,8 +104,8 @@ export class HeatmapOverlay
   /**
    * The (source, palette) that failed to rasterize.
    *
-   * The reuse check requires a canvas, which a failure leaves unset, so
-   * without this a map that cannot be rasterized is retried — and logged — on
+   * The reuse check requires decoded indices, which a failure leaves unset,
+   * so without this a map that cannot be decoded is retried — and logged — on
    * EVERY repaint. During playback that is thirty times a second.
    *
    * The source is held by identity rather than summarized into a key: a string
@@ -158,14 +165,14 @@ export class HeatmapOverlay
       return;
     }
 
-    const canvas = this.ensureRaster(palette);
+    const indexed = this.ensureIndexed(palette);
 
-    if (!canvas) {
+    if (!indexed) {
       return;
     }
 
     renderer.drawImage(
-      { type: "canvas", canvas },
+      { type: "indexed", indexed },
       meta.canonicalMediaBounds,
       { opacity: style.opacity ?? 1 },
       this.containerId,
@@ -221,13 +228,19 @@ export class HeatmapOverlay
     }
   }
 
-  private ensureRaster(palette: HeatmapPalette): HTMLCanvasElement | undefined {
+  /**
+   * Quantize the map and table the palette if either changed since the last
+   * paint; otherwise hand back what is already there. The two are cached
+   * independently: a new frame under the same palette keeps the table, and a
+   * color-scheme change that leaves the range alone keeps the indices.
+   */
+  private ensureIndexed(palette: HeatmapPalette): IndexedImage | undefined {
     const source = this.resolveSource();
 
     if (!source) {
       // Nothing resolvable right now: no inline map, and either no `map_path`
       // at all or one still decoding. Stopping at the paint is not enough —
-      // the values behind the last raster are what `valueAt` and
+      // the values behind the last paint are what `valueAt` and
       // `containsPoint` answer from, so leaving them would let an invisible
       // overlay go on swallowing clicks for a heatmap that is not on screen.
       // Clearing keeps the hit test honest about what is actually painted; a
@@ -243,44 +256,59 @@ export class HeatmapOverlay
       return undefined;
     }
 
-    if (
-      this.#canvas &&
-      this.#renderedSource === source &&
-      this.#renderedPalette === key
-    ) {
-      return this.#canvas;
+    const previous = this.#indexed;
+    const sameSource =
+      previous !== undefined && this.#renderedSource === source;
+    const samePalette = previous !== undefined && this.#renderedPalette === key;
+
+    if (sameSource && samePalette) {
+      return previous;
     }
 
+    const rangeKey = JSON.stringify(palette.range ?? null);
+
     try {
-      const { rgba, width, height, values } = rasterizeHeatmap(source, palette);
+      const decoded =
+        sameSource && this.#decoded && this.#decodedRange === rangeKey
+          ? this.#decoded
+          : decodeHeatmapIndices(source, palette.range);
 
-      const { maskCanvas, maskContext } = createMaskCanvas(width, height);
-      maskContext.putImageData(
-        new ImageData(new Uint8ClampedArray(rgba), width, height),
-        0,
-        0,
-      );
+      // The table depends on the range the indices were quantized over,
+      // which an undeclared range infers from the array's type — so two maps
+      // under one palette can still need two tables.
+      const lutKey = `${key}|${decoded.range[0]},${decoded.range[1]}`;
+      const lut =
+        previous !== undefined && this.#lutKey === lutKey
+          ? previous.lut
+          : buildHeatmapLut(decoded.range, palette);
 
-      this.#canvas = maskCanvas;
-      this.#values = values;
-      this.#width = width;
-      this.#height = height;
+      this.#decoded = decoded;
+      this.#decodedRange = rangeKey;
+      this.#indexed = {
+        indices: decoded.indices,
+        width: decoded.width,
+        height: decoded.height,
+        lut,
+      };
+      this.#lutKey = lutKey;
       this.#renderedSource = source;
       this.#renderedPalette = key;
       this.#failedSource = undefined;
       this.#failedPalette = undefined;
     } catch (error) {
       // one malformed map must not take the whole frame down
-      console.error(`[heatmap] failed to rasterize "${this.field}":`, error);
-      this.#canvas = undefined;
-      this.#values = undefined;
+      console.error(`[heatmap] failed to decode "${this.field}":`, error);
+      this.#indexed = undefined;
+      this.#decoded = undefined;
+      this.#decodedRange = undefined;
+      this.#lutKey = undefined;
       this.#renderedSource = source;
       this.#renderedPalette = key;
       this.#failedSource = source;
       this.#failedPalette = key;
     }
 
-    return this.#canvas;
+    return this.#indexed;
   }
 
   /**
@@ -395,18 +423,21 @@ export class HeatmapOverlay
 
   /** The value under a relative point, or 0 outside the map. */
   valueAt(relative: Point): number {
-    if (!this.#values || !this.#width || !this.#height) {
+    const decoded = this.#decoded;
+
+    if (!decoded) {
       return 0;
     }
 
-    const x = Math.floor(relative.x * this.#width);
-    const y = Math.floor(relative.y * this.#height);
+    const { width, height, values, channels } = decoded;
+    const x = Math.floor(relative.x * width);
+    const y = Math.floor(relative.y * height);
 
-    if (x < 0 || y < 0 || x >= this.#width || y >= this.#height) {
+    if (x < 0 || y < 0 || x >= width || y >= height) {
       return 0;
     }
 
-    return this.#values[y * this.#width + x];
+    return values[(y * width + x) * channels];
   }
 
   /**
@@ -524,12 +555,12 @@ export class HeatmapOverlay
     return LABEL_ARCHETYPE_PRIORITY.HEATMAP;
   }
 
-  /** Drops the raster and everything hit-testing answers from. */
+  /** Drops the quantized map and everything hit-testing answers from. */
   private clearRaster(): void {
-    this.#canvas = undefined;
-    this.#values = undefined;
-    this.#width = 0;
-    this.#height = 0;
+    this.#indexed = undefined;
+    this.#decoded = undefined;
+    this.#decodedRange = undefined;
+    this.#lutKey = undefined;
     this.#renderedSource = undefined;
     this.#renderedPalette = undefined;
   }
