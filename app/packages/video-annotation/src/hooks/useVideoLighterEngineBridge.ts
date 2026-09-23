@@ -83,8 +83,8 @@ export const useVideoLighterEngineBridge = (
   useAnnotationEventHandler(
     "annotation:formGeometryCommitted",
     useCallback(
-      ({ instanceId, path, undoKey }) =>
-        onEditCommit(instanceId, path, undoKey),
+      ({ ref, undoKey }) =>
+        onEditCommit(ref.instanceId, ref.path, undoKey, ref.frame),
       [onEditCommit],
     ),
   );

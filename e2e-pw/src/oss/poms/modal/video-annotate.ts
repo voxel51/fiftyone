@@ -1,6 +1,8 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
 import { ModalPom } from ".";
 
+const escapeRegExp = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 /**
  * The video-annotation surface: the ImaVid tile, the timeline of per-instance
  * frame-label tracks and temporal-detection (TD) rows, and the playback
@@ -621,7 +623,7 @@ class VideoAnnotateAsserter {
    * (space separated), since the overlays themselves have no DOM.
    */
   async canvasRendersField(field: string, rendered = true) {
-    const pattern = new RegExp(`(^| )${field}( |$)`);
+    const pattern = new RegExp(`(^| )${escapeRegExp(field)}( |$)`);
     return rendered
       ? await expect(this.va.surface).toHaveAttribute(
           "data-cy-scene-overlay-fields",
@@ -635,7 +637,7 @@ class VideoAnnotateAsserter {
 
   /** Assert whether the canvas renders the overlay with `id`. */
   async canvasRendersOverlay(id: string, rendered = true) {
-    const pattern = new RegExp(`(^| )${id}( |$)`);
+    const pattern = new RegExp(`(^| )${escapeRegExp(id)}( |$)`);
     return rendered
       ? await expect(this.va.surface).toHaveAttribute(
           "data-cy-scene-overlay-ids",

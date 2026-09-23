@@ -282,6 +282,19 @@ export default function Position({ readOnly = false }: PositionProps) {
 
           shown.current = [...next, rotation ?? state.rotation.rotation ?? 0];
 
+          // re-entering the stored value is no edit, so it must not promote
+          const storedLabel = engine.getLabel(ref);
+          const unchanged =
+            Array.isArray(storedLabel?.bounding_box) &&
+            storedLabel.bounding_box.every(
+              (v: number, i: number) => v === next[i],
+            ) &&
+            (!("rotation" in rotationData) ||
+              rotationData.rotation === storedRotation);
+          if (unchanged) {
+            return;
+          }
+
           const undoKey = engine.mintGestureId();
           engine.transaction(
             () =>
@@ -292,8 +305,7 @@ export default function Position({ readOnly = false }: PositionProps) {
             { undoKey },
           );
           eventBus.dispatch("annotation:formGeometryCommitted", {
-            instanceId: ref.instanceId,
-            path: ref.path,
+            ref,
             undoKey,
           });
         }}

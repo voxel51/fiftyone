@@ -1,4 +1,5 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
+import { EventUtils } from "src/shared/event-utils";
 
 /** Shared user-facing episode interactions for modal and Explorer MCAP hosts. */
 export class EpisodePom {
@@ -88,24 +89,23 @@ export class EpisodePom {
     tileTitle: string,
   ): Promise<Readonly<Record<string, number>>> {
     const inputs = await this.openViewpointInputs(tileTitle);
-    const previousPose = await this.readCameraPoseInputs(inputs);
-    const previousRaw: Record<string, string> = {};
-    for (const name of Object.keys(previousPose)) {
-      // the committed value, as the input reflects it in aria-valuenow
-      previousRaw[name] =
-        (await inputs
-          .getByRole("spinbutton", { name })
-          .getAttribute("aria-valuenow")) ?? "";
+    // the committed values, as the inputs reflect them in aria-valuenow
+    const changed: Locator[] = [];
+    for (const name of CAMERA_POSE_INPUT_NAMES) {
+      const input = inputs.getByRole("spinbutton", { name });
+      const raw = (await input.getAttribute("aria-valuenow")) ?? "";
+      changed.push(
+        input.and(this.page.locator(`:not([aria-valuenow="${raw}"])`)),
+      );
     }
     await this.blurActiveElement();
     await this.page.keyboard.press("e");
-    // the ego view moves the camera, so every pose input leaves its old value
-    for (const [name, raw] of Object.entries(previousRaw)) {
-      await inputs
-        .getByRole("spinbutton", { name })
-        .and(this.page.locator(`:not([aria-valuenow="${raw}"])`))
-        .waitFor();
-    }
+    // one commit publishes the whole pose, and a valid pose can keep a
+    // coordinate, so any input changing means the new pose is in
+    await changed
+      .reduce((any, input) => any.or(input))
+      .first()
+      .waitFor();
     return this.readCameraPoseInputs(inputs);
   }
 
@@ -114,11 +114,17 @@ export class EpisodePom {
     expected: Readonly<Record<string, number>>,
   ): Promise<void> {
     const inputs = await this.openViewpointInputs(tileTitle);
+    const eventUtils = new EventUtils(this.page);
     for (const [name, value] of Object.entries(expected)) {
-      const input = inputs.getByRole("spinbutton", { name });
-      // populated first, then compared once at 6-digit precision
-      await input.and(this.page.locator("[aria-valuenow]")).waitFor();
-      expect(Number.parseFloat(await input.inputValue())).toBeCloseTo(value, 6);
+      // a stale pose can be showing after a navigation or reload; wait for
+      // this one, compared at 6-digit precision
+      await eventUtils.untilDom(
+        inputs.getByRole("spinbutton", { name }),
+        (element, target) =>
+          Math.abs(Number(element.getAttribute("aria-valuenow")) - target) <
+          5e-7,
+        value,
+      );
     }
   }
 

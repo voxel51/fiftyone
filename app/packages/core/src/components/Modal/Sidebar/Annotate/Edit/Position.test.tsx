@@ -165,7 +165,10 @@ describe("Position", () => {
 
     expect(dispatch).toHaveBeenLastCalledWith(
       "annotation:formGeometryCommitted",
-      { instanceId: INSTANCE, path: PATH, undoKey: "gesture-1" },
+      {
+        ref: { sample: SAMPLE, path: PATH, instanceId: INSTANCE },
+        undoKey: "gesture-1",
+      },
     );
   });
 

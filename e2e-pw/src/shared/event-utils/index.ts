@@ -69,6 +69,33 @@ export class EventCounter {
   }
 }
 
+type ArmHandler = (e: { detail?: unknown }) => boolean;
+
+/**
+ * One exposed binding per page routes every armed listener by id. Playwright
+ * cannot remove a binding, so a binding per arm would pile up across a spec.
+ */
+const dispatchers = new WeakMap<
+  Page,
+  { name: string; handlers: Map<string, ArmHandler>; exposed: Promise<void> }
+>();
+
+const dispatcherFor = (page: Page) => {
+  let dispatcher = dispatchers.get(page);
+  if (!dispatcher) {
+    const handlers = new Map<string, ArmHandler>();
+    const name = getFunctionNameWithRandomSuffix("__fo_event_utils");
+    // an id with no handler has resolved or been disposed: detach it
+    const exposed = page.exposeFunction(
+      name,
+      (id: string, e: { detail?: unknown }) => handlers.get(id)?.(e) ?? true,
+    );
+    dispatcher = { name, handlers, exposed };
+    dispatchers.set(page, dispatcher);
+  }
+  return dispatcher;
+};
+
 export class EventUtils {
   constructor(private readonly page: Page) {}
 
@@ -87,7 +114,9 @@ export class EventUtils {
     eventName: string,
     predicate: (e: { detail?: unknown }) => boolean = () => true,
   ): Promise<ArmedEvent> {
-    const exposedFunctionName = getFunctionNameWithRandomSuffix(eventName);
+    const dispatcher = dispatcherFor(this.page);
+    await dispatcher.exposed;
+    const id = getFunctionNameWithRandomSuffix(eventName);
 
     let resolveReceived: () => void;
     const received = new Promise<void>((resolve) => {
@@ -95,25 +124,23 @@ export class EventUtils {
     });
 
     // the return value tells the page to detach once the wait is satisfied
-    await this.page.exposeFunction(
-      exposedFunctionName,
-      (e: { detail?: unknown }) => {
-        const matched = predicate(e);
-        if (matched) {
-          resolveReceived();
-        }
-        return matched;
-      },
-    );
+    dispatcher.handlers.set(id, (e) => {
+      const matched = predicate(e);
+      if (matched) {
+        dispatcher.handlers.delete(id);
+        resolveReceived();
+      }
+      return matched;
+    });
 
     // the listener is attached in its own evaluate — not inside the promise
     // that carries the wait — so attachment is complete when `arm` returns
     await this.page.evaluate(
-      ({ eventName_, exposedFunctionName_ }) => {
+      ({ eventName_, dispatcher_, id_ }) => {
         let detach = () => {};
         const deliver = (detail: unknown) => {
           // @ts-expect-error - the function is exposed at runtime
-          window[exposedFunctionName_]({ detail }).then(
+          window[dispatcher_](id_, { detail }).then(
             (matched: boolean) => matched && detach(),
           );
         };
@@ -141,22 +168,20 @@ export class EventUtils {
         detach = () => {
           document.removeEventListener(eventName_, onDocument);
           offBus?.();
-          delete armed[exposedFunctionName_];
+          delete armed[id_];
         };
-        armed[exposedFunctionName_] = detach;
+        armed[id_] = detach;
       },
-      { eventName_: eventName, exposedFunctionName_: exposedFunctionName },
+      { eventName_: eventName, dispatcher_: dispatcher.name, id_: id },
     );
 
-    return new ArmedEvent(received, () =>
-      this.page
-        .evaluate(
-          (name): void => window.__FO_ARMED__?.[name]?.(),
-          exposedFunctionName,
-        )
+    return new ArmedEvent(received, async () => {
+      dispatcher.handlers.delete(id);
+      await this.page
+        .evaluate((key): void => window.__FO_ARMED__?.[key]?.(), id)
         // a navigated or closed page took the listener with it
-        .catch((): void => undefined),
-    );
+        .catch((): void => undefined);
+    });
   }
 
   /**

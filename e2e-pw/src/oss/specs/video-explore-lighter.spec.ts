@@ -45,7 +45,10 @@ test.afterAll(async ({ foWebServer }) => {
 
 test.beforeEach(async ({ fiftyoneLoader, grid, modal, page }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-  await grid.openFirstSample();
+  // the Lighter scene is laid over the media only once its viewport is reset
+  await modal.eventUtils.after("lighter:viewport-init-complete", () =>
+    grid.openFirstSample(),
+  );
   await modal.waitForSampleLoadDomAttribute();
 });
 

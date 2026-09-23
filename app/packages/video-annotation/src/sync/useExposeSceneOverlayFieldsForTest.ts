@@ -112,6 +112,12 @@ export const useExposeSceneOverlayFieldsForTest = (scene: Scene): void => {
     return () => {
       delete window.__FO_PLAYWRIGHT_SCENE_OVERLAY_FIELDS;
       delete window.__FO_PLAYWRIGHT_SCENE_OVERLAY_GEOMETRY;
+      // a surface that outlives its scene must not report the old overlays
+      const surface = document.querySelector(
+        '[data-cy="video-annotation-surface"]',
+      );
+      surface?.removeAttribute("data-cy-scene-overlay-fields");
+      surface?.removeAttribute("data-cy-scene-overlay-ids");
     };
   }, [scene]);
 };
