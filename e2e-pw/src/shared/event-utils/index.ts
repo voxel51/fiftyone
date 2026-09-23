@@ -19,6 +19,10 @@ declare global {
   interface Window {
     /** Per-counter event records installed by {@link EventUtils.counter}. */
     __EVENT_COUNTS__?: Record<string, CountedEvent[]>;
+    /** The app's event-bus tap (`@fiftyone/events`). */
+    __FO_EVENTS__?: {
+      tap: (listener: (event: string, data: unknown) => void) => () => void;
+    };
   }
 }
 
@@ -55,7 +59,8 @@ export class EventUtils {
   constructor(private readonly page: Page) {}
 
   /**
-   * Arm a listener for a document-level CustomEvent. Resolves only after the
+   * Arm a listener for an app event: a document-level CustomEvent, or any
+   * `@fiftyone/events` bus event on any channel. Resolves only after the
    * in-page listener is attached, so an event fired any time after arming is
    * guaranteed to be observed — arm BEFORE the action that fires the event,
    * then await the handle's `received` after it:
@@ -75,12 +80,15 @@ export class EventUtils {
       resolveReceived = resolve;
     });
 
+    // the return value tells the page to detach once the wait is satisfied
     await this.page.exposeFunction(
       exposedFunctionName,
       (e: { detail?: unknown }) => {
-        if (predicate(e)) {
+        const matched = predicate(e);
+        if (matched) {
           resolveReceived();
         }
+        return matched;
       },
     );
 
@@ -88,14 +96,37 @@ export class EventUtils {
     // that carries the wait — so attachment is complete when `arm` returns
     await this.page.evaluate(
       ({ eventName_, exposedFunctionName_ }) => {
-        document.addEventListener(eventName_, (e: Event) => {
-          // CustomEvent instances don't serialize across the boundary;
-          // forward only the detail
+        let detach = () => {};
+        const deliver = (detail: unknown) => {
           // @ts-expect-error - the function is exposed at runtime
-          window[exposedFunctionName_]({
-            detail: (e as CustomEvent).detail,
-          });
+          window[exposedFunctionName_]({ detail }).then(
+            (matched: boolean) => matched && detach(),
+          );
+        };
+
+        // CustomEvent instances don't serialize across the boundary;
+        // forward only the detail
+        const onDocument = (e: Event) => deliver((e as CustomEvent).detail);
+        document.addEventListener(eventName_, onDocument);
+
+        // bus payloads can hold live objects; forward only primitive fields
+        const offBus = window.__FO_EVENTS__?.tap((event, data) => {
+          if (event !== eventName_) return;
+          deliver(
+            Object.fromEntries(
+              Object.entries((data ?? {}) as Record<string, unknown>).filter(
+                ([, v]) =>
+                  v === null ||
+                  (typeof v !== "object" && typeof v !== "function"),
+              ),
+            ),
+          );
         });
+
+        detach = () => {
+          document.removeEventListener(eventName_, onDocument);
+          offBus?.();
+        };
       },
       { eventName_: eventName, exposedFunctionName_: exposedFunctionName },
     );
