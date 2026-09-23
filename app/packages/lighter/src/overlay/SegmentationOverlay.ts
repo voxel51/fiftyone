@@ -15,7 +15,6 @@ import type { Renderer2D } from "../renderer/Renderer2D";
 import type { Selectable } from "../selection/Selectable";
 import type { Point, RawLookerLabel, Rect, RenderMeta } from "../types";
 import { getSimpleStrokeStyles } from "../utils/colorMapping";
-import { createMaskCanvas } from "../utils/createMaskCanvas";
 import { maskSourceOf } from "../utils/maskSource";
 import { toRelativePoint } from "../utils/mediaPoint";
 import {
@@ -23,8 +22,11 @@ import {
   paletteKey,
   type SegmentationPalette,
 } from "../utils/segmentationPalette";
-import type { RasterizedSegmentation } from "../utils/segmentationRaster";
-import { rasterizeSegmentation } from "../utils/segmentationRaster";
+import {
+  buildSegmentationLut,
+  decodeSegmentationIndices,
+} from "../utils/segmentationIndices";
+import type { IndexedImage } from "../renderer/Renderer2D";
 import { decodeMaskPath } from "../utils/maskPathDecoding";
 import { PathDecodeCooldown } from "../utils/pathDecodeCooldown";
 import { BaseOverlay } from "./BaseOverlay";
@@ -66,16 +68,13 @@ export class SegmentationOverlay
   extends BaseOverlay<SegmentationLabel>
   implements Selectable
 {
-  /** The rasterized mask, ready to draw. */
-  #canvas?: HTMLCanvasElement;
   /**
-   * Per-pixel target indices behind `#canvas`, for hit-testing. Typed as the
-   * rasterizer returns it — the source mask's width — so a target above 255
-   * is reported as itself rather than wrapping.
+   * The mask as the renderer draws it: per-pixel target indices plus the
+   * palette as a lookup table, colored on the GPU. The indices double as the
+   * hit-test surface — they are the decoded mask itself, so a target above
+   * 255 is reported as itself rather than wrapping.
    */
-  #targets?: RasterizedSegmentation["targets"];
-  #maskWidth = 0;
-  #maskHeight = 0;
+  #indexed?: IndexedImage;
 
   /**
    * The media rect the last paint drew into, in canvas pixels. Hit tests
@@ -84,7 +83,7 @@ export class SegmentationOverlay
    */
   #mediaBounds?: Rect;
 
-  /** What `#canvas` was built from; a mismatch means re-rasterize. */
+  /** What `#indexed` was built from; a mismatch means re-decode / re-table. */
   #renderedSource?: string | OverlayMask;
   #renderedPalette?: string;
 
@@ -178,14 +177,14 @@ export class SegmentationOverlay
       return;
     }
 
-    const canvas = this.ensureRaster(palette);
+    const indexed = this.ensureIndexed(palette);
 
-    if (!canvas) {
+    if (!indexed) {
       return;
     }
 
     renderer.drawImage(
-      { type: "canvas", canvas },
+      { type: "indexed", indexed },
       meta.canonicalMediaBounds,
       { opacity: style.opacity ?? 1 },
       this.containerId,
@@ -242,12 +241,15 @@ export class SegmentationOverlay
   }
 
   /**
-   * Rasterize if the mask or the palette changed since the last paint;
-   * otherwise hand back what is already there.
+   * Decode the mask and table the palette if either changed since the last
+   * paint; otherwise hand back what is already there. The two are cached
+   * independently: a new frame keeps the table when the palette is the same
+   * (for an 8-bit mask, whose table covers every possible target), and a
+   * color-scheme change keeps the decoded indices.
    */
-  private ensureRaster(
+  private ensureIndexed(
     palette: SegmentationPalette,
-  ): HTMLCanvasElement | undefined {
+  ): IndexedImage | undefined {
     const source = this.resolveSource(palette);
 
     if (!source) {
@@ -268,31 +270,35 @@ export class SegmentationOverlay
       return undefined;
     }
 
-    if (
-      this.#canvas &&
-      this.#renderedSource === source &&
-      this.#renderedPalette === key
-    ) {
-      return this.#canvas;
+    const previous = this.#indexed;
+    const sameSource =
+      previous !== undefined && this.#renderedSource === source;
+    const samePalette = previous !== undefined && this.#renderedPalette === key;
+
+    if (sameSource && samePalette) {
+      return previous;
     }
 
     try {
-      const { rgba, width, height, targets } = rasterizeSegmentation(
-        source,
-        palette,
-      );
+      const decoded = sameSource
+        ? {
+            indices: previous.indices,
+            width: previous.width,
+            height: previous.height,
+          }
+        : decodeSegmentationIndices(source);
 
-      const { maskCanvas, maskContext } = createMaskCanvas(width, height);
-      maskContext.putImageData(
-        new ImageData(new Uint8ClampedArray(rgba), width, height),
-        0,
-        0,
-      );
+      // An 8-bit table covers every target the mask could hold, so it
+      // outlives the frame; a 16-bit one is built for the targets present.
+      const reusableLut =
+        samePalette && decoded.indices instanceof Uint8Array
+          ? previous.lut
+          : undefined;
 
-      this.#canvas = maskCanvas;
-      this.#targets = targets;
-      this.#maskWidth = width;
-      this.#maskHeight = height;
+      this.#indexed = {
+        ...decoded,
+        lut: reusableLut ?? buildSegmentationLut(decoded.indices, palette),
+      };
       this.#renderedSource = source;
       this.#renderedPalette = key;
       this.#failedSource = undefined;
@@ -300,19 +306,15 @@ export class SegmentationOverlay
     } catch (error) {
       // A malformed or multi-channel mask must not take the frame down with
       // it — every other overlay in this pass still has to paint.
-      console.error(
-        `[segmentation] failed to rasterize "${this.field}":`,
-        error,
-      );
-      this.#canvas = undefined;
-      this.#targets = undefined;
+      console.error(`[segmentation] failed to decode "${this.field}":`, error);
+      this.#indexed = undefined;
       this.#renderedSource = source;
       this.#renderedPalette = key;
       this.#failedSource = source;
       this.#failedPalette = key;
     }
 
-    return this.#canvas;
+    return this.#indexed;
   }
 
   /**
@@ -430,18 +432,21 @@ export class SegmentationOverlay
 
   /** The target index under a relative point, or 0 for background. */
   targetAt(relative: Point): number {
-    if (!this.#targets || !this.#maskWidth || !this.#maskHeight) {
+    const indexed = this.#indexed;
+
+    if (!indexed) {
       return 0;
     }
 
-    const x = Math.floor(relative.x * this.#maskWidth);
-    const y = Math.floor(relative.y * this.#maskHeight);
+    const { indices, width, height } = indexed;
+    const x = Math.floor(relative.x * width);
+    const y = Math.floor(relative.y * height);
 
-    if (x < 0 || y < 0 || x >= this.#maskWidth || y >= this.#maskHeight) {
+    if (x < 0 || y < 0 || x >= width || y >= height) {
       return 0;
     }
 
-    return this.#targets[y * this.#maskWidth + x];
+    return indices[y * width + x];
   }
 
   /** The target index under a canvas pixel point, or 0 for background. */
@@ -572,12 +577,9 @@ export class SegmentationOverlay
     return LABEL_ARCHETYPE_PRIORITY.SEGMENTATION;
   }
 
-  /** Drops the raster and everything hit-testing answers from. */
+  /** Drops the decoded mask and everything hit-testing answers from. */
   private clearRaster(): void {
-    this.#canvas = undefined;
-    this.#targets = undefined;
-    this.#maskWidth = 0;
-    this.#maskHeight = 0;
+    this.#indexed = undefined;
     this.#renderedSource = undefined;
     this.#renderedPalette = undefined;
   }
