@@ -52,6 +52,9 @@ interface SearchOrigin {
   base: fos.State.Stage[] | null;
   decorate: (() => void) | null;
   withdraw: (() => void) | null;
+  /** The fingerprint of the view a backend search sent; null for an
+   * operator run, whose resulting view only the server knows. */
+  expectedFp: string | null;
 }
 
 export interface LanguageSearchOptions {
@@ -112,15 +115,18 @@ export const useLanguageSearch = ({
 
   const observeView = useCallback(
     (view: fos.State.Stage[]) => {
-      const fromSearch = pendingSearch.current !== null;
+      const pending = pendingSearch.current;
+      // Only the view a search sent is its result: a rollback of that view,
+      // or another change landing first, is not
+      const fromSearch =
+        pending !== null &&
+        (pending.expectedFp === null ||
+          pending.expectedFp === viewFingerprint(view));
       const previousSearch = lastSearch.current;
       // A just-searched run owns the arriving view; any other view change
       // supersedes the chain and a next search targets the view as-is
-      if (pendingSearch.current) {
-        lastSearch.current = {
-          ...pendingSearch.current,
-          viewFp: viewFingerprint(view),
-        };
+      if (pending && fromSearch) {
+        lastSearch.current = { ...pending, viewFp: viewFingerprint(view) };
         pendingSearch.current = null;
       } else if (
         lastSearch.current &&
@@ -140,6 +146,9 @@ export const useLanguageSearch = ({
    * that would have cleared it may never come.
    */
   const cancel = useCallback(() => {
+    // A search whose view is still in transit is superseded as well: that
+    // view, if it lands, is no longer the bar's search result
+    pendingSearch.current = null;
     if (backendSearchInFlight.current === null) return;
     backendSearchInFlight.current = null;
     backendSearchSeq.current += 1;
@@ -284,14 +293,19 @@ export const useLanguageSearch = ({
           backendSearchInFlight.current = null;
           return true;
         };
-        backend
-          .search({
-            datasetName,
-            brainKey: index.key,
-            runTimestamp: index.timestamp ?? null,
-            query,
-            k: searchK,
-          })
+        // Through the executor, so a backend that throws before returning its
+        // promise still reaches the failure handling below
+        new Promise<fos.TextSearchResult>((resolve) =>
+          resolve(
+            backend.search({
+              datasetName,
+              brainKey: index.key,
+              runTimestamp: index.timestamp ?? null,
+              query,
+              k: searchK,
+            }),
+          ),
+        )
           .then((result) => {
             if (!settle()) return;
             const current = latestView.current;
@@ -307,6 +321,7 @@ export const useLanguageSearch = ({
               base,
               decorate: result.decorate ?? null,
               withdraw: result.withdraw ?? null,
+              expectedFp: viewFingerprint(view),
             };
             if (viewFingerprint(view) === viewFingerprint(current)) {
               // No view change is coming to clear the pending treatment, or
@@ -375,7 +390,13 @@ export const useLanguageSearch = ({
           const runId =
             (result?.result as { run_id?: string } | undefined)?.run_id ?? null;
           pendingSearch.current = runId
-            ? { runId, base: null, decorate: null, withdraw: null }
+            ? {
+                runId,
+                base: null,
+                decorate: null,
+                withdraw: null,
+                expectedFp: null,
+              }
             : null;
         },
       });

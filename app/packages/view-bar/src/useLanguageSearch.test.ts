@@ -166,4 +166,45 @@ describe("useLanguageSearch with a text search backend", () => {
 
     expect(withdraw).toHaveBeenCalledTimes(1);
   });
+
+  it("fails a backend that throws before returning its promise like any other failure", async () => {
+    env.search.mockImplementationOnce(() => {
+      throw new Error("the backend is misconfigured");
+    });
+    const hook = mount();
+
+    await act(async () => hook.result.current.props.onSubmit("an animal"));
+
+    expect(env.setPending).toHaveBeenLastCalledWith(false);
+    expect(env.notify).toHaveBeenCalledWith(
+      expect.objectContaining({ msg: "the backend is misconfigured" }),
+    );
+  });
+
+  it("forgets a search whose view was still in transit when cancelled", async () => {
+    const decorate = vi.fn();
+    const resolve = pendingResult();
+    const hook = mount();
+    act(() => hook.result.current.props.onSubmit("an animal"));
+    await act(async () => resolve({ stage: MATCHES, decorate }));
+
+    act(() => hook.result.current.cancel());
+
+    // The view it had already sent still lands; the bar moved past it
+    expect(land(hook, [EXISTING, MATCHES])).toBe(false);
+    expect(decorate).not.toHaveBeenCalled();
+  });
+
+  it("does not take a rollback of the view it sent for its result", async () => {
+    const decorate = vi.fn();
+    const resolve = pendingResult();
+    const hook = mount();
+    act(() => hook.result.current.props.onSubmit("an animal"));
+    await act(async () => resolve({ stage: MATCHES, decorate }));
+
+    expect(land(hook, [EXISTING])).toBe(false);
+    expect(decorate).not.toHaveBeenCalled();
+    expect(land(hook, [EXISTING, MATCHES])).toBe(true);
+    expect(decorate).toHaveBeenCalledTimes(1);
+  });
 });
