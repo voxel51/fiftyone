@@ -3,10 +3,16 @@
  */
 
 import { describe, expect, it } from "vitest";
+import { KEYPOINT_SELECTED_RADIUS } from "../constants";
 import { CoordinateSystem2D } from "../core/CoordinateSystem2D";
 import { MockRenderer2D } from "../renderer/MockRenderer2D";
+import type { Point } from "../types";
 import { NO_BOUNDS } from "./DetectionOverlay";
-import { KeypointOverlay, type KeypointLabel } from "./KeypointOverlay";
+import {
+  KeypointOverlay,
+  type KeypointLabel,
+  type LabelTextPlacement,
+} from "./KeypointOverlay";
 
 /**
  * Builds a KeypointOverlay over an identity-over-100x100 media region, so
@@ -227,5 +233,54 @@ describe("KeypointOverlay.selectPoint", () => {
 
     overlay.selectPoint(1);
     expect(overlay.getSelectedPoint()).toBe(1);
+  });
+});
+
+/** Exposes the protected placement helper for direct assertions. */
+class PlacementProbe extends KeypointOverlay {
+  placement(absPoints: Point[]): LabelTextPlacement | null {
+    return this.computeLabelTextPlacement(new MockRenderer2D(), absPoints);
+  }
+}
+
+const probe = () =>
+  new PlacementProbe({
+    id: "kp-probe",
+    field: "keypoints",
+    label: { label: "person", points: [] } as KeypointLabel,
+  });
+
+const WORLD_HOLE: Point = { x: NaN, y: NaN };
+
+describe("KeypointOverlay label text placement", () => {
+  it("centers the text above a lone placed node, skipping holes", () => {
+    const placement = probe().placement([
+      WORLD_HOLE,
+      { x: 40, y: 30 },
+      WORLD_HOLE,
+    ]);
+
+    // the mock renderer's scale is 1, so the gap is in world units
+    expect(placement).toEqual({
+      position: { x: 40, y: 30 - (KEYPOINT_SELECTED_RADIUS + 4) },
+      anchor: { vertical: "bottom", horizontal: "center" },
+    });
+  });
+
+  it("centers the text on the centroid of the placed nodes", () => {
+    const placement = probe().placement([
+      { x: 10, y: 20 },
+      WORLD_HOLE,
+      { x: 30, y: 40 },
+    ]);
+
+    expect(placement).toEqual({
+      position: { x: 20, y: 30 },
+      anchor: { vertical: "center", horizontal: "center" },
+    });
+  });
+
+  it("draws no text when every node is a hole", () => {
+    expect(probe().placement([WORLD_HOLE, WORLD_HOLE])).toBeNull();
   });
 });

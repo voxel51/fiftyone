@@ -4,7 +4,6 @@
 
 import {
   EDGE_THRESHOLD,
-  KEYPOINT_SELECTED_RADIUS,
   LABEL_ARCHETYPE_PRIORITY,
   PREVIEW_LINE_OPACITY,
 } from "../constants";
@@ -41,9 +40,6 @@ export interface PolylineOptions {
 }
 
 const DEFAULT_FILL_OPACITY = 0.3;
-
-/** Screen-space gap between a lone vertex's marker and its label text. */
-const SINGLE_POINT_LABEL_GAP = 4;
 
 export type SegmentEndpoint = {
   segmentIdx: number;
@@ -907,37 +903,24 @@ export class PolylineOverlay extends KeypointOverlay {
       return;
     }
 
-    if (ctx.absPoints.length === 0) {
-      return;
-    }
-
     if (!BaseOverlay.validBounds(this.bounds)) {
       return;
     }
 
-    const single = ctx.absPoints.length === 1;
-    const scale = renderer.getScale() || 1;
-    const position = single
-      ? {
-          x: ctx.absPoints[0].x,
-          y:
-            ctx.absPoints[0].y -
-            (KEYPOINT_SELECTED_RADIUS + SINGLE_POINT_LABEL_GAP) / scale,
-        }
-      : PolylineOverlay.computeCentroid(ctx.absPoints);
+    const placement = this.computeLabelTextPlacement(renderer, ctx.absPoints);
+    if (!placement) {
+      return;
+    }
 
     // `drawText` returns the absolute-space background rect; retain it for
     // hover/selection hit-testing.
     this.textBounds = renderer.drawText(
       this.label.label,
-      position,
+      placement.position,
       {
         fontColor: "#ffffff",
         backgroundColor: ctx.style.fillStyle || ctx.style.strokeStyle || "#000",
-        anchor: {
-          vertical: single ? "bottom" : "center",
-          horizontal: "center",
-        },
+        anchor: placement.anchor,
       },
       this.containerId,
     );
@@ -975,25 +958,6 @@ export class PolylineOverlay extends KeypointOverlay {
     }
 
     return super.getMouseDistance(point);
-  }
-
-  /**
-   * Returns the centroid (mean position) of the given points. Callers are
-   * responsible for ensuring the array is non-empty.
-   */
-  private static computeCentroid(points: Point[]): Point {
-    let sumX = 0;
-    let sumY = 0;
-
-    for (const p of points) {
-      sumX += p.x;
-      sumY += p.y;
-    }
-
-    return {
-      x: sumX / points.length,
-      y: sumY / points.length,
-    };
   }
 
   private static pointInRect(p: Point, r: Rect): boolean {

@@ -24,6 +24,7 @@ import type { Renderer2D } from "../renderer/Renderer2D";
 import type { OverlayEvent } from "../interaction/InteractionManager";
 import type { Selectable } from "../selection/Selectable";
 import type {
+  Anchor,
   DrawStyle,
   Hoverable,
   Point,
@@ -75,6 +76,15 @@ const sanitizePoint = (point: readonly unknown[]): [number, number] => {
 /** Whether an absolute point is drawable/hit-testable (not a hole). */
 const isFinitePoint = (point: Point): boolean =>
   Number.isFinite(point.x) && Number.isFinite(point.y);
+
+/** Screen-space gap between a lone point's marker and its label text. */
+const SINGLE_POINT_LABEL_GAP = 4;
+
+/** Where a point-based overlay draws its label text, and how it anchors. */
+export interface LabelTextPlacement {
+  position: Point;
+  anchor: Anchor;
+}
 
 /**
  * Options for creating a keypoint overlay.
@@ -830,21 +840,63 @@ export class KeypointOverlay
     );
   }
 
+  /**
+   * Label text placement shared by keypoints and polylines: centered above a
+   * lone point (so the text does not cover its marker), otherwise centered on
+   * the centroid of the drawable points. Holes are skipped, so a skeleton
+   * with one placed node reads like a lone vertex. `null` when nothing is
+   * drawable.
+   */
+  protected computeLabelTextPlacement(
+    renderer: Renderer2D,
+    absPoints: Point[],
+  ): LabelTextPlacement | null {
+    const drawable = absPoints.filter(isFinitePoint);
+    if (drawable.length === 0) return null;
+
+    if (drawable.length === 1) {
+      const scale = renderer.getScale() || 1;
+      return {
+        position: {
+          x: drawable[0].x,
+          y:
+            drawable[0].y -
+            (KEYPOINT_SELECTED_RADIUS + SINGLE_POINT_LABEL_GAP) / scale,
+        },
+        anchor: { vertical: "bottom", horizontal: "center" },
+      };
+    }
+
+    let sumX = 0;
+    let sumY = 0;
+    for (const p of drawable) {
+      sumX += p.x;
+      sumY += p.y;
+    }
+
+    return {
+      position: { x: sumX / drawable.length, y: sumY / drawable.length },
+      anchor: { vertical: "center", horizontal: "center" },
+    };
+  }
+
   protected renderLabelText(
     renderer: Renderer2D,
     ctx: KeypointRenderContext,
   ): void {
     if (!this.label || !this.label.label?.length) return;
+    if (!BaseOverlay.validBounds(this.bounds)) return;
 
-    const labelBounds = this.bounds;
-    if (!BaseOverlay.validBounds(labelBounds)) return;
+    const placement = this.computeLabelTextPlacement(renderer, ctx.absPoints);
+    if (!placement) return;
 
     renderer.drawText(
       this.label.label,
-      { x: labelBounds.x, y: labelBounds.y },
+      placement.position,
       {
         fontColor: "#ffffff",
         backgroundColor: ctx.style.fillStyle || ctx.style.strokeStyle || "#000",
+        anchor: placement.anchor,
       },
       this.containerId,
     );
