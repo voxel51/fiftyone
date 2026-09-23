@@ -75,6 +75,18 @@ const pointerDown = (canvas: HTMLCanvasElement) => {
   );
 };
 
+const pointerMove = (canvas: HTMLCanvasElement, clientX: number) => {
+  canvas.dispatchEvent(
+    new MouseEvent("pointermove", { clientX, clientY: 10, bubbles: true }),
+  );
+};
+
+const pointerUp = (canvas: HTMLCanvasElement, clientX = 10) => {
+  canvas.dispatchEvent(
+    new MouseEvent("pointerup", { clientX, clientY: 10, bubbles: true }),
+  );
+};
+
 describe("InteractionManager read-only", () => {
   let canvas: HTMLCanvasElement;
   let selection: SelectionManager;
@@ -92,6 +104,7 @@ describe("InteractionManager read-only", () => {
         getScale: () => 1,
         screenToWorld: (p: unknown) => p,
         disableZoomPan,
+        enableZoomPan: vi.fn(),
       } as unknown as Renderer2D,
       `read-only-test-${Math.random()}`,
     );
@@ -129,6 +142,48 @@ describe("InteractionManager read-only", () => {
     pointerDown(canvas);
 
     expect(onPointerDown).toHaveBeenCalled();
+  });
+
+  describe("selection", () => {
+    const readOnlyOverlay = () => {
+      const { handler } = makeHandler("d1");
+      manager.addHandler(handler);
+      selection.addSelectable(handler as unknown as Selectable);
+      manager.setReadOnly(true);
+    };
+
+    it("selects on a click when read-only", () => {
+      readOnlyOverlay();
+
+      pointerDown(canvas);
+      expect(selection.isSelected("d1")).toBe(false);
+
+      pointerUp(canvas);
+      expect(selection.isSelected("d1")).toBe(true);
+    });
+
+    it("shows Looker's cursors: pointer on a label, all-scroll while panning", () => {
+      readOnlyOverlay();
+
+      pointerMove(canvas, 10);
+      expect(canvas.style.cursor).toBe("pointer");
+
+      pointerDown(canvas);
+      pointerMove(canvas, 40);
+      expect(canvas.style.cursor).toBe("all-scroll");
+
+      pointerUp(canvas, 40);
+      expect(canvas.style.cursor).toBe("pointer");
+    });
+
+    it("does not select when a read-only press pans instead", () => {
+      readOnlyOverlay();
+
+      pointerDown(canvas);
+      pointerUp(canvas, 40);
+
+      expect(selection.isSelected("d1")).toBe(false);
+    });
   });
 
   describe("camera", () => {
