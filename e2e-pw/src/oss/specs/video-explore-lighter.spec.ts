@@ -63,10 +63,10 @@ test.describe.serial("video Explore Lighter surface", () => {
     await modal.sampleCanvas.assert.lighterCoversMedia();
 
     const viewport = page.viewportSize();
-    await page.setViewportSize({
-      width: viewport.width - 300,
-      height: viewport.height - 200,
-    });
+    await modal.sampleCanvas.resizeViewport(
+      viewport.width - 300,
+      viewport.height - 200,
+    );
 
     await modal.sampleCanvas.assert.hasScreenshot("video-explore-resized.png");
     await modal.sampleCanvas.assert.lighterCoversMedia();
@@ -77,9 +77,11 @@ test.describe.serial("video Explore Lighter surface", () => {
   }) => {
     await modal.sampleCanvas.move(0.5, 0.5);
     await modal.sampleCanvas.wheel(7);
+    await modal.sampleCanvas.moveMouseToViewportEdge();
     await modal.sampleCanvas.assert.hasScreenshot("video-explore-zoomed.png");
 
     await modal.sampleCanvas.drag(0.5, 0.5, 0.7, 0.5);
+    await modal.sampleCanvas.moveMouseToViewportEdge();
     await modal.sampleCanvas.assert.hasScreenshot("video-explore-panned.png");
   });
 

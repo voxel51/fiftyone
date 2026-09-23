@@ -248,6 +248,15 @@ export class SampleCanvasPom {
   }
 
   /**
+   * Resize the page, returning once Lighter has resized its canvas to match
+   */
+  async resizeViewport(width: number, height: number) {
+    await this.eventUtils.after("lighter:resize", () =>
+      this.page.setViewportSize({ width, height }),
+    );
+  }
+
+  /**
    * Reset Lighter zoom and pan with the Annotate keyboard shortcut
    */
   async resetZoomPan() {
@@ -346,27 +355,13 @@ class SampleCanvasAsserter {
    * its media in (`data-lighter-media`), so labels paint in the media rect
    */
   async lighterCoversMedia() {
-    const boxes = () =>
-      Promise.all([
-        this.sampleCanvasPom.lighterCanvas.boundingBox(),
-        this.sampleCanvasPom.locator
-          .locator("[data-lighter-media]")
-          .boundingBox(),
-      ]);
-
-    // Pixi follows a layout change with a resize; until it lands the canvas
-    // lags its host, so a mismatch then only counts after the resize
-    const resized = await this.sampleCanvasPom.eventUtils.arm("lighter:resize");
-    try {
-      let [canvas, media] = await boxes();
-      if (JSON.stringify(canvas) !== JSON.stringify(media)) {
-        await resized.received;
-        [canvas, media] = await boxes();
-      }
-      expect(canvas).toEqual(media);
-    } finally {
-      await resized.dispose();
-    }
+    const [canvas, media] = await Promise.all([
+      this.sampleCanvasPom.lighterCanvas.boundingBox(),
+      this.sampleCanvasPom.locator
+        .locator("[data-lighter-media]")
+        .boundingBox(),
+    ]);
+    expect(canvas).toEqual(media);
   }
 
   /**
