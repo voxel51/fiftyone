@@ -532,7 +532,8 @@ export default class Flashlight<K> {
       this.requestMore();
     }
 
-    if (!zooming) {
+    // only for browser automation (e2e)
+    if (!zooming && navigator.webdriver) {
       this.element.dispatchEvent(
         new CustomEvent("flashlight-rendered", {
           bubbles: true,

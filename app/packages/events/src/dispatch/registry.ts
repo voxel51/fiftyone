@@ -8,7 +8,8 @@ declare global {
   }
 }
 
-if (typeof window !== "undefined") {
+// only for browser automation (e2e)
+if (typeof window !== "undefined" && window.navigator?.webdriver) {
   window.__FO_EVENTS__ = { tap: tapAllEvents };
 }
 

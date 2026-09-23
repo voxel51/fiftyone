@@ -7,6 +7,7 @@ import {
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
+import { isE2E } from "@fiftyone/utilities";
 import { useCallback, useEffect } from "react";
 
 type Scene = ReturnType<typeof useLighterSetupWithPixi>["scene"];
@@ -64,10 +65,10 @@ const stampSceneOverlays = (scene: NonNullable<Scene>) => {
 };
 
 /**
- * Publish the scene's live overlay fields on `window` for e2e assertions, and
- * mirror the overlay set onto the surface's DOM attributes. A read-only probe —
- * it never drives app behavior; the hook owns the global's lifecycle and
- * clears it on scene change / unmount.
+ * Under browser automation only, publish the scene's live overlay fields on
+ * `window` and mirror the overlay set onto the surface's DOM attributes. A
+ * read-only probe that never drives app behavior; it clears the globals on
+ * scene change / unmount.
  */
 export const useExposeSceneOverlayFieldsForTest = (scene: Scene): void => {
   const on = useLighterEventHandler(
@@ -76,7 +77,7 @@ export const useExposeSceneOverlayFieldsForTest = (scene: Scene): void => {
 
   // after the scene has applied the add/remove, not during its dispatch
   const stamp = useCallback(() => {
-    if (scene) {
+    if (scene && isE2E()) {
       queueMicrotask(() => stampSceneOverlays(scene));
     }
   }, [scene]);
@@ -85,7 +86,7 @@ export const useExposeSceneOverlayFieldsForTest = (scene: Scene): void => {
   on("lighter:overlay-removed", stamp);
 
   useEffect(() => {
-    if (!scene) {
+    if (!scene || !isE2E()) {
       return undefined;
     }
 
