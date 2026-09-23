@@ -19,6 +19,7 @@ import { createMaskCanvas } from "../utils/createMaskCanvas";
 import { maskSourceOf } from "../utils/maskSource";
 import { toRelativePoint } from "../utils/mediaPoint";
 import {
+  colorForTarget,
   paletteKey,
   type SegmentationPalette,
 } from "../utils/segmentationPalette";
@@ -124,6 +125,13 @@ export class SegmentationOverlay
   #failedPalette?: string;
 
   #isSelectedState = false;
+
+  /**
+   * Where the pointer last was while hovering, in canvas pixels. The tooltip
+   * names the target UNDER the cursor, and `getTooltipInfo` takes no point,
+   * so the hover handlers keep it here.
+   */
+  #hoverPoint?: Point;
 
   public cursor = "pointer";
 
@@ -240,7 +248,7 @@ export class SegmentationOverlay
   private ensureRaster(
     palette: SegmentationPalette,
   ): HTMLCanvasElement | undefined {
-    const source = this.resolveSource();
+    const source = this.resolveSource(palette);
 
     if (!source) {
       // Nothing resolvable right now: no inline mask, and either no
@@ -317,7 +325,9 @@ export class SegmentationOverlay
    * one handle reused across the clip, so a gated mount would tear it down
    * and rebuild it on every playhead step.
    */
-  private resolveSource(): string | OverlayMask | undefined {
+  private resolveSource(
+    palette: SegmentationPalette,
+  ): string | OverlayMask | undefined {
     // Normalized rather than read straight off the label: `/frames` sends a
     // base64 string, but the GraphQL sample payload sends the same mask as
     // `{ $binary: { base64 } }`, and this surface receives both. An unwrapped
@@ -339,13 +349,13 @@ export class SegmentationOverlay
       return this.#decodedFromPath;
     }
 
-    this.startDecode(path);
+    this.startDecode(path, palette);
 
     return undefined;
   }
 
   /** Fetch + decode an on-disk mask, then repaint. */
-  private startDecode(path: string): void {
+  private startDecode(path: string, palette: SegmentationPalette): void {
     if (this.#decodingPath === path || this.#destroyed) {
       return;
     }
@@ -363,7 +373,15 @@ export class SegmentationOverlay
 
     this.#decodingPath = path;
 
-    void decodeMaskPath(url, this.field ?? "", SEGMENTATION)
+    // The decoder needs the targets to tell an RGB-keyed mask (keep the
+    // channels) from an indexed one (one channel); the palette carries them
+    // as the dataset declared them.
+    void decodeMaskPath(
+      url,
+      this.field ?? "",
+      SEGMENTATION,
+      palette.maskTargets,
+    )
       .then((decoded) => {
         // The label may have moved on while this was in flight — a scrub, or
         // simply the next frame. Adopting a stale decode would paint the
@@ -466,6 +484,65 @@ export class SegmentationOverlay
     super.applyLabel(label);
     // the next paint re-rasterizes: the source changed
     this.markDirty();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Hoverable
+  // ---------------------------------------------------------------------------
+
+  override onHoverEnter(
+    point: Point | null,
+    event: PointerEvent | null,
+  ): boolean {
+    this.#hoverPoint = point ?? undefined;
+    return super.onHoverEnter(point, event);
+  }
+
+  override onHoverMove(
+    point?: Point | null,
+    event?: PointerEvent | null,
+  ): boolean {
+    this.#hoverPoint = point ?? undefined;
+    return super.onHoverMove(point, event);
+  }
+
+  override onHoverLeave(
+    point?: Point | null,
+    event?: PointerEvent | null,
+  ): boolean {
+    this.#hoverPoint = undefined;
+    return super.onHoverLeave?.(point, event) ?? true;
+  }
+
+  /**
+   * What the modal tooltip shows for the pixel under the cursor: the target
+   * index, which the tooltip resolves to its mask-target name itself, bordered
+   * in that target's color. The mask bytes are dropped from the label copy —
+   * the tooltip never shows them, and a base64 mask per hover-move is a lot
+   * of state to churn for nothing.
+   */
+  getTooltipInfo(): {
+    color: string;
+    field: string;
+    label: SegmentationLabel;
+    type: string;
+    target: number;
+  } | null {
+    const palette = this.currentStyle?.segmentationPalette;
+
+    if (!palette) {
+      return null;
+    }
+
+    const target = this.#hoverPoint ? this.targetAtPixel(this.#hoverPoint) : 0;
+
+    return {
+      color: colorForTarget(target, palette) ?? palette.fieldColor,
+      field: this.field || "unknown",
+      label: { ...this.label, mask: undefined },
+      type: "Segmentation",
+      target,
+    };
   }
 
   // ---------------------------------------------------------------------------

@@ -42,6 +42,13 @@ export interface SegmentationPalette {
   /** Fallback ramp, indexed by `target % pool.length`. */
   pool: readonly string[];
   seed: number;
+  /**
+   * The field's mask targets as the dataset declares them, RGB-keyed or not.
+   * Not a color input — the palette above has already read them — but the
+   * on-disk decoder needs the raw map to know whether a PNG's channels are
+   * addresses (RGB targets) or one index per pixel.
+   */
+  maskTargets?: MaskTargets;
 }
 
 /** `[{ intTarget, color }]` -> `{ [intTarget]: color }`. */
@@ -119,6 +126,7 @@ export const resolveSegmentationPalette = (
     allowedTargets,
     pool,
     seed,
+    maskTargets,
   };
 };
 

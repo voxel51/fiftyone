@@ -111,6 +111,13 @@ export class HeatmapOverlay
 
   #isSelectedState = false;
 
+  /**
+   * Where the pointer last was while hovering, in canvas pixels. The tooltip
+   * reports the value UNDER the cursor, and `getTooltipInfo` takes no point,
+   * so the hover handlers keep it here.
+   */
+  #hoverPoint?: Point;
+
   public cursor = "pointer";
 
   constructor(options: HeatmapOverlayOptions) {
@@ -432,6 +439,62 @@ export class HeatmapOverlay
   applyLabel(label: HeatmapLabel): void {
     super.applyLabel(label);
     this.markDirty();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Hoverable
+  // ---------------------------------------------------------------------------
+
+  override onHoverEnter(
+    point: Point | null,
+    event: PointerEvent | null,
+  ): boolean {
+    this.#hoverPoint = point ?? undefined;
+    return super.onHoverEnter(point, event);
+  }
+
+  override onHoverMove(
+    point?: Point | null,
+    event?: PointerEvent | null,
+  ): boolean {
+    this.#hoverPoint = point ?? undefined;
+    return super.onHoverMove(point, event);
+  }
+
+  override onHoverLeave(
+    point?: Point | null,
+    event?: PointerEvent | null,
+  ): boolean {
+    this.#hoverPoint = undefined;
+    return super.onHoverLeave?.(point, event) ?? true;
+  }
+
+  /**
+   * What the modal tooltip shows for the pixel under the cursor: its value,
+   * bordered in the field's color. The map bytes are dropped from the label
+   * copy — the tooltip never shows them, and a base64 map per hover-move is a
+   * lot of state to churn for nothing.
+   */
+  getTooltipInfo(): {
+    color: string;
+    field: string;
+    label: HeatmapLabel;
+    type: string;
+    target: number;
+  } | null {
+    const palette = this.currentStyle?.heatmapPalette;
+
+    if (!palette) {
+      return null;
+    }
+
+    return {
+      color: palette.fieldColor,
+      field: this.field || "unknown",
+      label: { ...this.label, map: undefined },
+      type: "Heatmap",
+      target: this.#hoverPoint ? this.valueAtPixel(this.#hoverPoint) : 0,
+    };
   }
 
   // ---------------------------------------------------------------------------
