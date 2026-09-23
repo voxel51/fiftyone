@@ -16,6 +16,7 @@ from multiprocessing.pool import ThreadPool
 import os
 from typing import Tuple
 
+import bson
 from bson import ObjectId, json_util
 from bson.codec_options import CodecOptions
 import mongoengine
@@ -1165,26 +1166,49 @@ class InsertAdmitter(object):
     :meth:`Dataset.merge_samples()
     <fiftyone.core.dataset.Dataset.merge_samples>` when it merges whole
     collections, never materialize documents in Python and are not admitted.
+
+    Batches can also be sized in bytes. Encoding a batch to measure it costs
+    time, so it happens only while some registered admitter's
+    :meth:`wants_bytes` returns True; otherwise ``num_bytes`` is ``None``.
+    ``num_bytes`` is also ``None`` for writes whose batch cannot be sized
+    faithfully, such as upserts that replace existing documents.
     """
 
-    def admit(self, collection_name, num_docs):
+    def wants_bytes(self):
+        """Whether this admitter needs batches sized in bytes.
+
+        Consulted per batch, so an admitter may start or stop asking at any
+        time.
+
+        Returns:
+            True/False
+        """
+        return False
+
+    def admit(self, collection_name, num_docs, num_bytes=None):
         """Consulted before a batch is written.
 
         Args:
             collection_name: the name of the collection being written to
             num_docs: the number of documents the write would add
+            num_bytes (None): the BSON-encoded size of the batch, or
+                ``None`` if it was not sized
 
         Raises:
             InsertRefusedError: to refuse the write
         """
         pass
 
-    def record(self, collection_name, num_docs):
+    def record(self, collection_name, num_docs, num_bytes=None):
         """Informed after a batch was written.
 
         Args:
             collection_name: the name of the collection written to
             num_docs: the number of documents the write added
+            num_bytes (None): the BSON-encoded size of the documents the
+                write added, or ``None`` if the batch was not sized. After a
+                partial write this is the batch's size prorated by the
+                documents that landed
         """
         pass
 
@@ -1217,17 +1241,42 @@ def unregister_insert_admitter(admitter):
     _insert_admitters[:] = [a for a in _insert_admitters if a is not admitter]
 
 
-def _admit_insert(collection_name, num_docs):
+def _admit_insert(collection_name, num_docs, num_bytes=None):
     for admitter in _insert_admitters:
-        admitter.admit(collection_name, num_docs)
+        admitter.admit(collection_name, num_docs, num_bytes=num_bytes)
 
 
-def _record_insert(collection_name, num_docs):
+def _record_insert(collection_name, num_docs, num_bytes=None):
     for admitter in _insert_admitters:
-        admitter.record(collection_name, num_docs)
+        admitter.record(collection_name, num_docs, num_bytes=num_bytes)
 
 
-def _admitted_write(collection_name, num_docs, write):
+def _wants_bytes():
+    """Whether any registered admitter wants batches sized in bytes."""
+    return any(a.wants_bytes() for a in _insert_admitters)
+
+
+def _encoded_size(docs):
+    """The total BSON-encoded size of the documents.
+
+    Documents without an ``_id`` yet are measured as they are; the id the
+    driver adds is a rounding error against a byte limit.
+    """
+    return sum(len(bson.encode(d)) for d in docs)
+
+
+def _prorated_bytes(num_bytes, num_written, num_docs):
+    """The share of a batch's bytes that a partial write landed."""
+    if num_bytes is None:
+        return None
+
+    if not num_docs:
+        return 0
+
+    return num_bytes * num_written // num_docs
+
+
+def _admitted_write(collection_name, num_docs, write, docs=None):
     """Performs one batch write under the registered insert admitters.
 
     The admitters are consulted with the number of documents the write would
@@ -1242,6 +1291,10 @@ def _admitted_write(collection_name, num_docs, write):
             registered, so a write nobody admits pays nothing for the count
         write: a callable that performs the write and returns its
             ``pymongo.results`` result
+        docs (None): the documents the write inserts, used to size the
+            batch in bytes when an admitter wants that. Pass ``None`` when
+            the batch cannot be sized faithfully (e.g. it replaces existing
+            documents), which admits it unsized
 
     Returns:
         the result of ``write()``
@@ -1252,16 +1305,26 @@ def _admitted_write(collection_name, num_docs, write):
     if callable(num_docs):
         num_docs = num_docs()
 
-    _admit_insert(collection_name, num_docs)
+    if docs is not None and _wants_bytes():
+        num_bytes = _encoded_size(docs)
+    else:
+        num_bytes = None
+
+    _admit_insert(collection_name, num_docs, num_bytes=num_bytes)
 
     try:
         res = write()
     except BulkWriteError as bwe:
-        _record_insert(collection_name, _num_written_before(bwe))
+        num_written = _num_written_before(bwe)
+        _record_insert(
+            collection_name,
+            num_written,
+            num_bytes=_prorated_bytes(num_bytes, num_written, num_docs),
+        )
         msg = bwe.details["writeErrors"][0]["errmsg"]
         raise ValueError(msg) from bwe
 
-    _record_insert(collection_name, _num_written(res))
+    _record_insert(collection_name, _num_written(res), num_bytes=num_bytes)
 
     return res
 
@@ -1341,6 +1404,7 @@ def insert_documents(
                 coll.name,
                 len(batch),
                 lambda: coll.insert_many(batch, ordered=ordered),
+                docs=batch,
             )
             batch_ids = [b["_id"] for b in batch]
             ids.extend(batch_ids)

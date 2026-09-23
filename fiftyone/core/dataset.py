@@ -4415,6 +4415,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._sample_collection_name,
             len(dicts),
             lambda: self._sample_collection.insert_many(dicts),
+            docs=dicts,
         )
 
         for sample, d in samples_and_docs:
@@ -4559,10 +4560,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             return len(ops) - existing
 
+        # Unsized: the ops also replace existing documents, which `num_new`
+        # does not count, so sizing them would over-count near a byte cap
         foo.database._admitted_write(
             self._sample_collection_name,
             num_new,
             lambda: self._sample_collection.bulk_write(ops, ordered=False),
+            docs=None,
         )
 
         for sample, d in samples_and_docs:
