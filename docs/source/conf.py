@@ -13,6 +13,8 @@ import os
 import re
 import sys
 
+from pygments.lexers.special import TextLexer
+
 sys.path.insert(0, os.path.abspath("."))
 sys.path.insert(0, os.path.abspath("../extensions"))
 
@@ -366,3 +368,7 @@ def setup(app):
     app.add_directive("customanimatedcta", CustomAnimatedCTADirective)
     app.add_directive("customusecasecard", CustomUseCaseCardDirective)
     app.add_directive("customavailablein", CustomAvailableInDirective)
+
+    # Plain text that readers paste into an agent, so unlike ``text`` blocks
+    # it keeps its copy button
+    app.add_lexer("prompt", TextLexer)
