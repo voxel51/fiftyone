@@ -1,7 +1,13 @@
 import { getLabelColorFromContext } from "@fiftyone/lighter";
 import type { ModalSample } from "@fiftyone/state";
 import type { Stage } from "@fiftyone/utilities";
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   useActiveDetectionField,
   useColorScheme,
@@ -628,9 +634,12 @@ function useTrackDecorator({
  * plus one row per `TemporalDetection` (rendered as a `support`-spanning
  * interval). Untracked labels still paint as overlays but get no rows.
  *
- * One-shot re-key on the empty→ready transition so `initialPinnedIds` (read
- * only at mount) bootstraps from the real frame-track list; later recolors
- * update through the live `tracks` prop and preserve the user's pin state.
+ * Mounted once per sample and fed the live `tracks` prop. The frame-label
+ * stream is rebuilt whenever a per-frame field is toggled, and its index is
+ * empty until the rebuild lands — so the rows resolved last are held in place
+ * through that gap rather than passed on as an empty list. An empty list would
+ * drop the timeline to its header-only layout and re-open the drawer on the
+ * way back, which read as the drawer closing and opening on every toggle.
  */
 export const FrameLabelsTracks: React.FC<{
   sample?: ModalSample;
@@ -708,10 +717,22 @@ export const FrameLabelsTracks: React.FC<{
   const schemasLoaded = useLabelSchemasLoaded();
   const ready = frameTracksResolved && (mode === "explore" || schemasLoaded);
   // Object tracks (with their sub-tracks interleaved) followed by TD tracks.
-  const tracks = useMemo(
+  const resolvedTracks = useMemo(
     () => [...frameTracks, ...temporalDetectionTracks],
     [frameTracks, temporalDetectionTracks],
   );
+
+  // The last list that resolved, shown while the next one loads (see the
+  // component doc). Adopted through an effect rather than a ref written during
+  // render: it is state the rows below derive from, and the one extra render it
+  // costs lands only when a new list actually resolves.
+  const [heldTracks, setHeldTracks] = useState(resolvedTracks);
+  useEffect(() => {
+    if (ready) {
+      setHeldTracks(resolvedTracks);
+    }
+  }, [ready, resolvedTracks]);
+  const tracks = ready ? resolvedTracks : heldTracks;
 
   const expansion = useTrackExpansion();
 
@@ -758,7 +779,6 @@ export const FrameLabelsTracks: React.FC<{
 
   return (
     <TrackProvider
-      key={ready ? "ready" : "init"}
       tracks={visibleTracks}
       autoPinNewTracks={false}
       persistKey={persistKey}
