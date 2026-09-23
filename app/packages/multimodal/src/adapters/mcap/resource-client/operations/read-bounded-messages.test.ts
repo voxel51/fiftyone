@@ -4,11 +4,104 @@ import type { DecodeClient } from "../../../../query/decoding";
 import {
   isMcapBoundedReadCancelledError,
   type McapIndexedReaderLike,
+  type McapReadContinuation,
 } from "../../reader";
 import { resolveMcapTimelineStrategy } from "../timeline";
 import { readMcapBoundedMessages } from "./read-bounded-messages";
 
 describe("readMcapBoundedMessages", () => {
+  it("keeps supported messages and charges a grant containing unsupported channels", async () => {
+    const usage = {
+      chunksOpened: 1,
+      decompressedBytes: 1_000,
+      decompressionCacheHits: 0,
+      elapsedMs: 10,
+      logicalSourceBytes: 500,
+      logicalUncompressedBytes: 1_000,
+      messagesDecoded: 3,
+      transferredBytes: 500,
+    };
+    const continuation: McapReadContinuation = {
+      nextChunkStartOffset: 500n,
+      sourceKey: "fixture",
+      topicsKey: "/supported,/unsupported",
+      version: 1,
+    };
+    const skipped = [{ startNs: 0n, endNs: 0n }];
+    const reader: McapIndexedReaderLike = {
+      channelsById: new Map(
+        [1, 2].map((id) => [
+          id,
+          {
+            id,
+            messageEncoding: id === 1 ? "json" : "unsupported",
+            metadata: new Map(),
+            schemaId: 0,
+            topic: id === 1 ? "/supported" : "/unsupported",
+            type: "Channel" as const,
+          },
+        ]),
+      ),
+      chunkIndexes: [],
+      schemasById: new Map(),
+      readMessages: async function* () {
+        yield* [];
+      },
+      readBoundedMessages: vi.fn(async () => ({
+        continuation,
+        coverageByTopic: new Map([
+          ["/supported", [{ startNs: 1n, endNs: 3n }]],
+          ["/unsupported", [{ startNs: 1n, endNs: 3n }]],
+        ]),
+        messages: [
+          { ...message(1), data: new TextEncoder().encode('{"value":1}') },
+          { ...message(2), channelId: 2 },
+          { ...message(3), data: new TextEncoder().encode('{"value":3}') },
+        ],
+        skippedByTopic: new Map([["/unsupported", skipped]]),
+        stopReason: "budget-exhausted" as const,
+        usage,
+      })),
+    };
+    const decodeClient: DecodeClient = {
+      cachesDecodedOutput: false,
+      decode: vi.fn(),
+    };
+    const budget = {
+      maxMessages: 3,
+      maxSourceBytes: 500,
+      maxUncompressedBytes: 1_000,
+      maxWallTimeMs: 100,
+    };
+    const result = await readMcapBoundedMessages({
+      decodeClient,
+      reader,
+      request: {
+        absoluteBudget: budget,
+        absoluteMaxChunks: 1,
+        budget,
+        maxChunks: 1,
+        representation: "message",
+        source: { sourceId: "fixture", url: "memory://fixture" },
+        topics: ["/supported", "/unsupported"],
+      },
+      timeline: resolveMcapTimelineStrategy(undefined),
+    });
+
+    expect(result.messages.map((entry) => entry.decoded.output)).toEqual([
+      { message: { value: 1 } },
+      { message: { value: 3 } },
+    ]);
+    expect(result.unavailableByTopic?.get("/unsupported")).toEqual([
+      { startNs: 0n, endNs: 0n },
+      { startNs: 2n, endNs: 2n },
+    ]);
+    expect(skipped).toEqual([{ startNs: 0n, endNs: 0n }]);
+    expect(result.usage).toEqual({ ...usage, messagesDecoded: 2 });
+    expect(result.continuation).toBe(continuation);
+    expect(result.stopReason).toBe("budget-exhausted");
+  });
+
   it("yields to cancellation during payload decode and reports decoded progress", async () => {
     const controller = new AbortController();
     const messages = Array.from({ length: 8 }, (_, index) =>

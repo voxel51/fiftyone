@@ -22,6 +22,7 @@ const SourceReadBudgetContext = createContext<SourceReadBudgetAccount | null>(
 const noSubscribe = () => () => undefined;
 const NO_STANDING: SourceReadBudgetStanding | null = null;
 
+/** Shares one recording's read allowance with its mounted viewer surfaces. */
 export const SourceReadBudgetProvider: React.FC<{
   readonly account: SourceReadBudgetAccount | null;
   readonly children: React.ReactNode;
@@ -35,7 +36,10 @@ export const SourceReadBudgetProvider: React.FC<{
 export function useSourceReadBudgetStanding(): SourceReadBudgetStanding | null {
   const account = useContext(SourceReadBudgetContext);
   const subscribe = useMemo(
-    () => (account ? account.subscribe : noSubscribe),
+    () =>
+      account
+        ? (listener: () => void) => account.subscribe(listener)
+        : noSubscribe,
     [account],
   );
   // The account rebuilds its standing object per call, and the store hook

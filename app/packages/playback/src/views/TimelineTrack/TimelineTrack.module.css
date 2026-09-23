@@ -240,12 +240,11 @@
 }
 
 /* Unknown span: the source has not inspected this time, so nothing can be
-   said about events here. Hatched, below every marker, never interactive. */
+   said about events here. Hover exposes the reason; clicks bubble to the lane. */
 .unknown {
   position: absolute;
   top: 0;
   bottom: 0;
-  pointer-events: none;
   z-index: 1;
   background: repeating-linear-gradient(
     135deg,

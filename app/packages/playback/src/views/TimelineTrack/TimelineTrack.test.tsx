@@ -83,6 +83,16 @@ describe("TimelineTrack", () => {
 
   afterEach(() => cleanup());
 
+  it("exposes the coverage-gap explanation and lets gap clicks seek", () => {
+    renderTrack({
+      track: { coverageRanges: [], coverageGapLabel: "Read limit reached" },
+    });
+    const gap = screen.getByRole("img", { name: "Read limit reached" });
+    expect(gap.getAttribute("title")).toBe("Read limit reached");
+    fireEvent.click(gap, { clientX: 600, button: 0, detail: 1 });
+    expect(screen.getByTestId("playhead").textContent).toBe("6.000");
+  });
+
   describe("structure", () => {
     it("renders the root, lane, and bar by default", () => {
       const { container } = renderTrack();

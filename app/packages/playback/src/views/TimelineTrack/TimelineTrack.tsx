@@ -759,9 +759,10 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
               (gap) => (
                 <div
                   key={`${gap.startSec}:${gap.endSec}`}
-                  aria-hidden="true"
+                  aria-label={coverageGapLabel}
                   className={styles.unknown}
                   data-track-unknown
+                  role="img"
                   style={{
                     left: pct(gap.startSec),
                     width: `${((gap.endSec - gap.startSec) / viewDuration) * 100}%`,

@@ -52,6 +52,12 @@ export async function readMcapBoundedMessages({
     topics: request.topics,
   });
   const messages: McapDecodedMessage[] = [];
+  const unavailableByTopic = new Map(
+    [...(result.skippedByTopic ?? [])].map(([topic, ranges]) => [
+      topic,
+      [...ranges],
+    ]),
+  );
   await consumeMcapBoundedGrant({
     items: result.messages,
     onItem: async (message) => {
@@ -60,10 +66,15 @@ export async function readMcapBoundedMessages({
         const decode =
           channel &&
           genericRecordDecoderForChannel(reader, channel, { defaults: true });
-        if (!channel || !decode) {
-          throw new Error(
-            `Cannot read full messages for ${channel?.topic ?? message.channelId}: schema or encoding is unavailable`,
-          );
+        if (!channel) {
+          throw new Error(`MCAP channel ${message.channelId} is missing`);
+        }
+        if (!decode) {
+          const timeNs = timeline.messageTimeNs(message);
+          const ranges = unavailableByTopic.get(channel.topic) ?? [];
+          ranges.push({ startNs: timeNs, endNs: timeNs });
+          unavailableByTopic.set(channel.topic, ranges);
+          return;
         }
         messages.push({
           activeTimeline: timeline.id,
@@ -115,8 +126,6 @@ export async function readMcapBoundedMessages({
       ...result.usage,
       messagesDecoded: messages.length,
     },
-    ...(result.skippedByTopic && result.skippedByTopic.size > 0
-      ? { unavailableByTopic: result.skippedByTopic }
-      : {}),
+    ...(unavailableByTopic.size > 0 ? { unavailableByTopic } : {}),
   };
 }
