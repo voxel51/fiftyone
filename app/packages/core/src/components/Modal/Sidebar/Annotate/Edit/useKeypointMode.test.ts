@@ -3,6 +3,7 @@ import {
   computeTargetIndex,
   nextHoleBelow,
   resolveTargetIndex,
+  skipTarget,
 } from "./useKeypointMode";
 import { skeletonNodeCount } from "./useAnnotationContext/createNew";
 
@@ -93,6 +94,43 @@ describe("nextHoleBelow", () => {
   it("never scans past the skeleton's node count", () => {
     const overlay = overlayWith([[0.1, 0.1], [0.5, 0.5], HOLE]);
     expect(nextHoleBelow(overlay, 2, 0)).toBeNull();
+  });
+});
+
+describe("skipTarget", () => {
+  it("adds the target to the skip set and advances strict order", () => {
+    const overlay = overlayWith([[0.1, 0.1], HOLE, HOLE]);
+    const next = skipTarget(overlay, 3, [], null, 1);
+
+    expect(next).toEqual({ skipped: [1], forcedIndex: null });
+    expect(resolveTargetIndex(overlay, 3, next.skipped, next.forcedIndex)).toBe(
+      2,
+    );
+  });
+
+  it("does not duplicate an already-skipped node", () => {
+    const overlay = overlayWith([HOLE, HOLE]);
+    expect(skipTarget(overlay, 2, [0], 0, 0).skipped).toEqual([0]);
+  });
+
+  it("walks a Place force down to the next hole", () => {
+    const overlay = overlayWith([[0.1, 0.1], HOLE, [0.5, 0.5], HOLE]);
+    expect(skipTarget(overlay, 4, [1, 3], 1, 1).forcedIndex).toBe(3);
+  });
+
+  it("ends a Place force at the bottom of the list", () => {
+    const overlay = overlayWith([[0.1, 0.1], HOLE, [0.9, 0.9]]);
+    const next = skipTarget(overlay, 3, [], 1, 1);
+
+    expect(next.forcedIndex).toBeNull();
+    expect(
+      resolveTargetIndex(overlay, 3, next.skipped, next.forcedIndex),
+    ).toBeNull();
+  });
+
+  it("leaves a force on another node untouched", () => {
+    const overlay = overlayWith([HOLE, HOLE, HOLE]);
+    expect(skipTarget(overlay, 3, [], 2, 0).forcedIndex).toBe(2);
   });
 });
 

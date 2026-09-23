@@ -1398,6 +1398,10 @@ export class InteractionManager {
     // ---- Tier 2: Stop editing the current label, remain in mode ----
 
     if (this.selectionManager.getSelectionCount() > 0) {
+      this.eventBus.dispatch("lighter:right-click-deselect", {
+        eventId: generateUUID(),
+        overlayIds: this.selectionManager.getSelectedIds(),
+      });
       this.selectionManager.clearSelection();
       return;
     }

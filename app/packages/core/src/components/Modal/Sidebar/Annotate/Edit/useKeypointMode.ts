@@ -1,5 +1,4 @@
-import { FRAMES_PREFIX } from "@fiftyone/annotation";
-import { CommandContextManager } from "@fiftyone/commands";
+import { FRAMES_PREFIX, useAnnotationEngine } from "@fiftyone/annotation";
 import {
   GuidedKeypointHandler,
   InteractiveCreationHandler,
@@ -7,7 +6,6 @@ import {
   KeypointOverlay,
   KeypointPointHitAction,
   type KeypointPointHitContext,
-  MoveKeypointPointCommand,
   PolylineOverlay,
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighter,
@@ -142,6 +140,28 @@ export const resolveTargetIndex = (
 
   return computeTargetIndex(overlay, nodeCount, skipped);
 };
+
+/**
+ * Skip state after skipping `targetIndex`: the node stays a hole and joins
+ * the skip set, and skipping a Place-forced node moves the force to the next
+ * hole down the list (or ends it at the bottom). Shared by the sidebar Skip
+ * button and the canvas Shift+click. Exported for tests.
+ */
+export const skipTarget = (
+  overlay: Pick<KeypointOverlay, "getRelativePoints">,
+  nodeCount: number,
+  skipped: readonly number[],
+  forcedIndex: number | null,
+  targetIndex: number,
+): { skipped: number[]; forcedIndex: number | null } => ({
+  skipped: skipped.includes(targetIndex)
+    ? [...skipped]
+    : [...skipped, targetIndex],
+  forcedIndex:
+    forcedIndex === targetIndex
+      ? nextHoleBelow(overlay, nodeCount, targetIndex)
+      : forcedIndex,
+});
 
 /**
  * The first hole strictly below `fromIndex`, whatever the skip set says.
@@ -328,18 +348,25 @@ export const useGuidedKeypoints = () => {
     const target = resolveOverlay();
     if (!target || targetIndex === null) return;
 
-    const nextSkipped = skipped.includes(targetIndex)
-      ? skipped
-      : [...skipped, targetIndex];
-    setSkips({ overlayId: target.id, skipped: nextSkipped });
+    const next = skipTarget(
+      target,
+      nodeCount,
+      skipped,
+      forcedIndex,
+      targetIndex,
+    );
+    setSkips({ overlayId: target.id, skipped: next.skipped });
     // Skipping a Place-forced node keeps the chain walking: the force moves
     // to the next hole down the list, or ends at the bottom
     if (forcedIndex === targetIndex) {
-      const next = nextHoleBelow(target, nodeCount, targetIndex);
-      setForced(next === null ? null : { overlayId: target.id, index: next });
+      setForced(
+        next.forcedIndex === null
+          ? null
+          : { overlayId: target.id, index: next.forcedIndex },
+      );
     }
 
-    if (computeTargetIndex(target, nodeCount, nextSkipped) === null) {
+    if (computeTargetIndex(target, nodeCount, next.skipped) === null) {
       scene?.exitInteractiveMode();
     }
   }, [
@@ -379,18 +406,10 @@ export const useGuidedKeypoints = () => {
         return;
       }
 
-      const hole: [number, number] = [NaN, NaN];
-
-      target.movePointById(pointId, hole, true);
-
-      const command = new MoveKeypointPointCommand(
-        target,
-        pointId,
-        from,
-        hole,
-        true,
-      );
-      CommandContextManager.instance().getActiveContext().pushUndoable(command);
+      // The emitted move commits through the engine, which records the undo
+      // step. Pushing a Lighter command too would double-record the clear
+      // (see useLighterEngineBridge's external undo authority).
+      target.movePointById(pointId, [NaN, NaN], true);
 
       // Clearing IS skipping: the node is deliberately a hole now, so the
       // guided cursor passes it rather than immediately re-arming its
@@ -545,6 +564,15 @@ export const useKeypointModeInstaller = (): void => {
   useLighterEvent("lighter:keypoint-point-moved", bumpGuidedEpoch);
   useLighterEvent("lighter:keypoint-point-added", bumpGuidedEpoch);
   useLighterEvent("lighter:keypoint-point-deleted", bumpGuidedEpoch);
+  // Undo/redo are engine-owned: they write the store, and the Lighter bridge
+  // applies the result to the overlay silently (no point events). Observe the
+  // engine too, or an undone placement would leave the checklist and the
+  // guided target stale.
+  const engine = useAnnotationEngine();
+  useEffect(
+    () => engine.subscribeChanges(bumpGuidedEpoch),
+    [bumpGuidedEpoch, engine],
+  );
 
   // Mirror the overlay's per-point sub-selection into sidebar state — canvas
   // point clicks and checklist row clicks both dispatch this event, so the
@@ -562,6 +590,21 @@ export const useKeypointModeInstaller = (): void => {
       },
       [setSelectedNode],
     ),
+  );
+
+  // A right-click on the keypoint being edited is a confirm, not a bail (see
+  // the selection effect below). Recorded at gesture time, while the mode is
+  // still armed; the deselect it precedes consumes it.
+  const keypointModeActiveRef = useRef(keypointModeActive);
+  keypointModeActiveRef.current = keypointModeActive;
+  const rightClickConfirmedRef = useRef<ReadonlySet<string>>(new Set());
+  useLighterEvent(
+    "lighter:right-click-deselect",
+    useCallback((event: { overlayIds: string[] }) => {
+      rightClickConfirmedRef.current = keypointModeActiveRef.current
+        ? new Set(event.overlayIds)
+        : new Set();
+    }, []),
   );
 
   // Any establish counts, wherever it came from (the first-placement
@@ -602,6 +645,13 @@ export const useKeypointModeInstaller = (): void => {
   // with holes opens it passively — inspection is not an invitation to
   // place, and arming is explicit (the action button, or a checklist row's
   // Place button). (Tim, 2026-09-21.)
+  //
+  // The one deselect that keeps the mode: a right-click on a keypoint with
+  // anything placed confirms it (unplaced nodes stay holes) and opens the
+  // next draft on the same field, so the next click places the first node of
+  // the next instance — the detection/polyline cadence. A right-click on a
+  // nothing-placed draft still exits, so a second right-click leaves the
+  // mode. (Eric, 2026-09-23.)
   const prevSelectedRef = useRef(selected);
   useEffect(() => {
     const prev = prevSelectedRef.current;
@@ -619,21 +669,31 @@ export const useKeypointModeInstaller = (): void => {
         );
       }
     } else if (wasKeypoint2d) {
-      setKeypointModeActive(false);
-
-      // Discard the abandoned draft's scene overlay (deselect paths bypass
-      // useExit's cleanup)
       const prevId = prev?.overlay?.id;
       const prevOverlay = prevId ? scene?.getOverlay(prevId) : undefined;
-      if (
-        prev?.isNew &&
-        prevId &&
+      const hasPlacement =
         prevOverlay instanceof KeypointOverlay &&
-        !prevOverlay
+        prevOverlay
           .getRelativePoints()
-          .some((p) => Number.isFinite(p[0]) && Number.isFinite(p[1]))
-      ) {
-        removeOverlay(prevId, true);
+          .some((p) => Number.isFinite(p[0]) && Number.isFinite(p[1]));
+      const confirmed = !!prevId && rightClickConfirmedRef.current.has(prevId);
+      rightClickConfirmedRef.current = new Set();
+
+      if (confirmed && hasPlacement && !selected && prev?.field) {
+        createNew(KEYPOINT, { field: prev.field });
+      } else {
+        setKeypointModeActive(false);
+
+        // Discard the abandoned draft's scene overlay (deselect paths bypass
+        // useExit's cleanup)
+        if (
+          prev?.isNew &&
+          prevId &&
+          prevOverlay instanceof KeypointOverlay &&
+          !hasPlacement
+        ) {
+          removeOverlay(prevId, true);
+        }
       }
     }
 
@@ -645,6 +705,7 @@ export const useKeypointModeInstaller = (): void => {
       setSelectedNode(null);
     }
   }, [
+    createNew,
     removeOverlay,
     scene,
     selected,
@@ -879,6 +940,44 @@ export const useKeypointModeInstaller = (): void => {
               exitInstalledHandler();
             }
           },
+          // Shift+click: the sidebar Skip, from the canvas
+          onSkip: (index) => {
+            const skips = currentSkipsRef.current;
+            const skipped =
+              skips?.overlayId === targetOverlay.id ? skips.skipped : [];
+            const forced = currentForcedRef.current;
+            const forcedIndex =
+              forced?.overlayId === targetOverlay.id ? forced.index : null;
+            const next = skipTarget(
+              targetOverlay,
+              nodeCount,
+              skipped,
+              forcedIndex,
+              index,
+            );
+
+            setSkips({ overlayId: targetOverlay.id, skipped: next.skipped });
+            if (forcedIndex === index) {
+              setForced(
+                next.forcedIndex === null
+                  ? null
+                  : { overlayId: targetOverlay.id, index: next.forcedIndex },
+              );
+            }
+            bumpGuidedEpoch();
+            // Auto-finish, as after a placement. The refs still hold the
+            // pre-skip state until the next render, so resolve from `next`.
+            if (
+              resolveTargetIndex(
+                targetOverlay,
+                nodeCount,
+                next.skipped,
+                next.forcedIndex,
+              ) === null
+            ) {
+              exitInstalledHandler();
+            }
+          },
         });
 
         scene.enterInteractiveMode(handler);
@@ -964,6 +1063,7 @@ export const useKeypointModeInstaller = (): void => {
     sceneEpoch,
     selected,
     setForced,
+    setSkips,
   ]);
 
   // Tear down on unmount (scene swap, modal close)

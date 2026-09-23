@@ -210,6 +210,13 @@ export type LighterEventGroup = {
   "lighter:active-mode-quit-requested": { eventId: string };
   /** Emitted when the AI mask should be established and point selection ended (e.g. right-click). */
   "lighter:point-selection-finalize": { eventId: string };
+  /**
+   * Emitted by a right-click that stops editing the selected labels (the
+   * second right-click tier), just before the selection clears. Lets a mode
+   * whose lifetime follows its selection (keypoint mode) tell "confirm and
+   * start the next one" apart from other deselects.
+   */
+  "lighter:right-click-deselect": { eventId: string; overlayIds: string[] };
 
   // ============================================================================
   // KEYPOINT EVENTS
