@@ -203,6 +203,37 @@ class GroupedTemporalTagGridFilterTests(unittest.TestCase):
 
     @drop_tags
     @drop_datasets
+    def test_match_temporal_tags_on_a_view_sees_a_sibling_slice_tag(self):
+        # A view's own `temporal_tags` is scoped to its samples, so on the
+        # image slice it cannot see the tag sitting on the video sibling.
+        dataset, groups = _make_tagged_group_dataset()
+        dataset.group_slice = "image"
+        view = dataset.view()
+
+        self.assertEqual(
+            view.match_temporal_tags(tags=["review"]).values("group.id"),
+            [groups[0]],
+        )
+        self.assertEqual(
+            view.match_temporal_tags(tags=["review"], bool=False).values(
+                "group.id"
+            ),
+            [groups[1]],
+        )
+
+    @drop_tags
+    @drop_datasets
+    def test_match_temporal_tags_on_a_flattened_slice_view(self):
+        dataset, groups = _make_tagged_group_dataset()
+        flat = dataset.select_group_slices("image")
+
+        self.assertEqual(
+            flat.match_temporal_tags(tags=["review"]).values("group.id"),
+            [groups[0]],
+        )
+
+    @drop_tags
+    @drop_datasets
     def test_match_temporal_tags_stage_matches_groups(self):
         dataset, groups = _make_tagged_group_dataset()
 

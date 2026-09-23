@@ -777,6 +777,8 @@ The FiftyOne App can be configured in the ways described below:
 | `enable_query_performance` | `FIFTYONE_APP_ENABLE_QUERY_PERFORMANCE` | `True`        | Whether to show the query performance toggle in the UI for users to select. See            |
 |                            |                                         |               | :ref:`this section <app-optimizing-query-performance>` for more details.                   |
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
+| `follow_static_symlinks`   | `FIFTYONE_APP_FOLLOW_STATIC_SYMLINKS`   | `True`        | Whether the App server follows symlinks when serving the App's static files.               |
++----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
 | `grid_zoom`                | `FIFTYONE_APP_GRID_ZOOM`                | `5`           | The zoom level of the App's sample grid. Larger values result in larger samples (and thus  |
 |                            |                                         |               | fewer samples in the grid). Supported values are `{0, 1, ..., 10}`.                        |
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
@@ -864,6 +866,7 @@ You can print your App config at any time via the Python library and the CLI:
             "default_query_performance": true,
             "disable_frame_filtering": false,
             "enable_query_performance": true,
+            "follow_static_symlinks": true,
             "multicolor_keypoints": false,
             "notebook_height": 800,
             "proxy_url": None,
@@ -915,6 +918,7 @@ You can print your App config at any time via the Python library and the CLI:
             "default_query_performance": true,
             "disable_frame_filtering": false,
             "enable_query_performance": true,
+            "follow_static_symlinks": true,
             "loop_videos": false,
             "media_fallback": false,
             "multicolor_keypoints": false,

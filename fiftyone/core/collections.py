@@ -7363,25 +7363,36 @@ class SampleCollection(object):
         if bool is None:
             bool = True
 
+        # Resolved against the root dataset, not this collection: a view
+        # scoped to one slice cannot see tags on its siblings' samples, and a
+        # tag on any slice qualifies the whole group. The match below
+        # intersects with this collection, so out-of-view hits cannot leak in.
+        root = self._dataset
         sample_ids = {
             tag.sample_id
-            for tag in self.temporal_tags.values(filter=tag_filter)
+            for tag in root.temporal_tags.values(filter=tag_filter)
         }
 
-        if self.media_type == fom.GROUP:
-            # A tag lives on one slice's sample, so selecting sample ids would
-            # empty a view of any other slice. Match the owning groups instead.
+        if root.media_type == fom.GROUP:
+            # A tag lives on one slice's sample, so matching sample ids would
+            # empty a view of any other slice. Match the owning groups
+            # instead, by group id rather than with the group view stages,
+            # which do not apply to a collection already flattened with
+            # `select_group_slices`.
             group_ids = []
             if sample_ids:
-                flat = self.select_group_slices(_allow_mixed=True)
+                flat = root.select_group_slices(_allow_mixed=True)
                 group_ids = flat.select(sample_ids).values(
-                    self.group_field + ".id"
+                    root.group_field + ".id"
                 )
 
-            if bool:
-                return self.select_groups(group_ids)
+            path = root.group_field + "._id"
+            oids = [ObjectId(group_id) for group_id in group_ids]
 
-            return self.exclude_groups(group_ids) if group_ids else self.view()
+            if bool:
+                return self.match({path: {"$in": oids}})
+
+            return self.match({path: {"$nin": oids}}) if oids else self.view()
 
         if bool:
             return self.select(sample_ids)
