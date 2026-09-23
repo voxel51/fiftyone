@@ -39,6 +39,7 @@ const registryAtom = atom<RegistryMap>({
     id: "propagate-linear-keypoint",
     label: "Linear interpolation (keypoint)",
     agent: new KeypointPropagationBrowserAgent(),
+    unlisted: true,
   },
   "propagate-sam2": {
     id: "propagate-sam2",
