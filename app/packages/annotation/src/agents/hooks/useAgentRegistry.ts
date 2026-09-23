@@ -30,6 +30,9 @@ const registryAtom = atom<RegistryMap>({
     id: "propagate-linear-polyline",
     label: "Linear interpolation (polyline)",
     agent: new PolylinePropagationBrowserAgent(),
+    // like the other propagation agents: dispatched by label type, never a
+    // user-pickable annotation model
+    unlisted: true,
   },
   // keypoint tracks lerp per skeleton node, preserving [NaN, NaN] holes
   "propagate-linear-keypoint": {
