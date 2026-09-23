@@ -146,6 +146,18 @@ const LANGUAGE_SEARCH_K = 25;
 const SIMILARITY_SEARCH_OPERATOR = "@voxel51/panels/similarity_search";
 
 /**
+ * What a follow-up search replaces: the operator's run, which records its own
+ * base view, or — for a search a backend ran in the browser — the view its
+ * stage was appended to, and what that backend annotates its view with.
+ */
+interface SearchOrigin {
+  runId: string | null;
+  base: fos.State.Stage[] | null;
+  decorate: (() => void) | null;
+  withdraw: (() => void) | null;
+}
+
+/**
  * Where a press is still "in the bar": the bar itself (both rows), the stage
  * editor and search settings popovers, and any portaled popout — a list, a
  * select menu, a tooltip — that a control in the bar opened.
@@ -204,18 +216,29 @@ const ViewBarInner: React.FC<{
   // `fos.view` lags a round-trip behind, and that gap must not read as
   // pending work — clearing or searching would flash Apply for one echo
   const [inFlight, setInFlight] = React.useState<string | null>(null);
-  // Search chaining: the run a submitted search created, then — once its
-  // view lands — the fingerprint of that view. A following search typed
-  // over an unmodified result view REPLACES the search (via the run's
-  // recorded base) instead of refining 25 results down to 25 results.
-  const pendingSearchRunId = React.useRef<string | null>(null);
+  // Search chaining: what a submitted search replaces from — the run it
+  // created, or for a backend-run search the view it was appended to — then,
+  // once its view lands, the fingerprint of that view. A following search
+  // typed over an unmodified result view REPLACES the search instead of
+  // refining 25 results down to 25 results.
+  const pendingSearch = React.useRef<SearchOrigin | null>(null);
   // Whether a view has already landed, so the one a direct URL loads with is
   // told apart from a change made while the page is up
   const viewLoaded = React.useRef(false);
-  const lastSearch = React.useRef<{
-    runId: string;
-    viewFp: string;
-  } | null>(null);
+  const lastSearch = React.useRef<(SearchOrigin & { viewFp: string }) | null>(
+    null,
+  );
+  // Only the newest backend-run search may apply its view
+  const backendSearchSeq = React.useRef(0);
+  // A search's annotations stand exactly as long as its view does
+  const swapSearchDecorations = useCallback(
+    (previous: SearchOrigin | null, next: SearchOrigin | null) => {
+      if (previous === next) return;
+      previous?.withdraw?.();
+      next?.decorate?.();
+    },
+    [],
+  );
 
   /**
    * Puts the keyboard on the trailing insert slot — where describing the next
@@ -301,21 +324,23 @@ const ViewBarInner: React.FC<{
       // that broke while the user was looking — only a later one reveals
       const loaded = viewLoaded.current;
       viewLoaded.current = true;
-      const fromSearch = pendingSearchRunId.current !== null;
+      const fromSearch = pendingSearch.current !== null;
+      const previousSearch = lastSearch.current;
       // A just-searched run owns the arriving view; any other view change
       // supersedes the chain and a next search targets the view as-is
-      if (pendingSearchRunId.current) {
+      if (pendingSearch.current) {
         lastSearch.current = {
-          runId: pendingSearchRunId.current,
+          ...pendingSearch.current,
           viewFp: viewFingerprint(currentView),
         };
-        pendingSearchRunId.current = null;
+        pendingSearch.current = null;
       } else if (
         lastSearch.current &&
         viewFingerprint(currentView) !== lastSearch.current.viewFp
       ) {
         lastSearch.current = null;
       }
+      swapSearchDecorations(previousSearch, lastSearch.current);
 
       //
       // After Apply the server echoes the view back — the same stages, with
@@ -352,7 +377,7 @@ const ViewBarInner: React.FC<{
     return () => {
       rollbackViewBar = () => undefined;
     };
-  }, [currentView]);
+  }, [currentView, swapSearchDecorations]);
 
   const defsByName = useMemo(
     () => new Map(stageDefs.map((d) => [d.name, d as StageDefinition])),
@@ -746,6 +771,7 @@ const ViewBarInner: React.FC<{
   // ----- Collapsed bar: summary chip + language search -----
 
   const promptKeys = fos.usePromptableSimilarityKeys();
+  const textSearchBackends = fos.useTextSearchBackends();
   // The search runs through the similarity_search operator. The registry
   // that lists it loads after the bar renders, so until it has, the operator
   // is not missing — only unknown: the field takes the query and
@@ -757,6 +783,9 @@ const ViewBarInner: React.FC<{
   );
   const searchOperatorAvailable =
     searchOperatorRegistered || registryState === "loading";
+  // An index searched by a registered backend needs no operator
+  const hasBackendIndex = promptKeys.some((index) => index.backend);
+  const searchAvailable = searchOperatorAvailable || hasBackendIndex;
   const notify = fos.useNotification();
   const notifySearchUnavailable = useCallback(
     () =>
@@ -766,12 +795,14 @@ const ViewBarInner: React.FC<{
       }),
     [notify],
   );
-  // The language search turns Enter into a SortBySimilarity stage, so it
-  // needs a prompt-capable index and the stage itself to be offerable here
-  const searchEnabled =
-    searchOperatorAvailable &&
-    promptKeys.length > 0 &&
-    defsByName.has("SortBySimilarity");
+  // The language search turns Enter into a SortBySimilarity stage — or, for
+  // a backend-run index, the Select its backend answers with — so it needs a
+  // prompt-capable index and that stage to be offerable here
+  const operatorSearchable =
+    searchOperatorAvailable && defsByName.has("SortBySimilarity");
+  const searchEnabled = promptKeys.some((index) =>
+    index.backend ? defsByName.has("Select") : operatorSearchable,
+  );
 
   // The search settings popover: which index the search uses and how many
   // matches it asks for. Default ordering = the top 5 indexes actually
@@ -861,6 +892,10 @@ const ViewBarInner: React.FC<{
       // prompt-capable one — never an index that cannot embed the typed prompt
       const index = resolvedSearchIndex;
       if (!index) return;
+      const backend = index.backend
+        ? textSearchBackends.get(index.backend)
+        : undefined;
+      if (index.backend && (!backend || !datasetName)) return;
       if (datasetName) {
         recordIndexUse(datasetName, index.key);
         recordSearchQuery(datasetName, query);
@@ -869,9 +904,59 @@ const ViewBarInner: React.FC<{
       trackEvent("view_bar_text_search", {
         patches: Boolean(index.patchesField),
       });
-      // The pending treatment every view change gets, for the operator's
+      // The pending treatment every view change gets, for the search's
       // whole run — the router clears it when the resulting entry loads
       setViewChangePending(true);
+      if (backend && datasetName) {
+        const base =
+          lastSearch.current?.base &&
+          viewFingerprint(currentView) === lastSearch.current.viewFp
+            ? lastSearch.current.base
+            : currentView;
+        const seq = ++backendSearchSeq.current;
+        backend
+          .search({
+            datasetName,
+            brainKey: index.key,
+            runTimestamp: index.timestamp ?? null,
+            query,
+            k: searchK,
+          })
+          .then((result) => {
+            if (seq !== backendSearchSeq.current) return;
+            const view = [...base, result.stage];
+            const origin: SearchOrigin = {
+              runId: null,
+              base,
+              decorate: result.decorate ?? null,
+              withdraw: result.withdraw ?? null,
+            };
+            if (viewFingerprint(view) === viewFingerprint(currentView)) {
+              // No view change is coming to clear the pending treatment, or
+              // to swap the annotations — the new search's may differ
+              setViewChangePending(false);
+              const next = { ...origin, viewFp: viewFingerprint(currentView) };
+              swapSearchDecorations(lastSearch.current, next);
+              lastSearch.current = next;
+              return;
+            }
+            pendingSearch.current = origin;
+            setView(view);
+            setInFlight(inFlightFingerprint(view));
+          })
+          .catch((error: unknown) => {
+            // A newer search owns the pending treatment and the view
+            if (seq !== backendSearchSeq.current) return;
+            setViewChangePending(false);
+            console.error("Similarity search failed:", error);
+            notify({
+              key: "view-bar-search-failed",
+              msg: error instanceof Error ? error.message : String(error),
+              variant: "error",
+            });
+          });
+        return;
+      }
       // The same route the Similarity action takes: the server-side search
       // operator owns building and applying the view, and the bar hydrates
       // from the view change like any other external edit
@@ -895,7 +980,7 @@ const ViewBarInner: React.FC<{
         params.patches_field = index.patchesField;
       }
       if (
-        lastSearch.current &&
+        lastSearch.current?.runId &&
         viewFingerprint(currentView) === lastSearch.current.viewFp
       ) {
         // Typed over an unmodified result view: replace that search
@@ -910,18 +995,26 @@ const ViewBarInner: React.FC<{
             console.error("Similarity search failed:", result.error);
             return;
           }
-          pendingSearchRunId.current =
+          const runId =
             (result?.result as { run_id?: string } | undefined)?.run_id ?? null;
+          pendingSearch.current = runId
+            ? { runId, base: null, decorate: null, withdraw: null }
+            : null;
         },
       });
     },
     [
       resolvedSearchIndex,
+      textSearchBackends,
       datasetName,
       trackEvent,
       setViewChangePending,
       currentView,
       searchK,
+      setView,
+      inFlightFingerprint,
+      notify,
+      swapSearchDecorations,
     ],
   );
 
@@ -1062,9 +1155,11 @@ const ViewBarInner: React.FC<{
     () => setViewChangePending(false),
     [setViewChangePending],
   );
+  // A backend-run index waits on no operator registry
+  const searchesByBackend = Boolean(resolvedSearchIndex?.backend);
   const submitSearch = useDeferredSearch({
-    settled: registryState !== "loading",
-    registered: searchOperatorRegistered,
+    settled: registryState !== "loading" || searchesByBackend,
+    registered: searchOperatorRegistered || searchesByBackend,
     submit: submitLanguageQuery,
     onUnavailable: notifySearchUnavailable,
     onHold: holdSearch,
@@ -1083,7 +1178,7 @@ const ViewBarInner: React.FC<{
         onHasTextChange={setSearchHasText}
         onFocus={foldForSearchFocus}
         onSubmit={submitSearch}
-        available={searchOperatorAvailable}
+        available={searchAvailable}
         onUnavailable={notifySearchUnavailable}
         enabled={searchEnabled}
         history={searchHistory}

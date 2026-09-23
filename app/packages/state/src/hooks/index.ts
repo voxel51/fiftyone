@@ -7,6 +7,14 @@ export {
   type PromptableSimilarityIndex,
 } from "./similaritySearch/usePromptableSimilarityKeys";
 export {
+  registerTextSearchBackend,
+  useTextSearchBackends,
+  type TextSearchBackend,
+  type TextSearchRequest,
+  type TextSearchResult,
+  type TextSearchStage,
+} from "./similaritySearch/textSearchBackends";
+export {
   useSetViewChangePending,
   useViewChangePending,
 } from "./useViewChangePending";
