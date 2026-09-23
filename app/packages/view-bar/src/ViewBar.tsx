@@ -228,8 +228,14 @@ const ViewBarInner: React.FC<{
   const lastSearch = React.useRef<(SearchOrigin & { viewFp: string }) | null>(
     null,
   );
-  // Only the newest backend-run search may apply its view
+  // Only the newest backend-run search may apply its view; null while none
+  // is in flight
   const backendSearchSeq = React.useRef(0);
+  const backendSearchInFlight = React.useRef<number | null>(null);
+  // The view as of the latest render: a backend search resolves long after
+  // the render that submitted it, and the view may have moved on since
+  const latestView = React.useRef(currentView);
+  latestView.current = currentView;
   // A search's annotations stand exactly as long as its view does
   const swapSearchDecorations = useCallback(
     (previous: SearchOrigin | null, next: SearchOrigin | null) => {
@@ -871,7 +877,30 @@ const ViewBarInner: React.FC<{
   const [searchHasText, setSearchHasText] = React.useState(false);
 
   /** The bar's one [x]: back to the root view — stages, drafts, search text. */
+  /**
+   * Drops the backend search in flight, if any: whatever superseded it owns
+   * the view now. Its pending treatment is released, since the view change
+   * that would have cleared it may never come.
+   */
+  const cancelBackendSearch = useCallback(() => {
+    if (backendSearchInFlight.current === null) return;
+    backendSearchInFlight.current = null;
+    backendSearchSeq.current += 1;
+    setViewChangePending(false);
+  }, [setViewChangePending]);
+
+  // Leaving (the bar remounts per dataset) takes the search's annotations
+  // with it: nothing else would ever withdraw them
+  useEffect(
+    () => () => {
+      cancelBackendSearch();
+      lastSearch.current?.withdraw?.();
+    },
+    [cancelBackendSearch],
+  );
+
   const clearView = useCallback(() => {
+    cancelBackendSearch();
     setTouched(new Set());
     setModeOverrides({});
     setEditingId(null);
@@ -884,7 +913,7 @@ const ViewBarInner: React.FC<{
     dispatch({ type: "hydrate", stages: [] });
     setModeOverrides({});
     setTouched(new Set());
-  }, [setView, inFlightFingerprint, trackEvent]);
+  }, [setView, inFlightFingerprint, trackEvent, cancelBackendSearch]);
 
   const submitLanguageQuery = useCallback(
     (query: string) => {
@@ -904,6 +933,7 @@ const ViewBarInner: React.FC<{
       trackEvent("view_bar_text_search", {
         patches: Boolean(index.patchesField),
       });
+      cancelBackendSearch();
       // The pending treatment every view change gets, for the search's
       // whole run — the router clears it when the resulting entry loads
       setViewChangePending(true);
@@ -913,7 +943,14 @@ const ViewBarInner: React.FC<{
           viewFingerprint(currentView) === lastSearch.current.viewFp
             ? lastSearch.current.base
             : currentView;
+        const submittedFp = viewFingerprint(currentView);
         const seq = ++backendSearchSeq.current;
+        backendSearchInFlight.current = seq;
+        const settle = () => {
+          if (seq !== backendSearchSeq.current) return false;
+          backendSearchInFlight.current = null;
+          return true;
+        };
         backend
           .search({
             datasetName,
@@ -923,7 +960,14 @@ const ViewBarInner: React.FC<{
             k: searchK,
           })
           .then((result) => {
-            if (seq !== backendSearchSeq.current) return;
+            if (!settle()) return;
+            const current = latestView.current;
+            if (viewFingerprint(current) !== submittedFp) {
+              // The view changed while the search ran; applying the result
+              // onto the old base would silently undo that change
+              setViewChangePending(false);
+              return;
+            }
             const view = [...base, result.stage];
             const origin: SearchOrigin = {
               runId: null,
@@ -931,11 +975,11 @@ const ViewBarInner: React.FC<{
               decorate: result.decorate ?? null,
               withdraw: result.withdraw ?? null,
             };
-            if (viewFingerprint(view) === viewFingerprint(currentView)) {
+            if (viewFingerprint(view) === viewFingerprint(current)) {
               // No view change is coming to clear the pending treatment, or
               // to swap the annotations — the new search's may differ
               setViewChangePending(false);
-              const next = { ...origin, viewFp: viewFingerprint(currentView) };
+              const next = { ...origin, viewFp: viewFingerprint(current) };
               swapSearchDecorations(lastSearch.current, next);
               lastSearch.current = next;
               return;
@@ -946,7 +990,7 @@ const ViewBarInner: React.FC<{
           })
           .catch((error: unknown) => {
             // A newer search owns the pending treatment and the view
-            if (seq !== backendSearchSeq.current) return;
+            if (!settle()) return;
             setViewChangePending(false);
             console.error("Similarity search failed:", error);
             notify({
@@ -1015,6 +1059,7 @@ const ViewBarInner: React.FC<{
       inFlightFingerprint,
       notify,
       swapSearchDecorations,
+      cancelBackendSearch,
     ],
   );
 
