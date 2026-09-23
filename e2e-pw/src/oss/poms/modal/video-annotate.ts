@@ -341,12 +341,19 @@ export class VideoAnnotatePom {
    * the robust path while the ImaVid buffer settles.
    */
   async stepForward() {
-    await this.page.keyboard.press(".");
+    await this.stepAndApply(".");
   }
 
   /** Move the playhead back one frame (the "," Modal-context keybinding). */
   async stepBack() {
-    await this.page.keyboard.press(",");
+    await this.stepAndApply(",");
+  }
+
+  /** Canvas and sidebar reads are only valid once the scene shows the frame. */
+  private stepAndApply(key: string) {
+    return this.modal.eventUtils.after("video-annotation:frame-applied", () =>
+      this.page.keyboard.press(key),
+    );
   }
 
   /** Toggle playback (play/pause) via the timeline control. */
@@ -569,20 +576,22 @@ class VideoAnnotateAsserter {
       return;
     }
 
-    // the bar must stay mounted and on-screen — otherwise a rejected trial
-    // click would prove "gone", not "non-actionable"
+    // the bar must stay mounted and on-screen — otherwise a failed hit-test
+    // would prove "gone", not "non-actionable"
     await expect(bar).toBeVisible();
 
-    let rejected = false;
-    try {
-      await bar.click({ trial: true, timeout: 1500 });
-    } catch {
-      rejected = true;
-    }
+    const hit = await bar.evaluate((el) => {
+      const { left, top, width, height } = el.getBoundingClientRect();
+      const target = document.elementFromPoint(
+        left + width / 2,
+        top + height / 2,
+      );
+      return !!target && el.contains(target);
+    });
     expect(
-      rejected,
+      hit,
       "expected the track bar to be non-actionable while the drawer is closed",
-    ).toBe(true);
+    ).toBe(false);
   }
 
   /** Assert a label (by class text) is / isn't listed in the annotate sidebar. */
