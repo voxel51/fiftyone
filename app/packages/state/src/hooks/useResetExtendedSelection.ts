@@ -1,4 +1,4 @@
-import { useRecoilTransaction_UNSTABLE } from "recoil";
+import { useRecoilCallback, useRecoilTransaction_UNSTABLE } from "recoil";
 import {
   clearExtendedSelectionMirror,
   extendedSelection,
@@ -31,5 +31,26 @@ export default function useResetExtendedSelection() {
     ({ set, reset }) =>
       () =>
         resetExtendedSelectionTransaction({ set, reset }),
+  );
+}
+
+/**
+ * Publishes a result to the extended selection: its stage narrows the grid
+ * without changing the view, and `decorate` writes the publisher's own
+ * selection artifacts in the same commit. A callback rather than a
+ * transaction, as the embeddings panel's selection does, so the atom's effect
+ * keeps the mirror it restores from in step.
+ */
+export function usePublishExtendedSelection() {
+  return useRecoilCallback(
+    ({ set, reset }) =>
+      (
+        stage: Record<string, Record<string, unknown>>,
+        decorate?: (cb: ExtendedSelectionResetInterface) => void,
+      ) => {
+        set(extendedSelectionOverrideStage, stage as never);
+        decorate?.({ set, reset });
+      },
+    [],
   );
 }

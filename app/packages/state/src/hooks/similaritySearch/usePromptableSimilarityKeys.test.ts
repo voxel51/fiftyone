@@ -26,17 +26,17 @@ vi.mock("recoil", () => ({
   useRecoilValue: ({ key }: { key: keyof typeof values }) => values[key],
 }));
 
-import { registerTextSearchBackend } from "./textSearchBackends";
+import { registerTextSearchExtension } from "./textSearchExtensions";
 import usePromptableSimilarityKeys from "./usePromptableSimilarityKeys";
 
 describe("usePromptableSimilarityKeys", () => {
-  it("offers an index the server cannot sort by once a backend for its method registers", () => {
+  it("offers an index the server cannot sort by once an extension for its method registers", () => {
     const { result } = renderHook(() => usePromptableSimilarityKeys());
     expect(result.current).toStrictEqual([]);
 
     let unregister = () => undefined as void;
     act(() => {
-      unregister = registerTextSearchBackend({
+      unregister = registerTextSearchExtension({
         method: "multimodal",
         search: vi.fn(),
       });
@@ -47,7 +47,7 @@ describe("usePromptableSimilarityKeys", () => {
         key: "emb_sim",
         patchesField: null,
         model: "siglip",
-        backend: "multimodal",
+        extension: "multimodal",
         timestamp: "2026-09-01T00:00:00",
       },
     ]);

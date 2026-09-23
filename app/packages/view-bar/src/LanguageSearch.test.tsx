@@ -2,6 +2,10 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@fiftyone/state", () => ({ useViewChangePending: () => false }));
+const extensionRun = vi.hoisted(() => vi.fn(() => true));
+vi.mock("./useLanguageSearchExtension", () => ({
+  useLanguageSearchExtension: () => ({ run: extensionRun, recentQueries: [] }),
+}));
 vi.mock("./SearchSettingsPopover", () => ({
   SearchSettingsPopover: ({ trigger }: { trigger: React.ReactNode }) => (
     <>{trigger}</>
@@ -109,5 +113,32 @@ describe("LanguageSearch", () => {
     search("person");
     expect(onSubmit).not.toHaveBeenCalled();
     expect(onOpenPanel).not.toHaveBeenCalled();
+  });
+
+  it("hands a query for an index an extension searches to the extension", () => {
+    const onSubmit = vi.fn();
+    const index = {
+      key: "emb_sim",
+      patchesField: null,
+      extension: "multimodal",
+    };
+    render(
+      <LanguageSearch
+        onSubmit={onSubmit}
+        onUnavailable={noop}
+        available
+        enabled
+        history={[]}
+        promptKeys={[index]}
+        selectedKey="emb_sim"
+        onSelectKey={noop}
+        k={25}
+        onChangeK={noop}
+        onOpenPanel={noop}
+      />,
+    );
+    search("an animal");
+    expect(extensionRun).toHaveBeenCalledWith(index, "an animal", 25);
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 });

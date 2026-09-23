@@ -34,7 +34,9 @@ import {
 import React from "react";
 
 import styles from "./LanguageSearch.module.css";
+import { rememberQuery } from "./searchQueryHistory";
 import { SearchSettingsPopover } from "./SearchSettingsPopover";
+import { useLanguageSearchExtension } from "./useLanguageSearchExtension";
 
 export const LANGUAGE_SEARCH_LABEL = "Search or ask in natural language";
 
@@ -89,9 +91,21 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
     onHasTextChange?.(!!query);
     return () => onHasTextChange?.(false);
   }, [query, onHasTextChange]);
-  // Set when the submitted search is still resolving into a view — only the
-  // quick search drives the flag, so it can't fire for unrelated loads
+  // Set while the submitted search is still running — only the quick search
+  // drives the flag, so it can't fire for unrelated loads
   const pending = useViewChangePending();
+  // An index a text search extension searches client-side runs here, not
+  // through `onSubmit`
+  const { run: runExtensionSearch, recentQueries } =
+    useLanguageSearchExtension();
+  const shownHistory = React.useMemo(
+    () =>
+      recentQueries.reduceRight(
+        (queries, q) => rememberQuery(queries, q),
+        [...history],
+      ),
+    [recentQueries, history],
+  );
 
   // The dropdown under the box: previous queries matching the draft. With no
   // prompt-capable index there is nothing to offer, and the empty state is
@@ -99,10 +113,10 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
   const options = React.useMemo<ComboboxOption[]>(() => {
     if (!available || !enabled) return [];
     const q = query.trim().toLowerCase();
-    return history
+    return shownHistory
       .filter((h) => !q || h.toLowerCase().includes(q))
       .map((h) => ({ id: h, label: h }));
-  }, [available, enabled, history, query]);
+  }, [available, enabled, shownHistory, query]);
 
   // A picked row or committed text: a previous query re-runs, typed text
   // runs. With no index there is nothing to run, and the query is the reason
@@ -118,9 +132,20 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
         onOpenPanel();
         return;
       }
+      const index = promptKeys.find((key) => key.key === selectedKey);
+      if (index?.extension && runExtensionSearch(index, text, k)) return;
       onSubmit(text);
     },
-    [available, enabled, onOpenPanel, onSubmit],
+    [
+      available,
+      enabled,
+      onOpenPanel,
+      onSubmit,
+      promptKeys,
+      selectedKey,
+      runExtensionSearch,
+      k,
+    ],
   );
 
   return (
