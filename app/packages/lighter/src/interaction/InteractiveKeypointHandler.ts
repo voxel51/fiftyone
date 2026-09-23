@@ -159,6 +159,12 @@ export class InteractiveKeypointHandler implements InteractionHandler {
     return true;
   }
 
+  onCanvasLeave(): void {
+    // Hide the preview line while the pointer is off the canvas; the next
+    // move back in redraws it (cf. InteractivePolylineHandler)
+    this.overlay.setPreviewPoint(null);
+  }
+
   onDoubleClick(_point: Point, _event: PointerEvent): boolean {
     // Finish creation by dispatching the same establish event used by
     // InteractiveDetectionHandler (via InteractionManager). This triggers

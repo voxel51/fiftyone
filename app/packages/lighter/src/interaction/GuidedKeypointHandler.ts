@@ -132,6 +132,13 @@ export class GuidedKeypointHandler implements InteractionHandler {
     return true;
   }
 
+  onCanvasLeave(): void {
+    // Hide the preview line and node tag while the pointer is off the
+    // canvas; the next move back in redraws them (cf.
+    // InteractivePolylineHandler)
+    this.overlay.setPreviewPoint(null);
+  }
+
   cleanup(): void {
     this.overlay.setPreviewPoint(null);
   }

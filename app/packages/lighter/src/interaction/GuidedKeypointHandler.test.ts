@@ -91,6 +91,16 @@ describe("GuidedKeypointHandler", () => {
     expect(pushUndoable).not.toHaveBeenCalled();
   });
 
+  it("hides the preview when the pointer leaves the canvas", () => {
+    const { overlay, handler } = makeHandler();
+    const setPreviewPoint = vi.spyOn(overlay, "setPreviewPoint");
+
+    handler.onMove(click(false));
+    handler.onCanvasLeave();
+
+    expect(setPreviewPoint).toHaveBeenLastCalledWith(null);
+  });
+
   it("places on Shift+click when the owner offers no skip", () => {
     const { overlay, handler, onPlaced } = makeHandler(false);
 
