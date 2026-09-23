@@ -241,6 +241,13 @@ export class SampleCanvasPom {
   }
 
   /**
+   * The Lighter canvas, shared by the image and video surfaces
+   */
+  get lighterCanvas() {
+    return this.page.getByTestId("lighter-sample-renderer-canvas");
+  }
+
+  /**
    * Wait for a drawing tool to be armed on the scene.
    *
    * `Scene2D.enterInteractiveMode` stamps the installed handler's own cursor
@@ -325,6 +332,18 @@ class SampleCanvasAsserter {
     await expect(this.sampleCanvasPom.locator).toHaveScreenshot(name, {
       maxDiffPixelRatio: 0.0,
     });
+  }
+
+  /**
+   * Is the Lighter canvas stacked exactly over the sample's `<video>`, so
+   * labels paint in the media rect. Read once the canvas has settled.
+   */
+  async lighterCoversVideo() {
+    const [canvas, media] = await Promise.all([
+      this.sampleCanvasPom.lighterCanvas.boundingBox(),
+      this.sampleCanvasPom.locator.locator("video").boundingBox(),
+    ]);
+    expect(canvas).toEqual(media);
   }
 
   /**
