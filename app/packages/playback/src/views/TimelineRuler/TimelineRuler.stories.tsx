@@ -19,7 +19,7 @@ function Wrapper(props: { labelWidth?: number }) {
         ref={containerRef}
         style={{
           width: 800,
-          background: "var(--color-content-bg-card-1)",
+          background: "var(--color-content-bg-card)",
         }}
       >
         <TimelineRuler labelWidth={props.labelWidth} zoomRef={containerRef} />

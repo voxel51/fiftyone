@@ -32,7 +32,7 @@
   box-shadow: none;
   border-radius: 0;
   border: 1px solid var(--color-content-border-default);
-  background: var(--color-content-bg-card-2);
+  background: var(--color-content-bg-card-nested);
 }
 
 .root :global(.mosaic .mosaic-window-toolbar) {

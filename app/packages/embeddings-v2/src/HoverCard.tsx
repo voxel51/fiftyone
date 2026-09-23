@@ -35,9 +35,9 @@ import type { HoverHit } from "./renderer";
 const CLICK_SLOP_PX = 4;
 
 const TOKEN_VARS = {
-  "--emb-popover": `var(${getColorCssVar(BackgroundColor.Popover)})`,
-  "--emb-border-subtle": `var(${getColorCssVar(BorderColor.Subtle)})`,
-  "--emb-fg": `var(${getColorCssVar(TextColor.Fg)})`,
+  "--emb-popover": `${getColorCssVar(BackgroundColor.Popover)}`,
+  "--emb-border-subtle": `${getColorCssVar(BorderColor.Subtle)}`,
+  "--emb-fg": `${getColorCssVar(TextColor.Foreground)}`,
 } as CSSProperties;
 
 export interface HoverContent {
@@ -212,7 +212,7 @@ export default function HoverCard({
       {header && (
         <div className="emb-hover-header">
           <span className="emb-hover-title" title={header.title}>
-            <Text variant={TextVariant.Md} color={TextColor.Fg}>
+            <Text variant={TextVariant.Md} color={TextColor.Foreground}>
               {header.title}
             </Text>
           </span>
@@ -240,7 +240,7 @@ export default function HoverCard({
             {d.label}
           </Text>
           <span className="emb-hover-detail-value">
-            <Text variant={TextVariant.Sm} color={TextColor.Fg}>
+            <Text variant={TextVariant.Sm} color={TextColor.Foreground}>
               {d.value}
             </Text>
           </span>
@@ -255,7 +255,7 @@ export default function HoverCard({
             />
           )}
           <span className="emb-hover-text">
-            <Text variant={TextVariant.Md} color={TextColor.Fg}>
+            <Text variant={TextVariant.Md} color={TextColor.Foreground}>
               {value.label}
             </Text>
           </span>

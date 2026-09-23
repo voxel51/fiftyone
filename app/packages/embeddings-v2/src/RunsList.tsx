@@ -186,7 +186,7 @@ export default function RunsList({
         )}
         {actionError && (
           <div className="emb-runs-action-error">
-            <Text variant={TextVariant.Md} color={TextColor.Destructive}>
+            <Text variant={TextVariant.Md} color={TextColor.Failure}>
               {actionError}
             </Text>
           </div>
@@ -233,7 +233,7 @@ export default function RunsList({
                   run.error
                     ? // Structurally unusable (see BrainRun.error): opening
                       // it could only fail, but Delete stays available
-                      { label: "Error", color: TextColor.Destructive }
+                      { label: "Error", color: TextColor.Failure }
                     : run.ready
                       ? // Icon-tier success: the soft sage the design
                         // reference uses, not the saturated text green
@@ -273,7 +273,7 @@ export default function RunsList({
           sx={{
             zIndex: 9999,
             "& .MuiPaper-root": {
-              backgroundColor: `var(${getColorCssVar(BackgroundColor.Muted)})`,
+              backgroundColor: `${getColorCssVar(BackgroundColor.Muted)}`,
               // Kill MUI's elevation overlay so the grey matches exactly.
               backgroundImage: "none",
             },
@@ -285,7 +285,7 @@ export default function RunsList({
               setMenu(null);
             }}
             sx={{
-              color: `var(${getColorCssVar(TextColor.Destructive)})`,
+              color: `${getColorCssVar(TextColor.Failure)}`,
               "& .MuiListItemIcon-root, & .MuiListItemText-primary": {
                 color: "inherit",
               },

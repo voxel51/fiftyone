@@ -64,7 +64,7 @@
   border-radius: 4px;
   /* Monaco's loading state paints nothing, so the box holds the editor's
      surface color from the first frame */
-  background: var(--color-content-bg-card-1);
+  background: var(--color-content-bg-card);
   border: 1px solid var(--color-content-border-default);
 }
 
