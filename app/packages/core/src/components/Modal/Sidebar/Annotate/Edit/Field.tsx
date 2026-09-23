@@ -114,7 +114,10 @@ const Field = () => {
       // Atomic move between fields, ALL through the engine: drop EVERY
       // occurrence of the track from the source field and re-home it (with its
       // per-frame geometry) at the destination, in a single transaction (one
-      // coalesced change → one autosave patch, one undo unit). A video track
+      // coalesced change → one autosave patch). The transaction does not
+      // record an engine undo unit: the DelegatingUndoable below IS the move's
+      // one undo step (it also re-points the form), and an engine unit on top
+      // would double the step and re-record on every undo. A video track
       // spans many frames — moving only the current frame would leave the rest
       // behind and never clear the source — so the move fans across all frames
       // the instance occupies. Identity is the store's, so the track keeps its
@@ -150,7 +153,7 @@ const Field = () => {
           // in both directions, so the edit session survives the swap.
           const anchor = engine.interaction.getAnchor();
 
-          engine.transaction(() => {
+          const rehome = () => {
             for (const { ref } of occurrences) {
               engine.deleteLabel(ref);
             }
@@ -190,7 +193,9 @@ const Field = () => {
                 } as Partial<LabelData>,
               );
             }
-          });
+          };
+
+          engine.transaction(rehome, { record: false });
 
           if (anchor && anchor.instanceId === instanceId) {
             engine.interaction.setActive([{ ...anchor, path: to }]);

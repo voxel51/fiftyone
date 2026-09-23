@@ -389,9 +389,19 @@ export class AnnotationEngine {
 
   /**
    * The only write boundary: atomic (lazy snapshot / rollback), one coalesced
-   * change dispatch, one undo unit. Nested calls join the outermost.
+   * change dispatch, one undo unit. Nested calls join the outermost, whose
+   * `opts` apply.
+   *
+   * `record: false` commits without an undo unit, for a write that a
+   * command-stack undoable already owns (its execute/undo run this
+   * transaction). Recording it too would put the action on the shared stack
+   * twice, and every undo of the undoable would record a fresh unit. Changes
+   * still dispatch, so persistence and the surfaces see the write.
    */
-  transaction<T>(fn: () => T, opts: { undoKey?: string } = {}): T {
+  transaction<T>(
+    fn: () => T,
+    opts: { undoKey?: string; record?: boolean } = {},
+  ): T {
     this.assertNotDispatching("transaction");
 
     if (this.txDepth > 0) {
@@ -425,7 +435,7 @@ export class AnnotationEngine {
     const displayPending = this.txDisplayPending;
     this.resetTransaction();
 
-    if (ops.length > 0 && !this.replaying) {
+    if (ops.length > 0 && !this.replaying && opts.record !== false) {
       const id = `undo:${(this.undoEpoch += 1)}`;
       const result = this.undos.push({ id, ops, undoKey: opts.undoKey });
       this.emitUndoCommit(result.entry, result.coalesced);
