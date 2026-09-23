@@ -248,6 +248,13 @@ export class SampleCanvasPom {
   }
 
   /**
+   * Reset Lighter zoom and pan with the Annotate keyboard shortcut
+   */
+  async resetZoomPan() {
+    await this.page.keyboard.press("r");
+  }
+
+  /**
    * Wait for a drawing tool to be armed on the scene.
    *
    * `Scene2D.enterInteractiveMode` stamps the installed handler's own cursor
