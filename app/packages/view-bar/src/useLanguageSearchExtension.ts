@@ -11,10 +11,11 @@
 import { useTrackEvent } from "@fiftyone/analytics";
 import type { PromptableSimilarityIndex } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { recordIndexUse } from "./searchIndexRecency";
 import { recordSearchQuery, rememberQuery } from "./searchQueryHistory";
+import { viewFingerprint } from "./state";
 
 export interface LanguageSearchExtension {
   /**
@@ -32,6 +33,7 @@ export interface LanguageSearchExtension {
 
 export const useLanguageSearchExtension = (): LanguageSearchExtension => {
   const datasetName = fos.useCurrentDatasetName();
+  const view = fos.useView();
   const extensions = fos.useTextSearchExtensions();
   const publishExtendedSelection = fos.usePublishExtendedSelection();
   const setViewChangePending = fos.useSetViewChangePending();
@@ -55,6 +57,12 @@ export const useLanguageSearchExtension = (): LanguageSearchExtension => {
   // dataset) must not publish into the next one, nor leave its pending
   // treatment on
   useEffect(() => cancel, [cancel]);
+
+  // A search answers the view it was typed over. Once the view changes —
+  // stages applied, an operator, navigation — its result would narrow a view
+  // nobody searched
+  const viewFp = useMemo(() => viewFingerprint(view), [view]);
+  useEffect(() => cancel(), [viewFp, cancel]);
 
   const run = useCallback(
     (index: PromptableSimilarityIndex, query: string, k: number) => {

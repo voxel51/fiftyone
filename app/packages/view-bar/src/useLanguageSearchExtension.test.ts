@@ -2,6 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const env = vi.hoisted(() => ({
+  view: [] as { _cls: string; kwargs: [string, unknown][] }[],
   search: vi.fn(),
   publish: vi.fn(),
   setPending: vi.fn(),
@@ -11,6 +12,7 @@ const env = vi.hoisted(() => ({
 
 vi.mock("@fiftyone/state", () => ({
   useCurrentDatasetName: () => "robots",
+  useView: () => env.view,
   useTextSearchExtensions: () => env.extensions,
   usePublishExtendedSelection: () => env.publish,
   useSetViewChangePending: () => env.setPending,
@@ -44,6 +46,7 @@ describe("useLanguageSearchExtension", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.localStorage.clear();
+    env.view = [];
     env.extensions = new Map([
       ["multimodal", { method: "multimodal", search: env.search }],
     ]);
@@ -150,6 +153,21 @@ describe("useLanguageSearchExtension", () => {
       result.current.run(INDEX, "an animal", 25);
     });
     unmount();
+    await act(async () => resolve({ stage: STAGE }));
+
+    expect(env.publish).not.toHaveBeenCalled();
+    expect(env.setPending).toHaveBeenLastCalledWith(false);
+  });
+
+  it("drops a search when the view changes before it settles", async () => {
+    const resolve = pendingResult();
+    const { result, rerender } = renderHook(() => useLanguageSearchExtension());
+
+    act(() => {
+      result.current.run(INDEX, "an animal", 25);
+    });
+    env.view = [{ _cls: "fiftyone.core.stages.Limit", kwargs: [["limit", 5]] }];
+    rerender();
     await act(async () => resolve({ stage: STAGE }));
 
     expect(env.publish).not.toHaveBeenCalled();
