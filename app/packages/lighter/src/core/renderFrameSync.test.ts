@@ -20,6 +20,8 @@
 
 import { describe, expect, it, vi } from "vitest";
 
+import { getEventBus } from "@fiftyone/events";
+import type { LighterEventGroup } from "../events";
 import { DetectionOverlay } from "../overlay/DetectionOverlay";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { ResourceLoader } from "../resource/ResourceLoader";
@@ -110,6 +112,26 @@ describe("Scene2D render loop phase contract", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(renderer.calls).toEqual(duringTick);
+  });
+
+  it("rebuilds overlays inside a resize, before the resize frame is drawn", async () => {
+    const renderer = makeRenderer();
+    const scene = makeScene(renderer);
+    await scene.startRenderLoop();
+    scene.addOverlay(makeDetection("a"));
+    renderer.fireTick();
+
+    // the resize frame's ticker has already run; new bounds only mark dirty
+    const bus = getEventBus<LighterEventGroup>(scene.getEventChannel());
+    bus.dispatch("lighter:canonical-media-bounds-changed", {
+      bounds: { x: 0, y: 0, width: 2, height: 2 },
+    });
+    renderer.calls.length = 0;
+
+    bus.dispatch("lighter:resize", { width: 2, height: 2 });
+
+    expect(renderer.calls).toContain("begin:a");
+    expect(renderer.calls).toContain("end:a");
   });
 
   it("closes every overlay's rebuild pass before the tick returns", () => {

@@ -229,6 +229,15 @@ export class Scene2D {
       },
     );
 
+    // A resize is drawn in the ResizeObserver's frame, after this frame's
+    // ticker already ran, so rebuild overlays against the new bounds now.
+    this.registerEventHandler("lighter:resize", () => {
+      this.canonicalMedia?.updateBounds();
+      for (const overlayId of this.overlayOrder) {
+        this.renderOverlay(overlayId);
+      }
+    });
+
     // Listen for scene options changes to trigger re-rendering
     this.registerEventHandler("lighter:scene-options-changed", (event) => {
       // `updateOptions` REPLACES `sceneOptions` wholesale (see its own doc
