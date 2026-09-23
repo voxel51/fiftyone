@@ -92,7 +92,7 @@
 
 .flowHandle {
   background: var(--color-content-icon-default) !important;
-  border: 2px solid var(--color-content-bg-card-2) !important;
+  border: 2px solid var(--color-content-bg-card-nested) !important;
   height: 8px !important;
   min-height: 8px;
   min-width: 8px;

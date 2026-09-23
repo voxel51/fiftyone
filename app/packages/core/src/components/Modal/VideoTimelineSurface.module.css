@@ -14,14 +14,14 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  background: var(--color-content-bg-card-1);
+  background: var(--color-content-bg-card);
 }
 
 /* Docks under the media at its natural height. The separating top edge
    belongs to `TimelineWithTracks` itself, not to this host. */
 .timeline {
   flex: 0 0 auto;
-  background: var(--color-content-bg-card-1);
+  background: var(--color-content-bg-card);
 }
 
 .empty {

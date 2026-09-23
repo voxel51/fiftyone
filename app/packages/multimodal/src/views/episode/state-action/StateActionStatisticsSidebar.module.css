@@ -175,7 +175,7 @@
 }
 
 .episodeOutOfRange {
-  color: var(--color-content-text-destructive);
+  color: var(--color-content-text-failure);
   font-size: 9px;
   overflow: hidden;
   text-overflow: ellipsis;

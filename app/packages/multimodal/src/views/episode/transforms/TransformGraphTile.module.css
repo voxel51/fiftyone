@@ -146,7 +146,7 @@
 .issue {
   background: color-mix(
     in srgb,
-    var(--color-content-bg-card-2) 90%,
+    var(--color-content-bg-card-nested) 90%,
     transparent
   );
   border: 1px solid var(--color-content-border-default);
@@ -177,7 +177,7 @@
 
 .errorDot,
 .warningDot {
-  background: var(--color-content-text-destructive);
+  background: var(--color-content-text-failure);
   border-radius: 50%;
   flex: none;
   height: 7px;

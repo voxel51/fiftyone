@@ -187,7 +187,7 @@ function Readout({
         gap: 24,
         padding: "8px 12px",
         font: "12px/1.4 ui-monospace, monospace",
-        background: "var(--color-content-bg-card-1)",
+        background: "var(--color-content-bg-card)",
         color: "var(--color-content-text-primary)",
         borderBottom: "1px solid var(--color-content-border-subtle)",
       }}

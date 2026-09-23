@@ -148,7 +148,7 @@ export default function FacetCell({
         <div className="emb-facet-cell-header">
           <Text
             variant={TextVariant.Sm}
-            color={TextColor.Fg}
+            color={TextColor.Foreground}
             className="emb-facet-cell-header-label"
             title={label}
           >
