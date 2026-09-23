@@ -115,7 +115,7 @@ test.beforeEach(async ({ datasetFactory }) => {
 });
 
 test.describe.serial("video annotation track editing", () => {
-  test("a class edit fans across the track while geometry stays per-frame", async ({
+  test("a class edit fans across the track, and a geometry edit re-keys it", async ({
     fiftyoneLoader,
     modal,
     page,
@@ -128,7 +128,7 @@ test.describe.serial("video annotation track editing", () => {
     await va.assert.labelListed("vehicle");
     await va.selectLabel("vehicle");
 
-    // per-frame geometry edit on frame 1 (bounding_box is NOT fanned out)
+    // a geometry edit on a non-keyframe makes it a keyframe
     await modal.sidebar.edit.setFieldValue("position.x", "0.5");
     await modal.sidebar.edit.assert.verifyFieldValue("position.x", "0.5");
 
@@ -148,9 +148,10 @@ test.describe.serial("video annotation track editing", () => {
     await va.assert.labelListed("person");
     await va.assert.labelListed("vehicle", false);
 
-    // but geometry did NOT fan out: frame 6 keeps the seeded x (0.3), not 0.5
+    // the seeded track has no keyframes, so frame 1 is now its only one and
+    // frame 6 interpolates to it
     await va.selectLabel("person");
-    await modal.sidebar.edit.assert.verifyFieldValue("position.x", "0.3");
+    await modal.sidebar.edit.assert.verifyFieldValue("position.x", "0.5");
   });
 
   test("the edit form follows the selected track across frames", async ({
@@ -163,20 +164,23 @@ test.describe.serial("video annotation track editing", () => {
 
     await va.selectLabel("vehicle");
 
-    // make frame 1 geometrically distinct from the rest of the track
+    // the edit makes frame 1 a keyframe, which the frames after it follow
     await modal.sidebar.edit.setFieldValue("position.x", "0.5");
     await modal.sidebar.edit.assert.verifyFieldValue("position.x", "0.5");
 
-    // step forward: the form follows the anchor to frame 2's detection, so it
-    // shows that frame's x (still the seeded 0.3) — NOT frame 1's edited 0.5,
-    // and NOT a closed/blank form. Blur first so "." steps the frame instead of
-    // typing into the focused number input.
+    // step forward: the form follows the anchor to frame 2's detection rather
+    // than closing. Blur first so "." steps the frame instead of typing into
+    // the focused number input.
     await blur(page);
     await va.stepForward();
     await expect(modal.sidebar.edit.backButton).toBeVisible();
-    await modal.sidebar.edit.assert.verifyFieldValue("position.x", "0.3");
+    await modal.sidebar.edit.assert.verifyFieldValue("position.x", "0.5");
 
-    // step back: the form re-reads frame 1, where the edit lives
+    // key frame 2 apart from frame 1
+    await modal.sidebar.edit.setFieldValue("position.x", "0.7");
+    await modal.sidebar.edit.assert.verifyFieldValue("position.x", "0.7");
+
+    // step back: the form re-reads frame 1, which keeps its own edit
     await blur(page);
     await va.stepBack();
     await modal.sidebar.edit.assert.verifyFieldValue("position.x", "0.5");

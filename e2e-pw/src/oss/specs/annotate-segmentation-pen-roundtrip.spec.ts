@@ -115,7 +115,7 @@ test.describe.serial("segmentation pen-tool round-trip", () => {
     await modal.sidebar.annotate.assert.segmentationModeIsActive(false);
     await modal.sidebar.annotate.assert.selectIsActive();
 
-    // ── 4. A fresh browser context must list the detection with its mask ────
+    // ── 4. A fresh browser context must list both detections with masks ─────
     const context = await browser.newContext();
     try {
       const freshPage = await context.newPage();
@@ -126,10 +126,11 @@ test.describe.serial("segmentation pen-tool round-trip", () => {
       await fresh.waitForSampleLoadDomAttribute();
       await fresh.sidebar.switchMode("annotate");
       const rows = fresh.sidebar.annotate.labelRowsFor("instances");
-      await expect(rows).toHaveCount(1);
+      // both polygons were committed as their own detections
+      await expect(rows).toHaveCount(2);
 
-      // the persisted mask renders on the fresh canvas exactly as drawn
-      await rows.click();
+      // the first persisted mask renders on the fresh canvas exactly as drawn
+      await rows.first().click();
       await fresh.sidebar.edit.assert.hasMaskPreview();
       await fresh.sampleCanvas.assert.hasScreenshot("seg-pen-persisted.png");
     } finally {

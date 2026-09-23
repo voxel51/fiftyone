@@ -281,13 +281,17 @@ export async function expectDominantColor(
   locator: Locator,
   expected: readonly [number, number, number],
 ): Promise<void> {
-  // pixels are only meaningful once the tile has painted the frame it asked for
+  // pixels are only meaningful once painted: an episode image tile once it
+  // shows the frame it asked for, a looker canvas once it has drawn
   await new EventUtils(locator.page()).untilDom(locator, (element) => {
     const stack = element.closest("[data-episode-image-requested]");
-    const requested = stack?.getAttribute("data-episode-image-requested");
+    if (!stack) {
+      return element.getAttribute("canvas-loaded") === "true";
+    }
+    const requested = stack.getAttribute("data-episode-image-requested");
     return (
       !!requested &&
-      requested === stack?.getAttribute("data-episode-image-committed")
+      requested === stack.getAttribute("data-episode-image-committed")
     );
   });
   expect(await getLocatorDominantColorShare(locator, expected)).toBeGreaterThan(
