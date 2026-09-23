@@ -194,7 +194,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     setSourcesEnabled,
     toggleSource,
   } = useScene3dSelection({ restore: viewStateRestore, sourceKey });
-  usePublishAnnotationStreams(sceneAnnotationStreams);
+  usePublishAnnotationStreams(sceneAnnotationStreams, sceneAnnotationSources);
   usePublishFullHistoryStreams("pose", poseStreams);
   usePublishFullHistoryStreams("scene-update", sceneAnnotationStreams);
   const selectedStreamStatuses = useStreamStatuses(selectedStreams);

@@ -35,6 +35,7 @@ export const STREAM_CATEGORY = Object.freeze({
   ACTIONS: "actions",
   ANNOTATIONS_PLANNING: "annotations-planning",
   CUSTOM: "custom",
+  DERIVED: "derived",
   DIAGNOSTICS: "diagnostics",
   INSTRUCTIONS: "instructions",
   OBSERVATIONS: "observations",
@@ -92,6 +93,8 @@ export const STREAM_METADATA = Object.freeze({
   DECODE_STATUS: "stream.decode_status",
   ENCODING: "stream.encoding",
   INSPECTABLE: "stream.inspectable",
+  /** Set to "false" when a source cannot produce annotation label tracks. */
+  LABEL_TRACKS: "stream.label_tracks",
   SCHEMA_NAME: "stream.schema_name",
 } as const);
 
