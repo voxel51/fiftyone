@@ -184,12 +184,14 @@ export class ModalPom {
           });
 
         const step = Math.max(el.clientWidth, 200);
-        for (let pos = step; pos <= el.scrollWidth; pos += step) {
+        for (let pos = 0; pos <= el.scrollWidth; pos += step) {
           const rendered = settled();
           const before = el.scrollLeft;
           el.scrollTo({ left: pos });
-          if (el.scrollLeft === before) return;
-          await rendered;
+          // no scroll, no render: nothing new came into view at this step
+          if (el.scrollLeft !== before) {
+            await rendered;
+          }
           if (hasTarget()) return;
         }
       }, slice);

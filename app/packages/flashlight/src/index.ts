@@ -537,7 +537,7 @@ export default class Flashlight<K> {
       this.element.dispatchEvent(
         new CustomEvent("flashlight-rendered", {
           bubbles: true,
-          detail: { pending: this.state.currentRequestKey !== null },
+          detail: { pending: this.loading },
         }),
       );
     }
