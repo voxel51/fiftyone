@@ -246,12 +246,11 @@ You can also store your credentials in your
 `~/.fiftyone/annotation_config.json`:
 
 .. code-block:: json
-    :force:
 
     {
         "backends": {
             "labelstudio": {
-                "api_key": ...,
+                "api_key": "<api_key>"
             }
         }
     }

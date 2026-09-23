@@ -231,15 +231,13 @@ You can also store your credentials in your
 `~/.fiftyone/annotation_config.json`:
 
 .. code-block:: json
-    :force:
 
     {
         "backends": {
             "cvat": {
-                ...
-                "username": ...,
-                "password": ...,
-                "email": ...  # if applicable
+                "username": "<username>",
+                "password": "<password>",
+                "email": "<email>"
             }
         }
     }
@@ -302,13 +300,11 @@ you can configure the URL of your server in any of the following ways:
     `~/.fiftyone/annotation_config.json`:
 
 .. code-block:: json
-    :force:
 
     {
         "backends": {
             "cvat": {
-                "url": "http://localhost:8080",
-                ...
+                "url": "http://localhost:8080"
             }
         }
     }
@@ -329,15 +325,12 @@ requests, you can provide them in either of the following ways:
     `~/.fiftyone/annotation_config.json`:
 
 .. code-block:: json
-    :force:
 
     {
         "backends": {
             "cvat": {
-                ...
                 "headers": {
-                    "<name>": "<value>",
-                    ...
+                    "<name>": "<value>"
                 }
             }
         }

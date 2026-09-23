@@ -368,8 +368,7 @@ Finally, you can permanently change your default dimensionality reduction
 method by updating the `default_visualization_method` key of your
 :ref:`brain config <brain-config>` at `~/.fiftyone/brain_config.json`:
 
-.. code-block:: json
-    :force:
+.. code-block:: text
 
     {
         "default_visualization_method": "<method>",

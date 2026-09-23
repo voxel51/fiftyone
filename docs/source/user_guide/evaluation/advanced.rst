@@ -517,7 +517,6 @@ evaluation methods will use it.
     `~/.fiftyone/evaluation_config.json` as follows:
 
     .. code-block:: json
-        :force:
 
         {
             "default_regression_backend": "<backend>",
@@ -525,8 +524,7 @@ evaluation methods will use it.
                 "<backend>": {
                     "config_cls": "your.custom.RegressionEvaluationConfig"
                 }
-            },
-            ...
+            }
         }
 
     In the above, `<backend>` defines the name of your custom backend, which
@@ -580,7 +578,6 @@ evaluation methods will use it.
     `~/.fiftyone/evaluation_config.json` as follows:
 
     .. code-block:: json
-        :force:
 
         {
             "default_classification_backend": "<backend>",
@@ -588,8 +585,7 @@ evaluation methods will use it.
                 "<backend>": {
                     "config_cls": "your.custom.ClassificationEvaluationConfig"
                 }
-            },
-            ...
+            }
         }
 
     In the above, `<backend>` defines the name of your custom backend, which
@@ -648,7 +644,6 @@ evaluation methods will use it.
     `~/.fiftyone/evaluation_config.json` as follows:
 
     .. code-block:: json
-        :force:
 
         {
             "default_detection_backend": "<backend>",
@@ -656,8 +651,7 @@ evaluation methods will use it.
                 "<backend>": {
                     "config_cls": "your.custom.DetectionEvaluationConfig"
                 }
-            },
-            ...
+            }
         }
 
     In the above, `<backend>` defines the name of your custom backend, which
@@ -711,7 +705,6 @@ evaluation methods will use it.
     `~/.fiftyone/evaluation_config.json` as follows:
 
     .. code-block:: json
-        :force:
 
         {
             "default_segmentation_backend": "<backend>",
@@ -719,8 +712,7 @@ evaluation methods will use it.
                 "<backend>": {
                     "config_cls": "your.custom.SegmentationEvaluationConfig"
                 }
-            },
-            ...
+            }
         }
 
     In the above, `<backend>` defines the name of your custom backend, which
