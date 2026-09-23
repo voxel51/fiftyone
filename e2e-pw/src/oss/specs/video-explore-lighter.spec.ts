@@ -62,7 +62,9 @@ test.describe.serial("video Explore Lighter surface", () => {
     modal,
     page,
   }) => {
-    await modal.sampleCanvas.assert.hasScreenshot("video-explore-labels.png");
+    await modal.sampleCanvas.assert.hasMediaScreenshot(
+      "video-explore-labels.png",
+    );
     await modal.sampleCanvas.assert.lighterCoversMedia();
 
     const viewport = page.viewportSize();
@@ -71,7 +73,9 @@ test.describe.serial("video Explore Lighter surface", () => {
       viewport.height - 200,
     );
 
-    await modal.sampleCanvas.assert.hasScreenshot("video-explore-resized.png");
+    await modal.sampleCanvas.assert.hasMediaScreenshot(
+      "video-explore-resized.png",
+    );
     await modal.sampleCanvas.assert.lighterCoversMedia();
   });
 
@@ -81,12 +85,16 @@ test.describe.serial("video Explore Lighter surface", () => {
     await modal.sampleCanvas.move(0.5, 0.5);
     await modal.sampleCanvas.zoomIn();
     await modal.sampleCanvas.moveMouseToViewportEdge();
-    await modal.sampleCanvas.assert.hasScreenshot("video-explore-zoomed.png");
+    await modal.sampleCanvas.assert.hasMediaScreenshot(
+      "video-explore-zoomed.png",
+    );
 
     // start off the box: in Annotate a press on it grabs the label
     await modal.sampleCanvas.drag(0.1, 0.9, 0.3, 0.9);
     await modal.sampleCanvas.moveMouseToViewportEdge();
-    await modal.sampleCanvas.assert.hasScreenshot("video-explore-panned.png");
+    await modal.sampleCanvas.assert.hasMediaScreenshot(
+      "video-explore-panned.png",
+    );
   });
 
   test("hovering a label opens its tooltip", async ({ modal }) => {

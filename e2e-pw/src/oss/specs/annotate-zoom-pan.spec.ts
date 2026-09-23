@@ -77,20 +77,20 @@ test.afterEach(async ({ modal, page }) => {
 const zoomPanReset = async (modal: ModalPom, name: string) => {
   const canvas = modal.sampleCanvas;
 
-  await canvas.assert.hasScreenshot(`${name}-initial.png`);
+  await canvas.assert.hasMediaScreenshot(`${name}-initial.png`);
 
   // the screenshot parks the pointer at the viewport edge
   await canvas.move(0.5, 0.5);
   await canvas.zoomIn();
-  await canvas.assert.hasScreenshot(`${name}-zoomed.png`);
+  await canvas.assert.hasMediaScreenshot(`${name}-zoomed.png`);
 
   // start off the box: in Annotate a press on it grabs the label
   await canvas.drag(0.1, 0.9, 0.3, 0.9);
-  await canvas.assert.hasScreenshot(`${name}-panned.png`);
+  await canvas.assert.hasMediaScreenshot(`${name}-panned.png`);
 
   // reset returns to exactly the frame the canvas opened with
   await canvas.resetZoomPan();
-  await canvas.assert.hasScreenshot(`${name}-initial.png`);
+  await canvas.assert.hasMediaScreenshot(`${name}-initial.png`);
 };
 
 test.describe.serial("Lighter zoom and pan", () => {

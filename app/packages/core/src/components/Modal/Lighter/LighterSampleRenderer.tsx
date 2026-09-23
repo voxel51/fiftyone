@@ -109,6 +109,7 @@ export const LighterSampleRenderer = ({
           data-cy="lighter-sample-renderer"
           // Lighter paints the image itself, so its frame is the media rect
           data-lighter-media
+          data-lighter-surface
           id="lighter-sample-renderer-container"
           style={{
             width: "100%",

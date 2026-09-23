@@ -177,7 +177,7 @@ export const LighterVideo: React.FC<LighterVideoProps> = ({
   const Sync = mode === "annotate" ? AnnotateSync : ExploreSync;
 
   return (
-    <div className={styles.body}>
+    <div className={styles.body} data-lighter-surface>
       <video
         ref={videoRef}
         className={styles.video}

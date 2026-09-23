@@ -1,4 +1,4 @@
-import { expect, Page } from "src/oss/fixtures";
+import { expect, Locator, Page } from "src/oss/fixtures";
 import type { EventUtils } from "src/shared/event-utils";
 import { ToolbarPom } from "./toolbar";
 import { TooltipPom } from "./tooltip";
@@ -329,6 +329,23 @@ class SampleCanvasAsserter {
    * @param name the name of the screenshot
    */
   async hasScreenshot(name: string) {
+    await this.#hasScreenshot(this.sampleCanvasPom.locator, name);
+  }
+
+  /**
+   * Does the media, with the labels Lighter paints over it, match this
+   * screenshot; no surrounding controls (timeline, toolbars) are captured
+   *
+   * @param name the name of the screenshot
+   */
+  async hasMediaScreenshot(name: string) {
+    await this.#hasScreenshot(
+      this.sampleCanvasPom.locator.locator("[data-lighter-surface]"),
+      name,
+    );
+  }
+
+  async #hasScreenshot(target: Locator, name: string) {
     await expect(this.sampleCanvasPom.checkbox).toBeHidden();
     await this.sampleCanvasPom.tooltip.assert.isVisible(false);
     await this.sampleCanvasPom.moveMouseToViewportEdge();
@@ -336,7 +353,7 @@ class SampleCanvasAsserter {
     await this.sampleCanvasPom.page.addStyleTag({
       content: ".segmentation-toolbar { display: none !important; }",
     });
-    await expect(this.sampleCanvasPom.locator).toHaveScreenshot(name, {
+    await expect(target).toHaveScreenshot(name, {
       maxDiffPixelRatio: 0.0,
     });
   }
