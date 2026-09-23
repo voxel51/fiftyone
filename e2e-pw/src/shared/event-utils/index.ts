@@ -202,6 +202,22 @@ export class EventUtils {
   }
 
   /**
+   * Resolve on the next `eventName` from now. Only for events no test action
+   * causes (an autosave tick, a periodic persist); otherwise use {@link after}.
+   */
+  public async next(
+    eventName: string,
+    predicate?: (e: { detail?: unknown }) => boolean,
+  ): Promise<void> {
+    const armed = await this.arm(eventName, predicate);
+    try {
+      await armed.received;
+    } finally {
+      await armed.dispose();
+    }
+  }
+
+  /**
    * Run `action` and resolve once `eventName` fires because of it. The
    * listener is armed before `action` starts, so the event cannot be missed:
    *

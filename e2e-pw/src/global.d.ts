@@ -13,6 +13,7 @@ interface Window {
 
   /** Tracks the most recently observed CSS cursor value for cursor-change events. */
   __FO_PLAYWRIGHT_CURRENT_CURSOR: string;
+  __FO_PLAYWRIGHT_LOOKER3D_CAMERA?: () => number[] | null;
 
   /** Disables analytics and QA performance toast banners during test runs. */
   IS_PLAYWRIGHT: boolean;

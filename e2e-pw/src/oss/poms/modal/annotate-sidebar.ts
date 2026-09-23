@@ -86,10 +86,7 @@ export class ModalAnnotateSidebarPom {
    */
   async waitForSavesSettled() {
     // every autosave tick ends in this event once nothing is left to save
-    const settled = await new EventUtils(this.page).arm(
-      "annotation:persistenceSettled",
-    );
-    await settled.received;
+    await new EventUtils(this.page).next("annotation:persistenceSettled");
   }
 
   /**
