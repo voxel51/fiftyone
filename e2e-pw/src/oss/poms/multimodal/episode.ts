@@ -634,7 +634,7 @@ export class EpisodePom {
     await expect(this.state).toBeVisible({ timeout: READY_TIMEOUT });
     // Session extensions own the wording; the empty state reports inventory size.
     await expect(this.state).toContainText(
-      new RegExp(`\\b${streamCount} streams\\b`),
+      new RegExp(`(^|[^0-9])${streamCount} streams([^a-z]|$)`),
     );
   }
 
