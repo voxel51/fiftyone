@@ -942,20 +942,20 @@ def count_temporal_tags(view: foc.SampleCollection) -> dict:
     """Counts the temporal tags on the samples of ``view``, by tag value.
 
     Counts every interval, as the other sidebar tag counts count occurrences.
-    The dataset's tags are listed first and then narrowed to the view, rather
-    than listing the view's sample ids, which would read every sample.
+    The database groups the dataset's tags per sample first, so only tagged
+    samples are narrowed to the view, rather than every tag or every sample id
+    being read.
     """
-    tags = fotags.list_temporal_tags(_root_dataset(view))
-    sample_ids = {str(tag.sample_id) for tag in tags}
-    if not sample_ids:
+    per_sample = fotags.count_temporal_tags_per_sample(_root_dataset(view))
+    if not per_sample:
         return {}
 
-    in_view = set(view.select(sample_ids).values("id"))
+    in_view = view.select(list(per_sample.keys())).values("id")
 
     counts = {}
-    for tag in tags:
-        if str(tag.sample_id) in in_view:
-            counts[tag.tag] = counts.get(tag.tag, 0) + 1
+    for sample_id in in_view:
+        for tag, count in per_sample[sample_id].items():
+            counts[tag] = counts.get(tag, 0) + count
 
     return counts
 

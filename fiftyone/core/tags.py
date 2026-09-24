@@ -763,6 +763,41 @@ def count_temporal_tags(
     return TemporalTags(dataset).count(filter=filter, by_sample=by_sample)
 
 
+def count_temporal_tags_per_sample(dataset) -> dict[str, dict[str, int]]:
+    """Counts the temporal tags on each sample of a dataset, by tag value.
+
+    The grouping runs in the database, so this returns one entry per tagged
+    sample rather than one per interval.
+
+    Args:
+        dataset: a :class:`fiftyone.Dataset`
+
+    Returns:
+        a dict mapping sample IDs to dicts mapping tag values to the number of
+        intervals of that tag on the sample
+    """
+    collection = _get_existing_collection()
+    if collection is None:
+        return {}
+
+    pipeline = [
+        {"$match": _build_query(dataset._doc.id, None)},
+        {
+            "$group": {
+                "_id": {"sample": "$_sample_id", "tag": "$tag"},
+                "count": {"$sum": 1},
+            }
+        },
+    ]
+
+    counts: dict[str, dict[str, int]] = {}
+    for result in collection.aggregate(pipeline):
+        sample_counts = counts.setdefault(str(result["_id"]["sample"]), {})
+        sample_counts[result["_id"]["tag"]] = result["count"]
+
+    return counts
+
+
 def delete_for_dataset_id(dataset_id) -> int:
     collection = _get_existing_collection()
     if collection is None:

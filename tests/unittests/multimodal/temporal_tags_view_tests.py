@@ -7,6 +7,7 @@ Grid filtering by temporal tags (server view integration).
 """
 
 import unittest
+from unittest import mock
 
 from decorators import drop_collection, drop_datasets
 
@@ -202,6 +203,18 @@ class TemporalTagCountTests(unittest.TestCase):
                 dataset.group_slice = slice_name
 
                 self.assertEqual(count_temporal_tags(dataset.view()), counts)
+
+    @drop_tags
+    @drop_datasets
+    def test_counts_without_loading_tag_documents(self):
+        dataset, _ = _make_tagged_dataset()
+
+        with mock.patch.object(
+            fota, "list_temporal_tags", side_effect=AssertionError
+        ):
+            self.assertEqual(
+                count_temporal_tags(dataset.view()), {"keep": 1, "review": 2}
+            )
 
     @drop_tags
     @drop_datasets
