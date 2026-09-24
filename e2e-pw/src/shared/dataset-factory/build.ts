@@ -22,9 +22,11 @@ const LABEL_TYPES = new Set([
   "Classifications",
   "Detection",
   "Detections",
+  "Heatmap",
   "Instance",
   "Polyline",
   "Polylines",
+  "Segmentation",
   "TemporalDetection",
   "TemporalDetections",
 ]);

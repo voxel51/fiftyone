@@ -66,6 +66,8 @@ export {
   useDuration,
   useIsPlaying,
   usePlayhead,
+  useSeekEvent,
+  useSpeed,
   useViewEnd,
   useViewStart,
 } from "./src/lib/playback/use-playback-state";
