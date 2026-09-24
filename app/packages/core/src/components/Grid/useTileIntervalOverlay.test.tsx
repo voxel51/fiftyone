@@ -15,8 +15,13 @@ vi.mock("recoil", async () => ({
   useRecoilValue: () => true,
 }));
 
+const lane = vi.hoisted(() => ({ surfaces: [] as string[] }));
+
 vi.mock("@fiftyone/multimodal/grid-overlay", () => ({
-  EpisodeGridOverlay: () => <div data-lane="" />,
+  EpisodeGridOverlay: ({ ctx }: { ctx: { surface: string } }) => {
+    lane.surfaces.push(ctx.surface);
+    return <div data-lane="" />;
+  },
 }));
 
 import { useTileIntervalOverlay } from "./useTileIntervalOverlay";
@@ -36,5 +41,17 @@ describe("useTileIntervalOverlay", () => {
 
     expect(await show("video")).toBe(true);
     expect(await show("image")).toBe(false);
+  });
+
+  it("tells the lane it is drawn on a grid tile", async () => {
+    lane.surfaces = [];
+    const { result } = renderHook(() => useTileIntervalOverlay());
+    await act(async () =>
+      result.current.mount("video", document.createElement("div"), {
+        sample: { _id: "video", _media_type: "video" },
+      }),
+    );
+
+    expect(lane.surfaces).toEqual(["grid"]);
   });
 });

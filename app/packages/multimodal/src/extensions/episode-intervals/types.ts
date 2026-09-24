@@ -1,3 +1,5 @@
+import type { SampleRendererProps } from "@fiftyone/plugins";
+
 /**
  * All an interval lane needs to identify what it is drawing over.
  *
@@ -9,6 +11,12 @@
 export interface IntervalTileContext {
   readonly dataset: { readonly datasetId: string };
   readonly sample: { readonly sample: { readonly _id: string } };
+  /**
+   * Where the lane is drawn. A source can serve a grid tile and the modal
+   * differently — sharing one request across a page of tiles, or fetching
+   * for the single open sample.
+   */
+  readonly surface: SampleRendererProps["ctx"]["surface"];
   /**
    * How far the tile's media runs (ns), for surfaces that know it up front.
    *

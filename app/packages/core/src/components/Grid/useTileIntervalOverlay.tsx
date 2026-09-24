@@ -113,6 +113,7 @@ export function useTileIntervalOverlay() {
             ctx={{
               dataset: { datasetId },
               sample: { sample: { _id: sampleId } },
+              surface: "grid",
               durationNs,
             }}
           />
