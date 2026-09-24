@@ -10,13 +10,10 @@ import os
 import sys
 import uuid
 
-# Every test run gets its own database so that tests can never read or modify
-# a user's real datasets. This must run before ``fiftyone`` is imported,
-# because ``fo.config`` reads the environment at import time; the environment
-# variable also carries the name into any subprocess a test spawns. A name that
-# already has the test prefix is reused rather than replaced, so that nested
-# pytest processes share the parent's database and a fixed test database can
-# be chosen explicitly.
+# Isolates each run in its own database. Must run before ``fiftyone`` is
+# imported, since ``fo.config`` reads the environment at import time. A name
+# already carrying the test prefix is reused, so nested pytest processes share
+# the parent's database.
 _TEST_DATABASE_PREFIX = "fiftyone-test-"
 
 if os.environ.get("FIFTYONE_DATABASE_NAME", "").startswith(
@@ -40,8 +37,21 @@ if "fiftyone.core.config" in sys.modules:
     fo.config.database_name = os.environ["FIFTYONE_DATABASE_NAME"]
 
 
+_session_finish_message = None
+
+
+def pytest_sessionstart(session):
+    reporter = session.config.pluginmanager.get_plugin("terminalreporter")
+    if reporter is not None:
+        reporter.write_line(
+            "test database: %s" % os.environ["FIFTYONE_DATABASE_NAME"]
+        )
+
+
 def pytest_sessionfinish(session, exitstatus):
     """Drops the test database created for this run, if one was created."""
+    global _session_finish_message
+
     if _owned_test_database_name is None:
         return
 
@@ -53,6 +63,20 @@ def pytest_sessionfinish(session, exitstatus):
 
     if fo.config.database_name == _owned_test_database_name:
         fod.drop_database()
+        _session_finish_message = (
+            "dropped test database: %s" % _owned_test_database_name
+        )
+    else:
+        _session_finish_message = (
+            "did not drop test database %s: fo.config.database_name was "
+            "changed to %s during the run"
+            % (_owned_test_database_name, fo.config.database_name)
+        )
+
+
+def pytest_terminal_summary(terminalreporter):
+    if _session_finish_message is not None:
+        terminalreporter.write_line(_session_finish_message)
 
 
 # freezegun swaps the real datetime classes out for fakes, so entering and
