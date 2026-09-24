@@ -235,15 +235,17 @@ export function useRunPlotData(
     fos.selectedSamples,
   );
 
-  // Panel state (local: plot-only state must not reload the page query)
-  // survives the remounts that view changes cause. Values normalize to
-  // null: partials are undefined until first set
+  // Shared panel state under the documented `colorByField` key, so saved
+  // workspaces and the session carry the choice (see EmbeddingsV2Panel).
+  // Like any layout change, a write refetches the page query. Values
+  // normalize to null: partials are undefined until first set, and
+  // SDK-written state arrives unchecked
   const [colorFieldState, setColorField] = usePanelStatePartial<string | null>(
-    "colorField",
+    "colorByField",
     null,
-    true,
   );
-  const colorField = colorFieldState ?? null;
+  const colorField =
+    typeof colorFieldState === "string" ? colorFieldState : null;
   const brainKey = run.brainKey;
 
   // The color-by endpoint speaks root-dataset paths, but the grid
