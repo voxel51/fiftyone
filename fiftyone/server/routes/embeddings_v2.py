@@ -38,6 +38,7 @@ from starlette.responses import Response
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
+import fiftyone.core.patches as fop
 import fiftyone.core.stages as fos
 import fiftyone.core.storage as fost
 from fiftyone.core.utils import run_sync_task
@@ -272,14 +273,24 @@ class EmbeddingsV2Masks(HTTPEndpoint):
         n = len(results.points)
         flags = 0
 
-        # Visible: membership in the view (stages only, no filters).
         # Group slices scope visibility too, even with no view stages
+        view = None
         if stages or slices:
             view = fosv.get_view(
                 dataset,
                 stages=stages,
                 sample_filter=get_sample_filter(slices),
             )
+
+        # No point of the run maps into a patches view of another field,
+        # and the brain library raises on the attempt. Nothing links, so
+        # nothing hides or dims; the client warns instead
+        unlinked = view is not None and _is_unlinked_patches_view(
+            view, results.config.patches_field
+        )
+
+        # Visible: membership in the view (stages only, no filters)
+        if view is not None and not unlinked:
             if view.view() != results.view.view():
                 results.use_view(view, allow_missing=True)
 
@@ -295,7 +306,7 @@ class EmbeddingsV2Masks(HTTPEndpoint):
             flags |= FLAG_ALL_VISIBLE
 
         # Match: membership in the filtered/extended view
-        if filters or extended_stages or extended_selection:
+        if not unlinked and (filters or extended_stages or extended_selection):
             match = _match_mask(
                 dataset_name,
                 results,
@@ -345,7 +356,13 @@ class EmbeddingsV2LassoStage(HTTPEndpoint):
 
         is_patches_view = view._is_patches
         is_patches_plot = patches_field is not None
-        sources_equal = is_patches_view == is_patches_plot
+        # A patches view of another field has no path to the run's points
+        # (resolving one raises), so the spatial stage is out; the id stage
+        # below still answers, matching nothing in that view
+        sources_equal = (
+            is_patches_view == is_patches_plot
+            and not _is_unlinked_patches_view(view, patches_field)
+        )
 
         if polygon is not None and points_field is not None and sources_equal:
             # Constant-size spatial stage; no ids on the wire.
@@ -663,6 +680,26 @@ def _color_data(dataset, results, field_path):
         for label, count in ranked[:MAX_CATEGORIES]
     ]
     return "categorical", values, classes, truncated, exact
+
+
+def _is_unlinked_patches_view(view, patches_field):
+    """Whether ``view`` is a patches view of labels other than the run's.
+
+    The same rule the brain library enforces when mapping results into a
+    view: a patches view must be of the run's patches field, and an
+    evaluation patches view must be of either field of its evaluation.
+    Samples runs link to any view.
+    """
+    if patches_field is None:
+        return False
+
+    if isinstance(view, fop.EvaluationPatchesView):
+        return patches_field not in (view.gt_field, view.pred_field)
+
+    if isinstance(view, fop.PatchesView):
+        return patches_field != view.patches_field
+
+    return False
 
 
 def _match_mask(

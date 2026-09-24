@@ -98,6 +98,41 @@ def _make_patches_run():
     return dataset, points
 
 
+def _make_two_field_patches_run(points_field=None):
+    """A patches run on ``ground_truth``, over samples that also carry
+    ``predictions`` and ``other`` detections. A patches view of ``other``
+    shares no ids with the run."""
+    dataset = fo.Dataset()
+    samples = []
+    for i in range(5):
+        fields = {
+            name: fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label=f"d{j}",
+                        bounding_box=[0.1 + 0.4 * j, 0.1, 0.2, 0.2],
+                        confidence=0.9,
+                    )
+                    for j in range(2)
+                ]
+            )
+            for name in ("ground_truth", "predictions", "other")
+        }
+        samples.append(fo.Sample(filepath=f"/tmp/img{i}.png", **fields))
+
+    dataset.add_samples(samples)
+    num_patches = dataset.count("ground_truth.detections")
+    points = np.random.default_rng(51).normal(size=(num_patches, 2))
+    fob.compute_visualization(
+        dataset,
+        patches_field="ground_truth",
+        points=points,
+        points_field=points_field,
+        brain_key="viz_patches",
+    )
+    return dataset, points
+
+
 class ServerEmbeddingsV2Tests(unittest.TestCase):
     @drop_datasets
     def test_run_info(self):
@@ -455,6 +490,96 @@ class ServerEmbeddingsV2Tests(unittest.TestCase):
         )
         self.assertTrue(res["_cls"].endswith("MatchLabels"))
         self.assertEqual(res["count"], 2)
+
+    @drop_datasets
+    def test_unlinked_patches_views(self):
+        dataset, _ = _make_two_field_patches_run()
+        dataset.evaluate_detections(
+            "predictions", gt_field="ground_truth", eval_key="eval"
+        )
+        unlinked = v2._is_unlinked_patches_view
+
+        # Samples runs link to any view; other views link to any run
+        self.assertFalse(unlinked(dataset.to_patches("other"), None))
+        self.assertFalse(unlinked(dataset.view(), "ground_truth"))
+
+        # A patches view links only to runs on its own field
+        self.assertFalse(
+            unlinked(dataset.to_patches("ground_truth"), "ground_truth")
+        )
+        self.assertTrue(unlinked(dataset.to_patches("other"), "ground_truth"))
+
+        # An evaluation patches view links to runs on either of its fields
+        eval_patches = dataset.to_evaluation_patches("eval")
+        self.assertFalse(unlinked(eval_patches, "ground_truth"))
+        self.assertFalse(unlinked(eval_patches, "predictions"))
+        self.assertTrue(unlinked(eval_patches, "other"))
+
+    @drop_datasets
+    def test_masks_unlinked_patches_view(self):
+        dataset, points = _make_two_field_patches_run()
+        base = {"datasetName": dataset.name, "brainKey": "viz_patches"}
+        n = len(points)
+        other = dataset.to_patches("other")
+
+        # This used to raise from the brain library's use_view, and a
+        # selection dimmed every point. Nothing links, so nothing hides or
+        # dims
+        _, _, _, flags, payload = _parse(
+            v2.EmbeddingsV2Masks._post_sync(
+                None,
+                {
+                    **base,
+                    "view": other._serialize(),
+                    "extendedSelection": other.values("id")[:2],
+                },
+            )
+        )
+        self.assertEqual(flags, v2.FLAG_ALL_VISIBLE | v2.FLAG_ALL_MATCH)
+        visible, match = _unpack_masks(payload, n)
+        self.assertTrue(visible.all())
+        self.assertTrue(match.all())
+
+        # A patches view of the run's own field still scopes the plot
+        linked = dataset.to_patches("ground_truth").take(3, seed=51)
+        _, _, _, _, payload = _parse(
+            v2.EmbeddingsV2Masks._post_sync(
+                None, {**base, "view": linked._serialize()}
+            )
+        )
+        visible, _ = _unpack_masks(payload, n)
+        self.assertEqual(visible.sum(), 3)
+
+    @drop_datasets
+    def test_lasso_polygon_unlinked_patches_view(self):
+        dataset, points = _make_two_field_patches_run(points_field="viz_point")
+        base = {"datasetName": dataset.name, "brainKey": "viz_patches"}
+        # Encloses every point
+        polygon = [[-10, -10], [10, -10], [10, 10], [-10, 10]]
+
+        # Resolving the run's points path in this view used to raise; the
+        # id stage answers instead of the spatial one
+        res = v2.EmbeddingsV2LassoStage._post_sync(
+            None,
+            {
+                **base,
+                "view": dataset.to_patches("other")._serialize(),
+                "polygon": polygon,
+            },
+        )
+        self.assertTrue(res["_cls"].endswith("Select"))
+        self.assertEqual(res["count"], len(points))
+
+        # The run's own patches view keeps the spatial stage
+        res = v2.EmbeddingsV2LassoStage._post_sync(
+            None,
+            {
+                **base,
+                "view": dataset.to_patches("ground_truth")._serialize(),
+                "polygon": polygon,
+            },
+        )
+        self.assertTrue(res["_cls"].endswith("Mongo"))
 
     @drop_datasets
     def test_patches_ids_kinds(self):
