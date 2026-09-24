@@ -365,7 +365,7 @@ class SampleCanvasAsserter {
     }
     expect(
       await target.screenshot({ animations: "disabled", caret: "hide" }),
-    ).toMatchSnapshot(name, { maxDiffPixelRatio: 0.0 });
+    ).toMatchSnapshot(name, { maxDiffPixelRatio: 0, threshold: 0 });
   }
 
   /**

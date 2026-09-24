@@ -1,4 +1,3 @@
-import { useTheme } from "@fiftyone/components";
 import type { ImageLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { VideoAnnotationSurface } from "@fiftyone/video-annotation";
@@ -37,7 +36,6 @@ type NativeLookerProps = LookerProps & { sample: fos.ModalSample };
 
 const ModalLookerNoTimeline = React.memo((props: NativeLookerProps) => {
   const { id, ref, looker } = useLooker<ImageLooker>(props);
-  const theme = useTheme();
 
   useImageModalSelectiveRendering(id, looker);
 
@@ -50,7 +48,7 @@ const ModalLookerNoTimeline = React.memo((props: NativeLookerProps) => {
         width: "100%",
         height: "100%",
         minHeight: 0,
-        background: theme.background.level2,
+        background: "var(--color-content-bg-card-1)",
         position: "relative",
       }}
     />

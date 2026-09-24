@@ -1,4 +1,3 @@
-import { useTheme } from "@fiftyone/components";
 import { ImaVidLooker } from "@fiftyone/looker";
 import type { FoTimelineConfig } from "@fiftyone/playback";
 import {
@@ -53,8 +52,6 @@ export const ImaVidLookerReact = React.memo(
     );
 
     const { sample } = sampleDataWithExtraParams;
-
-    const theme = useTheme();
     const initialRef = useRef<boolean>(true);
     const baseLookerOptions = fos.useLookerOptions(true);
 
@@ -363,7 +360,7 @@ export const ImaVidLookerReact = React.memo(
             width: "100%",
             height: "100%",
             minHeight: 0,
-            background: theme.background.level2,
+            background: "var(--color-content-bg-card-1)",
             position: "relative",
           }}
         />
