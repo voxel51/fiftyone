@@ -10,6 +10,7 @@ const NO_TAGS: readonly TemporalTag[] = [];
 type Entry = {
   bySample: TagsBySample;
   generation: number;
+  loaded: boolean;
   loading: boolean;
 };
 
@@ -28,10 +29,14 @@ function emit() {
   for (const listener of listeners) listener();
 }
 
+function notifyMutated() {
+  for (const listener of mutationListeners) listener();
+}
+
 function entryFor(datasetId: string): Entry {
   let entry = entries.get(datasetId);
   if (!entry) {
-    entry = { bySample: EMPTY, generation: 0, loading: false };
+    entry = { bySample: EMPTY, generation: 0, loaded: false, loading: false };
     entries.set(datasetId, entry);
   }
 
@@ -51,7 +56,9 @@ function groupBySample(tags: readonly TemporalTag[]): TagsBySample {
 
 function load(client: TemporalTagsClient, datasetId: string) {
   const entry = entryFor(datasetId);
-  if (entry.loading) return;
+  // Every tile that comes into view asks; only the first ask, or the first
+  // after an invalidation, may reach the network.
+  if (entry.loading || entry.loaded) return;
 
   entry.loading = true;
   const generation = ++entry.generation;
@@ -61,6 +68,7 @@ function load(client: TemporalTagsClient, datasetId: string) {
       // an invalidation bumped past this response, so it is already stale
       if (entry.generation !== generation) return;
       entry.bySample = groupBySample(tags);
+      entry.loaded = true;
       entry.loading = false;
       emit();
     })
@@ -81,15 +89,44 @@ export function invalidateDatasetTemporalTags(
 ) {
   if (!datasetId) return;
 
-  for (const listener of mutationListeners) listener();
+  notifyMutated();
 
   const entry = entries.get(datasetId);
   if (!entry) return;
 
   // past any in-flight response, which would otherwise land as fresh
   entry.generation += 1;
+  entry.loaded = false;
   entry.loading = false;
   load(client ?? getDefaultClient(), datasetId);
+}
+
+/**
+ * Replaces one sample's tags after a mutation, with that sample's tags as the
+ * server now has them, so an edit does not refetch the whole dataset.
+ */
+export function setSampleTemporalTags(
+  datasetId: string,
+  sampleId: string,
+  tags: readonly TemporalTag[],
+  client?: TemporalTagsClient,
+) {
+  const entry = entries.get(datasetId);
+  // A load still in flight may have been answered before the edit, so it is
+  // superseded rather than patched.
+  if (entry?.loading) {
+    invalidateDatasetTemporalTags(datasetId, client);
+    return;
+  }
+
+  notifyMutated();
+  if (!entry?.loaded) return;
+
+  const bySample = new Map(entry.bySample);
+  if (tags.length) bySample.set(sampleId, tags);
+  else bySample.delete(sampleId);
+  entry.bySample = bySample;
+  emit();
 }
 
 /**

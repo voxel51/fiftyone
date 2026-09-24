@@ -1,6 +1,14 @@
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { StrictMode, useEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { useDatasetTemporalTags } from "./dataset-tags";
 import { useSampleTemporalTags } from "./hooks";
 import type {
   TemporalTag,
@@ -218,6 +226,60 @@ describe("useSampleTemporalTags", () => {
       sampleId: "sample-id",
     });
     expect(client.listSampleTemporalTags).toHaveBeenCalledTimes(5);
+  });
+
+  it("updates the grid's store after an edit without refetching the dataset", async () => {
+    const tagged = createTemporalTag("created");
+    const client = createTemporalTagsClient({
+      listSampleTemporalTags: vi.fn(async () => [tagged]),
+    });
+    const grid = renderHook(() =>
+      useDatasetTemporalTags("edit-dataset", client),
+    );
+    await waitFor(() =>
+      expect(client.listDatasetTemporalTags).toHaveBeenCalledTimes(1),
+    );
+    const sample = renderHook(() =>
+      useSampleTemporalTags({
+        client,
+        datasetId: "edit-dataset",
+        sampleId: "sample-id",
+      }),
+    );
+    await waitFor(() => expect(sample.result.current.status).toBe("ready"));
+
+    await act(async () => {
+      await sample.result.current.create([{ end: 2, start: 1, tag: "review" }]);
+    });
+
+    expect(client.listDatasetTemporalTags).toHaveBeenCalledTimes(1);
+    expect(grid.result.current.get("sample-id")).toEqual([tagged]);
+  });
+
+  it("gives the grid's store the whole sample when the hook is filtered", async () => {
+    const client = createTemporalTagsClient();
+    renderHook(() => useDatasetTemporalTags("filtered-dataset", client));
+    await waitFor(() =>
+      expect(client.listDatasetTemporalTags).toHaveBeenCalledTimes(1),
+    );
+    const sample = renderHook(() =>
+      useSampleTemporalTags({
+        client,
+        datasetId: "filtered-dataset",
+        filter: { tags: ["review"] },
+        sampleId: "sample-id",
+      }),
+    );
+    await waitFor(() => expect(sample.result.current.status).toBe("ready"));
+
+    await act(async () => {
+      await sample.result.current.create([{ end: 2, start: 1, tag: "review" }]);
+    });
+
+    expect(client.listSampleTemporalTags).toHaveBeenLastCalledWith({
+      datasetId: "filtered-dataset",
+      sampleId: "sample-id",
+    });
   });
 
   it("loads after StrictMode replays the mount effects", async () => {

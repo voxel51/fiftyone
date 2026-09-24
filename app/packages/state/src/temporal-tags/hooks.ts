@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createTemporalTagsClient } from "./client";
-import { invalidateDatasetTemporalTags } from "./dataset-tags";
+import {
+  invalidateDatasetTemporalTags,
+  setSampleTemporalTags,
+} from "./dataset-tags";
 import type {
   TemporalTag,
   TemporalTagCreate,
@@ -36,6 +39,7 @@ export function useSampleTemporalTags({
 }: UseSampleTemporalTagsOptions): UseSampleTemporalTagsResult {
   const temporalTagsClient = client ?? getDefaultTemporalTagsClient();
   const filterKey = temporalTagFilterKey(filter);
+  const filtered = filter !== undefined;
   const [state, setState] = useState<TemporalTagsState>(IDLE_STATE);
   const mountedRef = useRef(true);
   const requestIdRef = useRef(0);
@@ -88,12 +92,34 @@ export function useSampleTemporalTags({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [datasetId, filterKey, sampleId, temporalTagsClient]);
 
-  // A refresh that fails leaves the error in hook state, where `reload` put it.
-  // Rejecting here instead would report a completed write as a failure, and the
-  // caller would retry it.
-  const refresh = useCallback(async () => {
-    await reload().catch(() => undefined);
-  }, [reload]);
+  // After a write: re-list this sample, and hand the dataset's shared store the
+  // sample's tags in place of refetching the whole dataset. A filtered hook's
+  // list is only part of the sample, so the store gets an unfiltered one.
+  //
+  // A re-list that fails leaves the error in hook state, where `reload` put it,
+  // and falls back to refetching the dataset. Rejecting here instead would
+  // report a completed write as a failure, and the caller would retry it.
+  const settle = useCallback(async () => {
+    try {
+      const temporalTags = await reload();
+      if (!datasetId || !sampleId) return;
+
+      const sampleTags = filtered
+        ? await temporalTagsClient.listSampleTemporalTags({
+            datasetId,
+            sampleId,
+          })
+        : temporalTags;
+      setSampleTemporalTags(
+        datasetId,
+        sampleId,
+        sampleTags,
+        temporalTagsClient,
+      );
+    } catch {
+      invalidateDatasetTemporalTags(datasetId, temporalTagsClient);
+    }
+  }, [datasetId, filtered, reload, sampleId, temporalTagsClient]);
 
   // Declared before the load effect so the flag is live by the time `reload`
   // first runs. Refs survive a StrictMode effect replay, so the cleanup's
@@ -118,12 +144,11 @@ export function useSampleTemporalTags({
         ...ids,
         temporalTags,
       });
-      invalidateDatasetTemporalTags(datasetId, temporalTagsClient);
-      await refresh();
+      await settle();
 
       return created;
     },
-    [datasetId, refresh, sampleId, temporalTagsClient],
+    [datasetId, settle, sampleId, temporalTagsClient],
   );
 
   const update = useCallback(
@@ -134,12 +159,11 @@ export function useSampleTemporalTags({
         temporalTagId,
         update,
       });
-      invalidateDatasetTemporalTags(datasetId, temporalTagsClient);
-      await refresh();
+      await settle();
 
       return updated;
     },
-    [datasetId, refresh, sampleId, temporalTagsClient],
+    [datasetId, settle, sampleId, temporalTagsClient],
   );
 
   const deleteTags = useCallback(
@@ -149,12 +173,11 @@ export function useSampleTemporalTags({
         ...ids,
         ids: idsToDelete,
       });
-      invalidateDatasetTemporalTags(datasetId, temporalTagsClient);
-      await refresh();
+      await settle();
 
       return deleted;
     },
-    [datasetId, refresh, sampleId, temporalTagsClient],
+    [datasetId, settle, sampleId, temporalTagsClient],
   );
 
   const clear = useCallback(
@@ -164,12 +187,11 @@ export function useSampleTemporalTags({
         ...ids,
         filter: clearFilter,
       });
-      invalidateDatasetTemporalTags(datasetId, temporalTagsClient);
-      await refresh();
+      await settle();
 
       return deleted;
     },
-    [datasetId, refresh, sampleId, temporalTagsClient],
+    [datasetId, settle, sampleId, temporalTagsClient],
   );
 
   return {
