@@ -27,7 +27,10 @@ export {
   MAIN_TILE_ID,
   VIDEO_STREAM_ID,
 } from "./src/utils/ids";
-export { getModalSampleFrameRate } from "./src/utils/modalSample";
+export {
+  getModalSampleFrameRate,
+  getModalSampleSupport,
+} from "./src/utils/modalSample";
 export { useTimelineMaxSize } from "./src/hooks/useTimelineMaxSize";
 export { DynamicGroupImageStream } from "./src/streams/DynamicGroupImageStream";
 export type { DynamicGroupImageFrame } from "./src/streams/DynamicGroupImageStream";
