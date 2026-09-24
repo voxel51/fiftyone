@@ -189,7 +189,9 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
   const mode = useMemo<TimelineMode>(
     () =>
       frameRate && Number.isFinite(frameRate) && frameRate > 0
-        ? { kind: "sequence", fps: frameRate }
+        ? // FiftyOne frame numbers start at 1, matching the annotation
+          // surface and the `support` values on temporal detections
+          { kind: "sequence", fps: frameRate, firstFrame: 1 }
         : { kind: "duration" },
     [frameRate],
   );
