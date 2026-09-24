@@ -208,7 +208,8 @@ class Sapiens2PoseModel(fout.TorchImageModel, fom.SupportsGetItem):
             "**",
             "%s_keypoints308_*-1024x768.py" % arch,
         )
-        matches = glob.glob(pattern, recursive=True)
+        # Sorted so the same config is chosen whatever the filesystem order
+        matches = sorted(glob.glob(pattern, recursive=True))
         if not matches:
             raise ValueError(
                 "Could not find a keypoints308 config for '%s' in the "
