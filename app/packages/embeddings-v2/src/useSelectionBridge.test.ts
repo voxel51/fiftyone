@@ -458,6 +458,43 @@ describe("useSelectionBridge", () => {
     expect(result.current.selectedIndices).toEqual([0]);
   });
 
+  // A selection made under one link state is void under the other: its
+  // stage would scope a grid that holds none of its points, or it never
+  // reached the grid at all
+  it("drops its own selection when the grid's link to the run changes", () => {
+    const opts = options();
+    const { result, rerender } = renderHook(
+      ({ linked }) => useSelectionBridge({ ...opts, linksToGrid: linked }),
+      { initialProps: { linked: true } },
+    );
+    const cleared = {
+      stage: null,
+      count: null,
+      sampleCount: null,
+      decorate: null,
+    };
+
+    // Linked: the lasso's stage scopes the grid
+    act(() => result.current.handleSelection([0, 1]));
+    vi.mocked(opts.publishSelection).mockClear();
+
+    rerender({ linked: false });
+    expect(opts.publishSelection).toHaveBeenCalledWith(cleared);
+    expect(result.current.lassoIndices).toBeNull();
+    expect(opts.chart.current?.clearSelection).toHaveBeenCalled();
+
+    // Unlinked: the lasso stays in the plot, then goes when the link returns
+    act(() => result.current.handleSelection([0]));
+    vi.mocked(opts.publishSelection).mockClear();
+
+    rerender({ linked: true });
+    expect(opts.publishSelection).toHaveBeenCalledWith(cleared);
+    expect(result.current.lassoIndices).toBeNull();
+    // The grid checkboxes are not this panel's to drop
+    expect(opts.setSelectedSamples).not.toHaveBeenCalled();
+    expect(opts.resetExtended).not.toHaveBeenCalled();
+  });
+
   it("lights the clicked point in the plot with no checkbox behind it", () => {
     // `selectedSamples` never sees the click, so the plot's emphasis has to
     // come from the click layer itself

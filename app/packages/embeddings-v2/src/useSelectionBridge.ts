@@ -143,15 +143,15 @@ export function useSelectionBridge({
   // emphasis follows a click that never reaches `selectedSamples`
   const [clickIndices, setClickIndices] = useState<number[] | null>(null);
 
-  // Stable because the Esc effect below depends on it
-  const clearAll = useCallback(() => {
+  // This panel's own selection: the lasso and click layers, their stage,
+  // and the chart's local dim. The grid checkboxes and other panels'
+  // selections are not this panel's to drop
+  const clearOwnSelection = useCallback(() => {
     lassoSeq.current++;
     clickSeq.current++;
-    resetExtended();
     clickedPoints.current.clear();
     clickedSamples.current.clear();
     setClickIndices(null);
-    setSelectedSamples(new Map());
     setLassoIndices(null);
     setError(null);
     // The extension's artifacts clear in the same commit they were
@@ -164,13 +164,14 @@ export function useSelectionBridge({
       decorate: decorateSelection?.(null) ?? null,
     });
     chart.current?.clearSelection();
-  }, [
-    resetExtended,
-    setSelectedSamples,
-    publishSelection,
-    decorateSelection,
-    chart,
-  ]);
+  }, [publishSelection, decorateSelection, chart]);
+
+  // Stable because the Esc effect below depends on it
+  const clearAll = useCallback(() => {
+    resetExtended();
+    setSelectedSamples(new Map());
+    clearOwnSelection();
+  }, [resetExtended, setSelectedSamples, clearOwnSelection]);
 
   // Esc clears every selection layer (App state + the chart's local dim)
   useEffect(() => {
@@ -181,6 +182,17 @@ export function useSelectionBridge({
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [clearAll]);
+
+  // The grid switching between this run's patches and another field's
+  // voids the selection made under the other state: made unlinked, it
+  // never reached the grid; made linked, its stage would scope a grid
+  // that holds none of its points
+  const linkedRef = useRef(linksToGrid);
+  useEffect(() => {
+    if (linkedRef.current === linksToGrid) return;
+    linkedRef.current = linksToGrid;
+    clearOwnSelection();
+  }, [linksToGrid, clearOwnSelection]);
 
   // Grid/checkbox selections style the plot (id -> every wire index
   // sharing that id — one sample can own many points, e.g. every window
