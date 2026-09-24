@@ -60,6 +60,7 @@ import {
 } from "../tracks/useTrackExpansion";
 import { LABELS_STREAM_ID } from "../utils/ids";
 import { resolveTrackExtentEdit } from "../tracks/trackExtentEdit";
+import { objectRowColor } from "../tracks/objectRowColor";
 import { useVideoTrackDecorator } from "../tracks/useVideoTrackDecorator";
 import { useScrollTrackToAnchor } from "../state/useScrollTrackToAnchor";
 import { useCurrentFrameGetter } from "../state/useCurrentFrame";
@@ -421,11 +422,8 @@ function useTrackColorResolvers(): {
   // `frames.polylines`, …) so the row matches its overlay's color and
   // multi-field rows don't collapse onto one field's scheme entry.
   const resolveObjectColor = useCallback(
-    (label: PerInstanceLabel, path: string) =>
-      getLabelColorFromContext(path, label, {
-        colorScheme: scheme,
-        seed,
-      }),
+    (label: PerInstanceLabel | null, path: string) =>
+      objectRowColor(label, path, { colorScheme: scheme, seed }),
     [scheme, seed],
   );
 

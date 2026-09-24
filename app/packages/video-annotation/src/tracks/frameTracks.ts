@@ -114,7 +114,8 @@ export interface PerInstanceLabel {
 
 /** Resolve a row's color from its label and the field path it lives on. */
 export type PerInstanceColorResolver = (
-  label: PerInstanceLabel,
+  /** `null` asks for the field's color: a Segmentation or Heatmap row. */
+  label: PerInstanceLabel | null,
   path: string,
 ) => string;
 
@@ -658,11 +659,13 @@ function toTrack(
       ? `Field "${field}"`
       : `Tracked "${state.classLabel}" (track ${state.displayIndex})`,
     color: resolveColor(
-      {
-        label: state.classLabel,
-        index: state.persistedIndex,
-        instance: state.instance,
-      },
+      field
+        ? null
+        : {
+            label: state.classLabel,
+            index: state.persistedIndex,
+            instance: state.instance,
+          },
       state.path,
     ),
     events,

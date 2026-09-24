@@ -1,6 +1,6 @@
 import type { Track } from "@fiftyone/playback";
 import type { LabelData } from "@fiftyone/utilities";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { singletonAddressId } from "../streams/framesData";
 import {
   buildTracksFromIndex,
@@ -151,6 +151,7 @@ describe("buildTracksFromIndex", () => {
 
   it("builds one row named after the field for a Segmentation", () => {
     const id = singletonAddressId("frames.seg");
+    const resolveColor = vi.fn(() => "#fff");
     const overlay: FrameOverlay = new Map([
       [5, [{ _id: id, _cls: "Segmentation" } as LabelData]],
     ]);
@@ -171,12 +172,14 @@ describe("buildTracksFromIndex", () => {
       ],
       overlay,
       fps: FPS,
-      resolveColor: () => "#fff",
+      resolveColor,
       dynamicAttributes: [],
     });
 
     expect(tracks).toHaveLength(1);
     expect(tracks[0].label).toBe("seg");
+    // the field's color, not a class's
+    expect(resolveColor).toHaveBeenCalledWith(null, "frames.seg");
     // frames 4 (index) and 5 (overlay) coalesce; frame 3 stays a hole
     expect(
       presence(tracks[0]).map(({ startSec, endSec }) => [startSec, endSec]),

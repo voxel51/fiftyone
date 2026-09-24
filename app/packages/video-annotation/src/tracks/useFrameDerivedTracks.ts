@@ -24,7 +24,7 @@ import {
 
 /** Resolves the row color for a per-frame object track. */
 export type ObjectTrackColorResolver = (
-  label: PerInstanceLabel,
+  label: PerInstanceLabel | null,
   path: string,
 ) => string;
 
