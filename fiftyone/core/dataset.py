@@ -270,7 +270,15 @@ def _delete_non_persistent_datasets(verbose=False):
             continue
 
         if not dataset.persistent and not dataset.deleted:
-            dataset._delete()
+            try:
+                dataset._delete()
+            except Exception:
+                logger.warning(
+                    "Failed to delete non-persistent dataset '%s'",
+                    name,
+                    exc_info=True,
+                )
+                continue
             if verbose:
                 logger.info("Dataset '%s' deleted", name)
 
@@ -6495,10 +6503,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         If reference to a sample exists in memory, the sample will be updated
         such that ``sample.in_dataset`` is False.
+
+        Any deleters registered via :func:`register_extras_deleter` run first.
+        If one raises, the dataset is left intact and deletion can be retried.
         """
         self._delete()
 
     def _delete(self):
+        for deleter in _extras_deleters:
+            deleter(self)
+
         self._sample_collection.drop()
         fos.Sample._reset_docs(self._sample_collection_name)
 
@@ -10790,6 +10804,27 @@ def _update_no_overwrite(d, dnew):
 # this module needing to know about those concepts. See
 # :func:`register_extras_cloner`.
 _extras_cloners = []
+
+
+# Hooks invoked before a dataset is deleted, as ``deleter(dataset)``. See
+# :func:`register_extras_deleter`.
+_extras_deleters = []
+
+
+def register_extras_deleter(deleter):
+    """Registers a callable to be invoked when a dataset is deleted.
+
+    Each registered deleter is called as ``deleter(dataset)`` before any of
+    the dataset's collections or records are deleted, including for generated
+    and non-persistent datasets, so that it can remove data the dataset owns
+    outside of the database. A deleter that raises aborts the deletion with
+    the dataset intact, so the deletion can be retried.
+
+    Args:
+        deleter: a callable with signature ``deleter(dataset)``
+    """
+    if deleter not in _extras_deleters:
+        _extras_deleters.append(deleter)
 
 
 def register_extras_cloner(cloner):
