@@ -28,5 +28,6 @@ describe("foreignSelectionIds", () => {
   it("treats the atom's default as none", () => {
     expect(foreignSelectionIds({ selection: null }, null)).toBeNull();
     expect(foreignSelectionIds(null, null)).toBeNull();
+    expect(foreignSelectionIds(undefined, null)).toBeNull();
   });
 });

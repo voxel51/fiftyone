@@ -17,7 +17,10 @@
  * kept showing the plot's.
  */
 export function foreignSelectionIds(
-  extended: { readonly selection?: readonly string[] | null } | null,
+  extended:
+    | { readonly selection?: readonly string[] | null }
+    | null
+    | undefined,
   ownStage: unknown,
 ): readonly string[] | null {
   if (ownStage) return null;
