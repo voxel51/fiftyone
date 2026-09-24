@@ -703,28 +703,16 @@ export const FrameLabelsTracks: React.FC<{
     mode === "explore" ? exploreTdFields : undefined,
   );
 
-  // Readiness for the data-timeline-loaded test seam: schemas must have
-  // landed (TD/frame fields are schema-gated), and the frame index must
-  // have resolved unless there are no frame fields to index.
+  // Annotate's frame fields come from the label schemas, so their empty set
+  // means nothing until those have landed; Explore's come from the sidebar.
   const schemasLoaded = useLabelSchemasLoaded();
-  const visibleSchemas = useVisibleLabelSchemas();
-  const hasFrameFields = useMemo(
-    () => [...visibleSchemas].some((path) => path.startsWith("frames.")),
-    [visibleSchemas],
-  );
-  const timelineLoaded =
-    schemasLoaded && (frameTracksResolved || !hasFrameFields);
+  const ready = frameTracksResolved && (mode === "explore" || schemasLoaded);
 
   // Object tracks (with their sub-tracks interleaved) followed by TD tracks.
   const resolvedTracks = useMemo(
     () => [...frameTracks, ...temporalDetectionTracks],
     [frameTracks, temporalDetectionTracks],
   );
-
-  // Bootstrap on frame-tracks-resolved, not `tracks.length`: TD tracks resolve
-  // synchronously and would otherwise trip the empty→ready flip before frame
-  // tracks land, leaving frame tracks unpinned.
-  const ready = frameTracksResolved;
 
   // The last list that resolved, shown while the next one loads (see the
   // component doc). Adopted through an effect rather than a ref written during
@@ -786,7 +774,7 @@ export const FrameLabelsTracks: React.FC<{
         scrollerRef={timelineScroller}
         extraActions={extraActions}
         trailingActions={trailingActions}
-        loaded={timelineLoaded}
+        loaded={ready}
         maxSize={maxSize}
         drawerOpen={drawerOpen}
         onDrawerOpenChange={setDrawerOpen}
