@@ -1,7 +1,12 @@
-import { addressIdOf, type AnnotationEngine } from "@fiftyone/annotation";
+import {
+  addressIdOf,
+  type AnnotationEngine,
+  toSchemaField,
+} from "@fiftyone/annotation";
 import type { Track, TrackEvent } from "@fiftyone/playback";
 import type { LabelData } from "@fiftyone/utilities";
 import { isEqual } from "lodash";
+import { singletonAddressId } from "../streams/framesData";
 import {
   mergeAttributeRuns,
   mergePresence,
@@ -109,7 +114,8 @@ export interface PerInstanceLabel {
 
 /** Resolve a row's color from its label and the field path it lives on. */
 export type PerInstanceColorResolver = (
-  label: PerInstanceLabel,
+  /** `null` asks for the field's color: a Segmentation or Heatmap row. */
+  label: PerInstanceLabel | null,
   path: string,
 ) => string;
 
@@ -625,16 +631,24 @@ function toTrack(
     })),
   ];
 
+  // A Segmentation or Heatmap is one row per field, with no class or index
+  const field =
+    id === singletonAddressId(state.path) ? toSchemaField(state.path) : null;
+
   return {
     id,
-    label: `${state.classLabel} ${state.displayIndex}`,
-    description: `Tracked "${state.classLabel}" (track ${state.displayIndex})`,
+    label: field ?? `${state.classLabel} ${state.displayIndex}`,
+    description: field
+      ? `Field "${field}"`
+      : `Tracked "${state.classLabel}" (track ${state.displayIndex})`,
     color: resolveColor(
-      {
-        label: state.classLabel,
-        index: state.persistedIndex,
-        instance: state.instance,
-      },
+      field
+        ? null
+        : {
+            label: state.classLabel,
+            index: state.persistedIndex,
+            instance: state.instance,
+          },
       state.path,
     ),
     events,

@@ -26,6 +26,7 @@ from starlette.requests import Request
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.json as foj
+import fiftyone.core.labels as fol
 import fiftyone.core.odm as foo
 from fiftyone.core.utils import run_sync_task
 import fiftyone.core.view as fov
@@ -39,6 +40,12 @@ import fiftyone.server.view as fosv
 # ``TRACK_INDEX_PREFIX`` (``@fiftyone/annotation``) so the baseline index and
 # the engine address the same track by the same id.
 TRACK_INDEX_PREFIX = "track-"
+
+# Label types the client addresses by field rather than per label, as
+# ``field:<path>``. Must match ``singletonAddressId`` in
+# ``@fiftyone/video-annotation`` so a mask field is one timeline row.
+SINGLETON_ADDRESS_PREFIX = "field:"
+_SINGLETON_LABEL_TYPES = (fol.Segmentation, fol.Heatmap)
 
 
 def run_length_encode(frames: t.Iterable[int]) -> t.List[t.List[int]]:
@@ -118,10 +125,32 @@ def resolve_label_list_field(dataset, field: str) -> t.Optional[str]:
     return getattr(field_obj.document_type, "_LABEL_LIST_FIELD", None)
 
 
+def resolve_singleton_address_id(
+    dataset, field: str, dynamic_group: bool = False
+) -> t.Optional[str]:
+    """The client's field-level address id when ``field`` holds a
+    Segmentation or Heatmap, else ``None``.
+    """
+    schema = (
+        dataset.get_field_schema()
+        if dynamic_group
+        else dataset.get_frame_field_schema()
+    )
+    field_obj = schema.get(field)
+    if not isinstance(field_obj, fof.EmbeddedDocumentField) or not issubclass(
+        field_obj.document_type, _SINGLETON_LABEL_TYPES
+    ):
+        return None
+
+    path = field if dynamic_group else "frames." + field
+    return SINGLETON_ADDRESS_PREFIX + path
+
+
 def index_post_pipeline(
     field: str,
     list_field: t.Optional[str],
     dynamic_attributes: t.Sequence[str] = (),
+    singleton_address_id: t.Optional[str] = None,
 ) -> t.List[dict]:
     """Mongo stages that group a frame field's labels into per-instance state.
 
@@ -129,8 +158,10 @@ def index_post_pipeline(
     input. Groups by ``instance._id`` (the engine's track keystone), falling
     back to the synthetic ``track-<index>`` for an instance-less label carrying
     a persisted ``index`` (so its frames coalesce into one track), and finally
-    to the per-frame label ``_id`` for a bare detection with neither. This
-    mirrors the client ``addressIdOf`` exactly. The run-length encoding itself
+    to the per-frame label ``_id`` for a bare detection with neither. A
+    ``singleton_address_id`` (see :func:`resolve_singleton_address_id`)
+    replaces all of that, so a Segmentation or Heatmap field is one group.
+    This mirrors the client ``addressIdOf`` exactly. The run-length encoding itself
     happens in Python on the grouped output; see :func:`run_length_encode`.
 
     When ``dynamic_attributes`` is non-empty the group also pushes each present
@@ -151,12 +182,16 @@ def index_post_pipeline(
     }
 
     group: dict = {
-        "_id": {
-            "$ifNull": [
-                "$labels.instance._id",
-                {"$ifNull": [index_track_id, "$labels._id"]},
-            ]
-        },
+        "_id": (
+            {"$literal": singleton_address_id}
+            if singleton_address_id
+            else {
+                "$ifNull": [
+                    "$labels.instance._id",
+                    {"$ifNull": [index_track_id, "$labels._id"]},
+                ]
+            }
+        ),
         "frames": {"$addToSet": "$fn"},
         "keyframes": {
             "$addToSet": {
@@ -270,10 +305,16 @@ async def aggregate_index(
     result: t.Dict[str, dict] = {}
     for field in fields:
         list_field = resolve_label_list_field(view._dataset, field)
+        singleton_address_id = resolve_singleton_address_id(
+            view._dataset, field
+        )
         pipeline = view._pipeline(
             frames_only=True,
             post_pipeline=index_post_pipeline(
-                field, list_field, dynamic_attributes
+                field,
+                list_field,
+                dynamic_attributes,
+                singleton_address_id,
             ),
         )
         groups = await foo.aggregate(collection, pipeline).to_list(None)

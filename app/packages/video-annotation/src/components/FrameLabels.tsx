@@ -58,6 +58,7 @@ import {
 import { LABELS_STREAM_ID } from "../utils/ids";
 import { getModalSampleFrameRate } from "../utils/modalSample";
 import { resolveTrackExtentEdit } from "../tracks/trackExtentEdit";
+import { objectRowColor } from "../tracks/objectRowColor";
 import { useVideoTrackDecorator } from "../tracks/useVideoTrackDecorator";
 import { useScrollTrackToAnchor } from "../state/useVideoInteraction";
 import { useCurrentFrameGetter } from "../state/useCurrentFrame";
@@ -74,6 +75,7 @@ import {
 import { VideoFrameLabelsStream } from "../streams/VideoFrameLabelsStream";
 
 const DEFAULT_FRAME_FIELD = "frames.detections";
+const TRACKS_RENDERED_EVENT = "video-annotation-tracks-rendered";
 
 /** Base linked-overlay decoration the interaction layer attaches per row. */
 type BaseTrackDecoration = ReturnType<
@@ -407,11 +409,8 @@ function useTrackColorResolvers(): {
   // `frames.polylines`, …) so the row matches its overlay's color and
   // multi-field rows don't collapse onto one field's scheme entry.
   const resolveObjectColor = useCallback(
-    (label: PerInstanceLabel, path: string) =>
-      getLabelColorFromContext(path, label, {
-        colorScheme: scheme,
-        seed,
-      }),
+    (label: PerInstanceLabel | null, path: string) =>
+      objectRowColor(label, path, { colorScheme: scheme, seed }),
     [scheme, seed],
   );
 
@@ -433,12 +432,15 @@ function useTrackDecorator({
   objectTracks,
   expansion,
   expandableParentIds,
+  readOnly,
   ready,
 }: {
   sample: ModalSample | undefined;
   objectTracks: Track[];
   expansion: TrackExpansion;
   expandableParentIds: ReadonlySet<string>;
+  /** Explore: no edit menu items and no drag edits, only playback. */
+  readOnly: boolean;
   /**
    * Whether the track list reflects the current stream. Held rows (see
    * `FrameLabelsTracks`) render while the replacement stream is still loading,
@@ -518,6 +520,7 @@ function useTrackDecorator({
       mergeCandidatesByGroup,
       expansion,
       expandableParentIds,
+      readOnly,
       ready,
     ],
   );
@@ -539,6 +542,17 @@ function useTrackDecorator({
         return built;
       };
 
+      const withExpansion = (decorated: TrackDecoration): TrackDecoration =>
+        expandableParentIds.has(track.id)
+          ? {
+              ...decorated,
+              expansionGutter: true,
+              expandable: true,
+              expanded: expansion.isExpanded(track.id),
+              onToggleExpand: () => expansion.toggle(track.id),
+            }
+          : { ...decorated, expansionGutter: true };
+
       if (sub) {
         const parentLink = base;
         return remember({
@@ -552,6 +566,10 @@ function useTrackDecorator({
 
       if (!fps) {
         return remember({ ...base, expansionGutter: true });
+      }
+
+      if (readOnly) {
+        return remember(withExpansion({ ...base, snapStepSec }));
       }
 
       // A TD row is identified by its structured event payload; anything else
@@ -580,17 +598,7 @@ function useTrackDecorator({
           ...mergeTargetsFor(mergeCandidatesByGroup, track),
         });
 
-        if (!expandableParentIds.has(track.id)) {
-          return remember({ ...decorated, expansionGutter: true });
-        }
-
-        return remember({
-          ...decorated,
-          expansionGutter: true,
-          expandable: true,
-          expanded: expansion.isExpanded(track.id),
-          onToggleExpand: () => expansion.toggle(track.id),
-        });
+        return remember(withExpansion(decorated));
       }
 
       // Object track with no stream yet, or a held row whose replacement
@@ -621,6 +629,7 @@ function useTrackDecorator({
       mergeCandidatesByGroup,
       expansion,
       expandableParentIds,
+      readOnly,
       ready,
     ],
   );
@@ -751,6 +760,17 @@ export const FrameLabelsTracks: React.FC<{
     [tracks, expansion.expandedIds],
   );
 
+  // the timeline's rows commit before this parent effect runs
+  useEffect(() => {
+    if (ready) {
+      document.dispatchEvent(
+        new CustomEvent(TRACKS_RENDERED_EVENT, {
+          detail: { ids: visibleTracks.map(({ id }) => id) },
+        }),
+      );
+    }
+  }, [ready, visibleTracks]);
+
   // Filled by TimelineWithTracks; the drawer is virtualized, so revealing a
   // row has to go through the list rather than the DOM.
   const timelineScroller = useRef<TimelineTracksScroller | null>(null);
@@ -760,6 +780,7 @@ export const FrameLabelsTracks: React.FC<{
     objectTracks: frameTracks,
     expansion,
     expandableParentIds,
+    readOnly: mode === "explore",
     ready,
   });
 
