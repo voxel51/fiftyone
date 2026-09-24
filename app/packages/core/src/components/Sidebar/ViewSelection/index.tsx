@@ -1,6 +1,7 @@
 import { useTrackEvent } from "@fiftyone/analytics";
 import { default as useRefetchableSavedViews } from "../../../hooks/useRefetchableSavedViews";
 import * as fos from "@fiftyone/state";
+import { isE2E } from "@fiftyone/utilities";
 import { Suspense, useEffect, useMemo } from "react";
 import {
   atom,
@@ -78,6 +79,17 @@ export default function ViewSelection() {
       ),
     [viewOptions, viewSearch],
   );
+
+  // only for browser automation (e2e): a save or delete refetches the list
+  // after its dialog closes, and a search applies after a debounce
+  useEffect(() => {
+    if (!isE2E()) return;
+    document.dispatchEvent(
+      new CustomEvent("saved-views-listed", {
+        detail: { count: searchData.length, search: viewSearch },
+      }),
+    );
+  }, [searchData, viewSearch]);
 
   useEffect(() => {
     refetch({ name: datasetName });
