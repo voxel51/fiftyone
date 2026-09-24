@@ -187,7 +187,7 @@ On videos, an anchor is tied to the current frame. On
 stream and timestamp. The marker appears only when that frame, slice, or
 timestamp is displayed. The comment's chip in the Discussion panel takes you
 back to it. The video timeline marks every commented frame. Point cloud
-tiles are not supported.
+tiles and ordered dynamic groups played as video are not supported.
 
 .. image:: https://cdn.voxel51.com/enterprise/app/comments_spatiotemporal.webp
    :alt: Anchored comments on a video frame, marked on the timeline and listed in the Discussion panel

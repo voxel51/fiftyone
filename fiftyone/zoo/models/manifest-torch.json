@@ -12335,6 +12335,91 @@
             "date_added": "2026-07-13 00:00:00"
         },
         {
+            "base_name": "paddle-ocr-vl-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "PaddleOCR-VL 1.6, a 0.9B vision-language document parser that detects and reads text in one pass",
+            "source": "https://huggingface.co/PaddlePaddle/PaddleOCR-VL-1.6",
+            "author": "PaddlePaddle Authors",
+            "license": "Apache 2.0",
+            "size_bytes": 1930059391,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.paddleocr_vl.PaddleOCRVLModel",
+                "config": {
+                    "name_or_path": "PaddlePaddle/PaddleOCR-VL-1.6",
+                    "task": "spotting"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "transformers>=5.13"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["ocr", "detection", "torch"],
+            "training_data": [],
+            "date_added": "2026-07-21 00:00:00"
+        },
+        {
+            "base_name": "point-transformer-v3-nuscenes-torch",
+            "base_filename": "ptv3-nuscenes-semseg-pt-v3m1-0-base.pth",
+            "version": null,
+            "description": "Point Transformer V3 backbone pretrained on nuScenes LiDAR semantic segmentation; produces embeddings for 3D point cloud samples",
+            "source": "https://github.com/Pointcept/PointTransformerV3",
+            "author": "Xiaoyang Wu, et al.",
+            "license": "MIT",
+            "size_bytes": 554519016,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://huggingface.co/Pointcept/PointTransformerV3/resolve/main/nuscenes-semseg-pt-v3m1-0-base/model/model_best.pth"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ptv3.PointTransformerV3Model",
+                "config": {
+                    "grid_size": 0.05,
+                    "feature_keys": ["coord", "strength"]
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "spconv-cu120",
+                    "torch-scatter",
+                    "timm",
+                    "addict",
+                    "open3d"
+                ],
+                "cpu": {
+                    "support": false
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "embeddings",
+                "3d",
+                "point-cloud",
+                "lidar",
+                "nuscenes",
+                "torch",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "nuScenes",
+                    "url": "https://www.nuscenes.org"
+                }
+            ],
+            "date_added": "2026-06-15 12:00:00"
+        },
+        {
             "base_name": "dinov3-vits16-torch",
             "base_filename": null,
             "version": null,
@@ -12491,23 +12576,31 @@
             "date_added": "2026-07-14 12:00:00"
         },
         {
-            "base_name": "paddle-ocr-vl-torch",
+            "base_name": "c-radio-v4-h-torch",
             "base_filename": null,
             "version": null,
-            "description": "PaddleOCR-VL 1.6, a 0.9B vision-language document parser that detects and reads text in one pass",
-            "source": "https://huggingface.co/PaddlePaddle/PaddleOCR-VL-1.6",
-            "author": "PaddlePaddle Authors",
-            "license": "Apache 2.0",
-            "size_bytes": 1930059391,
+            "description": "C-RADIOv4-H (631M params) vision foundation model combining SigLIP2, DINOv3, and SAM3 for embeddings and spatial attention",
+            "source": "https://github.com/NVlabs/RADIO",
+            "author": "NVIDIA",
+            "license": "NVIDIA Open Model License Agreement",
+            "size_bytes": 2520000000,
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.paddleocr_vl.PaddleOCRVLModel",
+                "type": "fiftyone.utils.radio.CRadioV4Model",
                 "config": {
-                    "name_or_path": "PaddlePaddle/PaddleOCR-VL-1.6",
-                    "task": "spotting"
+                    "hf_repo": "nvidia/C-RADIOv4-H"
                 }
             },
             "requirements": {
-                "packages": ["torch", "transformers>=5.13"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers",
+                    "timm",
+                    "einops",
+                    "open-clip-torch",
+                    "scikit-learn",
+                    "scipy"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -12515,9 +12608,152 @@
                     "support": true
                 }
             },
-            "tags": ["ocr", "detection", "torch"],
+            "tags": [
+                "embeddings",
+                "heatmap",
+                "torch",
+                "transformer",
+                "nvidia",
+                "foundation"
+            ],
+            "training_data": [
+                {
+                    "name": "Multi-teacher distillation (SigLIP2, DINOv3, SAM3)",
+                    "url": "https://arxiv.org/abs/2601.17237"
+                }
+            ],
+            "date_added": "2026-02-05 12:00:00"
+        },
+        {
+            "base_name": "c-radio-v4-so400m-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "C-RADIOv4-SO400M (412M params) efficient vision foundation model competitive with ViT-H at lower cost",
+            "source": "https://github.com/NVlabs/RADIO",
+            "author": "NVIDIA",
+            "license": "NVIDIA Open Model License Agreement",
+            "size_bytes": 1648000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.radio.CRadioV4Model",
+                "config": {
+                    "hf_repo": "nvidia/C-RADIOv4-SO400M"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers",
+                    "timm",
+                    "einops",
+                    "open-clip-torch",
+                    "scikit-learn",
+                    "scipy"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "embeddings",
+                "heatmap",
+                "torch",
+                "transformer",
+                "nvidia",
+                "foundation"
+            ],
+            "training_data": [
+                {
+                    "name": "Multi-teacher distillation (SigLIP2, DINOv3, SAM3)",
+                    "url": "https://arxiv.org/abs/2601.17237"
+                }
+            ],
+            "date_added": "2026-02-05 12:00:00"
+        },
+        {
+            "base_name": "tipsv2-b14-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "TIPSv2 base vision-language encoder for zero-shot image classification and spatially-aware embeddings",
+            "source": "https://huggingface.co/google/tipsv2-b14",
+            "author": "Google DeepMind",
+            "license": "Apache 2.0",
+            "size_bytes": 784561815,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "google/tipsv2-b14"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=5.14",
+                    "sentencepiece"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "logits",
+                "embeddings",
+                "torch",
+                "transformers",
+                "zero-shot",
+                "official"
+            ],
             "training_data": [],
-            "date_added": "2026-07-21 00:00:00"
+            "date_added": "2026-07-22 00:00:00"
+        },
+        {
+            "base_name": "tipsv2-l14-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "TIPSv2 large vision-language encoder for zero-shot image classification and spatially-aware embeddings",
+            "source": "https://huggingface.co/google/tipsv2-l14",
+            "author": "Google DeepMind",
+            "license": "Apache 2.0",
+            "size_bytes": 1952552415,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "google/tipsv2-l14"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=5.14",
+                    "sentencepiece"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "logits",
+                "embeddings",
+                "torch",
+                "transformers",
+                "zero-shot",
+                "official"
+            ],
+            "training_data": [],
+            "date_added": "2026-07-22 00:00:00"
         },
         {
             "base_name": "qwen3.8-27b-torch",

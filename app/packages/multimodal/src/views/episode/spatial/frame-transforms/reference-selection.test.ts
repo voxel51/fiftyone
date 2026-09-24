@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { EpisodeFrameGraphSummary } from "../../../../runtime/frame-transforms";
 import {
   chooseCameraTarget,
+  chooseEgoCameraTarget,
   createReferenceSelectionState,
   deriveReferenceDecision,
   referenceSelectionReducer,
@@ -10,6 +11,29 @@ import {
 } from "./reference-selection";
 
 describe("episode 3D reference selection", () => {
+  it.each([
+    { frameIds: ["map", "lidar"], expected: "" },
+    { frameIds: ["base_link", "ego_vehicle", "map"], expected: "base_link" },
+    {
+      frameIds: ["robot/base_link", "robot/ego_vehicle", "map"],
+      expected: "robot/base_link",
+    },
+    {
+      frameIds: ["robot_a/base_link", "robot_b/base_link", "map"],
+      expected: "",
+    },
+    {
+      frameIds: ["robot_a/base_link", "robot_b/ego_vehicle", "map"],
+      expected: "",
+    },
+  ])(
+    "matches ego without guessing across robot namespaces: $frameIds",
+    ({ frameIds, expected }) => {
+      expect(chooseEgoCameraTarget(frameIds)).toBe(expected);
+      expect(chooseCameraTarget(frameIds, "map")).toBe(expected || "map");
+    },
+  );
+
   it("waits for data evidence instead of choosing an arbitrary transform island", () => {
     const emptyFacts = facts({
       components: [["base_link", "world"]],

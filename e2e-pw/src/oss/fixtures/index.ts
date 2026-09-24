@@ -3,14 +3,11 @@ import { DatasetFactory } from "src/shared/dataset-factory";
 import { EventUtils } from "src/shared/event-utils";
 import { MediaFactory } from "src/shared/media-factory";
 import { reserveWorkerPort } from "src/shared/network-utils/port";
-import { SAM2_MOCK_WORKER_SRC } from "src/shared/sam2-mock-worker";
+import { installSam2MockWorker } from "src/shared/sam2-mock-worker";
 import { AbstractFiftyoneLoader } from "../../shared/abstract-loader";
 import { AggregationWatcher } from "./aggregation-watcher";
-import { Annotate3dSDK } from "./annotate-3d-sdk";
-import { AnnotateSDK } from "./annotate-sdk";
 import { FoWebServer } from "./fo-server";
 import { OssLoader } from "./loader";
-import { VideoAnnotateSDK } from "./video-annotate-sdk";
 
 // note: this difference between "with" and "without" is only for type safety
 
@@ -21,9 +18,6 @@ export type CustomFixturesWithoutPage = {
   datasetFactory: typeof DatasetFactory;
   mediaFactory: typeof MediaFactory;
   foWebServer: FoWebServer;
-  annotateSDK: AnnotateSDK;
-  annotate3dSDK: Annotate3dSDK;
-  videoAnnotateSDK: VideoAnnotateSDK;
 };
 
 // these fixtures have access to the {page} fixture
@@ -75,24 +69,6 @@ const customFixtures = base.extend<object, CustomFixturesWithoutPage>({
     },
     { scope: "worker" },
   ],
-  annotateSDK: [
-    async ({}, use) => {
-      await use(new AnnotateSDK());
-    },
-    { scope: "worker" },
-  ],
-  annotate3dSDK: [
-    async ({}, use) => {
-      await use(new Annotate3dSDK());
-    },
-    { scope: "worker" },
-  ],
-  videoAnnotateSDK: [
-    async ({}, use) => {
-      await use(new VideoAnnotateSDK());
-    },
-    { scope: "worker" },
-  ],
 });
 
 export const test = customFixtures.extend<CustomFixturesWithPage>({
@@ -114,16 +90,7 @@ export const test = customFixtures.extend<CustomFixturesWithPage>({
     await use(new AggregationWatcher(page));
   },
   mockSam2Worker: async ({ page }, use) => {
-    // Must install BEFORE the page mounts BrowserAnnotationProvider. See
-    // `app/.../BrowserAnnotationProvider.ts` for the seam contract.
-    await page.addInitScript((workerSrc: string) => {
-      (
-        window as unknown as { __FO_TEST_SAM2_WORKER_FACTORY?: () => Worker }
-      ).__FO_TEST_SAM2_WORKER_FACTORY = () => {
-        const blob = new Blob([workerSrc], { type: "text/javascript" });
-        return new Worker(URL.createObjectURL(blob));
-      };
-    }, SAM2_MOCK_WORKER_SRC);
+    await installSam2MockWorker(page);
     await use();
   },
   baseURL: async ({ fiftyoneServerPort }, use) => {
