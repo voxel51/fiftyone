@@ -11,8 +11,6 @@ import {
   tinyA,
   tinyB,
 } from "src/oss/fixtures/mcap";
-import { CANVAS_ONLY } from "src/oss/poms/multimodal/episode";
-import { EventUtils } from "src/shared/event-utils";
 
 const SOURCE_FACTS_DATABASE_NAME = "fiftyone-multimodal-source-facts";
 
@@ -175,34 +173,46 @@ test.describe("MCAP surfaces", () => {
       const canvas = pointTile.locator('[data-graphics-surface="modal-3d"]');
       await expect(canvas).toHaveAttribute("data-graphics-backend", "webgl2");
 
-      const pointPanel = pointTile.locator("[data-point-cloud-rendered-count]");
-      // largest points so each frame's cloud is plain to see
-      await modal.episode.setSidebarNumber("points", "Point size (px)", 10);
-
-      // each frame's points are drawn once the panel's render stats report
-      // them, so every screenshot shows that frame's cloud
-      await expectPointCloudSpread(pointPanel, 4, 1);
-      await expect(canvas).toHaveScreenshot("point-frame-1.png", {
-        stylePath: CANVAS_ONLY,
-      });
-      await modal.episode.stepForward();
-      await expectPointCloudSpread(pointPanel, 4, 2);
-      await expect(canvas).toHaveScreenshot("point-frame-2.png", {
-        stylePath: CANVAS_ONLY,
-      });
-      await modal.episode.stepForward();
-      await expectPointCloudSpread(pointPanel, 5, 3);
-      await expect(canvas).toHaveScreenshot("point-frame-3.png", {
-        stylePath: CANVAS_ONLY,
-      });
+      // largest points so each frame's cloud is plain to see; each capture
+      // follows the frame that drew that cloud
+      await modal.episode.afterPointCloudFrame(
+        { at: "2024-01-01 00:00:00.000", pointCount: 4, pointSize: 10 },
+        () => modal.episode.setSidebarNumber("points", "Point size (px)", 10),
+      );
+      await modal.episode.assert.hasCanvasScreenshot(
+        canvas,
+        "point-frame-1.png",
+      );
+      await modal.episode.afterPointCloudFrame(
+        { at: "2024-01-01 00:00:01.000", pointCount: 4, pointSize: 10 },
+        () => modal.episode.stepForward(),
+      );
+      await modal.episode.assert.hasCanvasScreenshot(
+        canvas,
+        "point-frame-2.png",
+      );
+      await modal.episode.afterPointCloudFrame(
+        { at: "2024-01-01 00:00:02.000", pointCount: 5, pointSize: 10 },
+        () => modal.episode.stepForward(),
+      );
+      await modal.episode.assert.hasCanvasScreenshot(
+        canvas,
+        "point-frame-3.png",
+      );
 
       await modal.close();
-      await openMcapModal(grid, modal, sampleIndex.sidebarStart);
-      await modal.episode.waitForReady(sidebarFileNames[0]);
-      await modal.episode.setSidebarToggle(
-        "camera/front",
-        "Toggle pointcloud projections",
-        false,
+      // projections start off, so the first image frame shows none
+      await modal.episode.afterImageFrame(
+        { at: "2024-01-01 00:00:00.000", projectedStreams: 0 },
+        async () => {
+          await openMcapModal(grid, modal, sampleIndex.sidebarStart);
+          await modal.episode.waitForReady(sidebarFileNames[0]);
+          await modal.episode.setSidebarToggle(
+            "camera/front",
+            "Toggle pointcloud projections",
+            false,
+          );
+        },
       );
       const imageCanvas = modal.episode.shell.locator(
         '[data-graphics-surface="modal-images"]',
@@ -213,19 +223,26 @@ test.describe("MCAP surfaces", () => {
       );
       // only the camera tile's area of the shared image canvas
       const cameraTile = modal.episode.tile("camera/front");
-      await expect(cameraTile).toHaveScreenshot("projection-off.png", {
-        stylePath: CANVAS_ONLY,
-      });
-      await modal.episode.setSidebarToggle(
-        "camera/front",
-        "Toggle pointcloud projections",
-        true,
+      await modal.episode.assert.hasCanvasScreenshot(
+        cameraTile,
+        "projection-off.png",
       );
       // largest projected points so the overlay is plain to see
-      await modal.episode.setProjectionPointSize("camera/front", 10);
-      await expect(cameraTile).toHaveScreenshot("projection-on.png", {
-        stylePath: CANVAS_ONLY,
-      });
+      await modal.episode.afterImageFrame(
+        { at: "2024-01-01 00:00:00.000", projectedStreams: 1, pointSize: 10 },
+        async () => {
+          await modal.episode.setSidebarToggle(
+            "camera/front",
+            "Toggle pointcloud projections",
+            true,
+          );
+          await modal.episode.setProjectionPointSize("camera/front", 10);
+        },
+      );
+      await modal.episode.assert.hasCanvasScreenshot(
+        cameraTile,
+        "projection-on.png",
+      );
 
       await modal.episode.scope
         .getByRole("tab", { name: "Scene", exact: true })
@@ -287,29 +304,6 @@ async function sourceFactsEntryCount(page: Page): Promise<number> {
       };
     });
   }, SOURCE_FACTS_DATABASE_NAME);
-}
-
-async function expectPointCloudSpread(
-  panel: Locator,
-  minimumRenderedCount: number,
-  minimumSpreadAxes: number,
-): Promise<void> {
-  await new EventUtils(panel.page()).untilDom(
-    panel,
-    (element, [count, axes]) => {
-      const rendered = Number(
-        element.getAttribute("data-point-cloud-rendered-count"),
-      );
-      const spread = (
-        element.getAttribute("data-point-cloud-bounds-size") ?? ""
-      )
-        .split(",")
-        .map(Number)
-        .filter((value) => Number.isFinite(value) && value > 0.1).length;
-      return rendered >= count && spread >= axes;
-    },
-    [minimumRenderedCount, minimumSpreadAxes] as const,
-  );
 }
 
 async function expectStatsRow(

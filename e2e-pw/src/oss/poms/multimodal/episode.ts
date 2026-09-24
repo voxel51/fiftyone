@@ -1,28 +1,97 @@
+import fs from "fs";
 import path from "path";
 import { Locator, Page, expect } from "src/oss/fixtures";
 import { EventUtils } from "src/shared/event-utils";
 
 /**
- * Screenshot stylesheet that hides everything in the episode shell except its
+ * Screenshot style that hides everything in the episode shell except its
  * canvases, so a capture shows rendered pixels and no DOM chrome.
  */
-export const CANVAS_ONLY = path.resolve(
-  __dirname,
-  "../../../shared/assets/canvas-only.css",
+const CANVAS_ONLY_STYLE = fs.readFileSync(
+  path.resolve(__dirname, "../../../shared/assets/canvas-only.css"),
+  "utf8",
 );
+
+/** Detail of the app's e2e-only `multimodal-point-cloud-frame-rendered` */
+interface PointCloudFrameDetail {
+  readonly contentTimesNs: string;
+  readonly pointSize: number;
+  readonly renderedPointCount: number;
+  readonly surface: string | null;
+}
+
+/** Detail of the app's e2e-only `multimodal-image-frame-rendered` */
+interface ImageFrameDetail {
+  readonly imageContentTimeNs: string | null;
+  readonly pointSize: number;
+  readonly projectedStreamCount: number;
+}
 
 /** Shared user-facing episode interactions for modal and Explorer MCAP hosts. */
 export class EpisodePom {
+  readonly assert: EpisodeAsserter;
   readonly shell: Locator;
   readonly state: Locator;
+  private readonly eventUtils: EventUtils;
   private inspectedStream: string | null = null;
 
   constructor(
     private readonly page: Page,
     readonly scope: Locator,
   ) {
+    this.assert = new EpisodeAsserter();
+    this.eventUtils = new EventUtils(page);
     this.shell = scope.locator("[data-episode-playback-shell]");
     this.state = byDataTestId(scope, "episode-modal-state");
+  }
+
+  /**
+   * Run `action` and resolve on the rendered frame of the modal 3D canvas
+   * that drew the point cloud captured at `drawn.at` (a UTC playhead time).
+   */
+  async afterPointCloudFrame<T>(
+    drawn: { at: string; pointCount: number; pointSize: number },
+    action: () => Promise<T>,
+  ): Promise<T> {
+    const contentTimeNs = utcDateTimeToNanoseconds(drawn.at);
+    return this.eventUtils.after(
+      "multimodal-point-cloud-frame-rendered",
+      action,
+      (event) => {
+        const detail = event.detail as PointCloudFrameDetail;
+        return (
+          detail.surface === "modal-3d" &&
+          detail.contentTimesNs === contentTimeNs &&
+          detail.renderedPointCount === drawn.pointCount &&
+          detail.pointSize === drawn.pointSize
+        );
+      },
+    );
+  }
+
+  /**
+   * Run `action` and resolve on the rendered frame of the image tile that
+   * drew the image captured at `drawn.at` with `drawn.projectedStreams`
+   * point-cloud projections, at `drawn.pointSize` when given.
+   */
+  async afterImageFrame<T>(
+    drawn: { at: string; projectedStreams: number; pointSize?: number },
+    action: () => Promise<T>,
+  ): Promise<T> {
+    const contentTimeNs = utcDateTimeToNanoseconds(drawn.at);
+    return this.eventUtils.after(
+      "multimodal-image-frame-rendered",
+      action,
+      (event) => {
+        const detail = event.detail as ImageFrameDetail;
+        return (
+          detail.imageContentTimeNs === contentTimeNs &&
+          detail.projectedStreamCount === drawn.projectedStreams &&
+          (drawn.pointSize === undefined ||
+            detail.pointSize === drawn.pointSize)
+        );
+      },
+    );
   }
 
   get controls(): Locator {
@@ -678,6 +747,15 @@ export class EpisodePom {
   }
 }
 
+class EpisodeAsserter {
+  /** One capture of `target` showing only the episode shell's canvases */
+  async hasCanvasScreenshot(target: Locator, name: string): Promise<void> {
+    expect(
+      await target.screenshot({ style: CANVAS_ONLY_STYLE }),
+    ).toMatchSnapshot(name);
+  }
+}
+
 const CAMERA_POSE_INPUT_NAMES = [
   "Position X",
   "Position Y",
@@ -693,6 +771,12 @@ function byDataTestId(root: Locator, id: string): Locator {
 
 function exactText(value: string): RegExp {
   return new RegExp(`^${value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`);
+}
+
+function utcDateTimeToNanoseconds(value: string): string {
+  const milliseconds = utcDateTimeToMilliseconds(value);
+  if (milliseconds === null) throw new Error(`Not a UTC date-time: ${value}`);
+  return (BigInt(milliseconds) * 1_000_000n).toString();
 }
 
 function utcDateTimeToMilliseconds(value: string): number | null {

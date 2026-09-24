@@ -5,6 +5,7 @@ import {
   useTileId,
 } from "@fiftyone/tiling";
 import { useIsPlaying } from "@fiftyone/playback";
+import { isE2E } from "@fiftyone/utilities";
 import { useStore } from "jotai";
 import React, {
   useCallback,
@@ -33,6 +34,7 @@ import {
 import { VISUALIZATION_KIND } from "../../../visualization";
 import { ImagePanel } from "../../../visualization/media-2d/ImagePanel";
 import { VideoPanel } from "../../../visualization/media-2d/VideoPanel";
+import { FrameRenderedSignal } from "../../../visualization/webgpu/FrameRenderedSignal";
 import { BitmapImageFrameView } from "../../../visualization/media-2d/BitmapImageView";
 import GpuImageAnnotationLayer from "../../../visualization/media-2d/GpuImageAnnotationLayer";
 import { GpuImageAnnotationPicker } from "../../../visualization/media-2d/GpuImageAnnotationPicker";
@@ -948,6 +950,31 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
       sourceKey,
     ],
   );
+  const sceneChildren = useMemo(
+    () =>
+      isE2E() ? (
+        <>
+          <FrameRenderedSignal
+            detail={{
+              imageContentTimeNs:
+                committedImageContentTimeNs?.toString() ?? null,
+              pointSize: pointCloudProjection.pointSize,
+              projectedStreamCount: renderedProjectionLayers.length,
+            }}
+            event="multimodal-image-frame-rendered"
+          />
+          {panelSceneChildren}
+        </>
+      ) : (
+        panelSceneChildren
+      ),
+    [
+      committedImageContentTimeNs,
+      panelSceneChildren,
+      pointCloudProjection.pointSize,
+      renderedProjectionLayers.length,
+    ],
+  );
 
   return (
     <>
@@ -977,7 +1004,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
                   onImageLoaded={handleImageLoaded}
                   onResetView={imagePanZoom.resetView}
                   priority={isPlaying ? "playing" : "visible"}
-                  sceneChildren={panelSceneChildren}
+                  sceneChildren={sceneChildren}
                   stream={stream}
                   targetTimeNs={playbackFrame.contentTimeNs}
                   textureMesh={
@@ -999,7 +1026,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
                 notices={imageNotices}
                 onImageLoaded={handleImageLoaded}
                 onResetView={imagePanZoom.resetView}
-                sceneChildren={panelSceneChildren}
+                sceneChildren={sceneChildren}
                 textureMesh={
                   rectifiedViewActive ? rectifiedDisplay?.textureMesh : null
                 }
