@@ -100,7 +100,7 @@ export class EventUtils {
   constructor(private readonly page: Page) {}
 
   /**
-   * Arm a listener for an app event: a document-level CustomEvent, or any
+   * Arm a listener for an app event: a document- or window-level CustomEvent, or any
    * `@fiftyone/events` bus event on any channel. Resolves only after the
    * in-page listener is attached, so an event fired any time after arming is
    * guaranteed to be observed — arm BEFORE the action that fires the event,
@@ -146,9 +146,11 @@ export class EventUtils {
         };
 
         // CustomEvent instances don't serialize across the boundary;
-        // forward only the detail
-        const onDocument = (e: Event) => deliver((e as CustomEvent).detail);
-        document.addEventListener(eventName_, onDocument);
+        // forward only the detail. Some app events go to window instead of
+        // document, and a window listener doesn't see document events.
+        const onDom = (e: Event) => deliver((e as CustomEvent).detail);
+        document.addEventListener(eventName_, onDom);
+        window.addEventListener(eventName_, onDom);
 
         // bus payloads can hold live objects; forward only primitive fields
         const offBus = window.__FO_EVENTS__?.tap((event, data) => {
@@ -166,7 +168,8 @@ export class EventUtils {
 
         const armed = (window.__FO_ARMED__ ??= {});
         detach = () => {
-          document.removeEventListener(eventName_, onDocument);
+          document.removeEventListener(eventName_, onDom);
+          window.removeEventListener(eventName_, onDom);
           offBus?.();
           delete armed[id_];
         };

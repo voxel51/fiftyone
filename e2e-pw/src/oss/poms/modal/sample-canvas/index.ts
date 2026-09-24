@@ -357,9 +357,14 @@ class SampleCanvasAsserter {
     await this.sampleCanvasPom.page.addStyleTag({
       content: ".segmentation-toolbar { display: none !important; }",
     });
-    await expect(target).toHaveScreenshot(name, {
-      maxDiffPixelRatio: 0.0,
-    });
+    // a Lighter frame paints after the state that caused it, so capture the
+    // next one; a looker draws synchronously when its state changes
+    if ((await this.sampleCanvasPom.lighterCanvas.count()) > 0) {
+      await this.sampleCanvasPom.eventUtils.next("lighter:frame-painted");
+    }
+    expect(
+      await target.screenshot({ animations: "disabled", caret: "hide" }),
+    ).toMatchSnapshot(name, { maxDiffPixelRatio: 0.0 });
   }
 
   /**

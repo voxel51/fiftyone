@@ -164,6 +164,12 @@ export class PixiRenderer2D implements Renderer2D {
     if (this.isRunning && this.tickHandler) this.tickHandler();
   };
 
+  // only for browser automation (e2e): runs after Pixi's own render at LOW,
+  // so the frame it announces is on screen
+  private announcePaint = () => {
+    this.eventBus.dispatch("lighter:frame-painted", {});
+  };
+
   addTickHandler(onFrame: () => void): void {
     if (!this.app || this.isRunning) {
       return;
@@ -173,6 +179,13 @@ export class PixiRenderer2D implements Renderer2D {
     this.tickHandler = onFrame;
 
     this.app.ticker.add(this.tick);
+    if (navigator.webdriver) {
+      this.app.ticker.add(
+        this.announcePaint,
+        undefined,
+        PIXI.UPDATE_PRIORITY.UTILITY,
+      );
+    }
   }
 
   resetTickHandler(): void {
@@ -180,6 +193,7 @@ export class PixiRenderer2D implements Renderer2D {
 
     if (this.app.ticker) {
       this.app.ticker.remove(this.tick);
+      this.app.ticker.remove(this.announcePaint);
     }
 
     this.tickHandler = undefined;

@@ -304,6 +304,8 @@ export type LighterEventGroup = {
   "lighter:viewport-init-complete": Record<string, never>;
   /** Emitted after PixiJS initialization completes and the render loop starts */
   "lighter:renderer-ready": Record<string, never>;
+  /** A frame reached the screen. Emitted under browser automation only. */
+  "lighter:frame-painted": Record<string, never>;
 
   // ============================================================================
   // "DO" EVENTS USERS CAN EMIT TO FORCE STATE CHANGES OR ACTIONS
