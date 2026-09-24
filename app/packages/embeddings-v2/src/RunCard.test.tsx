@@ -34,4 +34,29 @@ describe("RunCard", () => {
     fireEvent.click(screen.getByText("kebab"));
     expect(onClick).not.toHaveBeenCalled();
   });
+
+  // Disabled wins over onClick; a disabled run is still deletable
+  it("is inert when disabled, while its actions still work", () => {
+    const onClick = vi.fn();
+    const onAction = vi.fn();
+    render(
+      <RunCard
+        title="viz"
+        disabled
+        onClick={onClick}
+        actions={
+          <button type="button" onClick={onAction}>
+            kebab
+          </button>
+        }
+      />,
+    );
+
+    fireEvent.click(screen.getByText("viz"));
+    expect(onClick).not.toHaveBeenCalled();
+    expect(screen.getByText("kebab").closest("[role='button']")).toBeNull();
+
+    fireEvent.click(screen.getByText("kebab"));
+    expect(onAction).toHaveBeenCalledTimes(1);
+  });
 });

@@ -42,6 +42,9 @@ export interface RunCardProps {
   meta?: ReactNode[];
   /** Trailing action cluster; clicks do not bubble to the card */
   actions?: ReactNode;
+  /** Mutes the card and makes it inert, `onClick` or not. Actions stay
+   * live; say why in `meta` */
+  disabled?: boolean;
   onClick?: () => void;
 }
 
@@ -62,17 +65,19 @@ export function RunCard({
   status,
   meta,
   actions,
+  disabled = false,
   onClick,
 }: RunCardProps) {
-  const interactive = Boolean(onClick);
+  const interactive = Boolean(onClick) && !disabled;
   return (
     <div
       className="emb-run-card"
       data-interactive={interactive ? "true" : "false"}
+      data-disabled={disabled ? "true" : "false"}
       style={TOKEN_VARS}
       role={interactive ? "button" : undefined}
       tabIndex={interactive ? 0 : undefined}
-      onClick={onClick}
+      onClick={interactive ? onClick : undefined}
       onKeyDown={
         interactive
           ? (event) => {
