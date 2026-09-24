@@ -11,7 +11,6 @@
   min-height: 0;
   position: relative;
   overflow: hidden;
-  background: var(--color-content-bg-card-1);
 }
 
 /* The looker's own transport bar is redundant with the timeline docked
@@ -26,5 +25,4 @@
    belongs to `TimelineWithTracks` itself, not to this host. */
 .timeline {
   flex: 0 0 auto;
-  background: var(--color-content-bg-card-1);
 }

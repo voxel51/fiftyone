@@ -11,11 +11,16 @@ import {
   getModalSampleFrameRate,
   useTimelineMaxSize,
 } from "@fiftyone/video-annotation";
+import { BackgroundColor, getColorCssVar } from "@voxel51/voodo";
 import React, { useMemo } from "react";
 import { useLookerPlaybackBridge } from "./useLookerPlaybackBridge";
 import styles from "./VideoLookerSurface.module.css";
 import useLooker from "./use-looker";
 import { useVideoModalSelectiveRendering } from "./use-modal-selective-rendering";
+
+const CARD_BACKGROUND: React.CSSProperties = {
+  background: `var(${getColorCssVar(BackgroundColor.Card1)})`,
+};
 
 /**
  * The looker half: a `VideoLooker` attached to this host, bound to the
@@ -91,10 +96,10 @@ export const VideoLookerSurface: React.FC<{ sample: fos.ModalSample }> = ({
         ref={dimensions.ref as React.RefObject<HTMLDivElement>}
         className={styles.root}
       >
-        <div className={styles.media}>
+        <div className={styles.media} style={CARD_BACKGROUND}>
           <VideoLookerReact sample={sample} frameRate={frameRate} />
         </div>
-        <div className={styles.timeline}>
+        <div className={styles.timeline} style={CARD_BACKGROUND}>
           <FrameLabelsTracks
             sample={sample}
             maxSize={timelineMaxSize}

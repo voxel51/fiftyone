@@ -202,7 +202,7 @@ export class VideoAnnotatePom {
 
   /** The label text in a track row's left column. */
   trackLabel(trackId: string): Locator {
-    return this.page.locator(`[data-track-id="${trackId}"] [data-track-label]`);
+    return this.track(trackId).locator("[data-track-label]");
   }
 
   /** Right-click a track's interval bar and read its context menu items. */
@@ -562,9 +562,7 @@ class VideoAnnotateAsserter {
   /** Assert a track's interval bars have no resize handles. */
   async trackNotResizable(trackId: string) {
     expect(
-      await this.va.page
-        .locator(`[data-track-id="${trackId}"] [data-resize-handle]`)
-        .count(),
+      await this.va.track(trackId).locator("[data-resize-handle]").count(),
     ).toBe(0);
   }
 
