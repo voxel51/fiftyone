@@ -3,6 +3,7 @@ import { EventUtils } from "src/shared/event-utils";
 import { ModalTaggerPom } from "../action-row/tagger/modal-tagger";
 import { EpisodePom } from "../multimodal/episode";
 import { ModalPanelPom } from "../panels/modal-panel";
+import { escapeRegExp } from "src/oss/utils";
 import { UrlPom } from "../url";
 import { ModalAnnotate3dPom } from "./annotate-3d";
 import { ModalGroupActionsPom } from "./group-actions";
@@ -140,13 +141,11 @@ export class ModalPom {
       .getByTestId(`nav-${direction === "forward" ? "right" : "left"}-button`)
       .click();
 
-    // wait for sample id to change
-    await this.page.waitForFunction((currentSampleId) => {
-      const sampleId = document.querySelector(
-        "[data-cy=sidebar-entry-id]",
-      )?.textContent;
-      return sampleId !== currentSampleId;
-    }, currentSampleId);
+    // the sidebar remounts its entries on a sample change
+    await this.eventUtils.untilPresent(
+      "[data-cy=sidebar-entry-id]",
+      new RegExp(`^(?!${escapeRegExp(currentSampleId)}$)\\S`),
+    );
 
     return this.waitForSampleLoadDomAttribute(allowErrorInfo);
   }

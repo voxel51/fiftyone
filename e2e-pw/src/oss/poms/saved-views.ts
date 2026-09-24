@@ -1,4 +1,5 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
+import { EventUtils } from "src/shared/event-utils";
 
 export type Color =
   | "Gray"
@@ -125,11 +126,9 @@ export class SavedViewsPom {
 
   async clearView() {
     if (await this.canClearView()) {
-      const urlBeforeClear = this.page.url();
-      await this.clearViewBtn.click();
-      await this.page.waitForFunction((urlBeforeClear) => {
-        return window.location.href !== urlBeforeClear;
-      }, urlBeforeClear);
+      await new EventUtils(this.page).after("page-change", () =>
+        this.clearViewBtn.click(),
+      );
     }
   }
 

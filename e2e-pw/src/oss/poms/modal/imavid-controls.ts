@@ -1,4 +1,5 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
+import { escapeRegExp } from "src/oss/utils";
 import { ModalPom } from ".";
 
 export class ModalImaAsVideoControlsPom {
@@ -39,31 +40,25 @@ export class ModalImaAsVideoControlsPom {
     return timelineId;
   }
 
-  private async waitUntilBufferingIsFinished() {
-    await this.page.waitForFunction(
-      () =>
-        document
-          .querySelector("[data-cy=imavid-playhead]")
-          ?.getAttribute("data-playhead-state") !== "buffering",
+  // only the paused and playing states render an icon with a click handler
+  private async waitUntilClickable() {
+    await this.modal.eventUtils.untilPresent(
+      '[data-cy=imavid-playhead][data-playhead-state="paused"], [data-cy=imavid-playhead][data-playhead-state="playing"]',
     );
   }
 
   public async togglePlay() {
-    await this.waitUntilBufferingIsFinished();
+    await this.waitUntilClickable();
 
-    let currentPlayHeadStatus = await this.playPauseButton.getAttribute(
+    // a short clip can play through and pause again before a DOM read, so
+    // wait on the event the icon's handler dispatches
+    const state = await this.playPauseButton.getAttribute(
       "data-playhead-state",
     );
-
-    const original = currentPlayHeadStatus;
-
-    // keep pressing space until play head status changes
-    while (currentPlayHeadStatus === original) {
-      await this.playPauseButton.click();
-      currentPlayHeadStatus = await this.playPauseButton.getAttribute(
-        "data-playhead-state",
-      );
-    }
+    await this.modal.eventUtils.after(
+      state === "paused" ? "play" : "pause",
+      () => this.playPauseButton.click(),
+    );
   }
 
   async getCurrentFrameStatus() {
@@ -75,17 +70,9 @@ export class ModalImaAsVideoControlsPom {
   }
 
   async waitUntilFrameTextIs(frameText: string, matchBeginning = false) {
-    await this.page.waitForFunction(
-      ({ frameText_, matchBeginning_ }) => {
-        const frameTextDom = document.querySelector(
-          `[data-cy=imavid-status-indicator]`,
-        )?.textContent;
-        if (matchBeginning_) {
-          return frameTextDom?.startsWith(frameText_);
-        }
-        return frameTextDom === frameText_;
-      },
-      { frameText_: frameText, matchBeginning_: matchBeginning },
+    await this.modal.eventUtils.untilPresent(
+      "[data-cy=imavid-status-indicator]",
+      new RegExp(`^${escapeRegExp(frameText)}${matchBeginning ? "" : "$"}`),
     );
   }
 

@@ -1,10 +1,8 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
+import { escapeRegExp } from "src/oss/utils";
 import { ModalPom } from ".";
 
 const TIME = '[data-cy="modal"] [data-testid="timeline-playhead-time"]';
-
-const escapeRegExp = (value: string) =>
-  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /**
  * Video playback controls in the modal.

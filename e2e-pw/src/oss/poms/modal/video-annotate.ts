@@ -1,8 +1,7 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
+import { escapeRegExp } from "src/oss/utils";
 import { ModalPom } from ".";
 
-const escapeRegExp = (value: string) =>
-  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 /**
  * The video-annotation surface: the ImaVid tile, the timeline of per-instance
  * frame-label tracks and temporal-detection (TD) rows, and the playback

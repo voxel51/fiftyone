@@ -119,34 +119,6 @@ export class Renderer3dPom {
     ) as Promise<SavedCameraState | null>;
   }
 
-  async waitForSavedCameraState(
-    datasetName: string,
-    timeout = 10000,
-  ): Promise<SavedCameraState> {
-    await this.page.waitForFunction(
-      ({ name, validatorBody }) => {
-        const validateSavedCameraState = new Function("raw", validatorBody);
-
-        return Boolean(
-          validateSavedCameraState(
-            localStorage.getItem(`${name}-fo3d-camera-position`),
-          ),
-        );
-      },
-      { name: datasetName, validatorBody: SAVED_CAMERA_STATE_VALIDATOR_BODY },
-      { timeout },
-    );
-
-    const savedState = await this.getSavedCameraState(datasetName);
-    if (!savedState) {
-      throw new Error(
-        `Saved camera state for dataset "${datasetName}" was not found`,
-      );
-    }
-
-    return savedState;
-  }
-
   async clearSavedCameraState(datasetName: string): Promise<void> {
     await this.page.evaluate((name) => {
       localStorage.removeItem(`${name}-fo3d-camera-position`);
