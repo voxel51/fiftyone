@@ -1,4 +1,4 @@
-import { Locator, Page } from "@playwright/test";
+import { Frame, Locator, Page } from "@playwright/test";
 
 /**
  * Handle for an armed document-event listener. Deliberately not a thenable:
@@ -194,38 +194,40 @@ export class EventUtils {
    * for state that takes real time to appear (decode, reveal, playback).
    */
   public async untilPresent(selector: string, text?: RegExp): Promise<void> {
-    await this.page.evaluate(
-      ({ selector_, source, flags }) =>
-        new Promise<void>((resolve) => {
-          const pattern = source === null ? null : new RegExp(source, flags);
-          const matches = () =>
-            Array.from(document.querySelectorAll(selector_)).some(
-              (el) => !pattern || pattern.test(el.textContent ?? ""),
-            );
+    await this.reportingNavigation(selector, () =>
+      this.page.evaluate(
+        ({ selector_, source, flags }) =>
+          new Promise<void>((resolve) => {
+            const pattern = source === null ? null : new RegExp(source, flags);
+            const matches = () =>
+              Array.from(document.querySelectorAll(selector_)).some(
+                (el) => !pattern || pattern.test(el.textContent ?? ""),
+              );
 
-          if (matches()) {
-            resolve();
-            return;
-          }
-
-          const observer = new MutationObserver(() => {
             if (matches()) {
-              observer.disconnect();
               resolve();
+              return;
             }
-          });
-          observer.observe(document, {
-            subtree: true,
-            childList: true,
-            attributes: true,
-            characterData: true,
-          });
-        }),
-      {
-        selector_: selector,
-        source: text?.source ?? null,
-        flags: text?.flags ?? "",
-      },
+
+            const observer = new MutationObserver(() => {
+              if (matches()) {
+                observer.disconnect();
+                resolve();
+              }
+            });
+            observer.observe(document, {
+              subtree: true,
+              childList: true,
+              attributes: true,
+              characterData: true,
+            });
+          }),
+        {
+          selector_: selector,
+          source: text?.source ?? null,
+          flags: text?.flags ?? "",
+        },
+      ),
     );
   }
 
@@ -240,32 +242,59 @@ export class EventUtils {
     arg?: A,
   ): Promise<void> {
     await locator.waitFor({ state: "attached" });
-    await locator.evaluate(
-      (element, { source, arg_ }) =>
-        new Promise<void>((resolve) => {
-          const check = new Function(`return (${source})`)() as (
-            element: Element,
-            arg: unknown,
-          ) => boolean;
-          if (check(element, arg_)) {
-            resolve();
-            return;
-          }
-          const observer = new MutationObserver(() => {
+    await this.reportingNavigation(locator.toString(), () =>
+      locator.evaluate(
+        (element, { source, arg_ }) =>
+          new Promise<void>((resolve) => {
+            const check = new Function(`return (${source})`)() as (
+              element: Element,
+              arg: unknown,
+            ) => boolean;
             if (check(element, arg_)) {
-              observer.disconnect();
               resolve();
+              return;
             }
-          });
-          observer.observe(element.ownerDocument, {
-            subtree: true,
-            childList: true,
-            attributes: true,
-            characterData: true,
-          });
-        }),
-      { source: predicate.toString(), arg_: arg },
+            const observer = new MutationObserver(() => {
+              if (check(element, arg_)) {
+                observer.disconnect();
+                resolve();
+              }
+            });
+            observer.observe(element.ownerDocument, {
+              subtree: true,
+              childList: true,
+              attributes: true,
+              characterData: true,
+            });
+          }),
+        { source: predicate.toString(), arg_: arg },
+      ),
     );
+  }
+
+  /**
+   * Run a DOM wait; if the document is replaced under it, fail with the URLs
+   * the page navigated to, since the wait can never resolve on that document
+   */
+  private async reportingNavigation<T>(
+    target: string,
+    wait: () => Promise<T>,
+  ): Promise<T> {
+    const urls: string[] = [];
+    const record = (frame: Frame) => {
+      if (frame === this.page.mainFrame()) urls.push(frame.url());
+    };
+    this.page.on("framenavigated", record);
+    try {
+      return await wait();
+    } catch (error) {
+      if (urls.length === 0) throw error;
+      throw new Error(
+        `the page navigated to ${urls.join(" -> ")} while waiting for ${target}: ${(error as Error).message}`,
+      );
+    } finally {
+      this.page.off("framenavigated", record);
+    }
   }
 
   /**
