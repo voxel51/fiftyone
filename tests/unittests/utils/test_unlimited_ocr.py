@@ -31,6 +31,37 @@ class TestUnlimitedOCRConfig:
         assert config.prompt == "<image>Free OCR."
         assert config.crop_size == 1024
 
+    def test_prompt_without_image_token_rejected(self):
+        with pytest.raises(ValueError, match="<image>"):
+            fuo.UnlimitedOCRModelConfig({"prompt": "Free OCR."})
+
+    def test_revision(self):
+        assert fuo.UnlimitedOCRModelConfig({}).revision is None
+        config = fuo.UnlimitedOCRModelConfig({"revision": "abc123"})
+        assert config.revision == "abc123"
+
+    def test_zoo_entry_pins_a_commit(self):
+        import json
+        import os
+        import re
+
+        path = os.path.join(
+            os.path.dirname(fuo.__file__),
+            os.pardir,
+            "zoo",
+            "models",
+            "manifest-torch.json",
+        )
+        with open(path, "r", encoding="utf-8") as f:
+            models = json.load(f)["models"]
+        entry = next(
+            m for m in models if m["base_name"] == "unlimited-ocr-torch"
+        )
+        revision = entry["default_deployment_config_dict"]["config"][
+            "revision"
+        ]
+        assert re.fullmatch(r"[0-9a-f]{40}", revision)
+
 
 class TestUnlimitedOCRGetItem:
     def test_required_keys(self):
@@ -90,6 +121,16 @@ class TestParseLayout:
     def test_malformed_box_skipped(self):
         text = "<|det|>text [not, a, box]<|/det|>x"
         assert fuo._parse_layout(text) == []
+
+    def test_nested_coordinate_skipped(self):
+        text = "<|det|>text [1, 2, 3, [4]]<|/det|>x"
+        assert fuo._parse_layout(text) == []
+
+    def test_non_list_box_skipped(self):
+        text = "<|det|>text [[0, 0, 999, 999], 5]<|/det|>x"
+        els = fuo._parse_layout(text)
+        assert len(els) == 1
+        assert els[0]["box"] == pytest.approx([0.0, 0.0, 1.0, 1.0])
 
     def test_empty_output(self):
         assert fuo._parse_layout("") == []
@@ -163,6 +204,24 @@ class TestPredictAll:
 
         assert torch.nn.Linear.reset_parameters is before[0]
         assert torch.nn.LayerNorm.reset_parameters is before[1]
+
+
+class TestLoadModel:
+    def test_revision_reaches_both_loaders(self, monkeypatch):
+        from unittest import mock
+
+        fake = mock.MagicMock()
+        monkeypatch.setattr(fuo, "transformers", fake)
+        monkeypatch.setattr(fuo.torch.cuda, "is_available", lambda: True)
+
+        model = fuo.UnlimitedOCRModel.__new__(fuo.UnlimitedOCRModel)
+        model._device = "cpu"
+        model._load_model(fuo.UnlimitedOCRModelConfig({"revision": "abc123"}))
+
+        tokenizer_kwargs = fake.AutoTokenizer.from_pretrained.call_args.kwargs
+        model_kwargs = fake.AutoModel.from_pretrained.call_args.kwargs
+        assert tokenizer_kwargs["revision"] == "abc123"
+        assert model_kwargs["revision"] == "abc123"
 
 
 class TestKeepTorchInit:

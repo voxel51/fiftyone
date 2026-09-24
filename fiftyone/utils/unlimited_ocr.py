@@ -117,10 +117,15 @@ def _parse_layout(text):
             coords = [coords]
 
         for box in coords:
-            if len(box) != 4:
+            if not isinstance(box, (list, tuple)) or len(box) != 4:
                 continue
 
-            x1, y1, x2, y2 = (float(v) / (_NUM_COORD_BINS - 1) for v in box)
+            try:
+                x1, y1, x2, y2 = (
+                    float(v) / (_NUM_COORD_BINS - 1) for v in box
+                )
+            except (TypeError, ValueError):
+                continue
             x0 = min(max(min(x1, x2), 0.0), 1.0)
             y0 = min(max(min(y1, y2), 0.0), 1.0)
             xf = min(max(x1, x2, 0.0), 1.0)
@@ -156,6 +161,7 @@ class UnlimitedOCRModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
 
     Args:
         name_or_path ("baidu/Unlimited-OCR"): the HuggingFace model to load
+        revision (None): the commit hash, branch or tag of the model to load
         prompt ("<image>document parsing."): the task prompt. Must contain the
             ``<image>`` token
         base_size (1024): the global-view size in pixels
@@ -175,7 +181,12 @@ class UnlimitedOCRModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         self.name_or_path = self.parse_string(
             d, "name_or_path", default=DEFAULT_UNLIMITED_OCR_MODEL
         )
+        self.revision = self.parse_string(d, "revision", default=None)
         self.prompt = self.parse_string(d, "prompt", default=DEFAULT_PROMPT)
+        if "<image>" not in self.prompt:
+            raise ValueError(
+                "prompt must contain the '<image>' token; got %r" % self.prompt
+            )
         self.base_size = self.parse_int(d, "base_size", default=1024)
         self.crop_size = self.parse_int(d, "crop_size", default=640)
         self.crop_mode = self.parse_bool(d, "crop_mode", default=True)
@@ -235,10 +246,13 @@ class UnlimitedOCRModel(fout.TorchImageModel, fom.SupportsGetItem):
             )
 
         self._tokenizer = transformers.AutoTokenizer.from_pretrained(
-            config.name_or_path, trust_remote_code=True
+            config.name_or_path,
+            revision=config.revision,
+            trust_remote_code=True,
         )
         model = transformers.AutoModel.from_pretrained(
             config.name_or_path,
+            revision=config.revision,
             trust_remote_code=True,
             use_safetensors=True,
             torch_dtype=torch.bfloat16,

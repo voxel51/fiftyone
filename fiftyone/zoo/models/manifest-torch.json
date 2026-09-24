@@ -12655,7 +12655,9 @@
             "size_bytes": 6672547120,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.unlimited_ocr.UnlimitedOCRModel",
-                "config": {}
+                "config": {
+                    "revision": "07dea832e22aefee32ad281d4b80551282e1c168"
+                }
             },
             "requirements": {
                 "packages": [
