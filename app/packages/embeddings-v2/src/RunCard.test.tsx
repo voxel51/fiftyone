@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { TextColor } from "@voxel51/voodo";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { RunCard } from "./RunCard";
 
@@ -58,5 +59,39 @@ describe("RunCard", () => {
 
     fireEvent.click(screen.getByText("kebab"));
     expect(onAction).toHaveBeenCalledTimes(1);
+  });
+
+  // The reason covers the title and meta only: hovering the pill or the
+  // live delete menu must not raise it
+  it("explains a disabled card in a tooltip over its title and meta", () => {
+    render(
+      <RunCard
+        title="viz"
+        status={{ label: "Unavailable", color: TextColor.Muted }}
+        meta={["fake patches"]}
+        actions={<button type="button">kebab</button>}
+        disabled
+        disabledReason="Wrong field"
+      />,
+    );
+
+    fireEvent.mouseEnter(screen.getByText("Unavailable"));
+    fireEvent.mouseEnter(screen.getByText("kebab"));
+    expect(screen.queryByText("Wrong field")).toBeNull();
+
+    fireEvent.mouseEnter(screen.getByText("viz"));
+    expect(screen.getByText("Wrong field")).toBeDefined();
+    fireEvent.mouseLeave(screen.getByText("viz"));
+    expect(screen.queryByText("Wrong field")).toBeNull();
+
+    fireEvent.mouseEnter(screen.getByText("fake patches"));
+    expect(screen.getByText("Wrong field")).toBeDefined();
+  });
+
+  it("shows no reason on an enabled card", () => {
+    render(<RunCard title="viz" disabledReason="Wrong field" />);
+
+    fireEvent.mouseEnter(screen.getByText("viz"));
+    expect(screen.queryByText("Wrong field")).toBeNull();
   });
 });

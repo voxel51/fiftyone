@@ -26,8 +26,8 @@
   background: var(--emb-card-hover);
 }
 
-/* Only the identity row mutes: the meta line carries the reason, and the
-   actions stay live, so both keep full contrast */
+/* Only the identity row mutes: the pill names the state and the actions
+   stay live, so both keep full contrast */
 .emb-run-card[data-disabled="true"] .emb-run-card-lead {
   opacity: 0.5;
 }

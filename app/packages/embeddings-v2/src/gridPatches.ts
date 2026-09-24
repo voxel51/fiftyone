@@ -78,7 +78,8 @@ export function gridPatches(
   return null;
 }
 
-/** Why a run cannot link to the grid (the card's hint), or null when it can */
+/** Why a run cannot link to the grid (the card's tooltip), or null when it
+ * can */
 export function unavailableReason(
   run: Pick<VisualizationRun, "patchesField">,
   grid: GridPatches | null,
@@ -86,7 +87,7 @@ export function unavailableReason(
   if (!grid || !run.patchesField || grid.fields.includes(run.patchesField)) {
     return null;
   }
-  return `Grid shows ${grid.label}`;
+  return `The grid shows ${grid.label}. This run embeds ${run.patchesField} patches.`;
 }
 
 export interface ListedRun {

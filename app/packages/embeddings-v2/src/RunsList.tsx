@@ -253,14 +253,14 @@ export default function RunsList({
                 badge={run.dims ? `${run.dims}D` : undefined}
                 badgeAccent={run.dims === 3}
                 status={runStatus(run, unavailable)}
-                // Inert however ready, but still deletable from here
+                // Inert however ready, but still deletable from here. The
+                // reason is a tooltip, so the meta keeps every card's shape
                 disabled={Boolean(unavailable)}
-                // One shape for every run: why it can't open (if it
-                // can't), what it covers, what produced it, when it last
-                // changed
+                disabledReason={unavailable ?? undefined}
+                // One shape for every run: what it covers, what produced it,
+                // when it last changed
                 meta={[
                   run.error,
-                  unavailable,
                   // Same brain key semantics, very different plots —
                   // which granularity a run embeds must be readable
                   // from the card

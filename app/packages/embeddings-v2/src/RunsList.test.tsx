@@ -133,11 +133,16 @@ describe("RunsList", () => {
     );
 
     expect(screen.getByText("Unavailable")).toBeDefined();
-    expect(screen.getByText("Grid shows ground_truth patches")).toBeDefined();
+    // The reason is a tooltip, so every card keeps the same meta line
+    const reason =
+      "The grid shows ground_truth patches. This run embeds fake patches.";
+    expect(screen.queryByText(reason)).toBeNull();
 
     const [fake, gt, img] = ["fake_viz", "gt_viz", "img_viz"].map((key) =>
       screen.getByText(key),
     );
+    fireEvent.mouseEnter(fake);
+    expect(screen.getByText(reason)).toBeDefined();
     // DOM order: the two usable runs first, in dataset order
     expect(
       gt.compareDocumentPosition(img) & Node.DOCUMENT_POSITION_FOLLOWING,

@@ -91,7 +91,7 @@ describe("unavailableReason", () => {
   it("blocks only patches runs on another field", () => {
     expect(unavailableReason(run("gt", "ground_truth"), grid)).toBeNull();
     expect(unavailableReason(run("fake", "fake"), grid)).toBe(
-      "Grid shows ground_truth patches",
+      "The grid shows ground_truth patches. This run embeds fake patches.",
     );
   });
 
@@ -119,11 +119,11 @@ describe("listRuns", () => {
       "fake_a",
       "fake_b",
     ]);
-    expect(listed.map(({ unavailable }) => unavailable)).toEqual([
-      null,
-      null,
-      "Grid shows ground_truth patches",
-      "Grid shows ground_truth patches",
+    expect(listed.map(({ unavailable }) => Boolean(unavailable))).toEqual([
+      false,
+      false,
+      true,
+      true,
     ]);
   });
 });

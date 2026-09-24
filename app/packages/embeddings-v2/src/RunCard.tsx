@@ -19,6 +19,7 @@ import {
   Text,
   TextColor,
   TextVariant,
+  Tooltip,
 } from "@voxel51/voodo";
 import { type CSSProperties, type ReactNode } from "react";
 import "./panel.css";
@@ -43,8 +44,12 @@ export interface RunCardProps {
   /** Trailing action cluster; clicks do not bubble to the card */
   actions?: ReactNode;
   /** Mutes the card and makes it inert, `onClick` or not. Actions stay
-   * live; say why in `meta` */
+   * live */
   disabled?: boolean;
+  /** Why a disabled card is disabled: a tooltip over its title and meta.
+   * The status pill and actions stay outside it, so hovering the menu
+   * never raises it */
+  disabledReason?: string;
   onClick?: () => void;
 }
 
@@ -57,6 +62,28 @@ const TOKEN_VARS = {
   "--emb-text-secondary": `var(${getColorCssVar(TextColor.Secondary)})`,
 } as CSSProperties;
 
+/** One content region of the card, under the reason tooltip when there is
+ * one. The tooltip's wrapper takes the region's class, so the layout is
+ * identical either way. Portaled: rendered inside the region, the tooltip
+ * would inherit the muted region's opacity */
+function Region({
+  className,
+  reason,
+  children,
+}: {
+  className: string;
+  reason: string | null;
+  children: ReactNode;
+}) {
+  return reason ? (
+    <Tooltip content={reason} portal wrapperClassName={className}>
+      {children}
+    </Tooltip>
+  ) : (
+    <div className={className}>{children}</div>
+  );
+}
+
 export function RunCard({
   icon,
   title,
@@ -66,9 +93,11 @@ export function RunCard({
   meta,
   actions,
   disabled = false,
+  disabledReason,
   onClick,
 }: RunCardProps) {
   const interactive = Boolean(onClick) && !disabled;
+  const reason = disabled && disabledReason ? disabledReason : null;
   return (
     <div
       className="emb-run-card"
@@ -90,7 +119,7 @@ export function RunCard({
       }
     >
       <div className="emb-run-card-row">
-        <div className="emb-run-card-lead">
+        <Region className="emb-run-card-lead" reason={reason}>
           {icon && (
             <div className="emb-run-card-iconwell">
               <Icon name={icon} size={Size.Sm} color={TextColor.Secondary} />
@@ -109,7 +138,7 @@ export function RunCard({
               {badge}
             </span>
           )}
-        </div>
+        </Region>
         <div
           className="emb-run-card-trail"
           onClick={(event) => event.stopPropagation()}
@@ -132,7 +161,7 @@ export function RunCard({
         </div>
       </div>
       {meta && meta.length > 0 && (
-        <div className="emb-run-card-meta">
+        <Region className="emb-run-card-meta" reason={reason}>
           {meta.map((item, index) => (
             // The dot travels with its segment: a narrow card wraps
             // between segments, never inside one
@@ -143,7 +172,7 @@ export function RunCard({
               </Text>
             </span>
           ))}
-        </div>
+        </Region>
       )}
     </div>
   );
