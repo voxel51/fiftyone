@@ -11,18 +11,9 @@ import sys
 import uuid
 
 # Isolates each run in its own database. Must run before ``fiftyone`` is
-# imported, since ``fo.config`` reads the environment at import time. A name
-# already carrying the test prefix is reused, so nested pytest processes share
-# the parent's database.
-_TEST_DATABASE_PREFIX = "fiftyone-test-"
-
-if os.environ.get("FIFTYONE_DATABASE_NAME", "").startswith(
-    _TEST_DATABASE_PREFIX
-):
-    _owned_test_database_name = None
-else:
-    _owned_test_database_name = _TEST_DATABASE_PREFIX + uuid.uuid4().hex[:12]
-    os.environ["FIFTYONE_DATABASE_NAME"] = _owned_test_database_name
+# imported, since ``fo.config`` reads the environment at import time.
+_owned_test_database_name = "fiftyone-test-" + uuid.uuid4().hex[:12]
+os.environ["FIFTYONE_DATABASE_NAME"] = _owned_test_database_name
 
 if "fiftyone.core.config" in sys.modules:
     import fiftyone as fo
@@ -51,9 +42,6 @@ def pytest_sessionstart(session):
 def pytest_sessionfinish(session, exitstatus):
     """Drops the test database created for this run, if one was created."""
     global _session_finish_message
-
-    if _owned_test_database_name is None:
-        return
 
     fod = sys.modules.get("fiftyone.core.odm.database")
     if fod is None or not fod._connection_kwargs:
