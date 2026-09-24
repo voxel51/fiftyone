@@ -27,7 +27,7 @@ from fiftyone.server.filters import GroupElementFilter, SampleFilter
 from fiftyone.server.scalars import BSONArray, JSON
 
 _LABEL_TAGS = "_label_tags"
-_TEMPORAL_TAGS = "_temporal_tags"
+TEMPORAL_TAGS = "_temporal_tags"
 
 
 def _make_group_field_stage(view):
@@ -228,7 +228,7 @@ def get_extended_view(
         if label_tags:
             view = _match_label_tags(view, label_tags)
 
-        temporal_tags = filters.get(_TEMPORAL_TAGS, None)
+        temporal_tags = filters.get(TEMPORAL_TAGS, None)
         if temporal_tags:
             view = _match_temporal_tags(view, temporal_tags)
 
@@ -922,30 +922,13 @@ def _match_temporal_tags(
     # requested tag values at the dataset level (tags are sparse, so this set
     # stays small, and we avoid enumerating the view's sample ids on every
     # grid load), then select / exclude within the current view -- the
-    # select/exclude intersects, so out-of-view tag hits can't leak in.
-    dataset = view._dataset if isinstance(view, fov.DatasetView) else view
+    # select/exclude intersects, so out-of-view tag hits can't leak in. On a
+    # grouped view that is the active slice's samples, as with every other
+    # sidebar filter.
     tags = fotags.list_temporal_tags(
-        dataset, fotags.TemporalTagFilter(tags=values)
+        _root_dataset(view), fotags.TemporalTagFilter(tags=values)
     )
     sample_ids = {str(tag.sample_id) for tag in tags}
-
-    if dataset.media_type == fom.GROUP:
-        # A tag lives on one slice's sample, but the grid shows whichever slice
-        # is active, so selecting sample ids would empty the grid on every
-        # other slice. Match the groups those samples belong to instead.
-        #
-        # Matched on the group id field rather than with `select_groups`: by
-        # the time the grid's filters are applied the collection has usually
-        # been flattened to the requested slices, and the group stages do not
-        # apply to a flattened view.
-        group_ids = _temporal_tag_group_ids(dataset, sample_ids)
-        path = dataset.group_field + "._id"
-        oids = [ObjectId(group_id) for group_id in group_ids]
-
-        if exclude:
-            return view.match({path: {"$nin": oids}}) if oids else view
-
-        return view.match({path: {"$in": oids}})
 
     if exclude:
         # Excluding with no matches leaves the view untouched.
@@ -955,14 +938,30 @@ def _match_temporal_tags(
     return view.select(sample_ids)
 
 
-def _temporal_tag_group_ids(dataset, sample_ids) -> list:
-    """The ids of the groups owning `sample_ids`, looked up across every slice."""
+def count_temporal_tags(view: foc.SampleCollection) -> dict:
+    """Counts the temporal tags on the samples of ``view``, by tag value.
+
+    Counts every interval, as the other sidebar tag counts count occurrences.
+    The dataset's tags are listed first and then narrowed to the view, rather
+    than listing the view's sample ids, which would read every sample.
+    """
+    tags = fotags.list_temporal_tags(_root_dataset(view))
+    sample_ids = {str(tag.sample_id) for tag in tags}
     if not sample_ids:
-        return []
+        return {}
 
-    flat = dataset.select_group_slices(_allow_mixed=True)
+    in_view = set(view.select(sample_ids).values("id"))
 
-    return flat.select(sample_ids).values(dataset.group_field + ".id")
+    counts = {}
+    for tag in tags:
+        if str(tag.sample_id) in in_view:
+            counts[tag.tag] = counts.get(tag.tag, 0) + 1
+
+    return counts
+
+
+def _root_dataset(view: foc.SampleCollection) -> fod.Dataset:
+    return view._dataset if isinstance(view, fov.DatasetView) else view
 
 
 def _match_label_tags(view: foc.SampleCollection, label_tags):

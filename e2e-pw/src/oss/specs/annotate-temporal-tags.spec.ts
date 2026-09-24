@@ -81,6 +81,13 @@ test.describe.serial("video temporal tags", () => {
     page,
     sidebar,
   }) => {
+    // Counted while no tag exists, so the count checked once the modal closes
+    // is only right if the tag mutation itself refetched it.
+    await sidebar.clickFieldDropdown("_temporal_tags");
+    await expect(
+      page.getByTestId("categorical-filter-_temporal_tags"),
+    ).toContainText("No results");
+
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
@@ -99,6 +106,10 @@ test.describe.serial("video temporal tags", () => {
     await sidebar.clickFieldCheckbox("_temporal_tags");
 
     await expect.poll(async () => await grid.temporalTagMarkCount()).toBe(1);
+
+    await expect(
+      await sidebar.getAttributeItemCount("_temporal_tags", TAG),
+    ).toHaveText("1");
 
     // A reload keeps nothing client-side, so a mark that comes back was read
     // from the tag routes.

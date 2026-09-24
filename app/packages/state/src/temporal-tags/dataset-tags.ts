@@ -15,6 +15,7 @@ type Entry = {
 
 const entries = new Map<string, Entry>();
 const listeners = new Set<() => void>();
+const mutationListeners = new Set<() => void>();
 let defaultClient: TemporalTagsClient | undefined;
 
 function getDefaultClient() {
@@ -80,6 +81,8 @@ export function invalidateDatasetTemporalTags(
 ) {
   if (!datasetId) return;
 
+  for (const listener of mutationListeners) listener();
+
   const entry = entries.get(datasetId);
   if (!entry) return;
 
@@ -87,6 +90,18 @@ export function invalidateDatasetTemporalTags(
   entry.generation += 1;
   entry.loading = false;
   load(client ?? getDefaultClient(), datasetId);
+}
+
+/**
+ * Calls `listener` after every temporal tag mutation, on any dataset. Returns
+ * the unsubscribe function.
+ */
+export function onTemporalTagsMutated(listener: () => void): () => void {
+  mutationListeners.add(listener);
+
+  return () => {
+    mutationListeners.delete(listener);
+  };
 }
 
 /**

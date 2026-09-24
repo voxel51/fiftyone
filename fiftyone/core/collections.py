@@ -7363,36 +7363,15 @@ class SampleCollection(object):
         if bool is None:
             bool = True
 
-        # Resolved against the root dataset, not this collection: a view
-        # scoped to one slice cannot see tags on its siblings' samples, and a
-        # tag on any slice qualifies the whole group. The match below
-        # intersects with this collection, so out-of-view hits cannot leak in.
+        # Resolved against the root dataset rather than this collection, whose
+        # own `temporal_tags` would list every one of its sample ids; the
+        # select below intersects with this collection, which on a grouped
+        # collection is its active slice's samples.
         root = self._dataset
         sample_ids = {
             tag.sample_id
             for tag in root.temporal_tags.values(filter=tag_filter)
         }
-
-        if root.media_type == fom.GROUP:
-            # A tag lives on one slice's sample, so matching sample ids would
-            # empty a view of any other slice. Match the owning groups
-            # instead, by group id rather than with the group view stages,
-            # which do not apply to a collection already flattened with
-            # `select_group_slices`.
-            group_ids = []
-            if sample_ids:
-                flat = root.select_group_slices(_allow_mixed=True)
-                group_ids = flat.select(sample_ids).values(
-                    root.group_field + ".id"
-                )
-
-            path = root.group_field + "._id"
-            oids = [ObjectId(group_id) for group_id in group_ids]
-
-            if bool:
-                return self.match({path: {"$in": oids}})
-
-            return self.match({path: {"$nin": oids}}) if oids else self.view()
 
         if bool:
             return self.select(sample_ids)

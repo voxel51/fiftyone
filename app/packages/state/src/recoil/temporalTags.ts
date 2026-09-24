@@ -1,7 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { atom, selector, useRecoilValue, useSetRecoilState } from "recoil";
-import { createTemporalTagsClient } from "../temporal-tags";
+import {
+  DefaultValue,
+  atom,
+  selector,
+  selectorFamily,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
+import {
+  createTemporalTagsClient,
+  onTemporalTagsMutated,
+} from "../temporal-tags";
 import { useActiveFilterValues } from "./filters";
+import { counts } from "./pathData/counts";
 import { isModalActive } from "./modal";
 import { activeField } from "./schema";
 import { datasetId } from "./selectors";
@@ -20,10 +31,11 @@ export interface TemporalTagResults {
 }
 
 /**
- * Available temporal-tag values (with counts) for the current dataset. A plain
- * atom (rather than an async selector) so reading it never suspends the
- * sidebar. Kept private — exposed only through the read selector + sync hook
- * below so the atom stays an implementation detail.
+ * Every temporal-tag value defined on the current dataset, with its count over
+ * the whole dataset: the vocabulary a tag editor offers. A plain atom (rather
+ * than an async selector) so reading it never suspends. Kept private — exposed
+ * only through the read selector + sync hook below so the atom stays an
+ * implementation detail.
  */
 const temporalTagResultsAtom = atom<TemporalTagResults>({
   key: "temporalTagResultsAtom",
@@ -31,31 +43,24 @@ const temporalTagResultsAtom = atom<TemporalTagResults>({
 });
 
 /**
- * Read-only view of the temporal-tag results, exposed as the string filter's
- * `resultsAtom` (a RecoilValue, mirroring `labelTagsCount`). Populate it via
- * {@link useSyncTemporalTagResults}.
+ * Read-only view of the dataset's temporal-tag vocabulary. Populate it via
+ * {@link useSyncTemporalTagResults}. The sidebar's counts are not these; they
+ * are {@link temporalTagCounts}, scoped to the view.
  */
 export const temporalTagResults = selector<TemporalTagResults>({
   key: "temporalTagResults",
   get: ({ get }) => get(temporalTagResultsAtom),
 });
 
-/**
- * Fetches temporal-tag value counts for a dataset and shapes them for the
- * string filter.
- */
+/** Fetches the temporal-tag vocabulary of a dataset, with counts. */
 export const fetchTemporalTagResults = async (
   datasetId: string,
 ): Promise<TemporalTagResults> => {
-  // Counts intervals, the way every other sidebar tag count counts items —
-  // `count_label_tags` reports occurrences, not the samples they sit on. A
-  // count is therefore not a promise about how many rows selecting the value
-  // leaves in the grid.
-  const counts = await createTemporalTagsClient().countDatasetTemporalTags({
+  const tagCounts = await createTemporalTagsClient().countDatasetTemporalTags({
     datasetId,
   });
 
-  const results = Object.entries(counts ?? {}).map(([value, count]) => ({
+  const results = Object.entries(tagCounts ?? {}).map(([value, count]) => ({
     value,
     count,
   }));
@@ -65,9 +70,51 @@ export const fetchTemporalTagResults = async (
 };
 
 /**
- * Loads temporal-tag value counts for the active dataset into the results atom.
- * Encapsulates all Recoil + fetch access so the filter component never touches
- * atoms directly. Call once from the temporal-tags sidebar filter.
+ * Bumped after every temporal tag mutation. Temporal tags are not sample
+ * fields, so no other input to their aggregation changes when one is created,
+ * edited or deleted; this is what refetches it.
+ */
+export const temporalTagsRevision = atom<number>({
+  key: "temporalTagsRevision",
+  default: 0,
+  effects: [
+    ({ setSelf }) =>
+      onTemporalTagsMutated(() =>
+        setSelf(
+          (revision) => (revision instanceof DefaultValue ? 0 : revision) + 1,
+        ),
+      ),
+  ],
+});
+
+/**
+ * The temporal-tag values on the samples in view, with how many intervals
+ * each has there, shaped for the string filter's `resultsAtom`. Scoped like
+ * every other sidebar count: the view, the active slice, and with `extended`
+ * the filters.
+ */
+export const temporalTagCounts = selectorFamily<
+  TemporalTagResults,
+  { modal: boolean; extended: boolean }
+>({
+  key: "temporalTagCounts",
+  get:
+    (params) =>
+    ({ get }) => {
+      const results = Object.entries(
+        get(counts({ ...params, path: TEMPORAL_TAGS_FIELD })),
+      ).map(([value, count]) => ({ value, count }));
+
+      return {
+        results,
+        count: results.reduce((acc, { count }) => acc + count, 0),
+      };
+    },
+});
+
+/**
+ * Loads the active dataset's temporal-tag vocabulary into the results atom.
+ * Call from each tag editor that offers the existing values.
  */
 export const useSyncTemporalTagResults = (): void => {
   const currentDatasetId = useRecoilValue(datasetId);

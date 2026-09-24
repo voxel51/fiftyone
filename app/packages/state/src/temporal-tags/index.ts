@@ -8,6 +8,7 @@
 export { createTemporalTagsClient } from "./client";
 export {
   invalidateDatasetTemporalTags,
+  onTemporalTagsMutated,
   useDatasetTemporalTags,
   useSampleTemporalTagsFromDataset,
 } from "./dataset-tags";

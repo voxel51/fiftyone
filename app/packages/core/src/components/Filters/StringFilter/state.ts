@@ -73,11 +73,11 @@ export const stringSearchResults = selectorFamily<
       };
 
       // Temporal tags aren't sample fields, so they have no index and no
-      // `/values` support — serve their options from the dataset tag counts
+      // `/values` support — serve their options from their aggregation
       // instead of the lightning / values paths below (which would fail to
       // resolve `_temporal_tags` as a field).
       if (path.startsWith("_temporal_tags")) {
-        const temporal = get(fos.temporalTagResults);
+        const temporal = get(fos.temporalTagCounts({ modal, extended: false }));
         return {
           count: temporal.count ?? 0,
           values: temporal.results,

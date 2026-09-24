@@ -12,7 +12,7 @@ from decorators import drop_collection, drop_datasets
 
 import fiftyone as fo
 import fiftyone.core.tags as fota
-from fiftyone.server.view import get_extended_view
+from fiftyone.server.view import count_temporal_tags, get_extended_view
 
 drop_tags = drop_collection(fota.TAGS_COLLECTION_NAME)
 
@@ -97,18 +97,17 @@ class TemporalTagGridFilterTests(unittest.TestCase):
 
 
 class GroupedTemporalTagGridFilterTests(unittest.TestCase):
-    """A tag written on one slice's sample has to filter every slice.
-
-    The grid shows whichever slice is active, so matching the tagged sample
-    ids alone would empty the grid on every slice but the tagged one.
+    """On a grouped dataset the filter applies to the active slice's samples,
+    like every other sidebar filter; a tag on a sibling slice does not count.
     """
 
     @drop_tags
     @drop_datasets
-    def test_match_selects_the_group_from_any_slice(self):
-        dataset, groups = _make_tagged_group_dataset()
+    def test_match_selects_the_active_slices_tagged_samples(self):
+        dataset, groups, _ = _make_tagged_group_dataset()
+        expected = {"image": [], "video": [groups[0]]}
 
-        for slice_name in ("image", "video"):
+        for slice_name, group_ids in expected.items():
             with self.subTest(slice=slice_name):
                 dataset.group_slice = slice_name
                 view = get_extended_view(
@@ -116,14 +115,15 @@ class GroupedTemporalTagGridFilterTests(unittest.TestCase):
                     filters={_TEMPORAL_TAGS: {"values": ["review"]}},
                 )
 
-                self.assertEqual(view.values("group.id"), [groups[0]])
+                self.assertEqual(view.values("group.id"), group_ids)
 
     @drop_tags
     @drop_datasets
-    def test_exclude_removes_the_group_from_any_slice(self):
-        dataset, groups = _make_tagged_group_dataset()
+    def test_exclude_removes_the_active_slices_tagged_samples(self):
+        dataset, groups, _ = _make_tagged_group_dataset()
+        expected = {"image": groups, "video": [groups[1]]}
 
-        for slice_name in ("image", "video"):
+        for slice_name, group_ids in expected.items():
             with self.subTest(slice=slice_name):
                 dataset.group_slice = slice_name
                 view = get_extended_view(
@@ -136,108 +136,33 @@ class GroupedTemporalTagGridFilterTests(unittest.TestCase):
                     },
                 )
 
-                self.assertEqual(view.values("group.id"), [groups[1]])
+                self.assertEqual(view.values("group.id"), group_ids)
 
     @drop_tags
     @drop_datasets
-    def test_match_with_no_hits_is_empty_on_every_slice(self):
-        dataset, _ = _make_tagged_group_dataset()
-
-        for slice_name in ("image", "video"):
-            with self.subTest(slice=slice_name):
-                dataset.group_slice = slice_name
-                view = get_extended_view(
-                    dataset.view(),
-                    filters={_TEMPORAL_TAGS: {"values": ["nonexistent"]}},
-                )
-
-                self.assertEqual(len(view), 0)
-
-    @drop_tags
-    @drop_datasets
-    def test_exclude_with_no_hits_keeps_every_group(self):
-        dataset, groups = _make_tagged_group_dataset()
-
-        for slice_name in ("image", "video"):
-            with self.subTest(slice=slice_name):
-                dataset.group_slice = slice_name
-                view = get_extended_view(
-                    dataset.view(),
-                    filters={
-                        _TEMPORAL_TAGS: {
-                            "values": ["nonexistent"],
-                            "exclude": True,
-                        }
-                    },
-                )
-
-                self.assertEqual(set(view.values("group.id")), set(groups))
-
-    @drop_tags
-    @drop_datasets
-    def test_match_survives_a_flattened_collection(self):
+    def test_match_on_a_flattened_collection_selects_the_tagged_sample(self):
         # `load_view` flattens a grouped collection with
-        # `select_group_slices(_force_mixed=True)` before applying the grid's
-        # filters, and the group view stages do not apply to a flattened view.
-        dataset, groups = _make_tagged_group_dataset()
+        # `select_group_slices(_force_mixed=True)` for the modal before
+        # applying its filters.
+        dataset, _, tagged_id = _make_tagged_group_dataset()
         flat = dataset.select_group_slices(_force_mixed=True)
 
         view = get_extended_view(
             flat, filters={_TEMPORAL_TAGS: {"values": ["review"]}}
         )
 
-        self.assertEqual(set(view.values("group.id")), {groups[0]})
+        self.assertEqual(view.values("id"), [tagged_id])
 
     @drop_tags
     @drop_datasets
-    def test_exclude_survives_a_flattened_collection(self):
-        dataset, groups = _make_tagged_group_dataset()
-        flat = dataset.select_group_slices(_force_mixed=True)
+    def test_match_temporal_tags_stage_matches_the_active_slice(self):
+        dataset, groups, _ = _make_tagged_group_dataset()
+        expected = {
+            "image": ([], groups),
+            "video": ([groups[0]], [groups[1]]),
+        }
 
-        view = get_extended_view(
-            flat,
-            filters={_TEMPORAL_TAGS: {"values": ["review"], "exclude": True}},
-        )
-
-        self.assertEqual(set(view.values("group.id")), {groups[1]})
-
-    @drop_tags
-    @drop_datasets
-    def test_match_temporal_tags_on_a_view_sees_a_sibling_slice_tag(self):
-        # A view's own `temporal_tags` is scoped to its samples, so on the
-        # image slice it cannot see the tag sitting on the video sibling.
-        dataset, groups = _make_tagged_group_dataset()
-        dataset.group_slice = "image"
-        view = dataset.view()
-
-        self.assertEqual(
-            view.match_temporal_tags(tags=["review"]).values("group.id"),
-            [groups[0]],
-        )
-        self.assertEqual(
-            view.match_temporal_tags(tags=["review"], bool=False).values(
-                "group.id"
-            ),
-            [groups[1]],
-        )
-
-    @drop_tags
-    @drop_datasets
-    def test_match_temporal_tags_on_a_flattened_slice_view(self):
-        dataset, groups = _make_tagged_group_dataset()
-        flat = dataset.select_group_slices("image")
-
-        self.assertEqual(
-            flat.match_temporal_tags(tags=["review"]).values("group.id"),
-            [groups[0]],
-        )
-
-    @drop_tags
-    @drop_datasets
-    def test_match_temporal_tags_stage_matches_groups(self):
-        dataset, groups = _make_tagged_group_dataset()
-
-        for slice_name in ("image", "video"):
+        for slice_name, (matched, excluded) in expected.items():
             with self.subTest(slice=slice_name):
                 dataset.group_slice = slice_name
 
@@ -245,19 +170,60 @@ class GroupedTemporalTagGridFilterTests(unittest.TestCase):
                     dataset.match_temporal_tags(tags=["review"]).values(
                         "group.id"
                     ),
-                    [groups[0]],
+                    matched,
                 )
                 self.assertEqual(
                     dataset.match_temporal_tags(
                         tags=["review"], bool=False
                     ).values("group.id"),
-                    [groups[1]],
+                    excluded,
                 )
+
+
+class TemporalTagCountTests(unittest.TestCase):
+    @drop_tags
+    @drop_datasets
+    def test_counts_only_the_views_samples(self):
+        dataset, ids = _make_tagged_dataset()
+
+        self.assertEqual(
+            count_temporal_tags(dataset.exclude(ids[0])),
+            {"keep": 1, "review": 1},
+        )
+
+    @drop_tags
+    @drop_datasets
+    def test_counts_only_the_active_slice(self):
+        dataset, _, _ = _make_tagged_group_dataset()
+        expected = {"image": {}, "video": {"review": 1}}
+
+        for slice_name, counts in expected.items():
+            with self.subTest(slice=slice_name):
+                dataset.group_slice = slice_name
+
+                self.assertEqual(count_temporal_tags(dataset.view()), counts)
+
+    @drop_tags
+    @drop_datasets
+    def test_counts_every_interval(self):
+        dataset, ids = _make_tagged_dataset()
+        fota.add_temporal_tags(
+            dataset,
+            [
+                fota.TemporalTag(
+                    ids[0], 5, 6, "review", kind=fota.TagKind.TEMPORAL
+                )
+            ],
+        )
+
+        self.assertEqual(
+            count_temporal_tags(dataset.select(ids[0])), {"review": 2}
+        )
 
 
 def _make_tagged_group_dataset():
     """Two groups of an image and a video slice; only the first group's video
-    sample carries the "review" tag."""
+    sample carries the "review" tag, and its id is returned."""
     dataset = fo.Dataset()
     dataset.add_group_field("group", default="image")
 
@@ -291,7 +257,7 @@ def _make_tagged_group_dataset():
         ],
     )
 
-    return dataset, groups
+    return dataset, groups, str(samples[1].id)
 
 
 def _make_tagged_dataset():
