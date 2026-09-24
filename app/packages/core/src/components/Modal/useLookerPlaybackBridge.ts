@@ -4,8 +4,10 @@
 
 import { getFrameNumber, getTime, type VideoLooker } from "@fiftyone/looker";
 import {
+  bumpStreamRangesVersion,
   useIsPlaying,
   usePlayback,
+  usePlaybackStore,
   useSeekEvent,
   useSpeed,
 } from "@fiftyone/playback";
@@ -38,12 +40,18 @@ export function useLookerPlaybackBridge(
 ): void {
   const { registerStream, subscribeStream, setClockSource, play, pause } =
     usePlayback();
+  const store = usePlaybackStore();
   const isPlaying = useIsPlaying();
   const speed = useSpeed();
   const seekEvent = useSeekEvent();
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [duration, setDuration] = useState(0);
+  // Tracked from the looker's "buffering" events rather than read off
+  // `looker.state`: the looker fires the event from inside its state update,
+  // before the flag is written, so a barrier re-check triggered by the event
+  // would read the old value and hold forever.
+  const bufferingRef = useRef(looker.state.buffering);
 
   // Space and , / . belong to the timeline's own bindings on this surface.
   // Left in the looker too, one press would toggle the engine twice.
@@ -90,7 +98,7 @@ export function useLookerPlaybackBridge(
       blocking: true,
       duration,
       nativeStepSeconds: frameRate ? 1 / frameRate : undefined,
-      bufferState: () => (looker.state.buffering ? "loading" : "ready"),
+      bufferState: () => (bufferingRef.current ? "loading" : "ready"),
       bufferedRanges: () => {
         const video = videoRef.current;
         if (!video) {
@@ -112,7 +120,7 @@ export function useLookerPlaybackBridge(
       unsubscribe();
       unregister();
     };
-  }, [duration, frameRate, looker, registerStream, subscribeStream]);
+  }, [duration, frameRate, registerStream, subscribeStream]);
 
   // The frame the looker is painting is the time the engine should report.
   // `null` before the looker has loaded, for which the engine falls back to
@@ -162,6 +170,20 @@ export function useLookerPlaybackBridge(
   // real, and nothing restarts it once the frames arrive. The clock source
   // already holds the playhead on the looker's frame while it buffers.
   fos.useEventHandler(looker, "play", play);
+
+  // A play pressed while the looker is still buffering is held by the engine
+  // as pending, and the engine only re-evaluates a pending play when a stream
+  // signals a change in what it has buffered. The looker signals nothing on
+  // its own, so without the wake-up a play pressed during the initial buffer
+  // never starts. Same wake-up the audio stream uses.
+  fos.useEventHandler(looker, "buffering", (event: CustomEvent<boolean>) => {
+    bufferingRef.current = Boolean(event.detail);
+
+    if (!event.detail) {
+      bumpStreamRangesVersion(store);
+    }
+  });
+
   fos.useEventHandler(
     looker,
     "pause",
