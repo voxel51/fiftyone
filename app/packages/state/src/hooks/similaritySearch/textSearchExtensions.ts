@@ -14,12 +14,19 @@ export interface TextSearchRequest {
   /** How many matches the search returns: samples for most indexes, segments
    * for a segment index, where several can fall in one sample. */
   k: number;
-  /** The serialized stages of the view the search was typed over, which the
-   * published result is narrowed to. An extension that ranks within it
-   * returns `k` matches the grid can show, as `SortBySimilarity` does; one
-   * that ranks over the whole index can end up with fewer once the view
-   * narrows it. */
+  /**
+   * The serialized stages of the view the search was typed over. With
+   * `filters` and `extended`, this is the context an operator is sent, and
+   * `SortBySimilarity` ranks within all three. How an extension scopes its
+   * ranking is its own choice; one that ranks over the whole index can return
+   * fewer than `k` matches the grid shows.
+   */
   view: State.Stage[];
+  /** The grid's sidebar filters. */
+  filters: State.Filters;
+  /** The grid's extended stages, `{ [stage class]: kwargs }`, including the
+   * extended selection this search's result replaces once published. */
+  extended: Record<string, unknown>;
   /** Aborted once this search is cancelled: the view changed, a newer
    * search started, or the field went away. An extension should stop
    * before further work and resolve null; a result it returns anyway is

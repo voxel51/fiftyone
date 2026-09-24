@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const env = vi.hoisted(() => ({
   view: [] as { _cls: string; kwargs: [string, unknown][] }[],
+  filters: {} as Record<string, unknown>,
+  extended: {} as Record<string, unknown>,
   search: vi.fn(),
   publish: vi.fn(),
   setPending: vi.fn(),
@@ -14,6 +16,8 @@ const env = vi.hoisted(() => ({
 vi.mock("@fiftyone/state", () => ({
   useCurrentDatasetName: () => "robots",
   useView: () => env.view,
+  useFilters: () => env.filters,
+  useExtendedStages: () => env.extended,
   useTextSearchExtensions: () => env.extensions,
   usePublishExtendedSelection: () => env.publish,
   useSetViewChangePending: () => env.setPending,
@@ -50,6 +54,8 @@ describe("useLanguageSearchExtension", () => {
     vi.clearAllMocks();
     window.localStorage.clear();
     env.view = [];
+    env.filters = {};
+    env.extended = {};
     env.extensions = new Map([
       ["multimodal", { method: "multimodal", search: env.search }],
     ]);
@@ -77,9 +83,13 @@ describe("useLanguageSearchExtension", () => {
     expect(env.setPending).toHaveBeenLastCalledWith(false);
   });
 
-  it("sends the view the search was typed over", () => {
+  it("sends the view context an operator is sent", () => {
     pendingResult();
     env.view = [{ _cls: "fiftyone.core.stages.Limit", kwargs: [["limit", 5]] }];
+    env.filters = { "ground_truth.label": { values: ["cat"] } };
+    env.extended = {
+      "fiftyone.core.stages.Select": { sample_ids: ["ep1"], ordered: false },
+    };
     const { result } = renderSearch();
 
     act(() => {
@@ -87,7 +97,11 @@ describe("useLanguageSearchExtension", () => {
     });
 
     expect(env.search).toHaveBeenCalledWith(
-      expect.objectContaining({ view: env.view }),
+      expect.objectContaining({
+        view: env.view,
+        filters: env.filters,
+        extended: env.extended,
+      }),
     );
   });
 

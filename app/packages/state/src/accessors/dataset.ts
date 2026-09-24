@@ -7,7 +7,9 @@ import {
   datasetName,
   dynamicGroupParameters,
   expressionCatalog,
+  extendedStages,
   fieldSchema,
+  filters,
   groupMediaTypes,
   isGroup,
   isOrderedDynamicGroup,
@@ -256,3 +258,11 @@ export const useStageDefinitions = () => useRecoilValue(stageDefinitions);
 
 /** The applied view's stages. */
 export const useView = (): State.Stage[] => useRecoilValue(view);
+
+/** The grid's sidebar filters. */
+export const useFilters = (): State.Filters => useRecoilValue(filters);
+
+/** The grid's extended stages, `{ [stage class]: kwargs }`, as operators are
+ * sent them. */
+export const useExtendedStages = (): Record<string, unknown> =>
+  useRecoilValue(extendedStages);

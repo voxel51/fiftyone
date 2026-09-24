@@ -31,6 +31,8 @@ export interface LanguageSearchExtension {
 export const useLanguageSearchExtension = (): LanguageSearchExtension => {
   const datasetName = fos.useCurrentDatasetName();
   const view = fos.useView();
+  const filters = fos.useFilters();
+  const extended = fos.useExtendedStages();
   const extensions = fos.useTextSearchExtensions();
   const publishExtendedSelection = fos.usePublishExtendedSelection();
   const setViewChangePending = fos.useSetViewChangePending();
@@ -96,6 +98,8 @@ export const useLanguageSearchExtension = (): LanguageSearchExtension => {
             query,
             k,
             view,
+            filters,
+            extended,
             signal,
           }),
         ),
@@ -124,6 +128,8 @@ export const useLanguageSearchExtension = (): LanguageSearchExtension => {
       extensions,
       datasetName,
       view,
+      filters,
+      extended,
       publishExtendedSelection,
       setViewChangePending,
       notify,
