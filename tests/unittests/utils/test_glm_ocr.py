@@ -74,6 +74,12 @@ class ConfigTests(unittest.TestCase):
         config = foug.GLMOCRModelConfig({"prompt": '{"id": ""}'})
         self.assertEqual(config.prompt, '{"id": ""}')
 
+    def test_task_ignored_with_custom_prompt(self):
+        config = foug.GLMOCRModelConfig(
+            {"task": "nonsense", "prompt": '{"id": ""}'}
+        )
+        self.assertEqual(config.prompt, '{"id": ""}')
+
 
 class PredictTests(unittest.TestCase):
     def _model(self, decoded, prompt=None):

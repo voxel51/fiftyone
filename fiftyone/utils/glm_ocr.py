@@ -95,12 +95,12 @@ class GLMOCRModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
             d, "name_or_path", default=DEFAULT_GLM_OCR_MODEL
         )
         self.task = self.parse_string(d, "task", default="text")
-        if self.task not in _TASK_PROMPTS:
+        self.prompt = self.parse_string(d, "prompt", default=None)
+        if self.prompt is None and self.task not in _TASK_PROMPTS:
             raise ValueError(
                 "Unsupported task '%s'. Supported tasks are: %s"
                 % (self.task, ", ".join(_TASK_PROMPTS))
             )
-        self.prompt = self.parse_string(d, "prompt", default=None)
         self.max_new_tokens = self.parse_int(d, "max_new_tokens", default=8192)
 
         # GLM-OCR consumes the raw image via its own processor
