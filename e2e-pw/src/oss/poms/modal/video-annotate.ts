@@ -292,6 +292,34 @@ export class VideoAnnotatePom {
       .first();
   }
 
+  /**
+   * Run `action` and resolve once the timeline has rendered exactly the rows
+   * `ids`, in any order.
+   */
+  async afterTracksRendered<T>(ids: string[], action: () => Promise<T>) {
+    const want = [...ids].sort().join(",");
+    return this.modal.eventUtils.after(
+      "video-annotation-tracks-rendered",
+      action,
+      (e) =>
+        [...((e.detail as { ids?: string[] })?.ids ?? [])].sort().join(",") ===
+        want,
+    );
+  }
+
+  /** The label text in a track row's left column. */
+  trackLabel(trackId: string): Locator {
+    return this.track(trackId).locator("[data-track-label]");
+  }
+
+  /** Right-click a track's interval bar and read its context menu items. */
+  async trackContextMenuItems(trackId: string): Promise<string[]> {
+    await this.trackBar(trackId).click({ button: "right" });
+    const items = this.page.getByRole("menuitem");
+    await items.first().waitFor();
+    return items.allTextContents();
+  }
+
   /** The human-readable interval span shown in a track bar's `title` tooltip. */
   async trackBarTitle(trackId: string): Promise<string> {
     return (await this.trackBar(trackId).getAttribute("title")) ?? "";
@@ -626,6 +654,23 @@ class VideoAnnotateAsserter {
     await expect
       .poll(async () => (await this.va.temporalTrackIds()).length)
       .toBe(expected);
+  }
+
+  /** Assert a track row's left-column label. */
+  async trackLabel(trackId: string, text: string) {
+    expect(await this.va.trackLabel(trackId).textContent()).toBe(text);
+  }
+
+  /** Assert a track's context menu lists exactly `items`, in order. */
+  async trackContextMenuItems(trackId: string, items: string[]) {
+    expect(await this.va.trackContextMenuItems(trackId)).toEqual(items);
+  }
+
+  /** Assert a track's interval bars have no resize handles. */
+  async trackNotResizable(trackId: string) {
+    expect(
+      await this.va.track(trackId).locator("[data-resize-handle]").count(),
+    ).toBe(0);
   }
 
   /** Assert a track with the given id is present on the timeline. */
