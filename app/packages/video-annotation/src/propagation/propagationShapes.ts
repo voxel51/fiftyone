@@ -54,7 +54,10 @@ export const toSyntheticKeypoint = (label: LabelData): SyntheticKeypoint => ({
   _id: label._id,
   label: (label.label as string) ?? "",
   points: label.points as SyntheticKeypoint["points"],
-  index: label.index as number | undefined,
+  // omitted, not `undefined`, when the label has none: the shape rides into
+  // every frame propagation fills, and JSON (so the server's copy) cannot
+  // hold an `undefined` member
+  ...(typeof label.index === "number" ? { index: label.index } : {}),
   instance: label.instance as SyntheticKeypoint["instance"],
   keyframe: (label.keyframe as boolean) ?? false,
 });

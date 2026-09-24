@@ -102,6 +102,17 @@ describe("equalsNormalized", () => {
     expect(equalsNormalized(undefined, { a: 1 })).toBe(false);
   });
 
+  // Regression (2026-09-23): JSON drops `undefined` members, so a label
+  // carrying one could never compare equal to its own persisted echo
+  it("treats a member set to undefined as absent, as JSON does", () => {
+    expect(equalsNormalized({ a: 1, index: undefined }, { a: 1 })).toBe(true);
+    expect(equalsNormalized({ a: 1, index: 0 }, { a: 1 })).toBe(false);
+    expect(normalizeForCompare({ a: 1, b: { c: undefined } })).toStrictEqual({
+      a: 1,
+      b: {},
+    });
+  });
+
   it("treats a NaN keypoint hole and its server echo as equal", () => {
     // the server encodes a skipped node's [NaN, NaN] coordinate as
     // extended JSON; an unequal compare here re-sends the patch forever

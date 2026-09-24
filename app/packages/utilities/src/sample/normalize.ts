@@ -40,6 +40,13 @@ const NONFINITE_STRING_VALUES: ReadonlyMap<string, number> = new Map([
  *   for their entries, arrays inherit it (a `points` row keeps the `points`
  *   context). A caller comparing a bare value (no wrapping object) passes the
  *   governing field name itself.
+ * - Object members whose value is `undefined` → dropped. JSON drops them, so
+ *   the server can never echo one back; a member set to `undefined` and an
+ *   absent member are the same stored value. Kept, a stray `undefined` (e.g.
+ *   an optional field copied from a label that lacks it) makes a label
+ *   compare unequal to its own persisted echo forever, while the JSON patch
+ *   between them is empty — or, for a keypoint, carries only the NaN-hole
+ *   replaces a patch compare emits because `NaN !== NaN`.
  *
  * The non-finite collapses matter for keypoints: a skipped node's coordinate
  * is `[NaN, NaN]`, and an unequal compare against its own persisted echo
@@ -69,7 +76,9 @@ export const normalizeForCompare = (
     }
 
     return Object.fromEntries(
-      Object.entries(obj).map(([k, v]) => [k, normalizeForCompare(v, k)]),
+      Object.entries(obj)
+        .filter(([, v]) => v !== undefined)
+        .map(([k, v]) => [k, normalizeForCompare(v, k)]),
     );
   }
 
