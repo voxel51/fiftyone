@@ -114,6 +114,29 @@ describe("ClipSupportRange", () => {
     });
   });
 
+  it("confines seeks and steps to the support while locked", () => {
+    const { result } = renderRange(SUPPORT);
+    const { store, api } = result.current;
+
+    act(() => api.seek(3.5));
+    expect(getPlayhead(store)).toBeCloseTo(RANGE.end - 1 / FPS);
+
+    act(() => api.seek(0));
+    expect(getPlayhead(store)).toBeCloseTo(RANGE.start);
+
+    act(() => api.stepBack());
+    expect(getPlayhead(store)).toBeCloseTo(RANGE.start);
+
+    act(() => api.seek(RANGE.end - 1 / FPS));
+    act(() => api.stepForward());
+    expect(getPlayhead(store)).toBeCloseTo(RANGE.end - 1 / FPS);
+
+    // Unlocked, the whole timeline is reachable again.
+    act(() => lockBinding().handler());
+    act(() => api.seek(3.5));
+    expect(getPlayhead(store)).toBeCloseTo(3.5);
+  });
+
   it("leaves the engine alone when the sample has no support", () => {
     const { result } = renderRange(null);
     const { store } = result.current;

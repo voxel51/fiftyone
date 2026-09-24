@@ -366,6 +366,14 @@ export interface PlaybackContextValue {
   stepForward: () => void;
   setView: (start: number, end: number) => void;
   setLoop: (start: number, end: number) => void;
+  /**
+   * Confine user-driven playhead moves (`seek`, `seekSnapped`, `stepBack`,
+   * `stepForward`) to the loop region. Playback already wraps within the
+   * loop; this additionally keeps scrubbing and stepping from leaving it,
+   * for surfaces that present a sub-range — a clip's support — as the whole
+   * timeline. Off by default.
+   */
+  setConfineToLoop: (confine: boolean) => void;
   setSpeed: (speed: number) => void;
 
   /**

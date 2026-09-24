@@ -1,7 +1,9 @@
 import { useViewportInitReveal } from "@fiftyone/lighter";
 import React, { type RefObject, useRef, useState, useEffect } from "react";
 import {
+  getPlayhead,
   usePlayback,
+  usePlaybackStore,
   usePublishCurrentFrame,
   useVideoElementAudio,
   useVideoStream,
@@ -119,6 +121,7 @@ export const LighterVideo: React.FC<LighterVideoProps> = ({
   // policy and unmuting on the first play.
   useVideoElementAudio(sourceId, videoRef, { hasAudio });
   const { seek } = usePlayback();
+  const playbackStore = usePlaybackStore();
 
   // Publish the playhead frame for the consumers that sit OUTSIDE this
   // provider and so cannot convert playhead seconds themselves: the modal's
@@ -207,9 +210,15 @@ export const LighterVideo: React.FC<LighterVideoProps> = ({
           // (after a seek that crossed an unbuffered range, etc.) does
           // NOT reset the playhead. We only kick the engine on the
           // FIRST `loadeddata` per `videoSrc`.
+          //
+          // Re-seeks to wherever the playhead already IS rather than to 0:
+          // a surface may have positioned it before this event — a clip
+          // opens on its support's first frame the moment the duration
+          // lands, which precedes `loadeddata` — and a hard `seek(0)` here
+          // yanked it back to the start of the source video.
           if (kickedSrcRef.current === videoSrc) return;
           kickedSrcRef.current = videoSrc;
-          seek(0);
+          seek(getPlayhead(playbackStore));
         }}
       />
       <div ref={lighterHostRef} className={styles.lighterHost} />

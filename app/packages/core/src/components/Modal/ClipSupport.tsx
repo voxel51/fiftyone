@@ -85,6 +85,9 @@ export interface ClipSupportRangeProps {
  * duration first lands — until then `setLoop` / `setView` clamp against a
  * zero duration and reject every range, so nothing can be applied at mount.
  *
+ * While locked, user seeks and frame steps are confined to the support as
+ * well (`setConfineToLoop`), so `.` / `,` and the ruler cannot leave the clip.
+ *
  * Unlocking restores the full timeline. Re-locking moves a playhead that
  * wandered outside the support back to its first frame; one already inside
  * stays put.
@@ -98,7 +101,7 @@ export const ClipSupportRange: React.FC<ClipSupportRangeProps> = ({
   frameRate,
   children,
 }) => {
-  const { setLoop, setView, seek } = usePlayback();
+  const { setLoop, setView, setConfineToLoop, seek } = usePlayback();
   const store = usePlaybackStore();
   const duration = useDuration();
   const [locked, setLocked] = useState(true);
@@ -121,6 +124,8 @@ export const ClipSupportRange: React.FC<ClipSupportRangeProps> = ({
     if (locked) {
       setLoop(range.start, range.end);
       setView(range.start, range.end);
+      // Scrubbing and stepping stay inside the clip too, not just playback.
+      setConfineToLoop(true);
       const playhead = getPlayhead(store);
       if (first || playhead < range.start || playhead >= range.end) {
         seek(range.start);
@@ -128,11 +133,26 @@ export const ClipSupportRange: React.FC<ClipSupportRangeProps> = ({
     } else if (appliedRef.current !== false) {
       // Only on the transition: re-running on a duration refinement while
       // unlocked would throw away a zoom the user has since applied.
+      setConfineToLoop(false);
       setLoop(0, duration);
       setView(0, duration);
     }
     appliedRef.current = locked;
-  }, [range, duration, locked, setLoop, setView, seek, store]);
+  }, [
+    range,
+    duration,
+    locked,
+    setLoop,
+    setView,
+    setConfineToLoop,
+    seek,
+    store,
+  ]);
+
+  // The provider outlives this component when consecutive samples share a
+  // frame rate (it is keyed on the mode, not the sample), so a clip must not
+  // leave the next sample confined to its range.
+  useEffect(() => () => setConfineToLoop(false), [setConfineToLoop]);
 
   const toggleLock = useCallback(() => {
     if (!range) return;

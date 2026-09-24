@@ -11,6 +11,7 @@ import {
 } from "@fiftyone/video-annotation";
 import React, { useCallback, useMemo, useState } from "react";
 import { ClipSupportRange } from "./ClipSupport";
+import { useRememberedTimelineDisplay } from "./useRememberedTimelineDisplay";
 import { VideoExploreToolbar } from "./VideoExploreToolbar";
 import { useVideoExploreKeybindings } from "./useVideoExploreKeybindings";
 import styles from "./VideoTimelineSurface.module.css";
@@ -70,6 +71,15 @@ const ExploreVideo: React.FC<{
       onError={onError}
     />
   );
+};
+
+/**
+ * Mount point for {@link useRememberedTimelineDisplay}: it reads the
+ * provider's mode control, so it has to live below `PlaybackProvider`.
+ */
+const RememberTimelineDisplay: React.FC = () => {
+  useRememberedTimelineDisplay();
+  return null;
 };
 
 export interface VideoTimelineSurfaceProps {
@@ -198,8 +208,11 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
   // if not. The readout in the controls row switches between the two at a
   // click, which is where the frame-number preference now lives.
   //
-  // The DISPLAY still opens on timecode (`defaultDisplay` below): frames were
-  // opt-in on the looker too, behind `UseFrameNumberOptionElement`.
+  // The DISPLAY opens on timecode for a whole video (`defaultDisplay` below):
+  // frames were opt-in on the looker too, behind `UseFrameNumberOptionElement`.
+  // A CLIP opens on frame numbers, because its support is a frame range and
+  // the readout is how the user relates what they see to it. Either way the
+  // user's own pick then persists across samples (`RememberTimelineDisplay`).
   const mode = useMemo<TimelineMode>(
     () =>
       frameRate && Number.isFinite(frameRate) && frameRate > 0
@@ -217,7 +230,12 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
     mode.kind === "sequence" ? `sequence:${mode.fps}` : mode.kind;
 
   return (
-    <PlaybackProvider key={playbackKey} mode={mode} defaultDisplay="duration">
+    <PlaybackProvider
+      key={playbackKey}
+      mode={mode}
+      defaultDisplay={support ? "configured" : "duration"}
+    >
+      <RememberTimelineDisplay />
       {/* Keyed on the sample so the lock and its one-shot playhead seed reset
           per clip: the provider above is keyed on the MODE, so two clips of
           one video (same fps) share a store. */}
@@ -229,7 +247,7 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
         {/* Hydrates the frame labels onto the video's Lighter scene. A SIBLING
           of `RegisterFrameLabels`, not a child — that component swaps its
           wrapper when duration lands, which would remount the store. */}
-        <RegisterVideoExploreLabels />
+        <RegisterVideoExploreLabels support={support} />
         {/* Registers the /frames-backed label stream. A SIBLING for the same
           reason as the two above, and a load-bearing one: it gates on
           `useDuration() > 0` and re-keys on the resolved `frameCount`, while
