@@ -120,7 +120,10 @@ export class GridPom {
       await this.page.click("body", { position: { x: 0, y: 0 } });
     }
 
-    await this.sliceSelector.selectSlice(slice);
+    if ((await this.sliceSelector.activeSlice()) === slice) return;
+
+    // a slice change remounts the grid
+    await this.run(() => this.sliceSelector.selectSlice(slice));
   }
 
   /** Wait until the grid has mounted at least one tile. */
@@ -176,6 +179,19 @@ export class GridPom {
     });
   }
 
+  /**
+   * Resolve once the entry counts (of `kind`, when given) have no count still
+   * loading
+   */
+  async untilEntryCountsLoaded(kind?: "groups" | "elements") {
+    const counts = kind
+      ? `[data-cy=entry-counts][data-count-kind=${kind}]`
+      : "[data-cy=entry-counts]";
+    await this.eventUtils.untilPresent(
+      `${counts}:not(:has([data-cy=loading-dots]))`,
+    );
+  }
+
   /** Resolve once `count` grid lookers have drawn, e.g. after a page load */
   async untilTilesDrawn(count: number) {
     await this.eventUtils.untilDom(
@@ -221,7 +237,7 @@ class GridAsserter {
 
   async isNthSampleSelected(n: number) {
     const checkbox = await this.gridPom.getNthCheckbox(n);
-    await expect(checkbox).toBeChecked();
+    expect(await checkbox.isChecked()).toBe(true);
   }
 
   async nthSampleHasTagValue(
@@ -230,12 +246,12 @@ class GridAsserter {
     expectedTagValue: string,
   ) {
     const tagElement = this.gridPom.getNthTile(n).getByTestId(`tag-${tagName}`);
-    await expect(tagElement).toHaveText(expectedTagValue);
+    expect(await tagElement.textContent()).toBe(expectedTagValue);
   }
 
   async nthSampleHasNoTag(n: number, tagName: string) {
     const tagElement = this.gridPom.getNthTile(n).getByTestId(`tag-${tagName}`);
-    await expect(tagElement).toBeHidden();
+    expect(await tagElement.isVisible()).toBe(false);
   }
 
   async isSelectionCountEqualTo(n: number) {
@@ -244,17 +260,18 @@ class GridAsserter {
     );
 
     if (n === 0) {
-      await expect(action).toBeHidden();
+      expect(await action.isVisible()).toBe(false);
       return;
     }
 
-    await expect(action.first()).toHaveText(String(n));
+    expect(await action.first().textContent()).toBe(String(n));
   }
 
   async isEntryCountTextEqualTo(text: string) {
-    // `toHaveText` collapses whitespace on both sides
-    await expect(this.gridPom.page.getByTestId("entry-counts")).toHaveText(
-      text,
-    );
+    await this.gridPom.untilEntryCountsLoaded();
+    const counts = await this.gridPom.page
+      .getByTestId("entry-counts")
+      .textContent();
+    expect(counts?.replace(/\s+/g, " ").trim()).toBe(text);
   }
 }

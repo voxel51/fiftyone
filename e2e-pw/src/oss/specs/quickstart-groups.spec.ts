@@ -71,8 +71,7 @@ test.describe.serial("quickstart-groups", () => {
 
     await grid.actionsRow.toggleDisplayOptions();
     await grid.actionsRow.displayActions.setSidebarStatisticsMode("group");
-
-    // note: entry-counts might take a while to change, which is why we're asserting using polling
+    await grid.untilEntryCountsLoaded("groups");
     await grid.assert.isEntryCountTextEqualTo(
       "(12 samples) 4 groups with slice",
     );
