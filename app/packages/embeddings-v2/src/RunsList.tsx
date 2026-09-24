@@ -3,7 +3,9 @@
  * dataset. Every run is listed and viewable regardless of its
  * dimensionality — the plot renders with whatever camera the build
  * provides. Deleting a run is a two-step confirmation handled inline
- * on the card.
+ * on the card. While the grid shows a patches view, patches runs on
+ * other fields stay listed but disabled, last, with the reason on the
+ * card (see gridPatches.ts) — hidden, they would read as missing.
  */
 import DeleteOutlined from "@mui/icons-material/DeleteOutlined";
 import { ListItemIcon, ListItemText, Menu, MenuItem } from "@mui/material";
@@ -22,11 +24,13 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import { useEffect, useState } from "react";
+import { listRuns } from "./gridPatches";
 import { LandingCTA } from "./LandingCTA";
 import "./panel.css";
 import type { VisualizationRun } from "./protocol";
-import { RunCard } from "./RunCard";
+import { RunCard, type RunCardStatus } from "./RunCard";
 import { UpsellBanner } from "./UpsellBanner";
+import { useGridPatches } from "./useGridPatches";
 
 // MM/DD/YYYY per the card spec — a fixed format, not the viewer locale
 const formatTimestamp = (timestamp: string | null): string | null => {
@@ -57,6 +61,24 @@ const covers = (run: VisualizationRun): string =>
 const lastUpdated = (timestamp: string | null): string | null => {
   const formatted = formatTimestamp(timestamp);
   return formatted ? `last updated ${formatted}` : null;
+};
+
+/** The card's status pill. Error and Pending describe the run itself, so
+ * they outrank Unavailable, which describes only the grid's current view */
+const runStatus = (
+  run: VisualizationRun,
+  unavailable: string | null,
+): RunCardStatus => {
+  // Structurally unusable (see BrainRun.error): opening it could only
+  // fail, but Delete stays available
+  if (run.error) return { label: "Error", color: TextColor.Destructive };
+  // Deliberately status-agnostic: without run-status bookkeeping, "no
+  // results yet" cannot distinguish still-computing from failed
+  if (!run.ready) return { label: "Pending", color: TextColor.Secondary };
+  if (unavailable) return { label: "Unavailable", color: TextColor.Muted };
+  // Icon-tier success: the soft sage the design reference uses, not the
+  // saturated text green
+  return { label: "Ready", color: IconColor.Success };
 };
 
 export default function RunsList({
@@ -91,6 +113,7 @@ export default function RunsList({
     key: string;
     anchor: HTMLElement;
   } | null>(null);
+  const grid = useGridPatches();
 
   // A refreshed run list can delete a run or flip its readiness under an
   // open menu or an armed confirmation; both must not outlive the ready
@@ -222,31 +245,22 @@ export default function RunsList({
           )
         ) : (
           <div className="emb-runs-stack">
-            {runs.map((run) => (
+            {listRuns(runs, grid).map(({ run, unavailable }) => (
               <RunCard
                 key={run.brainKey}
                 icon={IconName.Embeddings}
                 title={run.brainKey}
                 badge={run.dims ? `${run.dims}D` : undefined}
                 badgeAccent={run.dims === 3}
-                status={
-                  run.error
-                    ? // Structurally unusable (see BrainRun.error): opening
-                      // it could only fail, but Delete stays available
-                      { label: "Error", color: TextColor.Destructive }
-                    : run.ready
-                      ? // Icon-tier success: the soft sage the design
-                        // reference uses, not the saturated text green
-                        { label: "Ready", color: IconColor.Success }
-                      : // Deliberately status-agnostic: without run-status
-                        // bookkeeping, "no results yet" cannot distinguish
-                        // still-computing from failed
-                        { label: "Pending", color: TextColor.Secondary }
-                }
-                // One shape for every run: what it covers, what produced it,
-                // when it last changed
+                status={runStatus(run, unavailable)}
+                // Inert however ready, but still deletable from here
+                disabled={Boolean(unavailable)}
+                // One shape for every run: why it can't open (if it
+                // can't), what it covers, what produced it, when it last
+                // changed
                 meta={[
                   run.error,
+                  unavailable,
                   // Same brain key semantics, very different plots —
                   // which granularity a run embeds must be readable
                   // from the card
