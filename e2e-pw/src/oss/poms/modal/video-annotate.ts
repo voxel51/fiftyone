@@ -185,6 +185,19 @@ export class VideoAnnotatePom {
       .first();
   }
 
+  /** The label text in a track row's left column. */
+  trackLabel(trackId: string): Locator {
+    return this.page.locator(`[data-track-id="${trackId}"] [data-track-label]`);
+  }
+
+  /** Right-click a track's interval bar and read its context menu items. */
+  async trackContextMenuItems(trackId: string): Promise<string[]> {
+    await this.trackBar(trackId).click({ button: "right" });
+    const items = this.page.getByRole("menuitem");
+    await expect(items.first()).toBeVisible();
+    return items.allTextContents();
+  }
+
   /** The human-readable interval span shown in a track bar's `title` tooltip. */
   async trackBarTitle(trackId: string): Promise<string> {
     return (await this.trackBar(trackId).getAttribute("title")) ?? "";
@@ -519,6 +532,24 @@ class VideoAnnotateAsserter {
     await expect
       .poll(async () => (await this.va.temporalTrackIds()).length)
       .toBe(expected);
+  }
+
+  /** Assert a track row's left-column label. */
+  async trackLabel(trackId: string, text: string) {
+    await expect(this.va.trackLabel(trackId)).toHaveText(text);
+  }
+
+  /** Assert a track's context menu lists exactly `items`, in order. */
+  async trackContextMenuItems(trackId: string, items: string[]) {
+    expect(await this.va.trackContextMenuItems(trackId)).toEqual(items);
+  }
+
+  /** Assert a track's interval bars have no resize handles. */
+  async trackNotResizable(trackId: string) {
+    await expect(this.va.trackBar(trackId)).toBeVisible();
+    await expect(
+      this.va.page.locator(`[data-track-id="${trackId}"] [data-resize-handle]`),
+    ).toHaveCount(0);
   }
 
   /** Assert a track with the given id is present on the timeline. */
