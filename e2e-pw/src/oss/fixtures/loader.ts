@@ -5,18 +5,7 @@ import {
   WaitUntilGridVisibleOptions,
 } from "src/shared/abstract-loader";
 import { PythonRunner } from "src/shared/python-runner/python-runner";
-import { Duration } from "../utils";
-
-const clearPersistedBrowserState = async (page: Page) => {
-  if (page.isClosed()) {
-    return;
-  }
-
-  await page.evaluate(() => {
-    window.localStorage.clear();
-    window.sessionStorage.clear();
-  });
-};
+import { EventUtils } from "src/shared/event-utils";
 
 export class OssLoader extends AbstractFiftyoneLoader {
   constructor() {
@@ -75,7 +64,6 @@ export class OssLoader extends AbstractFiftyoneLoader {
     page: Page,
     datasetName: string,
     options?: WaitUntilGridVisibleOptions,
-    isRetry?: boolean,
   ): Promise<void> {
     const { isEmptyDataset, readySelector, searchParams, withGrid } =
       options ?? {
@@ -174,78 +162,25 @@ export class OssLoader extends AbstractFiftyoneLoader {
       }
     }
 
-    try {
-      await page.waitForSelector(
-        `[data-cy=${
-          withGrid ? "spotlight-section-forward" : "panel-container"
-        }]`,
-        {
-          state: "visible",
-        },
-      );
-    } catch (e) {
-      if (isRetry) {
-        throw e;
-      } else {
-        if (page.isClosed()) {
-          throw e;
-        }
-
-        try {
-          const ctx = page.context();
-          await ctx.clearCookies();
-          await ctx.clearPermissions();
-          await clearPersistedBrowserState(page);
-
-          if (page.isClosed()) {
-            throw e;
-          }
-
-          await page.reload({ waitUntil: "domcontentloaded" });
-        } catch (cleanupError) {
-          if (page.isClosed()) {
-            throw e;
-          }
-
-          throw cleanupError;
-        }
-
-        return this.waitUntilGridVisible(page, datasetName, options, true);
-      }
-    }
+    const events = new EventUtils(page);
+    await events.untilPresent(
+      `[data-cy=${withGrid ? "spotlight-section-forward" : "panel-container"}]`,
+    );
 
     if (isEmptyDataset) {
       return;
     }
 
     if (readySelector) {
-      await page.waitForSelector(readySelector, {
-        state: "visible",
-        timeout: Duration.Seconds(10),
-      });
+      await events.untilPresent(readySelector);
       return;
     }
 
     // a grid tile's terminal state depends on its kind: lookers finish
     // drawing a canvas (or report an error); custom-renderer tiles are
     // ready once their wrapper commits
-    await page.waitForFunction(
-      () => {
-        if (document.querySelector(`[data-cy=looker-error-info]`)) {
-          return true;
-        }
-
-        if (document.querySelector(`[data-cy=grid-custom-renderer]`)) {
-          return true;
-        }
-
-        return (
-          document.querySelector(`canvas`)?.getAttribute("canvas-loaded") ===
-          "true"
-        );
-      },
-      {},
-      { timeout: Duration.Seconds(10) },
+    await events.untilPresent(
+      '[data-cy=looker-error-info], [data-cy=grid-custom-renderer], canvas[canvas-loaded="true"]',
     );
   }
 }
