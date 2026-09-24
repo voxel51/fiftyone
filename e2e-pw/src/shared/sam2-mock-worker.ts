@@ -1,26 +1,14 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
- *
- * Mock SAM2 inference worker for e2e specs. Returns a deterministic
- * all-foreground mask + bbox so AI-assisted segmentation tests don't have
- * to download model weights or run ONNX.
- *
- * Installed via the `window.__FO_TEST_SAM2_WORKER_FACTORY` seam on
- * `BrowserAnnotationProvider`. The source string is wrapped in a Blob URL
- * by the test setup so it runs in a real Worker context — `self.onmessage`
- * and `self.postMessage` work as in the production `worker.ts`.
- *
- * The protocol mirrors `app/packages/annotation/src/providers/worker.ts`:
- *   - emit `{ type: "ready" }` once on startup
- *   - `init` → no response
- *   - `loadModel` → `{ id, type, success: true, result: undefined }`
- *   - `embedAndDecode` → `{ id, type, success: true, result }` where result
- *     is `{ mask: Float32Array, maskWidth, maskHeight, bbox: {x,y,w,h} }`
- *
- * The mask is 8x8 all-ones (foreground) so the agent's `normalizeMask`
- * (thresholded at >0.5) yields 64 foreground pixels, which after the
- * agent's encode + the server-side save round-trip, the spec can verify
- * with `annotateSDK.getDetectionsState(...).maskPixels > 0`.
+ */
+
+import type { BrowserContext, Page } from "@playwright/test";
+
+/**
+ * Mock SAM2 inference worker for e2e specs, run in a real Worker from a Blob
+ * URL. It speaks the production `worker.ts` protocol and answers every decode
+ * with a deterministic 8x8 all-foreground mask + bbox, so no weights download
+ * and the saved detection renders a non-empty mask.
  */
 export const SAM2_MOCK_WORKER_SRC = `
   self.onmessage = (e) => {
@@ -50,3 +38,17 @@ export const SAM2_MOCK_WORKER_SRC = `
   };
   self.postMessage({ type: "ready" });
 `;
+
+/**
+ * Installs the mock worker through the `window.__FO_TEST_SAM2_WORKER_FACTORY`
+ * seam before any page in `target` mounts `BrowserAnnotationProvider`.
+ */
+export const installSam2MockWorker = (target: Page | BrowserContext) =>
+  target.addInitScript((workerSrc: string) => {
+    (
+      window as unknown as { __FO_TEST_SAM2_WORKER_FACTORY?: () => Worker }
+    ).__FO_TEST_SAM2_WORKER_FACTORY = () => {
+      const blob = new Blob([workerSrc], { type: "text/javascript" });
+      return new Worker(URL.createObjectURL(blob));
+    };
+  }, SAM2_MOCK_WORKER_SRC);

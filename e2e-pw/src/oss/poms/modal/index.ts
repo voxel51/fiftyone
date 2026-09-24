@@ -40,7 +40,7 @@ export class ModalPom {
 
   constructor(
     private readonly page: Page,
-    private readonly eventUtils: EventUtils,
+    readonly eventUtils: EventUtils,
   ) {
     this.assert = new ModalAsserter(this);
     this.locator = page.getByTestId("modal");
@@ -339,6 +339,15 @@ export class ModalPom {
       .click();
 
     await this.clickOnLooker3d();
+  }
+
+  /** Chrome hidden from 3D screenshots: the action bar, selection bar, and panels. */
+  get looker3dScreenshotMasks(): Locator[] {
+    return [
+      this.locator.getByTestId("looker3d-action-bar"),
+      this.locator.getByTestId("selectable-bar"),
+      this.locator.getByTestId("panel-container"),
+    ];
   }
 
   async clickOnLooker() {

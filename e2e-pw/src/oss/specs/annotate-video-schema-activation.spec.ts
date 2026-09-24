@@ -1,22 +1,12 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Schema-manager activation gates EVERY annotate surface for a video dataset:
- * deactivating a label field must hide it on the canvas overlays, the timeline
- * tracks, AND the sidebar rows — not just one of them.
- *
- * This guards a fixed bug where only the sidebar consulted the active set: the
- * canvas overlays (engine Lighter bridge) and timeline tracks rendered straight
- * from presence, so a deactivated field stayed painted. The fix gates all three
- * on the sidebar's visible set (annotation-active ∩ explore-active). Covered for
- * both a per-frame field (`frames.detections`, via the engine bridge `paths`
- * scope + the frame-derived tracks) and a sample-level TemporalDetections field
- * (`events`, via the TD overlay sync + the TD track derivation).
- *
- * Seeded (per test, for isolation) with a tracked frame detection on sample 0
- * (one `vehicle` instance on every frame) plus the demo `events` TDs
- * (approach [1,6] / pass [7,13] / depart [14,20] over a 20-frame clip). At the
- * initial frame both fields render everywhere.
+ * Schema-manager activation gates every annotate surface for a video dataset:
+ * deactivating a field must hide it on the canvas overlays, the timeline tracks
+ * and the sidebar rows, for both a per-frame field (`frames.detections`) and a
+ * sample-level TemporalDetections field (`events`). Re-seeded per test with a
+ * tracked `vehicle` on every frame plus the demo events over a 20-frame clip,
+ * so both fields render everywhere at frame 1.
  */
 import { test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -29,7 +19,6 @@ const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-video-schema-active",
 );
 const id = "000000000000000000000000";
-const clip = `/tmp/${datasetName}.webm`;
 
 const FRAME_FIELD = "frames.detections";
 const TD_FIELD = "events";
@@ -46,32 +35,78 @@ const test = base.extend<{
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
-  // 20-frame clip so the events thirds land on approach [1,6] / pass [7,13] /
-  // depart [14,20]; the playhead opens on frame 1 (approach in support).
-  await mediaFactory.createVideo({
-    outputPath: clip,
-    duration: 2,
-    width: 64,
-    height: 64,
-    frameRate: 10,
-    color: "#3050a0",
-  });
 });
 
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeEach(async ({ videoAnnotateSDK }) => {
-  // a tracked `vehicle` frame detection on every frame + the three demo TDs;
-  // both schemas active. Re-seeded per test so activation edits don't leak
-  // across the serial dataset.
-  await videoAnnotateSDK.seed({
+test.beforeEach(async ({ datasetFactory }) => {
+  // a tracked `vehicle` frame detection on every frame + the three demo TDs
+  // over the 20-frame clip (approach [1,6] / pass [7,13] / depart [14,20]; the
+  // playhead opens on frame 1, approach in support); both schemas active.
+  // Re-seeded per test so activation edits don't leak across the serial
+  // dataset.
+  await datasetFactory.createDataset({
+    mediaType: "video",
     datasetName,
-    videoPaths: [clip],
-    trackedSampleIndices: [0],
+    sampleFrames: true,
+    schema: {
+      "frames.detections": "Detections",
+      "frames.detections.detections.instance": "Instance",
+      "frames.detections.detections.keyframe": "BooleanField",
+      "frames.detections.detections.propagation": "DictField",
+      events: "TemporalDetections",
+    },
+    labelSchemas: {
+      "frames.detections": {
+        type: "detections",
+        component: "dropdown",
+        classes: ["vehicle", "person", "road sign"],
+        attributes: [
+          { name: "id", type: "id", component: "text", read_only: true },
+          { name: "tags", type: "list<str>", component: "text" },
+          { name: "confidence", type: "float", component: "text" },
+          { name: "index", type: "int", component: "text" },
+          { name: "mask_path", type: "str", component: "text" },
+        ],
+      },
+      events: {
+        type: "temporaldetections",
+        component: "dropdown",
+        classes: ["approach", "pass", "depart"],
+        attributes: [
+          { name: "id", type: "id", component: "text", read_only: true },
+        ],
+      },
+    },
+    // three events split the clip into thirds
+    withSampleData: ({ numFrames }, { label }) => {
+      const a = Math.max(1, Math.floor(numFrames / 3));
+      const b = Math.max(a + 1, Math.floor((2 * numFrames) / 3));
+      return {
+        events: label.temporalDetections([
+          label.temporalDetection({ label: "approach", support: [1, a] }),
+          label.temporalDetection({ label: "pass", support: [a + 1, b] }),
+          label.temporalDetection({
+            label: "depart",
+            support: [b + 1, numFrames],
+          }),
+        ]),
+      };
+    },
+    withFrameData: (_, { label }) => ({
+      detections: label.detections([
+        label.detection({
+          label: "vehicle",
+          bounding_box: [0.3, 0.3, 0.2, 0.2],
+          index: 1,
+          instance: label.instance("vehicle-1"),
+        }),
+      ]),
+    }),
   });
 });
 

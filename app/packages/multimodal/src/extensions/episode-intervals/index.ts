@@ -11,6 +11,7 @@ export { EpisodeIntervalSources } from "./chain";
 export {
   toEpisodeRelativeNs,
   useEpisodePlayheadNs,
+  useEpisodeSeek,
   useEpisodeTimeRange,
 } from "./use-episode-time-range";
 export { packIntervals, UNPLACED } from "./pack-intervals";
