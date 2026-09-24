@@ -7,6 +7,8 @@ const env = vi.hoisted(() => ({
   publish: vi.fn(),
   setPending: vi.fn(),
   notify: vi.fn(),
+  onSearched: vi.fn(),
+  serverPending: false,
   extensions: new Map(),
 }));
 
@@ -15,13 +17,15 @@ vi.mock("@fiftyone/state", () => ({
   useView: () => env.view,
   useTextSearchExtensions: () => env.extensions,
   usePublishExtendedSelection: () => env.publish,
+  useViewChangePending: () => env.serverPending,
   useSetViewChangePending: () => env.setPending,
   useNotification: () => env.notify,
 }));
-vi.mock("@fiftyone/analytics", () => ({ useTrackEvent: () => vi.fn() }));
 
-import { readSearchQueries } from "./searchQueryHistory";
 import { useLanguageSearchExtension } from "./useLanguageSearchExtension";
+
+const renderSearch = () =>
+  renderHook(() => useLanguageSearchExtension(env.onSearched));
 
 const INDEX = {
   key: "emb_sim",
@@ -45,8 +49,8 @@ const pendingResult = () => {
 describe("useLanguageSearchExtension", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    window.localStorage.clear();
     env.view = [];
+    env.serverPending = false;
     env.extensions = new Map([
       ["multimodal", { method: "multimodal", search: env.search }],
     ]);
@@ -55,7 +59,7 @@ describe("useLanguageSearchExtension", () => {
   it("publishes the extension's result to the extended selection", async () => {
     const decorate = vi.fn();
     const resolve = pendingResult();
-    const { result } = renderHook(() => useLanguageSearchExtension());
+    const { result } = renderSearch();
 
     act(() => {
       result.current.run(INDEX, "an animal", 25);
@@ -74,20 +78,34 @@ describe("useLanguageSearchExtension", () => {
     expect(env.setPending).toHaveBeenLastCalledWith(false);
   });
 
-  it("records the query in the dataset's history and shows it at once", () => {
+  it("reports the search it starts for the bar to record", () => {
     pendingResult();
-    const { result } = renderHook(() => useLanguageSearchExtension());
+    const { result } = renderSearch();
 
     act(() => {
       result.current.run(INDEX, "an animal", 25);
     });
 
-    expect(readSearchQueries("robots")).toEqual(["an animal"]);
-    expect(result.current.recentQueries).toEqual(["an animal"]);
+    expect(env.onSearched).toHaveBeenCalledWith(INDEX, "an animal");
+  });
+
+  it("waits for a server search still running rather than racing it", () => {
+    env.serverPending = true;
+    const { result } = renderSearch();
+
+    act(() => {
+      result.current.run(INDEX, "an animal", 25);
+    });
+
+    expect(env.search).not.toHaveBeenCalled();
+    expect(env.setPending).not.toHaveBeenCalled();
+    expect(env.notify).toHaveBeenCalledWith(
+      expect.objectContaining({ key: "view-bar-text-search-busy" }),
+    );
   });
 
   it("leaves an index no extension searches to the caller", () => {
-    const { result } = renderHook(() => useLanguageSearchExtension());
+    const { result } = renderSearch();
 
     let ran = true;
     act(() => {
@@ -101,7 +119,7 @@ describe("useLanguageSearchExtension", () => {
   it("publishes only the newest search when an older one settles later", async () => {
     const first = pendingResult();
     const second = pendingResult();
-    const { result } = renderHook(() => useLanguageSearchExtension());
+    const { result } = renderSearch();
 
     act(() => {
       result.current.run(INDEX, "an animal", 25);
@@ -119,7 +137,7 @@ describe("useLanguageSearchExtension", () => {
     env.search.mockImplementationOnce(() => {
       throw new Error("the extension is misconfigured");
     });
-    const { result } = renderHook(() => useLanguageSearchExtension());
+    const { result } = renderSearch();
 
     await act(async () => {
       result.current.run(INDEX, "an animal", 25);
@@ -133,7 +151,7 @@ describe("useLanguageSearchExtension", () => {
 
   it("drops a cancelled search that settles later", async () => {
     const resolve = pendingResult();
-    const { result } = renderHook(() => useLanguageSearchExtension());
+    const { result } = renderSearch();
 
     act(() => {
       result.current.run(INDEX, "an animal", 25);
@@ -147,7 +165,7 @@ describe("useLanguageSearchExtension", () => {
 
   it("drops a search still running when the field unmounts", async () => {
     const resolve = pendingResult();
-    const { result, unmount } = renderHook(() => useLanguageSearchExtension());
+    const { result, unmount } = renderSearch();
 
     act(() => {
       result.current.run(INDEX, "an animal", 25);
@@ -161,7 +179,7 @@ describe("useLanguageSearchExtension", () => {
 
   it("drops a search when the view changes before it settles", async () => {
     const resolve = pendingResult();
-    const { result, rerender } = renderHook(() => useLanguageSearchExtension());
+    const { result, rerender } = renderSearch();
 
     act(() => {
       result.current.run(INDEX, "an animal", 25);

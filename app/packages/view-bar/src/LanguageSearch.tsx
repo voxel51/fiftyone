@@ -34,7 +34,6 @@ import {
 import React from "react";
 
 import styles from "./LanguageSearch.module.css";
-import { rememberQuery } from "./searchQueryHistory";
 import { SearchSettingsPopover } from "./SearchSettingsPopover";
 import { useLanguageSearchExtension } from "./useLanguageSearchExtension";
 
@@ -42,6 +41,9 @@ export const LANGUAGE_SEARCH_LABEL = "Search or ask in natural language";
 
 export interface LanguageSearchProps {
   onSubmit: (query: string) => void;
+  /** A search a text search extension runs has started, for the bar to
+   * record like the ones `onSubmit` runs. */
+  onSearched: (index: PromptableSimilarityIndex, query: string) => void;
   /**
    * Reports whether the input holds text — while it does, the bar's clear
    * [x] shows even with no stages applied.
@@ -50,10 +52,11 @@ export interface LanguageSearchProps {
   /** The input taking focus — the bar folds its stages row behind it. */
   onFocus?: () => void;
   /**
-   * Whether the similarity search operator may exist — registered, or not yet
-   * known to be missing while the registry loads. Known missing, the field
-   * still shows, and a click explains itself through `onUnavailable` instead
-   * of offering anything.
+   * Whether a search can run: the chosen index is one a text search
+   * extension searches, or the similarity search operator may exist —
+   * registered, or not yet known to be missing while the registry loads.
+   * Otherwise the field still shows, and a click explains itself through
+   * `onUnavailable` instead of offering anything.
    */
   available: boolean;
   onUnavailable: () => void;
@@ -73,6 +76,7 @@ export interface LanguageSearchProps {
 
 export const LanguageSearch: React.FC<LanguageSearchProps> = ({
   onSubmit,
+  onSearched,
   onHasTextChange,
   onFocus,
   available,
@@ -96,19 +100,8 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
   const pending = useViewChangePending();
   // An index a text search extension searches client-side runs here, not
   // through `onSubmit`
-  const {
-    run: runExtensionSearch,
-    cancel: cancelExtensionSearch,
-    recentQueries,
-  } = useLanguageSearchExtension();
-  const shownHistory = React.useMemo(
-    () =>
-      recentQueries.reduceRight(
-        (queries, q) => rememberQuery(queries, q),
-        [...history],
-      ),
-    [recentQueries, history],
-  );
+  const { run: runExtensionSearch, cancel: cancelExtensionSearch } =
+    useLanguageSearchExtension(onSearched);
 
   // The dropdown under the box: previous queries matching the draft. With no
   // prompt-capable index there is nothing to offer, and the empty state is
@@ -116,10 +109,10 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
   const options = React.useMemo<ComboboxOption[]>(() => {
     if (!available || !enabled) return [];
     const q = query.trim().toLowerCase();
-    return shownHistory
+    return history
       .filter((h) => !q || h.toLowerCase().includes(q))
       .map((h) => ({ id: h, label: h }));
-  }, [available, enabled, shownHistory, query]);
+  }, [available, enabled, history, query]);
 
   // A picked row or committed text: a previous query re-runs, typed text
   // runs. With no index there is nothing to run, and the query is the reason
@@ -136,7 +129,12 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
         return;
       }
       const index = promptKeys.find((key) => key.key === selectedKey);
-      if (index?.extension && runExtensionSearch(index, text, k)) return;
+      if (index?.extension) {
+        // The server cannot sort this index, so with its extension gone
+        // there is no search to fall back to
+        if (!runExtensionSearch(index, text, k)) onUnavailable();
+        return;
+      }
       // An extension search still running would otherwise publish over the
       // view this search produces
       cancelExtensionSearch();
@@ -147,6 +145,7 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
       enabled,
       onOpenPanel,
       onSubmit,
+      onUnavailable,
       promptKeys,
       selectedKey,
       runExtensionSearch,

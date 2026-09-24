@@ -11,10 +11,9 @@ import {
 
 /**
  * Clears every extended-selection layer inside the caller's Recoil
- * transaction. Atom effects do not fire in a transaction, so the mirror the
- * atoms restore themselves from on fragment refetches is cleared explicitly
- * alongside them — any transaction that resets the atoms without this
- * resurrects the selection on the next dataset fragment update.
+ * transaction. The atoms' effects update the mirror they restore themselves
+ * from on fragment refetches only once the transaction commits, so the
+ * mirror is cleared here as well, in step with the reset.
  */
 export function resetExtendedSelectionTransaction(
   cb: ExtendedSelectionResetInterface,
@@ -35,28 +34,34 @@ export default function useResetExtendedSelection() {
 }
 
 /**
- * Publishes a result to the extended selection, replacing whatever selection
- * was there: its stage narrows the grid without changing the view, and
- * `decorate` writes the publisher's own selection artifacts in the same
- * commit. A callback rather than a transaction, as the embeddings panel's
- * selection does, so the atoms' effects keep the mirror they restore from in
- * step.
+ * Publishes a result to the extended selection through the caller's `cb`,
+ * replacing whatever selection was there: its stage narrows the grid without
+ * changing the view, and `decorate` writes the publisher's own selection
+ * artifacts in the same commit.
  */
+export function publishExtendedSelection(
+  cb: ExtendedSelectionResetInterface,
+  stage: Record<string, Record<string, unknown>>,
+  decorate?: (cb: ExtendedSelectionResetInterface) => void,
+): void {
+  // The previous selection's sample ids still scope the sidebar's counts and
+  // reach operators, and its artifacts stay drawn, unless they clear before
+  // the new stage is written
+  cb.reset(extendedSelection);
+  runExtendedSelectionResetParticipants(cb);
+  cb.set(extendedSelectionOverrideStage, stage);
+  decorate?.(cb);
+}
+
+/** {@link publishExtendedSelection}, committed as one Recoil batch. */
 export function usePublishExtendedSelection() {
   return useRecoilCallback(
     ({ set, reset }) =>
       (
         stage: Record<string, Record<string, unknown>>,
         decorate?: (cb: ExtendedSelectionResetInterface) => void,
-      ) => {
-        // The previous selection's sample ids still scope the sidebar's
-        // counts and reach operators, and its artifacts stay drawn, unless
-        // they clear before the new stage is written
-        reset(extendedSelection);
-        runExtendedSelectionResetParticipants({ set, reset });
-        set(extendedSelectionOverrideStage, stage as never);
-        decorate?.({ set, reset });
-      },
+      ) =>
+        publishExtendedSelection({ set, reset }, stage, decorate),
     [],
   );
 }

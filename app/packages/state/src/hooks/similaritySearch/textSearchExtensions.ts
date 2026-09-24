@@ -10,6 +10,9 @@ export interface TextSearchRequest {
    * previous run's cached answers. */
   runTimestamp: string | null;
   query: string;
+  /** How many samples the result keeps, ranked over the whole index. The
+   * current view and sidebar filters narrow the published result afterward,
+   * so the grid can show fewer than `k`. */
   k: number;
 }
 

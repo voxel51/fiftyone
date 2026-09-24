@@ -822,6 +822,9 @@ const ViewBarInner: React.FC<{
     searchIndexKey,
     viewPatchesField,
   );
+  // An extension searches client-side and publishes to the extended
+  // selection: it needs neither the operator nor `SortBySimilarity`
+  const extensionSearch = Boolean(resolvedSearchIndex?.extension);
 
   const openSimilarityPanel = useCallback(() => {
     trackEvent("view_bar_search_settings_panel_opened");
@@ -855,12 +858,9 @@ const ViewBarInner: React.FC<{
     setTouched(new Set());
   }, [setView, inFlightFingerprint, trackEvent]);
 
-  const submitLanguageQuery = useCallback(
-    (query: string) => {
-      // The settings popover's picked index, else the most recently computed
-      // prompt-capable one — never an index that cannot embed the typed prompt
-      const index = resolvedSearchIndex;
-      if (!index) return;
+  // Every search the field runs, whichever path runs it
+  const recordSearch = useCallback(
+    (index: fos.PromptableSimilarityIndex, query: string) => {
       if (datasetName) {
         recordIndexUse(datasetName, index.key);
         recordSearchQuery(datasetName, query);
@@ -869,6 +869,17 @@ const ViewBarInner: React.FC<{
       trackEvent("view_bar_text_search", {
         patches: Boolean(index.patchesField),
       });
+    },
+    [datasetName, trackEvent],
+  );
+
+  const submitLanguageQuery = useCallback(
+    (query: string) => {
+      // The settings popover's picked index, else the most recently computed
+      // prompt-capable one — never an index that cannot embed the typed prompt
+      const index = resolvedSearchIndex;
+      if (!index) return;
+      recordSearch(index, query);
       // The pending treatment every view change gets, for the operator's
       // whole run — the router clears it when the resulting entry loads
       setViewChangePending(true);
@@ -917,8 +928,7 @@ const ViewBarInner: React.FC<{
     },
     [
       resolvedSearchIndex,
-      datasetName,
-      trackEvent,
+      recordSearch,
       setViewChangePending,
       currentView,
       searchK,
@@ -1079,13 +1089,16 @@ const ViewBarInner: React.FC<{
       style={{ height: CHROME_CONTROL_HEIGHT }}
     >
       <LanguageSearch
-        key={`search-${searchEpoch}`}
+        // The bar stays mounted across a dataset switch; the field must not,
+        // or a search in flight publishes into the next dataset
+        key={`search-${datasetName}-${searchEpoch}`}
         onHasTextChange={setSearchHasText}
         onFocus={foldForSearchFocus}
         onSubmit={submitSearch}
-        available={searchOperatorAvailable}
+        onSearched={recordSearch}
+        available={searchOperatorAvailable || extensionSearch}
         onUnavailable={notifySearchUnavailable}
-        enabled={searchEnabled}
+        enabled={searchEnabled || extensionSearch}
         history={searchHistory}
         promptKeys={orderedPromptKeys}
         selectedKey={resolvedSearchIndex?.key ?? null}

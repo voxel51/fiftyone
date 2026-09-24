@@ -33,9 +33,32 @@ const usePromptableSimilarityKeys = (): PromptableSimilarityIndex[] => {
     const created = new Map(brainMethods.map((m, i) => [m.key, i]));
     const models = new Map(brainMethods.map((m) => [m.key, m.config.model]));
     const timestamps = new Map(brainMethods.map((m) => [m.key, m.timestamp]));
+    // A registered extension searches its method's indexes even where the
+    // server could sort them, so each such key is offered once, as the
+    // extension's — a server copy listed beside it would win the lookup by
+    // key and send the query to `SortBySimilarity` instead
+    const searchedByExtension = brainMethods
+      .filter(
+        ({ config }) =>
+          (config.type === "similarity" ||
+            config.cls.toLowerCase().includes("similarity")) &&
+          config.supportsPrompts === true &&
+          extensions.has(config.method),
+      )
+      .map(({ key, config, timestamp }) => ({
+        key,
+        patchesField: config.patchesField ?? null,
+        model: config.model,
+        extension: config.method,
+        timestamp,
+      }));
+    const extensionKeys = new Set(searchedByExtension.map(({ key }) => key));
     return [
       ...samples
-        .filter((method) => method.supportsPrompts === true)
+        .filter(
+          (method) =>
+            method.supportsPrompts === true && !extensionKeys.has(method.key),
+        )
         .map(({ key }) => ({
           key,
           patchesField: null,
@@ -43,27 +66,17 @@ const usePromptableSimilarityKeys = (): PromptableSimilarityIndex[] => {
           timestamp: timestamps.get(key),
         })),
       ...patches
-        .filter(([method]) => method.supportsPrompts === true)
+        .filter(
+          ([method]) =>
+            method.supportsPrompts === true && !extensionKeys.has(method.key),
+        )
         .map(([{ key }, field]) => ({
           key,
           patchesField: field,
           model: models.get(key),
           timestamp: timestamps.get(key),
         })),
-      // `similarityMethods` leaves these out: `SortBySimilarity` cannot run
-      // on them, so only a registered extension makes them searchable
-      ...brainMethods
-        .filter(
-          ({ config }) =>
-            config.supportsPrompts === true && extensions.has(config.method),
-        )
-        .map(({ key, config, timestamp }) => ({
-          key,
-          patchesField: null,
-          model: config.model,
-          extension: config.method,
-          timestamp,
-        })),
+      ...searchedByExtension,
     ].sort((a, b) => (created.get(b.key) ?? -1) - (created.get(a.key) ?? -1));
   }, [samples, patches, brainMethods, extensions]);
 };

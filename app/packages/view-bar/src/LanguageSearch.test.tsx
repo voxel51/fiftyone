@@ -8,7 +8,6 @@ vi.mock("./useLanguageSearchExtension", () => ({
   useLanguageSearchExtension: () => ({
     run: extensionRun,
     cancel: extensionCancel,
-    recentQueries: [],
   }),
 }));
 vi.mock("./SearchSettingsPopover", () => ({
@@ -35,6 +34,7 @@ const renderSearch = (props: { available: boolean; enabled: boolean }) => {
   render(
     <LanguageSearch
       onSubmit={onSubmit}
+      onSearched={noop}
       onUnavailable={onUnavailable}
       history={["cats"]}
       promptKeys={[]}
@@ -50,7 +50,10 @@ const renderSearch = (props: { available: boolean; enabled: boolean }) => {
 };
 
 describe("LanguageSearch", () => {
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    vi.clearAllMocks();
+  });
 
   it("always renders the field", () => {
     renderSearch({ available: false, enabled: false });
@@ -130,6 +133,7 @@ describe("LanguageSearch", () => {
     render(
       <LanguageSearch
         onSubmit={onSubmit}
+        onSearched={noop}
         onUnavailable={noop}
         available
         enabled
@@ -148,11 +152,11 @@ describe("LanguageSearch", () => {
   });
 
   it("drops a running extension search before submitting to the server", () => {
-    extensionCancel.mockClear();
     const onSubmit = vi.fn();
     render(
       <LanguageSearch
         onSubmit={onSubmit}
+        onSearched={noop}
         onUnavailable={noop}
         available
         enabled
@@ -171,5 +175,32 @@ describe("LanguageSearch", () => {
     expect(extensionCancel.mock.invocationCallOrder[0]).toBeLessThan(
       onSubmit.mock.invocationCallOrder[0],
     );
+  });
+
+  it("never sends an index only an extension can search to the server", () => {
+    extensionRun.mockReturnValueOnce(false);
+    const onSubmit = vi.fn();
+    const onUnavailable = vi.fn();
+    render(
+      <LanguageSearch
+        onSubmit={onSubmit}
+        onSearched={noop}
+        onUnavailable={onUnavailable}
+        available
+        enabled
+        history={[]}
+        promptKeys={[
+          { key: "emb_sim", patchesField: null, extension: "multimodal" },
+        ]}
+        selectedKey="emb_sim"
+        onSelectKey={noop}
+        k={25}
+        onChangeK={noop}
+        onOpenPanel={noop}
+      />,
+    );
+    search("an animal");
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(onUnavailable).toHaveBeenCalledTimes(1);
   });
 });

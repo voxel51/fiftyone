@@ -8,13 +8,10 @@
  * without changing the view.
  */
 
-import { useTrackEvent } from "@fiftyone/analytics";
 import type { PromptableSimilarityIndex } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
-import { recordIndexUse } from "./searchIndexRecency";
-import { recordSearchQuery, rememberQuery } from "./searchQueryHistory";
 import { viewFingerprint } from "./state";
 
 export interface LanguageSearchExtension {
@@ -26,20 +23,22 @@ export interface LanguageSearchExtension {
   /** Drops the search in flight, if any: it will not publish, and its
    * pending treatment is released. */
   cancel: () => void;
-  /** Queries run here, most recent first. The bar reads the stored history
-   * when it mounts, so these would otherwise be missing until it remounts. */
-  recentQueries: readonly string[];
 }
 
-export const useLanguageSearchExtension = (): LanguageSearchExtension => {
+/**
+ * @param onSearched told of each search that starts, to record it where the
+ *   bar records its server searches
+ */
+export const useLanguageSearchExtension = (
+  onSearched: (index: PromptableSimilarityIndex, query: string) => void,
+): LanguageSearchExtension => {
   const datasetName = fos.useCurrentDatasetName();
   const view = fos.useView();
   const extensions = fos.useTextSearchExtensions();
   const publishExtendedSelection = fos.usePublishExtendedSelection();
+  const pending = fos.useViewChangePending();
   const setViewChangePending = fos.useSetViewChangePending();
   const notify = fos.useNotification();
-  const trackEvent = useTrackEvent();
-  const [recentQueries, setRecentQueries] = useState<string[]>([]);
 
   // Only the newest search may publish; null while none is in flight
   const searchSeq = useRef(0);
@@ -53,7 +52,7 @@ export const useLanguageSearchExtension = (): LanguageSearchExtension => {
     }
   }, [setViewChangePending]);
 
-  // A search still running when the field goes away (it remounts per
+  // A search still running when the field goes away (the bar keys it by
   // dataset) must not publish into the next one, nor leave its pending
   // treatment on
   useEffect(() => cancel, [cancel]);
@@ -71,10 +70,19 @@ export const useLanguageSearchExtension = (): LanguageSearchExtension => {
         : undefined;
       if (!extension || !datasetName) return false;
 
-      recordIndexUse(datasetName, index.key);
-      recordSearchQuery(datasetName, query);
-      setRecentQueries((queries) => rememberQuery(queries, query));
-      trackEvent("view_bar_text_search", { patches: false });
+      // Set with none of this hook's searches in flight, the pending flag is
+      // a server search's. It cannot be cancelled, and the view it lands
+      // resets the extended selection, so a result published now would be
+      // wiped by the older query's — this one waits for it instead
+      if (pending && inFlight.current === null) {
+        notify({
+          key: "view-bar-text-search-busy",
+          msg: "Wait for the current search to finish",
+        });
+        return true;
+      }
+
+      onSearched(index, query);
 
       const seq = ++searchSeq.current;
       inFlight.current = seq;
@@ -119,11 +127,12 @@ export const useLanguageSearchExtension = (): LanguageSearchExtension => {
       extensions,
       datasetName,
       publishExtendedSelection,
+      pending,
       setViewChangePending,
       notify,
-      trackEvent,
+      onSearched,
     ],
   );
 
-  return { run, cancel, recentQueries };
+  return { run, cancel };
 };

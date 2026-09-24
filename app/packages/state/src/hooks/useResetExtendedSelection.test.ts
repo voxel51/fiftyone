@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+
 // An explicit factory, NOT importOriginal: the real atoms module reaches this
 // hook again through the package barrel, and loading it here instantiates the
 // hook against the unmocked module before the mock can take effect
@@ -10,14 +11,6 @@ vi.mock("../recoil/atoms", () => ({
   extendedSelectionOverrideStage: { key: "extendedSelectionOverrideStage" },
 }));
 
-// Hands the hook's callback the test's own set/reset, so its writes can be
-// read back in order
-const recoilCb = vi.hoisted(() => ({ set: vi.fn(), reset: vi.fn() }));
-vi.mock("recoil", () => ({
-  useRecoilCallback: (factory: (cb: unknown) => unknown) => factory(recoilCb),
-  useRecoilTransaction_UNSTABLE: vi.fn(),
-}));
-
 import {
   clearExtendedSelectionMirror,
   extendedSelection,
@@ -25,8 +18,8 @@ import {
 } from "../recoil/atoms";
 import { registerExtendedSelectionResetParticipant } from "./extendedSelectionReset";
 import {
+  publishExtendedSelection,
   resetExtendedSelectionTransaction,
-  usePublishExtendedSelection,
 } from "./useResetExtendedSelection";
 
 describe("resetExtendedSelectionTransaction", () => {
@@ -52,28 +45,29 @@ describe("resetExtendedSelectionTransaction", () => {
   });
 });
 
-describe("usePublishExtendedSelection", () => {
+describe("publishExtendedSelection", () => {
   it("clears the previous selection and its artifacts before writing the new one", () => {
+    const cb = { set: vi.fn(), reset: vi.fn() };
     const participant = vi.fn();
     const unregister = registerExtendedSelectionResetParticipant(participant);
     const stage = { "fiftyone.core.stages.Select": { sample_ids: ["a"] } };
     const decorate = vi.fn();
 
     try {
-      usePublishExtendedSelection()(stage, decorate);
+      publishExtendedSelection(cb, stage, decorate);
     } finally {
       unregister();
     }
 
-    expect(recoilCb.reset).toHaveBeenCalledWith(extendedSelection);
-    expect(recoilCb.set).toHaveBeenCalledWith(
-      extendedSelectionOverrideStage,
-      stage,
-    );
+    expect(cb.reset).toHaveBeenCalledWith(extendedSelection);
+    expect(cb.set).toHaveBeenCalledWith(extendedSelectionOverrideStage, stage);
     const order = (fn: { mock: { invocationCallOrder: number[] } }) =>
       fn.mock.invocationCallOrder[0];
-    expect(order(recoilCb.reset)).toBeLessThan(order(recoilCb.set));
-    expect(order(participant)).toBeLessThan(order(recoilCb.set));
-    expect(order(recoilCb.set)).toBeLessThan(order(decorate));
+    expect(order(cb.reset)).toBeLessThan(order(cb.set));
+    expect(order(participant)).toBeLessThan(order(cb.set));
+    expect(order(cb.set)).toBeLessThan(order(decorate));
+    // Joining the publish's own commit
+    expect(participant).toHaveBeenCalledWith(cb);
+    expect(decorate).toHaveBeenCalledWith(cb);
   });
 });
