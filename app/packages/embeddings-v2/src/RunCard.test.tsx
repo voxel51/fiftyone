@@ -61,9 +61,9 @@ describe("RunCard", () => {
     expect(onAction).toHaveBeenCalledTimes(1);
   });
 
-  // The reason covers the title and meta only: hovering the pill or the
-  // live delete menu must not raise it
-  it("explains a disabled card in a tooltip over its title and meta", () => {
+  // The reason covers the whole card, so no dead zone sits between its
+  // text; the card's own attributes land on the tooltip's wrapper
+  it("explains a disabled card in a tooltip over the whole card", () => {
     render(
       <RunCard
         title="viz"
@@ -75,13 +75,13 @@ describe("RunCard", () => {
       />,
     );
 
-    fireEvent.mouseEnter(screen.getByText("Unavailable"));
-    fireEvent.mouseEnter(screen.getByText("kebab"));
+    const card = screen.getByText("viz").closest(".emb-run-card");
+    expect(card?.getAttribute("data-disabled")).toBe("true");
     expect(screen.queryByText("Wrong field")).toBeNull();
 
-    fireEvent.mouseEnter(screen.getByText("viz"));
+    fireEvent.mouseEnter(screen.getByText("Unavailable"));
     expect(screen.getByText("Wrong field")).toBeDefined();
-    fireEvent.mouseLeave(screen.getByText("viz"));
+    fireEvent.mouseLeave(screen.getByText("Unavailable"));
     expect(screen.queryByText("Wrong field")).toBeNull();
 
     fireEvent.mouseEnter(screen.getByText("fake patches"));

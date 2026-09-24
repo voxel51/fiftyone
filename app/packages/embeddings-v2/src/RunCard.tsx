@@ -21,7 +21,7 @@ import {
   TextVariant,
   Tooltip,
 } from "@voxel51/voodo";
-import { type CSSProperties, type ReactNode } from "react";
+import { type CSSProperties, type HTMLAttributes, type ReactNode } from "react";
 import "./panel.css";
 
 export interface RunCardStatus {
@@ -46,9 +46,7 @@ export interface RunCardProps {
   /** Mutes the card and makes it inert, `onClick` or not. Actions stay
    * live */
   disabled?: boolean;
-  /** Why a disabled card is disabled: a tooltip over its title and meta.
-   * The status pill and actions stay outside it, so hovering the menu
-   * never raises it */
+  /** Why a disabled card is disabled, as a tooltip over the whole card */
   disabledReason?: string;
   onClick?: () => void;
 }
@@ -62,25 +60,23 @@ const TOKEN_VARS = {
   "--emb-text-secondary": `var(${getColorCssVar(TextColor.Secondary)})`,
 } as CSSProperties;
 
-/** One content region of the card, under the reason tooltip when there is
- * one. The tooltip's wrapper takes the region's class, so the layout is
- * identical either way. Portaled: rendered inside the region, the tooltip
- * would inherit the muted region's opacity */
-function Region({
-  className,
+/** The card's root, which is the reason tooltip's own wrapper when there
+ * is a reason: the tooltip covers the whole card, with no dead zones
+ * between its text, and the root's props land on the wrapper, so the
+ * layout is identical either way */
+function CardRoot({
   reason,
   children,
-}: {
-  className: string;
-  reason: string | null;
-  children: ReactNode;
-}) {
+  ...props
+}: HTMLAttributes<HTMLDivElement> & { reason: string | null }) {
   return reason ? (
-    <Tooltip content={reason} portal wrapperClassName={className}>
+    <Tooltip content={reason} portal wrapperClassName="emb-run-card" {...props}>
       {children}
     </Tooltip>
   ) : (
-    <div className={className}>{children}</div>
+    <div className="emb-run-card" {...props}>
+      {children}
+    </div>
   );
 }
 
@@ -99,8 +95,8 @@ export function RunCard({
   const interactive = Boolean(onClick) && !disabled;
   const reason = disabled && disabledReason ? disabledReason : null;
   return (
-    <div
-      className="emb-run-card"
+    <CardRoot
+      reason={reason}
       data-interactive={interactive ? "true" : "false"}
       data-disabled={disabled ? "true" : "false"}
       style={TOKEN_VARS}
@@ -119,7 +115,7 @@ export function RunCard({
       }
     >
       <div className="emb-run-card-row">
-        <Region className="emb-run-card-lead" reason={reason}>
+        <div className="emb-run-card-lead">
           {icon && (
             <div className="emb-run-card-iconwell">
               <Icon name={icon} size={Size.Sm} color={TextColor.Secondary} />
@@ -138,7 +134,7 @@ export function RunCard({
               {badge}
             </span>
           )}
-        </Region>
+        </div>
         <div
           className="emb-run-card-trail"
           onClick={(event) => event.stopPropagation()}
@@ -161,7 +157,7 @@ export function RunCard({
         </div>
       </div>
       {meta && meta.length > 0 && (
-        <Region className="emb-run-card-meta" reason={reason}>
+        <div className="emb-run-card-meta">
           {meta.map((item, index) => (
             // The dot travels with its segment: a narrow card wraps
             // between segments, never inside one
@@ -172,8 +168,8 @@ export function RunCard({
               </Text>
             </span>
           ))}
-        </Region>
+        </div>
       )}
-    </div>
+    </CardRoot>
   );
 }
