@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { gridPatches, listRuns, unavailableReason } from "./gridPatches";
+import {
+  gridPatches,
+  listRuns,
+  plotWarning,
+  unavailableReason,
+} from "./gridPatches";
 import type { VisualizationRun } from "./protocol";
 
 const stage = (_cls: string, kwargs: [string, unknown][]) => ({
@@ -97,6 +102,21 @@ describe("unavailableReason", () => {
 
   it("blocks nothing outside a patches view", () => {
     expect(unavailableReason(run("fake", "fake"), null)).toBeNull();
+  });
+});
+
+describe("plotWarning", () => {
+  const grid = { fields: ["ground_truth"], label: "ground_truth patches" };
+
+  // The grid changed after the run opened: the plot says what no longer
+  // reaches the grid
+  it("warns only when the open run cannot link to the grid", () => {
+    expect(plotWarning(run("fake", "fake"), grid)).toBe(
+      "The grid shows ground_truth patches, but this run embeds fake patches. Lasso and filters don't apply to the grid.",
+    );
+    expect(plotWarning(run("gt", "ground_truth"), grid)).toBeNull();
+    expect(plotWarning(run("viz", null), grid)).toBeNull();
+    expect(plotWarning(run("fake", "fake"), null)).toBeNull();
   });
 });
 

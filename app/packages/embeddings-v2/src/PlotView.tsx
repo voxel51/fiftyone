@@ -33,11 +33,13 @@ import { ColorLegend } from "./ColorLegend";
 import { ContinuousLegend } from "./ContinuousLegend";
 import FacetCell from "./FacetCell";
 import type { SharedPlotProps } from "./extensions";
+import { plotWarning } from "./gridPatches";
 import { counterLabel } from "./plotCounter";
 import { SettingsMenu } from "./SettingsMenu";
 import "./panel.css";
 import { type VisualizationRun } from "./protocol";
 import { type CameraAdapterFactory, type InteractionMode } from "./renderer";
+import { useGridPatches } from "./useGridPatches";
 import { NONE_FIELD, useRunPlotData } from "./useRunPlotData";
 
 const TOKEN_VARS = {
@@ -96,6 +98,10 @@ export default function PlotView({
   zCamera?: () => Promise<CameraAdapterFactory>;
 }) {
   const data = useRunPlotData(datasetName, run);
+  // The runs list disables a run the grid's patches view cannot link to,
+  // but the grid can change after the run opens; the plot stays usable
+  // and says what no longer reaches the grid
+  const gridWarning = plotWarning(run, useGridPatches());
   const {
     loaded,
     total,
@@ -323,6 +329,13 @@ export default function PlotView({
         <div className="emb-plot-error">
           <Text variant={TextVariant.Sm} color={TextColor.Destructive}>
             {error}
+          </Text>
+        </div>
+      )}
+      {gridWarning && (
+        <div className="emb-plot-error" role="status">
+          <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+            {gridWarning}
           </Text>
         </div>
       )}

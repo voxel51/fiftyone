@@ -78,16 +78,39 @@ export function gridPatches(
   return null;
 }
 
+/** The grid's patches and the run's field, when the run cannot link */
+function mismatch(
+  run: Pick<VisualizationRun, "patchesField">,
+  grid: GridPatches | null,
+): { grid: GridPatches; field: string } | null {
+  if (!grid || !run.patchesField || grid.fields.includes(run.patchesField)) {
+    return null;
+  }
+  return { grid, field: run.patchesField };
+}
+
 /** Why a run cannot link to the grid (the card's tooltip), or null when it
  * can */
 export function unavailableReason(
   run: Pick<VisualizationRun, "patchesField">,
   grid: GridPatches | null,
 ): string | null {
-  if (!grid || !run.patchesField || grid.fields.includes(run.patchesField)) {
-    return null;
-  }
-  return `The grid shows ${grid.label}. This run embeds ${run.patchesField} patches.`;
+  const found = mismatch(run, grid);
+  return found
+    ? `The grid shows ${found.grid.label}. This run embeds ${found.field} patches.`
+    : null;
+}
+
+/** The open plot's warning when its run cannot link to the grid (the grid
+ * changed after the run opened), or null when it can */
+export function plotWarning(
+  run: Pick<VisualizationRun, "patchesField">,
+  grid: GridPatches | null,
+): string | null {
+  const found = mismatch(run, grid);
+  return found
+    ? `The grid shows ${found.grid.label}, but this run embeds ${found.field} patches. Lasso and filters don't apply to the grid.`
+    : null;
 }
 
 export interface ListedRun {
