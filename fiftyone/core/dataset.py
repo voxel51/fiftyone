@@ -6510,8 +6510,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._delete()
 
     def _delete(self):
-        for deleter in _extras_deleters:
-            deleter(self)
+        # A generated dataset's external data belongs to its source dataset
+        if not self._is_generated:
+            for deleter in _extras_deleters:
+                deleter(self)
 
         self._sample_collection.drop()
         fos.Sample._reset_docs(self._sample_collection_name)
@@ -10806,19 +10808,20 @@ def _update_no_overwrite(d, dnew):
 _extras_cloners = []
 
 
-# Hooks invoked before a dataset is deleted, as ``deleter(dataset)``. See
-# :func:`register_extras_deleter`.
 _extras_deleters = []
 
 
 def register_extras_deleter(deleter):
     """Registers a callable to be invoked when a dataset is deleted.
 
-    Each registered deleter is called as ``deleter(dataset)`` before any of
-    the dataset's collections or records are deleted, including for generated
-    and non-persistent datasets, so that it can remove data the dataset owns
-    outside of the database. A deleter that raises aborts the deletion with
-    the dataset intact, so the deletion can be retried.
+    Each registered deleter is called as ``deleter(dataset)``, in registration
+    order, before any of the dataset's collections or records are deleted, so
+    that it can remove data the dataset owns outside of the database.
+    Generated datasets, such as patches and clips, do not invoke deleters.
+
+    A deleter that raises aborts the deletion with the dataset intact, so the
+    deletion can be retried, which reruns every deleter. Deleters must
+    therefore be idempotent.
 
     Args:
         deleter: a callable with signature ``deleter(dataset)``

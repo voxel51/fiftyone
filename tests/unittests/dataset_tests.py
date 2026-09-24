@@ -7127,12 +7127,31 @@ class ExtrasDeleterTests(unittest.TestCase):
             if dataset.name == failing.name:
                 raise OSError("storage unreachable")
 
+        failing.add_sample(fo.Sample(filepath="image.png"))
         fod.register_extras_deleter(deleter)
 
-        fod._delete_non_persistent_datasets()
+        with self.assertLogs("fiftyone.core.dataset", "WARNING"):
+            fod._delete_non_persistent_datasets()
 
-        self.assertTrue(fo.dataset_exists(failing.name))
+        self.assertEqual(len(fo.load_dataset(failing.name)), 1)
         self.assertFalse(fo.dataset_exists(healthy.name))
+
+    @drop_datasets
+    def test_generated_dataset_skips_deleters(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(
+            fo.Sample(
+                filepath="image.png",
+                gt=fo.Detections(detections=[fo.Detection(label="cat")]),
+            )
+        )
+        patches = dataset.to_patches("gt")
+        deleted = []
+        fod.register_extras_deleter(deleted.append)
+
+        patches._dataset.delete()
+
+        self.assertListEqual(deleted, [])
 
 
 class DynamicFieldTests(unittest.TestCase):
