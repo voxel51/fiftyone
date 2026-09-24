@@ -181,7 +181,6 @@ export const LighterVideo: React.FC<LighterVideoProps> = ({
       <video
         ref={videoRef}
         className={styles.video}
-        data-lighter-media
         src={videoSrc}
         preload="auto"
         playsInline

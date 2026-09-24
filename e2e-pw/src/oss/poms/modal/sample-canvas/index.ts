@@ -251,15 +251,6 @@ export class SampleCanvasPom {
   }
 
   /**
-   * Resize the page, returning once Lighter has resized its canvas to match
-   */
-  async resizeViewport(width: number, height: number) {
-    await this.eventUtils.after("lighter:resize", () =>
-      this.page.setViewportSize({ width, height }),
-    );
-  }
-
-  /**
    * Reset Lighter zoom and pan with the Annotate keyboard shortcut
    */
   async resetZoomPan() {
@@ -366,20 +357,6 @@ class SampleCanvasAsserter {
     expect(
       await target.screenshot({ animations: "disabled", caret: "hide" }),
     ).toMatchSnapshot(name, { maxDiffPixelRatio: 0, threshold: 0 });
-  }
-
-  /**
-   * Is the Lighter canvas stacked exactly over the element the surface shows
-   * its media in (`data-lighter-media`), so labels paint in the media rect
-   */
-  async lighterCoversMedia() {
-    const [canvas, media] = await Promise.all([
-      this.sampleCanvasPom.lighterCanvas.boundingBox(),
-      this.sampleCanvasPom.locator
-        .locator("[data-lighter-media]")
-        .boundingBox(),
-    ]);
-    expect(canvas).toEqual(media);
   }
 
   /**
