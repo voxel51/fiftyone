@@ -16,6 +16,7 @@ import {
   packIntervals,
   UNPLACED,
   useEpisodePlayheadNs,
+  useEpisodeSeek,
   useEpisodeTimeRange,
 } from "../extensions/episode-intervals";
 import { temporalTagIntervalSource } from "./temporal-tag-interval-source";
@@ -23,15 +24,6 @@ import styles from "./grid-overlay.module.css";
 
 /** Cap the stacked levels so the lane stays compact on a small grid tile. */
 const MAX_LEVELS = 3;
-
-/**
- * Mark thickness and the vertical pitch between stacked levels.
- *
- * The height is applied inline rather than in the stylesheet because the lane's
- * own height is computed from it; two copies would drift.
- */
-const MARK_HEIGHT = 6;
-const LEVEL_STEP = 8;
 
 /**
  * Fraction of the lane's span an instant still answers a hover from.
@@ -55,7 +47,7 @@ const TILE_SELECTOR = "[data-grid-tile]";
 /**
  * Tile sizes the lane stops being worth its space at.
  *
- * The bar is fixed height, so on a small enough tile it stops being a readout
+ * The overlay is fixed height, so on a small tile it stops being a readout
  * and starts being a stripe across the preview. Below the readout thresholds
  * the names go and the lane stays, which is the half that still reads at a
  * glance; below the lane thresholds the overlay goes entirely.
@@ -123,8 +115,9 @@ function IntervalLane({
   // takes precedence over the playhead for the readout: it is a deliberate act
   // of inspection, while the playhead is only where the tile got to.
   const [hoverNs, setHoverNs] = useState<number | null>(null);
-  const barRef = useRef<HTMLDivElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const laneRef = useRef<HTMLDivElement | null>(null);
+  const seek = useEpisodeSeek(episodeId, timeRange);
   const [tile, setTile] = useState<HTMLElement | null>(null);
   const attachToTile = useCallback((sentinel: HTMLElement | null) => {
     setTile(sentinel?.closest<HTMLElement>(TILE_SELECTOR) ?? null);
@@ -134,24 +127,32 @@ function IntervalLane({
   const domainSpan = model?.domainSpan ?? 1;
   const hitToleranceNs = domainSpan * HIT_TOLERANCE;
   // Read through a ref so a changing span never re-subscribes the listener.
+  //
+  // Written after commit rather than during render: the listeners below are
+  // bound to the committed tile, so a render that is thrown away — or one
+  // React has not committed yet — must not be able to move the value they
+  // read. A click can only arrive after commit, so the ref is never stale by
+  // the time either listener fires.
   const domainSpanRef = useRef(domainSpan);
-  domainSpanRef.current = domainSpan;
+  useLayoutEffect(() => {
+    domainSpanRef.current = domainSpan;
+  }, [domainSpan]);
 
   // This effect follows the pointer while it is over the overlay, projected
   // onto the lane's horizontal axis. Listening on the tile rather than on the
   // overlay is what lets the overlay stay `pointer-events: none`, so arriving
-  // over an interval does not cut hover playback off. The bar's own rectangle is
-  // then what decides whether the pointer counts as being over it — hovering
-  // the preview itself is not an inspection and gets no ghost.
+  // over an interval does not cut hover playback off. The container's own
+  // rectangle is then what decides whether the pointer counts as being over
+  // it — hovering the preview itself is not an inspection and gets no ghost.
   useEffect(() => {
     if (!tile) return;
 
     const onMove = (event: globalThis.MouseEvent) => {
-      const bar = barRef.current;
+      const container = containerRef.current;
       const lane = laneRef.current;
-      if (!bar || !lane) return;
+      if (!container || !lane) return;
 
-      const overlay = bar.getBoundingClientRect();
+      const overlay = container.getBoundingClientRect();
       if (
         event.clientX < overlay.left ||
         event.clientX > overlay.right ||
@@ -177,9 +178,66 @@ function IntervalLane({
     };
   }, [tile]);
 
+  // Read through a ref for the same reason the span is: the listener below is
+  // bound once per tile and must not re-subscribe as the episode's range
+  // arrives or the tile is pointed at another sample.
+  const seekRef = useRef(seek);
+  useLayoutEffect(() => {
+    seekRef.current = seek;
+  }, [seek]);
+
+  // This effect turns a click on the overlay into a seek instead of letting it
+  // open the modal.
+  //
+  // Bound on the tile in the CAPTURE phase, which is the only place it can be:
+  // the overlay is `pointer-events: none` — deliberately, so that reaching for
+  // it does not cut hover playback off — so the click's target is the preview
+  // underneath it, and by the time the event bubbles it is indistinguishable
+  // from a click on the tile. Capturing lets its own rectangle decide,
+  // exactly as it does for the hover readout, and stop the event before the
+  // grid cell that would open the sample ever sees it.
+  useEffect(() => {
+    if (!tile) return undefined;
+
+    const onClick = (event: globalThis.MouseEvent) => {
+      // A modified click is the grid's, not ours: those are how a tile is
+      // added to a selection.
+      if (event.metaKey || event.shiftKey || event.ctrlKey || event.altKey) {
+        return;
+      }
+
+      const container = containerRef.current;
+      const lane = laneRef.current;
+      const requestSeek = seekRef.current;
+      if (!container || !lane || !requestSeek) return;
+
+      const overlay = container.getBoundingClientRect();
+      if (
+        event.clientX < overlay.left ||
+        event.clientX > overlay.right ||
+        event.clientY < overlay.top ||
+        event.clientY > overlay.bottom
+      ) {
+        return;
+      }
+
+      const { left, width } = lane.getBoundingClientRect();
+      if (width <= 0) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      requestSeek(
+        clamp((event.clientX - left) / width, 0, 1) * domainSpanRef.current,
+      );
+    };
+
+    tile.addEventListener("click", onClick, { capture: true });
+    return () => tile.removeEventListener("click", onClick, { capture: true });
+  }, [tile]);
+
   // The sentinel is how the tile is found, so it is rendered unconditionally:
-  // gating the bar on a measurement taken through it would mean never taking
-  // the measurement.
+  // gating the overlay on a measurement taken through it would mean never
+  // taking the measurement.
   const sentinel = <span hidden ref={attachToTile} />;
 
   if (!model) return sentinel;
@@ -198,11 +256,15 @@ function IntervalLane({
     (tileSize.width >= MIN_READOUT_TILE_WIDTH &&
       tileSize.height >= MIN_READOUT_TILE_HEIGHT);
 
-  const { intervals, marks, levelCount } = model;
+  const { intervals, levels } = model;
   const readoutNs = hoverNs ?? playheadNs;
 
   return (
-    <div className={styles.bar} data-testid="episode-grid-overlay" ref={barRef}>
+    <div
+      className={styles.overlayContainer}
+      data-testid="episode-grid-overlay"
+      ref={containerRef}
+    >
       {sentinel}
       {fitsReadout && (
         <Readout
@@ -212,38 +274,30 @@ function IntervalLane({
           width={tileSize?.width ?? 0}
         />
       )}
-      <div
-        className={styles.lane}
-        ref={laneRef}
-        style={{ height: (levelCount - 1) * LEVEL_STEP + MARK_HEIGHT }}
-      >
+      <div className={styles.lane} ref={laneRef}>
         {/* One track per occupied level, so an empty stretch reads as somewhere
-            an interval could sit rather than as bare background. */}
-        {Array.from({ length: levelCount }, (_, level) => (
-          <div
-            className={styles.track}
-            key={level}
-            style={{ bottom: level * LEVEL_STEP, height: MARK_HEIGHT }}
-          />
-        ))}
-        {marks.map((mark, index) => (
-          <div
-            key={index}
-            className={styles.mark}
-            data-source={mark.interval.sourceId}
-            data-testid="episode-grid-overlay-mark"
-            style={{
-              left: `${offsetPercent(mark.interval.startNs, domainSpan)}%`,
-              width: `${spanPercent(
-                mark.interval.startNs,
-                mark.interval.endNs,
-                domainSpan,
-              )}%`,
-              bottom: mark.level * LEVEL_STEP,
-              height: MARK_HEIGHT,
-              background: mark.interval.color,
-            }}
-          />
+            an interval could sit rather than as bare background. Highest level
+            first, so level 0 is the bottom row it was packed onto. */}
+        {levels.map((placed, index) => (
+          <div className={styles.track} key={levels.length - 1 - index}>
+            {placed.map((interval, markIndex) => (
+              <div
+                key={markIndex}
+                className={styles.mark}
+                data-source={interval.sourceId}
+                data-testid="episode-grid-overlay-mark"
+                style={{
+                  left: `${offsetPercent(interval.startNs, domainSpan)}%`,
+                  width: `${spanPercent(
+                    interval.startNs,
+                    interval.endNs,
+                    domainSpan,
+                  )}%`,
+                  background: interval.color,
+                }}
+              />
+            ))}
+          </div>
         ))}
         {playheadNs !== null && (
           <div
@@ -463,21 +517,19 @@ function intervalsAt(
   return covering;
 }
 
-interface LaneMark {
-  readonly interval: EpisodeInterval;
-  readonly level: number;
-}
-
 interface LaneModel {
-  /** Only the intervals that found a level; these are what get drawn. */
-  readonly marks: readonly LaneMark[];
+  /**
+   * The intervals that found a level, grouped into the track each one is
+   * drawn on. Ordered top row first — the highest level packed — so the list
+   * maps straight onto the column of tracks.
+   */
+  readonly levels: readonly (readonly EpisodeInterval[])[];
   /**
    * Every interval, placed or not. The readout works from this, so an interval
    * the lane had no room to draw is still named when the pointer reaches it —
    * dropping it from the lane loses its position, not its existence.
    */
   readonly intervals: readonly EpisodeInterval[];
-  readonly levelCount: number;
   /** Time span the lane maps left->right (ns); never zero. */
   readonly domainSpan: number;
 }
@@ -510,12 +562,21 @@ function buildLaneModel(
     MAX_LEVELS,
   );
 
+  // Top row first: level 0 is the base of the stack and so the last track in
+  // a column that grows downwards.
+  const tracks: EpisodeInterval[][] = Array.from(
+    { length: levelCount },
+    () => [],
+  );
+  intervals.forEach((interval, index) => {
+    const level = levels[index];
+    if (level === UNPLACED) return;
+    tracks[levelCount - 1 - level].push(interval);
+  });
+
   return {
-    marks: intervals.flatMap((interval, index) =>
-      levels[index] === UNPLACED ? [] : [{ interval, level: levels[index] }],
-    ),
+    levels: tracks,
     intervals,
-    levelCount,
     domainSpan: Math.max(recordingDurationNs ?? fallbackEnd, 1),
   };
 }

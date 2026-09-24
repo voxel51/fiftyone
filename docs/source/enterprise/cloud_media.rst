@@ -864,7 +864,7 @@ file by passing your token as a build environment variable, e.g.,
 `FIFTYONE_ENTERPRISE_TOKEN` and then using the syntax below to specify the version
 of the FiftyOne Enterprise client to use:
 
-.. code-block:: text
+.. code-block:: none
 
     https://${FIFTYONE_ENTERPRISE_TOKEN}@pypi.fiftyone.ai/packages/fiftyone-0.6.6-py3-none-any.whl
 

@@ -140,6 +140,15 @@ export const fo3dPerformanceStatsAtom = atom<Fo3dPerformanceStats>({
 });
 
 // GRID & BACKGROUND
+/**
+ * True once the fo3d scene is parsed, its camera lifecycle is ready and every
+ * asset loader has resolved; `Looker3d` exposes it as `data-scene-ready`.
+ */
+export const fo3dSceneReadyAtom = atom<boolean>({
+  key: "fo3dSceneReady",
+  default: false,
+});
+
 export const isGridOnAtom = atom<boolean>({
   key: "fo3d-isGridOn",
   default: true,
