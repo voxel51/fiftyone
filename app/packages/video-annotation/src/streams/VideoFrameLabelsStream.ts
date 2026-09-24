@@ -10,6 +10,7 @@ import {
 import {
   maskBitmapCache,
   maskSourceOf,
+  segmentationIndexCache,
   type MaskSource,
 } from "@fiftyone/lighter";
 import { type FrameDoc } from "../../../core/src/client/framesClient";
@@ -217,17 +218,30 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
    */
   async warmup(time = 0): Promise<void> {
     const frame = this.timeToFrame(time);
-    if (this.cache.has(frame)) {
-      return;
+
+    if (!this.cache.has(frame)) {
+      const inflight = this.inflight.get(frame);
+
+      if (inflight) {
+        await inflight;
+      } else {
+        await this.fetchChunk(frame);
+      }
     }
 
-    const inflight = this.inflight.get(frame);
-    if (inflight) {
-      await inflight;
-      return;
-    }
+    // A stream registered after the engine's settle loop has finished gets no
+    // commit until play, so without this it would start playback one chunk
+    // deep and stall at the chunk boundary while the next one loads.
+    this.prefetchAhead(time);
+    this.warmSegmentationsAhead(frame);
+  }
 
-    await this.fetchChunk(frame);
+  /** Ask for the lookahead window from `time`; skips what is cached or in flight. */
+  private prefetchAhead(time: number): void {
+    this.prefetch([
+      time,
+      Math.min(this.frameCount / this.frameRate, time + this.lookaheadSeconds),
+    ]);
   }
 
   /**
@@ -712,7 +726,64 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
       return;
     }
 
+    // A new committed frame. The engine only asks for a prefetch once a frame
+    // is already missing, so left to it the next chunk is requested at the
+    // moment the clock stalls on it. Ask ahead here instead, as the bitmap
+    // stream does; `prefetch` skips what is cached or in flight.
+    this.prefetchAhead(time);
+    this.warmSegmentationsAhead(frame);
+
     this.publish(store, this.getValue(time));
+  }
+
+  /**
+   * Start decoding the inline segmentation masks of the frames just ahead of
+   * the playhead, off the main thread, so the overlay finds its indices
+   * already decoded when it paints. Not part of the readiness gate: a mask
+   * that has not landed by then is decoded at paint time, as before.
+   */
+  private warmSegmentationsAhead(frame: number): void {
+    const last = Math.min(this.frameCount, frame + MASK_HOLD_AHEAD_FRAMES);
+
+    for (let f = frame; f <= last; f++) {
+      for (const source of this.segmentationSourcesAt(f)) {
+        if (
+          !segmentationIndexCache.has(source) &&
+          !segmentationIndexCache.isWarming(source)
+        ) {
+          void segmentationIndexCache.warm(source);
+        }
+      }
+    }
+  }
+
+  /** Every inline `Segmentation.mask` carried by this frame's cached document. */
+  private segmentationSourcesAt(frame: number): string[] {
+    const doc = this.cache.get(frame);
+
+    if (!doc) {
+      return [];
+    }
+
+    const sources: string[] = [];
+
+    for (const field of this.frameFields) {
+      const label = doc[field] as
+        | { _cls?: string; mask?: SerializedMask }
+        | undefined;
+
+      if (label?._cls !== "Segmentation") {
+        continue;
+      }
+
+      const source = maskSourceOf(label.mask);
+
+      if (typeof source === "string") {
+        sources.push(source);
+      }
+    }
+
+    return sources;
   }
 
   /** Subscribe to `/frames` cache mutations (chunks landing); returns an unsubscribe function. */

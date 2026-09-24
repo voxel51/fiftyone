@@ -1,5 +1,9 @@
 export { createMaskCanvas } from "./createMaskCanvas";
-export { decodeMask } from "./maskDecoding";
+export { decodeMask, decodeSegmentationIndicesAsync } from "./maskDecoding";
+export {
+  SegmentationIndexCache,
+  segmentationIndexCache,
+} from "./segmentationIndexCache";
 export { MaskBitmapCache, maskBitmapCache } from "./maskBitmapCache";
 export type { MaskSource } from "./maskBitmapCache";
 export { maskSourceOf } from "./maskSource";

@@ -15,7 +15,16 @@
 import type { OverlayMask } from "@fiftyone/looker/src/numpy";
 
 import { decodeMaskToRaster } from "./maskRaster";
-import type { MaskDecodeResponse } from "./maskDecodeWorker";
+import type {
+  MaskDecodeRequest,
+  MaskDecodeResponse,
+  MaskDecodeSuccess,
+  MaskIndicesSuccess,
+} from "./maskDecodeWorker";
+import {
+  decodeSegmentationIndices,
+  type DecodedSegmentation,
+} from "./segmentationIndices";
 
 export interface DecodedMask {
   bitmap: ImageBitmap;
@@ -29,7 +38,10 @@ let worker: Worker | undefined;
 let nextId = 1;
 const pending = new Map<
   string,
-  { resolve: (mask: DecodedMask) => void; reject: (err: Error) => void }
+  {
+    resolve: (data: MaskDecodeSuccess | MaskIndicesSuccess) => void;
+    reject: (err: Error) => void;
+  }
 >();
 
 const supportsWorkers = (): boolean =>
@@ -67,14 +79,7 @@ const ensureWorker = (): Worker | undefined => {
       pending.delete(data.uuid);
 
       if (data.ok) {
-        job.resolve({
-          bitmap: data.bitmap,
-          rawPixels: {
-            src: data.rawPixels,
-            width: data.width,
-            height: data.height,
-          },
-        });
+        job.resolve(data);
       } else {
         // `in`-narrow (the union discriminant doesn't narrow under this
         // package's tsconfig — cf. maskPathDecoding).
@@ -100,15 +105,44 @@ const ensureWorker = (): Worker | undefined => {
   return worker;
 };
 
-const decodeViaWorker = (
+const requestViaWorker = (
   w: Worker,
-  maskData: string | OverlayMask,
-): Promise<DecodedMask> =>
+  request: Omit<MaskDecodeRequest, "uuid">,
+): Promise<MaskDecodeSuccess | MaskIndicesSuccess> =>
   new Promise((resolve, reject) => {
     const uuid = String(nextId++);
     pending.set(uuid, { resolve, reject });
-    w.postMessage({ uuid, maskData });
+    w.postMessage({ ...request, uuid });
   });
+
+const decodeViaWorker = async (
+  w: Worker,
+  maskData: string | OverlayMask,
+): Promise<DecodedMask> => {
+  const data = await requestViaWorker(w, { kind: "raster", maskData });
+
+  if (data.kind === "indices") {
+    throw new Error("mask worker answered a raster request with indices");
+  }
+
+  return {
+    bitmap: data.bitmap,
+    rawPixels: { src: data.rawPixels, width: data.width, height: data.height },
+  };
+};
+
+const decodeIndicesViaWorker = async (
+  w: Worker,
+  maskData: string | OverlayMask,
+): Promise<DecodedSegmentation> => {
+  const data = await requestViaWorker(w, { kind: "indices", maskData });
+
+  if (data.kind !== "indices") {
+    throw new Error("mask worker answered an indices request with a raster");
+  }
+
+  return { indices: data.indices, width: data.width, height: data.height };
+};
 
 const decodeOnMainThread = async (
   maskData: string | OverlayMask,
@@ -144,5 +178,30 @@ export async function decodeMask(
       err,
     );
     return decodeOnMainThread(maskData);
+  }
+}
+
+/**
+ * Decode a segmentation mask to its target indices off the main thread, with
+ * the same fallbacks as {@link decodeMask}. The synchronous
+ * {@link decodeSegmentationIndices} stays the path of last resort, so a
+ * caller that cannot wait (a paint) still gets its indices.
+ */
+export async function decodeSegmentationIndicesAsync(
+  maskData: string | OverlayMask,
+): Promise<DecodedSegmentation> {
+  const w = ensureWorker();
+  if (!w) {
+    return decodeSegmentationIndices(maskData);
+  }
+
+  try {
+    return await decodeIndicesViaWorker(w, maskData);
+  } catch (err) {
+    console.error(
+      "[decodeMask] worker indices decode failed; main-thread fallback:",
+      err,
+    );
+    return decodeSegmentationIndices(maskData);
   }
 }
