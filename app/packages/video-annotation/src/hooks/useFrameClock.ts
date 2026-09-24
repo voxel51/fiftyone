@@ -2,6 +2,8 @@ import type { Clock } from "@fiftyone/annotation";
 import { useEffect, useMemo, useRef } from "react";
 import { useCurrentFrame } from "../state/useCurrentFrame";
 
+const FRAME_APPLIED_EVENT = "video-annotation-frame-applied";
+
 /**
  * Adapts the surface's playback position to the annotation engine's
  * {@link Clock}. The frame comes from {@link useCurrentFrame} (the
@@ -25,6 +27,11 @@ export const useFrameClock = (): Clock => {
     for (const listener of listeners) {
       listener(frame);
     }
+
+    // listeners apply synchronously, so the scene now shows `frame`
+    document.dispatchEvent(
+      new CustomEvent(FRAME_APPLIED_EVENT, { detail: { frame } }),
+    );
   }, [frame, listeners]);
 
   return useMemo<Clock>(

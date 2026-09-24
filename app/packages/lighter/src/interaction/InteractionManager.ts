@@ -479,19 +479,24 @@ export class InteractionManager {
         multipleSelection: this.selectionManager.isMultipleSelection(),
       });
 
-      if (selectionAction !== "none") {
-        if (selectionAction === "toggle") {
-          this.selectionManager.toggle(handler!.id, { event });
-        } else {
-          this.selectionManager.select(handler!.id);
-        }
+      if (selectionAction === "toggle") {
+        this.selectionManager.toggle(handler!.id, { event });
+      } else if (selectionAction === "select") {
+        this.selectionManager.select(handler!.id);
+      }
 
-        // Select an overlay before issuing any edits. The cursor at this point
-        // is a 'pointer' indicating selection, not painting/erasing/keypoint.
-        if (segmentationModeBridge.isActive()) {
-          event.preventDefault();
-          return;
-        }
+      if (isSelectableOverlay && !drawOverOverlay) {
+        this.eventBus.dispatch("lighter:overlay-click", {
+          id: handler!.id,
+          point: worldPoint,
+        });
+      }
+
+      // Select an overlay before issuing any edits. The cursor at this point
+      // is a 'pointer' indicating selection, not painting/erasing/keypoint.
+      if (selectionAction !== "none" && segmentationModeBridge.isActive()) {
+        event.preventDefault();
+        return;
       }
 
       // Detection mode: defer overlay creation until we confirm this is a drag.

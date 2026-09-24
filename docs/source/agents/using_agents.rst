@@ -229,7 +229,7 @@ available skills and per-agent install instructions.
 Step 4: Use It
 ---------------
 
-.. code-block:: text
+.. code-block:: prompt
 
     "List all my datasets"
     "Load quickstart dataset and show summary"
