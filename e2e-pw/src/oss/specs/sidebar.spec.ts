@@ -1,4 +1,4 @@
-import { test as base, expect } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
@@ -46,37 +46,31 @@ test.describe.serial("sidebar-filter-visibility", () => {
       // select bottle in ground_truth.detections.label
       await sidebar.clickFieldDropdown("ground_truth");
     });
-    await sidebar.applyLabelFromList(
-      ["bottle"],
-      "select-detections-with-label",
+    await grid.afterTilesDrawn(1, () =>
+      sidebar.applyLabelFromList(["bottle"], "select-detections-with-label"),
     );
 
     // verify the number of samples in the result
     await grid.assert.isEntryCountTextEqualTo("1 of 5 samples");
 
-    await expect(await grid.getForwardSection()).toHaveScreenshot(
-      "select-bottle.png",
-      { animations: "allow" },
-    );
+    await grid.assert.hasScreenshot("select-bottle.png");
 
     // go to visibility mode
     await sidebar.toggleSidebarMode();
 
     // test case: visibility mode - show label
-    await sidebar.applyLabelFromList(["cat"], "show-label");
-
-    await expect(await grid.getForwardSection()).toHaveScreenshot(
-      "select-bottle-show-cat.png",
-      { animations: "allow" },
+    await grid.afterTilesDrawn(1, () =>
+      sidebar.applyLabelFromList(["cat"], "show-label"),
     );
+
+    await grid.assert.hasScreenshot("select-bottle-show-cat.png");
 
     // test case: visibility mode - hide label
-    await sidebar.applyLabelFromList(["person"], "hide-label");
-
-    await expect(await grid.getForwardSection()).toHaveScreenshot(
-      "select-bottle-hide-person-cat.png",
-      { animations: "allow" },
+    await grid.afterTilesDrawn(1, () =>
+      sidebar.applyLabelFromList(["person"], "hide-label"),
     );
+
+    await grid.assert.hasScreenshot("select-bottle-hide-person-cat.png");
   });
 
   test("In grid, exclude a label filter works", async ({
@@ -90,38 +84,31 @@ test.describe.serial("sidebar-filter-visibility", () => {
     await eventUtils.after("animation-onRest", async () => {
       await sidebar.clickFieldDropdown("ground_truth");
     });
-    await sidebar.applyLabelFromList(
-      ["bottle"],
-      "exclude-detections-with-label",
+    await grid.afterTilesDrawn(5, () =>
+      sidebar.applyLabelFromList(["bottle"], "exclude-detections-with-label"),
     );
 
     // verify the number of samples in the result
     await grid.assert.isEntryCountTextEqualTo("5 samples");
-    await grid.waitForGridToLoad();
     await grid.assert.isTileCountEqualTo(5);
-    await expect(await grid.getForwardSection()).toHaveScreenshot(
-      "exclude-bottle.png",
-      { animations: "allow" },
-    );
+    await grid.assert.hasScreenshot("exclude-bottle.png");
 
     // Test with visibility mode:
     await sidebar.toggleSidebarMode();
 
     // test case: visibility mode - show label
-    await sidebar.applyLabelFromList(["cup"], "show-label");
-
-    await expect(await grid.getForwardSection()).toHaveScreenshot(
-      "exclude-bottle-show-cup.png",
-      { animations: "allow" },
+    await grid.afterTilesDrawn(5, () =>
+      sidebar.applyLabelFromList(["cup"], "show-label"),
     );
+
+    await grid.assert.hasScreenshot("exclude-bottle-show-cup.png");
 
     // test case: visibility mode - hide label
-    await sidebar.applyLabelFromList([], "hide-label");
-
-    await expect(await grid.getForwardSection()).toHaveScreenshot(
-      "exclude-bottle-hide-cup.png",
-      { animations: "allow" },
+    await grid.afterTilesDrawn(5, () =>
+      sidebar.applyLabelFromList([], "hide-label"),
     );
+
+    await grid.assert.hasScreenshot("exclude-bottle-hide-cup.png");
   });
 
   test("In grid, show samples with a label filter works", async ({
@@ -136,35 +123,33 @@ test.describe.serial("sidebar-filter-visibility", () => {
       await sidebar.clickFieldDropdown("ground_truth");
     });
 
-    await grid.run(async () => {
-      await sidebar.applyLabelFromList(["bottle"], "show-samples-with-label");
+    await grid.afterTilesDrawn(1, () =>
+      grid.run(() =>
+        sidebar.applyLabelFromList(["bottle"], "show-samples-with-label"),
+      ),
+    );
 
-      // verify the number of samples in the result
-      await grid.assert.isEntryCountTextEqualTo("1 of 5 samples");
-    });
+    // verify the number of samples in the result
+    await grid.assert.isEntryCountTextEqualTo("1 of 5 samples");
 
-    await expect(grid.getForwardSection()).toHaveScreenshot("show-bottle.png", {
-      animations: "allow",
-    });
+    await grid.assert.hasScreenshot("show-bottle.png");
 
     // Test with visibility mode:
     await sidebar.toggleSidebarMode();
 
     // test case: visibility mode - show label
-    await sidebar.applyLabelFromList(["cup"], "show-label");
-
-    await expect(await grid.getForwardSection()).toHaveScreenshot(
-      "show-bottle-show-cup.png",
-      { animations: "allow" },
+    await grid.afterTilesDrawn(1, () =>
+      sidebar.applyLabelFromList(["cup"], "show-label"),
     );
+
+    await grid.assert.hasScreenshot("show-bottle-show-cup.png");
 
     // test case: visibility mode - hide label
-    await sidebar.applyLabelFromList([], "hide-label");
-
-    await expect(await grid.getForwardSection()).toHaveScreenshot(
-      "show-bottle-hide-cup.png",
-      { animations: "allow" },
+    await grid.afterTilesDrawn(1, () =>
+      sidebar.applyLabelFromList([], "hide-label"),
     );
+
+    await grid.assert.hasScreenshot("show-bottle-hide-cup.png");
   });
 
   test("In grid, omit samples with a label filter works", async ({
@@ -178,34 +163,30 @@ test.describe.serial("sidebar-filter-visibility", () => {
     await eventUtils.after("animation-onRest", async () => {
       await sidebar.clickFieldDropdown("ground_truth");
     });
-    await sidebar.applyLabelFromList(["bottle"], "omit-samples-with-label");
+    await grid.afterTilesDrawn(4, () =>
+      sidebar.applyLabelFromList(["bottle"], "omit-samples-with-label"),
+    );
 
     // verify the number of samples in the result
     await grid.assert.isEntryCountTextEqualTo("4 of 5 samples");
-    await grid.waitForGridToLoad();
 
-    await expect(await grid.getForwardSection()).toHaveScreenshot(
-      "hide-bottle.png",
-      { animations: "allow" },
-    );
+    await grid.assert.hasScreenshot("hide-bottle.png");
 
     // Test the visibility mode:
     await sidebar.toggleSidebarMode();
 
     // test case: visibility mode - show label
-    await sidebar.applyLabelFromList(["horse"], "show-label");
-
-    await expect(await grid.getForwardSection()).toHaveScreenshot(
-      "hide-bottle-show-horse.png",
-      { animations: "allow" },
+    await grid.afterTilesDrawn(4, () =>
+      sidebar.applyLabelFromList(["horse"], "show-label"),
     );
+
+    await grid.assert.hasScreenshot("hide-bottle-show-horse.png");
 
     // test case: visibility mode - hide label
-    await sidebar.applyLabelFromList([], "hide-label");
-
-    await expect(await grid.getForwardSection()).toHaveScreenshot(
-      "hide-bottle-hide-horse.png",
-      { animations: "allow" },
+    await grid.afterTilesDrawn(4, () =>
+      sidebar.applyLabelFromList([], "hide-label"),
     );
+
+    await grid.assert.hasScreenshot("hide-bottle-hide-horse.png");
   });
 });

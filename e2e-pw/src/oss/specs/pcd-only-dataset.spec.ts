@@ -1,4 +1,4 @@
-import { test as base, expect } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
@@ -12,11 +12,6 @@ const pcdWithNaN = `/tmp/test-pcd2-${datasetName}.pcd`;
 /**
  * Hide these elements when taking screenshots
  */
-const getScreenshotMasks = (modal: ModalPom) => [
-  modal.locator.getByTestId("looker3d-action-bar"),
-  modal.locator.getByTestId("selectable-bar"),
-];
-
 const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   grid: async ({ page, eventUtils }, use) => {
     await use(new GridPom(page, eventUtils));
@@ -76,19 +71,9 @@ test.describe.serial("orthographic projections", () => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });
 
-  test("orthographic projections are rendered correctly", async ({
-    modal,
-    grid,
-  }) => {
-    const mask = getScreenshotMasks(modal);
-
-    await expect(grid.getForwardSection()).toHaveScreenshot(
-      "orthographic-projection-grid-cuboids.png",
-      {
-        mask,
-        animations: "allow",
-      },
-    );
+  test("orthographic projections are rendered correctly", async ({ grid }) => {
+    await grid.untilTilesDrawn(2);
+    await grid.assert.hasScreenshot("orthographic-projection-grid-cuboids.png");
 
     // TODO: FIX ME. MODAL SCREENSHOT COMPARISON IS OFF BY ONE-PIXEL
 

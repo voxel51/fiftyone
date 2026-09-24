@@ -47,6 +47,9 @@ export default defineConfig({
       // since label color assignment is non-deterministic, we allow a small amount of pixel difference
       maxDiffPixelRatio: 0.02,
     },
+    toMatchSnapshot: {
+      maxDiffPixelRatio: 0.02,
+    },
   },
   /* Configure projects for major browsers */
   projects: [

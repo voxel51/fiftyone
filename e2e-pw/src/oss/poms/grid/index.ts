@@ -161,6 +161,30 @@ export class GridPom {
     );
   }
 
+  /**
+   * Run `action` and resolve once `count` distinct tiles have drawn their
+   * canvas because of it
+   */
+  async afterTilesDrawn<T>(
+    count: number,
+    action: () => Promise<T>,
+  ): Promise<T> {
+    const drawn = new Set<string>();
+    return this.eventUtils.after("canvas-loaded", action, (e) => {
+      drawn.add((e.detail as { sampleId: string }).sampleId);
+      return drawn.size === count;
+    });
+  }
+
+  /** Resolve once `count` grid lookers have drawn, e.g. after a page load */
+  async untilTilesDrawn(count: number) {
+    await this.eventUtils.untilDom(
+      this.locator,
+      (grid, n) => grid.querySelectorAll('[canvas-loaded="true"]').length === n,
+      count,
+    );
+  }
+
   async run<T>(wrap: () => Promise<T>): Promise<T> {
     const refresh = await this.armGridRefresh();
     try {
@@ -175,6 +199,20 @@ export class GridPom {
 
 class GridAsserter {
   constructor(private readonly gridPom: GridPom) {}
+
+  /**
+   * One capture of `target` (the forward section by default); draw it first
+   * with {@link GridPom.afterTilesDrawn}
+   */
+  async hasScreenshot(
+    name: string,
+    options: { target?: Locator; mask?: Locator[] } = {},
+  ) {
+    const target = options.target ?? this.gridPom.getForwardSection();
+    expect(await target.screenshot({ mask: options.mask })).toMatchSnapshot(
+      name,
+    );
+  }
 
   async isTileCountEqualTo(n: number) {
     const tileCount = await this.gridPom.locator.locator(TILE_SELECTOR).count();

@@ -1,4 +1,4 @@
-import { test as base, expect } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
@@ -78,15 +78,17 @@ test.afterEach(async ({ modal, page }) => {
 test.describe.serial("media field", () => {
   test("grid media field", async ({ fiftyoneLoader, grid, page }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-    await expect(grid.getNthLooker(0)).toHaveScreenshot("grid-media-field.png");
+    await grid.untilTilesDrawn(1);
+    await grid.assert.hasScreenshot("grid-media-field.png", {
+      target: grid.getNthLooker(0),
+    });
   });
 
   test("modal media field", async ({ grid, fiftyoneLoader, modal, page }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();
-    // move off of looker to hide controls
-    await page.mouse.move(0, 0);
-    await expect(modal.looker).toHaveScreenshot("modal-media-field.png");
+    await modal.hideLookerControls();
+    await modal.assert.hasLookerScreenshot("modal-media-field.png");
   });
 });

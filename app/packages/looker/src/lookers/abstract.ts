@@ -511,7 +511,10 @@ export abstract class AbstractLooker<
         ctx.canvas.setAttribute("canvas-loaded", "true");
         ctx.canvas.dispatchEvent(
           new CustomEvent("canvas-loaded", {
-            detail: { sampleFilepath: this.sample.filepath },
+            detail: {
+              sampleFilepath: this.sample.filepath,
+              sampleId: this.sample.id,
+            },
             bubbles: true,
           }),
         );

@@ -345,6 +345,15 @@ export class ModalPom {
     );
   }
 
+  /** Move the mouse off the looker and wait for its controls to hide */
+  async hideLookerControls() {
+    await this.page.mouse.move(0, 0);
+    await this.eventUtils.untilDom(
+      this.looker.getByTestId("looker-controls"),
+      (controls) => (controls as HTMLElement).style.display === "none",
+    );
+  }
+
   async waitForLighterReady() {
     await this.eventUtils.untilPresent(
       '[data-cy="modal"] [data-cy="lighter-sample-renderer"][style*="visibility: visible"]',
@@ -362,6 +371,11 @@ export class ModalPom {
 
 class ModalAsserter {
   constructor(private readonly modalPom: ModalPom) {}
+
+  /** One capture of the looker; hide its controls first */
+  async hasLookerScreenshot(name: string) {
+    expect(await this.modalPom.looker.screenshot()).toMatchSnapshot(name);
+  }
 
   async isClosed() {
     await expect(this.modalPom.locator).toBeHidden();

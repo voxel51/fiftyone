@@ -1,4 +1,4 @@
-import { test as base, expect } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
@@ -96,15 +96,8 @@ test.describe.serial("fo3d", () => {
   });
 
   test("scene is rendered correctly", async ({ modal, grid, modalSidebar }) => {
-    const mask = modal.looker3dScreenshotMasks;
-
-    await expect(grid.getForwardSection()).toHaveScreenshot(
-      "orthographic-projection-grid-cuboids.png",
-      {
-        mask,
-        animations: "allow",
-      },
-    );
+    await grid.untilTilesDrawn(2);
+    await grid.assert.hasScreenshot("orthographic-projection-grid-cuboids.png");
 
     await grid.openFirstSample();
     await modal.modalContainer.hover();

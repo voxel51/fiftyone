@@ -1,4 +1,4 @@
-import { test as base, expect } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
@@ -54,22 +54,16 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     await eventUtils.after("animation-onRest", () =>
       sidebar.clickFieldDropdown("ground_truth"),
     );
-    await eventUtils.after("re-render-tag", () =>
+    await grid.afterTilesDrawn(5, () =>
       sidebar.applyLabelFromList(["cat"], "show-label"),
     );
-    await expect(await grid.getForwardSection()).toHaveScreenshot(
-      "visible-cat.png",
-      { animations: "allow" },
-    );
+    await grid.assert.hasScreenshot("visible-cat.png");
 
     // test case: visibility mode - hide label
-    await eventUtils.after("re-render-tag", () =>
+    await grid.afterTilesDrawn(5, () =>
       sidebar.applyLabelFromList([], "hide-label"),
     );
-    await expect(await grid.getForwardSection()).toHaveScreenshot(
-      "not-visible-cat.png",
-      { animations: "allow" },
-    );
+    await grid.assert.hasScreenshot("not-visible-cat.png");
   });
 
   test("In classification grid, show samples with a label filter works", async ({
@@ -84,35 +78,28 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     await sidebar.waitForElement("checkbox-ship");
     await sidebar.applyLabelFromList(["frog"], "show-samples-with-label");
 
-    await sidebar.applyLabelFromList(["ship"], "show-samples-with-label");
+    await grid.afterTilesDrawn(3, () =>
+      sidebar.applyLabelFromList(["ship"], "show-samples-with-label"),
+    );
 
     // verify the number of samples in the result
     await grid.assert.isEntryCountTextEqualTo("3 of 5 samples");
-    await expect(await grid.getForwardSection()).toHaveScreenshot(
-      "show-frog.png",
-      { animations: "allow" },
-    );
+    await grid.assert.hasScreenshot("show-frog.png");
 
     // Test with visibility mode:
     await sidebar.toggleSidebarMode();
 
     // test case: visibility mode - show label
-    await eventUtils.after("re-render-tag", () =>
+    await grid.afterTilesDrawn(3, () =>
       sidebar.applyLabelFromList(["frog"], "show-label"),
     );
-    await expect(await grid.getForwardSection()).toHaveScreenshot(
-      "show-frog-ship-visible-frog.png",
-      { animations: "allow" },
-    );
+    await grid.assert.hasScreenshot("show-frog-ship-visible-frog.png");
 
     // test case: visibility mode - hide label
-    await eventUtils.after("re-render-tag", () =>
+    await grid.afterTilesDrawn(3, () =>
       sidebar.applyLabelFromList([], "hide-label"),
     );
-    await expect(await grid.getForwardSection()).toHaveScreenshot(
-      "show-frog-ship-invisible-frog.png",
-      { animations: "allow" },
-    );
+    await grid.assert.hasScreenshot("show-frog-ship-invisible-frog.png");
   });
 
   test("In classification grid, omit samples with a label filter works", async ({
@@ -124,32 +111,25 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
       sidebar.clickFieldDropdown("ground_truth"),
     );
 
-    await sidebar.applyLabelFromList(["ship"], "omit-samples-with-label");
-
-    await expect(await grid.getForwardSection()).toHaveScreenshot(
-      "hide-ship.png",
-      { animations: "allow" },
+    await grid.afterTilesDrawn(3, () =>
+      sidebar.applyLabelFromList(["ship"], "omit-samples-with-label"),
     );
+
+    await grid.assert.hasScreenshot("hide-ship.png");
 
     // Test the visibility mode:
     await sidebar.toggleSidebarMode();
 
     // test case: visibility mode - show label
-    await eventUtils.after("re-render-tag", () =>
+    await grid.afterTilesDrawn(3, () =>
       sidebar.applyLabelFromList(["cat"], "show-label"),
     );
-    await expect(await grid.getForwardSection()).toHaveScreenshot(
-      "hide-ship-visible-cat.png",
-      { animations: "allow" },
-    );
+    await grid.assert.hasScreenshot("hide-ship-visible-cat.png");
 
     // test case: visibility mode - hide label
-    await eventUtils.after("re-render-tag", () =>
+    await grid.afterTilesDrawn(3, () =>
       sidebar.applyLabelFromList([], "hide-label"),
     );
-    await expect(await grid.getForwardSection()).toHaveScreenshot(
-      "hide-ship-invisible-cat.png",
-      { animations: "allow" },
-    );
+    await grid.assert.hasScreenshot("hide-ship-invisible-cat.png");
   });
 });

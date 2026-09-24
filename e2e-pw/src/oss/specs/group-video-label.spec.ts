@@ -1,4 +1,4 @@
-import { test as base, expect } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
@@ -73,25 +73,18 @@ test.describe.serial("groups video labels", () => {
     await grid.sliceSelector.assert.verifyHasSlices(["v1", "v2"]);
 
     // compare screenshot for default slice (v1)
-    await expect(grid.getNthLooker(0)).toHaveScreenshot("slice-v1.png");
-
-    // const v2SampleLoadedPromise = page.evaluate((testVideoPath2_) => {
-    //   return new Promise<void>((resolve) => {
-    //     document.addEventListener("canvas-loaded", (e: CustomEvent) => {
-    //       if ((e.detail.sampleFilepath as string) === testVideoPath2_) {
-    //         resolve();
-    //       }
-    //     });
-    //   });
-    // }, testVideoPath2);
+    await grid.untilTilesDrawn(1);
+    await grid.assert.hasScreenshot("slice-v1.png", {
+      target: grid.getNthLooker(0),
+    });
 
     // compare screenshot for another slice (v2)
-    await grid.run(async () => {
-      await grid.sliceSelector.selectSlice("v2");
+    await grid.afterTilesDrawn(1, () =>
+      grid.run(() => grid.sliceSelector.selectSlice("v2")),
+    );
+    await grid.assert.hasScreenshot("slice-v2.png", {
+      target: grid.getNthLooker(0),
     });
-    // await v2SampleLoadedPromise;
-
-    await expect(grid.getNthLooker(0)).toHaveScreenshot("slice-v2.png");
   });
 
   test("video plays with correct label for each slice", async ({
