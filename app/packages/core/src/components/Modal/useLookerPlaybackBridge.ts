@@ -13,6 +13,7 @@ import {
 } from "@fiftyone/playback";
 import * as fos from "@fiftyone/state";
 import { useEffect, useRef, useState } from "react";
+import { useLookerFrameSync } from "./useLookerFrameSync";
 
 const STREAM_ID = "modal-video-looker";
 
@@ -44,6 +45,7 @@ export function useLookerPlaybackBridge(
   const isPlaying = useIsPlaying();
   const speed = useSpeed();
   const seekEvent = useSeekEvent();
+  const seekLooker = useLookerFrameSync(looker, frameRate);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [duration, setDuration] = useState(0);
@@ -151,7 +153,7 @@ export function useLookerPlaybackBridge(
       return;
     }
 
-    looker.seekToFrame(getFrameNumber(seekEvent.time, duration, frameRate));
+    seekLooker(getFrameNumber(seekEvent.time, duration, frameRate));
     // `seq` changes on every event, including a repeat of the same time.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seekEvent?.seq]);

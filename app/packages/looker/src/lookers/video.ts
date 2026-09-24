@@ -338,13 +338,31 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
     return DEFAULT_VIDEO_OPTIONS;
   }
 
+  /**
+   * Starts playback, first rewinding from the last frame the way the Space
+   * shortcut does, so a finished clip plays again.
+   */
   play(): void {
-    this.updater(({ playing }) => {
-      if (!playing) {
-        return { playing: true };
-      }
-      return {};
-    });
+    this.updater(
+      ({ playing, duration, frameNumber, lockedToSupport, config }) => {
+        if (playing) {
+          return {};
+        }
+
+        const end = lockedToSupport
+          ? config.support[1]
+          : duration === null
+            ? null
+            : getFrameNumber(duration, duration, config.frameRate);
+
+        return frameNumber === end
+          ? {
+              playing: true,
+              frameNumber: lockedToSupport ? config.support[0] : 1,
+            }
+          : { playing: true };
+      },
+    );
   }
 
   pause(): void {
@@ -380,19 +398,29 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
   }
 
   /**
-   * Moves the playhead to a 1-indexed frame, clamped to the clip, the way
-   * the seek bar does. Lets an external transport (the modal's shared
+   * Moves the playhead to a 1-indexed frame, clamped to the clip (or to its
+   * support while locked to it), the way the seek bar does. Lets an external transport (the modal's shared
    * timeline) drive this looker without reaching into its state.
    */
   seekToFrame(frameNumber: number): void {
     this.updater(
-      ({ duration, config: { frameRate }, frameNumber: current }) => {
+      ({
+        duration,
+        config: { frameRate, support },
+        frameNumber: current,
+        lockedToSupport,
+      }) => {
         if (duration === null || !Number.isFinite(frameNumber)) {
           return {};
         }
 
-        const total = getFrameNumber(duration, duration, frameRate);
-        const clamped = Math.min(Math.max(1, Math.round(frameNumber)), total);
+        const [first, last] = lockedToSupport
+          ? support
+          : [1, getFrameNumber(duration, duration, frameRate)];
+        const clamped = Math.min(
+          Math.max(first, Math.round(frameNumber)),
+          last,
+        );
 
         return clamped === current ? {} : { frameNumber: clamped };
       },
