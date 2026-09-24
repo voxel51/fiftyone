@@ -631,14 +631,11 @@ export class EpisodePom {
   }
 
   async expectUnsupported(streamCount = 1): Promise<void> {
-    await expect(
-      this.state.getByText(
-        "No previewable streams in this recording (" +
-          streamCount +
-          " streams found)",
-        { exact: true },
-      ),
-    ).toBeVisible({ timeout: READY_TIMEOUT });
+    await expect(this.state).toBeVisible({ timeout: READY_TIMEOUT });
+    // Session extensions own the wording; the empty state reports inventory size.
+    await expect(this.state).toContainText(
+      new RegExp(`\\b${streamCount} streams\\b`),
+    );
   }
 
   async expectNoViewerError(): Promise<void> {
