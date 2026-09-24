@@ -107,6 +107,24 @@ def _warn_runs_using_fields(dataset, paths):
         paths: a list of field paths, with ``frames.`` prefixes for frame
             fields
     """
+    try:
+        runs = list(_get_runs_using_fields(dataset, paths))
+    except Exception:
+        # Advisory only, and the deletion may already be partly applied, so
+        # this must never raise
+        logger.debug("Failed to check brain runs for fields", exc_info=True)
+        return
+
+    for key, used_paths in runs:
+        logger.warning(
+            "Deleting field(s) %s, which brain run '%s' reads; the run "
+            "remains but may no longer work",
+            ", ".join("'%s'" % p for p in used_paths),
+            key,
+        )
+
+
+def _get_runs_using_fields(dataset, paths):
     for key, run_doc in dataset._doc.brain_methods.items():
         if isinstance(run_doc, DBRef) or _is_generated_view_run(run_doc):
             continue
@@ -118,12 +136,7 @@ def _warn_runs_using_fields(dataset, paths):
             if any(p == path or p.startswith(path + ".") for p in run_paths)
         ]
         if used_paths:
-            logger.warning(
-                "Deleting field(s) %s, which brain run '%s' reads; the run "
-                "remains but may no longer work",
-                ", ".join("'%s'" % p for p in used_paths),
-                key,
-            )
+            yield key, used_paths
 
 
 def _get_input_fields(dataset, config):
@@ -156,5 +169,6 @@ def _is_generated_view_run(run_doc):
             for s in run_doc.view_stages
         )
     except Exception:
-        # A stage that no longer loads says nothing about the run's fields
+        # Without the stage there is no telling what the run's fields are
+        # relative to, so stay quiet about it
         return True

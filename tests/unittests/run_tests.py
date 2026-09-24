@@ -7,6 +7,9 @@ FiftyOne run-related unit tests.
 """
 
 import unittest
+from unittest import mock
+
+from bson import DBRef, ObjectId
 
 import fiftyone as fo
 import fiftyone.core.brain as fob
@@ -192,11 +195,6 @@ class RunTests(unittest.TestCase):
         self.assertTrue(run_info1.timestamp < run_info2.timestamp)
 
 
-if __name__ == "__main__":
-    fo.config.show_progress_bars = False
-    unittest.main(verbosity=2)
-
-
 class FieldDeletionWarningTests(unittest.TestCase):
     def _register(self, samples, key, **kwargs):
         config = fob.BrainMethodConfig(**kwargs)
@@ -211,6 +209,7 @@ class FieldDeletionWarningTests(unittest.TestCase):
                 roi=fo.Detections(
                     detections=[fo.Detection(label="cat", emb=[0.1])]
                 ),
+                gt=fo.Detections(detections=[fo.Detection(label="dog")]),
             )
         )
         return dataset
@@ -263,15 +262,50 @@ class FieldDeletionWarningTests(unittest.TestCase):
     @drop_datasets
     def test_one_warning_per_run(self):
         dataset = self._make_dataset()
-        self._register(
-            dataset, "uniq", roi_field="roi", embeddings_field="emb"
-        )
+        self._register(dataset, "uniq", patches_field="roi", roi_field="gt")
 
         with self.assertLogs("fiftyone.core.brain", "WARNING") as logs:
-            dataset.delete_sample_fields(["roi", "emb"])
+            dataset.delete_sample_fields(["roi", "gt"])
 
         self.assertEqual(len(logs.output), 1)
-        self.assertIn("'roi'", logs.output[0])
+        self.assertIn("'roi', 'gt'", logs.output[0])
+
+    @drop_datasets
+    def test_attribute_of_an_input_field(self):
+        # Deleting what a run does not read, such as a label attribute that a
+        # brain method wrote and then removes
+        dataset = self._make_dataset()
+        self._register(dataset, "sim", patches_field="roi")
+
+        with self.assertNoLogs("fiftyone.core.brain", "WARNING"):
+            dataset.delete_sample_field("roi.detections.emb")
+
+    @drop_datasets
+    def test_unreadable_runs_are_skipped(self):
+        dataset = self._make_dataset()
+        self._register(dataset, "sim", embeddings_field="emb")
+        self._register(dataset, "broken", embeddings_field="emb")
+        run_doc = dataset._doc.brain_methods["broken"]
+        run_doc.view_stages = ['{"_cls": "no.such.Stage", "kwargs": []}']
+        dataset._doc.brain_methods["dangling"] = DBRef("runs", ObjectId())
+
+        with self.assertLogs("fiftyone.core.brain", "WARNING") as logs:
+            dataset.delete_sample_field("emb")
+
+        self.assertEqual(len(logs.output), 1)
+        self.assertIn("brain run 'sim'", logs.output[0])
+
+    @drop_datasets
+    def test_a_failed_check_does_not_stop_the_deletion(self):
+        dataset = self._make_dataset()
+        self._register(dataset, "sim", embeddings_field="emb")
+
+        with mock.patch.object(
+            fob, "_get_input_fields", side_effect=RuntimeError
+        ):
+            dataset.delete_sample_field("emb")
+
+        self.assertFalse(dataset.has_sample_field("emb"))
 
     @drop_datasets
     def test_frame_field(self):
@@ -295,3 +329,8 @@ class FieldDeletionWarningTests(unittest.TestCase):
         # "emb" names the patches' field, not the dataset's
         with self.assertNoLogs("fiftyone.core.brain", "WARNING"):
             dataset.delete_sample_field("emb")
+
+
+if __name__ == "__main__":
+    fo.config.show_progress_bars = False
+    unittest.main(verbosity=2)

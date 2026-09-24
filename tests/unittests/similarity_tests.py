@@ -223,6 +223,25 @@ class FieldDeletionWarningTests(unittest.TestCase):
         self.assertIn("brain run 'sim'", logs.output[0])
 
     @drop_datasets
+    def test_removing_a_visualization_index_is_silent(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="image%d.png" % i, emb=np.random.randn(4))
+                for i in range(4)
+            ]
+        )
+        results = fob.compute_visualization(
+            dataset,
+            points=np.random.randn(4, 2),
+            points_field="pts",
+            brain_key="viz",
+        )
+
+        with self.assertNoLogs("fiftyone.core.brain", "WARNING"):
+            results.remove_index()
+
+    @drop_datasets
     def test_patch_embeddings_field(self):
         dataset = fo.Dataset()
         dataset.add_samples(
