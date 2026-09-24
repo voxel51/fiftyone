@@ -36,7 +36,8 @@ export function useLookerPlaybackBridge(
   looker: VideoLooker,
   frameRate: number | undefined,
 ): void {
-  const { registerStream, setClockSource, play, pause } = usePlayback();
+  const { registerStream, subscribeStream, setClockSource, play, pause } =
+    usePlayback();
   const isPlaying = useIsPlaying();
   const speed = useSpeed();
   const seekEvent = useSeekEvent();
@@ -80,14 +81,16 @@ export function useLookerPlaybackBridge(
       return undefined;
     }
 
-    return registerStream({
+    const unregister = registerStream({
       id: STREAM_ID,
-      // The looker paces itself; gating the engine on it again would only
-      // add stalls.
-      blocking: false,
+      // Blocking so the looker's buffering is the engine's buffering: the
+      // timeline shows its indicator, and a pending play waits for the
+      // looker to be ready. The barrier costs nothing here, since the clock
+      // source already freezes on the looker's frame while it buffers.
+      blocking: true,
       duration,
       nativeStepSeconds: frameRate ? 1 / frameRate : undefined,
-      bufferState: () => "ready",
+      bufferState: () => (looker.state.buffering ? "loading" : "ready"),
       bufferedRanges: () => {
         const video = videoRef.current;
         if (!video) {
@@ -100,7 +103,16 @@ export function useLookerPlaybackBridge(
         return ranges;
       },
     });
-  }, [duration, frameRate, registerStream]);
+
+    // The engine skips a stream nobody consumes. The looker is its own
+    // consumer, so subscribe here or the barrier never asks it.
+    const unsubscribe = subscribeStream(STREAM_ID);
+
+    return () => {
+      unsubscribe();
+      unregister();
+    };
+  }, [duration, frameRate, looker, registerStream, subscribeStream]);
 
   // The frame the looker is painting is the time the engine should report.
   // `null` before the looker has loaded, for which the engine falls back to
