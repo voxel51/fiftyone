@@ -441,11 +441,14 @@ function useTrackDecorator({
   objectTracks,
   expansion,
   expandableParentIds,
+  readOnly,
 }: {
   sample: ModalSample | undefined;
   objectTracks: Track[];
   expansion: TrackExpansion;
   expandableParentIds: ReadonlySet<string>;
+  /** Explore: no edit menu items and no drag edits, only playback. */
+  readOnly: boolean;
 }): (track: Track) => TrackDecoration {
   const baseDecorate = useVideoTrackDecorator();
   const actions = useVideoSurfaceActions();
@@ -518,6 +521,7 @@ function useTrackDecorator({
       mergeCandidatesByGroup,
       expansion,
       expandableParentIds,
+      readOnly,
     ],
   );
 
@@ -538,6 +542,17 @@ function useTrackDecorator({
         return built;
       };
 
+      const withExpansion = (decorated: TrackDecoration): TrackDecoration =>
+        expandableParentIds.has(track.id)
+          ? {
+              ...decorated,
+              expansionGutter: true,
+              expandable: true,
+              expanded: expansion.isExpanded(track.id),
+              onToggleExpand: () => expansion.toggle(track.id),
+            }
+          : { ...decorated, expansionGutter: true };
+
       if (sub) {
         const parentLink = base;
         return remember({
@@ -551,6 +566,10 @@ function useTrackDecorator({
 
       if (!fps) {
         return remember({ ...base, expansionGutter: true });
+      }
+
+      if (readOnly) {
+        return remember(withExpansion({ ...base, snapStepSec }));
       }
 
       // A TD row is identified by its structured event payload; anything else
@@ -579,17 +598,7 @@ function useTrackDecorator({
           ...mergeTargetsFor(mergeCandidatesByGroup, track),
         });
 
-        if (!expandableParentIds.has(track.id)) {
-          return remember({ ...decorated, expansionGutter: true });
-        }
-
-        return remember({
-          ...decorated,
-          expansionGutter: true,
-          expandable: true,
-          expanded: expansion.isExpanded(track.id),
-          onToggleExpand: () => expansion.toggle(track.id),
-        });
+        return remember(withExpansion(decorated));
       }
 
       // Object track with no stream yet: can't wire frame edits — base only.
@@ -619,6 +628,7 @@ function useTrackDecorator({
       mergeCandidatesByGroup,
       expansion,
       expandableParentIds,
+      readOnly,
     ],
   );
 }
@@ -754,6 +764,7 @@ export const FrameLabelsTracks: React.FC<{
     objectTracks: frameTracks,
     expansion,
     expandableParentIds,
+    readOnly: mode === "explore",
   });
 
   return (

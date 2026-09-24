@@ -1,7 +1,12 @@
-import { addressIdOf, type AnnotationEngine } from "@fiftyone/annotation";
+import {
+  addressIdOf,
+  type AnnotationEngine,
+  toSchemaField,
+} from "@fiftyone/annotation";
 import type { Track, TrackEvent } from "@fiftyone/playback";
 import type { LabelData } from "@fiftyone/utilities";
 import { isEqual } from "lodash";
+import { singletonAddressId } from "../streams/framesData";
 import {
   mergeAttributeRuns,
   mergePresence,
@@ -642,10 +647,16 @@ function toTrack(
     })),
   ];
 
+  // A Segmentation or Heatmap is one row per field, with no class or index
+  const field =
+    id === singletonAddressId(state.path) ? toSchemaField(state.path) : null;
+
   return {
     id,
-    label: `${state.classLabel} ${state.displayIndex}`,
-    description: `Tracked "${state.classLabel}" (track ${state.displayIndex})`,
+    label: field ?? `${state.classLabel} ${state.displayIndex}`,
+    description: field
+      ? `Field "${field}"`
+      : `Tracked "${state.classLabel}" (track ${state.displayIndex})`,
     color: resolveColor(
       {
         label: state.classLabel,
