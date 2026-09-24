@@ -447,11 +447,19 @@ function useTrackDecorator({
   objectTracks,
   expansion,
   expandableParentIds,
+  ready,
 }: {
   sample: ModalSample | undefined;
   objectTracks: Track[];
   expansion: TrackExpansion;
   expandableParentIds: ReadonlySet<string>;
+  /**
+   * Whether the track list reflects the current stream. Held rows (see
+   * `FrameLabelsTracks`) render while the replacement stream is still loading,
+   * and its store has no labels to edit yet, so their presence-bar edits and
+   * menu actions stay off until the reload lands.
+   */
+  ready: boolean;
 }): (track: Track) => TrackDecoration {
   const baseDecorate = useVideoTrackDecorator();
   const actions = useVideoSurfaceActions();
@@ -524,6 +532,7 @@ function useTrackDecorator({
       mergeCandidatesByGroup,
       expansion,
       expandableParentIds,
+      ready,
     ],
   );
 
@@ -566,7 +575,7 @@ function useTrackDecorator({
         | undefined;
       const isObjectTrack = tdEvent?.detectionId === undefined;
 
-      if (isObjectTrack && stream) {
+      if (isObjectTrack && stream && ready) {
         const decorated = decorateObjectTrack({
           track,
           base,
@@ -598,7 +607,8 @@ function useTrackDecorator({
         });
       }
 
-      // Object track with no stream yet: can't wire frame edits — base only.
+      // Object track with no stream yet, or a held row whose replacement
+      // stream is still loading: can't wire frame edits — base only.
       if (isObjectTrack) {
         return remember({ ...base, expansionGutter: true });
       }
@@ -625,6 +635,7 @@ function useTrackDecorator({
       mergeCandidatesByGroup,
       expansion,
       expandableParentIds,
+      ready,
     ],
   );
 }
@@ -775,6 +786,7 @@ export const FrameLabelsTracks: React.FC<{
     objectTracks: frameTracks,
     expansion,
     expandableParentIds,
+    ready,
   });
 
   return (

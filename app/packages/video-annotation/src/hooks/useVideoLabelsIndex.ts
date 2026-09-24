@@ -40,9 +40,9 @@ export function useVideoLabelsIndex(
   fields: string[],
   dynamicAttributes: string[] = [],
 ): VideoLabelsIndexState {
-  const fieldsKey = fields.join(",");
-  const dynamicKey = dynamicAttributes.join(",");
-  const key = `${fieldsKey}|${dynamicKey}`;
+  // Serialized, not joined: a field name may itself contain a delimiter, and a
+  // colliding key would let a previous answer pass as the current one.
+  const key = JSON.stringify([fields, dynamicAttributes]);
   const [state, setState] = useState<StoredIndexState>({
     ...EMPTY,
     stream: null,
@@ -91,8 +91,8 @@ export function useVideoLabelsIndex(
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- fieldsKey/dynamicKey capture the arrays
-  }, [stream, fieldsKey, dynamicKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `key` captures the arrays
+  }, [stream, key]);
 
   // Answer only for the CURRENT inputs — see `StoredIndexState`.
   const current = state.stream === stream && state.key === key;
