@@ -12,7 +12,7 @@
  */
 
 import type { PromptableSimilarityIndex } from "@fiftyone/state";
-import { useViewChangePending } from "@fiftyone/state";
+import { useCurrentDatasetName, useViewChangePending } from "@fiftyone/state";
 import {
   Align,
   Button,
@@ -34,6 +34,7 @@ import {
 import React from "react";
 
 import styles from "./LanguageSearch.module.css";
+import { rememberQuery } from "./searchQueryHistory";
 import { SearchSettingsPopover } from "./SearchSettingsPopover";
 import { useLanguageSearchExtension } from "./useLanguageSearchExtension";
 
@@ -41,9 +42,6 @@ export const LANGUAGE_SEARCH_LABEL = "Search or ask in natural language";
 
 export interface LanguageSearchProps {
   onSubmit: (query: string) => void;
-  /** A search a text search extension runs has started, for the bar to
-   * record like the ones `onSubmit` runs. */
-  onSearched: (index: PromptableSimilarityIndex, query: string) => void;
   /**
    * Reports whether the input holds text — while it does, the bar's clear
    * [x] shows even with no stages applied.
@@ -52,11 +50,11 @@ export interface LanguageSearchProps {
   /** The input taking focus — the bar folds its stages row behind it. */
   onFocus?: () => void;
   /**
-   * Whether a search can run: the chosen index is one a text search
-   * extension searches, or the similarity search operator may exist —
-   * registered, or not yet known to be missing while the registry loads.
-   * Otherwise the field still shows, and a click explains itself through
-   * `onUnavailable` instead of offering anything.
+   * Whether the similarity search operator may exist — registered, or not yet
+   * known to be missing while the registry loads. Known missing, the field
+   * still shows, and a click explains itself through `onUnavailable` instead
+   * of offering anything. An index a text search extension searches needs
+   * neither this nor `enabled`: the field searches it regardless.
    */
   available: boolean;
   onUnavailable: () => void;
@@ -74,14 +72,23 @@ export interface LanguageSearchProps {
   onOpenPanel: () => void;
 }
 
-export const LanguageSearch: React.FC<LanguageSearchProps> = ({
+/**
+ * The field, remounted per dataset: a query typed over one dataset means
+ * nothing in the next, and a search still running for it must not publish
+ * there. The bar itself stays mounted across the switch.
+ */
+export const LanguageSearch: React.FC<LanguageSearchProps> = (props) => {
+  const datasetName = useCurrentDatasetName();
+  return <LanguageSearchField key={datasetName ?? ""} {...props} />;
+};
+
+const LanguageSearchField: React.FC<LanguageSearchProps> = ({
   onSubmit,
-  onSearched,
   onHasTextChange,
   onFocus,
-  available,
+  available: operatorAvailable,
   onUnavailable,
-  enabled,
+  enabled: indexEnabled,
   history,
   promptKeys,
   selectedKey,
@@ -100,8 +107,26 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
   const pending = useViewChangePending();
   // An index a text search extension searches client-side runs here, not
   // through `onSubmit`
-  const { run: runExtensionSearch, cancel: cancelExtensionSearch } =
-    useLanguageSearchExtension(onSearched);
+  const {
+    run: runExtensionSearch,
+    cancel: cancelExtensionSearch,
+    recentQueries,
+  } = useLanguageSearchExtension();
+  const shownHistory = React.useMemo(
+    () =>
+      recentQueries.reduceRight(
+        (queries, q) => rememberQuery(queries, q),
+        [...history],
+      ),
+    [recentQueries, history],
+  );
+  // An extension searches client-side and publishes to the extended
+  // selection: it needs neither the operator nor `SortBySimilarity`
+  const extensionSearch = Boolean(
+    promptKeys.find((key) => key.key === selectedKey)?.extension,
+  );
+  const available = operatorAvailable || extensionSearch;
+  const enabled = indexEnabled || extensionSearch;
 
   // The dropdown under the box: previous queries matching the draft. With no
   // prompt-capable index there is nothing to offer, and the empty state is
@@ -109,10 +134,10 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
   const options = React.useMemo<ComboboxOption[]>(() => {
     if (!available || !enabled) return [];
     const q = query.trim().toLowerCase();
-    return history
+    return shownHistory
       .filter((h) => !q || h.toLowerCase().includes(q))
       .map((h) => ({ id: h, label: h }));
-  }, [available, enabled, history, query]);
+  }, [available, enabled, shownHistory, query]);
 
   // A picked row or committed text: a previous query re-runs, typed text
   // runs. With no index there is nothing to run, and the query is the reason

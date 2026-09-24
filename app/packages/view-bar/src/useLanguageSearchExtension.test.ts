@@ -7,7 +7,7 @@ const env = vi.hoisted(() => ({
   publish: vi.fn(),
   setPending: vi.fn(),
   notify: vi.fn(),
-  onSearched: vi.fn(),
+  trackEvent: vi.fn(),
   serverPending: false,
   extensions: new Map(),
 }));
@@ -21,11 +21,12 @@ vi.mock("@fiftyone/state", () => ({
   useSetViewChangePending: () => env.setPending,
   useNotification: () => env.notify,
 }));
+vi.mock("@fiftyone/analytics", () => ({ useTrackEvent: () => env.trackEvent }));
 
+import { readSearchQueries } from "./searchQueryHistory";
 import { useLanguageSearchExtension } from "./useLanguageSearchExtension";
 
-const renderSearch = () =>
-  renderHook(() => useLanguageSearchExtension(env.onSearched));
+const renderSearch = () => renderHook(() => useLanguageSearchExtension());
 
 const INDEX = {
   key: "emb_sim",
@@ -49,6 +50,7 @@ const pendingResult = () => {
 describe("useLanguageSearchExtension", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.localStorage.clear();
     env.view = [];
     env.serverPending = false;
     env.extensions = new Map([
@@ -78,7 +80,7 @@ describe("useLanguageSearchExtension", () => {
     expect(env.setPending).toHaveBeenLastCalledWith(false);
   });
 
-  it("reports the search it starts for the bar to record", () => {
+  it("records the query in the dataset's history and shows it at once", () => {
     pendingResult();
     const { result } = renderSearch();
 
@@ -86,7 +88,21 @@ describe("useLanguageSearchExtension", () => {
       result.current.run(INDEX, "an animal", 25);
     });
 
-    expect(env.onSearched).toHaveBeenCalledWith(INDEX, "an animal");
+    expect(readSearchQueries("robots")).toEqual(["an animal"]);
+    expect(result.current.recentQueries).toEqual(["an animal"]);
+  });
+
+  it("reports whether the searched index is patches-level", () => {
+    pendingResult();
+    const { result } = renderSearch();
+
+    act(() => {
+      result.current.run({ ...INDEX, patchesField: "detections" }, "a car", 25);
+    });
+
+    expect(env.trackEvent).toHaveBeenCalledWith("view_bar_text_search", {
+      patches: true,
+    });
   });
 
   it("waits for a server search still running rather than racing it", () => {
@@ -99,6 +115,8 @@ describe("useLanguageSearchExtension", () => {
 
     expect(env.search).not.toHaveBeenCalled();
     expect(env.setPending).not.toHaveBeenCalled();
+    // A search that never ran is not history
+    expect(readSearchQueries("robots")).toEqual([]);
     expect(env.notify).toHaveBeenCalledWith(
       expect.objectContaining({ key: "view-bar-text-search-busy" }),
     );

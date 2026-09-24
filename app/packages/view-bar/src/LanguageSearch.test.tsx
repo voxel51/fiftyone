@@ -1,13 +1,21 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@fiftyone/state", () => ({ useViewChangePending: () => false }));
+const env = vi.hoisted(() => ({
+  dataset: "robots",
+  recentQueries: [] as string[],
+}));
+vi.mock("@fiftyone/state", () => ({
+  useCurrentDatasetName: () => env.dataset,
+  useViewChangePending: () => false,
+}));
 const extensionRun = vi.hoisted(() => vi.fn(() => true));
 const extensionCancel = vi.hoisted(() => vi.fn());
 vi.mock("./useLanguageSearchExtension", () => ({
   useLanguageSearchExtension: () => ({
     run: extensionRun,
     cancel: extensionCancel,
+    recentQueries: env.recentQueries,
   }),
 }));
 vi.mock("./SearchSettingsPopover", () => ({
@@ -34,7 +42,6 @@ const renderSearch = (props: { available: boolean; enabled: boolean }) => {
   render(
     <LanguageSearch
       onSubmit={onSubmit}
-      onSearched={noop}
       onUnavailable={onUnavailable}
       history={["cats"]}
       promptKeys={[]}
@@ -53,6 +60,8 @@ describe("LanguageSearch", () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
+    env.dataset = "robots";
+    env.recentQueries = [];
   });
 
   it("always renders the field", () => {
@@ -91,6 +100,45 @@ describe("LanguageSearch", () => {
       screen.getByRole("combobox", { name: LANGUAGE_SEARCH_LABEL }),
     );
     expect(screen.getByRole("option", { name: "cats" })).toBeTruthy();
+  });
+
+  it("offers a query an extension just ran before the stored history has it", () => {
+    env.recentQueries = ["dogs"];
+    renderSearch({ available: true, enabled: true });
+    fireEvent.focus(
+      screen.getByRole("combobox", { name: LANGUAGE_SEARCH_LABEL }),
+    );
+    expect(
+      screen.getAllByRole("option").map((option) => option.textContent),
+    ).toEqual(["dogs", "cats"]);
+  });
+
+  it("empties the field when the dataset changes", () => {
+    const props = {
+      onSubmit: noop,
+      onUnavailable: noop,
+      available: true,
+      enabled: true,
+      history: [],
+      promptKeys: [],
+      selectedKey: null,
+      onSelectKey: noop,
+      k: 25,
+      onChangeK: noop,
+      onOpenPanel: noop,
+    };
+    const { rerender } = render(<LanguageSearch {...props} />);
+    const field = () =>
+      screen.getByRole<HTMLInputElement>("combobox", {
+        name: LANGUAGE_SEARCH_LABEL,
+      });
+    fireEvent.change(field(), { target: { value: "an animal" } });
+    expect(field().value).toBe("an animal");
+
+    env.dataset = "cars";
+    rerender(<LanguageSearch {...props} />);
+
+    expect(field().value).toBe("");
   });
 
   it("opens the panel when a query is submitted with no index", () => {
@@ -133,7 +181,6 @@ describe("LanguageSearch", () => {
     render(
       <LanguageSearch
         onSubmit={onSubmit}
-        onSearched={noop}
         onUnavailable={noop}
         available
         enabled
@@ -151,12 +198,40 @@ describe("LanguageSearch", () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
+  it("searches an extension's index without the similarity operator or a server index", () => {
+    const onUnavailable = vi.fn();
+    const onOpenPanel = vi.fn();
+    const index = {
+      key: "emb_sim",
+      patchesField: null,
+      extension: "multimodal",
+    };
+    render(
+      <LanguageSearch
+        onSubmit={noop}
+        onUnavailable={onUnavailable}
+        available={false}
+        enabled={false}
+        history={[]}
+        promptKeys={[index]}
+        selectedKey="emb_sim"
+        onSelectKey={noop}
+        k={25}
+        onChangeK={noop}
+        onOpenPanel={onOpenPanel}
+      />,
+    );
+    search("an animal");
+    expect(extensionRun).toHaveBeenCalledWith(index, "an animal", 25);
+    expect(onUnavailable).not.toHaveBeenCalled();
+    expect(onOpenPanel).not.toHaveBeenCalled();
+  });
+
   it("drops a running extension search before submitting to the server", () => {
     const onSubmit = vi.fn();
     render(
       <LanguageSearch
         onSubmit={onSubmit}
-        onSearched={noop}
         onUnavailable={noop}
         available
         enabled
@@ -184,7 +259,6 @@ describe("LanguageSearch", () => {
     render(
       <LanguageSearch
         onSubmit={onSubmit}
-        onSearched={noop}
         onUnavailable={onUnavailable}
         available
         enabled
