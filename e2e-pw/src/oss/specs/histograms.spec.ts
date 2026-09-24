@@ -1,4 +1,4 @@
-import { test as base, expect } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { HistogramPom } from "src/oss/poms/panels/histogram-panel";
 import { GridPanelPom } from "src/oss/poms/panels/grid-panel";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
@@ -49,8 +49,7 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
 });
 
 test("histograms panel", async ({ histogram, panel }) => {
-  await panel.open("Histograms");
-  await histogram.assert.isLoaded();
+  await histogram.afterLoad(() => panel.open("Histograms"), "bool");
 
   await histogram.assert.verifyField("bool");
 
@@ -81,13 +80,9 @@ test("histograms panel", async ({ histogram, panel }) => {
     "str",
     "tags",
   ]);
-  await expect(histogram.locator).toHaveScreenshot("bool-histogram.png", {
-    animations: "allow",
-  });
   await histogram.selector.closeResults();
+  await histogram.assert.hasScreenshot("bool-histogram.png");
 
   await histogram.selectField("float");
-  await expect(histogram.locator).toHaveScreenshot("float-histogram.png", {
-    animations: "allow",
-  });
+  await histogram.assert.hasScreenshot("float-histogram.png");
 });

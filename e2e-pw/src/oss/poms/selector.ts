@@ -37,7 +37,8 @@ export class SelectorPom {
   }
 
   async closeResults() {
-    this.input.blur();
+    await this.input.blur();
+    await this.resultsContainer.waitFor({ state: "detached" });
   }
 }
 

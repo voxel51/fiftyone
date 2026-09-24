@@ -41,6 +41,11 @@ class HistogramAsserter {
     await expect(this.histogramPom.locator).toBeVisible();
   }
 
+  /** One capture of the panel; draw it first with `afterLoad` */
+  async hasScreenshot(name: string) {
+    expect(await this.histogramPom.locator.screenshot()).toMatchSnapshot(name);
+  }
+
   async verifyField(field: string) {
     await this.histogramPom.selector.assert.verifyValue(field);
   }

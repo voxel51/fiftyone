@@ -177,6 +177,9 @@ const HistogramRenderer: React.FC<{ path: string }> = ({ path }) => {
         };
 
   useLayoutEffect(() => {
+    // the chart draws at the container's measured height
+    if (data.length && !height) return;
+
     // the empty-data state renders no container; completion must still
     // signal, so fall back to the document
     const el = document.getElementById(`histogram-${path}`) ?? document;
@@ -184,7 +187,7 @@ const HistogramRenderer: React.FC<{ path: string }> = ({ path }) => {
     el.dispatchEvent(
       new CustomEvent("histograms-loaded", { bubbles: true, detail: { path } }),
     );
-  }, [path, raw, ref]);
+  }, [path, raw, ref, height]);
 
   return data.length ? (
     <Container id={`histogram-${path}`} ref={ref}>
