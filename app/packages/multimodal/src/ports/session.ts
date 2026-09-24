@@ -1,5 +1,6 @@
 import type { EventStreamsCapability } from "./event-streams";
 import type {
+  EncodedMessageBatch,
   ByteRange,
   ByteSourceDescriptor,
   DecodedFrame,
@@ -114,8 +115,8 @@ export type ReadContinuation = object & {
 
 /** One explicit slice requested from a source-scoped budget account. */
 export interface BudgetedReadRequest {
-  /** Full schema-shaped values, independent of visualization support. */
-  readonly representation?: "message";
+  /** Full message values or owned encoded records, independent of visualization support. */
+  readonly representation?: "message" | "raw-message";
   /**
    * Optional inclusive admission horizon within the stable request window.
    * Atomic source groups wholly after this time remain behind the returned
@@ -142,6 +143,8 @@ export interface BudgetedReadRequest {
 /** Partial or complete data returned by one bounded source read grant. */
 export interface BudgetedReadResult {
   readonly batches: readonly FrameBatch[];
+  /** Owned encoded payloads when raw-message representation is requested. */
+  readonly rawMessages?: EncodedMessageBatch;
   readonly continuation?: ReadContinuation;
   readonly coverageByStream: ReadonlyMap<StreamId, readonly TimeWindow[]>;
   /** Earliest atomic-group start still behind the continuation. */

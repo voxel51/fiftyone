@@ -9,6 +9,8 @@ import type {
   ReadWorkUsage,
 } from "../../../ports";
 import type {
+  EncodedMessage,
+  EncodedMessageBatch,
   EpisodeRecordingFacts,
   RawRecordSchema,
   TimeWindow,
@@ -141,7 +143,7 @@ export interface McapReadDecodedMessagesRequest {
 
 /** Internal resource request backing the format-neutral bounded-read port. */
 export interface McapReadBoundedMessagesRequest {
-  readonly representation?: "message";
+  readonly representation?: "message" | "raw-message";
   readonly absoluteBudget: ReadWorkBudget;
   readonly absoluteMaxChunks: number;
   readonly activeTimeline?: McapActiveTimeline;
@@ -159,6 +161,7 @@ export interface McapReadBoundedMessagesRequest {
 
 /** Decoded partial result returned across the MCAP resource boundary. */
 export interface McapReadBoundedMessagesResult {
+  readonly rawMessages?: EncodedMessageBatch<EncodedMessage>;
   readonly continuation?: ReadContinuation;
   readonly coverageByTopic: ReadonlyMap<string, readonly TimeWindow[]>;
   readonly messages: readonly McapDecodedMessage[];

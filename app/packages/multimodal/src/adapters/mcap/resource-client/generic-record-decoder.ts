@@ -38,7 +38,7 @@ export type McapGenericRecordDecoderResolution =
  * use `genericRecordDecoderResolutionForChannel`.
  */
 export function genericRecordDecoderForChannel(
-  reader: McapIndexedReaderLike,
+  reader: Pick<McapIndexedReaderLike, "schemasById">,
   channel: McapGenericDecodableChannel,
   options?: { readonly defaults?: boolean },
 ): ((bytes: Uint8Array) => Record<string, unknown>) | null {
@@ -55,7 +55,7 @@ export function genericRecordDecoderForChannel(
  * whether the blocker is the message encoding itself or an unusable schema.
  */
 export function genericRecordDecoderResolutionForChannel(
-  reader: McapIndexedReaderLike,
+  reader: Pick<McapIndexedReaderLike, "schemasById">,
   channel: McapGenericDecodableChannel,
   options?: { readonly defaults?: boolean },
 ): McapGenericRecordDecoderResolution {

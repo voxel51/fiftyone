@@ -1168,6 +1168,19 @@ class McapEpisodeSession implements EpisodeSession {
       });
       return {
         batches,
+        ...(result.rawMessages
+          ? {
+              rawMessages: {
+                channels: result.rawMessages.channels,
+                records: result.rawMessages.records
+                  .map((record) => ({
+                    ...record,
+                    streamId: this.streamIdFor(record.topic),
+                  }))
+                  .filter((record) => requestedStreams.has(record.streamId)),
+              },
+            }
+          : {}),
         ...(result.continuation ? { continuation: result.continuation } : {}),
         coverageByStream: new Map(
           [...result.coverageByTopic].map(([topic, windows]) => [

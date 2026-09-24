@@ -182,3 +182,34 @@ function scalarToJson(node: RawScalarNode): unknown {
       return node.truncated ? `${node.value}…` : node.value;
   }
 }
+
+/** Schema metadata needed to decode encoded messages at their consumer. */
+export interface EncodedMessageChannel {
+  readonly channelId: number;
+  readonly messageEncoding: string;
+  readonly schemaName?: string;
+  readonly schemaEncoding?: string;
+  readonly schemaData?: Uint8Array;
+}
+
+/** An owned payload buffer, safe to transfer without detaching source caches. */
+export interface EncodedMessage {
+  readonly channelId: number;
+  readonly topic: string;
+  readonly timestampNs: bigint;
+  readonly logTimeNs: bigint;
+  readonly publishTimeNs: bigint;
+  readonly sequence: number;
+  readonly data: Uint8Array;
+}
+
+/** Encoded input addressed through the format-neutral stream inventory. */
+export interface EncodedStreamMessage extends EncodedMessage {
+  readonly streamId: StreamId;
+}
+
+/** One grant's encoded messages and channel schemas, without decoded values. */
+export interface EncodedMessageBatch<T = EncodedStreamMessage> {
+  readonly records: readonly T[];
+  readonly channels: readonly EncodedMessageChannel[];
+}

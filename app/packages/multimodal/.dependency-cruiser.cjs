@@ -37,6 +37,7 @@ const VIEW_SESSION = `${VIEWS}session/`;
 const VISUALIZATION = `${SRC}visualization/`;
 
 const ENTERPRISE_SHARED_FACADES =
+  `${SRC}adapters/mcap/record-decoder/index\\.ts$|` +
   `${SRC}(extensions/(grid-posters|timeline|tiles)/(index|runtime)\\.ts$|` +
   `extensions/episode-intervals/index\\.ts$|` +
   `extensions/(mcap-explorer|episode-actions|episode-session|host)/index\\.ts$|` +
