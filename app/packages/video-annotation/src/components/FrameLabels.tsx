@@ -1,7 +1,13 @@
 import { getLabelColorFromContext } from "@fiftyone/lighter";
 import type { ModalSample } from "@fiftyone/state";
 import type { Stage } from "@fiftyone/utilities";
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   useActiveDetectionField,
   useColorScheme,
@@ -427,11 +433,19 @@ function useTrackDecorator({
   objectTracks,
   expansion,
   expandableParentIds,
+  ready,
 }: {
   sample: ModalSample | undefined;
   objectTracks: Track[];
   expansion: TrackExpansion;
   expandableParentIds: ReadonlySet<string>;
+  /**
+   * Whether the track list reflects the current stream. Held rows (see
+   * `FrameLabelsTracks`) render while the replacement stream is still loading,
+   * and its store has no labels to edit yet, so their presence-bar edits and
+   * menu actions stay off until the reload lands.
+   */
+  ready: boolean;
 }): (track: Track) => TrackDecoration {
   const baseDecorate = useVideoTrackDecorator();
   const actions = useVideoSurfaceActions();
@@ -504,6 +518,7 @@ function useTrackDecorator({
       mergeCandidatesByGroup,
       expansion,
       expandableParentIds,
+      ready,
     ],
   );
 
@@ -546,7 +561,7 @@ function useTrackDecorator({
         | undefined;
       const isObjectTrack = tdEvent?.detectionId === undefined;
 
-      if (isObjectTrack && stream) {
+      if (isObjectTrack && stream && ready) {
         const decorated = decorateObjectTrack({
           track,
           base,
@@ -578,7 +593,8 @@ function useTrackDecorator({
         });
       }
 
-      // Object track with no stream yet: can't wire frame edits — base only.
+      // Object track with no stream yet, or a held row whose replacement
+      // stream is still loading: can't wire frame edits — base only.
       if (isObjectTrack) {
         return remember({ ...base, expansionGutter: true });
       }
@@ -605,6 +621,7 @@ function useTrackDecorator({
       mergeCandidatesByGroup,
       expansion,
       expandableParentIds,
+      ready,
     ],
   );
 }
@@ -614,9 +631,12 @@ function useTrackDecorator({
  * plus one row per `TemporalDetection` (rendered as a `support`-spanning
  * interval). Untracked labels still paint as overlays but get no rows.
  *
- * One-shot re-key on the empty→ready transition so `initialPinnedIds` (read
- * only at mount) bootstraps from the real frame-track list; later recolors
- * update through the live `tracks` prop and preserve the user's pin state.
+ * Mounted once per sample and fed the live `tracks` prop. The frame-label
+ * stream is rebuilt whenever a per-frame field is toggled, and its index is
+ * empty until the rebuild lands — so the rows resolved last are held in place
+ * through that gap rather than passed on as an empty list. An empty list would
+ * drop the timeline to its header-only layout and re-open the drawer on the
+ * way back, which read as the drawer closing and opening on every toggle.
  */
 export const FrameLabelsTracks: React.FC<{
   sample?: ModalSample;
@@ -683,23 +703,28 @@ export const FrameLabelsTracks: React.FC<{
     mode === "explore" ? exploreTdFields : undefined,
   );
 
-  // Readiness for the data-timeline-loaded test seam: schemas must have
-  // landed (TD/frame fields are schema-gated), and the frame index must
-  // have resolved unless there are no frame fields to index.
+  // Annotate's frame fields come from the label schemas, so their empty set
+  // means nothing until those have landed; Explore's come from the sidebar.
   const schemasLoaded = useLabelSchemasLoaded();
-  const visibleSchemas = useVisibleLabelSchemas();
-  const hasFrameFields = useMemo(
-    () => [...visibleSchemas].some((path) => path.startsWith("frames.")),
-    [visibleSchemas],
-  );
-  const timelineLoaded =
-    schemasLoaded && (frameTracksResolved || !hasFrameFields);
+  const ready = frameTracksResolved && (mode === "explore" || schemasLoaded);
 
   // Object tracks (with their sub-tracks interleaved) followed by TD tracks.
-  const tracks = useMemo(
+  const resolvedTracks = useMemo(
     () => [...frameTracks, ...temporalDetectionTracks],
     [frameTracks, temporalDetectionTracks],
   );
+
+  // The last list that resolved, shown while the next one loads (see the
+  // component doc). Adopted through an effect rather than a ref written during
+  // render: it is state the rows below derive from, and the one extra render it
+  // costs lands only when a new list actually resolves.
+  const [heldTracks, setHeldTracks] = useState(resolvedTracks);
+  useEffect(() => {
+    if (ready) {
+      setHeldTracks(resolvedTracks);
+    }
+  }, [ready, resolvedTracks]);
+  const tracks = ready ? resolvedTracks : heldTracks;
 
   const expansion = useTrackExpansion();
 
@@ -726,11 +751,6 @@ export const FrameLabelsTracks: React.FC<{
     [tracks, expansion.expandedIds],
   );
 
-  // Bootstrap on frame-tracks-resolved, not `tracks.length`: TD tracks resolve
-  // synchronously and would otherwise trip the empty→ready flip before frame
-  // tracks land, leaving frame tracks unpinned.
-  const ready = frameTracksResolved;
-
   // Filled by TimelineWithTracks; the drawer is virtualized, so revealing a
   // row has to go through the list rather than the DOM.
   const timelineScroller = useRef<TimelineTracksScroller | null>(null);
@@ -740,11 +760,11 @@ export const FrameLabelsTracks: React.FC<{
     objectTracks: frameTracks,
     expansion,
     expandableParentIds,
+    ready,
   });
 
   return (
     <TrackProvider
-      key={ready ? "ready" : "init"}
       tracks={visibleTracks}
       autoPinNewTracks={false}
       persistKey={persistKey}
@@ -754,7 +774,7 @@ export const FrameLabelsTracks: React.FC<{
         scrollerRef={timelineScroller}
         extraActions={extraActions}
         trailingActions={trailingActions}
-        loaded={timelineLoaded}
+        loaded={ready}
         maxSize={maxSize}
         drawerOpen={drawerOpen}
         onDrawerOpenChange={setDrawerOpen}
