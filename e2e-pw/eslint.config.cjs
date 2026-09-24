@@ -22,6 +22,9 @@ module.exports = tseslint.config(
       // quarantining a flaky test IS the workflow: skips carry a reason
       // comment and the burn-in gate screens their return
       "playwright/no-skipped-test": "off",
+      // assertions read once after an explicit wait on their cause, so a
+      // missing wait fails instead of being retried away
+      "playwright/prefer-web-first-assertions": "off",
     },
   },
   {

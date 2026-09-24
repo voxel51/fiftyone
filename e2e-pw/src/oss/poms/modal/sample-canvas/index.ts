@@ -285,14 +285,15 @@ export class SampleCanvasPom {
   }
 
   /**
-   * Move the mouse to the right edge of the viewport (e.g. to avoid tooltips in
-   * screenshots).
+   * Park the mouse on the modal backdrop beside its content, where nothing
+   * reacts to hover, so tooltips and hover highlights stay out of screenshots
    */
-  async moveMouseToViewportEdge() {
-    const viewport = this.page.viewportSize();
-    if (viewport) {
-      await this.page.mouse.move(viewport.width - 1, viewport.height / 2);
-    }
+  async parkMouse() {
+    const content = await this.page.getByTestId("modal-content").boundingBox();
+    await this.page.mouse.move(content.x / 2, content.y + content.height / 2);
+    expect(
+      await this.page.locator(":hover").last().getAttribute("data-cy"),
+    ).toBe("modal");
   }
 
   async #toScreenCoordinates(x: number, y: number) {
@@ -350,9 +351,9 @@ class SampleCanvasAsserter {
   }
 
   async #hasScreenshot(target: Locator, name: string) {
+    await this.sampleCanvasPom.parkMouse();
     await expect(this.sampleCanvasPom.checkbox).toBeHidden();
     await this.sampleCanvasPom.tooltip.assert.isVisible(false);
-    await this.sampleCanvasPom.moveMouseToViewportEdge();
     await this.sampleCanvasPom.toolbar.assert.isVisible(false);
     await this.sampleCanvasPom.page.addStyleTag({
       content: ".segmentation-toolbar { display: none !important; }",

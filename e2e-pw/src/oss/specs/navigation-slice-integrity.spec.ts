@@ -29,7 +29,7 @@ const ensureMain2dCanvasReadyForScreenshot = async (modal: ModalPom) => {
   await expect(modal.sampleCanvas.checkbox).toBeHidden();
   await modal.sampleCanvas.tooltip.assert.isVisible(false);
   await modal.sampleCanvas.toolbar.assert.isVisible(false);
-  await modal.sampleCanvas.moveMouseToViewportEdge();
+  await modal.sampleCanvas.parkMouse();
 };
 
 const test = base.extend<{
