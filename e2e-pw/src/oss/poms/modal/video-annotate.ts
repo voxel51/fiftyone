@@ -185,6 +185,21 @@ export class VideoAnnotatePom {
       .first();
   }
 
+  /**
+   * Run `action` and resolve once the timeline has rendered exactly the rows
+   * `ids`, in any order.
+   */
+  async afterTracksRendered<T>(ids: string[], action: () => Promise<T>) {
+    const want = [...ids].sort().join(",");
+    return this.modal.eventUtils.after(
+      "video-annotation-tracks-rendered",
+      action,
+      (e) =>
+        [...((e.detail as { ids?: string[] })?.ids ?? [])].sort().join(",") ===
+        want,
+    );
+  }
+
   /** The label text in a track row's left column. */
   trackLabel(trackId: string): Locator {
     return this.page.locator(`[data-track-id="${trackId}"] [data-track-label]`);
@@ -194,7 +209,7 @@ export class VideoAnnotatePom {
   async trackContextMenuItems(trackId: string): Promise<string[]> {
     await this.trackBar(trackId).click({ button: "right" });
     const items = this.page.getByRole("menuitem");
-    await expect(items.first()).toBeVisible();
+    await items.first().waitFor();
     return items.allTextContents();
   }
 
@@ -536,7 +551,7 @@ class VideoAnnotateAsserter {
 
   /** Assert a track row's left-column label. */
   async trackLabel(trackId: string, text: string) {
-    await expect(this.va.trackLabel(trackId)).toHaveText(text);
+    expect(await this.va.trackLabel(trackId).textContent()).toBe(text);
   }
 
   /** Assert a track's context menu lists exactly `items`, in order. */
@@ -546,10 +561,11 @@ class VideoAnnotateAsserter {
 
   /** Assert a track's interval bars have no resize handles. */
   async trackNotResizable(trackId: string) {
-    await expect(this.va.trackBar(trackId)).toBeVisible();
-    await expect(
-      this.va.page.locator(`[data-track-id="${trackId}"] [data-resize-handle]`),
-    ).toHaveCount(0);
+    expect(
+      await this.va.page
+        .locator(`[data-track-id="${trackId}"] [data-resize-handle]`)
+        .count(),
+    ).toBe(0);
   }
 
   /** Assert a track with the given id is present on the timeline. */

@@ -78,6 +78,7 @@ import {
 import { VideoFrameLabelsStream } from "../streams/VideoFrameLabelsStream";
 
 const DEFAULT_FRAME_FIELD = "frames.detections";
+const TRACKS_RENDERED_EVENT = "video-annotation-tracks-rendered";
 
 /** Base linked-overlay decoration the interaction layer attaches per row. */
 type BaseTrackDecoration = ReturnType<
@@ -784,6 +785,17 @@ export const FrameLabelsTracks: React.FC<{
   useEffect(() => {
     onReadyChange?.(ready);
   }, [ready, onReadyChange]);
+
+  // the timeline's rows commit before this parent effect runs
+  useEffect(() => {
+    if (ready) {
+      document.dispatchEvent(
+        new CustomEvent(TRACKS_RENDERED_EVENT, {
+          detail: { ids: visibleTracks.map(({ id }) => id) },
+        }),
+      );
+    }
+  }, [ready, visibleTracks]);
 
   // Filled by TimelineWithTracks; the drawer is virtualized, so revealing a
   // row has to go through the list rather than the DOM.

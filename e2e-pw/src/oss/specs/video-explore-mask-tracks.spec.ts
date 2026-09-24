@@ -60,12 +60,15 @@ test("mask fields are one read-only row each, with a hole at missing frames", as
   await modal.waitForSampleLoadDomAttribute();
   const va = modal.videoAnnotate;
 
-  // dense label fields start inactive
-  await modal.sidebar.toggleLabelCheckbox("frames.seg");
-  await modal.sidebar.toggleLabelCheckbox("frames.heat");
-
+  // dense label fields start inactive; the drawer toggle needs a row, and
+  // rows only mount in an open drawer
+  await va.afterTracksRendered([SEG], () =>
+    modal.sidebar.toggleLabelCheckbox("frames.seg"),
+  );
   await va.openTracksDrawer();
-  await va.assert.objectTrackCount(2);
+  await va.afterTracksRendered([SEG, HEAT], () =>
+    modal.sidebar.toggleLabelCheckbox("frames.heat"),
+  );
   expect((await va.objectTrackIds()).sort()).toEqual([HEAT, SEG]);
 
   await va.assert.trackLabel(SEG, "seg");
