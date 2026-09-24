@@ -77,6 +77,20 @@ describe("useLanguageSearchExtension", () => {
     expect(env.setPending).toHaveBeenLastCalledWith(false);
   });
 
+  it("sends the view the search was typed over", () => {
+    pendingResult();
+    env.view = [{ _cls: "fiftyone.core.stages.Limit", kwargs: [["limit", 5]] }];
+    const { result } = renderSearch();
+
+    act(() => {
+      result.current.run(INDEX, "an animal", 25);
+    });
+
+    expect(env.search).toHaveBeenCalledWith(
+      expect.objectContaining({ view: env.view }),
+    );
+  });
+
   it("records the query in the dataset's history and shows it at once", () => {
     pendingResult();
     const { result } = renderSearch();

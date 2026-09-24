@@ -95,6 +95,7 @@ export const useLanguageSearchExtension = (): LanguageSearchExtension => {
             runTimestamp: index.timestamp ?? null,
             query,
             k,
+            view,
             signal,
           }),
         ),
@@ -122,6 +123,7 @@ export const useLanguageSearchExtension = (): LanguageSearchExtension => {
     [
       extensions,
       datasetName,
+      view,
       publishExtendedSelection,
       setViewChangePending,
       notify,

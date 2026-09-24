@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import type { State } from "../../recoil/types";
 import type { ExtendedSelectionResetInterface } from "../extendedSelectionReset";
 
 /** What an extension's search is asked: the index, the prompt, and how many
@@ -10,11 +11,15 @@ export interface TextSearchRequest {
    * previous run's cached answers. */
   runTimestamp: string | null;
   query: string;
-  /** How many matches the search returns, ranked over the whole index: samples
-   * for most indexes, segments for a segment index, where several can fall in
-   * one sample. The current view and sidebar filters narrow the published
-   * result afterward, so the grid can show fewer. */
+  /** How many matches the search returns: samples for most indexes, segments
+   * for a segment index, where several can fall in one sample. */
   k: number;
+  /** The serialized stages of the view the search was typed over, which the
+   * published result is narrowed to. An extension that ranks within it
+   * returns `k` matches the grid can show, as `SortBySimilarity` does; one
+   * that ranks over the whole index can end up with fewer once the view
+   * narrows it. */
+  view: State.Stage[];
   /** Aborted once this search is cancelled: the view changed, a newer
    * search started, or the field went away. An extension should stop
    * before further work and resolve null; a result it returns anyway is
