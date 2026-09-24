@@ -4,7 +4,12 @@ import {
   useAnnotationEngine,
   useEngineSelector,
 } from "@fiftyone/annotation";
+import { useModalSample } from "@fiftyone/state";
 import type { LabelData } from "@fiftyone/utilities";
+import {
+  getModalSampleFrameRate,
+  resolveFrameCount,
+} from "@fiftyone/video-annotation";
 import { ErrorSchemaBuilder } from "@rjsf/utils";
 import { useEffect, useMemo, useState } from "react";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
@@ -68,6 +73,16 @@ export default function TemporalDetectionDetails({
   const overlay = selected?.overlay;
   const engine = useAnnotationEngine();
   const sample = useActiveAnnotationSampleId();
+
+  // the video's frame count, so a typed stop can't name a frame past its end
+  // (the timeline clamps drags the same way); `null` when metadata is missing
+  const modalSample = useModalSample();
+  const frameCount = useMemo(() => {
+    const frameRate = getModalSampleFrameRate(modalSample);
+    return modalSample && frameRate && frameRate > 0
+      ? resolveFrameCount(modalSample, frameRate)
+      : null;
+  }, [modalSample]);
 
   // address the TD by its engine ref — the anchor's full ref when opened from a
   // surface, falling back to the schema-field + overlay id (a TD is sample-level,
@@ -166,10 +181,11 @@ export default function TemporalDetectionDetails({
 
           // an invalid span stays on screen with its message; the stored
           // span is untouched until the typed values agree
-          const nextIssue = supportIssue(span, {
-            start: merged.start,
-            stop: merged.stop,
-          });
+          const nextIssue = supportIssue(
+            span,
+            { start: merged.start, stop: merged.stop },
+            frameCount,
+          );
           setIssue(nextIssue);
           if (nextIssue) {
             return;

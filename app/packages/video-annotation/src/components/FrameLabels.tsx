@@ -53,10 +53,14 @@ import {
   type TrackExpansion,
 } from "../tracks/useTrackExpansion";
 import { LABELS_STREAM_ID } from "../utils/ids";
-import { resolveTrackExtentEdit } from "../tracks/trackExtentEdit";
+import {
+  resolveTemporalDetectionSupport,
+  resolveTrackExtentEdit,
+} from "../tracks/trackExtentEdit";
 import { useVideoTrackDecorator } from "../tracks/useVideoTrackDecorator";
 import { useScrollTrackToAnchor } from "../state/useScrollTrackToAnchor";
 import { useCurrentFrameGetter } from "../state/useCurrentFrame";
+import { resolveFrameCount } from "../utils/frameCount";
 import { getModalSampleFrameRate } from "../utils/modalSample";
 import { useTimelineDrawerOpen } from "../state/useTimelineDrawer";
 import {
@@ -454,6 +458,13 @@ function useTrackDecorator({
   const fps = useModalSampleFrameRate(sample);
   const snapStepSec =
     Number.isFinite(fps) && fps && fps > 0 ? 1 / fps : undefined;
+  // Clip length for clamping temporal detection drags: the label stream's
+  // count once it is registered, else the sample's own metadata.
+  const totalFrames =
+    stream?.totalFrames ??
+    (sample && fps > 0
+      ? (resolveFrameCount(sample, fps) ?? undefined)
+      : undefined);
 
   // The split boundary, captured when the track's context menu OPENS — not read
   // live in the menu item's handler, because clicking a menu item seeks the
@@ -514,6 +525,7 @@ function useTrackDecorator({
       snapStepSec,
       actions,
       stream,
+      totalFrames,
       getCurrentFrame,
       mergeCandidatesByGroup,
       expansion,
@@ -603,6 +615,7 @@ function useTrackDecorator({
           base,
           snapStepSec,
           fps,
+          totalFrames,
           actions,
         }),
         expansionGutter: true,
@@ -615,6 +628,7 @@ function useTrackDecorator({
       snapStepSec,
       actions,
       stream,
+      totalFrames,
       getCurrentFrame,
       mergeCandidatesByGroup,
       expansion,
@@ -875,12 +889,15 @@ function decorateTemporalDetectionTrack({
   base,
   snapStepSec,
   fps,
+  totalFrames,
   actions,
 }: {
   tdEvent: TemporalDetectionEventData;
   base: BaseTrackDecoration;
   snapStepSec: number | undefined;
   fps: number;
+  /** Clip length in frames, or `undefined` while it is still unknown. */
+  totalFrames: number | undefined;
   actions: VideoSurfaceActions;
 }): TrackDecoration {
   return {
@@ -897,12 +914,14 @@ function decorateTemporalDetectionTrack({
           ),
       },
     ],
-    onEventEdit: (_eventIndex, newStartSec, newEndSec) =>
+    onEventEdit: (_eventIndex, newStartSec, newEndSec, mode) =>
       applyTemporalDetectionEdit({
         tdEvent,
         newStartSec,
         newEndSec,
+        mode,
         fps,
+        totalFrames,
         actions,
       }),
   };
@@ -984,26 +1003,43 @@ function applyObjectTrackEdit({
 
 /**
  * Apply a TD interval drag: convert the dragged seconds back to a 1-indexed
- * inclusive frame `support` and dispatch the edit. Inverts the build's
- * mapping: `startSec = (firstFrame - 1) / fps`, `endSec = lastFrame / fps`.
+ * inclusive frame `support`, kept within the clip, and dispatch the edit.
+ * Inverts the build's mapping: `startSec = (firstFrame - 1) / fps`,
+ * `endSec = lastFrame / fps`. The drag layer already stops the bar at the
+ * lane's edges; this is the frame-domain guarantee behind it, so a support
+ * can never name a frame the video doesn't have.
  */
 function applyTemporalDetectionEdit({
   tdEvent,
   newStartSec,
   newEndSec,
+  mode,
   fps,
+  totalFrames,
   actions,
 }: {
   tdEvent: TemporalDetectionEventData;
   newStartSec: number;
   newEndSec: number;
+  mode: "resize-start" | "resize-end" | "move";
   fps: number;
+  totalFrames: number | undefined;
   actions: VideoSurfaceActions;
 }): void {
-  const firstFrame = Math.max(1, Math.round(newStartSec * fps) + 1);
-  const lastFrame = Math.max(firstFrame, Math.round(newEndSec * fps));
+  const support = resolveTemporalDetectionSupport({
+    mode,
+    newStartSec,
+    newEndSec,
+    fps,
+    // Unknown clip length: no upper bound to clamp against.
+    totalFrames: totalFrames ?? Number.MAX_SAFE_INTEGER,
+  });
+
+  if (!support) {
+    return;
+  }
 
   actions.editTemporalDetection(tdEvent.fieldPath, tdEvent.detectionId, {
-    support: [firstFrame, lastFrame],
+    support,
   });
 }
