@@ -11,6 +11,7 @@ vi.mock("@fiftyone/utilities", () => ({
 
 import {
   DTYPE_BITMASK,
+  DTYPE_BYTES12,
   DTYPE_F32,
   DTYPE_U16,
   FLAG_ALL_MATCH,
@@ -19,6 +20,7 @@ import {
   MAGIC,
   fetchColor,
   fetchGeometry,
+  fetchIds,
   fetchMasks,
 } from "./protocol";
 
@@ -60,6 +62,34 @@ describe("fetchGeometry", () => {
   it("rejects a non-f32 response", async () => {
     fetchMock.mockResolvedValue(makeColumn(DTYPE_U16, 1, 1, new Uint8Array(2)));
     await expect(fetchGeometry("d", "k")).rejects.toThrow(/f32/);
+  });
+});
+
+describe("fetchIds", () => {
+  it("asks for the points' own ids by default", async () => {
+    const payload = new Uint8Array(24).map((_, i) => i);
+    fetchMock.mockResolvedValue(makeColumn(DTYPE_BYTES12, 1, 2, payload));
+
+    const ids = await fetchIds("d", "k");
+    expect(fetchMock.mock.calls[0][2]).toEqual({
+      datasetName: "d",
+      brainKey: "k",
+      kind: "points",
+    });
+    expect(Array.from(ids)).toEqual(Array.from(payload));
+  });
+
+  it("asks for the owning samples' ids", async () => {
+    fetchMock.mockResolvedValue(
+      makeColumn(DTYPE_BYTES12, 1, 1, new Uint8Array(12)),
+    );
+
+    await fetchIds("d", "k", undefined, "samples");
+    expect(fetchMock.mock.calls[0][2]).toEqual({
+      datasetName: "d",
+      brainKey: "k",
+      kind: "samples",
+    });
   });
 });
 

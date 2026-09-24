@@ -45,6 +45,7 @@ import {
 } from "./colors";
 import { backgroundClickAction } from "./backgroundClick";
 import { gridFilterPath } from "./filterPath";
+import { foreignSelectionIds } from "./foreignSelection";
 import { legendCounts } from "./legendCounts";
 import {
   legendLabels,
@@ -202,6 +203,15 @@ export function useRunPlotData(
     fos.extendedSelectionOverrideStage,
   );
   const resetExtended = fos.useResetExtendedSelection();
+  // Other panels' selections (the Map panel's lasso, set_extended_selection)
+  // emphasize the plot the way they narrow the grid — unless this panel's
+  // own stage is live, which the grid shows instead (see foreignSelection.ts)
+  const extendedSelection = useRecoilValue(fos.extendedSelection);
+  const ownStage = useRecoilValue(fos.extendedSelectionOverrideStage);
+  const foreignSelection = useMemo(
+    () => foreignSelectionIds(extendedSelection, ownStage),
+    [extendedSelection, ownStage],
+  );
 
   // ONE commit per selection. Written as separate setters, each write
   // invalidated the App's view on its own and fired a full sidebar
@@ -615,6 +625,8 @@ export function useRunPlotData(
     resetExtended,
     selectedSamples,
     setSelectedSamples,
+    foreignSelection,
+    serverIds: !source.ownsGeometry,
     decorateSelection: features.decorateSelection,
     resolveLassoStage: features.resolveLassoStage,
     publishSelection,

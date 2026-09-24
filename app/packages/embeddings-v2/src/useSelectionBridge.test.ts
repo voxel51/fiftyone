@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SelectionType } from "@fiftyone/state";
 import type { LassoStageInput } from "./extensions";
-import { fetchLassoStage, fetchSampleInfo, idAt } from "./protocol";
+import { fetchIds, fetchLassoStage, fetchSampleInfo, idAt } from "./protocol";
 import type { SampleInfo } from "./protocol";
 import type { Loaded } from "./useRunColumns";
 import {
@@ -18,6 +18,7 @@ vi.mock("@fiftyone/utilities", () => ({
 }));
 vi.mock("./protocol", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./protocol")>()),
+  fetchIds: vi.fn(),
   fetchLassoStage: vi.fn(),
   fetchSampleInfo: vi.fn(),
 }));
@@ -82,6 +83,9 @@ const options = (
   resetExtended: vi.fn(),
   selectedSamples: new Map<string, SelectionType>(),
   setSelectedSamples: vi.fn(),
+  foreignSelection: null,
+  // Off by default: most tests never touch the owning-sample fetch
+  serverIds: false,
   decorateSelection: null,
   resolveLassoStage,
   ...overrides,
@@ -836,9 +840,9 @@ describe("useSelectionBridge", () => {
   });
 
   it("treats a selection that maps to nothing as no selection", () => {
-    // Sample ids never resolve against a patches run's label-id wire
-    // order. An empty array here would dim the whole plot and outrank
-    // the filter-match layer in the host's precedence chain
+    // An id outside the run resolves to no point. An empty array here
+    // would dim the whole plot and outrank the filter-match layer in the
+    // host's precedence chain
     const selected = new Map<string, SelectionType>([
       ["not-in-this-run", "default"],
     ]);
@@ -1080,5 +1084,170 @@ describe("useSelectionBridge", () => {
     expect(opts.resetExtended).toHaveBeenCalled();
     expect(opts.setSelectedSamples).toHaveBeenCalledWith(new Map());
     expect(opts.chart.current?.clearSelection).toHaveBeenCalled();
+  });
+});
+
+// A patches run: three label points owned by two samples. Points 0 and 1
+// are patches of sample 20, point 2 is a patch of sample 21
+const oid = (byte: number): Uint8Array => new Uint8Array(12).fill(byte);
+const idColumn = (...ids: Uint8Array[]): Uint8Array => {
+  const out = new Uint8Array(ids.length * 12);
+  ids.forEach((id, i) => out.set(id, i * 12));
+  return out;
+};
+const hex = (byte: number): string => idAt(oid(byte), 0);
+const PATCH_IDS = idColumn(oid(10), oid(11), oid(12));
+const OWNERS = idColumn(oid(20), oid(20), oid(21));
+const PATCH_LOADED: Loaded = {
+  brainKey: "viz",
+  points: [0, 1, 2].map((i) => ({
+    id: idAt(PATCH_IDS, i),
+    x: i,
+    y: i,
+    label: null,
+  })),
+  ids: PATCH_IDS,
+  total: 3,
+};
+const gridSelection = (id: string) =>
+  new Map<string, SelectionType>([[id, "default"]]);
+
+describe("useSelectionBridge: foreign and sample-level selections", () => {
+  beforeEach(() => {
+    vi.mocked(fetchIds).mockReset();
+    vi.mocked(fetchIds).mockResolvedValue(OWNERS);
+  });
+
+  it("emphasizes another panel's selection", () => {
+    const opts = options({ foreignSelection: [idAt(IDS, 1)] });
+    const { result } = renderHook(() => useSelectionBridge(opts));
+
+    expect(result.current.selectedIndices).toEqual([1]);
+  });
+
+  it("lets the grid's checkboxes outrank another panel's selection", () => {
+    // The old panel's order: the grid's selection first, a foreign one last
+    const opts = options({
+      selectedSamples: gridSelection(idAt(IDS, 0)),
+      foreignSelection: [idAt(IDS, 1)],
+    });
+    const { result } = renderHook(() => useSelectionBridge(opts));
+
+    expect(result.current.selectedIndices).toEqual([0]);
+  });
+
+  it("treats a foreign selection outside the run as no selection", () => {
+    const opts = options({ foreignSelection: ["not-in-this-run"] });
+    const { result } = renderHook(() => useSelectionBridge(opts));
+
+    expect(result.current.selectedIndices).toBeNull();
+  });
+
+  // Run type x grid view: the grid hands over whichever ids its view lists,
+  // sample ids in a samples view and label ids in a patches view
+  it.each([
+    {
+      run: "samples",
+      view: "samples",
+      loaded: LOADED,
+      patchesField: null,
+      id: idAt(IDS, 1),
+      expected: [1],
+    },
+    {
+      // Patch ids cannot name a samples run's points: a known limit
+      run: "samples",
+      view: "patches",
+      loaded: LOADED,
+      patchesField: null,
+      id: hex(10),
+      expected: null,
+    },
+    {
+      run: "patches",
+      view: "samples",
+      loaded: PATCH_LOADED,
+      patchesField: "ground_truth",
+      id: hex(20),
+      expected: [0, 1],
+    },
+    {
+      run: "patches",
+      view: "patches",
+      loaded: PATCH_LOADED,
+      patchesField: "ground_truth",
+      id: hex(12),
+      expected: [2],
+    },
+  ])(
+    "resolves a $view-view grid selection on a $run run",
+    async ({ loaded, patchesField, id, expected }) => {
+      const opts = options({
+        loaded,
+        patchesField,
+        serverIds: true,
+        selectedSamples: gridSelection(id),
+      });
+      const { result } = renderHook(() => useSelectionBridge(opts));
+
+      await waitFor(() =>
+        expect(result.current.selectedIndices).toEqual(expected),
+      );
+    },
+  );
+
+  it("lights every patch of another panel's selected sample", async () => {
+    const opts = options({
+      loaded: PATCH_LOADED,
+      patchesField: "ground_truth",
+      serverIds: true,
+      foreignSelection: [hex(20)],
+    });
+    const { result } = renderHook(() => useSelectionBridge(opts));
+
+    await waitFor(() => expect(result.current.selectedIndices).toEqual([0, 1]));
+    expect(fetchIds).toHaveBeenCalledWith("ds", "viz", undefined, "samples");
+  });
+
+  it("clips owning-sample matches to the points loaded so far", async () => {
+    // Mid-load: two of three points are in, but the owner column spans the
+    // whole run, so sample 21's only patch is not drawable yet
+    const loaded: Loaded = {
+      ...PATCH_LOADED,
+      points: PATCH_LOADED.points.slice(0, 2),
+    };
+    const opts = options({
+      loaded,
+      patchesField: "ground_truth",
+      serverIds: true,
+      foreignSelection: [hex(20), hex(21)],
+    });
+    const { result } = renderHook(() => useSelectionBridge(opts));
+
+    await waitFor(() => expect(result.current.selectedIndices).toEqual([0, 1]));
+  });
+
+  it("never asks the server for an extension-owned run's owners", () => {
+    const opts = options({
+      loaded: PATCH_LOADED,
+      patchesField: "ground_truth",
+      serverIds: false,
+      selectedSamples: gridSelection(hex(20)),
+    });
+    const { result } = renderHook(() => useSelectionBridge(opts));
+
+    expect(fetchIds).not.toHaveBeenCalled();
+    expect(result.current.selectedIndices).toBeNull();
+  });
+
+  it("fetches owners only once something is selected", () => {
+    const opts = options({
+      loaded: PATCH_LOADED,
+      patchesField: "ground_truth",
+      serverIds: true,
+    });
+    renderHook(() => useSelectionBridge(opts));
+
+    expect(fetchIds).not.toHaveBeenCalled();
   });
 });
