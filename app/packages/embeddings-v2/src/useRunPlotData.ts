@@ -45,6 +45,7 @@ import {
 } from "./colors";
 import { backgroundClickAction } from "./backgroundClick";
 import { gridFilterPath } from "./filterPath";
+import { runLinksToGrid } from "./gridPatches";
 import { legendCounts } from "./legendCounts";
 import {
   legendLabels,
@@ -69,6 +70,7 @@ import {
 } from "./extensions";
 import { useColorColumn } from "./useColorColumn";
 import { useColorPalette } from "./useColorPalette";
+import { useGridPatches } from "./useGridPatches";
 import { useHoverInfo } from "./useHoverInfo";
 import { useMasks } from "./useMasks";
 import { useRunColumns, type Loaded } from "./useRunColumns";
@@ -596,6 +598,10 @@ export function useRunPlotData(
     },
   }).current;
 
+  // A grid of another field's patches holds none of this run's points, so
+  // selections stay in the plot (see gridPatches.ts)
+  const linksToGrid = runLinksToGrid(run, useGridPatches());
+
   const {
     selectedIndices,
     lassoIndices,
@@ -618,6 +624,7 @@ export function useRunPlotData(
     decorateSelection: features.decorateSelection,
     resolveLassoStage: features.resolveLassoStage,
     publishSelection,
+    linksToGrid,
   });
 
   // Selection lives in global singletons (see the module docstring above)

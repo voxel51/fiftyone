@@ -89,6 +89,14 @@ function mismatch(
   return { grid, field: run.patchesField };
 }
 
+/** Whether the run's selections can reach the grid */
+export function runLinksToGrid(
+  run: Pick<VisualizationRun, "patchesField">,
+  grid: GridPatches | null,
+): boolean {
+  return mismatch(run, grid) === null;
+}
+
 /** Why a run cannot link to the grid (the card's tooltip), or null when it
  * can */
 export function unavailableReason(

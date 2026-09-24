@@ -84,6 +84,7 @@ const options = (
   setSelectedSamples: vi.fn(),
   decorateSelection: null,
   resolveLassoStage,
+  linksToGrid: true,
   ...overrides,
 });
 
@@ -411,6 +412,50 @@ describe("useSelectionBridge", () => {
       sampleCount: 1,
       decorate: null,
     });
+  });
+
+  // FOEPD-4437: a grid of another field's patches holds none of the run's
+  // points, so a stage over them would only empty it
+  it("keeps a lasso in the plot when the grid cannot hold its points", () => {
+    vi.mocked(fetchLassoStage).mockClear();
+    const opts = options({ linksToGrid: false });
+    const { result } = renderHook(() => useSelectionBridge(opts));
+
+    act(() => result.current.handleSelection([0, 1]));
+
+    expect(fetchLassoStage).not.toHaveBeenCalled();
+    // A null stage clears any earlier one; the count still drives the chip
+    expect(opts.publishSelection).toHaveBeenCalledWith({
+      stage: null,
+      count: 2,
+      sampleCount: null,
+      decorate: null,
+    });
+    expect(Array.from(result.current.lassoIndices ?? [])).toEqual([0, 1]);
+  });
+
+  it("keeps a click in the plot when the grid cannot hold its points", () => {
+    const opts = options({ linksToGrid: false });
+    const { result } = renderHook(() => useSelectionBridge(opts));
+
+    act(() =>
+      result.current.handlePointClick({
+        index: 0,
+        id: idAt(IDS, 0),
+        label: "",
+        x: 0,
+        y: 0,
+      }),
+    );
+
+    expect(opts.publishSelection).toHaveBeenCalledWith({
+      stage: null,
+      count: 1,
+      sampleCount: 1,
+      decorate: null,
+    });
+    // The plot still lights the clicked point
+    expect(result.current.selectedIndices).toEqual([0]);
   });
 
   it("lights the clicked point in the plot with no checkbox behind it", () => {

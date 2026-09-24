@@ -3,6 +3,7 @@ import {
   gridPatches,
   listRuns,
   plotWarning,
+  runLinksToGrid,
   unavailableReason,
 } from "./gridPatches";
 import type { VisualizationRun } from "./protocol";
@@ -102,6 +103,16 @@ describe("unavailableReason", () => {
 
   it("blocks nothing outside a patches view", () => {
     expect(unavailableReason(run("fake", "fake"), null)).toBeNull();
+  });
+});
+
+describe("runLinksToGrid", () => {
+  it("is false only for patches runs on another field", () => {
+    const grid = { fields: ["ground_truth"], label: "ground_truth patches" };
+    expect(runLinksToGrid(run("fake", "fake"), grid)).toBe(false);
+    expect(runLinksToGrid(run("gt", "ground_truth"), grid)).toBe(true);
+    expect(runLinksToGrid(run("viz", null), grid)).toBe(true);
+    expect(runLinksToGrid(run("fake", "fake"), null)).toBe(true);
   });
 });
 

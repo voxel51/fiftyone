@@ -48,6 +48,11 @@ export interface SelectionBridgeOptions {
   resolveLassoStage:
     | ((input: LassoStageInput) => Record<string, unknown> | null)
     | null;
+  /** Whether selections can reach the grid. False while the grid shows a
+   * patches view of another field than the run's: no stage over the run's
+   * points selects anything there, so lassos and clicks stay in the plot
+   * (which warns) instead of emptying the grid */
+  linksToGrid: boolean;
 }
 
 /**
@@ -95,6 +100,7 @@ export function useSelectionBridge({
   decorateSelection,
   resolveLassoStage,
   publishSelection,
+  linksToGrid,
 }: SelectionBridgeOptions): {
   selectedIndices: number[] | null;
   /** The live lasso's enclosed wire indices (null = no lasso). Kept
@@ -268,6 +274,19 @@ export function useSelectionBridge({
     // counts follow the gesture, not the network
     setLassoIndices(Uint32Array.from(kept));
 
+    // The grid holds none of these points: the lasso stays in the plot,
+    // and a null stage clears any earlier one rather than emptying the
+    // grid with a stage that selects nothing
+    if (!linksToGrid) {
+      publishSelection({
+        stage: null,
+        count: kept.length,
+        sampleCount: null,
+        decorate: decorateSelection?.(kept) ?? null,
+      });
+      return;
+    }
+
     if (resolveLassoStage && loaded && loaded.points.length === loaded.total) {
       const stage = resolveLassoStage({
         indices: kept,
@@ -344,12 +363,16 @@ export function useSelectionBridge({
     const indices = decoratedIndices(samples);
     setClickIndices(indices.length ? indices : null);
     publishSelection({
-      stage: {
-        "fiftyone.core.stages.Select": {
-          sample_ids: Array.from(samples),
-          ordered: false,
-        },
-      },
+      // A grid of another field's patches holds none of these samples'
+      // points; the click stays in the plot, as a lasso does
+      stage: linksToGrid
+        ? {
+            "fiftyone.core.stages.Select": {
+              sample_ids: Array.from(samples),
+              ordered: false,
+            },
+          }
+        : null,
       // Point count, not sample count — matches what a lasso reports for
       // the same points, and what the dim layer actually highlights
       count: indices.length || samples.size,
