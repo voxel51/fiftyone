@@ -77,12 +77,13 @@ export default function TemporalDetectionDetails({
   // the video's frame count, so a typed stop can't name a frame past its end
   // (the timeline clamps drags the same way); `null` when metadata is missing
   const modalSample = useModalSample();
-  const frameCount = useMemo(() => {
-    const frameRate = getModalSampleFrameRate(modalSample);
-    return modalSample && frameRate && frameRate > 0
-      ? resolveFrameCount(modalSample, frameRate)
-      : null;
-  }, [modalSample]);
+  const frameCount = useMemo(
+    () =>
+      modalSample
+        ? resolveFrameCount(modalSample, getModalSampleFrameRate(modalSample))
+        : null,
+    [modalSample],
+  );
 
   // address the TD by its engine ref — the anchor's full ref when opened from a
   // surface, falling back to the schema-field + overlay id (a TD is sample-level,

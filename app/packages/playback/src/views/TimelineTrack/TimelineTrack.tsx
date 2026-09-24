@@ -423,13 +423,13 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
       if (drag.mode === "resize-start") {
         newStart = Math.max(0, snap(drag.origStart + dSec));
         if (newStart > drag.origEnd - minDuration) {
-          newStart = drag.origEnd - minDuration;
+          newStart = Math.max(0, drag.origEnd - minDuration);
         }
         newEnd = drag.origEnd;
       } else if (drag.mode === "resize-end") {
         newEnd = Math.min(timelineEnd, snap(drag.origEnd + dSec));
         if (newEnd < drag.origStart + minDuration) {
-          newEnd = drag.origStart + minDuration;
+          newEnd = Math.min(timelineEnd, drag.origStart + minDuration);
         }
         newStart = drag.origStart;
       } else {

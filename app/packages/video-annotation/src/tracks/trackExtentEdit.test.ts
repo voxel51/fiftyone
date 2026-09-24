@@ -171,6 +171,20 @@ describe("resolveTemporalDetectionSupport", () => {
     ).toBeNull();
   });
 
+  it("returns null for a non-positive clip length", () => {
+    for (const totalFrames of [0, -3, Number.NaN]) {
+      expect(
+        resolveTemporalDetectionSupport({
+          mode: "resize-end",
+          newStartSec: 0,
+          newEndSec: 1,
+          fps: FPS,
+          totalFrames,
+        }),
+      ).toBeNull();
+    }
+  });
+
   it("inverts the build's seconds mapping for an in-range drag", () => {
     expect(td("resize-end", SEG_FIRST, 50)).toEqual([SEG_FIRST, 50]);
     expect(td("resize-start", 5, SEG_LAST)).toEqual([5, SEG_LAST]);

@@ -182,7 +182,7 @@ export interface ResolveTemporalDetectionSupportInput {
  * inclusive `[first, last]` support, kept within `[1, totalFrames]`. A
  * `move` that overruns either edge slides back so the span keeps its width;
  * a resize past an edge stops at that edge. Returns `null` for degenerate
- * input (bad fps or clip length).
+ * input (non-positive fps or clip length).
  */
 export function resolveTemporalDetectionSupport(
   input: ResolveTemporalDetectionSupportInput,
@@ -192,8 +192,8 @@ export function resolveTemporalDetectionSupport(
     return null;
   }
 
-  const totalFrames = Math.max(1, Math.round(input.totalFrames));
-  if (!Number.isFinite(totalFrames)) {
+  const totalFrames = Math.round(input.totalFrames);
+  if (!Number.isFinite(totalFrames) || totalFrames < 1) {
     return null;
   }
 
