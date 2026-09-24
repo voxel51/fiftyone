@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fetchIds, idAt, type IdColumn } from "./protocol";
 import { usePatchSampleIndex } from "./usePatchSampleIndex";
@@ -142,8 +142,12 @@ describe("usePatchSampleIndex", () => {
     });
     await waitFor(() => expect(result.current?.get(hex(3))).toEqual([0]));
 
-    stale.resolve(OWNERS);
-    await Promise.resolve();
+    // Inside act, so a wrongly accepted response would commit before the
+    // assertions and fail them
+    await act(async () => {
+      stale.resolve(OWNERS);
+      await stale.promise;
+    });
     expect(result.current?.get(hex(1))).toBeUndefined();
     expect(result.current?.get(hex(3))).toEqual([0]);
   });
