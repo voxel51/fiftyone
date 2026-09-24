@@ -16,6 +16,7 @@ import type { Selectable } from "../selection/Selectable";
 import type { Point, RawLookerLabel, Rect, RenderMeta } from "../types";
 import { getSimpleStrokeStyles } from "../utils/colorMapping";
 import { maskSourceOf } from "../utils/maskSource";
+import { segmentationIndexCache } from "../utils/decodedIndexCache";
 import { toRelativePoint } from "../utils/mediaPoint";
 import {
   colorForTarget,
@@ -25,6 +26,7 @@ import {
 import {
   buildSegmentationLut,
   decodeSegmentationIndices,
+  type DecodedSegmentation,
 } from "../utils/segmentationIndices";
 import type { IndexedImage } from "../renderer/Renderer2D";
 import { decodeMaskPath } from "../utils/maskPathDecoding";
@@ -241,6 +243,30 @@ export class SegmentationOverlay
   }
 
   /**
+   * The mask's indices: decoded ahead of time when the label stream warmed
+   * this frame (see {@link segmentationIndexCache}), otherwise decoded here
+   * and remembered so a repeat of this mask (a seek back, a second overlay of
+   * the same frame) does not pay again. Only an inline mask is cached: a
+   * `mask_path` source is already decoded, and keying by that object would
+   * pin it for the cache's lifetime.
+   */
+  private decodeIndices(source: string | OverlayMask): DecodedSegmentation {
+    const warmed = segmentationIndexCache.get(source);
+
+    if (warmed) {
+      return warmed;
+    }
+
+    const decoded = decodeSegmentationIndices(source);
+
+    if (typeof source === "string") {
+      segmentationIndexCache.set(source, decoded);
+    }
+
+    return decoded;
+  }
+
+  /**
    * Decode the mask and table the palette if either changed since the last
    * paint; otherwise hand back what is already there. The two are cached
    * independently: a new frame keeps the table when the palette is the same
@@ -286,7 +312,7 @@ export class SegmentationOverlay
             width: previous.width,
             height: previous.height,
           }
-        : decodeSegmentationIndices(source);
+        : this.decodeIndices(source);
 
       // An 8-bit table covers every target the mask could hold, so it
       // outlives the frame; a 16-bit one is built for the targets present.
