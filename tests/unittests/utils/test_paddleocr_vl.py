@@ -131,7 +131,9 @@ class PixelBudgetEffectTests(unittest.TestCase):
                     "PaddlePaddle/PaddleOCR-VL-1.6"
                 )
             )
-        except Exception as e:
+        except (ImportError, OSError, ValueError) as e:
+            # Missing transformers, no network or Hub access, or an
+            # installed transformers without the PaddleOCR-VL processor
             raise unittest.SkipTest(
                 "PaddleOCR-VL image processor unavailable: %s" % e
             )
@@ -145,13 +147,34 @@ class PixelBudgetEffectTests(unittest.TestCase):
             images=big,
             return_tensors="pt",
             size={
-                "shortest_edge": foup._MIN_PIXELS,
+                "shortest_edge": foup._min_pixels(self.image_processor),
                 "longest_edge": foup._SPOTTING_MAX_PIXELS,
             },
         )
         self.assertGreater(
             raised["pixel_values"].shape[0], base["pixel_values"].shape[0]
         )
+
+    def test_checkpoint_minimum_is_kept(self):
+        self.assertEqual(
+            foup._min_pixels(self.image_processor),
+            self.image_processor.size["shortest_edge"],
+        )
+
+
+class MinPixelsTests(unittest.TestCase):
+    def test_reads_shortest_edge(self):
+        processor = mock.MagicMock()
+        processor.size = {"shortest_edge": 112896, "longest_edge": 1003520}
+        self.assertEqual(foup._min_pixels(processor), 112896)
+
+    def test_falls_back_without_a_size(self):
+        self.assertEqual(foup._min_pixels(object()), foup._MIN_PIXELS)
+
+    def test_falls_back_without_a_shortest_edge(self):
+        processor = mock.MagicMock()
+        processor.size = {"longest_edge": 1003520}
+        self.assertEqual(foup._min_pixels(processor), foup._MIN_PIXELS)
 
 
 class UpscaleForSpottingTests(unittest.TestCase):
@@ -194,6 +217,10 @@ class PredictTests(unittest.TestCase):
         model._device = "cpu"
         model._model = mock.MagicMock()
         model._processor = mock.MagicMock()
+        model._processor.image_processor.size = {
+            "shortest_edge": 112896,
+            "longest_edge": 1003520,
+        }
         model._processor.apply_chat_template.return_value = mock.MagicMock()
         model._processor.decode.return_value = decoded
         # inputs["input_ids"].shape[-1] and .to(device) chains
@@ -228,6 +255,7 @@ class PredictTests(unittest.TestCase):
             model._predict_all([np.zeros((16, 16, 3), dtype=np.uint8)])
         kwargs = model._processor.apply_chat_template.call_args.kwargs
         size = kwargs["images_kwargs"]["size"]
+        self.assertEqual(size["shortest_edge"], 112896)
         self.assertEqual(size["longest_edge"], foup._SPOTTING_MAX_PIXELS)
 
     def test_recognition_pixel_budget(self):
@@ -236,6 +264,7 @@ class PredictTests(unittest.TestCase):
             model._predict_all([np.zeros((16, 16, 3), dtype=np.uint8)])
         kwargs = model._processor.apply_chat_template.call_args.kwargs
         size = kwargs["images_kwargs"]["size"]
+        self.assertEqual(size["shortest_edge"], 112896)
         self.assertEqual(size["longest_edge"], foup._DEFAULT_MAX_PIXELS)
 
     def test_non_spotting_task_ignores_locations(self):

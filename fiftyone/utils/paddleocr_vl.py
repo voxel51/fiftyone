@@ -97,6 +97,15 @@ def _select_dtype(device):
     return torch.bfloat16 if "cuda" in str(device) else torch.float32
 
 
+def _min_pixels(image_processor):
+    """The checkpoint's minimum pixel budget, which the image processor keeps
+    as ``size["shortest_edge"]``."""
+    try:
+        return image_processor.size["shortest_edge"] or _MIN_PIXELS
+    except (AttributeError, KeyError, TypeError):
+        return _MIN_PIXELS
+
+
 def _upscale_for_spotting(pil):
     """Doubles images whose dimensions are both under 1500 px, matching the
     reference spotting pipeline, which upscales small inputs so fine text
@@ -250,12 +259,9 @@ class PaddleOCRVLModel(fout.TorchImageModel):
                     return_tensors="pt",
                     images_kwargs={
                         "size": {
-                            "shortest_edge": getattr(
-                                self._processor.image_processor,
-                                "min_pixels",
-                                None,
-                            )
-                            or _MIN_PIXELS,
+                            "shortest_edge": _min_pixels(
+                                self._processor.image_processor
+                            ),
                             "longest_edge": max_pixels,
                         }
                     },
