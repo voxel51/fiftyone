@@ -32,6 +32,7 @@ from .utils import (
     warn_reserved_pk_paths,
 )
 
+fob = fou.lazy_import("fiftyone.core.brain")
 fod = fou.lazy_import("fiftyone.core.dataset")
 fog = fou.lazy_import("fiftyone.core.groups")
 
@@ -916,6 +917,9 @@ class DatasetMixin(object):
 
         if not del_paths:
             return
+
+        prefix = dataset._FRAMES_PREFIX if is_frame_field else ""
+        fob._warn_runs_using_fields(dataset, [prefix + p for p in del_paths])
 
         cls._delete_fields_simple(del_paths)
 

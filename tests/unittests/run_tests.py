@@ -9,6 +9,7 @@ FiftyOne run-related unit tests.
 import unittest
 
 import fiftyone as fo
+import fiftyone.core.brain as fob
 
 from decorators import drop_datasets
 
@@ -194,3 +195,103 @@ class RunTests(unittest.TestCase):
 if __name__ == "__main__":
     fo.config.show_progress_bars = False
     unittest.main(verbosity=2)
+
+
+class FieldDeletionWarningTests(unittest.TestCase):
+    def _register(self, samples, key, **kwargs):
+        config = fob.BrainMethodConfig(**kwargs)
+        fob.BrainMethod(config).register_run(samples, key)
+
+    def _make_dataset(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(
+            fo.Sample(
+                filepath="image.png",
+                emb=[0.1, 0.2],
+                roi=fo.Detections(
+                    detections=[fo.Detection(label="cat", emb=[0.1])]
+                ),
+            )
+        )
+        return dataset
+
+    @drop_datasets
+    def test_embeddings_field(self):
+        dataset = self._make_dataset()
+        self._register(dataset, "sim", embeddings_field="emb")
+
+        with self.assertLogs("fiftyone.core.brain", "WARNING") as logs:
+            dataset.delete_sample_field("emb")
+
+        self.assertEqual(len(logs.output), 1)
+        self.assertIn("'emb'", logs.output[0])
+        self.assertIn("brain run 'sim'", logs.output[0])
+
+    @drop_datasets
+    def test_parent_field(self):
+        dataset = self._make_dataset()
+        self._register(dataset, "sim", embeddings_field="roi.detections.emb")
+
+        with self.assertLogs("fiftyone.core.brain", "WARNING") as logs:
+            dataset.delete_sample_field("roi")
+
+        self.assertIn("brain run 'sim'", logs.output[0])
+
+    @drop_datasets
+    def test_unrelated_field(self):
+        dataset = self._make_dataset()
+        self._register(dataset, "sim", embeddings_field="emb")
+
+        with self.assertNoLogs("fiftyone.core.brain", "WARNING"):
+            dataset.delete_sample_field("roi")
+
+    @drop_datasets
+    def test_roi_embeddings(self):
+        dataset = self._make_dataset()
+        self._register(
+            dataset, "uniq", roi_field="roi", embeddings_field="emb"
+        )
+
+        with self.assertNoLogs("fiftyone.core.brain", "WARNING"):
+            dataset.delete_sample_field("emb")
+
+        with self.assertLogs("fiftyone.core.brain", "WARNING") as logs:
+            dataset.delete_sample_field("roi.detections.emb")
+
+        self.assertIn("brain run 'uniq'", logs.output[0])
+
+    @drop_datasets
+    def test_one_warning_per_run(self):
+        dataset = self._make_dataset()
+        self._register(
+            dataset, "uniq", roi_field="roi", embeddings_field="emb"
+        )
+
+        with self.assertLogs("fiftyone.core.brain", "WARNING") as logs:
+            dataset.delete_sample_fields(["roi", "emb"])
+
+        self.assertEqual(len(logs.output), 1)
+        self.assertIn("'roi'", logs.output[0])
+
+    @drop_datasets
+    def test_frame_field(self):
+        dataset = fo.Dataset()
+        sample = fo.Sample(filepath="video.mp4")
+        sample.frames[1] = fo.Frame(dets=fo.Detections())
+        dataset.add_sample(sample)
+        self._register(dataset, "sim", patches_field="frames.dets")
+
+        with self.assertLogs("fiftyone.core.brain", "WARNING") as logs:
+            dataset.delete_frame_field("dets")
+
+        self.assertIn("'frames.dets'", logs.output[0])
+
+    @drop_datasets
+    def test_generated_view_run(self):
+        dataset = self._make_dataset()
+        patches = dataset.to_patches("roi")
+        self._register(patches, "sim", embeddings_field="emb")
+
+        # "emb" names the patches' field, not the dataset's
+        with self.assertNoLogs("fiftyone.core.brain", "WARNING"):
+            dataset.delete_sample_field("emb")

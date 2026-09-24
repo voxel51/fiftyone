@@ -205,6 +205,49 @@ class SimilarityTests(unittest.TestCase):
         self.assertListEqual(values5, values1[:2])
 
 
+class FieldDeletionWarningTests(unittest.TestCase):
+    @drop_datasets
+    def test_sklearn_embeddings_field(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="image%d.png" % i, emb=np.random.randn(4))
+                for i in range(4)
+            ]
+        )
+        fob.compute_similarity(dataset, embeddings="emb", brain_key="sim")
+
+        with self.assertLogs("fiftyone.core.brain", "WARNING") as logs:
+            dataset.delete_sample_field("emb")
+
+        self.assertIn("brain run 'sim'", logs.output[0])
+
+    @drop_datasets
+    def test_patch_embeddings_field(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="image%d.png" % i,
+                    gt=fo.Detections(
+                        detections=[
+                            fo.Detection(label="cat", emb=np.random.randn(4))
+                        ]
+                    ),
+                )
+                for i in range(4)
+            ]
+        )
+        fob.compute_similarity(
+            dataset, patches_field="gt", embeddings="emb", brain_key="sim"
+        )
+
+        with self.assertLogs("fiftyone.core.brain", "WARNING") as logs:
+            dataset.delete_sample_field("gt.detections.emb")
+
+        self.assertIn("brain run 'sim'", logs.output[0])
+
+
 if __name__ == "__main__":
     fo.config.show_progress_bars = False
     unittest.main(verbosity=2)
