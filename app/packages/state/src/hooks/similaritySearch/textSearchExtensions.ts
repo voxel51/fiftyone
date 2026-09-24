@@ -76,9 +76,9 @@ export interface TextSearchResult {
 export interface TextSearchExtension {
   /** The brain runs' `config.method` this extension searches. */
   method: string;
-  /** Shown under the search settings' Results field while one of this
-   * extension's indexes is selected, e.g. to say how its results relate to
-   * what the grid shows. */
+  /** Shown below the search settings' Results label, above its input, while
+   * one of this extension's indexes is selected, e.g. to say how its results
+   * relate to what the grid shows. */
   resultsHint?: string;
   /** The sources `index` can narrow a search to; null, or absent, when it
    * cannot be narrowed. */

@@ -266,12 +266,12 @@ export const SearchSettingsPopover: React.FC<SearchSettingsPopoverProps> = ({
                 <Text variant={TextVariant.Label} color={TextColor.Tertiary}>
                   Results
                 </Text>
-                <ResultsInput k={k} onChangeK={onChangeK} />
                 {resultsHint && (
                   <Text variant={TextVariant.Xs} color={TextColor.Tertiary}>
                     {resultsHint}
                   </Text>
                 )}
+                <ResultsInput k={k} onChangeK={onChangeK} />
               </Stack>
               {sources && (
                 <SourcesPicker

@@ -52,9 +52,17 @@ const openWith = (
 describe("SearchSettingsPopover", () => {
   afterEach(cleanup);
 
-  it("shows the selected index's extension hint under Results, and none for other indexes", () => {
+  it("shows the selected index's extension hint between the Results label and its input, and none for other indexes", () => {
     openWith("emb_sim");
-    expect(screen.getByText(HINT)).toBeTruthy();
+    const hint = screen.getByText(HINT);
+    expect(
+      screen.getByText("Results").compareDocumentPosition(hint) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      hint.compareDocumentPosition(screen.getByLabelText("Number of results")) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
 
     cleanup();
     openWith("clip_sim");
