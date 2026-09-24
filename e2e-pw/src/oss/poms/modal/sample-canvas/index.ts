@@ -183,9 +183,13 @@ export class SampleCanvasPom {
 
     await this.page.mouse.move(xy.x, xy.y);
     if (cursor) {
-      // Hover cursors are set by this move's pointer event; a mode's cursor is
-      // stamped on the canvas when the mode installs, even after the move.
-      await expect(this.lighterCanvas).toHaveCSS("cursor", cursor);
+      // The deepest hovered element is whatever surface is under the pointer
+      // (Lighter canvas, looker, overlay); a mode's cursor is stamped on it
+      // when the mode installs, even after the move.
+      await expect(this.page.locator(":hover").last()).toHaveCSS(
+        "cursor",
+        cursor,
+      );
     }
   }
 
