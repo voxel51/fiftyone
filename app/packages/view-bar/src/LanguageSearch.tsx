@@ -8,7 +8,8 @@
  * Similarity Search panel to create one.
  *
  * The magnifying glass is where the search's settings live (which index, how
- * many results); focusing the input offers the dataset's previous queries.
+ * many results, which of its sources to search); focusing the input offers
+ * the dataset's previous queries.
  */
 
 import type { PromptableSimilarityIndex } from "@fiftyone/state";
@@ -38,6 +39,7 @@ import styles from "./LanguageSearch.module.css";
 import { rememberQuery } from "./searchQueryHistory";
 import { SearchSettingsPopover } from "./SearchSettingsPopover";
 import { useLanguageSearchExtension } from "./useLanguageSearchExtension";
+import { useSearchSources } from "./useSearchSources";
 
 export const LANGUAGE_SEARCH_LABEL = "Search or ask in natural language";
 
@@ -118,10 +120,34 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
       ),
     [recentQueries, history],
   );
+  const selectedIndex = promptKeys.find((key) => key.key === selectedKey);
   // An extension searches client-side and publishes to the extended
   // selection: it needs neither the operator nor `SortBySimilarity`
-  const extensionSearch = Boolean(
-    promptKeys.find((key) => key.key === selectedKey)?.extension,
+  const extensionSearch = Boolean(selectedIndex?.extension);
+
+  // Until the settings first open nobody has narrowed the search, and it
+  // runs over every source
+  const [settingsOpened, setSettingsOpened] = React.useState(false);
+  const sources = useSearchSources(selectedIndex, settingsOpened);
+  // Per index, the sources chosen to search; an index absent here searches
+  // all of them
+  const [chosenSources, setChosenSources] = React.useState<
+    Record<string, string[]>
+  >({});
+  const selectedSources = React.useMemo(() => {
+    if (!sources || !selectedKey) return null;
+    const chosen = chosenSources[selectedKey];
+    if (!chosen) return null;
+    // Values the index no longer reports cannot be searched
+    const kept = sources.values.filter((value) => chosen.includes(value));
+    return kept.length && kept.length < sources.values.length ? kept : null;
+  }, [sources, selectedKey, chosenSources]);
+  const onChangeSources = React.useCallback(
+    (values: string[]) => {
+      if (!selectedKey) return;
+      setChosenSources((chosen) => ({ ...chosen, [selectedKey]: values }));
+    },
+    [selectedKey],
   );
   const available = operatorAvailable || extensionSearch;
   const enabled = indexEnabled || extensionSearch;
@@ -151,11 +177,10 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
         onOpenPanel();
         return;
       }
-      const index = promptKeys.find((key) => key.key === selectedKey);
-      if (index?.extension) {
+      if (selectedIndex?.extension) {
         // Never to `onSubmit`, even with its extension gone: the server
         // cannot sort this index
-        runExtensionSearch(index, text, k);
+        runExtensionSearch(selectedIndex, text, k, selectedSources);
         return;
       }
       onSubmit(text);
@@ -165,10 +190,10 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
       enabled,
       onOpenPanel,
       onSubmit,
-      promptKeys,
-      selectedKey,
+      selectedIndex,
       runExtensionSearch,
       k,
+      selectedSources,
     ],
   );
 
@@ -180,9 +205,10 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
       className={styles.root}
     >
       {/* The magnifying glass is where the search's settings live — which
-          index, how many results, and the hand-off to the Similarity Search
-          panel (or, with no index, the explanation and the on-ramp). It
-          floats over the field's leading padding so the field — and the
+          index, how many results, which of its sources to search, and the
+          hand-off to the Similarity Search panel while an index the server
+          sorts exists (or, with no index, the explanation and the on-ramp).
+          It floats over the field's leading padding so the field — and the
           list anchored to it — starts at the bar's left edge. */}
       <div className={styles.magnifier}>
         {pending ? (
@@ -204,6 +230,7 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
                 leadingIcon={SearchIcon}
                 aria-label="Similarity search settings"
                 data-cy="view-bar-search-settings-trigger"
+                onClick={() => setSettingsOpened(true)}
               />
             }
             promptKeys={promptKeys}
@@ -211,6 +238,9 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
             onSelectKey={onSelectKey}
             k={k}
             onChangeK={onChangeK}
+            sources={sources}
+            selectedSources={selectedSources}
+            onChangeSources={onChangeSources}
             onOpenPanel={onOpenPanel}
           />
         )}

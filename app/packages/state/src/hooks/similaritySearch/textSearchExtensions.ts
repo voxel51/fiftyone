@@ -27,11 +27,32 @@ export interface TextSearchRequest {
   /** The grid's extended stages, `{ [stage class]: kwargs }`, including the
    * extended selection this search's result replaces once published. */
   extended: Record<string, unknown>;
+  /** The {@link SearchSources} values to rank within; null ranks them all. */
+  sources: string[] | null;
   /** Aborted once this search is cancelled: the view changed, a newer
    * search started, or the field went away. An extension should stop
    * before further work and resolve null; a result it returns anyway is
    * discarded. */
   signal: AbortSignal;
+}
+
+/** Which similarity index a search runs over, as an extension is asked about
+ * it outside a search. */
+export interface TextSearchIndex {
+  datasetName: string;
+  brainKey: string;
+  runTimestamp: string | null;
+}
+
+/**
+ * What an index's matches can come from, such as the streams of a
+ * multimodal index, offered in the search settings so a search can be
+ * narrowed to some of them.
+ */
+export interface SearchSources {
+  /** Names the values as a group, plural, such as "Streams". */
+  label: string;
+  values: string[];
 }
 
 /**
@@ -59,6 +80,9 @@ export interface TextSearchExtension {
    * extension's indexes is selected, e.g. to say how its results relate to
    * what the grid shows. */
   resultsHint?: string;
+  /** The sources `index` can narrow a search to; null, or absent, when it
+   * cannot be narrowed. */
+  sources?: (index: TextSearchIndex) => Promise<SearchSources | null>;
   /** Resolves null when a newer search elsewhere replaced this one: nothing
    * publishes, and nothing is reported. */
   search: (request: TextSearchRequest) => Promise<TextSearchResult | null>;

@@ -9,7 +9,9 @@ export {
 export {
   registerTextSearchExtension,
   useTextSearchExtensions,
+  type SearchSources,
   type TextSearchExtension,
+  type TextSearchIndex,
   type TextSearchRequest,
   type TextSearchResult,
 } from "./similaritySearch/textSearchExtensions";

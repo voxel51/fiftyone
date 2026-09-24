@@ -67,7 +67,7 @@ describe("useLanguageSearchExtension", () => {
     const { result } = renderSearch();
 
     act(() => {
-      result.current.run(INDEX, "an animal", 25);
+      result.current.run(INDEX, "an animal", 25, null);
     });
     expect(env.setPending).toHaveBeenLastCalledWith(true);
     await act(async () => resolve({ stage: STAGE, decorate }));
@@ -93,7 +93,7 @@ describe("useLanguageSearchExtension", () => {
     const { result } = renderSearch();
 
     act(() => {
-      result.current.run(INDEX, "an animal", 25);
+      result.current.run(INDEX, "an animal", 25, null);
     });
 
     expect(env.search).toHaveBeenCalledWith(
@@ -105,12 +105,25 @@ describe("useLanguageSearchExtension", () => {
     );
   });
 
+  it("asks the extension to rank within the chosen sources", () => {
+    pendingResult();
+    const { result } = renderSearch();
+
+    act(() => {
+      result.current.run(INDEX, "an animal", 25, ["/cam_left"]);
+    });
+
+    expect(env.search).toHaveBeenCalledWith(
+      expect.objectContaining({ sources: ["/cam_left"] }),
+    );
+  });
+
   it("records the query in the dataset's history and shows it at once", () => {
     pendingResult();
     const { result } = renderSearch();
 
     act(() => {
-      result.current.run(INDEX, "an animal", 25);
+      result.current.run(INDEX, "an animal", 25, null);
     });
 
     expect(readSearchQueries("robots")).toEqual(["an animal"]);
@@ -121,7 +134,7 @@ describe("useLanguageSearchExtension", () => {
     const { result } = renderSearch();
 
     act(() => {
-      result.current.run({ ...INDEX, extension: null }, "a car", 25);
+      result.current.run({ ...INDEX, extension: null }, "a car", 25, null);
     });
 
     expect(env.search).not.toHaveBeenCalled();
@@ -135,8 +148,8 @@ describe("useLanguageSearchExtension", () => {
     const { result } = renderSearch();
 
     act(() => {
-      result.current.run(INDEX, "an animal", 25);
-      result.current.run(INDEX, "a car", 25);
+      result.current.run(INDEX, "an animal", 25, null);
+      result.current.run(INDEX, "a car", 25, null);
     });
     const newer = { "fiftyone.core.stages.Select": { sample_ids: ["ep2"] } };
     await act(async () => second({ stage: newer }));
@@ -151,7 +164,7 @@ describe("useLanguageSearchExtension", () => {
     const { result } = renderSearch();
 
     act(() => {
-      result.current.run(INDEX, "an animal", 25);
+      result.current.run(INDEX, "an animal", 25, null);
     });
     await act(async () => resolve(null));
 
@@ -167,7 +180,7 @@ describe("useLanguageSearchExtension", () => {
     const { result } = renderSearch();
 
     await act(async () => {
-      result.current.run(INDEX, "an animal", 25);
+      result.current.run(INDEX, "an animal", 25, null);
     });
 
     expect(env.notify).toHaveBeenCalledWith(
@@ -182,10 +195,10 @@ describe("useLanguageSearchExtension", () => {
     const { result } = renderSearch();
 
     act(() => {
-      result.current.run(INDEX, "an animal", 25);
+      result.current.run(INDEX, "an animal", 25, null);
     });
     act(() => {
-      result.current.run(INDEX, "a car", 25);
+      result.current.run(INDEX, "a car", 25, null);
     });
 
     expect(env.search.mock.calls[0][0].signal.aborted).toBe(true);
@@ -197,7 +210,7 @@ describe("useLanguageSearchExtension", () => {
     const { result, unmount } = renderSearch();
 
     act(() => {
-      result.current.run(INDEX, "an animal", 25);
+      result.current.run(INDEX, "an animal", 25, null);
     });
     unmount();
     expect(env.search.mock.calls[0][0].signal.aborted).toBe(true);
@@ -212,7 +225,7 @@ describe("useLanguageSearchExtension", () => {
     const { result, rerender } = renderSearch();
 
     act(() => {
-      result.current.run(INDEX, "an animal", 25);
+      result.current.run(INDEX, "an animal", 25, null);
     });
     env.view = [{ _cls: "fiftyone.core.stages.Limit", kwargs: [["limit", 5]] }];
     rerender();

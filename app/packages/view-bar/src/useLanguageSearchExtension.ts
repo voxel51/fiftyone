@@ -19,10 +19,16 @@ import { viewFingerprint } from "./state";
 
 export interface LanguageSearchExtension {
   /**
-   * Runs `query` through the extension that searches `index`; does nothing
-   * when no registered extension searches it.
+   * Runs `query` through the extension that searches `index`, ranking within
+   * `sources` (null ranks every source); does nothing when no registered
+   * extension searches it.
    */
-  run: (index: PromptableSimilarityIndex, query: string, k: number) => void;
+  run: (
+    index: PromptableSimilarityIndex,
+    query: string,
+    k: number,
+    sources: string[] | null,
+  ) => void;
   /** Queries run here, most recent first. The bar reads the stored history
    * when it mounts, so these would otherwise be missing until it remounts. */
   recentQueries: readonly string[];
@@ -69,7 +75,12 @@ export const useLanguageSearchExtension = (): LanguageSearchExtension => {
   useEffect(() => cancel(), [viewFp, cancel]);
 
   const run = useCallback(
-    (index: PromptableSimilarityIndex, query: string, k: number) => {
+    (
+      index: PromptableSimilarityIndex,
+      query: string,
+      k: number,
+      sources: string[] | null,
+    ) => {
       const extension = index.extension
         ? extensions.get(index.extension)
         : undefined;
@@ -100,6 +111,7 @@ export const useLanguageSearchExtension = (): LanguageSearchExtension => {
             view,
             filters,
             extended,
+            sources,
             signal,
           }),
         ),

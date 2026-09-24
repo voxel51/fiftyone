@@ -17,9 +17,30 @@ vi.mock("./useLanguageSearchExtension", () => ({
     recentQueries: env.recentQueries,
   }),
 }));
+const sources = vi.hoisted(() => ({
+  current: null as { label: string; values: string[] } | null,
+  wanted: vi.fn(),
+}));
+vi.mock("./useSearchSources", () => ({
+  useSearchSources: (_index: unknown, wanted: boolean) => {
+    sources.wanted(wanted);
+    return sources.current;
+  },
+}));
 vi.mock("./SearchSettingsPopover", () => ({
-  SearchSettingsPopover: ({ trigger }: { trigger: React.ReactNode }) => (
-    <>{trigger}</>
+  SearchSettingsPopover: ({
+    trigger,
+    onChangeSources,
+  }: {
+    trigger: React.ReactNode;
+    onChangeSources: (values: string[]) => void;
+  }) => (
+    <>
+      {trigger}
+      <button onClick={() => onChangeSources(["/cam_left"])}>
+        choose left
+      </button>
+    </>
   ),
 }));
 
@@ -62,6 +83,7 @@ describe("LanguageSearch", () => {
     env.dataset = "robots";
     env.pending = false;
     env.recentQueries = [];
+    sources.current = null;
   });
 
   it("always renders the field", () => {
@@ -194,8 +216,54 @@ describe("LanguageSearch", () => {
       />,
     );
     search("an animal");
-    expect(extensionRun).toHaveBeenCalledWith(index, "an animal", 25);
+    expect(extensionRun).toHaveBeenCalledWith(index, "an animal", 25, null);
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  const renderStreamIndex = () => {
+    sources.current = {
+      label: "Streams",
+      values: ["/cam_left", "/cam_right"],
+    };
+    const index = {
+      key: "emb_sim",
+      patchesField: null,
+      extension: "multimodal",
+    };
+    render(
+      <LanguageSearch
+        onSubmit={noop}
+        onUnavailable={noop}
+        available
+        enabled
+        history={[]}
+        promptKeys={[index]}
+        selectedKey="emb_sim"
+        onSelectKey={noop}
+        k={25}
+        onChangeK={noop}
+        onOpenPanel={noop}
+      />,
+    );
+    return index;
+  };
+
+  it("asks for the index's sources only once the settings open", () => {
+    renderStreamIndex();
+    expect(sources.wanted).toHaveBeenLastCalledWith(false);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Similarity search settings" }),
+    );
+    expect(sources.wanted).toHaveBeenLastCalledWith(true);
+  });
+
+  it("searches only the sources chosen in the settings", () => {
+    const index = renderStreamIndex();
+    fireEvent.click(screen.getByRole("button", { name: "choose left" }));
+    search("an animal");
+    expect(extensionRun).toHaveBeenCalledWith(index, "an animal", 25, [
+      "/cam_left",
+    ]);
   });
 
   it("searches an extension's index without the similarity operator or a server index", () => {
@@ -222,7 +290,7 @@ describe("LanguageSearch", () => {
       />,
     );
     search("an animal");
-    expect(extensionRun).toHaveBeenCalledWith(index, "an animal", 25);
+    expect(extensionRun).toHaveBeenCalledWith(index, "an animal", 25, null);
     expect(onUnavailable).not.toHaveBeenCalled();
     expect(onOpenPanel).not.toHaveBeenCalled();
   });
