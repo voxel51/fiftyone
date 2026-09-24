@@ -29,6 +29,7 @@ export {
 } from "./src/utils/ids";
 export { getModalSampleFrameRate } from "./src/utils/modalSample";
 export { resolveFrameCount } from "./src/utils/frameCount";
+export { resolveTemporalDetectionSupport } from "./src/tracks/trackExtentEdit";
 export { useTimelineMaxSize } from "./src/hooks/useTimelineMaxSize";
 export { DynamicGroupImageStream } from "./src/streams/DynamicGroupImageStream";
 export type { DynamicGroupImageFrame } from "./src/streams/DynamicGroupImageStream";
@@ -40,10 +41,7 @@ export {
 export { PropagationStatusItem } from "./src/components/PropagationStatusItem";
 export { resolvePropagationTarget } from "./src/propagation/propagationTarget";
 export type { PropagationTarget } from "./src/propagation/propagationTarget";
-export {
-  resolveTemporalDetectionSupport,
-  resolveTrackExtentEdit,
-} from "./src/tracks/trackExtentEdit";
+export { resolveTrackExtentEdit } from "./src/tracks/trackExtentEdit";
 export type {
   ResolveTrackExtentEditInput,
   TrackDragMode,
