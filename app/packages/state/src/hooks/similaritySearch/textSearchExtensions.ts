@@ -37,7 +37,9 @@ export interface TextSearchResult {
 export interface TextSearchExtension {
   /** The brain runs' `config.method` this extension searches. */
   method: string;
-  search: (request: TextSearchRequest) => Promise<TextSearchResult>;
+  /** Resolves null when a newer search elsewhere replaced this one: nothing
+   * publishes, and nothing is reported. */
+  search: (request: TextSearchRequest) => Promise<TextSearchResult | null>;
 }
 
 const extensions = new Map<string, TextSearchExtension>();

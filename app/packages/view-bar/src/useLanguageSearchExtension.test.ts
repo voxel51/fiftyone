@@ -151,6 +151,20 @@ describe("useLanguageSearchExtension", () => {
     expect(env.publish).toHaveBeenCalledWith(newer, undefined);
   });
 
+  it("publishes and reports nothing for a search a newer one elsewhere replaced", async () => {
+    const resolve = pendingResult();
+    const { result } = renderSearch();
+
+    act(() => {
+      result.current.run(INDEX, "an animal", 25);
+    });
+    await act(async () => resolve(null));
+
+    expect(env.publish).not.toHaveBeenCalled();
+    expect(env.notify).not.toHaveBeenCalled();
+    expect(env.setPending).toHaveBeenLastCalledWith(false);
+  });
+
   it("fails an extension that throws before returning its promise like any other failure", async () => {
     env.search.mockImplementationOnce(() => {
       throw new Error("the extension is misconfigured");

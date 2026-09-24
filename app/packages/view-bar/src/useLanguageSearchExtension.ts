@@ -98,7 +98,7 @@ export const useLanguageSearchExtension = (): LanguageSearchExtension => {
       setViewChangePending(true);
       // Through the executor, so an extension that throws before returning
       // its promise still reaches the failure handling below
-      new Promise<fos.TextSearchResult>((resolve) =>
+      new Promise<fos.TextSearchResult | null>((resolve) =>
         resolve(
           extension.search({
             datasetName,
@@ -110,7 +110,7 @@ export const useLanguageSearchExtension = (): LanguageSearchExtension => {
         ),
       )
         .then((result) => {
-          if (seq !== searchSeq.current) return;
+          if (seq !== searchSeq.current || !result) return;
           publishExtendedSelection(result.stage, result.decorate);
         })
         .catch((error: unknown) => {
