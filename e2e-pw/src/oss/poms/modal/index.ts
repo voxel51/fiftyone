@@ -372,6 +372,16 @@ export class ModalPom {
 class ModalAsserter {
   constructor(private readonly modalPom: ModalPom) {}
 
+  /** One capture of the modal on the 3D canvas's next rendered frame */
+  async hasLooker3dScreenshot(name: string) {
+    await this.modalPom.eventUtils.next("looker3d-frame-rendered");
+    expect(
+      await this.modalPom.modalContainer.screenshot({
+        mask: this.modalPom.looker3dScreenshotMasks,
+      }),
+    ).toMatchSnapshot(name);
+  }
+
   /** One capture of the looker; hide its controls first */
   async hasLookerScreenshot(name: string) {
     expect(await this.modalPom.looker.screenshot()).toMatchSnapshot(name);

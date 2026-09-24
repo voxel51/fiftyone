@@ -129,6 +129,7 @@ export const ToggleGridHelper = () => {
       <ActionItem
         title="Toggle Grid (G)"
         data-cy="looker-3d-toggle-grid-helper"
+        aria-pressed={isGridOn}
       >
         <GridOnIcon
           sx={{ fontSize: 24 }}

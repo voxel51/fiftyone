@@ -1,4 +1,4 @@
-import { test as base, expect } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
@@ -80,7 +80,6 @@ test.describe.serial("fo3d-ply", () => {
   });
 
   test("PLY scene is rendered correctly", async ({ modal, grid, page }) => {
-    const mask = modal.looker3dScreenshotMasks;
     await page.evaluate(() => {
       localStorage.setItem("fo-3d-annotation-tips-dismissed", "true");
     });
@@ -95,12 +94,6 @@ test.describe.serial("fo3d-ply", () => {
     // Hide grid helper (better for screenshots)
     await modal.looker3dControls.toggleGridHelper();
 
-    await expect(modal.modalContainer).toHaveScreenshot(
-      "ply-scene-top-view.png",
-      {
-        mask,
-        animations: "allow",
-      },
-    );
+    await modal.assert.hasLooker3dScreenshot("ply-scene-top-view.png");
   });
 });

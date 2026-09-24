@@ -68,7 +68,14 @@ export class Looker3DControlsPom {
   }
 
   async toggleGridHelper() {
-    await this.locator.getByTestId("looker-3d-toggle-grid-helper").click();
+    const toggle = this.locator.getByTestId("looker-3d-toggle-grid-helper");
+    const pressed = await toggle.getAttribute("aria-pressed");
+    await toggle.click();
+    await this.modal.eventUtils.untilDom(
+      toggle,
+      (el, was) => el.getAttribute("aria-pressed") !== was,
+      pressed,
+    );
   }
 
   async openSliceSelector() {

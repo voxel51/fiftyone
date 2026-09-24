@@ -4,7 +4,7 @@
  * Two point-cloud slices with different static transforms render aligned in
  * the world frame.
  */
-import { expect, test as base } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
@@ -87,8 +87,5 @@ test("renders both point-cloud slices aligned in the world frame", async ({
   await modal.looker3dControls.setTopView();
   await modal.looker3dControls.toggleGridHelper();
 
-  await expect(modal.modalContainer).toHaveScreenshot(
-    "world-aligned-slices.png",
-    { mask: modal.looker3dScreenshotMasks, animations: "allow" },
-  );
+  await modal.assert.hasLooker3dScreenshot("world-aligned-slices.png");
 });

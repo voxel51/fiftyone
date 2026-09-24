@@ -21,6 +21,8 @@ export const CAMERA_LOOK_AT_SETTLED_EVENT = "looker3d-camera-look-at-settled";
 /** Dispatched on `document` once a scene is parsed, its assets loaded and its camera settled. */
 export const SCENE_READY_EVENT = "looker3d-scene-ready";
 export const CAMERA_SAVED_EVENT = "looker3d-camera-saved";
+/** Fired on `document` after each rendered frame, only under browser automation. */
+export const FRAME_RENDERED_EVENT = "looker3d-frame-rendered";
 export const SET_ZOOM_TO_SELECTED_EVENT = "fo-action-zoom-to-selected";
 
 export const SHADE_BY_INTENSITY = "intensity";
