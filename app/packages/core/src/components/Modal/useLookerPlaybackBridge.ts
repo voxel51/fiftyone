@@ -140,9 +140,25 @@ export function useLookerPlaybackBridge(
     looker.updateOptions({ playbackRate: speed });
   }, [looker, speed]);
 
-  // Looker -> timeline: its shortcuts, and pausing at the end of the clip.
   // Looker -> timeline: reaching the end of the clip, and any play/pause the
   // looker still initiates itself.
+  //
+  // The looker also reports a "pause" every time it stops to buffer frames,
+  // flagged in the detail, and a "play" when it resumes. That one is not a
+  // transport change: forwarding it would pause the engine, whose pause
+  // comes straight back through the effect above and stops the looker for
+  // real, and nothing restarts it once the frames arrive. The clock source
+  // already holds the playhead on the looker's frame while it buffers.
   fos.useEventHandler(looker, "play", play);
-  fos.useEventHandler(looker, "pause", pause);
+  fos.useEventHandler(
+    looker,
+    "pause",
+    (event: CustomEvent<{ buffering?: boolean } | null>) => {
+      if (event.detail?.buffering) {
+        return;
+      }
+
+      pause();
+    },
+  );
 }
