@@ -399,8 +399,12 @@ export const lookerPanels = atom({
 /**
  * Whether the dataset has a media surface that can carry temporal tags: one
  * with a playhead to place an interval on. Multimodal episodes and videos
- * qualify, and so does a grouped dataset with at least one video slice —
- * those slices open on the same video surface in the modal.
+ * qualify, and so does a grouped dataset with at least one video slice.
+ *
+ * Deliberately the dataset and not the slice in view. A grouped match is
+ * reported on whichever slice is active even when the interval itself lives on
+ * a sibling, so the filter has to stay offered there — withdrawing it on an
+ * image slice would hide a filter that still has results to give.
  */
 export const supportsTemporalTags = selector<boolean>({
   key: "supportsTemporalTags",

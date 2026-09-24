@@ -21,7 +21,9 @@ describe("supportsTemporalTags", () => {
     expect(testSupportsTemporalTags()).toBe(true);
   });
 
-  it("covers a grouped dataset with a video slice", () => {
+  it("covers a grouped dataset with a video slice, whatever slice is in view", () => {
+    // A grouped match is reported on the active slice even when the interval
+    // lives on a sibling, so the filter stays offered on every slice.
     setMockAtoms({
       mediaType: "group",
       groupMediaTypesSet: new Set(["image", "video"]),
