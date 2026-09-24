@@ -239,6 +239,12 @@ else has edited the script, reload it and review their changes before saving.
 Use **Export script to file** to download the current editor contents,
 including unsaved changes. **Import script from file** brings that JSON file
 into another dataset as a new, disabled draft. Files contain the script name,
-source, inputs, and output declarations; permissions, enablement, and computed
+source, inputs, output declarations, and Scripts API version; permissions,
+enablement, and computed
 results do not transfer. Check topic names and preview each imported script
 before saving it.
+
+Scripts currently use API version 1. Saved definitions require ``api_version: 1``;
+portable files and organization scripts carry ``apiVersion: 1`` inside ``script``.
+The file-format ``version`` is independent of the Scripts API version. Imports
+from a newer Scripts API require a FiftyOne version that supports it.

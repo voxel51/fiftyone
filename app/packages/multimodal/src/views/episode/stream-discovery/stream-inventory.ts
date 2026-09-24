@@ -34,7 +34,7 @@ export const STREAM_CATEGORY_LABEL: Record<StreamCategory, string> = {
   [STREAM_CATEGORY.TRANSFORMS_POSES]: "Transforms & Poses",
   [STREAM_CATEGORY.DIAGNOSTICS]: "Diagnostics",
   [STREAM_CATEGORY.TELEMETRY]: "Telemetry",
-  [STREAM_CATEGORY.DERIVED]: "Derived Streams",
+  [STREAM_CATEGORY.DERIVED]: "Scripts",
   [STREAM_CATEGORY.CUSTOM]: "Custom / Unknown",
 };
 
