@@ -721,6 +721,11 @@ export const FrameLabelsTracks: React.FC<{
     [frameTracks, temporalDetectionTracks],
   );
 
+  // Bootstrap on frame-tracks-resolved, not `tracks.length`: TD tracks resolve
+  // synchronously and would otherwise trip the empty→ready flip before frame
+  // tracks land, leaving frame tracks unpinned.
+  const ready = frameTracksResolved;
+
   // The last list that resolved, shown while the next one loads (see the
   // component doc). Adopted through an effect rather than a ref written during
   // render: it is state the rows below derive from, and the one extra render it
@@ -757,11 +762,6 @@ export const FrameLabelsTracks: React.FC<{
       }),
     [tracks, expansion.expandedIds],
   );
-
-  // Bootstrap on frame-tracks-resolved, not `tracks.length`: TD tracks resolve
-  // synchronously and would otherwise trip the empty→ready flip before frame
-  // tracks land, leaving frame tracks unpinned.
-  const ready = frameTracksResolved;
 
   // Filled by TimelineWithTracks; the drawer is virtualized, so revealing a
   // row has to go through the list rather than the DOM.
