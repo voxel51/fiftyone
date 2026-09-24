@@ -85,6 +85,18 @@ class TestSapiens2PoseModelConfig:
         assert isinstance(config, fout.TorchImageModelConfig)
         assert isinstance(config, fozm.HasZooModel)
 
+    def test_default_box_batch_size(self):
+        assert fus.Sapiens2PoseModelConfig({}).box_batch_size == 8
+
+    def test_custom_box_batch_size(self):
+        config = fus.Sapiens2PoseModelConfig({"box_batch_size": 2})
+        assert config.box_batch_size == 2
+
+    @pytest.mark.parametrize("size", [0, -1])
+    def test_non_positive_box_batch_size_raises(self, size):
+        with pytest.raises(ValueError, match="box_batch_size"):
+            fus.Sapiens2PoseModelConfig({"box_batch_size": size})
+
 
 # ---------------------------------------------------------------------------
 # GetItem (box prompt extraction)
@@ -175,7 +187,10 @@ class TestSapiens2PosePredict:
             [[10.0, 20.0], [30.0, 40.0], [50.0, 60.0], [70.0, 80.0]]
         )
         scores = np.array([0.9, 0.8, 0.1, 0.95])
-        model._keypoints_for_box = lambda image, bbox: (kpts, scores)
+        model._keypoints_for_boxes = lambda image, boxes: (
+            [kpts] * len(boxes),
+            [scores] * len(boxes),
+        )
 
         imgs = [
             {
@@ -197,7 +212,10 @@ class TestSapiens2PosePredict:
         model = self._bare_model(thresh=0.3)
         kpts = np.array([[10.0, 20.0], [50.0, 60.0]])
         scores = np.array([0.9, 0.1])  # second below threshold
-        model._keypoints_for_box = lambda image, bbox: (kpts, scores)
+        model._keypoints_for_boxes = lambda image, boxes: (
+            [kpts] * len(boxes),
+            [scores] * len(boxes),
+        )
 
         imgs = [
             {
@@ -219,7 +237,10 @@ class TestSapiens2PosePredict:
         model = self._bare_model()
         kpts = np.array([[1.0, 1.0]])
         scores = np.array([0.9])
-        model._keypoints_for_box = lambda image, bbox: (kpts, scores)
+        model._keypoints_for_boxes = lambda image, boxes: (
+            [kpts] * len(boxes),
+            [scores] * len(boxes),
+        )
 
         imgs = [
             {
@@ -234,9 +255,9 @@ class TestSapiens2PosePredict:
 
     def test_single_dict_wrapped(self):
         model = self._bare_model()
-        model._keypoints_for_box = lambda image, bbox: (
-            np.array([[1.0, 1.0]]),
-            np.array([0.9]),
+        model._keypoints_for_boxes = lambda image, boxes: (
+            [np.array([[1.0, 1.0]])] * len(boxes),
+            [np.array([0.9])] * len(boxes),
         )
         item = {
             "image": np.zeros((10, 10, 3), np.uint8),
@@ -244,6 +265,226 @@ class TestSapiens2PosePredict:
         }
         out = model._predict_all(item)
         assert len(out) == 1
+
+
+# ---------------------------------------------------------------------------
+# Batched inference through the sapiens model boundary
+# ---------------------------------------------------------------------------
+
+
+class _FakePoseNet:
+    """Stands in for the sapiens top-down estimator: each crop is filled with
+    its box's index, and each crop's heatmaps carry that index."""
+
+    def __init__(self, num_keypoints=2):
+        self.num_keypoints = num_keypoints
+        self.batch_sizes = []
+        self.metas = []
+
+    def pipeline(self, data_info):
+        import torch
+
+        x1, y1, x2, y2 = (float(v) for v in data_info["bbox"][0])
+        meta = {
+            "input_size": np.array([[768.0, 1024.0]]),
+            "bbox_center": np.array([[(x1 + x2) / 2, (y1 + y2) / 2]]),
+            "bbox_scale": np.array([[x2 - x1, y2 - y1]]),
+        }
+        index = len(self.metas)
+        self.metas.append(meta)
+        return {
+            "inputs": torch.full((3, 4, 3), index, dtype=torch.uint8),
+            "data_samples": {"meta": meta},
+        }
+
+    def data_preprocessor(self, data):
+        return {
+            "inputs": data["inputs"].float()[None],
+            "data_samples": data["data_samples"],
+        }
+
+    def __call__(self, inputs):
+        self.batch_sizes.append(inputs.shape[0])
+        index = inputs.mean(dim=(1, 2, 3))
+        return (
+            index[:, None, None, None]
+            .expand(-1, self.num_keypoints, 2, 2)
+            .clone()
+        )
+
+
+class _FakeCodec:
+    """Decodes a crop's heatmaps to two crop points: the crop centre shifted
+    right by the box index, and the crop origin."""
+
+    def decode(self, heatmaps):
+        index = float(heatmaps[0, 0, 0])
+        kpts = np.array([[[384.0 + index, 512.0], [0.0, 0.0]]])
+        scores = np.array([[0.9, 0.1]])
+        return kpts, scores
+
+
+class TestSapiens2PoseBatchedInference:
+    def _model(self, box_batch_size=8, thresh=0.3):
+        model = fus.Sapiens2PoseModel.__new__(fus.Sapiens2PoseModel)
+        model._model = _FakePoseNet()
+        model._codec = _FakeCodec()
+        model._device = "cpu"
+        model._box_batch_size = box_batch_size
+        model._keypoint_thresh = thresh
+        return model
+
+    def test_crop_points_map_back_to_each_box(self):
+        model = self._model()
+        boxes = np.array(
+            [[10, 20, 110, 220], [300, 40, 340, 120]], dtype=np.float32
+        )
+        image = np.zeros((400, 500, 3), np.uint8)
+
+        keypoints, scores = model._keypoints_for_boxes(image, boxes)
+
+        # The crop origin lands on each box's top-left corner
+        np.testing.assert_allclose(keypoints[0][1], [10, 20])
+        np.testing.assert_allclose(keypoints[1][1], [300, 40])
+        # The crop centre lands on each box's centre, shifted by the index
+        np.testing.assert_allclose(keypoints[0][0], [60, 120])
+        np.testing.assert_allclose(keypoints[1][0], [320 + 40 / 768, 80])
+        np.testing.assert_allclose(scores[0], [0.9, 0.1])
+        np.testing.assert_allclose(scores[1], [0.9, 0.1])
+
+    def test_one_forward_pass_for_all_boxes(self):
+        model = self._model(box_batch_size=8)
+        boxes = np.array([[0, 0, 10, 10]] * 3, dtype=np.float32)
+
+        model._keypoints_for_boxes(np.zeros((20, 20, 3), np.uint8), boxes)
+
+        assert model._model.batch_sizes == [3]
+
+    def test_boxes_run_in_chunks_and_keep_their_order(self):
+        model = self._model(box_batch_size=2)
+        boxes = np.array(
+            [[10 * i, 5 * i, 10 * i + 40, 5 * i + 80] for i in range(5)],
+            dtype=np.float32,
+        )
+
+        keypoints, _ = model._keypoints_for_boxes(
+            np.zeros((200, 200, 3), np.uint8), boxes
+        )
+
+        assert model._model.batch_sizes == [2, 2, 1]
+        for i, (x1, y1, x2, y2) in enumerate(boxes):
+            np.testing.assert_allclose(keypoints[i][1], [x1, y1])
+            np.testing.assert_allclose(
+                keypoints[i][0][0], (x1 + x2) / 2 + i * 40 / 768
+            )
+
+    def test_predict_all_normalizes_and_thresholds(self):
+        model = self._model(thresh=0.3)
+        item = {
+            "image": np.zeros((400, 500, 3), np.uint8),
+            "boxes": np.array([[10, 20, 110, 220]], dtype=np.float32),
+        }
+
+        kp = model._predict_all([item])[0].keypoints[0]
+
+        assert kp.points[0][0] == pytest.approx(60 / 500)
+        assert kp.points[0][1] == pytest.approx(120 / 400)
+        # The second point scores 0.1, under the threshold
+        assert np.isnan(kp.points[1][0]) and np.isnan(kp.points[1][1])
+        assert kp.confidence == pytest.approx([0.9, 0.1])
+
+
+class TestSapiens2PoseCodec:
+    def test_codec_built_from_config_without_type(self):
+        model = fus.Sapiens2PoseModel.__new__(fus.Sapiens2PoseModel)
+        codec_cfg = {
+            "type": "UDPHeatmap",
+            "input_size": (768, 1024),
+            "heatmap_size": (192, 256),
+            "sigma": 6,
+        }
+        model._model = MagicMock()
+        model._model.cfg.codec = codec_cfg
+
+        codec = model._build_codec()
+
+        udp = fus._sapiens_pose_datasets.UDPHeatmap
+        udp.assert_called_once_with(
+            input_size=(768, 1024), heatmap_size=(192, 256), sigma=6
+        )
+        assert codec is udp.return_value
+        assert codec_cfg["type"] == "UDPHeatmap"
+
+
+class TestSapiens2PoseLoadModel:
+    def _package(self, tmp_path, config_dirs):
+        root = tmp_path / "sapiens"
+        for sub, name in config_dirs:
+            path = root / "pose" / "configs" / "keypoints308" / sub
+            path.mkdir(parents=True, exist_ok=True)
+            (path / name).write_text("")
+        fus.sapiens.__file__ = str(root / "__init__.py")
+        return root
+
+    def _load(self, monkeypatch, repo="facebook/sapiens2-pose-0.4b"):
+        import huggingface_hub
+
+        downloads = []
+
+        def fake_download(repo_id, filename, revision=None):
+            downloads.append((repo_id, filename, revision))
+            return "ckpt.safetensors"
+
+        monkeypatch.setattr(huggingface_hub, "hf_hub_download", fake_download)
+        model = fus.Sapiens2PoseModel.__new__(fus.Sapiens2PoseModel)
+        model._device = "cpu"
+        config = fus.Sapiens2PoseModelConfig({"hf_repo": repo})
+        return model, model._load_model(config), downloads
+
+    def test_pinned_checkpoint_and_first_sorted_config(
+        self, tmp_path, monkeypatch
+    ):
+        root = self._package(
+            tmp_path,
+            [
+                ("b_set", "sapiens2_0.4b_keypoints308_b-1024x768.py"),
+                ("a_set", "sapiens2_0.4b_keypoints308_a-1024x768.py"),
+                ("a_set", "sapiens2_1b_keypoints308_a-1024x768.py"),
+            ],
+        )
+
+        model, loaded, downloads = self._load(monkeypatch)
+
+        arch, filename, revision = fus._POSE_REPOS[
+            "facebook/sapiens2-pose-0.4b"
+        ]
+        assert downloads == [
+            ("facebook/sapiens2-pose-0.4b", filename, revision)
+        ]
+        expected = str(
+            root
+            / "pose"
+            / "configs"
+            / "keypoints308"
+            / "a_set"
+            / "sapiens2_0.4b_keypoints308_a-1024x768.py"
+        )
+        assert os.path.normcase(model._config_path) == os.path.normcase(
+            expected
+        )
+        init_model = fus._sapiens_pose_models.init_model
+        init_model.assert_called_once_with(
+            model._config_path, "ckpt.safetensors", device="cpu"
+        )
+        assert loaded is init_model.return_value
+
+    def test_missing_config_raises(self, tmp_path, monkeypatch):
+        self._package(
+            tmp_path, [("a_set", "sapiens2_1b_keypoints308_a-1024x768.py")]
+        )
+
+        with pytest.raises(ValueError, match="keypoints308 config"):
+            self._load(monkeypatch)
 
 
 class TestSapiens2PoseCollate:

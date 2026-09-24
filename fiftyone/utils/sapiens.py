@@ -129,6 +129,8 @@ class Sapiens2PoseModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         hf_repo ("facebook/sapiens2-pose-1b"): the HuggingFace pose repo to load
         keypoint_thresh (0.3): per-keypoint confidence below which a point is
             marked not-visible (NaN)
+        box_batch_size (8): the number of person boxes from one image that
+            run through the network together
     """
 
     def __init__(self, d):
@@ -150,6 +152,11 @@ class Sapiens2PoseModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
             raise ValueError(
                 "keypoint_thresh must be in [0, 1]; got %s"
                 % self.keypoint_thresh
+            )
+        self.box_batch_size = self.parse_int(d, "box_batch_size", default=8)
+        if self.box_batch_size < 1:
+            raise ValueError(
+                "box_batch_size must be positive; got %s" % self.box_batch_size
             )
 
         # Sapiens runs its own preprocessing pipeline on raw image + boxes
@@ -188,6 +195,7 @@ class Sapiens2PoseModel(fout.TorchImageModel, fom.SupportsGetItem):
     def __init__(self, config):
         super().__init__(config)
         self._keypoint_thresh = config.keypoint_thresh
+        self._box_batch_size = config.box_batch_size
         self._codec = self._build_codec()
 
     def _download_model(self, config):
@@ -246,29 +254,52 @@ class Sapiens2PoseModel(fout.TorchImageModel, fom.SupportsGetItem):
     def build_get_item(self, field_mapping=None):
         return Sapiens2PoseGetItem(field_mapping=field_mapping)
 
-    def _keypoints_for_box(self, image, bbox):
-        data_info = dict(
-            img=image,
-            bbox=bbox[None],
-            bbox_score=np.ones(1, dtype=np.float32),
-        )
-        data = self._model.data_preprocessor(self._model.pipeline(data_info))
-        inputs = data["inputs"]
-        if inputs.ndim == 3:
-            inputs = inputs[None]
-        data_samples = data["data_samples"]
+    def _keypoints_for_boxes(self, image, boxes):
+        """Returns the keypoints and scores of every box in an image, in box
+        order.
 
+        Each box is cropped and normalized on its own, as in the upstream
+        pose demo, and the crops go through the network ``box_batch_size``
+        at a time.
+        """
+        inputs = []
+        metas = []
+        for bbox in boxes:
+            data_info = dict(
+                img=image,
+                bbox=bbox[None],
+                bbox_score=np.ones(1, dtype=np.float32),
+            )
+            data = self._model.data_preprocessor(
+                self._model.pipeline(data_info)
+            )
+            crop = data["inputs"]
+            if crop.ndim == 3:
+                crop = crop[None]
+            inputs.append(crop)
+            metas.append(data["data_samples"]["meta"])
+
+        preds = []
         with torch.no_grad():
-            pred = self._model(inputs.to(self._device)).cpu().numpy()
+            for start in range(0, len(inputs), self._box_batch_size):
+                chunk = torch.cat(inputs[start : start + self._box_batch_size])
+                preds.append(self._model(chunk.to(self._device)).cpu().numpy())
 
-        kpts, scores = self._codec.decode(pred[0])
-        meta = data_samples["meta"]
-        kpts = (
-            kpts / meta["input_size"] * meta["bbox_scale"]
-            + meta["bbox_center"]
-            - 0.5 * meta["bbox_scale"]
-        )
-        return kpts[0], scores[0]
+        keypoints = []
+        scores = []
+        for heatmaps, meta in zip(
+            (h for chunk in preds for h in chunk), metas
+        ):
+            kpts, kpt_scores = self._codec.decode(heatmaps)
+            kpts = (
+                kpts / meta["input_size"] * meta["bbox_scale"]
+                + meta["bbox_center"]
+                - 0.5 * meta["bbox_scale"]
+            )
+            keypoints.append(kpts[0])
+            scores.append(kpt_scores[0])
+
+        return keypoints, scores
 
     def _predict_all(self, imgs):
         if not isinstance(imgs, list):
@@ -281,8 +312,7 @@ class Sapiens2PoseModel(fout.TorchImageModel, fom.SupportsGetItem):
             boxes = item["boxes"]
 
             keypoints = []
-            for bbox in boxes:
-                kpts, scores = self._keypoints_for_box(image, bbox)
+            for kpts, scores in zip(*self._keypoints_for_boxes(image, boxes)):
                 points = []
                 confs = []
                 for (x, y), s in zip(kpts, scores):
