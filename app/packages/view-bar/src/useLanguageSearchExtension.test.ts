@@ -8,7 +8,6 @@ const env = vi.hoisted(() => ({
   setPending: vi.fn(),
   notify: vi.fn(),
   trackEvent: vi.fn(),
-  serverPending: false,
   extensions: new Map(),
 }));
 
@@ -17,7 +16,6 @@ vi.mock("@fiftyone/state", () => ({
   useView: () => env.view,
   useTextSearchExtensions: () => env.extensions,
   usePublishExtendedSelection: () => env.publish,
-  useViewChangePending: () => env.serverPending,
   useSetViewChangePending: () => env.setPending,
   useNotification: () => env.notify,
 }));
@@ -52,7 +50,6 @@ describe("useLanguageSearchExtension", () => {
     vi.clearAllMocks();
     window.localStorage.clear();
     env.view = [];
-    env.serverPending = false;
     env.extensions = new Map([
       ["multimodal", { method: "multimodal", search: env.search }],
     ]);
@@ -92,46 +89,16 @@ describe("useLanguageSearchExtension", () => {
     expect(result.current.recentQueries).toEqual(["an animal"]);
   });
 
-  it("reports whether the searched index is patches-level", () => {
-    pendingResult();
+  it("does nothing for an index no registered extension searches", () => {
     const { result } = renderSearch();
 
     act(() => {
-      result.current.run({ ...INDEX, patchesField: "detections" }, "a car", 25);
-    });
-
-    expect(env.trackEvent).toHaveBeenCalledWith("view_bar_text_search", {
-      patches: true,
-    });
-  });
-
-  it("waits for a server search still running rather than racing it", () => {
-    env.serverPending = true;
-    const { result } = renderSearch();
-
-    act(() => {
-      result.current.run(INDEX, "an animal", 25);
+      result.current.run({ ...INDEX, extension: null }, "a car", 25);
     });
 
     expect(env.search).not.toHaveBeenCalled();
     expect(env.setPending).not.toHaveBeenCalled();
-    // A search that never ran is not history
     expect(readSearchQueries("robots")).toEqual([]);
-    expect(env.notify).toHaveBeenCalledWith(
-      expect.objectContaining({ key: "view-bar-text-search-busy" }),
-    );
-  });
-
-  it("leaves an index no extension searches to the caller", () => {
-    const { result } = renderSearch();
-
-    let ran = true;
-    act(() => {
-      ran = result.current.run({ ...INDEX, extension: null }, "a car", 25);
-    });
-
-    expect(ran).toBe(false);
-    expect(env.search).not.toHaveBeenCalled();
   });
 
   it("publishes only the newest search when an older one settles later", async () => {
@@ -181,18 +148,20 @@ describe("useLanguageSearchExtension", () => {
     expect(env.setPending).toHaveBeenLastCalledWith(false);
   });
 
-  it("drops a cancelled search that settles later", async () => {
-    const resolve = pendingResult();
+  it("tells an older search to stop when a newer one starts", () => {
+    pendingResult();
+    pendingResult();
     const { result } = renderSearch();
 
     act(() => {
       result.current.run(INDEX, "an animal", 25);
-      result.current.cancel();
     });
-    await act(async () => resolve({ stage: STAGE }));
+    act(() => {
+      result.current.run(INDEX, "a car", 25);
+    });
 
-    expect(env.publish).not.toHaveBeenCalled();
-    expect(env.setPending).toHaveBeenLastCalledWith(false);
+    expect(env.search.mock.calls[0][0].signal.aborted).toBe(true);
+    expect(env.search.mock.calls[1][0].signal.aborted).toBe(false);
   });
 
   it("drops a search still running when the field unmounts", async () => {
@@ -203,6 +172,7 @@ describe("useLanguageSearchExtension", () => {
       result.current.run(INDEX, "an animal", 25);
     });
     unmount();
+    expect(env.search.mock.calls[0][0].signal.aborted).toBe(true);
     await act(async () => resolve({ stage: STAGE }));
 
     expect(env.publish).not.toHaveBeenCalled();
@@ -218,6 +188,7 @@ describe("useLanguageSearchExtension", () => {
     });
     env.view = [{ _cls: "fiftyone.core.stages.Limit", kwargs: [["limit", 5]] }];
     rerender();
+    expect(env.search.mock.calls[0][0].signal.aborted).toBe(true);
     await act(async () => resolve({ stage: STAGE }));
 
     expect(env.publish).not.toHaveBeenCalled();

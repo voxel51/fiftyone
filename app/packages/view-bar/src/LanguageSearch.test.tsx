@@ -3,18 +3,17 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const env = vi.hoisted(() => ({
   dataset: "robots",
+  pending: false,
   recentQueries: [] as string[],
 }));
 vi.mock("@fiftyone/state", () => ({
   useCurrentDatasetName: () => env.dataset,
-  useViewChangePending: () => false,
+  useViewChangePending: () => env.pending,
 }));
-const extensionRun = vi.hoisted(() => vi.fn(() => true));
-const extensionCancel = vi.hoisted(() => vi.fn());
+const extensionRun = vi.hoisted(() => vi.fn());
 vi.mock("./useLanguageSearchExtension", () => ({
   useLanguageSearchExtension: () => ({
     run: extensionRun,
-    cancel: extensionCancel,
     recentQueries: env.recentQueries,
   }),
 }));
@@ -61,6 +60,7 @@ describe("LanguageSearch", () => {
     cleanup();
     vi.clearAllMocks();
     env.dataset = "robots";
+    env.pending = false;
     env.recentQueries = [];
   });
 
@@ -227,54 +227,19 @@ describe("LanguageSearch", () => {
     expect(onOpenPanel).not.toHaveBeenCalled();
   });
 
-  it("drops a running extension search before submitting to the server", () => {
-    const onSubmit = vi.fn();
-    render(
-      <LanguageSearch
-        onSubmit={onSubmit}
-        onUnavailable={noop}
-        available
-        enabled
-        history={[]}
-        promptKeys={[{ key: "clip_sim", patchesField: null, extension: null }]}
-        selectedKey="clip_sim"
-        onSelectKey={noop}
-        k={25}
-        onChangeK={noop}
-        onOpenPanel={noop}
-      />,
-    );
-    search("an animal");
-    expect(onSubmit).toHaveBeenCalledWith("an animal");
-    expect(extensionCancel).toHaveBeenCalledTimes(1);
-    expect(extensionCancel.mock.invocationCallOrder[0]).toBeLessThan(
-      onSubmit.mock.invocationCallOrder[0],
-    );
-  });
+  it("keeps the search settings shut while a search runs", () => {
+    renderSearch({ available: true, enabled: true });
+    expect(
+      screen.getByRole("button", { name: "Similarity search settings" }),
+    ).toBeTruthy();
 
-  it("never sends an index only an extension can search to the server", () => {
-    extensionRun.mockReturnValueOnce(false);
-    const onSubmit = vi.fn();
-    const onUnavailable = vi.fn();
-    render(
-      <LanguageSearch
-        onSubmit={onSubmit}
-        onUnavailable={onUnavailable}
-        available
-        enabled
-        history={[]}
-        promptKeys={[
-          { key: "emb_sim", patchesField: null, extension: "multimodal" },
-        ]}
-        selectedKey="emb_sim"
-        onSelectKey={noop}
-        k={25}
-        onChangeK={noop}
-        onOpenPanel={noop}
-      />,
-    );
-    search("an animal");
-    expect(onSubmit).not.toHaveBeenCalled();
-    expect(onUnavailable).toHaveBeenCalledTimes(1);
+    cleanup();
+    env.pending = true;
+    renderSearch({ available: true, enabled: true });
+
+    expect(
+      screen.queryByRole("button", { name: "Similarity search settings" }),
+    ).toBeNull();
+    expect(screen.getByLabelText("Search in progress")).toBeTruthy();
   });
 });

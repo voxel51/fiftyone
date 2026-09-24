@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react";
 import type { ExtendedSelectionResetInterface } from "../extendedSelectionReset";
 
 /** What an extension's search is asked: the index, the prompt, and how many
- * samples the result keeps. */
+ * matches to return. */
 export interface TextSearchRequest {
   datasetName: string;
   brainKey: string;
@@ -10,10 +10,16 @@ export interface TextSearchRequest {
    * previous run's cached answers. */
   runTimestamp: string | null;
   query: string;
-  /** How many samples the result keeps, ranked over the whole index. The
-   * current view and sidebar filters narrow the published result afterward,
-   * so the grid can show fewer than `k`. */
+  /** How many matches the search returns, ranked over the whole index: samples
+   * for most indexes, segments for a segment index, where several can fall in
+   * one sample. The current view and sidebar filters narrow the published
+   * result afterward, so the grid can show fewer. */
   k: number;
+  /** Aborted once this search is cancelled: the view changed, a newer
+   * search started, or the field went away. An extension should stop
+   * before further work and resolve null; a result it returns anyway is
+   * discarded. */
+  signal: AbortSignal;
 }
 
 /**

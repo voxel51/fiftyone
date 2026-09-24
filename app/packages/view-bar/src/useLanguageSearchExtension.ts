@@ -19,13 +19,10 @@ import { viewFingerprint } from "./state";
 
 export interface LanguageSearchExtension {
   /**
-   * Runs `query` through the extension that searches `index`. Returns false,
-   * doing nothing, when no registered extension searches it.
+   * Runs `query` through the extension that searches `index`; does nothing
+   * when no registered extension searches it.
    */
-  run: (index: PromptableSimilarityIndex, query: string, k: number) => boolean;
-  /** Drops the search in flight, if any: it will not publish, and its
-   * pending treatment is released. */
-  cancel: () => void;
+  run: (index: PromptableSimilarityIndex, query: string, k: number) => void;
   /** Queries run here, most recent first. The bar reads the stored history
    * when it mounts, so these would otherwise be missing until it remounts. */
   recentQueries: readonly string[];
@@ -36,7 +33,6 @@ export const useLanguageSearchExtension = (): LanguageSearchExtension => {
   const view = fos.useView();
   const extensions = fos.useTextSearchExtensions();
   const publishExtendedSelection = fos.usePublishExtendedSelection();
-  const pending = fos.useViewChangePending();
   const setViewChangePending = fos.useSetViewChangePending();
   const notify = fos.useNotification();
   const trackEvent = useTrackEvent();
@@ -45,9 +41,14 @@ export const useLanguageSearchExtension = (): LanguageSearchExtension => {
   // Only the newest search may publish; null while none is in flight
   const searchSeq = useRef(0);
   const inFlight = useRef<number | null>(null);
+  // Tells the running search to stop early. An extension may finish anyway,
+  // so `searchSeq`, not the signal, decides what publishes
+  const controller = useRef<AbortController | null>(null);
 
   const cancel = useCallback(() => {
     searchSeq.current += 1;
+    controller.current?.abort();
+    controller.current = null;
     if (inFlight.current !== null) {
       inFlight.current = null;
       setViewChangePending(false);
@@ -70,27 +71,15 @@ export const useLanguageSearchExtension = (): LanguageSearchExtension => {
       const extension = index.extension
         ? extensions.get(index.extension)
         : undefined;
-      if (!extension || !datasetName) return false;
-
-      // Set with none of this hook's searches in flight, the pending flag is
-      // a server search's. It cannot be cancelled, and the view it lands
-      // resets the extended selection, so a result published now would be
-      // wiped by the older query's — this one waits for it instead
-      if (pending && inFlight.current === null) {
-        notify({
-          key: "view-bar-text-search-busy",
-          msg: "Wait for the current search to finish",
-        });
-        return true;
-      }
+      if (!extension || !datasetName) return;
 
       recordIndexUse(datasetName, index.key);
       recordSearchQuery(datasetName, query);
       setRecentQueries((queries) => rememberQuery(queries, query));
-      trackEvent("view_bar_text_search", {
-        patches: Boolean(index.patchesField),
-      });
+      trackEvent("view_bar_text_search", { patches: false });
 
+      controller.current?.abort();
+      const { signal } = (controller.current = new AbortController());
       const seq = ++searchSeq.current;
       inFlight.current = seq;
       // The in-progress treatment the field shows for any search. No view
@@ -106,6 +95,7 @@ export const useLanguageSearchExtension = (): LanguageSearchExtension => {
             runTimestamp: index.timestamp ?? null,
             query,
             k,
+            signal,
           }),
         ),
       )
@@ -128,18 +118,16 @@ export const useLanguageSearchExtension = (): LanguageSearchExtension => {
           inFlight.current = null;
           setViewChangePending(false);
         });
-      return true;
     },
     [
       extensions,
       datasetName,
       publishExtendedSelection,
-      pending,
       setViewChangePending,
       notify,
       trackEvent,
     ],
   );
 
-  return { run, cancel, recentQueries };
+  return { run, recentQueries };
 };

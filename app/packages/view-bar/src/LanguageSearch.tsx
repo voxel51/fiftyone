@@ -25,6 +25,7 @@ import {
   SearchIcon,
   Size,
   Spacing,
+  Spinner,
   Stack,
   Text,
   TextColor,
@@ -107,11 +108,8 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
   const pending = useViewChangePending();
   // An index a text search extension searches client-side runs here, not
   // through `onSubmit`
-  const {
-    run: runExtensionSearch,
-    cancel: cancelExtensionSearch,
-    recentQueries,
-  } = useLanguageSearchExtension();
+  const { run: runExtensionSearch, recentQueries } =
+    useLanguageSearchExtension();
   const shownHistory = React.useMemo(
     () =>
       recentQueries.reduceRight(
@@ -155,14 +153,11 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
       }
       const index = promptKeys.find((key) => key.key === selectedKey);
       if (index?.extension) {
-        // The server cannot sort this index, so with its extension gone
-        // there is no search to fall back to
-        if (!runExtensionSearch(index, text, k)) onUnavailable();
+        // Never to `onSubmit`, even with its extension gone: the server
+        // cannot sort this index
+        runExtensionSearch(index, text, k);
         return;
       }
-      // An extension search still running would otherwise publish over the
-      // view this search produces
-      cancelExtensionSearch();
       onSubmit(text);
     },
     [
@@ -170,11 +165,9 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
       enabled,
       onOpenPanel,
       onSubmit,
-      onUnavailable,
       promptKeys,
       selectedKey,
       runExtensionSearch,
-      cancelExtensionSearch,
       k,
     ],
   );
@@ -192,24 +185,35 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
           floats over the field's leading padding so the field — and the
           list anchored to it — starts at the bar's left edge. */}
       <div className={styles.magnifier}>
-        <SearchSettingsPopover
-          trigger={
-            <Button
-              variant={Variant.Icon}
-              size={Size.Xs}
-              borderless
-              leadingIcon={SearchIcon}
-              aria-label="Similarity search settings"
-              data-cy="view-bar-search-settings-trigger"
-            />
-          }
-          promptKeys={promptKeys}
-          selectedKey={selectedKey}
-          onSelectKey={onSelectKey}
-          k={k}
-          onChangeK={onChangeK}
-          onOpenPanel={onOpenPanel}
-        />
+        {pending ? (
+          // Shut while a search runs: switching the index mid-search could
+          // let a server search, which cannot be cancelled, land over the
+          // newer one
+          <Spinner
+            size={Size.Xs}
+            aria-label="Search in progress"
+            data-cy="view-bar-search-in-progress"
+          />
+        ) : (
+          <SearchSettingsPopover
+            trigger={
+              <Button
+                variant={Variant.Icon}
+                size={Size.Xs}
+                borderless
+                leadingIcon={SearchIcon}
+                aria-label="Similarity search settings"
+                data-cy="view-bar-search-settings-trigger"
+              />
+            }
+            promptKeys={promptKeys}
+            selectedKey={selectedKey}
+            onSelectKey={onSelectKey}
+            k={k}
+            onChangeK={onChangeK}
+            onOpenPanel={onOpenPanel}
+          />
+        )}
       </div>
       <Combobox
         aria-label={LANGUAGE_SEARCH_LABEL}
