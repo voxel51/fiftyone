@@ -113,8 +113,7 @@ export function useVideoTemporalTags(
 
   // The dropdown offers the whole dataset's vocabulary, not just this sample's
   // tags — otherwise the first tag on any sample has nothing to pick from and
-  // every label has to be retyped. The sidebar filter loads the same atom;
-  // loading here too covers the modal being opened without it.
+  // every label has to be retyped.
   useSyncTemporalTagResults();
   const existingTags = useTemporalTagValues();
 
