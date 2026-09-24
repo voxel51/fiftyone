@@ -11,6 +11,7 @@
 
 import type { OverlayMask } from "@fiftyone/looker/src/numpy";
 
+import { decodeHeatmapIndices, type DecodedHeatmap } from "./heatmapIndices";
 import { decodeMaskToRaster } from "./maskRaster";
 import {
   decodeSegmentationIndices,
@@ -34,7 +35,21 @@ export interface MaskIndicesRequest {
   maskData: string | OverlayMask;
 }
 
-export type MaskDecodeRequest = MaskRasterRequest | MaskIndicesRequest;
+/**
+ * Quantize a heatmap to 16-bit indices over its range, for the same palette
+ * lookup. The exact values ride along for the tooltip.
+ */
+export interface HeatmapIndicesRequest {
+  uuid: string;
+  kind: "heatmap";
+  maskData: string | OverlayMask;
+  range?: [number, number];
+}
+
+export type MaskDecodeRequest =
+  | MaskRasterRequest
+  | MaskIndicesRequest
+  | HeatmapIndicesRequest;
 
 export interface MaskDecodeSuccess {
   uuid: string;
@@ -62,9 +77,16 @@ interface MaskDecodeFailure {
   error: string;
 }
 
+export interface HeatmapIndicesSuccess extends DecodedHeatmap {
+  uuid: string;
+  ok: true;
+  kind: "heatmap";
+}
+
 export type MaskDecodeResponse =
   | MaskDecodeSuccess
   | MaskIndicesSuccess
+  | HeatmapIndicesSuccess
   | MaskDecodeFailure;
 
 /** True only when this module is running as a dedicated worker. */
@@ -93,6 +115,20 @@ const handleMessage = async (event: MessageEvent<MaskDecodeRequest>) => {
       };
 
       post(payload, [indices.buffer]);
+      return;
+    }
+
+    if (event.data.kind === "heatmap") {
+      const decoded = decodeHeatmapIndices(maskData, event.data.range);
+      const payload: HeatmapIndicesSuccess = {
+        ...decoded,
+        uuid,
+        ok: true,
+        kind: "heatmap",
+      };
+
+      // The values are a view over the decoded payload; both go zero-copy.
+      post(payload, [decoded.indices.buffer, decoded.values.buffer]);
       return;
     }
 

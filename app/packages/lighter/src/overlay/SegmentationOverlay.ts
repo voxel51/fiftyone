@@ -16,7 +16,7 @@ import type { Selectable } from "../selection/Selectable";
 import type { Point, RawLookerLabel, Rect, RenderMeta } from "../types";
 import { getSimpleStrokeStyles } from "../utils/colorMapping";
 import { maskSourceOf } from "../utils/maskSource";
-import { segmentationIndexCache } from "../utils/segmentationIndexCache";
+import { segmentationIndexCache } from "../utils/decodedIndexCache";
 import { toRelativePoint } from "../utils/mediaPoint";
 import {
   colorForTarget,

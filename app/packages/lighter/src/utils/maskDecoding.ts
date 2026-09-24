@@ -15,7 +15,9 @@
 import type { OverlayMask } from "@fiftyone/looker/src/numpy";
 
 import { decodeMaskToRaster } from "./maskRaster";
+import { decodeHeatmapIndices, type DecodedHeatmap } from "./heatmapIndices";
 import type {
+  HeatmapIndicesSuccess,
   MaskDecodeRequest,
   MaskDecodeResponse,
   MaskDecodeSuccess,
@@ -34,12 +36,17 @@ export interface DecodedMask {
 
 // ---- worker plumbing ----
 
+type WorkerSuccess =
+  | MaskDecodeSuccess
+  | MaskIndicesSuccess
+  | HeatmapIndicesSuccess;
+
 let worker: Worker | undefined;
 let nextId = 1;
 const pending = new Map<
   string,
   {
-    resolve: (data: MaskDecodeSuccess | MaskIndicesSuccess) => void;
+    resolve: (data: WorkerSuccess) => void;
     reject: (err: Error) => void;
   }
 >();
@@ -108,7 +115,7 @@ const ensureWorker = (): Worker | undefined => {
 const requestViaWorker = (
   w: Worker,
   request: Omit<MaskDecodeRequest, "uuid">,
-): Promise<MaskDecodeSuccess | MaskIndicesSuccess> =>
+): Promise<WorkerSuccess> =>
   new Promise((resolve, reject) => {
     const uuid = String(nextId++);
     pending.set(uuid, { resolve, reject });
@@ -121,7 +128,7 @@ const decodeViaWorker = async (
 ): Promise<DecodedMask> => {
   const data = await requestViaWorker(w, { kind: "raster", maskData });
 
-  if (data.kind === "indices") {
+  if (data.kind === "indices" || data.kind === "heatmap") {
     throw new Error("mask worker answered a raster request with indices");
   }
 
@@ -142,6 +149,31 @@ const decodeIndicesViaWorker = async (
   }
 
   return { indices: data.indices, width: data.width, height: data.height };
+};
+
+const decodeHeatmapViaWorker = async (
+  w: Worker,
+  maskData: string | OverlayMask,
+  range: readonly [number, number] | undefined,
+): Promise<DecodedHeatmap> => {
+  const data = await requestViaWorker(w, {
+    kind: "heatmap",
+    maskData,
+    range: range ? [range[0], range[1]] : undefined,
+  });
+
+  if (data.kind !== "heatmap") {
+    throw new Error("mask worker answered a heatmap request with a raster");
+  }
+
+  return {
+    indices: data.indices,
+    width: data.width,
+    height: data.height,
+    values: data.values,
+    channels: data.channels,
+    range: data.range,
+  };
 };
 
 const decodeOnMainThread = async (
@@ -203,5 +235,29 @@ export async function decodeSegmentationIndicesAsync(
       err,
     );
     return decodeSegmentationIndices(maskData);
+  }
+}
+
+/**
+ * Quantize a heatmap to palette indices off the main thread, with the same
+ * fallbacks as {@link decodeMask}.
+ */
+export async function decodeHeatmapIndicesAsync(
+  mapData: string | OverlayMask,
+  range?: readonly [number, number],
+): Promise<DecodedHeatmap> {
+  const w = ensureWorker();
+  if (!w) {
+    return decodeHeatmapIndices(mapData, range);
+  }
+
+  try {
+    return await decodeHeatmapViaWorker(w, mapData, range);
+  } catch (err) {
+    console.error(
+      "[decodeMask] worker heatmap decode failed; main-thread fallback:",
+      err,
+    );
+    return decodeHeatmapIndices(mapData, range);
   }
 }

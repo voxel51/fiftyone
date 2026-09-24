@@ -71,28 +71,27 @@ const maskCache = vi.hoisted(() => ({
   },
 }));
 
-/** Stand-in for the decoded segmentation indices cache; records warms. */
-const segmentationCache = vi.hoisted(() => ({
-  warmed: [] as string[],
-  has(): boolean {
-    return false;
-  },
-  isWarming(): boolean {
-    return false;
-  },
-  warm(source: string): Promise<void> {
-    this.warmed.push(source);
-    return Promise.resolve();
-  },
+/** Records the decode-ahead warms the stream issues. */
+const warms = vi.hoisted(() => ({
+  segmentations: [] as string[],
+  heatmaps: [] as Array<[string, [number, number] | undefined]>,
   reset(): void {
-    this.warmed = [];
+    this.segmentations = [];
+    this.heatmaps = [];
   },
 }));
 
 vi.mock("@fiftyone/lighter", () => ({
   maskBitmapCache: maskCache,
-  segmentationIndexCache: segmentationCache,
   maskSourceOf: (mask?: unknown) => mask ?? undefined,
+  warmSegmentationIndices: (source: string) => {
+    warms.segmentations.push(source);
+    return Promise.resolve();
+  },
+  warmHeatmapIndices: (source: string, range?: [number, number]) => {
+    warms.heatmaps.push([source, range]);
+    return Promise.resolve();
+  },
 }));
 
 vi.mock("../../../core/src/client/videoLabelsClient", () => ({
@@ -276,7 +275,7 @@ describe("VideoFrameLabelsStream onCommit", () => {
     expect(prefetch).toHaveBeenCalledTimes(2);
   });
 
-  it("warms the segmentations of the frames ahead of the playhead", () => {
+  it("warms the dense labels of the frames ahead of the playhead", () => {
     const stream = new VideoFrameLabelsStream({
       id: "test",
       sampleId: "s",
@@ -284,10 +283,10 @@ describe("VideoFrameLabelsStream onCommit", () => {
       view: [],
       frameCount: 100,
       frameRate: 30,
-      frameFields: ["detections", "segmentation"],
+      frameFields: ["detections", "segmentation", "heatmap"],
     });
     const store = createStore();
-    segmentationCache.reset();
+    warms.reset();
 
     for (const frame of [10, 11, 12]) {
       // @ts-expect-error — test-only: populate the private frame-doc cache
@@ -295,6 +294,11 @@ describe("VideoFrameLabelsStream onCommit", () => {
         frame_number: frame,
         detections: { detections: [] },
         segmentation: { _cls: "Segmentation", mask: `seg-${frame}` },
+        heatmap: {
+          _cls: "Heatmap",
+          map: `map-${frame}`,
+          range: frame === 12 ? null : [0, 100],
+        },
       });
     }
 
@@ -302,7 +306,14 @@ describe("VideoFrameLabelsStream onCommit", () => {
 
     // The current frame decodes at paint time either way; the ones after it
     // are what the decode-ahead buys.
-    expect(segmentationCache.warmed).toEqual(["seg-10", "seg-11", "seg-12"]);
+    expect(warms.segmentations).toEqual(["seg-10", "seg-11", "seg-12"]);
+    // The heatmap's indices depend on its range, so the range rides along;
+    // an undeclared one is inferred at decode time.
+    expect(warms.heatmaps).toEqual([
+      ["map-10", [0, 100]],
+      ["map-11", [0, 100]],
+      ["map-12", undefined],
+    ]);
   });
 });
 
