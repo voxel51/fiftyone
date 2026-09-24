@@ -1,4 +1,5 @@
-import React, { type RefObject, useRef, useState } from "react";
+import { useViewportInitReveal } from "@fiftyone/lighter";
+import React, { type RefObject, useRef, useState, useEffect } from "react";
 import {
   usePlayback,
   usePublishCurrentFrame,
@@ -65,6 +66,7 @@ export interface LighterVideoProps {
   onLoadStart?: (element: HTMLVideoElement) => void;
   onLoadedData?: (element: HTMLVideoElement) => void;
   onError?: (element: HTMLVideoElement) => void;
+  onRevealChange?: (revealed: boolean) => void;
 }
 
 /**
@@ -78,6 +80,7 @@ export const LighterVideo: React.FC<LighterVideoProps> = ({
   onLoadStart,
   onLoadedData,
   onError,
+  onRevealChange,
 }) => {
   const sourceId = VIDEO_STREAM_ID;
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -153,6 +156,11 @@ export const LighterVideo: React.FC<LighterVideoProps> = ({
   // Explore is where it is a restoration. Annotate never had one, and popping
   // a tooltip over the canvas mid-draw is a product change in its own right —
   // `null` routes the hook at the undefined channel, so it observes nothing.
+  const revealed = useViewportInitReveal(scene);
+  useEffect(() => {
+    onRevealChange?.(revealed);
+  }, [revealed, onRevealChange]);
+
   useLighterTooltipEventHandler(mode === "explore" ? scene : null);
 
   // Canvas selection <-> `fos.selectedLabels`, which the modal's Tag and

@@ -979,6 +979,10 @@ elements of the group as a video.
    :alt: dynamic-groups
    :align: center
 
+Ordered groups of images can also be annotated as a video, with object tracks
+that span the group's samples. See
+:ref:`Annotating dynamic groups as video <dynamic-group-video-annotation>`.
+
 .. _app-field-visibility:
 
 Field visibility
