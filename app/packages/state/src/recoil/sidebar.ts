@@ -542,7 +542,7 @@ export const sidebarGroups = selectorFamily<
       const tagGroupIndex = groupNames.indexOf("tags");
       // Temporal tags need a playhead to hang an interval on, so the filter is
       // only offered where one exists (e.g. not `quickstart`).
-      groups[tagGroupIndex].paths = get(atoms.supportsTemporalTags)
+      groups[tagGroupIndex].paths = get(atoms.supportsTemporalTags(modal))
         ? ["_label_tags", "_temporal_tags", "tags"]
         : ["_label_tags", "tags"];
 

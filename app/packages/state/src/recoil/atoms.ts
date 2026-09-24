@@ -13,17 +13,29 @@ import {
   sampleFieldsFragment$key,
 } from "@fiftyone/relay";
 import {
+  MEDIA_TYPE_GROUP,
   MEDIA_TYPE_MULTIMODAL,
   MEDIA_TYPE_VIDEO,
   StrictField,
   setContains3d,
 } from "@fiftyone/utilities";
-import { DefaultValue, atom, atomFamily, selector } from "recoil";
+import {
+  DefaultValue,
+  atom,
+  atomFamily,
+  selector,
+  selectorFamily,
+} from "recoil";
 import { ModalSample } from "..";
 import { GRID_SPACES_DEFAULT, sessionAtom } from "../session";
 import { collapseFields } from "../utils";
 import { getBrowserStorageEffectForKey } from "./customEffects";
-import { groupMediaTypesSet } from "./groups";
+import {
+  currentSlice,
+  groupMediaTypesMap,
+  groupMediaTypesSet,
+  isTemporalTagSlice,
+} from "./groups";
 import type { SelectionType } from "./types";
 import {
   DEFAULT_LABEL_SELECTION_STYLE,
@@ -397,25 +409,26 @@ export const lookerPanels = atom({
 });
 
 /**
- * Whether the dataset has a media surface that can carry temporal tags: one
- * with a playhead to place an interval on. Multimodal episodes and videos
- * qualify, and so does a grouped dataset with at least one video slice.
- *
- * Deliberately the dataset and not the slice in view. A grouped match is
- * reported on whichever slice is active even when the interval itself lives on
- * a sibling, so the filter has to stay offered there — withdrawing it on an
- * image slice would hide a filter that still has results to give.
+ * Whether the samples in view can carry temporal tags: they need a playhead to
+ * place an interval on. Multimodal episodes and videos qualify; in a grouped
+ * dataset, only a video slice does. Keyed by `modal`, since the modal can show
+ * a different slice than the grid.
  */
-export const supportsTemporalTags = selector<boolean>({
+export const supportsTemporalTags = selectorFamily<boolean, boolean>({
   key: "supportsTemporalTags",
-  get: ({ get }) => {
-    const type = get(mediaType);
-    return (
-      type === MEDIA_TYPE_MULTIMODAL ||
-      type === MEDIA_TYPE_VIDEO ||
-      get(groupMediaTypesSet).has(MEDIA_TYPE_VIDEO)
-    );
-  },
+  get:
+    (modal) =>
+    ({ get }) => {
+      const type = get(mediaType);
+      if (type === MEDIA_TYPE_GROUP) {
+        return isTemporalTagSlice(
+          get(groupMediaTypesMap),
+          get(currentSlice(modal)),
+        );
+      }
+
+      return type === MEDIA_TYPE_MULTIMODAL || type === MEDIA_TYPE_VIDEO;
+    },
 });
 
 export const only3d = selector<boolean>({

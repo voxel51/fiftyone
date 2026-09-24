@@ -26,7 +26,7 @@ const SidebarList: React.FC = () => {
   const [width, setWidth] = useState(WIDTH);
   // Matches the sidebar filter gating — the color entry exists for exactly the
   // datasets whose sidebar offers the temporal-tags filter.
-  const hasTemporalTags = useRecoilValue(fos.supportsTemporalTags);
+  const hasTemporalTags = useRecoilValue(fos.supportsTemporalTags(false));
   const stableGroup = [
     { paths: [ACTIVE_FIELD.GLOBAL, ACTIVE_FIELD.JSON], name: "general" },
     {

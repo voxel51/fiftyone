@@ -50,7 +50,7 @@ export function useTileIntervalOverlay() {
   const RecoilBridge = useRecoilBridgeAcrossReactRoots_UNSTABLE();
   // The lane only ever has something to draw where the dataset can carry
   // temporal tags, so nothing is mounted anywhere else.
-  const supported = useRecoilValue(fos.supportsTemporalTags);
+  const supported = useRecoilValue(fos.supportsTemporalTags(false));
 
   const mounted = useRef(new Map<string, MountedOverlay>());
 
