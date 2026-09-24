@@ -55,6 +55,10 @@ export interface TextSearchResult {
 export interface TextSearchExtension {
   /** The brain runs' `config.method` this extension searches. */
   method: string;
+  /** Shown under the search settings' Results field while one of this
+   * extension's indexes is selected, e.g. to say how its results relate to
+   * what the grid shows. */
+  resultsHint?: string;
   /** Resolves null when a newer search elsewhere replaced this one: nothing
    * publishes, and nothing is reported. */
   search: (request: TextSearchRequest) => Promise<TextSearchResult | null>;

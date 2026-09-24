@@ -9,6 +9,7 @@
  */
 
 import type { PromptableSimilarityIndex } from "@fiftyone/state";
+import { useTextSearchExtensions } from "@fiftyone/state";
 import {
   Align,
   Button,
@@ -112,6 +113,10 @@ export const SearchSettingsPopover: React.FC<SearchSettingsPopoverProps> = ({
   onOpenPanel,
 }) => {
   const selected = promptKeys.find((index) => index.key === selectedKey);
+  const extensions = useTextSearchExtensions();
+  const resultsHint = selected?.extension
+    ? extensions.get(selected.extension)?.resultsHint
+    : undefined;
   return (
     <Popover
       trigger={trigger}
@@ -185,6 +190,11 @@ export const SearchSettingsPopover: React.FC<SearchSettingsPopoverProps> = ({
                   Results
                 </Text>
                 <ResultsInput k={k} onChangeK={onChangeK} />
+                {resultsHint && (
+                  <Text variant={TextVariant.Xs} color={TextColor.Tertiary}>
+                    {resultsHint}
+                  </Text>
+                )}
               </Stack>
             </>
           )}
