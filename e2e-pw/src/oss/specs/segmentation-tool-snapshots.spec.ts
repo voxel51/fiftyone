@@ -150,7 +150,7 @@ test.describe.serial("segmentation tool snapshots", () => {
     await deselectForSnapshot(modal);
     await modal.sidebar.annotate.assert.labelRowCount(FIELD, 1);
 
-    await modal.sampleCanvas.assert.hasScreenshot("seg-pen-rectangle.png");
+    await modal.sampleCanvas.assert.hasMediaScreenshot("seg-pen-rectangle.png");
 
     await assertOnlyLabelHasMask(modal);
   });
@@ -174,7 +174,7 @@ test.describe.serial("segmentation tool snapshots", () => {
     await deselectForSnapshot(modal);
     await modal.sidebar.annotate.assert.labelRowCount(FIELD, 1);
 
-    await modal.sampleCanvas.assert.hasScreenshot("seg-brush-stroke.png");
+    await modal.sampleCanvas.assert.hasMediaScreenshot("seg-brush-stroke.png");
   });
 
   test("ai", async ({
@@ -210,7 +210,7 @@ test.describe.serial("segmentation tool snapshots", () => {
     await deselectForSnapshot(modal);
     await modal.sidebar.annotate.assert.labelRowCount(FIELD, 1);
 
-    await modal.sampleCanvas.assert.hasScreenshot("seg-ai-mask.png");
+    await modal.sampleCanvas.assert.hasMediaScreenshot("seg-ai-mask.png");
 
     await assertOnlyLabelHasMask(modal);
   });
@@ -244,7 +244,7 @@ test.describe.serial("segmentation tool snapshots", () => {
       await deselectForSnapshot(modal);
       await modal.sidebar.annotate.assert.labelRowCount(FIELD, 1);
 
-      await modal.sampleCanvas.assert.hasScreenshot("seg-merge-union.png");
+      await modal.sampleCanvas.assert.hasMediaScreenshot("seg-merge-union.png");
 
       // Sanity check: the merge persisted the pair as a single masked detection.
       const context = await browser.newContext();
@@ -254,7 +254,7 @@ test.describe.serial("segmentation tool snapshots", () => {
         await openAnnotate(freshModal, freshPage, fiftyoneLoader, datasetName);
         await freshModal.sidebar.annotate.assert.labelRowCount(FIELD, 1);
         await assertOnlyLabelHasMask(freshModal);
-        await freshModal.sampleCanvas.assert.hasScreenshot(
+        await freshModal.sampleCanvas.assert.hasMediaScreenshot(
           "seg-merge-persisted.png",
         );
       } finally {

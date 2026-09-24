@@ -1,5 +1,15 @@
+import path from "path";
 import { Locator, Page, expect } from "src/oss/fixtures";
 import { EventUtils } from "src/shared/event-utils";
+
+/**
+ * Screenshot stylesheet that hides everything in the episode shell except its
+ * canvases, so a capture shows rendered pixels and no DOM chrome.
+ */
+export const CANVAS_ONLY = path.resolve(
+  __dirname,
+  "../../../shared/assets/canvas-only.css",
+);
 
 /** Shared user-facing episode interactions for modal and Explorer MCAP hosts. */
 export class EpisodePom {
@@ -157,6 +167,17 @@ export class EpisodePom {
       await toggle.and(this.page.locator('[aria-checked="true"]')).waitFor();
     else
       await toggle.and(this.page.locator('[aria-checked="false"]')).waitFor();
+  }
+
+  /** Size the camera tile's projected points (a plain number input). */
+  async setProjectionPointSize(tileTitle: string, size: number): Promise<void> {
+    await this.openTileSettings(tileTitle);
+    const input = this.scope.getByRole("spinbutton", {
+      name: "Point size",
+      exact: true,
+    });
+    await input.fill(String(size));
+    await expect(input).toHaveValue(String(size));
   }
 
   async setSidebarNumber(

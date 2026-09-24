@@ -11,6 +11,7 @@ import {
   tinyA,
   tinyB,
 } from "src/oss/fixtures/mcap";
+import { CANVAS_ONLY } from "src/oss/poms/multimodal/episode";
 import { EventUtils } from "src/shared/event-utils";
 
 const SOURCE_FACTS_DATABASE_NAME = "fiftyone-multimodal-source-facts";
@@ -175,16 +176,25 @@ test.describe("MCAP surfaces", () => {
       await expect(canvas).toHaveAttribute("data-graphics-backend", "webgl2");
 
       const pointPanel = pointTile.locator("[data-point-cloud-rendered-count]");
+      // largest points so each frame's cloud is plain to see
+      await modal.episode.setSidebarNumber("points", "Point size (px)", 10);
+
       // each frame's points are drawn once the panel's render stats report
       // them, so every screenshot shows that frame's cloud
       await expectPointCloudSpread(pointPanel, 4, 1);
-      await expect(canvas).toHaveScreenshot("point-frame-1.png");
+      await expect(canvas).toHaveScreenshot("point-frame-1.png", {
+        stylePath: CANVAS_ONLY,
+      });
       await modal.episode.stepForward();
       await expectPointCloudSpread(pointPanel, 4, 2);
-      await expect(canvas).toHaveScreenshot("point-frame-2.png");
+      await expect(canvas).toHaveScreenshot("point-frame-2.png", {
+        stylePath: CANVAS_ONLY,
+      });
       await modal.episode.stepForward();
       await expectPointCloudSpread(pointPanel, 5, 3);
-      await expect(canvas).toHaveScreenshot("point-frame-3.png");
+      await expect(canvas).toHaveScreenshot("point-frame-3.png", {
+        stylePath: CANVAS_ONLY,
+      });
 
       await modal.close();
       await openMcapModal(grid, modal, sampleIndex.sidebarStart);
@@ -201,13 +211,21 @@ test.describe("MCAP surfaces", () => {
         "data-graphics-backend",
         "webgl2",
       );
-      await expect(imageCanvas).toHaveScreenshot("projection-off.png");
+      // only the camera tile's area of the shared image canvas
+      const cameraTile = modal.episode.tile("camera/front");
+      await expect(cameraTile).toHaveScreenshot("projection-off.png", {
+        stylePath: CANVAS_ONLY,
+      });
       await modal.episode.setSidebarToggle(
         "camera/front",
         "Toggle pointcloud projections",
         true,
       );
-      await expect(imageCanvas).toHaveScreenshot("projection-on.png");
+      // largest projected points so the overlay is plain to see
+      await modal.episode.setProjectionPointSize("camera/front", 10);
+      await expect(cameraTile).toHaveScreenshot("projection-on.png", {
+        stylePath: CANVAS_ONLY,
+      });
 
       await modal.episode.scope
         .getByRole("tab", { name: "Scene", exact: true })

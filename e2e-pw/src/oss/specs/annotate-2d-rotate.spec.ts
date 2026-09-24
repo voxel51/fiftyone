@@ -126,7 +126,7 @@ test.describe("2D rotated bounding boxes", () => {
   test("a seeded rotation renders the box rotated", async ({ modal }) => {
     await modal.sidebar.annotate.selectActiveLabel("cat", 0);
 
-    await modal.sampleCanvas.assert.hasScreenshot(
+    await modal.sampleCanvas.assert.hasMediaScreenshot(
       "rotated-detection-selected.png",
     );
   });

@@ -129,10 +129,15 @@ test.describe.serial("segmentation pen-tool round-trip", () => {
       // both polygons were committed as their own detections
       await expect(rows).toHaveCount(2);
 
-      // the first persisted mask renders on the fresh canvas exactly as drawn
+      // both masks render on the fresh canvas as drawn, captured before any
+      // row is selected since the rows' order isn't fixed
+      await fresh.sampleCanvas.assert.hasMediaScreenshot(
+        "seg-pen-persisted.png",
+      );
+
+      // and a persisted row carries its mask
       await rows.first().click();
       await fresh.sidebar.edit.assert.hasMaskPreview();
-      await fresh.sampleCanvas.assert.hasScreenshot("seg-pen-persisted.png");
     } finally {
       await context.close();
     }

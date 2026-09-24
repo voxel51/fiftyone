@@ -112,7 +112,9 @@ test.describe.serial("segmentation AI (SAM2) round-trip", () => {
       // {0.4, 0.4, 0.2, 0.2}; that is what the fresh canvas must render
       await rows.click();
       await fresh.sidebar.edit.assert.hasMaskPreview();
-      await fresh.sampleCanvas.assert.hasScreenshot("seg-ai-persisted.png");
+      await fresh.sampleCanvas.assert.hasMediaScreenshot(
+        "seg-ai-persisted.png",
+      );
     } finally {
       await context.close();
     }

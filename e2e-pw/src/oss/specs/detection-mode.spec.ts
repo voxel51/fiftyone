@@ -109,7 +109,7 @@ test.describe.serial("detection mode", () => {
     await modal.sampleCanvas.move(0.6, 0.6);
     await modal.sampleCanvas.up();
     await modal.sampleCanvas.assert.hasCursor("nwse-resize");
-    await modal.sampleCanvas.assert.hasScreenshot(
+    await modal.sampleCanvas.assert.hasMediaScreenshot(
       "draw-and-quit-detection-selected.png",
     );
 
@@ -119,7 +119,7 @@ test.describe.serial("detection mode", () => {
     await modal.sampleCanvas.up();
     await modal.sidebar.annotate.assert.detectionModeIsActive(false);
     await modal.sampleCanvas.assert.hasCursor("default");
-    await modal.sampleCanvas.assert.hasScreenshot(
+    await modal.sampleCanvas.assert.hasMediaScreenshot(
       "draw-and-quit-exited-detection-mode.png",
     );
   });
@@ -176,7 +176,7 @@ test.describe.serial("detection mode", () => {
     await modal.sampleCanvas.move(0.8, 0.6);
     await modal.sampleCanvas.up();
     await modal.sampleCanvas.assert.hasCursor("nesw-resize");
-    await modal.sampleCanvas.assert.hasScreenshot(
+    await modal.sampleCanvas.assert.hasMediaScreenshot(
       "multiple-detections-second-selected.png",
     );
 
@@ -186,7 +186,7 @@ test.describe.serial("detection mode", () => {
     await modal.sampleCanvas.up();
     await modal.sidebar.annotate.assert.detectionModeIsActive(false);
     await modal.sampleCanvas.assert.hasCursor("default");
-    await modal.sampleCanvas.assert.hasScreenshot(
+    await modal.sampleCanvas.assert.hasMediaScreenshot(
       "multiple-detections-exited-detection-mode.png",
     );
   });
