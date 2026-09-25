@@ -1,5 +1,6 @@
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import {
+  useDuration,
   useViewEnd,
   useViewStart,
 } from "../../lib/playback/use-playback-state";
@@ -301,6 +302,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
 }) => {
   const viewStart = useViewStart();
   const viewEnd = useViewEnd();
+  const duration = useDuration();
   const { seek, setLoop } = usePlayback();
 
   const laneRef = useRef<HTMLDivElement>(null);
@@ -409,25 +411,35 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
       // collapse to zero seconds via resize). Without a snap step, we
       // still enforce a tiny floor to avoid `start === end` intervals.
       const minDuration = snapStepSec ?? 1e-6;
+      // The timeline's extent. An interval can't be dragged past either
+      // end: there is nothing there to annotate, and a consumer that maps
+      // seconds back to frames would otherwise be handed a frame the media
+      // doesn't have. Unknown duration (0) leaves the right edge open.
+      const timelineEnd = duration > 0 ? duration : Number.POSITIVE_INFINITY;
 
       let newStart = drag.origStart;
       let newEnd = drag.origEnd;
 
       if (drag.mode === "resize-start") {
-        newStart = snap(drag.origStart + dSec);
+        newStart = Math.max(0, snap(drag.origStart + dSec));
         if (newStart > drag.origEnd - minDuration) {
-          newStart = drag.origEnd - minDuration;
+          newStart = Math.max(0, drag.origEnd - minDuration);
         }
         newEnd = drag.origEnd;
       } else if (drag.mode === "resize-end") {
-        newEnd = snap(drag.origEnd + dSec);
+        newEnd = Math.min(timelineEnd, snap(drag.origEnd + dSec));
         if (newEnd < drag.origStart + minDuration) {
-          newEnd = drag.origStart + minDuration;
+          newEnd = Math.min(timelineEnd, drag.origStart + minDuration);
         }
         newStart = drag.origStart;
       } else {
         const width = drag.origEnd - drag.origStart;
-        newStart = snap(drag.origStart + dSec);
+        // Slide back so the whole bar stays on the timeline; a bar wider
+        // than the timeline pins to its start.
+        newStart = Math.max(
+          0,
+          Math.min(snap(drag.origStart + dSec), timelineEnd - width),
+        );
         newEnd = newStart + width;
       }
 

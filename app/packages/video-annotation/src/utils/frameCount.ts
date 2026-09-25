@@ -6,12 +6,16 @@ import type { ModalSample } from "@fiftyone/state";
  * but VideoMetadata persists `total_frame_count` and `duration` at runtime —
  * we loose-cast through.
  *
+ * `total_frame_count` stands on its own; `duration` needs a positive
+ * `frameRate` to become a count, so without one only the stored count can
+ * resolve.
+ *
  * Returns `null` (never throws) when neither is usable: the caller shows a
  * "compute metadata" prompt instead of crashing the modal.
  */
 export function resolveFrameCount(
   sample: ModalSample,
-  frameRate: number,
+  frameRate?: number | null,
 ): number | null {
   const metadata = (sample.sample as { metadata?: Record<string, unknown> })
     ?.metadata;
@@ -25,7 +29,10 @@ export function resolveFrameCount(
   if (
     typeof duration === "number" &&
     Number.isFinite(duration) &&
-    duration > 0
+    duration > 0 &&
+    typeof frameRate === "number" &&
+    Number.isFinite(frameRate) &&
+    frameRate > 0
   ) {
     // Ceiling, not round: a partial trailing frame (duration not an exact
     // frame multiple) is still a real frame. The epsilon keeps float error

@@ -23,6 +23,26 @@ describe("supportError", () => {
   });
 });
 
+describe("supportError with a frame count", () => {
+  it("accepts a stop on the last frame", () => {
+    expect(supportError(1, 120, 120)).toBeNull();
+  });
+
+  it("rejects a stop past the last frame", () => {
+    expect(supportError(1, 121, 120)).toBe("stop must be at most 120");
+  });
+
+  it("ignores an unknown frame count", () => {
+    expect(supportError(1, 10_000, null)).toBeNull();
+    expect(supportError(1, 10_000, undefined)).toBeNull();
+    expect(supportError(1, 10_000, 0)).toBeNull();
+  });
+
+  it("reports the ordering error before the bound", () => {
+    expect(supportError(130, 125, 120)).toBe("start must not be after stop");
+  });
+});
+
 describe("changedBound", () => {
   it("names the bound that differs from the current span", () => {
     expect(changedBound({ start: 1, stop: 10 }, { start: 5, stop: 10 })).toBe(
@@ -52,5 +72,11 @@ describe("supportIssue", () => {
       bound: "start",
       message: "start must not be after stop",
     });
+  });
+
+  it("places a past-the-end stop under the stop bound", () => {
+    expect(
+      supportIssue({ start: 5, stop: 30 }, { start: 5, stop: 200 }, 120),
+    ).toEqual({ bound: "stop", message: "stop must be at most 120" });
   });
 });
