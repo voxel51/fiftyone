@@ -2,7 +2,7 @@ import { Point } from "@fiftyone/looker";
 import { selectorFamily } from "recoil";
 import { filters, modalFilters } from "./filters";
 import { BooleanFilter } from "./pathFilters/boolean";
-import { NumericFilter } from "./pathFilters/numeric";
+import { helperFunction, NumericFilter } from "./pathFilters/numeric";
 import { StringFilter } from "./pathFilters/string";
 import { expandPath } from "./schema";
 
@@ -92,10 +92,13 @@ export default selectorFamily<(path: string, value: Point) => boolean, boolean>(
                 }
               }
 
-              const includes =
-                value[key] >= numFilter.range[0] &&
-                value[key] <= numFilter.range[1];
-              const r = numFilter.exclude ? !includes : includes;
+              const [start, end] = numFilter.range ?? [null, null];
+              const r = helperFunction(
+                value[key] as number,
+                numFilter.exclude,
+                start,
+                end,
+              );
 
               if (!r) {
                 result = false;
