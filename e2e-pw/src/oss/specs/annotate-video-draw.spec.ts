@@ -128,10 +128,7 @@ test.describe.serial("video per-frame detection drawing", () => {
 
     // draw a box in detection mode
     await modal.sidebar.annotate.detectionMode("Detections");
-    await modal.sampleCanvas.move(0.55, 0.55);
-    await modal.sampleCanvas.down();
-    await modal.sampleCanvas.move(0.78, 0.78);
-    await modal.sampleCanvas.up();
+    await modal.videoAnnotate.drawBox([0.55, 0.55], [0.78, 0.78]);
 
     // the draw creates exactly one object track on the timeline
     await modal.videoAnnotate.assert.objectTrackCount(1);

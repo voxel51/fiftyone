@@ -117,17 +117,14 @@ test.describe.serial("video annotation sample navigation", () => {
     const [firstTrack] = await va.objectTrackIds();
 
     // page forward to the next video sample (ArrowRight = ModalNextSample)
-    await page.keyboard.press("ArrowRight");
-    // the first sample's track row leaves before the next sample's surface reveals
+    await va.navigateSample("next");
     await va.assert.hasTrack(firstTrack, false);
-    await va.waitForSurface();
     await va.assert.objectTrackCount(1);
     const [secondTrack] = await va.objectTrackIds();
 
     // page back to the first sample
-    await page.keyboard.press("ArrowLeft");
+    await va.navigateSample("previous");
     await va.assert.hasTrack(firstTrack);
-    await va.waitForSurface();
     await va.assert.objectTrackCount(1);
 
     expect(secondTrack).not.toBe(firstTrack);

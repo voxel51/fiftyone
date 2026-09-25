@@ -86,6 +86,7 @@ test("toggling a frame field keeps the timeline drawer and its rows mounted", as
   await modal.assert.isOpen();
   await modal.waitForSampleLoadDomAttribute();
   const va = modal.videoAnnotate;
+  await va.waitForTimeline();
 
   // both fields are active by default: one row each
   await va.assert.objectTrackCount(2);
@@ -120,7 +121,9 @@ test("toggling a frame field keeps the timeline drawer and its rows mounted", as
 
   // turn the polylines field off: the stream rebuilds, the polyline row goes,
   // the detection row stays put in the same drawer
-  await modal.sidebar.toggleLabelCheckbox("frames.polylines");
+  await va.afterTracksChange(() =>
+    modal.sidebar.toggleLabelCheckbox("frames.polylines"),
+  );
   await va.assert.objectTrackCount(1);
   await expect(page.locator(TIMELINE_ROOT)).toHaveAttribute(
     "data-timeline-loaded",
@@ -138,7 +141,9 @@ test("toggling a frame field keeps the timeline drawer and its rows mounted", as
 
   // and back on: the stream rebuilds again, still without a remount, and the
   // detection row that was held is the very same node
-  await modal.sidebar.toggleLabelCheckbox("frames.polylines");
+  await va.afterTracksChange(() =>
+    modal.sidebar.toggleLabelCheckbox("frames.polylines"),
+  );
   await va.assert.objectTrackCount(2);
   await expect(page.locator(TIMELINE_ROOT)).toHaveAttribute(
     "data-timeline-loaded",

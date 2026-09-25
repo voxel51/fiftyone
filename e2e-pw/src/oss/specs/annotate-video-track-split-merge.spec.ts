@@ -234,7 +234,7 @@ test.describe.serial("video annotation track split / merge", () => {
     await va.assert.objectTrackCount(3);
 
     // one undo unit: back to vehicle + person
-    await va.undo();
+    await va.afterTracksChange(() => va.undo());
     await va.assert.objectTrackCount(2);
     await va.assert.hasTrack(vehicleId);
   });

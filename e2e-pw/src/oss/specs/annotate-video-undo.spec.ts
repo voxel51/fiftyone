@@ -119,19 +119,16 @@ test.describe.serial("video annotation undo/redo", () => {
 
     // draw a second box; its auto-extend spans many frames as one coalesced unit
     await modal.sidebar.annotate.detectionMode("Detections");
-    await modal.sampleCanvas.move(0.6, 0.6);
-    await modal.sampleCanvas.down();
-    await modal.sampleCanvas.move(0.82, 0.82);
-    await modal.sampleCanvas.up();
+    await va.drawBox([0.6, 0.6], [0.82, 0.82]);
     await va.assert.objectTrackCount(2);
 
     // ONE undo removes the entire drawn track (every auto-extended frame), not
     // just the last frame — leaving the seeded track intact
-    await undoKey(page);
+    await va.afterTracksChange(() => undoKey(page));
     await va.assert.objectTrackCount(1);
 
     // redo brings the whole drawn track back
-    await redoKey(page);
+    await va.afterTracksChange(() => redoKey(page));
     await va.assert.objectTrackCount(2);
   });
 
@@ -186,17 +183,14 @@ test.describe.serial("video annotation undo/redo", () => {
 
     // edit B: draw a second track (its auto-extend coalesces into one unit)
     await modal.sidebar.annotate.detectionMode("Detections");
-    await modal.sampleCanvas.move(0.6, 0.6);
-    await modal.sampleCanvas.down();
-    await modal.sampleCanvas.move(0.82, 0.82);
-    await modal.sampleCanvas.up();
+    await va.drawBox([0.6, 0.6], [0.82, 0.82]);
     await va.assert.objectTrackCount(2);
     await modal.sidebar.edit.exitToList();
 
     // EXACTLY two undos return to baseline — one per edit. If either edit
     // pushed a duplicate entry (the Lighter self-undo or the form's own
     // undoable), two undos would leave the surface mid-edit and this fails.
-    await undoKey(page);
+    await va.afterTracksChange(() => undoKey(page));
     await va.assert.objectTrackCount(1);
     await undoKey(page);
     await va.assert.labelListed("vehicle");
@@ -205,7 +199,7 @@ test.describe.serial("video annotation undo/redo", () => {
     // and exactly two redos reapply both, newest-undone first
     await redoKey(page);
     await va.assert.labelListed("person");
-    await redoKey(page);
+    await va.afterTracksChange(() => redoKey(page));
     await va.assert.objectTrackCount(2);
   });
 
@@ -229,7 +223,7 @@ test.describe.serial("video annotation undo/redo", () => {
     await va.assert.objectTrackCount(0);
 
     // a single undo restores the whole track
-    await undoKey(page);
+    await va.afterTracksChange(() => undoKey(page));
     await va.assert.objectTrackCount(1);
   });
 });

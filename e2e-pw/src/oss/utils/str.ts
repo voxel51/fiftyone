@@ -13,3 +13,10 @@ export const exactText = (value: string) =>
 /** Matches `value` as one token of a space-separated list */
 export const spaceToken = (value: string) =>
   new RegExp(`(^| )${escapeRegExp(value)}( |$)`);
+
+/**
+ * Collapse runs of whitespace to one space and trim, as Playwright's text
+ * matchers do, for comparing a single `textContent()` read
+ */
+export const collapseWhitespace = (text: string | null) =>
+  (text ?? "").replace(/\s+/g, " ").trim();

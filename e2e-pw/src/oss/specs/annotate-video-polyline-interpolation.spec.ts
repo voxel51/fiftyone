@@ -348,10 +348,12 @@ test.describe("polyline track deletion on video", () => {
     await clickOverlay(modal, id);
 
     // received only if the first press deleted the track
-    await modal.eventUtils.after(
-      "lighter:overlay-removed",
-      () => page.keyboard.press("Backspace"),
-      ofOverlay(id),
+    await modal.videoAnnotate.afterTracksChange(() =>
+      modal.eventUtils.after(
+        "lighter:overlay-removed",
+        () => page.keyboard.press("Backspace"),
+        ofOverlay(id),
+      ),
     );
     await modal.videoAnnotate.assert.objectTrackCount(1);
     // the delete flushes before the test ends

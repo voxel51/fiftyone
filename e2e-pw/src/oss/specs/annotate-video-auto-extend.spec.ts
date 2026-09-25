@@ -80,10 +80,7 @@ const openAnnotate = async (
 /** Draw a detection box across the given relative corners (annotate mode). */
 const drawBox = async (modal: ModalPom) => {
   await modal.sidebar.annotate.detectionMode("Detections");
-  await modal.sampleCanvas.move(0.55, 0.55, "crosshair");
-  await modal.sampleCanvas.down();
-  await modal.sampleCanvas.move(0.78, 0.78);
-  await modal.sampleCanvas.up();
+  await modal.videoAnnotate.drawBox([0.55, 0.55], [0.78, 0.78]);
 };
 
 const stepForward = async (modal: ModalPom, n: number) => {
@@ -182,11 +179,11 @@ test.describe.serial("video annotation fresh draw", () => {
     // auto-extend filler coalesces into the draw's undo unit, so a SINGLE undo
     // removes the whole freshly-drawn track (box + filler).
     await modal.sidebar.edit.assert.undoIsEnabled();
-    await modal.sidebar.edit.undo();
+    await va.afterTracksChange(() => modal.sidebar.edit.undo());
     await va.assert.objectTrackCount(0);
 
     // redo re-creates the whole track in one step
-    await modal.sidebar.edit.redo();
+    await va.afterTracksChange(() => modal.sidebar.edit.redo());
     await va.assert.objectTrackCount(1);
   });
 });
