@@ -1,0 +1,105 @@
+/* A thin warning strip above the header: an amber wash, bookended by
+   caution-tape stripes that fade out before they reach the text */
+.banner {
+  position: relative;
+  flex: none;
+  height: 28px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--banner-tint) 14%, var(--banner-surface));
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--banner-tint) 40%, var(--banner-surface));
+  animation: drop-in 240ms ease-out;
+}
+
+.banner::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    -45deg,
+    color-mix(in srgb, var(--banner-tint) 22%, transparent) 0 8px,
+    transparent 8px 16px
+  );
+  mask-image: linear-gradient(
+    90deg,
+    #000,
+    transparent 18%,
+    transparent 82%,
+    #000
+  );
+  pointer-events: none;
+}
+
+.content {
+  position: relative;
+  height: 100%;
+  padding: 0 16px;
+  white-space: nowrap;
+}
+
+.title {
+  flex-shrink: 0;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.divider {
+  flex-shrink: 0;
+  width: 1px;
+  height: 12px;
+  background: color-mix(in srgb, var(--banner-tint) 50%, transparent);
+}
+
+/* The message gives way first when the window is narrow; the upgrade link
+   stays whole */
+.message {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.count {
+  padding: 1px 6px;
+  border-radius: 9999px;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--banner-tint) 24%, transparent);
+}
+
+.fixed {
+  flex-shrink: 0;
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: var(--banner-tint);
+  text-underline-offset: 3px;
+}
+
+.arrow {
+  transition: transform 150ms ease-out;
+}
+
+.link:hover .arrow {
+  transform: translate(1px, -1px);
+}
+
+@keyframes drop-in {
+  from {
+    margin-top: -28px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .banner {
+    animation: none;
+  }
+
+  .arrow {
+    transition: none;
+  }
+}
