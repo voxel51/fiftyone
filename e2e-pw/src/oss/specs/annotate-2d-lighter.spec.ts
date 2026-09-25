@@ -57,7 +57,9 @@ test.beforeEach(async ({ fiftyoneLoader, modal, page }) => {
   });
   await modal.waitForSampleLoadDomAttribute();
   await modal.assert.isOpen();
-  await modal.sidebar.switchMode("annotate");
+  await modal.sampleCanvas.afterRenderer(SampleCanvasType.LIGHTER, () =>
+    modal.sidebar.switchMode("annotate"),
+  );
 });
 
 /** The engine-derived Labels count, once it settles on `expected`. */

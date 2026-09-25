@@ -240,6 +240,7 @@ test.describe.serial("sparse multimodal groups", () => {
         await modal.looker3dControls.waitForAllAssetsLoaded();
         await modal.assert.verify3dRendererVisible();
       } else if (mode === "annotate") {
+        await modal.waitForLighterReady();
         await modal.sampleCanvas.assert.is(SampleCanvasType.LIGHTER);
       } else {
         await modal.waitForSampleLoadDomAttribute(true);

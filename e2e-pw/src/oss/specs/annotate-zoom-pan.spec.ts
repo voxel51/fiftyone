@@ -102,7 +102,9 @@ test.describe.serial("Lighter zoom and pan", () => {
   }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, imageDatasetName);
     await grid.openFirstSample();
-    await modal.sidebar.switchMode("annotate");
+    await modal.sampleCanvas.afterRenderer(SampleCanvasType.LIGHTER, () =>
+      modal.sidebar.switchMode("annotate"),
+    );
     await modal.sampleCanvas.assert.is(SampleCanvasType.LIGHTER);
     await modal.waitForLighterReady();
 

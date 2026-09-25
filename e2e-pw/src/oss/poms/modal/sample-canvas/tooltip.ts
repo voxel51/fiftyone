@@ -67,11 +67,22 @@ export class TooltipPom {
     await this.locked.getByTestId("quick-edit").click();
   }
 
-  /**
-   * Toggle the mode of the tooltip. Locked or unlocked
-   */
+  /** Run `action` (a hover) and resolve once the tooltip has shown */
+  afterShown<T>(action: () => Promise<T>): Promise<T> {
+    return this.eventUtils.after(
+      "e2e:modal:tooltip",
+      action,
+      (e) => (e.detail as { visible: boolean }).visible,
+    );
+  }
+
+  /** Lock the shown tooltip; Control locks it and never unlocks it */
   async toggleLock() {
-    await this.page.keyboard.press("Control");
+    await this.eventUtils.after(
+      "e2e:modal:tooltip",
+      () => this.page.keyboard.press("Control"),
+      (e) => (e.detail as { locked: boolean }).locked,
+    );
   }
 }
 
@@ -100,10 +111,7 @@ class TooltipAsserter {
    * @param visible Whether it is expected to be visibile or not
    */
   async isVisible(visible = true) {
-    const locator = this.tooltipPom.content;
-    return visible
-      ? await expect(locator).toBeVisible()
-      : await expect(locator).toBeHidden();
+    expect(await this.tooltipPom.content.isVisible()).toBe(visible);
   }
 
   /**

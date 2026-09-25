@@ -47,11 +47,13 @@ test.describe.serial("lighter-toolbar-smoke", () => {
   }) => {
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();
-    await modal.sidebar.switchMode("annotate");
+    await modal.sampleCanvas.afterRenderer(SampleCanvasType.LIGHTER, () =>
+      modal.sidebar.switchMode("annotate"),
+    );
 
     await modal.sampleCanvas.assert.is(SampleCanvasType.LIGHTER);
     await modal.sampleCanvas.toolbar.assert.isVisible(false);
-    await modal.sampleCanvas.move(0.5, 0.5);
+    await modal.sampleCanvas.revealToolbar();
     await modal.sampleCanvas.toolbar.assert.isVisible();
   });
 });

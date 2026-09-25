@@ -1,6 +1,7 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  */
+import { getEventBus } from "@fiftyone/events";
 import {
   ImageOptions,
   ImageOverlay,
@@ -32,6 +33,11 @@ import useViewport from "./useViewport";
 
 const GpuErrorAnimation = lazy(() => import("./GpuErrorAnimation"));
 
+/** e2e specs wait on the renderer a mode switch or quick edit reveals */
+type LighterSampleRendererE2EEvents = {
+  "e2e:modal:lighter-revealed": { sampleId: string };
+};
+
 export interface LighterSampleRendererProps {
   /** Custom CSS class name */
   className?: string;
@@ -62,6 +68,14 @@ export const LighterSampleRenderer = ({
   sampleRef.current = sample;
 
   const onReveal = useCallback(() => setIsRevealed(true), []);
+
+  useEffect(() => {
+    if (!isRevealed) return;
+    getEventBus<LighterSampleRendererE2EEvents>().dispatch(
+      "e2e:modal:lighter-revealed",
+      { sampleId: sampleRef.current?.sample?._id ?? "" },
+    );
+  }, [isRevealed]);
 
   useEffect(() => {
     // sceneId should be deterministic, but unique for a given sample snapshot

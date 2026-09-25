@@ -291,12 +291,51 @@ export class SampleCanvasPom {
     ).toBe("modal");
   }
 
-  /** Park the mouse and check no hover affordance is showing */
+  /**
+   * Park the mouse and wait for every hover affordance to unmount. Leaving
+   * the canvas hides them in a later render, and only if one was showing.
+   */
   async prepareForScreenshot() {
     await this.parkMouse();
-    await expect(this.checkbox).toBeHidden();
-    await this.tooltip.assert.isVisible(false);
-    await this.toolbar.assert.isVisible(false);
+    await Promise.all(
+      [this.checkbox, this.tooltip.content, this.toolbar.locator].map(
+        (locator) => locator.waitFor({ state: "detached" }),
+      ),
+    );
+  }
+
+  /** Hover a label at relative `x`, `y`; resolves once its tooltip shows */
+  async hoverLabel(x: number, y: number) {
+    await this.tooltip.afterShown(() => this.move(x, y, "pointer"));
+  }
+
+  /**
+   * Hover the canvas center; resolves once the Lighter toolbar the hover
+   * mounts is there
+   */
+  async revealToolbar() {
+    await this.move(0.5, 0.5);
+    await this.toolbar.locator.waitFor();
+  }
+
+  /**
+   * Run `action` (a mode switch or a quick edit) and resolve once the `type`
+   * renderer it switches to has shown its sample
+   */
+  async afterRenderer<T>(
+    type: SampleCanvasType.LIGHTER | SampleCanvasType.LOOKER,
+    action: () => Promise<T>,
+  ): Promise<T> {
+    if (type === SampleCanvasType.LIGHTER) {
+      return this.eventUtils.after("e2e:modal:lighter-revealed", action);
+    }
+    const result = await action();
+    await this.locator
+      .getByTestId(type)
+      .locator('[canvas-loaded="true"]')
+      .first()
+      .waitFor({ state: "attached" });
+    return result;
   }
 
   async #toScreenCoordinates(x: number, y: number) {
@@ -370,8 +409,10 @@ class SampleCanvasAsserter {
    *
    * @param name The sample canvas type, e.g. "lighter"
    */
-  is(type: SampleCanvasType) {
-    return expect(this.sampleCanvasPom.locator.getByTestId(type)).toBeVisible();
+  async is(type: SampleCanvasType) {
+    expect(
+      await this.sampleCanvasPom.locator.getByTestId(type).isVisible(),
+    ).toBe(true);
   }
 }
 

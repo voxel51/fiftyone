@@ -51,9 +51,6 @@ class ToolbarAsserter {
    * @param visible Whether the toolbar is expected to be visible (default true)
    */
   async isVisible(visible = true) {
-    const locator = this.toolbarPom.locator;
-    return visible
-      ? await expect(locator).toBeVisible()
-      : await expect(locator).toBeHidden();
+    expect(await this.toolbarPom.locator.isVisible()).toBe(visible);
   }
 }

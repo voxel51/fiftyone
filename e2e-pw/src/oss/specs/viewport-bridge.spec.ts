@@ -60,14 +60,14 @@ test.describe.serial("viewport-bridge-visual", () => {
 
     await modal.sampleCanvas.assert.hasScreenshot("round-trip-looker.png");
 
-    await modal.sidebar.switchMode("annotate");
+    await modal.sampleCanvas.afterRenderer(SampleCanvasType.LIGHTER, () =>
+      modal.sidebar.switchMode("annotate"),
+    );
     await modal.sampleCanvas.assert.is(SampleCanvasType.LIGHTER);
 
-    // Wait for PixiJS to have fully initialised and applied the transferred
-    // viewport before switching back.
-    await modal.waitForLighterReady();
-
-    await modal.sidebar.switchMode("explore");
+    await modal.sampleCanvas.afterRenderer(SampleCanvasType.LOOKER, () =>
+      modal.sidebar.switchMode("explore"),
+    );
     await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
     await modal.waitForSampleLoadDomAttribute();
 
@@ -93,7 +93,9 @@ test.describe.serial("viewport-bridge-visual", () => {
 
     await modal.sampleCanvas.assert.hasScreenshot("cross-renderer.png");
 
-    await modal.sidebar.switchMode("annotate");
+    await modal.sampleCanvas.afterRenderer(SampleCanvasType.LIGHTER, () =>
+      modal.sidebar.switchMode("annotate"),
+    );
     await modal.sampleCanvas.assert.is(SampleCanvasType.LIGHTER);
 
     await modal.sampleCanvas.assert.hasScreenshot("cross-renderer.png");

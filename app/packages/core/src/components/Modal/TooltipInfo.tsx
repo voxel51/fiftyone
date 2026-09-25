@@ -1,4 +1,5 @@
 import { IconButton, Tooltip } from "@fiftyone/components";
+import { getEventBus } from "@fiftyone/events";
 import * as fos from "@fiftyone/state";
 import { ModalMode, useModalMode } from "@fiftyone/state";
 import { isHoveringAnyLabelWithInstanceConfig } from "@fiftyone/state/src/jotai";
@@ -168,6 +169,11 @@ const getHiddenLabelsKey = (datasetName: string, labelName: string) => {
 };
 
 const LABEL_CHANGE_EVENT_NAME = "fo-hide-label-change";
+
+/** e2e specs wait on the tooltip a hover shows, hides or a key locks */
+type TooltipE2EEvents = {
+  "e2e:modal:tooltip": { field: string; locked: boolean; visible: boolean };
+};
 
 const getHiddenLabels = (datasetName: string, labelName: string) => {
   const hiddenLabels = localStorage.getItem(
@@ -355,6 +361,14 @@ export const TooltipInfo = React.memo(() => {
       document.removeEventListener("keydown", lockTooltip);
     };
   }, []);
+
+  useEffect(() => {
+    getEventBus<TooltipE2EEvents>().dispatch("e2e:modal:tooltip", {
+      field: detail?.field ?? "",
+      locked: isTooltipLocked,
+      visible: Boolean(detail),
+    });
+  }, [detail, isTooltipLocked]);
 
   const tooltipDiv = useMemo(() => {
     if (!detail) {

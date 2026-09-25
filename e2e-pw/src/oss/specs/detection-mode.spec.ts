@@ -51,7 +51,7 @@ test.describe.serial("detection mode", () => {
       searchParams: new URLSearchParams({ id: "000000000000000000000000" }),
     });
 
-    await modal.waitForOpen();
+    await modal.waitForSampleLoadDomAttribute(true);
     await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
     await modal.sidebar.switchMode("annotate");
   });

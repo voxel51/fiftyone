@@ -68,7 +68,7 @@ test("a lone vertex renders and hovers like a keypoint", async ({ modal }) => {
   // park the cursor away from the vertex, then hover it; the cursor gate
   // retries until the dot's hit target answers
   await modal.sampleCanvas.move(0.9, 0.9);
-  await modal.sampleCanvas.move(0.5, 0.5, "pointer");
+  await modal.sampleCanvas.hoverLabel(0.5, 0.5);
 
   await modal.sampleCanvas.tooltip.assert.isVisible();
   await modal.sampleCanvas.tooltip.assert.hasField("polylines");

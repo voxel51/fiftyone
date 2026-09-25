@@ -55,7 +55,7 @@ test.describe.serial("Canvas Rendering Regressions", () => {
     });
 
     // Confirm the modal opened and is displaying the Looker (Explore) canvas
-    await modal.waitForOpen();
+    await modal.waitForSampleLoadDomAttribute(true);
     await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
 
     // Assert pixelated rendering in Explore mode via screenshot comparison

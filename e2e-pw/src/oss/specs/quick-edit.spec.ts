@@ -249,10 +249,12 @@ test.describe("quick edit", () => {
    * below; tooltip content itself is covered by "detections via tooltip".
    */
   const enterDetectionQuickEdit = async (modal: ModalPom) => {
-    await modal.sampleCanvas.move(0.5, 0.5, "pointer");
+    await modal.sampleCanvas.hoverLabel(0.5, 0.5);
     await modal.sampleCanvas.tooltip.assert.isVisible();
     await modal.sampleCanvas.tooltip.toggleLock();
-    await modal.sampleCanvas.tooltip.quickEdit();
+    await modal.sampleCanvas.afterRenderer(SampleCanvasType.LIGHTER, () =>
+      modal.sampleCanvas.tooltip.quickEdit(),
+    );
     await modal.sampleCanvas.assert.is(SampleCanvasType.LIGHTER);
     await modal.sampleCanvas.move(0.9, 0.9, "crosshair");
   };
@@ -274,7 +276,7 @@ test.describe("quick edit", () => {
     await modal.sampleCanvas.assert.hasScreenshot("classification-looker.png");
 
     // Show tooltip
-    await modal.sampleCanvas.move(0.05, 0.03, "pointer");
+    await modal.sampleCanvas.hoverLabel(0.05, 0.03);
     await modal.sampleCanvas.tooltip.assert.isVisible();
     await modal.sampleCanvas.tooltip.assert.isLocked(false);
 
@@ -287,7 +289,9 @@ test.describe("quick edit", () => {
     );
 
     // Transition to quick edit via the sidebar
-    await modal.sidebar.quickEdit("classification");
+    await modal.sampleCanvas.afterRenderer(SampleCanvasType.LIGHTER, () =>
+      modal.sidebar.quickEdit("classification"),
+    );
     await modal.sampleCanvas.assert.is(SampleCanvasType.LIGHTER);
     await modal.sampleCanvas.assert.hasScreenshot("classification-lighter.png");
   });
@@ -306,7 +310,7 @@ test.describe("quick edit", () => {
     await modal.sampleCanvas.assert.hasCursor("default");
 
     // Show tooltip
-    await modal.sampleCanvas.move(0.5, 0.5, "pointer");
+    await modal.sampleCanvas.hoverLabel(0.5, 0.5);
     await modal.sampleCanvas.tooltip.assert.isVisible();
     await modal.sampleCanvas.tooltip.assert.isLocked(false);
 
@@ -323,7 +327,9 @@ test.describe("quick edit", () => {
     );
 
     // Transition to quick edit via the tooltip
-    await modal.sampleCanvas.tooltip.quickEdit();
+    await modal.sampleCanvas.afterRenderer(SampleCanvasType.LIGHTER, () =>
+      modal.sampleCanvas.tooltip.quickEdit(),
+    );
     await modal.sampleCanvas.assert.is(SampleCanvasType.LIGHTER);
     await modal.sampleCanvas.move(0.9, 0.9, "crosshair");
     await modal.sidebar.edit.assert.redoIsEnabled(false);
