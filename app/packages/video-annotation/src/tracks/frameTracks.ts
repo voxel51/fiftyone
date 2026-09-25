@@ -1,7 +1,12 @@
-import { addressIdOf, type AnnotationEngine } from "@fiftyone/annotation";
+import {
+  addressIdOf,
+  type AnnotationEngine,
+  toSchemaField,
+} from "@fiftyone/annotation";
 import type { Track, TrackEvent } from "@fiftyone/playback";
 import type { LabelData } from "@fiftyone/utilities";
 import { isEqual } from "lodash";
+import { singletonAddressId } from "../streams/framesData";
 import {
   mergeAttributeRuns,
   mergePresence,
@@ -109,7 +114,8 @@ export interface PerInstanceLabel {
 
 /** Resolve a row's color from its label and the field path it lives on. */
 export type PerInstanceColorResolver = (
-  label: PerInstanceLabel,
+  /** `null` asks for the field's color: a Segmentation or Heatmap row. */
+  label: PerInstanceLabel | null,
   path: string,
 ) => string;
 
@@ -189,7 +195,7 @@ export function buildPerInstanceTracks({
     fps,
     dynamicAttributes,
   );
-  return statesToTracks(states, resolveColor, dynamicAttributes);
+  return statesToTracks(states, resolveColor, dynamicAttributes, fps);
 }
 
 /** One tracked instance's server-side presence distribution (no payloads). */
@@ -256,7 +262,7 @@ export function buildTracksFromIndex({
     path,
     dynamicAttributes,
   );
-  return statesToTracks(states, resolveColor, dynamicAttributes);
+  return statesToTracks(states, resolveColor, dynamicAttributes, fps);
 }
 
 /** Shape the accumulated states into sorted, colored timeline tracks. */
@@ -264,6 +270,7 @@ function statesToTracks(
   states: Map<string, InstanceState>,
   resolveColor: PerInstanceColorResolver,
   dynamicAttributes: readonly string[],
+  fps: number,
 ): Track[] {
   assignDisplayOrdinals(states);
 
@@ -274,7 +281,7 @@ function statesToTracks(
       continue;
     }
 
-    const parent = toTrack(id, state, resolveColor);
+    const parent = toTrack(id, state, resolveColor, fps);
     parents.push(parent);
 
     const children = buildSubTracks(parent, state, dynamicAttributes);
@@ -590,11 +597,27 @@ function assignDisplayOrdinals(states: Map<string, InstanceState>): void {
   }
 }
 
+/**
+ * Where a keyframe's marker sits: at its frame's start, except on a track's
+ * last frame, where it sits at the bar's end so the two visibly coincide.
+ */
+export const keyframeMarkerSec = (
+  frameStartSec: number,
+  intervals: readonly { start: number; end: number }[],
+  fps: number,
+): number => {
+  const frameEndSec = frameStartSec + 1 / fps;
+  // the bar's own end value, so the two coincide exactly
+  const bar = intervals.find(({ end }) => Math.abs(end - frameEndSec) < 1e-6);
+  return bar ? bar.end : frameStartSec;
+};
+
 /** Build the timeline {@link Track} for one accumulated instance state. */
 function toTrack(
   id: string,
   state: InstanceState,
   resolveColor: PerInstanceColorResolver,
+  fps: number,
 ): Track {
   // Every event carries the field path so a row's click / hover resolves the
   // correct `(path, instanceId)` ref regardless of which frame field it's on.
@@ -619,22 +642,30 @@ function toTrack(
     // Point events render as diamond markers on top of the presence bar
     // via `TimelineTrack`'s no-`endSec` branch.
     ...state.keyframeTimes.map((startSec) => ({
-      startSec,
+      startSec: keyframeMarkerSec(startSec, state.intervals, fps),
       label: "Keyframe",
       data,
     })),
   ];
 
+  // A Segmentation or Heatmap is one row per field, with no class or index
+  const field =
+    id === singletonAddressId(state.path) ? toSchemaField(state.path) : null;
+
   return {
     id,
-    label: `${state.classLabel} ${state.displayIndex}`,
-    description: `Tracked "${state.classLabel}" (track ${state.displayIndex})`,
+    label: field ?? `${state.classLabel} ${state.displayIndex}`,
+    description: field
+      ? `Field "${field}"`
+      : `Tracked "${state.classLabel}" (track ${state.displayIndex})`,
     color: resolveColor(
-      {
-        label: state.classLabel,
-        index: state.persistedIndex,
-        instance: state.instance,
-      },
+      field
+        ? null
+        : {
+            label: state.classLabel,
+            index: state.persistedIndex,
+            instance: state.instance,
+          },
       state.path,
     ),
     events,

@@ -827,6 +827,50 @@ class FrameLabelSchemaTests(unittest.TestCase):
         self.assertIn("frames.detections", dataset.active_label_schemas)
 
     @drop_datasets
+    def test_create_and_activate_field_operator_classes_component(self):
+        from fiftyone.operators.executor import ExecutionContext
+        from plugins.operators.annotation import CreateAndActivateField
+
+        def create(label_schema_config):
+            dataset = fo.Dataset()
+            ctx = ExecutionContext(
+                operator_uri="create_and_activate_field",
+                request_params={
+                    "dataset_name": dataset.name,
+                    "params": {
+                        "field_name": "ground_truth",
+                        "field_category": "label",
+                        "field_type": "detections",
+                        "label_schema_config": label_schema_config,
+                    },
+                },
+            )
+            result = CreateAndActivateField().execute(ctx)
+            self.assertNotIn("error", result)
+            dataset.reload()
+            return dataset.label_schemas["ground_truth"]["component"]
+
+        many = [f"c{i}" for i in range(7)]
+
+        # no explicit choice: pick from the class count
+        self.assertEqual(create({"classes": ["a", "b"]}), "radio")
+        self.assertEqual(create({"classes": many}), "dropdown")
+
+        # an explicit choice wins regardless of the class count
+        self.assertEqual(
+            create({"classes": ["a", "b"], "component": "dropdown"}),
+            "dropdown",
+        )
+        self.assertEqual(
+            create({"classes": many, "component": "radio"}), "radio"
+        )
+
+        # anything else falls back to the class-count default
+        self.assertEqual(
+            create({"classes": many, "component": "text"}), "dropdown"
+        )
+
+    @drop_datasets
     def test_create_and_activate_sample_field_operator(self):
         from fiftyone.operators.executor import ExecutionContext
         from plugins.operators.annotation import CreateAndActivateField

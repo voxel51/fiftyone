@@ -1,6 +1,39 @@
 {
     "models": [
         {
+            "base_name": "map-anything-apache-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Universal feed-forward metric 3D reconstruction from images producing depth maps, camera poses, intrinsics, and point clouds",
+            "source": "https://huggingface.co/facebook/map-anything-apache",
+            "author": "Nikhil Keetha, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 4230000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.mapanything.MapAnythingModel",
+                "config": {
+                    "hf_repo": "facebook/map-anything-apache",
+                    "output_type": "depth"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "mapanything @ git+https://github.com/facebookresearch/map-anything.git@v1.1"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["depth", "3d", "pointcloud", "reconstruction", "torch"],
+            "training_data": [],
+            "date_added": "2026-02-06 12:00:00"
+        },
+        {
             "base_name": "alexnet-imagenet-torch",
             "base_filename": "alexnet-owt-4df8aa71.pth",
             "version": null,
@@ -9638,45 +9671,6 @@
             "date_added": "2024-05-20 19:22:51"
         },
         {
-            "base_name": "yolo-nas-torch",
-            "base_filename": null,
-            "version": null,
-            "description": "AI-designed detector family offering three model variants for diverse deployment scenarios",
-            "source": "https://github.com/Deci-AI/super-gradients",
-            "author": "Shay Aharon, et al.",
-            "license": "Apache 2.0",
-            "size_bytes": null,
-            "default_deployment_config_dict": {
-                "type": "fiftyone.utils.super_gradients.TorchYoloNasModel",
-                "config": {
-                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
-                    "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
-                    "raw_inputs": true
-                }
-            },
-            "requirements": {
-                "packages": ["torch", "torchvision", "super-gradients"],
-                "cpu": {
-                    "support": true
-                },
-                "gpu": {
-                    "support": true
-                }
-            },
-            "tags": ["detection", "torch", "yolo", "official"],
-            "training_data": [
-                {
-                    "name": "MS COCO 2017",
-                    "url": "https://cocodataset.org"
-                },
-                {
-                    "name": "Objects365",
-                    "url": "https://www.objects365.org"
-                }
-            ],
-            "date_added": "2024-01-06 08:51:14"
-        },
-        {
             "base_name": "yolov5x-coco-torch",
             "base_filename": "yolov5x-coco.pt",
             "description": "High-accuracy detector offering top precision for applications where quality is critical",
@@ -11806,6 +11800,118 @@
             "date_added": "2026-06-30 00:00:00"
         },
         {
+            "base_name": "florence-2-base-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Florence-2 base (0.23B) prompt-based vision foundation model for detection, grounding, dense captioning, OCR, segmentation and captioning",
+            "source": "https://huggingface.co/florence-community/Florence-2-base",
+            "author": "Bin Xiao, et al.",
+            "license": "MIT",
+            "size_bytes": 468567567,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.florence2.Florence2Model",
+                "config": {
+                    "name_or_path": "florence-community/Florence-2-base"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers>=4.56.0"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "ocr", "vlm", "torch", "transformer"],
+            "training_data": [],
+            "date_added": "2026-09-25 12:00:00"
+        },
+        {
+            "base_name": "florence-2-large-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Florence-2 large (0.77B) prompt-based vision foundation model for detection, grounding, dense captioning, OCR, segmentation and captioning",
+            "source": "https://huggingface.co/florence-community/Florence-2-large",
+            "author": "Bin Xiao, et al.",
+            "license": "MIT",
+            "size_bytes": 1558929750,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.florence2.Florence2Model",
+                "config": {
+                    "name_or_path": "florence-community/Florence-2-large"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers>=4.56.0"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "ocr", "vlm", "torch", "transformer"],
+            "training_data": [],
+            "date_added": "2026-09-25 12:00:00"
+        },
+        {
+            "base_name": "florence-2-base-ft-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Florence-2 base-ft (0.23B) prompt-based vision foundation model fine-tuned on downstream tasks for detection, grounding, dense captioning, OCR, segmentation and captioning",
+            "source": "https://huggingface.co/florence-community/Florence-2-base-ft",
+            "author": "Bin Xiao, et al.",
+            "license": "MIT",
+            "size_bytes": 468567573,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.florence2.Florence2Model",
+                "config": {
+                    "name_or_path": "florence-community/Florence-2-base-ft"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers>=4.56.0"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "ocr", "vlm", "torch", "transformer"],
+            "training_data": [],
+            "date_added": "2026-09-25 12:00:00"
+        },
+        {
+            "base_name": "florence-2-large-ft-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Florence-2 large-ft (0.77B) prompt-based vision foundation model fine-tuned on downstream tasks for detection, grounding, dense captioning, OCR, segmentation and captioning",
+            "source": "https://huggingface.co/florence-community/Florence-2-large-ft",
+            "author": "Bin Xiao, et al.",
+            "license": "MIT",
+            "size_bytes": 1546346804,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.florence2.Florence2Model",
+                "config": {
+                    "name_or_path": "florence-community/Florence-2-large-ft"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers>=4.56.0"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "ocr", "vlm", "torch", "transformer"],
+            "training_data": [],
+            "date_added": "2026-09-25 12:00:00"
+        },
+        {
             "base_name": "rfdetr-nano-coco-torch",
             "base_filename": null,
             "version": null,
@@ -12374,6 +12480,120 @@
             "date_added": "2026-07-13 00:00:00"
         },
         {
+            "base_name": "paddle-ocr-vl-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "PaddleOCR-VL 1.6, a 0.9B vision-language document parser that detects and reads text in one pass",
+            "source": "https://huggingface.co/PaddlePaddle/PaddleOCR-VL-1.6",
+            "author": "PaddlePaddle Authors",
+            "license": "Apache 2.0",
+            "size_bytes": 1930059391,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.paddleocr_vl.PaddleOCRVLModel",
+                "config": {
+                    "name_or_path": "PaddlePaddle/PaddleOCR-VL-1.6",
+                    "task": "spotting"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "transformers>=5.13"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["ocr", "detection", "torch"],
+            "training_data": [],
+            "date_added": "2026-07-21 00:00:00"
+        },
+        {
+            "base_name": "point-transformer-v3-nuscenes-torch",
+            "base_filename": "ptv3-nuscenes-semseg-pt-v3m1-0-base.pth",
+            "version": null,
+            "description": "Point Transformer V3 backbone pretrained on nuScenes LiDAR semantic segmentation; produces embeddings for 3D point cloud samples",
+            "source": "https://github.com/Pointcept/PointTransformerV3",
+            "author": "Xiaoyang Wu, et al.",
+            "license": "MIT",
+            "size_bytes": 554519016,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://huggingface.co/Pointcept/PointTransformerV3/resolve/main/nuscenes-semseg-pt-v3m1-0-base/model/model_best.pth"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ptv3.PointTransformerV3Model",
+                "config": {
+                    "grid_size": 0.05,
+                    "feature_keys": ["coord", "strength"]
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "spconv-cu120",
+                    "torch-scatter",
+                    "timm",
+                    "addict",
+                    "open3d"
+                ],
+                "cpu": {
+                    "support": false
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "embeddings",
+                "3d",
+                "point-cloud",
+                "lidar",
+                "nuscenes",
+                "torch",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "nuScenes",
+                    "url": "https://www.nuscenes.org"
+                }
+            ],
+            "date_added": "2026-06-15 12:00:00"
+        },
+        {
+            "base_name": "glm-ocr-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "GLM-OCR, a 0.9B vision-language model that transcribes document images to text",
+            "source": "https://huggingface.co/zai-org/GLM-OCR",
+            "author": "Z.ai",
+            "license": "MIT",
+            "size_bytes": 2650754336,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.glm_ocr.GLMOCRModel",
+                "config": {
+                    "name_or_path": "zai-org/GLM-OCR",
+                    "task": "text"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "transformers>=5.14"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["ocr", "classification", "torch"],
+            "training_data": [],
+            "date_added": "2026-07-21 00:00:00"
+        },
+        {
             "base_name": "dinov3-vits16-torch",
             "base_filename": null,
             "version": null,
@@ -12528,6 +12748,270 @@
                 }
             ],
             "date_added": "2026-07-14 12:00:00"
+        },
+        {
+            "base_name": "argus-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Argus (103M) multi-task perception model on a frozen EUPE-ViT-B backbone for COCO detection, ImageNet classification, ADE20K semantic segmentation and indoor metric depth",
+            "source": "https://huggingface.co/phanerozoic/argus",
+            "author": "Charles Norton (phanerozoic)",
+            "license": "FAIR Noncommercial Research License",
+            "size_bytes": 412316194,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.argus.ArgusModel",
+                "config": {
+                    "name_or_path": "phanerozoic/argus"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision>=0.16", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "classification", "torch", "transformer"],
+            "training_data": [
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                },
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                },
+                {
+                    "name": "ADE20K",
+                    "url": "http://sceneparsing.csail.mit.edu/"
+                },
+                {
+                    "name": "NYU Depth V2",
+                    "url": "https://cs.nyu.edu/~fergus/datasets/nyu_depth_v2.html"
+                },
+                {
+                    "name": "LVD-1689M",
+                    "url": "https://arxiv.org/abs/2603.22387"
+                }
+            ],
+            "date_added": "2026-09-25 12:00:00"
+        },
+        {
+            "base_name": "c-radio-v4-h-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "C-RADIOv4-H (631M params) vision foundation model combining SigLIP2, DINOv3, and SAM3 for embeddings and spatial attention",
+            "source": "https://github.com/NVlabs/RADIO",
+            "author": "NVIDIA",
+            "license": "NVIDIA Open Model License Agreement",
+            "size_bytes": 2520000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.radio.CRadioV4Model",
+                "config": {
+                    "hf_repo": "nvidia/C-RADIOv4-H"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers",
+                    "timm",
+                    "einops",
+                    "open-clip-torch",
+                    "scikit-learn",
+                    "scipy"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "embeddings",
+                "heatmap",
+                "torch",
+                "transformer",
+                "nvidia",
+                "foundation"
+            ],
+            "training_data": [
+                {
+                    "name": "Multi-teacher distillation (SigLIP2, DINOv3, SAM3)",
+                    "url": "https://arxiv.org/abs/2601.17237"
+                }
+            ],
+            "date_added": "2026-02-05 12:00:00"
+        },
+        {
+            "base_name": "c-radio-v4-so400m-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "C-RADIOv4-SO400M (412M params) efficient vision foundation model competitive with ViT-H at lower cost",
+            "source": "https://github.com/NVlabs/RADIO",
+            "author": "NVIDIA",
+            "license": "NVIDIA Open Model License Agreement",
+            "size_bytes": 1648000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.radio.CRadioV4Model",
+                "config": {
+                    "hf_repo": "nvidia/C-RADIOv4-SO400M"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers",
+                    "timm",
+                    "einops",
+                    "open-clip-torch",
+                    "scikit-learn",
+                    "scipy"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "embeddings",
+                "heatmap",
+                "torch",
+                "transformer",
+                "nvidia",
+                "foundation"
+            ],
+            "training_data": [
+                {
+                    "name": "Multi-teacher distillation (SigLIP2, DINOv3, SAM3)",
+                    "url": "https://arxiv.org/abs/2601.17237"
+                }
+            ],
+            "date_added": "2026-02-05 12:00:00"
+        },
+        {
+            "base_name": "unlimited-ocr-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Unlimited-OCR document parser that reads a page into layout elements (titles, paragraphs, tables, figures) with recognized text, including long and multi-column documents",
+            "source": "https://huggingface.co/baidu/Unlimited-OCR",
+            "author": "Baidu",
+            "license": "MIT",
+            "size_bytes": 6672547120,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.unlimited_ocr.UnlimitedOCRModel",
+                "config": {
+                    "revision": "07dea832e22aefee32ad281d4b80551282e1c168"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=4.49,<5",
+                    "easydict",
+                    "einops",
+                    "addict"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["ocr", "detection", "torch", "transformer", "vlm"],
+            "training_data": [],
+            "date_added": "2026-07-14 12:00:00"
+        },
+        {
+            "base_name": "tipsv2-b14-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "TIPSv2 base vision-language encoder for zero-shot image classification and spatially-aware embeddings",
+            "source": "https://huggingface.co/google/tipsv2-b14",
+            "author": "Google DeepMind",
+            "license": "Apache 2.0",
+            "size_bytes": 784561815,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "google/tipsv2-b14"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=5.14",
+                    "sentencepiece"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "logits",
+                "embeddings",
+                "torch",
+                "transformers",
+                "zero-shot",
+                "official"
+            ],
+            "training_data": [],
+            "date_added": "2026-07-22 00:00:00"
+        },
+        {
+            "base_name": "tipsv2-l14-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "TIPSv2 large vision-language encoder for zero-shot image classification and spatially-aware embeddings",
+            "source": "https://huggingface.co/google/tipsv2-l14",
+            "author": "Google DeepMind",
+            "license": "Apache 2.0",
+            "size_bytes": 1952552415,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "google/tipsv2-l14"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=5.14",
+                    "sentencepiece"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "logits",
+                "embeddings",
+                "torch",
+                "transformers",
+                "zero-shot",
+                "official"
+            ],
+            "training_data": [],
+            "date_added": "2026-07-22 00:00:00"
         },
         {
             "base_name": "qwen3.8-27b-torch",

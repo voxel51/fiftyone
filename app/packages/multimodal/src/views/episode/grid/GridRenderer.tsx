@@ -23,7 +23,11 @@ import { PushVideoAccessUnitReader } from "../../../video/push-reader";
 import { VideoPlaybackManagerProvider } from "../../../video/react";
 import { REORDERED_VIDEO_DECODE_LOOKAHEAD_NS } from "../../../video/stream-engine";
 import type { VideoStreamLease } from "../../../video/playback-manager";
-import { isSharedEncodedVideoVisualization } from "../../../video/types";
+import {
+  isSharedEncodedVideoVisualization,
+  sharedVideoRejectionMessage,
+  unsupportedVideoCodecMessage,
+} from "../../../video/types";
 import { PointCloudPanel } from "../../../visualization/composition";
 import { acquireGridLiveLease } from "../../../visualization/webgpu/webgpu-live-lease";
 import { renderPointCloudSnapshot } from "../../../visualization/scene-3d/gpu/webgpu-snapshot-renderer";
@@ -58,6 +62,7 @@ import {
   useGridPosterProviderDescriptor,
   useProvidedGridPoster,
 } from "./use-grid-poster-provider";
+import { peekSourceBootstrap } from "../../../runtime";
 import { useHydratedSourceFacts } from "./use-hydrated-source-facts";
 import { LeRobotGridHoverVideo } from "./LeRobotGridHoverVideo";
 
@@ -71,7 +76,6 @@ const SNAPSHOT_REFRESH_DEBOUNCE_MS = 250;
  */
 export const HOVER_INTENT_DELAY_MS = 120;
 /** Dwell before hover playback starts, avoiding scroll-under-cursor churn. */
-export const PLAYBACK_HOVER_INTENT_DELAY_MS = HOVER_INTENT_DELAY_MS;
 
 const stopGridActivationPropagation = (
   event: React.MouseEvent<HTMLElement>,
@@ -163,6 +167,7 @@ export function GridRenderer({
       source
         ? {
             datasetId: ctx.dataset.datasetId,
+            episodeId: sampleId,
             mediaField: ctx.media?.field,
             mediaPath: ctx.media?.path,
             posterSourceName: firstMatch?.stream,
@@ -179,6 +184,7 @@ export function GridRenderer({
       firstMatch?.startNs,
       firstMatch?.stream,
       providerCacheScope,
+      sampleId,
       selectedSourceName,
       source,
     ],
@@ -246,6 +252,7 @@ export function GridRenderer({
     // A provider-answered tile skips the preview session exactly like a cache
     // hit, so it needs the same facts republish
     cachedPoster: effectivePoster,
+    episodeId: sampleId,
     previewSessionDemand,
     source,
     sourceFactsScope,
@@ -364,6 +371,9 @@ export function GridRenderer({
           streamId: preview.streamId,
           streamSourceName: preview.streamSourceName,
           streamSourceNames: preview.streamSourceNames,
+          ...(source
+            ? { timeRange: peekSourceBootstrap(source)?.timeRange }
+            : {}),
           width: size.width,
         },
         key: cacheKey,
@@ -375,6 +385,7 @@ export function GridRenderer({
       preview.streamId,
       preview.streamSourceName,
       preview.streamSourceNames,
+      source,
     ],
   );
   // An AV1 poster arrives through the native <video>, so "ready with no
@@ -397,6 +408,16 @@ export function GridRenderer({
     (error: Error) => setNativeVideoError(error.message),
     [],
   );
+  const posterImage =
+    preview.frame?.kind === "image" ? preview.frame.image : null;
+  const codecRejection =
+    posterImage !== null &&
+    posterImage.kind === "encoded-video" &&
+    !isSharedEncodedVideoVisualization(posterImage)
+      ? sharedVideoRejectionMessage(posterImage)
+      : preview.unsupportedCodec
+        ? unsupportedVideoCodecMessage(preview.unsupportedCodec)
+        : null;
 
   // This effect keeps the grid cache's retained-byte estimate current.
   useEffect(() => {
@@ -433,7 +454,11 @@ export function GridRenderer({
       {blocksGridActivation && ctx.openModal ? (
         <OpenModalButton openModal={ctx.openModal} />
       ) : null}
-      {preview.frame ? (
+      {codecRejection ? (
+        <div className={classes.codecRejection} role="alert">
+          {codecRejection}
+        </div>
+      ) : preview.frame ? (
         <VideoPlaybackManagerProvider manager={gridVideoPlayback.manager}>
           <PreviewFrame
             // Image dimensions are per camera stream; remount to drop stale
@@ -484,7 +509,11 @@ export function GridRenderer({
       ) : null}
       {preview.frame && preview.isBuffering ? (
         <span
-          className={classes.bufferingIndicator}
+          className={
+            blocksGridActivation
+              ? `${classes.bufferingIndicator} ${classes.bufferingIndicatorBesideButton}`
+              : classes.bufferingIndicator
+          }
           data-testid="episode-grid-buffering-indicator"
         >
           <Spinner size={Size.Xs} />
@@ -500,6 +529,7 @@ export function GridRenderer({
           onPresentedTimeSeconds={preview.presentNativeTimeSeconds}
           onSurfaceRetainedBytesChange={setNativeSurfaceRetainedBytes}
           playing={preview.isPlaying}
+          seek={preview.nativeSeek}
           video={preview.nativeVideo}
         />
       ) : null}
@@ -769,7 +799,7 @@ function usePlaybackHoverIntent(
     timerRef.current = setTimeout(() => {
       timerRef.current = null;
       play();
-    }, PLAYBACK_HOVER_INTENT_DELAY_MS);
+    }, HOVER_INTENT_DELAY_MS);
   }, [cancel, enabled, play, setHovered]);
 
   // This effect cancels hover playback when the grid becomes inactive.

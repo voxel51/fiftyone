@@ -1,4 +1,4 @@
-import { is3d, type Schema } from "@fiftyone/utilities";
+import { is3d, MEDIA_TYPE_IMAGE, type Schema } from "@fiftyone/utilities";
 import { useMemo } from "react";
 import {
   useRecoilCallback,
@@ -19,6 +19,7 @@ import {
   expressionCatalog,
   extendedStages,
   filters,
+  dynamicGroupParameters,
   fieldSchema,
   groupMediaTypes,
   gridSortBy,
@@ -26,6 +27,8 @@ import {
   isClipsView,
   isFramesView,
   isPatchesView,
+  isOrderedDynamicGroup,
+  parentMediaTypeSelector,
   selectedMediaField,
   refresher,
   skeleton,
@@ -33,6 +36,7 @@ import {
   State,
   view,
 } from "../recoil";
+import { isPatchesView } from "../recoil/view";
 
 /**
  * Get the current dataset ID.
@@ -171,14 +175,30 @@ export const useIsGroupDataset = () => {
 export type GroupSliceMediaType = "video" | "3d" | "image" | "multimodal";
 
 /**
+ * The registry key a field path resolves its skeleton under.
+ *
+ * Skeletons are registered against the dataset's TOP-LEVEL field name, so a
+ * frame path (`frames.keypoints`) has to resolve through its last segment.
+ * Without it a frame keypoint field misses the registry entirely and falls
+ * through to the dataset default, which is null for most datasets.
+ *
+ * Exported so the rule can be tested on its own: the hook around it is a
+ * `useRecoilCallback`, and exercising that would mean importing Recoil into a
+ * test during the Recoil->Jotai freeze.
+ */
+export const skeletonFieldKey = (field: string): string =>
+  field.split(".").slice(-1)[0];
+
+/**
  * Hook which provides a function to get the default keypoint skeleton for a
- * given field.
+ * given field. Falls back to the dataset's default skeleton when the field
+ * has none of its own.
  */
 export const useGetKeypointSkeleton = () => {
   return useRecoilCallback(
     ({ snapshot }) =>
       (field: string) =>
-        snapshot.getLoadable(skeleton(field)).getValue(),
+        snapshot.getLoadable(skeleton(skeletonFieldKey(field))).getValue(),
     [],
   );
 };
@@ -204,12 +224,50 @@ export const useGroupSlices = (mediaTypes: GroupSliceMediaType[]): string[] => {
     .map(({ name }) => name);
 };
 
+/** The media type of a dynamic group's members, or the dataset's own media type. */
+export const useParentMediaType = (): string =>
+  useRecoilValue(parentMediaTypeSelector);
+
 /**
  * The operator catalog the expression editor suggests from, exactly as the
  * server describes it — or null before the query has resolved, which callers
  * treat as "suggest nothing rather than something wrong".
  */
 export const useExpressionCatalog = () => useRecoilValue(expressionCatalog);
+
+/**
+ * Whether the current view is an ordered dynamic group over image samples
+ * (ImaVid). Such a view reports a "group" media type with no slices.
+ *
+ * @returns True if the current view is an image-backed dynamic group video
+ */
+export const useIsImageDynamicGroupVideo = (): boolean => {
+  const orderedDynamicGroup = useRecoilValue(isOrderedDynamicGroup);
+  const parentMediaType = useRecoilValue(parentMediaTypeSelector);
+
+  return orderedDynamicGroup && parentMediaType === MEDIA_TYPE_IMAGE;
+};
+
+/**
+ * The field the current dynamic group is ordered by, or null when the view is
+ * not a dynamic group or the group is unordered.
+ */
+export const useDynamicGroupOrderBy = (): string | null =>
+  useRecoilValue(dynamicGroupParameters)?.orderBy ?? null;
+
+/**
+ * The field the current dynamic group is grouped by, or null when the view is
+ * not a dynamic group. A group built from an expression or a list of fields
+ * has no single field to name, so it reads null too.
+ */
+export const useDynamicGroupGroupBy = (): string | null => {
+  const groupBy = useRecoilValue(dynamicGroupParameters)?.groupBy;
+
+  return typeof groupBy === "string" ? groupBy : null;
+};
+
+/** Whether the current view is a patches view. */
+export const useIsPatchesView = (): boolean => useRecoilValue(isPatchesView);
 
 /** The server's stage descriptors, as `fiftyone/core/stages.py` describes them. */
 export const useStageDefinitions = () => useRecoilValue(stageDefinitions);
@@ -288,3 +346,10 @@ export function useLegacySelectedSamples() {
 export function useGridGroupSlice(): string | null {
   return useRecoilValue(groupSlice);
 }
+/** The grid's sidebar filters. */
+export const useFilters = (): State.Filters => useRecoilValue(filters);
+
+/** The grid's extended stages, `{ [stage class]: kwargs }`, as operators are
+ * sent them. */
+export const useExtendedStages = (): Record<string, unknown> =>
+  useRecoilValue(extendedStages);
