@@ -9,7 +9,7 @@ import { TooltipPom } from "./tooltip";
  */
 const EMPTY_AREA = 0.05;
 
-// one wheel gesture of this size zooms Lighter about 1.2x
+// one wheel gesture this size zooms Lighter 1.2x on linux, 1.5x on darwin
 const ZOOM_IN_WHEEL_DELTA = 125;
 
 export interface Box {
@@ -244,7 +244,7 @@ export class SampleCanvasPom {
   }
 
   /**
-   * Zoom the Lighter view in about 1.2x at the pointer as one wheel gesture,
+   * Zoom the Lighter view in at the pointer as one wheel gesture,
    * returning once Lighter has applied it
    */
   async zoomIn() {
