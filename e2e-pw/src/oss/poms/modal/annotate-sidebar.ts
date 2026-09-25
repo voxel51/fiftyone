@@ -1,5 +1,5 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
-import { spaceToken } from "src/oss/utils";
+import { collapseWhitespace } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
 
 /**
@@ -135,7 +135,7 @@ export class ModalAnnotateSidebarPom {
    */
   async openAnnotationSliceResults() {
     await this.annotationSliceSelector.click();
-    await expect(this.annotationSliceResultsContainer).toBeVisible();
+    await this.annotationSliceResultsContainer.waitFor();
     return this.annotationSliceResultsContainer;
   }
 
@@ -163,15 +163,17 @@ export class ModalAnnotateSidebarPom {
   async selectAnnotationSlice(slice: string) {
     // a 3D slice becomes selectable once the group's samples load, and the
     // option list is computed when it opens, so open it only after that
-    await expect(
-      this.locator.getByTestId("annotation-slice-selector"),
-    ).toHaveAttribute("data-cy-selectable-slices", spaceToken(slice));
+    await this.locator
+      .locator(
+        `[data-cy="annotation-slice-selector"][data-cy-selectable-slices~="${slice}"]`,
+      )
+      .waitFor({ state: "attached" });
     await this.annotationSliceSelector.click();
     await this.annotationSliceResultsContainer
       .getByTestId(`selector-result-${slice}`)
       .click();
 
-    await expect(this.annotationSliceSelector).toHaveValue(slice);
+    expect(await this.annotationSliceSelector.inputValue()).toBe(slice);
   }
 
   /**
@@ -267,76 +269,60 @@ class ModalAnnotateSidebarAsserter {
    * @param count The expected number of active labels
    */
   async hasActiveLabelsCount(count: number) {
-    await expect(
-      this.modalAnnotateSidebar.locator.getByTestId(
-        "sidebar-group-Labels-field-count",
-      ),
-    ).toHaveText(count.toString());
+    expect(await this.modalAnnotateSidebar.getActiveLabelsCount()).toBe(count);
   }
 
   /**
    * Verify that the active labels section is expanded
    */
   async verifyActiveLabelsIsExpanded() {
-    await expect(
-      this.modalAnnotateSidebar.locator.getByTestId(
-        "sidebar-group-Labels-toggle",
-      ),
-    ).toHaveAttribute("data-testid", "RemoveIcon");
+    expect(await this.toggleIcon("Labels")).toBe("RemoveIcon");
   }
 
   /**
    * Verify that the active labels section is collapsed
    */
   async verifyActiveLabelsIsCollapsed() {
-    await expect(
-      this.modalAnnotateSidebar.locator.getByTestId(
-        "sidebar-group-Labels-toggle",
-      ),
-    ).toHaveAttribute("data-testid", "AddIcon");
+    expect(await this.toggleIcon("Labels")).toBe("AddIcon");
   }
 
   /** The field at `path` lists exactly `count` label rows. */
   async labelRowCount(path: string, count: number) {
-    await expect(this.modalAnnotateSidebar.labelRowsFor(path)).toHaveCount(
+    expect(await this.modalAnnotateSidebar.labelRowsFor(path).count()).toBe(
       count,
     );
   }
 
   /** The PRIMITIVES row for `path` shows `value`. */
   async primitiveValue(path: string, value: string) {
-    await expect(this.modalAnnotateSidebar.primitiveValue(path)).toHaveText(
-      value,
-    );
+    expect(
+      collapseWhitespace(
+        await this.modalAnnotateSidebar.primitiveValue(path).textContent(),
+      ),
+    ).toBe(value);
   }
 
   /** The PRIMITIVES row for `path` is (not) editable. */
   async primitiveReadOnly(path: string, readOnly: boolean) {
-    await expect(
-      this.modalAnnotateSidebar.primitiveEntry(path),
-    ).toHaveAttribute("data-cy-read-only", readOnly ? "true" : "false");
+    expect(
+      await this.modalAnnotateSidebar
+        .primitiveEntry(path)
+        .getAttribute("data-cy-read-only"),
+    ).toBe(readOnly ? "true" : "false");
   }
 
   /**
    * Verify that the active primitive fields section is expanded
    */
   async verifyActivePrimitiveFieldsIsExpanded() {
-    await expect(
-      this.modalAnnotateSidebar.locator.getByTestId(
-        "sidebar-group-PRIMITIVES-toggle",
-      ),
-    ).toHaveAttribute("data-testid", "RemoveIcon");
+    expect(await this.toggleIcon("PRIMITIVES")).toBe("RemoveIcon");
   }
 
   /**
    * Verify that the active primitive fields section is collapsed
    */
   async verifyActivePrimitiveFieldsIsCollapsed() {
-    await expect(
-      this.modalAnnotateSidebar.locator.getByTestId(
-        "sidebar-group-PRIMITIVES-toggle",
-      ),
-    ).toHaveAttribute("data-testid", "AddIcon");
+    expect(await this.toggleIcon("PRIMITIVES")).toBe("AddIcon");
   }
 
   /**
@@ -345,11 +331,9 @@ class ModalAnnotateSidebarAsserter {
    * @param expectedCount The expected number of active labels
    */
   async verifyActiveLabelsCount(expectedCount: number) {
-    await expect(
-      this.modalAnnotateSidebar.locator.getByTestId(
-        "sidebar-group-Labels-field-count",
-      ),
-    ).toHaveText(expectedCount.toString());
+    expect(await this.modalAnnotateSidebar.getActiveLabelsCount()).toBe(
+      expectedCount,
+    );
   }
 
   /**
@@ -358,11 +342,16 @@ class ModalAnnotateSidebarAsserter {
    * @param expectedCount The expected number of active primitive fields
    */
   async verifyActivePrimitiveFieldsCount(expectedCount: number) {
-    await expect(
-      this.modalAnnotateSidebar.locator.getByTestId(
-        "sidebar-group-PRIMITIVES-field-count",
-      ),
-    ).toHaveText(expectedCount.toString());
+    expect(
+      await this.modalAnnotateSidebar.getActivePrimitiveFieldsCount(),
+    ).toBe(expectedCount);
+  }
+
+  /** The icon a sidebar group's toggle shows (its expanded state). */
+  private toggleIcon(group: "Labels" | "PRIMITIVES") {
+    return this.modalAnnotateSidebar.locator
+      .getByTestId(`sidebar-group-${group}-toggle`)
+      .getAttribute("data-testid");
   }
 
   /**
@@ -382,9 +371,9 @@ class ModalAnnotateSidebarAsserter {
    * @param expectedSlice The slice name that should be active
    */
   async verifySelectedAnnotationSlice(expectedSlice: string) {
-    await expect(this.modalAnnotateSidebar.annotationSliceSelector).toHaveValue(
-      expectedSlice,
-    );
+    expect(
+      await this.modalAnnotateSidebar.annotationSliceSelector.inputValue(),
+    ).toBe(expectedSlice);
   }
 
   /**
@@ -394,7 +383,7 @@ class ModalAnnotateSidebarAsserter {
    */
   async selectIsActive(active = true) {
     const button = this.modalAnnotateSidebar.page.getByTestId("select-action");
-    await expect(button).toHaveAttribute("data-cy-active", active.toString());
+    expect(await button.getAttribute("data-cy-active")).toBe(String(active));
   }
 
   /**
@@ -406,7 +395,7 @@ class ModalAnnotateSidebarAsserter {
     const button = this.modalAnnotateSidebar.page.getByTestId(
       "create-classification",
     );
-    await expect(button).toHaveAttribute("data-cy-active", active.toString());
+    expect(await button.getAttribute("data-cy-active")).toBe(String(active));
   }
 
   /**
@@ -416,7 +405,7 @@ class ModalAnnotateSidebarAsserter {
    */
   async detectionModeIsActive(active = true) {
     const button = this.modalAnnotateSidebar.page.getByTestId("detection-mode");
-    await expect(button).toHaveAttribute("data-cy-active", active.toString());
+    expect(await button.getAttribute("data-cy-active")).toBe(String(active));
   }
 
   /**
@@ -427,7 +416,7 @@ class ModalAnnotateSidebarAsserter {
   async segmentationModeIsActive(active = true) {
     const button =
       this.modalAnnotateSidebar.page.getByTestId("segmentation-mode");
-    await expect(button).toHaveAttribute("data-cy-active", active.toString());
+    expect(await button.getAttribute("data-cy-active")).toBe(String(active));
   }
 
   /**
@@ -437,7 +426,7 @@ class ModalAnnotateSidebarAsserter {
    */
   async polylineModeIsActive(active = true) {
     const button = this.modalAnnotateSidebar.page.getByTestId("polyline-mode");
-    await expect(button).toHaveAttribute("data-cy-active", active.toString());
+    expect(await button.getAttribute("data-cy-active")).toBe(String(active));
   }
 
   /**
@@ -454,6 +443,6 @@ class ModalAnnotateSidebarAsserter {
       name: tool,
       exact: true,
     });
-    await expect(button).toHaveAttribute("aria-pressed", "true");
+    expect(await button.getAttribute("aria-pressed")).toBe("true");
   }
 }
