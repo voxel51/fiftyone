@@ -6,6 +6,7 @@ Frozen selection tagging tests.
 |
 """
 
+import os
 import unittest
 
 from bson import ObjectId
@@ -307,7 +308,8 @@ class GroupedDatasetTagTests(unittest.TestCase):
             self.dataset, {"slice": "right", "episodeIds": right_ids[:1]}
         )
         self.assertEqual(
-            [g["filepath"] for g in described["groups"]], ["/tmp/right-0.jpg"]
+            [g["filepath"] for g in described["groups"]],
+            [os.path.abspath("/tmp/right-0.jpg")],
         )
         members = [{"episodeId": right_ids[0], "kind": "episode"}]
         tag_selection(self.dataset, members, {"tag": "slice", "add": True})

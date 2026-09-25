@@ -7,8 +7,9 @@ Episode selection identity and complete scope resolution tests.
 """
 
 import asyncio
-from datetime import datetime
+import os
 import unittest
+from datetime import datetime
 
 from bson import ObjectId
 
@@ -332,7 +333,7 @@ class ImageSelectionTests(unittest.TestCase):
         self.assertEqual(result["counts"]["segments"], 0)
         self.assertEqual(
             sorted(group["filepath"] for group in result["groups"]),
-            ["/tmp/image-%d.jpg" % i for i in range(3)],
+            [os.path.abspath("/tmp/image-%d.jpg" % i) for i in range(3)],
         )
         self.assertEqual(result["unavailableGroups"], [])
 
@@ -393,7 +394,7 @@ class ConvertedViewSelectionTests(unittest.TestCase):
         self.assertEqual(result["counts"]["fullEpisodes"], 3)
         self.assertEqual(
             sorted({group["filepath"] for group in result["groups"]}),
-            ["/tmp/patches-0.jpg", "/tmp/patches-1.jpg"],
+            [os.path.abspath("/tmp/patches-%d.jpg" % i) for i in range(2)],
         )
         patch_ids = [group["episodeId"] for group in result["groups"]]
         self.assertNotIn(patch_ids[0], self.dataset.values("id"))
@@ -504,7 +505,10 @@ class LazyScopeAndSnapshotTests(unittest.TestCase):
         self.assertEqual(
             [group["episodeId"] for group in described["groups"]], wanted[:1]
         )
-        self.assertEqual(described["groups"][0]["filepath"], "/tmp/lazy-0.jpg")
+        self.assertEqual(
+            described["groups"][0]["filepath"],
+            os.path.abspath("/tmp/lazy-0.jpg"),
+        )
 
     def test_snapshot_freezes_the_scope_until_it_expires(self):
         snapshot = create_snapshot(self.dataset, {})
