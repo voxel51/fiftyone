@@ -24,7 +24,10 @@ from fiftyone.core.session.events import (
     dict_factory,
 )
 
-from fiftyone.server.events.dispatch import dispatch_event
+from fiftyone.server.events.dispatch import (
+    dispatch_app_count,
+    dispatch_event,
+)
 from fiftyone.server.events.initialize import initialize_listener
 from fiftyone.server.events.state import (
     Listener,
@@ -117,6 +120,7 @@ async def disconnect(
 
     if is_app:
         decrement_app_count(subscription)
+        dispatch_app_count()
 
         if not get_app_count() and focx._get_context() == focx._NONE:
             return await dispatch_event(None, CloseSession())

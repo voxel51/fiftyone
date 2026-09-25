@@ -108,6 +108,24 @@ class TestListenerDisconnect(unittest.IsolatedAsyncioTestCase):
         )
 
 
+def _app_payload(subscription):
+    return fose.ListenPayload(
+        events=[fose.AppCountUpdate.get_event_name()],
+        initializer=fose.AppInitializer(),
+        subscription=subscription,
+    )
+
+
+def _read_counts(subscription):
+    counts = []
+    for listener in foss.get_listeners()[fose.AppCountUpdate.get_event_name()]:
+        if listener.subscription == subscription:
+            while not listener.queue.empty():
+                counts.append(listener.queue.get_nowait()[1].count)
+
+    return counts
+
+
 class TestAppCount(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         foss.set_state(fos.StateDescription())
@@ -136,4 +154,51 @@ class TestAppCount(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(foss.get_app_count(), 1)
 
         foss.decrement_app_count("b")
+        self.assertEqual(foss.get_app_count(), 1)
+
+    async def test_connect_and_disconnect_dispatch_count(self):
+        await fosi.initialize_listener(_app_payload("a"))
+        self.assertEqual(_read_counts("a"), [1])
+
+        b = await fosi.initialize_listener(_app_payload("b"))
+        self.assertEqual(_read_counts("a"), [2])
+        self.assertEqual(_read_counts("b"), [2])
+
+        await fosl.disconnect(True, b.request_listeners, "b")
+        self.assertEqual(_read_counts("a"), [1])
+        self.assertEqual(_read_counts("b"), [])
+
+    async def test_reconnect_dispatches_unchanged_count(self):
+        await fosi.initialize_listener(_app_payload("a"))
+        stale = await fosi.initialize_listener(_app_payload("b"))
+        _read_counts("a")
+
+        # both of "b"'s connections hear the count, though it has not
+        # changed
+        await fosi.initialize_listener(_app_payload("b"))
+        self.assertEqual(_read_counts("a"), [2])
+        self.assertEqual(_read_counts("b"), [2, 2])
+
+        await fosl.disconnect(True, stale.request_listeners, "b")
+        self.assertEqual(_read_counts("a"), [2])
+
+    async def test_unread_count_is_replaced(self):
+        await fosi.initialize_listener(_app_payload("a"))
+        b = await fosi.initialize_listener(_app_payload("b"))
+        await fosl.disconnect(True, b.request_listeners, "b")
+
+        # queues are last-in first-out, so a stale count must not linger
+        # behind the latest one
+        self.assertEqual(_read_counts("a"), [1])
+
+    async def test_session_clients_are_not_counted(self):
+        await fosi.initialize_listener(_app_payload("a"))
+        await fosi.initialize_listener(
+            fose.ListenPayload(
+                events=[fose.AppCountUpdate.get_event_name()],
+                initializer=fos.StateDescription(),
+                subscription="session",
+            )
+        )
+
         self.assertEqual(foss.get_app_count(), 1)

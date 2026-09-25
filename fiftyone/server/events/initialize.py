@@ -21,6 +21,7 @@ from fiftyone.core.session.events import (
 import fiftyone.core.utils as fou
 
 from fiftyone.server.events import dispatch_event
+from fiftyone.server.events.dispatch import dispatch_app_count
 from fiftyone.server.events.state import (
     Listener,
     get_listeners,
@@ -63,6 +64,12 @@ async def initialize_listener(payload: ListenPayload):
 
     get_requests()[payload.subscription] = request_listeners
 
+    if is_app:
+        # counted here, on the event loop, once this connection's own
+        # listeners can receive the new count too
+        increment_app_count(payload.subscription)
+        dispatch_app_count()
+
     return InitializedListener(is_app, request_listeners, state)
 
 
@@ -97,7 +104,6 @@ def handle_app_initializer(subscription: str, initializer: AppInitializer):
     Returns:
         ``None`` or a coroutine
     """
-    increment_app_count(subscription)
     state = get_state()
     current = state.dataset.name if state.dataset is not None else None
 
