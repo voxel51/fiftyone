@@ -201,11 +201,12 @@ def _to_classification(result):
 
 
 def _to_segmentation(mask):
-    """A segmentation from an Argus map of ADE20K class indices."""
+    """A segmentation from an Argus map of ADE20K class indices, stored as
+    values 1 to 150 so that 0 remains the background value."""
     if torch.is_tensor(mask):
         mask = mask.detach().cpu().numpy()
 
-    return fol.Segmentation(mask=np.asarray(mask).astype(np.uint8))
+    return fol.Segmentation(mask=(np.asarray(mask) + 1).astype(np.uint8))
 
 
 def _to_heatmap(depth):
@@ -302,8 +303,8 @@ class ArgusModel(fout.TorchImageModel):
     decides the label type: ``"classification"`` returns a
     :class:`fiftyone.core.labels.Classification` over the 1,000 ImageNet
     classes, ``"segmentation"`` returns a
-    :class:`fiftyone.core.labels.Segmentation` over the 150 ADE20K classes,
-    named by :attr:`mask_targets`, ``"depth"`` returns a
+    :class:`fiftyone.core.labels.Segmentation` whose values 1 to 150 are the
+    ADE20K classes named by :attr:`mask_targets`, ``"depth"`` returns a
     :class:`fiftyone.core.labels.Heatmap` of metric depth, normalized by its
     maximum with the maximum in meters in ``max_depth``, and ``"detection"``
     returns :class:`fiftyone.core.labels.Detections` over the 80 COCO
@@ -346,7 +347,7 @@ class ArgusModel(fout.TorchImageModel):
     @property
     def mask_targets(self):
         if self.config.task == "segmentation":
-            return dict(enumerate(_ADE20K_CLASSES))
+            return dict(enumerate(_ADE20K_CLASSES, start=1))
 
         return None
 

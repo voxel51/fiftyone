@@ -62,14 +62,14 @@ class TestToClassification:
 
 
 class TestToSegmentation:
-    def test_class_indices_are_kept(self):
+    def test_classes_are_stored_from_one(self):
         mask = torch.tensor([[0, 2], [149, 12]])
 
         label = foua._to_segmentation(mask)
 
         assert isinstance(label, fol.Segmentation)
         assert label.mask.dtype == np.uint8
-        np.testing.assert_array_equal(label.mask, [[0, 2], [149, 12]])
+        np.testing.assert_array_equal(label.mask, [[1, 3], [150, 13]])
 
 
 class TestToHeatmap:
@@ -198,7 +198,7 @@ class TestPredictAll:
         out = model._predict_all([PILImage.new("RGB", (10, 10))])
 
         assert model._model.calls == [("segment", 1, {})]
-        np.testing.assert_array_equal(out[0].mask, np.full((4, 4), 2))
+        np.testing.assert_array_equal(out[0].mask, np.full((4, 4), 3))
 
     def test_detection_settings(self):
         model = _model(
@@ -257,9 +257,10 @@ class TestMaskTargets:
         targets = _model({"task": "segmentation"}).mask_targets
 
         assert len(targets) == 150
-        assert targets[0] == "wall"
-        assert targets[2] == "sky"
-        assert targets[149] == "flag"
+        assert 0 not in targets
+        assert targets[1] == "wall"
+        assert targets[3] == "sky"
+        assert targets[150] == "flag"
 
     def test_other_tasks_have_none(self):
         assert _model({"task": "depth"}).mask_targets is None
