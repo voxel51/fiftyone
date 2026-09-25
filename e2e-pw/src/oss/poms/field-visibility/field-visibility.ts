@@ -196,11 +196,15 @@ export class FieldVisibilityPom {
   }
 
   async clearFieldVisibilityChanges() {
-    await this.clearBtn.click();
+    await this.gridPom.run(async () => {
+      await this.clearBtn.click();
+    });
   }
 
   async clickReset() {
-    return await this.resetBtn.click();
+    await this.gridPom.run(async () => {
+      await this.resetBtn.click();
+    });
   }
 
   async openTab(tabName: TabType) {

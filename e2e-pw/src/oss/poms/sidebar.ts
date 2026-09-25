@@ -97,7 +97,6 @@ export class SidebarPom {
   async waitForElement(dataCy: string) {
     const selector = this.sidebar.getByTestId(dataCy);
     await selector.waitFor();
-    await expect(selector).toBeVisible();
   }
 
   // when less than 25 entries, it's displayed in a list
@@ -171,15 +170,15 @@ class SidebarAsserter {
   constructor(private readonly sb: SidebarPom) {}
 
   async assertCheckboxEnabled(fieldName: string) {
-    await expect(
-      this.sb.sidebar.getByTestId(`checkbox-${fieldName}`),
-    ).toBeVisible();
+    expect(
+      await this.sb.sidebar.getByTestId(`checkbox-${fieldName}`).isVisible(),
+    ).toBe(true);
   }
 
   async assertCheckboxDisabled(fieldName: string) {
-    await expect(
-      this.sb.sidebar.getByTestId(`checkbox-${fieldName}`),
-    ).toHaveCount(0);
+    expect(
+      await this.sb.sidebar.getByTestId(`checkbox-${fieldName}`).count(),
+    ).toBe(0);
   }
 
   async assertCheckboxesEnabled(fieldNames: string[]) {
@@ -195,38 +194,42 @@ class SidebarAsserter {
   }
 
   async assertFieldHasQueryPerformance(fieldName: string) {
-    await expect(this.sb.queryPerformance(fieldName)).toBeVisible();
+    expect(await this.sb.queryPerformance(fieldName).isVisible()).toBe(true);
   }
 
   async assertFieldMissingQueryPerformance(fieldName: string) {
-    await expect(this.sb.queryPerformance(fieldName)).toBeHidden();
+    expect(await this.sb.queryPerformance(fieldName).isVisible()).toBe(false);
   }
 
   async assertSubfieldHasQueryPerformance(
     fieldName: string,
     filterType?: "categorical" | "numeric",
   ) {
-    await expect(this.sb.queryPerformance(fieldName, filterType)).toBeVisible();
+    expect(
+      await this.sb.queryPerformance(fieldName, filterType).isVisible(),
+    ).toBe(true);
   }
 
   async assertSubfieldMissingQueryPerformance(
     fieldName: string,
     filterType?: "categorical" | "numeric",
   ) {
-    await expect(this.sb.queryPerformance(fieldName, filterType)).toBeHidden();
+    expect(
+      await this.sb.queryPerformance(fieldName, filterType).isVisible(),
+    ).toBe(false);
   }
 
   async assertFieldInSidebar(fieldName: string) {
-    await expect(this.sb.field(fieldName)).toBeVisible();
+    expect(await this.sb.field(fieldName).isVisible()).toBe(true);
   }
 
   async assertFieldDisabled(fieldName: string) {
-    await expect(this.sb.fieldArrow(fieldName, true)).toHaveCount(0);
+    expect(await this.sb.fieldArrow(fieldName, true).count()).toBe(0);
   }
 
   async assertFieldArrowRemoved(fieldName: string) {
-    await expect(this.sb.fieldArrow(fieldName, false)).toHaveCount(0);
-    await expect(this.sb.fieldArrow(fieldName, true)).toHaveCount(0);
+    expect(await this.sb.fieldArrow(fieldName, false).count()).toBe(0);
+    expect(await this.sb.fieldArrow(fieldName, true).count()).toBe(0);
   }
 
   async assertFieldsDisabled(fieldNames: string[]) {
@@ -236,7 +239,7 @@ class SidebarAsserter {
   }
 
   async assertFieldEnabled(fieldName: string) {
-    await expect(this.sb.fieldArrow(fieldName, true)).toBeVisible();
+    expect(await this.sb.fieldArrow(fieldName, true).isVisible()).toBe(true);
   }
 
   async assertFieldsEnabled(fieldNames: string[]) {
@@ -258,27 +261,27 @@ class SidebarAsserter {
   }
 
   async assertFieldNotInSidebar(fieldName: string) {
-    await expect(this.sb.field(fieldName)).toBeHidden();
+    expect(await this.sb.field(fieldName).isVisible()).toBe(false);
   }
 
   async assertFilterIsVisible(fieldName: string, filterType: "categorical") {
-    await expect(this.sb.filter(fieldName, filterType)).toBeVisible();
+    expect(await this.sb.filter(fieldName, filterType).isVisible()).toBe(true);
   }
 
   async assertSidebarGroupIsVisible(groupName: string) {
-    await expect(this.sb.groupField(groupName)).toBeVisible();
+    expect(await this.sb.groupField(groupName).isVisible()).toBe(true);
   }
 
   async assertSidebarGroupIsHidden(groupName: string) {
-    await expect(this.sb.groupField(groupName)).toBeHidden();
+    expect(await this.sb.groupField(groupName).isVisible()).toBe(false);
   }
 
   async assertAddGroupVisible() {
-    await expect(this.sb.addGroupField).toBeVisible();
+    expect(await this.sb.addGroupField.isVisible()).toBe(true);
   }
 
   async assertAddGroupHidden() {
-    await expect(this.sb.addGroupField).toBeHidden();
+    expect(await this.sb.addGroupField.isVisible()).toBe(false);
   }
 
   async assertCanDragFieldToGroup(fieldName: string, groupName: string) {
@@ -295,22 +298,24 @@ class SidebarAsserter {
     expect(draggableAreaBB.y).not.toEqual(newDraggableAreaBB.y);
 
     expect(draggableSidebarFieldArea.getAttribute("draggable")).toBeTruthy();
-    await expect(draggableSidebarFieldArea).toHaveAttribute(
-      "data-draggable",
+    expect(await draggableSidebarFieldArea.getAttribute("data-draggable")).toBe(
       "true",
     );
   }
 
   async assertCanDragField(fieldName: string) {
-    await expect(this.sb.sidebarEntryDraggableArea(fieldName)).toHaveAttribute(
-      "data-draggable",
-      "true",
-    );
+    expect(
+      await this.sb
+        .sidebarEntryDraggableArea(fieldName)
+        .getAttribute("data-draggable"),
+    ).toBe("true");
   }
 
   async assertCannotDragField(fieldName: string) {
-    await expect(
-      this.sb.sidebarEntryDraggableArea(fieldName),
-    ).not.toHaveAttribute("data-draggable", "true");
+    expect(
+      await this.sb
+        .sidebarEntryDraggableArea(fieldName)
+        .getAttribute("data-draggable"),
+    ).not.toBe("true");
   }
 }
