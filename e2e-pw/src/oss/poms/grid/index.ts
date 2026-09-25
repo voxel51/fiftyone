@@ -176,6 +176,21 @@ export class GridPom {
   }
 
   /**
+   * Run `action` and resolve once the tiles of every one of `filepaths` have
+   * redrawn their tag bubbles because of it
+   */
+  async afterTagsRendered<T>(
+    filepaths: string[],
+    action: () => Promise<T>,
+  ): Promise<T> {
+    const pending = new Set(filepaths);
+    return this.eventUtils.after("e2e:looker:tags-rendered", action, (e) => {
+      pending.delete((e.detail as { sampleFilepath: string }).sampleFilepath);
+      return pending.size === 0;
+    });
+  }
+
+  /**
    * Resolve once the entry counts (of `kind`, when given) have no count still
    * loading
    */

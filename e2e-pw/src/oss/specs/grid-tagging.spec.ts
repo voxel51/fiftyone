@@ -47,25 +47,34 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
 
 test("grid tagging", async ({ fiftyoneLoader, grid, page, sidebar }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-  await sidebar.clickFieldCheckbox("filepath");
-  await sidebar.clickFieldCheckbox("tags");
-  await grid.scrollBottom();
-  for (let i = 31; i <= 54; i++) {
-    const locator = grid.locator.getByText(`/tmp/${i}-${datasetName}.png`);
-    await expect(locator).toBeVisible();
+  const indexes = Array.from({ length: 24 }, (_, i) => i + 31);
+  const filepaths = indexes.map((i) => `/tmp/${i}-${datasetName}.png`);
+  const bubble = (filepath: string) => grid.locator.getByText(filepath);
+
+  await grid.afterTagsRendered(filepaths, async () => {
+    await sidebar.clickFieldCheckbox("filepath");
+    await sidebar.clickFieldCheckbox("tags");
+    await grid.scrollBottom();
+  });
+  for (const filepath of filepaths) {
+    expect(await bubble(filepath).isVisible()).toBe(true);
   }
 
-  await grid.run(async () => {
-    await grid.actionsRow.toggleTagSamplesOrLabels();
-    await grid.tagger.setActiveTaggerMode("sample");
-    await grid.tagger.addNewTag("sample", "grid-test");
-  });
+  await grid.afterTagsRendered(filepaths, () =>
+    grid.run(async () => {
+      await grid.actionsRow.toggleTagSamplesOrLabels();
+      await grid.tagger.setActiveTaggerMode("sample");
+      await grid.tagger.addNewTag("sample", "grid-test");
+    }),
+  );
 
-  for (let i = 31; i <= 54; i++) {
-    const locator = grid.locator.getByText(`/tmp/${i}-${datasetName}.png`);
-    await expect(locator).toBeVisible();
-    await expect(
-      locator.locator("..").getByTestId("tag-tags-grid-test"),
-    ).toBeVisible();
+  for (const filepath of filepaths) {
+    expect(await bubble(filepath).isVisible()).toBe(true);
+    expect(
+      await bubble(filepath)
+        .locator("..")
+        .getByTestId("tag-tags-grid-test")
+        .isVisible(),
+    ).toBe(true);
   }
 });

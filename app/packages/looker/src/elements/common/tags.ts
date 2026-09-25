@@ -15,9 +15,9 @@ import { computeTagData } from "./computeTagData";
 import { lookerTags } from "./tags.module.css";
 import { prettify } from "./util";
 
-/** e2e specs wait on a tile's tags redrawing after a color change */
+/** e2e specs wait on a tile's tags redrawing after a field or color change */
 type TagsE2EEvents = {
-  "e2e:looker:tags-rendered": undefined;
+  "e2e:looker:tags-rendered": { sampleFilepath: string };
 };
 
 const LINE_HEIGHT_COEFFICIENT = 1.15;
@@ -122,7 +122,9 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       );
     }
 
-    getEventBus<TagsE2EEvents>().dispatch("e2e:looker:tags-rendered");
+    getEventBus<TagsE2EEvents>().dispatch("e2e:looker:tags-rendered", {
+      sampleFilepath: sample.filepath,
+    });
 
     return this.element;
   }

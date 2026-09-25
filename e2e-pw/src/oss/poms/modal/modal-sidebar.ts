@@ -300,14 +300,19 @@ class ModalSidebarAsserter {
   }
 
   /**
-   * Waits until the sample tag count in the sidebar equals the expected count.
+   * Asserts the sample tag count once it has loaded; a tag applied through
+   * the tagger reloads it
    *
    * @param count - The expected number of sample tags
    */
   async verifySampleTagCount(count: number) {
-    await expect(this.modalSidebarPom.getSidebarEntry("tags")).toHaveText(
-      String(count),
-    );
+    const entry = this.modalSidebarPom.getSidebarEntry("tags");
+    await entry
+      .filter({
+        hasNot: this.modalSidebarPom.page.locator("[data-cy=loading-dots]"),
+      })
+      .waitFor({ state: "attached" });
+    expect(await entry.textContent()).toBe(String(count));
   }
 
   /**
@@ -333,19 +338,6 @@ class ModalSidebarAsserter {
         collapseWhitespace(await entry.getByTestId(`value-${v}`).textContent()),
       ).toBe(v);
     }
-  }
-
-  /**
-   * Waits until the label tag count in the sidebar equals the expected count,.
-   *
-   * @param count - The expected number of label tags
-   */
-  async verifyLabelTagCount(count: number) {
-    await expect(
-      this.modalSidebarPom.page.locator(
-        "#modal [data-cy='sidebar-field-container-_label_tags'] [data-cy='entry-count-all']",
-      ),
-    ).toHaveText(String(count));
   }
 
   /**
