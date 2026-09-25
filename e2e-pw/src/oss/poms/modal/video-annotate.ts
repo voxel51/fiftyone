@@ -3,10 +3,10 @@ import { collapseWhitespace, spaceToken } from "src/oss/utils";
 import { ModalPom } from ".";
 
 /** Dispatched after the timeline commits a changed set of rows, with their ids */
-const TRACKS_RENDERED = "video-annotation-tracks-rendered";
+const TRACKS_RENDERED = "e2e:video-annotation:tracks-rendered";
 
 const renderedIds = (e: { detail?: unknown }) =>
-  (e.detail as { ids?: string[] } | undefined)?.ids ?? [];
+  (e.detail as { ids: string }).ids.split(",").filter(Boolean);
 
 /**
  * The video-annotation surface: the ImaVid tile, the timeline of per-instance

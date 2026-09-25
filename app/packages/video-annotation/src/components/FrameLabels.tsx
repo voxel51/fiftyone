@@ -1,3 +1,4 @@
+import { getEventBus } from "@fiftyone/events";
 import { getLabelColorFromContext } from "@fiftyone/lighter";
 import type { ModalSample } from "@fiftyone/state";
 import type { Stage } from "@fiftyone/utilities";
@@ -78,7 +79,11 @@ import {
 import { VideoFrameLabelsStream } from "../streams/VideoFrameLabelsStream";
 
 const DEFAULT_FRAME_FIELD = "frames.detections";
-const TRACKS_RENDERED_EVENT = "video-annotation-tracks-rendered";
+/** e2e specs wait on the timeline rows an edit or sample change commits */
+type FrameLabelsE2EEvents = {
+  /** the visible rows' track ids, comma-separated */
+  "e2e:video-annotation:tracks-rendered": { ids: string };
+};
 
 /** Base linked-overlay decoration the interaction layer attaches per row. */
 type BaseTrackDecoration = ReturnType<
@@ -789,10 +794,9 @@ export const FrameLabelsTracks: React.FC<{
   // the timeline's rows commit before this parent effect runs
   useEffect(() => {
     if (ready) {
-      document.dispatchEvent(
-        new CustomEvent(TRACKS_RENDERED_EVENT, {
-          detail: { ids: visibleTracks.map(({ id }) => id) },
-        }),
+      getEventBus<FrameLabelsE2EEvents>().dispatch(
+        "e2e:video-annotation:tracks-rendered",
+        { ids: visibleTracks.map(({ id }) => id).join(",") },
       );
     }
   }, [ready, visibleTracks]);
