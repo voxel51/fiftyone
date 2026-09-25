@@ -42,17 +42,14 @@ export class PagePom {
       await this.datasetSelector.openResults();
       await this.datasetSelector.selectResult(dataset);
     }
-    await this.page.waitForSelector(
-      `[data-cy=${dataset ? "dataset" : "index"}-page]`,
-      {
-        state: "visible",
-      },
-    );
+    await this.getPage(dataset ? "dataset" : "index").waitFor();
   }
 
   /** Go back in history; resolves once the previous page has rendered */
   async goBack() {
-    await this.eventUtils.after("page-change", () => this.page.goBack());
+    await this.eventUtils.after("e2e:app:page-change", () =>
+      this.page.goBack(),
+    );
   }
 }
 

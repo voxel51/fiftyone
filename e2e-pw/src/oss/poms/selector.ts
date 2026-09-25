@@ -31,9 +31,11 @@ export class SelectorPom {
   }
 
   async openResults() {
-    await this.eventUtils.after(`selector-results-${this.title}`, async () => {
-      await this.input.focus();
-    });
+    await this.eventUtils.after(
+      "e2e:components:selector-results",
+      () => this.input.focus(),
+      (e) => (e.detail as { cy?: string }).cy === this.title,
+    );
   }
 
   async closeResults() {

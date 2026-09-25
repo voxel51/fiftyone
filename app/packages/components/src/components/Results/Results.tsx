@@ -1,3 +1,4 @@
+import { getEventBus } from "@fiftyone/events";
 import classNames from "classnames";
 import React, { useEffect, useLayoutEffect, useRef } from "react";
 import style from "./Results.module.css";
@@ -8,6 +9,11 @@ export interface ResultProps<T> {
   onClick: () => void;
   component: React.FC<{ value: T; className?: string }>;
 }
+
+/** e2e specs wait on a selector's results mounting before reading them */
+type ResultsE2EEvents = {
+  "e2e:components:selector-results": { cy?: string };
+};
 
 const NONSTRING_VALUES: any[] = [false, true, null];
 const STRING_VALUES = ["False", "True", "None"];
@@ -86,10 +92,11 @@ function Results<T>({
   const ref = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
-    ref.current?.dispatchEvent(
-      new CustomEvent(`selector-results-${cy}`, { bubbles: true }),
+    getEventBus<ResultsE2EEvents>().dispatch(
+      "e2e:components:selector-results",
+      { cy },
     );
-  }, [cy, ref]);
+  }, [cy]);
 
   const hasFooter =
     footer ||

@@ -56,11 +56,6 @@ const testView2: SaveViewParams = {
 
 // todo: move it to the SavedViewsPom
 async function deleteSavedView(savedViews: SavedViewsPom, slug: string) {
-  const hasUnsaved = savedViews.canClearView();
-  if (!hasUnsaved) {
-    await savedViews.clearView();
-  }
-
   await savedViews.openSelect();
   const count = await savedViews.savedViewOptionCount(slug);
 

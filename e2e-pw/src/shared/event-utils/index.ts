@@ -274,7 +274,7 @@ export class EventUtils {
    * Run `action` and resolve once `eventName` fires because of it. The
    * listener is armed before `action` starts, so the event cannot be missed:
    *
-   *   await eventUtils.after("page-change", () => page.goBack());
+   *   await eventUtils.after("e2e:app:page-change", () => page.goBack());
    */
   public async after<T>(
     eventName: string,

@@ -103,7 +103,9 @@ export class SavedViewsPom {
   async saveView(view: SaveViewParams) {
     await this.openCreateModal();
     await this.saveViewInputs(view);
-    await this.eventUtils.after("page-change", () => this.saveButton().click());
+    await this.eventUtils.after("e2e:app:page-change", () =>
+      this.saveButton().click(),
+    );
     await this.waitUntilModalHidden();
   }
 
@@ -133,7 +135,9 @@ export class SavedViewsPom {
     await this.clickColor(color);
     await this.pickColor(newColor);
 
-    await this.eventUtils.after("page-change", () => this.saveButton().click());
+    await this.eventUtils.after("e2e:app:page-change", () =>
+      this.saveButton().click(),
+    );
     await this.waitUntilModalHidden();
   }
 
@@ -158,20 +162,14 @@ export class SavedViewsPom {
 
   async clearView() {
     await this.closeSelect();
-    if (await this.canClearView()) {
-      await this.eventUtils.after("page-change", () =>
-        this.clearViewBtn.click(),
-      );
-    }
+    await this.eventUtils.after("e2e:app:page-change", () =>
+      this.clearViewBtn.click(),
+    );
   }
 
   async clickCloseModal() {
     await this.closeModalBtn.click();
     await this.waitUntilModalHidden();
-  }
-
-  canClearView() {
-    return this.clearViewBtn.isVisible();
   }
 
   /** Open the saved view list, unless it already is */
