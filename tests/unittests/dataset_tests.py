@@ -7130,11 +7130,15 @@ class ExtrasDeleterTests(unittest.TestCase):
         failing.add_sample(fo.Sample(filepath="image.png"))
         fod.register_extras_deleter(deleter)
 
-        with self.assertLogs("fiftyone.core.dataset", "WARNING"):
-            fod._delete_non_persistent_datasets()
+        try:
+            with self.assertLogs("fiftyone.core.dataset", "WARNING"):
+                fod._delete_non_persistent_datasets()
 
-        self.assertEqual(len(fo.load_dataset(failing.name)), 1)
-        self.assertFalse(fo.dataset_exists(healthy.name))
+            self.assertEqual(len(fo.load_dataset(failing.name)), 1)
+            self.assertFalse(fo.dataset_exists(healthy.name))
+        finally:
+            fod._extras_deleters.clear()
+            failing.delete()
 
     @drop_datasets
     def test_generated_dataset_skips_deleters(self):

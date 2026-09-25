@@ -10819,9 +10819,10 @@ def register_extras_deleter(deleter):
     that it can remove data the dataset owns outside of the database.
     Generated datasets, such as patches and clips, do not invoke deleters.
 
-    A deleter that raises aborts the deletion with the dataset intact, so the
-    deletion can be retried, which reruns every deleter. Deleters must
-    therefore be idempotent.
+    A deleter that raises aborts the deletion with the dataset's records
+    intact, so the deletion can be retried. What earlier deleters removed is
+    not restored, and a retry reruns every deleter, so deleters must be
+    idempotent.
 
     Args:
         deleter: a callable with signature ``deleter(dataset)``
