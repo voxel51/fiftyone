@@ -212,7 +212,9 @@ class GridAsserter {
       return;
     }
 
-    await expect(action.first()).toHaveText(String(n));
+    await expect(action.first()).toHaveText(
+      `${n.toLocaleString()} sample${n === 1 ? "" : "s"}`,
+    );
   }
 
   async isEntryCountTextEqualTo(text: string) {
