@@ -142,10 +142,13 @@ export class ModalPom {
       .click();
 
     // the sidebar remounts its entries on a sample change
-    await this.eventUtils.untilPresent(
-      "[data-cy=sidebar-entry-id]",
-      new RegExp(`^(?!${escapeRegExp(currentSampleId)}$)\\S`),
-    );
+    await this.page
+      .locator("[data-cy=sidebar-entry-id]")
+      .filter({
+        hasText: new RegExp(`^(?!${escapeRegExp(currentSampleId)}$)\\S`),
+      })
+      .first()
+      .waitFor({ state: "attached" });
 
     return this.waitForSampleLoadDomAttribute(allowErrorInfo);
   }
@@ -332,11 +335,15 @@ export class ModalPom {
     // the plain video surface sets it on the `<video>`
     const container = '[data-cy="modal"] [data-cy="modal-looker-container"]';
     const loaded = `${container} [canvas-loaded="true"]`;
-    await this.eventUtils.untilPresent(
-      allowErrorInfo
-        ? `${loaded}, ${container} [data-cy="looker-error-info"]`
-        : loaded,
-    );
+    await this.page
+      .locator(
+        allowErrorInfo
+          ? `${loaded}, ${container} [data-cy="looker-error-info"]`
+          : loaded,
+      )
+      .first()
+      .first()
+      .waitFor({ state: "attached" });
   }
 
   /** Move the mouse off the looker and wait for its controls to hide */
@@ -349,9 +356,22 @@ export class ModalPom {
   }
 
   async waitForLighterReady() {
-    await this.eventUtils.untilPresent(
-      '[data-cy="modal"] [data-cy="lighter-sample-renderer"][style*="visibility: visible"]',
-    );
+    await this.page
+      .locator(
+        '[data-cy="modal"] [data-cy="lighter-sample-renderer"][style*="visibility: visible"]',
+      )
+      .first()
+      .waitFor({ state: "attached" });
+  }
+
+  /** Resolve once the 3D scene is loaded, its camera settled and revealed */
+  async untilSceneReady() {
+    await this.page
+      .locator(
+        '[data-cy="modal"] [data-cy="looker3d"][data-scene-ready="true"]',
+      )
+      .first()
+      .waitFor({ state: "attached" });
   }
 
   private async isFullscreen() {

@@ -182,9 +182,10 @@ export class GridPom {
     const counts = kind
       ? `[data-cy=entry-counts][data-count-kind=${kind}]`
       : "[data-cy=entry-counts]";
-    await this.eventUtils.untilPresent(
-      `${counts}:not(:has([data-cy=loading-dots]))`,
-    );
+    await this.page
+      .locator(`${counts}:not(:has([data-cy=loading-dots]))`)
+      .first()
+      .waitFor({ state: "attached" });
   }
 
   /** Resolve once `count` grid lookers have drawn, e.g. after a page load */

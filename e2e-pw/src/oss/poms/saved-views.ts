@@ -71,7 +71,7 @@ export class SavedViewsPom {
   async clickOptionEdit(slug: string) {
     await this.savedViewOption(slug).hover();
     await this.optionEdit(slug).click();
-    await this.eventUtils.untilPresent(DIALOG);
+    await this.page.locator(DIALOG).first().waitFor({ state: "attached" });
     // the dialog fills its inputs from the view in an effect after it mounts
     await this.eventUtils.untilDom(
       this.nameInput(),
@@ -110,7 +110,7 @@ export class SavedViewsPom {
   async deleteView(name: string) {
     await this.savedViewOption(name).hover();
     await this.optionEdit(name).click();
-    await this.eventUtils.untilPresent(DIALOG);
+    await this.page.locator(DIALOG).first().waitFor({ state: "attached" });
     await this.clickDeleteBtn();
   }
 
@@ -140,7 +140,7 @@ export class SavedViewsPom {
   /** Open the color dropdown */
   async clickColor(color: Color = defaultColor) {
     await this.colorInput(color).click();
-    await this.eventUtils.untilPresent(COLOR_LIST);
+    await this.page.locator(COLOR_LIST).first().waitFor({ state: "attached" });
   }
 
   /** Pick a color from the open dropdown, resolving once its menu is gone */
@@ -178,7 +178,10 @@ export class SavedViewsPom {
   async openSelect() {
     if ((await this.page.locator(SELECTION_LIST).count()) > 0) return;
     await this.selector.click();
-    await this.eventUtils.untilPresent(SELECTION_LIST);
+    await this.page
+      .locator(SELECTION_LIST)
+      .first()
+      .waitFor({ state: "attached" });
   }
 
   async openCreateModal(
@@ -190,7 +193,7 @@ export class SavedViewsPom {
       await this.openSelect();
     }
     await this.saveNewViewBtn.click();
-    await this.eventUtils.untilPresent(DIALOG);
+    await this.page.locator(DIALOG).first().waitFor({ state: "attached" });
   }
 
   async savedViewCount(name: string) {

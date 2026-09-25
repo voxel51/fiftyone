@@ -5,7 +5,6 @@ import {
   WaitUntilGridVisibleOptions,
 } from "src/shared/abstract-loader";
 import { PythonRunner } from "src/shared/python-runner/python-runner";
-import { EventUtils } from "src/shared/event-utils";
 
 export class OssLoader extends AbstractFiftyoneLoader {
   constructor() {
@@ -159,25 +158,31 @@ export class OssLoader extends AbstractFiftyoneLoader {
       }
     }
 
-    const events = new EventUtils(page);
-    await events.untilPresent(
-      `[data-cy=${withGrid ? "spotlight-section-forward" : "panel-container"}]`,
-    );
+    await page
+      .locator(
+        `[data-cy=${withGrid ? "spotlight-section-forward" : "panel-container"}]`,
+      )
+      .first()
+      .waitFor({ state: "attached" });
 
     if (isEmptyDataset) {
       return;
     }
 
     if (readySelector) {
-      await events.untilPresent(readySelector);
+      await page.locator(readySelector).first().waitFor({ state: "attached" });
       return;
     }
 
     // a grid tile's terminal state depends on its kind: lookers finish
     // drawing a canvas (or report an error); custom-renderer tiles are
     // ready once their wrapper commits
-    await events.untilPresent(
-      '[data-cy=looker-error-info], [data-cy=grid-custom-renderer], canvas[canvas-loaded="true"]',
-    );
+    await page
+      .locator(
+        '[data-cy=looker-error-info], [data-cy=grid-custom-renderer], canvas[canvas-loaded="true"]',
+      )
+      .first()
+      .first()
+      .waitFor({ state: "attached" });
   }
 }

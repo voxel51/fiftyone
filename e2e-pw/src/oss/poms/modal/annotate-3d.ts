@@ -30,9 +30,7 @@ export class ModalAnnotate3dPom {
    */
   async waitForSurface() {
     await expect(this.container).toBeVisible();
-    await this.modal.eventUtils.untilPresent(
-      '[data-cy="modal"] [data-cy="looker3d"][data-scene-ready="true"]',
-    );
+    await this.modal.untilSceneReady();
   }
 
   /**

@@ -66,24 +66,34 @@ export class ModalVideoControlsPom {
     // Anchor on a real reading first. If the readout is absent or mid-swap,
     // `start` is empty and any later reading would count as "advanced" — the
     // helper would return without playback having moved at all.
-    await this.modal.eventUtils.untilPresent(TIME, /\S/);
+    await this.page
+      .locator(TIME)
+      .filter({ hasText: /\S/ })
+      .first()
+      .waitFor({ state: "attached" });
     const start = (await this.time.textContent()) ?? "";
 
     await this.togglePlay();
-    await this.modal.eventUtils.untilPresent(
-      TIME,
-      new RegExp(`^(?!${escapeRegExp(start)}$)\\S`),
-    );
+    await this.page
+      .locator(TIME)
+      .filter({ hasText: new RegExp(`^(?!${escapeRegExp(start)}$)\\S`) })
+      .first()
+      .waitFor({ state: "attached" });
     await this.togglePlay();
   }
 
   /** Play until the readout reads `text`, then pause. */
   private async playUntilReadout(text: string, matchBeginning: boolean) {
     await this.togglePlay();
-    await this.modal.eventUtils.untilPresent(
-      TIME,
-      new RegExp(`^${escapeRegExp(text)}${matchBeginning ? "" : "$"}`),
-    );
+    await this.page
+      .locator(TIME)
+      .filter({
+        hasText: new RegExp(
+          `^${escapeRegExp(text)}${matchBeginning ? "" : "$"}`,
+        ),
+      })
+      .first()
+      .waitFor({ state: "attached" });
     await this.togglePlay();
   }
 

@@ -42,9 +42,13 @@ export class ModalImaAsVideoControlsPom {
 
   // only the paused and playing states render an icon with a click handler
   private async waitUntilClickable() {
-    await this.modal.eventUtils.untilPresent(
-      '[data-cy=imavid-playhead][data-playhead-state="paused"], [data-cy=imavid-playhead][data-playhead-state="playing"]',
-    );
+    await this.page
+      .locator(
+        '[data-cy=imavid-playhead][data-playhead-state="paused"], [data-cy=imavid-playhead][data-playhead-state="playing"]',
+      )
+      .first()
+      .first()
+      .waitFor({ state: "attached" });
   }
 
   public async togglePlay() {
@@ -70,10 +74,16 @@ export class ModalImaAsVideoControlsPom {
   }
 
   async waitUntilFrameTextIs(frameText: string, matchBeginning = false) {
-    await this.modal.eventUtils.untilPresent(
-      "[data-cy=imavid-status-indicator]",
-      new RegExp(`^${escapeRegExp(frameText)}${matchBeginning ? "" : "$"}`),
-    );
+    await this.page
+      .locator("[data-cy=imavid-status-indicator]")
+      .filter({
+        hasText: new RegExp(
+          `^${escapeRegExp(frameText)}${matchBeginning ? "" : "$"}`,
+        ),
+      })
+      .first()
+      .first()
+      .waitFor({ state: "attached" });
   }
 
   async playUntilFrames(frameText: string, matchBeginning = false) {

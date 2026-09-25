@@ -189,50 +189,6 @@ export class EventUtils {
   }
 
   /**
-   * Resolve once an element matches `selector` (and, given `text`, has text
-   * content matching it), immediately if one already does. Waits on DOM
-   * mutations rather than polling, so it is bounded only by the test timeout —
-   * for state that takes real time to appear (decode, reveal, playback).
-   */
-  public async untilPresent(selector: string, text?: RegExp): Promise<void> {
-    await this.reportingNavigation(selector, () =>
-      this.page.evaluate(
-        ({ selector_, source, flags }) =>
-          new Promise<void>((resolve) => {
-            const pattern = source === null ? null : new RegExp(source, flags);
-            const matches = () =>
-              Array.from(document.querySelectorAll(selector_)).some(
-                (el) => !pattern || pattern.test(el.textContent ?? ""),
-              );
-
-            if (matches()) {
-              resolve();
-              return;
-            }
-
-            const observer = new MutationObserver(() => {
-              if (matches()) {
-                observer.disconnect();
-                resolve();
-              }
-            });
-            observer.observe(document, {
-              subtree: true,
-              childList: true,
-              attributes: true,
-              characterData: true,
-            });
-          }),
-        {
-          selector_: selector,
-          source: text?.source ?? null,
-          flags: text?.flags ?? "",
-        },
-      ),
-    );
-  }
-
-  /**
    * Resolve once `predicate(element, arg)` holds for the element `locator`
    * resolves to, re-checking on every DOM mutation. The predicate runs in the
    * page, so it must be self-contained (no closure over test variables).

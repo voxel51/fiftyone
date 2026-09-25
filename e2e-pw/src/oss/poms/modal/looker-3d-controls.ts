@@ -45,9 +45,7 @@ export class Looker3DControlsPom {
       this.locator.getByTestId("looker3d-logs-action-bar"),
     ).toHaveText(SUCCESS_MSG);
 
-    await this.modal.eventUtils.untilPresent(
-      '[data-cy="modal"] [data-cy="looker3d"][data-scene-ready="true"]',
-    );
+    await this.modal.untilSceneReady();
   }
 
   /**
