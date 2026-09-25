@@ -31,6 +31,13 @@ export interface GridSelectionActionContext {
   readonly conversion: ViewConversion | null;
   /** The serialized view stages the scope was read in. */
   readonly view: readonly unknown[];
+  /** Optional opening preference for sample subsets of grouped datasets. */
+  readonly preferredGroupSlice?: string;
+  /**
+   * The selection bucket an explicit scope is drawn from, when the tray runs
+   * several or the one bucket carries a name. Absent for the plain tray.
+   */
+  readonly bucket?: { readonly id: string; readonly name: string };
   /**
    * Names the complete scope once: the captured members, or a server-side
    * snapshot of all current results that later browsing cannot change.
