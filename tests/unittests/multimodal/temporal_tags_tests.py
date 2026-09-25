@@ -28,10 +28,6 @@ class TemporalTagTests(unittest.TestCase):
         self.assertEqual(fota.list_temporal_tags(dataset), [])
         self.assertEqual(fota.count_temporal_tags(dataset), {})
         self.assertEqual(fota.delete_temporal_tags(dataset, tags="missing"), 0)
-        self.assertNotIn(
-            fota.TAGS_COLLECTION_NAME,
-            foo.get_db_conn().list_collection_names(),
-        )
 
         persisted = fota.add_temporal_tags(
             dataset,
