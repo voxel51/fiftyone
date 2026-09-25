@@ -93,7 +93,7 @@ export class ModalPom {
   }
 
   afterLookerAttached<T>(action: () => Promise<T>): Promise<T> {
-    return this.eventUtils.after("looker-attached", action);
+    return this.eventUtils.after("e2e:modal:looker-attached", action);
   }
 
   getSampleNavigation(direction: "forward" | "backward") {

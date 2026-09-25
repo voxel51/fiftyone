@@ -92,7 +92,7 @@ test.describe.serial("color scheme basic functionality with quickstart", () => {
     // turn on the sample tag bubble
     await sidebar.clickFieldCheckbox("tags");
     // mount eventListener
-    await eventUtils.after("re-render-tag", async () => {
+    await eventUtils.after("e2e:looker:tags-rendered", async () => {
       // open color modal and modify color in sample tags field and ground_truth
       await gridActionsRow.toggleColorSettings();
 

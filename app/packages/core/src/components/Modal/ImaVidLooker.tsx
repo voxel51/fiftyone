@@ -28,6 +28,7 @@ import {
   useLookerOptionsUpdate,
   useModalContext,
 } from "./hooks";
+import { dispatchLookerAttached } from "./lookerAttached";
 import useKeyEvents from "./use-key-events";
 import { useImavidModalSelectiveRendering } from "./use-modal-selective-rendering";
 import { shortcutToHelpItems } from "./utils";
@@ -146,6 +147,7 @@ export const ImaVidLookerReact = React.memo(
 
     useEffect(() => {
       looker.attach(id);
+      dispatchLookerAttached();
     }, [looker, id]);
 
     useEventHandler(looker, "clear", useClearSelectedLabels());
@@ -153,11 +155,6 @@ export const ImaVidLookerReact = React.memo(
     useKeyEvents(initialRef, sample._id, looker);
 
     const ref = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-      ref.current?.dispatchEvent(
-        new CustomEvent(`looker-attached`, { bubbles: true }),
-      );
-    }, [ref]);
 
     const loadRange = React.useCallback(
       async (range: Readonly<BufferRange>) => {

@@ -1,6 +1,7 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  */
+import { getEventBus } from "@fiftyone/events";
 import type { COLOR_BY } from "@fiftyone/utilities";
 import { isEqual } from "lodash";
 import type {
@@ -13,6 +14,11 @@ import { BaseElement } from "../base";
 import { computeTagData } from "./computeTagData";
 import { lookerTags } from "./tags.module.css";
 import { prettify } from "./util";
+
+/** e2e specs wait on a tile's tags redrawing after a color change */
+type TagsE2EEvents = {
+  "e2e:looker:tags-rendered": undefined;
+};
 
 const LINE_HEIGHT_COEFFICIENT = 1.15;
 const SPACING_COEFFICIENT = 0.1;
@@ -107,12 +113,6 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     this.showPatchLabels = showPatchLabels;
     this.shownLabelAttributes = shownLabelAttributes;
 
-    this.element.dispatchEvent(
-      new CustomEvent("re-render-tag", {
-        bubbles: true,
-      }),
-    );
-
     const spacing = `${fontSize * SPACING_COEFFICIENT}px`;
     for (const { path, value, color, title } of elements.filter((e) =>
       Boolean(e),
@@ -121,6 +121,8 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         applyTagValue(color, path, title, value, spacing),
       );
     }
+
+    getEventBus<TagsE2EEvents>().dispatch("e2e:looker:tags-rendered");
 
     return this.element;
   }
