@@ -118,7 +118,7 @@ test.describe.serial("quickstart-groups", () => {
 
     test("group media visibility toggle works", async ({ modal }) => {
       // make sure popout is right aligned to the toggle button
-      await modal.group.toggleMediaButton.click();
+      await modal.group.openMediaVisibility();
 
       // const popoutBoundingBox =
       //   await modal.group.groupMediaVisibilityPopout.boundingBox();
@@ -167,6 +167,7 @@ test.describe.serial("quickstart-groups", () => {
       await renderer3d.assert.expectSomethingToRender();
 
       await modal.sidebar.switchMode("explore");
+      await modal.group.openMediaVisibility();
 
       if (!(await modal.groupLooker.isVisible())) {
         await modal.group.toggleMedia("viewer");

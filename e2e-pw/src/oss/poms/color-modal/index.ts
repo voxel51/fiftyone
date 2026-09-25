@@ -56,31 +56,16 @@ export class ColorModalPom {
   // field level setting
   async changeColorMode(mode: "value" | "field" | "instance") {
     await this.getFieldSelector("color-by-attribute").click();
-    await this.getFieldSelector(`option-${mode}`).click();
+    const option = this.getFieldSelector(`option-${mode}`);
+    await option.click();
+    // the options popout sits over the controls below it until it closes
+    await option.waitFor({ state: "detached" });
   }
 
-  async useSpecialFieldColor(fieldName: string) {
-    await this.page
-      .getByTitle(`Use custom color for ${fieldName} field`)
-      .first()
-      .click({ force: true });
-  }
-
-  async setSpecialFieldColor(color: string) {
-    await this.getFieldSelector("field-color-div").isVisible();
-    await this.getFieldSelector("field-color-div")
-      .getByRole("textbox")
-      .fill(color);
-  }
-
-  // value level setting
-  async selectColorByAttribute(field: string) {
-    await this.colorModal
-      .getByTestId("custom-colors-select-attribute")
-      .click({ force: true });
-    await this.colorModal
-      .getByTestId(`filter-option-${field}`)
-      .click({ force: true });
+  async useCustomValueColors() {
+    await this.getFieldSelector(
+      "checkbox-Use custom colors for specific field values",
+    ).click();
   }
 
   async addNewPairs(pairs: { value: string; color: string }[]) {

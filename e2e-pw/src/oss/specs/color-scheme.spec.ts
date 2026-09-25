@@ -99,10 +99,7 @@ test.describe.serial("color scheme basic functionality with quickstart", () => {
       await colorModal.selectActiveField("sample tags");
       await colorModal.changeColorMode("value");
 
-      await page
-        .getByTitle(`Use custom colors for specific field values`)
-        .first()
-        .click({ force: true });
+      await colorModal.useCustomValueColors();
       await colorModal.addANewPair("validation", "#9ACD32", 0); // yellow green
       await colorModal.addANewPair("validation", "#9ACD32", 0); // yellow green
       await colorModal.addANewPair("validation", "#9ACD32", 0); // yellow green

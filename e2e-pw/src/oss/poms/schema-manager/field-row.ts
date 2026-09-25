@@ -5,7 +5,11 @@ import { JSONEditorPom } from "./json-editor";
 
 /**
  * A field row of the schema manager. May be active/hidden, checked/unchecked,
- * editable, and have pill attributes such as system and read-only
+ * editable, and have pill attributes such as system and read-only.
+ *
+ * Row controls are pressed from the keyboard: a row that cannot be dragged is
+ * `aria-disabled` (dnd-kit's draggable attributes), which Playwright's click
+ * treats as disabling every control inside it.
  */
 export class FieldRowPom {
   readonly assert: FieldRowAsserter;
@@ -61,18 +65,14 @@ export class FieldRowPom {
    * Check the checkbox, if it exists
    */
   async clickCheckbox() {
-    // click must be forced because the field row has an aria-disabled
-    // attribute
-    await this.checkbox.click({ force: true });
+    await this.checkbox.press("Space");
   }
 
   /**
    * Click the pencil button, if it exists
    */
   async edit() {
-    // click must be forced because the field row has an aria-disabled
-    // attribute
-    await this.pencil.click({ force: true });
+    await this.pencil.press("Enter");
     return new JSONEditorPom(
       this.page,
       this.eventUtils,
@@ -85,9 +85,7 @@ export class FieldRowPom {
    * Click the scan button (for unconfigured fields)
    */
   async scan() {
-    // click must be forced because the field row has an aria-disabled
-    // attribute
-    await this.scanButton.click({ force: true });
+    await this.scanButton.press("Enter");
     return new JSONEditorPom(
       this.page,
       this.eventUtils,

@@ -37,7 +37,7 @@ export class ModalSidebarPom {
     const selectionDiv = this.locator
       .getByTestId("checkbox-" + label)
       .getByTitle(label);
-    await selectionDiv.click({ force: true });
+    await selectionDiv.click();
   }
 
   /**

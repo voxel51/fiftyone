@@ -2,6 +2,12 @@ import { Page, expect } from "src/oss/fixtures";
 import { ModalPom } from ".";
 import { DynamicGroupPaginationPom } from "./dynamic-group-pagination-bar";
 
+const NAVIGATION_MODE_OPTIONS = {
+  carousel: "Sequential Access",
+  pagination: "Random Access",
+  video: "Video",
+} as const;
+
 export class ModalGroupActionsPom {
   readonly page: Page;
   readonly modal: ModalPom;
@@ -25,12 +31,13 @@ export class ModalGroupActionsPom {
     return this.modal.locator.getByTestId("group-media-visibility-popout");
   }
 
-  async toggleMedia(media: "3d" | "carousel" | "viewer") {
-    if (!(await this.groupMediaVisibilityPopout.isVisible())) {
-      // using force=true because react-draggable is intercepting click event
-      await this.toggleMediaButton.click({ force: true });
-    }
+  async openMediaVisibility() {
+    await this.toggleMediaButton.click();
+    await this.groupMediaVisibilityPopout.waitFor();
+  }
 
+  /** Toggle one renderer; open the popout first with `openMediaVisibility` */
+  async toggleMedia(media: "3d" | "carousel" | "viewer") {
     switch (media) {
       case "3d":
         await this.modal.locator.getByTestId("checkbox-3D Viewer").click();
@@ -56,28 +63,13 @@ export class ModalGroupActionsPom {
   async setDynamicGroupsNavigationMode(
     mode: "carousel" | "pagination" | "video",
   ) {
-    // using force=true because react-draggable is intercepting click event
-    await this.modal.toggleDisplayOptionsButton.click({ force: true });
-
-    switch (mode) {
-      case "carousel":
-        await this.modal.locator
-          .getByTestId("tab-option-Sequential Access")
-          .click();
-        break;
-      case "pagination":
-        await this.modal.locator
-          .getByTestId("tab-option-Random Access")
-          .click();
-        break;
-      case "video":
-        await this.modal.locator.getByTestId("tab-option-Video").click();
-        break;
-      default:
-        throw new Error(`Unknown mode: ${mode}`);
-    }
-    // using force=true because react-draggable is intercepting click event
-    await this.modal.toggleDisplayOptionsButton.click({ force: true });
+    const option = this.modal.locator.getByTestId(
+      `tab-option-${NAVIGATION_MODE_OPTIONS[mode]}`,
+    );
+    await this.modal.toggleDisplayOptionsButton.click();
+    await option.click();
+    await this.modal.toggleDisplayOptionsButton.click();
+    await option.waitFor({ state: "detached" });
   }
 }
 
