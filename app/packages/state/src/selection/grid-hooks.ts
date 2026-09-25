@@ -6,6 +6,7 @@ import {
   useGridGroupSlice,
   useGridViewScope,
   useLegacySelectedSamples,
+  useSampleSchema,
   useSetSelectionScopeBoundary,
 } from "../accessors/dataset";
 import {
@@ -83,6 +84,7 @@ export function useGridSelectionBoundary() {
   const { domainId, conversion } = useGridSelectionDataset();
   const [boundary, setBoundary] = useSelectionBoundary(domainId);
   const { filters: currentFilters, rangeConstraint } = useGridViewScope();
+  const schema = useSampleSchema();
   const tags = currentFilters._temporal_tags;
   const effective = useMemo<SelectionBoundary>(() => {
     const values = Array.isArray(tags?.values)
@@ -97,6 +99,21 @@ export function useGridSelectionBoundary() {
       providers.push(rangeConstraint.provider);
     if (!tags?.exclude && values.length)
       providers.push({ kind: "temporal-tags", values });
+    if (!conversion)
+      for (const [field, definition] of Object.entries(schema)) {
+        if (!definition.embeddedDocType?.endsWith(".TemporalDetections"))
+          continue;
+        const filter = currentFilters[`${field}.detections.label`];
+        const eventValues = Array.isArray(filter?.values)
+          ? filter.values.filter(
+              (value): value is string => typeof value === "string",
+            )
+          : [];
+        // Both sidebar label modes identify event ranges; isMatching only
+        // controls whether nonmatching parents stay in the displayed view.
+        if (!filter?.exclude && eventValues.length)
+          providers.push({ kind: "events", field, values: eventValues });
+      }
     return providers.length
       ? {
           ...boundary,
@@ -106,7 +123,7 @@ export function useGridSelectionBoundary() {
               : { kind: "intersection", providers },
         }
       : boundary;
-  }, [boundary, conversion, rangeConstraint, tags]);
+  }, [boundary, conversion, currentFilters, rangeConstraint, schema, tags]);
   return [effective, setBoundary] as const;
 }
 
