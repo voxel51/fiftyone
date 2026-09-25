@@ -1,4 +1,5 @@
 import { CenteredStack, scrollable } from "@fiftyone/components";
+import { getEventBus } from "@fiftyone/events";
 import { clearUseKeyStores } from "@fiftyone/core/src/plugins/SchemaIO/hooks";
 import {
   PanelSkeleton,
@@ -17,6 +18,11 @@ import { useTrackEvent } from "@fiftyone/analytics";
 import usePanelEvent from "./usePanelEvent";
 import LoadingSpinner from "@fiftyone/components/src/components/Loading/LoadingSpinner";
 import { styled } from "@mui/system";
+
+/** e2e specs wait on a Python panel's render once its events settle */
+type CustomPanelE2EEvents = {
+  "e2e:operators:panel-rendered": { panelName: string; pending: number };
+};
 
 const SpinnerContainer = styled(Box)`
   display: flex;
@@ -56,6 +62,15 @@ export function CustomPanel(props: CustomPanelProps) {
   useEffect(() => {
     setLoading(count > 0);
   }, [setLoading, count]);
+
+  // an event's render lands with its result, before its count drops
+  useEffect(() => {
+    if (!panelSchema) return;
+    getEventBus<CustomPanelE2EEvents>().dispatch(
+      "e2e:operators:panel-rendered",
+      { panelName, pending: count },
+    );
+  }, [panelName, panelSchema, data, count]);
 
   if (pending && !panelSchema) {
     return <PanelSkeleton />;

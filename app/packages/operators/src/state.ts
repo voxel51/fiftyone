@@ -1,5 +1,6 @@
 import { useAnalyticsInfo } from "@fiftyone/analytics";
 import { Markdown } from "@fiftyone/components";
+import { getEventBus } from "@fiftyone/events";
 import * as fos from "@fiftyone/state";
 import { debounce, omit } from "lodash";
 import React, {
@@ -805,7 +806,15 @@ export const useOperatorPrompt = () => {
   };
 };
 
-const operatorIOState = atom({
+const operatorIOState = atom<{
+  visible: boolean;
+  schema?: unknown;
+  data?: unknown;
+  isInput?: boolean;
+  isOutput?: boolean;
+  hideButtons?: boolean;
+  validationErrors?: unknown;
+}>({
   key: "operatorIOState",
   default: { visible: false },
 });
@@ -1142,6 +1151,11 @@ export enum OperatorLoadResult {
   NOT_FOUND = "NOT_FOUND",
 }
 
+/** e2e specs wait on an operator run a click or prompt starts */
+type OperatorExecutorE2EEvents = {
+  "e2e:operators:executed": { operator: string; failed: boolean };
+};
+
 /**
  * @param uri - The URI of the operator to execute.
  * @param handlers - The optional handlers for the operator.
@@ -1259,6 +1273,7 @@ export function useOperatorExecutor(
       ctx.state = state;
       ctx.delegationTarget = delegationTarget;
       ctx.requestDelegation = requestDelegation;
+      let failed = true;
       try {
         ctx.hooks = hooks;
         ctx.state = state;
@@ -1269,6 +1284,7 @@ export function useOperatorExecutor(
         setResult(result.result);
         setError(result.error);
         setIsDelegated(result.delegated);
+        failed = Boolean(result.error);
         if (result.error && !options?.skipErrorNotification) {
           handlers.onError?.(result, { ctx });
           notify({
@@ -1299,6 +1315,10 @@ export function useOperatorExecutor(
       }
       setHasExecuted(true);
       setIsExecuting(false);
+      getEventBus<OperatorExecutorE2EEvents>().dispatch(
+        "e2e:operators:executed",
+        { operator: uri, failed },
+      );
     },
     [currentSample, context, loadResult],
   );

@@ -1,4 +1,6 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
+import { EventUtils } from "src/shared/event-utils";
+import { PROMPT_EVENT, promptDetail } from "./operators-prompt";
 
 export class OperatorsBrowserPom {
   readonly page: Page;
@@ -6,7 +8,10 @@ export class OperatorsBrowserPom {
   readonly assert: OperatorsBrowserAsserter;
   readonly selectionCount: Locator;
 
-  constructor(page: Page) {
+  constructor(
+    page: Page,
+    private readonly eventUtils: EventUtils,
+  ) {
     this.page = page;
     this.assert = new OperatorsBrowserAsserter(this);
 
@@ -25,8 +30,13 @@ export class OperatorsBrowserPom {
     return this.locator.getByTestId("operators-browser-search").fill(term);
   }
 
+  /** Choose an operator; resolves once its prompt shows a form or runs */
   choose(operator: string) {
-    return this.locator.getByText(operator).click();
+    return this.eventUtils.after(
+      PROMPT_EVENT,
+      () => this.locator.getByText(operator).click(),
+      (e) => promptDetail(e).phase !== "closed",
+    );
   }
 }
 

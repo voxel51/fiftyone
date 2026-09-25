@@ -219,6 +219,7 @@ test.describe.serial("schema manager", () => {
   });
 
   test("patches view required field prompt activates schema and enters edit mode", async ({
+    eventUtils,
     fiftyoneLoader,
     page,
     modal,
@@ -240,17 +241,14 @@ test.describe.serial("schema manager", () => {
 
     // Click the activate button to initialize and activate the predictions schema
     expect(await activateButton.isEnabled()).toBe(true);
-    // activation generates and activates the schema through operators; the
-    // edit panel mounts once that round-trip lands
-    const activated = page.waitForResponse(
-      (r) =>
-        r.url().includes("/operators/execute") &&
-        r.request().postDataJSON()?.operator_uri ===
-          "@voxel51/operators/activate_label_schemas" &&
-        r.status() < 400,
+    // activation generates and activates the schema through operators
+    await eventUtils.after(
+      "e2e:operators:executed",
+      () => activateButton.click(),
+      (e) =>
+        (e.detail as { operator: string }).operator ===
+        "@voxel51/operators/activate_label_schemas",
     );
-    await activateButton.click();
-    await activated;
 
     // After activation, the edit panel should appear with "Edit Detection";
     // it mounts once the activated schemas are refetched

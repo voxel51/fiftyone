@@ -10,8 +10,8 @@ const test = base.extend<{
   url: UrlPom;
   viewBar: ViewBarPom;
 }>({
-  operatorsBrowser: async ({ page }, use) => {
-    await use(new OperatorsBrowserPom(page));
+  operatorsBrowser: async ({ page, eventUtils }, use) => {
+    await use(new OperatorsBrowserPom(page, eventUtils));
   },
   url: async ({ page, eventUtils }, use) => {
     await use(new UrlPom(page, eventUtils));
