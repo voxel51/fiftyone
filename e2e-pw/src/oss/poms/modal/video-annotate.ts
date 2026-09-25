@@ -1,5 +1,5 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
-import { collapseWhitespace, spaceToken } from "src/oss/utils";
+import { collapseWhitespace } from "src/oss/utils";
 import { ModalPom } from ".";
 
 /** Dispatched after the timeline commits a changed set of rows, with their ids */
@@ -226,6 +226,26 @@ export class VideoAnnotatePom {
       TRACKS_RENDERED,
       action,
       (e) => [...renderedIds(e)].sort().join(",") === want,
+    );
+  }
+
+  /**
+   * Run `action` and resolve once the canvas paints overlays of each field in
+   * `fields` marked true and of none marked false
+   */
+  async afterCanvasFields<T>(
+    fields: Record<string, boolean>,
+    action: () => Promise<T>,
+  ) {
+    return this.modal.eventUtils.after(
+      "e2e:video-annotation:overlays-stamped",
+      action,
+      (e) => {
+        const painted = (e.detail as { fields: string }).fields.split(" ");
+        return Object.entries(fields).every(
+          ([field, on]) => painted.includes(field) === on,
+        );
+      },
     );
   }
 
@@ -733,15 +753,9 @@ class VideoAnnotateAsserter {
    * (space separated), since the overlays themselves have no DOM.
    */
   async canvasRendersField(field: string, rendered = true) {
-    const pattern = spaceToken(field);
-    return rendered
-      ? await expect(this.va.surface).toHaveAttribute(
-          "data-cy-scene-overlay-fields",
-          pattern,
-        )
-      : await expect(this.va.surface).not.toHaveAttribute(
-          "data-cy-scene-overlay-fields",
-          pattern,
-        );
+    const fields = await this.va.surface.getAttribute(
+      "data-cy-scene-overlay-fields",
+    );
+    expect((fields ?? "").split(" ").includes(field)).toBe(rendered);
   }
 }

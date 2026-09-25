@@ -2,6 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { getEventBus } from "@fiftyone/events";
 import type { useLighterSetupWithPixi } from "@fiftyone/lighter";
 import {
   UNDEFINED_LIGHTER_SCENE_ID,
@@ -11,6 +12,12 @@ import { isE2E } from "@fiftyone/utilities";
 import { useCallback, useEffect } from "react";
 
 type Scene = ReturnType<typeof useLighterSetupWithPixi>["scene"];
+
+/** e2e specs wait on the overlay set an activation change leaves painted */
+type SceneOverlaysE2EEvents = {
+  /** the fields the scene's overlays belong to, space separated */
+  "e2e:video-annotation:overlays-stamped": { fields: string };
+};
 
 declare global {
   interface Window {
@@ -45,13 +52,15 @@ const stampSceneOverlays = (scene: NonNullable<Scene>) => {
   }
 
   const overlays = scene.getAllOverlays();
-  surface.setAttribute(
-    "data-cy-scene-overlay-fields",
-    Array.from(new Set(overlays.map((o) => o.field))).join(" "),
-  );
+  const fields = Array.from(new Set(overlays.map((o) => o.field))).join(" ");
+  surface.setAttribute("data-cy-scene-overlay-fields", fields);
   surface.setAttribute(
     "data-cy-scene-overlay-ids",
     overlays.map((o) => o.id).join(" "),
+  );
+  getEventBus<SceneOverlaysE2EEvents>().dispatch(
+    "e2e:video-annotation:overlays-stamped",
+    { fields },
   );
 };
 
