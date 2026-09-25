@@ -1,0 +1,34 @@
+name: PR Retarget
+
+# GitHub auto-retargeting a stacked PR (the PR below it merged) fires `edited`,
+# not `synchronize`, so the Pull Request suite never tests the new base.
+# Updating the branch as voxel51-bot fires the `synchronize` that does.
+
+on:
+  pull_request:
+    types: [edited]
+
+permissions: {}
+
+jobs:
+  update-branch:
+    # Title/body edits skip at the job level, which bills no runner time. Fork
+    # PRs get no secrets, so they need a manual update instead.
+    if: >-
+      github.event.changes.base != null &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Merge the new base into the PR branch
+        env:
+          # the default Actions token's pushes would not trigger CI
+          GH_TOKEN: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if ! gh api -X PUT "repos/$REPO/pulls/$PR_NUMBER/update-branch" \
+            -f expected_head_sha="$HEAD_SHA"; then
+            echo "::error::Could not update the branch onto its new base; push to it to run CI."
+            exit 1
+          fi
