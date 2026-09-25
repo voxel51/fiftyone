@@ -31,7 +31,7 @@ type SimilarLabelsResponse = {
   count: number;
   instance_id: string;
   label_id_map: Record<string, number>;
-  range: [number, number];
+  range: [number, number] | null;
 };
 
 const fetchSimilarLabels = async ({
@@ -43,7 +43,7 @@ const fetchSimilarLabels = async ({
 }: {
   instanceId: string;
   sampleId: string;
-  numFrames: number;
+  numFrames?: number;
   dataset: string;
   view: State.Stage[];
 }): Promise<SimilarLabelsResponse | null> => {
@@ -70,7 +70,7 @@ const fetchSimilarLabels = async ({
 export const getSimilarLabelsCached = async (params: {
   instanceId: string;
   sampleId: string;
-  numFrames: number;
+  numFrames?: number;
   dataset: string;
   view: State.Stage[];
 }): Promise<SimilarLabelsResponse | null> => {
@@ -103,7 +103,67 @@ export const getSimilarLabelsCached = async (params: {
   }
 };
 
+/**
+ * Selects or deselects every label of a tracked instance across a video's
+ * frames. Selecting asks the server for the instance's label ids; deselecting
+ * drops every selected label carrying the instance id.
+ */
+export const useToggleInstanceLabelsAcrossFrames = () =>
+  useRecoilCallback(
+    ({ set, snapshot }) =>
+      async ({
+        sampleId,
+        instanceId,
+        field,
+        select,
+        numFrames,
+      }: {
+        sampleId: string;
+        instanceId: string;
+        field: string;
+        select: boolean;
+        numFrames?: number;
+      }) => {
+        if (!select) {
+          set(selectedLabels, (prev) =>
+            prev.filter((label) => label.instanceId !== instanceId),
+          );
+          return;
+        }
+
+        const similarLabels = await getSimilarLabelsCached({
+          instanceId,
+          sampleId,
+          numFrames,
+          dataset: snapshot.getLoadable(datasetName).getValue(),
+          view: snapshot.getLoadable(view).getValue(),
+        });
+
+        if (!similarLabels) {
+          return;
+        }
+
+        set(selectedLabels, (prev) => {
+          const selected = new Set(prev.map((label) => label.labelId));
+          const additions = Object.entries(similarLabels.label_id_map)
+            .filter(([labelId]) => !selected.has(labelId))
+            .map(([labelId, frameNumber]) => ({
+              sampleId,
+              labelId,
+              frameNumber,
+              field,
+              instanceId,
+            }));
+
+          return additions.length > 0 ? [...prev, ...additions] : prev;
+        });
+      },
+    [],
+  );
+
 export const useOnShiftClickLabel = () => {
+  const toggleInstanceLabels = useToggleInstanceLabelsAcrossFrames();
+
   const handleGroup = useRecoilCallback(
     ({ set, snapshot }) =>
       async (e: LabelToggledEvent) => {
@@ -201,28 +261,11 @@ export const useOnShiftClickLabel = () => {
   );
 
   const handleVideo = useRecoilCallback(
-    ({ set, snapshot }) =>
+    ({ snapshot }) =>
       async (e: LabelToggledEvent) => {
-        const { sourceInstanceId, sourceLabelId } = e.detail;
+        const { sourceInstanceId, sourceLabelId, sourceSampleId } = e.detail;
 
         if (!sourceInstanceId) {
-          return;
-        }
-
-        const currentView = snapshot.getLoadable(view).getValue();
-
-        const similarLabels = await getSimilarLabelsCached({
-          instanceId: sourceInstanceId,
-          sampleId: e.detail.sourceSampleId,
-          numFrames:
-            jotaiStore.get(
-              getTimelineConfigAtom(`timeline-${e.detail.sourceSampleId}`),
-            ).totalFrames ?? 1,
-          dataset: snapshot.getLoadable(datasetName).getValue(),
-          view: currentView,
-        });
-
-        if (!similarLabels) {
           return;
         }
 
@@ -236,37 +279,23 @@ export const useOnShiftClickLabel = () => {
           currentHoveredInstances[1] as HoveredInstancesLabelsTuple[1]
         )[sourceLabelId].field;
 
-        const { label_id_map: labelIdMap } = similarLabels;
-
-        const labelsToAddOrRemove = Object.entries(labelIdMap).map(
-          ([labelId, frameNumber]) => ({
-            sampleId: e.detail.sourceSampleId,
-            labelId,
-            frameNumber,
-            field: fieldName,
-            instanceId: sourceInstanceId,
-          }),
-        );
-
         // if current label is already selected, and shift + click pressed,
         // assume user wants to deselect all instances with that instance config
         const currentSelectedLabels = snapshot
           .getLoadable(selectedLabelMap)
           .getValue();
 
-        if (currentSelectedLabels[sourceLabelId]) {
-          set(selectedLabels, (prev) => {
-            return [
-              ...prev.filter((label) => label.instanceId !== sourceInstanceId),
-            ];
-          });
-        } else {
-          set(selectedLabels, (prev) => {
-            return [...prev, ...labelsToAddOrRemove];
-          });
-        }
+        return toggleInstanceLabels({
+          sampleId: sourceSampleId,
+          instanceId: sourceInstanceId,
+          field: fieldName,
+          select: !currentSelectedLabels[sourceLabelId],
+          numFrames:
+            jotaiStore.get(getTimelineConfigAtom(`timeline-${sourceSampleId}`))
+              .totalFrames ?? 1,
+        });
       },
-    [],
+    [toggleInstanceLabels],
   );
 
   return useRecoilCallback(

@@ -85,6 +85,7 @@ export const useLighterSelectionEventHandler = (
   );
 
   const applyDelta = fos.useApplySelectedLabelsDelta();
+  const toggleInstanceLabels = fos.useToggleInstanceLabelsAcrossFrames();
   const sampleId = fos.useModalSampleId();
   // A getter, not the reactive value: this callback is registered on an event
   // channel, so taking a new identity every frame would mean a full
@@ -98,10 +99,12 @@ export const useLighterSelectionEventHandler = (
         selectedIds,
         deselectedIds,
         ignoreSideEffects,
+        isShiftPressed,
       }: {
         selectedIds: string[];
         deselectedIds: string[];
         ignoreSideEffects?: boolean;
+        isShiftPressed?: boolean;
       }) => {
         // Flagged payloads are not user intent, and both producers have
         // already settled the atom themselves or must not touch it:
@@ -143,8 +146,30 @@ export const useLighterSelectionEventHandler = (
           );
 
         applyDelta({ add, remove });
+
+        if (!isShiftPressed) {
+          return;
+        }
+
+        // Shift-click on a tracked instance acts on the whole track: every
+        // label sharing its instance id, on every frame, follows the clicked
+        // occurrence in or out of the selection.
+        const clickedId = selectedIds[0] ?? deselectedIds[0];
+        const clicked = clickedId ? scene.getOverlay(clickedId) : undefined;
+        const instanceId = clicked?.label?.instance?._id;
+
+        if (!clicked?.field || !instanceId) {
+          return;
+        }
+
+        toggleInstanceLabels({
+          sampleId,
+          instanceId,
+          field: clicked.field,
+          select: selectedIds.length > 0,
+        });
       },
-      [applyDelta, getFrame, sampleId, scene, syncing],
+      [applyDelta, getFrame, sampleId, scene, syncing, toggleInstanceLabels],
     ),
   );
 };

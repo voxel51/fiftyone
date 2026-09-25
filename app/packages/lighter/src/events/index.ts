@@ -260,6 +260,7 @@ export type LighterEventGroup = {
   "lighter:overlay-deselect": {
     id: string;
     ignoreSideEffects?: boolean;
+    isShiftPressed?: boolean;
   };
   /** Emitted when the selection changes (multiple overlays selected/deselected) */
   "lighter:selection-changed": {
@@ -273,6 +274,8 @@ export type LighterEventGroup = {
      * should skip deselect entries when this is true.
      */
     ignoreSideEffects?: boolean;
+    /** True when the pointer gesture behind this change held shift. */
+    isShiftPressed?: boolean;
   };
   /** Emitted when all overlays are deselected */
   "lighter:selection-cleared": {
