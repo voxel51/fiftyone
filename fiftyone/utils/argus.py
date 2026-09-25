@@ -254,16 +254,18 @@ class ArgusModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
     """Configuration for running an :class:`ArgusModel`.
 
     Args:
-        name_or_path ("phanerozoic/argus"): the HuggingFace model to load
+        name_or_path ("phanerozoic/argus"): the HuggingFace model to load,
+            ``"phanerozoic/argus"`` or ``"phanerozoic/argus-lite"``
         task ("detection"): the task to run. One of ``"classification"``,
             ``"segmentation"``, ``"depth"`` or ``"detection"``
         resolution (None): the square resolution at which to run the
             ``"segmentation"``, ``"depth"`` and ``"detection"`` tasks. By
             default, each runs at the resolution its head was trained at:
-            512, 416 and 768, respectively. ``"classification"`` always runs
-            at 224
-        nms_thresh (0.5): the IoU threshold of the non-maximum suppression
-            applied to detections
+            512, 416 and 768, respectively. ``"classification"`` and
+            embeddings always run at 224
+        nms_thresh (None): the IoU threshold of the non-maximum suppression
+            applied to detections. By default, the model's own threshold is
+            used
         max_detections (100): the maximum number of detections per image
     """
 
@@ -285,7 +287,7 @@ class ArgusModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
             raise ValueError(
                 "resolution must be positive; got %s" % self.resolution
             )
-        self.nms_thresh = self.parse_number(d, "nms_thresh", default=0.5)
+        self.nms_thresh = self.parse_number(d, "nms_thresh", default=None)
         self.max_detections = self.parse_int(d, "max_detections", default=100)
         if self.max_detections <= 0:
             raise ValueError(
@@ -299,8 +301,9 @@ class ArgusModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
 class ArgusModel(fout.TorchImageModel):
     """FiftyOne wrapper for `Argus <https://huggingface.co/phanerozoic/argus>`_.
 
-    Argus attaches task heads to a frozen EUPE-ViT-B backbone. The ``task``
-    decides the label type: ``"classification"`` returns a
+    Argus attaches task heads to a frozen EUPE backbone: ViT-B for
+    ``phanerozoic/argus`` and ViT-S for ``phanerozoic/argus-lite``. The
+    ``task`` decides the label type: ``"classification"`` returns a
     :class:`fiftyone.core.labels.Classification` over the 1,000 ImageNet
     classes, ``"segmentation"`` returns a
     :class:`fiftyone.core.labels.Segmentation` whose values 1 to 150 are the
@@ -308,7 +311,8 @@ class ArgusModel(fout.TorchImageModel):
     :class:`fiftyone.core.labels.Heatmap` of metric depth, normalized by its
     maximum with the maximum in meters in ``max_depth``, and ``"detection"``
     returns :class:`fiftyone.core.labels.Detections` over the 80 COCO
-    classes.
+    classes. Embeddings are the L2-normalized CLS token that the classifier
+    reads, whatever the ``task``.
 
     Example::
 
@@ -324,6 +328,8 @@ class ArgusModel(fout.TorchImageModel):
         dataset.apply_model(model, label_field="argus_segmentation")
         dataset.mask_targets["argus_segmentation"] = model.mask_targets
         dataset.save()
+
+        dataset.compute_embeddings(model, embeddings_field="argus_embeddings")
 
         session = fo.launch_app(dataset)
 
@@ -364,6 +370,18 @@ class ArgusModel(fout.TorchImageModel):
         # Keep the raw images as a list; Argus resizes each one
         return batch
 
+    @property
+    def has_embeddings(self):
+        return True
+
+    def embed(self, arg):
+        return self.embed_all([arg])[0]
+
+    def embed_all(self, args):
+        images, _ = fout.imgs_to_rgb_pil(args)
+        embeddings = self._model.embed(images)
+        return embeddings.detach().cpu().numpy()
+
     def _run(self, images, sizes):
         """The labels for a batch of RGB PIL images of the given sizes."""
         task = self.config.task
@@ -387,10 +405,12 @@ class ArgusModel(fout.TorchImageModel):
         if score_thresh is None:
             score_thresh = _DEFAULT_SCORE_THRESH
 
+        if self.config.nms_thresh is not None:
+            kwargs["nms_thresh"] = self.config.nms_thresh
+
         results = self._model.detect(
             images,
             score_thresh=score_thresh,
-            nms_thresh=self.config.nms_thresh,
             max_per_image=self.config.max_detections,
             **kwargs,
         )

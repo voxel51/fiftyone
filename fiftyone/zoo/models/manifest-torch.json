@@ -12773,7 +12773,72 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "classification", "torch", "transformer"],
+            "tags": [
+                "detection",
+                "classification",
+                "segmentation",
+                "depth",
+                "embeddings",
+                "torch",
+                "transformer"
+            ],
+            "training_data": [
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                },
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                },
+                {
+                    "name": "ADE20K",
+                    "url": "http://sceneparsing.csail.mit.edu/"
+                },
+                {
+                    "name": "NYU Depth V2",
+                    "url": "https://cs.nyu.edu/~fergus/datasets/nyu_depth_v2.html"
+                },
+                {
+                    "name": "LVD-1689M",
+                    "url": "https://arxiv.org/abs/2603.22387"
+                }
+            ],
+            "date_added": "2026-09-25 12:00:00"
+        },
+        {
+            "base_name": "argus-lite-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Argus-Lite (38M) multi-task perception model on a frozen EUPE-ViT-S backbone for COCO detection, ImageNet classification, ADE20K semantic segmentation and indoor metric depth",
+            "source": "https://huggingface.co/phanerozoic/argus-lite",
+            "author": "Charles Norton (phanerozoic)",
+            "license": "FAIR Noncommercial Research License",
+            "size_bytes": 152335388,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.argus.ArgusModel",
+                "config": {
+                    "name_or_path": "phanerozoic/argus-lite"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision>=0.16", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "detection",
+                "classification",
+                "segmentation",
+                "depth",
+                "embeddings",
+                "torch",
+                "transformer"
+            ],
             "training_data": [
                 {
                     "name": "MS COCO 2017",
