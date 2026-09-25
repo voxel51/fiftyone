@@ -961,7 +961,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
               pointSize: pointCloudProjection.pointSize,
               projectedStreamCount: renderedProjectionLayers.length,
             }}
-            event="multimodal-image-frame-rendered"
+            event="e2e:multimodal:image-frame-rendered"
           />
           {panelSceneChildren}
         </>

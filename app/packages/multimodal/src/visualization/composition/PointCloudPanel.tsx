@@ -662,7 +662,7 @@ const PointCloudCanvas = memo(function PointCloudCanvas(
       {isE2E() ? (
         <FrameRenderedSignal
           detail={pointCloudFrameDetail(renderLayers, pointSize, canvasSurface)}
-          event="multimodal-point-cloud-frame-rendered"
+          event="e2e:multimodal:point-cloud-frame-rendered"
         />
       ) : null}
       <PerspectiveCameraProjection

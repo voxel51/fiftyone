@@ -96,7 +96,7 @@ export class SavedViewsPom {
   }
 
   async waitUntilModalHidden() {
-    await this.eventUtils.untilAbsent(DIALOG);
+    await this.dialogLocator.waitFor({ state: "detached" });
   }
 
   /** Create a view; the app selects it once its list has refetched */
@@ -146,14 +146,14 @@ export class SavedViewsPom {
   /** Pick a color from the open dropdown, resolving once its menu is gone */
   async pickColor(color: Color) {
     await this.colorOption(color).click();
-    await this.eventUtils.untilAbsent(COLOR_LIST);
+    await this.colorListContainer().waitFor({ state: "detached" });
   }
 
   /** Close the saved view list; an edit opened from it leaves it open */
   async closeSelect() {
     if ((await this.page.locator(SELECTION_LIST).count()) === 0) return;
     await this.page.keyboard.press("Escape");
-    await this.eventUtils.untilAbsent(SELECTION_LIST);
+    await this.page.locator(SELECTION_LIST).waitFor({ state: "detached" });
   }
 
   async clearView() {
@@ -265,7 +265,7 @@ export class SavedViewsPom {
 
   /** Delete the open view; its list refetches after the dialog closes */
   async clickDeleteBtn() {
-    await this.eventUtils.after("saved-views-listed", () =>
+    await this.eventUtils.after("e2e:saved-views:listed", () =>
       this.deleteBtn().click(),
     );
     await this.waitUntilModalHidden();
@@ -371,7 +371,7 @@ class SavedViewAsserter {
   ) {
     // the list filters once the search input's debounce fires
     await this.svp.eventUtils.after(
-      "saved-views-listed",
+      "e2e:saved-views:listed",
       () => this.svp.searchInput().fill(term),
       (e) => (e.detail as { search: string }).search === term.toLowerCase(),
     );

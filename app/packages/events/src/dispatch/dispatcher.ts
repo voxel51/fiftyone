@@ -11,6 +11,15 @@ type HandlerMap<T extends EventGroup> = {
 
 type EventTap = (event: string, data: unknown) => void;
 
+/**
+ * Events named `e2e:*` are signals for browser automation (e2e specs); the
+ * bus drops them everywhere else, so call sites dispatch them unconditionally
+ */
+export const E2E_EVENT_PREFIX = "e2e:";
+
+const isAutomated = () =>
+  typeof navigator !== "undefined" && navigator.webdriver === true;
+
 const taps = new Set<EventTap>();
 
 /**
@@ -231,6 +240,9 @@ export class EventDispatcher<T extends EventGroup> {
     event: E,
     ...args: DispatchData<T[E]>
   ): void {
+    if (String(event).startsWith(E2E_EVENT_PREFIX) && !isAutomated()) {
+      return;
+    }
     const data = args[0] as T[E];
     for (const tap of taps) {
       try {

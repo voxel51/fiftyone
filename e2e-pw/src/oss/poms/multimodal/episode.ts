@@ -12,7 +12,7 @@ const CANVAS_ONLY_STYLE = fs.readFileSync(
   "utf8",
 );
 
-/** Detail of the app's e2e-only `multimodal-point-cloud-frame-rendered` */
+/** Detail of the app's e2e-only `e2e:multimodal:point-cloud-frame-rendered` */
 interface PointCloudFrameDetail {
   readonly contentTimesNs: string;
   readonly pointSize: number;
@@ -20,7 +20,7 @@ interface PointCloudFrameDetail {
   readonly surface: string | null;
 }
 
-/** Detail of the app's e2e-only `multimodal-image-frame-rendered` */
+/** Detail of the app's e2e-only `e2e:multimodal:image-frame-rendered` */
 interface ImageFrameDetail {
   readonly imageContentTimeNs: string | null;
   readonly pointSize: number;
@@ -55,7 +55,7 @@ export class EpisodePom {
   ): Promise<T> {
     const contentTimeNs = utcDateTimeToNanoseconds(drawn.at);
     return this.eventUtils.after(
-      "multimodal-point-cloud-frame-rendered",
+      "e2e:multimodal:point-cloud-frame-rendered",
       action,
       (event) => {
         const detail = event.detail as PointCloudFrameDetail;
@@ -80,7 +80,7 @@ export class EpisodePom {
   ): Promise<T> {
     const contentTimeNs = utcDateTimeToNanoseconds(drawn.at);
     return this.eventUtils.after(
-      "multimodal-image-frame-rendered",
+      "e2e:multimodal:image-frame-rendered",
       action,
       (event) => {
         const detail = event.detail as ImageFrameDetail;

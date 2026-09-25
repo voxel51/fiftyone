@@ -1756,6 +1756,7 @@ __metadata:
   resolution: "@fiftyone/core@workspace:packages/core"
   dependencies:
     "@fiftyone/components": "npm:*"
+    "@fiftyone/events": "npm:*"
     "@fiftyone/feature-flags": "npm:*"
     "@fiftyone/flashlight": "npm:*"
     "@fiftyone/looker": "npm:*"
@@ -2011,6 +2012,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/flashlight@workspace:packages/flashlight"
   dependencies:
+    "@fiftyone/events": "npm:*"
     prettier: "catalog:"
     typescript: "catalog:"
     typescript-plugin-css-modules: "npm:^5.1.0"
@@ -2155,6 +2157,7 @@ __metadata:
     "@bufbuild/protobuf": "npm:^2.11.0"
     "@date-fns/tz": "npm:^1.5.0"
     "@fiftyone/components": "npm:*"
+    "@fiftyone/events": "npm:*"
     "@fiftyone/playback": "workspace:*"
     "@fiftyone/plugins": "npm:*"
     "@fiftyone/state": "npm:*"

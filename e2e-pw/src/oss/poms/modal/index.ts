@@ -169,17 +169,24 @@ export class ModalPom {
 
         if (hasTarget()) return;
 
-        // each scroll settles in a non-zooming render; one with no page
-        // request pending shows everything in view
+        // each scroll settles in a non-zooming render; one of the (horizontal)
+        // carousel with no page request pending shows everything in view
         const settled = () =>
           new Promise<void>((resolve) => {
-            const onRendered = (e: Event) => {
-              if (!(e as CustomEvent<{ pending: boolean }>).detail.pending) {
-                el.removeEventListener("flashlight-rendered", onRendered);
+            const untap = window.__FO_EVENTS__.tap((event, data) => {
+              const { horizontal, pending } = data as {
+                horizontal: boolean;
+                pending: boolean;
+              };
+              if (
+                event === "e2e:flashlight:rendered" &&
+                horizontal &&
+                !pending
+              ) {
+                untap();
                 resolve();
               }
-            };
-            el.addEventListener("flashlight-rendered", onRendered);
+            });
           });
 
         const step = Math.max(el.clientWidth, 200);
@@ -373,7 +380,7 @@ class ModalAsserter {
 
   /** One capture of the modal on the 3D canvas's next rendered frame */
   async hasLooker3dScreenshot(name: string) {
-    await this.modalPom.eventUtils.next("looker3d-frame-rendered");
+    await this.modalPom.eventUtils.next("e2e:looker3d:frame-rendered");
     expect(
       await this.modalPom.modalContainer.screenshot({
         mask: this.modalPom.looker3dScreenshotMasks,

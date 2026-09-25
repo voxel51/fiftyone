@@ -45,10 +45,13 @@ test.describe("MCAP surfaces", () => {
     page,
   }) => {
     // opening the episode persists its source facts
-    await modal.eventUtils.after("multimodal-source-facts-saved", async () => {
-      await openMcapModal(grid, modal, sampleIndex.episodeA);
-      await modal.episode.waitForReady(tinyA.fileName);
-    });
+    await modal.eventUtils.after(
+      "e2e:multimodal:source-facts-saved",
+      async () => {
+        await openMcapModal(grid, modal, sampleIndex.episodeA);
+        await modal.episode.waitForReady(tinyA.fileName);
+      },
+    );
     expect(await sourceFactsEntryCount(page)).toBeGreaterThan(0);
 
     await modal.close();

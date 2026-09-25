@@ -231,29 +231,6 @@ export class EventUtils {
     );
   }
 
-  /** Resolve once no element matches `selector`, immediately if none does */
-  public async untilAbsent(selector: string): Promise<void> {
-    await this.reportingNavigation(selector, () =>
-      this.page.evaluate(
-        (selector_) =>
-          new Promise<void>((resolve) => {
-            if (!document.querySelector(selector_)) {
-              resolve();
-              return;
-            }
-            const observer = new MutationObserver(() => {
-              if (!document.querySelector(selector_)) {
-                observer.disconnect();
-                resolve();
-              }
-            });
-            observer.observe(document, { subtree: true, childList: true });
-          }),
-        selector,
-      ),
-    );
-  }
-
   /**
    * Resolve once `predicate(element, arg)` holds for the element `locator`
    * resolves to, re-checking on every DOM mutation. The predicate runs in the

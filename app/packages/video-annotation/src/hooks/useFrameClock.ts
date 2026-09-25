@@ -1,11 +1,10 @@
 import type { Clock } from "@fiftyone/annotation";
 import { getEventBus } from "@fiftyone/events";
-import { isE2E } from "@fiftyone/utilities";
 import { useEffect, useMemo, useRef } from "react";
 import { useCurrentFrame } from "../state/useCurrentFrame";
 
 type FrameClockEventGroup = {
-  "video-annotation:frame-applied": { frame: number };
+  "e2e:video-annotation:frame-applied": { frame: number };
 };
 
 /**
@@ -33,12 +32,10 @@ export const useFrameClock = (): Clock => {
     }
 
     // listeners apply synchronously, so the scene now shows `frame`
-    if (isE2E()) {
-      getEventBus<FrameClockEventGroup>().dispatch(
-        "video-annotation:frame-applied",
-        { frame },
-      );
-    }
+    getEventBus<FrameClockEventGroup>().dispatch(
+      "e2e:video-annotation:frame-applied",
+      { frame },
+    );
   }, [frame, listeners]);
 
   return useMemo<Clock>(

@@ -13,6 +13,7 @@ import { useWorkingLabel } from "./annotation/store/working";
 import {
   CAMERA_LOOK_AT_SETTLED_EVENT,
   FRAME_RENDERED_EVENT,
+  type Looker3dE2EEvents,
   SCENE_READY_EVENT,
 } from "./constants";
 import { LoadingDots } from "@fiftyone/components";
@@ -36,6 +37,7 @@ import {
   useFo3dSceneReady,
 } from "./state/accessors";
 import { isPolyline3dOverlay } from "./types";
+import { getEventBus } from "@fiftyone/events";
 
 /**
  * This component renders all supported 3D contexts through the FO3D pipeline,
@@ -134,7 +136,7 @@ export const Looker3d = () => {
   useEffect(() => {
     if (!isE2E()) return undefined;
     return addAfterEffect(() =>
-      document.dispatchEvent(new CustomEvent(FRAME_RENDERED_EVENT)),
+      getEventBus<Looker3dE2EEvents>().dispatch(FRAME_RENDERED_EVENT),
     );
   }, []);
 

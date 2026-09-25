@@ -1,7 +1,6 @@
 import { useTrackEvent } from "@fiftyone/analytics";
 import { default as useRefetchableSavedViews } from "../../../hooks/useRefetchableSavedViews";
 import * as fos from "@fiftyone/state";
-import { isE2E } from "@fiftyone/utilities";
 import { Suspense, useEffect, useMemo } from "react";
 import {
   atom,
@@ -14,6 +13,12 @@ import { shouldToggleBookMarkIconOnSelector } from "../../Grid/Actions/SaveFilte
 import SavedViewsSelection from "./SavedViewsSelection";
 import ViewDialog, { viewDialogContent } from "./ViewDialog";
 import { Box } from "./styledComponents";
+import { getEventBus } from "@fiftyone/events";
+
+/** e2e specs wait on the list a refetch or search leaves on screen */
+type SavedViewsE2EEvents = {
+  "e2e:saved-views:listed": { count: number; search: string };
+};
 
 export const viewSearchTerm = atom<string>({
   key: "viewSearchTerm",
@@ -80,15 +85,13 @@ export default function ViewSelection() {
     [viewOptions, viewSearch],
   );
 
-  // only for browser automation (e2e): a save or delete refetches the list
-  // after its dialog closes, and a search applies after a debounce
+  // a save or delete refetches the list after its dialog closes, and a search
+  // applies after a debounce; e2e specs wait on the list that results
   useEffect(() => {
-    if (!isE2E()) return;
-    document.dispatchEvent(
-      new CustomEvent("saved-views-listed", {
-        detail: { count: searchData.length, search: viewSearch },
-      }),
-    );
+    getEventBus<SavedViewsE2EEvents>().dispatch("e2e:saved-views:listed", {
+      count: searchData.length,
+      search: viewSearch,
+    });
   }, [searchData, viewSearch]);
 
   useEffect(() => {

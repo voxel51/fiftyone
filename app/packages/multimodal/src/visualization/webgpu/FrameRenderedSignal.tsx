@@ -1,5 +1,6 @@
 import { addAfterEffect, useFrame } from "@react-three/fiber";
 import { useEffect, useLayoutEffect, useRef } from "react";
+import { getEventBus } from "@fiftyone/events";
 
 /** Primitive fields describing what one rendered frame drew. */
 export type FrameRenderedDetail = Readonly<
@@ -8,8 +9,8 @@ export type FrameRenderedDetail = Readonly<
 
 /**
  * Test signal for browser automation: after each frame its R3F root renders,
- * dispatches `event` on the document with `detail` as committed for that
- * frame. Mount it only when `isE2E()`.
+ * dispatches the `e2e:` bus event `event` with `detail` as committed for that
+ * frame. Mount it only when `isE2E()`, since it adds per-frame work.
  */
 export function FrameRenderedSignal({
   detail,
@@ -37,8 +38,9 @@ export function FrameRenderedSignal({
       addAfterEffect(() => {
         if (!renderedRef.current) return;
         renderedRef.current = false;
-        document.dispatchEvent(
-          new CustomEvent(event, { detail: detailRef.current }),
+        getEventBus<Record<string, FrameRenderedDetail>>().dispatch(
+          event,
+          detailRef.current,
         );
       }),
     [event],

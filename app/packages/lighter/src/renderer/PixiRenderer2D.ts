@@ -167,7 +167,7 @@ export class PixiRenderer2D implements Renderer2D {
   // only for browser automation (e2e): runs after Pixi's own render at LOW,
   // so the frame it announces is on screen
   private announcePaint = () => {
-    this.eventBus.dispatch("lighter:frame-painted", {});
+    this.eventBus.dispatch("e2e:lighter:frame-painted", {});
   };
 
   addTickHandler(onFrame: () => void): void {

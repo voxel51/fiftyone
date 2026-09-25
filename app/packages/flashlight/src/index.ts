@@ -22,6 +22,12 @@ export type { Render, Response } from "./state";
 import styles from "./styles.module.css";
 import tile from "./tile";
 import { argMin, getDims } from "./util";
+import { getEventBus } from "@fiftyone/events";
+
+/** e2e specs wait on a settled render of a grid or carousel */
+type FlashlightE2EEvents = {
+  "e2e:flashlight:rendered": { horizontal: boolean; pending: boolean };
+};
 
 export type FlashlightOptions = Partial<Options>;
 
@@ -532,14 +538,11 @@ export default class Flashlight<K> {
       this.requestMore();
     }
 
-    // only for browser automation (e2e)
-    if (!zooming && navigator.webdriver) {
-      this.element.dispatchEvent(
-        new CustomEvent("flashlight-rendered", {
-          bubbles: true,
-          detail: { pending: this.loading },
-        }),
-      );
+    if (!zooming) {
+      getEventBus<FlashlightE2EEvents>().dispatch("e2e:flashlight:rendered", {
+        horizontal: this.config.horizontal,
+        pending: this.loading,
+      });
     }
   }
 

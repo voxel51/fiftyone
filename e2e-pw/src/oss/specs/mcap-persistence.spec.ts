@@ -43,12 +43,12 @@ test.describe("MCAP persistence", () => {
       );
       // the fullscreen tile is the last field this workspace saves
       await modal.eventUtils.after(
-        "multimodal-layout-saved",
+        "e2e:multimodal:layout-saved",
         () => modal.episode.fullscreenTile("Logs / Diagnostics"),
         (e) =>
-          ((e.detail as { fields?: string[] })?.fields ?? []).includes(
-            "expandedTileId",
-          ),
+          (e.detail as { fields: string }).fields
+            .split(",")
+            .includes("expandedTileId"),
       );
       await expectCustomizedWorkspaceSaved(page);
 

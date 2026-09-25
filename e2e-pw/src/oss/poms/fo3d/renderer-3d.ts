@@ -101,7 +101,7 @@ export class Renderer3dPom {
 
   /** Resolve on the next camera save, which the scene makes on its own. */
   async nextCameraSave(): Promise<void> {
-    await new EventUtils(this.page).next("looker3d-camera-saved");
+    await new EventUtils(this.page).next("e2e:looker3d:camera-saved");
   }
 
   async getSavedCameraState(

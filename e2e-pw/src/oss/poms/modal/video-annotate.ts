@@ -380,8 +380,9 @@ export class VideoAnnotatePom {
 
   /** Canvas and sidebar reads are only valid once the scene shows the frame. */
   private stepAndApply(key: string) {
-    return this.modal.eventUtils.after("video-annotation:frame-applied", () =>
-      this.page.keyboard.press(key),
+    return this.modal.eventUtils.after(
+      "e2e:video-annotation:frame-applied",
+      () => this.page.keyboard.press(key),
     );
   }
 

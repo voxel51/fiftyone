@@ -1,5 +1,5 @@
 import type { ModalSample } from "@fiftyone/state";
-import { PathType, determinePathType, isE2E } from "@fiftyone/utilities";
+import { PathType, determinePathType } from "@fiftyone/utilities";
 import { folder } from "leva";
 import {
   DoubleSide,
@@ -21,7 +21,8 @@ import type {
   FoSceneNode,
 } from "../hooks";
 import type { SavedCameraState } from "../types";
-import { CAMERA_SAVED_EVENT } from "../constants";
+import { CAMERA_SAVED_EVENT, type Looker3dE2EEvents } from "../constants";
+import { getEventBus } from "@fiftyone/events";
 
 export const getCameraPositionKey = (datasetName?: string) =>
   `${datasetName ?? "fiftyone"}-fo3d-camera-position`;
@@ -64,10 +65,7 @@ export const saveCameraState = (
     JSON.stringify({ position, target }),
   );
 
-  // only for browser automation (e2e), which waits on the save
-  if (isE2E()) {
-    document.dispatchEvent(new CustomEvent(CAMERA_SAVED_EVENT));
-  }
+  getEventBus<Looker3dE2EEvents>().dispatch(CAMERA_SAVED_EVENT);
 };
 
 export const getAssetUrlForSceneNode = (node: FoSceneNode): string => {
