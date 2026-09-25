@@ -18,6 +18,7 @@ from fiftyone.core.collections import SampleCollection
 from fiftyone.core.dataset import Dataset
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
+import fiftyone.core.selection as fosel
 import fiftyone.core.stages as fos
 import fiftyone.core.storage as focs
 from fiftyone.core.utils import run_sync_task
@@ -225,30 +226,15 @@ async def sample_nodes_for_ids(view, sample_ids):
     """
     if not sample_ids:
         return {}
-    selected = view.select(list(sample_ids))
+    selected = fosel.select_parents(view, sample_ids)
     pipeline = await get_samples_pipeline(selected, None)
     samples = await foo.aggregate(
         foo.get_async_db_conn()[selected._dataset._sample_collection_name],
         pipeline,
     ).to_list(len(sample_ids))
-    metadata_cache = {}
-    url_cache = {}
-    additional_media_fields = (
-        fosm._get_additional_media_fields(selected) if samples else None
-    )
-    nodes = await asyncio.gather(
-        *[
-            _create_sample_item(
-                selected,
-                sample,
-                metadata_cache,
-                url_cache,
-                True,
-                additional_media_fields=additional_media_fields,
-            )
-            for sample in samples
-        ]
-    )
+    from fiftyone.server.selection_extensions import build_sample_items
+
+    nodes = await build_sample_items(selected, samples)
     media_by_sample, located = await resolve_sample_media(selected, nodes)
     unaddressable = {
         asset_id: path

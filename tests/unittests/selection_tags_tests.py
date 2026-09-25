@@ -213,13 +213,28 @@ class ConvertedViewTagTests(unittest.TestCase):
                 ),
             )
         )
-        self.stages = [fo.ToPatches("ground_truth")._serialize()]
+        self.patches = self.dataset.to_patches("ground_truth")
+        self.stages = self.patches._serialize()
 
     def tearDown(self):
         self.dataset.delete()
 
+    def test_generated_sample_tags_are_rejected(self):
+        members = [{"episodeId": self.patches.first().id, "kind": "episode"}]
+        with self.assertRaisesRegex(ValueError, "source label tags only"):
+            tag_selection(
+                self.dataset,
+                members,
+                {"tag": "review", "add": True},
+                "members",
+                stages=self.stages,
+            )
+        self.assertEqual(self.patches.count_sample_tags(), {})
+        self.assertEqual(self.dataset.count_sample_tags(), {})
+        self.assertEqual(self.dataset.count_label_tags(), {})
+
     def test_patch_label_tags_reach_the_source_labels(self):
-        patch_ids = self.dataset.to_patches("ground_truth").values("id")
+        patch_ids = self.patches.values("id")
         members = [{"episodeId": patch_ids[0], "kind": "episode"}]
         result = tag_selection(
             self.dataset,
@@ -231,7 +246,20 @@ class ConvertedViewTagTests(unittest.TestCase):
         self.assertEqual(result["labels"], 1)
         self.assertIn("review", result["tags"])
         tags = [d.tags for d in self.dataset.first().ground_truth.detections]
-        self.assertEqual(sorted(len(t) for t in tags), [0, 1])
+        self.assertEqual(tags, [["review"], []])
+        self.assertEqual(self.dataset.count_sample_tags(), {})
+        patches = self.patches
+        self.assertEqual(patches.values("tags"), [[], []])
+        result = tag_selection(
+            self.dataset,
+            members,
+            {"tag": "review", "add": False},
+            "labels",
+            stages=self.stages,
+        )
+        self.assertEqual(result["applied"], {})
+        self.assertEqual(self.dataset.count_label_tags(), {})
+        self.assertEqual(patches.count_label_tags(), {})
         with self.assertRaises(ValueError):
             tag_selection(
                 self.dataset,
@@ -289,12 +317,13 @@ class GroupedDatasetTagTests(unittest.TestCase):
         tag_selection(self.dataset, members, {"tag": "slice", "add": True})
         flat = self.dataset.select_group_slices(_allow_mixed=True)
         self.assertEqual(flat.count_sample_tags(), {"slice": 1})
-        tag_selection(
-            self.dataset,
-            members,
-            {"tag": "whole", "add": True},
-            group_scope="all",
+        from fiftyone.server.selection import create_snapshot, load_snapshot
+
+        snapshot = create_snapshot(
+            self.dataset, {"members": members, "groups": "all"}
         )
+        expanded, _ = load_snapshot(self.dataset, snapshot["snapshotId"])
+        tag_selection(self.dataset, expanded, {"tag": "whole", "add": True})
         self.assertEqual(flat.count_sample_tags()["whole"], 2)
         self.assertEqual(flat.match_tags("whole").count(), 2)
 

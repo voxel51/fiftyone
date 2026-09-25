@@ -11,6 +11,8 @@ import json
 
 from bson import ObjectId
 
+import fiftyone.core.selection_refs as fosr
+
 
 def normalize_members(members):
     """Validates and deduplicates members without merging overlapping ranges.
@@ -27,6 +29,8 @@ def normalize_members(members):
     """
     result = {}
     for original in members:
+        if not isinstance(original, dict):
+            raise ValueError("A selection member must be an object")
         member = copy.deepcopy(original)
         episode_id = member.get("episodeId")
         if not ObjectId.is_valid(episode_id):
@@ -35,8 +39,16 @@ def normalize_members(members):
         kind = member.get("kind")
         if kind == "episode":
             member = {"episodeId": member["episodeId"], "kind": kind}
+            if "reference" in original:
+                member["reference"] = fosr.normalize_reference(
+                    original["reference"]
+                )
         elif kind == "segment":
-            bounds = member["range"]
+            bounds = member.get("range")
+            if not isinstance(bounds, dict) or not all(
+                key in bounds for key in ("start", "end", "streams")
+            ):
+                raise ValueError("Segments require bounds and streams")
             start = _integer(bounds["start"])
             end = _integer(bounds["end"])
             streams = bounds["streams"]
@@ -91,6 +103,13 @@ def member_key(member):
 
     Storage always pairs this identity with a dataset ID and subset ID.
     """
+    if member.get("reference") is not None:
+        return json.dumps(
+            ["reference", fosr.normalize_reference(member["reference"])],
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+        )
     key = [member["episodeId"], member["kind"]]
     if member["kind"] == "segment":
         bounds = member["range"]
@@ -132,7 +151,13 @@ def intersect_members(candidates, allowed):
             if start < end and streams:
                 clipped = copy.deepcopy(candidate)
                 clipped["range"].update(
-                    start=str(start), end=str(end), streams=streams
+                    start=str(start),
+                    end=str(end),
+                    streams=streams,
+                    provenance=copy.deepcopy(
+                        saved.get("provenance", [])
+                        + bounds.get("provenance", [])
+                    ),
                 )
                 result.append(clipped)
     return normalize_members(result)

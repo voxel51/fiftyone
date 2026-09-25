@@ -655,6 +655,7 @@ def make_clips_dataset(
     name=None,
     persistent=False,
     _generated=False,
+    _subset_id=None,
 ):
     """Creates a dataset that contains one sample per clip defined by the
     given field or expression in the collection.
@@ -786,6 +787,13 @@ def make_clips_dataset(
         )
         dataset.add_sample_field(field_or_expr + ".label", fof.StringField)
         dataset.add_sample_field(field_or_expr + ".index", fof.IntField)
+        dataset.create_index(
+            [
+                ("sample_id", 1),
+                (field_or_expr + ".label", 1),
+                (field_or_expr + ".index", 1),
+            ]
+        )
 
     if other_fields:
         src_schema = sample_collection.get_field_schema()
@@ -813,7 +821,13 @@ def make_clips_dataset(
 
     _make_pretty_summary(dataset)
 
-    if clips_type == "support":
+    if _subset_id is not None:
+        from fiftyone.core.subsets import write_clips_dataset
+
+        write_clips_dataset(
+            sample_collection._root_dataset, _subset_id, dataset
+        )
+    elif clips_type == "support":
         _write_support_clips(
             dataset,
             sample_collection,

@@ -2137,6 +2137,7 @@ class Places(enum.Enum):
 
     SAMPLES_GRID_ACTIONS = "samples-grid-actions"
     SAMPLES_GRID_SECONDARY_ACTIONS = "samples-grid-secondary-actions"
+    SAMPLES_GRID_SELECTION_ACTIONS = "samples-grid-selection-actions"
     SAMPLES_VIEWER_ACTIONS = "samples-viewer-actions"
     EMBEDDINGS_ACTIONS = "embeddings-actions"
     HISTOGRAM_ACTIONS = "histograms-actions"
