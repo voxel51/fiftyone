@@ -86,27 +86,23 @@ export class ModalImaAsVideoControlsPom {
       .waitFor({ state: "attached" });
   }
 
+  /**
+   * Play until the status shows `frameText`, then pause; resolves with the
+   * frame the pause lands on, which a draw in flight can carry past it
+   */
   async playUntilFrames(frameText: string, matchBeginning = false) {
     await this.togglePlay();
     await this.waitUntilFrameTextIs(frameText, matchBeginning);
-    await this.togglePlay();
-
-    // sometimes there's a drift, in which case correct it
-    let currentTime = await this.getCurrentFrameStatus();
-    const maxCorrectionAttempts = 10;
-
-    let correctionAttempts = 0;
-    if (currentTime !== frameText) {
-      // keep pressing "<" until we reach the desired frame
-      while (
-        currentTime !== frameText &&
-        correctionAttempts < maxCorrectionAttempts
-      ) {
-        await this.page.keyboard.press(",");
-        currentTime = await this.getCurrentFrameStatus();
-        correctionAttempts++;
-      }
-    }
+    let landed = 0;
+    await this.modal.eventUtils.after(
+      "e2e:playback:paused",
+      () => this.togglePlay(),
+      (e) => {
+        landed = (e.detail as { frameNumber: number }).frameNumber;
+        return true;
+      },
+    );
+    return landed;
   }
 
   async toggleSettings() {
@@ -124,42 +120,6 @@ export class ModalImaAsVideoControlsPom {
     if (isLooping !== loopInputChecked) {
       await loopLabel.click();
     }
-  }
-
-  async setSpeedTo(config: "low" | "middle" | "high") {
-    await this.speedButton.hover();
-    const speedSliderInputRange = this.speedButton
-      .first()
-      .locator("input[type=range]");
-    const sliderBoundingBox = await speedSliderInputRange.boundingBox();
-
-    if (!sliderBoundingBox) {
-      throw new Error("Could not find speed slider bounding box");
-    }
-
-    const sliderWidth = sliderBoundingBox.width;
-
-    switch (config) {
-      case "low":
-        await this.page.mouse.click(
-          sliderBoundingBox.x + sliderWidth * 0.15,
-          sliderBoundingBox.y,
-        );
-        break;
-      case "middle":
-        await this.page.mouse.click(
-          sliderBoundingBox.x + sliderWidth * 0.5,
-          sliderBoundingBox.y,
-        );
-        break;
-      case "high":
-        await this.page.mouse.click(
-          sliderBoundingBox.x + sliderWidth * 0.95,
-          sliderBoundingBox.y,
-        );
-        break;
-    }
-    await this.controls.hover({ force: true });
   }
 }
 

@@ -113,7 +113,7 @@ test.skip("check modal playback and tagging behavior", async ({
 
   await modal.imavid.waitUntilFrameTextIs("1 / 150");
 
-  await modal.imavid.playUntilFrames("13 / 150");
+  const tagged = await modal.imavid.playUntilFrames("13 / 150");
 
   // verify it's the "13th" (todo: 3rd) frame that's rendered
   // TODO: FIX ME. MODAL SCREENSHOT COMPARISON IS OFF BY ONE-PIXEL
@@ -122,7 +122,7 @@ test.skip("check modal playback and tagging behavior", async ({
   //   animations: "allow",
   // });
   await modal.sidebar.assert.waitUntilSidebarEntryTextEqualsMultiple({
-    frame_number: "13",
+    frame_number: String(tagged),
     video_id: "1",
   });
 
@@ -134,9 +134,9 @@ test.skip("check modal playback and tagging behavior", async ({
   await modal.sidebar.assert.verifySampleTagCount(currentSampleTagCount + 1);
 
   // skip a couple of frames and see that sample tag count is zero
-  await modal.imavid.playUntilFrames("20 / 150");
+  const untagged = await modal.imavid.playUntilFrames("20 / 150");
   await modal.sidebar.assert.waitUntilSidebarEntryTextEqualsMultiple({
-    frame_number: "20",
+    frame_number: String(untagged),
     video_id: "1",
   });
   await modal.sidebar.assert.verifySampleTagCount(0);

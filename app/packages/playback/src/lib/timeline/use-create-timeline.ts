@@ -1,3 +1,4 @@
+import { getEventBus } from "@fiftyone/events";
 import { Optional, useEventHandler, useKeydownHandler } from "@fiftyone/state";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useAtomCallback } from "jotai/utils";
@@ -24,6 +25,11 @@ import {
 } from "../constants";
 import { useDefaultTimelineNameImperative } from "./use-default-timeline-name";
 import { getTimelineSetFrameNumberEventName } from "./utils";
+
+/** e2e specs read the frame a pause lands on once its in-flight draw commits */
+type TimelineE2EEvents = {
+  "e2e:playback:paused": { timelineName: string; frameNumber: number };
+};
 
 /**
  * This hook creates a new timeline with the given configuration.
@@ -149,6 +155,7 @@ export const useCreateTimeline = (
   const configRef = useRef(config);
   const isAnimationActiveRef = useRef(false);
   const isLastDrawFinishedRef = useRef(true);
+  const lastDrawRef = useRef<Promise<void>>(Promise.resolve());
   const frameNumberRef = useRef(frameNumber);
   const onAnimationStutterRef = useRef(newTimelineProps.onAnimationStutter);
   const onPlayListenerRef = useRef<() => void>();
@@ -179,6 +186,12 @@ export const useCreateTimeline = (
     if (onPauseListenerRef.current) {
       onPauseListenerRef.current();
     }
+    lastDrawRef.current.then(() =>
+      getEventBus<TimelineE2EEvents>().dispatch("e2e:playback:paused", {
+        timelineName,
+        frameNumber: frameNumberRef.current,
+      }),
+    );
   }, [timelineName]);
 
   const onPlayEvent = useCallback(
@@ -294,7 +307,7 @@ export const useCreateTimeline = (
       // we don't increase frame number until the draw is complete
       isLastDrawFinishedRef.current = false;
 
-      setFrameNumber({
+      lastDrawRef.current = setFrameNumber({
         name: timelineName,
         newFrameNumber: targetFrameNumber,
       })
