@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
-import { EventDispatcher } from "./dispatcher";
+import { EventDispatcher, tapAllEvents } from "./dispatcher";
 
 type TestEventGroup = {
   "test:eventA": { id: string; name: string };
@@ -612,5 +612,43 @@ describe("EventDispatcher", () => {
       expect(asyncHandler).toHaveBeenCalledTimes(1);
       vi.useRealTimers();
     });
+  });
+});
+
+describe("tapAllEvents", () => {
+  test("observes dispatches on every dispatcher, with or without handlers", () => {
+    const tap = vi.fn();
+    const off = tapAllEvents(tap);
+    const a = new EventDispatcher<TestEventGroup>();
+    const b = new EventDispatcher<TestEventGroup>();
+
+    a.dispatch("test:eventB", { value: 1 });
+    b.on("test:eventC", vi.fn());
+    b.dispatch("test:eventC");
+    off();
+    a.dispatch("test:eventB", { value: 2 });
+
+    expect(tap.mock.calls).toEqual([
+      ["test:eventB", { value: 1 }],
+      ["test:eventC", undefined],
+    ]);
+  });
+
+  test("a throwing tap does not stop handlers", () => {
+    const errors = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const off = tapAllEvents(() => {
+      throw new Error("tap");
+    });
+    const dispatcher = new EventDispatcher<TestEventGroup>();
+    const handler = vi.fn();
+    dispatcher.on("test:eventB", handler);
+
+    dispatcher.dispatch("test:eventB", { value: 3 });
+    off();
+    errors.mockRestore();
+
+    expect(handler).toHaveBeenCalledWith({ value: 3 });
   });
 });

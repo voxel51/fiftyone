@@ -622,4 +622,11 @@ class VideoAnnotateAsserter {
       .poll(async () => (await this.va.canvasOverlayFields()).includes(field))
       .toBe(rendered);
   }
+
+  /** Assert the canvas renders overlays for exactly `fields`, in one read. */
+  async canvasRendersFields(fields: string[]) {
+    expect((await this.va.canvasOverlayFields()).sort()).toEqual(
+      [...fields].sort(),
+    );
+  }
 }

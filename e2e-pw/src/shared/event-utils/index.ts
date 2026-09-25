@@ -19,6 +19,10 @@ declare global {
   interface Window {
     /** Per-counter event records installed by {@link EventUtils.counter}. */
     __EVENT_COUNTS__?: Record<string, CountedEvent[]>;
+    /** The app's event-bus tap (`@fiftyone/events`). */
+    __FO_EVENTS__?: {
+      tap: (listener: (event: string, data: unknown) => void) => () => void;
+    };
   }
 }
 
@@ -55,7 +59,8 @@ export class EventUtils {
   constructor(private readonly page: Page) {}
 
   /**
-   * Arm a listener for a document-level CustomEvent. Resolves only after the
+   * Arm a listener for an app event: a document-level CustomEvent, or any
+   * `@fiftyone/events` bus event on any channel. Resolves only after the
    * in-page listener is attached, so an event fired any time after arming is
    * guaranteed to be observed — arm BEFORE the action that fires the event,
    * then await the handle's `received` after it:
@@ -94,6 +99,21 @@ export class EventUtils {
           // @ts-expect-error - the function is exposed at runtime
           window[exposedFunctionName_]({
             detail: (e as CustomEvent).detail,
+          });
+        });
+
+        // bus payloads can hold live objects; forward only primitive fields
+        window.__FO_EVENTS__?.tap((event, data) => {
+          if (event !== eventName_) return;
+          // @ts-expect-error - the function is exposed at runtime
+          window[exposedFunctionName_]({
+            detail: Object.fromEntries(
+              Object.entries((data ?? {}) as Record<string, unknown>).filter(
+                ([, v]) =>
+                  v === null ||
+                  (typeof v !== "object" && typeof v !== "function"),
+              ),
+            ),
           });
         });
       },
