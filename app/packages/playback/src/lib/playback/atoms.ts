@@ -146,6 +146,15 @@ export const viewEndAtom = atom(0); // initialised to duration by PlaybackProvid
 export const loopStartAtom = atom(0);
 export const loopEndAtom = atom(0); // initialised to duration by PlaybackProvider
 
+/**
+ * When true, user-driven playhead moves (`seek`, `seekSnapped`, `stepBack`,
+ * `stepForward`) clamp to the loop region instead of `[0, duration]`, so a
+ * surface can confine a user to a sub-range — a clip's support frames — and
+ * not just wrap playback within it. The RAF tick is unaffected: it already
+ * wraps at `loopEnd`. Off by default; `setConfineToLoop` flips it.
+ */
+export const confineToLoopAtom = atom(false);
+
 // Provider-initialized config.
 export const durationAtom = atom(0);
 export const stepIntervalAtom = atom(1 / 30);

@@ -6,9 +6,12 @@ import {
   RegisterVideoExploreLabels,
   LighterVideo,
   getModalSampleFrameRate,
+  getModalSampleSupport,
   useTimelineMaxSize,
 } from "@fiftyone/video-annotation";
 import React, { useCallback, useMemo, useState } from "react";
+import { ClipSupportRange } from "./ClipSupport";
+import { useRememberedTimelineDisplay } from "./useRememberedTimelineDisplay";
 import { VideoExploreToolbar } from "./VideoExploreToolbar";
 import { useVideoExploreKeybindings } from "./useVideoExploreKeybindings";
 import styles from "./VideoTimelineSurface.module.css";
@@ -70,6 +73,15 @@ const ExploreVideo: React.FC<{
   );
 };
 
+/**
+ * Mount point for {@link useRememberedTimelineDisplay}: it reads the
+ * provider's mode control, so it has to live below `PlaybackProvider`.
+ */
+const RememberTimelineDisplay: React.FC = () => {
+  useRememberedTimelineDisplay();
+  return null;
+};
+
 export interface VideoTimelineSurfaceProps {
   sample: fos.ModalSample;
   /**
@@ -103,6 +115,14 @@ export interface VideoTimelineSurfaceProps {
  * `VideoExploreToolbar`. Everything bound here is listed in that toolbar's
  * `HELP_ITEMS`.
  *
+ * Clip support (`l`): a `to_clips()` sample carries the `[first, last]` frame
+ * range it covers, and the looker confined playback to it behind a lock.
+ * `ClipSupportRange` does the same here with the engine's loop region: locked,
+ * the loop and the view window are the support and the playhead opens on its
+ * first frame; unlocked, the whole video plays. The toolbar's lock button and
+ * `l` toggle it. Gated on the view actually being a clips view, as the looker
+ * was (`useCreateLooker` handed `support` over only under `isClipsView`).
+ *
  * Per-frame label types: detections, polylines, keypoints and classifications
  * all render (see `framesData`'s `ELEMENT_CLS`), across the fields the SIDEBAR
  * has active — `RegisterFrameLabels` and `FrameLabelsTracks` both take
@@ -124,8 +144,6 @@ export interface VideoTimelineSurfaceProps {
  * - `m` mute / unmute. Audio moved to the timeline's own volume control, so
  *   the capability exists; only the keyboard binding is missing.
  * - `0`-`9` seek to 0%, 10%, … of the duration.
- * - `l` support lock — toggling the lock on a sample's support frames. The
- *   support-frame concept has no equivalent on this surface at all.
  * - `z` crop to content. The capability exists — the toolbar's Fit frames the
  *   overlays' bounding box via `scene.fitToContent()` — but no key is bound.
  * - `p` the settings / options panel.
@@ -179,13 +197,22 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
   // re-cast here — `RegisterFrameLabels` gates on the same value.
   const frameRate = getModalSampleFrameRate(sample);
 
+  const isClipsView = fos.useIsClipsView();
+  const support = useMemo(
+    () => (isClipsView ? (getModalSampleSupport(sample) ?? null) : null),
+    [isClipsView, sample],
+  );
+
   // Sequence mode when the frame rate is known, so the engine steps whole
   // frames and the frame domain is available to switch into; elapsed seconds
   // if not. The readout in the controls row switches between the two at a
   // click, which is where the frame-number preference now lives.
   //
-  // The DISPLAY still opens on timecode (`defaultDisplay` below): frames were
-  // opt-in on the looker too, behind `UseFrameNumberOptionElement`.
+  // The DISPLAY opens on timecode for a whole video (`defaultDisplay` below):
+  // frames were opt-in on the looker too, behind `UseFrameNumberOptionElement`.
+  // A CLIP opens on frame numbers, because its support is a frame range and
+  // the readout is how the user relates what they see to it. Either way the
+  // user's own pick then persists across samples (`RememberTimelineDisplay`).
   const mode = useMemo<TimelineMode>(
     () =>
       frameRate && Number.isFinite(frameRate) && frameRate > 0
@@ -205,59 +232,73 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
     mode.kind === "sequence" ? `sequence:${mode.fps}` : mode.kind;
 
   return (
-    <PlaybackProvider key={playbackKey} mode={mode} defaultDisplay="duration">
-      {/* Hydrates the frame labels onto the video's Lighter scene. A SIBLING
+    <PlaybackProvider
+      key={playbackKey}
+      mode={mode}
+      defaultDisplay={support ? "configured" : "duration"}
+    >
+      <RememberTimelineDisplay />
+      {/* Keyed on the sample so the lock and its one-shot playhead seed reset
+          per clip: the provider above is keyed on the MODE, so two clips of
+          one video (same fps) share a store. */}
+      <ClipSupportRange
+        key={sample.sample.id}
+        support={support}
+        frameRate={frameRate}
+      >
+        {/* Hydrates the frame labels onto the video's Lighter scene. A SIBLING
           of `RegisterFrameLabels`, not a child — that component swaps its
           wrapper when duration lands, which would remount the store. */}
-      <RegisterVideoExploreLabels />
-      {/* Registers the /frames-backed label stream. A SIBLING for the same
+        <RegisterVideoExploreLabels support={support} />
+        {/* Registers the /frames-backed label stream. A SIBLING for the same
           reason as the two above, and a load-bearing one: it gates on
           `useDuration() > 0` and re-keys on the resolved `frameCount`, while
           the duration it waits for is published by the <video> below. Nested, every sample would load, flip the gate, and then tear
           down and rebuild the very element that fed it — a visible reload, and
           a `canvas-loaded` marker that goes true, disappears, then true again.
           Consumers read the stream via `useFrameLabelsStream`, not position. */}
-      <RegisterFrameLabels sample={sample} mode="explore" />
-      <div
-        ref={dimensions.ref as React.RefObject<HTMLDivElement>}
-        data-cy="modal-looker-container"
-        className={styles.root}
-      >
-        {/* The media area answers to `looker` the way every other sample
+        <RegisterFrameLabels sample={sample} mode="explore" />
+        <div
+          ref={dimensions.ref as React.RefObject<HTMLDivElement>}
+          data-cy="modal-looker-container"
+          className={styles.root}
+        >
+          {/* The media area answers to `looker` the way every other sample
             surface does: it is what hover affordances target, and it
             survives a media error the same way the lookers' root does. */}
-        <div className={styles.media} data-cy="looker">
-          {!videoSrc ? (
-            <div className={styles.empty}>No media URL on this sample.</div>
-          ) : mediaFailed ? (
-            <div className={styles.empty} data-cy="looker-error-info">
-              This video failed to load. The file may not exist, or its type may
-              be unsupported.
-            </div>
-          ) : (
-            <ExploreVideo
-              videoSrc={videoSrc}
-              filepath={sample.sample.filepath}
-              onError={onMediaError}
-            />
-          )}
-        </div>
-        {/* Owns its own TrackProvider + TimelineWithTracks. Track data is
+          <div className={styles.media} data-cy="looker">
+            {!videoSrc ? (
+              <div className={styles.empty}>No media URL on this sample.</div>
+            ) : mediaFailed ? (
+              <div className={styles.empty} data-cy="looker-error-info">
+                This video failed to load. The file may not exist, or its type
+                may be unsupported.
+              </div>
+            ) : (
+              <ExploreVideo
+                videoSrc={videoSrc}
+                filepath={sample.sample.filepath}
+                onError={onMediaError}
+              />
+            )}
+          </div>
+          {/* Owns its own TrackProvider + TimelineWithTracks. Track data is
             the server label index; the annotation engine contributes only
             an unsaved-edit overlay, empty in Explore. Dropped when the media
             failed: there is no clock to drive it, so it would only ever
             render an empty, inert transport under the error. */}
-        {!mediaFailed && (
-          <div className={styles.timeline}>
-            <FrameLabelsTracks
-              sample={sample}
-              maxSize={timelineMaxSize}
-              mode="explore"
-              trailingActions={<VideoExploreToolbar />}
-            />
-          </div>
-        )}
-      </div>
+          {!mediaFailed && (
+            <div className={styles.timeline}>
+              <FrameLabelsTracks
+                sample={sample}
+                maxSize={timelineMaxSize}
+                mode="explore"
+                trailingActions={<VideoExploreToolbar />}
+              />
+            </div>
+          )}
+        </div>
+      </ClipSupportRange>
     </PlaybackProvider>
   );
 };
