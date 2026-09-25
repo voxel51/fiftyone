@@ -5166,6 +5166,7 @@ class SampleBatchAdmissionTests(unittest.TestCase):
         dataset = MagicMock()
         dataset._sample_collection_name = "samples.test"
         dataset._sample_collection.count_documents.return_value = num_existing
+        dataset._sample_collection.codec_options = bson.DEFAULT_CODEC_OPTIONS
         return dataset
 
     def _inserts(self, dataset, samples_and_docs):

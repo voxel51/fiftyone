@@ -4409,13 +4409,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             -   a list of IDs of the samples that were added to this dataset
         """
         dicts = [doc for _, doc in samples_and_docs]
+        coll = self._sample_collection
 
         # adds `_id` to each dict
         res = foo.database._admitted_write(
             self._sample_collection_name,
             len(dicts),
-            lambda: self._sample_collection.insert_many(dicts),
+            lambda: coll.insert_many(dicts),
             docs=dicts,
+            codec_options=coll.codec_options,
         )
 
         for sample, d in samples_and_docs:

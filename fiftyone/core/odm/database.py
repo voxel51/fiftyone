@@ -10,6 +10,7 @@ import asyncio
 import atexit
 import dataclasses
 from datetime import datetime
+import itertools
 import json
 import logging
 from multiprocessing.pool import ThreadPool
@@ -1207,8 +1208,7 @@ class InsertAdmitter(object):
             num_docs: the number of documents the write added
             num_bytes (None): the BSON-encoded size of the documents the
                 write added, or ``None`` if the batch was not sized. After a
-                partial write this is the batch's size prorated by the
-                documents that landed
+                partial write this is the size of the documents that landed
         """
         pass
 
@@ -1256,27 +1256,47 @@ def _wants_bytes():
     return any(a.wants_bytes() for a in _insert_admitters)
 
 
-def _encoded_size(docs):
-    """The total BSON-encoded size of the documents.
+# The element the driver prepends to a document that has no ``_id``: a type
+# byte, the ``"_id\0"`` key, and a twelve-byte ObjectId
+_GENERATED_ID_BYTES = 17
 
-    Documents without an ``_id`` yet are measured as they are; the id the
-    driver adds is a rounding error against a byte limit.
+
+def _encoded_sizes(docs, codec_options=None):
+    """The BSON-encoded size of each document as it will be written.
+
+    Documents are encoded with the destination collection's codec options,
+    and a document without an ``_id`` is counted with the one the driver
+    will add, without modifying it.
     """
-    return sum(len(bson.encode(d)) for d in docs)
+    if codec_options is None:
+        codec_options = bson.DEFAULT_CODEC_OPTIONS
+
+    return [
+        len(bson.encode(d, codec_options=codec_options))
+        + (0 if "_id" in d else _GENERATED_ID_BYTES)
+        for d in docs
+    ]
 
 
-def _prorated_bytes(num_bytes, num_written, num_docs):
-    """The share of a batch's bytes that a partial write landed."""
-    if num_bytes is None:
+def _landed_bytes(sizes, bwe):
+    """The encoded size of the documents that a failed write landed.
+
+    Those are the first ``nInserted`` documents that the error does not name
+    as failed: the prefix before the first error of an ordered write, and
+    every document but the failed ones of an unordered write.
+    """
+    if sizes is None:
         return None
 
-    if not num_docs:
-        return 0
+    details = bwe.details or {}
+    failed = {e.get("index") for e in details.get("writeErrors", [])}
+    landed = (size for i, size in enumerate(sizes) if i not in failed)
+    return sum(itertools.islice(landed, _num_written_before(bwe)))
 
-    return num_bytes * num_written // num_docs
 
-
-def _admitted_write(collection_name, num_docs, write, docs=None):
+def _admitted_write(
+    collection_name, num_docs, write, docs=None, codec_options=None
+):
     """Performs one batch write under the registered insert admitters.
 
     The admitters are consulted with the number of documents the write would
@@ -1295,6 +1315,9 @@ def _admitted_write(collection_name, num_docs, write, docs=None):
             batch in bytes when an admitter wants that. Pass ``None`` when
             the batch cannot be sized faithfully (e.g. it replaces existing
             documents), which admits it unsized
+        codec_options (None): the destination collection's
+            ``bson.codec_options.CodecOptions``, used to size the batch. By
+            default, BSON's default codec options are used
 
     Returns:
         the result of ``write()``
@@ -1306,8 +1329,10 @@ def _admitted_write(collection_name, num_docs, write, docs=None):
         num_docs = num_docs()
 
     if docs is not None and _wants_bytes():
-        num_bytes = _encoded_size(docs)
+        sizes = _encoded_sizes(docs, codec_options=codec_options)
+        num_bytes = sum(sizes)
     else:
+        sizes = None
         num_bytes = None
 
     _admit_insert(collection_name, num_docs, num_bytes=num_bytes)
@@ -1315,11 +1340,10 @@ def _admitted_write(collection_name, num_docs, write, docs=None):
     try:
         res = write()
     except BulkWriteError as bwe:
-        num_written = _num_written_before(bwe)
         _record_insert(
             collection_name,
-            num_written,
-            num_bytes=_prorated_bytes(num_bytes, num_written, num_docs),
+            _num_written_before(bwe),
+            num_bytes=_landed_bytes(sizes, bwe),
         )
         msg = bwe.details["writeErrors"][0]["errmsg"]
         raise ValueError(msg) from bwe
@@ -1405,6 +1429,7 @@ def insert_documents(
                 len(batch),
                 lambda: coll.insert_many(batch, ordered=ordered),
                 docs=batch,
+                codec_options=coll.codec_options,
             )
             batch_ids = [b["_id"] for b in batch]
             ids.extend(batch_ids)

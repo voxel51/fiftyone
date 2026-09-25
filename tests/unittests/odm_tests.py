@@ -9,9 +9,12 @@ FiftyOne odm unit tests.
 import unittest
 from functools import partial
 from unittest import mock
+import uuid
 
 import bson
 from bson import ObjectId
+from bson.binary import UuidRepresentation
+from bson.codec_options import CodecOptions
 from pymongo.errors import BulkWriteError
 from pymongo.results import InsertManyResult
 
@@ -190,10 +193,18 @@ class _FakeCollection:
     """A pymongo collection stand-in that records what it was asked to
     write."""
 
-    def __init__(self, name, fail_after=None):
+    def __init__(
+        self,
+        name,
+        fail_after=None,
+        failed=None,
+        codec_options=bson.DEFAULT_CODEC_OPTIONS,
+    ):
         self.name = name
         self.batch_sizes = []
         self.fail_after = fail_after
+        self.failed = failed
+        self.codec_options = codec_options
 
     def insert_many(self, docs, ordered=False):
         self.batch_sizes.append(len(docs))
@@ -201,7 +212,21 @@ class _FakeCollection:
             raise BulkWriteError(
                 {
                     "nInserted": self.fail_after,
-                    "writeErrors": [{"errmsg": "duplicate key"}],
+                    "writeErrors": [
+                        {"index": self.fail_after, "errmsg": "duplicate key"}
+                    ],
+                }
+            )
+
+        if self.failed is not None:
+            # an unordered write that went on past its failures
+            raise BulkWriteError(
+                {
+                    "nInserted": len(docs) - len(self.failed),
+                    "writeErrors": [
+                        {"index": i, "errmsg": "duplicate key"}
+                        for i in self.failed
+                    ],
                 }
             )
 
@@ -426,10 +451,12 @@ class InsertAdmitterTests(unittest.TestCase):
         coll = _FakeCollection("samples.test")
         docs = [{"_id": ObjectId()} for _ in range(3)]
 
-        with mock.patch.object(foo.database, "_encoded_size") as encoded_size:
+        with mock.patch.object(
+            foo.database, "_encoded_sizes"
+        ) as encoded_sizes:
             foo.insert_documents(docs, coll, batcher=False, progress=False)
 
-        encoded_size.assert_not_called()
+        encoded_sizes.assert_not_called()
         self.assertEqual(
             admitter.num_bytes,
             [("admit", None), ("admit", None), ("record", None)],
@@ -449,25 +476,69 @@ class InsertAdmitterTests(unittest.TestCase):
             admitter.num_bytes, [("admit", None), ("record", None)]
         )
 
-    def test_a_failed_write_records_the_prorated_bytes(self):
+    def test_a_failed_ordered_write_records_the_bytes_of_its_prefix(self):
         admitter = _SizingAdmitter(self.calls)
         foo.register_insert_admitter(admitter)
 
         coll = _FakeCollection("samples.test", fail_after=1)
-        docs = [{"_id": ObjectId()} for _ in range(3)]
-        num_bytes = sum(len(bson.encode(d)) for d in docs)
+        docs = [
+            {"_id": ObjectId(), "filepath": "/" + "x" * n} for n in (90, 5, 5)
+        ]
+
+        with self.assertRaises(ValueError):
+            foo.insert_documents(
+                docs, coll, ordered=True, batcher=False, progress=False
+            )
+
+        self.assertEqual(self._records(), [("record", "samples.test", 1)])
+        self.assertEqual(
+            admitter.num_bytes[-1], ("record", len(bson.encode(docs[0])))
+        )
+
+    def test_a_failed_unordered_write_records_the_bytes_that_landed(self):
+        admitter = _SizingAdmitter(self.calls)
+        foo.register_insert_admitter(admitter)
+
+        # the large document in the middle fails; the ones around it land
+        coll = _FakeCollection("samples.test", failed=[1])
+        docs = [
+            {"_id": ObjectId(), "filepath": "/" + "x" * n} for n in (5, 90, 5)
+        ]
 
         with self.assertRaises(ValueError):
             foo.insert_documents(docs, coll, batcher=False, progress=False)
 
-        self.assertEqual(self._records(), [("record", "samples.test", 1)])
-        self.assertEqual(admitter.num_bytes[-1], ("record", num_bytes // 3))
+        self.assertEqual(self._records(), [("record", "samples.test", 2)])
+        self.assertEqual(
+            admitter.num_bytes[-1],
+            ("record", len(bson.encode(docs[0])) + len(bson.encode(docs[2]))),
+        )
 
-    def test_prorated_bytes(self):
-        self.assertIsNone(foo.database._prorated_bytes(None, 1, 3))
-        self.assertEqual(foo.database._prorated_bytes(100, 0, 0), 0)
-        self.assertEqual(foo.database._prorated_bytes(100, 1, 3), 33)
-        self.assertEqual(foo.database._prorated_bytes(100, 3, 3), 100)
+    def test_a_document_without_an_id_is_sized_with_the_one_it_will_get(self):
+        doc = {"filepath": "/im.png"}
+
+        (size,) = foo.database._encoded_sizes([doc])
+
+        self.assertNotIn("_id", doc)
+        self.assertEqual(
+            size, len(bson.encode({"_id": ObjectId(), "filepath": "/im.png"}))
+        )
+
+    def test_batches_are_sized_with_the_collection_codec_options(self):
+        admitter = _SizingAdmitter(self.calls)
+        foo.register_insert_admitter(admitter)
+
+        # native UUIDs only encode under an explicit UUID representation
+        codec_options = CodecOptions(
+            uuid_representation=UuidRepresentation.STANDARD
+        )
+        coll = _FakeCollection("samples.test", codec_options=codec_options)
+        docs = [{"_id": ObjectId(), "key": uuid.uuid4()}]
+
+        foo.insert_documents(docs, coll, batcher=False, progress=False)
+
+        num_bytes = len(bson.encode(docs[0], codec_options=codec_options))
+        self.assertEqual(admitter.num_bytes[-1], ("record", num_bytes))
 
 
 def _inserted(docs):
