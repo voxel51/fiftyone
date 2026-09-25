@@ -116,6 +116,11 @@ test("all current results include offscreen samples in a saved subset", async ({
   await tray.assert.subsetScope(name, 60);
   await grid.assert.isEntryCountTextEqualTo("60 samples");
 
+  // View stages are shared through the server session, including with a new
+  // browser context. Clear Limit before checking the dataset-wide scope.
+  await grid.run(() => viewBar.removeStage(0));
+  await grid.assert.isEntryCountTextEqualTo("60 samples");
+
   const context = await browser.newContext();
   try {
     const freshPage = await context.newPage();
@@ -157,6 +162,8 @@ test("captured samples remain action targets outside the current results", async
   await tray.assert.cardsHaveNames(["0.png", "2.png"]);
 
   await tray.tagSamples("captured");
+  await grid.run(() => viewBar.removeStage(0));
+  await grid.assert.isEntryCountTextEqualTo("8 samples");
   const context = await browser.newContext();
   try {
     const freshPage = await context.newPage();

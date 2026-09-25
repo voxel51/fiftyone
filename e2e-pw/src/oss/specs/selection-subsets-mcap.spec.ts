@@ -313,6 +313,9 @@ assert sorted((tag.sample_id, tag.start, tag.end, tag.anchor) for tag in reviewe
     await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName);
     const freshSidebar = new SidebarPom(freshPage);
     const freshTray = new SelectionTrayPom(freshPage);
+    // The server session may still be browsing the saved subset. Start from
+    // the full dataset so this checks the temporal tag filter itself.
+    await freshTray.chooseAllSamples();
     await freshSidebar.clickFieldDropdown("_temporal_tags");
     await freshSidebar.applyFilter("reviewed-range");
     await expect(freshTray.locator).toContainText(
