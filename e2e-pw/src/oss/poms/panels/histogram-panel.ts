@@ -19,16 +19,14 @@ export class HistogramPom {
   }
 
   async selectField(field: string) {
-    await this.eventUtils.after(`histogram-${field}`, () =>
-      this.selector.selectResult(field),
-    );
+    await this.afterLoad(() => this.selector.selectResult(field), field);
   }
 
   // run the action that reloads the histogram (mode switch, panel
   // foreground); pass a path to ignore sibling histograms' draws
   afterLoad<T>(action: () => Promise<T>, path?: string): Promise<T> {
     return this.eventUtils.after(
-      "histograms-loaded",
+      "e2e:histograms:loaded",
       action,
       (e) => !path || (e.detail as { path?: string })?.path === path,
     );

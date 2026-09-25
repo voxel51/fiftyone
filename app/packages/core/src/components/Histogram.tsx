@@ -1,4 +1,5 @@
 import { Loading, useTheme } from "@fiftyone/components";
+import { getEventBus } from "@fiftyone/events";
 import * as fos from "@fiftyone/state";
 import { distribution } from "@fiftyone/state";
 import { DATE_FIELD, DATE_TIME_FIELD, styles } from "@fiftyone/utilities";
@@ -23,6 +24,11 @@ const Container = styled.div`
 
   ${styles.scrollbarStyles}
 `;
+
+/** e2e specs wait on a histogram's draw before reading or capturing it */
+type HistogramE2EEvents = {
+  "e2e:histograms:loaded": { path: string };
+};
 
 const LIMIT = 200;
 
@@ -180,13 +186,9 @@ const HistogramRenderer: React.FC<{ path: string }> = ({ path }) => {
     // the chart draws at the container's measured height
     if (data.length && !height) return;
 
-    // the empty-data state renders no container; completion must still
-    // signal, so fall back to the document
-    const el = document.getElementById(`histogram-${path}`) ?? document;
-    el.dispatchEvent(new CustomEvent(`histogram-${path}`, { bubbles: true }));
-    el.dispatchEvent(
-      new CustomEvent("histograms-loaded", { bubbles: true, detail: { path } }),
-    );
+    getEventBus<HistogramE2EEvents>().dispatch("e2e:histograms:loaded", {
+      path,
+    });
   }, [path, raw, ref, height]);
 
   return data.length ? (
