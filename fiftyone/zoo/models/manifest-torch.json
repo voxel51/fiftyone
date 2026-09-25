@@ -11800,6 +11800,118 @@
             "date_added": "2026-06-30 00:00:00"
         },
         {
+            "base_name": "florence-2-base-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Florence-2 base (0.23B) prompt-based vision foundation model for detection, grounding, dense captioning, OCR, segmentation and captioning",
+            "source": "https://huggingface.co/florence-community/Florence-2-base",
+            "author": "Bin Xiao, et al.",
+            "license": "MIT",
+            "size_bytes": 468567567,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.florence2.Florence2Model",
+                "config": {
+                    "name_or_path": "florence-community/Florence-2-base"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers>=4.56.0"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "ocr", "vlm", "torch", "transformer"],
+            "training_data": [],
+            "date_added": "2026-09-25 12:00:00"
+        },
+        {
+            "base_name": "florence-2-large-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Florence-2 large (0.77B) prompt-based vision foundation model for detection, grounding, dense captioning, OCR, segmentation and captioning",
+            "source": "https://huggingface.co/florence-community/Florence-2-large",
+            "author": "Bin Xiao, et al.",
+            "license": "MIT",
+            "size_bytes": 1558929750,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.florence2.Florence2Model",
+                "config": {
+                    "name_or_path": "florence-community/Florence-2-large"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers>=4.56.0"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "ocr", "vlm", "torch", "transformer"],
+            "training_data": [],
+            "date_added": "2026-09-25 12:00:00"
+        },
+        {
+            "base_name": "florence-2-base-ft-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Florence-2 base-ft (0.23B) prompt-based vision foundation model fine-tuned on downstream tasks for detection, grounding, dense captioning, OCR, segmentation and captioning",
+            "source": "https://huggingface.co/florence-community/Florence-2-base-ft",
+            "author": "Bin Xiao, et al.",
+            "license": "MIT",
+            "size_bytes": 468567573,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.florence2.Florence2Model",
+                "config": {
+                    "name_or_path": "florence-community/Florence-2-base-ft"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers>=4.56.0"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "ocr", "vlm", "torch", "transformer"],
+            "training_data": [],
+            "date_added": "2026-09-25 12:00:00"
+        },
+        {
+            "base_name": "florence-2-large-ft-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Florence-2 large-ft (0.77B) prompt-based vision foundation model fine-tuned on downstream tasks for detection, grounding, dense captioning, OCR, segmentation and captioning",
+            "source": "https://huggingface.co/florence-community/Florence-2-large-ft",
+            "author": "Bin Xiao, et al.",
+            "license": "MIT",
+            "size_bytes": 1546346804,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.florence2.Florence2Model",
+                "config": {
+                    "name_or_path": "florence-community/Florence-2-large-ft"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers>=4.56.0"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "ocr", "vlm", "torch", "transformer"],
+            "training_data": [],
+            "date_added": "2026-09-25 12:00:00"
+        },
+        {
             "base_name": "rfdetr-nano-coco-torch",
             "base_filename": null,
             "version": null,
