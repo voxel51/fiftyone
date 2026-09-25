@@ -7,6 +7,7 @@ Episode selection identity and complete scope resolution tests.
 """
 
 import asyncio
+from datetime import datetime
 import unittest
 
 from bson import ObjectId
@@ -14,10 +15,8 @@ from bson import ObjectId
 import fiftyone as fo
 import fiftyone.core.selection as fosel
 import fiftyone.core.tags as fot
-from datetime import datetime
 
 import fiftyone.server.samples as foses
-from fiftyone.server import selection as foss
 import fiftyone.server.selection as foss
 from fiftyone.server.selection import (
     create_snapshot,
