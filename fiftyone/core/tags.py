@@ -25,7 +25,14 @@ import os
 from typing import Iterable
 
 from bson import ObjectId
-from pymongo import ASCENDING, InsertOne, ReturnDocument, UpdateMany, UpdateOne
+from pymongo import (
+    ASCENDING,
+    IndexModel,
+    InsertOne,
+    ReturnDocument,
+    UpdateMany,
+    UpdateOne,
+)
 from pymongo.errors import DuplicateKeyError
 
 import eta.core.utils as etau
@@ -54,6 +61,9 @@ TAGS_COLLECTION_NAME = "tags"
 TAGS_EXPORT_FILENAME = "tags.json"
 TAGS_EXPORT_KEY = "tags"
 
+# Must stay the unique index's keys after `_dataset_id` and `kind`, in that
+# order: reads pin those two, so the index returns this order without an
+# in-memory sort, and its uniqueness makes the order total.
 _TAG_SORT = [
     ("_sample_id", ASCENDING),
     ("index_type", ASCENDING),
@@ -61,7 +71,6 @@ _TAG_SORT = [
     ("start", ASCENDING),
     ("end", ASCENDING),
     ("tag", ASCENDING),
-    ("_id", ASCENDING),
 ]
 
 
@@ -264,7 +273,8 @@ class TemporalTags(object):
 
     def __bool__(self):
         query = self._scoped_query(None)
-        return _get_collection().find_one(query, {"_id": True}) is not None
+        projection = {"_id": False, "_dataset_id": True}
+        return _get_collection().find_one(query, projection) is not None
 
     def __len__(self):
         return _get_collection().count_documents(self._scoped_query(None))
@@ -337,7 +347,8 @@ class TemporalTags(object):
             an iterator over :class:`TemporalTag` instances
         """
         query = self._scoped_query(filter)
-        docs = _get_collection().find(query).sort(_TAG_SORT)
+        collection = _get_collection()
+        docs = collection.find(query, hint=_read_hint(query)).sort(_TAG_SORT)
         return (_from_storage_doc(doc) for doc in docs)
 
     def _scoped_query(self, filter):
@@ -408,7 +419,7 @@ class TemporalTags(object):
                     upsert=True,
                 )
 
-        collection = _get_or_create_collection()
+        collection = _get_collection()
         collection.bulk_write(list(ops_by_key.values()), ordered=False)
         _touch_parent_last_modified_at(self._dataset, sample_ids.values(), now)
 
@@ -901,17 +912,7 @@ def export_tags(sample_collection, export_path, progress=None) -> int:
         _delete_temporal_tags_export(export_path)
         return 0
 
-    docs = collection.find(query).sort(
-        [
-            ("_sample_id", ASCENDING),
-            ("index_type", ASCENDING),
-            ("anchor", ASCENDING),
-            ("start", ASCENDING),
-            ("end", ASCENDING),
-            ("tag", ASCENDING),
-            ("_id", ASCENDING),
-        ]
-    )
+    docs = collection.find(query).sort(_TAG_SORT)
 
     foo.export_collection(
         map(_to_export_doc, docs),
@@ -989,10 +990,15 @@ def _ensure_temporal_tag_list(tags) -> list[TemporalTag]:
 
 
 def _tagged_sample_ids(query) -> list[str]:
+    kwargs = {}
+    hint = _read_hint(query)
+    if hint is not None:
+        kwargs["hint"] = hint
+
     return [
         str(doc["_id"])
         for doc in _get_collection().aggregate(
-            [{"$match": query}, {"$group": {"_id": "$_sample_id"}}]
+            [{"$match": query}, {"$group": {"_id": "$_sample_id"}}], **kwargs
         )
     ]
 
@@ -1457,12 +1463,13 @@ def _query_from_unique_key(key):
 _INDEXED_COLLECTIONS = set()
 
 
-def _get_or_create_collection():
+def _get_collection():
     collection = foo.get_db_conn()[TAGS_COLLECTION_NAME]
 
-    # Indexes are created once per process. The unique index is what keeps
-    # concurrent upserts from inserting the same tag twice, so a tags
-    # collection dropped while this process runs gets it back only on restart
+    # Indexes are created once per process, on first use. The unique index is
+    # what keeps concurrent upserts from inserting the same tag twice, so a
+    # tags collection dropped while this process runs gets it back only on
+    # restart
     key = (collection.database.name, collection.name)
     if key not in _INDEXED_COLLECTIONS:
         _ensure_indexes(collection)
@@ -1471,8 +1478,22 @@ def _get_or_create_collection():
     return collection
 
 
-def _get_collection():
-    return foo.get_db_conn()[TAGS_COLLECTION_NAME]
+def _read_hint(query):
+    """The index for a dataset-wide read filtered by tag or anchor.
+
+    The planner otherwise prefers the unique index, which returns the tag sort
+    order but reads every tag in the dataset to find the matches.
+    """
+    if "_sample_id" in query:
+        return None
+
+    if "tag" in query:
+        return _TAG_INDEX
+
+    if "anchor" in query:
+        return _ANCHOR_INDEX
+
+    return None
 
 
 def _delete_temporal_tags_export(export_path) -> None:
@@ -1484,71 +1505,56 @@ def _utcnow():
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
+_TAG_INDEX = "temporal_tag_tag_sort"
+_ANCHOR_INDEX = "temporal_tag_anchor_sort"
+
+
 def _ensure_indexes(collection) -> None:
-    collection.create_index(
+    collection.create_indexes(
         [
-            ("_dataset_id", ASCENDING),
-            ("_sample_id", ASCENDING),
-            ("kind", ASCENDING),
-            ("index_type", ASCENDING),
-            ("anchor", ASCENDING),
-            ("start", ASCENDING),
-            ("end", ASCENDING),
-            ("tag", ASCENDING),
-        ],
-        name="unique_temporal_tag",
-        unique=True,
-    )
-    collection.create_index(
-        [
-            ("_dataset_id", ASCENDING),
-            ("_sample_id", ASCENDING),
-            ("kind", ASCENDING),
-            ("index_type", ASCENDING),
-            ("anchor", ASCENDING),
-            ("start", ASCENDING),
-            ("end", ASCENDING),
-        ],
-        name="temporal_tag_overlap",
-    )
-    # Viewer reads usually pin one sample and optionally add a time window,
-    # without necessarily knowing an index type or anchor up front.
-    collection.create_index(
-        [
-            ("_dataset_id", ASCENDING),
-            ("_sample_id", ASCENDING),
-            ("kind", ASCENDING),
-            ("start", ASCENDING),
-            ("end", ASCENDING),
-            ("index_type", ASCENDING),
-            ("anchor", ASCENDING),
-            ("tag", ASCENDING),
-        ],
-        name="temporal_tag_sample_range",
-    )
-    # Search and track-population flows start from tag values, then need the
-    # matching sample IDs and ranges.
-    collection.create_index(
-        [
-            ("_dataset_id", ASCENDING),
-            ("kind", ASCENDING),
-            ("tag", ASCENDING),
-            ("_sample_id", ASCENDING),
-            ("start", ASCENDING),
-            ("end", ASCENDING),
-            ("index_type", ASCENDING),
-            ("anchor", ASCENDING),
-        ],
-        name="temporal_tag_tag_lookup",
-    )
-    collection.create_index(
-        [
-            ("_dataset_id", ASCENDING),
-            ("kind", ASCENDING),
-            ("anchor", ASCENDING),
-            ("tag", ASCENDING),
-        ],
-        name="temporal_tag_counts",
+            IndexModel(
+                [
+                    ("_dataset_id", ASCENDING),
+                    ("_sample_id", ASCENDING),
+                    ("kind", ASCENDING),
+                    ("index_type", ASCENDING),
+                    ("anchor", ASCENDING),
+                    ("start", ASCENDING),
+                    ("end", ASCENDING),
+                    ("tag", ASCENDING),
+                ],
+                name="unique_temporal_tag",
+                unique=True,
+            ),
+            # Tag and anchor reads: the value, then `_TAG_SORT` without it, so
+            # a single value streams in sort order and counts are covered
+            IndexModel(
+                [
+                    ("_dataset_id", ASCENDING),
+                    ("kind", ASCENDING),
+                    ("tag", ASCENDING),
+                    ("_sample_id", ASCENDING),
+                    ("index_type", ASCENDING),
+                    ("anchor", ASCENDING),
+                    ("start", ASCENDING),
+                    ("end", ASCENDING),
+                ],
+                name=_TAG_INDEX,
+            ),
+            IndexModel(
+                [
+                    ("_dataset_id", ASCENDING),
+                    ("kind", ASCENDING),
+                    ("anchor", ASCENDING),
+                    ("_sample_id", ASCENDING),
+                    ("index_type", ASCENDING),
+                    ("start", ASCENDING),
+                    ("end", ASCENDING),
+                    ("tag", ASCENDING),
+                ],
+                name=_ANCHOR_INDEX,
+            ),
+        ]
     )
 
 

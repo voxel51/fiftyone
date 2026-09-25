@@ -700,41 +700,32 @@ class TemporalTagTests(unittest.TestCase):
     @isolate_temporal_tags
     @drop_datasets
     def test_creates_query_indexes(self):
-        dataset, sample_ids = _make_dataset()
-        fota.add_temporal_tags(
-            dataset,
-            fota.TemporalTag(
-                sample_ids[0],
-                0,
-                10,
-                "review",
-                anchor="camera_front",
-                kind=fota.TagKind.TEMPORAL,
-            ),
-        )
+        dataset, _ = _make_dataset()
+
+        # A read alone creates them; nothing has been written yet
+        fota.list_temporal_tags(dataset)
 
         collection = foo.get_db_conn()[fota.TAGS_COLLECTION_NAME]
-        indexes = collection.index_information()
+        indexes = {
+            name: [field for field, _ in info["key"]]
+            for name, info in collection.index_information().items()
+        }
+        sort_fields = [field for field, _ in fota._TAG_SORT]
 
         self.assertEqual(
-            indexes["temporal_tag_sample_range"]["key"][:5],
-            [
-                ("_dataset_id", 1),
-                ("_sample_id", 1),
-                ("kind", 1),
-                ("start", 1),
-                ("end", 1),
-            ],
+            indexes["unique_temporal_tag"],
+            ["_dataset_id", "_sample_id", "kind"] + sort_fields[1:],
         )
-        self.assertEqual(
-            indexes["temporal_tag_tag_lookup"]["key"][:4],
-            [
-                ("_dataset_id", 1),
-                ("kind", 1),
-                ("tag", 1),
-                ("_sample_id", 1),
-            ],
-        )
+        self.assertEqual(sort_fields[0], "_sample_id")
+        for name, field in (
+            ("temporal_tag_tag_sort", "tag"),
+            ("temporal_tag_anchor_sort", "anchor"),
+        ):
+            self.assertEqual(
+                indexes[name],
+                ["_dataset_id", "kind", field]
+                + [f for f in sort_fields if f != field],
+            )
 
     @isolate_temporal_tags
     @drop_datasets
