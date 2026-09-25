@@ -254,8 +254,6 @@ class ArgusModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
 
     Args:
         name_or_path ("phanerozoic/argus"): the HuggingFace model to load
-        revision (None): the revision of the model repository to load, which
-            pins the model code that is loaded with ``trust_remote_code``
         task ("detection"): the task to run. One of ``"classification"``,
             ``"segmentation"``, ``"depth"`` or ``"detection"``
         resolution (None): the square resolution at which to run the
@@ -275,7 +273,6 @@ class ArgusModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         self.name_or_path = self.parse_string(
             d, "name_or_path", default=DEFAULT_ARGUS_MODEL
         )
-        self.revision = self.parse_string(d, "revision", default=None)
         self.task = self.parse_string(d, "task", default="detection")
         if self.task not in _TASKS:
             raise ValueError(
@@ -338,9 +335,7 @@ class ArgusModel(fout.TorchImageModel):
 
     def _load_model(self, config):
         model = transformers.AutoModel.from_pretrained(
-            config.name_or_path,
-            revision=config.revision,
-            trust_remote_code=True,
+            config.name_or_path, trust_remote_code=True
         ).eval()
         return model.to(self._device)
 

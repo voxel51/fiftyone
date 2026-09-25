@@ -23,7 +23,6 @@ class TestArgusModelConfig:
         config = foua.ArgusModelConfig({})
 
         assert config.name_or_path == "phanerozoic/argus"
-        assert config.revision is None
         assert config.task == "detection"
         assert config.resolution is None
         assert config.nms_thresh == 0.5
@@ -283,6 +282,5 @@ class TestZooEntry:
 
         assert deployment["type"] == "fiftyone.utils.argus.ArgusModel"
         assert deployment["config"]["name_or_path"] == "phanerozoic/argus"
-        assert len(deployment["config"]["revision"]) == 40
         assert "detection" in entry["tags"]
         assert "depth" not in entry["tags"]

@@ -12649,8 +12649,7 @@
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.argus.ArgusModel",
                 "config": {
-                    "name_or_path": "phanerozoic/argus",
-                    "revision": "5eaa5dbfb82b3b443b9bf54c499faac94acc195e"
+                    "name_or_path": "phanerozoic/argus"
                 }
             },
             "requirements": {
