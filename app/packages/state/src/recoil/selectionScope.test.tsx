@@ -26,10 +26,12 @@ vi.mock("../accessors/dataset", async () => {
   const { datasetId } = await import("./selectors");
   const { view } = await import("./view");
   const { useSetSelectionScopeBoundary } = await import("./selectionScope");
+  const empty = {};
   return {
     useCurrentDatasetId: () => useRecoilValue(datasetId),
     useDatasetMediaType: () => "image",
-    useGridViewScope: () => ({ view: useRecoilValue(view), filters: {} }),
+    useSampleSchema: () => empty,
+    useGridViewScope: () => ({ view: useRecoilValue(view), filters: empty }),
     useSetSelectionScopeBoundary,
   };
 });

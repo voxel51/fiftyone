@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { EpisodeSelection } from "./types";
 
 const mocks = vi.hoisted(() => ({
+  empty: {},
   view: [
     {
       _cls: "fiftyone.core.stages.GroupBy",
@@ -18,10 +19,11 @@ const mocks = vi.hoisted(() => ({
 vi.mock("../accessors/dataset", () => ({
   useCurrentDatasetId: () => "group-hooks",
   useDatasetMediaType: () => "image",
+  useSampleSchema: () => mocks.empty,
   useGridGroupSlice: () => null,
   useGridViewScope: () => ({
     view: mocks.view,
-    filters: {},
+    filters: mocks.empty,
     extendedStages: {},
     refresh: 0,
   }),
