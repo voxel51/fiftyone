@@ -84,7 +84,7 @@ test("frame primitives follow the playhead and the frame number is read-only", a
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
   });
-  await modal.assert.isOpen();
+  await modal.waitForOpen();
   await modal.sidebar.switchMode("annotate");
   await modal.videoAnnotate.waitForSurface();
 

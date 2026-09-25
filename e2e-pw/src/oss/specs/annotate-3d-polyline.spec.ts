@@ -43,7 +43,7 @@ const openAnnotate = async (
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
   });
-  await modal.assert.isOpen();
+  await modal.waitForOpen();
   await modal.sidebar.switchMode("annotate");
   await modal.annotate3d.waitForSurface();
 };

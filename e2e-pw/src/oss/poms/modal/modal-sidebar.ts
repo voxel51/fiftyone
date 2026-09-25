@@ -1,4 +1,5 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
+import { collapseWhitespace, exactText } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
 import { ModalAnnotateEditPom } from "./annotate-edit";
 import { ModalAnnotateSidebarPom } from "./annotate-sidebar";
@@ -169,7 +170,7 @@ export class ModalSidebarPom {
       await toggle.click();
     }
 
-    await expect(this.locator).toBeHidden();
+    await this.locator.waitFor({ state: "hidden" });
   }
 
   /**
@@ -243,7 +244,10 @@ class ModalSidebarAsserter {
    * @returns A promise that resolves when the entry text matches the expected value
    */
   async waitUntilSidebarEntryTextEquals(key: string, value: string) {
-    await expect(this.modalSidebarPom.getSidebarEntry(key)).toHaveText(value);
+    await this.modalSidebarPom
+      .getSidebarEntry(key)
+      .filter({ hasText: exactText(value) })
+      .waitFor({ state: "attached" });
   }
 
   /**
@@ -288,11 +292,11 @@ class ModalSidebarAsserter {
    * @param count - The expected count value for the field
    */
   async verifySidebarFieldCount(field: string, count: string | number) {
-    await expect(
-      this.modalSidebarPom
-        .getSidebarField(field)
-        .getByTestId("entry-count-all"),
-    ).toHaveText(String(count));
+    expect(
+      collapseWhitespace(
+        await this.modalSidebarPom.getSidebarFieldCount(field),
+      ),
+    ).toBe(String(count));
   }
 
   /**
@@ -322,8 +326,12 @@ class ModalSidebarAsserter {
       const v = obj[k];
       const entry = locator.getByTestId(`key-value-${k}-${v}`);
 
-      await expect(entry.getByTestId(`key-${k}`)).toHaveText(k);
-      await expect(entry.getByTestId(`value-${v}`)).toHaveText(v);
+      expect(
+        collapseWhitespace(await entry.getByTestId(`key-${k}`).textContent()),
+      ).toBe(k);
+      expect(
+        collapseWhitespace(await entry.getByTestId(`value-${v}`).textContent()),
+      ).toBe(v);
     }
   }
 
@@ -344,8 +352,10 @@ class ModalSidebarAsserter {
    * Assert that annotation is disabled with a specific message
    */
   async hasDisabledMessage(messageSubstring: string) {
-    await expect(
-      this.modalSidebarPom.locator.getByText(messageSubstring),
-    ).toBeVisible();
+    expect(
+      await this.modalSidebarPom.locator
+        .getByText(messageSubstring)
+        .isVisible(),
+    ).toBe(true);
   }
 }

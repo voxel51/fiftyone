@@ -72,7 +72,7 @@ test.describe.serial("segmentation pen-tool round-trip", () => {
     modal,
   }) => {
     // ── 1. Enter annotate → segmentation mode → pick Pen ─────────────────────
-    await modal.assert.isOpen();
+    await modal.waitForOpen();
     await modal.sidebar.switchMode("annotate");
     await modal.waitForLighterReady();
 

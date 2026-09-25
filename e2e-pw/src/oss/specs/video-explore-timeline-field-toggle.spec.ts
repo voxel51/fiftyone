@@ -83,7 +83,7 @@ test("toggling a frame field keeps the timeline drawer and its rows mounted", as
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
   });
-  await modal.assert.isOpen();
+  await modal.waitForOpen();
   await modal.waitForSampleLoadDomAttribute();
   const va = modal.videoAnnotate;
   await va.waitForTimeline();

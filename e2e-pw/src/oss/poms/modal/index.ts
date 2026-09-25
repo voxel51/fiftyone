@@ -4,7 +4,7 @@ import { EventUtils } from "src/shared/event-utils";
 import { ModalTaggerPom } from "../action-row/tagger/modal-tagger";
 import { EpisodePom } from "../multimodal/episode";
 import { ModalPanelPom } from "../panels/modal-panel";
-import { escapeRegExp } from "src/oss/utils";
+import { collapseWhitespace, escapeRegExp, exactText } from "src/oss/utils";
 import { UrlPom } from "../url";
 import { ModalAnnotate3dPom } from "./annotate-3d";
 import { ModalGroupActionsPom } from "./group-actions";
@@ -247,9 +247,10 @@ export class ModalPom {
     await looker.click({ position: { x: 10, y: 60 } });
 
     // wait for slice to change
-    await expect(this.sidebar.getSidebarEntry(groupField)).not.toHaveText(
-      currentSlice,
-    );
+    await this.sidebar
+      .getSidebarEntry(groupField)
+      .filter({ hasNotText: exactText(currentSlice ?? "") })
+      .waitFor({ state: "attached" });
     return this.waitForSampleLoadDomAttribute(allowErrorInfo);
   }
 
@@ -317,6 +318,11 @@ export class ModalPom {
 
   async clickOnLooker() {
     return this.looker.click();
+  }
+
+  /** Wait for the modal to open, e.g. from a deep link as the page loads */
+  async waitForOpen() {
+    await this.locator.waitFor();
   }
 
   async waitForSampleLoadDomAttribute(allowErrorInfo = false) {
@@ -390,35 +396,39 @@ class ModalAsserter {
   }
 
   async isClosed() {
-    await expect(this.modalPom.locator).toBeHidden();
+    expect(await this.modalPom.locator.isVisible()).toBe(false);
   }
 
   async isOpen() {
-    await expect(this.modalPom.locator).toBeVisible();
+    expect(await this.modalPom.locator.isVisible()).toBe(true);
   }
 
   async verifyModalOpenedSuccessfully() {
     await this.modalPom.waitForSampleLoadDomAttribute();
-    await expect(this.modalPom.locator).toBeVisible();
+    expect(await this.modalPom.locator.isVisible()).toBe(true);
   }
 
   async verifyHasNoViewerError() {
-    await expect(
-      this.modalPom.modalContainer.getByTestId("looker-error-info"),
-    ).toHaveCount(0);
+    expect(
+      await this.modalPom.modalContainer
+        .getByTestId("looker-error-info")
+        .count(),
+    ).toBe(0);
   }
 
   async verifyPrimary2dRendererVisible() {
-    await expect(this.modalPom.groupLooker).toBeVisible();
+    expect(await this.modalPom.groupLooker.isVisible()).toBe(true);
   }
 
   async verify3dRendererVisible() {
-    await expect(this.modalPom.looker3d).toBeVisible();
+    expect(await this.modalPom.looker3d.isVisible()).toBe(true);
   }
   async verifySelectionCount(n: number) {
     const action = this.modalPom.locator.getByTestId("action-manage-selected");
 
-    await expect(action.first()).toHaveText(String(n));
+    expect(collapseWhitespace(await action.first().textContent())).toBe(
+      String(n),
+    );
   }
 
   async verifyCarouselLength(expectedCount: number) {
@@ -430,24 +440,25 @@ class ModalAsserter {
 
   async verifySampleNavigation(direction: "forward" | "backward") {
     const navigation = this.modalPom.getSampleNavigation(direction);
-    await expect(navigation).toBeVisible();
+    expect(await navigation.isVisible()).toBe(true);
   }
 
   async verifyModalSamplePluginTitle(
     title: string,
     { pinned }: { pinned: boolean } = { pinned: false },
   ) {
-    await expect(
-      this.modalPom.locator.getByTestId("panel-tab-fo-sample-modal-plugin"),
-    ).toHaveText(pinned ? `📌 ${title}` : title);
+    expect(
+      collapseWhitespace(
+        await this.modalPom.locator
+          .getByTestId("panel-tab-fo-sample-modal-plugin")
+          .textContent(),
+      ),
+    ).toBe(pinned ? `📌 ${title}` : title);
   }
 
   /** The modal fills the viewport (its content is styled 100% x 100%). */
   async isFullscreen(fullscreen = true) {
-    const content = this.modalPom.modalContent;
-    const full = /width:\s*100%;.*height:\s*100%/;
-    return fullscreen
-      ? await expect(content).toHaveAttribute("style", full)
-      : await expect(content).not.toHaveAttribute("style", full);
+    const style = await this.modalPom.modalContent.getAttribute("style");
+    expect(/width:\s*100%;.*height:\s*100%/.test(style ?? "")).toBe(fullscreen);
   }
 }

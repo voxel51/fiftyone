@@ -136,7 +136,7 @@ test.describe.serial("schema manager", () => {
       searchParams: new URLSearchParams({ id }),
     });
     // Init
-    await modal.assert.isOpen();
+    await modal.waitForOpen();
     await modal.sidebar.switchMode("annotate");
     await schemaManager.open();
     await schemaManager.assert.isOpen();
@@ -272,7 +272,7 @@ test.describe.serial("schema manager", () => {
     await fiftyoneLoader.waitUntilGridVisible(page, groupVideoDatasetName, {
       searchParams: new URLSearchParams({ id: groupVideoId }),
     });
-    await modal.assert.isOpen();
+    await modal.waitForOpen();
     await modal.sidebar.switchMode("annotate");
 
     await schemaManager.assert.isEnabled();

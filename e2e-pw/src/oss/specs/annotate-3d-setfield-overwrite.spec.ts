@@ -54,7 +54,7 @@ const inFreshContext = async (
     await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
       searchParams: new URLSearchParams({ id, view: baseSlug }),
     });
-    await freshModal.assert.isOpen();
+    await freshModal.waitForOpen();
     await verify(freshModal);
   } finally {
     await context.close();
@@ -69,7 +69,7 @@ const openAnnotate = async (
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id, view: viewSlug }),
   });
-  await modal.assert.isOpen();
+  await modal.waitForOpen();
   await modal.sidebar.switchMode("annotate");
   await modal.annotate3d.waitForSurface();
 };

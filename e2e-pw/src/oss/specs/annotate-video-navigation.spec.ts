@@ -108,7 +108,7 @@ test.describe.serial("video annotation sample navigation", () => {
       withGrid: true,
     });
     await grid.openFirstSample();
-    await modal.assert.isOpen();
+    await modal.waitForOpen();
     await modal.sidebar.switchMode("annotate");
     await modal.videoAnnotate.waitForSurface();
 

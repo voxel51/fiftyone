@@ -206,8 +206,8 @@ test.describe.serial("sparse multimodal groups", () => {
     await grid.assert.isEntryCountTextEqualTo("4 groups with slice");
 
     await grid.openFirstSample();
-    await modal.assert.verify3dRendererVisible();
     await modal.looker3dControls.waitForAllAssetsLoaded();
+    await modal.assert.verify3dRendererVisible();
     await modal.assert.verifyHasNoViewerError();
     await modal.sidebar.assert.waitUntilSidebarEntryTextEqualsMultiple({
       "group.name": "pcd",
@@ -237,8 +237,8 @@ test.describe.serial("sparse multimodal groups", () => {
       mode: "annotate" | "explore";
     }) => {
       if (is3dSlice) {
-        await modal.assert.verify3dRendererVisible();
         await modal.looker3dControls.waitForAllAssetsLoaded();
+        await modal.assert.verify3dRendererVisible();
       } else if (mode === "annotate") {
         await modal.sampleCanvas.assert.is(SampleCanvasType.LIGHTER);
       } else {

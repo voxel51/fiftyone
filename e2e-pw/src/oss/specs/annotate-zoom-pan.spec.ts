@@ -117,7 +117,7 @@ test.describe.serial("Lighter zoom and pan", () => {
     await fiftyoneLoader.waitUntilGridVisible(page, videoDatasetName, {
       searchParams: new URLSearchParams({ id: videoId }),
     });
-    await modal.assert.isOpen();
+    await modal.waitForOpen();
     await modal.sidebar.switchMode("annotate");
     await modal.videoAnnotate.waitForSurface();
 

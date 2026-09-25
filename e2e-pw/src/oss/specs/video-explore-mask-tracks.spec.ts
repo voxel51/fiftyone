@@ -56,7 +56,7 @@ test("mask fields are one read-only row each, with a hole at missing frames", as
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
   });
-  await modal.assert.isOpen();
+  await modal.waitForOpen();
   await modal.waitForSampleLoadDomAttribute();
   const va = modal.videoAnnotate;
 

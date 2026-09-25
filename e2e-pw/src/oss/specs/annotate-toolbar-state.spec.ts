@@ -83,7 +83,7 @@ test.afterEach(async ({ modal, page }) => {
 });
 
 const openAnnotate = async (modal: ModalPom) => {
-  await modal.assert.isOpen();
+  await modal.waitForOpen();
   await modal.waitForSampleLoadDomAttribute();
   await modal.sidebar.switchMode("annotate");
 };

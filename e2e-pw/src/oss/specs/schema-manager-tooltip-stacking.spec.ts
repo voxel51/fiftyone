@@ -48,7 +48,7 @@ test.describe.serial("schema manager tooltip z-index stacking", () => {
     modal,
     schemaManager,
   }) => {
-    await modal.assert.isOpen();
+    await modal.waitForOpen();
     await modal.waitForSampleLoadDomAttribute();
 
     await modal.sampleCanvas.move(0.5, 0.5, "pointer");
