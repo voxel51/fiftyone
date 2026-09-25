@@ -39,12 +39,13 @@ export const useFo3dSceneBounds = ({
     hasSeenBoundsComputingRef.current = true;
   }
 
+  // bounds being recomputed (say, a slice was added) are not resolved yet, even
+  // with an earlier box still in hand
   const isBoundsResolved =
-    sceneBoundingBox !== null ||
     rootAssetCount === 0 ||
-    (isReadyToComputeBounds &&
-      !isComputingSceneBoundingBox &&
-      hasSeenBoundsComputingRef.current);
+    (!isComputingSceneBoundingBox &&
+      (sceneBoundingBox !== null ||
+        (isReadyToComputeBounds && hasSeenBoundsComputingRef.current)));
 
   return {
     sceneBoundingBox,

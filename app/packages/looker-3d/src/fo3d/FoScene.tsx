@@ -10,6 +10,7 @@ import {
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { Fo3dErrorBoundary } from "../ErrorBoundary";
 import { PANEL_ORDER_VISIBILITY } from "../constants";
+import { FO3D_ASSET_LOADING } from "../hooks/use-bounds";
 import { useUrlModifier } from "../hooks/use-fo3d-fetcher";
 import { fo3dContainsBackground, isFo3dBackgroundOnAtom } from "../state";
 import type { PointCloudCrop } from "../utils/point-cloud-crop";
@@ -349,10 +350,14 @@ const R3fNode = ({
 
   return (
     <AssetErrorBoundary resetKey={assetErrorResetKey}>
-      <Suspense fallback={null}>{assetJsx}</Suspense>
+      <Suspense fallback={<group userData={ASSET_LOADING_USER_DATA} />}>
+        {assetJsx}
+      </Suspense>
     </AssetErrorBoundary>
   );
 };
+
+const ASSET_LOADING_USER_DATA = { [FO3D_ASSET_LOADING]: true };
 
 const SceneR3fComponent = ({
   assetRoot,
