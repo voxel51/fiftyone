@@ -112,12 +112,13 @@ export class ModalPom {
     await this.locator.getByTestId("select-sample-checkbox").click();
   }
 
+  /** Pick the media field in display options, which open and close again */
   async selectMediaField(field: string) {
     const radio = this.page.getByTestId(`radio-button-${field}`);
-    if (!(await radio.isVisible())) {
-      await this.toggleDisplayOptionsButton.click();
-    }
+    await this.toggleDisplayOptionsButton.click();
     await radio.click();
+    await this.toggleDisplayOptionsButton.click();
+    await radio.waitFor({ state: "detached" });
   }
 
   async navigateSample(

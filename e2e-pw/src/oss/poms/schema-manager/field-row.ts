@@ -61,6 +61,10 @@ export class FieldRowPom {
     return (text ?? "").split(" ")[0];
   }
 
+  // voodo's RichList marks rows that can't be dragged aria-disabled, so
+  // Playwright refuses to click their controls; key presses reach them until
+  // voodo stops disabling the whole row
+
   /**
    * Check the checkbox, if it exists
    */

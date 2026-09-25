@@ -116,11 +116,6 @@ export class GridPom {
   }
 
   async selectSlice(slice: string) {
-    if (await this.page.getByTestId("modal").isVisible()) {
-      // Defensive, no-op-ish cleanup to dismiss any open thing before interacting with the grid slice selector.
-      await this.page.click("body", { position: { x: 0, y: 0 } });
-    }
-
     if ((await this.sliceSelector.activeSlice()) === slice) return;
 
     // a slice change remounts the grid

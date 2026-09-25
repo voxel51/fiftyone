@@ -80,9 +80,6 @@ test.beforeEach(async ({ fiftyoneLoader, modal, page }) => {
  * must be read from a fresh selection, not the stale form.
  */
 const reselect = async (modal: ModalPom, label = "cat") => {
-  if (await modal.sidebar.edit.backButton.isVisible()) {
-    await modal.sidebar.edit.exitToList();
-  }
   await modal.sidebar.annotate.selectActiveLabel(label, 0);
 };
 
