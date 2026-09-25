@@ -5,3 +5,11 @@ export const getUniqueDatasetNameWithPrefix = (prefix: string) => {
 
 export const escapeRegExp = (value: string) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/** Matches `value` as the whole string */
+export const exactText = (value: string) =>
+  new RegExp(`^${escapeRegExp(value)}$`);
+
+/** Matches `value` as one token of a space-separated list */
+export const spaceToken = (value: string) =>
+  new RegExp(`(^| )${escapeRegExp(value)}( |$)`);

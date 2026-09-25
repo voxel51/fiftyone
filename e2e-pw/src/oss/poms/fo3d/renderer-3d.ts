@@ -50,7 +50,10 @@ export class Renderer3dPom {
   readonly statusBarToggle: Locator;
   readonly statusBarClose: Locator;
 
-  constructor(private readonly page: Page) {
+  constructor(
+    private readonly page: Page,
+    private readonly eventUtils: EventUtils,
+  ) {
     this.assert = new Renderer3dAsserter(this);
     this.asset3dPanel = new Asset3dPanelPom(this.page);
     this.modalLookerContainer = this.page.getByTestId("modal-looker-container");
@@ -78,7 +81,7 @@ export class Renderer3dPom {
 
   /** Resolve on the next camera save, which the scene makes on its own. */
   async nextCameraSave(): Promise<void> {
-    await new EventUtils(this.page).next("e2e:looker3d:camera-saved");
+    await this.eventUtils.next("e2e:looker3d:camera-saved");
   }
 
   async getSavedCameraState(

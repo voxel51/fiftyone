@@ -1,5 +1,5 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
-import { escapeRegExp } from "src/oss/utils";
+import { spaceToken } from "src/oss/utils";
 import { ModalPom } from ".";
 
 /**
@@ -651,7 +651,7 @@ class VideoAnnotateAsserter {
    * (space separated), since the overlays themselves have no DOM.
    */
   async canvasRendersField(field: string, rendered = true) {
-    const pattern = new RegExp(`(^| )${escapeRegExp(field)}( |$)`);
+    const pattern = spaceToken(field);
     return rendered
       ? await expect(this.va.surface).toHaveAttribute(
           "data-cy-scene-overlay-fields",

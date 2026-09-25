@@ -1,4 +1,5 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
+import { spaceToken } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
 
 /**
@@ -11,7 +12,10 @@ export class ModalAnnotateSidebarPom {
   readonly annotationSliceSelector: Locator;
   readonly annotationSliceResultsContainer: Locator;
 
-  constructor(page: Page) {
+  constructor(
+    page: Page,
+    private readonly eventUtils: EventUtils,
+  ) {
     this.page = page;
     this.assert = new ModalAnnotateSidebarAsserter(this);
     this.locator = page.getByTestId("modal").getByTestId("sidebar");
@@ -86,7 +90,7 @@ export class ModalAnnotateSidebarPom {
    */
   async waitForSavesSettled() {
     // every autosave tick ends in this event once nothing is left to save
-    await new EventUtils(this.page).next("annotation:persistenceSettled");
+    await this.eventUtils.next("annotation:persistenceSettled");
   }
 
   /**
@@ -161,10 +165,7 @@ export class ModalAnnotateSidebarPom {
     // option list is computed when it opens, so open it only after that
     await expect(
       this.locator.getByTestId("annotation-slice-selector"),
-    ).toHaveAttribute(
-      "data-cy-selectable-slices",
-      new RegExp(`(^| )${slice.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}( |$)`),
-    );
+    ).toHaveAttribute("data-cy-selectable-slices", spaceToken(slice));
     await this.annotationSliceSelector.click();
     await this.annotationSliceResultsContainer
       .getByTestId(`selector-result-${slice}`)

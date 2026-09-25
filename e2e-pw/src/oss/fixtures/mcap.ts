@@ -206,8 +206,8 @@ for dataset_name in ["${datasetName}", "${alternateMediaDatasetName}", "${worksp
     },
     { auto: true, scope: "worker" },
   ],
-  explorer: async ({ page }, use) => {
-    const explorer = new McapExplorerPom(page);
+  explorer: async ({ eventUtils, page }, use) => {
+    const explorer = new McapExplorerPom(page, eventUtils);
     await use(explorer);
     await explorer.closeIfOpen();
   },

@@ -1,5 +1,6 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
 import { GridPanelPom } from "src/oss/poms/panels/grid-panel";
+import { EventUtils } from "src/shared/event-utils";
 import { EpisodePom } from "./episode";
 
 /** MCAP Explorer ingress and lifecycle interactions. */
@@ -8,10 +9,13 @@ export class McapExplorerPom {
   readonly panel: GridPanelPom;
   readonly scope: Locator;
 
-  constructor(private readonly page: Page) {
+  constructor(
+    private readonly page: Page,
+    eventUtils: EventUtils,
+  ) {
     this.panel = new GridPanelPom(page);
     this.scope = this.panel.getContent("McapExplorerPanel");
-    this.episode = new EpisodePom(page, this.scope);
+    this.episode = new EpisodePom(page, this.scope, eventUtils);
   }
 
   async open(): Promise<void> {

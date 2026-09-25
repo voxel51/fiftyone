@@ -53,13 +53,13 @@ export class ModalPom {
     this.looker3dControls = new Looker3DControlsPom(page, this);
     this.panel = new ModalPanelPom(page, this);
     this.sampleCanvas = new SampleCanvasPom(page, eventUtils);
-    this.sidebar = new ModalSidebarPom(page);
+    this.sidebar = new ModalSidebarPom(page, eventUtils);
     this.tagger = new ModalTaggerPom(page, this);
     this.url = new UrlPom(page, eventUtils);
     this.video = new ModalVideoControlsPom(page, this);
     this.videoAnnotate = new VideoAnnotatePom(page, this);
     this.annotate3d = new ModalAnnotate3dPom(page, this);
-    this.episode = new EpisodePom(page, this.locator);
+    this.episode = new EpisodePom(page, this.locator, eventUtils);
   }
 
   get modalSamplePluginTitle() {

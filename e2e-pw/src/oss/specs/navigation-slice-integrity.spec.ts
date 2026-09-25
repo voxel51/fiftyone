@@ -43,8 +43,8 @@ const test = base.extend<{
   modal: async ({ page, eventUtils }, use) => {
     await use(new ModalPom(page, eventUtils));
   },
-  renderer3d: async ({ page }, use) => {
-    await use(new Renderer3dPom(page));
+  renderer3d: async ({ page, eventUtils }, use) => {
+    await use(new Renderer3dPom(page, eventUtils));
   },
 });
 

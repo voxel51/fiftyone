@@ -1,4 +1,5 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
+import { EventUtils } from "src/shared/event-utils";
 import { ModalAnnotateEditPom } from "./annotate-edit";
 import { ModalAnnotateSidebarPom } from "./annotate-sidebar";
 
@@ -18,8 +19,8 @@ export class ModalSidebarPom {
    * @param page - The Playwright Page object used to locate elements within
    *  the modal sidebar
    */
-  constructor(page: Page) {
-    this.annotate = new ModalAnnotateSidebarPom(page);
+  constructor(page: Page, eventUtils: EventUtils) {
+    this.annotate = new ModalAnnotateSidebarPom(page, eventUtils);
     this.edit = new ModalAnnotateEditPom(page);
     this.page = page;
     this.assert = new ModalSidebarAsserter(this);

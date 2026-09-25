@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { Locator, Page, expect } from "src/oss/fixtures";
+import { exactText } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
 
 /**
@@ -32,15 +33,14 @@ export class EpisodePom {
   readonly assert: EpisodeAsserter;
   readonly shell: Locator;
   readonly state: Locator;
-  private readonly eventUtils: EventUtils;
   private inspectedStream: string | null = null;
 
   constructor(
     private readonly page: Page,
     readonly scope: Locator,
+    private readonly eventUtils: EventUtils,
   ) {
     this.assert = new EpisodeAsserter();
-    this.eventUtils = new EventUtils(page);
     this.shell = scope.locator("[data-episode-playback-shell]");
     this.state = byDataTestId(scope, "episode-modal-state");
   }
@@ -193,11 +193,10 @@ export class EpisodePom {
     expected: Readonly<Record<string, number>>,
   ): Promise<void> {
     const inputs = await this.openViewpointInputs(tileTitle);
-    const eventUtils = new EventUtils(this.page);
     for (const [name, value] of Object.entries(expected)) {
       // a stale pose can be showing after a navigation or reload; wait for
       // this one, compared at 6-digit precision
-      await eventUtils.untilDom(
+      await this.eventUtils.untilDom(
         inputs.getByRole("spinbutton", { name }),
         (element, target) =>
           Math.abs(Number(element.getAttribute("aria-valuenow")) - target) <
@@ -767,10 +766,6 @@ const CAMERA_POSE_INPUT_NAMES = [
 
 function byDataTestId(root: Locator, id: string): Locator {
   return root.locator('[data-testid="' + id + '"]');
-}
-
-function exactText(value: string): RegExp {
-  return new RegExp(`^${value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`);
 }
 
 function utcDateTimeToNanoseconds(value: string): string {

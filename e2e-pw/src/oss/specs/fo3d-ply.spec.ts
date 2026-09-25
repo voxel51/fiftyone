@@ -27,8 +27,8 @@ const test = base.extend<{
   modal: async ({ page, eventUtils }, use) => {
     await use(new ModalPom(page, eventUtils));
   },
-  modalSidebar: async ({ page }, use) => {
-    await use(new ModalSidebarPom(page));
+  modalSidebar: async ({ page, eventUtils }, use) => {
+    await use(new ModalSidebarPom(page, eventUtils));
   },
 });
 
