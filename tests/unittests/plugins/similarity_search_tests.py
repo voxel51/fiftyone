@@ -35,12 +35,21 @@ class SimilaritySearchOperatorTests(unittest.TestCase):
         self.assertEqual(run["base_view"], [])
         self.assertEqual(run["result_count"], 2)
 
-        view = dataset.limit(3)
+        # Leaves out the whole dataset's nearest match, so a search that
+        # ignored the view would return a sample outside it
+        query_id = dataset.first().id
+        nearest = [i for i in run["result_ids"] if i != query_id][0]
+        view = dataset.exclude(nearest)
         run = _search(dataset, view=view)
         self.assertEqual(
             run["base_view"], view._serialize(include_uuids=False)
         )
         self.assertEqual(run["result_count"], 2)
+        self.assertTrue(
+            set(run["result_ids"]).issubset(
+                {str(sample_id) for sample_id in view.values("id")}
+            )
+        )
 
 
 def _search(dataset, view=None):
