@@ -65,8 +65,8 @@ test("grid remounts exactly once per spaces layout change", async ({
     await panel.openInSplit("Histograms");
     return at;
   });
-  await expect(panel.getContent("Histograms")).toBeVisible();
-  await expect(grid.getNthTile(0)).toBeVisible();
+  expect(await panel.getContent("Histograms").isVisible()).toBe(true);
+  expect(await grid.getNthTile(0).isVisible()).toBe(true);
   await assertCycles(1, { splitAt });
 
   // join: closing the split panel collapses the layout back to a single pane
@@ -75,7 +75,7 @@ test("grid remounts exactly once per spaces layout change", async ({
     await panel.closeTab("Histograms");
     return at;
   });
-  await expect(panel.getContent("Histograms")).toBeHidden();
-  await expect(grid.getNthTile(0)).toBeVisible();
+  expect(await panel.getContent("Histograms").isVisible()).toBe(false);
+  expect(await grid.getNthTile(0).isVisible()).toBe(true);
   await assertCycles(2, { splitAt, joinAt });
 });

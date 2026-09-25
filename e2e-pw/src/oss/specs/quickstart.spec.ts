@@ -1,4 +1,4 @@
-import { test as base, expect } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { SidebarPom } from "src/oss/poms/sidebar";
@@ -80,13 +80,13 @@ test.describe.serial("quickstart", () => {
     await sidebar.asserter.assertFilterIsVisible("id", "categorical");
   });
 
-  test("selection bookmark", async ({ page, grid }) => {
+  test("selection bookmark", async ({ grid }) => {
     await grid.toggleSelectFirstSample();
     await grid.actionsRow.assert.hasFiltersBookmark();
     await grid.run(async () => {
       await grid.actionsRow.bookmarkFilters();
     });
-    await expect(page.getByTestId("entry-counts")).toHaveText("1 sample");
+    await grid.assert.isEntryCountTextEqualTo("1 sample");
   });
 
   test("entry counts text when toPatches then groupedBy", async ({

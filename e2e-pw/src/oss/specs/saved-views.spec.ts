@@ -104,7 +104,7 @@ test.describe.serial("saved views", () => {
   });
 
   test("saved view basic operations", async ({ savedViews }) => {
-    await expect(savedViews.selector).toBeVisible();
+    expect(await savedViews.selector.isVisible()).toBe(true);
     await savedViews.openCreateModal();
 
     await savedViews.assert.verifyInputIsDefault();

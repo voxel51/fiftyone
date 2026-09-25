@@ -68,15 +68,17 @@ test.describe.serial("tag", () => {
   }) => {
     await sidebar.clickFieldCheckbox("tags");
     await sidebar.clickFieldDropdown("tags");
-    // mount eventListener
-    await grid.run(async () => {
-      await grid.actionsRow.toggleTagSamplesOrLabels();
-      await tagger.setActiveTaggerMode("sample");
-      await tagger.addNewTag("sample", "test1");
-    });
+    // tagging remounts the grid; the tiles' tags render as they redraw
+    await grid.afterTilesDrawn(5, () =>
+      grid.run(async () => {
+        await grid.actionsRow.toggleTagSamplesOrLabels();
+        await tagger.setActiveTaggerMode("sample");
+        await tagger.addNewTag("sample", "test1");
+      }),
+    );
 
     const bubble = page.getByTestId("tag-tags-test1");
-    await expect(bubble).toHaveCount(5);
+    expect(await bubble.count()).toBe(5);
   });
 
   test("In grid, I can add a new label tag to all samples", async ({
@@ -88,18 +90,20 @@ test.describe.serial("tag", () => {
   }) => {
     await sidebar.clickFieldCheckbox("_label_tags");
     await sidebar.clickFieldDropdown("_label_tags");
-    // mount eventListener
-    await grid.run(async () => {
-      await grid.actionsRow.toggleTagSamplesOrLabels();
-      await tagger.setActiveTaggerMode("label");
-      await tagger.addNewTag("label", "labelTest");
-    });
+    // tagging remounts the grid; the tiles' tags render as they redraw
+    await grid.afterTilesDrawn(5, () =>
+      grid.run(async () => {
+        await grid.actionsRow.toggleTagSamplesOrLabels();
+        await tagger.setActiveTaggerMode("label");
+        await tagger.addNewTag("label", "labelTest");
+      }),
+    );
     // verify the bubble in the image
     // the first sample has 17 label tag count, the second sample has 22 tag count
     const bubble1 = page.getByTestId("tag-_label_tags-labeltest:-17");
     const bubble2 = page.getByTestId("tag-_label_tags-labeltest:-22");
-    await expect(bubble1).toBeVisible();
-    await expect(bubble2).toBeVisible();
+    expect(await bubble1.isVisible()).toBe(true);
+    expect(await bubble2.isVisible()).toBe(true);
 
     // `_label_tags` is a client-derived pseudo path; the server has no such
     // field on the view and throws `DatasetView has no field '_label_tags'`
