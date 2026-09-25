@@ -7366,11 +7366,9 @@ class SampleCollection(object):
         # Resolved against the root dataset because the select below already
         # scopes to this collection (on a grouped collection, its active
         # slice's samples); scoping the tag read too would do that work twice.
-        root = self._dataset
-        sample_ids = {
-            tag.sample_id
-            for tag in root.temporal_tags.values(filter=tag_filter)
-        }
+        sample_ids = fota.list_temporal_tag_sample_ids(
+            self._dataset, tag_filter
+        )
 
         if bool:
             return self.select(sample_ids)

@@ -642,6 +642,25 @@ def list_temporal_tags(
     return list(TemporalTags(dataset).values(filter=filter))
 
 
+def list_temporal_tag_sample_ids(
+    dataset, filter: TemporalTagFilter | None = None
+) -> list[str]:
+    """Lists the IDs of the samples of a dataset that carry a matching
+    temporal tag.
+
+    Each sample is listed once, however many matching tags it carries.
+
+    Args:
+        dataset: a :class:`fiftyone.Dataset`
+        filter (None): an optional :class:`TemporalTagFilter`
+
+    Returns:
+        a list of sample IDs
+    """
+    _validate_dataset(dataset)
+    return _tagged_sample_ids(_build_query(dataset._doc.id, filter))
+
+
 def delete_temporal_tags(
     dataset,
     *,
@@ -969,6 +988,15 @@ def _ensure_temporal_tag_list(tags) -> list[TemporalTag]:
     return tags
 
 
+def _tagged_sample_ids(query) -> list[str]:
+    return [
+        str(doc["_id"])
+        for doc in _get_collection().aggregate(
+            [{"$match": query}, {"$group": {"_id": "$_sample_id"}}]
+        )
+    ]
+
+
 def _scope_query(query, dataset, sample_collection=None):
     """Restricts a tag query to the samples of ``sample_collection``.
 
@@ -978,12 +1006,7 @@ def _scope_query(query, dataset, sample_collection=None):
     if not isinstance(sample_collection, fov.DatasetView):
         return query
 
-    tagged_ids = [
-        str(doc["_id"])
-        for doc in _get_collection().aggregate(
-            [{"$match": query}, {"$group": {"_id": "$_sample_id"}}]
-        )
-    ]
+    tagged_ids = _tagged_sample_ids(query)
     if tagged_ids:
         scoped_ids = sample_collection.select(tagged_ids).values("_id")
     else:

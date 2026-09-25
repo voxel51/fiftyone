@@ -925,10 +925,9 @@ def _match_temporal_tags(
     # select/exclude intersects, so out-of-view tag hits can't leak in. On a
     # grouped view that is the active slice's samples, as with every other
     # sidebar filter.
-    tags = fotags.list_temporal_tags(
+    sample_ids = fotags.list_temporal_tag_sample_ids(
         _root_dataset(view), fotags.TemporalTagFilter(tags=values)
     )
-    sample_ids = {str(tag.sample_id) for tag in tags}
 
     if exclude:
         # Excluding with no matches leaves the view untouched.
