@@ -242,6 +242,28 @@ class TestPredictAll:
         assert model._predict_all([PILImage.new("RGB", (10, 10))]) == [None]
 
 
+class TestGenerate:
+    def test_padding_is_removed(self):
+        model = fouf.Florence2Model.__new__(fouf.Florence2Model)
+        model.config = fouf.Florence2ModelConfig({"task": "caption"})
+        model._device = "cpu"
+        model._model = mock.MagicMock()
+        model._processor = mock.MagicMock()
+        model._processor.return_value.to.return_value = {}
+        model._processor.tokenizer.pad_token = "<pad>"
+        model._processor.batch_decode.return_value = [
+            "</s><s>A long caption.</s>",
+            "</s><s>Short.</s><pad><pad><pad>",
+        ]
+
+        texts = model._generate([PILImage.new("RGB", (10, 10))] * 2)
+
+        assert texts == [
+            "</s><s>A long caption.</s>",
+            "</s><s>Short.</s>",
+        ]
+
+
 class TestBatching:
     def test_images_of_different_sizes_are_batched_as_a_list(self):
         model = fouf.Florence2Model.__new__(fouf.Florence2Model)

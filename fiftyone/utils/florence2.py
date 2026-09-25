@@ -304,7 +304,12 @@ class Florence2Model(fout.TorchImageModel):
                 do_sample=False,
             )
 
-        return self._processor.batch_decode(ids, skip_special_tokens=False)
+        texts = self._processor.batch_decode(ids, skip_special_tokens=False)
+
+        # Shorter generations in a batch end in padding, which the processor's
+        # text parsing keeps
+        pad = self._processor.tokenizer.pad_token
+        return [text.replace(pad, "") for text in texts] if pad else texts
 
     def _to_label(self, text, image_size):
         token, kind, _ = _TASKS[self.config.task]
