@@ -1,0 +1,253 @@
+/* ---------------------------------------------------------------------------
+ * Voxel51 Agent showcase: the upsell a workspace without the agent opens from
+ * the tray's assistant slot. Tokens arrive as --agent-* from the component.
+ * ------------------------------------------------------------------------- */
+
+/* The name on the left, availability opposite it. */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--agent-space-md);
+}
+
+.title {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* "Only in Voxel51": a hairline brand-gradient pill, the same gradient as the
+ * header's Enterprise call to action. Brand color, not a theme token. */
+.exclusive {
+  --agent-brand-gradient: linear-gradient(45deg, #ff6d04 0%, #b681ff 100%);
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  padding: 1px 10px;
+  border-radius: 999px;
+  font-size: var(--agent-font-xs);
+  font-weight: 500;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.exclusive::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: var(--agent-brand-gradient);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.exclusiveLabel {
+  background-image: var(--agent-brand-gradient);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.showcase {
+  display: flex;
+  flex-direction: column;
+  gap: var(--agent-space-lg);
+}
+
+/* The lede sits close under the name, as its subtitle. */
+.intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--agent-space-sm);
+}
+
+.lede {
+  display: block;
+  max-width: 64ch;
+}
+
+.stage {
+  display: grid;
+  grid-template-columns: minmax(220px, 272px) minmax(0, 1fr);
+  gap: var(--agent-space-lg);
+  align-items: center;
+}
+
+/* ---------------------------------------------------------------------------
+ * Capability tabs
+ * ------------------------------------------------------------------------- */
+
+.tabs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--agent-space-sm);
+}
+
+.tab {
+  cursor: pointer;
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--agent-focus);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Player
+ * ------------------------------------------------------------------------- */
+
+.player {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--agent-border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--agent-stage);
+  box-shadow: 0 24px 48px -28px rgb(0 0 0 / 0.6);
+}
+
+.video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--agent-duration) var(--agent-easing);
+}
+
+.player[data-state="ready"] .video {
+  opacity: 1;
+}
+
+.playToggle {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  background: var(--agent-overlay) !important;
+  opacity: 0;
+  transition: opacity var(--agent-duration) var(--agent-easing);
+}
+
+.player:hover .playToggle,
+.player[data-paused] .playToggle,
+.playToggle:focus-visible {
+  opacity: 1;
+}
+
+.skeleton {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.skeletonCenter {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--agent-space-sm);
+}
+
+.skeletonControls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+}
+
+.skeletonPlay,
+.skeletonButton,
+.skeletonTrack,
+.skeletonTime {
+  display: block;
+  flex: none;
+  background: linear-gradient(
+    90deg,
+    var(--agent-skeleton) 0%,
+    var(--agent-shimmer) 50%,
+    var(--agent-skeleton) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+.skeletonPlay {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+}
+
+.skeletonButton {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+}
+
+.skeletonTrack {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+}
+
+.skeletonTime {
+  width: 72px;
+  height: 10px;
+  border-radius: 5px;
+}
+
+/* An unreachable recording keeps the player's frame, at rest. */
+.skeleton[data-unavailable] .skeletonButton,
+.skeleton[data-unavailable] .skeletonTrack,
+.skeleton[data-unavailable] .skeletonTime {
+  background: var(--agent-skeleton);
+  animation: none;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+/* Narrow viewports stack the player above the list. */
+@media (max-width: 760px) {
+  .stage {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tabs {
+    order: 2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonPlay,
+  .skeletonButton,
+  .skeletonTrack,
+  .skeletonTime {
+    animation: none;
+  }
+
+  .video,
+  .playToggle {
+    transition: none;
+  }
+}
