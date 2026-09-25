@@ -8,7 +8,6 @@
 import { env, isEventSourcePolling } from "@fiftyone/utilities";
 import {
   Align,
-  ArrowOutwardIcon,
   BackgroundColor,
   getColorCssVar,
   IconColor,
@@ -26,7 +25,7 @@ import {
 import type { CSSProperties } from "react";
 import { useSharedSessionCount } from "../sharedSession/hooks";
 import styles from "./SharedSessionBanner.module.css";
-import { ENTERPRISE_URL } from "./Teams";
+import SharedSessionUpgrade from "./SharedSessionUpgrade";
 
 const TOKENS = {
   "--banner-tint": `var(${getColorCssVar(SemanticColor.Warning)})`,
@@ -75,22 +74,7 @@ const Notice = () => {
           Open in <span className={styles.count}>{count} tabs</span> that share
           the same state and can lead to unexpected behavior.
         </Text>
-        <Text
-          variant={TextVariant.Sm}
-          color={TextColor.Fg}
-          className={styles.fixed}
-        >
-          To browse independently, please{" "}
-          <a
-            href={ENTERPRISE_URL}
-            target="_blank"
-            rel="noreferrer"
-            className={styles.link}
-          >
-            upgrade to Voxel51
-            <ArrowOutwardIcon size={12} className={styles.arrow} />
-          </a>
-        </Text>
+        <SharedSessionUpgrade />
       </Stack>
     </div>
   );

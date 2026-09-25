@@ -60,11 +60,6 @@ describe("SharedSessionBanner", () => {
 
     wait(1);
     expect(banner()?.textContent).toContain("Open in 2 tabs");
-    expect(
-      screen
-        .getByRole("link", { name: /upgrade to Voxel51/ })
-        .getAttribute("href"),
-    ).toContain("voxel51.com");
   });
 
   it("follows the count while it warns", () => {
