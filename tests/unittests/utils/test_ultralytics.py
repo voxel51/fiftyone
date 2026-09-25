@@ -1018,5 +1018,184 @@ class TestFiftyOneYOLOEVPPredictAllIntegration:
         assert model._set_predictor_calls == [(model.config, model._model)]
 
 
+def _depth_result(depth):
+    """A stand-in for a depth ``Results`` whose map holds ``depth`` meters."""
+    import torch
+
+    if depth is None:
+        return SimpleNamespace(depth=None)
+
+    data = torch.tensor(depth, dtype=torch.float32)
+    return SimpleNamespace(depth=SimpleNamespace(data=data))
+
+
+class TestToHeatmaps:
+    def test_map_is_scaled_by_its_maximum(self):
+        from fiftyone.utils.ultralytics import to_heatmaps
+
+        heatmap = to_heatmaps(_depth_result([[1.0, 2.0], [4.0, 8.0]]))
+
+        assert isinstance(heatmap, fol.Heatmap)
+        assert heatmap.map.dtype == np.float32
+        np.testing.assert_allclose(heatmap.map, [[0.125, 0.25], [0.5, 1.0]])
+        assert heatmap.max_depth == pytest.approx(8.0)
+        assert heatmap.is_metric is True
+
+    def test_meters_are_recovered_from_max_depth(self):
+        from fiftyone.utils.ultralytics import to_heatmaps
+
+        depth = [[0.5, 3.25], [12.0, 40.0]]
+        heatmap = to_heatmaps(_depth_result(depth))
+
+        np.testing.assert_allclose(
+            heatmap.map * heatmap.max_depth, depth, rtol=1e-6
+        )
+
+    def test_list_in_list_out(self):
+        from fiftyone.utils.ultralytics import to_heatmaps
+
+        heatmaps = to_heatmaps(
+            [_depth_result([[1.0]]), _depth_result([[2.0, 4.0]])]
+        )
+
+        assert isinstance(heatmaps, list)
+        assert [h.max_depth for h in heatmaps] == [1.0, 4.0]
+
+    def test_all_zero_map(self):
+        from fiftyone.utils.ultralytics import to_heatmaps
+
+        heatmap = to_heatmaps(_depth_result([[0.0, 0.0]]))
+
+        np.testing.assert_array_equal(heatmap.map, [[0.0, 0.0]])
+        assert heatmap.max_depth == 0.0
+
+    def test_result_without_depth(self):
+        from fiftyone.utils.ultralytics import to_heatmaps
+
+        assert to_heatmaps(_depth_result(None)) is None
+        assert to_heatmaps(SimpleNamespace()) is None
+
+
+class TestUltralyticsDepthOutputProcessor:
+    def test_post_processes_then_converts(self):
+        from fiftyone.utils import ultralytics as fu
+
+        calls = []
+
+        def fake_post_processor(preds, imgs, orig_imgs):
+            calls.append((preds, imgs, orig_imgs))
+            return [_depth_result([[2.0, 4.0]])]
+
+        proc = fu.UltralyticsDepthOutputProcessor(
+            post_processor=fake_post_processor
+        )
+        out = proc(
+            {"preds": "P", "imgs": "I", "orig_imgs": ["O"]},
+            [(2, 1)],
+            confidence_thresh=0.3,
+        )
+
+        assert calls == [("P", "I", ["O"])]
+        assert len(out) == 1
+        np.testing.assert_allclose(out[0].map, [[0.5, 1.0]])
+        assert out[0].max_depth == pytest.approx(4.0)
+
+
+class TestConvertDepthModel:
+    @staticmethod
+    def _tasks(with_depth=True):
+        class DetectionModel:
+            pass
+
+        class SegmentationModel(DetectionModel):
+            pass
+
+        class PoseModel(DetectionModel):
+            pass
+
+        class OBBModel(DetectionModel):
+            pass
+
+        class ClassificationModel:
+            pass
+
+        tasks = SimpleNamespace(
+            DetectionModel=DetectionModel,
+            SegmentationModel=SegmentationModel,
+            PoseModel=PoseModel,
+            OBBModel=OBBModel,
+            ClassificationModel=ClassificationModel,
+        )
+        if with_depth:
+            # As in ultralytics, depth models are detection models too
+            tasks.DepthModel = type("DepthModel", (DetectionModel,), {})
+
+        return tasks
+
+    def _patch(self, monkeypatch, tasks):
+        from fiftyone.utils import ultralytics as fu
+
+        monkeypatch.setattr(
+            fu, "ultralytics", SimpleNamespace(nn=SimpleNamespace(tasks=tasks))
+        )
+        monkeypatch.setattr(fu, "_convert_yolo_depth_model", lambda m: "depth")
+        monkeypatch.setattr(
+            fu, "_convert_yolo_detection_model", lambda m: "detection"
+        )
+        return fu
+
+    def test_depth_model_is_not_taken_for_a_detector(self, monkeypatch):
+        tasks = self._tasks()
+        fu = self._patch(monkeypatch, tasks)
+
+        depth = SimpleNamespace(model=tasks.DepthModel())
+        detection = SimpleNamespace(model=tasks.DetectionModel())
+
+        assert fu.convert_ultralytics_model(depth) == "depth"
+        assert fu.convert_ultralytics_model(detection) == "detection"
+
+    def test_ultralytics_without_depth_still_converts_detectors(
+        self, monkeypatch
+    ):
+        tasks = self._tasks(with_depth=False)
+        fu = self._patch(monkeypatch, tasks)
+
+        detection = SimpleNamespace(model=tasks.DetectionModel())
+
+        assert fu.convert_ultralytics_model(detection) == "detection"
+
+
+class TestYOLO26DepthZooEntries:
+    def test_entries_use_the_depth_output_processor(self):
+        import json
+        import os
+
+        import fiftyone.utils.ultralytics as fu
+
+        path = os.path.join(
+            os.path.dirname(fu.__file__),
+            os.pardir,
+            "zoo",
+            "models",
+            "manifest-torch.json",
+        )
+        with open(path, "r", encoding="utf-8") as f:
+            models = {m["base_name"]: m for m in json.load(f)["models"]}
+
+        for size in "nsmlx":
+            entry = models["yolo26%s-depth-torch" % size]
+            config = entry["default_deployment_config_dict"]["config"]
+            filename = "yolo26%s-depth.pt" % size
+
+            assert config["output_processor_cls"] == (
+                "fiftyone.utils.ultralytics.UltralyticsDepthOutputProcessor"
+            )
+            assert config["entrypoint_args"]["model"] == filename
+            assert entry["base_filename"] == filename
+            assert entry["manager"]["config"]["url"].endswith("/" + filename)
+            assert "ultralytics>=8.4.104" in entry["requirements"]["packages"]
+            assert "depth" in entry["tags"]
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
