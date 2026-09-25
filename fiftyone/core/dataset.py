@@ -10819,6 +10819,10 @@ def register_extras_deleter(deleter):
     that it can remove data the dataset owns outside of the database.
     Generated datasets, such as patches and clips, do not invoke deleters.
 
+    A deleter must identify that data by the dataset itself, such as its ID or
+    its run records, and never by its samples: other datasets may reference
+    the same media, and internal staging datasets are deleted like any other.
+
     A deleter that raises aborts the deletion with the dataset's records
     intact, so the deletion can be retried. What earlier deleters removed is
     not restored, and a retry reruns every deleter, so deleters must be
