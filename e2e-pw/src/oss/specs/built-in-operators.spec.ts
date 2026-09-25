@@ -16,8 +16,8 @@ const test = base.extend<{
   url: async ({ page, eventUtils }, use) => {
     await use(new UrlPom(page, eventUtils));
   },
-  viewBar: async ({ page }, use) => {
-    await use(new ViewBarPom(page));
+  viewBar: async ({ page, eventUtils }, use) => {
+    await use(new ViewBarPom(page, eventUtils));
   },
 });
 
@@ -65,5 +65,6 @@ test("Built-in operators: set view", async ({
   await operatorsBrowser.search("E2E");
   await url.pageChange(() => operatorsBrowser.choose("E2E: Set view"));
   // A view set by an operator opens the stages row on its own
+  await viewBar.waitForStages();
   await viewBar.assert.hasViewStage("Limit3");
 });

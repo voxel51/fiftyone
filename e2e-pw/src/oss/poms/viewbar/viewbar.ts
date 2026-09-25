@@ -1,4 +1,12 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
+import type { EventUtils } from "src/shared/event-utils";
+
+/** The bar moves the keyboard a frame after an edit, then dispatches this */
+const FOCUS_PLACED = "e2e:view-bar:focus-placed";
+
+/** Whether `locator` holds the keyboard, read once */
+const isFocused = (locator: Locator) =>
+  locator.evaluate((element) => element === document.activeElement);
 
 /**
  * The view bar: a search row in the header, with the stage cards in a
@@ -14,11 +22,14 @@ export class ViewBarPom {
   /** The stage editor popover. One per page, open for at most one stage. */
   readonly stageEditor: StageEditorPom;
 
-  constructor(page: Page) {
+  constructor(
+    page: Page,
+    readonly eventUtils: EventUtils,
+  ) {
     this.page = page;
     this.assert = new ViewBarAsserter(this);
     this.locator = this.page.getByTestId("view-bar");
-    this.stageEditor = new StageEditorPom(page);
+    this.stageEditor = new StageEditorPom(page, eventUtils);
   }
 
   /** The stages row: the bar's second row, present while open. */
@@ -80,20 +91,23 @@ export class ViewBarPom {
     await this.searchSettingsTrigger.click();
     await this.searchSettings.getByTestId("search-settings-k").fill(String(k));
     await this.searchSettingsTrigger.click();
-    await expect(this.searchSettings).toBeHidden();
+    await this.searchSettings.waitFor({ state: "hidden" });
   }
 
   /**
    * Makes the stages row visible. A bar holding stages opens it on its own;
-   * an empty bar needs the toggle. The toggle's aria-expanded reflects the
-   * open state synchronously, so this never races the row mounting.
+   * an empty bar needs the toggle, which also lands the keyboard in the row
+   * a frame later. The toggle's aria-expanded reflects the open state
+   * synchronously, so this never races the row mounting.
    */
   async openStages() {
     const expanded = await this.stagesToggle.getAttribute("aria-expanded");
     if (expanded !== "true") {
-      await this.stagesToggle.click();
+      await this.eventUtils.after(FOCUS_PLACED, () =>
+        this.stagesToggle.click(),
+      );
     }
-    await expect(this.stagesRow).toBeVisible();
+    await this.stagesRow.waitFor();
   }
 
   /**
@@ -103,7 +117,23 @@ export class ViewBarPom {
    */
   async expand() {
     await this.openStages();
-    await expect(this.viewStages.first()).toBeVisible();
+    await this.waitForStages();
+  }
+
+  /** Wait for a view that arrived from elsewhere to show its stages. */
+  async waitForStages() {
+    await this.viewStages.first().waitFor();
+  }
+
+  /**
+   * Types a stage name into the focused insert typeahead and inserts the
+   * top match with Enter, returning its open editor.
+   */
+  async typeStage(name: string) {
+    await this.page.keyboard.type(name);
+    await this.page.keyboard.press("Enter");
+    await this.stageEditor.locator.waitFor();
+    return this.stageEditor;
   }
 
   /** Appends a stage and returns its open editor. */
@@ -120,14 +150,14 @@ export class ViewBarPom {
       .getByRole("listbox")
       .getByRole("option", { name, exact: true })
       .click();
-    await this.stageEditor.assert.isOpen();
+    await this.stageEditor.locator.waitFor();
     return this.stageEditor;
   }
 
   /** Reopens an already-applied stage's editor and returns it. */
   async editStage(index: number) {
     await this.viewStages.nth(index).getByLabel("Edit stage").click();
-    await this.stageEditor.assert.isOpen();
+    await this.stageEditor.locator.waitFor();
     return this.stageEditor;
   }
 }
@@ -145,10 +175,18 @@ export class StageEditorPom {
   readonly locator: Locator;
   readonly assert: StageEditorAsserter;
 
-  constructor(page: Page) {
+  constructor(
+    page: Page,
+    private readonly eventUtils: EventUtils,
+  ) {
     this.page = page;
     this.assert = new StageEditorAsserter(this);
     this.locator = page.getByTestId("view-stage-editor");
+  }
+
+  /** The expression editor's suggestion rows (portaled). */
+  get suggestions() {
+    return this.page.locator('[id^="view-bar-suggestion-"]');
   }
 
   /** One parameter's control group. */
@@ -161,9 +199,41 @@ export class StageEditorPom {
     await this.param(param).getByRole("textbox").fill(value);
   }
 
-  /** Commits the stage from a param's input — Enter finishes AND applies. */
+  /**
+   * Commits the stage from a param's input — Enter finishes AND applies,
+   * closing the editor and moving the keyboard to the next insert slot.
+   */
   async commit(param: string) {
-    await this.param(param).getByRole("textbox").press("Enter");
+    await this.closing(() =>
+      this.param(param).getByRole("textbox").press("Enter"),
+    );
+  }
+
+  /** Enter wherever the keyboard is in the editor: finishes and applies. */
+  async finish() {
+    await this.closing(() => this.page.keyboard.press("Enter"));
+  }
+
+  /** Escape closes the editor and puts the keyboard back on its pill. */
+  async dismiss() {
+    await this.closing(() => this.page.keyboard.press("Escape"));
+  }
+
+  /**
+   * Accept the suggestion row showing `text`, by click or by Enter; the
+   * editor puts the caret back after the completion a frame later.
+   */
+  async acceptSuggestion(text: string, gesture: "mouse" | "keyboard") {
+    await this.eventUtils.after(FOCUS_PLACED, () =>
+      gesture === "mouse"
+        ? this.suggestions.filter({ hasText: text }).first().click()
+        : this.page.keyboard.press("Enter"),
+    );
+  }
+
+  private async closing(action: () => Promise<void>) {
+    await this.eventUtils.after(FOCUS_PLACED, action);
+    await this.locator.waitFor({ state: "hidden" });
   }
 
   /** Picks an option in a param's picker, e.g. a field param's path. */
@@ -194,15 +264,17 @@ class ViewBarAsserter {
   constructor(private readonly viewBar: ViewBarPom) {}
 
   async isVisible() {
-    await expect(this.viewBar.locator).toBeVisible();
+    expect(await this.viewBar.locator.isVisible()).toBe(true);
   }
 
   async hasViewStage(text: string) {
-    await expect(this.viewBar.viewStages).toContainText(text);
+    expect(
+      (await this.viewBar.viewStages.allTextContents()).join(" "),
+    ).toContain(text);
   }
 
   async stageCount(n: number) {
-    await expect(this.viewBar.viewStages).toHaveCount(n);
+    expect(await this.viewBar.viewStages.count()).toBe(n);
   }
 
   /**
@@ -210,20 +282,41 @@ class ViewBarAsserter {
    * the state an opened empty stages row lands in.
    */
   async stageTypeaheadIsReady() {
-    await expect(this.viewBar.insertTypeahead).toBeFocused();
-    await expect(
-      this.viewBar.page.getByRole("listbox").getByRole("option").first(),
-    ).toBeVisible();
+    expect(await isFocused(this.viewBar.insertTypeahead)).toBe(true);
+    expect(
+      await this.viewBar.page
+        .getByRole("listbox")
+        .getByRole("option")
+        .first()
+        .isVisible(),
+    ).toBe(true);
+  }
+
+  /** The insert typeahead holds the keyboard. */
+  async insertTypeaheadIsFocused() {
+    expect(await isFocused(this.viewBar.insertTypeahead)).toBe(true);
+  }
+
+  /** The keyboard is back on the pill of the stage at `index`. */
+  async stageIsFocused(index: number) {
+    expect(
+      await isFocused(
+        this.viewBar.viewStages.nth(index).getByLabel("Edit stage"),
+      ),
+    ).toBe(true);
+  }
+
+  async stagesRowIsHidden() {
+    expect(await this.viewBar.stagesRow.isVisible()).toBe(false);
   }
 
   /** The history dropdown offers `query` as a previous search. */
   async searchHistoryOffers(query: string) {
-    await expect(
-      this.viewBar.searchHistory.getByRole("option", {
-        name: query,
-        exact: true,
-      }),
-    ).toBeVisible();
+    expect(
+      await this.viewBar.searchHistory
+        .getByRole("option", { name: query, exact: true })
+        .isVisible(),
+    ).toBe(true);
   }
 }
 
@@ -231,38 +324,45 @@ class StageEditorAsserter {
   constructor(private readonly editor: StageEditorPom) {}
 
   async isOpen() {
-    await expect(this.editor.locator).toBeVisible();
+    expect(await this.editor.locator.isVisible()).toBe(true);
   }
 
   async isClosed() {
-    await expect(this.editor.locator).toBeHidden();
+    expect(await this.editor.locator.isVisible()).toBe(false);
   }
 
   /** The value a control is showing, whatever kind of control it is. */
   async paramText(param: string, value: string) {
-    await expect(this.editor.param(param).getByRole("textbox")).toHaveValue(
-      value,
-    );
+    expect(
+      await this.editor.param(param).getByRole("textbox").inputValue(),
+    ).toBe(value);
   }
 
   async paramToggle(param: string, checked: boolean) {
-    const toggle = this.editor.param(param).getByRole("checkbox");
-    if (checked) {
-      await expect(toggle).toBeChecked();
-    } else {
-      await expect(toggle).not.toBeChecked();
-    }
+    expect(
+      await this.editor.param(param).getByRole("checkbox").isChecked(),
+    ).toBe(checked);
   }
 
   /** A field param shows its path in the picker rather than anywhere else. */
   async paramField(param: string, path: string) {
-    await expect(this.editor.param(param)).toContainText(path);
+    expect(await this.editor.param(param).textContent()).toContain(path);
   }
 
   /** Which editor a hydrated param opened in. */
   async activeEditor(param: string, label: string) {
-    await expect(
-      this.editor.param(param).getByRole("tab", { name: label, exact: true }),
-    ).toHaveAttribute("aria-selected", "true");
+    expect(
+      await this.editor
+        .param(param)
+        .getByRole("tab", { name: label, exact: true })
+        .getAttribute("aria-selected"),
+    ).toBe("true");
+  }
+
+  /** The control for `param` holds the keyboard. */
+  async paramIsFocused(param: string) {
+    expect(await isFocused(this.editor.param(param).getByRole("textbox"))).toBe(
+      true,
+    );
   }
 }

@@ -13,8 +13,8 @@ import { clsOf, getSessionView, kwargsOf } from "src/shared/session-state";
 let datasetName: string;
 
 const test = base.extend<{ viewBar: ViewBarPom; grid: GridPom }>({
-  viewBar: async ({ page }, use) => {
-    await use(new ViewBarPom(page));
+  viewBar: async ({ page, eventUtils }, use) => {
+    await use(new ViewBarPom(page, eventUtils));
   },
   grid: async ({ page, eventUtils }, use) => {
     await use(new GridPom(page, eventUtils));
@@ -74,7 +74,7 @@ test.describe("view bar", () => {
 
     // A hydrated view stays folded behind the toggle's count badge
     await viewBar.expand();
-    await expect(viewBar.viewStages).toHaveCount(8);
+    await viewBar.assert.stageCount(8);
 
     const layout = await viewBar.stagesRow.evaluate((element) => {
       // The scroller, not its gutter wrapper: the gutter's only child is the
@@ -101,7 +101,7 @@ test.describe("view bar", () => {
     await grid.run(() =>
       viewBar.viewStages.first().getByLabel("Remove stage").click(),
     );
-    await expect(viewBar.viewStages).toHaveCount(7);
+    await viewBar.assert.stageCount(7);
   });
 
   test("a stage built in the bar reaches the session view", async ({

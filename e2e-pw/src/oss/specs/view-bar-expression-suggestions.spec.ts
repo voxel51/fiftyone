@@ -7,7 +7,8 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 let datasetName: string;
 
 const test = base.extend<{ viewBar: ViewBarPom; grid: GridPom }>({
-  viewBar: async ({ page }, use) => use(new ViewBarPom(page)),
+  viewBar: async ({ page, eventUtils }, use) =>
+    use(new ViewBarPom(page, eventUtils)),
   grid: async ({ page, eventUtils }, use) => use(new GridPom(page, eventUtils)),
 });
 
@@ -61,19 +62,14 @@ const completeFieldAndExpectOperators = async (
   await monacoBox.click();
   await page.keyboard.type('F("l');
 
-  const suggestions = page.locator('[id^="view-bar-suggestion-"]');
-  await expect(suggestions.first()).toBeVisible();
-  const fieldRow = suggestions.filter({ hasText: "label" }).first();
-
-  if (accept === "mouse") {
-    await fieldRow.click();
-  } else {
-    await page.keyboard.press("Enter");
-  }
+  expect(await editor.suggestions.first().isVisible()).toBe(true);
+  await editor.acceptSuggestion("label", accept);
 
   // the completed receiver should immediately offer operators
-  await expect(filter).toContainText('F("label")');
-  await expect(suggestions.filter({ hasText: "==" }).first()).toBeVisible();
+  expect(await filter.textContent()).toContain('F("label")');
+  expect(
+    await editor.suggestions.filter({ hasText: "==" }).first().isVisible(),
+  ).toBe(true);
 };
 
 test("operator suggestions follow a mouse-completed field", async ({

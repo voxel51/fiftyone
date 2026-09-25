@@ -50,6 +50,7 @@ import { kindsByFtype, operatorsFrom } from "./builder/catalog";
 import { fromSource, isEnvelope, sourceOf } from "./builder/envelope";
 import { ClearViewButton } from "./ClearViewButton";
 import { allowedFields } from "./fields";
+import { dispatchFocusPlaced } from "./focusPlaced";
 import { InsertSlot } from "./InsertSlot";
 import { LanguageSearch } from "./LanguageSearch";
 import styles from "./ViewBar.module.css";
@@ -246,6 +247,7 @@ const ViewBarInner: React.FC<{
       );
       if (typeahead) {
         typeahead.focus();
+        dispatchFocusPlaced("insert-slot");
         return;
       }
       const slots = row.querySelectorAll<HTMLElement>(
@@ -256,6 +258,7 @@ const ViewBarInner: React.FC<{
       // after Enter only shows a focus ring on a button nobody pressed
       if (open) last?.click();
       else last?.focus();
+      dispatchFocusPlaced("insert-slot");
     });
   }, []);
 

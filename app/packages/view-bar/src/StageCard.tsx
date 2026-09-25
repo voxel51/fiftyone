@@ -28,6 +28,7 @@ import React from "react";
 
 import type { Kind, Operator } from "./builder/catalog";
 import { ParamInput } from "./controls";
+import { dispatchFocusPlaced } from "./focusPlaced";
 import {
   blockedBy,
   expressionScope,
@@ -330,11 +331,12 @@ export const StageCard: React.FC<StageCardProps> = ({
             e.preventDefault();
             e.stopPropagation();
             onToggle();
-            requestAnimationFrame(() =>
+            requestAnimationFrame(() => {
               editButtonRef.current
                 ?.querySelector<HTMLElement>('[role="button"]')
-                ?.focus(),
-            );
+                ?.focus();
+              dispatchFocusPlaced("stage");
+            });
             return;
           }
 
