@@ -6,7 +6,19 @@ import { Page } from "@playwright/test";
  * "armed" and "received" indistinguishable to callers.
  */
 export class ArmedEvent {
-  constructor(readonly received: Promise<void>) {}
+  private disposed = false;
+
+  constructor(
+    readonly received: Promise<void>,
+    private readonly teardown: () => Promise<void> = async () => undefined,
+  ) {}
+
+  /** Detach the in-page listener. Idempotent; safe after navigation. */
+  async dispose(): Promise<void> {
+    if (this.disposed) return;
+    this.disposed = true;
+    await this.teardown();
+  }
 }
 
 export interface CountedEvent {
@@ -19,6 +31,8 @@ declare global {
   interface Window {
     /** Per-counter event records installed by {@link EventUtils.counter}. */
     __EVENT_COUNTS__?: Record<string, CountedEvent[]>;
+    /** Detach functions of armed listeners, by exposed-function name. */
+    __FO_ARMED__?: Record<string, () => void>;
     /** The app's event-bus tap (`@fiftyone/events`). */
     __FO_EVENTS__?: {
       tap: (listener: (event: string, data: unknown) => void) => () => void;
@@ -80,12 +94,15 @@ export class EventUtils {
       resolveReceived = resolve;
     });
 
+    // the return value tells the page to detach once the wait is satisfied
     await this.page.exposeFunction(
       exposedFunctionName,
       (e: { detail?: unknown }) => {
-        if (predicate(e)) {
+        const matched = predicate(e);
+        if (matched) {
           resolveReceived();
         }
+        return matched;
       },
     );
 
@@ -93,34 +110,53 @@ export class EventUtils {
     // that carries the wait — so attachment is complete when `arm` returns
     await this.page.evaluate(
       ({ eventName_, exposedFunctionName_ }) => {
-        document.addEventListener(eventName_, (e: Event) => {
-          // CustomEvent instances don't serialize across the boundary;
-          // forward only the detail
+        let detach = () => {};
+        const deliver = (detail: unknown) => {
           // @ts-expect-error - the function is exposed at runtime
-          window[exposedFunctionName_]({
-            detail: (e as CustomEvent).detail,
-          });
-        });
+          window[exposedFunctionName_]({ detail }).then(
+            (matched: boolean) => matched && detach(),
+          );
+        };
+
+        // CustomEvent instances don't serialize across the boundary;
+        // forward only the detail
+        const onDocument = (e: Event) => deliver((e as CustomEvent).detail);
+        document.addEventListener(eventName_, onDocument);
 
         // bus payloads can hold live objects; forward only primitive fields
-        window.__FO_EVENTS__?.tap((event, data) => {
+        const offBus = window.__FO_EVENTS__?.tap((event, data) => {
           if (event !== eventName_) return;
-          // @ts-expect-error - the function is exposed at runtime
-          window[exposedFunctionName_]({
-            detail: Object.fromEntries(
+          deliver(
+            Object.fromEntries(
               Object.entries((data ?? {}) as Record<string, unknown>).filter(
                 ([, v]) =>
                   v === null ||
                   (typeof v !== "object" && typeof v !== "function"),
               ),
             ),
-          });
+          );
         });
+
+        const armed = (window.__FO_ARMED__ ??= {});
+        detach = () => {
+          document.removeEventListener(eventName_, onDocument);
+          offBus?.();
+          delete armed[exposedFunctionName_];
+        };
+        armed[exposedFunctionName_] = detach;
       },
       { eventName_: eventName, exposedFunctionName_: exposedFunctionName },
     );
 
-    return new ArmedEvent(received);
+    return new ArmedEvent(received, async () => {
+      await this.page
+        .evaluate(
+          (key): void => window.__FO_ARMED__?.[key]?.(),
+          exposedFunctionName,
+        )
+        // a navigated or closed page took the listener with it
+        .catch((): void => undefined);
+    });
   }
 
   /**
@@ -135,9 +171,13 @@ export class EventUtils {
     predicate?: (e: { detail?: unknown }) => boolean,
   ): Promise<T> {
     const armed = await this.arm(eventName, predicate);
-    const result = await action();
-    await armed.received;
-    return result;
+    try {
+      const result = await action();
+      await armed.received;
+      return result;
+    } finally {
+      await armed.dispose();
+    }
   }
 
   /**
