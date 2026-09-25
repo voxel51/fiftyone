@@ -19,12 +19,6 @@ const datasetName = getUniqueDatasetNameWithPrefix("annotate-2d-mask-edit");
 /** Fixed ObjectId addressing the single sample (so we can deep-link the modal). */
 const id = "000000000000000000000000";
 
-/** The rendered mask preview's covered fraction once the mask has painted. */
-const maskCoverage = async (modal: ModalPom) => {
-  await modal.sidebar.edit.assert.maskPreviewDrawn();
-  return modal.sidebar.edit.maskPreviewCoverage();
-};
-
 /** Open the seeded detection's editor in a brand-new browser context. */
 const inFreshContext = async (
   browser: Browser,
@@ -142,7 +136,7 @@ test.describe.serial("2D annotation mask edit (brush)", () => {
     await modal.sidebar.edit.assert.inSegmentationMode(true);
 
     // seed mask is fully set within its bbox → coverage starts at 1.0.
-    const before = await maskCoverage(modal);
+    const before = await modal.sidebar.edit.maskPreviewCoverage();
     expect(before).toBeGreaterThan(0);
 
     await modal.sidebar.annotate.pickTool("Brush");
@@ -156,7 +150,9 @@ test.describe.serial("2D annotation mask edit (brush)", () => {
     // coverage drops — raw pixel count is unreliable across the commit's mask
     // re-rasterization, the covered FRACTION is not.
     await inFreshContext(browser, fiftyoneLoader, async (fresh) => {
-      expect(await maskCoverage(fresh)).toBeLessThan(before);
+      expect(await fresh.sidebar.edit.maskPreviewCoverage()).toBeLessThan(
+        before,
+      );
     });
 
     // the erase is one undoable engine unit — undo restores full coverage.
@@ -166,7 +162,7 @@ test.describe.serial("2D annotation mask edit (brush)", () => {
     await restored;
 
     await inFreshContext(browser, fiftyoneLoader, async (fresh) => {
-      expect(await maskCoverage(fresh)).toBe(before);
+      expect(await fresh.sidebar.edit.maskPreviewCoverage()).toBe(before);
     });
   });
 });
