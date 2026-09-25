@@ -161,12 +161,25 @@ async def aggregate_resolver(
             ]
         )
 
+    # Temporal tags are a virtual sidebar field. Their counts come from the
+    # dedicated tags route, even when a multimodal dataset falls back to Mongo.
+    paths = [
+        path
+        for path in form.paths
+        if path != "_temporal_tags" and not path.startswith("_temporal_tags.")
+    ]
+    if not paths:
+        return [
+            DataAggregation(path=path, count=0, exists=0)
+            for path in form.paths
+        ]
+
     aggregations, deserializers = zip(
         *[
             _resolve_path_aggregation(
                 path, view, form.query_performance, form.hint
             )
-            for path in form.paths
+            for path in paths
         ]
     )
     counts = [len(a) for a in aggregations]
@@ -193,7 +206,15 @@ async def aggregate_resolver(
                 result.slice = await slice_view._async_aggregate(foa.Count())
                 break
 
-    return results
+    resolved = iter(results)
+    return [
+        (
+            DataAggregation(path=path, count=0, exists=0)
+            if path == "_temporal_tags" or path.startswith("_temporal_tags.")
+            else next(resolved)
+        )
+        for path in form.paths
+    ]
 
 
 RESULT_MAPPING = {
