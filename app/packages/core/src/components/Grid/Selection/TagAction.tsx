@@ -5,13 +5,13 @@ import type {
 } from "@fiftyone/multimodal/extensions/grid-selection";
 import { useRefresh, useSelectionTagDisabledReason } from "@fiftyone/state";
 import {
+  memberCounts,
   normalizeSelectionMembers,
   selectionTagsRequest,
   useInvalidateSelectionScope,
   type SelectionCounts,
   type SelectionScope,
   type SelectionUnit,
-  type ViewConversion,
 } from "@fiftyone/state/src/selection";
 import {
   AddIcon,
@@ -37,17 +37,20 @@ import ActionSurface from "./ActionSurface";
 import { scopePhrase, unitTitlePlural } from "./format";
 import { Notice } from "./Notice";
 import Segmented from "./Segmented";
+import { useGroupActionScope } from "./useGroupActionScope";
 import styles from "./SelectionTray.module.css";
 
 interface Capture {
   datasetId: string;
   mediaType: string;
   unit: SelectionUnit;
-  conversion: ViewConversion | null;
   view: readonly unknown[];
+  conversion: GridSelectionActionContext["conversion"];
   source: GridSelectionActionContext["source"];
   scope: SelectionScope;
   counts: SelectionCounts;
+  /** The bucket an explicit scope came from, when it has a name to show. */
+  within?: string;
 }
 
 type Target = "members" | "labels";
@@ -57,6 +60,7 @@ interface TagState {
   applied: Readonly<Record<string, number>>;
   targets: number;
   labels: number | null;
+  disabledReason?: string;
 }
 
 function TagSelection({
@@ -77,10 +81,11 @@ function TagSelection({
         datasetId: context.datasetId,
         mediaType: context.mediaType,
         unit: context.unit,
-        conversion: context.conversion,
         view: context.view,
+        conversion: context.conversion,
         source: context.source,
         counts: context.counts,
+        within: context.bucket?.name,
         scope:
           resolved.kind === "members"
             ? {
@@ -141,22 +146,26 @@ function TagPicker({ capture }: { capture: Capture }) {
   const permission = useSelectionTagDisabledReason();
   const invalidate = useInvalidateSelectionScope(capture.datasetId);
   const refresh = useRefresh();
-  const { unit, counts } = capture;
-  // Patches are labels, so their picker only tags labels.
-  const labelsOnly = capture.conversion === "patches";
-  const [target, setTarget] = useState<Target>(
-    labelsOnly ? "labels" : "members",
+  const { unit } = capture;
+  const groupScope = useGroupActionScope(
+    capture.datasetId,
+    capture.mediaType,
+    capture.scope,
+    capture.view,
   );
-  // Grouped datasets tag the captured slice by default; every slice on request.
-  const grouped = capture.mediaType === "group";
-  const [groupScope, setGroupScope] = useState<"slice" | "all">("slice");
+  const scope = groupScope.scope;
+  const counts =
+    scope?.kind === "snapshot"
+      ? scope.counts
+      : scope
+        ? { ...capture.counts, ...memberCounts(scope.members) }
+        : capture.counts;
+  const labelsOnly = Boolean(capture.conversion);
+  const [choice, setTarget] = useState<Target>("members");
+  const target = labelsOnly ? "labels" : choice;
   const options = useMemo(
-    () => ({
-      target,
-      view: capture.view,
-      groups: grouped ? groupScope : undefined,
-    }),
-    [target, capture.view, grouped, groupScope],
+    () => ({ target, view: capture.view }),
+    [target, capture.view],
   );
   const [state, setState] = useState<TagState | null>(null);
   const [query, setQuery] = useState("");
@@ -168,17 +177,18 @@ function TagPicker({ capture }: { capture: Capture }) {
     const request = ++requests.current;
     setState(null);
     setError(null);
+    if (!scope) return;
     try {
       const result = await selectionTagsRequest(
         capture.datasetId,
-        capture.scope,
+        scope,
         options,
       );
       if (request === requests.current) setState(result);
     } catch (cause) {
       if (request === requests.current) setError(String(cause));
     }
-  }, [capture.datasetId, capture.scope, options]);
+  }, [capture.datasetId, scope, options]);
   // This effect reads the scope's tags when the picker opens and whenever
   // its target or slice choice changes.
   useEffect(() => {
@@ -192,7 +202,11 @@ function TagPicker({ capture }: { capture: Capture }) {
   const known = tags.includes(tag);
   const total = state?.targets ?? 0;
   const noLabels = target === "labels" && state !== null && !state.labels;
-  const blocked = Boolean(permission) || !state || noLabels;
+  const blocked =
+    Boolean(permission || state?.disabledReason) ||
+    !scope ||
+    !state ||
+    noLabels;
   const stateOf = (value: string): "none" | "some" | "all" => {
     const count = state?.applied[value] ?? 0;
     if (count <= 0) return "none";
@@ -204,11 +218,10 @@ function TagPicker({ capture }: { capture: Capture }) {
     setBusy(value);
     setError(null);
     try {
-      const result = await selectionTagsRequest(
-        capture.datasetId,
-        capture.scope,
-        { ...options, change: { tag: value, add } },
-      );
+      const result = await selectionTagsRequest(capture.datasetId, scope!, {
+        ...options,
+        change: { tag: value, add },
+      });
       setState(result);
       if (created) setQuery("");
       invalidate();
@@ -233,41 +246,60 @@ function TagPicker({ capture }: { capture: Capture }) {
         color={TextColor.Secondary}
         className={styles.sheetTitle}
       >
-        {`Tag ${scopePhrase(capture.source, counts, unit)}`}
+        {`Tag ${scopePhrase(capture.source, counts, unit, capture.within)}`}
       </Text>
-      <Segmented<Target>
-        label="Tag"
-        value={target}
-        disabled={Boolean(busy)}
-        options={[
-          {
-            value: "members",
-            label: unitTitlePlural(unit),
-            disabledReason: labelsOnly
-              ? "Patches are labels; tag them as labels"
-              : null,
-          },
-          {
-            value: "labels",
-            label: "Labels",
-            disabledReason: counts.segments
-              ? `Label tagging needs whole ${unit.many}`
-              : null,
-          },
-        ]}
-        onChange={setTarget}
-      />
-      {grouped && (
-        <Segmented<"slice" | "all">
-          label="Slices"
-          value={groupScope}
+      {labelsOnly ? (
+        <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+          Tag source labels
+        </Text>
+      ) : (
+        <Segmented<Target>
+          label="Tag"
+          value={target}
           disabled={Boolean(busy)}
           options={[
-            { value: "slice", label: "This slice" },
-            { value: "all", label: "All slices" },
+            {
+              value: "members",
+              label: counts.segments
+                ? counts.fullEpisodes
+                  ? `${unitTitlePlural(unit)} and segments`
+                  : "Segments"
+                : unitTitlePlural(unit),
+            },
+            {
+              value: "labels",
+              label: "Labels",
+              disabledReason: counts.segments
+                ? `Label tagging needs whole ${unit.many}`
+                : null,
+            },
           ]}
-          onChange={setGroupScope}
+          onChange={setTarget}
         />
+      )}
+      {groupScope.enabled && (
+        <Segmented<"slice" | "all">
+          label="Slices"
+          value={groupScope.choice}
+          disabled={Boolean(busy)}
+          options={[
+            { value: "slice", label: "Selected samples" },
+            { value: "all", label: "All slices of these groups" },
+          ]}
+          onChange={groupScope.setChoice}
+        />
+      )}
+      {groupScope.error && (
+        <span role="alert">
+          <Text color={TextColor.Destructive}>{groupScope.error}</Text>
+          <Button
+            size={Size.Xs}
+            variant={Variant.Borderless}
+            onClick={groupScope.retry}
+          >
+            Retry expansion
+          </Button>
+        </span>
       )}
       <Input
         size={Size.Md}
@@ -275,7 +307,7 @@ function TagPicker({ capture }: { capture: Capture }) {
         aria-label="Create or find tag"
         placeholder="Create or find tag"
         value={query}
-        disabled={!state || Boolean(busy)}
+        disabled={blocked || Boolean(busy)}
         onChange={(event) => setQuery(event.target.value)}
         onKeyDown={(event) => {
           if (event.key === "Enter") {
@@ -339,7 +371,7 @@ function TagPicker({ capture }: { capture: Capture }) {
             </Text>
           </button>
         )}
-        {state && !filtered.length && !tag && (
+        {state && !blocked && !filtered.length && !tag && (
           <Text
             variant={TextVariant.Sm}
             color={TextColor.Secondary}
@@ -353,7 +385,7 @@ function TagPicker({ capture }: { capture: Capture }) {
         <Notice
           tone="warning"
           icon={WarningAmberIcon}
-          title={`No labels in these ${unit.many}.`}
+          title={state?.disabledReason ?? `No labels in these ${unit.many}.`}
         />
       )}
       {permission && (

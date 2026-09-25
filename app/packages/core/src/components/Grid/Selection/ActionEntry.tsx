@@ -78,7 +78,7 @@ export default function ActionEntry({
       size={Size.Sm}
       variant={Variant.Borderless}
       leadingIcon={icon}
-      className={active ? styles.actionActive : undefined}
+      className={`${styles.toolbarButton} ${active ? styles.actionActive : ""}`}
       disabled={disabled}
       aria-busy={busy || undefined}
       onClick={onClick}

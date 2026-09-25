@@ -1,4 +1,14 @@
-import { PlaybackProvider, type TimelineMode } from "@fiftyone/playback";
+import {
+  getIsPlaying,
+  getIsPlayPending,
+  getPlayhead,
+  PlaybackProvider,
+  useDuration,
+  usePlayback,
+  usePlaybackStore,
+  useSeekEvent,
+  type TimelineMode,
+} from "@fiftyone/playback";
 import * as fos from "@fiftyone/state";
 import {
   FrameLabelsTracks,
@@ -8,7 +18,14 @@ import {
   getModalSampleFrameRate,
   useTimelineMaxSize,
 } from "@fiftyone/video-annotation";
-import React, { useCallback, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useSavedVideoSegments } from "./useSavedVideoSegments";
 import { VideoExploreToolbar } from "./VideoExploreToolbar";
 import { useVideoExploreKeybindings } from "./useVideoExploreKeybindings";
 import styles from "./VideoTimelineSurface.module.css";
@@ -63,6 +80,7 @@ const ExploreVideo: React.FC<{
     <LighterVideo
       videoSrc={videoSrc}
       mode="explore"
+      autoSeekOnLoad={false}
       onLoadStart={onLoadStart}
       onLoadedData={onLoadedData}
       onError={onError}
@@ -178,6 +196,7 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
   // type, so it is read through the shared narrowing accessor rather than
   // re-cast here — `RegisterFrameLabels` gates on the same value.
   const frameRate = getModalSampleFrameRate(sample);
+  const savedSegments = useSavedVideoSegments(sample.sample._id, frameRate);
 
   // Sequence mode when the frame rate is known, so the engine steps whole
   // frames and the frame domain is available to switch into; elapsed seconds
@@ -201,8 +220,9 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
   // `stepInterval` on the first sample's mode. Keying on the resolved mode
   // (kind + fps) forces the remount switching samples needs while staying
   // stable across renders that don't change it.
-  const playbackKey =
+  const clockKey =
     mode.kind === "sequence" ? `sequence:${mode.fps}` : mode.kind;
+  const playbackKey = `${sample.sample._id}:${videoSrc}:${clockKey}:${savedSegments.pinScopeKey ?? ""}`;
 
   return (
     <PlaybackProvider key={playbackKey} mode={mode} defaultDisplay="duration">
@@ -217,7 +237,12 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
           down and rebuild the very element that fed it — a visible reload, and
           a `canvas-loaded` marker that goes true, disappears, then true again.
           Consumers read the stream via `useFrameLabelsStream`, not position. */}
-      <RegisterFrameLabels sample={sample} mode="explore" />
+      <RegisterFrameLabels
+        sample={sample}
+        mode="explore"
+        initialTime={savedSegments.initialTime}
+      />
+      {!frameRate && <InitialVideoSeek time={savedSegments.initialTime} />}
       <div
         ref={dimensions.ref as React.RefObject<HTMLDivElement>}
         data-cy="modal-looker-container"
@@ -254,6 +279,9 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
               maxSize={timelineMaxSize}
               mode="explore"
               trailingActions={<VideoExploreToolbar />}
+              additionalTracks={savedSegments.tracks}
+              initialPinnedIds={savedSegments.initialPinnedIds}
+              pinScopeKey={savedSegments.pinScopeKey}
             />
           </div>
         )}
@@ -261,3 +289,25 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
     </PlaybackProvider>
   );
 };
+
+/** Videos without a frame-label stream still honor their opening position. */
+function InitialVideoSeek({ time }: { time: number | null }) {
+  const duration = useDuration();
+  const { seek } = usePlayback();
+  const store = usePlaybackStore();
+  const seekEvent = useSeekEvent();
+  const done = useRef(false);
+  useEffect(() => {
+    if (done.current || time === null || duration <= 0) return;
+    done.current = true;
+    if (
+      seekEvent ||
+      getPlayhead(store) !== 0 ||
+      getIsPlaying(store) ||
+      getIsPlayPending(store)
+    )
+      return;
+    seek(Math.min(time, duration));
+  }, [duration, time, seek, seekEvent, store]);
+  return null;
+}

@@ -6,6 +6,7 @@ import uuid from "react-uuid";
 import { useRecoilValue } from "recoil";
 import { useMemoOne } from "use-memo-one";
 import { gridAt, gridOffset, gridPage } from "./recoil";
+import { useGridJumpRevision } from "./useScrollLocation";
 
 export default function useRefreshers() {
   const { key: selectionScopeKey } = useGridSelectionRequest();
@@ -22,6 +23,7 @@ export default function useRefreshers() {
   const mediaField = useRecoilValue(fos.selectedMediaField(false));
   const queryPerformanceSetting = useRecoilValue(fos.queryPerformanceSetting);
   const refresher = useRecoilValue(fos.refresher);
+  const jump = useGridJumpRevision();
   const shouldRenderImaVidLooker = useRecoilValue(
     fos.shouldRenderImaVidLooker(false),
   );
@@ -31,10 +33,12 @@ export default function useRefreshers() {
   const sort = useRecoilValue(fos.gridSortBy);
   const view = fos.filterView(useRecoilValue(fos.view) ?? []);
 
-  // only reload, attempt to return to the last grid location
+  // only reload, attempt to return to the last grid location (or the one
+  // a jump just wrote)
   const layoutReset = useMemoOne(() => {
     cropToContent;
     fieldVisibilityStage;
+    jump;
     mediaField;
     queryPerformanceSetting;
     refresher;
@@ -42,6 +46,7 @@ export default function useRefreshers() {
   }, [
     cropToContent,
     fieldVisibilityStage,
+    jump,
     mediaField,
     queryPerformanceSetting,
     refresher,

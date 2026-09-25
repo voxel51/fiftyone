@@ -6,6 +6,7 @@ import { useGridSelection } from "@fiftyone/state/src/selection";
 import { useRef } from "react";
 import { useRecoilCallback } from "recoil";
 import type { Records } from "./useRecords";
+import type { GridSelectionClick } from "./useGridSelectionClick";
 
 export const addRange = (
   index: number,
@@ -91,7 +92,7 @@ export const removeRange = (
   return next;
 };
 
-export default (records: Records) => {
+export default (records: Records, selectBucket: GridSelectionClick) => {
   const selection = useGridSelection();
   const ref =
     useRef<(params: ThumbnailSelectionDetail<Sample>) => Promise<void>>();
@@ -101,18 +102,9 @@ export default (records: Records) => {
         const { shiftKey, altKey, id: sampleId, sample, symbol } = params;
 
         if (selection.enabled) {
-          if (
-            shiftKey &&
-            selection.selected.size &&
-            [...selection.selected.keys()].some((id) => records.has(id))
-          ) {
-            const ids = new Set(selection.selected.keys());
-            const next = ids.has(sampleId)
-              ? removeRange(get(records, symbol.description), ids, records)
-              : addRange(get(records, symbol.description), ids, records);
-            for (const id of ids) if (!next.has(id)) selection.remove(id);
-            void selection.select([...next].filter((id) => !ids.has(id)));
-          } else void selection.toggle(sampleId);
+          // The modifiers pick the bucket; Shift then ranges within it.
+          const bucket = selection.route(params).id;
+          await selectBucket(sampleId, bucket, shiftKey);
           return;
         }
 
@@ -165,7 +157,7 @@ export default (records: Records) => {
         set(selectedSamples, current);
         set(selectedSampleObjects, currentObjects);
       },
-    [records, selection],
+    [records, selection, selectBucket],
   );
   return ref;
 };

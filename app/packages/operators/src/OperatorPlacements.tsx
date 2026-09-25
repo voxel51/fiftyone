@@ -15,6 +15,7 @@ import { Operator } from "./operators";
 import {
   useOperatorExecutor,
   useOperatorPlacements,
+  useOperatorPromptOpen,
   usePromptOperatorInput,
 } from "./state";
 import { Placement, Places } from "./types";
@@ -99,6 +100,7 @@ function ButtonPlacement(props: OperatorPlacementProps) {
   const { label } = view;
   const { icon, darkIcon, lightIcon } = view?.options || {};
   const { canExecute, execute } = usePlacementControls(props);
+  const open = useOperatorPromptOpen(operator.uri);
 
   const showIcon =
     isPrimitiveString(icon) ||
@@ -129,7 +131,8 @@ function ButtonPlacement(props: OperatorPlacementProps) {
         icon={showIcon && IconComponent}
         text={!showIcon && title}
         title={title}
-        highlight={place === types.Places.SAMPLES_GRID_ACTIONS}
+        open={open}
+        highlight={open}
         style={{ whiteSpace: "nowrap" }}
         tooltipPlacement={modal ? "top" : "bottom"}
       />

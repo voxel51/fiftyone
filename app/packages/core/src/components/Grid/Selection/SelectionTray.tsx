@@ -3,28 +3,43 @@ import {
   useGridSelectionActions,
   type GridSelectionActionContext,
 } from "@fiftyone/multimodal/extensions/grid-selection";
+import OperatorPlacements from "@fiftyone/operators/src/OperatorPlacements";
+import { Places } from "@fiftyone/operators/src/types";
 import * as fos from "@fiftyone/state";
 import {
   countSelection,
   FOLD_STEP,
   foldWindow,
+  MAX_SELECTION_BUCKETS,
+  selectionBucketTitle,
   useFoldRevealed,
   useGridSelection,
   useGridSelectionBoundary,
   useInvalidateSelectionScope,
+  useRemoveSelectionBucket,
+  useSelectionBucketActions,
   type EpisodeSelection,
+  type SelectionBucket,
   type SelectionCounts,
 } from "@fiftyone/state/src/selection";
 import {
+  Anchor,
   Button,
   ChevronBottomIcon,
   ChevronTopIcon,
+  Divider,
   MoreHorizontalIcon,
+  Orientation,
   Size,
-  Variant,
+  Text,
+  TextVariant,
+  Tooltip,
   useDragDelta,
+  Variant,
+  WorkspacesIcon,
 } from "@voxel51/voodo";
 import {
+  Fragment,
   useEffect,
   useId,
   useRef,
@@ -32,21 +47,39 @@ import {
   type KeyboardEvent,
   type RefObject,
 } from "react";
+import BucketColumn from "./BucketColumn";
+import {
+  gestureLabel,
+  useHeldGesture,
+  useTrackHeldGesture,
+} from "./bucketGestures";
 import FoldCard from "./FoldCard";
-import { episodeTitle, unitTitle } from "./format";
+import {
+  episodeTitle,
+  isFullEpisode,
+  unitTitle,
+  type SelectionKind,
+} from "./format";
 import SelectionCard from "./SelectionCard";
 import SelectionSummary from "./SelectionSummary";
+import SubsetJobs from "./SubsetJobs";
 import styles from "./SelectionTray.module.css";
 import {
+  CARD_HEIGHT,
+  MULTIMODAL_CARD_HEIGHT,
+  multimodalTrayTheme,
+  STRIP_GAP,
   STRIP_MAX_FRACTION,
-  STRIP_MIN_HEIGHT,
-  STRIP_ROW_HEIGHT,
+  STRIP_PADDING_BOTTOM,
+  STRIP_PADDING_TOP,
   trayTheme,
 } from "./theme";
 import UnavailableReferences from "./UnavailableReferences";
 import { useRegisterSelectionActions } from "./useRegisterSelectionActions";
 
-const UNDO_WINDOW_MS = 10_000;
+const UNDO_WINDOW_MS = 5_000;
+/** Room for a column header above the cards when buckets sit side by side. */
+const COLUMN_HEADER_HEIGHT = 32;
 const EMPTY_COUNTS: SelectionCounts = {
   episodes: 0,
   fullEpisodes: 0,
@@ -54,20 +87,23 @@ const EMPTY_COUNTS: SelectionCounts = {
   segmentEpisodes: 0,
   unavailable: 0,
 };
+const NO_CAPTURES: ReadonlyMap<string, EpisodeSelection> = new Map();
 
 /** Pointer and keyboard resizing of the card strip, bounded by the grid pane. */
-function useStripResize(root: RefObject<HTMLElement>) {
-  const [height, setHeight] = useState(STRIP_MIN_HEIGHT);
-  const start = useRef(STRIP_MIN_HEIGHT);
+function useStripResize(root: RefObject<HTMLElement>, cardHeight: number) {
+  const minimum = cardHeight + STRIP_PADDING_TOP + STRIP_PADDING_BOTTOM;
+  const rowHeight = cardHeight + STRIP_GAP;
+  const [height, setHeight] = useState(minimum);
+  const start = useRef(minimum);
   const maximum = () =>
     Math.max(
-      STRIP_MIN_HEIGHT,
+      minimum,
       Math.floor(
         (root.current?.parentElement?.clientHeight ?? 640) * STRIP_MAX_FRACTION,
       ),
     );
   const clamp = (value: number) =>
-    Math.max(STRIP_MIN_HEIGHT, Math.min(maximum(), value));
+    Math.max(minimum, Math.min(maximum(), value));
   const { isDragging, handleProps } = useDragDelta({
     axis: "vertical",
     onDragStart: () => {
@@ -78,11 +114,11 @@ function useStripResize(root: RefObject<HTMLElement>) {
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const next =
       event.key === "ArrowUp"
-        ? height + STRIP_ROW_HEIGHT
+        ? height + rowHeight
         : event.key === "ArrowDown"
-          ? height - STRIP_ROW_HEIGHT
+          ? height - rowHeight
           : event.key === "Home"
-            ? STRIP_MIN_HEIGHT
+            ? minimum
             : event.key === "End"
               ? maximum()
               : null;
@@ -91,8 +127,8 @@ function useStripResize(root: RefObject<HTMLElement>) {
     setHeight(clamp(next));
   };
   return {
-    height,
-    min: STRIP_MIN_HEIGHT,
+    height: Math.max(height, minimum),
+    min: minimum,
     max: maximum(),
     dragging: isDragging,
     handleProps,
@@ -158,47 +194,92 @@ function useOverflowPanel(anchor: RefObject<HTMLElement>) {
   return { open, setOpen, panel };
 }
 
+/** What a clear or bucket removal took away, while undo is offered. */
+interface Cleared {
+  readonly counts?: SelectionCounts;
+  readonly groups: readonly EpisodeSelection[];
+  readonly bucketId: string;
+  /** How many captures the bucket kept, so a fresh selection retires undo. */
+  readonly remaining: number;
+  /** Present when the whole bucket was removed from the layout. */
+  readonly layout?: {
+    readonly bucket: SelectionBucket;
+    readonly index: number;
+  };
+}
+
 /**
  * The persistent bottom bar that states the action scope, plus the
  * expandable strip of captured parents. Explicit captures take precedence
  * over current results; both are resolved completely, never by loaded cards.
+ *
+ * One bucket is the plain tray. Several buckets stand side by side in the
+ * strip, each fed by its own gesture, and the bar's actions apply to the one
+ * bucket that is the target.
  */
-export default function SelectionTray() {
+export default function SelectionTray({
+  locate,
+}: {
+  /** Scrolls the grid to a captured parent; false when it is not shown. */
+  locate?: (episodeId: string) => Promise<boolean>;
+}) {
   useRegisterSelectionActions();
   const selection = useGridSelection();
   const [boundary] = useGridSelectionBoundary();
   const invalidate = useInvalidateSelectionScope(selection.datasetId);
+  const layout = useSelectionBucketActions(selection.datasetId);
+  const removeBucket = useRemoveSelectionBucket(selection.domainId);
   const actions = useGridSelectionActions();
   const setExpandedSample = fos.useSetExpandedSample();
   const setModalState = fos.useSetModalState();
   const [collapsed, setCollapsed] = useState(false);
-  const [cleared, setCleared] = useState<readonly EpisodeSelection[] | null>(
-    null,
-  );
+  // A clear can be undone until a pause passes or the selection grows past
+  // what the clear left behind, so a stale undo can never resurrect old
+  // captures over a fresh selection.
+  const [cleared, setCleared] = useState<Cleared | null>(null);
   const root = useRef<HTMLElement>(null);
-  const cards = useRef<HTMLDivElement>(null);
   const more = useRef<HTMLDivElement>(null);
   const overflowPanel = useOverflowPanel(more);
-  const strip = useStripResize(root);
+  const multimodal = selection.mediaType === "multimodal";
+  const { unit, buckets, captures, target } = selection;
+  const multi = buckets.length > 1;
+  const strip = useStripResize(
+    root,
+    (multimodal ? MULTIMODAL_CARD_HEIGHT : CARD_HEIGHT) +
+      (multi ? COLUMN_HEADER_HEIGHT : 0),
+  );
   const stripId = useId();
   const menuId = useId();
-  const { unit } = selection;
+  const held = useHeldGesture();
+  useTrackHeldGesture(multi);
 
-  const captured = [...selection.selected.values()];
+  const targetIndex = Math.max(
+    0,
+    buckets.findIndex((bucket) => bucket.id === target),
+  );
+  const targetBucket = buckets[targetIndex];
+  const capturesOf = (bucketId: string) =>
+    captures.get(bucketId) ?? NO_CAPTURES;
+  const captured = [...capturesOf(targetBucket.id).values()];
   const explicit = captured.length > 0;
+  const anyCaptured = buckets.some((bucket) => capturesOf(bucket.id).size > 0);
   // Long selections fold to their first and last cards; each press on the
   // fold reveals a chunk from both ends. The loader shares this state so it
-  // describes only the rendered ends.
-  const folding = useFoldRevealed(selection.domainId);
+  // describes only the rendered ends. Columns fold on their own.
+  const folding = useFoldRevealed(selection.domainId, targetBucket.id);
   const fold = foldWindow(captured, folding.revealed);
   const folded = fold.hidden > 0;
   const reveal = Math.min(fold.hidden, 2 * FOLD_STEP);
   // File names repeat across LeRobot-style episodes; fall back to the id then.
   const nameCounts = new Map<string, number>();
-  for (const group of captured) {
-    const name = episodeTitle(group, unit);
-    nameCounts.set(name, (nameCounts.get(name) ?? 0) + 1);
-  }
+  const named = new Set<string>();
+  for (const bucket of buckets)
+    for (const group of capturesOf(bucket.id).values()) {
+      if (named.has(group.episodeId)) continue;
+      named.add(group.episodeId);
+      const name = episodeTitle(group, unit);
+      nameCounts.set(name, (nameCounts.get(name) ?? 0) + 1);
+    }
   const titleOf = (group: EpisodeSelection) => {
     const name = episodeTitle(group, unit);
     return group.filepath && (nameCounts.get(name) ?? 0) === 1
@@ -206,7 +287,7 @@ export default function SelectionTray() {
       : `${unitTitle(unit)} …${group.episodeId.slice(-6)}`;
   };
   const counts = explicit
-    ? countSelection(captured)
+    ? (selection.selectedCounts ?? EMPTY_COUNTS)
     : (selection.counts ?? EMPTY_COUNTS);
   const outside =
     explicit && !selection.loading && !selection.error
@@ -216,24 +297,33 @@ export default function SelectionTray() {
             selection.candidates.get(group.episodeId) === null,
         ).length
       : 0;
+  const armedBucket =
+    multi && held === "command"
+      ? buckets[1]
+      : multi && held === "option"
+        ? buckets[2]
+        : undefined;
+  const bucketName = (bucket: SelectionBucket) =>
+    selectionBucketTitle(bucket, buckets.indexOf(bucket));
 
   // This effect retires the undo affordance after a pause, or as soon as a
-  // new selection starts after the clear, so a stale undo can never
-  // resurrect old captures over a fresh selection.
+  // new selection starts after the clear. It arms only once the clear has
+  // landed, since the captures shrink a render after the clear is requested.
   const undoArmed = useRef(false);
+  const clearedCount = cleared ? capturesOf(cleared.bucketId).size : 0;
   useEffect(() => {
     if (!cleared) {
       undoArmed.current = false;
       return undefined;
     }
-    if (!explicit) undoArmed.current = true;
+    if (clearedCount <= cleared.remaining) undoArmed.current = true;
     else if (undoArmed.current) {
       setCleared(null);
       return undefined;
     }
     const timer = window.setTimeout(() => setCleared(null), UNDO_WINDOW_MS);
     return () => window.clearTimeout(timer);
-  }, [cleared, explicit]);
+  }, [cleared, clearedCount]);
 
   const context: GridSelectionActionContext = {
     datasetId: selection.datasetId,
@@ -241,18 +331,24 @@ export default function SelectionTray() {
     source: explicit ? "explicit" : "results",
     counts,
     groups: explicit ? captured : [],
-    loading: !explicit && selection.loading,
-    error: !explicit ? selection.error : null,
+    loading: explicit
+      ? !selection.selectedCounts && !selection.capturedError
+      : selection.loading,
+    error: explicit ? selection.capturedError : selection.error,
     boundary,
     unit,
     conversion: selection.conversion,
     view: selection.request.view,
+    preferredGroupSlice: selection.conversion
+      ? undefined
+      : selection.request.slice,
+    bucket:
+      explicit && (multi || targetBucket.name)
+        ? { id: targetBucket.id, name: bucketName(targetBucket) }
+        : undefined,
     resolve: async () =>
       explicit
-        ? {
-            kind: "members",
-            members: captured.flatMap((group) => group.members),
-          }
+        ? selection.resolveCaptured()
         : { kind: "snapshot", ...(await selection.snapshot()) },
   };
   const available = actions.filter((action) =>
@@ -261,10 +357,10 @@ export default function SelectionTray() {
   const primary = available.filter((action) => action.placement === "primary");
   const overflow = available.filter((action) => action.placement === "more");
 
-  const open = async (group: EpisodeSelection) => {
+  const open = async (group: EpisodeSelection, bucketId: string) => {
     // Open exactly as the grid does: with the sample's group, and a cursor
-    // that walks the captured cards for the modal's next and previous.
-    const cards = captured;
+    // that walks the bucket's captured cards for the modal's next and previous.
+    const cards = [...capturesOf(bucketId).values()];
     let position = Math.max(
       0,
       cards.findIndex((card) => card.episodeId === group.episodeId),
@@ -288,38 +384,72 @@ export default function SelectionTray() {
     });
     await setExpandedSample(locate(position));
   };
-  const clearAll = () => {
-    setCleared(captured);
-    folding.reset();
-    selection.clear();
+  /** Clear one archetype (whole parents or segments), or everything, in one bucket. */
+  const clear = (kind?: SelectionKind, bucketId: string = targetBucket.id) => {
+    const all = [...capturesOf(bucketId).values()];
+    const groups = kind
+      ? all.filter(
+          (group) => (isFullEpisode(group) ? "episode" : "segment") === kind,
+        )
+      : all;
+    if (!groups.length) return;
+    setCleared({
+      groups,
+      bucketId,
+      remaining: all.length - groups.length,
+      counts: kind
+        ? countSelection(groups)
+        : (selection.countsForBucket(bucketId) ?? undefined),
+    });
+    if (groups.length === all.length) {
+      selection.clear(bucketId);
+      return;
+    }
+    for (const group of groups) selection.remove(group.episodeId, bucketId);
+  };
+  /** Drop a bucket from the layout; its captures come back with undo. */
+  const dropBucket = (bucketId: string) => {
+    const index = buckets.findIndex((bucket) => bucket.id === bucketId);
+    if (index < 0 || buckets.length < 2) return;
+    const groups = [...capturesOf(bucketId).values()];
+    setCleared({
+      groups,
+      counts: selection.countsForBucket(bucketId) ?? undefined,
+      bucketId,
+      remaining: 0,
+      layout: { bucket: buckets[index], index },
+    });
+    removeBucket(bucketId);
   };
   const undoClear = () => {
-    cleared?.forEach((group) => selection.capture(group));
+    if (!cleared) return;
+    if (cleared.layout)
+      layout.restore(cleared.layout.bucket, cleared.layout.index);
+    for (const group of cleared.groups)
+      selection.capture(group, "replace", cleared.bucketId);
     setCleared(null);
   };
-  const renderCard = (group: EpisodeSelection) => (
-    <SelectionCard
-      key={group.episodeId}
-      group={group}
-      candidate={selection.candidates.get(group.episodeId)}
-      mediaType={selection.mediaType}
-      unit={unit}
-      title={titleOf(group)}
-      open={open}
-      capture={selection.capture}
-      remove={removeGroup}
-    />
-  );
-  const removeGroup = (episodeId: string) => {
+  const addBucket = () => {
+    const id = layout.add();
+    if (id) {
+      setCollapsed(false);
+      selection.setTarget(id);
+    }
+  };
+  const removeGroup = (episodeId: string, bucketId: string) => {
     const items = Array.from(
-      cards.current?.querySelectorAll<HTMLElement>("[data-episode-id]") ?? [],
+      root.current?.querySelectorAll<HTMLElement>(
+        multi
+          ? `[data-bucket="${bucketId}"] [data-episode-id]`
+          : "[data-episode-id]",
+      ) ?? [],
     );
     const index = items.findIndex(
       (item) => item.dataset.episodeId === episodeId,
     );
     const hadFocus = items[index]?.contains(document.activeElement) ?? false;
     const neighbor = items[index + 1] ?? items[index - 1];
-    selection.remove(episodeId);
+    selection.remove(episodeId, bucketId);
     if (!hadFocus) return;
     window.requestAnimationFrame(() => {
       const target =
@@ -328,15 +458,44 @@ export default function SelectionTray() {
       target?.focus();
     });
   };
+  const renderCard = (group: EpisodeSelection, bucketId: string) => (
+    <SelectionCard
+      key={group.episodeId}
+      group={group}
+      candidate={selection.candidates.get(group.episodeId)}
+      mediaType={selection.mediaType}
+      unit={unit}
+      title={titleOf(group)}
+      open={(target) => open(target, bucketId)}
+      locate={locate}
+      capture={(candidate, operation) =>
+        selection.capture(candidate, operation, bucketId)
+      }
+      remove={(episodeId) => removeGroup(episodeId, bucketId)}
+    />
+  );
+
+  const showStrip = multi || explicit;
+  const clearedFrom =
+    cleared && (multi || cleared.layout)
+      ? cleared.layout
+        ? selectionBucketTitle(cleared.layout.bucket, cleared.layout.index)
+        : bucketName(
+            buckets.find((bucket) => bucket.id === cleared.bucketId) ??
+              targetBucket,
+          )
+      : undefined;
 
   return (
     <section
       ref={root}
       className={styles.tray}
       aria-label="Selection"
-      style={trayTheme}
+      data-buckets={multi ? buckets.length : undefined}
+      style={multimodal ? multimodalTrayTheme : trayTheme}
     >
-      {explicit && (
+      <SubsetJobs datasetId={selection.datasetId} />
+      {showStrip && (
         <div
           id={stripId}
           className={styles.strip}
@@ -358,41 +517,132 @@ export default function SelectionTray() {
           >
             <span className={styles.grip} />
           </div>
-          <div
-            ref={cards}
-            role="group"
-            className={styles.cards}
-            aria-label={`Selected ${unit.many}`}
-          >
-            {fold.head.map(renderCard)}
-            {folded && (
-              <FoldCard
-                hidden={fold.hidden}
-                reveal={reveal}
-                unit={unit}
-                onReveal={() => folding.reveal(FOLD_STEP)}
-              />
-            )}
-            {fold.tail.map(renderCard)}
-          </div>
+          {multi ? (
+            <div
+              role="group"
+              className={styles.columns}
+              aria-label="Selection buckets"
+            >
+              {buckets.map((bucket, index) => (
+                <Fragment key={bucket.id}>
+                  {index > 0 && (
+                    <Divider
+                      orientation={Orientation.Column}
+                      className={styles.columnDivider}
+                      data-column-divider=""
+                    />
+                  )}
+                  <BucketColumn
+                    bucket={bucket}
+                    index={index}
+                    domainId={selection.domainId}
+                    unit={unit}
+                    captured={[...capturesOf(bucket.id).values()]}
+                    target={bucket.id === targetBucket.id && anyCaptured}
+                    armed={armedBucket?.id === bucket.id}
+                    removable={buckets.length > 1}
+                    renderCard={renderCard}
+                    onTarget={selection.setTarget}
+                    onUpdate={layout.update}
+                    onClear={(id) => clear(undefined, id)}
+                    onRemove={dropBucket}
+                  />
+                </Fragment>
+              ))}
+            </div>
+          ) : (
+            <div
+              role="group"
+              className={styles.cards}
+              aria-label={`Selected ${unit.many}`}
+            >
+              {fold.head.map((group) => renderCard(group, targetBucket.id))}
+              {folded && (
+                <FoldCard
+                  hidden={fold.hidden}
+                  reveal={reveal}
+                  unit={unit}
+                  onReveal={() => folding.reveal(FOLD_STEP)}
+                />
+              )}
+              {fold.tail.map((group) => renderCard(group, targetBucket.id))}
+            </div>
+          )}
         </div>
       )}
       <div className={styles.bar}>
+        {buckets.length < MAX_SELECTION_BUCKETS && (
+          <Tooltip
+            anchor={Anchor.Top}
+            wrapperClassName={styles.tipWrap}
+            content={
+              <Text variant={TextVariant.Sm}>
+                {multi
+                  ? `Add a third bucket, fed by ${gestureLabel("option")}`
+                  : `Sort into buckets: up to three working selections side by side. Plain clicks fill the first, ${gestureLabel(
+                      "command",
+                    )} the second, ${gestureLabel("option")} the third.`}
+              </Text>
+            }
+          >
+            <Button
+              size={Size.Sm}
+              variant={Variant.Icon}
+              leadingIcon={WorkspacesIcon}
+              aria-label={multi ? "Add a bucket" : "Sort into buckets"}
+              className={styles.toolbarButton}
+              data-tray-add-bucket=""
+              onClick={addBucket}
+            />
+          </Tooltip>
+        )}
         <SelectionSummary
           explicit={explicit}
           counts={counts}
           unit={unit}
           outside={outside}
-          loading={selection.loading}
-          error={selection.error}
-          cleared={cleared?.length}
+          loading={
+            explicit
+              ? !selection.selectedCounts && !selection.capturedError
+              : selection.loading
+          }
+          error={explicit ? selection.capturedError : selection.error}
+          cleared={
+            cleared
+              ? (cleared.counts ?? countSelection(cleared.groups))
+              : undefined
+          }
+          clearedFrom={clearedFrom}
           onUndo={undoClear}
-          onRetry={invalidate}
-          onClear={clearAll}
+          onRetry={
+            !explicit && selection.retryRangeCapture
+              ? selection.retryRangeCapture
+              : invalidate
+          }
+          onClear={clear}
+          buckets={
+            multi
+              ? {
+                  items: buckets.map((bucket, index) => ({
+                    bucket,
+                    index,
+                    counts:
+                      selection.countsForBucket(bucket.id) ?? EMPTY_COUNTS,
+                  })),
+                  target: targetBucket.id,
+                  onTarget: selection.setTarget,
+                  onClear: (bucketId) => clear(undefined, bucketId),
+                }
+              : undefined
+          }
+          armed={armedBucket ? bucketName(armedBucket) : null}
         />
         <div className={styles.scope}>
           <UnavailableReferences
+            key={selection.scopeKey}
             groups={selection.unavailableGroups}
+            total={selection.unavailableTotal}
+            loadPage={selection.loadUnavailable}
             selected={selection.selected}
             capture={selection.capture}
             unit={unit}
@@ -407,12 +657,14 @@ export default function SelectionTray() {
               surface="toolbar"
             />
           ))}
+          <OperatorPlacements place={Places.SAMPLES_GRID_SELECTION_ACTIONS} />
           {overflow.length > 0 && (
             <div ref={more} className={styles.more}>
               <Button
                 size={Size.Sm}
                 variant={Variant.Borderless}
                 leadingIcon={MoreHorizontalIcon}
+                className={styles.toolbarButton}
                 aria-label="More actions"
                 aria-haspopup="menu"
                 aria-expanded={overflowPanel.open}
@@ -440,20 +692,28 @@ export default function SelectionTray() {
               </div>
             </div>
           )}
-          {explicit && (
-            <Button
-              size={Size.Sm}
-              variant={Variant.Icon}
-              leadingIcon={collapsed ? ChevronTopIcon : ChevronBottomIcon}
-              aria-label={
-                collapsed
-                  ? `Show selected ${unit.many}`
-                  : `Hide selected ${unit.many}`
-              }
-              aria-expanded={!collapsed}
-              aria-controls={stripId}
-              onClick={() => setCollapsed((value) => !value)}
-            />
+          {showStrip && (
+            <>
+              <Divider
+                orientation={Orientation.Column}
+                className={styles.collapseDivider}
+                aria-hidden="true"
+              />
+              <Button
+                size={Size.Sm}
+                variant={Variant.Icon}
+                className={styles.toolbarButton}
+                leadingIcon={collapsed ? ChevronTopIcon : ChevronBottomIcon}
+                aria-label={
+                  collapsed
+                    ? `Show selected ${unit.many}`
+                    : `Hide selected ${unit.many}`
+                }
+                aria-expanded={!collapsed}
+                aria-controls={stripId}
+                onClick={() => setCollapsed((value) => !value)}
+              />
+            </>
           )}
         </div>
       </div>

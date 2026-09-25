@@ -5,9 +5,12 @@ import {
   type SelectionUnit,
   type useGridSelection,
 } from "@fiftyone/state/src/selection";
+import { isDirect3dSamplePath } from "@fiftyone/utilities";
 import {
+  Anchor,
   BackgroundColor,
   Button,
+  CenterFocusWeakIcon,
   CloseIcon,
   FolderOffIcon,
   ImageIcon,
@@ -19,12 +22,13 @@ import {
   Text,
   TextColor,
   TextVariant,
+  Tooltip,
   Variant,
   ViewInArIcon,
   VisibilityOffIcon,
   WarningAmberIcon,
 } from "@voxel51/voodo";
-import {
+import React, {
   Suspense,
   lazy,
   useEffect,
@@ -32,9 +36,9 @@ import {
   useState,
   type RefObject,
 } from "react";
+import { setTileHighlight, useHoveredTile } from "../gridTileRegistry";
 import {
   episodeTitle,
-  formatRanges,
   groupDescriptor,
   isFullEpisode,
   listRanges,
@@ -44,10 +48,11 @@ import {
 import MismatchPopover from "./MismatchPopover";
 import RangeTrack from "./RangeTrack";
 import styles from "./SelectionTray.module.css";
-import { cardWidth } from "./theme";
+import { CARD_PREVIEW_HEIGHT, cardWidth, MULTIMODAL_CARD_WIDTH } from "./theme";
 
 // The plugin renderer graph is heavy; only multimodal cards pay for it.
 const RendererPreview = lazy(() => import("./RendererPreview"));
+const LookerPreview = lazy(() => import("./LookerPreview"));
 
 type Selection = ReturnType<typeof useGridSelection>;
 interface Props extends Pick<Selection, "capture" | "remove"> {
@@ -61,6 +66,8 @@ interface Props extends Pick<Selection, "capture" | "remove"> {
   /** Display name; defaults to the media file name. */
   title?: string;
   open: (group: EpisodeSelection) => Promise<void>;
+  /** Scrolls the grid to this parent; resolves false when it is not shown. */
+  locate?: (episodeId: string) => Promise<boolean>;
 }
 
 /** Defers thumbnail media until the card is near the strip's viewport. */
@@ -99,7 +106,29 @@ function previewKind(mediaType: string, filepath: string | undefined) {
   return "none" as const;
 }
 
-/** One parent's captured scope: the whole sample/episode or grouped segments. */
+/**
+ * Points the grid at this card's tile while the pointer or focus rests on
+ * the card, and lets go when the card leaves the strip mid-hover.
+ */
+function useTileCorrespondence(episodeId: string) {
+  // This effect clears a highlight the card can no longer end itself,
+  // because it unmounted (removed, folded away) while hovered or focused.
+  useEffect(() => () => setTileHighlight(episodeId, false), [episodeId]);
+  return {
+    onPointerEnter: () => setTileHighlight(episodeId, true),
+    onPointerLeave: () => setTileHighlight(episodeId, false),
+    onFocus: () => setTileHighlight(episodeId, true),
+    onBlur: (event: React.FocusEvent<HTMLElement>) => {
+      if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+        setTileHighlight(episodeId, false);
+    },
+  };
+}
+
+/**
+ * One parent's captured scope as bare media: the whole sample/episode or,
+ * for segments, the media with its ranges drawn along the bottom edge.
+ */
 export default function SelectionCard({
   group,
   candidate,
@@ -107,19 +136,44 @@ export default function SelectionCard({
   unit,
   title: titleProp,
   open,
+  locate,
   capture,
   remove,
 }: Props) {
   const root = useRef<HTMLElement>(null);
   const near = useNearViewport(root);
+  const correspondence = useTileCorrespondence(group.episodeId);
+  const mirrored = useHoveredTile() === group.episodeId;
+  // This effect brings a card into the strip's view when its grid tile is
+  // hovered, so the correspondence is visible even in a scrolled strip.
+  useEffect(() => {
+    if (mirrored)
+      root.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [mirrored]);
   const [mediaFailed, setMediaFailed] = useState(false);
+  const [locating, setLocating] = useState(false);
+  // A miss is remembered against the match it was reported for, so fresh
+  // results re-enable the control without an effect.
+  const [missedFor, setMissedFor] = useState<{
+    candidate: Props["candidate"];
+  } | null>(null);
+  const missed = missedFor !== null && missedFor.candidate === candidate;
   // Media that arrives without a known ratio reports its own once loaded.
   const [measured, setMeasured] = useState<number | null>(null);
-  const aspect = group.aspectRatio ?? group.node?.aspectRatio ?? measured;
-  const width = cardWidth(aspect);
+  const sourceAspect = group.aspectRatio ?? group.node?.aspectRatio ?? measured;
+  const crop = group.crop;
+  const aspect = crop
+    ? (sourceAspect ?? 1) * (crop[2] / crop[3])
+    : sourceAspect;
+  const multimodal = mediaType === "multimodal";
+  const threeD =
+    mediaType === "3d" ||
+    mediaType === "point-cloud" ||
+    isDirect3dSamplePath(group.filepath);
+  const width = multimodal ? MULTIMODAL_CARD_WIDTH : cardWidth(aspect);
   const temporal = unit.temporal;
   const kind = mediaFailed ? "none" : previewKind(mediaType, group.filepath);
-  const rendered = mediaType === "multimodal" && Boolean(group.node);
+  const rendered = (multimodal || threeD) && Boolean(group.node);
   const hasPreview = rendered || kind !== "none";
   const full = isFullEpisode(group);
   const segments = segmentsOf(group);
@@ -138,12 +192,11 @@ export default function SelectionCard({
       : mismatch
         ? "current matches differ"
         : null;
-  const PlaceholderIcon =
-    mediaType === "3d" || mediaType === "point-cloud"
-      ? ViewInArIcon
-      : temporal
-        ? PlayArrowIcon
-        : ImageIcon;
+  const PlaceholderIcon = threeD
+    ? ViewInArIcon
+    : temporal
+      ? PlayArrowIcon
+      : ImageIcon;
 
   return (
     <article
@@ -153,9 +206,13 @@ export default function SelectionCard({
       data-episode-id={group.episodeId}
       data-unavailable={unavailable || undefined}
       data-outside={outside || undefined}
+      data-mirrored={mirrored || undefined}
       aria-label={`${title}, ${descriptor}${status ? `, ${status}` : ""}`}
+      {...correspondence}
     >
-      <div className={styles.preview}>
+      <div
+        className={`${styles.preview}${multimodal ? ` ${styles.squarePreview}` : ""}`}
+      >
         <button
           type="button"
           className={styles.open}
@@ -175,14 +232,18 @@ export default function SelectionCard({
                 </span>
               }
             >
-              <RendererPreview
-                node={group.node}
-                fallback={
-                  <span className={styles.placeholder}>
-                    <PlaceholderIcon size={Size.Lg} color={TextColor.Muted} />
-                  </span>
-                }
-              />
+              {multimodal ? (
+                <RendererPreview
+                  node={group.node}
+                  fallback={
+                    <span className={styles.placeholder}>
+                      <PlaceholderIcon size={Size.Lg} color={TextColor.Muted} />
+                    </span>
+                  }
+                />
+              ) : (
+                <LookerPreview node={group.node} width={width} />
+              )}
             </Suspense>
           ) : near && kind === "video" && group.filepath ? (
             <video
@@ -200,18 +261,42 @@ export default function SelectionCard({
               }}
             />
           ) : near && kind === "image" && group.filepath ? (
-            <img
-              className={styles.media}
-              src={fos.getSampleSrc(group.filepath)}
-              alt=""
-              loading="lazy"
-              onError={() => setMediaFailed(true)}
-              onLoad={(event) => {
-                const { naturalWidth, naturalHeight } = event.currentTarget;
-                if (naturalWidth && naturalHeight)
-                  setMeasured(naturalWidth / naturalHeight);
-              }}
-            />
+            <div
+              className={crop ? styles.crop : styles.imageFrame}
+              style={
+                crop
+                  ? {
+                      width: `min(100%, ${CARD_PREVIEW_HEIGHT * (aspect ?? 1)}px)`,
+                      aspectRatio: aspect ?? undefined,
+                    }
+                  : undefined
+              }
+            >
+              <img
+                className={styles.media}
+                style={
+                  crop
+                    ? {
+                        position: "absolute",
+                        width: `${100 / crop[2]}%`,
+                        height: `${100 / crop[3]}%`,
+                        left: `${(-100 * crop[0]) / crop[2]}%`,
+                        top: `${(-100 * crop[1]) / crop[3]}%`,
+                        maxWidth: "none",
+                      }
+                    : undefined
+                }
+                src={fos.getSampleSrc(group.filepath)}
+                alt=""
+                loading="lazy"
+                onError={() => setMediaFailed(true)}
+                onLoad={(event) => {
+                  const { naturalWidth, naturalHeight } = event.currentTarget;
+                  if (naturalWidth && naturalHeight)
+                    setMeasured(naturalWidth / naturalHeight);
+                }}
+              />
+            </div>
           ) : (
             <span className={styles.placeholder}>
               <PlaceholderIcon size={Size.Lg} color={TextColor.Muted} />
@@ -232,15 +317,65 @@ export default function SelectionCard({
             </Text>
           </span>
         )}
-        <Button
-          variant={Variant.Icon}
-          size={Size.Xs}
-          className={styles.remove}
-          aria-label={`Remove ${title} from selection`}
-          leadingIcon={CloseIcon}
-          data-card-remove=""
-          onClick={() => remove(group.episodeId)}
-        />
+        {temporal && !full && segments.length > 0 && (
+          <span
+            className={styles.segmentTrack}
+            title={listRanges(segments).join("\n")}
+          >
+            <RangeTrack members={segments} className={styles.segmentBars} />
+          </span>
+        )}
+        <span className={styles.tools}>
+          {locate && (
+            <Tooltip
+              anchor={Anchor.Top}
+              content={
+                <Text variant={TextVariant.Sm}>
+                  {outside || missed
+                    ? "Not in current results"
+                    : "Scroll to grid"}
+                </Text>
+              }
+            >
+              <Button
+                variant={Variant.Icon}
+                size={Size.Xs}
+                className={styles.tool}
+                aria-label={`Scroll to ${title} in the grid`}
+                title={outside || missed ? "Not in current results" : undefined}
+                leadingIcon={CenterFocusWeakIcon}
+                aria-busy={locating || undefined}
+                disabled={unavailable || outside || missed || locating}
+                data-card-locate=""
+                onClick={async () => {
+                  setLocating(true);
+                  try {
+                    if (!(await locate(group.episodeId)))
+                      setMissedFor({ candidate });
+                  } finally {
+                    setLocating(false);
+                  }
+                }}
+              />
+            </Tooltip>
+          )}
+          <Tooltip
+            anchor={Anchor.Top}
+            content={
+              <Text variant={TextVariant.Sm}>Remove from selection</Text>
+            }
+          >
+            <Button
+              variant={Variant.Icon}
+              size={Size.Xs}
+              className={styles.tool}
+              aria-label={`Remove ${title} from selection`}
+              leadingIcon={CloseIcon}
+              data-card-remove=""
+              onClick={() => remove(group.episodeId)}
+            />
+          </Tooltip>
+        </span>
         {(unavailable || outside || mismatch) && (
           <div className={styles.flags}>
             {mismatch && candidate && (
@@ -270,47 +405,6 @@ export default function SelectionCard({
               >
                 Not in results
               </Pill>
-            )}
-          </div>
-        )}
-      </div>
-      <div className={styles.meta}>
-        <Text variant={TextVariant.Sm} className={styles.title} title={title}>
-          {title}
-        </Text>
-        {(temporal || dynamicGroup) && (
-          <div className={styles.metaRow}>
-            {dynamicGroup ? (
-              <Text
-                variant={TextVariant.Xs}
-                color={TextColor.Secondary}
-                className={styles.ellipsis}
-                style={{ flex: 1 }}
-                title={dynamicGroup.label}
-              >
-                {`${plural(dynamicGroup.size, unit.one, unit.many)} · ${dynamicGroup.label}`}
-              </Text>
-            ) : full ? (
-              <Text
-                variant={TextVariant.Xs}
-                color={TextColor.Secondary}
-                className={styles.ellipsis}
-                style={{ flex: 1 }}
-              >
-                {`Whole ${unit.one}`}
-              </Text>
-            ) : (
-              <div className={styles.ranges}>
-                <RangeTrack members={segments} />
-                <Text
-                  variant={TextVariant.Xs}
-                  color={TextColor.Secondary}
-                  className={styles.ellipsis}
-                  title={listRanges(segments).join("\n")}
-                >
-                  {formatRanges(segments, 2)}
-                </Text>
-              </div>
             )}
           </div>
         )}

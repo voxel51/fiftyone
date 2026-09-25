@@ -2,6 +2,7 @@ import {
   EPISODE_UNIT,
   selectionScopeLabel,
   type EpisodeSelection,
+  type SavedSubset,
   type SelectionCounts,
   type SelectionMember,
   type SelectionRange,
@@ -15,6 +16,14 @@ export function plural(count: number, unit: string, units = `${unit}s`) {
   return `${count.toLocaleString()} ${count === 1 ? unit : units}`;
 }
 
+/** Saved identities, without fetching live availability or distinct parents. */
+export function savedSubsetLabel(subset: SavedSubset, unit: SelectionUnit) {
+  const { fullEpisodes, segments } = subset.memberCounts;
+  if (!segments) return plural(subset.memberCount, unit.one, unit.many);
+  if (!fullEpisodes) return plural(subset.memberCount, "segment");
+  return `${plural(fullEpisodes, unit.one, unit.many)} and ${plural(segments, "segment")}`;
+}
+
 /** "Episode", "Sample", "Patch": the unit for titles and menu copy. */
 export function unitTitle(unit: SelectionUnit) {
   return unit.one.charAt(0).toUpperCase() + unit.one.slice(1);
@@ -22,18 +31,70 @@ export function unitTitle(unit: SelectionUnit) {
 
 /**
  * Names a frozen scope inside a panel title: "all 16 samples in view" for
- * every current result, "3 selected samples" for an explicit selection.
+ * every current result, "3 selected samples" for an explicit selection, and
+ * "3 selected samples in Keep" when the selection is one named bucket.
  */
 export function scopePhrase(
   source: "explicit" | "results",
   counts: SelectionCounts,
   unit: SelectionUnit,
+  within?: string,
 ) {
   const label = selectionScopeLabel(counts, unit);
   if (source === "results") return `all ${label} in view`;
-  if (counts.segments) return `selected ${label}`;
+  const suffix = within ? ` in ${within}` : "";
+  if (counts.segments || counts.groups) return `selected ${label}${suffix}`;
   const noun = counts.fullEpisodes === 1 ? unit.one : unit.many;
-  return `${counts.fullEpisodes} selected ${noun}`;
+  return `${counts.fullEpisodes} selected ${noun}${suffix}`;
+}
+
+/** The archetype a selection pill aggregates: whole parents or segments. */
+export type SelectionKind = "episode" | "segment";
+
+/** Count and wording for one independently clearable selection kind. */
+export interface SelectionPill {
+  readonly kind: SelectionKind;
+  readonly count: number;
+  /** "sample", "episodes", "segment": the exact noun, already pluralized. */
+  readonly noun: string;
+  /** Fuller wording for the tooltip: "2 full episodes", "3 segments across 2 episodes". */
+  readonly detail: string;
+}
+
+/**
+ * One pill per archetype in the selection: whole parents in the unit's own
+ * noun (samples, clips, frames, patches, episodes) and, for temporal media,
+ * a second pill aggregating segments. The count and noun read as
+ * "4 samples selected"; the detail carries the qualifiers the pill omits.
+ */
+export function selectionPills(
+  counts: SelectionCounts,
+  unit: SelectionUnit,
+): SelectionPill[] {
+  const pills: SelectionPill[] = [];
+  const mixed = counts.fullEpisodes > 0 && counts.segments > 0;
+  if (counts.fullEpisodes > 0)
+    pills.push({
+      kind: "episode",
+      count: counts.fullEpisodes,
+      noun: counts.fullEpisodes === 1 ? unit.one : unit.many,
+      detail:
+        mixed && unit.temporal
+          ? plural(counts.fullEpisodes, `full ${unit.one}`, `full ${unit.many}`)
+          : plural(counts.fullEpisodes, unit.one, unit.many),
+    });
+  if (counts.segments > 0)
+    pills.push({
+      kind: "segment",
+      count: counts.segments,
+      noun: counts.segments === 1 ? "segment" : "segments",
+      detail: `${plural(counts.segments, "segment")} across ${plural(
+        counts.segmentEpisodes,
+        unit.one,
+        unit.many,
+      )}`,
+    });
+  return pills;
 }
 
 /** "Episodes", "Samples", "Patches". */
@@ -50,7 +111,10 @@ export function segmentsOf(
 }
 
 export function isFullEpisode(group: Pick<EpisodeSelection, "members">) {
-  return group.members.some((member) => member.kind === "episode");
+  return (
+    Boolean("group" in group && group.group) ||
+    group.members.some((member) => member.kind === "episode")
+  );
 }
 
 /** The card descriptor: "Full episode", "Sample", or "N segments". */
@@ -72,7 +136,7 @@ export function episodeTitle(
   return group.filepath.split(/[\\/]/).pop() || group.filepath;
 }
 
-const INTEGER = /^-?\d+$/;
+export const INTEGER = /^-?\d+$/;
 
 function clock(totalMs: number) {
   const sign = totalMs < 0 ? "-" : "";
@@ -118,6 +182,8 @@ export function formatRange(
 }
 
 function byStart(a: SegmentMember, b: SegmentMember) {
+  if (!INTEGER.test(a.range.start) || !INTEGER.test(b.range.start))
+    return a.range.start.localeCompare(b.range.start);
   const left = BigInt(a.range.start);
   const right = BigInt(b.range.start);
   return left < right ? -1 : left > right ? 1 : 0;

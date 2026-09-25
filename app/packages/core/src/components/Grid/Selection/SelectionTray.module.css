@@ -121,10 +121,38 @@
 
 .summaryText {
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 0 var(--tray-space-xs);
+  gap: var(--tray-space-xs) var(--tray-space-sm);
   min-width: 0;
+}
+
+/* Match the action buttons' rendered type size. */
+.summary .summaryLabel {
+  font-size: 14px;
+}
+
+/* One pill per selected archetype: "4 samples selected", with its own clear.
+ * The count reads in the primary color, the rest recedes, and the clear sits
+ * flush with the pill's rounded end. */
+.bar .countPill {
+  border: 1px solid var(--tray-border);
+  padding: 4px 6px 4px 14px;
+  white-space: nowrap;
+}
+
+.countPillBody {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.countPillCount {
+  font-weight: 600;
+}
+
+.bar .countPillClear {
+  margin-left: 2px;
 }
 
 .actions {
@@ -133,6 +161,29 @@
   gap: var(--tray-space-xs);
   margin-left: auto;
   flex: 0 0 auto;
+}
+
+/* Match text and icon-only controls, with room for the larger tray icons. */
+.bar .toolbarButton {
+  min-height: 32px;
+  line-height: 20px;
+}
+
+.toolbarButton svg {
+  display: block;
+  flex: none;
+  width: 14px;
+  height: 14px;
+  /* Optical alignment with the label's cap height, below its line-box center. */
+  transform: translateY(1px);
+}
+
+.actions .collapseDivider {
+  flex: none;
+  align-self: center;
+  height: 20px;
+  margin: 0 var(--tray-space-xs);
+  opacity: 0.5;
 }
 
 /* The action whose panel is open stays lit, like a pressed toolbar toggle. */
@@ -221,6 +272,7 @@
   flex-direction: column;
   flex: none;
   width: var(--tray-card-w);
+  max-width: 100%;
   height: var(--tray-card-h);
   border-radius: 8px;
   overflow: hidden;
@@ -244,6 +296,20 @@
   border-style: dashed;
 }
 
+/* The card answering a hovered grid tile: the grid's own nudge and ring. */
+.card[data-mirrored="true"] {
+  border-color: var(--tray-accent);
+  box-shadow: inset 0 0 0 1px var(--tray-accent);
+}
+
+.card .preview {
+  transition: transform var(--tray-duration) var(--tray-easing);
+}
+
+.card[data-mirrored="true"] .preview {
+  transform: scale(1.04);
+}
+
 .card[data-outside="true"] .media {
   opacity: 0.45;
   filter: saturate(0.3);
@@ -262,8 +328,13 @@
 
 .preview {
   position: relative;
-  flex: 0 0 var(--tray-preview-h);
+  flex: 1 1 auto;
+  min-height: 0;
   background: var(--tray-strip-bg);
+}
+
+.squarePreview {
+  aspect-ratio: 1;
 }
 
 .open {
@@ -299,10 +370,26 @@
   transition: opacity var(--tray-duration-fast) var(--tray-easing);
 }
 
-.rendererHost {
+.imageFrame {
+  width: 100%;
+  height: 100%;
+}
+
+.crop {
+  position: relative;
+  flex: none;
+  overflow: hidden;
+}
+
+.rendererHost,
+.lookerHost {
   position: absolute;
   inset: 0;
   overflow: hidden;
+}
+
+.lookerHost {
+  pointer-events: none;
 }
 
 .placeholder {
@@ -324,19 +411,29 @@
   pointer-events: none;
 }
 
-.remove {
-  position: absolute !important;
+/* Card tools (locate in grid, remove) show on hover or focus. */
+.tools {
+  position: absolute;
   top: 4px;
   right: 4px;
-  background: var(--tray-overlay) !important;
+  display: inline-flex;
+  gap: 2px;
   opacity: 0;
   transition: opacity var(--tray-duration-fast) var(--tray-easing);
 }
 
-.card:hover .remove,
-.card:focus-within .remove,
-.remove:focus-visible {
+.card:hover .tools,
+.card:focus-within .tools,
+.tools:focus-within {
   opacity: 1;
+}
+
+.card .tool {
+  background: var(--tray-overlay) !important;
+}
+
+.card .tool:disabled {
+  opacity: 0.5;
 }
 
 .flags {
@@ -354,39 +451,6 @@
   pointer-events: auto;
 }
 
-.meta {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 3px;
-  padding: 6px 8px;
-}
-
-.title {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-weight: 500;
-}
-
-.metaRow {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-
-.ranges {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
 .ellipsis {
   display: block;
   overflow: hidden;
@@ -397,6 +461,31 @@
 /* ---------------------------------------------------------------------------
  * Range track
  * ------------------------------------------------------------------------- */
+
+/* Segment cards draw their ranges along the media's bottom edge, so the
+ * card reads as "this part of the episode" without a caption. */
+.segmentTrack {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 10px;
+  padding: 3px 0;
+  box-sizing: border-box;
+  background: linear-gradient(to top, var(--tray-overlay), transparent);
+  pointer-events: auto;
+}
+
+.segmentBars {
+  height: 4px;
+  border-radius: 0;
+  background: color-mix(in srgb, var(--tray-text) 25%, transparent);
+}
+
+/* Flags sit above the track when a card has both. */
+.segmentTrack ~ .flags {
+  bottom: 14px;
+}
 
 .track {
   position: relative;
@@ -597,6 +686,12 @@
   line-height: 1.45;
 }
 
+.scopeStagesLink {
+  text-decoration: underline dashed;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
 .sheetActions {
   display: flex;
   justify-content: flex-end;
@@ -674,8 +769,65 @@
   white-space: normal;
 }
 
-.rowDestructive:hover {
+.subsetRow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: 8px;
+}
+
+.subsetRow:hover,
+.subsetRow:focus-within {
+  background: var(--tray-raised);
+}
+
+.subsetChoice {
+  flex: 1;
+  min-width: 0;
+}
+
+.subsetDelete {
+  position: absolute;
+  right: 6px;
+  opacity: 0;
+  pointer-events: none;
+  color: var(--tray-destructive);
+}
+
+.subsetCount {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.subsetRow:hover .subsetCount,
+.subsetRow:focus-within .subsetCount {
+  opacity: 0;
+}
+
+.subsetRow:hover .subsetDelete,
+.subsetRow:focus-within .subsetDelete {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.subsetDelete:hover {
   background: color-mix(in srgb, var(--tray-destructive) 12%, transparent);
+}
+
+@media (hover: none) {
+  .subsetChoice {
+    padding-right: 44px;
+  }
+
+  .subsetRow:hover .subsetCount,
+  .subsetRow:focus-within .subsetCount {
+    opacity: 1;
+  }
+
+  .subsetDelete {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 .pager {
@@ -692,13 +844,11 @@
   border-top: 1px solid var(--tray-border);
 }
 
-.lockNote {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+/* Confirmation dialogs */
+.confirmationCheckbox:not([data-checked]) {
+  border-color: var(--tray-border-strong);
 }
 
-/* Confirmation dialogs */
 .dialogBody {
   display: flex;
   flex-direction: column;
@@ -820,6 +970,32 @@
   padding: 0 6px;
 }
 
+.scopeStages {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex: none;
+  opacity: 0.8;
+  animation: scopeStagesPulse 3.2s ease-in-out infinite;
+}
+
+.scopeStages svg {
+  width: 14px;
+  height: 14px;
+}
+
+@keyframes scopeStagesPulse {
+  0%,
+  100% {
+    opacity: 0.65;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
 /* Bare icons size from their container; make the switch affordance visible. */
 .scopeChevron {
   display: inline-flex;
@@ -844,6 +1020,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .scopeStages {
+    animation: none;
+  }
+
   .scopeChevron svg {
     transition: none;
   }
@@ -858,14 +1038,363 @@
   white-space: nowrap;
 }
 
+/* ---------------------------------------------------------------------------
+ * Buckets: several working selections side by side
+ * ------------------------------------------------------------------------- */
+
+/* A bucket's mark: its icon, or its position number. */
+.bucketAvatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--tray-raised);
+  color: var(--tray-text);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.bucketAvatar[data-size="xs"] {
+  width: 16px;
+  height: 16px;
+  font-size: 10px;
+}
+
+.bucketAvatar svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Bar pills, one per populated bucket. The pressed one is the action target. */
+.bucketPills {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--tray-space-xs);
+}
+
+.bar .bucketPill {
+  padding: 3px 6px 3px 4px;
+  border-color: var(--tray-border);
+  transition:
+    border-color var(--tray-duration-fast) var(--tray-easing),
+    box-shadow var(--tray-duration-fast) var(--tray-easing);
+}
+
+.bar .bucketPill[data-target="true"] {
+  border-color: var(--tray-accent);
+  box-shadow: inset 0 0 0 1px var(--tray-accent);
+}
+
+.bucketPillBody {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 1px 2px 1px 1px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.bucketPillBody:hover {
+  background: var(--tray-accent-soft);
+}
+
+.bucketPillBody:focus-visible {
+  outline: 2px solid var(--tray-focus);
+  outline-offset: 1px;
+}
+
+.bucketPillName {
+  max-width: 12ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.armedHint {
+  white-space: nowrap;
+}
+
+/* Strip columns */
+.columns {
+  box-sizing: border-box;
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+  padding: var(--tray-strip-pad-top) var(--tray-space-xs)
+    var(--tray-strip-pad-bottom);
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.column {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-width: 168px;
+  min-height: 0;
+  border-radius: 8px;
+  transition: box-shadow var(--tray-duration-fast) var(--tray-easing);
+}
+
+.column[data-armed="true"] {
+  box-shadow: inset 0 0 0 2px var(--tray-accent);
+  background: color-mix(in srgb, var(--tray-accent) 8%, transparent);
+}
+
+.columnDivider {
+  flex: none;
+  align-self: stretch;
+  margin: 4px var(--tray-space-xs);
+}
+
+.columnHeader {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--tray-space-xs);
+  min-width: 0;
+  padding: 0 var(--tray-space-xs) 4px;
+}
+
+.columnTitle {
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 2px 8px 2px 3px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--tray-duration-fast) var(--tray-easing),
+    border-color var(--tray-duration-fast) var(--tray-easing);
+}
+
+.columnTitle:hover {
+  background: var(--tray-raised);
+}
+
+.columnTitle[aria-pressed="true"] {
+  border-color: var(--tray-accent);
+  background: var(--tray-accent-soft);
+}
+
+.columnTitle:focus-visible {
+  outline: 2px solid var(--tray-focus);
+  outline-offset: 1px;
+}
+
+.columnName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Re-keyed when the count changes, so a landing tile bumps the number. */
+.columnCount {
+  display: inline-flex;
+  animation: countBump var(--tray-duration) var(--tray-easing);
+}
+
+@keyframes countBump {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.35);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* The gesture that feeds a column, drawn as a key. */
+.gestureKey {
+  flex: none;
+  margin-left: auto;
+  padding: 1px 6px;
+  border: 1px solid var(--tray-border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--tray-strip-bg);
+  color: var(--tray-text-secondary);
+  font-family: var(--tray-font);
+  font-size: var(--tray-font-xs);
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.column[data-armed="true"] .gestureKey {
+  border-color: var(--tray-accent);
+  color: var(--tray-accent-text);
+}
+
+.columnCards {
+  box-sizing: border-box;
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  align-content: flex-start;
+  gap: var(--tray-strip-gap);
+  min-height: 0;
+  padding: 2px var(--tray-space-xs) 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.columnEmpty {
+  padding: 6px 4px;
+}
+
+/* Name and icon editor */
+.bucketEditor {
+  width: min(300px, calc(100vw - 24px));
+}
+
+.iconPalette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.iconChoice {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.iconChoice:hover {
+  background: var(--tray-raised);
+}
+
+.iconChoice[aria-checked="true"] {
+  border-color: var(--tray-accent);
+  background: var(--tray-accent-soft);
+}
+
+.iconChoice:focus-visible {
+  outline: 2px solid var(--tray-focus);
+  outline-offset: 1px;
+}
+
+/* Tile chips: membership marks and one-click destinations on grid tiles. */
+.tileChips {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  display: flex;
+  gap: 3px;
+  pointer-events: auto;
+  font-family: var(--tray-font);
+}
+
+.tileChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, white 45%, transparent);
+  border-radius: 999px;
+  background: var(--tray-overlay);
+  color: white;
+  cursor: pointer;
+  opacity: 0.75;
+  transition:
+    opacity var(--tray-duration-fast) var(--tray-easing),
+    transform var(--tray-duration-fast) var(--tray-easing),
+    background-color var(--tray-duration-fast) var(--tray-easing);
+}
+
+.tileChip .bucketAvatar {
+  background: transparent;
+  color: inherit;
+}
+
+.tileChip:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.tileChip[data-member="true"] {
+  border-color: var(--tray-accent);
+  background: var(--tray-accent);
+  opacity: 1;
+}
+
+.tileChip[data-armed="true"] {
+  opacity: 1;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--tray-accent) 70%, transparent);
+  animation: chipPulse 900ms var(--tray-easing) infinite;
+}
+
+.tileChip:focus-visible {
+  outline: 2px solid var(--tray-focus);
+  outline-offset: 1px;
+}
+
+@keyframes chipPulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .strip,
   .card,
-  .remove,
+  .card .preview,
+  .tools,
   .media,
   .grip,
-  .segment {
+  .segment,
+  .columnCount,
+  .tileChip,
+  .column {
     transition: none;
     animation: none;
   }
+
+  .card[data-mirrored="true"] .preview {
+    transform: none;
+  }
+}
+.savedSegments {
+  position: absolute;
+  top: 32px;
+  right: 6px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: var(--tray-overlay);
+  pointer-events: auto;
 }

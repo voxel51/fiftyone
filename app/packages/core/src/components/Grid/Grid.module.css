@@ -101,3 +101,81 @@
   top: 0;
   width: 100%;
 }
+
+/* Keep selected/focused controls visible; reveal the rest in the top 40%. */
+.spotlightGrid
+  [data-fo-selection-hover="false"]
+  [data-fo-selection-checkbox]:not(:has(:checked)):not(:focus-within) {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* The top gradient belongs to the selection controls' hover region. */
+.spotlightGrid [data-fo-selection-hover="false"] [data-fo-thumbnail-selector] {
+  background: none;
+}
+
+/* Bucket chips replace the checkbox while keeping thumbnail titles visible. */
+.spotlightGrid[data-selection-buckets] [data-fo-selection-checkbox] {
+  display: none;
+}
+
+.spotlightGrid[data-selection-buckets] [data-fo-thumbnail-selector] {
+  pointer-events: none;
+  justify-content: flex-end;
+}
+
+/* ---------------------------------------------------------------------------
+ * Tray ↔ grid correspondence. Pointing at a selection tray card marks its
+ * tile; the media eases in a touch (inside the tile's own frame, so rows
+ * never overlap) and the selection checkbox winks once.
+ * ------------------------------------------------------------------------- */
+
+.spotlightGrid [data-fo-looker-host] {
+  transition: transform 180ms ease-out;
+}
+
+/* Keep the hover outline inside the tile and above the media. */
+.spotlightGrid
+  [data-fo-selection-hover]:where(:hover)
+  > [data-fo-tile-overlay] {
+  outline: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+  outline-offset: -1px;
+}
+
+.spotlightGrid [data-fo-tile-highlight] > [data-fo-looker-host] {
+  transform: scale(1.04);
+}
+
+@keyframes tileWink {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.35) rotate(-8deg);
+  }
+  65% {
+    transform: scale(0.9);
+  }
+}
+
+.spotlightGrid [data-fo-tile-highlight] label > input[type="checkbox"] ~ span,
+.spotlightGrid [data-fo-tile-highlight] :global(.MuiCheckbox-root) svg {
+  animation: tileWink 520ms ease-in-out 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spotlightGrid [data-fo-looker-host] {
+    transition: none;
+  }
+
+  .spotlightGrid [data-fo-tile-highlight] > [data-fo-looker-host] {
+    transform: none;
+  }
+
+  .spotlightGrid [data-fo-tile-highlight] label > input[type="checkbox"] ~ span,
+  .spotlightGrid [data-fo-tile-highlight] :global(.MuiCheckbox-root) svg {
+    animation: none;
+  }
+}

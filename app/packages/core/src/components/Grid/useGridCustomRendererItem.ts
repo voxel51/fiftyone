@@ -55,7 +55,7 @@ export function useGridCustomRendererItem(
     ({ snapshot }) =>
       (sampleId: string) =>
         selectionRef.current.enabled
-          ? selectionRef.current.selected.has(sampleId)
+          ? selectionRef.current.membership.has(sampleId)
           : snapshot.getLoadable(fos.selectedSamples).getValue().has(sampleId),
     [],
   );

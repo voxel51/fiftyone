@@ -7,6 +7,7 @@ import {
   listRanges,
   rangeDomain,
   scopePhrase,
+  selectionPills,
   streamsLabel,
   type SegmentMember,
 } from "./format";
@@ -42,6 +43,18 @@ describe("scopePhrase", () => {
       }),
     ).toMatch(/^selected 1 full episode · 2 segments/);
   });
+
+  it("names the bucket an explicit scope came from, never the results scope", () => {
+    expect(scopePhrase("explicit", counts(3), samples, "Keep")).toBe(
+      "3 selected samples in Keep",
+    );
+    expect(scopePhrase("explicit", counts(1, 2), samples, "Unsure")).toMatch(
+      /segments across 1 sample in Unsure$/,
+    );
+    expect(scopePhrase("results", counts(16), samples, "Keep")).toBe(
+      "all 16 samples in view",
+    );
+  });
 });
 
 function segment(
@@ -56,6 +69,68 @@ function segment(
     range: { start, end, timebase, streams, provenance: [] },
   };
 }
+
+describe("selectionPills", () => {
+  const episodes = { one: "episode", many: "episodes", temporal: true };
+  const clips = { one: "clip", many: "clips", temporal: false };
+  it("names the exact unit for whole parents", () => {
+    expect(
+      selectionPills(
+        {
+          episodes: 4,
+          fullEpisodes: 4,
+          segments: 0,
+          segmentEpisodes: 0,
+          unavailable: 0,
+        },
+        clips,
+      ),
+    ).toEqual([
+      { kind: "episode", count: 4, noun: "clips", detail: "4 clips" },
+    ]);
+    expect(
+      selectionPills(
+        {
+          episodes: 1,
+          fullEpisodes: 1,
+          segments: 0,
+          segmentEpisodes: 0,
+          unavailable: 0,
+        },
+        episodes,
+      ),
+    ).toEqual([
+      { kind: "episode", count: 1, noun: "episode", detail: "1 episode" },
+    ]);
+  });
+  it("aggregates one pill per archetype when parents and segments mix", () => {
+    expect(
+      selectionPills(
+        {
+          episodes: 3,
+          fullEpisodes: 2,
+          segments: 3,
+          segmentEpisodes: 1,
+          unavailable: 0,
+        },
+        episodes,
+      ),
+    ).toEqual([
+      {
+        kind: "episode",
+        count: 2,
+        noun: "episodes",
+        detail: "2 full episodes",
+      },
+      {
+        kind: "segment",
+        count: 3,
+        noun: "segments",
+        detail: "3 segments across 1 episode",
+      },
+    ]);
+  });
+});
 
 describe("selection display formatting", () => {
   it("formats bounds per timebase without altering identity values", () => {

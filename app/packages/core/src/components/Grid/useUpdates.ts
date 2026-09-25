@@ -4,7 +4,10 @@ import { RENDER_STATUS_PENDING } from "@fiftyone/looker/src/worker/shared";
 import type Spotlight from "@fiftyone/spotlight";
 import type { ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
-import { useGridSelection } from "@fiftyone/state/src/selection";
+import {
+  useGridSelectionDataset,
+  useSelectionMembership,
+} from "@fiftyone/state/src/selection";
 import { useCallback, useEffect, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { useDetectNewActiveLabelFields } from "../Sidebar/useDetectNewActiveLabelFields";
@@ -75,7 +78,8 @@ const useItemUpdater = (
     modal: false,
   });
   const selected = useRecoilValue(fos.selectedSamples);
-  const selection = useGridSelection();
+  const { enabled, domainId } = useGridSelectionDataset();
+  const membership = useSelectionMembership(domainId);
   const style = useRecoilValue(fos.sampleSelectionStyle);
 
   return useCallback(
@@ -119,8 +123,9 @@ const useItemUpdater = (
         // todo: decouple async manager from looker state and pass options in
         // handleNewOverlays / refreshSample
         const sampleId = id.description;
-        const isSelected = selection.enabled
-          ? selection.selected.has(sampleId)
+        // A tile reads as selected when any bucket holds it.
+        const isSelected = enabled
+          ? membership.has(sampleId)
           : selected.has(sampleId);
         const { selectionType, selectionIcon } = fos.resolveSelectionIcon(
           selected,
@@ -149,15 +154,7 @@ const useItemUpdater = (
         entry.updateOptions({}, shouldHardReload);
       };
     },
-    [
-      cache,
-      getNewFields,
-      options,
-      selected,
-      style,
-      selection.enabled,
-      selection.selected,
-    ],
+    [cache, getNewFields, options, selected, style, enabled, membership],
   );
 };
 

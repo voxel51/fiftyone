@@ -1,5 +1,7 @@
 import { registerGridSelectionAction } from "@fiftyone/multimodal/extensions/grid-selection";
 import { useEffect } from "react";
+import { removeFromSubsetAction } from "./RemoveFromSubsetAction";
+import { similaritySelectionAction } from "./SimilarityAction";
 import { addToSubsetAction } from "./SubsetAction";
 import { tagSelectionAction } from "./TagAction";
 import { hideSelectedAction, showOnlySelectedAction } from "./ViewActions";
@@ -14,7 +16,9 @@ export function useRegisterSelectionActions() {
     if (consumers++ === 0) {
       const disposers = [
         addToSubsetAction,
+        removeFromSubsetAction,
         tagSelectionAction,
+        similaritySelectionAction,
         showOnlySelectedAction,
         hideSelectedAction,
       ].map(registerGridSelectionAction);

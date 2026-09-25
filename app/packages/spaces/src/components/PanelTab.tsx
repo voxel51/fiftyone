@@ -57,6 +57,7 @@ export default function PanelTab({ node, active, spaceId }: PanelTabProps) {
         });
       }}
       $active={active}
+      style={panelName === "Samples" ? { paddingRight: 0 } : undefined}
       data-cy={`panel-tab-${(panelName as string).toLowerCase()}`}
     >
       {!panel && pending && <Skeleton width={48} height={24} />}

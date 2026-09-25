@@ -3,11 +3,15 @@ import type { CSSProperties } from "react";
 
 /** Fixed card geometry, shared by the stylesheet and the resize math. */
 export const CARD_WIDTH = 208;
-export const CARD_HEIGHT = 166;
 export const CARD_PREVIEW_HEIGHT = 106;
+/** A card is its media plus two 1px borders; nothing is captioned. */
+export const CARD_HEIGHT = CARD_PREVIEW_HEIGHT + 2;
 /** Cards keep one height; their width follows the media, within reason. */
 export const CARD_MIN_WIDTH = 106;
 export const CARD_MAX_WIDTH = 320;
+/** Multimodal previews are square. */
+export const MULTIMODAL_CARD_WIDTH = 144;
+export const MULTIMODAL_CARD_HEIGHT = MULTIMODAL_CARD_WIDTH;
 
 /**
  * The card width that shows the whole media at the fixed preview height.
@@ -27,10 +31,6 @@ export function cardWidth(aspectRatio: number | null | undefined) {
 export const STRIP_GAP = 8;
 export const STRIP_PADDING_TOP = 14;
 export const STRIP_PADDING_BOTTOM = 8;
-/** One row of cards plus the strip's padding. */
-export const STRIP_ROW_HEIGHT = CARD_HEIGHT + STRIP_GAP;
-export const STRIP_MIN_HEIGHT =
-  CARD_HEIGHT + STRIP_PADDING_TOP + STRIP_PADDING_BOTTOM;
 /** Fraction of the grid pane the strip may grow to before scrolling. */
 export const STRIP_MAX_FRACTION = 0.4;
 
@@ -63,6 +63,7 @@ export const trayTheme = {
   "--tray-font": cssVar.fontFamily.sans,
   "--tray-font-xs": cssVar.text.xs,
   "--tray-font-sm": cssVar.text.sm,
+  "--tray-font-md": cssVar.text.md,
   "--tray-space-xs": cssVar.spacing.xs,
   "--tray-space-sm": cssVar.spacing.sm,
   "--tray-space-md": cssVar.spacing.md,
@@ -72,8 +73,14 @@ export const trayTheme = {
   "--tray-card-w": `${CARD_WIDTH}px`,
   "--tray-card-w-min": `${CARD_MIN_WIDTH}px`,
   "--tray-card-h": `${CARD_HEIGHT}px`,
-  "--tray-preview-h": `${CARD_PREVIEW_HEIGHT}px`,
   "--tray-strip-gap": `${STRIP_GAP}px`,
   "--tray-strip-pad-top": `${STRIP_PADDING_TOP}px`,
   "--tray-strip-pad-bottom": `${STRIP_PADDING_BOTTOM}px`,
+} as CSSProperties;
+
+/** Larger square previews keep the fold card and strip geometry in step. */
+export const multimodalTrayTheme = {
+  ...trayTheme,
+  "--tray-card-w-min": `${MULTIMODAL_CARD_WIDTH}px`,
+  "--tray-card-h": `${MULTIMODAL_CARD_HEIGHT}px`,
 } as CSSProperties;

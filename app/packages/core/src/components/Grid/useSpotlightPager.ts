@@ -18,8 +18,7 @@ import type { Subscription } from "relay-runtime";
 import type { Records } from "./useRecords";
 import useTimeout from "./useTimeout";
 import { handleNode } from "./utils";
-
-export const PAGE_SIZE = 20;
+import { PAGE_SIZE } from "./constants";
 
 export type SampleStore = WeakMap<ID, { sample: fos.Sample; index: number }>;
 
@@ -81,9 +80,9 @@ const useSpotlightPager = ({
   const keys = useRef(new Set<string>());
 
   const pages = useMemo(() => {
-    /** Track already requested pages */
+    /** Track pages successfully fetched since the last reset. */
     clearRecords;
-    return new Set();
+    return new Set<number>();
   }, [clearRecords]);
 
   const page = useRecoilCallback(
@@ -100,12 +99,11 @@ const useSpotlightPager = ({
           fos.fieldSchema({ space: fos.State.SPACE.SAMPLE }),
         );
 
-        // if a page has not been requested by this callback, require a network
-        // request
+        // Until a fresh response arrives, concurrent requests must also go to
+        // the network rather than reading the previous grid's Relay data.
         const fetchPolicy = pages.has(pageNumber)
           ? "store-or-network"
           : "network-only";
-        pages.add(pageNumber);
 
         return new Promise<Response<number, fos.Sample>>((resolve) => {
           subscription = fetchQuery<foq.paginateSamplesQuery>(
@@ -128,6 +126,7 @@ const useSpotlightPager = ({
                   handleTimeout(data.samples.queryTime);
                 return;
               }
+              pages.add(pageNumber);
               const items = processSamplePageData(
                 pageNumber,
                 store,
@@ -165,6 +164,7 @@ const useSpotlightPager = ({
       handleError,
       handleTimeout,
       pager,
+      pages,
       store,
       zoom,
       selectionEnabled,

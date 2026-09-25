@@ -1,12 +1,16 @@
 import * as fos from "@fiftyone/state";
 import {
   getSubset,
+  getSubsetCounts,
   listSubsets,
-  useEpisodeSelectionActions,
+  selectionDomainId,
   useGridSelectionBoundary,
   useGridSelectionDataset,
   useInvalidateSelectionScope,
+  useOpenSelectionBoundary,
+  useSelectionBucketCommands,
   useSelectionScopeRevision,
+  viewConversion,
   type SavedSubset,
   type SelectionBoundary,
   type SelectionCounts,
@@ -21,19 +25,57 @@ import { useCallback, useEffect, useState } from "react";
  * never silently become the target of actions in another.
  */
 export function useOpenSubset(datasetId: string) {
-  const { domainId } = useGridSelectionDataset();
+  const { domainId, subsetViewId } = useGridSelectionDataset();
   const [, setBoundary] = useGridSelectionBoundary();
-  const { clear } = useEpisodeSelectionActions(domainId);
+  const { clearAll: clear } = useSelectionBucketCommands(domainId);
   const clearTemporalTags = fos.useClearTemporalTagConstraint();
   const invalidate = useInvalidateSelectionScope(datasetId);
+  const openBoundary = useOpenSelectionBoundary();
+  const setView = fos.useSetView();
+  const setGroupSlice = fos.useSetGroupSlice();
+  const groupSlices = fos.useGroupSlices();
   return useCallback(
-    (subsetId?: string, subsetScope?: SelectionBoundary["subsetScope"]) => {
+    (
+      subsetId?: string,
+      subsetScope?: SelectionBoundary["subsetScope"],
+      view?: SavedSubset["view"],
+      preferredGroupSlice?: string | null,
+    ) => {
       invalidate();
+      if (preferredGroupSlice && groupSlices.includes(preferredGroupSlice))
+        setGroupSlice(preferredGroupSlice);
       clearTemporalTags();
       clear();
-      setBoundary({ subsetId, subsetScope });
+      // An exact frame/range view belongs to its subset. Leaving that scope
+      // must also leave the conversion, especially when deleting the subset.
+      const nextView =
+        view === undefined && !subsetId && subsetViewId ? null : view;
+      const targetDomain =
+        nextView === undefined
+          ? domainId
+          : selectionDomainId(
+              datasetId,
+              viewConversion(nextView ?? [])?.key ?? null,
+            );
+      if (targetDomain === domainId) setBoundary({ subsetId, subsetScope });
+      else {
+        openBoundary(targetDomain, { subsetId, subsetScope });
+        setView([...(nextView ?? [])]);
+      }
     },
-    [invalidate, clearTemporalTags, clear, setBoundary],
+    [
+      invalidate,
+      clearTemporalTags,
+      clear,
+      setBoundary,
+      datasetId,
+      domainId,
+      subsetViewId,
+      openBoundary,
+      setView,
+      setGroupSlice,
+      groupSlices,
+    ],
   );
 }
 
@@ -46,9 +88,10 @@ export const SUBSET_PAGE_SIZE = 5;
  */
 export function useSavedSubsets(
   datasetId: string,
-  options: { search?: string; page?: number } = {},
+  options: { search?: string; page?: number; view?: readonly unknown[] } = {},
 ) {
   const { search = "", page = 0 } = options;
+  const viewKey = JSON.stringify(options.view);
   const revision = useSelectionScopeRevision(datasetId);
   const [state, setState] = useState<{
     page: SubsetPage | null;
@@ -67,6 +110,7 @@ export function useSavedSubsets(
       search: search.trim() || undefined,
       skip: page * SUBSET_PAGE_SIZE,
       limit: SUBSET_PAGE_SIZE,
+      ...(viewKey !== undefined && { view: JSON.parse(viewKey) }),
     })
       .then((value) => {
         if (active) setState({ page: value, error: null, loading: false });
@@ -78,7 +122,7 @@ export function useSavedSubsets(
     return () => {
       active = false;
     };
-  }, [datasetId, revision, reloads, search, page]);
+  }, [datasetId, revision, reloads, search, page, viewKey]);
   return {
     subsets: state.page?.subsets ?? null,
     /** How many subsets match the search. */
@@ -91,10 +135,11 @@ export function useSavedSubsets(
   };
 }
 
-/** One subset by id with live counts, or null while unknown or when there is none. */
+/** Loads subset metadata first, then optionally resolves live counts. */
 export function useSavedSubset(
   datasetId: string,
   subsetId: string | undefined,
+  includeCounts = false,
 ) {
   const revision = useSelectionScopeRevision(datasetId);
   const [state, setState] = useState<{
@@ -105,19 +150,31 @@ export function useSavedSubset(
   // This effect reads the subset whenever its id or a subset write changes.
   useEffect(() => {
     if (!datasetId || !subsetId) return undefined;
-    let active = true;
+    const controller = new AbortController();
     getSubset(datasetId, subsetId)
-      .then((subset) => {
-        if (active) setState({ id: subsetId, subset, error: null });
+      .then(async (subset) => {
+        if (controller.signal.aborted) return;
+        setState({ id: subsetId, subset, error: null });
+        if (includeCounts && subset.counts === null) {
+          try {
+            const counted = await getSubsetCounts(
+              datasetId,
+              subsetId,
+              controller.signal,
+            );
+            if (!controller.signal.aborted)
+              setState({ id: subsetId, subset: counted, error: null });
+          } catch {
+            // Keep usable metadata when live counts are temporarily unavailable.
+          }
+        }
       })
       .catch((cause: unknown) => {
-        if (active)
+        if (!controller.signal.aborted)
           setState({ id: subsetId, subset: null, error: String(cause) });
       });
-    return () => {
-      active = false;
-    };
-  }, [datasetId, subsetId, revision]);
+    return () => controller.abort();
+  }, [datasetId, subsetId, revision, includeCounts]);
   if (!subsetId) return { subset: null, error: null, loading: false };
   const current = state.id === subsetId;
   return {
@@ -141,7 +198,7 @@ export function defaultSubsetScope(
  * subset holding both whole members and segments offers each, named.
  */
 export function subsetRows(subset: SavedSubset, unit: SelectionUnit) {
-  const { fullEpisodes, segments } = subset.counts;
+  const { fullEpisodes, segments } = subset.memberCounts;
   const rows: {
     scope: NonNullable<SelectionBoundary["subsetScope"]>;
     count: number;

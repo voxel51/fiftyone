@@ -1,3 +1,4 @@
+import { useSelectionSubsetDisabledReason } from "@fiftyone/state";
 import type {
   GridSelectionAction,
   GridSelectionActionContext,
@@ -7,25 +8,22 @@ import {
   memberCounts,
   normalizeSelectionMembers,
   scopeBody,
-  selectionScopeLabel,
   subsetRequest,
   useInvalidateSelectionScope,
+  useSubsetJobs,
   type SavedSubset,
   type SelectionCounts,
   type SelectionScope,
   type SelectionUnit,
-  type SubsetAddResult,
 } from "@fiftyone/state/src/selection";
 import {
   AddIcon,
   Button,
-  CheckCircleOutlineIcon,
   ErrorOutlineIcon,
   FolderIcon,
   GridViewIcon,
   Input,
   LoadingDots,
-  LockIcon,
   RefreshIcon,
   ResizeBehavior,
   Size,
@@ -39,20 +37,21 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import ActionEntry from "./ActionEntry";
 import ActionSurface from "./ActionSurface";
-import { plural, scopePhrase } from "./format";
+import { savedSubsetLabel, scopePhrase } from "./format";
 import { Notice } from "./Notice";
 import styles from "./SelectionTray.module.css";
 import SubsetBrowser from "./SubsetBrowser";
-import {
-  defaultSubsetScope,
-  useOpenSubset,
-  useSavedSubset,
-} from "./useSubsetScope";
+import Segmented from "./Segmented";
+import { useGroupActionScope } from "./useGroupActionScope";
+import { SubsetJobStatus } from "./SubsetJobs";
 
 /** A frozen scope and how it will be saved. */
 export interface Capture {
   datasetId: string;
   mediaType: string;
+  /** The view that gives captured entities their identity. */
+  view?: readonly unknown[];
+  preferredGroupSlice?: string;
   unit: SelectionUnit;
   source: GridSelectionActionContext["source"];
   /** The members to save, or how to freeze them once the panel is open. */
@@ -61,8 +60,8 @@ export interface Capture {
   counts: SelectionCounts | null;
   /** Add into an existing subset, or save only as a new one. */
   mode: "add" | "create";
-  /** The open subset, which is a saved selection and cannot change. */
-  frozenId?: string;
+  /** The bucket an explicit scope came from, when it has a name to show. */
+  within?: string;
 }
 
 function AddToSubset({
@@ -70,39 +69,32 @@ function AddToSubset({
   disabledReason,
   surface = "toolbar",
 }: GridSelectionActionProps) {
+  const permission = useSelectionSubsetDisabledReason();
   const [capture, setCapture] = useState<Capture | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  // Inside an open subset the only write is a new subset: the open one is a
-  // saved selection and never changes underneath the person browsing it.
-  const frozenId = context.boundary.subsetId;
-  const label = frozenId ? "Save as new subset" : "Add to subset";
-  const begin = async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      const resolved = await context.resolve();
-      setCapture({
-        datasetId: context.datasetId,
-        mediaType: context.mediaType,
-        unit: context.unit,
-        source: context.source,
-        counts: context.counts,
-        scope:
-          resolved.kind === "members"
-            ? {
-                kind: "members",
-                members: normalizeSelectionMembers(resolved.members),
-              }
-            : resolved,
-        mode: frozenId ? "create" : "add",
-        frozenId,
-      });
-    } catch (cause) {
-      setError(String(cause));
-    } finally {
-      setBusy(false);
-    }
+  const scoped = Boolean(context.boundary.subsetId);
+  const label = scoped ? "Save as new subset" : "Add to subset";
+  const begin = () => {
+    if (permission) return;
+    setCapture({
+      datasetId: context.datasetId,
+      mediaType: context.mediaType,
+      view: context.view,
+      preferredGroupSlice: context.preferredGroupSlice,
+      unit: context.unit,
+      source: context.source,
+      counts: context.counts,
+      within: context.bucket?.name,
+      scope: async () => {
+        const resolved = await context.resolve();
+        return resolved.kind === "members"
+          ? {
+              kind: "members",
+              members: normalizeSelectionMembers(resolved.members),
+            }
+          : resolved;
+      },
+      mode: scoped ? "create" : "add",
+    });
   };
   const close = () => setCapture(null);
   return (
@@ -117,10 +109,8 @@ function AddToSubset({
             label={label}
             icon={GridViewIcon}
             surface={surface}
-            onClick={() => (capture ? close() : void begin())}
-            disabledReason={disabledReason}
-            busy={busy}
-            busyLabel="Preparing…"
+            onClick={() => (capture ? close() : begin())}
+            disabledReason={permission || disabledReason}
             aria-haspopup="dialog"
             aria-expanded={Boolean(capture)}
           />
@@ -128,23 +118,15 @@ function AddToSubset({
       >
         {capture && <SubsetPanel capture={capture} close={close} />}
       </ActionSurface>
-      {error && (
-        <Text
-          role="alert"
-          variant={TextVariant.Xs}
-          color={TextColor.Destructive}
-        >
-          {error}
-        </Text>
-      )}
     </>
   );
 }
 
+const EMPTY_VIEW: readonly unknown[] = [];
+
 interface Pending {
   subset: SavedSubset;
   operationId: string;
-  prepared: boolean;
 }
 
 /**
@@ -162,21 +144,26 @@ export function SubsetPanel({
   /** Off when a surrounding modal already titles the panel. */
   heading?: boolean;
 }) {
+  const permission = useSelectionSubsetDisabledReason();
   const invalidate = useInvalidateSelectionScope(capture.datasetId);
-  const openSubset = useOpenSubset(capture.datasetId);
+  const jobs = useSubsetJobs(capture.datasetId);
+  const [jobId, setJobId] = useState<string>();
   const creating = capture.mode === "create";
   const [view, setView] = useState<"list" | "form">(creating ? "form" : "list");
-  const [scope, setScope] = useState<SelectionScope | null>(
+  const [baseScope, setScope] = useState<SelectionScope | null>(
     typeof capture.scope === "function" ? null : capture.scope,
   );
+  const groupScope = useGroupActionScope(
+    capture.datasetId,
+    capture.mediaType,
+    baseScope,
+    capture.view ?? EMPTY_VIEW,
+  );
+  const scope = groupScope.scope;
   const [scopeError, setScopeError] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [pending, setPending] = useState<Pending | null>(null);
-  const [result, setResult] = useState<{
-    subset: SavedSubset;
-    added: SubsetAddResult;
-  } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -202,47 +189,28 @@ export function SubsetPanel({
       : scope.counts
     : capture.counts;
   const phrase = counts
-    ? scopePhrase(capture.source, counts, unit)
+    ? scopePhrase(capture.source, counts, unit, capture.within)
     : capture.source === "results"
       ? `all ${unit.many} in view`
       : `selected ${unit.many}`;
-  const { subset: frozen } = useSavedSubset(
-    capture.datasetId,
-    capture.frozenId,
-  );
-  const memberNoun = (count: number) =>
-    counts?.segments
-      ? plural(count, "member")
-      : plural(count, unit.one, unit.many);
 
   const addTo = async (subset: SavedSubset, resume: Pending | null) => {
-    if (!scope) return;
-    let operation: Pending =
+    if (!scope || permission) return;
+    const operation: Pending =
       resume?.subset.id === subset.id
         ? resume
-        : { subset, operationId: crypto.randomUUID(), prepared: false };
+        : { subset, operationId: crypto.randomUUID() };
     setPending(operation);
     setBusy(true);
     setError(null);
     try {
-      if (!operation.prepared) {
-        await subsetRequest<SubsetAddResult>(capture.datasetId, "/add", {
-          phase: "prepare",
-          subsetId: subset.id,
-          operationId: operation.operationId,
-          ...scopeBody(scope),
-        });
-        operation = { ...operation, prepared: true };
-        setPending(operation);
-      }
-      const added = await subsetRequest<SubsetAddResult>(
-        capture.datasetId,
-        "/add",
-        { phase: "apply", operationId: operation.operationId },
-      );
-      setResult({ subset, added });
-      setPending(null);
-      invalidate();
+      const id = await jobs.start(subset, {
+        subsetId: subset.id,
+        operationId: operation.operationId,
+        ...scopeBody(scope),
+        view: capture.view,
+      });
+      setJobId(id);
     } catch (cause) {
       setError(String(cause));
     } finally {
@@ -250,7 +218,7 @@ export function SubsetPanel({
     }
   };
   const createAndAdd = async () => {
-    if (!scope || (!pending && !name.trim())) return;
+    if (permission || !scope || (!pending && !name.trim())) return;
     let subset = pending?.subset;
     if (!subset) {
       setBusy(true);
@@ -259,6 +227,8 @@ export function SubsetPanel({
         subset = await subsetRequest<SavedSubset>(capture.datasetId, "", {
           name: name.trim(),
           description: description.trim() || undefined,
+          view: capture.view,
+          preferredGroupSlice: capture.preferredGroupSlice,
         });
         invalidate();
       } catch (cause) {
@@ -281,16 +251,29 @@ export function SubsetPanel({
       {title}
     </Text>
   ) : null;
-  const scopeStatus = scope ? null : scopeError ? (
+  const expansionChoice = groupScope.enabled ? (
+    <Segmented<"slice" | "all">
+      label="Slices"
+      value={groupScope.choice}
+      disabled={busy || Boolean(pending)}
+      options={[
+        { value: "slice", label: "Selected samples" },
+        { value: "all", label: "All slices of these groups" },
+      ]}
+      onChange={groupScope.setChoice}
+    />
+  ) : null;
+  const captureError = groupScope.error ?? scopeError;
+  const scopeStatus = scope ? null : captureError ? (
     <span className={styles.inlineAlert} role="alert">
       <Text variant={TextVariant.Sm} color={TextColor.Destructive}>
-        {scopeError}
+        {captureError}
       </Text>
       <Button
         size={Size.Xs}
         variant={Variant.Borderless}
         leadingIcon={RefreshIcon}
-        onClick={() => void freeze()}
+        onClick={() => (groupScope.error ? groupScope.retry() : void freeze())}
       >
         Retry
       </Button>
@@ -303,48 +286,14 @@ export function SubsetPanel({
     />
   );
 
-  if (result) {
-    const { added, duplicates } = result.added;
+  if (jobId)
     return (
-      <div className={styles.sheetBody}>
-        {heading}
-        <Notice
-          tone="success"
-          icon={CheckCircleOutlineIcon}
-          role="status"
-          title={
-            added === 0
-              ? `Everything here was already in ${result.subset.name}.`
-              : view === "form"
-                ? `Saved ${memberNoun(added)} as ${result.subset.name}.`
-                : `Added ${memberNoun(added)} to ${result.subset.name}.`
-          }
-        >
-          {added > 0 && duplicates > 0
-            ? `${memberNoun(duplicates)} were already in the subset.`
-            : null}
-        </Notice>
-        <div className={styles.sheetActions}>
-          <Button size={Size.Sm} variant={Variant.Borderless} onClick={close}>
-            Done
-          </Button>
-          <Button
-            size={Size.Sm}
-            variant={Variant.Secondary}
-            onClick={() => {
-              openSubset(
-                result.subset.id,
-                defaultSubsetScope(result.added.counts),
-              );
-              close();
-            }}
-          >
-            Open subset
-          </Button>
-        </div>
-      </div>
+      <SubsetJobStatus
+        datasetId={capture.datasetId}
+        jobId={jobId}
+        close={close}
+      />
     );
-  }
 
   if (view === "form")
     return (
@@ -356,15 +305,8 @@ export function SubsetPanel({
         }}
       >
         {heading}
-        {capture.frozenId && (
-          <span className={styles.lockNote}>
-            <LockIcon size={Size.Sm} color={TextColor.Secondary} />
-            <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
-              {`${frozen?.name ?? "The open subset"} is a saved selection and can't be changed.`}
-            </Text>
-          </span>
-        )}
         {scopeStatus}
+        {expansionChoice}
         <Input
           size={Size.Md}
           aria-label="New subset name"
@@ -396,7 +338,12 @@ export function SubsetPanel({
           <Button
             type="submit"
             size={Size.Md}
-            disabled={busy || !scope || (!pending && !name.trim())}
+            disabled={
+              Boolean(permission) ||
+              busy ||
+              !scope ||
+              (!pending && !name.trim())
+            }
           >
             {busy ? "Saving…" : error ? "Retry" : "Create subset"}
           </Button>
@@ -420,14 +367,16 @@ export function SubsetPanel({
     <div className={styles.sheetBody}>
       {heading}
       {scopeStatus}
+      {expansionChoice}
       <SubsetBrowser
         datasetId={capture.datasetId}
+        view={capture.view ?? []}
         renderSubset={(subset) => (
           <button
             key={subset.id}
             type="button"
             className={styles.row}
-            disabled={busy || !scope}
+            disabled={Boolean(permission) || busy || !scope}
             onClick={() => void addTo(subset, pending)}
           >
             <FolderIcon size={Size.Md} color={TextColor.Secondary} />
@@ -439,12 +388,12 @@ export function SubsetPanel({
                 className={subset.description ? styles.rowClamp : undefined}
                 title={subset.description ?? undefined}
               >
-                {subset.description ?? selectionScopeLabel(subset.counts, unit)}
+                {subset.description ?? savedSubsetLabel(subset, unit)}
               </Text>
             </span>
             {subset.description && (
               <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-                {selectionScopeLabel(subset.counts, unit)}
+                {savedSubsetLabel(subset, unit)}
               </Text>
             )}
             {busy && pending?.subset.id === subset.id && (
@@ -496,9 +445,6 @@ export const addToSubsetAction: GridSelectionAction = {
   supports: () => true,
   scope: "explicit-or-results",
   memberKinds: ["episode", "segment"],
-  unavailable: (context) =>
-    context.conversion
-      ? "Saved subsets are available in the samples view"
-      : null,
+  unavailable: () => null,
   Component: AddToSubset,
 };

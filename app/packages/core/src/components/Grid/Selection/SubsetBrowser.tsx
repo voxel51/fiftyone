@@ -12,7 +12,7 @@ import {
   TextVariant,
   Variant,
 } from "@voxel51/voodo";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import styles from "./SelectionTray.module.css";
 import { SUBSET_PAGE_SIZE, useSavedSubsets } from "./useSubsetScope";
 
@@ -23,10 +23,12 @@ import { SUBSET_PAGE_SIZE, useSavedSubsets } from "./useSubsetScope";
  */
 export default function SubsetBrowser({
   datasetId,
+  view,
   renderSubset,
   emptyText = "No saved subsets yet",
 }: {
   datasetId: string;
+  view?: readonly unknown[];
   /** Rows for one subset; a mixed subset may render more than one. */
   renderSubset: (subset: SavedSubset) => ReactNode;
   emptyText?: string;
@@ -36,8 +38,12 @@ export default function SubsetBrowser({
   const { subsets, total, count, loading, error } = useSavedSubsets(datasetId, {
     search,
     page,
+    view,
   });
   const pages = Math.max(1, Math.ceil(total / SUBSET_PAGE_SIZE));
+  useEffect(() => {
+    if (!loading && !error) setPage((current) => Math.min(current, pages - 1));
+  }, [loading, error, pages]);
   const first = total ? page * SUBSET_PAGE_SIZE + 1 : 0;
   const last = Math.min(total, (page + 1) * SUBSET_PAGE_SIZE);
   return (

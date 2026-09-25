@@ -1,4 +1,4 @@
-import { rangeDomain, type SegmentMember } from "./format";
+import { INTEGER, rangeDomain, type SegmentMember } from "./format";
 import styles from "./SelectionTray.module.css";
 
 interface Props {
@@ -31,17 +31,22 @@ export default function RangeTrack({
       data-tone={tone}
       aria-hidden="true"
     >
-      {members.map((member, index) => {
-        const left = percent(member.range.start);
-        const width = Math.max(percent(member.range.end) - left, 1);
-        return (
-          <span
-            key={`${member.range.start}:${member.range.end}:${index}`}
-            className={styles.rangeBar}
-            style={{ left: `${left}%`, width: `${width}%` }}
-          />
-        );
-      })}
+      {members
+        .filter(
+          (member) =>
+            INTEGER.test(member.range.start) && INTEGER.test(member.range.end),
+        )
+        .map((member, index) => {
+          const left = percent(member.range.start);
+          const width = Math.max(percent(member.range.end) - left, 1);
+          return (
+            <span
+              key={`${member.range.start}:${member.range.end}:${index}`}
+              className={styles.rangeBar}
+              style={{ left: `${left}%`, width: `${width}%` }}
+            />
+          );
+        })}
     </div>
   );
 }
