@@ -99,6 +99,6 @@ export const selectionRangeConstraintBridge = {
 
 /** A late result from another dataset must never constrain this grid. */
 export function useSelectionRangeConstraint(datasetName: string | null) {
-  const { value } = useAtomValue(constraintAtom);
+  const { value } = useAtomValue(constraintAtom, { store: getDefaultStore() });
   return value?.datasetName === datasetName ? value : undefined;
 }

@@ -1,3 +1,4 @@
+import { Provider, createStore } from "jotai";
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { combineSelectionCaptures } from "./client";
@@ -45,6 +46,22 @@ const snapshot = (id: string) => ({
 });
 
 describe("frozen range constraint", () => {
+  it("receives bridge updates inside a scoped provider", () => {
+    const store = createStore();
+    const { result } = renderHook(
+      () => useSelectionRangeConstraint("recordings"),
+      {
+        wrapper: ({ children }) => (
+          <Provider store={store}>{children}</Provider>
+        ),
+      },
+    );
+    act(() => bridge.capture({ ...capture, error: "Unavailable source" }));
+    expect(result.current?.error).toBe("Unavailable source");
+    act(() => bridge.reset());
+    expect(result.current).toBeUndefined();
+  });
+
   it("uploads bounded batches then publishes only the union reference", async () => {
     vi.mocked(combineSelectionCaptures)
       .mockResolvedValueOnce(snapshot("a"))

@@ -113,10 +113,12 @@ def get_job(dataset, job_id):
     job = coordinator.get(job_id)
     _check_owner(dataset, job)
     expires = job.get("lease_expires_at")
+    if expires is not None and expires.tzinfo is None:
+        expires = expires.replace(tzinfo=timezone.utc)
     if (
         job["state"] == "running"
         and expires
-        and expires.replace(tzinfo=timezone.utc) <= datetime.now(timezone.utc)
+        and expires <= datetime.now(timezone.utc)
     ):
         coordinator.fail_expired(
             job_id, "The server worker stopped. Retry to continue."

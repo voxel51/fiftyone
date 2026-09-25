@@ -89,7 +89,12 @@ function writeCaptures(datasetId: string, value: Captures) {
   try {
     const key = STORAGE_PREFIX + datasetId;
     if (value.size)
-      storage()?.setItem(key, JSON.stringify([...value.values()]));
+      storage()?.setItem(
+        key,
+        JSON.stringify(
+          [...value.values()].map(({ node: _node, ...capture }) => capture),
+        ),
+      );
     else storage()?.removeItem(key);
   } catch {
     /* Storage is a convenience; the in-memory selection is authoritative. */

@@ -313,17 +313,15 @@ class ConvertedSubsetTests(unittest.TestCase):
     def test_frame_membership_operations_do_not_materialize_a_view(self):
         frames = self.dataset.to_frames(sample_frames="dynamic")
         members = list(fosr.iter_members(frames.limit(2)))
-        subset = fosub.create_subset(
-            self.dataset, "No materialization", view=frames._serialize()
-        )["id"]
         with patch.object(
-            fosub,
-            "load_materialized_view",
+            fo.DatasetView,
+            "_build",
             side_effect=AssertionError("must not materialize"),
         ):
-            operation = str(uuid4())
-            fosub.prepare_add(self.dataset, subset, operation, members)
-            fosub.apply_add(self.dataset, operation)
+            subset = fosub.create_subset(
+                self.dataset, "No materialization", view=frames._serialize()
+            )["id"]
+            self.add(subset, frames, members)
             self.assertEqual(
                 fosub.subset_counts(self.dataset, subset)["episodes"], 2
             )

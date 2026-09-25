@@ -1114,7 +1114,9 @@ def prepare_subset_add(dataset, data, progress=None, preview=True):
         else None
     )
     stages = snapshot.get("view") if snapshot else data.get("view")
-    fosub.subset_base_view(dataset, data["subsetId"], stages or [])
+    subset = fosub.get_subset(dataset, data["subsetId"])
+    if fosub.subset_view_key(stages or [], dataset) != subset.get("view_key"):
+        raise ValueError("Open this subset in its matching entity view")
     return fosub.prepare_add(
         dataset,
         data["subsetId"],
@@ -1252,7 +1254,13 @@ def selection_availability(dataset, episode_ids, stages=None):
     target = view_dataset(dataset, stages)
     result = {episode_id: {"unavailable": True} for episode_id in episode_ids}
     present = sample_details_map(
-        target, episode_ids, clips=target is not dataset and _is_clips(target)
+        target,
+        [
+            episode_id
+            for episode_id in episode_ids
+            if ObjectId.is_valid(episode_id)
+        ],
+        clips=target is not dataset and _is_clips(target),
     )
     for sample_id, details in present.items():
         result[sample_id] = {"unavailable": False, **details}

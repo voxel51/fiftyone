@@ -73,7 +73,6 @@ def create_subset(
             raise ValueError("The preferred slice must belong to this dataset")
         doc["preferred_group_slice"] = preferred_group_slice
     if prefix:
-        converted = fov.DatasetView._build(dataset, prefix)
         domain = _reference_domain(dataset, prefix)
         if domain and domain[0] == "clip-range":
             # Reconstruct anonymous clips from frozen bounds, never by
@@ -93,7 +92,7 @@ def create_subset(
                 )._serialize()
             ]
         else:
-            doc["view"] = converted._serialize()
+            doc["view"] = fov.DatasetView._build(dataset, prefix)._serialize()
         doc["view_key"] = subset_view_key(prefix, dataset)
     doc["_id"] = _collection("subsets").insert_one(doc).inserted_id
     return _summary(doc)
@@ -1088,9 +1087,9 @@ def _check_operation(operation):
             "Prepare the complete captured operation before adding"
         )
     expires = operation.get("expires_at")
-    if expires is not None and expires.replace(
-        tzinfo=timezone.utc
-    ) <= datetime.now(timezone.utc):
+    if expires is not None and expires.tzinfo is None:
+        expires = expires.replace(tzinfo=timezone.utc)
+    if expires is not None and expires <= datetime.now(timezone.utc):
         raise ValueError("This operation expired; prepare a new operation")
 
 

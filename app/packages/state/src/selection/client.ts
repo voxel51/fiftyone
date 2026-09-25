@@ -432,6 +432,11 @@ async function runSelectionJob<T>(
   signal?.addEventListener("abort", cancel, { once: true });
   try {
     let job = await startSelectionJob<T>(datasetId, kind, request, id);
+    if (signal?.aborted) {
+      // The earlier cancellation may have reached the server before creation.
+      cancel();
+      signal.throwIfAborted();
+    }
     let delay = 100;
     while (job.state === "requested" || job.state === "running") {
       signal?.throwIfAborted();

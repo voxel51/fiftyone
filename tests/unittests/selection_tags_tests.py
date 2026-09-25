@@ -170,10 +170,6 @@ class SelectionTagTests(unittest.TestCase):
         self.assertEqual(self.dataset.count_sample_tags(), {})
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class ImageTagTests(unittest.TestCase):
     def setUp(self):
         self.dataset = fo.Dataset()
@@ -361,3 +357,7 @@ class AppliedTagTests(unittest.TestCase):
         )
         self.assertEqual(result["applied"], {})
         self.assertEqual(result["tags"], [])
+
+
+if __name__ == "__main__":
+    unittest.main()
