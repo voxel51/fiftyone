@@ -1,4 +1,4 @@
-import { ImaVidLooker } from "@fiftyone/looker";
+import { ImaVidLooker, VideoLooker } from "@fiftyone/looker";
 import { getSubscription } from "@fiftyone/looker/src/lookers/imavid/subscribe";
 import { Lookers, useLookerOptions } from "@fiftyone/state";
 import { useEffect, useRef } from "react";
@@ -91,4 +91,30 @@ export const useImavidModalSelectiveRendering = (
 
     (looker as ImaVidLooker).pause();
   }, [lookerOptions]);
+};
+
+/**
+ * Refresh the video looker when the sidebar activates a field it has not
+ * painted yet. The video looker keeps painted frames in a buffer, so there
+ * is no per-field refresh — a new field means re-processing the buffer.
+ */
+export const useVideoModalSelectiveRendering = (
+  id: string,
+  looker: VideoLooker,
+) => {
+  const { getNewFields } = useDetectNewActiveLabelFields({
+    modal: true,
+  });
+
+  const lookerOptions = useLookerOptions(true);
+
+  useEffect(() => {
+    if (!looker) {
+      return;
+    }
+
+    if (getNewFields(id)) {
+      looker.refreshSample();
+    }
+  }, [id, lookerOptions.activePaths, looker, getNewFields]);
 };
