@@ -1,4 +1,5 @@
 import { getFetchFunctionExtended } from "@fiftyone/utilities";
+import type { State } from "../recoil/types";
 import type {
   EpisodeSelection,
   SelectionBoundary,
@@ -22,6 +23,7 @@ export interface SelectionRequest {
 
 /** Exact scope counts, plus details for the parents named in `episodeIds`. */
 export interface SelectionResult {
+  readonly unavailableTotal?: number;
   readonly unavailableGroups?: readonly EpisodeSelection[];
   readonly groups: readonly EpisodeSelection[];
   readonly counts: SelectionCounts;
@@ -30,15 +32,59 @@ export interface SelectionResult {
 /** Count the scope and describe only the requested parents, never every member. */
 export async function resolveSelection(
   datasetId: string,
-  request: SelectionRequest & { readonly episodeIds?: readonly string[] },
+  request: SelectionRequest & {
+    readonly episodeIds?: readonly string[];
+    readonly unavailableSkip?: number;
+  },
   signal?: AbortSignal,
 ): Promise<SelectionResult> {
+  return runSelectionJob<SelectionResult>(datasetId, "scope", request, signal);
+}
+
+/** Resolve clicked tiles promptly without queuing or recounting the whole scope. */
+export async function resolveSelectionDetails(
+  datasetId: string,
+  request: SelectionRequest & {
+    readonly episodeIds: readonly string[];
+    readonly capture?: boolean;
+  },
+  signal?: AbortSignal,
+): Promise<Pick<SelectionResult, "groups">> {
+  if (request.capture && request.expand)
+    return runSelectionJob<Pick<SelectionResult, "groups">>(
+      datasetId,
+      "capture",
+      { ...request, detailsOnly: true },
+      signal,
+    );
+  return (
+    await getFetchFunctionExtended()<unknown, Pick<SelectionResult, "groups">>({
+      method: "POST",
+      path: `/dataset/${encodeURIComponent(datasetId)}/selection`,
+      body: { ...request, detailsOnly: true },
+      signal,
+    })
+  ).response;
+}
+
+/** Where one sample sits in the grid's paginated order. */
+export interface SamplePosition {
+  /** Zero-based index, or null when the scope does not show the sample. */
+  readonly index: number | null;
+}
+
+/** Locate a sample in the current results without paging to it. */
+export async function resolveSamplePosition(
+  datasetId: string,
+  request: SelectionRequest & { readonly sampleId: string },
+  signal?: AbortSignal,
+): Promise<SamplePosition> {
   const response = await getFetchFunctionExtended()<
     typeof request,
-    SelectionResult
+    SamplePosition
   >({
     method: "POST",
-    path: `/dataset/${encodeURIComponent(datasetId)}/selection`,
+    path: `/dataset/${encodeURIComponent(datasetId)}/selection/position`,
     body: request,
     signal,
   });
@@ -57,16 +103,52 @@ export async function createSelectionSnapshot(
   request: SelectionRequest,
   signal?: AbortSignal,
 ): Promise<SelectionSnapshot> {
-  const response = await getFetchFunctionExtended()<
-    SelectionRequest,
-    SelectionSnapshot
-  >({
-    method: "POST",
-    path: `/dataset/${encodeURIComponent(datasetId)}/selection/snapshots`,
-    body: request,
+  return runSelectionJob<SelectionSnapshot>(
+    datasetId,
+    "snapshot",
+    request,
     signal,
-  });
-  return response.response;
+  );
+}
+
+interface CaptureUnionRequest {
+  readonly members: readonly SelectionMember[];
+  readonly snapshotIds: readonly string[];
+  readonly view: readonly unknown[];
+  readonly groupCount?: number;
+}
+
+/** Count overlapping frozen captures without writing their union. */
+export async function countSelectionCaptures(
+  datasetId: string,
+  request: CaptureUnionRequest,
+  signal?: AbortSignal,
+): Promise<SelectionCounts> {
+  const result = await runSelectionJob<SelectionResult>(
+    datasetId,
+    "scope",
+    request,
+    signal,
+  );
+  return result.counts;
+}
+
+/** Freeze a union; transient grid filters keep the normal short expiry. */
+export async function combineSelectionCaptures(
+  datasetId: string,
+  request: CaptureUnionRequest & {
+    readonly groups?: "all";
+    readonly transient?: boolean;
+  },
+  signal?: AbortSignal,
+): Promise<SelectionScope & { readonly kind: "snapshot" }> {
+  const result = await runSelectionJob<SelectionSnapshot>(
+    datasetId,
+    "snapshot",
+    request,
+    signal,
+  );
+  return { kind: "snapshot", ...result };
 }
 
 /** What an action targets: captured members, or a snapshot of all results. */
@@ -105,7 +187,19 @@ export interface SavedSubset {
   readonly id: string;
   readonly name: string;
   readonly description?: string | null;
-  readonly counts: SelectionCounts;
+  /** An opening preference; membership can include any slice. */
+  readonly preferredGroupSlice?: string | null;
+  /** Saved identities, including unavailable references; independent of views. */
+  readonly memberCount: number;
+  readonly memberCounts: {
+    readonly fullEpisodes: number;
+    readonly segments: number;
+  };
+  /** Availability and distinct parent counts, computed only when requested. */
+  readonly counts: SelectionCounts | null;
+  readonly kinds?: readonly ("episode" | "segment")[];
+  /** Conversion that gives saved entities their identity. */
+  readonly view?: readonly State.Stage[] | null;
 }
 
 /** Preview and completion use the same units and immutable operation identity. */
@@ -144,21 +238,42 @@ export interface SubsetPage {
 /** Pages the dataset's subsets, matching names and descriptions to a search. */
 export function listSubsets(
   datasetId: string,
-  options: { search?: string; skip?: number; limit?: number } = {},
+  options: {
+    search?: string;
+    skip?: number;
+    limit?: number;
+    view?: readonly unknown[];
+  } = {},
 ) {
   const params = new URLSearchParams();
   if (options.search) params.set("search", options.search);
   if (options.skip) params.set("skip", String(options.skip));
   if (options.limit) params.set("limit", String(options.limit));
+  if (options.view !== undefined)
+    params.set("view", JSON.stringify(options.view));
   const query = params.toString();
   return subsetRequest<SubsetPage>(datasetId, query ? `?${query}` : "");
 }
 
-/** Reads one subset with its live counts. */
+/** Reads a subset's name and member kinds without scanning its membership. */
 export function getSubset(datasetId: string, subsetId: string) {
   return subsetRequest<SavedSubset>(
     datasetId,
-    `/${encodeURIComponent(subsetId)}`,
+    `/${encodeURIComponent(subsetId)}?counts=false`,
+  );
+}
+
+/** Computes exact live counts separately from the metadata needed for actions. */
+export function getSubsetCounts(
+  datasetId: string,
+  subsetId: string,
+  signal?: AbortSignal,
+) {
+  return runSelectionJob<SavedSubset>(
+    datasetId,
+    "summary",
+    { subsetId },
+    signal,
   );
 }
 
@@ -170,6 +285,19 @@ export function deleteSubset(datasetId: string, subsetId: string) {
     undefined,
     "DELETE",
   );
+}
+
+/** Removes exact references from a subset without deleting their samples. */
+export function removeSubsetMembers(
+  datasetId: string,
+  subsetId: string,
+  scope: SelectionScope,
+) {
+  return subsetRequest<{
+    subsetId: string;
+    removed: number;
+    counts: SelectionCounts | null;
+  }>(datasetId, `/${encodeURIComponent(subsetId)}/remove`, scopeBody(scope));
 }
 
 /** Refresh live metadata for captured parents, including those outside results. */
@@ -192,6 +320,7 @@ export async function getSelectionAvailability(
           | "groupId"
           | "node"
           | "aspectRatio"
+          | "crop"
         >
       >
     >({
@@ -208,8 +337,6 @@ export interface SelectionTagOptions {
   readonly target?: "members" | "labels";
   /** The serialized view the scope was captured in. */
   readonly view?: readonly unknown[];
-  /** Grouped datasets: tag only the captured slice samples, or every slice. */
-  readonly groups?: "slice" | "all";
 }
 
 /** Inspect or apply an idempotent tag change to a frozen scope. */
@@ -225,6 +352,7 @@ export async function selectionTagsRequest(
         counts: SelectionCounts;
         tags: string[];
         labels: number | null;
+        disabledReason?: string;
         /** How many scope targets carry each tag right now. */
         applied: Record<string, number>;
         /** How many targets the scope has: samples, streams, or labels. */
@@ -238,8 +366,90 @@ export async function selectionTagsRequest(
         change: options.change,
         target: options.target ?? "members",
         view: options.view,
-        groups: options.groups,
       },
     })
   ).response;
+}
+
+/** Persisted server work; totals are unknown until capture finishes. */
+export interface SelectionJob<T = unknown> {
+  readonly id: string;
+  readonly kind: "snapshot" | "capture" | "add" | "scope" | "summary";
+  readonly state: "requested" | "running" | "completed" | "failed" | "canceled";
+  readonly cancelRequested: boolean;
+  readonly progress: {
+    readonly phase: string;
+    readonly done: number;
+    readonly total: number | null;
+    readonly added?: number;
+    readonly duplicates?: number;
+  } | null;
+  readonly result: T | null;
+  readonly error: string | null;
+}
+
+/** Reads or updates a dataset-scoped operation handle. */
+export async function selectionJobRequest<T>(
+  datasetId: string,
+  path: string,
+  body?: unknown,
+  signal?: AbortSignal,
+): Promise<SelectionJob<T>> {
+  return (
+    await getFetchFunctionExtended()<unknown, SelectionJob<T>>({
+      method: body === undefined ? "GET" : "POST",
+      path: `/dataset/${encodeURIComponent(datasetId)}/selection/jobs${path}`,
+      body,
+      signal,
+    })
+  ).response;
+}
+
+/** Submits work with a stable ID so a lost response can be recovered. */
+export function startSelectionJob<T>(
+  datasetId: string,
+  kind: SelectionJob["kind"],
+  request: unknown,
+  id = crypto.randomUUID(),
+) {
+  return selectionJobRequest<T>(datasetId, "", { id, kind, request });
+}
+
+/** Poll reads without holding an HTTP request open through a large scan. */
+async function runSelectionJob<T>(
+  datasetId: string,
+  kind: SelectionJob["kind"],
+  request: unknown,
+  signal?: AbortSignal,
+): Promise<T> {
+  const id = crypto.randomUUID();
+  const cancel = () => {
+    void selectionJobRequest(datasetId, `/${id}`, { action: "cancel" }).catch(
+      () => {},
+    );
+  };
+  signal?.throwIfAborted();
+  signal?.addEventListener("abort", cancel, { once: true });
+  try {
+    let job = await startSelectionJob<T>(datasetId, kind, request, id);
+    let delay = 100;
+    while (job.state === "requested" || job.state === "running") {
+      signal?.throwIfAborted();
+      await new Promise<void>((resolve) => setTimeout(resolve, delay));
+      signal?.throwIfAborted();
+      job = await selectionJobRequest<T>(
+        datasetId,
+        `/${id}`,
+        undefined,
+        signal,
+      );
+      delay = Math.min(delay * 2, 2000);
+    }
+    if (job.state !== "completed" || job.result === null) {
+      throw new Error(job.error ?? "The operation was stopped");
+    }
+    return job.result;
+  } finally {
+    signal?.removeEventListener("abort", cancel);
+  }
 }

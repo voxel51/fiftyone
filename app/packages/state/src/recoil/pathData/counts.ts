@@ -1,12 +1,12 @@
 import { VALID_KEYPOINTS } from "@fiftyone/utilities";
 import { selectorFamily, waitForAll } from "recoil";
 import { aggregation, constrainsScope } from "../aggregations";
-import { selectionScopeBoundary } from "../atoms";
 import { datasetSampleCount } from "../dataset";
 import * as filterAtoms from "../filters";
 import { queryPerformance } from "../queryPerformance";
 import * as schemaAtoms from "../schema";
 import * as selectors from "../selectors";
+import { selectionScopeBoundary } from "../selectionScope";
 import { MATCH_LABEL_TAGS, TEMPORAL_TAGS_FIELD } from "../sidebar";
 import { temporalTagResults } from "../temporalTags";
 import * as viewAtoms from "../view";

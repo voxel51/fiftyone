@@ -5,7 +5,7 @@ import { selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 import type { ResponseFrom } from "../utils";
 import type { SelectionBoundary } from "../selection/types";
-import { refresher, selectionScopeBoundary } from "./atoms";
+import { refresher } from "./atoms";
 import { config } from "./config";
 import * as filterAtoms from "./filters";
 import {
@@ -20,6 +20,7 @@ import { activeIndex, queryPerformance } from "./queryPerformance";
 import { RelayEnvironmentKey } from "./relay";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
+import { selectionScopeBoundary } from "./selectionScope";
 import { State } from "./types";
 import * as viewAtoms from "./view";
 

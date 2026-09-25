@@ -1,16 +1,12 @@
 import { is3d, MEDIA_TYPE_IMAGE, type Schema } from "@fiftyone/utilities";
 import { useMemo } from "react";
-import {
-  useRecoilCallback,
-  useRecoilState,
-  useRecoilValue,
-  useSetRecoilState,
-} from "recoil";
-import { selectedSamples, selectionScopeBoundary } from "../recoil/atoms";
+import { useRecoilCallback, useRecoilState, useRecoilValue } from "recoil";
+import { selectedSamples } from "../recoil/atoms";
 import { groupSlice } from "../recoil/groups";
 import {
   anyTagging,
   canTagSamplesOrLabels,
+  canEditSavedViews,
   readOnly,
   dataset,
   datasetId,
@@ -36,7 +32,10 @@ import {
   State,
   view,
 } from "../recoil";
-import { isPatchesView } from "../recoil/view";
+
+import { useSelectionRangeConstraint } from "../selection/range-constraint";
+
+export { useSetSelectionScopeBoundary } from "../recoil/selectionScope";
 
 /**
  * Get the current dataset ID.
@@ -205,23 +204,30 @@ export const useGetKeypointSkeleton = () => {
 
 /**
  * Returns the names of dataset-level group slices whose media type matches
- * any of the provided types.
+ * any of the provided types, or every slice when types are omitted.
  *
  * @param mediaTypes - The media types to filter by. "3d" matches all 3D
  *   types (fo3d, point-cloud, etc.).
  * @returns Slice names matching the requested media types, in dataset order.
  */
-export const useGroupSlices = (mediaTypes: GroupSliceMediaType[]): string[] => {
+export const useGroupSlices = (
+  mediaTypes?: GroupSliceMediaType[],
+): string[] => {
   const slices = useRecoilValue(groupMediaTypes);
 
-  return slices
-    .filter(({ mediaType }) =>
-      mediaTypes.some((type) => {
-        if (type === "3d") return is3d(mediaType);
-        return mediaType === type;
-      }),
-    )
-    .map(({ name }) => name);
+  return useMemo(
+    () =>
+      slices
+        .filter(
+          ({ mediaType }) =>
+            !mediaTypes ||
+            mediaTypes.some((type) =>
+              type === "3d" ? is3d(mediaType) : mediaType === type,
+            ),
+        )
+        .map(({ name }) => name),
+    [slices, mediaTypes],
+  );
 };
 
 /** The media type of a dynamic group's members, or the dataset's own media type. */
@@ -278,17 +284,13 @@ export const useView = (): State.Stage[] => useRecoilValue(view);
 /** Current grid pipeline inputs, without pagination or explicit selection. */
 export function useGridViewScope() {
   return {
+    rangeConstraint: useSelectionRangeConstraint(useCurrentDatasetName()),
     view: useView(),
     filters: useRecoilValue(filters),
     extendedStages: useRecoilValue(extendedStages),
     sort: useRecoilValue(gridSortBy),
     refresh: useRecoilValue(refresher),
   };
-}
-
-/** Publishes the tray's browsing boundary for legacy view-scoped queries. */
-export function useSetSelectionScopeBoundary() {
-  return useSetRecoilState(selectionScopeBoundary);
 }
 
 /** The dataset's estimated sample count, before any view stage or filter. */
@@ -319,7 +321,7 @@ export function useIsConvertedView() {
   return clips || frames || patches;
 }
 
-/** Shared tagging policy, including Enterprise session permissions. */
+/** Shared tagging policy, including session permissions. */
 export function useSelectionTagDisabledReason(): string | null {
   const permission = useRecoilValue(canTagSamplesOrLabels);
   const locked = useRecoilValue(readOnly);
@@ -331,6 +333,16 @@ export function useSelectionTagDisabledReason(): string | null {
       "Tagging is not permitted"
     );
   return tagging ? "Another tagging operation is in progress" : null;
+}
+
+/** Saved subsets follow the dataset metadata editing permission. */
+export function useSelectionSubsetDisabledReason(): string | null {
+  const permission = useRecoilValue(canEditSavedViews);
+  const locked = useRecoilValue(readOnly);
+  if (locked) return "This session is read-only";
+  return permission.enabled
+    ? null
+    : "Editing subsets requires dataset edit permission";
 }
 
 /**

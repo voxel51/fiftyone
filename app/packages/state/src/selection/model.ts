@@ -6,6 +6,12 @@ import type {
 
 /** Identity excludes provenance, display formatting, and provider order. */
 export function selectionMemberKey(member: SelectionMember): string {
+  if (member.kind === "episode" && member.reference) {
+    const reference = Object.fromEntries(
+      Object.entries(member.reference).sort(([a], [b]) => a.localeCompare(b)),
+    );
+    return JSON.stringify(["reference", reference]);
+  }
   if (member.kind === "episode")
     return JSON.stringify([member.episodeId, member.kind]);
   const { start, end, timebase, streams } = member.range;
@@ -52,6 +58,9 @@ export function normalizeSelectionMembers(
             source.itemId,
             source.nativeStart,
             source.nativeEnd,
+            source.label,
+            source.model,
+            source.origin,
           ]),
           source,
         ]),
@@ -78,6 +87,13 @@ export function sameSelection(
   left: EpisodeSelection,
   right: EpisodeSelection,
 ): boolean {
+  if (left.group || right.group)
+    return Boolean(
+      left.group &&
+      right.group &&
+      left.group.size === right.group.size &&
+      left.group.fingerprint === right.group.fingerprint,
+    );
   const a = new Set(left.members.map(selectionMemberKey));
   const b = new Set(right.members.map(selectionMemberKey));
   return a.size === b.size && [...a].every((key) => b.has(key));
@@ -90,6 +106,7 @@ export function updateEpisodeSelection(
   operation: "replace" | "add",
 ): EpisodeSelection {
   if (operation === "add" && current) {
+    if (current.group || candidate.group) return current;
     if (
       current.members.some((m) => m.kind === "episode") ||
       candidate.members.some((m) => m.kind === "episode")
@@ -104,7 +121,7 @@ export function updateEpisodeSelection(
     };
   }
   if (
-    !candidate.members.length ||
+    (!candidate.members.length && !candidate.group?.snapshotId) ||
     (!candidate.group &&
       candidate.members.some((m) => m.episodeId !== candidate.episodeId))
   )
@@ -122,27 +139,58 @@ export function updateEpisodeSelection(
   };
 }
 
+/** Complete action sources; group members never need to travel to the browser. */
+export function capturedScopeSources(groups: readonly EpisodeSelection[]) {
+  return {
+    members: normalizeSelectionMembers(
+      groups.flatMap((group) => group.members),
+    ),
+    snapshotIds: [
+      ...new Set(
+        groups.flatMap((group) =>
+          group.group?.snapshotId ? [group.group.snapshotId] : [],
+        ),
+      ),
+    ],
+    ...(groups.some((group) => group.group) && {
+      groupCount: new Set(
+        groups
+          .filter((group) => group.group)
+          .map((group) => group.group?.key ?? group.episodeId),
+      ).size,
+    }),
+  };
+}
+
 /** Summarize grouped cards without confusing card count with action scope. */
 export function countSelection(
   groups: readonly EpisodeSelection[],
 ): SelectionCounts {
-  let fullEpisodes = 0,
-    segments = 0,
-    segmentEpisodes = 0,
-    unavailable = 0;
-  for (const group of groups) {
-    const count = group.members.filter((m) => m.kind === "segment").length;
-    segments += count;
-    segmentEpisodes += Number(count > 0);
-    fullEpisodes += group.members.filter((m) => m.kind === "episode").length;
-    unavailable += group.unavailable ? group.members.length : 0;
-  }
+  const members = normalizeSelectionMembers(
+    groups.flatMap((group) => group.members),
+  );
+  const unavailableIds = new Set(
+    groups.filter((group) => group.unavailable).map((group) => group.episodeId),
+  );
   return {
-    episodes: groups.length,
-    fullEpisodes,
-    segments,
-    segmentEpisodes,
-    unavailable,
+    episodes: new Set(members.map((member) => member.episodeId)).size,
+    fullEpisodes: members.filter((member) => member.kind === "episode").length,
+    segments: members.filter((member) => member.kind === "segment").length,
+    segmentEpisodes: new Set(
+      members
+        .filter((member) => member.kind === "segment")
+        .map((member) => member.episodeId),
+    ).size,
+    unavailable: members.filter((member) =>
+      unavailableIds.has(member.episodeId),
+    ).length,
+    ...(groups.some((group) => group.group) && {
+      groups: new Set(
+        groups
+          .filter((group) => group.group)
+          .map((group) => group.group?.key ?? group.episodeId),
+      ).size,
+    }),
   };
 }
 
@@ -194,15 +242,37 @@ const CONVERTING_STAGES: Record<string, ViewConversion> = {
  */
 export function viewConversion(
   stages: readonly unknown[],
-): { kind: ViewConversion; key: string } | null {
-  let found: { kind: ViewConversion; key: string } | null = null;
+): { kind: ViewConversion; key: string; subsetId?: string } | null {
+  let found: { kind: ViewConversion; key: string; subsetId?: string } | null =
+    null;
   for (const stage of stages) {
     if (typeof stage !== "object" || stage === null) continue;
     const { _cls, kwargs } = stage as { _cls?: unknown; kwargs?: unknown };
     if (typeof _cls !== "string") continue;
     const kind = CONVERTING_STAGES[_cls];
-    if (kind)
-      found = { kind, key: `${_cls}:${JSON.stringify(kwargs ?? null)}` };
+    if (kind) {
+      // Materialization hints can change while the server opens a subset.
+      // They do not change which kind of source entities this scope contains.
+      const configuration = Array.isArray(kwargs)
+        ? kwargs.filter(
+            (entry) => !Array.isArray(entry) || entry[0] !== "_state",
+          )
+        : kwargs;
+      found = { kind, key: `${_cls}:${JSON.stringify(configuration ?? null)}` };
+      const config: unknown = Array.isArray(configuration)
+        ? configuration.find(
+            (entry) => Array.isArray(entry) && entry[0] === "config",
+          )?.[1]
+        : undefined;
+      if (
+        config &&
+        typeof config === "object" &&
+        "_subset_id" in config &&
+        typeof config._subset_id === "string"
+      ) {
+        found.subsetId = config._subset_id;
+      }
+    }
   }
   return found;
 }
@@ -240,6 +310,7 @@ export function selectionScopeLabel(
   unit: SelectionUnit = EPISODE_UNIT,
 ): string {
   const parts = [];
+  if (counts.groups) parts.push(count(counts.groups, "group"));
   // "Full" only earns its place next to segments; alone, "2 samples" is clear.
   if (counts.fullEpisodes)
     parts.push(
@@ -276,13 +347,173 @@ const GROUP_BY_STAGE = "fiftyone.core.stages.GroupBy";
 
 /** Whether the view groups samples dynamically, so a tile stands for a group. */
 export function hasDynamicGroups(stages: readonly unknown[]) {
-  return stages.some((stage) => {
-    if (typeof stage !== "object" || stage === null) return false;
+  let grouped = false;
+  for (const stage of stages) {
+    if (typeof stage !== "object" || stage === null) continue;
     const { _cls, kwargs } = stage as { _cls?: unknown; kwargs?: unknown };
-    if (_cls !== GROUP_BY_STAGE || !Array.isArray(kwargs)) return false;
+    if (_cls === "fiftyone.core.stages.Flatten") grouped = false;
+    if (_cls !== GROUP_BY_STAGE || !Array.isArray(kwargs)) continue;
     const flat = kwargs.find(
       (entry) => Array.isArray(entry) && entry[0] === "flat",
     ) as [string, unknown] | undefined;
-    return !flat?.[1];
-  });
+    if (!flat?.[1]) grouped = true;
+  }
+  return grouped;
+}
+
+/* ---------------------------------------------------------------------------
+ * Selection buckets
+ * ------------------------------------------------------------------------- */
+
+/** Up to this many working selections sit side by side in the tray. */
+export const MAX_SELECTION_BUCKETS = 3;
+/** Bucket names stay short enough to read as a pill. */
+export const SELECTION_BUCKET_NAME_LENGTH = 10;
+/**
+ * The bucket every dataset starts with. Its captures keep the storage key
+ * the single-bucket tray always used, so enabling buckets later loses nothing.
+ */
+export const PRIMARY_SELECTION_BUCKET = "primary";
+
+/** The small icon palette a bucket can wear instead of its position number. */
+export const SELECTION_BUCKET_ICONS = [
+  "approve",
+  "reject",
+  "neutral",
+  "question",
+  "star",
+  "flag",
+  "bookmark",
+  "idea",
+] as const;
+export type SelectionBucketIcon = (typeof SELECTION_BUCKET_ICONS)[number];
+
+/** One working selection. Position in the list decides which gesture feeds it. */
+export interface SelectionBucket {
+  readonly id: string;
+  /** Short display name, at most SELECTION_BUCKET_NAME_LENGTH characters. */
+  readonly name?: string;
+  readonly icon?: SelectionBucketIcon;
+}
+
+export const DEFAULT_SELECTION_BUCKETS: readonly SelectionBucket[] = [
+  { id: PRIMARY_SELECTION_BUCKET },
+];
+
+/** Bucket ids never collide with the domain separators used in storage keys. */
+const BUCKET_ID = /^[A-Za-z0-9_-]+$/;
+
+/** Mint an id for a new bucket. */
+export function newSelectionBucketId() {
+  const random =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID().replace(/-/g, "").slice(0, 12)
+      : Math.random().toString(36).slice(2, 14);
+  return `b${random}`;
+}
+
+/** Trim a proposed name to something that reads as a pill; empty means unnamed. */
+export function normalizeSelectionBucketName(name: unknown) {
+  if (typeof name !== "string") return undefined;
+  const trimmed = name.trim().slice(0, SELECTION_BUCKET_NAME_LENGTH).trim();
+  return trimmed || undefined;
+}
+
+/** Accept only well-formed, unique buckets from storage or callers; never zero. */
+export function normalizeSelectionBuckets(
+  value: unknown,
+): readonly SelectionBucket[] {
+  if (!Array.isArray(value)) return DEFAULT_SELECTION_BUCKETS;
+  const seen = new Set<string>();
+  const buckets: SelectionBucket[] = [];
+  for (const entry of value) {
+    if (typeof entry !== "object" || entry === null) continue;
+    const { id, name, icon } = entry as Partial<SelectionBucket>;
+    if (typeof id !== "string" || !BUCKET_ID.test(id) || seen.has(id)) continue;
+    seen.add(id);
+    const bucket: SelectionBucket = { id };
+    const cleanName = normalizeSelectionBucketName(name);
+    if (cleanName) Object.assign(bucket, { name: cleanName });
+    if (
+      typeof icon === "string" &&
+      (SELECTION_BUCKET_ICONS as readonly string[]).includes(icon)
+    )
+      Object.assign(bucket, { icon: icon as SelectionBucketIcon });
+    buckets.push(bucket);
+    if (buckets.length === MAX_SELECTION_BUCKETS) break;
+  }
+  return buckets.length ? buckets : DEFAULT_SELECTION_BUCKETS;
+}
+
+/** Whether a bucket list is the untouched default the single tray implies. */
+export function isDefaultSelectionBuckets(buckets: readonly SelectionBucket[]) {
+  return (
+    buckets.length === 1 &&
+    buckets[0].id === PRIMARY_SELECTION_BUCKET &&
+    !buckets[0].name &&
+    !buckets[0].icon
+  );
+}
+
+/**
+ * The key a bucket's captures live under. The primary bucket keeps the bare
+ * domain so its captures are the ones the single-bucket tray persisted.
+ */
+export function selectionCaptureKey(domainId: string, bucketId: string) {
+  return bucketId === PRIMARY_SELECTION_BUCKET
+    ? domainId
+    : `${domainId}#${bucketId}`;
+}
+
+/** The dataset a selection domain (dataset, or dataset|conversion) belongs to. */
+export function selectionDomainDataset(domainId: string) {
+  return domainId.split("|")[0];
+}
+
+/** "Bucket 2" when a bucket has no name of its own. */
+export function selectionBucketTitle(bucket: SelectionBucket, index: number) {
+  return bucket.name ?? `Bucket ${index + 1}`;
+}
+
+/** The gesture that feeds a bucket, by its position. */
+export type SelectionGesture = "click" | "command" | "option";
+
+export function selectionBucketGesture(index: number): SelectionGesture {
+  return index === 0 ? "click" : index === 1 ? "command" : "option";
+}
+
+/** The modifier flags a pointer event carries. */
+export interface SelectionModifiers {
+  readonly metaKey?: boolean;
+  readonly ctrlKey?: boolean;
+  readonly altKey?: boolean;
+}
+
+/**
+ * The bucket a click feeds. Option/Alt reaches the third bucket, the command
+ * modifier (⌘ on macOS, Ctrl elsewhere; both are honored everywhere) the
+ * second, and anything else the first. A modifier with no bucket behind it
+ * is treated as a plain click, so a two-bucket setup never swallows Alt.
+ */
+export function routeSelectionBucket(
+  modifiers: SelectionModifiers,
+  buckets: readonly SelectionBucket[],
+): SelectionBucket {
+  if (modifiers.altKey && buckets.length > 2) return buckets[2];
+  if ((modifiers.metaKey || modifiers.ctrlKey) && buckets.length > 1)
+    return buckets[1];
+  return buckets[0];
+}
+
+/** "12 samples · 3 segments": the short form a bucket pill carries. */
+export function compactScopeLabel(
+  counts: SelectionCounts,
+  unit: SelectionUnit = EPISODE_UNIT,
+): string {
+  const parts = [];
+  if (counts.groups) parts.push(count(counts.groups, "group"));
+  if (counts.fullEpisodes)
+    parts.push(count(counts.fullEpisodes, unit.one, unit.many));
+  if (counts.segments) parts.push(count(counts.segments, "segment"));
+  return parts.join(" · ") || `0 ${unit.many}`;
 }

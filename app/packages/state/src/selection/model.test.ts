@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   countSelection,
+  capturedScopeSources,
   normalizeSelectionMembers,
   sameSelection,
   updateEpisodeSelection,
@@ -14,6 +15,16 @@ import {
   selectionScopeLabel,
   selectionUnit,
   viewConversion,
+  compactScopeLabel,
+  isDefaultSelectionBuckets,
+  newSelectionBucketId,
+  normalizeSelectionBucketName,
+  normalizeSelectionBuckets,
+  routeSelectionBucket,
+  selectionBucketGesture,
+  selectionBucketTitle,
+  selectionCaptureKey,
+  selectionDomainDataset,
 } from "./model";
 import type { EpisodeSelection, SelectionMember } from "./types";
 
@@ -200,4 +211,140 @@ describe("scope helpers", () => {
       false,
     );
   });
+});
+
+describe("selection buckets", () => {
+  it("routes clicks by bucket position and treats unbound modifiers as plain clicks", () => {
+    const one = [{ id: "primary" }];
+    const two = [{ id: "primary" }, { id: "b" }];
+    const three = [...two, { id: "c" }];
+    expect(routeSelectionBucket({}, three).id).toBe("primary");
+    expect(routeSelectionBucket({ metaKey: true }, three).id).toBe("b");
+    expect(routeSelectionBucket({ ctrlKey: true }, three).id).toBe("b");
+    expect(routeSelectionBucket({ altKey: true }, three).id).toBe("c");
+    expect(
+      routeSelectionBucket({ altKey: true, metaKey: true }, three).id,
+    ).toBe("c");
+    expect(routeSelectionBucket({ altKey: true }, two).id).toBe("primary");
+    expect(routeSelectionBucket({ altKey: true, metaKey: true }, two).id).toBe(
+      "b",
+    );
+    expect(routeSelectionBucket({ metaKey: true }, one).id).toBe("primary");
+    expect(selectionBucketGesture(0)).toBe("click");
+    expect(selectionBucketGesture(1)).toBe("command");
+    expect(selectionBucketGesture(2)).toBe("option");
+  });
+
+  it("normalizes stored layouts: junk, duplicates, long names, unknown icons, and the cap", () => {
+    expect(normalizeSelectionBuckets(null)).toEqual([{ id: "primary" }]);
+    expect(normalizeSelectionBuckets([])).toEqual([{ id: "primary" }]);
+    expect(
+      normalizeSelectionBuckets([
+        { id: "primary", name: "  Definitely keep  ", icon: "approve" },
+        { id: "primary" },
+        { id: "bad|id" },
+        { id: "b", icon: "sparkles", name: 3 },
+        "junk",
+        { id: "c" },
+        { id: "d" },
+      ]),
+    ).toEqual([
+      { id: "primary", name: "Definitely", icon: "approve" },
+      { id: "b" },
+      { id: "c" },
+    ]);
+    expect(isDefaultSelectionBuckets([{ id: "primary" }])).toBe(true);
+    expect(isDefaultSelectionBuckets([{ id: "primary", name: "A" }])).toBe(
+      false,
+    );
+    expect(normalizeSelectionBucketName("   ")).toBeUndefined();
+  });
+
+  it("keys captures so the primary bucket keeps the single tray's storage", () => {
+    expect(selectionCaptureKey("ds", "primary")).toBe("ds");
+    expect(selectionCaptureKey("ds", "b1")).toBe("ds#b1");
+    expect(isPersistentDomain("ds#b1")).toBe(true);
+    expect(isPersistentDomain("ds|conv#b1")).toBe(false);
+    expect(selectionDomainDataset("ds|conv")).toBe("ds");
+    expect(selectionDomainDataset("ds")).toBe("ds");
+    expect(selectionBucketTitle({ id: "x" }, 1)).toBe("Bucket 2");
+    expect(selectionBucketTitle({ id: "x", name: "Keep" }, 1)).toBe("Keep");
+    expect(newSelectionBucketId()).toMatch(/^b[a-z0-9]+$/);
+  });
+
+  it("labels a bucket's scope compactly", () => {
+    const counts = (fullEpisodes: number, segments: number) => ({
+      episodes: fullEpisodes,
+      fullEpisodes,
+      segments,
+      segmentEpisodes: segments ? 1 : 0,
+      unavailable: 0,
+    });
+    expect(compactScopeLabel(counts(1, 0), SAMPLE_UNIT)).toBe("1 sample");
+    expect(compactScopeLabel(counts(2, 3), VIDEO_UNIT)).toBe(
+      "2 samples · 3 segments",
+    );
+    expect(compactScopeLabel(counts(0, 0), SAMPLE_UNIT)).toBe("0 samples");
+  });
+});
+
+it("deduplicates generated members by source identity while preserving entity kinds", () => {
+  const reference = {
+    type: "frame" as const,
+    sampleId: "source",
+    frameNumber: 3,
+  };
+  const original = {
+    episodeId: "old-row",
+    kind: "episode" as const,
+    reference,
+  };
+  const regenerated = { ...original, episodeId: "new-row" };
+  const range = {
+    episodeId: "clip-row",
+    kind: "episode" as const,
+    reference: {
+      type: "clip-range" as const,
+      sampleId: "source",
+      support: [3, 3] as const,
+    },
+  };
+  expect(normalizeSelectionMembers([original, regenerated, range])).toEqual([
+    regenerated,
+    range,
+  ]);
+  expect(sameSelection(group(original), group(regenerated))).toBe(true);
+});
+
+it.each(["ToFrames", "ToClips", "ToPatches"])(
+  "keeps %s boundaries when the server replaces a materialization hint",
+  (stage) => {
+    const view = (name: string) => [
+      {
+        _cls: `fiftyone.core.stages.${stage}`,
+        kwargs: [
+          ["config", { _subset_id: "saved" }],
+          ["_state", { name }],
+        ],
+      },
+    ];
+    expect(viewConversion(view("old"))?.key).toBe(
+      viewConversion(view("new"))?.key,
+    );
+  },
+);
+
+it("counts modal captures of the same dynamic group only once", () => {
+  const captures = ["a", "b"].map((episodeId) => ({
+    episodeId,
+    members: [],
+    group: {
+      label: "scene",
+      key: "same-group",
+      size: 3,
+      snapshotId: "snapshot",
+    },
+  }));
+  expect(capturedScopeSources(captures).groupCount).toBe(1);
+  expect(capturedScopeSources(captures).snapshotIds).toEqual(["snapshot"]);
 });

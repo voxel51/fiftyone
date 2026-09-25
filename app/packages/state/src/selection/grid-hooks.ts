@@ -9,30 +9,54 @@ import {
   useSetSelectionScopeBoundary,
 } from "../accessors/dataset";
 import {
+  combineSelectionCaptures,
+  countSelectionCaptures,
   createSelectionSnapshot,
+  type SelectionScope,
   getSelectionAvailability,
   resolveSelection,
+  resolveSelectionDetails,
   type SelectionRequest,
 } from "./client";
 import {
-  useEpisodeSelection,
-  useEpisodeSelectionActions,
-  useFoldRevealed,
-  useSelectionBoundary,
-  useSelectionScopeRevision,
+  useClearSelectionBucket,
   useRefreshSelectionMetadata,
+  useSelectionBoundary,
+  useSelectionBucketCaptures,
+  useSelectionBucketCommands,
+  useSelectionBuckets,
+  useSelectionMembership,
+  useSelectionScopeRevision,
+  useSelectionTarget,
 } from "./hooks";
 import { foldWindow } from "./fold";
 import {
+  capturedScopeSources,
+  countSelection,
   hasDynamicGroups,
+  routeSelectionBucket,
   selectionDomainId,
   selectionUnit,
   viewConversion,
+  type SelectionModifiers,
 } from "./model";
-import { candidatesAtom, type CandidateState } from "./model/atoms";
-import type { EpisodeSelection, SelectionBoundary } from "./types";
+import {
+  bucketCommandAtom,
+  captureRequestsAtom,
+  captureScopesAtom,
+  candidatesAtom,
+  renderedCaptureIdsAtom,
+  type CandidateState,
+  type Captures,
+} from "./model/atoms";
+import type {
+  EpisodeSelection,
+  SelectionBoundary,
+  SegmentConstraint,
+} from "./types";
 
 const EMPTY_GROUPS: readonly EpisodeSelection[] = [];
+const EMPTY_CAPTURES: Captures = new Map();
 const NO_CANDIDATES: ReadonlyMap<string, EpisodeSelection | null> = new Map();
 
 /** Current dataset identity, selection domain, and vocabulary. */
@@ -48,6 +72,7 @@ export function useGridSelectionDataset() {
     domainId: selectionDomainId(id, conversion?.key ?? null),
     mediaType: type,
     conversion: kind,
+    subsetViewId: conversion?.subsetId,
     unit: selectionUnit(type, kind),
     enabled: Boolean(id) && Boolean(type),
   };
@@ -55,17 +80,33 @@ export function useGridSelectionDataset() {
 
 /** Active range constraints include positive temporal-tag sidebar filters. */
 export function useGridSelectionBoundary() {
-  const { domainId } = useGridSelectionDataset();
+  const { domainId, conversion } = useGridSelectionDataset();
   const [boundary, setBoundary] = useSelectionBoundary(domainId);
-  const { filters: currentFilters } = useGridViewScope();
+  const { filters: currentFilters, rangeConstraint } = useGridViewScope();
   const tags = currentFilters._temporal_tags;
-  const values = Array.isArray(tags?.values)
-    ? tags.values.filter((value): value is string => typeof value === "string")
-    : [];
-  const effective: SelectionBoundary =
-    !boundary.provider && !tags?.exclude && values.length
-      ? { ...boundary, provider: { kind: "temporal-tags", values } }
+  const effective = useMemo<SelectionBoundary>(() => {
+    const values = Array.isArray(tags?.values)
+      ? tags.values.filter(
+          (value): value is string => typeof value === "string",
+        )
+      : [];
+    const providers: SegmentConstraint[] = boundary.provider
+      ? [boundary.provider]
+      : [];
+    if (!conversion && rangeConstraint)
+      providers.push(rangeConstraint.provider);
+    if (!tags?.exclude && values.length)
+      providers.push({ kind: "temporal-tags", values });
+    return providers.length
+      ? {
+          ...boundary,
+          provider:
+            providers.length === 1
+              ? providers[0]
+              : { kind: "intersection", providers },
+        }
       : boundary;
+  }, [boundary, conversion, rangeConstraint, tags]);
   return [effective, setBoundary] as const;
 }
 
@@ -103,8 +144,13 @@ export function useGridSelectionRequest() {
 
 /** Whole-parent scopes describe a clicked tile without a server round trip. */
 export function isPlainScope(request: SelectionRequest) {
+  const conversion = viewConversion(request.view)?.kind;
   return (
-    !request.boundary.provider && !request.boundary.subsetId && !request.expand
+    !request.boundary.provider &&
+    !request.boundary.subsetId &&
+    !request.expand &&
+    conversion !== "frames" &&
+    conversion !== "clips"
   );
 }
 
@@ -125,47 +171,144 @@ function withCandidates(
 
 /**
  * Reads the scope's exact counts and the details fetched for captured
- * parents. Clicking a tile resolves only that tile; nothing enumerates the
- * whole scope in the browser.
+ * parents, plus every bucket's captures. Clicking a tile resolves only that
+ * tile; nothing enumerates the whole scope in the browser.
+ *
+ * `selected`, `capture`, `remove`, `clear`, `select`, and `toggle` address
+ * the bucket actions apply to unless a bucket id is given. The grid decides
+ * the bucket for a gesture with `route`.
  */
 export function useGridSelection() {
   const dataset = useGridSelectionDataset();
   const { key, request } = useGridSelectionRequest();
+  const { rangeConstraint } = useGridViewScope();
+  const latestScope = useRef(key);
+  latestScope.current = key;
   const state = useAtomValue(candidatesAtom(dataset.domainId));
-  const selected = useEpisodeSelection(dataset.domainId);
-  const { capture, remove, clear } = useEpisodeSelectionActions(
+  const buckets = useSelectionBuckets(dataset.datasetId);
+  const captures = useSelectionBucketCaptures(dataset.domainId);
+  const membership = useSelectionMembership(dataset.domainId);
+  const { target, setTarget } = useSelectionTarget(dataset.domainId);
+  const { removeEverywhere, clearAll } = useSelectionBucketCommands(
     dataset.domainId,
   );
+  const clearBucket = useClearSelectionBucket(dataset.domainId);
+  const dispatch = useSetAtom(bucketCommandAtom(dataset.domainId));
+  const selected = captures.get(target) ?? EMPTY_CAPTURES;
   const current = state.key === key && !state.loading && !state.error;
+  const merged = useAtomValue(captureScopesAtom(dataset.domainId));
+  const setMerged = useSetAtom(captureScopesAtom(dataset.domainId));
+  const sources = capturedScopeSources([...selected.values()]);
+  const resolved = merged.get(target);
+  const capturedState =
+    resolved?.key === JSON.stringify(sources) ? resolved : undefined;
+  const selectedCounts = sources.snapshotIds.length
+    ? (capturedState?.counts ?? null)
+    : countSelection([...selected.values()]);
+  const resolveCaptured = async (): Promise<SelectionScope> => {
+    if (!sources.snapshotIds.length)
+      return { kind: "members", members: sources.members };
+    if (capturedState?.scope) return capturedState.scope;
+    const scope = await combineSelectionCaptures(dataset.datasetId, {
+      ...sources,
+      view: request.view,
+    });
+    setMerged((current) =>
+      current.get(target)?.key === JSON.stringify(sources)
+        ? new Map(current).set(target, {
+            key: JSON.stringify(sources),
+            counts: scope.counts,
+            scope,
+          })
+        : current,
+    );
+    return scope;
+  };
+  const countsForBucket = (bucketId: string) => {
+    const groups = [...(captures.get(bucketId)?.values() ?? [])];
+    const input = capturedScopeSources(groups);
+    if (!input.snapshotIds.length) return countSelection(groups);
+    const cached = merged.get(bucketId);
+    return cached?.key === JSON.stringify(input)
+      ? (cached.counts ?? null)
+      : null;
+  };
+  const [captureError, setCaptureError] = useState<string | null>(null);
+  const capture = useCallback(
+    (
+      group: EpisodeSelection,
+      operation: "replace" | "add" = "replace",
+      bucketId: string = target,
+    ) => {
+      setCaptureError(null);
+      if (group.group && !group.group.snapshotId) {
+        void resolveSelectionDetails(dataset.datasetId, {
+          ...request,
+          episodeIds: [group.episodeId],
+          capture: true,
+        })
+          .then((result) => {
+            if (latestScope.current !== key) return;
+            for (const captured of result.groups)
+              dispatch({
+                type: "capture",
+                bucketId,
+                group: captured,
+                operation,
+              });
+          })
+          .catch((error: unknown) => setCaptureError(String(error)));
+      } else dispatch({ type: "capture", bucketId, group, operation });
+    },
+    [dispatch, target, dataset.datasetId, request, key],
+  );
+  const remove = useCallback(
+    (episodeId: string, bucketId: string = target) =>
+      dispatch({ type: "remove", bucketId, episodeId }),
+    [dispatch, target],
+  );
+  const clear = useCallback(
+    (bucketId: string = target) => clearBucket(bucketId),
+    [clearBucket, target],
+  );
   const resolveCandidates = useCallback(
     async (ids: readonly string[]) => {
       if (isPlainScope(request))
         return new Map(ids.map((id) => [id, wholeParent(id)] as const));
-      const result = await resolveSelection(dataset.datasetId, {
+      const result = await resolveSelectionDetails(dataset.datasetId, {
         ...request,
         episodeIds: ids,
+        capture: true,
       });
+      if (latestScope.current !== key)
+        return new Map<string, EpisodeSelection>();
       return new Map(
         result.groups.map((group) => [group.episodeId, group] as const),
       );
     },
-    [dataset.datasetId, request],
+    [dataset.datasetId, request, key],
   );
   const select = useCallback(
-    async (ids: readonly string[]) => {
-      const fresh = ids.filter((id) => !selected.has(id));
+    async (ids: readonly string[], bucketId: string = target) => {
+      const bucket = captures.get(bucketId);
+      const fresh = ids.filter((id) => !bucket?.has(id));
       if (!fresh.length) return;
       for (const group of (await resolveCandidates(fresh)).values())
-        capture(group);
+        dispatch({ type: "capture", bucketId, group });
     },
-    [selected, resolveCandidates, capture],
+    [captures, target, resolveCandidates, dispatch],
   );
   const toggle = useCallback(
-    async (id: string) => {
-      if (selected.has(id)) remove(id);
-      else await select([id]);
+    async (id: string, bucketId: string = target) => {
+      if (captures.get(bucketId)?.has(id))
+        dispatch({ type: "remove", bucketId, episodeId: id });
+      else await select([id], bucketId);
     },
-    [selected, remove, select],
+    [captures, target, dispatch, select],
+  );
+  const route = useCallback(
+    (modifiers: SelectionModifiers) => routeSelectionBucket(modifiers, buckets),
+    [buckets],
   );
   const snapshot = useCallback(
     (signal?: AbortSignal) =>
@@ -174,22 +317,47 @@ export function useGridSelection() {
   );
   return {
     ...dataset,
+    scopeKey: key,
+    buckets,
+    target,
+    setTarget,
+    captures,
+    membership,
+    route,
     capture,
     remove,
+    removeEverywhere,
     clear,
+    clearAll,
     select,
     toggle,
     snapshot,
     selected,
+    selectedCounts,
+    resolveCaptured,
+    countsForBucket,
+    capturedError: captureError ?? capturedState?.error ?? null,
     candidates: current ? state.candidates : NO_CANDIDATES,
     counts: current ? state.counts : null,
+    unavailableTotal: current ? state.unavailableTotal : undefined,
+    loadUnavailable: (skip: number) =>
+      resolveSelection(dataset.datasetId, {
+        ...request,
+        unavailableSkip: skip,
+      }),
     unavailableGroups:
       state.key === key
         ? (state.unavailableGroups ?? EMPTY_GROUPS)
         : EMPTY_GROUPS,
     request,
-    loading: state.key !== key || state.loading,
-    error: state.key === key ? state.error : null,
+    retryRangeCapture: !dataset.conversion ? rangeConstraint?.retry : undefined,
+    loading:
+      (!dataset.conversion && rangeConstraint?.pending) ||
+      state.key !== key ||
+      state.loading,
+    error:
+      (!dataset.conversion ? rangeConstraint?.error : undefined) ??
+      (state.key === key ? state.error : null),
   };
 }
 
@@ -205,7 +373,7 @@ export function renderedCaptures(
 
 /**
  * Mount once in the grid: counts per scope, details only for the captured
- * parents the strip renders. A folded strip shows its two ends, so a
+ * parents the strips render. A folded strip shows its two ends, so a
  * thousand captures never turn into a thousand-parent details request.
  */
 export function useLoadGridSelection() {
@@ -214,15 +382,57 @@ export function useLoadGridSelection() {
   const { refresh } = useGridViewScope();
   const set = useSetAtom(candidatesAtom(domainId));
   const state = useAtomValue(candidatesAtom(domainId));
-  const selected = useEpisodeSelection(domainId);
-  const { revealed } = useFoldRevealed(domainId);
   const selectedIds = JSON.stringify(
-    renderedCaptures(selected, revealed).sort(),
+    useAtomValue(renderedCaptureIdsAtom(domainId)),
   );
   const latestSelected = useRef(selectedIds);
   latestSelected.current = selectedIds;
   const refreshMetadata = useRefreshSelectionMetadata(domainId);
   const stages = request.view;
+  const capturedView = useRef(stages);
+  capturedView.current = stages;
+  const captureRequests = useAtomValue(captureRequestsAtom(domainId));
+  const setCaptures = useSetAtom(captureScopesAtom(domainId));
+  const mergedCaptures = useAtomValue(captureScopesAtom(domainId));
+  const latestCaptures = useRef(mergedCaptures);
+  latestCaptures.current = mergedCaptures;
+  const captureRevision = useSelectionScopeRevision(id);
+  // This effect counts frozen unions when a bucket's membership changes.
+  useEffect(() => {
+    if (!enabled) return undefined;
+    const controller = new AbortController();
+    const requests = JSON.parse(captureRequests) as [
+      string,
+      ReturnType<typeof capturedScopeSources>,
+    ][];
+    for (const [bucketId, sources] of requests) {
+      if (!sources.snapshotIds.length) continue;
+      const captureKey = JSON.stringify(sources);
+      const cached = latestCaptures.current.get(bucketId);
+      if (cached?.key === captureKey && cached.counts) continue;
+      countSelectionCaptures(
+        id,
+        { ...sources, view: capturedView.current },
+        controller.signal,
+      )
+        .then((counts) => {
+          if (!controller.signal.aborted)
+            setCaptures((current) =>
+              new Map(current).set(bucketId, { key: captureKey, counts }),
+            );
+        })
+        .catch((error: unknown) => {
+          if (!controller.signal.aborted)
+            setCaptures((current) =>
+              new Map(current).set(bucketId, {
+                key: captureKey,
+                error: String(error),
+              }),
+            );
+        });
+    }
+    return () => controller.abort();
+  }, [id, enabled, captureRequests, captureRevision, setCaptures]);
   // This effect checks live parent availability independently of the current results.
   useEffect(() => {
     if (!enabled || selectedIds === "[]") return undefined;
@@ -263,6 +473,7 @@ export function useLoadGridSelection() {
               key,
               counts: result.counts,
               unavailableGroups: result.unavailableGroups,
+              unavailableTotal: result.unavailableTotal,
               candidates: new Map(),
               loading: false,
               error: null,
@@ -296,7 +507,11 @@ export function useLoadGridSelection() {
     );
     if (!missing.length) return undefined;
     const controller = new AbortController();
-    resolveSelection(id, { ...request, episodeIds: missing }, controller.signal)
+    resolveSelectionDetails(
+      id,
+      { ...request, episodeIds: missing },
+      controller.signal,
+    )
       .then((result) => {
         if (!controller.signal.aborted)
           set((current) =>
@@ -385,13 +600,13 @@ export function reconcileSelection(
  * describe the same scope the grid pages do.
  */
 export function useSyncSelectionScope() {
-  const { enabled } = useGridSelectionDataset();
+  const { domainId, enabled } = useGridSelectionDataset();
   const [boundary] = useGridSelectionBoundary();
   const setScope = useSetSelectionScopeBoundary();
   // This effect mirrors the boundary whenever it changes.
   useEffect(() => {
-    setScope(enabled ? boundary : null);
-  }, [enabled, boundary, setScope]);
+    setScope(enabled ? { domainId, boundary } : null);
+  }, [domainId, enabled, boundary, setScope]);
   // This effect withdraws the boundary when the grid unmounts.
   useEffect(() => () => setScope(null), [setScope]);
 }
@@ -399,13 +614,16 @@ export function useSyncSelectionScope() {
 /**
  * Mount once in the grid. Keeps the legacy selected-samples session and the
  * tray captures in step, so lookers, the modal, operators, and saved views
- * all see the one selection the tray shows.
+ * all see the one selection the tray shows. The legacy session holds the
+ * union of every bucket; a parent it adds lands in the first bucket, and a
+ * parent it drops leaves every bucket.
  */
 export function useSyncLegacySelection() {
   const { datasetId, domainId: id, enabled } = useGridSelectionDataset();
   const { key, request } = useGridSelectionRequest();
-  const selected = useEpisodeSelection(id);
-  const { capture, remove } = useEpisodeSelectionActions(id);
+  const membership = useSelectionMembership(id);
+  const buckets = useSelectionBuckets(datasetId);
+  const dispatch = useSetAtom(bucketCommandAtom(id));
   const state = useAtomValue(candidatesAtom(id));
   const [legacy, setLegacy] = useLegacySelectedSamples();
   const previous = useRef<{ tray: string[]; legacy: string[] } | null>(null);
@@ -413,8 +631,9 @@ export function useSyncLegacySelection() {
     key: string;
     ids: ReadonlySet<string>;
   } | null>(null);
-  const trayIds = useMemo(() => [...selected.keys()].sort(), [selected]);
+  const trayIds = useMemo(() => [...membership.keys()].sort(), [membership]);
   const legacyIds = useMemo(() => [...legacy.keys()].sort(), [legacy]);
+  const firstBucket = buckets[0].id;
   // This effect forgets the last agreement when the domain changes so a
   // stale selection from another dataset or view is never adopted.
   useEffect(() => {
@@ -428,7 +647,7 @@ export function useSyncLegacySelection() {
     if (trayIds.length || !legacyIds.length || verified?.key === key)
       return undefined;
     const controller = new AbortController();
-    resolveSelection(
+    resolveSelectionDetails(
       datasetId,
       { ...request, episodeIds: legacyIds },
       controller.signal,
@@ -447,14 +666,14 @@ export function useSyncLegacySelection() {
   }, [enabled, datasetId, key, request, trayIds, legacyIds, verified]);
   // This effect reconciles the two selection stores after either one changes.
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) return undefined;
     const plan = reconcileSelection(
       previous.current,
       trayIds,
       legacyIds,
       verified?.key === key ? verified.ids : null,
     );
-    if (plan.kind === "wait") return;
+    if (plan.kind === "wait") return undefined;
     if (plan.kind === "push") {
       setLegacy(
         new Map(
@@ -465,16 +684,49 @@ export function useSyncLegacySelection() {
         ),
       );
       previous.current = { tray: trayIds, legacy: [...plan.ids] };
-      return;
+      return undefined;
     }
     if (plan.kind === "adopt") {
-      for (const sampleId of plan.remove) remove(sampleId);
-      for (const sampleId of plan.capture)
-        capture(state.candidates.get(sampleId) ?? wholeParent(sampleId));
-      previous.current = { tray: legacyIds, legacy: legacyIds };
-      return;
+      const apply = (groups: readonly EpisodeSelection[]) => {
+        for (const sampleId of plan.remove)
+          dispatch({ type: "remove-everywhere", episodeId: sampleId });
+        for (const group of groups)
+          dispatch({ type: "capture", bucketId: firstBucket, group });
+        const captured = new Set(groups.map((group) => group.episodeId));
+        const requested = new Set(plan.capture);
+        const ids = legacyIds.filter(
+          (id) => !requested.has(id) || captured.has(id),
+        );
+        if (ids.length !== legacyIds.length)
+          setLegacy(
+            new Map(ids.map((id) => [id, legacy.get(id) ?? "default"])),
+          );
+        previous.current = { tray: ids, legacy: ids };
+      };
+      if (!isPlainScope(request)) {
+        // Modal and operator selections supply row IDs. Resolve their durable
+        // references just as a grid click does before adopting them.
+        const controller = new AbortController();
+        resolveSelectionDetails(
+          datasetId,
+          { ...request, episodeIds: plan.capture, capture: true },
+          controller.signal,
+        )
+          .then((result) => {
+            if (!controller.signal.aborted) apply(result.groups);
+          })
+          .catch(() => {
+            /* Preserve the current selection when resolution fails. */
+          });
+        return () => controller.abort();
+      }
+      apply(
+        plan.capture.map((id) => state.candidates.get(id) ?? wholeParent(id)),
+      );
+      return undefined;
     }
     previous.current = { tray: trayIds, legacy: legacyIds };
+    return undefined;
   }, [
     enabled,
     key,
@@ -483,8 +735,10 @@ export function useSyncLegacySelection() {
     legacy,
     verified,
     state.candidates,
-    capture,
-    remove,
+    firstBucket,
+    dispatch,
     setLegacy,
+    datasetId,
+    request,
   ]);
 }

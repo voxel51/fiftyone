@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { reconcileSelection, renderedCaptures } from "./grid-hooks";
+import {
+  isPlainScope,
+  reconcileSelection,
+  renderedCaptures,
+} from "./grid-hooks";
 import type { EpisodeSelection } from "./types";
 
 describe("legacy selection reconciliation", () => {
@@ -68,3 +72,17 @@ describe("rendered captures", () => {
     expect(renderedCaptures(selected(1000), 50)).toHaveLength(200);
   });
 });
+
+it.each(["ToFrames", "ToClips", "ToTrajectories"])(
+  "resolves source references for explicit %s selections",
+  (stage) => {
+    expect(
+      isPlainScope({
+        view: [{ _cls: `fiftyone.core.stages.${stage}`, kwargs: [] }],
+        filters: {},
+        extendedStages: {},
+        boundary: {},
+      }),
+    ).toBe(false);
+  },
+);
