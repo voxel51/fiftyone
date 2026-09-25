@@ -97,7 +97,7 @@ def handle_app_initializer(subscription: str, initializer: AppInitializer):
     Returns:
         ``None`` or a coroutine
     """
-    increment_app_count()
+    increment_app_count(subscription)
     state = get_state()
     current = state.dataset.name if state.dataset is not None else None
 

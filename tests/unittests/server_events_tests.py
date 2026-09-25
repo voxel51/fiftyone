@@ -106,3 +106,34 @@ class TestListenerDisconnect(unittest.IsolatedAsyncioTestCase):
         self.assertIsInstance(
             await fosl.disconnect(True, set()), fose.CloseSession
         )
+
+
+class TestAppCount(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        foss.set_state(fos.StateDescription())
+        self._reset()
+
+    def tearDown(self):
+        self._reset()
+
+    def _reset(self):
+        foss._app_connections.clear()
+        foss.get_listeners().clear()
+        foss.get_requests().clear()
+
+    def test_reconnect_counts_once(self):
+        foss.increment_app_count("a")
+        foss.increment_app_count("b")
+
+        # "b" reconnects before its previous connection is seen to close
+        foss.increment_app_count("b")
+        self.assertEqual(foss.get_app_count(), 2)
+
+        foss.decrement_app_count("b")
+        self.assertEqual(foss.get_app_count(), 2)
+
+        foss.decrement_app_count("b")
+        self.assertEqual(foss.get_app_count(), 1)
+
+        foss.decrement_app_count("b")
+        self.assertEqual(foss.get_app_count(), 1)
