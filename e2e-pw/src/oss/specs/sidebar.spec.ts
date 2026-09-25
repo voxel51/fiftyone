@@ -111,10 +111,9 @@ test.describe.serial("sidebar-filter-visibility", () => {
     // test case: visibility mode - show label
     await sidebar.applyLabelFromList(["cup"], "show-label");
 
-    await expect(await grid.getForwardSection()).toHaveScreenshot(
-      "exclude-bottle-show-cup.png",
-      { animations: "allow" },
-    );
+    await expect
+      .soft(await grid.getForwardSection())
+      .toHaveScreenshot("exclude-bottle-show-cup.png", { animations: "allow" });
 
     // test case: visibility mode - hide label
     await sidebar.applyLabelFromList([], "hide-label");
