@@ -7363,10 +7363,9 @@ class SampleCollection(object):
         if bool is None:
             bool = True
 
-        # Resolved against the root dataset rather than this collection, whose
-        # own `temporal_tags` would list every one of its sample ids; the
-        # select below intersects with this collection, which on a grouped
-        # collection is its active slice's samples.
+        # Resolved against the root dataset because the select below already
+        # scopes to this collection (on a grouped collection, its active
+        # slice's samples); scoping the tag read too would do that work twice.
         root = self._dataset
         sample_ids = {
             tag.sample_id

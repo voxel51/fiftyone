@@ -247,12 +247,11 @@ class TemporalTags(object):
     """
 
     def __init__(self, sample_collection):
-        dataset, sample_collection, sample_ids = _resolve_sample_collection(
+        dataset, sample_collection = _resolve_sample_collection(
             sample_collection
         )
         self._dataset = dataset
         self._sample_collection = sample_collection
-        self._sample_ids = sample_ids
 
     def __str__(self):
         return "<%s: %s>" % (
@@ -264,17 +263,11 @@ class TemporalTags(object):
         return "<%s: %s>" % (self.__class__.__name__, len(self))
 
     def __bool__(self):
-        return len(self) > 0
+        query = self._scoped_query(None)
+        return _get_collection().find_one(query, {"_id": True}) is not None
 
     def __len__(self):
-        collection = _get_existing_collection()
-        if collection is None:
-            return 0
-
-        query = _build_query(
-            self._dataset._doc.id, None, sample_ids=self._sample_ids
-        )
-        return collection.count_documents(query)
+        return _get_collection().count_documents(self._scoped_query(None))
 
     def __iter__(self):
         return self.keys()
@@ -343,15 +336,13 @@ class TemporalTags(object):
         Returns:
             an iterator over :class:`TemporalTag` instances
         """
-        query = _build_query(
-            self._dataset._doc.id, filter, sample_ids=self._sample_ids
-        )
-        collection = _get_existing_collection()
-        if collection is None:
-            return iter(())
-
-        docs = collection.find(query).sort(_TAG_SORT)
+        query = self._scoped_query(filter)
+        docs = _get_collection().find(query).sort(_TAG_SORT)
         return (_from_storage_doc(doc) for doc in docs)
+
+    def _scoped_query(self, filter):
+        query = _build_query(self._dataset._doc.id, filter)
+        return _scope_query(query, self._dataset, self._sample_collection)
 
     def add(self, tags: TemporalTag | Iterable[TemporalTag]):
         """Adds temporal tags to this collection.
@@ -454,19 +445,13 @@ class TemporalTags(object):
             the updated :class:`TemporalTag`
         """
         tag_id = _ensure_object_id(id, "id")
-        collection = _get_existing_collection()
-        if collection is None:
-            raise TemporalTagNotFoundError(
-                "Temporal tag not found: %s" % tag_id
-            )
-
+        collection = _get_collection()
         query = {
             "_dataset_id": self._dataset._doc.id,
             "_id": tag_id,
             "kind": TagKind.TEMPORAL.value,
         }
-        if self._sample_ids is not None:
-            query["_sample_id"] = _build_in_query(list(self._sample_ids))
+        query = _scope_query(query, self._dataset, self._sample_collection)
 
         existing_doc = collection.find_one(query)
         if existing_doc is None:
@@ -537,9 +522,7 @@ class TemporalTags(object):
         Returns:
             the number of deleted temporal tags
         """
-        query = _build_query(
-            self._dataset._doc.id, filter, sample_ids=self._sample_ids
-        )
+        query = _build_query(self._dataset._doc.id, filter)
         has_selector = filter is not None and not _is_empty_filter(filter)
 
         if ids is not None:
@@ -557,10 +540,8 @@ class TemporalTags(object):
                 "dataset"
             )
 
-        collection = _get_existing_collection()
-        if collection is None:
-            return 0
-
+        query = _scope_query(query, self._dataset, self._sample_collection)
+        collection = _get_collection()
         sample_ids = collection.distinct("_sample_id", query)
         deleted_count = collection.delete_many(query).deleted_count
         if deleted_count:
@@ -596,13 +577,7 @@ class TemporalTags(object):
         Returns:
             a dict mapping tag values to counts
         """
-        match = {
-            "$match": _build_query(
-                self._dataset._doc.id,
-                filter,
-                sample_ids=self._sample_ids,
-            )
-        }
+        match = {"$match": self._scoped_query(filter)}
         if by_sample:
             # Two-stage group: first dedupe to one row per (tag, sample), then
             # count rows per tag. Avoids building a large per-tag array (which
@@ -621,10 +596,7 @@ class TemporalTags(object):
                 {"$sort": {"_id": 1}},
             ]
 
-        collection = _get_existing_collection()
-        if collection is None:
-            return {}
-
+        collection = _get_collection()
         return {
             result["_id"]: result["count"]
             for result in collection.aggregate(pipeline)
@@ -776,10 +748,7 @@ def count_temporal_tags_per_sample(dataset) -> dict[str, dict[str, int]]:
         a dict mapping sample IDs to dicts mapping tag values to the number of
         intervals of that tag on the sample
     """
-    collection = _get_existing_collection()
-    if collection is None:
-        return {}
-
+    collection = _get_collection()
     pipeline = [
         {"$match": _build_query(dataset._doc.id, None)},
         {
@@ -799,20 +768,14 @@ def count_temporal_tags_per_sample(dataset) -> dict[str, dict[str, int]]:
 
 
 def delete_for_dataset_id(dataset_id) -> int:
-    collection = _get_existing_collection()
-    if collection is None:
-        return 0
-
+    collection = _get_collection()
     return collection.delete_many(
         {"_dataset_id": dataset_id, "kind": TagKind.TEMPORAL.value}
     ).deleted_count
 
 
 def delete_for_sample_ids(dataset_id, sample_ids) -> int:
-    collection = _get_existing_collection()
-    if collection is None:
-        return 0
-
+    collection = _get_collection()
     sample_ids = list(sample_ids)
     if not sample_ids:
         return 0
@@ -836,20 +799,14 @@ def delete_for_sample_ids(dataset_id, sample_ids) -> int:
 
 
 def count_for_dataset_id(dataset_id) -> int:
-    collection = _get_existing_collection()
-    if collection is None:
-        return 0
-
+    collection = _get_collection()
     return collection.count_documents(
         {"_dataset_id": dataset_id, "kind": TagKind.TEMPORAL.value}
     )
 
 
 def get_orphan_dataset_ids(dataset_ids) -> list:
-    collection = _get_existing_collection()
-    if collection is None:
-        return []
-
+    collection = _get_collection()
     dataset_ids = set(dataset_ids)
     orphan_dataset_ids = [
         dataset_id
@@ -865,10 +822,7 @@ def count_for_dataset_ids(dataset_ids) -> int:
     if not dataset_ids:
         return 0
 
-    collection = _get_existing_collection()
-    if collection is None:
-        return 0
-
+    collection = _get_collection()
     return collection.count_documents(
         {
             "_dataset_id": _build_in_query(dataset_ids),
@@ -882,10 +836,7 @@ def delete_for_dataset_ids(dataset_ids) -> int:
     if not dataset_ids:
         return 0
 
-    collection = _get_existing_collection()
-    if collection is None:
-        return 0
-
+    collection = _get_collection()
     return collection.delete_many(
         {
             "_dataset_id": _build_in_query(dataset_ids),
@@ -900,12 +851,12 @@ def clone_tags(
     if now is None:
         now = _utcnow()
 
-    collection = _get_existing_collection()
-    if collection is None:
-        return 0
-
-    sample_ids = _get_sample_scope(source_dataset, sample_collection)
-    query = _build_query(source_dataset._doc.id, None, sample_ids=sample_ids)
+    collection = _get_collection()
+    query = _scope_query(
+        _build_query(source_dataset._doc.id, None),
+        source_dataset,
+        sample_collection,
+    )
 
     ops = []
     for doc in collection.find(query, {"_id": False}):
@@ -920,14 +871,12 @@ def clone_tags(
 
 
 def export_tags(sample_collection, export_path, progress=None) -> int:
-    dataset, _, sample_ids = _resolve_sample_collection(sample_collection)
-    query = _build_query(dataset._doc.id, None, sample_ids=sample_ids)
+    dataset, sample_collection = _resolve_sample_collection(sample_collection)
+    query = _scope_query(
+        _build_query(dataset._doc.id, None), dataset, sample_collection
+    )
 
-    collection = _get_existing_collection()
-    if collection is None:
-        _delete_temporal_tags_export(export_path)
-        return 0
-
+    collection = _get_collection()
     num_docs = collection.count_documents(query)
     if num_docs == 0:
         _delete_temporal_tags_export(export_path)
@@ -987,12 +936,7 @@ def _resolve_sample_collection(sample_collection):
 
     _validate_dataset(dataset)
 
-    if isinstance(sample_collection, fov.DatasetView):
-        sample_ids = _get_sample_scope(dataset, sample_collection)
-    else:
-        sample_ids = None
-
-    return dataset, sample_collection, sample_ids
+    return dataset, sample_collection
 
 
 def _validate_dataset(dataset) -> None:
@@ -1025,11 +969,27 @@ def _ensure_temporal_tag_list(tags) -> list[TemporalTag]:
     return tags
 
 
-def _get_sample_scope(dataset, sample_collection=None):
-    if sample_collection is None or sample_collection is dataset:
-        return None
+def _scope_query(query, dataset, sample_collection=None):
+    """Restricts a tag query to the samples of ``sample_collection``.
 
-    return list(sample_collection.values("_id"))
+    A view is scoped by the samples its matching tags point at, so the cost
+    follows the number of tagged samples rather than the size of the view.
+    """
+    if not isinstance(sample_collection, fov.DatasetView):
+        return query
+
+    tagged_ids = [
+        str(doc["_id"])
+        for doc in _get_collection().aggregate(
+            [{"$match": query}, {"$group": {"_id": "$_sample_id"}}]
+        )
+    ]
+    if tagged_ids:
+        scoped_ids = sample_collection.select(tagged_ids).values("_id")
+    else:
+        scoped_ids = []
+
+    return {**query, "_sample_id": {"$in": scoped_ids}}
 
 
 def _validate_sample_ids_exist(
@@ -1044,11 +1004,11 @@ def _validate_sample_ids_exist(
         sample_oids.append(sample_oid)
 
     if isinstance(sample_collection, fov.DatasetView):
-        found_values = sample_collection.values("_id")
-        if found_values is None:
-            found_values = []
-
-        found = set(found_values)
+        found = set(
+            sample_collection.select(
+                [str(sample_oid) for sample_oid in sample_oids]
+            ).values("_id")
+        )
     else:
         found = set(
             sample_collection._sample_collection.distinct(
@@ -1216,13 +1176,8 @@ def _from_export_doc(doc) -> TemporalTag:
     )
 
 
-def _build_query(
-    dataset_id, filter: TemporalTagFilter | None, sample_ids=None
-):
+def _build_query(dataset_id, filter: TemporalTagFilter | None):
     query = {"_dataset_id": dataset_id, "kind": TagKind.TEMPORAL.value}
-
-    if sample_ids is not None:
-        query["_sample_id"] = _build_in_query(list(sample_ids))
 
     if filter is None:
         return query
@@ -1231,11 +1186,6 @@ def _build_query(
         filter_sample_ids = _ensure_object_id_list(
             filter.sample_ids, "sample_ids"
         )
-        if sample_ids is not None:
-            filter_sample_ids = _intersect_sample_ids(
-                filter_sample_ids, sample_ids
-            )
-
         query["_sample_id"] = _build_in_query(filter_sample_ids)
 
     if filter.tags is not None:
@@ -1266,13 +1216,6 @@ def _build_query(
         raise ValueError("Temporal tag filters must satisfy start < end")
 
     return query
-
-
-def _intersect_sample_ids(filter_sample_ids, sample_ids):
-    sample_ids = set(sample_ids)
-    return [
-        sample_id for sample_id in filter_sample_ids if sample_id in sample_ids
-    ]
 
 
 def _is_empty_filter(filter: TemporalTagFilter) -> bool:
@@ -1488,18 +1431,25 @@ def _query_from_unique_key(key):
     }
 
 
+_INDEXED_COLLECTIONS = set()
+
+
 def _get_or_create_collection():
     collection = foo.get_db_conn()[TAGS_COLLECTION_NAME]
-    _ensure_indexes(collection)
+
+    # Indexes are created once per process. The unique index is what keeps
+    # concurrent upserts from inserting the same tag twice, so a tags
+    # collection dropped while this process runs gets it back only on restart
+    key = (collection.database.name, collection.name)
+    if key not in _INDEXED_COLLECTIONS:
+        _ensure_indexes(collection)
+        _INDEXED_COLLECTIONS.add(key)
+
     return collection
 
 
-def _get_existing_collection():
-    db = foo.get_db_conn()
-    if TAGS_COLLECTION_NAME not in db.list_collection_names():
-        return None
-
-    return db[TAGS_COLLECTION_NAME]
+def _get_collection():
+    return foo.get_db_conn()[TAGS_COLLECTION_NAME]
 
 
 def _delete_temporal_tags_export(export_path) -> None:
