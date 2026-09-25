@@ -12638,6 +12638,56 @@
             "date_added": "2026-07-14 12:00:00"
         },
         {
+            "base_name": "argus-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Argus (103M) multi-task perception model on a frozen EUPE-ViT-B backbone for COCO detection, ImageNet classification, ADE20K semantic segmentation and indoor metric depth",
+            "source": "https://huggingface.co/phanerozoic/argus",
+            "author": "Charles Norton (phanerozoic)",
+            "license": "FAIR Noncommercial Research License",
+            "size_bytes": 412316194,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.argus.ArgusModel",
+                "config": {
+                    "name_or_path": "phanerozoic/argus",
+                    "revision": "5eaa5dbfb82b3b443b9bf54c499faac94acc195e"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision>=0.16", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "classification", "torch", "transformer"],
+            "training_data": [
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                },
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                },
+                {
+                    "name": "ADE20K",
+                    "url": "http://sceneparsing.csail.mit.edu/"
+                },
+                {
+                    "name": "NYU Depth V2",
+                    "url": "https://cs.nyu.edu/~fergus/datasets/nyu_depth_v2.html"
+                },
+                {
+                    "name": "LVD-1689M",
+                    "url": "https://arxiv.org/abs/2603.22387"
+                }
+            ],
+            "date_added": "2026-09-25 12:00:00"
+        },
+        {
             "base_name": "c-radio-v4-h-torch",
             "base_filename": null,
             "version": null,
