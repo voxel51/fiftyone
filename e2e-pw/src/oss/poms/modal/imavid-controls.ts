@@ -47,7 +47,6 @@ export class ModalImaAsVideoControlsPom {
         '[data-cy=imavid-playhead][data-playhead-state="paused"], [data-cy=imavid-playhead][data-playhead-state="playing"]',
       )
       .first()
-      .first()
       .waitFor({ state: "attached" });
   }
 
@@ -81,7 +80,6 @@ export class ModalImaAsVideoControlsPom {
           `^${escapeRegExp(frameText)}${matchBeginning ? "" : "$"}`,
         ),
       })
-      .first()
       .first()
       .waitFor({ state: "attached" });
   }

@@ -182,7 +182,6 @@ export class OssLoader extends AbstractFiftyoneLoader {
         '[data-cy=looker-error-info], [data-cy=grid-custom-renderer], canvas[canvas-loaded="true"]',
       )
       .first()
-      .first()
       .waitFor({ state: "attached" });
   }
 }

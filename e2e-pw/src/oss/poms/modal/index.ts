@@ -337,7 +337,6 @@ export class ModalPom {
           : loaded,
       )
       .first()
-      .first()
       .waitFor({ state: "attached" });
   }
 
