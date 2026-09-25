@@ -11,6 +11,7 @@ import {
   tinyA,
   tinyB,
 } from "src/oss/fixtures/mcap";
+import { collapseWhitespace } from "src/oss/utils";
 
 const SOURCE_FACTS_DATABASE_NAME = "fiftyone-multimodal-source-facts";
 
@@ -21,10 +22,12 @@ test.describe("MCAP surfaces", () => {
     page,
   }) => {
     const tile = grid.getNthTile(0);
-    await expect(tile.locator("canvas")).toBeVisible();
-    await expect(
-      page.getByTestId("selector-episode-grid-stream"),
-    ).toHaveAttribute("placeholder", "Stream: Auto");
+    expect(await tile.locator("canvas").isVisible()).toBe(true);
+    expect(
+      await page
+        .getByTestId("selector-episode-grid-stream")
+        .getAttribute("placeholder"),
+    ).toBe("Stream: Auto");
 
     await openMcapModal(grid, modal, sampleIndex.episodeA);
     await modal.episode.waitForReady(tinyA.fileName);
@@ -84,7 +87,7 @@ test.describe("MCAP surfaces", () => {
       modal,
     }) => {
       const tile = grid.getNthTile(0);
-      await expect(tile).toHaveAttribute("data-cy", "looker");
+      expect(await tile.getAttribute("data-cy")).toBe("looker");
       await expectDominantColor(tile.locator("canvas"), [255, 0, 255]);
 
       await openMcapModal(grid, modal, 0);
@@ -174,7 +177,7 @@ test.describe("MCAP surfaces", () => {
       await modal.episode.setSamplingRate(1);
       const pointTile = modal.episode.tile("points");
       const canvas = pointTile.locator('[data-graphics-surface="modal-3d"]');
-      await expect(canvas).toHaveAttribute("data-graphics-backend", "webgl2");
+      expect(await canvas.getAttribute("data-graphics-backend")).toBe("webgl2");
 
       // largest points so each frame's cloud is plain to see; each capture
       // follows the frame that drew that cloud
@@ -220,8 +223,7 @@ test.describe("MCAP surfaces", () => {
       const imageCanvas = modal.episode.shell.locator(
         '[data-graphics-surface="modal-images"]',
       );
-      await expect(imageCanvas).toHaveAttribute(
-        "data-graphics-backend",
+      expect(await imageCanvas.getAttribute("data-graphics-backend")).toBe(
         "webgl2",
       );
       // only the camera tile's area of the shared image canvas
@@ -251,7 +253,9 @@ test.describe("MCAP surfaces", () => {
         .getByRole("tab", { name: "Scene", exact: true })
         .click();
       await modal.episode.scope.getByRole("button", { name: "Stats" }).click();
-      await expect(modal.episode.scope.getByText("Graphics")).toBeVisible();
+      expect(await modal.episode.scope.getByText("Graphics").isVisible()).toBe(
+        true,
+      );
       await expectStatsRow(
         modal.episode.scope,
         "Requested backend",
@@ -315,5 +319,12 @@ async function expectStatsRow(
   value: string | RegExp,
 ): Promise<void> {
   const row = scope.locator(`[data-stats-row=${JSON.stringify(label)}]`);
-  await expect(row.locator("span").last()).toHaveText(value);
+  const text = collapseWhitespace(
+    await row.locator("span").last().textContent(),
+  );
+  if (typeof value === "string") {
+    expect(text).toBe(value);
+  } else {
+    expect(text).toMatch(value);
+  }
 }
