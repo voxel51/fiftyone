@@ -91,7 +91,7 @@ export class JSONEditorPom {
    * Scan the dataset and populate label schema values
    */
   async scan() {
-    await this.eventUtils.after("schema-manager-scan-complete", async () => {
+    await this.eventUtils.after("schema-manager:scan-complete", async () => {
       await this.schemaManager.locator.getByTestId("scan").click();
     });
   }
@@ -100,7 +100,7 @@ export class JSONEditorPom {
    * Save the changes
    */
   async save() {
-    await this.eventUtils.after("schema-manager-save-complete", async () => {
+    await this.eventUtils.after("schema-manager:save-complete", async () => {
       await this.schemaManager.footer.getByTestId("primary-button").click();
     });
   }
@@ -125,7 +125,7 @@ export class JSONEditorPom {
    * @returns A promise
    */
   afterInvalidJSON<T>(action: () => Promise<T>): Promise<T> {
-    return this.eventUtils.after("schema-manager-invalid-json", action);
+    return this.eventUtils.after("schema-manager:invalid-json", action);
   }
 
   /**
@@ -134,7 +134,7 @@ export class JSONEditorPom {
    * @returns A promise
    */
   afterValidJSON<T>(action: () => Promise<T>): Promise<T> {
-    return this.eventUtils.after("schema-manager-valid-json", action);
+    return this.eventUtils.after("schema-manager:valid-json", action);
   }
 }
 
