@@ -92,16 +92,19 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-it("only offers removal inside a subset and requires selected members", () => {
+it("only offers removal inside a subset once members are selected", () => {
   const view = render(<Host value={context({ boundary: {} })} />);
   expect(
     screen.queryByRole("button", { name: "Remove from subset" }),
   ).toBeNull();
   view.rerender(<Host value={context({ source: "results" })} />);
-  const button = screen.getByRole("button", { name: "Remove from subset" });
-  expect(button.hasAttribute("disabled")).toBe(true);
-  fireEvent.click(button);
-  expect(mocks.remove).not.toHaveBeenCalled();
+  expect(
+    screen.queryByRole("button", { name: "Remove from subset" }),
+  ).toBeNull();
+  view.rerender(<Host value={context()} />);
+  expect(
+    screen.getByRole("button", { name: "Remove from subset" }),
+  ).toBeTruthy();
 });
 
 it("confirms removal, deselects its captured members, and shows no success message", async () => {

@@ -128,27 +128,36 @@ function RemoveFromSubset({
     }
   };
 
+  // Removal only means something for captured members, so the entry stays
+  // out of the bar until a bucket holds some. An open confirmation keeps its
+  // capture for retry whatever the selection does meanwhile.
+  const offered = context.source === "explicit";
+
   return (
     <>
-      <ActionEntry
-        label="Remove from subset"
-        icon={RemoveCircleOutlineIcon}
-        surface={surface}
-        disabledReason={blocked}
-        busy={busy}
-        busyLabel={pending ? "Removing…" : "Preparing…"}
-        onClick={() => void begin()}
-        aria-haspopup="dialog"
-        aria-expanded={confirming}
-      />
-      {error && !confirming && (
-        <Text
-          role="alert"
-          variant={TextVariant.Xs}
-          color={TextColor.Destructive}
-        >
-          {error}
-        </Text>
+      {offered && (
+        <>
+          <ActionEntry
+            label="Remove from subset"
+            icon={RemoveCircleOutlineIcon}
+            surface={surface}
+            disabledReason={blocked}
+            busy={busy}
+            busyLabel={pending ? "Removing…" : "Preparing…"}
+            onClick={() => void begin()}
+            aria-haspopup="dialog"
+            aria-expanded={confirming}
+          />
+          {error && !confirming && (
+            <Text
+              role="alert"
+              variant={TextVariant.Xs}
+              color={TextColor.Destructive}
+            >
+              {error}
+            </Text>
+          )}
+        </>
       )}
       {confirming && pending && (
         <SubsetConfirmationDialog
