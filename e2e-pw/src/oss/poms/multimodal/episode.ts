@@ -136,9 +136,9 @@ export class EpisodePom {
     await this.shell
       .and(this.page.locator(`:not([data-episode-source-transitioning])`))
       .waitFor();
-    await expect(
-      byDataTestId(this.scope, "episode-preparing-scaffold"),
-    ).toBeHidden();
+    await byDataTestId(this.scope, "episode-preparing-scaffold").waitFor({
+      state: "hidden",
+    });
   }
 
   /** Verifies useful episode topology is visible before source reads recover. */
@@ -149,9 +149,9 @@ export class EpisodePom {
     await this.shell.waitFor();
     await this.scope.getByText(fileName, { exact: true }).waitFor();
     await this.expectTileTitles(tileTitles);
-    await expect(
-      byDataTestId(this.scope, "episode-preparing-scaffold"),
-    ).toBeHidden();
+    expect(
+      await byDataTestId(this.scope, "episode-preparing-scaffold").isVisible(),
+    ).toBe(false);
   }
 
   async navigateDatasetSample(
@@ -246,7 +246,7 @@ export class EpisodePom {
       exact: true,
     });
     await input.fill(String(size));
-    await expect(input).toHaveValue(String(size));
+    expect(await input.inputValue()).toBe(String(size));
   }
 
   async setSidebarNumber(
@@ -295,7 +295,7 @@ export class EpisodePom {
     if ((await viewpoint.getAttribute("aria-expanded")) !== "true") {
       await viewpoint.click();
     }
-    await expect(viewpoint).toHaveAttribute("aria-expanded", "true");
+    expect(await viewpoint.getAttribute("aria-expanded")).toBe("true");
     return this.scope;
   }
 
@@ -310,7 +310,9 @@ export class EpisodePom {
   }
 
   async expectFileName(fileName: string): Promise<void> {
-    await expect(this.scope.getByText(fileName, { exact: true })).toBeVisible();
+    expect(
+      await this.scope.getByText(fileName, { exact: true }).isVisible(),
+    ).toBe(true);
   }
 
   async expectTileTitles(
@@ -318,15 +320,15 @@ export class EpisodePom {
     absent: readonly string[] = [],
   ): Promise<void> {
     for (const title of present) {
-      await expect(this.tileTitle(title).first()).toBeVisible();
+      expect(await this.tileTitle(title).first().isVisible()).toBe(true);
     }
     for (const title of absent) {
-      await expect(this.tileTitle(title)).toHaveCount(0);
+      expect(await this.tileTitle(title).count()).toBe(0);
     }
   }
 
   async expectTileTitleCount(title: string, count: number): Promise<void> {
-    await expect(this.tileTitle(title)).toHaveCount(count);
+    expect(await this.tileTitle(title).count()).toBe(count);
   }
 
   async addTile(type: string, title: string): Promise<void> {
@@ -363,7 +365,7 @@ export class EpisodePom {
       .first()
       .getByRole("button", { name: "Close", exact: true })
       .click();
-    await expect(this.tileTitle(title)).toHaveCount(remaining);
+    expect(await this.tileTitle(title).count()).toBe(remaining);
     if (remaining === 0 && this.inspectedStream === title) {
       this.inspectedStream = null;
     }
@@ -396,7 +398,7 @@ export class EpisodePom {
   }
 
   async expectTileCount(count: number): Promise<void> {
-    await expect(this.shell.locator(".mosaic-window")).toHaveCount(count);
+    expect(await this.shell.locator(".mosaic-window").count()).toBe(count);
   }
 
   tile(title: string): Locator {
@@ -429,9 +431,11 @@ export class EpisodePom {
     await this.shell
       .getByRole("button", { name: "Play", exact: true })
       .waitFor();
-    await expect(
-      this.shell.getByRole("button", { name: "Pause", exact: true }),
-    ).toHaveCount(0);
+    expect(
+      await this.shell
+        .getByRole("button", { name: "Pause", exact: true })
+        .count(),
+    ).toBe(0);
   }
 
   async expectTileEmpty(
@@ -441,7 +445,7 @@ export class EpisodePom {
     const tile = this.tile(title);
     const empty = byDataTestId(tile, "episode-tile-empty-state");
     await empty.filter({ hasText: message }).waitFor();
-    await expect(this.image(title)).toHaveCount(0);
+    expect(await this.image(title).count()).toBe(0);
   }
 
   async expectPlayhead(text: string): Promise<void> {
@@ -454,7 +458,7 @@ export class EpisodePom {
       this.timestampReadout,
       "episode-timezone-picker",
     ).getByRole("combobox");
-    await expect(timezone).toHaveValue("UTC");
+    expect(await timezone.inputValue()).toBe("UTC");
   }
 
   async expectUtcTimeAfterAtMostOneForwardStep(
@@ -492,7 +496,7 @@ export class EpisodePom {
   }
 
   async expectNoUtcTime(): Promise<void> {
-    await expect(this.timestampReadout).toHaveCount(0);
+    expect(await this.timestampReadout.count()).toBe(0);
   }
 
   async stepForward(): Promise<void> {
@@ -601,21 +605,16 @@ export class EpisodePom {
     absent: readonly string[] = [],
   ): Promise<void> {
     await this.openStreams();
+    const inspect = (stream: string) =>
+      this.scope.getByRole("button", {
+        name: `Inspect ${stream}`,
+        exact: true,
+      });
     for (const stream of present) {
-      await expect(
-        this.scope.getByRole("button", {
-          name: `Inspect ${stream}`,
-          exact: true,
-        }),
-      ).toBeVisible();
+      expect(await inspect(stream).isVisible()).toBe(true);
     }
     for (const stream of absent) {
-      await expect(
-        this.scope.getByRole("button", {
-          name: `Inspect ${stream}`,
-          exact: true,
-        }),
-      ).toHaveCount(0);
+      expect(await inspect(stream).count()).toBe(0);
     }
   }
 
@@ -624,7 +623,7 @@ export class EpisodePom {
       .locator("[data-cy=episode-raw-tile]")
       .filter({ hasText: "Choose a stream in the panel settings" });
     await clearedTile.waitFor();
-    await expect(byDataTestId(clearedTile, "episode-raw-tree")).toHaveCount(0);
+    expect(await byDataTestId(clearedTile, "episode-raw-tree").count()).toBe(0);
   }
 
   async inspectStream(stream: string): Promise<void> {
@@ -707,7 +706,7 @@ export class EpisodePom {
       await logs.getByText(text, { exact: true }).waitFor();
     }
     for (const text of absent) {
-      await expect(logs.getByText(text, { exact: true })).toHaveCount(0);
+      expect(await logs.getByText(text, { exact: true }).count()).toBe(0);
     }
     await logs
       .getByRole("button", { name: "Exit fullscreen", exact: true })
@@ -730,10 +729,12 @@ export class EpisodePom {
   }
 
   async expectNoViewerError(): Promise<void> {
-    await expect(this.scope.getByText(/Failed to read recording/)).toHaveCount(
+    expect(await this.scope.getByText(/Failed to read recording/).count()).toBe(
       0,
     );
-    await expect(this.scope.locator("[data-cy=error-boundary]")).toHaveCount(0);
+    expect(await this.scope.locator("[data-cy=error-boundary]").count()).toBe(
+      0,
+    );
   }
 
   private tileTitle(title: string): Locator {
