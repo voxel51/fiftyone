@@ -112,7 +112,14 @@ async def dispatch_polling_event_listener(
             events.append(event_tuple)
 
     if disconnect:
-        del get_requests()[payload.subscription]
+        # the App is gone; if its cell is reactivated, it polls again under
+        # the same subscription and must initialize as a new client
+        for event_name, listener in get_requests().pop(payload.subscription):
+            get_listeners()[event_name].discard(listener)
+
+        if sub == payload.subscription:
+            _polling_listener = None
+
         _end_polling_lease(payload.subscription)
 
     events = sorted(events, key=lambda event: event[0])

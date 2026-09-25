@@ -315,3 +315,24 @@ class TestAppCount(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(_read_counts("a"), [1])
         self.assertNotIn("p", fosp._polling_leases)
+
+        # a reactivated cell polls again under the same subscription
+        response = await fosp.dispatch_polling_event_listener(
+            None, _payload("p")
+        )
+        self.assertEqual(
+            response["events"][0]["event"], fose.StateUpdate.get_event_name()
+        )
+        self.assertEqual(_read_counts("a"), [2])
+        self.assertEqual(
+            len(
+                [
+                    listener
+                    for listener in foss.get_listeners()[
+                        fose.AppCountUpdate.get_event_name()
+                    ]
+                    if listener.subscription == "p"
+                ]
+            ),
+            1,
+        )
