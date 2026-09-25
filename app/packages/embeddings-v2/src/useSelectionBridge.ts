@@ -16,6 +16,7 @@ import type {
 import { buildIdIndex, fetchLassoStage, fetchSampleInfo } from "./protocol";
 import type { EmbeddingsViewHandle, HoverHit } from "./renderer";
 import { usePatchSampleIndex } from "./usePatchSampleIndex";
+import { useSelectedPatchOwners } from "./useSelectedPatchOwners";
 import type { Loaded } from "./useRunColumns";
 
 export interface SelectionBridgeOptions {
@@ -48,6 +49,8 @@ export interface SelectionBridgeOptions {
   /** Whether the server's ids column can answer for this run. False for an
    * extension-owned run, whose points are not sample-keyed. */
   serverIds: boolean;
+  /** The grid shows a patches view, so its selections are patch ids */
+  isPatchesView: boolean;
   /** Joins each publish with the extension's selection artifacts (called
    * with the kept indices; null on clear). Null when nothing decorates. */
   decorateSelection: ((kept: number[] | null) => SelectionDecorator) | null;
@@ -104,6 +107,7 @@ export function useSelectionBridge({
   setSelectedSamples,
   foreignSelection,
   serverIds,
+  isPatchesView,
   decorateSelection,
   resolveLassoStage,
   publishSelection,
@@ -200,6 +204,28 @@ export function useSelectionBridge({
     selectedSamples.size > 0 ? selectedSamples : foreignSelection,
   );
 
+  // The reverse case: a patches view hands over patch ids, which never name
+  // an images run's points, so the server maps them to their samples. The
+  // grid's checkboxes outrank another panel's selection, as below
+  const selectedPatchIds = useMemo(() => {
+    if (!isPatchesView || patchesField || !serverIds) return null;
+    if (selectedSamples.size) return Array.from(selectedSamples.keys());
+    return foreignSelection;
+  }, [
+    isPatchesView,
+    patchesField,
+    serverIds,
+    selectedSamples,
+    foreignSelection,
+  ]);
+  const patchOwners = useSelectedPatchOwners(
+    datasetName,
+    brainKey,
+    view,
+    selectedPatchIds,
+    loaded?.points.length ?? 0,
+  );
+
   // Grid/checkbox selections style the plot (id -> every wire index
   // sharing that id — one sample can own many points, e.g. every window
   // of an episode in a multimodal run). The map is built lazily and
@@ -244,6 +270,8 @@ export function useSelectionBridge({
       : [];
     if (!clickIndices?.length) {
       if (grid.length) return grid;
+      // A patches view's selection, already ranked (checkboxes first)
+      if (patchOwners) return patchOwners;
       // Another panel's selection is the lowest layer, the old panel's
       // order: checkboxes and clicks outrank it here, and this panel's
       // own stage gates it off upstream (see foreignSelection.ts)
@@ -258,7 +286,13 @@ export function useSelectionBridge({
     // episode, and spread-push overflows the arg limit past ~100k
     const seen = new Set(grid);
     return grid.concat(clickIndices.filter((i) => !seen.has(i)));
-  }, [selectedSamples, resolveIndices, clickIndices, foreignSelection]);
+  }, [
+    selectedSamples,
+    resolveIndices,
+    clickIndices,
+    foreignSelection,
+    patchOwners,
+  ]);
 
   // Lasso -> view stage -> the grid. The override stage alone drives
   // the grid; the stage builds locally when the extension supplies a

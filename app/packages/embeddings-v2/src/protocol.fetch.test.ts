@@ -121,6 +121,25 @@ describe("fetchMasks", () => {
     expect(masks.visible).toBeNull();
     expect(masks.match).toBeNull();
   });
+
+  it("sends extended stages for the match mask", async () => {
+    fetchMock.mockResolvedValue(
+      makeColumn(DTYPE_BITMASK, 2, 8, new Uint8Array(2)),
+    );
+    const extended = {
+      "fiftyone.core.stages.Select": { sample_ids: ["p1"], ordered: false },
+    };
+
+    await fetchMasks("d", "k", [], null, extended);
+    expect(fetchMock.mock.calls[0][2]).toEqual({
+      datasetName: "d",
+      brainKey: "k",
+      view: [],
+      filters: null,
+      slices: null,
+      extended,
+    });
+  });
 });
 
 /** Column bytes + a JSON tail, as /v2/color responds */

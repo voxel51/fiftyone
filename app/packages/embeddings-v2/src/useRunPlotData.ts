@@ -627,6 +627,7 @@ export function useRunPlotData(
     setSelectedSamples,
     foreignSelection,
     serverIds: !source.ownsGeometry,
+    isPatchesView,
     decorateSelection: features.decorateSelection,
     resolveLassoStage: features.resolveLassoStage,
     publishSelection,

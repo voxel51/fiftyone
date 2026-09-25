@@ -279,6 +279,10 @@ export async function fetchMasks(
   brainKey: string,
   view: unknown[],
   filters: unknown,
+  /** Extended stages (`{ [_cls]: kwargs }`) folded into the match mask.
+   * The server resolves them in the view's own vocabulary and maps a
+   * patches view's matches back to their samples for a sample-keyed run */
+  extended: Record<string, unknown> | null = null,
 ): Promise<Masks> {
   const buffer = await fetchColumn("/embeddings/v2/masks", {
     datasetName,
@@ -286,6 +290,7 @@ export async function fetchMasks(
     view,
     filters,
     slices: null,
+    extended,
   });
   const header = parseHeader(buffer);
   if (header.dtype !== DTYPE_BITMASK) {

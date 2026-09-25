@@ -3,7 +3,13 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SelectionType } from "@fiftyone/state";
 import type { LassoStageInput } from "./extensions";
-import { fetchIds, fetchLassoStage, fetchSampleInfo, idAt } from "./protocol";
+import {
+  fetchIds,
+  fetchLassoStage,
+  fetchMasks,
+  fetchSampleInfo,
+  idAt,
+} from "./protocol";
 import type { SampleInfo } from "./protocol";
 import type { Loaded } from "./useRunColumns";
 import {
@@ -20,6 +26,7 @@ vi.mock("./protocol", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./protocol")>()),
   fetchIds: vi.fn(),
   fetchLassoStage: vi.fn(),
+  fetchMasks: vi.fn(),
   fetchSampleInfo: vi.fn(),
 }));
 
@@ -86,6 +93,7 @@ const options = (
   foreignSelection: null,
   // Off by default: most tests never touch the owning-sample fetch
   serverIds: false,
+  isPatchesView: false,
   decorateSelection: null,
   resolveLassoStage,
   ...overrides,
@@ -1116,6 +1124,12 @@ describe("useSelectionBridge: foreign and sample-level selections", () => {
   beforeEach(() => {
     vi.mocked(fetchIds).mockReset();
     vi.mocked(fetchIds).mockResolvedValue(OWNERS);
+    // The patches-view owner lookup: point 1 owns the selected patches
+    vi.mocked(fetchMasks).mockReset();
+    vi.mocked(fetchMasks).mockResolvedValue({
+      visible: null,
+      match: new Uint8Array([0, 1]),
+    });
   });
 
   it("emphasizes another panel's selection", () => {
@@ -1151,23 +1165,27 @@ describe("useSelectionBridge: foreign and sample-level selections", () => {
       view: "samples",
       loaded: LOADED,
       patchesField: null,
+      isPatchesView: false,
       id: idAt(IDS, 1),
       expected: [1],
     },
     {
-      // Patch ids cannot name a samples run's points: a known limit
+      // Patch ids cannot name a samples run's points, so the server maps
+      // them to their owners (the mocked match mask names point 1)
       run: "samples",
       view: "patches",
       loaded: LOADED,
       patchesField: null,
+      isPatchesView: true,
       id: hex(10),
-      expected: null,
+      expected: [1],
     },
     {
       run: "patches",
       view: "samples",
       loaded: PATCH_LOADED,
       patchesField: "ground_truth",
+      isPatchesView: false,
       id: hex(20),
       expected: [0, 1],
     },
@@ -1176,15 +1194,17 @@ describe("useSelectionBridge: foreign and sample-level selections", () => {
       view: "patches",
       loaded: PATCH_LOADED,
       patchesField: "ground_truth",
+      isPatchesView: true,
       id: hex(12),
       expected: [2],
     },
   ])(
     "resolves a $view-view grid selection on a $run run",
-    async ({ loaded, patchesField, id, expected }) => {
+    async ({ loaded, patchesField, isPatchesView, id, expected }) => {
       const opts = options({
         loaded,
         patchesField,
+        isPatchesView,
         serverIds: true,
         selectedSamples: gridSelection(id),
       });
@@ -1249,5 +1269,46 @@ describe("useSelectionBridge: foreign and sample-level selections", () => {
     renderHook(() => useSelectionBridge(opts));
 
     expect(fetchIds).not.toHaveBeenCalled();
+  });
+
+  it("lights the images that own another panel's patches in a patches view", async () => {
+    const opts = options({
+      serverIds: true,
+      isPatchesView: true,
+      foreignSelection: [hex(10)],
+    });
+    const { result } = renderHook(() => useSelectionBridge(opts));
+
+    await waitFor(() => expect(result.current.selectedIndices).toEqual([1]));
+    expect(fetchMasks).toHaveBeenCalledWith("ds", "viz", [], null, {
+      "fiftyone.core.stages.Select": { sample_ids: [hex(10)], ordered: false },
+    });
+  });
+
+  it("ranks the grid's patch checkboxes above another panel's patches", async () => {
+    const opts = options({
+      serverIds: true,
+      isPatchesView: true,
+      selectedSamples: gridSelection(hex(10)),
+      foreignSelection: [hex(11)],
+    });
+    renderHook(() => useSelectionBridge(opts));
+
+    await waitFor(() => expect(fetchMasks).toHaveBeenCalled());
+    expect(vi.mocked(fetchMasks).mock.calls[0][4]).toEqual({
+      "fiftyone.core.stages.Select": { sample_ids: [hex(10)], ordered: false },
+    });
+  });
+
+  it("never asks the server to map patches for an extension-owned run", () => {
+    const opts = options({
+      serverIds: false,
+      isPatchesView: true,
+      foreignSelection: [hex(10)],
+    });
+    const { result } = renderHook(() => useSelectionBridge(opts));
+
+    expect(fetchMasks).not.toHaveBeenCalled();
+    expect(result.current.selectedIndices).toBeNull();
   });
 });
