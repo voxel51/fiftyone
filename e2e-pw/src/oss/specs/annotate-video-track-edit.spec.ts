@@ -173,7 +173,7 @@ test.describe.serial("video annotation track editing", () => {
     // the focused number input.
     await blur(page);
     await va.stepForward();
-    await expect(modal.sidebar.edit.backButton).toBeVisible();
+    await modal.sidebar.edit.assert.isOpen();
     await modal.sidebar.edit.assert.verifyFieldValue("position.x", "0.5");
 
     // key frame 2 apart from frame 1
@@ -250,7 +250,7 @@ test.describe.serial("video annotation track editing", () => {
     await modal.sampleCanvas.click(0.4, 0.4);
 
     // the editor opened — selection worked
-    await expect(modal.sidebar.edit.backButton).toBeVisible();
+    await modal.sidebar.edit.assert.isOpen();
 
     // a select is not an edit: the next autosave carries only a real edit. A
     // class change fans across the track without touching geometry, so a no-op
@@ -288,13 +288,13 @@ test.describe.serial("video annotation track editing", () => {
 
     // sidebar row -> editor
     await va.selectLabel("vehicle");
-    await expect(modal.sidebar.edit.backButton).toBeVisible();
+    await modal.sidebar.edit.assert.isOpen();
     await modal.sidebar.edit.assert.verifyFieldValue("label", "vehicle");
     await modal.sidebar.edit.exitToList();
 
     // timeline row -> editor (same shared engine selection)
     await va.clickTrack(trackId);
-    await expect(modal.sidebar.edit.backButton).toBeVisible();
+    await modal.sidebar.edit.assert.isOpen();
     await modal.sidebar.edit.assert.verifyFieldValue("label", "vehicle");
     await modal.sidebar.edit.exitToList();
 
@@ -302,7 +302,7 @@ test.describe.serial("video annotation track editing", () => {
     // container coords; hover until the overlay's "pointer" cursor registers)
     await modal.sampleCanvas.move(0.4, 0.4, "pointer");
     await modal.sampleCanvas.click(0.4, 0.4);
-    await expect(modal.sidebar.edit.backButton).toBeVisible();
+    await modal.sidebar.edit.assert.isOpen();
     await modal.sidebar.edit.assert.verifyFieldValue("label", "vehicle");
   });
 });

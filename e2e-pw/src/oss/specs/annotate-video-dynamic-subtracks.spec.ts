@@ -162,7 +162,7 @@ test.describe.serial("video annotation dynamic attribute sub-tracks", () => {
     await va.assert.subTracks(parentId, [ATTR]);
 
     // Uniform "off" across the clip → a single value segment.
-    await expect(va.segmentBars(subId)).toHaveCount(1);
+    expect(await va.segmentBars(subId).count()).toBe(1);
 
     // Collapse: the sub-track row is hidden again.
     await va.toggleTrackExpansion(parentId);
@@ -192,9 +192,13 @@ test.describe.serial("video annotation dynamic attribute sub-tracks", () => {
     await va.toggleTrackExpansion(parentId);
 
     // Two value segments now, labelled by their values.
-    await expect(va.segmentBars(subId)).toHaveCount(2);
-    await expect(va.segmentBars(subId).nth(0)).toHaveAttribute("title", /off/);
-    await expect(va.segmentBars(subId).nth(1)).toHaveAttribute("title", /left/);
+    expect(await va.segmentBars(subId).count()).toBe(2);
+    expect(await va.segmentBars(subId).nth(0).getAttribute("title")).toMatch(
+      /off/,
+    );
+    expect(await va.segmentBars(subId).nth(1).getAttribute("title")).toMatch(
+      /left/,
+    );
   });
 
   test("undo collapses the two segments back to one", async ({
@@ -218,12 +222,17 @@ test.describe.serial("video annotation dynamic attribute sub-tracks", () => {
     const subId = `${parentId}::${ATTR}`;
 
     await va.toggleTrackExpansion(parentId);
-    await expect(va.segmentBars(subId)).toHaveCount(2);
+    expect(await va.segmentBars(subId).count()).toBe(2);
 
     // The whole forward-fill is one undo unit → the row reverts to one segment.
-    await modal.sidebar.edit.undo();
-    await expect(va.segmentBars(subId)).toHaveCount(1);
-    await expect(va.segmentBars(subId).nth(0)).toHaveAttribute("title", /off/);
+    // Its rows stay the same, so wait on the rebuild of those same rows.
+    await va.afterTracksRendered(await va.trackIds(), () =>
+      modal.sidebar.edit.undo(),
+    );
+    expect(await va.segmentBars(subId).count()).toBe(1);
+    expect(await va.segmentBars(subId).nth(0).getAttribute("title")).toMatch(
+      /off/,
+    );
   });
 
   test("clicking a value segment seeks to its start", async ({
@@ -280,7 +289,9 @@ test.describe.serial("video annotation dynamic attribute sub-tracks", () => {
     // Clicking the sub-track row selects the PARENT object track, opening its
     // editor — its `turn_signal` field becomes readable (frame 1 → "off").
     await va.clickTrack(subId);
-    await expect(modal.sidebar.edit.getFieldContainer(ATTR)).toBeVisible();
+    expect(await modal.sidebar.edit.getFieldContainer(ATTR).isVisible()).toBe(
+      true,
+    );
     await assertSignal(modal, "off");
   });
 });

@@ -450,12 +450,12 @@ test.describe.serial("video annotation track split / merge", () => {
     // it did) but carries no merge target — the only other track is a different
     // class
     await va.trackBar(personId).click({ button: "right" });
-    await expect(
-      page.getByRole("menuitem", { name: "Delete track" }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("menuitem", { name: /^Merge into / }),
-    ).toHaveCount(0);
+    expect(
+      await page.getByRole("menuitem", { name: "Delete track" }).isVisible(),
+    ).toBe(true);
+    expect(
+      await page.getByRole("menuitem", { name: /^Merge into / }).count(),
+    ).toBe(0);
 
     // both tracks survive — nothing merged
     await page.keyboard.press("Escape");

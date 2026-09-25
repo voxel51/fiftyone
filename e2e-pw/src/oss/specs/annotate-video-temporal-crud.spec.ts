@@ -157,7 +157,7 @@ test.describe.serial("video annotation temporal detection CRUD", () => {
 
     const saved = savedResponse(page);
     await va.clickTrack(newTrack as string);
-    await expect(modal.sidebar.edit.backButton).toBeVisible();
+    await modal.sidebar.edit.assert.isOpen();
     await modal.sidebar.edit.selectFieldChoice("label", "depart");
     await modal.sidebar.edit.assert.verifyFieldValue("label", "depart");
     await saved;
@@ -197,7 +197,7 @@ test.describe.serial("video annotation temporal detection CRUD", () => {
     // delete it through the editor (engine delete -> id-aligned list diff)
     const saved = savedResponse(page);
     await va.selectLabel("pass");
-    await expect(modal.sidebar.edit.backButton).toBeVisible();
+    await modal.sidebar.edit.assert.isOpen();
     await modal.sidebar.edit.deleteLabel();
     await saved;
 

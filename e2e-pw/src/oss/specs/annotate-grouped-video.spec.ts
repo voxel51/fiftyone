@@ -254,7 +254,7 @@ test.describe.serial("grouped video annotation", () => {
     await modal.videoAnnotate.assert.labelListed("vehicle");
     await modal.videoAnnotate.selectLabel("vehicle");
     // the editor opened => select() didn't throw resolving its sample scope
-    await expect(modal.sidebar.edit.backButton).toBeVisible();
+    await modal.sidebar.edit.assert.isOpen();
 
     const patch = modal.sidebar.annotate.waitForPatch();
     await modal.sidebar.edit.setFieldValue("position.x", "0.5");
@@ -279,7 +279,7 @@ test.describe.serial("grouped video annotation", () => {
 
     await modal.videoAnnotate.assert.labelListed("vehicle");
     await modal.videoAnnotate.selectLabel("vehicle");
-    await expect(modal.sidebar.edit.backButton).toBeVisible();
+    await modal.sidebar.edit.assert.isOpen();
 
     const patch = modal.sidebar.annotate.waitForPatch();
     await modal.sidebar.edit.setFieldValue("position.x", "0.5");

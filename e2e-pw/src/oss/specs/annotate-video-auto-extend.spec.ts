@@ -7,7 +7,7 @@
  * `detections` and keeps following the playhead. Re-seeded clean per test on a
  * 40-frame clip so the extent isn't clamped.
  */
-import { expect, test as base } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
@@ -159,7 +159,7 @@ test.describe.serial("video annotation fresh draw", () => {
     // bound to the schema field on the next frame
     await blur(page);
     await va.stepForward();
-    await expect(modal.sidebar.edit.backButton).toBeVisible();
+    await modal.sidebar.edit.assert.isOpen();
     await modal.sidebar.edit.assert.currentField("frames.detections");
   });
 

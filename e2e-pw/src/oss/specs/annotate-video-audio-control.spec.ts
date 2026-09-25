@@ -90,12 +90,12 @@ test.describe("timeline audio controls", () => {
 
     // No popover: the mute button sits directly in the toolbar and grows the
     // fader on hover. It is labelled by its channel ("Master").
-    await expect(volumeControl(page)).toBeVisible();
+    expect(await volumeControl(page).isVisible()).toBe(true);
 
     const mute = page.locator('[data-testid="timeline-controls-mute"]');
-    await expect(mute).toBeVisible();
-    await expect(mute).toHaveAttribute("aria-label", "Unmute Master");
-    await expect(mute).toHaveAttribute("aria-pressed", "true");
+    expect(await mute.isVisible()).toBe(true);
+    expect(await mute.getAttribute("aria-label")).toBe("Unmute Master");
+    expect(await mute.getAttribute("aria-pressed")).toBe("true");
   });
 
   test("a silent video shows no volume UI at all", async ({
@@ -106,12 +106,15 @@ test.describe("timeline audio controls", () => {
     await openAnnotate(fiftyoneLoader, modal, page, silentId);
 
     // controls render; the volume control never mounts
-    await expect(
-      page.locator('[data-testid="timeline-controls-root"]').first(),
-    ).toBeVisible();
-    await expect(volumeControl(page)).toHaveCount(0);
-    await expect(
-      page.locator('[data-testid="timeline-controls-mute"]'),
-    ).toHaveCount(0);
+    expect(
+      await page
+        .locator('[data-testid="timeline-controls-root"]')
+        .first()
+        .isVisible(),
+    ).toBe(true);
+    expect(await volumeControl(page).count()).toBe(0);
+    expect(
+      await page.locator('[data-testid="timeline-controls-mute"]').count(),
+    ).toBe(0);
   });
 });

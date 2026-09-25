@@ -90,10 +90,9 @@ test("toggling a frame field keeps the timeline drawer and its rows mounted", as
 
   // both fields are active by default: one row each
   await va.assert.objectTrackCount(2);
-  await expect(page.locator(TIMELINE_ROOT)).toHaveAttribute(
-    "data-timeline-loaded",
-    "true",
-  );
+  expect(
+    await page.locator(TIMELINE_ROOT).getAttribute("data-timeline-loaded"),
+  ).toBe("true");
 
   // rows only render in the drawer body, so open it — this is also the layout
   // the close-and-reopen was visible in
@@ -125,10 +124,9 @@ test("toggling a frame field keeps the timeline drawer and its rows mounted", as
     modal.sidebar.toggleLabelCheckbox("frames.polylines"),
   );
   await va.assert.objectTrackCount(1);
-  await expect(page.locator(TIMELINE_ROOT)).toHaveAttribute(
-    "data-timeline-loaded",
-    "true",
-  );
+  expect(
+    await page.locator(TIMELINE_ROOT).getAttribute("data-timeline-loaded"),
+  ).toBe("true");
 
   let after = await attached();
   expect(after.root, "timeline root was replaced").toBe(true);
@@ -145,10 +143,9 @@ test("toggling a frame field keeps the timeline drawer and its rows mounted", as
     modal.sidebar.toggleLabelCheckbox("frames.polylines"),
   );
   await va.assert.objectTrackCount(2);
-  await expect(page.locator(TIMELINE_ROOT)).toHaveAttribute(
-    "data-timeline-loaded",
-    "true",
-  );
+  expect(
+    await page.locator(TIMELINE_ROOT).getAttribute("data-timeline-loaded"),
+  ).toBe("true");
 
   after = await attached();
   expect(after.root, "timeline root was replaced").toBe(true);
