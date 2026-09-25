@@ -29,7 +29,7 @@ export class ModalAnnotate3dPom {
    * canvas interaction.
    */
   async waitForSurface() {
-    await expect(this.container).toBeVisible();
+    await this.container.waitFor();
     await this.modal.untilSceneReady();
   }
 
@@ -212,10 +212,11 @@ export class ModalAnnotate3dPom {
       await this.page.mouse.move(x, y);
       await this.page.mouse.down();
       await this.page.mouse.up();
-      await expect(this.container).toHaveAttribute(
-        "data-cy-draft-vertex-count",
-        String(index + 1),
-      );
+      await this.page
+        .locator(
+          `[data-cy="looker3d"][data-cy-draft-vertex-count="${index + 1}"]`,
+        )
+        .waitFor({ state: "attached" });
     }
 
     // Enter commits the segment; a double-click would ride on wall-clock timing
@@ -232,33 +233,36 @@ class ModalAnnotate3dAsserter {
    * annotate mode (the cuboid/polyline/transform groups mount on demand).
    */
   async toolbarVisible(visible = true) {
-    const plane = this.pom.toolbarButton("toggle-annotation-plane");
-    return visible
-      ? await expect(plane).toBeVisible()
-      : await expect(plane).toBeHidden();
+    expect(
+      await this.pom.toolbarButton("toggle-annotation-plane").isVisible(),
+    ).toBe(visible);
   }
 
   /** Assert cuboid-draw mode is active (Create Cuboid button highlighted). */
   async createCuboidActive(active = true) {
-    await expect(this.pom.toolbarButton("create-cuboid")).toHaveAttribute(
-      "data-cy-active",
-      String(active),
-    );
+    expect(
+      await this.pom
+        .toolbarButton("create-cuboid")
+        .getAttribute("data-cy-active"),
+    ).toBe(String(active));
   }
 
   /** Assert polyline annotation mode is active (the sidebar 3D Polylines button). */
   async polylineModeActive(active = true) {
-    await expect(
-      this.pom.page.locator('[data-cy="polyline-mode-3d"]'),
-    ).toHaveAttribute("data-cy-active", String(active));
+    expect(
+      await this.pom.page
+        .locator('[data-cy="polyline-mode-3d"]')
+        .getAttribute("data-cy-active"),
+    ).toBe(String(active));
   }
 
   /** Assert the New Segment polyline action is active (segmentation armed). */
   async newSegmentActive(active = true) {
-    await expect(this.pom.toolbarButton("new-segment")).toHaveAttribute(
-      "data-cy-active",
-      String(active),
-    );
+    expect(
+      await this.pom
+        .toolbarButton("new-segment")
+        .getAttribute("data-cy-active"),
+    ).toBe(String(active));
   }
 
   /**
@@ -266,23 +270,24 @@ class ModalAnnotate3dAsserter {
    * gizmo mode is active.
    */
   async transformModeActive(mode: "translate" | "rotate" | "scale") {
-    await expect(this.pom.toolbarButton(mode)).toHaveAttribute(
-      "data-cy-active",
-      "true",
-    );
+    expect(
+      await this.pom.toolbarButton(mode).getAttribute("data-cy-active"),
+    ).toBe("true");
   }
 
   /** Assert a label (by class text) is / isn't listed in the sidebar. */
   async labelListed(labelText: string, listed = true) {
     const row = this.pom.labelRow(labelText);
-    return listed
-      ? await expect(row).toBeVisible()
-      : await expect(row).toHaveCount(0);
+    if (listed) {
+      expect(await row.isVisible()).toBe(true);
+    } else {
+      expect(await row.count()).toBe(0);
+    }
   }
 
   /** Assert the number of label rows currently listed. */
   async labelCount(expected: number) {
-    await expect(this.pom.labelRows).toHaveCount(expected);
+    expect(await this.pom.labelRows.count()).toBe(expected);
   }
 }
 

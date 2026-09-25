@@ -1,4 +1,5 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
+import { exactText } from "src/oss/utils";
 import { ModalPom } from ".";
 import { ModalLevaPom } from "./leva";
 
@@ -36,14 +37,13 @@ export class Looker3DControlsPom {
 
   /**
    * Wait until every scene asset has loaded and the scene has rendered with
-   * its settled camera. Arm the ready event before reading the state once: a
-   * reveal that already happened shows in the attribute, one still to come
-   * fires the armed event.
+   * its settled camera.
    */
   async waitForAllAssetsLoaded() {
-    await expect(
-      this.locator.getByTestId("looker3d-logs-action-bar"),
-    ).toHaveText(SUCCESS_MSG);
+    await this.locator
+      .getByTestId("looker3d-logs-action-bar")
+      .filter({ hasText: exactText(SUCCESS_MSG) })
+      .waitFor({ state: "attached" });
 
     await this.modal.untilSceneReady();
   }
@@ -87,7 +87,7 @@ export class Looker3DControlsPom {
     }
 
     await this.modal.clickOnLooker3d();
-    await expect(this.sliceSelectorCheckboxes).toHaveCount(0);
+    await this.sliceSelectorCheckboxes.waitFor({ state: "detached" });
   }
 
   getSliceCheckbox(slice: string) {
@@ -99,13 +99,15 @@ class Looker3DControlsAsserter {
   constructor(private readonly looker3dControlsPom: Looker3DControlsPom) {}
 
   async verifySliceSelectorLabel(expectedLabel: string) {
-    await expect(this.looker3dControlsPom.sliceSelector).toContainText(
-      expectedLabel,
-    );
+    expect(
+      await this.looker3dControlsPom.sliceSelector.textContent(),
+    ).toContain(expectedLabel);
   }
 
   async verifySliceSelectorHidden() {
-    await expect(this.looker3dControlsPom.sliceSelector).toBeHidden();
+    expect(await this.looker3dControlsPom.sliceSelector.isVisible()).toBe(
+      false,
+    );
   }
 
   async verifySliceChecked(slice: string, checked = true) {
@@ -113,11 +115,6 @@ class Looker3DControlsAsserter {
       .getSliceCheckbox(slice)
       .locator('input[type="checkbox"]');
 
-    if (checked) {
-      await expect(checkbox).toBeChecked();
-      return;
-    }
-
-    await expect(checkbox).not.toBeChecked();
+    expect(await checkbox.isChecked()).toBe(checked);
   }
 }

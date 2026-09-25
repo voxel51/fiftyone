@@ -164,10 +164,9 @@ class Renderer3dAsserter {
   ) {
     // scene-ready = assets loaded, camera settled, revealed — the frame is
     // painted, so one pixel count is enough
-    await expect(this.renderer3dPom.looker3d).toHaveAttribute(
-      "data-scene-ready",
-      "true",
-    );
+    expect(
+      await this.renderer3dPom.looker3d.getAttribute("data-scene-ready"),
+    ).toBe("true");
     expect(await this.renderer3dPom.countRenderedPixels()).toBeGreaterThan(
       minRenderedPixels,
     );
