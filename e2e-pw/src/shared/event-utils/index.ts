@@ -37,6 +37,8 @@ declare global {
     __FO_EVENTS__?: {
       tap: (listener: (event: string, data: unknown) => void) => () => void;
     };
+    /** Bus listeners of {@link EventUtils.initCounter}, tapped once the bus loads. */
+    __FO_BUS_COUNTERS__?: ((event: string, data: unknown) => void)[];
   }
 }
 
@@ -292,12 +294,11 @@ export class EventUtils {
   }
 
   /**
-   * Install a counter for a document CustomEvent (such as `grid-mount`) at
-   * document start, before any application code runs, so events fired during
-   * the initial page load are observed. Bus events are not counted: the bus
-   * tap only exists once the app has loaded. Create the counter BEFORE the
-   * navigation whose load it should watch; each navigation starts a fresh
-   * document, resetting the records to empty.
+   * Install a counter for an app event (a document CustomEvent such as
+   * `grid-mount`, or a bus event) at document start, before any application
+   * code runs, so events fired during the initial page load are observed.
+   * Create the counter BEFORE the navigation whose load it should watch; each
+   * navigation starts a fresh document, resetting the records to empty.
    */
   public async initCounter(eventName: string): Promise<EventCounter> {
     const key = getFunctionNameWithRandomSuffix(`counter_${eventName}`);
@@ -306,11 +307,29 @@ export class EventUtils {
       ({ eventName_, key_ }) => {
         const store = (window.__EVENT_COUNTS__ ??= {});
         const records: { t: number; detail?: unknown }[] = (store[key_] = []);
-        document.addEventListener(eventName_, (e: Event) => {
-          records.push({
-            t: performance.now(),
-            detail: (e as CustomEvent).detail,
-          });
+        const record = (detail: unknown) =>
+          records.push({ t: performance.now(), detail });
+        document.addEventListener(eventName_, (e: Event) =>
+          record((e as CustomEvent).detail),
+        );
+
+        const counters = (window.__FO_BUS_COUNTERS__ ??= []);
+        counters.push((event, data) => event === eventName_ && record(data));
+        if (counters.length > 1) return;
+        // the bus registry installs its tap while the app loads, after this
+        // script; tap it the moment it is assigned
+        Object.defineProperty(window, "__FO_EVENTS__", {
+          configurable: true,
+          set(bus: NonNullable<Window["__FO_EVENTS__"]>) {
+            Object.defineProperty(window, "__FO_EVENTS__", {
+              configurable: true,
+              writable: true,
+              value: bus,
+            });
+            bus.tap((event, data) =>
+              counters.forEach((count) => count(event, data)),
+            );
+          },
         });
       },
       { eventName_: eventName, key_: key },

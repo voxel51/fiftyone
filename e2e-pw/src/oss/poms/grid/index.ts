@@ -138,7 +138,7 @@ export class GridPom {
   async armLifecycleCounters() {
     return {
       mounts: await this.eventUtils.initCounter("grid-mount"),
-      unmounts: await this.eventUtils.initCounter("grid-unmount"),
+      unmounts: await this.eventUtils.initCounter("e2e:grid:unmount"),
     };
   }
 
@@ -148,7 +148,7 @@ export class GridPom {
    * `received` after it.
    */
   private async armGridRefresh(): Promise<ArmedEvent> {
-    const unmount = await this.eventUtils.arm("grid-unmount");
+    const unmount = await this.eventUtils.arm("e2e:grid:unmount");
     const mount = await this.eventUtils.arm("grid-mount");
     return new ArmedEvent(
       Promise.all([unmount.received, mount.received]).then(
