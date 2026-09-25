@@ -146,7 +146,7 @@ test.describe.serial("3d cuboid annotation", () => {
     await modal.annotate3d.selectLabel("car");
 
     // seeded geometry: location [0, 0, 0]
-    await expect(modal.annotate3d.geometryField("x")).toHaveValue("0.00");
+    expect(await modal.annotate3d.geometryField("x").inputValue()).toBe("0.00");
 
     // editing the x input commits an undoable engine write that autosaves
     const saved = page.waitForResponse(
@@ -161,15 +161,17 @@ test.describe.serial("3d cuboid annotation", () => {
     // container/world coordinate ambiguity)
     await inFreshContext(browser, fiftyoneLoader, async (fresh) => {
       await fresh.annotate3d.selectLabel("car");
-      await expect(fresh.annotate3d.geometryField("x")).toHaveValue("1.50");
+      expect(await fresh.annotate3d.geometryField("x").inputValue()).toBe(
+        "1.50",
+      );
     });
 
     // the form value mirrors the committed engine state, so undo/redo of the
     // geometry edit round-trips there
     await modal.sidebar.edit.undo();
-    await expect(modal.annotate3d.geometryField("x")).toHaveValue("0.00");
+    expect(await modal.annotate3d.geometryField("x").inputValue()).toBe("0.00");
     await modal.sidebar.edit.redo();
-    await expect(modal.annotate3d.geometryField("x")).toHaveValue("1.50");
+    expect(await modal.annotate3d.geometryField("x").inputValue()).toBe("1.50");
   });
 
   test("a class edit on the cuboid persists across a fresh save", async ({

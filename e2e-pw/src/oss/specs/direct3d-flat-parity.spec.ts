@@ -111,7 +111,7 @@ test.describe.serial("flat direct 3d parity", () => {
         seenSampleIndices.add(specIndex);
       }
 
-      await expect(modal.looker3d).toBeVisible();
+      expect(await modal.looker3d.isVisible()).toBe(true);
       await modal.looker3dControls.assert.verifySliceSelectorHidden();
       await modal.sidebar.assert.verifySidebarEntryTexts({
         name: spec.name,

@@ -316,7 +316,7 @@ test.describe.serial("3d polyline creation", () => {
       [0.6, 0.4],
       [0.6, 0.6],
     ]);
-    await expect(labelInput).toBeVisible();
+    expect(await labelInput.isVisible()).toBe(true);
 
     // the freshly-drawn polyline is auto-selected with its edit form open
     // (which replaces the label list); verify creation through the form, then

@@ -63,7 +63,7 @@ test.describe.serial("quickstart-groups", () => {
   }) => {
     await grid.assert.isTileCountEqualTo(4);
     const selectorSlice = page.getByTestId("selector-slice");
-    await expect(selectorSlice).toHaveValue("left");
+    expect(await selectorSlice.inputValue()).toBe("left");
   });
 
   test("entry counts works", async ({ grid }) => {
@@ -131,23 +131,23 @@ test.describe.serial("quickstart-groups", () => {
       //   0
       // );
 
-      await expect(modal.looker3d).toBeVisible();
+      expect(await modal.looker3d.isVisible()).toBe(true);
       await modal.group.toggleMedia("3d");
-      await expect(modal.looker3d).toBeHidden();
+      expect(await modal.looker3d.isVisible()).toBe(false);
       await modal.group.toggleMedia("3d");
-      await expect(modal.looker3d).toBeVisible();
+      expect(await modal.looker3d.isVisible()).toBe(true);
 
-      await expect(modal.groupLooker).toBeVisible();
+      expect(await modal.groupLooker.isVisible()).toBe(true);
       await modal.group.toggleMedia("viewer");
-      await expect(modal.groupLooker).toBeHidden();
+      expect(await modal.groupLooker.isVisible()).toBe(false);
       await modal.group.toggleMedia("viewer");
-      await expect(modal.groupLooker).toBeVisible();
+      expect(await modal.groupLooker.isVisible()).toBe(true);
 
-      await expect(modal.carousel).toBeVisible();
+      expect(await modal.carousel.isVisible()).toBe(true);
       await modal.group.toggleMedia("carousel");
-      await expect(modal.carousel).toBeHidden();
+      expect(await modal.carousel.isVisible()).toBe(false);
       await modal.group.toggleMedia("carousel");
-      await expect(modal.carousel).toBeVisible();
+      expect(await modal.carousel.isVisible()).toBe(true);
     });
 
     // Flaky: the pcd canvas intermittently renders zero pixels after the
@@ -176,8 +176,8 @@ test.describe.serial("quickstart-groups", () => {
         await modal.group.toggleMedia("3d");
       }
 
-      await expect(modal.groupLooker).toBeVisible();
-      await expect(modal.looker3d).toBeVisible();
+      expect(await modal.groupLooker.isVisible()).toBe(true);
+      expect(await modal.looker3d.isVisible()).toBe(true);
       await modal.clickOnLooker();
       await modal.assert.verifyModalSamplePluginTitle("left", { pinned: true });
 
@@ -190,8 +190,8 @@ test.describe.serial("quickstart-groups", () => {
       await grid.openFirstSample();
       await modal.waitForSampleLoadDomAttribute(true);
       await modal.assert.verifyModalSamplePluginTitle("left", { pinned: true });
-      await expect(modal.groupLooker).toBeVisible();
-      await expect(modal.looker3d).toBeVisible();
+      expect(await modal.groupLooker.isVisible()).toBe(true);
+      expect(await modal.looker3d.isVisible()).toBe(true);
 
       await modal.sidebar.switchMode("annotate");
       await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice("pcd");
