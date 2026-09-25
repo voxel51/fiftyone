@@ -58,6 +58,7 @@ test.describe.serial("field visibility", () => {
   test("deselect all fields works - deselects enabled fields", async ({
     fieldVisibility,
   }) => {
+    await fieldVisibility.hoverIcon();
     await fieldVisibility.asserter.fieldVisibilityIconHasTooltip();
     await fieldVisibility.openFieldVisibilityModal();
     await fieldVisibility.toggleAllSelection();

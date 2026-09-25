@@ -68,6 +68,6 @@ class GridActionsRowAsserter {
   constructor(private readonly gridPom: GridActionsRowPom) {}
 
   async hasFiltersBookmark() {
-    await expect(this.gridPom.filtersBookmark).toBeVisible();
+    expect(await this.gridPom.filtersBookmark.isVisible()).toBe(true);
   }
 }

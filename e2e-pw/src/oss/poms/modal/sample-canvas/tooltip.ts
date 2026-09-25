@@ -1,5 +1,5 @@
 import { Page, expect } from "src/oss/fixtures";
-import { isElementCoveredBy } from "src/oss/utils";
+import { collapseWhitespace, isElementCoveredBy } from "src/oss/utils";
 import type { EventUtils } from "src/shared/event-utils";
 
 /**
@@ -87,9 +87,11 @@ class TooltipAsserter {
    * @param locked Whether the tooltip is expected to be locked or not
    */
   async isLocked(locked = true) {
-    return locked
-      ? await expect(this.tooltipPom.locked).toBeVisible()
-      : await expect(this.tooltipPom.locked).toBeAttached({ attached: false });
+    if (locked) {
+      expect(await this.tooltipPom.locked.isVisible()).toBe(true);
+    } else {
+      expect(await this.tooltipPom.locked.count()).toBe(0);
+    }
   }
 
   /**
@@ -110,7 +112,9 @@ class TooltipAsserter {
    * @param field The field name
    */
   async hasField(field: string) {
-    await expect(this.tooltipPom.title).toHaveText(field);
+    expect(collapseWhitespace(await this.tooltipPom.title.textContent())).toBe(
+      field,
+    );
   }
 
   /**
@@ -123,8 +127,8 @@ class TooltipAsserter {
   async hasAttribute(attribute: string, value: string, hidden?: boolean) {
     const locator = this.tooltipPom.getAttribute(attribute, hidden);
 
-    await expect(locator).toBeVisible();
-    await expect(locator).toHaveText(value);
+    expect(await locator.isVisible()).toBe(true);
+    expect(collapseWhitespace(await locator.textContent())).toBe(value);
   }
 
   /**

@@ -133,10 +133,11 @@ class ColorModalAsserter {
   constructor(private readonly colorModalPom: ColorModalPom) {}
 
   async isColorByModeEqualTo(mode: "value" | "field" | "instance") {
-    await expect(
-      this.colorModalPom.colorModal
+    expect(
+      await this.colorModalPom.colorModal
         .getByTestId(`radio-button-${mode}`)
-        .getByRole("radio"),
-    ).toBeChecked();
+        .getByRole("radio")
+        .isChecked(),
+    ).toBe(true);
   }
 }

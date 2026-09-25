@@ -14,6 +14,7 @@ export class EmbeddingsV2Pom {
 
   async open() {
     await this.gridPanel.open("Embeddings");
+    await this.runsPage.waitFor();
   }
 }
 
@@ -21,11 +22,11 @@ class EmbeddingsV2Asserter {
   constructor(private readonly pom: EmbeddingsV2Pom) {}
 
   async verifyPanelLoaded() {
-    await expect(this.pom.runsPage).toBeVisible();
+    expect(await this.pom.runsPage.isVisible()).toBe(true);
     // No empty-state text assertion: this suite also runs against
     // enterprise builds, and the two app modes deliberately render
     // different no-runs states (upsell landing vs. neutral empty
     // state). The per-mode rendering is unit-tested in RunsList.
-    await expect(this.pom.gridPanel.errorBoundary).toBeHidden();
+    expect(await this.pom.gridPanel.errorBoundary.isVisible()).toBe(false);
   }
 }

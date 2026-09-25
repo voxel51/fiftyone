@@ -85,22 +85,22 @@ class ModalGroupActionsAsserter {
   constructor(private readonly groupActionsPom: ModalGroupActionsPom) {}
 
   async assertIsCarouselVisible() {
-    await expect(this.groupActionsPom.modal.carousel).toBeVisible();
+    expect(await this.groupActionsPom.modal.carousel.isVisible()).toBe(true);
   }
 
   async assertIsCarouselNotVisible() {
-    await expect(this.groupActionsPom.modal.carousel).toBeHidden();
+    expect(await this.groupActionsPom.modal.carousel.isVisible()).toBe(false);
   }
 
   async assertIsPaginationBarVisible() {
-    await expect(
-      this.groupActionsPom.dynamicGroupPagination.locator,
-    ).toBeVisible();
+    expect(
+      await this.groupActionsPom.dynamicGroupPagination.locator.isVisible(),
+    ).toBe(true);
   }
 
   async assertIsPaginationBarNotVisible() {
-    await expect(
-      this.groupActionsPom.dynamicGroupPagination.locator,
-    ).toBeHidden();
+    expect(
+      await this.groupActionsPom.dynamicGroupPagination.locator.isVisible(),
+    ).toBe(false);
   }
 }

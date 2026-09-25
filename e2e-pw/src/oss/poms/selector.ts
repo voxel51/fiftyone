@@ -46,7 +46,7 @@ class SelectorAsserter {
   constructor(private readonly selectorPom: SelectorPom) {}
 
   async verifyValue(value: string) {
-    await expect(this.selectorPom.input).toHaveValue(value);
+    expect(await this.selectorPom.input.inputValue()).toBe(value);
   }
 
   async verifyResults(values: string[]) {
@@ -54,11 +54,11 @@ class SelectorAsserter {
     expect(count).toBe(values.length);
 
     for (let index = 0; index < values.length; index++) {
-      await expect(
-        this.selectorPom.resultsContainer.getByTestId(
-          `selector-result-${values[index]}`,
-        ),
-      ).toBeVisible();
+      expect(
+        await this.selectorPom.resultsContainer
+          .getByTestId(`selector-result-${values[index]}`)
+          .isVisible(),
+      ).toBe(true);
     }
   }
 }

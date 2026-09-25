@@ -55,6 +55,7 @@ export class SchemaManagerPom {
    */
   async close() {
     await this.locator.getByTestId("close-schema-manager").click();
+    await this.locator.waitFor({ state: "hidden" });
   }
 
   /**
@@ -63,6 +64,7 @@ export class SchemaManagerPom {
    */
   async open() {
     await this.page.getByTestId("open-schema-manager").click();
+    await this.locator.waitFor();
   }
 
   /**
@@ -93,7 +95,10 @@ export class SchemaManagerPom {
     await row.clickCheckbox();
     await row.assert.isChecked(true);
     await this.moveFields();
-    await this.assert.isHiddenFieldRow(field);
+    // the move is a round-trip; the row lands in its new section after it
+    await this.hiddenFields
+      .getByTestId(`field-row-${field}`)
+      .waitFor({ state: "attached" });
   }
 
   /**
@@ -107,7 +112,9 @@ export class SchemaManagerPom {
     await row.clickCheckbox();
     await row.assert.isChecked(true);
     await this.moveFields();
-    await this.assert.isActiveFieldRow(field);
+    await this.activeFields
+      .getByTestId(`field-row-${field}`)
+      .waitFor({ state: "attached" });
   }
 }
 
@@ -126,7 +133,7 @@ class SchemaManagerAsserter {
     const locator = this.schemaManagerPom.activeFields.getByTestId(
       `field-row-${field}`,
     );
-    await expect(locator).toBeAttached();
+    expect(await locator.count()).toBe(1);
   }
 
   /**
@@ -138,39 +145,43 @@ class SchemaManagerAsserter {
     const locator = this.schemaManagerPom.hiddenFields.getByTestId(
       `field-row-${field}`,
     );
-    await expect(locator).toBeAttached();
+    expect(await locator.count()).toBe(1);
   }
 
   /**
    * Is schema manager modal closed
    */
   async isClosed() {
-    await expect(this.schemaManagerPom.locator).toBeHidden();
+    expect(await this.schemaManagerPom.locator.isVisible()).toBe(false);
   }
 
   /**
    * Is schema manager modal open
    */
   async isOpen() {
-    await expect(this.schemaManagerPom.locator).toBeVisible();
+    expect(await this.schemaManagerPom.locator.isVisible()).toBe(true);
   }
 
   /**
    * Is the "Add schema" button disabled
    */
   async isDisabled() {
-    await expect(
-      this.schemaManagerPom.page.getByTestId("open-schema-manager"),
-    ).toBeDisabled();
+    expect(
+      await this.schemaManagerPom.page
+        .getByTestId("open-schema-manager")
+        .isDisabled(),
+    ).toBe(true);
   }
 
   /**
    * Is the "Add schema" button enabled
    */
   async isEnabled() {
-    await expect(
-      this.schemaManagerPom.page.getByTestId("open-schema-manager"),
-    ).toBeEnabled();
+    expect(
+      await this.schemaManagerPom.page
+        .getByTestId("open-schema-manager")
+        .isEnabled(),
+    ).toBe(true);
   }
 
   /**

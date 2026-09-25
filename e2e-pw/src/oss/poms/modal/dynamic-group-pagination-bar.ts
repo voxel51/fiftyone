@@ -1,4 +1,5 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
+import { collapseWhitespace } from "src/oss/utils";
 import { ModalPom } from ".";
 
 export class DynamicGroupPaginationPom {
@@ -27,6 +28,14 @@ export class DynamicGroupPaginationPom {
   getTooltip(text: string) {
     return this.page.getByTestId(`tooltip-${text}`);
   }
+
+  /** Hover a page button until its `text` tooltip opens (after a delay) */
+  async hoverPage(page: number, text: string) {
+    await this.getPageButton(page).hover();
+    const tooltip = this.getTooltip(text);
+    await tooltip.waitFor();
+    return tooltip;
+  }
 }
 
 class DynamicGroupPaginationAsserter {
@@ -34,16 +43,13 @@ class DynamicGroupPaginationAsserter {
 
   async verifyPage(page: number) {
     const button = this.nestedGroupPom.getPageButton(page);
-    await expect(button).toBeVisible();
-    await expect(button).toHaveText(String(page));
+    expect(await button.isVisible()).toBe(true);
+    expect(collapseWhitespace(await button.textContent())).toBe(String(page));
   }
 
   async verifyTooltip(page: number, text: string) {
-    const button = this.nestedGroupPom.getPageButton(page);
-    await button.hover();
-    const tooltip = this.nestedGroupPom.getTooltip(text);
-    await expect(tooltip).toBeVisible();
-    await expect(tooltip).toHaveText(text);
+    const tooltip = await this.nestedGroupPom.hoverPage(page, text);
+    expect(collapseWhitespace(await tooltip.textContent())).toBe(text);
   }
 
   async verifyTooltips(pages: { [page: number]: string }) {

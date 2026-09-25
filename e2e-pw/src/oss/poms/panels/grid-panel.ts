@@ -76,6 +76,6 @@ class GridPanelAsserter {
   constructor(private readonly panelPom: GridPanelPom) {}
 
   async hasError() {
-    await expect(this.panelPom.errorBoundary).toBeVisible();
+    expect(await this.panelPom.errorBoundary.isVisible()).toBe(true);
   }
 }

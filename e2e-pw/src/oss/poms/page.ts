@@ -49,6 +49,11 @@ export class PagePom {
       },
     );
   }
+
+  /** Go back in history; resolves once the previous page has rendered */
+  async goBack() {
+    await this.eventUtils.after("page-change", () => this.page.goBack());
+  }
 }
 
 class PageAsserter {
@@ -67,7 +72,7 @@ class PageAsserter {
   }
 
   async verifyPage(pagename: string) {
-    await expect(this.pagePom.getPage(pagename)).toBeVisible();
+    expect(await this.pagePom.getPage(pagename).isVisible()).toBe(true);
   }
 
   async verifyPathname(pathname: string) {

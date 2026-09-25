@@ -173,7 +173,13 @@ export class FieldVisibilityPom {
 
   async openFieldVisibilityModal() {
     await this.fieldVisibilityBtn.click();
-    await expect(this.modalContainer).toBeVisible();
+    await this.modalContainer.waitFor();
+  }
+
+  /** Hover the field visibility icon; its tooltip opens after a delay */
+  async hoverIcon() {
+    await this.fieldVisibilityBtn.hover();
+    await this.fieldVisibilityToggleTooltip.waitFor();
   }
 
   async hideFields(paths: string[]) {
@@ -221,8 +227,7 @@ class FieldVisibilityAsserter {
   constructor(private readonly fv: FieldVisibilityPom) {}
 
   async fieldVisibilityIconHasTooltip() {
-    await this.fv.fieldVisibilityBtn.hover();
-    await expect(this.fv.fieldVisibilityToggleTooltip).toBeVisible();
+    expect(await this.fv.fieldVisibilityToggleTooltip.isVisible()).toBe(true);
   }
 
   async assertAllFieldsSelected(selectionFields: string[] = allParentPaths) {
@@ -249,19 +254,19 @@ class FieldVisibilityAsserter {
 
   async assertMetadataInVisible(path: string = "ground_truth") {
     const fieldInfoContainer = this.fv.getFieldInfoContainer(path);
-    await expect(fieldInfoContainer).toBeHidden();
+    expect(await fieldInfoContainer.isVisible()).toBe(false);
   }
 
   async assertMetadataVisible(path: string = "ground_truth") {
     const fieldInfoContainer = this.fv.getFieldInfoContainer(path);
-    await expect(fieldInfoContainer).toBeVisible();
-    await expect(
-      fieldInfoContainer.getByText(`${path} description`),
-    ).toBeVisible();
+    expect(await fieldInfoContainer.isVisible()).toBe(true);
+    expect(
+      await fieldInfoContainer.getByText(`${path} description`).isVisible(),
+    ).toBe(true);
   }
 
   async assertFilterRuleExamplesVisible() {
-    await expect(this.fv.filterRuleContainer).toBeVisible();
+    expect(await this.fv.filterRuleContainer.isVisible()).toBe(true);
   }
 
   async assertDefaultParentPathsSelected() {

@@ -1,4 +1,4 @@
-import { Locator, Page, expect } from "src/oss/fixtures";
+import { Locator, Page } from "src/oss/fixtures";
 import { GridPanelPom } from "src/oss/poms/panels/grid-panel";
 import { EventUtils } from "src/shared/event-utils";
 import { EpisodePom } from "./episode";
@@ -20,19 +20,13 @@ export class McapExplorerPom {
 
   async open(): Promise<void> {
     await this.panel.open("McapExplorerPanel");
-    await expect(
-      this.scope.getByRole("button", {
-        name: "Drop an MCAP file or click to browse",
-      }),
-    ).toBeVisible();
+    await this.expectPicker();
   }
 
   async closeIfOpen(): Promise<void> {
     if (!(await this.scope.isVisible())) return;
     await this.panel.close();
-    await expect(
-      this.page.getByTestId("spotlight-section-forward"),
-    ).toBeVisible();
+    await this.page.getByTestId("spotlight-section-forward").waitFor();
   }
 
   async upload(filePath: string): Promise<void> {
@@ -47,19 +41,17 @@ export class McapExplorerPom {
   }
 
   async expectPicker(): Promise<void> {
-    await expect(
-      this.scope.getByRole("button", {
-        name: "Drop an MCAP file or click to browse",
-      }),
-    ).toBeVisible();
+    await this.scope
+      .getByRole("button", { name: "Drop an MCAP file or click to browse" })
+      .waitFor();
   }
 
   async expectInvalidExtension(filePath: string): Promise<void> {
     await this.scope
       .locator('[data-testid="local-mcap-input"]')
       .setInputFiles(filePath);
-    await expect(
-      this.scope.getByText("Choose an .mcap file", { exact: true }),
-    ).toBeVisible();
+    await this.scope
+      .getByText("Choose an .mcap file", { exact: true })
+      .waitFor();
   }
 }

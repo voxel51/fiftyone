@@ -43,7 +43,7 @@ test.describe.serial("index page", () => {
     await pagePom.assert.verifyPage("dataset");
     await pagePom.assert.verifyPathname(`/datasets/${datasetName}`);
 
-    await page.goBack();
+    await pagePom.goBack();
     await pagePom.assert.verifyPage("index");
     await pagePom.assert.verifyPathname("/");
   });

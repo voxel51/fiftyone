@@ -34,6 +34,6 @@ class OperatorsBrowserAsserter {
   constructor(private readonly panelPom: OperatorsBrowserPom) {}
 
   async isOpen() {
-    await expect(this.panelPom.locator).toBeVisible();
+    expect(await this.panelPom.locator.isVisible()).toBe(true);
   }
 }

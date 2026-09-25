@@ -88,6 +88,7 @@ test.describe.serial("dynamic groups smoke test", () => {
         searchParams: new URLSearchParams({ view: "dynamic-group" }),
       });
       await grid.openFirstSample();
+      await modal.waitForSampleLoadDomAttribute();
 
       await modal.group.assert.assertIsPaginationBarVisible();
       await modal.group.assert.assertIsCarouselNotVisible();

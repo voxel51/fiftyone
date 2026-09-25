@@ -117,7 +117,7 @@ class FieldRowAsserter {
    * configured.
    */
   async hasCheckbox() {
-    await expect(this.fieldRowPom.checkbox).toBeVisible();
+    expect(await this.fieldRowPom.checkbox.isVisible()).toBe(true);
   }
 
   /**
@@ -135,14 +135,14 @@ class FieldRowAsserter {
    * @param checked Whether the checkbox should checked or not
    */
   async isChecked(checked: boolean) {
-    await expect(this.fieldRowPom.checkbox).toBeChecked({ checked });
+    expect(await this.fieldRowPom.checkbox.isChecked()).toBe(checked);
   }
 
   /**
    * Is the field row editable, i.e. does it have a pencil button
    */
   async isEditable() {
-    await expect(this.fieldRowPom.pencil).toBeAttached();
+    expect(await this.fieldRowPom.pencil.count()).toBe(1);
   }
 
   /**

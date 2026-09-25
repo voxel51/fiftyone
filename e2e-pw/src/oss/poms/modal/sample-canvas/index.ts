@@ -187,8 +187,9 @@ export class SampleCanvasPom {
       // The deepest hovered element is whatever surface is under the pointer
       // (Lighter canvas, looker, overlay); a mode's cursor is stamped on it
       // when the mode installs, even after the move.
-      await expect(this.page.locator(":hover").last()).toHaveCSS(
-        "cursor",
+      await this.eventUtils.untilDom(
+        this.page.locator(":hover").last(),
+        (element, expected) => getComputedStyle(element).cursor === expected,
         cursor,
       );
     }
@@ -271,9 +272,11 @@ export class SampleCanvasPom {
    *   detection creation handlers use "crosshair")
    */
   async waitForDrawingCursor(cursor = "crosshair") {
-    await expect(
-      this.page.getByTestId("lighter-sample-renderer-canvas"),
-    ).toHaveCSS("cursor", cursor);
+    await this.eventUtils.untilDom(
+      this.lighterCanvas,
+      (element, expected) => getComputedStyle(element).cursor === expected,
+      cursor,
+    );
   }
 
   /**

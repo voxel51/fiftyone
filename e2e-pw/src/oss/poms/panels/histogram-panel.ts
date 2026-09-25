@@ -39,7 +39,7 @@ class HistogramAsserter {
   constructor(private readonly histogramPom: HistogramPom) {}
 
   async isLoaded() {
-    await expect(this.histogramPom.locator).toBeVisible();
+    expect(await this.histogramPom.locator.isVisible()).toBe(true);
   }
 
   /** One capture of the panel; draw it first with `afterLoad` */
