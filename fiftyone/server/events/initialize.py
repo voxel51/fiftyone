@@ -21,13 +21,11 @@ from fiftyone.core.session.events import (
 import fiftyone.core.utils as fou
 
 from fiftyone.server.events import dispatch_event
-from fiftyone.server.events.dispatch import dispatch_app_count
 from fiftyone.server.events.state import (
     Listener,
     get_listeners,
     get_requests,
     get_state,
-    increment_app_count,
 )
 
 
@@ -64,13 +62,19 @@ async def initialize_listener(payload: ListenPayload):
 
     get_requests()[payload.subscription] = request_listeners
 
-    if is_app:
-        # counted here, on the event loop, once this connection's own
-        # listeners can receive the new count too
-        increment_app_count(payload.subscription)
-        dispatch_app_count()
-
     return InitializedListener(is_app, request_listeners, state)
+
+
+def is_app_listener(payload: ListenPayload) -> bool:
+    """Whether a listener payload comes from an App client.
+
+    Args:
+        payload: a :class:`fiftyone.core.session.events.ListenPayload`
+
+    Returns:
+        True/False
+    """
+    return isinstance(payload.initializer, AppInitializer)
 
 
 def initialize_listener_sync(payload: ListenPayload):
@@ -79,7 +83,7 @@ def initialize_listener_sync(payload: ListenPayload):
     Args:
         payload: a :class:`fiftyone.core.session.events.ListenPayload`
     """
-    if isinstance(payload.initializer, AppInitializer):
+    if is_app_listener(payload):
         return (
             handle_app_initializer(payload.subscription, payload.initializer),
             True,

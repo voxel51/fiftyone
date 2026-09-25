@@ -28,12 +28,16 @@ from fiftyone.server.events.dispatch import (
     dispatch_app_count,
     dispatch_event,
 )
-from fiftyone.server.events.initialize import initialize_listener
+from fiftyone.server.events.initialize import (
+    initialize_listener,
+    is_app_listener,
+)
 from fiftyone.server.events.state import (
     Listener,
     decrement_app_count,
     get_app_count,
     get_listeners,
+    increment_app_count,
 )
 
 
@@ -49,7 +53,25 @@ async def add_event_listener(
     Returns:
         A server sent event source
     """
-    data = await initialize_listener(payload)
+    is_app = is_app_listener(payload)
+    if is_app:
+        # counted before initializing, which can load a dataset, so that the
+        # last other App disconnecting meanwhile does not close the session
+        increment_app_count(payload.subscription)
+
+    try:
+        data = await initialize_listener(payload)
+    except BaseException:
+        if is_app:
+            decrement_app_count(payload.subscription)
+            dispatch_app_count()
+
+        raise
+
+    if is_app:
+        # dispatched once this connection's listeners can receive it too
+        dispatch_app_count()
+
     try:
         if data.is_app:
             yield ServerSentEvent(

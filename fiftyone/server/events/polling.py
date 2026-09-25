@@ -20,8 +20,14 @@ from fiftyone.core.session.events import (
     StateUpdate,
 )
 
+from fiftyone.server.events.dispatch import dispatch_app_count
 from fiftyone.server.events.initialize import initialize_listener
-from fiftyone.server.events.state import Listener, get_listeners, get_requests
+from fiftyone.server.events.state import (
+    Listener,
+    get_listeners,
+    get_requests,
+    increment_app_count,
+)
 
 _polling_listener: t.Optional[t.Tuple[str, t.Set[t.Tuple[str, Listener]]]] = (
     None
@@ -57,6 +63,9 @@ async def dispatch_polling_event_listener(
     ):
         data = await initialize_listener(payload)
         _polling_listener = (payload.subscription, data.request_listeners)
+        if data.is_app:
+            increment_app_count(payload.subscription)
+            dispatch_app_count()
 
         return {
             "events": [
