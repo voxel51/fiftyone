@@ -108,7 +108,7 @@ test.describe.serial("2D annotation mask merge", () => {
     // Enter segmentation mode on the target, then activate the Merge tool.
     await modal.sidebar.annotate.selectActiveLabel("cat", 0);
     await modal.sidebar.edit.assert.inSegmentationMode(true);
-    await expect(modal.sidebar.edit.mergeTool).toBeEnabled();
+    expect(await modal.sidebar.edit.mergeTool.isEnabled()).toBe(true);
     await modal.sidebar.edit.mergeTool.click();
 
     // First click sets the target (cat mask); the second merges the source

@@ -230,13 +230,16 @@ test.describe.serial("schema manager", () => {
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
 
-    // The required field prompt should appear since "predictions" has no active schema
-    await expect(page.getByText("Field not in label schema")).toBeVisible();
-    await expect(page.getByTestId("activate-field-schema")).toBeVisible();
+    // The required field prompt should appear since "predictions" has no
+    // active schema; it mounts once the label schemas load
+    const activateButton = page.getByTestId("activate-field-schema");
+    await activateButton.waitFor();
+    expect(await page.getByText("Field not in label schema").isVisible()).toBe(
+      true,
+    );
 
     // Click the activate button to initialize and activate the predictions schema
-    const activateButton = page.getByTestId("activate-field-schema");
-    await expect(activateButton).toBeEnabled();
+    expect(await activateButton.isEnabled()).toBe(true);
     // activation generates and activates the schema through operators; the
     // edit panel mounts once that round-trip lands
     const activated = page.waitForResponse(
@@ -249,11 +252,14 @@ test.describe.serial("schema manager", () => {
     await activateButton.click();
     await activated;
 
-    // After activation, the edit panel should appear with "Edit Detection"
-    await expect(page.getByText("Edit Detection")).toBeVisible();
+    // After activation, the edit panel should appear with "Edit Detection";
+    // it mounts once the activated schemas are refetched
+    await page.getByText("Edit Detection").waitFor();
 
     // In patches view, the Schema button should not be visible
-    await expect(page.getByRole("button", { name: "Schema" })).toBeHidden();
+    expect(await page.getByRole("button", { name: "Schema" }).isVisible()).toBe(
+      false,
+    );
   });
 
   test("annotation enabled for a grouped dataset with a video slice", async ({

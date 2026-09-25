@@ -37,10 +37,11 @@ const expectPersistedClassification = async (
     await freshModal.waitForSampleLoadDomAttribute();
     await freshModal.assert.isOpen();
     await freshModal.sidebar.switchMode("annotate");
+    await freshModal.sidebar.annotate.waitForLabelList();
     const rows = freshModal.sidebar.annotate.labelRowsFor(FIELD);
-    await expect(rows).toHaveCount(label === null ? 0 : 1);
+    expect(await rows.count()).toBe(label === null ? 0 : 1);
     if (label !== null) {
-      await expect(rows).toHaveAttribute("data-cy-label", label);
+      expect(await rows.getAttribute("data-cy-label")).toBe(label);
     }
   } finally {
     await context.close();

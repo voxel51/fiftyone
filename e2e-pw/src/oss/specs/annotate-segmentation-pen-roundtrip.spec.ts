@@ -125,9 +125,10 @@ test.describe.serial("segmentation pen-tool round-trip", () => {
       const fresh = new ModalPom(freshPage, new EventUtils(freshPage));
       await fresh.waitForSampleLoadDomAttribute();
       await fresh.sidebar.switchMode("annotate");
+      await fresh.sidebar.annotate.waitForLabelList();
       const rows = fresh.sidebar.annotate.labelRowsFor("instances");
       // both polygons were committed as their own detections
-      await expect(rows).toHaveCount(2);
+      expect(await rows.count()).toBe(2);
 
       // both masks render on the fresh canvas as drawn, captured before any
       // row is selected since the rows' order isn't fixed

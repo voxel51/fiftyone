@@ -57,6 +57,18 @@ export class ModalAnnotateSidebarPom {
   }
 
   /**
+   * Wait for the label list to finish loading after entering annotate mode:
+   * the Labels group is shown and no entry is still loading.
+   */
+  async waitForLabelList() {
+    await this.page
+      .locator(
+        '[data-cy="modal"] [data-cy="sidebar"]:has([data-cy="sidebar-group-Labels-field-count"]):not(:has([data-cy="loading-dots"]))',
+      )
+      .waitFor({ state: "attached" });
+  }
+
+  /**
    * Get the count of active labels in the sidebar
    *
    * @returns A promise that resolves to the number of active labels

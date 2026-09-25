@@ -6,7 +6,7 @@
  * select-only canvas click records no phantom undo entry (a value-equal commit
  * must not capture an op). Only an e2e exercises the real autosave round-trip.
  */
-import { expect, test as base } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
@@ -78,7 +78,7 @@ test.describe.serial("annotate undo durability", () => {
     await modal.sampleCanvas.up();
 
     // confirm the click selected the box (the edit form opened)
-    await expect(modal.sidebar.edit.backButton).toBeVisible();
+    await modal.sidebar.edit.assert.isOpen();
 
     // selected but nothing edited → the select-click recorded no phantom entry
     await modal.sidebar.edit.assert.undoIsEnabled(false);

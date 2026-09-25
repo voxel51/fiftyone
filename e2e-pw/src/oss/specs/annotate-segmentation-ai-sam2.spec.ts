@@ -105,8 +105,9 @@ test.describe.serial("segmentation AI (SAM2) round-trip", () => {
       const fresh = new ModalPom(freshPage, new EventUtils(freshPage));
       await fresh.waitForSampleLoadDomAttribute();
       await fresh.sidebar.switchMode("annotate");
+      await fresh.sidebar.annotate.waitForLabelList();
       const rows = fresh.sidebar.annotate.labelRowsFor("instances");
-      await expect(rows).toHaveCount(1);
+      expect(await rows.count()).toBe(1);
 
       // the mock worker answers with an 8x8 all-foreground mask at box
       // {0.4, 0.4, 0.2, 0.2}; that is what the fresh canvas must render

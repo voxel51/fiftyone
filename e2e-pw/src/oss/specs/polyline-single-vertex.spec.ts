@@ -78,11 +78,13 @@ test("a lone vertex renders and hovers like a keypoint", async ({ modal }) => {
 test("polyline attributes offer visibility eyes in the modal", async ({
   modal,
 }) => {
-  await modal.sidebar.clickFieldDropdown("polylines");
+  await modal.eventUtils.after("animation-onRest", () =>
+    modal.sidebar.clickFieldDropdown("polylines"),
+  );
 
   const labelEye = modal.sidebar.locator.getByTestId(
     "shown-attribute-polylines.polylines.label",
   );
-  await expect(labelEye).toBeVisible();
-  await expect(labelEye).toBeEnabled();
+  expect(await labelEye.isVisible()).toBe(true);
+  expect(await labelEye.isEnabled()).toBe(true);
 });

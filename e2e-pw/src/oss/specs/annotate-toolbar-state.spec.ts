@@ -86,6 +86,7 @@ const openAnnotate = async (modal: ModalPom) => {
   await modal.waitForOpen();
   await modal.waitForSampleLoadDomAttribute();
   await modal.sidebar.switchMode("annotate");
+  await modal.sidebar.annotate.waitForLabelList();
 };
 
 /** The label list's header, which unmounts while the edit form is showing. */
@@ -169,7 +170,7 @@ test.describe.serial("annotate toolbar state", () => {
 
     // quitting before the async establish flow commits would re-activate
     // detection mode, so wait for the edit form first
-    await expect(labelListHeader(modal)).toBeHidden();
+    await labelListHeader(modal).waitFor({ state: "hidden" });
     await clickCanvas(modal, 0.09, 0.09, "crosshair");
     await expectActive(modal, "select");
   });
@@ -185,7 +186,7 @@ test.describe.serial("annotate toolbar state", () => {
     await modal.sidebar.annotate.detectionMode("Detections");
     await clickCanvas(modal, 0.5, 0.5, "crosshair");
     await expectActive(modal, "select");
-    await expect(labelListHeader(modal)).toBeVisible();
+    expect(await labelListHeader(modal).isVisible()).toBe(true);
 
     // the classification tab renders at the top-left of the media bounds
     await clickCanvas(modal, 0.05, 0.02, "pointer");
@@ -197,7 +198,7 @@ test.describe.serial("annotate toolbar state", () => {
     // clicking the detection opens its edit form and activates detection mode
     await clickCanvas(modal, 0.5, 0.5, "pointer");
     await expectActive(modal, "detection");
-    await expect(labelListHeader(modal)).toBeHidden();
+    expect(await labelListHeader(modal).isVisible()).toBe(false);
 
     await clickCanvas(modal, 0.09, 0.09, "crosshair");
     await expectActive(modal, "select");
@@ -226,22 +227,22 @@ test.describe.serial("annotate toolbar state", () => {
     const detectionModeButton = page.getByTestId("detection-mode");
     const exploreButton = modal.sidebar.locator.getByTestId("explore");
     const annotateButton = modal.sidebar.locator.getByTestId("annotate");
-    await expect(detectionModeButton).toBeVisible();
-    await expect(modal.sidebar.edit.undoButton).toBeVisible();
-    await expect(exploreButton).toBeVisible();
-    await expect(annotateButton).toBeVisible();
-    await expect(labelListHeader(modal)).toBeVisible();
+    expect(await detectionModeButton.isVisible()).toBe(true);
+    expect(await modal.sidebar.edit.undoButton.isVisible()).toBe(true);
+    expect(await exploreButton.isVisible()).toBe(true);
+    expect(await annotateButton.isVisible()).toBe(true);
+    expect(await labelListHeader(modal).isVisible()).toBe(true);
 
     await modal.sidebar.annotate.selectActiveLabel("cat", 0);
-    await expect(detectionModeButton).toBeHidden();
-    await expect(labelListHeader(modal)).toBeHidden();
-    await expect(modal.sidebar.edit.undoButton).toBeVisible();
-    await expect(exploreButton).toBeVisible();
-    await expect(annotateButton).toBeVisible();
+    expect(await detectionModeButton.isVisible()).toBe(false);
+    expect(await labelListHeader(modal).isVisible()).toBe(false);
+    expect(await modal.sidebar.edit.undoButton.isVisible()).toBe(true);
+    expect(await exploreButton.isVisible()).toBe(true);
+    expect(await annotateButton.isVisible()).toBe(true);
 
     await modal.sidebar.edit.exitToList();
-    await expect(labelListHeader(modal)).toBeVisible();
-    await expect(detectionModeButton).toBeVisible();
+    expect(await labelListHeader(modal).isVisible()).toBe(true);
+    expect(await detectionModeButton.isVisible()).toBe(true);
   });
 
   test("the schema manager opens from the label list", async ({

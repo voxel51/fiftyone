@@ -39,17 +39,21 @@ test.describe.serial("annotate-multimodal-disabled", () => {
     page,
   }) => {
     await grid.openFirstSample();
+    await modal.waitForOpen();
 
     // Multimodal media renders through its own MM sidebar (Inspect/Fields
     // tabs) instead of the classic sidebar entirely, so there's no
     // explore/annotate mode switcher to switch into "annotate" mode with in
     // the first place — nothing left to disable.
-    await expect(modal.sidebar.locator).toHaveCount(0);
+    expect(await modal.sidebar.locator.count()).toBe(0);
 
     // ...and no leftover control offering to toggle a sidebar that can never
     // mount.
-    await expect(
-      page.getByTestId("modal").getByTestId("action-toggle-sidebar"),
-    ).toHaveCount(0);
+    expect(
+      await page
+        .getByTestId("modal")
+        .getByTestId("action-toggle-sidebar")
+        .count(),
+    ).toBe(0);
   });
 });
