@@ -18,6 +18,7 @@ import fiftyone.core.session.events as fose
 import fiftyone.server.events.dispatch as fosd
 import fiftyone.server.events.listener as fosl
 import fiftyone.server.events.initialize as fosi
+import fiftyone.server.events.polling as fosp
 import fiftyone.server.events.state as foss
 
 from decorators import drop_datasets
@@ -110,7 +111,10 @@ class TestListenerDisconnect(unittest.IsolatedAsyncioTestCase):
         )
 
 
-_APP_EVENTS = [fose.AppCountUpdate.get_event_name()]
+_APP_EVENTS = [
+    fose.AppCountUpdate.get_event_name(),
+    fose.DeactivateNotebookCell.get_event_name(),
+]
 
 
 def _payload(subscription, initializer=None):
@@ -163,13 +167,19 @@ class TestAppCount(unittest.IsolatedAsyncioTestCase):
         foss.set_state(fos.StateDescription())
         self._reset()
 
-    def tearDown(self):
+    async def asyncTearDown(self):
+        if fosp._polling_sweep is not None:
+            fosp._polling_sweep.cancel()
+
         self._reset()
 
     def _reset(self):
         foss._app_connections.clear()
         foss.get_listeners().clear()
         foss.get_requests().clear()
+        fosp._polling_listener = None
+        fosp._polling_leases.clear()
+        fosp._polling_sweep = None
 
     def test_reconnect_counts_once(self):
         foss.increment_app_count("a")
@@ -276,3 +286,32 @@ class TestAppCount(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(foss.get_app_count(), 1)
         self.assertEqual(_read_counts("a"), [1])
+
+    async def test_polling_app_counts_while_it_polls(self):
+        await _Connection("a").open()
+        _read_counts("a")
+
+        await fosp.dispatch_polling_event_listener(None, _payload("p"))
+        self.assertEqual(_read_counts("a"), [2])
+
+        await fosp.dispatch_polling_event_listener(None, _payload("p"))
+        self.assertEqual(_read_counts("a"), [])
+
+        renewed = fosp._polling_leases["p"]
+        fosp._expire_polling_leases(renewed + fosp._POLLING_LEASE_SECONDS)
+        self.assertEqual(foss.get_app_count(), 2)
+
+        # "p" stops polling
+        fosp._expire_polling_leases(renewed + fosp._POLLING_LEASE_SECONDS + 1)
+        self.assertEqual(_read_counts("a"), [1])
+
+    async def test_deactivated_polling_app_stops_counting(self):
+        await _Connection("a").open()
+        await fosp.dispatch_polling_event_listener(None, _payload("p"))
+        _read_counts("a")
+
+        await fosd.dispatch_event(None, fose.DeactivateNotebookCell())
+        await fosp.dispatch_polling_event_listener(None, _payload("p"))
+
+        self.assertEqual(_read_counts("a"), [1])
+        self.assertNotIn("p", fosp._polling_leases)
