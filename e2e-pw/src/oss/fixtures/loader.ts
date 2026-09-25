@@ -95,10 +95,7 @@ export class OssLoader extends AbstractFiftyoneLoader {
           return;
         }
         const cursor = window.getComputedStyle(element).cursor;
-        if (cursor !== window.__FO_PLAYWRIGHT_CURRENT_CURSOR) {
-          window.__FO_PLAYWRIGHT_CURRENT_CURSOR = cursor;
-          document.dispatchEvent(new CustomEvent("cursor-change"));
-        }
+        window.__FO_PLAYWRIGHT_CURRENT_CURSOR = cursor;
       };
 
       document.addEventListener("mousemove", handleCursorChange);

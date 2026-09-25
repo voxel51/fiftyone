@@ -15,15 +15,6 @@ type Scene = ReturnType<typeof useLighterSetupWithPixi>["scene"];
 declare global {
   interface Window {
     /**
-     * E2E affordance: the distinct fields of the overlays currently mounted on
-     * the video annotation scene. Canvas overlays are PIXI (not DOM), so this
-     * is the only handle a Playwright spec has to assert that the canvas honors
-     * the active schema (deactivating a field hides its overlays). Read live;
-     * removed when the surface unmounts.
-     */
-    __FO_PLAYWRIGHT_SCENE_OVERLAY_FIELDS?: () => string[];
-
-    /**
      * E2E affordance: the live GEOMETRY of the overlays mounted on the video
      * annotation scene, as the canvas currently holds it — not as the engine
      * stores it. The two can disagree (a projection that never reached the
@@ -65,7 +56,7 @@ const stampSceneOverlays = (scene: NonNullable<Scene>) => {
 };
 
 /**
- * Under browser automation only, publish the scene's live overlay fields on
+ * Under browser automation only, publish the scene's live overlay geometry on
  * `window` and mirror the overlay set onto the surface's DOM attributes. A
  * read-only probe that never drives app behavior; it clears the globals on
  * scene change / unmount.
@@ -92,9 +83,6 @@ export const useExposeSceneOverlayFieldsForTest = (scene: Scene): void => {
 
     stampSceneOverlays(scene);
 
-    window.__FO_PLAYWRIGHT_SCENE_OVERLAY_FIELDS = () =>
-      Array.from(new Set(scene.getAllOverlays().map((o) => o.field)));
-
     window.__FO_PLAYWRIGHT_SCENE_OVERLAY_GEOMETRY = () =>
       scene.getAllOverlays().map((overlay) => {
         const withPoints = overlay as unknown as {
@@ -110,7 +98,6 @@ export const useExposeSceneOverlayFieldsForTest = (scene: Scene): void => {
       });
 
     return () => {
-      delete window.__FO_PLAYWRIGHT_SCENE_OVERLAY_FIELDS;
       delete window.__FO_PLAYWRIGHT_SCENE_OVERLAY_GEOMETRY;
       // a surface that outlives its scene must not report the old overlays
       const surface = document.querySelector(

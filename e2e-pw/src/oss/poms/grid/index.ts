@@ -126,11 +126,6 @@ export class GridPom {
     await this.run(() => this.sliceSelector.selectSlice(slice));
   }
 
-  /** Wait until the grid has mounted at least one tile. */
-  async waitForGridToLoad() {
-    await expect(this.page.locator(TILE_SELECTOR).first()).toBeAttached();
-  }
-
   /**
    * Install counters for grid lifecycle events at document start — arm
    * BEFORE navigating to the page. Counting from document start makes the
@@ -173,7 +168,7 @@ export class GridPom {
     action: () => Promise<T>,
   ): Promise<T> {
     const drawn = new Set<string>();
-    return this.eventUtils.after("canvas-loaded", action, (e) => {
+    return this.eventUtils.after("e2e:looker:canvas-loaded", action, (e) => {
       drawn.add((e.detail as { sampleId: string }).sampleId);
       return drawn.size === count;
     });

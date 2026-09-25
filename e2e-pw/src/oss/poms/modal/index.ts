@@ -157,50 +157,38 @@ export class ModalPom {
   }
 
   async scrollCarouselTo(slice: string) {
-    await this.groupCarousel
-      .getByTestId("flashlight")
-      .evaluate(async (el, targetText) => {
-        const hasTarget = () => {
-          for (const t of el.querySelectorAll('[data-cy="thumbnail-title"]')) {
-            if (t.textContent === targetText) return true;
-          }
-          return false;
-        };
+    const flashlight = this.groupCarousel.getByTestId("flashlight");
+    const target = flashlight
+      .getByTestId("thumbnail-title")
+      .filter({ hasText: new RegExp(`^${escapeRegExp(slice)}$`) });
+    const extent = () =>
+      flashlight.evaluate((el) => ({
+        scrollLeft: el.scrollLeft,
+        scrollWidth: el.scrollWidth,
+        width: el.clientWidth,
+      }));
 
-        if (hasTarget()) return;
-
-        // each scroll settles in a non-zooming render; one of the (horizontal)
-        // carousel with no page request pending shows everything in view
-        const settled = () =>
-          new Promise<void>((resolve) => {
-            const untap = window.__FO_EVENTS__.tap((event, data) => {
-              const { horizontal, pending } = data as {
-                horizontal: boolean;
-                pending: boolean;
-              };
-              if (
-                event === "e2e:flashlight:rendered" &&
-                horizontal &&
-                !pending
-              ) {
-                untap();
-                resolve();
-              }
-            });
-          });
-
-        const step = Math.max(el.clientWidth, 200);
-        for (let pos = 0; pos <= el.scrollWidth; pos += step) {
-          const rendered = settled();
-          const before = el.scrollLeft;
-          el.scrollTo({ left: pos });
-          // no scroll, no render: nothing new came into view at this step
-          if (el.scrollLeft !== before) {
-            await rendered;
-          }
-          if (hasTarget()) return;
-        }
-      }, slice);
+    // each scroll settles in a render of the (horizontal) carousel with no
+    // page request pending, which shows everything in view
+    for (let pos = 0; (await target.count()) === 0; ) {
+      const { scrollLeft, scrollWidth, width } = await extent();
+      if (pos > scrollWidth) return;
+      const left = Math.min(pos, scrollWidth - width);
+      pos += Math.max(width, 200);
+      // no scroll, no render: nothing new comes into view at this step
+      if (left === scrollLeft) continue;
+      await this.eventUtils.after(
+        "e2e:flashlight:rendered",
+        () => flashlight.evaluate((el, x) => el.scrollTo({ left: x }), left),
+        (e) => {
+          const { horizontal, pending } = e.detail as {
+            horizontal: boolean;
+            pending: boolean;
+          };
+          return horizontal && !pending;
+        },
+      );
+    }
   }
 
   async navigateCarousel(index: number, allowErrorInfo = false) {

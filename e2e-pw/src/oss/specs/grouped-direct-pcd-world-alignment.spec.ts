@@ -14,7 +14,7 @@ const datasetName = getUniqueDatasetNameWithPrefix(
 );
 const QUARTER_TURN = [0, 0, 0.7071067811865476, 0.7071067811865476];
 
-const SCENE_REVEALED = "looker3d-scene-ready";
+const SCENE_REVEALED = "e2e:looker3d:scene-ready";
 // a reveal waits on a point-cloud fetch and a camera restore; Teams CI runs
 // this same spec several times slower
 

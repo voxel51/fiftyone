@@ -3,6 +3,7 @@
  */
 
 import { EventDispatcher, getEventBus } from "@fiftyone/events";
+import { isE2E } from "@fiftyone/utilities";
 import { Viewport } from "pixi-viewport";
 import * as PIXI from "pixi.js";
 import {
@@ -179,7 +180,7 @@ export class PixiRenderer2D implements Renderer2D {
     this.tickHandler = onFrame;
 
     this.app.ticker.add(this.tick);
-    if (navigator.webdriver) {
+    if (isE2E()) {
       this.app.ticker.add(
         this.announcePaint,
         undefined,

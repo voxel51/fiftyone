@@ -132,7 +132,7 @@ test.describe.serial("groups video labels", () => {
 
     // change slice and repeat
     await eventUtils.after(
-      "canvas-loaded",
+      "e2e:looker:canvas-loaded",
       () => modal.group.selectNthItemFromCarousel(1),
       (e) =>
         (e.detail as { sampleFilepath?: string })?.sampleFilepath ===

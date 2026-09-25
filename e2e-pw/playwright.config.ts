@@ -43,11 +43,8 @@ export default defineConfig({
     testIdAttribute: "data-cy",
   },
   expect: {
-    toHaveScreenshot: {
-      // since label color assignment is non-deterministic, we allow a small amount of pixel difference
-      maxDiffPixelRatio: 0.02,
-    },
     toMatchSnapshot: {
+      // since label color assignment is non-deterministic, we allow a small amount of pixel difference
       maxDiffPixelRatio: 0.02,
     },
   },

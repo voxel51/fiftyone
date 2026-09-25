@@ -18,8 +18,8 @@ export const SET_TOP_VIEW_EVENT = "fo-action-set-top-view";
 export const SET_EGO_VIEW_EVENT = "fo-action-set-ego-view";
 /** Fired on `document` once a frame has rendered a programmatic camera look-at. */
 export const CAMERA_LOOK_AT_SETTLED_EVENT = "looker3d-camera-look-at-settled";
-/** Dispatched on `document` once a scene is parsed, its assets loaded and its camera settled. */
-export const SCENE_READY_EVENT = "looker3d-scene-ready";
+/** Dispatched on the event bus once a scene is parsed, its assets loaded and its camera settled. */
+export const SCENE_READY_EVENT = "e2e:looker3d:scene-ready";
 export const CAMERA_SAVED_EVENT = "e2e:looker3d:camera-saved";
 /** Dispatched on the event bus after each rendered frame. */
 export const FRAME_RENDERED_EVENT = "e2e:looker3d:frame-rendered";
@@ -28,6 +28,7 @@ export const FRAME_RENDERED_EVENT = "e2e:looker3d:frame-rendered";
 export type Looker3dE2EEvents = {
   [CAMERA_SAVED_EVENT]: undefined;
   [FRAME_RENDERED_EVENT]: undefined;
+  [SCENE_READY_EVENT]: { sceneKey: string };
 };
 export const SET_ZOOM_TO_SELECTED_EVENT = "fo-action-zoom-to-selected";
 

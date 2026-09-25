@@ -13,7 +13,8 @@
     ],
     "main": "src/index.ts",
     "dependencies": {
-        "@fiftyone/analytics": "*"
+        "@fiftyone/analytics": "*",
+        "@fiftyone/utilities": "*"
     },
     "devDependencies": {
         "@testing-library/dom": "catalog:",

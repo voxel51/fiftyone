@@ -1,3 +1,4 @@
+import { getEventBus } from "@fiftyone/events";
 import { Lookers } from "@fiftyone/state";
 import {
   jotaiStore,
@@ -60,6 +61,11 @@ import { ProcessSample } from "../worker";
 import { AsyncLabelsRenderingManager } from "../worker/async-labels-rendering-manager";
 import { LookerUtils } from "./shared";
 import { retrieveTransferables } from "./utils";
+
+/** e2e specs wait on a looker having drawn its sample */
+type LookerE2EEvents = {
+  "e2e:looker:canvas-loaded": { sampleFilepath: string; sampleId: string };
+};
 
 const LABEL_LISTS_PATH = new Set(withPath(LABELS_PATH, LABEL_LISTS));
 const LABEL_LIST_KEY = Object.fromEntries(
@@ -509,15 +515,10 @@ export abstract class AbstractLooker<
         ctx.globalAlpha = 1;
 
         ctx.canvas.setAttribute("canvas-loaded", "true");
-        ctx.canvas.dispatchEvent(
-          new CustomEvent("canvas-loaded", {
-            detail: {
-              sampleFilepath: this.sample.filepath,
-              sampleId: this.sample.id,
-            },
-            bubbles: true,
-          }),
-        );
+        getEventBus<LookerE2EEvents>().dispatch("e2e:looker:canvas-loaded", {
+          sampleFilepath: this.sample.filepath,
+          sampleId: this.sample.id,
+        });
       } catch (error) {
         if (error instanceof AppError || error instanceof MediaError) {
           this.updater({ error });

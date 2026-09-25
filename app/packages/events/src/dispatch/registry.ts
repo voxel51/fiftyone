@@ -1,3 +1,4 @@
+import { isE2E } from "@fiftyone/utilities";
 import { EventDispatcher, tapAllEvents } from "../dispatch/dispatcher";
 import { EventGroup } from "../types";
 
@@ -8,8 +9,7 @@ declare global {
   }
 }
 
-// only for browser automation (e2e)
-if (typeof window !== "undefined" && window.navigator?.webdriver) {
+if (isE2E()) {
   window.__FO_EVENTS__ = { tap: tapAllEvents };
 }
 

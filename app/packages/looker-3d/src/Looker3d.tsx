@@ -243,11 +243,9 @@ export const Looker3d = () => {
   const revealed = sceneReady && cameraSettledKey === looker3dSceneKey;
   useEffect(() => {
     if (revealed) {
-      document.dispatchEvent(
-        new CustomEvent(SCENE_READY_EVENT, {
-          detail: { sceneKey: looker3dSceneKey },
-        }),
-      );
+      getEventBus<Looker3dE2EEvents>().dispatch(SCENE_READY_EVENT, {
+        sceneKey: looker3dSceneKey,
+      });
     }
   }, [revealed, looker3dSceneKey]);
 

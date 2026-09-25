@@ -1,3 +1,4 @@
+import { isE2E } from "@fiftyone/utilities";
 import type { EventGroup, EventHandler } from "../types";
 
 type DispatchData<T> = T extends undefined | null ? [data?: T] : [data: T];
@@ -16,9 +17,6 @@ type EventTap = (event: string, data: unknown) => void;
  * bus drops them everywhere else, so call sites dispatch them unconditionally
  */
 export const E2E_EVENT_PREFIX = "e2e:";
-
-const isAutomated = () =>
-  typeof navigator !== "undefined" && navigator.webdriver === true;
 
 const taps = new Set<EventTap>();
 
@@ -240,7 +238,7 @@ export class EventDispatcher<T extends EventGroup> {
     event: E,
     ...args: DispatchData<T[E]>
   ): void {
-    if (String(event).startsWith(E2E_EVENT_PREFIX) && !isAutomated()) {
+    if (String(event).startsWith(E2E_EVENT_PREFIX) && !isE2E()) {
       return;
     }
     const data = args[0] as T[E];

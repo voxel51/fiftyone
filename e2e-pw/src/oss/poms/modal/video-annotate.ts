@@ -501,23 +501,6 @@ export class VideoAnnotatePom {
   }
 
   /**
-   * The distinct fields of the overlays currently rendered on the canvas.
-   * Canvas overlays are PIXI (not DOM), so this reads the scene through the
-   * `__FO_PLAYWRIGHT_SCENE_OVERLAY_FIELDS` e2e affordance the surface exposes —
-   * the only handle a spec has on what the canvas is actually painting.
-   */
-  async canvasOverlayFields(): Promise<string[]> {
-    return this.page.evaluate(
-      () =>
-        (
-          window as unknown as {
-            __FO_PLAYWRIGHT_SCENE_OVERLAY_FIELDS?: () => string[];
-          }
-        ).__FO_PLAYWRIGHT_SCENE_OVERLAY_FIELDS?.() ?? [],
-    );
-  }
-
-  /**
    * The live geometry of the overlays the canvas is painting, as the OVERLAY
    * holds it — deliberately not what the engine stores. Reads the
    * `__FO_PLAYWRIGHT_SCENE_OVERLAY_GEOMETRY` affordance; use it to catch a
@@ -678,27 +661,5 @@ class VideoAnnotateAsserter {
           "data-cy-scene-overlay-fields",
           pattern,
         );
-  }
-
-  /** Assert whether the canvas renders the overlay with `id`. */
-  async canvasRendersOverlay(id: string, rendered = true) {
-    const pattern = new RegExp(`(^| )${escapeRegExp(id)}( |$)`);
-    return rendered
-      ? await expect(this.va.surface).toHaveAttribute(
-          "data-cy-scene-overlay-ids",
-          pattern,
-        )
-      : await expect(this.va.surface).not.toHaveAttribute(
-          "data-cy-scene-overlay-ids",
-          pattern,
-        );
-  }
-
-  /** Assert the surface shows the sample with `sampleId`. */
-  async showsSample(sampleId: string) {
-    await expect(this.va.surface).toHaveAttribute(
-      "data-cy-sample-id",
-      sampleId,
-    );
   }
 }

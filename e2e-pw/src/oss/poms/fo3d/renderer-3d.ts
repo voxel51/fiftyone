@@ -49,7 +49,6 @@ export class Renderer3dPom {
   readonly statusBar: Locator;
   readonly statusBarToggle: Locator;
   readonly statusBarClose: Locator;
-  readonly statusBarCameraPosition: Locator;
 
   constructor(private readonly page: Page) {
     this.assert = new Renderer3dAsserter(this);
@@ -64,28 +63,6 @@ export class Renderer3dPom {
     this.statusBarClose = this.modalLookerContainer.getByTestId(
       "looker3d-statusbar-close",
     );
-    this.statusBarCameraPosition = this.modalLookerContainer.getByTestId(
-      "looker3d-statusbar-camera-position",
-    );
-  }
-
-  async openStatusBar() {
-    if (await this.statusBar.isVisible()) {
-      return;
-    }
-
-    await this.statusBarToggle.waitFor({ state: "visible" });
-    await this.statusBarToggle.click();
-    await this.statusBar.waitFor({ state: "visible" });
-  }
-
-  async closeStatusBar() {
-    if (!(await this.statusBar.isVisible())) {
-      return;
-    }
-
-    await this.statusBarClose.click();
-    await this.statusBar.waitFor({ state: "hidden" });
   }
 
   /** The live camera position, read off the camera (the status bar lags it). */
@@ -173,22 +150,6 @@ export class Renderer3dPom {
     }
 
     return renderedPixelCount;
-  }
-
-  private parseCameraPosition(text: string): CameraPosition {
-    const match = text.match(
-      /(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/,
-    );
-
-    if (!match) {
-      throw new Error(`Unable to parse camera position from "${text}"`);
-    }
-
-    return [
-      Number.parseFloat(match[1]),
-      Number.parseFloat(match[2]),
-      Number.parseFloat(match[3]),
-    ];
   }
 }
 

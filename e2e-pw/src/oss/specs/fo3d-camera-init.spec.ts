@@ -111,7 +111,7 @@ test.afterAll(async ({ foWebServer }) => {
 // ─── tests ─────────────────────────────────────────────────────────────────
 
 // Quarantined (was test.describe.serial): entering annotate reveals the scene
-// (looker3d-scene-ready) before its camera attaches, so the mode-switch test
+// (e2e:looker3d:scene-ready) before its camera attaches, so the mode-switch test
 // reads no camera; the other tests pass on their event waits
 test.describe.skip("camera initialization", () => {
   test.afterEach(async ({ page, modal }) => {
@@ -181,10 +181,10 @@ test.describe.skip("camera initialization", () => {
     expect(savedBefore?.target).toHaveLength(3);
 
     // Navigate to next sample, then come back
-    await modal.eventUtils.after("looker3d-scene-ready", () =>
+    await modal.eventUtils.after("e2e:looker3d:scene-ready", () =>
       modal.navigateNextSample(),
     );
-    await modal.eventUtils.after("looker3d-scene-ready", () =>
+    await modal.eventUtils.after("e2e:looker3d:scene-ready", () =>
       modal.navigatePreviousSample(),
     );
 
@@ -243,7 +243,7 @@ test.describe.skip("camera initialization", () => {
 
     const exploreCameraBefore = await renderer3d.getCameraPosition();
 
-    await modal.eventUtils.after("looker3d-scene-ready", () =>
+    await modal.eventUtils.after("e2e:looker3d:scene-ready", () =>
       modal.sidebar.switchMode("annotate"),
     );
     expect(
@@ -259,7 +259,7 @@ test.describe.skip("camera initialization", () => {
 
     const annotateCameraAfterDrag = await renderer3d.getCameraPosition();
 
-    await modal.eventUtils.after("looker3d-scene-ready", () =>
+    await modal.eventUtils.after("e2e:looker3d:scene-ready", () =>
       modal.sidebar.switchMode("explore"),
     );
 

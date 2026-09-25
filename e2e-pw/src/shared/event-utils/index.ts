@@ -1,7 +1,7 @@
 import { Frame, Locator, Page } from "@playwright/test";
 
 /**
- * Handle for an armed document-event listener. Deliberately not a thenable:
+ * Handle for an armed app-event listener. Deliberately not a thenable:
  * an async method returning a bare promise would adopt (flatten) it, making
  * "armed" and "received" indistinguishable to callers.
  */
@@ -41,9 +41,8 @@ declare global {
 }
 
 /**
- * Handle for counting occurrences of a document-level CustomEvent. Created
- * by {@link EventUtils.counter}; counts accumulate from creation, so create
- * it at the moment "zero" should mean.
+ * Handle for counting occurrences of a document CustomEvent. Created by
+ * {@link EventUtils.initCounter}; counts accumulate from document start.
  */
 export class EventCounter {
   constructor(
@@ -100,8 +99,9 @@ export class EventUtils {
   constructor(private readonly page: Page) {}
 
   /**
-   * Arm a listener for an app event: a document- or window-level CustomEvent, or any
-   * `@fiftyone/events` bus event on any channel. Resolves only after the
+   * Arm a listener for an app event: an `@fiftyone/events` bus event on any
+   * channel (the `e2e:` signals), or a document or window CustomEvent the app
+   * dispatches for its own use. Resolves only after the
    * in-page listener is attached, so an event fired any time after arming is
    * guaranteed to be observed — arm BEFORE the action that fires the event,
    * then await the handle's `received` after it:
@@ -146,11 +146,12 @@ export class EventUtils {
         };
 
         // CustomEvent instances don't serialize across the boundary;
-        // forward only the detail. Some app events go to window instead of
-        // document, and a window listener doesn't see document events.
+        // forward only the detail. A document event bubbles on to window, so
+        // the window listener takes only events dispatched on window itself.
         const onDom = (e: Event) => deliver((e as CustomEvent).detail);
+        const onWindow = (e: Event) => e.target === window && onDom(e);
         document.addEventListener(eventName_, onDom);
-        window.addEventListener(eventName_, onDom);
+        window.addEventListener(eventName_, onWindow);
 
         // bus payloads can hold live objects; forward only primitive fields
         const offBus = window.__FO_EVENTS__?.tap((event, data) => {
@@ -169,7 +170,7 @@ export class EventUtils {
         const armed = (window.__FO_ARMED__ ??= {});
         detach = () => {
           document.removeEventListener(eventName_, onDom);
-          window.removeEventListener(eventName_, onDom);
+          window.removeEventListener(eventName_, onWindow);
           offBus?.();
           delete armed[id_];
         };
@@ -335,39 +336,11 @@ export class EventUtils {
   }
 
   /**
-   * Install a counter for a document-level CustomEvent. Counting starts when
-   * the returned promise resolves — create the counter BEFORE the actions
-   * whose events it should observe, then assert on `read()` after them:
-   *
-   *   const unmounts = await eventUtils.counter("grid-unmount");
-   *   await actionThatRefreshesGrid();
-   *   expect(await unmounts.read()).toBe(1);
-   */
-  public async counter(eventName: string): Promise<EventCounter> {
-    const key = getFunctionNameWithRandomSuffix(`counter_${eventName}`);
-
-    await this.page.evaluate(
-      ({ eventName_, key_ }) => {
-        const store = (window.__EVENT_COUNTS__ ??= {});
-        const records: { t: number; detail?: unknown }[] = (store[key_] = []);
-        document.addEventListener(eventName_, (e: Event) => {
-          records.push({
-            t: performance.now(),
-            detail: (e as CustomEvent).detail,
-          });
-        });
-      },
-      { eventName_: eventName, key_: key },
-    );
-
-    return new EventCounter(this.page, key);
-  }
-
-  /**
-   * Install a counter for a document-level CustomEvent at document start,
-   * before any application code runs. Unlike {@link counter}, events fired
-   * during initial page load are observed — create the counter BEFORE the
-   * navigation whose load it should watch. Each navigation starts a fresh
+   * Install a counter for a document CustomEvent (such as `grid-mount`) at
+   * document start, before any application code runs, so events fired during
+   * the initial page load are observed. Bus events are not counted: the bus
+   * tap only exists once the app has loaded. Create the counter BEFORE the
+   * navigation whose load it should watch; each navigation starts a fresh
    * document, resetting the records to empty.
    */
   public async initCounter(eventName: string): Promise<EventCounter> {

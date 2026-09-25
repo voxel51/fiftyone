@@ -17,7 +17,7 @@ export function FrameRenderedSignal({
   event,
 }: {
   readonly detail: FrameRenderedDetail;
-  readonly event: string;
+  readonly event: `e2e:${string}`;
 }) {
   const detailRef = useRef(detail);
   const renderedRef = useRef(false);
