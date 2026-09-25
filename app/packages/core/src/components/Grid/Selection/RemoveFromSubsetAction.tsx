@@ -1,4 +1,4 @@
-import { useSelectionSubsetDisabledReason } from "@fiftyone/state";
+import { useRefresh, useSelectionSubsetDisabledReason } from "@fiftyone/state";
 import type {
   GridSelectionAction,
   GridSelectionActionProps,
@@ -45,6 +45,7 @@ function RemoveFromSubset({
 }: GridSelectionActionProps) {
   const permission = useSelectionSubsetDisabledReason();
   const invalidate = useInvalidateSelectionScope(context.datasetId);
+  const refresh = useRefresh();
   const { domainId } = useGridSelectionDataset();
   const { removeMembersEverywhere, removeSnapshotsEverywhere } =
     useSelectionBucketCommands(domainId);
@@ -80,6 +81,7 @@ function RemoveFromSubset({
       setConfirming(false);
       setPending(null);
       invalidate();
+      refresh();
     } catch (cause) {
       setError(String(cause));
       setConfirming(true);

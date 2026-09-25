@@ -5,7 +5,12 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { useSubsetJobs, useTrackSubsetJobs } from "./jobs";
 import type { SelectionJob, SubsetAddResult } from "./client";
 
-const mocks = vi.hoisted(() => ({ start: vi.fn(), request: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  start: vi.fn(),
+  request: vi.fn(),
+  refresh: vi.fn(),
+}));
+vi.mock("../hooks/useRefresh", () => ({ default: () => mocks.refresh }));
 vi.mock("./client", () => ({
   startSelectionJob: mocks.start,
   selectionJobRequest: mocks.request,
@@ -57,6 +62,7 @@ function useJobs(datasetId: string) {
 }
 beforeEach(() => {
   sessionStorage.clear();
+  mocks.refresh.mockReset();
   mocks.start
     .mockReset()
     .mockImplementation(async (_dataset, _kind, _request, id) => job(id));
@@ -88,6 +94,7 @@ it("reconnects after unmount and reload without submitting the capture again", a
   );
   expect(second.result.current.jobs[0].job.id).toBe(id);
   expect(mocks.start).toHaveBeenCalledOnce();
+  expect(mocks.refresh).toHaveBeenCalledOnce();
   expect(
     sessionStorage.getItem(`fiftyone:subset-jobs:${datasetId}`),
   ).not.toContain("snapshotId");

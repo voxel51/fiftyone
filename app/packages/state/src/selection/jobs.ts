@@ -1,5 +1,6 @@
 import { useAtom } from "jotai";
 import { useCallback, useEffect } from "react";
+import useRefresh from "../hooks/useRefresh";
 import {
   selectionJobRequest,
   startSelectionJob,
@@ -131,6 +132,7 @@ export function useSubsetJobs(datasetId: string) {
 export function useTrackSubsetJobs(datasetId: string) {
   const [jobs, setJobs] = useAtom(subsetJobsAtom(datasetId));
   const invalidate = useInvalidateSelectionScope(datasetId);
+  const refresh = useRefresh();
   const ids = jobs
     .filter((record) => selectionJobActive(record.job))
     .map((record) => record.job.id)
@@ -157,7 +159,10 @@ export function useTrackSubsetJobs(datasetId: string) {
                   : item,
               ),
             );
-            if (!selectionJobActive(job)) invalidate();
+            if (!selectionJobActive(job)) {
+              invalidate();
+              if (job.state === "completed") refresh();
+            }
           } catch (cause) {
             if (active)
               setJobs((current) =>
@@ -175,5 +180,5 @@ export function useTrackSubsetJobs(datasetId: string) {
       active = false;
       clearTimeout(timer);
     };
-  }, [datasetId, ids, invalidate, setJobs]);
+  }, [datasetId, ids, invalidate, refresh, setJobs]);
 }

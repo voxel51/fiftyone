@@ -787,8 +787,8 @@
 }
 
 .subsetDelete {
-  position: absolute;
-  right: 6px;
+  flex-shrink: 0;
+  margin-right: 6px;
   opacity: 0;
   pointer-events: none;
   color: var(--tray-destructive);
@@ -797,11 +797,6 @@
 .subsetCount {
   flex-shrink: 0;
   white-space: nowrap;
-}
-
-.subsetRow:hover .subsetCount,
-.subsetRow:focus-within .subsetCount {
-  opacity: 0;
 }
 
 .subsetRow:hover .subsetDelete,

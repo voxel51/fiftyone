@@ -18,9 +18,11 @@ const mocks = vi.hoisted(() => ({
   invalidate: vi.fn(),
   deselect: vi.fn(),
   deselectSnapshots: vi.fn(),
+  refresh: vi.fn(),
 }));
 vi.mock("@fiftyone/state", () => ({
   useSelectionSubsetDisabledReason: () => null,
+  useRefresh: () => mocks.refresh,
 }));
 vi.mock("@fiftyone/state/src/selection", async () => ({
   ...(await import("@fiftyone/state/src/selection/model")),
@@ -86,6 +88,7 @@ beforeEach(() => {
   mocks.invalidate.mockReset();
   mocks.deselect.mockReset();
   mocks.deselectSnapshots.mockReset();
+  mocks.refresh.mockReset();
 });
 afterEach(cleanup);
 
@@ -117,6 +120,7 @@ it("confirms removal, deselects its captured members, and shows no success messa
     members: [{ episodeId: "sample", kind: "episode" }],
   });
   expect(mocks.invalidate).toHaveBeenCalledOnce();
+  expect(mocks.refresh).toHaveBeenCalledOnce();
   expect(mocks.deselect).toHaveBeenCalledWith([
     { episodeId: "sample", kind: "episode" },
   ]);
