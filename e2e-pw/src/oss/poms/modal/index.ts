@@ -1,4 +1,5 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
+import { expectScreenshot } from "src/oss/utils/screenshot";
 import { EventUtils } from "src/shared/event-utils";
 import { ModalTaggerPom } from "../action-row/tagger/modal-tagger";
 import { EpisodePom } from "../multimodal/episode";
@@ -99,18 +100,6 @@ export class ModalPom {
     return this.locator.getByTestId(
       `nav-${direction === "forward" ? "right" : "left"}-button`,
     );
-  }
-
-  async hideControls() {
-    const controls = this.locator.getByTestId("looker-controls");
-
-    // controls may not exist (annotate mode); `c` toggles them
-    if ((await controls.count()) === 0 || (await controls.isHidden())) {
-      return;
-    }
-
-    await this.page.keyboard.press("c");
-    await expect(controls).toBeHidden();
   }
 
   async toggleSelection(isPcd = false) {
@@ -348,7 +337,7 @@ export class ModalPom {
 
   /** Move the mouse off the looker and wait for its controls to hide */
   async hideLookerControls() {
-    await this.page.mouse.move(0, 0);
+    await this.sampleCanvas.parkMouse();
     await this.eventUtils.untilDom(
       this.looker.getByTestId("looker-controls"),
       (controls) => (controls as HTMLElement).style.display === "none",
@@ -389,16 +378,15 @@ class ModalAsserter {
   /** One capture of the modal on the 3D canvas's next rendered frame */
   async hasLooker3dScreenshot(name: string) {
     await this.modalPom.eventUtils.next("e2e:looker3d:frame-rendered");
-    expect(
-      await this.modalPom.modalContainer.screenshot({
-        mask: this.modalPom.looker3dScreenshotMasks,
-      }),
-    ).toMatchSnapshot(name);
+    await expectScreenshot(this.modalPom.modalContainer, name, {
+      mask: this.modalPom.looker3dScreenshotMasks,
+    });
   }
 
-  /** One capture of the looker; hide its controls first */
+  /** One capture of the looker with its controls hidden */
   async hasLookerScreenshot(name: string) {
-    expect(await this.modalPom.looker.screenshot()).toMatchSnapshot(name);
+    await this.modalPom.hideLookerControls();
+    await expectScreenshot(this.modalPom.looker, name);
   }
 
   async isClosed() {

@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { expect, test as base } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { Renderer3dPom } from "src/oss/poms/fo3d/renderer-3d";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
@@ -26,10 +26,7 @@ const TEMP_FILE_PATHS = groupSpecs.flatMap((spec) => [
 
 const ensureMain2dCanvasReadyForScreenshot = async (modal: ModalPom) => {
   await modal.assert.verifyPrimary2dRendererVisible();
-  await expect(modal.sampleCanvas.checkbox).toBeHidden();
-  await modal.sampleCanvas.tooltip.assert.isVisible(false);
-  await modal.sampleCanvas.toolbar.assert.isVisible(false);
-  await modal.sampleCanvas.parkMouse();
+  await modal.sampleCanvas.prepareForScreenshot();
 };
 
 const test = base.extend<{

@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { Locator, Page, expect } from "src/oss/fixtures";
 import { exactText } from "src/oss/utils";
+import { expectScreenshot } from "src/oss/utils/screenshot";
 import { EventUtils } from "src/shared/event-utils";
 
 /**
@@ -749,9 +750,7 @@ export class EpisodePom {
 class EpisodeAsserter {
   /** One capture of `target` showing only the episode shell's canvases */
   async hasCanvasScreenshot(target: Locator, name: string): Promise<void> {
-    expect(
-      await target.screenshot({ style: CANVAS_ONLY_STYLE }),
-    ).toMatchSnapshot(name);
+    await expectScreenshot(target, name, { style: CANVAS_ONLY_STYLE });
   }
 }
 

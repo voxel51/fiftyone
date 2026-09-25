@@ -119,7 +119,6 @@ test.describe.serial("tag", () => {
     await grid.openFirstSample();
 
     await modal.sidebar.toggleLabelCheckbox("ground_truth");
-    await modal.hideControls();
 
     // TODO: FIX ME. MODAL SCREENSHOT COMPARISON IS OFF BY ONE-PIXEL
     // await expect(modal.looker).toHaveScreenshot("labels.png");
@@ -135,7 +134,6 @@ test.describe.serial("tag", () => {
     await modal.tagger.addLabelTag("correct");
 
     await modal.sidebar.clearGroupFilters("labels");
-    await modal.hideControls();
     // TODO: FIX ME. MODAL SCREENSHOT COMPARISON IS OFF BY ONE-PIXEL
     // await expect(modal.looker).toHaveScreenshot("labels.png");
   });

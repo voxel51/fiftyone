@@ -1,4 +1,5 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
+import { expectScreenshot } from "src/oss/utils/screenshot";
 import { ArmedEvent, EventUtils } from "src/shared/event-utils";
 import { GridActionsRowPom } from "../action-row/grid-actions-row";
 import { GridSliceSelectorPom } from "../action-row/grid-slice-selector";
@@ -221,9 +222,7 @@ class GridAsserter {
     options: { target?: Locator; mask?: Locator[] } = {},
   ) {
     const target = options.target ?? this.gridPom.getForwardSection();
-    expect(await target.screenshot({ mask: options.mask })).toMatchSnapshot(
-      name,
-    );
+    await expectScreenshot(target, name, { mask: options.mask });
   }
 
   async isTileCountEqualTo(n: number) {

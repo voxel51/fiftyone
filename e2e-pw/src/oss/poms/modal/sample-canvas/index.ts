@@ -1,4 +1,5 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
+import { expectScreenshot } from "src/oss/utils/screenshot";
 import type { EventUtils } from "src/shared/event-utils";
 import { ToolbarPom } from "./toolbar";
 import { TooltipPom } from "./tooltip";
@@ -287,6 +288,14 @@ export class SampleCanvasPom {
     ).toBe("modal");
   }
 
+  /** Park the mouse and check no hover affordance is showing */
+  async prepareForScreenshot() {
+    await this.parkMouse();
+    await expect(this.checkbox).toBeHidden();
+    await this.tooltip.assert.isVisible(false);
+    await this.toolbar.assert.isVisible(false);
+  }
+
   async #toScreenCoordinates(x: number, y: number) {
     if (!this.#box) {
       this.#box = await this.locator.boundingBox();
@@ -342,21 +351,15 @@ class SampleCanvasAsserter {
   }
 
   async #hasScreenshot(target: Locator, name: string) {
-    await this.sampleCanvasPom.parkMouse();
-    await expect(this.sampleCanvasPom.checkbox).toBeHidden();
-    await this.sampleCanvasPom.tooltip.assert.isVisible(false);
-    await this.sampleCanvasPom.toolbar.assert.isVisible(false);
-    await this.sampleCanvasPom.page.addStyleTag({
-      content: ".segmentation-toolbar { display: none !important; }",
-    });
+    await this.sampleCanvasPom.prepareForScreenshot();
     // a Lighter frame paints after the state that caused it, so capture the
     // next one; a looker draws synchronously when its state changes
     if ((await this.sampleCanvasPom.lighterCanvas.count()) > 0) {
       await this.sampleCanvasPom.eventUtils.next("e2e:lighter:frame-painted");
     }
-    expect(
-      await target.screenshot({ animations: "disabled", caret: "hide" }),
-    ).toMatchSnapshot(name, { maxDiffPixelRatio: 0, threshold: 0 });
+    await expectScreenshot(target, name, {
+      style: ".segmentation-toolbar { display: none !important; }",
+    });
   }
 
   /**

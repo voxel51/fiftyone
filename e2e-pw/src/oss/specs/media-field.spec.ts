@@ -88,7 +88,6 @@ test.describe.serial("media field", () => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();
-    await modal.hideLookerControls();
     await modal.assert.hasLookerScreenshot("modal-media-field.png");
   });
 });

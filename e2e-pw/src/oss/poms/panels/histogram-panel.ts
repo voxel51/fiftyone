@@ -1,4 +1,5 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
+import { expectScreenshot } from "src/oss/utils/screenshot";
 import { EventUtils } from "src/shared/event-utils";
 import { SelectorPom } from "../selector";
 
@@ -43,7 +44,7 @@ class HistogramAsserter {
 
   /** One capture of the panel; draw it first with `afterLoad` */
   async hasScreenshot(name: string) {
-    expect(await this.histogramPom.locator.screenshot()).toMatchSnapshot(name);
+    await expectScreenshot(this.histogramPom.locator, name);
   }
 
   async verifyField(field: string) {
