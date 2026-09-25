@@ -119,13 +119,9 @@ test("a painted mask clears on auto-extended filler frames during playback", asy
   // form stays bound and follows the playhead. The fresh detection already
   // carries the default first class, so a non-default class must be chosen --
   // re-selecting the default is a no-op that never produces a save request
-  const saved = page.waitForResponse(
-    (r) =>
-      /\/sample\//.test(r.url()) &&
-      ["POST", "PATCH", "PUT"].includes(r.request().method()),
+  await modal.sidebar.annotate.afterSave(() =>
+    modal.sidebar.edit.selectFieldChoice("label", "person"),
   );
-  await modal.sidebar.edit.selectFieldChoice("label", "person");
-  await saved;
   await blur(page);
 
   // step onto a filler frame inside the auto-extended span: the box is present

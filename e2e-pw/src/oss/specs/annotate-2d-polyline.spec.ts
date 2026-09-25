@@ -6,7 +6,7 @@
  * persists across a fresh browser context, and its delete undoes. The same
  * `usePolylineMode` creation handler as video runs here on the Lighter canvas.
  */
-import { Browser, test as base, type Page } from "src/oss/fixtures";
+import { Browser, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
@@ -23,13 +23,6 @@ const TRIANGLE: Array<[number, number]> = [
   [0.6, 0.35],
   [0.48, 0.6],
 ];
-
-const savedSample = (page: Page) =>
-  page.waitForResponse(
-    (r) =>
-      /\/sample\//.test(r.url()) &&
-      ["POST", "PATCH", "PUT"].includes(r.request().method()),
-  );
 
 /** A second triangle, offset so it doesn't overlap {@link TRIANGLE}. */
 const TRIANGLE_2: Array<[number, number]> = TRIANGLE.map(([x, y]) => [
@@ -123,16 +116,15 @@ test.describe.serial("2D annotation polyline", () => {
     browser,
     fiftyoneLoader,
     modal,
-    page,
   }) => {
     await modal.sidebar.annotate.polylineMode();
     await drawPolyline(modal, TRIANGLE);
 
     // the freshly-drawn polyline opens its edit form; assigning a class commits.
-    const saved = savedSample(page);
-    await modal.sidebar.edit.selectFieldChoice("label", "lane");
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "lane"),
+    );
     await modal.sidebar.edit.assert.verifyFieldValue("label", "lane");
-    await saved;
 
     // true round-trip: the labeled polyline is the one active label and reads
     // back its class.
@@ -195,14 +187,13 @@ test.describe.serial("2D annotation polyline", () => {
   // flaky: intermittently fails on the delete/undo round-trip
   test.skip("a polyline can be deleted and the deletion is undoable", async ({
     modal,
-    page,
   }) => {
     await modal.sidebar.annotate.polylineMode();
     await drawPolyline(modal, TRIANGLE);
 
-    const saved = savedSample(page);
-    await modal.sidebar.edit.selectFieldChoice("label", "lane");
-    await saved;
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "lane"),
+    );
 
     // exit to the list so the label is counted (the actively-edited label
     // isn't listed in the Labels group while its form is open).
@@ -211,9 +202,9 @@ test.describe.serial("2D annotation polyline", () => {
 
     // re-select and delete it.
     await modal.sidebar.annotate.selectActiveLabel("lane", 0);
-    const deleted = savedSample(page);
-    await modal.sidebar.edit.deleteLabel();
-    await deleted;
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.deleteLabel(),
+    );
     await modal.sidebar.annotate.assert.hasActiveLabelsCount(0);
 
     // delete is one undoable engine unit (the undo control lives in the

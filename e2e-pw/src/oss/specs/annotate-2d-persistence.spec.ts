@@ -96,18 +96,13 @@ test.describe.serial("2D annotation edit/delete persistence", () => {
     browser,
     fiftyoneLoader,
     modal,
-    page,
   }) => {
     await modal.sidebar.annotate.selectActiveLabel("cat", 0);
 
-    const saved = page.waitForResponse(
-      (r) =>
-        /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method()),
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.setFieldValue("confidence", "0.7"),
     );
-    await modal.sidebar.edit.setFieldValue("confidence", "0.7");
     await modal.sidebar.edit.assert.verifyFieldValue("confidence", "0.7");
-    await saved;
 
     await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
       await freshModal.sidebar.annotate.selectActiveLabel("cat", 0);
@@ -122,18 +117,13 @@ test.describe.serial("2D annotation edit/delete persistence", () => {
     browser,
     fiftyoneLoader,
     modal,
-    page,
   }) => {
     await modal.sidebar.annotate.selectActiveLabel("cat", 0);
 
-    const saved = page.waitForResponse(
-      (r) =>
-        /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method()),
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.setFieldValue("position.x", "0.111"),
     );
-    await modal.sidebar.edit.setFieldValue("position.x", "0.111");
     await modal.sidebar.edit.assert.verifyFieldValue("position.x", "0.111");
-    await saved;
 
     await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
       await freshModal.sidebar.annotate.selectActiveLabel("cat", 0);
@@ -152,15 +142,11 @@ test.describe.serial("2D annotation edit/delete persistence", () => {
   }) => {
     const before = await modal.sidebar.annotate.getActiveLabelsCount();
 
-    const saved = page.waitForResponse(
-      (r) =>
-        /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method()),
-    );
-    await modal.sidebar.annotate.selectActiveLabel("cat", 0);
-    await page.keyboard.press("Backspace");
+    await modal.sidebar.annotate.afterSave(async () => {
+      await modal.sidebar.annotate.selectActiveLabel("cat", 0);
+      await page.keyboard.press("Backspace");
+    });
     await modal.sidebar.annotate.assert.hasActiveLabelsCount(before - 1);
-    await saved;
 
     await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
       await freshModal.sidebar.annotate.assert.hasActiveLabelsCount(before - 1);

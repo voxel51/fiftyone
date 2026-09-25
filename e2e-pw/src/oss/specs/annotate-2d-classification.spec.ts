@@ -97,10 +97,10 @@ test.describe.serial("2D annotation classification", () => {
     // the new classification opens its edit form; choosing a (non-default)
     // class commits. "cloudy" is the 2nd class — distinct from the pre-filled
     // default — so this is a real value change, not a no-op.
-    const saved = modal.sidebar.annotate.waitForPatch();
-    await modal.sidebar.edit.selectFieldChoice("label", "cloudy");
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "cloudy"),
+    );
     await modal.sidebar.edit.assert.verifyFieldValue("label", "cloudy");
-    await saved;
 
     // true round-trip: the field holds the chosen class
     await expectPersistedClassification(browser, fiftyoneLoader, "cloudy");
@@ -112,15 +112,15 @@ test.describe.serial("2D annotation classification", () => {
     modal,
   }) => {
     await modal.sidebar.annotate.createClassification();
-    const saved = modal.sidebar.annotate.waitForPatch();
-    await modal.sidebar.edit.selectFieldChoice("label", "cloudy");
-    await saved;
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "cloudy"),
+    );
     await expectPersistedClassification(browser, fiftyoneLoader, "cloudy");
 
     // the new classification is selected (form open) — delete it.
-    const deleted = modal.sidebar.annotate.waitForPatch();
-    await modal.sidebar.edit.deleteLabel();
-    await deleted;
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.deleteLabel(),
+    );
     await expectPersistedClassification(browser, fiftyoneLoader, null);
   });
 
@@ -133,19 +133,17 @@ test.describe.serial("2D annotation classification", () => {
     modal,
   }) => {
     await modal.sidebar.annotate.createClassification();
-    const saved = modal.sidebar.annotate.waitForPatch();
-    await modal.sidebar.edit.selectFieldChoice("label", "cloudy");
-    await saved;
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "cloudy"),
+    );
     await expectPersistedClassification(browser, fiftyoneLoader, "cloudy");
 
-    const deleted = modal.sidebar.annotate.waitForPatch();
-    await modal.sidebar.edit.deleteLabel();
-    await deleted;
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.deleteLabel(),
+    );
 
     await modal.sidebar.edit.assert.undoIsEnabled();
-    const restored = modal.sidebar.annotate.waitForPatch();
-    await modal.sidebar.edit.undo();
-    await restored;
+    await modal.sidebar.annotate.afterSave(() => modal.sidebar.edit.undo());
     await expectPersistedClassification(browser, fiftyoneLoader, "cloudy");
   });
 });

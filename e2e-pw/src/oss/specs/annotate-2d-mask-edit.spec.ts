@@ -114,9 +114,9 @@ test.describe.serial("2D annotation mask edit (brush)", () => {
 
     // paint a stroke well outside the seeded bbox ([0.4,0.4]+0.2) so the mask
     // grows rather than re-covering already-set pixels.
-    const saved = modal.sidebar.annotate.waitForPatch();
-    await modal.sampleCanvas.drag(0.7, 0.5, 0.85, 0.5);
-    await saved;
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sampleCanvas.drag(0.7, 0.5, 0.85, 0.5),
+    );
 
     // the persisted mask reaches past the seeded box: its bounding box widened
     await inFreshContext(browser, fiftyoneLoader, async (fresh) => {
@@ -143,9 +143,9 @@ test.describe.serial("2D annotation mask edit (brush)", () => {
     await modal.sidebar.annotate.pickMaskMode("Remove");
 
     // erase across the seeded bbox center.
-    const saved = modal.sidebar.annotate.waitForPatch();
-    await modal.sampleCanvas.drag(0.42, 0.5, 0.58, 0.5);
-    await saved;
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sampleCanvas.drag(0.42, 0.5, 0.58, 0.5),
+    );
 
     // coverage drops — raw pixel count is unreliable across the commit's mask
     // re-rasterization, the covered FRACTION is not.
@@ -157,9 +157,7 @@ test.describe.serial("2D annotation mask edit (brush)", () => {
 
     // the erase is one undoable engine unit — undo restores full coverage.
     await modal.sidebar.edit.assert.undoIsEnabled();
-    const restored = modal.sidebar.annotate.waitForPatch();
-    await modal.sidebar.edit.undo();
-    await restored;
+    await modal.sidebar.annotate.afterSave(() => modal.sidebar.edit.undo());
 
     await inFreshContext(browser, fiftyoneLoader, async (fresh) => {
       expect(await fresh.sidebar.edit.maskPreviewCoverage()).toBe(before);

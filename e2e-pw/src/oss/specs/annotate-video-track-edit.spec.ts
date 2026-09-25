@@ -66,14 +66,6 @@ const inFreshContext = async (
 const blur = (page: Page) =>
   page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
 
-/** Await the autosave round-trip for the edited sample. */
-const savedResponse = (page: Page) =>
-  page.waitForResponse(
-    (r) =>
-      /\/sample\//.test(r.url()) &&
-      ["POST", "PATCH", "PUT"].includes(r.request().method()),
-  );
-
 // re-seed per test: one tracked instance (vehicle, index=1) on every frame.
 // 20 frames @ 10fps — long enough to step several frames off the start.
 test.beforeEach(async ({ datasetFactory }) => {
@@ -133,10 +125,10 @@ test.describe.serial("video annotation track editing", () => {
     await modal.sidebar.edit.assert.verifyFieldValue("position.x", "0.5");
 
     // track-level class edit — fans across every frame of the instance
-    const saved = savedResponse(page);
-    await modal.sidebar.edit.selectFieldChoice("label", "person");
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "person"),
+    );
     await modal.sidebar.edit.assert.verifyFieldValue("label", "person");
-    await saved;
 
     // step well off the edited frame and re-select the (now "person") track
     await modal.sidebar.edit.exitToList();
@@ -256,9 +248,9 @@ test.describe.serial("video annotation track editing", () => {
     // class change fans across the track without touching geometry, so a no-op
     // resize committed by the select would ride the same patch and promote the
     // frame to a keyframe — which the fresh load below would show
-    const saved = savedResponse(page);
-    await modal.sidebar.edit.selectFieldChoice("label", "person");
-    await saved;
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "person"),
+    );
     expect(persists).toBe(1);
     page.off("response", countPersist);
 

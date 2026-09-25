@@ -65,14 +65,6 @@ const inFreshContext = async (
   }
 };
 
-/** A sample-mutating autosave (the engine commit that persists the draw). */
-const savedSample = (page: Page) =>
-  page.waitForResponse(
-    (r) =>
-      /\/sample\//.test(r.url()) &&
-      ["POST", "PATCH", "PUT"].includes(r.request().method()),
-  );
-
 test.describe.serial("video non-box label create", () => {
   // Re-seed a clean slate per test (polylines field + schema active, no tracks):
   // these run serially against one dataset, so a persisted draw from one test
@@ -170,10 +162,10 @@ test.describe.serial("video non-box label create", () => {
     await modal.videoAnnotate.assert.objectTrackCount(before + 1);
 
     // the freshly-drawn polyline opens its edit form; assigning a class commits
-    const saved = savedSample(page);
-    await modal.sidebar.edit.selectFieldChoice("label", "person");
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "person"),
+    );
     await modal.sidebar.edit.assert.verifyFieldValue("label", "person");
-    await saved;
 
     // the polyline frame label survives a true round-trip — exactly one object
     // track persists on the clean-slate timeline (the class is verified live
@@ -209,10 +201,10 @@ test.describe.serial("video non-box label create", () => {
     // the sidebar mask preview renders — proving the open form resolved the
     // live masked overlay by the track's instance id, not a maskless stub
     await modal.sidebar.edit.assert.hasMaskPreview(true);
-    const saved = savedSample(page);
-    await modal.sidebar.edit.selectFieldChoice("label", "person");
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "person"),
+    );
     await modal.sidebar.edit.assert.verifyFieldValue("label", "person");
-    await saved;
 
     // the masked detection survives a true round-trip with its mask intact
     await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {

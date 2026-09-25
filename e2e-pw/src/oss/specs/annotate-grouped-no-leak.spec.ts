@@ -352,9 +352,9 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
 
     // delete the mesh cuboid via the 3D annotation toolbar
     await modal.annotate3d.selectLabel("cat");
-    let saved = modal.sidebar.annotate.waitForPatch();
-    await modal.annotate3d.deleteSelected();
-    await saved;
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.annotate3d.deleteSelected(),
+    );
 
     // the delete persists to the mesh sample only — image + cloud untouched
     await expectPersistedSliceClasses(page, fiftyoneLoader, {
@@ -364,9 +364,7 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     });
 
     // undo restores the mesh cuboid
-    saved = modal.sidebar.annotate.waitForPatch();
-    await modal.sidebar.edit.undo();
-    await saved;
+    await modal.sidebar.annotate.afterSave(() => modal.sidebar.edit.undo());
     await expectPersistedSliceClasses(page, fiftyoneLoader, {
       image: ["cat", "cat"],
       mesh: ["cat"],
@@ -374,9 +372,7 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     });
 
     // redo re-applies the delete
-    saved = modal.sidebar.annotate.waitForPatch();
-    await modal.sidebar.edit.redo();
-    await saved;
+    await modal.sidebar.annotate.afterSave(() => modal.sidebar.edit.redo());
     await expectPersistedSliceClasses(page, fiftyoneLoader, {
       image: ["cat", "cat"],
       mesh: [],
@@ -399,9 +395,9 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
 
     // delete one of the image slice's two detections via the label menu
     await modal.annotate3d.selectLabel("cat");
-    let saved = modal.sidebar.annotate.waitForPatch();
-    await modal.sidebar.edit.deleteLabel();
-    await saved;
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.deleteLabel(),
+    );
 
     // the delete persists to the image sample only — 3D slices untouched
     await expectPersistedSliceClasses(page, fiftyoneLoader, {
@@ -411,9 +407,7 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     });
 
     // undo restores the deleted detection (still only on the image sample)
-    saved = modal.sidebar.annotate.waitForPatch();
-    await modal.sidebar.edit.undo();
-    await saved;
+    await modal.sidebar.annotate.afterSave(() => modal.sidebar.edit.undo());
     await expectPersistedSliceClasses(page, fiftyoneLoader, {
       image: ["cat", "cat"],
       mesh: ["cat"],
@@ -421,9 +415,7 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     });
 
     // redo re-applies the delete (still only on the image sample)
-    saved = modal.sidebar.annotate.waitForPatch();
-    await modal.sidebar.edit.redo();
-    await saved;
+    await modal.sidebar.annotate.afterSave(() => modal.sidebar.edit.redo());
     await expectPersistedSliceClasses(page, fiftyoneLoader, {
       image: ["cat"],
       mesh: ["cat"],

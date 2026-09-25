@@ -83,12 +83,11 @@ test.describe.serial("segmentation AI (SAM2) round-trip", () => {
 
     // ── 2. Place a positive point — inference auto-fires on context change ──
     // inference runs in a worker: settlement alone reads "settled" before
-    // the label exists, so arm the autosave response that will carry it
-    const saved = modal.sidebar.annotate.waitForPatch();
-    await modal.sampleCanvas.click(0.5, 0.5);
-
+    // the label exists, so wait on the save that carries it
     // ── 3. Wait for the inferred detection to persist ───────────────────────
-    await saved;
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sampleCanvas.click(0.5, 0.5),
+    );
 
     // The inferred detection is left selected; the create toolbar is hidden
     // while editing, so exit via the edit form rather than the toolbar.

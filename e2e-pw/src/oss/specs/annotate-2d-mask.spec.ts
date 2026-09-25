@@ -175,12 +175,9 @@ for (const cfg of KINDS) {
       page.on("response", countPatch);
 
       try {
-        const saved = page.waitForResponse(
-          (r) =>
-            /\/sample\//.test(r.url()) && isSamplePatch(r.request().method()),
+        await modal.sidebar.annotate.afterSave(() =>
+          modal.sidebar.edit.removeMask(),
         );
-        await modal.sidebar.edit.removeMask();
-        await saved;
 
         await modal.sidebar.edit.assert.hasMask(false);
         expect(patches).toBe(1);
@@ -202,17 +199,13 @@ for (const cfg of KINDS) {
       browser,
       fiftyoneLoader,
       modal,
-      page,
     }) => {
       await modal.sidebar.annotate.selectActiveLabel("cat", 0);
       await modal.sidebar.edit.assert.hasMask(true);
 
-      const saved = page.waitForResponse(
-        (r) =>
-          /\/sample\//.test(r.url()) && isSamplePatch(r.request().method()),
+      await modal.sidebar.annotate.afterSave(() =>
+        modal.sidebar.edit.removeMask(),
       );
-      await modal.sidebar.edit.removeMask();
-      await saved;
       await modal.sidebar.edit.assert.hasMask(false);
 
       await inFreshContext(

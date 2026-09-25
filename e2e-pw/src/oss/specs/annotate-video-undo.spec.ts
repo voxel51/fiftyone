@@ -58,13 +58,6 @@ const redoKey = async (page: Page) => {
   await page.keyboard.press("Control+Shift+z");
 };
 
-const savedResponse = (page: Page) =>
-  page.waitForResponse(
-    (r) =>
-      /\/sample\//.test(r.url()) &&
-      ["POST", "PATCH", "PUT"].includes(r.request().method()),
-  );
-
 // re-seed per test: one tracked instance (vehicle) present on every frame.
 // 20 frames @ 10fps — a drawn box auto-extends ~30, clamped to the clip.
 test.beforeEach(async ({ datasetFactory }) => {
@@ -144,10 +137,10 @@ test.describe.serial("video annotation undo/redo", () => {
     await va.selectLabel("vehicle");
 
     // a class edit fans across the track (one undo unit)
-    const saved = savedResponse(page);
-    await modal.sidebar.edit.selectFieldChoice("label", "person");
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "person"),
+    );
     await modal.sidebar.edit.assert.verifyFieldValue("label", "person");
-    await saved;
     await modal.sidebar.edit.exitToList();
     await va.assert.labelListed("person");
 
@@ -174,10 +167,10 @@ test.describe.serial("video annotation undo/redo", () => {
 
     // edit A: a track-wide class change (one engine transaction, one undo unit)
     await va.selectLabel("vehicle");
-    const saved = savedResponse(page);
-    await modal.sidebar.edit.selectFieldChoice("label", "person");
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "person"),
+    );
     await modal.sidebar.edit.assert.verifyFieldValue("label", "person");
-    await saved;
     await modal.sidebar.edit.exitToList();
     await va.assert.labelListed("person");
 

@@ -134,14 +134,10 @@ test.describe.serial("video per-frame detection drawing", () => {
     await modal.videoAnnotate.assert.objectTrackCount(1);
 
     // the freshly-drawn box opens its edit form; assigning a class commits it
-    const saved = page.waitForResponse(
-      (r) =>
-        /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method()),
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "person"),
     );
-    await modal.sidebar.edit.selectFieldChoice("label", "person");
     await modal.sidebar.edit.assert.verifyFieldValue("label", "person");
-    await saved;
 
     // the frame label survives a true round-trip
     await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {

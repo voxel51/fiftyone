@@ -115,21 +115,16 @@ test.describe.serial("2D Lighter annotation", () => {
     browser,
     fiftyoneLoader,
     modal,
-    page,
   }) => {
     const before = await modal.sidebar.annotate.getActiveLabelsCount();
 
-    // the new box autosaves via POST/PATCH dataset/.../sample/...; await it so
-    // the verification can't race the persist
-    const saved = page.waitForResponse(
-      (r) =>
-        /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method()),
-    );
-    await drawBox(modal, [0.1, 0.1], [0.28, 0.28]);
-    await modal.sidebar.edit.exitToList();
+    // the new box autosaves; wait on the save so the verification can't race
+    // the persist
+    await modal.sidebar.annotate.afterSave(async () => {
+      await drawBox(modal, [0.1, 0.1], [0.28, 0.28]);
+      await modal.sidebar.edit.exitToList();
+    });
     await expectLabelsCount(modal, before + 1);
-    await saved;
 
     // verify from a brand-new context (no shared client cache): proves the box
     // round-tripped and exercises load-time bridge hydration. A mid-test reload

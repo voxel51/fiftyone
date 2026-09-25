@@ -24,13 +24,6 @@ const otherField = (current: string) =>
 
 const CLASSES = ["vehicle", "person", "road sign"];
 
-const savedSample = (page: Page) =>
-  page.waitForResponse(
-    (r) =>
-      /\/sample\//.test(r.url()) &&
-      ["POST", "PATCH", "PUT"].includes(r.request().method()),
-  );
-
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
     await use(new ModalPom(page, eventUtils));
@@ -148,9 +141,9 @@ test.describe.serial("video annotation field move", () => {
     const from = await modal.sidebar.edit.getCurrentField();
     const to = otherField(from);
 
-    const saved = savedSample(page);
-    await modal.sidebar.edit.moveFieldTo(to);
-    await saved;
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.moveFieldTo(to),
+    );
 
     await reselect(modal);
     await modal.sidebar.edit.assert.currentField(to);
@@ -172,9 +165,9 @@ test.describe.serial("video annotation field move", () => {
     const from = await modal.sidebar.edit.getCurrentField();
     const to = otherField(from);
 
-    const saved = savedSample(page);
-    await modal.sidebar.edit.moveFieldTo(to);
-    await saved;
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.moveFieldTo(to),
+    );
     await reselect(modal);
     await modal.sidebar.edit.assert.currentField(to);
 

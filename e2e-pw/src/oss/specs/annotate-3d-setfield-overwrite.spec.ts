@@ -137,14 +137,10 @@ test.describe.serial("3d annotate set_field overwrite", () => {
     // sanity: the editor sees the PROJECTED note, not the DB value
     await modal.annotate3d.selectLabel("car");
 
-    const saved = page.waitForResponse(
-      (r) =>
-        /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method()),
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "truck"),
     );
-    await modal.sidebar.edit.selectFieldChoice("label", "truck");
     await modal.sidebar.edit.assert.verifyFieldValue("label", "truck");
-    await saved;
 
     // the cuboid edit persisted. CRITICAL: neither projected value may clobber
     // the DB — the base dataset still shows the materialized `note`, and the

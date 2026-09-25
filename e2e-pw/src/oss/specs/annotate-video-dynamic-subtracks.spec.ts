@@ -50,14 +50,6 @@ const openAnnotate = async (
 const blur = (page: Page) =>
   page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
 
-/** Await the autosave round-trip for the edited sample. */
-const savedResponse = (page: Page) =>
-  page.waitForResponse(
-    (r) =>
-      /\/sample\//.test(r.url()) &&
-      ["POST", "PATCH", "PUT"].includes(r.request().method()),
-  );
-
 const ATTR = "turn_signal";
 
 /** Step the playhead by `delta` frames (negative = backward), un-focused. */
@@ -75,10 +67,10 @@ const stepFrames = async (modal: ModalPom, page: Page, delta: number) => {
 };
 
 /** Commit a `turn_signal` choice at the current frame and await the save. */
-const setSignal = async (modal: ModalPom, page: Page, choice: string) => {
-  const saved = savedResponse(page);
-  await modal.sidebar.edit.selectFieldChoice(ATTR, choice);
-  await saved;
+const setSignal = async (modal: ModalPom, choice: string) => {
+  await modal.sidebar.annotate.afterSave(() =>
+    modal.sidebar.edit.selectFieldChoice(ATTR, choice),
+  );
 };
 
 /** Assert the selected track's `turn_signal` value at the current frame. */
@@ -181,7 +173,7 @@ test.describe.serial("video annotation dynamic attribute sub-tracks", () => {
 
     // Edit at frame 4 → "left": forward-fills 4..end, so "off" 1..3 / "left" 4..end.
     await stepFrames(modal, page, 3);
-    await setSignal(modal, page, "left");
+    await setSignal(modal, "left");
 
     const parentId = await va.firstObjectTrackId();
 
@@ -213,7 +205,7 @@ test.describe.serial("video annotation dynamic attribute sub-tracks", () => {
 
     // Split into two segments (off 1..3 / left 4..end).
     await stepFrames(modal, page, 3);
-    await setSignal(modal, page, "left");
+    await setSignal(modal, "left");
 
     const parentId = await va.firstObjectTrackId();
 
@@ -247,7 +239,7 @@ test.describe.serial("video annotation dynamic attribute sub-tracks", () => {
 
     // off 1..3 / left 4..end (the "left" segment starts at frame 4).
     await stepFrames(modal, page, 3);
-    await setSignal(modal, page, "left");
+    await setSignal(modal, "left");
 
     const parentId = await va.firstObjectTrackId();
 

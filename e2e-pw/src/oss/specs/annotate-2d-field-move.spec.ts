@@ -140,12 +140,9 @@ test.describe.serial("2D annotation field move", () => {
     page.on("response", countPatch);
 
     try {
-      const saved = page.waitForResponse(
-        (r) =>
-          /\/sample\//.test(r.url()) && isSamplePatch(r.request().method()),
+      await modal.sidebar.annotate.afterSave(() =>
+        modal.sidebar.edit.moveFieldTo(to),
       );
-      await modal.sidebar.edit.moveFieldTo(to);
-      await saved;
 
       // The move deselected the label; re-select to read its new home.
       await reselect(modal);
@@ -173,18 +170,15 @@ test.describe.serial("2D annotation field move", () => {
     browser,
     fiftyoneLoader,
     modal,
-    page,
   }) => {
     await reselect(modal);
 
     const from = await modal.sidebar.edit.getCurrentField();
     const to = otherField(from);
 
-    const saved = page.waitForResponse(
-      (r) => /\/sample\//.test(r.url()) && isSamplePatch(r.request().method()),
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.moveFieldTo(to),
     );
-    await modal.sidebar.edit.moveFieldTo(to);
-    await saved;
 
     await reselect(modal);
     await modal.sidebar.edit.assert.currentField(to);

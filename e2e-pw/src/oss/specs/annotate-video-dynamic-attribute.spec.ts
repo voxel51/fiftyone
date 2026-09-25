@@ -49,14 +49,6 @@ const openAnnotate = async (
 const blur = (page: Page) =>
   page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
 
-/** Await the autosave round-trip for the edited sample. */
-const savedResponse = (page: Page) =>
-  page.waitForResponse(
-    (r) =>
-      /\/sample\//.test(r.url()) &&
-      ["POST", "PATCH", "PUT"].includes(r.request().method()),
-  );
-
 const ATTR = "turn_signal";
 
 /** Step the playhead by `delta` frames (negative = backward), un-focused. */
@@ -78,10 +70,10 @@ const assertSignal = async (modal: ModalPom, expected: string) =>
   modal.sidebar.edit.assert.verifyFieldValue(ATTR, expected);
 
 /** Commit a `turn_signal` choice at the current frame and await the save. */
-const setSignal = async (modal: ModalPom, page: Page, choice: string) => {
-  const saved = savedResponse(page);
-  await modal.sidebar.edit.selectFieldChoice(ATTR, choice);
-  await saved;
+const setSignal = async (modal: ModalPom, choice: string) => {
+  await modal.sidebar.annotate.afterSave(() =>
+    modal.sidebar.edit.selectFieldChoice(ATTR, choice),
+  );
 };
 
 // re-seed per test: one tracked instance carrying turn_signal="off" everywhere.
@@ -148,7 +140,7 @@ test.describe.serial("video annotation dynamic attribute", () => {
 
     // edit at frame 4 -> "left"
     await stepFrames(modal, page, 3);
-    await setSignal(modal, page, "left");
+    await setSignal(modal, "left");
     await assertSignal(modal, "left");
 
     // earlier frame is untouched (forward-fill only)
@@ -177,15 +169,15 @@ test.describe.serial("video annotation dynamic attribute", () => {
 
     // frame 4 -> "left" (left runs 4..end)
     await stepFrames(modal, page, 3);
-    await setSignal(modal, page, "left");
+    await setSignal(modal, "left");
 
     // frame 8 -> "right" (a change boundary: left 4..7, right 8..end)
     await stepFrames(modal, page, 4);
-    await setSignal(modal, page, "right");
+    await setSignal(modal, "right");
 
     // frame 6 -> "off": fills forward only up to the frame-8 boundary
     await stepFrames(modal, page, -2);
-    await setSignal(modal, page, "off");
+    await setSignal(modal, "off");
     await assertSignal(modal, "off");
 
     // frame 7 took the new value...

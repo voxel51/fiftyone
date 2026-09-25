@@ -108,13 +108,9 @@ test.describe.serial("video annotation fresh draw", () => {
 
     // commit the fresh draw (a class) so it — and the auto-extended filler —
     // enter engine presence; an uncommitted draft isn't listed in the sidebar
-    const saved = page.waitForResponse(
-      (r) =>
-        /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method()),
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "person"),
     );
-    await modal.sidebar.edit.selectFieldChoice("label", "person");
-    await saved;
     await modal.sidebar.edit.exitToList();
     await blur(page);
 
@@ -146,14 +142,10 @@ test.describe.serial("video annotation fresh draw", () => {
     await modal.sidebar.edit.assert.currentField("frames.detections");
 
     // committing a class keeps the form bound; the field stays `detections`
-    const saved = page.waitForResponse(
-      (r) =>
-        /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method()),
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "person"),
     );
-    await modal.sidebar.edit.selectFieldChoice("label", "person");
     await modal.sidebar.edit.assert.verifyFieldValue("label", "person");
-    await saved;
 
     // the form follows the playhead without a manual reselect: still open, still
     // bound to the schema field on the next frame

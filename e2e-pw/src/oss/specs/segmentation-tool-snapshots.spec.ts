@@ -195,10 +195,10 @@ test.describe.serial("segmentation tool snapshots", () => {
     // One positive point near the center; mock worker returns a
     // deterministic 8x8 all-foreground mask at bbox {0.4, 0.4, 0.2, 0.2}.
     // inference runs in a worker: settlement alone reads "settled" before
-    // the label exists, so arm the autosave response that will carry it
-    const saved = modal.sidebar.annotate.waitForPatch();
-    await modal.sampleCanvas.click(0.5, 0.5);
-    await saved;
+    // the label exists, so wait on the save that carries it
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sampleCanvas.click(0.5, 0.5),
+    );
 
     // Right-click to finalize the AI session: destroys the keypoint
     // overlay (and its ripple animation), leaving only the mask render.

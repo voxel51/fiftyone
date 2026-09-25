@@ -84,20 +84,15 @@ test.describe.serial("annotate undo durability", () => {
     await modal.sidebar.edit.assert.undoIsEnabled(false);
   });
 
-  test("the undo stack survives an autosave", async ({ modal, page }) => {
+  test("the undo stack survives an autosave", async ({ modal }) => {
     await modal.sidebar.annotate.selectActiveLabel("cat", 0);
     const before = await modal.sidebar.edit.getFieldValue("position.x");
 
     // edit a field; the engine commits + autosaves (PATCH dataset/.../sample/...)
-    const saved = page.waitForResponse(
-      (r) =>
-        /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method()),
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.setFieldValue("position.x", "0.123"),
     );
-    await modal.sidebar.edit.setFieldValue("position.x", "0.123");
     await modal.sidebar.edit.assert.verifyFieldValue("position.x", "0.123");
-    await modal.sidebar.edit.assert.undoIsEnabled();
-    await saved;
 
     // the persist echo (whole-sample reset) must NOT have wiped the stack:
     // undo is still enabled and still reverts the edit

@@ -106,6 +106,20 @@ export class ModalAnnotateSidebarPom {
   }
 
   /**
+   * Run `action` and resolve once the edit it makes has been written and
+   * nothing is left to save: the write is the edit's cause-signal, and the
+   * settled pass after it proves no later edit is still pending.
+   */
+  async afterSave<T>(action: () => Promise<T>): Promise<T> {
+    const result = await this.eventUtils.after(
+      "annotation:persistenceSuccess",
+      action,
+    );
+    await this.waitForSavesSettled();
+    return result;
+  }
+
+  /**
    * Select an active label by name and position
    *
    * @param label The label name to select
@@ -190,9 +204,8 @@ export class ModalAnnotateSidebarPom {
 
   /**
    * Resolves on the next successful PATCH to the per-sample dataset
-   * endpoint. Only for asserting on the response itself (e.g. URL scoping);
-   * to wait for an edit to persist, use {@link waitForSavesSettled} — it
-   * cannot miss a patch that fires early and it verifies nothing is pending.
+   * endpoint. Only for asserting on the request itself (which sample it
+   * targets); to wait for an edit to persist, use {@link afterSave}.
    */
   waitForPatch() {
     return this.page.waitForResponse(
