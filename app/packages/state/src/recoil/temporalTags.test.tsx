@@ -7,12 +7,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import React from "react";
-import {
-  RecoilRoot,
-  useRecoilValue,
-  useSetRecoilState,
-  type RecoilState,
-} from "recoil";
+import { RecoilRoot, useRecoilValue, useSetRecoilState } from "recoil";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const fetchMock = vi.fn();
@@ -52,25 +47,9 @@ vi.mock("./selectors", async () => {
     }),
   };
 });
-vi.mock("./modal", async () => {
-  const { atom } = await vi.importActual<typeof import("recoil")>("recoil");
-  return {
-    isModalActive: atom<boolean>({
-      key: "test_isModalActive",
-      default: false,
-    }),
-  };
-});
-
+import { invalidateDatasetTemporalTags } from "../temporal-tags";
 import { filters as filtersAtom } from "./filters";
-import { isModalActive } from "./modal";
 import { datasetId as datasetIdAtom } from "./selectors";
-
-// The real `isModalActive` is a read-only selector; the mock above swaps it
-// for a plain atom so the test can drive it, but the import still carries
-// the selector's type — a targeted cast at this one declaration site is
-// simpler than re-typing the mock.
-const isModalActiveAtom = isModalActive as unknown as RecoilState<boolean>;
 import {
   fetchTemporalTagResults,
   temporalTagResults,
@@ -219,11 +198,67 @@ describe("useSyncTemporalTagResults", () => {
     );
   });
 
+  it("keeps the vocabulary without refetching when an editor remounts", async () => {
+    fetchMock.mockResolvedValue({ response: { counts: { review: 2 } } });
+
+    let setShown: ((value: boolean) => void) | undefined;
+    function Toggle() {
+      const [shown, set] = React.useState(true);
+      setShown = set;
+      return shown ? <Harness /> : null;
+    }
+
+    render(
+      <RecoilRoot>
+        <Toggle />
+      </RecoilRoot>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId("probe").textContent).toContain("review"),
+    );
+
+    act(() => setShown?.(false));
+    act(() => setShown?.(true));
+
+    expect(screen.getByTestId("probe").textContent).toContain("review");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("refreshes the vocabulary in place after a tag mutation", async () => {
+    let resolveRefresh: (value: {
+      response: { counts: Record<string, number> };
+    }) => void;
+    fetchMock.mockResolvedValueOnce({ response: { counts: { review: 2 } } });
+    fetchMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveRefresh = resolve;
+        }),
+    );
+
+    renderSync();
+
+    await waitFor(() =>
+      expect(screen.getByTestId("probe").textContent).toContain("review"),
+    );
+
+    act(() => invalidateDatasetTemporalTags("ds1"));
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId("probe").textContent).toContain("review");
+
+    await act(async () => {
+      resolveRefresh({ response: { counts: { review: 2, created: 1 } } });
+    });
+
+    expect(screen.getByTestId("probe").textContent).toContain("created");
+  });
+
   it("ignores a stale response from an earlier overlapping load", async () => {
-    // The mount effect starts a fetch that stays pending while the modal
-    // opens and closes, which starts a second, independent fetch. The second
-    // resolves first with fresh results; the first resolving afterwards must
-    // not clobber them with what it fetched before the modal round-trip.
+    // The mount fetch stays pending while a tag mutation starts a second,
+    // independent fetch. The second resolves first with fresh results; the
+    // first resolving afterwards must not clobber them.
     let resolveFirst: (value: {
       response: { counts: Record<string, number> };
     }) => void;
@@ -235,31 +270,20 @@ describe("useSyncTemporalTagResults", () => {
     );
     fetchMock.mockResolvedValueOnce({ response: { counts: { fresh: 1 } } });
 
-    let setModalActive: ((value: boolean) => void) | undefined;
-    function ModalControl() {
-      setModalActive = useSetRecoilState(isModalActiveAtom);
-      return null;
-    }
+    renderSync();
 
-    render(
-      <RecoilRoot>
-        <Harness />
-        <ModalControl />
-      </RecoilRoot>,
-    );
-
-    act(() => setModalActive?.(true));
-    act(() => setModalActive?.(false));
+    act(() => invalidateDatasetTemporalTags("ds1"));
 
     await waitFor(() =>
       expect(screen.getByTestId("probe").textContent).toContain("fresh"),
     );
 
-    resolveFirst({ response: { counts: { stale: 1 } } });
-
-    // Give the stale promise a turn to resolve and (incorrectly) apply.
-    await Promise.resolve();
-    await Promise.resolve();
+    // A macrotask, not a few microtasks: the response passes through several
+    // awaits before it could apply, and the assertions must run after that.
+    await act(async () => {
+      resolveFirst({ response: { counts: { stale: 1 } } });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
 
     expect(screen.getByTestId("probe").textContent).toContain("fresh");
     expect(screen.getByTestId("probe").textContent).not.toContain("stale");

@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo } from "react";
 import {
   DefaultValue,
   atom,
   selector,
   selectorFamily,
+  useRecoilCallback,
   useRecoilValue,
-  useSetRecoilState,
 } from "recoil";
 import {
   createTemporalTagsClient,
@@ -13,7 +13,6 @@ import {
 } from "../temporal-tags";
 import { useActiveFilterValues } from "./filters";
 import { counts } from "./pathData/counts";
-import { isModalActive } from "./modal";
 import { activeField } from "./schema";
 import { datasetId } from "./selectors";
 import { TEMPORAL_TAGS_FIELD } from "./sidebar";
@@ -37,10 +36,23 @@ export interface TemporalTagResults {
  * only through the read selector + sync hook below so the atom stays an
  * implementation detail.
  */
+const NO_RESULTS: TemporalTagResults = { results: [], count: null };
+
 const temporalTagResultsAtom = atom<TemporalTagResults>({
   key: "temporalTagResultsAtom",
-  default: { results: [], count: null },
+  default: NO_RESULTS,
 });
+
+/** The dataset whose vocabulary `temporalTagResultsAtom` holds. */
+const temporalTagResultsDatasetAtom = atom<string | null>({
+  key: "temporalTagResultsDatasetAtom",
+  default: null,
+});
+
+// Shared by every editor that loads the vocabulary, so a response that is no
+// longer the latest request, from any of them, is dropped rather than
+// overwriting fresher results.
+let latestVocabularyRequest = 0;
 
 /**
  * Read-only view of the dataset's temporal-tag vocabulary. Populate it via
@@ -113,64 +125,63 @@ export const temporalTagCounts = selectorFamily<
 });
 
 /**
- * Loads the active dataset's temporal-tag vocabulary into the results atom.
- * Call from each tag editor that offers the existing values.
+ * Loads the active dataset's temporal-tag vocabulary into the results atom,
+ * once per dataset, and refreshes it after every temporal tag mutation. Call
+ * from each tag editor that offers the existing values.
  */
 export const useSyncTemporalTagResults = (): void => {
   const currentDatasetId = useRecoilValue(datasetId);
-  const setResults = useSetRecoilState(temporalTagResultsAtom);
-  const modalActive = useRecoilValue(isModalActive);
-  const wasModalActive = useRef(modalActive);
 
-  // Shared across both call sites below (mount/dataset-change and
-  // modal-close), which can overlap: the dataset-change effect can still be
-  // in flight when the modal closes and re-triggers `load`. A `cancelled`
-  // flag scoped to a single call can't see a *later* call — only this
-  // counter, bumped by every call, can tell an in-flight response that it is
-  // no longer the latest one and let it drop its result instead of
-  // clobbering fresher data.
-  const requestGenerationRef = useRef(0);
+  const load = useRecoilCallback(
+    ({ set }) =>
+      (targetDatasetId: string) => {
+        const request = ++latestVocabularyRequest;
+        fetchTemporalTagResults(targetDatasetId)
+          .then((results) => {
+            if (request === latestVocabularyRequest) {
+              set(temporalTagResultsAtom, results);
+            }
+          })
+          .catch(() => {
+            // Keep what is shown, and let the next editor mount retry.
+            if (request === latestVocabularyRequest) {
+              set(temporalTagResultsDatasetAtom, null);
+            }
+          });
+      },
+    [],
+  );
 
-  const load = useCallback(() => {
-    const generation = ++requestGenerationRef.current;
-    const isStale = () => requestGenerationRef.current !== generation;
+  // An editor mounting for a dataset whose vocabulary is already held neither
+  // clears it nor refetches it.
+  const sync = useRecoilCallback(
+    ({ snapshot, set }) =>
+      () => {
+        const loadedFor = snapshot
+          .getLoadable(temporalTagResultsDatasetAtom)
+          .getValue();
+        if (loadedFor === currentDatasetId) return;
 
-    if (!currentDatasetId) {
-      // No active dataset — clear any stale results from a prior one.
-      setResults({ results: [], count: null });
-      return;
-    }
-
-    // Clear the prior dataset's results immediately — otherwise
-    // `useTemporalTagValues` keeps returning the old dataset's vocabulary
-    // until this fetch resolves.
-    setResults({ results: [], count: null });
-
-    fetchTemporalTagResults(currentDatasetId)
-      .then((results) => {
-        if (!isStale()) {
-          setResults(results);
+        set(temporalTagResultsDatasetAtom, currentDatasetId);
+        set(temporalTagResultsAtom, NO_RESULTS);
+        if (currentDatasetId) {
+          load(currentDatasetId);
+        } else {
+          ++latestVocabularyRequest;
         }
-      })
-      .catch(() => {
-        if (!isStale()) {
-          setResults({ results: [], count: null });
-        }
-      });
-    // `setResults` is a stable Recoil setter.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentDatasetId]);
+      },
+    [currentDatasetId, load],
+  );
 
-  // Initial load and on dataset change.
-  useEffect(() => load(), [load]);
+  useEffect(() => sync(), [sync]);
 
-  // Re-fetch when the modal closes: a tag may have been created / edited /
-  // deleted in the modal, so the grid's tag list is stale until we refresh.
+  // A created, renamed or deleted tag changes the vocabulary; refresh it in
+  // place so the editor never offers an empty list meanwhile.
   useEffect(() => {
-    const closed = wasModalActive.current && !modalActive;
-    wasModalActive.current = modalActive;
-    if (closed) load();
-  }, [modalActive, load]);
+    if (!currentDatasetId) return undefined;
+
+    return onTemporalTagsMutated(() => load(currentDatasetId));
+  }, [currentDatasetId, load]);
 };
 
 const NO_VALUES: string[] = [];
