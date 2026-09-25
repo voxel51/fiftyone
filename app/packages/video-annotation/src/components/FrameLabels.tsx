@@ -730,12 +730,14 @@ export const FrameLabelsTracks: React.FC<{
   const [drawerOpen, setDrawerOpen] = useTimelineDrawerOpen();
 
   // Persist pin state per video (dataset + sample) so reopening the same
-  // sample restores which tracks the user pinned to the timeline.
+  // sample restores which tracks the user pinned to the timeline. Keyed by the
+  // sample shown, not the modal's sample id: on a grouped dataset that is the
+  // grid tile that was clicked, which differs by grid slice for the same video.
   const dataset = useDatasetName();
-  const sampleId = useModalSampleId();
+  const shownSampleId = sample?.sample?._id;
   const persistKey =
-    dataset && sampleId
-      ? `fo-va-pinned-tracks:${dataset}:${sampleId}`
+    dataset && shownSampleId
+      ? `fo-va-pinned-tracks:${dataset}:${shownSampleId}`
       : undefined;
 
   // Dynamic attributes are declared per field, so resolve them per-path when
@@ -852,7 +854,11 @@ export const FrameLabelsTracks: React.FC<{
   });
 
   return (
+    // `TrackProvider` reads `persistKey` at mount and writes its current pins
+    // under whatever key it is given, so a new video must remount it, or the
+    // previous video's pins overwrite the new one's.
     <TrackProvider
+      key={persistKey}
       tracks={visibleTracks}
       autoPinNewTracks={false}
       initialPinnedIds={pinnedTrackIds}
