@@ -8,6 +8,7 @@ Multimodal temporal tag unit tests.
 
 import time
 import unittest
+from unittest import mock
 
 from bson import ObjectId
 from decorators import drop_datasets, isolate_temporal_tags
@@ -726,6 +727,45 @@ class TemporalTagTests(unittest.TestCase):
                 ["_dataset_id", "kind", field]
                 + [f for f in sort_fields if f != field],
             )
+
+    @isolate_temporal_tags
+    @drop_datasets
+    def test_view_scope_batches_match_one_batch(self):
+        dataset, sample_ids = _make_dataset(num_samples=9)
+        fota.add_temporal_tags(
+            dataset,
+            [
+                fota.TemporalTag(sample_id, start, start + 5, tag)
+                for sample_id in sample_ids
+                for start, tag in ((0, "a"), (10, "b"), (20, "a"))
+            ],
+        )
+        view = dataset.select(sample_ids[1:8])
+
+        def observe():
+            tags = view.temporal_tags
+            return (
+                [(t.sample_id, t.start, t.tag) for t in tags.values()],
+                len(tags),
+                bool(tags),
+                tags.count(),
+                tags.count(by_sample=True),
+            )
+
+        expected = observe()
+        with mock.patch.object(
+            fota.fou, "recommend_batch_size_for_value", return_value=2
+        ):
+            self.assertEqual(observe(), expected)
+
+            tag_id = next(view.temporal_tags.values()).id
+            updated = view.temporal_tags.update(tag_id, end=9)
+            self.assertEqual(updated.end, 9)
+
+            self.assertEqual(view.temporal_tags.delete(tags="b"), 7)
+
+        self.assertEqual(view.temporal_tags.count(), {"a": 14})
+        self.assertEqual(dataset.temporal_tags.count(), {"a": 18, "b": 2})
 
     @isolate_temporal_tags
     @drop_datasets
