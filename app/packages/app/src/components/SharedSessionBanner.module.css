@@ -88,9 +88,11 @@
   transform: translate(1px, -1px);
 }
 
+/* Slides in over its own space: the page below moves once, instead of every
+   frame, which would re-lay out the grid throughout */
 @keyframes drop-in {
   from {
-    margin-top: -28px;
+    transform: translateY(-100%);
   }
 }
 
