@@ -3,6 +3,7 @@ import {
   useGridSelectionActions,
   type GridSelectionActionContext,
 } from "@fiftyone/multimodal/extensions/grid-selection";
+import AgentPromotion from "./AgentPromotion";
 import OperatorPlacements from "@fiftyone/operators/src/OperatorPlacements";
 import { Places } from "@fiftyone/operators/src/types";
 import * as fos from "@fiftyone/state";
@@ -658,6 +659,10 @@ export default function SelectionTray({
             />
           ))}
           <OperatorPlacements place={Places.SAMPLES_GRID_SELECTION_ACTIONS} />
+          <OperatorPlacements
+            place={Places.SAMPLES_GRID_SELECTION_ASSISTANT}
+            fallback={<AgentPromotion />}
+          />
           {overflow.length > 0 && (
             <div ref={more} className={styles.more}>
               <Button

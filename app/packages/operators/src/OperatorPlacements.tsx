@@ -22,7 +22,7 @@ import { Placement, Places } from "./types";
 
 import { getStringAndNumberProps } from "@fiftyone/core/src/components/Actions/utils";
 import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
-import { useCallback } from "react";
+import { useCallback, type ReactNode } from "react";
 
 export function OperatorPlacementWithErrorBoundary(
   props: OperatorPlacementProps,
@@ -39,8 +39,10 @@ export function OperatorPlacementWithErrorBoundary(
 }
 
 function OperatorPlacements(props: OperatorPlacementsProps) {
-  const { place, modal } = props;
+  const { place, modal, fallback } = props;
   const { placements } = useOperatorPlacements(place);
+
+  if (!placements.length) return fallback ?? null;
 
   return placements.map((placement) => (
     <OperatorPlacementWithErrorBoundary
@@ -211,6 +213,8 @@ export function usePlacementControls(props: OperatorPlacementProps) {
 }
 
 type OperatorPlacementsProps = {
+  /** Content shown when no operator contributes to this placement. */
+  fallback?: ReactNode;
   place: Places;
   modal?: boolean;
 };
