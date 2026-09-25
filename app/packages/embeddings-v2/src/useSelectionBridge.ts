@@ -196,6 +196,8 @@ export function useSelectionBridge({
     brainKey,
     serverIds ? patchesField : null,
     selectedSamples.size > 0 || foreignSelection !== null,
+    // The live selection; a failed fetch retries when it changes
+    selectedSamples.size > 0 ? selectedSamples : foreignSelection,
   );
 
   // Grid/checkbox selections style the plot (id -> every wire index

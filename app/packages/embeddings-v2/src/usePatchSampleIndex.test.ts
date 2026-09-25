@@ -33,16 +33,24 @@ const deferred = () => {
   return { promise, resolve };
 };
 
+/** Lets pending fetch callbacks and the renders they cause finish */
+const settle = () =>
+  act(async () => {
+    await new Promise((done) => setTimeout(done, 0));
+  });
+
 interface Props {
   brainKey: string;
   patchesField: string | null;
   enabled: boolean;
+  /** Stands in for the live selection; only its identity matters */
+  selection?: unknown;
 }
 
 const render = (initialProps: Props) =>
   renderHook(
-    ({ brainKey, patchesField, enabled }: Props) =>
-      usePatchSampleIndex("ds", brainKey, patchesField, enabled),
+    ({ brainKey, patchesField, enabled, selection }: Props) =>
+      usePatchSampleIndex("ds", brainKey, patchesField, enabled, selection),
     { initialProps },
   );
 
@@ -150,5 +158,42 @@ describe("usePatchSampleIndex", () => {
     });
     expect(result.current?.get(hex(1))).toBeUndefined();
     expect(result.current?.get(hex(3))).toEqual([0]);
+  });
+
+  it("retries a failed fetch once the selection changes", async () => {
+    // A transient failure must not leave the run unhighlightable for as
+    // long as something stays selected
+    vi.mocked(fetchIds).mockRejectedValueOnce(new Error("503"));
+    const props: Props = {
+      brainKey: "viz",
+      patchesField: "ground_truth",
+      enabled: true,
+      selection: new Map([["a", "default"]]),
+    };
+    const { result, rerender } = render(props);
+    await settle();
+    expect(result.current).toBeNull();
+
+    rerender({ ...props, selection: new Map([["b", "default"]]) });
+    await waitFor(() => expect(result.current).not.toBeNull());
+    expect(fetchIds).toHaveBeenCalledTimes(2);
+    expect(result.current?.get(hex(1))).toEqual([0, 1]);
+  });
+
+  it("waits for a new selection before asking a failing server again", async () => {
+    vi.mocked(fetchIds).mockRejectedValue(new Error("503"));
+    const props: Props = {
+      brainKey: "viz",
+      patchesField: "ground_truth",
+      enabled: true,
+      selection: ["a"],
+    };
+    const { result, rerender } = render(props);
+    await settle();
+
+    rerender({ ...props });
+    await settle();
+    expect(fetchIds).toHaveBeenCalledTimes(1);
+    expect(result.current).toBeNull();
   });
 });
