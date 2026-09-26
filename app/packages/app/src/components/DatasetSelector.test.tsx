@@ -6,23 +6,31 @@ const setDatasetSpy = vi.fn();
 
 // Provide just the @fiftyone/state surface the component imports.
 vi.mock("@fiftyone/state", async () => {
-  const { atom } = await vi.importActual<typeof import("recoil")>("recoil");
+  const { atom, useRecoilValue } =
+    await vi.importActual<typeof import("recoil")>("recoil");
+  const datasetName = atom<string | null>({
+    key: "test_datasetName",
+    default: null,
+  });
   return {
-    datasetName: atom<string | null>({
-      key: "test_datasetName",
-      default: null,
-    }),
+    datasetName,
+    useCurrentDatasetName: () => useRecoilValue(datasetName),
     useSetDataset: () => setDatasetSpy,
   };
 });
 
+import { datasetName } from "@fiftyone/state";
 import DatasetSelector from "./DatasetSelector";
 
 const useSearch = () => ({ values: ["quickstart", "quickstart-video"] });
 
-const setup = () =>
+const setup = (applied?: string) =>
   render(
-    <RecoilRoot>
+    <RecoilRoot
+      initializeState={({ set }) => {
+        if (applied) set(datasetName, applied);
+      }}
+    >
       <DatasetSelector useSearch={useSearch} />
     </RecoilRoot>,
   );
@@ -45,6 +53,17 @@ describe("DatasetSelector", () => {
     expect(setDatasetSpy).toHaveBeenCalledWith("quickstart");
     // The route has not resolved yet (`datasetName` is still null); the field
     // must not blank out in the meantime
+    expect((input as HTMLInputElement).value).toBe("quickstart");
+  });
+
+  it("does not reload the dataset that is already open", () => {
+    setup("quickstart");
+    const input = screen.getByRole("combobox", { name: "Dataset" });
+
+    fireEvent.focus(input);
+    fireEvent.mouseDown(screen.getByRole("option", { name: "quickstart" }));
+
+    expect(setDatasetSpy).not.toHaveBeenCalled();
     expect((input as HTMLInputElement).value).toBe("quickstart");
   });
 

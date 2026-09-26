@@ -3,7 +3,6 @@
  */
 
 import { useTrackEvent } from "@fiftyone/analytics";
-import { Header } from "@fiftyone/components";
 import { OperatorPlacements, types } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import { useRefresh } from "@fiftyone/state";
@@ -20,13 +19,15 @@ import {
   Stack,
   Variant,
 } from "@voxel51/voodo";
-import React, { Suspense, useCallback, useMemo } from "react";
+import React, { Suspense, useCallback, useMemo, useState } from "react";
 import { useFragment, usePaginationFragment } from "react-relay";
 import { useDebounce } from "react-use";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { graphql } from "relay-runtime";
+import { useProduct } from "../product";
 import Analytics from "./Analytics";
 import DatasetSelector from "./DatasetSelector";
+import Header from "./Header";
 import HeaderLinks from "./HeaderLinks";
 import styles from "./Nav.module.css";
 import Teams from "./Teams";
@@ -97,6 +98,10 @@ const Nav: React.FC<
   const { mode, setMode } = useColorScheme();
   const setTheme = useSetRecoilState(fos.theme);
   const trackEvent = useTrackEvent();
+  const { enterpriseCta, Status, title } = useProduct();
+  // The view bar's search stays in the row; its stages row renders here, under
+  // the row, where it has the window's width
+  const [stagesHost, setStagesHost] = useState<HTMLDivElement | null>(null);
   const toggleTheme = useCallback(() => {
     const nextMode = mode === "dark" ? "light" : "dark";
     setMode(nextMode);
@@ -107,18 +112,22 @@ const Nav: React.FC<
   return (
     <>
       <Header
-        title={"FiftyOne"}
+        title={title}
         onRefresh={refresh}
         navChildren={<DatasetSelector useSearch={useSearch} />}
+        belowRow={
+          hasDataset && (
+            <div className={styles.stagesHost} ref={setStagesHost} />
+          )
+        }
       >
-        {hasDataset ? (
-          <Suspense fallback={<div className={styles.spacer} />}>
+        {Status && <Status />}
+        {hasDataset && (
+          <Suspense fallback={null}>
             <div className={styles.bar}>
-              <ViewBar />
+              <ViewBar stagesHost={stagesHost} />
             </div>
           </Suspense>
-        ) : (
-          <div className={styles.spacer} />
         )}
         <Stack
           orientation={Orientation.Row}
@@ -126,7 +135,7 @@ const Nav: React.FC<
           spacing={Spacing.Sm}
           className={styles.actions}
         >
-          <Teams />
+          {enterpriseCta && <Teams />}
           <Button
             variant={Variant.Icon}
             size={Size.Md}

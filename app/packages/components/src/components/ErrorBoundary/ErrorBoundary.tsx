@@ -18,7 +18,9 @@ import React, {
 } from "react";
 import { ErrorBoundary as Boundary, FallbackProps } from "react-error-boundary";
 import scrollableStyles from "../../scrollable.module.css";
-import CodeBlock from "../CodeBlock";
+import { CodeBlock } from "@voxel51/voodo";
+
+import { Highlighted } from "@voxel51/voodo/code";
 import Loading from "../Loading";
 import style from "./ErrorBoundary.module.css";
 
@@ -125,9 +127,14 @@ export const ErrorDisplayMarkup = <T extends AppError>({
             </div>
             {content && (
               <CodeBlock
-                text={content.trim().replace(/\n+/g, "\n")}
-                language="javascript"
-              />
+                code={content.trim().replace(/\n+/g, "\n")}
+                lineNumbers
+              >
+                <Highlighted
+                  code={content.trim().replace(/\n+/g, "\n")}
+                  language="javascript"
+                />
+              </CodeBlock>
             )}
           </div>
         ))}

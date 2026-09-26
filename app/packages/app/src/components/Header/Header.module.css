@@ -1,11 +1,8 @@
-/* All interactive chrome in the nav bar — title, dataset selector, view bar,
-   the right-side actions — sits on one 40px row, centered within it. The
-   header is 56px around that row, and grows with it: the view bar opens a
-   second row of stages under its search row, and the page below moves down
-   rather than being covered. Layout is a voodo Stack; the surface is the
-   shell's own until the shell moves to design-system tokens as a whole — no
-   voodo surface token matches it in the dark theme, and a header on a
-   different grey than the panels around it reads as a seam. */
+/* The title, dataset selector and right-side actions sit on one 40px row,
+   centered within it; anything the shell puts under that row spans the window.
+   The surface is the shell's own until the shell moves to design-system tokens
+   as a whole — no voodo surface token matches it in the dark theme, and a
+   header on a different grey than the panels around it reads as a seam. */
 .header {
   background-color: var(--fo-palette-background-header);
   flex-shrink: 0;
@@ -16,6 +13,20 @@
      contributes the difference — the rightmost glyph sits as far from the
      edge as the logo does on the left */
   padding: 8px 0.25rem 8px 0.75rem;
+}
+
+.row {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Full width, inset to the header's own gutters, so a view bar under the row
+   uses the window rather than the gap between the selector and the actions */
+.belowRow {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0 0.5rem 0 0;
 }
 
 /* The row the title and selector share with the view bar's search row */

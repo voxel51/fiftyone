@@ -218,7 +218,6 @@ packages/core/src/components/Sidebar/useDetectNewActiveLabelFields.ts
 packages/core/src/components/Sidebar/ViewSelection/index.tsx
 packages/core/src/components/Sidebar/ViewSelection/ViewDialog.tsx
 packages/core/src/components/Snackbar.tsx
-packages/core/src/components/Starter/index.tsx
 packages/core/src/components/ViewBar/ViewBar.tsx
 packages/core/src/components/ViewBar/ViewStage/ViewStageParameter.tsx
 packages/core/src/components/ViewBar/ViewStage/ViewStage.tsx

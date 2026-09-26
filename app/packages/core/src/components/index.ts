@@ -13,4 +13,3 @@ export { default as QueryPerformanceToast } from "./QueryPerformanceToast";
 export { default as ResourceCount } from "./ResourceCount";
 export * from "./Sidebar";
 export { default as Snackbar } from "./Snackbar";
-export * from "./Starter";

@@ -4,8 +4,6 @@ export { default as Bar } from "./Bar";
 export { default as Button } from "./Button";
 export { default as CenteredStack } from "./CenteredStack";
 export { default as Code } from "./Code";
-export { default as CodeBlock } from "./CodeBlock";
-export { default as CodeTabs } from "./CodeTabs";
 export { default as ColoredDot } from "./ColoredDot";
 export { default as CopyButton } from "./CopyButton";
 export { default as Dialog } from "./Dialog";
@@ -24,7 +22,6 @@ export type {
   ToolbarActionItem,
   ToolbarActionGroup,
 } from "./ActionToolbar";
-export { default as Header } from "./Header";
 export { default as HelpPanel } from "./HelpPanel";
 export { default as HelpTooltip } from "./HelpTooltip";
 export { default as IconButton } from "./IconButton";
@@ -38,7 +35,6 @@ export { default as Markdown } from "./Markdown";
 export { default as MuiButton } from "./MuiButton";
 export { default as MuiIconFont } from "./MuiIconFont";
 export { default as PanelCTA } from "./PanelCTA";
-export { default as Pending } from "./Pending";
 export { default as PillButton } from "./PillButton";
 export { default as Popout, PopoutDiv } from "./Popout";
 export { default as PopoutButton } from "./PopoutButton";
