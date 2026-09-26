@@ -18,6 +18,7 @@ from fiftyone.core.collections import SampleCollection
 from fiftyone.core.dataset import Dataset
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
+import fiftyone.core.selection as fosel
 import fiftyone.core.stages as fos
 import fiftyone.core.storage as focs
 from fiftyone.core.utils import run_sync_task
@@ -214,6 +215,53 @@ async def paginate_samples(
         ),
         edges=edges,
     )
+
+
+async def sample_nodes_for_ids(view, sample_ids):
+    """Builds grid-identical sample nodes for a few ids.
+
+    The selection tray previews a captured sample with the same renderer and
+    media the grid tile uses, so it needs the same node the grid page carries:
+    the sample document, its media URLs, and resolved media assets.
+    """
+    if not sample_ids:
+        return {}
+    selected = fosel.select_parents(view, sample_ids)
+    pipeline = await get_samples_pipeline(selected, None)
+    samples = await foo.aggregate(
+        foo.get_async_db_conn()[selected._dataset._sample_collection_name],
+        pipeline,
+    ).to_list(len(sample_ids))
+    from fiftyone.server.selection_extensions import build_sample_items
+
+    nodes = await build_sample_items(selected, samples)
+    media_by_sample, located = await resolve_sample_media(selected, nodes)
+    unaddressable = {
+        asset_id: path
+        for asset_id, path in located.items()
+        if focs.get_file_system(path) is not focs.FileSystem.LOCAL
+    }
+    media_srcs = (
+        await run_sync_task(_media_asset_srcs, unaddressable)
+        if unaddressable
+        else {}
+    )
+    for node in nodes:
+        media = media_by_sample.get(str(node.sample["_id"]))
+        if media is None:
+            continue
+        node.sample["_media"] = {
+            "assets": [
+                (
+                    {**asset, "src": media_srcs[asset["id"]]}
+                    if asset["id"] in media_srcs
+                    else asset
+                )
+                for asset in media.assets
+            ],
+            "poster": media.poster_id,
+        }
+    return {str(node.sample["_id"]): node for node in nodes}
 
 
 def _media_asset_srcs(unaddressable):

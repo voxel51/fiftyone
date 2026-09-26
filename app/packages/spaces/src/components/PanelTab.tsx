@@ -36,6 +36,7 @@ export default function PanelTab({ node, active, spaceId }: PanelTabProps) {
   }, [node, closeEffect, spaces]);
 
   const TabIndicator = panel?.panelOptions?.TabIndicator;
+  const TabLabel = panel?.panelOptions?.TabLabel;
 
   return (
     <StyledTab
@@ -56,13 +57,17 @@ export default function PanelTab({ node, active, spaceId }: PanelTabProps) {
         });
       }}
       $active={active}
+      style={panelName === "Samples" ? { paddingRight: 0 } : undefined}
       data-cy={`panel-tab-${(panelName as string).toLowerCase()}`}
     >
       {!panel && pending && <Skeleton width={48} height={24} />}
       {!panel && !pending && <Typography>{panelName}</Typography>}
       {panel && loading && <CircularProgress size={14} sx={{ mr: 0.85 }} />}
       {panel && !loading && <PanelIcon name={panelName as string} />}
-      {panel && <Typography>{title || panel.label || panel.name}</Typography>}
+      {panel && TabLabel && <TabLabel />}
+      {panel && !TabLabel && (
+        <Typography>{title || panel.label || panel.name}</Typography>
+      )}
       <PanelTabMeta
         showAlpha={panel?.panelOptions?.alpha ?? false}
         showBeta={panel?.panelOptions?.beta ?? false}

@@ -6,6 +6,24 @@ import { setMockAtoms, TestSelectorFamily } from "../../../../__mocks__/recoil";
 import * as aggregations from "./aggregations";
 import { State } from "./types";
 
+describe("selection scope in aggregation filters", () => {
+  it("adds the browsing boundary only when it constrains results", () => {
+    expect(aggregations.constrainsScope(null)).toBe(false);
+    expect(aggregations.constrainsScope({})).toBe(false);
+    expect(aggregations.constrainsScope({ subsetId: "subset" })).toBe(true);
+    expect(aggregations.withSelectionScope(null, null)).toBeNull();
+    expect(aggregations.withSelectionScope({ a: 1 }, {})).toEqual({ a: 1 });
+    expect(
+      aggregations.withSelectionScope(null, { subsetId: "subset" }),
+    ).toEqual({ _selection_scope: { subsetId: "subset" } });
+    const provider = { kind: "events" as const, field: "events", values: [] };
+    expect(aggregations.withSelectionScope({ a: 1 }, { provider })).toEqual({
+      a: 1,
+      _selection_scope: { provider },
+    });
+  });
+});
+
 describe("test aggregation path accumulation", () => {
   it("resolves grouped modal label paths", () => {
     const testModalSampleAggregationPaths = <

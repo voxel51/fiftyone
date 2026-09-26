@@ -35,6 +35,7 @@ export interface LanguageSearchExtension {
 }
 
 export const useLanguageSearchExtension = (): LanguageSearchExtension => {
+  const datasetId = fos.useCurrentDatasetId();
   const datasetName = fos.useCurrentDatasetName();
   const view = fos.useView();
   const filters = fos.useFilters();
@@ -84,7 +85,7 @@ export const useLanguageSearchExtension = (): LanguageSearchExtension => {
       const extension = index.extension
         ? extensions.get(index.extension)
         : undefined;
-      if (!extension || !datasetName) return;
+      if (!extension || !datasetId || !datasetName) return;
 
       recordIndexUse(datasetName, index.key);
       recordSearchQuery(datasetName, query);
@@ -103,6 +104,7 @@ export const useLanguageSearchExtension = (): LanguageSearchExtension => {
       new Promise<fos.TextSearchResult | null>((resolve) =>
         resolve(
           extension.search({
+            datasetId,
             datasetName,
             brainKey: index.key,
             runTimestamp: index.timestamp ?? null,
@@ -138,6 +140,7 @@ export const useLanguageSearchExtension = (): LanguageSearchExtension => {
     },
     [
       extensions,
+      datasetId,
       datasetName,
       view,
       filters,

@@ -92,7 +92,7 @@ type BaseTrackDecoration = ReturnType<
   ReturnType<typeof useVideoTrackDecorator>
 >;
 
-/** Decoration a track row contributes to {@link TimelineWithTracks}. */
+/** Decoration a track row contributes to {@link TemporalTagTimeline}. */
 type TrackDecoration = BaseTrackDecoration & {
   snapStepSec?: number;
   eventMenuItems?: TrackEventMenuItem[];
@@ -212,6 +212,8 @@ const NO_FIELDS: readonly string[] = [];
  */
 export const RegisterFrameLabels: React.FC<{
   sample: ModalSample;
+  /** Opening position; null defers the initial seek until the scope resolves. */
+  initialTime?: number | null;
   /**
    * Optional. Prefer rendering this registrar as a childless SIBLING of the
    * surface: it swaps its wrapper component when duration lands, and re-keys on
@@ -236,7 +238,7 @@ export const RegisterFrameLabels: React.FC<{
    * told to return them.
    */
   mode?: "annotate" | "explore";
-}> = ({ sample, children, mode = "annotate" }) => {
+}> = ({ sample, children, mode = "annotate", initialTime }) => {
   const duration = useDuration();
   const dataset = useDatasetName();
   const view = useView();
@@ -301,6 +303,7 @@ export const RegisterFrameLabels: React.FC<{
   return (
     <FrameLabelsRegistration
       key={key}
+      initialTime={initialTime}
       sampleId={sampleId}
       dataset={dataset}
       view={view}
@@ -316,6 +319,7 @@ export const RegisterFrameLabels: React.FC<{
 };
 
 interface FrameLabelsRegistrationProps {
+  initialTime?: number | null;
   sampleId: string;
   dataset: string;
   view: Stage[];
@@ -373,8 +377,8 @@ const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
   // Publish so consumers above the surface reach it via useFrameLabelsStream.
   usePublishFrameLabelsStream(streamRef.current);
 
-  // Prefetch + seek t=0 so overlays paint on first load, not on first play.
-  useWarmupThenSeek(streamRef.current);
+  // Warm the opening position before committing the first label overlays.
+  useWarmupThenSeek(streamRef.current, props.initialTime);
 
   return <>{children}</>;
 };
@@ -680,6 +684,9 @@ function useTrackDecorator({
   );
 }
 
+const NO_ADDITIONAL_TRACKS: Track[] = [];
+const EMPTY_HOST_DECORATION = Object.freeze({});
+
 /**
  * Labels track timeline — one row per tracked instance (grouped by `index`)
  * plus one row per `TemporalDetection` (rendered as a `support`-spanning
@@ -701,6 +708,11 @@ function useTrackDecorator({
  */
 export const FrameLabelsTracks: React.FC<{
   sample?: ModalSample;
+  /** Read-only host tracks, such as the saved ranges being browsed. */
+  additionalTracks?: Track[];
+  initialPinnedIds?: string[];
+  /** Keep a scoped host's pins separate from the ordinary video preferences. */
+  pinScopeKey?: string;
   /** Cap on the timeline drawer body (px); it scrolls internally past this. */
   maxSize?: number;
   /**
@@ -734,6 +746,9 @@ export const FrameLabelsTracks: React.FC<{
   readouts,
   mode = "annotate",
   onReadyChange,
+  additionalTracks = NO_ADDITIONAL_TRACKS,
+  initialPinnedIds,
+  pinScopeKey,
 }) => {
   const { resolveObjectColor, resolveTemporalDetectionColor } =
     useTrackColorResolvers();
@@ -751,7 +766,7 @@ export const FrameLabelsTracks: React.FC<{
   const shownSampleId = sample?.sample?._id;
   const persistKey =
     dataset && shownSampleId
-      ? `fo-va-pinned-tracks:${dataset}:${shownSampleId}`
+      ? `fo-va-pinned-tracks:${dataset}:${shownSampleId}${pinScopeKey ? `:${pinScopeKey}` : ""}`
       : undefined;
 
   // Dynamic attributes are declared per field, so resolve them per-path when
@@ -787,11 +802,15 @@ export const FrameLabelsTracks: React.FC<{
     onTagCreate,
     onTagUpdate,
   } = useVideoTemporalTags(sample?.sample?._id);
+  const initialPins = useMemo(
+    () => [...new Set([...pinnedTrackIds, ...(initialPinnedIds ?? [])])],
+    [pinnedTrackIds, initialPinnedIds],
+  );
 
   // Object tracks (with their sub-tracks interleaved) followed by TD tracks.
   const resolvedTracks = useMemo(
-    () => [...frameTracks, ...temporalDetectionTracks],
-    [frameTracks, temporalDetectionTracks],
+    () => [...additionalTracks, ...frameTracks, ...temporalDetectionTracks],
+    [additionalTracks, frameTracks, temporalDetectionTracks],
   );
 
   // The last list that resolved, shown while the next one loads (see the
@@ -866,6 +885,13 @@ export const FrameLabelsTracks: React.FC<{
     readOnly: mode === "explore",
     ready,
   });
+  const decorateWithHostTracks = useCallback(
+    (track: Track) =>
+      additionalTracks.includes(track)
+        ? EMPTY_HOST_DECORATION
+        : decorateTrack(track),
+    [additionalTracks, decorateTrack],
+  );
 
   return (
     // `TrackProvider` reads `persistKey` at mount and writes its current pins
@@ -875,11 +901,11 @@ export const FrameLabelsTracks: React.FC<{
       key={persistKey}
       tracks={visibleTracks}
       autoPinNewTracks={false}
-      initialPinnedIds={pinnedTrackIds}
+      initialPinnedIds={initialPins}
       persistKey={persistKey}
     >
       <TemporalTagTimeline
-        decorateTrack={decorateTrack}
+        decorateTrack={decorateWithHostTracks}
         scrollerRef={timelineScroller}
         extraActions={extraActions}
         trailingActions={trailingActions}

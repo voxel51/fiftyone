@@ -44,7 +44,6 @@ packages/core/src/components/Actions/Options/Options.tsx
 packages/core/src/components/Actions/Selected/Grid.tsx
 packages/core/src/components/Actions/Selected/hooks.test.ts
 packages/core/src/components/Actions/Selected/hooks.ts
-packages/core/src/components/Actions/Selected/index.tsx
 packages/core/src/components/Actions/Selected/Modal.tsx
 packages/core/src/components/Actions/Similarity/index.tsx
 packages/core/src/components/Actions/Similarity/useSimilarityPopover.ts

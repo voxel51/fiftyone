@@ -1019,6 +1019,8 @@ const ViewBarInner: React.FC<{
     setStagesOpen(true);
   }, [stagesRowOpen, closeStagesRow]);
 
+  fos.useEventHandler(window, "fiftyone:toggle-view-stages", toggleStagesRow);
+
   /**
    * The bar's Escape: the editor popover is portaled, so an Escape here means
    * nothing is open — it walks the working state back to what is applied and

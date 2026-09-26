@@ -70,6 +70,10 @@ export interface EpisodeInterval {
 /** What one source reports for the sample currently being rendered. */
 export interface EpisodeIntervalContribution {
   readonly intervals: readonly EpisodeInterval[];
+  /** Optional opening position on the episode's native clock. */
+  readonly initialSeekTimeNs?: bigint;
+  /** Wait for the opening position before using the first-data fallback. */
+  readonly initialSeekPending?: boolean;
   /**
    * Rows to start pinned in the modal timeline — the ones the grid is filtered
    * by, named by the same key the intervals use (`rowKey`, or `eventName`
