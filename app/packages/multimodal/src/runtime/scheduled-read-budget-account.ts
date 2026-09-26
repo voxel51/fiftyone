@@ -93,5 +93,8 @@ export function createScheduledSourceReadBudgetAccount(
     },
     remaining: () => account.remaining(),
     reserve: (budget) => account.reserve(budget),
+    standing: () => account.standing(),
+    lift: () => account.lift(),
+    subscribe: (listener) => account.subscribe(listener),
   };
 }

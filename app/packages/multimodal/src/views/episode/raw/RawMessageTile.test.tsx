@@ -118,7 +118,7 @@ vi.mock("./raw-message-context", () => ({
   }),
 }));
 
-vi.mock("../plots/use-add-field-to-plot", () => ({
+vi.mock("../commands/use-add-field-to-plot", () => ({
   useAddFieldToPlot: () => mocks.addFieldToPlot,
 }));
 

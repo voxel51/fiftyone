@@ -115,6 +115,15 @@
   white-space: nowrap;
 }
 
+/* Row-level controls beside the pin. They keep their size while the name
+   ellipsises, so an affordance never disappears on a narrow column. */
+.labelActions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 2px;
+}
+
 /* Pin button stays visible — at half opacity when unpinned so it's
    discoverable, full opacity when pinned (or on hover). */
 .pinButton {
@@ -228,4 +237,20 @@
 
 .resizeHandleEnd {
   right: calc(-1 * var(--resize-buffer));
+}
+
+/* Unknown span: the source has not inspected this time, so nothing can be
+   said about events here. Hover exposes the reason; clicks bubble to the lane. */
+.unknown {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  background: repeating-linear-gradient(
+    135deg,
+    transparent 0,
+    transparent 4px,
+    rgba(128, 128, 128, 0.28) 4px,
+    rgba(128, 128, 128, 0.28) 6px
+  );
 }

@@ -52,6 +52,7 @@ function normalizedSceneMetadata(
   for (const key of [
     SCENE_SOURCE_METADATA.CALIBRATION_STREAM_ID,
     STREAM_METADATA.DECODE_STATUS,
+    STREAM_METADATA.LABEL_TRACKS,
     STREAM_METADATA.SCHEMA_NAME,
   ]) {
     const value = metadata[key];

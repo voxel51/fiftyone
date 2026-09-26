@@ -78,7 +78,7 @@ vi.mock("../playback/data-stream-context", () => ({
   useDataStream: () => mocks.dataStream,
 }));
 
-vi.mock("../plots/use-add-field-to-plot", () => ({
+vi.mock("../commands/use-add-field-to-plot", () => ({
   useAddFieldToPlot: () => mocks.addFieldToPlot,
 }));
 

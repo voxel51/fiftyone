@@ -153,6 +153,103 @@ describe("ProgressiveHistoryHub", () => {
     expect(snapshot.terminalCause).toBe("account-exhausted");
   });
 
+  it.each([false, true])(
+    "resumes exhausted history from its continuation after lifting (released: %s)",
+    async (released) => {
+      const continuation = {};
+      const read = vi
+        .fn<BudgetedReadJob["read"]>()
+        .mockResolvedValueOnce(
+          boundedResult({
+            batches: [batch("pose", 10n)],
+            continuation,
+            coverageByStream: new Map([
+              ["pose", [{ startNs: 0n, endNs: 49n }]],
+            ]),
+            stopReason: "budget-exhausted",
+          }),
+        )
+        .mockResolvedValueOnce(
+          boundedResult({
+            batches: [],
+            coverageByStream: new Map(),
+            continuation,
+            stopReason: "account-exhausted",
+          }),
+        )
+        .mockResolvedValueOnce(
+          boundedResult({
+            batches: [batch("pose", 75n)],
+            coverageByStream: new Map([
+              ["pose", [{ startNs: 50n, endNs: 99n }]],
+            ]),
+            stopReason: "source-exhausted",
+          }),
+        );
+      const account = accountFor(read);
+      const hub = new ProgressiveHistoryHub(session(), account);
+      const job = hub.get(config({ key: "resume", streams: ["pose"] }));
+      let release = job.acquire(demand());
+      expect((await terminalSnapshot(job)).terminalCause).toBe(
+        "account-exhausted",
+      );
+      if (released) release();
+      account.lift();
+      if (released) {
+        expect(read).toHaveBeenCalledTimes(2);
+        release = job.acquire(demand());
+      }
+      const snapshot = await terminalSnapshot(job);
+      release();
+      expect(snapshot.status).toBe("complete");
+      expect(snapshot.truncated).toBe(false);
+      expect(snapshot.value.get("pose")).toEqual([10n, 75n]);
+      expect(snapshot.coverageByStream.get("pose")).toEqual([
+        { startNs: 0n, endNs: 99n },
+      ]);
+      expect(read.mock.calls[2]?.[0].continuation).toBe(continuation);
+      expect(read).toHaveBeenCalledTimes(3);
+    },
+  );
+
+  it("resumes when the limit is lifted before an exhausted read resolves", async () => {
+    let finishRead: (result: BudgetedReadResult) => void = () => undefined;
+    const continuation = {};
+    const read = vi
+      .fn<BudgetedReadJob["read"]>()
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishRead = resolve;
+          }),
+      )
+      .mockResolvedValueOnce(
+        boundedResult({
+          batches: [batch("pose", 75n)],
+          coverageByStream: new Map([["pose", [{ startNs: 0n, endNs: 99n }]]]),
+          stopReason: "source-exhausted",
+        }),
+      );
+    const account = accountFor(read);
+    const job = new ProgressiveHistoryHub(session(), account).get(
+      config({ key: "lift-in-flight", streams: ["pose"] }),
+    );
+    const release = job.acquire(demand());
+    account.lift();
+    finishRead(
+      boundedResult({
+        batches: [],
+        continuation,
+        coverageByStream: new Map(),
+        stopReason: "account-exhausted",
+      }),
+    );
+    await vi.waitFor(() => expect(job.snapshot().status).toBe("complete"));
+    release();
+    expect(read.mock.calls[1]?.[0].continuation).toBe(continuation);
+    expect(job.snapshot().value.get("pose")).toEqual([75n]);
+  });
+
   it("terminates when an explicit oversized retry still makes no progress", async () => {
     const continuation = {};
     const read = vi.fn<BudgetedReadJob["read"]>().mockResolvedValue(
@@ -478,10 +575,21 @@ function config(overrides: {
 }
 
 function accountFor(read: BudgetedReadJob["read"]): SourceReadBudgetAccount {
+  let lifted = false;
+  const listeners = new Set<() => void>();
   return {
     createJob: () => ({ read }),
     remaining: () => ({ ...budget }),
     reserve: () => undefined,
+    standing: () => ({ exhausted: false, lifted }),
+    lift: () => {
+      lifted = true;
+      for (const listener of listeners) listener();
+    },
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
   };
 }
 

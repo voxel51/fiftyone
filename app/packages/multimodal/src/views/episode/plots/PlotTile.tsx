@@ -8,6 +8,11 @@ import {
   usePlaybackStore,
 } from "@fiftyone/playback";
 import { useSetTileTitle, useTileId } from "@fiftyone/tiling";
+import { Button, Size, Variant } from "@voxel51/voodo";
+import {
+  useLiftSourceReadLimit,
+  useSourceReadBudgetStanding,
+} from "../playback/source-read-budget-context";
 import React, { useCallback, useEffect, useMemo } from "react";
 import type { AlignedData } from "uplot";
 import { addCoveredRange, type NsRange } from "../../../runtime";
@@ -74,6 +79,8 @@ const PlotTile: React.FC<EpisodeTileProps> = () => {
     [seriesConfigs],
   );
   const seriesByKey = useNumericSeriesStates(seriesKeys);
+  const readBudget = useSourceReadBudgetStanding();
+  const liftReadLimit = useLiftSourceReadLimit();
   const sourceNamesByBinding = useMemo(() => {
     const names = new Map<string, string>();
     for (const stream of enumeration.streams) {
@@ -262,6 +269,24 @@ const PlotTile: React.FC<EpisodeTileProps> = () => {
           }`}
         >
           {statusNotes.join(" · ")}
+        </span>
+      ) : null}
+      {readBudget?.exhausted && !readBudget.lifted && liftReadLimit ? (
+        // Partial data with a reason and the one remedy: the recording's
+        // session read limit is used up, and only the viewer may lift it.
+        <span
+          className={`${styles.statusBadge} ${plotStyles.readLimit}`}
+          data-testid="plot-read-limit"
+          style={{ top: statusNotes.length > 0 ? 30 : 8 }}
+        >
+          read limit reached
+          <Button
+            onClick={liftReadLimit}
+            size={Size.Xs}
+            variant={Variant.Borderless}
+          >
+            Lift
+          </Button>
         </span>
       ) : null}
       {seriesConfigs.length === 0 ? (

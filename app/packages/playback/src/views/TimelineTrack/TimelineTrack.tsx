@@ -50,6 +50,41 @@ export type TimelineTrackEvent =
       resizable?: boolean;
     };
 
+/** One span of time whose contents are known (inspected/computed). */
+export interface TimelineCoverageRange {
+  startSec: number;
+  endSec: number;
+}
+
+/**
+ * Visible spans that no coverage range accounts for. Ranges are merged and
+ * clipped to the view, so the result is bounded by `coverage.length + 1`
+ * regardless of how much of the recording is unknown.
+ */
+export function unknownCoverageSpans(
+  coverage: readonly TimelineCoverageRange[],
+  viewStart: number,
+  viewEnd: number,
+): TimelineCoverageRange[] {
+  if (viewEnd <= viewStart) return [];
+  const sorted = [...coverage].sort((a, b) => a.startSec - b.startSec);
+  const gaps: TimelineCoverageRange[] = [];
+  let cursor = viewStart;
+  for (const range of sorted) {
+    if (range.endSec < cursor) continue;
+    if (range.startSec > cursor) {
+      gaps.push({
+        startSec: cursor,
+        endSec: Math.min(range.startSec, viewEnd),
+      });
+    }
+    cursor = Math.max(cursor, range.endSec);
+    if (cursor >= viewEnd) break;
+  }
+  if (cursor < viewEnd) gaps.push({ startSec: cursor, endSec: viewEnd });
+  return gaps.filter((gap) => gap.endSec > gap.startSec);
+}
+
 export interface NormalizedEvent {
   startSec: number;
   endSec?: number;
@@ -119,8 +154,24 @@ export interface TimelineTrackProps {
    * is set) or a point.
    */
   events?: TimelineTrackEvent[];
-  /** Fired when an event marker / bar is clicked. Typically seeks. */
-  onEventClick?: (event: NormalizedEvent) => void;
+  /**
+   * Spans whose events are known. When set, every visible span outside them
+   * is hatched as "unknown", so an empty stretch of lane never reads as "no
+   * events" when the source simply has not looked there yet. Omit for tracks
+   * whose events are complete.
+   */
+  coverageRanges?: readonly TimelineCoverageRange[];
+  /** Explain uncovered time when coverage is limited by rendering as well as computation. */
+  coverageGapLabel?: string;
+  /**
+   * Fired when an event marker / bar is clicked, after the lane has seeked to
+   * the click. `anchor` is the click's viewport position so a consumer can
+   * open a readout beside the event rather than somewhere unrelated.
+   */
+  onEventClick?: (
+    event: NormalizedEvent,
+    anchor?: { x: number; y: number },
+  ) => void;
   /**
    * Custom items appended (below a separator) to an event's context menu.
    * Each `onSelect` receives the event the menu was opened on — the handler
@@ -140,6 +191,14 @@ export interface TimelineTrackProps {
    * already visible from its position.
    */
   secondaryLabel?: string;
+  /**
+   * Row-level controls rendered in the label column between the secondary
+   * label and the pin button — a "continue" or "retry" affordance for a row
+   * whose source has stopped, for instance. Clicks inside never reach the
+   * row, so they cannot seek or select. Semantic-free: the consumer decides
+   * what belongs here.
+   */
+  labelActions?: React.ReactNode;
   height?: number;
   labelWidth?: number;
   pinned?: boolean;
@@ -278,10 +337,13 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
   start,
   end,
   events = [],
+  coverageRanges,
+  coverageGapLabel = "Not computed yet",
   onEventClick,
   eventMenuItems,
   label,
   secondaryLabel,
+  labelActions,
   height = TIMELINE_TRACK_ROW_HEIGHT,
   labelWidth = 0,
   pinned = false,
@@ -631,6 +693,17 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
               {secondaryLabel}
             </Text>
           )}
+          {labelActions && (
+            <span
+              className={styles.labelActions}
+              data-track-label-actions
+              // A control here acts on the row's source, not on the row: it
+              // must neither select the track nor seek the lane.
+              onClick={(e) => e.stopPropagation()}
+            >
+              {labelActions}
+            </span>
+          )}
           {onPinClick && !isChild && (
             <Button
               variant={Variant.Icon}
@@ -693,6 +766,24 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
           );
         }}
       >
+        {coverageRanges
+          ? unknownCoverageSpans(coverageRanges, viewStart, viewEnd).map(
+              (gap) => (
+                <div
+                  key={`${gap.startSec}:${gap.endSec}`}
+                  aria-label={coverageGapLabel}
+                  className={styles.unknown}
+                  data-track-unknown
+                  role="img"
+                  style={{
+                    left: pct(gap.startSec),
+                    width: `${((gap.endSec - gap.startSec) / viewDuration) * 100}%`,
+                  }}
+                  title={coverageGapLabel}
+                />
+              ),
+            )
+          : null}
         {barVisible && (
           <div
             className={styles.bar}
@@ -763,7 +854,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                       viewDuration;
                   seek(t);
                 }
-                onEventClick?.(event);
+                onEventClick?.(event, { x: ev.clientX, y: ev.clientY });
               };
               const isInterval = event.endSec !== undefined;
               const isResizable = Boolean(

@@ -260,6 +260,7 @@ describe("SourcePlayback", () => {
     );
 
     expect(session.activate).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button")).toBeNull();
     expect(
       screen.getByText(
         "No previewable streams in this recording (3 streams found)",
@@ -297,6 +298,64 @@ describe("SourcePlayback", () => {
     expect(screen.getByTestId("settings-stream-term").textContent).toBe(
       "topics",
     );
+  });
+
+  it("reaches the unmasked shell for signal- and event-only sessions without a scene source", () => {
+    const source = createSource("drive");
+    const base = {
+      activate: vi.fn(),
+      manifest: bootstrapManifest("/odom"),
+    } as unknown as EpisodeSession;
+    const streams: StreamDescriptor[] = [
+      {
+        id: "sensors/speed",
+        sourceName: "Driving / speed",
+        kind: "scalar",
+        payload: { encoding: "json" },
+        timeRange: base.manifest.timeRange,
+      },
+      {
+        id: "sensors/hard_braking",
+        sourceName: "Driving / hard_braking",
+        kind: "events",
+        payload: { encoding: "json" },
+        timeRange: base.manifest.timeRange,
+      },
+    ];
+    const session = {
+      ...base,
+      manifest: {
+        ...base.manifest,
+        streams: [...base.manifest.streams, ...streams],
+      },
+      numericSeries: {} as NonNullable<EpisodeSession["numericSeries"]>,
+    } as EpisodeSession;
+    playbackHarness.sceneInventory = {
+      error: null,
+      sources: [],
+      status: "ready",
+      streams,
+      streamCount: 3,
+    };
+
+    render(
+      <SourcePlayback
+        fileName="drive.mcap"
+        session={session}
+        source={source}
+      />,
+    );
+
+    expect(screen.getByTestId("playback-shell")).toBeTruthy();
+    expect(screen.queryByText(/No previewable streams/)).toBeNull();
+    expect(screen.queryByText("Nothing to preview yet")).toBeNull();
+    // No scene source means nothing can ever report playhead data; the mask
+    // must not wait for it.
+    expect(
+      document
+        .querySelector("[data-episode-playback-shell]")
+        ?.hasAttribute("data-episode-source-transitioning"),
+    ).toBe(false);
   });
 
   it("does not record a prior session under the next source", () => {

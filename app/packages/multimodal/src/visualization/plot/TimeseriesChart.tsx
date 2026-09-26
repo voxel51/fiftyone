@@ -29,6 +29,16 @@ export interface TimeseriesCoverageRange {
   readonly startSec: number;
 }
 
+/**
+ * Where the plot area (axes and legend excluded) sits inside this chart's
+ * outer element, in CSS pixels. Sibling time surfaces align to it so equal
+ * times share one x position, whatever the y-axis label width turns out to be.
+ */
+export interface TimeseriesPlotBounds {
+  readonly leftPx: number;
+  readonly widthPx: number;
+}
+
 export interface TimeseriesChartProps {
   /** uPlot aligned data: shared x vector plus one y vector per series. */
   readonly data: AlignedData;
@@ -57,6 +67,12 @@ export interface TimeseriesChartProps {
 
   /** Coalesced visible-range demand; user zoom/pan pins, reset follows. */
   readonly onViewportChange?: (viewport: TimeseriesViewport) => void;
+
+  /**
+   * Reports the plot area's horizontal bounds inside the host whenever they
+   * change (resize, axis width changes). Lets stacked lanes share the axis.
+   */
+  readonly onPlotBoundsChange?: (bounds: TimeseriesPlotBounds) => void;
 
   /** Ranges inspected for every rendered series; complements are unread. */
   readonly coverageRanges?: readonly TimeseriesCoverageRange[];
@@ -363,12 +379,14 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
   onSeek,
   onSeekEnd,
   onViewportChange,
+  onPlotBoundsChange,
   registerHoverTimeListener,
   registerPlayheadListener,
   resetZoomRevision = 0,
   series,
   unavailableRanges = EMPTY_COVERAGE_RANGES,
 }) => {
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const plotRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<uPlot | null>(null);
   const playheadLineRef = useRef<HTMLDivElement | null>(null);
@@ -394,6 +412,8 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
   onHoverTimeRef.current = onHoverTime;
   const onViewportChangeRef = useRef(onViewportChange);
   onViewportChangeRef.current = onViewportChange;
+  const onPlotBoundsChangeRef = useRef(onPlotBoundsChange);
+  onPlotBoundsChangeRef.current = onPlotBoundsChange;
   const coverageRangesRef = useRef(coverageRanges);
   coverageRangesRef.current = coverageRanges;
   const unavailableRangesRef = useRef(unavailableRanges);
@@ -481,6 +501,30 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
       });
     };
 
+    // Measured from the DOM rather than uPlot's device-pixel bbox so the
+    // value is directly usable by CSS siblings; only changes are published.
+    let publishedBounds: TimeseriesPlotBounds | null = null;
+    const publishPlotBounds = (chart: uPlot) => {
+      const listener = onPlotBoundsChangeRef.current;
+      if (!listener) return;
+      // Include the chart chrome's padding when aligning sibling surfaces.
+      const hostRect = (rootRef.current ?? host).getBoundingClientRect();
+      const overRect = chart.over.getBoundingClientRect();
+      const bounds: TimeseriesPlotBounds = {
+        leftPx: overRect.left - hostRect.left,
+        widthPx: overRect.width,
+      };
+      if (
+        publishedBounds &&
+        publishedBounds.leftPx === bounds.leftPx &&
+        publishedBounds.widthPx === bounds.widthPx
+      ) {
+        return;
+      }
+      publishedBounds = bounds;
+      listener(bounds);
+    };
+
     const options: uPlot.Options = {
       axes: [
         {
@@ -510,6 +554,7 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
       height: Math.max(host.clientHeight, 80),
       hooks: {
         draw: [
+          (chart) => publishPlotBounds(chart),
           (chart) =>
             positionPlayhead(
               chart,
@@ -874,6 +919,7 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
           coverageRangesRef.current,
           unavailableRangesRef.current,
         );
+        publishPlotBounds(chart);
         queueViewportPublication(chart);
       }
     };
@@ -1036,7 +1082,7 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
   ]);
 
   return (
-    <div className={styles.root} data-testid="timeseries-chart">
+    <div className={styles.root} data-testid="timeseries-chart" ref={rootRef}>
       <div className={styles.plot} ref={plotRef}>
         <div className={styles.controls}>
           <ChartControl

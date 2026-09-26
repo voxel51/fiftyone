@@ -739,3 +739,58 @@ function dispatchPointer(
   Object.defineProperty(event, "pointerId", { value: pointerId });
   target.dispatchEvent(event);
 }
+
+describe("plot bounds", () => {
+  it("reports outer-relative plot bounds, including padding, once per change", () => {
+    const onPlotBoundsChange = vi.fn();
+    const { unmount } = render(
+      <TimeseriesChart
+        {...FOLLOW_POLICY_PROPS}
+        data={DATA}
+        durationSec={20}
+        onPlotBoundsChange={onPlotBoundsChange}
+        series={[{ color: "#f00", label: "speed" }]}
+      />,
+    );
+    const chart = lastChart();
+    const rect = (left: number, width: number) =>
+      ({
+        left,
+        width,
+        right: left + width,
+        top: 0,
+        bottom: 0,
+        height: 0,
+        x: left,
+        y: 0,
+        toJSON: () => ({}),
+      }) as DOMRect;
+    // The y axis takes 60 px, plus 8 px of padding outside the plot host.
+    const host = chart.root.parentElement as HTMLElement;
+    host.getBoundingClientRect = () => rect(40, 700);
+    const outer = host.parentElement as HTMLElement;
+    outer.getBoundingClientRect = () => rect(32, 716);
+    chart.over.getBoundingClientRect = () => rect(100, 600);
+    onPlotBoundsChange.mockClear();
+
+    runHooks(chart.options.hooks?.draw, chart);
+    expect(onPlotBoundsChange).toHaveBeenCalledTimes(1);
+    expect(onPlotBoundsChange).toHaveBeenLastCalledWith({
+      leftPx: 68,
+      widthPx: 600,
+    });
+
+    // Identical geometry on a later redraw is not republished.
+    runHooks(chart.options.hooks?.draw, chart);
+    expect(onPlotBoundsChange).toHaveBeenCalledTimes(1);
+
+    // A wider y axis moves the plot area; siblings hear about it.
+    chart.over.getBoundingClientRect = () => rect(112, 588);
+    runHooks(chart.options.hooks?.draw, chart);
+    expect(onPlotBoundsChange).toHaveBeenLastCalledWith({
+      leftPx: 80,
+      widthPx: 588,
+    });
+    unmount();
+  });
+});

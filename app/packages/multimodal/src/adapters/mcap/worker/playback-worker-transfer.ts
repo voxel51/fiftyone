@@ -10,6 +10,16 @@ import { messagesFromMcapWorkerResult } from "./worker-result-traversal";
  */
 export function transferablesForMcapResult(result: unknown): Transferable[] {
   const transferables = new Set<Transferable>();
+  const raw = recordFromUnknown(recordFromUnknown(result)?.rawMessages);
+  for (const entry of [
+    ...(raw && Array.isArray(raw.records) ? raw.records : []),
+    ...(raw && Array.isArray(raw.channels) ? raw.channels : []),
+  ]) {
+    const record = recordFromUnknown(entry);
+    const bytes = record?.data ?? record?.schemaData;
+    if (bytes instanceof Uint8Array && bytes.buffer instanceof ArrayBuffer)
+      transferables.add(bytes.buffer);
+  }
 
   for (const buffer of numericSeriesBuffersFromResult(result)) {
     transferables.add(buffer);

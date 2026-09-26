@@ -37,12 +37,13 @@ const VIEW_SESSION = `${VIEWS}session/`;
 const VISUALIZATION = `${SRC}visualization/`;
 
 const ENTERPRISE_SHARED_FACADES =
+  `${SRC}adapters/mcap/record-decoder/index\\.ts$|` +
   `${SRC}(extensions/(grid-posters|timeline|tiles)/(index|runtime)\\.ts$|` +
   `extensions/episode-intervals/index\\.ts$|` +
-  `extensions/(mcap-explorer|episode-actions)/index\\.ts$|` +
-  `ir/index\\.ts$|query/bytes/index\\.ts$|temporal-tags/index\\.ts$|` +
-  `utils/(bigint|cancellation|relative-time)\\.ts$|` +
-  `views/episode/settings/controls/index\\.ts$|visualization/index\\.ts$)`;
+  `extensions/(mcap-explorer|episode-actions|episode-session|host)/index\\.ts$|` +
+  `ir/index\\.ts$|ports/index\\.ts$|runtime/index\\.ts$|query/bytes/index\\.ts$|temporal-tags/index\\.ts$|` +
+  `utils/(bigint|cancellation|relative-time|errors|numeric-series-buckets)\\.ts$|` +
+  `views/episode/(settings/controls|extension)/index\\.ts$|visualization/(index\\.ts$|(composition|plot|message|panel-ui)/index\\.ts$))`;
 const FORMAT_VENDORS =
   "(^|/)node_modules/(@mcap|@foxglove|hyparquet|hyparquet-compressors|mp4box)(/|$)|" +
   "^(@mcap/|@foxglove/|hyparquet$|hyparquet-compressors$|mp4box$)";
@@ -167,7 +168,7 @@ module.exports = {
       // instead of package internals that are intentionally free to evolve.
       name: "enterprise-imports-shared-only-through-facades",
       severity: "error",
-      from: { path: ENTERPRISE },
+      from: { path: ENTERPRISE, pathNot: TEST_MODULE },
       to: { path: SRC, pathNot: `${ENTERPRISE}|${ENTERPRISE_SHARED_FACADES}` },
     },
     {
@@ -208,7 +209,7 @@ module.exports = {
       },
       to: {
         path: EPISODE,
-        pathNot: `${EPISODE_INDEX}|${EPISODE_SETTINGS_CONTROLS_INDEX}`,
+        pathNot: `${EPISODE_INDEX}|${EPISODE_SETTINGS_CONTROLS_INDEX}|${EPISODE}extension/index\\.ts$`,
       },
     },
     {
