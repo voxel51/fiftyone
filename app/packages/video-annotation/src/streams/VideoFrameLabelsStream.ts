@@ -10,6 +10,8 @@ import {
 import {
   maskBitmapCache,
   maskSourceOf,
+  warmHeatmapIndices,
+  warmSegmentationIndices,
   type MaskSource,
 } from "@fiftyone/lighter";
 import { type FrameDoc } from "../../../core/src/client/framesClient";
@@ -64,6 +66,22 @@ export interface VideoFrameLabelsStreamOptions {
 }
 
 const DEFAULT_CHUNK_SIZE = 60;
+
+/** The parts of a full-frame label document the decode-ahead reads. */
+interface DenseLabelDoc {
+  _cls?: string;
+  mask?: SerializedMask;
+  map?: SerializedMask;
+  range?: number[] | null;
+}
+
+/** A heatmap's declared range as a pair, or undefined to infer at decode. */
+const heatmapRangeOf = (
+  range: number[] | null | undefined,
+): [number, number] | undefined =>
+  range && range.length === 2
+    ? [Number(range[0]), Number(range[1])]
+    : undefined;
 const DEFAULT_FRAME_FIELD = "detections";
 
 /** localStorage key + Vite env var for the mask gate toggle (see below). */
@@ -217,17 +235,30 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
    */
   async warmup(time = 0): Promise<void> {
     const frame = this.timeToFrame(time);
-    if (this.cache.has(frame)) {
-      return;
+
+    if (!this.cache.has(frame)) {
+      const inflight = this.inflight.get(frame);
+
+      if (inflight) {
+        await inflight;
+      } else {
+        await this.fetchChunk(frame);
+      }
     }
 
-    const inflight = this.inflight.get(frame);
-    if (inflight) {
-      await inflight;
-      return;
-    }
+    // A stream registered after the engine's settle loop has finished gets no
+    // commit until play, so without this it would start playback one chunk
+    // deep and stall at the chunk boundary while the next one loads.
+    this.prefetchAhead(time);
+    this.warmDenseLabelsAhead(frame);
+  }
 
-    await this.fetchChunk(frame);
+  /** Ask for the lookahead window from `time`; skips what is cached or in flight. */
+  private prefetchAhead(time: number): void {
+    this.prefetch([
+      time,
+      Math.min(this.frameCount / this.frameRate, time + this.lookaheadSeconds),
+    ]);
   }
 
   /**
@@ -712,7 +743,51 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
       return;
     }
 
+    // A new committed frame. The engine only asks for a prefetch once a frame
+    // is already missing, so left to it the next chunk is requested at the
+    // moment the clock stalls on it. Ask ahead here instead, as the bitmap
+    // stream does; `prefetch` skips what is cached or in flight.
+    this.prefetchAhead(time);
+    this.warmDenseLabelsAhead(frame);
+
     this.publish(store, this.getValue(time));
+  }
+
+  /**
+   * Start decoding the inline segmentation masks and heatmaps of the frames
+   * just ahead of the playhead, off the main thread, so the overlay finds
+   * its indices already decoded when it paints. Not part of the readiness
+   * gate: a label that has not landed by then is decoded at paint time, as
+   * before. The caches skip what is resident or in flight.
+   */
+  private warmDenseLabelsAhead(frame: number): void {
+    const last = Math.min(this.frameCount, frame + MASK_HOLD_AHEAD_FRAMES);
+
+    for (let f = frame; f <= last; f++) {
+      const doc = this.cache.get(f);
+
+      if (!doc) {
+        continue;
+      }
+
+      for (const field of this.frameFields) {
+        const label = doc[field] as DenseLabelDoc | undefined;
+
+        if (label?._cls === "Segmentation") {
+          const source = maskSourceOf(label.mask);
+
+          if (typeof source === "string") {
+            void warmSegmentationIndices(source);
+          }
+        } else if (label?._cls === "Heatmap") {
+          const source = maskSourceOf(label.map);
+
+          if (typeof source === "string") {
+            void warmHeatmapIndices(source, heatmapRangeOf(label.range));
+          }
+        }
+      }
+    }
   }
 
   /** Subscribe to `/frames` cache mutations (chunks landing); returns an unsubscribe function. */

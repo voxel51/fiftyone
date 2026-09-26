@@ -15,6 +15,7 @@ import type { IndexedImage, Renderer2D } from "../renderer/Renderer2D";
 import type { Selectable } from "../selection/Selectable";
 import type { Point, RawLookerLabel, Rect, RenderMeta } from "../types";
 import { getSimpleStrokeStyles } from "../utils/colorMapping";
+import { heatmapIndexCache, heatmapIndexKey } from "../utils/decodedIndexCache";
 import {
   buildHeatmapLut,
   decodeHeatmapIndices,
@@ -229,6 +230,33 @@ export class HeatmapOverlay
   }
 
   /**
+   * The map's indices: decoded ahead of time when the label stream warmed
+   * this frame (see {@link heatmapIndexCache}), otherwise quantized here and
+   * remembered. Only an inline map is cached: a `map_path` source is already
+   * decoded, and keying by that object would pin it for the cache's lifetime.
+   */
+  private decodeIndices(
+    source: string | OverlayMask,
+    range: readonly [number, number] | undefined,
+  ): DecodedHeatmap {
+    const key =
+      typeof source === "string" ? heatmapIndexKey(source, range) : null;
+    const warmed = key === null ? undefined : heatmapIndexCache.get(key);
+
+    if (warmed) {
+      return warmed;
+    }
+
+    const decoded = decodeHeatmapIndices(source, range);
+
+    if (key !== null) {
+      heatmapIndexCache.set(key, decoded);
+    }
+
+    return decoded;
+  }
+
+  /**
    * Quantize the map and table the palette if either changed since the last
    * paint; otherwise hand back what is already there. The two are cached
    * independently: a new frame under the same palette keeps the table, and a
@@ -271,7 +299,7 @@ export class HeatmapOverlay
       const decoded =
         sameSource && this.#decoded && this.#decodedRange === rangeKey
           ? this.#decoded
-          : decodeHeatmapIndices(source, palette.range);
+          : this.decodeIndices(source, palette.range);
 
       // The table depends on the range the indices were quantized over,
       // which an undeclared range infers from the array's type — so two maps

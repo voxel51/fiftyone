@@ -6,9 +6,12 @@ FiftyOne JSON handling
 |
 """
 
+from base64 import b64encode
 import dataclasses
 from datetime import date, datetime
+import io
 import math
+import zlib
 
 from bson import ObjectId
 import numpy as np
@@ -28,7 +31,53 @@ def _handle_bytes(o):
     return o
 
 
+# Enough inflated bytes to hold a ``.npy`` header: magic + version + header
+# length + the dict literal. Structured dtypes can run longer; they fall
+# through to the full decode below
+_NPY_HEADER_PEEK_BYTES = 4096
+
+
+def _peek_numpy_header(raw):
+    """Reads the ``.npy`` header of a serialized array without inflating the
+    array body.
+
+    Returns ``(shape, fortran_order)``, or ``None`` when the header cannot be
+    read from the first :data:`_NPY_HEADER_PEEK_BYTES` inflated bytes.
+    """
+    try:
+        head = zlib.decompressobj().decompress(raw, _NPY_HEADER_PEEK_BYTES)
+        with io.BytesIO(head) as f:
+            major, _ = np.lib.format.read_magic(f)
+            if major == 1:
+                shape, fortran_order, _ = np.lib.format.read_array_header_1_0(
+                    f
+                )
+            else:
+                shape, fortran_order, _ = np.lib.format.read_array_header_2_0(
+                    f
+                )
+    except Exception:
+        return None
+
+    return shape, fortran_order
+
+
 def _handle_numpy_array(raw, _cls=None):
+    # The stored bytes are already the wire format (``np.save`` + zlib), so a
+    # C-ordered array only needs base64. Inflating, re-saving, and
+    # re-compressing a dense mask costs ~40ms per 1080p frame, which was the
+    # bulk of a video label window's response time
+    header = _peek_numpy_header(raw)
+
+    if header is not None:
+        shape, fortran_order = header
+
+        if _cls not in _MASK_CLASSES:
+            return str(tuple(shape))
+
+        if not fortran_order:
+            return b64encode(raw).decode("ascii")
+
     if _cls not in _MASK_CLASSES:
         return str(fou.deserialize_numpy_array(raw).shape)
 

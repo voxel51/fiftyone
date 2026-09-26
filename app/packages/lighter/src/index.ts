@@ -159,6 +159,13 @@ export type {
 export { MaskBitmapCache, maskBitmapCache } from "./utils/maskBitmapCache";
 export type { MaskSource } from "./utils/maskBitmapCache";
 export { maskSourceOf } from "./utils/maskSource";
+export {
+  DecodedIndexCache,
+  heatmapIndexCache,
+  segmentationIndexCache,
+  warmHeatmapIndices,
+  warmSegmentationIndices,
+} from "./utils/decodedIndexCache";
 
 // Constants
 export { DEFAULT_ZOOM_PAD } from "./constants";
