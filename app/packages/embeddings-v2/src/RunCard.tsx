@@ -46,12 +46,12 @@ export interface RunCardProps {
 }
 
 const TOKEN_VARS = {
-  "--emb-card-bg": `var(${getColorCssVar(BackgroundColor.Card2)})`,
-  "--emb-card-hover": `var(${getColorCssVar(BackgroundColor.CardElevated)})`,
-  "--emb-border-subtle": `var(${getColorCssVar(BorderColor.Subtle)})`,
-  "--emb-border-strong": `var(${getColorCssVar(BorderColor.Strong)})`,
-  "--emb-brand": `var(${getColorCssVar(BrandColor.Primary)})`,
-  "--emb-text-secondary": `var(${getColorCssVar(TextColor.Secondary)})`,
+  "--emb-card-bg": `${getColorCssVar(BackgroundColor.CardNested)}`,
+  "--emb-card-hover": `${getColorCssVar(BackgroundColor.CardElevated)}`,
+  "--emb-border-subtle": `${getColorCssVar(BorderColor.Subtle)}`,
+  "--emb-border-strong": `${getColorCssVar(BorderColor.Strong)}`,
+  "--emb-brand": `${getColorCssVar(BrandColor.Primary)}`,
+  "--emb-text-secondary": `${getColorCssVar(TextColor.Secondary)}`,
 } as CSSProperties;
 
 export function RunCard({
@@ -92,7 +92,7 @@ export function RunCard({
             </div>
           )}
           <span className="emb-run-card-title">
-            <Text variant={TextVariant.Lg} color={TextColor.Fg}>
+            <Text variant={TextVariant.Lg} color={TextColor.Foreground}>
               {title}
             </Text>
           </span>
