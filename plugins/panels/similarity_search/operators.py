@@ -138,8 +138,9 @@ class SimilaritySearchOperator(foo.Operator):
                 view = ctx.target_view(require_flat=True)
 
             # Recorded flat (pre-patches), so a replacing search of either
-            # kind can rebuild it
-            run_data["base_view"] = view._serialize(include_uuids=False)
+            # kind can rebuild it. The target is the dataset itself when
+            # nothing narrows it, and only a view serializes its stages
+            run_data["base_view"] = view.view()._serialize(include_uuids=False)
 
             ctx.set_progress(0.2, label="Preparing query...")
 
