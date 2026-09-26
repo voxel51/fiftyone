@@ -24,6 +24,8 @@ const LABEL_TYPES = new Set([
   "Detections",
   "Heatmap",
   "Instance",
+  "Keypoint",
+  "Keypoints",
   "Polyline",
   "Polylines",
   "Segmentation",
@@ -49,6 +51,7 @@ export interface BuildOptions extends Pick<
   | "promptableIndexes"
   | "savedViews"
   | "schema"
+  | "skeletons"
   | "staticTransforms"
 > {
   mediaType: "image" | "video" | "3d" | "multimodal" | "group";
@@ -95,10 +98,17 @@ export const build = (() => {
     samples,
     savedViews = {},
     schema = {},
+    skeletons = {},
     staticTransforms = [],
   }: BuildOptions) => {
     const payload = writeToTmpFile(
-      JSON.stringify({ samples, frames, labelSchemas, staticTransforms }),
+      JSON.stringify({
+        samples,
+        frames,
+        labelSchemas,
+        skeletons,
+        staticTransforms,
+      }),
       "json",
     );
     const hasVideo =
@@ -137,6 +147,13 @@ ${mediaTypeCode}
 ${Object.entries(schema)
   .map(([fieldPath, fieldType]) => addField(fieldPath, fieldType))
   .join("\n")}
+
+if payload["skeletons"]:
+    dataset.skeletons = {
+        name: fo.KeypointSkeleton(labels=s["labels"], edges=s["edges"])
+        for name, s in payload["skeletons"].items()
+    }
+    dataset.save()
 
 for transform in payload["staticTransforms"]:
     dataset.add_static_transform(StaticTransform(**transform))

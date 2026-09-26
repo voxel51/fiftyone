@@ -46,7 +46,7 @@ import type {
 } from "../types";
 import { generateColorFromId } from "../utils/color";
 import type { ColorMappingContext } from "../utils/colorMapping";
-import { getOverlayColor } from "../utils/colorMapping";
+import { getKeypointPointColors, getOverlayColor } from "../utils/colorMapping";
 import { CoordinateSystem2D } from "./CoordinateSystem2D";
 import {
   OVERLAY_STATUS_ERROR,
@@ -88,6 +88,14 @@ export const TypeGuards = {
     typeof (value as { containsPoint: unknown }).containsPoint === "function" &&
     "markDirty" in value &&
     typeof (value as { markDirty: unknown }).markDirty === "function",
+
+  hasPointColors: (
+    body: BaseOverlay,
+  ): body is BaseOverlay & {
+    setPointColors(colors: (string | null)[] | null): void;
+  } =>
+    "setPointColors" in body &&
+    typeof (body as { setPointColors: unknown }).setPointColors === "function",
 };
 
 /**
@@ -172,14 +180,14 @@ export class Scene2D {
   private renderCallbacks = new Map<string, RenderCallback>();
   private colorMappingContext?: ColorMappingContext;
   private overlayOrderOptions: OverlayOrderOptions = {};
-  private rotation: number = 0;
-  private interactiveMode: boolean = false;
+  private rotation = 0;
+  private interactiveMode = false;
   private interactiveHandler?: InteractionHandler;
   // When an external authority (the annotation engine) owns undo/redo, Lighter
   // must not also push its own edit commands — the engine captures the same
   // edits as value-based entries, so a self-push double-counts every gesture.
-  private externalUndoAuthority: boolean = false;
-  private isRenderLoopActive: boolean = false;
+  private externalUndoAuthority = false;
+  private isRenderLoopActive = false;
   private abortController = new AbortController();
   private readonly sceneId: string;
   private readonly eventBus: EventDispatcher<LighterEventGroup>;
@@ -1074,7 +1082,7 @@ export class Scene2D {
     }
 
     // Find overlays that contain the mouse point
-    let contained = this.overlayOrder
+    const contained = this.overlayOrder
       .map((id) => this.overlays.get(id))
       .filter((overlay): overlay is BaseOverlay => {
         if (!overlay) return false;
@@ -1128,6 +1136,22 @@ export class Scene2D {
           ? (overlay.label.label as string)
           : overlay.id;
       strokeStyle = generateColorFromId(identifier, 70, 50);
+    }
+
+    // Per-point color-by-value: a keypoint field colored by a per-point
+    // attribute overrides individual point fills (edges keep the label
+    // color, matching the classic looker). Stored silently — this runs
+    // inside the render pass, just before the overlay draws.
+    if (TypeGuards.hasPointColors(overlay)) {
+      overlay.setPointColors(
+        this.colorMappingContext
+          ? getKeypointPointColors(
+              overlay.field,
+              overlay.label,
+              this.colorMappingContext,
+            )
+          : null,
+      );
     }
 
     const baseStyle: DrawStyle = {
@@ -1245,7 +1269,7 @@ export class Scene2D {
    * @param overlay - The overlay to add.
    * @param withUndo - Whether to track this operation for undo/redo.
    */
-  addOverlay(overlay: BaseOverlay, withUndo: boolean = false): void {
+  addOverlay(overlay: BaseOverlay, withUndo = false): void {
     if (withUndo) {
       const command = new AddOverlayCommand(
         this,
@@ -1303,11 +1327,7 @@ export class Scene2D {
    * @param withUndo - Whether to track this operation for undo/redo.
    * @param lifecycle - Whether this is a lifecycle event (not user-driven)
    */
-  removeOverlay(
-    id: string,
-    withUndo: boolean = false,
-    lifecycle: boolean = false,
-  ): void {
+  removeOverlay(id: string, withUndo = false, lifecycle = false): void {
     if (withUndo) {
       const overlay = this.overlays.get(id);
       if (overlay) {

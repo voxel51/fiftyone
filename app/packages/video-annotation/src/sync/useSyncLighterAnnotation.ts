@@ -9,6 +9,10 @@ import {
 } from "@fiftyone/lighter";
 import { useDetectionMode } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useDetectionMode";
 import {
+  useKeypointMode,
+  useKeypointModeInstaller,
+} from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useKeypointMode";
+import {
   usePolylineMode,
   usePolylineModeInstaller,
 } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/usePolylineMode";
@@ -38,6 +42,7 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
   const detectionMode = useDetectionMode();
   const segmentationMode = useSegmentationMode();
   const polylineMode = usePolylineMode();
+  const keypointMode = useKeypointMode();
 
   useRegisterDrawHandler({ registerHandler, detectionMode, segmentationMode });
   useRegisterDrawEstablishHandler({ registerHandler });
@@ -47,6 +52,7 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
     detectionMode,
     segmentationMode,
     polylineMode,
+    keypointMode,
   });
   useRegisterPointSelectionFinalizeHandler({
     registerHandler,
@@ -56,10 +62,13 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
     detectionMode,
     segmentationMode,
     polylineMode,
+    keypointMode,
   });
 
-  // Polylines self-create through an InteractiveCreationHandler the installer
-  // mounts on the scene (the image surface gets this via `useBridge`); without
-  // it polyline mode toggles but a canvas click draws nothing.
+  // Polylines and keypoints self-create through an InteractiveCreationHandler
+  // their installers mount on the scene (the image surface gets these via
+  // `useBridge`); without them the mode toggles but a canvas click draws
+  // nothing.
   usePolylineModeInstaller();
+  useKeypointModeInstaller();
 };

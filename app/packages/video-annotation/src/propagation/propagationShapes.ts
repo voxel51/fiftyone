@@ -11,6 +11,7 @@ import {
   type LabelData,
   LabelType,
   type SyntheticBox,
+  type SyntheticKeypoint,
   type SyntheticPolyline,
 } from "@fiftyone/utilities";
 
@@ -22,10 +23,15 @@ export const isBoxFieldType = (type: LabelType): boolean =>
 export const isPolylineFieldType = (type: LabelType): boolean =>
   type === LabelType.Polyline || type === LabelType.Polylines;
 
+/** Node-bearing keypoint fields; their nodes interpolate (holes preserved). */
+export const isKeypointFieldType = (type: LabelType): boolean =>
+  type === LabelType.Keypoint || type === LabelType.Keypoints;
+
 /** Linear agent id for a field's geometry, or `null` when nothing can be lerped. */
 export const linearAgentFor = (type: LabelType): string | null => {
   if (isBoxFieldType(type)) return "propagate-linear";
   if (isPolylineFieldType(type)) return "propagate-linear-polyline";
+  if (isKeypointFieldType(type)) return "propagate-linear-keypoint";
   return null;
 };
 
@@ -39,6 +45,20 @@ export const toSyntheticPolyline = (label: LabelData): SyntheticPolyline => ({
   filled: label.filled as boolean | undefined,
   index: label.index as number | undefined,
   instance: label.instance as SyntheticPolyline["instance"],
+  keyframe: (label.keyframe as boolean) ?? false,
+});
+
+/** The engine's stored keypoint as the shape the keypoint agent consumes. */
+export const toSyntheticKeypoint = (label: LabelData): SyntheticKeypoint => ({
+  id: label._id,
+  _id: label._id,
+  label: (label.label as string) ?? "",
+  points: label.points as SyntheticKeypoint["points"],
+  // omitted, not `undefined`, when the label has none: the shape rides into
+  // every frame propagation fills, and JSON (so the server's copy) cannot
+  // hold an `undefined` member
+  ...(typeof label.index === "number" ? { index: label.index } : {}),
+  instance: label.instance as SyntheticKeypoint["instance"],
   keyframe: (label.keyframe as boolean) ?? false,
 });
 

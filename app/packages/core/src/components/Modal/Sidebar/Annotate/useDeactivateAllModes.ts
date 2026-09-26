@@ -2,6 +2,7 @@ import { useSetCurrent3dAnnotationMode } from "@fiftyone/looker-3d/src/state/acc
 import { useCallback } from "react";
 import { useClassificationMode } from "./Edit/useClassificationMode";
 import { useDetectionMode } from "./Edit/useDetectionMode";
+import { useKeypointMode } from "./Edit/useKeypointMode";
 import { usePolylineMode } from "./Edit/usePolylineMode";
 import { useSegmentationMode } from "./Edit/useSegmentationMode";
 
@@ -16,6 +17,7 @@ export const useDeactivateAllModes = () => {
   const { deactivateDetectionMode } = useDetectionMode();
   const { deactivateSegmentationMode } = useSegmentationMode();
   const { deactivatePolylineMode } = usePolylineMode();
+  const { deactivateKeypointMode } = useKeypointMode();
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
 
   return useCallback(() => {
@@ -23,10 +25,12 @@ export const useDeactivateAllModes = () => {
     deactivateDetectionMode();
     deactivateSegmentationMode();
     deactivatePolylineMode();
+    deactivateKeypointMode();
     setCurrent3dAnnotationMode(null);
   }, [
     deactivateClassificationMode,
     deactivateDetectionMode,
+    deactivateKeypointMode,
     deactivatePolylineMode,
     deactivateSegmentationMode,
     setCurrent3dAnnotationMode,

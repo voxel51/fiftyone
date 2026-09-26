@@ -225,9 +225,12 @@ export const createLighterBridge = ({
       // the scene's selection teardown emit an unflagged overlay-deselect —
       // handlers would write interaction state back mid-dispatch. Deselect
       // first, flagged, so handlers no-op and the teardown finds nothing
-      // selected.
+      // selected. The removal itself is a sync eviction — an engine re-home
+      // unmounts at the old field and remounts the SAME id at the new one —
+      // not a user delete, so it is flagged `lifecycle` per the event contract
+      // and deletion-reacting consumers skip it.
       scene.deselectOverlay(overlay.id, { ignoreSideEffects: true });
-      scene.removeOverlay(overlay.id);
+      scene.removeOverlay(overlay.id, false, true);
       managed.delete(overlay.id);
     },
 
@@ -239,10 +242,12 @@ export const createLighterBridge = ({
       // sharing the scene (the image plane, uncommitted drafts, cursors) are
       // not the bridge's to remove. Deselect first, flagged, for the same
       // reason as unmount — and so engine selection survives a bridge swap
-      // for the successor to reapply.
+      // for the successor to reapply. Teardown evicts everything rather than
+      // deleting anything, so the removals are flagged `lifecycle` per the
+      // event contract and deletion-reacting consumers skip them.
       for (const id of managed) {
         scene.deselectOverlay(id, { ignoreSideEffects: true });
-        scene.removeOverlay(id);
+        scene.removeOverlay(id, false, true);
       }
 
       managed.clear();

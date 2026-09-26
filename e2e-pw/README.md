@@ -210,6 +210,14 @@ await DatasetFactory.createDataset({
 });
 ```
 
+Keypoints need a skeleton as well as a schema field: `skeletons` maps a field
+name to `{ labels, edges }` and becomes `dataset.skeletons`, keyed by the bare
+field name (`keypoints`, never `frames.keypoints`, even on a video dataset).
+Build the documents with `helpers.label.keypoints([...])` and
+`helpers.label.keypoint({ label, points })`, where a `null` entry in `points`
+is a hole — an unplaced skeleton node — stored as a `[NaN, NaN]` coordinate
+pair.
+
 Verify persistence the way a user would see it: await the edit's sample-save
 response, then assert from a fresh browser context on what the app renders.
 Group slices may be `image`, `3d` or `video` (with per-slice media options);

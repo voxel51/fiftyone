@@ -11,6 +11,7 @@ import { useCallback } from "react";
 import type { PropagateArgs } from "../propagation/propagateArgs";
 import {
   toSyntheticBox,
+  toSyntheticKeypoint,
   toSyntheticPolyline,
 } from "../propagation/propagationShapes";
 import { useApplyPropagationResult } from "../propagation/useApplyPropagationResult";
@@ -47,10 +48,13 @@ export const useLinearPropagate = () => {
         return false;
       }
 
+      // polylines and keypoints carry `points` instead of a bbox
       const toKeyframe =
         agentId === "propagate-linear-polyline"
           ? toSyntheticPolyline
-          : toSyntheticBox;
+          : agentId === "propagate-linear-keypoint"
+            ? toSyntheticKeypoint
+            : toSyntheticBox;
 
       const context: PropagationContext = {
         sampleDescriptor,

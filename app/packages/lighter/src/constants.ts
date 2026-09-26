@@ -64,10 +64,21 @@ export const HANDLE_OFFSET_X = 6;
 export const HANDLE_OFFSET_Y = 3;
 
 /**
- * Settings related to keypoint overlays
+ * Settings related to keypoint overlays. Radii are FILL radii; the white
+ * outline strokes are centered on the fill edge, so a point's visible color
+ * core is radius - outline/2 and its total extent is radius + outline/2.
+ * The selected pair keeps the same color core as an unselected point
+ * (6.5 - 2.5/2 = 6 - 1.5/2) — selection thickens the outline OUTWARD
+ * instead of covering the color.
  */
-export const KEYPOINT_RADIUS = 5;
-export const KEYPOINT_SELECTED_RADIUS = 8;
+export const KEYPOINT_RADIUS = 6;
+export const KEYPOINT_SELECTED_RADIUS = 6.5;
+export const KEYPOINT_OUTLINE_WIDTH = 1.5;
+export const KEYPOINT_SELECTED_OUTLINE_WIDTH = 2.5;
+// Soft black hairline just outside the white outline: the white ring gives
+// contrast on dark imagery, the halo covers light imagery
+export const KEYPOINT_HALO_WIDTH = 1;
+export const KEYPOINT_HALO_OPACITY = 0.5;
 export const KEYPOINT_HIT_RADIUS = 10;
 export const PREVIEW_LINE_OPACITY = 0.6;
 

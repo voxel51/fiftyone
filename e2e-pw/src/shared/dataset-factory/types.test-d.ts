@@ -28,6 +28,17 @@ void factory.createDataset({
 });
 
 void factory.createDataset({
+  datasetName: "keypoints",
+  schema: { keypoints: "Keypoints" },
+  skeletons: { keypoints: { labels: ["head", "tail"], edges: [[0, 1]] } },
+  withSampleData: (_, { label }) => ({
+    keypoints: label.keypoints([
+      label.keypoint({ label: "x", points: [[0.1, 0.2], null] }),
+    ]),
+  }),
+});
+
+void factory.createDataset({
   datasetName: "images",
   // @ts-expect-error `videoOptions` requires `mediaType: "video"`.
   videoOptions: { duration: 1 },

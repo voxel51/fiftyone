@@ -5,18 +5,26 @@ import {
   useCreateCommand,
 } from "@fiftyone/commands";
 import { useIsWorkingInitialized } from "@fiftyone/looker-3d";
-import { isPatchesView, useUnboundStateRef } from "@fiftyone/state";
+import {
+  isPatchesView,
+  useGetKeypointSkeleton,
+  useUnboundStateRef,
+} from "@fiftyone/state";
 import type { LabelData } from "@fiftyone/utilities";
 import { useCallback, useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import AddSchema from "./AddSchema";
+import { getKeypointPointKeys } from "./keypointPointAttributes";
 import {
   type LabelType,
   useAnnotationContext,
   useAnnotationFields,
 } from "./useAnnotationContext";
-import { buildNewLabelData } from "./useAnnotationContext/createNew";
+import {
+  buildNewLabelData,
+  skeletonNodeCount,
+} from "./useAnnotationContext/createNew";
 
 const createSchema = (
   choices: string[],
@@ -59,9 +67,14 @@ const Field = () => {
     [disabled, fields, isPatches],
   );
   const engine = useAnnotationEngine();
+  const getSkeleton = useGetKeypointSkeleton();
   const nextFieldValue = useRef(currentFieldValue);
   const labelId = currentLabel?.overlay?.id;
   const currentLabelRef = useUnboundStateRef(currentLabel);
+  // The SOURCE field's schema declares which keys in the moved data are
+  // per-point parallel lists; read live (like the label) so the move
+  // callback never strips against a stale schema.
+  const schemaAttributesRef = useUnboundStateRef(selected?.schema?.attributes);
 
   const is3DAnnotationStagingInitialized = useIsWorkingInitialized();
 
@@ -85,10 +98,26 @@ const Field = () => {
         (source as { instance?: { _id?: string } } | undefined)?.instance
           ?._id ?? source?._id;
 
+      // A keypoint's field swap ERASES its geometry: a node's index is bound
+      // to its skeleton's semantics (node 3 of a face is not node 3 of a
+      // body), so carrying placements across topologies would be silent
+      // corruption. The erase rides the move's own undo unit — the original
+      // per-occurrence data is captured on the forward move (keyed by
+      // sample + frame; the path changes across the move) and the reverse
+      // move restores it verbatim.
+      const isKeypoint =
+        (source as { _cls?: string } | undefined)?._cls === "Keypoint";
+      const captured = new Map<string, LabelData>();
+      const occurrenceKey = (ref: LabelRef) =>
+        `${ref.sample}:${ref.frame ?? ""}`;
+
       // Atomic move between fields, ALL through the engine: drop EVERY
       // occurrence of the track from the source field and re-home it (with its
       // per-frame geometry) at the destination, in a single transaction (one
-      // coalesced change → one autosave patch, one undo unit). A video track
+      // coalesced change → one autosave patch). The transaction does not
+      // record an engine undo unit: the DelegatingUndoable below IS the move's
+      // one undo step (it also re-points the form), and an engine unit on top
+      // would double the step and re-record on every undo. A video track
       // spans many frames — moving only the current frame would leave the rest
       // behind and never clear the source — so the move fans across all frames
       // the instance occupies. Identity is the store's, so the track keeps its
@@ -110,25 +139,68 @@ const Field = () => {
           .map((ref) => ({ ref, data: engine.getLabel(ref) }))
           .filter((o): o is { ref: LabelRef; data: LabelData } => !!o.data);
 
-        if (occurrences.length === 0) return;
+        // Zero occurrences is legal: an atomic keypoint creation draft has no
+        // engine rows until it finalizes, so there is nothing to move — but
+        // the sidebar swap below must still happen (the keypoint mode reseeds
+        // the draft for the new field's skeleton off it).
+        if (occurrences.length > 0) {
+          const cls = (source as { _cls: LabelType })._cls;
 
-        const cls = (source as { _cls: LabelType })._cls;
+          // The transaction deletes the anchor's ref (its key includes the
+          // path), so interaction GC prunes the selection and the form —
+          // which follows the anchor — would close mid-edit. Capture the
+          // anchor now and re-point it at the destination after the move,
+          // in both directions, so the edit session survives the swap.
+          const anchor = engine.interaction.getAnchor();
 
-        engine.transaction(() => {
-          for (const { ref } of occurrences) {
-            engine.deleteLabel(ref);
+          const rehome = () => {
+            for (const { ref } of occurrences) {
+              engine.deleteLabel(ref);
+            }
+
+            for (const { ref, data } of occurrences) {
+              let payload: Partial<LabelData> = data;
+              if (isKeypoint && to === newField) {
+                // Forward move: capture, then write the destination
+                // skeleton's holes (free-form: no points) and drop EVERY
+                // per-point parallel list the erased geometry anchored —
+                // the reserved names plus schema attributes with point
+                // scope, which are keyed by the OLD skeleton's node indices
+                captured.set(occurrenceKey(ref), data);
+                const nodeCount = skeletonNodeCount(getSkeleton(to) ?? null);
+                const pointKeys = getKeypointPointKeys(
+                  schemaAttributesRef.current,
+                );
+                const rest = Object.fromEntries(
+                  Object.entries(data as Record<string, unknown>).filter(
+                    ([key]) => !pointKeys.has(key),
+                  ),
+                );
+                payload = {
+                  ...rest,
+                  points: Array.from({ length: nodeCount }, () => [NaN, NaN]),
+                } as Partial<LabelData>;
+              } else if (isKeypoint) {
+                // Reverse move (undo): restore the captured original
+                payload = captured.get(occurrenceKey(ref)) ?? data;
+              }
+
+              engine.updateLabel(
+                { sample: ref.sample, path: to, instanceId, frame: ref.frame },
+                {
+                  ...buildNewLabelData(to, cls, { id: instanceId }),
+                  ...payload,
+                } as Partial<LabelData>,
+              );
+            }
+          };
+
+          engine.transaction(rehome, { record: false });
+
+          if (anchor && anchor.instanceId === instanceId) {
+            engine.interaction.setActive([{ ...anchor, path: to }]);
           }
-
-          for (const { ref, data } of occurrences) {
-            engine.updateLabel(
-              { sample: ref.sample, path: to, instanceId, frame: ref.frame },
-              {
-                ...buildNewLabelData(to, cls, { id: instanceId }),
-                ...data,
-              } as Partial<LabelData>,
-            );
-          }
-        });
+        }
 
         // Best-effort sidebar sync; no-ops when the label isn't selected.
         setCurrentField(to);
@@ -139,7 +211,15 @@ const Field = () => {
         () => move(oldField, newField),
         () => move(newField, oldField),
       );
-    }, [currentLabelRef, engine, setCurrentField, labelId, currentFieldValue]),
+    }, [
+      currentLabelRef,
+      engine,
+      getSkeleton,
+      schemaAttributesRef,
+      setCurrentField,
+      labelId,
+      currentFieldValue,
+    ]),
     () => true,
   );
 

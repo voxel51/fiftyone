@@ -1,7 +1,14 @@
 import { DetectionLabel } from "@fiftyone/looker";
-import { useClearModal } from "@fiftyone/state";
+import { useClearModal, useGetKeypointSkeleton } from "@fiftyone/state";
 import { DETECTION, KEYPOINT, POLYLINE } from "@fiftyone/utilities";
-import { useEffect } from "react";
+import {
+  Heading,
+  HeadingLevel,
+  Text,
+  TextColor,
+  TextVariant,
+} from "@voxel51/voodo";
+import { ReactNode, useEffect } from "react";
 import styled from "styled-components";
 import { isDetection3d } from "../../../../../utils/labels";
 import AnnotationSchema from "./AnnotationSchema";
@@ -15,6 +22,7 @@ import Position from "./Position";
 import Position3d from "./Position3d";
 import TemporalDetectionDetails from "./TemporalDetectionDetails";
 import { useAnnotationContext } from "./useAnnotationContext";
+import { skeletonNodeCount } from "./useAnnotationContext/createNew";
 import PrimitiveWrapper from "./PrimitiveWrapper";
 import useActivePrimitive from "./useActivePrimitive";
 import useExit from "./useExit";
@@ -41,6 +49,35 @@ const Content = styled.div`
   flex-direction: column;
   row-gap: 0.5rem;
 `;
+
+const Section = styled.section`
+  border-top: 1px solid ${({ theme }) => theme.neutral.softBorder};
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+`;
+
+const SectionHeading = styled(Heading)`
+  margin: 0 0 0.75rem;
+`;
+
+/**
+ * Headlined attribute-scope group. Keypoints carry attributes at two scopes —
+ * the whole label (e.g. `label`) and the individual point (e.g. per-point
+ * `confidence`) — and their form fields look alike, so each scope's block
+ * sits under its own ruled-off headline.
+ */
+const ScopeSection = ({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) => (
+  <Section>
+    <SectionHeading level={HeadingLevel.H4}>{title}</SectionHeading>
+    {children}
+  </Section>
+);
 
 export default function Edit() {
   const { selected } = useAnnotationContext();
@@ -91,6 +128,10 @@ export default function Edit() {
     };
   }, [exit, clear]);
 
+  const getSkeleton = useGetKeypointSkeleton();
+  const skeletonNodes =
+    type === KEYPOINT && field ? skeletonNodeCount(getSkeleton(field)) : 0;
+
   const is3dDetection =
     overlay && isDetection3d(overlay.label as DetectionLabel);
   const isTemporalDetection =
@@ -103,6 +144,11 @@ export default function Edit() {
       <Content>
         <Id />
         {!primitiveEditingActive && <Field />}
+        {!primitiveEditingActive && skeletonNodes > 0 && (
+          <Text color={TextColor.Secondary} variant={TextVariant.Sm}>
+            {skeletonNodes}-point skeleton
+          </Text>
+        )}
         {primitiveEditingActive && <PrimitiveWrapper />}
         {type === DETECTION && overlay && !is3dDetection && (
           <Position readOnly={isReadOnly || isMaskDetection} />
@@ -111,11 +157,22 @@ export default function Edit() {
           <Position3d readOnly={isReadOnly} />
         )}
         {type === POLYLINE && <PolylineDetails />}
-        {type === KEYPOINT && <KeypointDetails />}
+        {type === KEYPOINT && (
+          <ScopeSection title="Points">
+            <KeypointDetails />
+          </ScopeSection>
+        )}
         {isTemporalDetection && (
           <TemporalDetectionDetails readOnly={isReadOnly} />
         )}
-        {field && <AnnotationSchema readOnly={isReadOnly} />}
+        {field &&
+          (type === KEYPOINT ? (
+            <ScopeSection title="Label attributes">
+              <AnnotationSchema readOnly={isReadOnly} />
+            </ScopeSection>
+          ) : (
+            <AnnotationSchema readOnly={isReadOnly} />
+          ))}
         {isMaskDetection && <MaskPreview />}
       </Content>
     </ContentContainer>

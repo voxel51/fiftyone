@@ -18,9 +18,15 @@ export class RemoveKeypointPointCommand implements Undoable {
   private readonly relativePosition: [number, number];
   private readonly variant?: string;
 
+  /**
+   * @param silent - When `true`, removes/re-adds without dispatching point
+   *   events (no engine commit) across execute/undo/redo. Keypoint creation
+   *   drafts use this: they persist once, on completion, never per placement.
+   */
   constructor(
     private overlay: KeypointOverlay,
     private pointId: string,
+    private silent = false,
   ) {
     const entry = overlay.getPointById(pointId);
     if (!entry) {
@@ -36,7 +42,7 @@ export class RemoveKeypointPointCommand implements Undoable {
   }
 
   execute(): void {
-    this.overlay.removePointById(this.pointId);
+    this.overlay.removePointById(this.pointId, this.silent);
   }
 
   undo(): void {
@@ -46,6 +52,7 @@ export class RemoveKeypointPointCommand implements Undoable {
     this.overlay.addPoint(worldPoint, {
       variant: this.variant,
       id: this.pointId,
+      silent: this.silent,
     });
   }
 }

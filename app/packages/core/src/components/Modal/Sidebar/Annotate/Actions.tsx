@@ -59,6 +59,7 @@ import {
 } from "./Edit/useAnnotationContext";
 import { useClassificationMode } from "./Edit/useClassificationMode";
 import { useDetectionMode } from "./Edit/useDetectionMode";
+import { useKeypointMode } from "./Edit/useKeypointMode";
 import { usePolylineMode } from "./Edit/usePolylineMode";
 import { useSegmentationMode } from "./Edit/useSegmentationMode";
 import { useAnnotationUndoRedo } from "./useAnnotationUndoRedo";
@@ -304,6 +305,36 @@ const Polyline = () => {
   );
 };
 
+const Keypoint = () => {
+  const { activateKeypointMode, keypointModeActive, disabled, tooltip } =
+    useKeypointMode();
+  const deactivateAll = useDeactivateAll();
+
+  return (
+    <Tooltip anchor={Anchor.Top} content={<Text>{tooltip}</Text>} portal>
+      <Square
+        $active={keypointModeActive}
+        className={disabled ? "disabled" : ""}
+        data-cy="keypoint-mode"
+        data-cy-active={keypointModeActive}
+        onClick={() => {
+          if (disabled) {
+            return;
+          }
+
+          deactivateAll();
+
+          if (!keypointModeActive) {
+            activateKeypointMode();
+          }
+        }}
+      >
+        <Icon name={IconName.Embeddings} size={Size.Md} />
+      </Square>
+    </Tooltip>
+  );
+};
+
 // Undo/Redo show a generic tooltip rather than a full stack dump: on video a
 // single edit fans out across many frames, so the raw stack reads as noise.
 // `useAnnotationUndoRedo` still exposes `undoStack` / `redoStack` for debugging
@@ -495,6 +526,7 @@ const Actions = ({ hidden = false }: { hidden?: boolean }) => {
   const { detectionModeActive } = useDetectionMode();
   const { segmentationModeActive } = useSegmentationMode();
   const { polylineModeActive } = usePolylineMode();
+  const { keypointModeActive } = useKeypointMode();
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
 
   const noActiveActions =
@@ -502,6 +534,7 @@ const Actions = ({ hidden = false }: { hidden?: boolean }) => {
     !detectionModeActive &&
     !segmentationModeActive &&
     !polylineModeActive &&
+    !keypointModeActive &&
     !current3dAnnotationMode;
   const areThreeDActionsVisible = is3dDataset || is3dSamplePinned;
 
@@ -555,6 +588,7 @@ const Actions = ({ hidden = false }: { hidden?: boolean }) => {
               <Detection />
               <Segmentation />
               <Polyline />
+              <Keypoint />
             </>
           ) : (
             <>
@@ -570,6 +604,7 @@ const Actions = ({ hidden = false }: { hidden?: boolean }) => {
                     <Detection />
                     <Segmentation />
                     <Polyline />
+                    <Keypoint />
                   </>
                 ))}
             </>

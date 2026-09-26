@@ -537,6 +537,20 @@ def _validate_attribute(
             f"'{parent_field_name}'"
         )
 
+    scope = label_schema.pop(foac.SCOPE, None)
+    if scope is not None and scope not in foac.SCOPES:
+        raise ValueError(
+            f"invalid '{foac.SCOPE}' setting '{scope}' for '{attribute}' "
+            f"attribute of field '{parent_field_name}'"
+        )
+
+    is_point_scope = scope == foac.POINT_SCOPE
+    if is_point_scope and class_name not in {_KEYPOINT, _KEYPOINTS}:
+        raise ValueError(
+            f"'{foac.POINT_SCOPE}' '{foac.SCOPE}' is only supported for "
+            f"keypoint fields, not '{parent_field_name}' ({class_name})"
+        )
+
     if allow_new_attrs is False and attribute not in subfields:
         raise ValueError(
             f"'{attribute}' attribute does not exist on {class_name} field"
@@ -567,8 +581,33 @@ def _validate_attribute(
             f"'{parent_field_name}'"
         )
 
+    field = parent_field.get_field(attribute) if parent_field else None
+
+    if is_point_scope:
+        # A point-scoped attribute is stored as a list parallel to `points`
+        # and its schema declares — and validates as — the ELEMENT type
+        if field is not None:
+            if not isinstance(field, fof.ListField) or not isinstance(
+                field.field, foac.SUPPORTED_POINT_ATTRIBUTE_FIELDS
+            ):
+                raise ValueError(
+                    f"'{attribute}' attribute of field '{parent_field_name}' "
+                    f"is not a per-point list of bool/float/int/str values; "
+                    f"'{foac.SCOPE}' cannot be '{foac.POINT_SCOPE}'"
+                )
+
+            field = field.field
+        elif label_schema.get(foac.TYPE, None) not in _POINT_SCOPE_TYPES:
+            raise ValueError(
+                f"invalid '{foac.TYPE}' "
+                f"'{label_schema.get(foac.TYPE, None)}' for "
+                f"'{foac.POINT_SCOPE}'-scoped '{attribute}' attribute of "
+                f"field '{parent_field_name}'; point-scoped attributes "
+                f"declare their element type ({sorted(_POINT_SCOPE_TYPES)})"
+            )
+
     _validate_field_label_schema(
-        parent_field.get_field(attribute) if parent_field else None,
+        field,
         f"{path}.{attribute}",
         label_schema,
         allow_default=True,
@@ -797,16 +836,24 @@ _CLASSIFICATION = "classification"
 _CLASSIFICATIONS = "classifications"
 _DETECTION = "detection"
 _DETECTIONS = "detections"
+_KEYPOINT = "keypoint"
+_KEYPOINTS = "keypoints"
 _POLYLINE = "polyline"
 _POLYLINES = "polylines"
 _TEMPORAL_DETECTION = "temporaldetection"
 _TEMPORAL_DETECTIONS = "temporaldetections"
+
+# Element types a point-scoped attribute may declare (its storage is a list
+# of the element type, parallel to ``points``)
+_POINT_SCOPE_TYPES = {foac.BOOL, foac.FLOAT, foac.INT, foac.STR}
 
 _ALL_LABEL_TYPES = {
     _CLASSIFICATION,
     _CLASSIFICATIONS,
     _DETECTION,
     _DETECTIONS,
+    _KEYPOINT,
+    _KEYPOINTS,
     _POLYLINE,
     _POLYLINES,
     _TEMPORAL_DETECTION,

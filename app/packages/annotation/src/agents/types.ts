@@ -1,5 +1,6 @@
 import type { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
 import type { DetectionLabel } from "@fiftyone/looker/src/overlays/detection";
+import type { KeypointLabel } from "@fiftyone/lighter";
 import type { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
 import type { SyntheticKeyframe } from "@fiftyone/utilities";
 import type { ProviderError } from "../providers";
@@ -217,11 +218,24 @@ export type PropagatedPolyline = PolylineLabel & {
 };
 
 /**
+ * A `KeypointLabel` carrying the same video-annotation dynamic attrs, for
+ * propagation over per-node geometry. `points` is required and holds one
+ * `[x, y]` per skeleton node; interpolation preserves `[NaN, NaN]` holes.
+ */
+export type PropagatedKeypoint = KeypointLabel & {
+  points: [number, number][];
+  keyframe: boolean;
+};
+
+/**
  * Whichever label kind the resolved agent emits. The writer
  * (`useApplyPropagationResult`) is geometry-agnostic — it spreads the label —
  * so this union costs it nothing.
  */
-export type PropagatedLabel = PropagatedDetection | PropagatedPolyline;
+export type PropagatedLabel =
+  | PropagatedDetection
+  | PropagatedPolyline
+  | PropagatedKeypoint;
 
 /**
  * Response type for propagation tasks: a flat list of per-frame labels the
