@@ -1,11 +1,12 @@
-import { Disposable } from "react-relay";
-import { KeyTypeData } from "react-relay/relay-hooks/helpers";
 import {
   atom,
-  AtomOptions,
-  ReadWriteSelectorOptions,
-  TransactionInterface_UNSTABLE,
-} from "recoil";
+  type AtomOptions,
+  type ReverbState,
+  type ReadWriteSelectorOptions,
+  type TransactionInterface,
+} from "@fiftyone/reverb";
+import { Disposable } from "react-relay";
+import { KeyTypeData } from "react-relay/relay-hooks/helpers";
 import { GraphQLTaggedNode, OperationType } from "relay-runtime";
 import { KeyType } from "relay-runtime/lib/store/readInlineData";
 import { selectorWithEffect } from "./selectorWithEffect";
@@ -28,7 +29,7 @@ export type GraphQLSyncFragmentSyncAtomOptions<T extends KeyType, K> = {
 const isTest = typeof process !== "undefined" && process.env.MODE === "test";
 
 /**
- * Creates a recoil atom synced with a relay fragment via its path in a query.
+ * Creates an atom synced with a relay fragment via its path in a query.
  * If the fragment path cannot be read from given the parent fragment keys and
  * the optional final read function, the atom's default value will be used.
  *
@@ -40,20 +41,52 @@ const isTest = typeof process !== "undefined" && process.env.MODE === "test";
  *    in every Writer transaction, including transitions published before this
  *    atom has an active consumer.
  *
- * The second path prevents a long-lived RecoilRoot from exposing a retained
+ * The second path prevents a long-lived root from exposing a retained
  * value from the previous dataset while the next dataset's consumers mount.
  */
 export function graphQLSyncFragmentAtom<T extends KeyType, K = T[" $data"]>(
   fragmentOptions: GraphQLSyncFragmentSyncAtomOptions<T, K>,
   options: GraphQLSyncFragmentAtomOptions<K>,
-) {
+): ReverbState<K> {
   const value = atom({
     ...options,
     default: fragmentOptions.default,
+    /**
+     * The effect below owns live updates, but it cannot set a value before
+     * the first read returns, so a read resolves the fragment from the
+     * current page itself.
+     */
+    resolve: () => {
+      if (isTest) {
+        return fragmentOptions.default;
+      }
+
+      try {
+        const { pageQuery } = getPageQuery();
+        const resolved = resolveFragmentChain(
+          pageQuery.data,
+          fragmentOptions.fragments,
+          fragmentOptions.keys,
+          pageQuery.preloadedQuery.environment,
+        );
+
+        if (resolved.missing || !resolved.context || resolved.data === null) {
+          return fragmentOptions.default;
+        }
+
+        const data = resolved.data as T[" $data"];
+
+        return fragmentOptions.read
+          ? fragmentOptions.read(data, null)
+          : (data as K);
+      } catch {
+        return fragmentOptions.default;
+      }
+    },
     effects: [
       ...(options.effects || []),
       ({ setSelf, trigger }) => {
-        // recoil state should be initialized via RecoilRoot's initializeState
+        // state should be initialized through the root's initializeState
         // during tests
         if (isTest) return undefined;
 
@@ -63,10 +96,7 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K = T[" $data"]>(
         const { pageQuery, subscribe } = getPageQuery();
         let disposable: Disposable | undefined = undefined;
         let previous: null | T[" $data"] = null;
-        const setter = (
-          d: null | T[" $data"],
-          int?: TransactionInterface_UNSTABLE,
-        ) => {
+        const setter = (d: null | T[" $data"], int?: TransactionInterface) => {
           const set = int ? (v: K) => int.set(value, v) : setSelf;
           set(
             fragmentOptions.read && d !== null
@@ -81,7 +111,7 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K = T[" $data"]>(
 
         const run = (
           page: PageQuery<OperationType>,
-          transactionInterface?: TransactionInterface_UNSTABLE,
+          transactionInterface?: TransactionInterface,
         ): Disposable | undefined => {
           const preloadedQuery = page.preloadedQuery;
           try {
@@ -136,6 +166,13 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K = T[" $data"]>(
               setter(update);
             });
           } catch (e) {
+            // Resetting on an unreadable fragment keeps a previous dataset's
+            // value from leaking, but it looks identical to a legitimately
+            // empty fragment, so say which happened.
+            console.error(
+              `graphQLSyncFragmentAtom(${options.key}) could not resolve its fragment`,
+              e,
+            );
             setter(null, transactionInterface);
             return undefined;
           }
@@ -154,7 +191,7 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K = T[" $data"]>(
 
   /*
    * The effect subscription above exists only after this atom is initialized
-   * in the current consumer lifecycle. The application keeps its RecoilRoot
+   * in the current consumer lifecycle. The application keeps its root
    * mounted while routing between datasets, so a page can be published while
    * a particular atom has no mounted consumer even though its previous value
    * is still observable through retained selector state.
@@ -171,7 +208,7 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K = T[" $data"]>(
    * baseline. An active atom may therefore receive the same page from both
    * paths, but both writes are derived from the identical page payload.
    */
-  // Match the atom effect above: tests initialize Recoil state directly and do
+  // Match the atom effect above: tests initialize state directly and do
   // not participate in the runtime Writer synchronization lifecycle.
   if (!isTest) {
     let previousPageData: null | T[" $data"] = null;
@@ -211,10 +248,14 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K = T[" $data"]>(
               : (fragmentData as K),
         );
         previousPageData = fragmentData;
-      } catch {
+      } catch (e) {
         // A missing fragment reference or incompatible query shape must not leak
         // state across pages. The normal atom effect can populate the value later
         // if Relay makes the fragment available through a live update.
+        console.error(
+          `graphQLSyncFragmentAtom(${options.key}) could not resolve its fragment on a page transition`,
+          e,
+        );
         reset();
       }
     });

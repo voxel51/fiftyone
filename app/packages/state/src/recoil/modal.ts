@@ -1,7 +1,6 @@
 import { PointInfo, type Sample } from "@fiftyone/looker";
-import { mainSample, mainSampleQuery } from "@fiftyone/relay";
+import { graphQLSelector, mainSample, mainSampleQuery } from "@fiftyone/relay";
 import { atom, selector, useRecoilValue } from "recoil";
-import { graphQLSelector } from "recoil-relay";
 import { VariablesOf } from "relay-runtime";
 import type { Lookers } from "../hooks";
 import { ComputeCoordinatesReturnType } from "../hooks/useTooltip";

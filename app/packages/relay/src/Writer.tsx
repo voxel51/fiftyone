@@ -1,12 +1,10 @@
+import {
+  type TransactionInterface,
+  useReverbTransaction,
+} from "@fiftyone/reverb";
 import { default as React } from "react";
 import { PreloadedQuery } from "react-relay";
-import {
-  AtomEffect,
-  TransactionInterface_UNSTABLE,
-  useRecoilTransaction_UNSTABLE,
-} from "recoil";
 import { ConcreteRequest, OperationType } from "relay-runtime";
-import { datasetQuery } from "./queries";
 import { SelectorEffectContext, Setter } from "./selectorWithEffect";
 
 export interface PageQuery<T extends OperationType> {
@@ -18,7 +16,7 @@ export interface PageQuery<T extends OperationType> {
 
 export type PageSubscription<T extends OperationType> = (
   pageQuery: PageQuery<T>,
-  transactionInterface: TransactionInterface_UNSTABLE,
+  transactionInterface: TransactionInterface,
   previousPageQuery?: PageQuery<T>,
 ) => void;
 
@@ -75,35 +73,6 @@ export function getPageQuery<T extends OperationType>() {
   return { pageQuery: pageQueryReader<T>(), subscribe };
 }
 
-/**
- * Effect for restting an atom's value when the view or dataset changes.
- * Can be limited to only dataset changes when viewChange is false
- */
-export const resetEffect = <T,>(viewChange = true): AtomEffect<T> => {
-  return ({ trigger, node }) => {
-    if (trigger === "get") {
-      const initialPage = getPageQuery<datasetQuery>();
-      const currentDatasetName =
-        initialPage.pageQuery.preloadedQuery.variables.name;
-      const currentView =
-        initialPage.pageQuery.preloadedQuery.variables.savedViewSlug ||
-        initialPage.pageQuery.preloadedQuery.variables.view;
-      return subscribe<datasetQuery>(({ preloadedQuery }, { reset }) => {
-        if (preloadedQuery.variables.name !== currentDatasetName) {
-          const view =
-            preloadedQuery.variables.savedViewSlug ||
-            preloadedQuery.variables.view;
-          if (!viewChange || view !== currentView) {
-            reset(node);
-          }
-        }
-      });
-    }
-
-    return undefined;
-  };
-};
-
 type WriterProps<T extends OperationType> = React.PropsWithChildren<{
   read: () => PageQuery<T>;
   setters: Map<string, Setter>;
@@ -111,8 +80,8 @@ type WriterProps<T extends OperationType> = React.PropsWithChildren<{
 }>;
 
 /**
- * A Recoil/Relay atomic syncing interface between a current page query
- * and atom and atom families
+ * Publishes each page query to its subscribers in one commit, so every value
+ * derived from a page advances as a single snapshot.
  */
 export function Writer<T extends OperationType>({
   children,
@@ -123,9 +92,9 @@ export function Writer<T extends OperationType>({
   // @ts-ignore
   pageQueryReader = read;
 
-  const set = useRecoilTransaction_UNSTABLE(
+  const set = useReverbTransaction(
     (transactionInterface) =>
-      (cb: (TransactionInterface: TransactionInterface_UNSTABLE) => void) => {
+      (cb: (accessors: TransactionInterface) => void) => {
         cb(transactionInterface);
       },
     [],

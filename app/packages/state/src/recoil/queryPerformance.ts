@@ -14,7 +14,6 @@ import {
   selectorFamily,
   useRecoilValue,
 } from "recoil";
-import { graphQLSelectorFamily } from "recoil-relay";
 import type { ResponseFrom } from "../utils";
 import { config } from "./config";
 import { getBrowserStorageEffectForKey } from "./customEffects";
@@ -112,7 +111,7 @@ export const filterSearch = selectorFamily({
     },
 });
 
-export const lightningQuery = graphQLSelectorFamily<
+export const lightningQuery = foq.graphQLSelectorFamily<
   foq.lightningQuery$variables,
   foq.LightningInput["paths"],
   ResponseFrom<foq.lightningQuery>["lightning"]
@@ -120,7 +119,8 @@ export const lightningQuery = graphQLSelectorFamily<
   environment: RelayEnvironmentKey,
   key: "lightningQuery",
   query: foq.lightning,
-  mapResponse: (response) => response.lightning,
+  mapResponse: (response: ResponseFrom<foq.lightningQuery>) =>
+    response.lightning,
   variables:
     (paths) =>
     ({ get }) => {

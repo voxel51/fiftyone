@@ -2,7 +2,6 @@ import * as foq from "@fiftyone/relay";
 import type { VariablesOf } from "react-relay";
 import type { SerializableParam } from "recoil";
 import { selectorFamily } from "recoil";
-import { graphQLSelectorFamily } from "recoil-relay";
 import type { ResponseFrom } from "../utils";
 import { refresher } from "./atoms";
 import { config } from "./config";
@@ -41,7 +40,7 @@ export class AggregationQueryTimeout extends Error {
  * GraphQL Selector Family for Aggregations.
  * @param extended - Whether to use extended aggregations.
  */
-export const aggregationQuery = graphQLSelectorFamily<
+export const aggregationQuery = foq.graphQLSelectorFamily<
   VariablesOf<foq.aggregationsQuery>,
   {
     dynamicGroup?: SerializableParam;
@@ -57,8 +56,10 @@ export const aggregationQuery = graphQLSelectorFamily<
 >({
   key: "aggregationQuery",
   environment: RelayEnvironmentKey,
-  mapResponse: (response) =>
-    response.aggregations.filter((d) => d.__typename !== "%other"),
+  mapResponse: (response: ResponseFrom<foq.aggregationsQuery>) =>
+    response.aggregations.filter(
+      (d): d is Aggregation => d.__typename !== "%other",
+    ),
   query: foq.aggregation,
   variables:
     ({
