@@ -20,7 +20,9 @@ import {
 } from "@testing-library/react";
 import { TagIcon } from "@voxel51/voodo";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ReactNode } from "react";
 import ActionEntry from "./ActionEntry";
+import { SelectionAssistantFallbackContext } from "./SelectionAssistantFallbackContext";
 import SelectionTray from "./SelectionTray";
 
 function segment(start: string, end: string) {
@@ -113,7 +115,7 @@ const mocks = vi.hoisted(() => {
 });
 
 vi.mock("@fiftyone/operators/src/OperatorPlacements", () => ({
-  default: () => null,
+  default: ({ fallback }: { fallback?: ReactNode }) => fallback ?? null,
 }));
 vi.mock("../../Actions/Similarity/utils", () => ({
   useAvailableSimilarityKeys: () => mocks.similarityKeys,
@@ -246,6 +248,18 @@ function useThreeBuckets(target = "primary") {
 }
 
 describe("SelectionTray", () => {
+  it("lets the host suppress the assistant promotion while placements load", () => {
+    const view = render(<SelectionTray />);
+    expect(screen.getByRole("button", { name: "Voxel51 Agent" })).toBeTruthy();
+
+    view.rerender(
+      <SelectionAssistantFallbackContext.Provider value={false}>
+        <SelectionTray />
+      </SelectionAssistantFallbackContext.Provider>,
+    );
+    expect(screen.queryByRole("button", { name: "Voxel51 Agent" })).toBeNull();
+  });
+
   it("states the all-results scope from exact counts, with loading and retryable errors", async () => {
     mocks.selection.counts = countSelection([fullEpisode, segmentEpisode]);
     const view = render(<SelectionTray />);

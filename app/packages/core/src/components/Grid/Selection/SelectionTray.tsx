@@ -4,6 +4,7 @@ import {
   type GridSelectionActionContext,
 } from "@fiftyone/multimodal/extensions/grid-selection";
 import AgentPromotion from "./AgentPromotion";
+import { SelectionAssistantFallbackContext } from "./SelectionAssistantFallbackContext";
 import OperatorPlacements from "@fiftyone/operators/src/OperatorPlacements";
 import { Places } from "@fiftyone/operators/src/types";
 import * as fos from "@fiftyone/state";
@@ -41,6 +42,7 @@ import {
 } from "@voxel51/voodo";
 import {
   Fragment,
+  useContext,
   useEffect,
   useId,
   useRef,
@@ -231,6 +233,7 @@ export default function SelectionTray({
   const layout = useSelectionBucketActions(selection.datasetId);
   const removeBucket = useRemoveSelectionBucket(selection.domainId);
   const actions = useGridSelectionActions();
+  const showAssistantFallback = useContext(SelectionAssistantFallbackContext);
   const setExpandedSample = fos.useSetExpandedSample();
   const setModalState = fos.useSetModalState();
   const [collapsed, setCollapsed] = useState(false);
@@ -662,7 +665,7 @@ export default function SelectionTray({
           <OperatorPlacements place={Places.SAMPLES_GRID_SELECTION_ACTIONS} />
           <OperatorPlacements
             place={Places.SAMPLES_GRID_SELECTION_ASSISTANT}
-            fallback={<AgentPromotion />}
+            fallback={showAssistantFallback ? <AgentPromotion /> : null}
           />
           {overflow.length > 0 && (
             <div ref={more} className={styles.more}>
