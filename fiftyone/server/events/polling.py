@@ -163,7 +163,7 @@ def _end_polling_lease(subscription: str) -> None:
 
 def _expire_polling_leases(now: float) -> None:
     for subscription, renewed in list(_polling_leases.items()):
-        if now - renewed > _POLLING_LEASE_SECONDS:
+        if now > renewed + _POLLING_LEASE_SECONDS:
             _end_polling_lease(subscription)
 
 
