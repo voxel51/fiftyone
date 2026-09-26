@@ -13049,6 +13049,40 @@
             "date_added": "2026-08-14 12:00:00"
         },
         {
+            "base_name": "mimo-v2.6-distill-qwen-9b-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Agentic 9B vision-language model distilled from MiMo-V2.6 onto Qwen3.5 for object detection via 2D grounding",
+            "source": "https://huggingface.co/XiaomiMiMo/MiMo-V2.6-Distill-Qwen-9B",
+            "author": "Xiaomi MiMo",
+            "license": "MIT",
+            "size_bytes": 18850000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.mimo_v2_6.MiMoV26Model",
+                "config": {
+                    "name_or_path": "XiaomiMiMo/MiMo-V2.6-Distill-Qwen-9B",
+                    "output_processor_cls": "fiftyone.utils.mimo_v2_6.MiMoV26OutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=5.12.0",
+                    "accelerate"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "vlm", "torch", "transformer", "zero-shot"],
+            "training_data": [],
+            "date_added": "2026-09-22 12:00:00"
+        },
+        {
             "base_name": "muse-glimmer-30b-torch",
             "base_filename": null,
             "version": null,
