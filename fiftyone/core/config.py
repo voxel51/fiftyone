@@ -881,6 +881,18 @@ class EvaluationConfig(EnvConfig):
         return d
 
 
+def locate_config_dir():
+    """Returns the path to FiftyOne's configuration directory.
+
+    The default location is ``~/.fiftyone``, but you can override this path by
+    setting the ``FIFTYONE_CONFIG_DIR`` environment variable.
+
+    Returns:
+        the path to FiftyOne's configuration directory
+    """
+    return foc.FIFTYONE_CONFIG_DIR
+
+
 def locate_config():
     """Returns the path to the :class:`FiftyOneConfig` on disk.
 
@@ -892,10 +904,7 @@ def locate_config():
     Returns:
         the path to the :class:`FiftyOneConfig` on disk
     """
-    if "FIFTYONE_CONFIG_PATH" not in os.environ:
-        return foc.FIFTYONE_CONFIG_PATH
-
-    return os.environ["FIFTYONE_CONFIG_PATH"]
+    return foc.FIFTYONE_CONFIG_PATH
 
 
 def locate_app_config():
@@ -910,10 +919,7 @@ def locate_app_config():
     Returns:
         the path to the :class:`AppConfig` on disk
     """
-    if "FIFTYONE_APP_CONFIG_PATH" not in os.environ:
-        return foc.FIFTYONE_APP_CONFIG_PATH
-
-    return os.environ["FIFTYONE_APP_CONFIG_PATH"]
+    return foc.FIFTYONE_APP_CONFIG_PATH
 
 
 def locate_annotation_config():
@@ -928,10 +934,7 @@ def locate_annotation_config():
     Returns:
         the path to the :class:`AnnotationConfig` on disk
     """
-    if "FIFTYONE_ANNOTATION_CONFIG_PATH" not in os.environ:
-        return foc.FIFTYONE_ANNOTATION_CONFIG_PATH
-
-    return os.environ["FIFTYONE_ANNOTATION_CONFIG_PATH"]
+    return foc.FIFTYONE_ANNOTATION_CONFIG_PATH
 
 
 class HTTPRetryConfig(object):
@@ -966,10 +969,7 @@ def locate_evaluation_config():
     Returns:
         the path to the :class:`EvaluationConfig` on disk
     """
-    if "FIFTYONE_EVALUATION_CONFIG_PATH" not in os.environ:
-        return foc.FIFTYONE_EVALUATION_CONFIG_PATH
-
-    return os.environ["FIFTYONE_EVALUATION_CONFIG_PATH"]
+    return foc.FIFTYONE_EVALUATION_CONFIG_PATH
 
 
 def load_config():
