@@ -477,7 +477,10 @@ describe("WebCodecsVideoDecoder AV1", () => {
       frame: {
         ...opening.frame,
         keyframe: true,
-        preroll: [streamKeyframe, leadingDelta],
+        preroll: [
+          { bytes: streamKeyframe, keyframe: true },
+          { bytes: leadingDelta, keyframe: false },
+        ],
       },
     };
 
@@ -511,6 +514,48 @@ describe("WebCodecsVideoDecoder AV1", () => {
         .every(({ closed }) => closed()),
     ).toBe(true);
     output.close();
+    actor.close();
+  });
+  it("keeps a picture its preroll decodes and serves it without resubmitting", async () => {
+    const harness = fakeWebCodecs();
+    const actor = new WebCodecsVideoDecoder(harness.environment);
+    // Presented after the opening but decoded before it, as a P-frame ahead
+    // of the B-frame that opens a reordered episode
+    const early: EncodedVideoAccessUnit = {
+      frame: { ...av1Unit(200_000).frame, decodeTimestampNs: 100_000n },
+      timeNs: 200_000n,
+    };
+    const opening = av1Unit(100_000);
+    const accessUnit: EncodedVideoAccessUnit = {
+      ...opening,
+      frame: {
+        ...opening.frame,
+        decodeTimestampNs: 300_000n,
+        keyframe: true,
+        preroll: [
+          { bytes: av1Unit(0, true).frame.bytes, keyframe: true },
+          { bytes: early.frame.bytes, keyframe: false, timestampNs: 200_000n },
+        ],
+      },
+    };
+
+    const first = await actor.decode([accessUnit], {
+      signal: new AbortController().signal,
+      targetTimeNs: 100_000n,
+    });
+    const second = await actor.decode([early], {
+      signal: new AbortController().signal,
+      targetTimeNs: 200_000n,
+    });
+
+    const chunks = harness.instances[0].decode.mock.calls.map(
+      ([chunk]) => chunk as { readonly timestamp: number },
+    );
+    expect(chunks).toHaveLength(3);
+    expect(second.timestamp).toBe(chunks[1].timestamp);
+    expect(first.timestamp).toBe(chunks[2].timestamp);
+    first.close();
+    second.close();
     actor.close();
   });
 });

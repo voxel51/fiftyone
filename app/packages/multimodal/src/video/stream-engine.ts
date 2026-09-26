@@ -522,7 +522,10 @@ export class VideoStreamEngine {
         runwayEndTimeNs,
         signal,
       );
-      const units = uniqueDecodeSortedAccessUnits([intent, ...read]);
+      const carried = prerollPresentedTimes(intent);
+      const units = uniqueDecodeSortedAccessUnits([intent, ...read]).filter(
+        (unit) => !carried.has(unit.timeNs),
+      );
       if (!units[0]?.frame.keyframe || units[0].timeNs !== intent.timeNs) {
         throw new VideoDependencyWaitError(
           "Waiting for the video runway keyframe",
@@ -601,12 +604,13 @@ export class VideoStreamEngine {
       );
     }
     const keyframe = this.cache.get(keyframeTimeNs);
+    const carried = prerollPresentedTimes(keyframe);
     const targetDecodeTimeNs = intent.frame.decodeTimestampNs;
     const keyframeDecodeTimeNs = keyframe?.frame.decodeTimestampNs;
     const runwayDecodeEndTimeNs = maxDecodeTimeNs(
       this.cache.range(keyframeTimeNs, runwayEndTimeNs),
     );
-    const units =
+    const units = (
       targetDecodeTimeNs !== undefined &&
       keyframeDecodeTimeNs !== undefined &&
       runwayDecodeEndTimeNs !== null
@@ -620,13 +624,17 @@ export class VideoStreamEngine {
         : uniqueSortedAccessUnits([
             ...this.cache.range(keyframeTimeNs, intent.timeNs),
             intent,
-          ]);
+          ])
+    ).filter((unit) => !carried.has(unit.timeNs));
     if (!units[0]?.frame.keyframe || units[0].timeNs !== keyframeTimeNs) {
       throw new VideoDependencyWaitError(
         "Waiting for the video runway keyframe",
       );
     }
-    if (!units.some((unit) => unit.timeNs === intent.timeNs)) {
+    if (
+      !carried.has(intent.timeNs) &&
+      !units.some((unit) => unit.timeNs === intent.timeNs)
+    ) {
       throw new VideoDependencyWaitError("Waiting for the video runway target");
     }
     if (units.length > MAX_VIDEO_DEPENDENCY_ACCESS_UNITS) {
@@ -763,6 +771,20 @@ function runwayStartingAtLastKeyframe(
     throw new VideoDependencyWaitError("Waiting for the video seek target");
   }
   return reordered ? uniqueDecodeSortedAccessUnits(runway) : runway;
+}
+
+/**
+ * Times a unit's preroll presents. Decoding the unit delivers those pictures,
+ * so their own units, which decode before it, never join its runway.
+ */
+function prerollPresentedTimes(
+  unit: EncodedVideoAccessUnit | undefined,
+): ReadonlySet<bigint> {
+  const times = new Set<bigint>();
+  for (const entry of unit?.frame.preroll ?? []) {
+    if (entry.timestampNs !== undefined) times.add(entry.timestampNs);
+  }
+  return times;
 }
 
 function strongerIntent(

@@ -102,6 +102,44 @@ const tinyAv1Mp4Bytes = new Uint8Array(
     "base64",
   ),
 );
+// x264 at 10 fps with two B-frames per P, so decode order is I0 P0.3 B0.1
+// B0.2 P0.6 B0.4 B0.5 ...: presentation and decode order cross.
+const bFrameMp4Bytes = new Uint8Array(
+  Buffer.from(
+    [
+      "AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAOwbW9vdgAAAGxtdmhkAAAAAAAAAAAAAAAAAAAD6AAABLAAAQAAAQAA",
+      "AAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAA",
+      "Atp0cmFrAAAAXHRraGQAAAADAAAAAAAAAAAAAAABAAAAAAAABLAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAA",
+      "AAAAAAAAAAAAAABAAAAAABAAAAAQAAAAAAAkZWR0cwAAABxlbHN0AAAAAAAAAAEAAASwAAAEAAABAAAAAAJSbWRpYQAAACBtZGhk",
+      "AAAAAAAAAAAAAAAAAAAoAAAAMABVxAAAAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAAB/W1p",
+      "bmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAb1zdGJsAAAAvXN0c2QA",
+      "AAAAAAAAAQAAAK1hdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAABAAEABIAAAASAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAA",
+      "AAAAAAAAAAAAAAAAAAAAGP//AAAAM2F2Y0MBZAAK/+EAF2dkAAqs03sBEAAAAwAQAAADAUDxIlOAAQAFaO+PLIv9+PgAAAAAEHBh",
+      "c3AAAAABAAAAAQAAABRidHJ0AAAAAAAAHkIAAB5CAAAAGHN0dHMAAAAAAAAAAQAAAAwAAAQAAAAAFHN0c3MAAAAAAAAAAQAAAAEA",
+      "AABYY3R0cwAAAAAAAAAJAAAAAQAABAAAAAABAAAMAAAAAAIAAAAAAAAAAQAADAAAAAACAAAAAAAAAAEAAAwAAAAAAgAAAAAAAAAB",
+      "AAAIAAAAAAEAAAAAAAAAHHN0c2MAAAAAAAAAAQAAAAEAAAAMAAAAAQAAAERzdHN6AAAAAAAAAAAAAAAMAAADgAAAADEAAAAMAAAA",
+      "DAAAADYAAAAMAAAADAAAADEAAAAMAAAADAAAAB4AAAAMAAAAFHN0Y28AAAAAAAAAAQAAA+AAAABidWR0YQAAAFptZXRhAAAAAAAA",
+      "ACFoZGxyAAAAAAAAAABtZGlyYXBwbAAAAAAAAAAAAAAAAC1pbHN0AAAAJal0b28AAAAdZGF0YQAAAAEAAAAATGF2ZjU4Ljc2LjEw",
+      "MAAAAAhmcmVlAAAEkm1kYXQAAAKrBgX//6fcRem95tlIt5Ys2CDZI+7veDI2NCAtIGNvcmUgMTY0IHIzMTA4IDMxZTE5ZjkgLSBI",
+      "LjI2NC9NUEVHLTQgQVZDIGNvZGVjIC0gQ29weWxlZnQgMjAwMy0yMDIzIC0gaHR0cDovL3d3dy52aWRlb2xhbi5vcmcveDI2NC5o",
+      "dG1sIC0gb3B0aW9uczogY2FiYWM9MSByZWY9MSBkZWJsb2NrPTE6MDowIGFuYWx5c2U9MHgzOjB4MTEzIG1lPWhleCBzdWJtZT03",
+      "IHBzeT0xIHBzeV9yZD0xLjAwOjAuMDAgbWl4ZWRfcmVmPTAgbWVfcmFuZ2U9MTYgY2hyb21hX21lPTEgdHJlbGxpcz0xIDh4OGRj",
+      "dD0xIGNxbT0wIGRlYWR6b25lPTIxLDExIGZhc3RfcHNraXA9MSBjaHJvbWFfcXBfb2Zmc2V0PS0yIHRocmVhZHM9MSBsb29rYWhl",
+      "YWRfdGhyZWFkcz0xIHNsaWNlZF90aHJlYWRzPTAgbnI9MCBkZWNpbWF0ZT0xIGludGVybGFjZWQ9MCBibHVyYXlfY29tcGF0PTAg",
+      "Y29uc3RyYWluZWRfaW50cmE9MCBiZnJhbWVzPTIgYl9weXJhbWlkPTAgYl9hZGFwdD0wIGJfYmlhcz0wIGRpcmVjdD0xIHdlaWdo",
+      "dGI9MSBvcGVuX2dvcD0wIHdlaWdodHA9MiBrZXlpbnQ9MTIga2V5aW50X21pbj03IHNjZW5lY3V0PTAgaW50cmFfcmVmcmVzaD0w",
+      "IHJjX2xvb2thaGVhZD0xMiByYz1jcmYgbWJ0cmVlPTEgY3JmPTIzLjAgcWNvbXA9MC42MCBxcG1pbj0wIHFwbWF4PTY5IHFwc3Rl",
+      "cD00IGlwX3JhdGlvPTEuNDAgYXE9MToxLjAwAIAAAADNZYiEAT/o+oS7H9XzU7MOR40DBza7ugpZum0o7Y5VWG6/yJ7K4bHw7lp0",
+      "FMdEoz5+puT+JTsfv1mo4yUlraJg2ARDky1i+H1KKZp61Aw7s8LZERUFAD6BhemXGMw8nb+cqYD/1Gfctiteiz8AaSL1p4o87ndC",
+      "U9z0yjFqGTknUMVIxxTTswX+CQGfTPTxkPurxeSM/AFGJC6ZyMErHASivMa15H0sxfLfcCUqd/4k65U4nMLuOxY9CN3GH39Poqh7",
+      "ImtVmRTtIAeqBdGwMQAAAC1BmiYxN8fn6BZBbhQczBJXKCOleFj4FnpfdxQurz6m1xm69KgyMg48fEilrWoAAAAIAZ5CiEv/64EA",
+      "AAAIAZ5EiEv/64AAAAAyQZpMMRH/ufxL3hLgJvPza0VKySUB/aIswLLFno/b+9WjLqU9uaqhfy/o6jF1o/xqGisAAAAIAZ5oiEv/",
+      "64EAAAAIAZ5qiEv/64EAAAAtQZpyMRn/xTpwW77YNmTSAzu5inQx1tn3hXndLVNNqOgjbLi98iFJG33sFT77AAAACAGejohL/+uA",
+      "AAAACAGekIhL/+uAAAAAGkGaljEJf9E52bTbhHK6clha5MDyNvbWR46xAAAACAGetIhL/+uA",
+    ].join(""),
+    "base64",
+  ),
+);
 const EPISODE_ROW_START = 100;
 const EPISODE_ROW_END = 101;
 const assets: readonly AssetDescriptor[] = [
@@ -333,39 +371,44 @@ const readParquetObjects = vi.fn(
   },
 );
 
-function av1ByteResources(): ByteResources {
-  const av1Info = {
+/** Serves `videoBytes` as the test video, declared with this codec and rate. */
+function videoByteResources(
+  videoBytes: Uint8Array,
+  codec: string,
+  fps: number,
+): ByteResources {
+  const videoInfo = {
     ...info,
     features: {
       ...info.features,
       "observation.images.test": {
         ...info.features["observation.images.test"],
-        info: { "video.codec": "av1", "video.fps": 2 },
+        info: { "video.codec": codec, "video.fps": fps },
       },
     },
   };
-  const av1InfoBytes = new TextEncoder().encode(JSON.stringify(av1Info));
+  const videoInfoBytes = new TextEncoder().encode(JSON.stringify(videoInfo));
   return {
     readBytes: async (request) => {
       const start = Number(request.range.offset);
       const end = start + Number(request.range.length);
       if (request.source.sourceId === "video") {
         return {
-          bytes: tinyAv1Mp4Bytes.slice(start, end),
+          bytes: videoBytes.slice(start, end),
           range: request.range,
           source: {
             ...request.source,
-            sizeBytes: tinyAv1Mp4Bytes.byteLength.toString(),
+            sizeBytes: videoBytes.byteLength.toString(),
           },
         };
       }
       if (request.source.sourceId !== "info") return io.readBytes(request);
       return {
-        bytes: av1InfoBytes.slice(start, end),
+        bytes: videoInfoBytes.slice(start, end),
         range: request.range,
         source: {
           ...request.source,
-          sizeBytes: av1InfoBytes.byteLength.toString(),
+          sizeBytes: videoInfoBytes.byteLength.toString(),
         },
       };
     },
@@ -911,7 +954,7 @@ describe("LeRobot format adapter", () => {
   it("reports the instant a native preview seeks to, not the one requested", async () => {
     const preview = await createLeRobotFormatAdapter({
       readParquetObjects,
-    }).openPreview?.(source, av1ByteResources());
+    }).openPreview?.(source, videoByteResources(tinyAv1Mp4Bytes, "av1", 2));
     if (!preview) throw new Error("LeRobot preview session is unavailable");
     try {
       await expect(
@@ -931,7 +974,7 @@ describe("LeRobot format adapter", () => {
   });
 
   it("keeps AV1 grid previews native while demuxing modal access units", async () => {
-    const av1Io = av1ByteResources();
+    const av1Io = videoByteResources(tinyAv1Mp4Bytes, "av1", 2);
     const adapter = createLeRobotFormatAdapter({
       readParquetObjects,
     });
@@ -1069,54 +1112,68 @@ describe("LeRobot format adapter", () => {
   it("makes an episode opening mid-GOP decodable from its first frame", async () => {
     // The shared MP4's keyframe precedes the episode, so the opening frame is
     // a delta that decodes only after that keyframe
-    const midGopAssets = assets.map((asset) =>
-      asset.id === "video"
-        ? {
-            ...asset,
-            selector: {
-              fromTimestamp: 0.5,
-              kind: "video-timestamp-interval" as const,
-              toTimestamp: 1,
-            },
-          }
-        : asset,
+    const encoded = await readEpisodeVideo(0.5, 1, io);
+
+    expect(encoded.map((frame) => frame.timestampNs)).toEqual([0n]);
+    const [opening] = encoded;
+    expect(opening.keyframe).toBe(true);
+    expect(opening.preroll).toHaveLength(1);
+    const [streamKeyframe] = opening.preroll ?? [];
+    expect(streamKeyframe.keyframe).toBe(true);
+    // Annex B IDR slice (NAL type 5) from the sample the episode excludes
+    expect(
+      analyzeH264AnnexBAccessUnit(streamKeyframe.bytes).nalUnitTypes,
+    ).toContain(5);
+    expect(analyzeH264AnnexBAccessUnit(opening.bytes).keyframe).toBe(false);
+  });
+
+  it("opens a reordered episode on its first picture with every sample decoded ahead of it", async () => {
+    // Opening at 0.2 s, the start falls between B0.1 and B0.2, and P0.3 is
+    // in range but decodes before B0.1, which is not
+    const encoded = await readEpisodeVideo(
+      0.2,
+      1.2,
+      videoByteResources(bFrameMp4Bytes, "h264", 10),
     );
-    const session = await createLeRobotFormatAdapter({
-      readParquetObjects,
-    }).open(
-      {
-        ...source,
-        assets: { ...source.assets, list: async () => midGopAssets },
-      },
-      io,
+    const at = (seconds: number) =>
+      encoded.find((frame) => frame.timestampNs === secondsNs(seconds - 0.2));
+
+    const opening = at(0.2);
+    expect(opening?.keyframe).toBe(true);
+    expect(opening?.decodeTimestampNs).toBeDefined();
+    expect(
+      opening?.preroll?.map((unit) => ({
+        keyframe: unit.keyframe,
+        timestampNs: unit.timestampNs,
+      })),
+    ).toEqual([
+      { keyframe: true, timestampNs: undefined },
+      { keyframe: false, timestampNs: secondsNs(0.1) },
+      { keyframe: false, timestampNs: undefined },
+    ]);
+    // P0.3 decodes inside the preroll, yet stays on the timeline itself
+    expect(at(0.3)?.keyframe).toBe(false);
+    expect(encoded.some((frame) => (frame.timestampNs ?? 0n) < 0n)).toBe(false);
+  });
+
+  it("carries a reference past the episode end ahead of the pictures that use it", async () => {
+    // Ending at 0.5 s drops P0.6, which decodes before B0.4 and B0.5
+    const encoded = await readEpisodeVideo(
+      0,
+      0.5,
+      videoByteResources(bFrameMp4Bytes, "h264", 10),
     );
-    try {
-      const batches = await collectBatches(
-        session.read({
-          streams: ["observation.images.test"],
-          window: session.manifest.timeRange,
-        }),
-      );
-      const encoded = batches
-        .flatMap((batch) => batch.frames)
-        .flatMap((frame) =>
-          frame.output.visualization?.kind === "encoded-video"
-            ? [frame.output.visualization]
-            : [],
-        );
-      expect(encoded.map((frame) => frame.timestampNs)).toEqual([0n]);
-      const [opening] = encoded;
-      expect(opening.keyframe).toBe(true);
-      expect(opening.preroll).toHaveLength(1);
-      const [streamKeyframe] = opening.preroll ?? [];
-      // Annex B IDR slice (NAL type 5) from the sample the episode excludes
-      expect(
-        analyzeH264AnnexBAccessUnit(streamKeyframe).nalUnitTypes,
-      ).toContain(5);
-      expect(analyzeH264AnnexBAccessUnit(opening.bytes).keyframe).toBe(false);
-    } finally {
-      session.dispose();
-    }
+
+    expect(encoded.map((frame) => frame.timestampNs)).not.toContain(
+      secondsNs(0.6),
+    );
+    const carrier = encoded.find(
+      (frame) => frame.timestampNs === secondsNs(0.4),
+    );
+    expect(carrier?.keyframe).toBe(false);
+    expect(carrier?.preroll).toEqual([
+      { bytes: expect.any(Uint8Array), keyframe: false },
+    ]);
   });
 
   it("rejects an open cancelled while resolving codecs", async () => {
@@ -1575,4 +1632,54 @@ function videoAsset(
       toTimestamp: 14.2,
     },
   };
+}
+
+/** An episode window's encoded frames, read through a fresh session. */
+async function readEpisodeVideo(
+  fromTimestamp: number,
+  toTimestamp: number,
+  byteResources: ByteResources,
+) {
+  const windowAssets = assets.map((asset) =>
+    asset.id === "video"
+      ? {
+          ...asset,
+          selector: {
+            fromTimestamp,
+            kind: "video-timestamp-interval" as const,
+            toTimestamp,
+          },
+        }
+      : asset,
+  );
+  const session = await createLeRobotFormatAdapter({
+    readParquetObjects,
+  }).open(
+    {
+      ...source,
+      assets: { ...source.assets, list: async () => windowAssets },
+    },
+    byteResources,
+  );
+  try {
+    const batches = await collectBatches(
+      session.read({
+        streams: ["observation.images.test"],
+        window: session.manifest.timeRange,
+      }),
+    );
+    return batches
+      .flatMap((batch) => batch.frames)
+      .flatMap((frame) =>
+        frame.output.visualization?.kind === "encoded-video"
+          ? [frame.output.visualization]
+          : [],
+      );
+  } finally {
+    session.dispose();
+  }
+}
+
+function secondsNs(seconds: number): bigint {
+  return BigInt(Math.round(seconds * 1e9));
 }

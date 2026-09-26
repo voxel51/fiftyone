@@ -19,6 +19,7 @@ import {
   recordingSupportFactsFromStreams,
   type DecodedFrame,
   type DecodedOutput,
+  type EncodedVideoPrerollUnit,
   type EncodedVideoVisualization,
   type EpisodeManifest,
   type EpisodePreviewNativeVideo,
@@ -1100,34 +1101,42 @@ class LeRobotEpisodeSession implements EpisodeSession {
             lengthSize,
           );
     };
-    // An episode sharing an MP4 with others can open mid-GOP. The samples
-    // start at the preceding keyframe, so everything decoded before the
-    // episode's first sample is the preroll that makes that sample decodable.
-    const openingIndex = samples.findIndex(
-      (sample) =>
+    const episodeDurationNs = secondsToNs(
+      binding.toSeconds - binding.fromSeconds,
+    );
+    const prerolls = videoPrerolls(
+      samples.map((sample) =>
         episodeRelativeNs(
           videoPresentationSeconds(index, sample),
           binding,
           boundaryToleranceNs,
-        ) >= 0n,
+        ),
+      ),
+      samples.map((sample) => sample.is_sync),
+      episodeDurationNs,
     );
     return samples
-      .map((sample, sampleIndex) =>
-        videoFrame({
+      .map((sample, sampleIndex) => {
+        const carried = prerolls.get(sampleIndex);
+        return videoFrame({
           binding,
           boundaryToleranceNs,
           bytes: payload(sample),
           decodable: true,
           index,
           parameterSets,
-          preroll:
-            sampleIndex === openingIndex && openingIndex > 0
-              ? samples.slice(0, openingIndex).map(payload)
-              : undefined,
+          preroll: carried?.units.map(
+            ({ sampleIndex: carriedIndex, timestampNs }) => ({
+              bytes: payload(samples[carriedIndex]),
+              keyframe: samples[carriedIndex].is_sync,
+              ...(timestampNs === undefined ? {} : { timestampNs }),
+            }),
+          ),
+          randomAccess: carried?.randomAccess ?? false,
           sample,
           streamId,
-        }),
-      )
+        });
+      })
       .filter((frame): frame is DecodedFrame => frame !== null);
   }
 
@@ -2234,6 +2243,78 @@ async function parseVideoIndex(
   };
 }
 
+/** Decode-order samples one emitted sample carries ahead of its own. */
+interface VideoPreroll {
+  /** Whether carrying them makes the sample a random access point. */
+  readonly randomAccess: boolean;
+  readonly units: readonly {
+    readonly sampleIndex: number;
+    /** Set on a sample that is also emitted, so its picture is kept. */
+    readonly timestampNs?: bigint;
+  }[];
+}
+
+/**
+ * What each emitted sample must carry so every picture on the episode
+ * timeline decodes, keyed by decode index. The arrays are in decode order,
+ * starting at a stream keyframe, with each sample's episode-relative
+ * presentation time.
+ *
+ * An episode that opens mid-GOP has its first pictures depend on samples
+ * before the start, and with reordering some of those decode after samples
+ * inside it. The episode's first picture in presentation order carries every
+ * sample decoded before it and becomes the random access point: an in-range
+ * one stays emitted too, and a picture decoded ahead of its own unit is kept.
+ * An out-of-range sample decoded after that, which a later picture may
+ * reference, rides ahead of the next emitted sample.
+ */
+function videoPrerolls(
+  relativeNs: readonly bigint[],
+  sync: readonly boolean[],
+  durationNs: bigint,
+): Map<number, VideoPreroll> {
+  const inRange = (sampleIndex: number) =>
+    relativeNs[sampleIndex] >= 0n && relativeNs[sampleIndex] < durationNs;
+  const prerolls = new Map<number, VideoPreroll>();
+  let opening = -1;
+  relativeNs.forEach((timeNs, sampleIndex) => {
+    if (inRange(sampleIndex) && (opening < 0 || timeNs < relativeNs[opening])) {
+      opening = sampleIndex;
+    }
+  });
+  if (opening < 0) return prerolls;
+  // Pre-start samples decoded after a keyframe that is itself in range are
+  // leading pictures of the previous GOP, which this read never holds
+  const chained = relativeNs[0] < 0n && !sync[opening];
+  let pending: VideoPreroll["units"][number][] = [];
+  relativeNs.forEach((timeNs, sampleIndex) => {
+    if (chained && sampleIndex <= opening) {
+      if (sampleIndex < opening) {
+        pending.push(
+          inRange(sampleIndex)
+            ? { sampleIndex, timestampNs: timeNs }
+            : { sampleIndex },
+        );
+        return;
+      }
+      prerolls.set(sampleIndex, { randomAccess: true, units: pending });
+      pending = [];
+      return;
+    }
+    if (!inRange(sampleIndex)) {
+      if (timeNs >= durationNs || (chained && sampleIndex > opening)) {
+        pending.push({ sampleIndex });
+      }
+      return;
+    }
+    if (pending.length) {
+      prerolls.set(sampleIndex, { randomAccess: false, units: pending });
+      pending = [];
+    }
+  });
+  return prerolls;
+}
+
 function selectVideoSamples(
   index: VideoIndex,
   binding: VideoBinding,
@@ -2277,6 +2358,7 @@ function videoFrame({
   index,
   parameterSets,
   preroll,
+  randomAccess = false,
   sample,
   streamId,
 }: {
@@ -2286,7 +2368,8 @@ function videoFrame({
   readonly decodable: boolean;
   readonly index: VideoIndex;
   readonly parameterSets: VideoParameterSets;
-  readonly preroll?: readonly Uint8Array[];
+  readonly preroll?: readonly EncodedVideoPrerollUnit[];
+  readonly randomAccess?: boolean;
   readonly sample: Sample;
   readonly streamId: string;
 }): DecodedFrame | null {
@@ -2315,14 +2398,18 @@ function videoFrame({
     codecString: index.track.codec,
     decodable,
     // Consumers read the field's presence as "this stream is reordered",
-    // which costs a seek runway and a decoder reset per keyframe
-    ...(decodeTimestampNs === timestampNs ? {} : { decodeTimestampNs }),
-    keyframe: sample.is_sync || Boolean(preroll?.length),
+    // which costs a seek runway and a decoder reset per keyframe. A preroll
+    // that presents pictures is reordering, whatever this sample's own times.
+    ...(decodeTimestampNs === timestampNs &&
+    !preroll?.some((unit) => unit.timestampNs !== undefined)
+      ? {}
+      : { decodeTimestampNs }),
+    keyframe: sample.is_sync || randomAccess,
     parameterSets,
     preroll,
     timestampNs,
   });
-  const payloads = [...(preroll ?? []), bytes];
+  const payloads = [...(preroll ?? []).map((unit) => unit.bytes), bytes];
   const output: DecodedOutput = {
     resourceHints: {
       sizeBytes: payloads.reduce((sum, payload) => sum + payload.byteLength, 0),
@@ -2358,7 +2445,7 @@ function encodedVideo({
   readonly decodeTimestampNs?: bigint;
   readonly keyframe: boolean;
   readonly parameterSets: VideoParameterSets;
-  readonly preroll?: readonly Uint8Array[];
+  readonly preroll?: readonly EncodedVideoPrerollUnit[];
   readonly timestampNs: bigint;
 }): EncodedVideoVisualization {
   const codec = codecFamily(codecString);
