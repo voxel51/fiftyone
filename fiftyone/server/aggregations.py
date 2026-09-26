@@ -17,7 +17,7 @@ import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
-from fiftyone.core.utils import datetime_to_timestamp
+from fiftyone.core.utils import datetime_to_timestamp, run_sync_task
 import fiftyone.core.view as fov
 
 from fiftyone.server.constants import LIST_LIMIT
@@ -161,44 +161,49 @@ async def aggregate_resolver(
             ]
         )
 
-    # Temporal tags are a virtual sidebar field. Their counts come from the
-    # dedicated tags route, even when a multimodal dataset falls back to Mongo.
+    # Temporal tags are a virtual sidebar field. Count the root on this view;
+    # nested paths are not sample fields and have no Mongo aggregation.
     paths = [
         path
         for path in form.paths
-        if path != "_temporal_tags" and not path.startswith("_temporal_tags.")
+        if path != fosv.TEMPORAL_TAGS
+        and not path.startswith(fosv.TEMPORAL_TAGS + ".")
     ]
-    if not paths:
-        return [
-            DataAggregation(path=path, count=0, exists=0)
-            for path in form.paths
-        ]
-
-    aggregations, deserializers = zip(
-        *[
-            _resolve_path_aggregation(
-                path, view, form.query_performance, form.hint
-            )
-            for path in paths
-        ]
-    )
-    counts = [len(a) for a in aggregations]
-    flattened = [item for sublist in aggregations for item in sublist]
-
-    maxTimeMS = form.max_query_time * 1000 if form.max_query_time else None
-    try:
-        result = await view._async_aggregate(flattened, maxTimeMS=maxTimeMS)
-    except ExecutionTimeout:
-        return [
-            AggregationQueryTimeout(path=path, query_time=form.max_query_time)
-            for path in form.paths
-        ]
 
     results = []
-    offset = 0
-    for length, deserialize in zip(counts, deserializers):
-        results.append(deserialize(result[offset : length + offset]))
-        offset += length
+    if paths:
+        aggregations, deserializers = zip(
+            *[
+                _resolve_path_aggregation(
+                    path, view, form.query_performance, form.hint
+                )
+                for path in paths
+            ]
+        )
+        counts = [len(a) for a in aggregations]
+        flattened = [item for sublist in aggregations for item in sublist]
+
+        maxTimeMS = form.max_query_time * 1000 if form.max_query_time else None
+        try:
+            result = await view._async_aggregate(
+                flattened, maxTimeMS=maxTimeMS
+            )
+        except ExecutionTimeout:
+            return [
+                AggregationQueryTimeout(
+                    path=path, query_time=form.max_query_time
+                )
+                for path in form.paths
+            ]
+
+        offset = 0
+        for length, deserialize in zip(counts, deserializers):
+            results.append(deserialize(result[offset : length + offset]))
+            offset += length
+
+    temporal_tags = None
+    if fosv.TEMPORAL_TAGS in form.paths:
+        temporal_tags = await run_sync_task(_temporal_tags_aggregation, view)
 
     if slice_view:
         for result in results:
@@ -207,14 +212,16 @@ async def aggregate_resolver(
                 break
 
     resolved = iter(results)
-    return [
-        (
-            DataAggregation(path=path, count=0, exists=0)
-            if path == "_temporal_tags" or path.startswith("_temporal_tags.")
-            else next(resolved)
-        )
-        for path in form.paths
-    ]
+    ordered = []
+    for path in form.paths:
+        if path == fosv.TEMPORAL_TAGS:
+            ordered.append(temporal_tags)
+        elif path.startswith(fosv.TEMPORAL_TAGS + "."):
+            ordered.append(DataAggregation(path=path, count=0, exists=0))
+        else:
+            ordered.append(next(resolved))
+
+    return ordered
 
 
 RESULT_MAPPING = {
@@ -235,6 +242,23 @@ RESULT_MAPPING = {
     fof.ObjectIdField: StringAggregation,
     fof.StringField: StringAggregation,
 }
+
+
+def _temporal_tags_aggregation(
+    view: foc.SampleCollection,
+) -> StringAggregation:
+    counts = fosv.count_temporal_tags(view)
+    total = sum(counts.values())
+
+    return StringAggregation(
+        path=fosv.TEMPORAL_TAGS,
+        count=total,
+        exists=total,
+        values=[
+            StringAggregationValue(value=value, count=count)
+            for value, count in sorted(counts.items())
+        ],
+    )
 
 
 async def _load_view(form: AggregationForm, slices: t.List[str]):

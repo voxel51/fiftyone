@@ -25,6 +25,7 @@ determines where the column ends, so no delimiter is needed.
 
 import json
 import logging
+import math
 import struct
 import threading
 from collections import OrderedDict
@@ -36,6 +37,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 import fiftyone.core.fields as fof
+import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.stages as fos
@@ -426,7 +428,8 @@ class EmbeddingsV2SampleInfo(HTTPEndpoint):
 
         sample_id = str(results.sample_ids[index])
         point_id = sample_id
-        if results.config.patches_field is not None:
+        patches_field = results.config.patches_field
+        if patches_field is not None:
             point_id = str(results.label_ids[index])
 
         try:
@@ -439,6 +442,7 @@ class EmbeddingsV2SampleInfo(HTTPEndpoint):
                 "filepath": None,
                 "media": None,
                 "value": None,
+                "bounds": None,
             }
 
         value = None
@@ -448,12 +452,23 @@ class EmbeddingsV2SampleInfo(HTTPEndpoint):
             except (AttributeError, KeyError, ValueError):
                 value = None
 
+        media = _hover_media(sample)
+
+        # Only an image preview can be cropped: samples with no hover media
+        # (video, 3D) get no box either
+        bounds = (
+            _patch_bounds(sample, patches_field, point_id)
+            if patches_field is not None and media is not None
+            else None
+        )
+
         return {
             "id": point_id,
             "sampleId": sample_id,
             "filepath": sample.filepath,
-            "media": _hover_media(sample),
+            "media": media,
             "value": value,
+            "bounds": bounds,
         }
 
 
@@ -741,6 +756,111 @@ def _hover_media(sample):
             pass
 
     return filepath
+
+
+def _patch_bounds(sample, patches_field, label_id):
+    """Resolves a patch point's label to its containing box within the
+    sample's media, as relative ``[x, y, w, h]``.
+
+    Returns None when the label carries no usable geometry, or when it no
+    longer exists — a run outlives edits to the field it was computed on,
+    and a hover for a deleted label falls back to the whole sample rather
+    than failing.
+
+    Boxes are deliberately not clamped to ``[0, 1]``: a label may extend
+    past the media's edge, and the client's crop handles that the same way
+    the grid's crop-to-content does.
+    """
+    try:
+        container = sample.get_field(patches_field)
+    except (AttributeError, KeyError, ValueError):
+        return None
+
+    if container is None:
+        return None
+
+    # Detections/Polylines/Keypoints name their list field; a patches run
+    # can also be computed on a single-label field, which is its own entry
+    list_field = getattr(type(container), "_LABEL_LIST_FIELD", None)
+    if list_field is not None:
+        labels = getattr(container, list_field, None) or []
+    else:
+        labels = [container]
+
+    for label in labels:
+        if str(label.id) == label_id:
+            return _label_bounds(label)
+
+    return None
+
+
+def _label_bounds(label):
+    """Relative ``[x, y, w, h]`` containing box for one patch label.
+
+    Covers the label types a patches run can be built from
+    (``fiftyone.core.patches._PATCHES_TYPES``).
+    """
+    if isinstance(label, fol.Detection):
+        bounding_box = label.bounding_box
+        if not bounding_box or len(bounding_box) != 4:
+            return None
+
+        try:
+            box = [float(coord) for coord in bounding_box]
+        except (TypeError, ValueError):
+            return None
+
+        if any(math.isnan(coord) for coord in box):
+            return None
+
+        return box
+
+    if isinstance(label, fol.Polyline):
+        # Polylines nest their points one level deeper: a list of shapes
+        points = [p for shape in (label.points or []) for p in shape]
+    elif isinstance(label, fol.Keypoint):
+        points = label.points or []
+    else:
+        return None
+
+    return _containing_box(points)
+
+
+def _containing_box(points):
+    """The relative ``[x, y, w, h]`` box containing ``points``.
+
+    Mirrors the App's ``getContainingBox()``, which derives the same
+    quantity client-side to drive the grid's crop-to-content. Missing
+    coordinates — keypoints encode them as None or NaN — are skipped
+    rather than poisoning the extent.
+    """
+    coords = []
+    for point in points:
+        if point is None or len(point) < 2:
+            continue
+
+        x, y = point[0], point[1]
+        if x is None or y is None:
+            continue
+
+        try:
+            x, y = float(x), float(y)
+        except (TypeError, ValueError):
+            continue
+
+        if math.isnan(x) or math.isnan(y):
+            continue
+
+        coords.append((x, y))
+
+    if not coords:
+        return None
+
+    xs = [x for x, _ in coords]
+    ys = [y for _, y in coords]
+    x, y = min(xs), min(ys)
+
+    return [x, y, max(xs) - x, max(ys) - y]
 
 
 def _resolve_selection(data, results):

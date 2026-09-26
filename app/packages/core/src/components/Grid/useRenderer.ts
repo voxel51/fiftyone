@@ -9,6 +9,7 @@ import useFontSize from "./useFontSize";
 import { useGridCustomRendererItem } from "./useGridCustomRendererItem";
 import useSelectSample from "./useSelectSample";
 import type { GridSelectionClick } from "./useGridSelectionClick";
+import { useTileIntervalOverlay } from "./useTileIntervalOverlay";
 import type { SampleStore } from "./useSpotlightPager";
 
 const LOOKER_HOST_ATTR = "data-fo-looker-host";
@@ -98,6 +99,7 @@ export default function useRenderer({
   const selectionRef = useRef(selection);
   selectionRef.current = selection;
   const sampleRenderer = useGridCustomRendererItem(createLooker);
+  const tileOverlay = useTileIntervalOverlay();
 
   // `showItem` must stay stable even as the sample renderer hook refreshes.
   const sampleRendererRef = useRef(sampleRenderer);
@@ -105,22 +107,24 @@ export default function useRenderer({
 
   const detachItem = useCallback(
     (id: ID) => {
-      cache.get(id.description)?.detach();
+      tileOverlay.unmount(id.description);
       unregisterTile(id.description);
+      return cache.get(id.description)?.detach();
     },
-    [cache],
+    [cache, tileOverlay],
   );
 
   const hideItem = useCallback<Hide>(
     ({ id }) => {
-      cache.hide(id.description);
+      tileOverlay.unmount(id.description);
       // Drop the decorator portal too — Spotlight may reuse this tile
       // element for a different sample on re-show, and we don't want
       // the old decorator pointing at an overlay div that now belongs
       // to someone else. The next `showItem` re-registers cheaply.
       unregisterTile(id.description);
+      return cache.hide(id.description);
     },
-    [cache],
+    [cache, tileOverlay],
   );
 
   const showItem = useCallback<Show<number, fos.Sample>>(
@@ -161,7 +165,10 @@ export default function useRenderer({
         // Re-register so the overlay div (potentially recreated on a
         // fresh tile element after scroll) is what portals target.
         const cachedResult = store.get(id);
-        if (cachedResult) registerWithSample(cachedResult);
+        if (cachedResult) {
+          registerWithSample(cachedResult);
+          tileOverlay.mount(key, element, cachedResult);
+        }
         return cache.sizeOf(key);
       }
 
@@ -202,9 +209,10 @@ export default function useRenderer({
       cache.set(key, item);
       item.attach(innerHost, dimensions);
       registerWithSample(result);
+      tileOverlay.mount(key, element, result);
       return cache.sizeOf(key);
     },
-    [cache, getFontSize, selectSample, sampleRendererRef, store],
+    [cache, getFontSize, selectSample, sampleRendererRef, store, tileOverlay],
   );
 
   return {

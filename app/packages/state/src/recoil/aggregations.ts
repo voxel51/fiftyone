@@ -21,6 +21,8 @@ import { RelayEnvironmentKey } from "./relay";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
 import { selectionScopeBoundary } from "./selectionScope";
+import { TEMPORAL_TAGS_FIELD } from "./sidebar";
+import { temporalTagsRevision } from "./temporalTags";
 import { State } from "./types";
 import * as viewAtoms from "./view";
 
@@ -104,7 +106,9 @@ export const aggregationQuery = graphQLSelectorFamily<
         (mixed || get(groupStatistics(modal)) === "group") && useSelection;
 
       const aggForm = {
-        index: get(refresher),
+        index:
+          get(refresher) +
+          (paths.includes(TEMPORAL_TAGS_FIELD) ? get(temporalTagsRevision) : 0),
         dataset,
         dynamicGroup,
         extendedStages: root ? {} : get(selectors.extendedStagesNoSort),
@@ -180,9 +184,14 @@ export const aggregation = selectorFamily({
       path: string;
     }) =>
     ({ get }) => {
-      const paths = params.modal
-        ? get(modalAggregationPaths({ path, mixed: params.mixed }))
-        : get(schemaAtoms.filterFields(path));
+      // Temporal tags are counted apart from the sample fields server-side,
+      // and are refetched on their own after a tag mutation
+      const paths =
+        path === TEMPORAL_TAGS_FIELD
+          ? [path]
+          : params.modal
+            ? get(modalAggregationPaths({ path, mixed: params.mixed }))
+            : get(schemaAtoms.filterFields(path));
 
       const result = get(
         aggregations({

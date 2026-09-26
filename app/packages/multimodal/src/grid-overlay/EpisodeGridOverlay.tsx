@@ -1,4 +1,4 @@
-import type { SampleRendererProps } from "@fiftyone/plugins";
+import type { IntervalTileContext } from "../extensions/episode-intervals";
 import {
   useCallback,
   useEffect,
@@ -87,7 +87,7 @@ const BUILT_IN_SOURCES = [
  * different sources share levels and enabling another source never makes the
  * tile taller. Renders nothing when no source contributes anything.
  */
-export function EpisodeGridOverlay({ ctx }: SampleRendererProps) {
+export function EpisodeGridOverlay({ ctx }: { ctx: IntervalTileContext }) {
   return (
     <EpisodeIntervalSources builtInSources={BUILT_IN_SOURCES} ctx={ctx}>
       {(resolved) => <IntervalLane ctx={ctx} resolved={resolved} />}
@@ -99,7 +99,7 @@ function IntervalLane({
   ctx,
   resolved,
 }: {
-  readonly ctx: SampleRendererProps["ctx"];
+  readonly ctx: IntervalTileContext;
   readonly resolved: readonly ResolvedEpisodeIntervals[];
 }) {
   const episodeId = ctx.sample.sample._id;
@@ -107,7 +107,7 @@ function IntervalLane({
   const playheadNs = useEpisodePlayheadNs(episodeId, timeRange);
   const recordingDurationNs = timeRange
     ? Number(timeRange.endNs - timeRange.startNs)
-    : undefined;
+    : ctx.durationNs;
 
   const model = useMemo(
     () => buildLaneModel(resolved, recordingDurationNs),

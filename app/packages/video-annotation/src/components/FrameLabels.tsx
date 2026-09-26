@@ -31,8 +31,9 @@ import {
 import { useEngineTemporalSample } from "../sync/useTemporalOverlaySync";
 import { useWarmupThenSeek } from "../hooks/useWarmupThenSeek";
 import {
-  TimelineWithTracks,
+  TemporalTagTimeline,
   TrackProvider,
+  isTemporalTagTrackId,
   type TimelineTracksScroller,
   type Track,
   type TrackEventMenuItem,
@@ -48,6 +49,7 @@ import {
   objectTrackClassOf,
   objectTrackPathOf,
   parseSubTrackId,
+  parseTimelineSubTrackId,
   type PerInstanceLabel,
 } from "../tracks/frameTracks";
 import {
@@ -70,6 +72,7 @@ import { useCurrentFrameGetter } from "../state/useCurrentFrame";
 import { resolveFrameCount } from "../utils/frameCount";
 import { getModalSampleFrameRate } from "../utils/modalSample";
 import { useTimelineDrawerOpen } from "../state/useTimelineDrawer";
+import { useVideoTemporalTags } from "../tracks/useVideoTemporalTags";
 import {
   useVideoSurfaceActions,
   type VideoSurfaceActions,
@@ -89,7 +92,7 @@ type BaseTrackDecoration = ReturnType<
   ReturnType<typeof useVideoTrackDecorator>
 >;
 
-/** Decoration a track row contributes to {@link TimelineWithTracks}. */
+/** Decoration a track row contributes to {@link TemporalTagTimeline}. */
 type TrackDecoration = BaseTrackDecoration & {
   snapStepSec?: number;
   eventMenuItems?: TrackEventMenuItem[];
@@ -111,6 +114,16 @@ type TrackDecoration = BaseTrackDecoration & {
 
 /** Row height (px) for a dynamic-attribute sub-track — shorter than a parent. */
 const SUB_TRACK_ROW_HEIGHT = 22;
+
+/**
+ * Decoration for a temporal-tag row. Tags are sample-scoped intervals with no
+ * engine instance behind them, so none of the frame-addressed edits, merges or
+ * hover links apply; the timeline supplies their own menu. Shared rather than
+ * rebuilt per call so the memoized rows keep hitting.
+ */
+const TEMPORAL_TAG_TRACK_DECORATION: TrackDecoration = {
+  expansionGutter: true,
+};
 
 /**
  * Most "Merge into …" entries to offer on one track's menu.
@@ -557,6 +570,10 @@ function useTrackDecorator({
 
   return useCallback(
     (track: Track): TrackDecoration => {
+      if (isTemporalTagTrackId(track.id)) {
+        return TEMPORAL_TAG_TRACK_DECORATION;
+      }
+
       // A sub-track row links its hover / selection to the PARENT instance and
       // renders as an indented child; it owns no presence-bar edits.
       const sub = parseSubTrackId(track.id);
@@ -675,6 +692,13 @@ const EMPTY_HOST_DECORATION = Object.freeze({});
  * plus one row per `TemporalDetection` (rendered as a `support`-spanning
  * interval). Untracked labels still paint as overlays but get no rows.
  *
+ * Temporal tags ride on the same timeline, which is why this renders
+ * `TemporalTagTimeline` rather than the plain `TimelineWithTracks` it wraps:
+ * that adds the tag-mode button, the range-drag overlay and the creation
+ * popup, and contributes one row per tag value carried by the open sample.
+ * The surfaces this mounts on cover both plain video datasets and the video
+ * slices of grouped ones.
+ *
  * Mounted once per sample and fed the live `tracks` prop. The frame-label
  * stream is rebuilt whenever a per-frame field is toggled, and its index is
  * empty until the rebuild lands — so the rows resolved last are held in place
@@ -693,9 +717,9 @@ export const FrameLabelsTracks: React.FC<{
   maxSize?: number;
   /**
    * Host content for the controls row, after the playback cluster. Passed
-   * through to `TimelineWithTracks` rather than assumed here: this component
-   * renders the same read-only track data in Explore and in Annotate, and
-   * only Annotate has editing actions to offer.
+   * through to the timeline rather than assumed here: this component renders
+   * the same read-only track data in Explore and in Annotate, and only
+   * Annotate has editing actions to offer.
    */
   extraActions?: React.ReactNode;
   /**
@@ -735,12 +759,14 @@ export const FrameLabelsTracks: React.FC<{
   const [drawerOpen, setDrawerOpen] = useTimelineDrawerOpen();
 
   // Persist pin state per video (dataset + sample) so reopening the same
-  // sample restores which tracks the user pinned to the timeline.
+  // sample restores which tracks the user pinned to the timeline. Keyed by the
+  // sample shown, not the modal's sample id: on a grouped dataset that is the
+  // grid tile that was clicked, which differs by grid slice for the same video.
   const dataset = useDatasetName();
-  const sampleId = useModalSampleId();
+  const shownSampleId = sample?.sample?._id;
   const persistKey =
-    dataset && sampleId
-      ? `fo-va-pinned-tracks:${dataset}:${sampleId}${pinScopeKey ? `:${pinScopeKey}` : ""}`
+    dataset && shownSampleId
+      ? `fo-va-pinned-tracks:${dataset}:${shownSampleId}${pinScopeKey ? `:${pinScopeKey}` : ""}`
       : undefined;
 
   // Dynamic attributes are declared per field, so resolve them per-path when
@@ -765,6 +791,22 @@ export const FrameLabelsTracks: React.FC<{
   // means nothing until those have landed; Explore's come from the sidebar.
   const schemasLoaded = useLabelSchemasLoaded();
   const ready = frameTracksResolved && (mode === "explore" || schemasLoaded);
+
+  // `sample.sample._id`, not `sample.id`: the modal's sample query suffixes its
+  // id with `-modal`, which the tag routes reject as a malformed ObjectId.
+  const {
+    tracks: temporalTagTracks,
+    existingTags,
+    pinnedTrackIds,
+    tagEventMenuItems,
+    onTagCreate,
+    onTagUpdate,
+  } = useVideoTemporalTags(sample?.sample?._id);
+  const initialPins = useMemo(
+    () => [...new Set([...pinnedTrackIds, ...(initialPinnedIds ?? [])])],
+    [pinnedTrackIds, initialPinnedIds],
+  );
+
   // Object tracks (with their sub-tracks interleaved) followed by TD tracks.
   const resolvedTracks = useMemo(
     () => [...additionalTracks, ...frameTracks, ...temporalDetectionTracks],
@@ -781,7 +823,13 @@ export const FrameLabelsTracks: React.FC<{
       setHeldTracks(resolvedTracks);
     }
   }, [ready, resolvedTracks]);
-  const tracks = ready ? resolvedTracks : heldTracks;
+  // The sample's temporal tags follow, live: they do not come from the
+  // frame-label stream, so a field toggle has nothing of theirs to wait for.
+  const shownTracks = ready ? resolvedTracks : heldTracks;
+  const tracks = useMemo(
+    () => [...shownTracks, ...temporalTagTracks],
+    [shownTracks, temporalTagTracks],
+  );
 
   const expansion = useTrackExpansion();
 
@@ -789,7 +837,7 @@ export const FrameLabelsTracks: React.FC<{
   const expandableParentIds = useMemo(() => {
     const ids = new Set<string>();
     for (const track of tracks) {
-      const sub = parseSubTrackId(track.id);
+      const sub = parseTimelineSubTrackId(track.id);
       if (sub) {
         ids.add(sub.parentId);
       }
@@ -802,15 +850,14 @@ export const FrameLabelsTracks: React.FC<{
   const visibleTracks = useMemo(
     () =>
       tracks.filter((track) => {
-        const sub = parseSubTrackId(track.id);
+        const sub = parseTimelineSubTrackId(track.id);
         return !sub || expansion.expandedIds.has(sub.parentId);
       }),
     [tracks, expansion.expandedIds],
   );
 
-  // Bootstrap on frame-tracks-resolved, not `tracks.length`: TD tracks resolve
-  // synchronously and would otherwise trip the empty→ready flip before frame
-  // tracks land, leaving frame tracks unpinned.
+  // Ready means frame tracks resolved, not `tracks.length`: TD and tag tracks
+  // resolve on their own and would report ready before frame tracks land.
   useEffect(() => {
     onReadyChange?.(ready);
   }, [ready, onReadyChange]);
@@ -826,8 +873,8 @@ export const FrameLabelsTracks: React.FC<{
     }
   }, [ready, visibleTracks]);
 
-  // Filled by TimelineWithTracks; the drawer is virtualized, so revealing a
-  // row has to go through the list rather than the DOM.
+  // Filled by the timeline; the drawer is virtualized, so revealing a row has
+  // to go through the list rather than the DOM.
   const timelineScroller = useRef<TimelineTracksScroller | null>(null);
   useScrollTrackToAnchor(timelineScroller);
   const decorateTrack = useTrackDecorator({
@@ -847,13 +894,17 @@ export const FrameLabelsTracks: React.FC<{
   );
 
   return (
+    // `TrackProvider` reads `persistKey` at mount and writes its current pins
+    // under whatever key it is given, so a new video must remount it, or the
+    // previous video's pins overwrite the new one's.
     <TrackProvider
+      key={persistKey}
       tracks={visibleTracks}
       autoPinNewTracks={false}
+      initialPinnedIds={initialPins}
       persistKey={persistKey}
-      initialPinnedIds={initialPinnedIds}
     >
-      <TimelineWithTracks
+      <TemporalTagTimeline
         decorateTrack={decorateWithHostTracks}
         scrollerRef={timelineScroller}
         extraActions={extraActions}
@@ -863,6 +914,10 @@ export const FrameLabelsTracks: React.FC<{
         maxSize={maxSize}
         drawerOpen={drawerOpen}
         onDrawerOpenChange={setDrawerOpen}
+        existingTags={existingTags}
+        tagEventMenuItems={tagEventMenuItems}
+        onTagCreate={onTagCreate}
+        onTagUpdate={onTagUpdate}
       />
     </TrackProvider>
   );

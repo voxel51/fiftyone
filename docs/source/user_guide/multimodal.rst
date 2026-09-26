@@ -481,6 +481,11 @@ tags**: tags attached to a time interval within a sample rather than to the
 whole sample. Temporal tags are ideal for marking events of interest —
 interventions, near-misses, sensor dropouts, interesting maneuvers.
 
+Temporal tags are not limited to multimodal datasets. Any sample the App can
+put a playhead on carries them: multimodal episodes, video samples, and the
+video slices of grouped datasets. In each case the interval is measured in
+nanoseconds elapsed from the start of that sample's media.
+
 You can create temporal tags interactively in the App, or programmatically
 via the SDK.
 
@@ -490,6 +495,10 @@ Tagging in the App
 To create a temporal tag in the App, **Shift + click and drag** along the
 playback timeline to select the interval of interest, then enter the tag.
 Existing tags appear on the timeline, where you can review and delete them.
+
+The same timeline appears beneath the player when you open a video sample, so
+video datasets are tagged exactly the same way. The sidebar's **temporal tags**
+filter and its entry in the color scheme editor appear for these datasets too.
 
 .. image:: https://cdn.voxel51.com/fundamentals/fiftyone_multimodal/temporal-tag.webp
    :alt: multimodal-temporal-tags

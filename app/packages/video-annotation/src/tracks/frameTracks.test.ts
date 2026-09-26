@@ -1,8 +1,10 @@
+import { temporalTagTrackId } from "@fiftyone/playback";
 import type { LabelData } from "@fiftyone/utilities";
 import { describe, expect, it, vi } from "vitest";
 import {
   buildPerInstanceTracks,
   parseSubTrackId,
+  parseTimelineSubTrackId,
   segmentAttribute,
   subTrackId,
   type FrameLabelReader,
@@ -389,5 +391,22 @@ describe("buildPerInstanceTracks dynamic-attribute sub-tracks", () => {
 
     expect(tracks).toHaveLength(1);
     expect(parseSubTrackId(tracks[0].id)).toBeNull();
+  });
+});
+
+describe("parseTimelineSubTrackId", () => {
+  it("reads a sub-track row exactly as the plain parse does", () => {
+    const id = subTrackId("instance-1", "occluded");
+
+    expect(parseTimelineSubTrackId(id)).toEqual(parseSubTrackId(id));
+  });
+
+  it("refuses to read a temporal-tag row as somebody's child", () => {
+    // The plain parse sees the `::` in the tag id and invents a parent; a row
+    // attributed to a parent that does not exist never renders.
+    const id = temporalTagTrackId("review");
+
+    expect(parseSubTrackId(id)).not.toBeNull();
+    expect(parseTimelineSubTrackId(id)).toBeNull();
   });
 });

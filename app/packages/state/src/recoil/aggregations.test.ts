@@ -143,3 +143,52 @@ describe("extended aggregation requests", () => {
     expect(requested).toBe(expected);
   });
 });
+
+describe("temporal tag aggregations", () => {
+  it("requests temporal tags on their own, in the modal too", () => {
+    const modal = <TestSelectorFamily<typeof aggregations.aggregation>>(
+      (<unknown>aggregations.aggregation({
+        extended: false,
+        modal: true,
+        path: "_temporal_tags",
+      }))
+    );
+    let requested: string[] | undefined;
+    setMockAtoms({
+      aggregations: ({ paths }) => {
+        requested = paths;
+        return [{ path: "_temporal_tags" }];
+      },
+    });
+
+    modal();
+    expect(requested).toStrictEqual(["_temporal_tags"]);
+  });
+
+  it("refetches temporal tags, and only them, after a tag mutation", () => {
+    const query = aggregations.aggregationQuery as unknown as (params: {
+      extended: boolean;
+      modal: boolean;
+      paths: string[];
+    }) => { variables: () => { form: { index: number } } };
+    const index = (paths: string[]) =>
+      query({ extended: false, modal: false, paths }).variables().form.index;
+    setMockAtoms({
+      activeIndex: null,
+      config: {},
+      currentSlices: () => null,
+      _datasetName__setter: "dataset",
+      extendedStagesNoSort: {},
+      groupSlice: null,
+      groupStatistics: () => "slice",
+      hiddenLabelsArray: [],
+      queryPerformance: false,
+      refresher: 3,
+      temporalTagsRevision: 2,
+      _view__setter: [],
+    });
+
+    expect(index(["_temporal_tags"])).toBe(5);
+    expect(index(["tags"])).toBe(3);
+  });
+});

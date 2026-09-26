@@ -27,7 +27,7 @@ from fiftyone.server.filters import GroupElementFilter, SampleFilter
 from fiftyone.server.scalars import BSONArray, JSON
 
 _LABEL_TAGS = "_label_tags"
-_TEMPORAL_TAGS = "_temporal_tags"
+TEMPORAL_TAGS = "_temporal_tags"
 
 
 def _make_group_field_stage(view):
@@ -303,7 +303,7 @@ def get_extended_view(
         if label_tags:
             view = _match_label_tags(view, label_tags)
 
-        temporal_tags = filters.get(_TEMPORAL_TAGS, None)
+        temporal_tags = filters.get(TEMPORAL_TAGS, None)
         if temporal_tags:
             view = _match_temporal_tags(view, temporal_tags)
 
@@ -1024,10 +1024,11 @@ def _match_temporal_tags(
     # requested tag values at the dataset level (tags are sparse, so this set
     # stays small, and we avoid enumerating the view's sample ids on every
     # grid load), then select / exclude within the current view -- the
-    # select/exclude intersects, so out-of-view tag hits can't leak in.
-    dataset = view._dataset if isinstance(view, fov.DatasetView) else view
+    # select/exclude intersects, so out-of-view tag hits can't leak in. On a
+    # grouped view that is the active slice's samples, as with every other
+    # sidebar filter.
     tags = fotags.list_temporal_tags(
-        dataset, fotags.TemporalTagFilter(tags=values)
+        _root_dataset(view), fotags.TemporalTagFilter(tags=values)
     )
     sample_ids = {str(tag.sample_id) for tag in tags}
 
@@ -1037,6 +1038,32 @@ def _match_temporal_tags(
 
     # Matching with no matches yields an empty view.
     return view.select(sample_ids)
+
+
+def count_temporal_tags(view: foc.SampleCollection) -> dict:
+    """Counts the temporal tags on the samples of ``view``, by tag value.
+
+    Counts every interval, as the other sidebar tag counts count occurrences.
+    The database groups the dataset's tags per sample first, so only tagged
+    samples are narrowed to the view, rather than every tag or every sample id
+    being read.
+    """
+    per_sample = fotags.count_temporal_tags_per_sample(_root_dataset(view))
+    if not per_sample:
+        return {}
+
+    in_view = view.select(list(per_sample.keys())).values("id")
+
+    counts = {}
+    for sample_id in in_view:
+        for tag, count in per_sample[sample_id].items():
+            counts[tag] = counts.get(tag, 0) + count
+
+    return counts
+
+
+def _root_dataset(view: foc.SampleCollection) -> fod.Dataset:
+    return view._dataset if isinstance(view, fov.DatasetView) else view
 
 
 def _match_label_tags(view: foc.SampleCollection, label_tags):

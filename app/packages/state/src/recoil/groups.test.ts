@@ -2,7 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("recoil");
 vi.mock("recoil-relay");
 
-import { setMockAtoms, TestSelector } from "../../../../__mocks__/recoil";
+import {
+  mockValues,
+  setMockAtoms,
+  TestSelector,
+} from "../../../../__mocks__/recoil";
 import { TestGraphQLSelectorFamily } from "../../../../__mocks__/recoil-relay";
 import * as groups from "./groups";
 
@@ -109,5 +113,35 @@ describe("currentGroupSliceNames", () => {
     });
 
     expect(testCurrentGroupSliceNames()).toStrictEqual([]);
+  });
+});
+
+describe("groupSlice", () => {
+  const testGroupSlice = groups.groupSlice as unknown as TestSelector<
+    typeof groups.groupSlice
+  > & { set: (slice: string) => void };
+  const temporalTags = { values: ["my tag"], exclude: false };
+  const labelTags = { values: ["reviewed"], exclude: false };
+
+  const switchTo = (slice: string) => {
+    setMockAtoms({
+      similarityParameters: null,
+      defaultGroupSlice: "left",
+      groupMediaTypesMap: { left: "image", video: "video" },
+      filters: { _temporal_tags: temporalTags, _label_tags: labelTags },
+    });
+    testGroupSlice.set(slice);
+    return (mockValues as Record<string, unknown>).filters;
+  };
+
+  it("drops a temporal tags filter on moving to a slice that cannot carry temporal tags", () => {
+    expect(switchTo("left")).toEqual({ _label_tags: labelTags });
+  });
+
+  it("keeps a temporal tags filter on moving to a video slice", () => {
+    expect(switchTo("video")).toEqual({
+      _temporal_tags: temporalTags,
+      _label_tags: labelTags,
+    });
   });
 });

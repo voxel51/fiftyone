@@ -49,6 +49,15 @@ export type {
 } from "./src/views/TemporalTag/TemporalTagContext";
 export { default as TemporalTagTimeline } from "./src/views/TemporalTag/TemporalTagTimeline";
 export type { TemporalTagTimelineProps } from "./src/views/TemporalTag/TemporalTagTimeline";
+export {
+  buildTemporalTagTracks,
+  isTemporalTagTrackId,
+  TEMPORAL_TAG_TRACK_PREFIX,
+  temporalTagNanoseconds,
+  temporalTagSeconds,
+  temporalTagTrackId,
+} from "./src/views/TemporalTag/temporal-tag-tracks";
+export type { TemporalTagInterval } from "./src/views/TemporalTag/temporal-tag-tracks";
 
 // Continuous-time playback runtime surface consumed by feature packages
 // (e.g. @fiftyone/video-annotation) — exposed here so consumers don't reach

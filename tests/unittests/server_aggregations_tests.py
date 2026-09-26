@@ -12,6 +12,7 @@ import strawberry as gql
 from strawberry.schema.config import StrawberryConfig
 
 import fiftyone as fo
+import fiftyone.core.tags as fota
 
 from fiftyone.server.constants import SCALAR_OVERRIDES
 from fiftyone.server.aggregate import AggregateQuery
@@ -248,6 +249,76 @@ class TestGroupModeHistogramCounts(unittest.IsolatedAsyncioTestCase):
             result.data,
             {"aggregate": [{"values": [{"value": 1, "key": "default"}]}]},
         )
+
+
+class TestTemporalTagsAggregation(unittest.IsolatedAsyncioTestCase):
+    @drop_async_dataset
+    async def test_counts_the_active_slice_alongside_field_paths(
+        self, dataset: fo.Dataset
+    ):
+        _add_samples(dataset)
+        other = dataset.select_group_slices("other").first()
+        fota.add_temporal_tags(
+            dataset,
+            [
+                fota.TemporalTag(
+                    other.id, 0, 1, "review", kind=fota.TagKind.TEMPORAL
+                )
+            ],
+        )
+
+        query = """
+            query Query($form: AggregationForm!) {
+                aggregations(form: $form) {
+                    ... on StringAggregation {
+                        path
+                        count
+                        values {
+                            count
+                            value
+                        }
+                    }
+                }
+            }
+        """
+
+        expected = {
+            "default": [],
+            "other": [{"count": 1, "value": "review"}],
+        }
+        for slice_name, values in expected.items():
+            with self.subTest(slice=slice_name):
+                form = {
+                    "index": 0,
+                    "dataset": dataset.name,
+                    "extended_stages": {},
+                    "filters": {},
+                    "group_id": None,
+                    "hidden_labels": [],
+                    "paths": ["label.label", "_temporal_tags"],
+                    "mixed": False,
+                    "sample_ids": [],
+                    "slice": slice_name,
+                    "slices": [slice_name],
+                    "view": [],
+                }
+                result = await execute(schema, query, {"form": form})
+
+                self.assertEqual(
+                    result.data["aggregations"],
+                    [
+                        {
+                            "path": "label.label",
+                            "count": 1,
+                            "values": [{"count": 1, "value": slice_name}],
+                        },
+                        {
+                            "path": "_temporal_tags",
+                            "count": len(values),
+                            "values": values,
+                        },
+                    ],
+                )
 
 
 def _add_samples(dataset: fo.Dataset):
