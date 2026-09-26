@@ -2,6 +2,13 @@ import { expect, Locator, Page } from "src/oss/fixtures";
 import { ModalPom } from ".";
 
 /**
+ * Prefix of a temporal-tag row's track id. Must match
+ * `TEMPORAL_TAG_TRACK_PREFIX` in `@fiftyone/playback`, which mints these ids —
+ * this package cannot import from the app workspace.
+ */
+const TEMPORAL_TAG_TRACK_PREFIX = "temporal-tag::";
+
+/**
  * The video-annotation surface: the ImaVid tile, the timeline of per-instance
  * frame-label tracks and temporal-detection (TD) rows, and the playback
  * controls, composing with the shared modal POMs. Tracks expose
@@ -121,6 +128,106 @@ export class VideoAnnotatePom {
   /** Timeline track ids for temporal-detection rows (`td-<field>-<id>`). */
   async temporalTrackIds(): Promise<string[]> {
     return (await this.trackIds()).filter((id) => id.startsWith("td-"));
+  }
+
+  /**
+   * Timeline track ids for temporal-TAG rows (`temporal-tag::<value>`). Not to
+   * be confused with {@link temporalTrackIds}, which is temporal detections.
+   */
+  async temporalTagTrackIds(): Promise<string[]> {
+    return (await this.trackIds()).filter((id) =>
+      id.startsWith(TEMPORAL_TAG_TRACK_PREFIX),
+    );
+  }
+
+  /** The tag-mode toggle in the timeline controls (also bound to Shift+T). */
+  get temporalTagModeButton(): Locator {
+    return this.page.locator('[data-testid="temporal-tag-mode-button"]');
+  }
+
+  /** The create/edit popup, addressed by its dialog role. */
+  temporalTagPopup(mode: "Create" | "Edit" = "Create"): Locator {
+    return this.page.getByRole("dialog", { name: `${mode} temporal tag` });
+  }
+
+  /**
+   * Resolves once a temporal-tag write lands, giving the caller the response
+   * so it can be checked against the sample it was supposed to be scoped to.
+   *
+   * Deliberately matches any status: filtering to 2xx here would turn a
+   * rejected write into a test timeout with nothing to read, instead of a
+   * failure carrying the server's reason.
+   */
+  waitForTemporalTagWrite(method: "POST" | "PATCH" | "DELETE" = "POST") {
+    return this.page.waitForResponse(
+      (resp) =>
+        resp.request().method() === method &&
+        /\/dataset\/[^/]+\/sample\/[^/]+\/tags/.test(resp.url()),
+    );
+  }
+
+  /**
+   * Drag a range on the tag-mode overlay and save it under `label`.
+   *
+   * The drag only has to land somewhere in the ruler's right half; the popup's
+   * nudge buttons then walk the bounds to a fixed number of steps, so the
+   * persisted interval does not depend on where the pointer went and callers
+   * never do pixel arithmetic to assert it.
+   */
+  async createTemporalTag(label: string, { nudges = 2 } = {}) {
+    // Shift+T rather than clicking the toggle: on a grouped modal the media
+    // canvas overlaps the controls row and swallows the click, and the hotkey
+    // is the same documented affordance.
+    await expect(this.temporalTagModeButton).toBeVisible();
+    await this.page.keyboard.press("Shift+T");
+    await expect(this.temporalTagModeButton).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+
+    const overlay = this.page.locator(
+      '[data-testid="temporal-tag-range-overlay"]',
+    );
+    const box = await overlay.boundingBox();
+    if (!box) {
+      throw new Error("temporal tag range overlay is not on screen");
+    }
+
+    // Right half only: the label column occupies the left edge of the overlay.
+    const y = box.y + box.height / 2;
+    const from = box.x + box.width * 0.55;
+    const to = box.x + box.width * 0.8;
+
+    await this.page.mouse.move(from, y);
+    await this.page.mouse.down();
+    for (let i = 1; i <= 8; i++) {
+      await this.page.mouse.move(from + ((to - from) * i) / 8, y);
+    }
+    await this.page.mouse.up();
+
+    const popup = this.temporalTagPopup();
+    await expect(popup).toBeVisible();
+
+    // Same count on both edges keeps the interval's width fixed as well as its
+    // endpoints' relationship to wherever the drag started.
+    for (let i = 0; i < nudges; i++) {
+      await popup.getByRole("button", { name: "Start +0.1s" }).click();
+      await popup.getByRole("button", { name: "End +0.1s" }).click();
+    }
+
+    await popup.getByRole("textbox", { name: "Tag" }).fill(label);
+
+    const written = this.waitForTemporalTagWrite("POST");
+    await popup.getByRole("button", { name: "Accept" }).click();
+    const response = await written;
+    if (!response.ok()) {
+      throw new Error(
+        `temporal tag write failed: ${response.status()} ${await response.text()}`,
+      );
+    }
+    await expect(popup).toBeHidden();
+
+    return response;
   }
 
   /** A timeline track row by its id (object instanceId or `td-…`). */

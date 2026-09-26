@@ -201,7 +201,7 @@ export interface PlaybackShellProps {
   onTagUpdate?: TemporalTagTimelineProps["onTagUpdate"];
   /** Callback that deletes an existing temporal tag by its backend id. */
   onTagDelete?: NonNullable<
-    TemporalTagTimelineProps["eventMenuItems"]
+    TemporalTagTimelineProps["tagEventMenuItems"]
   >[number]["onSelect"];
   /** Reports the timeline drawer's seeded and user-controlled visibility. */
   onTimelineDrawerOpenChange?: (open: boolean) => void;
@@ -643,7 +643,7 @@ function Layout({
         existingTags={existingTags}
         onTagCreate={onTagCreate}
         onTagUpdate={onTagUpdate}
-        eventMenuItems={
+        tagEventMenuItems={
           onTagDelete
             ? [
                 {

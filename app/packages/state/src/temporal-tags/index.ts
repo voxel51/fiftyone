@@ -1,24 +1,24 @@
 /**
- * Tag route client and React hooks.
+ * Temporal tag route client and React hooks.
  *
- * The transport itself lives in `@fiftyone/state` so the video surfaces can
- * reach it without depending on this package; what remains here is the sample
- * renderer adapter and this facade, which enterprise imports by path.
+ * Media-type neutral: the routes are sample-scoped, so every surface that can
+ * put a playhead on a sample — multimodal episodes, video samples, video
+ * slices of grouped datasets — reads and writes the same records through here.
  */
+export { createTemporalTagsClient } from "./client";
 export {
-  createTemporalTagsClient,
   invalidateDatasetTemporalTags,
-  TEMPORAL_TAG_INDEX_TYPE,
+  onTemporalTagsMutated,
   useDatasetTemporalTags,
-  useSampleTemporalTags,
   useSampleTemporalTagsFromDataset,
-} from "@fiftyone/state";
-export { useSampleRendererTemporalTags } from "./hooks";
+} from "./dataset-tags";
+export { useSampleTemporalTags } from "./hooks";
+export { TEMPORAL_TAG_INDEX_TYPE } from "./types";
+export type { CreateTemporalTagsClientOptions } from "./client";
 export type {
   CountDatasetTemporalTagsRequest,
   ClearSampleTemporalTagsRequest,
   CreateSampleTemporalTagsRequest,
-  CreateTemporalTagsClientOptions,
   DeleteSampleTemporalTagsRequest,
   ListDatasetTemporalTagsRequest,
   ListSampleTemporalTagsRequest,
@@ -32,4 +32,4 @@ export type {
   UpdateSampleTemporalTagRequest,
   UseSampleTemporalTagsOptions,
   UseSampleTemporalTagsResult,
-} from "@fiftyone/state";
+} from "./types";
