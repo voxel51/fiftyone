@@ -209,17 +209,16 @@ test.describe.serial("quickstart-groups", () => {
     sidebar,
     eventUtils,
   }) => {
-    let entryExpandPromise = await eventUtils.arm("animation-onRest");
-    await sidebar.toggleSidebarGroup("GROUP");
-    await entryExpandPromise.received;
+    await eventUtils.after("animation-onRest", () =>
+      sidebar.toggleSidebarGroup("GROUP"),
+    );
+    await eventUtils.after("animation-onRest", () =>
+      sidebar.clickFieldDropdown("group.name"),
+    );
 
-    entryExpandPromise = await eventUtils.arm("animation-onRest");
-    await sidebar.clickFieldDropdown("group.name");
-    await entryExpandPromise.received;
-
-    const promise = await grid.armGridRefresh();
-    await sidebar.applyFilter("left");
-    await promise.received;
+    await grid.run(async () => {
+      await sidebar.applyFilter("left");
+    });
 
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();

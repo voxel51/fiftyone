@@ -30,12 +30,9 @@ export class ModalAnnotate3dPom {
    */
   async waitForSurface() {
     await expect(this.container).toBeVisible();
-    // arm first, then read the state once: a reveal that already happened
-    // shows in the attribute, one still to come fires the armed event
-    const ready = await this.modal.eventUtils.arm("looker3d-scene-ready");
-    if ((await this.container.getAttribute("data-scene-ready")) !== "true") {
-      await ready.received;
-    }
+    await this.modal.eventUtils.untilPresent(
+      '[data-cy="modal"] [data-cy="looker3d"][data-scene-ready="true"]',
+    );
   }
 
   /**

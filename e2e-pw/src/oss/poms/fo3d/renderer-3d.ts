@@ -1,6 +1,7 @@
 import { Jimp } from "jimp";
 import { expect, Locator, Page } from "src/oss/fixtures";
 import { Asset3dPanelPom } from "src/oss/poms/fo3d/assets-panel";
+import { EventUtils } from "src/shared/event-utils";
 
 export type CameraPosition = [number, number, number];
 const DEFAULT_MIN_RENDERED_PIXELS = 150;
@@ -87,16 +88,20 @@ export class Renderer3dPom {
     await this.statusBar.waitFor({ state: "hidden" });
   }
 
+  /** The live camera position, read off the camera (the status bar lags it). */
   async getCameraPosition(): Promise<CameraPosition> {
-    await this.openStatusBar();
-    await this.statusBarCameraPosition.waitFor({ state: "visible" });
-
-    const text = await this.statusBarCameraPosition.textContent();
-    if (!text) {
-      throw new Error("Camera position text is empty");
+    const position = await this.page.evaluate(
+      () => window.__FO_PLAYWRIGHT_LOOKER3D_CAMERA?.() ?? null,
+    );
+    if (!position) {
+      throw new Error("no live 3D camera on the page");
     }
+    return position as CameraPosition;
+  }
 
-    return this.parseCameraPosition(text);
+  /** Resolve on the next camera save, which the scene makes on its own. */
+  async nextCameraSave(): Promise<void> {
+    await new EventUtils(this.page).next("looker3d-camera-saved");
   }
 
   async getSavedCameraState(
@@ -221,12 +226,14 @@ class Renderer3dAsserter {
   async expectSomethingToRender(
     minRenderedPixels = DEFAULT_MIN_RENDERED_PIXELS,
   ) {
-    await expect(this.renderer3dPom.looker3d).toBeVisible();
-
-    await expect
-      .poll(async () => this.renderer3dPom.countRenderedPixels(), {
-        timeout: 5000,
-      })
-      .toBeGreaterThan(minRenderedPixels);
+    // scene-ready = assets loaded, camera settled, revealed — the frame is
+    // painted, so one pixel count is enough
+    await expect(this.renderer3dPom.looker3d).toHaveAttribute(
+      "data-scene-ready",
+      "true",
+    );
+    expect(await this.renderer3dPom.countRenderedPixels()).toBeGreaterThan(
+      minRenderedPixels,
+    );
   }
 }

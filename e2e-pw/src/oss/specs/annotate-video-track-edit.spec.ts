@@ -62,9 +62,6 @@ const inFreshContext = async (
 };
 
 /** Read a numeric edit-form field value (the sidebar shows relative [0,1]). */
-const fieldNum = async (modal: ModalPom, path: string) =>
-  Number(await modal.sidebar.edit.getFieldValue(path));
-
 /** Drop focus so the "." / "," frame-step keybindings aren't typed into an input. */
 const blur = (page: Page) =>
   page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
@@ -118,7 +115,7 @@ test.beforeEach(async ({ datasetFactory }) => {
 });
 
 test.describe.serial("video annotation track editing", () => {
-  test("a class edit fans across the track while geometry stays per-frame", async ({
+  test("a class edit fans across the track, and a geometry edit re-keys it", async ({
     fiftyoneLoader,
     modal,
     page,
@@ -131,9 +128,9 @@ test.describe.serial("video annotation track editing", () => {
     await va.assert.labelListed("vehicle");
     await va.selectLabel("vehicle");
 
-    // per-frame geometry edit on frame 1 (bounding_box is NOT fanned out)
+    // a geometry edit on a non-keyframe makes it a keyframe
     await modal.sidebar.edit.setFieldValue("position.x", "0.5");
-    await expect.poll(() => fieldNum(modal, "position.x")).toBeCloseTo(0.5, 4);
+    await modal.sidebar.edit.assert.verifyFieldValue("position.x", "0.5");
 
     // track-level class edit — fans across every frame of the instance
     const saved = savedResponse(page);
@@ -151,9 +148,10 @@ test.describe.serial("video annotation track editing", () => {
     await va.assert.labelListed("person");
     await va.assert.labelListed("vehicle", false);
 
-    // but geometry did NOT fan out: frame 6 keeps the seeded x (0.3), not 0.5
+    // the seeded track has no keyframes, so frame 1 is now its only one and
+    // frame 6 interpolates to it
     await va.selectLabel("person");
-    await expect.poll(() => fieldNum(modal, "position.x")).toBeCloseTo(0.3, 4);
+    await modal.sidebar.edit.assert.verifyFieldValue("position.x", "0.5");
   });
 
   test("the edit form follows the selected track across frames", async ({
@@ -166,23 +164,26 @@ test.describe.serial("video annotation track editing", () => {
 
     await va.selectLabel("vehicle");
 
-    // make frame 1 geometrically distinct from the rest of the track
+    // the edit makes frame 1 a keyframe, which the frames after it follow
     await modal.sidebar.edit.setFieldValue("position.x", "0.5");
-    await expect.poll(() => fieldNum(modal, "position.x")).toBeCloseTo(0.5, 4);
+    await modal.sidebar.edit.assert.verifyFieldValue("position.x", "0.5");
 
-    // step forward: the form follows the anchor to frame 2's detection, so it
-    // shows that frame's x (still the seeded 0.3) — NOT frame 1's edited 0.5,
-    // and NOT a closed/blank form. Blur first so "." steps the frame instead of
-    // typing into the focused number input.
+    // step forward: the form follows the anchor to frame 2's detection rather
+    // than closing. Blur first so "." steps the frame instead of typing into
+    // the focused number input.
     await blur(page);
     await va.stepForward();
     await expect(modal.sidebar.edit.backButton).toBeVisible();
-    await expect.poll(() => fieldNum(modal, "position.x")).toBeCloseTo(0.3, 4);
+    await modal.sidebar.edit.assert.verifyFieldValue("position.x", "0.5");
 
-    // step back: the form re-reads frame 1, where the edit lives
+    // key frame 2 apart from frame 1
+    await modal.sidebar.edit.setFieldValue("position.x", "0.7");
+    await modal.sidebar.edit.assert.verifyFieldValue("position.x", "0.7");
+
+    // step back: the form re-reads frame 1, which keeps its own edit
     await blur(page);
     await va.stepBack();
-    await expect.poll(() => fieldNum(modal, "position.x")).toBeCloseTo(0.5, 4);
+    await modal.sidebar.edit.assert.verifyFieldValue("position.x", "0.5");
   });
 
   test("geometry edits undo and redo through the engine stack", async ({
@@ -194,28 +195,24 @@ test.describe.serial("video annotation track editing", () => {
     await openAnnotate(fiftyoneLoader, modal, page);
 
     await modal.videoAnnotate.selectLabel("vehicle");
-    const before = await fieldNum(modal, "position.x");
+    const before = await modal.sidebar.edit.getFieldValue("position.x");
     await modal.sidebar.edit.assert.undoIsEnabled(false);
 
     // commit a geometry edit; undo becomes enabled
     await modal.sidebar.edit.setFieldValue("position.x", "0.1");
-    await expect.poll(() => fieldNum(modal, "position.x")).toBeCloseTo(0.1, 4);
+    await modal.sidebar.edit.assert.verifyFieldValue("position.x", "0.1");
     await modal.sidebar.edit.assert.undoIsEnabled();
 
     // undo reverts to the committed baseline; redo re-applies
     await modal.sidebar.edit.undo();
-    await expect
-      .poll(() => fieldNum(modal, "position.x"))
-      .toBeCloseTo(before, 4);
+    await modal.sidebar.edit.assert.verifyFieldValue("position.x", before);
 
     await modal.sidebar.edit.redo();
-    await expect.poll(() => fieldNum(modal, "position.x")).toBeCloseTo(0.1, 4);
+    await modal.sidebar.edit.assert.verifyFieldValue("position.x", "0.1");
 
     // restore baseline for any sibling
     await modal.sidebar.edit.undo();
-    await expect
-      .poll(() => fieldNum(modal, "position.x"))
-      .toBeCloseTo(before, 4);
+    await modal.sidebar.edit.assert.verifyFieldValue("position.x", before);
   });
 
   test("selecting a track on the canvas neither persists nor promotes a keyframe", async ({

@@ -146,9 +146,7 @@ test.describe.serial("video annotation fresh draw", () => {
     // the form reads the schema field immediately (no deselect/reselect). The
     // schema exposes the frame field at its real path, so that field is
     // `frames.detections` — one namespace across schema, form, and engine.
-    await expect
-      .poll(() => modal.sidebar.edit.getCurrentField())
-      .toBe("frames.detections");
+    await modal.sidebar.edit.assert.currentField("frames.detections");
 
     // committing a class keeps the form bound; the field stays `detections`
     const saved = page.waitForResponse(
@@ -165,9 +163,7 @@ test.describe.serial("video annotation fresh draw", () => {
     await blur(page);
     await va.stepForward();
     await expect(modal.sidebar.edit.backButton).toBeVisible();
-    await expect
-      .poll(() => modal.sidebar.edit.getCurrentField())
-      .toBe("frames.detections");
+    await modal.sidebar.edit.assert.currentField("frames.detections");
   });
 
   test("undo removes a freshly-drawn box (engine undo on video)", async ({

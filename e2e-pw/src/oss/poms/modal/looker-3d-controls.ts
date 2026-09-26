@@ -34,21 +34,20 @@ export class Looker3DControlsPom {
       .click();
   }
 
+  /**
+   * Wait until every scene asset has loaded and the scene has rendered with
+   * its settled camera. Arm the ready event before reading the state once: a
+   * reveal that already happened shows in the attribute, one still to come
+   * fires the armed event.
+   */
   async waitForAllAssetsLoaded() {
-    await this.page.waitForFunction(
-      (SUCCESS_MSG_INJECTED) => {
-        const logs = document.querySelector(
-          "[data-cy=looker3d-logs-action-bar]",
-        );
-        return logs?.textContent === SUCCESS_MSG_INJECTED;
-      },
-      SUCCESS_MSG,
-      { timeout: 10000 },
+    await expect(
+      this.locator.getByTestId("looker3d-logs-action-bar"),
+    ).toHaveText(SUCCESS_MSG);
+
+    await this.modal.eventUtils.untilPresent(
+      '[data-cy="modal"] [data-cy="looker3d"][data-scene-ready="true"]',
     );
-    // takes a bit of time for 3d assets to mount after load
-    // todo: figure out if we can emit event on canvas paint
-    // eslint-disable-next-line playwright/no-wait-for-timeout
-    await this.page.waitForTimeout(150);
   }
 
   /**
@@ -56,15 +55,16 @@ export class Looker3DControlsPom {
    * camera, so a following canvas click raycasts against the top view.
    */
   async setTopView() {
-    const settled = await this.modal.eventUtils.arm(
-      "looker3d-camera-look-at-settled",
+    await this.modal.eventUtils.after("looker3d-camera-look-at-settled", () =>
+      this.locator.getByTestId("looker-3d-set-top-view").click(),
     );
-    await this.locator.getByTestId("looker-3d-set-top-view").click();
-    await settled.received;
   }
 
+  /** Move to the ego view; resolves once a frame has rendered the new camera. */
   async setEgoView() {
-    await this.locator.getByTestId("looker-3d-set-ego-view").click();
+    await this.modal.eventUtils.after("looker3d-camera-look-at-settled", () =>
+      this.locator.getByTestId("looker-3d-set-ego-view").click(),
+    );
   }
 
   async toggleGridHelper() {

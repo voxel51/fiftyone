@@ -149,12 +149,12 @@ test.describe.serial("schema manager", () => {
     await jsonEditor.assert.hasJSON(DEFAULT_LABEL_SCHEMA);
 
     // Unsuccessful validation
-    const invalid = await jsonEditor.armInvalidJSON();
-    await jsonEditor.setJSON({
-      component: "wrong",
-      type: "classification",
+    await jsonEditor.afterInvalidJSON(async () => {
+      await jsonEditor.setJSON({
+        component: "wrong",
+        type: "classification",
+      });
     });
-    await invalid.received;
     await jsonEditor.assert.hasErrors([
       "invalid component 'wrong' for field 'classification'",
     ]);
@@ -164,12 +164,12 @@ test.describe.serial("schema manager", () => {
     await jsonEditor.assert.hasJSON(DEFAULT_LABEL_SCHEMA);
 
     // Successful validation
-    const valid = await jsonEditor.armValidJSON();
-    await jsonEditor.setJSON({
-      component: "text",
-      type: "classification",
+    await jsonEditor.afterValidJSON(async () => {
+      await jsonEditor.setJSON({
+        component: "text",
+        type: "classification",
+      });
     });
-    await valid.received;
 
     // Scan
     await jsonEditor.scan();
@@ -233,20 +233,26 @@ test.describe.serial("schema manager", () => {
     await modal.sidebar.switchMode("annotate");
 
     // The required field prompt should appear since "predictions" has no active schema
-    await expect(page.getByText("Field not in label schema")).toBeVisible({
-      timeout: 5_000,
-    });
+    await expect(page.getByText("Field not in label schema")).toBeVisible();
     await expect(page.getByTestId("activate-field-schema")).toBeVisible();
 
     // Click the activate button to initialize and activate the predictions schema
     const activateButton = page.getByTestId("activate-field-schema");
     await expect(activateButton).toBeEnabled();
+    // activation generates and activates the schema through operators; the
+    // edit panel mounts once that round-trip lands
+    const activated = page.waitForResponse(
+      (r) =>
+        r.url().includes("/operators/execute") &&
+        r.request().postDataJSON()?.operator_uri ===
+          "@voxel51/operators/activate_label_schemas" &&
+        r.status() < 400,
+    );
     await activateButton.click();
+    await activated;
 
     // After activation, the edit panel should appear with "Edit Detection"
-    await expect(page.getByText("Edit Detection")).toBeVisible({
-      timeout: 10_000,
-    });
+    await expect(page.getByText("Edit Detection")).toBeVisible();
 
     // In patches view, the Schema button should not be visible
     await expect(page.getByRole("button", { name: "Schema" })).toBeHidden();

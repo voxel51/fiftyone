@@ -19,7 +19,10 @@ import type { InteractionState } from "../overlay/DetectionOverlay";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { SelectionManager } from "../selection/SelectionManager";
-import { resolveSelectionClick } from "./resolveSelectionClick";
+import {
+  resolveSelectionClick,
+  type SelectionClickAction,
+} from "./resolveSelectionClick";
 import type { Point, Rect } from "../types";
 import { buildBrushCursor } from "./buildBrushCursor";
 import { InteractiveCreationHandler } from "./InteractiveCreationHandler";
@@ -257,6 +260,7 @@ export class InteractionManager {
   private visibilityPredicate?: (id: string) => boolean;
 
   private readonly CLICK_THRESHOLD = 3; // pixels, dictates drag vs. click
+  private readOnlyPanning = false;
   private readonly DRAG_TIME_THRESHOLD = 500; // ms, dictates drag vs. click
   private readonly DOUBLE_CLICK_TIME_THRESHOLD = 500; // ms
   private readonly DOUBLE_CLICK_DISTANCE_THRESHOLD = 3; // pixels
@@ -461,36 +465,13 @@ export class InteractionManager {
         return;
       }
 
-      const isSelectableOverlay = !!handler && TypeGuards.isSelectable(handler);
-
       // the selected overlay still wins the hit test so drag/resize works
       const drawOverOverlay = this.isDrawingOverUnselected(handler);
 
-      // See `resolveSelectionClick` for the rule. The pointer event rides
-      // along only on the toggle path: it decides the `isShiftPressed` the
-      // select event carries, and no single-select surface should change what
-      // it reports.
-      const selectionAction = resolveSelectionClick({
-        isSelectableOverlay,
-        isSelected: isSelectableOverlay
-          ? this.selectionManager.isSelected(handler!.id)
-          : false,
-        isDrawingOver: drawOverOverlay,
-        multipleSelection: this.selectionManager.isMultipleSelection(),
-      });
-
-      if (selectionAction === "toggle") {
-        this.selectionManager.toggle(handler!.id, { event });
-      } else if (selectionAction === "select") {
-        this.selectionManager.select(handler!.id);
-      }
-
-      if (isSelectableOverlay && !drawOverOverlay) {
-        this.eventBus.dispatch("lighter:overlay-click", {
-          id: handler!.id,
-          point: worldPoint,
-        });
-      }
+      // read-only selects on release, so a press that pans selects nothing
+      const selectionAction = this.readOnly
+        ? "none"
+        : this.applySelectionClick(handler, event, worldPoint);
 
       // Select an overlay before issuing any edits. The cursor at this point
       // is a 'pointer' indicating selection, not painting/erasing/keypoint.
@@ -523,8 +504,8 @@ export class InteractionManager {
       }
     }
 
-    // Read-only stops here: selection above has already run, but handing the
-    // pointer to the overlay is what puts it into a move/resize/paint state.
+    // Read-only stops here: handing the pointer to the overlay is what puts it
+    // into a move/resize/paint state.
     if (this.readOnly) {
       return;
     }
@@ -581,11 +562,27 @@ export class InteractionManager {
     }
   };
 
+  /** Looker's cursors for a read-only surface: panning, then any label. */
+  private readOnlyCursor(handler?: InteractionHandler): string {
+    if (this.readOnlyPanning) return "all-scroll";
+
+    return handler &&
+      handler.id !== this.canonicalMediaId &&
+      TypeGuards.isSelectable(handler)
+      ? "pointer"
+      : "default";
+  }
+
   private configureCursorStyle(
     handler: InteractionHandler,
     worldPoint: Point,
     scale: number,
   ): void {
+    if (this.readOnly) {
+      this.canvas.style.cursor = this.readOnlyCursor(handler);
+      return;
+    }
+
     if (
       segmentationModeBridge.isActive() &&
       segmentationModeBridge.getActiveTool() === SegmentationTool.Merge
@@ -877,7 +874,11 @@ export class InteractionManager {
     const cursorHandler =
       handler && handler.id !== this.canonicalMediaId ? handler : undefined;
 
-    if (cursorHandler) {
+    if (this.readOnly) {
+      this.readOnlyPanning =
+        !!this.clickStartPoint && this.isSpatialDragEvent(event);
+      this.canvas.style.cursor = this.readOnlyCursor(cursorHandler);
+    } else if (cursorHandler) {
       this.configureCursorStyle(cursorHandler, worldPoint, scale);
     } else if (segmentationModeBridge.isActive() && !interactiveHandler) {
       const isMergeTool =
@@ -1092,6 +1093,10 @@ export class InteractionManager {
     this.canvas.style.cursor =
       handler?.getCursor?.(worldPoint, scale, this.currentModifiers) ||
       this.canvas.style.cursor;
+    if (this.readOnly) {
+      this.readOnlyPanning = false;
+      this.canvas.style.cursor = this.readOnlyCursor(handler);
+    }
     this.clickStartPoint = undefined;
     this.clickStartTime = 0;
   };
@@ -1244,6 +1249,46 @@ export class InteractionManager {
     }
   }
 
+  /**
+   * Select (or toggle) the overlay under a click per `resolveSelectionClick`,
+   * and announce the click. The event rides along only on the toggle path,
+   * where it decides the select event's `isShiftPressed`.
+   */
+  private applySelectionClick(
+    handler: InteractionHandler | undefined,
+    event: PointerEvent,
+    worldPoint: Point,
+  ): SelectionClickAction {
+    const isSelectableOverlay = !!handler && TypeGuards.isSelectable(handler);
+
+    // the selected overlay still wins the hit test so drag/resize works
+    const drawOverOverlay = this.isDrawingOverUnselected(handler);
+
+    const selectionAction = resolveSelectionClick({
+      isSelectableOverlay,
+      isSelected: isSelectableOverlay
+        ? this.selectionManager.isSelected(handler!.id)
+        : false,
+      isDrawingOver: drawOverOverlay,
+      multipleSelection: this.selectionManager.isMultipleSelection(),
+    });
+
+    if (selectionAction === "toggle") {
+      this.selectionManager.toggle(handler!.id, { event });
+    } else if (selectionAction === "select") {
+      this.selectionManager.select(handler!.id);
+    }
+
+    if (isSelectableOverlay && !drawOverOverlay) {
+      this.eventBus.dispatch("lighter:overlay-click", {
+        id: handler!.id,
+        point: worldPoint,
+      });
+    }
+
+    return selectionAction;
+  }
+
   private handleClick(point: Point, event: PointerEvent, now: number): void {
     if (!this.clickStartPoint || !this.clickStartTime) return;
 
@@ -1263,6 +1308,13 @@ export class InteractionManager {
 
       // Handle selection if the handler is selectable
       if (handler && TypeGuards.isSelectable(handler)) {
+        if (this.readOnly) {
+          this.applySelectionClick(
+            handler,
+            event,
+            this.renderer.screenToWorld(point),
+          );
+        }
         event.preventDefault();
       }
       // Otherwise, handle regular click
@@ -1504,7 +1556,9 @@ export class InteractionManager {
       // event, and this rAF runs later. Writing "default" here would
       // overwrite that, producing the flicker between mode cursor and
       // "default" reported during bounding-box creation.
-      if (
+      if (this.readOnly) {
+        this.canvas.style.cursor = this.readOnlyCursor();
+      } else if (
         !segmentationModeBridge.isActive() &&
         !detectionModeBridge.isActive()
       ) {

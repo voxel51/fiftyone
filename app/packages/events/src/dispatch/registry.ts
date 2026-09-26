@@ -1,5 +1,17 @@
-import { EventDispatcher } from "../dispatch/dispatcher";
+import { EventDispatcher, tapAllEvents } from "../dispatch/dispatcher";
 import { EventGroup } from "../types";
+
+declare global {
+  interface Window {
+    /** E2E affordance: lets Playwright arm on any event-bus event by name. */
+    __FO_EVENTS__?: { tap: typeof tapAllEvents };
+  }
+}
+
+// only for browser automation (e2e)
+if (typeof window !== "undefined" && window.navigator?.webdriver) {
+  window.__FO_EVENTS__ = { tap: tapAllEvents };
+}
 
 export const DEFAULT_CHANNEL_ID = "default";
 

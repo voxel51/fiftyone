@@ -6,7 +6,7 @@
  * persists across a fresh browser context, and its delete undoes. The same
  * `usePolylineMode` creation handler as video runs here on the Lighter canvas.
  */
-import { Browser, expect, test as base, type Page } from "src/oss/fixtures";
+import { Browser, test as base, type Page } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
@@ -137,9 +137,7 @@ test.describe.serial("2D annotation polyline", () => {
     // true round-trip: the labeled polyline is the one active label and reads
     // back its class.
     await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
-      await expect
-        .poll(() => freshModal.sidebar.annotate.getActiveLabelsCount())
-        .toBe(1);
+      await freshModal.sidebar.annotate.assert.hasActiveLabelsCount(1);
       await freshModal.sidebar.annotate.selectActiveLabel("lane", 0);
       await freshModal.sidebar.edit.assert.verifyFieldValue("label", "lane");
     });
@@ -163,9 +161,7 @@ test.describe.serial("2D annotation polyline", () => {
     await modal.sampleCanvas.rightClick(0.85, 0.85);
     await modal.sidebar.edit.assert.isClosed();
     await modal.sidebar.annotate.assert.polylineModeIsActive();
-    await expect
-      .poll(() => modal.sidebar.annotate.getActiveLabelsCount())
-      .toBe(2);
+    await modal.sidebar.annotate.assert.hasActiveLabelsCount(2);
 
     // tier 3: nothing open, so right-click leaves the mode for Select
     await modal.sampleCanvas.rightClick(0.85, 0.85);
@@ -211,25 +207,19 @@ test.describe.serial("2D annotation polyline", () => {
     // exit to the list so the label is counted (the actively-edited label
     // isn't listed in the Labels group while its form is open).
     await modal.sidebar.edit.exitToList();
-    await expect
-      .poll(() => modal.sidebar.annotate.getActiveLabelsCount())
-      .toBe(1);
+    await modal.sidebar.annotate.assert.hasActiveLabelsCount(1);
 
     // re-select and delete it.
     await modal.sidebar.annotate.selectActiveLabel("lane", 0);
     const deleted = savedSample(page);
     await modal.sidebar.edit.deleteLabel();
     await deleted;
-    await expect
-      .poll(() => modal.sidebar.annotate.getActiveLabelsCount())
-      .toBe(0);
+    await modal.sidebar.annotate.assert.hasActiveLabelsCount(0);
 
     // delete is one undoable engine unit (the undo control lives in the
     // list-level actions bar, so it's reachable after the form exits).
     await modal.sidebar.edit.assert.undoIsEnabled();
     await modal.sidebar.edit.undo();
-    await expect
-      .poll(() => modal.sidebar.annotate.getActiveLabelsCount())
-      .toBe(1);
+    await modal.sidebar.annotate.assert.hasActiveLabelsCount(1);
   });
 });

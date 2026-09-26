@@ -1,4 +1,4 @@
-import { Page } from "@playwright/test";
+import { Locator, Page } from "@playwright/test";
 
 /**
  * Handle for an armed document-event listener. Deliberately not a thenable:
@@ -6,7 +6,19 @@ import { Page } from "@playwright/test";
  * "armed" and "received" indistinguishable to callers.
  */
 export class ArmedEvent {
-  constructor(readonly received: Promise<void>) {}
+  private disposed = false;
+
+  constructor(
+    readonly received: Promise<void>,
+    private readonly teardown: () => Promise<void> = async () => undefined,
+  ) {}
+
+  /** Detach the in-page listener. Idempotent; safe after navigation. */
+  async dispose(): Promise<void> {
+    if (this.disposed) return;
+    this.disposed = true;
+    await this.teardown();
+  }
 }
 
 export interface CountedEvent {
@@ -19,6 +31,12 @@ declare global {
   interface Window {
     /** Per-counter event records installed by {@link EventUtils.counter}. */
     __EVENT_COUNTS__?: Record<string, CountedEvent[]>;
+    /** Detach functions of armed listeners, by exposed-function name. */
+    __FO_ARMED__?: Record<string, () => void>;
+    /** The app's event-bus tap (`@fiftyone/events`). */
+    __FO_EVENTS__?: {
+      tap: (listener: (event: string, data: unknown) => void) => () => void;
+    };
   }
 }
 
@@ -51,11 +69,39 @@ export class EventCounter {
   }
 }
 
+type ArmHandler = (e: { detail?: unknown }) => boolean;
+
+/**
+ * One exposed binding per page routes every armed listener by id. Playwright
+ * cannot remove a binding, so a binding per arm would pile up across a spec.
+ */
+const dispatchers = new WeakMap<
+  Page,
+  { name: string; handlers: Map<string, ArmHandler>; exposed: Promise<void> }
+>();
+
+const dispatcherFor = (page: Page) => {
+  let dispatcher = dispatchers.get(page);
+  if (!dispatcher) {
+    const handlers = new Map<string, ArmHandler>();
+    const name = getFunctionNameWithRandomSuffix("__fo_event_utils");
+    // an id with no handler has resolved or been disposed: detach it
+    const exposed = page.exposeFunction(
+      name,
+      (id: string, e: { detail?: unknown }) => handlers.get(id)?.(e) ?? true,
+    );
+    dispatcher = { name, handlers, exposed };
+    dispatchers.set(page, dispatcher);
+  }
+  return dispatcher;
+};
+
 export class EventUtils {
   constructor(private readonly page: Page) {}
 
   /**
-   * Arm a listener for a document-level CustomEvent. Resolves only after the
+   * Arm a listener for an app event: a document-level CustomEvent, or any
+   * `@fiftyone/events` bus event on any channel. Resolves only after the
    * in-page listener is attached, so an event fired any time after arming is
    * guaranteed to be observed — arm BEFORE the action that fires the event,
    * then await the handle's `received` after it:
@@ -68,39 +114,171 @@ export class EventUtils {
     eventName: string,
     predicate: (e: { detail?: unknown }) => boolean = () => true,
   ): Promise<ArmedEvent> {
-    const exposedFunctionName = getFunctionNameWithRandomSuffix(eventName);
+    const dispatcher = dispatcherFor(this.page);
+    await dispatcher.exposed;
+    const id = getFunctionNameWithRandomSuffix(eventName);
 
     let resolveReceived: () => void;
     const received = new Promise<void>((resolve) => {
       resolveReceived = resolve;
     });
 
-    await this.page.exposeFunction(
-      exposedFunctionName,
-      (e: { detail?: unknown }) => {
-        if (predicate(e)) {
-          resolveReceived();
-        }
-      },
-    );
+    // the return value tells the page to detach once the wait is satisfied
+    dispatcher.handlers.set(id, (e) => {
+      const matched = predicate(e);
+      if (matched) {
+        dispatcher.handlers.delete(id);
+        resolveReceived();
+      }
+      return matched;
+    });
 
     // the listener is attached in its own evaluate — not inside the promise
     // that carries the wait — so attachment is complete when `arm` returns
     await this.page.evaluate(
-      ({ eventName_, exposedFunctionName_ }) => {
-        document.addEventListener(eventName_, (e: Event) => {
-          // CustomEvent instances don't serialize across the boundary;
-          // forward only the detail
+      ({ eventName_, dispatcher_, id_ }) => {
+        let detach = () => {};
+        const deliver = (detail: unknown) => {
           // @ts-expect-error - the function is exposed at runtime
-          window[exposedFunctionName_]({
-            detail: (e as CustomEvent).detail,
-          });
+          window[dispatcher_](id_, { detail }).then(
+            (matched: boolean) => matched && detach(),
+          );
+        };
+
+        // CustomEvent instances don't serialize across the boundary;
+        // forward only the detail
+        const onDocument = (e: Event) => deliver((e as CustomEvent).detail);
+        document.addEventListener(eventName_, onDocument);
+
+        // bus payloads can hold live objects; forward only primitive fields
+        const offBus = window.__FO_EVENTS__?.tap((event, data) => {
+          if (event !== eventName_) return;
+          deliver(
+            Object.fromEntries(
+              Object.entries((data ?? {}) as Record<string, unknown>).filter(
+                ([, v]) =>
+                  v === null ||
+                  (typeof v !== "object" && typeof v !== "function"),
+              ),
+            ),
+          );
         });
+
+        const armed = (window.__FO_ARMED__ ??= {});
+        detach = () => {
+          document.removeEventListener(eventName_, onDocument);
+          offBus?.();
+          delete armed[id_];
+        };
+        armed[id_] = detach;
       },
-      { eventName_: eventName, exposedFunctionName_: exposedFunctionName },
+      { eventName_: eventName, dispatcher_: dispatcher.name, id_: id },
     );
 
-    return new ArmedEvent(received);
+    return new ArmedEvent(received, async () => {
+      dispatcher.handlers.delete(id);
+      await this.page
+        .evaluate((key): void => window.__FO_ARMED__?.[key]?.(), id)
+        // a navigated or closed page took the listener with it
+        .catch((): void => undefined);
+    });
+  }
+
+  /**
+   * Resolve once an element matches `selector` (and, given `text`, has text
+   * content matching it), immediately if one already does. Waits on DOM
+   * mutations rather than polling, so it is bounded only by the test timeout —
+   * for state that takes real time to appear (decode, reveal, playback).
+   */
+  public async untilPresent(selector: string, text?: RegExp): Promise<void> {
+    await this.page.evaluate(
+      ({ selector_, source, flags }) =>
+        new Promise<void>((resolve) => {
+          const pattern = source === null ? null : new RegExp(source, flags);
+          const matches = () =>
+            Array.from(document.querySelectorAll(selector_)).some(
+              (el) => !pattern || pattern.test(el.textContent ?? ""),
+            );
+
+          if (matches()) {
+            resolve();
+            return;
+          }
+
+          const observer = new MutationObserver(() => {
+            if (matches()) {
+              observer.disconnect();
+              resolve();
+            }
+          });
+          observer.observe(document, {
+            subtree: true,
+            childList: true,
+            attributes: true,
+            characterData: true,
+          });
+        }),
+      {
+        selector_: selector,
+        source: text?.source ?? null,
+        flags: text?.flags ?? "",
+      },
+    );
+  }
+
+  /**
+   * Resolve once `predicate(element, arg)` holds for the element `locator`
+   * resolves to, re-checking on every DOM mutation. The predicate runs in the
+   * page, so it must be self-contained (no closure over test variables).
+   */
+  public async untilDom<A>(
+    locator: Locator,
+    predicate: (element: Element, arg: A) => boolean,
+    arg?: A,
+  ): Promise<void> {
+    await locator.waitFor({ state: "attached" });
+    await locator.evaluate(
+      (element, { source, arg_ }) =>
+        new Promise<void>((resolve) => {
+          const check = new Function(`return (${source})`)() as (
+            element: Element,
+            arg: unknown,
+          ) => boolean;
+          if (check(element, arg_)) {
+            resolve();
+            return;
+          }
+          const observer = new MutationObserver(() => {
+            if (check(element, arg_)) {
+              observer.disconnect();
+              resolve();
+            }
+          });
+          observer.observe(element.ownerDocument, {
+            subtree: true,
+            childList: true,
+            attributes: true,
+            characterData: true,
+          });
+        }),
+      { source: predicate.toString(), arg_: arg },
+    );
+  }
+
+  /**
+   * Resolve on the next `eventName` from now. Only for events no test action
+   * causes (an autosave tick, a periodic persist); otherwise use {@link after}.
+   */
+  public async next(
+    eventName: string,
+    predicate?: (e: { detail?: unknown }) => boolean,
+  ): Promise<void> {
+    const armed = await this.arm(eventName, predicate);
+    try {
+      await armed.received;
+    } finally {
+      await armed.dispose();
+    }
   }
 
   /**
@@ -115,9 +293,13 @@ export class EventUtils {
     predicate?: (e: { detail?: unknown }) => boolean,
   ): Promise<T> {
     const armed = await this.arm(eventName, predicate);
-    const result = await action();
-    await armed.received;
-    return result;
+    try {
+      const result = await action();
+      await armed.received;
+      return result;
+    } finally {
+      await armed.dispose();
+    }
   }
 
   /**

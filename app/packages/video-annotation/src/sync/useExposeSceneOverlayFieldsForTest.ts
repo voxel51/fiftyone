@@ -2,13 +2,13 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import type { useLighterSetupWithPixi } from "@fiftyone/lighter";
 import {
   UNDEFINED_LIGHTER_SCENE_ID,
-  useLighterEventBus,
-  type LighterEventGroup,
-  type useLighterSetupWithPixi,
+  useLighterEventHandler,
 } from "@fiftyone/lighter";
-import { useEffect } from "react";
+import { isE2E } from "@fiftyone/utilities";
+import { useCallback, useEffect } from "react";
 
 type Scene = ReturnType<typeof useLighterSetupWithPixi>["scene"];
 
@@ -40,48 +40,57 @@ declare global {
   }
 }
 
-/** Lighter events re-dispatched on `document`, where `EventUtils` can arm on them. */
-const FORWARDED_EVENTS: (keyof LighterEventGroup)[] = [
-  "lighter:overlay-click",
-  "lighter:overlay-removed",
-];
-
-// payloads can hold live overlays, which don't serialize to Playwright
-const primitiveFields = (payload: unknown): Record<string, unknown> =>
-  Object.fromEntries(
-    Object.entries((payload ?? {}) as Record<string, unknown>).filter(
-      ([, value]) =>
-        value === null ||
-        (typeof value !== "object" && typeof value !== "function"),
-    ),
+/**
+ * The DOM mirror of the scene's overlay set: `data-cy-scene-overlay-fields`
+ * and `data-cy-scene-overlay-ids` (space separated) on the surface element, so
+ * a spec can assert what the canvas paints with a locator instead of a poll.
+ */
+const stampSceneOverlays = (scene: NonNullable<Scene>) => {
+  const surface = document.querySelector(
+    '[data-cy="video-annotation-surface"]',
   );
+  if (!surface) {
+    return;
+  }
+
+  const overlays = scene.getAllOverlays();
+  surface.setAttribute(
+    "data-cy-scene-overlay-fields",
+    Array.from(new Set(overlays.map((o) => o.field))).join(" "),
+  );
+  surface.setAttribute(
+    "data-cy-scene-overlay-ids",
+    overlays.map((o) => o.id).join(" "),
+  );
+};
 
 /**
- * Publish the scene's live overlay fields on `window` for e2e assertions. A
- * read-only probe — it never drives app behavior; the hook owns the global's
- * lifecycle and clears it on scene change / unmount.
+ * Under browser automation only, publish the scene's live overlay fields on
+ * `window` and mirror the overlay set onto the surface's DOM attributes. A
+ * read-only probe that never drives app behavior; it clears the globals on
+ * scene change / unmount.
  */
 export const useExposeSceneOverlayFieldsForTest = (scene: Scene): void => {
-  const eventBus = useLighterEventBus(
+  const on = useLighterEventHandler(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
   );
 
-  useEffect(() => {
-    const offs = FORWARDED_EVENTS.map((event) =>
-      eventBus.on(event, (payload: unknown) => {
-        document.dispatchEvent(
-          new CustomEvent(event, { detail: primitiveFields(payload) }),
-        );
-      }),
-    );
+  // after the scene has applied the add/remove, not during its dispatch
+  const stamp = useCallback(() => {
+    if (scene && isE2E()) {
+      queueMicrotask(() => stampSceneOverlays(scene));
+    }
+  }, [scene]);
 
-    return () => offs.forEach((off) => off());
-  }, [eventBus]);
+  on("lighter:overlay-added", stamp);
+  on("lighter:overlay-removed", stamp);
 
   useEffect(() => {
-    if (!scene) {
+    if (!scene || !isE2E()) {
       return undefined;
     }
+
+    stampSceneOverlays(scene);
 
     window.__FO_PLAYWRIGHT_SCENE_OVERLAY_FIELDS = () =>
       Array.from(new Set(scene.getAllOverlays().map((o) => o.field)));
@@ -103,6 +112,12 @@ export const useExposeSceneOverlayFieldsForTest = (scene: Scene): void => {
     return () => {
       delete window.__FO_PLAYWRIGHT_SCENE_OVERLAY_FIELDS;
       delete window.__FO_PLAYWRIGHT_SCENE_OVERLAY_GEOMETRY;
+      // a surface that outlives its scene must not report the old overlays
+      const surface = document.querySelector(
+        '[data-cy="video-annotation-surface"]',
+      );
+      surface?.removeAttribute("data-cy-scene-overlay-fields");
+      surface?.removeAttribute("data-cy-scene-overlay-ids");
     };
   }, [scene]);
 };

@@ -49,23 +49,23 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
   }) => {
     // Test the visibility mode:
     await sidebar.toggleSidebarMode();
-    // mount eventListener
-    const gridRefreshedEventPromise = await eventUtils.arm("re-render-tag");
-    const entryExpandPromise = await eventUtils.arm("animation-onRest");
 
     // test case: visibility mode - show label
-    await sidebar.clickFieldDropdown("ground_truth");
-    await entryExpandPromise.received;
-    await sidebar.applyLabelFromList(["cat"], "show-label");
-    await gridRefreshedEventPromise.received;
+    await eventUtils.after("animation-onRest", () =>
+      sidebar.clickFieldDropdown("ground_truth"),
+    );
+    await eventUtils.after("re-render-tag", () =>
+      sidebar.applyLabelFromList(["cat"], "show-label"),
+    );
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "visible-cat.png",
       { animations: "allow" },
     );
 
     // test case: visibility mode - hide label
-    await sidebar.applyLabelFromList([], "hide-label");
-    await gridRefreshedEventPromise.received;
+    await eventUtils.after("re-render-tag", () =>
+      sidebar.applyLabelFromList([], "hide-label"),
+    );
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "not-visible-cat.png",
       { animations: "allow" },
@@ -77,10 +77,9 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     sidebar,
     eventUtils,
   }) => {
-    const entryExpandPromise = await eventUtils.arm("animation-onRest");
-
-    await sidebar.clickFieldDropdown("ground_truth");
-    await entryExpandPromise.received;
+    await eventUtils.after("animation-onRest", () =>
+      sidebar.clickFieldDropdown("ground_truth"),
+    );
     await sidebar.waitForElement("checkbox-frog");
     await sidebar.waitForElement("checkbox-ship");
     await sidebar.applyLabelFromList(["frog"], "show-samples-with-label");
@@ -96,20 +95,20 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
 
     // Test with visibility mode:
     await sidebar.toggleSidebarMode();
-    // mount eventListener
-    const gridRefreshedEventPromise = await eventUtils.arm("re-render-tag");
 
     // test case: visibility mode - show label
-    await sidebar.applyLabelFromList(["frog"], "show-label");
-    await gridRefreshedEventPromise.received;
+    await eventUtils.after("re-render-tag", () =>
+      sidebar.applyLabelFromList(["frog"], "show-label"),
+    );
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "show-frog-ship-visible-frog.png",
       { animations: "allow" },
     );
 
     // test case: visibility mode - hide label
-    await sidebar.applyLabelFromList([], "hide-label");
-    await gridRefreshedEventPromise.received;
+    await eventUtils.after("re-render-tag", () =>
+      sidebar.applyLabelFromList([], "hide-label"),
+    );
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "show-frog-ship-invisible-frog.png",
       { animations: "allow" },
@@ -121,9 +120,9 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     sidebar,
     eventUtils,
   }) => {
-    const entryExpandPromise = await eventUtils.arm("animation-onRest");
-    await sidebar.clickFieldDropdown("ground_truth");
-    await entryExpandPromise.received;
+    await eventUtils.after("animation-onRest", () =>
+      sidebar.clickFieldDropdown("ground_truth"),
+    );
 
     await sidebar.applyLabelFromList(["ship"], "omit-samples-with-label");
 
@@ -135,20 +134,19 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     // Test the visibility mode:
     await sidebar.toggleSidebarMode();
 
-    // mount eventListener
-    const gridRefreshedEventPromise = await eventUtils.arm("re-render-tag");
-
     // test case: visibility mode - show label
-    await sidebar.applyLabelFromList(["cat"], "show-label");
-    await gridRefreshedEventPromise.received;
+    await eventUtils.after("re-render-tag", () =>
+      sidebar.applyLabelFromList(["cat"], "show-label"),
+    );
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "hide-ship-visible-cat.png",
       { animations: "allow" },
     );
 
     // test case: visibility mode - hide label
-    await sidebar.applyLabelFromList([], "hide-label");
-    await gridRefreshedEventPromise.received;
+    await eventUtils.after("re-render-tag", () =>
+      sidebar.applyLabelFromList([], "hide-label"),
+    );
     await expect(await grid.getForwardSection()).toHaveScreenshot(
       "hide-ship-invisible-cat.png",
       { animations: "allow" },

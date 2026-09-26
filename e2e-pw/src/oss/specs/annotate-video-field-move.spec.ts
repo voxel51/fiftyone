@@ -7,7 +7,7 @@
  * Assertions are relative to the track's current field so the serial tests
  * don't depend on each other's end state.
  */
-import { Browser, expect, test as base, type Page } from "src/oss/fixtures";
+import { Browser, test as base, type Page } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
@@ -153,13 +153,11 @@ test.describe.serial("video annotation field move", () => {
     await saved;
 
     await reselect(modal);
-    await expect.poll(() => modal.sidebar.edit.getCurrentField()).toBe(to);
+    await modal.sidebar.edit.assert.currentField(to);
 
     await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
       await freshModal.videoAnnotate.selectLabel("vehicle");
-      await expect
-        .poll(() => freshModal.sidebar.edit.getCurrentField())
-        .toBe(to);
+      await freshModal.sidebar.edit.assert.currentField(to);
     });
   });
 
@@ -178,16 +176,16 @@ test.describe.serial("video annotation field move", () => {
     await modal.sidebar.edit.moveFieldTo(to);
     await saved;
     await reselect(modal);
-    await expect.poll(() => modal.sidebar.edit.getCurrentField()).toBe(to);
+    await modal.sidebar.edit.assert.currentField(to);
 
     await modal.sidebar.edit.assert.undoIsEnabled();
     await modal.sidebar.edit.undo();
     await reselect(modal);
-    await expect.poll(() => modal.sidebar.edit.getCurrentField()).toBe(from);
+    await modal.sidebar.edit.assert.currentField(from);
 
     await modal.sidebar.edit.assert.redoIsEnabled();
     await modal.sidebar.edit.redo();
     await reselect(modal);
-    await expect.poll(() => modal.sidebar.edit.getCurrentField()).toBe(to);
+    await modal.sidebar.edit.assert.currentField(to);
   });
 });

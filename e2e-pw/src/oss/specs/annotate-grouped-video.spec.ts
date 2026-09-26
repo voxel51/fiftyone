@@ -197,15 +197,9 @@ test.describe.serial("grouped video annotation", () => {
   }) => {
     await enterVideoAnnotate(grid, modal);
 
-    await expect
-      .poll(() => modal.videoAnnotate.listedLabelPaths())
-      .toEqual(
-        expect.arrayContaining([
-          "frames.detections",
-          "classification",
-          "events",
-        ]),
-      );
+    for (const path of ["frames.detections", "classification", "events"]) {
+      await modal.videoAnnotate.assert.listsPath(path);
+    }
 
     // the sample-level `detections` field is filtered out on a video slice
     // (spatial sample-level labels live in `frames.*` on video)
@@ -223,13 +217,12 @@ test.describe.serial("grouped video annotation", () => {
     await modal.sidebar.annotate.selectAnnotationSlice("image");
     await modal.waitForLighterReady();
 
-    await expect
-      .poll(() => modal.videoAnnotate.listedLabelPaths())
-      .toEqual(expect.arrayContaining(["detections", "classification"]));
-
-    const paths = await modal.videoAnnotate.listedLabelPaths();
-    expect(paths).not.toContain("frames.detections");
-    expect(paths).not.toContain("events");
+    for (const path of ["detections", "classification"]) {
+      await modal.videoAnnotate.assert.listsPath(path);
+    }
+    for (const path of ["frames.detections", "events"]) {
+      await modal.videoAnnotate.assert.listsPath(path, false);
+    }
   });
 
   test("the annotation slice selector offers both the video and image slices", async ({
@@ -270,11 +263,7 @@ test.describe.serial("grouped video annotation", () => {
     // scoped to the video sample
     expect(response.url()).toContain(videoId);
     expect(response.url()).not.toContain(imageId);
-    await expect
-      .poll(async () =>
-        Number(await modal.sidebar.edit.getFieldValue("position.x")),
-      )
-      .toBeCloseTo(0.5, 4);
+    await modal.sidebar.edit.assert.verifyFieldValue("position.x", "0.5");
 
     expect(pageErrors).toEqual([]);
   });

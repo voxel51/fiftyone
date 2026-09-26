@@ -173,6 +173,7 @@ export class FieldVisibilityPom {
 
   async openFieldVisibilityModal() {
     await this.fieldVisibilityBtn.click();
+    await expect(this.modalContainer).toBeVisible();
   }
 
   async hideFields(paths: string[]) {
@@ -182,16 +183,16 @@ export class FieldVisibilityPom {
       await this.page
         .getByTestId(`schema-selection-${paths[i]}`)
         .getByRole("checkbox", { checked: true })
-        .click({ timeout: 1000 });
+        .click();
     }
 
     await this.submitFieldVisibilityChanges();
   }
 
   async submitFieldVisibilityChanges() {
-    const gridRefresh = await this.gridPom.armGridRefresh();
-    await this.applyBtn.click();
-    await gridRefresh.received;
+    await this.gridPom.run(async () => {
+      await this.applyBtn.click();
+    });
   }
 
   async clearFieldVisibilityChanges() {

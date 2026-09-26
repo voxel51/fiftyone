@@ -1,11 +1,7 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
 import { ModalPom } from ".";
 
-/**
- * Playback has to actually reach the target, so these waits get the long
- * timeout rather than the default assertion one.
- */
-const READOUT_TIMEOUT = 30_000;
+const TIME = '[data-cy="modal"] [data-testid="timeline-playhead-time"]';
 
 const escapeRegExp = (value: string) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -70,33 +66,26 @@ export class ModalVideoControlsPom {
    */
   async playUntilAdvanced() {
     // Anchor on a real reading first. If the readout is absent or mid-swap,
-    // `start` is null/empty and the "has changed" assertion below is satisfied
-    // by the first non-empty value — the helper would return without playback
-    // having advanced at all, and its callers would pass vacuously.
-    await expect(this.time).not.toHaveText("", { timeout: READOUT_TIMEOUT });
-    const start = await this.time.textContent();
-    if (!start) {
-      throw new Error(
-        "timeline readout is empty; cannot detect playback advancing",
-      );
-    }
+    // `start` is empty and any later reading would count as "advanced" — the
+    // helper would return without playback having moved at all.
+    await this.modal.eventUtils.untilPresent(TIME, /\S/);
+    const start = (await this.time.textContent()) ?? "";
 
     await this.togglePlay();
-    await expect(this.time).not.toHaveText(start, {
-      timeout: READOUT_TIMEOUT,
-    });
+    await this.modal.eventUtils.untilPresent(
+      TIME,
+      new RegExp(`^(?!${escapeRegExp(start)}$)\\S`),
+    );
     await this.togglePlay();
   }
 
   /** Play until the readout reads `text`, then pause. */
   private async playUntilReadout(text: string, matchBeginning: boolean) {
     await this.togglePlay();
-
-    await expect(this.time).toHaveText(
-      matchBeginning ? new RegExp(`^${escapeRegExp(text)}`) : text,
-      { timeout: READOUT_TIMEOUT },
+    await this.modal.eventUtils.untilPresent(
+      TIME,
+      new RegExp(`^${escapeRegExp(text)}${matchBeginning ? "" : "$"}`),
     );
-
     await this.togglePlay();
   }
 

@@ -61,9 +61,9 @@ test.describe.serial("quickstart", () => {
 
     // test navigation
 
-    const expanded = await eventUtils.arm("animation-onRest");
-    await sidebar.clickFieldDropdown("id");
-    await expanded.received;
+    await eventUtils.after("animation-onRest", async () => {
+      await sidebar.clickFieldDropdown("id");
+    });
     await sidebar.asserter.assertFilterIsVisible("id", "categorical");
 
     await grid.openFirstSample();
@@ -83,9 +83,9 @@ test.describe.serial("quickstart", () => {
   test("selection bookmark", async ({ page, grid }) => {
     await grid.toggleSelectFirstSample();
     await grid.actionsRow.assert.hasFiltersBookmark();
-    const gridRefresh = await grid.armGridRefresh();
-    await grid.actionsRow.bookmarkFilters();
-    await gridRefresh.received;
+    await grid.run(async () => {
+      await grid.actionsRow.bookmarkFilters();
+    });
     await expect(page.getByTestId("entry-counts")).toHaveText("1 sample");
   });
 

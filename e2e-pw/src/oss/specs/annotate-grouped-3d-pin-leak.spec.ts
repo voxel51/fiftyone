@@ -130,22 +130,14 @@ test.describe.serial("grouped 2D+3D annotation — 3D pin does not leak", () => 
 
     // The image slice's sidebar must reflect ITS OWN two detections — never the
     // pinned 3D scene's cuboid. A leak would show count 1 with the "dog" cuboid.
-    await expect
-      .poll(() => modal.sidebar.annotate.getActiveLabelsCount(), {
-        timeout: 20_000,
-      })
-      .toBe(2);
+    await modal.sidebar.annotate.assert.hasActiveLabelsCount(2);
     await modal.annotate3d.assert.labelListed("dog", false);
     expect(await modal.annotate3d.listedLabels()).toEqual(["cat", "cat"]);
 
     // Explicitly selecting the image slice keeps it clean (no cuboid resurfaces).
     await modal.sidebar.annotate.selectAnnotationSlice("image");
     await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice("image");
-    await expect
-      .poll(() => modal.sidebar.annotate.getActiveLabelsCount(), {
-        timeout: 20_000,
-      })
-      .toBe(2);
+    await modal.sidebar.annotate.assert.hasActiveLabelsCount(2);
     await modal.annotate3d.assert.labelListed("dog", false);
   });
 
@@ -161,11 +153,7 @@ test.describe.serial("grouped 2D+3D annotation — 3D pin does not leak", () => 
     await modal.sidebar.annotate.selectAnnotationSlice("mesh");
     await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice("mesh");
     await modal.annotate3d.waitForSurface();
-    await expect
-      .poll(() => modal.sidebar.annotate.getActiveLabelsCount(), {
-        timeout: 20_000,
-      })
-      .toBe(1);
+    await modal.sidebar.annotate.assert.hasActiveLabelsCount(1);
     await modal.annotate3d.assert.labelListed("dog", true);
   });
 });

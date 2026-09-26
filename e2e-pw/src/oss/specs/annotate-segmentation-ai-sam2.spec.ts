@@ -106,15 +106,13 @@ test.describe.serial("segmentation AI (SAM2) round-trip", () => {
       await fresh.waitForSampleLoadDomAttribute();
       await fresh.sidebar.switchMode("annotate");
       const rows = fresh.sidebar.annotate.labelRowsFor("instances");
-      expect(await rows.count()).toBeGreaterThanOrEqual(1);
+      await expect(rows).toHaveCount(1);
 
-      // Mock worker's 8x8 all-foreground mask → a non-empty rendered mask.
-      // Loose lower bound catches "field saved but mask empty".
-      await rows.first().click();
+      // the mock worker answers with an 8x8 all-foreground mask at box
+      // {0.4, 0.4, 0.2, 0.2}; that is what the fresh canvas must render
+      await rows.click();
       await fresh.sidebar.edit.assert.hasMaskPreview();
-      await expect
-        .poll(() => fresh.sidebar.edit.maskPreviewPixels())
-        .toBeGreaterThan(0);
+      await fresh.sampleCanvas.assert.hasScreenshot("seg-ai-persisted.png");
     } finally {
       await context.close();
     }

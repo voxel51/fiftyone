@@ -107,9 +107,7 @@ test.describe.serial("segmentation pen-tool round-trip", () => {
     await modal.sidebar.edit.assert.isOpen();
     await modal.sampleCanvas.rightClick(0.5, 0.5);
     await modal.sidebar.edit.assert.isClosed();
-    await expect
-      .poll(() => modal.sidebar.annotate.getActiveLabelsCount())
-      .toBe(2);
+    await modal.sidebar.annotate.assert.hasActiveLabelsCount(2);
 
     await modal.sidebar.annotate.waitForSavesSettled();
 
@@ -117,7 +115,7 @@ test.describe.serial("segmentation pen-tool round-trip", () => {
     await modal.sidebar.annotate.assert.segmentationModeIsActive(false);
     await modal.sidebar.annotate.assert.selectIsActive();
 
-    // ── 4. A fresh browser context must list the detection with its mask ────
+    // ── 4. A fresh browser context must list both detections with masks ─────
     const context = await browser.newContext();
     try {
       const freshPage = await context.newPage();
@@ -128,15 +126,13 @@ test.describe.serial("segmentation pen-tool round-trip", () => {
       await fresh.waitForSampleLoadDomAttribute();
       await fresh.sidebar.switchMode("annotate");
       const rows = fresh.sidebar.annotate.labelRowsFor("instances");
-      expect(await rows.count()).toBeGreaterThanOrEqual(1);
+      // both polygons were committed as their own detections
+      await expect(rows).toHaveCount(2);
 
-      // Pen polygon covered ~20% × 20% of the image; a non-empty rendered mask
-      // catches "the field saved but the mask is empty".
+      // the first persisted mask renders on the fresh canvas exactly as drawn
       await rows.first().click();
       await fresh.sidebar.edit.assert.hasMaskPreview();
-      await expect
-        .poll(() => fresh.sidebar.edit.maskPreviewPixels())
-        .toBeGreaterThan(0);
+      await fresh.sampleCanvas.assert.hasScreenshot("seg-pen-persisted.png");
     } finally {
       await context.close();
     }

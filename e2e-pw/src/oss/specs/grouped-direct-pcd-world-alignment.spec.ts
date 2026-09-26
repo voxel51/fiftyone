@@ -73,14 +73,14 @@ test("renders both point-cloud slices aligned in the world frame", async ({
 
   // each wait is armed before the action that causes the reveal, so no earlier
   // reveal can satisfy it
-  const firstSliceRevealed = await eventUtils.arm(SCENE_REVEALED);
-  await grid.openFirstSample();
-  await modal.waitForSampleLoadDomAttribute(true);
-  await firstSliceRevealed.received;
+  await eventUtils.after(SCENE_REVEALED, async () => {
+    await grid.openFirstSample();
+    await modal.waitForSampleLoadDomAttribute(true);
+  });
 
-  const bothSlicesRevealed = await eventUtils.arm(SCENE_REVEALED);
-  await modal.toggleLooker3dSlice("lidar_right");
-  await bothSlicesRevealed.received;
+  await eventUtils.after(SCENE_REVEALED, async () => {
+    await modal.toggleLooker3dSlice("lidar_right");
+  });
 
   // the reveal above means bounds are resolved and the camera is mounted, so
   // the top view frames both slices and its settle signal is dispatched

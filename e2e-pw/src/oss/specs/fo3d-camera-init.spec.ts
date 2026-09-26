@@ -110,9 +110,9 @@ test.afterAll(async ({ foWebServer }) => {
 
 // ─── tests ─────────────────────────────────────────────────────────────────
 
-// Flaky: whichever test opens the modal first hits a camera-init stall (the
-// camera never re-frames/saves); skipping only the first test moved the same
-// failure to the next one, so quarantine the suite (was test.describe.serial)
+// Quarantined (was test.describe.serial): entering annotate reveals the scene
+// (looker3d-scene-ready) before its camera attaches, so the mode-switch test
+// reads no camera; the other tests pass on their event waits
 test.describe.skip("camera initialization", () => {
   test.afterEach(async ({ page, modal }) => {
     await modal.close({ ignoreError: true });
@@ -134,16 +134,13 @@ test.describe.skip("camera initialization", () => {
     await grid.openFirstSample();
     await modal.looker3dControls.waitForAllAssetsLoaded();
 
-    await expect
-      .poll(
-        async () =>
-          positionsAreClose(
-            await renderer3d.getCameraPosition(),
-            DEFAULT_CAMERA_POSITION,
-          ),
-        { timeout: 10000 },
-      )
-      .toBe(false);
+    // the scene reveals only once the camera has settled
+    expect(
+      positionsAreClose(
+        await renderer3d.getCameraPosition(),
+        DEFAULT_CAMERA_POSITION,
+      ),
+    ).toBe(false);
 
     const position = await renderer3d.getCameraPosition();
 
@@ -166,22 +163,17 @@ test.describe.skip("camera initialization", () => {
 
     const cameraBefore = await renderer3d.getCameraPosition();
 
-    // Wait until saved camera state matches the live camera.
-    // localStorage can briefly contain an early fallback value.
-    await expect
-      .poll(async () => {
-        const saved = await renderer3d.getSavedCameraState(basicDatasetName);
-        if (!saved) {
-          return false;
-        }
-
-        return positionsAreClose(
-          saved.position as [number, number, number],
-          cameraBefore,
-          1.0,
-        );
-      })
-      .toBe(true);
+    // localStorage can briefly hold an early fallback value; the next save
+    // after the reveal holds the settled camera
+    await renderer3d.nextCameraSave();
+    const saved = await renderer3d.getSavedCameraState(basicDatasetName);
+    expect(
+      positionsAreClose(
+        saved?.position as [number, number, number],
+        cameraBefore,
+        1.0,
+      ),
+    ).toBe(true);
 
     const savedBefore = await renderer3d.getSavedCameraState(basicDatasetName);
     expect(savedBefore).not.toBeNull();
@@ -189,18 +181,12 @@ test.describe.skip("camera initialization", () => {
     expect(savedBefore?.target).toHaveLength(3);
 
     // Navigate to next sample, then come back
-    await modal.navigateNextSample();
-    await modal.navigatePreviousSample();
-
-    await expect
-      .poll(
-        async () => {
-          const currentCamera = await renderer3d.getCameraPosition();
-          return positionsAreClose(currentCamera, cameraBefore, 1.0);
-        },
-        { timeout: 10000, intervals: [500] },
-      )
-      .toBe(true);
+    await modal.eventUtils.after("looker3d-scene-ready", () =>
+      modal.navigateNextSample(),
+    );
+    await modal.eventUtils.after("looker3d-scene-ready", () =>
+      modal.navigatePreviousSample(),
+    );
 
     const positionAfter = await renderer3d.getCameraPosition();
 
@@ -229,17 +215,13 @@ test.describe.skip("camera initialization", () => {
     await grid.openFirstSample();
     await modal.looker3dControls.waitForAllAssetsLoaded();
 
-    await expect
-      .poll(
-        async () =>
-          positionsAreClose(
-            await renderer3d.getCameraPosition(),
-            SCENE_CAMERA_POSITION,
-            1.0,
-          ),
-        { timeout: 10000 },
-      )
-      .toBe(true);
+    expect(
+      positionsAreClose(
+        await renderer3d.getCameraPosition(),
+        SCENE_CAMERA_POSITION,
+        1.0,
+      ),
+    ).toBe(true);
   });
 
   test("camera position persists across explore/annotate mode switches", async ({
@@ -256,44 +238,30 @@ test.describe.skip("camera initialization", () => {
 
     await grid.openFirstSample();
     await modal.looker3dControls.waitForAllAssetsLoaded();
+    // the modal opens in explore, so this switch remounts nothing
     await modal.sidebar.switchMode("explore");
 
     const exploreCameraBefore = await renderer3d.getCameraPosition();
 
-    await modal.sidebar.switchMode("annotate");
+    await modal.eventUtils.after("looker3d-scene-ready", () =>
+      modal.sidebar.switchMode("annotate"),
+    );
+    expect(
+      positionsAreClose(
+        await renderer3d.getCameraPosition(),
+        exploreCameraBefore,
+        modeSwitchTolerance,
+      ),
+    ).toBe(true);
 
-    await expect
-      .poll(
-        async () =>
-          positionsAreClose(
-            await renderer3d.getCameraPosition(),
-            exploreCameraBefore,
-            modeSwitchTolerance,
-          ),
-        { timeout: 10000 },
-      )
-      .toBe(true);
-
+    // damping is off, so the camera has moved by the time the drag returns
     await renderer3d.dragCameraBy(10, 10);
-    // we wait for canvas animation which takes a few ms to run, 100 to be safe
-    // eslint-disable-next-line playwright/no-wait-for-timeout
-    await page.waitForTimeout(100);
 
     const annotateCameraAfterDrag = await renderer3d.getCameraPosition();
 
-    await modal.sidebar.switchMode("explore");
-
-    await expect
-      .poll(
-        async () =>
-          positionsAreClose(
-            await renderer3d.getCameraPosition(),
-            annotateCameraAfterDrag,
-            modeSwitchTolerance,
-          ),
-        { timeout: 10000 },
-      )
-      .toBe(true);
+    await modal.eventUtils.after("looker3d-scene-ready", () =>
+      modal.sidebar.switchMode("explore"),
+    );
 
     const exploreCameraAfterRoundTrip = await renderer3d.getCameraPosition();
 
@@ -328,35 +296,9 @@ test.describe.skip("camera initialization", () => {
     // Use a public camera action to move the camera after initialization.
     await modal.looker3dControls.setEgoView();
 
-    await expect
-      .poll(
-        async () =>
-          !positionsAreClose(
-            await renderer3d.getCameraPosition(),
-            initialPosition,
-          ),
-        { timeout: 10000 },
-      )
-      .toBe(true);
-
-    // Wait until the persisted camera state catches up with the rendered camera.
-    await expect
-      .poll(async () => {
-        const currentCamera = await renderer3d.getCameraPosition();
-        const savedState =
-          await renderer3d.getSavedCameraState(basicDatasetName);
-
-        if (!savedState) {
-          return false;
-        }
-
-        return positionsAreClose(
-          savedState.position as [number, number, number],
-          currentCamera,
-          1.0,
-        );
-      })
-      .toBe(true);
+    // setEgoView resolves once the moved camera has rendered; the next save
+    // after that holds it
+    await renderer3d.nextCameraSave();
 
     const newPosition = await renderer3d.getCameraPosition();
     const savedState = await renderer3d.getSavedCameraState(basicDatasetName);

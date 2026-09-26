@@ -41,8 +41,16 @@ test.describe("MCAP persistence", () => {
         ["camera/front", "Logs / Diagnostics", "/pose"],
         ["points"],
       );
-      await modal.episode.fullscreenTile("Logs / Diagnostics");
-      await waitForCustomizedWorkspaceSave(page);
+      // the fullscreen tile is the last field this workspace saves
+      await modal.eventUtils.after(
+        "multimodal-layout-saved",
+        () => modal.episode.fullscreenTile("Logs / Diagnostics"),
+        (e) =>
+          ((e.detail as { fields?: string[] })?.fields ?? []).includes(
+            "expandedTileId",
+          ),
+      );
+      await expectCustomizedWorkspaceSaved(page);
 
       await modal.episode.navigateDatasetSample("forward", tinyB.fileName);
       await modal.episode.expectTileCount(2);
@@ -67,7 +75,7 @@ test.describe("MCAP persistence", () => {
       await modal.episode.fullscreenTile("Logs / Diagnostics");
       await modal.close();
       await page.reload();
-      await expect(grid.locator).toBeVisible({ timeout: 30_000 });
+      await grid.locator.waitFor();
       await openMcapModal(grid, modal, 0);
       await modal.episode.waitForReady(tinyA.fileName);
       await expectRestoredWorkspace(modal);
@@ -126,7 +134,7 @@ test.describe("MCAP persistence", () => {
 
     await modal.close();
     await page.reload();
-    await expect(grid.locator).toBeVisible({ timeout: 30_000 });
+    await grid.locator.waitFor();
     await openMcapModal(
       grid,
       modal,
@@ -161,7 +169,7 @@ test.describe("MCAP persistence", () => {
 
     await modal.close();
     await page.reload();
-    await expect(grid.locator).toBeVisible({ timeout: 30_000 });
+    await grid.locator.waitFor();
     await openMcapModal(
       grid,
       modal,
@@ -172,47 +180,43 @@ test.describe("MCAP persistence", () => {
   });
 });
 
-async function waitForCustomizedWorkspaceSave(page: Page): Promise<void> {
-  await expect
-    .poll(
-      () =>
-        page.evaluate((storageKey) => {
-          const raw = localStorage.getItem(storageKey);
-          if (!raw) return false;
-          const parsed = JSON.parse(raw) as {
-            byDataset?: Record<string, Record<string, unknown>>;
-          };
-          // Layouts are keyed by opaque dataset ID. A fresh Playwright context
-          // loads exactly one dataset before this assertion.
-          const entries = Object.values(parsed.byDataset ?? {});
-          if (entries.length !== 1) return false;
-          const [entry] = entries;
-          const collectTileIds = (node: unknown): string[] => {
-            if (typeof node === "string") return [node];
-            if (!node || typeof node !== "object") return [];
-            const branch = node as { first?: unknown; second?: unknown };
-            return [
-              ...collectTileIds(branch.first),
-              ...collectTileIds(branch.second),
-            ];
-          };
-          const tileTypes = collectTileIds(entry.layout)
-            .map((tileId) => tileId.split("-", 1)[0])
-            .sort();
-          const rawStreams =
-            entry.rawStreams && typeof entry.rawStreams === "object"
-              ? Object.values(entry.rawStreams)
-              : [];
-          return (
-            typeof entry.expandedTileId === "string" &&
-            entry.expandedTileId.startsWith("log-") &&
-            tileTypes.join(",") === "image,log,raw" &&
-            rawStreams.length === 1
-          );
-        }, EPISODE_LAYOUT_STORAGE_KEY),
-      { timeout: 10_000 },
-    )
-    .toBe(true);
+async function expectCustomizedWorkspaceSaved(page: Page): Promise<void> {
+  expect(
+    await page.evaluate((storageKey) => {
+      const raw = localStorage.getItem(storageKey);
+      if (!raw) return false;
+      const parsed = JSON.parse(raw) as {
+        byDataset?: Record<string, Record<string, unknown>>;
+      };
+      // Layouts are keyed by opaque dataset ID. A fresh Playwright context
+      // loads exactly one dataset before this assertion.
+      const entries = Object.values(parsed.byDataset ?? {});
+      if (entries.length !== 1) return false;
+      const [entry] = entries;
+      const collectTileIds = (node: unknown): string[] => {
+        if (typeof node === "string") return [node];
+        if (!node || typeof node !== "object") return [];
+        const branch = node as { first?: unknown; second?: unknown };
+        return [
+          ...collectTileIds(branch.first),
+          ...collectTileIds(branch.second),
+        ];
+      };
+      const tileTypes = collectTileIds(entry.layout)
+        .map((tileId) => tileId.split("-", 1)[0])
+        .sort();
+      const rawStreams =
+        entry.rawStreams && typeof entry.rawStreams === "object"
+          ? Object.values(entry.rawStreams)
+          : [];
+      return (
+        typeof entry.expandedTileId === "string" &&
+        entry.expandedTileId.startsWith("log-") &&
+        tileTypes.join(",") === "image,log,raw" &&
+        rawStreams.length === 1
+      );
+    }, EPISODE_LAYOUT_STORAGE_KEY),
+  ).toBe(true);
 }
 
 async function setRepresentativeSidebarPreferences(

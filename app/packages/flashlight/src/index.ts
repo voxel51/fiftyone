@@ -531,6 +531,16 @@ export default class Flashlight<K> {
     if (this.state.lastSection === this.state.sections.length - 1) {
       this.requestMore();
     }
+
+    // only for browser automation (e2e)
+    if (!zooming && navigator.webdriver) {
+      this.element.dispatchEvent(
+        new CustomEvent("flashlight-rendered", {
+          bubbles: true,
+          detail: { pending: this.loading },
+        }),
+      );
+    }
   }
 
   private tile(items: ItemData[], useRowRemainder = false): RowData[][] {

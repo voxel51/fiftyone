@@ -31,9 +31,9 @@ export class SelectorPom {
   }
 
   async openResults() {
-    const results = await this.eventUtils.arm(`selector-results-${this.title}`);
-    await this.input.focus();
-    await results.received;
+    await this.eventUtils.after(`selector-results-${this.title}`, async () => {
+      await this.input.focus();
+    });
   }
 
   async closeResults() {

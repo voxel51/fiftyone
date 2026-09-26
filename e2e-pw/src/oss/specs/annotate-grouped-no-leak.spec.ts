@@ -135,11 +135,9 @@ const expectPersistedSliceClasses = async (
       }
       // switching the annotation slice re-federates the active sample (and
       // loads a 3D slice's scene), so settle on the count first
-      await expect
-        .poll(() => modal.sidebar.annotate.getActiveLabelsCount(), {
-          timeout: 20_000,
-        })
-        .toBe(expected[slice].length);
+      await modal.sidebar.annotate.assert.hasActiveLabelsCount(
+        expected[slice].length,
+      );
       expect((await modal.annotate3d.listedLabels()).sort()).toEqual(
         expected[slice],
       );
@@ -185,11 +183,9 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     const visit = async (slice: SliceName) => {
       await modal.sidebar.annotate.selectAnnotationSlice(slice);
       await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice(slice);
-      await expect
-        .poll(() => modal.sidebar.annotate.getActiveLabelsCount(), {
-          timeout: 20_000,
-        })
-        .toBe(SLICES[slice].count);
+      await modal.sidebar.annotate.assert.hasActiveLabelsCount(
+        SLICES[slice].count,
+      );
     };
 
     for (const slice of SLICE_NAMES) {
@@ -215,11 +211,7 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
 
     await modal.sidebar.annotate.selectAnnotationSlice("image");
     await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice("image");
-    await expect
-      .poll(() => modal.sidebar.annotate.getActiveLabelsCount(), {
-        timeout: 20_000,
-      })
-      .toBe(2);
+    await modal.sidebar.annotate.assert.hasActiveLabelsCount(2);
 
     // change the first of the image slice's two detections cat -> dog
     await modal.annotate3d.selectLabel("cat");
@@ -246,11 +238,7 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
 
     await modal.sidebar.annotate.selectAnnotationSlice("image");
     await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice("image");
-    await expect
-      .poll(() => modal.sidebar.annotate.getActiveLabelsCount(), {
-        timeout: 20_000,
-      })
-      .toBe(2);
+    await modal.sidebar.annotate.assert.hasActiveLabelsCount(2);
 
     // draw a new detection clear of the two seeded boxes (which sit at low x),
     // then assign it a distinct class so the create is unambiguous
@@ -288,11 +276,7 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     await modal.sidebar.annotate.selectAnnotationSlice("mesh");
     await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice("mesh");
     await modal.annotate3d.waitForSurface();
-    await expect
-      .poll(() => modal.sidebar.annotate.getActiveLabelsCount(), {
-        timeout: 20_000,
-      })
-      .toBe(1);
+    await modal.sidebar.annotate.assert.hasActiveLabelsCount(1);
 
     // select the mesh cuboid and change its class
     await modal.annotate3d.selectLabel("cat");
@@ -321,11 +305,7 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     await modal.sidebar.annotate.selectAnnotationSlice("mesh");
     await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice("mesh");
     await modal.annotate3d.waitForSurface();
-    await expect
-      .poll(() => modal.sidebar.annotate.getActiveLabelsCount(), {
-        timeout: 20_000,
-      })
-      .toBe(1);
+    await modal.sidebar.annotate.assert.hasActiveLabelsCount(1);
 
     // keep the seeded cuboid so the detections field stays enabled (an emptied
     // slice drops the field and the `cuboid-mode` toolbar with it); it sits off
@@ -368,11 +348,7 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     await modal.sidebar.annotate.selectAnnotationSlice("mesh");
     await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice("mesh");
     await modal.annotate3d.waitForSurface();
-    await expect
-      .poll(() => modal.sidebar.annotate.getActiveLabelsCount(), {
-        timeout: 20_000,
-      })
-      .toBe(1);
+    await modal.sidebar.annotate.assert.hasActiveLabelsCount(1);
 
     // delete the mesh cuboid via the 3D annotation toolbar
     await modal.annotate3d.selectLabel("cat");
@@ -419,11 +395,7 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
 
     await modal.sidebar.annotate.selectAnnotationSlice("image");
     await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice("image");
-    await expect
-      .poll(() => modal.sidebar.annotate.getActiveLabelsCount(), {
-        timeout: 20_000,
-      })
-      .toBe(2);
+    await modal.sidebar.annotate.assert.hasActiveLabelsCount(2);
 
     // delete one of the image slice's two detections via the label menu
     await modal.annotate3d.selectLabel("cat");

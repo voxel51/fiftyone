@@ -123,9 +123,7 @@ test.describe.serial("2D annotation mask merge", () => {
 
     // The source detection is absorbed + deleted → one label remains, persisted.
     await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
-      await expect
-        .poll(() => freshModal.sidebar.annotate.getActiveLabelsCount())
-        .toBe(1);
+      await freshModal.sidebar.annotate.assert.hasActiveLabelsCount(1);
     });
   });
 
@@ -153,9 +151,7 @@ test.describe.serial("2D annotation mask merge", () => {
     await modal.sidebar.annotate.waitForSavesSettled();
 
     await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
-      await expect
-        .poll(() => freshModal.sidebar.annotate.getActiveLabelsCount())
-        .toBe(2);
+      await freshModal.sidebar.annotate.assert.hasActiveLabelsCount(2);
     });
   });
 });

@@ -128,10 +128,6 @@ const openAnnotate = async (
 const blur = (page: Page) =>
   page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
 
-// canvas reads are only valid once the scene has applied the new frame
-const step = (modal: ModalPom, move: () => Promise<void>) =>
-  modal.eventUtils.after("video-annotation-frame-applied", move);
-
 const ofOverlay =
   (id: string) =>
   (e: { detail?: unknown }): boolean =>
@@ -147,13 +143,13 @@ const clickOverlay = (modal: ModalPom, id: string) =>
 
 const stepForward = async (modal: ModalPom, n: number) => {
   for (let i = 0; i < n; i++) {
-    await step(modal, () => modal.videoAnnotate.stepForward());
+    await modal.videoAnnotate.stepForward();
   }
 };
 
 const stepBack = async (modal: ModalPom, n: number) => {
   for (let i = 0; i < n; i++) {
-    await step(modal, () => modal.videoAnnotate.stepBack());
+    await modal.videoAnnotate.stepBack();
   }
 };
 

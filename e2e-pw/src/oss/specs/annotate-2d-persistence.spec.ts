@@ -5,7 +5,7 @@
  * the sidebar form autosave and are verified from a brand-new browser
  * context. Operates on the single seeded box so selection is unambiguous.
  */
-import { Browser, expect, test as base } from "src/oss/fixtures";
+import { Browser, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
@@ -60,9 +60,6 @@ test.beforeEach(async ({ fiftyoneLoader, modal, page }) => {
 });
 
 /** Read a numeric edit-form field value. */
-const fieldNum = async (modal: ModalPom, path: string) =>
-  Number(await modal.sidebar.edit.getFieldValue(path));
-
 /**
  * Open the dataset in a fresh browser context (no shared client cache, single
  * clean load — a true server round-trip) and run `verify` against an
@@ -114,9 +111,10 @@ test.describe.serial("2D annotation edit/delete persistence", () => {
 
     await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
       await freshModal.sidebar.annotate.selectActiveLabel("cat", 0);
-      await expect
-        .poll(() => fieldNum(freshModal, "confidence"))
-        .toBeCloseTo(0.7, 4);
+      await freshModal.sidebar.edit.assert.verifyFieldValue(
+        "confidence",
+        "0.7",
+      );
     });
   });
 
@@ -134,16 +132,15 @@ test.describe.serial("2D annotation edit/delete persistence", () => {
         ["POST", "PATCH", "PUT"].includes(r.request().method()),
     );
     await modal.sidebar.edit.setFieldValue("position.x", "0.111");
-    await expect
-      .poll(() => fieldNum(modal, "position.x"))
-      .toBeCloseTo(0.111, 4);
+    await modal.sidebar.edit.assert.verifyFieldValue("position.x", "0.111");
     await saved;
 
     await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
       await freshModal.sidebar.annotate.selectActiveLabel("cat", 0);
-      await expect
-        .poll(() => fieldNum(freshModal, "position.x"))
-        .toBeCloseTo(0.111, 4);
+      await freshModal.sidebar.edit.assert.verifyFieldValue(
+        "position.x",
+        "0.111",
+      );
     });
   });
 
@@ -162,15 +159,11 @@ test.describe.serial("2D annotation edit/delete persistence", () => {
     );
     await modal.sidebar.annotate.selectActiveLabel("cat", 0);
     await page.keyboard.press("Backspace");
-    await expect
-      .poll(() => modal.sidebar.annotate.getActiveLabelsCount())
-      .toBe(before - 1);
+    await modal.sidebar.annotate.assert.hasActiveLabelsCount(before - 1);
     await saved;
 
     await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
-      await expect
-        .poll(() => freshModal.sidebar.annotate.getActiveLabelsCount())
-        .toBe(before - 1);
+      await freshModal.sidebar.annotate.assert.hasActiveLabelsCount(before - 1);
     });
   });
 });

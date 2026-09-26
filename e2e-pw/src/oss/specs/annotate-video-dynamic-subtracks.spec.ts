@@ -83,7 +83,7 @@ const setSignal = async (modal: ModalPom, page: Page, choice: string) => {
 
 /** Assert the selected track's `turn_signal` value at the current frame. */
 const assertSignal = async (modal: ModalPom, expected: string) =>
-  expect.poll(() => modal.sidebar.edit.getFieldValue(ATTR)).toBe(expected);
+  modal.sidebar.edit.assert.verifyFieldValue(ATTR, expected);
 
 /**
  * Seed one tracked instance carrying `turn_signal`="off" on every frame. 20
@@ -159,14 +159,14 @@ test.describe.serial("video annotation dynamic attribute sub-tracks", () => {
 
     // Expand: exactly the one declared-dynamic attribute's row appears.
     await va.toggleTrackExpansion(parentId);
-    await expect.poll(() => va.subTrackIds(parentId)).toEqual([subId]);
+    await va.assert.subTracks(parentId, [ATTR]);
 
     // Uniform "off" across the clip → a single value segment.
     await expect(va.segmentBars(subId)).toHaveCount(1);
 
     // Collapse: the sub-track row is hidden again.
     await va.toggleTrackExpansion(parentId);
-    await expect.poll(() => va.subTrackIds(parentId)).toHaveLength(0);
+    await va.assert.subTracks(parentId, []);
   });
 
   test("a mid-track edit splits the sub-track into two value segments", async ({
@@ -356,8 +356,6 @@ test.describe.serial("video annotation multiple dynamic attributes", () => {
     await va.openTracksDrawer();
 
     await va.toggleTrackExpansion(parentId);
-    await expect
-      .poll(async () => (await va.subTrackIds(parentId)).sort())
-      .toEqual([`${parentId}::brake`, `${parentId}::${ATTR}`].sort());
+    await va.assert.subTracks(parentId, ["brake", ATTR]);
   });
 });

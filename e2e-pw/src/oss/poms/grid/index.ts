@@ -1,5 +1,4 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
-import { Duration } from "src/oss/utils";
 import { ArmedEvent, EventUtils } from "src/shared/event-utils";
 import { GridActionsRowPom } from "../action-row/grid-actions-row";
 import { GridSliceSelectorPom } from "../action-row/grid-slice-selector";
@@ -134,17 +133,13 @@ export class GridPom {
   async scrollBottom() {
     const forwardSectionDiv = this.getForwardSection().locator("div").last();
     await forwardSectionDiv.waitFor({ state: "visible" });
-    return forwardSectionDiv.scrollIntoViewIfNeeded({
-      timeout: Duration.Seconds(20),
-    });
+    return forwardSectionDiv.scrollIntoViewIfNeeded();
   }
 
   async scrollTop() {
     const backwardSectionDiv = this.getBackwardSection().locator("div").first();
     await backwardSectionDiv.waitFor({ state: "visible" });
-    return backwardSectionDiv.scrollIntoViewIfNeeded({
-      timeout: Duration.Seconds(20),
-    });
+    return backwardSectionDiv.scrollIntoViewIfNeeded();
   }
 
   async selectSlice(slice: string) {
@@ -156,13 +151,9 @@ export class GridPom {
     await this.sliceSelector.selectSlice(slice);
   }
 
-  /**
-   * @deprecated Use `armGridRefresh` instead.
-   */
+  /** Wait until the grid has mounted at least one tile. */
   async waitForGridToLoad() {
-    return this.page.waitForSelector(TILE_SELECTOR, {
-      timeout: 2000,
-    });
+    await expect(this.page.locator(TILE_SELECTOR).first()).toBeAttached();
   }
 
   /**
@@ -185,21 +176,28 @@ export class GridPom {
    * arming BEFORE the action that refreshes the grid, then await the handle's
    * `received` after it.
    */
-  async armGridRefresh(): Promise<ArmedEvent> {
+  private async armGridRefresh(): Promise<ArmedEvent> {
     const unmount = await this.eventUtils.arm("grid-unmount");
     const mount = await this.eventUtils.arm("grid-mount");
     return new ArmedEvent(
       Promise.all([unmount.received, mount.received]).then(
         (): void => undefined,
       ),
+      async () => {
+        await Promise.all([unmount.dispose(), mount.dispose()]);
+      },
     );
   }
 
   async run<T>(wrap: () => Promise<T>): Promise<T> {
     const refresh = await this.armGridRefresh();
-    const result = await wrap();
-    await refresh.received;
-    return result;
+    try {
+      const result = await wrap();
+      await refresh.received;
+      return result;
+    } finally {
+      await refresh.dispose();
+    }
   }
 }
 
@@ -244,15 +242,9 @@ class GridAsserter {
   }
 
   async isEntryCountTextEqualTo(text: string) {
-    const entryCounts = this.gridPom.page.getByTestId("entry-counts");
-    const normalize = (value: string | null) =>
-      (value ?? "").replace(/\s+/g, " ").trim();
-
-    await expect(entryCounts).toBeVisible({ timeout: Duration.Seconds(20) });
-    await expect
-      .poll(async () => normalize(await entryCounts.textContent()), {
-        timeout: Duration.Seconds(20),
-      })
-      .toBe(normalize(text));
+    // `toHaveText` collapses whitespace on both sides
+    await expect(this.gridPom.page.getByTestId("entry-counts")).toHaveText(
+      text,
+    );
   }
 }

@@ -29,6 +29,9 @@ export enum SampleCanvasType {
  * All operations use relative [0, 1] coordinates with respect to container,
  * and not the media within it.
  */
+// one wheel gesture of this size zooms Lighter about 1.5x
+const ZOOM_IN_WHEEL_DELTA = 125;
+
 export class SampleCanvasPom {
   readonly assert: SampleCanvasAsserter;
   #box?: Box;
@@ -171,32 +174,18 @@ export class SampleCanvasPom {
    *
    * @param x The x coordinate between [0, 1]
    * @param y The y coordinate between [0, 1]
-   * @param cursor An optional cursor value to expect after moving. When
-   *   provided, the move is retried until the cursor matches. This is
-   *   necessary because the cursor is event-driven — it only updates when a
-   *   mouse event fires — so the underlying state (e.g. detection mode) may
-   *   not have settled yet on the first move attempt.
+   * @param cursor An optional cursor the canvas must show after the move
    */
   async move(x: number, y: number, cursor?: string) {
     const xy = await this.#toScreenCoordinates(x, y);
     this.#mouseX = xy.x;
     this.#mouseY = xy.y;
 
+    await this.page.mouse.move(xy.x, xy.y);
     if (cursor) {
-      // The cursor flag only updates on mouse events, so it can hold a stale
-      // value from a previous hover (e.g. a just-clicked sidebar button).
-      // Reset it so the gate below is only satisfied by a fresh hover-driven
-      // update at the target position — otherwise the click can fire before
-      // the canvas has rendered the element the test intends to hit.
-      await this.page.evaluate(() => {
-        window.__FO_PLAYWRIGHT_CURRENT_CURSOR = "";
-      });
-      await expect(async () => {
-        await this.page.mouse.move(xy.x, xy.y);
-        await this.assert.hasCursor(cursor);
-      }).toPass();
-    } else {
-      await this.page.mouse.move(xy.x, xy.y);
+      // Hover cursors are set by this move's pointer event; a mode's cursor is
+      // stamped on the canvas when the mode installs, even after the move.
+      await expect(this.lighterCanvas).toHaveCSS("cursor", cursor);
     }
   }
 
@@ -241,6 +230,39 @@ export class SampleCanvasPom {
   }
 
   /**
+   * Zoom the Lighter view in about 1.5x at the pointer as one wheel gesture,
+   * returning once Lighter has applied it
+   */
+  async zoomIn() {
+    await this.eventUtils.after("lighter:zoomed", () =>
+      this.page.mouse.wheel(0, -ZOOM_IN_WHEEL_DELTA),
+    );
+  }
+
+  /**
+   * The Lighter canvas, shared by the image and video surfaces
+   */
+  get lighterCanvas() {
+    return this.page.getByTestId("lighter-sample-renderer-canvas");
+  }
+
+  /**
+   * Resize the page, returning once Lighter has resized its canvas to match
+   */
+  async resizeViewport(width: number, height: number) {
+    await this.eventUtils.after("lighter:resize", () =>
+      this.page.setViewportSize({ width, height }),
+    );
+  }
+
+  /**
+   * Reset Lighter zoom and pan with the Annotate keyboard shortcut
+   */
+  async resetZoomPan() {
+    await this.page.keyboard.press("r");
+  }
+
+  /**
    * Wait for a drawing tool to be armed on the scene.
    *
    * `Scene2D.enterInteractiveMode` stamps the installed handler's own cursor
@@ -256,14 +278,6 @@ export class SampleCanvasPom {
     await expect(
       this.page.getByTestId("lighter-sample-renderer-canvas"),
     ).toHaveCSS("cursor", cursor);
-  }
-
-  /**
-   * Wait for the cursor to change
-   */
-  async waitForCursorChange() {
-    const armed = await this.eventUtils.arm("cursor-change");
-    await armed.received;
   }
 
   /**
@@ -325,6 +339,20 @@ class SampleCanvasAsserter {
     await expect(this.sampleCanvasPom.locator).toHaveScreenshot(name, {
       maxDiffPixelRatio: 0.0,
     });
+  }
+
+  /**
+   * Is the Lighter canvas stacked exactly over the element the surface shows
+   * its media in (`data-lighter-media`), so labels paint in the media rect
+   */
+  async lighterCoversMedia() {
+    const [canvas, media] = await Promise.all([
+      this.sampleCanvasPom.lighterCanvas.boundingBox(),
+      this.sampleCanvasPom.locator
+        .locator("[data-lighter-media]")
+        .boundingBox(),
+    ]);
+    expect(canvas).toEqual(media);
   }
 
   /**

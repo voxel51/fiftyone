@@ -254,6 +254,9 @@ test.describe.serial("segmentation tool snapshots", () => {
         await openAnnotate(freshModal, freshPage, fiftyoneLoader, datasetName);
         await freshModal.sidebar.annotate.assert.labelRowCount(FIELD, 1);
         await assertOnlyLabelHasMask(freshModal);
+        await freshModal.sampleCanvas.assert.hasScreenshot(
+          "seg-merge-persisted.png",
+        );
       } finally {
         await context.close();
       }

@@ -118,24 +118,17 @@ test.describe.serial("video annotation sample navigation", () => {
 
     // page forward to the next video sample (ArrowRight = ModalNextSample)
     await page.keyboard.press("ArrowRight");
-    await expect
-      .poll(async () => {
-        const ids = await va.objectTrackIds();
-        return ids.length === 1 && ids[0] !== firstTrack;
-      })
-      .toBe(true);
+    // the first sample's track row leaves before the next sample's surface reveals
+    await va.assert.hasTrack(firstTrack, false);
     await va.waitForSurface();
+    await va.assert.objectTrackCount(1);
     const [secondTrack] = await va.objectTrackIds();
 
     // page back to the first sample
     await page.keyboard.press("ArrowLeft");
-    await expect
-      .poll(async () => {
-        const ids = await va.objectTrackIds();
-        return ids.length === 1 && ids[0] === firstTrack;
-      })
-      .toBe(true);
+    await va.assert.hasTrack(firstTrack);
     await va.waitForSurface();
+    await va.assert.objectTrackCount(1);
 
     expect(secondTrack).not.toBe(firstTrack);
     // no "a store for sample X is already registered" (or similar) was thrown

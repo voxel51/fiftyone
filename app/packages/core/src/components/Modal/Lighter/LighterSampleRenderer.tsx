@@ -107,6 +107,8 @@ export const LighterSampleRenderer = ({
           onMouseLeave={() => setIsCanvasHovered(false)}
           className={`lighter-sample-renderer ${className}`}
           data-cy="lighter-sample-renderer"
+          // Lighter paints the image itself, so its frame is the media rect
+          data-lighter-media
           id="lighter-sample-renderer-container"
           style={{
             width: "100%",
