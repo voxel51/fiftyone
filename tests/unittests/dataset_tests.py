@@ -21,6 +21,7 @@ from unittest.mock import MagicMock, patch
 import eta.core.utils as etau
 import numpy as np
 import pytz
+import bson
 from bson import ObjectId
 from pymongo.errors import BulkWriteError
 from pymongo.results import BulkWriteResult, InsertManyResult
@@ -5115,19 +5116,26 @@ class _AdmissionSample:
 class _RecordingAdmitter(foo.InsertAdmitter):
     """An admitter that remembers what it was asked and what it was told."""
 
-    def __init__(self, refuse=False):
+    def __init__(self, refuse=False, sizing=False):
         self.refuse = refuse
+        self.sizing = sizing
         self.admitted = []
         self.recorded = []
+        self.num_bytes = []
 
-    def admit(self, collection_name, num_docs):
+    def wants_bytes(self):
+        return self.sizing
+
+    def admit(self, collection_name, num_docs, num_bytes=None):
         if self.refuse:
             raise foo.InsertRefusedError("refused")
 
         self.admitted.append((collection_name, num_docs))
+        self.num_bytes.append(("admit", num_bytes))
 
-    def record(self, collection_name, num_docs):
+    def record(self, collection_name, num_docs, num_bytes=None):
         self.recorded.append((collection_name, num_docs))
+        self.num_bytes.append(("record", num_bytes))
 
 
 def _new_sample_and_doc(filepath="im.png"):
@@ -5158,6 +5166,7 @@ class SampleBatchAdmissionTests(unittest.TestCase):
         dataset = MagicMock()
         dataset._sample_collection_name = "samples.test"
         dataset._sample_collection.count_documents.return_value = num_existing
+        dataset._sample_collection.codec_options = bson.DEFAULT_CODEC_OPTIONS
         return dataset
 
     def _inserts(self, dataset, samples_and_docs):
@@ -5246,6 +5255,34 @@ class SampleBatchAdmissionTests(unittest.TestCase):
 
         self.assertEqual(self.admitter.admitted, [("samples.test", 3)])
         self.assertEqual(self.admitter.recorded, [("samples.test", 2)])
+
+    def test_add_samples_batch_is_sized_in_bytes(self):
+        self.admitter.sizing = True
+        dataset = self._make_dataset()
+        samples_and_docs = [_new_sample_and_doc() for _ in range(3)]
+        self._inserts(dataset, samples_and_docs)
+        num_bytes = sum(len(bson.encode(d)) for _, d in samples_and_docs)
+
+        fo.Dataset._add_samples_batch(dataset, samples_and_docs)
+
+        self.assertEqual(
+            self.admitter.num_bytes,
+            [("admit", num_bytes), ("record", num_bytes)],
+        )
+
+    def test_upsert_samples_batch_is_never_sized(self):
+        # its ops also replace existing documents, so its encoded size is
+        # not what it adds
+        self.admitter.sizing = True
+        dataset = self._make_dataset()
+        samples_and_docs = [_new_sample_and_doc()]
+        self._upserts(dataset, inserted=1)
+
+        fo.Dataset._upsert_samples_batch(dataset, samples_and_docs)
+
+        self.assertEqual(
+            self.admitter.num_bytes, [("admit", None), ("record", None)]
+        )
 
 
 class DatasetExtrasTests(unittest.TestCase):

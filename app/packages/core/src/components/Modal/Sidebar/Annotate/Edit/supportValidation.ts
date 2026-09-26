@@ -8,9 +8,14 @@ export interface Span {
 /**
  * Validates a TemporalDetection's `[start, stop]` frame support the way the
  * SDK's `FrameSupportField` does: whole frame numbers with `1 <= start <= stop`.
- * Returns the message to show, or `null` when the span is valid.
+ * With a known `frameCount`, the span also may not reach past the video's last
+ * frame. Returns the message to show, or `null` when the span is valid.
  */
-export const supportError = (start: number, stop: number): string | null => {
+export const supportError = (
+  start: number,
+  stop: number,
+  frameCount?: number | null,
+): string | null => {
   if (!Number.isInteger(start) || !Number.isInteger(stop)) {
     return "frame numbers must be whole numbers";
   }
@@ -21,6 +26,15 @@ export const supportError = (start: number, stop: number): string | null => {
 
   if (start > stop) {
     return "start must not be after stop";
+  }
+
+  if (
+    typeof frameCount === "number" &&
+    Number.isFinite(frameCount) &&
+    frameCount > 0 &&
+    stop > frameCount
+  ) {
+    return `stop must be at most ${frameCount}`;
   }
 
   return null;
@@ -43,7 +57,8 @@ export const changedBound = (current: Span, next: Span): SupportBound =>
 export const supportIssue = (
   displayed: Span,
   next: Required<Span>,
+  frameCount?: number | null,
 ): SupportIssue | null => {
-  const message = supportError(next.start, next.stop);
+  const message = supportError(next.start, next.stop, frameCount);
   return message ? { bound: changedBound(displayed, next), message } : null;
 };
