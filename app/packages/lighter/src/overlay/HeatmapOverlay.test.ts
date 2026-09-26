@@ -16,19 +16,8 @@ import { FAILED_PATH_DECODE_COOLDOWN_MS } from "../utils/pathDecodeCooldown";
 import { resolveHeatmapPalette } from "../utils/heatmapPalette";
 import { HeatmapOverlay } from "./HeatmapOverlay";
 
-// The test environment mocks a 2D context but provides no `ImageData`
-// constructor. What the raster CONTAINS is covered by `heatmapRaster.test.ts`;
-// here it only has to be a distinct object per rasterize.
-class StubImageData {
-  constructor(
-    readonly data: Uint8ClampedArray,
-    readonly width: number,
-    readonly height: number,
-  ) {}
-}
-
-vi.stubGlobal("ImageData", StubImageData);
-
+// What the indices and table CONTAIN is covered by `heatmapIndices.test.ts`;
+// here the drawn image only has to be a distinct object per decode.
 const FIELD = "frames.heatmap";
 const SCALE = [
   [0, 0, 0],
@@ -121,12 +110,14 @@ describe("HeatmapOverlay", () => {
     meta: RenderMeta = META,
   ) => overlay.render(renderer as never, style as never, meta);
 
-  it("draws the rasterized map over the canonical media bounds", () => {
+  it("draws the quantized map over the canonical media bounds", () => {
     render(makeOverlay());
 
     expect(renderer.drawImage).toHaveBeenCalledTimes(1);
     const [source, bounds] = renderer.drawImage.mock.calls[0];
-    expect(source.type).toBe("canvas");
+    expect(source.type).toBe("indexed");
+    expect(source.indexed.indices).toBeInstanceOf(Uint16Array);
+    expect(source.indexed.lut).toHaveLength(256 * 256 * 4);
     expect(bounds).toEqual(META.canonicalMediaBounds);
   });
 
@@ -136,33 +127,33 @@ describe("HeatmapOverlay", () => {
     expect(renderer.drawImage).not.toHaveBeenCalled();
   });
 
-  it("reuses the raster across repaints of the same map and palette", () => {
+  it("reuses the indices across repaints of the same map and palette", () => {
     const overlay = makeOverlay();
     const style = { heatmapPalette: palette() };
 
     render(overlay, style);
-    const first = renderer.drawImage.mock.calls[0][0].canvas;
+    const first = renderer.drawImage.mock.calls[0][0].indexed;
     render(overlay, style);
 
-    expect(renderer.drawImage.mock.calls[1][0].canvas).toBe(first);
+    expect(renderer.drawImage.mock.calls[1][0].indexed).toBe(first);
   });
 
-  it("re-rasterizes when the palette changes", () => {
+  it("re-tables when the palette changes", () => {
     const overlay = makeOverlay();
 
     render(overlay, { heatmapPalette: palette({ colorBy: "field" }) });
-    const first = renderer.drawImage.mock.calls[0][0].canvas;
+    const first = renderer.drawImage.mock.calls[0][0].indexed;
     render(overlay, { heatmapPalette: palette({ colorBy: "value" }) });
 
-    expect(renderer.drawImage.mock.calls[1][0].canvas).not.toBe(first);
+    expect(renderer.drawImage.mock.calls[1][0].indexed).not.toBe(first);
   });
 
-  it("re-rasterizes when the map changes", () => {
+  it("re-quantizes when the map changes", () => {
     const overlay = makeOverlay([0, 0.5, 1, 0.25]);
     const style = { heatmapPalette: palette() };
 
     render(overlay, style);
-    const first = renderer.drawImage.mock.calls[0][0].canvas;
+    const first = renderer.drawImage.mock.calls[0][0].indexed;
 
     overlay.applyLabel({
       _id: "heat-1",
@@ -171,7 +162,7 @@ describe("HeatmapOverlay", () => {
     });
     render(overlay, style);
 
-    expect(renderer.drawImage.mock.calls[1][0].canvas).not.toBe(first);
+    expect(renderer.drawImage.mock.calls[1][0].indexed).not.toBe(first);
   });
 
   it("hit-tests non-zero values only", () => {
@@ -284,7 +275,7 @@ describe("HeatmapOverlay", () => {
     expect(renderer.drawImage).toHaveBeenCalledTimes(1);
   });
 
-  it("survives a map it cannot rasterize", () => {
+  it("survives a map it cannot decode", () => {
     const consoleError = vi
       .spyOn(console, "error")
       .mockImplementation(() => undefined);
