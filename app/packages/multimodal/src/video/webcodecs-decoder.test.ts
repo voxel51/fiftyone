@@ -437,6 +437,72 @@ describe("WebCodecsVideoDecoder", () => {
     expect(harness.instances[0].close).toHaveBeenCalledOnce();
     actor.close();
   });
+
+  it("counts a discarded preroll picture as decoder progress", async () => {
+    vi.useFakeTimers();
+    const harness = fakeWebCodecs({ deferOutputs: true });
+    const actor = new WebCodecsVideoDecoder(harness.environment);
+    const opening = av1Unit(0);
+    const accessUnit: EncodedVideoAccessUnit = {
+      ...opening,
+      frame: {
+        ...opening.frame,
+        keyframe: true,
+        preroll: [
+          { bytes: av1Unit(0, true).frame.bytes, keyframe: true },
+          { bytes: av1Unit(0).frame.bytes, keyframe: false },
+          { bytes: av1Unit(0).frame.bytes, keyframe: false },
+        ],
+      },
+    };
+    const decode = actor.decode([accessUnit], {
+      signal: new AbortController().signal,
+      targetTimeNs: 0n,
+    });
+
+    // Each gap is inside the timeout; together they are three times it
+    for (let output = 0; output < 4; output += 1) {
+      await vi.advanceTimersByTimeAsync(
+        VIDEO_DECODE_PROGRESS_TIMEOUT_MS * 0.75,
+      );
+      harness.releaseOutputs(1);
+    }
+
+    const frame = await decode;
+    expect(frame.timestamp).toBe(
+      (
+        harness.instances[0].decode.mock.calls[3][0] as {
+          readonly timestamp: number;
+        }
+      ).timestamp,
+    );
+    frame.close();
+    actor.close();
+  });
+
+  it("keeps a decoder whose output arrives after its transaction ended", async () => {
+    vi.useFakeTimers();
+    const harness = fakeWebCodecs({ deferOutputs: true });
+    const actor = new WebCodecsVideoDecoder(harness.environment);
+    const first = actor.decode([av1Unit(0, true), av1Unit(1)], {
+      signal: new AbortController().signal,
+      targetTimeNs: 0n,
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    harness.releaseOutputs(1);
+    (await first).close();
+
+    harness.releaseOutputs(1);
+    await vi.advanceTimersByTimeAsync(VIDEO_DECODE_PROGRESS_TIMEOUT_MS + 1);
+
+    const second = await actor.decode([av1Unit(1)], {
+      signal: new AbortController().signal,
+      targetTimeNs: 1n,
+    });
+    expect(harness.instances).toHaveLength(1);
+    second.close();
+    actor.close();
+  });
 });
 
 describe("WebCodecsVideoDecoder AV1", () => {

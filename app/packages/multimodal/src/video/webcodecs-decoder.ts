@@ -46,6 +46,8 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
   private codecString: string | null = null;
   private decoder: VideoDecoder | null = null;
   private readonly decoderQueueWaiters = new Set<(error: Error) => void>();
+  /** Submitted chunks whose pictures are discarded, by timestamp. */
+  private readonly discardedOutputs = new Map<number, () => void>();
   private failed: Error | null = null;
   private hevcParameterSets: Uint8Array | undefined;
   private lastOutputTimeNs: bigint | null = null;
@@ -168,7 +170,11 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
     const decoder = this.decoder;
     if (!decoder) throw new Error("Video decoder closed");
     let timer: ReturnType<typeof setTimeout> | null = null;
+    let settled = false;
+    // Outputs can arrive after the transaction ends; a timer they armed then
+    // would fail a healthy decoder
     const armProgressTimer = () => {
+      if (settled) return;
       if (timer !== null) this.environment.clearTimeout(timer);
       timer = this.environment.setTimeout(() => {
         timer = null;
@@ -232,6 +238,7 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
       if (this.protectedReorderedOutputTimeNs === targetTimeNs) {
         this.protectedReorderedOutputTimeNs = null;
       }
+      settled = true;
       if (timer !== null) this.environment.clearTimeout(timer);
     }
   }
@@ -278,7 +285,11 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
     if (!decoder) throw new Error("Video decoder closed");
 
     let timer: ReturnType<typeof setTimeout> | null = null;
+    let settled = false;
+    // Outputs can arrive after the transaction ends; a timer they armed then
+    // would fail a healthy decoder
     const armProgressTimer = () => {
+      if (settled) return;
       if (timer !== null) this.environment.clearTimeout(timer);
       timer = this.environment.setTimeout(() => {
         timer = null;
@@ -313,6 +324,7 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
       if (outputs.some(Boolean)) this.lastOutputTimeNs = targetTimeNs;
       return outputs;
     } finally {
+      settled = true;
       if (timer !== null) this.environment.clearTimeout(timer);
     }
   }
@@ -388,14 +400,14 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
     const sourceTimestampUs = Number(unit.timeNs / 1_000n);
     const submissionTimestampUs =
       unit.frame.decodeTimestampNs !== undefined
-        ? uniquePendingTimestamp(sourceTimestampUs, this.pending)
+        ? this.unusedTimestampFrom(sourceTimestampUs, 1)
         : this.lastSubmissionTimestampUs === null
           ? sourceTimestampUs
           : Math.max(sourceTimestampUs, this.lastSubmissionTimestampUs + 1);
     this.lastSubmissionTimestampUs = submissionTimestampUs;
     const preroll = unit.frame.preroll ?? [];
     // Discarded pictures take timestamps below the carrier's, which no
-    // pending output uses, so handleOutput closes them
+    // awaited output uses, so handleOutput closes them
     let discardCeilingUs = sourceTimestampUs;
     try {
       for (const entry of preroll) {
@@ -414,24 +426,22 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
             decoder,
             unit.frame,
             entryData,
-            uniquePendingTimestamp(Number(timeNs / 1_000n), this.pending),
+            this.unusedTimestampFrom(Number(timeNs / 1_000n), 1),
             type,
-            { onProgress, timeNs },
+            onProgress,
+            timeNs,
           );
           this.trackReorderedOutput(timeNs, promise);
           continue;
         }
-        discardCeilingUs = unpendingTimestampBelow(
-          discardCeilingUs,
-          this.pending,
-        );
+        discardCeilingUs = this.unusedTimestampFrom(discardCeilingUs - 1, -1);
         this.enqueue(
           decoder,
           unit.frame,
           entryData,
           discardCeilingUs,
           type,
-          null,
+          onProgress,
         );
       }
     } catch (error) {
@@ -445,13 +455,27 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
       unit.frame.keyframe && !preroll.some((entry) => entry.keyframe)
         ? "key"
         : "delta",
-      { onProgress, timeNs: unit.timeNs },
+      onProgress,
+      unit.timeNs,
     );
   }
 
+  /** The first timestamp from `start`, stepping by `step`, no output uses. */
+  private unusedTimestampFrom(start: number, step: 1 | -1): number {
+    let timestamp = start;
+    while (
+      this.discardedOutputs.has(timestamp) ||
+      this.pending.some((entry) => entry.submissionTimestampUs === timestamp)
+    ) {
+      timestamp += step;
+    }
+    return timestamp;
+  }
+
   /**
-   * Hands one chunk to the decoder. With an output, its picture resolves the
-   * returned promise; without one, the picture is discarded on arrival.
+   * Hands one chunk to the decoder. With a `timeNs`, its picture resolves the
+   * returned promise; without one, the picture is discarded on arrival. Either
+   * arrival is decoder progress.
    */
   private enqueue(
     decoder: VideoDecoder,
@@ -459,7 +483,8 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
     data: Uint8Array,
     timestampUs: number,
     type: "key" | "delta",
-    output: { readonly onProgress: () => void; readonly timeNs: bigint },
+    onProgress: () => void,
+    timeNs: bigint,
   ): Promise<VideoFrame>;
   private enqueue(
     decoder: VideoDecoder,
@@ -467,7 +492,7 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
     data: Uint8Array,
     timestampUs: number,
     type: "key" | "delta",
-    output: null,
+    onProgress: () => void,
   ): void;
   private enqueue(
     decoder: VideoDecoder,
@@ -475,13 +500,11 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
     data: Uint8Array,
     timestampUs: number,
     type: "key" | "delta",
-    output: {
-      readonly onProgress: () => void;
-      readonly timeNs: bigint;
-    } | null,
+    onProgress: () => void,
+    timeNs?: bigint,
   ): Promise<VideoFrame> | void {
     let pending: PendingOutput | undefined;
-    if (output) {
+    if (timeNs !== undefined) {
       let resolveOutput!: (frame: VideoFrame) => void;
       let rejectOutput!: (error: Error) => void;
       const promise = new Promise<VideoFrame>((resolve, reject) => {
@@ -491,14 +514,16 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
       pending = {
         promise,
         reject: rejectOutput,
-        resolve: (frame) => {
-          output.onProgress();
-          resolveOutput(frame);
+        resolve: (output) => {
+          onProgress();
+          resolveOutput(output);
         },
-        timeNs: output.timeNs,
+        timeNs,
         submissionTimestampUs: timestampUs,
       };
       this.pending.push(pending);
+    } else {
+      this.discardedOutputs.set(timestampUs, onProgress);
     }
     try {
       decoder.decode(
@@ -645,7 +670,10 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
     );
     const pending = index >= 0 ? this.pending.splice(index, 1)[0] : undefined;
     if (!pending) {
+      const onProgress = this.discardedOutputs.get(timestamp);
+      this.discardedOutputs.delete(timestamp);
       frame.close();
+      onProgress?.();
       return;
     }
     pending.resolve(frame);
@@ -665,6 +693,7 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
   private disposeDecoder(error: Error, reset = true): void {
     for (const fail of [...this.decoderQueueWaiters]) fail(error);
     for (const pending of this.pending.splice(0)) pending.reject(error);
+    this.discardedOutputs.clear();
     for (const output of this.reorderedOutputs.values()) {
       if (output.frame) output.frame.close();
     }
@@ -719,29 +748,6 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
       sps: this.sps,
     });
   }
-}
-
-function uniquePendingTimestamp(
-  preferred: number,
-  pending: readonly PendingOutput[],
-) {
-  let timestamp = preferred;
-  while (pending.some((entry) => entry.submissionTimestampUs === timestamp)) {
-    timestamp += 1;
-  }
-  return timestamp;
-}
-
-/** The highest timestamp below `ceiling` that no pending output uses. */
-function unpendingTimestampBelow(
-  ceiling: number,
-  pending: readonly PendingOutput[],
-): number {
-  let candidate = ceiling - 1;
-  while (pending.some((entry) => entry.submissionTimestampUs === candidate)) {
-    candidate -= 1;
-  }
-  return candidate;
 }
 
 function abortableDecoderOutput<T>(

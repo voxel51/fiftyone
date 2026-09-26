@@ -812,6 +812,39 @@ describe("VideoPlaybackManager and VideoStreamEngine", () => {
     lease.release();
   });
 
+  it("counts preroll chunks against the bounded decode budget", async () => {
+    const harness = createHarness();
+    const opening = accessUnit(0, true);
+    const carrier: H264AccessUnit = {
+      ...opening,
+      frame: {
+        ...opening.frame,
+        preroll: Array.from(
+          { length: MAX_VIDEO_DEPENDENCY_ACCESS_UNITS },
+          (_, index) => ({
+            bytes: Uint8Array.of(0, 0, 1, index === 0 ? 0x65 : 0x41),
+            keyframe: index === 0,
+          }),
+        ),
+      },
+    };
+    const target = accessUnit(1);
+    const manager = new VideoPlaybackManager("source", harness.dependencies);
+    manager.setReader(rangeReader([carrier, target]));
+    const lease = manager.acquire("/camera");
+    lease.request({ ...target, priority: "visible" });
+
+    await vi.waitFor(() =>
+      expect(lease.getSnapshot()).toMatchObject({
+        diagnostic: {
+          message: "Video dependency chain exceeds the bounded decode budget",
+        },
+      }),
+    );
+    expect(harness.decoders[0].decodeCalls).toHaveLength(0);
+    lease.release();
+  });
+
   it("restores direct-forward continuity after cancellation reaches a keyframe", async () => {
     const gate = deferred<void>();
     const harness = createHarness({

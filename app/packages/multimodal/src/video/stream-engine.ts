@@ -474,7 +474,7 @@ export class VideoStreamEngine {
     if (!units.some((unit) => unit.timeNs === intent.timeNs)) {
       throw new VideoDependencyWaitError("Waiting for the video seek target");
     }
-    if (units.length > MAX_VIDEO_DEPENDENCY_ACCESS_UNITS) {
+    if (decodeChunkCount(units) > MAX_VIDEO_DEPENDENCY_ACCESS_UNITS) {
       throw new VideoDependencyWaitError(
         "Video dependency chain exceeds the bounded decode budget",
       );
@@ -531,7 +531,7 @@ export class VideoStreamEngine {
           "Waiting for the video runway keyframe",
         );
       }
-      if (units.length > MAX_VIDEO_DEPENDENCY_ACCESS_UNITS) {
+      if (decodeChunkCount(units) > MAX_VIDEO_DEPENDENCY_ACCESS_UNITS) {
         throw new VideoDependencyWaitError(
           "Video dependency chain exceeds the bounded decode budget",
         );
@@ -637,7 +637,7 @@ export class VideoStreamEngine {
     ) {
       throw new VideoDependencyWaitError("Waiting for the video runway target");
     }
-    if (units.length > MAX_VIDEO_DEPENDENCY_ACCESS_UNITS) {
+    if (decodeChunkCount(units) > MAX_VIDEO_DEPENDENCY_ACCESS_UNITS) {
       throw new VideoDependencyWaitError(
         "Video dependency chain exceeds the bounded decode budget",
       );
@@ -771,6 +771,14 @@ function runwayStartingAtLastKeyframe(
     throw new VideoDependencyWaitError("Waiting for the video seek target");
   }
   return reordered ? uniqueDecodeSortedAccessUnits(runway) : runway;
+}
+
+/** Chunks a decoder takes for these units, each one's preroll included. */
+function decodeChunkCount(units: readonly EncodedVideoAccessUnit[]): number {
+  return units.reduce(
+    (count, unit) => count + 1 + (unit.frame.preroll?.length ?? 0),
+    0,
+  );
 }
 
 /**
