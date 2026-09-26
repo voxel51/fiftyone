@@ -92,6 +92,73 @@ function mount() {
   );
 }
 
+it("keeps actions pending until every tile capture finishes resolving", async () => {
+  let resolveFirst!: (value: { groups: EpisodeSelection[] }) => void;
+  let resolveSecond!: (value: { groups: EpisodeSelection[] }) => void;
+  const first = new Promise<{ groups: EpisodeSelection[] }>((resolve) => {
+    resolveFirst = resolve;
+  });
+  const second = new Promise<{ groups: EpisodeSelection[] }>((resolve) => {
+    resolveSecond = resolve;
+  });
+  mocks.details
+    .mockImplementationOnce(() => first)
+    .mockImplementationOnce(() => second);
+  const { result } = mount();
+  let firstSelection!: Promise<void>;
+  let secondSelection!: Promise<void>;
+  act(() => {
+    firstSelection = result.current.select(["first"]);
+    secondSelection = result.current.select(["second"]);
+  });
+  expect(result.current.pendingCaptures).toBe(true);
+  expect(result.current.selected.size).toBe(0);
+
+  await act(async () => {
+    resolveFirst({ groups: [{ ...card, episodeId: "first" }] });
+    await firstSelection;
+  });
+  expect(result.current.pendingCaptures).toBe(true);
+
+  await act(async () => {
+    resolveSecond({ groups: [{ ...card, episodeId: "second" }] });
+    await secondSelection;
+  });
+  expect(result.current.pendingCaptures).toBe(false);
+  expect([...result.current.selected.keys()]).toEqual(["first", "second"]);
+});
+
+it("reports a failed tile capture to the tray", async () => {
+  mocks.details.mockRejectedValueOnce(new Error("capture failed"));
+  const { result } = mount();
+  await act(async () => result.current.select(["missing"]));
+  expect(result.current.pendingCaptures).toBe(false);
+  expect(result.current.capturedError).toContain("capture failed");
+  expect(result.current.selected.size).toBe(0);
+});
+
+it("keeps actions pending while an unresolved group is captured", async () => {
+  let resolveDetails!: (value: { groups: EpisodeSelection[] }) => void;
+  mocks.details.mockImplementationOnce(
+    () =>
+      new Promise<{ groups: EpisodeSelection[] }>((resolve) => {
+        resolveDetails = resolve;
+      }),
+  );
+  const { result } = mount();
+  act(() =>
+    result.current.capture({
+      ...card,
+      group: { ...card.group!, snapshotId: undefined },
+    }),
+  );
+  expect(result.current.pendingCaptures).toBe(true);
+  expect(result.current.selected.size).toBe(0);
+  await act(async () => resolveDetails({ groups: [card] }));
+  expect(result.current.pendingCaptures).toBe(false);
+  expect(result.current.selected.has(card.episodeId)).toBe(true);
+});
+
 it("captures group tokens and preserves their union when browsing changes", async () => {
   const { result, rerender } = mount();
   await act(async () => result.current.select([card.episodeId]));

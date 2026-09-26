@@ -43,9 +43,11 @@ import {
 } from "./model";
 import {
   bucketCommandAtom,
+  captureErrorAtom,
   captureRequestsAtom,
   captureScopesAtom,
   candidatesAtom,
+  pendingCapturesAtom,
   renderedCaptureIdsAtom,
   type CandidateState,
   type Captures,
@@ -202,6 +204,8 @@ export function useGridSelection() {
   const latestScope = useRef(key);
   latestScope.current = key;
   const state = useAtomValue(candidatesAtom(dataset.domainId));
+  const pendingCaptures = useAtomValue(pendingCapturesAtom(dataset.domainId));
+  const setPendingCaptures = useSetAtom(pendingCapturesAtom(dataset.domainId));
   const buckets = useSelectionBuckets(dataset.datasetId);
   const captures = useSelectionBucketCaptures(dataset.domainId);
   const membership = useSelectionMembership(dataset.domainId);
@@ -250,7 +254,8 @@ export function useGridSelection() {
       ? (cached.counts ?? null)
       : null;
   };
-  const [captureError, setCaptureError] = useState<string | null>(null);
+  const captureError = useAtomValue(captureErrorAtom(dataset.domainId));
+  const setCaptureError = useSetAtom(captureErrorAtom(dataset.domainId));
   const capture = useCallback(
     (
       group: EpisodeSelection,
@@ -259,6 +264,7 @@ export function useGridSelection() {
     ) => {
       setCaptureError(null);
       if (group.group && !group.group.snapshotId) {
+        setPendingCaptures((count) => count + 1);
         void resolveSelectionDetails(dataset.datasetId, {
           ...request,
           episodeIds: [group.episodeId],
@@ -274,10 +280,19 @@ export function useGridSelection() {
                 operation,
               });
           })
-          .catch((error: unknown) => setCaptureError(String(error)));
+          .catch((error: unknown) => setCaptureError(String(error)))
+          .finally(() => setPendingCaptures((count) => count - 1));
       } else dispatch({ type: "capture", bucketId, group, operation });
     },
-    [dispatch, target, dataset.datasetId, request, key],
+    [
+      dispatch,
+      target,
+      dataset.datasetId,
+      request,
+      key,
+      setCaptureError,
+      setPendingCaptures,
+    ],
   );
   const remove = useCallback(
     (episodeId: string, bucketId: string = target) =>
@@ -310,10 +325,25 @@ export function useGridSelection() {
       const bucket = captures.get(bucketId);
       const fresh = ids.filter((id) => !bucket?.has(id));
       if (!fresh.length) return;
-      for (const group of (await resolveCandidates(fresh)).values())
-        dispatch({ type: "capture", bucketId, group });
+      setCaptureError(null);
+      setPendingCaptures((count) => count + 1);
+      try {
+        for (const group of (await resolveCandidates(fresh)).values())
+          dispatch({ type: "capture", bucketId, group });
+      } catch (error) {
+        setCaptureError(String(error));
+      } finally {
+        setPendingCaptures((count) => count - 1);
+      }
     },
-    [captures, target, resolveCandidates, dispatch],
+    [
+      captures,
+      target,
+      resolveCandidates,
+      dispatch,
+      setCaptureError,
+      setPendingCaptures,
+    ],
   );
   const toggle = useCallback(
     async (id: string, bucketId: string = target) => {
@@ -354,6 +384,7 @@ export function useGridSelection() {
     resolveCaptured,
     countsForBucket,
     capturedError: captureError ?? capturedState?.error ?? null,
+    pendingCaptures: pendingCaptures > 0,
     candidates: current ? state.candidates : NO_CANDIDATES,
     counts: current ? state.counts : null,
     unavailableTotal: current ? state.unavailableTotal : undefined,

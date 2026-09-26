@@ -123,6 +123,12 @@ export const boundaryAtom = atomFamily((_datasetId: string) =>
   atom<SelectionBoundary>({}),
 );
 export const scopeRevisionAtom = atomFamily((_datasetId: string) => atom(0));
+/** In-flight selection captures; actions must not freeze an older selection. */
+export const pendingCapturesAtom = atomFamily((_domainId: string) => atom(0));
+/** Capture failures are visible to the tray even when the click came from a tile. */
+export const captureErrorAtom = atomFamily((_domainId: string) =>
+  atom<string | null>(null),
+);
 /** How many extra captures each end of a folded strip has revealed, per bucket. */
 export const foldRevealedAtom = atomFamily((_captureKey: string) => atom(0));
 

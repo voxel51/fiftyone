@@ -290,6 +290,13 @@ export default function SelectionTray({
   const counts = explicit
     ? (selection.selectedCounts ?? EMPTY_COUNTS)
     : (selection.counts ?? EMPTY_COUNTS);
+  const loading =
+    selection.pendingCaptures ||
+    (explicit
+      ? !selection.selectedCounts && !selection.capturedError
+      : selection.loading);
+  const error = explicit ? selection.capturedError : selection.error;
+  const actionError = selection.capturedError ?? error;
   const outside =
     explicit && !selection.loading && !selection.error
       ? captured.filter(
@@ -332,10 +339,8 @@ export default function SelectionTray({
     source: explicit ? "explicit" : "results",
     counts,
     groups: explicit ? captured : [],
-    loading: explicit
-      ? !selection.selectedCounts && !selection.capturedError
-      : selection.loading,
-    error: explicit ? selection.capturedError : selection.error,
+    loading,
+    error: actionError,
     boundary,
     unit,
     conversion: selection.conversion,
@@ -602,12 +607,8 @@ export default function SelectionTray({
           counts={counts}
           unit={unit}
           outside={outside}
-          loading={
-            explicit
-              ? !selection.selectedCounts && !selection.capturedError
-              : selection.loading
-          }
-          error={explicit ? selection.capturedError : selection.error}
+          loading={loading}
+          error={error}
           cleared={
             cleared
               ? (cleared.counts ?? countSelection(cleared.groups))
