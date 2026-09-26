@@ -37,7 +37,10 @@ def convert_ultralytics_model(model):
     Raises:
         ValueError: if the model could not be converted
     """
-    if isinstance(model.model, ultralytics.nn.tasks.SegmentationModel):
+    # Depth models subclass DetectionModel, so they are matched first
+    if _is_depth_model(model.model):
+        return _convert_yolo_depth_model(model)
+    elif isinstance(model.model, ultralytics.nn.tasks.SegmentationModel):
         return _convert_yolo_segmentation_model(model)
     elif isinstance(model.model, ultralytics.nn.tasks.PoseModel):
         return _convert_yolo_pose_model(model)
@@ -53,6 +56,12 @@ def convert_ultralytics_model(model):
             "Unsupported model type; cannot convert %s to a FiftyOne model"
             % model
         )
+
+
+def _is_depth_model(model):
+    # DepthModel ships with ultralytics>=8.4.104
+    depth_model = getattr(ultralytics.nn.tasks, "DepthModel", None)
+    return depth_model is not None and isinstance(model, depth_model)
 
 
 def _extract_track_ids(result):
@@ -497,6 +506,50 @@ def _to_keypoints(result, confidence_thresh=None, classes=None):
         keypoints.append(keypoint)
 
     return fol.Keypoints(keypoints=keypoints)
+
+
+def to_heatmaps(results):
+    """Converts ``ultralytics.YOLO`` depth maps to FiftyOne format.
+
+    The depth models predict metric depth in meters. Each map is divided by
+    its maximum, which is stored in the heatmap's ``max_depth`` attribute, so
+    ``heatmap.map * heatmap.max_depth`` is the depth in meters.
+
+    Args:
+        results: a single or list of ``ultralytics.engine.results.Results``
+
+    Returns:
+        a single or list of :class:`fiftyone.core.labels.Heatmap`
+    """
+    single = not isinstance(results, list)
+    if single:
+        results = [results]
+
+    batch = [_to_heatmap(r) for r in results]
+
+    if single:
+        return batch[0]
+
+    return batch
+
+
+def _to_heatmap(result):
+    depth = getattr(result, "depth", None)
+    if depth is None:
+        return None
+
+    depth = depth.data.detach().cpu().numpy().astype(np.float32)
+    max_depth = float(depth.max()) if depth.size else 0.0
+    if max_depth > 0:
+        depth = depth / max_depth
+    else:
+        depth = np.zeros_like(depth)
+
+    heatmap = fol.Heatmap(map=depth)
+    heatmap.is_metric = True
+    heatmap.max_depth = max_depth
+
+    return heatmap
 
 
 class FiftyOneYOLOModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
@@ -1030,6 +1083,17 @@ def _convert_yolo_pose_model(model):
     return FiftyOneYOLOModel(config)
 
 
+def _convert_yolo_depth_model(model):
+    config = FiftyOneYOLOModelConfig(
+        {
+            "model": model,
+            "output_processor_cls": UltralyticsDepthOutputProcessor,
+            "model_path": model.model_name,
+        }
+    )
+    return FiftyOneYOLOModel(config)
+
+
 class UltralyticsOutputProcessor(fout.OutputProcessor):
     """Converts Ultralytics PyTorch Hub model outputs to FiftyOne format."""
 
@@ -1299,6 +1363,29 @@ class UltralyticsOBBOutputProcessor(
         return obb_to_polylines(
             preds, confidence_thresh=confidence_thresh, classes=classes
         )
+
+
+class UltralyticsDepthOutputProcessor(
+    fout.OutputProcessor, UltralyticsPostProcessor
+):
+    """Converts Ultralytics depth estimation model outputs to FiftyOne
+    format.
+    """
+
+    def __init__(self, classes=None, post_processor=None):
+        super().__init__(classes)
+        self.post_processor = post_processor
+
+    def __call__(
+        self,
+        output,
+        _,
+        confidence_thresh=None,
+        classes=None,
+        **kwargs,
+    ):
+        preds = self.post_process(output)
+        return to_heatmaps(preds)
 
 
 def _detections_to_visual_prompts(detections, img_width, img_height):
