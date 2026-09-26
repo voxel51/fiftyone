@@ -30,6 +30,7 @@ from freezegun import freeze_time
 from mongoengine import ValidationError
 
 import fiftyone as fo
+import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
@@ -7107,6 +7108,91 @@ class DatasetDeletionTests(unittest.TestCase):
 
         self.assertEqual(last_modified_at7b, last_modified_at5b)
         self.assertEqual(last_modified_at7c, last_modified_at5c)
+
+
+class ExtrasDeleterTests(unittest.TestCase):
+    def setUp(self):
+        patcher = patch.object(fod, "_extras_deleters", [])
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    @drop_datasets
+    def test_deleter_runs_before_drop(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(fo.Sample(filepath="image.png"))
+        seen = []
+        fod.register_extras_deleter(lambda ds: seen.append((ds, len(ds))))
+        fod.register_extras_deleter(seen.append)
+        fod.register_extras_deleter(seen.append)
+
+        dataset.delete()
+
+        self.assertEqual(seen, [(dataset, 1), dataset])
+        self.assertTrue(dataset.deleted)
+
+    @drop_datasets
+    def test_failed_deleter_keeps_dataset(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(fo.Sample(filepath="image.png"))
+        name = dataset.name
+        reachable = []
+
+        def deleter(dataset):
+            if not reachable:
+                raise OSError("storage unreachable")
+
+        fod.register_extras_deleter(deleter)
+
+        with self.assertRaises(OSError):
+            dataset.delete()
+
+        self.assertFalse(dataset.deleted)
+        self.assertTrue(fo.dataset_exists(name))
+        self.assertEqual(len(fo.load_dataset(name)), 1)
+
+        reachable.append(True)
+        dataset.delete()
+
+        self.assertFalse(fo.dataset_exists(name))
+
+    @drop_datasets
+    def test_failed_deleter_does_not_stop_reaper(self):
+        failing = fo.Dataset()
+        healthy = fo.Dataset()
+
+        def deleter(dataset):
+            if dataset.name == failing.name:
+                raise OSError("storage unreachable")
+
+        failing.add_sample(fo.Sample(filepath="image.png"))
+        fod.register_extras_deleter(deleter)
+
+        try:
+            with self.assertLogs("fiftyone.core.dataset", "WARNING"):
+                fod._delete_non_persistent_datasets()
+
+            self.assertEqual(len(fo.load_dataset(failing.name)), 1)
+            self.assertFalse(fo.dataset_exists(healthy.name))
+        finally:
+            fod._extras_deleters.clear()
+            failing.delete()
+
+    @drop_datasets
+    def test_generated_dataset_skips_deleters(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(
+            fo.Sample(
+                filepath="image.png",
+                gt=fo.Detections(detections=[fo.Detection(label="cat")]),
+            )
+        )
+        patches = dataset.to_patches("gt")
+        deleted = []
+        fod.register_extras_deleter(deleted.append)
+
+        patches._dataset.delete()
+
+        self.assertListEqual(deleted, [])
 
 
 class DynamicFieldTests(unittest.TestCase):
