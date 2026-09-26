@@ -8,6 +8,7 @@ Multimodal temporal tag unit tests.
 
 import time
 import unittest
+from unittest import mock
 
 from bson import ObjectId
 from decorators import drop_datasets, isolate_temporal_tags
@@ -28,10 +29,6 @@ class TemporalTagTests(unittest.TestCase):
         self.assertEqual(fota.list_temporal_tags(dataset), [])
         self.assertEqual(fota.count_temporal_tags(dataset), {})
         self.assertEqual(fota.delete_temporal_tags(dataset, tags="missing"), 0)
-        self.assertNotIn(
-            fota.TAGS_COLLECTION_NAME,
-            foo.get_db_conn().list_collection_names(),
-        )
 
         persisted = fota.add_temporal_tags(
             dataset,
@@ -704,41 +701,71 @@ class TemporalTagTests(unittest.TestCase):
     @isolate_temporal_tags
     @drop_datasets
     def test_creates_query_indexes(self):
-        dataset, sample_ids = _make_dataset()
-        fota.add_temporal_tags(
-            dataset,
-            fota.TemporalTag(
-                sample_ids[0],
-                0,
-                10,
-                "review",
-                anchor="camera_front",
-                kind=fota.TagKind.TEMPORAL,
-            ),
-        )
+        dataset, _ = _make_dataset()
+
+        # A read alone creates them; nothing has been written yet
+        fota.list_temporal_tags(dataset)
 
         collection = foo.get_db_conn()[fota.TAGS_COLLECTION_NAME]
-        indexes = collection.index_information()
+        indexes = {
+            name: [field for field, _ in info["key"]]
+            for name, info in collection.index_information().items()
+        }
+        sort_fields = [field for field, _ in fota._TAG_SORT]
 
         self.assertEqual(
-            indexes["temporal_tag_sample_range"]["key"][:5],
+            indexes["unique_temporal_tag"],
+            ["_dataset_id", "_sample_id", "kind"] + sort_fields[1:],
+        )
+        self.assertEqual(sort_fields[0], "_sample_id")
+        for name, field in (
+            ("temporal_tag_tag_sort", "tag"),
+            ("temporal_tag_anchor_sort", "anchor"),
+        ):
+            self.assertEqual(
+                indexes[name],
+                ["_dataset_id", "kind", field]
+                + [f for f in sort_fields if f != field],
+            )
+
+    @isolate_temporal_tags
+    @drop_datasets
+    def test_view_scope_batches_match_one_batch(self):
+        dataset, sample_ids = _make_dataset(num_samples=9)
+        fota.add_temporal_tags(
+            dataset,
             [
-                ("_dataset_id", 1),
-                ("_sample_id", 1),
-                ("kind", 1),
-                ("start", 1),
-                ("end", 1),
+                fota.TemporalTag(sample_id, start, start + 5, tag)
+                for sample_id in sample_ids
+                for start, tag in ((0, "a"), (10, "b"), (20, "a"))
             ],
         )
-        self.assertEqual(
-            indexes["temporal_tag_tag_lookup"]["key"][:4],
-            [
-                ("_dataset_id", 1),
-                ("kind", 1),
-                ("tag", 1),
-                ("_sample_id", 1),
-            ],
-        )
+        view = dataset.select(sample_ids[1:8])
+
+        def observe():
+            tags = view.temporal_tags
+            return (
+                [(t.sample_id, t.start, t.tag) for t in tags.values()],
+                len(tags),
+                bool(tags),
+                tags.count(),
+                tags.count(by_sample=True),
+            )
+
+        expected = observe()
+        with mock.patch.object(
+            fota.fou, "recommend_batch_size_for_value", return_value=2
+        ):
+            self.assertEqual(observe(), expected)
+
+            tag_id = next(view.temporal_tags.values()).id
+            updated = view.temporal_tags.update(tag_id, end=9)
+            self.assertEqual(updated.end, 9)
+
+            self.assertEqual(view.temporal_tags.delete(tags="b"), 7)
+
+        self.assertEqual(view.temporal_tags.count(), {"a": 14})
+        self.assertEqual(dataset.temporal_tags.count(), {"a": 18, "b": 2})
 
     @isolate_temporal_tags
     @drop_datasets
