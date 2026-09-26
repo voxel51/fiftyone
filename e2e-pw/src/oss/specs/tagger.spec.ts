@@ -123,6 +123,9 @@ test.describe.serial("tag", () => {
     await modal.sidebar.clickFieldDropdown("predictions");
     await entryExpandPromise.received;
     await modal.sidebar.applyFilter("bird");
+    await expect(
+      modal.sidebar.locator.getByTestId("clear-filters-labels"),
+    ).toBeVisible();
 
     await modal.looker.hover();
 
