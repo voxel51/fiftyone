@@ -43,6 +43,14 @@ interface BaseEncodedVideoVisualization {
   readonly decodeTimestampNs?: bigint;
   readonly format: string;
   readonly keyframe?: boolean;
+  /**
+   * Decode-order payloads from the stream's own keyframe up to, not including,
+   * this unit, for a unit whose keyframe lies before the timeline start. The
+   * first is the stream keyframe. Such a unit is marked `keyframe` because it
+   * is a random access point on this timeline, but its own payload is a delta
+   * and decodes only after these, whose pictures are never presented.
+   */
+  readonly preroll?: readonly Uint8Array[];
   readonly timestampNs?: bigint;
 }
 

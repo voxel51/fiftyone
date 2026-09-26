@@ -371,7 +371,7 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
     unit: EncodedVideoAccessUnit,
     onProgress: () => void,
   ): Promise<VideoFrame> {
-    const data = this.chunkData(unit);
+    const data = this.chunkData(unit.frame);
     // Preserve source PTS for browser-level observability. LeRobot MP4 units
     // carry an explicit DTS and may be submitted in non-monotonic PTS order
     // when B-frames are present. Units without DTS retain monotonic nudging.
@@ -399,13 +399,29 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
       timeNs: unit.timeNs,
       submissionTimestampUs,
     };
+    const preroll = unit.frame.preroll ?? [];
+    // A preroll output matches no pending entry, so handleOutput closes it
+    const prerollTimestampsUs = unpendingTimestampsBelow(
+      submissionTimestampUs,
+      preroll.length,
+      this.pending,
+    );
     this.pending.push(pending);
     try {
+      preroll.forEach((payload, index) => {
+        decoder.decode(
+          new this.environment.EncodedVideoChunk({
+            data: this.chunkData(unit.frame, payload),
+            timestamp: prerollTimestampsUs[index],
+            type: index === 0 ? "key" : "delta",
+          }),
+        );
+      });
       decoder.decode(
         new this.environment.EncodedVideoChunk({
           data,
           timestamp: submissionTimestampUs,
-          type: unit.frame.keyframe ? "key" : "delta",
+          type: unit.frame.keyframe && !preroll.length ? "key" : "delta",
         }),
       );
     } catch (error) {
@@ -586,20 +602,23 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
     this.hevcParameterSets = undefined;
   }
 
-  private chunkData(unit: EncodedVideoAccessUnit): Uint8Array {
+  private chunkData(
+    frame: EncodedVideoVisualization,
+    bytes: Uint8Array = frame.bytes,
+  ): Uint8Array {
     // A frame's parameter sets come from the container's out-of-band record
     // (avcC/hvcC), so the access unit still needs them inlined; a stream that
     // also carries them in-band decodes fine with the repeat
-    if (unit.frame.codec === "h265") {
-      const parameterSets = unit.frame.hevc?.parameterSets;
+    if (frame.codec === "h265") {
+      const parameterSets = frame.hevc?.parameterSets;
       if (parameterSets) this.hevcParameterSets = parameterSets;
-      return concatAnnexB([this.hevcParameterSets, unit.frame.bytes]);
+      return concatAnnexB([this.hevcParameterSets, bytes]);
     }
-    if (unit.frame.codec !== "h264") return unit.frame.bytes;
-    if (unit.frame.h264?.sps) this.sps = unit.frame.h264.sps;
-    if (unit.frame.h264?.pps) this.pps = unit.frame.h264.pps;
+    if (frame.codec !== "h264") return bytes;
+    if (frame.h264?.sps) this.sps = frame.h264.sps;
+    if (frame.h264?.pps) this.pps = frame.h264.pps;
     return h264AccessUnitWithParameterSets({
-      bytes: unit.frame.bytes,
+      bytes,
       pps: this.pps,
       sps: this.sps,
     });
@@ -615,6 +634,23 @@ function uniquePendingTimestamp(
     timestamp += 1;
   }
   return timestamp;
+}
+
+/** `count` ascending timestamps below `ceiling` that no pending output uses. */
+function unpendingTimestampsBelow(
+  ceiling: number,
+  count: number,
+  pending: readonly PendingOutput[],
+): number[] {
+  const timestamps: number[] = [];
+  let candidate = ceiling - 1;
+  while (timestamps.length < count) {
+    if (!pending.some((entry) => entry.submissionTimestampUs === candidate)) {
+      timestamps.unshift(candidate);
+    }
+    candidate -= 1;
+  }
+  return timestamps;
 }
 
 function abortableDecoderOutput<T>(

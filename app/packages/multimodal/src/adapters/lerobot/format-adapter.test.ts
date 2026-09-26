@@ -15,6 +15,7 @@ import {
   collectBatches,
   defineEpisodeSessionContractTests,
 } from "../../testing/adapter-contract";
+import { analyzeH264AnnexBAccessUnit } from "../../codecs/h264-annexb";
 import { resetVideoCodecSupport } from "../../codecs/video-codec-support";
 import { detectLeRobotSample } from "./descriptor";
 import { createLeRobotFormatAdapter } from "./format-adapter";
@@ -1060,6 +1061,59 @@ describe("LeRobot format adapter", () => {
         );
       expect(opening).toBeDefined();
       expect(opening).not.toHaveProperty("decodeTimestampNs");
+    } finally {
+      session.dispose();
+    }
+  });
+
+  it("makes an episode opening mid-GOP decodable from its first frame", async () => {
+    // The shared MP4's keyframe precedes the episode, so the opening frame is
+    // a delta that decodes only after that keyframe
+    const midGopAssets = assets.map((asset) =>
+      asset.id === "video"
+        ? {
+            ...asset,
+            selector: {
+              fromTimestamp: 0.5,
+              kind: "video-timestamp-interval" as const,
+              toTimestamp: 1,
+            },
+          }
+        : asset,
+    );
+    const session = await createLeRobotFormatAdapter({
+      readParquetObjects,
+    }).open(
+      {
+        ...source,
+        assets: { ...source.assets, list: async () => midGopAssets },
+      },
+      io,
+    );
+    try {
+      const batches = await collectBatches(
+        session.read({
+          streams: ["observation.images.test"],
+          window: session.manifest.timeRange,
+        }),
+      );
+      const encoded = batches
+        .flatMap((batch) => batch.frames)
+        .flatMap((frame) =>
+          frame.output.visualization?.kind === "encoded-video"
+            ? [frame.output.visualization]
+            : [],
+        );
+      expect(encoded.map((frame) => frame.timestampNs)).toEqual([0n]);
+      const [opening] = encoded;
+      expect(opening.keyframe).toBe(true);
+      expect(opening.preroll).toHaveLength(1);
+      const [streamKeyframe] = opening.preroll ?? [];
+      // Annex B IDR slice (NAL type 5) from the sample the episode excludes
+      expect(
+        analyzeH264AnnexBAccessUnit(streamKeyframe).nalUnitTypes,
+      ).toContain(5);
+      expect(analyzeH264AnnexBAccessUnit(opening.bytes).keyframe).toBe(false);
     } finally {
       session.dispose();
     }

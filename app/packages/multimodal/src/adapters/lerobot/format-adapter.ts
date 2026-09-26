@@ -1089,28 +1089,45 @@ class LeRobotEpisodeSession implements EpisodeSession {
       samples,
       request.signal,
     );
-    return samples
-      .map((sample) => {
-        const offset = sample.offset - samples[0].offset;
-        return videoFrame({
+    const payload = (sample: Sample) => {
+      const offset = sample.offset - samples[0].offset;
+      // H.264 and HEVC are length-prefixed in the container and Annex B to
+      // the decoder; AV1 temporal units pass through as stored
+      return trackCodec === "av1"
+        ? bytes.slice(offset, offset + sample.size)
+        : mp4SampleToAnnexB(
+            bytes.subarray(offset, offset + sample.size),
+            lengthSize,
+          );
+    };
+    // An episode sharing an MP4 with others can open mid-GOP. The samples
+    // start at the preceding keyframe, so everything decoded before the
+    // episode's first sample is the preroll that makes that sample decodable.
+    const openingIndex = samples.findIndex(
+      (sample) =>
+        episodeRelativeNs(
+          videoPresentationSeconds(index, sample),
           binding,
           boundaryToleranceNs,
-          // H.264 and HEVC are length-prefixed in the container and Annex B
-          // to the decoder; AV1 temporal units pass through as stored
-          bytes:
-            trackCodec === "av1"
-              ? bytes.slice(offset, offset + sample.size)
-              : mp4SampleToAnnexB(
-                  bytes.subarray(offset, offset + sample.size),
-                  lengthSize,
-                ),
+        ) >= 0n,
+    );
+    return samples
+      .map((sample, sampleIndex) =>
+        videoFrame({
+          binding,
+          boundaryToleranceNs,
+          bytes: payload(sample),
           decodable: true,
           index,
           parameterSets,
+          preroll:
+            sampleIndex === openingIndex && openingIndex > 0
+              ? samples.slice(0, openingIndex).map(payload)
+              : undefined,
           sample,
           streamId,
-        });
-      })
+        }),
+      )
       .filter((frame): frame is DecodedFrame => frame !== null);
   }
 
@@ -2259,6 +2276,7 @@ function videoFrame({
   decodable,
   index,
   parameterSets,
+  preroll,
   sample,
   streamId,
 }: {
@@ -2268,6 +2286,7 @@ function videoFrame({
   readonly decodable: boolean;
   readonly index: VideoIndex;
   readonly parameterSets: VideoParameterSets;
+  readonly preroll?: readonly Uint8Array[];
   readonly sample: Sample;
   readonly streamId: string;
 }): DecodedFrame | null {
@@ -2298,14 +2317,16 @@ function videoFrame({
     // Consumers read the field's presence as "this stream is reordered",
     // which costs a seek runway and a decoder reset per keyframe
     ...(decodeTimestampNs === timestampNs ? {} : { decodeTimestampNs }),
-    keyframe: sample.is_sync,
+    keyframe: sample.is_sync || Boolean(preroll?.length),
     parameterSets,
+    preroll,
     timestampNs,
   });
+  const payloads = [...(preroll ?? []), bytes];
   const output: DecodedOutput = {
     resourceHints: {
-      sizeBytes: bytes.byteLength,
-      transferables: [bytes.buffer],
+      sizeBytes: payloads.reduce((sum, payload) => sum + payload.byteLength, 0),
+      transferables: payloads.map((payload) => payload.buffer),
     },
     timing: { timeRange: { startNs: timestampNs } },
     visualization,
@@ -2328,6 +2349,7 @@ function encodedVideo({
   decodeTimestampNs,
   keyframe,
   parameterSets,
+  preroll,
   timestampNs,
 }: {
   readonly bytes: Uint8Array;
@@ -2336,6 +2358,7 @@ function encodedVideo({
   readonly decodeTimestampNs?: bigint;
   readonly keyframe: boolean;
   readonly parameterSets: VideoParameterSets;
+  readonly preroll?: readonly Uint8Array[];
   readonly timestampNs: bigint;
 }): EncodedVideoVisualization {
   const codec = codecFamily(codecString);
@@ -2344,6 +2367,7 @@ function encodedVideo({
     ...(decodeTimestampNs === undefined ? {} : { decodeTimestampNs }),
     format: codecString,
     keyframe,
+    ...(preroll?.length ? { preroll } : {}),
     kind: VISUALIZATION_KIND.ENCODED_VIDEO,
     timestampNs,
   } as const;

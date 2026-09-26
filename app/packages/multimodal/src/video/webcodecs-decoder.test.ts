@@ -465,6 +465,54 @@ describe("WebCodecsVideoDecoder AV1", () => {
     output.close();
     actor.close();
   });
+
+  it("decodes a unit's preroll before it and presents only the unit", async () => {
+    const harness = fakeWebCodecs();
+    const actor = new WebCodecsVideoDecoder(harness.environment);
+    const streamKeyframe = av1Unit(-2, true).frame.bytes;
+    const leadingDelta = av1Unit(-1).frame.bytes;
+    const opening = av1Unit(0);
+    const accessUnit: EncodedVideoAccessUnit = {
+      ...opening,
+      frame: {
+        ...opening.frame,
+        keyframe: true,
+        preroll: [streamKeyframe, leadingDelta],
+      },
+    };
+
+    const output = await actor.decode([accessUnit], {
+      signal: new AbortController().signal,
+      targetTimeNs: 0n,
+    });
+
+    const chunks = harness.instances[0].decode.mock.calls.map(
+      ([chunk]) =>
+        chunk as {
+          readonly data: Uint8Array;
+          readonly timestamp: number;
+          readonly type: string;
+        },
+    );
+    expect(chunks.map((chunk) => chunk.type)).toEqual([
+      "key",
+      "delta",
+      "delta",
+    ]);
+    expect(chunks.map((chunk) => chunk.data)).toEqual([
+      streamKeyframe,
+      leadingDelta,
+      opening.frame.bytes,
+    ]);
+    expect(output.timestamp).toBe(chunks[2].timestamp);
+    expect(
+      harness.frames
+        .filter(({ frame }) => frame !== output)
+        .every(({ closed }) => closed()),
+    ).toBe(true);
+    output.close();
+    actor.close();
+  });
 });
 
 describe("WebCodecsVideoDecoder H.264 parameter sets", () => {
