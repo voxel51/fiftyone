@@ -4,6 +4,9 @@
 
 import { BaseLabel } from "@fiftyone/looker/src/overlays/base";
 
+import type { HeatmapPalette } from "./utils/heatmapPalette";
+import type { SegmentationPalette } from "./utils/segmentationPalette";
+
 /**
  * 2D rectangle with position and size.
  */
@@ -36,6 +39,17 @@ export interface DrawStyle {
   isSelected?: boolean;
   /** Selection border color (defaults to orange if not specified) */
   selectionColor?: string;
+  /**
+   * Resolved per-target colors for a segmentation mask.
+   *
+   * Carried on the style rather than read by the overlay because the scene
+   * owns the color context, and because it then rides the existing
+   * dirty-then-repaint path: a color-scheme change marks overlays dirty, the
+   * next paint resolves a new palette, and the mask re-rasterizes.
+   */
+  segmentationPalette?: SegmentationPalette;
+  /** Resolved colors + range for a heatmap. Carried for the same reason. */
+  heatmapPalette?: HeatmapPalette;
 }
 
 export interface Anchor {

@@ -7,9 +7,11 @@
  */
 
 import type { OverlayMask } from "@fiftyone/looker/src/numpy";
+import type { MaskTargets } from "@fiftyone/looker/src/state";
 import { LRUCache } from "lru-cache";
 import { v4 as uuidv4 } from "uuid";
 
+import { coloringForMaskDecode } from "./maskDecodeColoring";
 import type { DecodeResponse } from "./maskPathDecodeWorker";
 
 // Minimum of 1 worker, maximum of 4 workers
@@ -26,6 +28,7 @@ interface PendingJob {
   url: string;
   field: string;
   cls: string;
+  maskTargets?: MaskTargets;
   resolve: (mask: OverlayMask | undefined) => void;
 }
 
@@ -149,6 +152,7 @@ const dispatch = (slot: Slot, job: PendingJob): void => {
     url: job.url,
     field: job.field,
     cls: job.cls,
+    maskTargets: job.maskTargets,
   });
 };
 
@@ -178,6 +182,10 @@ const drain = (): void => {
  * on a label is not always directly fetchable and must be mapped to a real
  * URL by the integration layer before reaching here.
  *
+ * `maskTargets` matters for a Segmentation only: RGB-keyed targets keep the
+ * decoded channels, indexed (or absent) targets collapse to one. Other label
+ * types never read it.
+ *
  * Returns `undefined` if the fetch or decode fails; callers should treat
  * this as "no mask available yet" and proceed without one.
  */
@@ -185,6 +193,7 @@ export async function decodeMaskPath(
   url: string,
   field: string,
   cls: string,
+  maskTargets?: MaskTargets,
 ): Promise<OverlayMask | undefined> {
   // Defensive: callers should never pass a non-string URL, but if they do,
   // a downstream `fetch(undefined)` would resolve to a phantom request
@@ -204,7 +213,7 @@ export async function decodeMaskPath(
     return existing;
   }
 
-  const promise = decodeMaskPathImpl(url, field, cls);
+  const promise = decodeMaskPathImpl(url, field, cls, maskTargets);
   inFlight.set(url, promise);
   void promise
     .then((mask) => {
@@ -219,6 +228,7 @@ async function decodeMaskPathImpl(
   url: string,
   field: string,
   cls: string,
+  maskTargets: MaskTargets | undefined,
 ): Promise<OverlayMask | undefined> {
   const pool = ensurePool();
 
@@ -241,7 +251,12 @@ async function decodeMaskPathImpl(
 
       const blob = await response.blob();
 
-      const mask = await decodeMaskOnDisk(blob, cls, field, {} as never);
+      const mask = await decodeMaskOnDisk(
+        blob,
+        cls,
+        field,
+        coloringForMaskDecode(field, maskTargets),
+      );
 
       return mask ?? undefined;
     } catch (err) {
@@ -256,6 +271,7 @@ async function decodeMaskPathImpl(
       url,
       field,
       cls,
+      maskTargets,
       resolve,
     };
 
