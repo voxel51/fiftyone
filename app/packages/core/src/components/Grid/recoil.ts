@@ -145,18 +145,6 @@ export const gridZoom = selector<number>({
   },
 });
 
-export const gridCropCallback = selector({
-  key: "gridCropCallback",
-  get: ({ getCallback }) => {
-    return getCallback(({ snapshot }) => async () => {
-      return (
-        (await snapshot.getPromise(fos.isPatchesView)) &&
-        (await snapshot.getPromise(fos.cropToContent(false)))
-      );
-    });
-  },
-});
-
 export const gridCrop = selector({
   key: "gridCrop",
   get: ({ get }) => {

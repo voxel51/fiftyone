@@ -4,17 +4,26 @@ import { filters, modalFilters } from "./filters";
 import { BooleanFilter } from "./pathFilters/boolean";
 import { NumericFilter } from "./pathFilters/numeric";
 import { StringFilter } from "./pathFilters/string";
-import { expandPath } from "./schema";
+import { expandPath, labelPaths } from "./schema";
 
 export default selectorFamily<(path: string, value: Point) => boolean, boolean>(
   {
     key: "skeletonFilter",
     get:
       (modal) =>
-      ({ get, getCallback }) => {
+      ({ get }) => {
         const f = get(modal ? modalFilters : filters);
-        return getCallback(({ snapshot }) => (path: string, value: Point) => {
-          path = snapshot.getLoadable(expandPath(path)).contents;
+        // The returned predicate runs outside the store, so every expansion it
+        // can need is resolved here.
+        const expanded: Record<string, string> = Object.fromEntries(
+          get(labelPaths({ expanded: false })).map((labelPath) => [
+            labelPath,
+            get(expandPath(labelPath)),
+          ]),
+        );
+
+        return (path: string, value: Point) => {
+          path = expanded[path] ?? path;
           let result: boolean = true;
 
           const stringListFilters: string[] = [];
@@ -128,7 +137,7 @@ export default selectorFamily<(path: string, value: Point) => boolean, boolean>(
           });
 
           return result;
-        });
+        };
       },
   },
 );
