@@ -1,19 +1,18 @@
 /**
- * @generated SignedSource<<ef5889b53febd6a04edda592f5ef3b86>>
+ * @generated SignedSource<<33a6ff3d56316529529f9d5766ea51ad>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { Fragment, ReaderFragment } from 'relay-runtime';
+import { ReaderFragment } from 'relay-runtime';
 export type ColorBy = "field" | "instance" | "value" | "%future added value";
 export type Theme = "browser" | "dark" | "light" | "%future added value";
 import { FragmentRefs } from "relay-runtime";
 export type configFragment$data = {
-  readonly colorscale: ReadonlyArray<ReadonlyArray<number>> | null;
+  readonly colorscale: ReadonlyArray<ReadonlyArray<number>> | null | undefined;
   readonly config: {
     readonly colorBy: ColorBy;
     readonly colorPool: ReadonlyArray<string>;
@@ -23,18 +22,18 @@ export type configFragment$data = {
     readonly enableQueryPerformance: boolean;
     readonly gridZoom: number;
     readonly loopVideos: boolean;
-    readonly maxQueryTime: number | null;
+    readonly maxQueryTime: number | null | undefined;
     readonly mediaFallback: boolean;
     readonly multicolorKeypoints: boolean;
     readonly notebookHeight: number;
-    readonly plugins: object | null;
+    readonly plugins: object | null | undefined;
     readonly showConfidence: boolean;
     readonly showIndex: boolean;
     readonly showLabel: boolean;
     readonly showSkeletons: boolean;
     readonly showTooltip: boolean;
     readonly theme: Theme;
-    readonly timezone: string | null;
+    readonly timezone: string | null | undefined;
     readonly useFrameNumber: boolean;
   };
   readonly " $fragmentType": "configFragment";
@@ -80,7 +79,7 @@ return {
           "name": "colorPool",
           "storageKey": null
         },
-        (v0/*: any*/),
+        (v0/*:: as any*/),
         {
           "alias": null,
           "args": null,
@@ -210,7 +209,7 @@ return {
       ],
       "storageKey": null
     },
-    (v0/*: any*/)
+    (v0/*:: as any*/)
   ],
   "type": "Query",
   "abstractKey": null

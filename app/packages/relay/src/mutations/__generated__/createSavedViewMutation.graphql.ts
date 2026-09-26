@@ -1,51 +1,50 @@
 /**
- * @generated SignedSource<<4d5d398b91f782a06a9331549a5118ae>>
+ * @generated SignedSource<<de636e028cdec691700286da95d96251>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { ConcreteRequest, Mutation } from 'relay-runtime';
+import { ConcreteRequest } from 'relay-runtime';
 export type StateForm = {
-  addStages?: Array | null;
-  extended?: object | null;
-  filters?: object | null;
-  labels?: ReadonlyArray<SelectedLabel> | null;
-  sampleIds?: ReadonlyArray<string> | null;
-  slice?: string | null;
+  addStages?: Array | null | undefined;
+  extended?: object | null | undefined;
+  filters?: object | null | undefined;
+  labels?: ReadonlyArray<SelectedLabel> | null | undefined;
+  sampleIds?: ReadonlyArray<string> | null | undefined;
+  slice?: string | null | undefined;
 };
 export type SelectedLabel = {
   field: string;
-  frameNumber?: number | null;
-  instanceId?: string | null;
+  frameNumber?: number | null | undefined;
+  instanceId?: string | null | undefined;
   labelId: string;
   sampleId: string;
-  type?: string | null;
+  type?: string | null | undefined;
 };
 export type createSavedViewMutation$variables = {
-  color?: string | null;
-  datasetName?: string | null;
-  description?: string | null;
-  form?: StateForm | null;
-  session?: string | null;
+  color?: string | null | undefined;
+  datasetName?: string | null | undefined;
+  description?: string | null | undefined;
+  form?: StateForm | null | undefined;
+  session?: string | null | undefined;
   subscription: string;
   viewName: string;
-  viewStages?: Array | null;
+  viewStages?: Array | null | undefined;
 };
 export type createSavedViewMutation$data = {
   readonly createSavedView: {
-    readonly color: string | null;
-    readonly createdAt: number | null;
-    readonly datasetId: string | null;
-    readonly description: string | null;
-    readonly id: string | null;
-    readonly name: string | null;
-    readonly slug: string | null;
-    readonly viewStages: ReadonlyArray<string> | null;
-  } | null;
+    readonly color: string | null | undefined;
+    readonly createdAt: number | null | undefined;
+    readonly datasetId: string | null | undefined;
+    readonly description: string | null | undefined;
+    readonly id: string | null | undefined;
+    readonly name: string | null | undefined;
+    readonly slug: string | null | undefined;
+    readonly viewStages: ReadonlyArray<string> | null | undefined;
+  } | null | undefined;
 };
 export type createSavedViewMutation = {
   response: createSavedViewMutation$data;
@@ -206,37 +205,37 @@ v8 = [
 return {
   "fragment": {
     "argumentDefinitions": [
-      (v0/*: any*/),
-      (v1/*: any*/),
-      (v2/*: any*/),
-      (v3/*: any*/),
-      (v4/*: any*/),
-      (v5/*: any*/),
-      (v6/*: any*/),
-      (v7/*: any*/)
+      (v0/*:: as any*/),
+      (v1/*:: as any*/),
+      (v2/*:: as any*/),
+      (v3/*:: as any*/),
+      (v4/*:: as any*/),
+      (v5/*:: as any*/),
+      (v6/*:: as any*/),
+      (v7/*:: as any*/)
     ],
     "kind": "Fragment",
     "metadata": null,
     "name": "createSavedViewMutation",
-    "selections": (v8/*: any*/),
+    "selections": (v8/*:: as any*/),
     "type": "Mutation",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
     "argumentDefinitions": [
-      (v5/*: any*/),
-      (v4/*: any*/),
-      (v6/*: any*/),
-      (v7/*: any*/),
-      (v1/*: any*/),
-      (v2/*: any*/),
-      (v0/*: any*/),
-      (v3/*: any*/)
+      (v5/*:: as any*/),
+      (v4/*:: as any*/),
+      (v6/*:: as any*/),
+      (v7/*:: as any*/),
+      (v1/*:: as any*/),
+      (v2/*:: as any*/),
+      (v0/*:: as any*/),
+      (v3/*:: as any*/)
     ],
     "kind": "Operation",
     "name": "createSavedViewMutation",
-    "selections": (v8/*: any*/)
+    "selections": (v8/*:: as any*/)
   },
   "params": {
     "cacheID": "394266ec53b6d4eeb1710d03f7cb9dbb",

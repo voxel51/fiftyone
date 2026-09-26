@@ -9,7 +9,7 @@
         "**/__generated__/**",
         "**/dist/**"
     ],
-    "customScalars": {
+    "customScalarTypes": {
         "BSON": "object",
         "BSONArray": "Array",
         "Date": "number",

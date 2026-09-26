@@ -1,23 +1,22 @@
 /**
- * @generated SignedSource<<5824920101a6f1b350d67c862b128228>>
+ * @generated SignedSource<<df0e5ddab4429a21689a786285c5f12c>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { Fragment, ReaderFragment } from 'relay-runtime';
+import { ReaderFragment } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type sidebarGroupsFragment$data = {
   readonly appConfig: {
     readonly sidebarGroups: ReadonlyArray<{
-      readonly expanded: boolean | null;
+      readonly expanded: boolean | null | undefined;
       readonly name: string;
-      readonly paths: ReadonlyArray<string> | null;
-    }> | null;
-  } | null;
+      readonly paths: ReadonlyArray<string> | null | undefined;
+    }> | null | undefined;
+  } | null | undefined;
   readonly datasetId: string;
   readonly " $fragmentSpreads": FragmentRefs<"frameFieldsFragment" | "sampleFieldsFragment">;
   readonly " $fragmentType": "sidebarGroupsFragment";

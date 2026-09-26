@@ -1,14 +1,13 @@
 /**
- * @generated SignedSource<<9dfd1da6fa86e82dd16237b59cff2edd>>
+ * @generated SignedSource<<3c0282283558f4742893ed921d6092ef>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { Fragment, ReaderFragment } from 'relay-runtime';
+import { ReaderFragment } from 'relay-runtime';
 export type Kind = "ANY" | "ARRAY" | "BOOLEAN" | "DATE" | "ID" | "NUMBER" | "OBJECT" | "STRING" | "%future added value";
 import { FragmentRefs } from "relay-runtime";
 export type expressionCatalogFragment$data = {
@@ -20,7 +19,7 @@ export type expressionCatalogFragment$data = {
   readonly viewExpressionOperators: ReadonlyArray<{
     readonly argKinds: ReadonlyArray<Kind>;
     readonly display: string;
-    readonly maxArgs: number | null;
+    readonly maxArgs: number | null | undefined;
     readonly minArgs: number;
     readonly name: string;
     readonly reflected: boolean;

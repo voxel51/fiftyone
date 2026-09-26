@@ -1,32 +1,31 @@
 /**
- * @generated SignedSource<<2fbe02e39ce04bc0d59ab85750ce2c85>>
+ * @generated SignedSource<<a105fd1d249e75a22c556e799768e4cd>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { Fragment, ReaderFragment } from 'relay-runtime';
+import { ReaderFragment } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type viewSchemaFragment$data = {
   readonly schemaForViewStages: {
     readonly fieldSchema: ReadonlyArray<{
-      readonly description: string | null;
-      readonly embeddedDocType: string | null;
+      readonly description: string | null | undefined;
+      readonly embeddedDocType: string | null | undefined;
       readonly ftype: string;
-      readonly info: object | null;
+      readonly info: object | null | undefined;
       readonly path: string;
-      readonly subfield: string | null;
+      readonly subfield: string | null | undefined;
     }>;
     readonly frameFieldSchema: ReadonlyArray<{
-      readonly description: string | null;
-      readonly embeddedDocType: string | null;
+      readonly description: string | null | undefined;
+      readonly embeddedDocType: string | null | undefined;
       readonly ftype: string;
-      readonly info: object | null;
+      readonly info: object | null | undefined;
       readonly path: string;
-      readonly subfield: string | null;
+      readonly subfield: string | null | undefined;
     }>;
   };
   readonly " $fragmentType": "viewSchemaFragment";
@@ -122,7 +121,7 @@ return {
           "kind": "LinkedField",
           "name": "fieldSchema",
           "plural": true,
-          "selections": (v0/*: any*/),
+          "selections": (v0/*:: as any*/),
           "storageKey": null
         },
         {
@@ -132,7 +131,7 @@ return {
           "kind": "LinkedField",
           "name": "frameFieldSchema",
           "plural": true,
-          "selections": (v0/*: any*/),
+          "selections": (v0/*:: as any*/),
           "storageKey": null
         }
       ],
