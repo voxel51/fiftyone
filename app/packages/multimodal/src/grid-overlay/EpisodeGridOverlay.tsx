@@ -20,6 +20,7 @@ import {
   useEpisodeTimeRange,
 } from "../extensions/episode-intervals";
 import { temporalTagIntervalSource } from "./temporal-tag-interval-source";
+import { savedSegmentIntervalSource } from "../extensions/episode-intervals/saved-segments";
 import styles from "./grid-overlay.module.css";
 
 /** Cap the stacked levels so the lane stays compact on a small grid tile. */
@@ -73,7 +74,10 @@ const MAX_READOUT_NAMES = 12;
  * Sources that ship in this package. Everything else arrives through the
  * registry — see `extensions/episode-intervals/types.ts`.
  */
-const BUILT_IN_SOURCES = [temporalTagIntervalSource];
+const BUILT_IN_SOURCES = [
+  savedSegmentIntervalSource,
+  temporalTagIntervalSource,
+];
 
 /**
  * Bottom-of-tile interval lane for multimodal grid previews.

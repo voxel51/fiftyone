@@ -1,20 +1,16 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * The language search field's own search, for an index a registered text
- * search extension searches client-side. The field hands such a query here
- * instead of to the view bar's server search: the extension runs it and the
- * result is published to the extended selection, which narrows the grid
+ * Text search for an index a registered text search extension searches
+ * client-side, which the server cannot sort by: the extension runs it and
+ * the result is published to the extended selection, which narrows the grid
  * without changing the view.
  */
 
-import { useTrackEvent } from "@fiftyone/analytics";
 import type { PromptableSimilarityIndex } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
-import { recordIndexUse } from "./searchIndexRecency";
-import { recordSearchQuery, rememberQuery } from "./searchQueryHistory";
 import { viewFingerprint } from "./state";
 
 export interface LanguageSearchExtension {
@@ -29,12 +25,15 @@ export interface LanguageSearchExtension {
     k: number,
     sources: string[] | null,
   ) => void;
-  /** Queries run here, most recent first. The bar reads the stored history
-   * when it mounts, so these would otherwise be missing until it remounts. */
-  recentQueries: readonly string[];
+  /** Drops the search in flight: nothing it returns is published. */
+  cancel: () => void;
 }
 
-export const useLanguageSearchExtension = (): LanguageSearchExtension => {
+export const useLanguageSearchExtension = (
+  /** Called when a search actually runs. */
+  onRun: (index: PromptableSimilarityIndex, query: string) => void,
+): LanguageSearchExtension => {
+  const datasetId = fos.useCurrentDatasetId();
   const datasetName = fos.useCurrentDatasetName();
   const view = fos.useView();
   const filters = fos.useFilters();
@@ -43,8 +42,6 @@ export const useLanguageSearchExtension = (): LanguageSearchExtension => {
   const publishExtendedSelection = fos.usePublishExtendedSelection();
   const setViewChangePending = fos.useSetViewChangePending();
   const notify = fos.useNotification();
-  const trackEvent = useTrackEvent();
-  const [recentQueries, setRecentQueries] = useState<string[]>([]);
 
   // Only the newest search may publish; null while none is in flight
   const searchSeq = useRef(0);
@@ -63,8 +60,8 @@ export const useLanguageSearchExtension = (): LanguageSearchExtension => {
     }
   }, [setViewChangePending]);
 
-  // A search still running when the field goes away (it is keyed by
-  // dataset) must not publish into the next one, nor leave its pending
+  // A search still running when its host goes away (the view bar is keyed
+  // by dataset) must not publish into the next one, nor leave its pending
   // treatment on
   useEffect(() => cancel, [cancel]);
 
@@ -84,12 +81,9 @@ export const useLanguageSearchExtension = (): LanguageSearchExtension => {
       const extension = index.extension
         ? extensions.get(index.extension)
         : undefined;
-      if (!extension || !datasetName) return;
+      if (!extension || !datasetId || !datasetName) return;
 
-      recordIndexUse(datasetName, index.key);
-      recordSearchQuery(datasetName, query);
-      setRecentQueries((queries) => rememberQuery(queries, query));
-      trackEvent("view_bar_text_search", { patches: false });
+      onRun(index, query);
 
       controller.current?.abort();
       const { signal } = (controller.current = new AbortController());
@@ -103,6 +97,7 @@ export const useLanguageSearchExtension = (): LanguageSearchExtension => {
       new Promise<fos.TextSearchResult | null>((resolve) =>
         resolve(
           extension.search({
+            datasetId,
             datasetName,
             brainKey: index.key,
             runTimestamp: index.timestamp ?? null,
@@ -138,6 +133,7 @@ export const useLanguageSearchExtension = (): LanguageSearchExtension => {
     },
     [
       extensions,
+      datasetId,
       datasetName,
       view,
       filters,
@@ -145,9 +141,9 @@ export const useLanguageSearchExtension = (): LanguageSearchExtension => {
       publishExtendedSelection,
       setViewChangePending,
       notify,
-      trackEvent,
+      onRun,
     ],
   );
 
-  return { run, recentQueries };
+  return { run, cancel };
 };

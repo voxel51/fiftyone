@@ -13,6 +13,7 @@ import {
 } from "@fiftyone/video-annotation";
 import { BackgroundColor, getColorCssVar } from "@voxel51/voodo";
 import React, { useMemo } from "react";
+import { useSavedVideoSegments } from "./useSavedVideoSegments";
 import { useLookerPlaybackBridge } from "./useLookerPlaybackBridge";
 import styles from "./VideoLookerSurface.module.css";
 import { VideoTimelineExtensions } from "./VideoTimelineExtensions";
@@ -71,6 +72,7 @@ export const VideoLookerSurface: React.FC<{ sample: fos.ModalSample }> = ({
   const timelineMaxSize = useTimelineMaxSize(surfaceHeight);
 
   const frameRate = getModalSampleFrameRate(sample);
+  const savedSegments = useSavedVideoSegments(sample.sample._id, frameRate);
 
   // Sequence mode when the frame rate is known, so the engine steps whole
   // frames and the ruler can count them; elapsed seconds if not.
@@ -84,15 +86,20 @@ export const VideoLookerSurface: React.FC<{ sample: fos.ModalSample }> = ({
 
   // `PlaybackProvider` resolves `mode` at mount only, so a sample with a
   // different frame rate has to remount it.
-  const playbackKey =
+  const clockKey =
     mode.kind === "sequence" ? `sequence:${mode.fps}` : mode.kind;
+  const playbackKey = `${sample.sample._id}:${clockKey}:${savedSegments.pinScopeKey ?? ""}`;
 
   return (
     <PlaybackProvider key={playbackKey} mode={mode} defaultDisplay="duration">
       {/* Registers the label stream the tracks read. A SIBLING of the media:
           it re-keys on the resolved frame count, and nesting the looker under
           it would rebuild the looker on the way to ready. */}
-      <RegisterFrameLabels sample={sample} mode="explore" />
+      <RegisterFrameLabels
+        sample={sample}
+        mode="explore"
+        initialTime={savedSegments.initialTime}
+      />
       <div
         ref={dimensions.ref as React.RefObject<HTMLDivElement>}
         className={styles.root}
@@ -103,17 +110,18 @@ export const VideoLookerSurface: React.FC<{ sample: fos.ModalSample }> = ({
         <div className={styles.timeline} style={CARD_BACKGROUND}>
           <VideoTimelineExtensions sample={sample}>
             {({ tracks, decorateTrack, rulerOverlay, runtime }) => (
-              <>
-                <FrameLabelsTracks
-                  sample={sample}
-                  maxSize={timelineMaxSize}
-                  mode="explore"
-                  extraTracks={tracks}
-                  decorateExtraTrack={decorateTrack}
-                  rulerOverlay={rulerOverlay}
-                  runtime={runtime}
-                />
-              </>
+              <FrameLabelsTracks
+                sample={sample}
+                maxSize={timelineMaxSize}
+                mode="explore"
+                additionalTracks={savedSegments.tracks}
+                initialPinnedIds={savedSegments.initialPinnedIds}
+                pinScopeKey={savedSegments.pinScopeKey}
+                extraTracks={tracks}
+                decorateExtraTrack={decorateTrack}
+                rulerOverlay={rulerOverlay}
+                runtime={runtime}
+              />
             )}
           </VideoTimelineExtensions>
         </div>

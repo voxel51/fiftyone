@@ -4,18 +4,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const env = vi.hoisted(() => ({
   dataset: "robots",
   pending: false,
-  recentQueries: [] as string[],
 }));
 vi.mock("@fiftyone/state", () => ({
   useCurrentDatasetName: () => env.dataset,
   useViewChangePending: () => env.pending,
-}));
-const extensionRun = vi.hoisted(() => vi.fn());
-vi.mock("./useLanguageSearchExtension", () => ({
-  useLanguageSearchExtension: () => ({
-    run: extensionRun,
-    recentQueries: env.recentQueries,
-  }),
 }));
 const sources = vi.hoisted(() => ({
   current: null as { label: string; values: string[] } | null,
@@ -76,11 +68,8 @@ vi.mock("./SearchSettingsPopover", () => ({
   ),
 }));
 
-import {
-  LANGUAGE_SEARCH_LABEL,
-  LanguageSearch,
-  type LanguageSearchProps,
-} from "./LanguageSearch";
+import { LANGUAGE_SEARCH_LABEL, LanguageSearch } from "./LanguageSearch";
+import type { TextSearchController } from "./useTextSearch";
 
 const noop = () => undefined;
 
@@ -99,34 +88,34 @@ const EXTENSION_INDEX = {
 };
 
 /** Renders the field with a similarity index enabled and nothing selected,
- * as `overrides` changes it; returns its props, callbacks being spies. */
-const renderSearch = (overrides: Partial<LanguageSearchProps> = {}) => {
-  const props: LanguageSearchProps = {
-    onSubmit: vi.fn(),
-    onUnavailable: vi.fn(),
-    onOpenPanel: vi.fn(),
+ * as `overrides` changes it; returns its controller, callbacks being spies. */
+const renderSearch = (overrides: Partial<TextSearchController> = {}) => {
+  const controls: TextSearchController = {
     available: true,
     enabled: true,
+    onUnavailable: vi.fn(),
     history: [],
     promptKeys: [],
-    selectedKey: null,
+    selectedIndex: undefined,
     onSelectKey: noop,
     k: 25,
     onChangeK: noop,
+    onOpenPanel: vi.fn(),
+    submit: vi.fn(),
     ...overrides,
   };
-  const view = render(<LanguageSearch {...props} />);
+  const view = render(<LanguageSearch search={controls} />);
   return {
-    ...props,
-    rerender: () => view.rerender(<LanguageSearch {...props} />),
+    ...controls,
+    rerender: () => view.rerender(<LanguageSearch search={controls} />),
   };
 };
 
 /** Renders the field with {@link EXTENSION_INDEX} selected. */
-const renderExtensionSearch = (overrides: Partial<LanguageSearchProps> = {}) =>
+const renderExtensionSearch = (overrides: Partial<TextSearchController> = {}) =>
   renderSearch({
     promptKeys: [EXTENSION_INDEX],
-    selectedKey: EXTENSION_INDEX.key,
+    selectedIndex: EXTENSION_INDEX,
     ...overrides,
   });
 
@@ -136,7 +125,6 @@ describe("LanguageSearch", () => {
     vi.clearAllMocks();
     env.dataset = "robots";
     env.pending = false;
-    env.recentQueries = [];
     sources.current = null;
     suggested.current = null;
   });
@@ -179,17 +167,6 @@ describe("LanguageSearch", () => {
     expect(screen.getByRole("option", { name: "cats" })).toBeTruthy();
   });
 
-  it("offers a query an extension just ran before the stored history has it", () => {
-    env.recentQueries = ["dogs"];
-    renderSearch({ history: ["cats"] });
-    fireEvent.focus(
-      screen.getByRole("combobox", { name: LANGUAGE_SEARCH_LABEL }),
-    );
-    expect(
-      screen.getAllByRole("option").map((option) => option.textContent),
-    ).toEqual(["dogs", "cats"]);
-  });
-
   it("empties the field when the dataset changes", () => {
     const { rerender } = renderSearch();
     const field = () =>
@@ -206,45 +183,33 @@ describe("LanguageSearch", () => {
   });
 
   it("opens the panel when a query is submitted with no index", () => {
-    const { onSubmit, onOpenPanel } = renderSearch({
+    const { submit, onOpenPanel } = renderSearch({
       available: true,
       enabled: false,
     });
     search("person");
     expect(onOpenPanel).toHaveBeenCalledTimes(1);
-    expect(onSubmit).not.toHaveBeenCalled();
+    expect(submit).not.toHaveBeenCalled();
   });
 
   it("runs the query when it is submitted with an index", () => {
-    const { onSubmit, onOpenPanel } = renderSearch({
+    const { submit, onOpenPanel } = renderSearch({
       available: true,
       enabled: true,
     });
     search("person");
-    expect(onSubmit).toHaveBeenCalledWith("person");
+    expect(submit).toHaveBeenCalledWith("person", null);
     expect(onOpenPanel).not.toHaveBeenCalled();
   });
 
   it("does nothing when the operator is not registered", () => {
-    const { onSubmit, onOpenPanel } = renderSearch({
+    const { submit, onOpenPanel } = renderSearch({
       available: false,
       enabled: false,
     });
     search("person");
-    expect(onSubmit).not.toHaveBeenCalled();
+    expect(submit).not.toHaveBeenCalled();
     expect(onOpenPanel).not.toHaveBeenCalled();
-  });
-
-  it("hands a query for an index an extension searches to the extension", () => {
-    const { onSubmit } = renderExtensionSearch();
-    search("an animal");
-    expect(extensionRun).toHaveBeenCalledWith(
-      EXTENSION_INDEX,
-      "an animal",
-      25,
-      null,
-    );
-    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   const renderStreamIndex = () => {
@@ -252,7 +217,7 @@ describe("LanguageSearch", () => {
       label: "Streams",
       values: ["/cam_left", "/cam_right"],
     };
-    renderExtensionSearch();
+    return renderExtensionSearch();
   };
 
   it("asks for the index's sources only once the settings open", () => {
@@ -265,31 +230,10 @@ describe("LanguageSearch", () => {
   });
 
   it("searches only the sources chosen in the settings", () => {
-    renderStreamIndex();
+    const { submit } = renderStreamIndex();
     fireEvent.click(screen.getByRole("button", { name: "choose left" }));
     search("an animal");
-    expect(extensionRun).toHaveBeenCalledWith(
-      EXTENSION_INDEX,
-      "an animal",
-      25,
-      ["/cam_left"],
-    );
-  });
-
-  it("searches an extension's index without the similarity operator or a server index", () => {
-    const { onUnavailable, onOpenPanel } = renderExtensionSearch({
-      available: false,
-      enabled: false,
-    });
-    search("an animal");
-    expect(extensionRun).toHaveBeenCalledWith(
-      EXTENSION_INDEX,
-      "an animal",
-      25,
-      null,
-    );
-    expect(onUnavailable).not.toHaveBeenCalled();
-    expect(onOpenPanel).not.toHaveBeenCalled();
+    expect(submit).toHaveBeenCalledWith("an animal", ["/cam_left"]);
   });
 
   it("keeps the search settings shut while a search runs", () => {
@@ -415,17 +359,12 @@ describe("LanguageSearch", () => {
       },
     ])("runs $name on Enter", ({ answer, typed, runs }) => {
       setSuggested(answer);
-      renderSuggested(["a red cup"]);
+      const { submit } = renderSuggested(["a red cup"]);
       search(typed);
       if (runs === null) {
-        expect(extensionRun).not.toHaveBeenCalled();
+        expect(submit).not.toHaveBeenCalled();
       } else {
-        expect(extensionRun).toHaveBeenCalledWith(
-          EXTENSION_INDEX,
-          runs,
-          25,
-          null,
-        );
+        expect(submit).toHaveBeenCalledWith(runs, null);
       }
     });
 
@@ -450,14 +389,14 @@ describe("LanguageSearch", () => {
         actions: [{ id: "add-queries", label: "Add queries" }],
         Action,
       });
-      renderSuggested();
+      const { submit } = renderSuggested();
       type("robot");
       expect(optionNames()).toEqual(["a robot arm", "Add queries"]);
       fireEvent.mouseDown(screen.getByRole("option", { name: "Add queries" }));
       expect(
         screen.getByRole("dialog", { name: "action add-queries" }),
       ).toBeTruthy();
-      expect(extensionRun).not.toHaveBeenCalled();
+      expect(submit).not.toHaveBeenCalled();
       expect(field().value).toBe("robot");
     });
 
