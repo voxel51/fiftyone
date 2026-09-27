@@ -172,7 +172,7 @@ describe("LanguageSearch", () => {
     const index = {
       key: "emb_sim",
       patchesField: null,
-      extension: "multimodal",
+      provider: "multimodal",
     };
     return renderSearch({
       history: [],

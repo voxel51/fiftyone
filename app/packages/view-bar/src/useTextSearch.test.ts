@@ -5,11 +5,11 @@ const env = vi.hoisted(() => ({
   promptKeys: [] as {
     key: string;
     patchesField: string | null;
-    extension?: string | null;
+    provider?: string | null;
   }[],
   operatorAvailable: true,
   operatorRun: vi.fn(),
-  extensionRun: vi.fn(),
+  providerRun: vi.fn(),
   onRun: null as null | ((index: { key: string }, query: string) => void),
 }));
 
@@ -30,9 +30,9 @@ vi.mock("./useOperatorSearch", () => ({
     };
   },
 }));
-vi.mock("./useLanguageSearchExtension", () => ({
-  useLanguageSearchExtension: () => ({
-    run: env.extensionRun,
+vi.mock("./useProviderSearch", () => ({
+  useProviderSearch: () => ({
+    run: env.providerRun,
     cancel: vi.fn(),
   }),
 }));
@@ -40,10 +40,10 @@ vi.mock("./useLanguageSearchExtension", () => ({
 import { useTextSearch } from "./useTextSearch";
 
 const SERVER_INDEX = { key: "clip_sim", patchesField: null };
-const EXTENSION_INDEX = {
+const PROVIDER_INDEX = {
   key: "emb_sim",
   patchesField: null,
-  extension: "multimodal",
+  provider: "multimodal",
 };
 
 const renderController = () =>
@@ -63,17 +63,17 @@ describe("useTextSearch", () => {
     act(() => result.current.submit("an animal", null));
 
     expect(env.operatorRun).toHaveBeenCalledWith(SERVER_INDEX, "an animal", 25);
-    expect(env.extensionRun).not.toHaveBeenCalled();
+    expect(env.providerRun).not.toHaveBeenCalled();
   });
 
-  it("runs a query for an index an extension searches through the extension", () => {
-    env.promptKeys = [EXTENSION_INDEX];
+  it("runs a query for an index a provider searches through the provider", () => {
+    env.promptKeys = [PROVIDER_INDEX];
     const { result } = renderController();
 
     act(() => result.current.submit("an animal", ["/cam_left"]));
 
-    expect(env.extensionRun).toHaveBeenCalledWith(
-      EXTENSION_INDEX,
+    expect(env.providerRun).toHaveBeenCalledWith(
+      PROVIDER_INDEX,
       "an animal",
       25,
       ["/cam_left"],
@@ -81,8 +81,8 @@ describe("useTextSearch", () => {
     expect(env.operatorRun).not.toHaveBeenCalled();
   });
 
-  it("searches an extension's index without the similarity operator", () => {
-    env.promptKeys = [EXTENSION_INDEX];
+  it("searches a provider's index without the similarity operator", () => {
+    env.promptKeys = [PROVIDER_INDEX];
     env.operatorAvailable = false;
     const { result } = renderController();
 

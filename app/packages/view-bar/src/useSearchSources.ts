@@ -2,9 +2,9 @@
  * Copyright 2017-2026, Voxel51, Inc.
  *
  * What the selected index's matches can come from, for the search settings
- * to narrow a search to: today, what the index's text search extension
+ * to narrow a search to: today, what the index's text search provider
  * reports, such as a multimodal index's streams. Asked only once `wanted`,
- * since finding them can cost the extension a server request.
+ * since finding them can cost the provider a server request.
  */
 
 import type { PromptableSimilarityIndex, SearchSources } from "@fiftyone/state";
@@ -16,10 +16,8 @@ export const useSearchSources = (
   wanted: boolean,
 ): SearchSources | null => {
   const datasetName = fos.useCurrentDatasetName();
-  const extensions = fos.useTextSearchExtensions();
-  const extension = index?.extension
-    ? extensions.get(index.extension)
-    : undefined;
+  const providers = fos.useTextSearchProviders();
+  const provider = index?.provider ? providers.get(index.provider) : undefined;
   const brainKey = index?.key ?? null;
   const runTimestamp = index?.timestamp ?? null;
 
@@ -31,11 +29,11 @@ export const useSearchSources = (
   } | null>(null);
 
   useEffect(() => {
-    if (!wanted || !extension?.sources || !datasetName || !brainKey) {
+    if (!wanted || !provider?.sources || !datasetName || !brainKey) {
       return undefined;
     }
     let live = true;
-    extension
+    provider
       .sources({ datasetName, brainKey, runTimestamp })
       .then((sources) => {
         if (live) setResolved({ brainKey, sources });
@@ -48,9 +46,9 @@ export const useSearchSources = (
     return () => {
       live = false;
     };
-  }, [wanted, extension, datasetName, brainKey, runTimestamp]);
+  }, [wanted, provider, datasetName, brainKey, runTimestamp]);
 
-  if (!extension?.sources || resolved?.brainKey !== brainKey) return null;
+  if (!provider?.sources || resolved?.brainKey !== brainKey) return null;
   const sources = resolved.sources;
   // One source leaves nothing to choose between
   return sources && sources.values.length > 1 ? sources : null;
