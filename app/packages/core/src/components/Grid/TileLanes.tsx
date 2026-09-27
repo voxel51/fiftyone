@@ -1,9 +1,9 @@
-import type { IntervalTileContext } from "../extensions/episode-intervals";
+import type { IntervalTileContext } from "@fiftyone/multimodal/extensions/episode-intervals";
 import {
   gridOverlayKey,
   useGridOverlays,
-} from "../extensions/timeline/grid-overlay-registry";
-import { EpisodeGridOverlay } from "./EpisodeGridOverlay";
+} from "@fiftyone/multimodal/extensions/timeline";
+import { EpisodeGridOverlay } from "@fiftyone/multimodal/grid-overlay";
 
 /**
  * One grid tile's footer lanes, whatever renders the tile: the temporal-tag

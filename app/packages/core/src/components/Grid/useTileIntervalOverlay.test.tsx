@@ -86,7 +86,7 @@ vi.mock("@fiftyone/looker", () => {
   return { VideoLooker };
 });
 
-vi.mock("@fiftyone/multimodal/grid-overlay", () => ({
+vi.mock("./TileLanes", () => ({
   TileLanes: ({
     ctx,
     showTags,
@@ -104,6 +104,9 @@ vi.mock("@fiftyone/multimodal/grid-overlay", () => ({
       </>
     );
   },
+}));
+
+vi.mock("@fiftyone/multimodal/runtime", () => ({
   getEpisodeSeek: seeks.get,
   releaseEpisodeSeek: seeks.release,
   subscribeEpisodeSeek: seeks.subscribe,

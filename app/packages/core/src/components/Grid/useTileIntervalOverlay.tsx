@@ -14,8 +14,7 @@ import {
   publishEpisodeTimeRange,
   releaseEpisodeSeek,
   subscribeEpisodeSeek,
-  TileLanes,
-} from "@fiftyone/multimodal/grid-overlay";
+} from "@fiftyone/multimodal/runtime";
 import * as fos from "@fiftyone/state";
 import { MEDIA_TYPE_VIDEO } from "@fiftyone/utilities";
 import {
@@ -32,6 +31,7 @@ import {
   useRecoilBridgeAcrossReactRoots_UNSTABLE,
   useRecoilValue,
 } from "recoil";
+import { TileLanes } from "./TileLanes";
 
 const HOST_STYLES: Partial<CSSStyleDeclaration> = {
   position: "absolute",

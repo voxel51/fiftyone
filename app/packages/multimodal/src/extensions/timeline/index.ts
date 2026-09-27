@@ -23,6 +23,7 @@ export {
 } from "./sample-focus";
 // Edition-contributed grid-tile overlays, rendered by the shared grid
 export {
+  gridOverlayKey,
   registerGridOverlay,
   useGridOverlays,
   type GridOverlayComponent,
