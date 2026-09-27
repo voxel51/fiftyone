@@ -14,6 +14,7 @@ const env = vi.hoisted(() => ({
 }));
 
 vi.mock("@fiftyone/state", () => ({
+  useCurrentDatasetId: () => "dataset-id",
   useCurrentDatasetName: () => "robots",
   useView: () => env.view,
   useFilters: () => env.filters,
@@ -74,6 +75,8 @@ describe("useLanguageSearchExtension", () => {
 
     expect(env.search).toHaveBeenCalledWith(
       expect.objectContaining({
+        datasetId: "dataset-id",
+        datasetName: "robots",
         brainKey: "emb_sim",
         query: "an animal",
         k: 25,

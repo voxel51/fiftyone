@@ -130,6 +130,11 @@ export class ViewBarPom {
     await this.stageEditor.assert.isOpen();
     return this.stageEditor;
   }
+
+  async removeStage(index: number) {
+    await this.openStages();
+    await this.viewStages.nth(index).getByLabel("Remove stage").click();
+  }
 }
 
 /**

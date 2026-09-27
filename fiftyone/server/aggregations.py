@@ -161,9 +161,14 @@ async def aggregate_resolver(
             ]
         )
 
-    # Temporal tags are not sample fields, so there is nothing to aggregate
-    # over for them; they are counted separately on the same view
-    paths = [path for path in form.paths if path != fosv.TEMPORAL_TAGS]
+    # Temporal tags are a virtual sidebar field. Count the root on this view;
+    # nested paths are not sample fields and have no Mongo aggregation.
+    paths = [
+        path
+        for path in form.paths
+        if path != fosv.TEMPORAL_TAGS
+        and not path.startswith(fosv.TEMPORAL_TAGS + ".")
+    ]
 
     results = []
     if paths:
@@ -196,8 +201,9 @@ async def aggregate_resolver(
             results.append(deserialize(result[offset : length + offset]))
             offset += length
 
-    if len(paths) != len(form.paths):
-        results.append(await run_sync_task(_temporal_tags_aggregation, view))
+    temporal_tags = None
+    if fosv.TEMPORAL_TAGS in form.paths:
+        temporal_tags = await run_sync_task(_temporal_tags_aggregation, view)
 
     if slice_view:
         for result in results:
@@ -205,7 +211,17 @@ async def aggregate_resolver(
                 result.slice = await slice_view._async_aggregate(foa.Count())
                 break
 
-    return results
+    resolved = iter(results)
+    ordered = []
+    for path in form.paths:
+        if path == fosv.TEMPORAL_TAGS:
+            ordered.append(temporal_tags)
+        elif path.startswith(fosv.TEMPORAL_TAGS + "."):
+            ordered.append(DataAggregation(path=path, count=0, exists=0))
+        else:
+            ordered.append(next(resolved))
+
+    return ordered
 
 
 RESULT_MAPPING = {

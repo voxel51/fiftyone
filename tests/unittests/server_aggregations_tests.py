@@ -36,6 +36,46 @@ schema = gql.Schema(
 
 class TestGroupModeSidebarCounts(unittest.IsolatedAsyncioTestCase):
     @drop_async_dataset
+    async def test_virtual_temporal_tag_path_in_mongo_fallback(
+        self, dataset: fo.Dataset
+    ):
+        dataset.add_sample(fo.Sample(filepath="one.png"))
+        query = """
+            query Query($form: AggregationForm!) {
+                aggregations(form: $form) {
+                    ... on DataAggregation { path count exists }
+                    ... on StringAggregation { path count exists }
+                }
+            }
+        """
+        form = {
+            "dataset": dataset.name,
+            "extended_stages": {},
+            "filters": {},
+            "group_id": None,
+            "hidden_labels": [],
+            "index": 0,
+            "mixed": False,
+            "paths": ["_temporal_tags", "filepath"],
+            "sample_ids": [],
+            "slice": None,
+            "slices": None,
+            "view": [],
+        }
+
+        result = await execute(schema, query, {"form": form})
+
+        self.assertEqual(
+            result.data,
+            {
+                "aggregations": [
+                    {"path": "_temporal_tags", "count": 0, "exists": 0},
+                    {"path": "filepath", "count": 1, "exists": 1},
+                ]
+            },
+        )
+
+    @drop_async_dataset
     async def test_empty(self, dataset: fo.Dataset):
         query = """
             query Query($form: AggregationForm!) {
