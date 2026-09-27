@@ -570,7 +570,7 @@ type Query {
   doNotTrack: Boolean!
   estimatedDatasetCount: Int!
   dataset(name: String!, savedViewSlug: String, view: BSONArray = null): Dataset
-  samples(dataset: String!, view: BSONArray!, first: Int = 20, after: String = null, filter: SampleFilter = null, filters: BSON = null, extendedStages: BSON = null, paginationData: Boolean = true, sortBy: String = null, desc: Boolean = false, hint: String = null, maxQueryTime: Int = null, dynamicGroup: BSON = null): PaginateSamplesResponse!
+  samples(dataset: String!, view: BSONArray!, first: Int = 20, after: String = null, before: String = null, filter: SampleFilter = null, filters: BSON = null, extendedStages: BSON = null, paginationData: Boolean = true, sortBy: String = null, desc: Boolean = false, hint: String = null, maxQueryTime: Int = null, dynamicGroup: BSON = null, cursorPagination: Boolean = false): PaginateSamplesResponse!
   sample(dataset: String!, view: BSONArray!, filter: SampleFilter!, filters: JSON = null): SampleItem
   stageDefinitions: [StageDefinition!]!
   uid: String!

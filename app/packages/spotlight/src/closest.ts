@@ -4,7 +4,20 @@
 
 import { ONE, TWO, ZERO } from "./constants";
 
-// Binary search for closest row
+/**
+ * Binary search for the row whose `top` value is closest to `target`.
+ *
+ * Returns `null` for an empty array. When `target` is outside the range of
+ * all rows the nearest boundary row is returned with a signed delta so callers
+ * can tell which direction they overshot.
+ *
+ * @param rows - Sorted array of items to search.
+ * @param target - The position (px) to find the closest row for.
+ * @param top - Accessor that returns the top edge (px) of an item.
+ * @param lo - Lower bound index for the current search window.
+ * @param hi - Upper bound index for the current search window.
+ * @returns The index of the closest row and its signed distance from `target`, or `null` if `rows` is empty.
+ */
 export function closest<I>(
   rows: I[],
   target: number,

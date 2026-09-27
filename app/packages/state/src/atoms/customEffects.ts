@@ -74,11 +74,20 @@ export const getBrowserStorageEffectForKey =
 
       const value = storage.getItem(key);
       let procesedValue;
+      // True when the storage value is unreadable for the requested
+      // class (e.g. "NaN" / "Infinity" / "foo" stored under a number
+      // key). We must NOT propagate the parsed garbage into the atom —
+      // doing so causes downstream consumers like voodo's slider to
+      // emit `onChange(NaN)`, which re-writes `NaN` to storage, which
+      // re-emits `NaN` on next load: an infinite render loop. Clear the
+      // bad entry and let the atom fall back to its declared default.
+      let invalid = false;
 
       if (useJsonSerialization) {
         procesedValue = JSON.parse(value);
       } else if (valueClass === "number") {
         procesedValue = Number(value);
+        if (!Number.isFinite(procesedValue)) invalid = true;
       } else if (valueClass === "boolean") {
         procesedValue = value === "true";
       } else if (valueClass === "stringArray") {
@@ -91,13 +100,24 @@ export const getBrowserStorageEffectForKey =
         procesedValue = value;
       }
 
-      if (value != null) setSelf(procesedValue);
+      if (invalid) {
+        storage.removeItem(key);
+      } else if (value != null) {
+        setSelf(procesedValue);
+      }
 
       onSet((newValue, _oldValue, isReset) => {
         if (props.map) {
           newValue = props.map(newValue) as T;
         }
-        if (isReset || newValue === undefined) {
+        // Don't persist non-finite numbers — they round-trip back as
+        // NaN on the next load and drive the consumer into a state
+        // where it can't recover. Treat them the same as a reset.
+        const isUnpersistableNumber =
+          valueClass === "number" &&
+          typeof newValue === "number" &&
+          !Number.isFinite(newValue);
+        if (isReset || newValue === undefined || isUnpersistableNumber) {
           storage.removeItem(key);
         } else {
           storage.setItem(

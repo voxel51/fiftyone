@@ -28,6 +28,8 @@ export default function useRefreshers() {
   );
   const sort = useReverbValue(fos.gridSortBy);
   const view = fos.filterView(useReverbValue(fos.view) ?? []);
+  const dsid = useReverbValue(fos.datasetId) ?? "";
+  const scrubCursor = useReverbValue(fos.gridScrubCursor(dsid));
 
   // only reload, attempt to return to the last grid location
   const layoutReset = useMemoOne(() => {
@@ -60,6 +62,9 @@ export default function useRefreshers() {
     extendedStagesUnsorted,
     filters,
     groupSlice,
+    // A committed scrub cursor seeks pagination to a sort-field value;
+    // remount Spotlight at the new AT location.
+    scrubCursor,
     shouldRenderImaVidLooker,
     similarityParameters,
     sort,
