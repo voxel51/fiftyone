@@ -740,7 +740,10 @@ class TemporalTagTests(unittest.TestCase):
                 for start, tag in ((0, "a"), (10, "b"), (20, "a"))
             ],
         )
-        view = dataset.select(sample_ids[1:8])
+        # Reverse-sorted, so the view's own order is not tag sort order
+        view = dataset.select(sample_ids[1:8]).sort_by(
+            "filepath", reverse=True
+        )
 
         def observe():
             tags = view.temporal_tags
@@ -755,7 +758,7 @@ class TemporalTagTests(unittest.TestCase):
         expected = observe()
         with mock.patch.object(
             fota.fou, "recommend_batch_size_for_value", return_value=2
-        ):
+        ), mock.patch.object(fota, "_MAX_SCOPE_IDS", 2):
             self.assertEqual(observe(), expected)
 
             tag_id = next(view.temporal_tags.values()).id

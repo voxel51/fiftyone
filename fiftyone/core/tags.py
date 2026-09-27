@@ -37,6 +37,7 @@ from pymongo.errors import DuplicateKeyError
 
 import eta.core.utils as etau
 
+import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
@@ -280,10 +281,10 @@ class TemporalTags(object):
         )
 
     def __len__(self):
-        collection = _get_collection()
-        return sum(
-            collection.count_documents(query)
-            for query in self._scoped_queries(None)
+        return _count_scoped_tags(
+            _build_query(self._dataset._doc.id, None),
+            self._dataset,
+            self._sample_collection,
         )
 
     def __iter__(self):
@@ -353,7 +354,7 @@ class TemporalTags(object):
         Returns:
             an iterator over :class:`TemporalTag` instances
         """
-        queries = self._scoped_queries(filter)
+        queries = self._scoped_queries(filter, ordered=True)
         collection = _get_collection()
         return (
             _from_storage_doc(doc)
@@ -363,9 +364,11 @@ class TemporalTags(object):
             )
         )
 
-    def _scoped_queries(self, filter):
+    def _scoped_queries(self, filter, ordered=False):
         query = _build_query(self._dataset._doc.id, filter)
-        return _scoped_queries(query, self._dataset, self._sample_collection)
+        return _scoped_queries(
+            query, self._dataset, self._sample_collection, ordered=ordered
+        )
 
     def add(self, tags: TemporalTag | Iterable[TemporalTag]):
         """Adds temporal tags to this collection.
@@ -934,22 +937,19 @@ def clone_tags(
 
 def export_tags(sample_collection, export_path, progress=None) -> int:
     dataset, sample_collection = _resolve_sample_collection(sample_collection)
-    queries = list(
-        _scoped_queries(
-            _build_query(dataset._doc.id, None), dataset, sample_collection
-        )
-    )
-
-    collection = _get_collection()
-    num_docs = sum(collection.count_documents(query) for query in queries)
+    query = _build_query(dataset._doc.id, None)
+    num_docs = _count_scoped_tags(query, dataset, sample_collection)
     if num_docs == 0:
         _delete_temporal_tags_export(export_path)
         return 0
 
+    collection = _get_collection()
     docs = (
         doc
-        for query in queries
-        for doc in collection.find(query).sort(_TAG_SORT)
+        for scoped_query in _scoped_queries(
+            query, dataset, sample_collection, ordered=True
+        )
+        for doc in collection.find(scoped_query).sort(_TAG_SORT)
     )
 
     foo.export_collection(
@@ -1041,25 +1041,57 @@ def _tagged_sample_ids(query) -> list[str]:
     ]
 
 
-def _scoped_queries(query, dataset, sample_collection=None):
+# A view's sample IDs per tag query. Each query is one round trip, so this is
+# as large as stays well under MongoDB's 16MB command limit: an ObjectId in an
+# `$in` array takes about 20 bytes, so 500,000 of them take about 10MB
+_MAX_SCOPE_IDS = 500000
+
+
+def _scoped_queries(query, dataset, sample_collection=None, ordered=False):
     """Yields ``query`` restricted to the samples of ``sample_collection``.
 
-    A view is scoped by the samples its matching tags point at, so the cost
-    follows the number of tagged samples rather than the size of the view.
-    Those samples are split into batches in ascending ID order, so each query
-    stays under MongoDB's command size limit and the batches' results, one
-    after another, are in ``_TAG_SORT`` order.
+    A query that already names tags or samples is scoped by the few samples it
+    matches; any other is scoped by the view's own samples. Each query holds a
+    batch of sample IDs, so it stays under MongoDB's command size limit. With
+    ``ordered``, the batches are in ascending ID order, so their results, one
+    after another, are in ``_TAG_SORT`` order; otherwise the view's IDs are
+    streamed, and a caller that stops early reads no more of them.
     """
     if not isinstance(sample_collection, fov.DatasetView):
         yield query
         return
 
-    # ObjectId hex strings all have the same length, so they sort as the IDs do
-    tagged_ids = sorted(_tagged_sample_ids(query))
-    for batch in _iter_sample_id_batches(tagged_ids):
-        scoped_ids = sample_collection.select(batch).values("_id")
-        if scoped_ids:
-            yield {**query, "_sample_id": {"$in": scoped_ids}}
+    # A view without stages holds every sample of a non-grouped dataset
+    if not sample_collection._stages and dataset.media_type != fom.GROUP:
+        yield query
+        return
+
+    if "_id" in query or "_sample_id" in query:
+        # ObjectId hex strings all have the same length, so they sort as the
+        # IDs do
+        tagged_ids = sorted(_tagged_sample_ids(query))
+        batches = (
+            sample_collection.select(batch).values("_id")
+            for batch in _iter_sample_id_batches(tagged_ids)
+        )
+    elif ordered:
+        batches = fou.iter_batches(
+            sorted(
+                sample_collection.values("_id", _enforce_natural_order=False)
+            ),
+            _MAX_SCOPE_IDS,
+        )
+    else:
+        batches = fou.iter_batches(
+            sample_collection._iter_values(
+                "_id", _enforce_natural_order=False
+            ),
+            _MAX_SCOPE_IDS,
+        )
+
+    for sample_ids in batches:
+        if sample_ids:
+            yield {**query, "_sample_id": {"$in": list(sample_ids)}}
 
 
 def _iter_sample_id_batches(sample_ids):
@@ -1067,6 +1099,20 @@ def _iter_sample_id_batches(sample_ids):
         ObjectId(), max_size=100000
     )
     return fou.iter_batches(sample_ids, batch_size)
+
+
+def _count_scoped_tags(query, dataset, sample_collection=None) -> int:
+    """Counts the tags matching ``query`` on the samples of
+    ``sample_collection``.
+    """
+    collection = _get_collection()
+    return sum(
+        result["count"]
+        for scoped_query in _scoped_queries(query, dataset, sample_collection)
+        for result in collection.aggregate(
+            [{"$match": scoped_query}, {"$count": "count"}]
+        )
+    )
 
 
 def _validate_sample_ids_exist(
@@ -1086,7 +1132,7 @@ def _validate_sample_ids_exist(
             found.update(
                 sample_collection.select(
                     [str(sample_oid) for sample_oid in batch]
-                ).values("_id")
+                )._iter_values("_id")
             )
         else:
             found.update(
@@ -1516,16 +1562,19 @@ def _get_collection():
 
 
 def _read_hint(query):
-    """The index for a dataset-wide read filtered by tag or anchor.
+    """The index for a read filtered by tag or anchor.
 
-    The planner otherwise prefers the unique index, which returns the tag sort
-    order but reads every tag in the dataset to find the matches.
+    The planner otherwise prefers the unique index whenever several values are
+    requested, because it returns the tag sort order, but it then reads every
+    tag of the dataset (or of the view's samples) to find the matches. The tag
+    index leads with the tag and then the sample, so it also serves a tag
+    filter within one sample or a view.
     """
-    if "_sample_id" in query:
-        return None
-
     if "tag" in query:
         return _TAG_INDEX
+
+    if "_sample_id" in query:
+        return None
 
     if "anchor" in query:
         return _ANCHOR_INDEX
