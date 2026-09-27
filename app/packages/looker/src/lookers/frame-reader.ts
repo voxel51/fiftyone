@@ -100,13 +100,24 @@ export const { acquireReader, clearReader } = (() => {
       frameChunk: [
         (worker, { frames, range: [start, end] }: FrameChunkResponse) => {
           addFrameBuffers([start, end]);
-          for (let i = 0; i < frames.length; i++) {
-            const frameSample = frames[i];
+          const cacheFrame = (frameSample: FrameSample) => {
             const prefixedFrameSample = withFrames(frameSample);
             const overlays = loadOverlays(prefixedFrameSample, schema);
             const frame = { overlays, sample: frameSample };
             frameCache.set(frameSample.frame_number, frame);
             addFrame(frameSample.frame_number, frame);
+          };
+          for (let i = 0; i < frames.length; i++) {
+            cacheFrame(frames[i]);
+          }
+
+          // A frame with no document is left out of the chunk, yet its range
+          // is marked buffered. It must be cached too, or requesting it counts
+          // as a miss and restarts the stream, killing the fetch in flight.
+          for (let frameNumber = start; frameNumber <= end; frameNumber++) {
+            if (!frameCache.has(frameNumber)) {
+              cacheFrame({ frame_number: frameNumber });
+            }
           }
 
           if (end < frameCount) {

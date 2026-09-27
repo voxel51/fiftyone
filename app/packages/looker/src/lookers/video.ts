@@ -31,6 +31,7 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
   private firstFrameNumber: number;
   private frames: Map<number, WeakRef<Frame>> = new Map();
   private requestFrames: (frameNumber: number) => void;
+  private readingFrames = false;
 
   get frameNumber() {
     return this.state.frameNumber;
@@ -251,6 +252,12 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
       this.state.buffering && this.dispatchEvent("buffering", false);
       this.state.playing = false;
       this.state.buffering = false;
+    } else if (
+      LOOKER_WITH_READER === this &&
+      this.readingFrames !== this.needsFrameStream()
+    ) {
+      this.state.buffers = this.initialBuffers(this.state.config);
+      this.setReader();
     }
 
     if (LOOKER_WITH_READER === this) {
@@ -280,6 +287,16 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
         totalFrames: frameCount,
       },
     });
+
+    this.readingFrames = this.needsFrameStream();
+    if (!this.readingFrames) {
+      // Nothing on the tile draws a frame document, so the whole clip counts
+      // as buffered and playback never waits on a stream
+      clearReader();
+      this.state.buffers = [[1, frameCount]];
+      this.requestFrames = () => undefined;
+      return;
+    }
 
     this.requestFrames = acquireReader({
       addFrame: (frameNumber, frame) =>
@@ -317,7 +334,9 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
                 ...{
                   filter: this.state.options.filter,
                   value: {
-                    ...this.frames.get(this.frameNumber).deref().sample,
+                    ...(this.getFrame(this.frameNumber)?.sample ?? {
+                      frame_number: this.frameNumber,
+                    }),
                   },
                   schema: this.state.config.fieldSchema.frames.fields,
                   keys: ["frames"],
@@ -497,6 +516,17 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
 
   getVideo() {
     return this.lookerElement.children[0].element as HTMLVideoElement;
+  }
+
+  /**
+   * Whether playback needs the frame stream. A thumbnail draws only the
+   * frame fields shown in the sidebar; the expanded view always streams.
+   */
+  private needsFrameStream() {
+    return (
+      !this.state.config.thumbnail ||
+      this.state.options.activePaths.some((path) => path.startsWith("frames."))
+    );
   }
 
   private hasFrame(frameNumber: number) {
