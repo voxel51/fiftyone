@@ -11,11 +11,14 @@ const env = vi.hoisted(() => ({
   operatorRun: vi.fn(),
   extensionRun: vi.fn(),
   onRun: null as null | ((index: { key: string }, query: string) => void),
+  Suggestions: () => null,
 }));
 
 vi.mock("@fiftyone/state", () => ({
   useCurrentDatasetName: () => "robots",
   usePromptableSimilarityKeys: () => env.promptKeys,
+  useTextSearchExtensions: () =>
+    new Map([["multimodal", { Suggestions: env.Suggestions }]]),
 }));
 vi.mock("@fiftyone/analytics", () => ({ useTrackEvent: () => vi.fn() }));
 vi.mock("@fiftyone/operators", () => ({ executeOperator: vi.fn() }));
@@ -37,6 +40,7 @@ vi.mock("./useLanguageSearchExtension", () => ({
   }),
 }));
 
+import { HistorySuggestions } from "./HistorySuggestions";
 import { useTextSearch } from "./useTextSearch";
 
 const SERVER_INDEX = { key: "clip_sim", patchesField: null };
@@ -88,6 +92,16 @@ describe("useTextSearch", () => {
 
     expect(result.current.available).toBe(true);
     expect(result.current.enabled).toBe(true);
+  });
+
+  it("takes suggestions from the selected index's search", () => {
+    env.promptKeys = [SERVER_INDEX];
+    const { result, rerender } = renderController();
+    expect(result.current.Suggestions).toBe(HistorySuggestions);
+
+    env.promptKeys = [EXTENSION_INDEX];
+    rerender();
+    expect(result.current.Suggestions).toBe(env.Suggestions);
   });
 
   it("offers a query in the history as soon as it runs", () => {

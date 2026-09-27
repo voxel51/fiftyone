@@ -58,25 +58,26 @@ export interface SearchSources {
   values: string[];
 }
 
-/** What an index's extension offers the field. */
+/** What the search field offers for the text typed so far. */
 export interface TextSearchSuggestions {
-  /** The prompts the index can answer as they are. */
-  prompts: string[];
-  /** Whether typed text that is not one of `prompts` can be searched. */
+  /** The rows to offer, in order. */
+  prompts: readonly string[];
+  /** Whether typed text that is no row can be searched. */
   freeText: boolean;
-  /** List rows for the extension's own actions, offered while `freeText` is
-   * false; choosing one renders its `Action`. */
-  actions?: { id: string; label: string }[];
+  loading?: boolean;
+  /** Shown in place of an empty list. */
+  emptyMessage?: (props: { close: () => void }) => React.ReactNode;
 }
 
-export interface TextSearchListProps {
-  index: TextSearchIndex;
+export interface TextSearchSuggestionsProps {
+  /** Null while no prompt-capable index exists. */
+  index: TextSearchIndex | null;
   query: string;
-  /** Closes the list, or ends an action's flow. */
-  close: () => void;
-  /** Asks the field to call `loadSuggestions` again. */
-  refresh: () => void;
-  startAction: (id: string) => void;
+  /** The field's previous queries, most recent first. */
+  history: readonly string[];
+  /** Whether the field's list is open. */
+  open: boolean;
+  children: (suggestions: TextSearchSuggestions) => React.ReactNode;
 }
 
 /**
@@ -107,13 +108,9 @@ export interface TextSearchExtension {
   /** The sources `index` can narrow a search to; null, or absent, when it
    * cannot be narrowed. */
   sources?: (index: TextSearchIndex) => Promise<SearchSources | null>;
-  /** Called when the list opens and on `refresh`. Until it first resolves,
-   * typed text runs nothing; absent, any text runs. */
-  loadSuggestions?: (index: TextSearchIndex) => Promise<TextSearchSuggestions>;
-  /** Shown while `freeText` is false and the list has no rows. */
-  EmptyList?: React.ComponentType<TextSearchListProps>;
-  /** The flow one of `actions` starts, rendered until it calls `close`. */
-  Action?: React.ComponentType<TextSearchListProps & { id: string }>;
+  /** Wraps the search field while one of this extension's indexes is
+   * selected, to say what it offers for the typed text. */
+  Suggestions: React.ComponentType<TextSearchSuggestionsProps>;
   /** Resolves null when a newer search elsewhere replaced this one: nothing
    * publishes, and nothing is reported. */
   search: (request: TextSearchRequest) => Promise<TextSearchResult | null>;

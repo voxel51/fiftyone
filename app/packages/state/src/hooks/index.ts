@@ -12,10 +12,10 @@ export {
   type SearchSources,
   type TextSearchExtension,
   type TextSearchIndex,
-  type TextSearchListProps,
   type TextSearchRequest,
   type TextSearchResult,
   type TextSearchSuggestions,
+  type TextSearchSuggestionsProps,
 } from "./similaritySearch/textSearchExtensions";
 export {
   useSetViewChangePending,

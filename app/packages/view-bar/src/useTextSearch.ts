@@ -25,6 +25,7 @@ import { patchesFieldOfView, resolveSearchIndex } from "./searchIndexSelection";
 import { readSearchQueries, recordSearchQuery } from "./searchQueryHistory";
 import type { SerializedStage } from "./state";
 import { useLanguageSearchExtension } from "./useLanguageSearchExtension";
+import { HistorySuggestions } from "./HistorySuggestions";
 import { useOperatorSearch } from "./useOperatorSearch";
 
 /**
@@ -57,6 +58,9 @@ export interface TextSearchController {
   onOpenPanel: () => void;
   /** Runs `query`, ranking within `sources`; null ranks every source. */
   submit: (query: string, sources: string[] | null) => void;
+  /** What the selected index's search wraps the field in, to say what it
+   * offers for the typed text. */
+  Suggestions: fos.TextSearchExtension["Suggestions"];
 }
 
 export interface TextSearch extends TextSearchController {
@@ -78,6 +82,7 @@ export const useTextSearch = ({
   const datasetName = fos.useCurrentDatasetName();
   const trackEvent = useTrackEvent();
   const promptKeys = fos.usePromptableSimilarityKeys();
+  const extensions = fos.useTextSearchExtensions();
 
   // Default ordering = the top 5 indexes actually searched with in the past
   // week (most recent first), then newest-created; an explicit pick
@@ -182,6 +187,10 @@ export const useTextSearch = ({
     onChangeK,
     onOpenPanel,
     submit,
+    Suggestions:
+      (selectedIndex?.extension &&
+        extensions.get(selectedIndex.extension)?.Suggestions) ||
+      HistorySuggestions,
     claimView: operator.claimView,
     cancel: extension.cancel,
   };

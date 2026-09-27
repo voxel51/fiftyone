@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { TextSearchSuggestions } from "@fiftyone/state";
 
 const env = vi.hoisted(() => ({
   dataset: "robots",
@@ -17,38 +18,6 @@ vi.mock("./useSearchSources", () => ({
   useSearchSources: (_index: unknown, wanted: boolean) => {
     sources.wanted(wanted);
     return sources.current;
-  },
-}));
-type ListProps = {
-  query: string;
-  close: () => void;
-  refresh: () => void;
-  startAction: (id: string) => void;
-};
-const suggested = vi.hoisted(() => ({
-  current: null as {
-    mode: "open" | "pending" | "offered";
-    prompts: string[];
-    actions: { id: string; label: string }[];
-    loading: boolean;
-    index: { datasetName: string; brainKey: string; runTimestamp: null };
-    EmptyList?: React.ComponentType<ListProps>;
-    Action?: React.ComponentType<ListProps & { id: string }>;
-  } | null,
-  loadCount: vi.fn(),
-  history: vi.fn(),
-}));
-vi.mock("./useSearchSuggestions", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("./useSearchSuggestions")>()),
-  useSearchSuggestions: (
-    _index: unknown,
-    _query: string,
-    history: readonly string[],
-    loadCount: number,
-  ) => {
-    suggested.loadCount(loadCount);
-    suggested.history(history);
-    return suggested.current;
   },
 }));
 vi.mock("./SearchSettingsPopover", () => ({
@@ -69,6 +38,7 @@ vi.mock("./SearchSettingsPopover", () => ({
 }));
 
 import { LANGUAGE_SEARCH_LABEL, LanguageSearch } from "./LanguageSearch";
+import { HistorySuggestions } from "./HistorySuggestions";
 import type { TextSearchController } from "./useTextSearch";
 
 const noop = () => undefined;
@@ -102,6 +72,7 @@ const renderSearch = (overrides: Partial<TextSearchController> = {}) => {
     onChangeK: noop,
     onOpenPanel: vi.fn(),
     submit: vi.fn(),
+    Suggestions: HistorySuggestions,
     ...overrides,
   };
   const view = render(<LanguageSearch search={controls} />);
@@ -126,7 +97,6 @@ describe("LanguageSearch", () => {
     env.dataset = "robots";
     env.pending = false;
     sources.current = null;
-    suggested.current = null;
   });
 
   it("always renders the field", () => {
@@ -159,12 +129,14 @@ describe("LanguageSearch", () => {
     expect(onOpenPanel).toHaveBeenCalledTimes(1);
   });
 
-  it("offers previous queries when search is possible", () => {
-    renderSearch({ history: ["cats"] });
-    fireEvent.focus(
-      screen.getByRole("combobox", { name: LANGUAGE_SEARCH_LABEL }),
-    );
-    expect(screen.getByRole("option", { name: "cats" })).toBeTruthy();
+  it("offers the previous queries matching the typed text", () => {
+    renderSearch({ history: ["Cats", "dogs"] });
+    const field = screen.getByRole("combobox", { name: LANGUAGE_SEARCH_LABEL });
+    fireEvent.focus(field);
+    fireEvent.change(field, { target: { value: "ca" } });
+    expect(
+      screen.getAllByRole("option").map((option) => option.textContent),
+    ).toEqual(["Cats"]);
   });
 
   it("empties the field when the dataset changes", () => {
@@ -252,114 +224,75 @@ describe("LanguageSearch", () => {
     expect(screen.getByLabelText("Search in progress")).toBeTruthy();
   });
   describe("with an extension's suggestions", () => {
-    type Answer = Partial<NonNullable<typeof suggested.current>>;
+    const seen = vi.fn();
 
-    const setSuggested = (answer: Answer = {}) => {
-      suggested.current = {
-        mode: "offered",
-        prompts: [],
-        actions: [],
-        loading: false,
-        index: {
-          datasetName: "robots",
-          brainKey: "emb_sim",
-          runTimestamp: null,
-        },
-        ...answer,
+    /** An extension offering `answer` for whatever is typed. */
+    const suggesting =
+      (
+        answer: Partial<TextSearchSuggestions>,
+      ): TextSearchController["Suggestions"] =>
+      ({ children, ...props }) => {
+        seen(props);
+        return <>{children({ prompts: [], freeText: false, ...answer })}</>;
       };
-    };
-
-    const renderSuggested = (history: string[] = []) =>
-      renderExtensionSearch({ history });
 
     const field = () =>
       screen.getByRole<HTMLInputElement>("combobox", {
         name: LANGUAGE_SEARCH_LABEL,
       });
 
-    const type = (text: string) => {
-      fireEvent.focus(field());
-      fireEvent.change(field(), { target: { value: text } });
-    };
-
-    const optionNames = () =>
-      screen.queryAllByRole("option").map((option) => option.textContent);
-
-    it.each<{
-      name: string;
-      answer: Answer;
-      history: string[];
-      typed: string;
-      options: string[];
-    }>([
-      {
-        name: "matching previous queries, then the extension's prompts, without repeats",
-        answer: { mode: "open", prompts: ["a robot arm", "a red cup"] },
-        history: ["a red cup", "a green bowl"],
-        typed: "a r",
-        options: ["a red cup", "a robot arm"],
-      },
-      {
-        name: "only the extension's prompts when only they can run",
-        answer: { prompts: ["a red cup"] },
+    it("lists the extension's rows and hands it the typed text, previous queries and whether the list is open", () => {
+      renderExtensionSearch({
         history: ["a green bowl"],
-        typed: "",
-        options: ["a red cup"],
-      },
-      {
-        name: "previous queries before the extension's suggester loads",
-        answer: { mode: "pending" },
-        history: ["a red cup"],
-        typed: "",
-        options: ["a red cup"],
-      },
-    ])("lists $name", ({ answer, history, typed, options }) => {
-      setSuggested(answer);
-      renderSuggested(history);
-      type(typed);
-      expect(optionNames()).toEqual(options);
-    });
+        Suggestions: suggesting({ prompts: ["a red cup", "a robot arm"] }),
+      });
+      fireEvent.focus(field());
+      fireEvent.change(field(), { target: { value: "a r" } });
 
-    it("hands the extension the field's previous queries", () => {
-      setSuggested();
-      renderSuggested(["a red cup"]);
-      expect(suggested.history).toHaveBeenLastCalledWith(["a red cup"]);
+      expect(
+        screen.getAllByRole("option").map((option) => option.textContent),
+      ).toEqual(["a red cup", "a robot arm"]);
+      expect(seen).toHaveBeenLastCalledWith({
+        index: {
+          datasetName: "robots",
+          brainKey: "emb_sim",
+          runTimestamp: null,
+        },
+        query: "a r",
+        history: ["a green bowl"],
+        open: true,
+      });
     });
 
     it.each<{
       name: string;
-      answer: Answer;
+      answer: Partial<TextSearchSuggestions>;
       typed: string;
       runs: string | null;
     }>([
       {
         name: "free text when the extension allows it",
-        answer: { mode: "open" },
+        answer: { freeText: true },
         typed: "a green bowl",
         runs: "a green bowl",
       },
       {
-        name: "the top prompt",
+        name: "the top row",
         answer: { prompts: ["a robot arm"] },
         typed: "robot",
         runs: "a robot arm",
       },
       {
         // Nothing matched, so no row can take the Enter
-        name: "nothing for text that is not one of the extension's prompts",
-        answer: { prompts: [] },
-        typed: "a green bowl",
-        runs: null,
-      },
-      {
-        name: "no typed text before the extension's suggester loads",
-        answer: { mode: "pending", loading: true },
+        name: "nothing for text that is no row",
+        answer: {},
         typed: "a green bowl",
         runs: null,
       },
     ])("runs $name on Enter", ({ answer, typed, runs }) => {
-      setSuggested(answer);
-      const { submit } = renderSuggested(["a red cup"]);
+      const { submit } = renderExtensionSearch({
+        Suggestions: suggesting(answer),
+      });
       search(typed);
       if (runs === null) {
         expect(submit).not.toHaveBeenCalled();
@@ -368,81 +301,15 @@ describe("LanguageSearch", () => {
       }
     });
 
-    it("loads the suggester again each time the list opens", () => {
-      setSuggested();
-      renderSuggested();
-      const before = suggested.loadCount.mock.lastCall?.[0];
+    it("shows the extension's empty message when it offers nothing", () => {
+      renderExtensionSearch({
+        Suggestions: suggesting({
+          emptyMessage: () => <span>nothing can run</span>,
+        }),
+      });
       fireEvent.focus(field());
-      expect(suggested.loadCount.mock.lastCall?.[0]).toBe(before + 1);
-    });
-
-    const Action = ({ id, close, refresh }: ListProps & { id: string }) => (
-      <div role="dialog" aria-label={`action ${id}`}>
-        <button onClick={refresh}>refresh</button>
-        <button onClick={close}>close</button>
-      </div>
-    );
-
-    it("offers the extension's actions after its prompts, and starts one without searching", () => {
-      setSuggested({
-        prompts: ["a robot arm"],
-        actions: [{ id: "add-queries", label: "Add queries" }],
-        Action,
-      });
-      const { submit } = renderSuggested();
-      type("robot");
-      expect(optionNames()).toEqual(["a robot arm", "Add queries"]);
-      fireEvent.mouseDown(screen.getByRole("option", { name: "Add queries" }));
-      expect(
-        screen.getByRole("dialog", { name: "action add-queries" }),
-      ).toBeTruthy();
-      expect(submit).not.toHaveBeenCalled();
-      expect(field().value).toBe("robot");
-    });
-
-    it("offers no action row when no prompt matched", () => {
-      setSuggested({
-        actions: [{ id: "add-queries", label: "Add queries" }],
-        Action,
-      });
-      renderSuggested();
-      type("a green bowl");
-      expect(optionNames()).toEqual([]);
-    });
-
-    const EmptyList = ({ startAction }: ListProps) => (
-      <button onClick={() => startAction("add-queries")}>
-        nothing can run
-      </button>
-    );
-
-    it("shows the extension's empty list when nothing can run, starts its action, reloads on its refresh and ends it on close", () => {
-      setSuggested({ EmptyList, Action });
-      renderSuggested();
-      type("a green bowl");
-      fireEvent.click(screen.getByRole("button", { name: "nothing can run" }));
-      expect(
-        screen.getByRole("dialog", { name: "action add-queries" }),
-      ).toBeTruthy();
-      fireEvent.change(field(), { target: { value: "a green bowls" } });
-      expect(field().value).toBe("a green bowls");
-
-      const before = suggested.loadCount.mock.lastCall?.[0];
-      fireEvent.click(screen.getByRole("button", { name: "refresh" }));
-      expect(suggested.loadCount.mock.lastCall?.[0]).toBe(before + 1);
-      fireEvent.click(screen.getByRole("button", { name: "close" }));
-      expect(
-        screen.queryByRole("dialog", { name: "action add-queries" }),
-      ).toBeNull();
-    });
-
-    it("shows no empty list while any text can run", () => {
-      setSuggested({ mode: "open", EmptyList });
-      renderSuggested();
-      type("a green bowl");
-      expect(
-        screen.queryByRole("button", { name: "nothing can run" }),
-      ).toBeNull();
+      fireEvent.change(field(), { target: { value: "a green bowl" } });
+      expect(screen.getByText("nothing can run")).toBeTruthy();
     });
   });
 });
