@@ -5,6 +5,7 @@ import type {
   EncodedH264VideoVisualization,
 } from "../ir";
 import { VISUALIZATION_KIND } from "../ir";
+import { withPreroll } from "./preroll.test-fixtures";
 import type { EncodedVideoAccessUnit, H264AccessUnit } from "./types";
 import {
   VideoCodecUnsupportedError,
@@ -442,19 +443,15 @@ describe("WebCodecsVideoDecoder", () => {
     vi.useFakeTimers();
     const harness = fakeWebCodecs({ deferOutputs: true });
     const actor = new WebCodecsVideoDecoder(harness.environment);
-    const opening = av1Unit(0);
-    const accessUnit: EncodedVideoAccessUnit = {
-      ...opening,
-      frame: {
-        ...opening.frame,
-        keyframe: true,
-        preroll: [
-          { bytes: av1Unit(0, true).frame.bytes, keyframe: true },
-          { bytes: av1Unit(0).frame.bytes, keyframe: false },
-          { bytes: av1Unit(0).frame.bytes, keyframe: false },
-        ],
-      },
-    };
+    const accessUnit = withPreroll(
+      av1Unit(0),
+      [
+        { bytes: av1Unit(0, true).frame.bytes, keyframe: true },
+        { bytes: av1Unit(0).frame.bytes, keyframe: false },
+        { bytes: av1Unit(0).frame.bytes, keyframe: false },
+      ],
+      { keyframe: true },
+    );
     const decode = actor.decode([accessUnit], {
       signal: new AbortController().signal,
       targetTimeNs: 0n,
@@ -538,17 +535,14 @@ describe("WebCodecsVideoDecoder AV1", () => {
     const streamKeyframe = av1Unit(-2, true).frame.bytes;
     const leadingDelta = av1Unit(-1).frame.bytes;
     const opening = av1Unit(0);
-    const accessUnit: EncodedVideoAccessUnit = {
-      ...opening,
-      frame: {
-        ...opening.frame,
-        keyframe: true,
-        preroll: [
-          { bytes: streamKeyframe, keyframe: true },
-          { bytes: leadingDelta, keyframe: false },
-        ],
-      },
-    };
+    const accessUnit = withPreroll(
+      opening,
+      [
+        { bytes: streamKeyframe, keyframe: true },
+        { bytes: leadingDelta, keyframe: false },
+      ],
+      { keyframe: true },
+    );
 
     const output = await actor.decode([accessUnit], {
       signal: new AbortController().signal,
@@ -591,19 +585,14 @@ describe("WebCodecsVideoDecoder AV1", () => {
       frame: { ...av1Unit(200_000).frame, decodeTimestampNs: 100_000n },
       timeNs: 200_000n,
     };
-    const opening = av1Unit(100_000);
-    const accessUnit: EncodedVideoAccessUnit = {
-      ...opening,
-      frame: {
-        ...opening.frame,
-        decodeTimestampNs: 300_000n,
-        keyframe: true,
-        preroll: [
-          { bytes: av1Unit(0, true).frame.bytes, keyframe: true },
-          { bytes: early.frame.bytes, keyframe: false, timestampNs: 200_000n },
-        ],
-      },
-    };
+    const accessUnit = withPreroll(
+      av1Unit(100_000),
+      [
+        { bytes: av1Unit(0, true).frame.bytes, keyframe: true },
+        { bytes: early.frame.bytes, keyframe: false, timestampNs: 200_000n },
+      ],
+      { decodeTimestampNs: 300_000n, keyframe: true },
+    );
 
     const first = await actor.decode([accessUnit], {
       signal: new AbortController().signal,
