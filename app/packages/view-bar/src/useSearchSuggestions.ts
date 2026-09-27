@@ -2,9 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  *
  * What the selected index's text search extension offers for the typed
- * prompt. Its suggestions are loaded whenever `loadCount` changes (the list
- * opening, or the extension asking to refresh), and matched against every
- * keystroke here.
+ * prompt, reloaded whenever `loadCount` changes.
  */
 
 import type {
@@ -26,7 +24,6 @@ export interface SearchSuggestions {
   mode: "open" | "pending" | "offered";
   prompts: string[];
   actions: { id: string; label: string }[];
-  /** Nothing has loaded for this index yet, and a load is in flight. */
   loading: boolean;
   index: TextSearchIndex;
   EmptyList: TextSearchExtension["EmptyList"];
@@ -41,8 +38,6 @@ const NO_PROMPTS: string[] = [];
 const NO_ACTIONS: { id: string; label: string }[] = [];
 const REFUSED: TextSearchSuggestions = { prompts: [], freeText: false };
 
-/** Whether `text` is offered for the typed `draft`: every text matches an
- * empty draft, and otherwise ignoring case. */
 export function matchesDraft(text: string, draft: string): boolean {
   const q = draft.trim().toLowerCase();
   return !q || text.toLowerCase().includes(q);
@@ -65,7 +60,7 @@ export const useSearchSuggestions = (
   const runTimestamp = index?.timestamp ?? null;
 
   // Tagged with the index it answers, so another index's prompts are never
-  // offered; a later load for the same index replaces it once it resolves
+  // offered
   const [loaded, setLoaded] = useState<{
     brainKey: string;
     runTimestamp: string | null;
@@ -135,7 +130,6 @@ export const useSearchSuggestions = (
       };
     }
 
-    // Only what the index can answer runs, previous queries included
     const runnable = new Set(offered.prompts);
     const previous = history.filter(
       (text) => runnable.has(text) && matchesDraft(text, query),

@@ -42,7 +42,6 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
     return this.state.playing;
   }
 
-  /** The clip's length in seconds, once its metadata has loaded. */
   get duration(): number | null {
     return this.state.duration;
   }
@@ -452,7 +451,6 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
     );
   }
 
-  /** Moves the playhead to `seconds` into the clip, as `seekToFrame` does. */
   seekToSeconds(seconds: number): void {
     const {
       duration,
@@ -465,9 +463,7 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
 
   /**
    * Redraws the idle thumbnail at `seconds` into the clip, or at its start
-   * when null, and starts the next hover playback there. Ignored until the
-   * first poster has loaded. While the clip is live the poster only stands in
-   * until the video has a frame, so a redraw then changes nothing visible.
+   * when null, and starts the next hover playback there.
    */
   posterAt(seconds: number | null): void {
     const { config, loaded } = this.state;

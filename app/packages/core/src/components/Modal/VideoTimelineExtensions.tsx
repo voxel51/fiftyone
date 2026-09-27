@@ -23,33 +23,9 @@ const NO_EXTENSIONS: TimelineComposition = {
 };
 
 /**
- * Opens a video the embeddings panel matched at its first matched window, as
- * the episode modal does, once per sample and only after the clip's duration
- * is known, since a seek before then clamps to the start.
- */
-function useSeekToFirstMatchOnOpen(sampleId: string, durationSec: number) {
-  const identity = useMemo(
-    () => ({ sample: { sample: { _id: sampleId } } }),
-    [sampleId],
-  );
-  const firstMatch = useSampleRendererFirstMatch(identity);
-  const { seek } = usePlayback();
-  const seeked = useRef<string | null>(null);
-  useEffect(() => {
-    if (!firstMatch || durationSec <= 0 || seeked.current === sampleId) return;
-    seeked.current = sampleId;
-    seek(Number(firstMatch.startNs) / 1e9);
-  }, [seek, durationSec, firstMatch, sampleId]);
-}
-
-/**
- * Runs the registered timeline extensions for the video modal, as the
- * multimodal episode timeline does, so a video's timeline gets the same rows
- * and ruler overlays (a video is an episode with one stream). The video's own
- * rows stay `FrameLabelsTracks`'; the extensions' arrive through `children`.
- *
- * Must render inside the surface's `PlaybackProvider`: the time range is the
- * playback's duration, starting at 0.
+ * Runs the registered timeline extensions for the video modal, a video being
+ * an episode with one stream, and opens it at its first matched window. Must
+ * render inside the surface's `PlaybackProvider`.
  */
 export const VideoTimelineExtensions: React.FC<{
   sample: fos.ModalSample;
@@ -59,7 +35,21 @@ export const VideoTimelineExtensions: React.FC<{
   const schema = fos.useModalSampleSchema();
   const mediaField = fos.useSelectedMediaFieldModal();
   const durationSec = useDuration();
-  useSeekToFirstMatchOnOpen(sample.sample._id, durationSec);
+
+  const sampleId = sample.sample._id;
+  const identity = useMemo(
+    () => ({ sample: { sample: { _id: sampleId } } }),
+    [sampleId],
+  );
+  const firstMatch = useSampleRendererFirstMatch(identity);
+  const { seek } = usePlayback();
+  const seeked = useRef<string | null>(null);
+  useEffect(() => {
+    // A seek before the duration is known clamps to the start
+    if (!firstMatch || durationSec <= 0 || seeked.current === sampleId) return;
+    seeked.current = sampleId;
+    seek(Number(firstMatch.startNs) / 1e9);
+  }, [seek, durationSec, firstMatch, sampleId]);
 
   const ctx = useMemo(
     () =>

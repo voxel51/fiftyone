@@ -398,10 +398,8 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
   private loop = false;
   private playbackRate = 1;
   private posterFrame: number;
-  /** Bumped per poster draw, so a slower earlier draw cannot land last. */
   private posterDraw = 0;
-  /** How far into the clip the poster shows, in seconds, or null for the
-   * clip's start. Hover playback starts here. */
+  /** Where the poster shows, in seconds, or null for the clip's start. */
   private posterSeconds: number | null = null;
   private requestCallback: (callback: (time: number) => void) => void;
   private release: () => void;
@@ -589,8 +587,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
                 return {};
               }
 
-              // The playhead is what both the video and the frame reader
-              // start from, so hover playback has to move it to the poster
+              // Hover playback starts at the poster
               const start =
                 thumbnail && this.posterSeconds !== null
                   ? getFrameNumber(this.posterSeconds, duration, frameRate)
@@ -616,11 +613,6 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     return called;
   }
 
-  /**
-   * Redraws an idle thumbnail's poster at `seconds` into the clip, or at the
-   * clip's own start when null. Only the byte range around that moment is
-   * fetched. Hover playback then starts there.
-   */
   posterAt(seconds: number | null) {
     this.update(({ config: { src, frameRate, support } }) => {
       this.drawPoster(src, frameRate, support, seconds, false);
@@ -629,12 +621,9 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
   }
 
   /**
-   * Draws the poster from a pooled video seeked to `seconds`, or to the start
-   * of the clip (or of its support) when null.
-   *
-   * The `initial` draw is what marks the looker loaded, so a redraw requested
-   * meanwhile must not supersede it; redraws supersede one another, so a
-   * slower earlier one cannot land last.
+   * Draws the poster seeked to `seconds`, or to the clip's start when null.
+   * The `initial` draw marks the looker loaded, so no redraw supersedes it;
+   * redraws supersede one another, so a slower earlier one cannot land last.
    */
   private drawPoster(
     src: string,
@@ -649,7 +638,6 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
         video.removeEventListener("error", error);
         video.removeEventListener("seeked", seeked);
         release();
-        // A failed redraw keeps the poster already drawn
         if (initial) {
           this.update({ error: true, loaded: true, dimensions: [512, 512] });
         }
@@ -688,8 +676,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
             : Math.min(Math.max(seconds, 0), video.duration);
         video.removeEventListener("loadedmetadata", load);
 
-        // Assigning a size clears the canvas, which would blank a poster that
-        // is only being redrawn
+        // Assigning a size clears the canvas
         if (
           this.canvas.width !== video.videoWidth ||
           this.canvas.height !== video.videoHeight
@@ -763,9 +750,8 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
       return null;
     }
 
-    // The poster covers the tile until a live video has a frame of its own
-    // to show; after that it stands in only for the clip's start, since a
-    // poster moved to a match must not replace frame 1 when playback loops
+    // A poster moved to a match must not stand in for frame 1 when playback
+    // loops
     const videoShowsNothing = !this.element || this.element.readyState < 2;
     const posterIsPlayhead =
       this.posterSeconds === null && frameNumber === this.posterFrame;

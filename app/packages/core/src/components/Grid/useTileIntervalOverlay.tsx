@@ -1,3 +1,8 @@
+/**
+ * Overlay host for tiles the grid renders with the default looker. The looker
+ * paints into a bare element, so the lanes get their own React root on it,
+ * torn down when spotlight recycles the element.
+ */
 import { VideoLooker } from "@fiftyone/looker";
 import {
   useGridOverlays,
@@ -28,15 +33,6 @@ import {
   useRecoilValue,
 } from "recoil";
 
-/**
- * Overlay host for tiles the grid renders with the default looker.
- *
- * A custom-renderer tile is a React tree, so `GridCustomRendererItem` can nest
- * the interval lane inside it. A default looker is not: the grid hands
- * spotlight a bare element and the looker paints a canvas into it. Video tiles
- * take that path, so the lane needs its own root mounted onto the same element
- * and torn down when spotlight recycles it.
- */
 const HOST_STYLES: Partial<CSSStyleDeclaration> = {
   position: "absolute",
   left: "0",
@@ -50,7 +46,6 @@ const HOST_STYLES: Partial<CSSStyleDeclaration> = {
 
 type MountedOverlay = { readonly root: Root; readonly host: HTMLElement };
 
-/** The only thing a tile lane needs off the sample: its id and media type. */
 type TileSample = {
   readonly sample?: {
     readonly _id?: string;
@@ -62,65 +57,6 @@ type TileSample = {
 
 const NS_PER_SECOND = 1_000_000_000;
 
-/** The tile's clip length in seconds, from its looker once the poster has
- * loaded; null before then, or for a tile with no video looker. */
-function useLookerDuration(looker: VideoLooker | null): number | null {
-  const [duration, setDuration] = useState(() => looker?.duration ?? null);
-  useEffect(() => {
-    if (!looker) return undefined;
-    const read = () => setDuration(looker.duration ?? null);
-    read();
-    looker.addEventListener("load", read);
-    return () => looker.removeEventListener("load", read);
-  }, [looker]);
-
-  return duration;
-}
-
-/**
- * Shows the tile at its first matched window while a selection hits it, and
- * back at its start once none does. Waits for the poster, which is what the
- * looker's duration signals.
- */
-function useScrubToFirstMatch(
-  looker: VideoLooker | null,
-  ctx: IntervalTileContext,
-  loaded: boolean,
-) {
-  const firstMatch = useSampleRendererFirstMatch(ctx);
-  const startNs = firstMatch?.startNs ?? null;
-  const scrubbed = useRef(false);
-  useEffect(() => {
-    if (!looker || !loaded) return;
-    if (startNs !== null) {
-      looker.posterAt(Number(startNs) / NS_PER_SECOND);
-      scrubbed.current = true;
-    } else if (scrubbed.current) {
-      looker.posterAt(null);
-      scrubbed.current = false;
-    }
-  }, [looker, loaded, startNs]);
-}
-
-/** Moves the tile's clip to where its lanes are clicked. The requests are
- * absolute on the axis the tile published, which for a video starts at 0. */
-function useSeekRequests(looker: VideoLooker | null, sampleId: string) {
-  useEffect(() => {
-    if (!looker) return undefined;
-    const unsubscribe = subscribeEpisodeSeek(sampleId, () => {
-      const request = getEpisodeSeek(sampleId);
-      if (request)
-        looker.seekToSeconds(Number(request.timestampNs) / NS_PER_SECOND);
-    });
-    return () => {
-      unsubscribe();
-      releaseEpisodeSeek(sampleId);
-    };
-  }, [looker, sampleId]);
-}
-
-/** The lanes one video tile draws: its temporal tags where the dataset can
- * carry them, then whatever the edition registered. */
 function VideoTileLanes({
   datasetId,
   sampleId,
@@ -134,16 +70,24 @@ function VideoTileLanes({
   readonly looker: VideoLooker | null;
   readonly showTags: boolean;
 }) {
-  // The recorded duration when the sample has one; otherwise the looker's,
-  // read off the file header the poster already fetched
-  const lookerDuration = useLookerDuration(looker);
+  // Known once the poster has loaded
+  const [lookerDuration, setLookerDuration] = useState(
+    () => looker?.duration ?? null,
+  );
+  useEffect(() => {
+    if (!looker) return undefined;
+    const read = () => setLookerDuration(looker.duration ?? null);
+    read();
+    looker.addEventListener("load", read);
+    return () => looker.removeEventListener("load", read);
+  }, [looker]);
+
   const durationNs =
     metadataDurationNs ??
     (lookerDuration !== null && lookerDuration > 0
       ? lookerDuration * NS_PER_SECOND
       : undefined);
-  // A video's axis is its own 0-based clock. Published before paint, so no
-  // lane is first drawn against the extent of its intervals instead
+  // Before paint, so no lane is first drawn against its intervals' extent
   useLayoutEffect(() => {
     if (durationNs === undefined) return;
     publishEpisodeTimeRange(sampleId, {
@@ -159,8 +103,33 @@ function VideoTileLanes({
     }),
     [datasetId, sampleId],
   );
-  useScrubToFirstMatch(looker, ctx, lookerDuration !== null);
-  useSeekRequests(looker, sampleId);
+
+  const startNs = useSampleRendererFirstMatch(ctx)?.startNs ?? null;
+  const loaded = lookerDuration !== null;
+  const scrubbed = useRef(false);
+  useEffect(() => {
+    if (!looker || !loaded) return;
+    if (startNs !== null) {
+      looker.posterAt(Number(startNs) / NS_PER_SECOND);
+      scrubbed.current = true;
+    } else if (scrubbed.current) {
+      looker.posterAt(null);
+      scrubbed.current = false;
+    }
+  }, [looker, loaded, startNs]);
+
+  useEffect(() => {
+    if (!looker) return undefined;
+    const unsubscribe = subscribeEpisodeSeek(sampleId, () => {
+      const request = getEpisodeSeek(sampleId);
+      if (request)
+        looker.seekToSeconds(Number(request.timestampNs) / NS_PER_SECOND);
+    });
+    return () => {
+      unsubscribe();
+      releaseEpisodeSeek(sampleId);
+    };
+  }, [looker, sampleId]);
 
   return <TileLanes ctx={ctx} showTags={showTags} />;
 }
@@ -170,8 +139,6 @@ export function useTileIntervalOverlay() {
   // which is what the multimodal tile passes through its renderer context.
   const datasetId = fos.useCurrentDataset()?.datasetId;
   const RecoilBridge = useRecoilBridgeAcrossReactRoots_UNSTABLE();
-  // Something can be drawn only where the dataset can carry temporal tags or
-  // an edition registered a lane of its own, so nothing is mounted elsewhere.
   const supported = useRecoilValue(fos.supportsTemporalTags(false));
   const hasOverlays = useGridOverlays().length > 0;
 
@@ -227,8 +194,6 @@ export function useTileIntervalOverlay() {
       element.appendChild(host);
 
       const root = createRoot(host);
-      // Seconds on the sample's metadata; the lane's axis is nanoseconds, the
-      // unit the tags themselves are stored in.
       const duration = sample.sample?.metadata?.duration;
       const durationNs =
         typeof duration === "number" && duration > 0
@@ -252,13 +217,11 @@ export function useTileIntervalOverlay() {
     [RecoilBridge, datasetId, hasOverlays, supported, unmount],
   );
 
-  // Tear every root down with the grid, so a dataset change does not leave
-  // roots bound to elements spotlight has dropped.
-  const mountedRef = mounted;
   useEffect(() => {
+    const current = mounted.current;
     return () => {
-      const entries = [...mountedRef.current.values()];
-      mountedRef.current.clear();
+      const entries = [...current.values()];
+      current.clear();
       queueMicrotask(() => {
         for (const { root, host } of entries) {
           root.unmount();
@@ -266,7 +229,7 @@ export function useTileIntervalOverlay() {
         }
       });
     };
-  }, [mountedRef]);
+  }, []);
 
   return { mount, unmount };
 }

@@ -58,20 +58,15 @@ export interface SearchSources {
 
 /** What an index's extension offers the field. */
 export interface TextSearchSuggestions {
-  /** The prompts the index can answer as they are. The field suggests those
-   * the typed text matches. */
+  /** The prompts the index can answer as they are. */
   prompts: string[];
-  /** Whether typed text that is not one of `prompts` can be searched. False
-   * leaves the field committing only `prompts`, previous queries among them
-   * included. */
+  /** Whether typed text that is not one of `prompts` can be searched. */
   freeText: boolean;
-  /** Trailing list rows for the extension's own actions, offered while
-   * `freeText` is false; choosing one renders its `Action` and runs no
-   * search. */
+  /** List rows for the extension's own actions, offered while `freeText` is
+   * false; choosing one renders its `Action`. */
   actions?: { id: string; label: string }[];
 }
 
-/** What an extension's list content is given. */
 export interface TextSearchListProps {
   index: TextSearchIndex;
   query: string;
@@ -79,7 +74,6 @@ export interface TextSearchListProps {
   close: () => void;
   /** Asks the field to call `loadSuggestions` again. */
   refresh: () => void;
-  /** Starts one of `actions`, exactly as choosing its row does. */
   startAction: (id: string) => void;
 }
 
@@ -111,14 +105,10 @@ export interface TextSearchExtension {
   /** The sources `index` can narrow a search to; null, or absent, when it
    * cannot be narrowed. */
   sources?: (index: TextSearchIndex) => Promise<SearchSources | null>;
-  /** Called when the list opens and on `refresh`; it may resolve from the
-   * extension's own cache. Until it first resolves for an index, the field
-   * offers previous queries and runs no typed text; a rejection leaves
-   * nothing searchable. Absent: the field offers previous queries and
-   * searches any text. */
+  /** Called when the list opens and on `refresh`. Until it first resolves,
+   * typed text runs nothing; absent, any text runs. */
   loadSuggestions?: (index: TextSearchIndex) => Promise<TextSearchSuggestions>;
-  /** Shown while `freeText` is false and the list has no rows, e.g. to say
-   * why typed text cannot run and to offer an action. */
+  /** Shown while `freeText` is false and the list has no rows. */
   EmptyList?: React.ComponentType<TextSearchListProps>;
   /** The flow one of `actions` starts, rendered until it calls `close`. */
   Action?: React.ComponentType<TextSearchListProps & { id: string }>;

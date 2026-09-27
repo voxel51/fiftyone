@@ -849,13 +849,11 @@ const ViewBarInner: React.FC<{
     // An emptied bar folds back to the single search row
     setStagesOpen(false);
     if (currentView.length) {
-      // The extended selection resets when the new view publishes
       setView([]);
       setInFlight(inFlightFingerprint([]));
     } else {
-      // Setting the same empty view never publishes, so a text search
-      // extension's result, which narrows the grid without changing the
-      // view, would outlive the clear
+      // Setting the same empty view never publishes, so it would not clear
+      // a text search's extended selection
       resetExtendedSelection();
     }
     trackEvent("view_bar_view_cleared");
