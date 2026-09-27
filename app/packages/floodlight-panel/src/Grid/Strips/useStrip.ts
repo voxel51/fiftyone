@@ -118,13 +118,13 @@ export default function useStrip(variables: PageVariables, recordBase = 0) {
         store: strips.store,
         variables,
       }),
-      ...scopeRenderer(
+      ...scopeRenderer<number, fos.Sample>(
         {
           detachItem: (id) => renderer.current.detachItem(id),
           hideItem: (item) => renderer.current.hideItem(item),
           showItem: (item) => renderer.current.showItem(item),
         },
-        strips.store,
+        strips.ownership,
       ),
     });
 

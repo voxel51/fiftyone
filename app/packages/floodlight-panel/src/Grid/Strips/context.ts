@@ -10,18 +10,28 @@ import type { FieldValue } from "../categorical";
 import type { Limiter, PageVariables } from "../samplePages";
 import type useRenderer from "../useRenderer";
 import type { Records } from "../useRecords";
+import type { Ownership } from "../../host/ownership";
 import type { SampleStore } from "../useSpotlightPager";
 
 export type Renderer = ReturnType<typeof useRenderer>["renderer"];
+
+/** What looker option updates reach: an inner instance or a stack. */
+export type Updatable = Pick<Spotlight<number, fos.Sample>, "updateItems">;
 
 /** What every lazily mounted strip in a Lanes or Matrix layout shares. */
 export interface Strips {
   aspectRatio?: number;
   environment: IEnvironment;
+  /** Whether the item cache holds a looker for this sample id. */
+  hasItem: (key: string) => boolean;
+  /** The dimensions each looker was last shown at, for moving it unresized. */
+  lastSizes: Map<string, [number, number]>;
   limit: Limiter;
+  /** Which strip owns each looker; shared by every strip in the layout. */
+  ownership: Ownership;
   records: Records;
   /** Tracks an inner instance so looker option updates reach it. */
-  register: (spotlight: Spotlight<number, fos.Sample>) => () => void;
+  register: (instance: Updatable) => () => void;
   renderer: MutableRefObject<Renderer>;
   reset: string;
   root: HTMLElement | null;

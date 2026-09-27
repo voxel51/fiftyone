@@ -79,13 +79,6 @@
 
 /* MATRIX */
 
-.matrix {
-  display: grid;
-  width: max-content;
-  min-width: 100%;
-  font-size: 0.8125rem;
-}
-
 .corner,
 .colHead,
 .rowHead {
@@ -137,4 +130,251 @@
     var(--fo-palette-primary-plainColor) 8%,
     transparent
   );
+}
+
+/* STACK */
+
+/* isolated so layer z-indexes stay under the sticky headers */
+.stack {
+  position: relative;
+  isolation: isolate;
+  min-width: 0;
+  cursor: zoom-in;
+  outline: none;
+}
+
+.stack:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--fo-palette-primary-plainColor);
+}
+
+.stackIdle {
+  cursor: default;
+}
+
+.layer {
+  /* depth: 0 front, 1-4 behind, -1 flying out toward the viewer */
+  --d: 0;
+  --shadow: var(--fo-palette-custom-shadowDark);
+  position: absolute;
+  overflow: hidden;
+  border-radius: 3px;
+  /* a tight contact shadow plus a diffuse one, both softer with distance */
+  box-shadow:
+    0 calc(1px - var(--d) * 0.25px) calc(2px + var(--d) * 1.5px)
+      color-mix(in srgb, var(--shadow) calc(40% - var(--d) * 8%), transparent),
+    0 calc(6px - var(--d) * 1px) calc(16px + var(--d) * 4px)
+      color-mix(in srgb, var(--shadow) calc(24% - var(--d) * 5%), transparent);
+  transform-origin: 0 0;
+  transition:
+    transform 180ms ease-out,
+    opacity 180ms ease-out,
+    box-shadow 180ms ease-out,
+    translate 180ms ease-out;
+  will-change: transform;
+}
+
+/* lifts the hovered or focused stack's front item as a click affordance */
+.stack:is(:hover, :focus-visible) .layer[data-front] {
+  --d: -0.75;
+  translate: 0 -2px;
+}
+
+/* fades a layer into the background with distance */
+.layer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--fo-palette-background-mediaSpace);
+  opacity: var(--dim, 0);
+  transition: opacity 180ms ease-out;
+  pointer-events: none;
+}
+
+.stackAway .layer {
+  visibility: hidden;
+}
+
+.stackCount {
+  position: absolute;
+  right: 0.375rem;
+  bottom: 0.25rem;
+  z-index: 10;
+  padding: 0 0.3125rem;
+  border-radius: 0.5rem;
+  background: color-mix(
+    in srgb,
+    var(--fo-palette-background-mediaSpace) 80%,
+    transparent
+  );
+  color: var(--fo-palette-text-tertiary);
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.125rem;
+  pointer-events: none;
+}
+
+/* EXPANDED CELL */
+
+.overlay {
+  position: absolute;
+  inset: 48px 0 0 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.expansion {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+}
+
+.scrim {
+  position: absolute;
+  inset: 0;
+  background: color-mix(
+    in srgb,
+    var(--fo-palette-background-mediaSpace) 70%,
+    transparent
+  );
+  animation: fadeIn 250ms ease-out;
+}
+
+.expanded {
+  position: absolute;
+  inset: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--fo-palette-divider);
+  border-radius: 4px;
+  background: var(--fo-palette-background-mediaSpace);
+  box-shadow: 0 8px 32px rgb(0 0 0 / 40%);
+  outline: none;
+}
+
+.expandedHeader {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--fo-palette-divider);
+}
+
+.expandedTitle {
+  min-width: 0;
+  overflow: hidden;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--fo-palette-text-primary);
+  font: inherit;
+  font-size: 0.8125rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.expandedGrid {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .layer,
+  .layer::after {
+    transition: none;
+  }
+
+  .stack:is(:hover, :focus-visible) .layer[data-front] {
+    translate: none;
+  }
+
+  .scrim {
+    animation: none;
+  }
+}
+
+/* WINDOWED MATRIX: only the positioning the virtualization needs */
+
+.matrixView {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-size: 0.8125rem;
+}
+
+.matrixHead {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+}
+
+/* in flow, so the header row takes the corner's height as the grid did */
+.matrixCorner {
+  position: relative;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+}
+
+/* the visible column area; its cells slide by the shared scroll position */
+.matrixTrack {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+}
+
+.matrixCells {
+  position: absolute;
+  inset: 0;
+  transform: translateX(calc(-1 * var(--sx, 0px)));
+  will-change: transform;
+}
+
+.matrixColHead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  box-sizing: border-box;
+}
+
+.matrixBody {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.matrixRow {
+  position: absolute;
+  inset: 0;
+}
+
+.matrixRowHead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  box-sizing: border-box;
+}
+
+.matrixCell {
+  position: absolute;
+  top: 0;
+  box-sizing: border-box;
+}
+
+.matrixBar {
+  flex: 0 0 auto;
+  overflow-x: auto;
+  overflow-y: hidden;
 }

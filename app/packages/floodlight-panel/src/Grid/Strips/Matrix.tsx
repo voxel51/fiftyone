@@ -2,72 +2,23 @@
  * Copyright 2017-2026, Voxel51, Inc.
  *
  * Matrix layout: rows are one field's values, columns another's, and each
- * cell is a strip of the samples matching both. Two label fields sorted by
- * confidence read as a confusion matrix of strips.
+ * cell is a depth stack of the samples matching both. Two label fields
+ * sorted by confidence read as a confusion matrix of stacks; clicking one
+ * expands it into a grid of that cell's samples.
  */
 
 import styles from "./Strips.module.css";
 
 import { useReverbValue } from "@fiftyone/reverb";
-import clsx from "clsx";
-import { Fragment, useContext, useMemo } from "react";
+import { useContext } from "react";
+import { createPortal } from "react-dom";
 import { gridZoom } from "../atoms";
-import { type ValueCount, useValueCounts } from "../categorical";
-import { StripsContext } from "./context";
+import { useValueCounts } from "../categorical";
+import ExpandedCell from "./ExpandedCell";
+import { ExpanderContext, OverlayContext, useExpander } from "./expansion";
+import MatrixBody from "./MatrixBody";
 import StripsRoot from "./StripsRoot";
-import StripTrack, { trackHeight } from "./StripTrack";
-
-const CELL_RECORD_SPAN = 1e6;
-
-const keyOf = (entry: ValueCount) => JSON.stringify(entry.value);
-
-const Heading = ({
-  className,
-  entry,
-}: {
-  className: string;
-  entry: ValueCount;
-}) => (
-  <div className={className} title={`${entry.label} (${entry.count})`}>
-    <span className={styles.value}>{entry.label}</span>
-    <span className={styles.count}>{entry.count.toLocaleString()}</span>
-  </div>
-);
-
-const Cell = ({
-  col,
-  colField,
-  index,
-  row,
-  rowField,
-}: {
-  col: ValueCount;
-  colField: string;
-  index: number;
-  row: ValueCount;
-  rowField: string;
-}) => {
-  const strips = useContext(StripsContext)!;
-  const variables = useMemo(
-    () =>
-      strips.variables([
-        [rowField, row.value],
-        [colField, col.value],
-      ]),
-    [col.value, colField, row.value, rowField, strips],
-  );
-
-  return (
-    <StripTrack
-      className={clsx(
-        styles.cell,
-        keyOf(row) === keyOf(col) && styles.diagonal,
-      )}
-      recordBase={index * CELL_RECORD_SPAN}
-      variables={variables}
-    />
-  );
-};
+import { trackHeight } from "./StripTrack";
 
 const Cells = ({
   colField,
@@ -78,46 +29,33 @@ const Cells = ({
 }) => {
   const rows = useValueCounts(rowField, "value");
   const cols = useValueCounts(colField, "value");
-  const height = trackHeight(useReverbValue(gridZoom), 56, 8);
+  const rowHeight = trackHeight(useReverbValue(gridZoom), 56, 8);
+  const expander = useExpander();
+  const overlay = useContext(OverlayContext);
 
   if (!rows.length || !cols.length) {
     return <div className={styles.none}>No values</div>;
   }
 
   return (
-    <div
-      className={styles.matrix}
-      style={{
-        gridTemplateColumns: `max-content repeat(${cols.length}, minmax(${
-          height * 2
-        }px, 1fr))`,
-        gridTemplateRows: "auto",
-        gridAutoRows: `${height}px`,
-      }}
-    >
-      <div className={styles.corner}>
-        <span>{rowField} ↓</span>
-        <span>{colField} →</span>
-      </div>
-      {cols.map((col) => (
-        <Heading key={keyOf(col)} className={styles.colHead} entry={col} />
-      ))}
-      {rows.map((row, r) => (
-        <Fragment key={keyOf(row)}>
-          <Heading className={styles.rowHead} entry={row} />
-          {cols.map((col, c) => (
-            <Cell
-              key={keyOf(col)}
-              col={col}
-              colField={colField}
-              index={r * cols.length + c}
-              row={row}
-              rowField={rowField}
-            />
-          ))}
-        </Fragment>
-      ))}
-    </div>
+    <ExpanderContext.Provider value={expander}>
+      <MatrixBody
+        colField={colField}
+        cols={cols}
+        rowField={rowField}
+        rowHeight={rowHeight}
+        rows={rows}
+      />
+      {expander.expanded &&
+        overlay &&
+        createPortal(
+          <ExpandedCell
+            key={expander.expanded.cell}
+            expansion={expander.expanded}
+          />,
+          overlay,
+        )}
+    </ExpanderContext.Provider>
   );
 };
 

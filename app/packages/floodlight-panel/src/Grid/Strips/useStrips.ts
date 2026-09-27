@@ -6,11 +6,9 @@
  * instances, with looker option updates fanned out to each of them.
  */
 
-import type Spotlight from "@fiftyone/floodlight";
 import type { Updater } from "@fiftyone/floodlight";
 import type * as foq from "@fiftyone/relay";
 import { useReverbValue } from "@fiftyone/reverb";
-import type * as fos from "@fiftyone/state";
 import { useSyncLabelsRenderingStatus } from "@fiftyone/core/src/hooks";
 import { useCallback, useMemo, useRef } from "react";
 import type { VariablesOf } from "react-relay";
@@ -23,6 +21,7 @@ import {
 } from "../atoms";
 import { type FieldValue, useMatchStage } from "../categorical";
 import { createLimiter } from "../samplePages";
+import { createOwnership } from "../../host/ownership";
 import useItemCache from "../useItemCache";
 import useLabelVisibility from "../useLabelVisibility";
 import useRecords from "../useRecords";
@@ -30,7 +29,7 @@ import useRefreshers from "../useRefreshers";
 import useRenderer from "../useRenderer";
 import type { SampleStore } from "../useSpotlightPager";
 import useUpdates from "../useUpdates";
-import type { Strips } from "./context";
+import type { Strips, Updatable } from "./context";
 
 const MAX_HIDDEN = 200;
 const MAX_CONCURRENT_PAGES = 4;
@@ -39,11 +38,11 @@ type Vars = VariablesOf<foq.paginateSamplesQuery>;
 
 const useFanout = () =>
   useMemo(() => {
-    const instances = new Set<Spotlight<number, fos.Sample>>();
+    const instances = new Set<Updatable>();
     let last: Updater | undefined;
 
     return {
-      register: (spotlight: Spotlight<number, fos.Sample>) => {
+      register: (spotlight: Updatable) => {
         last && spotlight.updateItems(last);
         instances.add(spotlight);
         return () => {
@@ -93,6 +92,15 @@ export default function useStrips(id: string, root: HTMLElement | null) {
     ...useLabelVisibility(),
   });
   const records = useRecords(reset);
+  const ownership = useMemo(() => createOwnership(), []);
+  const lastSizes = useMemo(() => {
+    reset;
+    return new Map<string, [number, number]>();
+  }, [reset]);
+  const hasItem = useCallback(
+    (key: string) => cache.get(key) !== undefined,
+    [cache],
+  );
   const store: SampleStore = useMemo(() => {
     reset;
     return new WeakMap();
@@ -120,7 +128,10 @@ export default function useStrips(id: string, root: HTMLElement | null) {
     () => ({
       aspectRatio: square ? 1 : undefined,
       environment,
+      hasItem,
+      lastSizes,
       limit,
+      ownership,
       records,
       register: fanout.register,
       renderer,
@@ -133,7 +144,10 @@ export default function useStrips(id: string, root: HTMLElement | null) {
     [
       environment,
       fanout,
+      hasItem,
+      lastSizes,
       limit,
+      ownership,
       records,
       reset,
       root,
