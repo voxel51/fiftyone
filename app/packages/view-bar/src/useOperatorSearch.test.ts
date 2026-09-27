@@ -27,7 +27,6 @@ const RESULT_VIEW: SerializedStage[] = [
   { _cls: "fiftyone.core.stages.SortBySimilarity", kwargs: [["k", 25]] },
 ];
 
-/** Runs a search and lands the view its run produced. */
 const searchAndLand = (
   result: { current: ReturnType<typeof useOperatorSearch> },
   runId: string,
@@ -67,7 +66,6 @@ describe("useOperatorSearch", () => {
       { _cls: "fiftyone.core.stages.Limit", kwargs: [["limit", 5]] },
     ];
     expect(result.current.claimView(edited)).toBe(false);
-    // Back to the result's stages by hand: the run no longer owns this view
     result.current.claimView(RESULT_VIEW);
     rerender({ view: RESULT_VIEW });
     act(() => result.current.run(INDEX, "a car", 25));
