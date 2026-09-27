@@ -10,6 +10,7 @@ const env = vi.hoisted(() => ({
   operatorAvailable: true,
   operatorRun: vi.fn(),
   providerRun: vi.fn(),
+  providerCancel: vi.fn(),
   onRun: null as null | ((index: { key: string }, query: string) => void),
 }));
 
@@ -33,7 +34,7 @@ vi.mock("./useOperatorSearch", () => ({
 vi.mock("./useProviderSearch", () => ({
   useProviderSearch: () => ({
     run: env.providerRun,
-    cancel: vi.fn(),
+    cancel: env.providerCancel,
   }),
 }));
 
@@ -64,6 +65,9 @@ describe("useTextSearch", () => {
 
     expect(env.operatorRun).toHaveBeenCalledWith(SERVER_INDEX, "an animal", 25);
     expect(env.providerRun).not.toHaveBeenCalled();
+    expect(env.providerCancel.mock.invocationCallOrder[0]).toBeLessThan(
+      env.operatorRun.mock.invocationCallOrder[0],
+    );
   });
 
   it("runs a query for an index a provider searches through the provider", () => {
@@ -79,6 +83,7 @@ describe("useTextSearch", () => {
       ["/cam_left"],
     );
     expect(env.operatorRun).not.toHaveBeenCalled();
+    expect(env.providerCancel).not.toHaveBeenCalled();
   });
 
   it("searches a provider's index without the similarity operator", () => {
