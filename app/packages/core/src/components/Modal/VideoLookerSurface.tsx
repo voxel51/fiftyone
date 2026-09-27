@@ -15,6 +15,7 @@ import { BackgroundColor, getColorCssVar } from "@voxel51/voodo";
 import React, { useMemo } from "react";
 import { useLookerPlaybackBridge } from "./useLookerPlaybackBridge";
 import styles from "./VideoLookerSurface.module.css";
+import { VideoTimelineExtensions } from "./VideoTimelineExtensions";
 import useLooker from "./use-looker";
 import { useVideoModalSelectiveRendering } from "./use-modal-selective-rendering";
 
@@ -100,11 +101,21 @@ export const VideoLookerSurface: React.FC<{ sample: fos.ModalSample }> = ({
           <VideoLookerReact sample={sample} frameRate={frameRate} />
         </div>
         <div className={styles.timeline} style={CARD_BACKGROUND}>
-          <FrameLabelsTracks
-            sample={sample}
-            maxSize={timelineMaxSize}
-            mode="explore"
-          />
+          <VideoTimelineExtensions sample={sample}>
+            {({ tracks, decorateTrack, rulerOverlay, runtime }) => (
+              <>
+                <FrameLabelsTracks
+                  sample={sample}
+                  maxSize={timelineMaxSize}
+                  mode="explore"
+                  extraTracks={tracks}
+                  decorateExtraTrack={decorateTrack}
+                  rulerOverlay={rulerOverlay}
+                />
+                {runtime}
+              </>
+            )}
+          </VideoTimelineExtensions>
         </div>
       </div>
     </PlaybackProvider>

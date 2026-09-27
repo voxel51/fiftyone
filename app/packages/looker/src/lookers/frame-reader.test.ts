@@ -253,6 +253,17 @@ describe("frame-reader", () => {
     expect(worker.postMessage).toHaveBeenCalledTimes(callsBeforeRequest);
   });
 
+  it("does not restart the stream for frames a chunk covered without documents", () => {
+    // A video with no frame labels gets back its ranges with no frames in them
+    const options = createMockOptions({ frameCount: 200 });
+    const requestFrames = acquireReader(options);
+
+    simulateFrameChunk([], [1, 30]);
+    requestFrames(30);
+
+    expect(createWorker).toHaveBeenCalledOnce();
+  });
+
   it("calls addFrame for each frame in a chunk response", () => {
     const addFrame = vi.fn();
     const options = createMockOptions({ addFrame });

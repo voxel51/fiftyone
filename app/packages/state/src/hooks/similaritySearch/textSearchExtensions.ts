@@ -1,3 +1,4 @@
+import type React from "react";
 import { useSyncExternalStore } from "react";
 import type { State } from "../../recoil/types";
 import type { ExtendedSelectionResetInterface } from "../extendedSelectionReset";
@@ -55,6 +56,40 @@ export interface SearchSources {
   values: string[];
 }
 
+/** What the field offers for the text typed so far. */
+export interface TextSearchSuggestions {
+  /** Prompts to offer for the typed text, in order. With `freeText`, they
+   * follow the field's own matching previous queries; without it, they are
+   * the whole list, so any previous query that can run belongs here. */
+  prompts: string[];
+  /** Whether typed text that is not one of `prompts` can be searched. False
+   * leaves the field committing only offered prompts. */
+  freeText: boolean;
+  /** Trailing list rows for the extension's own actions; choosing one
+   * renders its `Action` and runs no search. */
+  actions?: { id: string; label: string }[];
+}
+
+/** Refines what is offered as the text changes: pure and synchronous, called
+ * on every keystroke, so it does no I/O. `history` is the field's previous
+ * queries, most recent first. */
+export type TextSearchSuggester = (
+  query: string,
+  history: readonly string[],
+) => TextSearchSuggestions;
+
+/** What an extension's list content is given. */
+export interface TextSearchListProps {
+  index: TextSearchIndex;
+  query: string;
+  /** Closes the list, or ends an action's flow. */
+  close: () => void;
+  /** Asks the field to call `loadSuggestions` again. */
+  refresh: () => void;
+  /** Starts one of `actions`, exactly as choosing its row does. */
+  startAction: (id: string) => void;
+}
+
 /**
  * A search's result, published to the extended selection: it narrows the
  * grid without changing the view, exactly as a selection made in the
@@ -83,6 +118,18 @@ export interface TextSearchExtension {
   /** The sources `index` can narrow a search to; null, or absent, when it
    * cannot be narrowed. */
   sources?: (index: TextSearchIndex) => Promise<SearchSources | null>;
+  /** Called when the list opens and on `refresh`. It may resolve from the
+   * extension's own cache; the suggester it resolves to is synchronous, does
+   * no I/O, and refines every keystroke. Until it first resolves for an
+   * index, the field offers previous queries and runs no typed text; a
+   * rejection leaves nothing searchable. Absent: the field offers previous
+   * queries and searches any text. */
+  loadSuggestions?: (index: TextSearchIndex) => Promise<TextSearchSuggester>;
+  /** Shown while `freeText` is false and the list has no rows, e.g. to say
+   * why typed text cannot run and to offer an action. */
+  EmptyList?: React.ComponentType<TextSearchListProps>;
+  /** The flow one of `actions` starts, rendered until it calls `close`. */
+  Action?: React.ComponentType<TextSearchListProps & { id: string }>;
   /** Resolves null when a newer search elsewhere replaced this one: nothing
    * publishes, and nothing is reported. */
   search: (request: TextSearchRequest) => Promise<TextSearchResult | null>;

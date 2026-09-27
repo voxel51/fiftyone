@@ -10,6 +10,7 @@ import {
 } from "@fiftyone/video-annotation";
 import React, { useCallback, useMemo, useState } from "react";
 import { VideoExploreToolbar } from "./VideoExploreToolbar";
+import { VideoTimelineExtensions } from "./VideoTimelineExtensions";
 import { useVideoExploreKeybindings } from "./useVideoExploreKeybindings";
 import styles from "./VideoTimelineSurface.module.css";
 
@@ -249,12 +250,22 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
             render an empty, inert transport under the error. */}
         {!mediaFailed && (
           <div className={styles.timeline}>
-            <FrameLabelsTracks
-              sample={sample}
-              maxSize={timelineMaxSize}
-              mode="explore"
-              trailingActions={<VideoExploreToolbar />}
-            />
+            <VideoTimelineExtensions sample={sample}>
+              {({ tracks, decorateTrack, rulerOverlay, runtime }) => (
+                <>
+                  <FrameLabelsTracks
+                    sample={sample}
+                    maxSize={timelineMaxSize}
+                    mode="explore"
+                    trailingActions={<VideoExploreToolbar />}
+                    extraTracks={tracks}
+                    decorateExtraTrack={decorateTrack}
+                    rulerOverlay={rulerOverlay}
+                  />
+                  {runtime}
+                </>
+              )}
+            </VideoTimelineExtensions>
           </div>
         )}
       </div>

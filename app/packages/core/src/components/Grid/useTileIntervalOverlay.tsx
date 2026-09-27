@@ -1,7 +1,14 @@
+import { VideoLooker } from "@fiftyone/looker";
+import {
+  mcapGridOverlayKey,
+  useMcapGridOverlays,
+  useSampleRendererFirstMatch,
+} from "@fiftyone/multimodal/extensions/timeline";
+import type { IntervalTileContext } from "@fiftyone/multimodal/extensions/episode-intervals";
 import { EpisodeGridOverlay } from "@fiftyone/multimodal/grid-overlay";
 import * as fos from "@fiftyone/state";
 import { MEDIA_TYPE_VIDEO } from "@fiftyone/utilities";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Root } from "react-dom/client";
 import { createRoot } from "react-dom/client";
 import {
@@ -43,14 +50,100 @@ type TileSample = {
 
 const NS_PER_SECOND = 1_000_000_000;
 
+/** The tile's clip length in seconds, from its looker once the poster has
+ * loaded; null before then, or for a tile with no video looker. */
+function useLookerDuration(looker: VideoLooker | null): number | null {
+  const [duration, setDuration] = useState(() => looker?.duration ?? null);
+  useEffect(() => {
+    if (!looker) return undefined;
+    const read = () => setDuration(looker.duration ?? null);
+    read();
+    looker.addEventListener("load", read);
+    return () => looker.removeEventListener("load", read);
+  }, [looker]);
+
+  return duration;
+}
+
+/**
+ * Shows the tile at its first matched window while a selection hits it, and
+ * back at its start once none does. Waits for the poster, which is what the
+ * looker's duration signals.
+ */
+function useScrubToFirstMatch(
+  looker: VideoLooker | null,
+  ctx: IntervalTileContext,
+  loaded: boolean,
+) {
+  const firstMatch = useSampleRendererFirstMatch(ctx);
+  const startNs = firstMatch?.startNs ?? null;
+  const scrubbed = useRef(false);
+  useEffect(() => {
+    if (!looker || !loaded) return;
+    if (startNs !== null) {
+      looker.posterAt(Number(startNs) / NS_PER_SECOND);
+      scrubbed.current = true;
+    } else if (scrubbed.current) {
+      looker.posterAt(null);
+      scrubbed.current = false;
+    }
+  }, [looker, loaded, startNs]);
+}
+
+/** The lanes one video tile draws: its temporal tags where the dataset can
+ * carry them, then whatever the edition registered. */
+function VideoTileLanes({
+  datasetId,
+  sampleId,
+  metadataDurationNs,
+  looker,
+  showTags,
+}: {
+  readonly datasetId: string;
+  readonly sampleId: string;
+  readonly metadataDurationNs: number | undefined;
+  readonly looker: VideoLooker | null;
+  readonly showTags: boolean;
+}) {
+  // The recorded duration when the sample has one; otherwise the looker's,
+  // read off the file header the poster already fetched
+  const lookerDuration = useLookerDuration(looker);
+  const durationNs =
+    metadataDurationNs ??
+    (lookerDuration !== null && lookerDuration > 0
+      ? lookerDuration * NS_PER_SECOND
+      : undefined);
+  const ctx = useMemo<IntervalTileContext>(
+    () => ({
+      dataset: { datasetId },
+      sample: { sample: { _id: sampleId } },
+      surface: "grid",
+      durationNs,
+    }),
+    [datasetId, sampleId, durationNs],
+  );
+  useScrubToFirstMatch(looker, ctx, lookerDuration !== null);
+
+  const overlays = useMcapGridOverlays();
+  return (
+    <>
+      {showTags ? <EpisodeGridOverlay ctx={ctx} /> : null}
+      {overlays.map((Overlay) => (
+        <Overlay key={mcapGridOverlayKey(Overlay)} ctx={ctx} />
+      ))}
+    </>
+  );
+}
+
 export function useTileIntervalOverlay() {
   // `datasetId`, not `id`: the tag routes are keyed by the dataset's own id,
   // which is what the multimodal tile passes through its renderer context.
   const datasetId = fos.useCurrentDataset()?.datasetId;
   const RecoilBridge = useRecoilBridgeAcrossReactRoots_UNSTABLE();
-  // The lane only ever has something to draw where the dataset can carry
-  // temporal tags, so nothing is mounted anywhere else.
+  // Something can be drawn only where the dataset can carry temporal tags or
+  // an edition registered a lane of its own, so nothing is mounted elsewhere.
   const supported = useRecoilValue(fos.supportsTemporalTags(false));
+  const hasOverlays = useMcapGridOverlays().length > 0;
 
   const mounted = useRef(new Map<string, MountedOverlay>());
 
@@ -70,8 +163,13 @@ export function useTileIntervalOverlay() {
   }, []);
 
   const mount = useCallback(
-    (key: string, element: HTMLElement, sample: TileSample) => {
-      if (!supported || !datasetId) {
+    (
+      key: string,
+      element: HTMLElement,
+      sample: TileSample,
+      looker?: unknown,
+    ) => {
+      if ((!supported && !hasOverlays) || !datasetId) {
         return;
       }
 
@@ -109,20 +207,19 @@ export function useTileIntervalOverlay() {
 
       root.render(
         <RecoilBridge>
-          <EpisodeGridOverlay
-            ctx={{
-              dataset: { datasetId },
-              sample: { sample: { _id: sampleId } },
-              surface: "grid",
-              durationNs,
-            }}
+          <VideoTileLanes
+            datasetId={datasetId}
+            sampleId={sampleId}
+            metadataDurationNs={durationNs}
+            looker={looker instanceof VideoLooker ? looker : null}
+            showTags={supported}
           />
         </RecoilBridge>,
       );
 
       mounted.current.set(key, { root, host });
     },
-    [RecoilBridge, datasetId, supported, unmount],
+    [RecoilBridge, datasetId, hasOverlays, supported, unmount],
   );
 
   // Tear every root down with the grid, so a dataset change does not leave

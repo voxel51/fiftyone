@@ -27,6 +27,37 @@ vi.mock("./useSearchSources", () => ({
     return sources.current;
   },
 }));
+type ListProps = {
+  query: string;
+  close: () => void;
+  refresh: () => void;
+  startAction: (id: string) => void;
+};
+const suggested = vi.hoisted(() => ({
+  current: null as {
+    mode: "open" | "pending" | "offered";
+    prompts: string[];
+    actions: { id: string; label: string }[];
+    loading: boolean;
+    index: { datasetName: string; brainKey: string; runTimestamp: null };
+    EmptyList?: React.ComponentType<ListProps>;
+    Action?: React.ComponentType<ListProps & { id: string }>;
+  } | null,
+  loadCount: vi.fn(),
+  history: vi.fn(),
+}));
+vi.mock("./useSearchSuggestions", () => ({
+  useSearchSuggestions: (
+    _index: unknown,
+    _query: string,
+    history: readonly string[],
+    loadCount: number,
+  ) => {
+    suggested.loadCount(loadCount);
+    suggested.history(history);
+    return suggested.current;
+  },
+}));
 vi.mock("./SearchSettingsPopover", () => ({
   SearchSettingsPopover: ({
     trigger,
@@ -84,6 +115,7 @@ describe("LanguageSearch", () => {
     env.pending = false;
     env.recentQueries = [];
     sources.current = null;
+    suggested.current = null;
   });
 
   it("always renders the field", () => {
@@ -309,5 +341,209 @@ describe("LanguageSearch", () => {
       screen.queryByRole("button", { name: "Similarity search settings" }),
     ).toBeNull();
     expect(screen.getByLabelText("Search in progress")).toBeTruthy();
+  });
+  describe("with an extension's suggestions", () => {
+    const EXTENSION_INDEX = {
+      key: "emb_sim",
+      patchesField: null,
+      extension: "multimodal",
+    };
+
+    const setSuggested = (
+      answer: Partial<NonNullable<typeof suggested.current>> = {},
+    ) => {
+      suggested.current = {
+        mode: "offered",
+        prompts: [],
+        actions: [],
+        loading: false,
+        index: {
+          datasetName: "robots",
+          brainKey: "emb_sim",
+          runTimestamp: null,
+        },
+        ...answer,
+      };
+    };
+
+    const renderSuggested = (history: string[] = []) => {
+      render(
+        <LanguageSearch
+          onSubmit={noop}
+          onUnavailable={noop}
+          available
+          enabled
+          history={history}
+          promptKeys={[EXTENSION_INDEX]}
+          selectedKey="emb_sim"
+          onSelectKey={noop}
+          k={25}
+          onChangeK={noop}
+          onOpenPanel={noop}
+        />,
+      );
+    };
+
+    const field = () =>
+      screen.getByRole<HTMLInputElement>("combobox", {
+        name: LANGUAGE_SEARCH_LABEL,
+      });
+
+    const type = (text: string) => {
+      fireEvent.focus(field());
+      fireEvent.change(field(), { target: { value: text } });
+    };
+
+    const optionNames = () =>
+      screen.queryAllByRole("option").map((option) => option.textContent);
+
+    it("lists matching previous queries, then the extension's prompts, without repeats", () => {
+      setSuggested({ mode: "open", prompts: ["a robot arm", "a red cup"] });
+      renderSuggested(["a red cup", "a green bowl"]);
+      type("a r");
+      expect(optionNames()).toEqual(["a red cup", "a robot arm"]);
+    });
+
+    it("hands the extension the field's previous queries", () => {
+      setSuggested();
+      renderSuggested(["a red cup"]);
+      expect(suggested.history).toHaveBeenLastCalledWith(["a red cup"]);
+    });
+
+    it("searches free text when the extension allows it", () => {
+      setSuggested({ mode: "open" });
+      renderSuggested();
+      search("a green bowl");
+      expect(extensionRun).toHaveBeenCalledWith(
+        EXTENSION_INDEX,
+        "a green bowl",
+        25,
+        null,
+      );
+    });
+
+    it("lists only the extension's prompts when only they can run", () => {
+      setSuggested({ prompts: ["a red cup"] });
+      renderSuggested(["a green bowl"]);
+      type("");
+      expect(optionNames()).toEqual(["a red cup"]);
+    });
+
+    it("refuses text that is not one of the extension's prompts", () => {
+      // Nothing matched, so no row can take the Enter
+      setSuggested({ prompts: [] });
+      renderSuggested();
+      search("a green bowl");
+      expect(extensionRun).not.toHaveBeenCalled();
+    });
+
+    it("takes the top prompt on Enter", () => {
+      setSuggested({ prompts: ["a robot arm"] });
+      renderSuggested();
+      search("robot");
+      expect(extensionRun).toHaveBeenCalledWith(
+        EXTENSION_INDEX,
+        "a robot arm",
+        25,
+        null,
+      );
+    });
+
+    it("runs no typed text before the extension's suggester loads", () => {
+      setSuggested({ mode: "pending", loading: true });
+      renderSuggested(["a red cup"]);
+      search("a green bowl");
+      expect(extensionRun).not.toHaveBeenCalled();
+    });
+
+    it("offers previous queries before the extension's suggester loads", () => {
+      setSuggested({ mode: "pending" });
+      renderSuggested(["a red cup"]);
+      type("");
+      expect(optionNames()).toEqual(["a red cup"]);
+    });
+
+    it("loads the suggester again each time the list opens", () => {
+      setSuggested();
+      renderSuggested();
+      const before = suggested.loadCount.mock.lastCall?.[0];
+      fireEvent.focus(field());
+      expect(suggested.loadCount.mock.lastCall?.[0]).toBe(before + 1);
+    });
+
+    const Action = ({ id, close, refresh }: ListProps & { id: string }) => (
+      <div role="dialog" aria-label={`action ${id}`}>
+        <button onClick={refresh}>refresh</button>
+        <button onClick={close}>close</button>
+      </div>
+    );
+
+    it("offers the extension's actions after its prompts, and starts one without searching", () => {
+      setSuggested({
+        prompts: ["a robot arm"],
+        actions: [{ id: "add-queries", label: "Add queries" }],
+        Action,
+      });
+      renderSuggested();
+      type("robot");
+      expect(optionNames()).toEqual(["a robot arm", "Add queries"]);
+      fireEvent.mouseDown(screen.getByRole("option", { name: "Add queries" }));
+      expect(
+        screen.getByRole("dialog", { name: "action add-queries" }),
+      ).toBeTruthy();
+      expect(extensionRun).not.toHaveBeenCalled();
+      expect(field().value).toBe("robot");
+    });
+
+    it("offers no action row when no prompt matched", () => {
+      setSuggested({
+        actions: [{ id: "add-queries", label: "Add queries" }],
+        Action,
+      });
+      renderSuggested();
+      type("a green bowl");
+      expect(optionNames()).toEqual([]);
+    });
+
+    const EmptyList = ({ startAction }: ListProps) => (
+      <button onClick={() => startAction("add-queries")}>
+        nothing can run
+      </button>
+    );
+
+    it("shows the extension's empty list when nothing can run, and starts its action", () => {
+      setSuggested({ EmptyList, Action });
+      renderSuggested();
+      type("a green bowl");
+      fireEvent.click(screen.getByRole("button", { name: "nothing can run" }));
+      expect(
+        screen.getByRole("dialog", { name: "action add-queries" }),
+      ).toBeTruthy();
+      fireEvent.change(field(), { target: { value: "a green bowls" } });
+      expect(field().value).toBe("a green bowls");
+    });
+
+    it("shows no empty list while any text can run", () => {
+      setSuggested({ mode: "open", EmptyList });
+      renderSuggested();
+      type("a green bowl");
+      expect(
+        screen.queryByRole("button", { name: "nothing can run" }),
+      ).toBeNull();
+    });
+
+    it("loads the suggester again on refresh, and ends the action on close", () => {
+      setSuggested({ EmptyList, Action });
+      renderSuggested();
+      type("a green bowl");
+      fireEvent.click(screen.getByRole("button", { name: "nothing can run" }));
+      const before = suggested.loadCount.mock.lastCall?.[0];
+      fireEvent.click(screen.getByRole("button", { name: "refresh" }));
+      expect(suggested.loadCount.mock.lastCall?.[0]).toBe(before + 1);
+      fireEvent.click(screen.getByRole("button", { name: "close" }));
+      expect(
+        screen.queryByRole("dialog", { name: "action add-queries" }),
+      ).toBeNull();
+    });
   });
 });

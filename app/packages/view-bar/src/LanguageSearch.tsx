@@ -40,8 +40,14 @@ import { rememberQuery } from "./searchQueryHistory";
 import { SearchSettingsPopover } from "./SearchSettingsPopover";
 import { useLanguageSearchExtension } from "./useLanguageSearchExtension";
 import { useSearchSources } from "./useSearchSources";
+import { useSearchSuggestions } from "./useSearchSuggestions";
 
 export const LANGUAGE_SEARCH_LABEL = "Search or ask in natural language";
+
+// Prompt rows' ids carry this prefix and action rows the other, so an
+// action id can never be taken for a prompt
+const PROMPT_ROW = "prompt:";
+const ACTION_ROW = "action:";
 
 export interface LanguageSearchProps {
   onSubmit: (query: string) => void;
@@ -152,16 +158,53 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
   const available = operatorAvailable || extensionSearch;
   const enabled = indexEnabled || extensionSearch;
 
-  // The dropdown under the box: previous queries matching the draft. With no
-  // prompt-capable index there is nothing to offer, and the empty state is
+  // Bumped each time the list opens and on an extension's `refresh`, which
+  // is when its suggester is loaded
+  const [suggestionsLoad, setSuggestionsLoad] = React.useState(0);
+  const suggestions = useSearchSuggestions(
+    selectedIndex,
+    query,
+    shownHistory,
+    suggestionsLoad,
+  );
+  const mode = suggestions?.mode ?? "open";
+  const offeredOnly = mode === "offered";
+  const [action, setAction] = React.useState<string | null>(null);
+  // Picking a row writes its label into the field right after `onChange`;
+  // an action row is not a prompt, so the draft must survive it
+  const keepDraft = React.useRef(false);
+  const startAction = React.useCallback((id: string) => setAction(id), []);
+  const refreshSuggestions = React.useCallback(
+    () => setSuggestionsLoad((count) => count + 1),
+    [],
+  );
+
+  // The dropdown under the box: previous queries matching the draft, then the
+  // extension's prompts; or, when only its prompts can run, those alone. With
+  // no prompt-capable index there is nothing to offer, and the empty state is
   // the on-ramp to creating one
   const options = React.useMemo<ComboboxOption[]>(() => {
     if (!available || !enabled) return [];
     const q = query.trim().toLowerCase();
-    return shownHistory
-      .filter((h) => !q || h.toLowerCase().includes(q))
-      .map((h) => ({ id: h, label: h }));
-  }, [available, enabled, shownHistory, query]);
+    const previous = offeredOnly
+      ? []
+      : shownHistory.filter((h) => !q || h.toLowerCase().includes(q));
+    const prompts = (suggestions?.prompts ?? []).filter(
+      (prompt) => !previous.includes(prompt),
+    );
+    const rows: ComboboxOption[] = [...previous, ...prompts].map((text) => ({
+      id: `${PROMPT_ROW}${text}`,
+      label: text,
+    }));
+    // Trailing only, and only after a prompt: with nothing matched, Enter on
+    // unmatched text must never land on an action
+    if (offeredOnly && rows.length) {
+      for (const { id, label } of suggestions?.actions ?? []) {
+        rows.push({ id: `${ACTION_ROW}${id}`, label });
+      }
+    }
+    return rows;
+  }, [available, enabled, shownHistory, query, suggestions, offeredOnly]);
 
   // A picked row or committed text: a previous query re-runs, typed text
   // runs. With no index there is nothing to run, and the query is the reason
@@ -169,6 +212,11 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
   const commit = React.useCallback(
     (option: ComboboxOption | null) => {
       if (!option || !available) return;
+      if (offeredOnly && option.id.startsWith(ACTION_ROW)) {
+        keepDraft.current = true;
+        startAction(option.id.slice(ACTION_ROW.length));
+        return;
+      }
       const text = option.label.trim();
       if (!text) return;
       // The query stays visible — it names the view now loading
@@ -194,8 +242,28 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
       runExtensionSearch,
       k,
       selectedSources,
+      offeredOnly,
+      startAction,
     ],
   );
+
+  const listProps = suggestions && {
+    index: suggestions.index,
+    query,
+    refresh: refreshSuggestions,
+    startAction,
+  };
+  const EmptyList = suggestions?.EmptyList;
+  const Action = suggestions?.Action;
+  // Typed text that matches no prompt commits nothing: the extension's list
+  // content can say why and offer its actions
+  const offeredOnlyMessage =
+    available && enabled && offeredOnly && EmptyList && listProps
+      ? ({ close }: { close: () => void }) => (
+          <EmptyList {...listProps} close={close} />
+        )
+      : null;
+  const endAction = React.useCallback(() => setAction(null), []);
 
   return (
     <Stack
@@ -255,15 +323,27 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
         // arrives through onChange and the field keeps the text it ran with
         value={null}
         inputValue={query}
-        onInputChange={setQuery}
+        onInputChange={(text) => {
+          if (keepDraft.current) {
+            keepDraft.current = false;
+            return;
+          }
+          setQuery(text);
+        }}
         onChange={commit}
         onFocus={onFocus}
         // Committed without an index, the text is a request for one
-        allowFreeText={available}
+        // Until the extension's suggester loads, and while only its prompts
+        // can run, typed text alone runs nothing
+        allowFreeText={available && mode === "open"}
+        // Enter takes the top match: typed text alone cannot run
+        autoHighlight={offeredOnly}
+        loading={Boolean(suggestions?.loading)}
         // Without the operator there is nothing to open; the click gets an
         // explanation instead
         onOpenChange={(isOpen) => {
           if (isOpen && !available) onUnavailable();
+          if (isOpen && suggestions) refreshSuggestions();
         }}
         // Enter runs the search; clicking elsewhere must not
         commitOnBlur={false}
@@ -274,7 +354,8 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
         // With previous searches to offer the list is the offer; with none it
         // is noise, so it stays hidden
         emptyMessage={
-          !available || enabled
+          offeredOnlyMessage ??
+          (!available || enabled
             ? null
             : // Text search needs a similarity index that supports prompts:
               // the list says so, and its one action is to go make one —
@@ -309,9 +390,12 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
                     Create index
                   </Button>
                 </div>
-              )
+              ))
         }
       />
+      {action !== null && Action && listProps && (
+        <Action {...listProps} id={action} close={endAction} />
+      )}
       {pending && (
         // Legible even for a sub-second search: a word, not just the dots — the
         // grid's own word for it
