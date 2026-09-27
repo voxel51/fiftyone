@@ -1,14 +1,26 @@
 import { VideoLooker } from "@fiftyone/looker";
 import {
-  mcapGridOverlayKey,
-  useMcapGridOverlays,
+  useGridOverlays,
   useSampleRendererFirstMatch,
 } from "@fiftyone/multimodal/extensions/timeline";
 import type { IntervalTileContext } from "@fiftyone/multimodal/extensions/episode-intervals";
-import { EpisodeGridOverlay } from "@fiftyone/multimodal/grid-overlay";
+import {
+  getEpisodeSeek,
+  publishEpisodeTimeRange,
+  releaseEpisodeSeek,
+  subscribeEpisodeSeek,
+  TileLanes,
+} from "@fiftyone/multimodal/grid-overlay";
 import * as fos from "@fiftyone/state";
 import { MEDIA_TYPE_VIDEO } from "@fiftyone/utilities";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { Root } from "react-dom/client";
 import { createRoot } from "react-dom/client";
 import {
@@ -90,6 +102,23 @@ function useScrubToFirstMatch(
   }, [looker, loaded, startNs]);
 }
 
+/** Moves the tile's clip to where its lanes are clicked. The requests are
+ * absolute on the axis the tile published, which for a video starts at 0. */
+function useSeekRequests(looker: VideoLooker | null, sampleId: string) {
+  useEffect(() => {
+    if (!looker) return undefined;
+    const unsubscribe = subscribeEpisodeSeek(sampleId, () => {
+      const request = getEpisodeSeek(sampleId);
+      if (request)
+        looker.seekToSeconds(Number(request.timestampNs) / NS_PER_SECOND);
+    });
+    return () => {
+      unsubscribe();
+      releaseEpisodeSeek(sampleId);
+    };
+  }, [looker, sampleId]);
+}
+
 /** The lanes one video tile draws: its temporal tags where the dataset can
  * carry them, then whatever the edition registered. */
 function VideoTileLanes({
@@ -113,26 +142,27 @@ function VideoTileLanes({
     (lookerDuration !== null && lookerDuration > 0
       ? lookerDuration * NS_PER_SECOND
       : undefined);
+  // A video's axis is its own 0-based clock. Published before paint, so no
+  // lane is first drawn against the extent of its intervals instead
+  useLayoutEffect(() => {
+    if (durationNs === undefined) return;
+    publishEpisodeTimeRange(sampleId, {
+      startNs: 0n,
+      endNs: BigInt(Math.round(durationNs)),
+    });
+  }, [sampleId, durationNs]);
   const ctx = useMemo<IntervalTileContext>(
     () => ({
       dataset: { datasetId },
       sample: { sample: { _id: sampleId } },
       surface: "grid",
-      durationNs,
     }),
-    [datasetId, sampleId, durationNs],
+    [datasetId, sampleId],
   );
   useScrubToFirstMatch(looker, ctx, lookerDuration !== null);
+  useSeekRequests(looker, sampleId);
 
-  const overlays = useMcapGridOverlays();
-  return (
-    <>
-      {showTags ? <EpisodeGridOverlay ctx={ctx} /> : null}
-      {overlays.map((Overlay) => (
-        <Overlay key={mcapGridOverlayKey(Overlay)} ctx={ctx} />
-      ))}
-    </>
-  );
+  return <TileLanes ctx={ctx} showTags={showTags} />;
 }
 
 export function useTileIntervalOverlay() {
@@ -143,7 +173,7 @@ export function useTileIntervalOverlay() {
   // Something can be drawn only where the dataset can carry temporal tags or
   // an edition registered a lane of its own, so nothing is mounted elsewhere.
   const supported = useRecoilValue(fos.supportsTemporalTags(false));
-  const hasOverlays = useMcapGridOverlays().length > 0;
+  const hasOverlays = useGridOverlays().length > 0;
 
   const mounted = useRef(new Map<string, MountedOverlay>());
 

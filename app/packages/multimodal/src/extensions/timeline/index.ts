@@ -20,18 +20,17 @@ export type {
 // hooks here — inert (empty) until something publishes
 export {
   firstMatchWindow,
-  publishMcapEmbeddingSelection,
-  useMcapEmbeddingSelectionSnapshot,
+  publishEmbeddingSelection,
+  useEmbeddingSelectionSnapshot,
   useSampleRendererEmbeddingWindows,
   useSampleRendererFirstMatch,
   type EmbeddingWindow,
-  type McapEmbeddingSelection,
-  type McapEmbeddingWindowMark,
+  type EmbeddingSelection,
+  type EmbeddingWindowMark,
 } from "./embedding-selection";
 // Edition-contributed grid-tile overlays, rendered by the shared grid
 export {
-  mcapGridOverlayKey,
-  registerMcapGridOverlay,
-  useMcapGridOverlays,
-  type McapGridOverlayComponent,
+  registerGridOverlay,
+  useGridOverlays,
+  type GridOverlayComponent,
 } from "./grid-overlay-registry";

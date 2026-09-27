@@ -9,7 +9,7 @@ import {
 import type { ReactElement } from "react";
 import { RecoilRoot, useSetRecoilState } from "recoil";
 import { multimodalGridFit } from "@fiftyone/state";
-import { publishMcapEmbeddingSelection } from "../../../extensions/timeline";
+import { publishEmbeddingSelection } from "../../../extensions/timeline";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   WEBGPU_DEVICE_BUDGET,
@@ -75,13 +75,13 @@ function GridFitController() {
 
 type PublishedWindows = Record<
   string,
-  Array<{ stream: string; startNs: string; endNs: string }>
+  Array<{ stream: string; startUs: number; endUs: number }>
 >;
 
 function renderWithMatches(ui: ReactElement, byEpisode: PublishedWindows) {
   // The published selection reaches tiles through the extensions/timeline store
   // (their own React roots), not through this Recoil tree
-  publishMcapEmbeddingSelection({ byEpisode });
+  publishEmbeddingSelection({ byEpisode });
   return render(ui);
 }
 
@@ -339,7 +339,7 @@ vi.mock("../../../visualization/composition", () => ({
 
 afterEach(() => {
   cleanup();
-  publishMcapEmbeddingSelection(null);
+  publishEmbeddingSelection(null);
   vi.useRealTimers();
   resetGridLiveLeasesForTests();
   resetGraphicsRendererRegistryForTests();
@@ -514,13 +514,13 @@ describe("GridRenderer", () => {
   it("posters at the earliest window the embeddings panel matched", () => {
     renderWithMatches(<GridRenderer ctx={rendererCtx()} />, {
       "1": [
-        { stream: "/camera/front", startNs: "1700", endNs: "1800" },
-        { stream: "/lidar/top", startNs: "1200", endNs: "1200" },
+        { stream: "/camera/front", startUs: 1700, endUs: 1800 },
+        { stream: "/lidar/top", startUs: 1200, endUs: 1200 },
       ],
     });
 
     expect(vi.mocked(useGridPreview).mock.lastCall?.[0]).toMatchObject({
-      posterStartTimeNs: 1_200n,
+      posterStartTimeNs: 1_200_000n,
       posterSourceName: "/lidar/top",
     });
   });
@@ -528,7 +528,7 @@ describe("GridRenderer", () => {
   it("posters at the recording start when the lasso missed this episode", () => {
     renderWithMatches(<GridRenderer ctx={rendererCtx()} />, {
       "other-episode": [
-        { stream: "/camera/front", startNs: "1700", endNs: "1800" },
+        { stream: "/camera/front", startUs: 1700, endUs: 1800 },
       ],
     });
 

@@ -56,27 +56,20 @@ export interface SearchSources {
   values: string[];
 }
 
-/** What the field offers for the text typed so far. */
+/** What an index's extension offers the field. */
 export interface TextSearchSuggestions {
-  /** Prompts to offer for the typed text, in order. With `freeText`, they
-   * follow the field's own matching previous queries; without it, they are
-   * the whole list, so any previous query that can run belongs here. */
+  /** The prompts the index can answer as they are. The field suggests those
+   * the typed text matches. */
   prompts: string[];
   /** Whether typed text that is not one of `prompts` can be searched. False
-   * leaves the field committing only offered prompts. */
+   * leaves the field committing only `prompts`, previous queries among them
+   * included. */
   freeText: boolean;
-  /** Trailing list rows for the extension's own actions; choosing one
-   * renders its `Action` and runs no search. */
+  /** Trailing list rows for the extension's own actions, offered while
+   * `freeText` is false; choosing one renders its `Action` and runs no
+   * search. */
   actions?: { id: string; label: string }[];
 }
-
-/** Refines what is offered as the text changes: pure and synchronous, called
- * on every keystroke, so it does no I/O. `history` is the field's previous
- * queries, most recent first. */
-export type TextSearchSuggester = (
-  query: string,
-  history: readonly string[],
-) => TextSearchSuggestions;
 
 /** What an extension's list content is given. */
 export interface TextSearchListProps {
@@ -118,13 +111,12 @@ export interface TextSearchExtension {
   /** The sources `index` can narrow a search to; null, or absent, when it
    * cannot be narrowed. */
   sources?: (index: TextSearchIndex) => Promise<SearchSources | null>;
-  /** Called when the list opens and on `refresh`. It may resolve from the
-   * extension's own cache; the suggester it resolves to is synchronous, does
-   * no I/O, and refines every keystroke. Until it first resolves for an
-   * index, the field offers previous queries and runs no typed text; a
-   * rejection leaves nothing searchable. Absent: the field offers previous
-   * queries and searches any text. */
-  loadSuggestions?: (index: TextSearchIndex) => Promise<TextSearchSuggester>;
+  /** Called when the list opens and on `refresh`; it may resolve from the
+   * extension's own cache. Until it first resolves for an index, the field
+   * offers previous queries and runs no typed text; a rejection leaves
+   * nothing searchable. Absent: the field offers previous queries and
+   * searches any text. */
+  loadSuggestions?: (index: TextSearchIndex) => Promise<TextSearchSuggestions>;
   /** Shown while `freeText` is false and the list has no rows, e.g. to say
    * why typed text cannot run and to offer an action. */
   EmptyList?: React.ComponentType<TextSearchListProps>;

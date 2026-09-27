@@ -85,7 +85,6 @@ import {
   type TemporalDetectionLabelLike,
 } from "../tracks/temporalDetectionTracks";
 import { VideoFrameLabelsStream } from "../streams/VideoFrameLabelsStream";
-import { PinOnAppear } from "../tracks/PinOnAppear";
 
 const DEFAULT_FRAME_FIELD = "frames.detections";
 const TRACKS_RENDERED_EVENT = "video-annotation-tracks-rendered";
@@ -740,9 +739,8 @@ export const FrameLabelsTracks: React.FC<{
   /** Reports whether the frame tracks have resolved for the current sample. */
   onReadyChange?: (ready: boolean) => void;
   /**
-   * Read-only rows a host adds after the sample's own, pinned the first time
-   * each appears. Must be a stable reference while unchanged: a new identity
-   * re-decorates every row.
+   * Read-only rows a host adds after the sample's own. Must be a stable
+   * reference while unchanged: a new identity re-decorates every row.
    */
   extraTracks?: readonly Track[];
   /** Row behavior the host adds to its `extraTracks`, over the read-only
@@ -750,6 +748,9 @@ export const FrameLabelsTracks: React.FC<{
   decorateExtraTrack?: TemporalTagTimelineProps["decorateTrack"];
   /** Host content drawn over the ruler. */
   rulerOverlay?: (labelWidth: number) => React.ReactNode;
+  /** Host content mounted inside this timeline's track provider, such as
+   * what pins the host's own rows. */
+  runtime?: React.ReactNode;
 }> = ({
   sample,
   maxSize,
@@ -761,6 +762,7 @@ export const FrameLabelsTracks: React.FC<{
   extraTracks = NO_EXTRA_TRACKS,
   decorateExtraTrack,
   rulerOverlay,
+  runtime,
 }) => {
   const { resolveObjectColor, resolveTemporalDetectionColor } =
     useTrackColorResolvers();
@@ -890,14 +892,14 @@ export const FrameLabelsTracks: React.FC<{
     ready,
   });
   const extraTrackIds = useMemo(
-    () => extraTracks.map(({ id }) => id),
+    () => new Set(extraTracks.map(({ id }) => id)),
     [extraTracks],
   );
   const decorateTrack = useCallback<
     NonNullable<TemporalTagTimelineProps["decorateTrack"]>
   >(
     (track, pinned) =>
-      extraTrackIds.includes(track.id)
+      extraTrackIds.has(track.id)
         ? {
             ...EXTRA_TRACK_DECORATION,
             ...decorateExtraTrack?.(track, pinned),
@@ -917,7 +919,7 @@ export const FrameLabelsTracks: React.FC<{
       initialPinnedIds={pinnedTrackIds}
       persistKey={persistKey}
     >
-      <PinOnAppear ids={extraTrackIds} />
+      {runtime}
       <TemporalTagTimeline
         decorateTrack={decorateTrack}
         scrollerRef={timelineScroller}

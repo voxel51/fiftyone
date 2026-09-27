@@ -40,7 +40,7 @@ import { rememberQuery } from "./searchQueryHistory";
 import { SearchSettingsPopover } from "./SearchSettingsPopover";
 import { useLanguageSearchExtension } from "./useLanguageSearchExtension";
 import { useSearchSources } from "./useSearchSources";
-import { useSearchSuggestions } from "./useSearchSuggestions";
+import { matchesDraft, useSearchSuggestions } from "./useSearchSuggestions";
 
 export const LANGUAGE_SEARCH_LABEL = "Search or ask in natural language";
 
@@ -185,10 +185,9 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
   // the on-ramp to creating one
   const options = React.useMemo<ComboboxOption[]>(() => {
     if (!available || !enabled) return [];
-    const q = query.trim().toLowerCase();
     const previous = offeredOnly
       ? []
-      : shownHistory.filter((h) => !q || h.toLowerCase().includes(q));
+      : shownHistory.filter((h) => matchesDraft(h, query));
     const prompts = (suggestions?.prompts ?? []).filter(
       (prompt) => !previous.includes(prompt),
     );

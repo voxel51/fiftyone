@@ -6,11 +6,7 @@ import {
 } from "@fiftyone/plugins";
 import type { ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
-import {
-  mcapGridOverlayKey,
-  useMcapGridOverlays,
-} from "@fiftyone/multimodal/extensions/timeline";
-import { EpisodeGridOverlay } from "@fiftyone/multimodal/grid-overlay";
+import { TileLanes } from "@fiftyone/multimodal/grid-overlay";
 import { MEDIA_TYPE_MULTIMODAL } from "@fiftyone/utilities";
 import { Checkbox } from "@mui/material";
 import React from "react";
@@ -211,23 +207,6 @@ const GridCustomRendererWrapper = ({
   );
 };
 
-/** Edition-registered grid-tile overlays (rendered inside the multimodal
- * guard); nothing renders before anything registers. */
-const McapGridOverlays = ({
-  ctx,
-}: {
-  readonly ctx: SampleRendererRenderContext;
-}) => {
-  const overlays = useMcapGridOverlays();
-  return (
-    <>
-      {overlays.map((Overlay) => (
-        <Overlay key={mcapGridOverlayKey(Overlay)} ctx={ctx} />
-      ))}
-    </>
-  );
-};
-
 const GridCustomRenderer = ({
   Renderer,
   ctx,
@@ -359,10 +338,7 @@ export class GridCustomRendererItem {
             <div style={FOOTER_STYLES}>
               <GridTagBubbles sample={sample} />
               {ctx.media?.mediaType === MEDIA_TYPE_MULTIMODAL ? (
-                <>
-                  <EpisodeGridOverlay ctx={ctx} />
-                  <McapGridOverlays ctx={ctx} />
-                </>
+                <TileLanes ctx={ctx} />
               ) : null}
             </div>
           </GridCustomRendererWrapper>

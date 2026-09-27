@@ -46,7 +46,8 @@ const suggested = vi.hoisted(() => ({
   loadCount: vi.fn(),
   history: vi.fn(),
 }));
-vi.mock("./useSearchSuggestions", () => ({
+vi.mock("./useSearchSuggestions", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./useSearchSuggestions")>()),
   useSearchSuggestions: (
     _index: unknown,
     _query: string,
@@ -75,7 +76,11 @@ vi.mock("./SearchSettingsPopover", () => ({
   ),
 }));
 
-import { LANGUAGE_SEARCH_LABEL, LanguageSearch } from "./LanguageSearch";
+import {
+  LANGUAGE_SEARCH_LABEL,
+  LanguageSearch,
+  type LanguageSearchProps,
+} from "./LanguageSearch";
 
 const noop = () => undefined;
 
@@ -86,26 +91,44 @@ const search = (query: string) => {
   fireEvent.keyDown(field, { key: "Enter" });
 };
 
-const renderSearch = (props: { available: boolean; enabled: boolean }) => {
-  const onUnavailable = vi.fn();
-  const onOpenPanel = vi.fn();
-  const onSubmit = vi.fn();
-  render(
-    <LanguageSearch
-      onSubmit={onSubmit}
-      onUnavailable={onUnavailable}
-      history={["cats"]}
-      promptKeys={[]}
-      selectedKey={null}
-      onSelectKey={noop}
-      k={25}
-      onChangeK={noop}
-      onOpenPanel={onOpenPanel}
-      {...props}
-    />,
-  );
-  return { onSubmit, onUnavailable, onOpenPanel };
+/** An index a text search extension searches, rather than the server. */
+const EXTENSION_INDEX = {
+  key: "emb_sim",
+  patchesField: null,
+  extension: "multimodal",
 };
+
+/** Renders the field with a similarity index enabled and nothing selected,
+ * as `overrides` changes it; returns its props, callbacks being spies. */
+const renderSearch = (overrides: Partial<LanguageSearchProps> = {}) => {
+  const props: LanguageSearchProps = {
+    onSubmit: vi.fn(),
+    onUnavailable: vi.fn(),
+    onOpenPanel: vi.fn(),
+    available: true,
+    enabled: true,
+    history: [],
+    promptKeys: [],
+    selectedKey: null,
+    onSelectKey: noop,
+    k: 25,
+    onChangeK: noop,
+    ...overrides,
+  };
+  const view = render(<LanguageSearch {...props} />);
+  return {
+    ...props,
+    rerender: () => view.rerender(<LanguageSearch {...props} />),
+  };
+};
+
+/** Renders the field with {@link EXTENSION_INDEX} selected. */
+const renderExtensionSearch = (overrides: Partial<LanguageSearchProps> = {}) =>
+  renderSearch({
+    promptKeys: [EXTENSION_INDEX],
+    selectedKey: EXTENSION_INDEX.key,
+    ...overrides,
+  });
 
 describe("LanguageSearch", () => {
   afterEach(() => {
@@ -149,7 +172,7 @@ describe("LanguageSearch", () => {
   });
 
   it("offers previous queries when search is possible", () => {
-    renderSearch({ available: true, enabled: true });
+    renderSearch({ history: ["cats"] });
     fireEvent.focus(
       screen.getByRole("combobox", { name: LANGUAGE_SEARCH_LABEL }),
     );
@@ -158,7 +181,7 @@ describe("LanguageSearch", () => {
 
   it("offers a query an extension just ran before the stored history has it", () => {
     env.recentQueries = ["dogs"];
-    renderSearch({ available: true, enabled: true });
+    renderSearch({ history: ["cats"] });
     fireEvent.focus(
       screen.getByRole("combobox", { name: LANGUAGE_SEARCH_LABEL }),
     );
@@ -168,20 +191,7 @@ describe("LanguageSearch", () => {
   });
 
   it("empties the field when the dataset changes", () => {
-    const props = {
-      onSubmit: noop,
-      onUnavailable: noop,
-      available: true,
-      enabled: true,
-      history: [],
-      promptKeys: [],
-      selectedKey: null,
-      onSelectKey: noop,
-      k: 25,
-      onChangeK: noop,
-      onOpenPanel: noop,
-    };
-    const { rerender } = render(<LanguageSearch {...props} />);
+    const { rerender } = renderSearch();
     const field = () =>
       screen.getByRole<HTMLInputElement>("combobox", {
         name: LANGUAGE_SEARCH_LABEL,
@@ -190,7 +200,7 @@ describe("LanguageSearch", () => {
     expect(field().value).toBe("an animal");
 
     env.dataset = "cars";
-    rerender(<LanguageSearch {...props} />);
+    rerender();
 
     expect(field().value).toBe("");
   });
@@ -226,29 +236,14 @@ describe("LanguageSearch", () => {
   });
 
   it("hands a query for an index an extension searches to the extension", () => {
-    const onSubmit = vi.fn();
-    const index = {
-      key: "emb_sim",
-      patchesField: null,
-      extension: "multimodal",
-    };
-    render(
-      <LanguageSearch
-        onSubmit={onSubmit}
-        onUnavailable={noop}
-        available
-        enabled
-        history={[]}
-        promptKeys={[index]}
-        selectedKey="emb_sim"
-        onSelectKey={noop}
-        k={25}
-        onChangeK={noop}
-        onOpenPanel={noop}
-      />,
-    );
+    const { onSubmit } = renderExtensionSearch();
     search("an animal");
-    expect(extensionRun).toHaveBeenCalledWith(index, "an animal", 25, null);
+    expect(extensionRun).toHaveBeenCalledWith(
+      EXTENSION_INDEX,
+      "an animal",
+      25,
+      null,
+    );
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
@@ -257,27 +252,7 @@ describe("LanguageSearch", () => {
       label: "Streams",
       values: ["/cam_left", "/cam_right"],
     };
-    const index = {
-      key: "emb_sim",
-      patchesField: null,
-      extension: "multimodal",
-    };
-    render(
-      <LanguageSearch
-        onSubmit={noop}
-        onUnavailable={noop}
-        available
-        enabled
-        history={[]}
-        promptKeys={[index]}
-        selectedKey="emb_sim"
-        onSelectKey={noop}
-        k={25}
-        onChangeK={noop}
-        onOpenPanel={noop}
-      />,
-    );
-    return index;
+    renderExtensionSearch();
   };
 
   it("asks for the index's sources only once the settings open", () => {
@@ -290,52 +265,42 @@ describe("LanguageSearch", () => {
   });
 
   it("searches only the sources chosen in the settings", () => {
-    const index = renderStreamIndex();
+    renderStreamIndex();
     fireEvent.click(screen.getByRole("button", { name: "choose left" }));
     search("an animal");
-    expect(extensionRun).toHaveBeenCalledWith(index, "an animal", 25, [
-      "/cam_left",
-    ]);
+    expect(extensionRun).toHaveBeenCalledWith(
+      EXTENSION_INDEX,
+      "an animal",
+      25,
+      ["/cam_left"],
+    );
   });
 
   it("searches an extension's index without the similarity operator or a server index", () => {
-    const onUnavailable = vi.fn();
-    const onOpenPanel = vi.fn();
-    const index = {
-      key: "emb_sim",
-      patchesField: null,
-      extension: "multimodal",
-    };
-    render(
-      <LanguageSearch
-        onSubmit={noop}
-        onUnavailable={onUnavailable}
-        available={false}
-        enabled={false}
-        history={[]}
-        promptKeys={[index]}
-        selectedKey="emb_sim"
-        onSelectKey={noop}
-        k={25}
-        onChangeK={noop}
-        onOpenPanel={onOpenPanel}
-      />,
-    );
+    const { onUnavailable, onOpenPanel } = renderExtensionSearch({
+      available: false,
+      enabled: false,
+    });
     search("an animal");
-    expect(extensionRun).toHaveBeenCalledWith(index, "an animal", 25, null);
+    expect(extensionRun).toHaveBeenCalledWith(
+      EXTENSION_INDEX,
+      "an animal",
+      25,
+      null,
+    );
     expect(onUnavailable).not.toHaveBeenCalled();
     expect(onOpenPanel).not.toHaveBeenCalled();
   });
 
   it("keeps the search settings shut while a search runs", () => {
-    renderSearch({ available: true, enabled: true });
+    renderSearch();
     expect(
       screen.getByRole("button", { name: "Similarity search settings" }),
     ).toBeTruthy();
 
     cleanup();
     env.pending = true;
-    renderSearch({ available: true, enabled: true });
+    renderSearch();
 
     expect(
       screen.queryByRole("button", { name: "Similarity search settings" }),
@@ -343,15 +308,9 @@ describe("LanguageSearch", () => {
     expect(screen.getByLabelText("Search in progress")).toBeTruthy();
   });
   describe("with an extension's suggestions", () => {
-    const EXTENSION_INDEX = {
-      key: "emb_sim",
-      patchesField: null,
-      extension: "multimodal",
-    };
+    type Answer = Partial<NonNullable<typeof suggested.current>>;
 
-    const setSuggested = (
-      answer: Partial<NonNullable<typeof suggested.current>> = {},
-    ) => {
+    const setSuggested = (answer: Answer = {}) => {
       suggested.current = {
         mode: "offered",
         prompts: [],
@@ -366,23 +325,8 @@ describe("LanguageSearch", () => {
       };
     };
 
-    const renderSuggested = (history: string[] = []) => {
-      render(
-        <LanguageSearch
-          onSubmit={noop}
-          onUnavailable={noop}
-          available
-          enabled
-          history={history}
-          promptKeys={[EXTENSION_INDEX]}
-          selectedKey="emb_sim"
-          onSelectKey={noop}
-          k={25}
-          onChangeK={noop}
-          onOpenPanel={noop}
-        />,
-      );
-    };
+    const renderSuggested = (history: string[] = []) =>
+      renderExtensionSearch({ history });
 
     const field = () =>
       screen.getByRole<HTMLInputElement>("combobox", {
@@ -397,11 +341,39 @@ describe("LanguageSearch", () => {
     const optionNames = () =>
       screen.queryAllByRole("option").map((option) => option.textContent);
 
-    it("lists matching previous queries, then the extension's prompts, without repeats", () => {
-      setSuggested({ mode: "open", prompts: ["a robot arm", "a red cup"] });
-      renderSuggested(["a red cup", "a green bowl"]);
-      type("a r");
-      expect(optionNames()).toEqual(["a red cup", "a robot arm"]);
+    it.each<{
+      name: string;
+      answer: Answer;
+      history: string[];
+      typed: string;
+      options: string[];
+    }>([
+      {
+        name: "matching previous queries, then the extension's prompts, without repeats",
+        answer: { mode: "open", prompts: ["a robot arm", "a red cup"] },
+        history: ["a red cup", "a green bowl"],
+        typed: "a r",
+        options: ["a red cup", "a robot arm"],
+      },
+      {
+        name: "only the extension's prompts when only they can run",
+        answer: { prompts: ["a red cup"] },
+        history: ["a green bowl"],
+        typed: "",
+        options: ["a red cup"],
+      },
+      {
+        name: "previous queries before the extension's suggester loads",
+        answer: { mode: "pending" },
+        history: ["a red cup"],
+        typed: "",
+        options: ["a red cup"],
+      },
+    ])("lists $name", ({ answer, history, typed, options }) => {
+      setSuggested(answer);
+      renderSuggested(history);
+      type(typed);
+      expect(optionNames()).toEqual(options);
     });
 
     it("hands the extension the field's previous queries", () => {
@@ -410,57 +382,51 @@ describe("LanguageSearch", () => {
       expect(suggested.history).toHaveBeenLastCalledWith(["a red cup"]);
     });
 
-    it("searches free text when the extension allows it", () => {
-      setSuggested({ mode: "open" });
-      renderSuggested();
-      search("a green bowl");
-      expect(extensionRun).toHaveBeenCalledWith(
-        EXTENSION_INDEX,
-        "a green bowl",
-        25,
-        null,
-      );
-    });
-
-    it("lists only the extension's prompts when only they can run", () => {
-      setSuggested({ prompts: ["a red cup"] });
-      renderSuggested(["a green bowl"]);
-      type("");
-      expect(optionNames()).toEqual(["a red cup"]);
-    });
-
-    it("refuses text that is not one of the extension's prompts", () => {
-      // Nothing matched, so no row can take the Enter
-      setSuggested({ prompts: [] });
-      renderSuggested();
-      search("a green bowl");
-      expect(extensionRun).not.toHaveBeenCalled();
-    });
-
-    it("takes the top prompt on Enter", () => {
-      setSuggested({ prompts: ["a robot arm"] });
-      renderSuggested();
-      search("robot");
-      expect(extensionRun).toHaveBeenCalledWith(
-        EXTENSION_INDEX,
-        "a robot arm",
-        25,
-        null,
-      );
-    });
-
-    it("runs no typed text before the extension's suggester loads", () => {
-      setSuggested({ mode: "pending", loading: true });
+    it.each<{
+      name: string;
+      answer: Answer;
+      typed: string;
+      runs: string | null;
+    }>([
+      {
+        name: "free text when the extension allows it",
+        answer: { mode: "open" },
+        typed: "a green bowl",
+        runs: "a green bowl",
+      },
+      {
+        name: "the top prompt",
+        answer: { prompts: ["a robot arm"] },
+        typed: "robot",
+        runs: "a robot arm",
+      },
+      {
+        // Nothing matched, so no row can take the Enter
+        name: "nothing for text that is not one of the extension's prompts",
+        answer: { prompts: [] },
+        typed: "a green bowl",
+        runs: null,
+      },
+      {
+        name: "no typed text before the extension's suggester loads",
+        answer: { mode: "pending", loading: true },
+        typed: "a green bowl",
+        runs: null,
+      },
+    ])("runs $name on Enter", ({ answer, typed, runs }) => {
+      setSuggested(answer);
       renderSuggested(["a red cup"]);
-      search("a green bowl");
-      expect(extensionRun).not.toHaveBeenCalled();
-    });
-
-    it("offers previous queries before the extension's suggester loads", () => {
-      setSuggested({ mode: "pending" });
-      renderSuggested(["a red cup"]);
-      type("");
-      expect(optionNames()).toEqual(["a red cup"]);
+      search(typed);
+      if (runs === null) {
+        expect(extensionRun).not.toHaveBeenCalled();
+      } else {
+        expect(extensionRun).toHaveBeenCalledWith(
+          EXTENSION_INDEX,
+          runs,
+          25,
+          null,
+        );
+      }
     });
 
     it("loads the suggester again each time the list opens", () => {
@@ -511,7 +477,7 @@ describe("LanguageSearch", () => {
       </button>
     );
 
-    it("shows the extension's empty list when nothing can run, and starts its action", () => {
+    it("shows the extension's empty list when nothing can run, starts its action, reloads on its refresh and ends it on close", () => {
       setSuggested({ EmptyList, Action });
       renderSuggested();
       type("a green bowl");
@@ -521,6 +487,14 @@ describe("LanguageSearch", () => {
       ).toBeTruthy();
       fireEvent.change(field(), { target: { value: "a green bowls" } });
       expect(field().value).toBe("a green bowls");
+
+      const before = suggested.loadCount.mock.lastCall?.[0];
+      fireEvent.click(screen.getByRole("button", { name: "refresh" }));
+      expect(suggested.loadCount.mock.lastCall?.[0]).toBe(before + 1);
+      fireEvent.click(screen.getByRole("button", { name: "close" }));
+      expect(
+        screen.queryByRole("dialog", { name: "action add-queries" }),
+      ).toBeNull();
     });
 
     it("shows no empty list while any text can run", () => {
@@ -529,20 +503,6 @@ describe("LanguageSearch", () => {
       type("a green bowl");
       expect(
         screen.queryByRole("button", { name: "nothing can run" }),
-      ).toBeNull();
-    });
-
-    it("loads the suggester again on refresh, and ends the action on close", () => {
-      setSuggested({ EmptyList, Action });
-      renderSuggested();
-      type("a green bowl");
-      fireEvent.click(screen.getByRole("button", { name: "nothing can run" }));
-      const before = suggested.loadCount.mock.lastCall?.[0];
-      fireEvent.click(screen.getByRole("button", { name: "refresh" }));
-      expect(suggested.loadCount.mock.lastCall?.[0]).toBe(before + 1);
-      fireEvent.click(screen.getByRole("button", { name: "close" }));
-      expect(
-        screen.queryByRole("dialog", { name: "action add-queries" }),
       ).toBeNull();
     });
   });

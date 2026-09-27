@@ -15,7 +15,6 @@ export {
   type TextSearchListProps,
   type TextSearchRequest,
   type TextSearchResult,
-  type TextSearchSuggester,
   type TextSearchSuggestions,
 } from "./similaritySearch/textSearchExtensions";
 export {

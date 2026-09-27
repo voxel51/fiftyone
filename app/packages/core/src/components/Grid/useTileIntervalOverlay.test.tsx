@@ -21,9 +21,13 @@ const lane = vi.hoisted(() => ({ surfaces: [] as string[] }));
 
 // What an edition registers, e.g. the embedding-window lane
 const registered = vi.hoisted(() => ({
-  overlays: [] as Array<(props: { ctx: { durationNs?: number } }) => null>,
-  durations: [] as Array<number | undefined>,
+  overlays: [] as Array<() => null>,
 }));
+
+// The episode time ranges tiles publish, which every lane reads its axis from
+const ranges = vi.hoisted(
+  () => new Map<string, { startNs: bigint; endNs: bigint }>(),
+);
 
 // The selection's first match for any tile, as a store a test can move
 const match = vi.hoisted(() => {
@@ -42,9 +46,28 @@ const match = vi.hoisted(() => {
   };
 });
 
+// Seek requests a lane makes, as the shared registry holds them
+const seeks = vi.hoisted(() => {
+  const listeners = new Map<string, Set<() => void>>();
+  const requests = new Map<string, { timestampNs: bigint }>();
+  return {
+    request(episodeId: string, timestampNs: bigint) {
+      requests.set(episodeId, { timestampNs });
+      listeners.get(episodeId)?.forEach((listener) => listener());
+    },
+    get: (episodeId: string) => requests.get(episodeId) ?? null,
+    release: (episodeId: string) => requests.delete(episodeId),
+    subscribe(episodeId: string, listener: () => void) {
+      const set = listeners.get(episodeId) ?? new Set();
+      set.add(listener);
+      listeners.set(episodeId, set);
+      return () => set.delete(listener);
+    },
+  };
+});
+
 vi.mock("@fiftyone/multimodal/extensions/timeline", () => ({
-  mcapGridOverlayKey: () => 0,
-  useMcapGridOverlays: () => registered.overlays,
+  useGridOverlays: () => registered.overlays,
   useSampleRendererFirstMatch: () => {
     const startNs = useSyncExternalStore(
       match.subscribe,
@@ -59,6 +82,7 @@ vi.mock("@fiftyone/looker", () => {
   class VideoLooker extends EventTarget {
     duration: number | null = null;
     posterAt = vi.fn();
+    seekToSeconds = vi.fn();
     loadPoster(duration: number) {
       this.duration = duration;
       this.dispatchEvent(new Event("load"));
@@ -68,10 +92,30 @@ vi.mock("@fiftyone/looker", () => {
 });
 
 vi.mock("@fiftyone/multimodal/grid-overlay", () => ({
-  EpisodeGridOverlay: ({ ctx }: { ctx: { surface: string } }) => {
-    lane.surfaces.push(ctx.surface);
-    return <div data-lane="" />;
+  TileLanes: ({
+    ctx,
+    showTags,
+  }: {
+    ctx: { surface: string };
+    showTags: boolean;
+  }) => {
+    if (showTags) lane.surfaces.push(ctx.surface);
+    return (
+      <>
+        {showTags ? <div data-lane="" /> : null}
+        {registered.overlays.map((Overlay, index) => (
+          <Overlay key={index} />
+        ))}
+      </>
+    );
   },
+  getEpisodeSeek: seeks.get,
+  releaseEpisodeSeek: seeks.release,
+  subscribeEpisodeSeek: seeks.subscribe,
+  publishEpisodeTimeRange: (
+    episodeId: string,
+    range: { startNs: bigint; endNs: bigint },
+  ) => ranges.set(episodeId, range),
 }));
 
 import { VideoLooker } from "@fiftyone/looker";
@@ -79,6 +123,7 @@ import { useTileIntervalOverlay } from "./useTileIntervalOverlay";
 
 type FakeLooker = VideoLooker & {
   posterAt: ReturnType<typeof vi.fn>;
+  seekToSeconds: ReturnType<typeof vi.fn>;
   loadPoster: (duration: number) => void;
 };
 
@@ -111,16 +156,17 @@ describe("useTileIntervalOverlay", () => {
     expect(lane.surfaces).toEqual(["grid"]);
   });
 
-  it("mounts a registered overlay on the clip's duration where tags are unsupported", async () => {
+  it("mounts a registered overlay where tags are unsupported, on the clip's recorded duration", async () => {
     tags.supported = false;
-    registered.durations = [];
+    const mounted: string[] = [];
     registered.overlays = [
-      ({ ctx }) => {
-        registered.durations.push(ctx.durationNs);
+      () => {
+        mounted.push("overlay");
         return null;
       },
     ];
     lane.surfaces = [];
+    ranges.clear();
     try {
       const { result } = renderHook(() => useTileIntervalOverlay());
       await act(async () =>
@@ -133,8 +179,12 @@ describe("useTileIntervalOverlay", () => {
         }),
       );
 
-      expect(registered.durations).toEqual([2.5e9]);
+      expect(mounted.length).toBeGreaterThan(0);
       expect(lane.surfaces).toEqual([]);
+      expect(ranges.get("video")).toEqual({
+        startNs: 0n,
+        endNs: 2_500_000_000n,
+      });
     } finally {
       tags.supported = true;
       registered.overlays = [];
@@ -145,13 +195,7 @@ describe("useTileIntervalOverlay", () => {
     const mountWithLooker = async () => {
       // The mocked looker takes no arguments, unlike the real one
       const looker = new (VideoLooker as unknown as new () => FakeLooker)();
-      registered.durations = [];
-      registered.overlays = [
-        ({ ctx }) => {
-          registered.durations.push(ctx.durationNs);
-          return null;
-        },
-      ];
+      ranges.clear();
       const { result } = renderHook(() => useTileIntervalOverlay());
       await act(async () =>
         result.current.mount(
@@ -164,35 +208,34 @@ describe("useTileIntervalOverlay", () => {
       return looker;
     };
 
-    it("draws on the clip length the looker read with its poster", async () => {
-      try {
-        const looker = await mountWithLooker();
+    it("moves the clip to where its lanes are clicked", async () => {
+      const looker = await mountWithLooker();
 
-        await act(async () => looker.loadPoster(12));
+      await act(async () => seeks.request("video", 4_500_000_000n));
 
-        expect(registered.durations.at(0)).toBeUndefined();
-        expect(registered.durations.at(-1)).toBe(12e9);
-      } finally {
-        registered.overlays = [];
-      }
+      expect(looker.seekToSeconds).toHaveBeenLastCalledWith(4.5);
     });
 
-    it("shows the first match once the poster is in, and the start once the match is gone", async () => {
+    it("publishes the clip length the looker read with its poster, shows the first match once the poster is in, and the start once the match is gone", async () => {
       try {
         const looker = await mountWithLooker();
 
-        // Before the poster there is nothing to seek
+        // Before the poster there is no length, and nothing to seek
         await act(async () => match.set(3_000_000_000n));
+        expect(ranges.has("video")).toBe(false);
         expect(looker.posterAt).not.toHaveBeenCalled();
 
         await act(async () => looker.loadPoster(12));
+        expect(ranges.get("video")).toEqual({
+          startNs: 0n,
+          endNs: 12_000_000_000n,
+        });
         expect(looker.posterAt).toHaveBeenLastCalledWith(3);
 
         await act(async () => match.set(null));
         expect(looker.posterAt).toHaveBeenLastCalledWith(null);
       } finally {
         match.set(null);
-        registered.overlays = [];
       }
     });
   });

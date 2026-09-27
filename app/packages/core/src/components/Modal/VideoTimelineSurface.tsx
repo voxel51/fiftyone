@@ -261,8 +261,8 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
                     extraTracks={tracks}
                     decorateExtraTrack={decorateTrack}
                     rulerOverlay={rulerOverlay}
+                    runtime={runtime}
                   />
-                  {runtime}
                 </>
               )}
             </VideoTimelineExtensions>

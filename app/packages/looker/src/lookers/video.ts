@@ -452,14 +452,26 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
     );
   }
 
+  /** Moves the playhead to `seconds` into the clip, as `seekToFrame` does. */
+  seekToSeconds(seconds: number): void {
+    const {
+      duration,
+      config: { frameRate },
+    } = this.state;
+    if (duration === null || !Number.isFinite(seconds)) return;
+
+    this.seekToFrame(getFrameNumber(seconds, duration, frameRate));
+  }
+
   /**
-   * Shows an idle thumbnail at `seconds` into the clip, or back at its start
-   * when null, and starts hover playback there. Ignored until the first
-   * poster has loaded, and while the clip is live (hovered or playing).
+   * Redraws the idle thumbnail at `seconds` into the clip, or at its start
+   * when null, and starts the next hover playback there. Ignored until the
+   * first poster has loaded. While the clip is live the poster only stands in
+   * until the video has a frame, so a redraw then changes nothing visible.
    */
   posterAt(seconds: number | null): void {
-    const { config, hovering, loaded, playing } = this.state;
-    if (!config.thumbnail || !loaded || hovering || playing) return;
+    const { config, loaded } = this.state;
+    if (!config.thumbnail || !loaded) return;
     if (seconds !== null && !Number.isFinite(seconds)) return;
 
     (this.lookerElement.children[0] as unknown as VideoElement).posterAt(

@@ -2,16 +2,16 @@
  * Copyright 2017-2026, Voxel51, Inc.
  *
  * What the selected index's text search extension offers for the typed
- * prompt. Its suggester is loaded whenever `loadCount` changes (the list
- * opening, or the extension asking to refresh), and every keystroke is
- * refined by the suggester alone.
+ * prompt. Its suggestions are loaded whenever `loadCount` changes (the list
+ * opening, or the extension asking to refresh), and matched against every
+ * keystroke here.
  */
 
 import type {
   PromptableSimilarityIndex,
   TextSearchExtension,
   TextSearchIndex,
-  TextSearchSuggester,
+  TextSearchSuggestions,
 } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
 import { useEffect, useMemo, useState } from "react";
@@ -19,26 +19,34 @@ import { useEffect, useMemo, useState } from "react";
 export interface SearchSuggestions {
   /**
    * - `open`: previous queries and the extension's prompts; any text runs.
-   * - `pending`: no suggester yet; previous queries only, and no typed text
+   * - `pending`: nothing loaded yet; previous queries only, and no typed text
    *   runs.
    * - `offered`: only the extension's prompts, and its actions, can run.
    */
   mode: "open" | "pending" | "offered";
   prompts: string[];
   actions: { id: string; label: string }[];
-  /** No suggester has loaded for this index yet, and one is loading. */
+  /** Nothing has loaded for this index yet, and a load is in flight. */
   loading: boolean;
   index: TextSearchIndex;
   EmptyList: TextSearchExtension["EmptyList"];
   Action: TextSearchExtension["Action"];
 }
 
+/** How much of a prompt is typed before an extension's prompts are
+ * suggested; previous queries match from the first character. */
+const SUGGEST_AFTER = 3;
+
 const NO_PROMPTS: string[] = [];
 const NO_ACTIONS: { id: string; label: string }[] = [];
-const REFUSE_ALL: TextSearchSuggester = () => ({
-  prompts: [],
-  freeText: false,
-});
+const REFUSED: TextSearchSuggestions = { prompts: [], freeText: false };
+
+/** Whether `text` is offered for the typed `draft`: every text matches an
+ * empty draft, and otherwise ignoring case. */
+export function matchesDraft(text: string, draft: string): boolean {
+  const q = draft.trim().toLowerCase();
+  return !q || text.toLowerCase().includes(q);
+}
 
 /** Null when the index's extension suggests nothing: previous queries only,
  * and any text runs. */
@@ -56,12 +64,12 @@ export const useSearchSuggestions = (
   const brainKey = index?.key ?? null;
   const runTimestamp = index?.timestamp ?? null;
 
-  // Tagged with the index it answers, so another index's suggester never
-  // runs; a later load for the same index replaces it once it resolves
+  // Tagged with the index it answers, so another index's prompts are never
+  // offered; a later load for the same index replaces it once it resolves
   const [loaded, setLoaded] = useState<{
     brainKey: string;
     runTimestamp: string | null;
-    suggester: TextSearchSuggester;
+    suggestions: TextSearchSuggestions;
   } | null>(null);
   const [loadingFor, setLoadingFor] = useState<string | null>(null);
 
@@ -73,27 +81,27 @@ export const useSearchSuggestions = (
     let live = true;
     const loadKey = JSON.stringify([brainKey, runTimestamp, loadCount]);
     setLoadingFor(loadKey);
-    const settle = (suggester: TextSearchSuggester) => {
+    const settle = (suggestions: TextSearchSuggestions) => {
       if (!live) return;
-      setLoaded({ brainKey, runTimestamp, suggester });
+      setLoaded({ brainKey, runTimestamp, suggestions });
       setLoadingFor((current) => (current === loadKey ? null : current));
     };
     extension
       .loadSuggestions({ datasetName, brainKey, runTimestamp })
       .then(settle, (error: unknown) => {
         console.error("Search suggestions unavailable:", error);
-        settle(REFUSE_ALL);
+        settle(REFUSED);
       });
     return () => {
       live = false;
     };
   }, [extension, datasetName, brainKey, runTimestamp, loadCount]);
 
-  const suggester =
+  const offered =
     loaded?.brainKey === brainKey && loaded?.runTimestamp === runTimestamp
-      ? loaded.suggester
+      ? loaded.suggestions
       : null;
-  const loading = !suggester && loadingFor !== null;
+  const loading = !offered && loadingFor !== null;
   const EmptyList = extension?.EmptyList;
   const Action = extension?.Action;
 
@@ -105,7 +113,7 @@ export const useSearchSuggestions = (
       Action,
       loading,
     };
-    if (!suggester) {
+    if (!offered) {
       return {
         ...base,
         mode: "pending" as const,
@@ -114,19 +122,32 @@ export const useSearchSuggestions = (
       };
     }
 
-    let answer: ReturnType<TextSearchSuggester>;
-    try {
-      answer = suggester(query, history);
-    } catch (error) {
-      console.error("Search suggestions failed:", error);
-      answer = REFUSE_ALL(query, history);
+    const suggested =
+      query.trim().length >= SUGGEST_AFTER
+        ? offered.prompts.filter((text) => matchesDraft(text, query))
+        : NO_PROMPTS;
+    if (offered.freeText) {
+      return {
+        ...base,
+        mode: "open" as const,
+        prompts: suggested,
+        actions: NO_ACTIONS,
+      };
     }
 
+    // Only what the index can answer runs, previous queries included
+    const runnable = new Set(offered.prompts);
+    const previous = history.filter(
+      (text) => runnable.has(text) && matchesDraft(text, query),
+    );
     return {
       ...base,
-      mode: answer.freeText ? ("open" as const) : ("offered" as const),
-      prompts: answer.prompts,
-      actions: answer.actions ?? NO_ACTIONS,
+      mode: "offered" as const,
+      prompts: [
+        ...previous,
+        ...suggested.filter((text) => !previous.includes(text)),
+      ],
+      actions: offered.actions ?? NO_ACTIONS,
     };
   }, [
     extension,
@@ -136,7 +157,7 @@ export const useSearchSuggestions = (
     EmptyList,
     Action,
     loading,
-    suggester,
+    offered,
     query,
     history,
   ]);

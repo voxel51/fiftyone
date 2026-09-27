@@ -111,8 +111,8 @@ export const VideoLookerSurface: React.FC<{ sample: fos.ModalSample }> = ({
                   extraTracks={tracks}
                   decorateExtraTrack={decorateTrack}
                   rulerOverlay={rulerOverlay}
+                  runtime={runtime}
                 />
-                {runtime}
               </>
             )}
           </VideoTimelineExtensions>

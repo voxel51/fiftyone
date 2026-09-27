@@ -4,13 +4,14 @@
 
 import {
   TimelineExtensionHost,
+  useSampleRendererFirstMatch,
   type TimelineComposition,
   type TimelineSection,
 } from "@fiftyone/multimodal/extensions/timeline";
-import { useDuration } from "@fiftyone/playback";
+import { useDuration, usePlayback } from "@fiftyone/playback";
 import { createSampleRendererRenderContext } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 
 const NO_SECTIONS: readonly TimelineSection[] = [];
 
@@ -20,6 +21,26 @@ const NO_EXTENSIONS: TimelineComposition = {
   runtime: null,
   tracks: [],
 };
+
+/**
+ * Opens a video the embeddings panel matched at its first matched window, as
+ * the episode modal does, once per sample and only after the clip's duration
+ * is known, since a seek before then clamps to the start.
+ */
+function useSeekToFirstMatchOnOpen(sampleId: string, durationSec: number) {
+  const identity = useMemo(
+    () => ({ sample: { sample: { _id: sampleId } } }),
+    [sampleId],
+  );
+  const firstMatch = useSampleRendererFirstMatch(identity);
+  const { seek } = usePlayback();
+  const seeked = useRef<string | null>(null);
+  useEffect(() => {
+    if (!firstMatch || durationSec <= 0 || seeked.current === sampleId) return;
+    seeked.current = sampleId;
+    seek(Number(firstMatch.startNs) / 1e9);
+  }, [seek, durationSec, firstMatch, sampleId]);
+}
 
 /**
  * Runs the registered timeline extensions for the video modal, as the
@@ -38,6 +59,7 @@ export const VideoTimelineExtensions: React.FC<{
   const schema = fos.useModalSampleSchema();
   const mediaField = fos.useSelectedMediaFieldModal();
   const durationSec = useDuration();
+  useSeekToFirstMatchOnOpen(sample.sample._id, durationSec);
 
   const ctx = useMemo(
     () =>

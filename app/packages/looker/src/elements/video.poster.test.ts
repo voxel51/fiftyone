@@ -52,21 +52,27 @@ describe("VideoElement.renderSelf", () => {
       VideoElement["renderSelf"]
     >[0];
 
-  it("keeps the poster up while a hovered video has no frame to show", () => {
-    const element = liveElement(1, 60);
+  it.each([
+    {
+      name: "keeps the poster up while a hovered video has no frame to show",
+      readyState: 1,
+      frameNumber: 1492,
+      shows: "canvas",
+    },
+    {
+      // A looping hover comes back to frame 1, which the poster no longer
+      // shows
+      name: "does not show a poster moved to a match in place of the clip's start",
+      readyState: 4,
+      frameNumber: 1,
+      shows: "element",
+    },
+  ] as const)("$name", ({ readyState, frameNumber, shows }) => {
+    const element = liveElement(readyState, 60);
 
-    VideoElement.prototype.renderSelf.call(element, hoveredState(1492));
+    VideoElement.prototype.renderSelf.call(element, hoveredState(frameNumber));
 
-    expect(element.imageSource).toBe(element.canvas);
-  });
-
-  it("does not show a poster moved to a match in place of the clip's start", () => {
-    // A looping hover comes back to frame 1, which the poster no longer shows
-    const element = liveElement(4, 60);
-
-    VideoElement.prototype.renderSelf.call(element, hoveredState(1));
-
-    expect(element.imageSource).toBe(element.element);
+    expect(element.imageSource).toBe(element[shows]);
   });
 });
 
@@ -100,12 +106,19 @@ describe("VideoElement hover playback", () => {
     return updates[1];
   };
 
-  it("starts at the poster's moment when the poster shows a match", async () => {
-    expect(await acquire(60)).toEqual({ frameNumber: 601 });
-  });
-
-  it("starts where the playhead is when the poster shows the start", async () => {
-    expect(await acquire(null)).toEqual({});
+  it.each([
+    {
+      name: "at the poster's moment when the poster shows a match",
+      posterSeconds: 60,
+      update: { frameNumber: 601 },
+    },
+    {
+      name: "where the playhead is when the poster shows the start",
+      posterSeconds: null,
+      update: {},
+    },
+  ])("starts $name", async ({ posterSeconds, update }) => {
+    expect(await acquire(posterSeconds)).toEqual(update);
   });
 });
 
@@ -125,20 +138,18 @@ describe("VideoLooker.posterAt", () => {
     return { looker, posterAt };
   };
 
-  it.each([
-    ["before the first poster has loaded", { loaded: false }],
-    ["while the clip is hovered", { hovering: true }],
-    ["while the clip plays", { playing: true }],
-  ])("leaves the poster alone %s", (_name, state) => {
-    const { looker, posterAt } = lookerWith(state);
+  it("leaves the poster alone before the first poster has loaded", () => {
+    const { looker, posterAt } = lookerWith({ loaded: false });
 
     VideoLooker.prototype.posterAt.call(looker, 3);
 
     expect(posterAt).not.toHaveBeenCalled();
   });
 
-  it("redraws an idle poster at the time asked for", () => {
-    const { looker, posterAt } = lookerWith({});
+  // A selection can change while the tile is live; dropping it would leave
+  // the poster, and the next hover, at the previous match
+  it("redraws the poster at the time asked for while the clip plays on hover", () => {
+    const { looker, posterAt } = lookerWith({ hovering: true, playing: true });
 
     VideoLooker.prototype.posterAt.call(looker, 3);
 

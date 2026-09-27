@@ -14,22 +14,27 @@ import { useMemo, useSyncExternalStore } from "react";
  * free, which a context or bridged Recoil atom does not.
  */
 
-/** One selected window mark: a time span (ns as decimal strings to preserve
- * precision past Number.MAX_SAFE_INTEGER) tagged with its stream. */
-export interface McapEmbeddingWindowMark {
+/** One selected window mark: a span in the microseconds a run keys windows
+ * in, tagged with its stream. Exact in a double, unlike nanoseconds. A point
+ * embedding has startUs === endUs. */
+export interface EmbeddingWindowMark {
   stream: string;
-  startNs: string;
-  endNs: string;
+  startUs: number;
+  endUs: number;
+  /** The embedding space this mark was resolved in. Every model embeds the
+   * same windows, so the same (stream, time) exists once per model; the tag is
+   * what keeps a mark from resolving to a space it never came from. Absent
+   * only for a run that records no per-point model. */
   model?: string;
 }
 
 /** The whole published selection, grouped by episode (sample id). */
-export interface McapEmbeddingSelection {
-  byEpisode: Record<string, McapEmbeddingWindowMark[]>;
+export interface EmbeddingSelection {
+  byEpisode: Record<string, EmbeddingWindowMark[]>;
 }
 
-interface McapEmbeddingSelectionStore {
-  snapshot: McapEmbeddingSelection | null;
+interface EmbeddingSelectionStore {
+  snapshot: EmbeddingSelection | null;
   readonly listeners: Set<() => void>;
 }
 
@@ -43,13 +48,13 @@ const globalStore = globalThis as Record<PropertyKey, unknown>;
 const store = (globalStore[STORE_KEY] ??= {
   snapshot: null,
   listeners: new Set(),
-} satisfies McapEmbeddingSelectionStore) as McapEmbeddingSelectionStore;
+} satisfies EmbeddingSelectionStore) as EmbeddingSelectionStore;
 
 /** Publishes the current selection (null clears it). Called by whatever owns
  * the selection state — an edition's embeddings panel — every time it
  * changes; nothing here decides WHEN. */
-export function publishMcapEmbeddingSelection(
-  next: McapEmbeddingSelection | null,
+export function publishEmbeddingSelection(
+  next: EmbeddingSelection | null,
 ): void {
   store.snapshot = next;
   for (const listener of store.listeners) listener();
@@ -62,7 +67,7 @@ const subscribe = (listener: () => void): (() => void) => {
 const getSnapshot = () => store.snapshot;
 
 /** The published selection, or null before anything published. */
-export function useMcapEmbeddingSelectionSnapshot(): McapEmbeddingSelection | null {
+export function useEmbeddingSelectionSnapshot(): EmbeddingSelection | null {
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
 
@@ -70,7 +75,8 @@ export function useMcapEmbeddingSelectionSnapshot(): McapEmbeddingSelection | nu
  * One selected embedding window in the current episode: the time span an
  * embedding vector covers, tagged with its stream. A point embedding has
  * `startNs === endNs` (rendered as a marker); a window embedding spans
- * `[startNs, endNs)` (rendered as an interval bar).
+ * `[startNs, endNs)` (rendered as an interval bar). Nanoseconds here only:
+ * the timeline is drawn against them, and marks cross over here.
  */
 export interface EmbeddingWindow {
   readonly labelId: string;
@@ -85,6 +91,12 @@ const NO_WINDOWS: readonly EmbeddingWindow[] = [];
  * or the smaller context a video tile's lanes are given. */
 type EpisodeContext = { readonly sample?: { readonly sample?: unknown } };
 
+const NANOS_PER_MICRO = 1000n;
+
+function microsToNanos(micros: number): bigint {
+  return BigInt(Math.round(micros)) * NANOS_PER_MICRO;
+}
+
 /**
  * The current episode's selected embedding windows for the overlays —
  * label-free, keyed strictly by ``(episode, stream, time)``. No per-tile
@@ -95,7 +107,7 @@ type EpisodeContext = { readonly sample?: { readonly sample?: unknown } };
 export function useSampleRendererEmbeddingWindows(
   ctx: EpisodeContext,
 ): readonly EmbeddingWindow[] {
-  const selection = useMcapEmbeddingSelectionSnapshot();
+  const selection = useEmbeddingSelectionSnapshot();
 
   const sample = ctx.sample?.sample as
     | { _id?: string; id?: string }
@@ -108,22 +120,14 @@ export function useSampleRendererEmbeddingWindows(
     if (!marks || marks.length === 0) return NO_WINDOWS;
     const windows: EmbeddingWindow[] = [];
     marks.forEach((m, i) => {
-      let startNs: bigint;
-      let endNs: bigint;
-      try {
-        startNs = BigInt(m.startNs);
-        endNs = BigInt(m.endNs);
-      } catch {
-        // A malformed mark must not take the whole tile's selection down with it
-        return;
-      }
+      if (!Number.isFinite(m.startUs) || !Number.isFinite(m.endUs)) return;
       windows.push({
         // Synthetic, stable per (episode, stream, time) — a namespace for the
         // read-only track id, NOT a fiftyone label id (none exist here).
-        labelId: `${episodeId}:${m.stream}:${m.startNs}:${i}`,
+        labelId: `${episodeId}:${m.stream}:${m.startUs}:${i}`,
         stream: m.stream,
-        startNs,
-        endNs,
+        startNs: microsToNanos(m.startUs),
+        endNs: microsToNanos(m.endUs),
       });
     });
     return windows.length === 0 ? NO_WINDOWS : windows;

@@ -103,7 +103,7 @@ function IntervalLane({
   const playheadNs = useEpisodePlayheadNs(episodeId, timeRange);
   const recordingDurationNs = timeRange
     ? Number(timeRange.endNs - timeRange.startNs)
-    : ctx.durationNs;
+    : undefined;
 
   const model = useMemo(
     () => buildLaneModel(resolved, recordingDurationNs),

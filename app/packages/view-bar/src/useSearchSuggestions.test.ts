@@ -26,13 +26,8 @@ const index = (key: string, extension = "multimodal") => ({
 
 const NO_HISTORY: string[] = [];
 
-// Offers the prompts containing the typed text; only they can run
-const offering =
-  (prompts: string[]) =>
-  (query: string): { prompts: string[]; freeText: boolean } => ({
-    prompts: prompts.filter((prompt) => prompt.includes(query)),
-    freeText: false,
-  });
+// Prompts only the index can run
+const offering = (prompts: string[]) => ({ prompts, freeText: false });
 
 describe("useSearchSuggestions", () => {
   beforeEach(() => {
@@ -55,7 +50,7 @@ describe("useSearchSuggestions", () => {
     expect(result.current).toMatchObject({ mode: "pending", loading: false });
   });
 
-  it("runs nothing until the suggester loads", () => {
+  it("runs nothing until the suggestions load", () => {
     env.loadSuggestions.mockReturnValue(new Promise(() => undefined));
     const { result } = renderHook(() =>
       useSearchSuggestions(index("emb_sim"), "", NO_HISTORY, 1),
@@ -67,7 +62,7 @@ describe("useSearchSuggestions", () => {
     });
   });
 
-  it("refines every keystroke with one loaded suggester", async () => {
+  it("matches every keystroke against one load", async () => {
     env.loadSuggestions.mockResolvedValue(
       offering(["a robot arm", "a red cup"]),
     );
@@ -79,29 +74,51 @@ describe("useSearchSuggestions", () => {
     await waitFor(() => expect(result.current?.mode).toBe("offered"));
     expect(result.current?.prompts).toEqual(["a robot arm", "a red cup"]);
 
-    rerender({ query: "a ro" });
+    rerender({ query: "A RO" });
     expect(result.current?.prompts).toEqual(["a robot arm"]);
     expect(env.loadSuggestions).toHaveBeenCalledTimes(1);
   });
 
-  it("hands the suggester the field's previous queries", async () => {
-    const suggester = vi.fn(() => ({ prompts: [], freeText: true }));
-    env.loadSuggestions.mockResolvedValue(suggester);
-    const history = ["a red cup"];
-    const { result } = renderHook(() =>
-      useSearchSuggestions(index("emb_sim"), "a", history, 1),
+  it("suggests the index's prompts only from three typed characters", async () => {
+    env.loadSuggestions.mockResolvedValue({
+      prompts: ["red rain"],
+      freeText: true,
+    });
+    const { result, rerender } = renderHook(
+      ({ query }) =>
+        useSearchSuggestions(index("emb_sim"), query, NO_HISTORY, 1),
+      { initialProps: { query: "re" } },
     );
     await waitFor(() => expect(result.current?.mode).toBe("open"));
-    expect(suggester).toHaveBeenLastCalledWith("a", history);
+    expect(result.current?.prompts).toEqual([]);
+
+    rerender({ query: "red" });
+    expect(result.current?.prompts).toEqual(["red rain"]);
+  });
+
+  it("offers only the previous queries the index can run, first", async () => {
+    env.loadSuggestions.mockResolvedValue({
+      prompts: ["a red truck", "red rain"],
+      freeText: false,
+      actions: [{ id: "add", label: "Add queries" }],
+    });
+    const { result } = renderHook(() =>
+      useSearchSuggestions(index("emb_sim"), "red", ["red rain", "red car"], 1),
+    );
+    await waitFor(() => expect(result.current?.mode).toBe("offered"));
+    expect(result.current?.prompts).toEqual(["red rain", "a red truck"]);
+    expect(result.current?.actions).toEqual([
+      { id: "add", label: "Add queries" },
+    ]);
   });
 
   it("loads again when asked", async () => {
     env.loadSuggestions
       .mockResolvedValueOnce(offering(["a robot arm"]))
-      .mockResolvedValueOnce(offering(["a robot arm", "a green bowl"]));
+      .mockResolvedValueOnce(offering(["a robot arm", "a robot leg"]));
     const { result, rerender } = renderHook(
       ({ loadCount }) =>
-        useSearchSuggestions(index("emb_sim"), "a", NO_HISTORY, loadCount),
+        useSearchSuggestions(index("emb_sim"), "robot", NO_HISTORY, loadCount),
       { initialProps: { loadCount: 1 } },
     );
     await waitFor(() =>
@@ -110,11 +127,11 @@ describe("useSearchSuggestions", () => {
 
     rerender({ loadCount: 2 });
     await waitFor(() =>
-      expect(result.current?.prompts).toEqual(["a robot arm", "a green bowl"]),
+      expect(result.current?.prompts).toEqual(["a robot arm", "a robot leg"]),
     );
   });
 
-  it("never uses another index's suggester", async () => {
+  it("never offers another index's prompts", async () => {
     env.loadSuggestions.mockImplementation(({ brainKey }) =>
       brainKey === "first"
         ? Promise.resolve(offering(["a robot arm"]))
@@ -130,19 +147,8 @@ describe("useSearchSuggestions", () => {
     expect(result.current).toMatchObject({ mode: "pending", prompts: [] });
   });
 
-  it("allows nothing when the suggester cannot load", async () => {
+  it("allows nothing when the suggestions cannot load", async () => {
     env.loadSuggestions.mockRejectedValue(new Error("unreachable"));
-    const { result } = renderHook(() =>
-      useSearchSuggestions(index("emb_sim"), "a", NO_HISTORY, 1),
-    );
-    await waitFor(() => expect(result.current?.mode).toBe("offered"));
-    expect(result.current?.prompts).toEqual([]);
-  });
-
-  it("allows nothing when the suggester throws", async () => {
-    env.loadSuggestions.mockResolvedValue(() => {
-      throw new Error("bad");
-    });
     const { result } = renderHook(() =>
       useSearchSuggestions(index("emb_sim"), "a", NO_HISTORY, 1),
     );
