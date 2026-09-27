@@ -4,18 +4,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const env = vi.hoisted(() => ({
   dataset: "robots",
   pending: false,
-  recentQueries: [] as string[],
 }));
 vi.mock("@fiftyone/state", () => ({
   useCurrentDatasetName: () => env.dataset,
   useViewChangePending: () => env.pending,
-}));
-const extensionRun = vi.hoisted(() => vi.fn());
-vi.mock("./useLanguageSearchExtension", () => ({
-  useLanguageSearchExtension: () => ({
-    run: extensionRun,
-    recentQueries: env.recentQueries,
-  }),
 }));
 const sources = vi.hoisted(() => ({
   current: null as { label: string; values: string[] } | null,
@@ -45,6 +37,7 @@ vi.mock("./SearchSettingsPopover", () => ({
 }));
 
 import { LANGUAGE_SEARCH_LABEL, LanguageSearch } from "./LanguageSearch";
+import type { TextSearchController } from "./useTextSearch";
 
 const noop = () => undefined;
 
@@ -55,25 +48,27 @@ const search = (query: string) => {
   fireEvent.keyDown(field, { key: "Enter" });
 };
 
-const renderSearch = (props: { available: boolean; enabled: boolean }) => {
-  const onUnavailable = vi.fn();
-  const onOpenPanel = vi.fn();
-  const onSubmit = vi.fn();
-  render(
-    <LanguageSearch
-      onSubmit={onSubmit}
-      onUnavailable={onUnavailable}
-      history={["cats"]}
-      promptKeys={[]}
-      selectedKey={null}
-      onSelectKey={noop}
-      k={25}
-      onChangeK={noop}
-      onOpenPanel={onOpenPanel}
-      {...props}
-    />,
-  );
-  return { onSubmit, onUnavailable, onOpenPanel };
+const controller = (
+  overrides: Partial<TextSearchController>,
+): TextSearchController => ({
+  available: true,
+  enabled: true,
+  onUnavailable: vi.fn(),
+  history: ["cats"],
+  promptKeys: [],
+  selectedIndex: undefined,
+  onSelectKey: noop,
+  k: 25,
+  onChangeK: noop,
+  onOpenPanel: vi.fn(),
+  submit: vi.fn(),
+  ...overrides,
+});
+
+const renderSearch = (overrides: Partial<TextSearchController>) => {
+  const controls = controller(overrides);
+  render(<LanguageSearch search={controls} />);
+  return controls;
 };
 
 describe("LanguageSearch", () => {
@@ -82,7 +77,6 @@ describe("LanguageSearch", () => {
     vi.clearAllMocks();
     env.dataset = "robots";
     env.pending = false;
-    env.recentQueries = [];
     sources.current = null;
   });
 
@@ -124,32 +118,9 @@ describe("LanguageSearch", () => {
     expect(screen.getByRole("option", { name: "cats" })).toBeTruthy();
   });
 
-  it("offers a query an extension just ran before the stored history has it", () => {
-    env.recentQueries = ["dogs"];
-    renderSearch({ available: true, enabled: true });
-    fireEvent.focus(
-      screen.getByRole("combobox", { name: LANGUAGE_SEARCH_LABEL }),
-    );
-    expect(
-      screen.getAllByRole("option").map((option) => option.textContent),
-    ).toEqual(["dogs", "cats"]);
-  });
-
   it("empties the field when the dataset changes", () => {
-    const props = {
-      onSubmit: noop,
-      onUnavailable: noop,
-      available: true,
-      enabled: true,
-      history: [],
-      promptKeys: [],
-      selectedKey: null,
-      onSelectKey: noop,
-      k: 25,
-      onChangeK: noop,
-      onOpenPanel: noop,
-    };
-    const { rerender } = render(<LanguageSearch {...props} />);
+    const controls = controller({ history: [] });
+    const { rerender } = render(<LanguageSearch search={controls} />);
     const field = () =>
       screen.getByRole<HTMLInputElement>("combobox", {
         name: LANGUAGE_SEARCH_LABEL,
@@ -158,66 +129,39 @@ describe("LanguageSearch", () => {
     expect(field().value).toBe("an animal");
 
     env.dataset = "cars";
-    rerender(<LanguageSearch {...props} />);
+    rerender(<LanguageSearch search={controls} />);
 
     expect(field().value).toBe("");
   });
 
   it("opens the panel when a query is submitted with no index", () => {
-    const { onSubmit, onOpenPanel } = renderSearch({
+    const { submit, onOpenPanel } = renderSearch({
       available: true,
       enabled: false,
     });
     search("person");
     expect(onOpenPanel).toHaveBeenCalledTimes(1);
-    expect(onSubmit).not.toHaveBeenCalled();
+    expect(submit).not.toHaveBeenCalled();
   });
 
   it("runs the query when it is submitted with an index", () => {
-    const { onSubmit, onOpenPanel } = renderSearch({
+    const { submit, onOpenPanel } = renderSearch({
       available: true,
       enabled: true,
     });
     search("person");
-    expect(onSubmit).toHaveBeenCalledWith("person");
+    expect(submit).toHaveBeenCalledWith("person", null);
     expect(onOpenPanel).not.toHaveBeenCalled();
   });
 
   it("does nothing when the operator is not registered", () => {
-    const { onSubmit, onOpenPanel } = renderSearch({
+    const { submit, onOpenPanel } = renderSearch({
       available: false,
       enabled: false,
     });
     search("person");
-    expect(onSubmit).not.toHaveBeenCalled();
+    expect(submit).not.toHaveBeenCalled();
     expect(onOpenPanel).not.toHaveBeenCalled();
-  });
-
-  it("hands a query for an index an extension searches to the extension", () => {
-    const onSubmit = vi.fn();
-    const index = {
-      key: "emb_sim",
-      patchesField: null,
-      extension: "multimodal",
-    };
-    render(
-      <LanguageSearch
-        onSubmit={onSubmit}
-        onUnavailable={noop}
-        available
-        enabled
-        history={[]}
-        promptKeys={[index]}
-        selectedKey="emb_sim"
-        onSelectKey={noop}
-        k={25}
-        onChangeK={noop}
-        onOpenPanel={noop}
-      />,
-    );
-    search("an animal");
-    expect(extensionRun).toHaveBeenCalledWith(index, "an animal", 25, null);
-    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   const renderStreamIndex = () => {
@@ -230,22 +174,11 @@ describe("LanguageSearch", () => {
       patchesField: null,
       extension: "multimodal",
     };
-    render(
-      <LanguageSearch
-        onSubmit={noop}
-        onUnavailable={noop}
-        available
-        enabled
-        history={[]}
-        promptKeys={[index]}
-        selectedKey="emb_sim"
-        onSelectKey={noop}
-        k={25}
-        onChangeK={noop}
-        onOpenPanel={noop}
-      />,
-    );
-    return index;
+    return renderSearch({
+      history: [],
+      promptKeys: [index],
+      selectedIndex: index,
+    });
   };
 
   it("asks for the index's sources only once the settings open", () => {
@@ -258,41 +191,10 @@ describe("LanguageSearch", () => {
   });
 
   it("searches only the sources chosen in the settings", () => {
-    const index = renderStreamIndex();
+    const { submit } = renderStreamIndex();
     fireEvent.click(screen.getByRole("button", { name: "choose left" }));
     search("an animal");
-    expect(extensionRun).toHaveBeenCalledWith(index, "an animal", 25, [
-      "/cam_left",
-    ]);
-  });
-
-  it("searches an extension's index without the similarity operator or a server index", () => {
-    const onUnavailable = vi.fn();
-    const onOpenPanel = vi.fn();
-    const index = {
-      key: "emb_sim",
-      patchesField: null,
-      extension: "multimodal",
-    };
-    render(
-      <LanguageSearch
-        onSubmit={noop}
-        onUnavailable={onUnavailable}
-        available={false}
-        enabled={false}
-        history={[]}
-        promptKeys={[index]}
-        selectedKey="emb_sim"
-        onSelectKey={noop}
-        k={25}
-        onChangeK={noop}
-        onOpenPanel={onOpenPanel}
-      />,
-    );
-    search("an animal");
-    expect(extensionRun).toHaveBeenCalledWith(index, "an animal", 25, null);
-    expect(onUnavailable).not.toHaveBeenCalled();
-    expect(onOpenPanel).not.toHaveBeenCalled();
+    expect(submit).toHaveBeenCalledWith("an animal", ["/cam_left"]);
   });
 
   it("keeps the search settings shut while a search runs", () => {

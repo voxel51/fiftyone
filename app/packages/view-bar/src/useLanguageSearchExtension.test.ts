@@ -9,7 +9,7 @@ const env = vi.hoisted(() => ({
   publish: vi.fn(),
   setPending: vi.fn(),
   notify: vi.fn(),
-  trackEvent: vi.fn(),
+  onRun: vi.fn(),
   extensions: new Map(),
 }));
 
@@ -24,12 +24,11 @@ vi.mock("@fiftyone/state", () => ({
   useSetViewChangePending: () => env.setPending,
   useNotification: () => env.notify,
 }));
-vi.mock("@fiftyone/analytics", () => ({ useTrackEvent: () => env.trackEvent }));
 
-import { readSearchQueries } from "./searchQueryHistory";
 import { useLanguageSearchExtension } from "./useLanguageSearchExtension";
 
-const renderSearch = () => renderHook(() => useLanguageSearchExtension());
+const renderSearch = () =>
+  renderHook(() => useLanguageSearchExtension(env.onRun));
 
 const INDEX = {
   key: "emb_sim",
@@ -53,7 +52,6 @@ const pendingResult = () => {
 describe("useLanguageSearchExtension", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    window.localStorage.clear();
     env.view = [];
     env.filters = {};
     env.extended = {};
@@ -121,7 +119,7 @@ describe("useLanguageSearchExtension", () => {
     );
   });
 
-  it("records the query in the dataset's history and shows it at once", () => {
+  it("reports each search it runs", () => {
     pendingResult();
     const { result } = renderSearch();
 
@@ -129,8 +127,7 @@ describe("useLanguageSearchExtension", () => {
       result.current.run(INDEX, "an animal", 25, null);
     });
 
-    expect(readSearchQueries("robots")).toEqual(["an animal"]);
-    expect(result.current.recentQueries).toEqual(["an animal"]);
+    expect(env.onRun).toHaveBeenCalledWith(INDEX, "an animal");
   });
 
   it("does nothing for an index no registered extension searches", () => {
@@ -142,7 +139,7 @@ describe("useLanguageSearchExtension", () => {
 
     expect(env.search).not.toHaveBeenCalled();
     expect(env.setPending).not.toHaveBeenCalled();
-    expect(readSearchQueries("robots")).toEqual([]);
+    expect(env.onRun).not.toHaveBeenCalled();
   });
 
   it("publishes only the newest search when an older one settles later", async () => {
