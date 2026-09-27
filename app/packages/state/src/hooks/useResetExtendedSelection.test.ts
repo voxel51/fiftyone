@@ -9,12 +9,14 @@ vi.mock("../recoil/atoms", () => ({
   // one call
   extendedSelection: { key: "extendedSelection" },
   extendedSelectionOverrideStage: { key: "extendedSelectionOverrideStage" },
+  writeExtendedSelectionMirror: vi.fn(),
 }));
 
 import {
   clearExtendedSelectionMirror,
   extendedSelection,
   extendedSelectionOverrideStage,
+  writeExtendedSelectionMirror,
 } from "../recoil/atoms";
 import { registerExtendedSelectionResetParticipant } from "./extendedSelectionReset";
 import {
@@ -69,5 +71,16 @@ describe("publishExtendedSelection", () => {
     // Joining the publish's own commit
     expect(participant).toHaveBeenCalledWith(cb);
     expect(decorate).toHaveBeenCalledWith(cb);
+  });
+
+  it("writes the stage to its fragment-read mirror", () => {
+    // The first read of a stage nothing had read yet restores the mirror
+    // over the write, so a search published from the view bar alone would
+    // never narrow the grid
+    const stage = { "fiftyone.core.stages.Select": { sample_ids: ["a"] } };
+
+    publishExtendedSelection({ set: vi.fn(), reset: vi.fn() }, stage);
+
+    expect(writeExtendedSelectionMirror).toHaveBeenCalledWith(stage);
   });
 });

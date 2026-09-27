@@ -39,9 +39,16 @@ import styles from "./LanguageSearch.module.css";
 import { rememberQuery } from "./searchQueryHistory";
 import { SearchSettingsPopover } from "./SearchSettingsPopover";
 import { useLanguageSearchExtension } from "./useLanguageSearchExtension";
+import { useSearchQueries } from "./useSearchQueries";
 import { useSearchSources } from "./useSearchSources";
 
 export const LANGUAGE_SEARCH_LABEL = "Search or ask in natural language";
+
+/** How much of a prompt is typed before encoded queries are suggested. */
+const SUGGEST_AFTER = 3;
+
+// Prompt rows' ids carry a prefix, so no prompt can take this one
+const ADD_QUERIES_ID = "add-queries";
 
 export interface LanguageSearchProps {
   onSubmit: (query: string) => void;
@@ -152,16 +159,56 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
   const available = operatorAvailable || extensionSearch;
   const enabled = indexEnabled || extensionSearch;
 
-  // The dropdown under the box: previous queries matching the draft. With no
-  // prompt-capable index there is nothing to offer, and the empty state is
-  // the on-ramp to creating one
+  // Bumped each time the list opens and after queries are added, so the
+  // index's encoded queries are read again
+  const [queriesRead, setQueriesRead] = React.useState(0);
+  const encoded = useSearchQueries(selectedIndex, queriesRead);
+  // Only the index's encoded queries can run; while they load, nothing can
+  const encodedOnly = Boolean(encoded && !encoded.freeText);
+  const AddQueries = encodedOnly ? encoded?.AddQueries : undefined;
+  const [addingQueries, setAddingQueries] = React.useState(false);
+  // Picking a row writes its label into the field right after `onChange`;
+  // the add action is not a prompt, so the draft must survive it
+  const keepDraft = React.useRef(false);
+
+  // The dropdown under the box: previous queries matching the draft, then the
+  // index's encoded queries matching it. With no prompt-capable index there
+  // is nothing to offer, and the empty state is the on-ramp to creating one
   const options = React.useMemo<ComboboxOption[]>(() => {
     if (!available || !enabled) return [];
     const q = query.trim().toLowerCase();
-    return shownHistory
-      .filter((h) => !q || h.toLowerCase().includes(q))
-      .map((h) => ({ id: h, label: h }));
-  }, [available, enabled, shownHistory, query]);
+    const matches = (text: string) => text.toLowerCase().includes(q);
+    const previous = shownHistory.filter(
+      (h) =>
+        (!q || matches(h)) && (!encodedOnly || encoded?.queries.includes(h)),
+    );
+    const suggested =
+      encoded && q.length >= SUGGEST_AFTER
+        ? encoded.queries.filter((e) => matches(e) && !previous.includes(e))
+        : [];
+    const rows: ComboboxOption[] = [...previous, ...suggested].map((text) => ({
+      id: `query:${text}`,
+      label: text,
+    }));
+    // Trailing only: with nothing matched the empty state offers it, so Enter
+    // on unmatched text never lands on it
+    if (AddQueries && rows.length) {
+      rows.push({
+        id: ADD_QUERIES_ID,
+        label: "Add queries",
+        "data-cy": "view-bar-search-add-queries",
+      });
+    }
+    return rows;
+  }, [
+    available,
+    enabled,
+    shownHistory,
+    query,
+    encoded,
+    encodedOnly,
+    AddQueries,
+  ]);
 
   // A picked row or committed text: a previous query re-runs, typed text
   // runs. With no index there is nothing to run, and the query is the reason
@@ -169,6 +216,11 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
   const commit = React.useCallback(
     (option: ComboboxOption | null) => {
       if (!option || !available) return;
+      if (AddQueries && option.id === ADD_QUERIES_ID) {
+        keepDraft.current = true;
+        setAddingQueries(true);
+        return;
+      }
       const text = option.label.trim();
       if (!text) return;
       // The query stays visible — it names the view now loading
@@ -194,7 +246,47 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
       runExtensionSearch,
       k,
       selectedSources,
+      AddQueries,
     ],
+  );
+
+  // Typed text that matches no encoded query commits nothing, so the list
+  // says why, and offers to add it when the extension can
+  const encodedOnlyMessage =
+    available && enabled && encodedOnly
+      ? ({ close }: { close: () => void }) => (
+          <div
+            className={styles.emptyState}
+            data-cy="view-bar-search-encoded-only"
+          >
+            <div className={styles.emptyCopy}>
+              <Text variant={TextVariant.Xs} color={TextColor.Tertiary}>
+                Only queries this index has already encoded can be searched.
+              </Text>
+            </div>
+            {AddQueries && (
+              <Button
+                variant={Variant.Borderless}
+                size={Size.Sm}
+                onClick={() => {
+                  close();
+                  setAddingQueries(true);
+                }}
+              >
+                Add queries
+              </Button>
+            )}
+          </div>
+        )
+      : null;
+
+  const onQueriesAdded = React.useCallback(
+    () => setQueriesRead((count) => count + 1),
+    [],
+  );
+  const onAddQueriesClosed = React.useCallback(
+    () => setAddingQueries(false),
+    [],
   );
 
   return (
@@ -255,15 +347,25 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
         // arrives through onChange and the field keeps the text it ran with
         value={null}
         inputValue={query}
-        onInputChange={setQuery}
+        onInputChange={(text) => {
+          if (keepDraft.current) {
+            keepDraft.current = false;
+            return;
+          }
+          setQuery(text);
+        }}
         onChange={commit}
         onFocus={onFocus}
         // Committed without an index, the text is a request for one
-        allowFreeText={available}
+        allowFreeText={available && !encodedOnly}
+        // Enter takes the top match: typed text alone cannot run
+        autoHighlight={encodedOnly}
+        loading={Boolean(encoded?.loading)}
         // Without the operator there is nothing to open; the click gets an
         // explanation instead
         onOpenChange={(isOpen) => {
           if (isOpen && !available) onUnavailable();
+          if (isOpen && encoded) setQueriesRead((count) => count + 1);
         }}
         // Enter runs the search; clicking elsewhere must not
         commitOnBlur={false}
@@ -274,7 +376,8 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
         // With previous searches to offer the list is the offer; with none it
         // is noise, so it stays hidden
         emptyMessage={
-          !available || enabled
+          encodedOnlyMessage ??
+          (!available || enabled
             ? null
             : // Text search needs a similarity index that supports prompts:
               // the list says so, and its one action is to go make one —
@@ -309,9 +412,16 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
                     Create index
                   </Button>
                 </div>
-              )
+              ))
         }
       />
+      {addingQueries && AddQueries && encoded && (
+        <AddQueries
+          index={encoded.index}
+          onClose={onAddQueriesClosed}
+          onAdded={onQueriesAdded}
+        />
+      )}
       {pending && (
         // Legible even for a sub-second search: a word, not just the dots — the
         // grid's own word for it

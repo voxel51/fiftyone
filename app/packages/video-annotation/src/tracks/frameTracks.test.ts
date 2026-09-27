@@ -7,6 +7,7 @@ import {
   parseTimelineSubTrackId,
   segmentAttribute,
   subTrackId,
+  visibleTimelineTracks,
   type FrameLabelReader,
   type PerInstanceLabel,
 } from "./frameTracks";
@@ -408,5 +409,32 @@ describe("parseTimelineSubTrackId", () => {
 
     expect(parseSubTrackId(id)).not.toBeNull();
     expect(parseTimelineSubTrackId(id)).toBeNull();
+  });
+});
+
+describe("visibleTimelineTracks", () => {
+  const row = (id: string) => ({ id, label: id, color: "#000", events: [] });
+  const ids = (tracks: { id: string }[]) => tracks.map(({ id }) => id);
+
+  it("always shows a host's extra rows, even ids that read as sub-tracks", () => {
+    // `embedding-window::video` parses as a child of an `embedding-window`
+    // parent that does not exist, which would hide it for good
+    const extra = row("embedding-window::video");
+
+    expect(ids(visibleTimelineTracks([], [extra], new Set()))).toEqual([
+      "embedding-window::video",
+    ]);
+  });
+
+  it("hides a collapsed parent's sub-tracks and shows an expanded one's", () => {
+    const parent = row("instance-1");
+    const child = row(subTrackId("instance-1", "occluded"));
+
+    expect(ids(visibleTimelineTracks([parent, child], [], new Set()))).toEqual([
+      "instance-1",
+    ]);
+    expect(
+      ids(visibleTimelineTracks([parent, child], [], new Set(["instance-1"]))),
+    ).toEqual(["instance-1", child.id]);
   });
 });

@@ -1,4 +1,3 @@
-import type { SampleRendererProps } from "@fiftyone/plugins";
 import { useMemo, useSyncExternalStore } from "react";
 
 /**
@@ -82,6 +81,10 @@ export interface EmbeddingWindow {
 
 const NO_WINDOWS: readonly EmbeddingWindow[] = [];
 
+/** What identifies the episode a tile draws: a sample renderer's context,
+ * or the smaller context a video tile's lanes are given. */
+type EpisodeContext = { readonly sample?: { readonly sample?: unknown } };
+
 /**
  * The current episode's selected embedding windows for the overlays —
  * label-free, keyed strictly by ``(episode, stream, time)``. No per-tile
@@ -90,7 +93,7 @@ const NO_WINDOWS: readonly EmbeddingWindow[] = [];
  * selected for its episode.
  */
 export function useSampleRendererEmbeddingWindows(
-  ctx: SampleRendererProps["ctx"],
+  ctx: EpisodeContext,
 ): readonly EmbeddingWindow[] {
   const selection = useMcapEmbeddingSelectionSnapshot();
 
@@ -151,7 +154,7 @@ export function firstMatchWindow(
  * the modal playhead on the same instant.
  */
 export function useSampleRendererFirstMatch(
-  ctx: SampleRendererProps["ctx"],
+  ctx: EpisodeContext,
 ): EmbeddingWindow | null {
   const windows = useSampleRendererEmbeddingWindows(ctx);
   return useMemo(() => firstMatchWindow(windows), [windows]);

@@ -1,5 +1,6 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
 import { useSyncExternalStore, type ComponentType } from "react";
+import type { IntervalTileContext } from "../host/tile-context";
 
 /**
  * Grid-tile overlay components an edition contributes (e.g. an
@@ -8,7 +9,11 @@ import { useSyncExternalStore, type ComponentType } from "react";
  * registration, so no OSS-synced file ever imports edition code.
  */
 
-export type McapGridOverlayComponent = ComponentType<SampleRendererProps>;
+/** A custom-renderer tile passes its renderer context; a default-looker
+ * (video) tile passes only what identifies it and how long its media runs. */
+export type McapGridOverlayComponent = ComponentType<{
+  readonly ctx: SampleRendererProps["ctx"] | IntervalTileContext;
+}>;
 
 interface McapGridOverlayRegistry {
   readonly overlays: Set<McapGridOverlayComponent>;
@@ -51,6 +56,22 @@ const subscribe = (listener: () => void): (() => void) => {
   return () => registry.listeners.delete(listener);
 };
 const getSnapshot = () => registry.snapshot;
+
+// Keyed by the overlay's own reference (stable per registration), not its
+// position in the registry's array — an earlier overlay unregistering must
+// not shift a later one's key and force it to remount.
+const overlayIds = new WeakMap<McapGridOverlayComponent, number>();
+let nextOverlayId = 0;
+
+/** A React key for one registered overlay, the same in every host. */
+export function mcapGridOverlayKey(overlay: McapGridOverlayComponent): number {
+  let id = overlayIds.get(overlay);
+  if (id === undefined) {
+    id = nextOverlayId++;
+    overlayIds.set(overlay, id);
+  }
+  return id;
+}
 
 /** The registered overlays; empty before anything registers. */
 export function useMcapGridOverlays(): readonly McapGridOverlayComponent[] {

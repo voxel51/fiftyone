@@ -59,7 +59,7 @@ export default function useRenderer({
         instance.attach(element, dimensions, getFontSize());
         const cached = store.get(id);
         if (cached) {
-          tileOverlay.mount(key, element, cached);
+          tileOverlay.mount(key, element, cached, instance);
         }
         cache.show(key);
         return cache.sizeOf(key);
@@ -97,7 +97,7 @@ export default function useRenderer({
 
       cache.set(key, item);
       item.attach(element, dimensions);
-      tileOverlay.mount(key, element, result);
+      tileOverlay.mount(key, element, result, item);
       return cache.sizeOf(key);
     },
     [cache, getFontSize, selectSample, sampleRendererRef, store, tileOverlay],

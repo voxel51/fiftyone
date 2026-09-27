@@ -10,8 +10,10 @@ export {
   registerTextSearchExtension,
   useTextSearchExtensions,
   type SearchSources,
+  type TextSearchAddQueriesProps,
   type TextSearchExtension,
   type TextSearchIndex,
+  type TextSearchQueries,
   type TextSearchRequest,
   type TextSearchResult,
 } from "./similaritySearch/textSearchExtensions";

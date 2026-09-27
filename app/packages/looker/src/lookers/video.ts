@@ -6,6 +6,7 @@ import { jotaiStore } from "@fiftyone/state/src/jotai";
 import { getVideoElements } from "../elements";
 import { VIDEO_SHORTCUTS } from "../elements/common";
 import { getFrameNumber } from "../elements/util";
+import type { VideoElement } from "../elements/video";
 import { ClassificationsOverlay, loadOverlays } from "../overlays";
 import type { Overlay } from "../overlays/base";
 import processOverlays from "../processOverlays";
@@ -31,6 +32,7 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
   private firstFrameNumber: number;
   private frames: Map<number, WeakRef<Frame>> = new Map();
   private requestFrames: (frameNumber: number) => void;
+  private readingFrames = false;
 
   get frameNumber() {
     return this.state.frameNumber;
@@ -38,6 +40,11 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
 
   get playing() {
     return this.state.playing;
+  }
+
+  /** The clip's length in seconds, once its metadata has loaded. */
+  get duration(): number | null {
+    return this.state.duration;
   }
 
   get waiting() {
@@ -251,6 +258,12 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
       this.state.buffering && this.dispatchEvent("buffering", false);
       this.state.playing = false;
       this.state.buffering = false;
+    } else if (
+      LOOKER_WITH_READER === this &&
+      this.readingFrames !== this.needsFrameStream()
+    ) {
+      this.state.buffers = this.initialBuffers(this.state.config);
+      this.setReader();
     }
 
     if (LOOKER_WITH_READER === this) {
@@ -280,6 +293,16 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
         totalFrames: frameCount,
       },
     });
+
+    this.readingFrames = this.needsFrameStream();
+    if (!this.readingFrames) {
+      // Nothing on the tile draws a frame document, so the whole clip counts
+      // as buffered and playback never waits on a stream
+      clearReader();
+      this.state.buffers = [[1, frameCount]];
+      this.requestFrames = () => undefined;
+      return;
+    }
 
     this.requestFrames = acquireReader({
       addFrame: (frameNumber, frame) =>
@@ -317,7 +340,9 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
                 ...{
                   filter: this.state.options.filter,
                   value: {
-                    ...this.frames.get(this.frameNumber).deref().sample,
+                    ...(this.getFrame(this.frameNumber)?.sample ?? {
+                      frame_number: this.frameNumber,
+                    }),
                   },
                   schema: this.state.config.fieldSchema.frames.fields,
                   keys: ["frames"],
@@ -427,6 +452,21 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
     );
   }
 
+  /**
+   * Shows an idle thumbnail at `seconds` into the clip, or back at its start
+   * when null, and starts hover playback there. Ignored until the first
+   * poster has loaded, and while the clip is live (hovered or playing).
+   */
+  posterAt(seconds: number | null): void {
+    const { config, hovering, loaded, playing } = this.state;
+    if (!config.thumbnail || !loaded || hovering || playing) return;
+    if (seconds !== null && !Number.isFinite(seconds)) return;
+
+    (this.lookerElement.children[0] as unknown as VideoElement).posterAt(
+      seconds,
+    );
+  }
+
   postProcess(): VideoState {
     if (this.state.seeking) {
       this.state.disableOverlays = true;
@@ -497,6 +537,17 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
 
   getVideo() {
     return this.lookerElement.children[0].element as HTMLVideoElement;
+  }
+
+  /**
+   * Whether playback needs the frame stream. A thumbnail draws only the
+   * frame fields shown in the sidebar; the expanded view always streams.
+   */
+  private needsFrameStream() {
+    return (
+      !this.state.config.thumbnail ||
+      this.state.options.activePaths.some((path) => path.startsWith("frames."))
+    );
   }
 
   private hasFrame(frameNumber: number) {

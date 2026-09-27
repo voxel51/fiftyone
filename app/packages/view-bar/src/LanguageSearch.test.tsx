@@ -27,6 +27,25 @@ vi.mock("./useSearchSources", () => ({
     return sources.current;
   },
 }));
+const encoded = vi.hoisted(() => ({
+  current: null as {
+    queries: string[];
+    freeText: boolean;
+    loading: boolean;
+    index: { datasetName: string; brainKey: string; runTimestamp: null };
+    AddQueries?: React.ComponentType<{
+      onClose: () => void;
+      onAdded: () => void;
+    }>;
+  } | null,
+  readCount: vi.fn(),
+}));
+vi.mock("./useSearchQueries", () => ({
+  useSearchQueries: (_index: unknown, readCount: number) => {
+    encoded.readCount(readCount);
+    return encoded.current;
+  },
+}));
 vi.mock("./SearchSettingsPopover", () => ({
   SearchSettingsPopover: ({
     trigger,
@@ -84,6 +103,7 @@ describe("LanguageSearch", () => {
     env.pending = false;
     env.recentQueries = [];
     sources.current = null;
+    encoded.current = null;
   });
 
   it("always renders the field", () => {
@@ -309,5 +329,191 @@ describe("LanguageSearch", () => {
       screen.queryByRole("button", { name: "Similarity search settings" }),
     ).toBeNull();
     expect(screen.getByLabelText("Search in progress")).toBeTruthy();
+  });
+  describe("with an index's encoded queries", () => {
+    const EXTENSION_INDEX = {
+      key: "emb_sim",
+      patchesField: null,
+      extension: "multimodal",
+    };
+
+    const setEncoded = (
+      answer: Partial<NonNullable<typeof encoded.current>> = {},
+    ) => {
+      encoded.current = {
+        queries: ["a robot arm", "a red cup"],
+        freeText: false,
+        loading: false,
+        index: {
+          datasetName: "robots",
+          brainKey: "emb_sim",
+          runTimestamp: null,
+        },
+        ...answer,
+      };
+    };
+
+    const renderEncoded = (history: string[] = []) => {
+      const onSubmit = vi.fn();
+      render(
+        <LanguageSearch
+          onSubmit={onSubmit}
+          onUnavailable={noop}
+          available
+          enabled
+          history={history}
+          promptKeys={[EXTENSION_INDEX]}
+          selectedKey="emb_sim"
+          onSelectKey={noop}
+          k={25}
+          onChangeK={noop}
+          onOpenPanel={noop}
+        />,
+      );
+      return { onSubmit };
+    };
+
+    const type = (text: string) => {
+      const field = screen.getByRole("combobox", {
+        name: LANGUAGE_SEARCH_LABEL,
+      });
+      fireEvent.focus(field);
+      fireEvent.change(field, { target: { value: text } });
+      return field;
+    };
+
+    const optionNames = () =>
+      screen.queryAllByRole("option").map((option) => option.textContent);
+
+    it("suggests matching encoded queries once three characters are typed", () => {
+      setEncoded({ freeText: true });
+      renderEncoded();
+      type("ro");
+      expect(optionNames()).toEqual([]);
+      type("rob");
+      expect(optionNames()).toEqual(["a robot arm"]);
+    });
+
+    it("does not suggest a query the history already offers", () => {
+      setEncoded({ freeText: true });
+      renderEncoded(["a robot arm"]);
+      type("robot");
+      expect(optionNames()).toEqual(["a robot arm"]);
+    });
+
+    it("searches free text when the index can encode it", () => {
+      setEncoded({ freeText: true });
+      renderEncoded();
+      search("a green bowl");
+      expect(extensionRun).toHaveBeenCalledWith(
+        EXTENSION_INDEX,
+        "a green bowl",
+        25,
+        null,
+      );
+    });
+
+    it("refuses text that matches no encoded query", () => {
+      setEncoded();
+      renderEncoded();
+      search("a green bowl");
+      expect(extensionRun).not.toHaveBeenCalled();
+    });
+
+    it("takes the top encoded match on Enter", () => {
+      setEncoded();
+      renderEncoded();
+      search("robot");
+      expect(extensionRun).toHaveBeenCalledWith(
+        EXTENSION_INDEX,
+        "a robot arm",
+        25,
+        null,
+      );
+    });
+
+    it("drops previous queries the index cannot search", () => {
+      setEncoded();
+      renderEncoded(["a red cup", "a green bowl"]);
+      type("");
+      expect(optionNames()).toEqual(["a red cup"]);
+    });
+
+    it("refuses anything while the encoded queries load", () => {
+      setEncoded({ queries: [], freeText: false, loading: true });
+      renderEncoded(["a red cup"]);
+      search("a red cup");
+      expect(extensionRun).not.toHaveBeenCalled();
+    });
+
+    it("reads the encoded queries again each time the list opens", () => {
+      setEncoded();
+      renderEncoded();
+      const field = screen.getByRole("combobox", {
+        name: LANGUAGE_SEARCH_LABEL,
+      });
+      const before = encoded.readCount.mock.lastCall?.[0];
+      fireEvent.focus(field);
+      expect(encoded.readCount.mock.lastCall?.[0]).toBe(before + 1);
+    });
+
+    const AddQueries = ({
+      onClose,
+      onAdded,
+    }: {
+      onClose: () => void;
+      onAdded: () => void;
+    }) => (
+      <div role="dialog" aria-label="Add queries dialog">
+        <button onClick={onAdded}>added</button>
+        <button onClick={onClose}>close</button>
+      </div>
+    );
+
+    it("offers adding queries after the matches, and opens the extension's flow", () => {
+      setEncoded({ AddQueries });
+      renderEncoded();
+      type("robot");
+      expect(optionNames()).toEqual(["a robot arm", "Add queries"]);
+      fireEvent.mouseDown(screen.getByRole("option", { name: "Add queries" }));
+      expect(
+        screen.getByRole("dialog", { name: "Add queries dialog" }),
+      ).toBeTruthy();
+      expect(extensionRun).not.toHaveBeenCalled();
+      expect(
+        screen.getByRole<HTMLInputElement>("combobox", {
+          name: LANGUAGE_SEARCH_LABEL,
+        }).value,
+      ).toBe("robot");
+    });
+
+    it("explains the refusal and offers adding queries when nothing matches", () => {
+      setEncoded({ AddQueries });
+      renderEncoded();
+      type("a green bowl");
+      expect(
+        screen.getByText(
+          "Only queries this index has already encoded can be searched.",
+        ),
+      ).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Add queries" }));
+      expect(
+        screen.getByRole("dialog", { name: "Add queries dialog" }),
+      ).toBeTruthy();
+    });
+
+    it("reads the queries again once some are added, and closes the flow on request", () => {
+      setEncoded({ AddQueries });
+      renderEncoded();
+      type("a green bowl");
+      fireEvent.click(screen.getByRole("button", { name: "Add queries" }));
+      const before = encoded.readCount.mock.lastCall?.[0];
+      fireEvent.click(screen.getByRole("button", { name: "added" }));
+      expect(encoded.readCount.mock.lastCall?.[0]).toBe(before + 1);
+      fireEvent.click(screen.getByRole("button", { name: "close" }));
+      expect(
+        screen.queryByRole("dialog", { name: "Add queries dialog" }),
+      ).toBeNull();
+    });
   });
 });

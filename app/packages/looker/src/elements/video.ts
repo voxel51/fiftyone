@@ -398,6 +398,11 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
   private loop = false;
   private playbackRate = 1;
   private posterFrame: number;
+  /** Bumped per poster draw, so a slower earlier draw cannot land last. */
+  private posterDraw = 0;
+  /** How far into the clip the poster shows, in seconds, or null for the
+   * clip's start. Hover playback starts here. */
+  private posterSeconds: number | null = null;
   private requestCallback: (callback: (time: number) => void) => void;
   private release: () => void;
   private src: string;
@@ -534,43 +539,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
       if (thumbnail) {
         this.canvas = document.createElement("canvas");
         this.canvas.style.imageRendering = "pixelated";
-        acquireThumbnailer().then(([video, release]) => {
-          const error = () => {
-            video.removeEventListener("error", error);
-            video.removeEventListener("seeked", seeked);
-            release();
-            this.update({ error: true, loaded: true, dimensions: [512, 512] });
-          };
-
-          const seeked = () => {
-            const ctx = this.canvas.getContext("2d");
-            ctx.imageSmoothingEnabled = false;
-            ctx.drawImage(video, 0, 0);
-            video.removeEventListener("seeked", seeked);
-            video.removeEventListener("error", error);
-            release();
-            this.update({
-              hasPoster: true,
-              duration: video.duration,
-              loaded: true,
-            });
-          };
-
-          const load = () => {
-            video.addEventListener("seeked", seeked);
-            video.currentTime = support ? getTime(support[0], frameRate) : 0;
-            video.removeEventListener("loadedmetadata", load);
-
-            this.canvas.width = video.videoWidth;
-            this.canvas.height = video.videoHeight;
-
-            this.update({ dimensions: [video.videoWidth, video.videoHeight] });
-          };
-
-          video.addEventListener("error", error);
-          video.addEventListener("loadedmetadata", load);
-          video.src = src;
-        });
+        this.drawPoster(src, frameRate, support, null, true);
       } else {
         this.element = document.createElement("video");
         this.element.preload = "metadata";
@@ -607,19 +576,31 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
       if (!waitingForVideo && !error) {
         acquirePlayer().then(([video, release]) => {
           this.update(
-            ({ frameNumber, hovering, config: { frameRate, thumbnail } }) => {
+            ({
+              duration,
+              frameNumber,
+              hovering,
+              config: { frameRate, thumbnail },
+            }) => {
               this.element = video;
               this.release = release;
               if ((!hovering && thumbnail) || this.waitingToRelease) {
                 this.releaseVideo();
-              } else {
-                this.attachEvents();
-                this.frameNumber = getTime(frameNumber, frameRate);
-                this.element.currentTime = getTime(frameNumber, frameRate);
-                this.element.src = this.src;
+                return {};
               }
 
-              return {};
+              // The playhead is what both the video and the frame reader
+              // start from, so hover playback has to move it to the poster
+              const start =
+                thumbnail && this.posterSeconds !== null
+                  ? getFrameNumber(this.posterSeconds, duration, frameRate)
+                  : frameNumber;
+              this.attachEvents();
+              this.frameNumber = start;
+              this.element.currentTime = getTime(start, frameRate);
+              this.element.src = this.src;
+
+              return start === frameNumber ? {} : { frameNumber: start };
             },
           );
         });
@@ -633,6 +614,97 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     });
 
     return called;
+  }
+
+  /**
+   * Redraws an idle thumbnail's poster at `seconds` into the clip, or at the
+   * clip's own start when null. Only the byte range around that moment is
+   * fetched. Hover playback then starts there.
+   */
+  posterAt(seconds: number | null) {
+    this.update(({ config: { src, frameRate, support } }) => {
+      this.drawPoster(src, frameRate, support, seconds, false);
+      return {};
+    });
+  }
+
+  /**
+   * Draws the poster from a pooled video seeked to `seconds`, or to the start
+   * of the clip (or of its support) when null.
+   *
+   * The `initial` draw is what marks the looker loaded, so a redraw requested
+   * meanwhile must not supersede it; redraws supersede one another, so a
+   * slower earlier one cannot land last.
+   */
+  private drawPoster(
+    src: string,
+    frameRate: number,
+    support: [number, number] | undefined,
+    seconds: number | null,
+    initial: boolean,
+  ) {
+    const draw = initial ? this.posterDraw : ++this.posterDraw;
+    acquireThumbnailer().then(([video, release]) => {
+      const error = () => {
+        video.removeEventListener("error", error);
+        video.removeEventListener("seeked", seeked);
+        release();
+        // A failed redraw keeps the poster already drawn
+        if (initial) {
+          this.update({ error: true, loaded: true, dimensions: [512, 512] });
+        }
+      };
+
+      const seeked = () => {
+        video.removeEventListener("seeked", seeked);
+        video.removeEventListener("error", error);
+        if (!initial && draw !== this.posterDraw) {
+          release();
+          return;
+        }
+
+        const ctx = this.canvas.getContext("2d");
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(video, 0, 0);
+        const duration = video.duration;
+        if (!initial) {
+          this.posterSeconds = seconds === null ? null : video.currentTime;
+        }
+        release();
+        this.update(
+          initial
+            ? { hasPoster: true, duration, loaded: true }
+            : { hasPoster: true },
+        );
+      };
+
+      const load = () => {
+        video.addEventListener("seeked", seeked);
+        video.currentTime =
+          seconds === null
+            ? support
+              ? getTime(support[0], frameRate)
+              : 0
+            : Math.min(Math.max(seconds, 0), video.duration);
+        video.removeEventListener("loadedmetadata", load);
+
+        // Assigning a size clears the canvas, which would blank a poster that
+        // is only being redrawn
+        if (
+          this.canvas.width !== video.videoWidth ||
+          this.canvas.height !== video.videoHeight
+        ) {
+          this.canvas.width = video.videoWidth;
+          this.canvas.height = video.videoHeight;
+        }
+
+        this.update({ dimensions: [video.videoWidth, video.videoHeight] });
+      };
+
+      video.addEventListener("error", error);
+      video.addEventListener("loadedmetadata", load);
+      video.src = src;
+    });
   }
 
   private releaseVideo() {
@@ -691,7 +763,13 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
       return null;
     }
 
-    if (hasPoster && frameNumber === this.posterFrame) {
+    // The poster covers the tile until a live video has a frame of its own
+    // to show; after that it stands in only for the clip's start, since a
+    // poster moved to a match must not replace frame 1 when playback loops
+    const videoShowsNothing = !this.element || this.element.readyState < 2;
+    const posterIsPlayhead =
+      this.posterSeconds === null && frameNumber === this.posterFrame;
+    if (hasPoster && (videoShowsNothing || posterIsPlayhead)) {
       this.imageSource = this.canvas;
     } else {
       this.imageSource = this.element;

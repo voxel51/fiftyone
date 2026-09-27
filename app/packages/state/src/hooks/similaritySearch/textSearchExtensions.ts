@@ -1,3 +1,4 @@
+import type React from "react";
 import { useSyncExternalStore } from "react";
 import type { State } from "../../recoil/types";
 import type { ExtendedSelectionResetInterface } from "../extendedSelectionReset";
@@ -55,6 +56,23 @@ export interface SearchSources {
   values: string[];
 }
 
+/** The prompts an index can answer as is, for the field to suggest. */
+export interface TextSearchQueries {
+  /** Prompts searchable without encoding anything new. */
+  queries: string[];
+  /** Whether a prompt outside `queries` can be searched. False leaves the
+   * field suggesting `queries` and refusing anything else. */
+  freeText: boolean;
+}
+
+export interface TextSearchAddQueriesProps {
+  index: TextSearchIndex;
+  /** Ends the flow; the field renders nothing for it afterwards. */
+  onClose: () => void;
+  /** Asks the field to read `queries` again. */
+  onAdded: () => void;
+}
+
 /**
  * A search's result, published to the extended selection: it narrows the
  * grid without changing the view, exactly as a selection made in the
@@ -83,6 +101,11 @@ export interface TextSearchExtension {
   /** The sources `index` can narrow a search to; null, or absent, when it
    * cannot be narrowed. */
   sources?: (index: TextSearchIndex) => Promise<SearchSources | null>;
+  /** Absent: any prompt can be searched and nothing is suggested, as today. */
+  queries?: (index: TextSearchIndex) => Promise<TextSearchQueries>;
+  /** Grows `queries`, e.g. a dialog that schedules prompts to be encoded.
+   * Offered in the dropdown while `freeText` is false. */
+  AddQueries?: React.ComponentType<TextSearchAddQueriesProps>;
   /** Resolves null when a newer search elsewhere replaced this one: nothing
    * publishes, and nothing is reported. */
   search: (request: TextSearchRequest) => Promise<TextSearchResult | null>;

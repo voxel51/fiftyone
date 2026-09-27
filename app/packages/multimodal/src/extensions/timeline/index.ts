@@ -30,6 +30,7 @@ export {
 } from "./embedding-selection";
 // Edition-contributed grid-tile overlays, rendered by the shared grid
 export {
+  mcapGridOverlayKey,
   registerMcapGridOverlay,
   useMcapGridOverlays,
   type McapGridOverlayComponent,
