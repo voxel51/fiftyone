@@ -102,7 +102,7 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
   }
 
   getCurrentFrameLabels(): LabelData[] {
-    const frame = this.frames.get(this.frameNumber).deref();
+    const frame = this.getFrame(this.frameNumber);
     if (!frame) {
       return [];
     }
