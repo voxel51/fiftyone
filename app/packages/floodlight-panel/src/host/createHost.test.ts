@@ -1,6 +1,6 @@
 import { RowChange } from "@fiftyone/floodlight";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { type Anchor, createHost, SLOT } from "./createHost";
+import { type Anchor, createHost, SETTLE, SLOT } from "./createHost";
 
 class FakeInstance extends EventTarget {
   attach = vi.fn();
@@ -38,11 +38,13 @@ afterEach(() => {
 const setup = (axis: "width" | "height" = "width") => {
   const element = document.createElement("div");
   const built: FakeInstance[] = [];
-  const build = vi.fn((_anchor: Anchor<number> | undefined) => {
-    const instance = new FakeInstance();
-    built.push(instance);
-    return instance;
-  });
+  const build = vi.fn(
+    (_anchor: Anchor<number> | undefined, _context?: { interim: boolean }) => {
+      const instance = new FakeInstance();
+      built.push(instance);
+      return instance;
+    },
+  );
   const host = createHost<number, FakeInstance>({ axis, build, element });
   return { build, built, element, host };
 };
@@ -78,7 +80,7 @@ describe("createHost", () => {
     expect(host.instance).toBe(built[1]);
   });
 
-  test("rebuilds once per settled cross-axis resize, at the last anchor", () => {
+  test("rebuilds an interim instance per resize tick, at the last anchor", () => {
     const { build, built, host } = setup();
     host.rebuild();
     built[0].load();
@@ -86,15 +88,59 @@ describe("createHost", () => {
 
     resize({ width: 800, height: 600 });
     resize({ width: 820, height: 600 });
-    resize({ width: 840, height: 600 });
-    expect(build).toHaveBeenCalledTimes(1);
-
-    vi.advanceTimersByTime(150);
     expect(build).toHaveBeenCalledTimes(2);
-    expect(build).toHaveBeenLastCalledWith({
-      key: 3,
-      at: { description: "sample", fraction: 0.25 },
-    });
+    expect(build).toHaveBeenLastCalledWith(
+      { key: 3, at: { description: "sample", fraction: 0.25 } },
+      { interim: true },
+    );
+  });
+
+  test("keeps one interim build in flight and catches up after it swaps", () => {
+    const { build, built, host } = setup();
+    host.rebuild();
+    built[0].load();
+    resize({ width: 800, height: 600 });
+
+    resize({ width: 820, height: 600 });
+    resize({ width: 840, height: 600 });
+    resize({ width: 860, height: 600 });
+    expect(build).toHaveBeenCalledTimes(2);
+
+    built[1].load();
+    expect(build).toHaveBeenCalledTimes(3);
+    expect(build).toHaveBeenLastCalledWith(undefined, { interim: true });
+    built[2].load();
+    expect(build).toHaveBeenCalledTimes(3);
+  });
+
+  test("builds the content instance once the resize settles", () => {
+    const { build, built, host } = setup();
+    host.rebuild();
+    built[0].load();
+    resize({ width: 800, height: 600 });
+    resize({ width: 820, height: 600 });
+    built[1].load();
+
+    vi.advanceTimersByTime(SETTLE - 1);
+    expect(build).toHaveBeenCalledTimes(2);
+    vi.advanceTimersByTime(1);
+    expect(build).toHaveBeenCalledTimes(3);
+    expect(build).toHaveBeenLastCalledWith(undefined, { interim: false });
+
+    built[2].load();
+    expect(host.instance).toBe(built[2]);
+  });
+
+  test("the settled content build replaces a pending interim one", () => {
+    const { build, built, host } = setup();
+    host.rebuild();
+    built[0].load();
+    resize({ width: 800, height: 600 });
+    resize({ width: 820, height: 600 });
+
+    vi.advanceTimersByTime(SETTLE);
+    expect(built[1].destroy).toHaveBeenCalled();
+    expect(build).toHaveBeenLastCalledWith(undefined, { interim: false });
   });
 
   test("ignores primary-axis changes", () => {
@@ -102,17 +148,43 @@ describe("createHost", () => {
     host.rebuild();
     resize({ width: 800, height: 600 });
     resize({ width: 800, height: 900 });
-    vi.advanceTimersByTime(500);
     expect(build).toHaveBeenCalledTimes(1);
   });
 
   test("watches height when the cross axis is vertical", () => {
-    const { build, host } = setup("height");
+    const { build, built, host } = setup("height");
     host.rebuild();
+    built[0].load();
     resize({ width: 800, height: 200 });
     resize({ width: 800, height: 260 });
-    vi.advanceTimersByTime(150);
     expect(build).toHaveBeenCalledTimes(2);
+  });
+
+  test("runs onSwap before disposing the previous instance", () => {
+    const element = document.createElement("div");
+    const order: string[] = [];
+    const built: FakeInstance[] = [];
+    const host = createHost<number, FakeInstance>({
+      axis: "width",
+      element,
+      build: () => {
+        const instance = new FakeInstance();
+        instance.destroy = vi.fn(() =>
+          order.push(`destroy ${built.indexOf(instance)}`),
+        );
+        built.push(instance);
+        return instance;
+      },
+      onSwap: (next, previous) =>
+        order.push(
+          `swap ${built.indexOf(next)} from ${previous ? built.indexOf(previous) : "none"}`,
+        ),
+    });
+    host.rebuild();
+    built[0].load();
+    host.rebuild();
+    built[1].load();
+    expect(order).toEqual(["swap 0 from none", "swap 1 from 0", "destroy 0"]);
   });
 
   test("replacing a pending rebuild disposes it", () => {

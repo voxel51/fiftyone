@@ -5,6 +5,33 @@
   width: 100%;
 }
 
+/* A tile laid out during a resize, before its content returns. */
+@keyframes tileShimmer {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -50% 0;
+  }
+}
+
+.tileShimmer {
+  background-image: linear-gradient(
+    100deg,
+    transparent 30%,
+    color-mix(in srgb, var(--fo-palette-text-primary) 7%, transparent) 50%,
+    transparent 70%
+  );
+  background-size: 200% 100%;
+  animation: tileShimmer 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tileShimmer {
+    animation: none;
+  }
+}
+
 .fallingPixels {
   position: absolute;
   inset: 0;

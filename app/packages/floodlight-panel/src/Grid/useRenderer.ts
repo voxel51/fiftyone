@@ -1,3 +1,4 @@
+import styles from "./Grid.module.css";
 import type { Hide, ID, Show } from "@fiftyone/floodlight";
 import * as fos from "@fiftyone/state";
 import { useCallback, useMemo, useRef } from "react";
@@ -6,6 +7,20 @@ import useFontSize from "./useFontSize";
 import { useGridCustomRendererItem } from "./useGridCustomRendererItem";
 import useSelectSample from "./useSelectSample";
 import type { SampleStore } from "./useSpotlightPager";
+
+type Loadable = {
+  loaded: boolean;
+  addEventListener(type: "load", listener: () => void): void;
+};
+
+// the tile shimmers until its media and overlays have drawn
+const shimmerUntilLoaded = (item: Loadable, element: HTMLElement) => {
+  if (item.loaded) return;
+  element.classList.add(styles.tileShimmer);
+  item.addEventListener("load", () =>
+    element.classList.remove(styles.tileShimmer),
+  );
+};
 
 export default function useRenderer({
   cache,
@@ -51,6 +66,7 @@ export default function useRenderer({
 
       const instance = cache.get(key);
       if (instance) {
+        shimmerUntilLoaded(instance, element);
         instance.attach(element, dimensions, getFontSize());
         cache.show(key);
         return cache.sizeOf(key);
@@ -87,6 +103,7 @@ export default function useRenderer({
       });
 
       cache.set(key, item);
+      shimmerUntilLoaded(item, element);
       item.attach(element, dimensions);
       return cache.sizeOf(key);
     },

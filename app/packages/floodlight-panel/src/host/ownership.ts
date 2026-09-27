@@ -7,8 +7,22 @@ export interface Renderer<K, V> {
   showItem: Show<K, V>;
 }
 
-// one owner map per group of instances sharing an item cache
-const owners = new WeakMap<object, Map<string, symbol>>();
+/** Which instance owns each item; shared by the instances sharing an item cache. */
+export type Ownership = Map<string, symbol>;
+
+export const createOwnership = (): Ownership => new Map();
+
+/** A renderer scoped to one instance, with controls for handing items over. */
+export interface Scoped<K, V> extends Renderer<K, V> {
+  /** Record shows instead of performing them, while a visible instance holds the items. */
+  defer(): void;
+  /** Perform the recorded shows and stop deferring. */
+  flush(): void;
+  /** Make every later call a no-op, for an instance that has been replaced. */
+  retire(): void;
+}
+
+type ShowArgs<K, V> = Parameters<Show<K, V>>[0];
 
 /**
  * Scopes a shared renderer to one instance: the instance that showed an item
@@ -18,30 +32,49 @@ const owners = new WeakMap<object, Map<string, symbol>>();
  */
 export const scopeRenderer = <K, V>(
   renderer: Renderer<K, V>,
-  /** Any object shared by exactly the instances that share the item cache. */
-  group: object,
-): Renderer<K, V> => {
-  let map = owners.get(group);
-  if (!map) {
-    map = new Map();
-    owners.set(group, map);
-  }
-  const shared = map;
+  shared: Ownership,
+): Scoped<K, V> => {
   const scope = Symbol("instance");
   const owns = (id: ID) => shared.get(id.description) === scope;
+  const deferred = new Map<string, ShowArgs<K, V>>();
+  let deferring = false;
+  let retired = false;
+
+  const show = (args: ShowArgs<K, V>) => {
+    shared.set(args.id.description, scope);
+    return renderer.showItem(args);
+  };
 
   return {
     showItem: (args) => {
-      shared.set(args.id.description, scope);
-      return renderer.showItem(args);
+      if (retired) return Promise.resolve(0);
+      if (!deferring) return show(args);
+      deferred.set(args.id.description, args);
+      return Promise.resolve(0);
     },
     hideItem: (args) => {
-      if (owns(args.id)) renderer.hideItem(args);
+      if (retired) return;
+      if (deferring) deferred.delete(args.id.description);
+      else if (owns(args.id)) renderer.hideItem(args);
     },
     detachItem: (id) => {
+      if (retired) return;
+      deferred.delete(id.description);
       if (!owns(id)) return;
       shared.delete(id.description);
       renderer.detachItem(id);
+    },
+    defer: () => {
+      deferring = true;
+    },
+    flush: () => {
+      deferring = false;
+      for (const args of deferred.values()) show(args);
+      deferred.clear();
+    },
+    retire: () => {
+      retired = true;
+      deferred.clear();
     },
   };
 };

@@ -29,6 +29,9 @@ import type { VariablesOf } from "react-relay";
 import { useReverbCallback, useReverbValue } from "@fiftyone/reverb";
 import styles from "./Grid.module.css";
 import { gridSpacing, groupSiblingsPageParameters } from "./atoms";
+import { createPageSource } from "../host/pageSource";
+import { SLOT } from "../host/createHost";
+import { createOwnership, scopeRenderer } from "../host/ownership";
 import { connectionItems, fetchSamplePage, routeWheel } from "./samplePages";
 import type { ItemCache } from "./types";
 import useRenderer from "./useRenderer";
@@ -59,6 +62,22 @@ export default function useSwimlaneRenderer({
     new Map<string, Spotlight<number, fos.Sample>>(),
   );
   const wheelHandlers = useRef(new Map<string, () => void>());
+
+  // separate from the grid's: outer rows and inner strips both key by the cover id
+  const ownership = useMemo(() => createOwnership(), [store]);
+  // keyed by the exact query, so a view change misses instead of serving stale siblings
+  const siblingPages = useMemo(
+    () =>
+      createPageSource(async (json: string) => {
+        const connection = await fetchSamplePage(
+          environment,
+          JSON.parse(json) as VariablesOf<foq.paginateSamplesQuery>,
+        );
+        if (!connection) throw new Error("sibling page timed out");
+        return connection;
+      }),
+    [environment, store],
+  );
 
   const resolveSiblingPager = useReverbCallback(
     ({ snapshot }) =>
@@ -177,13 +196,10 @@ export default function useSwimlaneRenderer({
 
         // Page 1+ = siblings via paginateSamples filtered by groupId.
         const factory = await resolveSiblingPager(groupId!);
-        const connection = await fetchSamplePage(
-          environment,
-          factory(
-            cursor - 1,
-            SIBLINGS_PAGE_SIZE,
-          ) as unknown as VariablesOf<foq.paginateSamplesQuery>,
-        );
+        const variables = factory(cursor - 1, SIBLINGS_PAGE_SIZE);
+        const connection = await siblingPages
+          .get(JSON.stringify(variables))
+          .catch(() => null);
         if (!connection) {
           // Connection didn't resolve (timeout / unknown). Pager
           // exhausted — clear the shimmer so we don't loop forever.
@@ -206,6 +222,7 @@ export default function useSwimlaneRenderer({
 
       // Inner renderer: spacer items render as grid-colored blanks;
       // everything else (cover + siblings) delegates to base.
+      const scoped = scopeRenderer(base.renderer, ownership);
       const innerRenderer = {
         showItem: ((args2) => {
           if (args2.id.description === spacerId) {
@@ -213,15 +230,15 @@ export default function useSwimlaneRenderer({
               "var(--fo-palette-background-mediaSpace)";
             return Promise.resolve(0);
           }
-          return base.renderer.showItem(args2);
+          return scoped.showItem(args2);
         }) as typeof base.renderer.showItem,
         hideItem: ((args2) => {
           if (args2.id.description === spacerId) return undefined;
-          return base.renderer.hideItem(args2);
+          return scoped.hideItem(args2);
         }) as typeof base.renderer.hideItem,
         detachItem: ((innerId) => {
           if (innerId.description === spacerId) return;
-          base.renderer.detachItem(innerId);
+          scoped.detachItem(innerId);
         }) as typeof base.renderer.detachItem,
       };
 
@@ -253,7 +270,9 @@ export default function useSwimlaneRenderer({
       const outerHost = document.getElementById(id);
       wheelHandlers.current.set(
         key,
-        routeWheel(row, () => outerHost?.firstElementChild),
+        routeWheel(row, () =>
+          outerHost?.querySelector(`:scope > [${SLOT}="active"] > *`),
+        ),
       );
 
       return Promise.resolve(0);
@@ -265,6 +284,8 @@ export default function useSwimlaneRenderer({
       groupField,
       id,
       resolveSiblingPager,
+      siblingPages,
+      ownership,
       spacing,
       store,
     ],

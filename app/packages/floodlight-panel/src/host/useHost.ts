@@ -1,6 +1,7 @@
 import { type RefObject, useEffect, useRef, useState } from "react";
 import {
   type Anchor,
+  type BuildContext,
   createHost,
   type CrossAxis,
   type Host,
@@ -11,10 +12,10 @@ import {
 export interface UseHostOptions<K, I extends Instance> {
   ref: RefObject<HTMLElement>;
   axis: CrossAxis;
-  build: (anchor: Anchor<K> | undefined) => I;
+  build: (anchor: Anchor<K> | undefined, context: BuildContext) => I;
   onAnchor?: (anchor: Anchor<K>) => void;
   onDispose?: (instance: I) => void;
-  settle?: number;
+  onSwap?: (next: I, previous: I | undefined) => void;
 }
 
 /**
@@ -28,7 +29,7 @@ export default function useHost<K, I extends Instance>(
   const latest = useRef(options);
   latest.current = options;
 
-  const { axis, ref, settle } = options;
+  const { axis, ref } = options;
   const [host, setHost] = useState<Host<K, I>>();
   const [state, setState] = useState<{ status: HostStatus; instance?: I }>({
     status: "building",
@@ -41,11 +42,11 @@ export default function useHost<K, I extends Instance>(
     const created = createHost<K, I>({
       axis,
       element,
-      settle,
-      build: (anchor) => latest.current.build(anchor),
+      build: (anchor, context) => latest.current.build(anchor, context),
       onAnchor: (anchor) => latest.current.onAnchor?.(anchor),
       onDispose: (instance) => latest.current.onDispose?.(instance),
       onStatus: (status, instance) => setState({ instance, status }),
+      onSwap: (next, previous) => latest.current.onSwap?.(next, previous),
     });
     setHost(created);
 
@@ -53,7 +54,7 @@ export default function useHost<K, I extends Instance>(
       created.destroy();
       setHost(undefined);
     };
-  }, [axis, ref, settle]);
+  }, [axis, ref]);
 
   return { host, ...state };
 }
