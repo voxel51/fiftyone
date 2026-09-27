@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import {
-  publishEmbeddingSelection,
+  publishSampleFocus,
   registerTimelineExtension,
   type TimelineExtensionComponentProps,
 } from "@fiftyone/multimodal/extensions/timeline";
@@ -40,7 +40,7 @@ const SAMPLE = {
 } as unknown as fos.ModalSample;
 
 const ROW = {
-  id: "embedding-window::video",
+  id: "test:row::video",
   label: "video",
   color: "#000",
   events: [],
@@ -49,7 +49,7 @@ const ROW = {
 let unregister: (() => void) | undefined;
 afterEach(() => {
   cleanup();
-  publishEmbeddingSelection(null);
+  publishSampleFocus(null);
   env.seek.mockReset();
   env.tracksProps.mockReset();
   unregister?.();
@@ -57,15 +57,8 @@ afterEach(() => {
 });
 
 describe("VideoTimelineExtensions", () => {
-  it("opens a matched video at its first matched window", () => {
-    publishEmbeddingSelection({
-      byEpisode: {
-        "sample-1": [
-          { stream: "video", startUs: 4_000_000, endUs: 5_000_000 },
-          { stream: "video", startUs: 2_500_000, endUs: 3_000_000 },
-        ],
-      },
-    });
+  it("opens a video at its published focus", () => {
+    publishSampleFocus({ "sample-1": { startUs: 2_500_000 } });
 
     render(<VideoTimelineExtensions sample={SAMPLE} />);
 

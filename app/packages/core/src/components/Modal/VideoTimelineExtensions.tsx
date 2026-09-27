@@ -4,7 +4,7 @@
 
 import {
   TimelineExtensionHost,
-  useSampleRendererFirstMatch,
+  useSampleFocus,
   type TimelineComposition,
   type TimelineSection,
 } from "@fiftyone/multimodal/extensions/timeline";
@@ -52,7 +52,7 @@ const ExtendedTracks: React.FC<
 /**
  * The video modal's read-only timeline, running the registered timeline
  * extensions over it, a video being an episode with one stream, and opening
- * it at its first matched window. Must render inside the surface's
+ * it at its published focus. Must render inside the surface's
  * `PlaybackProvider`.
  */
 export const VideoTimelineExtensions: React.FC<
@@ -69,15 +69,15 @@ export const VideoTimelineExtensions: React.FC<
     () => ({ sample: { sample: { _id: sampleId } } }),
     [sampleId],
   );
-  const firstMatch = useSampleRendererFirstMatch(identity);
+  const focus = useSampleFocus(identity);
   const { seek } = usePlayback();
   const seeked = useRef<string | null>(null);
   useEffect(() => {
     // A seek before the duration is known clamps to the start
-    if (!firstMatch || durationSec <= 0 || seeked.current === sampleId) return;
+    if (!focus || durationSec <= 0 || seeked.current === sampleId) return;
     seeked.current = sampleId;
-    seek(Number(firstMatch.startNs) / 1e9);
-  }, [seek, durationSec, firstMatch, sampleId]);
+    seek(Number(focus.startNs) / 1e9);
+  }, [seek, durationSec, focus, sampleId]);
 
   const ctx = useMemo(
     () =>

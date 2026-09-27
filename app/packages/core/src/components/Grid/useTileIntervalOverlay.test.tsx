@@ -27,7 +27,7 @@ const ranges = vi.hoisted(
   () => new Map<string, { startNs: bigint; endNs: bigint }>(),
 );
 
-const match = vi.hoisted(() => {
+const focus = vi.hoisted(() => {
   const listeners = new Set<() => void>();
   const state = { startNs: null as bigint | null };
   return {
@@ -64,10 +64,10 @@ const seeks = vi.hoisted(() => {
 
 vi.mock("@fiftyone/multimodal/extensions/timeline", () => ({
   useGridOverlays: () => registered.overlays,
-  useSampleRendererFirstMatch: () => {
+  useSampleFocus: () => {
     const startNs = useSyncExternalStore(
-      match.subscribe,
-      () => match.state.startNs,
+      focus.subscribe,
+      () => focus.state.startNs,
     );
     return startNs === null ? null : { startNs };
   },
@@ -210,11 +210,11 @@ describe("useTileIntervalOverlay", () => {
       expect(looker.seekToSeconds).toHaveBeenLastCalledWith(4.5);
     });
 
-    it("publishes the clip length the looker read with its poster, shows the first match once the poster is in, and the start once the match is gone", async () => {
+    it("publishes the clip length the looker read with its poster, shows the published focus once the poster is in, and the start once the focus is cleared", async () => {
       try {
         const looker = await mountWithLooker();
 
-        await act(async () => match.set(3_000_000_000n));
+        await act(async () => focus.set(3_000_000_000n));
         expect(ranges.has("video")).toBe(false);
         expect(looker.posterAt).not.toHaveBeenCalled();
 
@@ -225,10 +225,10 @@ describe("useTileIntervalOverlay", () => {
         });
         expect(looker.posterAt).toHaveBeenLastCalledWith(3);
 
-        await act(async () => match.set(null));
+        await act(async () => focus.set(null));
         expect(looker.posterAt).toHaveBeenLastCalledWith(null);
       } finally {
-        match.set(null);
+        focus.set(null);
       }
     });
   });

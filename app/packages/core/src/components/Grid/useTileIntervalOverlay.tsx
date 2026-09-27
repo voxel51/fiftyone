@@ -6,7 +6,7 @@
 import { VideoLooker } from "@fiftyone/looker";
 import {
   useGridOverlays,
-  useSampleRendererFirstMatch,
+  useSampleFocus,
 } from "@fiftyone/multimodal/extensions/timeline";
 import type { IntervalTileContext } from "@fiftyone/multimodal/extensions/episode-intervals";
 import {
@@ -98,7 +98,7 @@ function VideoTileLanes({
     [datasetId, sampleId],
   );
 
-  const startNs = useSampleRendererFirstMatch(ctx)?.startNs ?? null;
+  const startNs = useSampleFocus(ctx)?.startNs ?? null;
   const loaded = lookerDuration !== null;
   const scrubbed = useRef(false);
   useEffect(() => {

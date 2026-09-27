@@ -9,7 +9,10 @@ import {
 import type { ReactElement } from "react";
 import { RecoilRoot, useSetRecoilState } from "recoil";
 import { multimodalGridFit } from "@fiftyone/state";
-import { publishEmbeddingSelection } from "../../../extensions/timeline";
+import {
+  publishSampleFocus,
+  type SampleFocus,
+} from "../../../extensions/timeline";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   WEBGPU_DEVICE_BUDGET,
@@ -43,8 +46,6 @@ import type {
   ResolvedGridPosterProviderDescriptor,
 } from "./use-grid-poster-provider";
 
-// The grid mounts custom renderers under a RecoilBridge, which is what lets
-// the tile read the embeddings panel's published match for its episode.
 function render(ui: ReactElement) {
   return renderBare(ui, { wrapper: RecoilRoot });
 }
@@ -73,15 +74,8 @@ function GridFitController() {
   return null;
 }
 
-type PublishedWindows = Record<
-  string,
-  Array<{ stream: string; startUs: number; endUs: number }>
->;
-
-function renderWithMatches(ui: ReactElement, byEpisode: PublishedWindows) {
-  // The published selection reaches tiles through the extensions/timeline store
-  // (their own React roots), not through this Recoil tree
-  publishEmbeddingSelection({ byEpisode });
+function renderWithFocus(ui: ReactElement, focus: Record<string, SampleFocus>) {
+  publishSampleFocus(focus);
   return render(ui);
 }
 
@@ -339,7 +333,7 @@ vi.mock("../../../visualization/composition", () => ({
 
 afterEach(() => {
   cleanup();
-  publishEmbeddingSelection(null);
+  publishSampleFocus(null);
   vi.useRealTimers();
   resetGridLiveLeasesForTests();
   resetGraphicsRendererRegistryForTests();
@@ -511,12 +505,9 @@ describe("GridRenderer", () => {
     expect(secondKey).toContain(descriptor.cacheRevision);
   });
 
-  it("posters at the earliest window the embeddings panel matched", () => {
-    renderWithMatches(<GridRenderer ctx={rendererCtx()} />, {
-      "1": [
-        { stream: "/camera/front", startUs: 1700, endUs: 1800 },
-        { stream: "/lidar/top", startUs: 1200, endUs: 1200 },
-      ],
+  it("posters at the published focus of its sample", () => {
+    renderWithFocus(<GridRenderer ctx={rendererCtx()} />, {
+      "1": { startUs: 1200, stream: "/lidar/top" },
     });
 
     expect(vi.mocked(useGridPreview).mock.lastCall?.[0]).toMatchObject({
@@ -525,11 +516,9 @@ describe("GridRenderer", () => {
     });
   });
 
-  it("posters at the recording start when the lasso missed this episode", () => {
-    renderWithMatches(<GridRenderer ctx={rendererCtx()} />, {
-      "other-episode": [
-        { stream: "/camera/front", startUs: 1700, endUs: 1800 },
-      ],
+  it("posters at the recording start when only other samples are focused", () => {
+    renderWithFocus(<GridRenderer ctx={rendererCtx()} />, {
+      "other-episode": { startUs: 1700, stream: "/camera/front" },
     });
 
     expect(vi.mocked(useGridPreview).mock.lastCall?.[0]).toMatchObject({

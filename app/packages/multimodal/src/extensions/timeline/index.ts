@@ -15,19 +15,12 @@ export type {
   TimelineSection,
   TimelineTrackDecorator,
 } from "./types";
-// The embedding-window selection crosses this seam as a plain external store:
-// an edition PUBLISHES into it and the shared renderers read it through the
-// hooks here — inert (empty) until something publishes
 export {
-  firstMatchWindow,
-  publishEmbeddingSelection,
-  useEmbeddingSelectionSnapshot,
-  useSampleRendererEmbeddingWindows,
-  useSampleRendererFirstMatch,
-  type EmbeddingWindow,
-  type EmbeddingSelection,
-  type EmbeddingWindowMark,
-} from "./embedding-selection";
+  publishSampleFocus,
+  useSampleFocus,
+  type ResolvedSampleFocus,
+  type SampleFocus,
+} from "./sample-focus";
 // Edition-contributed grid-tile overlays, rendered by the shared grid
 export {
   registerGridOverlay,
