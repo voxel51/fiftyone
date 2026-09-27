@@ -254,7 +254,6 @@ describe("frame-reader", () => {
   });
 
   it("does not restart the stream for frames a chunk covered without documents", () => {
-    // A video with no frame labels gets back its ranges with no frames in them
     const options = createMockOptions({ frameCount: 200 });
     const requestFrames = acquireReader(options);
 

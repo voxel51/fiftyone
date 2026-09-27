@@ -74,9 +74,6 @@ describe("publishExtendedSelection", () => {
   });
 
   it("writes the stage to its fragment-read mirror", () => {
-    // The first read of a stage nothing had read yet restores the mirror
-    // over the write, so a search published from the view bar alone would
-    // never narrow the grid
     const stage = { "fiftyone.core.stages.Select": { sample_ids: ["a"] } };
 
     publishExtendedSelection({ set: vi.fn(), reset: vi.fn() }, stage);

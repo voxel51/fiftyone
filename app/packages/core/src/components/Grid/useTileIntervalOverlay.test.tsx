@@ -19,17 +19,14 @@ vi.mock("recoil", async () => ({
 
 const lane = vi.hoisted(() => ({ surfaces: [] as string[] }));
 
-// What an edition registers, e.g. the embedding-window lane
 const registered = vi.hoisted(() => ({
   overlays: [] as Array<() => null>,
 }));
 
-// The episode time ranges tiles publish, which every lane reads its axis from
 const ranges = vi.hoisted(
   () => new Map<string, { startNs: bigint; endNs: bigint }>(),
 );
 
-// The selection's first match for any tile, as a store a test can move
 const match = vi.hoisted(() => {
   const listeners = new Set<() => void>();
   const state = { startNs: null as bigint | null };
@@ -46,7 +43,6 @@ const match = vi.hoisted(() => {
   };
 });
 
-// Seek requests a lane makes, as the shared registry holds them
 const seeks = vi.hoisted(() => {
   const listeners = new Map<string, Set<() => void>>();
   const requests = new Map<string, { timestampNs: bigint }>();
@@ -77,7 +73,6 @@ vi.mock("@fiftyone/multimodal/extensions/timeline", () => ({
   },
 }));
 
-// A video tile's looker: a duration that lands with the poster, and a seek
 vi.mock("@fiftyone/looker", () => {
   class VideoLooker extends EventTarget {
     duration: number | null = null;
@@ -193,7 +188,6 @@ describe("useTileIntervalOverlay", () => {
 
   describe("on a video with no recorded duration", () => {
     const mountWithLooker = async () => {
-      // The mocked looker takes no arguments, unlike the real one
       const looker = new (VideoLooker as unknown as new () => FakeLooker)();
       ranges.clear();
       const { result } = renderHook(() => useTileIntervalOverlay());
@@ -220,7 +214,6 @@ describe("useTileIntervalOverlay", () => {
       try {
         const looker = await mountWithLooker();
 
-        // Before the poster there is no length, and nothing to seek
         await act(async () => match.set(3_000_000_000n));
         expect(ranges.has("video")).toBe(false);
         expect(looker.posterAt).not.toHaveBeenCalled();

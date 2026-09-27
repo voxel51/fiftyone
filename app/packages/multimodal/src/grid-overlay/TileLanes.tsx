@@ -7,10 +7,7 @@ import { EpisodeGridOverlay } from "./EpisodeGridOverlay";
 
 /**
  * One grid tile's footer lanes, whatever renders the tile: the temporal-tag
- * lane, then every edition-registered lane.
- *
- * `showTags` is off where the dataset cannot carry temporal tags; registered
- * lanes still draw.
+ * lane (unless `showTags` is off), then every registered lane.
  */
 export function TileLanes({
   ctx,
@@ -29,5 +26,3 @@ export function TileLanes({
     </>
   );
 }
-
-export default TileLanes;

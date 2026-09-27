@@ -417,8 +417,6 @@ describe("visibleTimelineTracks", () => {
   const ids = (tracks: { id: string }[]) => tracks.map(({ id }) => id);
 
   it("always shows a host's rows first, even ids that read as sub-tracks", () => {
-    // `embedding-window::video` parses as a child of an `embedding-window`
-    // parent that does not exist, which would hide it for good
     const host = row("embedding-window::video");
 
     expect(

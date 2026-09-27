@@ -23,7 +23,6 @@ type TestLooker = {
   pluckOverlays: (state: unknown) => unknown;
 };
 
-/** A hovered looker, with just the state `pluckOverlays` reads. */
 const looker = (
   activePaths: string[],
   { thumbnail = true } = {},

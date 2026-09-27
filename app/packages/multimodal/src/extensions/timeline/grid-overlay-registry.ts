@@ -54,13 +54,11 @@ const subscribe = (listener: () => void): (() => void) => {
 };
 const getSnapshot = () => registry.snapshot;
 
-// Keyed by the overlay's own reference (stable per registration), not its
-// position in the registry's array — an earlier overlay unregistering must
-// not shift a later one's key and force it to remount.
+// By reference, not array position, so an earlier overlay unregistering does
+// not remount a later one
 const overlayIds = new WeakMap<GridOverlayComponent, number>();
 let nextOverlayId = 0;
 
-/** A React key for one registered overlay, the same in every host. */
 export function gridOverlayKey(overlay: GridOverlayComponent): number {
   let id = overlayIds.get(overlay);
   if (id === undefined) {

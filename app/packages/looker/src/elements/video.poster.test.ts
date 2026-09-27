@@ -18,8 +18,6 @@ const idleState = (frameNumber: number) =>
 
 describe("VideoElement.renderSelf", () => {
   it("draws an idle tile's poster whatever frame its playhead is on", () => {
-    // An idle thumbnail holds no video, so drawing anything but the poster
-    // hands the canvas a null image
     const canvas = document.createElement("canvas");
     const element = { element: null, canvas, posterFrame: 1 } as unknown as {
       imageSource: unknown;
@@ -60,8 +58,6 @@ describe("VideoElement.renderSelf", () => {
       shows: "canvas",
     },
     {
-      // A looping hover comes back to frame 1, which the poster no longer
-      // shows
       name: "does not show a poster moved to a match in place of the clip's start",
       readyState: 4,
       frameNumber: 1,
@@ -146,8 +142,6 @@ describe("VideoLooker.posterAt", () => {
     expect(posterAt).not.toHaveBeenCalled();
   });
 
-  // A selection can change while the tile is live; dropping it would leave
-  // the poster, and the next hover, at the previous match
   it("redraws the poster at the time asked for while the clip plays on hover", () => {
     const { looker, posterAt } = lookerWith({ hovering: true, playing: true });
 
