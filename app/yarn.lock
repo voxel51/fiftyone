@@ -1609,6 +1609,7 @@ __metadata:
     "@fiftyone/core": "npm:*"
     "@fiftyone/events": "npm:*"
     "@fiftyone/feature-flags": "npm:*"
+    "@fiftyone/floodlight-panel": "npm:*"
     "@fiftyone/multimodal": "npm:*"
     "@fiftyone/relay": "npm:*"
     "@fiftyone/reverb": "workspace:*"
@@ -1757,6 +1758,7 @@ __metadata:
     "@fiftyone/components": "npm:*"
     "@fiftyone/feature-flags": "npm:*"
     "@fiftyone/flashlight": "npm:*"
+    "@fiftyone/floodlight": "npm:*"
     "@fiftyone/looker": "npm:*"
     "@fiftyone/map": "npm:*"
     "@fiftyone/multimodal": "npm:*"
@@ -2007,6 +2009,54 @@ __metadata:
   resolution: "@fiftyone/flashlight@workspace:packages/flashlight"
   dependencies:
     prettier: "catalog:"
+    typescript: "catalog:"
+    typescript-plugin-css-modules: "npm:^5.1.0"
+    vite: "catalog:"
+  languageName: unknown
+  linkType: soft
+
+"@fiftyone/floodlight-panel@npm:*, @fiftyone/floodlight-panel@workspace:packages/floodlight-panel":
+  version: 0.0.0-use.local
+  resolution: "@fiftyone/floodlight-panel@workspace:packages/floodlight-panel"
+  dependencies:
+    "@fiftyone/analytics": "npm:*"
+    "@fiftyone/components": "npm:*"
+    "@fiftyone/core": "npm:*"
+    "@fiftyone/floodlight": "npm:*"
+    "@fiftyone/looker": "npm:*"
+    "@fiftyone/multimodal": "npm:*"
+    "@fiftyone/operators": "npm:*"
+    "@fiftyone/plugins": "npm:*"
+    "@fiftyone/relay": "npm:*"
+    "@fiftyone/reverb": "workspace:*"
+    "@fiftyone/spaces": "npm:*"
+    "@fiftyone/state": "npm:*"
+    "@fiftyone/utilities": "npm:*"
+    "@mui/icons-material": "catalog:"
+    "@mui/material": "catalog:"
+    "@react-spring/web": "catalog:"
+    "@testing-library/react": "catalog:"
+    "@voxel51/voodo": "catalog:"
+    clsx: "npm:^2.1.1"
+    color: "npm:^4.2.3"
+    react-error-boundary: "catalog:"
+    react-relay: "catalog:"
+    react-uuid: "catalog:"
+    relay-runtime: "catalog:"
+    styled-components: "catalog:"
+    use-memo-one: "npm:^1.1.3"
+    uuid: "catalog:"
+  peerDependencies:
+    react: 18.2.0
+    react-dom: 18.2.0
+  languageName: unknown
+  linkType: soft
+
+"@fiftyone/floodlight@npm:*, @fiftyone/floodlight@workspace:packages/floodlight":
+  version: 0.0.0-use.local
+  resolution: "@fiftyone/floodlight@workspace:packages/floodlight"
+  dependencies:
+    "@af-utils/scrollend-polyfill": "npm:^0.0.13"
     typescript: "catalog:"
     typescript-plugin-css-modules: "npm:^5.1.0"
     vite: "catalog:"

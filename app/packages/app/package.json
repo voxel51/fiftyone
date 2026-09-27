@@ -20,6 +20,7 @@
         "@fiftyone/core": "*",
         "@fiftyone/events": "*",
         "@fiftyone/feature-flags": "*",
+        "@fiftyone/floodlight-panel": "*",
         "@fiftyone/multimodal": "*",
         "@fiftyone/relay": "*",
         "@fiftyone/reverb": "workspace:*",

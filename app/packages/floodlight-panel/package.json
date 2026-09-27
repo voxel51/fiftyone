@@ -1,0 +1,45 @@
+{
+    "name": "@fiftyone/floodlight-panel",
+    "version": "0.1.0",
+    "author": "Voxel51, Inc.",
+    "description": "Floodlight grid panel plugin",
+    "license": "Apache-2.0",
+    "private": true,
+    "main": "./src/index.tsx",
+    "type": "module",
+    "dependencies": {
+        "@fiftyone/analytics": "*",
+        "@fiftyone/components": "*",
+        "@fiftyone/core": "*",
+        "@fiftyone/floodlight": "*",
+        "@fiftyone/looker": "*",
+        "@fiftyone/multimodal": "*",
+        "@fiftyone/operators": "*",
+        "@fiftyone/plugins": "*",
+        "@fiftyone/relay": "*",
+        "@fiftyone/reverb": "workspace:*",
+        "@fiftyone/spaces": "*",
+        "@fiftyone/state": "*",
+        "@fiftyone/utilities": "*",
+        "@mui/icons-material": "catalog:",
+        "@mui/material": "catalog:",
+        "@react-spring/web": "catalog:",
+        "@voxel51/voodo": "catalog:",
+        "clsx": "^2.1.1",
+        "color": "^4.2.3",
+        "react-error-boundary": "catalog:",
+        "react-relay": "catalog:",
+        "react-uuid": "catalog:",
+        "relay-runtime": "catalog:",
+        "styled-components": "catalog:",
+        "use-memo-one": "^1.1.3",
+        "uuid": "catalog:"
+    },
+    "devDependencies": {
+        "@testing-library/react": "catalog:"
+    },
+    "peerDependencies": {
+        "react": "18.2.0",
+        "react-dom": "18.2.0"
+    }
+}

@@ -1,0 +1,49 @@
+import Color from "color";
+import styled from "styled-components";
+
+export const SamplesHeader = styled.div`
+  position: absolute;
+  top: 0;
+  display: flex;
+  padding: 0.5rem;
+  justify-content: space-between;
+  overflow: visible;
+  width: 100%;
+  background-image: linear-gradient(
+    to top,
+    ${({ theme }) => Color(theme.background.mediaSpace).alpha(0.0).toString()}
+      0%,
+    ${({ theme }) => theme.background.mediaSpace} 100%
+  );
+  gap: 8px;
+`;
+
+export const RightDiv = styled.div`
+  display: flex;
+  justify-content: center;
+  align-content: center;
+  flex-direction: column;
+  margin: 0 0.25rem;
+  padding-right: 0.5rem;
+  font-weight: bold;
+`;
+
+export const RightContainer = styled.div`
+  display: flex;
+  /* Vertically center each control (slider, toggle, divider, etc.) so
+     the toggle+icon pair lines up with the spacing/zoom sliders and the
+     sort arrow regardless of their differing intrinsic heights. */
+  align-items: center;
+  color: ${({ theme }) => theme.text.secondary};
+`;
+
+export const SliderContainer = styled.div`
+  display: flex;
+  align-items: center;
+  /* Snug width — wide enough to manipulate, narrow enough that the
+     header doesn't dedicate disproportionate horizontal real estate to
+     two sliders. */
+  width: 5.5rem;
+  gap: 0.5rem;
+  padding-right: 0.375rem;
+`;

@@ -3,5 +3,7 @@
 packages/operators
 packages/app
 packages/view-bar
+packages/floodlight
+packages/floodlight-panel
 packages/spotlight
 packages/looker-3d

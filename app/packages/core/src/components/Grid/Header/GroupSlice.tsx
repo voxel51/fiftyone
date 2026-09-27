@@ -1,7 +1,11 @@
+import { Selector } from "@fiftyone/components";
 import { groupSlice, groupSlices, useSetGroupSlice } from "@fiftyone/state";
-import { Select } from "@voxel51/voodo";
-import { useMemo } from "react";
+import { useCallback } from "react";
 import { useReverbValue } from "@fiftyone/reverb";
+
+const Slice = ({ value }: { className?: string; value: string }) => {
+  return <>{value}</>;
+};
 
 const GroupSlice = () => {
   const slice = useReverbValue(groupSlice);
@@ -11,25 +15,30 @@ const GroupSlice = () => {
   const setSlice = useSetGroupSlice();
   const groupSlicesValue = useReverbValue(groupSlices);
 
-  const options = useMemo(
-    () =>
-      groupSlicesValue.map((name) => ({
-        id: name,
-        data: { label: name },
-      })),
+  const useSearch = useCallback(
+    (search: string) => {
+      const values = groupSlicesValue.filter((name) => name.includes(search));
+      return { values, total: values.length };
+    },
     [groupSlicesValue],
   );
 
   return (
-    <Select
-      exclusive
-      portal
-      value={slice}
-      options={options}
-      onChange={(v) => {
-        if (typeof v === "string") setSlice(v);
+    <Selector
+      inputStyle={{ height: 28 }}
+      component={Slice}
+      containerStyle={{
+        marginLeft: "0.5rem",
+        position: "relative",
       }}
-      style={{ marginLeft: "0.5rem", minWidth: 140 }}
+      onSelect={async (slice) => {
+        setSlice(slice);
+        return slice;
+      }}
+      overflow={true}
+      placeholder={"slice"}
+      useSearch={useSearch}
+      value={slice}
     />
   );
 };

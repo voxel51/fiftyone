@@ -1,0 +1,140 @@
+/* Starts below the panel header (the same 48px the scrubber clears) so
+ * no lane or matrix heading sits under the header's controls. */
+.scroller {
+  position: absolute;
+  inset: 48px 0 0 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: var(--fo-palette-background-mediaSpace);
+}
+
+.none {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--fo-palette-text-tertiary);
+  font-size: 0.875rem;
+}
+
+.value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--fo-palette-text-primary);
+}
+
+.count {
+  flex: 0 0 auto;
+  color: var(--fo-palette-text-tertiary);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.track {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.host {
+  position: absolute;
+  inset: 0;
+}
+
+.empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fo-palette-text-tertiary);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* LANES */
+
+.lanes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0 0.5rem 0.5rem;
+}
+
+.lane {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+}
+
+.laneLabel {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.25rem 0.125rem;
+  font-size: 0.8125rem;
+}
+
+/* MATRIX */
+
+.matrix {
+  display: grid;
+  width: max-content;
+  min-width: 100%;
+  font-size: 0.8125rem;
+}
+
+.corner,
+.colHead,
+.rowHead {
+  display: flex;
+  gap: 0.375rem;
+  background: var(--fo-palette-background-mediaSpace);
+  position: sticky;
+}
+
+.corner {
+  top: 0;
+  left: 0;
+  z-index: 3;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 0.25rem 0.5rem;
+  color: var(--fo-palette-text-tertiary);
+  font-size: 0.75rem;
+  border-right: 1px solid var(--fo-palette-divider);
+  border-bottom: 1px solid var(--fo-palette-divider);
+}
+
+.colHead {
+  top: 0;
+  z-index: 2;
+  align-items: baseline;
+  min-width: 0;
+  padding: 0.375rem 0.5rem;
+  border-bottom: 1px solid var(--fo-palette-divider);
+}
+
+.rowHead {
+  left: 0;
+  z-index: 1;
+  align-items: center;
+  max-width: 12rem;
+  padding: 0 0.5rem;
+  border-right: 1px solid var(--fo-palette-divider);
+}
+
+.cell {
+  border-right: 1px solid var(--fo-palette-divider);
+  border-bottom: 1px solid var(--fo-palette-divider);
+}
+
+.diagonal {
+  background: color-mix(
+    in srgb,
+    var(--fo-palette-primary-plainColor) 8%,
+    transparent
+  );
+}

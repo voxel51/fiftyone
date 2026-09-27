@@ -7,6 +7,8 @@ export const SpaceContainer = styled.div`
 `;
 
 export const PanelContainer = styled.div`
+  display: flex;
+  flex-direction: column;
   width: 100%;
   height: 100%;
   overflow: hidden;
@@ -20,7 +22,10 @@ export const PanelTabs = styled.div<{ $isModal?: boolean }>`
 
 export const StyledPanel = styled.div<{ $isModalPanel?: boolean }>`
   width: 100%;
-  height: calc(100% - 28px);
+  /* fills what the tab row leaves in a PanelContainer; 100% elsewhere */
+  height: 100%;
+  flex: 1 1 0;
+  min-height: 0;
   overflow: auto;
   background: var(--fo-palette-background-mediaSpace);
 `;

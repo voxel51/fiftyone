@@ -1,65 +1,45 @@
+import { PillButton } from "@fiftyone/components";
 import { sidebarVisible } from "@fiftyone/state";
-import {
-  BackgroundColor,
-  Icon,
-  IconName,
-  Pill,
-  Size,
-  TextColor,
-  Tooltip,
-} from "@voxel51/voodo";
+import { KeyboardArrowLeft, KeyboardArrowRight } from "@mui/icons-material";
 import React from "react";
 import { useReverbState } from "@fiftyone/reverb";
 import type { ActionProps } from "../types";
-
-// Tactile press feedback. Matches the header's icon affordances so
-// every clickable in the grid chrome feels consistent.
-const PRESS_CLASS =
-  "cursor-pointer hover:scale-[1.06] active:scale-[0.94] transition-transform duration-[150ms] ease-out";
-
-const TOOLTIP_CLASS =
-  "!bg-black/70 !text-white backdrop-blur-sm whitespace-nowrap";
+import { getStringAndNumberProps } from "../utils";
 
 const ToggleSidebar = React.forwardRef<
-  HTMLSpanElement,
+  HTMLButtonElement,
   ActionProps & {
     modal: boolean;
   }
->(({ modal }, ref) => {
+>(({ modal, adaptiveMenuItemProps }, ref) => {
   const [visible, setVisible] = useReverbState(sidebarVisible(modal));
 
-  // Chevron direction depends on whether we're in the modal (where
-  // the sidebar lives on the right) or the grid (where it lives on
-  // the left). The icon shown is the action the click WILL perform —
-  // pointing inward when shown, outward when hidden.
-  const iconName = visible
-    ? modal
-      ? IconName.ChevronRight
-      : IconName.ChevronLeft
-    : modal
-      ? IconName.ChevronLeft
-      : IconName.ChevronRight;
-
   return (
-    <Tooltip
-      content={`${visible ? "Hide" : "Show"} sidebar (s)`}
-      className={TOOLTIP_CLASS}
-      portal
-    >
-      <Pill
-        ref={ref}
-        size={Size.Xs}
-        backgroundColor={
-          visible ? BackgroundColor.Muted : BackgroundColor.Card2
-        }
-        color={visible ? TextColor.Muted : TextColor.Primary}
-        className={PRESS_CLASS}
-        onClick={() => setVisible(!visible)}
-        data-cy="action-toggle-sidebar"
-      >
-        <Icon name={iconName} size={Size.Sm} />
-      </Pill>
-    </Tooltip>
+    <PillButton
+      onClick={() => {
+        setVisible(!visible);
+      }}
+      title={`${visible ? "Hide" : "Show"} sidebar (s)`}
+      tooltipPlacement={modal ? "bottom" : "top"}
+      open={visible}
+      icon={
+        visible ? (
+          modal ? (
+            <KeyboardArrowRight />
+          ) : (
+            <KeyboardArrowLeft />
+          )
+        ) : modal ? (
+          <KeyboardArrowLeft />
+        ) : (
+          <KeyboardArrowRight />
+        )
+      }
+      highlight={!visible}
+      ref={ref}
+      data-cy="action-toggle-sidebar"
+      {...(getStringAndNumberProps(adaptiveMenuItemProps) || {})}
+    />
   );
 });
 

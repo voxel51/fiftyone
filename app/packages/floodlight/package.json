@@ -1,0 +1,30 @@
+{
+    "name": "@fiftyone/floodlight",
+    "version": "0.1.0",
+    "author": "Voxel51, Inc.",
+    "description": "A cursor-based justified-layout virtualized grid",
+    "homepage": "https://github.com/voxel51/fiftyone/app/packages/floodlight",
+    "license": "Apache-2.0",
+    "bugs": {
+        "url": "https://github.com/voxel51/fiftyone"
+    },
+    "scripts": {
+        "check": "biome check --write ./src README.md tsconfig.json vite.config.ts",
+        "dev": "vite"
+    },
+    "main": "./src/index.ts",
+    "private": true,
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "devDependencies": {
+        "typescript": "catalog:",
+        "typescript-plugin-css-modules": "^5.1.0",
+        "vite": "catalog:"
+    },
+    "type": "module",
+    "dependencies": {
+        "@af-utils/scrollend-polyfill": "^0.0.13"
+    }
+}

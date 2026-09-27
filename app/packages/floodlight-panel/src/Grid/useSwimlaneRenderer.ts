@@ -20,19 +20,19 @@
  */
 
 import * as foq from "@fiftyone/relay";
-import Spotlight from "@fiftyone/spotlight";
-import type { Get, Hide, ID, Show } from "@fiftyone/spotlight";
+import Spotlight from "@fiftyone/floodlight";
+import type { Get, Hide, ID, Show } from "@fiftyone/floodlight";
 import * as fos from "@fiftyone/state";
 import { useCallback, useMemo, useRef } from "react";
-import { fetchQuery, useRelayEnvironment } from "react-relay";
+import { useRelayEnvironment } from "react-relay";
 import type { VariablesOf } from "react-relay";
 import { useReverbCallback, useReverbValue } from "@fiftyone/reverb";
 import styles from "./Grid.module.css";
 import { gridSpacing, groupSiblingsPageParameters } from "./atoms";
-import type { LookerCache } from "./types";
+import { connectionItems, fetchSamplePage, routeWheel } from "./samplePages";
+import type { ItemCache } from "./types";
 import useRenderer from "./useRenderer";
 import type { SampleStore } from "./useSpotlightPager";
-import { handleNode } from "./utils";
 
 const SIBLINGS_PAGE_SIZE = 20;
 
@@ -42,7 +42,7 @@ export default function useSwimlaneRenderer({
   records,
   store,
 }: {
-  cache: LookerCache;
+  cache: ItemCache;
   id: string;
   records: Map<string, number>;
   store: SampleStore;
@@ -58,12 +58,7 @@ export default function useSwimlaneRenderer({
   const innerSpotlights = useRef(
     new Map<string, Spotlight<number, fos.Sample>>(),
   );
-  const wheelHandlers = useRef(
-    new Map<
-      string,
-      { element: HTMLElement; handler: (e: WheelEvent) => void }
-    >(),
-  );
+  const wheelHandlers = useRef(new Map<string, () => void>());
 
   const resolveSiblingPager = useReverbCallback(
     ({ snapshot }) =>
@@ -182,54 +177,23 @@ export default function useSwimlaneRenderer({
 
         // Page 1+ = siblings via paginateSamples filtered by groupId.
         const factory = await resolveSiblingPager(groupId!);
-        const variables = factory(
-          cursor - 1,
-          SIBLINGS_PAGE_SIZE,
-        ) as unknown as VariablesOf<foq.paginateSamplesQuery>;
-        const data = await new Promise<foq.paginateSamplesQuery["response"]>(
-          (resolve, reject) => {
-            const sub = fetchQuery<foq.paginateSamplesQuery>(
-              environment,
-              foq.paginateSamples,
-              variables,
-              { fetchPolicy: "network-only" },
-            ).subscribe({
-              next: (d) => {
-                resolve(d);
-                sub.unsubscribe();
-              },
-              error: reject,
-            });
-          },
+        const connection = await fetchSamplePage(
+          environment,
+          factory(
+            cursor - 1,
+            SIBLINGS_PAGE_SIZE,
+          ) as unknown as VariablesOf<foq.paginateSamplesQuery>,
         );
-        if (!foq.isPaginateSamplesConnection(data.samples)) {
+        if (!connection) {
           // Connection didn't resolve (timeout / unknown). Pager
           // exhausted — clear the shimmer so we don't loop forever.
           hideShimmer();
           return { items: [], next: null, previous: null };
         }
-        const siblings = data.samples.edges.flatMap((edge) => {
-          if (edge.node.__typename === "%other") return [];
-          if (edge.node.id === coverNode.id) return [];
-          const node = handleNode(edge.node);
-          const nwa = node as unknown as { aspectRatio?: number };
-          const sId = { description: (node as { id: string }).id };
-          // Register sibling samples in the outer store so the
-          // shared looker pipeline can resolve them at show time.
-          store.set(sId, node as unknown as fos.Sample);
-          return [
-            {
-              key: cursor,
-              aspectRatio:
-                nwa.aspectRatio && Number.isFinite(nwa.aspectRatio)
-                  ? nwa.aspectRatio
-                  : 1,
-              id: sId,
-              data: node as fos.Sample,
-            },
-          ];
+        const siblings = connectionItems(connection, cursor, store, {
+          skip: coverNode.id,
         });
-        const next = data.samples.pageInfo.hasNextPage ? cursor + 1 : null;
+        const next = connection.pageInfo.hasNextPage ? cursor + 1 : null;
         // Pager exhausted (server reports no more pages) → row is
         // fully loaded, drop the shimmer.
         if (next === null) hideShimmer();
@@ -286,23 +250,11 @@ export default function useSwimlaneRenderer({
       // intent the user asked for.
       innerSpotlight.attach(row);
 
-      // Wheel routing — vertical wheels escape to the outer grid;
-      // horizontal wheels stay in the inner.
       const outerHost = document.getElementById(id);
-      const handler = (e: WheelEvent) => {
-        if (Math.abs(e.deltaX) >= Math.abs(e.deltaY)) {
-          e.stopPropagation();
-        } else {
-          e.preventDefault();
-          e.stopPropagation();
-          (outerHost?.firstElementChild as HTMLElement | null)?.scrollBy(
-            0,
-            e.deltaY,
-          );
-        }
-      };
-      row.addEventListener("wheel", handler, { passive: false });
-      wheelHandlers.current.set(key, { element: row, handler });
+      wheelHandlers.current.set(
+        key,
+        routeWheel(row, () => outerHost?.firstElementChild),
+      );
 
       return Promise.resolve(0);
     },
@@ -327,11 +279,8 @@ export default function useSwimlaneRenderer({
       innerSpotlight.destroy();
       innerSpotlights.current.delete(key);
     }
-    const binding = wheelHandlers.current.get(key);
-    if (binding) {
-      binding.element.removeEventListener("wheel", binding.handler);
-      wheelHandlers.current.delete(key);
-    }
+    wheelHandlers.current.get(key)?.();
+    wheelHandlers.current.delete(key);
   }, []);
 
   return {

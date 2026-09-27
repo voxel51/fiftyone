@@ -39,6 +39,11 @@ export const GRID_SPACES_DEFAULT = {
   active_child: "default-samples-node",
 };
 
+/** Swaps the default workspace's grid panel for a flagged replacement. */
+export const setDefaultGridPanel = (type: string) => {
+  GRID_SPACES_DEFAULT.children[0].type = type;
+};
+
 export type ModalSelector = {
   groupId?: string;
   id?: string;

@@ -21,8 +21,8 @@ import {
   gridScrubberAvailable,
   gridScrubbing,
   gridSortFieldBounds,
-} from "../../recoil/grid";
-import { datasetId } from "../../recoil/selectors";
+} from "../../atoms/grid";
+import { datasetId } from "../../atoms/selectors";
 
 /**
  * Returns the current scrubber-enabled state and a setter. Persisted per

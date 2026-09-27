@@ -10,6 +10,7 @@ import { useSetReverbState, useReverbStore } from "@fiftyone/reverb";
 import { getDatasetName, getParam, resolveURL } from "../utils";
 import { AppReadyState } from "./registerEvent";
 import { syncSessionState } from "@fiftyone/state";
+import type { DatasetPageQuery } from "../pages/datasets/__generated__/DatasetPageQuery.graphql";
 import { appReadyState, processState } from "./utils";
 
 const useStateUpdate: EventHandlerHook = ({
@@ -22,7 +23,7 @@ const useStateUpdate: EventHandlerHook = ({
 
   return useCallback(
     (payload: { state: { [key: string]: unknown } }) => {
-      const state = processState(session.current, payload.state);
+      const { state, stage } = processState(session.current, payload.state);
       const stateless = env().VITE_NO_STATE;
       const path = resolveURL({
         currentPathname: router.history.location.pathname,
@@ -43,9 +44,10 @@ const useStateUpdate: EventHandlerHook = ({
 
       if (readyStateRef.current !== AppReadyState.OPEN) {
         router.history.replace(path, state);
-        router.load().then(() => {
+        router.load().then((entry) => {
           // The first page is loaded rather than published, so the session
           // atoms have had nothing to sync them.
+          stage(entry as { data: DatasetPageQuery["response"] });
           syncSessionState(store.set);
           setReadyState(AppReadyState.OPEN);
         });

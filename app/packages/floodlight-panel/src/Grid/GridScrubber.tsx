@@ -24,7 +24,7 @@ import { Scrubber } from "./Scrubber";
 import React, { useCallback, useEffect, useState } from "react";
 import { useReverbCallback, useReverbValue } from "@fiftyone/reverb";
 import styles from "./Grid.module.css";
-import { gridAt, gridOffset, gridPage } from "./atoms";
+import { gridAt, gridFraction, gridPage } from "./atoms";
 import { PAGE_SIZE } from "./useSpotlightPager";
 
 const NUM_TICKS = 10;
@@ -88,7 +88,7 @@ const GridScrubberContent = () => {
       () => {
         reset(gridAt);
         reset(gridPage);
-        reset(gridOffset);
+        reset(gridFraction);
       },
     [],
   );

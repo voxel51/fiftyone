@@ -1,0 +1,117 @@
+import styles from "./Grid.module.css";
+
+import { freeVideos } from "@fiftyone/looker";
+import type Spotlight from "@fiftyone/floodlight";
+import type { Rejected } from "@fiftyone/floodlight";
+import * as fos from "@fiftyone/state";
+import { useEffect, useLayoutEffect } from "react";
+import { useReverbValue, useSetReverbState } from "@fiftyone/reverb";
+import { MANAGING_GRID_MEMORY } from "@fiftyone/core/src/utils/links";
+import {
+  QP_WAIT,
+  QueryPerformanceToastEvent,
+} from "@fiftyone/core/src/components/QueryPerformanceToast";
+import { recommendedGridZoom } from "./atoms";
+import type { ItemCache } from "./types";
+import type { ScrollLocation } from "./useScrollLocation";
+
+export default ({
+  id,
+  cache,
+  pixels,
+  resizing,
+  set,
+  spotlight,
+}: {
+  id: string;
+  cache: ItemCache;
+  pixels: string;
+  resizing: boolean;
+  set: (location: ScrollLocation) => void;
+  spotlight?: Spotlight<number, fos.Sample>;
+}) => {
+  const handleAutosize = useSetReverbState(fos.snackbarLink);
+  const setRecommendedZoom = useSetReverbState(recommendedGridZoom);
+  const scrubbing = useReverbValue(fos.gridScrubbing);
+
+  // While the user is actively dragging the scrubber thumb, reveal the
+  // falling-pixels overlay so the grid visibly stops tracking real data.
+  //
+  // The release transition (`scrubbing` → false) is intentionally a no-op
+  // here: it doesn't mean "hide pixels", it means "commit the cursor and
+  // build the next Spotlight at the new AT". Pixels stay revealed until
+  // that next Spotlight fires `load` and the mount handler below hides
+  // them.
+  useEffect(() => {
+    if (!scrubbing) return;
+    const node = document.getElementById(pixels);
+    node?.classList.remove(styles.hidden);
+  }, [pixels, scrubbing]);
+
+  useLayoutEffect(() => {
+    if (resizing || !spotlight) {
+      return undefined;
+    }
+
+    const element = document.getElementById(id);
+
+    const info = fos.getQueryPerformancePath();
+    const timeout = setTimeout(() => {
+      if (info) {
+        window.dispatchEvent(
+          new QueryPerformanceToastEvent(info.path, info.isFrameField),
+        );
+      }
+    }, QP_WAIT);
+
+    const detail = () => ({
+      id,
+      width: element?.parentElement?.getBoundingClientRect().width,
+    });
+
+    const mount = () => {
+      cache.unfreeze();
+      clearTimeout(timeout);
+      document.getElementById(pixels)?.classList.add(styles.hidden);
+      document.dispatchEvent(
+        new CustomEvent("grid-mount", { detail: detail() }),
+      );
+    };
+
+    const rejected = (event: Rejected) => {
+      clearTimeout(timeout);
+      setRecommendedZoom(-event.recommendedRowAspectRatioThreshold);
+      spotlight.loaded &&
+        handleAutosize({
+          link: MANAGING_GRID_MEMORY,
+          message: "That's a lot of data! We've zoomed in a bit",
+        });
+    };
+
+    element && spotlight.attach(element);
+    spotlight.addEventListener("load", mount);
+    spotlight.addEventListener("rejected", rejected);
+    spotlight.addEventListener("rowchange", set);
+
+    return () => {
+      clearTimeout(timeout);
+      freeVideos();
+      document.dispatchEvent(
+        new CustomEvent("grid-unmount", { detail: detail() }),
+      );
+      document.getElementById(pixels)?.classList.remove(styles.hidden);
+      spotlight.removeEventListener("load", mount);
+      spotlight.removeEventListener("rowchange", set);
+      spotlight.destroy();
+    };
+  }, [
+    cache,
+    id,
+    handleAutosize,
+    pixels,
+    resizing,
+    set,
+    setRecommendedZoom,
+    spotlight,
+  ]);
+};

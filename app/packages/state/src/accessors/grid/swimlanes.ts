@@ -8,7 +8,7 @@
  */
 
 import { useReverbState, useReverbValue } from "@fiftyone/reverb";
-import { gridSwimlanes, gridSwimlanesAvailable } from "../../recoil/grid";
+import { gridSwimlanes, gridSwimlanesAvailable } from "../../atoms/grid";
 
 /**
  * Returns the current swimlanes-enabled state and a setter. Persisted per
