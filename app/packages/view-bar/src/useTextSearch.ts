@@ -164,6 +164,9 @@ export const useTextSearch = ({
         provider.run(selectedIndex, query, k, sources);
         return;
       }
+      // A provider search still running would publish its result, and end
+      // the pending state, over this one
+      provider.cancel();
       operator.run(selectedIndex, query, k);
     },
     [selectedIndex, provider, operator, k],
