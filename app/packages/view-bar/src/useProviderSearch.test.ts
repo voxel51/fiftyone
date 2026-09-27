@@ -10,7 +10,7 @@ const env = vi.hoisted(() => ({
   setPending: vi.fn(),
   notify: vi.fn(),
   onRun: vi.fn(),
-  extensions: new Map(),
+  providers: new Map(),
 }));
 
 vi.mock("@fiftyone/state", () => ({
@@ -19,21 +19,20 @@ vi.mock("@fiftyone/state", () => ({
   useView: () => env.view,
   useFilters: () => env.filters,
   useExtendedStages: () => env.extended,
-  useTextSearchExtensions: () => env.extensions,
+  useTextSearchProviders: () => env.providers,
   usePublishExtendedSelection: () => env.publish,
   useSetViewChangePending: () => env.setPending,
   useNotification: () => env.notify,
 }));
 
-import { useLanguageSearchExtension } from "./useLanguageSearchExtension";
+import { useProviderSearch } from "./useProviderSearch";
 
-const renderSearch = () =>
-  renderHook(() => useLanguageSearchExtension(env.onRun));
+const renderSearch = () => renderHook(() => useProviderSearch(env.onRun));
 
 const INDEX = {
   key: "emb_sim",
   patchesField: null,
-  extension: "multimodal",
+  provider: "multimodal",
   timestamp: null,
 };
 const STAGE = { "fiftyone.core.stages.Select": { sample_ids: ["ep1"] } };
@@ -49,18 +48,18 @@ const pendingResult = () => {
   return resolve;
 };
 
-describe("useLanguageSearchExtension", () => {
+describe("useProviderSearch", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     env.view = [];
     env.filters = {};
     env.extended = {};
-    env.extensions = new Map([
+    env.providers = new Map([
       ["multimodal", { method: "multimodal", search: env.search }],
     ]);
   });
 
-  it("publishes the extension's result to the extended selection", async () => {
+  it("publishes the provider's result to the extended selection", async () => {
     const decorate = vi.fn();
     const resolve = pendingResult();
     const { result } = renderSearch();
@@ -106,7 +105,7 @@ describe("useLanguageSearchExtension", () => {
     );
   });
 
-  it("asks the extension to rank within the chosen sources", () => {
+  it("asks the provider to rank within the chosen sources", () => {
     pendingResult();
     const { result } = renderSearch();
 
@@ -130,11 +129,11 @@ describe("useLanguageSearchExtension", () => {
     expect(env.onRun).toHaveBeenCalledWith(INDEX, "an animal");
   });
 
-  it("does nothing for an index no registered extension searches", () => {
+  it("does nothing for an index no registered provider searches", () => {
     const { result } = renderSearch();
 
     act(() => {
-      result.current.run({ ...INDEX, extension: null }, "a car", 25, null);
+      result.current.run({ ...INDEX, provider: null }, "a car", 25, null);
     });
 
     expect(env.search).not.toHaveBeenCalled();
@@ -173,9 +172,9 @@ describe("useLanguageSearchExtension", () => {
     expect(env.setPending).toHaveBeenLastCalledWith(false);
   });
 
-  it("fails an extension that throws before returning its promise like any other failure", async () => {
+  it("fails a provider that throws before returning its promise like any other failure", async () => {
     env.search.mockImplementationOnce(() => {
-      throw new Error("the extension is misconfigured");
+      throw new Error("the provider is misconfigured");
     });
     const { result } = renderSearch();
 
@@ -184,7 +183,7 @@ describe("useLanguageSearchExtension", () => {
     });
 
     expect(env.notify).toHaveBeenCalledWith(
-      expect.objectContaining({ msg: "the extension is misconfigured" }),
+      expect.objectContaining({ msg: "the provider is misconfigured" }),
     );
     expect(env.setPending).toHaveBeenLastCalledWith(false);
   });

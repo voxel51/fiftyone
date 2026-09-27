@@ -1,8 +1,8 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Text search for an index a registered text search extension searches
- * client-side, which the server cannot sort by: the extension runs it and
+ * Text search for an index a registered text search provider searches
+ * client-side, which the server cannot sort by: the provider runs it and
  * the result is published to the extended selection, which narrows the grid
  * without changing the view.
  */
@@ -13,11 +13,11 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import { viewFingerprint } from "./state";
 
-export interface LanguageSearchExtension {
+export interface ProviderSearch {
   /**
-   * Runs `query` through the extension that searches `index`, ranking within
+   * Runs `query` through the provider that searches `index`, ranking within
    * `sources` (null ranks every source); does nothing when no registered
-   * extension searches it.
+   * provider searches it.
    */
   run: (
     index: PromptableSimilarityIndex,
@@ -29,16 +29,16 @@ export interface LanguageSearchExtension {
   cancel: () => void;
 }
 
-export const useLanguageSearchExtension = (
+export const useProviderSearch = (
   /** Called when a search actually runs. */
   onRun: (index: PromptableSimilarityIndex, query: string) => void,
-): LanguageSearchExtension => {
+): ProviderSearch => {
   const datasetId = fos.useCurrentDatasetId();
   const datasetName = fos.useCurrentDatasetName();
   const view = fos.useView();
   const filters = fos.useFilters();
   const extended = fos.useExtendedStages();
-  const extensions = fos.useTextSearchExtensions();
+  const providers = fos.useTextSearchProviders();
   const publishExtendedSelection = fos.usePublishExtendedSelection();
   const setViewChangePending = fos.useSetViewChangePending();
   const notify = fos.useNotification();
@@ -46,7 +46,7 @@ export const useLanguageSearchExtension = (
   // Only the newest search may publish; null while none is in flight
   const searchSeq = useRef(0);
   const inFlight = useRef<number | null>(null);
-  // Tells the running search to stop early. An extension may finish anyway,
+  // Tells the running search to stop early. A provider may finish anyway,
   // so `searchSeq`, not the signal, decides what publishes
   const controller = useRef<AbortController | null>(null);
 
@@ -78,10 +78,10 @@ export const useLanguageSearchExtension = (
       k: number,
       sources: string[] | null,
     ) => {
-      const extension = index.extension
-        ? extensions.get(index.extension)
+      const provider = index.provider
+        ? providers.get(index.provider)
         : undefined;
-      if (!extension || !datasetId || !datasetName) return;
+      if (!provider || !datasetId || !datasetName) return;
 
       onRun(index, query);
 
@@ -92,11 +92,11 @@ export const useLanguageSearchExtension = (
       // The in-progress treatment the field shows for any search. No view
       // change follows this one, so it is released below, not by the router
       setViewChangePending(true);
-      // Through the executor, so an extension that throws before returning
+      // Through the executor, so a provider that throws before returning
       // its promise still reaches the failure handling below
       new Promise<fos.TextSearchResult | null>((resolve) =>
         resolve(
-          extension.search({
+          provider.search({
             datasetId,
             datasetName,
             brainKey: index.key,
@@ -132,7 +132,7 @@ export const useLanguageSearchExtension = (
         });
     },
     [
-      extensions,
+      providers,
       datasetId,
       datasetName,
       view,

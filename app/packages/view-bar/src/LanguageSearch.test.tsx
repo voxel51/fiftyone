@@ -50,11 +50,11 @@ const search = (query: string) => {
   fireEvent.keyDown(field, { key: "Enter" });
 };
 
-/** An index a text search extension searches, rather than the server. */
-const EXTENSION_INDEX = {
+/** An index a text search provider searches, rather than the server. */
+const PROVIDER_INDEX = {
   key: "emb_sim",
   patchesField: null,
-  extension: "multimodal",
+  provider: "multimodal",
 };
 
 /** Renders the field with a similarity index enabled and nothing selected,
@@ -82,11 +82,11 @@ const renderSearch = (overrides: Partial<TextSearchController> = {}) => {
   };
 };
 
-/** Renders the field with {@link EXTENSION_INDEX} selected. */
-const renderExtensionSearch = (overrides: Partial<TextSearchController> = {}) =>
+/** Renders the field with {@link PROVIDER_INDEX} selected. */
+const renderProviderSearch = (overrides: Partial<TextSearchController> = {}) =>
   renderSearch({
-    promptKeys: [EXTENSION_INDEX],
-    selectedIndex: EXTENSION_INDEX,
+    promptKeys: [PROVIDER_INDEX],
+    selectedIndex: PROVIDER_INDEX,
     ...overrides,
   });
 
@@ -189,7 +189,7 @@ describe("LanguageSearch", () => {
       label: "Streams",
       values: ["/cam_left", "/cam_right"],
     };
-    return renderExtensionSearch();
+    return renderProviderSearch();
   };
 
   it("asks for the index's sources only once the settings open", () => {
@@ -223,10 +223,10 @@ describe("LanguageSearch", () => {
     ).toBeNull();
     expect(screen.getByLabelText("Search in progress")).toBeTruthy();
   });
-  describe("with an extension's suggestions", () => {
+  describe("with a provider's suggestions", () => {
     const seen = vi.fn();
 
-    /** An extension offering `answer` for whatever is typed. */
+    /** A provider offering `answer` for whatever is typed. */
     const suggesting =
       (
         answer: Partial<TextSearchSuggestions>,
@@ -241,8 +241,8 @@ describe("LanguageSearch", () => {
         name: LANGUAGE_SEARCH_LABEL,
       });
 
-    it("lists the extension's rows and hands it the typed text, previous queries and whether the list is open", () => {
-      renderExtensionSearch({
+    it("lists the provider's rows and hands it the typed text, previous queries and whether the list is open", () => {
+      renderProviderSearch({
         history: ["a green bowl"],
         Suggestions: suggesting({ prompts: ["a red cup", "a robot arm"] }),
       });
@@ -271,7 +271,7 @@ describe("LanguageSearch", () => {
       runs: string | null;
     }>([
       {
-        name: "free text when the extension allows it",
+        name: "free text when the provider allows it",
         answer: { freeText: true },
         typed: "a green bowl",
         runs: "a green bowl",
@@ -290,7 +290,7 @@ describe("LanguageSearch", () => {
         runs: null,
       },
     ])("runs $name on Enter", ({ answer, typed, runs }) => {
-      const { submit } = renderExtensionSearch({
+      const { submit } = renderProviderSearch({
         Suggestions: suggesting(answer),
       });
       search(typed);
@@ -301,8 +301,8 @@ describe("LanguageSearch", () => {
       }
     });
 
-    it("shows the extension's empty message when it offers nothing", () => {
-      renderExtensionSearch({
+    it("shows the provider's empty message when it offers nothing", () => {
+      renderProviderSearch({
         Suggestions: suggesting({
           emptyMessage: () => <span>nothing can run</span>,
         }),

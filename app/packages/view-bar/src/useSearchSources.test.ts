@@ -3,16 +3,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const env = vi.hoisted(() => {
   const sources = vi.fn();
-  // One snapshot, as the registry hands out until an extension registers
-  const extensions = new Map([
+  // One snapshot, as the registry hands out until a provider registers
+  const providers = new Map([
     ["multimodal", { method: "multimodal", search: vi.fn(), sources }],
   ]);
-  return { sources, extensions };
+  return { sources, providers };
 });
 
 vi.mock("@fiftyone/state", () => ({
   useCurrentDatasetName: () => "robots",
-  useTextSearchExtensions: () => env.extensions,
+  useTextSearchProviders: () => env.providers,
 }));
 
 import { useSearchSources } from "./useSearchSources";
@@ -20,14 +20,14 @@ import { useSearchSources } from "./useSearchSources";
 const INDEX = {
   key: "emb_sim",
   patchesField: null,
-  extension: "multimodal",
+  provider: "multimodal",
   timestamp: null,
 };
 
 describe("useSearchSources", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("asks the extension only once wanted", async () => {
+  it("asks the provider only once wanted", async () => {
     const streams = { label: "Streams", values: ["/cam_left", "/cam_right"] };
     env.sources.mockResolvedValue(streams);
     const { result, rerender } = renderHook(
@@ -43,7 +43,7 @@ describe("useSearchSources", () => {
   it("offers nothing to choose for an index with one source", async () => {
     env.sources.mockResolvedValue({ label: "Streams", values: ["/cam"] });
     const { result } = renderHook(() => useSearchSources(INDEX, true));
-    // Settles the extension's answer
+    // Settles the provider's answer
     await act(async () => undefined);
     expect(env.sources).toHaveBeenCalled();
     expect(result.current).toBeNull();

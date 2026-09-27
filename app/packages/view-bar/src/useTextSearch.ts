@@ -4,8 +4,8 @@
  * Text search for whoever hosts the language search field: which index a
  * query runs with, how many matches it asks for, the dataset's previous
  * queries, and where it runs. An index the server sorts runs through the
- * similarity search operator; an index a registered text search extension
- * searches runs through that extension.
+ * similarity search operator; an index a registered text search provider
+ * searches runs through that provider.
  */
 
 import { useTrackEvent } from "@fiftyone/analytics";
@@ -24,8 +24,8 @@ import {
 import { patchesFieldOfView, resolveSearchIndex } from "./searchIndexSelection";
 import { readSearchQueries, recordSearchQuery } from "./searchQueryHistory";
 import type { SerializedStage } from "./state";
-import { useLanguageSearchExtension } from "./useLanguageSearchExtension";
 import { HistorySuggestions } from "./HistorySuggestions";
+import { useProviderSearch } from "./useProviderSearch";
 import { useOperatorSearch } from "./useOperatorSearch";
 
 /**
@@ -60,7 +60,7 @@ export interface TextSearchController {
   submit: (query: string, sources: string[] | null) => void;
   /** What the selected index's search wraps the field in, to say what it
    * offers for the typed text. */
-  Suggestions: fos.TextSearchExtension["Suggestions"];
+  Suggestions: fos.TextSearchProvider["Suggestions"];
 }
 
 export interface TextSearch extends TextSearchController {
@@ -82,7 +82,7 @@ export const useTextSearch = ({
   const datasetName = fos.useCurrentDatasetName();
   const trackEvent = useTrackEvent();
   const promptKeys = fos.usePromptableSimilarityKeys();
-  const extensions = fos.useTextSearchExtensions();
+  const providers = fos.useTextSearchProviders();
 
   // Default ordering = the top 5 indexes actually searched with in the past
   // week (most recent first), then newest-created; an explicit pick
@@ -144,7 +144,7 @@ export const useTextSearch = ({
     [datasetName, trackEvent],
   );
   const operator = useOperatorSearch(currentView, onRun);
-  const extension = useLanguageSearchExtension(onRun);
+  const provider = useProviderSearch(onRun);
 
   const onOpenPanel = useCallback(() => {
     trackEvent("view_bar_search_settings_panel_opened");
@@ -158,26 +158,26 @@ export const useTextSearch = ({
   const submit = useCallback(
     (query: string, sources: string[] | null) => {
       if (!selectedIndex) return;
-      if (selectedIndex.extension) {
-        // Never to the operator, even with its extension gone: the server
+      if (selectedIndex.provider) {
+        // Never to the operator, even with its provider gone: the server
         // cannot sort this index
-        extension.run(selectedIndex, query, k, sources);
+        provider.run(selectedIndex, query, k, sources);
         return;
       }
       operator.run(selectedIndex, query, k);
     },
-    [selectedIndex, extension, operator, k],
+    [selectedIndex, provider, operator, k],
   );
 
-  // An extension searches client-side and publishes to the extended
+  // A provider searches client-side and publishes to the extended
   // selection: it needs neither the operator nor `SortBySimilarity`
-  const extensionSearch = Boolean(selectedIndex?.extension);
+  const providerSearch = Boolean(selectedIndex?.provider);
 
   return {
-    available: operator.available || extensionSearch,
+    available: operator.available || providerSearch,
     onUnavailable: operator.onUnavailable,
     enabled:
-      extensionSearch ||
+      providerSearch ||
       (operator.available && promptKeys.length > 0 && sortStageOffered),
     history,
     promptKeys: orderedPromptKeys,
@@ -188,10 +188,10 @@ export const useTextSearch = ({
     onOpenPanel,
     submit,
     Suggestions:
-      (selectedIndex?.extension &&
-        extensions.get(selectedIndex.extension)?.Suggestions) ||
+      (selectedIndex?.provider &&
+        providers.get(selectedIndex.provider)?.Suggestions) ||
       HistorySuggestions,
     claimView: operator.claimView,
-    cancel: extension.cancel,
+    cancel: provider.cancel,
   };
 };
