@@ -159,6 +159,12 @@ export const createCountingRenderer = <K, V>(downstream?: {
 
   return {
     for: forInstance,
+    /** A retired instance gives up what it showed, so taking it over is a transfer. */
+    release: (label: string) => {
+      for (const looker of lookers.values()) {
+        if (looker.holder === label) looker.shown = false;
+      }
+    },
     counts: (id: string) => counts.get(id) ?? zero(),
     /** Counts of the calls one instance made. */
     instance: (label: string) => instances.get(label) ?? zero(),

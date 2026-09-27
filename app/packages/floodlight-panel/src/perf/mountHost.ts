@@ -1,6 +1,8 @@
 import { type Anchor, type BuildContext, createHost } from "../host/createHost";
-import { createOwnership, scopeRenderer } from "../host/ownership";
+import { createOwnership, type Scoped } from "../host/ownership";
 import { createPageSource } from "../host/pageSource";
+import { createGridRenderer } from "../Grid/gridRenderer";
+import { handOff } from "../Grid/handoff";
 import { createCacheRenderer } from "./cacheRenderer";
 import { type Counts, createCountingRenderer } from "./countingRenderer";
 import { countCalls, createFakePages, type FakeItem } from "./fakePages";
@@ -14,10 +16,10 @@ import {
 type Data = FakeItem["data"];
 
 /**
- * A real host over real engine instances, wired like `Grid.tsx`: one page
- * source and one ownership map. Interim builds render shimmer only; content
- * builds freeze the looker cache and render through the scoped grid
- * renderer, counted on the way. `log` records builds, loads and disposals.
+ * A real host over real engine instances, wired with the same modules as
+ * `Grid.tsx`: `createGridRenderer` per build and `handOff` at each swap, over
+ * one page source and one ownership map, counted on the way. `log` records
+ * builds, loads and disposals.
  */
 export const mountHost = ({
   axis = "width",
@@ -41,6 +43,8 @@ export const mountHost = ({
   const log: string[] = [];
   const interims = new Set<string>();
   const shimmers = new Map<string, number>();
+  const sizes = new Map<string, [number, number]>();
+  const scopes = new Map<Engine, Scoped<number, Data>>();
   // at each load, before the host swaps: what the instance had done, the
   // violation total, and how many tiles of the visible instance were blank
   const atLoad = new Map<
@@ -48,30 +52,36 @@ export const mountHost = ({
     { counts: Counts; violations: number; visibleBlank: number }
   >();
 
-  const shimmer = (label: string) => ({
-    detachItem: () => undefined,
-    hideItem: () => undefined,
-    showItem: () => {
-      shimmers.set(label, (shimmers.get(label) ?? 0) + 1);
-      return Promise.resolve(0);
-    },
-  });
+  const shimmer = (label: string) => () => {
+    shimmers.set(label, (shimmers.get(label) ?? 0) + 1);
+    return Promise.resolve(0);
+  };
 
   const build = (
     anchor: Anchor<number> | undefined,
     { interim }: BuildContext,
   ) => {
     const label = `i${labels.size}`;
-    interim ? interims.add(label) : looker.cache.freeze();
+    interim && interims.add(label);
     const counted = renderer.for(label);
-    const content = scoped ? scopeRenderer(counted, ownership) : counted;
+    const grid = createGridRenderer<Data>({
+      base: () => counted,
+      cached: (key) => Boolean(looker.cache.get(key)),
+      deferred: scoped && Boolean(host.instance),
+      interim,
+      ownership,
+      reattach: true,
+      shimmer: shimmer(label),
+      sizes,
+    });
     const { spotlight } = createEngine({
       key: anchor?.key ?? 0,
       at: anchor?.at,
       get: (key) => source.get(key),
-      ...(interim ? shimmer(label) : content),
+      ...(scoped ? grid : counted),
       ...config,
     });
+    scoped && scopes.set(spotlight, grid);
     spotlight.addEventListener("load", () => {
       log.push(`load ${label}`);
       atLoad.set(label, {
@@ -93,6 +103,14 @@ export const mountHost = ({
     build,
     element: container,
     onDispose: (instance) => log.push(`dispose ${labels.get(instance)}`),
+    onSwap: (next, previous) => {
+      previous && renderer.release(labels.get(previous) ?? "");
+      handOff({
+        cache: looker.cache,
+        next: scopes.get(next),
+        previous: previous && scopes.get(previous),
+      });
+    },
   });
 
   return {

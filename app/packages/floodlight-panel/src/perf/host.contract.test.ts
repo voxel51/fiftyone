@@ -77,19 +77,22 @@ describe("host contracts: cross-axis resize", () => {
     expect(mounted.fetches.total).toBe(0);
   });
 
-  test("interim instances hold no lookers", async () => {
-    const { looker, renderer, shimmers } = await setup();
+  test("interim instances move held lookers at their last size", async () => {
+    const { looker, renderer } = await setup();
     await burst();
 
+    // the 50 visible lookers move without resizing; nothing is created
     for (const label of ["i1", "i2"]) {
-      expect(looker.counts(label)).toEqual(NONE);
-      expect(renderer.instance(label).reattaches).toBe(0);
+      expect(looker.counts(label)).toEqual({
+        creates: 0,
+        reattaches: 50,
+        resizes: 0,
+        skipped: 0,
+      });
     }
-    expect(Object.fromEntries(shimmers)).toEqual({ i1: 115, i2: 115 });
-    // the disposed content instance returned all 55 lookers to the pool
-    expect(renderer.instance("i0").detaches).toBe(55);
-    expect(looker.cache.shown.size).toBe(0);
-    expect(looker.cache.hidden.size).toBe(55);
+    // the retired content instance's teardown detaches nothing
+    expect(renderer.instance("i0").detaches).toBe(0);
+    expect(renderer.violations).toEqual([]);
   });
 
   test("the settled content build reattaches every held looker", async () => {
@@ -186,24 +189,18 @@ describe("host contracts: content rebuild", () => {
     expect(kinds(renderer.violations, "foreign-detach")).toHaveLength(50);
   });
 
-  // `freeze` lets the pending instance's first shows move all 50 lookers
-  // out of the visible instance, whose tiles stay empty until the swap.
-  test.fails(
-    "the visible instance keeps its tiles until the swap",
-    async () => {
-      const { atLoad, host, renderer } = await setup();
-      host.rebuild(host.anchor);
-      await env.idle();
+  // the pending instance defers its shows until the swap hands the lookers over
+  test("the visible instance keeps its tiles until the swap", async () => {
+    const { atLoad, host, renderer } = await setup();
+    host.rebuild(host.anchor);
+    await env.idle();
 
-      expect(atLoad.get("i1")?.visibleBlank).toBe(0);
-      expect(kinds(renderer.violations, "show-elsewhere")).toEqual([]);
-    },
-  );
+    expect(atLoad.get("i1")?.visibleBlank).toBe(0);
+    expect(kinds(renderer.violations, "show-elsewhere")).toEqual([]);
+  });
 
-  // The visible instance keeps rendering while it scrolls: after `freeze`
-  // it re-shows its frozen lookers, the new instance's shows then return
-  // early at `isShown`, and its tiles stay empty after the swap.
-  test.fails("scrolling during the rebuild leaves no blank tiles", async () => {
+  // the visible instance keeps scrolling until it is retired at the swap
+  test("scrolling during the rebuild leaves no blank tiles", async () => {
     const { container, host, looker } = await setup();
     const element = scroller(slot(container));
     host.rebuild(host.anchor);

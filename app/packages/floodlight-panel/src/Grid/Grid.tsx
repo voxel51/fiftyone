@@ -20,8 +20,11 @@ import {
   pageParameters,
 } from "./atoms";
 import { createPageSource } from "../host/pageSource";
-import { createOwnership, type Scoped, scopeRenderer } from "../host/ownership";
+import { createOwnership, type Scoped } from "../host/ownership";
 import useHost from "../host/useHost";
+import { createGridRenderer } from "./gridRenderer";
+import { handOff } from "./handoff";
+import { showStorm } from "./loadingOverlay";
 import useEscape from "./useEscape";
 import useInstanceEvents from "./useInstanceEvents";
 import useItemCache from "./useItemCache";
@@ -140,32 +143,16 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
       // Teardown must reach the renderer that created the items: swimlane
       // rows own inner instances that only its detachItem destroys.
       const kind = useSwimlanes ? "swimlane" : "standard";
-      const sizes = lastSizes.current;
-      const scoped = scopeRenderer<number, fos.Sample>(
-        {
-          detachItem: (item) => refs.current.renderers[kind].detachItem(item),
-          hideItem: (item) => refs.current.renderers[kind].hideItem(item),
-          showItem: (item) => {
-            const key = item.id.description;
-            if (interim) {
-              // mid-resize, lookers move at their last size and stretch; the
-              // rest shimmer, including swimlane rows, whose content is an instance
-              const last = sizes.get(key);
-              return last && kind === "standard" && cache.get(key)
-                ? refs.current.renderers[kind].showItem({
-                    ...item,
-                    dimensions: last,
-                  })
-                : SHIMMER.showItem(item);
-            }
-            sizes.set(key, item.dimensions);
-            return refs.current.renderers[kind].showItem(item);
-          },
-        },
+      const scoped = createGridRenderer<fos.Sample>({
+        base: () => refs.current.renderers[kind],
+        cached: (key) => Boolean(cache.get(key)),
+        deferred: Boolean(hostRef.current?.instance),
+        interim,
         ownership,
-      );
-      // the visible instance keeps its lookers until the swap hands them over
-      hostRef.current?.instance && scoped.defer();
+        reattach: kind === "standard",
+        shimmer: SHIMMER.showItem,
+        sizes: lastSizes.current,
+      });
       const next = new Spotlight<number, fos.Sample>({
         key: anchor?.key ?? 0,
         at: anchor?.at,
@@ -189,12 +176,12 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
       else cleanups.current.set(next, wire(next));
       return next;
     },
-    onSwap: (next, previous) => {
-      previous && scopes.current.get(previous)?.retire();
-      cache.freeze();
-      scopes.current.get(next)?.flush();
-      cache.unfreeze();
-    },
+    onSwap: (next, previous) =>
+      handOff({
+        cache,
+        next: scopes.current.get(next),
+        previous: previous && scopes.current.get(previous),
+      }),
     onAnchor: (anchor) =>
       set({
         at: { description: anchor.at?.description ?? "" },
@@ -247,12 +234,13 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
   const loaded = useRef(false);
   if (status === "ready") loaded.current = true;
   const scrubbing = useReverbValue(fos.gridScrubbing);
-  const storm =
-    !loaded.current ||
-    (status === "building" &&
-      fetching &&
-      !(instance && interims.current.has(instance))) ||
-    scrubbing;
+  const storm = showStorm({
+    building: status === "building",
+    everLoaded: loaded.current,
+    fetching,
+    interim: Boolean(instance && interims.current.has(instance)),
+    scrubbing,
+  });
 
   useEscape();
   useUpdates({
