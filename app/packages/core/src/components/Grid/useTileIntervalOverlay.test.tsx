@@ -1,5 +1,9 @@
 import { act, renderHook } from "@testing-library/react";
-import { useSyncExternalStore, type ReactNode } from "react";
+import {
+  useSyncExternalStore,
+  type ComponentType,
+  type ReactNode,
+} from "react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@fiftyone/state", () => ({
@@ -19,9 +23,20 @@ vi.mock("recoil", async () => ({
 
 const lane = vi.hoisted(() => ({ surfaces: [] as string[] }));
 
-const registered = vi.hoisted(() => ({
-  overlays: [] as Array<() => null>,
-}));
+const registered = vi.hoisted(() => {
+  const listeners = new Set<() => void>();
+  return {
+    overlays: [] as Array<ComponentType>,
+    register(overlays: Array<ComponentType>) {
+      this.overlays = overlays;
+      listeners.forEach((listener) => listener());
+    },
+    subscribe(listener: () => void) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+  };
+});
 
 const ranges = vi.hoisted(
   () => new Map<string, { startNs: bigint; endNs: bigint }>(),
@@ -63,7 +78,6 @@ const seeks = vi.hoisted(() => {
 });
 
 vi.mock("@fiftyone/multimodal/extensions/timeline", () => ({
-  useGridOverlays: () => registered.overlays,
   useSampleFocus: () => {
     const startNs = useSyncExternalStore(
       focus.subscribe,
@@ -94,11 +108,15 @@ vi.mock("./TileLanes", () => ({
     ctx: { surface: string };
     showTags: boolean;
   }) => {
+    const overlays = useSyncExternalStore(
+      registered.subscribe,
+      () => registered.overlays,
+    );
     if (showTags) lane.surfaces.push(ctx.surface);
     return (
       <>
         {showTags ? <div data-lane="" /> : null}
-        {registered.overlays.map((Overlay, index) => (
+        {overlays.map((Overlay, index) => (
           <Overlay key={index} />
         ))}
       </>
@@ -186,6 +204,25 @@ describe("useTileIntervalOverlay", () => {
     } finally {
       tags.supported = true;
       registered.overlays = [];
+    }
+  });
+
+  it("draws an overlay registered after the tile mounted where tags are unsupported", async () => {
+    tags.supported = false;
+    const element = document.createElement("div");
+    try {
+      const { result } = renderHook(() => useTileIntervalOverlay());
+      await act(async () =>
+        result.current.mount("video", element, {
+          sample: { _id: "video", _media_type: "video" },
+        }),
+      );
+      await act(async () => registered.register([() => <i data-overlay="" />]));
+
+      expect(element.querySelector("[data-overlay]")).not.toBeNull();
+    } finally {
+      tags.supported = true;
+      registered.register([]);
     }
   });
 

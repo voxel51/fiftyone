@@ -4,10 +4,7 @@
  * torn down when spotlight recycles the element.
  */
 import { VideoLooker } from "@fiftyone/looker";
-import {
-  useGridOverlays,
-  useSampleFocus,
-} from "@fiftyone/multimodal/extensions/timeline";
+import { useSampleFocus } from "@fiftyone/multimodal/extensions/timeline";
 import type { IntervalTileContext } from "@fiftyone/multimodal/extensions/episode-intervals";
 import {
   getEpisodeSeek,
@@ -56,14 +53,13 @@ function VideoTileLanes({
   sampleId,
   metadataDurationNs,
   looker,
-  showTags,
 }: {
   readonly datasetId: string;
   readonly sampleId: string;
   readonly metadataDurationNs: number | undefined;
   readonly looker: VideoLooker | null;
-  readonly showTags: boolean;
 }) {
+  const showTags = useRecoilValue(fos.supportsTemporalTags(false));
   // Known once the poster has loaded
   const [lookerDuration, setLookerDuration] = useState(
     () => looker?.duration ?? null,
@@ -133,8 +129,6 @@ export function useTileIntervalOverlay() {
   // which is what the multimodal tile passes through its renderer context.
   const datasetId = fos.useCurrentDataset()?.datasetId;
   const RecoilBridge = useRecoilBridgeAcrossReactRoots_UNSTABLE();
-  const supported = useRecoilValue(fos.supportsTemporalTags(false));
-  const hasOverlays = useGridOverlays().length > 0;
 
   const mounted = useRef(new Map<string, MountedOverlay>());
 
@@ -160,7 +154,7 @@ export function useTileIntervalOverlay() {
       sample: TileSample,
       looker?: unknown,
     ) => {
-      if ((!supported && !hasOverlays) || !datasetId) {
+      if (!datasetId) {
         return;
       }
 
@@ -209,14 +203,13 @@ export function useTileIntervalOverlay() {
             sampleId={sampleId}
             metadataDurationNs={durationNs}
             looker={looker instanceof VideoLooker ? looker : null}
-            showTags={supported}
           />
         </RecoilBridge>,
       );
 
       mounted.current.set(key, { root, host });
     },
-    [RecoilBridge, datasetId, hasOverlays, supported, unmount],
+    [RecoilBridge, datasetId, unmount],
   );
 
   useEffect(() => {
