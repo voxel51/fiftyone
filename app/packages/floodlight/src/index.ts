@@ -165,6 +165,7 @@ export default class Spotlight<K, V> extends EventTarget {
       }
     });
     observer.observe(this.#element);
+    this.#aborter.signal.addEventListener("abort", () => observer.disconnect());
     // Run in the next animation frame for a correct measurement;
 
     const fill = () =>
@@ -278,7 +279,10 @@ export default class Spotlight<K, V> extends EventTarget {
    * @returns A Renderer for use with {@link Section.next}.
    */
   #createRenderer(reverse: boolean, render: boolean): Renderer<K, V> {
-    const applyResult = (result: ReturnType<Parameters<Renderer<K, V>>[0]>) => {
+    const applyResult = (
+      result: ReturnType<Parameters<Renderer<K, V>>[0]>,
+      draw = true,
+    ) => {
       let offset: false | number;
       if (reverse) {
         offset = typeof result.offset === "number" ? -result.offset : false;
@@ -302,6 +306,8 @@ export default class Spotlight<K, V> extends EventTarget {
         }
       }
 
+      if (!draw) return;
+
       this.#render({
         go: false,
         offset,
@@ -315,8 +321,9 @@ export default class Spotlight<K, V> extends EventTarget {
         // Synchronous path used during the initial fill. The runner can still
         // swap sections internally once cumulative rows cross `maxRows / 2`;
         // applying its result here keeps `#forward`/`#backward` in sync with
-        // that swap before the first real render runs.
-        applyResult(runner());
+        // that swap before the first real render runs. Rendering here would
+        // start a page load that aborts the fill before it offsets the sections.
+        applyResult(runner(), false);
         return;
       }
 
@@ -702,7 +709,8 @@ export default class Spotlight<K, V> extends EventTarget {
     if (key === null) {
       return { items: [], next: null, previous: null };
     }
-    const result = await this.#config.get(key);
+    // copied: pages may be cached and shared with other instances
+    const result = { ...(await this.#config.get(key)) };
     for (const { id } of result.items) {
       this.#keys.set(id, key);
     }
