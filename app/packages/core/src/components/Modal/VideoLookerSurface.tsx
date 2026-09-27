@@ -6,7 +6,6 @@ import type { VideoLooker } from "@fiftyone/looker";
 import { PlaybackProvider, type TimelineMode } from "@fiftyone/playback";
 import * as fos from "@fiftyone/state";
 import {
-  FrameLabelsTracks,
   RegisterFrameLabels,
   getModalSampleFrameRate,
   useTimelineMaxSize,
@@ -108,22 +107,14 @@ export const VideoLookerSurface: React.FC<{ sample: fos.ModalSample }> = ({
           <VideoLookerReact sample={sample} frameRate={frameRate} />
         </div>
         <div className={styles.timeline} style={CARD_BACKGROUND}>
-          <VideoTimelineExtensions sample={sample}>
-            {({ tracks, decorateTrack, rulerOverlay, runtime }) => (
-              <FrameLabelsTracks
-                sample={sample}
-                maxSize={timelineMaxSize}
-                mode="explore"
-                additionalTracks={savedSegments.tracks}
-                initialPinnedIds={savedSegments.initialPinnedIds}
-                pinScopeKey={savedSegments.pinScopeKey}
-                extraTracks={tracks}
-                decorateExtraTrack={decorateTrack}
-                rulerOverlay={rulerOverlay}
-                runtime={runtime}
-              />
-            )}
-          </VideoTimelineExtensions>
+          <VideoTimelineExtensions
+            sample={sample}
+            maxSize={timelineMaxSize}
+            mode="explore"
+            additionalTracks={savedSegments.tracks}
+            initialPinnedIds={savedSegments.initialPinnedIds}
+            pinScopeKey={savedSegments.pinScopeKey}
+          />
         </div>
       </div>
     </PlaybackProvider>

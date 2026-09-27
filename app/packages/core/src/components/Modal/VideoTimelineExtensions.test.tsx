@@ -2,14 +2,17 @@
 import {
   publishEmbeddingSelection,
   registerTimelineExtension,
-  type TimelineComposition,
   type TimelineExtensionComponentProps,
 } from "@fiftyone/multimodal/extensions/timeline";
 import type * as fos from "@fiftyone/state";
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const env = vi.hoisted(() => ({ durationSec: 7, seek: vi.fn() }));
+const env = vi.hoisted(() => ({
+  durationSec: 7,
+  seek: vi.fn(),
+  tracksProps: vi.fn(),
+}));
 
 vi.mock("@fiftyone/state", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@fiftyone/state")>()),
@@ -21,6 +24,13 @@ vi.mock("@fiftyone/playback", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@fiftyone/playback")>()),
   useDuration: () => env.durationSec,
   usePlayback: () => ({ seek: env.seek }),
+}));
+
+vi.mock("@fiftyone/video-annotation", () => ({
+  FrameLabelsTracks: (props: unknown) => {
+    env.tracksProps(props);
+    return null;
+  },
 }));
 
 import { VideoTimelineExtensions } from "./VideoTimelineExtensions";
@@ -41,6 +51,7 @@ afterEach(() => {
   cleanup();
   publishEmbeddingSelection(null);
   env.seek.mockReset();
+  env.tracksProps.mockReset();
   unregister?.();
   unregister = undefined;
 });
@@ -56,17 +67,13 @@ describe("VideoTimelineExtensions", () => {
       },
     });
 
-    render(
-      <VideoTimelineExtensions sample={SAMPLE}>
-        {() => null}
-      </VideoTimelineExtensions>,
-    );
+    render(<VideoTimelineExtensions sample={SAMPLE} />);
 
     expect(env.seek).toHaveBeenCalledTimes(1);
     expect(env.seek).toHaveBeenCalledWith(2.5);
   });
 
-  it("runs the timeline extensions for this video, from time 0 to its end, and hands their rows to its timeline", () => {
+  it("runs the timeline extensions for this video, from time 0 to its end, and shows their rows after the host's", () => {
     const seen = vi.fn();
     unregister = registerTimelineExtension({
       id: "test:probe",
@@ -87,20 +94,19 @@ describe("VideoTimelineExtensions", () => {
         );
       },
     });
-    const composed = vi.fn<(composition: TimelineComposition) => null>(
-      () => null,
-    );
+    const hostRow = { ...ROW, id: "fiftyone:saved-segments:all" };
 
     render(
-      <VideoTimelineExtensions sample={SAMPLE}>
-        {composed}
-      </VideoTimelineExtensions>,
+      <VideoTimelineExtensions sample={SAMPLE} additionalTracks={[hostRow]} />,
     );
 
     const context = seen.mock.lastCall?.[0];
     expect(context.ctx.sample.sample._id).toBe("sample-1");
     expect(context.ctx.media.path).toBe("/videos/clip.mp4");
     expect(context.timeRange).toEqual({ startNs: 0n, endNs: 7_000_000_000n });
-    expect(composed.mock.lastCall?.[0].tracks).toEqual([ROW]);
+    expect(env.tracksProps.mock.lastCall?.[0].additionalTracks).toEqual([
+      hostRow,
+      ROW,
+    ]);
   });
 });

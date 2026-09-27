@@ -128,16 +128,6 @@ const TEMPORAL_TAG_TRACK_DECORATION: TrackDecoration = {
 };
 
 /**
- * Decoration for a host-supplied row (see `FrameLabelsTracks`' `extraTracks`):
- * read-only, with no engine instance and no menu.
- */
-const EXTRA_TRACK_DECORATION: TrackDecoration = {
-  expansionGutter: true,
-};
-
-const NO_EXTRA_TRACKS: readonly Track[] = [];
-
-/**
  * Most "Merge into …" entries to offer on one track's menu.
  *
  * A merge target has to be a different track of the same class on the same
@@ -696,7 +686,7 @@ function useTrackDecorator({
   );
 }
 
-const NO_ADDITIONAL_TRACKS: Track[] = [];
+const NO_ADDITIONAL_TRACKS: readonly Track[] = [];
 const EMPTY_HOST_DECORATION = Object.freeze({});
 
 /**
@@ -720,8 +710,15 @@ const EMPTY_HOST_DECORATION = Object.freeze({});
  */
 export const FrameLabelsTracks: React.FC<{
   sample?: ModalSample;
-  /** Read-only host tracks, such as the saved ranges being browsed. */
-  additionalTracks?: Track[];
+  /**
+   * Read-only host rows shown before the sample's own, such as the saved
+   * ranges being browsed or an extension's rows. Never read as sub-tracks,
+   * whatever their ids look like. Must be a stable reference while unchanged:
+   * a new identity re-decorates every row.
+   */
+  additionalTracks?: readonly Track[];
+  /** Row behavior for `additionalTracks`; they are read-only without it. */
+  decorateAdditionalTrack?: TemporalTagTimelineProps["decorateTrack"];
   initialPinnedIds?: string[];
   /** Keep a scoped host's pins separate from the ordinary video preferences. */
   pinScopeKey?: string;
@@ -750,14 +747,6 @@ export const FrameLabelsTracks: React.FC<{
   mode?: "annotate" | "explore";
   /** Reports whether the frame tracks have resolved for the current sample. */
   onReadyChange?: (ready: boolean) => void;
-  /**
-   * Read-only rows a host adds after the sample's own. Must be a stable
-   * reference while unchanged: a new identity re-decorates every row.
-   */
-  extraTracks?: readonly Track[];
-  /** Row behavior the host adds to its `extraTracks`, over the read-only
-   * default. */
-  decorateExtraTrack?: TemporalTagTimelineProps["decorateTrack"];
   /** Host content drawn over the ruler. */
   rulerOverlay?: (labelWidth: number) => React.ReactNode;
   /** Host content mounted inside this timeline's track provider, such as
@@ -772,10 +761,9 @@ export const FrameLabelsTracks: React.FC<{
   mode = "annotate",
   onReadyChange,
   additionalTracks = NO_ADDITIONAL_TRACKS,
+  decorateAdditionalTrack,
   initialPinnedIds,
   pinScopeKey,
-  extraTracks = NO_EXTRA_TRACKS,
-  decorateExtraTrack,
   rulerOverlay,
   runtime,
 }) => {
@@ -838,8 +826,8 @@ export const FrameLabelsTracks: React.FC<{
 
   // Object tracks (with their sub-tracks interleaved) followed by TD tracks.
   const resolvedTracks = useMemo(
-    () => [...additionalTracks, ...frameTracks, ...temporalDetectionTracks],
-    [additionalTracks, frameTracks, temporalDetectionTracks],
+    () => [...frameTracks, ...temporalDetectionTracks],
+    [frameTracks, temporalDetectionTracks],
   );
 
   // The last list that resolved, shown while the next one loads (see the
@@ -877,8 +865,12 @@ export const FrameLabelsTracks: React.FC<{
 
   const visibleTracks = useMemo(
     () =>
-      visibleTimelineTracks(sampleTracks, extraTracks, expansion.expandedIds),
-    [sampleTracks, extraTracks, expansion.expandedIds],
+      visibleTimelineTracks(
+        additionalTracks,
+        sampleTracks,
+        expansion.expandedIds,
+      ),
+    [additionalTracks, sampleTracks, expansion.expandedIds],
   );
 
   // Ready means frame tracks resolved, not `tracks.length`: TD and tag tracks
@@ -910,25 +902,18 @@ export const FrameLabelsTracks: React.FC<{
     readOnly: mode === "explore",
     ready,
   });
-  const extraTrackIds = useMemo(
-    () => new Set(extraTracks.map(({ id }) => id)),
-    [extraTracks],
+  const additionalTrackIds = useMemo(
+    () => new Set(additionalTracks.map(({ id }) => id)),
+    [additionalTracks],
   );
   const decorateTrack = useCallback<
     NonNullable<TemporalTagTimelineProps["decorateTrack"]>
   >(
-    (track, pinned) => {
-      if (extraTrackIds.has(track.id)) {
-        return {
-          ...EXTRA_TRACK_DECORATION,
-          ...decorateExtraTrack?.(track, pinned),
-        };
-      }
-      return additionalTracks.includes(track)
-        ? EMPTY_HOST_DECORATION
-        : decorateSampleTrack(track);
-    },
-    [decorateSampleTrack, decorateExtraTrack, extraTrackIds, additionalTracks],
+    (track, pinned) =>
+      additionalTrackIds.has(track.id)
+        ? (decorateAdditionalTrack?.(track, pinned) ?? EMPTY_HOST_DECORATION)
+        : decorateSampleTrack(track),
+    [decorateSampleTrack, decorateAdditionalTrack, additionalTrackIds],
   );
 
   return (

@@ -8,9 +8,10 @@ import {
   type TimelineComposition,
   type TimelineSection,
 } from "@fiftyone/multimodal/extensions/timeline";
-import { useDuration, usePlayback } from "@fiftyone/playback";
+import { type Track, useDuration, usePlayback } from "@fiftyone/playback";
 import { createSampleRendererRenderContext } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
+import { FrameLabelsTracks } from "@fiftyone/video-annotation";
 import React, { useEffect, useMemo, useRef } from "react";
 
 const NO_SECTIONS: readonly TimelineSection[] = [];
@@ -22,15 +23,42 @@ const NO_EXTENSIONS: TimelineComposition = {
   tracks: [],
 };
 
+const NO_TRACKS: readonly Track[] = [];
+
+type TracksProps = Omit<
+  React.ComponentProps<typeof FrameLabelsTracks>,
+  "decorateAdditionalTrack" | "rulerOverlay" | "runtime"
+>;
+
+/** The timeline, with the extensions' rows after the host's own. */
+const ExtendedTracks: React.FC<
+  TracksProps & { composition: TimelineComposition }
+> = ({ composition, additionalTracks = NO_TRACKS, ...props }) => {
+  const tracks = useMemo(
+    () => [...additionalTracks, ...composition.tracks],
+    [additionalTracks, composition.tracks],
+  );
+  return (
+    <FrameLabelsTracks
+      {...props}
+      additionalTracks={tracks}
+      decorateAdditionalTrack={composition.decorateTrack}
+      rulerOverlay={composition.rulerOverlay}
+      runtime={composition.runtime}
+    />
+  );
+};
+
 /**
- * Runs the registered timeline extensions for the video modal, a video being
- * an episode with one stream, and opens it at its first matched window. Must
- * render inside the surface's `PlaybackProvider`.
+ * The video modal's read-only timeline, running the registered timeline
+ * extensions over it, a video being an episode with one stream, and opening
+ * it at its first matched window. Must render inside the surface's
+ * `PlaybackProvider`.
  */
-export const VideoTimelineExtensions: React.FC<{
-  sample: fos.ModalSample;
-  children: (composition: TimelineComposition) => React.ReactNode;
-}> = ({ sample, children }) => {
+export const VideoTimelineExtensions: React.FC<
+  TracksProps & { sample: fos.ModalSample }
+> = (props) => {
+  const { sample } = props;
   const dataset = fos.useCurrentDataset();
   const schema = fos.useModalSampleSchema();
   const mediaField = fos.useSelectedMediaFieldModal();
@@ -72,7 +100,10 @@ export const VideoTimelineExtensions: React.FC<{
     [durationSec],
   );
 
-  if (!ctx) return <>{children(NO_EXTENSIONS)}</>;
+  const renderTracks = (composition: TimelineComposition) => (
+    <ExtendedTracks {...props} composition={composition} />
+  );
+  if (!ctx) return renderTracks(NO_EXTENSIONS);
   return (
     <TimelineExtensionHost
       builtInSections={NO_SECTIONS}
@@ -82,7 +113,7 @@ export const VideoTimelineExtensions: React.FC<{
       session={null}
       timeRange={timeRange}
     >
-      {children}
+      {renderTracks}
     </TimelineExtensionHost>
   );
 };

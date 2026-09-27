@@ -11,7 +11,6 @@ import {
 } from "@fiftyone/playback";
 import * as fos from "@fiftyone/state";
 import {
-  FrameLabelsTracks,
   RegisterFrameLabels,
   RegisterVideoExploreLabels,
   LighterVideo,
@@ -275,23 +274,15 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
             render an empty, inert transport under the error. */}
         {!mediaFailed && (
           <div className={styles.timeline}>
-            <VideoTimelineExtensions sample={sample}>
-              {({ tracks, decorateTrack, rulerOverlay, runtime }) => (
-                <FrameLabelsTracks
-                  sample={sample}
-                  maxSize={timelineMaxSize}
-                  mode="explore"
-                  trailingActions={<VideoExploreToolbar />}
-                  additionalTracks={savedSegments.tracks}
-                  initialPinnedIds={savedSegments.initialPinnedIds}
-                  pinScopeKey={savedSegments.pinScopeKey}
-                  extraTracks={tracks}
-                  decorateExtraTrack={decorateTrack}
-                  rulerOverlay={rulerOverlay}
-                  runtime={runtime}
-                />
-              )}
-            </VideoTimelineExtensions>
+            <VideoTimelineExtensions
+              sample={sample}
+              maxSize={timelineMaxSize}
+              mode="explore"
+              trailingActions={<VideoExploreToolbar />}
+              additionalTracks={savedSegments.tracks}
+              initialPinnedIds={savedSegments.initialPinnedIds}
+              pinScopeKey={savedSegments.pinScopeKey}
+            />
           </div>
         )}
       </div>
