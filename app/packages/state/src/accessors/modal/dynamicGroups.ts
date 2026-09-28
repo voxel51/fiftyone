@@ -2,8 +2,14 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 import { useRef } from "react";
-import { useReverbValueLoadable } from "@fiftyone/reverb";
-import { groupByFieldValue } from "../../atoms/dynamicGroups";
+import { useReverbValue, useReverbValueLoadable } from "@fiftyone/reverb";
+import {
+  groupByFieldValue,
+  isDynamicGroup,
+  isNestedDynamicGroup,
+  isNonNestedDynamicGroup,
+} from "../../atoms/dynamicGroups";
+import { isQueryPerformantDynamicGroup } from "../../atoms/queryPerformance";
 import { dynamicGroupsElementCount } from "../../atoms/pathData/groups";
 
 /**
@@ -47,3 +53,18 @@ export const useElementsCount = (modal: boolean): number => {
   }
   return ref.current;
 };
+
+/** Whether the current view is a dynamic group. */
+export const useIsDynamicGroup = (): boolean => useReverbValue(isDynamicGroup);
+
+/** Whether the current view is a dynamic group over a group dataset. */
+export const useIsNestedDynamicGroup = (): boolean =>
+  useReverbValue(isNestedDynamicGroup);
+
+/** Whether the current view is a dynamic group over a non-group dataset. */
+export const useIsNonNestedDynamicGroup = (): boolean =>
+  useReverbValue(isNonNestedDynamicGroup);
+
+/** Whether the dynamic group is ordered with a fixed order-by key, so paging it is indexed. */
+export const useIsQueryPerformantDynamicGroup = (): boolean =>
+  Boolean(useReverbValue(isQueryPerformantDynamicGroup));

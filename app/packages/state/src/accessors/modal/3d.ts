@@ -22,6 +22,7 @@ import { ModalMode, modalMode } from "../../jotai/modal";
 import {
   groupMediaIsCarouselVisible,
   groupMediaIsMain2DViewerVisible,
+  groupMediaIsMain2DViewerVisibleSetting,
 } from "../../atoms/groups";
 import { GroupSampleNotFound, type ModalSample } from "../../atoms/modal";
 import * as internals from "../../atoms/renderConfig3d.atoms";
@@ -46,6 +47,10 @@ export const useIsGroupCarouselVisible = () => {
   const isAnnotate = useAtomValue(modalMode) === ModalMode.ANNOTATE;
   return isVisible && !isAnnotate;
 };
+
+/** The user's setting for showing the 2D viewer, before annotate-mode suppression. */
+export const useIsGroupMain2dViewerVisibleSetting = () =>
+  useReverbValue(groupMediaIsMain2DViewerVisibleSetting);
 
 /**
  * Whether the 2D viewer is visible. In annotate mode, suppressed when the 3D

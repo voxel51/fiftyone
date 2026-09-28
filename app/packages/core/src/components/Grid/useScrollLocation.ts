@@ -1,14 +1,31 @@
 import type { ID } from "@fiftyone/spotlight";
 import { useMemo } from "react";
-import { useReverbCallback, useReverbTransaction } from "@fiftyone/reverb";
+import {
+  atom,
+  useReverbCallback,
+  useReverbTransaction,
+  useReverbValue,
+} from "@fiftyone/reverb";
 import { gridAt, gridOffset, gridPage } from "./atoms";
 
+const gridJump = atom({
+  key: "gridJump",
+  default: 0,
+});
+
+/** Signals that the grid should rebuild at its newly requested location. */
+export function useGridJumpRevision() {
+  return useReverbValue(gridJump);
+}
+
+/** The sample and pixel offset at the start of a grid page. */
 export interface ScrollLocation {
   at: ID;
   page: number;
   offset: number;
 }
 
+/** Saves, restores, and explicitly changes the grid's scroll anchor. */
 export default function useScrollLocation(pageReset: string) {
   const getPage = useReverbTransaction(
     ({ get }) =>
@@ -66,5 +83,18 @@ export default function useScrollLocation(pageReset: string) {
     [],
   );
 
-  return { get, set };
+  // Point the grid at a sample on a known page; the layout refresher sees
+  // the jump and rebuilds the grid there, as it does after the modal closes.
+  const jump = useReverbTransaction(
+    ({ set }) =>
+      ({ page, at }: { page: number; at: string }) => {
+        set(gridPage, page);
+        set(gridAt, at);
+        set(gridOffset, 0);
+        set(gridJump, (count) => count + 1);
+      },
+    [],
+  );
+
+  return { get, set, jump };
 }

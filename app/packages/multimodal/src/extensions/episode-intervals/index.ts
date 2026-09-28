@@ -11,6 +11,7 @@ export { EpisodeIntervalSources } from "./chain";
 export {
   toEpisodeRelativeNs,
   useEpisodePlayheadNs,
+  useEpisodeSeek,
   useEpisodeTimeRange,
 } from "./use-episode-time-range";
 export { packIntervals, UNPLACED } from "./pack-intervals";
@@ -29,6 +30,7 @@ export type {
   EpisodeIntervalContribution,
   EpisodeIntervalSource,
   EpisodeIntervalSourceProps,
+  IntervalTileContext,
   ResolvedEpisodeIntervals,
 } from "./types";
 export type { PackableInterval, PackedIntervals } from "./pack-intervals";

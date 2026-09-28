@@ -145,6 +145,7 @@ export interface UseDataStreamOptions {
   /** Capture time to open the recording at, ahead of the first-data tick.
    * Set to an embeddings match so opening a matched tile lands on it. */
   initialSeekTimeNs?: bigint | null;
+  initialSeekPending?: boolean;
   session: EpisodeSession | null;
   /** Called whenever every blocking stream covers the current playhead. */
   onPlayheadDataReady?: () => void;
@@ -179,6 +180,7 @@ export function useRegisterDataStream({
   blockingStreams,
   endBoundedStreams,
   initialSeekTimeNs,
+  initialSeekPending,
   firstUsefulSettlementStreams = [],
   session,
   onPlayheadDataReady,
@@ -254,6 +256,8 @@ export function useRegisterDataStream({
   // and reload the whole recording whenever the match changed.
   const initialSeekTimeNsRef = useRef<bigint | null>(null);
   initialSeekTimeNsRef.current = initialSeekTimeNs ?? null;
+  const initialSeekPendingRef = useRef(false);
+  initialSeekPendingRef.current = initialSeekPending ?? false;
 
   // `seek` clamps to the duration known when it is called, and the timeline
   // index resolves before any stream has reported one. Without this the
@@ -436,6 +440,7 @@ export function useRegisterDataStream({
   // embeddings match overrides that target with the matched window, and needs
   // no stream bounds to do it.
   const maybeAutoSeekToFirstData = useCallback(() => {
+    if (initialSeekPendingRef.current) return;
     const matchNs = initialSeekTimeNsRef.current;
     // Only for a matched open — an ordinary open would log on every tick
     const trace = (outcome: string, detail: Record<string, unknown> = {}) => {
@@ -659,7 +664,13 @@ export function useRegisterDataStream({
   // which bounds how far the engine will let the opening seek travel.
   useEffect(() => {
     if (index) scheduleAutoSeekToFirstData();
-  }, [duration, index, scheduleAutoSeekToFirstData]);
+  }, [
+    duration,
+    index,
+    initialSeekTimeNs,
+    initialSeekPending,
+    scheduleAutoSeekToFirstData,
+  ]);
 
   // Contiguous [startSec, endSec] ranges where every active stream has the
   // tick cached — i.e. the stretches playback can run through without

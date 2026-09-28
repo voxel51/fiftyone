@@ -1,12 +1,10 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Whole-track delete on the video-annotation surface. The sidebar / keyboard
- * delete is PER-FRAME (it removes only the current frame's instance — the track
- * persists on other frames). Deleting an entire track is the timeline track's
- * right-click context menu → "Delete track", which removes the instance's label
- * on every frame in one engine transaction. The removal survives a true
- * round-trip (fresh browser context) via autosave.
+ * Whole-track delete on the video surface: the sidebar/keyboard delete is
+ * per-frame, so a whole track is deleted from the timeline row's context menu,
+ * removing the instance's label on every frame in one engine transaction. The
+ * removal survives a fresh browser context via autosave.
  */
 import { test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -19,7 +17,6 @@ const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-video-track-delete",
 );
 const id = "000000000000000000000000";
-const clip = `/tmp/${datasetName}.webm`;
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -27,30 +24,51 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
-  await mediaFactory.createVideo({
-    outputPath: clip,
-    duration: 2,
-    width: 64,
-    height: 64,
-    frameRate: 10,
-    color: "#3050a0",
-  });
 });
 
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeEach(async ({ videoAnnotateSDK }) => {
+test.beforeEach(async ({ datasetFactory }) => {
   // one tracked vehicle (index=1) on every frame; no TDs to keep the timeline
   // to a single object track.
-  await videoAnnotateSDK.seed({
+  await datasetFactory.createDataset({
+    mediaType: "video",
     datasetName,
-    videoPaths: [clip],
-    withEvents: false,
-    trackedSampleIndices: [0],
+    sampleFrames: true,
+    schema: {
+      "frames.detections": "Detections",
+      "frames.detections.detections.instance": "Instance",
+      "frames.detections.detections.keyframe": "BooleanField",
+      "frames.detections.detections.propagation": "DictField",
+    },
+    labelSchemas: {
+      "frames.detections": {
+        type: "detections",
+        component: "dropdown",
+        classes: ["vehicle", "person", "road sign"],
+        attributes: [
+          { name: "id", type: "id", component: "text", read_only: true },
+          { name: "tags", type: "list<str>", component: "text" },
+          { name: "confidence", type: "float", component: "text" },
+          { name: "index", type: "int", component: "text" },
+          { name: "mask_path", type: "str", component: "text" },
+        ],
+      },
+    },
+    withFrameData: (_, { label }) => ({
+      detections: label.detections([
+        label.detection({
+          label: "vehicle",
+          bounding_box: [0.3, 0.3, 0.2, 0.2],
+          index: 1,
+          instance: label.instance("vehicle-1"),
+        }),
+      ]),
+    }),
   });
 });
 

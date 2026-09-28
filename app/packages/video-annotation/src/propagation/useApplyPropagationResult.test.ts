@@ -30,7 +30,7 @@ import {
 const PATH = "frames.detections";
 
 beforeEach(() => {
-  h.stream = { labelsField: "detections" };
+  h.stream = { labelsField: "detections", labelsPath: PATH };
   vi.clearAllMocks();
 });
 

@@ -51,8 +51,16 @@ export class Looker3DControlsPom {
     await this.page.waitForTimeout(150);
   }
 
+  /**
+   * Look straight down the Z axis. Resolves once a frame has rendered the new
+   * camera, so a following canvas click raycasts against the top view.
+   */
   async setTopView() {
+    const settled = await this.modal.eventUtils.arm(
+      "looker3d-camera-look-at-settled",
+    );
     await this.locator.getByTestId("looker-3d-set-top-view").click();
+    await settled.received;
   }
 
   async setEgoView() {
@@ -77,19 +85,8 @@ export class Looker3DControlsPom {
     await expect(this.sliceSelectorCheckboxes).toHaveCount(0);
   }
 
-  async getSliceSelectorLabel() {
-    const text = await this.sliceSelector.textContent();
-    return text?.replace(/\s+/g, " ").trim() ?? "";
-  }
-
   getSliceCheckbox(slice: string) {
     return this.sliceSelectorCheckboxes.getByTestId(`checkbox-${slice}`);
-  }
-
-  async isSliceChecked(slice: string) {
-    return this.getSliceCheckbox(slice)
-      .locator('input[type="checkbox"]')
-      .isChecked();
   }
 }
 

@@ -1,0 +1,174 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import {
+  type FrameDoc,
+  type GetFramesRequest,
+  getFrames,
+} from "../../../core/src/client/framesClient";
+import { type DateTime, parseTimestamp } from "../../../core/src/client/util";
+import { usePublishDynamicGroupMemberIndex } from "../state/dynamicGroupMemberIndex";
+
+/** Ordered member ids (position i ↔ frame i+1) and the group version token the next write validates against. */
+export interface GroupWriteState {
+  index: string[];
+  token: string | null;
+}
+
+/**
+ * Build the `<max ISO>|<count>` group token the server validates from the
+ * members' `last_modified_at` values. The trailing `Z` is stripped like
+ * {@link getSampleVersionToken} does for the sample token.
+ */
+export const toGroupToken = (timestamps: readonly Date[]): string | null => {
+  if (timestamps.length === 0) {
+    return null;
+  }
+
+  const max = timestamps.reduce(
+    (acc, ts) => Math.max(acc, ts.getTime()),
+    Number.NEGATIVE_INFINITY,
+  );
+  const iso = new Date(max).toISOString().replace(/Z$/, "");
+  return `${iso}|${timestamps.length}`;
+};
+
+/**
+ * A member's `last_modified_at` as a `Date`. The group token cannot be built
+ * without every member's, so an unreadable one fails the index load by name.
+ */
+const memberTimestamp = (frame: FrameDoc): Date => {
+  const parsed = parseTimestamp(frame.last_modified_at as DateTime | undefined);
+
+  if (!parsed || Number.isNaN(parsed.getTime())) {
+    throw new Error(
+      `dynamic group member ${String(frame._id)} has no readable last_modified_at`,
+    );
+  }
+
+  return parsed;
+};
+
+export interface DynamicGroupIndex {
+  /** Resolves once the in-flight index fetch settles; immediately when none is in flight. */
+  whenReady: () => Promise<void>;
+  /** The current write state, `null` until the index fetch lands or after it was dropped. */
+  getState: () => GroupWriteState | null;
+  /** Record the token a successful write returned; `null` drops the state so the next write refetches. */
+  commit: (token: string | null) => void;
+  /** Replace the member index and token, e.g. from a version-mismatch response. */
+  replace: (index: string[], token: string | null) => void;
+  /** Fetch the member index and token again, e.g. after a failed mount fetch. */
+  loadIndex: () => Promise<void>;
+}
+
+export interface DynamicGroupIndexInput {
+  active: boolean;
+  sampleId: string;
+  dataset: string;
+  view: GetFramesRequest["view"];
+  slice: GetFramesRequest["slice"];
+  dynamicGroup: GetFramesRequest["dynamicGroup"];
+  frameCount: number | null;
+}
+
+/**
+ * Load a dynamic group's ordered member index and initial version token from
+ * one whole-group `/frames` fetch while `active`.
+ */
+export const useDynamicGroupIndex = ({
+  active,
+  sampleId,
+  dataset,
+  view,
+  slice,
+  dynamicGroup,
+  frameCount,
+}: DynamicGroupIndexInput): DynamicGroupIndex => {
+  const stateRef = useRef<GroupWriteState | null>(null);
+  const readyRef = useRef<Promise<void> | null>(null);
+  // bumped on each (re)mount so a stale fetch cannot land its state
+  const generation = useRef(0);
+  const publishIndex = usePublishDynamicGroupMemberIndex();
+  // the member order is published for readers outside the write path
+  const setState = useCallback(
+    (state: GroupWriteState | null) => {
+      stateRef.current = state;
+      publishIndex(state?.index ?? null);
+    },
+    [publishIndex],
+  );
+
+  const loadIndex = useCallback((): Promise<void> => {
+    const requested = generation.current;
+
+    const request = getFrames({
+      sampleId,
+      dataset,
+      view,
+      slice,
+      dynamicGroup,
+      frameNumber: 1,
+      numFrames: frameCount,
+      frameCount,
+      // `_id` rides along with any projection
+      fields: ["last_modified_at"],
+    })
+      .then((response) => {
+        if (requested !== generation.current) {
+          return;
+        }
+
+        // served in group order: the i-th document is the member behind frame i + 1
+        const frames = response.frames;
+
+        setState({
+          index: frames.map((frame) => String(frame._id)),
+          token: toGroupToken(frames.map(memberTimestamp)),
+        });
+      })
+      .catch((err) => {
+        console.error("failed to load dynamic group member index", err);
+      });
+
+    readyRef.current = request;
+    return request;
+  }, [sampleId, dataset, view, slice, dynamicGroup, frameCount, setState]);
+
+  useEffect(() => {
+    if (!active) {
+      return undefined;
+    }
+
+    generation.current += 1;
+    setState(null);
+    void loadIndex();
+
+    return () => {
+      generation.current += 1;
+      setState(null);
+      readyRef.current = null;
+    };
+  }, [active, loadIndex, setState]);
+
+  return useMemo(
+    () => ({
+      whenReady: () => readyRef.current ?? Promise.resolve(),
+      getState: () => stateRef.current,
+      commit: (token) => {
+        const current = stateRef.current;
+        // dropping the write state only forces a token refetch; the member
+        // order the sidebar reads is unchanged, so it stays published
+        stateRef.current =
+          token && current ? { index: current.index, token } : null;
+      },
+      replace: (index, token) => {
+        setState({ index, token });
+      },
+      loadIndex,
+    }),
+    [loadIndex, setState],
+  );
+};
