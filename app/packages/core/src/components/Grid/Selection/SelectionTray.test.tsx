@@ -135,6 +135,9 @@ vi.mock("./SubsetJobs", () => ({
   SubsetJobStatus: () => null,
 }));
 vi.mock("@fiftyone/state", () => ({
+  useSelectedMediaFieldGrid: () => "filepath",
+  useLookerOptions: () => ({ mediaFallback: false }),
+  getNormalizedUrls: () => ({}),
   useSetGroupSlice: () => vi.fn(),
   useGroupSlices: () => ["left", "right"],
   useSelectionSubsetDisabledReason: () => null,
