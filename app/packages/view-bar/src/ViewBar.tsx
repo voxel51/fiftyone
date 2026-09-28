@@ -15,13 +15,7 @@
  */
 
 import { useTrackEvent } from "@fiftyone/analytics";
-import {
-  executeOperator,
-  useOperatorAvailability,
-  useOperatorRegistryState,
-} from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
-import { buildSimilarityRunName } from "@fiftyone/utilities";
 import {
   Align,
   Anchor,
@@ -56,15 +50,6 @@ import { InsertSlot } from "./InsertSlot";
 import { LanguageSearch } from "./LanguageSearch";
 import styles from "./ViewBar.module.css";
 import {
-  orderBySearchRecency,
-  readIndexUses,
-  readMatches,
-  recordIndexUse,
-  recordMatches,
-} from "./searchIndexRecency";
-import { readSearchQueries, recordSearchQuery } from "./searchQueryHistory";
-import { patchesFieldOfView, resolveSearchIndex } from "./searchIndexSelection";
-import {
   appliesTo,
   defaultKwargs,
   gateDefinitions,
@@ -97,7 +82,7 @@ import {
   workingStagesFromView,
 } from "./state";
 import { usePrefixSchema } from "./prefix-schema";
-import { useDeferredSearch } from "./useDeferredSearch";
+import { useTextSearch } from "./useTextSearch";
 import type { SerializedStage } from "./state";
 import type { WorkingStage } from "./state";
 
@@ -138,16 +123,6 @@ const ALL_SLICE_MEDIA_TYPES: fos.GroupSliceMediaType[] = [
 ];
 
 /**
- * How many samples a typed language query keeps, matching the modal
- * similarity search's default. The stage lands in the bar as a normal
- * pill, so the value is one click away from being changed.
- */
-const LANGUAGE_SEARCH_K = 25;
-
-/** The Similarity action's server-side search operator. */
-const SIMILARITY_SEARCH_OPERATOR = "@voxel51/panels/similarity_search";
-
-/**
  * Where a press is still "in the bar": the bar itself, the stages row — which
  * a host may place outside the bar — the stage editor and search settings
  * popovers, and any portaled popout — a list, a select menu, a tooltip — that
@@ -183,7 +158,7 @@ const ViewBarInner: React.FC<{
   const currentView = fos.useView();
   const datasetName = fos.useCurrentDatasetName();
   const setView = fos.useSetView();
-  const setViewChangePending = fos.useSetViewChangePending();
+  const resetExtendedSelection = fos.useResetExtendedSelection();
   const trackEvent = useTrackEvent();
 
   const [state, dispatch] = useReducer(reducer, initialState);
@@ -214,18 +189,14 @@ const ViewBarInner: React.FC<{
   // `fos.view` lags a round-trip behind, and that gap must not read as
   // pending work — clearing or searching would flash Apply for one echo
   const [inFlight, setInFlight] = React.useState<string | null>(null);
-  // Search chaining: the run a submitted search created, then — once its
-  // view lands — the fingerprint of that view. A following search typed
-  // over an unmodified result view REPLACES the search (via the run's
-  // recorded base) instead of refining 25 results down to 25 results.
-  const pendingSearchRunId = React.useRef<string | null>(null);
   // Whether a view has already landed, so the one a direct URL loads with is
   // told apart from a change made while the page is up
   const viewLoaded = React.useRef(false);
-  const lastSearch = React.useRef<{
-    runId: string;
-    viewFp: string;
-  } | null>(null);
+  const search = useTextSearch({
+    currentView,
+    sortStageOffered: stageDefs.some((def) => def.name === "SortBySimilarity"),
+  });
+  const { claimView: claimSearchView, cancel: cancelSearch } = search;
 
   /**
    * Puts the keyboard on the trailing insert slot — where describing the next
@@ -311,21 +282,7 @@ const ViewBarInner: React.FC<{
       // that broke while the user was looking — only a later one reveals
       const loaded = viewLoaded.current;
       viewLoaded.current = true;
-      const fromSearch = pendingSearchRunId.current !== null;
-      // A just-searched run owns the arriving view; any other view change
-      // supersedes the chain and a next search targets the view as-is
-      if (pendingSearchRunId.current) {
-        lastSearch.current = {
-          runId: pendingSearchRunId.current,
-          viewFp: viewFingerprint(currentView),
-        };
-        pendingSearchRunId.current = null;
-      } else if (
-        lastSearch.current &&
-        viewFingerprint(currentView) !== lastSearch.current.viewFp
-      ) {
-        lastSearch.current = null;
-      }
+      const fromSearch = claimSearchView(currentView);
 
       //
       // After Apply the server echoes the view back — the same stages, with
@@ -362,7 +319,7 @@ const ViewBarInner: React.FC<{
     return () => {
       rollbackViewBar = () => undefined;
     };
-  }, [currentView]);
+  }, [currentView, claimSearchView]);
 
   const defsByName = useMemo(
     () => new Map(stageDefs.map((d) => [d.name, d as StageDefinition])),
@@ -755,93 +712,6 @@ const ViewBarInner: React.FC<{
 
   // ----- Collapsed bar: summary chip + language search -----
 
-  const promptKeys = fos.usePromptableSimilarityKeys();
-  // The search runs through the similarity_search operator. The registry
-  // that lists it loads after the bar renders, so until it has, the operator
-  // is not missing — only unknown: the field takes the query and
-  // `useDeferredSearch` holds it. Known missing (an install without the
-  // plugin, or a listing that failed) is when a click explains itself instead.
-  const registryState = useOperatorRegistryState();
-  const searchOperatorRegistered = useOperatorAvailability(
-    SIMILARITY_SEARCH_OPERATOR,
-  );
-  const searchOperatorAvailable =
-    searchOperatorRegistered || registryState === "loading";
-  const notify = fos.useNotification();
-  const notifySearchUnavailable = useCallback(
-    () =>
-      notify({
-        key: "view-bar-search-unavailable",
-        msg: "Natural language search is not available",
-      }),
-    [notify],
-  );
-  // The language search turns Enter into a SortBySimilarity stage, so it
-  // needs a prompt-capable index and the stage itself to be offerable here
-  const searchEnabled =
-    searchOperatorAvailable &&
-    promptKeys.length > 0 &&
-    defsByName.has("SortBySimilarity");
-
-  // The search settings popover: which index the search uses and how many
-  // matches it asks for. Default ordering = the top 5 indexes actually
-  // searched with in the past week (most recent first), then newest-created;
-  // an explicit pick overrides. Session-local pick; per-dataset recency.
-  const [searchIndexKey, setSearchIndexKey] = React.useState<string | null>(
-    null,
-  );
-  const [searchK, setSearchK] = React.useState(
-    () => (datasetName ? readMatches(datasetName) : null) ?? LANGUAGE_SEARCH_K,
-  );
-  const changeSearchK = useCallback(
-    (k: number) => {
-      setSearchK(k);
-      if (datasetName) {
-        recordMatches(datasetName, k);
-      }
-    },
-    [datasetName],
-  );
-  // bumps after every search so the ordering reflects the use just recorded
-  const [recencyStamp, setRecencyStamp] = React.useState(0);
-  const searchHistory = useMemo(
-    () => (datasetName ? readSearchQueries(datasetName) : []),
-    // recencyStamp invalidates the localStorage read
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [datasetName, recencyStamp],
-  );
-  const orderedPromptKeys = useMemo(
-    () =>
-      orderBySearchRecency(
-        promptKeys,
-        datasetName ? readIndexUses(datasetName) : {},
-      ),
-    // recencyStamp invalidates the localStorage read
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [promptKeys, datasetName, recencyStamp],
-  );
-  // A view standing in patches prefers a patches index on its field: a
-  // sample-level index cannot rank patches, and the server would flatten
-  // the view (dropping ToPatches) to satisfy it. An explicit pick wins.
-  const viewPatchesField = useMemo(
-    () => patchesFieldOfView(currentView),
-    [currentView],
-  );
-  const resolvedSearchIndex = resolveSearchIndex(
-    orderedPromptKeys,
-    searchIndexKey,
-    viewPatchesField,
-  );
-
-  const openSimilarityPanel = useCallback(() => {
-    trackEvent("view_bar_search_settings_panel_opened");
-    executeOperator("open_panel", {
-      name: "similarity_search_panel",
-      isActive: true,
-      layout: "horizontal",
-    });
-  }, [trackEvent]);
-
   // Bumped when the view clears: the search box remounts empty — a typed
   // query describes the view that was just discarded
   const [searchEpoch, setSearchEpoch] = React.useState(0);
@@ -855,85 +725,29 @@ const ViewBarInner: React.FC<{
     setModeOverrides({});
     setEditingId(null);
     setSearchEpoch((epoch) => epoch + 1);
+    cancelSearch();
     // An emptied bar folds back to the single search row
     setStagesOpen(false);
-    setView([]);
-    setInFlight(inFlightFingerprint([]));
+    if (currentView.length) {
+      setView([]);
+      setInFlight(inFlightFingerprint([]));
+    } else {
+      // Setting the same empty view never publishes, so it would not clear
+      // a text search's extended selection
+      resetExtendedSelection();
+    }
     trackEvent("view_bar_view_cleared");
     dispatch({ type: "hydrate", stages: [] });
     setModeOverrides({});
     setTouched(new Set());
-  }, [setView, inFlightFingerprint, trackEvent]);
-
-  const submitLanguageQuery = useCallback(
-    (query: string) => {
-      // The settings popover's picked index, else the most recently computed
-      // prompt-capable one — never an index that cannot embed the typed prompt
-      const index = resolvedSearchIndex;
-      if (!index) return;
-      if (datasetName) {
-        recordIndexUse(datasetName, index.key);
-        recordSearchQuery(datasetName, query);
-        setRecencyStamp((stamp) => stamp + 1);
-      }
-      trackEvent("view_bar_text_search", {
-        patches: Boolean(index.patchesField),
-      });
-      // The pending treatment every view change gets, for the operator's
-      // whole run — the router clears it when the resulting entry loads
-      setViewChangePending(true);
-      // The same route the Similarity action takes: the server-side search
-      // operator owns building and applying the view, and the bar hydrates
-      // from the view change like any other external edit
-      const params: Record<string, unknown> = {
-        brain_key: index.key,
-        query_type: "text",
-        query,
-        reverse: false,
-        k: searchK,
-        run_name: buildSimilarityRunName({
-          isImageSearch: false,
-          textQuery: query,
-          patchesField: index.patchesField ?? undefined,
-        }),
-        view_target: "CURRENT_VIEW",
-        // The run applies its own results — the same view the panel's
-        // Apply builds, without needing the panel
-        apply_results: true,
-      };
-      if (index.patchesField) {
-        params.patches_field = index.patchesField;
-      }
-      if (
-        lastSearch.current &&
-        viewFingerprint(currentView) === lastSearch.current.viewFp
-      ) {
-        // Typed over an unmodified result view: replace that search
-        params.replace_run_id = lastSearch.current.runId;
-      }
-      executeOperator(SIMILARITY_SEARCH_OPERATOR, params, {
-        callback: (result) => {
-          if (result?.error) {
-            // No view change is coming, so nothing will clear the pending
-            // treatment — release it here
-            setViewChangePending(false);
-            console.error("Similarity search failed:", result.error);
-            return;
-          }
-          pendingSearchRunId.current =
-            (result?.result as { run_id?: string } | undefined)?.run_id ?? null;
-        },
-      });
-    },
-    [
-      resolvedSearchIndex,
-      datasetName,
-      trackEvent,
-      setViewChangePending,
-      currentView,
-      searchK,
-    ],
-  );
+  }, [
+    currentView,
+    setView,
+    inFlightFingerprint,
+    resetExtendedSelection,
+    trackEvent,
+    cancelSearch,
+  ]);
 
   const stagesRowOpen = stagesOpen;
   const stagesRowOpenRef = useRef(false);
@@ -1068,25 +882,6 @@ const ViewBarInner: React.FC<{
    * editors), under it while open. Both are in the flow: the header grows
    * with the bar, and the page below moves down rather than being covered.
    */
-  // A held query gets the same in-flight treatment a running one does, so
-  // Enter always answers with something
-  const holdSearch = useCallback(
-    () => setViewChangePending(true),
-    [setViewChangePending],
-  );
-  const dropSearch = useCallback(
-    () => setViewChangePending(false),
-    [setViewChangePending],
-  );
-  const submitSearch = useDeferredSearch({
-    settled: registryState !== "loading",
-    registered: searchOperatorRegistered,
-    submit: submitLanguageQuery,
-    onUnavailable: notifySearchUnavailable,
-    onHold: holdSearch,
-    onDrop: dropSearch,
-  });
-
   const gutter = (
     <div
       className={
@@ -1100,17 +895,7 @@ const ViewBarInner: React.FC<{
         key={`search-${searchEpoch}`}
         onHasTextChange={setSearchHasText}
         onFocus={foldForSearchFocus}
-        onSubmit={submitSearch}
-        available={searchOperatorAvailable}
-        onUnavailable={notifySearchUnavailable}
-        enabled={searchEnabled}
-        history={searchHistory}
-        promptKeys={orderedPromptKeys}
-        selectedKey={resolvedSearchIndex?.key ?? null}
-        onSelectKey={setSearchIndexKey}
-        k={searchK}
-        onChangeK={changeSearchK}
-        onOpenPanel={openSimilarityPanel}
+        search={search}
       />
       {/* THE one [x]: clears every stage and any search text, and it lives
             on the always-visible first row so it stays reachable while the

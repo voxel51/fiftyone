@@ -1,56 +1,63 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * The language search field's own search, for an index a registered text
- * search extension searches client-side. The field hands such a query here
- * instead of to the view bar's server search: the extension runs it and the
- * result is published to the extended selection, which narrows the grid
+ * Text search for an index a registered text search provider searches
+ * client-side, which the server cannot sort by: the provider runs it and
+ * the result is published to the extended selection, which narrows the grid
  * without changing the view.
  */
 
-import { useTrackEvent } from "@fiftyone/analytics";
-import type { PromptableSimilarityIndex } from "@fiftyone/state";
+import type {
+  PromptableSimilarityIndex,
+  SearchSources,
+  TextSearchIndex,
+} from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { recordIndexUse } from "./searchIndexRecency";
-import { recordSearchQuery, rememberQuery } from "./searchQueryHistory";
+import { HistorySuggestions } from "./HistorySuggestions";
+import type { SearchStrategy } from "./searchStrategy";
 import { viewFingerprint } from "./state";
 
-export interface LanguageSearchExtension {
-  /**
-   * Runs `query` through the extension that searches `index`, ranking within
-   * `sources` (null ranks every source); does nothing when no registered
-   * extension searches it.
-   */
-  run: (
-    index: PromptableSimilarityIndex,
-    query: string,
-    k: number,
-    sources: string[] | null,
-  ) => void;
-  /** Queries run here, most recent first. The bar reads the stored history
-   * when it mounts, so these would otherwise be missing until it remounts. */
-  recentQueries: readonly string[];
+/**
+ * `run` does nothing for an index no registered provider searches. Such an
+ * index is only offered while its provider is registered, and needs neither
+ * the operator nor `SortBySimilarity`, so this search is always available.
+ */
+export interface ProviderSearch extends SearchStrategy {
+  /** Drops the search in flight: nothing it returns is published. */
+  cancel: () => void;
 }
 
-export const useLanguageSearchExtension = (): LanguageSearchExtension => {
+export const useProviderSearch = ({
+  onRun,
+  selectedIndex,
+  searchIndex,
+  sourcesWanted,
+}: {
+  /** Called when a search actually runs. */
+  onRun: (index: PromptableSimilarityIndex, query: string) => void;
+  selectedIndex: PromptableSimilarityIndex | undefined;
+  /** `selectedIndex`, as a provider is asked about it. */
+  searchIndex: TextSearchIndex | null;
+  /** Finding sources can cost the provider a server request, so it waits
+   * for this. */
+  sourcesWanted: boolean;
+}): ProviderSearch => {
   const datasetId = fos.useCurrentDatasetId();
   const datasetName = fos.useCurrentDatasetName();
   const view = fos.useView();
   const filters = fos.useFilters();
   const extended = fos.useExtendedStages();
-  const extensions = fos.useTextSearchExtensions();
+  const providers = fos.useTextSearchProviders();
   const publishExtendedSelection = fos.usePublishExtendedSelection();
   const setViewChangePending = fos.useSetViewChangePending();
   const notify = fos.useNotification();
-  const trackEvent = useTrackEvent();
-  const [recentQueries, setRecentQueries] = useState<string[]>([]);
 
   // Only the newest search may publish; null while none is in flight
   const searchSeq = useRef(0);
   const inFlight = useRef<number | null>(null);
-  // Tells the running search to stop early. An extension may finish anyway,
+  // Tells the running search to stop early. A provider may finish anyway,
   // so `searchSeq`, not the signal, decides what publishes
   const controller = useRef<AbortController | null>(null);
 
@@ -64,8 +71,8 @@ export const useLanguageSearchExtension = (): LanguageSearchExtension => {
     }
   }, [setViewChangePending]);
 
-  // A search still running when the field goes away (it is keyed by
-  // dataset) must not publish into the next one, nor leave its pending
+  // A search still running when its host goes away (the view bar is keyed
+  // by dataset) must not publish into the next one, nor leave its pending
   // treatment on
   useEffect(() => cancel, [cancel]);
 
@@ -82,15 +89,12 @@ export const useLanguageSearchExtension = (): LanguageSearchExtension => {
       k: number,
       sources: string[] | null,
     ) => {
-      const extension = index.extension
-        ? extensions.get(index.extension)
+      const provider = index.provider
+        ? providers.get(index.provider)
         : undefined;
-      if (!extension || !datasetId || !datasetName) return;
+      if (!provider || !datasetId || !datasetName) return;
 
-      recordIndexUse(datasetName, index.key);
-      recordSearchQuery(datasetName, query);
-      setRecentQueries((queries) => rememberQuery(queries, query));
-      trackEvent("view_bar_text_search", { patches: false });
+      onRun(index, query);
 
       controller.current?.abort();
       const { signal } = (controller.current = new AbortController());
@@ -99,11 +103,11 @@ export const useLanguageSearchExtension = (): LanguageSearchExtension => {
       // The in-progress treatment the field shows for any search. No view
       // change follows this one, so it is released below, not by the router
       setViewChangePending(true);
-      // Through the executor, so an extension that throws before returning
+      // Through the executor, so a provider that throws before returning
       // its promise still reaches the failure handling below
       new Promise<fos.TextSearchResult | null>((resolve) =>
         resolve(
-          extension.search({
+          provider.search({
             datasetId,
             datasetName,
             brainKey: index.key,
@@ -139,7 +143,7 @@ export const useLanguageSearchExtension = (): LanguageSearchExtension => {
         });
     },
     [
-      extensions,
+      providers,
       datasetId,
       datasetName,
       view,
@@ -148,9 +152,51 @@ export const useLanguageSearchExtension = (): LanguageSearchExtension => {
       publishExtendedSelection,
       setViewChangePending,
       notify,
-      trackEvent,
+      onRun,
     ],
   );
 
-  return { run, recentQueries };
+  const selectedProvider = selectedIndex?.provider
+    ? providers.get(selectedIndex.provider)
+    : undefined;
+  // Tagged with the index it answers, so another index's sources never show
+  // while this one's are loading
+  const [resolved, setResolved] = useState<{
+    brainKey: string;
+    sources: SearchSources | null;
+  } | null>(null);
+  useEffect(() => {
+    if (!sourcesWanted || !selectedProvider?.sources || !searchIndex) {
+      return undefined;
+    }
+    let live = true;
+    const { brainKey } = searchIndex;
+    selectedProvider
+      .sources(searchIndex)
+      .then((sources) => {
+        if (live) setResolved({ brainKey, sources });
+      })
+      .catch((error: unknown) => {
+        // Without them the search still runs, over every source
+        console.error("Search sources unavailable:", error);
+        if (live) setResolved({ brainKey, sources: null });
+      });
+    return () => {
+      live = false;
+    };
+  }, [sourcesWanted, selectedProvider, searchIndex]);
+
+  return {
+    available: true,
+    enabled: true,
+    run,
+    cancel,
+    sources:
+      selectedProvider?.sources &&
+      resolved &&
+      resolved.brainKey === searchIndex?.brainKey
+        ? resolved.sources
+        : null,
+    Suggestions: selectedProvider?.Suggestions ?? HistorySuggestions,
+  };
 };

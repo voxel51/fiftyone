@@ -45,3 +45,8 @@
   flex: 1;
   min-width: 0;
 }
+
+/* Catches the field's keys without taking part in the bar's layout. */
+.fieldKeys {
+  display: contents;
+}
