@@ -259,12 +259,17 @@ function useExecutionOptions(operatorURI, ctx, isRemote) {
         }
         const call = ++latestFetch.current;
         if (!ctxOverride) setIsLoading(true); // only show loading if loading the first time
-        const options = await resolveExecutionOptions(
-          operatorURI,
-          ctxOverride || ctx,
-        );
-        if (call !== latestFetch.current) return;
-        setExecutionOptions(options);
+        try {
+          const options = await resolveExecutionOptions(
+            operatorURI,
+            ctxOverride || ctx,
+          );
+          if (call !== latestFetch.current) return;
+          setExecutionOptions(options);
+        } catch (error) {
+          if (call !== latestFetch.current) return;
+          console.error("Failed to resolve execution options", error);
+        }
         setIsLoading(false);
       }),
     [operatorURI, ctx, isRemote],
@@ -539,7 +544,9 @@ export const useOperatorPrompt = () => {
   const promptId = promptingOperator.id;
   // The debounce does not wait for a resolve to finish, so resolves overlap;
   // an older one answering last would settle the form on params it no longer
-  // holds, leaving it validating until the next edit
+  // holds, leaving it validating until the next edit. Numbered when asked for,
+  // not when run: a debounce replaced by a change to its deps still runs its
+  // trailing call later, with params older than its replacement's
   const latestResolve = useRef(0);
 
   // the debounced resolver must keep its identity across renders so the
@@ -547,9 +554,9 @@ export const useOperatorPrompt = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const resolveInput = useCallback(
     debounce(
-      async (ctx) => {
-        const call = ++latestResolve.current;
-        const superseded = () => call !== latestResolve.current;
+      async (ctx, request: number) => {
+        const superseded = () => request !== latestResolve.current;
+        if (superseded()) return;
         try {
           const liteValues = liteValuesRef.current;
           const optimizedCtx = optimizeCtx(ctx, liteValues);
@@ -581,7 +588,7 @@ export const useOperatorPrompt = () => {
   );
   const resolveInputFields = useCallback(async () => {
     ctx.hooks = hooks;
-    resolveInput(ctx);
+    resolveInput(ctx, ++latestResolve.current);
   }, [ctx, hooks, resolveInput]);
 
   const validate = useCallback(
