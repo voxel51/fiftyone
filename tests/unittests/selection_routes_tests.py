@@ -70,6 +70,24 @@ class SelectionRouteTests(unittest.IsolatedAsyncioTestCase):
             endpoint.__new__(endpoint), request, *args
         )
 
+    async def test_subset_creation_forwards_optional_metadata(self):
+        provenance = {"agent": "curation-agent"}
+        lineage = {"subset_ids": ["parent"]}
+        with patch.object(
+            routes.fosub, "create_subset", return_value={}
+        ) as create:
+            await self.call(
+                routes.Subsets,
+                data={
+                    "name": "Review",
+                    "provenance": provenance,
+                    "lineage": lineage,
+                },
+            )
+        create.assert_called_once_with(
+            self.dataset, "Review", None, None, None, provenance, lineage
+        )
+
     async def test_sync_routes_offload_dataset_loading_and_operations(self):
         cases = [
             (

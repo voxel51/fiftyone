@@ -198,6 +198,8 @@ class Subsets(HTTPEndpoint):
                 data.get("description"),
                 data.get("view"),
                 data.get("preferredGroupSlice"),
+                data.get("provenance"),
+                data.get("lineage"),
             )
         except PermissionError as error:
             raise HTTPException(403, detail=str(error)) from error
