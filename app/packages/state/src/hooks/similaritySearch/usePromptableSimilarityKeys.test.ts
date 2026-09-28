@@ -38,7 +38,6 @@ describe("usePromptableSimilarityKeys", () => {
     act(() => {
       unregister = registerTextSearchProvider({
         method: "multimodal",
-        Suggestions: () => null,
         search: vi.fn(),
       });
     });

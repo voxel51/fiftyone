@@ -12,7 +12,7 @@ const env = vi.hoisted(() => ({
   providerRun: vi.fn(),
   providerCancel: vi.fn(),
   onRun: null as null | ((index: { key: string }, query: string) => void),
-  Suggestions: () => null,
+  Suggestions: (() => null) as (() => null) | undefined,
 }));
 
 vi.mock("@fiftyone/state", () => ({
@@ -59,6 +59,7 @@ describe("useTextSearch", () => {
     vi.clearAllMocks();
     window.localStorage.clear();
     env.operatorAvailable = true;
+    env.Suggestions = () => null;
   });
 
   it("runs a query for an index the server sorts through the operator", () => {
@@ -107,6 +108,13 @@ describe("useTextSearch", () => {
     env.promptKeys = [PROVIDER_INDEX];
     rerender();
     expect(result.current.Suggestions).toBe(env.Suggestions);
+  });
+
+  it("offers the previous queries for a provider that supplies no suggestions", () => {
+    env.promptKeys = [PROVIDER_INDEX];
+    env.Suggestions = undefined;
+    const { result } = renderController();
+    expect(result.current.Suggestions).toBe(HistorySuggestions);
   });
 
   it("offers a query in the history as soon as it runs", () => {
