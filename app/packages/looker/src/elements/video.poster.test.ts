@@ -118,6 +118,45 @@ describe("VideoElement hover playback", () => {
   });
 });
 
+describe("VideoElement hover exit", () => {
+  it.each([
+    { name: "a poster moved to a match", posterSeconds: 60, frameNumber: 601 },
+    { name: "the clip's start", posterSeconds: null, frameNumber: 1 },
+  ])(
+    "returns to the frame the poster shows: $name",
+    ({ posterSeconds, frameNumber }) => {
+      const updates: Record<string, unknown>[] = [];
+      const element = {
+        element: { paused: true },
+        posterFrame: 1,
+        posterSeconds,
+        waitingToPause: false,
+        waitingToPlay: false,
+        removeEvents: vi.fn(),
+        release: vi.fn(),
+        update(
+          next: (state: {
+            duration: number;
+            config: { frameRate: number; thumbnail: boolean };
+          }) => Record<string, unknown>,
+        ) {
+          updates.push(
+            next({ duration: 100, config: { frameRate: 10, thumbnail: true } }),
+          );
+        },
+      };
+
+      (
+        VideoElement.prototype as unknown as { releaseVideo: () => void }
+      ).releaseVideo.call(element);
+
+      expect(updates).toEqual([
+        { waitingForVideo: false, frameNumber, playing: false },
+      ]);
+    },
+  );
+});
+
 describe("VideoLooker.posterAt", () => {
   const lookerWith = (state: Record<string, unknown>) => {
     const posterAt = vi.fn();

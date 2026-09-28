@@ -733,11 +733,15 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     this.release?.();
     this.release = null;
 
-    this.update({
+    // Back to the frame the poster shows, which may have moved to a match
+    this.update(({ duration, config: { frameRate, thumbnail } }) => ({
       waitingForVideo: false,
-      frameNumber: this.posterFrame,
+      frameNumber:
+        thumbnail && this.posterSeconds !== null
+          ? getFrameNumber(this.posterSeconds, duration, frameRate)
+          : this.posterFrame,
       playing: false,
-    });
+    }));
   }
 
   renderSelf({
