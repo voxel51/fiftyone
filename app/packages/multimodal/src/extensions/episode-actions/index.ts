@@ -6,4 +6,5 @@ export type {
   EpisodeHeaderAction,
   EpisodeHeaderActionContext,
   EpisodeHeaderActionId,
+  EpisodeLayoutControls,
 } from "./types";

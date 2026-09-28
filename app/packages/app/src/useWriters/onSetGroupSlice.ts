@@ -10,7 +10,7 @@ import type { RegisteredWriter } from "./registerWriter";
 const onSetGroupSlice: RegisteredWriter<"sessionGroupSlice"> =
   ({ environment, router, subscription }) =>
   (slice) => {
-    const search = new URLSearchParams(router.history.location.search);
+    const search = new URLSearchParams(router.location.search);
     slice ? search.set("slice", slice) : search.delete("slice");
 
     const string = `?${search.toString()}`;

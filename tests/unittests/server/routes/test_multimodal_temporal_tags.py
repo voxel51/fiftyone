@@ -8,6 +8,7 @@ Tag route unit tests.
 
 import asyncio
 import json
+import uuid
 from unittest.mock import AsyncMock, MagicMock
 
 from bson import ObjectId
@@ -24,13 +25,19 @@ import fiftyone.server.routes.temporal_tags as fott
 
 
 @pytest.fixture(autouse=True)
-def clean_tags():
-    """Ensures each test starts with an empty tag collection."""
-    foo.get_db_conn().drop_collection(fota.TAGS_COLLECTION_NAME)
+def clean_tags(monkeypatch):
+    """Gives each test a temporal tags collection of its own and drops it
+    afterwards, so the tests never touch the tags of a database in use.
+
+    The same isolation as ``isolate_temporal_tags`` in ``tests/unittests/
+    decorators.py``, which this directory cannot import.
+    """
+    name = "%s_test_%s" % (fota.TAGS_COLLECTION_NAME, uuid.uuid4().hex)
+    monkeypatch.setattr(fota, "TAGS_COLLECTION_NAME", name)
 
     yield
 
-    foo.get_db_conn().drop_collection(fota.TAGS_COLLECTION_NAME)
+    foo.get_db_conn().drop_collection(name)
 
 
 @pytest.fixture(name="dataset")
