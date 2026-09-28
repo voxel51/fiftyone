@@ -25,7 +25,7 @@ from bson import DBRef, ObjectId, json_util
 import cachetools
 import mongoengine.errors as moe
 from pymongo import DeleteMany, InsertOne, ReplaceOne, UpdateMany, UpdateOne
-from pymongo.errors import BulkWriteError, CursorNotFound, OperationFailure
+from pymongo.errors import CursorNotFound, OperationFailure
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -56,6 +56,7 @@ foud = fou.lazy_import("fiftyone.utils.data")
 food = fou.lazy_import("fiftyone.operators.delegated")
 foos = fou.lazy_import("fiftyone.operators.store")
 fota = fou.lazy_import("fiftyone.core.tags")
+fosub = fou.lazy_import("fiftyone.core.subsets")
 fmm = fou.lazy_import("fiftyone.multimodal.media_reference.field_model")
 
 
@@ -4409,13 +4410,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             -   a list of IDs of the samples that were added to this dataset
         """
         dicts = [doc for _, doc in samples_and_docs]
+        coll = self._sample_collection
 
-        try:
-            # adds `_id` to each dict
-            res = self._sample_collection.insert_many(dicts)
-        except BulkWriteError as bwe:
-            msg = bwe.details["writeErrors"][0]["errmsg"]
-            raise ValueError(msg) from bwe
+        # adds `_id` to each dict
+        res = foo.database._admitted_write(
+            self._sample_collection_name,
+            len(dicts),
+            lambda: coll.insert_many(dicts),
+            docs=dicts,
+            codec_options=coll.codec_options,
+        )
 
         for sample, d in samples_and_docs:
             doc = self._sample_dict_to_doc(d)
@@ -4539,18 +4543,34 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 where the dict is the sample's backing document
         """
         ops = []
+        replaced_ids = []
         for sample, d in samples_and_docs:
             if sample.id:
                 ops.append(ReplaceOne({"_id": sample._id}, d, upsert=True))
+                replaced_ids.append(sample._id)
             else:
                 d.pop("_id", None)
                 ops.append(InsertOne(d))  # adds `_id` to dict
 
-        try:
-            self._sample_collection.bulk_write(ops, ordered=False)
-        except BulkWriteError as bwe:
-            msg = bwe.details["writeErrors"][0]["errmsg"]
-            raise ValueError(msg) from bwe
+        def num_new():
+            # A replace whose ID is not in this collection is inserted by the
+            # upsert, so it is as new as an explicit insert
+            existing = 0
+            if replaced_ids:
+                existing = self._sample_collection.count_documents(
+                    {"_id": {"$in": replaced_ids}}
+                )
+
+            return len(ops) - existing
+
+        # Unsized: the ops also replace existing documents, which `num_new`
+        # does not count, so sizing them would over-count near a byte cap
+        foo.database._admitted_write(
+            self._sample_collection_name,
+            num_new,
+            lambda: self._sample_collection.bulk_write(ops, ordered=False),
+            docs=None,
+        )
 
         for sample, d in samples_and_docs:
             doc = self._sample_dict_to_doc(d)
@@ -10220,6 +10240,7 @@ def _delete_dataset_extras(dataset):
     svc.cleanup()
 
     fota.delete_for_dataset_id(dataset_id)
+    fosub.delete_for_dataset_id(dataset_id)
 
 
 def _clone_collection(

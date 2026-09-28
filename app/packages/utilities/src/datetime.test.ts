@@ -1,3 +1,4 @@
+import { formatDateTime } from "./index";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -193,5 +194,15 @@ describe("dateOnlyToUTC", () => {
     expect(roundTripped.getDate()).toBe(picker.getDate());
     expect(roundTripped.getMonth()).toBe(picker.getMonth());
     expect(roundTripped.getFullYear()).toBe(picker.getFullYear());
+  });
+});
+
+describe("formatDateTime", () => {
+  it("shows milliseconds only when the value carries them", () => {
+    // 2024-06-15T15:50:00.000Z
+    expect(formatDateTime(1718466600000, "UTC")).toBe("2024-06-15, 15:50");
+    expect(formatDateTime(1718466600033, "UTC")).toBe(
+      "2024-06-15, 15:50:00.033",
+    );
   });
 });

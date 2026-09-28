@@ -2,6 +2,11 @@ import { zoomAspectRatio } from "@fiftyone/looker";
 import * as foq from "@fiftyone/relay";
 import type { ID, Response } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
+import {
+  useGridSelectionBoundary,
+  useGridSelectionDataset,
+  useGridSelectionPagingError,
+} from "@fiftyone/state/src/selection";
 import type { Schema } from "@fiftyone/utilities";
 import { useMemo, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
@@ -16,8 +21,7 @@ import type { Subscription } from "relay-runtime";
 import type { Records } from "./useRecords";
 import useTimeout from "./useTimeout";
 import { handleNode } from "./utils";
-
-export const PAGE_SIZE = 20;
+import { PAGE_SIZE } from "./constants";
 
 export type SampleStore = WeakMap<ID, { sample: fos.Sample; index: number }>;
 
@@ -68,6 +72,9 @@ const useSpotlightPager = ({
 }) => {
   const environment = useRelayEnvironment();
   const pager = useReverbValue(pageSelector);
+  const [boundary] = useGridSelectionBoundary();
+  const { enabled: selectionEnabled } = useGridSelectionDataset();
+  const reportSelectionError = useGridSelectionPagingError();
   const zoom = useReverbValue(zoomSelector);
   const handleError = useErrorHandler();
   const store: SampleStore = useMemo(() => new WeakMap(), []);
@@ -76,26 +83,30 @@ const useSpotlightPager = ({
   const keys = useRef(new Set<string>());
 
   const pages = useMemo(() => {
-    /** Track already requested pages */
+    /** Track pages successfully fetched since the last reset. */
     clearRecords;
-    return new Set();
+    return new Set<number>();
   }, [clearRecords]);
 
   const page = useReverbCallback(
     ({ snapshot }) => {
       return async (pageNumber: number) => {
         const variables = pager(pageNumber, PAGE_SIZE);
+        if (selectionEnabled)
+          variables.filters = {
+            ...variables.filters,
+            _selection_scope: boundary,
+          };
         let subscription: Subscription;
         const schema = await snapshot.getPromise(
           fos.fieldSchema({ space: fos.State.SPACE.SAMPLE }),
         );
 
-        // if a page has not been requested by this callback, require a network
-        // request
+        // Until a fresh response arrives, concurrent requests must also go to
+        // the network rather than reading the previous grid's Relay data.
         const fetchPolicy = pages.has(pageNumber)
           ? "store-or-network"
           : "network-only";
-        pages.add(pageNumber);
 
         return new Promise<Response<number, fos.Sample>>((resolve) => {
           subscription = fetchQuery<foq.paginateSamplesQuery>(
@@ -118,6 +129,7 @@ const useSpotlightPager = ({
                   handleTimeout(data.samples.queryTime);
                 return;
               }
+              pages.add(pageNumber);
               const items = processSamplePageData(
                 pageNumber,
                 store,
@@ -137,12 +149,31 @@ const useSpotlightPager = ({
             complete: () => {
               subscription?.unsubscribe();
             },
-            error: handleError,
+            error: (error) => {
+              if (
+                selectionEnabled &&
+                (boundary.subsetId || boundary.provider)
+              ) {
+                reportSelectionError(error);
+                resolve({ items: [], next: null, previous: null });
+              } else handleError(error);
+            },
           });
         });
       };
     },
-    [environment, handleError, handleTimeout, pager, store, zoom],
+    [
+      environment,
+      handleError,
+      handleTimeout,
+      pager,
+      pages,
+      store,
+      zoom,
+      selectionEnabled,
+      boundary,
+      reportSelectionError,
+    ],
   );
 
   return { page, records, store };

@@ -22,6 +22,7 @@ const info = (index: number): SampleInfo => ({
   filepath: `/data/nested/img${index}.jpg`,
   media: `media${index}.jpg`,
   value: `value${index}`,
+  bounds: null,
 });
 
 const mediaUrl = (media: string) => `url:${media}`;
@@ -44,6 +45,34 @@ describe("useHoverInfo", () => {
       swatch: "#abcdef",
     });
     expect(result.current.hover?.filename).toBe("img1.jpg");
+  });
+
+  it("carries a patch's bounds through to the card", async () => {
+    // The card crops to this; a sample-level run leaves it null
+    const bounds = [0.1, 0.2, 0.3, 0.4] as const;
+    vi.mocked(fetchSampleInfo)
+      .mockClear()
+      .mockResolvedValue({ ...info(1), bounds: [...bounds] });
+    const { result } = renderHook(() =>
+      useHoverInfo("ds", "viz", null, mediaUrl),
+    );
+
+    act(() => result.current.handleHover(hit(1)));
+
+    await waitFor(() => expect(result.current.hover).not.toBeNull());
+    expect(result.current.hover?.bounds).toEqual([...bounds]);
+  });
+
+  it("leaves bounds null for a sample-level run", async () => {
+    vi.mocked(fetchSampleInfo).mockClear().mockResolvedValue(info(1));
+    const { result } = renderHook(() =>
+      useHoverInfo("ds", "viz", null, mediaUrl),
+    );
+
+    act(() => result.current.handleHover(hit(1)));
+
+    await waitFor(() => expect(result.current.hover).not.toBeNull());
+    expect(result.current.hover?.bounds).toBeNull();
   });
 
   it("serves repeat hovers from the cache", async () => {

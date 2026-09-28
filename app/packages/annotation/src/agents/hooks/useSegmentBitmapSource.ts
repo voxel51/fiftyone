@@ -16,7 +16,7 @@ const resolverAtom = atom<{ resolve: SegmentBitmapResolver } | null>(
 /**
  * Register the current surface's decoded-bitmap resolver so the browser SAM2
  * agent can infer on an already-decoded frame instead of fetching the sample's
- * media URL. The video surface registers the active ImaVid frame; image
+ * media URL. The video surface registers the active dynamic group frame; image
  * surfaces register nothing (the agent falls back to the URL path). Cleared on
  * unmount so a torn-down surface can't leak its resolver into the next one.
  */

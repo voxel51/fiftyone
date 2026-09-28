@@ -12,6 +12,7 @@ from fiftyone.operators.server import OperatorRoutes
 
 from .aggregate import Aggregate
 from .camera import CameraRoutes
+from .dynamic_group import DynamicGroupRoutes
 from .embeddings import EmbeddingsRoutes
 from .embeddings_v2 import EmbeddingsV2Routes
 from .event import Event
@@ -28,6 +29,7 @@ from .plugins import Plugins
 from .runtime_assets import RuntimeAssetRoutes
 from .sample import SampleRoutes
 from .screenshot import Screenshot
+from .selection import SelectionRoutes
 from .sort import Sort
 from .tag import Tag
 from .tagging import Tagging
@@ -44,6 +46,7 @@ if is_feature_enabled("VFF_MULTIMODAL"):
 # Starlette routes should not be created here. Please leave as tuple definitions
 routes = (
     CameraRoutes
+    + DynamicGroupRoutes
     + EmbeddingsRoutes
     + EmbeddingsV2Routes
     + GroupsRoutes
@@ -52,6 +55,7 @@ routes = (
     + OperatorRoutes
     + RuntimeAssetRoutes
     + SampleRoutes
+    + SelectionRoutes
     + [
         ("/aggregate", Aggregate),
         ("/event", Event),

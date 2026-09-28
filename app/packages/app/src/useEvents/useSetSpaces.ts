@@ -17,7 +17,7 @@ const useSetSpaces: EventHandlerHook = ({ router }) => {
       router.replace(
         resolveURL({
           currentPathname: router.history.location.pathname,
-          currentSearch: router.history.location.search,
+          currentSearch: router.location.search,
           extra: {
             workspace: payload.spaces._name ?? null,
           },
