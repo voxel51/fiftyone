@@ -20,6 +20,7 @@ const inputs = (view: string) => ({
 });
 
 const env = vi.hoisted(() => ({
+  dynamic: true,
   params: {} as Record<string, unknown>,
   resolveInput: vi.fn(),
   resolveExecutionOptions: vi.fn(),
@@ -78,7 +79,10 @@ vi.mock("./operators", () => ({
     operator: {
       uri: "@test/op",
       isRemote: true,
-      config: { dynamic: true, resolveExecutionOptionsOnChange: true },
+      config: {
+        dynamic: env.dynamic,
+        resolveExecutionOptionsOnChange: true,
+      },
       resolveInput: env.resolveInput,
       useHooks: () => ({}),
       needsUserInput: async () => true,
@@ -107,6 +111,7 @@ import { useOperatorPrompt } from "./state";
 describe("useOperatorPrompt", () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    env.dynamic = true;
     env.params = { brain_key: "old" };
     env.resolveInput.mockReset();
     env.resolveExecutionOptions.mockReset();
@@ -177,5 +182,34 @@ describe("useOperatorPrompt", () => {
     expect(prompt.result.current.execDetails.executionOptions).toEqual({
       allowDelegatedExecution: true,
     });
+  });
+
+  it("stops loading execution options when the request fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    env.resolveExecutionOptions.mockRejectedValue(new Error("down"));
+    env.resolveInput.mockResolvedValue(inputs("form"));
+
+    const prompt = renderHook(() => useOperatorPrompt());
+    await act(async () => vi.runOnlyPendingTimers());
+
+    expect(prompt.result.current.execDetails.isLoading).toBe(false);
+  });
+
+  it("settles on the newest params when a replaced resolver's trailing call runs last", async () => {
+    env.dynamic = false;
+    const first = deferred<ReturnType<typeof inputs>>();
+    env.resolveInput.mockReturnValue(first.promise);
+    const prompt = renderHook(() => useOperatorPrompt());
+    await act(async () => undefined);
+
+    env.params = { brain_key: "mid" };
+    prompt.rerender();
+    await act(async () => first.resolve(inputs("form")));
+    env.params = { brain_key: "new" };
+    prompt.rerender();
+    await act(async () => vi.advanceTimersByTime(RESOLVE_TYPE_TTL));
+    await act(async () => vi.runOnlyPendingTimers());
+
+    expect(prompt.result.current.resolving).toBe(false);
   });
 });
