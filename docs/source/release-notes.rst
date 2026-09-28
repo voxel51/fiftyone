@@ -32,9 +32,6 @@ FiftyOne 1.22.1
 
 App
 ^^^
-- Video Explore mode renders with the looker again, with the shared timeline
-  docked beneath it
-  `#8543 <https://github.com/voxel51/fiftyone/pull/8543>`_
 - Toggling a per-frame field in the video modal sidebar no longer closes and
   reopens the timeline drawer
   `#8540 <https://github.com/voxel51/fiftyone/pull/8540>`_
