@@ -14,7 +14,7 @@ import { getNormalizedUrls } from "@fiftyone/state/src/utils";
 import { LABEL_LISTS_MAP } from "@fiftyone/utilities";
 import { useAtomValue } from "jotai";
 import { useCallback, useMemo, useRef } from "react";
-import { visibleLabelSchemas } from "./state";
+import { useShouldClipToFrame, visibleLabelSchemas } from "./state";
 import { useLighterInteractionPolicy } from "./useLighterInteractionPolicy";
 import { useSyncOverlayReadOnly } from "./useSyncOverlayReadOnly";
 
@@ -28,6 +28,7 @@ export const useLighterAnnotationBridge = (): void => {
   const engine = useAnnotationEngine();
   // skeleton edges drive keypoint connections; stable across renders
   const getSkeleton = useGetKeypointSkeleton();
+  const shouldClip = useShouldClipToFrame();
   const modalSample = useModalSample();
   const active = useAtomValue(visibleLabelSchemas);
   const interactionPolicy = useLighterInteractionPolicy();
@@ -97,6 +98,7 @@ export const useLighterAnnotationBridge = (): void => {
     resolveMediaUrl,
     interactionPolicy,
     getSkeleton,
+    shouldClip,
     enabled: !isVideoSurface,
   });
 

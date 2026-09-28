@@ -18,6 +18,7 @@ import type {
   DetectionOverlay,
   DetectionOverlayOptions,
   KeypointLabel,
+  KeypointOverlay,
   PolylineOverlay,
 } from "@fiftyone/lighter";
 import type { DetectionLabel, KeypointSkeleton } from "@fiftyone/looker";
@@ -193,7 +194,10 @@ export const makeKeypointAdapter = (
     overlay.applyLabel(label as unknown as KeypointLabel);
   },
 
-  toLabel: (overlay) => withoutId(overlay.label as Record<string, unknown>),
+  toLabel: (handle) => ({
+    ...withoutId(handle.label as Record<string, unknown>),
+    points: (handle as KeypointOverlay).getRelativePoints(),
+  }),
 });
 
 /** Skeleton-less keypoint adapter — points only. */

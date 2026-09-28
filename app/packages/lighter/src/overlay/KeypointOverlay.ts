@@ -16,6 +16,7 @@ import {
   STROKE_WIDTH,
 } from "../constants";
 import { CONTAINS } from "../core/Scene2D";
+import { clampPointToFrame, type FrameClipResult } from "../utils/clipToFrame";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { OverlayEvent } from "../interaction/InteractionManager";
 import type { Selectable } from "../selection/Selectable";
@@ -1027,6 +1028,32 @@ export class KeypointOverlay
     this.dragPointIndex = null;
     this.previewPoint = null;
     this.markDirty();
+  }
+
+  /**
+   * Clamps every point into the media frame.
+   */
+  clipToFrame(): FrameClipResult {
+    let clipped = false;
+
+    for (const entry of this.#points) {
+      const [x, y] = clampPointToFrame(entry.position);
+
+      if (
+        !Object.is(x, entry.position[0]) ||
+        !Object.is(y, entry.position[1])
+      ) {
+        entry.position = [x, y];
+        clipped = true;
+      }
+    }
+
+    if (!clipped) {
+      return "unchanged";
+    }
+
+    this.markDirty();
+    return "clipped";
   }
 
   /**

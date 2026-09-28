@@ -248,14 +248,15 @@ export const useDynamicGroupValue = (): string | null => {
 };
 
 /**
- * Dynamic-attribute names for a label field path. Re-exported from core so the
- * read hits the same `labelSchemaData` atom instance core writes (a direct
+ * Label schema reads (dynamic-attribute names, frame clipping). Re-exported
+ * from core so the read hits the same `labelSchemaData` atom instance core writes (a direct
  * cross-package atom import would resolve to a different, never-written family).
  */
 export {
   useDynamicAttributeNames,
   useDynamicAttributeNamesGetter,
   labelSchemaData,
+  useShouldClipToFrame,
 } from "../../../core/src/components/Modal/Sidebar/Annotate/state";
 
 /** The dataset's display time zone. */

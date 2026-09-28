@@ -9,6 +9,10 @@ import {
   PREVIEW_LINE_OPACITY,
 } from "../constants";
 import { CONTAINS } from "../core/Scene2D";
+import {
+  clipPolylineToFrame,
+  type FrameClipResult,
+} from "../utils/clipToFrame";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { DrawStyle, Point, RawLookerLabel, Rect } from "../types";
 import {
@@ -207,6 +211,31 @@ export class PolylineOverlay extends KeypointOverlay {
       prev = end;
     }
     return segments;
+  }
+
+  /**
+   * Clips each shape to the media frame, splitting open shapes that leave and
+   * re-enter it.
+   */
+  override clipToFrame(): FrameClipResult {
+    const shapes = this.getNestedPoints();
+    const clipped = clipPolylineToFrame(shapes, this.polylineClosed);
+
+    if (clipped.every((shape) => shape.length === 0)) {
+      return "empty";
+    }
+
+    if (JSON.stringify(clipped) === JSON.stringify(shapes)) {
+      return "unchanged";
+    }
+
+    this.applyLabel({
+      ...(this.label as unknown as PolylineLabel),
+      points: clipped,
+      closed: this.polylineClosed,
+      filled: this.polylineFilled,
+    });
+    return "clipped";
   }
 
   getClosed(): boolean {

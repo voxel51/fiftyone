@@ -472,6 +472,9 @@ def _validate_label_field_label_schema(
         _validate_values_setting(field_name, values, str, key=foac.CLASSES)
         settings = settings.union({foac.CLASSES})
 
+    if class_name in _CLIP_TO_FRAME_TYPES:
+        settings = settings.union({foac.CLIP_TO_FRAME})
+
     for key, value in label_schema.items():
         if key not in settings:
             if key == foac.CLASSES:
@@ -502,6 +505,8 @@ def _validate_label_field_label_schema(
             _validate_read_only(field_name, value)
         elif key == foac.DYNAMIC:
             _validate_dynamic(field_name, value)
+        elif key == foac.CLIP_TO_FRAME:
+            _validate_clip_to_frame(field_name, value)
         elif key == foac.TYPE and value != class_name:
             _raise_type_error(field, field_name, value)
 
@@ -730,6 +735,14 @@ def _validate_dynamic(field_name, value):
         )
 
 
+def _validate_clip_to_frame(field_name, value):
+    if not isinstance(value, bool):
+        raise ValueError(
+            f"invalid '{foac.CLIP_TO_FRAME}' value '{value}' for field "
+            f"'{field_name}'"
+        )
+
+
 def _validate_values_setting(field_name, value, _type, key=foac.VALUES):
     if not isinstance(value, list):
         raise ValueError(
@@ -797,6 +810,8 @@ _CLASSIFICATION = "classification"
 _CLASSIFICATIONS = "classifications"
 _DETECTION = "detection"
 _DETECTIONS = "detections"
+_KEYPOINT = "keypoint"
+_KEYPOINTS = "keypoints"
 _POLYLINE = "polyline"
 _POLYLINES = "polylines"
 _TEMPORAL_DETECTION = "temporaldetection"
@@ -811,4 +826,13 @@ _ALL_LABEL_TYPES = {
     _POLYLINES,
     _TEMPORAL_DETECTION,
     _TEMPORAL_DETECTIONS,
+}
+
+_CLIP_TO_FRAME_TYPES = {
+    _DETECTION,
+    _DETECTIONS,
+    _KEYPOINT,
+    _KEYPOINTS,
+    _POLYLINE,
+    _POLYLINES,
 }

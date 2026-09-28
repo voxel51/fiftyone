@@ -30,6 +30,7 @@ import { makeLighterAdapters } from "./adapters";
 import type { LighterInteractionPolicy } from "./interactionPolicy";
 import type { LighterBridgeDeps } from "./lighterBridge";
 import { createLighterBridge } from "./lighterBridge";
+import { useFrameClip } from "./useFrameClip";
 import { useLighterPreviewSync } from "./useLighterPreviewSync";
 
 export interface UseLighterEngineBridgeArgs {
@@ -80,6 +81,11 @@ export interface UseLighterEngineBridgeArgs {
    */
   getSkeleton?: LighterAdapterDeps["getSkeleton"];
   /**
+   * Whether gestures on a label path are clipped to the media frame before
+   * they commit. Omit it and nothing is clipped. MUST be referentially stable.
+   */
+  shouldClip?: (path: string) => boolean;
+  /**
    * Gate the whole surface off without violating hook order: a disabled bridge
    * registers nothing AND binds its gesture handlers to the inert sentinel
    * channel, so a shared scene (the video tile sets the global `lighterSceneAtom`
@@ -100,6 +106,7 @@ export const useLighterEngineBridge = ({
   onEstablishCommit,
   onEditCommit,
   getSkeleton,
+  shouldClip,
   enabled = true,
 }: UseLighterEngineBridgeArgs): void => {
   const { scene, overlayFactory } = useLighter();
@@ -178,9 +185,22 @@ export const useLighterEngineBridge = ({
     adapters,
   });
 
+  const clipToFrame = useFrameClip({
+    engine,
+    sample,
+    scene,
+    surface,
+    frameOf,
+    shouldClip,
+  });
+
   const commitOverlay = useCallback(
     (event: { overlayId: string }) => {
       const overlay = (scene as Scene2D).getOverlay(event.overlayId);
+
+      if (!clipToFrame(overlay)) {
+        return;
+      }
 
       // An emptied polyline has nothing to commit — delete it. The delete
       // is not a surface write, so the change loop unmounts the overlay.
@@ -208,7 +228,7 @@ export const useLighterEngineBridge = ({
       surface.commit(overlay, { undoKey });
       onEditCommit(event.overlayId, overlay?.field ?? "", undoKey);
     },
-    [engine, frameOf, onEditCommit, scene, surface],
+    [clipToFrame, engine, frameOf, onEditCommit, scene, surface],
   );
 
   // Gesture coalescing: drawing a masked detection commits in several steps —
@@ -285,6 +305,10 @@ export const useLighterEngineBridge = ({
   // no-op and the overlay keeps its handles after the form closes.
   const establishOverlay = useCallback(
     (event: { overlayId: string }) => {
+      if (!clipToFrame((scene as Scene2D).getOverlay(event.overlayId))) {
+        return;
+      }
+
       const undoKey = commitWithMaskTail(event);
       const overlay = (scene as Scene2D).getOverlay(event.overlayId);
 
@@ -296,7 +320,7 @@ export const useLighterEngineBridge = ({
       // draw's undo unit (video auto-extend), keyed by overlay id
       onEstablishCommit?.(event.overlayId, undoKey);
     },
-    [commitWithMaskTail, onEstablishCommit, scene, surface],
+    [clipToFrame, commitWithMaskTail, onEstablishCommit, scene, surface],
   );
 
   // WRITE-HALF: finalize events → commit (upsert by the overlay's durable id).

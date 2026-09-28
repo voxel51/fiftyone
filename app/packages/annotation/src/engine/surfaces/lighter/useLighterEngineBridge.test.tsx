@@ -17,7 +17,16 @@ const maskedIds = new Set<string>();
 // what the bridge reads to decide if a click is additive
 let multipleSelection = false;
 
+// what an overlay's clipToFrame reports, keyed by overlay id
+const clipResults = new Map<string, string>();
+const mockClipToFrame = vi.fn(
+  (id: string) => clipResults.get(id) ?? "unchanged",
+);
+const mockApplyLabel = vi.fn();
+const mockRemoveOverlay = vi.fn();
+
 class MockDetectionOverlay {
+  readonly field = "gt";
   constructor(
     readonly id: string,
     private readonly masked: boolean,
@@ -25,7 +34,16 @@ class MockDetectionOverlay {
   hasMask(): boolean {
     return this.masked;
   }
+  clipToFrame(): string {
+    return mockClipToFrame(this.id);
+  }
+  applyLabel(label: unknown): void {
+    mockApplyLabel(this.id, label);
+  }
 }
+
+class MockKeypointOverlay {}
+class MockPolylineOverlay extends MockKeypointOverlay {}
 
 vi.mock("@fiftyone/lighter", () => ({
   useLighter: () => ({
@@ -37,12 +55,15 @@ vi.mock("@fiftyone/lighter", () => ({
           : undefined,
       isDestroyed: false,
       isMultipleSelection: () => multipleSelection,
+      removeOverlay: mockRemoveOverlay,
       setExternalUndoAuthority: mockSetExternalUndoAuthority,
     },
     overlayFactory: {},
   }),
   useLighterEventHandler: () => mockOn,
   DetectionOverlay: MockDetectionOverlay,
+  KeypointOverlay: MockKeypointOverlay,
+  PolylineOverlay: MockPolylineOverlay,
   UNDEFINED_LIGHTER_SCENE_ID: "undefined-scene",
 }));
 
@@ -235,6 +256,79 @@ describe("useLighterEngineBridge — mask gesture coalescing", () => {
 
     expect(keyOf(0)).toBe("gesture:9");
     expect(keyOf(1)).toBe("gesture:9");
+  });
+});
+
+describe("useLighterEngineBridge — clip to frame", () => {
+  const stored = { bounding_box: [0.1, 0.1, 0.2, 0.2] };
+  let getLabel: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    handlers.clear();
+    ownedIds.clear();
+    clipResults.clear();
+    getLabel = vi.fn();
+  });
+
+  const mount = (shouldClip?: (path: string) => boolean) =>
+    renderHook(() =>
+      useLighterEngineBridge({
+        engine: { ...(makeEngine() as object), getLabel } as never,
+        sample: "s1",
+        dataset: "ds",
+        shouldClip,
+      }),
+    );
+
+  const fire = (event: string, overlayId: string) =>
+    handlers.get(event)?.({ overlayId });
+
+  it("clips an edit before committing it when the field clips", () => {
+    ownedIds.add("a");
+    clipResults.set("a", "clipped");
+    mount(() => true);
+
+    fire("lighter:overlay-drag-end", "a");
+
+    expect(mockClipToFrame).toHaveBeenCalledWith("a");
+    expect(mockClipToFrame.mock.invocationCallOrder[0]).toBeLessThan(
+      mockCommit.mock.invocationCallOrder[0],
+    );
+  });
+
+  it("leaves the gesture alone when the field does not clip", () => {
+    ownedIds.add("a");
+    mount(() => false);
+
+    fire("lighter:overlay-resize-end", "a");
+
+    expect(mockClipToFrame).not.toHaveBeenCalled();
+    expect(mockCommit).toHaveBeenCalledTimes(1);
+  });
+
+  it("reverts an edit left wholly outside the frame to its stored label", () => {
+    ownedIds.add("a");
+    clipResults.set("a", "empty");
+    getLabel.mockReturnValue(stored);
+    mount(() => true);
+
+    fire("lighter:overlay-drag-end", "a");
+
+    expect(mockApplyLabel).toHaveBeenCalledWith("a", stored);
+    expect(mockCommit).not.toHaveBeenCalled();
+  });
+
+  it("discards a fresh draw wholly outside the frame", () => {
+    ownedIds.add("a");
+    clipResults.set("a", "empty");
+    mount(() => true);
+
+    fire("lighter:overlay-establish", "a");
+
+    expect(mockRemoveOverlay).toHaveBeenCalledWith("a");
+    expect(mockSelectHandle).toHaveBeenCalledWith(undefined);
+    expect(mockCommit).not.toHaveBeenCalled();
   });
 });
 

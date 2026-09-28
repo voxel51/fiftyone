@@ -126,6 +126,11 @@ def generate_label_schemas(sample_collection, fields=None, scan_samples=True):
     When a label is marked as ``read_only``, all its attributes inherit the
     setting as well.
 
+    Spatial label types (detections, keypoints, and polylines) support a
+    ``clip_to_frame`` flag. When omitted or ``True``, the App clips labels
+    drawn, moved, or resized outside of the image or video frame to its
+    boundaries.
+
     All :class:`fiftyone.core.labels.Label` types are resolved by this method
     except :class:`fiftyone.core.labels.GeoLocation`,
     :class:`fiftyone.core.labels.GeoLocations`,

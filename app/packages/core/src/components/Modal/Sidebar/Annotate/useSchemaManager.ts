@@ -41,6 +41,7 @@ export type FieldSchema = {
   type: FieldType;
   component: ComponentType;
   read_only?: boolean;
+  clip_to_frame?: boolean;
   precision?: number;
   range?: [number, number];
   values?: (string | number)[];
