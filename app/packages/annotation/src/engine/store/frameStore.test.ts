@@ -66,6 +66,23 @@ describe("FrameStore identity + resolution", () => {
     expect(store.getLabel(ref("doc-1", 1))).toBeUndefined();
   });
 
+  it("resolves a frameless ref by instance across frames", () => {
+    const store = makeStore(
+      frames({
+        1: { [PATH]: [det("doc-1", "A", [0, 0, 1, 1])] },
+        3: { [PATH]: [det("doc-2", "B", [0, 0, 3, 3])] },
+      }),
+    );
+
+    // selection refs carry no frame; failing to resolve them would deselect
+    // every frame label on a sample-level reset
+    const frameless = { sample: SAMPLE, path: PATH, instanceId: "B" };
+    expect(store.getLabel(frameless)?.bounding_box).toEqual([0, 0, 3, 3]);
+    expect(
+      store.getLabel({ sample: SAMPLE, path: PATH, instanceId: "nope" }),
+    ).toBeUndefined();
+  });
+
   it("lists by frame and enumerates the pool as frame-stamped refs", () => {
     const store = makeStore(
       frames({
@@ -708,6 +725,32 @@ describe("FrameStore end-to-end with FrameTemporalView + frame-locked bridge", (
     seek(9);
     expect(handles.size).toBe(0);
   });
+
+  it("the temporal view reports the frame under the playhead", () => {
+    const { clock, seek } = makeClock();
+    const engine = new AnnotationEngine({
+      temporal: (e) => new FrameTemporalView(e, clock, (t) => t),
+    });
+
+    expect(engine.temporal.frame()).toBe(1);
+    seek(4);
+    expect(engine.temporal.frame()).toBe(4);
+  });
+
+  it("frame subscribers hear each new frame once, not same-frame ticks", () => {
+    const { clock, seek } = makeClock();
+    const engine = new AnnotationEngine({
+      temporal: (e) => new FrameTemporalView(e, clock, (t) => t),
+    });
+    const frames: number[] = [];
+    engine.subscribeFrame((frame) => frames.push(frame));
+
+    seek(4);
+    seek(4);
+    seek(2);
+
+    expect(frames).toEqual([4, 2]);
+  });
 });
 
 describe("FrameStore + frame-locked bridge: writes to other frames", () => {
@@ -781,5 +824,178 @@ describe("FrameStore + frame-locked bridge: writes to other frames", () => {
     // and a later engine-driven reproject of the SAME value stays a no-op
     engine.updateLabel(ref("A", 1), { bounding_box: [4, 4, 2, 2] });
     expect(handles.get("A")!.label.bounding_box).toEqual([0, 0, 1, 1]);
+  });
+});
+
+describe("FrameStore per-frame primitive values", () => {
+  const VALUE_PATH = "frames.weather";
+
+  it("serves a registered value at the frame it was seeded on", () => {
+    const store = new FrameStore(SAMPLE, {
+      labelTypes: LABEL_TYPES,
+      valuePaths: [VALUE_PATH],
+      values: { 1: { [VALUE_PATH]: "rain" }, 2: {} },
+    });
+
+    expect(store.getFrameValue(VALUE_PATH, 1)).toBe("rain");
+    expect(store.getFrameValue(VALUE_PATH, 2)).toBeUndefined();
+    expect(store.getFrameValue(VALUE_PATH, 3)).toBeUndefined();
+  });
+
+  it("ignores paths that were not registered", () => {
+    const store = new FrameStore(SAMPLE, {
+      labelTypes: LABEL_TYPES,
+      values: { 1: { [VALUE_PATH]: "rain" } },
+    });
+
+    expect(store.getFrameValue(VALUE_PATH, 1)).toBeUndefined();
+  });
+
+  it("a re-seed replaces the values and notifies display subscribers", () => {
+    const store = new FrameStore(SAMPLE, {
+      labelTypes: LABEL_TYPES,
+      valuePaths: [VALUE_PATH],
+      values: { 1: { [VALUE_PATH]: "rain" } },
+    });
+    let notified = 0;
+    store.subscribe(() => {
+      notified++;
+    });
+
+    store.setData(frames({}), { 1: { [VALUE_PATH]: "sun" } });
+
+    expect(store.getFrameValue(VALUE_PATH, 1)).toBe("sun");
+    expect(notified).toBe(1);
+  });
+
+  it("clear drops the values", () => {
+    const store = new FrameStore(SAMPLE, {
+      labelTypes: LABEL_TYPES,
+      valuePaths: [VALUE_PATH],
+      values: { 1: { [VALUE_PATH]: "rain" } },
+    });
+
+    store.clear();
+
+    expect(store.getFrameValue(VALUE_PATH, 1)).toBeUndefined();
+  });
+
+  const seeded = () =>
+    new FrameStore(SAMPLE, {
+      labelTypes: LABEL_TYPES,
+      valuePaths: [VALUE_PATH],
+      values: { 1: { [VALUE_PATH]: "rain" }, 2: {} },
+    });
+
+  it("an edit shadows the seeded value and persists at that frame only", () => {
+    const store = seeded();
+    let notified = 0;
+    store.subscribe(() => {
+      notified++;
+    });
+
+    store.setFrameValue(VALUE_PATH, 1, "sun");
+
+    expect(store.getFrameValue(VALUE_PATH, 1)).toBe("sun");
+    expect(notified).toBe(1);
+    expect(store.isDirty()).toBe(true);
+    expect(store.getJsonPatch()).toEqual([
+      { op: "replace", path: "/frames/1/weather", value: "sun" },
+    ]);
+  });
+
+  it("adds a field the frame never had", () => {
+    const store = seeded();
+
+    store.setFrameValue(VALUE_PATH, 2, "fog");
+
+    expect(store.getJsonPatch()).toEqual([
+      { op: "add", path: "/frames/2/weather", value: "fog" },
+    ]);
+  });
+
+  it("removes a field the frame had, and emits nothing for one it never had", () => {
+    const store = seeded();
+
+    store.deleteFrameValue(VALUE_PATH, 1);
+    store.deleteFrameValue(VALUE_PATH, 2);
+
+    expect(store.getFrameValue(VALUE_PATH, 1)).toBeUndefined();
+    expect(store.getJsonPatch()).toEqual([
+      { op: "remove", path: "/frames/1/weather" },
+    ]);
+  });
+
+  it("an edit back to the seeded value is not a change", () => {
+    const store = seeded();
+
+    store.setFrameValue(VALUE_PATH, 1, "rain");
+
+    expect(store.getJsonPatch()).toEqual([]);
+  });
+
+  it("refuses a path that was not registered", () => {
+    const store = seeded();
+
+    store.setFrameValue("frames.unregistered", 1, "sun");
+
+    expect(store.isDirty()).toBe(false);
+    expect(store.getJsonPatch()).toEqual([]);
+  });
+
+  it("a re-seed that agrees retires the edit", () => {
+    const store = seeded();
+    store.setFrameValue(VALUE_PATH, 1, "sun");
+
+    store.setData(frames({}), { 1: { [VALUE_PATH]: "sun" } });
+
+    expect(store.getFrameValue(VALUE_PATH, 1)).toBe("sun");
+    expect(store.isDirty()).toBe(false);
+    expect(store.getJsonPatch()).toEqual([]);
+  });
+
+  it("an edit made during a save survives a re-seed of the old value", () => {
+    const store = seeded();
+    store.setFrameValue(VALUE_PATH, 1, "sun");
+
+    store.setData(frames({}), { 1: { [VALUE_PATH]: "rain" } });
+
+    expect(store.getFrameValue(VALUE_PATH, 1)).toBe("sun");
+    expect(store.getJsonPatch()).toEqual([
+      { op: "replace", path: "/frames/1/weather", value: "sun" },
+    ]);
+  });
+
+  it("reconciling the persisted op retires the edit without re-emitting it", () => {
+    const store = seeded();
+    store.setFrameValue(VALUE_PATH, 1, "sun");
+
+    store.reconcilePersisted(store.getJsonPatch());
+
+    expect(store.getFrameValue(VALUE_PATH, 1)).toBe("sun");
+    expect(store.isDirty()).toBe(false);
+    expect(store.getJsonPatch()).toEqual([]);
+  });
+
+  it("reconciling a persisted removal retires the deletion", () => {
+    const store = seeded();
+    store.deleteFrameValue(VALUE_PATH, 1);
+
+    store.reconcilePersisted(store.getJsonPatch());
+
+    expect(store.getFrameValue(VALUE_PATH, 1)).toBeUndefined();
+    expect(store.isDirty()).toBe(false);
+    expect(store.getJsonPatch()).toEqual([]);
+  });
+
+  it("a rolled-back transaction discards the edit", () => {
+    const store = seeded();
+    const snapshot = store.snapshot();
+
+    store.setFrameValue(VALUE_PATH, 1, "sun");
+    store.restore(snapshot);
+
+    expect(store.getFrameValue(VALUE_PATH, 1)).toBe("rain");
+    expect(store.isDirty()).toBe(false);
   });
 });

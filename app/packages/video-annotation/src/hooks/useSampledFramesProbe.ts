@@ -22,7 +22,7 @@ export const responseHasSampledFrames = (
 };
 
 /**
- * Probe whether the open video's frames are materialized on disk. The ImaVid
+ * Probe whether the open video's frames are materialized on disk. The dynamic group
  * annotate path renders one image per frame, so a video that hasn't been
  * `to_frames(sample_frames=True)`'d has no per-frame `filepath` and renders
  * blank. We POST a single-frame `/frames` request for frame 1 and treat a

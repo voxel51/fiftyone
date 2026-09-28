@@ -27,6 +27,18 @@ vi.mock("./temporal-tag-interval-source", () => ({
   },
 }));
 
+// Saved ranges have their own source tests; this suite supplies lane intervals.
+vi.mock("../extensions/episode-intervals/saved-segments", () => ({
+  savedSegmentIntervalSource: {
+    id: "test:saved-segments",
+    label: "Saved segments",
+    order: 100,
+    Component: ({ children }: EpisodeIntervalSourceProps) => (
+      <>{children({ intervals: [] })}</>
+    ),
+  },
+}));
+
 const { EpisodeGridOverlay } = await import("./EpisodeGridOverlay");
 
 const TILE_WIDTH = 400;

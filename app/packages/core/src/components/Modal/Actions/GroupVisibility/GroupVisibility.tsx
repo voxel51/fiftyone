@@ -21,9 +21,7 @@ export default ({
   const [isCarouselVisible, setIsCarouselVisible] = useReverbState(
     fos.groupMediaIsCarouselVisibleSetting,
   );
-  const [isMainVisible, setIsMainVisible] = useReverbState(
-    fos.groupMediaIsMain2DViewerVisibleSetting,
-  );
+  const isMainVisible = fos.useIsGroupMain2dViewerVisibleSetting();
   const isNestedDynamicGroup = useReverbValue(fos.isNestedDynamicGroup);
   const shouldRenderImaVid = useReverbValue(fos.shouldRenderImaVidLooker(true));
   const dynamicGroupsViewMode = useReverbValue(fos.dynamicGroupsViewMode(true));
@@ -68,7 +66,7 @@ export default ({
           (!isCarouselVisible && toReturn.length === 0) ||
           (!(isSlotVisible && threeDSliceExists) && !isCarouselVisible)
         }
-        setValue={(value) => setIsMainVisible(value)}
+        setValue={(value) => actions.setMainViewerVisible(value)}
       />,
     );
 
@@ -94,7 +92,6 @@ export default ({
     isCarouselVisible,
     isMainVisible,
     isSlotVisible,
-    setIsMainVisible,
     isImavidInNestedGroup,
     setIsCarouselVisible,
     isAnnotateMode,

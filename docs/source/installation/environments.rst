@@ -233,7 +233,7 @@ cloud notebook that has an accessible network proxy via configured
 
 To use FiftyOne in a notebook, simply install `fiftyone` via `pip`:
 
-.. code-block:: text
+.. code-block:: shell
 
     !pip install fiftyone
 

@@ -24,6 +24,11 @@ export interface SyntheticBox {
   /** Normalized [x, y, w, h] in [0, 1]. */
   bounding_box: [number, number, number, number];
   /**
+   * Scalar 2D rotation in radians (oriented bounding boxes). Propagation
+   * lerps it along the shortest arc between keyframes.
+   */
+  rotation?: number;
+  /**
    * FiftyOne track index, when present. Carried so downstream color-
    * mapping can use `COLOR_BY.INSTANCE`'s `${label}-${index}-...` hash
    * (otherwise instance mode would collapse tracked detections of the
@@ -82,6 +87,8 @@ export interface RawDetection {
   index?: number;
   label?: string;
   bounding_box?: [number, number, number, number];
+  /** Scalar 2D rotation in radians; 3D detections carry a list instead. */
+  rotation?: number | number[];
   instance?: { _cls: "Instance"; _id?: string } | null;
   mask_path?: string;
   mask?: unknown;
@@ -154,6 +161,8 @@ export interface LocalDetection {
   index?: number;
   label?: string;
   bounding_box: [number, number, number, number];
+  /** Scalar 2D rotation in radians. */
+  rotation?: number;
   instance?: { _cls: "Instance"; _id?: string } | null;
   /**
    * Auto-promote-on-edit: callers handling user-initiated edits (draw,

@@ -177,6 +177,23 @@ describe("VideoLabelStore routing", () => {
     ]);
   });
 
+  it("serves a registered per-frame value from the FrameStore", () => {
+    const frames = new FrameStore(SAMPLE, {
+      labelTypes: { [FRAME_PATH]: LabelType.Detections },
+      valuePaths: ["frames.weather"],
+      values: { 3: { "frames.weather": "fog" } },
+    });
+    const store = new VideoLabelStore(
+      SAMPLE,
+      frames,
+      new FakeSampleStore() as unknown as SampleLabelStore,
+    );
+
+    expect(store.getFrameValue("frames.weather", 3)).toBe("fog");
+    expect(store.getFrameValue("frames.weather", 4)).toBeUndefined();
+    expect(store.getFrameValue(TD_PATH, 3)).toBeUndefined();
+  });
+
   it("reports the type from whichever backing owns the path", () => {
     const { store } = make();
 

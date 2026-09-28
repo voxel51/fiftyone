@@ -1,4 +1,6 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
+import { useGridSelectionBoundary } from "@fiftyone/state/src/selection/grid-hooks";
+import { savedSegmentPinScope } from "@fiftyone/state/src/selection/segment-provenance";
 import React, { useEffect, useMemo } from "react";
 import { sampleDescriptorFromContext } from "../../session/episode-source";
 import { useEpisodeSession } from "../../session/use-episode-session";
@@ -17,6 +19,7 @@ import {
   type ResolvedEpisodeIntervals,
 } from "../../../extensions/episode-intervals";
 import { publishEpisodeTimeRange } from "../../../runtime";
+import { savedSegmentIntervalSource } from "../../../extensions/episode-intervals/saved-segments";
 import { SourcePlayback } from "./SourcePlayback";
 import { sourceDisplayName } from "./source-display-name";
 import {
@@ -32,8 +35,10 @@ import { useTimeRange } from "../playback/use-time-range";
  * already have their own section carrying the create / update / delete
  * behavior the read-only interval shape has no room for.
  */
+const BUILT_IN_SOURCES = [savedSegmentIntervalSource];
+
 const ModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => (
-  <EpisodeIntervalSources ctx={ctx}>
+  <EpisodeIntervalSources ctx={ctx} builtInSources={BUILT_IN_SOURCES}>
     {(intervalSources) => (
       <EpisodeModal ctx={ctx} intervalSources={intervalSources} />
     )}
@@ -45,6 +50,7 @@ const EpisodeModal: React.FC<
     readonly intervalSources: readonly ResolvedEpisodeIntervals[];
   }
 > = ({ ctx, intervalSources }) => {
+  const [selectionBoundary] = useGridSelectionBoundary();
   // Translates the sample renderer context into a byte source, then delegates
   // the playback shell to the source-oriented host shared with the ad hoc
   // episode panel.
@@ -101,6 +107,11 @@ const EpisodeModal: React.FC<
   // Opening a tile the embeddings panel matched lands the playhead on the same
   // window the tile postered at, rather than the recording start.
   const firstMatch = useSampleRendererFirstMatch(ctx);
+  const opening = intervalSources.find(
+    ({ contribution }) =>
+      contribution.initialSeekPending ||
+      contribution.initialSeekTimeNs !== undefined,
+  )?.contribution;
 
   return (
     <AnnotationStreamsProvider>
@@ -122,11 +133,15 @@ const EpisodeModal: React.FC<
         }) => (
           <SourcePlayback
             defaultPinnedTrackIds={defaultPinnedTrackIds}
+            pinScopeKey={savedSegmentPinScope(selectionBoundary)}
             decorateTrack={decorateTrack}
             timelineRulerOverlay={rulerOverlay}
             episodeContext={{ datasetId, sampleId }}
             fileName={fileName}
-            initialSeekTimeNs={firstMatch?.startNs ?? null}
+            initialSeekTimeNs={
+              opening?.initialSeekTimeNs ?? firstMatch?.startNs ?? null
+            }
+            initialSeekPending={opening?.initialSeekPending}
             layoutScopeKey={datasetId}
             cameraPreferenceField={ctx.media.field}
             existingTags={existingTags}

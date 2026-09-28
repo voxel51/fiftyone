@@ -236,9 +236,6 @@ export function getSourceSessionHints(
   };
 }
 
-/** Stable cache snapshot reader suitable for `useSyncExternalStore`. */
-export const getSourceBootstrapSnapshot = peekSourceBootstrap;
-
 /** Subscribes to one source's bootstrap publishes. */
 export function subscribeSourceBootstrap(
   source: ByteSourceDescriptor,

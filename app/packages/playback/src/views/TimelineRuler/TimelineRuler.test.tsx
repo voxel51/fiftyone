@@ -360,6 +360,31 @@ describe("TimelineRuler", () => {
       ]);
     });
 
+    it("counting from 1, labels frame starts and leaves the end boundary blank", () => {
+      const { container } = renderRuler({
+        duration: 1,
+        viewStart: 0,
+        viewEnd: 1,
+        mode: { kind: "sequence", fps: 10, firstFrame: 1 },
+      });
+      const labels = Array.from(
+        container.querySelectorAll(`.${styles.tick}`),
+      ).map((el) => el.textContent);
+      expect(labels).toEqual([
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "",
+      ]);
+    });
+
     it("labels absolute-mode ticks as HH:MM:SS.mmm wall-clock time", () => {
       const { container } = renderRuler({
         duration: 2,

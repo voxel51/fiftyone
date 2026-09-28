@@ -12,8 +12,6 @@ from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
 import fiftyone.core.aggregations as foa
-import fiftyone.core.collections as foc
-import fiftyone.core.labels as fol
 from fiftyone.server.decorators import route
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
 import fiftyone.server.tags as fost
@@ -54,7 +52,7 @@ class Tagging(HTTPEndpoint):
         )
 
         if target_labels:
-            count_aggs, tag_aggs = build_label_tag_aggregations(view)
+            count_aggs, tag_aggs = fost.build_label_tag_aggregations(view)
             results = await view._async_aggregate(count_aggs + tag_aggs)
             items = None
             count = sum(results[: len(count_aggs)])
@@ -73,17 +71,3 @@ class Tagging(HTTPEndpoint):
             count = sum([v for k, v in tags.items() if k is not None])
 
         return {"count": count, "tags": tags, "items": items}
-
-
-def build_label_tag_aggregations(sample_collection: foc.SampleCollection):
-    counts = []
-    tags = []
-    for path, field in foc._iter_label_fields(sample_collection):
-        label_type = field.document_type
-        if issubclass(label_type, fol._HasLabelList):
-            path += "." + label_type._LABEL_LIST_FIELD
-
-        counts.append(foa.Count(path))
-        tags.append(foa.CountValues(path + ".tags"))
-
-    return counts, tags

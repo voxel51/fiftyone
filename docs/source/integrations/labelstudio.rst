@@ -217,7 +217,7 @@ or by setting the `default_backend` parameter of your
 :ref:`annotation config <annotation-config>` located at
 `~/.fiftyone/annotation_config.json`:
 
-.. code-block:: text
+.. code-block:: json
 
     {
         "default_backend": "labelstudio"
@@ -245,12 +245,12 @@ You can also store your credentials in your
 :ref:`annotation config <annotation-config>` located at
 `~/.fiftyone/annotation_config.json`:
 
-.. code-block:: text
+.. code-block:: json
 
     {
         "backends": {
             "labelstudio": {
-                "api_key": ...,
+                "api_key": "<api_key>"
             }
         }
     }
@@ -315,7 +315,7 @@ following ways:
     :ref:`annotation config <annotation-config>` at
     `~/.fiftyone/annotation_config.json`:
 
-.. code-block:: text
+.. code-block:: json
 
     {
         "backends": {

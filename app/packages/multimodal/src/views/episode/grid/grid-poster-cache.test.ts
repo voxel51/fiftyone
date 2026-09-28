@@ -87,6 +87,7 @@ describe("grid poster cache", () => {
   it("separates every render-semantic key field", () => {
     const previewIdentity = {
       datasetId: "dataset-a",
+      episodeId: "episode-a",
       mediaField: "recording",
       selectedSourceName: null,
       source: source("one", "etag-a"),
@@ -131,6 +132,7 @@ describe("grid poster cache", () => {
   it("keeps signed access URLs out of persistent poster identity", () => {
     const base = {
       datasetId: "dataset-a",
+      episodeId: "episode-a",
       imageFit: "cover" as const,
       mediaField: "recording",
       selectedSourceName: null,

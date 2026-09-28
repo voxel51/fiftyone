@@ -1,20 +1,12 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Polyline keyframe interpolation on the video-annotation surface, and — the
- * reason this spec exists — whether the CANVAS shows it.
- *
- * Reported: draw a polyline, scrub forward, drag a vertex (promoting a second
- * keyframe), then scrub back through the span. The interpolated frames are
- * correct in the store (verified against mongo) and Explore mode draws them, but
- * the annotate canvas keeps painting the shape it already had — until the
- * playhead leaves the track's extent entirely and comes back, which unmounts and
- * re-mounts the overlay.
- *
- * So the two halves are asserted separately:
- *   1. the interpolation itself — geometry moves between the keyframes
- *   2. the projection — what the overlay actually holds at those frames
- * A pass on (1) with a failure on (2) is precisely the reported bug.
+ * Polyline keyframe interpolation on the video surface and whether the canvas
+ * shows it: after a second keyframe, scrubbing back through the span was
+ * correct in the store and in Explore but the annotate canvas kept its stale
+ * shape. The interpolation (geometry moves between keyframes) and the
+ * projection (what the overlay holds) are asserted separately, so a pass on the
+ * first with a failure on the second is the reported bug.
  */
 import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -26,8 +18,6 @@ const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-video-polyline-interp",
 );
 const id = "000000000000000000000000";
-// .mp4 so the surface takes the mp4/native decode path the reported clip uses
-const clip = `/tmp/${datasetName}.mp4`;
 
 /** Vertices of the drawn shape, in relative canvas coordinates. */
 const DRAWN: Array<[number, number]> = [
@@ -46,34 +36,78 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
-  // ~180 frames @ 30fps, matching the reported clip's shape (the 10fps/40-frame
-  // variant of this spec passes, so frame rate / clip length is a suspect)
-  await mediaFactory.createVideo({
-    outputPath: clip,
-    duration: 6,
-    width: 64,
-    height: 64,
-    frameRate: 30,
-    color: "#3050a0",
-  });
 });
 
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeEach(async ({ videoAnnotateSDK }) => {
-  await videoAnnotateSDK.seed({
+test.beforeEach(async ({ datasetFactory }) => {
+  await datasetFactory.createDataset({
+    mediaType: "video",
     datasetName,
-    videoPaths: [clip],
-    withEvents: false,
-    // schema only: this spec draws the first polyline itself
-    withPolylineField: true,
+    // .mp4 so the surface takes the mp4/native decode path the reported clip
+    // uses; ~180 frames @ 30fps, matching the reported clip's shape (the
+    // 10fps/40-frame variant of this spec passes, so frame rate / clip length
+    // is a suspect)
+    videoOptions: { container: "mp4", duration: 6, frameRate: 30 },
+    sampleFrames: true,
+    schema: {
+      "frames.detections": "Detections",
+      "frames.detections.detections.instance": "Instance",
+      "frames.detections.detections.keyframe": "BooleanField",
+      "frames.detections.detections.propagation": "DictField",
+      "frames.polylines": "Polylines",
+      "frames.polylines.polylines.instance": "Instance",
+      "frames.polylines.polylines.keyframe": "BooleanField",
+      "frames.polylines.polylines.propagation": "DictField",
+    },
+    labelSchemas: {
+      "frames.detections": {
+        type: "detections",
+        component: "dropdown",
+        classes: ["vehicle", "person", "road sign"],
+        attributes: [
+          { name: "id", type: "id", component: "text", read_only: true },
+          { name: "tags", type: "list<str>", component: "text" },
+          { name: "confidence", type: "float", component: "text" },
+          { name: "index", type: "int", component: "text" },
+          { name: "mask_path", type: "str", component: "text" },
+        ],
+      },
+      "frames.polylines": {
+        type: "polylines",
+        component: "dropdown",
+        classes: ["vehicle", "person", "road sign"],
+        attributes: [
+          { name: "id", type: "id", component: "text", read_only: true },
+          { name: "index", type: "int", component: "text" },
+        ],
+      },
+    },
     // the reported sample carried several other polyline tracks; a pre-seeded
     // track makes the drawn one share the surface, as it did there
-    polylineSampleIndices: [0],
+    withFrameData: (_, { label }) => ({
+      detections: label.detections([]),
+      polylines: label.polylines([
+        label.polyline({
+          label: "person",
+          points: [
+            [
+              [0.2, 0.2],
+              [0.5, 0.2],
+              [0.35, 0.5],
+            ],
+          ],
+          closed: true,
+          filled: false,
+          index: 2,
+          instance: label.instance("person-polyline-2"),
+        }),
+      ]),
+    }),
   });
 });
 
@@ -94,15 +128,32 @@ const openAnnotate = async (
 const blur = (page: Page) =>
   page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
 
+// canvas reads are only valid once the scene has applied the new frame
+const step = (modal: ModalPom, move: () => Promise<void>) =>
+  modal.eventUtils.after("video-annotation-frame-applied", move);
+
+const ofOverlay =
+  (id: string) =>
+  (e: { detail?: unknown }): boolean =>
+    (e.detail as { id?: string } | undefined)?.id === id;
+
+// once received, the overlay is selected whatever its prior state
+const clickOverlay = (modal: ModalPom, id: string) =>
+  modal.eventUtils.after(
+    "lighter:overlay-click",
+    () => modal.sampleCanvas.click(BODY[0], BODY[1]),
+    ofOverlay(id),
+  );
+
 const stepForward = async (modal: ModalPom, n: number) => {
   for (let i = 0; i < n; i++) {
-    await modal.videoAnnotate.stepForward();
+    await step(modal, () => modal.videoAnnotate.stepForward());
   }
 };
 
 const stepBack = async (modal: ModalPom, n: number) => {
   for (let i = 0; i < n; i++) {
-    await modal.videoAnnotate.stepBack();
+    await step(modal, () => modal.videoAnnotate.stepBack());
   }
 };
 
@@ -159,10 +210,10 @@ const centroidY = (points: [number, number][] | undefined): number => {
 };
 
 /**
- * Container coordinates are not overlay coordinates: the clip is letterboxed, so
- * the canvas applies an affine to reach image space. Derive it from the draw
- * itself — the same three points, expressed both ways. Sorting each set by x
- * pairs them, since the overlay does not preserve draw order.
+ * Container coordinates are not overlay coordinates: the letterboxed clip gets
+ * an affine into image space, derived here from the draw's three points
+ * expressed both ways. Each set is sorted by x to pair them, since the overlay
+ * does not preserve draw order.
  */
 const deriveToContainer = (
   drawnOverlayPoints: [number, number][],
@@ -190,8 +241,8 @@ const dragVertex = async (
   id: string,
   toContainer: (point: [number, number]) => [number, number],
 ) => {
-  // select the overlay first; a vertex is only grabbable once it is drawn
-  await modal.sampleCanvas.click(BODY[0], BODY[1]);
+  // a vertex is only grabbable once its overlay is selected
+  await clickOverlay(modal, id);
 
   const live = await pointsOf(modal, id);
   const [vx, vy] = toContainer((live as [number, number][])[0]);
@@ -298,15 +349,14 @@ test.describe("polyline track deletion on video", () => {
 
     // a body click selects the shape without sub-selecting a vertex, so
     // Backspace reads as "delete the track", not "remove a vertex"
-    await modal.sampleCanvas.click(BODY[0], BODY[1]);
-    await page.keyboard.press("Backspace");
+    await clickOverlay(modal, id);
 
-    await expect
-      .poll(
-        () => polylineIds(modal),
-        "the drawn track should leave the canvas on the first press",
-      )
-      .not.toContain(id);
+    // received only if the first press deleted the track
+    await modal.eventUtils.after(
+      "lighter:overlay-removed",
+      () => page.keyboard.press("Backspace"),
+      ofOverlay(id),
+    );
     await modal.videoAnnotate.assert.objectTrackCount(1);
     // the delete flushes before the test ends
     await modal.sidebar.annotate.waitForSavesSettled();

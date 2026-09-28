@@ -20,6 +20,8 @@ export const GEOMETRY_SIGNAL = "geometry";
 export interface Geometry2d {
   kind: "2d";
   bounds: { x: number; y: number; width: number; height: number };
+  /** Scalar box rotation in radians, when the surface supports it. */
+  rotation?: number;
 }
 
 /** Live 3D cuboid geometry — absolute location/dimensions/quaternion. */

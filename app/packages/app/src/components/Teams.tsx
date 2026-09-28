@@ -26,7 +26,8 @@ import { useCallback, useEffect, useState } from "react";
 import styles from "./Teams.module.css";
 
 const ENTERPRISE_TOOLTIP_LS = "fiftyone-enterprise-tooltip-seen";
-const ENTERPRISE_URL = "https://voxel51.com/why-upgrade?utm_source=FiftyOneApp";
+export const ENTERPRISE_URL =
+  "https://voxel51.com/why-upgrade?utm_source=FiftyOneApp";
 
 /** The gradient the sparkle fills with; referenced from the stylesheet. */
 const GradientDefs = () => (

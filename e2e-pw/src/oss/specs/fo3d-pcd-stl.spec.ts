@@ -6,7 +6,6 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import fs from "node:fs";
 import { ModalSidebarPom } from "src/oss/poms/modal/modal-sidebar";
 import { getStlCube } from "./fo3d-ascii-asset-factory/stl-factory";
-import { getScreenshotMasks } from "./threed-utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("fo3d-stl-pcd");
 
@@ -97,7 +96,7 @@ test.describe.serial("fo3d", () => {
   });
 
   test("scene is rendered correctly", async ({ modal, grid, modalSidebar }) => {
-    const mask = getScreenshotMasks(modal);
+    const mask = modal.looker3dScreenshotMasks;
 
     await expect(grid.getForwardSection()).toHaveScreenshot(
       "orthographic-projection-grid-cuboids.png",

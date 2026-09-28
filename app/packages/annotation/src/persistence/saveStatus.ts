@@ -42,10 +42,8 @@ export interface SaveStatus {
   lastSavedAt: number | null;
 }
 
-// Module-level atom so the single publisher (the annotation composition root,
-// which owns the retry controller and persistence event stream) and the
-// indicator's reader resolve to the same default jotai store — mirrors the
-// videoAnnotationStatus pattern.
+// module-level atom so the publisher and the indicator's reader resolve to
+// the same default jotai store
 const saveStatusAtom = atom<SaveStatus>({
   health: SaveHealth.Healthy,
   inFlight: false,

@@ -1,19 +1,11 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Drawing a fresh per-frame detection box on the video-annotation surface:
- *
- *  - auto-extend (guards `9dbd95a6b2`): a freshly-drawn box becomes a short
- *    track, copied forward ~30 frames as non-keyframe filler (clamped at the
- *    clip end). Bracketed semantically via engine presence — a frame inside the
- *    extent lists the label, a frame past it does not.
- *  - fresh-draw form-sync (guards finding A / fcc91e013a / 94c366c562): the
- *    moment the draw is released to the engine the edit form's field reads the
- *    schema field `detections` (NOT the raw engine path `frames.detections`),
- *    and the form keeps following the playhead with no deselect/reselect.
- *
- * Clean slate, re-seeded per test (no pre-existing tracks) so the draw is the
- * only object track. The clip is 40 frames so the 30-frame extent isn't clamped.
+ * Drawing a fresh per-frame box on the video surface: it auto-extends ~30
+ * frames as non-keyframe filler (a frame inside the extent lists the label, one
+ * past it does not), and the edit form immediately reads the schema field
+ * `detections` and keeps following the playhead. Re-seeded clean per test on a
+ * 40-frame clip so the extent isn't clamped.
  */
 import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -25,7 +17,6 @@ const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-video-auto-extend",
 );
 const id = "000000000000000000000000";
-const clip = `/tmp/${datasetName}.webm`;
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -33,28 +24,43 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
-  // 40 frames @ 10fps — the 30-frame auto-extend stays clear of the clip end.
-  await mediaFactory.createVideo({
-    outputPath: clip,
-    duration: 4,
-    width: 64,
-    height: 64,
-    frameRate: 10,
-    color: "#3050a0",
-  });
 });
 
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeEach(async ({ videoAnnotateSDK }) => {
-  await videoAnnotateSDK.seed({
+test.beforeEach(async ({ datasetFactory }) => {
+  // 40 frames @ 10fps — the 30-frame auto-extend stays clear of the clip end.
+  await datasetFactory.createDataset({
+    mediaType: "video",
     datasetName,
-    videoPaths: [clip],
-    withEvents: false,
+    videoOptions: { duration: 4 },
+    sampleFrames: true,
+    schema: {
+      "frames.detections": "Detections",
+      "frames.detections.detections.instance": "Instance",
+      "frames.detections.detections.keyframe": "BooleanField",
+      "frames.detections.detections.propagation": "DictField",
+    },
+    labelSchemas: {
+      "frames.detections": {
+        type: "detections",
+        component: "dropdown",
+        classes: ["vehicle", "person", "road sign"],
+        attributes: [
+          { name: "id", type: "id", component: "text", read_only: true },
+          { name: "tags", type: "list<str>", component: "text" },
+          { name: "confidence", type: "float", component: "text" },
+          { name: "index", type: "int", component: "text" },
+          { name: "mask_path", type: "str", component: "text" },
+        ],
+      },
+    },
+    // present-but-empty on every frame, so the first draw's patch can append
+    withFrameData: (_, { label }) => ({ detections: label.detections([]) }),
   });
 });
 

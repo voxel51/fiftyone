@@ -34,10 +34,3 @@ export {
   useMcapGridOverlays,
   type McapGridOverlayComponent,
 } from "./grid-overlay-registry";
-// Shared episode-source plumbing an edition overlay renders through.
-// (Only runtime/ re-exports belong here — the extensions layer may not
-// reach views/ or temporal-tags/; editions import those directly.)
-export {
-  getSourceBootstrapSnapshot,
-  subscribeSourceBootstrap,
-} from "../../runtime/source-bootstrap-cache";

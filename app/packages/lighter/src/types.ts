@@ -108,6 +108,22 @@ export interface Spatial {
 }
 
 /**
+ * Interface for overlays that support a 2D rotation (oriented bounding
+ * boxes). Rotation is in radians, applied around the bounds center; positive
+ * rotates clockwise on screen.
+ */
+export interface Rotatable {
+  /** The current rotation, in radians */
+  getRotation(): number;
+
+  /** Sets the rotation, in radians */
+  setRotation(rotation: number): void;
+
+  /** return true if being rotated */
+  isRotating(): boolean;
+}
+
+/**
  * Transform matrix for coordinate conversions.
  */
 export interface TransformMatrix {

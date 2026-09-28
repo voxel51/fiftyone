@@ -1,4 +1,4 @@
-import type { SampleRendererProps } from "@fiftyone/plugins";
+import type { IntervalTileContext } from "./types";
 import React, { useMemo } from "react";
 import { sortSources, useEpisodeIntervalSources } from "./registry";
 import type {
@@ -11,7 +11,7 @@ const NO_INTERVALS: EpisodeIntervalContribution = { intervals: [] };
 const NO_RESOLVED: readonly ResolvedEpisodeIntervals[] = [];
 
 interface EpisodeIntervalSourcesProps {
-  readonly ctx: SampleRendererProps["ctx"];
+  readonly ctx: IntervalTileContext;
   /**
    * Sources the caller mounts unconditionally, alongside whatever is
    * registered. Temporal tags reach the grid tile this way: they ship in the
@@ -56,7 +56,7 @@ export const EpisodeIntervalSources: React.FC<EpisodeIntervalSourcesProps> = ({
 };
 
 interface SourceChainProps {
-  readonly ctx: SampleRendererProps["ctx"];
+  readonly ctx: IntervalTileContext;
   readonly index: number;
   readonly resolved: readonly ResolvedEpisodeIntervals[];
   readonly sources: readonly EpisodeIntervalSource[];

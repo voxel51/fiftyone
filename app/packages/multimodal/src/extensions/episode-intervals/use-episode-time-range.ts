@@ -1,8 +1,9 @@
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useMemo, useSyncExternalStore } from "react";
 import type { TimeWindow } from "../../ir";
 import {
   getEpisodePlayhead,
   getEpisodeTimeRange,
+  requestEpisodeSeek,
   subscribeEpisodePlayhead,
   subscribeEpisodeTimeRange,
 } from "../../runtime";
@@ -78,4 +79,35 @@ export function useEpisodePlayheadNs(
   );
   if (absoluteNs === null || !range) return null;
   return toEpisodeRelativeNs(absoluteNs, range);
+}
+
+/**
+ * Moves the tile presenting this episode to a position on the lane's axis.
+ *
+ * Null when there is nothing to move — no episode identity, or no published
+ * time range to rebase against — so a lane can tell "not seekable yet" from
+ * "seek did nothing" rather than silently swallowing a click.
+ *
+ * Takes episode-relative nanoseconds, which is the axis every interval and the
+ * lane itself are expressed in, and rebases to the absolute clock the
+ * renderer's reads are keyed by.
+ */
+export function useEpisodeSeek(
+  episodeId: string | undefined,
+  range: TimeWindow | null,
+): ((episodeRelativeNs: number) => void) | null {
+  return useMemo(() => {
+    if (!episodeId || !range) return null;
+    const spanNs = range.endNs - range.startNs;
+    return (episodeRelativeNs: number) => {
+      // Clamped in bigint against the published extent: a lane hit is derived
+      // from a pointer position, and the rounding at either end must not ask
+      // for an instant outside the recording.
+      const offsetNs = BigInt(Math.max(0, Math.round(episodeRelativeNs)));
+      requestEpisodeSeek(
+        episodeId,
+        range.startNs + (offsetNs > spanNs ? spanNs : offsetNs),
+      );
+    };
+  }, [episodeId, range]);
 }

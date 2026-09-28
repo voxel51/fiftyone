@@ -7,6 +7,15 @@ export {
   type PromptableSimilarityIndex,
 } from "./similaritySearch/usePromptableSimilarityKeys";
 export {
+  registerTextSearchExtension,
+  useTextSearchExtensions,
+  type SearchSources,
+  type TextSearchExtension,
+  type TextSearchIndex,
+  type TextSearchRequest,
+  type TextSearchResult,
+} from "./similaritySearch/textSearchExtensions";
+export {
   useSetViewChangePending,
   useViewChangePending,
 } from "./useViewChangePending";
@@ -45,6 +54,7 @@ export { default as useReset } from "./useReset";
 export {
   default as useResetExtendedSelection,
   resetExtendedSelectionTransaction,
+  usePublishExtendedSelection,
 } from "./useResetExtendedSelection";
 export * from "./extendedSelectionReset";
 export * from "./useRetryController";

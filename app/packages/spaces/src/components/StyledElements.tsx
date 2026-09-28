@@ -1,6 +1,7 @@
 import styled from "styled-components";
 
 export const SpaceContainer = styled.div`
+  position: relative;
   width: 100%;
   height: 100%;
   --focus-border: var(--fo-palette-neutral-plainColor);
@@ -9,6 +10,7 @@ export const SpaceContainer = styled.div`
 export const PanelContainer = styled.div`
   display: flex;
   flex-direction: column;
+  position: relative;
   width: 100%;
   height: 100%;
   overflow: hidden;

@@ -302,7 +302,7 @@ describe("LeRobot state/action provider", () => {
       const series = await session.numericSeries?.readNumericSeries({
         fields: ["action"],
         maxPointsPerField: 6,
-        stream: "lerobot:action",
+        stream: "action",
         window: session.manifest.timeRange,
       });
       const field = series?.fields[0];
@@ -353,7 +353,7 @@ describe("LeRobot state/action provider", () => {
         schema?.state?.dimensions.map((dimension) => dimension.name),
       ).toEqual([undefined, undefined, undefined]);
       await expect(
-        session.numericSeries?.enumerateNumericFields(["lerobot:action"]),
+        session.numericSeries?.enumerateNumericFields(["action"]),
       ).resolves.toMatchObject([
         {
           fields: [
@@ -424,13 +424,13 @@ describe("LeRobot state/action provider", () => {
     }).open(built.source, built.io);
     try {
       const schema = session.stateAction?.schema;
-      expect(schema?.state?.numericStreamId).toBe("lerobot:observation.state");
+      expect(schema?.state?.numericStreamId).toBe("observation.state");
       expect(
         schema?.state?.dimensions.map(
           (dimension) => dimension.numericFieldPath,
         ),
       ).toEqual(["observation.state.shoulder", "observation.state.elbow"]);
-      expect(schema?.action?.numericStreamId).toBe("lerobot:action");
+      expect(schema?.action?.numericStreamId).toBe("action");
       expect(
         schema?.action?.dimensions.map(
           (dimension) => dimension.numericFieldPath,

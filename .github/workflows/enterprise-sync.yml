@@ -28,7 +28,15 @@ jobs:
     if: >-
       github.repository == 'voxel51/fiftyone' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
-      !endsWith(github.event.pull_request.user.login, '[bot]') &&
+      (
+        !endsWith(github.event.pull_request.user.login, '[bot]') ||
+        (
+          github.event.pull_request.user.login == 'voxel51-autoworks[bot]' &&
+          github.event.pull_request.user.id == 331044789 &&
+          github.event.pull_request.user.type == 'Bot' &&
+          github.event.pull_request.head.repo.id == 257913595
+        )
+      ) &&
       (github.event.action != 'edited' || github.event.changes.base) &&
       (
         github.event.pull_request.base.ref == 'main' ||

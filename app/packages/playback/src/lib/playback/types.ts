@@ -236,9 +236,9 @@ export interface PlaybackClockSource {
  * - `duration`   — elapsed seconds, YouTube-style. The default; unchanged
  *                  behavior for every existing consumer that doesn't pass
  *                  `mode`.
- * - `sequence`   — frame-index based (frame 0, 1, 2, ...). `fps` derives
- *                  the engine's `nativeStepSeconds` (1/fps) and the
- *                  seconds<->frame-number conversion.
+ * - `sequence`   — frame-index based, counting from `firstFrame` (default
+ *                  0). `fps` derives the engine's `nativeStepSeconds` (1/fps)
+ *                  and the seconds<->frame-number conversion.
  * - `absolute`   — anchored to a real-world clock. `epochAnchorMs` is the
  *                  Unix-epoch millisecond timestamp that internal second 0
  *                  corresponds to; display converts to/from `Date`.
@@ -253,7 +253,12 @@ export interface PlaybackClockSource {
  */
 export type TimelineMode =
   | { kind: "duration" }
-  | { kind: "sequence"; fps: number }
+  | {
+      kind: "sequence";
+      fps: number;
+      /** The number of the first frame; 0 by default, 1 for FiftyOne frame numbers. */
+      firstFrame?: number;
+    }
   | { kind: "absolute"; epochAnchorMs: number };
 
 // ---------------------------------------------------------------------------

@@ -92,6 +92,14 @@ class Static(StaticFiles):
         return response
 
 
+def _app_static(directory):
+    return Static(
+        directory=directory,
+        html=True,
+        follow_symlink=fo.app_config.follow_static_symlinks,
+    )
+
+
 class HeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint
@@ -155,6 +163,10 @@ if _allowed_origins:
                 "accept-ranges",
                 "content-range",
                 "content-length",
+                # ETag carries the annotation version token and is not
+                # CORS-safelisted; without this a cross-origin app reads
+                # null and every follow-up save fails its version check
+                "etag",
             ],
         )
     )
@@ -224,11 +236,7 @@ app = Starlette(
         ),
         Mount(
             "/",
-            app=Static(
-                directory=os.path.join(os.path.dirname(__file__), "static"),
-                html=True,
-                follow_symlink=True,
-            ),
+            app=_app_static(os.path.join(os.path.dirname(__file__), "static")),
             name="static",
         ),
     ],

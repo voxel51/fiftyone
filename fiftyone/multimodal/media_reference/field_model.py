@@ -615,8 +615,12 @@ async def resolve_sample_media(
         poster = next(
             (
                 asset
+                for role in (
+                    MediaAssetRole.VIDEO_STREAM,
+                    MediaAssetRole.IMAGE_PAYLOAD,
+                )
                 for asset in entry.assets
-                if asset.description.role is MediaAssetRole.VIDEO_STREAM
+                if asset.description.role is role
             ),
             None,
         )

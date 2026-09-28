@@ -1,22 +1,30 @@
 import * as fos from "@fiftyone/state";
+import { VideoAnnotationSurface } from "@fiftyone/video-annotation";
 import { useEffect } from "react";
 import {
   useReverbState,
   useReverbValue,
   useSetReverbState,
 } from "@fiftyone/reverb";
+import { Loading } from "@fiftyone/components";
 import { DynamicGroup } from "./DynamicGroup";
 import GroupSample3d from "./GroupSample3d";
 import { GroupView } from "./GroupView";
 
+const AnnotateDynamicGroupVideo = () => {
+  const modalSample = fos.useModalSample();
+
+  if (!modalSample) {
+    return <Loading>Pixelating...</Loading>;
+  }
+
+  return <VideoAnnotationSurface sample={modalSample} />;
+};
+
 const Group = () => {
   const dynamic = useReverbValue(fos.isDynamicGroup);
   const only3d = useReverbValue(fos.only3d);
-  const is3dVisible = fos.useIs3dVisible();
   const isLooker3DVisible = fos.useIs3dVisibleSetting();
-  const isPinned = fos.useIs3dPinned();
-  const actions = fos.useRenderConfig3dActions();
-  const isMainVisible = useReverbValue(fos.groupMediaIsMain2DViewerVisible);
 
   const isNestedDynamicGroup = useReverbValue(fos.isNestedDynamicGroup);
   const isOrderedDynamicGroup = useReverbValue(fos.isOrderedDynamicGroup);
@@ -24,6 +32,7 @@ const Group = () => {
     fos.groupMediaIsCarouselVisibleSetting,
   );
   const isAnnotateMode = fos.useModalMode() === fos.ModalMode.ANNOTATE;
+  const isImageDynamicGroupVideo = fos.useIsImageDynamicGroupVideo();
 
   const [dynamicGroupsViewMode, setDynamicGroupsViewMode] = useReverbState(
     fos.dynamicGroupsViewMode(true),
@@ -60,11 +69,11 @@ const Group = () => {
     setIsMainLookerVisible,
   ]);
 
-  useEffect(() => {
-    if (is3dVisible && !isMainVisible && !isPinned) {
-      void actions.setPinned(true);
-    }
-  }, [actions, is3dVisible, isMainVisible, isPinned]);
+  // the video surface replaces the entire group view; the modal sample read
+  // lives in the child so a sparse group's missing slice never evaluates here
+  if (isAnnotateMode && isImageDynamicGroupVideo) {
+    return <AnnotateDynamicGroupVideo />;
+  }
 
   if (dynamic) {
     return <DynamicGroup />;

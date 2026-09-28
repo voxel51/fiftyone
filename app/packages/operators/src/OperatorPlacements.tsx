@@ -15,13 +15,14 @@ import { Operator } from "./operators";
 import {
   useOperatorExecutor,
   useOperatorPlacements,
+  useOperatorPromptOpen,
   usePromptOperatorInput,
 } from "./state";
 import { Placement, Places } from "./types";
 
 import { getStringAndNumberProps } from "@fiftyone/core/src/components/Actions/utils";
 import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
-import { useCallback } from "react";
+import { useCallback, type ReactNode } from "react";
 
 export function OperatorPlacementWithErrorBoundary(
   props: OperatorPlacementProps,
@@ -38,8 +39,10 @@ export function OperatorPlacementWithErrorBoundary(
 }
 
 function OperatorPlacements(props: OperatorPlacementsProps) {
-  const { place, modal } = props;
+  const { place, modal, fallback } = props;
   const { placements } = useOperatorPlacements(place);
+
+  if (!placements.length) return fallback ?? null;
 
   return placements.map((placement) => (
     <OperatorPlacementWithErrorBoundary
@@ -99,6 +102,7 @@ function ButtonPlacement(props: OperatorPlacementProps) {
   const { label } = view;
   const { icon, darkIcon, lightIcon } = view?.options || {};
   const { canExecute, execute } = usePlacementControls(props);
+  const open = useOperatorPromptOpen(operator.uri);
 
   const showIcon =
     isPrimitiveString(icon) ||
@@ -129,7 +133,8 @@ function ButtonPlacement(props: OperatorPlacementProps) {
         icon={showIcon && IconComponent}
         text={!showIcon && title}
         title={title}
-        highlight={place === types.Places.SAMPLES_GRID_ACTIONS}
+        open={open}
+        highlight={open}
         style={{ whiteSpace: "nowrap" }}
         tooltipPlacement={modal ? "top" : "bottom"}
       />
@@ -184,26 +189,32 @@ function ComponentPlacement(props: OperatorPlacementProps) {
 }
 
 export function usePlacementControls(props: OperatorPlacementProps) {
-  const { operator, placement } = props;
+  const { operator, placement, adaptiveMenuItemProps } = props;
   const { prompt = true } = placement?.view?.options || {};
   const { uri } = operator;
   const canExecute = operator?.config?.canExecute;
 
   const promptForInput = usePromptOperatorInput();
   const { execute } = useOperatorExecutor(uri);
+  const closeOverflow = adaptiveMenuItemProps?.closeOverflow;
 
   const handleClick = useCallback(() => {
+    // The action row's overflow popout outranks the operator palette, so one
+    // left open covers the prompt this click just opened
+    closeOverflow?.();
     if (prompt) {
       promptForInput(uri);
     } else {
       execute({});
     }
-  }, [prompt, promptForInput, uri, execute]);
+  }, [closeOverflow, prompt, promptForInput, uri, execute]);
 
   return { canExecute, execute: handleClick };
 }
 
 type OperatorPlacementsProps = {
+  /** Content shown when no operator contributes to this placement. */
+  fallback?: ReactNode;
   place: Places;
   modal?: boolean;
 };

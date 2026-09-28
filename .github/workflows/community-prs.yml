@@ -27,6 +27,14 @@ jobs:
             const pr = context.payload.pull_request;
             const author = pr.user.login;
 
+            // This App may publish internal PRs without collaborator access.
+            const trustedBot = author === 'voxel51-autoworks[bot]' &&
+              pr.user.id === 331044789 && pr.user.type === 'Bot' &&
+              pr.head.repo?.id === 257913595 &&
+              pr.head.repo?.full_name === 'voxel51/fiftyone' &&
+              (pr.base.ref === 'main' || pr.base.ref.startsWith('release/'));
+            if (trustedBot) return;
+
             let hasPush = false;
             try {
               const { data } = await github.rest.repos.getCollaboratorPermissionLevel({

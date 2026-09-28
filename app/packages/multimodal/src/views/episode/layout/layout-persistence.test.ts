@@ -198,6 +198,26 @@ describe("layout-persistence", () => {
   });
 
   describe("camera preferences", () => {
+    it("keeps default source conventions separate from every named field", () => {
+      writeCameraPreferences({ sceneUpAxis: "x" }, "source-a", undefined);
+      writeCameraPreferences(
+        { preferredWorldFrameId: "map" },
+        "source-a",
+        undefined,
+      );
+      writeCameraPreferences({ sceneUpAxis: "y" }, "source-a", "default");
+      expect(readCameraPreferences("source-a", undefined)).toEqual({
+        sceneUpAxis: "x",
+        preferredWorldFrameId: "map",
+      });
+      expect(readCameraPreferences("source-a", "default")).toEqual({
+        sceneUpAxis: "y",
+      });
+      expect(readCameraPreferences("source-b", undefined)).toBeNull();
+      writeCameraPreferences({ sceneUpAxis: "z" }, undefined, undefined);
+      expect(readModalLayout()?.defaultCameraPreferences).toBeUndefined();
+    });
+
     it("isolates conventions by dataset and selected media field", () => {
       writeCameraPreferences(
         { defaultTrackingMode: "free", preferredWorldFrameId: "map" },

@@ -12,6 +12,25 @@ import {
 } from "@fiftyone/reverb";
 import { toLabelMap } from "./utils";
 
+/** Summarize selected units, naming both types when the selection is empty. */
+export const useSelectionSummary = () => {
+  const sampleCount = useReverbValue(fos.selectedSamples).size;
+  const labelCount = useReverbValue(fos.selectedLabelIds).size;
+  const elementNames = useReverbValue(fos.elementNames);
+  const samples = `${sampleCount.toLocaleString()} ${
+    sampleCount === 1 ? elementNames.singular : elementNames.plural
+  }`;
+  const labels = `${labelCount.toLocaleString()} label${labelCount === 1 ? "" : "s"}`;
+  const text =
+    sampleCount && !labelCount
+      ? samples
+      : labelCount && !sampleCount
+        ? labels
+        : `${samples} · ${labels}`;
+
+  return { sampleCount, labelCount, text };
+};
+
 /**
  * Drop every selected label — from the atom, the canvas, and (through the
  * canvas) whatever else owns selection on this surface.
