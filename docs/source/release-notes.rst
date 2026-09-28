@@ -11,8 +11,7 @@ Includes all updates from :ref:`FiftyOne 1.22.1 <release-notes-v1.22.1>`, plus:
 
 - **Azure support for multimodal datasets**: episodes, projections, and
   embeddings stored in Azure Blob Storage now load, query, and embed like
-  they do on GCS and S3. Credentials are resolved per storage location, and
-  remote file sizes are read from object metadata instead of a signed request
+  they do on GCS and S3
 - Multimodal embeddings are computed for every time window; windows at the
   end of an episode are no longer dropped
 - GPU video decoding no longer falls back to the CPU after a decoder error
