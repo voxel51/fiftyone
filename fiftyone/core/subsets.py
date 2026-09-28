@@ -26,7 +26,7 @@ from uuid import uuid4
 from bson import BSON, ObjectId
 from bson.errors import InvalidDocument
 from pymongo import InsertOne, ReplaceOne, UpdateOne
-from pymongo.errors import BulkWriteError, DuplicateKeyError
+from pymongo.errors import BulkWriteError, DuplicateKeyError, OperationFailure
 
 import fiftyone.core.labels as fol
 import fiftyone.core.odm as foo
@@ -510,7 +510,9 @@ def subset_base_view(dataset, subset_id, stages=None):
             _collection("subsets").update_one(
                 {"_id": doc["_id"]}, {"$set": {"view": view._serialize()}}
             )
-        except PermissionError:
+        except (PermissionError, OperationFailure) as error:
+            if not _is_authorization_error(error):
+                raise
             # The rebuilt view is usable without persisting its cache hint.
             pass
     return view, rest
@@ -562,14 +564,20 @@ def load_materialized_view(source, subset_id, stage, reload=False):
                 generated = fovi.make_frames_dataset(
                     videos,
                     sample_frames="dynamic",
+                    name="subset-%s" % uuid4(),
                     _generated=True,
                     _subset_id=subset_id,
                 )
             else:
                 generated = focl.make_clips_dataset(
-                    videos, [], _generated=True, _subset_id=subset_id
+                    videos,
+                    [],
+                    name="subset-%s" % uuid4(),
+                    _generated=True,
+                    _subset_id=subset_id,
                 )
             caches = _collection("subset_materializations")
+            inserted_cache = False
             try:
                 caches.insert_one(
                     {
@@ -579,6 +587,7 @@ def load_materialized_view(source, subset_id, stage, reload=False):
                         "name": generated.name,
                     }
                 )
+                inserted_cache = True
                 published = _collection("subsets").update_one(
                     {
                         "_id": doc["_id"],
@@ -596,7 +605,23 @@ def load_materialized_view(source, subset_id, stage, reload=False):
                         }
                     },
                 )
-            except PermissionError:
+            except (PermissionError, OperationFailure) as error:
+                if not _is_authorization_error(error):
+                    raise
+                if inserted_cache:
+                    try:
+                        caches.delete_one(
+                            {
+                                "_id": generated._doc.id,
+                                "_dataset_id": dataset._doc.id,
+                            }
+                        )
+                    except (
+                        PermissionError,
+                        OperationFailure,
+                    ) as cleanup_error:
+                        if not _is_authorization_error(cleanup_error):
+                            raise
                 # Read-only clients retain an ordinary nonpersistent generated
                 # view. Publishing a shared cache is optional for these reads.
                 break
@@ -1569,8 +1594,22 @@ def _collection(name):
     return db[name]
 
 
+def _is_authorization_error(error):
+    return isinstance(error, PermissionError) or (
+        isinstance(error, OperationFailure) and error.code == 13
+    )
+
+
 @lru_cache(maxsize=32)
 def _ensure_indexes(client, database, name):
+    try:
+        _create_indexes(client, database, name)
+    except (PermissionError, OperationFailure) as error:
+        if not _is_authorization_error(error):
+            raise
+
+
+def _create_indexes(client, database, name):
     collection = client[database][name]
     collection.create_index("_dataset_id")
     if name in ("subset_operations", "subset_candidates"):

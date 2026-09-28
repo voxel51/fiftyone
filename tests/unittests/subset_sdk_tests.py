@@ -12,7 +12,7 @@ from unittest.mock import MagicMock, patch
 
 from bson import ObjectId
 from pymongo.collection import Collection
-from pymongo.errors import AutoReconnect
+from pymongo.errors import AutoReconnect, OperationFailure
 
 import fiftyone as fo
 import fiftyone.core.subsets as fosub
@@ -54,16 +54,28 @@ class SubsetSDKTests(unittest.TestCase):
         dataset = fo.Dataset()
         original_insert = Collection.insert_one
         original_update = Collection.update_one
+        original_create_index = Collection.create_index
+        denied_operation = None
 
         def insert(collection, *args, **kwargs):
-            if collection.name == "subset_materializations":
-                raise PermissionError("Read-only client")
+            if (
+                denied_operation in ("insert", "index")
+                and collection.name == "subset_materializations"
+            ):
+                raise OperationFailure("not authorized", code=13)
             return original_insert(collection, *args, **kwargs)
 
         def update(collection, *args, **kwargs):
-            if collection.name == "subsets":
-                raise PermissionError("Read-only client")
+            if denied_operation == "update" and collection.name == "subsets":
+                raise OperationFailure("not authorized", code=13)
             return original_update(collection, *args, **kwargs)
+
+        def create_index(collection, *args, **kwargs):
+            if denied_operation == "index" and collection.name.startswith(
+                "subset"
+            ):
+                raise OperationFailure("not authorized", code=13)
+            return original_create_index(collection, *args, **kwargs)
 
         try:
             dataset.add_sample(
@@ -80,17 +92,33 @@ class SubsetSDKTests(unittest.TestCase):
             )
             frames = dataset.to_frames(sample_frames="dynamic")
             subset = dataset.create_subset("Frames", frames.skip(2).limit(3))
-            with patch.object(Collection, "insert_one", insert), patch.object(
-                Collection, "update_one", update
-            ):
-                view = dataset.load_subset(subset["id"])
-                self.assertEqual(view.values("frame_number"), [3, 4, 5])
-            self.assertNotIn(
-                "materialization", fosub.get_subset(dataset, subset["id"])
-            )
-            view._dataset.delete()
+            for denied_operation in ("insert", "update", "index"):
+                with self.subTest(denied_operation=denied_operation):
+                    fosub._ensure_indexes.cache_clear()
+                    with patch.object(
+                        Collection, "insert_one", insert
+                    ), patch.object(
+                        Collection, "update_one", update
+                    ), patch.object(
+                        Collection, "create_index", create_index
+                    ):
+                        view = dataset.load_subset(subset["id"])
+                        self.assertEqual(
+                            view.values("frame_number"), [3, 4, 5]
+                        )
+                    self.assertNotIn(
+                        "materialization",
+                        fosub.get_subset(dataset, subset["id"]),
+                    )
+                    self.assertIsNone(
+                        fosub._collection("subset_materializations").find_one(
+                            {"_id": view._dataset._doc.id}
+                        )
+                    )
+                    view._dataset.delete()
             frames._dataset.delete()
         finally:
+            fosub._ensure_indexes.cache_clear()
             dataset.delete()
 
     def test_creator_attribution_round_trips_and_stays_immutable(self):
