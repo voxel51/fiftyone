@@ -2,7 +2,12 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import type { useLighterSetupWithPixi } from "@fiftyone/lighter";
+import {
+  UNDEFINED_LIGHTER_SCENE_ID,
+  useLighterEventBus,
+  type LighterEventGroup,
+  type useLighterSetupWithPixi,
+} from "@fiftyone/lighter";
 import { useEffect } from "react";
 
 type Scene = ReturnType<typeof useLighterSetupWithPixi>["scene"];
@@ -35,12 +40,44 @@ declare global {
   }
 }
 
+/** Lighter events re-dispatched on `document`, where `EventUtils` can arm on them. */
+const FORWARDED_EVENTS: (keyof LighterEventGroup)[] = [
+  "lighter:overlay-click",
+  "lighter:overlay-removed",
+];
+
+// payloads can hold live overlays, which don't serialize to Playwright
+const primitiveFields = (payload: unknown): Record<string, unknown> =>
+  Object.fromEntries(
+    Object.entries((payload ?? {}) as Record<string, unknown>).filter(
+      ([, value]) =>
+        value === null ||
+        (typeof value !== "object" && typeof value !== "function"),
+    ),
+  );
+
 /**
  * Publish the scene's live overlay fields on `window` for e2e assertions. A
  * read-only probe — it never drives app behavior; the hook owns the global's
  * lifecycle and clears it on scene change / unmount.
  */
 export const useExposeSceneOverlayFieldsForTest = (scene: Scene): void => {
+  const eventBus = useLighterEventBus(
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
+  );
+
+  useEffect(() => {
+    const offs = FORWARDED_EVENTS.map((event) =>
+      eventBus.on(event, (payload: unknown) => {
+        document.dispatchEvent(
+          new CustomEvent(event, { detail: primitiveFields(payload) }),
+        );
+      }),
+    );
+
+    return () => offs.forEach((off) => off());
+  }, [eventBus]);
+
   useEffect(() => {
     if (!scene) {
       return undefined;

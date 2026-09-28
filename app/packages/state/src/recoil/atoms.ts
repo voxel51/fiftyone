@@ -12,13 +12,30 @@ import {
   sampleFieldsFragment$data,
   sampleFieldsFragment$key,
 } from "@fiftyone/relay";
-import { StrictField, setContains3d } from "@fiftyone/utilities";
-import { DefaultValue, atom, atomFamily, selector } from "recoil";
+import {
+  MEDIA_TYPE_GROUP,
+  MEDIA_TYPE_MULTIMODAL,
+  MEDIA_TYPE_VIDEO,
+  StrictField,
+  setContains3d,
+} from "@fiftyone/utilities";
+import {
+  DefaultValue,
+  atom,
+  atomFamily,
+  selector,
+  selectorFamily,
+} from "recoil";
 import { ModalSample } from "..";
 import { GRID_SPACES_DEFAULT, sessionAtom } from "../session";
 import { collapseFields } from "../utils";
 import { getBrowserStorageEffectForKey } from "./customEffects";
-import { groupMediaTypesSet } from "./groups";
+import {
+  currentSlice,
+  groupMediaTypesMap,
+  groupMediaTypesSet,
+  isTemporalTagSlice,
+} from "./groups";
 import type { SelectionType } from "./types";
 import {
   DEFAULT_LABEL_SELECTION_STYLE,
@@ -389,6 +406,29 @@ export const lookerPanels = atom({
     json: { isOpen: false },
     help: { isOpen: false },
   },
+});
+
+/**
+ * Whether the samples in view can carry temporal tags: they need a playhead to
+ * place an interval on. Multimodal episodes and videos qualify; in a grouped
+ * dataset, only a video slice does. Keyed by `modal`, since the modal can show
+ * a different slice than the grid.
+ */
+export const supportsTemporalTags = selectorFamily<boolean, boolean>({
+  key: "supportsTemporalTags",
+  get:
+    (modal) =>
+    ({ get }) => {
+      const type = get(mediaType);
+      if (type === MEDIA_TYPE_GROUP) {
+        return isTemporalTagSlice(
+          get(groupMediaTypesMap),
+          get(currentSlice(modal)),
+        );
+      }
+
+      return type === MEDIA_TYPE_MULTIMODAL || type === MEDIA_TYPE_VIDEO;
+    },
 });
 
 export const only3d = selector<boolean>({

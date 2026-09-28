@@ -20,28 +20,39 @@ import type { GridPosterCacheEntry } from "./grid-poster-cache";
  */
 export function useHydratedSourceFacts({
   cachedPoster,
+  episodeId,
   previewSessionDemand,
   source,
   sourceFactsScope,
   visible,
 }: {
   readonly cachedPoster: GridPosterCacheEntry | null;
+  readonly episodeId: string | undefined;
   readonly previewSessionDemand: boolean;
   readonly source: ByteSourceDescriptor | null;
   readonly sourceFactsScope: SourceFactsScope | undefined;
   readonly visible: boolean;
 }): void {
+  // A tile answered from the poster cache opens no session, so the extent
+  // its overlays place marks against is the one the poster carries.
+  useEffect(() => {
+    const range = cachedPoster?.timeRange;
+    if (!episodeId || !range || getEpisodeTimeRange(episodeId)) return;
+    publishEpisodeTimeRange(episodeId, range);
+  }, [cachedPoster?.timeRange, episodeId]);
+
   const hydratedKeyRef = useRef<string | null>(null);
   useEffect(() => {
     // A demanded session publishes its own facts on open
     if (!visible || !cachedPoster || previewSessionDemand) return;
     if (!source || !sourceFactsScope) return;
+    if (!episodeId) return;
     // The modal writes facts without publishing the shared range, so a tile
     // first seen there has one here but none in the registry
     const bootstrapped = peekSourceBootstrap(source)?.timeRange;
     if (bootstrapped) {
-      if (!getEpisodeTimeRange(source.sourceId)) {
-        publishEpisodeTimeRange(source.sourceId, bootstrapped);
+      if (!getEpisodeTimeRange(episodeId)) {
+        publishEpisodeTimeRange(episodeId, bootstrapped);
       }
       return;
     }
@@ -53,7 +64,14 @@ export function useHydratedSourceFacts({
     void hydratePersistedSourceFacts(source, sourceFactsScope).then(() => {
       // A preview read also publishes the shared episode range
       const timeRange = peekSourceBootstrap(source)?.timeRange;
-      if (timeRange) publishEpisodeTimeRange(source.sourceId, timeRange);
+      if (timeRange) publishEpisodeTimeRange(episodeId, timeRange);
     });
-  }, [cachedPoster, previewSessionDemand, source, sourceFactsScope, visible]);
+  }, [
+    cachedPoster,
+    episodeId,
+    previewSessionDemand,
+    source,
+    sourceFactsScope,
+    visible,
+  ]);
 }

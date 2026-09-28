@@ -4,6 +4,7 @@ import {
   setCameraControlsLookAt,
   type Fo3dCameraControls,
 } from "../fo3d/camera-controls";
+import { CAMERA_LOOK_AT_SETTLED_EVENT } from "../constants";
 import type { Vector3Input } from "../utils";
 
 interface LookAtParams {
@@ -37,6 +38,13 @@ export const useFo3dCameraLookAt = ({
         target: lookAt.target,
       });
 
+      // the new view is raycastable once a frame has rendered it; e2e specs
+      // wait for this instead of guessing a settle duration
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() =>
+          document.dispatchEvent(new CustomEvent(CAMERA_LOOK_AT_SETTLED_EVENT)),
+        ),
+      );
       return true;
     },
     [cameraRef, cameraControlsRef],
