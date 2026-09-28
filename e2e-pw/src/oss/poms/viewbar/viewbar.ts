@@ -333,9 +333,31 @@ class StageEditorAsserter {
 
   /** The value a control is showing, whatever kind of control it is. */
   async paramText(param: string, value: string) {
-    expect(
-      await this.editor.param(param).getByRole("textbox").inputValue(),
-    ).toBe(value);
+    const control = this.editor.param(param);
+    // Monaco's textbox holds only the text around its cursor, so an
+    // expression is read from the editor's model
+    const text =
+      (await control.locator(".monaco-editor").count()) > 0
+        ? await control.evaluate((element) => {
+            const monaco = (
+              window as unknown as {
+                monaco: {
+                  editor: {
+                    getEditors: () => {
+                      getContainerDomNode: () => HTMLElement;
+                      getValue: () => string;
+                    }[];
+                  };
+                };
+              }
+            ).monaco;
+            return monaco.editor
+              .getEditors()
+              .find((editor) => element.contains(editor.getContainerDomNode()))
+              ?.getValue();
+          })
+        : await control.getByRole("textbox").inputValue();
+    expect(text).toBe(value);
   }
 
   async paramToggle(param: string, checked: boolean) {
