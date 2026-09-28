@@ -108,19 +108,15 @@ describe("VideoLooker frame event", () => {
     return frames;
   };
 
-  it("reports the middle of the presented frame while playing", () => {
-    expect(
-      framesBetween({ playing: true }, { playing: true, frameNumber: 6 }),
-    ).toEqual([{ playing: true, timeSeconds: 0.55 }]);
-  });
-
-  it("reports the stop when playback ends", () => {
+  it("reports playback stopping", () => {
     expect(framesBetween({ playing: true }, { playing: false })).toEqual([
       { playing: false, timeSeconds: 0.45 },
     ]);
   });
 
-  it("stays quiet when neither the frame nor playback changed", () => {
-    expect(framesBetween({ playing: true }, { playing: true })).toEqual([]);
+  it("leaves a changed frame number to the video element, which knows when it is presented", () => {
+    expect(
+      framesBetween({ playing: true }, { playing: true, frameNumber: 6 }),
+    ).toEqual([]);
   });
 });

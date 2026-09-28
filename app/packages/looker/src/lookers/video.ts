@@ -79,15 +79,14 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
       !playing && this.dispatchEvent("pause", { buffering: state.buffering });
     }
 
-    // Raw `playing`, not the buffering-adjusted flag above: a stall mid-playback
-    // is still a position being presented, while a thumbnail's mouseleave
-    // (which rewinds and stops) is what "no longer playing" means here.
-    if (
-      previousState.frameNumber !== state.frameNumber ||
-      previousState.playing !== state.playing
-    ) {
+    // Presented frames are reported by the video element; this only reports
+    // playback stopping. Raw `playing`, not the buffering-adjusted flag above:
+    // a stall mid-playback is still a position being presented, while a
+    // thumbnail's mouseleave (which rewinds and stops) is what "no longer
+    // playing" means here.
+    if (previousState.playing && !state.playing) {
       this.dispatchEvent("frame", {
-        playing: state.playing,
+        playing: false,
         timeSeconds: (state.frameNumber - 0.5) / state.config.frameRate,
       });
     }

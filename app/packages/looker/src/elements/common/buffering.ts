@@ -2,6 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { cssVar } from "@voxel51/voodo";
 import {
   lookerBuffering,
   lookerBufferingArc,
@@ -24,6 +25,7 @@ export function createBufferingIndicator(): HTMLDivElement {
 
   const svg = document.createElementNS(SVG_NS, "svg");
   svg.classList.add(lookerBufferingIcon);
+  svg.style.color = cssVar.color.text.primary;
   svg.setAttribute("viewBox", "0 0 24 24");
   svg.setAttribute("fill", "none");
 
