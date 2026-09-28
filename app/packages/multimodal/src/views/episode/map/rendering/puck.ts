@@ -24,6 +24,8 @@ const PUCK_RADIUS_PX = 9;
 const VOXEL51_PRIMARY_FALLBACK = "#ff6d04";
 const VOXEL51_PRIMARY_CSS_VAR = "--color-brand-primary";
 
+// Cached for the page lifetime: brand.primary is identical in both themes,
+// so a theme switch cannot invalidate it.
 let cachedPrimaryColor: string | null = null;
 
 /**

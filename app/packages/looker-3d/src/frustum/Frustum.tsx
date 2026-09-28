@@ -125,6 +125,7 @@ function FrustumMesh({ frustumData, geometry, texture }: GeometryFrustumProps) {
   const [isHovered, setIsHovered] = useState(false);
 
   const canShowTexture = Boolean(texture);
+  // brand.primary is the same in both themes, so resolving once is safe
   const hoverColor = useMemo(() => resolveCssColor(FRUSTUM_HOVER_COLOR), []);
   const wireframeColor = isHovered ? hoverColor : FRUSTUM_COLOR;
   const planeOpacity = isHovered

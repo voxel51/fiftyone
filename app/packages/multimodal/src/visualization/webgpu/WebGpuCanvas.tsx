@@ -3,6 +3,7 @@ import { Canvas } from "@react-three/fiber";
 import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three/webgpu";
+import { useAppliedThemeMode } from "@fiftyone/components";
 import { resolveCssColor } from "@fiftyone/utilities";
 
 import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "../panel-ui/style-tokens";
@@ -120,6 +121,7 @@ export function WebGpuCanvas({
   const canvasStateRef = useRef<GraphicsRootState | null>(null);
   const antialiasRef = useRef(antialias);
   const clearColorRef = useRef(clearColor);
+  const themeMode = useAppliedThemeMode();
   const mountedRef = useRef(true);
   const onErrorRef = useRef(onError);
   const onReadyRef = useRef(onReady);
@@ -290,14 +292,16 @@ export function WebGpuCanvas({
     };
   }, []);
 
-  // This effect reapplies renderer color settings when the clear color changes.
+  // This effect reapplies renderer color settings when the clear color
+  // changes, or when the theme flips and a token clear colour resolves anew.
   useEffect(() => {
     clearColorRef.current = clearColor;
     if (rendererRef.current) {
       prepareGraphicsRenderer(rendererRef.current, clearColor);
       canvasStateRef.current?.invalidate();
     }
-  }, [clearColor]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- themeMode is the signal
+  }, [clearColor, themeMode]);
 
   // This effect notifies consumers once Canvas state and renderer initialization are ready.
   useEffect(() => {

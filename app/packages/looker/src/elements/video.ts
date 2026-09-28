@@ -231,8 +231,8 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
     if (updatePlay) {
       const path = this.play.children[0] as SVGPathElement;
       path.style.fill = this.singleFrame
-        ? "var(--fo-palette-text-tertiary)"
-        : "var(--fo-palette-text-secondary)";
+        ? cssVar.color.icon.disabled
+        : cssVar.color.icon.emphasis;
       this.element.style.cursor = this.singleFrame ? "unset" : "pointer";
       this.element.title = this.singleFrame ? "Only one frame" : "Play (space)";
     }

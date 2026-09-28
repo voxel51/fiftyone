@@ -2,6 +2,7 @@
 import { OrbitControls } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
+import { useAppliedThemeMode } from "@fiftyone/components";
 import { resolveCssColor } from "@fiftyone/utilities";
 import { mix, screenUV, vec3 } from "three/tsl";
 import {
@@ -150,6 +151,10 @@ export function SceneBackground({
   const gradientBottom =
     background.kind === "gradient" ? background.bottom : null;
 
+  // Token backgrounds are resolved to concrete colours below, so the effect
+  // also reruns once the theme class has flipped.
+  const themeMode = useAppliedThemeMode();
+
   // This effect writes the configured fill onto the scene (an external
   // three object) and clears it on unmount so the next scene owner
   // starts from a clean slate.
@@ -175,7 +180,8 @@ export function SceneBackground({
       scene.background = null;
       scene.backgroundNode = null;
     };
-  }, [gradientBottom, gradientTop, invalidate, scene, solidColor]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- themeMode is the signal
+  }, [gradientBottom, gradientTop, invalidate, scene, solidColor, themeMode]);
 
   return null;
 }

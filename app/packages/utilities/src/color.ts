@@ -303,7 +303,11 @@ export const interpolateColorsRgb = (
   ];
 };
 
-const NEEDS_CSS = /var\(|color-mix\(/;
+// Only colour tokens are evaluated: the App's own `--color-*` / `--fo-palette-*`
+// variables and `color-mix()`. Any other var() (a font family, a spacing) is
+// not a colour and would come back as the probe's fallback colour if it were
+// assigned to `color`, so it passes through untouched.
+const NEEDS_CSS = /var\(--(?:color|fo-palette)[\w-]*\)|color-mix\(/;
 
 let probe: HTMLElement | null | undefined;
 
@@ -331,8 +335,9 @@ const probeElement = (): HTMLElement | null => {
  * caching a literal that would go stale when the theme flips. `color-mix()`
  * expressions, which several Voodo tokens resolve to, are evaluated as well.
  *
- * Plain literals come back unchanged, as does everything when there is no
- * document (workers, node tests) or the expression is invalid.
+ * Plain literals and non-colour var() references come back unchanged, as does
+ * everything when there is no document (workers, node tests) or the
+ * expression is invalid.
  */
 export const resolveCssColor = (color: string): string => {
   if (!NEEDS_CSS.test(color)) {
