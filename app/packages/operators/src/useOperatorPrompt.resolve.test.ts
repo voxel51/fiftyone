@@ -184,6 +184,34 @@ describe("useOperatorPrompt", () => {
     });
   });
 
+  it("keeps the newest execution options when an older call runs last", async () => {
+    env.resolveInput.mockResolvedValue(inputs("form"));
+    env.resolveExecutionOptions.mockImplementation(
+      async (_uri: string, ctx: { label?: string }) => ({ from: ctx.label }),
+    );
+    const prompt = renderHook(() => useOperatorPrompt());
+    await act(async () => vi.runOnlyPendingTimers());
+    const older = prompt.result.current.execDetails.fetch;
+    env.params = { brain_key: "new" };
+    prompt.rerender();
+    await act(async () => vi.runOnlyPendingTimers());
+    const newer = prompt.result.current.execDetails.fetch;
+    expect(newer).not.toBe(older);
+
+    // The older debounce's timer is already set, so the stale call on the
+    // newer one runs after the newest call, which the older one took
+    await act(async () => {
+      older({ label: "first" });
+      newer({ label: "stale" });
+      older({ label: "newest" });
+      vi.runOnlyPendingTimers();
+    });
+
+    expect(prompt.result.current.execDetails.executionOptions).toEqual({
+      from: "newest",
+    });
+  });
+
   it("stops loading execution options when the request fails", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     env.resolveExecutionOptions.mockRejectedValue(new Error("down"));
