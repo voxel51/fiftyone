@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { EncodedH264VideoVisualization } from "../ir";
 import { VISUALIZATION_KIND } from "../ir";
 import { VideoPlaybackManager } from "./playback-manager";
+import { withPreroll } from "./preroll.test-fixtures";
 import { SharedVideoPresentation } from "./presentation";
 import {
   MAX_VIDEO_DEPENDENCY_ACCESS_UNITS,
@@ -725,6 +726,44 @@ describe("VideoPlaybackManager and VideoStreamEngine", () => {
     lease.release();
   });
 
+  it("seeks to a picture a keyframe's preroll decodes through that keyframe", async () => {
+    const harness = createHarness();
+    // A reordered episode opening on B-frame 0 ms: P-frame 100 ms is on the
+    // timeline but decodes before it, inside its preroll
+    const early = accessUnit(100_000_000, false, "avc1.4D001F", 0);
+    const carrier = withPreroll(
+      accessUnit(0, true, "avc1.4D001F", 200_000_000),
+      [
+        { bytes: Uint8Array.of(0, 0, 1, 0x65), keyframe: true },
+        {
+          bytes: early.frame.bytes,
+          keyframe: false,
+          timestampNs: early.timeNs,
+        },
+      ],
+    );
+    const successor = accessUnit(
+      200_000_000,
+      false,
+      "avc1.4D001F",
+      300_000_000,
+    );
+    const manager = new VideoPlaybackManager("source", harness.dependencies);
+    manager.setReader(rangeReader([carrier, early, successor]));
+    const lease = manager.acquire("/camera");
+
+    lease.request({ ...early, priority: "visible" });
+    await presented(lease, early.timeNs);
+
+    const [decode] = harness.decoders[0].decodeCalls;
+    expect(decode.target).toBe(early.timeNs);
+    expect(decode.units.map((unit) => unit.timeNs)).toEqual([
+      carrier.timeNs,
+      successor.timeNs,
+    ]);
+    lease.release();
+  });
+
   it.each([601, 1_024])(
     "consumes a complete %i-frame long GOP with its keyframe and target",
     async (target) => {
@@ -764,6 +803,32 @@ describe("VideoPlaybackManager and VideoStreamEngine", () => {
           message: "Video dependency chain exceeds the bounded decode budget",
         },
         phase: "waiting-for-keyframe",
+      }),
+    );
+    expect(harness.decoders[0].decodeCalls).toHaveLength(0);
+    lease.release();
+  });
+
+  it("counts preroll chunks against the bounded decode budget", async () => {
+    const harness = createHarness();
+    const carrier = withPreroll(
+      accessUnit(0, true),
+      Array.from({ length: MAX_VIDEO_DEPENDENCY_ACCESS_UNITS }, (_, index) => ({
+        bytes: Uint8Array.of(0, 0, 1, index === 0 ? 0x65 : 0x41),
+        keyframe: index === 0,
+      })),
+    );
+    const target = accessUnit(1);
+    const manager = new VideoPlaybackManager("source", harness.dependencies);
+    manager.setReader(rangeReader([carrier, target]));
+    const lease = manager.acquire("/camera");
+    lease.request({ ...target, priority: "visible" });
+
+    await vi.waitFor(() =>
+      expect(lease.getSnapshot()).toMatchObject({
+        diagnostic: {
+          message: "Video dependency chain exceeds the bounded decode budget",
+        },
       }),
     );
     expect(harness.decoders[0].decodeCalls).toHaveLength(0);
