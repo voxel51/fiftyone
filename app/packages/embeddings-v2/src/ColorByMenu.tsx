@@ -25,6 +25,7 @@ import {
   useRef,
   useState,
   type KeyboardEvent,
+  type ReactNode,
 } from "react";
 import { useMenuDismiss } from "./useMenuDismiss";
 import "./panel.css";
@@ -40,11 +41,14 @@ export function ColorByMenu({
   onChange,
   disabled,
   loading,
+  footer,
 }: {
   options: ColorByOption[];
   value: string;
   onChange: (id: string) => void;
   disabled?: boolean;
+  /** Pinned under the open list, whatever it is scrolled to. */
+  footer?: ReactNode;
   /** Options are still resolving. Said in the list rather than left to the
    * reader: an incomplete list looks exactly like a complete one, and someone
    * who reads it as "this run has no such fields" closes the menu and does
@@ -206,56 +210,55 @@ export function ColorByMenu({
       )}
 
       {open && (
-        <div
-          className="emb-facet-panel emb-colorby-panel"
-          role="listbox"
-          id={listId}
-        >
-          {filtered.map((o, index) => (
-            <button
-              key={o.id}
-              id={`${listId}-${o.id}`}
-              type="button"
-              role="option"
-              aria-selected={o.id === value}
-              data-selected={o.id === value}
-              className="emb-facet-row"
-              onMouseEnter={() => setActiveIndex(index)}
-              onClick={() => commit(o.id)}
-            >
-              <span className="emb-facet-check">
-                {o.id === value && (
-                  <Icon
-                    name={IconName.Check}
-                    size={Size.Sm}
-                    color={TextColor.Fg}
-                  />
-                )}
-              </span>
-              <span className="emb-facet-row-label" title={o.data.label}>
-                {o.data.label}
-              </span>
-            </button>
-          ))}
-          {filtered.length === 0 && !loading && (
-            <div className="emb-facet-section">
-              <Text variant={TextVariant.Sm} color={TextColor.Tertiary}>
-                No matching fields
-              </Text>
-            </div>
-          )}
-          {loading && (
-            <div className="emb-facet-section emb-colorby-loading">
-              <Icon
-                name={IconName.Spinner}
-                size={Size.Sm}
-                color={TextColor.Secondary}
-              />
-              <Text variant={TextVariant.Sm} color={TextColor.Tertiary}>
-                Loading fields…
-              </Text>
-            </div>
-          )}
+        <div className="emb-facet-panel emb-colorby-panel">
+          <div className="emb-colorby-options" role="listbox" id={listId}>
+            {filtered.map((o, index) => (
+              <button
+                key={o.id}
+                id={`${listId}-${o.id}`}
+                type="button"
+                role="option"
+                aria-selected={o.id === value}
+                data-selected={o.id === value}
+                className="emb-facet-row"
+                onMouseEnter={() => setActiveIndex(index)}
+                onClick={() => commit(o.id)}
+              >
+                <span className="emb-facet-check">
+                  {o.id === value && (
+                    <Icon
+                      name={IconName.Check}
+                      size={Size.Sm}
+                      color={TextColor.Fg}
+                    />
+                  )}
+                </span>
+                <span className="emb-facet-row-label" title={o.data.label}>
+                  {o.data.label}
+                </span>
+              </button>
+            ))}
+            {filtered.length === 0 && !loading && (
+              <div className="emb-facet-section">
+                <Text variant={TextVariant.Sm} color={TextColor.Tertiary}>
+                  No matching fields
+                </Text>
+              </div>
+            )}
+            {loading && (
+              <div className="emb-facet-section emb-colorby-loading">
+                <Icon
+                  name={IconName.Spinner}
+                  size={Size.Sm}
+                  color={TextColor.Secondary}
+                />
+                <Text variant={TextVariant.Sm} color={TextColor.Tertiary}>
+                  Loading fields…
+                </Text>
+              </div>
+            )}
+          </div>
+          {footer && <div className="emb-colorby-footer">{footer}</div>}
         </div>
       )}
     </div>

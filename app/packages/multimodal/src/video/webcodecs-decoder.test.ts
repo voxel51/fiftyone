@@ -6,7 +6,11 @@ import type {
 } from "../ir";
 import { VISUALIZATION_KIND } from "../ir";
 import type { EncodedVideoAccessUnit, H264AccessUnit } from "./types";
-import { VideoDecoderFailureError, VideoIntentCancelledError } from "./types";
+import {
+  VideoCodecUnsupportedError,
+  VideoDecoderFailureError,
+  VideoIntentCancelledError,
+} from "./types";
 import {
   MAX_VIDEO_DECODE_IN_FLIGHT,
   VIDEO_DECODE_PROGRESS_TIMEOUT_MS,
@@ -364,15 +368,19 @@ describe("WebCodecsVideoDecoder", () => {
     const harness = fakeWebCodecs({ supported: false });
     const actor = new WebCodecsVideoDecoder(harness.environment);
 
-    await expect(
-      actor.decode([unit(0, true, "avc1.640028")], {
-        signal: new AbortController().signal,
-        targetTimeNs: 0n,
-      }),
-    ).rejects.toMatchObject({
-      message: "H.264 codec 'avc1.640028' is unsupported",
-      name: "VideoDecoderFailureError",
+    const refusal = actor.decode([unit(0, true, "avc1.640028")], {
+      signal: new AbortController().signal,
+      targetTimeNs: 0n,
     });
+
+    await expect(refusal).rejects.toMatchObject({
+      message: "H.264 codec 'avc1.640028' is unsupported",
+      name: "VideoCodecUnsupportedError",
+    });
+    // Terminal, so playback latches it instead of seeking into it again, while
+    // still satisfying every existing decoder-failure handler
+    await expect(refusal).rejects.toBeInstanceOf(VideoCodecUnsupportedError);
+    await expect(refusal).rejects.toBeInstanceOf(VideoDecoderFailureError);
     actor.close();
   });
 

@@ -19,6 +19,8 @@ const makeLabel = (
 
 const makeRendererMock = () => ({
   drawText: vi.fn(() => ({ x: 0, y: 0, width: 100, height: 20 })),
+  beginRebuild: vi.fn(),
+  endRebuild: vi.fn(),
   dispose: vi.fn(),
   hitTest: vi.fn(() => false),
   getBounds: vi.fn(() => undefined),
@@ -164,12 +166,15 @@ describe("TemporalOverlay", () => {
   });
 
   describe("renderImpl", () => {
-    it("disposes its container and skips drawing when inactive", () => {
+    it("drops its chip and skips drawing when inactive", () => {
       const o = make("a", [10, 20]);
       const renderer = makeRendererMock();
       o.render(renderer as any, STYLE, makeMeta());
 
-      expect(renderer.dispose).toHaveBeenCalledWith("a");
+      // drawing nothing inside a closed rebuild pass is what discards the
+      // previous chip — the pass trims every slot it did not reach
+      expect(renderer.beginRebuild).toHaveBeenCalledWith("a");
+      expect(renderer.endRebuild).toHaveBeenCalledWith("a");
       expect(renderer.drawText).not.toHaveBeenCalled();
     });
 
@@ -257,8 +262,10 @@ describe("TemporalOverlay", () => {
       const renderer = makeRendererMock();
       o.render(renderer as any, null, makeMeta());
 
-      // Container is still disposed (cleanup of prior render), but no draw.
-      expect(renderer.dispose).toHaveBeenCalledWith("a");
+      // The rebuild pass still opens and closes, so a prior chip is trimmed,
+      // but nothing is drawn.
+      expect(renderer.beginRebuild).toHaveBeenCalledWith("a");
+      expect(renderer.endRebuild).toHaveBeenCalledWith("a");
       expect(renderer.drawText).not.toHaveBeenCalled();
     });
   });

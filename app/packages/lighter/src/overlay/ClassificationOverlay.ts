@@ -98,9 +98,6 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
   }
 
   protected renderImpl(renderer: Renderer2D, renderMeta: RenderMeta): void {
-    // Dispose of old elements before creating new ones
-    renderer.dispose(this.containerId);
-
     const style = this.getCurrentStyle();
     if (!style) return;
 

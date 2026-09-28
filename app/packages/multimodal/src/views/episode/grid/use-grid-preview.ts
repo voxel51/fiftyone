@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import {
   type ByteSourceDescriptor,
   type EpisodePosterFrame,
@@ -10,11 +16,14 @@ import type { EpisodePreviewSession } from "../../../ports";
 import {
   EpisodePreviewPlaybackScheduler,
   episodePreviewPlaybackDelayMs,
+  getEpisodeSeek,
   publishEpisodePlayhead,
   publishEpisodePreviewBootstrap,
   publishEpisodeTimeRange,
   recordPreviewSourceFacts,
   releaseEpisodePlayhead,
+  releaseEpisodeSeek,
+  subscribeEpisodeSeek,
   type SourceFactsScope,
 } from "../../../runtime";
 import { errorMessage } from "../status/error-message";
@@ -40,6 +49,8 @@ export interface GridPreviewSnapshot {
   readonly streamSourceName: string | null;
   readonly streamSourceNames: readonly string[];
   readonly status: GridPreviewStatus;
+  /** Codec of a selected stream nothing here can decode, when there is one. */
+  readonly unsupportedCodec: string | null;
 }
 
 /**
@@ -56,6 +67,20 @@ export interface GridPreviewState extends GridPreviewSnapshot {
    * below, so nothing else can keep the published playhead moving.
    */
   presentNativeTimeSeconds(mediaTimeSeconds: number): void;
+  /**
+   * Where a native-video surface has been asked to move to, on its own media
+   * clock, or null when nothing has asked.
+   *
+   * A seek reaches the decoded-preview path by restarting its read loop from
+   * the requested instant, which a media element has no equivalent of — the
+   * element owns its own clock, so the request has to travel out to whoever
+   * mounted it. Carries the request id so that asking twice for the same
+   * instant is two seeks rather than one.
+   */
+  readonly nativeSeek: {
+    readonly requestId: number;
+    readonly timeSeconds: number;
+  } | null;
 }
 
 /**
@@ -81,8 +106,9 @@ export interface UseGridPreviewOptions {
   /** Capture time the still frame should show, instead of the recording
    * start. Set to an embeddings match so the tile posters at the match. */
   readonly posterStartTimeNs?: bigint | null;
-  /** Stream the poster prefers once it is known previewable — a match on a
-   * fused or non-previewable stream falls back to the automatic pick. */
+  /** The stream an embeddings match names. Asked for outright; a stream the
+   * session cannot preview (fused, unsupported) falls back to the automatic
+   * pick. */
   readonly posterSourceName?: string | null;
   readonly previewSession: EpisodePreviewSession | null;
   readonly previewSessionError?: string | null;
@@ -109,6 +135,7 @@ const IDLE_PREVIEW_STATE: GridPreviewSnapshot = {
   streamId: null,
   streamSourceName: null,
   streamSourceNames: [],
+  unsupportedCodec: null,
   status: "idle",
 } as const;
 
@@ -150,8 +177,9 @@ export function useGridPreview({
   const initialLoadInFlightRef = useRef(false);
   // A poster stream this source turned out not to preview. Remembered so the
   // retry falls back to the auto pick instead of asking again forever.
-  const refusedPosterSourceRef = useRef<string | null>(null);
-  const [, setPosterRefusals] = useState(0);
+  const [refusedPosterSource, setRefusedPosterSource] = useState<string | null>(
+    null,
+  );
   const onReadResultRef = useRef(onReadResult);
   onReadResultRef.current = onReadResult;
   const loadedRequestRef = useRef<{
@@ -256,6 +284,30 @@ export function useGridPreview({
     [],
   );
   const nextStartTimeNsRef = useRef<bigint | undefined>(undefined);
+
+  // Seek requests arrive from the interval lane, which is painted by the
+  // grid's footer column and so has no React path to this tile. Same seam as
+  // the playhead above, travelling the other way.
+  const subscribeSeek = useCallback(
+    (listener: () => void) =>
+      episodeId ? subscribeEpisodeSeek(episodeId, listener) : () => undefined,
+    [episodeId],
+  );
+  const seekRequest = useSyncExternalStore(
+    subscribeSeek,
+    () => (episodeId ? getEpisodeSeek(episodeId) : null),
+    () => null,
+  );
+  const [seekGeneration, setSeekGeneration] = useState(0);
+  // Read by the playback loop when it (re)starts: a seek has to re-anchor the
+  // scheduler rather than carry the last presented frame's time across the
+  // jump, which would bill the whole gap as playback debt and stall the tile.
+  const seekPendingRef = useRef(false);
+  const [nativeSeek, setNativeSeek] = useState<{
+    readonly requestId: number;
+    readonly timeSeconds: number;
+  } | null>(null);
+  const nativeVideoActive = state.nativeVideo !== null;
   const {
     finish: finishBuffering,
     start: startBuffering,
@@ -268,17 +320,54 @@ export function useGridPreview({
     }
   }, [enabled]);
 
-  // An explicit grid selection always wins. The poster's preferred stream is
-  // then asked for OUTRIGHT — never gated on `streamSourceNames`, which is
-  // filled BY a completed read: on the first one it is empty, so the match's
-  // stream was always dropped and the tile postered its auto-picked camera at
-  // the matched instant. A frame from the wrong camera, presented as the one
-  // that matched. The session refuses a stream it cannot preview, and
-  // `refusedPosterSource` below turns that refusal into the auto pick.
-  const posterRefused = refusedPosterSourceRef.current;
+  // This effect applies a seek asked for from outside this tree — a click on
+  // the interval lane. The request is withdrawn as it is applied, so that a
+  // tile scrolled out and re-mounted against the same episode does not replay
+  // a jump the user made minutes ago.
+  //
+  // Playback is started as well as moved: the lane can only be clicked while
+  // the tile is hovered, which is the same gesture that plays it, so a tile
+  // that lands on the requested instant and then sits frozen there would read
+  // as the click having half worked.
+  useEffect(() => {
+    if (!enabled || !episodeId || !seekRequest) return;
+    releaseEpisodeSeek(episodeId);
+
+    if (nativeVideoActive) {
+      const anchor = nativeAnchorRef.current;
+      if (!anchor) return;
+      setNativeSeek({
+        requestId: seekRequest.requestId,
+        timeSeconds:
+          anchor.startTimeSeconds +
+          Number(seekRequest.timestampNs - anchor.anchorNs) / 1e9,
+      });
+      setPlaying(true);
+      return;
+    }
+
+    nextStartTimeNsRef.current = seekRequest.timestampNs;
+    seekPendingRef.current = true;
+    setPlaying(true);
+    // Restarts the playback loop below, which aborts whatever read is in
+    // flight and begins again from the instant just written.
+    setSeekGeneration((generation) => generation + 1);
+  }, [enabled, episodeId, nativeVideoActive, seekRequest]);
+
+  // This effect withdraws an unapplied request when the tile stops presenting.
+  useEffect(
+    () => () => {
+      if (episodeId) releaseEpisodeSeek(episodeId);
+    },
+    [episodeId],
+  );
+
+  // Asked for outright, never gated on `streamSourceNames`: that array is
+  // filled BY a completed read, so on the first one it is empty and the
+  // match's stream would be dropped for an auto-picked camera.
   const effectiveSourceName =
     selectedSourceName ??
-    (posterSourceName && posterSourceName !== posterRefused
+    (posterSourceName && posterSourceName !== refusedPosterSource
       ? posterSourceName
       : null);
 
@@ -293,7 +382,11 @@ export function useGridPreview({
     nextStartTimeNsRef.current = undefined;
     // A refusal belongs to one source and one stream; carrying it across
     // either would keep falling back for a stream this source does preview
-    refusedPosterSourceRef.current = null;
+    setRefusedPosterSource(null);
+    // A native seek is a time on THIS source's timeline, anchored to this
+    // episode. Carrying it across an identity change would hand the next
+    // preview a target computed against media it is not playing.
+    setNativeSeek(null);
     finishBuffering();
     setPlaying(false);
     setStateOwnerKey(cacheRequestKey);
@@ -381,16 +474,15 @@ export function useGridPreview({
       })
       .then((result) => {
         if (active) {
-          // The session says it cannot preview this stream. Now — with the
-          // inventory it just returned — the auto pick is an informed
-          // fallback rather than a guess made before anything was known.
+          // A different stream answered than was asked for: the refusal.
+          // Not the status, which also reports a window the RIGHT stream
+          // carries no frame in — falling back there shows another camera.
           if (
-            result.status === "unavailable" &&
             effectiveSourceName &&
-            effectiveSourceName === posterSourceName
+            effectiveSourceName !== selectedSourceName &&
+            result.streamSourceName !== effectiveSourceName
           ) {
-            refusedPosterSourceRef.current = posterSourceName;
-            setPosterRefusals((n) => n + 1);
+            setRefusedPosterSource(effectiveSourceName);
           }
           notifyReadResult(onReadResultRef.current, result);
           publishEpisodeRange(publishEpisodePreviewBootstrap(source, result));
@@ -410,7 +502,14 @@ export function useGridPreview({
                 }
               : null;
           setFrameTimeNs(result.frameTimeNs);
-          nextStartTimeNsRef.current = result.nextStartTimeNs;
+          // A seek asked for while this read was in flight already wrote the
+          // instant the playback loop is to start from — and the loop has not
+          // run yet, because it waits out the initial load. The frame this
+          // read answered with sits before the jump, so taking its successor
+          // here would start playback where the click was not.
+          if (!seekPendingRef.current) {
+            nextStartTimeNsRef.current = result.nextStartTimeNs;
+          }
           setState((current) => resultPreservingCachedPoster(current, result));
           setLoadGeneration((g) => g + 1);
         }
@@ -437,16 +536,14 @@ export function useGridPreview({
       controller.abort();
     };
   }, [
-    enabled,
     effectiveSourceName,
+    enabled,
     hovered,
     initialVideoDecodeLookaheadNs,
-    // Read when a refusal is recorded; `effectiveSourceName` already tracks
-    // its value, so listing it changes nothing about when this runs
-    posterSourceName,
     posterStartTimeNs,
     previewSession,
     publishEpisodeRange,
+    selectedSourceName,
     setFrameTimeNs,
     source,
     sourceFactsScope,
@@ -475,7 +572,15 @@ export function useGridPreview({
       readonly result: EpisodePreviewReadResult;
     } | null = null;
     const playbackScheduler = new EpisodePreviewPlaybackScheduler();
-    playbackScheduler.reset(frameTimeNsRef.current, performance.now());
+    // A seek starts a fresh anchor: the frame last presented is on the far
+    // side of the jump, and pacing the next one against it would ask the loop
+    // to wait out the whole gap before showing anything.
+    const seeked = seekPendingRef.current;
+    seekPendingRef.current = false;
+    playbackScheduler.reset(
+      seeked ? undefined : frameTimeNsRef.current,
+      performance.now(),
+    );
 
     const presentResult = async (
       result: EpisodePreviewReadResult,
@@ -596,6 +701,7 @@ export function useGridPreview({
     playing,
     previewSession,
     publishEpisodeRange,
+    seekGeneration,
     setFrameTimeNs,
     source,
     sourceFactsScope,
@@ -612,6 +718,7 @@ export function useGridPreview({
     ...visibleState,
     isBuffering,
     isPlaying: enabled && stateOwnerKey === cacheRequestKey && playing,
+    nativeSeek,
     pause,
     play,
     presentNativeTimeSeconds,
@@ -636,6 +743,7 @@ function seededSnapshot(
     streamSourceName: cachedPoster.streamSourceName,
     streamSourceNames: cachedPoster.streamSourceNames,
     status: "ready",
+    unsupportedCodec: null,
   };
 }
 
@@ -757,6 +865,7 @@ function snapshotFromResult(
     streamSourceName: result.streamSourceName,
     streamSourceNames: result.streamSourceNames,
     status: result.status,
+    unsupportedCodec: result.unsupportedCodec ?? null,
   };
 }
 

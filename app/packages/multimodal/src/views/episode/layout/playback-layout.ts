@@ -6,7 +6,11 @@ import {
 } from "../../../ir";
 import type { SceneSource } from "../../../scene-inventory";
 import { SCENE_SOURCE_TYPE } from "../../../ir";
-import { filterDefaultStreamEquivalents } from "../../../stream-selection";
+import {
+  filterDefaultStreamEquivalents,
+  isDepthImageStreamName,
+  isNonColorImageStreamName,
+} from "../../../stream-selection";
 import { tileTypeFromId } from "./layout-persistence";
 import { TILE_TYPE, type TileType } from "../tiles/tile-types";
 
@@ -105,11 +109,6 @@ export function collectPlaybackDeviceCapabilities(): PlaybackDeviceCapabilities 
   };
 }
 
-// Stream tokens that mark a non-color image representation. Only a
-// tiebreak: a dense depth stream still outranks a single RGB keyframe.
-const DEPTH_IMAGE_TOKENS = new Set(["depth", "disparity"]);
-const NON_COLOR_IMAGE_TOKENS = new Set([...DEPTH_IMAGE_TOKENS, "ir"]);
-
 /**
  * Image sources ranked for tile binding: densest stream first
  * (`recordCount` descending — a video-rate feed outranks a stream that
@@ -128,8 +127,12 @@ export function rankImageSources(
       if (leftCount !== rightCount) {
         return rightCount - leftCount;
       }
-      const leftDepth = isNonColorImageSource(left.source) ? 1 : 0;
-      const rightDepth = isNonColorImageSource(right.source) ? 1 : 0;
+      const leftDepth = isNonColorImageStreamName(left.source.sourceName)
+        ? 1
+        : 0;
+      const rightDepth = isNonColorImageStreamName(right.source.sourceName)
+        ? 1
+        : 0;
       if (leftDepth !== rightDepth) {
         return leftDepth - rightDepth;
       }
@@ -151,39 +154,20 @@ export function rankDefaultImageSources(
   });
 }
 
-function isNonColorImageSource(source: SceneSource): boolean {
-  return imageSourceNameHasToken(source, NON_COLOR_IMAGE_TOKENS);
-}
-
-// TODO: Retire this topic-name heuristic once adapters expose image semantics
-// from a bounded first-message probe. MCAP summary metadata does not include
-// ROS/Foxglove pixel encoding, so unnamed depth streams remain unknown here.
-function isDepthImageSource(source: SceneSource): boolean {
-  return imageSourceNameHasToken(source, DEPTH_IMAGE_TOKENS);
-}
-
-function imageSourceNameHasToken(
-  source: SceneSource,
-  tokens: ReadonlySet<string>,
-): boolean {
-  return source.sourceName
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .some((token) => tokens.has(token));
-}
-
 function selectDefaultImageSources(
   rankedSources: readonly SceneSource[],
   budget: number,
 ): readonly SceneSource[] {
   const nonDepth = rankedSources
-    .filter((source) => !isDepthImageSource(source))
+    .filter((source) => !isDepthImageStreamName(source.sourceName))
     .slice(0, budget);
   if (nonDepth.length === budget) {
     return nonDepth;
   }
 
-  const depth = rankedSources.find(isDepthImageSource);
+  const depth = rankedSources.find((source) =>
+    isDepthImageStreamName(source.sourceName),
+  );
   return depth ? [...nonDepth, depth] : nonDepth;
 }
 

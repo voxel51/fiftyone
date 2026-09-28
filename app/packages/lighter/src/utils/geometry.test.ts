@@ -4,6 +4,7 @@
 
 import { expect, test, describe } from "vitest";
 import {
+  clipPolygonToRect,
   distance,
   dot2d,
   project2d,
@@ -183,5 +184,46 @@ describe("geometry", () => {
 
       expect(distanceFromLineSegment(point, start, end)).toBe(0);
     });
+  });
+});
+
+describe("clipPolygonToRect", () => {
+  const rect = { x: 0, y: 0, width: 100, height: 100 };
+  const xs = (pts: Point[]) => pts.map((p) => p.x);
+  const ys = (pts: Point[]) => pts.map((p) => p.y);
+
+  test("returns a fully-inside polygon unchanged", () => {
+    const polygon: Point[] = [
+      { x: 10, y: 10 },
+      { x: 90, y: 10 },
+      { x: 50, y: 90 },
+    ];
+    expect(clipPolygonToRect(polygon, rect)).toEqual(polygon);
+  });
+
+  test("slices an escaping corner flat at the rect edge", () => {
+    // diamond whose bottom vertex escapes below the rect
+    const polygon: Point[] = [
+      { x: 50, y: 10 },
+      { x: 90, y: 60 },
+      { x: 50, y: 130 },
+      { x: 10, y: 60 },
+    ];
+    const clipped = clipPolygonToRect(polygon, rect);
+
+    expect(clipped.length).toBeGreaterThanOrEqual(4);
+    expect(Math.max(...ys(clipped))).toBe(100);
+    expect(Math.min(...ys(clipped))).toBe(10);
+    expect(Math.min(...xs(clipped))).toBeGreaterThanOrEqual(0);
+    expect(Math.max(...xs(clipped))).toBeLessThanOrEqual(100);
+  });
+
+  test("returns empty for a polygon entirely outside the rect", () => {
+    const polygon: Point[] = [
+      { x: 200, y: 200 },
+      { x: 300, y: 200 },
+      { x: 250, y: 300 },
+    ];
+    expect(clipPolygonToRect(polygon, rect)).toEqual([]);
   });
 });

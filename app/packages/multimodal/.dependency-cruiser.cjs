@@ -44,8 +44,8 @@ const ENTERPRISE_SHARED_FACADES =
   `utils/(bigint|cancellation|relative-time)\\.ts$|` +
   `views/episode/settings/controls/index\\.ts$|visualization/index\\.ts$)`;
 const FORMAT_VENDORS =
-  "(^|/)node_modules/(@mcap|@foxglove|hyparquet|mp4box)(/|$)|" +
-  "^(@mcap/|@foxglove/|hyparquet$|mp4box$)";
+  "(^|/)node_modules/(@mcap|@foxglove|hyparquet|hyparquet-compressors|mp4box)(/|$)|" +
+  "^(@mcap/|@foxglove/|hyparquet$|hyparquet-compressors$|mp4box$)";
 const TEAMS =
   "^(teams-app/|packages/teams/)|" +
   "(^|/)node_modules/@fiftyone/teams-multimodal(/|$)|" +

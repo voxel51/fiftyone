@@ -169,11 +169,9 @@ export class TemporalOverlay
   }
 
   protected renderImpl(renderer: Renderer2D, renderMeta: RenderMeta): void {
-    renderer.dispose(this.containerId);
-
-    // Out-of-support: render nothing. The container has been disposed
-    // so the previous chip (if any) is removed; we early-return before
-    // re-creating anything.
+    // Out-of-support: render nothing. Drawing nothing is what removes the
+    // previous chip (if any) — the rebuild pass this paint runs inside
+    // discards every slot the pass does not reach.
     if (!this.isActiveState) {
       return;
     }

@@ -376,7 +376,7 @@ class SampleCollection(object):
     @property
     @hide_from_docs
     def temporal_tags(self):
-        """The multimodal temporal tags for this collection."""
+        """The temporal tags for this collection."""
         return fota.TemporalTags(self)
 
     @property
@@ -7363,9 +7363,14 @@ class SampleCollection(object):
         if bool is None:
             bool = True
 
+        # Resolved against the root dataset rather than this collection, whose
+        # own `temporal_tags` would list every one of its sample ids; the
+        # select below intersects with this collection, which on a grouped
+        # collection is its active slice's samples.
+        root = self._dataset
         sample_ids = {
             tag.sample_id
-            for tag in self.temporal_tags.values(filter=tag_filter)
+            for tag in root.temporal_tags.values(filter=tag_filter)
         }
 
         if bool:

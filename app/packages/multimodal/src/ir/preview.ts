@@ -1,7 +1,7 @@
 import type { ByteSourceDescriptor } from "./bytes";
 import type {
   CameraVisualization,
-  EncodedVideoVisualization,
+  EncodedVideoCodec,
   PointCloudVisualization,
 } from "./frames";
 import type { EpisodeManifest, StreamId } from "./manifest";
@@ -25,7 +25,7 @@ export type EpisodePreviewReadStatus = "empty" | "ready" | "unavailable";
 /** Browser-native video source scoped to one half-open episode interval. */
 export interface EpisodePreviewNativeVideo {
   /** Browser codec family used for runtime native-playback capability checks. */
-  readonly codec: EncodedVideoVisualization["codec"];
+  readonly codec: EncodedVideoCodec;
   /** Container-qualified codec string used by `canPlayType()`. */
   readonly codecString: string;
   readonly endTimeSeconds: number;
@@ -53,6 +53,11 @@ export interface EpisodePreviewReadResult {
   /** Previewable source names suitable for dataset-scoped selection. */
   readonly streamSourceNames: readonly string[];
   readonly status: EpisodePreviewReadStatus;
+  /**
+   * Codec string of a selected stream nothing here can decode. Carried as
+   * data, never as a frame: a frame would enter the decode path and be retried.
+   */
+  readonly unsupportedCodec?: string;
   /** Decode-order access units retained alongside an encoded-video poster. */
   readonly videoDecodeRunway?: readonly EpisodePosterFrame[];
 }

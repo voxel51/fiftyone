@@ -19,7 +19,6 @@ import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-video-false-sync");
-const clip = `/tmp/${datasetName}.mp4`;
 
 const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   grid: async ({ page, eventUtils }, use) => use(new GridPom(page, eventUtils)),
@@ -27,20 +26,45 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
     use(new ModalPom(page, eventUtils)),
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory, videoAnnotateSDK }) => {
+test.beforeAll(async ({ foWebServer, datasetFactory }) => {
   await foWebServer.startWebServer();
-  await mediaFactory.createVideo({
-    outputPath: clip,
-    duration: 15,
-    width: 64,
-    height: 64,
-    frameRate: 10,
-    color: ["#3050a0", "#a05030"],
-    keyframeInterval: 25,
-    // true keyframes: samples 1, 26, 51, 76, 101, 126
-    syncSamples: [1, 26, 51, 76, 90, 126],
+  await datasetFactory.createDataset({
+    mediaType: "video",
+    datasetName,
+    videoOptions: {
+      container: "mp4",
+      duration: 15,
+      width: 64,
+      height: 64,
+      frameRate: 10,
+      color: ["#3050a0", "#a05030"],
+      keyframeInterval: 25,
+      // true keyframes: samples 1, 26, 51, 76, 101, 126
+      syncSamples: [1, 26, 51, 76, 90, 126],
+    },
+    sampleFrames: true,
+    schema: {
+      "frames.detections": "Detections",
+      "frames.detections.detections.instance": "Instance",
+      "frames.detections.detections.keyframe": "BooleanField",
+      "frames.detections.detections.propagation": "DictField",
+    },
+    labelSchemas: {
+      "frames.detections": {
+        type: "detections",
+        component: "dropdown",
+        classes: ["vehicle", "person", "road sign"],
+        attributes: [
+          { name: "id", type: "id", component: "text", read_only: true },
+          { name: "tags", type: "list<str>", component: "text" },
+          { name: "confidence", type: "float", component: "text" },
+          { name: "index", type: "int", component: "text" },
+          { name: "mask_path", type: "str", component: "text" },
+        ],
+      },
+    },
+    withFrameData: (_, { label }) => ({ detections: label.detections([]) }),
   });
-  await videoAnnotateSDK.seed({ datasetName, videoPaths: [clip] });
 });
 
 test.afterAll(async ({ foWebServer }) => {

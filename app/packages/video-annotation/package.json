@@ -22,7 +22,8 @@
         "clsx": "^2.1.0",
         "jotai": "catalog:",
         "lru-cache": "catalog:",
-        "mp4box": "^2.4.1"
+        "mp4box": "^2.4.1",
+        "use-memo-one": "^1.1.3"
     },
     "devDependencies": {
         "@eslint/compat": "catalog:",

@@ -8,7 +8,7 @@ import { LRUCache } from "lru-cache";
 
 /**
  * A decoded frame held in the cache. `meta` is stream-specific opaque payload
- * (imavid: `{ src }`; native: `{ timestamp }`) — the cache never reads it.
+ * (dynamic group: `{ src }`; native: `{ timestamp }`) — the cache never reads it.
  */
 export interface CachedFrameBitmap<M = unknown> {
   bitmap: ImageBitmap;

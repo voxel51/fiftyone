@@ -355,8 +355,6 @@ export class KeypointOverlay
   // ---------------------------------------------------------------------------
 
   protected renderImpl(renderer: Renderer2D, _renderMeta: RenderMeta): void {
-    renderer.dispose(this.containerId);
-
     const style = this.currentStyle;
     if (!style) return;
 

@@ -52,6 +52,8 @@ export const useDeleteTrack = (): ((
 
         // Delete every occurrence as one undo unit; hold the entry it pushes so
         // a rejected persist can restore the whole track (and drop the entry).
+        // The rollback runs inside the queued persist (`onFailure`), before any
+        // persist queued behind this one reads the engine.
         const prior = engine.lastUndoEntry();
 
         engine.transaction(() => {
@@ -68,26 +70,24 @@ export const useDeleteTrack = (): ((
         const top = engine.lastUndoEntry();
         const rollback = top === prior ? undefined : top;
 
+        const onFailure = () => {
+          if (rollback) {
+            engine.rollbackEntry(rollback);
+          }
+        };
+
         let success: boolean;
         try {
-          success = (await persistAnnotationDeltas()) !== false;
+          success = (await persistAnnotationDeltas({ onFailure })) !== false;
 
           if (success) {
             eventBus.dispatch("annotation:persistenceSuccess");
           } else {
-            if (rollback) {
-              engine.rollbackEntry(rollback);
-            }
-
             eventBus.dispatch("annotation:persistenceError", {
               error: new Error("Server rejected changes"),
             });
           }
         } catch (error) {
-          if (rollback) {
-            engine.rollbackEntry(rollback);
-          }
-
           eventBus.dispatch("annotation:persistenceError", {
             error: error as Error,
           });

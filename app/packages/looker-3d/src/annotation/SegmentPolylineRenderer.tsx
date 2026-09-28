@@ -67,9 +67,12 @@ export const SegmentPolylineRenderer = ({
   );
   const annotationPlane = useRecoilValue(annotationPlaneAtom);
 
-  // Track last click time for double-click detection
+  // Track the last click for double-click detection: close in time AND on
+  // screen, so two quick clicks at different spots are two vertices
   const lastClickTimeRef = useRef<number>(0);
+  const lastClickScreenRef = useRef<{ x: number; y: number } | null>(null);
   const DOUBLE_CLICK_THRESHOLD_MS = 200;
+  const DOUBLE_CLICK_MAX_DISTANCE_PX = 6;
   const lastAddedVertexRef = useRef<[number, number, number] | null>(null);
 
   const commitSegment = useRecoilCallback(
@@ -199,7 +202,7 @@ export const SegmentPolylineRenderer = ({
   );
 
   const handleClick = useCallback(
-    (worldPos: THREE.Vector3) => {
+    (worldPos: THREE.Vector3, event: PointerEvent) => {
       setIsActivelySegmenting(false);
 
       if (!segmentState.isActive) return;
@@ -207,10 +210,17 @@ export const SegmentPolylineRenderer = ({
       const finalPos = worldPos;
 
       const currentTime = Date.now();
+      const lastScreen = lastClickScreenRef.current;
       const isDoubleClick =
-        currentTime - lastClickTimeRef.current < DOUBLE_CLICK_THRESHOLD_MS;
+        currentTime - lastClickTimeRef.current < DOUBLE_CLICK_THRESHOLD_MS &&
+        lastScreen !== null &&
+        Math.hypot(
+          event.clientX - lastScreen.x,
+          event.clientY - lastScreen.y,
+        ) <= DOUBLE_CLICK_MAX_DISTANCE_PX;
 
       lastClickTimeRef.current = currentTime;
+      lastClickScreenRef.current = { x: event.clientX, y: event.clientY };
 
       // Check for double-click behavior
       if (isDoubleClick && lastAddedVertexRef.current) {
@@ -334,6 +344,16 @@ export const SegmentPolylineRenderer = ({
         return;
       }
 
+      // Enter commits the segment drawn so far
+      if (event.key === "Enter" && segmentState.vertices.length >= 2) {
+        commitSegment(segmentState.vertices);
+        lastAddedVertexRef.current = null;
+
+        event.stopImmediatePropagation();
+        event.preventDefault();
+        return;
+      }
+
       // Handle Delete/Backspace - remove last vertex
       if (event.key === "Delete" || event.key === "Backspace") {
         // Only handle if we have vertices to remove
@@ -352,11 +372,17 @@ export const SegmentPolylineRenderer = ({
       }
     };
 
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
+    // capture phase, like the cuboid renderer: a bubbling listener elsewhere
+    // claims Enter before this one would see it
+    document.addEventListener("keydown", handleKeyDown, { capture: true });
+    return () =>
+      document.removeEventListener("keydown", handleKeyDown, {
+        capture: true,
+      });
   }, [
     segmentState.isActive,
     segmentState.vertices,
+    commitSegment,
     setSegmentState,
     setIsActivelySegmenting,
     ignoreEffects,

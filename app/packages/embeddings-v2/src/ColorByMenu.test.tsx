@@ -248,3 +248,22 @@ describe("choices that arrive while the menu is open", () => {
     expect(onChange).toHaveBeenCalledWith(NONE);
   });
 });
+
+describe("the footer", () => {
+  it("pins the extension's footer under the open list", () => {
+    render(
+      <ColorByMenu
+        options={streamOptions(2)}
+        value={NONE}
+        onChange={vi.fn()}
+        footer={<button type="button">Add fields</button>}
+      />,
+    );
+    // Closed, the footer is not on screen: it belongs to the list
+    expect(screen.queryByText("Add fields")).toBeNull();
+
+    fireEvent.click(control());
+
+    expect(screen.getByText("Add fields")).toBeTruthy();
+  });
+});

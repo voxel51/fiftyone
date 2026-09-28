@@ -4,14 +4,16 @@
  * empty/absent fields.
  */
 
-import { LabelType } from "@fiftyone/utilities";
+import { LabelType, SINGLETON_LABEL_TYPES } from "@fiftyone/utilities";
 import { describe, expect, it } from "vitest";
 
 import type { FrameDocLike } from "./framesData";
 import {
   ELEMENT_CLS,
   parseFramesData,
+  parseFrameValues,
   PROJECTABLE_FRAME_LABEL_TYPES,
+  singletonAddressId,
 } from "./framesData";
 
 const DETECTIONS = { "frames.detections": LabelType.Detections };
@@ -202,22 +204,154 @@ describe("per-frame label type coverage", () => {
   });
 
   it("advertises exactly the types it can project", () => {
-    // The guard against the original bug: anything in this set but missing an
-    // ELEMENT_CLS entry is dropped by `toFieldSpecs` and never paints, so the
+    // The guard against the original bug: anything in this set but projected
+    // by neither branch of `toFieldSpecs` is dropped and never paints, so the
     // set is derived rather than restated. Keep them in lockstep.
     expect([...PROJECTABLE_FRAME_LABEL_TYPES].sort()).toEqual(
-      Object.keys(ELEMENT_CLS).sort(),
+      [...Object.keys(ELEMENT_CLS), ...SINGLETON_LABEL_TYPES].sort(),
     );
   });
 
-  it("drops a type it has no element _cls for", () => {
-    // Segmentations have no per-element list, so they must not be projected —
-    // registering one would add a store field that never seeds.
+  it("drops a type neither branch can project", () => {
+    // TemporalDetections has a LIST_LABEL_CHILD but no per-frame element _cls,
+    // and is not a singleton — registering one would add a store field that
+    // never seeds.
     const data = parseFramesData(
-      [{ frame_number: 1, segmentations: { segmentations: [{ _id: "s" }] } }],
-      { "frames.segmentations": LabelType.Segmentation },
+      [{ frame_number: 1, events: { detections: [{ _id: "t" }] } }],
+      { "frames.events": LabelType.TemporalDetections },
     );
 
     expect(data[1]).toEqual({});
+  });
+});
+
+describe("parseFrameValues", () => {
+  it("keys a video's frame field by its frames.-prefixed path", () => {
+    const values = parseFrameValues(
+      [
+        { frame_number: 1, weather: "rain" },
+        { frame_number: 2, weather: "sun" },
+      ],
+      ["frames.weather"],
+    );
+
+    expect(values).toEqual({
+      1: { "frames.weather": "rain" },
+      2: { "frames.weather": "sun" },
+    });
+  });
+
+  it("reads a dynamic group's bare sample field under the same name", () => {
+    const values = parseFrameValues(
+      [{ frame_number: 1, timestamp: 12.5 }],
+      ["timestamp"],
+    );
+
+    expect(values).toEqual({ 1: { timestamp: 12.5 } });
+  });
+
+  it("treats null and missing fields as unset, keeping falsy values", () => {
+    const values = parseFrameValues(
+      [{ frame_number: 1, a: null, c: 0, d: false }],
+      ["a", "b", "c", "d"],
+    );
+
+    expect(values).toEqual({ 1: { c: 0, d: false } });
+  });
+});
+
+describe("parseFramesData — singleton frame fields", () => {
+  const SEGMENTATION = { "frames.segmentation": LabelType.Segmentation };
+
+  const segDoc = (frame_number: number, id: string): FrameDocLike => ({
+    frame_number,
+    segmentation: { _id: id, _cls: "Segmentation", mask: `mask-${id}` },
+  });
+
+  it("projects the field value itself as a one-element list", () => {
+    // a singleton IS the field value — no list child to unwrap
+    const data = parseFramesData([segDoc(1, "s1")], SEGMENTATION);
+
+    expect(data[1]["frames.segmentation"]).toHaveLength(1);
+    expect(data[1]["frames.segmentation"][0]).toMatchObject({
+      _cls: "Segmentation",
+      mask: "mask-s1",
+    });
+  });
+
+  it("addresses every frame by the FIELD, not the per-frame document id", () => {
+    // The regression this identity exists to prevent: the server mints a new
+    // `_id` per frame, so addressing by it would make each frame its own
+    // track and the overlay would unmount/remount on every playhead step.
+    const data = parseFramesData(
+      [segDoc(1, "doc-1"), segDoc(2, "doc-2"), segDoc(3, "doc-3")],
+      SEGMENTATION,
+    );
+
+    const ids = [1, 2, 3].map(
+      (frame) => data[frame]["frames.segmentation"][0]._id,
+    );
+
+    expect(new Set(ids).size).toBe(1);
+    expect(ids[0]).toBe(singletonAddressId("frames.segmentation"));
+  });
+
+  it("preserves the document's own id as _docId", () => {
+    const data = parseFramesData([segDoc(7, "doc-7")], SEGMENTATION);
+
+    expect(data[7]["frames.segmentation"][0]._docId).toBe("doc-7");
+  });
+
+  it("reads an absent singleton as empty, so a removal is detectable", () => {
+    const data = parseFramesData(
+      [{ frame_number: 1 }, segDoc(2, "s2")],
+      SEGMENTATION,
+    );
+
+    expect(data[1]["frames.segmentation"]).toEqual([]);
+    expect(data[2]["frames.segmentation"]).toHaveLength(1);
+  });
+
+  it("gives each singleton field its own identity", () => {
+    const data = parseFramesData(
+      [
+        {
+          frame_number: 1,
+          segmentation: { _id: "a", _cls: "Segmentation" },
+          heatmap: { _id: "b", _cls: "Heatmap", range: [0, 1] },
+        },
+      ],
+      {
+        "frames.segmentation": LabelType.Segmentation,
+        "frames.heatmap": LabelType.Heatmap,
+      },
+    );
+
+    expect(data[1]["frames.segmentation"][0]._id).not.toBe(
+      data[1]["frames.heatmap"][0]._id,
+    );
+    expect(data[1]["frames.heatmap"][0]).toMatchObject({
+      _cls: "Heatmap",
+      range: [0, 1],
+    });
+  });
+
+  it("projects list and singleton fields side by side", () => {
+    const data = parseFramesData(
+      [
+        {
+          frame_number: 1,
+          detections: { detections: [{ _id: "d1" }] },
+          segmentation: { _id: "s1", _cls: "Segmentation" },
+        },
+      ],
+      {
+        "frames.detections": LabelType.Detections,
+        "frames.segmentation": LabelType.Segmentation,
+      },
+    );
+
+    expect(data[1]["frames.detections"][0]._cls).toBe("Detection");
+    expect(data[1]["frames.segmentation"][0]._cls).toBe("Segmentation");
   });
 });

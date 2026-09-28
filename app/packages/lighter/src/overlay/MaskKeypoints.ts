@@ -134,8 +134,6 @@ export class MaskKeypoints extends KeypointOverlay {
   }
 
   protected override renderImpl(renderer: Renderer2D): void {
-    renderer.dispose(this.containerId);
-
     const style = this.currentStyle;
     if (!style) return;
 

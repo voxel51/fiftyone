@@ -238,14 +238,17 @@ export default function PlotView({
           </span>
           <ColorByMenu
             // Openable while the list is still filling: a dead pill gives a
-            // reader nothing to read, and the panel is where we say why
-            disabled={!choices.length && !choicesLoading}
+            // reader nothing to read, and the panel is where we say why.
+            disabled={
+              !choices.length && !choicesLoading && !features.colorByFooter
+            }
             loading={choicesLoading}
             value={colorField ?? NONE_FIELD}
             options={colorOptions}
             onChange={(value) =>
               setColorField(value !== NONE_FIELD ? value : null)
             }
+            footer={features.colorByFooter}
           />
           {streamField && (
             <Tooltip
@@ -436,7 +439,7 @@ export default function PlotView({
           <div className="emb-plot-overlay emb-plot-hint">
             <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
               {mode === "explore"
-                ? "Drag to pan · scroll to zoom · click a point for details"
+                ? "Drag to pan · scroll to zoom"
                 : "Drag to lasso · click points to toggle"}
             </Text>
           </div>

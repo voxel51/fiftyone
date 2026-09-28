@@ -33,7 +33,7 @@ export type FrameWorkerInbound = InitMessage | FetchChunkMessage;
 /**
  * worker → main: one decoded frame. `bitmap` is transferred (zero-copy), so
  * the sender must not touch it afterwards. `meta` is stream-specific opaque
- * payload the base hands to `toMeta` for caching (imavid: `{ src }`; native:
+ * payload the base hands to `toMeta` for caching (dynamic group: `{ src }`; native:
  * `{ timestamp }`).
  */
 export interface FrameReadyMessage {

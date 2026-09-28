@@ -6,14 +6,24 @@ import {
   colorScheme,
   colorSeed,
   datasetName,
+  dynamicGroupsElementCount,
+  dynamicGroupsTargetFrameRate,
+  field,
   fieldPaths,
+  groupByFieldValue,
   groupSlice,
   modalSampleId,
+  selectedMediaField,
   State,
+  timeZone,
+  type ModalSample,
   useCurrentDatasetId,
+  useDynamicGroupOrderBy,
+  useIsImageDynamicGroupVideo,
+  usePrimitiveFieldPaths,
   view,
 } from "@fiftyone/state";
-import { FRAMES_PREFIX } from "@fiftyone/annotation";
+import { isFrameScopedPath } from "./framePaths";
 import {
   CLASSIFICATION_FIELD,
   CLASSIFICATIONS_FIELD,
@@ -26,7 +36,8 @@ import {
 } from "@fiftyone/utilities";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useMemoOne } from "use-memo-one";
+import { constSelector, useRecoilValue } from "recoil";
 import {
   useAnnotationContext,
   useAnnotationFields,
@@ -35,6 +46,7 @@ import {
   activeLabelSchemas,
   visibleLabelSchemas,
 } from "../../../core/src/components/Modal/Sidebar/Annotate/state";
+import { getModalSampleFrameRate } from "../utils/modalSample";
 
 /**
  * Read accessors for the external recoil / jotai atoms the video surface
@@ -62,11 +74,7 @@ export const useGroupSlice = () => useRecoilValue(groupSlice);
 /** Id of the sample open in the modal. */
 export const useModalSampleId = () => useRecoilValue(modalSampleId);
 
-/**
- * Active view stages, narrowed to the `utilities` `Stage` shape the streams
- * expect. `fos.view` is typed as `State.Stage[]`; the two are structurally
- * compatible. Empty array when no view is applied.
- */
+/** Active view stages as the structurally compatible `utilities` `Stage[]`; empty when no view is applied. */
 export const useView = (): Stage[] => (useRecoilValue(view) ?? []) as Stage[];
 
 /** Schema paths of the dataset's temporal-detections fields. */
@@ -79,14 +87,9 @@ export const useTemporalDetectionFieldPaths = () =>
   );
 
 /**
- * Schema paths of the dataset's SAMPLE-level classification fields, single and
- * list alike.
- *
- * `space: SAMPLE` is what keeps the `frames.*` namespace out. A per-frame
- * classification is the `FrameStore`'s to paint (see
- * {@link useExploreFrameLabelFields}), and the composite `VideoLabelStore`
- * routes by which half claims the path — admitting `frames.classifications`
- * here would scope the same path twice, once per owner.
+ * Schema paths of the dataset's sample-level classification fields, single and
+ * list alike. `space: SAMPLE` keeps `frames.*` out, since the composite store
+ * routes each path to exactly one owner.
  */
 export const useSampleClassificationFieldPaths = () =>
   useRecoilValue(
@@ -111,12 +114,9 @@ export const useActiveDetectionField = (): string | null =>
   useAnnotationContext().lastUsed.fieldFor(DETECTION);
 
 /**
- * The label paths visible in the annotate sidebar — annotation-active ∩
- * explore-active — in the engine namespace (frame fields as `frames.*`). The
- * canvas overlays and timeline tracks gate rendering on this set so that
- * deactivating a field in the schema manager (or hiding it in Explore) hides it
- * everywhere, exactly like the sidebar. Returns a referentially-stable set so
- * the bridge's `paths` scope only re-creates on a real visibility change.
+ * The label paths visible in the annotate sidebar (annotation-active and
+ * explore-active) in the engine namespace. Referentially stable so the
+ * bridge's `paths` scope only re-creates on a real visibility change.
  */
 export const useVisibleLabelSchemas = (): ReadonlySet<string> => {
   const visible = useAtomValue(visibleLabelSchemas);
@@ -132,36 +132,119 @@ export const useLabelSchemasLoaded = (): boolean =>
   useAtomValue(activeLabelSchemas) !== null;
 
 /**
- * Every schema-active per-frame label field, mapped to its list label type
- * — the engine seed registers and renders exactly these (mirroring the 2D
- * surface, which paints every active field of each supported type).
- *
- * Drawn from the annotation schema's active fields per type (read-only fields
- * already filtered out by {@link useAnnotationFields}) and narrowed to the
- * `frames.*` namespace, since the video surface only owns per-frame labels.
- * Detection masks ride their parent detection field, so no separate entry.
+ * Every schema-active per-frame label field mapped to its list label type;
+ * the engine seed registers and renders exactly these. A real video owns its
+ * `frames.*` fields, while an image dataset grouped into a video owns its
+ * sample-level fields instead.
  */
 export const useFrameLabelFields = (): Record<string, LabelType> => {
   const detectionFields = useAnnotationFields(DETECTION).fields;
   const polylineFields = useAnnotationFields(POLYLINE).fields;
+  const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
 
-  return useMemo(() => {
+  // Keyed on content, not array identity: a new `labelTypes` identity tears
+  // down the engine's FrameStore, which reseeds from the stale `/frames` cache
+  // and drops every occurrence persisted this session.
+  const contentKey = `${detectionFields.join(
+    ",",
+  )}|${polylineFields.join(",")}|${isImageDynamicGroupVideo}`;
+
+  // `useMemoOne`, not `useMemo`: React may forget a memo, and a new object
+  // here destroys the FrameStore
+  return useMemoOne(() => {
     const fields: Record<string, LabelType> = {};
 
+    const owns = (field: string): boolean =>
+      isFrameScopedPath(field, isImageDynamicGroupVideo);
+
     for (const field of detectionFields) {
-      if (field.startsWith(FRAMES_PREFIX)) {
+      if (owns(field)) {
         fields[field] = LabelType.Detections;
       }
     }
 
     for (const field of polylineFields) {
-      if (field.startsWith(FRAMES_PREFIX)) {
+      if (owns(field)) {
         fields[field] = LabelType.Polylines;
       }
     }
 
     return fields;
-  }, [detectionFields, polylineFields]);
+  }, [contentKey]);
+};
+
+/**
+ * Schema-active primitive paths whose values live on the frame, so the sidebar
+ * reads them at the playhead: `frames.*` on a real video, the bare sample
+ * fields when an image dataset is grouped into a video.
+ */
+export const toFramePrimitivePaths = (
+  active: readonly string[],
+  primitivePaths: readonly string[],
+  isImageDynamicGroupVideo: boolean,
+  orderBy: string | null = null,
+): string[] =>
+  [
+    ...new Set([
+      ...primitivePaths.filter(
+        (path) =>
+          active.includes(path) &&
+          isFrameScopedPath(path, isImageDynamicGroupVideo),
+      ),
+      // the group's order-by value reads on the timeline, active or not
+      ...(isImageDynamicGroupVideo && orderBy ? [orderBy] : []),
+    ]),
+  ].sort();
+
+export const useFramePrimitivePaths = (): readonly string[] => {
+  const active = useAtomValue(activeLabelSchemas);
+  const primitivePaths = usePrimitiveFieldPaths();
+  const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
+  const paths = toFramePrimitivePaths(
+    active ?? [],
+    primitivePaths,
+    isImageDynamicGroupVideo,
+    useDynamicGroupOrderBy(),
+  );
+  // content-keyed: a new array identity re-registers the FrameStore
+  const contentKey = paths.join(",");
+  return useMemoOne(() => paths, [contentKey]);
+};
+
+/** The dataset's modal media field (default `filepath`), which locates each frame's media. */
+export const useModalMediaField = (): string =>
+  useRecoilValue(selectedMediaField(true));
+
+/**
+ * Frame rate driving video annotation playback for the modal sample. An image
+ * dataset grouped into a video has no per-sample rate, so it falls back to
+ * `app_config.dynamic_groups_target_frame_rate`.
+ */
+export const useModalSampleFrameRate = (
+  sample: ModalSample | null | undefined,
+): number => {
+  const targetFrameRate = useRecoilValue(dynamicGroupsTargetFrameRate);
+  return getModalSampleFrameRate(sample) ?? targetFrameRate;
+};
+
+/**
+ * Member count of the current modal dynamic group, suspending until the
+ * aggregation resolves. `enabled: false` skips the aggregation (returns null)
+ * while keeping hook order stable.
+ */
+export const useDynamicGroupElementCount = (enabled = true): number | null =>
+  useRecoilValue(
+    enabled ? dynamicGroupsElementCount({ modal: true }) : constSelector(null),
+  );
+
+/**
+ * The current modal dynamic group's group-by value, or null when the modal is
+ * not an image dataset grouped into a video. The server injects `_group` for
+ * any `group_by` stage, so the value is gated on the image-backed case.
+ */
+export const useDynamicGroupValue = (): string | null => {
+  const value = useRecoilValue(groupByFieldValue) as unknown as string | null;
+  return useIsImageDynamicGroupVideo() ? (value ?? null) : null;
 };
 
 /**
@@ -174,3 +257,10 @@ export {
   useDynamicAttributeNamesGetter,
   labelSchemaData,
 } from "../../../core/src/components/Modal/Sidebar/Annotate/state";
+
+/** The dataset's display time zone. */
+export const useTimeZone = (): string => useRecoilValue(timeZone);
+
+/** A field's `ftype`, or undefined when the path is not in the schema. */
+export const useFieldType = (path: string | null): string | undefined =>
+  useRecoilValue(field(path ?? ""))?.ftype;

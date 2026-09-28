@@ -29,6 +29,21 @@ function makeLabel(
   } as unknown as AnnotationLabel;
 }
 
+// the real persist runs `onFailure` inside its queued unit before it settles;
+// mirror that for the rejected / thrown outcomes below
+const rejectedPersist = async ({
+  onFailure,
+}: { onFailure?: () => void } = {}) => {
+  onFailure?.();
+  return false;
+};
+const thrownPersist =
+  (error: Error) =>
+  async ({ onFailure }: { onFailure?: () => void } = {}) => {
+    onFailure?.();
+    throw error;
+  };
+
 describe("useDeleteAnnotation", () => {
   let mockPersist: ReturnType<typeof vi.fn>;
   let mockEngineDeleteLabel: ReturnType<typeof vi.fn>;
@@ -175,7 +190,7 @@ describe("useDeleteAnnotation", () => {
     mockEngineLastUndoEntry
       .mockReturnValueOnce(undefined)
       .mockReturnValueOnce(entry);
-    mockPersist.mockResolvedValue(false);
+    mockPersist.mockImplementation(rejectedPersist);
     const deleteAnnotation = getCallback();
 
     await deleteAnnotation(makeLabel({ labelId: "label-7" }));
@@ -188,7 +203,7 @@ describe("useDeleteAnnotation", () => {
     mockEngineLastUndoEntry
       .mockReturnValueOnce(undefined)
       .mockReturnValueOnce(entry);
-    mockPersist.mockRejectedValue(new Error("network down"));
+    mockPersist.mockImplementation(thrownPersist(new Error("network down")));
     const deleteAnnotation = getCallback();
 
     await expect(deleteAnnotation(makeLabel())).rejects.toThrow("network down");
@@ -201,7 +216,7 @@ describe("useDeleteAnnotation", () => {
     mockEngineLastUndoEntry
       .mockReturnValueOnce(undefined)
       .mockReturnValueOnce(entry);
-    mockPersist.mockResolvedValue(false);
+    mockPersist.mockImplementation(rejectedPersist);
     const deleteAnnotation = getCallback();
 
     await deleteAnnotation(makeLabel(), { gestureId: "gesture:1" });

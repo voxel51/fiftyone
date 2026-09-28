@@ -15,7 +15,7 @@
  *
  * Why a worker: demux + decode + `createImageBitmap` all run off the main
  * thread, and bitmaps transfer without a copy — the tile just `drawImage`s
- * them. This gives ImaVid-style, single-clock lock-step playback WITHOUT the
+ * them. This gives single-clock lock-step playback WITHOUT the
  * `to_frames` preprocessing/storage cost.
  *
  * Frame-exactness (the load-bearing property): the demuxer's sample table maps

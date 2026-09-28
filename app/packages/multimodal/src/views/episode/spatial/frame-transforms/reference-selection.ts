@@ -316,9 +316,30 @@ export function chooseCameraTarget(
   referenceFrameId: string,
 ): string {
   return (
-    choosePreferredFrame(activeComponentFrameIds, EGO_FRAME_IDS) ||
+    chooseEgoCameraTarget(activeComponentFrameIds) ||
     (activeComponentFrameIds.includes(referenceFrameId) ? referenceFrameId : "")
   );
+}
+
+/** Matches an ego in the active component without the reference-frame fallback. */
+export function chooseEgoCameraTarget(frameIds: readonly string[]): string {
+  for (const preferred of EGO_FRAME_IDS) {
+    if (frameIds.includes(preferred)) return preferred;
+  }
+  // Different robot namespaces are ambiguous even when their ego frames use
+  // different aliases (e.g. robot_a/base_link and robot_b/ego_vehicle).
+  const namespaces = new Set<string>();
+  for (const frameId of frameIds) {
+    for (const preferred of EGO_FRAME_IDS) {
+      const suffix = `/${preferred}`;
+      if (frameId.endsWith(suffix)) {
+        namespaces.add(frameId.slice(0, -suffix.length));
+      }
+    }
+  }
+  return namespaces.size === 1
+    ? choosePreferredFrame(frameIds, EGO_FRAME_IDS)
+    : "";
 }
 
 function pendingPromotionFor({
