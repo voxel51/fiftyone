@@ -785,6 +785,34 @@ describe("GridRenderer", () => {
     expect(screen.getByTestId("episode-grid-buffering-indicator")).toBeTruthy();
   });
 
+  it("shows the buffering indicator over a native tile's poster, but never over its error", () => {
+    previewHarness.preview.cachedPoster = {
+      bytes: new Uint8Array([1, 2, 3]),
+      height: 180,
+      mimeType: "image/webp",
+      sourceKind: "image",
+      streamId: "/cam/video",
+      streamSourceName: "/cam/video",
+      streamSourceNames: ["/cam/video"],
+      width: 320,
+    };
+    previewHarness.preview.nativeVideo = {
+      codec: "h264",
+      codecString: "avc1.64000a",
+      endTimeSeconds: 37.5,
+      source: { sourceId: "video", url: "/asset/video.mp4" },
+      startTimeSeconds: 14.2,
+    };
+    previewHarness.preview.isBuffering = true;
+    previewHarness.preview.status = "ready";
+
+    render(<GridRenderer ctx={rendererCtx()} />);
+    expect(screen.getByTestId("episode-grid-buffering-indicator")).toBeTruthy();
+
+    act(() => nativeVideoHarness.onError?.(new Error("Native decode failed")));
+    expect(screen.queryByTestId("episode-grid-buffering-indicator")).toBeNull();
+  });
+
   it("reports retained frame and decoded bitmap bytes to the grid LRU", async () => {
     const bytes = new Uint8Array([1, 2, 3]);
     const onRetainedBytesChange = vi.fn();

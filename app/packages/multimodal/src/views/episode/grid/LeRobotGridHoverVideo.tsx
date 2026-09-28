@@ -30,6 +30,11 @@ const POSTER_RETRY_LIMIT = 50;
 interface LeRobotGridHoverVideoProps {
   readonly active: boolean;
   readonly capturePoster: boolean;
+  /**
+   * Reports whether playback is waiting on data: from the moment it is asked
+   * to play, or the element reports `waiting`, until a frame is presented.
+   */
+  readonly onBufferingChange?: (waiting: boolean) => void;
   readonly onCanvasCommitted: (
     canvas: HTMLCanvasElement,
     size: BitmapDrawSize,
@@ -60,6 +65,7 @@ interface LeRobotGridHoverVideoProps {
 export function LeRobotGridHoverVideo({
   active,
   capturePoster,
+  onBufferingChange,
   onCanvasCommitted,
   onError,
   onPresentedTimeSeconds,
@@ -83,6 +89,7 @@ export function LeRobotGridHoverVideo({
   const onCanvasCommittedRef = useLatestRef(onCanvasCommitted);
   const onErrorRef = useLatestRef(onError);
   const onPresentedTimeSecondsRef = useLatestRef(onPresentedTimeSeconds);
+  const onBufferingChangeRef = useLatestRef(onBufferingChange);
   const onSurfaceRetainedBytesChangeRef = useLatestRef(
     onSurfaceRetainedBytesChange,
   );
@@ -118,7 +125,16 @@ export function LeRobotGridHoverVideo({
     let posterCaptured = posterReadyRef.current;
     let posterRetryCount = 0;
     let posterRetryTimer: ReturnType<typeof setTimeout> | null = null;
+    let waiting = false;
 
+    const setWaiting = (next: boolean) => {
+      if (waiting === next) return;
+      waiting = next;
+      onBufferingChangeRef.current?.(next);
+    };
+    const onWaiting = () => {
+      if (playing) setWaiting(true);
+    };
     const setShowingVideo = (showing: boolean) => {
       if (showingVideo === showing) return;
       showingVideo = showing;
@@ -228,6 +244,7 @@ export function LeRobotGridHoverVideo({
         try {
           if (!capturePresentedPoster()) schedulePosterRetry();
           setShowingVideo(playing);
+          setWaiting(false);
           onPresentedTimeSecondsRef.current?.(element.currentTime);
         } catch (error) {
           fail(error);
@@ -262,6 +279,8 @@ export function LeRobotGridHoverVideo({
       element.removeEventListener("loadedmetadata", startAtEpisodeStart);
       element.removeEventListener("seeked", presentFallbackFrame);
       element.removeEventListener("timeupdate", onTimeUpdate);
+      element.removeEventListener("waiting", onWaiting);
+      setWaiting(false);
       element.style.visibility = "hidden";
       poster.style.visibility = posterCaptured ? "visible" : "hidden";
       element.pause();
@@ -299,6 +318,7 @@ export function LeRobotGridHoverVideo({
       try {
         if (!capturePresentedPoster()) schedulePosterRetry();
         setShowingVideo(playing);
+        setWaiting(false);
         onPresentedTimeSecondsRef.current?.(metadata.mediaTime);
         if (playing) scheduleFrame();
       } catch (error) {
@@ -315,11 +335,15 @@ export function LeRobotGridHoverVideo({
       element.addEventListener("loadedmetadata", startAtEpisodeStart);
       element.addEventListener("seeked", presentFallbackFrame);
       element.addEventListener("timeupdate", onTimeUpdate);
+      element.addEventListener("waiting", onWaiting);
       setShowingVideo(false);
       element.setAttribute("src", sourceUrl);
       element.load();
       if (element.readyState >= 1) startAtEpisodeStart();
     };
+    // Waiting from the moment playback is asked for, which covers a lease
+    // still queued behind other tiles and the media loading
+    if (playing) setWaiting(true);
     const request = requestGridNativeVideoLease(
       holderId,
       playing ? "playing" : "poster",
@@ -329,6 +353,7 @@ export function LeRobotGridHoverVideo({
     requestRef.current = request;
 
     return () => {
+      setWaiting(false);
       disposed = true;
       request.release();
       if (requestRef.current === request) requestRef.current = null;
@@ -341,6 +366,7 @@ export function LeRobotGridHoverVideo({
     endTimeSeconds,
     holderId,
     onCanvasCommittedRef,
+    onBufferingChangeRef,
     onErrorRef,
     onPresentedTimeSecondsRef,
     onSurfaceRetainedBytesChangeRef,
