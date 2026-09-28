@@ -1,5 +1,5 @@
 .fallingAsciiBox {
-  color: rgba(108, 214, 255, 0.9);
+  color: var(--color-content-text-info);
   display: inline-block;
   flex: 0 0 auto;
   height: 22px;
@@ -16,7 +16,8 @@
   font-weight: 800;
   line-height: 0.9;
   text-align: left;
-  text-shadow: 0 0 8px rgba(108, 214, 255, 0.5);
+  text-shadow: 0 0 8px
+    color-mix(in srgb, var(--color-content-text-info) 50%, transparent);
   white-space: pre;
 }
 

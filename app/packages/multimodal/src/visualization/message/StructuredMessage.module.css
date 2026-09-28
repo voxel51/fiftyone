@@ -2,7 +2,7 @@
    surface, with a metadata strip pinned above the scrollable tree. */
 
 .body {
-  background: var(--plot-surface, #050b12);
+  background: var(--color-content-bg-popover);
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -29,7 +29,7 @@
 
 .meta {
   align-items: center;
-  border-bottom: 1px solid var(--color-content-border-default, #383835);
+  border-bottom: 1px solid var(--color-content-border-default);
   color: var(--color-content-text-secondary);
   display: flex;
   flex: none;
@@ -66,7 +66,7 @@
 .messageActionButton {
   align-items: center;
   background: transparent;
-  border: 1px solid var(--color-content-border-default, #383835);
+  border: 1px solid var(--color-content-border-default);
   border-radius: 4px;
   color: var(--color-content-text-secondary);
   cursor: pointer;
@@ -84,7 +84,7 @@
 }
 
 .messageActionButton:focus-visible {
-  outline: 2px solid var(--color-voxel-secondary, #ff8d00);
+  outline: 2px solid var(--color-semantic-warning);
   outline-offset: 1px;
 }
 
@@ -166,7 +166,7 @@
 }
 
 .valueString {
-  color: var(--color-voxel-secondary, #ff8d00);
+  color: var(--color-semantic-warning);
   overflow-wrap: anywhere;
   min-width: 0;
 }
@@ -204,7 +204,7 @@
 .showMoreButton {
   background: transparent;
   border: none;
-  color: var(--color-voxel-secondary, #ff8d00);
+  color: var(--color-semantic-warning);
   cursor: pointer;
   font: inherit;
   padding: 0;

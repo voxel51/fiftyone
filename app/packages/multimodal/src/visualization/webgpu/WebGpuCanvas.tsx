@@ -3,6 +3,7 @@ import { Canvas } from "@react-three/fiber";
 import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three/webgpu";
+import { resolveCssColor } from "@fiftyone/utilities";
 
 import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "../panel-ui/style-tokens";
 import {
@@ -362,7 +363,10 @@ function prepareGraphicsRenderer(
   backend?: GraphicsBackend,
 ) {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.setClearColor(clearColor, OPAQUE_CLEAR_ALPHA);
+  renderer.setClearColor(
+    typeof clearColor === "string" ? resolveCssColor(clearColor) : clearColor,
+    OPAQUE_CLEAR_ALPHA,
+  );
 
   const rendererWithCompat = renderer as RendererWithDreiCompat;
   rendererWithCompat.capabilities = {

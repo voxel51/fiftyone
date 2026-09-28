@@ -14,7 +14,7 @@
 
 .toolbar {
   align-items: center;
-  border-bottom: 1px solid var(--color-content-border-default, #383835);
+  border-bottom: 1px solid var(--color-content-border-default);
   color: var(--color-content-text-secondary);
   display: flex;
   flex: none;
@@ -26,7 +26,7 @@
 
 .toolbarButton {
   background: transparent;
-  border: 1px solid var(--color-content-border-default, #383835);
+  border: 1px solid var(--color-content-border-default);
   border-radius: 4px;
   color: var(--color-content-text-secondary);
   cursor: pointer;
@@ -40,7 +40,7 @@
 
 .toolbarButton:focus-visible {
   color: var(--color-content-text-primary);
-  outline: 1px solid var(--color-voxel-secondary, #ff8d00);
+  outline: 1px solid var(--color-semantic-warning);
   outline-offset: 1px;
 }
 
@@ -61,14 +61,14 @@
 }
 
 .rail {
-  border-right: 1px solid var(--color-content-border-default, #383835);
+  border-right: 1px solid var(--color-content-border-default);
   flex: 0 0 190px;
   min-height: 0;
   overflow: auto;
 }
 
 .rail:focus-visible {
-  outline: 1px solid var(--color-voxel-secondary, #ff8d00);
+  outline: 1px solid var(--color-semantic-warning);
   outline-offset: -1px;
 }
 
@@ -88,11 +88,7 @@
   background: transparent;
   border: 0;
   border-bottom: 1px solid
-    color-mix(
-      in srgb,
-      var(--color-content-border-default, #383835) 45%,
-      transparent
-    );
+    color-mix(in srgb, var(--color-content-border-default) 45%, transparent);
   color: var(--color-content-text-secondary);
   cursor: pointer;
   display: block;
@@ -120,9 +116,9 @@
 .selectedRow {
   background: color-mix(
     in srgb,
-    var(--color-voxel-secondary, #ff8d00) 16%,
+    var(--color-semantic-warning) 16%,
     transparent
   );
   color: var(--color-content-text-primary);
-  box-shadow: inset 3px 0 var(--color-voxel-secondary, #ff8d00);
+  box-shadow: inset 3px 0 var(--color-semantic-warning);
 }

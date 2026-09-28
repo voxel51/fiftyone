@@ -2,6 +2,7 @@
 import { OrbitControls } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
+import { resolveCssColor } from "@fiftyone/utilities";
 import { mix, screenUV, vec3 } from "three/tsl";
 import {
   useCallback,
@@ -154,12 +155,12 @@ export function SceneBackground({
   // starts from a clean slate.
   useEffect(() => {
     if (solidColor !== null) {
-      scene.background = new THREE.Color(solidColor);
+      scene.background = new THREE.Color(resolveCssColor(solidColor));
       scene.backgroundNode = null;
     } else if (gradientTop !== null && gradientBottom !== null) {
       // THREE.Color converts the sRGB hex values into linear space.
-      const top = new THREE.Color(gradientTop);
-      const bottom = new THREE.Color(gradientBottom);
+      const top = new THREE.Color(resolveCssColor(gradientTop));
+      const bottom = new THREE.Color(resolveCssColor(gradientBottom));
       scene.background = null;
       // screenUV.y is 0 at the top of the canvas under WebGPU.
       scene.backgroundNode = mix(

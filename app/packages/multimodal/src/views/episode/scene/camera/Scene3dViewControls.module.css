@@ -6,10 +6,10 @@
 
 .button {
   align-items: center;
-  background: rgba(5, 11, 18, 0.76);
-  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: var(--color-content-tooltip-bg);
+  border: 1px solid var(--color-content-border-subtle);
   border-radius: 4px;
-  color: #cbd5e1;
+  color: var(--color-content-text-primary);
   cursor: pointer;
   display: inline-flex;
   font-family: inherit;
@@ -24,11 +24,11 @@
 
 .button:hover,
 .button:focus-visible {
-  background: rgba(30, 41, 59, 0.9);
-  border-color: rgba(203, 213, 225, 0.48);
+  background: var(--color-content-bg-card-elevated);
+  border-color: var(--color-content-border-hover);
 }
 
 .button:focus-visible {
-  outline: 2px solid #60a5fa;
+  outline: 2px solid var(--color-content-focus-ring);
   outline-offset: 1px;
 }

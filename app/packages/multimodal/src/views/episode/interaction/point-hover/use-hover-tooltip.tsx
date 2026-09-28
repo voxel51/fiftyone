@@ -17,6 +17,7 @@ import {
   TextVariant,
   Z_INDEX_VALUES,
   ZIndex,
+  cssVar,
 } from "@voxel51/voodo";
 import {
   VISUALIZATION_HUD_BACKGROUND_COLOR,
@@ -324,7 +325,7 @@ const tooltipHeadingStyle: CSSProperties = {
 };
 
 const colorBadgeStyle: CSSProperties = {
-  border: "1px solid rgba(255, 255, 255, 0.35)",
+  border: `1px solid ${cssVar.color.border.default}`,
   borderRadius: "50%",
   boxShadow: "0 0 0 1px rgba(0, 0, 0, 0.25)",
   flex: "0 0 auto",
@@ -438,8 +439,14 @@ export const Scene3dHoverTooltipStack: React.FC<{
             key={`${tooltip.kind}:${index}:${tooltipIdentityKey(tooltip)}`}
             style={{
               ...tooltipSectionStyle,
+              // Longhands rather than the `borderTop` shorthand: jsdom's
+              // CSSOM drops a shorthand whose colour is a `var(--…)`.
               ...(index > 0
-                ? { borderTop: `1px solid ${VISUALIZATION_HUD_BORDER_COLOR}` }
+                ? {
+                    borderTopColor: VISUALIZATION_HUD_BORDER_COLOR,
+                    borderTopStyle: "solid",
+                    borderTopWidth: 1,
+                  }
                 : {}),
             }}
           >

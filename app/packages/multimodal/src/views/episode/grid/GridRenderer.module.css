@@ -1,7 +1,7 @@
 .root {
   align-items: center;
-  background: #101114;
-  color: rgba(255, 255, 255, 0.78);
+  background: var(--color-content-bg-popover);
+  color: var(--color-content-text-primary);
   display: flex;
   height: 100%;
   justify-content: center;
@@ -26,7 +26,7 @@
  */
 .bufferingIndicator {
   align-items: center;
-  background: rgba(16, 17, 20, 0.72);
+  background: var(--color-content-scrim-default);
   border-radius: 50%;
   display: flex;
   height: 20px;
@@ -70,7 +70,7 @@
 }
 
 .nativeVideoError {
-  background: rgba(16, 17, 20, 0.82);
+  background: var(--color-content-scrim-heavy);
   bottom: 8px;
   left: 50%;
   max-width: calc(100% - 16px);
@@ -108,7 +108,7 @@
 }
 
 .error {
-  color: rgba(255, 120, 120, 0.78);
+  color: var(--color-content-text-failure);
   font-size: 11px;
   font-weight: 500;
   margin-top: 4px;
@@ -128,10 +128,10 @@
  */
 .openModalButton {
   align-items: center;
-  background: rgba(18, 18, 18, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: var(--color-content-scrim-default);
+  border: 1px solid var(--color-content-border-default);
   border-radius: 6px;
-  color: #f5f5f5;
+  color: var(--color-content-text-primary);
   display: flex;
   height: 22px;
   justify-content: center;
@@ -162,7 +162,7 @@
 .codecRejection {
   align-items: center;
   box-sizing: border-box;
-  color: rgba(255, 120, 120, 0.78);
+  color: var(--color-content-text-failure);
   display: flex;
   font-size: 11px;
   font-weight: 500;

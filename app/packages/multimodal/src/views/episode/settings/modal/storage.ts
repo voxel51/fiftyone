@@ -5,7 +5,6 @@ import {
   type PointCloudColorOptions,
   type PointCloudColormap,
 } from "../../../../visualization/scene-3d";
-import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "../../../../visualization/panel-ui/style-tokens";
 import { sanitizeBoundedStringList } from "../../../../utils/bounded-string-list";
 import type {
   ImageDisplayMode,
@@ -117,11 +116,18 @@ const MIN_PINHOLE_DEPTH_M = 0.05;
 const MAX_PINHOLE_DEPTH_M = 100;
 
 /**
+ * Seed for the solid-background colour picker. It feeds an `<input
+ * type="color">` and the persisted hex validation, so it has to be a literal
+ * `#rrggbb` rather than a theme `var(--…)` reference.
+ */
+const DEFAULT_SOLID_SCENE_BACKGROUND_HEX = "#050b12";
+
+/**
  * Default 3D scene background for episode playback.
  */
 export const DEFAULT_SCENE_BACKGROUND: SceneBackgroundSettings = {
   mode: "abyss",
-  solidColor: VISUALIZATION_PANEL_BACKGROUND_COLOR,
+  solidColor: DEFAULT_SOLID_SCENE_BACKGROUND_HEX,
 };
 
 /**

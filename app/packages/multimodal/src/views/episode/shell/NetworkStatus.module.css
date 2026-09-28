@@ -2,13 +2,13 @@
   align-items: center;
   background: color-mix(
     in srgb,
-    var(--fo-palette-warning-main, #b58105) 18%,
+    var(--color-semantic-warning) 18%,
     transparent
   );
   border: 1px solid
-    color-mix(in srgb, var(--fo-palette-warning-main, #b58105) 45%, transparent);
+    color-mix(in srgb, var(--color-semantic-warning) 45%, transparent);
   border-radius: 999px;
-  color: var(--fo-palette-warning-main, #ffc48b);
+  color: var(--color-content-text-warning);
   display: inline-flex;
   font-size: 0.72rem;
   font-weight: 500;
@@ -22,15 +22,15 @@
 .neutral {
   background: color-mix(
     in srgb,
-    var(--fo-palette-text-secondary, #a8adb7) 12%,
+    var(--color-content-text-secondary) 12%,
     transparent
   );
   border-color: color-mix(
     in srgb,
-    var(--fo-palette-text-secondary, #a8adb7) 32%,
+    var(--color-content-text-secondary) 32%,
     transparent
   );
-  color: var(--fo-palette-text-secondary, #c6c9d1);
+  color: var(--color-content-text-secondary);
 }
 
 .dot {

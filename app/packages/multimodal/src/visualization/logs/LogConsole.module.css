@@ -1,5 +1,5 @@
 .body {
-  background: var(--plot-surface, #050b12);
+  background: var(--color-content-bg-popover);
   color: var(--color-content-text-primary);
   display: flex;
   flex-direction: column;
@@ -12,7 +12,7 @@
 
 .toolbar {
   align-items: stretch;
-  border-bottom: 1px solid var(--color-content-border-default, #383835);
+  border-bottom: 1px solid var(--color-content-border-default);
   color: var(--color-content-text-secondary);
   display: flex;
   flex-direction: column;
@@ -59,10 +59,10 @@
   align-items: center;
   background: color-mix(
     in srgb,
-    var(--color-content-border-default, #383835) 35%,
+    var(--color-content-border-default) 35%,
     transparent
   );
-  border: 1px solid var(--color-content-border-default, #383835);
+  border: 1px solid var(--color-content-border-default);
   border-radius: 5px;
   display: flex;
   padding: 2px;
@@ -87,8 +87,8 @@
 .tabActive {
   background: color-mix(
     in srgb,
-    var(--color-primary-plain-color, #ff6d04) 18%,
-    var(--plot-surface, #050b12)
+    var(--color-brand-primary) 18%,
+    var(--color-content-bg-popover)
   );
   color: var(--color-content-text-primary);
 }
@@ -110,11 +110,7 @@
   background: transparent;
   border: 0;
   border-bottom: 1px solid
-    color-mix(
-      in srgb,
-      var(--color-content-border-default, #383835) 45%,
-      transparent
-    );
+    color-mix(in srgb, var(--color-content-border-default) 45%, transparent);
   color: inherit;
   box-sizing: border-box;
   cursor: pointer;
@@ -135,11 +131,7 @@
   background: transparent;
   border: 0;
   border-bottom: 1px solid
-    color-mix(
-      in srgb,
-      var(--color-content-border-default, #383835) 45%,
-      transparent
-    );
+    color-mix(in srgb, var(--color-content-border-default) 45%, transparent);
   box-sizing: border-box;
   color: inherit;
   cursor: pointer;
@@ -196,11 +188,11 @@
 }
 
 .freshness_current {
-  color: #86d88f;
+  color: var(--color-content-text-success);
 }
 
 .freshness_stale {
-  color: #f1c75b;
+  color: var(--color-content-text-warning);
 }
 
 .freshness_unknown {
@@ -258,23 +250,23 @@
 }
 
 .debug {
-  color: #7eb6ff;
+  color: var(--color-content-text-info);
 }
 
 .info {
-  color: #86d88f;
+  color: var(--color-content-text-success);
 }
 
 .warn {
-  color: #f1c75b;
+  color: var(--color-content-text-warning);
 }
 
 .error {
-  color: #ff837a;
+  color: var(--color-content-text-failure);
 }
 
 .fatal {
-  color: #ff5ea8;
+  color: var(--color-content-viz-chart-magenta);
 }
 
 .unknown {

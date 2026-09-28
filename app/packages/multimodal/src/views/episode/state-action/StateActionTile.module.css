@@ -3,7 +3,7 @@
    feature panes that stack when the tile is narrow. */
 
 .body {
-  background: var(--plot-surface, #050b12);
+  background: var(--color-content-bg-popover);
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -13,7 +13,7 @@
 
 .header {
   align-items: center;
-  border-bottom: 1px solid var(--color-content-border-default, #383835);
+  border-bottom: 1px solid var(--color-content-border-default);
   color: var(--color-content-text-secondary);
   display: flex;
   flex: none;
@@ -71,7 +71,7 @@
 }
 
 .actionButton:focus-visible {
-  outline: 1px solid var(--color-voxel-secondary, #f5b700);
+  outline: 1px solid var(--color-semantic-warning);
   outline-offset: 1px;
 }
 
@@ -99,7 +99,7 @@
 
 .staleRetryButton {
   background: transparent;
-  border: 1px solid var(--color-content-border-default, #383835);
+  border: 1px solid var(--color-content-border-default);
   border-radius: 4px;
   color: var(--color-content-text-primary);
   cursor: pointer;
@@ -118,11 +118,7 @@
 
 .missingNote {
   border-bottom: 1px solid
-    color-mix(
-      in srgb,
-      var(--color-content-border-default, #383835) 60%,
-      transparent
-    );
+    color-mix(in srgb, var(--color-content-border-default) 60%, transparent);
   color: var(--color-content-text-secondary);
   flex: none;
   font-size: 11px;
@@ -131,11 +127,7 @@
 
 .filterBar {
   border-bottom: 1px solid
-    color-mix(
-      in srgb,
-      var(--color-content-border-default, #383835) 60%,
-      transparent
-    );
+    color-mix(in srgb, var(--color-content-border-default) 60%, transparent);
   flex: none;
   padding: 6px 10px;
 }
@@ -164,11 +156,7 @@
 .paneHeading {
   align-items: baseline;
   border-bottom: 1px solid
-    color-mix(
-      in srgb,
-      var(--color-content-border-default, #383835) 60%,
-      transparent
-    );
+    color-mix(in srgb, var(--color-content-border-default) 60%, transparent);
   color: var(--color-content-text-primary);
   display: flex;
   flex: none;
@@ -308,7 +296,7 @@
 .dimTrackTick {
   background: color-mix(
     in srgb,
-    var(--color-voxel-secondary, #f5b700) 75%,
+    var(--color-semantic-warning) 75%,
     transparent
   );
   height: 7px;
@@ -346,7 +334,7 @@
 }
 
 .valueButton:focus-visible {
-  outline: 1px solid var(--color-voxel-secondary, #f5b700);
+  outline: 1px solid var(--color-semantic-warning);
   outline-offset: 1px;
 }
 
@@ -391,7 +379,7 @@
 }
 
 .plotButton:focus-visible {
-  outline: 1px solid var(--color-voxel-secondary, #f5b700);
+  outline: 1px solid var(--color-semantic-warning);
   outline-offset: 1px;
 }
 
@@ -424,7 +412,7 @@
 
 .retryButton {
   background: transparent;
-  border: 1px solid var(--color-content-border-default, #383835);
+  border: 1px solid var(--color-content-border-default);
   border-radius: 4px;
   color: var(--color-content-text-primary);
   cursor: pointer;

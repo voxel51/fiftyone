@@ -8,6 +8,7 @@ import {
   useRef,
 } from "react";
 import * as THREE from "three";
+import { resolveCssColor } from "@fiftyone/utilities";
 
 import { fittedImageSize } from "./image-fit";
 import {
@@ -52,7 +53,7 @@ export function Base2dScene({ background = true, children }: Base2dSceneProps) {
     <>
       {background ? (
         <color
-          args={[VISUALIZATION_PANEL_BACKGROUND_COLOR]}
+          args={[resolveCssColor(VISUALIZATION_PANEL_BACKGROUND_COLOR)]}
           attach="background"
         />
       ) : null}
