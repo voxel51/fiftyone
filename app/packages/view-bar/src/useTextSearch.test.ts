@@ -15,6 +15,8 @@ const env = vi.hoisted(() => ({
   providerCancel: vi.fn(),
   ProviderSuggestions: () => null,
   sourcesWanted: vi.fn(),
+  slicesWanted: vi.fn(),
+  indexSlices: new Map<string, string[]>(),
   onRun: null as null | ((index: { key: string }, query: string) => void),
 }));
 
@@ -25,8 +27,15 @@ vi.mock("@fiftyone/state", () => ({
 vi.mock("@fiftyone/analytics", () => ({ useTrackEvent: () => vi.fn() }));
 vi.mock("@fiftyone/operators", () => ({ executeOperator: vi.fn() }));
 vi.mock("./useOperatorSearch", () => ({
-  useOperatorSearch: ({ onRun }: { onRun: typeof env.onRun }) => {
+  useOperatorSearch: ({
+    onRun,
+    sourcesWanted,
+  }: {
+    onRun: typeof env.onRun;
+    sourcesWanted: boolean;
+  }) => {
     env.onRun = onRun;
+    env.slicesWanted(sourcesWanted);
     return {
       available: env.operatorAvailable,
       enabled: env.operatorAvailable,
@@ -34,6 +43,7 @@ vi.mock("./useOperatorSearch", () => ({
       run: env.operatorRun,
       claimView: () => false,
       sources: null,
+      indexSlices: env.indexSlices,
       Suggestions: env.OperatorSuggestions,
     };
   },
@@ -127,6 +137,17 @@ describe("useTextSearch", () => {
 
     act(() => result.current.onOpenSettings());
     expect(env.sourcesWanted).toHaveBeenLastCalledWith(true);
+  });
+
+  it("asks for the indexes' slices only once the settings open, and hands them on", () => {
+    env.promptKeys = [SERVER_INDEX];
+    env.indexSlices = new Map([["clip_sim", ["left", "right"]]]);
+    const { result } = renderController();
+    expect(env.slicesWanted).toHaveBeenLastCalledWith(false);
+
+    act(() => result.current.onOpenSettings());
+    expect(env.slicesWanted).toHaveBeenLastCalledWith(true);
+    expect(result.current.indexSlices).toBe(env.indexSlices);
   });
 
   it("offers sources only when there are several to choose between", () => {
