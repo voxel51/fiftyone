@@ -6,12 +6,4 @@ FiftyOne Server constants
 |
 """
 
-from datetime import date, datetime
-
-from fiftyone.server.scalars import Date, DateTime
-
 LIST_LIMIT = 100
-SCALAR_OVERRIDES = {
-    date: Date,
-    datetime: DateTime,
-}

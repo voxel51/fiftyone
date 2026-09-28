@@ -16,6 +16,7 @@ from contextlib import asynccontextmanager
 
 import eta.core.utils as etau
 import strawberry as gql
+from strawberry.schema.config import StrawberryConfig
 from starlette.applications import Starlette
 from starlette.datastructures import Headers
 from starlette.middleware import Middleware
@@ -38,12 +39,12 @@ from fiftyone.operators.store.notification_service import (
     default_notification_service,
     is_notification_service_disabled,
 )
-from fiftyone.server.constants import SCALAR_OVERRIDES
 from fiftyone.server.context import GraphQL
 from fiftyone.server.extensions import EndSession
 from fiftyone.server.mutation import Mutation
 from fiftyone.server.query import Query
 from fiftyone.server.routes import routes
+from fiftyone.server.scalars import SCALAR_MAP
 
 logger = logging.getLogger(__name__)
 
@@ -121,7 +122,7 @@ schema = gql.Schema(
     mutation=Mutation,
     query=Query,
     extensions=[EndSession],
-    scalar_overrides=SCALAR_OVERRIDES,
+    config=StrawberryConfig(scalar_map=SCALAR_MAP),
 )
 
 mtypes = (  # ensure mimetypes for Windows
