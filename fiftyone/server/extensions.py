@@ -20,7 +20,8 @@ class EndSession(Extension):
             result.errors = [
                 GraphQLError(
                     extensions={
-                        "stack": traceback.format_tb(error.__traceback__)
+                        **(error.extensions or {}),
+                        "stack": traceback.format_tb(error.__traceback__),
                     },
                     nodes=error.nodes,
                     source=error.source,

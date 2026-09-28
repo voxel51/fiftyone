@@ -27,7 +27,14 @@ import fiftyone.server.metadata as fosm
 from fiftyone.multimodal.media_reference.field_model import (
     resolve_sample_media,
 )
-from fiftyone.server.paginator import Connection, Edge, PageInfo
+from fiftyone.server.order.backend import (
+    Direction,
+    OrderError,
+    OrderMismatch,
+    OrderSpec,
+    SeekTarget,
+)
+from fiftyone.server.order.schema import get_service, to_graphql_error
 from fiftyone.server.scalars import BSON, JSON, BSONArray
 from fiftyone.server.utils import from_dict
 import fiftyone.server.view as fosv
@@ -83,6 +90,35 @@ SampleItem = t.Annotated[
 ]
 
 
+@gql.type(name="SampleItemStrPageInfo")
+class SamplePageInfo:
+    has_next_page: bool
+    has_previous_page: bool
+    start_cursor: t.Optional[str]
+    end_cursor: t.Optional[str]
+
+
+@gql.type(name="SampleItemStrEdge")
+class SampleEdge:
+    cursor: str
+    node: SampleItem
+    rank: t.Optional[int] = gql.field(
+        default=None,
+        description="The sample's rank in the order, when paging one",
+    )
+
+
+@gql.type(name="SampleItemStrConnection")
+class SampleConnection:
+    page_info: SamplePageInfo
+    edges: t.List[SampleEdge]
+    total: t.Optional[int] = None
+    order_version: t.Optional[str] = gql.field(
+        default=None,
+        description="The data's current version, when paging an order",
+    )
+
+
 MEDIA_TYPES = collections.defaultdict(lambda: UnknownSample)
 MEDIA_TYPES.update(
     {
@@ -110,8 +146,15 @@ async def paginate_samples(
     dynamic_group: t.Optional[BSON] = None,
     max_query_time: t.Optional[int] = None,
     cursor_pagination: t.Optional[bool] = False,
-) -> Connection[t.Union[ImageSample, VideoSample], str]:
+    order: t.Optional[str] = None,
+    seek: t.Optional[SeekTarget] = None,
+) -> SampleConnection:
     """Paginates samples in the given view.
+
+    With ``order`` (an order token), ``after`` and ``before`` are positions
+    in that order, every edge carries its ``rank``, and ``sort_by``,
+    ``desc``, ``hint`` and ``cursor_pagination`` are ignored. ``seek``
+    starts the page at a rank, fraction or sort value instead.
 
     Two cursor strategies are supported:
 
@@ -126,6 +169,23 @@ async def paginate_samples(
         by the grid scrubber to seek to a target sort-field value without
         counting the rows before it. Requires ``sort_by`` to be set.
     """
+    if order is not None:
+        return await _paginate_ordered(
+            order,
+            dataset,
+            stages,
+            filters,
+            first,
+            after=after,
+            before=before,
+            extended_stages=extended_stages,
+            sample_filter=sample_filter,
+            pagination_data=pagination_data,
+            dynamic_group=dynamic_group,
+            max_query_time=max_query_time,
+            seek=seek,
+        )
+
     run = lambda: fosv.get_view(
         dataset,
         stages=stages,
@@ -183,6 +243,36 @@ async def paginate_samples(
         # fetched reverse-sorted to put the nearest-cursor samples first).
         samples = list(reversed(samples))
 
+    nodes = await _shape_nodes(view, samples, pagination_data)
+
+    edges = []
+    for idx, node in enumerate(nodes):
+        if cursor_pagination and sort_by:
+            # Encode the sort-field value of this sample as the cursor so
+            # subsequent pages can seek past it.
+            cursor = _encode_cursor_value(samples[idx].get(sort_by))
+        else:
+            cursor = str(idx + int(after) + 1)
+        edges.append(SampleEdge(node=node, cursor=cursor))
+
+    return SampleConnection(
+        page_info=SamplePageInfo(
+            # For a backward fetch, `more` describes whether more rows
+            # exist on the still-earlier side (the cursor seek's
+            # "previous"). Forward fetches don't know — the client uses
+            # the field's `[min, max]` bounds to decide whether to walk
+            # backward from the seeked origin, so we report False here
+            # rather than making an extra query just to guess.
+            has_previous_page=more if backward else False,
+            has_next_page=False if backward else more,
+            start_cursor=edges[0].cursor if edges else None,
+            end_cursor=edges[-1].cursor if edges else None,
+        ),
+        edges=edges,
+    )
+
+
+async def _shape_nodes(view, samples, pagination_data):
     metadata_cache = {}
     url_cache = {}
     additional_media_fields = (
@@ -237,30 +327,108 @@ async def paginate_samples(
             "poster": media.poster_id,
         }
 
-    edges = []
-    for idx, node in enumerate(nodes):
-        if cursor_pagination and sort_by:
-            # Encode the sort-field value of this sample as the cursor so
-            # subsequent pages can seek past it.
-            cursor = _encode_cursor_value(samples[idx].get(sort_by))
-        else:
-            cursor = str(idx + int(after) + 1)
-        edges.append(Edge(node=node, cursor=cursor))
+    return nodes
 
-    return Connection(
-        page_info=PageInfo(
-            # For a backward fetch, `more` describes whether more rows
-            # exist on the still-earlier side (the cursor seek's
-            # "previous"). Forward fetches don't know — the client uses
-            # the field's `[min, max]` bounds to decide whether to walk
-            # backward from the seeked origin, so we report False here
-            # rather than making an extra query just to guess.
-            has_previous_page=more if backward else False,
-            has_next_page=False if backward else more,
-            start_cursor=edges[0].cursor if edges else None,
-            end_cursor=edges[-1].cursor if edges else None,
+
+async def _paginate_ordered(
+    order: str,
+    dataset: str,
+    stages: BSONArray,
+    filters: JSON,
+    first: int,
+    after: t.Optional[str] = None,
+    before: t.Optional[str] = None,
+    extended_stages: t.Optional[BSON] = None,
+    sample_filter: t.Optional[SampleFilter] = None,
+    pagination_data: t.Optional[bool] = False,
+    dynamic_group: t.Optional[BSON] = None,
+    max_query_time: t.Optional[int] = None,
+    seek: t.Optional[SeekTarget] = None,
+) -> SampleConnection:
+    group = sample_filter.group if sample_filter else None
+    if group and group.id:
+        raise to_graphql_error(
+            OrderMismatch("an order pages a view, not one group")
+        )
+
+    view_spec = OrderSpec(
+        dataset=dataset,
+        stages=stages or [],
+        filters=filters,
+        extended_stages=extended_stages,
+        group_slice=group.slice if group else None,
+        dynamic_group=dynamic_group,
+    )
+    backward = seek is None and before is not None and after is None
+    direction = Direction.BACKWARD if backward else Direction.FORWARD
+    position = before if backward else after
+    try:
+        handle, page, version = await run_sync_task(
+            get_service().page,
+            order,
+            view_spec,
+            position,
+            direction,
+            first,
+            seek,
+        )
+    except OrderError as err:
+        raise to_graphql_error(err) from err
+
+    samples = []
+    view = None
+    if page.ids:
+        extended = dict(extended_stages or {})
+        extended.pop("fiftyone.core.stages.SortBy", None)
+        view = await run_sync_task(
+            lambda: fosv.get_view(
+                dataset,
+                stages=stages,
+                filters=filters,
+                pagination_data=pagination_data,
+                extended_stages=extended,
+                sample_filter=sample_filter,
+                dynamic_group=dynamic_group,
+            ).select(page.ids, ordered=True)
+        )
+        pipeline = await get_samples_pipeline(view, sample_filter)
+        maxTimeMS = max_query_time * 1000 if max_query_time else None
+        samples = await foo.aggregate(
+            foo.get_async_db_conn()[view._dataset._sample_collection_name],
+            pipeline,
+            maxTimeMS=maxTimeMS,
+        ).to_list(len(page.ids))
+
+    # a sample deleted since its id was ranked drops out of the page
+    by_id = {sample["_id"]: sample for sample in samples}
+    kept = [i for i, _id in enumerate(page.ids) if _id in by_id]
+    samples = [by_id[page.ids[i]] for i in kept]
+    nodes = (
+        await _shape_nodes(view, samples, pagination_data) if samples else []
+    )
+    edges = [
+        SampleEdge(node=node, cursor=page.positions[i], rank=page.ranks[i])
+        for node, i in zip(nodes, kept)
+    ]
+
+    if backward:
+        has_previous, has_next = page.has_more, position is not None
+    elif page.ranks:
+        has_previous, has_next = page.ranks[0] > 0, page.has_more
+    else:
+        has_previous = position is not None or seek is not None
+        has_next = False
+
+    return SampleConnection(
+        page_info=SamplePageInfo(
+            has_previous_page=has_previous,
+            has_next_page=has_next,
+            start_cursor=page.positions[0] if page.positions else None,
+            end_cursor=page.positions[-1] if page.positions else None,
         ),
         edges=edges,
+        total=handle.total,
+        order_version=version,
     )
 
 

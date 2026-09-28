@@ -97,6 +97,13 @@ type BooleanLightningResult implements LightningResult {
   true: Boolean!
 }
 
+type Boundary {
+  rank: Int!
+  position: Position!
+  value: JSON
+  label: String!
+}
+
 type BrainRun implements Run {
   key: String!
   version: String
@@ -549,7 +556,56 @@ type ObjectIdLightningResult implements LightningResult {
   values: [String]
 }
 
+union OpenOrderResult = Order | OrderUnavailable
+
+type Order {
+  token: OrderToken!
+  total: Int!
+  randomAccess: Boolean!
+  strategy: OrderStrategy!
+  version: String!
+  boundaries(count: Int! = 100): [Boundary!]!
+}
+
+input OrderInput {
+  dataset: String!
+  view: BSONArray!
+  filters: BSON = null
+  extendedStages: BSON = null
+  groupSlice: String = null
+  dynamicGroup: BSON = null
+  sortBy: String = null
+  desc: Boolean = false
+  unit: RankUnit = SAMPLE
+  partition: [PartitionKey!] = null
+}
+
+type OrderStatus {
+  stale: Boolean!
+  version: String!
+  total: Int!
+}
+
+enum OrderStrategy {
+  LIVE
+  SNAPSHOT
+  LIST
+}
+
+"""One ordering of one view. Opaque."""
+scalar OrderToken
+
+type OrderUnavailable {
+  reason: Unavailable!
+  total: Int
+}
+
 union PaginateSamplesResponse = SampleItemStrConnection | QueryTimeout
+
+input PartitionKey {
+  path: String!
+  value: JSON = null
+}
 
 type PointCloudSample implements Sample {
   id: ID!
@@ -557,6 +613,9 @@ type PointCloudSample implements Sample {
   urls: [MediaURL!]!
   aspectRatio: Float!
 }
+
+"""A place in an ordering. Opaque."""
+scalar Position
 
 type Query {
   aggregate(datasetName: String!, view: BSONArray, aggregations: [Aggregate!]!, viewName: String = null, form: ExtendedViewForm = null): [AggregationResponses!]!
@@ -570,7 +629,10 @@ type Query {
   doNotTrack: Boolean!
   estimatedDatasetCount: Int!
   dataset(name: String!, savedViewSlug: String, view: BSONArray = null): Dataset
-  samples(dataset: String!, view: BSONArray!, first: Int = 20, after: String = null, before: String = null, filter: SampleFilter = null, filters: BSON = null, extendedStages: BSON = null, paginationData: Boolean = true, sortBy: String = null, desc: Boolean = false, hint: String = null, maxQueryTime: Int = null, dynamicGroup: BSON = null, cursorPagination: Boolean = false): PaginateSamplesResponse!
+  samples(dataset: String!, view: BSONArray!, first: Int = 20, after: String = null, before: String = null, filter: SampleFilter = null, filters: BSON = null, extendedStages: BSON = null, paginationData: Boolean = true, sortBy: String = null, desc: Boolean = false, hint: String = null, maxQueryTime: Int = null, dynamicGroup: BSON = null, cursorPagination: Boolean = false, order: OrderToken = null): PaginateSamplesResponse!
+  openOrder(input: OrderInput!): OpenOrderResult!
+  seekOrder(token: OrderToken!, rank: Int = null, fraction: Float = null): SeekResult!
+  orderStatus(token: OrderToken!): OrderStatus!
   sample(dataset: String!, view: BSONArray!, filter: SampleFilter!, filters: JSON = null): SampleItem
   stageDefinitions: [StageDefinition!]!
   uid: String!
@@ -584,6 +646,12 @@ type Query {
 
 type QueryTimeout {
   queryTime: Int!
+}
+
+enum RankUnit {
+  SAMPLE
+  GROUP
+  DYNAMIC_GROUP
 }
 
 type RootAggregation implements Aggregation {
@@ -640,6 +708,9 @@ type SampleItemStrConnection {
 type SampleItemStrEdge {
   cursor: String!
   node: SampleItem!
+
+  """The sample's rank in the order, when paging one"""
+  rank: Int
 }
 
 type SampleItemStrPageInfo {
@@ -673,6 +744,11 @@ input SavedViewInfo {
 type SchemaResult {
   fieldSchema: [SampleField!]!
   frameFieldSchema: [SampleField!]!
+}
+
+type SeekResult {
+  position: Position!
+  rank: Int!
 }
 
 input SelectedLabel {
@@ -810,6 +886,12 @@ type ThreeDSample implements Sample {
   sample: JSON!
   urls: [MediaURL!]!
   aspectRatio: Float!
+}
+
+enum Unavailable {
+  BUDGET_EXCEEDED
+  FRAME_SORT
+  UNSUPPORTED_STAGE
 }
 
 type UnknownSample implements Sample {
