@@ -1,22 +1,18 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Moving a 2D label between fields of the same type. The Edit-form field
- * dropdown (`Field.tsx`) commits a single engine `transaction` (delete from the
- * source field + `_id`-preserving upsert at the destination), so a move:
- *   - re-homes the label onto the destination field (one coalesced autosave),
- *   - round-trips through undo/redo on the shared engine stack,
- *   - persists across a true server round-trip.
- *
- * Two same-type Detections fields (`detections`, `predictions`) give the
- * dropdown a destination. Assertions are RELATIVE to the label's current field
- * (read first), so the serial tests don't depend on each other's end state.
+ * Moving a 2D label between same-type fields (`detections`, `predictions`)
+ * through the edit-form field dropdown, one engine transaction that re-homes
+ * the label, undoes/redoes, and persists. Assertions are relative to the
+ * label's current field so the serial tests don't depend on each other's end
+ * state.
  */
 import { Browser, expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
+import type { LabelSchema } from "src/shared/dataset-factory";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-2d-field-move");
 
@@ -36,7 +32,7 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ annotateSDK, datasetFactory, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
   await datasetFactory.createDataset({
     datasetName,
@@ -49,18 +45,19 @@ test.beforeAll(async ({ annotateSDK, datasetFactory, foWebServer }) => {
         ],
       },
     }),
+    // Both fields share a schema so the destination dropdown offers the other one.
+    labelSchemas: Object.fromEntries(
+      FIELDS.map((field): [string, LabelSchema] => [
+        field,
+        {
+          type: "detections",
+          classes: ["cat", "dog"],
+          attributes: [],
+          component: "dropdown",
+        },
+      ]),
+    ),
   });
-
-  // Both fields share a schema so the destination dropdown offers the other one.
-  for (const field of FIELDS) {
-    await annotateSDK.updateLabelSchema(datasetName, field, {
-      type: "detections",
-      classes: ["cat", "dog"],
-      attributes: [],
-      component: "dropdown",
-    });
-    await annotateSDK.addFieldToActiveLabelSchema(datasetName, field);
-  }
 });
 
 test.afterAll(async ({ foWebServer }) => {

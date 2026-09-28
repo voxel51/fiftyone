@@ -43,12 +43,14 @@ export class MockRenderer2D implements Renderer2D {
     width: number,
     color: number | string,
     containerId: string,
+    rotation?: number,
   ): void {
     this.containers.set(containerId, {
       type: "handles",
       bounds,
       width,
       color,
+      rotation,
     });
   }
 
@@ -56,19 +58,27 @@ export class MockRenderer2D implements Renderer2D {
     bounds: Rect,
     canonicalMediaBounds: Rect,
     containerId: string,
+    rotation?: number,
   ): void {
     this.containers.set(containerId, {
       type: "scrim",
       bounds,
       canonicalMediaBounds,
+      rotation,
     });
   }
 
-  drawRect(bounds: Rect, style: DrawStyle, containerId: string): void {
+  drawRect(
+    bounds: Rect,
+    style: DrawStyle,
+    containerId: string,
+    rotation?: number,
+  ): void {
     this.containers.set(containerId, {
       type: "rect",
       bounds,
       style,
+      rotation,
     });
   }
 

@@ -92,6 +92,21 @@ class GenerateLabelSchemaTests(unittest.TestCase):
         )
 
     @drop_datasets
+    def test_generate_frame_number_field_label_schema(self):
+        dataset = fo.Dataset()
+        sample = fo.Sample(filepath="video.mp4")
+        sample.frames[1] = fo.Frame()
+        dataset.add_sample(sample)
+        self.assertEqual(
+            generate_label_schemas(dataset, "frames.frame_number"),
+            {
+                "component": "text",
+                "type": "int",
+                "read_only": True,
+            },
+        )
+
+    @drop_datasets
     def test_generate_str_field_label_schema(self):
         dataset = fo.Dataset()
         dataset.add_sample(fo.Sample(filepath="image.png", str_field="test"))

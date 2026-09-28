@@ -4,15 +4,16 @@
  * Similarity search in the bar: typing a prompt and pressing Enter appends a
  * `SortBySimilarity` stage to the current view. The box always renders —
  * without a prompt-capable index it becomes the on-ramp: its dropdown asks
- * for a similarity index, and its one action opens the Similarity Search
- * panel to create one.
+ * for a similarity index, and both that dropdown's action and Enter open the
+ * Similarity Search panel to create one.
  *
  * The magnifying glass is where the search's settings live (which index, how
- * many results); focusing the input offers the dataset's previous queries.
+ * many results, which of its sources to search); focusing the input offers
+ * the dataset's previous queries.
  */
 
 import type { PromptableSimilarityIndex } from "@fiftyone/state";
-import { useViewChangePending } from "@fiftyone/state";
+import { useCurrentDatasetName, useViewChangePending } from "@fiftyone/state";
 import {
   Align,
   Button,
@@ -25,6 +26,7 @@ import {
   SearchIcon,
   Size,
   Spacing,
+  Spinner,
   Stack,
   Text,
   TextColor,
@@ -34,7 +36,10 @@ import {
 import React from "react";
 
 import styles from "./LanguageSearch.module.css";
+import { rememberQuery } from "./searchQueryHistory";
 import { SearchSettingsPopover } from "./SearchSettingsPopover";
+import { useLanguageSearchExtension } from "./useLanguageSearchExtension";
+import { useSearchSources } from "./useSearchSources";
 
 export const LANGUAGE_SEARCH_LABEL = "Search or ask in natural language";
 
@@ -45,11 +50,14 @@ export interface LanguageSearchProps {
    * [x] shows even with no stages applied.
    */
   onHasTextChange?: (hasText: boolean) => void;
+  /** The input taking focus — the bar folds its stages row behind it. */
+  onFocus?: () => void;
   /**
    * Whether the similarity search operator may exist — registered, or not yet
    * known to be missing while the registry loads. Known missing, the field
    * still shows, and a click explains itself through `onUnavailable` instead
-   * of offering anything.
+   * of offering anything. An index a text search extension searches needs
+   * neither this nor `enabled`: the field searches it regardless.
    */
   available: boolean;
   onUnavailable: () => void;
@@ -67,12 +75,23 @@ export interface LanguageSearchProps {
   onOpenPanel: () => void;
 }
 
-export const LanguageSearch: React.FC<LanguageSearchProps> = ({
+/**
+ * The field, remounted per dataset: a query typed over one dataset means
+ * nothing in the next, and a search still running for it must not publish
+ * there. The bar itself stays mounted across the switch.
+ */
+export const LanguageSearch: React.FC<LanguageSearchProps> = (props) => {
+  const datasetName = useCurrentDatasetName();
+  return <LanguageSearchField key={datasetName ?? ""} {...props} />;
+};
+
+const LanguageSearchField: React.FC<LanguageSearchProps> = ({
   onSubmit,
   onHasTextChange,
-  available,
+  onFocus,
+  available: operatorAvailable,
   onUnavailable,
-  enabled,
+  enabled: indexEnabled,
   history,
   promptKeys,
   selectedKey,
@@ -86,9 +105,52 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
     onHasTextChange?.(!!query);
     return () => onHasTextChange?.(false);
   }, [query, onHasTextChange]);
-  // Set when the submitted search is still resolving into a view — only the
-  // quick search drives the flag, so it can't fire for unrelated loads
+  // Set while the submitted search is still running — only the quick search
+  // drives the flag, so it can't fire for unrelated loads
   const pending = useViewChangePending();
+  // An index a text search extension searches client-side runs here, not
+  // through `onSubmit`
+  const { run: runExtensionSearch, recentQueries } =
+    useLanguageSearchExtension();
+  const shownHistory = React.useMemo(
+    () =>
+      recentQueries.reduceRight(
+        (queries, q) => rememberQuery(queries, q),
+        [...history],
+      ),
+    [recentQueries, history],
+  );
+  const selectedIndex = promptKeys.find((key) => key.key === selectedKey);
+  // An extension searches client-side and publishes to the extended
+  // selection: it needs neither the operator nor `SortBySimilarity`
+  const extensionSearch = Boolean(selectedIndex?.extension);
+
+  // Until the settings first open nobody has narrowed the search, and it
+  // runs over every source
+  const [settingsOpened, setSettingsOpened] = React.useState(false);
+  const sources = useSearchSources(selectedIndex, settingsOpened);
+  // Per index, the sources chosen to search; an index absent here searches
+  // all of them
+  const [chosenSources, setChosenSources] = React.useState<
+    Record<string, string[]>
+  >({});
+  const selectedSources = React.useMemo(() => {
+    if (!sources || !selectedKey) return null;
+    const chosen = chosenSources[selectedKey];
+    if (!chosen) return null;
+    // Values the index no longer reports cannot be searched
+    const kept = sources.values.filter((value) => chosen.includes(value));
+    return kept.length && kept.length < sources.values.length ? kept : null;
+  }, [sources, selectedKey, chosenSources]);
+  const onChangeSources = React.useCallback(
+    (values: string[]) => {
+      if (!selectedKey) return;
+      setChosenSources((chosen) => ({ ...chosen, [selectedKey]: values }));
+    },
+    [selectedKey],
+  );
+  const available = operatorAvailable || extensionSearch;
+  const enabled = indexEnabled || extensionSearch;
 
   // The dropdown under the box: previous queries matching the draft. With no
   // prompt-capable index there is nothing to offer, and the empty state is
@@ -96,22 +158,43 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
   const options = React.useMemo<ComboboxOption[]>(() => {
     if (!available || !enabled) return [];
     const q = query.trim().toLowerCase();
-    return history
+    return shownHistory
       .filter((h) => !q || h.toLowerCase().includes(q))
       .map((h) => ({ id: h, label: h }));
-  }, [available, enabled, history, query]);
+  }, [available, enabled, shownHistory, query]);
 
-  // A picked row or committed text: a previous query re-runs, typed text runs
+  // A picked row or committed text: a previous query re-runs, typed text
+  // runs. With no index there is nothing to run, and the query is the reason
+  // to make one — so it opens the panel the empty state points at
   const commit = React.useCallback(
     (option: ComboboxOption | null) => {
-      if (!option || !available || !enabled) return;
+      if (!option || !available) return;
       const text = option.label.trim();
       if (!text) return;
       // The query stays visible — it names the view now loading
       setQuery(text);
+      if (!enabled) {
+        onOpenPanel();
+        return;
+      }
+      if (selectedIndex?.extension) {
+        // Never to `onSubmit`, even with its extension gone: the server
+        // cannot sort this index
+        runExtensionSearch(selectedIndex, text, k, selectedSources);
+        return;
+      }
       onSubmit(text);
     },
-    [available, enabled, onSubmit],
+    [
+      available,
+      enabled,
+      onOpenPanel,
+      onSubmit,
+      selectedIndex,
+      runExtensionSearch,
+      k,
+      selectedSources,
+    ],
   );
 
   return (
@@ -122,29 +205,45 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
       className={styles.root}
     >
       {/* The magnifying glass is where the search's settings live — which
-          index, how many results, and the hand-off to the Similarity Search
-          panel (or, with no index, the explanation and the on-ramp). It
-          floats over the field's leading padding so the field — and the
+          index, how many results, which of its sources to search, and the
+          hand-off to the Similarity Search panel while an index the server
+          sorts exists (or, with no index, the explanation and the on-ramp).
+          It floats over the field's leading padding so the field — and the
           list anchored to it — starts at the bar's left edge. */}
       <div className={styles.magnifier}>
-        <SearchSettingsPopover
-          trigger={
-            <Button
-              variant={Variant.Icon}
-              size={Size.Xs}
-              borderless
-              leadingIcon={SearchIcon}
-              aria-label="Similarity search settings"
-              data-cy="view-bar-search-settings-trigger"
-            />
-          }
-          promptKeys={promptKeys}
-          selectedKey={selectedKey}
-          onSelectKey={onSelectKey}
-          k={k}
-          onChangeK={onChangeK}
-          onOpenPanel={onOpenPanel}
-        />
+        {pending ? (
+          // Shut while a search runs: switching the index mid-search could
+          // let a server search, which cannot be cancelled, land over the
+          // newer one
+          <Spinner
+            size={Size.Xs}
+            aria-label="Search in progress"
+            data-cy="view-bar-search-in-progress"
+          />
+        ) : (
+          <SearchSettingsPopover
+            trigger={
+              <Button
+                variant={Variant.Icon}
+                size={Size.Xs}
+                borderless
+                leadingIcon={SearchIcon}
+                aria-label="Similarity search settings"
+                data-cy="view-bar-search-settings-trigger"
+                onClick={() => setSettingsOpened(true)}
+              />
+            }
+            promptKeys={promptKeys}
+            selectedKey={selectedKey}
+            onSelectKey={onSelectKey}
+            k={k}
+            onChangeK={onChangeK}
+            sources={sources}
+            selectedSources={selectedSources}
+            onChangeSources={onChangeSources}
+            onOpenPanel={onOpenPanel}
+          />
+        )}
       </div>
       <Combobox
         aria-label={LANGUAGE_SEARCH_LABEL}
@@ -158,7 +257,9 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
         inputValue={query}
         onInputChange={setQuery}
         onChange={commit}
-        allowFreeText={available && enabled}
+        onFocus={onFocus}
+        // Committed without an index, the text is a request for one
+        allowFreeText={available}
         // Without the operator there is nothing to open; the click gets an
         // explanation instead
         onOpenChange={(isOpen) => {

@@ -1,6 +1,10 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import { TIMELINE_LABEL_WIDTH } from "../../lib/constants";
-import { useTracks, useTrackPinning } from "../../lib/tracks/TrackProvider";
+import {
+  useTracks,
+  useTrackPinning,
+  type Track,
+} from "../../lib/tracks/TrackProvider";
 import { TemporalTagProvider } from "./TemporalTagContext";
 import type {
   TemporalTagCreatePayload,
@@ -9,19 +13,32 @@ import type {
 import TemporalTagButton from "./TemporalTagButton";
 import TemporalTagPopup from "./TemporalTagPopup";
 import TemporalTagRangeOverlay from "./TemporalTagRangeOverlay";
+import {
+  isTemporalTagTrackId,
+  temporalTagTrackId,
+} from "./temporal-tag-tracks";
 import { useTemporalTagMode } from "./use-temporal-tag-mode";
 import TimelineWithTracks from "../TimelineWithTracks/TimelineWithTracks";
+import type {
+  TimelineTrackProps,
+  TrackEventMenuItem,
+} from "../TimelineTrack/TimelineTrack";
 import type { TimelineWithTracksProps } from "../TimelineWithTracks/TimelineWithTracks";
-import type { TrackEventMenuItem } from "../TimelineTrack/TimelineTrack";
-
-/** Track-id prefix for a temporal-tag group; the host builds the same ids. */
-const TEMPORAL_TAG_TRACK_PREFIX = "temporal-tag::";
 
 export interface TemporalTagTimelineProps extends TimelineWithTracksProps {
   onTagCreate?: (tag: TemporalTagCreatePayload) => Promise<void>;
   /** When provided, adds an "Edit tag" context-menu action that opens the
    *  popup pre-filled to mutate that tag's time range / label. */
   onTagUpdate?: (tag: TemporalTagUpdatePayload) => Promise<void>;
+  /**
+   * Context-menu items for temporal-tag rows only — a host's "Delete tag"
+   * belongs here, not in {@link TimelineWithTracksProps.eventMenuItems}, which
+   * reaches every row on the timeline. A surface that mixes tag rows with its
+   * own tracks (the video timeline carries object and temporal-detection rows
+   * alongside them) would otherwise offer tag actions on events that are not
+   * tags, addressed by ids the tag routes have never seen.
+   */
+  tagEventMenuItems?: TrackEventMenuItem[];
   /**
    * Tag labels offered by the "add to existing tag" dropdown. Hosts pass the
    * whole dataset's labels; without it the dropdown can only offer what the
@@ -47,7 +64,8 @@ const TemporalTagTimeline: React.FC<TemporalTagTimelineProps> = ({
   labelWidth: requestedLabelWidth = TIMELINE_LABEL_WIDTH,
   rulerOverlay,
   extraActions,
-  eventMenuItems,
+  tagEventMenuItems,
+  decorateTrack,
   ...timelineProps
 }) => {
   const tracks = useTracks();
@@ -56,7 +74,7 @@ const TemporalTagTimeline: React.FC<TemporalTagTimelineProps> = ({
 
   const existingTags = useMemo(() => {
     const onTimeline = tracks
-      .filter((t) => t.id.startsWith(TEMPORAL_TAG_TRACK_PREFIX))
+      .filter((t) => isTemporalTagTrackId(t.id))
       .map((t) => t.label);
     // Host list first: it is the dataset-wide vocabulary, and the timeline
     // only contributes labels it hasn't caught up with yet.
@@ -71,7 +89,7 @@ const TemporalTagTimeline: React.FC<TemporalTagTimelineProps> = ({
     if (!onTagCreate) return undefined;
     return async (tag: TemporalTagCreatePayload) => {
       await onTagCreate(tag);
-      setPinned(`${TEMPORAL_TAG_TRACK_PREFIX}${tag.tag}`, true);
+      setPinned(temporalTagTrackId(tag.tag), true);
     };
   }, [onTagCreate, setPinned]);
 
@@ -83,10 +101,10 @@ const TemporalTagTimeline: React.FC<TemporalTagTimelineProps> = ({
     existingTags,
   };
 
-  // Prepend an "Edit tag" action (opens the popup pre-filled) to the
-  // caller-provided menu items when editing is wired in.
-  const mergedEventMenuItems = useMemo<TrackEventMenuItem[] | undefined>(() => {
-    if (!onTagUpdate) return eventMenuItems;
+  // Prepend an "Edit tag" action (opens the popup pre-filled) to the host's
+  // tag-row items when editing is wired in.
+  const tagRowMenuItems = useMemo<TrackEventMenuItem[] | undefined>(() => {
+    if (!onTagUpdate) return tagEventMenuItems;
     const editItem: TrackEventMenuItem = {
       label: "Edit tag",
       onSelect: (event, anchor) => {
@@ -102,14 +120,29 @@ const TemporalTagTimeline: React.FC<TemporalTagTimelineProps> = ({
         );
       },
     };
-    return [editItem, ...(eventMenuItems ?? [])];
-  }, [onTagUpdate, eventMenuItems, actions]);
+    return [editItem, ...(tagEventMenuItems ?? [])];
+  }, [onTagUpdate, tagEventMenuItems, actions]);
+
+  // Attach the tag actions to tag rows only. `decorateTrack`'s result is
+  // cached per (callback identity, track), so every input this closure reads
+  // has to appear in the dependency list — see that prop's doc.
+  const decorateTagTrack = useCallback(
+    (track: Track, pinned: boolean): Partial<TimelineTrackProps> => {
+      const decoration = decorateTrack?.(track, pinned) ?? {};
+      if (!tagRowMenuItems || !isTemporalTagTrackId(track.id)) {
+        return decoration;
+      }
+
+      return { ...decoration, eventMenuItems: tagRowMenuItems };
+    },
+    [decorateTrack, tagRowMenuItems],
+  );
 
   return (
     <TemporalTagProvider value={tagContextValue}>
       <TimelineWithTracks
         {...timelineProps}
-        eventMenuItems={mergedEventMenuItems}
+        decorateTrack={decorateTagTrack}
         labelWidth={requestedLabelWidth}
         // Compose caller-provided slot content with the tag UI instead of
         // replacing it — hosts inject their own controls (e.g. a timestamp
