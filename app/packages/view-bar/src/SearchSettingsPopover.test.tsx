@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const HINT = "Ranked over the whole index.";
 
 vi.mock("@fiftyone/state", () => ({
-  useTextSearchExtensions: () =>
+  useTextSearchProviders: () =>
     new Map([["multimodal", { method: "multimodal", resultsHint: HINT }]]),
 }));
 
@@ -19,7 +19,7 @@ const openWith = (
   selectedKey: string,
   {
     promptKeys = [
-      { key: "emb_sim", patchesField: null, extension: "multimodal" },
+      { key: "emb_sim", patchesField: null, provider: "multimodal" },
       { key: "clip_sim", patchesField: null },
     ],
     sources = null,
@@ -52,7 +52,7 @@ const openWith = (
 describe("SearchSettingsPopover", () => {
   afterEach(cleanup);
 
-  it("shows the selected index's extension hint between the Results label and its input, and none for other indexes", () => {
+  it("shows the selected index's provider hint between the Results label and its input, and none for other indexes", () => {
     openWith("emb_sim");
     const hint = screen.getByText(HINT);
     expect(
@@ -82,14 +82,14 @@ describe("SearchSettingsPopover", () => {
   it("offers the Similarity Search panel only while the dataset has an index the server sorts", () => {
     const panelHandOff = () =>
       document.querySelector('[data-cy="search-settings-open-panel"]');
-    // The selected index is extension-searched; another index is not
+    // The selected index is provider-searched; another index is not
     openWith("emb_sim", { sources: STREAMS });
     expect(panelHandOff()).toBeTruthy();
 
     cleanup();
     openWith("emb_sim", {
       promptKeys: [
-        { key: "emb_sim", patchesField: null, extension: "multimodal" },
+        { key: "emb_sim", patchesField: null, provider: "multimodal" },
       ],
     });
     expect(panelHandOff()).toBeNull();

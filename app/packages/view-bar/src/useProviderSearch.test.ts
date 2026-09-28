@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const env = vi.hoisted(() => ({
@@ -6,11 +6,12 @@ const env = vi.hoisted(() => ({
   filters: {} as Record<string, unknown>,
   extended: {} as Record<string, unknown>,
   search: vi.fn(),
+  sources: vi.fn(),
   publish: vi.fn(),
   setPending: vi.fn(),
   notify: vi.fn(),
-  trackEvent: vi.fn(),
-  extensions: new Map(),
+  onRun: vi.fn(),
+  providers: new Map(),
 }));
 
 vi.mock("@fiftyone/state", () => ({
@@ -19,24 +20,36 @@ vi.mock("@fiftyone/state", () => ({
   useView: () => env.view,
   useFilters: () => env.filters,
   useExtendedStages: () => env.extended,
-  useTextSearchExtensions: () => env.extensions,
+  useTextSearchProviders: () => env.providers,
   usePublishExtendedSelection: () => env.publish,
   useSetViewChangePending: () => env.setPending,
   useNotification: () => env.notify,
 }));
-vi.mock("@fiftyone/analytics", () => ({ useTrackEvent: () => env.trackEvent }));
 
-import { readSearchQueries } from "./searchQueryHistory";
-import { useLanguageSearchExtension } from "./useLanguageSearchExtension";
-
-const renderSearch = () => renderHook(() => useLanguageSearchExtension());
+import { HistorySuggestions } from "./HistorySuggestions";
+import { useProviderSearch } from "./useProviderSearch";
 
 const INDEX = {
   key: "emb_sim",
   patchesField: null,
-  extension: "multimodal",
+  provider: "multimodal",
   timestamp: null,
 };
+const SEARCH_INDEX = {
+  datasetName: "robots",
+  brainKey: "emb_sim",
+  runTimestamp: null,
+};
+
+const providerSearch = (sourcesWanted = false) =>
+  useProviderSearch({
+    onRun: env.onRun,
+    selectedIndex: INDEX,
+    searchIndex: SEARCH_INDEX,
+    sourcesWanted,
+  });
+
+const renderSearch = () => renderHook(() => providerSearch());
 const STAGE = { "fiftyone.core.stages.Select": { sample_ids: ["ep1"] } };
 
 /** A search the test settles by hand. */
@@ -50,19 +63,18 @@ const pendingResult = () => {
   return resolve;
 };
 
-describe("useLanguageSearchExtension", () => {
+describe("useProviderSearch", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    window.localStorage.clear();
     env.view = [];
     env.filters = {};
     env.extended = {};
-    env.extensions = new Map([
+    env.providers = new Map([
       ["multimodal", { method: "multimodal", search: env.search }],
     ]);
   });
 
-  it("publishes the extension's result to the extended selection", async () => {
+  it("publishes the provider's result to the extended selection", async () => {
     const decorate = vi.fn();
     const resolve = pendingResult();
     const { result } = renderSearch();
@@ -108,7 +120,7 @@ describe("useLanguageSearchExtension", () => {
     );
   });
 
-  it("asks the extension to rank within the chosen sources", () => {
+  it("asks the provider to rank within the chosen sources", () => {
     pendingResult();
     const { result } = renderSearch();
 
@@ -121,7 +133,7 @@ describe("useLanguageSearchExtension", () => {
     );
   });
 
-  it("records the query in the dataset's history and shows it at once", () => {
+  it("reports each search it runs", () => {
     pendingResult();
     const { result } = renderSearch();
 
@@ -129,20 +141,19 @@ describe("useLanguageSearchExtension", () => {
       result.current.run(INDEX, "an animal", 25, null);
     });
 
-    expect(readSearchQueries("robots")).toEqual(["an animal"]);
-    expect(result.current.recentQueries).toEqual(["an animal"]);
+    expect(env.onRun).toHaveBeenCalledWith(INDEX, "an animal");
   });
 
-  it("does nothing for an index no registered extension searches", () => {
+  it("does nothing for an index no registered provider searches", () => {
     const { result } = renderSearch();
 
     act(() => {
-      result.current.run({ ...INDEX, extension: null }, "a car", 25, null);
+      result.current.run({ ...INDEX, provider: null }, "a car", 25, null);
     });
 
     expect(env.search).not.toHaveBeenCalled();
     expect(env.setPending).not.toHaveBeenCalled();
-    expect(readSearchQueries("robots")).toEqual([]);
+    expect(env.onRun).not.toHaveBeenCalled();
   });
 
   it("publishes only the newest search when an older one settles later", async () => {
@@ -176,9 +187,9 @@ describe("useLanguageSearchExtension", () => {
     expect(env.setPending).toHaveBeenLastCalledWith(false);
   });
 
-  it("fails an extension that throws before returning its promise like any other failure", async () => {
+  it("fails a provider that throws before returning its promise like any other failure", async () => {
     env.search.mockImplementationOnce(() => {
-      throw new Error("the extension is misconfigured");
+      throw new Error("the provider is misconfigured");
     });
     const { result } = renderSearch();
 
@@ -187,7 +198,7 @@ describe("useLanguageSearchExtension", () => {
     });
 
     expect(env.notify).toHaveBeenCalledWith(
-      expect.objectContaining({ msg: "the extension is misconfigured" }),
+      expect.objectContaining({ msg: "the provider is misconfigured" }),
     );
     expect(env.setPending).toHaveBeenLastCalledWith(false);
   });
@@ -237,5 +248,38 @@ describe("useLanguageSearchExtension", () => {
 
     expect(env.publish).not.toHaveBeenCalled();
     expect(env.setPending).toHaveBeenLastCalledWith(false);
+  });
+
+  it("asks the provider for the selected index's sources only once wanted", async () => {
+    const streams = { label: "Streams", values: ["/cam_left", "/cam_right"] };
+    env.sources.mockResolvedValue(streams);
+    env.providers = new Map([
+      [
+        "multimodal",
+        { method: "multimodal", search: env.search, sources: env.sources },
+      ],
+    ]);
+    const { result, rerender } = renderHook(
+      ({ wanted }) => providerSearch(wanted),
+      { initialProps: { wanted: false } },
+    );
+    expect(env.sources).not.toHaveBeenCalled();
+
+    rerender({ wanted: true });
+    await waitFor(() => expect(result.current.sources).toStrictEqual(streams));
+    expect(env.sources).toHaveBeenCalledWith(SEARCH_INDEX);
+  });
+
+  it("offers the provider's suggestions, or the previous queries when it has none", () => {
+    const Suggestions = () => null;
+    env.providers = new Map([
+      ["multimodal", { method: "multimodal", search: env.search, Suggestions }],
+    ]);
+    expect(renderSearch().result.current.Suggestions).toBe(Suggestions);
+
+    env.providers = new Map([
+      ["multimodal", { method: "multimodal", search: env.search }],
+    ]);
+    expect(renderSearch().result.current.Suggestions).toBe(HistorySuggestions);
   });
 });

@@ -1,8 +1,9 @@
+import type React from "react";
 import { useSyncExternalStore } from "react";
 import type { State } from "../../recoil/types";
 import type { ExtendedSelectionResetInterface } from "../extendedSelectionReset";
 
-/** What an extension's search is asked: the index, the prompt, and how many
+/** What a provider's search is asked: the index, the prompt, and how many
  * matches to return. */
 export interface TextSearchRequest {
   /** The dataset's id, for services that key their records by it. */
@@ -19,7 +20,7 @@ export interface TextSearchRequest {
   /**
    * The serialized stages of the view the search was typed over. With
    * `filters` and `extended`, this is the context an operator is sent, and
-   * `SortBySimilarity` ranks within all three. How an extension scopes its
+   * `SortBySimilarity` ranks within all three. How a provider scopes its
    * ranking is its own choice; one that ranks over the whole index can return
    * fewer than `k` matches the grid shows.
    */
@@ -32,13 +33,13 @@ export interface TextSearchRequest {
   /** The {@link SearchSources} values to rank within; null ranks them all. */
   sources: string[] | null;
   /** Aborted once this search is cancelled: the view changed, a newer
-   * search started, or the field went away. An extension should stop
+   * search started, or the field went away. A provider should stop
    * before further work and resolve null; a result it returns anyway is
    * discarded. */
   signal: AbortSignal;
 }
 
-/** Which similarity index a search runs over, as an extension is asked about
+/** Which similarity index a search runs over, as a provider is asked about
  * it outside a search. */
 export interface TextSearchIndex {
   datasetName: string;
@@ -57,6 +58,28 @@ export interface SearchSources {
   values: string[];
 }
 
+/** What the search field offers for the text typed so far. */
+export interface TextSearchSuggestions {
+  /** The rows to offer, in order. */
+  prompts: readonly string[];
+  /** Whether typed text that is no row can be searched. */
+  freeText: boolean;
+  loading?: boolean;
+  /** Shown in place of an empty list. */
+  emptyMessage?: (props: { close: () => void }) => React.ReactNode;
+}
+
+export interface TextSearchSuggestionsProps {
+  /** Null while no prompt-capable index exists. */
+  index: TextSearchIndex | null;
+  query: string;
+  /** The field's previous queries, most recent first. */
+  history: readonly string[];
+  /** Whether the field's list is open. */
+  open: boolean;
+  children: (suggestions: TextSearchSuggestions) => React.ReactNode;
+}
+
 /**
  * A search's result, published to the extended selection: it narrows the
  * grid without changing the view, exactly as a selection made in the
@@ -65,7 +88,7 @@ export interface SearchSources {
 export interface TextSearchResult {
   /** The extended selection stage, `{ [stage class]: kwargs }`. */
   stage: Record<string, Record<string, unknown>>;
-  /** Writes the extension's own selection artifacts, such as where in each
+  /** Writes the provider's own selection artifacts, such as where in each
    * sample the matches are, in the same commit as the stage. */
   decorate?: (cb: ExtendedSelectionResetInterface) => void;
 }
@@ -75,28 +98,33 @@ export interface TextSearchResult {
  * the server cannot sort by. Registered by the package that owns the method;
  * the view bar's language search hands such an index's queries to it.
  */
-export interface TextSearchExtension {
-  /** The brain runs' `config.method` this extension searches. */
+export interface TextSearchProvider {
+  /** The brain runs' `config.method` this provider searches. */
   method: string;
   /** Shown below the search settings' Results label, above its input, while
-   * one of this extension's indexes is selected, e.g. to say how its results
+   * one of this provider's indexes is selected, e.g. to say how its results
    * relate to what the grid shows. */
   resultsHint?: string;
   /** The sources `index` can narrow a search to; null, or absent, when it
    * cannot be narrowed. */
   sources?: (index: TextSearchIndex) => Promise<SearchSources | null>;
+  /** Wraps the search field while one of this provider's indexes is
+   * selected, to say what it offers for the typed text. It must call
+   * `children`, which renders the field itself. Absent, the field offers the
+   * previous queries matching the typed text, and any text runs. */
+  Suggestions?: React.ComponentType<TextSearchSuggestionsProps>;
   /** Resolves null when a newer search elsewhere replaced this one: nothing
    * publishes, and nothing is reported. */
   search: (request: TextSearchRequest) => Promise<TextSearchResult | null>;
 }
 
-const extensions = new Map<string, TextSearchExtension>();
+const providers = new Map<string, TextSearchProvider>();
 const listeners = new Set<() => void>();
 // A new Map per change, so a subscriber's snapshot comparison sees it
-let snapshot: ReadonlyMap<string, TextSearchExtension> = new Map();
+let snapshot: ReadonlyMap<string, TextSearchProvider> = new Map();
 
 const publish = () => {
-  snapshot = new Map(extensions);
+  snapshot = new Map(providers);
   for (const listener of listeners) listener();
 };
 
@@ -104,14 +132,14 @@ const publish = () => {
  * Registers the text search for one similarity method. Returns the
  * unregister, for HMR disposal.
  */
-export function registerTextSearchExtension(
-  extension: TextSearchExtension,
+export function registerTextSearchProvider(
+  provider: TextSearchProvider,
 ): () => void {
-  extensions.set(extension.method, extension);
+  providers.set(provider.method, provider);
   publish();
   return () => {
-    if (extensions.get(extension.method) !== extension) return;
-    extensions.delete(extension.method);
+    if (providers.get(provider.method) !== provider) return;
+    providers.delete(provider.method);
     publish();
   };
 }
@@ -123,12 +151,12 @@ const subscribe = (listener: () => void) => {
   };
 };
 
-/** The registered extensions by method. Re-renders on registration, which
- * can land after first render: extensions register from a lazily loaded
+/** The registered providers by method. Re-renders on registration, which
+ * can land after first render: providers register from a lazily loaded
  * module. */
-export function useTextSearchExtensions(): ReadonlyMap<
+export function useTextSearchProviders(): ReadonlyMap<
   string,
-  TextSearchExtension
+  TextSearchProvider
 > {
   return useSyncExternalStore(subscribe, () => snapshot);
 }
