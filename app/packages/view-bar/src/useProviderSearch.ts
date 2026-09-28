@@ -7,32 +7,43 @@
  * without changing the view.
  */
 
-import type { PromptableSimilarityIndex } from "@fiftyone/state";
+import type {
+  PromptableSimilarityIndex,
+  SearchSources,
+  TextSearchIndex,
+} from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { HistorySuggestions } from "./HistorySuggestions";
+import type { SearchStrategy } from "./searchStrategy";
 import { viewFingerprint } from "./state";
 
-export interface ProviderSearch {
-  /**
-   * Runs `query` through the provider that searches `index`, ranking within
-   * `sources` (null ranks every source); does nothing when no registered
-   * provider searches it.
-   */
-  run: (
-    index: PromptableSimilarityIndex,
-    query: string,
-    k: number,
-    sources: string[] | null,
-  ) => void;
+/**
+ * `run` does nothing for an index no registered provider searches. Such an
+ * index is only offered while its provider is registered, and needs neither
+ * the operator nor `SortBySimilarity`, so this search is always available.
+ */
+export interface ProviderSearch extends SearchStrategy {
   /** Drops the search in flight: nothing it returns is published. */
   cancel: () => void;
 }
 
-export const useProviderSearch = (
+export const useProviderSearch = ({
+  onRun,
+  selectedIndex,
+  searchIndex,
+  sourcesWanted,
+}: {
   /** Called when a search actually runs. */
-  onRun: (index: PromptableSimilarityIndex, query: string) => void,
-): ProviderSearch => {
+  onRun: (index: PromptableSimilarityIndex, query: string) => void;
+  selectedIndex: PromptableSimilarityIndex | undefined;
+  /** `selectedIndex`, as a provider is asked about it. */
+  searchIndex: TextSearchIndex | null;
+  /** Finding sources can cost the provider a server request, so it waits
+   * for this. */
+  sourcesWanted: boolean;
+}): ProviderSearch => {
   const datasetId = fos.useCurrentDatasetId();
   const datasetName = fos.useCurrentDatasetName();
   const view = fos.useView();
@@ -145,5 +156,47 @@ export const useProviderSearch = (
     ],
   );
 
-  return { run, cancel };
+  const selectedProvider = selectedIndex?.provider
+    ? providers.get(selectedIndex.provider)
+    : undefined;
+  // Tagged with the index it answers, so another index's sources never show
+  // while this one's are loading
+  const [resolved, setResolved] = useState<{
+    brainKey: string;
+    sources: SearchSources | null;
+  } | null>(null);
+  useEffect(() => {
+    if (!sourcesWanted || !selectedProvider?.sources || !searchIndex) {
+      return undefined;
+    }
+    let live = true;
+    const { brainKey } = searchIndex;
+    selectedProvider
+      .sources(searchIndex)
+      .then((sources) => {
+        if (live) setResolved({ brainKey, sources });
+      })
+      .catch((error: unknown) => {
+        // Without them the search still runs, over every source
+        console.error("Search sources unavailable:", error);
+        if (live) setResolved({ brainKey, sources: null });
+      });
+    return () => {
+      live = false;
+    };
+  }, [sourcesWanted, selectedProvider, searchIndex]);
+
+  return {
+    available: true,
+    enabled: true,
+    run,
+    cancel,
+    sources:
+      selectedProvider?.sources &&
+      resolved &&
+      resolved.brainKey === searchIndex?.brainKey
+        ? resolved.sources
+        : null,
+    Suggestions: selectedProvider?.Suggestions ?? HistorySuggestions,
+  };
 };

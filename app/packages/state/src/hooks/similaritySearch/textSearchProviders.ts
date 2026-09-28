@@ -1,3 +1,4 @@
+import type React from "react";
 import { useSyncExternalStore } from "react";
 import type { State } from "../../recoil/types";
 import type { ExtendedSelectionResetInterface } from "../extendedSelectionReset";
@@ -57,6 +58,28 @@ export interface SearchSources {
   values: string[];
 }
 
+/** What the search field offers for the text typed so far. */
+export interface TextSearchSuggestions {
+  /** The rows to offer, in order. */
+  prompts: readonly string[];
+  /** Whether typed text that is no row can be searched. */
+  freeText: boolean;
+  loading?: boolean;
+  /** Shown in place of an empty list. */
+  emptyMessage?: (props: { close: () => void }) => React.ReactNode;
+}
+
+export interface TextSearchSuggestionsProps {
+  /** Null while no prompt-capable index exists. */
+  index: TextSearchIndex | null;
+  query: string;
+  /** The field's previous queries, most recent first. */
+  history: readonly string[];
+  /** Whether the field's list is open. */
+  open: boolean;
+  children: (suggestions: TextSearchSuggestions) => React.ReactNode;
+}
+
 /**
  * A search's result, published to the extended selection: it narrows the
  * grid without changing the view, exactly as a selection made in the
@@ -85,6 +108,11 @@ export interface TextSearchProvider {
   /** The sources `index` can narrow a search to; null, or absent, when it
    * cannot be narrowed. */
   sources?: (index: TextSearchIndex) => Promise<SearchSources | null>;
+  /** Wraps the search field while one of this provider's indexes is
+   * selected, to say what it offers for the typed text. It must call
+   * `children`, which renders the field itself. Absent, the field offers the
+   * previous queries matching the typed text, and any text runs. */
+  Suggestions?: React.ComponentType<TextSearchSuggestionsProps>;
   /** Resolves null when a newer search elsewhere replaced this one: nothing
    * publishes, and nothing is reported. */
   search: (request: TextSearchRequest) => Promise<TextSearchResult | null>;

@@ -9,8 +9,12 @@ const env = vi.hoisted(() => ({
   }[],
   operatorAvailable: true,
   operatorRun: vi.fn(),
+  OperatorSuggestions: () => null,
   providerRun: vi.fn(),
+  providerSources: null as { label: string; values: string[] } | null,
   providerCancel: vi.fn(),
+  ProviderSuggestions: () => null,
+  sourcesWanted: vi.fn(),
   onRun: null as null | ((index: { key: string }, query: string) => void),
 }));
 
@@ -21,21 +25,31 @@ vi.mock("@fiftyone/state", () => ({
 vi.mock("@fiftyone/analytics", () => ({ useTrackEvent: () => vi.fn() }));
 vi.mock("@fiftyone/operators", () => ({ executeOperator: vi.fn() }));
 vi.mock("./useOperatorSearch", () => ({
-  useOperatorSearch: (_view: unknown, onRun: typeof env.onRun) => {
+  useOperatorSearch: ({ onRun }: { onRun: typeof env.onRun }) => {
     env.onRun = onRun;
     return {
       available: env.operatorAvailable,
+      enabled: env.operatorAvailable,
       onUnavailable: vi.fn(),
       run: env.operatorRun,
       claimView: () => false,
+      sources: null,
+      Suggestions: env.OperatorSuggestions,
     };
   },
 }));
 vi.mock("./useProviderSearch", () => ({
-  useProviderSearch: () => ({
-    run: env.providerRun,
-    cancel: env.providerCancel,
-  }),
+  useProviderSearch: ({ sourcesWanted }: { sourcesWanted: boolean }) => {
+    env.sourcesWanted(sourcesWanted);
+    return {
+      available: true,
+      enabled: true,
+      run: env.providerRun,
+      cancel: env.providerCancel,
+      sources: env.providerSources,
+      Suggestions: env.ProviderSuggestions,
+    };
+  },
 }));
 
 import { useTextSearch } from "./useTextSearch";
@@ -55,6 +69,7 @@ describe("useTextSearch", () => {
     vi.clearAllMocks();
     window.localStorage.clear();
     env.operatorAvailable = true;
+    env.providerSources = null;
   });
 
   it("runs a query for an index the server sorts through the operator", () => {
@@ -63,7 +78,12 @@ describe("useTextSearch", () => {
 
     act(() => result.current.submit("an animal", null));
 
-    expect(env.operatorRun).toHaveBeenCalledWith(SERVER_INDEX, "an animal", 25);
+    expect(env.operatorRun).toHaveBeenCalledWith(
+      SERVER_INDEX,
+      "an animal",
+      25,
+      null,
+    );
     expect(env.providerRun).not.toHaveBeenCalled();
     expect(env.providerCancel.mock.invocationCallOrder[0]).toBeLessThan(
       env.operatorRun.mock.invocationCallOrder[0],
@@ -86,13 +106,41 @@ describe("useTextSearch", () => {
     expect(env.providerCancel).not.toHaveBeenCalled();
   });
 
-  it("searches a provider's index without the similarity operator", () => {
-    env.promptKeys = [PROVIDER_INDEX];
+  it("reads what the field offers from the selected index's search", () => {
+    env.promptKeys = [SERVER_INDEX];
     env.operatorAvailable = false;
-    const { result } = renderController();
+    const { result, rerender } = renderController();
+    expect(result.current.available).toBe(false);
+    expect(result.current.Suggestions).toBe(env.OperatorSuggestions);
 
+    env.promptKeys = [PROVIDER_INDEX];
+    rerender();
     expect(result.current.available).toBe(true);
     expect(result.current.enabled).toBe(true);
+    expect(result.current.Suggestions).toBe(env.ProviderSuggestions);
+  });
+
+  it("looks up sources only once the settings open", () => {
+    env.promptKeys = [PROVIDER_INDEX];
+    const { result } = renderController();
+    expect(env.sourcesWanted).toHaveBeenLastCalledWith(false);
+
+    act(() => result.current.onOpenSettings());
+    expect(env.sourcesWanted).toHaveBeenLastCalledWith(true);
+  });
+
+  it("offers sources only when there are several to choose between", () => {
+    env.promptKeys = [PROVIDER_INDEX];
+    env.providerSources = { label: "Streams", values: ["/cam_left"] };
+    const { result, rerender } = renderController();
+    expect(result.current.sources).toBeNull();
+
+    env.providerSources = {
+      label: "Streams",
+      values: ["/cam_left", "/cam_right"],
+    };
+    rerender();
+    expect(result.current.sources).toBe(env.providerSources);
   });
 
   it("offers a query in the history as soon as it runs", () => {

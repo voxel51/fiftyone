@@ -16,17 +16,31 @@ import * as fos from "@fiftyone/state";
 import { buildSimilarityRunName } from "@fiftyone/utilities";
 import { useCallback, useRef } from "react";
 
+import { HistorySuggestions } from "./HistorySuggestions";
+import type { SearchStrategy } from "./searchStrategy";
 import { type SerializedStage, viewFingerprint } from "./state";
 import { useDeferredSearch } from "./useDeferredSearch";
 
 /** The Similarity action's server-side search operator. */
 export const SIMILARITY_SEARCH_OPERATOR = "@voxel51/panels/similarity_search";
 
-export const useOperatorSearch = (
-  currentView: readonly SerializedStage[],
+export interface OperatorSearch extends SearchStrategy {
+  onUnavailable: () => void;
+  /** Whether a search run here produced an arriving view. */
+  claimView: (view: readonly SerializedStage[]) => boolean;
+}
+
+export const useOperatorSearch = ({
+  currentView,
+  onRun,
+  sortStageOffered,
+}: {
+  currentView: readonly SerializedStage[];
   /** Called when a search actually runs, not when one is held. */
-  onRun: (index: PromptableSimilarityIndex, query: string) => void,
-) => {
+  onRun: (index: PromptableSimilarityIndex, query: string) => void;
+  /** The host can offer `SortBySimilarity`, which the operator adds. */
+  sortStageOffered: boolean;
+}): OperatorSearch => {
   const setViewChangePending = fos.useSetViewChangePending();
   const notify = fos.useNotification();
   const registryState = useOperatorRegistryState();
@@ -150,12 +164,18 @@ export const useOperatorSearch = (
     return fromSearch;
   }, []);
 
+  // Until the registry loads the operator is not missing, only unknown: a
+  // query is held and runs, or explains itself, once it lands
+  const available = registered || registryState === "loading";
+
   return {
-    // Until the registry loads the operator is not missing, only unknown: a
-    // query is held and runs, or explains itself, once it lands
-    available: registered || registryState === "loading",
+    available,
+    enabled: available && sortStageOffered,
     onUnavailable,
     run,
     claimView,
+    // The operator's searches cannot be narrowed
+    sources: null,
+    Suggestions: HistorySuggestions,
   };
 };

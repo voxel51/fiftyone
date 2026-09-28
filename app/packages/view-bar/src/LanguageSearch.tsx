@@ -12,7 +12,12 @@
  * the dataset's previous queries.
  */
 
-import { useCurrentDatasetName, useViewChangePending } from "@fiftyone/state";
+import type { TextSearchSuggestions } from "@fiftyone/state";
+import {
+  useCurrentDatasetName,
+  useNotification,
+  useViewChangePending,
+} from "@fiftyone/state";
 import {
   Align,
   Button,
@@ -36,7 +41,6 @@ import React from "react";
 
 import styles from "./LanguageSearch.module.css";
 import { SearchSettingsPopover } from "./SearchSettingsPopover";
-import { useSearchSources } from "./useSearchSources";
 import type { TextSearchController } from "./useTextSearch";
 
 export const LANGUAGE_SEARCH_LABEL = "Search or ask in natural language";
@@ -75,6 +79,10 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
     onChangeK,
     onOpenPanel,
     submit,
+    searchIndex,
+    Suggestions,
+    onOpenSettings,
+    sources,
   },
   onHasTextChange,
   onFocus,
@@ -87,12 +95,9 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
   // Set while the submitted search is still running — only the quick search
   // drives the flag, so it can't fire for unrelated loads
   const pending = useViewChangePending();
+  const notify = useNotification();
   const selectedKey = selectedIndex?.key ?? null;
 
-  // Until the settings first open nobody has narrowed the search, and it
-  // runs over every source
-  const [settingsOpened, setSettingsOpened] = React.useState(false);
-  const sources = useSearchSources(selectedIndex, settingsOpened);
   // Per index, the sources chosen to search; an index absent here searches
   // all of them
   const [chosenSources, setChosenSources] = React.useState<
@@ -113,16 +118,15 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
     },
     [selectedKey],
   );
-  // The dropdown under the box: previous queries matching the draft. With no
-  // prompt-capable index there is nothing to offer, and the empty state is
-  // the on-ramp to creating one
-  const options = React.useMemo<ComboboxOption[]>(() => {
-    if (!available || !enabled) return [];
-    const q = query.trim().toLowerCase();
-    return history
-      .filter((h) => !q || h.toLowerCase().includes(q))
-      .map((h) => ({ id: h, label: h }));
-  }, [available, enabled, history, query]);
+  const [listOpen, setListOpen] = React.useState(false);
+
+  // The dropdown under the box is what the selected search offers. With no
+  // prompt-capable index it is empty, and the empty state is the on-ramp to
+  // creating one
+  const optionsFor = (suggestions: TextSearchSuggestions): ComboboxOption[] =>
+    available && enabled
+      ? suggestions.prompts.map((text) => ({ id: text, label: text }))
+      : [];
 
   // A picked row or committed text: a previous query re-runs, typed text
   // runs. With no index there is nothing to run, and the query is the reason
@@ -141,6 +145,110 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
       submit(text, selectedSources);
     },
     [available, enabled, onOpenPanel, submit, selectedSources],
+  );
+
+  // An Enter that commits nothing, with no search operator or on text that
+  // is no row where only rows can run, says why rather than leaving the
+  // query waiting on nothing
+  const explainUnrunnable = (
+    event: React.KeyboardEvent,
+    suggestions: TextSearchSuggestions,
+  ) => {
+    if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+    if (!query.trim()) return;
+    if (!available) {
+      onUnavailable();
+      return;
+    }
+    if (!enabled || suggestions.freeText) return;
+    if (optionsFor(suggestions).length > 0) return;
+    notify({
+      key: "view-bar-search-unrunnable",
+      variant: "info",
+      msg: suggestions.loading
+        ? "This index's searches are still loading. Try again in a moment."
+        : "This index can only run the searches it suggests. Pick one from the list.",
+    });
+  };
+
+  const renderField = (suggestions: TextSearchSuggestions) => (
+    <div
+      className={styles.fieldKeys}
+      onKeyDown={(event) => explainUnrunnable(event, suggestions)}
+    >
+      <Combobox
+        aria-label={LANGUAGE_SEARCH_LABEL}
+        placeholder={LANGUAGE_SEARCH_LABEL}
+        size={Size.Sm}
+        className={styles.field}
+        options={optionsFor(suggestions)}
+        // Nothing is ever "picked": a search is an action, so every commit
+        // arrives through onChange and the field keeps the text it ran with
+        value={null}
+        inputValue={query}
+        onInputChange={setQuery}
+        onChange={commit}
+        onFocus={onFocus}
+        // Committed without an index, the text is a request for one
+        allowFreeText={available && suggestions.freeText}
+        // Enter takes the top row when typed text alone cannot run
+        autoHighlight={!suggestions.freeText}
+        loading={Boolean(suggestions.loading)}
+        // Without the operator there is nothing to open; the click gets an
+        // explanation instead
+        onOpenChange={(isOpen) => {
+          setListOpen(isOpen);
+          if (isOpen && !available) onUnavailable();
+        }}
+        // Enter runs the search; clicking elsewhere must not
+        commitOnBlur={false}
+        // The bar's gutter clips overflow — the list must escape it
+        portal
+        // The field sits flush in the bar; the bar is its frame
+        borderless
+        // With previous searches to offer the list is the offer; with none it
+        // is noise, so it stays hidden
+        emptyMessage={
+          (available && enabled && suggestions.emptyMessage) ||
+          (!available || enabled
+            ? null
+            : // Text search needs a similarity index that supports prompts:
+              // the list says so, and its one action is to go make one —
+              // taking it is leaving the field
+              ({ close }) => (
+                <div
+                  className={styles.emptyState}
+                  data-cy="view-bar-search-no-index"
+                >
+                  <Icon
+                    name={IconName.Embeddings}
+                    size={Size.Sm}
+                    color={TextColor.Secondary}
+                  />
+                  <div className={styles.emptyCopy}>
+                    <Text variant={TextVariant.Sm} color={TextColor.Primary}>
+                      Describe what you’re looking for
+                    </Text>
+                    <Text variant={TextVariant.Xs} color={TextColor.Tertiary}>
+                      Add a similarity index once to search this dataset in
+                      plain language.
+                    </Text>
+                  </div>
+                  <Button
+                    variant={Variant.Borderless}
+                    size={Size.Sm}
+                    onClick={() => {
+                      close();
+                      onOpenPanel();
+                    }}
+                  >
+                    Create index
+                  </Button>
+                </div>
+              ))
+        }
+      />
+    </div>
   );
 
   return (
@@ -176,7 +284,7 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
                 leadingIcon={SearchIcon}
                 aria-label="Similarity search settings"
                 data-cy="view-bar-search-settings-trigger"
-                onClick={() => setSettingsOpened(true)}
+                onClick={onOpenSettings}
               />
             }
             promptKeys={promptKeys}
@@ -191,73 +299,14 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
           />
         )}
       </div>
-      <Combobox
-        aria-label={LANGUAGE_SEARCH_LABEL}
-        placeholder={LANGUAGE_SEARCH_LABEL}
-        size={Size.Sm}
-        className={styles.field}
-        options={options}
-        // Nothing is ever "picked": a search is an action, so every commit
-        // arrives through onChange and the field keeps the text it ran with
-        value={null}
-        inputValue={query}
-        onInputChange={setQuery}
-        onChange={commit}
-        onFocus={onFocus}
-        // Committed without an index, the text is a request for one
-        allowFreeText={available}
-        // Without the operator there is nothing to open; the click gets an
-        // explanation instead
-        onOpenChange={(isOpen) => {
-          if (isOpen && !available) onUnavailable();
-        }}
-        // Enter runs the search; clicking elsewhere must not
-        commitOnBlur={false}
-        // The bar's gutter clips overflow — the list must escape it
-        portal
-        // The field sits flush in the bar; the bar is its frame
-        borderless
-        // With previous searches to offer the list is the offer; with none it
-        // is noise, so it stays hidden
-        emptyMessage={
-          !available || enabled
-            ? null
-            : // Text search needs a similarity index that supports prompts:
-              // the list says so, and its one action is to go make one —
-              // taking it is leaving the field
-              ({ close }) => (
-                <div
-                  className={styles.emptyState}
-                  data-cy="view-bar-search-no-index"
-                >
-                  <Icon
-                    name={IconName.Embeddings}
-                    size={Size.Sm}
-                    color={TextColor.Secondary}
-                  />
-                  <div className={styles.emptyCopy}>
-                    <Text variant={TextVariant.Sm} color={TextColor.Primary}>
-                      Describe what you’re looking for
-                    </Text>
-                    <Text variant={TextVariant.Xs} color={TextColor.Tertiary}>
-                      Add a similarity index once to search this dataset in
-                      plain language.
-                    </Text>
-                  </div>
-                  <Button
-                    variant={Variant.Borderless}
-                    size={Size.Sm}
-                    onClick={() => {
-                      close();
-                      onOpenPanel();
-                    }}
-                  >
-                    Create index
-                  </Button>
-                </div>
-              )
-        }
-      />
+      <Suggestions
+        index={searchIndex}
+        query={query}
+        history={history}
+        open={listOpen}
+      >
+        {renderField}
+      </Suggestions>
       {pending && (
         // Legible even for a sub-second search: a word, not just the dots — the
         // grid's own word for it

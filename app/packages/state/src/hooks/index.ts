@@ -14,6 +14,8 @@ export {
   type TextSearchIndex,
   type TextSearchRequest,
   type TextSearchResult,
+  type TextSearchSuggestions,
+  type TextSearchSuggestionsProps,
 } from "./similaritySearch/textSearchProviders";
 export {
   useSetViewChangePending,

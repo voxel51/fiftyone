@@ -10,7 +10,11 @@
 
 import { useTrackEvent } from "@fiftyone/analytics";
 import { executeOperator } from "@fiftyone/operators";
-import type { PromptableSimilarityIndex } from "@fiftyone/state";
+import type {
+  PromptableSimilarityIndex,
+  SearchSources,
+  TextSearchIndex,
+} from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
 import { useCallback, useMemo, useState } from "react";
 
@@ -24,6 +28,7 @@ import {
 import { patchesFieldOfView, resolveSearchIndex } from "./searchIndexSelection";
 import { readSearchQueries, recordSearchQuery } from "./searchQueryHistory";
 import type { SerializedStage } from "./state";
+import type { SearchStrategy } from "./searchStrategy";
 import { useProviderSearch } from "./useProviderSearch";
 import { useOperatorSearch } from "./useOperatorSearch";
 
@@ -57,6 +62,18 @@ export interface TextSearchController {
   onOpenPanel: () => void;
   /** Runs `query`, ranking within `sources`; null ranks every source. */
   submit: (query: string, sources: string[] | null) => void;
+  /** The selected index as its search is asked about it; null while no
+   * prompt-capable index exists. */
+  searchIndex: TextSearchIndex | null;
+  /** What the selected index's search wraps the field in, to say what it
+   * offers for the typed text. */
+  Suggestions: SearchStrategy["Suggestions"];
+  /** The settings opened: from now on the selected index's sources are
+   * looked up. Until then nobody has narrowed the search. */
+  onOpenSettings: () => void;
+  /** What the selected index's matches can come from; null until the
+   * settings open, and while there is nothing to choose between. */
+  sources: SearchSources | null;
 }
 
 export interface TextSearch extends TextSearchController {
@@ -138,8 +155,36 @@ export const useTextSearch = ({
     },
     [datasetName, trackEvent],
   );
-  const operator = useOperatorSearch(currentView, onRun);
-  const provider = useProviderSearch(onRun);
+  const searchIndex = useMemo(
+    () =>
+      datasetName && selectedIndex
+        ? {
+            datasetName,
+            brainKey: selectedIndex.key,
+            runTimestamp: selectedIndex.timestamp ?? null,
+          }
+        : null,
+    [datasetName, selectedIndex],
+  );
+  const [sourcesWanted, setSourcesWanted] = useState(false);
+  const onOpenSettings = useCallback(() => setSourcesWanted(true), []);
+
+  const operator = useOperatorSearch({
+    currentView,
+    onRun,
+    sortStageOffered,
+  });
+  const provider = useProviderSearch({
+    onRun,
+    selectedIndex,
+    searchIndex,
+    sourcesWanted,
+  });
+  // Never the operator for a provider's index, even with its provider gone:
+  // the server cannot sort it
+  const strategy: SearchStrategy = selectedIndex?.provider
+    ? provider
+    : operator;
 
   const onOpenPanel = useCallback(() => {
     trackEvent("view_bar_search_settings_panel_opened");
@@ -153,30 +198,18 @@ export const useTextSearch = ({
   const submit = useCallback(
     (query: string, sources: string[] | null) => {
       if (!selectedIndex) return;
-      if (selectedIndex.provider) {
-        // Never to the operator, even with its provider gone: the server
-        // cannot sort this index
-        provider.run(selectedIndex, query, k, sources);
-        return;
-      }
       // A provider search still running would publish its result, and end
       // the pending state, over this one
-      provider.cancel();
-      operator.run(selectedIndex, query, k);
+      if (strategy !== provider) provider.cancel();
+      strategy.run(selectedIndex, query, k, sources);
     },
-    [selectedIndex, provider, operator, k],
+    [selectedIndex, strategy, provider, k],
   );
 
-  // A provider searches client-side and publishes to the extended
-  // selection: it needs neither the operator nor `SortBySimilarity`
-  const providerSearch = Boolean(selectedIndex?.provider);
-
   return {
-    available: operator.available || providerSearch,
+    available: strategy.available,
     onUnavailable: operator.onUnavailable,
-    enabled:
-      providerSearch ||
-      (operator.available && promptKeys.length > 0 && sortStageOffered),
+    enabled: promptKeys.length > 0 && strategy.enabled,
     history,
     promptKeys: orderedPromptKeys,
     selectedIndex,
@@ -185,6 +218,14 @@ export const useTextSearch = ({
     onChangeK,
     onOpenPanel,
     submit,
+    searchIndex,
+    Suggestions: strategy.Suggestions,
+    onOpenSettings,
+    // One source leaves nothing to choose between
+    sources:
+      strategy.sources && strategy.sources.values.length > 1
+        ? strategy.sources
+        : null,
     claimView: operator.claimView,
     cancel: provider.cancel,
   };

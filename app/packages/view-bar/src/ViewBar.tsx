@@ -148,6 +148,7 @@ const ViewBarInner: React.FC<{
   const currentView = fos.useView();
   const datasetName = fos.useCurrentDatasetName();
   const setView = fos.useSetView();
+  const resetExtendedSelection = fos.useResetExtendedSelection();
   const trackEvent = useTrackEvent();
 
   const [state, dispatch] = useReducer(reducer, initialState);
@@ -717,13 +718,26 @@ const ViewBarInner: React.FC<{
     cancelSearch();
     // An emptied bar folds back to the single search row
     setStagesOpen(false);
-    setView([]);
-    setInFlight(inFlightFingerprint([]));
+    if (currentView.length) {
+      setView([]);
+      setInFlight(inFlightFingerprint([]));
+    } else {
+      // Setting the same empty view never publishes, so it would not clear
+      // a text search's extended selection
+      resetExtendedSelection();
+    }
     trackEvent("view_bar_view_cleared");
     dispatch({ type: "hydrate", stages: [] });
     setModeOverrides({});
     setTouched(new Set());
-  }, [setView, inFlightFingerprint, trackEvent, cancelSearch]);
+  }, [
+    currentView,
+    setView,
+    inFlightFingerprint,
+    resetExtendedSelection,
+    trackEvent,
+    cancelSearch,
+  ]);
 
   const stagesRowOpen = stagesOpen;
   const stagesRowOpenRef = useRef(false);
