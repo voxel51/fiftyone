@@ -30,17 +30,19 @@ const SPACING_COEFFICIENT = 0.1;
 export type GroupMatches = ReadonlyMap<string, readonly string[]>;
 
 /**
- * The matched slices a `SortBySimilarity` stage recorded in its state when
- * it searched a grouped collection, or null when no stage in `view` did.
+ * The matched slices the last `SortBySimilarity` stage in `view` recorded in
+ * its state when it searched a grouped collection, or null when it did not.
+ * A later search decides the results, so an earlier one's matches no longer
+ * describe them.
  */
 export const groupMatchesOf = (view: State.Stage[]): GroupMatches | null => {
-  for (const stage of view) {
+  for (const stage of [...view].reverse()) {
     if (stage._cls !== SORT_BY_SIMILARITY) continue;
     const state = Object.fromEntries(stage.kwargs)._state as
       | { group_matches?: Record<string, unknown> }
       | null
       | undefined;
-    if (!state?.group_matches) continue;
+    if (!state?.group_matches) return null;
     return new Map(
       Object.entries(state.group_matches).map(([groupId, slices]) => [
         groupId,

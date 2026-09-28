@@ -70,6 +70,19 @@ describe("useGroupMatchTileDecorator", () => {
     unmount();
   });
 
+  it("names the latest search's matches when searches are stacked", () => {
+    env.view = [
+      ...searchedFor({ g1: ["left"] }),
+      ...searchedFor({ g1: ["right"] }),
+    ];
+    const { unmount } = renderHook(() => useGroupMatchTileDecorator());
+
+    expect(pillsOf("g1").map((pill) => pill.textContent)).toStrictEqual([
+      "match: right",
+    ]);
+    unmount();
+  });
+
   it("draws nothing without a grouped similarity search in the view", () => {
     env.view = [];
     const unsearched = renderHook(() => useGroupMatchTileDecorator());
