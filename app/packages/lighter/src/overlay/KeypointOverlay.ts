@@ -1030,6 +1030,19 @@ export class KeypointOverlay
     this.markDirty();
   }
 
+  override applyLabel(label: KeypointLabel): void {
+    // points before the base label set so the derived getters are current
+    this.applyPoints(label);
+    super.applyLabel(label);
+  }
+
+  /**
+   * Replaces the overlay's points with the label's.
+   */
+  protected applyPoints(label: KeypointLabel): void {
+    this.setRelativePoints(label.points ?? []);
+  }
+
   /**
    * Clamps every point into the media frame.
    */

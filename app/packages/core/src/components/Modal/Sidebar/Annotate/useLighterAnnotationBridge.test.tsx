@@ -32,6 +32,9 @@ vi.mock("./state", async () => {
     visibleLabelSchemas: atom(new Set<string>()),
   };
 });
+vi.mock("./Edit/useDiscardDraft", () => ({
+  default: () => () => undefined,
+}));
 vi.mock("./useLighterInteractionPolicy", () => ({
   useLighterInteractionPolicy: () => ({}),
 }));

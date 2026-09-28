@@ -14,6 +14,7 @@ import {
 import { useCallback } from "react";
 import {
   useDatasetId,
+  useDiscardDraft,
   useShouldClipToFrame,
   useVisibleLabelSchemas,
 } from "../state/accessors";
@@ -48,6 +49,7 @@ export const useVideoLighterEngineBridge = (
   // skeleton edges drive keypoint connections; stable across renders
   const getSkeleton = useGetKeypointSkeleton();
   const shouldClip = useShouldClipToFrame();
+  const onDiscardDraft = useDiscardDraft();
   const sample = useActiveSampleId();
   const dataset = useDatasetId();
 
@@ -99,5 +101,6 @@ export const useVideoLighterEngineBridge = (
     onEditCommit,
     getSkeleton,
     shouldClip,
+    onDiscardDraft,
   });
 };

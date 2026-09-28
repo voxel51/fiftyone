@@ -247,6 +247,9 @@ export const useDynamicGroupValue = (): string | null => {
   return useIsImageDynamicGroupVideo() ? (value ?? null) : null;
 };
 
+/** Tears down the label being drawn; shared with the sidebar's delete. */
+export { default as useDiscardDraft } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useDiscardDraft";
+
 /**
  * Label schema reads (dynamic-attribute names, frame clipping). Re-exported
  * from core so the read hits the same `labelSchemaData` atom instance core writes (a direct

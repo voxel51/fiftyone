@@ -22,8 +22,7 @@ const clipResults = new Map<string, string>();
 const mockClipToFrame = vi.fn(
   (id: string) => clipResults.get(id) ?? "unchanged",
 );
-const mockApplyLabel = vi.fn();
-const mockRemoveOverlay = vi.fn();
+const mockUpdateHandle = vi.fn();
 
 class MockDetectionOverlay {
   readonly field = "gt";
@@ -36,9 +35,6 @@ class MockDetectionOverlay {
   }
   clipToFrame(): string {
     return mockClipToFrame(this.id);
-  }
-  applyLabel(label: unknown): void {
-    mockApplyLabel(this.id, label);
   }
 }
 
@@ -55,7 +51,6 @@ vi.mock("@fiftyone/lighter", () => ({
           : undefined,
       isDestroyed: false,
       isMultipleSelection: () => multipleSelection,
-      removeOverlay: mockRemoveOverlay,
       setExternalUndoAuthority: mockSetExternalUndoAuthority,
     },
     overlayFactory: {},
@@ -74,7 +69,9 @@ vi.mock("./lighterBridge", () => ({
 }));
 vi.mock("./adapters", () => ({
   lighterAdapters: {},
-  makeLighterAdapters: () => ({}),
+  makeLighterAdapters: () => ({
+    Detection: { updateHandle: mockUpdateHandle },
+  }),
 }));
 vi.mock("./useLighterPreviewSync", () => ({ useLighterPreviewSync: vi.fn() }));
 const mockCommit = vi.fn();
@@ -271,13 +268,20 @@ describe("useLighterEngineBridge — clip to frame", () => {
     getLabel = vi.fn();
   });
 
+  const onDiscardDraft = vi.fn();
+
   const mount = (shouldClip?: (path: string) => boolean) =>
     renderHook(() =>
       useLighterEngineBridge({
-        engine: { ...(makeEngine() as object), getLabel } as never,
+        engine: {
+          ...(makeEngine() as object),
+          getLabel,
+          getLabelType: () => "Detection",
+        } as never,
         sample: "s1",
         dataset: "ds",
         shouldClip,
+        onDiscardDraft,
       }),
     );
 
@@ -315,19 +319,23 @@ describe("useLighterEngineBridge — clip to frame", () => {
 
     fire("lighter:overlay-drag-end", "a");
 
-    expect(mockApplyLabel).toHaveBeenCalledWith("a", stored);
+    expect(mockUpdateHandle).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "a" }),
+      stored,
+    );
+    expect(onDiscardDraft).not.toHaveBeenCalled();
     expect(mockCommit).not.toHaveBeenCalled();
   });
 
-  it("discards a fresh draw wholly outside the frame", () => {
+  it("hands a fresh draw wholly outside the frame to the draft owner", () => {
     ownedIds.add("a");
     clipResults.set("a", "empty");
     mount(() => true);
 
     fire("lighter:overlay-establish", "a");
 
-    expect(mockRemoveOverlay).toHaveBeenCalledWith("a");
-    expect(mockSelectHandle).toHaveBeenCalledWith(undefined);
+    expect(onDiscardDraft).toHaveBeenCalledWith("a");
+    expect(mockSelectHandle).not.toHaveBeenCalled();
     expect(mockCommit).not.toHaveBeenCalled();
   });
 });

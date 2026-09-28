@@ -14,6 +14,7 @@ import { getNormalizedUrls } from "@fiftyone/state/src/utils";
 import { LABEL_LISTS_MAP } from "@fiftyone/utilities";
 import { useAtomValue } from "jotai";
 import { useCallback, useMemo, useRef } from "react";
+import useDiscardDraft from "./Edit/useDiscardDraft";
 import { useShouldClipToFrame, visibleLabelSchemas } from "./state";
 import { useLighterInteractionPolicy } from "./useLighterInteractionPolicy";
 import { useSyncOverlayReadOnly } from "./useSyncOverlayReadOnly";
@@ -29,6 +30,7 @@ export const useLighterAnnotationBridge = (): void => {
   // skeleton edges drive keypoint connections; stable across renders
   const getSkeleton = useGetKeypointSkeleton();
   const shouldClip = useShouldClipToFrame();
+  const onDiscardDraft = useDiscardDraft();
   const modalSample = useModalSample();
   const active = useAtomValue(visibleLabelSchemas);
   const interactionPolicy = useLighterInteractionPolicy();
@@ -99,6 +101,7 @@ export const useLighterAnnotationBridge = (): void => {
     interactionPolicy,
     getSkeleton,
     shouldClip,
+    onDiscardDraft,
     enabled: !isVideoSurface,
   });
 

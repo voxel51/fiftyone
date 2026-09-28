@@ -230,6 +230,23 @@ export const useGroupSlices = (
   );
 };
 
+/**
+ * Whether all of the dataset's media is 3D: a 3D dataset, or a group whose
+ * slices are all 3D.
+ */
+export const useIs3dOnlyDataset = (): boolean => {
+  const mediaType = useDatasetMediaType();
+  const slices = useRecoilValue(groupMediaTypes);
+
+  if (mediaType === "group") {
+    return (
+      slices.length > 0 && slices.every(({ mediaType }) => is3d(mediaType))
+    );
+  }
+
+  return !!mediaType && is3d(mediaType);
+};
+
 /** The media type of a dynamic group's members, or the dataset's own media type. */
 export const useParentMediaType = (): string =>
   useRecoilValue(parentMediaTypeSelector);

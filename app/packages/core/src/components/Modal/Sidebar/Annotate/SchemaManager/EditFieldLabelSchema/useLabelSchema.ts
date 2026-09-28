@@ -3,6 +3,7 @@
  */
 
 import {
+  useIs3dOnlyDataset,
   useNotification,
   useQueryPerformanceSampleLimit,
 } from "@fiftyone/state";
@@ -174,12 +175,14 @@ const CLIP_TO_FRAME_TYPES = new Set([
 
 export const useClipToFrame = (field: string) => {
   const type = useAtomValue(fieldType(field));
+  // 3D scenes have no frame to clip to
+  const is3dOnly = useIs3dOnlyDataset();
   const [current, setCurrent] = useCurrentLabelSchema(field);
   const clipToFrame =
     (current as FieldSchema | undefined)?.clip_to_frame !== false;
 
   return {
-    canClipToFrame: !!type && CLIP_TO_FRAME_TYPES.has(type),
+    canClipToFrame: !is3dOnly && !!type && CLIP_TO_FRAME_TYPES.has(type),
     clipToFrame,
     toggleClipToFrame: () => {
       setCurrent({ ...(current as object), clip_to_frame: !clipToFrame });

@@ -2,35 +2,37 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import type { BaseOverlay, Scene2D } from "@fiftyone/lighter";
+import type { BaseOverlay } from "@fiftyone/lighter";
 import { DetectionOverlay, KeypointOverlay } from "@fiftyone/lighter";
 import { useCallback } from "react";
 
-import type { SurfaceController } from "../../bridge/surfaceController";
+import type { AdapterMap } from "../../bridge/types";
 import type { AnnotationEngine } from "../../core/engine";
 import { stampFrame, toLabelRef } from "../../identity/ref";
+import type { LighterDescriptor } from "./adapters";
 
 interface UseFrameClipArgs {
   engine: AnnotationEngine;
   sample: string;
-  scene: Scene2D | null | undefined;
-  surface: SurfaceController<BaseOverlay>;
+  adapters: AdapterMap<BaseOverlay, LighterDescriptor>;
   frameOf?: (path: string) => number | undefined;
   shouldClip?: (path: string) => boolean;
+  onDiscardDraft?: (overlayId: string) => void;
 }
 
 /**
  * Clips a finished gesture to the media frame. When nothing is left inside
- * it, the overlay reverts to its stored label (or a fresh draw is discarded)
- * and the callback returns false so the caller skips the commit.
+ * it, an edit re-applies its stored label and a fresh draw is handed to
+ * `onDiscardDraft`, and the callback returns false so the caller skips the
+ * commit.
  */
 export const useFrameClip = ({
   engine,
   sample,
-  scene,
-  surface,
+  adapters,
   frameOf,
   shouldClip,
+  onDiscardDraft,
 }: UseFrameClipArgs) =>
   useCallback(
     (overlay: BaseOverlay | undefined): boolean => {
@@ -53,15 +55,15 @@ export const useFrameClip = ({
       );
 
       if (stored) {
-        (overlay as BaseOverlay).applyLabel(
-          stored as Parameters<BaseOverlay["applyLabel"]>[0],
+        adapters[engine.getLabelType(overlay.field)]?.updateHandle(
+          overlay,
+          stored,
         );
       } else {
-        surface.selectHandle(undefined);
-        scene?.removeOverlay(overlay.id);
+        onDiscardDraft?.(overlay.id);
       }
 
       return false;
     },
-    [engine, frameOf, sample, scene, shouldClip, surface],
+    [adapters, engine, frameOf, onDiscardDraft, sample, shouldClip],
   );

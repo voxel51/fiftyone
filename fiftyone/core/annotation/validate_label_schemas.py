@@ -16,6 +16,7 @@ import fiftyone.core.annotation.constants as foac
 import fiftyone.core.annotation.utils as foau
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
+import fiftyone.core.media as fom
 
 
 class ValidationErrors(ExceptionGroup):
@@ -71,6 +72,7 @@ def validate_label_schemas(
     supported_fields = foau.list_valid_annotation_fields(
         sample_collection, flatten=True, include_frames=True
     )
+    is_3d_only = _is_3d_only(sample_collection)
     exceptions = []
     for field_name in fields:
         try:
@@ -79,6 +81,12 @@ def validate_label_schemas(
 
             if field_name in all_fields and field_name not in supported_fields:
                 raise ValueError(f"field '{field_name}' is not supported")
+
+            if is_3d_only and foac.CLIP_TO_FRAME in label_schema[field_name]:
+                raise ValueError(
+                    f"'{foac.CLIP_TO_FRAME}' is not supported for field "
+                    f"'{field_name}' of a 3D collection"
+                )
 
             _validate_field_label_schema(
                 sample_collection.get_field(field_name),
@@ -93,6 +101,14 @@ def validate_label_schemas(
 
     if exceptions:
         raise ValidationErrors("invalid label schema(s)", exceptions)
+
+
+def _is_3d_only(sample_collection):
+    if sample_collection.media_type == fom.GROUP:
+        media_types = set((sample_collection.group_media_types or {}).values())
+        return bool(media_types) and media_types <= _3D_MEDIA_TYPES
+
+    return sample_collection.media_type in _3D_MEDIA_TYPES
 
 
 def _validate_field_label_schema(
@@ -827,6 +843,8 @@ _ALL_LABEL_TYPES = {
     _TEMPORAL_DETECTION,
     _TEMPORAL_DETECTIONS,
 }
+
+_3D_MEDIA_TYPES = {fom.POINT_CLOUD, fom.THREE_D}
 
 _CLIP_TO_FRAME_TYPES = {
     _DETECTION,

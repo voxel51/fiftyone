@@ -1113,6 +1113,43 @@ class ClipToFrameValidationTests(unittest.TestCase):
             )
 
     @drop_datasets
+    def test_clip_to_frame_rejected_on_3d_collection(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(
+            fo.Sample(
+                filepath="scene.fo3d",
+                detections=fo.Detections(
+                    detections=[fo.Detection(label="one")]
+                ),
+            )
+        )
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {"type": "detections", "clip_to_frame": True},
+                fields="detections",
+            )
+
+    @drop_datasets
+    def test_clip_to_frame_rejected_on_3d_only_group(self):
+        dataset = _make_group_dataset(["left.fo3d"])
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {"type": "detections", "clip_to_frame": True},
+                fields="detections",
+            )
+
+    @drop_datasets
+    def test_clip_to_frame_accepted_on_group_with_2d_media(self):
+        dataset = _make_group_dataset(["left.png", "right.fo3d"])
+        validate_label_schemas(
+            dataset,
+            {"type": "detections", "clip_to_frame": True},
+            fields="detections",
+        )
+
+    @drop_datasets
     def test_clip_to_frame_rejected_on_primitive_field(self):
         dataset = _make_clip_to_frame_test_dataset()
         with self.assertRaises(ExceptionGroup):
@@ -1368,6 +1405,26 @@ def _make_clip_to_frame_test_dataset():
         )
     )
     dataset.add_sample_field("str_field", fo.StringField)
+
+    return dataset
+
+
+def _make_group_dataset(filepaths):
+    dataset = fo.Dataset()
+    dataset.add_group_field("group", default="left")
+    group = fo.Group()
+    dataset.add_samples(
+        [
+            fo.Sample(
+                filepath=filepath,
+                group=group.element(slice_name),
+                detections=fo.Detections(
+                    detections=[fo.Detection(label="one")]
+                ),
+            )
+            for slice_name, filepath in zip(("left", "right"), filepaths)
+        ]
+    )
 
     return dataset
 

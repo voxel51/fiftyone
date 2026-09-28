@@ -86,6 +86,11 @@ export interface UseLighterEngineBridgeArgs {
    */
   shouldClip?: (path: string) => boolean;
   /**
+   * Discards a fresh draw that ended wholly outside the media frame. The draft
+   * is the surface's to tear down, so omit it and the draft is left as drawn.
+   */
+  onDiscardDraft?: (overlayId: string) => void;
+  /**
    * Gate the whole surface off without violating hook order: a disabled bridge
    * registers nothing AND binds its gesture handlers to the inert sentinel
    * channel, so a shared scene (the video tile sets the global `lighterSceneAtom`
@@ -107,6 +112,7 @@ export const useLighterEngineBridge = ({
   onEditCommit,
   getSkeleton,
   shouldClip,
+  onDiscardDraft,
   enabled = true,
 }: UseLighterEngineBridgeArgs): void => {
   const { scene, overlayFactory } = useLighter();
@@ -188,10 +194,10 @@ export const useLighterEngineBridge = ({
   const clipToFrame = useFrameClip({
     engine,
     sample,
-    scene,
-    surface,
+    adapters,
     frameOf,
     shouldClip,
+    onDiscardDraft,
   });
 
   const commitOverlay = useCallback(
