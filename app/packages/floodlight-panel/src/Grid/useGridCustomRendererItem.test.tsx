@@ -79,6 +79,10 @@ vi.mock("./GridTagBubbles", () => ({
   default: () => null,
 }));
 
+vi.mock("@fiftyone/multimodal/grid-overlay", () => ({
+  EpisodeGridOverlay: () => null,
+}));
+
 vi.mock("@fiftyone/reverb", () => ({
   useReverbBridge: vi.fn(() => ({ children }: React.PropsWithChildren) => (
     <>{children}</>

@@ -70,7 +70,12 @@ const payload = (tags: string[]) => ({
         },
       },
     ],
-    pageInfo: { hasNextPage: true },
+    pageInfo: {
+      hasNextPage: true,
+      hasPreviousPage: false,
+      endCursor: null,
+      startCursor: null,
+    },
   },
 });
 
