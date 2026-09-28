@@ -3,7 +3,8 @@
  *
  * Text search through the server's similarity search operator, for an index
  * the server can sort by. The operator builds and applies the result view
- * itself; whoever shows the view hands each arriving one to `claimView`.
+ * itself; whoever shows the view hands each arriving one to `claimView`. On a
+ * grouped dataset an index's sources are the group slices it covers.
  */
 
 import {
@@ -14,19 +15,44 @@ import {
 import type { PromptableSimilarityIndex } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
 import { buildSimilarityRunName } from "@fiftyone/utilities";
-import { useCallback, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 
+import { HistorySuggestions } from "./HistorySuggestions";
+import type { SearchStrategy } from "./searchStrategy";
 import { type SerializedStage, viewFingerprint } from "./state";
 import { useDeferredSearch } from "./useDeferredSearch";
+import { useIndexSlices } from "./useIndexSlices";
 
 /** The Similarity action's server-side search operator. */
 export const SIMILARITY_SEARCH_OPERATOR = "@voxel51/panels/similarity_search";
 
-export const useOperatorSearch = (
-  currentView: readonly SerializedStage[],
+export interface OperatorSearch extends SearchStrategy {
+  onUnavailable: () => void;
+  /** Whether a search run here produced an arriving view. */
+  claimView: (view: readonly SerializedStage[]) => boolean;
+  /** The group slices each of the dataset's indexes covers, by brain key,
+   * once sources are wanted on a grouped dataset. */
+  indexSlices: ReadonlyMap<string, readonly string[]>;
+}
+
+export const useOperatorSearch = ({
+  currentView,
+  onRun,
+  promptKeys,
+  selectedIndex,
+  sortStageOffered,
+  sourcesWanted,
+}: {
+  currentView: readonly SerializedStage[];
   /** Called when a search actually runs, not when one is held. */
-  onRun: (index: PromptableSimilarityIndex, query: string) => void,
-) => {
+  onRun: (index: PromptableSimilarityIndex, query: string) => void;
+  promptKeys: readonly PromptableSimilarityIndex[];
+  selectedIndex: PromptableSimilarityIndex | undefined;
+  /** The host can offer `SortBySimilarity`, which the operator adds. */
+  sortStageOffered: boolean;
+  /** Finding sources costs a server request, so it waits for this. */
+  sourcesWanted: boolean;
+}): OperatorSearch => {
   const setViewChangePending = fos.useSetViewChangePending();
   const notify = fos.useNotification();
   const registryState = useOperatorRegistryState();
@@ -162,12 +188,26 @@ export const useOperatorSearch = (
     return fromSearch;
   }, []);
 
+  const indexSlices = useIndexSlices(promptKeys, sourcesWanted);
+  const selectedSlices = selectedIndex && indexSlices.get(selectedIndex.key);
+  const sources = useMemo(
+    () =>
+      selectedSlices ? { label: "Slices", values: [...selectedSlices] } : null,
+    [selectedSlices],
+  );
+
+  // Until the registry loads the operator is not missing, only unknown: a
+  // query is held and runs, or explains itself, once it lands
+  const available = registered || registryState === "loading";
+
   return {
-    // Until the registry loads the operator is not missing, only unknown: a
-    // query is held and runs, or explains itself, once it lands
-    available: registered || registryState === "loading",
+    available,
+    enabled: available && sortStageOffered,
     onUnavailable,
     run,
     claimView,
+    sources,
+    indexSlices,
+    Suggestions: HistorySuggestions,
   };
 };

@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const env = vi.hoisted(() => ({
   execute: vi.fn(),
   onRun: vi.fn(),
+  indexSlices: new Map<string, string[]>(),
+  slicesWanted: vi.fn(),
 }));
 
 vi.mock("@fiftyone/operators", () => ({
@@ -18,11 +20,30 @@ vi.mock("@fiftyone/state", () => ({
 vi.mock("@fiftyone/utilities", () => ({
   buildSimilarityRunName: () => "run name",
 }));
+vi.mock("./useIndexSlices", () => ({
+  useIndexSlices: (_indexes: unknown, wanted: boolean) => {
+    env.slicesWanted(wanted);
+    return env.indexSlices;
+  },
+}));
 
 import type { SerializedStage } from "./state";
 import { useOperatorSearch } from "./useOperatorSearch";
 
 const INDEX = { key: "clip_sim", patchesField: null };
+
+const operatorSearch = (
+  view: readonly SerializedStage[],
+  sourcesWanted = false,
+) =>
+  useOperatorSearch({
+    currentView: view,
+    onRun: env.onRun,
+    promptKeys: [INDEX],
+    selectedIndex: INDEX,
+    sortStageOffered: true,
+    sourcesWanted,
+  });
 const RESULT_VIEW: SerializedStage[] = [
   { _cls: "fiftyone.core.stages.SortBySimilarity", kwargs: [["k", 25]] },
 ];
@@ -38,11 +59,14 @@ const searchAndLand = (
 };
 
 describe("useOperatorSearch", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    env.indexSlices = new Map();
+  });
 
   it("replaces a search typed over its unchanged result view", () => {
     const { result, rerender } = renderHook(
-      ({ view }) => useOperatorSearch(view, env.onRun),
+      ({ view }) => operatorSearch(view),
       { initialProps: { view: [] as SerializedStage[] } },
     );
 
@@ -56,7 +80,7 @@ describe("useOperatorSearch", () => {
 
   it("stops replacing a search once another change supersedes its result", () => {
     const { result, rerender } = renderHook(
-      ({ view }) => useOperatorSearch(view, env.onRun),
+      ({ view }) => operatorSearch(view),
       { initialProps: { view: [] as SerializedStage[] } },
     );
 
@@ -74,12 +98,28 @@ describe("useOperatorSearch", () => {
   });
 
   it("sends the slices only when the pick narrows the search", () => {
-    const { result } = renderHook(() => useOperatorSearch([], env.onRun));
+    const { result } = renderHook(() => operatorSearch([]));
 
     act(() => result.current.run(INDEX, "a car", 25, ["left"]));
     expect(env.execute.mock.lastCall[1].slices).toStrictEqual(["left"]);
 
     act(() => result.current.run(INDEX, "a car", 25, null));
     expect(env.execute.mock.lastCall[1]).not.toHaveProperty("slices");
+  });
+
+  it("offers the slices the selected index covers as its sources, once wanted", () => {
+    env.indexSlices = new Map([["clip_sim", ["left", "right"]]]);
+    const { result, rerender } = renderHook(
+      ({ wanted }) => operatorSearch([], wanted),
+      { initialProps: { wanted: false } },
+    );
+    expect(env.slicesWanted).toHaveBeenLastCalledWith(false);
+
+    rerender({ wanted: true });
+    expect(env.slicesWanted).toHaveBeenLastCalledWith(true);
+    expect(result.current.sources).toStrictEqual({
+      label: "Slices",
+      values: ["left", "right"],
+    });
   });
 });

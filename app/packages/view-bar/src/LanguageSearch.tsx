@@ -37,8 +37,6 @@ import React from "react";
 
 import styles from "./LanguageSearch.module.css";
 import { SearchSettingsPopover } from "./SearchSettingsPopover";
-import { useIndexSlices } from "./useIndexSlices";
-import { useSearchSources } from "./useSearchSources";
 import type { TextSearchController } from "./useTextSearch";
 
 export const LANGUAGE_SEARCH_LABEL = "Search or ask in natural language";
@@ -77,7 +75,11 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
     onChangeK,
     onOpenPanel,
     submit,
+    searchIndex,
     Suggestions,
+    onOpenSettings,
+    sources,
+    indexSlices,
   },
   onHasTextChange,
   onFocus,
@@ -92,11 +94,6 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
   const pending = useViewChangePending();
   const selectedKey = selectedIndex?.key ?? null;
 
-  // Until the settings first open nobody has narrowed the search, and it
-  // runs over every source
-  const [settingsOpened, setSettingsOpened] = React.useState(false);
-  const sources = useSearchSources(selectedIndex, settingsOpened);
-  const indexSlices = useIndexSlices(promptKeys, settingsOpened);
   // Per index, the sources chosen to search; an index absent here searches
   // all of them
   const [chosenSources, setChosenSources] = React.useState<
@@ -116,18 +113,6 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
       setChosenSources((chosen) => ({ ...chosen, [selectedKey]: values }));
     },
     [selectedKey],
-  );
-  const datasetName = useCurrentDatasetName();
-  const suggestionsIndex = React.useMemo(
-    () =>
-      datasetName && selectedIndex
-        ? {
-            datasetName,
-            brainKey: selectedIndex.key,
-            runTimestamp: selectedIndex.timestamp ?? null,
-          }
-        : null,
-    [datasetName, selectedIndex],
   );
   const [listOpen, setListOpen] = React.useState(false);
 
@@ -266,7 +251,7 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
                 leadingIcon={SearchIcon}
                 aria-label="Similarity search settings"
                 data-cy="view-bar-search-settings-trigger"
-                onClick={() => setSettingsOpened(true)}
+                onClick={onOpenSettings}
               />
             }
             promptKeys={promptKeys}
@@ -283,7 +268,7 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
         )}
       </div>
       <Suggestions
-        index={suggestionsIndex}
+        index={searchIndex}
         query={query}
         history={history}
         open={listOpen}

@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const env = vi.hoisted(() => ({
@@ -6,6 +6,7 @@ const env = vi.hoisted(() => ({
   filters: {} as Record<string, unknown>,
   extended: {} as Record<string, unknown>,
   search: vi.fn(),
+  sources: vi.fn(),
   publish: vi.fn(),
   setPending: vi.fn(),
   notify: vi.fn(),
@@ -25,9 +26,8 @@ vi.mock("@fiftyone/state", () => ({
   useNotification: () => env.notify,
 }));
 
+import { HistorySuggestions } from "./HistorySuggestions";
 import { useProviderSearch } from "./useProviderSearch";
-
-const renderSearch = () => renderHook(() => useProviderSearch(env.onRun));
 
 const INDEX = {
   key: "emb_sim",
@@ -35,6 +35,21 @@ const INDEX = {
   provider: "multimodal",
   timestamp: null,
 };
+const SEARCH_INDEX = {
+  datasetName: "robots",
+  brainKey: "emb_sim",
+  runTimestamp: null,
+};
+
+const providerSearch = (sourcesWanted = false) =>
+  useProviderSearch({
+    onRun: env.onRun,
+    selectedIndex: INDEX,
+    searchIndex: SEARCH_INDEX,
+    sourcesWanted,
+  });
+
+const renderSearch = () => renderHook(() => providerSearch());
 const STAGE = { "fiftyone.core.stages.Select": { sample_ids: ["ep1"] } };
 
 /** A search the test settles by hand. */
@@ -233,5 +248,38 @@ describe("useProviderSearch", () => {
 
     expect(env.publish).not.toHaveBeenCalled();
     expect(env.setPending).toHaveBeenLastCalledWith(false);
+  });
+
+  it("asks the provider for the selected index's sources only once wanted", async () => {
+    const streams = { label: "Streams", values: ["/cam_left", "/cam_right"] };
+    env.sources.mockResolvedValue(streams);
+    env.providers = new Map([
+      [
+        "multimodal",
+        { method: "multimodal", search: env.search, sources: env.sources },
+      ],
+    ]);
+    const { result, rerender } = renderHook(
+      ({ wanted }) => providerSearch(wanted),
+      { initialProps: { wanted: false } },
+    );
+    expect(env.sources).not.toHaveBeenCalled();
+
+    rerender({ wanted: true });
+    await waitFor(() => expect(result.current.sources).toStrictEqual(streams));
+    expect(env.sources).toHaveBeenCalledWith(SEARCH_INDEX);
+  });
+
+  it("offers the provider's suggestions, or the previous queries when it has none", () => {
+    const Suggestions = () => null;
+    env.providers = new Map([
+      ["multimodal", { method: "multimodal", search: env.search, Suggestions }],
+    ]);
+    expect(renderSearch().result.current.Suggestions).toBe(Suggestions);
+
+    env.providers = new Map([
+      ["multimodal", { method: "multimodal", search: env.search }],
+    ]);
+    expect(renderSearch().result.current.Suggestions).toBe(HistorySuggestions);
   });
 });

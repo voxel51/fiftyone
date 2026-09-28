@@ -9,39 +9,54 @@ const env = vi.hoisted(() => ({
   }[],
   operatorAvailable: true,
   operatorRun: vi.fn(),
+  operatorSources: null as { label: string; values: string[] } | null,
+  OperatorSuggestions: () => null,
   providerRun: vi.fn(),
   providerCancel: vi.fn(),
+  ProviderSuggestions: () => null,
+  sourcesWanted: vi.fn(),
   onRun: null as null | ((index: { key: string }, query: string) => void),
-  Suggestions: (() => null) as (() => null) | undefined,
 }));
 
 vi.mock("@fiftyone/state", () => ({
   useCurrentDatasetName: () => "robots",
   usePromptableSimilarityKeys: () => env.promptKeys,
-  useTextSearchProviders: () =>
-    new Map([["multimodal", { Suggestions: env.Suggestions }]]),
 }));
 vi.mock("@fiftyone/analytics", () => ({ useTrackEvent: () => vi.fn() }));
 vi.mock("@fiftyone/operators", () => ({ executeOperator: vi.fn() }));
 vi.mock("./useOperatorSearch", () => ({
-  useOperatorSearch: (_view: unknown, onRun: typeof env.onRun) => {
+  useOperatorSearch: ({
+    onRun,
+    sourcesWanted,
+  }: {
+    onRun: typeof env.onRun;
+    sourcesWanted: boolean;
+  }) => {
     env.onRun = onRun;
+    env.sourcesWanted(sourcesWanted);
     return {
       available: env.operatorAvailable,
+      enabled: env.operatorAvailable,
       onUnavailable: vi.fn(),
       run: env.operatorRun,
       claimView: () => false,
+      sources: env.operatorSources,
+      indexSlices: new Map(),
+      Suggestions: env.OperatorSuggestions,
     };
   },
 }));
 vi.mock("./useProviderSearch", () => ({
   useProviderSearch: () => ({
+    available: true,
+    enabled: true,
     run: env.providerRun,
     cancel: env.providerCancel,
+    sources: null,
+    Suggestions: env.ProviderSuggestions,
   }),
 }));
 
-import { HistorySuggestions } from "./HistorySuggestions";
 import { useTextSearch } from "./useTextSearch";
 
 const SERVER_INDEX = { key: "clip_sim", patchesField: null };
@@ -59,7 +74,7 @@ describe("useTextSearch", () => {
     vi.clearAllMocks();
     window.localStorage.clear();
     env.operatorAvailable = true;
-    env.Suggestions = () => null;
+    env.operatorSources = null;
   });
 
   it("runs a query for an index the server sorts through the operator", () => {
@@ -96,30 +111,38 @@ describe("useTextSearch", () => {
     expect(env.providerCancel).not.toHaveBeenCalled();
   });
 
-  it("searches a provider's index without the similarity operator", () => {
-    env.promptKeys = [PROVIDER_INDEX];
-    env.operatorAvailable = false;
-    const { result } = renderController();
-
-    expect(result.current.available).toBe(true);
-    expect(result.current.enabled).toBe(true);
-  });
-
-  it("takes suggestions from the selected index's search", () => {
+  it("reads what the field offers from the selected index's search", () => {
     env.promptKeys = [SERVER_INDEX];
+    env.operatorAvailable = false;
     const { result, rerender } = renderController();
-    expect(result.current.Suggestions).toBe(HistorySuggestions);
+    expect(result.current.available).toBe(false);
+    expect(result.current.Suggestions).toBe(env.OperatorSuggestions);
 
     env.promptKeys = [PROVIDER_INDEX];
     rerender();
-    expect(result.current.Suggestions).toBe(env.Suggestions);
+    expect(result.current.available).toBe(true);
+    expect(result.current.enabled).toBe(true);
+    expect(result.current.Suggestions).toBe(env.ProviderSuggestions);
   });
 
-  it("offers the previous queries for a provider that supplies no suggestions", () => {
-    env.promptKeys = [PROVIDER_INDEX];
-    env.Suggestions = undefined;
+  it("looks up sources only once the settings open", () => {
+    env.promptKeys = [SERVER_INDEX];
     const { result } = renderController();
-    expect(result.current.Suggestions).toBe(HistorySuggestions);
+    expect(env.sourcesWanted).toHaveBeenLastCalledWith(false);
+
+    act(() => result.current.onOpenSettings());
+    expect(env.sourcesWanted).toHaveBeenLastCalledWith(true);
+  });
+
+  it("offers sources only when there are several to choose between", () => {
+    env.promptKeys = [SERVER_INDEX];
+    env.operatorSources = { label: "Slices", values: ["left"] };
+    const { result, rerender } = renderController();
+    expect(result.current.sources).toBeNull();
+
+    env.operatorSources = { label: "Slices", values: ["left", "right"] };
+    rerender();
+    expect(result.current.sources).toBe(env.operatorSources);
   });
 
   it("offers a query in the history as soon as it runs", () => {

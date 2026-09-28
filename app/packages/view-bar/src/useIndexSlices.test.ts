@@ -1,11 +1,11 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const env = vi.hoisted(() => ({ fetch: vi.fn() }));
+const env = vi.hoisted(() => ({ fetch: vi.fn(), grouped: true }));
 
 vi.mock("@fiftyone/state", () => ({
   useCurrentDatasetName: () => "robots",
-  useIsGroupDataset: () => true,
+  useIsGroupDataset: () => env.grouped,
 }));
 vi.mock("@fiftyone/utilities", () => ({
   getFetchFunction: () => env.fetch,
@@ -23,6 +23,7 @@ describe("useIndexSlices", () => {
     vi.clearAllMocks();
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     clearIndexSlices();
+    env.grouped = true;
   });
 
   it("asks the server once per index for the session", async () => {
@@ -41,6 +42,35 @@ describe("useIndexSlices", () => {
     ]);
     expect(second.result.current.get("siglip_sim")).toStrictEqual(["pcd"]);
     expect(env.fetch).toHaveBeenCalledTimes(2);
+    expect(env.fetch).toHaveBeenCalledWith("POST", "/similarity-index-slices", {
+      dataset: "robots",
+      brainKey: "clip_sim",
+    });
+  });
+
+  it("asks nothing until wanted", async () => {
+    renderHook(() => useIndexSlices(INDEXES, false));
+    await act(async () => undefined);
+    expect(env.fetch).not.toHaveBeenCalled();
+  });
+
+  it("asks for no slices outside a grouped dataset, or for a provider's or a patches index", async () => {
+    env.fetch.mockResolvedValue({ slices: ["left", "right"] });
+    env.grouped = false;
+    renderHook(() => useIndexSlices(INDEXES, true));
+    env.grouped = true;
+    renderHook(() =>
+      useIndexSlices(
+        [
+          { ...INDEXES[0], provider: "multimodal" },
+          { ...INDEXES[1], patchesField: "detections" },
+        ],
+        true,
+      ),
+    );
+    await act(async () => undefined);
+
+    expect(env.fetch).not.toHaveBeenCalled();
   });
 
   it("asks again after a failed answer", async () => {

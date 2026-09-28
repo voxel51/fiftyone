@@ -10,17 +10,6 @@ vi.mock("@fiftyone/state", () => ({
   useCurrentDatasetName: () => env.dataset,
   useViewChangePending: () => env.pending,
 }));
-const sources = vi.hoisted(() => ({
-  current: null as { label: string; values: string[] } | null,
-  wanted: vi.fn(),
-}));
-vi.mock("./useSearchSources", () => ({
-  useSearchSources: (_index: unknown, wanted: boolean) => {
-    sources.wanted(wanted);
-    return sources.current;
-  },
-}));
-vi.mock("./useIndexSlices", () => ({ useIndexSlices: () => new Map() }));
 vi.mock("./SearchSettingsPopover", () => ({
   SearchSettingsPopover: ({
     trigger,
@@ -73,7 +62,11 @@ const renderSearch = (overrides: Partial<TextSearchController> = {}) => {
     onChangeK: noop,
     onOpenPanel: vi.fn(),
     submit: vi.fn(),
+    searchIndex: null,
     Suggestions: HistorySuggestions,
+    onOpenSettings: vi.fn(),
+    sources: null,
+    indexSlices: new Map(),
     ...overrides,
   };
   const view = render(<LanguageSearch search={controls} />);
@@ -88,6 +81,11 @@ const renderProviderSearch = (overrides: Partial<TextSearchController> = {}) =>
   renderSearch({
     promptKeys: [PROVIDER_INDEX],
     selectedIndex: PROVIDER_INDEX,
+    searchIndex: {
+      datasetName: "robots",
+      brainKey: PROVIDER_INDEX.key,
+      runTimestamp: null,
+    },
     ...overrides,
   });
 
@@ -97,7 +95,6 @@ describe("LanguageSearch", () => {
     vi.clearAllMocks();
     env.dataset = "robots";
     env.pending = false;
-    sources.current = null;
   });
 
   it("always renders the field", () => {
@@ -185,21 +182,18 @@ describe("LanguageSearch", () => {
     expect(onOpenPanel).not.toHaveBeenCalled();
   });
 
-  const renderStreamIndex = () => {
-    sources.current = {
-      label: "Streams",
-      values: ["/cam_left", "/cam_right"],
-    };
-    return renderProviderSearch();
-  };
+  const renderStreamIndex = () =>
+    renderProviderSearch({
+      sources: { label: "Streams", values: ["/cam_left", "/cam_right"] },
+    });
 
-  it("asks for the index's sources only once the settings open", () => {
-    renderStreamIndex();
-    expect(sources.wanted).toHaveBeenLastCalledWith(false);
+  it("tells the search when the settings open", () => {
+    const { onOpenSettings } = renderStreamIndex();
+    expect(onOpenSettings).not.toHaveBeenCalled();
     fireEvent.click(
       screen.getByRole("button", { name: "Similarity search settings" }),
     );
-    expect(sources.wanted).toHaveBeenLastCalledWith(true);
+    expect(onOpenSettings).toHaveBeenCalledTimes(1);
   });
 
   it("searches only the sources chosen in the settings", () => {
