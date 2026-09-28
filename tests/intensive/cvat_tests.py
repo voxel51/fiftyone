@@ -12,9 +12,12 @@ You must run these tests interactively as follows::
 
 from bson import ObjectId
 from collections import defaultdict
+import math
 import numpy as np
 import os
 import unittest
+
+import pytest
 
 import eta.core.utils as etau
 
@@ -58,7 +61,7 @@ def _delete_shape(api, task_id, label_id):
 
 
 def _get_label(api, task_id, label=None):
-    attr_id_map, _, class_id_map = api._get_attr_class_maps(task_id)
+    attr_id_map, _, class_id_map, _ = api._get_attr_class_maps(task_id)
     if isinstance(label, str):
         label = class_id_map[label]
     else:
@@ -176,18 +179,24 @@ def _update_shape(
     attributes=None,
     occluded=None,
     group_id=None,
+    rotation=None,
 ):
     anno_json = api.get(api.task_annotation_url(task_id)).json()
     shape = _find_shape(anno_json, label_id)
     if shape is not None:
         if points is not None:
             shape["points"] = points
+        if rotation is not None:
+            # CVAT rectangle rotation, in degrees
+            shape["rotation"] = rotation
         if occluded is not None:
             shape["occluded"] = occluded
         if group_id is not None:
             shape["group"] = group_id
         if attributes is not None:
-            attr_id_map, _, class_id_map = api._get_attr_class_maps(task_id)
+            attr_id_map, _, class_id_map, _ = api._get_attr_class_maps(
+                task_id
+            )
             if label is None:
                 label_id = shape["label_id"]
                 attr_id_map = attr_id_map[label_id]
@@ -350,6 +359,55 @@ class CVATTests(unittest.TestCase):
                 prev_updated_sample.ground_truth.detections[0].id,
             )
             self.assertEqual(updated_sample.ground_truth.detections[0].test, 1)
+
+    def test_rotated_detections(self):
+        """FiftyOne stores 2D ``Detection.rotation`` in radians; CVAT rectangles
+        carry ``rotation`` in degrees. Both directions must convert."""
+        dataset = (
+            foz.load_zoo_dataset("quickstart")
+            .select_fields("ground_truth")
+            .clone()
+        )
+        dataset = dataset.match(F("ground_truth.detections").length() > 1)[
+            :1
+        ].clone()
+
+        sample = dataset.first()
+        rotated, plain = sample.ground_truth.detections[:2]
+        rotated["rotation"] = math.radians(30)
+        sample.save()
+
+        anno_key = "anno_key"
+        results = dataset.annotate(
+            anno_key,
+            backend="cvat",
+            label_field="ground_truth",
+        )
+
+        with results:
+            api = results.connect_to_api()
+            task_id = results.task_ids[0]
+
+            # export: radians -> degrees
+            shape = _get_shape(api, task_id, rotated.id)
+            self.assertAlmostEqual(shape["rotation"], 30.0, places=3)
+            shape = _get_shape(api, task_id, plain.id)
+            self.assertEqual(shape.get("rotation", 0), 0)
+
+            # an annotator rotates the other box to 60 degrees in CVAT
+            _update_shape(api, task_id, plain.id, rotation=60.0)
+
+            dataset.load_annotations(anno_key, cleanup=True)
+
+            # import: degrees -> radians
+            sample = dataset.first()
+            by_id = {d.id: d for d in sample.ground_truth.detections}
+            self.assertAlmostEqual(
+                by_id[rotated.id]["rotation"], math.radians(30), places=4
+            )
+            self.assertAlmostEqual(
+                by_id[plain.id]["rotation"], math.radians(60), places=4
+            )
 
     def test_multiple_fields(self):
         dataset = foz.load_zoo_dataset(
@@ -928,6 +986,7 @@ class CVATTests(unittest.TestCase):
         )[0]
         self.assertEqual(labels[0].upper(), new_label)
 
+    @pytest.mark.timeout(300)
     def test_dest_field(self):
         # Test images
         dataset = foz.load_zoo_dataset("quickstart", max_samples=2).clone()
@@ -1213,6 +1272,7 @@ class CVATTests(unittest.TestCase):
             any([gid == test_group_id for gid in id_group_map.values()])
         )
 
+    @pytest.mark.timeout(300)
     def test_task_exists(self):
         dataset = (
             foz.load_zoo_dataset("quickstart", max_samples=20)
@@ -1255,6 +1315,7 @@ class CVATTests(unittest.TestCase):
 
         dataset.load_annotations(anno_key, cleanup=True)
 
+    @pytest.mark.timeout(300)
     def test_project_exists(self):
         dataset = (
             foz.load_zoo_dataset("quickstart", max_samples=1)
