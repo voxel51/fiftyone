@@ -290,7 +290,15 @@ export default function SamplesScopeTab() {
                         }
                       >
                         <span className={styles.rowText}>
-                          <Text variant={TextVariant.Md}>{subset.name}</Text>
+                          {current && SubsetDetails ? (
+                            <SubsetDetails subset={active}>
+                              <Text variant={TextVariant.Md}>
+                                {subset.name}
+                              </Text>
+                            </SubsetDetails>
+                          ) : (
+                            <Text variant={TextVariant.Md}>{subset.name}</Text>
+                          )}
                           {subset.preferredGroupSlice && (
                             <Text
                               variant={TextVariant.Xs}
@@ -314,9 +322,6 @@ export default function SamplesScopeTab() {
                             >
                               {subset.description}
                             </Text>
-                          )}
-                          {current && SubsetDetails && (
-                            <SubsetDetails subset={active} />
                           )}
                           {unavailable > 0 && (
                             <Text
