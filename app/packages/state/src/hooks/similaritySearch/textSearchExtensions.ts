@@ -5,6 +5,8 @@ import type { ExtendedSelectionResetInterface } from "../extendedSelectionReset"
 /** What an extension's search is asked: the index, the prompt, and how many
  * matches to return. */
 export interface TextSearchRequest {
+  /** The dataset's id, for services that key their records by it. */
+  datasetId: string;
   datasetName: string;
   brainKey: string;
   /** The run's timestamp, so a key recomputed in place is not served the

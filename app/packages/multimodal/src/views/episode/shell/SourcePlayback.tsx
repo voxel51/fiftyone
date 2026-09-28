@@ -146,6 +146,8 @@ export interface SourcePlaybackProps {
   readonly sessionError?: string | null;
   /** Track ids to start pinned to the timeline (e.g. from a grid tag filter). */
   readonly defaultPinnedTrackIds?: readonly string[];
+  /** Isolates timeline preferences when browsing a scoped set of ranges. */
+  readonly pinScopeKey?: string;
   /** Per-row timeline decoration contributed by timeline sources. */
   readonly decorateTrack?: TemporalTagTimelineProps["decorateTrack"];
   /** Ruler overlay composed from timeline sources. */
@@ -160,6 +162,7 @@ export interface SourcePlaybackProps {
   /** Capture time to open the recording at, ahead of the first-data tick.
    * Set to an embeddings match so opening a matched tile lands on it. */
   readonly initialSeekTimeNs?: bigint | null;
+  readonly initialSeekPending?: boolean;
   readonly layoutScopeKey?: string;
   /** Host selected a new sample whose media descriptor is still resolving. */
   readonly navigationPending?: boolean;
@@ -207,12 +210,14 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
   cameraPreferenceField,
   children,
   defaultPinnedTrackIds,
+  pinScopeKey,
   decorateTrack,
   timelineRulerOverlay,
   fileName,
   episodeContext,
   headerActions,
   initialSeekTimeNs,
+  initialSeekPending,
   layoutScopeKey,
   navigationPending = false,
   existingTags,
@@ -456,12 +461,12 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
   // The first authoritative inventory gets one chance to reseed capability-
   // gated tiles that a bootstrap manifest cannot describe. After that, keep
   // the shell mounted across source changes unless an authoritative timeline
-  // mode proves incompatible with the current PlaybackProvider.
+  // mode proves incompatible, or the host switches the saved pin scope.
   const playbackShellKey = `${
     readyInventory || retainedAuthoritativeTimelineMode
       ? "authoritative"
       : "bootstrap"
-  }:${timelineModeKey(playbackTimelineMode)}`;
+  }:${timelineModeKey(playbackTimelineMode)}:${pinScopeKey ?? ""}`;
   const availableTileTypes = useMemo(
     () =>
       tileTypesFor({
@@ -475,9 +480,10 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
   );
   const playbackSource = readyInventory && !navigationPending ? source : null;
   const effectiveLayoutScopeKey = layoutScopeFor(layoutScopeKey, source);
-  // Pins are a user choice, so they outlive the modal that made them
+  // Subset browsing starts with its own pins, while preserving the user's
+  // ordinary episode preferences and any choices made within this subset.
   const pinPersistKey = effectiveLayoutScopeKey
-    ? `episode-pins:${effectiveLayoutScopeKey}`
+    ? `episode-pins:${effectiveLayoutScopeKey}${pinScopeKey ? `:${pinScopeKey}` : ""}`
     : undefined;
   const cameraViewStateScopeKey =
     cameraScopeKey(effectiveLayoutScopeKey, cameraPreferenceField) ??
@@ -785,6 +791,7 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
                                     availableTileTypes={availableTileTypes}
                                     budgetAccount={sourceReadBudgetAccount}
                                     initialSeekTimeNs={initialSeekTimeNs}
+                                    initialSeekPending={initialSeekPending}
                                     onPlayheadDataReady={
                                       handlePlayheadDataReady
                                     }

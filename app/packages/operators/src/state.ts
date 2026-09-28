@@ -72,6 +72,16 @@ export const showOperatorPromptSelector = selector({
   },
 });
 
+/** Whether the open operator prompt belongs to this action. */
+export function useOperatorPromptOpen(uri: string): boolean {
+  const prompt = useRecoilValue(promptingOperatorState);
+  return (
+    !!prompt &&
+    resolveOperatorURI(prompt.operatorName, { keepMethod: true }) ===
+      resolveOperatorURI(uri, { keepMethod: true })
+  );
+}
+
 export const usePromptOperatorInput = () => {
   const setRecentlyUsedOperators = useSetRecoilState(
     recentlyUsedOperatorsState,

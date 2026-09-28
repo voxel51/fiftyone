@@ -31,15 +31,8 @@ const HOST_STYLES: Partial<CSSStyleDeclaration> = {
 
 type MountedOverlay = { readonly root: Root; readonly host: HTMLElement };
 
-/** The only thing a tile lane needs off the sample: its id and media type. */
-type TileSample = {
-  readonly sample?: {
-    readonly _id?: string;
-    readonly media_type?: string | null;
-    readonly _media_type?: string | null;
-    readonly metadata?: { readonly duration?: number | null } | null;
-  };
-};
+/** Grid samples arrive from Relay with a scalar payload typed as `object`. */
+type TileSample = { readonly sample?: object };
 
 const NS_PER_SECOND = 1_000_000_000;
 
@@ -75,12 +68,20 @@ export function useTileIntervalOverlay() {
         return;
       }
 
-      const mediaType = sample.sample?._media_type ?? sample.sample?.media_type;
+      const data = sample.sample as
+        | {
+            readonly _id?: string;
+            readonly media_type?: string | null;
+            readonly _media_type?: string | null;
+            readonly metadata?: { readonly duration?: number | null } | null;
+          }
+        | undefined;
+      const mediaType = data?._media_type ?? data?.media_type;
       if (mediaType !== MEDIA_TYPE_VIDEO) {
         return;
       }
 
-      const sampleId = sample.sample?._id;
+      const sampleId = data?._id;
       if (!sampleId) {
         return;
       }
@@ -101,7 +102,7 @@ export function useTileIntervalOverlay() {
       const root = createRoot(host);
       // Seconds on the sample's metadata; the lane's axis is nanoseconds, the
       // unit the tags themselves are stored in.
-      const duration = sample.sample?.metadata?.duration;
+      const duration = data?.metadata?.duration;
       const durationNs =
         typeof duration === "number" && duration > 0
           ? duration * NS_PER_SECOND

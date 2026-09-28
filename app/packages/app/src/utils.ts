@@ -37,6 +37,17 @@ export function resolveURL(params: {
 }): string {
   const searchParams = new URLSearchParams(params.currentSearch);
 
+  if (
+    params.nextDataset !== undefined &&
+    (params.nextDataset === null ||
+      !params.currentPathname.endsWith(
+        `/datasets/${encodeURIComponent(params.nextDataset)}`,
+      ))
+  ) {
+    searchParams.delete("subset");
+    searchParams.delete("subsetScope");
+  }
+
   if (!params.nextDataset && params.nextView) {
     throw new Error("a view cannot be provided without a dataset");
   }
