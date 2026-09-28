@@ -5,7 +5,7 @@ FiftyOne Release Notes
 
 FiftyOne Enterprise 2.25.1
 --------------------------
-*Released TBD*
+*Released September 28, 2026*
 
 Includes all updates from :ref:`FiftyOne 1.22.1 <release-notes-v1.22.1>`, plus:
 
@@ -34,7 +34,7 @@ Includes all updates from :ref:`FiftyOne 1.22.1 <release-notes-v1.22.1>`, plus:
 
 FiftyOne 1.22.1
 ---------------
-*Released TBD*
+*Released September 28, 2026*
 
 App
 ^^^
