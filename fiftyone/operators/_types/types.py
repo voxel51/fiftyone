@@ -2824,6 +2824,14 @@ def _append_scope(description, scope_description):
     return " ".join(filter(None, (description, scope_description)))
 
 
+_MEDIA_TYPE_LABELS = {"point-cloud": "point cloud", "3d": "3D"}
+
+
+def _media_scope_description(media_type, slice_names):
+    label = _MEDIA_TYPE_LABELS.get(media_type, media_type)
+    return f"all {label} slices ({', '.join(slice_names)})"
+
+
 class ViewTargetOptions(object):
     """Represents the options for a :class:`ViewTargetProperty`.
 
@@ -2856,6 +2864,7 @@ class ViewTargetOptions(object):
         scope_description=None,
         dataset_scope_description=None,
         unavailable=None,
+        media_scopes=None,
         **_,
     ):
         """Initializes instance
@@ -2914,9 +2923,17 @@ class ViewTargetOptions(object):
                 cannot process to the reason why. These targets are offered as
                 disabled choices carrying the reason, and are excluded from
                 :meth:`available_values`
+            media_scopes (None): a list of ``(media_type, slice_names)``
+                tuples of a grouped dataset. The dataset and current view
+                targets are then also offered scoped to every slice of each
+                media type, and the dataset is offered only that way
         """
         super().__init__()
 
+        media_scopes = media_scopes or []
+        unscoped_current_view_description = (
+            current_view_description or "Samples matching filters"
+        )
         # Resolve descriptions for the various target views, with the slice
         # scope each target resolves to appended for grouped datasets
         action_description = action_description or "Process"
@@ -2992,6 +3009,27 @@ class ViewTargetOptions(object):
         self._unavailable = {}
 
         for target_view, include, label, description in choice_order:
+            if include and media_scopes:
+                if target_view == constants.ViewTarget.DATASET:
+                    # the whole grouped dataset is not a flat collection, so
+                    # it is offered one media type at a time instead
+                    self._add_media_scopes(
+                        target_view, label, "", media_scopes
+                    )
+                    continue
+
+                if target_view == constants.ViewTarget.CURRENT_VIEW:
+                    self.choices_view.add_choice(
+                        target_view, label=label, description=description
+                    )
+                    self._add_media_scopes(
+                        target_view,
+                        label,
+                        unscoped_current_view_description,
+                        media_scopes,
+                    )
+                    continue
+
             # a target that is not offered carries no reason to show
             reason = unavailable.get(target_view) if include else None
             if reason is not None:
@@ -3004,6 +3042,19 @@ class ViewTargetOptions(object):
                 description=reason if reason is not None else description,
                 include=include,
                 disabled=reason is not None,
+            )
+
+    def _add_media_scopes(self, target_view, label, description, scopes):
+        for media_type, slice_names in scopes:
+            scope = _media_scope_description(media_type, slice_names)
+            self.choices_view.add_choice(
+                constants.scope_view_target(target_view, media_type),
+                label=label,
+                description=(
+                    _append_scope(description, f"in {scope}")
+                    if description
+                    else scope[0].upper() + scope[1:]
+                ),
             )
 
     @property
@@ -3175,6 +3226,7 @@ class ViewTargetProperty(Property):
         unavailable = ctx.get_unavailable_view_targets(
             require_flat=require_flat
         )
+        media_scopes = ctx.get_group_media_scopes(require_flat=require_flat)
 
         # Determine which target views are available
         has_base_view = (
@@ -3220,6 +3272,7 @@ class ViewTargetProperty(Property):
             scope_description=scope,
             dataset_scope_description=dataset_scope,
             unavailable=unavailable,
+            media_scopes=media_scopes,
         )
         self._options = options
 
@@ -3232,7 +3285,12 @@ class ViewTargetProperty(Property):
             # every target is unavailable, so there is nothing to default to
             default_target = None
         elif not default_target or default_target not in vals:
-            default_target = vals[-1]  # last option
+            # a media scope reaches beyond the slice being looked at, so it
+            # is never the default
+            unscoped = [
+                v for v in vals if constants.split_view_target(v)[1] is None
+            ]
+            default_target = (unscoped or vals)[-1]  # last option
 
         # Only 1 option so no need for a radio group, just hide it. Grouped
         # datasets keep it visible so the slice scope stays discoverable
