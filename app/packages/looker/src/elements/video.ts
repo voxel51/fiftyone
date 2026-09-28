@@ -497,7 +497,12 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
               };
             },
             (state) => {
-              dispatchPresentedFrame(dispatchEvent, state);
+              // A callback queued before a seek began reads the seek target
+              // while the old picture is still shown; `seeked` reports where
+              // the seek landed
+              if (!this.element?.seeking && !state.seeking) {
+                dispatchPresentedFrame(dispatchEvent, state);
+              }
               if (state.playing && !state.seeking && !state.buffering) {
                 this.requestCallback(callback);
               }
