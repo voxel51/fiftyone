@@ -22,7 +22,7 @@ const PUCK_PIXEL_RATIO = 2;
 const PUCK_RADIUS_PX = 9;
 
 const VOXEL51_PRIMARY_FALLBACK = "#ff6d04";
-const VOXEL51_PRIMARY_CSS_VAR = "--fo-palette-primary-plainColor";
+const VOXEL51_PRIMARY_CSS_VAR = "--color-brand-primary";
 
 let cachedPrimaryColor: string | null = null;
 

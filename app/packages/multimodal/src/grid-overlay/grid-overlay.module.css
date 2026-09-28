@@ -17,7 +17,7 @@
   /* The darkest of the three layers — tracks sit lighter on this, intervals
      lighter still (in colour) on those. Slightly transparent so the preview
      reads faintly behind. */
-  background: rgba(16, 17, 20, 0.86);
+  background: var(--color-content-scrim-heavy);
   /* The overlay stays passive so hover-to-play reaches the cell beneath: both
      the hover readout and click-to-seek are driven by listeners on the tile,
      which decide by this element's rectangle rather than by capturing the
@@ -37,7 +37,7 @@
   font-size: 9px;
   line-height: 12px;
   white-space: nowrap;
-  color: rgba(245, 245, 245, 0.92);
+  color: var(--color-content-text-primary);
 }
 
 .chip {
@@ -57,7 +57,7 @@
 
 .overflow {
   flex: 0 0 auto;
-  color: rgba(245, 245, 245, 0.6);
+  color: var(--color-content-text-secondary);
 }
 
 /*
@@ -93,7 +93,11 @@
   flex: 0 0 auto;
   height: 6px;
   border-radius: 3px;
-  background: rgba(255, 255, 255, 0.13);
+  background: color-mix(
+    in srgb,
+    var(--color-content-text-primary) 13%,
+    transparent
+  );
 }
 
 .mark {
@@ -111,7 +115,7 @@
   top: -2px;
   bottom: -2px;
   width: 1px;
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--color-content-text-primary);
   pointer-events: none;
 }
 
@@ -126,6 +130,10 @@
   top: -2px;
   bottom: -2px;
   width: 1px;
-  background: rgba(255, 255, 255, 0.38);
+  background: color-mix(
+    in srgb,
+    var(--color-content-text-primary) 38%,
+    transparent
+  );
   pointer-events: none;
 }

@@ -2,6 +2,7 @@ import { Html } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { memo, useRef, type CSSProperties } from "react";
 import * as THREE from "three";
+import { cssVar } from "@voxel51/voodo";
 
 const AXES = [
   { color: "#ef4444", direction: [1, 0, 0], label: "X" },
@@ -154,7 +155,7 @@ export const CameraOrientationGizmo = memo(function CameraOrientationGizmo({
                 ...markerStyle,
                 background: head.color,
                 border: head.positive
-                  ? "1px solid rgba(255, 255, 255, 0.65)"
+                  ? `1px solid color-mix(in srgb, ${cssVar.color.text.primary} 65%, transparent)`
                   : "none",
                 height: head.positive
                   ? POSITIVE_HEAD_SIZE_PX
@@ -332,7 +333,7 @@ const headStyle: CSSProperties = {
 const markerStyle: CSSProperties = {
   alignItems: "center",
   borderRadius: "50%",
-  color: "#f8fafc",
+  color: cssVar.color.text.primary,
   display: "flex",
   fontSize: 10,
   fontWeight: 700,
