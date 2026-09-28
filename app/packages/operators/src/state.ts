@@ -246,6 +246,9 @@ const useExecutionContext = (operatorName, hooks = {}) => {
 function useExecutionOptions(operatorURI, ctx, isRemote) {
   const [isLoading, setIsLoading] = useState(true);
   const [executionOptions, setExecutionOptions] = useState(null);
+  // Requests overlap, and only the newest may apply its answer. Kept outside
+  // the memo, which builds a new debounce whenever the context changes
+  const latestFetch = useRef(0);
 
   const fetch = useMemo(
     () =>
@@ -254,11 +257,13 @@ function useExecutionOptions(operatorURI, ctx, isRemote) {
           setExecutionOptions({ allowImmediateExecution: true });
           return;
         }
+        const call = ++latestFetch.current;
         if (!ctxOverride) setIsLoading(true); // only show loading if loading the first time
         const options = await resolveExecutionOptions(
           operatorURI,
           ctxOverride || ctx,
         );
+        if (call !== latestFetch.current) return;
         setExecutionOptions(options);
         setIsLoading(false);
       }),
@@ -532,6 +537,10 @@ export const useOperatorPrompt = () => {
   }, [resolvedParams, inertPaths]);
   const liteValuesRef = useRef({});
   const promptId = promptingOperator.id;
+  // The debounce does not wait for a resolve to finish, so resolves overlap;
+  // an older one answering last would settle the form on params it no longer
+  // holds, leaving it validating until the next edit
+  const latestResolve = useRef(0);
 
   // the debounced resolver must keep its identity across renders so the
   // debounce window survives; deps are intentionally narrow
@@ -539,6 +548,8 @@ export const useOperatorPrompt = () => {
   const resolveInput = useCallback(
     debounce(
       async (ctx) => {
+        const call = ++latestResolve.current;
+        const superseded = () => call !== latestResolve.current;
         try {
           const liteValues = liteValuesRef.current;
           const optimizedCtx = optimizeCtx(ctx, liteValues);
@@ -547,6 +558,7 @@ export const useOperatorPrompt = () => {
           }
           const resolved =
             cachedResolvedInput || (await operator.resolveInput(optimizedCtx));
+          if (superseded()) return;
 
           validateThrottled(ctx, resolved);
           if (resolved) {
@@ -556,6 +568,7 @@ export const useOperatorPrompt = () => {
             setInputFields(null);
           }
         } catch (e) {
+          if (superseded()) return;
           resolveTypeError.current = e;
           setInputFields(null);
         }
