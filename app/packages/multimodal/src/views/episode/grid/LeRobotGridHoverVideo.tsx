@@ -162,15 +162,19 @@ export function LeRobotGridHoverVideo({
       }
       frameHandle = requestFrame.call(element, onPresentedFrame);
     };
-    const play = () => {
+    const play = (retry = true) => {
       const generation = ++playGeneration;
       void element.play().catch((error: unknown) => {
         if (disposed || generation !== playGeneration) return;
         // An interrupted request, such as the browser pausing an offscreen
-        // video to save power, is not a failure of the media
-        if (error instanceof DOMException && error.name === "AbortError") {
-          setShowingVideo(false);
-          setWaiting(false);
+        // video to save power, is asked once more before it counts as a
+        // failure; failing releases the lease so the tile falls back
+        if (
+          retry &&
+          error instanceof DOMException &&
+          error.name === "AbortError"
+        ) {
+          play(false);
           return;
         }
         fail(error);
