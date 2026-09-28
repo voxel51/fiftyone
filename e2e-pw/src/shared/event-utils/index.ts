@@ -294,6 +294,34 @@ export class EventUtils {
   }
 
   /**
+   * Run `action` and resolve once `events` have fired in order because of it,
+   * for when the app sends them back to back (a save's success, then settled).
+   * All are armed before `action` starts, so none can be missed.
+   */
+  public async afterSequence<T>(
+    events: readonly string[],
+    action: () => Promise<T>,
+  ): Promise<T> {
+    let seen = 0;
+    const armed = await Promise.all(
+      events.map((event, index) =>
+        this.arm(event, () => {
+          if (seen !== index) return false;
+          seen += 1;
+          return true;
+        }),
+      ),
+    );
+    try {
+      const result = await action();
+      await armed[armed.length - 1].received;
+      return result;
+    } finally {
+      await Promise.all(armed.map((handle) => handle.dispose()));
+    }
+  }
+
+  /**
    * Install a counter for an app event (a document CustomEvent such as
    * `grid-mount`, or a bus event) at document start, before any application
    * code runs, so events fired during the initial page load are observed.

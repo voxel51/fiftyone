@@ -111,12 +111,11 @@ export class ModalAnnotateSidebarPom {
    * settled pass after it proves no later edit is still pending.
    */
   async afterSave<T>(action: () => Promise<T>): Promise<T> {
-    const result = await this.eventUtils.after(
-      "annotation:persistenceSuccess",
+    // a pass that writes the edit sends success, then settled in the same pass
+    return this.eventUtils.afterSequence(
+      ["annotation:persistenceSuccess", "annotation:persistenceSettled"],
       action,
     );
-    await this.waitForSavesSettled();
-    return result;
   }
 
   /**
