@@ -9,9 +9,9 @@ const env = vi.hoisted(() => ({
   }[],
   operatorAvailable: true,
   operatorRun: vi.fn(),
-  operatorSources: null as { label: string; values: string[] } | null,
   OperatorSuggestions: () => null,
   providerRun: vi.fn(),
+  providerSources: null as { label: string; values: string[] } | null,
   providerCancel: vi.fn(),
   ProviderSuggestions: () => null,
   sourcesWanted: vi.fn(),
@@ -25,36 +25,31 @@ vi.mock("@fiftyone/state", () => ({
 vi.mock("@fiftyone/analytics", () => ({ useTrackEvent: () => vi.fn() }));
 vi.mock("@fiftyone/operators", () => ({ executeOperator: vi.fn() }));
 vi.mock("./useOperatorSearch", () => ({
-  useOperatorSearch: ({
-    onRun,
-    sourcesWanted,
-  }: {
-    onRun: typeof env.onRun;
-    sourcesWanted: boolean;
-  }) => {
+  useOperatorSearch: ({ onRun }: { onRun: typeof env.onRun }) => {
     env.onRun = onRun;
-    env.sourcesWanted(sourcesWanted);
     return {
       available: env.operatorAvailable,
       enabled: env.operatorAvailable,
       onUnavailable: vi.fn(),
       run: env.operatorRun,
       claimView: () => false,
-      sources: env.operatorSources,
-      indexSlices: new Map(),
+      sources: null,
       Suggestions: env.OperatorSuggestions,
     };
   },
 }));
 vi.mock("./useProviderSearch", () => ({
-  useProviderSearch: () => ({
-    available: true,
-    enabled: true,
-    run: env.providerRun,
-    cancel: env.providerCancel,
-    sources: null,
-    Suggestions: env.ProviderSuggestions,
-  }),
+  useProviderSearch: ({ sourcesWanted }: { sourcesWanted: boolean }) => {
+    env.sourcesWanted(sourcesWanted);
+    return {
+      available: true,
+      enabled: true,
+      run: env.providerRun,
+      cancel: env.providerCancel,
+      sources: env.providerSources,
+      Suggestions: env.ProviderSuggestions,
+    };
+  },
 }));
 
 import { useTextSearch } from "./useTextSearch";
@@ -74,20 +69,20 @@ describe("useTextSearch", () => {
     vi.clearAllMocks();
     window.localStorage.clear();
     env.operatorAvailable = true;
-    env.operatorSources = null;
+    env.providerSources = null;
   });
 
   it("runs a query for an index the server sorts through the operator", () => {
     env.promptKeys = [SERVER_INDEX];
     const { result } = renderController();
 
-    act(() => result.current.submit("an animal", ["left"]));
+    act(() => result.current.submit("an animal", null));
 
     expect(env.operatorRun).toHaveBeenCalledWith(
       SERVER_INDEX,
       "an animal",
       25,
-      ["left"],
+      null,
     );
     expect(env.providerRun).not.toHaveBeenCalled();
     expect(env.providerCancel.mock.invocationCallOrder[0]).toBeLessThan(
@@ -126,7 +121,7 @@ describe("useTextSearch", () => {
   });
 
   it("looks up sources only once the settings open", () => {
-    env.promptKeys = [SERVER_INDEX];
+    env.promptKeys = [PROVIDER_INDEX];
     const { result } = renderController();
     expect(env.sourcesWanted).toHaveBeenLastCalledWith(false);
 
@@ -135,14 +130,17 @@ describe("useTextSearch", () => {
   });
 
   it("offers sources only when there are several to choose between", () => {
-    env.promptKeys = [SERVER_INDEX];
-    env.operatorSources = { label: "Slices", values: ["left"] };
+    env.promptKeys = [PROVIDER_INDEX];
+    env.providerSources = { label: "Streams", values: ["/cam_left"] };
     const { result, rerender } = renderController();
     expect(result.current.sources).toBeNull();
 
-    env.operatorSources = { label: "Slices", values: ["left", "right"] };
+    env.providerSources = {
+      label: "Streams",
+      values: ["/cam_left", "/cam_right"],
+    };
     rerender();
-    expect(result.current.sources).toBe(env.operatorSources);
+    expect(result.current.sources).toBe(env.providerSources);
   });
 
   it("offers a query in the history as soon as it runs", () => {
