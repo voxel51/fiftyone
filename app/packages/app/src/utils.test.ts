@@ -6,6 +6,26 @@ import { describe, expect, it } from "vitest";
 import { resolveURL } from "./utils";
 
 describe("resolves datasets", () => {
+  it("drops dataset-specific subset scope when changing datasets", () => {
+    expect(
+      resolveURL({
+        currentPathname: "/datasets/one",
+        currentSearch: "?subset=old&subsetScope=segments&other=keep",
+        nextDataset: "two",
+      }),
+    ).toBe("/datasets/two?other=keep");
+  });
+
+  it("preserves subset scope for updates within the same dataset", () => {
+    expect(
+      resolveURL({
+        currentPathname: "/datasets/one",
+        currentSearch: "?subset=keep&subsetScope=segments",
+        nextDataset: "one",
+        nextView: "saved",
+      }),
+    ).toBe("/datasets/one?subset=keep&subsetScope=segments&view=saved");
+  });
   it("resolves to /", () => {
     expect(
       resolveURL({

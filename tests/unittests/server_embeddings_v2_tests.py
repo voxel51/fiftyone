@@ -494,6 +494,83 @@ class ServerEmbeddingsV2Tests(unittest.TestCase):
             )
 
     @drop_datasets
+    def test_sample_info_sample_run_has_no_bounds(self):
+        dataset, _ = _make_samples_run()
+
+        res = v2.EmbeddingsV2SampleInfo._post_sync(
+            None, {"datasetName": dataset.name, "brainKey": "viz", "index": 0}
+        )
+        self.assertIsNone(res["bounds"])
+
+    @drop_datasets
+    def test_sample_info_patch_bounds(self):
+        dataset, _ = _make_patches_run()
+        base = {"datasetName": dataset.name, "brainKey": "viz_patches"}
+        results = dataset.load_brain_results("viz_patches")
+
+        res = v2.EmbeddingsV2SampleInfo._post_sync(None, {**base, "index": 3})
+
+        # The point is a label, and its box is the one the grid crops to
+        self.assertEqual(res["id"], str(results.label_ids[3]))
+        self.assertEqual(res["bounds"], [0.1, 0.1, 0.2, 0.2])
+
+    @drop_datasets
+    def test_sample_info_patch_bounds_deleted_label(self):
+        # A run outlives edits to the field it was computed on: the hover
+        # falls back to the whole sample rather than failing
+        dataset, _ = _make_patches_run()
+        base = {"datasetName": dataset.name, "brainKey": "viz_patches"}
+        results = dataset.load_brain_results("viz_patches")
+
+        sample = dataset[str(results.sample_ids[0])]
+        sample.ground_truth.detections = [
+            d
+            for d in sample.ground_truth.detections
+            if str(d.id) != str(results.label_ids[0])
+        ]
+        sample.save()
+
+        res = v2.EmbeddingsV2SampleInfo._post_sync(None, {**base, "index": 0})
+        self.assertIsNone(res["bounds"])
+        self.assertIsNotNone(res["media"])
+
+    @drop_datasets
+    def test_sample_info_polyline_bounds(self):
+        # Polylines and keypoints have no bounding_box: the containing box
+        # of their points is what the grid crops to
+        dataset = fo.Dataset()
+        polyline = fo.Polyline(
+            label="p", points=[[(0.2, 0.3), (0.6, 0.3), (0.6, 0.9)]]
+        )
+        dataset.add_sample(
+            fo.Sample(
+                filepath="/tmp/img0.png",
+                shapes=fo.Polylines(polylines=[polyline]),
+            )
+        )
+        fob.compute_visualization(
+            dataset,
+            patches_field="shapes",
+            points=np.zeros((1, 2)),
+            brain_key="viz_shapes",
+        )
+
+        res = v2.EmbeddingsV2SampleInfo._post_sync(
+            None,
+            {
+                "datasetName": dataset.name,
+                "brainKey": "viz_shapes",
+                "index": 0,
+            },
+        )
+
+        x, y, w, h = res["bounds"]
+        self.assertAlmostEqual(x, 0.2)
+        self.assertAlmostEqual(y, 0.3)
+        self.assertAlmostEqual(w, 0.4)
+        self.assertAlmostEqual(h, 0.6)
+
+    @drop_datasets
     def test_sample_info_deleted_sample(self):
         dataset, points = _make_samples_run()
         base = {"datasetName": dataset.name, "brainKey": "viz"}

@@ -51,6 +51,8 @@ function drawPreview(
 
   canvas.width = PREVIEW_SIZE;
   canvas.height = PREVIEW_SIZE;
+  canvas.dataset.maskWidth = String(srcWidth);
+  canvas.dataset.maskHeight = String(srcHeight);
 
   const scale = Math.min(PREVIEW_SIZE / srcWidth, PREVIEW_SIZE / srcHeight);
   const drawW = Math.round(srcWidth * scale);

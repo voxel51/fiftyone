@@ -37,7 +37,8 @@ test.afterAll(async ({ foWebServer }) => {
 
 test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  await datasetFactory.createGroupDataset({
+  await datasetFactory.createDataset({
+    mediaType: "group",
     datasetName,
     numGroups: 3,
   });

@@ -8,7 +8,7 @@
  * - `extract` — decode frames on demand from the source video via WebCodecs
  *   (no `to_frames` preprocessing). Frame-exact via the demux sample table.
  * - `fetch` — fetch materialized per-frame images (`to_frames(sample_frames=True)`,
- *   `POST /frames`). The ImaVid image path.
+ *   `POST /frames`). The dynamic group image path.
  * - `html` — a live `<video>` element tile. Last resort; needs no preprocessing
  *   and no WebCodecs, but its overlay layer can trail the picture under load.
  */

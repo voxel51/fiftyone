@@ -3,23 +3,20 @@
  */
 
 import {
-  FRAMES_PREFIX,
   useActiveSampleId,
   useAnnotationEngine,
   useAnnotationEventBus,
 } from "@fiftyone/annotation";
+import { useIsImageDynamicGroupVideo } from "@fiftyone/state";
 import { useCallback } from "react";
+import { isFrameScopedPath } from "../state/framePaths";
 import { useCurrentFrameGetter } from "../state/useCurrentFrame";
 
 /**
- * Builds the bridge's `onEditCommit` callback: after a geometry drag / resize
- * lands on the engine, promote the touched frame to a keyframe and dispatch
- * `annotation:keyframeChanged` so
- * {@link useAutoInterpolate} re-lerps the bracketing segments against the new
- * geometry. The promotion write folds into the edit's undo unit via the gesture
- * `undoKey` the commit landed under, so one Ctrl-Z reverts the whole nudge.
- *
- * Frame-scoped: a sample-level temporal detection has no keyframe.
+ * An `onEditCommit` callback that promotes the edited frame of a frame-scoped
+ * geometry label to a keyframe (folded into the edit's `undoKey`) and dispatches
+ * `annotation:keyframeChanged`. Sample-level labels have no keyframe and are
+ * ignored.
  */
 export const useKeyframePromotionOnEdit = (): ((
   overlayId: string,
@@ -30,10 +27,11 @@ export const useKeyframePromotionOnEdit = (): ((
   const sample = useActiveSampleId();
   const getFrame = useCurrentFrameGetter();
   const eventBus = useAnnotationEventBus();
+  const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
 
   return useCallback(
     (overlayId, path, undoKey) => {
-      if (!path.startsWith(FRAMES_PREFIX)) {
+      if (!isFrameScopedPath(path, isImageDynamicGroupVideo)) {
         return;
       }
 
@@ -77,6 +75,6 @@ export const useKeyframePromotionOnEdit = (): ((
         undoKey,
       });
     },
-    [engine, eventBus, getFrame, sample],
+    [engine, eventBus, getFrame, isImageDynamicGroupVideo, sample],
   );
 };

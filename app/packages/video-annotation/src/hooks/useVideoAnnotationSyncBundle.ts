@@ -18,7 +18,7 @@ type TileScene = ReturnType<typeof useLighterSetupWithPixi>["scene"];
  *
  * `mediaRef` is the element the media transform tracks so scroll-zoom scales
  * the picture, not just the overlays — the `<video>` for the native tile, the
- * frame `<canvas>` for imavid.
+ * frame `<canvas>` for dynamic group video.
  */
 export function useVideoAnnotationSyncBundle<T extends HTMLElement>({
   scene,

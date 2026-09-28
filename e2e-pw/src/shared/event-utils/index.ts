@@ -104,6 +104,23 @@ export class EventUtils {
   }
 
   /**
+   * Run `action` and resolve once `eventName` fires because of it. The
+   * listener is armed before `action` starts, so the event cannot be missed:
+   *
+   *   await eventUtils.after("page-change", () => page.goBack());
+   */
+  public async after<T>(
+    eventName: string,
+    action: () => Promise<T>,
+    predicate?: (e: { detail?: unknown }) => boolean,
+  ): Promise<T> {
+    const armed = await this.arm(eventName, predicate);
+    const result = await action();
+    await armed.received;
+    return result;
+  }
+
+  /**
    * Install a counter for a document-level CustomEvent. Counting starts when
    * the returned promise resolves — create the counter BEFORE the actions
    * whose events it should observe, then assert on `read()` after them:

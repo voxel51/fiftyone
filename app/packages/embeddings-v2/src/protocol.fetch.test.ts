@@ -11,6 +11,7 @@ vi.mock("@fiftyone/utilities", () => ({
 
 import {
   DTYPE_BITMASK,
+  DTYPE_BYTES12,
   DTYPE_F32,
   DTYPE_U16,
   FLAG_ALL_MATCH,
@@ -19,6 +20,7 @@ import {
   MAGIC,
   fetchColor,
   fetchGeometry,
+  fetchIds,
   fetchMasks,
 } from "./protocol";
 
@@ -63,6 +65,34 @@ describe("fetchGeometry", () => {
   });
 });
 
+describe("fetchIds", () => {
+  it("asks for the points' own ids by default", async () => {
+    const payload = new Uint8Array(24).map((_, i) => i);
+    fetchMock.mockResolvedValue(makeColumn(DTYPE_BYTES12, 1, 2, payload));
+
+    const ids = await fetchIds("d", "k");
+    expect(fetchMock.mock.calls[0][2]).toEqual({
+      datasetName: "d",
+      brainKey: "k",
+      kind: "points",
+    });
+    expect(Array.from(ids)).toEqual(Array.from(payload));
+  });
+
+  it("asks for the owning samples' ids", async () => {
+    fetchMock.mockResolvedValue(
+      makeColumn(DTYPE_BYTES12, 1, 1, new Uint8Array(12)),
+    );
+
+    await fetchIds("d", "k", undefined, "samples");
+    expect(fetchMock.mock.calls[0][2]).toEqual({
+      datasetName: "d",
+      brainKey: "k",
+      kind: "samples",
+    });
+  });
+});
+
 describe("fetchMasks", () => {
   it("unpacks both masks from their offsets", async () => {
     // n=10 -> 2 bytes per mask. visible: bits 0,1 set; match: bit 9 set
@@ -90,6 +120,25 @@ describe("fetchMasks", () => {
     const masks = await fetchMasks("d", "k", [], null);
     expect(masks.visible).toBeNull();
     expect(masks.match).toBeNull();
+  });
+
+  it("sends extended stages for the match mask", async () => {
+    fetchMock.mockResolvedValue(
+      makeColumn(DTYPE_BITMASK, 2, 8, new Uint8Array(2)),
+    );
+    const extended = {
+      "fiftyone.core.stages.Select": { sample_ids: ["p1"], ordered: false },
+    };
+
+    await fetchMasks("d", "k", [], null, extended);
+    expect(fetchMock.mock.calls[0][2]).toEqual({
+      datasetName: "d",
+      brainKey: "k",
+      view: [],
+      filters: null,
+      slices: null,
+      extended,
+    });
   });
 });
 

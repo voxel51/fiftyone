@@ -71,8 +71,19 @@ export default function useExit() {
       // selection deselect is engine-routed — `setActive([])` below drives the
       // Lighter bridge's applySelected(false); only hover still needs a direct
       // poke (it isn't engine-routed on exit yet). The redundant sidebar→Lighter
-      // scene.deselectOverlay is intentionally dropped.
+      // scene.deselectOverlay is intentionally dropped for committed labels.
       overlay.onHoverLeave?.();
+
+      // A DRAFT is the exception: `createNew` selects its overlay in the scene
+      // with side effects suppressed and the draft's ref is never engine-active
+      // (see useDraftLockInteraction), so `setActive([])` cannot deselect it.
+      // Every exit that isn't a canvas right-click (Back arrow, Select tool,
+      // click-outside) would otherwise strand the draw as the scene's selection
+      // — a stale selection the next brush stroke reads as "editing this
+      // label" and silently paints nothing. Flagged so no handler re-enters.
+      if (label?.isNew && scene && !scene.isDestroyed) {
+        scene.deselectOverlay(overlay.id, { ignoreSideEffects: true });
+      }
     }
 
     // reset the sidebar form + primitive editor

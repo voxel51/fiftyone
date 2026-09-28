@@ -64,6 +64,8 @@ export const makeEngine = () => {
     },
     discard,
     getVersion: () => 0,
+    // no store here owns its own transport, so every patch takes the default
+    getPersistenceAdapter: () => undefined,
     captureBaseline: vi.fn(),
     getJsonPatch: vi.fn(() =>
       pending.length ? [{ sample: SAMPLE_ID, deltas: [...pending] }] : [],

@@ -287,6 +287,7 @@ function cacheFixturePoster(
   getGridPosterCache().put(
     gridPosterCacheKey({
       datasetId: "fixture-dataset",
+      episodeId: "fixture-grid",
       imageFit: fit,
       mediaField: "recording",
       selectedSourceName: null,
