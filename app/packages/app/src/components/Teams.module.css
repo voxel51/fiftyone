@@ -1,7 +1,11 @@
-/* The Enterprise call to action: brand gradient on the label and the sparkle,
-   a gentle pulse on hover. Brand color, not a theme token. */
+/* The Enterprise call to action: the expressive brand gradient on the label
+   and the sparkle, a gentle pulse on hover. */
 .cta {
-  --cta-gradient: linear-gradient(45deg, #ff6d04 0%, #b681ff 100%);
+  --cta-gradient: linear-gradient(
+    45deg,
+    var(--color-content-interactive-expressive-default-start) 0%,
+    var(--color-content-interactive-expressive-default-end) 100%
+  );
   background-image: var(--cta-gradient);
   background-clip: text;
   -webkit-background-clip: text;

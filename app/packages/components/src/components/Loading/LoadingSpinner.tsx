@@ -1,4 +1,5 @@
 import { CircularProgress } from "@mui/material";
+import { cssVar } from "@voxel51/voodo";
 
 const LoadingSpinner = ({
   color = "base",
@@ -8,7 +9,7 @@ const LoadingSpinner = ({
   size?: string;
 }) => {
   const COLORS: { [key: string]: string } = {
-    base: "#FFC59B",
+    base: cssVar.color.brand.accent,
     primary: "primary",
     secondary: "secondary",
     error: "error",

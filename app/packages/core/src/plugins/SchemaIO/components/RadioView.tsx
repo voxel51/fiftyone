@@ -9,6 +9,7 @@ import { useMemo } from "react";
 import { ButtonView, HeaderView } from ".";
 import { autoFocus, getComponentProps } from "../utils";
 import { useKey } from "../hooks";
+import { cssVar } from "@voxel51/voodo";
 
 export default function RadioView(props: RadioGroupProps) {
   const { schema, onChange, path, data } = props;
@@ -86,21 +87,28 @@ export default function RadioView(props: RadioGroupProps) {
                               background: "none",
                               justifyContent: "flex-start",
                               color:
-                                data === value ? "#FF6D04" : "text.secondary",
+                                data === value
+                                  ? cssVar.color.brand.primary
+                                  : "text.secondary",
                               border:
                                 data === value
-                                  ? "1px solid #FF6D04"
-                                  : "1px solid #333",
+                                  ? `1px solid ${cssVar.color.brand.primary}`
+                                  : `1px solid ${cssVar.color.border.default}`,
                               boxShadow: "none",
                               "&:hover": {
                                 background: "none",
                                 boxShadow: "none",
-                                borderColor: "rgba(255, 109, 4, 0.50)",
+                                borderColor: `color-mix(in srgb, ${cssVar.color.brand.primary} 50%, transparent)`,
                               },
                             },
                           },
                           icon: {
-                            sx: { color: data === value ? "#FF6D04" : "" },
+                            sx: {
+                              color:
+                                data === value
+                                  ? cssVar.color.brand.primary
+                                  : "",
+                            },
                           },
                         },
                       },

@@ -62,7 +62,11 @@
   bottom: 0;
   width: 6px;
   transform: translateX(-50%);
-  background: rgba(255, 200, 0, 0.85);
+  background: color-mix(
+    in srgb,
+    var(--color-semantic-warning) 85%,
+    transparent
+  );
   cursor: ew-resize;
   z-index: 3;
 }
@@ -145,7 +149,7 @@
 }
 
 .inspectionCaret::before {
-  border-left: 2px dashed var(--color-voxel-secondary, #ff8d00);
+  border-left: 2px dashed var(--color-semantic-warning);
   bottom: 0;
   content: "";
   left: 0;
@@ -155,7 +159,7 @@
 
 .inspectionCaretCap {
   background: var(--plot-surface, #050b12);
-  border: 1px solid var(--color-voxel-secondary, #ff8d00);
+  border: 1px solid var(--color-semantic-warning);
   border-radius: 50%;
   height: 6px;
   left: -4px;

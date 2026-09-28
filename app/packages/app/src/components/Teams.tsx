@@ -24,6 +24,7 @@ import {
 import { useCallback, useEffect, useState } from "react";
 
 import styles from "./Teams.module.css";
+import { cssVar } from "@voxel51/voodo";
 
 const ENTERPRISE_TOOLTIP_LS = "fiftyone-enterprise-tooltip-seen";
 export const ENTERPRISE_URL =
@@ -40,8 +41,18 @@ const GradientDefs = () => (
         x2="100%"
         y2="100%"
       >
-        <stop offset="0%" stopColor="#ff6d04" />
-        <stop offset="100%" stopColor="#b681ff" />
+        <stop
+          offset="0%"
+          style={{
+            stopColor: cssVar.color.interactive["expressive-default"].start,
+          }}
+        />
+        <stop
+          offset="100%"
+          style={{
+            stopColor: cssVar.color.interactive["expressive-default"].end,
+          }}
+        />
       </linearGradient>
     </defs>
   </svg>
