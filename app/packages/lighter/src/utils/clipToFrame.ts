@@ -93,9 +93,11 @@ const clipSegment = (
     }
   }
 
+  // keep untouched endpoints as-is so runs chain by exact equality;
+  // recomputing `a + 1 * dx` can drift from `b`
   return [
-    [a[0] + t0 * dx, a[1] + t0 * dy],
-    [a[0] + t1 * dx, a[1] + t1 * dy],
+    t0 === 0 ? a : [a[0] + t0 * dx, a[1] + t0 * dy],
+    t1 === 1 ? b : [a[0] + t1 * dx, a[1] + t1 * dy],
   ];
 };
 

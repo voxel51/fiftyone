@@ -68,6 +68,31 @@ describe("clipPolylineToFrame", () => {
     ]);
   });
 
+  test("keeps an open path whole when inside vertices don't round-trip", () => {
+    expect(
+      clipPolylineToFrame(
+        [
+          [
+            [-0.2, 0.5],
+            [0.1, 0.5],
+            [0.3, 0.5],
+            [0.7, 0.4],
+            [0.9, 0.9],
+          ],
+        ],
+        false,
+      ),
+    ).toEqual([
+      [
+        [0, 0.5],
+        [0.1, 0.5],
+        [0.3, 0.5],
+        [0.7, 0.4],
+        [0.9, 0.9],
+      ],
+    ]);
+  });
+
   test("splits an open path that leaves and re-enters the frame", () => {
     expect(
       clipPolylineToFrame(
