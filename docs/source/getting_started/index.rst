@@ -5,6 +5,11 @@ Getting Started Guides
 
 .. default-role:: code
 
+.. meta::
+    :description: Step-by-step guided learning paths for FiftyOne,
+        covering dataset curation, object detection, segmentation, model
+        evaluation, and more.
+
 Welcome to FiftyOne's guided learning experiences! These step-by-step tutorials will walk you through complete workflows, helping you master FiftyOne's capabilities through hands-on practice.
 
 Each guide is designed as a sequential learning experience with navigation between steps, allowing you to progress through the material at your own pace.

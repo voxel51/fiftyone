@@ -1063,7 +1063,12 @@ function loadMapLibreStylesheet(): Promise<void> {
   if (!mapLibreCssImport) {
     mapLibreCssImport = import("maplibre-gl/dist/maplibre-gl.css?url").then(
       ({ default: href }) => {
-        ensureMapLibreStylesheet(href);
+        // `?url` yields a string only under Vite. Webpack-style bundlers
+        // return a module object after injecting the styles themselves;
+        // using it as an href would request the literal "[object Object]".
+        if (typeof href === "string") {
+          ensureMapLibreStylesheet(href);
+        }
       },
     );
   }

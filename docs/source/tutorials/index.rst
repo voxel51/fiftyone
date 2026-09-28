@@ -5,6 +5,10 @@ FiftyOne Tutorials
 
 .. default-role:: code
 
+.. meta::
+    :description: Hands-on FiftyOne tutorials showing how to curate
+        datasets, debug models, and turn good models into great ones.
+
 Each tutorial below is a curated demonstration of how FiftyOne can help refine
 your datasets and turn your good models into *great models*.
 

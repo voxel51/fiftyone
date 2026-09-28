@@ -5,12 +5,12 @@ FiftyOne v0.19.0 revision.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from datetime import datetime
 import logging
 import string
 
 from bson import ObjectId
-
 
 logger = logging.getLogger(__name__)
 

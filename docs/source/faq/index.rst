@@ -5,6 +5,10 @@ Frequently Asked Questions
 
 .. default-role:: code
 
+.. meta::
+    :description: Frequently asked questions about installing, running,
+        and using FiftyOne.
+
 .. _faq-browser-support:
 
 Can I open the FiftyOne App in a browser?

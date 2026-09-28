@@ -5,6 +5,7 @@ Evaluation tests operators.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import fiftyone as fo
 import fiftyone.operators as foo
 from fiftyone.operators import types

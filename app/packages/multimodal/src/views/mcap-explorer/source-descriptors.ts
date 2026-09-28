@@ -94,6 +94,8 @@ function createResolvedRemoteMcapSourceDescriptor(
     fileName: sourceDisplayName(sourceIdentity) ?? "remote.mcap",
     source: {
       readProfile: BYTE_SOURCE_READ_PROFILE.REMOTE,
+      // Byte caches need the complete access identity. Source-facts storage
+      // applies its credential-free identity at its own boundary.
       sourceId: `remote-url:${sourceIdentity}`,
       url: href,
     },

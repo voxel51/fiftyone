@@ -5,6 +5,7 @@ Sample groups.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from copy import deepcopy
 
 from bson import ObjectId

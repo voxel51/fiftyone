@@ -26,9 +26,8 @@ import fiftyone.core.view as fov
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
 from fiftyone.server.scalars import BSONArray, JSON
 
-
 _LABEL_TAGS = "_label_tags"
-_TEMPORAL_TAGS = "_temporal_tags"
+TEMPORAL_TAGS = "_temporal_tags"
 
 
 def _make_group_field_stage(view):
@@ -100,6 +99,8 @@ def get_view(
     awaitable=False,
     sort_by=None,
     desc=False,
+    selection_scope=None,
+    selection_ids=None,
 ):
     """Gets the view defined by the given request parameters.
 
@@ -125,19 +126,65 @@ def get_view(
         sort_by (None): an optional sort field
         desc (False): whether to sort in descending order. Only applicable when
             `sort_by` is provided
+        selection_scope (None): an explicit saved subset and provider boundary
+        selection_ids (None): optional parent IDs for bounded detail requests
 
     Returns:
         a :class:`fiftyone.core.view.DatasetView`
     """
 
+    # Older App clients carry this metadata alongside filters. Keep that wire
+    # compatibility at the boundary, never pass it into field filter parsing.
+    selection_scope = selection_scope or (filters or {}).get(
+        "_selection_scope"
+    )
+    if filters and "_selection_scope" in filters:
+        filters = {
+            key: value
+            for key, value in filters.items()
+            if key != "_selection_scope"
+        }
+
     def run(dataset, stages):
+        subset_stage = None
         if isinstance(dataset, str):
             dataset = fod.load_dataset(dataset, reload=reload)
 
-        if view_name is not None:
-            return dataset.load_saved_view(view_name)
+        if selection_scope and selection_scope.get("subsetId"):
+            from fiftyone.server.selection import (
+                validate_subset_stages,
+            )
 
-        if stages:
+            if view_name is not None:
+                raise ValueError(
+                    "Open the saved view pipeline explicitly within this subset"
+                )
+            import fiftyone.core.subsets as fosub
+
+            base, subset_stages = fosub.subset_base_view(
+                dataset, selection_scope["subsetId"], stages
+            )
+            validate_subset_stages(subset_stages, extended_stages)
+            view = fosub.select_subset(
+                base,
+                selection_scope["subsetId"],
+                selection_scope.get("subsetScope"),
+                parent_ids=selection_ids,
+            )
+            subset_stage = view._stages[-1]
+            for stage in subset_stages:
+                view = _add_scope_stage(
+                    view, fosg.ViewStage._from_dict(stage), selection_scope
+                )
+        elif view_name is not None:
+            return dataset.load_saved_view(view_name)
+        elif stages and selection_scope and selection_scope.get("provider"):
+            view = dataset.view()
+            for stage in stages:
+                view = _add_scope_stage(
+                    view, fosg.ViewStage._from_dict(stage), selection_scope
+                )
+        elif stages:
             view = fov.DatasetView._build(dataset, stages)
         else:
             view = dataset.view()
@@ -155,6 +202,19 @@ def get_view(
                 view, media_types = handle_group_filter(
                     dataset, view, sample_filter.group
                 )
+                if (
+                    subset_stage is not None
+                    and subset_stage not in view._stages
+                ):
+                    # Modal group lookup can restart from the source dataset.
+                    # Its sibling samples must still belong to the subset.
+                    import fiftyone.core.subsets as fosub
+
+                    view = fosub.select_subset(
+                        view,
+                        selection_scope["subsetId"],
+                        selection_scope.get("subsetScope"),
+                    )
 
             elif sample_filter.id:
                 view = fov.make_optimized_select_view(view, sample_filter.id)
@@ -168,7 +228,19 @@ def get_view(
                 media_types=media_types,
                 sort_by=sort_by,
                 desc=desc,
+                selection_scope=selection_scope,
             )
+
+        if selection_scope:
+            if view._dataset is not dataset and selection_scope.get(
+                "provider"
+            ):
+                raise ValueError(
+                    "Segment sources are available in the samples view"
+                )
+            from fiftyone.server.selection import constrain_view
+
+            view = constrain_view(view, selection_scope)
 
         return view
 
@@ -186,6 +258,7 @@ def get_extended_view(
     media_types=None,
     sort_by=None,
     desc=False,
+    selection_scope=None,
 ):
     """Create an extended view with the provided filters.
 
@@ -198,6 +271,7 @@ def get_extended_view(
         sort_by (None): an optional sort field
         desc (False): whether to sort in descending order. Only applicable when
             `sort_by` is provided
+        selection_scope (None): an optional saved subset boundary
 
     Returns:
         a :class:`fiftyone.core.view.DatasetView`
@@ -211,7 +285,7 @@ def get_extended_view(
         sort_by_stage = extended_stages.pop(
             "fiftyone.core.stages.SortBy", None
         )
-        view = extend_view(view, extended_stages)
+        view = extend_view(view, extended_stages, selection_scope)
 
     if filters:
         if "tags" in filters:
@@ -229,7 +303,7 @@ def get_extended_view(
         if label_tags:
             view = _match_label_tags(view, label_tags)
 
-        temporal_tags = filters.get(_TEMPORAL_TAGS, None)
+        temporal_tags = filters.get(TEMPORAL_TAGS, None)
         if temporal_tags:
             view = _match_temporal_tags(view, temporal_tags)
 
@@ -265,12 +339,13 @@ def get_extended_view(
     return view
 
 
-def extend_view(view, extended_stages):
+def extend_view(view, extended_stages, selection_scope=None):
     """Adds the given extended stages to the view.
 
     Args:
         view: a :class:`fiftyone.core.collections.SampleCollection`
         extended_stages: an extended stages dict
+        selection_scope (None): an optional saved subset boundary
 
     Returns:
         a :class:`fiftyone.core.view.DatasetView`
@@ -278,8 +353,34 @@ def extend_view(view, extended_stages):
     for _cls, d in extended_stages.items():
         kwargs = [[k, v] for k, v in d.items()]
         stage = fosg.ViewStage._from_dict({"_cls": _cls, "kwargs": kwargs})
-        view = view.add_stage(stage)
+        view = _add_scope_stage(view, stage, selection_scope)
 
+    return view
+
+
+def _add_scope_stage(view, stage, selection_scope):
+    if selection_scope and isinstance(stage, fosg.GroupBy) and not stage.flat:
+        # Group representatives must come from eligible provider parents, too.
+        from fiftyone.server.selection import constrain_view
+
+        view = constrain_view(view, selection_scope)
+    view = view.add_stage(stage)
+    if (
+        selection_scope
+        and selection_scope.get("subsetId")
+        and isinstance(
+            stage, (fosg.SelectGroupSlices, fosg.ExcludeGroupSlices)
+        )
+    ):
+        # Slice stages can fetch siblings from the root collection. Reapply
+        # membership before later windows/grouping can observe those siblings.
+        import fiftyone.core.subsets as fosub
+
+        view = fosub.select_subset(
+            view,
+            selection_scope["subsetId"],
+            selection_scope.get("subsetScope"),
+        )
     return view
 
 
@@ -412,6 +513,14 @@ def _project_pagination_paths(
         if isinstance(field, (fof.DictField, fof.VectorField))
     ]
 
+    # A media reference is the sample's identity and is delivered whole: its
+    # coordinates are a kind's own, so they are not in the declared schema
+    references = [
+        path
+        for path, field in schema.items()
+        if isinstance(field, fof.MediaReferenceField)
+    ]
+
     selected_fields = ["_group"]  # store dynamic group values
     for path in schema:
         # exclude the field and its children, but not sibling fields that
@@ -420,6 +529,9 @@ def _project_pagination_paths(
             path == exclude or path.startswith(exclude + ".")
             for exclude in excluded
         ):
+            continue
+
+        if any(path.startswith(reference + ".") for reference in references):
             continue
 
         selected_fields.append(path)
@@ -912,10 +1024,11 @@ def _match_temporal_tags(
     # requested tag values at the dataset level (tags are sparse, so this set
     # stays small, and we avoid enumerating the view's sample ids on every
     # grid load), then select / exclude within the current view -- the
-    # select/exclude intersects, so out-of-view tag hits can't leak in.
-    dataset = view._dataset if isinstance(view, fov.DatasetView) else view
+    # select/exclude intersects, so out-of-view tag hits can't leak in. On a
+    # grouped view that is the active slice's samples, as with every other
+    # sidebar filter.
     tags = fotags.list_temporal_tags(
-        dataset, fotags.TemporalTagFilter(tags=values)
+        _root_dataset(view), fotags.TemporalTagFilter(tags=values)
     )
     sample_ids = {str(tag.sample_id) for tag in tags}
 
@@ -925,6 +1038,32 @@ def _match_temporal_tags(
 
     # Matching with no matches yields an empty view.
     return view.select(sample_ids)
+
+
+def count_temporal_tags(view: foc.SampleCollection) -> dict:
+    """Counts the temporal tags on the samples of ``view``, by tag value.
+
+    Counts every interval, as the other sidebar tag counts count occurrences.
+    The database groups the dataset's tags per sample first, so only tagged
+    samples are narrowed to the view, rather than every tag or every sample id
+    being read.
+    """
+    per_sample = fotags.count_temporal_tags_per_sample(_root_dataset(view))
+    if not per_sample:
+        return {}
+
+    in_view = view.select(list(per_sample.keys())).values("id")
+
+    counts = {}
+    for sample_id in in_view:
+        for tag, count in per_sample[sample_id].items():
+            counts[tag] = counts.get(tag, 0) + count
+
+    return counts
+
+
+def _root_dataset(view: foc.SampleCollection) -> fod.Dataset:
+    return view._dataset if isinstance(view, fov.DatasetView) else view
 
 
 def _match_label_tags(view: foc.SampleCollection, label_tags):

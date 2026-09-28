@@ -61,7 +61,10 @@ export default function CodeBlock({
         className={scrollableStyles.scrollable}
         language={(language ?? "python").toLowerCase()}
         customStyle={{ margin: 0, lineHeight: 1.75 }}
-        style={mode === "dark" ? a11yDark : a11yLight}
+        // The app's base theme is dark, and `mode` is undefined when this
+        // renders outside the theme provider — an error boundary's trace,
+        // for one — so unknown falls to dark rather than black-on-dark
+        style={mode === "light" ? a11yLight : a11yDark}
         {...props}
       >
         {text}

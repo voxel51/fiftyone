@@ -13,18 +13,15 @@ afterEach(() => {
 });
 
 describe("zoomTimeseriesChart", () => {
-  it("zooms both axes around their midpoint", () => {
+  it("zooms only x around its midpoint", () => {
     const chart = chartStub({ x: [0, 100], y: [-50, 50] });
 
     zoomTimeseriesChart(chart.value, TIMESERIES_ZOOM_IN_FACTOR, [0, 100]);
 
-    expect(chart.setScale).toHaveBeenNthCalledWith(1, "x", {
+    expect(chart.setScale).toHaveBeenCalledOnce();
+    expect(chart.setScale).toHaveBeenCalledWith("x", {
       min: 10,
       max: 90,
-    });
-    expect(chart.setScale).toHaveBeenNthCalledWith(2, "y", {
-      min: -40,
-      max: 40,
     });
   });
 
@@ -33,13 +30,10 @@ describe("zoomTimeseriesChart", () => {
 
     zoomTimeseriesChart(chart.value, TIMESERIES_ZOOM_OUT_FACTOR, [0, 100]);
 
-    expect(chart.setScale).toHaveBeenNthCalledWith(1, "x", {
+    expect(chart.setScale).toHaveBeenCalledOnce();
+    expect(chart.setScale).toHaveBeenCalledWith("x", {
       min: 0,
       max: 100,
-    });
-    expect(chart.setScale).toHaveBeenNthCalledWith(2, "y", {
-      min: -50,
-      max: 50,
     });
   });
 
@@ -77,7 +71,7 @@ describe("touchZoomPanPlugin", () => {
     destroyPlugin(plugin, chart.value);
   });
 
-  it("pinches uniformly around the gesture midpoint", () => {
+  it("pinches x around the gesture midpoint without changing y", () => {
     const chart = interactiveChartStub({ x: [20, 80], y: [20, 80] });
     const plugin = touchZoomPanPlugin({ xLimits: [0, 100] });
     initializePlugin(plugin, chart.value);
@@ -94,7 +88,7 @@ describe("touchZoomPanPlugin", () => {
     runFrame();
 
     expect(chart.scales.x).toEqual({ min: 35, max: 65 });
-    expect(chart.scales.y).toEqual({ min: 35, max: 65 });
+    expect(chart.scales.y).toEqual({ min: 20, max: 80 });
 
     destroyPlugin(plugin, chart.value);
   });

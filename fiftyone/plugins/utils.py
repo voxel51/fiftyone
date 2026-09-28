@@ -5,6 +5,7 @@ FiftyOne plugin utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 import multiprocessing.dummy
 import os
@@ -15,7 +16,6 @@ import yaml
 import fiftyone.core.utils as fou
 from fiftyone.utils.github import GitHubRepository
 from fiftyone.plugins.core import PLUGIN_METADATA_FILENAMES
-
 
 logger = logging.getLogger(__name__)
 

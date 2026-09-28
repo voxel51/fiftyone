@@ -5,6 +5,7 @@ Service tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from contextlib import contextmanager
 import os
 import sys
@@ -22,7 +23,6 @@ import fiftyone as fo
 import fiftyone.constants as foc
 import fiftyone.core.service as fos
 import fiftyone.service.util as fosu
-
 
 MONGOD_EXE_NAME = fos.DatabaseService.MONGOD_EXE_NAME
 

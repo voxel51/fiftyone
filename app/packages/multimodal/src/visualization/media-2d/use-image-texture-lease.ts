@@ -158,8 +158,17 @@ export function useImageTextureLease({
           return;
         }
 
-        hasVisibleTextureRef.current = false;
-        replaceHeldTexture(null, heldTextureRef, retiredTexturesRef, setHandle);
+        // A failed advance keeps the last committed frame visible —
+        // errors never blank the canvas. Only a lease that never showed
+        // anything reports empty-handed.
+        if (!hasVisibleTextureRef.current) {
+          replaceHeldTexture(
+            null,
+            heldTextureRef,
+            retiredTexturesRef,
+            setHandle,
+          );
+        }
         setErrorMessage(diagnosticMessage(error, "Image unavailable"));
         setStatus("error");
       });

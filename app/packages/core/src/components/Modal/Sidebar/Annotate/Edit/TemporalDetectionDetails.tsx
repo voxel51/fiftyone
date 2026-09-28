@@ -4,10 +4,21 @@ import {
   useAnnotationEngine,
   useEngineSelector,
 } from "@fiftyone/annotation";
+import { useModalSample } from "@fiftyone/state";
 import type { LabelData } from "@fiftyone/utilities";
+import {
+  getModalSampleFrameRate,
+  resolveFrameCount,
+} from "@fiftyone/video-annotation";
+import { ErrorSchemaBuilder } from "@rjsf/utils";
 import { useEffect, useMemo, useState } from "react";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
+import {
+  type Span,
+  type SupportIssue,
+  supportIssue,
+} from "./supportValidation";
 import { useAnnotationContext } from "./useAnnotationContext";
 
 const createInput = (name: string, readOnly?: boolean) => {
@@ -37,11 +48,6 @@ const createStack = () => {
   };
 };
 
-interface Span {
-  start?: number;
-  stop?: number;
-}
-
 export interface TemporalDetectionDetailsProps {
   readOnly?: boolean;
 }
@@ -53,17 +59,31 @@ export interface TemporalDetectionDetailsProps {
  * {@link Position} for bounding boxes. The span is read reactively from the
  * engine (so it re-syncs on number-input edits, undo/redo, and timeline drags)
  * and edits commit straight back through the engine, keeping the timeline
- * interval and persistence in step.
+ * interval and persistence in step. A span the SDK would reject (see
+ * {@link supportError}) shows a message under the edited bound and is not
+ * committed.
  */
 export default function TemporalDetectionDetails({
   readOnly = false,
 }: TemporalDetectionDetailsProps) {
   const [span, setSpan] = useState<Span>({});
+  const [issue, setIssue] = useState<SupportIssue | null>(null);
 
   const { selected } = useAnnotationContext();
   const overlay = selected?.overlay;
   const engine = useAnnotationEngine();
   const sample = useActiveAnnotationSampleId();
+
+  // the video's frame count, so a typed stop can't name a frame past its end
+  // (the timeline clamps drags the same way); `null` when metadata is missing
+  const modalSample = useModalSample();
+  const frameCount = useMemo(
+    () =>
+      modalSample
+        ? resolveFrameCount(modalSample, getModalSampleFrameRate(modalSample))
+        : null,
+    [modalSample],
+  );
 
   // address the TD by its engine ref — the anchor's full ref when opened from a
   // surface, falling back to the schema-field + overlay id (a TD is sample-level,
@@ -90,6 +110,7 @@ export default function TemporalDetectionDetails({
     }
 
     setSpan({ start: committedSupport[0], stop: committedSupport[1] });
+    setIssue(null);
   }, [committedSupport]);
 
   const schema: SchemaType = useMemo(
@@ -112,11 +133,26 @@ export default function TemporalDetectionDetails({
     [readOnly],
   );
 
+  // rendered by the form's field template under the edited bound
+  const smartFormProps = useMemo(() => {
+    if (!issue) {
+      return undefined;
+    }
+
+    return {
+      extraErrors: new ErrorSchemaBuilder().addErrors(issue.message, [
+        "support",
+        issue.bound,
+      ]).ErrorSchema,
+    };
+  }, [issue]);
+
   return (
     <div style={{ width: "100%" }}>
       <SchemaIOComponent
         key={ref?.instanceId ?? overlay?.id}
         smartForm={true}
+        smartFormProps={smartFormProps}
         schema={schema}
         data={{ support: span }}
         onChange={(input: { support?: Span }) => {
@@ -143,6 +179,18 @@ export default function TemporalDetectionDetails({
 
           // immediate display of the typed value
           setSpan(merged);
+
+          // an invalid span stays on screen with its message; the stored
+          // span is untouched until the typed values agree
+          const nextIssue = supportIssue(
+            span,
+            { start: merged.start, stop: merged.stop },
+            frameCount,
+          );
+          setIssue(nextIssue);
+          if (nextIssue) {
+            return;
+          }
 
           // commit through the engine: it persists (autosave diffs the engine)
           // and the timeline re-derives the interval. A bare updateLabel is one

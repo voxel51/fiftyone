@@ -5,6 +5,7 @@ FiftyOne user ID utility unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import unittest
 import uuid
 from unittest.mock import patch, mock_open

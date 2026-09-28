@@ -6,6 +6,7 @@ Unit tests for :class:`fiftyone.core.stages.SelectObjects` and
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import random
 import unittest
 

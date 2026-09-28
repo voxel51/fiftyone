@@ -332,6 +332,9 @@ function recordingFacts(
       embeddedSchemaChannelCount,
       missingSchemaChannelCount: channelCount - embeddedSchemaChannelCount,
     },
+    ...(reader.sourceSizeBytes !== undefined
+      ? { sizeBytes: reader.sourceSizeBytes.toString() }
+      : {}),
     topicCount: topics.size,
   };
 }

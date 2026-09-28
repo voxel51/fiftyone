@@ -277,10 +277,7 @@ export class ImageOverlay extends BaseOverlay implements CanonicalMedia {
     return this.id;
   }
 
-  protected async renderImpl(
-    renderer: Renderer2D,
-    _renderMeta: RenderMeta,
-  ): Promise<void> {
+  protected renderImpl(renderer: Renderer2D, _renderMeta: RenderMeta): void {
     // The image is rendered via the HTML <img> element, not through Pixi.
     if (
       this.imgElement &&

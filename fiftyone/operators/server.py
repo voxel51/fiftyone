@@ -5,6 +5,7 @@ FiftyOne operator server.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import contextlib
 import types
 from sse_starlette.sse import EventSourceResponse

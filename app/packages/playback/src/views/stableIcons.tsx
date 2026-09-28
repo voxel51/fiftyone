@@ -15,9 +15,11 @@ export const ChevronLeftIcon: React.FC = () => (
 export const ChevronRightIcon: React.FC = () => (
   <Icon name={IconName.ChevronRight} />
 );
+export const CloseIcon: React.FC = () => <Icon name={IconName.Close} />;
 export const PauseIcon: React.FC = () => <Icon name={IconName.Pause} />;
 export const PinIcon: React.FC = () => <Icon name={IconName.Pin} />;
 export const PlayIcon: React.FC = () => <Icon name={IconName.Play} />;
+export const SlidersIcon: React.FC = () => <Icon name={IconName.Sliders} />;
 export const TagIcon: React.FC = () => <Icon name={IconName.Tag} />;
 export const VolumeOffIcon: React.FC = () => <Icon name={IconName.VolumeOff} />;
 export const VolumeUpIcon: React.FC = () => <Icon name={IconName.VolumeUp} />;

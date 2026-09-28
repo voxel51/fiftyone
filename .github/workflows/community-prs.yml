@@ -27,6 +27,14 @@ jobs:
             const pr = context.payload.pull_request;
             const author = pr.user.login;
 
+            // This App may publish internal PRs without collaborator access.
+            const trustedBot = author === 'voxel51-autoworks[bot]' &&
+              pr.user.id === 331044789 && pr.user.type === 'Bot' &&
+              pr.head.repo?.id === 257913595 &&
+              pr.head.repo?.full_name === 'voxel51/fiftyone' &&
+              (pr.base.ref === 'main' || pr.base.ref.startsWith('release/'));
+            if (trustedBot) return;
+
             let hasPush = false;
             try {
               const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
@@ -71,7 +79,7 @@ jobs:
 
             if (from) {
               body.push(
-                `Community pull requests target the \`community\` branch, so I've changed this PR's base from \`${from}\` to \`community\`. Your changes are unaffected — a maintainer integrates \`community\` into \`develop\`.`,
+                `Community pull requests target the \`community\` branch, so I've changed this PR's base from \`${from}\` to \`community\`. Your changes are unaffected — a maintainer integrates \`community\` into \`main\`.`,
                 '',
               );
             }
@@ -81,7 +89,7 @@ jobs:
               '',
               '- [ ] You filled out the PR template above, completely to the best of your knowledge',
               '- [ ] You include tests (if applicable)',
-              '- [ ] You read the [contribution guide](https://github.com/voxel51/fiftyone/blob/develop/CONTRIBUTING.md#community-pull-requests)',
+              '- [ ] You read the [contribution guide](https://github.com/voxel51/fiftyone/blob/main/CONTRIBUTING.md#community-pull-requests)',
               '',
               '**Helpful resources:**',
               '- 📖 [FiftyOne Documentation](https://docs.voxel51.com/)',

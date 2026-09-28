@@ -46,8 +46,11 @@ type :class:`NoDatasetSampleDocument` to type ``dataset._sample_doc_cls``::
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import OrderedDict
 import random
+
+from mongoengine.errors import ValidationError
 
 import fiftyone.core.fields as fof
 import fiftyone.core.metadata as fom
@@ -57,16 +60,11 @@ import fiftyone.core.storage as fos
 from .document import Document, SerializableDocument
 from .mixins import DatasetMixin, get_default_fields, NoDatasetMixin
 
-
 # Use our own Random object to avoid messing with the user's seed
 _random = random.Random()
 
 
-def _generate_rand(filepath=None):
-    # @todo filepath no longer has to be unique. Should we change this?
-    if filepath is not None:
-        _random.seed(filepath)
-
+def _generate_rand():
     return _random.random() * 0.001 + 0.999
 
 
@@ -82,7 +80,8 @@ class DatasetSampleDocument(DatasetMixin, Document):
     _is_frames_doc = False
 
     id = fof.ObjectIdField(required=True, primary_key=True, db_field="_id")
-    filepath = fof.StringField(required=True)
+    filepath = fof.StringField()
+    media_reference = fof.MediaReferenceField()
     tags = fof.ListField(fof.StringField())
     metadata = fof.EmbeddedDocumentField(fom.Metadata, null=True)
     created_at = fof.DateTimeField(read_only=True)
@@ -95,6 +94,10 @@ class DatasetSampleDocument(DatasetMixin, Document):
     @property
     def media_type(self):
         return self._media_type
+
+    def clean(self):
+        if self.media_reference is None and not self.filepath:
+            raise ValidationError("Field is required: ['filepath']")
 
     def _get_repr_fields(self):
         fields = self.field_names
@@ -113,16 +116,36 @@ class NoDatasetSampleDocument(NoDatasetMixin, SerializableDocument):
     )
 
     def __init__(self, **kwargs):
-        filepath = fos.normalize_path(kwargs["filepath"])
+        filepath = kwargs.get("filepath", None)
+        reference = kwargs.get("media_reference", None)
+        reference_media_type = getattr(reference, "media_type", None)
+
+        if filepath is not None:
+            filepath = fos.normalize_path(filepath)
+            kwargs["filepath"] = filepath
 
         kwargs["id"] = kwargs.get("id", None)
-        kwargs["filepath"] = filepath
         kwargs["created_at"] = None
         kwargs["last_modified_at"] = None
-        kwargs["_rand"] = _generate_rand(filepath=filepath)
-        kwargs["_media_type"] = kwargs.get(
-            "media_type"
-        ) or fomm.get_media_type(filepath)
+
+        if kwargs.get("_rand", None) is None:
+            kwargs["_rand"] = _generate_rand()
+
+        media_type = kwargs.pop("media_type", None)
+        if reference is not None:
+            kwargs["_media_type"] = (
+                media_type
+                or kwargs.get("_media_type", None)
+                or reference_media_type
+                or fomm.MULTIMODAL
+            )
+        else:
+            kwargs["_media_type"] = (
+                media_type
+                or kwargs.get("_media_type", None)
+                or fomm.get_media_type(filepath)
+            )
+
         kwargs["_dataset_id"] = None
 
         self._data = OrderedDict()
@@ -130,7 +153,12 @@ class NoDatasetSampleDocument(NoDatasetMixin, SerializableDocument):
         for field_name in self.default_fields_ordered:
             value = kwargs.pop(field_name, None)
 
-            if value is None and field_name not in ("id", "_dataset_id"):
+            if value is None and field_name not in (
+                "id",
+                "filepath",
+                "media_reference",
+                "_dataset_id",
+            ):
                 value = self._get_default(self.default_fields[field_name])
 
             self._data[field_name] = value

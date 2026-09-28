@@ -190,6 +190,29 @@ def open_file(path, mode="r"):
     return _open_file(path, mode)
 
 
+class _LocalRangedFile(io.BufferedReader):
+    """A local handle under the ranged reader's teardown name."""
+
+    def release(self):
+        self.close()
+
+
+def open_ranged(path):
+    """Opens a file for bounded, seekable reads.
+
+    The caller owns the reader and calls ``release()`` when done.
+
+    Args:
+        path: a local path
+
+    Returns:
+        an open file-like object with a ``release()`` method
+    """
+    ensure_local(path)
+
+    return _LocalRangedFile(io.FileIO(path, "rb"))
+
+
 class FileCollection(list):
     """A list of open file-like objects with a closing context manager"""
 
@@ -313,6 +336,18 @@ def realpath(path):
         the resolved path
     """
     return os.path.realpath(path)
+
+
+def commonpath(paths):
+    """Returns the longest common subpath of the given paths.
+
+    Args:
+        paths: an iterable of paths
+
+    Returns:
+        the longest common subpath
+    """
+    return os.path.commonpath(paths)
 
 
 def isabs(path):

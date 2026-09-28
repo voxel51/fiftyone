@@ -19,7 +19,6 @@ import fiftyone.utils.torch as fout
 import fiftyone.core.utils as fou
 import fiftyone.zoo.models as fozm
 
-
 ultralytics = fou.lazy_import("ultralytics")
 torch = fou.lazy_import("torch")
 torchvision = fou.lazy_import("torchvision")
@@ -662,9 +661,9 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
     def _build_output_processor(self, config):
         if not config.output_processor_args:
             config.output_processor_args = {}
-        config.output_processor_args[
-            "post_processor"
-        ] = self._model.predictor.postprocess
+        config.output_processor_args["post_processor"] = (
+            self._model.predictor.postprocess
+        )
         output_processor = super()._build_output_processor(config)
         # Set post-processor to None for config JSON serialization.
         config.output_processor_args["post_processor"] = None
@@ -705,6 +704,7 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
             confidence_thresh=self.config.confidence_thresh,
             classes=self.config.filter_classes,
         )
+
 
 class YOLOEVPGetItem(fout.GetItem):
     """A :class:`GetItem` that loads images and box prompt detections for
@@ -891,9 +891,11 @@ class FiftyOneYOLOEVPModel(FiftyOneYOLOModel):
                     mode="predict",
                     verbose=False,
                     device=self._device,
-                    conf=self.config.confidence_thresh
-                    if self.config.confidence_thresh is not None
-                    else default_conf,
+                    conf=(
+                        self.config.confidence_thresh
+                        if self.config.confidence_thresh is not None
+                        else default_conf
+                    ),
                 )
             )
 

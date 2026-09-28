@@ -142,6 +142,27 @@ const ComposedTimeline: React.FC<{
       {contribution.value.runtime}
     </Fragment>
   ));
+  const rulerOverlay = useMemo(() => {
+    const overlays = contributions.flatMap((contribution) =>
+      contribution.value.rulerOverlay
+        ? [
+            {
+              id: contribution.extensionId,
+              render: contribution.value.rulerOverlay,
+            },
+          ]
+        : [],
+    );
+    return overlays.length === 0
+      ? undefined
+      : (labelWidth: number) => (
+          <>
+            {overlays.map((overlay) => (
+              <Fragment key={overlay.id}>{overlay.render(labelWidth)}</Fragment>
+            ))}
+          </>
+        );
+  }, [contributions]);
 
   return (
     <>
@@ -149,6 +170,7 @@ const ComposedTimeline: React.FC<{
         decorateTrack,
         onDrawerOpenChange,
         preferences,
+        rulerOverlay,
         runtime,
         tracks,
       })}

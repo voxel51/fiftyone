@@ -6,6 +6,7 @@ Utilities for working with
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 import os
 from urllib.parse import urlparse

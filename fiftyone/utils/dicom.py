@@ -21,7 +21,6 @@ fou.ensure_package("pydicom>=2.2.0")
 import pydicom
 from pydicom.fileset import FileInstance, FileSet
 
-
 logger = logging.getLogger(__name__)
 
 

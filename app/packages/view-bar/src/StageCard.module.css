@@ -1,0 +1,45 @@
+/* The card is the pill's frame; its content sits on one line inside it */
+.pill {
+  display: flex;
+  align-items: center;
+}
+
+/* A stage the server rejected says so once its editor closes — while the
+   popover is open the user is mid-thought, not in error */
+.pillInvalid {
+  border-color: var(--color-content-border-error);
+  outline: 1px solid var(--color-content-border-error);
+  outline-offset: -1px;
+}
+
+/* A stage still missing a required value is unfinished, not wrong: a dashed
+   frame in the ordinary border color */
+.pillDraft {
+  border-style: dashed;
+  border-color: var(--color-content-border-default);
+}
+
+/* voodo's Clickable is a plain span that takes no ref, so the ref used to put
+   the keyboard back on the pill after Escape lives on this wrapper */
+.trigger {
+  display: inline-flex;
+}
+
+.name {
+  font-weight: 600;
+}
+
+.preview {
+  white-space: nowrap;
+}
+
+/* A row holding several controls wraps rather than overflowing the popover */
+.wrapRow {
+  flex-wrap: wrap;
+}
+
+/* The editor is a focus sink: it takes the keyboard when no control can, so
+   Tab and Escape work from the start. That focus is not a selection to show. */
+.editor {
+  outline: none;
+}

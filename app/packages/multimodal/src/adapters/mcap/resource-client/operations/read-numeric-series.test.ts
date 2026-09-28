@@ -8,7 +8,6 @@ import { describe, expect, it, vi } from "vitest";
 import type { McapIndexedReaderLike, McapReadContinuation } from "../../reader";
 import { resolveMcapTimelineStrategy } from "../timeline";
 import {
-  numericSeriesSlicePointBudget,
   projectNumericField,
   readMcapNumericSeries,
   readMcapNumericSeriesSlice,
@@ -499,25 +498,6 @@ describe("readMcapNumericSeriesSlice", () => {
     maxWallTimeMs: 1_000,
   };
 
-  it("shares the viewport point budget across continuation coverage", () => {
-    const minute = 60_000_000_000n;
-    const firstSecond = [{ endNs: 999_999_999n, startNs: 0n }];
-    const fullMinute = [{ endNs: minute - 1n, startNs: 0n }];
-
-    expect(
-      numericSeriesSlicePointBudget(4_000, firstSecond, 0n, minute - 1n),
-    ).toBeLessThanOrEqual(72);
-    expect(
-      numericSeriesSlicePointBudget(4_000, fullMinute, 0n, minute - 1n),
-    ).toBeLessThanOrEqual(4_000);
-    expect(
-      numericSeriesSlicePointBudget(4_000, fullMinute, 0n, minute - 1n),
-    ).toBeGreaterThan(3_900);
-    expect(numericSeriesSlicePointBudget(4, firstSecond, 0n, minute - 1n)).toBe(
-      4,
-    );
-  });
-
   it("escalates a zero-coverage fallback scan to one atomic source unit", async () => {
     const continuation = {} as McapReadContinuation;
     const base = createReader({ messages: [] });
@@ -545,6 +525,7 @@ describe("readMcapNumericSeriesSlice", () => {
       request: {
         absoluteBudget: { ...budget, maxMessages: 250_000 },
         absoluteMaxChunks: 4,
+        bucketDurationNs: 1_000_000_000n,
         budget,
         endTimeNs: 2n,
         maxChunks: 1,
@@ -612,6 +593,7 @@ describe("readMcapNumericSeriesSlice", () => {
       request: {
         absoluteBudget: budget,
         absoluteMaxChunks: 4,
+        bucketDurationNs: 1_000_000_000n,
         budget,
         endTimeNs: 2_000_000_000n,
         maxChunks: 2,
@@ -679,6 +661,7 @@ describe("readMcapNumericSeriesSlice", () => {
       request: {
         absoluteBudget: budget,
         absoluteMaxChunks: 4,
+        bucketDurationNs: 1_000_000_000n,
         budget,
         endTimeNs: 2_000_000_000n,
         maxChunks: 2,
@@ -759,6 +742,7 @@ describe("readMcapNumericSeriesSlice", () => {
       request: {
         absoluteBudget,
         absoluteMaxChunks: 4,
+        bucketDurationNs: 1_000_000_000n,
         budget,
         endTimeNs: 2_000_000_000n,
         maxChunks: 1,

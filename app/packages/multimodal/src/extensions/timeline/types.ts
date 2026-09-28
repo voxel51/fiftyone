@@ -37,6 +37,8 @@ export interface TimelineContribution {
   readonly sections?: readonly TimelineSection[];
   /** Runs inside the playback, track, tiling, and episode data-stream providers. */
   readonly runtime?: React.ReactNode;
+  /** Rendered over the timeline ruler, given the ruler's effective label width. */
+  readonly rulerOverlay?: (labelWidth: number) => React.ReactNode;
   readonly preferences?: TimelinePreferences;
   readonly onDrawerOpenChange?: (open: boolean) => void;
 }
@@ -68,6 +70,7 @@ export interface TimelineComposition {
   readonly decorateTrack: TimelineTrackDecorator;
   readonly onDrawerOpenChange?: (open: boolean) => void;
   readonly preferences: TimelinePreferences;
+  readonly rulerOverlay?: (labelWidth: number) => React.ReactNode;
   readonly runtime: React.ReactNode;
   readonly tracks: readonly Track[];
 }

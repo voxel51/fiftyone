@@ -1,27 +1,29 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
 import type { Track } from "@fiftyone/playback";
+import {
+  buildTemporalTagTracks,
+  temporalTagNanoseconds,
+  temporalTagTrackId,
+} from "@fiftyone/playback";
 import type {
   TemporalTagCreatePayload,
   TemporalTagUpdatePayload,
 } from "@fiftyone/playback";
 import {
   useActiveTemporalTagFilterValues,
+  useSyncTemporalTagResults,
   useTemporalTagColor,
+  useTemporalTagValues,
 } from "@fiftyone/state";
 import { useCallback, useMemo } from "react";
 import { useSampleRendererTemporalTags } from "../../../temporal-tags";
 
-const NO_TRACKS: Track[] = [];
 const NO_IDS: string[] = [];
-
-/** Track id for a temporal-tag group. Must match `TemporalTagTimeline`'s
- * `temporal-tag::` prefix check. */
-const TEMPORAL_TAG_TRACK_PREFIX = "temporal-tag::";
-const temporalTagTrackId = (label: string): string =>
-  `${TEMPORAL_TAG_TRACK_PREFIX}${label}`;
 
 export interface TemporalTagsResult {
   tracks: Track[];
+  /** Every tag label in the dataset, for the creation popup's dropdown. */
+  existingTags: string[];
   onTagCreate: (tag: TemporalTagCreatePayload) => Promise<void>;
   onTagUpdate: (tag: TemporalTagUpdatePayload) => Promise<void>;
   onTagDelete: (event: { data?: unknown }) => Promise<void>;
@@ -51,8 +53,8 @@ export function useTemporalTags(
       create([
         {
           ...tag,
-          start: Math.round(tag.start * 1_000_000_000),
-          end: Math.round(tag.end * 1_000_000_000),
+          start: temporalTagNanoseconds(tag.start),
+          end: temporalTagNanoseconds(tag.end),
         },
       ]).then(() => undefined),
     [create],
@@ -61,49 +63,26 @@ export function useTemporalTags(
   const onTagUpdate = useCallback(
     (tag: TemporalTagUpdatePayload) =>
       update(tag.id, {
-        start: Math.round(tag.start * 1_000_000_000),
-        end: Math.round(tag.end * 1_000_000_000),
+        start: temporalTagNanoseconds(tag.start),
+        end: temporalTagNanoseconds(tag.end),
         tag: tag.tag,
       }).then(() => undefined),
     [update],
   );
 
-  const tracks = useMemo<Track[]>(() => {
-    if (temporalTags.length === 0) return NO_TRACKS;
+  const tracks = useMemo<Track[]>(
+    () => buildTemporalTagTracks(temporalTags, colorForTag),
+    [temporalTags, colorForTag],
+  );
 
-    const byLabel = new Map<string, (typeof temporalTags)[number][]>();
-    for (const t of temporalTags) {
-      const group = byLabel.get(t.tag) ?? [];
-      group.push(t);
-      byLabel.set(t.tag, group);
-    }
+  // The dropdown offers the whole dataset's vocabulary, not just this
+  // sample's tags — otherwise the first tag on any sample has nothing to pick
+  // from and every label has to be retyped. The sidebar filter loads the same
+  // atom; loading here too covers the modal being opened without it.
+  useSyncTemporalTagResults();
+  const existingTags = useTemporalTagValues();
 
-    // Sort label groups newest-first so recently created tags appear at the
-    // top of the pinned section.
-    const sorted = Array.from(byLabel.entries()).sort(([, a], [, b]) => {
-      const tA = Math.max(
-        ...a.map((t) => (t.createdAt ? Date.parse(t.createdAt) : 0)),
-      );
-      const tB = Math.max(
-        ...b.map((t) => (t.createdAt ? Date.parse(t.createdAt) : 0)),
-      );
-      return tB - tA;
-    });
-
-    return sorted.map(([label, events]) => ({
-      id: temporalTagTrackId(label),
-      label,
-      color: colorForTag(label),
-      events: events.map((t) => ({
-        data: t.id,
-        label: t.tag,
-        startSec: t.start / 1_000_000_000,
-        endSec: t.end / 1_000_000_000,
-      })),
-    }));
-  }, [temporalTags, colorForTag]);
-
-  return { tracks, onTagCreate, onTagUpdate, onTagDelete };
+  return { tracks, existingTags, onTagCreate, onTagUpdate, onTagDelete };
 }
 
 /**

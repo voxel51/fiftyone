@@ -1,0 +1,47 @@
+/* The search row fills the bar; the field takes whatever the pending
+   indicator leaves */
+.root {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 10px 0 0;
+}
+
+/* The magnifier sits INSIDE the field's box rather than beside it: the list
+   under the field anchors to the field's left edge, and the bar's left edge
+   is where a list under the bar should begin */
+.magnifier {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 8px;
+  display: flex;
+  align-items: center;
+  z-index: 1;
+}
+
+.field {
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  /* Room for the magnifier, so the text starts after it */
+  padding-left: 36px;
+}
+
+/* The no-index list has one row: what is off, why, and the way to turn it
+   on — laid out like the option it stands in for */
+.emptyState {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  padding: var(--spacing-xs) var(--spacing-xs) var(--spacing-xs) 0;
+}
+
+.emptyCopy {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}

@@ -12,8 +12,8 @@ import { GridCustomRendererItem } from "./GridCustomRendererItem";
 
 // The multimodal guard also mounts the temporal-tag overlay, which reaches
 // for an mcap source these tests do not build
-vi.mock("@fiftyone/multimodal/temporal-tags/grid-overlay", () => ({
-  TemporalTagGridOverlay: () => null,
+vi.mock("@fiftyone/multimodal/grid-overlay", () => ({
+  EpisodeGridOverlay: () => null,
 }));
 
 vi.mock("./GridTagBubbles", () => ({
@@ -51,9 +51,6 @@ const ModalBridge = ({ children }: React.PropsWithChildren) => (
     {children}
   </RecoilRoot>
 );
-
-const getOpenModalButton = (host: HTMLElement) =>
-  host.querySelector<HTMLButtonElement>("button[title='Open sample modal']");
 
 const getSelectControl = (host: HTMLElement) =>
   host.querySelector<HTMLElement>(
@@ -191,11 +188,16 @@ describe("GridCustomRendererItem", () => {
     const Renderer = ({ ctx }: { ctx: { media: { url: string | null } } }) => (
       <div data-testid="renderer">{ctx.media.url}</div>
     );
+    // Its own context object, not the shared fixture: the item assigns
+    // `openModal` onto whatever it is handed, and asserting that on a
+    // module-level literal would both fail type-checking and depend on some
+    // earlier test having constructed an item first.
+    const ctx: Record<string, unknown> = { ...BASE_CTX };
     const looker = new GridCustomRendererItem({
       pluginName: "pdf-renderer",
       Renderer,
       RecoilBridge: TestBridge,
-      ctx: BASE_CTX as any,
+      ctx: ctx as any,
       symbol: BASE_SYMBOL,
     });
     const host = document.createElement("div");
@@ -212,10 +214,9 @@ describe("GridCustomRendererItem", () => {
 
     expect(getGridCustomRendererFailover(BASE_CTX.dataset.name)).toBeNull();
     expect(loadSpy).toHaveBeenCalled();
-    const openButton = getOpenModalButton(host);
-    if (!openButton) {
-      throw new Error("Expected the open-modal button to be mounted");
-    }
+    // Opening is the renderer's affordance now, offered as `ctx.openModal`;
+    // the grid no longer puts a button on every custom-rendered tile.
+    expect(typeof ctx.openModal).toBe("function");
     expect(getSelectControl(host)).toBeNull();
 
     const renderer = host.querySelector("[data-testid='renderer']");
@@ -239,19 +240,16 @@ describe("GridCustomRendererItem", () => {
     expect(hostClickSpy).not.toHaveBeenCalled();
     expect(hostContextMenuSpy).not.toHaveBeenCalled();
 
-    openButton.click();
+    // `ctx.openModal` reaches the modal the same way a click on an ordinary
+    // tile does: by activating the mounted element.
+    (ctx.openModal as () => void)();
     expect(hostClickSpy).toHaveBeenCalledTimes(1);
 
     fireEvent.mouseEnter(wrapper);
 
     await waitFor(() => {
-      expect(getOpenModalButton(host)).toBe(openButton);
       expect(getSelectControl(host)).toBeTruthy();
     });
-
-    expect(
-      openButton.querySelector("[data-testid='OpenInFullIcon']"),
-    ).toBeTruthy();
 
     const selectSpy = vi.fn();
     looker.addEventListener("selectthumbnail", selectSpy);
@@ -278,7 +276,6 @@ describe("GridCustomRendererItem", () => {
     fireEvent.mouseLeave(wrapper);
 
     await waitFor(() => {
-      expect(getOpenModalButton(host)).toBe(openButton);
       expect(getSelectControl(host)).toBeTruthy();
     });
 

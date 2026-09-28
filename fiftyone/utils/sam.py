@@ -971,9 +971,9 @@ class SegmentAnythingModel(fout.TorchImageModelWithPrompts):
                 [img_hw],
                 confidence_thresh=self.config.confidence_thresh,
                 box_prompts=[boxes_xyxy] if boxes_xyxy is not None else None,
-                labels=[prompt_classes]
-                if prompt_classes is not None
-                else None,
+                labels=(
+                    [prompt_classes] if prompt_classes is not None else None
+                ),
                 mask_index=self.config.points_mask_index,
             )[0]
         return output
@@ -1203,9 +1203,9 @@ class SegmentAnythingModel(fout.TorchImageModelWithPrompts):
             sparse_embeddings, dense_embeddings = self._model.prompt_encoder(
                 points=points,
                 boxes=boxes[img_idx] if boxes is not None else None,
-                masks=mask_inputs[img_idx]
-                if mask_inputs is not None
-                else None,
+                masks=(
+                    mask_inputs[img_idx] if mask_inputs is not None else None
+                ),
             )
 
             low_res_masks, iou_predictions = self._model.mask_decoder(

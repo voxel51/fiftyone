@@ -181,6 +181,17 @@ export interface McapGridPreviewDecodeRequest {
   readonly selectedStreamTopic?: string | null;
   readonly source: ByteSourceDescriptor;
   readonly startTimeNs?: bigint;
+  /**
+   * Inclusive upper bound on the seek. Without one the read walks FORWARD
+   * with no limit and returns whatever the stream carries next — on a sparse
+   * or already-ended stream that is a frame from an unrelated moment, shown
+   * as though it were the one asked for. A caller that asked about a window
+   * passes its end so "nothing here" comes back as nothing.
+   *
+   * Omitted for the ordinary poster, which asks for the recording's first
+   * frame and means it.
+   */
+  readonly endTimeNs?: bigint;
 }
 
 /**
@@ -188,7 +199,12 @@ export interface McapGridPreviewDecodeRequest {
  */
 export async function decodeGridPreview(
   entry: McapGridPreviewEntry,
-  { selectedStreamTopic, source, startTimeNs }: McapGridPreviewDecodeRequest,
+  {
+    endTimeNs,
+    selectedStreamTopic,
+    source,
+    startTimeNs,
+  }: McapGridPreviewDecodeRequest,
 ): Promise<McapGridPreviewResult> {
   if (entry.topics === undefined) {
     const [recordingInventory, timelineRange] = await Promise.all([
@@ -262,6 +278,7 @@ export async function decodeGridPreview(
 
   const result = await readNextPreviewFrame({
     client: entry.client,
+    endTimeNs,
     selection,
     source,
     startTimeNs,
@@ -389,6 +406,8 @@ function choosePointCloudSelection(
 
 interface ReadPreviewFrameRequest {
   readonly client: McapResourceClient;
+  /** Inclusive upper bound; absent means "whatever this stream carries next". */
+  readonly endTimeNs?: bigint;
   readonly selection: McapGridPreviewSelection;
   readonly source: ByteSourceDescriptor;
   readonly startTimeNs?: bigint;
@@ -415,6 +434,7 @@ async function readNextPreviewFrame(
 
 async function readNextImagePreviewFrame({
   client,
+  endTimeNs,
   selection,
   source,
   startTimeNs,
@@ -425,6 +445,7 @@ async function readNextImagePreviewFrame({
 
   const imageMessage = await readNextMessage({
     client,
+    endTimeNs,
     source,
     startTimeNs,
     topic: selection.streamTopic,
@@ -444,6 +465,7 @@ async function readNextImagePreviewFrame({
 
 async function readNextPointCloudPreviewFrame({
   client,
+  endTimeNs,
   selection,
   source,
   startTimeNs,
@@ -454,6 +476,7 @@ async function readNextPointCloudPreviewFrame({
 
   const pointCloudMessage = await readNextMessage({
     client,
+    endTimeNs,
     source,
     startTimeNs,
     topic: selection.streamTopic,
@@ -475,11 +498,13 @@ async function readNextPointCloudPreviewFrame({
 
 async function readNextMessage({
   client,
+  endTimeNs,
   source,
   startTimeNs,
   topic,
 }: {
   readonly client: McapResourceClient;
+  readonly endTimeNs?: bigint;
   readonly source: ByteSourceDescriptor;
   readonly startTimeNs?: bigint;
   readonly topic: string;
@@ -488,6 +513,7 @@ async function readNextMessage({
     limit: 1,
     source,
     startTimeNs,
+    ...(endTimeNs === undefined ? {} : { endTimeNs }),
     topics: [topic],
   })) {
     return message;

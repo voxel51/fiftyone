@@ -5,6 +5,7 @@ Tests for the :mod:`fiftyone.utils.torch` module.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import unittest
 
 import numpy as np

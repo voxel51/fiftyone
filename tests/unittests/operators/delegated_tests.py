@@ -2182,7 +2182,7 @@ class TestPipelineRequestParamsOverrides(unittest.TestCase):
                     PipelineStage(
                         operator_uri="@test/op1",
                         name="stage_one",
-                        params={"stage_param": "value1"}
+                        params={"stage_param": "value1"},
                         # No request_params_overrides
                     ),
                 ]
@@ -2289,7 +2289,7 @@ class TestPipelineRequestParamsOverrides(unittest.TestCase):
                     PipelineStage(
                         operator_uri="@test/op2",
                         name="stage_two",
-                        request_params_overrides={"field2": "value2"}
+                        request_params_overrides={"field2": "value2"},
                         # view_name should NOT carry forward from stage 1
                     ),
                 ]
@@ -2355,7 +2355,7 @@ class TestPipelineRequestParamsOverrides(unittest.TestCase):
                         params={"param2": "value2"},
                         request_params_overrides={
                             "view_name": "custom_view_2",
-                        }
+                        },
                         # custom_field should NOT be present here
                     ),
                     PipelineStage(

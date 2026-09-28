@@ -1,0 +1,17 @@
+/* One width for every popover the bar opens — the stage editor and the
+   search settings are the same kind of surface */
+.panel {
+  width: 360px;
+}
+
+/* The index picker spans the panel like the fields beside it; the double
+   class outranks the dropdown's inline-block utility */
+.picker.picker {
+  display: block;
+  width: 100%;
+}
+
+.pickerTrigger {
+  width: 100%;
+  justify-content: space-between;
+}

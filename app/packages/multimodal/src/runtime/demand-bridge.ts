@@ -28,6 +28,15 @@ export interface DemandHandlers {
 /** Default stand-down after a failed demand read. */
 export const DEMAND_FAILURE_BACKOFF_MS = 5_000;
 
+/** Shared retry delay while playback traffic leaves idle demand starved. */
+export const DEMAND_DEFERRED_RETRY_MS = 2_000;
+
+/** Shared retry delay while the episode timeline is still registering. */
+export const DEMAND_TIMELINE_RETRY_MS = 250;
+
+/** Shared playhead throttle for exact-record demand bridges. */
+export const EXACT_RECORD_PLAYHEAD_THROTTLE_MS = 300;
+
 /** Refcounted demand registry shared by source-scoped runtime providers. */
 export interface DemandRegistry<THandlers extends DemandHandlers> {
   readonly handlersRef: MutableRef<THandlers | null>;

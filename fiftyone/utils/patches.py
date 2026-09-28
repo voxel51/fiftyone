@@ -5,6 +5,7 @@ Image patch utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import cv2
 
 import fiftyone.core.frame as fof

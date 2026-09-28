@@ -79,7 +79,11 @@ describe("MCAP format adapter", () => {
       recordingInventory(
         [
           create(StreamInventorySchema, {
-            metadata: { "mcap.topic": "/camera" },
+            metadata: {
+              "mcap.topic": "/camera",
+              [SCENE_SOURCE_METADATA.TYPE]: "image",
+              [STREAM_METADATA.DECODE_STATUS]: "decodable",
+            },
             payload: {
               encoding: "cdr",
               schema: "sensor_msgs/msg/Image",
@@ -96,6 +100,7 @@ describe("MCAP format adapter", () => {
           }),
           create(StreamInventorySchema, {
             metadata: {
+              "mcap.exact_browsing": "true",
               "mcap.topic": "/opaque",
               [STREAM_METADATA.DECODE_STATUS]: "schema-unavailable",
             },
@@ -119,9 +124,9 @@ describe("MCAP format adapter", () => {
 
     expect(manifest.recordingFacts).toEqual({
       applicationSupport: {
-        inspectableStreamCount: 1,
+        inspectableStreamCount: 2,
         renderableStreamCount: 1,
-        unavailableStreamCount: 1,
+        unavailableStreamCount: 0,
       },
       channelCount: 3,
       durationNs: "30000000000",
@@ -134,6 +139,41 @@ describe("MCAP format adapter", () => {
       startTimeNs: "10000000000",
       topicCount: 3,
     });
+    expect(manifest.streams).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "1",
+          metadata: expect.objectContaining({
+            [STREAM_METADATA.INSPECTABLE]: "true",
+          }),
+        }),
+        expect.objectContaining({
+          id: "2",
+          metadata: expect.objectContaining({
+            [STREAM_METADATA.INSPECTABLE]: "true",
+          }),
+        }),
+        expect.objectContaining({
+          id: "3",
+          metadata: expect.objectContaining({
+            [STREAM_METADATA.INSPECTABLE]: "true",
+          }),
+        }),
+      ]),
+    );
+  });
+
+  it("preserves source size discovered while reading inventory", () => {
+    const manifest = createMcapManifest(
+      "episode",
+      { endTimeNs: 2n, startTimeNs: 1n },
+      recordingInventory([], {
+        format: "mcap",
+        sizeBytes: "2845415834",
+      }),
+    );
+
+    expect(manifest.recordingFacts?.sizeBytes).toBe("2845415834");
   });
 
   it("activates the source before uncached bootstrap reads", async () => {
@@ -1208,6 +1248,7 @@ describe("MCAP format adapter", () => {
       const slice = await session.numericSeries?.readNumericSeriesSlice?.({
         absoluteBudget: budget,
         absoluteMaxChunks: 2,
+        bucketDurationNs: 1_000_000_000n,
         budget,
         maxChunks: 1,
         selections: [{ fields: ["exposure"], stream: "camera" }],
@@ -1307,6 +1348,36 @@ describe("MCAP format adapter", () => {
       schemaName: "SchemaB",
       streamId: selected.streamId,
     });
+  });
+
+  it("forwards metadata-only export reads to the bulk lane", async () => {
+    const client = createClient();
+    vi.mocked(client.readRawMessageRecord).mockResolvedValue({
+      encodedPayloadBytes: 42,
+      logTimeNs: 1n,
+      messageEncoding: "cdr",
+      schemaName: null,
+      status: "ok",
+      topic: "/camera",
+      validFromNs: 1n,
+      validUntilNs: 2n,
+    });
+    const capability = createMcapRawRecordCapability({
+      client,
+      source: sourceDescriptor,
+    });
+
+    await capability.readRawRecord({
+      intent: "export",
+      select: "metadata",
+      stream: "/camera",
+      timestampNs: 1n,
+    });
+
+    expect(client.readRawMessageRecord).toHaveBeenLastCalledWith(
+      expect.objectContaining({ select: "metadata", topic: "/camera" }),
+      expect.objectContaining({ priority: "bulk" }),
+    );
   });
 
   it("falls back from malformed channel metadata to a numeric inventory id", async () => {

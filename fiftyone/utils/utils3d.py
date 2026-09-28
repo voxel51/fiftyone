@@ -5,6 +5,7 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import contextlib
 import functools
 import logging
@@ -596,9 +597,9 @@ def pinhole_projector(
         raise ValueError("points must be a 3xN array")
 
     cam_int_pad = np.eye(4)
-    cam_int_pad[
-        : camera_intrinsics.shape[0], : camera_intrinsics.shape[1]
-    ] = camera_intrinsics
+    cam_int_pad[: camera_intrinsics.shape[0], : camera_intrinsics.shape[1]] = (
+        camera_intrinsics
+    )
     nbr_points = points.shape[1]
 
     points = np.concatenate((points, np.ones((1, nbr_points))))

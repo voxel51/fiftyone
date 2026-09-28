@@ -419,9 +419,22 @@ def _has_successful_static_transform(results: dict) -> bool:
     return False
 
 
+def _has_group_static_transform_configuration(dataset, group_samples) -> bool:
+    """Checks whether static transforms are configured for a group request."""
+    if dataset.static_transforms:
+        return True
+
+    for slice_sample in group_samples.values():
+        for _, value in slice_sample.iter_fields():
+            if next(_iter_static_transform_values(value), None) is not None:
+                return True
+
+    return False
+
+
 def _collect_static_transforms(
     dataset,
-    group_id: str,
+    group_samples,
     slices: List[str],
     source_frame: str,
     target_frame: str,
@@ -431,7 +444,7 @@ def _collect_static_transforms(
 
     Args:
         dataset: The FiftyOne dataset
-        group_id: The group ID to fetch transforms for
+        group_samples: Dict mapping slice names to samples in the group
         slices: List of slice names to collect transforms from
         source_frame: The source coordinate frame
         target_frame: The target coordinate frame
@@ -443,9 +456,11 @@ def _collect_static_transforms(
     """
     results = {}
     for slice_name in slices:
-        slice_sample, error = _get_slice_sample(dataset, group_id, slice_name)
-        if error:
-            results[slice_name] = error
+        slice_sample = group_samples.get(slice_name)
+        if slice_sample is None:
+            results[slice_name] = {
+                "error": f"Slice '{slice_name}' not found in group"
+            }
             continue
 
         try:
@@ -463,7 +478,11 @@ def _collect_static_transforms(
             results[slice_name] = {"staticTransform": None}
         else:
             results[slice_name] = {
-                "staticTransform": utils.json.serialize(transform)
+                "staticTransform": _serialize_static_transform(
+                    transform,
+                    fallback_source_frame=slice_name,
+                    fallback_target_frame=target_frame,
+                )
             }
 
     return results
@@ -572,8 +591,17 @@ class GroupStaticTransforms(HTTPEndpoint):
             chain_via,
         )
 
+        group_samples = dataset.get_group(group_id)
         results = _collect_static_transforms(
-            dataset, group_id, slices, source_frame, target_frame, chain_via
+            dataset,
+            group_samples,
+            slices,
+            source_frame,
+            target_frame,
+            chain_via,
+        )
+        has_static_transforms = _has_group_static_transform_configuration(
+            dataset, group_samples
         )
 
         # If no successful transforms found and target_frame was defaulted,
@@ -597,7 +625,7 @@ class GroupStaticTransforms(HTTPEndpoint):
                     # Re-collect results with new target_frame
                     results = _collect_static_transforms(
                         dataset,
-                        group_id,
+                        group_samples,
                         slices,
                         source_frame,
                         target_frame,
@@ -607,6 +635,7 @@ class GroupStaticTransforms(HTTPEndpoint):
         return utils.json.JSONResponse(
             {
                 "group_id": group_id,
+                "has_static_transforms": has_static_transforms,
                 "target_frame": target_frame,
                 "results": results,
             }

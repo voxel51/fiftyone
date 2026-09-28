@@ -514,6 +514,146 @@ describe("TimelineTrack", () => {
       expect(screen.getByText("Merge into B")).toBeTruthy();
     });
 
+    // The row mounts ONE ContextMenu and retargets it, rather than one per
+    // event — so "which event is this menu about" is now state, and these
+    // cover the ways that state can go wrong.
+    it("retargets the menu when a different event is right-clicked", () => {
+      const onSelect = vi.fn();
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [
+            { startSec: 1, endSec: 2 },
+            { startSec: 7, endSec: 8 },
+          ],
+          eventMenuItems: [{ label: "Delete track", onSelect }],
+        },
+      });
+      const bars = container.querySelectorAll(`.${styles.intervalBar}`);
+      expect(bars).toHaveLength(2);
+
+      fireEvent.contextMenu(bars[0]);
+      fireEvent.click(screen.getByText("Delete track"));
+      expect(onSelect.mock.calls[0][0]).toMatchObject({
+        startSec: 1,
+        endSec: 2,
+      });
+
+      fireEvent.contextMenu(bars[1]);
+      fireEvent.click(screen.getByText("Delete track"));
+      expect(onSelect).toHaveBeenCalledTimes(2);
+      expect(onSelect.mock.calls[1][0]).toMatchObject({
+        startSec: 7,
+        endSec: 8,
+      });
+    });
+
+    it("opens no menu when the right-click misses every event", () => {
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [{ startSec: 4, endSec: 6 }],
+          eventMenuItems: [{ label: "Delete track", onSelect: vi.fn() }],
+        },
+      });
+      const lane = container.querySelector(`.${styles.lane}`) as HTMLElement;
+
+      fireEvent.contextMenu(lane, { clientX: 900 });
+      expect(screen.queryByText("Delete track")).toBeNull();
+      expect(screen.queryByText("Move to start")).toBeNull();
+    });
+
+    it("keeps the open menu on the clicked event when events are replaced", () => {
+      // The menu snapshots the event it was opened on, so a rebuild of the
+      // array underneath it can't slide the menu onto a neighbour — which is
+      // what an index would have done once an earlier event was removed.
+      const onSelect = vi.fn();
+      const first = { startSec: 1, endSec: 2 };
+      const second = { startSec: 7, endSec: 8 };
+      const { container, rerender } = render(
+        <PlaybackProvider duration={10} stepInterval={1 / 30}>
+          <TimelineTrack
+            {...baseTrack}
+            start={0}
+            end={10}
+            events={[first, second]}
+            eventMenuItems={[{ label: "Delete track", onSelect }]}
+          />
+        </PlaybackProvider>,
+      );
+
+      const bars = container.querySelectorAll(`.${styles.intervalBar}`);
+      fireEvent.contextMenu(bars[1]);
+      expect(screen.getByText("Delete track")).toBeTruthy();
+
+      rerender(
+        <PlaybackProvider duration={10} stepInterval={1 / 30}>
+          <TimelineTrack
+            {...baseTrack}
+            start={0}
+            end={10}
+            events={[second]}
+            eventMenuItems={[{ label: "Delete track", onSelect }]}
+          />
+        </PlaybackProvider>,
+      );
+
+      // Still the event the user actually right-clicked, not its neighbour.
+      fireEvent.click(screen.getByText("Delete track"));
+      expect(onSelect).toHaveBeenCalledTimes(1);
+      expect(onSelect.mock.calls[0][0]).toMatchObject({
+        startSec: 7,
+        endSec: 8,
+      });
+    });
+
+    // Menu items render in a portal: they bubble through the React tree while
+    // sitting outside the row's DOM subtree, so a real left-click on one used
+    // to reach the row root and select the track as a side-effect of seeking.
+    it("does not fire onTrackClick when a built-in menu item is clicked", () => {
+      const onTrackClick = vi.fn();
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [interval],
+          onTrackClick,
+          eventMenuItems: [{ label: "Delete track", onSelect: vi.fn() }],
+        },
+      });
+      const bar = container.querySelector(
+        `.${styles.intervalBar}`,
+      ) as HTMLElement;
+
+      fireEvent.contextMenu(bar);
+      fireEvent.click(screen.getByText("Move to start"), { detail: 1 });
+      expect(onTrackClick).not.toHaveBeenCalled();
+    });
+
+    it("does not fire onTrackClick when a custom menu item is clicked", () => {
+      const onTrackClick = vi.fn();
+      const onSelect = vi.fn();
+      const { container } = renderTrack({
+        track: {
+          start: 0,
+          end: 10,
+          events: [interval],
+          onTrackClick,
+          eventMenuItems: [{ label: "Delete track", onSelect }],
+        },
+      });
+      const bar = container.querySelector(
+        `.${styles.intervalBar}`,
+      ) as HTMLElement;
+
+      fireEvent.contextMenu(bar);
+      fireEvent.click(screen.getByText("Delete track"), { detail: 1 });
+      expect(onSelect).toHaveBeenCalledTimes(1);
+      expect(onTrackClick).not.toHaveBeenCalled();
+    });
+
     it("does not fire onSelect for a disabled item", () => {
       const onSelect = vi.fn();
       const { container } = renderTrack({
@@ -682,6 +822,68 @@ describe("TimelineTrack", () => {
       expect(idx).toBe(0);
       expect(newStart).toBeCloseTo(5);
       expect(newEnd).toBeCloseTo(7);
+    });
+
+    it("stops a resize-end drag at the timeline's end", () => {
+      const onEventEdit = vi.fn();
+      const { container } = renderTrack({
+        duration: 10,
+        track: {
+          start: 0,
+          end: 10,
+          events: [baseInterval],
+          onEventEdit,
+        },
+      });
+      const endHandle = container.querySelector(
+        `.${styles.resizeHandleEnd}`,
+      ) as HTMLElement;
+      // +6s would put endSec at 12, past the 10s timeline.
+      dragOnElement(endHandle, 600, 1200);
+      const [, newStart, newEnd] = onEventEdit.mock.calls[0];
+      expect(newStart).toBeCloseTo(4);
+      expect(newEnd).toBeCloseTo(10);
+    });
+
+    it("stops a resize-start drag at the timeline's start", () => {
+      const onEventEdit = vi.fn();
+      const { container } = renderTrack({
+        duration: 10,
+        track: {
+          start: 0,
+          end: 10,
+          events: [baseInterval],
+          onEventEdit,
+        },
+      });
+      const startHandle = container.querySelector(
+        `.${styles.resizeHandleStart}`,
+      ) as HTMLElement;
+      dragOnElement(startHandle, 400, -200);
+      const [, newStart, newEnd] = onEventEdit.mock.calls[0];
+      expect(newStart).toBeCloseTo(0);
+      expect(newEnd).toBeCloseTo(6);
+    });
+
+    it("keeps a moved interval on the timeline, preserving its width", () => {
+      const onEventEdit = vi.fn();
+      const { container } = renderTrack({
+        duration: 10,
+        track: {
+          start: 0,
+          end: 10,
+          events: [baseInterval],
+          onEventEdit,
+        },
+      });
+      const bar = container.querySelector(
+        `.${styles.intervalBar}`,
+      ) as HTMLElement;
+      // +7s would carry [4, 6] to [11, 13]; it slides back to [8, 10].
+      dragOnElement(bar, 500, 1200);
+      const [, newStart, newEnd] = onEventEdit.mock.calls[0];
+      expect(newStart).toBeCloseTo(8);
+      expect(newEnd).toBeCloseTo(10);
     });
 
     it("snaps drag results to snapStepSec when provided", () => {

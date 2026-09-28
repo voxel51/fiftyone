@@ -293,6 +293,18 @@ const useOverlayCleanup = (
 export function useTemporalOverlaySync(
   scene: Scene,
   canonicalMediaReady: boolean,
+  /**
+   * Explore's active TD field set, when this is driving the Explore surface.
+   *
+   * `useVisibleLabelSchemas()` (the default below) is annotation-active ∩
+   * explore-active, populated by `useLoadSchemas()` only once the Annotate
+   * sidebar has been opened this session — so in an Explore-only session it
+   * stays empty and every TD overlay silently fails to paint, however many TD
+   * fields are checked in the Explore sidebar. When supplied, this IS the
+   * active set, the same way `useFrameDerivedTracks`' `exploreLabelTypes`
+   * overrides its own annotation-schema default.
+   */
+  exploreActivePaths?: ReadonlySet<string>,
 ): void {
   const overlaysRef = useRef<Map<string, TemporalOverlay>>(new Map());
 
@@ -301,7 +313,8 @@ export function useTemporalOverlaySync(
   // schema-manager deactivation evicts the TD overlay from the canvas too —
   // matching the timeline + sidebar. (Was explore-active only, which the schema
   // manager never touches.)
-  const activePaths = useVisibleLabelSchemas();
+  const annotationActivePaths = useVisibleLabelSchemas();
+  const activePaths = exploreActivePaths ?? annotationActivePaths;
   const currentFrameRef = useCurrentFrameRef();
 
   useOverlayDiff(

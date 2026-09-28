@@ -8,6 +8,7 @@ import type { Sample } from "@fiftyone/looker";
 import { NotFoundError } from "@fiftyone/utilities";
 import { isSampleIsh } from "@fiftyone/looker/src/util";
 import type { OpType } from "../types";
+import { recordSampleVersion } from "./sampleVersionTokens";
 
 export type DoPatchSampleArgs = {
   sample: Sample | null;
@@ -20,6 +21,17 @@ export type DoPatchSampleArgs = {
   labelId?: string;
   labelPath?: string;
   opType?: OpType;
+  /**
+   * The sample id that label-op ATTRIBUTION should use when it differs
+   * from the persisted document: a grouped modal persists edits against
+   * the slice document that owns them (the second camera, the pinned 3D
+   * scene), while the modal's unit of work is the GRID anchor sample.
+   * The unified persist loop passes the anchor here for every
+   * non-generated patch; consumers that credit label work (e.g.
+   * annotation-activity integrations downstream) attribute by this id
+   * rather than the persisted document's.
+   */
+  attributionSampleId?: string;
 };
 
 /**
@@ -53,6 +65,8 @@ export interface PatchPersistedInfo {
   labelId?: string;
   labelPath?: string;
   opType?: OpType;
+  /** See DoPatchSampleArgs.attributionSampleId (grouped-modal anchor). */
+  attributionSampleId?: string;
 }
 
 type PatchPersistedListener = (
@@ -80,12 +94,21 @@ export const doPatchSample = async ({
   labelId,
   labelPath,
   opType,
+  attributionSampleId,
 }: DoPatchSampleArgs): Promise<boolean> => {
   // The annotation endpoint implements a CRDT via a version token
   const versionToken = getVersionToken();
 
   if (!datasetId || !sample?._id || !versionToken) {
-    return false;
+    // name the failed precondition instead of reporting "rejected"
+    throw new Error(
+      "cannot patch sample: missing write precondition " +
+        JSON.stringify({
+          hasDatasetId: !!datasetId,
+          sampleId: sample?._id ?? null,
+          hasVersionToken: !!versionToken,
+        }),
+    );
   }
 
   let caughtErr: Error;
@@ -97,6 +120,8 @@ export const doPatchSample = async ({
   if (sampleDeltas.length > 0) {
     try {
       let updatedSample: Sample;
+      // the ETag of the response that carried `updatedSample`
+      let updatedVersionToken: string | null = null;
       // For generated views, use _sample_id so that the sampleId and datasetId
       // always refer to the persistent source.
       const sampleId = isGenerated
@@ -116,6 +141,7 @@ export const doPatchSample = async ({
           generatedSampleId: isGenerated ? sample._id : undefined,
         });
         updatedSample = response.sample;
+        updatedVersionToken = response.versionToken;
       } catch (err) {
         // catch and defer any HTTP errors
         caughtErr = err;
@@ -126,20 +152,35 @@ export const doPatchSample = async ({
         // and any pending changes will be re-attempted on the next patch
         if (err instanceof VersionMismatchError) {
           updatedSample = err.responseBody as Sample;
+          updatedVersionToken = err.versionToken ?? null;
         }
       }
 
       if (updatedSample) {
-        // transform response data to match the graphql sample format
-        const cleanedSample = transformSampleData(updatedSample);
-        postSample = cleanedSample;
-        if (isSampleIsh(cleanedSample)) {
-          refreshSample(cleanedSample as Sample);
-        } else {
-          console.error(
-            "response data does not adhere to sample format",
-            cleanedSample,
-          );
+        // The server has answered — its state is settled. Applying that
+        // answer locally must not change the outcome we report: a failure
+        // here would read as "the server rejected the patch" and roll back a
+        // change the server already made.
+        try {
+          // transform response data to match the graphql sample format
+          const cleanedSample = transformSampleData(updatedSample);
+          postSample = cleanedSample;
+          // the server's version is the next persist's token, whether this
+          // patch landed or lost a version race
+          recordSampleVersion({
+            sample: cleanedSample,
+            versionToken: updatedVersionToken,
+          });
+          if (isSampleIsh(cleanedSample)) {
+            refreshSample(cleanedSample as Sample);
+          } else {
+            console.error(
+              "response data does not adhere to sample format",
+              cleanedSample,
+            );
+          }
+        } catch (error) {
+          console.error("failed to apply the patched sample locally", error);
         }
       } else {
         console.warn("received empty sample data; deltas may be stale");
@@ -177,6 +218,7 @@ export const doPatchSample = async ({
       labelId,
       labelPath,
       opType,
+      attributionSampleId,
     };
     for (const listener of patchListeners) {
       try {

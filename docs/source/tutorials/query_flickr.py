@@ -7,6 +7,7 @@ https://www.flickr.com/services/apps/create.
 Copyright 2017-2026, Voxel51, Inc.
 voxel51.com
 """
+
 import argparse
 from itertools import takewhile
 import os

@@ -2,24 +2,44 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { rollbackViewBar } from "@fiftyone/core";
-import { setView, type setViewMutation } from "@fiftyone/relay";
+import { setView, subscribe, type setViewMutation } from "@fiftyone/relay";
 import {
   type State,
+  view as currentView,
   datasetName,
+  resetExtendedSelectionTransaction,
   stateSubscription,
   viewStateForm_INTERNAL,
 } from "@fiftyone/state";
+import { rollbackViewBar } from "@fiftyone/view-bar";
 import { DefaultValue } from "recoil";
 import { commitMutation } from "relay-runtime";
 import { pendingEntry } from "../Renderer";
 import { resolveURL } from "../utils";
+import { convertsSampleIdentity } from "./selectionIdentity";
 import type { RegisteredSetter } from "./registerSetter";
 
 const onSetView: RegisteredSetter =
   ({ environment, handleError, router, sessionRef }) =>
   ({ get, set }, value: State.Stage[]) => {
     set(pendingEntry, true);
+    // A new view replaces the base the selection was made against, so it goes
+    // with the checkmarks `onCompleted` drops below. Sidebar filters never
+    // reach this setter, so a lasso still composes with them.
+    //
+    // Deferred to the publish rather than done here: a rejected view rolls
+    // back without ever publishing, and dropping the stage up front would
+    // both lose the selection and send the grid to load a wider result set
+    // for a view that never arrives.
+    const unsubscribe = subscribe((_, transaction) => {
+      try {
+        resetExtendedSelectionTransaction(transaction);
+      } finally {
+        unsubscribe();
+      }
+    });
+
+    const previousView = get(currentView);
     let view = value;
     if (view instanceof DefaultValue) {
       view = [];
@@ -40,24 +60,41 @@ const onSetView: RegisteredSetter =
       variables,
       onCompleted: ({ setView: view }, errors) => {
         if (errors?.length) {
+          // Nothing publishes on this path, so the pending reset would
+          // otherwise sit registered and fire on the next navigation
+          unsubscribe();
           handleError(errors.map((e) => e.message));
           rollbackViewBar();
           return;
         }
 
         sessionRef.current.selectedLabels = [];
-        sessionRef.current.selectedSamples = new Map();
+        // The selection tray marks samples that leave the results, so a view
+        // change keeps the sample selection unless the view changes what a
+        // sample is.
+        if (
+          convertsSampleIdentity(previousView) ||
+          convertsSampleIdentity(view)
+        )
+          sessionRef.current.selectedSamples = new Map();
         sessionRef.current.fieldVisibilityStage = undefined;
         router.history.push(
           resolveURL({
             currentPathname: router.history.location.pathname,
-            currentSearch: router.history.location.search,
+            currentSearch: router.location.search,
             nextDataset: dataset,
           }),
           {
             view,
           },
         );
+      },
+      onError: (error) => {
+        // A network failure never reaches onCompleted, so the pending reset
+        // has to be dropped here as well
+        unsubscribe();
+        handleError([error.message]);
+        rollbackViewBar();
       },
     });
   };

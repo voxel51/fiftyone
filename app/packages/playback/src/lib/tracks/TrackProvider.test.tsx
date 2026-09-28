@@ -205,3 +205,162 @@ describe("TrackProvider", () => {
     });
   });
 });
+
+describe("TrackProvider late pinning", () => {
+  afterEach(() => {
+    cleanup();
+    window.localStorage.clear();
+  });
+
+  /** Renders the provider with controllable tracks and pin ids. */
+  const Host = ({
+    tracks,
+    initialPinnedIds,
+    persistKey,
+  }: {
+    readonly tracks: Track[];
+    readonly initialPinnedIds: string[];
+    readonly persistKey?: string;
+  }) => (
+    <TrackProvider
+      autoPinNewTracks={false}
+      initialPinnedIds={initialPinnedIds}
+      persistKey={persistKey}
+      tracks={tracks}
+    >
+      <Probe />
+    </TrackProvider>
+  );
+
+  let pinned: string[] = [];
+  let toggle: (id: string) => void = () => undefined;
+  const Probe = () => {
+    const { pinnedIds, togglePin } = useTrackPinning();
+    pinned = [...pinnedIds].sort();
+    toggle = togglePin;
+    return null;
+  };
+
+  it("pins a mount-time id whose track arrives later", () => {
+    // The id is seeded into the pinned set at mount whether or not its track
+    // exists, so a late track is already pinned when it lands.
+    const { rerender } = render(
+      <Host tracks={[]} initialPinnedIds={["cat"]} />,
+    );
+    expect(pinned).toEqual(["cat"]);
+
+    rerender(<Host tracks={[TRACKS[0]]} initialPinnedIds={["cat"]} />);
+
+    expect(pinned).toEqual(["cat"]);
+  });
+
+  it("pins an id that joins the list after mount, once its track exists", () => {
+    // The case the interval sources need: a source decides late *what* to pin.
+    const { rerender } = render(
+      <Host tracks={[TRACKS[0], TRACKS[1]]} initialPinnedIds={["cat"]} />,
+    );
+    expect(pinned).toEqual(["cat"]);
+
+    rerender(
+      <Host
+        tracks={[TRACKS[0], TRACKS[1]]}
+        initialPinnedIds={["cat", "dog"]}
+      />,
+    );
+
+    expect(pinned).toEqual(["cat", "dog"]);
+  });
+
+  it("waits for the track before applying a late id", () => {
+    const { rerender } = render(
+      <Host tracks={[TRACKS[0]]} initialPinnedIds={["cat"]} />,
+    );
+
+    // "dog" joins the list while its track is still missing.
+    rerender(<Host tracks={[TRACKS[0]]} initialPinnedIds={["cat", "dog"]} />);
+    expect(pinned).toEqual(["cat"]);
+
+    // ...and applies as soon as the track appears.
+    rerender(
+      <Host
+        tracks={[TRACKS[0], TRACKS[1]]}
+        initialPinnedIds={["cat", "dog"]}
+      />,
+    );
+    expect(pinned).toEqual(["cat", "dog"]);
+  });
+
+  it("keeps a late-pinned row unpinned once the user unpins it", () => {
+    // Each id is applied at most once, so a subsequent track update must not
+    // reinstate a pin the user deliberately removed.
+    const { rerender } = render(
+      <Host tracks={[TRACKS[0], TRACKS[1]]} initialPinnedIds={["cat"]} />,
+    );
+    rerender(
+      <Host
+        tracks={[TRACKS[0], TRACKS[1]]}
+        initialPinnedIds={["cat", "dog"]}
+      />,
+    );
+    expect(pinned).toEqual(["cat", "dog"]);
+
+    act(() => toggle("dog"));
+    expect(pinned).toEqual(["cat"]);
+
+    rerender(
+      <Host
+        tracks={[TRACKS[0], TRACKS[1], TRACKS[2]]}
+        initialPinnedIds={["cat", "dog"]}
+      />,
+    );
+
+    expect(pinned).toEqual(["cat"]);
+  });
+
+  it("lets a stored pin set override the defaults, including late ones", () => {
+    window.localStorage.setItem("scope", JSON.stringify(["person"]));
+
+    const { rerender } = render(
+      <Host
+        persistKey="scope"
+        tracks={[TRACKS[2]]}
+        initialPinnedIds={["cat"]}
+      />,
+    );
+    expect(pinned).toEqual(["person"]);
+
+    // A default joining the list afterwards must not resurrect itself over a
+    // choice the user already made.
+    rerender(
+      <Host
+        persistKey="scope"
+        tracks={[TRACKS[0], TRACKS[2]]}
+        initialPinnedIds={["cat", "dog"]}
+      />,
+    );
+
+    expect(pinned).toEqual(["person"]);
+  });
+
+  it("still applies the defaults when storage holds nothing", () => {
+    render(
+      <Host
+        persistKey="empty"
+        tracks={[TRACKS[0]]}
+        initialPinnedIds={["cat"]}
+      />,
+    );
+
+    expect(pinned).toEqual(["cat"]);
+  });
+
+  it("pins nothing when the list is empty", () => {
+    const { rerender } = render(
+      <Host tracks={[TRACKS[0]]} initialPinnedIds={[]} />,
+    );
+
+    rerender(<Host tracks={[TRACKS[0], TRACKS[1]]} initialPinnedIds={[]} />);
+
+    expect(pinned).toEqual([]);
+  });
+});

@@ -5,10 +5,11 @@ FiftyOne Server dataloader
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from dataclasses import dataclass
 import typing as t
 
-from pymongo.asynchronous.database import AsyncDatabase
+import motor.motor_asyncio as mtr
 from strawberry.dataloader import DataLoader
 
 from fiftyone.server.data import Info, T
@@ -29,7 +30,7 @@ dataloaders: t.Dict[type, DataLoaderConfig] = {}
 def get_dataloader(
     cls: t.Type[T],
     config: DataLoaderConfig,
-    db: AsyncDatabase,
+    db: mtr.AsyncIOMotorDatabase,
 ) -> DataLoader[str, t.Optional[T]]:
     async def load_items(
         keys: t.List[str],
@@ -64,7 +65,10 @@ def get_dataloader_resolver(
     key: str,
     filters: t.List[dict],
     projections: t.Optional[t.Dict] = None,
-) -> t.Callable[[str, Info], t.Coroutine[t.Any, t.Any, t.Optional[T]],]:
+) -> t.Callable[
+    [str, Info],
+    t.Coroutine[t.Any, t.Any, t.Optional[T]],
+]:
     dataloaders[cls] = DataLoaderConfig(
         collection=collection,
         key=key,

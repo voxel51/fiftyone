@@ -32,6 +32,7 @@ import { useCopyFeedback } from "../../../visualization/panel-ui/use-copy-feedba
 import { errorMessage } from "../../../utils/errors";
 import { RawMessageBrowser } from "./RawMessageBrowser";
 import { formatRawMessageTime } from "./raw-message-time";
+import { usePublishVisibleStreams } from "../stream-discovery/visible-streams";
 
 /**
  * Raw message tile: the escape hatch that makes every stream at least
@@ -54,6 +55,7 @@ const RawMessageTile: React.FC<EpisodeTileProps> = () => {
   );
   useRegisterTileSettings(tileId, settingsRegistration);
   const streamKey = useRawTileStream();
+  usePublishVisibleStreams(streamKey ? [streamKey] : []);
   const setStreamKey = useSetRawTileStream();
   const setTileTitle = useSetTileTitle();
   const { ensureStreams, recordsByStream, streams, subscribeRecord } =

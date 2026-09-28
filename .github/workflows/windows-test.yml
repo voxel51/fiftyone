@@ -6,7 +6,7 @@ on:
       python-versions:
         description: JSON array of Python versions for the Windows test matrix
         type: string
-        default: '["3.10", "3.11", "3.12", "3.13", "3.14"]'
+        default: '["3.10", "3.11", "3.12", "3.13"]'
 
 jobs:
   test-python:
@@ -27,18 +27,18 @@ jobs:
         shell: bash
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           sparse-checkout: |
             /*
             !/docs/**
           sparse-checkout-cone-mode: false
       - name: Setup Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
       - name: Setup (UV)
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@v10.0.1
         with:
           python-version: ${{ matrix.python }}
           # TODO: we are unsure if cache is working correctly here

@@ -5,6 +5,7 @@
 import {
   Button,
   Checkbox,
+  FormField,
   Input,
   Orientation,
   RichList,
@@ -17,6 +18,10 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import React, { useCallback, useMemo, useState } from "react";
+import {
+  CLASSES_COMPONENT_OPTIONS,
+  type ClassesComponent,
+} from "../../constants";
 import { EditSectionHeader, EmptyStateBox, Section } from "../../styled";
 import {
   createRichListItem,
@@ -26,6 +31,7 @@ import {
 } from "../../utils";
 import AddClassCard from "./AddClassCard";
 import CardActions from "./CardActions";
+import ComponentTypeButton from "./ComponentTypeButton";
 import EditAction from "./EditAction";
 
 // Expanded content for inline class editing (Name input + Include checkbox)
@@ -90,18 +96,23 @@ const InlineEditExpandedContent = ({
 interface ClassesSectionProps {
   classes: string[];
   attributeCount: number;
+  /** Input type the annotate sidebar renders the classes with */
+  component: ClassesComponent;
   onAddClass: (name: string) => void;
   onEditClass: (oldName: string, newName: string) => void;
   onDeleteClass: (name: string) => void;
+  onComponentChange: (component: ClassesComponent) => void;
   onOrderChange?: (newOrder: string[]) => void;
 }
 
 const ClassesSection = ({
   classes,
   attributeCount,
+  component,
   onAddClass,
   onEditClass,
   onDeleteClass,
+  onComponentChange,
   onOrderChange,
 }: ClassesSectionProps) => {
   const [isAdding, setIsAdding] = useState(false);
@@ -214,29 +225,55 @@ const ClassesSection = ({
         </Button>
       </EditSectionHeader>
 
-      {/* Add new class card */}
-      {isAdding && (
-        <AddClassCard
-          attributeCount={attributeCount}
-          existingClasses={classes}
-          onSave={handleAddSave}
-          onCancel={() => setIsAdding(false)}
-        />
-      )}
-
-      {classes.length === 0 && !isAdding ? (
-        <EmptyStateBox>
-          <Text color={TextColor.Secondary}>No classes defined</Text>
-        </EmptyStateBox>
-      ) : (
-        classes.length > 0 && (
-          <RichList
-            listItems={listItems}
-            draggable={true}
-            onOrderChange={handleOrderChange}
+      <Stack orientation={Orientation.Column} spacing={Spacing.Md}>
+        {/* Input type: only meaningful once there are classes to pick from */}
+        {classes.length > 0 && (
+          <FormField
+            label="Input type"
+            spacing={Spacing.Xs}
+            description="Dropdown is searchable and suits long class lists."
+            control={
+              <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
+                {CLASSES_COMPONENT_OPTIONS.map((opt) => (
+                  <ComponentTypeButton
+                    key={opt.id}
+                    icon={opt.icon}
+                    label={opt.label}
+                    isSelected={component === opt.id}
+                    onClick={() => onComponentChange(opt.id)}
+                  />
+                ))}
+              </Stack>
+            }
           />
-        )
-      )}
+        )}
+
+        {/* The add card and the list read as one list, so no gap between them */}
+        <Stack orientation={Orientation.Column} spacing={Spacing.None}>
+          {isAdding && (
+            <AddClassCard
+              attributeCount={attributeCount}
+              existingClasses={classes}
+              onSave={handleAddSave}
+              onCancel={() => setIsAdding(false)}
+            />
+          )}
+
+          {classes.length === 0 && !isAdding ? (
+            <EmptyStateBox>
+              <Text color={TextColor.Secondary}>No classes defined</Text>
+            </EmptyStateBox>
+          ) : (
+            classes.length > 0 && (
+              <RichList
+                listItems={listItems}
+                draggable={true}
+                onOrderChange={handleOrderChange}
+              />
+            )
+          )}
+        </Stack>
+      </Stack>
     </Section>
   );
 };

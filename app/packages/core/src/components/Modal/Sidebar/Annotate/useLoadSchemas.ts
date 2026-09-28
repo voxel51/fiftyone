@@ -1,4 +1,7 @@
-import { useOperatorExecutor } from "@fiftyone/operators";
+import {
+  useOperatorAvailability,
+  useOperatorExecutor,
+} from "@fiftyone/operators";
 import { useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 import { useSchemaManagerModal } from "./SchemaManager/hooks";
@@ -13,6 +16,7 @@ export default function useLoadSchemas() {
   const setActive = useSetAtom(activeLabelSchemas);
   const setActivePathsOrder = useSetAtom(activePathsOrder);
   const { closeSchemaManager } = useSchemaManagerModal();
+  const operatorAvailable = useOperatorAvailability("get_label_schemas");
   const get = useOperatorExecutor("get_label_schemas");
 
   useEffect(() => {
@@ -34,10 +38,14 @@ export default function useLoadSchemas() {
   // Refetch without pre-clearing the schema atoms: the `get.result`
   // effect above swaps them atomically once the response lands, so
   // consumers (`useLabels`, `useFormAnchor`'s `labelMap` lookup) never
-  // see a transient null mid-refetch.
+  // see a transient null mid-refetch. Operator availability is a dependency
+  // so callers whose effects depend on this callback retry once definitions
+  // register instead of retaining an executor that resolved too early.
   return useCallback(() => {
+    if (!operatorAvailable) return;
+
     setActivePathsOrder(null);
     closeSchemaManager();
     executeRef.current({});
-  }, [setActivePathsOrder, closeSchemaManager]);
+  }, [operatorAvailable, setActivePathsOrder, closeSchemaManager]);
 }

@@ -21,6 +21,20 @@ export class EpisodePom {
     return byDataTestId(this.shell, "timeline-controls-root");
   }
 
+  savedRangePin(sourceLabel: string): Locator {
+    return this.shell
+      .locator('[data-track-id^="fiftyone:saved-segments"]')
+      .filter({ hasText: sourceLabel })
+      .locator('[data-testid^="timeline-track-pin-"]')
+      .first();
+  }
+
+  async toggleTracksDrawer(): Promise<void> {
+    await byDataTestId(this.controls, "timeline-controls-toggle")
+      .first()
+      .click();
+  }
+
   get timelineRuler(): Locator {
     return byDataTestId(this.shell, "timeline-ruler");
   }
@@ -51,9 +65,11 @@ export class EpisodePom {
     return root.locator("[data-cy=episode-raw-meta]");
   }
 
-  async waitForReady(fileName: string): Promise<void> {
+  async waitForReady(sourceLabel: string | RegExp): Promise<void> {
     await expect(this.shell).toBeVisible({ timeout: READY_TIMEOUT });
-    await expect(this.scope.getByText(fileName, { exact: true })).toBeVisible({
+    await expect(
+      this.scope.getByText(sourceLabel, { exact: true }),
+    ).toBeVisible({
       timeout: READY_TIMEOUT,
     });
     await expect
@@ -64,6 +80,21 @@ export class EpisodePom {
         },
       )
       .toBeNull();
+    await expect(
+      byDataTestId(this.scope, "episode-preparing-scaffold"),
+    ).toBeHidden();
+  }
+
+  /** Verifies useful episode topology is visible before source reads recover. */
+  async expectWarmBootstrapShell(
+    fileName: string,
+    tileTitles: readonly string[],
+  ): Promise<void> {
+    await expect(this.shell).toBeVisible({ timeout: READY_TIMEOUT });
+    await expect(this.scope.getByText(fileName, { exact: true })).toBeVisible({
+      timeout: READY_TIMEOUT,
+    });
+    await this.expectTileTitles(tileTitles);
     await expect(
       byDataTestId(this.scope, "episode-preparing-scaffold"),
     ).toBeHidden();
@@ -227,6 +258,72 @@ export class EpisodePom {
       .click();
     await this.page.locator(`[data-testid="episode-add-tile-${type}"]`).click();
     await expect(this.tileTitle(title)).toBeVisible({ timeout: READY_TIMEOUT });
+  }
+
+  async selectMessageSource(
+    currentTitle: string,
+    nextTitle: string,
+  ): Promise<void> {
+    await this.openTileSettings(currentTitle);
+    const source = this.scope.getByRole("radio", {
+      name: nextTitle,
+      exact: true,
+    });
+    await expect(source).toBeVisible({ timeout: READY_TIMEOUT });
+    await source.check();
+    this.inspectedStream = nextTitle;
+    await expect(this.tileTitle(nextTitle).first()).toBeVisible({
+      timeout: READY_TIMEOUT,
+    });
+    await expect(this.rawTree).toBeVisible({ timeout: READY_TIMEOUT });
+  }
+
+  async closeTile(title: string): Promise<void> {
+    const initial = await this.tileTitle(title).count();
+    if (initial === 0) {
+      throw new Error(`No episode tile with title: ${title}`);
+    }
+    const remaining = initial - 1;
+    await this.tile(title)
+      .first()
+      .getByRole("button", { name: "Close", exact: true })
+      .click();
+    await expect(this.tileTitle(title)).toHaveCount(remaining);
+    if (remaining === 0 && this.inspectedStream === title) {
+      this.inspectedStream = null;
+    }
+  }
+
+  async fullscreenTile(title: string): Promise<void> {
+    await this.tile(title)
+      .first()
+      .getByRole("button", { name: "Fullscreen", exact: true })
+      .click();
+    await this.expectTileFullscreen(title);
+  }
+
+  async exitTileFullscreen(title: string): Promise<void> {
+    await this.tile(title)
+      .first()
+      .getByRole("button", { name: "Exit fullscreen", exact: true })
+      .click();
+    await expect(
+      this.tile(title)
+        .first()
+        .getByRole("button", { name: "Fullscreen", exact: true }),
+    ).toBeVisible({ timeout: READY_TIMEOUT });
+  }
+
+  async expectTileFullscreen(title: string): Promise<void> {
+    await expect(
+      this.tile(title)
+        .first()
+        .getByRole("button", { name: "Exit fullscreen", exact: true }),
+    ).toBeVisible({ timeout: READY_TIMEOUT });
+  }
+
+  async expectTileCount(count: number): Promise<void> {
+    await expect(this.shell.locator(".mosaic-window")).toHaveCount(count);
   }
 
   tile(title: string): Locator {

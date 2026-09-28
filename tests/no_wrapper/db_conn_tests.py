@@ -33,18 +33,18 @@ class GetDbConnTests(unittest.TestCase):
         self.assertFalse(foo.database._client._closed)
 
 
-class GetAsyncDbConnTests(unittest.IsolatedAsyncioTestCase):
-    async def test_get_async_db_conn(self):
+class GetAsyncDbConnTests(unittest.TestCase):
+    def test_get_async_db_conn(self):
         conn = foo.get_async_db_conn(use_global=True)
         self.assertIsNotNone(conn)
 
         # Check that the connection is open
-        self.assertFalse(conn.client._closed)
+        self.assertFalse(conn.delegate.client._closed)
 
         # Close the connection
-        await conn.client.close()
-        self.assertTrue(conn.client._closed)
+        conn.delegate.client.close()
+        self.assertTrue(conn.delegate.client._closed)
 
         # should reconnect
         conn = foo.get_async_db_conn(use_global=True)
-        self.assertFalse(conn.client._closed)
+        self.assertFalse(conn.delegate.client._closed)

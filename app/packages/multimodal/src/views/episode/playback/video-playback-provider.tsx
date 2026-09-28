@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
-import type { EncodedH264VideoVisualization } from "../../../ir";
 import { VideoPlaybackManager } from "../../../video/playback-manager";
 import { VideoPlaybackManagerProvider } from "../../../video/react";
 import type {
-  H264AccessUnit,
+  EncodedVideoAccessUnit,
   VideoAccessUnitReader,
 } from "../../../video/types";
+import { isSharedEncodedVideoVisualization } from "../../../video/types";
 import { VISUALIZATION_KIND } from "../../../visualization";
+import { monotonicNowMs } from "../../../utils/monotonic-time";
 import { useDataStream } from "./data-stream-context";
 
 /** Binds the source manager to the current bounded episode read port. */
@@ -34,24 +35,27 @@ export function SourceVideoPlaybackProvider({
       timelineStartTimeNs,
       read: async ({ budget, endTimeNs, signal, startTimeNs, stream }) => {
         const result = await readStreamFrames({
-          budget,
+          budget: {
+            deadlineMs: monotonicNowMs() + budget.maxWallTimeMs,
+            maxMessages: budget.maxMessages,
+            maxObservedPayloadBytes: budget.maxObservedPayloadBytes,
+          },
           endTimeNs,
           signal,
           startTimeNs,
           stream,
         });
-        const units: H264AccessUnit[] = [];
+        const units: EncodedVideoAccessUnit[] = [];
         for (const decoded of result.frames) {
           const visualization = decoded.output.visualization;
           if (
             visualization?.kind !== VISUALIZATION_KIND.ENCODED_VIDEO ||
-            visualization.codec !== "h264" ||
-            visualization.h264.hasFrame === false
+            !isSharedEncodedVideoVisualization(visualization)
           ) {
             continue;
           }
           units.push({
-            frame: visualization satisfies EncodedH264VideoVisualization,
+            frame: visualization,
             timeNs: decoded.timestampNs,
           });
         }

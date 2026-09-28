@@ -66,7 +66,6 @@ from fiftyone.core.session.events import (
 )
 import fiftyone.core.session.notebooks as fosn
 
-
 logger = logging.getLogger(__name__)
 
 #
@@ -1340,29 +1339,29 @@ def _attach_listeners(session: "Session"):
         "set_label_selection_style", on_set_label_selection_style
     )
 
-    on_select_labels: t.Callable[
-        [SelectLabels], None
-    ] = lambda event: _on_select_labels(session._state, event)
+    on_select_labels: t.Callable[[SelectLabels], None] = (
+        lambda event: _on_select_labels(session._state, event)
+    )
     session._client.add_event_listener("select_labels", on_select_labels)
 
-    on_set_color_scheme: t.Callable[
-        [SetColorScheme], None
-    ] = lambda event: setattr(session._state, "color_scheme", event.to_odm())
+    on_set_color_scheme: t.Callable[[SetColorScheme], None] = (
+        lambda event: setattr(session._state, "color_scheme", event.to_odm())
+    )
     session._client.add_event_listener("set_color_scheme", on_set_color_scheme)
 
-    on_set_dataset_color_scheme: t.Callable[
-        [SetDatasetColorScheme], None
-    ] = lambda _: _on_refresh(session, None)
+    on_set_dataset_color_scheme: t.Callable[[SetDatasetColorScheme], None] = (
+        lambda _: _on_refresh(session, None)
+    )
     session._client.add_event_listener(
         "set_dataset_color_scheme", on_set_dataset_color_scheme
     )
 
-    on_set_group_slice: t.Callable[
-        [SetGroupSlice], None
-    ] = lambda event: setattr(
-        session._state.dataset,
-        "group_slice",
-        event.slice,
+    on_set_group_slice: t.Callable[[SetGroupSlice], None] = (
+        lambda event: setattr(
+            session._state.dataset,
+            "group_slice",
+            event.slice,
+        )
     )
     session._client.add_event_listener("set_group_slice", on_set_group_slice)
 

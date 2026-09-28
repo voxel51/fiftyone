@@ -12,10 +12,19 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import { useCallback, useMemo } from "react";
-import { PRIMITIVE_FIELD_TYPES } from "../../constants";
+import {
+  PRIMITIVE_FIELD_TYPES,
+  isClassesComponent,
+  type ClassesComponent,
+} from "../../constants";
 import { useFieldType } from "../../hooks";
 import { EditSectionHeader, EmptyStateBox, Section } from "../../styled";
-import type { AttributeConfig, SchemaConfigType } from "../../utils";
+import {
+  defaultClassesComponent,
+  reconcileComponent,
+  type AttributeConfig,
+  type SchemaConfigType,
+} from "../../utils";
 import { useAppliedOntology } from "../useLabelSchema";
 import AttributesSection from "./AttributesSection";
 import ClassesSection from "./ClassesSection";
@@ -52,6 +61,14 @@ const GUIContent = ({
     () => config?.attributes || [],
     [config?.attributes],
   );
+  // What the annotate sidebar will render the classes with: an explicit
+  // radio/dropdown choice, else the class-count default applied on save.
+  const classesComponent = useMemo<ClassesComponent>(() => {
+    const component = config ? reconcileComponent(config).component : undefined;
+    return isClassesComponent(component)
+      ? component
+      : defaultClassesComponent(classes);
+  }, [classes, config]);
 
   const handleAddClass = useCallback(
     (name: string) => {
@@ -84,6 +101,14 @@ const GUIContent = ({
     (newOrder: string[]) => {
       if (!config) return;
       onConfigChange?.({ ...config, classes: newOrder });
+    },
+    [config, onConfigChange],
+  );
+
+  const handleComponentChange = useCallback(
+    (component: ClassesComponent) => {
+      if (!config) return;
+      onConfigChange?.({ ...config, component });
     },
     [config, onConfigChange],
   );
@@ -186,9 +211,11 @@ const GUIContent = ({
         <ClassesSection
           classes={classes}
           attributeCount={attributes.length}
+          component={classesComponent}
           onAddClass={handleAddClass}
           onEditClass={handleEditClass}
           onDeleteClass={handleDeleteClass}
+          onComponentChange={handleComponentChange}
           onOrderChange={handleClassOrderChange}
         />
       )}

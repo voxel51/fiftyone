@@ -15,6 +15,7 @@ import {
   collectBatches,
   defineEpisodeSessionContractTests,
 } from "../../testing/adapter-contract";
+import { resetVideoCodecSupport } from "../../codecs/video-codec-support";
 import { detectLeRobotSample } from "./descriptor";
 import { createLeRobotFormatAdapter } from "./format-adapter";
 
@@ -26,15 +27,23 @@ const info = {
       names: ["joint_a", "joint_b"],
       shape: [2],
     },
+    "action.gripper": { dtype: "float32", shape: [1] },
+    language_instruction: { dtype: "string", shape: [1] },
+    task_progress: { dtype: "float32", shape: [1] },
     "observation.state": {
       dtype: "float32",
       names: ["joint_a", "joint_b"],
       shape: [2],
     },
+    success: { dtype: "bool", shape: [1] },
     "observation.images.test": {
       dtype: "video",
       info: { "video.codec": "h264", "video.fps": 2 },
       shape: [16, 16, 3],
+    },
+    "observation.images.embedded": {
+      dtype: "image",
+      shape: [1, 1, 3],
     },
     timestamp: { dtype: "float32", shape: [1] },
   },
@@ -72,37 +81,97 @@ const tinyMp4Bytes = new Uint8Array(
     "base64",
   ),
 );
+const tinyAv1Mp4Bytes = new Uint8Array(
+  Buffer.from(
+    [
+      "AAAAIGZ0eXBpc29tAAACAGlzb21hdjAxaXNvMm1wNDEAAAMebW9vdgAAAGxtdmhkAAAAAAAAAAAAAAAAAAAD6AAAA+gAAQAA",
+      "AQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "AgAAAkl0cmFrAAAAXHRraGQAAAADAAAAAAAAAAAAAAABAAAAAAAAA+gAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAB",
+      "AAAAAAAAAAAAAAAAAABAAAAAAEAAAABAAAAAAAAkZWR0cwAAABxlbHN0AAAAAAAAAAEAAAPoAAAAAAABAAAAAAHBbWRpYQAAACB",
+      "tZGhkAAAAAAAAAAAAAAAAAABAAAAAQABVxAAAAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAAB",
+      "bG1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAASxzdGJsAAAArHN0c",
+      "2QAAAAAAAAAAQAAAJxhdjAxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAEAAQABIAAAASAAAAAAAAAABF0xhdmM2Mi4xMS4xMDAg",
+      "bGlic3Z0YXYxAAAAAAAAAAAAGP//AAAAGGF2MUOBAAwACgoAAAACr/+AXwAIAAAACmZpZWwBAAAAABBwYXNwAAAAAQAAAAEAAAAU",
+      "YnRydAAAAAAAAAGoAAABqAAAABhzdHRzAAAAAAAAAAEAAAACAAAgAAAAABRzdHNzAAAAAAAAAAEAAAABAAAAHHN0c2MAAAAAAAAA",
+      "AQAAAAEAAAACAAAAAQAAABxzdHN6AAAAAAAAAAAAAAACAAAAIwAAABIAAAAUc3RjbwAAAAAAAAABAAADTgAAAGF1ZHRhAAAAWW1l",
+      "dGEAAAAAAAAAIWhkbHIAAAAAAAAAAG1kaXJhcHBsAAAAAAAAAAAAAAAALGlsc3QAAAAkqXRvbwAAABxkYXRhAAAAAQAAAABMYXZm",
+      "NjIuMy4xMDAAAAAIZnJlZQAAAD1tZGF0CgoAAAACr/+JXyAIMhUQAMGCCyxRQgAACJQNlzHvMaZyCPgyEDACBAkkkiOQAAACAAA",
+      "AnFA=",
+    ].join(""),
+    "base64",
+  ),
+);
+const EPISODE_ROW_START = 100;
+const EPISODE_ROW_END = 101;
 const assets: readonly AssetDescriptor[] = [
   {
     id: "info",
     mediaType: "application/json",
-    metadata: { sizeBytes: infoBytes.byteLength.toString() },
-    role: "metadata",
+    role: "dataset-info",
+    selector: { kind: "whole-file" },
   },
   {
     id: "episodes",
     mediaType: "application/vnd.apache.parquet",
-    metadata: { sizeBytes: "1" },
-    role: "episode-index",
+    role: "episode-metadata",
+    selector: {
+      coordinateSystem: "parquet-file-row",
+      end: EPISODE_ROW_END,
+      kind: "row-interval",
+      start: EPISODE_ROW_START,
+    },
   },
   {
     id: "data",
     mediaType: "application/vnd.apache.parquet",
-    metadata: { chunkIndex: "0", fileIndex: "0", sizeBytes: "1" },
-    role: "data",
+    metadata: { chunkIndex: "0", fileIndex: "0" },
+    role: "tabular-frame-data",
+    selector: {
+      coordinateSystem: "parquet-file-row",
+      end: 3,
+      kind: "row-interval",
+      start: 0,
+    },
   },
   {
+    featureName: "observation.images.embedded",
+    id: "images",
+    mediaType: "application/vnd.apache.parquet",
+    role: "image-payload",
+    selector: {
+      coordinateSystem: "parquet-file-row",
+      end: 3,
+      kind: "row-interval",
+      start: 0,
+    },
+  },
+  {
+    featureName: "observation.images.test",
     id: "video",
     mediaType: "video/mp4",
     metadata: {
       chunkIndex: "0",
       fileIndex: "0",
-      sizeBytes: tinyMp4Bytes.byteLength.toString(),
       stream: "observation.images.test",
     },
-    role: "video",
+    role: "video-stream",
+    selector: {
+      fromTimestamp: 0,
+      kind: "video-timestamp-interval",
+      toTimestamp: 1,
+    },
   },
 ];
+
+// The manifest carries no sizes; a reader learns each object's size from its
+// first response, so the fixture reports it the way the byte client does.
+const assetSizes: Readonly<Record<string, number>> = {
+  data: 2,
+  episodes: 1,
+  images: 2,
+  info: infoBytes.byteLength,
+  video: tinyMp4Bytes.byteLength,
+};
 
 const episodeRow = {
   "data/chunk_index": 0n,
@@ -122,30 +191,61 @@ const episodeRow = {
 const dataRows = [
   {
     action: [1, 2],
+    "action.gripper": [0.1],
+    episode_index: 0n,
     frame_index: 0n,
+    index: 0n,
+    language_instruction: "reach for the cube",
+    "observation.images.embedded": Uint8Array.of(0xff, 0xd8, 0xff, 0xd9),
     "observation.state": [3, 4],
+    task_index: 0n,
+    task_progress: [0.1],
     timestamp: 0,
+    success: false,
   },
   {
     action: [5, 6],
+    "action.gripper": [0.2],
+    episode_index: 0n,
     frame_index: 1n,
+    index: 1n,
+    language_instruction: "reach for the cube",
+    "observation.images.embedded": Uint8Array.of(0xff, 0xd8, 0xff, 0xd9),
     "observation.state": [7, 8],
+    task_index: 0n,
+    task_progress: [0.5],
     timestamp: 0.033333335,
+    success: true,
   },
   {
     action: [9, 10],
+    "action.gripper": [0.3],
+    episode_index: 0n,
     frame_index: 2n,
+    index: 2n,
+    language_instruction: "reach for the cube",
+    "observation.images.embedded": Uint8Array.of(0xff, 0xd8, 0xff, 0xd9),
     "observation.state": [11, 12],
+    task_index: 0n,
+    task_progress: [1],
     timestamp: 0.06666667,
+    success: true,
   },
 ];
 
-const source: EpisodeSource = {
+const source = {
   assets: {
     list: async () => assets,
-    resolve: async (assetId) => descriptor(assetId),
+    resolve: async (assetId: string) => descriptor(assetId),
   },
-  episodeId: "episode-0",
+  episodeId: "src/0",
+  // A poster open never reads info.json; the sample's own rate declares it
+  fps: 30,
+  reference: {
+    data: [0, 0, 0, 3],
+    key: "src/0",
+    tasks: ["reach for the cube"],
+  },
 };
 
 const io: ByteResources = {
@@ -158,23 +258,118 @@ const io: ByteResources = {
         : byteSource.sourceId === "video"
           ? tinyMp4Bytes.slice(start, end)
           : new Uint8Array(Number(range.length));
-    return { bytes, range, source: byteSource };
+    return { bytes, range, source: sized(byteSource) };
   },
 };
+
+function sized(byteSource: ByteSourceDescriptor): ByteSourceDescriptor {
+  const size = assetSizes[byteSource.sourceId];
+  return size === undefined
+    ? byteSource
+    : { ...byteSource, sizeBytes: size.toString() };
+}
 
 function descriptor(assetId: string): ByteSourceDescriptor {
   const asset = assets.find((candidate) => candidate.id === assetId);
   if (!asset) throw new Error(`Unknown test asset ${assetId}`);
   return {
-    sizeBytes: asset.metadata?.sizeBytes,
     sourceId: asset.id,
     url: `memory://${asset.id}`,
   };
 }
 
-const readParquetObjects = vi.fn(async (options: { columns?: string[] }) =>
-  options.columns ? dataRows : [episodeRow],
+/** `io` with the test camera's declared codec swapped in info.json. */
+function declaredCodecIo(codec: string): ByteResources {
+  const declaredInfoBytes = new TextEncoder().encode(
+    JSON.stringify({
+      ...info,
+      features: {
+        ...info.features,
+        "observation.images.test": {
+          ...info.features["observation.images.test"],
+          info: { "video.codec": codec, "video.fps": 2 },
+        },
+      },
+    }),
+  );
+  return {
+    readBytes: async (request) => {
+      if (request.source.sourceId !== "info") return io.readBytes(request);
+      const start = Number(request.range.offset);
+      return {
+        bytes: declaredInfoBytes.slice(
+          start,
+          start + Number(request.range.length),
+        ),
+        range: request.range,
+        source: {
+          ...request.source,
+          sizeBytes: declaredInfoBytes.byteLength.toString(),
+        },
+      };
+    },
+  };
+}
+
+const readParquetObjects = vi.fn(
+  async (options: {
+    columns?: string[];
+    file: { byteLength: number };
+    rowEnd?: number;
+    rowStart?: number;
+  }) => {
+    if (
+      !options.columns &&
+      options.rowStart === EPISODE_ROW_START &&
+      options.rowEnd === EPISODE_ROW_END
+    ) {
+      return [episodeRow];
+    }
+    return dataRows.slice(
+      options.rowStart ?? 0,
+      options.rowEnd ?? dataRows.length,
+    );
+  },
 );
+
+function av1ByteResources(): ByteResources {
+  const av1Info = {
+    ...info,
+    features: {
+      ...info.features,
+      "observation.images.test": {
+        ...info.features["observation.images.test"],
+        info: { "video.codec": "av1", "video.fps": 2 },
+      },
+    },
+  };
+  const av1InfoBytes = new TextEncoder().encode(JSON.stringify(av1Info));
+  return {
+    readBytes: async (request) => {
+      const start = Number(request.range.offset);
+      const end = start + Number(request.range.length);
+      if (request.source.sourceId === "video") {
+        return {
+          bytes: tinyAv1Mp4Bytes.slice(start, end),
+          range: request.range,
+          source: {
+            ...request.source,
+            sizeBytes: tinyAv1Mp4Bytes.byteLength.toString(),
+          },
+        };
+      }
+      if (request.source.sourceId !== "info") return io.readBytes(request);
+      return {
+        bytes: av1InfoBytes.slice(start, end),
+        range: request.range,
+        source: {
+          ...request.source,
+          sizeBytes: av1InfoBytes.byteLength.toString(),
+        },
+      };
+    },
+  };
+}
 
 defineEpisodeSessionContractTests({
   createSession: () =>
@@ -184,24 +379,111 @@ defineEpisodeSessionContractTests({
 
 describe("LeRobot format adapter", () => {
   it("detects only explicit LeRobot source identities", () => {
+    const mediaReference = {
+      _cls: "LeRobotEpisodeReference",
+      key: "src/7",
+    };
+    expect(
+      detectLeRobotSample({
+        mediaReference,
+        mediaType: "multimodal",
+      }),
+    ).toBe(true);
+    expect(
+      detectLeRobotSample({
+        mediaReference,
+        mediaType: "application/x-lerobot",
+      }),
+    ).toBe(false);
     expect(
       detectLeRobotSample({
         mediaType: "multimodal",
         path: "/robot/run/meta/info.json",
       }),
-    ).toBe(true);
-    expect(
-      detectLeRobotSample({
-        mediaType: "application/x-lerobot",
-        path: "/robot/run",
-      }),
-    ).toBe(true);
-    expect(
-      detectLeRobotSample({
-        mediaType: "multimodal",
-        path: "/robot/run/data.parquet",
-      }),
     ).toBe(false);
+  });
+
+  it("publishes canonical catalog and recording facts even with a stale hint", async () => {
+    const staleSource: EpisodeSource = {
+      ...source,
+      manifestHint: {
+        episodeId: "stale",
+        streams: [],
+        timeDomain: { id: "stale", kind: "duration" },
+        timeRange: { endNs: 0n, startNs: 0n },
+      },
+    };
+    const session = await createLeRobotFormatAdapter({
+      readParquetObjects,
+    }).open(staleSource, io);
+    try {
+      const byName = new Map(
+        session.manifest.streams.map((stream) => [stream.sourceName, stream]),
+      );
+      expect(byName.get("observation.state")?.metadata).toMatchObject({
+        "stream.category": "observations",
+        "stream.count_noun": "samples",
+        "stream.inspectable": "true",
+      });
+      expect(byName.get("action")?.metadata).toMatchObject({
+        "stream.category": "actions",
+        "stream.inspectable": "true",
+      });
+      expect(byName.get("action.gripper")?.metadata).toMatchObject({
+        "stream.category": "actions",
+        "stream.inspectable": "true",
+      });
+      expect(byName.get("language_instruction")?.metadata).toMatchObject({
+        "stream.category": "instructions",
+        "stream.inspectable": "false",
+      });
+      expect(byName.get("success")?.metadata).toMatchObject({
+        "stream.category": "custom",
+        "stream.inspectable": "true",
+      });
+      expect(byName.get("task_progress")?.metadata).toMatchObject({
+        "stream.category": "custom",
+        "stream.inspectable": "true",
+      });
+      expect(byName.get("observation.images.embedded")).toMatchObject({
+        count: 3,
+        kind: "image",
+        metadata: {
+          "stream.category": "observations",
+          "stream.count_noun": "frames",
+          "stream.inspectable": "false",
+        },
+      });
+      expect(byName.get("observation.images.test")).toMatchObject({
+        kind: "video",
+        metadata: { "stream.inspectable": "false" },
+      });
+      expect(byName.get("observation.images.test")).not.toHaveProperty("count");
+      expect(session.manifest.recordingFacts).toMatchObject({
+        applicationSupport: {
+          inspectableStreamCount: 5,
+          renderableStreamCount: 2,
+          unavailableStreamCount: 1,
+        },
+        durationNs: "1000000000",
+        format: "lerobot",
+        lerobot: {
+          codebaseVersion: "v3.0",
+          episodeIndex: "0",
+          featureCount: 9,
+          fps: 30,
+          logicalRowCount: 3,
+          mediaFeatureCount: 2,
+          robotType: "test-arm",
+          videoCodecs: ["h264"],
+        },
+      });
+      expect(session.manifest.recordingFacts).not.toHaveProperty(
+        "messageCount",
+      );
+    } finally {
+      session.dispose();
+    }
   });
 
   it("exposes named vector values through the numeric capability", async () => {
@@ -211,7 +493,7 @@ describe("LeRobot format adapter", () => {
     }).open(source, io);
     try {
       expect(
-        await session.numericSeries?.enumerateNumericFields(["lerobot:action"]),
+        await session.numericSeries?.enumerateNumericFields(["action"]),
       ).toEqual([
         {
           availability: "ready",
@@ -221,13 +503,13 @@ describe("LeRobot format adapter", () => {
             { path: "action.joint_b", valueType: "float32" },
           ],
           sourceName: "action",
-          streamId: "lerobot:action",
+          streamId: "action",
         },
       ]);
       expect(
         await session.numericSeries?.readNumericSeries({
           fields: ["action.joint_b"],
-          stream: "lerobot:action",
+          stream: "action",
           window: session.manifest.timeRange,
         }),
       ).toEqual({
@@ -240,15 +522,39 @@ describe("LeRobot format adapter", () => {
           },
         ],
         sampleCount: 3,
-        streamId: "lerobot:action",
+        streamId: "action",
         truncated: false,
       });
       await session.numericSeries?.readNumericSeries({
         fields: ["action.joint_a"],
-        stream: "lerobot:action",
+        stream: "action",
         window: session.manifest.timeRange,
       });
       expect(readParquetObjects).toHaveBeenCalledTimes(2);
+    } finally {
+      session.dispose();
+    }
+  });
+
+  it("projects boolean scalar values as plottable zero/one samples", async () => {
+    const session = await createLeRobotFormatAdapter({
+      readParquetObjects,
+    }).open(source, io);
+    try {
+      await expect(
+        session.numericSeries?.readNumericSeries({
+          fields: ["success"],
+          stream: "success",
+          window: session.manifest.timeRange,
+        }),
+      ).resolves.toMatchObject({
+        fields: [
+          {
+            path: "success",
+            values: Float64Array.from([0, 1, 1]),
+          },
+        ],
+      });
     } finally {
       session.dispose();
     }
@@ -261,7 +567,7 @@ describe("LeRobot format adapter", () => {
     const current = collectBatches(
       session.read({
         priority: "current",
-        streams: ["lerobot:action"],
+        streams: ["action"],
         window: session.manifest.timeRange,
       }),
     );
@@ -271,7 +577,7 @@ describe("LeRobot format adapter", () => {
     const idle = collectBatches(
       session.read({
         priority: "idle",
-        streams: ["lerobot:action"],
+        streams: ["action"],
         window: session.manifest.timeRange,
       }),
     );
@@ -280,44 +586,27 @@ describe("LeRobot format adapter", () => {
     session.dispose();
   });
 
-  it("activates a session on read and cancels the previous session", async () => {
-    let releaseFirstRead = (_rows: Record<string, unknown>[]): void => {
-      throw new Error("First data read did not start");
-    };
-    let dataReadCount = 0;
-    const controlledReadParquet = vi.fn(
-      async (options: { columns?: string[] }) => {
-        if (!options.columns) return [episodeRow];
-        dataReadCount += 1;
-        if (dataReadCount > 1) return dataRows;
-        return new Promise<Record<string, unknown>[]>((resolve) => {
-          releaseFirstRead = resolve;
-        });
-      },
-    );
-    const adapter = createLeRobotFormatAdapter({
-      readParquetObjects: controlledReadParquet,
-    });
+  it("keeps concurrent episode sessions independently readable", async () => {
+    const adapter = createLeRobotFormatAdapter({ readParquetObjects });
     const firstSession = await adapter.open(source, io);
     const secondSession = await adapter.open(source, io);
-    const firstRead = collectBatches(
-      firstSession.read({
-        streams: ["lerobot:action"],
-        window: firstSession.manifest.timeRange,
-      }),
-    );
-    const secondRead = collectBatches(
-      secondSession.read({
-        streams: ["lerobot:action"],
-        window: secondSession.manifest.timeRange,
-      }),
-    );
-
-    await expect(secondRead).resolves.toHaveLength(1);
-    releaseFirstRead(dataRows);
-    await expect(firstRead).rejects.toSatisfy(isEpisodeReadCancelledError);
-    firstSession.dispose();
-    secondSession.dispose();
+    try {
+      const request = (session: EpisodeSession) =>
+        collectBatches(
+          session.read({
+            streams: ["action"],
+            window: session.manifest.timeRange,
+          }),
+        );
+      await expect(
+        Promise.all([request(firstSession), request(secondSession)]),
+      ).resolves.toEqual([expect.any(Array), expect.any(Array)]);
+      firstSession.dispose();
+      await expect(request(secondSession)).resolves.toHaveLength(1);
+    } finally {
+      firstSession.dispose();
+      secondSession.dispose();
+    }
   });
 
   it("demuxes an in-memory MP4 fixture into encoded video IR", async () => {
@@ -327,7 +616,7 @@ describe("LeRobot format adapter", () => {
     try {
       const batches = await collectBatches(
         session.read({
-          streams: ["lerobot:observation.images.test"],
+          streams: ["observation.images.test"],
           window: session.manifest.timeRange,
         }),
       );
@@ -344,17 +633,693 @@ describe("LeRobot format adapter", () => {
       session.dispose();
     }
   });
+
+  it("reuses an MP4 GOP prefix and reads only its missing tail", async () => {
+    const readBytes = vi.fn<ByteResources["readBytes"]>((request) =>
+      io.readBytes(request),
+    );
+    const session = await createLeRobotFormatAdapter({
+      readParquetObjects,
+    }).open(source, { readBytes });
+    const readVideo = (endNs: bigint) =>
+      collectBatches(
+        session.read({
+          streams: ["observation.images.test"],
+          window: { endNs, startNs: 0n },
+        }),
+      );
+    try {
+      await readVideo(0n);
+      const firstReads = readBytes.mock.calls
+        .map(([request]) => request)
+        .filter((request) => request.source.sourceId === "video");
+      const firstSpan = firstReads.at(-1)?.range;
+      if (!firstSpan) throw new Error("Expected an MP4 sample span read");
+
+      await readVideo(500_000_000n);
+      const extendedReads = readBytes.mock.calls
+        .map(([request]) => request)
+        .filter((request) => request.source.sourceId === "video");
+      expect(extendedReads).toHaveLength(firstReads.length + 1);
+      const tail = extendedReads.at(-1)?.range;
+      expect(tail?.offset).toBe(firstSpan.offset + firstSpan.length);
+
+      await readVideo(500_000_000n);
+      expect(
+        readBytes.mock.calls
+          .map(([request]) => request)
+          .filter((request) => request.source.sourceId === "video"),
+      ).toHaveLength(extendedReads.length);
+    } finally {
+      session.dispose();
+    }
+  });
+
+  it("reads synchronized camera batches concurrently", async () => {
+    const secondFeature = "observation.images.second";
+    const dualInfo = {
+      ...info,
+      features: {
+        ...info.features,
+        [secondFeature]: info.features["observation.images.test"],
+      },
+    };
+    const firstVideoAsset = assets.find((asset) => asset.id === "video");
+    if (!firstVideoAsset) throw new Error("Missing test video asset");
+    const dualAssets = [
+      ...assets,
+      {
+        ...firstVideoAsset,
+        featureName: secondFeature,
+        id: "video-second",
+        metadata: {
+          ...firstVideoAsset.metadata,
+          stream: secondFeature,
+        },
+      },
+    ];
+    let activeVideoReads = 0;
+    let maxActiveVideoReads = 0;
+    const dualInfoBytes = new TextEncoder().encode(JSON.stringify(dualInfo));
+    const dualSource = {
+      ...source,
+      assets: {
+        list: async () => dualAssets,
+        resolve: async (assetId: string) => {
+          const asset = dualAssets.find(
+            (candidate) => candidate.id === assetId,
+          );
+          if (!asset) throw new Error(`Unknown dual-camera asset ${assetId}`);
+          return { sourceId: asset.id, url: `memory://${asset.id}` };
+        },
+      },
+    };
+    const dualIo: ByteResources = {
+      readBytes: async (request) => {
+        const isVideo = request.source.sourceId.startsWith("video");
+        if (isVideo) {
+          activeVideoReads += 1;
+          maxActiveVideoReads = Math.max(maxActiveVideoReads, activeVideoReads);
+          await Promise.resolve();
+        }
+        try {
+          const start = Number(request.range.offset);
+          const end = start + Number(request.range.length);
+          const bytes = isVideo
+            ? tinyMp4Bytes.slice(start, end)
+            : request.source.sourceId === "info"
+              ? dualInfoBytes.slice(start, end)
+              : new Uint8Array(Number(request.range.length));
+          return {
+            bytes,
+            range: request.range,
+            source: isVideo
+              ? {
+                  ...request.source,
+                  sizeBytes: tinyMp4Bytes.byteLength.toString(),
+                }
+              : request.source.sourceId === "info"
+                ? {
+                    ...request.source,
+                    sizeBytes: dualInfoBytes.byteLength.toString(),
+                  }
+                : sized(request.source),
+          };
+        } finally {
+          if (isVideo) activeVideoReads -= 1;
+        }
+      },
+    };
+    const session = await createLeRobotFormatAdapter({
+      readParquetObjects,
+    }).open(dualSource, dualIo);
+    try {
+      const streams = ["observation.images.test", secondFeature];
+      const windows = await session.playback?.readSynchronizedBatch({
+        streams,
+        timeNs: [0n, 500_000_000n],
+      });
+
+      expect(maxActiveVideoReads).toBeGreaterThanOrEqual(2);
+      expect(windows).toHaveLength(2);
+      expect(windows?.[0].framesByStream[streams[0]]).toHaveLength(1);
+      expect(windows?.[0].framesByStream[streams[1]]).toHaveLength(1);
+      expect(windows?.[1].framesByStream[streams[0]]).toHaveLength(1);
+      expect(windows?.[1].framesByStream[streams[1]]).toHaveLength(1);
+    } finally {
+      session.dispose();
+    }
+  });
+
+  it("reads embedded images and exact bounded raw feature records", async () => {
+    const session = await createLeRobotFormatAdapter({
+      readParquetObjects,
+    }).open(source, io);
+    try {
+      const batches = await collectBatches(
+        session.read({
+          streams: ["observation.images.embedded"],
+          window: { endNs: 0n, startNs: 0n },
+        }),
+      );
+      expect(batches[0].frames[0].output.visualization).toMatchObject({
+        kind: "encoded-image",
+        mimeType: "image/jpeg",
+      });
+      expect(readParquetObjects.mock.lastCall?.[0]).toMatchObject({
+        rowEnd: 1,
+        rowStart: 0,
+      });
+
+      await expect(session.rawRecords?.listRawRecordStreams()).resolves.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            sourceName: "Episode rows",
+            streamId: "lerobot:rows",
+          }),
+          expect.objectContaining({
+            schemaName: "float32[2]",
+            sourceName: "action",
+            streamId: "action",
+          }),
+          expect.objectContaining({
+            schemaName: "float32[2]",
+            sourceName: "observation.state",
+            streamId: "observation.state",
+          }),
+        ]),
+      );
+
+      await expect(
+        session.rawRecords?.readRawRecordAtCursor?.({
+          cursor: "row:1",
+          includeFullJson: true,
+          stream: "lerobot:rows",
+        }),
+      ).resolves.toMatchObject({
+        cursor: "row:1",
+        fullJson: expect.stringContaining('"frame_index": "1"'),
+        sequence: 1,
+        status: "ok",
+        timestampNs: 33_333_335n,
+      });
+      await expect(
+        session.rawRecords?.readRawRecordAtCursor?.({
+          cursor: "row:1",
+          includeFullJson: true,
+          stream: "action",
+        }),
+      ).resolves.toMatchObject({
+        cursor: "row:1",
+        fullJson: expect.stringContaining('"action.joint_a": 5'),
+        root: {
+          entries: [
+            ["action.joint_a", { value: "5", valueType: "number" }],
+            ["action.joint_b", { value: "6", valueType: "number" }],
+          ],
+        },
+        schemaName: "float32[2]",
+        sequence: 1,
+        sourceName: "action",
+        status: "ok",
+        streamId: "action",
+        timestampNs: 33_333_335n,
+      });
+      expect(readParquetObjects.mock.lastCall?.[0]).toMatchObject({
+        columns: ["timestamp", "frame_index", "action"],
+        rowEnd: 2,
+        rowStart: 1,
+      });
+    } finally {
+      session.dispose();
+    }
+  });
+
+  it("previews one deterministic camera frame at a time", async () => {
+    const preview = await createLeRobotFormatAdapter({
+      readParquetObjects,
+    }).openPreview?.(source, io);
+    if (!preview) throw new Error("LeRobot preview session is unavailable");
+    try {
+      const first = await preview.read({
+        decodeLookaheadNs: 250_000_000n,
+        sourceName: "observation.images.test",
+      });
+      expect(first).toMatchObject({
+        frameTimeNs: 0n,
+        nativeVideo: {
+          codec: "h264",
+          codecString: expect.stringMatching(/^avc1\./),
+          endTimeSeconds: 1,
+          source: {
+            sourceId: "video",
+            url: "memory://video",
+          },
+          startTimeSeconds: 0,
+        },
+        nextStartTimeNs: 500_000_000n,
+        status: "ready",
+        streamSourceName: "observation.images.test",
+        // A poster open lists cameras only; the embedded image feature has
+        // no video asset to preview
+        streamSourceNames: ["observation.images.test"],
+      });
+      expect(
+        first.videoDecodeRunway?.map((frame) =>
+          frame.kind === "image" && frame.image.kind === "encoded-video"
+            ? frame.image.timestampNs
+            : null,
+        ),
+        // 250ms of lookahead reaches no second frame on a 2fps camera; the
+        // runway covers what the caller asked for, not the whole GOP
+      ).toEqual([0n]);
+      await expect(
+        preview.read({
+          sourceName: "observation.images.test",
+          startTimeNs: first.nextStartTimeNs,
+        }),
+      ).resolves.toMatchObject({
+        frameTimeNs: 500_000_000n,
+        status: "ready",
+      });
+    } finally {
+      preview.dispose();
+    }
+  });
+
+  it("reports the instant a native preview seeks to, not the one requested", async () => {
+    const preview = await createLeRobotFormatAdapter({
+      readParquetObjects,
+    }).openPreview?.(source, av1ByteResources());
+    if (!preview) throw new Error("LeRobot preview session is unavailable");
+    try {
+      await expect(
+        preview.read({
+          sourceName: "observation.images.test",
+          startTimeNs: 5_000_000_000n,
+        }),
+      ).resolves.toMatchObject({
+        frame: null,
+        frameTimeNs: 1_000_000_000n,
+        nativeVideo: { endTimeSeconds: 1, startTimeSeconds: 1 },
+        status: "ready",
+      });
+    } finally {
+      preview.dispose();
+    }
+  });
+
+  it("keeps AV1 grid previews native while demuxing modal access units", async () => {
+    const av1Io = av1ByteResources();
+    const adapter = createLeRobotFormatAdapter({
+      readParquetObjects,
+    });
+    const preview = await adapter.openPreview?.(source, av1Io);
+    if (!preview) throw new Error("LeRobot preview session is unavailable");
+    try {
+      await expect(
+        preview.read({ sourceName: "observation.images.test" }),
+      ).resolves.toMatchObject({
+        frame: null,
+        nativeVideo: {
+          codec: "av1",
+          codecString: expect.stringMatching(/^av01\./),
+          endTimeSeconds: 1,
+          source: { sourceId: "video", url: "memory://video" },
+          startTimeSeconds: 0,
+        },
+        status: "ready",
+        streamSourceName: "observation.images.test",
+        // A poster open lists cameras only; the embedded image feature has
+        // no video asset to preview
+        streamSourceNames: ["observation.images.test"],
+      });
+    } finally {
+      preview.dispose();
+    }
+
+    const session = await adapter.open(source, av1Io);
+    try {
+      expect(
+        session.manifest.streams.find(
+          (stream) => stream.id === "observation.images.test",
+        )?.metadata,
+      ).toMatchObject({ "stream.decode_status": "decodable" });
+      const batches = await collectBatches(
+        session.read({
+          streams: ["observation.images.test"],
+          window: session.manifest.timeRange,
+        }),
+      );
+      expect(batches[0].frames[0].output.visualization).toMatchObject({
+        codec: "av1",
+        format: expect.stringMatching(/^av01\./),
+        keyframe: true,
+        kind: "encoded-video",
+      });
+      expect(batches[0].frames[0].output.visualization).not.toHaveProperty(
+        "h264",
+      );
+      expect(
+        batches[0].frames[0].output.resourceHints?.sizeBytes,
+      ).toBeGreaterThan(0);
+    } finally {
+      session.dispose();
+    }
+  });
+
+  it("declares no decode timestamp on an in-order stream", async () => {
+    // Its presence is how consumers detect a reordered stream, and that costs
+    // a seek runway and a decoder reset per keyframe
+    const session = await createLeRobotFormatAdapter({
+      readParquetObjects,
+    }).open(source, io);
+    try {
+      const batches = await collectBatches(
+        session.read({
+          streams: ["observation.images.test"],
+          window: session.manifest.timeRange,
+        }),
+      );
+      const encoded = batches
+        .flatMap((batch) => batch.frames)
+        .flatMap((frame) =>
+          frame.output.visualization?.kind === "encoded-video"
+            ? [frame.output.visualization]
+            : [],
+        );
+      expect(encoded.length).toBeGreaterThan(0);
+      expect(
+        encoded.filter(
+          (visualization) => visualization.decodeTimestampNs !== undefined,
+        ),
+      ).toEqual([]);
+    } finally {
+      session.dispose();
+    }
+  });
+
+  it("declares no decode timestamp when the episode boundary snapped the presentation one", async () => {
+    // The snap moves presentation time; a decode time left unsnapped then
+    // reports every opening keyframe as reordered
+    const offsetAssets = assets.map((asset) =>
+      asset.id === "video"
+        ? {
+            ...asset,
+            selector: {
+              fromTimestamp: 0.1,
+              kind: "video-timestamp-interval" as const,
+              toTimestamp: 14.2,
+            },
+          }
+        : asset,
+    );
+    const session = await createLeRobotFormatAdapter({
+      readParquetObjects,
+    }).open(
+      {
+        ...source,
+        assets: { ...source.assets, list: async () => offsetAssets },
+      },
+      io,
+    );
+    try {
+      const batches = await collectBatches(
+        session.read({
+          streams: ["observation.images.test"],
+          window: session.manifest.timeRange,
+        }),
+      );
+      const opening = batches
+        .flatMap((batch) => batch.frames)
+        .map((frame) => frame.output.visualization)
+        .find(
+          (visualization) =>
+            visualization?.kind === "encoded-video" &&
+            visualization.timestampNs === 0n,
+        );
+      expect(opening).toBeDefined();
+      expect(opening).not.toHaveProperty("decodeTimestampNs");
+    } finally {
+      session.dispose();
+    }
+  });
+
+  it("rejects an open cancelled while resolving codecs", async () => {
+    // The resolver swallows header failures so a bad asset cannot block
+    // opening; an abort is not one of those and must still cancel the open.
+    // The header read is held open, so this fails if the open waits out a
+    // shared parse it no longer needs instead of racing its own signal.
+    const controller = new AbortController();
+    let releaseHeaderRead: (() => void) | undefined;
+    const heldHeaderRead = new Promise<void>((resolve) => {
+      releaseHeaderRead = resolve;
+    });
+    const abortingIo: ByteResources = {
+      readBytes: async (request) => {
+        if (request.source.sourceId === "video") {
+          controller.abort();
+          await heldHeaderRead;
+        }
+        return io.readBytes(request);
+      },
+    };
+
+    const opening = createLeRobotFormatAdapter({ readParquetObjects }).open(
+      source,
+      abortingIo,
+      { signal: controller.signal },
+    );
+    const outcome = await Promise.race([
+      opening.then(
+        () => "opened",
+        () => "rejected",
+      ),
+      new Promise((resolve) => setTimeout(() => resolve("still pending"), 250)),
+    ]);
+    releaseHeaderRead?.();
+
+    expect(outcome).toBe("rejected");
+  });
+
+  it("names a codec the client cannot decode instead of reading nothing", async () => {
+    // Reading nothing is indistinguishable from reading slowly: the modal
+    // holds spinners and a 0:00 timeline indefinitely
+    resetVideoCodecSupport();
+    vi.stubGlobal("VideoDecoder", {
+      isConfigSupported: async () => ({ supported: false }),
+    });
+    try {
+      const session = await createLeRobotFormatAdapter({
+        readParquetObjects,
+      }).open(source, io);
+      try {
+        expect(
+          session.manifest.streams.find(
+            (stream) => stream.id === "observation.images.test",
+          )?.metadata,
+        ).toMatchObject({ "stream.decode_status": "unsupported-encoding" });
+
+        // No access units at all: a frame is what feeds the read/decode
+        // engine, and one that can never decode is reread and retried for as
+        // long as the tile is mounted.
+        const batches = await collectBatches(
+          session.read({
+            streams: ["observation.images.test"],
+            window: session.manifest.timeRange,
+          }),
+        );
+        expect(batches.flatMap((batch) => batch.frames)).toEqual([]);
+      } finally {
+        session.dispose();
+      }
+
+      // This fixture's track is H.264, which the browser still plays natively
+      // even where WebCodecs refuses it, so the cell gets the native path
+      // rather than a refusal.
+      const preview = await createLeRobotFormatAdapter({
+        readParquetObjects,
+      }).openPreview?.(source, io);
+      if (!preview) throw new Error("LeRobot preview session is unavailable");
+      try {
+        const result = await preview.read({
+          sourceName: "observation.images.test",
+        });
+        expect(result.frame).toBeNull();
+        expect(result.nativeVideo?.codecString).toEqual(
+          expect.stringMatching(/^avc1\./),
+        );
+        expect(result.unsupportedCodec).toBeUndefined();
+      } finally {
+        preview.dispose();
+      }
+    } finally {
+      vi.unstubAllGlobals();
+      resetVideoCodecSupport();
+    }
+  });
+
+  it.each([
+    { decodeStatus: "decodable", supported: true },
+    { decodeStatus: "unsupported-encoding", supported: false },
+  ])(
+    "offers an HEVC camera as $decodeStatus when the client answers $supported",
+    async ({ decodeStatus, supported }) => {
+      // Refused on the declared name alone, a camera this client decodes
+      // natively never reaches a decoder
+      resetVideoCodecSupport();
+      vi.stubGlobal("VideoDecoder", {
+        isConfigSupported: async () => ({ supported }),
+      });
+      try {
+        const session = await createLeRobotFormatAdapter({
+          readParquetObjects,
+        }).open(source, declaredCodecIo("hevc"));
+        try {
+          expect(
+            session.manifest.streams.find(
+              (stream) => stream.id === "observation.images.test",
+            )?.metadata,
+          ).toMatchObject({ "stream.decode_status": decodeStatus });
+        } finally {
+          session.dispose();
+        }
+      } finally {
+        vi.unstubAllGlobals();
+        resetVideoCodecSupport();
+      }
+    },
+  );
+
+  it("refuses a camera the client decodes but the read path cannot route", async () => {
+    // The client answers for VP9 and no decoder path here takes it, so the
+    // client's answer alone promises a stream whose frames arrive undecodable
+    resetVideoCodecSupport();
+    vi.stubGlobal("VideoDecoder", {
+      isConfigSupported: async () => ({ supported: true }),
+    });
+    try {
+      const session = await createLeRobotFormatAdapter({
+        readParquetObjects,
+      }).open(source, declaredCodecIo("vp9"));
+      try {
+        expect(
+          session.manifest.streams.find(
+            (stream) => stream.id === "observation.images.test",
+          )?.metadata,
+        ).toMatchObject({ "stream.decode_status": "unsupported-encoding" });
+      } finally {
+        session.dispose();
+      }
+    } finally {
+      vi.unstubAllGlobals();
+      resetVideoCodecSupport();
+    }
+  });
+
+  it("ranks color ahead of depth before applying the front-camera preference", async () => {
+    const rankedAssets: readonly AssetDescriptor[] = [
+      videoAsset("depth", "observation.depth_linear.front", "1"),
+      videoAsset("color", "observation.images.wrist", "1"),
+      videoAsset("colorFront", "observation.images.front", "1"),
+    ];
+    const rankedSource: EpisodeSource = {
+      ...source,
+      assets: {
+        list: async () => rankedAssets,
+        resolve: async (assetId: string) => ({
+          sourceId: assetId,
+          url: `memory://${assetId}`,
+        }),
+      },
+    };
+    const rankedIo: ByteResources = {
+      readBytes: async ({ range, source: byteSource }) => {
+        const start = Number(range.offset);
+        return {
+          bytes: tinyMp4Bytes.slice(start, start + Number(range.length)),
+          range,
+          source: {
+            ...byteSource,
+            sizeBytes: tinyMp4Bytes.byteLength.toString(),
+          },
+        };
+      },
+    };
+    const preview = await createLeRobotFormatAdapter({
+      readParquetObjects,
+    }).openPreview?.(rankedSource, rankedIo);
+    if (!preview) throw new Error("LeRobot preview session is unavailable");
+    try {
+      await expect(preview.read()).resolves.toMatchObject({
+        streamSourceName: "observation.images.front",
+        streamSourceNames: [
+          "observation.images.front",
+          "observation.images.wrist",
+          "observation.depth_linear.front",
+        ],
+      });
+    } finally {
+      preview.dispose();
+    }
+  });
+
+  it("keeps an MP4 boundary keyframe after nanosecond normalization", async () => {
+    const boundaryAssets = assets.map((asset) =>
+      asset.id === "video"
+        ? {
+            ...asset,
+            selector: {
+              fromTimestamp: Number.EPSILON,
+              kind: "video-timestamp-interval" as const,
+              toTimestamp: 1,
+            },
+          }
+        : asset,
+    );
+    const boundarySource: EpisodeSource = {
+      ...source,
+      assets: {
+        ...source.assets,
+        list: async () => boundaryAssets,
+      },
+    };
+    const preview = await createLeRobotFormatAdapter({
+      readParquetObjects,
+    }).openPreview?.(boundarySource, io);
+    if (!preview) throw new Error("LeRobot preview session is unavailable");
+    try {
+      const result = await preview.read({
+        sourceName: "observation.images.test",
+      });
+      expect(result).toMatchObject({
+        frame: {
+          image: {
+            keyframe: true,
+            timestampNs: 0n,
+          },
+          kind: "image",
+        },
+        frameTimeNs: 0n,
+        status: "ready",
+      });
+    } finally {
+      preview.dispose();
+    }
+  });
 });
 
 const realRoot = process.env.LEROBOT_DATASET_PATH;
 
 describe.runIf(Boolean(realRoot))("LeRobot real-file walking slice", () => {
-  it("reads Parquet signals and demuxes an AV1 MP4 GOP through the port", async () => {
+  it("reads the so-2crw Parquet slice and range-demuxes both H.264 cameras", async () => {
     if (!realRoot) throw new Error("LEROBOT_DATASET_PATH is required");
     const real = await realSource(realRoot);
-    let session: EpisodeSession | undefined;
+    const session = await createLeRobotFormatAdapter().open(
+      real.source,
+      real.io,
+    );
     try {
-      session = await createLeRobotFormatAdapter().open(real.source, real.io);
       expect(session.manifest.metadata?.["lerobot.codebaseVersion"]).toBe(
         "v3.0",
       );
@@ -364,57 +1329,68 @@ describe.runIf(Boolean(realRoot))("LeRobot real-file walking slice", () => {
         expect.arrayContaining([
           "action",
           "observation.state",
-          "observation.images.overhead",
-          "observation.images.wrist",
+          "observation.images.camera1",
+          "observation.images.camera2",
         ]),
       );
 
       const signalBatches = await collectBatches(
         session.read({
-          streams: ["lerobot:action"],
+          streams: ["action"],
           window: { endNs: 100_000_000n, startNs: 0n },
         }),
       );
-      expect(signalBatches[0].frames).toHaveLength(3);
+      expect(signalBatches[0].frames.length).toBeGreaterThanOrEqual(3);
       expect(signalBatches[0].frames[0].output.scalars).toHaveLength(6);
 
       const videoBatches = await collectBatches(
         session.read({
           priority: "current",
-          streams: ["lerobot:observation.images.overhead"],
+          streams: ["observation.images.camera1"],
           window: { endNs: 200_000_000n, startNs: 0n },
         }),
       );
       expect(videoBatches[0].frames.length).toBeGreaterThanOrEqual(6);
       expect(videoBatches[0].frames[0].output.visualization).toMatchObject({
-        codec: "av1",
+        codec: "h264",
         kind: "encoded-video",
         keyframe: true,
       });
       expect(
         videoBatches[0].frames[0].output.resourceHints?.sizeBytes,
       ).toBeGreaterThan(0);
+      const stats = session.stats?.();
+      if (!stats) throw new Error("LeRobot session stats are unavailable");
+      expect(stats.transferredBytes).toBeLessThan(real.camera1SizeBytes);
     } finally {
-      session?.dispose();
+      session.dispose();
       await real.close();
     }
   }, 30_000);
 });
 
 async function realSource(root: string): Promise<{
+  camera1SizeBytes: number;
   close(): Promise<void>;
   io: ByteResources;
-  source: EpisodeSource;
+  source: {
+    assets: typeof source.assets;
+    episodeId: string;
+    reference: { data: readonly number[]; key: string; tasks: string[] };
+  };
 }> {
   const paths = {
     data: join(root, "data/chunk-000/file-000.parquet"),
     episodes: join(root, "meta/episodes/chunk-000/file-000.parquet"),
     info: join(root, "meta/info.json"),
-    overhead: join(
+    camera1: join(
       root,
-      "videos/observation.images.overhead/chunk-000/file-000.mp4",
+      "videos/observation.images.camera1/chunk-000/file-000.mp4",
     ),
-    wrist: join(root, "videos/observation.images.wrist/chunk-000/file-000.mp4"),
+    camera2: join(
+      root,
+      "videos/observation.images.camera2/chunk-000/file-000.mp4",
+    ),
   } as const;
   const entries = await Promise.all(
     Object.entries(paths).map(
@@ -431,13 +1407,20 @@ async function realSource(root: string): Promise<{
       id: "info",
       mediaType: "application/json",
       metadata: { sizeBytes: requiredValue(sizeById, "info") },
-      role: "metadata",
+      role: "dataset-info",
+      selector: { kind: "whole-file" },
     },
     {
       id: "episodes",
       mediaType: "application/vnd.apache.parquet",
       metadata: { sizeBytes: requiredValue(sizeById, "episodes") },
-      role: "episode-index",
+      role: "episode-metadata",
+      selector: {
+        coordinateSystem: "parquet-file-row",
+        end: 1,
+        kind: "row-interval",
+        start: 0,
+      },
     },
     {
       id: "data",
@@ -447,17 +1430,23 @@ async function realSource(root: string): Promise<{
         fileIndex: "0",
         sizeBytes: requiredValue(sizeById, "data"),
       },
-      role: "data",
+      role: "tabular-frame-data",
+      selector: {
+        coordinateSystem: "parquet-file-row",
+        end: 426,
+        kind: "row-interval",
+        start: 0,
+      },
     },
     videoAsset(
-      "overhead",
-      "observation.images.overhead",
-      requiredValue(sizeById, "overhead"),
+      "camera1",
+      "observation.images.camera1",
+      requiredValue(sizeById, "camera1"),
     ),
     videoAsset(
-      "wrist",
-      "observation.images.wrist",
-      requiredValue(sizeById, "wrist"),
+      "camera2",
+      "observation.images.camera2",
+      requiredValue(sizeById, "camera2"),
     ),
   ];
   const resolve = async (id: string): Promise<ByteSourceDescriptor> => {
@@ -467,6 +1456,7 @@ async function realSource(root: string): Promise<{
     return { sizeBytes, sourceId: id, url: path };
   };
   return {
+    camera1SizeBytes: Number(requiredValue(sizeById, "camera1")),
     close: async () => {
       await Promise.all(
         [...filesById.values()].map(async (file) => (await file).close()),
@@ -496,7 +1486,8 @@ async function realSource(root: string): Promise<{
     },
     source: {
       assets: { list: async () => realAssets, resolve },
-      episodeId: "episode-0",
+      episodeId: "src/0",
+      reference: { data: [0, 0, 0, 426], key: "src/0", tasks: [] },
     },
   };
 }
@@ -514,6 +1505,7 @@ function videoAsset(
   sizeBytes: string,
 ): AssetDescriptor {
   return {
+    featureName: stream,
     id,
     mediaType: "video/mp4",
     metadata: {
@@ -522,6 +1514,11 @@ function videoAsset(
       sizeBytes,
       stream,
     },
-    role: "video",
+    role: "video-stream",
+    selector: {
+      fromTimestamp: 0,
+      kind: "video-timestamp-interval",
+      toTimestamp: 14.2,
+    },
   };
 }

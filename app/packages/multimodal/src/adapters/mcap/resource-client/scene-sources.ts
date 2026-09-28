@@ -13,6 +13,7 @@ import {
   streamPrefix,
 } from "../../../stream-selection/index";
 import {
+  isAudioStream,
   isCameraCalibrationStream,
   isGridStream,
   isImageAnnotationsStream,
@@ -39,6 +40,7 @@ const LATEST_SYNC_POLICY: McapStreamSyncPolicy = {
 };
 
 const SYNC_POLICY_BY_TYPE: Record<SceneSourceType, McapStreamSyncPolicy> = {
+  [SCENE_SOURCE_TYPE.AUDIO]: LATEST_SYNC_POLICY,
   [SCENE_SOURCE_TYPE.CAMERA_CALIBRATION]: LATEST_SYNC_POLICY,
   [SCENE_SOURCE_TYPE.IMAGE]: LATEST_SYNC_POLICY,
   [SCENE_SOURCE_TYPE.IMAGE_ANNOTATION]: LATEST_SYNC_POLICY,
@@ -143,6 +145,9 @@ export function mcapStreamPolicies(
 function mcapSourceTypeForTopic(
   topic: StreamInventory,
 ): SceneSourceType | null {
+  if (isAudioStream(topic)) {
+    return SCENE_SOURCE_TYPE.AUDIO;
+  }
   if (isImageStream(topic)) {
     return SCENE_SOURCE_TYPE.IMAGE;
   }

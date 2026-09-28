@@ -30,19 +30,28 @@ class TestGetModelBaseUrl:
 
     def test_env_override(self, monkeypatch):
         """Tests that an environment variable overrides the default URL."""
-        monkeypatch.setenv("FIFTYONE_MODEL_WEIGHTS_BASE_SAM2", "https://custom.example.com/sam2")
+        monkeypatch.setenv(
+            "FIFTYONE_MODEL_WEIGHTS_BASE_SAM2",
+            "https://custom.example.com/sam2",
+        )
         url = _get_model_base_url("sam2")
         assert url == "https://custom.example.com/sam2"
 
     def test_env_override_strips_trailing_slash(self, monkeypatch):
         """Tests that a trailing slash on the env var value is stripped."""
-        monkeypatch.setenv("FIFTYONE_MODEL_WEIGHTS_BASE_SAM2", "https://custom.example.com/sam2/")
+        monkeypatch.setenv(
+            "FIFTYONE_MODEL_WEIGHTS_BASE_SAM2",
+            "https://custom.example.com/sam2/",
+        )
         url = _get_model_base_url("sam2")
         assert url == "https://custom.example.com/sam2"
 
     def test_env_key_uppercases_family(self, monkeypatch):
         """Tests that the family name is upper-cased when building the env key."""
-        monkeypatch.setenv("FIFTYONE_MODEL_WEIGHTS_BASE_MYMODEL", "https://example.com/mymodel")
+        monkeypatch.setenv(
+            "FIFTYONE_MODEL_WEIGHTS_BASE_MYMODEL",
+            "https://example.com/mymodel",
+        )
         url = _get_model_base_url("mymodel")
         assert url == "https://example.com/mymodel"
 
@@ -93,9 +102,14 @@ class TestModelWeightsEndpoint:
         assert data["url"] == f"{DEFAULT_MODEL_URLS['sam2']}/subdir/model.onnx"
 
     @pytest.mark.asyncio
-    async def test_env_override_reflected_in_response(self, endpoint, monkeypatch):
+    async def test_env_override_reflected_in_response(
+        self, endpoint, monkeypatch
+    ):
         """Tests that an env var override is used in the response URL."""
-        monkeypatch.setenv("FIFTYONE_MODEL_WEIGHTS_BASE_SAM2", "https://private.cdn.com/models")
+        monkeypatch.setenv(
+            "FIFTYONE_MODEL_WEIGHTS_BASE_SAM2",
+            "https://private.cdn.com/models",
+        )
         request = _make_request("sam2", "decoder.onnx")
         response = await endpoint.get(request)
 

@@ -203,6 +203,24 @@ from .core.runs import (
     RunResults,
 )
 from .core.sample import Sample
+from .core.media_reference import MediaReference
+from .multimodal.media_reference import (
+    InvalidMediaLocationError,
+    MalformedMediaSourceError,
+    MediaAsset,
+    MediaAssetRole,
+    MediaAssetSelector,
+    MediaReferenceError,
+    MediaSourceAuthorizationError,
+    MissingMediaRootError,
+    MovedMediaRootError,
+    RowInterval,
+    StaleMediaReferenceError,
+    UnfinalizedMediaSourceError,
+    UnsupportedMediaReferenceOperation,
+    VideoTimestampInterval,
+    WholeFile,
+)
 from .core.threed import (
     BoxGeometry,
     CylinderGeometry,
@@ -311,3 +329,9 @@ from .utils.eval.segmentation import (
     SegmentationResults,
 )
 from .utils.quickstart import quickstart
+
+from .utils.lerobot import (
+    LeRobotEpisodeReference,
+    UnsupportedLeRobotExportModeError,
+    UnsupportedLeRobotVersionError,
+)

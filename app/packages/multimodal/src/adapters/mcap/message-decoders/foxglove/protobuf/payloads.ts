@@ -31,6 +31,24 @@ export const FOXGLOVE_RAW_IMAGE_PAYLOAD: PayloadDescriptor = {
 } as const;
 
 /**
+ * Payload identity for foxglove.RawAudio messages.
+ */
+export const FOXGLOVE_RAW_AUDIO_PAYLOAD: PayloadDescriptor = {
+  encoding: "protobuf",
+  schema: "foxglove.RawAudio",
+  schemaEncoding: "protobuf",
+} as const;
+
+/**
+ * Payload identity for foxglove.CompressedAudio messages.
+ */
+export const FOXGLOVE_COMPRESSED_AUDIO_PAYLOAD: PayloadDescriptor = {
+  encoding: "protobuf",
+  schema: "foxglove.CompressedAudio",
+  schemaEncoding: "protobuf",
+} as const;
+
+/**
  * Payload identity for foxglove.PointCloud messages.
  */
 export const FOXGLOVE_POINT_CLOUD_PAYLOAD: PayloadDescriptor = {

@@ -121,6 +121,7 @@ export interface ByteClient {
    */
   stat?(
     source: ByteSourceDescriptor,
+    signal?: AbortSignal,
   ): Promise<ByteSourceDescriptor | undefined>;
 
   /**

@@ -5,6 +5,7 @@ CLIP model wrapper for the FiftyOne Model Zoo.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 import os
 from packaging.version import Version
@@ -23,7 +24,6 @@ import torch
 
 from .tokenizer import SimpleTokenizer
 from .model import build_model
-
 
 logger = logging.getLogger(__name__)
 

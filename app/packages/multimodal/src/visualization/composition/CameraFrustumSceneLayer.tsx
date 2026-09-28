@@ -37,6 +37,7 @@ import {
   isScenePrimarySelection,
   useSceneHoverLifecycle,
 } from "../scene-3d/use-scene-object-interaction";
+import { createScreenSpaceLineRaycast } from "../scene-3d/screen-space-line-raycast";
 
 // Camera frustum wireframes are purely presentational — depth is not data,
 // which is also why frustums never participate in camera-fit bounds.
@@ -117,6 +118,11 @@ export const CameraFrustumSceneLayer = memo(function CameraFrustumSceneLayer({
   const axisGeometry = useMemo(
     () => createCameraAxisMarkerGeometry(imagePlaneDepthM),
     [imagePlaneDepthM],
+  );
+  const viewportHeightPx = useThree((state) => state.size.height);
+  const lineRaycast = useMemo(
+    () => createScreenSpaceLineRaycast(viewportHeightPx),
+    [viewportHeightPx],
   );
   const pickingEnabled = useScenePicking();
   const [hovered, setHovered] = useState(false);
@@ -274,6 +280,8 @@ export const CameraFrustumSceneLayer = memo(function CameraFrustumSceneLayer({
   const imageMap = activeImageHandle
     ? (activeImageHandle.texture as never)
     : null;
+  // The same bundled-three mismatch applies to Object3D.raycast's signature.
+  const fiberLineRaycast = lineRaycast as never;
   if (!geometry) {
     return null;
   }
@@ -309,7 +317,7 @@ export const CameraFrustumSceneLayer = memo(function CameraFrustumSceneLayer({
       }
       userData={interactive ? POINT_PICK_BLOCKING_USER_DATA : undefined}
     >
-      <lineSegments frustumCulled={false}>
+      <lineSegments frustumCulled={false} raycast={fiberLineRaycast}>
         <primitive attach="geometry" object={geometry} />
         {selected ? (
           <lineDashedMaterial
@@ -331,7 +339,7 @@ export const CameraFrustumSceneLayer = memo(function CameraFrustumSceneLayer({
           />
         )}
       </lineSegments>
-      <lineSegments frustumCulled={false}>
+      <lineSegments frustumCulled={false} raycast={fiberLineRaycast}>
         <primitive attach="geometry" object={axisGeometry} />
         <lineBasicMaterial
           linewidth={CAMERA_FRUSTUM_AXIS_LINE_WIDTH}

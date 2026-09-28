@@ -26,7 +26,7 @@ export async function copyVideoFramePresentation(
       canvas.height = height;
       const context = canvas.getContext("2d");
       if (!context) {
-        throw new Error("Unable to allocate an H.264 presentation canvas");
+        throw new Error("Unable to allocate a video presentation canvas");
       }
       context.drawImage(frame, 0, 0, width, height);
       source = canvas;

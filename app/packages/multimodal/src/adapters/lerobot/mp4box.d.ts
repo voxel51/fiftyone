@@ -3,9 +3,13 @@ declare module "mp4box" {
   export interface Sample {
     cts: number;
     data?: Uint8Array;
+    description: unknown;
+    dts: number;
     duration: number;
     is_sync: boolean;
     number: number;
+    offset: number;
+    size: number;
     timescale: number;
   }
 
@@ -25,6 +29,7 @@ declare module "mp4box" {
   export interface ISOFile {
     appendBuffer(data: MP4BoxBuffer, last?: boolean): number;
     flush(): void;
+    getTrackSamplesInfo(id: number): Sample[];
     onError?: (error: string) => void;
     onReady?: (info: Movie) => void;
     onSamples?: (id: number, user: unknown, samples: Sample[]) => void;

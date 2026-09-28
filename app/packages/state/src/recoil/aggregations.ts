@@ -4,6 +4,7 @@ import type { SerializableParam } from "recoil";
 import { selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 import type { ResponseFrom } from "../utils";
+import type { SelectionBoundary } from "../selection/types";
 import { refresher } from "./atoms";
 import { config } from "./config";
 import * as filterAtoms from "./filters";
@@ -19,6 +20,9 @@ import { activeIndex, queryPerformance } from "./queryPerformance";
 import { RelayEnvironmentKey } from "./relay";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
+import { selectionScopeBoundary } from "./selectionScope";
+import { TEMPORAL_TAGS_FIELD } from "./sidebar";
+import { temporalTagsRevision } from "./temporalTags";
 import { State } from "./types";
 import * as viewAtoms from "./view";
 
@@ -33,6 +37,23 @@ export class AggregationQueryTimeout extends Error {
   constructor(readonly queryTime: number) {
     super();
   }
+}
+
+/** Whether the tray's browsing boundary narrows results at all. */
+export function constrainsScope(scope: SelectionBoundary | null) {
+  return Boolean(scope && (scope.subsetId || scope.provider));
+}
+
+/**
+ * Adds the tray's browsing boundary to App filters so counts describe the
+ * scoped grid. A boundary that constrains nothing leaves filters untouched.
+ */
+export function withSelectionScope(
+  filters: object | null,
+  scope: SelectionBoundary | null,
+) {
+  if (!constrainsScope(scope)) return filters;
+  return { ...(filters ?? {}), _selection_scope: scope };
 }
 
 /**
@@ -85,14 +106,18 @@ export const aggregationQuery = graphQLSelectorFamily<
         (mixed || get(groupStatistics(modal)) === "group") && useSelection;
 
       const aggForm = {
-        index: get(refresher),
+        index:
+          get(refresher) +
+          (paths.includes(TEMPORAL_TAGS_FIELD) ? get(temporalTagsRevision) : 0),
         dataset,
         dynamicGroup,
         extendedStages: root ? {} : get(selectors.extendedStagesNoSort),
-        filters:
+        filters: withSelectionScope(
           extended && !root
             ? get(modal ? filterAtoms.modalFilters : filterAtoms.filters)
             : null,
+          root || modal ? null : get(selectionScopeBoundary),
+        ),
         groupId: !root && modal && useSelection ? get(groupId) || null : null,
         hiddenLabels: !root ? get(selectors.hiddenLabelsArray) : [],
         paths,
@@ -132,7 +157,10 @@ export const aggregations = selectorFamily({
     ({ get }) => {
       if (params) {
         let extended = params.extended;
-        if (extended && !get(filterAtoms.hasFilters(params.modal))) {
+        // Field filters, not `hasFilters`: an extended selection is already in
+        // `extendedStages` for both variants, so keeping `extended` for one
+        // fires a second query whose response cannot differ
+        if (extended && !get(filterAtoms.hasFieldFilters(params.modal))) {
           extended = false;
         }
 
@@ -156,9 +184,14 @@ export const aggregation = selectorFamily({
       path: string;
     }) =>
     ({ get }) => {
-      const paths = params.modal
-        ? get(modalAggregationPaths({ path, mixed: params.mixed }))
-        : get(schemaAtoms.filterFields(path));
+      // Temporal tags are counted apart from the sample fields server-side,
+      // and are refetched on their own after a tag mutation
+      const paths =
+        path === TEMPORAL_TAGS_FIELD
+          ? [path]
+          : params.modal
+            ? get(modalAggregationPaths({ path, mixed: params.mixed }))
+            : get(schemaAtoms.filterFields(path));
 
       const result = get(
         aggregations({

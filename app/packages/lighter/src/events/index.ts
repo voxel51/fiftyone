@@ -3,6 +3,7 @@
  */
 
 import type { Undoable } from "@fiftyone/commands";
+import type { SceneOptions } from "../core/SceneConfig";
 import type { InteractionHandler } from "../interaction/InteractionManager";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 import type { PaintStrokeData } from "../overlay/MaskCanvas";
@@ -156,6 +157,26 @@ export type LighterEventGroup = {
     startBounds: Rect;
     bounds: Rect;
   };
+  /** Emitted while an overlay is being rotated */
+  "lighter:overlay-rotate-move": {
+    id: string;
+    /** Current rotation, in radians. */
+    rotation: number;
+  };
+  /** Emitted when an overlay rotation gesture ends */
+  "lighter:overlay-rotate-end": {
+    /**
+     * Event id — may be the interaction handler's id. Use {@link overlayId} to
+     * identify the rotated overlay.
+     */
+    id: string;
+    /** ID of the overlay that was rotated. */
+    overlayId: string;
+    /** Rotation when the gesture started, in radians. */
+    startRotation: number;
+    /** Rotation when the gesture ended, in radians. */
+    rotation: number;
+  };
   /** Emitted when an overlay is clicked */
   "lighter:overlay-click": { id: string; point: Point };
   /** Emitted when an overlay is double-clicked */
@@ -271,6 +292,7 @@ export type LighterEventGroup = {
     activePaths?: string[];
     showOverlays?: boolean;
     alpha?: number;
+    filter?: SceneOptions["filter"];
   };
   /** Emitted when the scene interactive mode changes */
   "lighter:scene-interactive-mode-changed": { interactiveMode: boolean };

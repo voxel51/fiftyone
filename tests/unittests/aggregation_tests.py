@@ -5,6 +5,7 @@ FiftyOne aggregation-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from datetime import date, datetime, timedelta
 import math
 

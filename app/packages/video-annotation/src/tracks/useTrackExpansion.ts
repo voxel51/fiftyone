@@ -2,7 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 /** Which parent tracks have their sub-track rows expanded. */
 export interface TrackExpansion {
@@ -36,5 +36,12 @@ export const useTrackExpansion = (): TrackExpansion => {
     [expandedIds],
   );
 
-  return { expandedIds, isExpanded, toggle };
+  // Memoized: consumers key work off this object's identity (the timeline's
+  // row-decoration cache reaches it through `decorateTrack`'s dependency
+  // list), so returning a fresh object every render invalidated that cache on
+  // every render and made the row memoization useless.
+  return useMemo(
+    () => ({ expandedIds, isExpanded, toggle }),
+    [expandedIds, isExpanded, toggle],
+  );
 };

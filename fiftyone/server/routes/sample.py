@@ -567,9 +567,11 @@ class SampleField(HTTPEndpoint):
             field_id,
             sample_id,
             dataset_id,
-            f" (generated_dataset={generated_dataset_name})"
-            if generated_dataset_name
-            else "",
+            (
+                f" (generated_dataset={generated_dataset_name})"
+                if generated_dataset_name
+                else ""
+            ),
         )
 
         if_last_modified_at = get_if_last_modified_at(request)

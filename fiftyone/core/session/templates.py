@@ -5,8 +5,8 @@ Notebook Session HTML templates
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from jinja2 import Template
 
+from jinja2 import Template
 
 SCREENSHOT_STYLE = """
 @import url("https://fonts.googleapis.com/css2?family=Palanquin&display=swap");
@@ -88,14 +88,11 @@ SCREENSHOT_DIV = """
 """
 
 
-SCREENSHOT_HTML = Template(
-    """
+SCREENSHOT_HTML = Template("""
 <style>%s</style>
 %s
 <script type="text/javascript">%s</script>
-"""
-    % (SCREENSHOT_STYLE, SCREENSHOT_DIV, SCREENSHOT_SCRIPT)
-)
+""" % (SCREENSHOT_STYLE, SCREENSHOT_DIV, SCREENSHOT_SCRIPT))
 
 
 SCREENSHOT_COLAB = """
@@ -168,8 +165,7 @@ SCREENSHOT_DATABRICKS_SCRIPT = """
    })();
 """
 
-SCREENSHOT_DATABRICKS = Template(
-    """
+SCREENSHOT_DATABRICKS = Template("""
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -187,6 +183,4 @@ SCREENSHOT_DATABRICKS = Template(
     <script type="text/javascript">%s</script>
   </body>
 </html>
-"""
-    % (SCREENSHOT_STYLE, SCREENSHOT_DIV, SCREENSHOT_DATABRICKS_SCRIPT)
-)
+""" % (SCREENSHOT_STYLE, SCREENSHOT_DIV, SCREENSHOT_DATABRICKS_SCRIPT))

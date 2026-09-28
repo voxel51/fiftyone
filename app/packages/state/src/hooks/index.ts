@@ -2,6 +2,24 @@ export * from "./hooks-utils";
 export * from "./media-field-lookers";
 export { default as useSearchSchemaFields } from "./schema/useSearchSchemaFields";
 export { default as useSetSelectedFieldsStage } from "./schema/useSetSelectedFieldsStage";
+export {
+  default as usePromptableSimilarityKeys,
+  type PromptableSimilarityIndex,
+} from "./similaritySearch/usePromptableSimilarityKeys";
+export {
+  registerTextSearchExtension,
+  useTextSearchExtensions,
+  type SearchSources,
+  type TextSearchExtension,
+  type TextSearchIndex,
+  type TextSearchRequest,
+  type TextSearchResult,
+} from "./similaritySearch/textSearchExtensions";
+export {
+  useSetViewChangePending,
+  useViewChangePending,
+} from "./useViewChangePending";
+export { default as useSimilarityKeys } from "./similaritySearch/useSimilarityKeys";
 export { default as useSimilarityType } from "./similaritySearch/useSimilarityType";
 export * from "./useActivityToast";
 export {
@@ -33,7 +51,11 @@ export { default as useRefresh } from "./useRefresh";
 export * from "./useRefreshSample";
 export * from "./useRenderConfig3d";
 export { default as useReset } from "./useReset";
-export { default as useResetExtendedSelection } from "./useResetExtendedSelection";
+export {
+  default as useResetExtendedSelection,
+  resetExtendedSelectionTransaction,
+  usePublishExtendedSelection,
+} from "./useResetExtendedSelection";
 export * from "./extendedSelectionReset";
 export * from "./useRetryController";
 export { default as useSampleFields } from "./useSampleFields";

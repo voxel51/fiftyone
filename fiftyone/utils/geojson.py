@@ -5,6 +5,7 @@ GeoJSON utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 import os
 
@@ -18,7 +19,6 @@ import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 import fiftyone.utils.data as foud
-
 
 logger = logging.getLogger(__name__)
 

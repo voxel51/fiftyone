@@ -24,6 +24,11 @@ export interface SyntheticBox {
   /** Normalized [x, y, w, h] in [0, 1]. */
   bounding_box: [number, number, number, number];
   /**
+   * Scalar 2D rotation in radians (oriented bounding boxes). Propagation
+   * lerps it along the shortest arc between keyframes.
+   */
+  rotation?: number;
+  /**
    * FiftyOne track index, when present. Carried so downstream color-
    * mapping can use `COLOR_BY.INSTANCE`'s `${label}-${index}-...` hash
    * (otherwise instance mode would collapse tracked detections of the
@@ -41,6 +46,36 @@ export interface SyntheticBox {
   keyframe: boolean;
 }
 
+/**
+ * A tracked polyline as the propagation path sees it — the sibling of
+ * {@link SyntheticBox} for vertex geometry. Propagation lerps `points` where a
+ * detection's is a `bounding_box`; everything else (identity, track index,
+ * keyframe flag) carries the same meaning.
+ */
+export interface SyntheticPolyline {
+  id: string;
+  /** Real MongoDB `_id` when the polyline has been persisted. */
+  _id?: string;
+  label: string;
+  /** One entry per ring / path; each is normalized [x, y] pairs in [0, 1]. */
+  points: [number, number][][];
+  /** Whether the last vertex connects back to the first. */
+  closed?: boolean;
+  filled?: boolean;
+  /** FiftyOne track index, when present. */
+  index?: number;
+  instance?: { _cls: "Instance"; _id?: string };
+  /** `true` for user-authored / propagation source; `false` for interpolated. */
+  keyframe: boolean;
+}
+
+/**
+ * Either geometry propagation can interpolate between two keyframes. Agents
+ * narrow to the one they handle; `useVideoPropagate` picks the agent from the
+ * field's label type, so the pairing is decided before an agent ever sees it.
+ */
+export type SyntheticKeyframe = SyntheticBox | SyntheticPolyline;
+
 export interface FrameLabelSnapshot {
   frameNumber: number;
   detections: SyntheticBox[];
@@ -52,6 +87,8 @@ export interface RawDetection {
   index?: number;
   label?: string;
   bounding_box?: [number, number, number, number];
+  /** Scalar 2D rotation in radians; 3D detections carry a list instead. */
+  rotation?: number | number[];
   instance?: { _cls: "Instance"; _id?: string } | null;
   mask_path?: string;
   mask?: unknown;
@@ -78,6 +115,40 @@ export interface RawPolylinesField {
   polylines?: RawPolyline[];
 }
 
+export interface RawKeypoint {
+  _id?: string;
+  id?: string;
+  index?: number;
+  label?: string;
+  /** Flat list of `[x, y]` vertices in normalized coordinates. */
+  points?: [number, number][];
+  confidence?: number[] | null;
+  instance?: { _cls: "Instance"; _id?: string } | null;
+  keyframe?: boolean;
+}
+
+export interface RawKeypointsField {
+  keypoints?: RawKeypoint[];
+}
+
+/**
+ * Non-spatial: a per-frame classification has no geometry, so the Lighter
+ * `ClassificationOverlay` renders it as a label chip rather than a shape.
+ */
+export interface RawClassification {
+  _id?: string;
+  id?: string;
+  index?: number;
+  label?: string;
+  confidence?: number | null;
+  instance?: { _cls: "Instance"; _id?: string } | null;
+  keyframe?: boolean;
+}
+
+export interface RawClassificationsField {
+  classifications?: RawClassification[];
+}
+
 /**
  * Shape callers pass to {@link VideoFrameLabelsStream.updateLabel}.
  * Lines up with the `Detection` wire format — `bounding_box` is required
@@ -90,6 +161,8 @@ export interface LocalDetection {
   index?: number;
   label?: string;
   bounding_box: [number, number, number, number];
+  /** Scalar 2D rotation in radians. */
+  rotation?: number;
   instance?: { _cls: "Instance"; _id?: string } | null;
   /**
    * Auto-promote-on-edit: callers handling user-initiated edits (draw,

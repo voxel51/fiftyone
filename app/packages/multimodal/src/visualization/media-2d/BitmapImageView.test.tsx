@@ -455,7 +455,7 @@ describe("BitmapImageView", () => {
     expect(onImageLoaded).toHaveBeenCalledWith(200, 200);
   });
 
-  it("bounds rapid frame churn and commits only the latest queued decode", async () => {
+  it("bounds rapid churn while preserving active decode liveness", async () => {
     const decodes = stubCreateImageBitmap();
     stubElementSize(100, 50);
     const context = sharedMockContext();
@@ -481,21 +481,22 @@ describe("BitmapImageView", () => {
       />,
     );
 
-    // createImageBitmap cannot abort the running decode, but intermediate
-    // frames never start and the queue remains one latest request deep.
+    // createImageBitmap cannot abort the running decode. It remains eligible
+    // to commit, while intermediate frames never start and the queue remains
+    // one latest request deep.
     expect(createImageBitmap).toHaveBeenCalledTimes(1);
-    const stale = fakeBitmap(10, 10);
-    decodes.settle(0, stale);
-    await waitFor(() => expect(stale.close).toHaveBeenCalledTimes(1));
-    expect(drawImage).not.toHaveBeenCalled();
+    const active = fakeBitmap(10, 10);
+    decodes.settle(0, active);
+    await waitFor(() => expect(drawImage).toHaveBeenCalledTimes(1));
+    expect(active.close).not.toHaveBeenCalled();
     expect(createImageBitmap).toHaveBeenCalledTimes(2);
 
     const latest = fakeBitmap(30, 30);
     decodes.settle(1, latest);
-    await waitFor(() => expect(drawImage).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(drawImage).toHaveBeenCalledTimes(2));
 
-    expect(drawImage).toHaveBeenCalledTimes(1);
-    expect(drawImage).toHaveBeenCalledWith(
+    expect(drawImage).toHaveBeenCalledTimes(2);
+    expect(drawImage).toHaveBeenLastCalledWith(
       latest,
       expect.anything(),
       expect.anything(),
@@ -503,8 +504,44 @@ describe("BitmapImageView", () => {
       expect.anything(),
     );
     expect(latest.close).not.toHaveBeenCalled();
-    expect(onImageLoaded).toHaveBeenCalledTimes(1);
-    expect(onImageLoaded).toHaveBeenCalledWith(30, 30);
+    expect(onImageLoaded).toHaveBeenCalledTimes(2);
+    expect(onImageLoaded).toHaveBeenLastCalledWith(30, 30);
+  });
+
+  it("keeps committing during continuous slower-than-input churn", async () => {
+    const decodes = stubCreateImageBitmap();
+    stubElementSize(100, 50);
+    const context = sharedMockContext();
+    const drawImage = vi.spyOn(context, "drawImage");
+
+    const { rerender } = render(
+      <BitmapImageView bytes={new Uint8Array([0])} />,
+    );
+
+    for (let frame = 1; frame <= 12; frame += 1) {
+      rerender(<BitmapImageView bytes={new Uint8Array([frame])} />);
+      decodes.settle(frame - 1, fakeBitmap(10, 10));
+      await act(async () => Promise.resolve());
+    }
+
+    // The stream is still producing. Every active decode settled after the
+    // next input arrived, and every one still reached the canvas.
+    expect(drawImage).toHaveBeenCalledTimes(12);
+  });
+
+  it("cancels an in-flight decode when the view unmounts", async () => {
+    const decodes = stubCreateImageBitmap();
+    stubElementSize(100, 50);
+    const context = sharedMockContext();
+    const drawImage = vi.spyOn(context, "drawImage");
+    const { unmount } = render(<BitmapImageView bytes={new Uint8Array([1])} />);
+
+    unmount();
+    const bitmap = fakeBitmap(10, 10);
+    decodes.settle(0, bitmap);
+
+    await waitFor(() => expect(bitmap.close).toHaveBeenCalledTimes(1));
+    expect(drawImage).not.toHaveBeenCalled();
   });
 
   it("closes the previous bitmap on replacement and the last one on unmount", async () => {
@@ -641,6 +678,56 @@ describe("BitmapImageFrameView", () => {
     expect(decoder.instances[0].close).toHaveBeenCalledOnce();
   });
 
+  it("commits H.264 presentations while bitmap copies lag continuous rerenders", async () => {
+    stubVideoDecoder();
+    const copies = stubCreateImageBitmap();
+    stubElementSize(100, 50);
+    sharedMockContext();
+    const onCanvasCommitted = vi.fn();
+    const onImageLoaded = vi.fn();
+    const frameIntervalNs = 70_422_535n;
+    const frames = Array.from({ length: 8 }, (_, index) =>
+      index === 0
+        ? videoFrame()
+        : deltaVideoFrame(1_000n + BigInt(index) * frameIntervalNs),
+    );
+
+    const rendered = render(
+      <BitmapImageFrameView
+        frame={frames[0]}
+        onCanvasCommitted={onCanvasCommitted}
+        onImageLoaded={onImageLoaded}
+        videoPriority="playing"
+      />,
+    );
+    for (let index = 1; index < frames.length; index += 1) {
+      await waitFor(() => expect(copies.pendingCount()).toBe(index));
+      rendered.rerender(
+        <BitmapImageFrameView
+          frame={frames[index]}
+          onCanvasCommitted={onCanvasCommitted}
+          onImageLoaded={onImageLoaded}
+          videoPriority="playing"
+        />,
+      );
+      await act(async () => {
+        copies.settle(index - 1, fakeBitmap(640, 480));
+      });
+      await waitFor(() =>
+        expect(onCanvasCommitted).toHaveBeenCalledTimes(index),
+      );
+    }
+
+    await waitFor(() => expect(copies.pendingCount()).toBe(frames.length));
+    expect(onImageLoaded).toHaveBeenCalledTimes(frames.length - 1);
+    await act(async () => {
+      copies.settle(frames.length - 1, fakeBitmap(640, 480));
+    });
+    await waitFor(() =>
+      expect(onCanvasCommitted).toHaveBeenCalledTimes(frames.length),
+    );
+  });
+
   it("waits for a keyframe before bootstrapping a private preview", async () => {
     const decoder = stubVideoDecoder();
     stubElementSize(100, 50);
@@ -658,7 +745,7 @@ describe("BitmapImageFrameView", () => {
 
     await waitFor(() =>
       expect(onError).toHaveBeenCalledWith(
-        new Error("H.264 preview is waiting for a keyframe"),
+        new Error("Video preview is waiting for a keyframe"),
       ),
     );
     expect(decoder.instances).toHaveLength(0);
@@ -730,9 +817,23 @@ describe("BitmapImageFrameView", () => {
 
     await waitFor(() => expect(onError).toHaveBeenCalledTimes(1));
     expect(onError.mock.calls[0]?.[0]).toEqual(
-      new Error("WebCodecs H.264 decoding is unavailable"),
+      new Error("WebCodecs video decoding is unavailable"),
     );
     expect(onImageLoaded).not.toHaveBeenCalled();
+  });
+
+  it("reports unavailable H.264 frame data separately from codec support", async () => {
+    const onError = vi.fn();
+
+    render(
+      <BitmapImageFrameView frame={videoFrame(false)} onError={onError} />,
+    );
+
+    await waitFor(() =>
+      expect(onError).toHaveBeenCalledWith(
+        new Error("H.264 video frame data is unavailable"),
+      ),
+    );
   });
 });
 
@@ -902,14 +1003,14 @@ function depthFrame(): RawImageVisualization {
   };
 }
 
-function videoFrame(): EncodedVideoVisualization {
+function videoFrame(hasFrame = true): EncodedVideoVisualization {
   return {
     bytes: Uint8Array.of(0, 0, 1, 0x65),
     codec: "h264",
     format: "h264",
     h264: {
       codecString: "avc1.4D001F",
-      hasFrame: true,
+      hasFrame,
       pps: Uint8Array.of(0x68, 0xce),
       sps: Uint8Array.of(0x67, 0x4d, 0x00, 0x1f),
     },
@@ -919,7 +1020,7 @@ function videoFrame(): EncodedVideoVisualization {
   };
 }
 
-function deltaVideoFrame(): EncodedVideoVisualization {
+function deltaVideoFrame(timestampNs = 2_000n): EncodedVideoVisualization {
   return {
     bytes: Uint8Array.of(0, 0, 1, 0x41),
     codec: "h264",
@@ -927,7 +1028,7 @@ function deltaVideoFrame(): EncodedVideoVisualization {
     h264: { hasFrame: true },
     keyframe: false,
     kind: VISUALIZATION_KIND.ENCODED_VIDEO,
-    timestampNs: 2_000n,
+    timestampNs,
   };
 }
 
@@ -1008,6 +1109,7 @@ function stubCreateImageBitmap() {
 
   return {
     fail: (index: number, error: unknown) => pending[index].reject(error),
+    pendingCount: () => pending.length,
     settle: (index: number, bitmap: ImageBitmap) =>
       pending[index].resolve(bitmap),
   };

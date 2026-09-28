@@ -7,9 +7,12 @@ import { TileIdScope, TilingProvider } from "./TilingProvider";
 import type { RegisteredTile } from "./types";
 import { useTileRegistry } from "./use-tile-registry";
 import {
+  useSetTileHeaderExtra,
   useSetTileSelection,
   useSetTileTitle,
   useSetTileTitleHighlighted,
+  useTileHeaderExtra,
+  useTileHeaderExtraFor,
   useTileSelection,
   useTileSelectionFor,
   useTileTitle,
@@ -235,6 +238,80 @@ describe("tile title highlighting", () => {
     expect(result.current.highlighted).toBe(false);
     act(() => result.current.setHighlighted(true));
     expect(result.current.highlighted).toBe(true);
+  });
+});
+
+describe("tile header extra", () => {
+  afterEach(() => cleanup());
+
+  it("round-trips: setting it in scope is visible via the scoped and the by-id hooks", () => {
+    const { result } = renderHook(
+      () => ({
+        set: useSetTileHeaderExtra(),
+        own: useTileHeaderExtra(),
+        byId: useTileHeaderExtraFor("tile-a"),
+      }),
+      { wrapper: wrap("tile-a") },
+    );
+
+    expect(result.current.own).toBeNull();
+    expect(result.current.byId).toBeNull();
+
+    act(() => result.current.set("mute-button"));
+    expect(result.current.own).toBe("mute-button");
+    expect(result.current.byId).toBe("mute-button");
+  });
+
+  it("isolates two tile ids from each other on the same store — no leakage", () => {
+    // Both scoped to the SAME jotai store (unlike `wrap()`, which gives
+    // each render its own store) — the thing under test here is the
+    // atomFamily's per-tileId isolation, not per-store isolation.
+    const store = createStore();
+    const a = renderHook(
+      () => ({ set: useSetTileHeaderExtra(), own: useTileHeaderExtra() }),
+      {
+        wrapper: ({ children }) => (
+          <JotaiProvider store={store}>
+            <TilingProvider>
+              <TileIdScope tileId="tile-a">{children}</TileIdScope>
+            </TilingProvider>
+          </JotaiProvider>
+        ),
+      },
+    );
+    const b = renderHook(
+      () => ({ set: useSetTileHeaderExtra(), own: useTileHeaderExtra() }),
+      {
+        wrapper: ({ children }) => (
+          <JotaiProvider store={store}>
+            <TilingProvider>
+              <TileIdScope tileId="tile-b">{children}</TileIdScope>
+            </TilingProvider>
+          </JotaiProvider>
+        ),
+      },
+    );
+
+    act(() => a.result.current.set("a-extra"));
+    expect(a.result.current.own).toBe("a-extra");
+    expect(b.result.current.own).toBeNull();
+
+    act(() => b.result.current.set("b-extra"));
+    expect(b.result.current.own).toBe("b-extra");
+    expect(a.result.current.own).toBe("a-extra");
+  });
+
+  it("defaults to null outside any TileIdScope, and the setter is a no-op", () => {
+    const { result } = renderHook(
+      () => ({
+        set: useSetTileHeaderExtra(),
+        own: useTileHeaderExtra(),
+      }),
+      { wrapper: makePlainWrap() },
+    );
+    expect(result.current.own).toBeNull();
+    act(() => result.current.set("ignored"));
+    expect(result.current.own).toBeNull();
   });
 });
 

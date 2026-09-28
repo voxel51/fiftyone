@@ -6,7 +6,6 @@ FiftyOne import/export-related unit tests.
 |
 """
 
-import importlib.util
 import os
 import pathlib
 import random
@@ -32,16 +31,11 @@ import fiftyone.utils.labels as foul
 import fiftyone.utils.yolo as fouy
 from fiftyone import ViewField as F
 
-from decorators import drop_collection, drop_datasets
+from decorators import drop_datasets, isolate_temporal_tags
 
 skipwindows = pytest.mark.skipif(
     os.name == "nt", reason="Windows hangs in workflows, fix me"
 )
-skiptf = pytest.mark.skipif(
-    importlib.util.find_spec("tensorflow") is None,
-    reason="tensorflow is not installed",
-)
-drop_tags = drop_collection(fota.TAGS_COLLECTION_NAME)
 
 
 class ImageDatasetTests(unittest.TestCase):
@@ -173,7 +167,7 @@ class DuplicateImageExportTests(ImageDatasetTests):
 
 
 class TagsImportExportTests(ImageDatasetTests):
-    @drop_tags
+    @isolate_temporal_tags
     @drop_datasets
     def test_fiftyone_dataset_tags_round_trip(self):
         dataset, _ = self._make_tag_dataset()
@@ -281,7 +275,7 @@ class TagsImportExportTests(ImageDatasetTests):
 
         self.assertFalse(os.path.isfile(tags_path))
 
-    @drop_tags
+    @isolate_temporal_tags
     @drop_datasets
     def test_fiftyone_dataset_tags_view_export(self):
         dataset, sample_ids = self._make_tag_dataset()
@@ -308,7 +302,7 @@ class TagsImportExportTests(ImageDatasetTests):
             {sample_ids[0], sample_ids[2]},
         )
 
-    @drop_tags
+    @isolate_temporal_tags
     @drop_datasets
     def test_fiftyone_dataset_tags_max_samples(self):
         dataset, sample_ids = self._make_tag_dataset()
@@ -337,7 +331,7 @@ class TagsImportExportTests(ImageDatasetTests):
             fota.list_temporal_tags(dataset2)[0].created_by, "alice"
         )
 
-    @drop_tags
+    @isolate_temporal_tags
     @drop_datasets
     def test_fiftyone_dataset_tags_nonempty_migration_import(self):
         dataset, _ = self._make_tag_dataset()
@@ -978,7 +972,6 @@ class ImageClassificationDatasetTests(ImageDatasetTests):
         # <class>/_images/<filename>
         self.assertEqual(len(relpath.split(os.path.sep)), 3)
 
-    @skiptf
     @drop_datasets
     def test_tf_image_classification_dataset(self):
         dataset = self._make_dataset()
@@ -1049,7 +1042,6 @@ class ImageChannelsDatasetTests(ImageDatasetTests):
         return dataset
 
     @skipwindows
-    @skiptf
     @drop_datasets
     def test_tf_image_classification_channels(self):
         orig_dataset = self._make_dataset()
@@ -1323,7 +1315,6 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         # _images/<filename>
         self.assertEqual(len(relpath.split(os.path.sep)), 2)
 
-    @skiptf
     @drop_datasets
     def test_tf_object_detection_dataset(self):
         dataset = self._make_dataset()

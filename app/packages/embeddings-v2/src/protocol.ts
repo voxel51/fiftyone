@@ -136,15 +136,22 @@ export async function fetchGeometry(
   return { n, columns };
 }
 
+/** Which id a point reports: its own identity (label ids for patches runs,
+ * sample ids otherwise), or the sample that owns it. The two differ only
+ * for patches runs. */
+export type IdKind = "points" | "samples";
+
 export async function fetchIds(
   datasetName: string,
   brainKey: string,
   slice?: Slice,
+  kind: IdKind = "points",
 ): Promise<IdColumn> {
   const buffer = await fetchColumn("/embeddings/v2/ids", {
     datasetName,
     brainKey,
     ...slice,
+    kind,
   });
   const header = parseHeader(buffer);
   if (header.dtype !== DTYPE_BYTES12) {
@@ -272,6 +279,10 @@ export async function fetchMasks(
   brainKey: string,
   view: unknown[],
   filters: unknown,
+  /** Extended stages (`{ [_cls]: kwargs }`) folded into the match mask.
+   * The server resolves them in the view's own vocabulary and maps a
+   * patches view's matches back to their samples for a sample-keyed run */
+  extended: Record<string, unknown> | null = null,
 ): Promise<Masks> {
   const buffer = await fetchColumn("/embeddings/v2/masks", {
     datasetName,
@@ -279,6 +290,7 @@ export async function fetchMasks(
     view,
     filters,
     slices: null,
+    extended,
   });
   const header = parseHeader(buffer);
   if (header.dtype !== DTYPE_BITMASK) {
@@ -340,6 +352,11 @@ export interface SampleInfo {
   /** Feed through the App's getSampleSrc(); null = no hover media */
   media: string | null;
   value: unknown;
+  /** Relative [x, y, w, h] of the hovered patch within its sample's media,
+   * for cropping the hover card to the patch. Null for sample-level runs —
+   * and for a patch whose label no longer exists, which falls back to the
+   * whole sample rather than failing */
+  bounds: [number, number, number, number] | null;
 }
 
 export async function fetchSampleInfo(
@@ -355,16 +372,24 @@ export async function fetchSampleInfo(
   );
 }
 
-/** Id -> wire-order-index map over the first `count` (default: all)
- * entries, for styling external selections */
+/** Id -> every wire-order index sharing that id, over the first `count`
+ * (default: all) entries, for styling external selections. One id can
+ * own many points (e.g. every window of an episode in a multimodal
+ * run), so each entry collects all of them rather than the last one seen. */
 export function buildIdIndex(
   ids: IdColumn,
   count?: number,
-): Map<string, number> {
+): Map<string, number[]> {
   const n = count ?? ids.length / 12;
-  const map = new Map<string, number>();
+  const map = new Map<string, number[]>();
   for (let i = 0; i < n; i++) {
-    map.set(idAt(ids, i), i);
+    const id = idAt(ids, i);
+    const existing = map.get(id);
+    if (existing) {
+      existing.push(i);
+    } else {
+      map.set(id, [i]);
+    }
   }
   return map;
 }

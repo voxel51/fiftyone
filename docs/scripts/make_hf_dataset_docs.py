@@ -19,7 +19,6 @@ import requests
 import yaml
 from huggingface_hub import HfApi, hf_hub_url
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -155,9 +154,11 @@ class HFDatasetDocGenerator:
                     dataset = HFDataset(
                         id=dataset_info.id,
                         downloads=getattr(dataset_info, "downloads", 0) or 0,
-                        last_modified=dataset_info.last_modified.isoformat()
-                        if getattr(dataset_info, "last_modified", None)
-                        else "",
+                        last_modified=(
+                            dataset_info.last_modified.isoformat()
+                            if getattr(dataset_info, "last_modified", None)
+                            else ""
+                        ),
                         card_data=card_data,
                     )
                     datasets.append(dataset)
@@ -186,9 +187,11 @@ class HFDatasetDocGenerator:
 
         datasets.sort(
             key=lambda d: (
-                -datetime.fromisoformat(d.last_modified).timestamp()
-                if d.last_modified
-                else 0,
+                (
+                    -datetime.fromisoformat(d.last_modified).timestamp()
+                    if d.last_modified
+                    else 0
+                ),
                 -d.downloads,
             )
         )

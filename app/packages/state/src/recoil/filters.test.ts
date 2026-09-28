@@ -3,6 +3,7 @@ vi.mock("recoil");
 vi.mock("recoil-relay");
 
 import { TestSelectorFamily, setMockAtoms } from "../../../../__mocks__/recoil";
+import { activeFilterValues } from "./activeFilterValues";
 import * as filters from "./filters";
 
 describe("filter resolves correctly", () => {
@@ -66,5 +67,45 @@ describe("hasFilter resolves correctly", () => {
 
     setMockAtoms({ extendedSelectionOverrideStage: null });
     expect(test()).toBe(false);
+  });
+});
+
+// These call the pure rule directly rather than the hook: `temporalTags.test`
+// mocks this module wholesale, so anything asserted through that mock is
+// asserting the mock. This is the only place the real rule runs.
+describe("activeFilterValues", () => {
+  it("returns the inclusive string selections", () => {
+    expect(activeFilterValues({ tag: { values: ["a", "b"] } }, "tag")).toEqual([
+      "a",
+      "b",
+    ]);
+  });
+
+  it("returns empty for an exclude filter", () => {
+    expect(
+      activeFilterValues({ tag: { values: ["a"], exclude: true } }, "tag"),
+    ).toEqual([]);
+  });
+
+  it("returns empty for an unset path", () => {
+    expect(activeFilterValues({}, "tag")).toEqual([]);
+    expect(activeFilterValues(undefined, "tag")).toEqual([]);
+  });
+
+  it("drops null values", () => {
+    expect(activeFilterValues({ tag: { values: ["a", null] } }, "tag")).toEqual(
+      ["a"],
+    );
+  });
+
+  // Consumers memo on the identity of this result, so every empty answer has
+  // to be the same array or the memo churns on every render.
+  it("returns one stable empty array", () => {
+    expect(activeFilterValues({}, "tag")).toBe(
+      activeFilterValues({ tag: { exclude: true } }, "tag"),
+    );
+    expect(activeFilterValues({ tag: { values: [null] } }, "tag")).toBe(
+      activeFilterValues({}, "other"),
+    );
   });
 });

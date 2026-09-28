@@ -1,11 +1,13 @@
 import * as fos from "@fiftyone/state";
 import {
+  getSamplePathExtension,
   isFo3dSamplePath,
   isWrappableDirect3dSamplePath,
 } from "@fiftyone/utilities";
 import { useEffect, useMemo, useState } from "react";
 import { useRecoilValue } from "recoil";
 import type { FoScene } from "../fo3d/render-types";
+import type { DirectPcdWorldTransforms } from "../fo3d/direct-pcd-world-alignment";
 import {
   buildSyntheticSceneForDirect3dSamples,
   buildSyntheticSceneNodesForDirect3dSamples,
@@ -13,6 +15,7 @@ import {
 import { getFo3dRoot, getMediaPathForFo3dSample } from "../fo3d/utils";
 import type { FiftyoneSceneRawJson } from "../utils";
 import useFo3dFetcher from "./use-fo3d-fetcher";
+import { useGroupedDirectPcdWorldTransforms } from "./use-grouped-direct-pcd-world-transforms";
 import { buildFoScene, getRootAssetCount } from "./use-fo3d-scene-parser";
 
 import { getResolvedUrlForFo3dAsset } from "../fo3d/utils";
@@ -109,6 +112,7 @@ export const appendDirect3dSamplesToScene = ({
 };
 
 type UseFo3dReturnType = {
+  directPcdWorldTransformsBySampleId: DirectPcdWorldTransforms;
   foScene: FoScene | null;
   isLoading: boolean;
   loadError: Error | null;
@@ -180,6 +184,47 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
     isGroup,
     group3dState.realFo3dSlices,
   ]);
+  const groupedDirectPcdSampleMap = useMemo(() => {
+    if (!groupedDirectSampleMap) {
+      return {};
+    }
+
+    return Object.fromEntries(
+      Object.entries(groupedDirectSampleMap).filter(([, currentSample]) => {
+        const path =
+          getMediaPathForFo3dSample(currentSample, mediaField) ??
+          currentSample.sample.filepath;
+        return getSamplePathExtension(path)?.toLowerCase() === ".pcd";
+      }),
+    );
+  }, [groupedDirectSampleMap, mediaField]);
+  const directPcdSliceNames = useMemo(
+    () => Object.keys(groupedDirectPcdSampleMap),
+    [groupedDirectPcdSampleMap],
+  );
+  const directPcdAlignment = useGroupedDirectPcdWorldTransforms({
+    enabled:
+      isGroup &&
+      !group3dState.activeFo3dSlice &&
+      directPcdSliceNames.length > 0,
+    sampleId: sample.sample._id ?? null,
+    sliceNames: directPcdSliceNames,
+  });
+  const directPcdWorldTransformsBySampleId = useMemo(() => {
+    const transforms: Record<string, DirectPcdWorldTransforms[string]> = {};
+
+    for (const [slice, currentSample] of Object.entries(
+      groupedDirectPcdSampleMap,
+    )) {
+      const transform = directPcdAlignment.transformsBySlice[slice];
+      const sampleId = currentSample.sample._id;
+      if (transform && sampleId) {
+        transforms[sampleId] = transform;
+      }
+    }
+
+    return transforms;
+  }, [directPcdAlignment.transformsBySlice, groupedDirectPcdSampleMap]);
   const syntheticRawData = useMemo(() => {
     if (group3dState.activeFo3dSlice || !isWrappableDirectAsset) {
       return null;
@@ -194,6 +239,7 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
       sample,
       mediaField,
       sampleMap: groupedSampleMap,
+      worldTransformsBySlice: directPcdAlignment.transformsBySlice,
     });
   }, [
     group3dState.activeFo3dSlice,
@@ -204,6 +250,7 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
     groupedDirectSampleMap,
     mediaField,
     sample,
+    directPcdAlignment.transformsBySlice,
   ]);
 
   // This effect fetches fo3d data for the active sample and guards stale updates.
@@ -213,6 +260,20 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
     setIsLoading(true);
     setLoadError(null);
     setRawData(null);
+
+    if (directPcdAlignment.isLoading) {
+      return () => {
+        isActive = false;
+      };
+    }
+
+    if (directPcdAlignment.error) {
+      setLoadError(directPcdAlignment.error);
+      setIsLoading(false);
+      return () => {
+        isActive = false;
+      };
+    }
 
     if (isRealFo3dScene) {
       fetchFo3d(url, fo3dPath)
@@ -269,6 +330,8 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
     };
   }, [
     fetchFo3d,
+    directPcdAlignment.error,
+    directPcdAlignment.isLoading,
     fo3dPath,
     filepath,
     groupedDirectSampleMap,
@@ -304,6 +367,7 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
 
   if (isLoading) {
     return {
+      directPcdWorldTransformsBySampleId: {},
       foScene: null,
       isLoading: true,
       loadError: null,
@@ -313,6 +377,7 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
   }
 
   return {
+    directPcdWorldTransformsBySampleId,
     foScene,
     isLoading: false,
     loadError,

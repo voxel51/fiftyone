@@ -5,6 +5,7 @@ Plotly-powered view plots.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import itertools
 from operator import itemgetter
 
@@ -19,7 +20,6 @@ import fiftyone.core.aggregations as foa
 
 from .base import ViewPlot
 from .plotly import PlotlyWidgetMixin
-
 
 _DEFAULT_LAYOUT = dict(
     template="ggplot2", margin={"r": 0, "t": 30, "l": 0, "b": 0}

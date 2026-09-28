@@ -21,14 +21,11 @@ from fiftyone.core.models import EmbeddingsMixin, PromptMixin
 from fiftyone.zoo.models import HasZooModel
 import fiftyone.utils.torch as fout
 
-
 fou.ensure_torch()
 import torch
 
-
 fou.ensure_package("transformers")
 import transformers
-
 
 logger = logging.getLogger(__name__)
 
@@ -533,6 +530,10 @@ class ZeroShotTransformerEmbeddingsMixin(EmbeddingsMixin):
         if self.preprocess:
             args = {"images": args}
             args = self.collate_fn(self.transforms(args))
+        elif isinstance(args, (list, tuple)):
+            # ragged models receive uncollated feature lists from data
+            # loaders
+            args = self.collate_fn(args)
 
         with torch.no_grad():
             for k, v in args.items():
@@ -597,6 +598,65 @@ class ZeroShotTransformerPromptMixin(PromptMixin):
         return text_features
 
 
+def _processor_output_is_ragged(transforms):
+    """Determines whether an image processor's output shape follows the
+    input's aspect ratio.
+
+    A processor that resizes to a lone ``shortest_edge`` or ``longest_edge``
+    with no fixed crop preserves aspect ratio, so mixed-aspect inputs produce
+    mixed-shape outputs. Bounding both edges (DETR-style) still preserves
+    aspect ratio; only the processor's own padding makes those outputs
+    uniform within a batch.
+    """
+    processor = getattr(transforms, "processor", transforms)
+    image_processor = getattr(processor, "image_processor", None) or getattr(
+        processor, "feature_extractor", None
+    )
+    if image_processor is None and hasattr(processor, "size"):
+        image_processor = processor
+
+    if image_processor is None:
+        return False
+
+    size = getattr(image_processor, "size", None)
+    # transformers >= 5 hands back a ``SizeDict`` dataclass rather than a dict
+    if not hasattr(size, "get"):
+        return False
+
+    # What the CALL will use: the handler forwards its kwargs to the
+    # processor, so an override there beats the processor's own default
+    kwargs = getattr(transforms, "kwargs", None) or {}
+    do_center_crop = kwargs.get(
+        "do_center_crop", getattr(image_processor, "do_center_crop", False)
+    )
+    crop_size = kwargs.get(
+        "crop_size", getattr(image_processor, "crop_size", None)
+    )
+    do_pad = kwargs.get("do_pad", getattr(image_processor, "do_pad", False))
+
+    if do_center_crop and crop_size:
+        return False
+
+    # ConvNeXt-style: resize the short edge to ``shortest_edge / crop_pct``,
+    # then crop back to a square of ``shortest_edge``
+    crop_pct = kwargs.get(
+        "crop_pct", getattr(image_processor, "crop_pct", None)
+    )
+    if crop_pct and size.get("shortest_edge"):
+        return False
+
+    if size.get("height") and size.get("width"):
+        return False
+
+    edges = [k for k in ("shortest_edge", "longest_edge") if size.get(k)]
+    if len(edges) == 2:
+        # aspect ratio is preserved between the two bounds, so with padding
+        # disabled a mixed-aspect batch cannot be stacked
+        return not do_pad
+
+    return len(edges) == 1
+
+
 class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
     """FiftyOne wrapper around a ``transformers`` model.
 
@@ -611,9 +671,9 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
         if config.entrypoint_args is None:
             config.entrypoint_args = {}
         if not config.entrypoint_args.get("pretrained_model_name_or_path"):
-            config.entrypoint_args[
-                "pretrained_model_name_or_path"
-            ] = config.name_or_path
+            config.entrypoint_args["pretrained_model_name_or_path"] = (
+                config.name_or_path
+            )
 
         config.entrypoint_args["cache_dir"] = fo.config.model_zoo_dir
 
@@ -632,7 +692,6 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
             **config.transforms_args,
             "cache_dir": fo.config.model_zoo_dir,
         }
-        config.ragged_batches = False
 
         # handle unsupported arguments
         if config.use_half_precision:
@@ -697,6 +756,9 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
     def _predict_all(self, args):
         if self.preprocess:
             args = self.collate_fn(self.transforms(args))
+        elif isinstance(args, (list, tuple)):
+            # ragged models receive uncollated feature lists from data loaders
+            args = self.collate_fn(args)
 
         # this line is the only difference between this and the base class
         # we should consolidate this function once post processing is properly
@@ -727,6 +789,15 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
         return self._model(
             **args, output_hidden_states=self._output_hidden_states
         )
+
+    def _build_transforms(self, config):
+        transforms, ragged_batches = super()._build_transforms(config)
+        if config.ragged_batches is None:
+            # aspect-following processors emit mixed-shape outputs, which
+            # consumers must not pre-stack
+            ragged_batches = _processor_output_is_ragged(transforms)
+
+        return transforms, ragged_batches
 
     def _load_transforms(self, config):
         try:
@@ -767,7 +838,9 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
 
     @property
     def has_collate_fn(self):
-        return True
+        # advertised only when outputs stack; ragged outputs must reach
+        # ``_predict_all`` as lists
+        return not self.ragged_batches
 
     @staticmethod
     def collate_fn(batch):
@@ -888,6 +961,11 @@ class FiftyOneZeroShotTransformer(
                 "text": self.text_prompts,  # inject text prompts
             }
         else:
+            if isinstance(args, (list, tuple)):
+                # ragged models receive uncollated feature lists from data
+                # loaders
+                args = self.collate_fn(args)
+
             args.update({"input_ids": self.input_ids})
         return super()._predict_all(args)
 
@@ -1375,6 +1453,9 @@ class FiftyOneTransformerForPoseEstimation(
                 "boxes": images_boxes,
             }
             args = self.collate_fn(self.transforms(args))
+        elif isinstance(args, (list, tuple)):
+            # ragged models receive uncollated feature lists from data loaders
+            args = self.collate_fn(args)
 
         image_sizes = args.pop("fo_image_size", [(None, None)])
         boxes = args.pop("boxes", None)
@@ -1573,9 +1654,11 @@ class _HFTransformsHandler:
             elif self.text:
                 res = self.processor(
                     images=args,
-                    text=self.text
-                    if not self.text_per_image
-                    else [self.text for _ in range(num_images)],
+                    text=(
+                        self.text
+                        if not self.text_per_image
+                        else [self.text for _ in range(num_images)]
+                    ),
                     **self.kwargs,
                 )
             else:

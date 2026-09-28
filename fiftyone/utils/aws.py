@@ -5,6 +5,7 @@ Utilities for working with `Amazon Web Services <https://aws.amazon.com>`.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 import multiprocessing.dummy
 import os
@@ -16,7 +17,6 @@ import botocore
 import eta.core.utils as etau
 
 import fiftyone.core.utils as fou
-
 
 logger = logging.getLogger(__name__)
 

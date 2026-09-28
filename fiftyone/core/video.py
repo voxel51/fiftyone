@@ -5,6 +5,7 @@ Video frame views.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import defaultdict
 from copy import deepcopy
 import logging
@@ -524,6 +525,7 @@ def make_frames_dataset(
     name=None,
     persistent=False,
     _generated=False,
+    _subset_id=None,
     **kwargs,
 ):
     """Creates a dataset that contains one sample per frame in the video
@@ -698,6 +700,14 @@ def make_frames_dataset(
     )
 
     _make_pretty_summary(dataset)
+
+    if _subset_id is not None:
+        from fiftyone.core.subsets import write_frames_dataset
+
+        write_frames_dataset(
+            sample_collection._root_dataset, _subset_id, dataset
+        )
+        return dataset
 
     # Initialize frames dataset
     sample_view, frames_to_sample = _init_frames(
@@ -934,7 +944,7 @@ def _init_frames(
 
             _id = frame_ids_map.get(fn, None)
             _filepath = images_patt % fn
-            _rand = foos._generate_rand(_filepath)
+            _rand = foos._generate_rand()
             _dataset_id = dataset._doc.id
 
             if missing_fps is not None and fn in missing_fps:

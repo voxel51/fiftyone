@@ -63,9 +63,11 @@ export class GridPom {
   async toggleSelectNthSample(n: number) {
     const tile = this.getNthTile(n);
     if (await this.isCustomRendererTile(tile)) {
-      // the selection checkbox is revealed on tile hover
-      await tile.hover();
-      await tile.getByRole("checkbox").click();
+      // the selection checkbox is revealed in the tile's top selection region
+      await tile.hover({ position: { x: 10, y: 5 } });
+      const checkbox = tile.locator("[data-fo-selection-checkbox]");
+      await expect(checkbox).toBeVisible();
+      await checkbox.click();
       return;
     }
     await tile.click({ position: { x: 10, y: 5 } });
@@ -75,19 +77,71 @@ export class GridPom {
     await this.toggleSelectNthSample(0);
   }
 
+  async addNthSampleToBucket(n: number, bucketName: string) {
+    const tile = this.getNthTile(n);
+    const box = await tile.boundingBox();
+    if (!box) throw new Error(`grid tile ${n} has no bounds`);
+    // Bucket chips appear when hovering near the tile's top edge.
+    await tile.hover({
+      position: { x: box.width / 2, y: Math.min(20, box.height / 8) },
+    });
+    const button = this.page.getByRole("button", {
+      name: `Add to ${bucketName}`,
+    });
+    await expect(button).toBeVisible();
+    await button.click();
+  }
+
   async openNthSample(n: number) {
     const tile = this.getNthTile(n);
     if (await this.isCustomRendererTile(tile)) {
-      // the open button is revealed on tile hover
+      // Hover reveals whatever affordances the tile only shows on hover.
       await tile.hover();
-      await tile.getByRole("button", { name: "Open sample modal" }).click();
-      return;
+      // Only a renderer whose own surface consumes the click offers an explicit
+      // open button — a point-cloud preview orbits its camera on drag, so it
+      // suppresses grid activation and needs one. Every other custom-rendered
+      // tile opens by being clicked, the same as an ordinary looker.
+      const openButton = tile.getByRole("button", {
+        name: "Open sample modal",
+      });
+      if ((await openButton.count()) > 0) {
+        await openButton.click();
+        return;
+      }
     }
     await tile.click({ position: { x: 10, y: 80 } });
   }
 
   async openFirstSample() {
     return this.openNthSample(0);
+  }
+
+  /**
+   * Temporal-tag marks drawn on the tiles' interval lanes. One per interval on
+   * a tagged sample; tiles whose sample carries no tag draw no lane at all.
+   */
+  temporalTagMarks(): Locator {
+    return this.page.locator(
+      '[data-testid="episode-grid-overlay"] [data-source="fiftyone:temporal-tags"]',
+    );
+  }
+
+  async temporalTagMarkCount(): Promise<number> {
+    return this.temporalTagMarks().count();
+  }
+
+  /**
+   * The first mark's position on its lane, as the percentages the lane lays it
+   * out with — the tag's own time over the lane's time axis.
+   */
+  async temporalTagMarkGeometry(): Promise<{ left: number; width: number }> {
+    const mark = this.temporalTagMarks().first();
+    const [left, width] = await Promise.all([
+      mark.evaluate((el) => Number.parseFloat((el as HTMLElement).style.left)),
+      mark.evaluate((el) => Number.parseFloat((el as HTMLElement).style.width)),
+    ]);
+
+    return { left, width };
   }
 
   async getEntryCountText() {
@@ -170,8 +224,7 @@ class GridAsserter {
   constructor(private readonly gridPom: GridPom) {}
 
   async isTileCountEqualTo(n: number) {
-    const tileCount = await this.gridPom.locator.locator(TILE_SELECTOR).count();
-    expect(tileCount).toBe(n);
+    await expect(this.gridPom.locator.locator(TILE_SELECTOR)).toHaveCount(n);
   }
 
   async isNthSampleSelected(n: number) {
@@ -194,16 +247,18 @@ class GridAsserter {
   }
 
   async isSelectionCountEqualTo(n: number) {
-    const action = this.gridPom.actionsRow.gridActionsRow.getByTestId(
-      "action-manage-selected",
-    );
+    const tray = this.gridPom.page.getByRole("region", { name: "Selection" });
 
     if (n === 0) {
-      await expect(action).toBeHidden();
+      await expect(tray).toContainText("Act on all samples in the grid");
       return;
     }
 
-    await expect(action.first()).toHaveText(String(n));
+    await expect(tray).toContainText(
+      new RegExp(
+        `${n.toLocaleString()}\\s*sample${n === 1 ? "" : "s"} selected`,
+      ),
+    );
   }
 
   async isEntryCountTextEqualTo(text: string) {

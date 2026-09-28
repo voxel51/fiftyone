@@ -144,6 +144,12 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_MODEL_ZOO_MANIFEST_PATHS",
             default=None,
         )
+        self.model_zoo_manifest_cache_enabled = self.parse_bool(
+            d,
+            "model_zoo_manifest_cache_enabled",
+            env_var="FIFTYONE_MODEL_ZOO_MANIFEST_CACHE_ENABLED",
+            default=False,
+        )
         self.default_dataset_dir = self.parse_path(
             d,
             "default_dataset_dir",
@@ -429,6 +435,12 @@ class AppConfig(EnvConfig):
             d,
             "enable_query_performance",
             env_var="FIFTYONE_APP_ENABLE_QUERY_PERFORMANCE",
+            default=True,
+        )
+        self.follow_static_symlinks = self.parse_bool(
+            d,
+            "follow_static_symlinks",
+            env_var="FIFTYONE_APP_FOLLOW_STATIC_SYMLINKS",
             default=True,
         )
         self.default_query_performance = self.parse_bool(

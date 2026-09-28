@@ -9,6 +9,7 @@ jobs:
     name: Prepare e2e assets
     outputs:
       burn-in-count: ${{ steps.burn-in-specs.outputs.count }}
+      burn-in-skipped: ${{ steps.burn-in-specs.outputs.skipped }}
       burn-in-specs: ${{ steps.burn-in-specs.outputs.specs }}
     defaults:
       run:
@@ -69,7 +70,7 @@ jobs:
             }
 
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           # yarn install runs PR-controlled lifecycle scripts
           persist-credentials: false
@@ -80,9 +81,9 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Setup node 22
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
 
       - name: Prepare yarn
         uses: ./.github/actions/setup-yarn
@@ -97,13 +98,22 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          # the `skip-burn-in` label opts a PR out (e.g. a refactor touching
+          # dozens of specs that cannot fit the burn-in budget)
+          SKIP_BURN_IN: ${{ contains(github.event.pull_request.labels.*.name, 'skip-burn-in') }}
         run: |
-          SPECS=$(node ../.github/scripts/burn-in-specs.mjs)
+          if [ "$SKIP_BURN_IN" = "true" ]; then
+            SPECS=""
+            echo "::notice::burn-in skipped by the skip-burn-in label"
+          else
+            SPECS=$(node ../.github/scripts/burn-in-specs.mjs)
+          fi
           COUNT=0
           if [ -n "$SPECS" ]; then
             COUNT=$(printf '%s\n' "$SPECS" | wc -l | tr -d ' ')
           fi
           echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "skipped=$SKIP_BURN_IN" >> "$GITHUB_OUTPUT"
           {
             echo "specs<<BURN_IN_EOF"
             printf '%s\n' "$SPECS"
@@ -117,14 +127,14 @@ jobs:
 
       - name: Cache built app static assets
         id: app-static-cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: fiftyone/server/static
           key: app-static-${{ runner.os }}-${{ steps.app-tree-hash.outputs.hash }}
 
       - name: Cache Node Modules
         id: app-node-cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             app/node_modules
@@ -152,7 +162,7 @@ jobs:
 
       - name: Cache E2E Node Modules
         id: e2e-node-cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             e2e-pw/node_modules
@@ -219,7 +229,7 @@ jobs:
           --health-retries 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           # yarn install runs PR-controlled lifecycle scripts
           persist-credentials: false
@@ -250,7 +260,7 @@ jobs:
 
       - name: Cache E2E Node Modules
         id: e2e-node-cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             e2e-pw/node_modules
@@ -307,8 +317,8 @@ jobs:
     if: needs.prepare-e2e.outputs.burn-in-count != '0'
     # 10 repeats of several typical spec files fit this budget; a PR that
     # adds more should land them in pieces.
-    timeout-minutes: 60
-    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    runs-on: ${{ vars.FIFTYONE_E2E_RUNNER || 'ubuntu-latest' }}
     container:
       # fiftyone-teams overrides the image name via repo var (superset deps)
       image: ${{ vars.FIFTYONE_E2E_IMAGE_NAME || 'ghcr.io/voxel51/fiftyone-e2e' }}:latest
@@ -342,7 +352,7 @@ jobs:
           --health-retries 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           # yarn install runs PR-controlled lifecycle scripts
           persist-credentials: false
@@ -374,7 +384,7 @@ jobs:
 
       - name: Cache E2E Node Modules
         id: e2e-node-cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             e2e-pw/node_modules
@@ -440,7 +450,7 @@ jobs:
         shell: bash
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           # yarn install runs PR-controlled lifecycle scripts
           persist-credentials: false
@@ -468,7 +478,7 @@ jobs:
 
       - name: Cache E2E Node Modules
         id: e2e-node-cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             e2e-pw/node_modules
@@ -529,6 +539,7 @@ jobs:
           TEST_E2E_RESULT: ${{ needs.test-e2e.result }}
           EXPECTED_SHARDS: "8"
           BURN_IN_COUNT: ${{ needs.prepare-e2e.outputs.burn-in-count }}
+          BURN_IN_SKIPPED: ${{ needs.prepare-e2e.outputs.burn-in-skipped }}
           BURN_IN_RESULT: ${{ needs.burn-in.result }}
           BURN_IN_REPORT_URL: ${{ steps.upload-burn-in.outputs.artifact-url }}
           REPORT_URL: ${{ steps.upload-merged.outputs.artifact-url }}
@@ -592,6 +603,7 @@ jobs:
           EXPECTED_SHARDS: "8"
           TEST_E2E_RESULT: ${{ needs.test-e2e.result }}
           BURN_IN_COUNT: ${{ needs.prepare-e2e.outputs.burn-in-count }}
+          BURN_IN_SKIPPED: ${{ needs.prepare-e2e.outputs.burn-in-skipped }}
           BURN_IN_RESULT: ${{ needs.burn-in.result }}
         run: node ../.github/scripts/enforce-verdict.mjs merged-results.json all-blob-reports burn-in-results.json
 

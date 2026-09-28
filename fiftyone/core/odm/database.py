@@ -6,39 +6,40 @@ Database utilities.
 |
 """
 
+import asyncio
 import atexit
 import dataclasses
 from datetime import datetime
+import itertools
+import json
 import logging
 from multiprocessing.pool import ThreadPool
 import os
 from typing import Tuple
 
-import asyncio
-from bson import json_util, ObjectId
+import bson
+from bson import ObjectId, json_util
 from bson.codec_options import CodecOptions
 import mongoengine
-
+import motor.motor_asyncio as mtr
 from packaging.version import Version
 import pymongo
-from pymongo.asynchronous.collection import AsyncCollection
-
 from pymongo.errors import (
     BulkWriteError,
     OperationFailure,
     PyMongoError,
     ServerSelectionTimeoutError,
 )
+from pymongo.results import InsertManyResult
 import pytz
 
 import eta.core.utils as etau
-
 import fiftyone as fo
 import fiftyone.constants as foc
-import fiftyone.migrations as fom
 from fiftyone.core.config import FiftyOneConfigError
 import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
+import fiftyone.migrations as fom
 
 foa = fou.lazy_import("fiftyone.core.annotation")
 fob = fou.lazy_import("fiftyone.core.brain")
@@ -46,6 +47,7 @@ fod = fou.lazy_import("fiftyone.core.dataset")
 foe = fou.lazy_import("fiftyone.core.evaluation")
 fors = fou.lazy_import("fiftyone.core.runs")
 fota = fou.lazy_import("fiftyone.core.tags")
+fosub = fou.lazy_import("fiftyone.core.subsets")
 
 
 logger = logging.getLogger(__name__)
@@ -241,11 +243,19 @@ def establish_db_conn(config):
 
 
 def _is_client_closed(client):
-    # handles both sync and async pymongo clients
+    # check if the pymongo or motor client is closed or None
     if client is None:
         return True
 
-    return getattr(client, "_closed", False)
+    # check pymongo client
+    if getattr(client, "_closed", False):
+        return True
+
+    # check motor client
+    if isinstance(client, mtr.AsyncIOMotorClient):
+        return getattr(client.delegate, "_closed", False)
+
+    return False
 
 
 def _connect():
@@ -267,27 +277,13 @@ def _disconnect():
             ...
     if _async_client:
         try:
-            _close_async_client(_async_client)
+            _async_client.close()
         except Exception:
             ...
 
     _client = None
     _async_client = None
     mongoengine.disconnect_all()
-
-
-def _close_async_client(client) -> None:
-    # AsyncMongoClient.close() is a coroutine, but disconnects happen in
-    # sync contexts
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = None
-
-    if loop is not None:
-        loop.create_task(client.close())
-    else:
-        asyncio.run(client.close())
 
 
 def _async_connect(use_global=False):
@@ -298,7 +294,7 @@ def _async_connect(use_global=False):
     global _async_client
     if not use_global or _is_client_closed(_async_client):
         global _connection_kwargs
-        client = pymongo.AsyncMongoClient(
+        client = mtr.AsyncIOMotorClient(
             **_connection_kwargs, appname=foc.DATABASE_APPNAME
         )
 
@@ -377,7 +373,7 @@ def aggregate(
 
     Args:
         collection: a ``pymongo.collection.Collection`` or
-            ``pymongo.asynchronous.collection.AsyncCollection``
+            ``motor.motor_asyncio.AsyncIOMotorCollection``
         pipelines: a MongoDB aggregation pipeline or a list of pipelines
         hints (None): a corresponding index hint or list of index hints for
             each pipeline
@@ -385,10 +381,8 @@ def aggregate(
 
     Returns:
         -   If a single pipeline is provided, a
-            ``pymongo.command_cursor.CommandCursor`` or an awaitable
-            resolving to a
-            ``pymongo.asynchronous.command_cursor.AsyncCommandCursor`` is
-            returned
+            ``pymongo.command_cursor.CommandCursor`` or
+            ``motor.motor_asyncio.AsyncIOMotorCommandCursor`` is returned
 
         -   If multiple pipelines are provided, each cursor is extracted into
             a list and the list of lists is returned
@@ -407,7 +401,7 @@ def aggregate(
     if maxTimeMS:
         kwargs["maxTimeMS"] = maxTimeMS
 
-    if isinstance(collection, AsyncCollection):
+    if isinstance(collection, mtr.AsyncIOMotorCollection):
         if num_pipelines == 1 and not is_list:
             if hints[0]:
                 kwargs["hint"] = hints[0]
@@ -482,8 +476,7 @@ async def _do_async_aggregate(collection, pipeline, hint, **kwargs):
     if hint:
         next_kwargs["hint"] = hint
 
-    cursor = await collection.aggregate(pipeline, **next_kwargs)
-    return [i async for i in cursor]
+    return [i async for i in collection.aggregate(pipeline, **next_kwargs)]
 
 
 def ensure_connection():
@@ -529,7 +522,7 @@ def get_async_db_client(use_global=False):
         use_global: whether to use the global client singleton
 
     Returns:
-        a ``pymongo.AsyncMongoClient``
+        a ``motor.motor_asyncio.AsyncIOMotorClient``
     """
     return _async_connect(use_global)
 
@@ -538,7 +531,7 @@ def get_async_db_conn(use_global=False):
     """Returns an async connection to the database.
 
     Returns:
-        a ``pymongo.asynchronous.database.AsyncDatabase``
+        a ``motor.motor_asyncio.AsyncIOMotorDatabase``
     """
     db = get_async_db_client(use_global=use_global)[fo.config.database_name]
     return _apply_options(db)
@@ -950,7 +943,10 @@ def export_collection(
             progress callback function to invoke instead
     """
     if num_docs is None:
-        num_docs = len(docs)
+        try:
+            num_docs = len(docs)
+        except TypeError:
+            pass
 
     if json_dir_or_path.endswith(".json"):
         _export_collection_single(
@@ -971,9 +967,10 @@ def _export_collection_single(docs, json_path, key, num_docs, progress=None):
             total=num_docs, iters_str="docs", progress=progress
         ) as pb:
             for idx, doc in pb(enumerate(docs, 1)):
-                f.write(json_util.dumps(doc))
-                if idx < num_docs:
+                if idx > 1:
                     f.write(",")
+
+                f.write(json_util.dumps(doc))
 
         f.write("]}")
 
@@ -1016,21 +1013,110 @@ def import_collection(json_dir_or_path, key="documents"):
         a tuple of
 
         -   an iterable of BSON documents
-        -   the number of documents
+        -   the number of documents, if this can be known a priori
     """
     if json_dir_or_path.endswith(".json"):
-        return _import_collection_single(json_dir_or_path, key)
+        docs = _import_collection_single(json_dir_or_path, key)
+        return docs, None
 
     return _import_collection_multi(json_dir_or_path)
 
 
 def _import_collection_single(json_path, key):
-    with open(json_path, "r") as f:
-        docs = json_util.loads(f.read()).get(key, [])
+    decoder = json.JSONDecoder(object_hook=json_util.object_hook)
+    chunk_size = 64 * 1024
 
-    num_docs = len(docs)
+    with open(json_path, "r", encoding="utf-8") as file:
+        buffer = ""
+        position = 0
+        eof = False
 
-    return docs, num_docs
+        def _read_more():
+            nonlocal buffer, position, eof
+            if position:
+                buffer = buffer[position:]
+                position = 0
+
+            chunk = file.read(chunk_size)
+            if chunk:
+                buffer += chunk
+            else:
+                eof = True
+
+        def _skip_whitespace():
+            nonlocal position
+            while True:
+                while position < len(buffer) and buffer[position].isspace():
+                    position += 1
+
+                if position < len(buffer) or eof:
+                    return
+
+                _read_more()
+
+        def _consume(expected):
+            nonlocal position
+            _skip_whitespace()
+            if position >= len(buffer):
+                raise ValueError("Malformed JSON collection")
+
+            actual = buffer[position]
+            if actual != expected:
+                raise ValueError(
+                    "Malformed JSON collection: expected '%s'" % expected
+                )
+
+            position += 1
+
+        def _decode_value():
+            nonlocal position
+            while True:
+                _skip_whitespace()
+                try:
+                    value, position = decoder.raw_decode(buffer, position)
+                    return value
+                except json.JSONDecodeError as exc:
+                    if eof:
+                        raise ValueError("Malformed JSON collection") from exc
+
+                    _read_more()
+
+        _read_more()
+        _consume("{")
+        imported_key = _decode_value()
+        if imported_key != key:
+            raise ValueError(
+                "JSON collection does not contain the expected '%s' key" % key
+            )
+
+        _consume(":")
+        _consume("[")
+        first = True
+        while True:
+            _skip_whitespace()
+            if position >= len(buffer):
+                raise ValueError("Malformed JSON collection")
+
+            if buffer[position] == "]":
+                position += 1
+                break
+
+            if not first:
+                _consume(",")
+
+            yield _decode_value()
+            first = False
+
+        _consume("}")
+        while True:
+            _skip_whitespace()
+            if position < len(buffer):
+                raise ValueError("Malformed JSON collection")
+
+            if eof:
+                break
+
+            _read_more()
 
 
 def _import_collection_multi(json_dir):
@@ -1042,6 +1128,250 @@ def _import_collection_multi(json_dir):
     docs = map(import_document, json_paths)
 
     return docs, len(json_paths)
+
+
+class InsertRefusedError(Exception):
+    """Raised by an :class:`InsertAdmitter` to refuse a batch write.
+
+    Admitters may raise a subclass so that callers can recognize why a write
+    was refused.
+    """
+
+    pass
+
+
+class InsertAdmitter(object):
+    """Base class for insert admitters.
+
+    An insert admitter is consulted before each batch of documents is
+    written to a collection and informed after each batch that was written.
+    This is the seam through which an embedding application bounds what a
+    session may add to a collection without the writers themselves knowing
+    about the bound.
+
+    Subclasses override :meth:`admit` to refuse a write by raising
+    :class:`InsertRefusedError` and :meth:`record` to observe what was
+    written. :meth:`admit` must not assume the write will succeed: a write
+    it admits can still fail, in which case :meth:`record` reports the
+    documents that landed before the failure, which may be none. Anything an
+    admitter counts therefore belongs in :meth:`record`.
+
+    Admitters see the writers that insert documents one by one:
+    :meth:`Dataset.add_samples() <fiftyone.core.dataset.Dataset.add_samples>`
+    and the importers built on it, :meth:`Dataset.merge_samples()
+    <fiftyone.core.dataset.Dataset.merge_samples>` when it merges sample by
+    sample, and :func:`insert_documents`. Writers that copy documents inside
+    the database via ``$out`` and ``$merge`` aggregations, such as
+    :meth:`Dataset.clone() <fiftyone.core.dataset.Dataset.clone>`,
+    :meth:`Dataset.add_collection()
+    <fiftyone.core.dataset.Dataset.add_collection>`, and
+    :meth:`Dataset.merge_samples()
+    <fiftyone.core.dataset.Dataset.merge_samples>` when it merges whole
+    collections, never materialize documents in Python and are not admitted.
+
+    Batches can also be sized in bytes. Encoding a batch to measure it costs
+    time, so it happens only while some registered admitter's
+    :meth:`wants_bytes` returns True; otherwise ``num_bytes`` is ``None``.
+    ``num_bytes`` is also ``None`` for writes whose batch cannot be sized
+    faithfully, such as upserts that replace existing documents.
+    """
+
+    def wants_bytes(self):
+        """Whether this admitter needs batches sized in bytes.
+
+        Consulted per batch, so an admitter may start or stop asking at any
+        time.
+
+        Returns:
+            True/False
+        """
+        return False
+
+    def admit(self, collection_name, num_docs, num_bytes=None):
+        """Consulted before a batch is written.
+
+        Args:
+            collection_name: the name of the collection being written to
+            num_docs: the number of documents the write would add
+            num_bytes (None): the BSON-encoded size of the batch, or
+                ``None`` if it was not sized
+
+        Raises:
+            InsertRefusedError: to refuse the write
+        """
+        pass
+
+    def record(self, collection_name, num_docs, num_bytes=None):
+        """Informed after a batch was written.
+
+        Args:
+            collection_name: the name of the collection written to
+            num_docs: the number of documents the write added
+            num_bytes (None): the BSON-encoded size of the documents the
+                write added, or ``None`` if the batch was not sized. After a
+                partial write this is the size of the documents that landed
+        """
+        pass
+
+
+# The registered admitters. Empty by default: nothing in open source
+# registers one, and an empty registry costs a list check per batch
+_insert_admitters = []
+
+
+def register_insert_admitter(admitter):
+    """Registers an :class:`InsertAdmitter`.
+
+    Registering the same admitter instance more than once has no effect.
+
+    Args:
+        admitter: an :class:`InsertAdmitter`
+    """
+    if not any(a is admitter for a in _insert_admitters):
+        _insert_admitters.append(admitter)
+
+
+def unregister_insert_admitter(admitter):
+    """Unregisters an :class:`InsertAdmitter`.
+
+    Unregistering an admitter that is not registered has no effect.
+
+    Args:
+        admitter: an :class:`InsertAdmitter`
+    """
+    _insert_admitters[:] = [a for a in _insert_admitters if a is not admitter]
+
+
+def _admit_insert(collection_name, num_docs, num_bytes=None):
+    for admitter in _insert_admitters:
+        admitter.admit(collection_name, num_docs, num_bytes=num_bytes)
+
+
+def _record_insert(collection_name, num_docs, num_bytes=None):
+    for admitter in _insert_admitters:
+        admitter.record(collection_name, num_docs, num_bytes=num_bytes)
+
+
+def _wants_bytes():
+    """Whether any registered admitter wants batches sized in bytes."""
+    return any(a.wants_bytes() for a in _insert_admitters)
+
+
+# The element the driver prepends to a document that has no ``_id``: a type
+# byte, the ``"_id\0"`` key, and a twelve-byte ObjectId
+_GENERATED_ID_BYTES = 17
+
+
+def _encoded_sizes(docs, codec_options=None):
+    """The BSON-encoded size of each document as it will be written.
+
+    Documents are encoded with the destination collection's codec options,
+    and a document without an ``_id`` is counted with the one the driver
+    will add, without modifying it.
+    """
+    if codec_options is None:
+        codec_options = bson.DEFAULT_CODEC_OPTIONS
+
+    return [
+        len(bson.encode(d, codec_options=codec_options))
+        + (0 if "_id" in d else _GENERATED_ID_BYTES)
+        for d in docs
+    ]
+
+
+def _landed_bytes(sizes, bwe):
+    """The encoded size of the documents that a failed write landed.
+
+    Those are the first ``nInserted`` documents that the error does not name
+    as failed: the prefix before the first error of an ordered write, and
+    every document but the failed ones of an unordered write.
+    """
+    if sizes is None:
+        return None
+
+    details = bwe.details or {}
+    failed = {e.get("index") for e in details.get("writeErrors", [])}
+    landed = (size for i, size in enumerate(sizes) if i not in failed)
+    return sum(itertools.islice(landed, _num_written_before(bwe)))
+
+
+def _admitted_write(
+    collection_name, num_docs, write, docs=None, codec_options=None
+):
+    """Performs one batch write under the registered insert admitters.
+
+    The admitters are consulted with the number of documents the write would
+    add, the write is performed, and the admitters are informed of the number
+    of documents it did add -- including the documents that landed before a
+    write that failed partway.
+
+    Args:
+        collection_name: the name of the collection being written to
+        num_docs: the number of documents the write would add, or a callable
+            that computes it. A callable is only invoked when an admitter is
+            registered, so a write nobody admits pays nothing for the count
+        write: a callable that performs the write and returns its
+            ``pymongo.results`` result
+        docs (None): the documents the write inserts, used to size the
+            batch in bytes when an admitter wants that. Pass ``None`` when
+            the batch cannot be sized faithfully (e.g. it replaces existing
+            documents), which admits it unsized
+        codec_options (None): the destination collection's
+            ``bson.codec_options.CodecOptions``, used to size the batch. By
+            default, BSON's default codec options are used
+
+    Returns:
+        the result of ``write()``
+    """
+    if not _insert_admitters:
+        return _write(write)
+
+    if callable(num_docs):
+        num_docs = num_docs()
+
+    if docs is not None and _wants_bytes():
+        sizes = _encoded_sizes(docs, codec_options=codec_options)
+        num_bytes = sum(sizes)
+    else:
+        sizes = None
+        num_bytes = None
+
+    _admit_insert(collection_name, num_docs, num_bytes=num_bytes)
+
+    try:
+        res = write()
+    except BulkWriteError as bwe:
+        _record_insert(
+            collection_name,
+            _num_written_before(bwe),
+            num_bytes=_landed_bytes(sizes, bwe),
+        )
+        msg = bwe.details["writeErrors"][0]["errmsg"]
+        raise ValueError(msg) from bwe
+
+    _record_insert(collection_name, _num_written(res), num_bytes=num_bytes)
+
+    return res
+
+
+def _write(write):
+    try:
+        return write()
+    except BulkWriteError as bwe:
+        msg = bwe.details["writeErrors"][0]["errmsg"]
+        raise ValueError(msg) from bwe
+
+
+def _num_written(res):
+    if isinstance(res, InsertManyResult):
+        return len(res.inserted_ids)
+
+    return res.inserted_count + res.upserted_count
+
+
+def _num_written_before(bwe):
+    details = bwe.details or {}
+    return details.get("nInserted", 0) + details.get("nUpserted", 0)
 
 
 def insert_documents(
@@ -1075,6 +1405,15 @@ def insert_documents(
     Returns:
         a list of IDs of the inserted documents
     """
+    if num_docs is None and hasattr(docs, "__len__"):
+        num_docs = len(docs)
+
+    # When the size of the whole write is known, it is admitted up front so
+    # that a refusal lands before anything is written rather than partway
+    # through. Each batch is still admitted as it is written
+    if num_docs is not None:
+        _admit_insert(coll.name, num_docs)
+
     ids = []
     batcher = fou.get_default_batcher(
         docs,
@@ -1083,20 +1422,23 @@ def insert_documents(
         total=num_docs,
     )
 
-    try:
-        with batcher:
-            for batch in batcher:
-                batch = list(batch)
-                res = coll.insert_many(batch, ordered=ordered)
-                ids.extend(b["_id"] for b in batch)
-                if hasattr(res, "nBytes") and hasattr(
-                    batcher, "set_encoding_ratio"
-                ):
-                    batcher.set_encoding_ratio(res.nBytes)
+    with batcher:
+        for batch in batcher:
+            batch = list(batch)
+            res = _admitted_write(
+                coll.name,
+                len(batch),
+                lambda: coll.insert_many(batch, ordered=ordered),
+                docs=batch,
+                codec_options=coll.codec_options,
+            )
+            batch_ids = [b["_id"] for b in batch]
+            ids.extend(batch_ids)
 
-    except BulkWriteError as bwe:
-        msg = bwe.details["writeErrors"][0]["errmsg"]
-        raise ValueError(msg) from bwe
+            if hasattr(res, "nBytes") and hasattr(
+                batcher, "set_encoding_ratio"
+            ):
+                batcher.set_encoding_ratio(res.nBytes)
 
     return ids
 
@@ -1461,6 +1803,9 @@ def delete_dataset(name, dry_run=False):
         _logger.info("Deleting %d tag(s)", num_tags)
         if not dry_run:
             fota.delete_for_dataset_id(_id)
+
+    if not dry_run:
+        fosub.delete_for_dataset_id(_id)
 
     view_ids = _get_saved_view_ids(dataset_dict)
 
@@ -1937,7 +2282,7 @@ def get_indexed_values(
 
     Args:
         collection: a ``pymongo.collection.Collection`` or
-            ``pymongo.asynchronous.collection.AsyncCollection``
+            ``motor.motor_asyncio.AsyncIOMotorCollection``
         field_or_fields: the field name or list of field names to retrieve.
         index_key (None): the name of the index to use. If None, the default
             index name will be constructed from the field name(s).

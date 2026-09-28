@@ -1,26 +1,30 @@
 import type { TimeWindow } from "../ir";
+import { createKeyedExternalStore } from "./keyed-external-store";
 
-const ranges = new Map<string, TimeWindow>();
-const listeners = new Map<string, Set<() => void>>();
+// Every hover session's first frame and every modal open republishes the same
+// extent as a fresh object, so ranges are compared by value rather than woken
+// through to every reader.
+const ranges = createKeyedExternalStore<TimeWindow>({
+  skipUnchanged: (previous, next) =>
+    previous.startNs === next.startNs && previous.endNs === next.endNs,
+});
 
 /** Publishes the best known inclusive time range for one episode identity. */
 export function publishEpisodeTimeRange(
   episodeId: string,
   range: TimeWindow,
 ): void {
-  ranges.set(episodeId, range);
-  for (const listener of listeners.get(episodeId) ?? []) listener();
+  ranges.publish(episodeId, range);
 }
 
 /** Returns a stable external-store snapshot for one episode. */
 export function getEpisodeTimeRange(episodeId: string): TimeWindow | null {
-  return ranges.get(episodeId) ?? null;
+  return ranges.get(episodeId);
 }
 
 /** Releases a published episode range when its source is no longer retained. */
 export function releaseEpisodeTimeRange(episodeId: string): void {
-  if (!ranges.delete(episodeId)) return;
-  for (const listener of listeners.get(episodeId) ?? []) listener();
+  ranges.release(episodeId);
 }
 
 /** Subscribes to time-range changes for one episode. */
@@ -28,24 +32,10 @@ export function subscribeEpisodeTimeRange(
   episodeId: string,
   listener: () => void,
 ): () => void {
-  const episodeListeners = listeners.get(episodeId) ?? new Set<() => void>();
-  episodeListeners.add(listener);
-  listeners.set(episodeId, episodeListeners);
-  return () => {
-    if (listeners.get(episodeId) !== episodeListeners) return;
-    episodeListeners.delete(listener);
-    if (episodeListeners.size === 0) listeners.delete(episodeId);
-  };
+  return ranges.subscribe(episodeId, listener);
 }
 
 /** Clears shared episode ranges between tests. */
 export function resetEpisodeTimeRangesForTests(): void {
-  ranges.clear();
-  try {
-    for (const episodeListeners of listeners.values()) {
-      for (const listener of episodeListeners) listener();
-    }
-  } finally {
-    listeners.clear();
-  }
+  ranges.resetForTests();
 }

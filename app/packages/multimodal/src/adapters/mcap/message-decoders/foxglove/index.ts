@@ -8,6 +8,10 @@ import {
   foxgloveCompressedImageDecoder,
 } from "./compressed-image";
 import {
+  foxgloveCompressedAudioCdrDecoders,
+  foxgloveCompressedAudioDecoder,
+} from "./compressed-audio";
+import {
   foxgloveCompressedVideoCdrDecoders,
   foxgloveCompressedVideoDecoder,
 } from "./compressed-video";
@@ -34,6 +38,10 @@ import {
   foxglovePoseInFrameDecoder,
 } from "./pose-in-frame";
 import {
+  foxgloveRawAudioCdrDecoders,
+  foxgloveRawAudioDecoder,
+} from "./raw-audio";
+import {
   foxgloveRawImageCdrDecoders,
   foxgloveRawImageDecoder,
 } from "./raw-image";
@@ -46,6 +54,10 @@ export {
   foxgloveCameraCalibrationCdrDecoders,
   foxgloveCameraCalibrationDecoder,
 } from "./camera-calibration";
+export {
+  foxgloveCompressedAudioCdrDecoders,
+  foxgloveCompressedAudioDecoder,
+} from "./compressed-audio";
 export {
   foxgloveCompressedImageCdrDecoders,
   foxgloveCompressedImageDecoder,
@@ -77,6 +89,10 @@ export {
   foxglovePoseInFrameDecoder,
 } from "./pose-in-frame";
 export {
+  foxgloveRawAudioCdrDecoders,
+  foxgloveRawAudioDecoder,
+} from "./raw-audio";
+export {
   foxgloveRawImageCdrDecoders,
   foxgloveRawImageDecoder,
 } from "./raw-image";
@@ -92,6 +108,8 @@ export * from "./payloads";
 export const foxgloveDecoders: readonly Decoder[] = [
   foxgloveCameraCalibrationDecoder,
   ...foxgloveCameraCalibrationCdrDecoders,
+  foxgloveCompressedAudioDecoder,
+  ...foxgloveCompressedAudioCdrDecoders,
   foxgloveCompressedImageDecoder,
   ...foxgloveCompressedImageCdrDecoders,
   foxgloveCompressedVideoDecoder,
@@ -110,6 +128,8 @@ export const foxgloveDecoders: readonly Decoder[] = [
   ...foxglovePointCloudCdrDecoders,
   foxglovePoseInFrameDecoder,
   ...foxglovePoseInFrameCdrDecoders,
+  foxgloveRawAudioDecoder,
+  ...foxgloveRawAudioCdrDecoders,
   foxgloveRawImageDecoder,
   ...foxgloveRawImageCdrDecoders,
   foxgloveSceneUpdateDecoder,

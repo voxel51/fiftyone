@@ -6,6 +6,11 @@ Using Agents
 
 .. default-role:: code
 
+.. meta::
+    :description: How to connect AI assistants to FiftyOne using the MCP
+        server and FiftyOne Skills, with setup instructions for every
+        major AI tool.
+
 .. _using-agents-overview:
 
 What Are Skills and MCP?
@@ -224,7 +229,7 @@ available skills and per-agent install instructions.
 Step 4: Use It
 ---------------
 
-.. code-block:: text
+.. code-block:: prompt
 
     "List all my datasets"
     "Load quickstart dataset and show summary"
@@ -332,5 +337,9 @@ _________
      - MCP specification
    * - `PyPI Package <https://pypi.org/project/fiftyone-mcp-server/>`_
      - MCP server on PyPI
+   * - `MCP Discovery Manifest </.well-known/mcp.json>`_
+     - Machine-readable FiftyOne MCP server manifest
+   * - `Skills Manifest </.well-known/skills.json>`_
+     - Pointer to the FiftyOne skills marketplace manifest
    * - `Discord Community <https://discord.gg/fiftyone-community>`_
      - Get help and share ideas

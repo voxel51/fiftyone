@@ -6,13 +6,13 @@ import {
   useOperatorPlacements,
 } from "@fiftyone/operators";
 import { useItemsWithOrderPersistence } from "@fiftyone/utilities";
+import { useGridSelectionDataset } from "@fiftyone/state/src/selection";
 import { Box } from "@mui/material";
 import { useMemo } from "react";
 import BrowseOperationsAction from "../../Actions/BrowseOperations";
 import ColorSchemeAction from "../../Actions/ColorScheme";
 import OptionsAction from "../../Actions/Options";
 import SelectedAction from "../../Actions/Selected";
-import SimilarityAction from "../../Actions/Similarity";
 import TagAction from "../../Actions/Tag";
 import ToggleSidebarAction from "../../Actions/ToggleSidebar";
 import PatchesAction from "./Patches";
@@ -35,10 +35,6 @@ const Patches = (props: AdaptiveMenuItemComponentPropsType) => (
   <PatchesAction adaptiveMenuItemProps={props} />
 );
 
-const Similarity = (props: AdaptiveMenuItemComponentPropsType) => (
-  <SimilarityAction modal={false} adaptiveMenuItemProps={props} />
-);
-
 const SaveFilters = (props: AdaptiveMenuItemComponentPropsType) => (
   <SaveFiltersAction adaptiveMenuItemProps={props} />
 );
@@ -56,6 +52,7 @@ const Options = (props: AdaptiveMenuItemComponentPropsType) => (
 );
 
 export default () => {
+  const { enabled: episodeSelection } = useGridSelectionDataset();
   const { placements: primaryPlacements } = useOperatorPlacements(
     types.Places.SAMPLES_GRID_ACTIONS,
   );
@@ -80,10 +77,6 @@ export default () => {
       {
         id: "patches",
         Component: Patches,
-      },
-      {
-        id: "similarity",
-        Component: Similarity,
       },
       {
         id: "save-filters",
@@ -129,8 +122,10 @@ export default () => {
           },
         };
       }),
-    ];
-  }, [primaryPlacements, secondaryPlacements]);
+    ].filter(
+      (item) => !episodeSelection || !["tag", "selected"].includes(item.id),
+    );
+  }, [primaryPlacements, secondaryPlacements, episodeSelection]);
   const { orderedItems, setOrder } = useItemsWithOrderPersistence(
     initialItems,
     "grid-actions-row",

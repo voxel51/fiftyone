@@ -53,7 +53,11 @@ export default ({ adaptiveMenuItemProps }: ActionProps) => {
 
         const unsubscribe = subscribe((_, { set, reset }) => {
           set(fos.savingFilters, false);
-          reset(fos.extendedSelection);
+          // The saved view now carries the selection. Cleared through the
+          // shared mechanism: a bare reset here runs in a transaction, where
+          // atom effects don't fire, so the fragment-read mirror would
+          // resurrect the selection on the refetch this save triggers
+          fos.resetExtendedSelectionTransaction({ set, reset });
           reset(fos.viewStateForm_INTERNAL);
           reset(fos.gridSortByStore(datasetId));
           reset(fos.gridSortDescendingStore(datasetId));
@@ -99,7 +103,6 @@ export default ({ adaptiveMenuItemProps }: ActionProps) => {
     <ActionDiv {...(getStringAndNumberProps(adaptiveMenuItemProps) || {})}>
       <PillButton
         open={false}
-        highlight={true}
         icon={loading ? <Loading /> : <Bookmark />}
         style={{ cursor: loading ? "default" : "pointer" }}
         onClick={saveFilters}

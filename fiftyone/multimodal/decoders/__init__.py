@@ -20,7 +20,6 @@ from .registry import (
     register_decoder,
 )
 
-
 __all__ = [
     "DecodedIngestFields",
     "DecodedIngestValue",

@@ -12,7 +12,6 @@ from enum import Enum
 from collections.abc import Generator
 from typing import Any, Literal, Optional, Union
 
-
 #: Maximum nesting depth allowed for a ``when`` condition tree. Mirrors the
 #: 20-level taxonomy depth limit cited in the PRD.
 MAX_CONDITION_DEPTH = 20

@@ -7,17 +7,101 @@ FiftyOne Server samples tests.
 """
 
 import unittest
+from unittest.mock import AsyncMock, Mock, patch
 
 import fiftyone as fo
-from fiftyone.server.samples import get_samples_pipeline
+import fiftyone.core.media as fom
+from fiftyone.server.samples import (
+    UnknownSample,
+    _create_sample_item,
+    get_samples_pipeline,
+)
 
 from decorators import drop_async_dataset
-
 
 F = fo.ViewField
 
 
 class ServerSamplesTests(unittest.IsolatedAsyncioTestCase):
+    async def test_multimodal_grid_skips_metadata_read(self):
+        collection = Mock(media_type=fom.MULTIMODAL)
+        sample = {"_id": "sample-id", "filepath": "scene.mcap"}
+        urls = [{"field": "filepath", "url": "media-url"}]
+
+        with patch(
+            "fiftyone.server.metadata._create_media_urls",
+            return_value=("scene.mcap", urls[0]["url"], urls),
+        ) as create_urls, patch(
+            "fiftyone.server.metadata.read_metadata",
+            new=AsyncMock(side_effect=AssertionError("unexpected read")),
+        ) as read_metadata:
+            node = await _create_sample_item(
+                collection,
+                sample,
+                {},
+                {},
+                pagination_data=True,
+                additional_media_fields=(None, None, []),
+            )
+
+        create_urls.assert_called_once()
+        read_metadata.assert_not_awaited()
+        self.assertIsInstance(node, UnknownSample)
+        self.assertEqual(node.id, "sample-id")
+        self.assertEqual(node.aspect_ratio, 1)
+        self.assertEqual(node.urls[0].field, "filepath")
+        self.assertEqual(node.urls[0].url, urls[0]["url"])
+
+    async def test_multimodal_modal_reads_metadata(self):
+        collection = Mock(media_type=fom.MULTIMODAL)
+        sample = {"_id": "sample-id", "filepath": "scene.mcap"}
+        urls = [{"field": "filepath", "url": "media-url"}]
+
+        with patch(
+            "fiftyone.server.metadata._create_media_urls",
+            return_value=("scene.mcap", urls[0]["url"], urls),
+        ), patch(
+            "fiftyone.server.metadata.read_metadata",
+            new=AsyncMock(return_value={"aspect_ratio": 2}),
+        ) as read_metadata:
+            node = await _create_sample_item(
+                collection,
+                sample,
+                {},
+                {},
+                pagination_data=False,
+                additional_media_fields=(None, None, []),
+            )
+
+        read_metadata.assert_awaited_once()
+        self.assertEqual(node.id, "sample-id-modal")
+        self.assertEqual(node.aspect_ratio, 2)
+        self.assertEqual(node.urls[0].url, urls[0]["url"])
+
+    async def test_unknown_grid_reads_metadata(self):
+        collection = Mock(media_type=fom.UNKNOWN)
+        sample = {"_id": "sample-id", "filepath": "scene.bin"}
+
+        with patch(
+            "fiftyone.server.metadata._create_media_urls",
+            return_value=("scene.bin", "media-url", []),
+        ), patch(
+            "fiftyone.server.metadata.read_metadata",
+            new=AsyncMock(return_value={"aspect_ratio": 3}),
+        ) as read_metadata:
+            node = await _create_sample_item(
+                collection,
+                sample,
+                {},
+                {},
+                pagination_data=True,
+                additional_media_fields=(None, None, []),
+            )
+
+        read_metadata.assert_awaited_once()
+        self.assertIsInstance(node, UnknownSample)
+        self.assertEqual(node.aspect_ratio, 3)
+
     @drop_async_dataset
     async def test_limited_frames_lookup(self, dataset: fo.Dataset):
         video = _add_video_sample(dataset)

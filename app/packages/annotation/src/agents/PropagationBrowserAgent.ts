@@ -1,3 +1,5 @@
+import { lerpRotation } from "@fiftyone/utilities";
+import type { SyntheticBox, SyntheticKeyframe } from "@fiftyone/utilities";
 import type {
   AnnotationAgent,
   AnnotationAgentLifecycle,
@@ -62,6 +64,10 @@ function generateObjectIdHex(): string {
  * Each emitted Detection carries `keyframe: false`, the propagation run's
  * provenance blob, and the shared `instance.id` from the source keyframes.
  */
+/** Narrows a propagation keyframe to the box geometry this agent lerps. */
+const isBoxKeyframe = (keyframe: SyntheticKeyframe): keyframe is SyntheticBox =>
+  Array.isArray((keyframe as SyntheticBox).bounding_box);
+
 export class PropagationBrowserAgent implements AnnotationAgent<PropagationInferenceResult> {
   private lifecycleStatus: AnnotationAgentLifecycleStatus = "idle";
   private readonly listeners = new Set<AnnotationAgentLifecycleListener>();
@@ -78,10 +84,30 @@ export class PropagationBrowserAgent implements AnnotationAgent<PropagationInfer
     this.setStatus("inferring");
 
     try {
+      // `parentKeyframes` spans both geometries propagation can lerp;
+      // `useVideoPropagate` resolves the agent from the field's label type, so a
+      // box keyframe is what reaches this agent. Narrow explicitly rather than
+      // asserting, so a future dispatch bug surfaces here instead of producing
+      // `undefined` coordinates.
       const [leftKeyframe, rightKeyframe] = context.parentKeyframes;
+
+      if (!isBoxKeyframe(leftKeyframe) || !isBoxKeyframe(rightKeyframe)) {
+        throw new Error(
+          "propagate-linear received a keyframe with no bounding box",
+        );
+      }
+
       const left: Bbox = leftKeyframe.bounding_box;
       const right: Bbox = rightKeyframe.bounding_box;
       const span: number = context.toFrame - context.fromFrame;
+
+      // oriented boxes: shortest-arc lerp of the scalar rotation; a keyframe
+      // without one interpolates against 0 (an unrotated box)
+      const hasRotation =
+        leftKeyframe.rotation !== undefined ||
+        rightKeyframe.rotation !== undefined;
+      const leftRotation = leftKeyframe.rotation ?? 0;
+      const rightRotation = rightKeyframe.rotation ?? 0;
 
       const perFrame: PropagationInferenceResult["perFrame"] = [];
       range(context.fromFrame + 1, context.toFrame).forEach((n) => {
@@ -90,6 +116,9 @@ export class PropagationBrowserAgent implements AnnotationAgent<PropagationInfer
           _id: generateObjectIdHex(),
           _cls: "Detection",
           bounding_box: lerpBbox(left, right, t),
+          ...(hasRotation
+            ? { rotation: lerpRotation(leftRotation, rightRotation, t) }
+            : {}),
           label: leftKeyframe.label,
           index: leftKeyframe.index,
           instance: { _cls: "Instance", _id: context.instanceId },

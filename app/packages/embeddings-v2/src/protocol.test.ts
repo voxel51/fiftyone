@@ -74,9 +74,23 @@ describe("buildIdIndex", () => {
 
     const map = buildIdIndex(bytes, 2);
     expect(map.size).toBe(2);
-    expect(map.get("000000000000000000000001")).toBe(0);
-    expect(map.get("000000000000000000000002")).toBe(1);
+    expect(map.get("000000000000000000000001")).toEqual([0]);
+    expect(map.get("000000000000000000000002")).toEqual([1]);
     expect(map.get("000000000000000000000000")).toBeUndefined();
+  });
+
+  it("collects every index sharing one id, not just the last", async () => {
+    // A multimodal run's points share one sample (episode) id across
+    // many windows — the map must keep all of them, in wire order
+    const { buildIdIndex } = await import("./protocol");
+    const bytes = new Uint8Array(36);
+    bytes[11] = 1; // id 0 ends ...01
+    bytes[23] = 1; // id 1 also ends ...01 (same episode, another window)
+    bytes[35] = 2; // id 2 ends ...02
+
+    const map = buildIdIndex(bytes, 3);
+    expect(map.get("000000000000000000000001")).toEqual([0, 1]);
+    expect(map.get("000000000000000000000002")).toEqual([2]);
   });
 });
 

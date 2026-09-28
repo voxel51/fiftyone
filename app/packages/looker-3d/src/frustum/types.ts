@@ -79,6 +79,10 @@ export interface FrustumGeometry {
  */
 export interface GroupStaticTransformResponse {
   group_id: string;
+  /** Whether any dataset- or sample-level static transforms are configured. */
+  has_static_transforms: boolean;
+  /** Resolution target returned by the endpoint. */
+  target_frame: string;
   results: {
     [sliceName: string]:
       | { staticTransform: StaticTransform | null }

@@ -12,6 +12,8 @@ export * from "./__generated__/sampleFieldsFragment.graphql";
 export * from "./__generated__/savedViewsFragment.graphql";
 export * from "./__generated__/savedViewsFragmentQuery.graphql";
 export * from "./__generated__/sidebarGroupsFragment.graphql";
+export * from "./__generated__/expressionCatalogFragment.graphql";
+export { default as expressionCatalogFragment } from "./expressionCatalogFragment";
 export * from "./__generated__/stageDefinitionsFragment.graphql";
 export * from "./__generated__/viewFragment.graphql";
 export * from "./__generated__/viewSchemaFragment.graphql";

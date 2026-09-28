@@ -20,6 +20,16 @@ export const dataset = foq.graphQLSyncFragmentAtom<
   },
 );
 
+/**
+ * Where each media source the browser addresses by path is, by source id.
+ * Read once per dataset load; a sample's assets name their source, so nothing
+ * repeats a location per page.
+ */
+export const mediaSources = selector<Readonly<Record<string, string>> | null>({
+  key: "mediaSources",
+  get: ({ get }) => get(dataset)?.mediaSources ?? null,
+});
+
 const estimatedCounts =
   foq.graphQLSyncFragmentAtom<foq.estimatedCountsFragment$key>(
     {

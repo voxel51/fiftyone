@@ -361,6 +361,46 @@ describe("readMcapRawMessageRecord", () => {
     expect(result.validUntilNs).toBe(3_000_000_000n);
   });
 
+  it("returns metadata without decoding or probing a successor", async () => {
+    const selectedEntry = indexedEntry({ logTimeNs: 2_000_000_000n });
+    const selected = createMessage(new Uint8Array([0xff, 0xfe, 0xfd]), {
+      logTime: 2_000_000_000n,
+    });
+    const readIndexedMessageTimes = vi.fn(async function* () {
+      yield indexedEntry({ logTimeNs: 3_000_000_000n });
+    });
+    const reader = createReader({
+      channel: createChannel({ messageEncoding: "json", topic: "/state" }),
+      messages: [],
+      readIndexedMessages: vi.fn(async () => [selected]),
+      readIndexedMessageTimes,
+      readLatestIndexedMessageTimes: async () =>
+        new Map([["/state", [selectedEntry]]]),
+    });
+
+    const result = await readMcapRawMessageRecord({
+      reader,
+      request: {
+        select: "metadata",
+        source: createSource(),
+        timeNs: 2_500_000_000n,
+        topic: "/state",
+      },
+      timeline,
+    });
+
+    expect(readIndexedMessageTimes).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      encodedPayloadBytes: 3,
+      logTimeNs: 2_000_000_000n,
+      status: "ok",
+      validFromNs: 2_000_000_000n,
+      validUntilNs: 2_000_000_001n,
+    });
+    expect(result.decodeError).toBeUndefined();
+    expect(result.root).toBeUndefined();
+  });
+
   it("materializes only the exact selected indexed entries", async () => {
     const source = createSource();
     const selectedEntry = indexedEntry({ logTimeNs: 2_000_000_000n });
@@ -522,6 +562,36 @@ describe("readMcapRawMessageRecord", () => {
         timeline,
       }),
     ).rejects.toMatchObject({ operation: "raw-record-message" });
+  });
+
+  it("reads metadata for an oversized indexed message without decoding", async () => {
+    const oversized = {
+      ...jsonMessage({ v: 1 }, 1n),
+      data: { byteLength: RAW_RECORD_MAX_MESSAGE_BYTES + 1 } as Uint8Array,
+    };
+    const reader = createReader({
+      channel: createChannel({ messageEncoding: "json", topic: "/state" }),
+      messages: [],
+      readIndexedMessages: async () => [oversized],
+      readLatestIndexedMessageTimes: async () =>
+        new Map([["/state", [indexedEntry({ logTimeNs: 1n })]]]),
+    });
+
+    const result = await readMcapRawMessageRecord({
+      reader,
+      request: {
+        select: "metadata",
+        source: createSource(),
+        timeNs: 1n,
+        topic: "/state",
+      },
+      timeline,
+    });
+
+    expect(result).toMatchObject({
+      encodedPayloadBytes: RAW_RECORD_MAX_MESSAGE_BYTES + 1,
+      status: "ok",
+    });
   });
 
   it("bounds validity to the probe horizon when no next message exists", async () => {

@@ -6,6 +6,36 @@ import { fieldPath, fields, isNumericField } from "./schema";
 import { datasetId } from "./selectors";
 import { State } from "./types";
 
+/** Presentation fit for media rendered inside square multimodal grid tiles. */
+export type MultimodalGridFit = "contain" | "cover";
+
+const multimodalGridFitStore = atomFamily<string, string>({
+  key: "multimodalGridFitStore",
+  default: "cover",
+  effects: (datasetId) => [
+    getBrowserStorageEffectForKey(`multimodalGridFit-${datasetId}`, {
+      valueClass: "string",
+    }),
+  ],
+});
+
+/** Validated grid fit for the active dataset, defaulting to Cover. */
+export const multimodalGridFit = selector<MultimodalGridFit>({
+  key: "multimodalGridFit",
+  get: ({ get }) => {
+    const value = get(multimodalGridFitStore(get(datasetId) ?? ""));
+    return value === "contain" ? "contain" : "cover";
+  },
+  set: ({ get, reset, set }, value) => {
+    const store = multimodalGridFitStore(get(datasetId) ?? "");
+    if (value instanceof DefaultValue) {
+      reset(store);
+      return;
+    }
+    set(store, value);
+  },
+});
+
 export const gridSortByStore = atomFamily<string, string>({
   key: "gridSortByStore",
   default: null,

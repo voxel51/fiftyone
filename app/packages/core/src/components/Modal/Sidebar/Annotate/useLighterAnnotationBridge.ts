@@ -4,6 +4,8 @@ import {
 } from "@fiftyone/annotation";
 import {
   useCurrentDatasetId,
+  useGetKeypointSkeleton,
+  useIsImageDynamicGroupVideo,
   useIsVideo,
   useModalSample,
 } from "@fiftyone/state";
@@ -17,28 +19,25 @@ import { useLighterInteractionPolicy } from "./useLighterInteractionPolicy";
 import { useSyncOverlayReadOnly } from "./useSyncOverlayReadOnly";
 
 /**
- * Mount the Lighter surface on the annotation engine: the bridge owns
- * overlay hydration, reconcile, gesture commits, and select/hover routing
- * (replacing the legacy `useLabels` hydration, `useSyncLighterSample`, and
- * focus/hover handlers). Scoped to the active schema paths — toggling
- * schemas re-creates the bridge (clear + rehydrate, the legacy reset
- * semantics). Selection policy (merge tool, draft lock, generated views)
- * is the modal's, injected via {@link useLighterInteractionPolicy}.
- *
- * Mount once at the annotation root, after `useSyncAnnotationEngine`.
+ * Mount the image Lighter surface on the annotation engine, scoped to the
+ * visible schema paths and disabled on video surfaces (which mount their own
+ * frame-stamping bridge). Mount once at the annotation root, after
+ * `useSyncAnnotationEngine`.
  */
 export const useLighterAnnotationBridge = (): void => {
   const engine = useAnnotationEngine();
+  // skeleton edges drive keypoint connections; stable across renders
+  const getSkeleton = useGetKeypointSkeleton();
   const modalSample = useModalSample();
   const active = useAtomValue(visibleLabelSchemas);
   const interactionPolicy = useLighterInteractionPolicy();
   const dataset = useCurrentDatasetId() ?? "";
 
-  // a video sample shares the global lighter scene atom but is owned by the
-  // video surface's own frame-locked bridge — disable this one so its handlers
-  // don't bind to the video tile's scene (the video bridge stamps the frame;
-  // this one would mis-route writes frame-agnostically)
+  // the video surface (a video sample or an image dynamic group video) mounts
+  // its own frame-stamping bridge; this frame-less one must stay off there
   const isVideo = useIsVideo();
+  const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
+  const isVideoSurface = isVideo || isImageDynamicGroupVideo;
 
   const sampleId = modalSample?.sample?._id ?? "";
 
@@ -97,7 +96,8 @@ export const useLighterAnnotationBridge = (): void => {
     paths,
     resolveMediaUrl,
     interactionPolicy,
-    enabled: !isVideo,
+    getSkeleton,
+    enabled: !isVideoSurface,
   });
 
   // overlay read-only flags are Lighter-surface state — owned here, off the

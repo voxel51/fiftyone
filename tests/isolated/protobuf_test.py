@@ -39,8 +39,14 @@ def _current_version(package):
 def test_incompatible_protobuf():
     original_version = _current_version("protobuf")
 
+    # googleapis-common-protos>=1.75.2 generates its pb2 files with a protoc
+    # that requires protobuf>=6.33.5 at import time, so it must be downgraded
+    # in lockstep to isolate the incompatibility to protobuf itself
+    original_protos_version = _current_version("googleapis-common-protos")
+
     try:
         _pip_install("protobuf==4.25.9")
+        _pip_install("googleapis-common-protos==1.75.1")
 
         env = os.environ.copy()
         env.pop("VFF_MULTIMODAL", None)
@@ -61,3 +67,10 @@ def test_incompatible_protobuf():
             _pip_uninstall("protobuf")
         else:
             _pip_install(f"protobuf=={original_version}")
+
+        if original_protos_version is None:
+            _pip_uninstall("googleapis-common-protos")
+        else:
+            _pip_install(
+                f"googleapis-common-protos=={original_protos_version}"
+            )

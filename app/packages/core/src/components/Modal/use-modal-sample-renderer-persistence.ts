@@ -2,6 +2,7 @@ import {
   createSampleRendererRenderContext,
   getComponent,
   getMatchingSampleRenderer,
+  hasSampleRendererSource,
   isSampleRendererModalPersistent,
   PluginComponentType,
   SampleRendererProps,
@@ -58,7 +59,7 @@ function usePersistenceKey(
   const matchedRenderer = getMatchingSampleRenderer(sampleRenderers, ctx);
   if (
     !matchedRenderer ||
-    !ctx.media.url ||
+    !hasSampleRendererSource(ctx.media) ||
     !getComponent<SampleRendererProps>(matchedRenderer.name) ||
     !isSampleRendererModalPersistent(matchedRenderer)
   ) {

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useSyncExternalStore } from "react";
 import type { ByteSourceDescriptor } from "../../ir";
 import {
   getSourceBootstrap,
-  getSourceBootstrapSnapshot,
+  peekSourceBootstrap,
   subscribeSourceBootstrap,
   type SourceBootstrap,
 } from "../source-bootstrap-cache";
@@ -21,7 +21,7 @@ export function useSourceBootstrap(
     [source],
   );
   const getSnapshot = useCallback(
-    () => (source ? getSourceBootstrapSnapshot(source) : null),
+    () => (source ? peekSourceBootstrap(source) : null),
     [source],
   );
   const bootstrap = useSyncExternalStore(

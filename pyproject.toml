@@ -8,6 +8,12 @@ exclude = '''
   | \.git
 )/
 '''
+extend-exclude = '''
+/(
+  docs/theme
+  | __generated__
+)/
+'''
 [tool.isort]
 profile = "black"
 line_length = 79

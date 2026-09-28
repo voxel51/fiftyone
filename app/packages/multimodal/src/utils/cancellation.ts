@@ -20,3 +20,29 @@ export function throwIfAborted(
     throw createAbortError(message);
   }
 }
+
+/** Links an epoch signal with one optional request signal. */
+export function linkAbortSignals(
+  epochSignal: AbortSignal,
+  requestSignal?: AbortSignal,
+): { readonly cleanup: () => void; readonly signal: AbortSignal } {
+  if (!requestSignal) {
+    return { cleanup: () => undefined, signal: epochSignal };
+  }
+
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  if (epochSignal.aborted || requestSignal.aborted) {
+    controller.abort();
+  } else {
+    epochSignal.addEventListener("abort", abort, { once: true });
+    requestSignal.addEventListener("abort", abort, { once: true });
+  }
+  return {
+    cleanup: () => {
+      epochSignal.removeEventListener("abort", abort);
+      requestSignal.removeEventListener("abort", abort);
+    },
+    signal: controller.signal,
+  };
+}

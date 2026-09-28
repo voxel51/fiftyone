@@ -5,6 +5,10 @@ FiftyOne Command-Line Interface (CLI)
 
 .. default-role:: code
 
+.. meta::
+    :description: Reference for the fiftyone command-line interface,
+        including dataset management, App control, and config commands.
+
 Installing FiftyOne automatically installs `fiftyone`, a command-line interface
 (CLI) for interacting with FiftyOne. This utility provides access to many
 useful features, including creating and inspecting datasets, visualizing
@@ -18,13 +22,13 @@ Quickstart
 
 To see the available top-level commands, type:
 
-.. code-block:: text
+.. code-block:: shell
 
     fiftyone --help
 
 You can learn more about any available subcommand via:
 
-.. code-block:: text
+.. code-block:: shell
 
     fiftyone <command> --help
 
@@ -1595,7 +1599,7 @@ Creates or initializes a plugin.
 
 **Examples**
 
-.. code-block:: text
+.. code-block:: shell
 
     # Initialize a new plugin
     fiftyone plugins create <name>

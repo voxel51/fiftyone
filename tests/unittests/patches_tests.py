@@ -5,6 +5,7 @@ FiftyOne patches-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from copy import deepcopy
 from datetime import datetime
 

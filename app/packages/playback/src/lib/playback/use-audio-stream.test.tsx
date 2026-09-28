@@ -13,8 +13,11 @@ import { PlaybackProvider, usePlaybackStore } from "./PlaybackProvider";
 import {
   getAudioAvailable,
   getAudioMuted,
+  getAudioTracks,
   setAudioMuted,
   setAudioVolume,
+  setTrackMuted,
+  setTrackVolume,
 } from "./store-access";
 import {
   audioBufferReadiness,
@@ -286,7 +289,7 @@ describe("useAudioStream (provider integration)", () => {
     vi.unstubAllGlobals();
   });
 
-  function renderAudio(options: { enabled?: boolean } = {}) {
+  function renderAudio(options: { enabled?: boolean; label?: string } = {}) {
     return renderHook(
       () => {
         const store = usePlaybackStore();
@@ -528,6 +531,43 @@ describe("useAudioStream (provider integration)", () => {
     expect(el.playbackRate).toBe(2);
     expect(el.volume).toBe(0.3);
     expect(el.muted).toBe(false);
+  });
+
+  it("applies effective volume/mute from this track's own fader combined with master", () => {
+    const { result } = renderAudio();
+    const el = created[0];
+    act(() => el._fire("loadedmetadata"));
+
+    // master is muted by default (session start); a per-track mute of
+    // `false` must not override that — either fader can silence the track.
+    act(() => setTrackMuted(result.current.store, "audio", false));
+    expect(el.muted).toBe(true);
+
+    act(() => {
+      setAudioMuted(result.current.store, false); // unmute master
+      setAudioVolume(result.current.store, 0.5); // master volume
+      setTrackVolume(result.current.store, "audio", 0.4); // this track's own fader
+    });
+    expect(el.muted).toBe(false);
+    expect(el.volume).toBeCloseTo(0.2); // 0.5 * 0.4
+
+    // muting just this track silences it even though master stays unmuted
+    act(() => setTrackMuted(result.current.store, "audio", true));
+    expect(el.muted).toBe(true);
+  });
+
+  it("registers itself in the audio-track roster while available, unregisters on unmount", () => {
+    const { result, unmount } = renderAudio({ label: "Sample audio" });
+    expect(getAudioTracks(result.current.store)).toEqual([]);
+
+    const el = created[0];
+    act(() => el._fire("loadedmetadata"));
+    expect(getAudioTracks(result.current.store)).toEqual([
+      { id: "audio", label: "Sample audio", kind: "native-element" },
+    ]);
+
+    unmount();
+    expect(getAudioTracks(result.current.store)).toEqual([]);
   });
 
   it("releases the media resource and availability on unmount", () => {

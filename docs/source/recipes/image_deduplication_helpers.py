@@ -19,6 +19,7 @@ A random 5% of the samples are duplicates, instead of the original samples.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import os
 import random
 
@@ -29,7 +30,6 @@ import fiftyone.utils.image as foui
 
 fou.ensure_tf()
 from tensorflow.keras.datasets import cifar100  # pylint: disable=import-error
-
 
 DATASET_SIZE = 1000
 DATASET_DIR = os.path.join("/tmp/fiftyone/cifar100_with_duplicates")

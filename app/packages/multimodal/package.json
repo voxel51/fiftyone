@@ -17,9 +17,13 @@
         "./query/decoding": "./src/query/decoding/index.ts",
         "./decoders": "./src/decoders/index.ts",
         "./temporal-tags": "./src/temporal-tags/index.ts",
-        "./temporal-tags/grid-overlay": "./src/temporal-tags/TemporalTagGridOverlay.tsx",
+        "./grid-overlay": "./src/grid-overlay/index.ts",
         "./inject": "./src/inject/index.ts",
+        "./extensions/episode-actions": "./src/extensions/episode-actions/index.ts",
+        "./extensions/grid-posters": "./src/extensions/grid-posters/index.ts",
         "./extensions/mcap-explorer": "./src/extensions/mcap-explorer/index.ts",
+        "./extensions/sidebar-tray": "./src/extensions/sidebar-tray/index.ts",
+        "./extensions/episode-intervals": "./src/extensions/episode-intervals/index.ts",
         "./extensions/timeline": "./src/extensions/timeline/index.ts",
         "./extensions/timeline/runtime": "./src/extensions/timeline/runtime.ts",
         "./extensions/tiles": "./src/extensions/tiles/index.ts",
@@ -28,7 +32,8 @@
         "./visualization": "./src/visualization/index.ts",
         "./visualization/composition": "./src/visualization/composition/index.ts",
         "./visualization/media-2d": "./src/visualization/media-2d/ImagePanel.tsx",
-        "./visualization/scene-3d": "./src/visualization/scene-3d/index.ts"
+        "./visualization/scene-3d": "./src/visualization/scene-3d/index.ts",
+        "./extensions/grid-selection": "./src/extensions/grid-selection/index.ts"
     },
     "typesVersions": {
         "*": {
@@ -56,8 +61,8 @@
             "temporal-tags": [
                 "src/temporal-tags/index.ts"
             ],
-            "temporal-tags/grid-overlay": [
-                "src/temporal-tags/TemporalTagGridOverlay.tsx"
+            "grid-overlay": [
+                "src/grid-overlay/index.ts"
             ],
             "query": [
                 "src/query/index.ts"
@@ -71,8 +76,20 @@
             "inject": [
                 "src/inject/index.ts"
             ],
+            "extensions/episode-actions": [
+                "src/extensions/episode-actions/index.ts"
+            ],
+            "extensions/grid-posters": [
+                "src/extensions/grid-posters/index.ts"
+            ],
             "extensions/mcap-explorer": [
                 "src/extensions/mcap-explorer/index.ts"
+            ],
+            "extensions/sidebar-tray": [
+                "src/extensions/sidebar-tray/index.ts"
+            ],
+            "extensions/episode-intervals": [
+                "src/extensions/episode-intervals/index.ts"
             ],
             "extensions/timeline": [
                 "src/extensions/timeline/index.ts"
@@ -100,6 +117,9 @@
             ],
             "visualization/scene-3d": [
                 "src/visualization/scene-3d/index.ts"
+            ],
+            "extensions/grid-selection": [
+                "src/extensions/grid-selection/index.ts"
             ]
         }
     },
@@ -137,9 +157,10 @@
         "colormap": "catalog:",
         "date-fns": "^4.1.0",
         "hyparquet": "^1.26.2",
+        "hyparquet-compressors": "^1.1.1",
         "jotai": "catalog:",
         "lru-cache": "catalog:",
-        "maplibre-gl": "^4.7.1",
+        "maplibre-gl": "^6.0.0",
         "meshoptimizer": "^0.22.0",
         "mp4box": "^2.4.1",
         "protobufjs": "^7.6.4",
@@ -151,6 +172,7 @@
         "@types/three": "^0.182.0",
         "babel-plugin-relay": "catalog:",
         "concurrently": "^7.2.1",
+        "fake-indexeddb": "^6.2.5",
         "react": "catalog:",
         "react-dom": "catalog:",
         "react-error-boundary": "catalog:",

@@ -121,6 +121,42 @@ describe("buildSyntheticSceneForDirect3dSamples", () => {
     ]);
   });
 
+  it("places grouped PCD nodes in their resolved world frames", () => {
+    const sampleMap = {
+      lidar_left: buildModalSample("/tmp/group/left.pcd"),
+      lidar_right: buildModalSample("/tmp/group/right.pcd"),
+    };
+
+    const scene = buildSyntheticSceneForDirect3dSamples({
+      sample: sampleMap.lidar_left,
+      mediaField: "filepath",
+      sampleMap,
+      worldTransformsBySlice: {
+        lidar_left: {
+          translation: [-3, 0, 0],
+          quaternion: [0, 0, 0, 1],
+        },
+        lidar_right: {
+          translation: [3, 0, 0],
+          quaternion: [0, 0, Math.SQRT1_2, Math.SQRT1_2],
+        },
+      },
+    });
+
+    expect(scene.children).toEqual([
+      expect.objectContaining({
+        name: "lidar_left",
+        position: [-3, 0, 0],
+        quaternion: [0, 0, 0, 1],
+      }),
+      expect.objectContaining({
+        name: "lidar_right",
+        position: [3, 0, 0],
+        quaternion: [0, 0, Math.SQRT1_2, Math.SQRT1_2],
+      }),
+    ]);
+  });
+
   it("returns null for unsupported direct assets", () => {
     const scene = buildSyntheticSceneForDirect3dSamples({
       sample: buildModalSample("/tmp/lidar/frame.obj"),

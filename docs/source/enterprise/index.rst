@@ -3,6 +3,10 @@
 FiftyOne Enterprise
 ===================
 
+.. meta::
+    :description: FiftyOne Enterprise adds multiuser collaboration, cloud
+        data support, on-demand compute, and more to open-source FiftyOne.
+
 .. Social links ---------------------------------------------------------------
 
 .. raw:: html

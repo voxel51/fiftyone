@@ -9,6 +9,7 @@ import {
   getSampleRendererComponent,
   getSelectedMediaPath,
   hasMatchMediaMatchers,
+  hasSampleRendererSource,
   isSampleRendererGridEnabled,
   matchesMatchMedia,
   SAMPLE_RENDERER_GRID_SLOT,
@@ -173,6 +174,44 @@ describe("sample renderer matcher utilities", () => {
     expect(ctx.surface).toBe("modal");
   });
 
+  it("builds a pathless media-reference context without a native looker", () => {
+    const media = createSampleRendererMediaContext(
+      {
+        sample: {
+          _id: "episode",
+          media_reference: {
+            _cls: "LeRobotEpisodeReference",
+            key: "lerobot-source/0",
+          },
+          _media_type: "multimodal",
+        },
+      },
+      "media_reference",
+    );
+
+    expect(media).toMatchObject({
+      extension: null,
+      isNative: false,
+      mediaReference: {
+        _cls: "LeRobotEpisodeReference",
+        key: "lerobot-source/0",
+      },
+      mediaType: "multimodal",
+      path: null,
+      url: null,
+    });
+    expect(hasSampleRendererSource(media)).toBe(true);
+    expect(matchesMatchMedia({ mediaTypes: ["MULTIMODAL"] }, media)).toBe(true);
+
+    const filepathMedia = createSampleRendererMediaContext(
+      createSample(),
+      "filepath",
+    );
+    expect(
+      matchesMatchMedia({ mediaTypes: ["multimodal"] }, filepathMedia),
+    ).toBe(false);
+  });
+
   it("detects matcher presence only when a matcher field is populated", () => {
     expect(hasMatchMediaMatchers(undefined)).toBe(false);
     expect(hasMatchMediaMatchers({})).toBe(false);
@@ -236,6 +275,30 @@ describe("sample renderer selection", () => {
     });
 
     expect(supportsSampleRenderer(registration, ctx)).toBe(true);
+  });
+
+  it("selects a media-reference renderer without a filepath or URL", () => {
+    const ctx = createSampleRendererRenderContext(
+      {
+        sample: {
+          _id: "episode",
+          media_reference: {
+            _cls: "LeRobotEpisodeReference",
+            key: "lerobot-source/0",
+          },
+          _media_type: "multimodal",
+        },
+      },
+      "media_reference",
+      dataset,
+      schema,
+      "modal",
+    );
+    const registration = createRegistration("logical-episode", {
+      supports: (candidate) => candidate.media.mediaReference != null,
+    });
+
+    expect(getMatchingSampleRenderer([registration], ctx)).toBe(registration);
   });
 
   it("supports predicate matchers", () => {

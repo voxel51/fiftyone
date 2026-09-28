@@ -93,6 +93,11 @@ export const useImavidModalSelectiveRendering = (
   }, [lookerOptions]);
 };
 
+/**
+ * Refresh the video looker when the sidebar activates a field it has not
+ * painted yet. The video looker keeps painted frames in a buffer, so there
+ * is no per-field refresh — a new field means re-processing the buffer.
+ */
 export const useVideoModalSelectiveRendering = (
   id: string,
   looker: VideoLooker,
@@ -108,12 +113,8 @@ export const useVideoModalSelectiveRendering = (
       return;
     }
 
-    const newFieldsIfAny = getNewFields(id);
-
-    if (newFieldsIfAny) {
-      // todo: no granular refreshing for video looker
-      // it'd require selective re-processing of frames in the buffer
-      looker?.refreshSample();
+    if (getNewFields(id)) {
+      looker.refreshSample();
     }
   }, [id, lookerOptions.activePaths, looker, getNewFields]);
 };

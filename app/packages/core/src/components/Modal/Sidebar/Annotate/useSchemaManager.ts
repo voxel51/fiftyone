@@ -1,5 +1,6 @@
 import { useOperatorExecutor } from "@fiftyone/operators";
 import { useCallback, useMemo } from "react";
+import type { ClassesComponent } from "./SchemaManager/constants";
 import type { AttributeConfig, SchemaConfigType } from "./SchemaManager/utils";
 
 /**
@@ -140,6 +141,8 @@ export type LabelSchemaConfig = {
   classes?: string[];
   attributes?: AttributeConfig[];
   new_attributes?: AttributeConfig[];
+  /** Input type for the classes; omitted = the operator picks by class count */
+  component?: ClassesComponent;
 };
 
 export type CreateAndActivateFieldRequest = {

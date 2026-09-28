@@ -141,11 +141,31 @@ export abstract class BaseOverlay<
     renderer: Renderer2D,
     style: DrawStyle | null,
     meta: RenderMeta,
-  ): void | Promise<void> {
+  ): void {
     // Store the current style for use in other methods
     this.currentStyle = style || undefined;
 
-    this.renderImpl(renderer, meta);
+    // Open a rebuild pass around the paint so `renderImpl` can redraw
+    // declaratively — list your draws, top to bottom — while the renderer
+    // reuses the display objects the last pass left behind and discards
+    // whatever this one did not reach. Wrapping here rather than inside each
+    // `renderImpl` is what makes the early returns (`if (!style) return`)
+    // safe: the pass still closes.
+    //
+    // A pass opens and closes within ONE `render` call, which is why
+    // `renderImpl` is synchronous. The cursor is per CONTAINER, not per call,
+    // so an async `renderImpl` that awaited between draws could have a
+    // re-render reset its cursor to 0 mid-list and then delete it out from
+    // under the newer pass. `finally` covers the other half: a throwing
+    // `renderImpl` is caught upstream by `executeOverlayRender`, and leaving
+    // the pass open would strand the cursor and every slot past it.
+    renderer.beginRebuild(this.containerId);
+
+    try {
+      this.renderImpl(renderer, meta);
+    } finally {
+      renderer.endRebuild(this.containerId);
+    }
   }
 
   /**
@@ -153,10 +173,7 @@ export abstract class BaseOverlay<
    * @param renderer - The renderer to use for drawing.
    * @param meta - Rendering metadata containing canonical media bounds and overlay index.
    */
-  protected abstract renderImpl(
-    renderer: Renderer2D,
-    meta: RenderMeta,
-  ): void | Promise<void>;
+  protected abstract renderImpl(renderer: Renderer2D, meta: RenderMeta): void;
 
   /**
    * Gets the current draw style used for this overlay.

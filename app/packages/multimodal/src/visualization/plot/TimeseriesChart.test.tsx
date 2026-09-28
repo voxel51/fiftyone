@@ -176,19 +176,18 @@ describe("TimeseriesChart interactions", () => {
     fireEvent.click(screen.getByLabelText("Zoom in"));
     expect(resetZoom.getAttribute("data-active")).toBe("true");
     expect(chart.scales.x).toEqual({ min: 2, max: 18 });
-    expect(chart.scales.y).toEqual({ min: 1, max: 9 });
+    // No samples fall inside [2, 18], so the previous fitted y domain stays.
+    expect(chart.scales.y.min).toBeCloseTo(0.95, 6);
+    expect(chart.scales.y.max).toBeCloseTo(2.05, 6);
     expect(chart.setScale).toHaveBeenCalledWith("x", {
       min: 2,
       max: 18,
     });
-    expect(chart.setScale).toHaveBeenCalledWith("y", {
-      min: 1,
-      max: 9,
-    });
 
     fireEvent.click(screen.getByLabelText("Zoom out"));
     expect(chart.scales.x).toEqual({ min: 0, max: 20 });
-    expect(chart.scales.y).toEqual({ min: 0, max: 10 });
+    expect(chart.scales.y.min).toBeCloseTo(0.95, 6);
+    expect(chart.scales.y.max).toBeCloseTo(2.05, 6);
 
     chart.setData.mockClear();
     chart.over.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
@@ -265,7 +264,7 @@ describe("TimeseriesChart interactions", () => {
     unmount();
   });
 
-  it("keeps the y domain stable while progressive data fills", () => {
+  it("auto-fits the y domain when coherent data changes", () => {
     const { rerender, unmount } = renderChart();
     const chart = lastChart();
     chart.setScale.mockClear();
@@ -283,8 +282,8 @@ describe("TimeseriesChart interactions", () => {
       />,
     );
     expect(chart.setScale).toHaveBeenLastCalledWith("y", {
-      max: 10,
-      min: 0,
+      max: 5.05,
+      min: 3.95,
     });
 
     const wider = [
@@ -302,6 +301,66 @@ describe("TimeseriesChart interactions", () => {
     expect(chart.setScale).toHaveBeenLastCalledWith("y", {
       max: 32.5,
       min: -22.5,
+    });
+    unmount();
+  });
+
+  it("sources the stable y domain from the intended window, not mid-commit scales", () => {
+    const { rerender, unmount } = renderChart();
+    const chart = lastChart();
+    // Simulate uPlot mid-commit: the x scale reads as a degenerate window
+    // while newly published data arrives. The y domain must come from the
+    // intended follow window, never from this transient scale state.
+    chart.scales.x.min = 0;
+    chart.scales.x.max = 0;
+    chart.setScale.mockClear();
+
+    const arrived = [
+      [0, 10, 20],
+      [1, -80, 90],
+    ] as AlignedData;
+    rerender(
+      <TimeseriesChart
+        {...FOLLOW_POLICY_PROPS}
+        data={arrived}
+        durationSec={20}
+        series={[{ color: "#f00", label: "speed" }]}
+      />,
+    );
+    const lastY = chart.setScale.mock.calls
+      .filter((call) => call[0] === "y")
+      .at(-1)?.[1] as { max: number; min: number };
+    expect(lastY.min).toBeLessThanOrEqual(-80);
+    expect(lastY.max).toBeGreaterThanOrEqual(90);
+    unmount();
+  });
+
+  it("excludes finite values outside coherent coverage from the y domain", () => {
+    const coveredData = [
+      [0, 5, 10, 15],
+      [1, 3, 5, 1_000],
+    ] as AlignedData;
+    const { unmount } = render(
+      <TimeseriesChart
+        {...FOLLOW_POLICY_PROPS}
+        coverageRanges={[{ endSec: 10, startSec: 0 }]}
+        data={coveredData}
+        durationSec={20}
+        series={[{ color: "#f00", label: "speed" }]}
+      />,
+    );
+    const chart = lastChart();
+    expect(chart.setScale).toHaveBeenLastCalledWith("y", {
+      max: 5.2,
+      min: 0.8,
+    });
+
+    chart.scales.x.min = 5;
+    chart.scales.x.max = 10;
+    runHooks(chart.options.hooks?.setScale, chart, "x");
+    expect(chart.setScale).toHaveBeenLastCalledWith("y", {
+      max: 5.1,
+      min: 2.9,
     });
     unmount();
   });

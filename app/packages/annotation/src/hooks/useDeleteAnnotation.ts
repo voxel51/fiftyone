@@ -69,6 +69,8 @@ export const useDeleteAnnotation = (): ((
         // this transaction pushes so a rejected persist can restore the label
         // (and drop the entry). A gesture delete (merge) carries a gestureId and
         // the gesture owns its own rollback, so we don't capture one here.
+        // The rollback runs inside the queued persist (`onFailure`), before any
+        // persist queued behind this one reads the engine.
         let rollback: ReturnType<typeof engine.lastUndoEntry>;
 
         if (options?.gestureId) {
@@ -87,28 +89,26 @@ export const useDeleteAnnotation = (): ((
         // usePersistenceEventHandler's success/error dispatch so the shared
         // activity toast reflects the result, and rethrow so callers (e.g. the
         // merge tool) can roll back on failure.
+        // restore the label the server refused to delete (a later autosave
+        // re-attempts under retry-by-default)
+        const onFailure = () => {
+          if (rollback) {
+            engine.rollbackEntry(rollback);
+          }
+        };
+
         let success: boolean;
         try {
-          success = (await persistAnnotationDeltas()) !== false;
+          success = (await persistAnnotationDeltas({ onFailure })) !== false;
 
           if (success) {
             eventBus.dispatch("annotation:persistenceSuccess");
           } else {
-            // restore the label the server refused to delete (a later autosave
-            // re-attempts under retry-by-default)
-            if (rollback) {
-              engine.rollbackEntry(rollback);
-            }
-
             eventBus.dispatch("annotation:persistenceError", {
               error: new Error("Server rejected changes"),
             });
           }
         } catch (error) {
-          if (rollback) {
-            engine.rollbackEntry(rollback);
-          }
-
           eventBus.dispatch("annotation:persistenceError", {
             error: error as Error,
           });

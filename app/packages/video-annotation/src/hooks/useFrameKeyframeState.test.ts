@@ -10,17 +10,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // Capture annotation event callbacks so tests can fire them directly. The
 // `useFrameLabelsStream` mock is rebound per test so we can simulate "stream
 // not ready".
-const { annotationHandlers, getLabelMock, streamRef, sampleIdRef } = vi.hoisted(
-  () => ({
+const { annotationHandlers, getLabelMock, streamRef, sampleIdRef, activeRefs } =
+  vi.hoisted(() => ({
     annotationHandlers: new Map<string, (payload: unknown) => void>(),
     getLabelMock: vi.fn(),
     streamRef: { current: null as unknown },
     sampleIdRef: { current: "sample-1" as string | null },
-  }),
-);
+    // Active interaction refs — the hook resolves the selected track's own field
+    // from these so a non-primary field (e.g. a polyline) reads the right label.
+    activeRefs: { current: [] as Array<{ instanceId: string; path: string }> },
+  }));
 
 vi.mock("@fiftyone/annotation", () => ({
-  useAnnotationEngine: () => ({ getLabel: getLabelMock }),
+  useAnnotationEngine: () => ({
+    getLabel: getLabelMock,
+    interaction: { getActive: () => activeRefs.current },
+  }),
   useActiveSampleId: () => sampleIdRef.current,
   useAnnotationEventHandler: (
     event: string,
@@ -28,10 +33,6 @@ vi.mock("@fiftyone/annotation", () => ({
   ) => {
     annotationHandlers.set(event, cb);
   },
-}));
-
-vi.mock("@fiftyone/playback", () => ({
-  frameAt: (time: number, fps: number) => Math.floor(time * fps) + 1,
 }));
 
 vi.mock("../streams/frameLabelsStream", () => ({
@@ -46,12 +47,9 @@ const fire = (event: string, payload: unknown) =>
 beforeEach(() => {
   annotationHandlers.clear();
   getLabelMock.mockReset();
-  streamRef.current = {
-    fps: 30,
-    totalFrames: 100,
-    labelsField: "detections",
-  };
+  streamRef.current = { labelsPath: "frames.detections" };
   sampleIdRef.current = "sample-1";
+  activeRefs.current = [];
 });
 
 afterEach(() => {
@@ -60,26 +58,32 @@ afterEach(() => {
 
 describe("useFrameKeyframeState", () => {
   it("returns false with no selection", () => {
-    const { result } = renderHook(() => useFrameKeyframeState([], 0));
+    const { result } = renderHook(() => useFrameKeyframeState([], 1));
     expect(result.current).toBe(false);
     expect(getLabelMock).not.toHaveBeenCalled();
   });
 
   it("returns false with multi-selection", () => {
-    const { result } = renderHook(() => useFrameKeyframeState(["a", "b"], 0));
+    const { result } = renderHook(() => useFrameKeyframeState(["a", "b"], 1));
     expect(result.current).toBe(false);
     expect(getLabelMock).not.toHaveBeenCalled();
   });
 
   it("returns false when stream is not ready", () => {
     streamRef.current = null;
-    const { result } = renderHook(() => useFrameKeyframeState(["a"], 0));
+    const { result } = renderHook(() => useFrameKeyframeState(["a"], 1));
     expect(result.current).toBe(false);
   });
 
-  it("returns true when the selected track has a keyframe at the playhead", () => {
+  it("returns false before the frame is known", () => {
+    const { result } = renderHook(() => useFrameKeyframeState(["a"], -1));
+    expect(result.current).toBe(false);
+    expect(getLabelMock).not.toHaveBeenCalled();
+  });
+
+  it("returns true when the selected track has a keyframe at the frame", () => {
     getLabelMock.mockReturnValue({ keyframe: true });
-    const { result } = renderHook(() => useFrameKeyframeState(["a"], 0));
+    const { result } = renderHook(() => useFrameKeyframeState(["a"], 1));
     expect(result.current).toBe(true);
     expect(getLabelMock).toHaveBeenCalledWith({
       sample: "sample-1",
@@ -91,19 +95,19 @@ describe("useFrameKeyframeState", () => {
 
   it("returns false when the detection on this frame has keyframe=false", () => {
     getLabelMock.mockReturnValue({ keyframe: false });
-    const { result } = renderHook(() => useFrameKeyframeState(["a"], 0));
+    const { result } = renderHook(() => useFrameKeyframeState(["a"], 1));
     expect(result.current).toBe(false);
   });
 
   it("returns false when there is no detection at the frame", () => {
     getLabelMock.mockReturnValue(undefined);
-    const { result } = renderHook(() => useFrameKeyframeState(["a"], 0));
+    const { result } = renderHook(() => useFrameKeyframeState(["a"], 1));
     expect(result.current).toBe(false);
   });
 
   it("re-reads the engine on annotation:keyframeChanged", () => {
     getLabelMock.mockReturnValueOnce({ keyframe: false });
-    const { result } = renderHook(() => useFrameKeyframeState(["a"], 0));
+    const { result } = renderHook(() => useFrameKeyframeState(["a"], 1));
     expect(result.current).toBe(false);
 
     getLabelMock.mockReturnValue({ keyframe: true });
@@ -113,7 +117,7 @@ describe("useFrameKeyframeState", () => {
 
   it("re-reads the engine on annotation:labelEdit", () => {
     getLabelMock.mockReturnValueOnce({ keyframe: true });
-    const { result } = renderHook(() => useFrameKeyframeState(["a"], 0));
+    const { result } = renderHook(() => useFrameKeyframeState(["a"], 1));
     expect(result.current).toBe(true);
 
     getLabelMock.mockReturnValue({ keyframe: false });
@@ -121,16 +125,56 @@ describe("useFrameKeyframeState", () => {
     expect(result.current).toBe(false);
   });
 
-  it("re-evaluates when selection / playhead changes", () => {
+  it("re-evaluates when selection / frame changes", () => {
     getLabelMock.mockReturnValue({ keyframe: true });
     const { result, rerender } = renderHook(
-      ({ ids, t }: { ids: string[]; t: number }) =>
-        useFrameKeyframeState(ids, t),
-      { initialProps: { ids: ["a"], t: 0 } },
+      ({ ids, frame }: { ids: string[]; frame: number }) =>
+        useFrameKeyframeState(ids, frame),
+      { initialProps: { ids: ["a"], frame: 1 } },
     );
     expect(result.current).toBe(true);
 
-    rerender({ ids: [], t: 0 });
+    rerender({ ids: [], frame: 1 });
     expect(result.current).toBe(false);
+  });
+
+  it("reads the selected track's own field, not the stream's primary", () => {
+    activeRefs.current = [{ instanceId: "a", path: "frames.polylines" }];
+    getLabelMock.mockImplementation(({ path }: { path: string }) =>
+      path === "frames.polylines" ? { keyframe: true } : { keyframe: false },
+    );
+
+    const { result } = renderHook(() => useFrameKeyframeState(["a"], 1));
+
+    expect(result.current).toBe(true);
+    expect(getLabelMock).toHaveBeenCalledWith(
+      expect.objectContaining({ path: "frames.polylines" }),
+    );
+  });
+
+  it("falls back to the primary field when the track has no active ref", () => {
+    activeRefs.current = [{ instanceId: "other", path: "frames.polylines" }];
+    getLabelMock.mockReturnValue({ keyframe: true });
+
+    const { result } = renderHook(() => useFrameKeyframeState(["a"], 1));
+
+    expect(result.current).toBe(true);
+    expect(getLabelMock).toHaveBeenCalledWith(
+      expect.objectContaining({ path: "frames.detections" }),
+    );
+  });
+
+  it("reads the bare primary path in a dynamic group video", () => {
+    // each frame is a member image, so the stream's primary path has no
+    // `frames.` prefix; a hardcoded one would read a field that does not exist
+    streamRef.current = { labelsPath: "detections" };
+    getLabelMock.mockReturnValue({ keyframe: true });
+
+    const { result } = renderHook(() => useFrameKeyframeState(["a"], 1));
+
+    expect(result.current).toBe(true);
+    expect(getLabelMock).toHaveBeenCalledWith(
+      expect.objectContaining({ path: "detections" }),
+    );
   });
 });

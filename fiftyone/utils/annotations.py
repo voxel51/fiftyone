@@ -5,6 +5,7 @@ Annotation utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import defaultdict, OrderedDict
 from copy import deepcopy
 import getpass
@@ -29,7 +30,6 @@ import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 import fiftyone.utils.eta as foue
 import fiftyone.utils.image as foui
-
 
 logger = logging.getLogger(__name__)
 

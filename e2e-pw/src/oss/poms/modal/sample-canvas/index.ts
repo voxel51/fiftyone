@@ -3,6 +3,12 @@ import type { EventUtils } from "src/shared/event-utils";
 import { ToolbarPom } from "./toolbar";
 import { TooltipPom } from "./tooltip";
 
+/**
+ * A corner of the canvas, clear of anything these tests draw around the
+ * center. Used by {@link SampleCanvasPom.clickEmptyArea}.
+ */
+const EMPTY_AREA = 0.05;
+
 export interface Box {
   x: number;
   y: number;
@@ -84,6 +90,14 @@ export class SampleCanvasPom {
     this.#mouseX = xy.x;
     this.#mouseY = xy.y;
     await this.page.mouse.click(xy.x, xy.y);
+  }
+
+  /**
+   * Click a part of the canvas with nothing drawn on it. In segmentation mode
+   * with the Select tool this is the deselect gesture.
+   */
+  async clickEmptyArea() {
+    await this.click(EMPTY_AREA, EMPTY_AREA);
   }
 
   /**
@@ -224,6 +238,24 @@ export class SampleCanvasPom {
     for (let i = 0; i < Math.abs(steps); i++) {
       await this.page.mouse.wheel(0, deltaY);
     }
+  }
+
+  /**
+   * Wait for a drawing tool to be armed on the scene.
+   *
+   * `Scene2D.enterInteractiveMode` stamps the installed handler's own cursor
+   * onto the canvas as it installs it, and that install happens in a React
+   * effect that runs *after* the mode flag flips. Clicks fired on the same
+   * tick as the toolbar button therefore reach no handler at all: nothing is
+   * drawn, no request is sent, and the edit form never opens.
+   *
+   * @param cursor The cursor the armed handler advertises (the polyline and
+   *   detection creation handlers use "crosshair")
+   */
+  async waitForDrawingCursor(cursor = "crosshair") {
+    await expect(
+      this.page.getByTestId("lighter-sample-renderer-canvas"),
+    ).toHaveCSS("cursor", cursor);
   }
 
   /**

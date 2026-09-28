@@ -7,15 +7,17 @@ import { RESOLVE_PLACEMENTS_TTL } from "./constants";
 import {
   ExecutionContext,
   fetchRemotePlacements,
-  listLocalAndRemoteOperators,
+  resolveOperatorURI,
   resolveLocalPlacements,
   type RawContext,
 } from "./operators";
 import {
   activePanelsEventCountAtom,
+  availableOperators,
   operatorPlacementsAtom,
   operatorThrottledContext,
   operatorsInitializedAtom,
+  operatorsLoadFailedAtom,
   useCurrentSample,
 } from "./state";
 
@@ -171,13 +173,33 @@ export function useActivePanelEventsCount(id: string) {
   return { count, increment, decrement };
 }
 
+/** Reactively returns the first registered operator URI from a list. */
 export function useFirstExistingUri(uris: string[]) {
-  const availableOperators = useMemo(() => listLocalAndRemoteOperators(), []);
-  return useMemo(() => {
-    const existingUri = uris.find((uri) =>
-      availableOperators.allOperators.some((op) => op.uri === uri),
-    );
-    const exists = Boolean(existingUri);
-    return { firstExistingUri: existingUri, exists };
-  }, [availableOperators, uris]);
+  const operators = useRecoilValue(availableOperators);
+  const existingUri = uris.find((uri) => {
+    const resolvedUri = resolveOperatorURI(uri);
+    return operators.some((operator) => operator.value === resolvedUri);
+  });
+  return { firstExistingUri: existingUri, exists: Boolean(existingUri) };
+}
+
+/**
+ * Reactively reports whether an operator URI is registered. This checks
+ * registry presence only; callers remain responsible for permission checks.
+ */
+export function useOperatorAvailability(uri: string) {
+  return useFirstExistingUri([uri]).exists;
+}
+
+/**
+ * Where the operator registry stands with the server listing. While
+ * `loading`, an operator's absence from {@link useOperatorAvailability} means
+ * nothing yet; `ready` and `error` are both final — after an `error` the
+ * registry will not fill in on its own.
+ */
+export function useOperatorRegistryState(): "loading" | "ready" | "error" {
+  const initialized = useRecoilValue(operatorsInitializedAtom);
+  const failed = useRecoilValue(operatorsLoadFailedAtom);
+  if (initialized) return "ready";
+  return failed ? "error" : "loading";
 }

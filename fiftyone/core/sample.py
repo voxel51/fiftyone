@@ -5,6 +5,9 @@ Dataset samples.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
+import logging
+from copy import deepcopy
 import os
 
 from bson import ObjectId
@@ -13,12 +16,18 @@ from fiftyone.core.document import Document, DocumentView
 import fiftyone.core.frame as fofr
 import fiftyone.core.frame_utils as fofu
 import fiftyone.core.labels as fol
-import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
+import fiftyone.core.metadata as fom
 import fiftyone.core.odm as foo
-import fiftyone.core.utils as fou
 from fiftyone.core.singletons import SampleSingleton
-import logging
+import fiftyone.core.utils as fou
+
+fmm = fou.lazy_import("fiftyone.multimodal.media_reference.field_model")
+import fiftyone.core.media_reference as fmd
+
+#: The stored field, which the hydrating property of the same name shadows
+_REFERENCE_FIELDS = ("media_reference",)
+
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +62,10 @@ class _SampleMixin(object):
             self.set_field("frames", value)
             return
 
+        if name in _REFERENCE_FIELDS and hasattr(self, "_doc"):
+            self._set_media_reference(value)
+            return
+
         self._secure_media(name, value)
         super().__setattr__(name, value)
 
@@ -65,6 +78,10 @@ class _SampleMixin(object):
     def __setitem__(self, field_name, value):
         if self.media_type == fomm.VIDEO and fofu.is_frame_number(field_name):
             self.frames[field_name] = value
+            return
+
+        if field_name in _REFERENCE_FIELDS:
+            self._set_media_reference(value)
             return
 
         self._secure_media(field_name, value)
@@ -87,13 +104,44 @@ class _SampleMixin(object):
 
     @property
     def filename(self):
-        """The basename of the media's filepath."""
+        """The basename or logical display name of the sample's media."""
+        reference = self.media_reference
+        if reference is not None:
+            return reference.display_name
+
         return os.path.basename(self.filepath)
+
+    @property
+    def media_reference(self):
+        """The sample's
+        :class:`fiftyone.core.media_reference.MediaReference`, or None for a filepath-backed sample.
+
+        The reference says which media source the sample's media comes from
+        and where in it the sample is; the source itself is recorded once on
+        the dataset.
+        """
+        return self._doc.get_field("media_reference")
+
+    @media_reference.setter
+    def media_reference(self, reference):
+        self._set_media_reference(reference)
 
     @property
     def media_type(self):
         """The media type of the sample."""
         return self._media_type
+
+    def get_media_key(self):
+        """Returns the sample's active logical media key.
+
+        Reference-backed samples return their reference's key. All other
+        samples return their filepath.
+        """
+        reference = self._doc.get_field("media_reference")
+        if reference is not None:
+            return reference.key
+
+        return self._doc.get_field("filepath")
 
     def get_field(self, field_name):
         if field_name == "frames" and self.media_type == fomm.VIDEO:
@@ -109,6 +157,18 @@ class _SampleMixin(object):
         validate=True,
         dynamic=False,
     ):
+        root_field = field_name.split(".", 1)[0]
+        if root_field in _REFERENCE_FIELDS and field_name != root_field:
+            raise AttributeError(
+                "Media references only support whole-value reassignment"
+            )
+
+        if field_name in _REFERENCE_FIELDS:
+            self._set_media_reference(value)
+            return
+
+        self._secure_media(field_name, value)
+
         if field_name == "frames" and self.media_type == fomm.VIDEO:
             self.frames.clear()
             self.frames.update(
@@ -129,6 +189,22 @@ class _SampleMixin(object):
         )
 
     def clear_field(self, field_name):
+        root_field = field_name.split(".", 1)[0]
+        if (
+            root_field in _REFERENCE_FIELDS
+            and field_name != root_field
+            and self._doc.get_field("media_reference") is not None
+        ):
+            raise AttributeError(
+                "Media references only support whole-value reassignment"
+            )
+
+        if root_field == "filepath" or root_field in _REFERENCE_FIELDS:
+            raise ValueError(
+                "A sample's media source cannot be cleared; create a new "
+                "sample instead"
+            )
+
         if field_name == "frames" and self.media_type == fomm.VIDEO:
             self.frames.clear()
             return
@@ -143,6 +219,12 @@ class _SampleMixin(object):
             skip_failures (False): whether to gracefully continue without
                 raising an error if metadata cannot be computed
         """
+        if self._doc.get_field("media_reference") is not None:
+            raise fmm.UnsupportedMediaReferenceOperation(
+                "Generic file metadata is unavailable for media-reference-"
+                "backed samples; use the registered episode resolver"
+            )
+
         fom.compute_sample_metadata(
             self, overwrite=overwrite, skip_failures=skip_failures
         )
@@ -425,7 +507,21 @@ class _SampleMixin(object):
                 fields=fields, omit_fields=omit_fields
             )
 
-        sample = super().copy(fields=fields, omit_fields=omit_fields)
+        if self._doc.get_field("media_reference") is not None:
+            # The reference is read-only, so the generic copy would drop it
+            parsed = self._parse_fields(fields=fields, omit_fields=omit_fields)
+            # a view copies into its document class; a sample into its own
+            document_cls = getattr(type(self), "_DOCUMENT_CLS", type(self))
+            sample = document_cls(
+                media_reference=deepcopy(self.media_reference),
+                **{
+                    v: deepcopy(self[k])
+                    for k, v in parsed.items()
+                    if k not in _REFERENCE_FIELDS
+                },
+            )
+        else:
+            sample = super().copy(fields=fields, omit_fields=omit_fields)
 
         if self.media_type == fomm.VIDEO:
             sample.frames.update(
@@ -463,8 +559,22 @@ class _SampleMixin(object):
         return d
 
     def _secure_media(self, field_name, value):
+        root_field = field_name.split(".", 1)[0]
+        if root_field in _REFERENCE_FIELDS:
+            if field_name == root_field:
+                return
+
+            raise AttributeError(
+                "Media references only support whole-value reassignment"
+            )
+
         if field_name != "filepath":
             return
+
+        if self._doc.get_field("media_reference") is not None:
+            raise ValueError(
+                "Cannot assign a filepath to a reference-backed sample"
+            )
 
         new_media_type = fomm.get_media_type(value)
         if self.media_type != new_media_type:
@@ -472,6 +582,63 @@ class _SampleMixin(object):
                 "A sample's 'filepath' can be changed, but its media type "
                 "cannot; current '%s', new '%s'"
                 % (self.media_type, new_media_type)
+            )
+
+    def _set_media_reference(self, reference):
+        current = self._doc.get_field("media_reference")
+        if current is None:
+            raise ValueError(
+                "Cannot convert a filepath-backed sample to a media reference "
+                "by assignment; create a new sample instead"
+            )
+
+        if not isinstance(reference, fmd.MediaReference):
+            raise TypeError("media_reference must be a MediaReference")
+
+        if self.in_dataset:
+            self._validate_attached_media_reference(reference)
+
+        if reference == current:
+            return
+
+        if self.in_dataset:
+            self._doc.media_reference = reference
+            self._doc.metadata = None
+        else:
+            self._doc._data["media_reference"] = reference
+            self._doc._data["metadata"] = None
+
+    def _validate_attached_media_reference(self, reference):
+        dataset = self._dataset
+        if reference.source_id not in fmm._media_sources_by_id(dataset):
+            raise ValueError(
+                "Dataset '%s' does not record media source '%s'. Add the "
+                "source with add_dir() rather than add_samples(), so the "
+                "dataset records where its bytes are"
+                % (dataset.name, reference.source_id)
+            )
+
+        if dataset.media_type == fomm.GROUP:
+            group_field = dataset.group_field
+            group = (
+                self._doc.get_field(group_field)
+                if group_field is not None
+                else None
+            )
+            slice_media_type = (
+                dataset.group_media_types.get(group.name)
+                if group is not None
+                else None
+            )
+            if slice_media_type != fomm.MULTIMODAL:
+                raise fomm.MediaTypeError(
+                    "A media reference is incompatible with group slice '%s'"
+                    % (group.name if group is not None else None)
+                )
+        elif dataset.media_type != fomm.MULTIMODAL:
+            raise fomm.MediaTypeError(
+                "A media reference does not match dataset media type '%s'"
+                % dataset.media_type
             )
 
     def _parse_fields_video(self, fields=None, omit_fields=None):
@@ -505,9 +672,12 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
         :class:`Sample` instance.
 
     Args:
-        filepath: the path to the data on disk. The path is converted to an
-            absolute path (if necessary) via
-            :func:`fiftyone.core.storage.normalize_path`
+        filepath (None): the path to the data on disk for a filepath-backed
+            sample. The path is converted to an absolute path (if necessary)
+            via :func:`fiftyone.core.storage.normalize_path`
+        media_reference (None): an immutable
+            :class:`fiftyone.core.media_reference.MediaReference` for a
+            reference-backed sample
         tags (None): a list of tags for the sample
         metadata (None): a :class:`fiftyone.core.metadata.Metadata` instance
         **kwargs: additional fields to dynamically set on the sample
@@ -515,9 +685,30 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
 
     _NO_DATASET_DOC_CLS = foo.NoDatasetSampleDocument
 
-    def __init__(self, filepath, tags=None, metadata=None, **kwargs):
+    def __init__(
+        self,
+        filepath=None,
+        tags=None,
+        metadata=None,
+        media_reference=None,
+        **kwargs,
+    ):
+        if media_reference is not None and not isinstance(
+            media_reference, fmd.MediaReference
+        ):
+            raise TypeError("media_reference must be a MediaReference")
+
+        if (filepath is None) == (media_reference is None):
+            raise TypeError(
+                "exactly one of filepath or media_reference is required"
+            )
+
         super().__init__(
-            filepath=filepath, tags=tags, metadata=metadata, **kwargs
+            filepath=filepath,
+            tags=tags,
+            metadata=metadata,
+            media_reference=media_reference,
+            **kwargs,
         )
 
         if self.media_type == fomm.VIDEO:
@@ -635,10 +826,13 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
         """
         d.pop("_dataset_id", None)
 
-        media_type = d.pop("_media_type", None)
+        media_type = d.get("_media_type", None)
+        if media_type is None and d.get("media_reference") is not None:
+            media_type = fomm.MULTIMODAL
         if media_type is None:
             media_type = fomm.get_media_type(d.get("filepath", ""))
 
+        frames = {}
         if media_type == fomm.VIDEO:
             frames = d.pop("frames", {})
 

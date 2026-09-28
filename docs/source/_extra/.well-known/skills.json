@@ -1,0 +1,6 @@
+{
+    "description": "FiftyOne Agent Skills. The canonical, machine-readable manifest of installable skills is marketplace.json in the fiftyone-skills repo.",
+    "marketplace": "https://raw.githubusercontent.com/voxel51/fiftyone-skills/main/.claude-plugin/marketplace.json",
+    "repository": "https://github.com/voxel51/fiftyone-skills",
+    "documentation": "https://docs.voxel51.com/agents/index.html"
+}

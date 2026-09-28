@@ -19,7 +19,6 @@ import fiftyone as fo
 import fiftyone.zoo as foz
 from fiftyone.core.labels import Detections
 
-
 PLACEHOLDER_LABEL = "mask"
 SAM_MODEL_NAME = "segment-anything-vitb-torch"
 SAM2_MODEL_NAME = "segment-anything-2-hiera-tiny-image-torch"

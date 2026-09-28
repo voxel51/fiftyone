@@ -5,6 +5,7 @@ CLIP model from https://github.com/openai/CLIP.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import OrderedDict
 from typing import Tuple, Union
 

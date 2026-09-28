@@ -145,6 +145,7 @@ describe("tileTypesFor", () => {
       tileTypesFor({
         hasNumericSeries: true,
         hasRawRecords: false,
+        hasStateAction: false,
         hasTransformTopology: false,
         sourceTypes: ["image", "location"],
       }),
@@ -154,6 +155,7 @@ describe("tileTypesFor", () => {
       tileTypesFor({
         hasNumericSeries: false,
         hasRawRecords: true,
+        hasStateAction: false,
         hasTransformTopology: false,
         sourceTypes: [],
       }),
@@ -165,6 +167,7 @@ describe("tileTypesFor", () => {
       tileTypesFor({
         hasNumericSeries: false,
         hasRawRecords: false,
+        hasStateAction: false,
         hasTransformTopology: true,
         sourceTypes: ["point-cloud"],
       }),
@@ -173,6 +176,7 @@ describe("tileTypesFor", () => {
       tileTypesFor({
         hasNumericSeries: false,
         hasRawRecords: false,
+        hasStateAction: false,
         hasTransformTopology: false,
         sourceTypes: ["point-cloud"],
       }),
@@ -193,6 +197,7 @@ describe("tileTypesFor", () => {
       tileTypesFor({
         hasNumericSeries: true,
         hasRawRecords: false,
+        hasStateAction: false,
         hasTransformTopology: false,
         sourceTypes: ["event"],
       }),

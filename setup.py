@@ -10,7 +10,7 @@ Installs FiftyOne.
 import os
 from setuptools import setup, find_packages
 
-VERSION = "1.22.0"
+VERSION = "1.23.0"
 
 
 def get_version():
@@ -66,12 +66,13 @@ setup(
         "Jinja2>=3,<4",
         "jsonpatch>=1,<2",
         "mongoengine~=0.29.1",  # Keep small bounds on mongo-related libraries
+        "motor~=3.6.0",  # Keep small bounds on mongo-related libraries
         "Pillow>=12.2",
         "plotly>=6.1.1,<7",
         "pprintpp>=0.1,<0.5",
         "psutil>=5,<8",
         "pydash>=6,<9",
-        "pymongo~=4.15.2",  # Keep small bounds on mongo-related libraries
+        "pymongo~=4.9.2",  # Keep small bounds on mongo-related libraries
         "pytz",  # Doesn't follow semver, keep unconstrained
         "PyYAML>=4,<7",
         "regex",  # Doesn't follow semver, keep unconstrained
@@ -80,6 +81,10 @@ setup(
         "sse-starlette>=0.10.3,<4",
         "starlette>=1.3.1,<1.4",
         "strawberry-graphql>=0.315.7,<0.317.0",
+        # graphql-core 3.3.0 removed graphql.execution.ExecutionContext, which
+        # strawberry-graphql 0.316 still imports; hold the 3.2 line until the
+        # strawberry pin above moves to a release that supports 3.3
+        "graphql-core>=3.2,<3.3",
         "tabulate>=0.7,<0.11",
         "tqdm>=2,<5",
         "xmltodict>=1,<2",
@@ -95,7 +100,7 @@ setup(
         "scikit-image<1",
         "scipy<2",
         # internal packages
-        "fiftyone-brain>=0.24.0,<0.25",
+        "fiftyone-brain>=0.25.0,<0.26",
         "fiftyone-db>=0.4,<2.0",
         "voxel51-eta>=0.17,<0.18",
     ],
@@ -118,7 +123,6 @@ setup(
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: 3.13",
-        "Programming Language :: Python :: 3.14",
     ],
     entry_points={"console_scripts": ["fiftyone=fiftyone.core.cli:main"]},
     python_requires=">=3.10",

@@ -6,6 +6,7 @@ Utilities for working with the
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 import os
 
@@ -13,7 +14,6 @@ import eta.core.utils as etau
 import eta.core.web as etaw
 
 import fiftyone.core.utils as fou
-
 
 logger = logging.getLogger(__name__)
 
@@ -78,13 +78,9 @@ def download_hmdb51_dataset(
         etau.delete_dir(scratch_dir)
 
 
-_VIDEOS_DOWNLOAD_LINK = (
-    "https://drive.usercontent.google.com/download?id=17anw5Oxp7lmp9cMwXPOyOpL5olDLmPpj&export=download&confirm=t"
-)
+_VIDEOS_DOWNLOAD_LINK = "https://drive.usercontent.google.com/download?id=17anw5Oxp7lmp9cMwXPOyOpL5olDLmPpj&export=download&confirm=t"
 
-_SPLITS_DOWNLOAD_LINK = (
-    "https://drive.usercontent.google.com/download?id=1NQxJWJSYWefyNS-LFYCenFih4gRDUPCX&export=download&confirm=t"
-)
+_SPLITS_DOWNLOAD_LINK = "https://drive.usercontent.google.com/download?id=1NQxJWJSYWefyNS-LFYCenFih4gRDUPCX&export=download&confirm=t"
 
 
 def _download_videos(scratch_dir):

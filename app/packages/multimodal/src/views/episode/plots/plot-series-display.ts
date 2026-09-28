@@ -10,6 +10,15 @@ export function plotSeriesDisplayName(
 ): string {
   const sourceName =
     sourceNamesByBinding.get(config.stream) ?? "Unknown source";
+  // Some formats (LeRobot features) already carry the source name in the
+  // field path; repeating it reads as "action.action.gripper.pos".
+  if (
+    config.fieldPath === sourceName ||
+    config.fieldPath.startsWith(`${sourceName}.`) ||
+    config.fieldPath.startsWith(`${sourceName}[`)
+  ) {
+    return config.fieldPath;
+  }
   return `${sourceName}.${config.fieldPath}`;
 }
 

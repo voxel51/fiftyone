@@ -99,6 +99,35 @@ describe("generic and MCAP synchronization parity", () => {
     });
   });
 
+  it("sorts strict duplicate timestamps before limiting them", async () => {
+    const frames = [frame(TIME_NS, 2), frame(TIME_NS, 0), frame(TIME_NS, 1)];
+    const runtimeWindow = (
+      await readSynchronizedPlaybackBatchFallback(session(frames), {
+        streamPolicies: {
+          [STREAM]: { limit: 2, mode: STREAM_SYNC_MODE.STRICT },
+        },
+        streams: [STREAM],
+        timeNs: [TIME_NS],
+      })
+    )[0];
+    const bounds = createWindowBounds({
+      streamPolicies: {
+        [STREAM]: { limit: 2, mode: PlaybackSyncMode.STRICT },
+      },
+      timeNs: TIME_NS,
+      topics: [STREAM],
+    }).streamPolicies[STREAM];
+    const mcapSelected = selectCandidatesForTopic(
+      [message(TIME_NS, 2), message(TIME_NS, 0), message(TIME_NS, 1)],
+      TIME_NS,
+      bounds,
+      (left, right) => left.sequence - right.sequence,
+    );
+
+    expect(runtimeWindow.frames.map((item) => item.sequence)).toEqual([0, 1]);
+    expect(mcapSelected.map((item) => item.sequence)).toEqual([0, 1]);
+  });
+
   it.each([
     {
       mcap: { limit: 0 },

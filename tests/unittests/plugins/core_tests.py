@@ -19,7 +19,6 @@ import fiftyone.plugins.definitions as fpd
 import fiftyone.plugins.constants as fpc
 import fiftyone.utils.github as foug
 
-
 _DEFAULT_TEST_PLUGINS = ["test-plugin1", "test-plugin2"]
 _DEFAULT_APP_CONFIG = {}
 _REQUIRED_YML_KEYS = ["name", "label", "version"]

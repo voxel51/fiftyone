@@ -1,6 +1,10 @@
 FiftyOne Concepts
 =================
 
+.. meta::
+    :description: In-depth guides to FiftyOne's core concepts: datasets,
+        views, the App, evaluation, brain methods, and more.
+
 Each section in this guide provides an example-centric deep dive into a core
 concept of FiftyOne, with the goal of getting you up-and-running with FiftyOne
 on your data quickly and easily.

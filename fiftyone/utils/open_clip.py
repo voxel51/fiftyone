@@ -5,6 +5,7 @@ CLIP model wrapper for the FiftyOne Model Zoo.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import contextlib
 import logging
 

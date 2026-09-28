@@ -33,6 +33,7 @@ import {
   commitMutation,
 } from "relay-runtime";
 import Setup from "./components/Setup";
+import SharedSessionBanner from "./components/SharedSessionBanner";
 import type { IndexPageQuery } from "./pages/__generated__/IndexPageQuery.graphql";
 import type {
   DatasetPageQuery,
@@ -49,7 +50,7 @@ export const SessionContext = React.createContext<Session>(SESSION_DEFAULT);
 
 const Plugins = ({ children }: { children: React.ReactNode }) => {
   const plugins = usePlugins();
-  if (plugins.isLoading) return <Loading>Pixelating...</Loading>;
+  if (plugins.isLoadingPlugins) return <Loading>Pixelating...</Loading>;
   return <>{children}</>;
 };
 
@@ -69,6 +70,7 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
       {readyState === AppReadyState.CONNECTING && (
         <Loading>Pixelating...</Loading>
       )}
+      {readyState === AppReadyState.OPEN && <SharedSessionBanner />}
       {readyState === AppReadyState.OPEN && (
         <Writer<OperationType>
           read={() => {

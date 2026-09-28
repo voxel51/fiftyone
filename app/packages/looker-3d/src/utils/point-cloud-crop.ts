@@ -8,6 +8,11 @@ import {
   DEFAULT_SELECTED_CUBOID_CROP_MARGIN,
   POINT_CLOUD_CROP_BOUNDS_EPSILON,
 } from "../constants";
+import {
+  transformCuboidToWorldFrame,
+  type DirectPcdWorldTransforms,
+} from "../fo3d/direct-pcd-world-alignment";
+import type { StaticTransform } from "../frustum/types";
 
 export interface PointCloudCrop {
   labelId: string;
@@ -26,6 +31,10 @@ interface CreatePointCloudCropOptions {
   visibleWorldHeightAtCenter?: number | null;
 }
 
+interface CreateCuboidPointCloudCropOptions extends CreatePointCloudCropOptions {
+  nativeToWorld?: StaticTransform;
+}
+
 interface CreatePointCloudCropFromPointOptions extends CreatePointCloudCropOptions {
   labelId?: string;
   upVector?: THREE.Vector3 | null;
@@ -33,6 +42,7 @@ interface CreatePointCloudCropFromPointOptions extends CreatePointCloudCropOptio
 }
 
 interface RenderModelPointCloudCropOptions extends CreatePointCloudCropOptions {
+  directPcdWorldTransformsBySampleId?: DirectPcdWorldTransforms;
   renderModel: RenderModel;
 }
 
@@ -108,10 +118,11 @@ export const createPointCloudCropFromCuboidTransform = (
   cuboid: CuboidTransformData,
   {
     margin,
+    nativeToWorld,
     source,
     useLegacyCoordinates = false,
     visibleWorldHeightAtCenter,
-  }: CreatePointCloudCropOptions = {},
+  }: CreateCuboidPointCloudCropOptions = {},
 ): PointCloudCrop | null => {
   if (
     !isFiniteNumberTuple(cuboid.location, 3) ||
@@ -135,9 +146,22 @@ export const createPointCloudCropFromCuboidTransform = (
     center.y -= size.y / 2;
   }
 
+  const displayCuboid = nativeToWorld
+    ? transformCuboidToWorldFrame(
+        {
+          ...cuboid,
+          location: center.toArray(),
+        },
+        nativeToWorld,
+      )
+    : cuboid;
+  if (nativeToWorld) {
+    center.set(...displayCuboid.location);
+  }
+
   const resolvedMargin = resolveCropMargin(margin);
   const halfSize = size.multiplyScalar(0.5).addScalar(resolvedMargin);
-  const quaternion = getCuboidQuaternion(cuboid);
+  const quaternion = getCuboidQuaternion(displayCuboid);
   const boxToWorld = new THREE.Matrix4().compose(
     center,
     quaternion,
@@ -159,7 +183,7 @@ export const createPointCloudCropFromCuboidTransform = (
 
 export const createPointCloudCropFromDetection = (
   detection: ReconciledDetection3D,
-  options: CreatePointCloudCropOptions = {},
+  options: CreateCuboidPointCloudCropOptions = {},
 ) => {
   return createPointCloudCropFromCuboidTransform(
     detection.data._id,
@@ -222,12 +246,14 @@ export const getSelectedCuboidPointCloudCrop = ({
   renderModel,
   selectedLabelId,
   margin,
+  directPcdWorldTransformsBySampleId,
   useLegacyCoordinates = false,
 }: SelectedPointCloudCropOptions): PointCloudCrop | null => {
   return getCuboidPointCloudCrop({
     renderModel,
     labelId: selectedLabelId,
     margin,
+    directPcdWorldTransformsBySampleId,
     source: "selection",
     useLegacyCoordinates,
   });
@@ -258,6 +284,7 @@ export const getCuboidPointCloudCrop = ({
   renderModel,
   labelId,
   margin,
+  directPcdWorldTransformsBySampleId,
   source,
   useLegacyCoordinates = false,
   visibleWorldHeightAtCenter,
@@ -276,6 +303,7 @@ export const getCuboidPointCloudCrop = ({
 
   return createPointCloudCropFromDetection(detection, {
     margin,
+    nativeToWorld: directPcdWorldTransformsBySampleId?.[detection.sampleId],
     source,
     useLegacyCoordinates,
     visibleWorldHeightAtCenter,

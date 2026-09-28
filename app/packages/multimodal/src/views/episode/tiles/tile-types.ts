@@ -11,6 +11,7 @@ import type { EpisodeTileExtensionId } from "../../../extensions/tiles/types";
  * resolver, and the tile bodies can all share it without cycles.
  */
 export const TILE_TYPE = {
+  AUDIO: "audio",
   IMAGE: "image",
   LOG: "log",
   MAP: "map",

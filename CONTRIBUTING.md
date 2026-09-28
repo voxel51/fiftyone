@@ -42,8 +42,8 @@ repository.
 Steps to make a pull request:
 
 - Fork https://github.com/voxel51/fiftyone
-- Implement your feature as a branch off of the `develop` branch
-- Create a pull request into the `develop` branch of
+- Implement your feature as a branch off of the `main` branch
+- Create a pull request into the `main` branch of
   https://github.com/voxel51/fiftyone
 
 If you are **not** a Voxel51 team member, we recommend opening your pull
@@ -52,13 +52,13 @@ request against the **`community`** branch (see below).
 #### Community pull requests
 
 If you are **not** a Voxel51 team member, open your pull request against the
-**`community`** branch rather than `develop`. If you open one against `develop`
-or a release branch, it is automatically retargeted to `community` for you.
+**`community`** branch rather than `main`. If you open one against `main` or a
+release branch, it is automatically retargeted to `community` for you.
 
 Your changes are unaffected by the retarget. Whenever `community` is ahead of
-`develop`, a `community` → `develop` pull request is opened automatically for a
-maintainer to review and merge, so your contribution still lands in `develop` —
-it just goes through `community` first.
+`main`, a `community` → `main` pull request is opened automatically for a
+maintainer to review and merge, so your contribution still lands in `main` — it
+just goes through `community` first.
 
 Once your pull request has been merged, your changes will be automatically
 included in the next FiftyOne release!
@@ -150,7 +150,7 @@ pylint <file>
 
 The [FiftyOne API](https://voxel51.com/docs/fiftyone/user_guide/basics.html) is
 implemented in Python and the source code lives in
-[fiftyone/fiftyone](https://github.com/voxel51/fiftyone/tree/develop/fiftyone).
+[fiftyone/fiftyone](https://github.com/voxel51/fiftyone/tree/main/fiftyone).
 Refer to `setup.py` to see the Python versions that the project supports.
 
 All Python code contributed to FiftyOne must follow our
@@ -160,7 +160,7 @@ All Python code contributed to FiftyOne must follow our
 
 The [FiftyOne App](https://voxel51.com/docs/fiftyone/user_guide/app.html) is an
 Electron App implemented in TypeScript and the source code lives in
-[fiftyone/app](https://github.com/voxel51/fiftyone/tree/develop/app).
+[fiftyone/app](https://github.com/voxel51/fiftyone/tree/main/app).
 
 All App code contributed to FiftyOne must follow our
 [style guide](STYLE_GUIDE.md#app-style-guide).
@@ -171,7 +171,7 @@ The [FiftyOne Documentation](https://fiftyone.ai) is written using
 [Sphinx](https://www.sphinx-doc.org/en/master) and
 [Sphinx-Napoleon](https://pypi.python.org/pypi/sphinxcontrib-napoleon) and the
 source code lives in
-[fiftyone/docs](https://github.com/voxel51/fiftyone/tree/develop/docs).
+[fiftyone/docs](https://github.com/voxel51/fiftyone/tree/main/docs).
 
 When adding a new feature to FiftyOne or changing core functionality, be sure
 to update both the docstrings in source code and the corresponding
@@ -183,9 +183,9 @@ follow our [style guide](STYLE_GUIDE.md#documentation-style-guide).
 ### Tests
 
 FiftyOne has a suite of tests in
-[fiftyone/tests](https://github.com/voxel51/fiftyone/tree/develop/tests).
+[fiftyone/tests](https://github.com/voxel51/fiftyone/tree/main/tests).
 
-These tests are automatically run on any PRs into the `develop` branch, and all
+These tests are automatically run on any PRs into the `main` branch, and all
 tests must pass in order for the branch to be mergeable.
 
 Please be sure to write tests when you add new features.

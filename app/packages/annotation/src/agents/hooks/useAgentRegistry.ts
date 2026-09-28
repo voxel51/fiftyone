@@ -2,6 +2,7 @@ import { AgentDescriptor, AgentRegistry } from "../registry";
 import { atom, useAtom } from "jotai";
 import { useCallback, useMemo } from "react";
 import { AnnotationAgent, InferenceResultProxy } from "../types";
+import { PolylinePropagationBrowserAgent } from "../PolylinePropagationBrowserAgent";
 import { PropagationBrowserAgent } from "../PropagationBrowserAgent";
 import { SAM2BrowserAnnotationAgent } from "../SAM2BrowserAnnotationAgent";
 import { SAM2PropagationBrowserAgent } from "../SAM2PropagationBrowserAgent";
@@ -20,6 +21,16 @@ const registryAtom = atom<RegistryMap>({
     id: "propagate-linear",
     label: "Linear interpolation",
     agent: new PropagationBrowserAgent(),
+    unlisted: true,
+  },
+  // `useVideoPropagate` dispatches here by label type; polyline tracks lerp
+  // their vertices where detections lerp a bounding box.
+  "propagate-linear-polyline": {
+    id: "propagate-linear-polyline",
+    label: "Linear interpolation (polyline)",
+    agent: new PolylinePropagationBrowserAgent(),
+    // like the other propagation agents: dispatched by label type, never a
+    // user-pickable annotation model
     unlisted: true,
   },
   "propagate-sam2": {

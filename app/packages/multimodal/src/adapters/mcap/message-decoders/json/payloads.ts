@@ -182,3 +182,22 @@ export const JSON_ROS_DETECTION_3D_ARRAY_PAYLOADS = jsonRosPayloads(
   "vision_msgs/Detection3DArray",
   "vision_msgs/msg/Detection3DArray",
 );
+
+/**
+ * Payload identity for JSON-encoded `foxglove.RawAudio` messages (the
+ * Foxglove JSON schema registry's namespaced schema name).
+ */
+export const JSON_FOXGLOVE_RAW_AUDIO_PAYLOAD: PayloadDescriptor = {
+  encoding: "json",
+  schema: "foxglove.RawAudio",
+  schemaEncoding: "jsonschema",
+};
+
+/**
+ * Payload identity for JSON-encoded `foxglove.CompressedAudio` messages.
+ */
+export const JSON_FOXGLOVE_COMPRESSED_AUDIO_PAYLOAD: PayloadDescriptor = {
+  encoding: "json",
+  schema: "foxglove.CompressedAudio",
+  schemaEncoding: "jsonschema",
+};

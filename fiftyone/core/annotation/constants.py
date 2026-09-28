@@ -14,7 +14,6 @@ import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomm
 from fiftyone.core.odm import DynamicEmbeddedDocument
 
-
 ### Components
 
 

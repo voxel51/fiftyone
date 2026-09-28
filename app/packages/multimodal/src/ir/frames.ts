@@ -39,10 +39,15 @@ interface BaseEncodedVideoVisualization {
   readonly kind: typeof VISUALIZATION_KIND.ENCODED_VIDEO;
   readonly bytes: Uint8Array;
   readonly coordinateFrameId?: string;
+  /** Decode-order timestamp when it differs from presentation order. */
+  readonly decodeTimestampNs?: bigint;
   readonly format: string;
   readonly keyframe?: boolean;
   readonly timestampNs?: bigint;
 }
+
+/** Codec families the encoded-video contract names. */
+export type EncodedVideoCodec = "av1" | "h264" | "h265" | "unknown" | "vp9";
 
 /**
  * Encoded H.264 access unit decoded from one message.
@@ -55,6 +60,40 @@ export interface EncodedH264VideoVisualization extends BaseEncodedVideoVisualiza
     readonly pps?: Uint8Array;
     readonly sps?: Uint8Array;
   };
+  readonly hevc?: never;
+  readonly undecodable?: never;
+}
+
+/** AV1 temporal unit carried directly from an ISO BMFF sample. */
+export interface EncodedAv1VideoVisualization extends BaseEncodedVideoVisualization {
+  readonly codec: "av1";
+  readonly h264?: never;
+  readonly hevc?: never;
+  readonly undecodable?: never;
+}
+
+/** Annex B HEVC access unit with the parameter sets a decoder needs in band. */
+export interface EncodedHevcVideoVisualization extends BaseEncodedVideoVisualization {
+  readonly codec: "h265";
+  readonly h264?: never;
+  readonly hevc: {
+    readonly codecString?: string;
+    /** VPS/SPS/PPS from the container's `hvcC`, Annex B framed. */
+    readonly parameterSets?: Uint8Array;
+  };
+  readonly undecodable?: never;
+}
+
+/**
+ * An access unit no decoder in this client can take. It carries no decoder
+ * payload; `format` names the codec so a renderer reports which one rather
+ * than waiting for frames that will never decode.
+ */
+export interface UndecodableVideoVisualization extends BaseEncodedVideoVisualization {
+  readonly codec: EncodedVideoCodec;
+  readonly h264?: never;
+  readonly hevc?: never;
+  readonly undecodable: true;
 }
 
 /**
@@ -64,10 +103,9 @@ export interface EncodedH264VideoVisualization extends BaseEncodedVideoVisualiza
  */
 export type EncodedVideoVisualization =
   | EncodedH264VideoVisualization
-  | (BaseEncodedVideoVisualization & {
-      readonly codec: "av1" | "h265" | "vp9";
-      readonly h264?: never;
-    });
+  | EncodedAv1VideoVisualization
+  | EncodedHevcVideoVisualization
+  | UndecodableVideoVisualization;
 
 /**
  * Raw image pixels normalized by a decoder. Ordinary color images carry
@@ -94,6 +132,48 @@ export interface RawImageVisualization {
 export type ImageVisualization =
   | EncodedImageVisualization
   | RawImageVisualization;
+
+/**
+ * Interleaved PCM samples decoded from one message. Typed-array element type
+ * follows the source PCM layout (signed 16-bit → `Int16Array`, etc.) — never
+ * force-normalized to `Float32Array` at this layer, matching how
+ * `EncodedImage`/`RawImage` stay distinct rather than being decoded eagerly
+ * here.
+ */
+export interface RawAudioVisualization {
+  readonly kind: typeof VISUALIZATION_KIND.RAW_AUDIO;
+  // Mirrors the PCM layouts decoders actually produce (unsigned 8-bit,
+  // signed 16/32-bit, 32-bit float). No decoder emits Int8Array, so it is
+  // deliberately absent — including it would widen the type for every
+  // consumer without cause.
+  readonly samples: Uint8Array | Int16Array | Int32Array | Float32Array;
+  readonly sampleRate: number;
+  readonly channels: number;
+  readonly timestampNs?: bigint;
+}
+
+/**
+ * Encoded audio access unit decoded from one message, still in its source
+ * codec (e.g. "opus", "mp3", "aac"). PCM decode happens downstream (Web Audio
+ * / WebCodecs `AudioDecoder`), not in this decoder layer — the same
+ * bytes-plus-`format` contract `EncodedVideoVisualization` uses.
+ *
+ * Deliberately flat: `EncodedVideoVisualization` carries a `codec`
+ * discriminant only because H.264 needs SPS/PPS alongside the bytes. No audio
+ * codec needs per-codec fields today, so adding one here would be
+ * speculative.
+ */
+export interface EncodedAudioVisualization {
+  readonly kind: typeof VISUALIZATION_KIND.ENCODED_AUDIO;
+  readonly bytes: Uint8Array;
+  readonly format: string;
+  readonly timestampNs?: bigint;
+}
+
+/** Audio visualizations accepted by the timeline's audio track pipeline. */
+export type AudioVisualization =
+  | RawAudioVisualization
+  | EncodedAudioVisualization;
 
 /** Camera content routed to either the still ImagePanel or dedicated VideoPanel. */
 export type CameraVisualization =
@@ -622,6 +702,7 @@ export interface ImageAnnotationsVisualization {
  * contribute metadata, transforms, annotations, or other nonvisual state.
  */
 export type DecodedVisualization =
+  | AudioVisualization
   | CameraCalibrationVisualization
   | EncodedVideoVisualization
   | ImageVisualization

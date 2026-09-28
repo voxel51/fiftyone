@@ -9,6 +9,7 @@ You must run these tests interactively as follows::
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import unittest
 from uuid import uuid4
 
@@ -18,7 +19,6 @@ import eta.core.web as etaw
 import fiftyone as fo
 import fiftyone.zoo as foz
 import fiftyone.utils.labelbox as foul
-
 
 _anno_key = "anno_key"
 

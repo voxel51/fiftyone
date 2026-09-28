@@ -3,6 +3,10 @@ FiftyOne Installation
 
 .. default-role:: code
 
+.. meta::
+    :description: How to install FiftyOne, set up virtual environments,
+        and troubleshoot common installation issues.
+
 .. note::
 
     Did you know? :ref:`FiftyOne Enterprise <fiftyone-enterprise>` is an open
@@ -41,7 +45,7 @@ This will install FiftyOne and all of its dependencies. Once this has
 completed, you can verify that FiftyOne is installed in your virtual
 environment by importing the `fiftyone` package:
 
-.. code-block:: text
+.. code-block:: console
 
     $ python
     >>>

@@ -36,13 +36,33 @@ export * from "./temporal-policy";
 export * from "./data-stream";
 /** Public bounded grid-to-modal source bootstrap handoff. */
 export * from "./source-bootstrap-cache";
+/** Public durable source-facts identity, persistence, and orchestration. */
+export * from "./source-facts";
+export * from "./source-facts-persistence";
+export * from "./source-facts-service";
 /** Public episode time-range handoff used across grid and modal shells. */
 export {
   getEpisodeTimeRange,
   publishEpisodeTimeRange,
   releaseEpisodeTimeRange,
+  resetEpisodeTimeRangesForTests,
   subscribeEpisodeTimeRange,
 } from "./episode-time-range-registry";
+export {
+  getEpisodePlayhead,
+  publishEpisodePlayhead,
+  releaseEpisodePlayhead,
+  resetEpisodePlayheadsForTests,
+  subscribeEpisodePlayhead,
+} from "./episode-playhead-registry";
+export {
+  getEpisodeSeek,
+  releaseEpisodeSeek,
+  requestEpisodeSeek,
+  resetEpisodeSeeksForTests,
+  subscribeEpisodeSeek,
+} from "./episode-seek-registry";
+export type { EpisodeSeekRequest } from "./episode-seek-registry";
 /** Public runtime demand scheduling bridge. */
 export * from "./demand-bridge";
 /** Public lazy format-adapter registry. */

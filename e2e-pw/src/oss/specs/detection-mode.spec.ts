@@ -13,7 +13,7 @@ const test = base.extend<{
   modal: async ({ page, eventUtils }, use) => {
     await use(new ModalPom(page, eventUtils));
   },
-  datasetName: async ({ annotateSDK, datasetFactory }, use, testInfo) => {
+  datasetName: async ({ datasetFactory }, use, testInfo) => {
     const name = getUniqueDatasetNameWithPrefix(
       `detection-mode-${testInfo.title.replace(/\s+/g, "-")}`,
     );
@@ -23,15 +23,15 @@ const test = base.extend<{
       schema: {
         detections: "Detections",
       },
+      labelSchemas: {
+        detections: {
+          type: "detections",
+          classes: [],
+          attributes: [],
+          component: "dropdown",
+        },
+      },
     });
-
-    await annotateSDK.updateLabelSchema(name, "detections", {
-      type: "detections",
-      classes: [],
-      attributes: [],
-      component: "dropdown",
-    });
-    await annotateSDK.addFieldToActiveLabelSchema(name, "detections");
 
     await use(name);
   },
@@ -122,6 +122,40 @@ test.describe.serial("detection mode", () => {
     await modal.sampleCanvas.assert.hasScreenshot(
       "draw-and-quit-exited-detection-mode.png",
     );
+  });
+
+  test("draw over an existing detection", async ({ modal }) => {
+    // Activate detection mode
+    await modal.sidebar.annotate.detectionMode("Detections");
+    await modal.sidebar.annotate.assert.detectionModeIsActive();
+
+    // Draw detection #1
+    await modal.sampleCanvas.move(0.2, 0.2, "crosshair");
+    await modal.sampleCanvas.down();
+    await modal.sampleCanvas.move(0.6, 0.6);
+    await modal.sampleCanvas.up();
+    await modal.sampleCanvas.assert.hasCursor("nwse-resize");
+
+    // Draw detection #2 in empty space so #1 becomes unselected
+    await modal.sampleCanvas.move(0.7, 0.7, "crosshair");
+    await modal.sampleCanvas.down();
+    await modal.sampleCanvas.move(0.9, 0.9);
+    await modal.sampleCanvas.up();
+    await modal.sampleCanvas.assert.hasCursor("nwse-resize");
+
+    // Unselected #1 doesn't claim the pointer: dragging inside it draws #3
+    await modal.sampleCanvas.move(0.3, 0.3, "crosshair");
+    await modal.sampleCanvas.down();
+    await modal.sampleCanvas.move(0.5, 0.5);
+    await modal.sampleCanvas.up();
+    await modal.sampleCanvas.assert.hasCursor("nwse-resize");
+
+    // Quit, then the label list shows all three (#3 was created, #1 untouched)
+    await modal.sampleCanvas.move(0.1, 0.1);
+    await modal.sampleCanvas.down();
+    await modal.sampleCanvas.up();
+    await modal.sidebar.annotate.assert.detectionModeIsActive(false);
+    await modal.sidebar.annotate.assert.hasActiveLabelsCount(3);
   });
 
   test("draw multiple detections", async ({ modal }) => {

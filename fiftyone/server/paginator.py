@@ -7,7 +7,7 @@ FiftyOne Server paginator
 """
 
 from bson import ObjectId
-from pymongo.asynchronous.collection import AsyncCollection
+import motor.motor_asyncio as mtr
 import typing as t
 
 import strawberry as gql
@@ -44,7 +44,7 @@ class Connection(t.Generic[T, C]):
 
 
 async def get_items(
-    collection: AsyncCollection,
+    collection: mtr.AsyncIOMotorCollection,
     from_db: t.Callable[[dict], T],
     key: str,
     filters: t.List[dict],
@@ -94,7 +94,10 @@ async def get_items(
 
 def get_paginator_resolver(
     cls: t.Type[T], key: str, filters: t.List[dict], collection: str
-) -> t.Callable[[t.Optional[int], t.Optional[str], Info], Connection[T, str],]:
+) -> t.Callable[
+    [t.Optional[int], t.Optional[str], Info],
+    Connection[T, str],
+]:
     async def paginate(
         search: t.Optional[str],
         first: t.Optional[int] = LIST_LIMIT,

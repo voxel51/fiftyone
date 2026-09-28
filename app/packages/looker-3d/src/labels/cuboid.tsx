@@ -284,6 +284,8 @@ export interface CuboidProps extends OverlayProps {
   enableFaceResize?: boolean;
   enableHeadingEdit?: boolean;
   hoverSource?: HoveredLabelSource;
+  /** Rotation contributed by display-only ancestors outside this cuboid. */
+  parentWorldQuaternion?: THREE.Vector4Tuple;
   showOrientation?: boolean;
 }
 
@@ -405,6 +407,7 @@ export const Cuboid = ({
   enableFaceResize = false,
   enableHeadingEdit = false,
   hoverSource = PANEL_ID_MAIN,
+  parentWorldQuaternion,
   showOrientation = false,
 }: CuboidProps) => {
   useHoverState();
@@ -595,6 +598,26 @@ export const Cuboid = ({
     useLegacyCoordinates,
   });
 
+  const parentQuaternion = useMemo(
+    () =>
+      parentWorldQuaternion
+        ? new THREE.Quaternion(...parentWorldQuaternion).normalize()
+        : new THREE.Quaternion(),
+    [parentWorldQuaternion],
+  );
+  const worldOrientationQuaternion = useMemo(
+    () => parentQuaternion.clone().multiply(orientationQuaternion).normalize(),
+    [orientationQuaternion, parentQuaternion],
+  );
+  const parentLocalUpVector = useMemo(() => {
+    const effectiveUp =
+      upVector && upVector.lengthSq() > 0
+        ? upVector.clone().normalize()
+        : new THREE.Vector3(0, 0, 1);
+
+    return effectiveUp.applyQuaternion(parentQuaternion.clone().invert());
+  }, [parentQuaternion, upVector]);
+
   // Set while a face button in the "Edit heading/up vector" sidebar section
   // is hovered — previews the ghost arrow/face highlight below.
   const headingUpPreview = useHeadingUpPreview();
@@ -605,15 +628,11 @@ export const Cuboid = ({
   // hovered (and vice versa), since the sidebar hover only ever carries one
   // face at a time.
   const currentUpFace = useMemo(() => {
-    const effectiveUp =
-      upVector && upVector.lengthSq() > 0
-        ? upVector.clone().normalize()
-        : new THREE.Vector3(0, 0, 1);
-    const localUp = effectiveUp
+    const localUp = parentLocalUpVector
       .clone()
       .applyQuaternion(orientationQuaternion.clone().invert());
     return getCuboidResizeFaceFromNormal(localUp) ?? "+z";
-  }, [upVector, orientationQuaternion]);
+  }, [orientationQuaternion, parentLocalUpVector]);
 
   // Full candidate orientation for the hovered heading/up combination, so the
   // axes tripod can preview the resulting frame before committing — alongside
@@ -639,7 +658,7 @@ export const Cuboid = ({
       quaternion: orientationQuaternion,
       headingFace: nextHeadingFace,
       upFace: nextUpFace,
-      upVector,
+      upVector: parentLocalUpVector,
     });
   }, [
     isHeadingUpPreviewActive,
@@ -647,7 +666,7 @@ export const Cuboid = ({
     currentUpFace,
     effectiveDimensions,
     orientationQuaternion,
-    upVector,
+    parentLocalUpVector,
   ]);
 
   const headingUpPreviewQuaternion = useMemo(
@@ -714,7 +733,7 @@ export const Cuboid = ({
     enabled: canEditHeading,
     dimensions: displayDimensions,
     orientation: orientationQuaternion,
-    upVector,
+    upVector: parentLocalUpVector,
     contentRef,
     panelElementRef,
     onDragStart: handleHeadingDragStart,
@@ -821,7 +840,10 @@ export const Cuboid = ({
       }
 
       const orientation = orientationQuaternion.clone().normalize();
-      const faceWorldNormal = getCuboidResizeFaceWorldNormal(face, orientation);
+      const faceWorldNormal = getCuboidResizeFaceWorldNormal(
+        face,
+        worldOrientationQuaternion,
+      );
       const cameraDirection = camera.getWorldDirection(new THREE.Vector3());
       const cameraUp = new THREE.Vector3(0, 1, 0)
         .applyQuaternion(camera.quaternion)
@@ -869,6 +891,7 @@ export const Cuboid = ({
       orientationQuaternion,
       setHoveredResizeFace,
       setIsCurrentlyTransforming,
+      worldOrientationQuaternion,
     ],
   );
 
@@ -1101,7 +1124,7 @@ export const Cuboid = ({
       ? getCuboidFaceDepthEdges(
           hoveredResizeFace,
           displayDimensions,
-          orientationQuaternion,
+          worldOrientationQuaternion,
           camera,
         )
       : null;

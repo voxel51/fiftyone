@@ -22,7 +22,6 @@ import eta.core.image as etai
 import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.video as etav
-
 import fiftyone.core.annotation as foa
 import fiftyone.core.brain as fob
 import fiftyone.core.dataset as fod
@@ -42,13 +41,15 @@ import fiftyone.types as fot
 
 from .parsers import (
     FiftyOneImageClassificationSampleParser,
-    FiftyOneTemporalDetectionSampleParser,
     FiftyOneImageDetectionSampleParser,
     FiftyOneImageLabelsSampleParser,
+    FiftyOneTemporalDetectionSampleParser,
     FiftyOneVideoLabelsSampleParser,
 )
 
 fota = fou.lazy_import("fiftyone.core.tags")
+foma = fou.lazy_import("fiftyone.multimodal.media_reference.asset_planning")
+fmm = fou.lazy_import("fiftyone.multimodal.media_reference.field_model")
 
 logger = logging.getLogger(__name__)
 
@@ -135,6 +136,10 @@ def import_samples(
 
     def _do_import_samples():
         with dataset_importer:
+            media_sources = dataset_importer.get_media_sources()
+            if media_sources:
+                dataset._record_media_sources(media_sources)
+
             parse_sample, _expand_schema, _dynamic = _build_parse_sample_fcn(
                 dataset,
                 dataset_importer,
@@ -184,7 +189,7 @@ def merge_samples(
     dataset_importer,
     label_field=None,
     tags=None,
-    key_field="filepath",
+    key_field=None,
     key_fcn=None,
     skip_existing=False,
     insert_new=True,
@@ -205,9 +210,9 @@ def merge_samples(
     importing datasets in custom formats by defining your own
     :class:`DatasetImporter`.
 
-    By default, samples with the same absolute ``filepath`` are merged, but you
-    can customize this behavior via the ``key_field`` and ``key_fcn``
-    parameters. For example, you could set
+    By default, samples with the same filepath or media reference key are
+    merged, but you can customize this behavior via the ``key_field`` and
+    ``key_fcn`` parameters. For example, you could set
     ``key_fcn = lambda sample: os.path.basename(sample.filepath)`` to merge
     samples with the same base filename.
 
@@ -250,8 +255,10 @@ def merge_samples(
             the keys of the imported label dictionaries as field names
         tags (None): an optional tag or iterable of tags to attach to each
             sample
-        key_field ("filepath"): the sample field to use to decide whether to
-            join with an existing sample
+        key_field (None): the sample field to use to decide whether to join
+            with an existing sample. By default, ``filepath`` or
+            ``media_reference.key`` is used according to the media source of
+            the samples
         key_fcn (None): a function that accepts a
             :class:`fiftyone.core.sample.Sample` instance and computes a key to
             decide if two samples should be merged. If a ``key_fcn`` is
@@ -262,15 +269,15 @@ def merge_samples(
             (False)
         fields (None): an optional field or iterable of fields to which to
             restrict the merge. If provided, fields other than these are
-            omitted from ``samples`` when merging or adding samples. One
-            exception is that ``filepath`` is always included when adding new
-            samples, since the field is required. This can also be a dict
+            omitted from ``samples`` when merging or adding samples. The
+            active media source is always included when adding new samples,
+            since it is required. This can also be a dict
             mapping field names of the input collection to field names of this
             dataset
         omit_fields (None): an optional field or iterable of fields to exclude
             from the merge. If provided, these fields are omitted from imported
-            samples, if present. One exception is that ``filepath`` is always
-            included when adding new samples, since the field is required
+            samples, if present. The active media source is always included
+            when adding new samples, since it is required
         merge_lists (True): whether to merge the elements of list fields
             (e.g., ``tags``) and label list fields (e.g.,
             :class:`fiftyone.core.labels.Detections` fields) rather than
@@ -340,6 +347,10 @@ def merge_samples(
     #
 
     with dataset_importer:
+        media_sources = dataset_importer.get_media_sources()
+        if media_sources:
+            dataset._record_media_sources(media_sources)
+
         parse_sample, expand_schema, dynamic = _build_parse_sample_fcn(
             dataset,
             dataset_importer,
@@ -757,6 +768,10 @@ def parse_dataset_info(dataset, info, overwrite=True):
     if app_config is not None:
         dataset.app_config.merge(app_config, overwrite=overwrite)
 
+    media_sources = info.pop("_media_sources", None)
+    if media_sources:
+        dataset._record_media_sources(media_sources, overwrite=overwrite)
+
     if overwrite:
         dataset.info.update(info)
     else:
@@ -941,6 +956,15 @@ class DatasetImporter(object):
         entered, :func:`DatasetImporter.__enter__`.
         """
         pass
+
+    def get_media_sources(self):
+        """Returns the media-source entries the importing dataset records
+        before any sample is added, or None.
+
+        Only importers of media-reference-backed samples provide these; see
+        :class:`fiftyone.utils.lerobot.LeRobotDatasetImporter`.
+        """
+        return None
 
     def get_dataset_info(self):
         """Returns the dataset info for the dataset.
@@ -1824,6 +1848,11 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._has_frames = None
         self._media_fields = None
 
+        self._dataset_dict = None
+        self._contains_media_references = None
+        self._media_source_manifest_sources = None
+        self._reference_asset_plan = None
+
     def setup(self):
         self._data_dir = os.path.join(self.dataset_dir, "data")
         self._fields_dir = os.path.join(self.dataset_dir, "fields")
@@ -1832,6 +1861,26 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._eval_dir = os.path.join(self.dataset_dir, "evaluations")
         self._runs_dir = os.path.join(self.dataset_dir, "runs")
         self._metadata_path = os.path.join(self.dataset_dir, "metadata.json")
+
+        self._dataset_dict = foo.import_document(self._metadata_path)
+        self._contains_media_references = bool(
+            self._dataset_dict.get("_media_sources")
+        )
+
+        if self._contains_media_references:
+            media_source_manifest_path = os.path.join(
+                self.dataset_dir, foma._MEDIA_SOURCE_MANIFEST_FILENAME
+            )
+            if not os.path.isfile(media_source_manifest_path):
+                raise ValueError(
+                    "Native media-reference dataset is missing its portable "
+                    "media-source manifest"
+                )
+
+            self._media_source_manifest_sources = (
+                foma._load_media_source_manifest(media_source_manifest_path)
+            )
+
         self._tags_path = os.path.join(
             self.dataset_dir, fota.TAGS_EXPORT_FILENAME
         )
@@ -1856,20 +1905,26 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
                 self._has_frames = False
 
     def import_samples(self, dataset, tags=None, progress=None):
-        dataset_dict = foo.import_document(self._metadata_path)
+        dataset_dict = self._dataset_dict
+        # A source the dataset already had resolves through the location it
+        # already has, which covers every one of its samples; a bundle's copy
+        # covers only the samples that bundle carried
+        preexisting = set(fmm._media_sources_by_id(dataset))
 
         if len(dataset) > 0 and fomi.needs_migration(
             head=dataset_dict["version"]
         ):
-            # A migration is required in order to load this dataset, and the
-            # dataset we're loading into is non-empty, so we must first load
-            # into a temporary dataset, perform the migration, and then merge
-            # into the destination dataset
+            # A migration is required in order to load this dataset, and
+            # the destination is non-empty, so first migrate in a
+            # temporary dataset and then merge into the destination.
             tmp_dataset = fod.Dataset()
 
             try:
                 sample_ids = self._import_samples(
-                    tmp_dataset, dataset_dict, tags=tags, progress=progress
+                    tmp_dataset,
+                    dataset_dict,
+                    tags=tags,
+                    progress=progress,
                 )
                 dataset.add_collection(tmp_dataset)
             finally:
@@ -1877,19 +1932,48 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
         else:
             sample_ids = self._import_samples(
-                dataset, dataset_dict, tags=tags, progress=progress
+                dataset,
+                dataset_dict,
+                tags=tags,
+                progress=progress,
             )
 
         fota.import_tags(
             dataset,
             self._tags_path,
-            sample_ids=sample_ids if self.max_samples is not None else None,
+            sample_ids=(sample_ids if self.max_samples is not None else None),
             progress=progress,
         )
 
+        self._record_bundled_media_sources(dataset, preexisting)
+
         return sample_ids
 
-    def _import_samples(self, dataset, dataset_dict, tags=None, progress=None):
+    def _record_bundled_media_sources(self, dataset, preexisting):
+        if not self._media_source_manifest_sources:
+            return
+
+        unbound = foma._record_bundled_media_sources(
+            self._media_source_manifest_sources,
+            self.dataset_dir,
+            dataset,
+            preexisting,
+        )
+        if unbound:
+            logger.warning(
+                "Imported media references name %d source(s) this dataset "
+                "does not record; their assets cannot be resolved: %s",
+                len(unbound),
+                ", ".join(source.id for source in unbound),
+            )
+
+    def _import_samples(
+        self,
+        dataset,
+        dataset_dict,
+        tags=None,
+        progress=None,
+    ):
         name = dataset.name
         empty_import = not bool(dataset)
         now = datetime.utcnow()
@@ -1947,6 +2031,11 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
             dataset_dict.update(keep_fields)
 
+            fod._handle_incoming_media_source(dataset, dataset_dict)
+            # this dict replaces the document wholesale, so its sources are
+            # filed under roots here rather than through the dataset
+            fod._file_dict_media_sources(dataset_dict)
+
             conn = foo.get_db_conn()
             conn.datasets.replace_one({"name": name}, dataset_dict)
 
@@ -1970,14 +2059,16 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         #
 
         logger.info("Importing samples...")
+
         samples, num_samples = foo.import_collection(
             self._samples_path, key="samples"
         )
-
         samples = self._preprocess_list(samples)
 
         if self.max_samples is not None:
             num_samples = self.max_samples
+        elif isinstance(samples, list):
+            num_samples = len(samples)
 
         if self.rel_dir is not None:
             # Prepend `rel_dir` to all relative paths
@@ -1990,7 +2081,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         dataset_id = dataset._doc.id
 
         def _parse_sample(sd):
-            if not os.path.isabs(sd["filepath"]):
+            if sd.get("filepath") and not os.path.isabs(sd["filepath"]):
                 sd["filepath"] = fos.normpath(
                     os.path.join(rel_dir, sd["filepath"])
                 )
@@ -3543,7 +3634,7 @@ class ImageSegmentationDirectoryImporter(
 
 class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
     """Importer for labeled image datasets whose labels are stored in
-    `ETA ImageLabels format <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_.
+    `ETA ImageLabels format <https://github.com/voxel51/eta/blob/main/docs/image_labels_guide.md>`_.
 
     See :ref:`this page <FiftyOneImageLabelsDataset-import>` for format
     details.
@@ -3679,7 +3770,7 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
 
 class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
     """Importer for labeled video datasets whose labels are stored in
-    `ETA VideoLabels format <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_.
+    `ETA VideoLabels format <https://github.com/voxel51/eta/blob/main/docs/video_labels_guide.md>`_.
 
     See :ref:`this page <FiftyOneVideoLabelsDataset-import>` for format
     details.

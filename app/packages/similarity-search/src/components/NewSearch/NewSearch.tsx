@@ -17,15 +17,16 @@ import {
   TextColor,
   TextVariant,
   Toggle,
+  Tooltip,
   Orientation,
   Spacing,
   Variant,
 } from "@voxel51/voodo";
 import { FileUploadOutlined } from "../../mui";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { OperatorExecutionButton } from "@fiftyone/operators";
 import {
-  BrainKeyConfig,
+  AnnotatedBrainKeyConfig,
   CloneConfig,
   QueryType,
   ViewTarget,
@@ -51,7 +52,7 @@ import {
 } from "../styled";
 
 type NewSearchProps = {
-  brainKeys: BrainKeyConfig[];
+  brainKeys: AnnotatedBrainKeyConfig[];
   cloneConfig?: CloneConfig | null;
   isPatchesView?: boolean;
   isReadOnly?: boolean;
@@ -69,6 +70,40 @@ export default function NewSearch({
 }: NewSearchProps) {
   const form = useNewSearchForm(brainKeys, cloneConfig, onSubmitted);
   const [uploadError, setUploadError] = useState<string | null>(null);
+
+  // All indexes are listed; ones that can't be used in the current view
+  // are grayed out with a tooltip and rejected by handleBrainKeyChange
+  const brainKeyOptions = useMemo(
+    () =>
+      brainKeys.map((bk) => {
+        const label =
+          bk.key + (bk.patches_field ? ` (patches: ${bk.patches_field})` : "");
+        return {
+          id: bk.key,
+          data: {
+            label,
+            content: bk.compatible ? undefined : (
+              <Tooltip content={bk.incompatibleReason}>
+                <span style={{ opacity: 0.5, cursor: "not-allowed" }}>
+                  {label}
+                </span>
+              </Tooltip>
+            ),
+          },
+        };
+      }),
+    [brainKeys],
+  );
+
+  const handleBrainKeyChange = useCallback(
+    (value: string | string[] | null) => {
+      const key = (value as string) ?? "";
+      const config = brainKeys.find((bk) => bk.key === key);
+      if (config && !config.compatible) return;
+      form.setBrainKey(key);
+    },
+    [brainKeys, form.setBrainKey],
+  );
 
   // Guard against setting state after unmount — `fileToBase64` resolves
   // asynchronously and the user can navigate away mid-read.
@@ -105,9 +140,9 @@ export default function NewSearch({
           control={
             <Select
               exclusive
-              options={form.brainKeyOptions}
+              options={brainKeyOptions}
               value={form.brainKey}
-              onChange={(value) => form.setBrainKey((value as string) ?? "")}
+              onChange={handleBrainKeyChange}
             />
           }
         />

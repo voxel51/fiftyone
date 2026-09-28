@@ -49,6 +49,10 @@ vi.mock("@fiftyone/plugins", () => ({
   getComponent: (...args: unknown[]) => getComponent(...args),
   getSampleRendererComponent: (...args: unknown[]) =>
     getSampleRendererComponent(...args),
+  hasSampleRendererSource: (media: {
+    mediaReference?: unknown;
+    url?: string | null;
+  }) => Boolean(media.url || media.mediaReference),
   useActivePlugins: (...args: unknown[]) => useActivePlugins(...args),
 }));
 
@@ -69,8 +73,19 @@ vi.mock("@fiftyone/analytics", () => ({
   useTrackEvent: () => trackEvent,
 }));
 
+vi.mock("@fiftyone/state/src/selection", () => ({
+  useGridSelection: () => ({
+    enabled: false,
+    selected: new Map(),
+    membership: new Set(),
+  }),
+}));
+
 // GridTagBubbles reaches for looker/schema hooks this test's minimal
 // @fiftyone/state mock doesn't provide; it's irrelevant to selection wiring.
+vi.mock("@fiftyone/multimodal/grid-overlay", () => ({
+  EpisodeGridOverlay: () => null,
+}));
 vi.mock("./GridTagBubbles", () => ({
   default: () => null,
 }));

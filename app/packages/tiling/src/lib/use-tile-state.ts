@@ -1,5 +1,6 @@
-import { atom, useAtomValue, useSetAtom } from "jotai";
+import { atom, useAtomValue, useSetAtom, type PrimitiveAtom } from "jotai";
 import { atomFamily } from "jotai/utils";
+import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef } from "react";
 import { registeredTilesAtom, tileSelectionAtom } from "./atoms";
 import { useTileId, useTiling } from "./TilingProvider";
@@ -10,6 +11,23 @@ const NO_TILE = "__no-tile__";
 
 /** Transient emphasis for one tile's header title. */
 const tileTitleHighlightedAtom = atomFamily((_tileId: string) => atom(false));
+
+/**
+ * A tile body's extra header content (e.g. an Audio tile's mute button).
+ * `MosaicGrid` renders the header and the tile body as two independent
+ * trees with no JSX channel between them, so a tile body publishes here
+ * and the header reads it back by tile id — mirrors `tileTitleHighlightedAtom`.
+ * `null` (the default) means "no extra content"; every non-audio tile
+ * simply never calls the setter, so this never affects them.
+ */
+// `atom<ReactNode>(null)` would resolve to `PrimitiveAtom<ReactNode>` in
+// theory, but jotai's overloads narrow it to a read-only `Atom<ReactNode>`
+// because the bare `null` initial value matches the read-fn overload
+// first (same quirk documented in @fiftyone/playback's atoms.ts). The
+// cast preserves the writable shape so `useSetAtom` type-checks.
+const tileHeaderExtraAtom = atomFamily(
+  (_tileId: string) => atom<ReactNode>(null) as PrimitiveAtom<ReactNode>,
+);
 
 export function useTileSelection<T = unknown>(): T | null {
   const tileId = useTileId();
@@ -77,6 +95,35 @@ export function useSetTileTitleHighlighted(): (highlighted: boolean) => void {
     (highlighted: boolean) => {
       if (!tileId) return;
       setHighlighted(highlighted);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tileId],
+  );
+}
+
+/** The surrounding tile's extra header content, or `null` if none was published. */
+export function useTileHeaderExtra(): ReactNode {
+  const tileId = useTileId();
+  return useAtomValue(tileHeaderExtraAtom(tileId ?? NO_TILE));
+}
+
+/** Reads a specific tile's extra header content by id — used by `MosaicGrid`. */
+export function useTileHeaderExtraFor(tileId: string | null): ReactNode {
+  return useAtomValue(tileHeaderExtraAtom(tileId ?? NO_TILE));
+}
+
+/**
+ * Publishes extra content the surrounding tile's header should render
+ * (e.g. a mute button). Call from a `useEffect` and reset to `null` on
+ * cleanup so the header reverts when the tile unmounts or stops needing it.
+ */
+export function useSetTileHeaderExtra(): (node: ReactNode) => void {
+  const tileId = useTileId();
+  const setExtra = useSetAtom(tileHeaderExtraAtom(tileId ?? NO_TILE));
+  return useCallback(
+    (node: ReactNode) => {
+      if (!tileId) return;
+      setExtra(node);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [tileId],

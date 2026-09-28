@@ -5,6 +5,7 @@ Base classes for objects that are backed by database documents.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from copy import deepcopy
 
 from bson import ObjectId
@@ -343,8 +344,7 @@ class _Document(object):
             AttributeError: if ``expand_schema == False`` and a field does not
                 exist
         """
-        if not overwrite:
-            existing_field_names = set(self.field_names)
+        existing_field_names = set(self.field_names) if not overwrite else ()
 
         fields = document._parse_fields(fields=fields, omit_fields=omit_fields)
 

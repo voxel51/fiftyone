@@ -44,7 +44,10 @@ import {
   type PlotSeriesConfig,
 } from "../plots/plot-tile-state";
 import { rawTileStreamAtom } from "../tiles/raw-message-binding";
-import { persistedImageTileBindingsAtom } from "../tiles/tile-source-bindings";
+import {
+  persistedAudioTileBindingsAtom,
+  persistedImageTileBindingsAtom,
+} from "../tiles/tile-source-bindings";
 import { cameraScopeKey } from "../scope/camera-scope";
 import { readSidebarPreferences } from "../settings/sidebar-preferences";
 import { createSemanticSourceIndex } from "../settings/semantic-source";
@@ -66,6 +69,8 @@ import {
   type PlaybackDeviceCapabilities,
   type PlaybackLayoutTile,
 } from "./playback-layout";
+import { usePortableLayoutCapture } from "./PortableLayoutHost";
+import { serializePortableLayout } from "./portable-layout";
 import MissingTile from "../tiles/MissingTile";
 import {
   defaultTimelineSamplingRateHz,
@@ -77,7 +82,7 @@ export interface ModalLayout {
   /** User-authored titles to seed into the TilingProvider. */
   initialManualTileTitles: Record<string, string>;
   /** `undefined` lets the TilingProvider auto-lay-out `initialTiles`. */
-  initialLayout: MosaicNode<string> | undefined;
+  initialLayout: MosaicNode<string> | null | undefined;
   /** Tile id that should initially render expanded to fullscreen. */
   initialExpandedTileId: string | null;
   /** Resolver-default tile entries restored by Reset Layout. */
@@ -143,6 +148,29 @@ function resolveSemanticImageBindings(
 }
 
 /**
+ * Same idea as {@link resolveSemanticImageBindings} for audio tiles: maps
+ * each tile's persisted semantic key back to whichever runtime source
+ * carries it now. Kept separate from the image map because the image path
+ * feeds `resolveInitialImageBindings`, which reasons about image tiles only.
+ */
+function resolveSemanticAudioBindings(
+  scopeKey: string | null,
+  sources: readonly SceneSource[],
+): Readonly<Record<string, string>> {
+  if (!scopeKey) return {};
+  const sourceIndex = createSemanticSourceIndex(sources);
+  const result: Record<string, string> = {};
+  for (const [tileId, tile] of Object.entries(
+    readSidebarPreferences(scopeKey).tiles,
+  )) {
+    if (!tile.audioSourceKey) continue;
+    const source = sourceIndex.representativeByKey.get(tile.audioSourceKey);
+    if (source) result[tileId] = source.id;
+  }
+  return result;
+}
+
+/**
  * Mount-time layout state for the episode modal: the user's persisted
  * sidebar visibility and tile arrangement when one restores cleanly
  * against the current scene, the resolver's defaults otherwise — a
@@ -196,6 +224,14 @@ export function useModalLayout({
       ),
     [cameraPreferenceField, datasetId, sources],
   );
+  const semanticAudioBindings = useMemo(
+    () =>
+      resolveSemanticAudioBindings(
+        cameraScopeKey(datasetId, cameraPreferenceField),
+        sources,
+      ),
+    [cameraPreferenceField, datasetId, sources],
+  );
   const boundDefaultTiles = useMemo(
     () =>
       buildResolvedTiles(
@@ -203,8 +239,15 @@ export function useModalLayout({
         resolveTile,
         sources,
         semanticImageBindings,
+        semanticAudioBindings,
       ),
-    [resolveTile, resolved.tiles, semanticImageBindings, sources],
+    [
+      resolveTile,
+      resolved.tiles,
+      semanticAudioBindings,
+      semanticImageBindings,
+      sources,
+    ],
   );
 
   const restored = useMemo(
@@ -216,11 +259,13 @@ export function useModalLayout({
         resolveTile,
         persisted?.tileTitles,
         semanticImageBindings,
+        semanticAudioBindings,
       ),
     [
       availableTileTypes,
       persisted,
       resolveTile,
+      semanticAudioBindings,
       semanticImageBindings,
       sources,
     ],
@@ -293,15 +338,14 @@ export function useModalLayout({
   const onSceneUpAxisChange = useCallback(
     (axis: Scene3dUpAxis) => {
       setSceneUpAxis(axis);
-      if (datasetId && cameraPreferenceField?.trim()) {
+      if (datasetId) {
         writeCameraPreferences(
           { sceneUpAxis: axis },
           datasetId,
           cameraPreferenceField,
         );
       } else {
-        // Preserve the dataset-scoped fallback when the caller cannot
-        // identify a media field yet.
+        // Preserve the legacy fallback when no source scope is available.
         writeModalLayout({ sceneUpAxis: axis }, datasetId);
       }
     },
@@ -354,9 +398,11 @@ export function useModalLayout({
   );
 
   return {
-    initialTiles: restored?.tiles ?? boundDefaultTiles,
+    initialTiles:
+      persisted?.layout === null ? {} : (restored?.tiles ?? boundDefaultTiles),
     initialManualTileTitles: restored?.manualTileTitles ?? {},
-    initialLayout: restored?.layout ?? resolved.layout,
+    initialLayout:
+      persisted?.layout === null ? null : (restored?.layout ?? resolved.layout),
     initialExpandedTileId,
     resetTiles: defaultTiles,
     defaultLeftOpen: persisted?.leftSidebarOpen ?? true,
@@ -385,6 +431,7 @@ function buildResolvedTiles(
   resolveTile: TileResolver,
   sources?: readonly SceneSource[],
   imageBindings?: Readonly<Record<string, string>>,
+  audioBindings?: Readonly<Record<string, string>>,
 ): Record<string, TilingTile> {
   const resolvedImageBindings =
     sources && imageBindings
@@ -407,7 +454,9 @@ function buildResolvedTiles(
     if (!definition) continue;
     const Tile = definition.Tile;
     const initialSourceId =
-      resolvedImageBindings?.get(tile.id) ?? tile.initialSourceId;
+      resolvedImageBindings?.get(tile.id) ??
+      audioBindings?.[tile.id] ??
+      tile.initialSourceId;
     result[tile.id] = {
       render: () => <Tile initialSourceId={initialSourceId} />,
       title: tile.title,
@@ -457,6 +506,7 @@ function rebuildTilesFromLayout(
   resolveTile: TileResolver,
   tileTitles?: Readonly<Record<string, string>>,
   imageBindings?: Readonly<Record<string, string>>,
+  audioBindings?: Readonly<Record<string, string>>,
 ): {
   layout: MosaicNode<string>;
   manualTileTitles: Record<string, string>;
@@ -495,7 +545,10 @@ function rebuildTilesFromLayout(
     if (!type) return null;
     const definition = resolveTile(type);
     const Tile = definition?.Tile ?? MissingTile;
-    const initialSourceId = resolvedImageBindings.get(id);
+    // Image tiles resolve through the ranked-fallback pass above; audio
+    // tiles restore straight from their persisted semantic key.
+    const initialSourceId =
+      resolvedImageBindings.get(id) ?? audioBindings?.[id];
     const restoredTitle = tileTitles?.[id];
     const title = restoredTitle ?? definition?.typeLabel ?? "Unavailable tile";
     if (restoredTitle) {
@@ -544,6 +597,7 @@ function resolveInitialImageBindings(
 }
 
 export interface ModalLayoutPersistenceProps {
+  cameraPreferenceField?: string;
   /** Persistence scope — same `datasetId` given to `useModalLayout`. */
   datasetId?: string;
 }
@@ -559,6 +613,7 @@ export interface ModalLayoutPersistenceProps {
  */
 export function ModalLayoutPersistence({
   datasetId,
+  cameraPreferenceField,
 }: ModalLayoutPersistenceProps): React.ReactElement | null {
   const { expandedTileId, layout, manualTileTitles, tiles } = useTiling();
   const layoutRef = useRef(layout);
@@ -570,6 +625,32 @@ export function ModalLayoutPersistence({
   const datasetIdRef = useRef(datasetId);
   datasetIdRef.current = datasetId;
   const store = useStore();
+  const capture = useCallback(
+    () =>
+      serializePortableLayout(
+        {
+          ...readModalLayout(datasetId),
+          layout: layoutRef.current,
+          tileTitles: { ...manualTileTitlesRef.current },
+          plotSeries: compactPlotSeries(store.get(plotTileSeriesAtom)),
+          rawStreams: store.get(rawTileStreamAtom),
+          logSettings: compactLogSettings(store.get(logTileSettingsAtom)),
+          mapSettings: compactMapSettings(store.get(mapTileSettingsAtom)),
+          scene3dSettings: compactScene3dSettings(
+            store.get(scene3dTilePlaybackSettingsAtom),
+          ),
+          extensionSettings: sanitizeExtensionSettings(
+            store.get(episodeTileExtensionSettingsAtom),
+          ),
+        },
+        readCameraPreferences(datasetId, cameraPreferenceField) ?? {},
+        readSidebarPreferences(
+          cameraScopeKey(datasetId, cameraPreferenceField),
+        ),
+      ),
+    [cameraPreferenceField, datasetId, store],
+  );
+  usePortableLayoutCapture(capture);
 
   // Restore persisted plot series into the shell-scoped atom for the
   // plot tiles that survived layout restore, then mirror atom changes
@@ -599,7 +680,18 @@ export function ModalLayoutPersistence({
     tilesRef,
   });
 
-  usePrunePersistedImageBindings(store, tiles);
+  usePrunePersistedTileBindings(
+    store,
+    tiles,
+    TILE_TYPE.IMAGE,
+    persistedImageTileBindingsAtom,
+  );
+  usePrunePersistedTileBindings(
+    store,
+    tiles,
+    TILE_TYPE.AUDIO,
+    persistedAudioTileBindingsAtom,
+  );
 
   const plotSeriesPatch = useCallback(
     (value: Readonly<Record<string, readonly PlotSeriesConfig[]>>) => ({
@@ -920,29 +1012,31 @@ type PersistedTileAtomField =
   | "scene3dSettings";
 
 /** Remove durable bindings only when their pane leaves the live layout. */
-function usePrunePersistedImageBindings(
+function usePrunePersistedTileBindings(
   store: ReturnType<typeof useStore>,
   tiles: Readonly<Record<string, TilingTile>>,
+  tileType: TileType,
+  bindingsAtom: PrimitiveAtom<Readonly<Record<string, string>>>,
 ): void {
-  const imageTileIdsKey = Object.keys(tiles)
-    .filter((tileId) => tileTypeFromId(tileId) === TILE_TYPE.IMAGE)
+  const liveTileIdsKey = Object.keys(tiles)
+    .filter((tileId) => tileTypeFromId(tileId) === tileType)
     .join("\u0000");
 
   // This effect reconciles intentional pane removal with durable bindings.
   useEffect(() => {
-    const imageTileIds = new Set(
-      imageTileIdsKey ? imageTileIdsKey.split("\u0000") : [],
+    const liveTileIds = new Set(
+      liveTileIdsKey ? liveTileIdsKey.split("\u0000") : [],
     );
-    store.set(persistedImageTileBindingsAtom, (previous) => {
+    store.set(bindingsAtom, (previous) => {
       const staleIds = Object.keys(previous).filter(
-        (tileId) => !imageTileIds.has(tileId),
+        (tileId) => !liveTileIds.has(tileId),
       );
       if (staleIds.length === 0) return previous;
       const next = { ...previous };
       for (const tileId of staleIds) delete next[tileId];
       return next;
     });
-  }, [imageTileIdsKey, store]);
+  }, [bindingsAtom, liveTileIdsKey, store]);
 }
 
 /**

@@ -6,6 +6,7 @@ Utilities for working with datasets in
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import defaultdict
 from copy import deepcopy
 import enum
@@ -19,7 +20,6 @@ import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.storage as fos
 import fiftyone.utils.data as foud
-
 
 logger = logging.getLogger(__name__)
 
