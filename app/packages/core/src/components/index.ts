@@ -2,6 +2,7 @@ export * from "./ActivityToast";
 export { default as Checkbox } from "./Common/Checkbox";
 export { default as Dataset } from "./Dataset";
 export { DatasetGridRendererFailover } from "./DatasetGridRendererFailover";
+export { SubsetDetailsContext } from "./Grid/Selection/SubsetDetailsContext";
 export { SelectionAssistantFallbackContext } from "./Grid/Selection/SelectionAssistantFallbackContext";
 export { default as EmptySamples } from "./EmptySamples";
 export { default as FieldLabelAndInfo } from "./FieldLabelAndInfo";
