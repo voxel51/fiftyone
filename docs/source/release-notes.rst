@@ -24,8 +24,6 @@ Includes all updates from :ref:`FiftyOne 1.22.1 <release-notes-v1.22.1>`, plus:
 - Compute embeddings over MCAP video streams, not only image streams
 - Labelers can use SAM2 video tracking and click-to-segment when their
   license grants built-in plugin execution
-- Restarting an errored service, or sweeping a stale one, now tears down its
-  pod instead of leaving it orphaned
 
 .. _release-notes-v1.22.1:
 
