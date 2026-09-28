@@ -1,6 +1,7 @@
 import { useTheme } from "@fiftyone/components";
 import { InfoOutlined } from "@mui/icons-material";
 import { useCallback, useEffect, useState } from "react";
+import { cssVar } from "@voxel51/voodo";
 import styled from "styled-components";
 
 const TipsContainer = styled.div<{
@@ -22,7 +23,7 @@ const TipsContainer = styled.div<{
   border: 1px solid ${(p) => p.$border};
   max-width: 500px;
   user-select: none;
-  background: rgba(0, 0, 0, 0.7);
+  background: ${cssVar.color.scrim.heavy};
   backdrop-filter: blur(4px);
 `;
 
@@ -39,7 +40,7 @@ const TipsTitle = styled.div`
   gap: 6px;
   font-size: 14px;
   font-weight: 600;
-  color: #e0e0e0;
+  color: ${cssVar.color.text.primary};
 `;
 
 const TipsContent = styled.div`
@@ -54,24 +55,24 @@ const TipsList = styled.ul`
 
 const TipsListItem = styled.li`
   margin-bottom: 4px;
-  color: #bdbdbd;
+  color: ${cssVar.color.text.secondary};
   list-style-type: none;
 `;
 
 const KeyboardShortcut = styled.span`
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: ${cssVar.color.interactive["secondary-default"]};
+  border: 1px solid ${cssVar.color.border.default};
   border-radius: 3px;
   padding: 0px 6px;
   font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
   font-size: 11px;
   font-weight: 600;
-  color: #fff;
+  color: ${cssVar.color.text.primary};
   margin: 0 2px;
 `;
 
 const HighlightText = styled.span`
-  color: #e0e0e0;
+  color: ${cssVar.color.text.primary};
   font-weight: 500;
 `;
 
@@ -85,10 +86,16 @@ const TipsButton = styled.button<{ $variant: "primary" | "secondary" }>`
   padding: 4px 12px;
   border-radius: 4px;
   border: 1px solid
-    ${(p) => (p.$variant === "primary" ? "#666" : "transparent")};
+    ${(p) =>
+      p.$variant === "primary" ? cssVar.color.border.default : "transparent"};
   background: ${(p) =>
-    p.$variant === "primary" ? "rgba(255, 255, 255, 0.1)" : "transparent"};
-  color: ${(p) => (p.$variant === "primary" ? "#e0e0e0" : "#999")};
+    p.$variant === "primary"
+      ? cssVar.color.interactive["secondary-default"]
+      : "transparent"};
+  color: ${(p) =>
+    p.$variant === "primary"
+      ? cssVar.color.text.primary
+      : cssVar.color.text.tertiary};
   font-size: 11px;
   font-weight: 500;
   cursor: pointer;
@@ -97,9 +104,12 @@ const TipsButton = styled.button<{ $variant: "primary" | "secondary" }>`
   &:hover {
     background: ${(p) =>
       p.$variant === "primary"
-        ? "rgba(255, 255, 255, 0.2)"
-        : "rgba(255, 255, 255, 0.05)"};
-    color: ${(p) => (p.$variant === "primary" ? "#fff" : "#ccc")};
+        ? cssVar.color.interactive["secondary-hover"]
+        : cssVar.color.interactive["secondary-default"]};
+    color: ${(p) =>
+      p.$variant === "primary"
+        ? cssVar.color.text.primary
+        : cssVar.color.text.secondary};
   }
 `;
 
@@ -201,7 +211,7 @@ export const AnnotationTips = ({
   return (
     <TipsContainer
       $border={theme.primary.main}
-      $text="#e0e0e0"
+      $text={cssVar.color.text.primary}
       $isMultiviewOn={isMultiviewOn}
     >
       <TipsHeader>

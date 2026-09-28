@@ -4,6 +4,7 @@ import { ColorscaleInput } from "@fiftyone/looker/src/state";
 import type { Range } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
 import { FLOAT_FIELD, INT_FIELD } from "@fiftyone/utilities/src/constants";
+import { cssVar } from "@voxel51/voodo";
 import { folder, useControls } from "leva";
 import type { OnChangeHandler } from "leva/plugin";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -273,7 +274,7 @@ export const usePcdMaterialControls = (
   const colormapOverrideButton = useMemo(() => {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-        <div style={{ fontSize: "1.1em", color: "#999" }}>
+        <div style={{ fontSize: "1.1em", color: cssVar.color.text.tertiary }}>
           Source: {colorMap.source}
         </div>
         <div style={{ display: "flex", gap: "8px", flexDirection: "column" }}>

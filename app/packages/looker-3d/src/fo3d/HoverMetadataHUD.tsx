@@ -1,5 +1,6 @@
 import CloseIcon from "@mui/icons-material/Close";
 import React, { useCallback, useMemo } from "react";
+import { cssVar } from "@voxel51/voodo";
 import styled from "styled-components";
 import { useFo3dContext } from "./context";
 
@@ -9,15 +10,15 @@ const HoverMetadataHUDContainer = styled.div`
   right: 1.5em;
   width: 300px;
   z-index: 500;
-  background: rgba(30, 32, 38, 0.96);
-  color: #fff;
+  background: ${cssVar.color.tooltip.bg};
+  color: ${cssVar.color.text.primary};
   border-radius: 14px;
   box-shadow: 0 6px 32px 0 rgba(0, 0, 0, 0.22);
   padding: 0;
   font-size: 0.82rem;
   font-family: inherit;
   pointer-events: auto;
-  border: 1px solid var(--fo-palette-primary-plainBorder, #444);
+  border: 1px solid ${cssVar.color.border.default};
   backdrop-filter: blur(8px);
   overflow: hidden;
   opacity: 0.7;
@@ -37,24 +38,24 @@ const TitleBar = styled.div`
   z-index: 1;
   align-items: center;
   justify-content: space-between;
-  background: rgba(40, 42, 50, 0.98);
+  background: ${cssVar.color.tooltip.bg};
   padding: 0.7em 1.2em 0.7em 1.2em;
-  border-bottom: 1px solid var(--fo-palette-primary-plainBorder, #444);
+  border-bottom: 1px solid ${cssVar.color.border.default};
 `;
 
 const Title = styled.div`
   font-weight: 700;
   font-size: 1.02em;
   letter-spacing: 0.01em;
-  color: #e0e0e0;
+  color: ${cssVar.color.text.primary};
   display: flex;
   align-items: center;
   gap: 0.7em;
 `;
 
 const RenderModeDescriptor = styled.span`
-  background: #2d2f36;
-  color: #a0a0ff;
+  background: ${cssVar.color.bg["card-nested"]};
+  color: ${cssVar.color.text.info};
   font-size: 0.92em;
   font-weight: 500;
   border-radius: 6px;
@@ -65,7 +66,7 @@ const RenderModeDescriptor = styled.span`
 const CloseButton = styled.button`
   background: none;
   border: none;
-  color: #aaa;
+  color: ${cssVar.color.text.secondary};
   cursor: pointer;
   padding: 0.2em;
   border-radius: 50%;
@@ -73,8 +74,8 @@ const CloseButton = styled.button`
   display: flex;
   align-items: center;
   &:hover {
-    background: rgba(255, 255, 255, 0.08);
-    color: #fff;
+    background: ${cssVar.color.interactive["secondary-hover"]};
+    color: ${cssVar.color.text.primary};
   }
 `;
 
@@ -87,14 +88,14 @@ const HoverMetadataList = styled.dl`
   padding: 1.1em 1.3em 1.2em 1.3em;
   dt {
     font-weight: 600;
-    color: #b3b3b3;
+    color: ${cssVar.color.text.secondary};
     margin: 0;
     font-size: 0.93em;
   }
   dd {
     margin: 0;
     word-break: break-all;
-    color: #fff;
+    color: ${cssVar.color.text.primary};
     font-size: 0.93em;
   }
 `;

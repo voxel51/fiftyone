@@ -1,3 +1,4 @@
+import { resolveCssColor } from "@fiftyone/utilities";
 import { Cone, Line } from "@react-three/drei";
 import { ThreeEvent } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -124,7 +125,8 @@ function FrustumMesh({ frustumData, geometry, texture }: GeometryFrustumProps) {
   const [isHovered, setIsHovered] = useState(false);
 
   const canShowTexture = Boolean(texture);
-  const wireframeColor = isHovered ? FRUSTUM_HOVER_COLOR : FRUSTUM_COLOR;
+  const hoverColor = useMemo(() => resolveCssColor(FRUSTUM_HOVER_COLOR), []);
+  const wireframeColor = isHovered ? hoverColor : FRUSTUM_COLOR;
   const planeOpacity = isHovered
     ? FRUSTUM_HOVER_OPACITY
     : FRUSTUM_PLANE_OPACITY;
