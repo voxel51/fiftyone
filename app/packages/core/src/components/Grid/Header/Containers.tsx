@@ -1,4 +1,3 @@
-import Color from "color";
 import styled from "styled-components";
 
 export const SamplesHeader = styled.div`
@@ -11,8 +10,7 @@ export const SamplesHeader = styled.div`
   width: 100%;
   background-image: linear-gradient(
     to top,
-    ${({ theme }) => Color(theme.background.mediaSpace).alpha(0.0).toString()}
-      0%,
+    transparent 0%,
     ${({ theme }) => theme.background.mediaSpace} 100%
   );
   gap: 8px;

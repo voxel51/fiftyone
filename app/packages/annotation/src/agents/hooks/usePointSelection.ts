@@ -21,6 +21,8 @@ import {
   resolvePointVariant,
 } from "./resolvePointVariant";
 import { usePointSelectionSeed } from "./usePointSelectionSeed";
+import { cssVar } from "@voxel51/voodo";
+import { resolveCssColorsDeep } from "@fiftyone/utilities";
 
 // Re-export the variant identifiers so existing callers can continue to
 // import them from `./usePointSelection`.
@@ -34,11 +36,11 @@ export {
 const POINT_SELECTION_VARIANT_STYLES: Record<PointSelectionVariant, DrawStyle> =
   {
     [POSITIVE_POINT_VARIANT]: {
-      fillStyle: "#1e7d45", // todo reference from voodo
+      fillStyle: cssVar.color.semantic.success,
       strokeStyle: "#ffffff",
     },
     [NEGATIVE_POINT_VARIANT]: {
-      fillStyle: "#c33636", // todo reference from voodo
+      fillStyle: cssVar.color.semantic.destructive,
       strokeStyle: "#ffffff",
     },
   };
@@ -144,7 +146,8 @@ export const usePointSelection = (): PointSelection => {
           id: uuidv4(),
           label: { label: "", points: [] },
           field: "",
-          variantStyles: POINT_SELECTION_VARIANT_STYLES,
+          // canvas cannot take var() strings; resolve at draw time
+          variantStyles: resolveCssColorsDeep(POINT_SELECTION_VARIANT_STYLES),
           // Pure UI scaffolding — keep it out of the SelectionManager so it
           // never competes for the single-selection slot. Under the engine's
           // unified active set, a selectable tool overlay would steal scene

@@ -9,6 +9,7 @@ const Plot = lazy(() => import("react-plotly.js"));
 import { HeaderView } from ".";
 import { getComponentProps } from "../utils";
 import { ViewPropsType } from "../utils/types";
+import { resolveCssColor, resolveCssColorsDeep } from "@fiftyone/utilities";
 
 type TraceWithIds = {
   name?: string;
@@ -142,32 +143,40 @@ export default function PlotlyView(props: ViewPropsType) {
     return {};
   }, []);
   const layoutDefaults = useMemo(() => {
+    // plotly parses colours itself, so the theme's var() references have
+    // to be resolved to concrete values here
+    const text = {
+      secondary: resolveCssColor(theme.text.secondary),
+      tertiary: resolveCssColor(theme.text.tertiary),
+    };
+    const grid = resolveCssColor(theme.primary.softBorder);
+    const surface = resolveCssColor(theme.background.mediaSpace);
     return {
       font: {
         family: "var(--fo-fontFamily-body)",
         size: 14,
-        color: theme.text.secondary,
+        color: text.secondary,
       },
       showlegend: false,
       xaxis: {
         showgrid: true,
         zeroline: true,
         visible: true,
-        zerolinecolor: theme.text.tertiary,
-        color: theme.text.secondary,
-        gridcolor: theme.primary.softBorder,
+        zerolinecolor: text.tertiary,
+        color: text.secondary,
+        gridcolor: grid,
         automargin: true, // Enable automatic margin adjustment
-        title: { font: { size: 14, color: theme.text.tertiary } },
+        title: { font: { size: 14, color: text.tertiary } },
       },
       yaxis: {
         showgrid: true,
         zeroline: true,
         visible: true,
-        zerolinecolor: theme.text.tertiary,
-        color: theme.text.secondary,
-        gridcolor: theme.primary.softBorder,
+        zerolinecolor: text.tertiary,
+        color: text.secondary,
+        gridcolor: grid,
         automargin: true, // Enable automatic margin adjustment
-        title: { font: { size: 14, color: theme.text.tertiary } },
+        title: { font: { size: 14, color: text.tertiary } },
       },
       autosize: true,
       margin: {
@@ -177,13 +186,13 @@ export default function PlotlyView(props: ViewPropsType) {
         r: 8, // Keep right margin
         pad: 0,
       },
-      paper_bgcolor: theme.background.mediaSpace,
-      plot_bgcolor: theme.background.mediaSpace,
+      paper_bgcolor: surface,
+      plot_bgcolor: surface,
       legend: {
         x: 1,
         y: 1,
-        bgcolor: theme.background.mediaSpace,
-        font: { color: theme.text.secondary },
+        bgcolor: surface,
+        font: { color: text.secondary },
       },
     };
   }, [theme]);
@@ -203,7 +212,10 @@ export default function PlotlyView(props: ViewPropsType) {
     return merge({}, configDefaults, config);
   }, [configDefaults, config]);
   const mergedData = useMemo(() => {
-    return mergeData(data || schema?.view?.data, dataDefaults);
+    // plotly parses colours; resolve any theme token an operator passed
+    return resolveCssColorsDeep(
+      mergeData(data || schema?.view?.data, dataDefaults),
+    );
   }, [data, dataDefaults, schema?.view?.data]);
 
   useEffect(() => {

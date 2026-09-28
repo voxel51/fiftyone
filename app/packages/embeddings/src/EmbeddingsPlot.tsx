@@ -9,6 +9,7 @@ import { tracesToData } from "./tracesToData";
 import { useKeyDown } from "./useKeyDown";
 import { usePlot } from "./usePlot";
 import { useResetPlotZoom, useZoomRevision } from "./useResetPlotZoom";
+import { resolveCssColor } from "@fiftyone/utilities";
 
 export function EmbeddingsPlot({
   labelSelectorLoading,
@@ -157,9 +158,9 @@ export function EmbeddingsPlot({
               yanchor: "top",
               yref: "paper",
               xref: "paper",
-              bgcolor: theme.background.level1,
+              bgcolor: resolveCssColor(theme.background.level1),
               font: {
-                color: theme.text.secondary,
+                color: resolveCssColor(theme.text.secondary),
               },
             },
           }}

@@ -12,6 +12,7 @@
     ],
     "main": "src/index.ts",
     "dependencies": {
+        "@fiftyone/utilities": "*",
         "@fiftyone/aggregations": "*",
         "@fiftyone/components": "*",
         "@fiftyone/plugins": "*",

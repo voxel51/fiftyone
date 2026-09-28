@@ -24,7 +24,7 @@ const FilterMode = styled.div`
   background-color: ${({ theme }) => theme.background.level3};
   &:hover {
     background-color: ${({ theme }) =>
-      Color(theme.background.level3).alpha(0.5).string()};
+      `color-mix(in srgb, ${theme.background.level3} 50%, transparent)`};
   }
   width: 100%;
   display: flex;

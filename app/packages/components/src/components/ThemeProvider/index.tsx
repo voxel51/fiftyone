@@ -1,8 +1,10 @@
 import * as fos from "@fiftyone/state";
 import {
+  type CssVarsThemeOptions,
   Experimental_CssVarsProvider as CssVarsProvider,
   experimental_extendTheme as extendMuiTheme,
 } from "@mui/material/styles";
+import { cssVar } from "@voxel51/voodo";
 import React from "react";
 import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import { ThemeContext as LegacyTheme } from "styled-components";
@@ -13,7 +15,153 @@ function dynamicTheme(accessor: string) {
   return `var(${parts.join("-")})`;
 }
 
-let theme = extendMuiTheme({
+// Every palette value is a Voodo CSS variable, so the legacy `theme.*` and
+// `--fo-palette-*` surfaces follow light/dark through Voodo's `.dark` class
+// and never carry a literal colour of their own. The two `colorSchemes` are
+// therefore identical: the variables flip, the theme does not have to.
+//
+// MUI cannot lighten/darken/contrast a `var(--…)` value, so every augmented
+// colour (primary, secondary, error) supplies main/light/dark/contrastText
+// itself, and the `*Channel` tokens MUI would derive are pinned explicitly.
+// Anything that parses colours in JS — plotly, canvas, three.js — must go
+// through `resolveCssColor` from `@fiftyone/utilities` first.
+const c = cssVar.color;
+
+// Figma has no contrast-text token; every filled colour here is a
+// mode-independent fill, so white is correct in both themes.
+const ON_FILL = "#FFFFFF";
+const NO_CHANNEL = "0 0 0";
+
+const palette = (mode: "light" | "dark") => ({
+  themeMode: mode,
+  action: {
+    active: c.icon.default,
+    activeChannel: NO_CHANNEL,
+    disabled: c.icon.disabled,
+    hover: c.interactive["secondary-hover"],
+    selected: c.interactive["secondary-default"],
+    selectedChannel: NO_CHANNEL,
+    disabledBackground: c.bg.muted,
+    focus: c.focus.ring,
+  },
+  background: {
+    default: c.bg.background,
+    defaultChannel: NO_CHANNEL,
+    paper: c.bg.background,
+    paperChannel: NO_CHANNEL,
+    body: c.bg.secondary,
+    button: c.bg["card-elevated"],
+    header: c.bg.card,
+    input: c.bg.card,
+    level1: c.bg["card-elevated"],
+    level2: c.bg.background,
+    level3: c.bg.popover,
+    looker: c.bg.background,
+    mediaSpace: c.bg.background,
+    mediaSpaceTransparent: "transparent",
+    modalBackdrop: c.scrim.heavy,
+    sidebar: c.bg.background,
+    tooltip: c.tooltip.bg,
+    viewBarButtons: c.bg.card,
+    inactiveTab: c.bg.muted,
+    popup: c.bg["card-elevated"],
+    field: c.bg.muted,
+    activeCell: c.interactive["secondary-hover"],
+    card: c.bg.card,
+  },
+  common: {
+    background: c.bg.background,
+    backgroundChannel: NO_CHANNEL,
+    onBackground: c.text.primary,
+    onBackgroundChannel: mode === "dark" ? "255 255 255" : "0 0 0",
+  },
+  divider: c.border.default,
+  dividerChannel: NO_CHANNEL,
+  dividerDisabled: c.border.disabled,
+  danger: {
+    plainColor: c.semantic.destructive,
+  },
+  grey: {
+    400: c.text.inverse,
+    5: c.bg.popover,
+  },
+  neutral: {
+    plainColor: c.semantic.info,
+    softBg: c.bg.muted,
+    softBorder: c.border.strong,
+  },
+  primary: {
+    main: c.brand.primary,
+    mainChannel: NO_CHANNEL,
+    light: c.brand.accent,
+    lightChannel: NO_CHANNEL,
+    dark: c.interactive["primary-pressed"],
+    darkChannel: NO_CHANNEL,
+    contrastText: ON_FILL,
+    contrastTextChannel: "255 255 255",
+    plainColor: c.brand.primary,
+    plainBorder: c.border.default,
+    softBg: c.interactive["secondary-hover"],
+    softBorder: c.border.subtle,
+  },
+  secondary: {
+    main: c.text.secondary,
+    mainChannel: NO_CHANNEL,
+    light: c.text.tertiary,
+    lightChannel: NO_CHANNEL,
+    dark: c.text.primary,
+    darkChannel: NO_CHANNEL,
+    contrastText: c.bg.background,
+    contrastTextChannel: NO_CHANNEL,
+  },
+  tertiary: {
+    main: c.bg.card,
+    hover: c.bg["card-elevated"],
+  },
+  focusVisible: c.focus.ring,
+  text: {
+    buttonHighlight: ON_FILL,
+    primary: c.text.primary,
+    primaryChannel: NO_CHANNEL,
+    secondary: c.text.secondary,
+    secondaryChannel: NO_CHANNEL,
+    tertiary: c.text.tertiary,
+    disabled: c.text.placeholder,
+    invert: c.text.inverse,
+  },
+  custom: {
+    shadow: c.scrim.light,
+    shadowDark: c.scrim.default,
+    lightning: c.semantic.warning,
+    toastBackgroundColor: c.tooltip.bg,
+    primarySoft: c.brand.accent,
+    primaryMedium: c.brand.accent,
+  },
+  voxel: {
+    500: c.brand.primary,
+    600: c.interactive["primary-pressed"],
+  },
+  error: {
+    main: c.interactive["danger-default"],
+    mainChannel: NO_CHANNEL,
+    light: c.interactive["danger-hover"],
+    lightChannel: NO_CHANNEL,
+    dark: c.interactive["danger-pressed"],
+    darkChannel: NO_CHANNEL,
+    contrastText: ON_FILL,
+    contrastTextChannel: "255 255 255",
+  },
+  Avatar: {
+    defaultBg: c.bg.muted,
+  },
+});
+
+// The trailing `fontFamily` / `opacity` keys are App extensions of the MUI
+// options shape, so the literal is typed here rather than inline.
+const themeOptions: CssVarsThemeOptions & {
+  fontFamily: { body: string };
+  opacity: { inputPlaceholder: number };
+} = {
   cssVarPrefix: "fo",
   typography: {
     fontFamily: "Palanquin, sans-serif",
@@ -26,171 +174,8 @@ let theme = extendMuiTheme({
     operatorPalette: 1001,
   },
   colorSchemes: {
-    light: {
-      palette: {
-        themeMode: "light",
-        action: {
-          active: "hsl(200, 0%, 30%)",
-          disabled: "hsl(0, 0.9523809523809558%, 20.588235294117645%)",
-        },
-        background: {
-          body: "hsl(200, 0%, 85%)",
-          button: "hsl(200, 0%, 90%)",
-          header: "hsl(200, 0%, 100%)",
-          input: "hsl(200, 0%, 98%)",
-          level1: "hsl(200, 0%, 95%)",
-          level2: "hsl(200, 0%, 98%)",
-          level3: "hsl(200, 0%, 95%)",
-          looker: "hsl(200, 0%, 95%)",
-          mediaSpace: "hsl(200,0%,98%)",
-          mediaSpaceTransparent: "hsla(200,0%,98%,0)",
-          modalBackdrop: "hsl(200, 0%, 0%, 0.5)",
-          sidebar: "hsl(200,0%,98%)",
-          tooltip: "hsl(200, 0%, 100%)",
-          viewBarButtons: "hsl(200, 0%, 100%)",
-          inactiveTab: "hsl(200, 0%, 90%)",
-          popup: "hsl(200, 0%, 95%)",
-          field: "hsl(200, 0%, 95%)",
-          activeCell: "hsl(200, 0%, 95%)",
-        },
-        divider: "hsl(200, 0%, 80%)",
-        dividerDisabled: "hsl(200, 0%, 85%)",
-        danger: {
-          plainColor: "hsl(0, 87%, 47%)",
-        },
-        grey: {
-          400: "#fff",
-          5: "hsl(200, 0%, 5%)",
-        },
-        neutral: {
-          plainColor: "hsl(213, 100%, 47%)",
-          softBg: "hsl(200, 0%, 95%, 0.3)",
-          softBorder: "hsl(200, 0%, 75%)",
-        },
-        primary: {
-          main: "hsl(25, 100%, 51%)",
-          mainChannel: "0 0 0",
-          plainBorder: "hsl(200, 0%, 90%)",
-          plainColor: "hsl(25, 100%, 51%)",
-          softBg: "hsl(200, 0%, 85%, 0.7)",
-          softBorder: "hsl(200, 0%, 80%)",
-        },
-        secondary: {
-          main: "hsl(200, 0%, 30%)",
-        },
-        tertiary: {
-          main: "hsl(200, 0%, 90%)",
-          hover: "hsl(200, 0%, 85%)",
-        },
-        focusVisible: "hsl(212, 97%, 57%, 0.3)",
-        text: {
-          buttonHighlight: "hsl(200, 0%, 100%)",
-          primary: "hsl(200, 0%, 0%)",
-          secondary: "hsl(200, 0%, 30%)",
-          tertiary: "hsl(200, 0%, 50%)",
-          invert: "hsl(200, 0%, 100%)",
-        },
-        custom: {
-          shadow: "hsl(200, 0%, 90%)",
-          shadowDark: "hsl(200, 0%, 70%)",
-          lightning: "hsl(25, 100%, 51%)",
-          toastBackgroundColor: "#FFFFFF",
-          primarySoft: "hsl(25, 100%, 51%)",
-        },
-        voxel: {
-          500: "#FF6D04",
-          600: "#D54B00", // Not in the design. Darker shade of 500 of is used
-        },
-        error: {
-          main: "hsl(0, 87%, 53%)",
-        },
-        Avatar: {
-          defaultBg: "hsl(200, 0%, 85%)",
-        },
-      },
-    },
-    dark: {
-      palette: {
-        themeMode: "dark",
-        action: {
-          active: "hsl(200, 0%, 70%)",
-          disabled: "hsl(200, 0%, 50%)",
-        },
-        background: {
-          button: "hsl(200, 0%, 20%)",
-          header: "hsl(200, 0%, 15%)",
-          body: "hsl(200, 0%, 15%)",
-          looker: "hsl(200, 0%, 10%)",
-          level1: "hsl(200, 0%, 20%)",
-          level2: "hsl(200, 0%, 10%)",
-          level3: "hsl(200, 0%, 5%)",
-          mediaSpace: "hsl(200, 0%, 10%)",
-          mediaSpaceTransparent: "hsla(200, 0%, 10%,0)",
-          modalBackdrop: "hsl(200, 0%, 0%, 0.75)",
-          sidebar: "hsl(200, 0%, 10%)",
-          tooltip: "hsl(200, 0%, 5%)",
-          viewBarButtons: "hsl(200, 0%, 15%)",
-          inactiveTab: "hsl(200, 0%, 18%)",
-          paper: "hsl(200, 0%, 10%)",
-          popup: "hsl(200, 0%, 20%)",
-          field: "hsl(200, 0%, 20%, 0.3)",
-          activeCell: "hsl(200, 0%, 25%)",
-          card: "hsl(200, 0%, 16%)",
-        },
-        divider: "hsl(200, 0%, 20%)",
-        dividerDisabled: "hsl(200, 0%, 15%)",
-        danger: {
-          plainColor: "hsl(0, 87%, 53%)",
-        },
-        grey: {
-          400: "#fff",
-          5: "hsl(200, 0%, 5%)",
-        },
-        neutral: {
-          softBg: "hsl(200, 0%, 20%, 0.3)",
-          softBorder: "hsl(200, 0%, 25%)",
-          plainColor: "hsl(213, 100%, 53%)",
-        },
-        primary: {
-          main: "hsl(25, 100%, 51%)",
-          mainChannel: "0 0 0",
-          plainColor: "hsl(25, 100%, 51%)",
-          plainBorder: "hsl(200, 0%, 5%)",
-          softBg: "hsl(200, 0%, 25%)",
-          softBorder: "hsl(200, 0%, 20%)",
-        },
-        secondary: {
-          main: "hsl(200, 0%, 70%)",
-        },
-        tertiary: {
-          main: "hsl(200, 0%, 15%)",
-          hover: "hsl(200, 0%, 20%)",
-        },
-        focusVisible: "hsl(212, 97%, 43%, 0.3)",
-        text: {
-          buttonHighlight: "hsl(200, 0%, 100%)",
-          primary: "hsl(200, 0%, 100%)",
-          secondary: "hsl(200, 0%, 70%)",
-          tertiary: "hsl(200, 0%, 50%)",
-          invert: "hsl(200, 0%, 5%)",
-        },
-        custom: {
-          shadow: "hsl(200, 0%, 10%)",
-          shadowDark: "hsl(200, 0%, 0%)",
-          lightning: "#f5b700",
-          toastBackgroundColor: "#333",
-          primarySoft: "hsl(25, 100%, 80%)",
-          primaryMedium: "hsl(25, 100%, 71%)",
-        },
-        voxel: {
-          500: "#FF6D04",
-          600: "#D54B00", // Not in the design. Darker shade of 500 of is used
-        },
-        error: {
-          main: "hsl(0, 87%, 53%)",
-        },
-      },
-    },
+    light: { palette: palette("light") },
+    dark: { palette: palette("dark") },
   },
   components: {
     MuiButtonBase: {
@@ -202,7 +187,7 @@ let theme = extendMuiTheme({
       variants: [
         {
           props: { variant: "contained" },
-          style: { color: "#ffffff" },
+          style: { color: ON_FILL },
         },
         {
           props: { variant: "outlined", color: "secondary" },
@@ -304,7 +289,9 @@ let theme = extendMuiTheme({
   opacity: {
     inputPlaceholder: 0.5,
   },
-});
+};
+
+let theme = extendMuiTheme(themeOptions);
 
 export const useTheme = () => {
   return theme.colorSchemes[useRecoilValue(fos.theme)].palette;
