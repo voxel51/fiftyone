@@ -41,9 +41,10 @@ App
 - Deleting several labels in quick succession no longer fails with a version
   mismatch and rolls the deletes back
   `#8489 <https://github.com/voxel51/fiftyone/pull/8489>`_
-- Right-click and Back exit every annotation creation mode the same way: one
-  right-click commits the in-progress label and keeps the tool armed, a
-  second returns to Select
+- Annotation creation modes now exit consistently: right-click commits the
+  in-progress label and keeps the tool armed, right-click again with no label
+  open to return to Select, and the Back arrow returns to Select directly in
+  every mode
   `#8481 <https://github.com/voxel51/fiftyone/pull/8481>`_
 - The label schema editor lets you choose a Radio or Dropdown input for a
   label field's classes, so fields with many classes get a searchable list
