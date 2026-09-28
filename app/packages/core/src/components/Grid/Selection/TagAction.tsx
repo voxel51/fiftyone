@@ -125,11 +125,7 @@ function TagSelection({
         {capture && <TagPicker capture={capture} />}
       </ActionSurface>
       {error && (
-        <Text
-          role="alert"
-          variant={TextVariant.Xs}
-          color={TextColor.Destructive}
-        >
+        <Text role="alert" variant={TextVariant.Xs} color={TextColor.Failure}>
           {error}
         </Text>
       )}
@@ -291,7 +287,7 @@ function TagPicker({ capture }: { capture: Capture }) {
       )}
       {groupScope.error && (
         <span role="alert">
-          <Text color={TextColor.Destructive}>{groupScope.error}</Text>
+          <Text color={TextColor.Failure}>{groupScope.error}</Text>
           <Button
             size={Size.Xs}
             variant={Variant.Borderless}

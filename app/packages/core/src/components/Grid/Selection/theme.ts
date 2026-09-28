@@ -40,12 +40,12 @@ export const STRIP_MAX_FRACTION = 0.4;
  * root, so each portaled root applies this same style object.
  */
 export const trayTheme = {
-  "--tray-bg": cssVar.color.bg.card["1"],
+  "--tray-bg": cssVar.color.bg.card,
   "--tray-strip-bg": cssVar.color.bg.background,
-  "--tray-card-bg": cssVar.color.bg.card["2"],
-  "--tray-raised": cssVar.color.bg.raised,
+  "--tray-card-bg": cssVar.color.bg["card-nested"],
+  "--tray-raised": cssVar.color.bg["card-elevated"],
   "--tray-popover": cssVar.color.bg.popover,
-  "--tray-overlay": cssVar.color.overlay.heavy,
+  "--tray-overlay": cssVar.color.scrim.heavy,
   "--tray-border": cssVar.color.border.default,
   "--tray-border-strong": cssVar.color.border.strong,
   "--tray-border-subtle": cssVar.color.border.subtle,
