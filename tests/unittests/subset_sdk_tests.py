@@ -33,6 +33,49 @@ class SubsetSDKTests(unittest.TestCase):
     def tearDown(self):
         self.dataset.delete()
 
+    def test_converted_subset_reads_without_cache_write_permission(self):
+        dataset = fo.Dataset()
+        original_insert = Collection.insert_one
+        original_update = Collection.update_one
+
+        def insert(collection, *args, **kwargs):
+            if collection.name == "subset_materializations":
+                raise PermissionError("Read-only client")
+            return original_insert(collection, *args, **kwargs)
+
+        def update(collection, *args, **kwargs):
+            if collection.name == "subsets":
+                raise PermissionError("Read-only client")
+            return original_update(collection, *args, **kwargs)
+
+        try:
+            dataset.add_sample(
+                fo.Sample(
+                    filepath="/tmp/subset-read-only.mp4",
+                    metadata=fo.VideoMetadata(
+                        frame_width=32,
+                        frame_height=24,
+                        frame_rate=10,
+                        total_frame_count=10,
+                        duration=1,
+                    ),
+                )
+            )
+            frames = dataset.to_frames(sample_frames="dynamic")
+            subset = dataset.create_subset("Frames", frames.skip(2).limit(3))
+            with patch.object(Collection, "insert_one", insert), patch.object(
+                Collection, "update_one", update
+            ):
+                view = dataset.load_subset(subset["id"])
+                self.assertEqual(view.values("frame_number"), [3, 4, 5])
+            self.assertNotIn(
+                "materialization", fosub.get_subset(dataset, subset["id"])
+            )
+            view._dataset.delete()
+            frames._dataset.delete()
+        finally:
+            dataset.delete()
+
     def test_creator_attribution_round_trips_and_stays_immutable(self):
         with patch.object(
             selection_context, "get_actor", return_value="creator"

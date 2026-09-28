@@ -506,9 +506,13 @@ def subset_base_view(dataset, subset_id, stages=None):
     )
     if prefix and view._serialize() != doc.get("view"):
         # Refresh the collection hint after reopening a generated view.
-        _collection("subsets").update_one(
-            {"_id": doc["_id"]}, {"$set": {"view": view._serialize()}}
-        )
+        try:
+            _collection("subsets").update_one(
+                {"_id": doc["_id"]}, {"$set": {"view": view._serialize()}}
+            )
+        except PermissionError:
+            # The rebuilt view is usable without persisting its cache hint.
+            pass
     return view, rest
 
 
@@ -566,31 +570,36 @@ def load_materialized_view(source, subset_id, stage, reload=False):
                     videos, [], _generated=True, _subset_id=subset_id
                 )
             caches = _collection("subset_materializations")
-            caches.insert_one(
-                {
-                    "_id": generated._doc.id,
-                    "_dataset_id": dataset._doc.id,
-                    "subset_id": subset_id,
-                    "name": generated.name,
-                }
-            )
-            published = _collection("subsets").update_one(
-                {
-                    "_id": doc["_id"],
-                    "_dataset_id": dataset._doc.id,
-                    "member_version": version,
-                    "materialization": previous,
-                },
-                {
-                    "$set": {
-                        "materialization": {
-                            "version": version,
-                            "name": generated.name,
-                            "dataset_id": generated._doc.id,
-                        }
+            try:
+                caches.insert_one(
+                    {
+                        "_id": generated._doc.id,
+                        "_dataset_id": dataset._doc.id,
+                        "subset_id": subset_id,
+                        "name": generated.name,
                     }
-                },
-            )
+                )
+                published = _collection("subsets").update_one(
+                    {
+                        "_id": doc["_id"],
+                        "_dataset_id": dataset._doc.id,
+                        "member_version": version,
+                        "materialization": previous,
+                    },
+                    {
+                        "$set": {
+                            "materialization": {
+                                "version": version,
+                                "name": generated.name,
+                                "dataset_id": generated._doc.id,
+                            }
+                        }
+                    },
+                )
+            except PermissionError:
+                # Read-only clients retain an ordinary nonpersistent generated
+                # view. Publishing a shared cache is optional for these reads.
+                break
             if not published.matched_count:
                 generated_id = generated._doc.id
                 generated._delete()
@@ -600,10 +609,11 @@ def load_materialized_view(source, subset_id, stage, reload=False):
             # Earlier published views may still serve in-flight requests.
             # Retain them until the owner is deleted or normal SDK cleanup;
             # only an unpublished losing cache is safe to delete immediately.
-        stage._state = {"name": generated.name, "subset_version": version}
-        if kind == "frame":
-            return fovi.FramesView(videos, stage, generated)
-        return focl.ClipsView(videos, stage, generated)
+        break
+    stage._state = {"name": generated.name, "subset_version": version}
+    if kind == "frame":
+        return fovi.FramesView(videos, stage, generated)
+    return focl.ClipsView(videos, stage, generated)
 
 
 def write_clips_dataset(dataset, subset_id, clips_dataset):
