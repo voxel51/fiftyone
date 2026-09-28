@@ -25,9 +25,9 @@ const temporalTagSetting = selector<TemporalTagColorInput>({
 });
 
 /**
- * Temporal-tag color settings. Temporal tags are always colored by value (tag
- * name), so this panel only offers per-value colors regardless of the global
- * color-by mode.
+ * Temporal-tag color settings: per-value colors, which apply when the app
+ * colors by value. Coloring by field gives every tag the `_temporal_tags`
+ * field color instead.
  */
 const TemporalTag: React.FC = () => {
   const { colorPool } = useRecoilValue(fos.colorScheme);
