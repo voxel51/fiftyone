@@ -10,7 +10,7 @@ const ClipToFrameSection = ({ field }: { field: string }) => {
   }
 
   return (
-    <div style={{ marginBottom: "1rem" }}>
+    <div>
       <div
         style={{
           display: "flex",
@@ -28,8 +28,7 @@ const ClipToFrameSection = ({ field }: { field: string }) => {
         />
       </div>
       <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
-        When enabled, spatial labels drawn outside of the boundaries of an image
-        or video frame will be clipped down to the frame boundaries.
+        When enabled, labels drawn past the frame's edges are clipped to it.
       </Text>
     </div>
   );
