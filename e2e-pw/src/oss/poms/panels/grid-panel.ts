@@ -68,7 +68,9 @@ export class GridPanelPom {
   }
 
   async bringPanelToForeground(panelName: GridPanelName) {
-    await this.getTab(panelName).click();
+    // The Samples tab label opens the scope picker. Click the panel icon to
+    // activate the tab without opening a menu over the grid actions.
+    await this.getTab(panelName).locator("svg").first().click();
   }
 }
 

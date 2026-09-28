@@ -24,7 +24,9 @@ import {
   raycastResultAtom,
   selectedLabelForAnnotationAtom,
   showCuboidOrientationAtom,
+  activeSegmentationStateAtom,
   transformModeAtom,
+  fo3dSceneReadyAtom,
 } from "./atoms";
 
 /**
@@ -43,6 +45,16 @@ export const useCurrent3dAnnotationMode = () => {
  *
  * @returns A function that accepts the annotation mode to set
  */
+/** Whether the fo3d scene is parsed, loaded, and framed, so it can be drawn on. */
+export const useFo3dSceneReady = () => useReverbValue(fo3dSceneReadyAtom);
+
+/** Set whether the fo3d scene is parsed, camera-ready and fully loaded. */
+export const useSetFo3dSceneReady = () => useSetReverbState(fo3dSceneReadyAtom);
+
+/** Vertices placed so far by the in-progress polyline segment. */
+export const useActiveSegmentationVertexCount = () =>
+  useReverbValue(activeSegmentationStateAtom).vertices.length;
+
 export const useSetCurrent3dAnnotationMode = () => {
   const setMode = useSetReverbState(current3dAnnotationModeAtom);
 
@@ -124,6 +136,9 @@ export const useSetIsCurrentlyTransforming = () => {
 export const useTransformMode = () => {
   return useReverbValue(transformModeAtom);
 };
+
+/** The transform gizmo mode with its setter, for the toolbar that switches it. */
+export const useTransformModeState = () => useReverbState(transformModeAtom);
 
 /**
  * The candidate face during a heading drag, shared across panels so the

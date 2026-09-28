@@ -216,7 +216,7 @@ export class BrowserAnnotationProvider implements AnnotationProvider {
   }
 
   /**
-   * Run SAM2 against an already-decoded frame bitmap (e.g. an ImaVid video
+   * Run SAM2 against an already-decoded frame bitmap (e.g. a dynamic group video
    * frame). Used by video propagation; see `videoPropagation.ts`.
    *
    * The bitmap is passed by structured clone, NOT as a transferable —

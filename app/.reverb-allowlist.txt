@@ -51,7 +51,6 @@ packages/core/src/components/Actions/Selected/Grid.tsx
 packages/core/src/components/Actions/Selected/Modal.tsx
 packages/core/src/components/Actions/Selected/hooks.test.ts
 packages/core/src/components/Actions/Selected/hooks.ts
-packages/core/src/components/Actions/Selected/index.tsx
 packages/core/src/components/Actions/Similarity/useSimilarityPopover.ts
 packages/core/src/components/Actions/Similarity/utils.ts
 packages/core/src/components/Actions/Tag/Tag.tsx
@@ -153,7 +152,6 @@ packages/core/src/components/Modal/Group/DynamicGroup/carousel/DynamicGroupCarou
 packages/core/src/components/Modal/Group/DynamicGroup/carousel/DynamicGroupsFlashlightWrapper.tsx
 packages/core/src/components/Modal/Group/DynamicGroup/carousel/useSetDynamicGroupSample.tsx
 packages/core/src/components/Modal/Group/DynamicGroup/index.tsx
-packages/core/src/components/Modal/Group/DynamicGroup/pagination/PaginationComponentWithTooltip.tsx
 packages/core/src/components/Modal/Group/DynamicGroup/pagination/index.tsx
 packages/core/src/components/Modal/Group/DynamicGroup/useDynamicGroupSamples.ts
 packages/core/src/components/Modal/Group/EnsureGroupSample.tsx
@@ -206,8 +204,6 @@ packages/core/src/components/Modal/Sidebar/Annotate/useGeneratedViewInteraction.
 packages/core/src/components/Modal/Sidebar/Annotate/useGeneratedViewInteraction.ts
 packages/core/src/components/Modal/Sidebar/Annotate/useGroupAnnotationModeController.ts
 packages/core/src/components/Modal/Sidebar/Annotate/useGroupAnnotationSlices.ts
-packages/core/src/components/Modal/Sidebar/Annotate/useLabels.ts
-packages/core/src/components/Modal/Sidebar/Annotate/useSamplePrimitives.ts
 packages/core/src/components/Modal/Sidebar/Annotate/useSourceFieldToActivate.ts
 packages/core/src/components/Modal/Sidebar/Annotate/useSyncAnnotationSliceMediaType.ts
 packages/core/src/components/Modal/Sidebar/Sidebar.tsx

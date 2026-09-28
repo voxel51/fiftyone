@@ -18,6 +18,7 @@ import {
   buildRunName,
   getQueryIds,
   sortType,
+  type QueryIds,
 } from "./utils";
 
 const DEFAULT_K = 25;
@@ -28,6 +29,8 @@ type UseSimilarityPopoverProps = {
   close: () => void;
   onSearchStart?: () => void;
   onSearchEnd?: () => void;
+  /** Explicit query scope supplied by a selection tray bucket. */
+  query?: QueryIds;
 };
 
 export default function useSimilarityPopover({
@@ -36,6 +39,7 @@ export default function useSimilarityPopover({
   close,
   onSearchStart,
   onSearchEnd,
+  query,
 }: UseSimilarityPopoverProps) {
   const [textQuery, setTextQuery] = useState("");
 
@@ -98,7 +102,7 @@ export default function useSimilarityPopover({
         if (!resolvedBrainKey) return;
 
         const queryResult = isImageSearch
-          ? await getQueryIds(snapshot, resolvedBrainKey)
+          ? (query ?? (await getQueryIds(snapshot, resolvedBrainKey)))
           : undefined;
 
         const queryIds = queryResult?.queryIds;
@@ -197,6 +201,7 @@ export default function useSimilarityPopover({
       datasetId,
       onSearchStart,
       onSearchEnd,
+      query,
     ],
   );
 

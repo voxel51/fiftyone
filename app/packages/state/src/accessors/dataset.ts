@@ -1,20 +1,45 @@
-import { is3d, type Schema } from "@fiftyone/utilities";
+import { is3d, MEDIA_TYPE_IMAGE, type Schema } from "@fiftyone/utilities";
 import { useMemo } from "react";
-import { useReverbCallback, useReverbValue } from "@fiftyone/reverb";
 import {
+  useReverbCallback,
+  useReverbState,
+  useReverbValue,
+} from "@fiftyone/reverb";
+import { selectedSamples } from "../atoms/atoms";
+import { groupSlice } from "../atoms/groups";
+import {
+  anyTagging,
+  canTagSamplesOrLabels,
+  canEditSavedViews,
+  readOnly,
   dataset,
   datasetId,
   datasetName,
+  datasetSampleCount,
   expressionCatalog,
+  extendedStages,
+  filters,
+  dynamicGroupParameters,
   fieldSchema,
   groupMediaTypes,
+  gridSortBy,
   isGroup,
+  isClipsView,
+  isFramesView,
+  isPatchesView,
+  isOrderedDynamicGroup,
+  parentMediaTypeSelector,
   selectedMediaField,
+  refresher,
   skeleton,
   stageDefinitions,
   State,
   view,
 } from "../atoms";
+
+import { useSelectionRangeConstraint } from "../selection/range-constraint";
+
+export { useSetSelectionScopeBoundary } from "../atoms/selectionScope";
 
 /**
  * Get the current dataset ID.
@@ -183,24 +208,35 @@ export const useGetKeypointSkeleton = () => {
 
 /**
  * Returns the names of dataset-level group slices whose media type matches
- * any of the provided types.
+ * any of the provided types, or every slice when types are omitted.
  *
  * @param mediaTypes - The media types to filter by. "3d" matches all 3D
  *   types (fo3d, point-cloud, etc.).
  * @returns Slice names matching the requested media types, in dataset order.
  */
-export const useGroupSlices = (mediaTypes: GroupSliceMediaType[]): string[] => {
+export const useGroupSlices = (
+  mediaTypes?: GroupSliceMediaType[],
+): string[] => {
   const slices = useReverbValue(groupMediaTypes);
 
-  return slices
-    .filter(({ mediaType }) =>
-      mediaTypes.some((type) => {
-        if (type === "3d") return is3d(mediaType);
-        return mediaType === type;
-      }),
-    )
-    .map(({ name }) => name);
+  return useMemo(
+    () =>
+      slices
+        .filter(
+          ({ mediaType }) =>
+            !mediaTypes ||
+            mediaTypes.some((type) =>
+              type === "3d" ? is3d(mediaType) : mediaType === type,
+            ),
+        )
+        .map(({ name }) => name),
+    [slices, mediaTypes],
+  );
 };
+
+/** The media type of a dynamic group's members, or the dataset's own media type. */
+export const useParentMediaType = (): string =>
+  useReverbValue(parentMediaTypeSelector);
 
 /**
  * The operator catalog the expression editor suggests from, exactly as the
@@ -209,8 +245,127 @@ export const useGroupSlices = (mediaTypes: GroupSliceMediaType[]): string[] => {
  */
 export const useExpressionCatalog = () => useReverbValue(expressionCatalog);
 
+/**
+ * Whether the current view is an ordered dynamic group over image samples
+ * (ImaVid). Such a view reports a "group" media type with no slices.
+ *
+ * @returns True if the current view is an image-backed dynamic group video
+ */
+export const useIsImageDynamicGroupVideo = (): boolean => {
+  const orderedDynamicGroup = useReverbValue(isOrderedDynamicGroup);
+  const parentMediaType = useReverbValue(parentMediaTypeSelector);
+
+  return orderedDynamicGroup && parentMediaType === MEDIA_TYPE_IMAGE;
+};
+
+/**
+ * The field the current dynamic group is ordered by, or null when the view is
+ * not a dynamic group or the group is unordered.
+ */
+export const useDynamicGroupOrderBy = (): string | null =>
+  useReverbValue(dynamicGroupParameters)?.orderBy ?? null;
+
+/**
+ * The field the current dynamic group is grouped by, or null when the view is
+ * not a dynamic group. A group built from an expression or a list of fields
+ * has no single field to name, so it reads null too.
+ */
+export const useDynamicGroupGroupBy = (): string | null => {
+  const groupBy = useReverbValue(dynamicGroupParameters)?.groupBy;
+
+  return typeof groupBy === "string" ? groupBy : null;
+};
+
+/** Whether the current view is a patches view. */
+export const useIsPatchesView = (): boolean => useReverbValue(isPatchesView);
+
 /** The server's stage descriptors, as `fiftyone/core/stages.py` describes them. */
 export const useStageDefinitions = () => useReverbValue(stageDefinitions);
 
 /** The applied view's stages. */
 export const useView = (): State.Stage[] => useReverbValue(view);
+
+/** Current grid pipeline inputs, without pagination or explicit selection. */
+export function useGridViewScope() {
+  return {
+    rangeConstraint: useSelectionRangeConstraint(useCurrentDatasetName()),
+    view: useView(),
+    filters: useReverbValue(filters),
+    extendedStages: useReverbValue(extendedStages),
+    sort: useReverbValue(gridSortBy),
+    refresh: useReverbValue(refresher),
+  };
+}
+
+/** The dataset's estimated sample count, before any view stage or filter. */
+export function useDatasetSampleCount() {
+  return useReverbValue(datasetSampleCount);
+}
+
+/** Clears the range-producing temporal tag constraint when returning to episodes. */
+export function useClearTemporalTagConstraint() {
+  return useReverbCallback(
+    ({ set }) =>
+      () => {
+        set(filters, (current) => {
+          const next = { ...current };
+          delete next._temporal_tags;
+          return next;
+        });
+      },
+    [],
+  );
+}
+
+/** Whether the view converts parent episodes into another result identity. */
+export function useIsConvertedView() {
+  const clips = useReverbValue(isClipsView);
+  const frames = useReverbValue(isFramesView);
+  const patches = useReverbValue(isPatchesView);
+  return clips || frames || patches;
+}
+
+/** Shared tagging policy, including session permissions. */
+export function useSelectionTagDisabledReason(): string | null {
+  const permission = useReverbValue(canTagSamplesOrLabels);
+  const locked = useReverbValue(readOnly);
+  const tagging = useReverbValue(anyTagging);
+  if (locked) return "This session is read-only";
+  if (!permission.enabled)
+    return (
+      permission.message?.replace("#action", "tag episodes or segments") ??
+      "Tagging is not permitted"
+    );
+  return tagging ? "Another tagging operation is in progress" : null;
+}
+
+/** Saved subsets follow the dataset metadata editing permission. */
+export function useSelectionSubsetDisabledReason(): string | null {
+  const permission = useReverbValue(canEditSavedViews);
+  const locked = useReverbValue(readOnly);
+  if (locked) return "This session is read-only";
+  return permission.enabled
+    ? null
+    : "Editing subsets requires dataset edit permission";
+}
+
+/**
+ * The legacy selected-samples session, read and written as one accessor so
+ * the grid selection tray can stay in step with lookers, the modal, and
+ * operators without new Reverb usage elsewhere.
+ */
+export function useLegacySelectedSamples() {
+  return useReverbState(selectedSamples);
+}
+
+/** The active group slice the grid shows, or null outside grouped datasets. */
+export function useGridGroupSlice(): string | null {
+  return useReverbValue(groupSlice);
+}
+/** The grid's sidebar filters. */
+export const useFilters = (): State.Filters => useReverbValue(filters);
+
+/** The grid's extended stages, `{ [stage class]: kwargs }`, as operators are
+ * sent them. */
+export const useExtendedStages = (): Record<string, unknown> =>
+  useReverbValue(extendedStages);
