@@ -164,10 +164,16 @@ export function LeRobotGridHoverVideo({
     };
     const play = () => {
       const generation = ++playGeneration;
-      void element.play().catch(() => {
-        if (!disposed && generation === playGeneration) {
+      void element.play().catch((error: unknown) => {
+        if (disposed || generation !== playGeneration) return;
+        // An interrupted request, such as the browser pausing an offscreen
+        // video to save power, is not a failure of the media
+        if (error instanceof DOMException && error.name === "AbortError") {
           setShowingVideo(false);
+          setWaiting(false);
+          return;
         }
+        fail(error);
       });
     };
     const startAtEpisodeStart = () => {

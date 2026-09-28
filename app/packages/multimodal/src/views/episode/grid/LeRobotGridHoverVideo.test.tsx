@@ -259,6 +259,53 @@ describe("LeRobotGridHoverVideo", () => {
     expect(onBufferingChange).toHaveBeenLastCalledWith(false);
   });
 
+  it("fails, and stops reporting waiting, when the element refuses to play", async () => {
+    const refusal = new DOMException("not allowed", "NotAllowedError");
+    vi.mocked(HTMLMediaElement.prototype.play).mockRejectedValueOnce(refusal);
+    const onBufferingChange = vi.fn();
+    const onError = vi.fn();
+    render(
+      <TestLeRobotGridHoverVideo
+        onBufferingChange={onBufferingChange}
+        onError={onError}
+        video={nativeVideo(0, 1)}
+      />,
+    );
+    const element = screen.getByTestId("lerobot-grid-hover-video");
+
+    await act(async () => fireEvent.loadedMetadata(element));
+
+    expect(onError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining("not allowed"),
+      }),
+    );
+    expect(onBufferingChange).toHaveBeenLastCalledWith(false);
+    expect(element.style.visibility).not.toBe("visible");
+  });
+
+  it("stops reporting waiting, without failing, when a play request is interrupted", async () => {
+    vi.mocked(HTMLMediaElement.prototype.play).mockRejectedValueOnce(
+      new DOMException("interrupted", "AbortError"),
+    );
+    const onBufferingChange = vi.fn();
+    const onError = vi.fn();
+    render(
+      <TestLeRobotGridHoverVideo
+        onBufferingChange={onBufferingChange}
+        onError={onError}
+        video={nativeVideo(0, 1)}
+      />,
+    );
+    const element = screen.getByTestId("lerobot-grid-hover-video");
+
+    await act(async () => fireEvent.loadedMetadata(element));
+
+    expect(onError).not.toHaveBeenCalled();
+    expect(onBufferingChange).toHaveBeenLastCalledWith(false);
+    expect(element.getAttribute("src")).not.toBeNull();
+  });
+
   it("reports no waiting while only capturing a poster", () => {
     const onBufferingChange = vi.fn();
     render(
