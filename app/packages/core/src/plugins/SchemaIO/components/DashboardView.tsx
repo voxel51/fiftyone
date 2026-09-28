@@ -42,6 +42,7 @@ import DynamicIO from "./DynamicIO";
 import DashboardPNGExport from "./DashboardPNGExport";
 import { get as getFromPath } from "lodash";
 import "./DashboardResizeHandles.css";
+import { cssVar } from "@voxel51/voodo";
 
 // Helper function to create minimal ButtonView props
 const createButtonViewProps = (schema, onClick) => ({
@@ -1527,7 +1528,7 @@ export default function DashboardView(props: ViewPropsType) {
                     ...baseItemProps.sx,
                     border:
                       selectedItemIds.has(id) && isEditMode
-                        ? "3px solid #ff6d04"
+                        ? `3px solid ${cssVar.color.brand.primary}`
                         : "2px solid transparent",
                     borderRadius:
                       selectedItemIds.has(id) && isEditMode ? "6px" : "0px",

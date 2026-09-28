@@ -3,6 +3,7 @@ import CircleIcon from "@mui/icons-material/Circle";
 import { Chip, FormControl, MenuItem, Select, Tooltip } from "@mui/material";
 import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId } from "@fiftyone/spaces";
+import { cssVar } from "@voxel51/voodo";
 
 const PillBadge = ({
   text,
@@ -52,12 +53,12 @@ const PillBadge = ({
   const [chipColor, setChipColor] = useState(getInitialChipColor(text, color));
 
   const COLORS: { [key: string]: string } = {
-    default: "#999999",
-    primary: "#FFB682",
+    default: cssVar.color.text.tertiary,
+    primary: cssVar.color.brand.accent,
     error: "error",
     warning: "warning",
     info: "info",
-    success: "#8BC18D",
+    success: cssVar.color.text.success,
   };
 
   const getColor = (colorValue: string): string => {

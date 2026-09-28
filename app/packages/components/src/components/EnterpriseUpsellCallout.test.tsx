@@ -14,6 +14,7 @@ vi.mock("@voxel51/voodo", () => ({
     onClick?: () => void;
   }) => <button onClick={onClick}>{children}</button>,
   Align: {},
+  cssVar: { color: { brand: { accent: "var(--color-brand-accent)" } } },
   CardBackground: {},
   IconName: { AI: "AI", ExternalLink: "ExternalLink" },
   Orientation: {},

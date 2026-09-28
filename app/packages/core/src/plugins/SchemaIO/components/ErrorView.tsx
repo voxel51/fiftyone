@@ -4,6 +4,7 @@ import PopoutButton from "./PopoutButton";
 import { Error } from "@mui/icons-material";
 import { getComponentProps } from "../utils";
 import { scrollable } from "@fiftyone/components";
+import { cssVar } from "@voxel51/voodo";
 
 export default function ErrorView(props) {
   const { schema, data } = props;
@@ -69,11 +70,11 @@ function DetailedError(props) {
   return (
     <Box
       sx={{
-        color: "#fc4545",
-        background: "hsla(0,100%,50%,0.12)",
-        borderTop: "1px solid hsla(0,100%,50%,0.25)",
+        color: cssVar.color.text.failure,
+        background: `color-mix(in srgb, ${cssVar.color.semantic.destructive} 12%, transparent)`,
+        borderTop: `1px solid color-mix(in srgb, ${cssVar.color.semantic.destructive} 25%, transparent)`,
         "&:last-child": {
-          borderBottom: "1px solid hsla(0,100%,50%,0.25)",
+          borderBottom: `1px solid color-mix(in srgb, ${cssVar.color.semantic.destructive} 25%, transparent)`,
         },
         overflow: "auto",
       }}

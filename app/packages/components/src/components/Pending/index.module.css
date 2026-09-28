@@ -16,8 +16,8 @@
   width: 100%;
   background-image: linear-gradient(
     130deg,
-    rgba(225, 100, 40, 0) 0%,
-    rgb(225, 100, 40) 50%,
-    rgba(225, 100, 40, 0) 100%
+    color-mix(in srgb, var(--color-brand-primary) 0%, transparent) 0%,
+    var(--color-brand-primary) 50%,
+    color-mix(in srgb, var(--color-brand-primary) 0%, transparent) 100%
   );
 }
