@@ -12,6 +12,7 @@ import { useTrackEvent } from "@fiftyone/analytics";
 import { executeOperator } from "@fiftyone/operators";
 import type { PromptableSimilarityIndex } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
+import type { ComponentType } from "react";
 import { useCallback, useMemo, useState } from "react";
 
 import {
@@ -60,7 +61,7 @@ export interface TextSearchController {
   submit: (query: string, sources: string[] | null) => void;
   /** What the selected index's search wraps the field in, to say what it
    * offers for the typed text. */
-  Suggestions: fos.TextSearchProvider["Suggestions"];
+  Suggestions: ComponentType<fos.TextSearchSuggestionsProps>;
 }
 
 export interface TextSearch extends TextSearchController {

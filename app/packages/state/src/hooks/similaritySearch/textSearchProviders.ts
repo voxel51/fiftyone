@@ -109,8 +109,10 @@ export interface TextSearchProvider {
    * cannot be narrowed. */
   sources?: (index: TextSearchIndex) => Promise<SearchSources | null>;
   /** Wraps the search field while one of this provider's indexes is
-   * selected, to say what it offers for the typed text. */
-  Suggestions: React.ComponentType<TextSearchSuggestionsProps>;
+   * selected, to say what it offers for the typed text. It must call
+   * `children`, which renders the field itself. Absent, the field offers the
+   * previous queries matching the typed text, and any text runs. */
+  Suggestions?: React.ComponentType<TextSearchSuggestionsProps>;
   /** Resolves null when a newer search elsewhere replaced this one: nothing
    * publishes, and nothing is reported. */
   search: (request: TextSearchRequest) => Promise<TextSearchResult | null>;
