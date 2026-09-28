@@ -12,6 +12,7 @@ import {
   useReverbValue,
   type MutableSnapshot,
 } from "@fiftyone/reverb";
+import { createStore } from "jotai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const stubs = vi.hoisted(() => ({
@@ -83,6 +84,7 @@ function makeWrapper(initialMap: LabelMap) {
     return React.createElement(
       ReverbRoot,
       {
+        store: createStore(),
         initializeState: ({ set }: MutableSnapshot) => {
           set(stubs.selectedLabelMap, initialMap);
         },
