@@ -48,7 +48,9 @@ PRIMITIVES = {
 }
 
 
-def _install_fixture(tmpdir, pool=None, slots=None, primitives=None, brand=None):
+def _install_fixture(
+    tmpdir, pool=None, slots=None, primitives=None, brand=None
+):
     """Writes a stand-in ``@voxel51/voodo`` into ``tmpdir/node_modules``.
 
     Lets the tests drive the real ``node`` path the tool uses, rather than
@@ -180,7 +182,9 @@ class RenderTests(unittest.TestCase):
         self.assertIn('    "#2563EB",  # 1: teal (blue 500)', module)
 
     def test_warns_against_hand_editing(self):
-        self.assertIn("AUTO-GENERATED", fosvp._render(POOL, SLOTS, PRIMITIVES, BRAND))
+        self.assertIn(
+            "AUTO-GENERATED", fosvp._render(POOL, SLOTS, PRIMITIVES, BRAND)
+        )
 
     def test_emits_the_brand_colors(self):
         module = fosvp._render(POOL, SLOTS, PRIMITIVES, BRAND)
@@ -255,7 +259,9 @@ class MainTests(unittest.TestCase):
         self.assertIsNone(contents)
 
     def test_check_passes_when_current(self):
-        code, _ = self._run(["--check"], body=fosvp._render(POOL, SLOTS, PRIMITIVES, BRAND))
+        code, _ = self._run(
+            ["--check"], body=fosvp._render(POOL, SLOTS, PRIMITIVES, BRAND)
+        )
 
         self.assertEqual(code, 0)
 

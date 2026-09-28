@@ -35,7 +35,6 @@ import os
 import subprocess
 import sys
 
-
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 APP_DIR = os.path.join(REPO_ROOT, "app")
