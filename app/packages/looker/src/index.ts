@@ -4,7 +4,7 @@
 
 export { createColorGenerator, getRGB } from "@fiftyone/utilities";
 export * from "./cache";
-export { freeVideos, getFrameNumber } from "./elements/util";
+export { freeVideos, getFrameNumber, getTime } from "./elements/util";
 export * from "./lookers";
 export * from "./overlays";
 export * from "./selection";

@@ -691,6 +691,50 @@ describe("useRegisterDataStream", () => {
     expect(getIsPlaying(store)).toBe(false);
   });
 
+  it("defers the first-data fallback until saved ranges resolve", async () => {
+    const storeCapture = capturePlaybackStore();
+    const readBounds = vi.fn(async () => [
+      {
+        firstMessageTimeNs: 100_000_000n,
+        lastMessageTimeNs: 1_000_000_000n,
+        topic: STREAM,
+      },
+    ]);
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn(
+        () =>
+          new Promise<readonly SynchronizedMessageWindow[]>(() => undefined),
+      ),
+      readSynchronizedMessages: vi.fn(
+        () => new Promise<SynchronizedMessageWindow>(() => undefined),
+      ),
+      readTimelineRange: vi.fn(async () => createTimelineRange()),
+      readTopicTimeBounds: readBounds,
+    });
+    const source = createSource("saved-range");
+    const props = {
+      client,
+      source,
+      onStore: storeCapture.onStore,
+      subscribe: false,
+    };
+    const { rerender } = render(<Harness {...props} initialSeekPending />, {
+      wrapper: TestProviders,
+    });
+    await waitFor(() => expect(readBounds).toHaveBeenCalled());
+    expect(getPlayhead(storeCapture.store())).toBe(0);
+    rerender(
+      <Harness
+        {...props}
+        initialSeekPending={false}
+        initialSeekTimeNs={500_000_000n}
+      />,
+    );
+    await waitFor(() =>
+      expect(getPlayhead(storeCapture.store())).toBeCloseTo(16 / 30, 3),
+    );
+  });
+
   it("waits for a duration that can hold the match before seeking to it", async () => {
     const storeCapture = capturePlaybackStore();
     let api: ReturnType<typeof usePlayback> | undefined;
@@ -3200,6 +3244,7 @@ function Harness({
   blockingStreams = DEFAULT_TEST_STREAMS,
   client,
   initialSeekTimeNs,
+  initialSeekPending,
   onPlayheadDataReady,
   onStore,
   onApi,
@@ -3216,6 +3261,7 @@ function Harness({
   readonly blockingStreams?: readonly string[];
   readonly client: ResourceClient;
   readonly initialSeekTimeNs?: bigint | null;
+  readonly initialSeekPending?: boolean;
   readonly onPlayheadDataReady?: () => void;
   readonly onStore: (store: PlaybackStore) => void;
   readonly onApi?: (api: ReturnType<typeof usePlayback>) => void;
@@ -3246,6 +3292,7 @@ function Harness({
     blockingStreams,
     endBoundedStreams: [],
     initialSeekTimeNs,
+    initialSeekPending,
     onPlayheadDataReady,
     session,
     source,

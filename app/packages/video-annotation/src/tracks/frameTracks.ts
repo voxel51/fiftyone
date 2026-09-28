@@ -1,7 +1,13 @@
-import { addressIdOf, type AnnotationEngine } from "@fiftyone/annotation";
+import {
+  addressIdOf,
+  type AnnotationEngine,
+  toSchemaField,
+} from "@fiftyone/annotation";
+import { isTemporalTagTrackId } from "@fiftyone/playback";
 import type { Track, TrackEvent } from "@fiftyone/playback";
 import type { LabelData } from "@fiftyone/utilities";
 import { isEqual } from "lodash";
+import { singletonAddressId } from "../streams/framesData";
 import {
   mergeAttributeRuns,
   mergePresence,
@@ -109,7 +115,8 @@ export interface PerInstanceLabel {
 
 /** Resolve a row's color from its label and the field path it lives on. */
 export type PerInstanceColorResolver = (
-  label: PerInstanceLabel,
+  /** `null` asks for the field's color: a Segmentation or Heatmap row. */
+  label: PerInstanceLabel | null,
   path: string,
 ) => string;
 
@@ -642,16 +649,24 @@ function toTrack(
     })),
   ];
 
+  // A Segmentation or Heatmap is one row per field, with no class or index
+  const field =
+    id === singletonAddressId(state.path) ? toSchemaField(state.path) : null;
+
   return {
     id,
-    label: `${state.classLabel} ${state.displayIndex}`,
-    description: `Tracked "${state.classLabel}" (track ${state.displayIndex})`,
+    label: field ?? `${state.classLabel} ${state.displayIndex}`,
+    description: field
+      ? `Field "${field}"`
+      : `Tracked "${state.classLabel}" (track ${state.displayIndex})`,
     color: resolveColor(
-      {
-        label: state.classLabel,
-        index: state.persistedIndex,
-        instance: state.instance,
-      },
+      field
+        ? null
+        : {
+            label: state.classLabel,
+            index: state.persistedIndex,
+            instance: state.instance,
+          },
       state.path,
     ),
     events,
@@ -693,8 +708,12 @@ export const subTrackId = (parentId: string, attr: string): string =>
 
 /**
  * Parse a sub-track id back into `{ parentId, attr }`, or `null` when the id is
- * an ordinary parent / temporal-detection track (no separator). Parent ids are
- * Mongo `instance._id`s, so the separator never collides.
+ * an ordinary parent / temporal-detection track (no separator).
+ *
+ * Only call this on ids this module minted — a parent id is a Mongo
+ * `instance._id`, which never contains the separator. For a row that could
+ * have come from anywhere on the timeline, use
+ * {@link parseTimelineSubTrackId}.
  */
 export const parseSubTrackId = (
   id: string,
@@ -709,6 +728,20 @@ export const parseSubTrackId = (
     attr: id.slice(at + SUB_TRACK_SEPARATOR.length),
   };
 };
+
+/**
+ * {@link parseSubTrackId} for any row the video timeline carries, including
+ * rows this module did not mint.
+ *
+ * A temporal-tag row's id contains the same `::` separator, so the plain parse
+ * reads `temporal-tag::review` as a child of a `temporal-tag` parent that does
+ * not exist — and the row is then hidden as a collapsed parent's child, which
+ * is to say it never appears at all.
+ */
+export const parseTimelineSubTrackId = (
+  id: string,
+): { parentId: string; attr: string } | null =>
+  isTemporalTagTrackId(id) ? null : parseSubTrackId(id);
 
 /** A contiguous run of one dynamic-attribute value across a track's frames. */
 export interface AttributeSegment {

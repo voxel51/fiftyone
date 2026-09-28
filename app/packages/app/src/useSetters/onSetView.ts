@@ -5,6 +5,7 @@
 import { setView, subscribe, type setViewMutation } from "@fiftyone/relay";
 import {
   type State,
+  view as currentView,
   datasetName,
   resetExtendedSelectionTransaction,
   stateSubscription,
@@ -15,6 +16,7 @@ import { DefaultValue } from "recoil";
 import { commitMutation } from "relay-runtime";
 import { pendingEntry } from "../Renderer";
 import { resolveURL } from "../utils";
+import { convertsSampleIdentity } from "./selectionIdentity";
 import type { RegisteredSetter } from "./registerSetter";
 
 const onSetView: RegisteredSetter =
@@ -37,6 +39,7 @@ const onSetView: RegisteredSetter =
       }
     });
 
+    const previousView = get(currentView);
     let view = value;
     if (view instanceof DefaultValue) {
       view = [];
@@ -66,12 +69,19 @@ const onSetView: RegisteredSetter =
         }
 
         sessionRef.current.selectedLabels = [];
-        sessionRef.current.selectedSamples = new Map();
+        // The selection tray marks samples that leave the results, so a view
+        // change keeps the sample selection unless the view changes what a
+        // sample is.
+        if (
+          convertsSampleIdentity(previousView) ||
+          convertsSampleIdentity(view)
+        )
+          sessionRef.current.selectedSamples = new Map();
         sessionRef.current.fieldVisibilityStage = undefined;
         router.history.push(
           resolveURL({
             currentPathname: router.history.location.pathname,
-            currentSearch: router.history.location.search,
+            currentSearch: router.location.search,
             nextDataset: dataset,
           }),
           {

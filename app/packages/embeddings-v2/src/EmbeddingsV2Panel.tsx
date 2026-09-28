@@ -1,19 +1,21 @@
 /**
  * Panel controller: the runs list is the landing view; opening a run
- * shows the plot. `openKey` lives in panel state (local) so the
- * selection survives the remounts that view changes cause, per panel
- * instance — but it is deliberately NOT restored across page loads or
- * dataset switches: the panel always lands on the runs list, and
- * color-by resets when a run is opened, so no run ever renders with
- * view state it can't vouch for (a restored field choice can be
- * invalid for the run, and a restored key can collide across
- * datasets). Run deletion executes the builtin delete_brain_run
- * operator, which enforces permissions where the deployment defines
- * them; the panel renders its own confirmation, so the operator's
- * prompt is bypassed.
+ * shows the plot. The open run (`brainResult`) and the color-by field
+ * (`colorByField`) live in SHARED panel state, which rides the session:
+ * a page reload, a saved workspace, or an SDK-built
+ * `fo.Panel(type="Embeddings", state=...)` reopens the same run with the
+ * same coloring. Those key names are the documented public contract
+ * (see the Embeddings panel section of docs/source/user_guide/app.rst).
+ * A newly added panel has a fresh id and empty state, so it lands on the
+ * runs list; a key that names no ready run on this dataset falls back to
+ * the list too. Opening a run from the list resets color-by, so one
+ * run's field never carries over to another. Run deletion executes the
+ * builtin delete_brain_run operator, which enforces permissions where
+ * the deployment defines them; the panel renders its own confirmation,
+ * so the operator's prompt is bypassed.
  */
 import { useOperatorExecutor } from "@fiftyone/operators";
-import { usePanelId, usePanelStatePartial } from "@fiftyone/spaces";
+import { usePanelStatePartial } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
 import { useEffect, useRef, useState } from "react";
 import { useExtensionGeneration } from "./extensions";
@@ -27,13 +29,6 @@ const DELETE_RUN_OPERATOR = "@voxel51/operators/delete_brain_run";
 /** Poll cadence while the list is showing a pending run */
 const PENDING_POLL_MS = 5_000;
 
-// Panel instances that have already mounted since this page load.
-// Module-scoped on purpose: panel state survives reloads via the
-// session, but view-change remounts recreate the component — this set
-// distinguishes "first mount after a page load" (reset to the runs
-// list) from "remount mid-session" (preserve the open run).
-const mountedPanels = new Set<string>();
-
 /** `key:ready:error` per run, order-independent: the basis for deciding
  * whether the dataset the page loaded still matches the server's runs */
 function statusSignature(runs: RunStatus[]): string {
@@ -46,20 +41,19 @@ function statusSignature(runs: RunStatus[]): string {
 export default function EmbeddingsV2Panel() {
   const datasetName = fos.useCurrentDatasetName() ?? null;
   const datasetId = fos.useCurrentDatasetId() ?? null;
-  const panelId = usePanelId();
   // The plot selects the extension's hooks at mount; a late-arriving
   // registration (the edition entrypoint is dynamically imported) must
   // remount it rather than swap hooks under it
   const extensionGeneration = useExtensionGeneration();
+  // Shared, not local: workspaces and the session persist only shared
+  // panel state (see the header for the key names)
   const [openKeyState, setOpenKey] = usePanelStatePartial<string | null>(
-    "openKey",
+    "brainResult",
     null,
-    true,
   );
   const [, setColorField] = usePanelStatePartial<string | null>(
-    "colorField",
+    "colorByField",
     null,
-    true,
   );
 
   // Switching datasets mid-session must not carry the open run along:
@@ -69,17 +63,10 @@ export default function EmbeddingsV2Panel() {
   const prevDataset = useRef(datasetName);
   const datasetSwitched = prevDataset.current !== datasetName;
 
-  const isFirstMountThisPageLoad = !mountedPanels.has(panelId);
+  // SDK-written state arrives unchecked: anything but a string is no
+  // selection. Partials are also undefined until first set
   const openKey =
-    isFirstMountThisPageLoad || datasetSwitched ? null : (openKeyState ?? null);
-
-  useEffect(() => {
-    if (!mountedPanels.has(panelId)) {
-      mountedPanels.add(panelId);
-      setOpenKey(null);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [panelId]);
+    !datasetSwitched && typeof openKeyState === "string" ? openKeyState : null;
 
   useEffect(() => {
     if (prevDataset.current !== datasetName) {
