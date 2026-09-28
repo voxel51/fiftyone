@@ -30,6 +30,7 @@ from .runtime_assets import RuntimeAssetRoutes
 from .sample import SampleRoutes
 from .screenshot import Screenshot
 from .selection import SelectionRoutes
+from .similarity_index_slices import SimilarityIndexSlices
 from .sort import Sort
 from .tag import Tag
 from .tagging import Tagging
@@ -71,6 +72,7 @@ routes = (
         ("/plugins", Plugins),
         ("/sort", Sort),
         ("/screenshot/{img:str}", Screenshot),
+        ("/similarity-index-slices", SimilarityIndexSlices),
         ("/tag", Tag),
         ("/tagging", Tagging),
         ("/values", Values),
