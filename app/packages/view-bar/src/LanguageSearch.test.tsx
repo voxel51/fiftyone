@@ -5,9 +5,11 @@ import type { TextSearchSuggestions } from "@fiftyone/state";
 const env = vi.hoisted(() => ({
   dataset: "robots",
   pending: false,
+  notify: vi.fn(),
 }));
 vi.mock("@fiftyone/state", () => ({
   useCurrentDatasetName: () => env.dataset,
+  useNotification: () => env.notify,
   useViewChangePending: () => env.pending,
 }));
 const sources = vi.hoisted(() => ({
@@ -174,12 +176,19 @@ describe("LanguageSearch", () => {
     expect(onOpenPanel).not.toHaveBeenCalled();
   });
 
-  it("does nothing when the operator is not registered", () => {
-    const { submit, onOpenPanel } = renderSearch({
+  it("explains itself on Enter when the operator is not registered", () => {
+    const { submit, onOpenPanel, onUnavailable } = renderSearch({
       available: false,
       enabled: false,
     });
-    search("person");
+    const field = screen.getByRole("combobox", { name: LANGUAGE_SEARCH_LABEL });
+    fireEvent.focus(field);
+    fireEvent.change(field, { target: { value: "person" } });
+    // Opening the list explained it once; that toast may be long gone
+    const opened = vi.mocked(onUnavailable).mock.calls.length;
+    fireEvent.keyDown(field, { key: "Enter" });
+
+    expect(onUnavailable).toHaveBeenCalledTimes(opened + 1);
     expect(submit).not.toHaveBeenCalled();
     expect(onOpenPanel).not.toHaveBeenCalled();
   });
@@ -298,7 +307,30 @@ describe("LanguageSearch", () => {
         expect(submit).not.toHaveBeenCalled();
       } else {
         expect(submit).toHaveBeenCalledWith(runs, null);
+        expect(env.notify).not.toHaveBeenCalled();
       }
+    });
+
+    it.each([
+      {
+        name: "only the rows it offers can run",
+        answer: {},
+        says: "This index can only run the searches it suggests. Pick one from the list.",
+      },
+      {
+        name: "its rows are still loading",
+        answer: { loading: true },
+        says: "This index's searches are still loading. Try again in a moment.",
+      },
+    ])("says why Enter ran nothing when $name", ({ answer, says }) => {
+      const { submit } = renderProviderSearch({
+        Suggestions: suggesting(answer),
+      });
+      search("a green bowl");
+      expect(submit).not.toHaveBeenCalled();
+      expect(env.notify).toHaveBeenCalledWith(
+        expect.objectContaining({ msg: says }),
+      );
     });
 
     it("shows the provider's empty message when it offers nothing", () => {
