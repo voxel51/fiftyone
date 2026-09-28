@@ -82,3 +82,45 @@ describe("VideoLooker.seekToFrame", () => {
     });
   });
 });
+
+describe("VideoLooker frame event", () => {
+  /** Every `frame` event the looker dispatches going from `from` to `to`. */
+  const framesBetween = (
+    from: Record<string, unknown>,
+    to: Record<string, unknown>,
+  ): unknown[] => {
+    const frames: unknown[] = [];
+    const dispatchImpliedEvents = (
+      VideoLooker.prototype as unknown as {
+        dispatchImpliedEvents: (this: unknown, a: unknown, b: unknown) => void;
+      }
+    ).dispatchImpliedEvents;
+    const options = { showJSON: false };
+    dispatchImpliedEvents.call(
+      {
+        dispatchEvent: (type: string, detail: unknown) => {
+          if (type === "frame") frames.push(detail);
+        },
+      },
+      state({ options, ...from }),
+      state({ options, ...to }),
+    );
+    return frames;
+  };
+
+  it("reports the middle of the presented frame while playing", () => {
+    expect(
+      framesBetween({ playing: true }, { playing: true, frameNumber: 6 }),
+    ).toEqual([{ playing: true, timeSeconds: 0.55 }]);
+  });
+
+  it("reports the stop when playback ends", () => {
+    expect(framesBetween({ playing: true }, { playing: false })).toEqual([
+      { playing: false, timeSeconds: 0.45 },
+    ]);
+  });
+
+  it("stays quiet when neither the frame nor playback changed", () => {
+    expect(framesBetween({ playing: true }, { playing: true })).toEqual([]);
+  });
+});

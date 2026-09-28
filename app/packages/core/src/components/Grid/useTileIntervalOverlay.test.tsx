@@ -42,6 +42,8 @@ const ranges = vi.hoisted(
   () => new Map<string, { startNs: bigint; endNs: bigint }>(),
 );
 
+const playheads = vi.hoisted(() => new Map<string, bigint>());
+
 const focus = vi.hoisted(() => {
   const listeners = new Set<() => void>();
   const state = { startNs: null as bigint | null };
@@ -92,6 +94,11 @@ vi.mock("@fiftyone/looker", () => {
     duration: number | null = null;
     posterAt = vi.fn();
     seekToSeconds = vi.fn();
+    present(playing: boolean, timeSeconds: number) {
+      this.dispatchEvent(
+        new CustomEvent("frame", { detail: { playing, timeSeconds } }),
+      );
+    }
     loadPoster(duration: number) {
       this.duration = duration;
       this.dispatchEvent(new Event("load"));
@@ -128,6 +135,9 @@ vi.mock("@fiftyone/multimodal/runtime", () => ({
   getEpisodeSeek: seeks.get,
   releaseEpisodeSeek: seeks.release,
   subscribeEpisodeSeek: seeks.subscribe,
+  publishEpisodePlayhead: (episodeId: string, timestampNs: bigint) =>
+    playheads.set(episodeId, timestampNs),
+  releaseEpisodePlayhead: (episodeId: string) => playheads.delete(episodeId),
   publishEpisodeTimeRange: (
     episodeId: string,
     range: { startNs: bigint; endNs: bigint },
@@ -141,6 +151,7 @@ type FakeLooker = VideoLooker & {
   posterAt: ReturnType<typeof vi.fn>;
   seekToSeconds: ReturnType<typeof vi.fn>;
   loadPoster: (duration: number) => void;
+  present: (playing: boolean, timeSeconds: number) => void;
 };
 
 describe("useTileIntervalOverlay", () => {
@@ -248,6 +259,16 @@ describe("useTileIntervalOverlay", () => {
       await act(async () => seeks.request("video", 4_500_000_000n));
 
       expect(looker.seekToSeconds).toHaveBeenLastCalledWith(4.5);
+    });
+
+    it("marks the lanes where hover playback is, and withdraws the mark when it stops", async () => {
+      const looker = await mountWithLooker();
+
+      await act(async () => looker.present(true, 1.25));
+      expect(playheads.get("video")).toBe(1_250_000_000n);
+
+      await act(async () => looker.present(false, 0.5));
+      expect(playheads.has("video")).toBe(false);
     });
 
     it("publishes the clip length the looker read with its poster, shows the published focus once the poster is in, and the start once the focus is cleared", async () => {

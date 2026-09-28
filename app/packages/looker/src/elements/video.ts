@@ -14,6 +14,10 @@ import {
   resetPlaybackRate,
   supportLock,
 } from "./common/actions";
+import {
+  createBufferingIndicator,
+  setBufferingShown,
+} from "./common/buffering";
 import { dispatchTooltipEvent } from "./common/util";
 import {
   acquirePlayer,
@@ -29,7 +33,6 @@ import {
   lookerControlActive,
   lookerTime,
 } from "./common/controls.module.css";
-import { lookerLoader } from "./common/looker.module.css";
 import {
   bufferingCircle,
   bufferingPath,
@@ -48,9 +51,7 @@ export class LoaderBar extends BaseElement<VideoState> {
   }
 
   createHTMLElement() {
-    const element = document.createElement("div");
-    element.classList.add(lookerLoader);
-    return element;
+    return createBufferingIndicator();
   }
 
   renderSelf({
@@ -76,11 +77,7 @@ export class LoaderBar extends BaseElement<VideoState> {
       : getFrameNumber(duration, duration, frameRate);
 
     this.shown = shown;
-    if (this.shown && start !== end) {
-      this.element.style.display = "block";
-    } else {
-      this.element.style.display = "none";
-    }
+    setBufferingShown(this.element, this.shown && start !== end);
     return this.element;
   }
 }

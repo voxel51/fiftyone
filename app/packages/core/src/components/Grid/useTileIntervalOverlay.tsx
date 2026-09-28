@@ -8,7 +8,9 @@ import { useSampleFocus } from "@fiftyone/multimodal/extensions/timeline";
 import type { IntervalTileContext } from "@fiftyone/multimodal/extensions/episode-intervals";
 import {
   getEpisodeSeek,
+  publishEpisodePlayhead,
   publishEpisodeTimeRange,
+  releaseEpisodePlayhead,
   releaseEpisodeSeek,
   subscribeEpisodeSeek,
 } from "@fiftyone/multimodal/runtime";
@@ -47,6 +49,9 @@ type MountedOverlay = { readonly root: Root; readonly host: HTMLElement };
 type TileSample = { readonly sample?: object };
 
 const NS_PER_SECOND = 1_000_000_000;
+
+/** The detail of the video looker's `frame` event. */
+type LookerFrame = { readonly playing: boolean; readonly timeSeconds: number };
 
 function VideoTileLanes({
   datasetId,
@@ -107,6 +112,27 @@ function VideoTileLanes({
       scrubbed.current = false;
     }
   }, [looker, loaded, startNs]);
+
+  useEffect(() => {
+    if (!looker) return undefined;
+    const onFrame = (event: Event) => {
+      const { playing, timeSeconds } = (event as CustomEvent<LookerFrame>)
+        .detail;
+      if (playing && Number.isFinite(timeSeconds)) {
+        publishEpisodePlayhead(
+          sampleId,
+          BigInt(Math.round(timeSeconds * NS_PER_SECOND)),
+        );
+      } else {
+        releaseEpisodePlayhead(sampleId);
+      }
+    };
+    looker.addEventListener("frame", onFrame);
+    return () => {
+      looker.removeEventListener("frame", onFrame);
+      releaseEpisodePlayhead(sampleId);
+    };
+  }, [looker, sampleId]);
 
   useEffect(() => {
     if (!looker) return undefined;
