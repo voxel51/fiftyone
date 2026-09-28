@@ -1,4 +1,4 @@
-import { cleanup, render, renderHook, screen } from "@testing-library/react";
+import { cleanup, render, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const env = vi.hoisted(() => ({
@@ -42,7 +42,9 @@ const pillsOf = (groupId: string) => {
   for (const decorator of decorators) {
     render(<>{decorator.render({ camera: { _id: groupId } })}</>);
   }
-  return screen.queryAllByTitle(/^Matched in slice/);
+  return [
+    ...document.querySelectorAll<HTMLElement>('[data-cy="group-match-pill"]'),
+  ];
 };
 
 describe("useGroupMatchTileDecorator", () => {
@@ -62,7 +64,13 @@ describe("useGroupMatchTileDecorator", () => {
   it("names the slices of a tile's group that matched, best match first", () => {
     const { unmount } = renderHook(() => useGroupMatchTileDecorator());
 
-    expect(pillsOf("g1").map((pill) => pill.textContent)).toStrictEqual([
+    const pills = pillsOf("g1");
+    expect(pills.map((pill) => pill.textContent)).toStrictEqual([
+      "match: right",
+      "match: left",
+    ]);
+    // A pill cut short on a narrow tile still reads in full on hover
+    expect(pills.map((pill) => pill.title)).toStrictEqual([
       "match: right",
       "match: left",
     ]);

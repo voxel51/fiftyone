@@ -91,13 +91,14 @@ function GroupMatchPills({
         <div
           key={slice}
           className={bubbles.gridTagBubble}
+          data-cy="group-match-pill"
           style={{
             backgroundColor: colors[i],
             margin: spacing,
             paddingLeft: spacing,
             paddingRight: spacing,
           }}
-          title={`Matched in slice ${slice}`}
+          title={`match: ${slice}`}
         >
           {`match: ${slice}`}
         </div>
