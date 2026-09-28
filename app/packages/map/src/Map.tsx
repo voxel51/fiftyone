@@ -35,6 +35,7 @@ import {
   mapStyle,
   Settings,
 } from "./state";
+import { resolveCssColorsDeep } from "@fiftyone/utilities";
 
 const fitBoundsOptions = { animate: false, padding: 30 };
 
@@ -319,7 +320,8 @@ const Panel: React.FC<{}> = () => {
               <Layer
                 id={"cluster"}
                 filter={["has", "point_count"]}
-                paint={{
+                // MapLibre paint cannot take var() strings; resolve the tokens
+                paint={resolveCssColorsDeep({
                   "circle-color": theme.primary.plainColor,
                   "circle-opacity": 0.7,
                   "circle-radius": [
@@ -332,7 +334,7 @@ const Panel: React.FC<{}> = () => {
                     40,
                   ],
                   ...settings.clusters.paint,
-                }}
+                })}
                 type={"circle"}
               />
             )}
@@ -345,7 +347,7 @@ const Panel: React.FC<{}> = () => {
                   "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
                   "text-size": 12,
                 }}
-                paint={settings.clusters.textPaint}
+                paint={resolveCssColorsDeep(settings.clusters.textPaint)}
                 type={"symbol"}
               />
             )}
@@ -353,7 +355,7 @@ const Panel: React.FC<{}> = () => {
             <Layer
               id={"point"}
               filter={["!", ["has", "point_count"]]}
-              paint={settings.pointPaint}
+              paint={resolveCssColorsDeep(settings.pointPaint)}
               type={"circle"}
             />
           </Source>

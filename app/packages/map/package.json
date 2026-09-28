@@ -12,6 +12,8 @@
     ],
     "main": "src/index.ts",
     "dependencies": {
+        "@voxel51/voodo": "catalog:",
+        "@fiftyone/utilities": "*",
         "@fiftyone/aggregations": "*",
         "@fiftyone/components": "*",
         "@fiftyone/plugins": "*",

@@ -3,6 +3,7 @@ import { merge } from "lodash";
 import React, { lazy, Suspense, useMemo } from "react";
 import type { PlotParams } from "react-plotly.js";
 import PlotlyTooltip, { TooltipValue } from "./PlotlyTooltip";
+import { resolveCssColorsDeep } from "@fiftyone/utilities";
 
 const Plot = lazy(() => import("react-plotly.js"));
 
@@ -91,9 +92,12 @@ function Plotly(props: EvaluationPlotProps) {
     };
   }, [theme]);
 
+  // plotly parses colours itself, so theme var() references (and any token
+  // a caller put in a trace) are resolved to concrete values here
   const mergedLayout = useMemo(() => {
-    return merge({}, layoutDefaults, layout);
+    return resolveCssColorsDeep(merge({}, layoutDefaults, layout));
   }, [layoutDefaults, layout]);
+  const resolvedData = useMemo(() => resolveCssColorsDeep(data), [data]);
 
   const configDefaults: PlotConfig = useMemo(() => {
     return {
@@ -119,7 +123,7 @@ function Plotly(props: EvaluationPlotProps) {
         config={configDefaults}
         layout={mergedLayout}
         style={{ height: "100%", width: "100%", zIndex: 1, ...style }}
-        data={data}
+        data={resolvedData}
         {...otherProps}
       />
     </Suspense>

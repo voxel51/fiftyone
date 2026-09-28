@@ -303,6 +303,85 @@ export const interpolateColorsRgb = (
   ];
 };
 
+const NEEDS_CSS = /var\(|color-mix\(/;
+
+let probe: HTMLElement | null | undefined;
+
+const probeElement = (): HTMLElement | null => {
+  if (probe === undefined) {
+    if (typeof document === "undefined") {
+      probe = null;
+    } else {
+      probe = document.createElement("span");
+      probe.style.display = "none";
+      document.documentElement.appendChild(probe);
+    }
+  }
+  return probe;
+};
+
+/**
+ * Resolves a CSS colour expression to the concrete `rgb()` / `rgba()` value
+ * it currently has.
+ *
+ * The App's theme values are Voodo CSS variables so they follow light/dark
+ * automatically, but a few consumers cannot take a `var()` string: canvas
+ * `fillStyle`, plotly layouts, three.js `Color`, MapLibre paint. Those read
+ * the colour through this helper at the moment they need it instead of
+ * caching a literal that would go stale when the theme flips. `color-mix()`
+ * expressions, which several Voodo tokens resolve to, are evaluated as well.
+ *
+ * Plain literals come back unchanged, as does everything when there is no
+ * document (workers, node tests) or the expression is invalid.
+ */
+export const resolveCssColor = (color: string): string => {
+  if (!NEEDS_CSS.test(color)) {
+    return color;
+  }
+  const el = probeElement();
+  if (!el) {
+    return color;
+  }
+  el.style.color = "";
+  el.style.color = color;
+  if (!el.style.color) {
+    return color;
+  }
+  return getComputedStyle(el).color || color;
+};
+
+/**
+ * `resolveCssColor` applied to every string inside a plain object or array,
+ * for configuration handed whole to a parser (a plotly layout or trace list,
+ * a MapLibre paint object). Untouched branches keep their identity, so a
+ * memoised input stays cheap to diff.
+ */
+export const resolveCssColorsDeep = <T>(value: T): T => {
+  if (typeof value === "string") {
+    return resolveCssColor(value) as T;
+  }
+  if (Array.isArray(value)) {
+    let changed = false;
+    const next = value.map((item) => {
+      const resolved = resolveCssColorsDeep(item);
+      changed ||= resolved !== item;
+      return resolved;
+    });
+    return (changed ? next : value) as T;
+  }
+  if (value && typeof value === "object" && value.constructor === Object) {
+    let changed = false;
+    const next: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value)) {
+      const resolved = resolveCssColorsDeep(v);
+      changed ||= resolved !== v;
+      next[k] = resolved;
+    }
+    return (changed ? next : value) as T;
+  }
+  return value;
+};
+
 /**
  * The App's default color pool, from the Voodo design system.
  *
