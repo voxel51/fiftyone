@@ -10,6 +10,7 @@ import {
   type ReverbState,
   type ReverbValueReadOnly,
 } from "@fiftyone/reverb";
+import { createStore } from "jotai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /** The shape of the selection atoms, restated so the stubs need no `any`. */
@@ -95,6 +96,7 @@ const wrapper =
     React.createElement(
       ReverbRoot,
       {
+        store: createStore(),
         initializeState: ({ set }: MutableSnapshot) => {
           set(stubs.selectedLabelMap, initial);
         },
