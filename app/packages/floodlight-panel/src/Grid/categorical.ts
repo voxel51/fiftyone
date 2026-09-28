@@ -69,26 +69,34 @@ export interface ValueCount {
 const labelOf = (value: FieldValue) =>
   value === null ? "None" : String(value);
 
+export type CountValuesData = {
+  values: readonly { value: number; str?: string | null; bool?: boolean }[];
+};
+
+/** Sorts by count (lanes) or by value (matrix axes). */
+export const toValueCounts = (
+  data: CountValuesData,
+  order: "count" | "value",
+): ValueCount[] => {
+  const values: ValueCount[] = data.values.map((entry) => {
+    const value = (entry.str ?? entry.bool ?? null) as FieldValue;
+    return { count: entry.value, label: labelOf(value), value };
+  });
+  return values.sort((a, b) =>
+    order === "count"
+      ? b.count - a.count || a.label.localeCompare(b.label)
+      : a.label.localeCompare(b.label),
+  );
+};
+
 /**
  * Value counts for `path` under the current view and filters. Suspends while
- * loading; `order` sorts by count (lanes) or by value (matrix axes).
+ * loading; see {@link toValueCounts} for `order`.
  */
 export const useValueCounts = (path: string, order: "count" | "value") => {
-  const data = useReverbValue(fos.countValues(path)) as {
-    values: readonly { value: number; str?: string | null; bool?: boolean }[];
-  };
+  const data = useReverbValue(fos.countValues(path)) as CountValuesData;
 
-  return useMemo(() => {
-    const values: ValueCount[] = data.values.map((entry) => {
-      const value = (entry.str ?? entry.bool ?? null) as FieldValue;
-      return { count: entry.value, label: labelOf(value), value };
-    });
-    return values.sort((a, b) =>
-      order === "count"
-        ? b.count - a.count || a.label.localeCompare(b.label)
-        : a.label.localeCompare(b.label),
-    );
-  }, [data, order]);
+  return useMemo(() => toValueCounts(data, order), [data, order]);
 };
 
 /** Builds a Match stage selecting samples whose `path` equals `value`. */

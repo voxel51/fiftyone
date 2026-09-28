@@ -2,6 +2,7 @@ import styles from "./Grid.module.css";
 
 import Spotlight from "@fiftyone/floodlight";
 import * as fos from "@fiftyone/state";
+import { Pending } from "@fiftyone/components";
 import clsx from "clsx";
 import { freeVideos } from "@fiftyone/looker";
 import React, { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
@@ -9,7 +10,7 @@ import { useReverbValue } from "@fiftyone/reverb";
 import { useMemoOne } from "use-memo-one";
 import { v4 as uuid } from "uuid";
 import { useSyncLabelsRenderingStatus } from "@fiftyone/core/src/hooks";
-import GridScrubber from "./GridScrubber";
+import GridRail from "./GridRail";
 import {
   gridAutosizing,
   gridSquareTiles,
@@ -24,7 +25,11 @@ import { createOwnership, type Scoped } from "../host/ownership";
 import useHost from "../host/useHost";
 import { createGridRenderer } from "./gridRenderer";
 import { handOff } from "./handoff";
-import { showStorm } from "./loadingOverlay";
+import GridPagesBar from "./Pages/GridPagesBar";
+import { usePagesEnabled } from "./Pages/settings";
+import useGridPages from "./Pages/useGridPages";
+import { withRowAspects } from "./laneHeights";
+import { showPending, showStorm } from "./loadingOverlay";
 import useEscape from "./useEscape";
 import useInstanceEvents from "./useInstanceEvents";
 import useItemCache from "./useItemCache";
@@ -33,7 +38,8 @@ import useRecords from "./useRecords";
 import useRefreshers from "./useRefreshers";
 import useRenderer from "./useRenderer";
 import useScrollLocation from "./useScrollLocation";
-import useSpotlightPager from "./useSpotlightPager";
+import useSpotlightPager, { PAGE_SIZE } from "./useSpotlightPager";
+import useRail from "../rail/useRail";
 import Storm from "./Storm";
 import useSwimlaneRenderer from "./useSwimlaneRenderer";
 import useUpdates from "./useUpdates";
@@ -108,9 +114,8 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
   const { get, set } = useScrollLocation(pageReset);
 
   const autosizing = useReverbValue(gridAutosizing);
-  // When the scrubber is on it owns the grid's right edge; turn off
-  // Spotlight's built-in scrollbar so the two don't fight for the gutter.
-  const [scrubberEnabled] = fos.useGridScrubber();
+  const paged = usePagesEnabled(layout);
+  const railVisible = !paged;
 
   // `reset` is the grid's refresh signal. The callables below are routed
   // through a ref so their identities are not rebuild triggers — a transient
@@ -143,6 +148,9 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
       // Teardown must reach the renderer that created the items: swimlane
       // rows own inner instances that only its detachItem destroys.
       const kind = useSwimlanes ? "swimlane" : "standard";
+      const aspects = useSwimlanes
+        ? swimlaneRenderer.rowAspects(container.current?.clientWidth ?? 0)
+        : undefined;
       const scoped = createGridRenderer<fos.Sample>({
         base: () => refs.current.renderers[kind],
         cached: (key) => Boolean(cache.get(key)),
@@ -161,13 +169,14 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
 
         maxRows: MAX_ROWS,
         maxItemsSizeBytes: autosizing && !interim ? maxBytes : undefined,
-        scrollbar: strip || !scrubberEnabled,
+        scrollbar: !railVisible,
         // Strip: one full-height item per column, scrolling left to right.
         horizontal: strip,
         ...(strip ? { offset: 0 } : {}),
         // swimlane rows abut so the view reads as one continuous stack
         spacing: useSwimlanes ? 0 : spacing,
-        get: (key) => sourceRef.current.get(key),
+        get: (key) =>
+          sourceRef.current.get(key).then((p) => withRowAspects(p, aspects)),
         // swimlanes and strips place one item per row
         rowAspectRatioThreshold: useSwimlanes || strip ? () => 0 : zoom,
       });
@@ -193,17 +202,33 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
       freeVideos();
     },
   });
-  const sourceRef = useRef(source);
-  sourceRef.current = source;
+  const { anchor: pageAnchor, ...paging } = useGridPages({
+    fetchSize: PAGE_SIZE,
+    host,
+    layout,
+    source,
+  });
+  const sourceRef = useRef(paging.source);
+  sourceRef.current = paging.source;
   hostRef.current = host;
+  const rail = useRail({
+    container,
+    horizontal: strip,
+    host,
+    instance,
+    pageSize: PAGE_SIZE,
+    ranks: records,
+  });
 
   // a setting that changes layout means a new instance, at the saved location
   const settings = useMemo(
     () => ({
       autosizing,
+      laneHeights: swimlaneRenderer.heights,
       maxBytes,
+      paged,
       reset,
-      scrubberEnabled,
+      railVisible,
       spacing,
       squareTiles,
       strip,
@@ -213,8 +238,10 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
     [
       autosizing,
       maxBytes,
+      swimlaneRenderer.heights,
+      paged,
       reset,
-      scrubberEnabled,
+      railVisible,
       spacing,
       squareTiles,
       strip,
@@ -223,23 +250,21 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
     ],
   );
   useEffect(() => {
-    host?.rebuild(get());
-  }, [get, host, settings]);
+    host?.rebuild(pageAnchor(get()));
+  }, [get, host, pageAnchor, settings]);
 
-  // the storm covers first loads, real fetches during a rebuild, and scrubs
   const fetching = useSyncExternalStore(
     source.subscribe,
     () => source.fetching,
   );
   const loaded = useRef(false);
   if (status === "ready") loaded.current = true;
-  const scrubbing = useReverbValue(fos.gridScrubbing);
-  const storm = showStorm({
+  const storm = showStorm({ everLoaded: loaded.current });
+  const pending = showPending({
     building: status === "building",
     everLoaded: loaded.current,
     fetching,
     interim: Boolean(instance && interims.current.has(instance)),
-    scrubbing,
   });
 
   useEscape();
@@ -255,7 +280,12 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
       <div
         id={id}
         ref={container}
-        className={clsx(styles.spotlightGrid, strip && styles.strip)}
+        className={clsx(
+          styles.spotlightGrid,
+          strip && styles.strip,
+          railVisible && styles.railOn,
+          paging.className,
+        )}
         data-cy="fo-grid"
       />
       <div
@@ -264,7 +294,13 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
       >
         <Storm className={styles.storm} />
       </div>
-      {!strip && <GridScrubber />}
+      {pending && (
+        <div className={styles.pending}>
+          <Pending />
+        </div>
+      )}
+      <GridRail horizontal={strip} rail={rail} visible={railVisible} />
+      {paged && <GridPagesBar grid={container} pages={paging.pages} />}
     </div>
   );
 }

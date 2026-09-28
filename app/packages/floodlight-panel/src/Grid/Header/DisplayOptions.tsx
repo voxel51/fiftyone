@@ -6,6 +6,7 @@ import {
   gridSquareTiles,
   maxGridItemsSizeBytes,
 } from "../atoms";
+import PagingOption from "../Pages/PagingOption";
 import { Word } from "./Sentence";
 
 const MediaField = () => {
@@ -85,6 +86,7 @@ const DisplayOptions = () => (
   <>
     <MediaField />
     <Tiles />
+    <PagingOption />
     <Memory />
   </>
 );

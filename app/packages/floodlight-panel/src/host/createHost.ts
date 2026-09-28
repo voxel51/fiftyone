@@ -56,6 +56,8 @@ export const createHost = <K, I extends Instance>(
   let pending: Entry<I> | undefined;
   let extent: number | undefined;
   let stale = false;
+  // resized before anything loaded: nothing to move, so rebuild once after it loads
+  let resizedEarly = false;
   let resizing: ReturnType<typeof setTimeout> | undefined;
   let destroyed = false;
 
@@ -97,7 +99,10 @@ export const createHost = <K, I extends Instance>(
         slot.setAttribute(SLOT, "active");
         entry.instance.addEventListener("rowchange", track);
         options.onStatus?.("ready", entry.instance);
-        if (stale && resizing) {
+        if (resizedEarly) {
+          resizedEarly = false;
+          rebuild();
+        } else if (stale && resizing) {
           stale = false;
           rebuild(anchor, true);
         }
@@ -115,6 +120,10 @@ export const createHost = <K, I extends Instance>(
     const changed = extent !== undefined && next !== extent;
     extent = next;
     if (!changed) return;
+    if (!current) {
+      resizedEarly = Boolean(pending);
+      return;
+    }
 
     clearTimeout(resizing);
     resizing = setTimeout(() => {

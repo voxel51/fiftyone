@@ -129,6 +129,8 @@ export const createPageGetter = ({
 export const routeWheel = (
   host: HTMLElement,
   outer: () => Element | null | undefined,
+  // attach() appends the Floodlight scroller as the host's last child
+  scroller: () => Element | null = () => host.lastElementChild,
 ) => {
   const handler = (event: WheelEvent) => {
     event.stopPropagation();
@@ -139,8 +141,7 @@ export const routeWheel = (
       return;
     }
 
-    // attach() appends the Floodlight scroller as the host's last child
-    const inner = host.lastElementChild;
+    const inner = scroller();
     if (!inner) return;
     const room =
       event.deltaX > 0

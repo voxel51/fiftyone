@@ -35,6 +35,7 @@ import { createOwnership, scopeRenderer } from "../host/ownership";
 import { connectionItems, fetchSamplePage, routeWheel } from "./samplePages";
 import type { ItemCache } from "./types";
 import useRenderer from "./useRenderer";
+import useSwimlaneResize, { groupIdOf } from "./useSwimlaneResize";
 import type { SampleStore } from "./useSpotlightPager";
 
 const SIBLINGS_PAGE_SIZE = 20;
@@ -62,6 +63,9 @@ export default function useSwimlaneRenderer({
     new Map<string, Spotlight<number, fos.Sample>>(),
   );
   const wheelHandlers = useRef(new Map<string, () => void>());
+  // the row element each inner instance is attached to
+  const innerRows = useRef(new Map<string, HTMLElement>());
+  const { bind, heights, rowAspects, scaffold } = useSwimlaneResize(groupField);
 
   // separate from the grid's: outer rows and inner strips both key by the cover id
   const ownership = useMemo(() => createOwnership(), [store]);
@@ -85,6 +89,14 @@ export default function useSwimlaneRenderer({
         snapshot.getPromise(groupSiblingsPageParameters(groupId)),
     [],
   );
+
+  const detachInner = useCallback((key: string) => {
+    innerSpotlights.current.get(key)?.destroy();
+    innerSpotlights.current.delete(key);
+    innerRows.current.delete(key);
+    wheelHandlers.current.get(key)?.();
+    wheelHandlers.current.delete(key);
+  }, []);
 
   /** Build the [shimmer-underlay] row scaffold once per element. */
   const ensureScaffold = useCallback((element: HTMLElement) => {
@@ -127,9 +139,15 @@ export default function useSwimlaneRenderer({
       shimmer.style.top = `${spacing}px`;
       shimmer.style.bottom = `${spacing}px`;
 
-      if (innerSpotlights.current.has(key)) return Promise.resolve(0);
-
       const [, rowHeight] = dimensions;
+      const groupId = groupIdOf(coverNode, groupField);
+      scaffold(element);
+      bind(element, groupId, rowHeight);
+
+      // a rebuilt outer instance shows the row in a new element, at its new height
+      if (innerRows.current.get(key) === row) return Promise.resolve(0);
+      detachInner(key);
+
       // Cover sample data is in the outer store; pull its aspect
       // ratio so the cover renders at native size in the inner
       // Spotlight's first row.
@@ -148,13 +166,6 @@ export default function useSwimlaneRenderer({
       const spacerId = `__swimlane_spacer__${coverNode.id}`;
       const spacerAspect =
         rowHeight > 0 ? Math.max(0.01, spacing / rowHeight) : 0.01;
-
-      // Resolve cover's group id; siblings can only be fetched on
-      // grouped datasets.
-      const sample =
-        (coverNode as { sample?: Record<string, { _id?: string }> }).sample ??
-        {};
-      const groupId = groupField ? sample[groupField]?._id : undefined;
 
       // Helper: hide shimmer once the row's inner pager is
       // exhausted. Deferred to the next frame so Spotlight has a
@@ -258,6 +269,7 @@ export default function useSwimlaneRenderer({
         ...innerRenderer,
       });
       innerSpotlights.current.set(key, innerSpotlight);
+      innerRows.current.set(key, row);
       // Shimmer removal is driven from `innerGet` when the pager
       // returns `next: null` (siblings exhausted). Spotlight's own
       // `load` event isn't reliable here — the inner's first
@@ -279,6 +291,8 @@ export default function useSwimlaneRenderer({
     },
     [
       base.renderer,
+      bind,
+      detachInner,
       ensureScaffold,
       environment,
       groupField,
@@ -286,6 +300,7 @@ export default function useSwimlaneRenderer({
       resolveSiblingPager,
       siblingPages,
       ownership,
+      scaffold,
       spacing,
       store,
     ],
@@ -293,18 +308,14 @@ export default function useSwimlaneRenderer({
 
   const hideItem = useCallback<Hide>(() => undefined, []);
 
-  const detachItem = useCallback((itemId: ID) => {
-    const key = itemId.description;
-    const innerSpotlight = innerSpotlights.current.get(key);
-    if (innerSpotlight) {
-      innerSpotlight.destroy();
-      innerSpotlights.current.delete(key);
-    }
-    wheelHandlers.current.get(key)?.();
-    wheelHandlers.current.delete(key);
-  }, []);
+  const detachItem = useCallback(
+    (itemId: ID) => detachInner(itemId.description),
+    [detachInner],
+  );
 
   return {
+    heights,
+    rowAspects,
     getFontSize: base.getFontSize,
     lookerOptions: base.lookerOptions,
     renderer: useMemo(

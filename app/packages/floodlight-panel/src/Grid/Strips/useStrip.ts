@@ -1,27 +1,29 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Owns one inner horizontal Floodlight instance: created while its host is
- * near the scroller's viewport, destroyed when it leaves, when its query
- * or height changes, or on unmount.
+ * Hosts one strip's short-lived horizontal Floodlight instances. A rebuild
+ * (a new query, spacing, or cross extent) renders in a hidden slot and swaps
+ * in at its `load`, handing lookers over, so the strip never blanks.
  */
+
+import gridStyles from "../Grid.module.css";
 
 import Spotlight from "@fiftyone/floodlight";
 import type * as fos from "@fiftyone/state";
 import { type RefObject, useContext, useEffect, useRef, useState } from "react";
-import {
-  createPageGetter,
-  type PageVariables,
-  routeWheel,
-} from "../samplePages";
-import { PAGE_SIZE } from "../useSpotlightPager";
-import { scopeRenderer } from "../../host/ownership";
+import { SLOT } from "../../host/createHost";
+import type { Scoped } from "../../host/ownership";
+import useHost from "../../host/useHost";
+import { createGridRenderer } from "../gridRenderer";
+import { handOff } from "../handoff";
+import { routeWheel } from "../samplePages";
 import { StripsContext } from "./context";
+import type { StripSource } from "./useStripSource";
 
 // Mount a screen ahead so strips are populated before they scroll in.
 const ROOT_MARGIN = "100% 100%";
 
-const useNearViewport = (
+export const useNearViewport = (
   ref: RefObject<HTMLElement>,
   root: HTMLElement | null,
 ) => {
@@ -41,103 +43,88 @@ const useNearViewport = (
   return near;
 };
 
-// A new cross extent (the strip's height) means a new instance, built once
-// the height stops changing.
-const SETTLE = 500;
-
-const useSettledHeight = (ref: RefObject<HTMLElement>) => {
-  const [height, setHeight] = useState<number>();
-
-  useEffect(() => {
-    const element = ref.current;
-    if (!element) return undefined;
-    let measured: number | undefined;
-    let timeout: ReturnType<typeof setTimeout> | undefined;
-    const settle = (next: number) => {
-      measured = next;
-      setHeight(next);
-    };
-    const observer = new ResizeObserver(([entry]) => {
-      const next = entry.contentRect.height;
-      clearTimeout(timeout);
-      if (measured === undefined) settle(next);
-      else if (next !== measured)
-        timeout = setTimeout(() => settle(next), SETTLE);
-    });
-    observer.observe(element);
-    return () => {
-      clearTimeout(timeout);
-      observer.disconnect();
-    };
-  }, [ref]);
-
-  return height;
+const shimmer = ({ element }: { element: HTMLDivElement }) => {
+  element.classList.add(gridStyles.tileShimmer);
+  return Promise.resolve(0);
 };
 
 /**
- * @returns the host ref to attach the instance to, and the first page's
- *   sample count (`null` until it resolves).
+ * @param scrollbar - whether instances show their scrollbar; off when a rail
+ *   replaces it
+ * @returns the ref of the element the strip's instances render in, its host,
+ *   and the instance on screen
  */
-export default function useStrip(variables: PageVariables, recordBase = 0) {
+export default function useStrip(source: StripSource, scrollbar = true) {
   const strips = useContext(StripsContext);
   if (!strips) throw new Error("useStrip requires a StripsContext");
 
-  const host = useRef<HTMLDivElement>(null);
-  const near = useNearViewport(host, strips.root);
-  const height = useSettledHeight(host);
-  const [first, setFirst] = useState<{
-    count: number;
-    for: PageVariables;
-  } | null>(null);
-  const count = first?.for === variables ? first.count : null;
-  const empty = count === 0;
+  const ref = useRef<HTMLDivElement>(null);
+  const latest = useRef({ scrollbar, source, strips });
+  latest.current = { scrollbar, source, strips };
+  const scopes = useRef(new WeakMap<object, Scoped<number, fos.Sample>>());
+  const cleanups = useRef(new WeakMap<object, () => void>());
+  const visible = useRef(false);
 
+  const { host, instance } = useHost<number, Spotlight<number, fos.Sample>>({
+    ref,
+    axis: "height",
+    build: (anchor, { interim }) => {
+      const { scrollbar, source, strips } = latest.current;
+      const scoped = createGridRenderer<fos.Sample>({
+        base: () => latest.current.strips.renderer.current,
+        cached: strips.hasItem,
+        deferred: visible.current,
+        interim,
+        ownership: strips.ownership,
+        reattach: true,
+        shimmer,
+        sizes: strips.lastSizes,
+      });
+      const spotlight = new Spotlight<number, fos.Sample>({
+        key: anchor?.key ?? 0,
+        at: anchor?.at,
+        offset: 0,
+        horizontal: true,
+        scrollbar,
+        spacing: strips.spacing,
+        rowAspectRatioThreshold: () => 0,
+        get: (page) => source.get(page),
+        ...scoped,
+      });
+      scopes.current.set(spotlight, scoped);
+      interim || cleanups.current.set(spotlight, strips.register(spotlight));
+      return spotlight;
+    },
+    onSwap: (next, previous) => {
+      visible.current = true;
+      handOff({
+        cache: latest.current.strips.cache,
+        next: scopes.current.get(next),
+        previous: previous && scopes.current.get(previous),
+      });
+    },
+    onDispose: (disposed) => cleanups.current.get(disposed)?.(),
+  });
+
+  // a new query starts at the strip's beginning; anything else keeps its place
+  const built = useRef<StripSource>();
   useEffect(() => {
-    const element = host.current;
-    if (!near || empty || !element || !height) return undefined;
+    if (!host) return;
+    const fresh = built.current !== source;
+    built.current = source;
+    host.rebuild(fresh ? { key: 0 } : undefined);
+  }, [host, source, strips.spacing]);
 
-    const { records, renderer } = strips;
-    const spotlight = new Spotlight<number, fos.Sample>({
-      key: 0,
-      offset: 0,
-      horizontal: true,
-      scrollbar: true,
-      spacing: strips.spacing,
-      rowAspectRatioThreshold: () => 0,
-      get: createPageGetter({
-        aspectRatio: strips.aspectRatio,
-        environment: strips.environment,
-        limit: strips.limit,
-        onPage: (page, items) => {
-          items.forEach((item, i) =>
-            records.set(item.id.description, recordBase + page * PAGE_SIZE + i),
-          );
-          page === 0 && setFirst({ count: items.length, for: variables });
-        },
-        pageSize: PAGE_SIZE,
-        store: strips.store,
-        variables,
-      }),
-      ...scopeRenderer<number, fos.Sample>(
-        {
-          detachItem: (id) => renderer.current.detachItem(id),
-          hideItem: (item) => renderer.current.hideItem(item),
-          showItem: (item) => renderer.current.showItem(item),
-        },
-        strips.ownership,
-      ),
-    });
+  const { root } = strips;
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return undefined;
+    return routeWheel(
+      element,
+      () => root,
+      () => element.querySelector(`:scope > [${SLOT}="active"] > *`),
+    );
+  }, [root]);
 
-    const unregister = strips.register(spotlight);
-    spotlight.attach(element);
-    const unroute = routeWheel(element, () => strips.root);
-
-    return () => {
-      unroute();
-      unregister();
-      spotlight.destroy();
-    };
-  }, [empty, height, near, recordBase, strips, variables]);
-
-  return { count, host };
+  return { host, instance, ref };
 }

@@ -19,12 +19,7 @@ import { StripsContext } from "./context";
 import { HoverKeysContext, useHoverKeys } from "./hoverKeys";
 import { createHScroll } from "./hscroll";
 import { MatrixContext, type MatrixModel } from "./matrixContext";
-import {
-  CELL_RECORD_SPAN,
-  columnWidth,
-  keyOf,
-  rowHeadWidth,
-} from "./matrixLayout";
+import { CELL_RECORD_SPAN, keyOf, matrixGeometry } from "./matrixLayout";
 import { ColumnHeads } from "./MatrixHeads";
 import { createRowSource, createRowStore, type RowData } from "./rowPages";
 import MatrixRows from "./MatrixRows";
@@ -75,9 +70,11 @@ export default function MatrixBody({
     [colField, rowField, strips],
   );
 
-  const headWidth = useMemo(() => rowHeadWidth(rows), [rows]);
-  const trackWidth = Math.max(0, (size?.width ?? 0) - headWidth);
-  const colWidth = columnWidth(rowHeight, trackWidth, cols.length);
+  const geometry = useMemo(
+    () => matrixGeometry(size?.width ?? 0, rowHeight, rows, cols.length),
+    [cols.length, rowHeight, rows, size?.width],
+  );
+  const { colWidth, gutter, headWidth, trackWidth } = geometry;
   useHorizontalScroll({ bar, root, scroll });
 
   const { host } = useHost<number, Instance>({
@@ -86,7 +83,9 @@ export default function MatrixBody({
     axis: "width",
     build: (anchor, context) => {
       const interim = context?.interim ?? false;
-      const aspectRatio = (body.current?.clientWidth || 1) / rowHeight;
+      // Floodlight's rows are its width less a gutter on each side
+      const width = (body.current?.clientWidth ?? 0) - 2 * gutter;
+      const aspectRatio = Math.max(1, width) / rowHeight;
       return new Spotlight<number, RowData>({
         ...(interim ? SHIMMER : scopeRenderer(store.renderer, ownership)),
         at: anchor?.at,
@@ -123,6 +122,7 @@ export default function MatrixBody({
       colField,
       cols,
       colWidth,
+      gutter,
       rowField,
       rowHeadWidth: headWidth,
       rows,
@@ -134,6 +134,7 @@ export default function MatrixBody({
       colField,
       cols,
       colWidth,
+      gutter,
       headWidth,
       rowField,
       rows,
@@ -152,7 +153,7 @@ export default function MatrixBody({
           <div
             ref={bar}
             className={styles.matrixBar}
-            style={{ marginLeft: headWidth }}
+            style={{ marginLeft: gutter + headWidth, marginRight: gutter }}
           >
             <div style={{ width: cols.length * colWidth, height: 1 }} />
           </div>

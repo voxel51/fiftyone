@@ -143,6 +143,23 @@ describe("createHost", () => {
     expect(build).toHaveBeenLastCalledWith(undefined, { interim: false });
   });
 
+  test("a resize before the first load waits for it, then rebuilds content once", () => {
+    const { build, built, host } = setup();
+    host.rebuild();
+    resize({ width: 800, height: 600 });
+    resize({ width: 820, height: 600 });
+    resize({ width: 840, height: 600 });
+    vi.advanceTimersByTime(SETTLE * 2);
+    expect(build).toHaveBeenCalledTimes(1);
+
+    built[0].load();
+    expect(build).toHaveBeenCalledTimes(2);
+    expect(build).toHaveBeenLastCalledWith(undefined, { interim: false });
+    built[1].load();
+    vi.advanceTimersByTime(SETTLE * 2);
+    expect(build).toHaveBeenCalledTimes(2);
+  });
+
   test("ignores primary-axis changes", () => {
     const { build, host } = setup("width");
     host.rebuild();

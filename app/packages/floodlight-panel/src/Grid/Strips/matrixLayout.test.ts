@@ -1,5 +1,11 @@
 import { describe, expect, test } from "vitest";
-import { columnWidth, columnWindow, rowHeadWidth } from "./matrixLayout";
+import {
+  columnLeft,
+  columnWidth,
+  columnWindow,
+  matrixGeometry,
+  rowHeadWidth,
+} from "./matrixLayout";
 
 describe("columnWindow", () => {
   // 8 columns of 150px in view, out of 100
@@ -43,5 +49,46 @@ describe("matrix sizes", () => {
     expect(rowHeadWidth([row("cat", 5)])).toBe(96);
     expect(rowHeadWidth([row("a much longer label", 12345)])).toBe(192);
     expect(rowHeadWidth([row("motorcycle", 1234)])).toBe(136);
+  });
+});
+
+describe("matrixGeometry", () => {
+  const rows = [{ count: 1234, label: "motorcycle", value: "motorcycle" }];
+
+  test("insets rows and header by Floodlight's gutter, sharing one head width", () => {
+    // 1000px body: rows are 1000 - 2 × 14 = 972 wide; 136px head; 836 track
+    expect(matrixGeometry(1000, 120, rows, 10)).toEqual({
+      colWidth: 240,
+      gutter: 14,
+      headWidth: 136,
+      rowWidth: 972,
+      trackWidth: 836,
+    });
+  });
+
+  test("header columns and cells share every edge, scrolled or not", () => {
+    const geometry = matrixGeometry(1000, 120, rows, 10);
+    // the header lays columns out after its gutter margin and the corner
+    const header = (c: number, x: number) =>
+      geometry.gutter + geometry.headWidth + c * geometry.colWidth - x;
+    // Floodlight places a row after its section's 14px padding
+    const cell = (c: number, x: number) =>
+      14 + geometry.headWidth + c * geometry.colWidth - x;
+
+    for (const x of [0, 300]) {
+      for (const c of [0, 1, 5]) {
+        expect(header(c, x)).toBe(cell(c, x));
+        expect(header(c + 1, x)).toBe(cell(c + 1, x));
+        expect(columnLeft(geometry, c, x)).toBe(cell(c, x));
+      }
+    }
+    expect(columnLeft(geometry, 0, 0)).toBe(150);
+    expect(columnLeft(geometry, 1, 0)).toBe(390);
+    expect(columnLeft(geometry, 2, 300)).toBe(330);
+  });
+
+  test("columns fill the rows' real width when few", () => {
+    // 836 / 4 = 209, which fits the rows, not the 28px wider body
+    expect(matrixGeometry(1000, 60, rows, 4).colWidth).toBe(209);
   });
 });

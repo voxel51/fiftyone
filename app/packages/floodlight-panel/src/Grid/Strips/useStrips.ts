@@ -127,6 +127,7 @@ export default function useStrips(id: string, root: HTMLElement | null) {
   return useMemo<Strips>(
     () => ({
       aspectRatio: square ? 1 : undefined,
+      cache,
       environment,
       hasItem,
       lastSizes,
@@ -142,6 +143,7 @@ export default function useStrips(id: string, root: HTMLElement | null) {
       variables,
     }),
     [
+      cache,
       environment,
       fanout,
       hasItem,

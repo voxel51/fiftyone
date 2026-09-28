@@ -106,6 +106,7 @@ const setup = () => {
     colField: "clip",
     cols: COLS,
     colWidth: COL_WIDTH,
+    gutter: 14,
     rowField: "truth",
     rowHeadWidth: 120,
     rows: ROWS,

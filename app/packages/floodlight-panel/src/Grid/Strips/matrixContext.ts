@@ -12,6 +12,8 @@ export interface MatrixModel {
   colField: string;
   cols: ValueCount[];
   colWidth: number;
+  /** Floodlight's inset of each row, which the header matches. */
+  gutter: number;
   rowField: string;
   rowHeadWidth: number;
   rows: ValueCount[];

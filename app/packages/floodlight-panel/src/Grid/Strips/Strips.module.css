@@ -64,6 +64,7 @@
 }
 
 .lane {
+  position: relative;
   display: flex;
   flex-direction: column;
   flex: 0 0 auto;
@@ -377,4 +378,34 @@
   flex: 0 0 auto;
   overflow-x: auto;
   overflow-y: hidden;
+}
+
+/* RAILS */
+
+/* A lane's own rail shows only while that lane is hovered or focused. */
+.miniRail {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+}
+
+.lane:hover .miniRail,
+.lane:focus-within .miniRail {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* With the lane-list rail up, the scroller shows no native scrollbar. */
+.scroller.railed {
+  scrollbar-width: none;
+}
+
+.scroller.railed::-webkit-scrollbar {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .miniRail {
+    transition: none;
+  }
 }

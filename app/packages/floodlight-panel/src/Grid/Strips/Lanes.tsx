@@ -7,71 +7,58 @@
 
 import styles from "./Strips.module.css";
 
-import { useReverbValue } from "@fiftyone/reverb";
-import { useContext, useMemo } from "react";
+import { useReverbValue, useReverbValueLoadable } from "@fiftyone/reverb";
+import * as fos from "@fiftyone/state";
+import { useContext, useMemo, useRef } from "react";
 import { gridZoom } from "../atoms";
-import { type ValueCount, useValueCounts } from "../categorical";
+import { type CountValuesData, toValueCounts } from "../categorical";
+import { useLaneHeights } from "../layout";
 import { StripsContext } from "./context";
+import LaneListRail from "./LaneListRail";
+import LaneRows from "./LaneRows";
 import StripsRoot from "./StripsRoot";
-import StripTrack, { trackHeight } from "./StripTrack";
+import { trackHeight } from "./StripTrack";
 
-// Record indices are only compared within a lane, so lanes get disjoint ranges.
-const LANE_RECORD_SPAN = 1e7;
+/**
+ * Suspends only for a path's first counts: a later reload keeps the lanes on
+ * screen, since suspending would hide every strip and tear down its instance.
+ */
+const useLaneValues = (path: string) => {
+  const loadable = useReverbValueLoadable(fos.countValues(path));
+  const last = useRef<{ data: CountValuesData; path: string }>();
+  if (loadable.state === "hasValue") {
+    last.current = { data: loadable.contents as CountValuesData, path };
+  }
+  const data =
+    loadable.state === "loading" && last.current?.path === path
+      ? last.current.data
+      : loadable.getValue();
 
-const Lane = ({
-  entry,
-  height,
-  index,
-  path,
-}: {
-  entry: ValueCount;
-  height: number;
-  index: number;
-  path: string;
-}) => {
-  const strips = useContext(StripsContext)!;
-  const variables = useMemo(
-    () => strips.variables([[path, entry.value]]),
-    [entry.value, path, strips],
-  );
-
-  return (
-    <section className={styles.lane}>
-      <div className={styles.laneLabel}>
-        <span className={styles.value} title={entry.label}>
-          {entry.label}
-        </span>
-        <span className={styles.count}>{entry.count.toLocaleString()}</span>
-      </div>
-      <StripTrack
-        recordBase={index * LANE_RECORD_SPAN}
-        style={{ height }}
-        variables={variables}
-      />
-    </section>
-  );
+  return useMemo(() => toValueCounts(data as CountValuesData, "count"), [data]);
 };
 
 const LaneList = ({ path }: { path: string }) => {
-  const values = useValueCounts(path, "count");
+  const values = useLaneValues(path);
   const height = trackHeight(useReverbValue(gridZoom), 64, 16);
+  const { heights, setHeight } = useLaneHeights();
+  const root = useContext(StripsContext)?.root ?? null;
 
   if (!values.length) {
     return <div className={styles.none}>No values</div>;
   }
 
   return (
-    <div className={styles.lanes}>
-      {values.map((entry, index) => (
-        <Lane
-          key={JSON.stringify(entry.value)}
-          entry={entry}
-          height={height}
-          index={index}
-          path={path}
-        />
-      ))}
-    </div>
+    <>
+      <LaneRows
+        defaultHeight={height}
+        heights={heights}
+        onResize={setHeight}
+        path={path}
+        railed
+        values={values}
+      />
+      <LaneListRail root={root} values={values} />
+    </>
   );
 };
 

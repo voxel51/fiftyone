@@ -21,6 +21,8 @@ export type Updatable = Pick<Spotlight<number, fos.Sample>, "updateItems">;
 /** What every lazily mounted strip in a Lanes or Matrix layout shares. */
 export interface Strips {
   aspectRatio?: number;
+  /** Held still while a rebuilt strip takes its lookers over. */
+  cache: { freeze(): void; unfreeze(): void };
   environment: IEnvironment;
   /** Whether the item cache holds a looker for this sample id. */
   hasItem: (key: string) => boolean;

@@ -164,3 +164,23 @@
   z-index: 5;
   pointer-events: auto;
 }
+
+/* With the rail up, the grid's own scroller shows no native scrollbar;
+ * inner strip scrollers sit deeper and keep theirs. */
+.railOn > [data-floodlight-slot] > :last-child {
+  scrollbar-width: none;
+}
+
+.railOn > [data-floodlight-slot] > :last-child::-webkit-scrollbar {
+  display: none;
+}
+
+.pending {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 6;
+  pointer-events: none;
+}

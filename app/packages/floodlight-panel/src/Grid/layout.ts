@@ -10,6 +10,7 @@ import { usePanelState } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
 import { useCallback, useMemo } from "react";
 import { categoricalPaths } from "./categorical";
+import { type LaneHeights, setLaneHeight } from "./laneHeights";
 
 export type LayoutKind = "grid" | "groups" | "strip" | "lanes" | "matrix";
 
@@ -18,7 +19,11 @@ export interface LayoutState {
   laneField?: string;
   rowField?: string;
   colField?: string;
+  /** Heights set by dragging a lane's edge; see {@link LaneHeights}. */
+  laneHeights?: LaneHeights;
 }
+
+const NO_HEIGHTS: LaneHeights = {};
 
 const pick = (paths: string[], preferred?: string, fallback = 0) =>
   preferred && paths.includes(preferred)
@@ -71,4 +76,20 @@ export default function usePanelLayout() {
     rowField: pick(paths, state?.rowField ?? row),
     update,
   };
+}
+
+/** This panel's custom lane heights, and a setter that resets on `undefined`. */
+export function useLaneHeights() {
+  const [state, setState] = usePanelState<LayoutState>({});
+  const setHeight = useCallback(
+    (key: string, height?: number) =>
+      setState((current: LayoutState | undefined) => {
+        const heights = current?.laneHeights ?? NO_HEIGHTS;
+        const next = setLaneHeight(heights, key, height);
+        return next === heights ? current : { ...current, laneHeights: next };
+      }),
+    [setState],
+  );
+
+  return { heights: state?.laneHeights ?? NO_HEIGHTS, setHeight };
 }

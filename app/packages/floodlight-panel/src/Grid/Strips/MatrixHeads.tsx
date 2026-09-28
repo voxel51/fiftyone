@@ -41,7 +41,10 @@ export const ColumnHeads = () => {
   );
 
   return (
-    <div className={styles.matrixHead}>
+    <div
+      className={styles.matrixHead}
+      style={{ marginLeft: matrix.gutter, marginRight: matrix.gutter }}
+    >
       <div
         className={clsx(styles.corner, styles.matrixCorner)}
         style={{ width: matrix.rowHeadWidth }}

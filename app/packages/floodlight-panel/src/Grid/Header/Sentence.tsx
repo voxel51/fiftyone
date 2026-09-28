@@ -1,11 +1,9 @@
 import * as fos from "@fiftyone/state";
-import { Select, Tooltip } from "@voxel51/voodo";
+import { Select } from "@voxel51/voodo";
 import { useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
-import { PRESS_CLASS, TOOLTIP_CLASS } from "./classes";
 import usePanelLayout, { type LayoutKind } from "../layout";
 import GroupSlice from "./GroupSlice";
-import { ScrubberIcon } from "./icons";
 import Sort from "./Sort";
 
 export const Word = styled.span`
@@ -109,30 +107,6 @@ const LayoutFields = () => {
   return null;
 };
 
-const ScrubberToggle = () => {
-  const available = fos.useGridScrubberAvailable();
-  const [enabled, setEnabled] = fos.useGridScrubber();
-  const { layout } = usePanelLayout();
-  if (!available || (layout !== "grid" && layout !== "groups")) return null;
-
-  return (
-    <Tooltip
-      content={enabled ? "Hide scrubber" : "Show scrubber"}
-      className={TOOLTIP_CLASS}
-      portal
-    >
-      <div
-        onClick={() => setEnabled(!enabled)}
-        onKeyDown={() => null}
-        className={PRESS_CLASS}
-        style={{ opacity: enabled ? 1 : 0.45 }}
-      >
-        <ScrubberIcon />
-      </div>
-    </Tooltip>
-  );
-};
-
 const Sentence = () => {
   const isGroup = useReverbValue(fos.isGroup);
   const slices = useReverbValue(fos.groupSlices);
@@ -148,7 +122,6 @@ const Sentence = () => {
         </>
       )}
       <Sort prefix={<Word>sorted by</Word>} />
-      <ScrubberToggle />
     </Row>
   );
 };

@@ -1,0 +1,196 @@
+/* The hit area is wider than the line so the rail is easy to grab. */
+.rail {
+  position: absolute;
+  top: 56px;
+  right: 0;
+  bottom: 16px;
+  width: 16px;
+  z-index: 5;
+  cursor: pointer;
+  touch-action: none;
+  outline: none;
+  opacity: 0.35;
+  transition: opacity 240ms ease;
+}
+
+.awake,
+.active,
+.rail:focus-visible {
+  opacity: 1;
+}
+
+.track {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 5px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--color-content-border-subtle);
+  transition:
+    width 160ms ease,
+    right 160ms ease,
+    background-color 160ms ease;
+}
+
+.active .track {
+  right: 4px;
+  width: 4px;
+  background: var(--color-content-border-strong);
+}
+
+.marker {
+  position: absolute;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--color-content-text-tertiary);
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+.awake .marker,
+.active .marker {
+  opacity: 0.6;
+}
+
+.marker.near {
+  width: 6px;
+  height: 6px;
+  opacity: 1;
+  background: var(--color-content-text-secondary);
+}
+
+.markerLabel {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--color-content-text-secondary);
+  pointer-events: none;
+}
+
+.thumb {
+  position: absolute;
+  left: 50%;
+  width: 6px;
+  min-height: 24px;
+  border-radius: 3px;
+  transform: translateX(-50%);
+  background: var(--color-brand-primary);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  transition:
+    top 180ms cubic-bezier(0.2, 0, 0, 1),
+    height 180ms ease,
+    width 160ms ease;
+}
+
+.active .thumb {
+  width: 8px;
+  border-radius: 4px;
+}
+
+.drag .thumb {
+  transition: width 160ms ease;
+}
+
+.pill {
+  position: absolute;
+  right: 18px;
+  transform: translateY(-50%);
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  background: var(--color-content-tooltip-bg);
+  color: var(--color-content-tooltip-text);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+}
+
+/* Horizontal: the same rail along a bottom edge. */
+.horizontal {
+  top: auto;
+  left: 16px;
+  right: 16px;
+  bottom: 0;
+  width: auto;
+  height: 16px;
+}
+
+.horizontal .track {
+  top: auto;
+  bottom: 5px;
+  left: 0;
+  right: 0;
+  width: auto;
+  height: 2px;
+  transition:
+    height 160ms ease,
+    bottom 160ms ease,
+    background-color 160ms ease;
+}
+
+.horizontal.active .track {
+  bottom: 4px;
+  right: 0;
+  width: auto;
+  height: 4px;
+}
+
+.horizontal .marker {
+  top: 50%;
+  left: auto;
+}
+
+.horizontal .markerLabel {
+  right: auto;
+  top: auto;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.horizontal .thumb {
+  top: 50%;
+  left: auto;
+  width: auto;
+  height: 6px;
+  min-height: 0;
+  min-width: 24px;
+  transform: translateY(-50%);
+  transition:
+    left 180ms cubic-bezier(0.2, 0, 0, 1),
+    width 180ms ease,
+    height 160ms ease;
+}
+
+.horizontal.active .thumb {
+  width: auto;
+  height: 8px;
+}
+
+.horizontal.drag .thumb {
+  transition: height 160ms ease;
+}
+
+.horizontal .pill {
+  right: auto;
+  bottom: 14px;
+  transform: translateX(-50%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rail,
+  .track,
+  .marker,
+  .thumb {
+    transition: none;
+  }
+}
