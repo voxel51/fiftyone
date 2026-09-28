@@ -1,0 +1,110 @@
+import { cleanup, render, renderHook, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const env = vi.hoisted(() => ({
+  grouped: true,
+  view: [] as { _cls: string; kwargs: [string, unknown][] }[],
+  options: {} as Record<string, unknown>,
+}));
+
+vi.mock("@fiftyone/state", () => ({
+  useCurrentDataset: () => ({ groupField: "camera" }),
+  useIsGroupDataset: () => env.grouped,
+  useLookerOptions: () => env.options,
+  useView: () => env.view,
+}));
+
+import { useGroupMatchTileDecorator } from "./GroupMatchPills";
+import { useTileDecorators } from "./tileDecorators";
+
+const searchedFor = (groupMatches: Record<string, string[]>) => [
+  {
+    _cls: "fiftyone.core.stages.SortBySimilarity",
+    kwargs: [
+      ["query", "a red car"],
+      ["_state", { pipeline: [], group_matches: groupMatches }],
+    ] as [string, unknown][],
+  },
+];
+
+const coloring = (by: string) => ({ by, pool: ["#999999"], seed: 0 });
+
+const SETTING = {
+  path: "camera",
+  fieldColor: "#ff0000",
+  valueColors: [{ value: "right", color: "#00ff00" }],
+};
+
+/** The pills the grid would draw on a tile of `groupId`'s group. */
+const pillsOf = (groupId: string) => {
+  const decorators = renderHook(() => useTileDecorators()).result.current;
+  cleanup();
+  for (const decorator of decorators) {
+    render(<>{decorator.render({ camera: { _id: groupId } })}</>);
+  }
+  return screen.queryAllByTitle(/^Matched in slice/);
+};
+
+describe("useGroupMatchTileDecorator", () => {
+  beforeEach(() => {
+    env.grouped = true;
+    env.view = searchedFor({ g1: ["right", "left"], g2: ["left"] });
+    env.options = { coloring: coloring("field"), customizeColorSetting: [] };
+    if (!globalThis.CSS?.supports) {
+      vi.stubGlobal("CSS", {
+        supports: (_: string, color: unknown) =>
+          typeof color === "string" && /^#[0-9a-f]{6}$/i.test(color),
+      });
+    }
+  });
+  afterEach(cleanup);
+
+  it("names the slices of a tile's group that matched, best match first", () => {
+    const { unmount } = renderHook(() => useGroupMatchTileDecorator());
+
+    expect(pillsOf("g1").map((pill) => pill.textContent)).toStrictEqual([
+      "match: right",
+      "match: left",
+    ]);
+    expect(pillsOf("g3")).toStrictEqual([]);
+    unmount();
+  });
+
+  it("draws nothing without a grouped similarity search in the view", () => {
+    env.view = [];
+    const unsearched = renderHook(() => useGroupMatchTileDecorator());
+    expect(pillsOf("g1")).toStrictEqual([]);
+    unsearched.unmount();
+
+    env.view = searchedFor({ g1: ["right"] });
+    env.grouped = false;
+    const ungrouped = renderHook(() => useGroupMatchTileDecorator());
+    expect(pillsOf("g1")).toStrictEqual([]);
+    ungrouped.unmount();
+  });
+
+  it("colors by the group field's color, or by each slice's value", () => {
+    env.options = {
+      coloring: coloring("field"),
+      customizeColorSetting: [SETTING],
+    };
+    const byField = renderHook(() => useGroupMatchTileDecorator());
+    expect(
+      pillsOf("g1").map((pill) => pill.style.backgroundColor),
+    ).toStrictEqual(["rgb(255, 0, 0)", "rgb(255, 0, 0)"]);
+    byField.unmount();
+
+    env.options = {
+      coloring: coloring("value"),
+      customizeColorSetting: [SETTING],
+    };
+    const byValue = renderHook(() => useGroupMatchTileDecorator());
+    const [right, left] = pillsOf("g1").map(
+      (pill) => pill.style.backgroundColor,
+    );
+    expect(right).toBe("rgb(0, 255, 0)");
+    expect(left).not.toBe("rgb(0, 255, 0)");
+    expect(left).not.toBe("rgb(255, 0, 0)");
+    byValue.unmount();
+  });
+});

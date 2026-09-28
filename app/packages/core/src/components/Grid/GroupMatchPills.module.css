@@ -1,0 +1,14 @@
+/* The tile's top right: its label bubbles run along the bottom and its
+   selection checkbox sits at the top left. */
+.pills {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 100%;
+  pointer-events: none;
+  color: #fff;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
+}
