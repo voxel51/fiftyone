@@ -506,7 +506,13 @@ export function GridRenderer({
           {nativeVideoError}
         </div>
       ) : null}
-      {preview.frame && preview.isBuffering ? (
+      {preview.isBuffering &&
+      (preview.frame ||
+        // A native tile rarely has a decoded frame: its picture is the cached
+        // poster or the one the element painted
+        (preview.nativeVideo &&
+          !nativeVideoError &&
+          (preview.cachedPoster || nativePosterPainted))) ? (
         <span
           className={
             blocksGridActivation
@@ -523,6 +529,7 @@ export function GridRenderer({
           active={visible}
           capturePoster={!preview.frame && !preview.cachedPoster}
           key={`${preview.nativeVideo.source.sourceId}:${preview.nativeVideo.codec}:${preview.nativeVideo.startTimeSeconds}:${preview.nativeVideo.endTimeSeconds}`}
+          onBufferingChange={preview.reportNativeBuffering}
           onCanvasCommitted={handleNativePosterCanvasCommitted}
           onError={handleNativeVideoError}
           onPresentedTimeSeconds={preview.presentNativeTimeSeconds}

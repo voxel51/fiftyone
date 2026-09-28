@@ -221,6 +221,61 @@ describe("LeRobotGridHoverVideo", () => {
     expect(HTMLMediaElement.prototype.load).toHaveBeenCalledTimes(2);
   });
 
+  it("reports waiting from hover playback until a frame is presented, and again when the video waits", () => {
+    const onBufferingChange = vi.fn();
+    render(
+      <TestLeRobotGridHoverVideo
+        onBufferingChange={onBufferingChange}
+        video={nativeVideo(0, 2)}
+      />,
+    );
+    const element = screen.getByTestId(
+      "lerobot-grid-hover-video",
+    ) as HTMLVideoElement;
+    expect(onBufferingChange).toHaveBeenLastCalledWith(true);
+
+    fireEvent.loadedMetadata(element);
+    presentFrame(0.1);
+    expect(onBufferingChange).toHaveBeenLastCalledWith(false);
+
+    fireEvent.waiting(element);
+    expect(onBufferingChange).toHaveBeenLastCalledWith(true);
+
+    presentFrame(0.2);
+    expect(onBufferingChange).toHaveBeenLastCalledWith(false);
+  });
+
+  it("stops reporting waiting when playback fails", () => {
+    const onBufferingChange = vi.fn();
+    render(
+      <TestLeRobotGridHoverVideo
+        onBufferingChange={onBufferingChange}
+        video={nativeVideo(0, 1)}
+      />,
+    );
+
+    fireEvent.error(screen.getByTestId("lerobot-grid-hover-video"));
+
+    expect(onBufferingChange).toHaveBeenLastCalledWith(false);
+  });
+
+  it("reports no waiting while only capturing a poster", () => {
+    const onBufferingChange = vi.fn();
+    render(
+      <TestLeRobotGridHoverVideo
+        capturePoster
+        onBufferingChange={onBufferingChange}
+        playing={false}
+        video={nativeVideo(0, 1)}
+      />,
+    );
+    const element = screen.getByTestId("lerobot-grid-hover-video");
+    fireEvent.loadedMetadata(element);
+    fireEvent.waiting(element);
+
+    expect(onBufferingChange).not.toHaveBeenCalledWith(true);
+  });
+
   it("keeps the media lifecycle stable across callback-only rerenders", () => {
     const rendered = render(
       <TestLeRobotGridHoverVideo video={nativeVideo(0, 1)} />,
@@ -278,6 +333,7 @@ function nativeVideo(
 function TestLeRobotGridHoverVideo({
   active = true,
   capturePoster = false,
+  onBufferingChange,
   onCanvasCommitted = () => undefined,
   onError = () => undefined,
   onSurfaceRetainedBytesChange = () => undefined,
@@ -289,6 +345,7 @@ function TestLeRobotGridHoverVideo({
     <LeRobotGridHoverVideo
       active={active}
       capturePoster={capturePoster}
+      onBufferingChange={onBufferingChange}
       onCanvasCommitted={onCanvasCommitted}
       onError={onError}
       onSurfaceRetainedBytesChange={onSurfaceRetainedBytesChange}
