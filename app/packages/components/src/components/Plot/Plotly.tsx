@@ -3,6 +3,7 @@ import { merge } from "lodash";
 import React, { lazy, Suspense, useMemo } from "react";
 import type { PlotParams } from "react-plotly.js";
 import PlotlyTooltip, { TooltipValue } from "./PlotlyTooltip";
+import { useAppliedThemeMode } from "../ThemeProvider";
 import { resolveCssColorsDeep } from "@fiftyone/utilities";
 
 const Plot = lazy(() => import("react-plotly.js"));
@@ -50,6 +51,8 @@ function PlotlyWithCustomTooltip(props: EvaluationPlotProps) {
 function Plotly(props: EvaluationPlotProps) {
   const { layout = {}, data, style = {}, ...otherProps } = props;
   const theme = useTheme();
+  // re-resolve tokens once the theme class has actually flipped
+  const themeMode = useAppliedThemeMode();
 
   const layoutDefaults = useMemo(() => {
     return {
@@ -96,8 +99,13 @@ function Plotly(props: EvaluationPlotProps) {
   // a caller put in a trace) are resolved to concrete values here
   const mergedLayout = useMemo(() => {
     return resolveCssColorsDeep(merge({}, layoutDefaults, layout));
-  }, [layoutDefaults, layout]);
-  const resolvedData = useMemo(() => resolveCssColorsDeep(data), [data]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- themeMode is the signal
+  }, [layoutDefaults, layout, themeMode]);
+  const resolvedData = useMemo(
+    () => resolveCssColorsDeep(data),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- themeMode is the signal
+    [data, themeMode],
+  );
 
   const configDefaults: PlotConfig = useMemo(() => {
     return {

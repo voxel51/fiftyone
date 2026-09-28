@@ -8,7 +8,7 @@ import {
   useRef,
 } from "react";
 import * as THREE from "three";
-import { resolveCssColor } from "@fiftyone/utilities";
+import { useResolvedCssColor } from "@fiftyone/components";
 
 import { fittedImageSize } from "./image-fit";
 import {
@@ -49,13 +49,14 @@ const VIEW_TRANSFORM_EPSILON = 0.000001;
  * Base 2D R3F scene for image-like renderables.
  */
 export function Base2dScene({ background = true, children }: Base2dSceneProps) {
+  // three needs a concrete colour; this re-resolves when the theme flips
+  const backgroundColor = useResolvedCssColor(
+    VISUALIZATION_PANEL_BACKGROUND_COLOR,
+  );
   return (
     <>
       {background ? (
-        <color
-          args={[resolveCssColor(VISUALIZATION_PANEL_BACKGROUND_COLOR)]}
-          attach="background"
-        />
+        <color args={[backgroundColor]} attach="background" />
       ) : null}
       {children}
     </>

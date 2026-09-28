@@ -1,13 +1,8 @@
-import { Loading, useTheme } from "@fiftyone/components";
+import { Loading, useResolvedCssColor, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { distribution } from "@fiftyone/state";
 import { DATE_FIELD, DATE_TIME_FIELD, styles } from "@fiftyone/utilities";
-import React, {
-  PureComponent,
-  Suspense,
-  useLayoutEffect,
-  useMemo,
-} from "react";
+import React, { PureComponent, Suspense, useLayoutEffect } from "react";
 import useMeasure from "react-use-measure";
 import { Bar, BarChart, Tooltip, XAxis, YAxis } from "recharts";
 import { useRecoilValue } from "recoil";
@@ -20,7 +15,6 @@ import {
 } from "../utils/generic";
 import { ContentDiv, ContentHeader } from "./utils";
 import { cssVar } from "@voxel51/voodo";
-import { resolveCssColor } from "@fiftyone/utilities";
 
 const Container = styled.div`
   overflow-y: hidden;
@@ -154,10 +148,7 @@ const HistogramRenderer: React.FC<{ path: string }> = ({ path }) => {
   const stroke = theme.text.secondary;
   const fill = stroke;
   // recharts writes `fill` as an SVG attribute, which cannot take a var()
-  const barFill = useMemo(
-    () => resolveCssColor(cssVar.color.brand.primary),
-    [],
-  );
+  const barFill = useResolvedCssColor(cssVar.color.brand.primary);
   const isDateTime = useRecoilValue(
     fos.meetsType({ path, ftype: DATE_TIME_FIELD }),
   );
