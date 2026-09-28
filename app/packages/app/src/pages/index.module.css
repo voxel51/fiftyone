@@ -1,8 +1,8 @@
 .page {
   position: relative;
   width: 100%;
-  height: calc(100% - 74px);
   flex: 1;
+  min-height: 0;
 }
 
 .rest {

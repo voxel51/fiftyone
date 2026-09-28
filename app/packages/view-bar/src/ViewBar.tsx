@@ -972,7 +972,11 @@ const ViewBarInner: React.FC<{
       setEditingId(null);
       applyOnLeaveRef.current();
       if (stagesRowOpenRef.current) {
-        setStagesOpen(false);
+        // Closing the row shortens the header and moves the page under the
+        // pointer, so wait for the press to finish on what it started on
+        window.addEventListener("click", () => setStagesOpen(false), {
+          once: true,
+        });
       }
     };
 
