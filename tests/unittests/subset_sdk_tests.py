@@ -8,7 +8,7 @@ Python SDK access to the App's saved subsets.
 
 import unittest
 from datetime import datetime, timedelta
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from bson import ObjectId
 from pymongo.collection import Collection
@@ -32,6 +32,23 @@ class SubsetSDKTests(unittest.TestCase):
 
     def tearDown(self):
         self.dataset.delete()
+
+    def test_denied_projection_repair_requires_a_confirmed_server_repair(self):
+        doc = {
+            "_id": ObjectId(),
+            "_dataset_id": self.dataset._doc.id,
+            "member_pending": {"version": 1, "members": [{"_id": "member"}]},
+        }
+        db = MagicMock()
+        db.subset_members.bulk_write.side_effect = PermissionError("Read only")
+        for refreshed in (None, doc):
+            with self.subTest(refreshed=refreshed):
+                db.subsets.find_one.return_value = refreshed
+                with self.assertRaises(PermissionError):
+                    fosub._flush_membership(db, doc)
+        db.subsets.find_one.return_value = {"_id": doc["_id"]}
+        fosub._flush_membership(db, doc)
+        db.subsets.update_one.assert_not_called()
 
     def test_converted_subset_reads_without_cache_write_permission(self):
         dataset = fo.Dataset()

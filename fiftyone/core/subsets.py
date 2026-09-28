@@ -1456,20 +1456,30 @@ def _flush_membership(db, doc):
     if not pending:
         return
     version = pending["version"]
-    _write_batch(
-        db.subset_members,
-        [
-            ReplaceOne(
-                {
-                    "_id": member["_id"],
-                    "_member_version": {"$lt": version},
-                },
-                member,
-                upsert=True,
-            )
-            for member in pending["members"]
-        ],
-    )
+    try:
+        _write_batch(
+            db.subset_members,
+            [
+                ReplaceOne(
+                    {
+                        "_id": member["_id"],
+                        "_member_version": {"$lt": version},
+                    },
+                    member,
+                    upsert=True,
+                )
+                for member in pending["members"]
+            ],
+        )
+    except PermissionError:
+        # A permissioned proxy can finish the stored journal during this read.
+        # Confirm it did so before ignoring the denied client-side repair.
+        refreshed = db.subsets.find_one(
+            {"_id": doc["_id"], "_dataset_id": doc["_dataset_id"]}
+        )
+        if refreshed is not None and not refreshed.get("member_pending"):
+            return
+        raise
     # Duplicate _ids mean another helper already applied this or a newer
     # version. Only this journal may be cleared, never a newer writer's.
     result = db.subsets.update_one(
