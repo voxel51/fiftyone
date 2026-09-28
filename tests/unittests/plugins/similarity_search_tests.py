@@ -13,6 +13,7 @@ import numpy as np
 import fiftyone as fo
 import fiftyone.brain as fob
 import fiftyone.operators as foo
+from fiftyone.core.view import DatasetView
 from fiftyone.operators.executor import Executor
 
 
@@ -51,10 +52,72 @@ class SimilaritySearchOperatorTests(unittest.TestCase):
             )
         )
 
+    def test_grouped_search_selects_groups_matched_in_any_slice(self):
+        dataset, query_id, group_ids = _grouped_dataset()
+        self.addCleanup(dataset.delete)
 
-def _search(dataset, view=None):
-    """Runs the search operator for the first sample's neighbors, answering
-    its run record."""
+        run = _search(dataset, query=query_id)
+
+        # The stage is kept, not stored IDs: it selects groups in the
+        # active slice and records which slices matched
+        result = DatasetView._build(dataset, run["result_view"])
+        self.assertEqual(result.values("group.id"), group_ids[:2])
+        self.assertEqual(result.values("group.name"), ["left", "left"])
+        self.assertEqual(
+            result._stages[-1].group_matches,
+            {group_ids[0]: ["right"], group_ids[1]: ["left"]},
+        )
+
+    def test_grouped_search_honors_the_picked_slices(self):
+        dataset, query_id, group_ids = _grouped_dataset()
+        self.addCleanup(dataset.delete)
+
+        run = _search(dataset, query=query_id, k=1, slices=["left"])
+
+        result = DatasetView._build(dataset, run["result_view"])
+        self.assertEqual(
+            result._stages[-1].group_matches, {group_ids[1]: ["left"]}
+        )
+
+
+def _grouped_dataset():
+    """Three groups of a left and a right image, all indexed. The query is
+    group 0's right image; group 1's left image is its nearest neighbor, and
+    everything else is far.
+
+    Returns the dataset, the query sample's ID, and the group IDs in order.
+    """
+    dataset = fo.Dataset()
+    dataset.add_group_field("group", default="left")
+    for i in range(3):
+        group = fo.Group()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath=f"{i}-{name}.png", group=group.element(name)
+                )
+                for name in ("left", "right")
+            ]
+        )
+
+    group_ids = dataset.values("group.id")
+    flat = dataset.select_group_slices()
+    near = {(group_ids[0], "right"): 0.0, (group_ids[1], "left"): 1.0}
+    keys = list(zip(*flat.values(["group.id", "group.name"])))
+    fob.compute_similarity(
+        flat,
+        embeddings=np.array([[near.get(key, 100.0), 0.0] for key in keys]),
+        backend="sklearn",
+        metric="euclidean",
+        brain_key="sim",
+    )
+    query_id = flat.values("id")[keys.index((group_ids[0], "right"))]
+    return dataset, query_id, group_ids
+
+
+def _search(dataset, view=None, query=None, k=2, slices=None):
+    """Runs the search operator for the neighbors of `query`, by default the
+    first sample, answering its run record."""
     # pylint: disable=import-outside-toplevel
     from plugins.panels.similarity_search.operators import (
         SimilaritySearchOperator,
@@ -66,10 +129,12 @@ def _search(dataset, view=None):
         "params": {
             "brain_key": "sim",
             "query_type": "image",
-            "query": dataset.first().id,
-            "k": 2,
+            "query": query or dataset.first().id,
+            "k": k,
         },
     }
+    if slices is not None:
+        request_params["params"]["slices"] = slices
     if view is not None:
         request_params["view"] = view._serialize()
 
