@@ -31,7 +31,7 @@ const searchAndLand = (
   result: { current: ReturnType<typeof useOperatorSearch> },
   runId: string,
 ) => {
-  act(() => result.current.run(INDEX, "an animal", 25));
+  act(() => result.current.run(INDEX, "an animal", 25, null));
   const [, , { callback }] = env.execute.mock.lastCall;
   act(() => callback({ result: { run_id: runId } }));
   return result.current.claimView(RESULT_VIEW);
@@ -48,7 +48,7 @@ describe("useOperatorSearch", () => {
 
     expect(searchAndLand(result, "run-1")).toBe(true);
     rerender({ view: RESULT_VIEW });
-    act(() => result.current.run(INDEX, "a car", 25));
+    act(() => result.current.run(INDEX, "a car", 25, null));
 
     expect(env.execute.mock.lastCall[1].replace_run_id).toBe("run-1");
     expect(env.onRun).toHaveBeenCalledTimes(2);
@@ -68,8 +68,18 @@ describe("useOperatorSearch", () => {
     expect(result.current.claimView(edited)).toBe(false);
     result.current.claimView(RESULT_VIEW);
     rerender({ view: RESULT_VIEW });
-    act(() => result.current.run(INDEX, "a car", 25));
+    act(() => result.current.run(INDEX, "a car", 25, null));
 
     expect(env.execute.mock.lastCall[1]).not.toHaveProperty("replace_run_id");
+  });
+
+  it("sends the slices only when the pick narrows the search", () => {
+    const { result } = renderHook(() => useOperatorSearch([], env.onRun));
+
+    act(() => result.current.run(INDEX, "a car", 25, ["left"]));
+    expect(env.execute.mock.lastCall[1].slices).toStrictEqual(["left"]);
+
+    act(() => result.current.run(INDEX, "a car", 25, null));
+    expect(env.execute.mock.lastCall[1]).not.toHaveProperty("slices");
   });
 });

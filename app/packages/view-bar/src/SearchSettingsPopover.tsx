@@ -43,6 +43,8 @@ export interface SearchSettingsPopoverProps {
   /** The magnifier: clicking it opens the settings under it. */
   trigger: React.ReactNode;
   promptKeys: PromptableSimilarityIndex[];
+  /** On a grouped dataset, the slices each index covers, by brain key. */
+  indexSlices?: ReadonlyMap<string, readonly string[]>;
   /** The index quick search will use (the resolved value, never null). */
   selectedKey: string | null;
   onSelectKey: (key: string) => void;
@@ -75,6 +77,30 @@ export const describeIndex = (index: PromptableSimilarityIndex): string => {
     ? `${label} (patches: ${index.patchesField})`
     : label;
 };
+
+/** An index's name, then the slices it covers as a quiet note, which is
+ * what tells an image index from a point-cloud one on a grouped dataset. */
+const IndexName: React.FC<{
+  index: PromptableSimilarityIndex;
+  slices: readonly string[] | undefined;
+}> = ({ index, slices }) => (
+  <Stack
+    orientation={Orientation.Row}
+    align={Align.Center}
+    spacing={Spacing.Sm}
+  >
+    {describeIndex(index)}
+    {slices && (
+      <Text
+        variant={TextVariant.Sm}
+        color={TextColor.Secondary}
+        data-cy="search-settings-index-slices"
+      >
+        {slices.join(", ")}
+      </Text>
+    )}
+  </Stack>
+);
 
 /**
  * The results count, typed freely: the field holds whatever is being typed —
@@ -176,6 +202,7 @@ const SourcesPicker: React.FC<{
 export const SearchSettingsPopover: React.FC<SearchSettingsPopoverProps> = ({
   trigger,
   promptKeys,
+  indexSlices,
   selectedKey,
   onSelectKey,
   k,
@@ -237,7 +264,14 @@ export const SearchSettingsPopover: React.FC<SearchSettingsPopoverProps> = ({
                   data-cy="search-settings-indexes"
                   trigger={
                     <DropdownTrigger className={styles.pickerTrigger}>
-                      {selected ? describeIndex(selected) : "Choose an index"}
+                      {selected ? (
+                        <IndexName
+                          index={selected}
+                          slices={indexSlices?.get(selected.key)}
+                        />
+                      ) : (
+                        "Choose an index"
+                      )}
                     </DropdownTrigger>
                   }
                 >
@@ -253,7 +287,10 @@ export const SearchSettingsPopover: React.FC<SearchSettingsPopoverProps> = ({
                         justify={Justify.Between}
                         spacing={Spacing.Sm}
                       >
-                        {describeIndex(index)}
+                        <IndexName
+                          index={index}
+                          slices={indexSlices?.get(index.key)}
+                        />
                         {index.key === selectedKey && (
                           <Icon name={IconName.Check} size={Size.Sm} />
                         )}

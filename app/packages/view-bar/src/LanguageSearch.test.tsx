@@ -20,6 +20,7 @@ vi.mock("./useSearchSources", () => ({
     return sources.current;
   },
 }));
+vi.mock("./useIndexSlices", () => ({ useIndexSlices: () => new Map() }));
 vi.mock("./SearchSettingsPopover", () => ({
   SearchSettingsPopover: ({
     trigger,

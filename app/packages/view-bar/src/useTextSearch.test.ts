@@ -65,9 +65,14 @@ describe("useTextSearch", () => {
     env.promptKeys = [SERVER_INDEX];
     const { result } = renderController();
 
-    act(() => result.current.submit("an animal", null));
+    act(() => result.current.submit("an animal", ["left"]));
 
-    expect(env.operatorRun).toHaveBeenCalledWith(SERVER_INDEX, "an animal", 25);
+    expect(env.operatorRun).toHaveBeenCalledWith(
+      SERVER_INDEX,
+      "an animal",
+      25,
+      ["left"],
+    );
     expect(env.providerRun).not.toHaveBeenCalled();
     expect(env.providerCancel.mock.invocationCallOrder[0]).toBeLessThan(
       env.operatorRun.mock.invocationCallOrder[0],

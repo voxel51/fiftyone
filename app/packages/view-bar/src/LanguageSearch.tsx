@@ -37,6 +37,7 @@ import React from "react";
 
 import styles from "./LanguageSearch.module.css";
 import { SearchSettingsPopover } from "./SearchSettingsPopover";
+import { useIndexSlices } from "./useIndexSlices";
 import { useSearchSources } from "./useSearchSources";
 import type { TextSearchController } from "./useTextSearch";
 
@@ -95,6 +96,7 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
   // runs over every source
   const [settingsOpened, setSettingsOpened] = React.useState(false);
   const sources = useSearchSources(selectedIndex, settingsOpened);
+  const indexSlices = useIndexSlices(promptKeys, settingsOpened);
   // Per index, the sources chosen to search; an index absent here searches
   // all of them
   const [chosenSources, setChosenSources] = React.useState<
@@ -268,6 +270,7 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
               />
             }
             promptKeys={promptKeys}
+            indexSlices={indexSlices}
             selectedKey={selectedKey}
             onSelectKey={onSelectKey}
             k={k}

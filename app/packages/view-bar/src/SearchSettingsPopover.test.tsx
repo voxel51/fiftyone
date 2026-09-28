@@ -22,11 +22,13 @@ const openWith = (
       { key: "emb_sim", patchesField: null, provider: "multimodal" },
       { key: "clip_sim", patchesField: null },
     ],
+    indexSlices = undefined,
     sources = null,
     selectedSources = null,
     onChangeSources = noop,
   }: {
     promptKeys?: PromptableSimilarityIndex[];
+    indexSlices?: ReadonlyMap<string, readonly string[]>;
     sources?: typeof STREAMS | null;
     selectedSources?: string[] | null;
     onChangeSources?: (values: string[]) => void;
@@ -36,6 +38,7 @@ const openWith = (
     <SearchSettingsPopover
       trigger={<button>settings</button>}
       promptKeys={promptKeys}
+      indexSlices={indexSlices}
       selectedKey={selectedKey}
       onSelectKey={noop}
       k={25}
@@ -117,5 +120,21 @@ describe("SearchSettingsPopover", () => {
       "/cam_left",
       "/cam_right",
     ]);
+  });
+
+  it("notes the slices an index covers beside its name, in the picker and in its option", () => {
+    const notes = () =>
+      [
+        ...document.querySelectorAll(
+          '[data-cy="search-settings-index-slices"]',
+        ),
+      ].map((note) => note.textContent);
+    openWith("clip_sim", {
+      indexSlices: new Map([["clip_sim", ["left", "right"]]]),
+    });
+    expect(notes()).toStrictEqual(["left, right"]);
+
+    fireEvent.click(screen.getByRole("button", { name: /clip_sim/ }));
+    expect(notes()).toStrictEqual(["left, right", "left, right"]);
   });
 });

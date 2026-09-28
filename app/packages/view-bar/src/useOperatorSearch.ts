@@ -51,10 +51,12 @@ export const useOperatorSearch = (
       index,
       query,
       k,
+      slices,
     }: {
       index: PromptableSimilarityIndex;
       query: string;
       k: number;
+      slices: string[] | null;
     }) => {
       onRun(index, query);
       // The pending treatment every view change gets, for the operator's
@@ -78,6 +80,10 @@ export const useOperatorSearch = (
       };
       if (index.patchesField) {
         params.patches_field = index.patchesField;
+      }
+      // Only a narrowed pick: without one the operator searches every slice
+      if (slices) {
+        params.slices = slices;
       }
       if (
         lastSearch.current &&
@@ -122,9 +128,15 @@ export const useOperatorSearch = (
     onDrop: drop,
   });
 
+  /** Runs `query`; on a grouped dataset, within `slices` of the index, or
+   * every slice it covers when null. */
   const run = useCallback(
-    (index: PromptableSimilarityIndex, query: string, k: number) =>
-      deferred({ index, query, k }),
+    (
+      index: PromptableSimilarityIndex,
+      query: string,
+      k: number,
+      slices: string[] | null,
+    ) => deferred({ index, query, k, slices }),
     [deferred],
   );
 
