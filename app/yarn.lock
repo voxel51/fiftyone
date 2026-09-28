@@ -2085,6 +2085,7 @@ __metadata:
     "@types/lru-cache": "npm:^7.10.10"
     "@types/uuid": "npm:^8.3.0"
     "@ungap/event-target": "npm:^0.2.2"
+    "@voxel51/voodo": "catalog:"
     "@xmldom/xmldom": "npm:^0.8.13"
     buffer: "catalog:"
     copy-to-clipboard: "npm:^3.3.1"

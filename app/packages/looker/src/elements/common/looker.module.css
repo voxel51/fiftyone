@@ -37,7 +37,6 @@
 
 .lookerBufferingIcon {
   animation: lookerSpin 1s linear infinite;
-  color: var(--color-content-text-primary, rgba(245, 245, 245, 0.92));
   height: 12px;
   width: 12px;
 }

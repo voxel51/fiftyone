@@ -5,7 +5,7 @@
 import { playbackRate, volume as volumeIcon, volumeMuted } from "../icons";
 import lockIcon from "../icons/lock.svg";
 import lockOpenIcon from "../icons/lockOpen.svg";
-import type { VideoState } from "../state";
+import type { DispatchEvent, VideoState } from "../state";
 import type { Events } from "./base";
 import { BaseElement } from "./base";
 import {
@@ -389,6 +389,21 @@ export class TimeElement extends BaseElement<VideoState> {
   }
 }
 
+/**
+ * Reports the frame the video element is presenting, for chrome drawn beside
+ * the looker (the grid's tile lanes): from the playback loop, whose frame
+ * number is read off the element's own clock, and once a seek has completed.
+ * The looker reports playback stopping separately.
+ */
+const dispatchPresentedFrame = (
+  dispatchEvent: DispatchEvent,
+  { config: { frameRate }, frameNumber, playing }: Readonly<VideoState>,
+) =>
+  dispatchEvent("frame", {
+    playing,
+    timeSeconds: (frameNumber - 0.5) / frameRate,
+  });
+
 export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
   private canvas: HTMLCanvasElement;
   private frameNumber: number;
@@ -447,6 +462,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
                   waitingForVideo: false,
                 };
               },
+              (state) => dispatchPresentedFrame(dispatchEvent, state),
             );
             dispatchEvent("load");
           });
@@ -480,8 +496,9 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
                 playing,
               };
             },
-            ({ playing, seeking, buffering }) => {
-              if (playing && !seeking && !buffering) {
+            (state) => {
+              dispatchPresentedFrame(dispatchEvent, state);
+              if (state.playing && !state.seeking && !state.buffering) {
                 this.requestCallback(callback);
               }
             },
