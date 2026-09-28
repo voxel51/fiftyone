@@ -1,6 +1,7 @@
 import { Html } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import { useMemo } from "react";
+import { cssVar } from "@voxel51/voodo";
 import styled from "styled-components";
 import * as THREE from "three";
 
@@ -11,15 +12,15 @@ const TooltipContainer = styled.div`
 `;
 
 const TooltipContent = styled.div`
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
+  background: ${cssVar.color.scrim.heavy};
+  color: ${cssVar.color.text.primary};
   padding: 8px 12px;
   border-radius: 4px;
   font-size: 12px;
   font-family: monospace;
   white-space: nowrap;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid ${cssVar.color.border.default};
 `;
 
 interface VertexTooltipProps {

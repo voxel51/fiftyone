@@ -6,11 +6,11 @@ import {
   FiftyoneSceneRawJson,
   getFiftyoneSceneSummary,
 } from "@fiftyone/looker-3d/src/utils";
-import { getFetchFunction } from "@fiftyone/utilities";
+import { getFetchFunction, resolveCssColor } from "@fiftyone/utilities";
+import { cssVar } from "@voxel51/voodo";
 import { DispatchEvent, ThreeDState } from "../state";
 import { BaseElement, Events } from "./base";
 
-const DEFAULT_FILL_STYLE = "rgba(255, 255, 255, 0.6)";
 export class ThreeDElement extends BaseElement<ThreeDState, HTMLImageElement> {
   public imageSource: HTMLCanvasElement | HTMLImageElement;
   private isOpmAvailable: boolean;
@@ -35,7 +35,7 @@ export class ThreeDElement extends BaseElement<ThreeDState, HTMLImageElement> {
 
         this.ctx = this.canvas.getContext("2d");
         this.ctx.font = "32px";
-        this.ctx.fillStyle = DEFAULT_FILL_STYLE;
+        this.ctx.fillStyle = resolveCssColor(cssVar.color.text.primary);
         this.ctx.imageSmoothingEnabled = false;
         this.ctx.drawImage(this.element, 0, 0);
 
@@ -87,8 +87,7 @@ export class ThreeDElement extends BaseElement<ThreeDState, HTMLImageElement> {
   }
 
   drawExtension() {
-    // background color: slightly faded dark-ink-black
-    this.ctx.fillStyle = "rgba(17, 25, 40, 0.95)";
+    this.ctx.fillStyle = resolveCssColor(cssVar.color.tooltip.bg);
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     this.drawGrid();
@@ -172,8 +171,7 @@ export class ThreeDElement extends BaseElement<ThreeDState, HTMLImageElement> {
     this.ctx.lineTo(cubeX, cubeY); // bottom
     this.ctx.lineTo(cubeX - half, cubeY - quarter); // left
     this.ctx.closePath();
-    // one of primary voxel51 colors
-    this.ctx.fillStyle = "#FF6D04";
+    this.ctx.fillStyle = resolveCssColor(cssVar.color.brand.primary);
     this.ctx.fill();
 
     // left face
@@ -199,7 +197,7 @@ export class ThreeDElement extends BaseElement<ThreeDState, HTMLImageElement> {
 
     // outline
     this.ctx.globalAlpha = 0.7;
-    this.ctx.strokeStyle = "#fff";
+    this.ctx.strokeStyle = resolveCssColor(cssVar.color.text.primary);
     this.ctx.lineWidth = 1;
     this.ctx.beginPath();
     this.ctx.moveTo(cubeX, cubeY - half);
@@ -220,7 +218,7 @@ export class ThreeDElement extends BaseElement<ThreeDState, HTMLImageElement> {
     this.ctx.shadowBlur = 6;
     this.ctx.shadowOffsetX = 0;
     this.ctx.shadowOffsetY = 2;
-    this.ctx.fillStyle = "#fff";
+    this.ctx.fillStyle = resolveCssColor(cssVar.color.text.primary);
     this.ctx.globalAlpha = 0.95;
     this.ctx.fillText(logoText, cubeX + half + 8, rectY + rectHeight / 2);
     this.ctx.restore();
@@ -295,7 +293,7 @@ export class ThreeDElement extends BaseElement<ThreeDState, HTMLImageElement> {
     const centerX = this.canvas.width / 2;
     const centerY = this.canvas.height / 1.3;
 
-    this.ctx.fillStyle = "#FFFFFF";
+    this.ctx.fillStyle = resolveCssColor(cssVar.color.text.primary);
     this.ctx.font =
       '500 28px system-ui, Roboto, "Helvetica Neue", Arial, sans-serif';
     this.ctx.textAlign = "center";

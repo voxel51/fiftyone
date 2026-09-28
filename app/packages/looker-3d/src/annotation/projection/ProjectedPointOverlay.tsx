@@ -1,4 +1,5 @@
 import { useTheme } from "@fiftyone/components";
+import { cssVar } from "@voxel51/voodo";
 import styled from "styled-components";
 import type { FrustumData } from "../../frustum/types";
 import { useRaycastResult } from "../../hooks/use-raycast-result";
@@ -21,8 +22,8 @@ export const TooltipAnchor = styled.div<{ $alignEnd: boolean }>`
  * The 3D coordinate badge shown near the projected crosshair.
  */
 export const CoordLabel = styled.div<{ $fontSize: number }>`
-  background: rgba(0, 0, 0, 0.55);
-  color: #fff;
+  background: ${cssVar.color.scrim.default};
+  color: ${cssVar.color.text.primary};
   font-size: ${({ $fontSize }) => $fontSize}px;
   line-height: 1;
   padding: ${({ $fontSize }) => `${$fontSize * 0.25}px ${$fontSize * 0.4}px`};

@@ -1,3 +1,5 @@
+import { cssVar } from "@voxel51/voodo";
+
 // =============================================================================
 // GEOMETRY CONSTANTS
 // =============================================================================
@@ -27,8 +29,13 @@ export const FRUSTUM_DEFAULT_ASPECT_RATIO = 16 / 9;
 /** Color for frustum wireframes (gray) */
 export const FRUSTUM_COLOR = "#888888";
 
-/** Highlight color when frustum is hovered (Voxel51 orange) */
-export const FRUSTUM_HOVER_COLOR = "#FF6D04";
+/**
+ * Highlight color when frustum is hovered (Voxel51 brand orange).
+ *
+ * A `var(--…)` reference: three.js cannot parse it, so consumers resolve it
+ * with `resolveCssColor` at render time.
+ */
+export const FRUSTUM_HOVER_COLOR = cssVar.color.brand.primary;
 
 /** X-axis color (red) */
 export const FRUSTUM_AXIS_X_COLOR = "#ff0000";

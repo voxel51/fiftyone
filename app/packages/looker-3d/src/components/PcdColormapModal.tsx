@@ -5,6 +5,7 @@ import Input from "@fiftyone/core/src/components/Common/Input";
 import { ColorscaleInput } from "@fiftyone/looker/src/state";
 import * as fos from "@fiftyone/state";
 import { interpolateColorsHex, rgbStringToHex } from "@fiftyone/utilities";
+import { cssVar } from "@voxel51/voodo";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import IconButton from "@mui/material/IconButton";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -101,7 +102,7 @@ const ColorStopRow: React.FC<{
         alignItems: "center",
         marginBottom: "8px",
         transition: "background-color 0.3s ease",
-        backgroundColor: isNew ? "rgba(255, 128, 30, 0.1)" : "transparent",
+        backgroundColor: isNew ? cssVar.color.bg.selected : "transparent",
         padding: "4px",
         borderRadius: "4px",
       }}
@@ -136,7 +137,7 @@ const ColorStopRow: React.FC<{
           size="small"
           style={{
             padding: "4px",
-            color: "#666",
+            color: cssVar.color.text.tertiary,
             width: "50px",
           }}
         >
@@ -361,7 +362,7 @@ const PcdColormapModal: React.FC<PcdColormapModalProps> = ({
                     <span>Number of stops</span>
                     <div
                       style={{
-                        color: "#666",
+                        color: cssVar.color.text.tertiary,
                         fontSize: "0.8rem",
                         marginLeft: "8px",
                         display: "inline-block",
@@ -415,7 +416,12 @@ const PcdColormapModal: React.FC<PcdColormapModalProps> = ({
                       Apply
                     </Button>
                     {colorList?.length && (
-                      <span style={{ color: "#666", fontSize: "0.9rem" }}>
+                      <span
+                        style={{
+                          color: cssVar.color.text.tertiary,
+                          fontSize: "0.9rem",
+                        }}
+                      >
                         Current: {colorList.length} stops
                       </span>
                     )}
@@ -434,7 +440,7 @@ const PcdColormapModal: React.FC<PcdColormapModalProps> = ({
                 gridTemplateColumns: "100px 1fr 40px 40px",
                 gap: "8px",
                 marginBottom: "8px",
-                color: "#666",
+                color: cssVar.color.text.tertiary,
                 fontSize: "0.9rem",
               }}
             >
@@ -460,8 +466,8 @@ const PcdColormapModal: React.FC<PcdColormapModalProps> = ({
             onClick={addColorStop}
             style={{
               marginTop: "8px",
-              backgroundColor: "#f0f0f0",
-              color: "#333",
+              backgroundColor: cssVar.color.interactive["secondary-default"],
+              color: cssVar.color.text.primary,
             }}
           >
             Add Color Stop

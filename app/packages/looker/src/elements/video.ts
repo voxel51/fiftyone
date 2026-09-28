@@ -2,6 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { cssVar } from "@voxel51/voodo";
 import { playbackRate, volume as volumeIcon, volumeMuted } from "../icons";
 import lockIcon from "../icons/lock.svg";
 import lockOpenIcon from "../icons/lockOpen.svg";
@@ -147,7 +148,7 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
     this.play.setAttribute("viewBox", "0 0 24 24");
 
     path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.setAttribute("fill", "rgb(238, 238, 238)");
+    path.style.fill = cssVar.color.icon.emphasis;
     path.setAttribute("d", "M8 5v14l11-7z");
     this.play.appendChild(path);
     path = document.createElementNS("http://www.w3.org/2000/svg", "path");
@@ -168,7 +169,7 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
     circle.setAttribute("cy", "24");
     circle.setAttribute("r", "9");
     circle.setAttribute("stroke-width", "2");
-    circle.setAttribute("stroke", "rgb(238, 238, 238)");
+    circle.style.stroke = cssVar.color.icon.emphasis;
     circle.setAttribute("fill", "none");
     circle.classList.add(bufferingPath);
     this.buffering.appendChild(circle);
@@ -228,13 +229,10 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
     }
 
     if (updatePlay) {
-      const path = this.play.children[0];
-      path.setAttribute(
-        "fill",
-        this.singleFrame
-          ? "var(--fo-palette-text-tertiary)"
-          : "var(--fo-palette-text-secondary)",
-      );
+      const path = this.play.children[0] as SVGPathElement;
+      path.style.fill = this.singleFrame
+        ? "var(--fo-palette-text-tertiary)"
+        : "var(--fo-palette-text-secondary)";
       this.element.style.cursor = this.singleFrame ? "unset" : "pointer";
       this.element.title = this.singleFrame ? "Only one frame" : "Play (space)";
     }

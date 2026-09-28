@@ -12,6 +12,7 @@ import TimelineIcon from "@mui/icons-material/Timeline";
 import CameraIcon from "@mui/icons-material/Videocam";
 import Text from "@mui/material/Typography";
 import { animated, useSpring } from "@react-spring/web";
+import { cssVar } from "@voxel51/voodo";
 import {
   type RefObject,
   useCallback,
@@ -38,16 +39,16 @@ const PerfContainer = styled.div`
   position: fixed;
   bottom: 0;
   right: 2em;
-  background: rgba(40, 44, 52, 0.85);
+  background: ${cssVar.color.tooltip.bg};
   opacity: 0.6;
   border-radius: 8px;
   padding: 16px 24px 12px 24px;
   min-width: 240px;
   box-shadow: none;
   backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid ${cssVar.color.border.subtle};
   z-index: 1000;
-  color: #e0e0e0;
+  color: ${cssVar.color.text.primary};
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -77,7 +78,7 @@ const StatLabel = styled.span`
 const StatValue = styled.span`
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: #bdbdbd;
+  color: ${cssVar.color.text.secondary};
   font-size: 14px;
   min-width: 60px;
   text-align: right;
@@ -86,7 +87,7 @@ const StatValue = styled.span`
 const StatBarTrack = styled.div`
   width: 100%;
   height: 6px;
-  background: rgba(255, 255, 255, 0.07);
+  background: ${cssVar.color.interactive["secondary-default"]};
   border-radius: 3px;
   margin-top: 2px;
   margin-bottom: 2px;
@@ -159,9 +160,9 @@ const ViewStatusMessage = styled.div<{ $color: string; $multiview: boolean }>`
   font-size: 14px;
   font-weight: 500;
   z-index: 1000;
-  background: rgba(0, 0, 0, 0.7);
+  background: ${cssVar.color.scrim.heavy};
   backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid ${cssVar.color.border.subtle};
   user-select: none;
   pointer-events: none;
 `;
@@ -217,17 +218,17 @@ const PerfStats = () => {
 
   const statBarColors = {
     // blue
-    calls: "#38bdf8",
+    calls: cssVar.color["viz-chart"].blue,
     // purple
-    triangles: "#a78bfa",
+    triangles: cssVar.color["viz-chart"].purple,
     // pink
-    points: "#f472b6",
+    points: cssVar.color["viz-chart"].pink,
     // yellow
-    geometries: "#fbbf24",
+    geometries: cssVar.color["viz-chart"].yellow,
     // green
-    textures: "#34d399",
+    textures: cssVar.color["viz-chart"].green,
     // light blue
-    programs: "#60a5fa",
+    programs: cssVar.color["viz-chart"].teal,
   };
 
   // note: this is reasonably arbitrary
@@ -242,7 +243,11 @@ const PerfStats = () => {
 
   // we want to show green for 50+ fps, yellow for 30-50, and red for <30
   const fpsColor =
-    perfStats.fps > 50 ? "#4ade80" : perfStats.fps > 30 ? "#facc15" : "#f87171";
+    perfStats.fps > 50
+      ? cssVar.color.semantic.success
+      : perfStats.fps > 30
+        ? cssVar.color.semantic.warning
+        : cssVar.color.semantic.destructive;
 
   const StatRowItem = ({
     icon,
@@ -290,7 +295,7 @@ const PerfStats = () => {
         style={{
           border: "none",
           height: 1,
-          background: "rgba(255,255,255,0.08)",
+          background: cssVar.color.border.subtle,
           margin: "4px 0 2px 0",
         }}
       />
@@ -421,7 +426,10 @@ export const StatusBar = ({
       )}
 
       {segmentState.isActive && (
-        <SegmentHint $border={theme.primary.main} $text={"#e0e0e0"}>
+        <SegmentHint
+          $border={theme.primary.main}
+          $text={cssVar.color.text.primary}
+        >
           <SegmentHintRow>
             <InfoOutlinedIcon
               style={{ fontSize: 12, color: theme.primary.main }}
@@ -432,7 +440,10 @@ export const StatusBar = ({
       )}
 
       {isCreatingCuboid && (
-        <SegmentHint $border={theme.primary.main} $text={"#e0e0e0"}>
+        <SegmentHint
+          $border={theme.primary.main}
+          $text={cssVar.color.text.primary}
+        >
           <SegmentHintRow>
             <InfoOutlinedIcon
               style={{ fontSize: 12, color: theme.primary.main }}
@@ -450,7 +461,7 @@ export const StatusBar = ({
         <>
           <PerfStats />
           <StatusBarContainer data-cy="looker3d-statusbar">
-            <CloseBar $bg={`rgba(255, 109, 5, 0.06)`}>
+            <CloseBar $bg={cssVar.color.bg.selected}>
               <IconButton
                 onClick={onClickHandler}
                 data-cy="looker3d-statusbar-close"
@@ -458,7 +469,9 @@ export const StatusBar = ({
                 <Close />
               </IconButton>
             </CloseBar>
-            <StatusPanel $bg={`hsla(208.46, 87%, 53%, 0.20)`}>
+            <StatusPanel
+              $bg={`color-mix(in srgb, ${cssVar.color.semantic.info} 20%, transparent)`}
+            >
               <CameraInfo cameraRef={cameraRef} />
             </StatusPanel>
           </StatusBarContainer>

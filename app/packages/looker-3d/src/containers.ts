@@ -1,3 +1,4 @@
+import { cssVar } from "@voxel51/voodo";
 import styled from "styled-components";
 
 export const ActionItem = styled.div`
@@ -26,7 +27,7 @@ export const ActionBarContainer = styled.div`
   align-items: center;
   display: flex;
 
-  color: #eee;
+  color: ${cssVar.color.text.primary};
 
   -webkit-transition: opacity 0.5s;
   -moz-transition: opacity 0.5s;
