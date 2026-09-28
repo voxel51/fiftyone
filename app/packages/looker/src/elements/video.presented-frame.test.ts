@@ -17,6 +17,7 @@ const framesFrom = (
   eventType: "play" | "seeked",
   initial: Record<string, unknown>,
   presentedSeconds: number[] = [],
+  { mediaSeeking = false } = {},
 ): unknown[] => {
   let state: Record<string, unknown> = {
     config: { frameRate: FPS, support: null, thumbnail: true },
@@ -36,6 +37,7 @@ const framesFrom = (
   };
   const queue = [...presentedSeconds];
   const element = {
+    element: { seeking: mediaSeeking },
     frameNumber: 1,
     requestCallback: (callback: (time: number) => void) => {
       const time = queue.shift();
@@ -63,6 +65,16 @@ describe("VideoElement presented frames", () => {
       { playing: true, timeSeconds: 0.25 },
       { playing: true, timeSeconds: 0.35 },
     ]);
+  });
+
+  it("reports nothing from the playback loop while the video is seeking", () => {
+    expect(
+      framesFrom("play", { frameNumber: 1 }, [0.25], { mediaSeeking: true }),
+    ).toEqual([]);
+  });
+
+  it("reports nothing from the playback loop while the looker is seeking", () => {
+    expect(framesFrom("play", { seeking: true }, [0.25])).toEqual([]);
   });
 
   it("reports where a completed seek landed", () => {
