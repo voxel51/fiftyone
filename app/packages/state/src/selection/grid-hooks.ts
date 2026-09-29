@@ -97,7 +97,9 @@ export function useGridSelectionBoundary() {
     const providers: SegmentConstraint[] = boundary.provider
       ? [boundary.provider]
       : [];
-    if (!conversion && rangeConstraint)
+    // A pending capture's provider names no ranges yet, and constraining by
+    // it would match nothing until its snapshot lands
+    if (!conversion && rangeConstraint && !rangeConstraint.pending)
       providers.push(rangeConstraint.provider);
     if (!tags?.exclude && values.length)
       providers.push({ kind: "temporal-tags", values });
