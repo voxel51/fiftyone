@@ -3,6 +3,7 @@ import {
   clearExtendedSelectionMirror,
   extendedSelection,
   extendedSelectionOverrideStage,
+  writeExtendedSelectionMirror,
 } from "../recoil/atoms";
 import {
   runExtendedSelectionResetParticipants,
@@ -50,6 +51,10 @@ export function publishExtendedSelection(
   cb.reset(extendedSelection);
   runExtendedSelectionResetParticipants(cb);
   cb.set(extendedSelectionOverrideStage, stage);
+  // A write to the stage before anything has read it never reaches the
+  // effect that keeps the mirror, and the atom's first read then restores
+  // the mirror's empty stage over it, so the mirror is written in step
+  writeExtendedSelectionMirror(stage);
   decorate?.(cb);
 }
 

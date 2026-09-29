@@ -448,9 +448,7 @@ type KeypointSkeleton {
   edges: [[Int!]!]!
 }
 
-"""
-The kind of value a view expression operator accepts or produces
-"""
+"""The kind of value a view expression operator accepts or produces"""
 enum Kind {
   ANY
   NUMBER

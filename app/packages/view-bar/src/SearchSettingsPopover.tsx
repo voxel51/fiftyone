@@ -10,7 +10,7 @@
  */
 
 import type { PromptableSimilarityIndex, SearchSources } from "@fiftyone/state";
-import { useTextSearchExtensions } from "@fiftyone/state";
+import { useTextSearchProviders } from "@fiftyone/state";
 import {
   Align,
   Button,
@@ -189,10 +189,10 @@ export const SearchSettingsPopover: React.FC<SearchSettingsPopoverProps> = ({
   // The panel sorts only indexes the server can: one of those anywhere in the
   // dataset is worth a way there, whichever index is selected
   const offerPanel =
-    promptKeys.length === 0 || promptKeys.some((index) => !index.extension);
-  const extensions = useTextSearchExtensions();
-  const resultsHint = selected?.extension
-    ? extensions.get(selected.extension)?.resultsHint
+    promptKeys.length === 0 || promptKeys.some((index) => !index.provider);
+  const providers = useTextSearchProviders();
+  const resultsHint = selected?.provider
+    ? providers.get(selected.provider)?.resultsHint
     : undefined;
   return (
     <Popover

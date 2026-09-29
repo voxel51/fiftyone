@@ -14,9 +14,9 @@ from strawberry.schema.config import StrawberryConfig
 import fiftyone as fo
 import fiftyone.core.tags as fota
 
-from fiftyone.server.constants import SCALAR_OVERRIDES
 from fiftyone.server.aggregate import AggregateQuery
 from fiftyone.server.aggregations import aggregate_resolver
+from fiftyone.server.scalars import SCALAR_MAP
 
 from decorators import drop_async_dataset
 from utils.graphql import execute
@@ -29,8 +29,7 @@ class AggregationsQuery(AggregateQuery):
 
 schema = gql.Schema(
     query=AggregationsQuery,
-    scalar_overrides=SCALAR_OVERRIDES,
-    config=StrawberryConfig(auto_camel_case=False),
+    config=StrawberryConfig(auto_camel_case=False, scalar_map=SCALAR_MAP),
 )
 
 
