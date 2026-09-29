@@ -103,6 +103,7 @@ type BrainRun implements Run {
   timestamp: datetime
   config: BrainRunConfig
   viewStages: [String!]
+  resultsMeta: BrainRunResultsMeta
   ready: Boolean
   error: String
 }
@@ -119,6 +120,10 @@ type BrainRunConfig implements RunConfig {
   type: BrainRunType
   maxK: Int
   supportsLeastSimilarity: Boolean
+}
+
+type BrainRunResultsMeta {
+  groupSlices: [String!]
 }
 
 enum BrainRunType {

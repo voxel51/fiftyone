@@ -178,7 +178,6 @@ export const useTextSearch = ({
     promptKeys,
     selectedIndex,
     sortStageOffered,
-    sourcesWanted,
   });
   const provider = useProviderSearch({
     onRun,

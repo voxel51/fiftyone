@@ -1,21 +1,19 @@
 """
-FiftyOne Server /similarity-index-slices route tests.
+Tests for the group slices that a similarity index records in its run's
+``results_meta``.
 
 | Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 
-from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import PropertyMock, patch
 
 import numpy as np
-from starlette.exceptions import HTTPException
 
 import fiftyone as fo
 import fiftyone.brain as fob
-from fiftyone.server.routes.similarity_index_slices import _index_slices
 
 from decorators import drop_datasets
 
@@ -43,7 +41,7 @@ def _grouped_dataset():
 
 
 def _index(samples, **kwargs):
-    fob.compute_similarity(
+    return fob.compute_similarity(
         samples,
         embeddings=np.random.default_rng(0).random((len(samples), 4)),
         brain_key="sim",
@@ -52,54 +50,62 @@ def _index(samples, **kwargs):
     )
 
 
-class SimilarityIndexSlicesTests(unittest.TestCase):
-    @drop_datasets
-    def test_names_the_slices_the_index_has_samples_in(self):
-        dataset = _grouped_dataset()
-        _index(dataset.select_group_slices(media_type="image"))
+def _results_meta(dataset):
+    dataset.reload()
+    return dataset._doc.brain_methods["sim"].results_meta
 
-        self.assertEqual(_index_slices(dataset.name, "sim"), ["left", "right"])
+
+class BrainGroupSlicesTests(unittest.TestCase):
+    @drop_datasets
+    def test_records_the_slices_the_index_holds_samples_from(self):
+        dataset = _grouped_dataset()
+        results = _index(dataset.select_group_slices(_allow_mixed=True))
+
+        pcd_ids = dataset.select_group_slices("pcd").values("id")
+        results.remove_from_index(sample_ids=pcd_ids)
+        results.save()
+
+        self.assertEqual(
+            _results_meta(dataset)["group_slices"], ["left", "right"]
+        )
 
     @drop_datasets
-    def test_reads_the_embeddings_field_without_loading_the_index(self):
+    def test_without_sample_ids_the_embeddings_field_marks_the_samples(self):
         dataset = _grouped_dataset()
-        _index(dataset.select_group_slices("right"), embeddings_field="emb")
+        results = _index(
+            dataset.select_group_slices("right"), embeddings_field="emb"
+        )
 
         with patch.object(
-            fo.Dataset, "load_brain_results", side_effect=AssertionError
-        ):
-            self.assertEqual(_index_slices(dataset.name, "sim"), ["right"])
+            type(results), "sample_ids", new_callable=PropertyMock
+        ) as sample_ids:
+            sample_ids.return_value = None
+            results.save()
+
+        self.assertEqual(_results_meta(dataset)["group_slices"], ["right"])
 
     @drop_datasets
     def test_an_index_that_cannot_list_its_samples_covers_every_slice(self):
         dataset = _grouped_dataset()
-        _index(dataset.select_group_slices("right"))
+        results = _index(dataset.select_group_slices("right"))
 
         with patch.object(
-            fo.Dataset,
-            "load_brain_results",
-            return_value=SimpleNamespace(sample_ids=None),
-        ):
-            self.assertEqual(
-                _index_slices(dataset.name, "sim"), ["left", "right", "pcd"]
-            )
+            type(results), "sample_ids", new_callable=PropertyMock
+        ) as sample_ids:
+            sample_ids.return_value = None
+            results.save()
+
+        self.assertEqual(
+            _results_meta(dataset)["group_slices"], ["left", "right", "pcd"]
+        )
 
     @drop_datasets
-    def test_a_dataset_without_groups_has_no_slices(self):
+    def test_a_dataset_without_groups_records_no_slices(self):
         dataset = fo.Dataset()
         dataset.add_samples([fo.Sample(filepath="/tmp/a.jpg")])
         _index(dataset)
 
-        self.assertEqual(_index_slices(dataset.name, "sim"), [])
-
-    @drop_datasets
-    def test_an_unknown_brain_key_is_a_bad_request(self):
-        dataset = _grouped_dataset()
-
-        with self.assertRaises(HTTPException) as raised:
-            _index_slices(dataset.name, "missing")
-
-        self.assertEqual(raised.exception.status_code, 400)
+        self.assertNotIn("group_slices", _results_meta(dataset))
 
 
 if __name__ == "__main__":

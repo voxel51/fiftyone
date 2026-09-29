@@ -4,8 +4,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const env = vi.hoisted(() => ({
   execute: vi.fn(),
   onRun: vi.fn(),
-  indexSlices: new Map<string, string[]>(),
-  slicesWanted: vi.fn(),
 }));
 
 vi.mock("@fiftyone/operators", () => ({
@@ -20,29 +18,27 @@ vi.mock("@fiftyone/state", () => ({
 vi.mock("@fiftyone/utilities", () => ({
   buildSimilarityRunName: () => "run name",
 }));
-vi.mock("./useIndexSlices", () => ({
-  useIndexSlices: (_indexes: unknown, wanted: boolean) => {
-    env.slicesWanted(wanted);
-    return env.indexSlices;
-  },
-}));
+
+import type { PromptableSimilarityIndex } from "@fiftyone/state";
 
 import type { SerializedStage } from "./state";
 import { useOperatorSearch } from "./useOperatorSearch";
 
-const INDEX = { key: "clip_sim", patchesField: null };
+const INDEX: PromptableSimilarityIndex = {
+  key: "clip_sim",
+  patchesField: null,
+};
 
 const operatorSearch = (
   view: readonly SerializedStage[],
-  sourcesWanted = false,
+  index: PromptableSimilarityIndex = INDEX,
 ) =>
   useOperatorSearch({
     currentView: view,
     onRun: env.onRun,
-    promptKeys: [INDEX],
-    selectedIndex: INDEX,
+    promptKeys: [index],
+    selectedIndex: index,
     sortStageOffered: true,
-    sourcesWanted,
   });
 const RESULT_VIEW: SerializedStage[] = [
   { _cls: "fiftyone.core.stages.SortBySimilarity", kwargs: [["k", 25]] },
@@ -61,7 +57,6 @@ const searchAndLand = (
 describe("useOperatorSearch", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    env.indexSlices = new Map();
   });
 
   it("replaces a search typed over its unchanged result view", () => {
@@ -107,19 +102,26 @@ describe("useOperatorSearch", () => {
     expect(env.execute.mock.lastCall[1]).not.toHaveProperty("slices");
   });
 
-  it("offers the slices the selected index covers as its sources, once wanted", () => {
-    env.indexSlices = new Map([["clip_sim", ["left", "right"]]]);
-    const { result, rerender } = renderHook(
-      ({ wanted }) => operatorSearch([], wanted),
-      { initialProps: { wanted: false } },
+  it("offers the slices the selected index recorded as its sources", () => {
+    const { result } = renderHook(() =>
+      operatorSearch([], { ...INDEX, groupSlices: ["left", "right"] }),
     );
-    expect(env.slicesWanted).toHaveBeenLastCalledWith(false);
 
-    rerender({ wanted: true });
-    expect(env.slicesWanted).toHaveBeenLastCalledWith(true);
     expect(result.current.sources).toStrictEqual({
       label: "Slices",
       values: ["left", "right"],
     });
+    expect(result.current.indexSlices).toStrictEqual(
+      new Map([["clip_sim", ["left", "right"]]]),
+    );
+  });
+
+  it("offers no sources for an index that recorded no slices", () => {
+    const { result } = renderHook(() =>
+      operatorSearch([], { ...INDEX, groupSlices: [] }),
+    );
+
+    expect(result.current.sources).toBeNull();
+    expect(result.current.indexSlices).toStrictEqual(new Map());
   });
 });

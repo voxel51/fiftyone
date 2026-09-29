@@ -23,6 +23,9 @@ export default graphql`
       viewStages
       ready
       error
+      resultsMeta {
+        groupSlices
+      }
       config {
         cls
         embeddingsField

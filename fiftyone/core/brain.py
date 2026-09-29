@@ -6,6 +6,7 @@ Brain method runs framework.
 |
 """
 
+import fiftyone.core.media as fom
 from fiftyone.core.runs import (
     BaseRun,
     BaseRunConfig,
@@ -77,4 +78,43 @@ class BrainMethod(BaseRun):
 class BrainResults(BaseRunResults):
     """Base class for brain method results."""
 
-    pass
+    def get_meta(self):
+        meta = super().get_meta()
+        group_slices = _similarity_group_slices(self)
+        if group_slices is not None:
+            meta["group_slices"] = group_slices
+
+        return meta
+
+
+def _similarity_group_slices(results):
+    """Returns the group slices that a sample-level similarity index on a
+    grouped dataset holds samples from, in the dataset's slice order, or None
+    for any other run.
+    """
+    config = results.config
+    if getattr(config, "type", None) != "similarity" or getattr(
+        config, "patches_field", None
+    ):
+        return None
+
+    samples = results.samples
+    if samples is None or samples._dataset.media_type != fom.GROUP:
+        return None
+
+    dataset = samples._dataset
+    flat = dataset.select_group_slices(_allow_mixed=True)
+    name_path = dataset.group_field + ".name"
+    sample_ids = getattr(results, "sample_ids", None)
+    embeddings_field = getattr(config, "embeddings_field", None)
+    if sample_ids is not None:
+        indexed = set(sample_ids)
+        ids, names = flat.values(["id", name_path])
+        present = {name for _id, name in zip(ids, names) if _id in indexed}
+    elif embeddings_field and dataset.has_field(embeddings_field):
+        present = set(flat.exists(embeddings_field).distinct(name_path))
+    else:
+        # An index that cannot list its samples could cover any slice
+        return list(dataset.group_slices)
+
+    return [name for name in dataset.group_slices if name in present]

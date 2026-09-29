@@ -15,6 +15,9 @@ export interface PromptableSimilarityIndex {
   provider?: string | null;
   /** When the run was computed. */
   timestamp?: string | null;
+  /** On a grouped dataset, the slices the index holds samples from, as
+   * recorded when its results were saved. */
+  groupSlices?: readonly string[] | null;
 }
 
 /**
@@ -33,6 +36,9 @@ const usePromptableSimilarityKeys = (): PromptableSimilarityIndex[] => {
     const created = new Map(brainMethods.map((m, i) => [m.key, i]));
     const models = new Map(brainMethods.map((m) => [m.key, m.config.model]));
     const timestamps = new Map(brainMethods.map((m) => [m.key, m.timestamp]));
+    const groupSlices = new Map(
+      brainMethods.map((m) => [m.key, m.resultsMeta?.groupSlices ?? null]),
+    );
     return [
       ...samples
         .filter((method) => method.supportsPrompts === true)
@@ -41,6 +47,7 @@ const usePromptableSimilarityKeys = (): PromptableSimilarityIndex[] => {
           patchesField: null,
           model: models.get(key),
           timestamp: timestamps.get(key),
+          groupSlices: groupSlices.get(key),
         })),
       ...patches
         .filter(([method]) => method.supportsPrompts === true)

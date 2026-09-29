@@ -21,7 +21,6 @@ import { HistorySuggestions } from "./HistorySuggestions";
 import type { SearchStrategy } from "./searchStrategy";
 import { type SerializedStage, viewFingerprint } from "./state";
 import { useDeferredSearch } from "./useDeferredSearch";
-import { useIndexSlices } from "./useIndexSlices";
 
 /** The Similarity action's server-side search operator. */
 export const SIMILARITY_SEARCH_OPERATOR = "@voxel51/panels/similarity_search";
@@ -31,7 +30,7 @@ export interface OperatorSearch extends SearchStrategy {
   /** Whether a search run here produced an arriving view. */
   claimView: (view: readonly SerializedStage[]) => boolean;
   /** The group slices each of the dataset's indexes covers, by brain key,
-   * once sources are wanted on a grouped dataset. */
+   * on a grouped dataset. */
   indexSlices: ReadonlyMap<string, readonly string[]>;
 }
 
@@ -41,7 +40,6 @@ export const useOperatorSearch = ({
   promptKeys,
   selectedIndex,
   sortStageOffered,
-  sourcesWanted,
 }: {
   currentView: readonly SerializedStage[];
   /** Called when a search actually runs, not when one is held. */
@@ -50,8 +48,6 @@ export const useOperatorSearch = ({
   selectedIndex: PromptableSimilarityIndex | undefined;
   /** The host can offer `SortBySimilarity`, which the operator adds. */
   sortStageOffered: boolean;
-  /** Finding sources costs a server request, so it waits for this. */
-  sourcesWanted: boolean;
 }): OperatorSearch => {
   const setViewChangePending = fos.useSetViewChangePending();
   const notify = fos.useNotification();
@@ -188,7 +184,15 @@ export const useOperatorSearch = ({
     return fromSearch;
   }, []);
 
-  const indexSlices = useIndexSlices(promptKeys, sourcesWanted);
+  const indexSlices = useMemo(
+    () =>
+      new Map(
+        promptKeys.flatMap(({ key, groupSlices }) =>
+          groupSlices?.length ? [[key, groupSlices] as const] : [],
+        ),
+      ),
+    [promptKeys],
+  );
   const selectedSlices = selectedIndex && indexSlices.get(selectedIndex.key);
   const sources = useMemo(
     () =>
