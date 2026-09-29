@@ -2191,7 +2191,7 @@ class TestPipelineRequestParamsOverrides(unittest.TestCase):
                     PipelineStage(
                         operator_uri="@test/op1",
                         name="stage_one",
-                        params={"stage_param": "value1"}
+                        params={"stage_param": "value1"},
                         # No request_params_overrides
                     ),
                 ]
@@ -2298,7 +2298,7 @@ class TestPipelineRequestParamsOverrides(unittest.TestCase):
                     PipelineStage(
                         operator_uri="@test/op2",
                         name="stage_two",
-                        request_params_overrides={"field2": "value2"}
+                        request_params_overrides={"field2": "value2"},
                         # view_name should NOT carry forward from stage 1
                     ),
                 ]
@@ -2364,7 +2364,7 @@ class TestPipelineRequestParamsOverrides(unittest.TestCase):
                         params={"param2": "value2"},
                         request_params_overrides={
                             "view_name": "custom_view_2",
-                        }
+                        },
                         # custom_field should NOT be present here
                     ),
                     PipelineStage(
@@ -2559,6 +2559,10 @@ def _noop_handler(signum, frame):
     pass
 
 
+@pytest.mark.skipif(
+    os.name == "nt",
+    reason="os.kill(pid, SIGTERM) terminates the process on Windows",
+)
 class DelegatedOperationTerminationTests(unittest.TestCase):
     """SIGTERM handling for delegated operations; needs no database."""
 
@@ -2821,8 +2825,7 @@ class DelegatedOperationTerminationTests(unittest.TestCase):
                 child.join()
 
     def test_forward_sigterm_exits_launcher_with_128_plus_signum(self):
-        script = textwrap.dedent(
-            """
+        script = textwrap.dedent("""
             import multiprocessing
             import os
             import signal
@@ -2836,8 +2839,7 @@ class DelegatedOperationTerminationTests(unittest.TestCase):
             with delegated._forward_sigterm(child, 10):
                 os.kill(os.getpid(), signal.SIGTERM)
                 time.sleep(30)
-            """
-        )
+            """)
         proc = subprocess.run(
             [sys.executable, "-c", script],
             capture_output=True,
@@ -2848,8 +2850,7 @@ class DelegatedOperationTerminationTests(unittest.TestCase):
         )
 
     def test_sync_launcher_exits_without_starting_next_queued_op(self):
-        script = textwrap.dedent(
-            """
+        script = textwrap.dedent("""
             import os
             import signal
             import time
@@ -2891,8 +2892,7 @@ class DelegatedOperationTerminationTests(unittest.TestCase):
             svc._execute_operator = execute
             svc.execute_queued_operations()
             print("LAUNCHER RETURNED", flush=True)
-            """
-        )
+            """)
         start = time.monotonic()
         proc = subprocess.run(
             [sys.executable, "-c", script],
