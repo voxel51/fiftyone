@@ -277,7 +277,7 @@ describe("SelectionTray", () => {
     mocks.selection.loading = true;
     mocks.selection.counts = null;
     view.rerender(<SelectionTray />);
-    expect(screen.getByText("Loading current results…")).toBeTruthy();
+    expect(screen.getByLabelText("Loading results")).toBeTruthy();
     expect(
       screen
         .getByRole("button", { name: "Add to subset" })

@@ -21,6 +21,7 @@ import {
   Button,
   ErrorOutlineIcon,
   FolderIcon,
+  FormField,
   GridViewIcon,
   Input,
   LoadingDots,
@@ -103,6 +104,7 @@ function AddToSubset({
         open={Boolean(capture)}
         onClose={close}
         title={label}
+        className={styles.subsetSheet}
         surface={surface}
         trigger={
           <ActionEntry
@@ -237,11 +239,20 @@ export function SubsetPanel({
         return;
       }
     }
+    if (scope.kind === "members" && scope.members.length === 0) {
+      setBusy(false);
+      close();
+      return;
+    }
     await addTo(subset, pending);
   };
 
   const title =
-    view === "form" ? `New subset from ${phrase}` : `Add ${phrase} to subset`;
+    view === "form"
+      ? counts?.episodes === 0
+        ? "New subset"
+        : `New subset from ${phrase}`
+      : `Add ${phrase} to subset`;
   const heading = showHeading ? (
     <Text
       variant={TextVariant.Label}
@@ -306,20 +317,31 @@ export function SubsetPanel({
       >
         {heading}
         {scopeStatus}
+        {counts?.episodes === 0 && (
+          <Notice tone="info" icon={GridViewIcon} title="Empty subset">
+            No samples yet — add them from the grid later.
+          </Notice>
+        )}
         {expansionChoice}
-        <Input
-          size={Size.Md}
-          aria-label="New subset name"
-          placeholder="New subset name…"
-          value={pending?.subset.name ?? name}
-          disabled={busy || Boolean(pending)}
-          onChange={(event) => setName(event.target.value)}
+        <FormField
+          label="Subset name"
+          control={
+            <Input
+              size={Size.Md}
+              className={styles.subsetNameInput}
+              aria-label="New subset name"
+              placeholder="Enter a subset name"
+              value={pending?.subset.name ?? name}
+              disabled={busy || Boolean(pending)}
+              onChange={(event) => setName(event.target.value)}
+            />
+          }
         />
         <TextArea
           size={Size.Md}
           aria-label="Description"
           placeholder="Description (optional)"
-          rows={3}
+          rows={2}
           resize={ResizeBehavior.None}
           value={description}
           disabled={busy || Boolean(pending)}
@@ -345,7 +367,7 @@ export function SubsetPanel({
               (!pending && !name.trim())
             }
           >
-            {busy ? "Saving…" : error ? "Retry" : "Create subset"}
+            {busy ? "Saving…" : error ? "Retry" : "Save subset"}
           </Button>
         </div>
         {error && (

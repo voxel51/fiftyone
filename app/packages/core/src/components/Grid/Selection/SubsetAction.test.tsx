@@ -204,7 +204,7 @@ it("creates a subset of exact patches with its captured view", async () => {
   fireEvent.change(screen.getByLabelText("New subset name"), {
     target: { value: "Birds" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Create subset" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save subset" }));
   await screen.findByText("1 member added to Birds");
   expect(mocks.request).toHaveBeenCalledWith("dataset", "", {
     name: "Birds",
@@ -323,7 +323,7 @@ it("creates a subset with a description from the form and can open it", async ()
   fireEvent.change(screen.getByLabelText("Description"), {
     target: { value: " After dusk " },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Create subset" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save subset" }));
   await screen.findByRole("status");
   expect(screen.getByRole("status").textContent).toContain(
     "1 member added to Night drives",
@@ -366,13 +366,13 @@ it("saves a new subset instead of changing the open one", async () => {
   expect(screen.queryByRole("button", { name: "New subset" })).toBeNull();
   expect(
     screen
-      .getByRole("button", { name: "Create subset" })
+      .getByRole("button", { name: "Save subset" })
       .hasAttribute("disabled"),
   ).toBe(true);
   fireEvent.change(screen.getByLabelText("New subset name"), {
     target: { value: "Night drives" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Create subset" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save subset" }));
   await screen.findByRole("status");
   expect(screen.getByRole("status").textContent).toContain(
     "1 member added to Night drives",
@@ -486,7 +486,7 @@ it("saves a frozen all-slices scope with an optional opening slice", async () =>
   fireEvent.change(screen.getByLabelText("New subset name"), {
     target: { value: "Stereo" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Create subset" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save subset" }));
   await waitFor(() => expect(mocks.start).toHaveBeenCalledOnce());
   expect(mocks.request).toHaveBeenCalledWith(
     "dataset",

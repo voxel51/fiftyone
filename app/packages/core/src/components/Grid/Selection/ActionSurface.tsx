@@ -14,6 +14,7 @@ export default function ActionSurface({
   title,
   surface = "toolbar",
   children,
+  className,
 }: {
   open: boolean;
   onClose: () => void;
@@ -21,6 +22,7 @@ export default function ActionSurface({
   title: string;
   surface?: "toolbar" | "menu";
   children: ReactNode;
+  className?: string;
 }) {
   if (surface === "menu")
     return (
@@ -42,7 +44,7 @@ export default function ActionSurface({
       anchor={PopoverAnchor.TopEnd}
       trigger={trigger}
     >
-      <div className={styles.sheet} style={trayTheme}>
+      <div className={`${styles.sheet} ${className ?? ""}`} style={trayTheme}>
         {children}
       </div>
     </Popover>

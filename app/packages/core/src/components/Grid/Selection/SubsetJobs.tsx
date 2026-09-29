@@ -203,10 +203,13 @@ export default function SubsetJobs({ datasetId }: { datasetId: string }) {
   useTrackSubsetJobs(datasetId);
   const { jobs } = useSubsetJobs(datasetId);
   const [open, setOpen] = useState<string>();
-  if (!jobs.length) return null;
+  const visible = jobs.filter(
+    ({ job, trackingId }) => job.state !== "completed" || open === trackingId,
+  );
+  if (!visible.length) return null;
   return (
     <div className={styles.sheetActions}>
-      {jobs.map(({ job, subsetName, trackingId }) => (
+      {visible.map(({ job, subsetName, trackingId }) => (
         <ActionSurface
           key={trackingId}
           open={open === trackingId}
@@ -214,18 +217,16 @@ export default function SubsetJobs({ datasetId }: { datasetId: string }) {
           title={`Save to ${subsetName}`}
           surface="toolbar"
           trigger={
-            <Button
-              size={Size.Sm}
-              variant={Variant.Borderless}
-              onClick={() => setOpen(trackingId)}
-            >
-              {selectionJobActive(job)
-                ? "Saving"
-                : job.state === "completed"
-                  ? "Saved"
-                  : "Save needs attention"}
-              : {subsetName}
-            </Button>
+            job.state === "completed" ? null : (
+              <Button
+                size={Size.Sm}
+                variant={Variant.Borderless}
+                onClick={() => setOpen(trackingId)}
+              >
+                {selectionJobActive(job) ? "Saving" : "Save needs attention"}:{" "}
+                {subsetName}
+              </Button>
+            )
           }
         >
           <SubsetJobStatus
