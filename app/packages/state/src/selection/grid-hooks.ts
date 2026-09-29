@@ -139,9 +139,15 @@ export function useGridSelectionBoundary({
   return [effective, setBoundary] as const;
 }
 
-/** Capturable request: the pipeline, provider boundary, and active slice. */
-export function useGridSelectionRequest() {
-  const [boundary] = useGridSelectionBoundary();
+/**
+ * Capturable request: the pipeline, provider boundary, and active slice.
+ * `rangeConstraint: false` builds it from the boundary without an extension's
+ * published ranges, as the grid's pages are requested.
+ */
+export function useGridSelectionRequest({
+  rangeConstraint = true,
+}: { readonly rangeConstraint?: boolean } = {}) {
+  const [boundary] = useGridSelectionBoundary({ rangeConstraint });
   const {
     view: stages,
     filters: currentFilters,
