@@ -1,12 +1,18 @@
+import { getEventBus } from "@fiftyone/events";
 import { useNotification } from "@fiftyone/state";
 import { Button, Text, TextColor, TextVariant, Variant } from "@voxel51/voodo";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import useCanManageSchema from "./useCanManageSchema";
 import {
   InitializationStatus,
   useAnnotationContextManager,
 } from "./useAnnotationContextManager";
 import type { RequiredField } from "./useSourceFieldToActivate";
+
+/** e2e specs wait on the prompt mounting once the label schemas load */
+type RequiredFieldPromptE2EEvents = {
+  "e2e:annotate:required-field-prompt": undefined;
+};
 
 interface RequiredFieldPromptProps {
   requiredField: RequiredField;
@@ -17,6 +23,12 @@ const RequiredFieldPrompt = ({ requiredField }: RequiredFieldPromptProps) => {
   const contextManager = useAnnotationContextManager();
   const [activating, setActivating] = useState(false);
   const notify = useNotification();
+
+  useEffect(() => {
+    getEventBus<RequiredFieldPromptE2EEvents>().dispatch(
+      "e2e:annotate:required-field-prompt",
+    );
+  }, []);
 
   const handleAddField = useCallback(async () => {
     setActivating(true);

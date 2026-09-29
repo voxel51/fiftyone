@@ -56,9 +56,9 @@ const GroupsCount = () => {
   return (
     <RightDiv data-cy="entry-counts" data-count-kind="groups">
       <div>
-        (<PathEntryCounts modal={false} path={""} />{" "}
+        (<PathEntryCounts modal={false} path={""} signal="grid-elements" />{" "}
         {elementTotal === 1 ? element.singular : element.plural}){" "}
-        <PathEntryCounts modal={false} path={"_"} />{" "}
+        <PathEntryCounts modal={false} path={"_"} signal="grid-groups" />{" "}
         {total === 1 ? "group" : "groups"}
         {groupSlice && " with slice"}
       </div>
@@ -99,7 +99,7 @@ const Count = () => {
   return (
     <RightDiv data-cy="entry-counts" data-count-kind="elements">
       <div style={{ whiteSpace: "nowrap" }}>
-        <PathEntryCounts modal={false} path={""} />{" "}
+        <PathEntryCounts modal={false} path={""} signal="grid-elements" />{" "}
         {isDynamicGroupViewStageActive &&
           !["sample", "group"].includes(element.singular) &&
           `group${total === 1 ? "" : "s"} of `}

@@ -6,6 +6,8 @@ import { SuspenseEntryCounts } from "../../Common/CountSubcount";
 interface PathEntryCountsProps {
   path: string;
   modal: boolean;
+  /** An e2e name to signal the loaded counts under */
+  signal?: string;
 }
 
 const showEntryCounts = selectorFamily<
@@ -29,7 +31,11 @@ const showEntryCounts = selectorFamily<
     },
 });
 
-export const PathEntryCounts = ({ modal, path }: PathEntryCountsProps) => {
+export const PathEntryCounts = ({
+  modal,
+  path,
+  signal,
+}: PathEntryCountsProps) => {
   const getAtom = useCallback(
     (extended: boolean) => {
       return fos.count({
@@ -55,6 +61,7 @@ export const PathEntryCounts = ({ modal, path }: PathEntryCountsProps) => {
     <SuspenseEntryCounts
       countAtom={queryPerformance ? undefined : getAtom(false)}
       subcountAtom={getAtom(true)}
+      signal={signal}
     />
   ) : null;
 };

@@ -10,9 +10,10 @@ export interface ResultProps<T> {
   component: React.FC<{ value: T; className?: string }>;
 }
 
-/** e2e specs wait on a selector's results mounting before reading them */
+/** e2e specs wait on a selector's results mounting, and unmounting */
 type ResultsE2EEvents = {
   "e2e:components:selector-results": { cy?: string };
+  "e2e:components:selector-results-closed": { cy?: string };
 };
 
 const NONSTRING_VALUES: any[] = [false, true, null];
@@ -92,10 +93,9 @@ function Results<T>({
   const ref = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
-    getEventBus<ResultsE2EEvents>().dispatch(
-      "e2e:components:selector-results",
-      { cy },
-    );
+    const bus = getEventBus<ResultsE2EEvents>();
+    bus.dispatch("e2e:components:selector-results", { cy });
+    return () => bus.dispatch("e2e:components:selector-results-closed", { cy });
   }, [cy]);
 
   const hasFooter =
