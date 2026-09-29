@@ -71,9 +71,42 @@ const maskCache = vi.hoisted(() => ({
   },
 }));
 
+/** Records the decode-ahead warms the stream issues. */
+const warms = vi.hoisted(() => ({
+  segmentations: [] as string[],
+  heatmaps: [] as Array<[string, [number, number] | undefined]>,
+  reset(): void {
+    this.segmentations = [];
+    this.heatmaps = [];
+  },
+}));
+
 vi.mock("@fiftyone/lighter", () => ({
   maskBitmapCache: maskCache,
   maskSourceOf: (mask?: unknown) => mask ?? undefined,
+  warmSegmentationIndices: (source: string) => {
+    warms.segmentations.push(source);
+    return Promise.resolve();
+  },
+  warmHeatmapIndices: (source: string, range?: [number, number]) => {
+    warms.heatmaps.push([source, range]);
+    return Promise.resolve();
+  },
+}));
+
+vi.mock("../../../core/src/client/videoLabelsClient", () => ({
+  getVideoLabelsWindow: vi.fn(
+    async ({
+      startFrame,
+      endFrame,
+    }: {
+      startFrame: number;
+      endFrame: number;
+    }) => ({
+      frames: {},
+      range: [startFrame, endFrame],
+    }),
+  ),
 }));
 
 function buildStream(): VideoFrameLabelsStream {
@@ -219,6 +252,81 @@ describe("VideoFrameLabelsStream onCommit", () => {
 
     stream.onCommit(timeOfFrame(10, 30), store);
     expect(published(stream, store)).toBeNull();
+  });
+
+  it("asks for the lookahead window when the committed frame changes", () => {
+    const stream = buildStream();
+    const store = createStore();
+    seedFrame(stream, 10);
+    seedFrame(stream, 11);
+    const prefetch = vi.spyOn(stream, "prefetch");
+
+    stream.onCommit(timeOfFrame(10, 30), store);
+    // Left to the engine, the next chunk is only requested once the clock
+    // has already stalled on it. The window is clamped to the clip: 100
+    // frames at 30fps end well inside the 12s lookahead.
+    expect(prefetch).toHaveBeenCalledWith([timeOfFrame(10, 30), 100 / 30]);
+
+    // Repeat commits within the frame do not re-ask.
+    stream.onCommit(timeOfFrame(10, 30) + 0.001, store);
+    expect(prefetch).toHaveBeenCalledTimes(1);
+
+    stream.onCommit(timeOfFrame(11, 30), store);
+    expect(prefetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("warms the dense labels of the frames ahead of the playhead", () => {
+    const stream = new VideoFrameLabelsStream({
+      id: "test",
+      sampleId: "s",
+      dataset: "d",
+      view: [],
+      frameCount: 100,
+      frameRate: 30,
+      frameFields: ["detections", "segmentation", "heatmap"],
+    });
+    const store = createStore();
+    warms.reset();
+
+    for (const frame of [10, 11, 12]) {
+      // @ts-expect-error — test-only: populate the private frame-doc cache
+      stream.cache.set(frame, {
+        frame_number: frame,
+        detections: { detections: [] },
+        segmentation: { _cls: "Segmentation", mask: `seg-${frame}` },
+        heatmap: {
+          _cls: "Heatmap",
+          map: `map-${frame}`,
+          range: frame === 12 ? null : [0, 100],
+        },
+      });
+    }
+
+    stream.onCommit(timeOfFrame(10, 30), store);
+
+    // The current frame decodes at paint time either way; the ones after it
+    // are what the decode-ahead buys.
+    expect(warms.segmentations).toEqual(["seg-10", "seg-11", "seg-12"]);
+    // The heatmap's indices depend on its range, so the range rides along;
+    // an undeclared one is inferred at decode time.
+    expect(warms.heatmaps).toEqual([
+      ["map-10", [0, 100]],
+      ["map-11", [0, 100]],
+      ["map-12", undefined],
+    ]);
+  });
+});
+
+describe("VideoFrameLabelsStream warmup", () => {
+  it("asks for the lookahead window once the first chunk has landed", async () => {
+    const stream = buildStream();
+    const prefetch = vi.spyOn(stream, "prefetch");
+
+    await stream.warmup(0);
+
+    // A stream registered after the engine has settled gets no commit until
+    // play; without this it would start one chunk deep.
+    expect(prefetch).toHaveBeenCalledWith([0, 100 / 30]);
   });
 });
 

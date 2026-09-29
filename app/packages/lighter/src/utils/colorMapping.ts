@@ -4,9 +4,10 @@
 
 import { getLabelColor } from "@fiftyone/looker/src/overlays/util";
 import type { ColorSchemeInput } from "@fiftyone/relay";
-import { COLOR_BY, getColor } from "@fiftyone/utilities";
+import { COLOR_BY, getColor, type RGB } from "@fiftyone/utilities";
 import { SELECTED_DASH_LENGTH } from "../constants";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
+import type { MaskTargets } from "./segmentationPalette";
 
 // White for info (selection, here)
 const INFO_COLOR = "#FFFFFF";
@@ -16,6 +17,26 @@ const HOVER_COLOR = "#FFFFFF";
 export interface ColorMappingContext {
   colorScheme: ColorSchemeInput;
   seed: number;
+  /**
+   * Per-field mask targets (`dataset.mask_targets`), keyed by field path.
+   * Only segmentation coloring reads these; every other overlay resolves a
+   * single color per label and never consults them.
+   */
+  maskTargets?: Record<string, MaskTargets>;
+  /** `dataset.default_mask_targets`, for fields with none of their own. */
+  defaultMaskTargets?: MaskTargets;
+  /**
+   * The app config's colormap, already resolved to RGB stops
+   * (`coloring.scale` in looker, from `dataset.app_config.colorscale`).
+   *
+   * It is the LAST fallback for a heatmap's colorscale, and on a dataset with
+   * no saved color scheme it is the only one there is: the per-field and
+   * default colorscales carry their stops in `rgb`, a server resolver that
+   * exists only on a stored scheme. Without this, every such dataset silently
+   * rendered color-by-value as the field-color opacity ramp while the sidebar
+   * said otherwise.
+   */
+  defaultScale?: readonly RGB[];
 }
 
 export interface StrokeStyles {

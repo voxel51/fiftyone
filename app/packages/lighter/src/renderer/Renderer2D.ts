@@ -19,7 +19,32 @@ export type ImageSourceType =
   | "texture"
   | "image-data"
   | "bitmap"
-  | "custom";
+  | "custom"
+  | "indexed";
+
+/**
+ * A raster whose pixels are palette indices rather than colors, colored on
+ * the GPU at draw time. Segmentation masks are this shape: one target per
+ * pixel, each target its own color. Handing the indices and the palette to
+ * the renderer separately means a color change re-uploads a 256 KB lookup
+ * table instead of re-painting megapixels on the CPU, and a new frame uploads
+ * its indices with no per-pixel work at all.
+ */
+/** Side of the square lookup-table texture; `256 * 256` covers a Uint16. */
+export const INDEXED_LUT_SIDE = 256;
+
+export interface IndexedImage {
+  /** One index per pixel, row-major, `width * height` long. */
+  indices: Uint8Array | Uint16Array;
+  width: number;
+  height: number;
+  /**
+   * RGBA8 lookup table for every index a `Uint16Array` can hold, laid out as
+   * a 256×256 texture: index `i` is at column `i % 256`, row `i / 256`.
+   * Straight (not premultiplied) alpha; alpha 0 means "do not paint".
+   */
+  lut: Uint8Array;
+}
 
 /**
  * Generic image source that can be any image-like object.
@@ -33,6 +58,7 @@ export interface ImageSource {
   imageData?: ImageData; // For ImageData objects
   bitmap?: ImageBitmap; // For ImageBitmap objects
   custom?: any; // For custom image implementations
+  indexed?: IndexedImage; // For palette-indexed rasters colored on the GPU
 }
 
 /**

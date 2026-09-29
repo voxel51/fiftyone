@@ -3,6 +3,7 @@
  */
 
 import {
+  coloring,
   colorScheme,
   colorSeed,
   datasetName,
@@ -15,6 +16,7 @@ import {
   modalSampleId,
   selectedMediaField,
   State,
+  targets,
   timeZone,
   type ModalSample,
   useCurrentDatasetId,
@@ -61,6 +63,21 @@ export const useColorScheme = () => useRecoilValue(colorScheme);
 
 /** Color seed used for instance / field color hashing. */
 export const useColorSeed = () => useRecoilValue(colorSeed);
+
+/**
+ * The app config's colormap, resolved to RGB stops. It is the last fallback
+ * for a heatmap's colorscale, and the only one a dataset with no saved color
+ * scheme has — the per-field and default colorscales carry their stops in
+ * `rgb`, which the server resolves only for a stored scheme.
+ */
+export const useDefaultColorscale = () => useRecoilValue(coloring).scale;
+
+/**
+ * Dataset mask targets, per field and the dataset-wide default. Segmentation
+ * coloring is per target rather than per label, so the palette needs these
+ * alongside the color scheme.
+ */
+export const useMaskTargets = () => useRecoilValue(targets);
 
 /** Current dataset name. */
 export const useDatasetName = () => useRecoilValue(datasetName);

@@ -11,18 +11,62 @@
 
 import type { OverlayMask } from "@fiftyone/looker/src/numpy";
 
+import { decodeHeatmapIndices, type DecodedHeatmap } from "./heatmapIndices";
 import { decodeMaskToRaster } from "./maskRaster";
+import {
+  decodeSegmentationIndices,
+  type SegmentationIndices,
+} from "./segmentationIndices";
 
-export interface MaskDecodeRequest {
+/** Rasterize a detection mask into a white+alpha bitmap (the default). */
+export interface MaskRasterRequest {
   uuid: string;
+  kind?: "raster";
   maskData: string | OverlayMask;
 }
 
-interface MaskDecodeSuccess {
+/**
+ * Decode a segmentation mask to its bare target indices, for the renderer's
+ * palette lookup. No rasterize: the GPU colors the indices at draw time.
+ */
+export interface MaskIndicesRequest {
+  uuid: string;
+  kind: "indices";
+  maskData: string | OverlayMask;
+}
+
+/**
+ * Quantize a heatmap to 16-bit indices over its range, for the same palette
+ * lookup. The exact values ride along for the tooltip.
+ */
+export interface HeatmapIndicesRequest {
+  uuid: string;
+  kind: "heatmap";
+  maskData: string | OverlayMask;
+  range?: [number, number];
+}
+
+export type MaskDecodeRequest =
+  | MaskRasterRequest
+  | MaskIndicesRequest
+  | HeatmapIndicesRequest;
+
+export interface MaskDecodeSuccess {
   uuid: string;
   ok: true;
+  /** Absent from responses predating the indices request; means raster. */
+  kind?: "raster";
   bitmap: ImageBitmap;
   rawPixels: Uint8Array;
+  width: number;
+  height: number;
+}
+
+export interface MaskIndicesSuccess {
+  uuid: string;
+  ok: true;
+  kind: "indices";
+  indices: SegmentationIndices;
   width: number;
   height: number;
 }
@@ -33,7 +77,17 @@ interface MaskDecodeFailure {
   error: string;
 }
 
-export type MaskDecodeResponse = MaskDecodeSuccess | MaskDecodeFailure;
+export interface HeatmapIndicesSuccess extends DecodedHeatmap {
+  uuid: string;
+  ok: true;
+  kind: "heatmap";
+}
+
+export type MaskDecodeResponse =
+  | MaskDecodeSuccess
+  | MaskIndicesSuccess
+  | HeatmapIndicesSuccess
+  | MaskDecodeFailure;
 
 /** True only when this module is running as a dedicated worker. */
 const isWorkerScope = (): boolean => {
@@ -49,6 +103,35 @@ const handleMessage = async (event: MessageEvent<MaskDecodeRequest>) => {
   const post = (self as DedicatedWorkerGlobalScope).postMessage.bind(self);
 
   try {
+    if (event.data.kind === "indices") {
+      const { indices, width, height } = decodeSegmentationIndices(maskData);
+      const payload: MaskIndicesSuccess = {
+        uuid,
+        ok: true,
+        kind: "indices",
+        indices,
+        width,
+        height,
+      };
+
+      post(payload, [indices.buffer]);
+      return;
+    }
+
+    if (event.data.kind === "heatmap") {
+      const decoded = decodeHeatmapIndices(maskData, event.data.range);
+      const payload: HeatmapIndicesSuccess = {
+        ...decoded,
+        uuid,
+        ok: true,
+        kind: "heatmap",
+      };
+
+      // The values are a view over the decoded payload; both go zero-copy.
+      post(payload, [decoded.indices.buffer, decoded.values.buffer]);
+      return;
+    }
+
     const { rgba, width, height, rawPixels } = decodeMaskToRaster(maskData);
     const bitmap = await createImageBitmap(
       new ImageData(new Uint8ClampedArray(rgba), width, height),
@@ -57,6 +140,7 @@ const handleMessage = async (event: MessageEvent<MaskDecodeRequest>) => {
     const payload: MaskDecodeSuccess = {
       uuid,
       ok: true,
+      kind: "raster",
       bitmap,
       rawPixels,
       width,

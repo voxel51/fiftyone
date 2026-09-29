@@ -28,7 +28,13 @@ import type {
 } from "../types";
 import { parseColorWithAlpha } from "../utils/color";
 import { clipPolygonToRect } from "../utils/geometry";
-import type { ImageOptions, ImageSource, Renderer2D } from "./Renderer2D";
+import { IndexedMaskMesh } from "./IndexedMaskMesh";
+import type {
+  ImageOptions,
+  ImageSource,
+  IndexedImage,
+  Renderer2D,
+} from "./Renderer2D";
 import { sharedPixiApp } from "./SharedPixiApplication";
 import { DashLine } from "./pixi-renderer-utils/dashed-line";
 
@@ -824,6 +830,14 @@ export class PixiRenderer2D implements Renderer2D {
     // a texture handed in from outside belongs to the caller
     let owned = false;
 
+    if (image.type === "indexed") {
+      if (!image.indexed) {
+        return;
+      }
+      this.drawIndexedImage(image.indexed, destination, options, containerId);
+      return;
+    }
+
     switch (image.type) {
       case "texture":
         if (!image.texture) {
@@ -905,6 +919,38 @@ export class PixiRenderer2D implements Renderer2D {
         // GPU multiply: white texture × tint = tint, no per-pixel CPU work.
         sprite.tint = options.tint;
       }
+    }
+  }
+
+  /**
+   * A palette-indexed raster, colored in a fragment shader. The mesh keeps
+   * both textures across paints and re-uploads only what changed, so a frame
+   * with new indices costs one upload and a color-scheme change costs only
+   * the 256 KB lookup table.
+   */
+  private drawIndexedImage(
+    image: IndexedImage,
+    destination: Rect,
+    options: ImageOptions | undefined,
+    containerId: string,
+  ): void {
+    const mesh = this.acquireSlot<IndexedMaskMesh>(
+      containerId,
+      (child) => child instanceof IndexedMaskMesh,
+      () => new IndexedMaskMesh(),
+      (existing) => this.resetDisplayObject(existing),
+      false,
+    );
+
+    mesh.setImage(image);
+    // a unit quad: the destination rect is its position and scale
+    mesh.position.set(destination.x, destination.y);
+    mesh.scale.set(destination.width, destination.height);
+    if (options?.opacity !== undefined) {
+      mesh.alpha = options.opacity;
+    }
+    if (options?.rotation !== undefined) {
+      mesh.rotation = options.rotation;
     }
   }
 

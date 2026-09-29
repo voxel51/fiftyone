@@ -5,8 +5,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   detectionAdapter,
   keypointAdapter,
+  makeHeatmapAdapter,
   makeKeypointAdapter,
+  makeSegmentationAdapter,
+  heatmapAdapter,
   polylineAdapter,
+  segmentationAdapter,
 } from "./adapters";
 import { lighterAdapters } from "./adapters";
 import type { LighterBridgeDeps } from "./lighterBridge";
@@ -218,6 +222,91 @@ describe("lighter adapters", () => {
         { _id: "k1", points: [] },
       ).options.connections,
     ).toEqual([]);
+  });
+
+  it("segmentation buildHandle passes the label through whole", () => {
+    const descriptor = segmentationAdapter.buildHandle(
+      ref("frames.segmentation", "field:frames.segmentation"),
+      { _id: "field:frames.segmentation", _cls: "Segmentation", mask: "b64" },
+    );
+
+    expect(descriptor.factoryKey).toBe("segmentation");
+    expect(descriptor.options.id).toBe("field:frames.segmentation");
+    expect(descriptor.options.field).toBe("frames.segmentation");
+    expect(descriptor.options.label).toMatchObject({ mask: "b64" });
+  });
+
+  it("segmentation renders a path only where a resolver can fetch it", () => {
+    // the overlay loads a mask_path itself, but only through a supplied
+    // resolver; without one it could never decode the path, so the label
+    // stays unmounted rather than painting nothing. A segmentation with no
+    // source at all has nothing to paint either way.
+    expect(segmentationAdapter.renders?.({ _id: "s", mask: "b64" })).toBe(true);
+    expect(
+      segmentationAdapter.renders?.({ _id: "s", mask_path: "/m.png" }),
+    ).toBe(false);
+    expect(segmentationAdapter.renders?.({ _id: "s" })).toBe(false);
+
+    const withResolver = makeSegmentationAdapter({
+      resolveMediaUrl: () => "/media?filepath=/m.png",
+    });
+
+    expect(withResolver.renders?.({ _id: "s", mask_path: "/m.png" })).toBe(
+      true,
+    );
+    expect(withResolver.renders?.({ _id: "s" })).toBe(false);
+  });
+
+  it("segmentation hands the overlay a resolver scoped to its mask_path", () => {
+    const resolveMediaUrl = vi.fn(() => "/media?filepath=/m.png");
+
+    const descriptor = makeSegmentationAdapter({ resolveMediaUrl }).buildHandle(
+      ref("frames.segmentation", "field:frames.segmentation"),
+      {
+        _id: "field:frames.segmentation",
+        _cls: "Segmentation",
+        mask_path: "/m.png",
+      },
+    );
+
+    const resolveUrl = descriptor.options.resolveUrl as (
+      raw: string,
+    ) => string | undefined;
+
+    expect(resolveUrl("/m.png")).toBe("/media?filepath=/m.png");
+    expect(resolveMediaUrl).toHaveBeenCalledWith({
+      path: "frames.segmentation",
+      instanceId: "field:frames.segmentation",
+      subField: "mask_path",
+      raw: "/m.png",
+    });
+  });
+
+  it("heatmap renders from either an inline map or a path", () => {
+    expect(heatmapAdapter.renders?.({ _id: "h", map: "b64" })).toBe(true);
+    expect(heatmapAdapter.renders?.({ _id: "h", map_path: "/m.png" })).toBe(
+      false,
+    );
+    expect(heatmapAdapter.renders?.({ _id: "h" })).toBe(false);
+
+    expect(
+      makeHeatmapAdapter({
+        resolveMediaUrl: () => "/media?filepath=/m.png",
+      }).renders?.({ _id: "h", map_path: "/m.png" }),
+    ).toBe(true);
+
+    const descriptor = heatmapAdapter.buildHandle(
+      ref("frames.heatmap", "field:frames.heatmap"),
+      {
+        _id: "field:frames.heatmap",
+        _cls: "Heatmap",
+        map: "b64",
+        range: [0, 1],
+      },
+    );
+
+    expect(descriptor.factoryKey).toBe("heatmap");
+    expect(descriptor.options.label).toMatchObject({ range: [0, 1] });
   });
 
   it("polyline toLabel reads nested points and flags", () => {
