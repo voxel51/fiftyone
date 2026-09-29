@@ -74,7 +74,9 @@ const openSample = async (
     modalSample: "loaded",
   });
   await modal.assert.isOpen();
-  await modal.sidebar.switchMode("annotate");
+  // the draw handler reinstalls as overlays mount, so draw after Lighter's
+  // first render
+  await modal.afterLighterReady(() => modal.sidebar.switchMode("annotate"));
 };
 
 /**
