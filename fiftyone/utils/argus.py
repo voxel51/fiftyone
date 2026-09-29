@@ -375,9 +375,25 @@ class ArgusModel(fout.TorchImageModel):
         return True
 
     def embed(self, arg):
+        """Generates an embedding for the given image.
+
+        Args:
+            arg: an image
+
+        Returns:
+            a numpy array containing the embedding
+        """
         return self.embed_all([arg])[0]
 
     def embed_all(self, args):
+        """Generates embeddings for the given images.
+
+        Args:
+            args: an iterable of images
+
+        Returns:
+            a numpy array containing the embeddings stacked along axis 0
+        """
         images, _ = fout.imgs_to_rgb_pil(args)
         embeddings = self._model.embed(images)
         return embeddings.detach().cpu().numpy()
