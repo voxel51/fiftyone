@@ -7662,6 +7662,211 @@
             "date_added": "2026-01-15 12:00:00"
         },
         {
+            "base_name": "yolo26n-depth-torch",
+            "base_filename": "yolo26n-depth.pt",
+            "description": "Ultra-fast monocular metric depth estimation",
+            "source": "https://docs.ultralytics.com/tasks/depth/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 12998295,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26n-depth.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolo26n-depth.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDepthOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.104"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["depth", "3d", "torch", "yolo", "official"],
+            "training_data": [],
+            "date_added": "2026-09-24 12:00:00"
+        },
+        {
+            "base_name": "yolo26s-depth-torch",
+            "base_filename": "yolo26s-depth.pt",
+            "description": "Fast monocular metric depth estimation",
+            "source": "https://docs.ultralytics.com/tasks/depth/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 26764887,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26s-depth.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolo26s-depth.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDepthOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.104"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["depth", "3d", "torch", "yolo", "official"],
+            "training_data": [],
+            "date_added": "2026-09-24 12:00:00"
+        },
+        {
+            "base_name": "yolo26m-depth-torch",
+            "base_filename": "yolo26m-depth.pt",
+            "description": "Monocular metric depth estimation with improved accuracy",
+            "source": "https://docs.ultralytics.com/tasks/depth/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 46926343,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26m-depth.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolo26m-depth.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDepthOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.104"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["depth", "3d", "torch", "yolo", "official"],
+            "training_data": [],
+            "date_added": "2026-09-24 12:00:00"
+        },
+        {
+            "base_name": "yolo26l-depth-torch",
+            "base_filename": "yolo26l-depth.pt",
+            "description": "High-accuracy monocular metric depth estimation",
+            "source": "https://docs.ultralytics.com/tasks/depth/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 55899735,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26l-depth.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolo26l-depth.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDepthOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.104"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["depth", "3d", "torch", "yolo", "official"],
+            "training_data": [],
+            "date_added": "2026-09-24 12:00:00"
+        },
+        {
+            "base_name": "yolo26x-depth-torch",
+            "base_filename": "yolo26x-depth.pt",
+            "description": "Maximum accuracy monocular metric depth estimation",
+            "source": "https://docs.ultralytics.com/tasks/depth/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 114629975,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26x-depth.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolo26x-depth.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDepthOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.104"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["depth", "3d", "torch", "yolo", "official"],
+            "training_data": [],
+            "date_added": "2026-09-24 12:00:00"
+        },
+        {
             "base_name": "yolo11n-seg-coco-torch",
             "base_filename": "yolo11n-seg-coco.pt",
             "description": "Edge model producing object outlines directly on phones and edge devices",
