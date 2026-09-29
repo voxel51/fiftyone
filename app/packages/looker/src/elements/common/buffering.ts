@@ -22,12 +22,15 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 export function createBufferingIndicator(): HTMLDivElement {
   const element = document.createElement("div");
   element.classList.add(lookerBuffering);
+  element.setAttribute("role", "status");
+  element.setAttribute("aria-label", "Buffering");
 
   const svg = document.createElementNS(SVG_NS, "svg");
   svg.classList.add(lookerBufferingIcon);
   svg.style.color = cssVar.color.text.primary;
   svg.setAttribute("viewBox", "0 0 24 24");
   svg.setAttribute("fill", "none");
+  svg.setAttribute("aria-hidden", "true");
 
   const ring = document.createElementNS(SVG_NS, "circle");
   ring.classList.add(lookerBufferingRing);

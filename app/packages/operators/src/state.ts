@@ -246,34 +246,36 @@ const useExecutionContext = (operatorName, hooks = {}) => {
 function useExecutionOptions(operatorURI, ctx, isRemote) {
   const [isLoading, setIsLoading] = useState(true);
   const [executionOptions, setExecutionOptions] = useState(null);
-  // Requests overlap, and only the newest may apply its answer. Kept outside
-  // the memo, which builds a new debounce whenever the context changes
+  // Requests overlap, and only the newest may apply its answer. Numbered when
+  // asked for, not when run: each context builds a new debounce with its own
+  // timer, so an older call can run after a newer one
   const latestFetch = useRef(0);
 
-  const fetch = useMemo(
-    () =>
-      debounce(async (ctxOverride = null) => {
-        if (!isRemote) {
-          setExecutionOptions({ allowImmediateExecution: true });
-          return;
-        }
-        const call = ++latestFetch.current;
-        if (!ctxOverride) setIsLoading(true); // only show loading if loading the first time
-        try {
-          const options = await resolveExecutionOptions(
-            operatorURI,
-            ctxOverride || ctx,
-          );
-          if (call !== latestFetch.current) return;
-          setExecutionOptions(options);
-        } catch (error) {
-          if (call !== latestFetch.current) return;
-          console.error("Failed to resolve execution options", error);
-        }
-        setIsLoading(false);
-      }),
-    [operatorURI, ctx, isRemote],
-  );
+  const fetch = useMemo(() => {
+    const debounced = debounce(async (request: number, ctxOverride = null) => {
+      const superseded = () => request !== latestFetch.current;
+      if (superseded()) return;
+      if (!isRemote) {
+        setExecutionOptions({ allowImmediateExecution: true });
+        return;
+      }
+      if (!ctxOverride) setIsLoading(true); // only show loading if loading the first time
+      try {
+        const options = await resolveExecutionOptions(
+          operatorURI,
+          ctxOverride || ctx,
+        );
+        if (superseded()) return;
+        setExecutionOptions(options);
+      } catch (error) {
+        if (superseded()) return;
+        console.error("Failed to resolve execution options", error);
+      }
+      setIsLoading(false);
+    });
+    return (ctxOverride = null) =>
+      debounced(++latestFetch.current, ctxOverride);
+  }, [operatorURI, ctx, isRemote]);
 
   useEffect(() => {
     fetch();

@@ -1762,6 +1762,8 @@ __metadata:
     "@fiftyone/map": "npm:*"
     "@fiftyone/multimodal": "npm:*"
     "@fiftyone/operators": "npm:*"
+    "@fiftyone/playback": "workspace:*"
+    "@fiftyone/plugins": "npm:*"
     "@fiftyone/spotlight": "npm:*"
     "@fiftyone/state": "npm:*"
     "@fiftyone/utilities": "npm:*"

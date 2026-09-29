@@ -20,12 +20,30 @@ const inputs = (view: string) => ({
 });
 
 const env = vi.hoisted(() => ({
+  /** When set, each debounced call waits here until the test runs it. */
+  heldCalls: null as null | (() => Promise<unknown>)[],
   dynamic: true,
   params: {} as Record<string, unknown>,
   resolveInput: vi.fn(),
   resolveExecutionOptions: vi.fn(),
 }));
 
+vi.mock("lodash", async (importOriginal) => {
+  const lodash = (await importOriginal<{ default: typeof import("lodash") }>())
+    .default;
+  const debounce = ((
+    fn: (...args: unknown[]) => unknown,
+    wait?: number,
+    options?: Parameters<typeof lodash.debounce>[2],
+  ) => {
+    const held = env.heldCalls;
+    if (!held) return lodash.debounce(fn, wait, options);
+    return (...args: unknown[]) => {
+      held.push(async () => fn(...args));
+    };
+  }) as typeof lodash.debounce;
+  return { ...lodash, debounce };
+});
 vi.mock("recoil", () => {
   return {
     atom: vi.fn(({ key }: { key: string }) => ({ key })),
@@ -111,6 +129,7 @@ import { useOperatorPrompt } from "./state";
 describe("useOperatorPrompt", () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    env.heldCalls = null;
     env.dynamic = true;
     env.params = { brain_key: "old" };
     env.resolveInput.mockReset();
@@ -181,6 +200,31 @@ describe("useOperatorPrompt", () => {
 
     expect(prompt.result.current.execDetails.executionOptions).toEqual({
       allowDelegatedExecution: true,
+    });
+  });
+
+  it("keeps the newest execution options when an older call runs last", async () => {
+    env.resolveInput.mockResolvedValue(inputs("form"));
+    env.resolveExecutionOptions.mockImplementation(
+      async (_uri: string, ctx: { label?: string }) => ({ from: ctx.label }),
+    );
+    const held: (() => Promise<unknown>)[] = [];
+    env.heldCalls = held;
+    const prompt = renderHook(() => useOperatorPrompt());
+    await act(async () => undefined);
+    held.length = 0;
+
+    const { fetch } = prompt.result.current.execDetails;
+    fetch({ label: "older" });
+    fetch({ label: "newer" });
+    const [older, newer] = held;
+    await act(async () => {
+      await newer();
+      await older();
+    });
+
+    expect(prompt.result.current.execDetails.executionOptions).toEqual({
+      from: "newer",
     });
   });
 
