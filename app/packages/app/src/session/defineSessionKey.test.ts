@@ -39,10 +39,12 @@ describe("defined session fields", () => {
   });
 
   it("keeps every registration the three registries had", () => {
-    // The set before the three registries were folded into one. A field that
-    // silently stops being registered is the failure this catches.
+    // The set before the three registries were folded into one, plus the
+    // streamed app count, a message like state_update rather than a field. A
+    // field that silently stops being registered is the failure this catches.
     expect(new Set(Object.keys(EVENTS))).toEqual(
       new Set([
+        "app_count_update",
         "deactivate_notebook_cell",
         "refresh",
         "select_labels",
