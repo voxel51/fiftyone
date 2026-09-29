@@ -213,3 +213,18 @@ describe("host contracts: content rebuild", () => {
     expect(looker.blank("i1")).toEqual([]);
   });
 });
+
+describe("host contracts: first load", () => {
+  test("the first swap leaves every tile its instance shows shown", async () => {
+    const mounted = mountHost();
+    mounted.host.rebuild();
+    env.resize(SIZE);
+    await env.idle();
+
+    // checked at the swap: a later render re-shows tiles and would hide a
+    // bug that the next cache.empty() turns into grey tiles
+    expect(mounted.current).toBe("i0");
+    expect(mounted.looker.tiles("i0").length).toBe(30);
+    expect(mounted.unshownAtSwap.get("i0")).toEqual([]);
+  });
+});

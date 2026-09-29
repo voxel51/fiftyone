@@ -724,6 +724,9 @@ export default class Spotlight<K, V> extends EventTarget {
       if (hasAt >= ZERO) {
         remainder = result.items.slice(ZERO, hasAt).reverse();
         result.items = result.items.slice(hasAt);
+      } else if (this.#config.at && result.items.length) {
+        // the anchor left its page (deleted or moved), so start at the page
+        this.#config.at = { description: result.items[ZERO].id.description };
       }
 
       this.#backward = new Section({

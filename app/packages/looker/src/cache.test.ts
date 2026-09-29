@@ -121,3 +121,58 @@ describe("useLookerCache", () => {
     expect(onDispose).toHaveBeenCalledOnce();
   });
 });
+
+describe("evict", () => {
+  const setup = () => {
+    const onDispose = vi.fn();
+    const cache = createCache<Looker>({
+      maxHiddenItems: 10,
+      maxHiddenItemsSizeBytes: 10,
+      onDispose,
+    });
+    const looker = new Looker();
+    looker.destroy = vi.fn();
+    return { cache, looker, onDispose };
+  };
+
+  type Cache = ReturnType<typeof createCache<Looker>>;
+  it.each([
+    ["shown", () => undefined],
+    ["frozen", (cache: Cache) => cache.freeze()],
+    ["hidden", (cache: Cache) => cache.hide("a")],
+  ])("destroys a %s instance exactly once", (_, move) => {
+    const { cache, looker, onDispose } = setup();
+    looker.loaded = true;
+    cache.set("a", looker);
+    move(cache);
+
+    cache.evict("a");
+
+    expect(cache.get("a")).toBeUndefined();
+    expect(looker.destroy).toHaveBeenCalledTimes(1);
+    expect(onDispose).toHaveBeenCalledTimes(1);
+    expect(onDispose).toHaveBeenCalledWith("a");
+  });
+
+  it("destroys a pending instance exactly once", () => {
+    const { cache, looker, onDispose } = setup();
+    looker.loaded = false;
+    cache.set("a", looker);
+    cache.hide("a");
+    expect(cache.pending.has("a")).toBe(true);
+
+    cache.evict("a");
+
+    expect(cache.get("a")).toBeUndefined();
+    expect(looker.destroy).toHaveBeenCalledTimes(1);
+    expect(onDispose).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores a key it does not hold", () => {
+    const { cache, onDispose } = setup();
+
+    cache.evict("missing");
+
+    expect(onDispose).toHaveBeenCalledTimes(0);
+  });
+});
