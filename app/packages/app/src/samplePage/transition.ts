@@ -5,6 +5,8 @@
 import type { SampleTransition } from "@fiftyone/core";
 
 const MEDIA = '[data-cy="modal-looker-container"]';
+const PAGE_MEDIA = `[data-cy="sample-page"] ${MEDIA}`;
+const SWIPE_MS = 220;
 const FLY_MS = 280;
 const FADE_MS = 120;
 // how long a landing waits on the page's media before giving up on it
@@ -144,6 +146,7 @@ export interface AppSampleTransition extends SampleTransition {
   ): Promise<void>;
   /** Runs `run` once any close under way has ended. */
   afterClose(run: () => void): void;
+  swipe(direction: 1 | -1, change: () => void): void;
 }
 
 export const createSampleTransition = (): AppSampleTransition => {
@@ -258,6 +261,56 @@ export const createSampleTransition = (): AppSampleTransition => {
 
     afterClose(run) {
       closing ? void closing.then(run) : run();
+    },
+
+    swipe(direction, change) {
+      const media = document.querySelector<HTMLElement>(PAGE_MEDIA);
+      const canvas = media?.querySelector("canvas");
+      if (
+        !media ||
+        !canvas?.width ||
+        reducedMotion() ||
+        typeof media.animate !== "function"
+      ) {
+        return change();
+      }
+
+      // the old media, clipped to its box so it leaves without covering the
+      // page around it
+      const box = media.getBoundingClientRect();
+      const clip = document.createElement("div");
+      place(clip, box);
+      clip.style.overflow = "hidden";
+      const old = crop(canvas, box, box);
+      Object.assign(old.style, { height: "100%", width: "100%" });
+      clip.appendChild(old);
+      document.body.appendChild(clip);
+
+      change();
+
+      const distance = box.width / 3;
+      const timing = { duration: SWIPE_MS, easing: EASE };
+      old
+        .animate(
+          [
+            { opacity: 1, transform: "none" },
+            { opacity: 0, transform: `translateX(${-direction * distance}px)` },
+          ],
+          { ...timing, fill: "forwards" },
+        )
+        .finished.catch(() => undefined)
+        .then(() => clip.remove());
+
+      // the new sample's media, once it has rendered
+      requestAnimationFrame(() =>
+        document.querySelector<HTMLElement>(PAGE_MEDIA)?.animate(
+          [
+            { opacity: 0, transform: `translateX(${direction * distance}px)` },
+            { opacity: 1, transform: "none" },
+          ],
+          timing,
+        ),
+      );
     },
   };
 };

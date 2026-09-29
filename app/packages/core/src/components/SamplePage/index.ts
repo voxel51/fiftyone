@@ -11,6 +11,11 @@ import { createContext, useContext } from "react";
 export interface SampleTransition {
   /** Lifts a still of `tile` above the app, then opens. */
   open<T>(tile: Element | null, open: () => T): T;
+  /**
+   * Swipes to the next (1) or previous (-1) sample: the media on screen
+   * leaves as `change` brings the new sample in.
+   */
+  swipe?(direction: 1 | -1, change: () => void): void;
 }
 
 export const SampleTransitionContext = createContext<
