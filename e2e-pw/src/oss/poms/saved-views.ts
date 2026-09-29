@@ -23,10 +23,11 @@ export type SaveViewParams = {
 
 const defaultColor = "Gray";
 
-const DIALOG = '[data-cy="saved-views-modal-body-container"]';
 const SELECTION_LIST = '[data-cy="saved-views-selection-view"]';
-const COLOR_LIST =
-  '[data-cy="saved-views-input-color-selection-selection-view"]';
+const SELECTION_EVENT = "e2e:components:selection";
+const DIALOG_EVENT = "e2e:saved-views:dialog";
+const VIEW_LIST = "saved-views";
+const COLOR_LIST = "saved-views-input-color-selection";
 
 export class SavedViewsPom {
   readonly page: Page;
@@ -67,15 +68,34 @@ export class SavedViewsPom {
     await this.clickOptionEdit(slug);
   }
 
+  /** Run `action`, resolving once the dropdown `list` has opened or closed */
+  private afterList<T>(list: string, open: boolean, action: () => Promise<T>) {
+    return this.eventUtils.after(SELECTION_EVENT, action, (e) => {
+      const detail = e.detail as { id: string; open: boolean };
+      return detail.id === list && detail.open === open;
+    });
+  }
+
+  /** Run `action`, resolving once the view dialog has closed */
+  private afterDialogClosed<T>(action: () => Promise<T>) {
+    return this.eventUtils.after(
+      DIALOG_EVENT,
+      action,
+      (e) => (e.detail as { open: boolean }).open === false,
+    );
+  }
+
   /** Open a saved view's edit dialog, resolving once it shows the view */
   async clickOptionEdit(slug: string) {
     await this.savedViewOption(slug).hover();
-    await this.optionEdit(slug).click();
-    await this.page.locator(DIALOG).first().waitFor({ state: "attached" });
     // the dialog fills its inputs from the view in an effect after it mounts
-    await this.eventUtils.untilDom(
-      this.nameInput(),
-      (input) => (input as HTMLInputElement).value !== "",
+    await this.eventUtils.after(
+      DIALOG_EVENT,
+      () => this.optionEdit(slug).click(),
+      (e) => {
+        const detail = e.detail as { open: boolean; name: string };
+        return detail.open && detail.name !== "";
+      },
     );
   }
 
@@ -95,24 +115,19 @@ export class SavedViewsPom {
     await this.pickColor(newColor);
   }
 
-  async waitUntilModalHidden() {
-    await this.dialogLocator.waitFor({ state: "detached" });
-  }
-
   /** Create a view; the app selects it once its list has refetched */
   async saveView(view: SaveViewParams) {
     await this.openCreateModal();
     await this.saveViewInputs(view);
-    await this.eventUtils.after("e2e:app:page-change", () =>
-      this.saveButton().click(),
+    await this.afterDialogClosed(() =>
+      this.eventUtils.after("e2e:app:page-change", () =>
+        this.saveButton().click(),
+      ),
     );
-    await this.waitUntilModalHidden();
   }
 
   async deleteView(name: string) {
-    await this.savedViewOption(name).hover();
-    await this.optionEdit(name).click();
-    await this.page.locator(DIALOG).first().waitFor({ state: "attached" });
+    await this.clickOptionEdit(name);
     await this.clickDeleteBtn();
   }
 
@@ -135,29 +150,33 @@ export class SavedViewsPom {
     await this.clickColor(color);
     await this.pickColor(newColor);
 
-    await this.eventUtils.after("e2e:app:page-change", () =>
-      this.saveButton().click(),
+    await this.afterDialogClosed(() =>
+      this.eventUtils.after("e2e:app:page-change", () =>
+        this.saveButton().click(),
+      ),
     );
-    await this.waitUntilModalHidden();
   }
 
   /** Open the color dropdown */
   async clickColor(color: Color = defaultColor) {
-    await this.colorInput(color).click();
-    await this.page.locator(COLOR_LIST).first().waitFor({ state: "attached" });
+    await this.afterList(COLOR_LIST, true, () =>
+      this.colorInput(color).click(),
+    );
   }
 
   /** Pick a color from the open dropdown, resolving once its menu is gone */
   async pickColor(color: Color) {
-    await this.colorOption(color).click();
-    await this.colorListContainer().waitFor({ state: "detached" });
+    await this.afterList(COLOR_LIST, false, () =>
+      this.colorOption(color).click(),
+    );
   }
 
   /** Close the saved view list; an edit opened from it leaves it open */
   async closeSelect() {
     if ((await this.page.locator(SELECTION_LIST).count()) === 0) return;
-    await this.page.keyboard.press("Escape");
-    await this.page.locator(SELECTION_LIST).waitFor({ state: "detached" });
+    await this.afterList(VIEW_LIST, false, () =>
+      this.page.keyboard.press("Escape"),
+    );
   }
 
   async clearView() {
@@ -168,18 +187,17 @@ export class SavedViewsPom {
   }
 
   async clickCloseModal() {
-    await this.closeModalBtn.click();
-    await this.waitUntilModalHidden();
+    await this.afterDialogClosed(() => this.closeModalBtn.click());
+  }
+
+  async clickCancel() {
+    await this.afterDialogClosed(() => this.cancelButton().click());
   }
 
   /** Open the saved view list, unless it already is */
   async openSelect() {
     if ((await this.page.locator(SELECTION_LIST).count()) > 0) return;
-    await this.selector.click();
-    await this.page
-      .locator(SELECTION_LIST)
-      .first()
-      .waitFor({ state: "attached" });
+    await this.afterList(VIEW_LIST, true, () => this.selector.click());
   }
 
   async openCreateModal(
@@ -190,8 +208,11 @@ export class SavedViewsPom {
     if (!isSelectAlreadyOpen) {
       await this.openSelect();
     }
-    await this.saveNewViewBtn.click();
-    await this.page.locator(DIALOG).first().waitFor({ state: "attached" });
+    await this.eventUtils.after(
+      DIALOG_EVENT,
+      () => this.saveNewViewBtn.click(),
+      (e) => (e.detail as { open: boolean }).open,
+    );
   }
 
   async savedViewCount(name: string) {
@@ -266,10 +287,11 @@ export class SavedViewsPom {
 
   /** Delete the open view; its list refetches after the dialog closes */
   async clickDeleteBtn() {
-    await this.eventUtils.after("e2e:saved-views:listed", () =>
-      this.deleteBtn().click(),
+    await this.afterDialogClosed(() =>
+      this.eventUtils.after("e2e:saved-views:listed", () =>
+        this.deleteBtn().click(),
+      ),
     );
-    await this.waitUntilModalHidden();
   }
 }
 
@@ -307,8 +329,7 @@ class SavedViewAsserter {
   }
 
   async verifyCancelBtnClearsAll() {
-    await this.svp.cancelButton().click();
-    await this.svp.waitUntilModalHidden();
+    await this.svp.clickCancel();
 
     await this.svp.openCreateModal();
     await this.verifyAllInputClear();

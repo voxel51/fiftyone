@@ -1,4 +1,5 @@
 import { IconButton, useTheme, ColoredDot } from "@fiftyone/components";
+import { getEventBus } from "@fiftyone/events";
 import { DEFAULT_SELECTED, constants } from "@fiftyone/state";
 import { CloseRounded } from "@mui/icons-material";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
@@ -10,6 +11,14 @@ import { SearchBox } from "./SearchBox";
 import { CustomBox, LastOption } from "./styledComponents";
 
 const { DEFAULT_COLOR_OPTION } = constants;
+
+/**
+ * e2e specs wait on a dropdown's list mounting, and on it unmounting once its
+ * exit transition ends
+ */
+type SelectionE2EEvents = {
+  "e2e:components:selection": { id: string; open: boolean };
+};
 
 type SelectionProps = {
   id: string;
@@ -90,6 +99,15 @@ export default function Selection(props: SelectionProps) {
     [onSearch],
   );
 
+  const signalMenu = useCallback(
+    (list: HTMLUListElement | null) =>
+      getEventBus<SelectionE2EEvents>().dispatch("e2e:components:selection", {
+        id,
+        open: list !== null,
+      }),
+    [id],
+  );
+
   if (!selected) {
     return null;
   }
@@ -118,6 +136,7 @@ export default function Selection(props: SelectionProps) {
             },
           },
           MenuListProps: {
+            ref: signalMenu,
             "data-cy": `${id}-selection-view`,
             sx: {
               paddingY: 0,
