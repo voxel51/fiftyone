@@ -3,24 +3,20 @@ import { PythonRunner } from "./python-runner/python-runner";
 
 export type WaitUntilGridVisibleOptions = {
   /**
-   * Whether the dataset is empty.
-   */
-  isEmptyDataset?: boolean;
-
-  /**
    * Search parameters to include
    */
   searchParams?: URLSearchParams;
 
   /**
-   * Optional selector that indicates the dataset is ready for interaction.
+   * An `e2e:` event that marks the page ready instead of a grid tile, e.g.
+   * the modal a deep link opens
    */
-  readySelector?: string;
+  readyEvent?: string;
 
   /**
-   * Whether to wait for the grid to be visible.
+   * The number of distinct grid tiles that must be ready (default 1)
    */
-  withGrid?: boolean;
+  tiles?: number;
 };
 export abstract class AbstractFiftyoneLoader {
   protected pythonRunner: PythonRunner;

@@ -199,15 +199,6 @@ export class GridPom {
       .waitFor({ state: "attached" });
   }
 
-  /** Resolve once `count` grid lookers have drawn, e.g. after a page load */
-  async untilTilesDrawn(count: number) {
-    await this.eventUtils.untilDom(
-      this.locator,
-      (grid, n) => grid.querySelectorAll('[canvas-loaded="true"]').length === n,
-      count,
-    );
-  }
-
   async run<T>(wrap: () => Promise<T>): Promise<T> {
     const refresh = await this.armGridRefresh();
     try {

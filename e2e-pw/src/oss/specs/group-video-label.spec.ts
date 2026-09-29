@@ -65,7 +65,7 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
 
 test.describe.serial("groups video labels", () => {
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, { tiles: 1 });
   });
 
   test("correct thumbnails for both slices", async ({ grid }) => {
@@ -73,7 +73,6 @@ test.describe.serial("groups video labels", () => {
     await grid.sliceSelector.assert.verifyHasSlices(["v1", "v2"]);
 
     // compare screenshot for default slice (v1)
-    await grid.untilTilesDrawn(1);
     await grid.assert.hasScreenshot("slice-v1.png", {
       target: grid.getNthLooker(0),
     });

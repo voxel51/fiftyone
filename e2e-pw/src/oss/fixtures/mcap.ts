@@ -233,7 +233,6 @@ for dataset_name in ["${datasetName}", "${alternateMediaDatasetName}", "${worksp
           graphicsBackend === "webgl2"
             ? new URLSearchParams({ graphicsBackend })
             : undefined,
-        withGrid: true,
       });
       await use();
       await modal.close({ ignoreError: true });

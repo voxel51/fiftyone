@@ -84,7 +84,9 @@ export const test = customFixtures.extend<CustomFixturesWithPage>({
     await use(page);
   },
   eventUtils: async ({ page }, use) => {
-    await use(new EventUtils(page));
+    const eventUtils = new EventUtils(page);
+    await eventUtils.recordLoads();
+    await use(eventUtils);
   },
   aggregationWatcher: async ({ page }, use) => {
     await use(new AggregationWatcher(page));

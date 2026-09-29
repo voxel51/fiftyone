@@ -92,11 +92,10 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
 
 test.describe.serial("fo3d", () => {
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, { tiles: 2 });
   });
 
   test("scene is rendered correctly", async ({ modal, grid, modalSidebar }) => {
-    await grid.untilTilesDrawn(2);
     await grid.assert.hasScreenshot("orthographic-projection-grid-cuboids.png");
 
     await grid.openFirstSample();

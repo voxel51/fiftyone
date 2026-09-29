@@ -39,8 +39,16 @@ declare global {
     };
     /** Bus listeners of {@link EventUtils.initCounter}, tapped once the bus loads. */
     __FO_BUS_COUNTERS__?: ((event: string, data: unknown) => void)[];
+    /** The document's `e2e:` events since its start, from {@link EventUtils.recordLoads}. */
+    __FO_EVENT_LOG__?: {
+      records: { event: string; detail: Record<string, unknown> }[];
+      waiters: Set<() => void>;
+    };
   }
 }
+
+/** Pages whose every document records its `e2e:` events from the start */
+const recordingPages = new WeakSet<Page>();
 
 /**
  * Handle for counting occurrences of a document CustomEvent. Created by
@@ -253,6 +261,97 @@ export class EventUtils {
       );
     } finally {
       this.page.off("framenavigated", record);
+    }
+  }
+
+  /**
+   * Record the `e2e:` events of every document this page loads from here on,
+   * from each document's start. Call before navigating; idempotent.
+   */
+  public async recordLoads(): Promise<void> {
+    if (recordingPages.has(this.page)) return;
+    recordingPages.add(this.page);
+
+    await this.page.addInitScript(() => {
+      if (window.__FO_EVENT_LOG__) return;
+      const log: NonNullable<Window["__FO_EVENT_LOG__"]> = {
+        records: [],
+        waiters: new Set(),
+      };
+      window.__FO_EVENT_LOG__ = log;
+
+      const counters = (window.__FO_BUS_COUNTERS__ ??= []);
+      counters.push((event, data) => {
+        if (!event.startsWith("e2e:")) return;
+        // bus payloads can hold live objects; keep only primitive fields
+        const detail = Object.fromEntries(
+          Object.entries((data ?? {}) as Record<string, unknown>).filter(
+            ([, v]) =>
+              v === null || (typeof v !== "object" && typeof v !== "function"),
+          ),
+        );
+        log.records.push({ event, detail });
+        log.waiters.forEach((wake) => wake());
+      });
+      if (counters.length > 1) return;
+      // same hand-off as initCounter: tap the bus the moment it is assigned
+      Object.defineProperty(window, "__FO_EVENTS__", {
+        configurable: true,
+        set(bus: NonNullable<Window["__FO_EVENTS__"]>) {
+          Object.defineProperty(window, "__FO_EVENTS__", {
+            configurable: true,
+            writable: true,
+            value: bus,
+          });
+          bus.tap((event, data) =>
+            counters.forEach((count) => count(event, data)),
+          );
+        },
+      });
+    });
+  }
+
+  /**
+   * Run `navigate` and resolve once one of `events` has fired in the document
+   * it leaves the page on, counting from that document's start. A navigation
+   * drops every armed listener, so this reads the record
+   * {@link recordLoads} keeps, which must be installed before `navigate`.
+   */
+  public async afterNavigation<T>(
+    events: string | readonly string[],
+    navigate: () => Promise<T>,
+    predicate: (e: { event: string; detail?: unknown }) => boolean = () => true,
+  ): Promise<T> {
+    if (!recordingPages.has(this.page)) {
+      throw new Error("afterNavigation needs recordLoads() before navigating");
+    }
+    const names = typeof events === "string" ? [events] : [...events];
+    const result = await navigate();
+
+    for (let from = 0; ; ) {
+      const record = await this.page.evaluate(
+        ({ names_, from_ }) =>
+          new Promise<{ index: number; event: string; detail: unknown }>(
+            (resolve) => {
+              const log = window.__FO_EVENT_LOG__!;
+              const find = () => {
+                for (let i = from_; i < log.records.length; i += 1) {
+                  const { event, detail } = log.records[i];
+                  if (names_.includes(event)) {
+                    log.waiters.delete(find);
+                    resolve({ index: i, event, detail });
+                    return;
+                  }
+                }
+              };
+              log.waiters.add(find);
+              find();
+            },
+          ),
+        { names_: names, from_: from },
+      );
+      if (predicate(record)) return result;
+      from = record.index + 1;
     }
   }
 

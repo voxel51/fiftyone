@@ -4,7 +4,18 @@ import {
   AbstractFiftyoneLoader,
   WaitUntilGridVisibleOptions,
 } from "src/shared/abstract-loader";
+import { EventUtils } from "src/shared/event-utils";
 import { PythonRunner } from "src/shared/python-runner/python-runner";
+
+/**
+ * A grid tile's terminal states: lookers finish drawing a canvas (or report
+ * an error); custom-renderer tiles are ready once their wrapper commits
+ */
+const TILE_READY = [
+  "e2e:looker:canvas-loaded",
+  "e2e:looker:error-shown",
+  "e2e:grid:custom-renderer-mounted",
+];
 
 export class OssLoader extends AbstractFiftyoneLoader {
   constructor() {
@@ -64,13 +75,9 @@ export class OssLoader extends AbstractFiftyoneLoader {
     datasetName: string,
     options?: WaitUntilGridVisibleOptions,
   ): Promise<void> {
-    const { isEmptyDataset, readySelector, searchParams, withGrid } =
-      options ?? {
-        isEmptyDataset: false,
-        readySelector: undefined,
-        searchParams: undefined,
-        withGrid: true,
-      };
+    const { readyEvent, searchParams, tiles } = options ?? {};
+    const eventUtils = new EventUtils(page);
+    await eventUtils.recordLoads();
 
     await page.addInitScript(() => {
       if (window.__FO_PLAYWRIGHT_INIT__) {
@@ -132,56 +139,56 @@ export class OssLoader extends AbstractFiftyoneLoader {
       }
     };
 
-    const search = searchParams ? searchParams.toString() : undefined;
-    if (search) {
-      await page.goto(`/datasets/${datasetName}?${search}`, {
-        waitUntil: "domcontentloaded",
-      });
-    } else {
-      await page.goto(`/datasets/${datasetName}`, {
-        waitUntil: "domcontentloaded",
-      });
-    }
-
-    const pathname = await page.evaluate(() => window.location.pathname);
-    if (pathname !== `/datasets/${datasetName}`) {
-      await forceDatasetFromSelector();
-    }
-
-    const view = searchParams?.get("view");
-    if (view) {
-      const search = await page.evaluate(() => window.location.search);
-
-      const params = new URLSearchParams(search);
-      if (params.get("view") !== view) {
-        throw new Error(`wrong view: '${params.get("view")}'`);
+    const navigate = async () => {
+      const search = searchParams ? searchParams.toString() : undefined;
+      if (search) {
+        await page.goto(`/datasets/${datasetName}?${search}`, {
+          waitUntil: "domcontentloaded",
+        });
+      } else {
+        await page.goto(`/datasets/${datasetName}`, {
+          waitUntil: "domcontentloaded",
+        });
       }
-    }
 
-    await page
-      .locator(
-        `[data-cy=${withGrid ? "spotlight-section-forward" : "panel-container"}]`,
-      )
-      .first()
-      .waitFor({ state: "attached" });
+      const pathname = await page.evaluate(() => window.location.pathname);
+      if (pathname !== `/datasets/${datasetName}`) {
+        await forceDatasetFromSelector();
+      }
 
-    if (isEmptyDataset) {
+      const view = searchParams?.get("view");
+      if (view) {
+        const search = await page.evaluate(() => window.location.search);
+
+        const params = new URLSearchParams(search);
+        if (params.get("view") !== view) {
+          throw new Error(`wrong view: '${params.get("view")}'`);
+        }
+      }
+    };
+
+    if (readyEvent) {
+      await eventUtils.afterNavigation(readyEvent, navigate);
       return;
     }
 
-    if (readySelector) {
-      await page.locator(readySelector).first().waitFor({ state: "attached" });
+    if (tiles) {
+      const drawn = new Set<string>();
+      await eventUtils.afterNavigation(
+        "e2e:looker:canvas-loaded",
+        navigate,
+        (e) => {
+          const { sampleId, thumbnail } = e.detail as {
+            sampleId: string;
+            thumbnail: boolean;
+          };
+          if (thumbnail) drawn.add(sampleId);
+          return drawn.size === tiles;
+        },
+      );
       return;
     }
 
-    // a grid tile's terminal state depends on its kind: lookers finish
-    // drawing a canvas (or report an error); custom-renderer tiles are
-    // ready once their wrapper commits
-    await page
-      .locator(
-        '[data-cy=looker-error-info], [data-cy=grid-custom-renderer], canvas[canvas-loaded="true"]',
-      )
-      .first()
-      .waitFor({ state: "attached" });
+    await eventUtils.afterNavigation(TILE_READY, navigate);
   }
 }

@@ -103,13 +103,12 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
 });
 
 test.beforeEach(async ({ page, fiftyoneLoader }) => {
-  await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+  await fiftyoneLoader.waitUntilGridVisible(page, datasetName, { tiles: 3 });
 });
 
 test.describe.serial("detection-mask", () => {
   test("should load all masks fine", async ({ grid, modal }) => {
     await grid.assert.isEntryCountTextEqualTo("3 samples");
-    await grid.untilTilesDrawn(3);
 
     // bad sample, assert it loads in the modal fine, too
     await grid.openFirstSample();

@@ -68,11 +68,10 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
 
 test.describe.serial("orthographic projections", () => {
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, { tiles: 2 });
   });
 
   test("orthographic projections are rendered correctly", async ({ grid }) => {
-    await grid.untilTilesDrawn(2);
     await grid.assert.hasScreenshot("orthographic-projection-grid-cuboids.png");
 
     // TODO: FIX ME. MODAL SCREENSHOT COMPARISON IS OFF BY ONE-PIXEL

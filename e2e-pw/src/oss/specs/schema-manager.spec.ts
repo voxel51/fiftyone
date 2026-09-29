@@ -211,7 +211,7 @@ test.describe.serial("schema manager", () => {
     // blank seeded video.
     await fiftyoneLoader.waitUntilGridVisible(page, videoDatasetName, {
       searchParams: new URLSearchParams({ id: videoId }),
-      readySelector: '[data-cy="modal"]',
+      readyEvent: "e2e:modal:opened",
     });
     await modal.assert.isOpen();
     await modal.sidebar.switchMode("annotate");

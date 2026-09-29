@@ -64,7 +64,11 @@ import { retrieveTransferables } from "./utils";
 
 /** e2e specs wait on a looker having drawn its sample */
 type LookerE2EEvents = {
-  "e2e:looker:canvas-loaded": { sampleFilepath: string; sampleId: string };
+  "e2e:looker:canvas-loaded": {
+    sampleFilepath: string;
+    sampleId: string;
+    thumbnail: boolean;
+  };
 };
 
 const LABEL_LISTS_PATH = new Set(withPath(LABELS_PATH, LABEL_LISTS));
@@ -518,6 +522,7 @@ export abstract class AbstractLooker<
         getEventBus<LookerE2EEvents>().dispatch("e2e:looker:canvas-loaded", {
           sampleFilepath: this.sample.filepath,
           sampleId: this.sample.id,
+          thumbnail: this.state.config.thumbnail,
         });
       } catch (error) {
         if (error instanceof AppError || error instanceof MediaError) {
