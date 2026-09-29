@@ -1,3 +1,4 @@
+import { getEventBus } from "@fiftyone/events";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import {
   useViewEnd,
@@ -17,7 +18,7 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import clsx from "clsx";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { TIMELINE_TRACK_ROW_HEIGHT } from "../../lib/constants";
 import styles from "./TimelineTrack.module.css";
@@ -208,6 +209,18 @@ const DEPTH_INDENT_PX = 14;
 /** Base left padding of the label column (matches the CSS). */
 const LABEL_BASE_PADDING_PX = 10;
 
+/** e2e specs wait on a lane's context menu showing its items */
+type LaneMenuE2EEvents = {
+  "e2e:playback:lane-menu-opened": undefined;
+};
+
+const LaneMenuOpenedSignal = () => {
+  useEffect(() => {
+    getEventBus<LaneMenuE2EEvents>().dispatch("e2e:playback:lane-menu-opened");
+  }, []);
+  return null;
+};
+
 /**
  * Content of the lane's single, delegated context menu. `event` is the
  * right-clicked event (`null` closes to nothing). One shared menu serves the
@@ -228,6 +241,7 @@ const LaneEventMenu: React.FC<{
 
   return (
     <>
+      <LaneMenuOpenedSignal />
       <MenuTextItem onClick={() => seek(event.startSec)}>
         Move to start
       </MenuTextItem>

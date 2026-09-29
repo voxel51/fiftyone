@@ -1,3 +1,4 @@
+import { getEventBus } from "@fiftyone/events";
 import React from "react";
 import { SEEK_BAR_DEBOUNCE } from "../../lib/constants";
 import { TimelineName } from "../../lib/timeline/state";
@@ -14,6 +15,12 @@ import {
   Speed,
   StatusIndicator,
 } from "./PlaybackElements";
+
+/** e2e specs wait on the status readout and playhead a timeline renders */
+type TimelineViewE2EEvents = {
+  "e2e:playback:status-shown": { timelineName: string; text: string };
+  "e2e:playback:playhead-state": { timelineName: string; state: string };
+};
 
 interface TimelineProps {
   name: TimelineName;
@@ -38,6 +45,23 @@ export const Timeline = React.memo(
       const seekBarValue = React.useMemo(() => getSeekValue(), [getSeekValue]);
 
       const { loaded, loading } = useTimelineBuffers(name);
+
+      React.useEffect(() => {
+        getEventBus<TimelineViewE2EEvents>().dispatch(
+          "e2e:playback:status-shown",
+          {
+            timelineName: name,
+            text: `${frameNumber} / ${config.totalFrames}`,
+          },
+        );
+      }, [name, frameNumber, config.totalFrames]);
+
+      React.useEffect(() => {
+        getEventBus<TimelineViewE2EEvents>().dispatch(
+          "e2e:playback:playhead-state",
+          { timelineName: name, state: playHeadState },
+        );
+      }, [name, playHeadState]);
 
       const onChangeSeek = React.useCallback(
         (e: React.ChangeEvent<HTMLInputElement>) => {
