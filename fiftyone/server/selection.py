@@ -33,7 +33,10 @@ import fiftyone.core.selection_context as fosc
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
 import fiftyone.server.tags as fostag
 import fiftyone.server.view as fosv
-from fiftyone.server.selection_extensions import resolve_filters
+from fiftyone.server.selection_extensions import (
+    resolve_filters,
+    resolve_range_source,
+)
 
 SNAPSHOT_TTL = timedelta(hours=1)
 SNAPSHOT_CHUNK = 5000
@@ -86,8 +89,20 @@ def _scoped_view(dataset, request):
     )
     view = constrain_view(view)
     converted = view._dataset is not dataset
-    if converted and boundary.get("provider"):
+    source = boundary.get("captureSource")
+    if converted and (boundary.get("provider") or source):
         raise ValueError("Segment sources are available in the samples view")
+    if source:
+        capture = {"kind": "source", "descriptor": source}
+        provider = boundary.get("provider")
+        boundary = {
+            **boundary,
+            "provider": (
+                {"kind": "intersection", "providers": [provider, capture]}
+                if provider
+                else capture
+            ),
+        }
     return view, boundary, converted
 
 
@@ -1445,6 +1460,16 @@ def candidate_members(view, provider=None, streams_cache=None):
         for constraint in providers[1:]:
             members = fosel.intersect_members(
                 members, candidate_members(view, constraint, streams_cache)
+            )
+        return members
+    if kind == "source":
+        allowed_ids = set(view.values("id"))
+        members = fosel.normalize_members(
+            resolve_range_source(view, provider["descriptor"], streams_cache)
+        )
+        if any(m["episodeId"] not in allowed_ids for m in members):
+            raise ValueError(
+                "A capture source returned parents outside its view"
             )
         return members
     if kind == "events":
