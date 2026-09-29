@@ -976,6 +976,7 @@ class TestMergePreparedInputs:
         return {
             "input_ids": torch.tensor([ids]),
             "attention_mask": torch.ones(1, len(ids), dtype=torch.long),
+            "mm_token_type_ids": torch.zeros(1, len(ids), dtype=torch.long),
             "pixel_values_videos": torch.arange(
                 n_patches * 3, dtype=torch.float32
             ).reshape(n_patches, 3),
@@ -1019,6 +1020,16 @@ class TestMergePreparedInputs:
             merged["pixel_values_videos"][4:], clip_b["pixel_values_videos"]
         )
         assert merged["video_grid_thw"].tolist() == [[1, 2, 2], [1, 3, 2]]
+
+    def test_token_types_are_left_padded_as_text(self):
+        clip_a = self._clip([1, 2, 3], 4, [1, 2, 2])
+        clip_b = self._clip([4], 4, [1, 2, 2])
+        clip_a["mm_token_type_ids"] = torch.tensor([[0, 2, 0]])
+        clip_b["mm_token_type_ids"] = torch.tensor([[2]])
+
+        merged = qwen3_vl.merge_prepared_inputs([clip_a, clip_b], self.PAD)
+
+        assert merged["mm_token_type_ids"].tolist() == [[0, 2, 0], [0, 0, 2]]
 
     def test_an_unknown_key_refuses_the_merge(self):
         clip = self._clip([1, 2], 4, [1, 2, 2])
