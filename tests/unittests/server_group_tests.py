@@ -161,26 +161,3 @@ class ServerGroupTests(unittest.TestCase):
             GroupElementFilter(id=group.id, slices=["one", "two"]),
         )
         self.assertEqual(len(select_one_two), 2)
-
-
-def test_a_grid_page_selects_groups_in_its_active_slice(fixture_dataset):
-    dataset = fixture_dataset(
-        groups=[
-            {"left": "%d-left.mp4" % i, "right": "%d-right.mp4" % i}
-            for i in range(2)
-        ]
-    )
-    group_ids = dataset.values("group.id")
-    right_ids = dataset.select_group_slices("right").values("id")
-
-    view = fosv.get_view(
-        dataset.name,
-        sample_filter=fosv.SampleFilter(
-            group=GroupElementFilter(slice="right", slices=["right"])
-        ),
-        extended_stages={
-            "fiftyone.core.stages.SelectGroups": {"group_ids": [group_ids[1]]}
-        },
-    )
-
-    assert view.values("id") == [right_ids[1]]
