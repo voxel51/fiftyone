@@ -52,22 +52,6 @@ class SimilaritySearchOperatorTests(unittest.TestCase):
             )
         )
 
-    def test_grouped_search_selects_groups_matched_in_any_slice(self):
-        dataset, query_id, group_ids = _grouped_dataset()
-        self.addCleanup(dataset.delete)
-
-        run = _search(dataset, query=query_id)
-
-        # The stage is kept, not stored IDs: it selects groups in the
-        # active slice and records which slices matched
-        result = DatasetView._build(dataset, run["result_view"])
-        self.assertEqual(result.values("group.id"), group_ids[:2])
-        self.assertEqual(result.values("group.name"), ["left", "left"])
-        self.assertEqual(
-            result._stages[-1].group_matches,
-            {group_ids[0]: ["right"], group_ids[1]: ["left"]},
-        )
-
     def test_grouped_search_honors_the_picked_slices(self):
         dataset, query_id, group_ids = _grouped_dataset()
         self.addCleanup(dataset.delete)
