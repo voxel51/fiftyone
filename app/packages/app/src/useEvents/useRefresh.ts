@@ -16,7 +16,7 @@ import { processState } from "./utils";
 const useRefresh: EventHandlerHook = ({ router, session }) => {
   return useCallback(
     (payload: { state: { [key: string]: unknown } }) => {
-      const state = processState(session.current, payload.state);
+      const { state } = processState(session.current, payload.state);
       const path = resolveURL({
         currentPathname: router.history.location.pathname,
         currentSearch: router.location.search,
