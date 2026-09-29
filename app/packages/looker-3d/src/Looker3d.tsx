@@ -12,6 +12,7 @@ import { ActionBar } from "./action-bar";
 import { useWorkingLabel } from "./annotation/store/working";
 import {
   CAMERA_LOOK_AT_SETTLED_EVENT,
+  DRAFT_VERTICES_EVENT,
   FRAME_RENDERED_EVENT,
   type Looker3dE2EEvents,
   SCENE_READY_EVENT,
@@ -90,6 +91,12 @@ export const Looker3d = () => {
           0,
         )
       : undefined;
+
+  useEffect(() => {
+    getEventBus<Looker3dE2EEvents>().dispatch(DRAFT_VERTICES_EVENT, {
+      count: draftVertexCount,
+    });
+  }, [draftVertexCount]);
 
   useEffect(() => {
     return () => {

@@ -1,10 +1,15 @@
 import { PopoutSectionTitle } from "@fiftyone/components";
 import { Checkbox } from "@fiftyone/core";
+import { getEventBus } from "@fiftyone/events";
 import * as fos from "@fiftyone/state";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
 import styled from "styled-components";
-import { ACTION_SET_PCDS } from "../constants";
+import {
+  ACTION_SET_PCDS,
+  type Looker3dE2EEvents,
+  SLICE_SELECTOR_EVENT,
+} from "../constants";
 import {
   ActionItem,
   ActionPopOverDiv,
@@ -79,6 +84,15 @@ export const SliceSelector = () => {
   );
 };
 
+const SliceSelectorSignal = () => {
+  useEffect(() => {
+    const bus = getEventBus<Looker3dE2EEvents>();
+    bus.dispatch(SLICE_SELECTOR_EVENT, { open: true });
+    return () => bus.dispatch(SLICE_SELECTOR_EVENT, { open: false });
+  }, []);
+  return null;
+};
+
 const PcdsSelector = () => {
   const { activeSlices, allSampleMap, allSlices } =
     fos.useRenderConfig3dState();
@@ -102,6 +116,7 @@ const PcdsSelector = () => {
     <ActionPopOverDiv ref={containerRef}>
       <ActionPopOverInner>
         <PopoutSectionTitle>Select 3D slices</PopoutSectionTitle>
+        <SliceSelectorSignal />
         <div data-cy={"looker3d-slice-checkboxes"}>
           {availableSlices.map((slice) => {
             return (

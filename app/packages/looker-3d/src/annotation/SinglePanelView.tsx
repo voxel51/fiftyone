@@ -1,3 +1,4 @@
+import { getEventBus } from "@fiftyone/events";
 import { Canvas } from "@react-three/fiber";
 import { useLayoutEffect, useRef } from "react";
 import styled from "styled-components";
@@ -5,6 +6,7 @@ import type * as THREE from "three";
 import type { Vector3 } from "three";
 import { StatusBar } from "../StatusBar";
 import { PcdColorMapTunnel } from "../components/PcdColormapModal";
+import { CANVAS_LOADED_EVENT, type Looker3dE2EEvents } from "../constants";
 import { StatusBarRootContainer } from "../containers";
 import type { Fo3dCameraControls } from "../fo3d/camera-controls";
 import { Fo3dSceneContent } from "../fo3d/Fo3dCanvas";
@@ -46,6 +48,9 @@ export const SinglePanelView = ({
     containerRef.current
       ?.querySelector(`#${CANVAS_WRAPPER_ID} canvas`)
       ?.setAttribute("canvas-loaded", "true");
+    getEventBus<Looker3dE2EEvents>().dispatch(CANVAS_LOADED_EVENT, {
+      thumbnail: false,
+    });
   }, [isSceneInitialized]);
 
   return (

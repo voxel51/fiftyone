@@ -1,11 +1,13 @@
 import { IconButton, PopoutSectionTitle, useTheme } from "@fiftyone/components";
+import { getEventBus } from "@fiftyone/events";
 import { NumberInput } from "@fiftyone/core/src/components/Common/Input";
 import { CloseTwoTone } from "@mui/icons-material";
 import GridOnIcon from "@mui/icons-material/GridOn";
 import { Checkbox, Typography } from "@mui/material";
 import type React from "react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRecoilState } from "recoil";
+import { GRID_TOGGLED_EVENT, type Looker3dE2EEvents } from "../constants";
 import { ActionItem } from "../containers";
 import {
   gridCellSizeAtom,
@@ -113,6 +115,12 @@ export const ToggleGridHelper = () => {
   const [isFirstLoad, setIsFirstLoad] = useState(true);
 
   const { primary } = useTheme();
+
+  useEffect(() => {
+    getEventBus<Looker3dE2EEvents>().dispatch(GRID_TOGGLED_EVENT, {
+      on: isGridOn,
+    });
+  }, [isGridOn]);
 
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
