@@ -33,7 +33,8 @@ export class SelectorPom {
   async openResults() {
     await this.eventUtils.after(
       "e2e:components:selector-results",
-      () => this.input.focus(),
+      // a click delivers focus events even when the page lacks browser focus
+      () => this.input.click(),
       (e) => (e.detail as { cy?: string }).cy === this.title,
     );
   }
@@ -41,7 +42,8 @@ export class SelectorPom {
   async closeResults() {
     await this.eventUtils.after(
       "e2e:components:selector-results-closed",
-      () => this.input.blur(),
+      // a blur is ignored while the pointer is over the results
+      () => this.input.press("Escape"),
       (e) => (e.detail as { cy?: string }).cy === this.title,
     );
   }
