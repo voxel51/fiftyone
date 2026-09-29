@@ -33,6 +33,7 @@ import { errorMessage } from "../../../utils/errors";
 import { RawMessageBrowser } from "./RawMessageBrowser";
 import { formatRawMessageTime } from "./raw-message-time";
 import { usePublishVisibleStreams } from "../stream-discovery/visible-streams";
+import { ShownSignal } from "../../../visualization/ShownSignal";
 
 /**
  * Raw message tile: the escape hatch that makes every stream at least
@@ -182,6 +183,18 @@ const RawMessageTile: React.FC<EpisodeTileProps> = () => {
 
   return (
     <div className={rawStyles.body} data-cy="episode-raw-tile">
+      {!streamKey ? (
+        <ShownSignal event="e2e:multimodal:raw-shown" detail={{ stream: "" }} />
+      ) : result && state?.status !== "loading" ? (
+        <ShownSignal
+          event="e2e:multimodal:raw-shown"
+          detail={{
+            stream: selectedSourceName ?? streamKey,
+            validFromNs: String(result.validFromNs),
+            status: state?.status ?? "",
+          }}
+        />
+      ) : null}
       {!streamKey ? (
         <div className={styles.loading}>
           <span className={styles.emptyText}>

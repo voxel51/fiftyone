@@ -14,6 +14,7 @@ import { SettingsNumberField } from "../controls/SettingsNumberField";
 import { SettingsSelect } from "../controls/SettingsSelect";
 import SidebarGroup from "../controls/SidebarGroup";
 import settingsStyles from "../../tiles/Tile.settings.module.css";
+import { ShownSignal } from "../../../../visualization/ShownSignal";
 
 const CUSTOM_PRESET_ID = "custom";
 type SamplingSelection = TimelineSamplingPresetId | typeof CUSTOM_PRESET_ID;
@@ -79,6 +80,7 @@ export default function TimelinePlaybackSettings({
       title="Playback"
       tooltip="Episode-wide timeline and data playback settings."
     >
+      <ShownSignal event="e2e:multimodal:sampling-rate" detail={{ rateHz }} />
       <label className={settingsStyles.field}>
         <SettingsLabel label="Data sampling" tooltip={SAMPLING_TOOLTIP} />
         <SettingsSelect

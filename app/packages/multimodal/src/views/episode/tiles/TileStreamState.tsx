@@ -19,6 +19,7 @@ import { useDataStream } from "../playback/data-stream-context";
 import { INITIAL_DATA_AUTO_SEEK_THRESHOLD_SECONDS } from "../playback/playback-buffering";
 import NoticeStrip from "../status/NoticeStrip";
 import styles from "./Tile.module.css";
+import { ShownSignal } from "../../../visualization/ShownSignal";
 
 /** Loading gaps shorter than this should read as an atomic frame swap. */
 const LOADING_INDICATOR_DELAY_MS = 200;
@@ -131,6 +132,10 @@ export const TileEmptyState: React.FC<{
   if (stableStreams.length === 0) {
     return (
       <div className={styles.loading} data-testid="episode-tile-empty-state">
+        <ShownSignal
+          event="e2e:multimodal:tile-empty"
+          detail={{ message: "No source available" }}
+        />
         <span className={clsx(styles.emptyText, styles.emptyTextError)}>
           No source available
         </span>
@@ -173,6 +178,12 @@ const TileEmptyStateForStreams: React.FC<{
 
   return (
     <div className={styles.loading} data-testid="episode-tile-empty-state">
+      {model.kind === "loading" ? null : (
+        <ShownSignal
+          event="e2e:multimodal:tile-empty"
+          detail={{ message: model.message }}
+        />
+      )}
       {model.kind === "failed" ? (
         <span className={clsx(styles.emptyText, styles.emptyTextError)}>
           {model.message}

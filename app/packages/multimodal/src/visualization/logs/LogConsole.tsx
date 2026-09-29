@@ -14,6 +14,8 @@ import type { EpisodeDiagnosticState } from "./diagnostic-console-state";
 import type { EpisodeLogConsoleRow } from "./log-console-rows";
 import { virtualLogRowRange } from "./log-console-virtualization";
 import styles from "./LogConsole.module.css";
+import { isE2E } from "@fiftyone/utilities";
+import { ShownSignal } from "../ShownSignal";
 
 const LOG_ROW_HEIGHT_PX = 30;
 const DIAGNOSTIC_ROW_HEIGHT_PX = 46;
@@ -212,6 +214,26 @@ export const LogConsole: React.FC<LogConsoleProps> = ({
 
   return (
     <div className={styles.body} data-testid="episode-log-console-tile">
+      {/* the rows' text is built only under automation */}
+      {isE2E() ? (
+        <ShownSignal
+          event="e2e:multimodal:log-rows"
+          detail={{
+            mode: viewMode,
+            texts: (viewMode === "logs"
+              ? rows.map((row) => [row.message])
+              : diagnostics.map(({ row }) => [
+                  row.status ?? row.level,
+                  row.groupLabel ?? row.stream,
+                  row.stream,
+                  row.message,
+                ])
+            )
+              .flat()
+              .join("\n"),
+          }}
+        />
+      ) : null}
       <div className={styles.toolbar}>
         <div className={styles.toolbarPrimary}>
           {availableViewModes.length > 0 ? (
