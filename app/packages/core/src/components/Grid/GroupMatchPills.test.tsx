@@ -39,14 +39,25 @@ const SETTING = {
 
 /** The pills the grid would draw on a tile of `groupId`'s group. */
 const pillsOf = (groupId: string) => {
-  const decorators = renderHook(() => useTileDecorators()).result.current;
-  cleanup();
-  for (const decorator of decorators) {
-    render(<>{decorator.render({ camera: { _id: groupId } })}</>);
-  }
-  return [
-    ...document.querySelectorAll<HTMLElement>('[data-cy="group-match-pill"]'),
+  const reader = renderHook(() => useTileDecorators());
+  const decorators = reader.result.current;
+  reader.unmount();
+  const tile = render(
+    <>
+      {decorators.map((decorator) => (
+        <div key={decorator.id}>
+          {decorator.render({ camera: { _id: groupId } })}
+        </div>
+      ))}
+    </>,
+  );
+  const pills = [
+    ...tile.container.querySelectorAll<HTMLElement>(
+      '[data-cy="group-match-pill"]',
+    ),
   ];
+  tile.unmount();
+  return pills;
 };
 
 describe("useGroupMatchTileDecorator", () => {
@@ -100,6 +111,44 @@ describe("useGroupMatchTileDecorator", () => {
     const { unmount } = renderHook(() => useGroupMatchTileDecorator());
 
     expect(pillsOf("g1").map((pill) => pill.textContent)).toStrictEqual([
+      "match: left",
+    ]);
+    unmount();
+  });
+
+  it("names the matches of whichever search ran last", () => {
+    const { rerender, unmount } = renderHook(() =>
+      useGroupMatchTileDecorator(),
+    );
+    const names = () => pillsOf("g1").map((pill) => pill.textContent);
+
+    env.published = new Map([["g1", ["left"]]]);
+    rerender();
+    expect(names()).toStrictEqual(["match: left"]);
+
+    env.view = searchedFor({ g1: ["right"] });
+    rerender();
+    expect(names()).toStrictEqual(["match: right"]);
+
+    env.published = new Map([["g1", ["left"]]]);
+    rerender();
+    expect(names()).toStrictEqual(["match: left"]);
+    unmount();
+  });
+
+  it("names the view's search again once published matches clear", () => {
+    env.published = new Map([["g1", ["left"]]]);
+    const { rerender, unmount } = renderHook(() =>
+      useGroupMatchTileDecorator(),
+    );
+    expect(pillsOf("g1").map((pill) => pill.textContent)).toStrictEqual([
+      "match: left",
+    ]);
+
+    env.published = null;
+    rerender();
+    expect(pillsOf("g1").map((pill) => pill.textContent)).toStrictEqual([
+      "match: right",
       "match: left",
     ]);
     unmount();

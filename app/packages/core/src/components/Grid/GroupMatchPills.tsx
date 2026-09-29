@@ -9,7 +9,7 @@ import { getAssignedColor } from "@fiftyone/looker/src/elements/common/util";
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 import type { State } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import styles from "./GroupMatchPills.module.css";
 import bubbles from "./GridTagBubbles.module.css";
@@ -26,6 +26,9 @@ const SORT_BY_SIMILARITY = "fiftyone.core.stages.SortBySimilarity";
 const DEFAULT_FONT_SIZE = 14;
 const SPACING_COEFFICIENT = 0.1;
 
+const lastSearchOf = (view: State.Stage[]): State.Stage | undefined =>
+  [...view].reverse().find((stage) => stage._cls === SORT_BY_SIMILARITY);
+
 /**
  * The matched slices the last `SortBySimilarity` stage in `view` recorded in
  * its state when it searched a grouped collection, or null when it did not.
@@ -35,23 +38,21 @@ const SPACING_COEFFICIENT = 0.1;
 export const groupMatchesOf = (
   view: State.Stage[],
 ): fos.GroupMatches | null => {
-  for (const stage of [...view].reverse()) {
-    if (stage._cls !== SORT_BY_SIMILARITY) continue;
-    const state = Object.fromEntries(stage.kwargs)._state as
-      | { group_matches?: Record<string, unknown> }
-      | null
-      | undefined;
-    if (!state?.group_matches) return null;
-    return new Map(
-      Object.entries(state.group_matches).map(([groupId, slices]) => [
-        groupId,
-        Array.isArray(slices)
-          ? slices.filter((slice): slice is string => typeof slice === "string")
-          : [],
-      ]),
-    );
-  }
-  return null;
+  const search = lastSearchOf(view);
+  if (!search) return null;
+  const state = Object.fromEntries(search.kwargs)._state as
+    | { group_matches?: Record<string, unknown> }
+    | null
+    | undefined;
+  if (!state?.group_matches) return null;
+  return new Map(
+    Object.entries(state.group_matches).map(([groupId, slices]) => [
+      groupId,
+      Array.isArray(slices)
+        ? slices.filter((slice): slice is string => typeof slice === "string")
+        : [],
+    ]),
+  );
 };
 
 function GroupMatchPills({
@@ -106,16 +107,38 @@ function GroupMatchPills({
   );
 }
 
-/** Shows each tile's matched slices while a grouped similarity search is in
- * the view, or while a search that ran without one has published them. */
+/**
+ * Shows each tile's matched slices from the latest search: a grouped
+ * similarity search in the view, or a search that ran without one and
+ * published its matches. When the published matches are cleared, the view's
+ * search describes the results again.
+ */
 export function useGroupMatchTileDecorator() {
   const grouped = fos.useIsGroupDataset();
   const groupField = fos.useCurrentDataset()?.groupField;
   const view = fos.useView();
   const published = fos.usePublishedGroupMatches();
+  const searchKey = useMemo(() => {
+    const search = lastSearchOf(view);
+    return search ? JSON.stringify(search) : null;
+  }, [view]);
+
+  const [latest, setLatest] = useState({
+    published,
+    searchKey,
+    source: published ? "published" : "view",
+  });
+  if (latest.published !== published || latest.searchKey !== searchKey) {
+    let source = latest.source;
+    if (searchKey !== latest.searchKey && searchKey !== null) source = "view";
+    if (published !== latest.published && published) source = "published";
+    setLatest({ published, searchKey, source });
+  }
+
+  const fromPublished = latest.source === "published" && published;
   const matches = useMemo(
-    () => (grouped ? (published ?? groupMatchesOf(view)) : null),
-    [grouped, published, view],
+    () => (grouped ? (fromPublished ? published : groupMatchesOf(view)) : null),
+    [grouped, fromPublished, published, view],
   );
 
   useEffect(() => {
