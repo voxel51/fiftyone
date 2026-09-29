@@ -2,7 +2,6 @@ import fs from "fs";
 import path from "path";
 import { Locator, Page, expect } from "src/oss/fixtures";
 import { exactText } from "src/oss/utils";
-import { expectScreenshot } from "src/oss/utils/screenshot";
 import { EventCondition, EventUtils } from "src/shared/event-utils";
 
 /**
@@ -914,9 +913,17 @@ export class EpisodePom {
 }
 
 class EpisodeAsserter {
-  /** One capture of `target` showing only the episode shell's canvases */
+  /**
+   * One capture of `target`'s area showing only the episode shell's canvases.
+   * A page clip, since the style hides `target` itself and an element capture
+   * waits for it to be visible.
+   */
   async hasCanvasScreenshot(target: Locator, name: string): Promise<void> {
-    await expectScreenshot(target, name, { style: CANVAS_ONLY_STYLE });
+    const clip = await target.boundingBox();
+    expect(clip).not.toBeNull();
+    expect(
+      await target.page().screenshot({ clip: clip!, style: CANVAS_ONLY_STYLE }),
+    ).toMatchSnapshot(name, { maxDiffPixelRatio: 0, threshold: 0 });
   }
 }
 

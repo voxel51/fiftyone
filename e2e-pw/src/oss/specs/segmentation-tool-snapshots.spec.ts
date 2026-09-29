@@ -9,8 +9,8 @@
  * baselines: a selected mask draws a dashed outline, which would otherwise
  * pin whichever tool happens to deselect on its own.
  *
- * Determinism comes from the fixed class "cat" (label colors hash the string),
- * moving the mouse off-canvas before snapshotting, finalizing the AI keypoint
+ * Determinism comes from pinning the field color (pool colors are otherwise
+ * handed out in first-request order), moving the mouse off-canvas before snapshotting, finalizing the AI keypoint
  * session so its ripple isn't captured, and pre-seeding the merge test's two
  * masks, with baselines captured on the CI platform (linux/Chromium).
  */
@@ -77,6 +77,7 @@ const test = base.extend<{
       labelSchemas: {
         [FIELD]: schema,
       },
+      colorScheme: { fields: [{ path: FIELD, fieldColor: "#009999" }] },
       ...seed,
     });
 
