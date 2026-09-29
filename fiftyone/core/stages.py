@@ -7233,7 +7233,7 @@ class SelectGroups(ViewStage):
         return self._ordered
 
     def to_mongo(self, sample_collection):
-        id_path = sample_collection.group_field + "._id"
+        id_path = _samples_group_field(sample_collection) + "._id"
         ids = [ObjectId(_id) for _id in self._group_ids]
 
         pipeline = [{"$match": {id_path: {"$in": ids}}}]
@@ -7279,8 +7279,14 @@ class SelectGroups(ViewStage):
         ]
 
     def validate(self, sample_collection):
-        if sample_collection.media_type != fom.GROUP:
+        if _samples_group_field(sample_collection) is None:
             raise ValueError("%s has no groups" % type(sample_collection))
+
+
+def _samples_group_field(sample_collection):
+    # A view of a grouped dataset flattened to its slices reports no group
+    # field, while its samples still carry it
+    return sample_collection._dataset.group_field
 
 
 class SelectLabels(ViewStage):
