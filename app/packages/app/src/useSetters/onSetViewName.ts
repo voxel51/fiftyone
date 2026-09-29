@@ -45,6 +45,9 @@ const onSetViewName: RegisteredSetter =
     sessionRef.current.selectedLabels = [];
     sessionRef.current.sampleSelectionStyle = DEFAULT_SELECTION_STYLE;
     sessionRef.current.fieldVisibilityStage = undefined;
+    // The silent schema-policy exclusion (`$extendedView`) must survive
+    // a saved-view change; only Field Visibility resets.
+    const { schemaExclusion, schemaKey } = router.get().state;
     router.history.push(
       resolveURL({
         currentPathname: router.history.location.pathname,
@@ -54,6 +57,8 @@ const onSetViewName: RegisteredSetter =
       }),
       {
         view: [],
+        schemaExclusion,
+        schemaKey,
       },
     );
   };

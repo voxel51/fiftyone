@@ -8,7 +8,11 @@ import {
   datasetFragment$key,
   graphQLSyncFragmentAtom,
 } from "@fiftyone/relay";
-import { fieldVisibilityStage, gridSortBy } from "@fiftyone/state";
+import {
+  fieldVisibilityStage,
+  gridSortBy,
+  activeSchemaStageExclusions,
+} from "@fiftyone/state";
 import { is3d } from "@fiftyone/utilities";
 import { atomFamily, DefaultValue, selector, selectorFamily } from "recoil";
 import { v4 as uuid } from "uuid";
@@ -510,20 +514,42 @@ export const extendedStagesUnsorted = selector({
   },
 });
 
+/**
+ * The `ExcludeFields` extended stage combining the user's Field
+ * Visibility selection with the schema-policy exclusions the client is
+ * responsible for (`activeSchemaStageExclusions`: the full union for
+ * MANAGE viewers, the Explore lens only for viewers the server already
+ * enforces). Extended stages are applied server-side to grid /
+ * aggregation queries but never render in the view bar — exactly the
+ * silent channel a stage policy needs.
+ */
+const fieldExclusionStage = selector({
+  key: "fieldExclusionStage",
+  get: ({ get }) => {
+    const fvStage = get(fieldVisibilityStage);
+    const taskExcluded = get(activeSchemaStageExclusions);
+    const names = new Set<string>([
+      ...(fvStage?.cls ? (fvStage.kwargs?.field_names ?? []) : []),
+      ...(taskExcluded ?? []),
+    ]);
+    if (!names.size) {
+      return {};
+    }
+    return {
+      [fvStage?.cls ?? "fiftyone.core.stages.ExcludeFields"]: {
+        field_names: [...names],
+        _allow_missing: true,
+      },
+    };
+  },
+});
+
 export const extendedStages = selector({
   key: "extendedStages",
   get: ({ get }) => {
     const sort = get(gridSortBy);
     const similarity = get(atoms.similarityParameters);
-    const fvStage = get(fieldVisibilityStage);
-    const rest: object = fvStage?.cls
-      ? {
-          [fvStage.cls]: {
-            field_names: fvStage.kwargs.field_names,
-            _allow_missing: true,
-          },
-        }
-      : {};
+    const rest: object = { ...get(fieldExclusionStage) };
 
     if (similarity) {
       rest["fiftyone.core.stages.SortBySimilarity"] = similarity
@@ -548,15 +574,7 @@ export const extendedStagesNoSort = selector({
   key: "extendedStagesNoSort",
   get: ({ get }) => {
     const similarity = get(atoms.similarityParameters);
-    const fvStage = get(fieldVisibilityStage);
-    const rest: object = fvStage?.cls
-      ? {
-          [fvStage.cls]: {
-            field_names: fvStage.kwargs.field_names,
-            _allow_missing: true,
-          },
-        }
-      : {};
+    const rest: object = { ...get(fieldExclusionStage) };
 
     if (similarity) {
       rest["fiftyone.core.stages.SortBySimilarity"] = similarity

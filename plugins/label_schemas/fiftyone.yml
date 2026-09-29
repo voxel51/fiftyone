@@ -1,0 +1,21 @@
+name: "@voxel51/label-schemas"
+description: |
+  Named label schemas: the documents the Schema Manager authors and the
+  Explore schema lens, annotation workflow stages and the App server's
+  field-visibility enforcement consume.
+tags:
+  - annotation
+  - schemas
+version: 0.1.0
+fiftyone:
+  version: "*"
+operators:
+  # NOTE: this list is what teams-api enumerates for the builtin-operator
+  # permission allowlist — an operator missing here 403s even though
+  # register() serves it ("User does not have permission to execute").
+  - list_label_schema_docs
+  - get_label_schema_doc
+  - create_label_schema_doc
+  - update_label_schema_doc
+  - delete_label_schema_doc
+  - propagate_label_schema_field

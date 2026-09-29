@@ -17,6 +17,9 @@ import {
   LIST_TYPES,
   NUMERIC_TYPES,
   SYSTEM_READ_ONLY_FIELD_NAME,
+  FRAME_LEVEL_LABEL_TYPES,
+  FRAME_PREFIX_AUTO_ERROR,
+  FRAME_PREFIX_SAMPLE_ERROR,
 } from "./constants";
 
 // =============================================================================
@@ -706,17 +709,42 @@ export const reconcileComponent = (
  * Frame-level fields on video are per-image, so they support the full spatial
  * label set; sample-level video fields are limited to clip-level label types.
  */
-export const getLabelTypeOptions = (
-  mediaType: string | null | undefined,
-  isFrameField = false,
-) => {
+export const getLabelTypeOptions = (mediaType: string | null | undefined) => {
   if (mediaType && is3d(mediaType)) {
     return LABEL_TYPE_OPTIONS_3D;
   }
   if (mediaType === "video") {
-    return isFrameField ? LABEL_TYPE_OPTIONS : LABEL_TYPE_OPTIONS_VIDEO;
+    return LABEL_TYPE_OPTIONS_VIDEO;
   }
   return LABEL_TYPE_OPTIONS;
+};
+
+/** Whether a label type is stored as a frame field on video. */
+export const isFrameLevelLabelType = (labelType: string | null | undefined) =>
+  FRAME_LEVEL_LABEL_TYPES.has(String(labelType ?? "").toLowerCase());
+
+/**
+ * Where a new video LABEL field lives, decided by its type: "frame"
+ * (the form adds the "frames." prefix) or "sample". Undefined for
+ * primitives and non-video media, where the typed name is used as-is.
+ */
+export type NewFieldScope = "frame" | "sample";
+
+/**
+ * Whether a field supports user-added (dynamic) attributes. Video
+ * sample-level label types (Classification / TemporalDetections) do
+ * not — only their built-in attributes are available.
+ */
+export const supportsDynamicAttributes = (
+  mediaType: string | null | undefined,
+  field: string,
+  labelType: string | null | undefined,
+) => {
+  if (mediaType !== "video" || field.startsWith("frames.")) {
+    return true;
+  }
+  const t = String(labelType ?? "").toLowerCase();
+  return t !== "classification" && !t.startsWith("temporaldetection");
 };
 
 // =============================================================================
@@ -730,23 +758,36 @@ export const validateFieldName = (
   fieldName: string,
   existingFields: Record<string, unknown> | null,
   mediaType?: string | null,
+  scope?: NewFieldScope,
 ): string | null => {
   const trimmed = fieldName.trim();
   if (!trimmed) return null;
-  if (existingFields && trimmed in existingFields) {
+
+  // Video label fields: the scope is decided by the label type, so a
+  // typed "frames." is never right — either the form adds it or the
+  // type can't live on frames.
+  if (scope && trimmed.startsWith("frames.")) {
+    return scope === "frame"
+      ? FRAME_PREFIX_AUTO_ERROR
+      : FRAME_PREFIX_SAMPLE_ERROR;
+  }
+  const effective = scope === "frame" ? `frames.${trimmed}` : trimmed;
+  if (existingFields && effective in existingFields) {
     return "Field name already exists";
   }
 
   // Frame fields only exist on video, where a single "frames." prefix targets
-  // the frame schema (e.g. "frames.detections"). The "." stays disallowed
-  // everywhere else, and deeper paths are rejected.
+  // the frame schema (e.g. "frames.detections") — typed by hand for
+  // primitives. The "." stays disallowed everywhere else, and deeper paths
+  // are rejected.
   const isVideo = mediaType === "video";
-  const pattern = isVideo
-    ? /^(frames\.)?[a-zA-Z_][a-zA-Z0-9_]*$/
-    : /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+  const pattern =
+    isVideo && !scope
+      ? /^(frames\.)?[a-zA-Z_][a-zA-Z0-9_]*$/
+      : /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 
   if (!pattern.test(trimmed)) {
-    return isVideo
+    return isVideo && !scope
       ? "Invalid field name (use letters, numbers, underscores; prefix with frames. for a frame field)"
       : "Invalid field name (use letters, numbers, underscores)";
   }

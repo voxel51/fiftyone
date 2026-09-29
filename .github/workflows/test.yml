@@ -104,6 +104,13 @@ jobs:
             --ignore tests/utils/ \
             --ignore tests/intensive/ \
             --ignore tests/no_wrapper
+      - name: Run label-schemas plugin tests
+        # The builtin plugin's suite lives with the plugin (shared with
+        # FiftyOne Enterprise); an in-memory collection stand-in means it
+        # needs no database.
+        run: |
+          python tests/utils/pytest_wrapper.py plugins/label_schemas/tests/ --verbose \
+            --junitxml junit/label-schemas.xml
       - name: Upload
         if: ${{ !startsWith(matrix.os, 'windows') && matrix.python == '3.13' }}
         uses: codecov/codecov-action@v7
