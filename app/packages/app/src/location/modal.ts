@@ -4,17 +4,24 @@
 
 import type { LocationModel, LocationStore } from "@fiftyone/location";
 import type { ModalSelector } from "@fiftyone/state";
-import { groupIdParam, sampleIdParam } from "./params";
+import type { AppRoute } from "./routes";
 
 type Selected = { groupId?: string; id?: string } | undefined;
+type Store = LocationStore<AppRoute>;
+
+// the query params a sample was linked by before it had a path
+const LEGACY_GROUP = "groupId";
+const LEGACY_SAMPLE = "id";
+
+const selectedBy = (route: AppRoute): Selected => {
+  if (route.kind === "group") return { groupId: route.groupId };
+  if (route.kind === "sample") return { id: route.id };
+  return undefined;
+};
 
 /** The sample the URL has open. A group's is named by its group alone. */
-export const readModal = (store: LocationStore<unknown>): Selected => {
-  const groupId = store.read(groupIdParam);
-  if (groupId) return { groupId };
-  const id = store.read(sampleIdParam);
-  return id ? { id } : undefined;
-};
+export const readModal = (store: Store): Selected =>
+  selectedBy(store.get().route);
 
 /** Whether `selector` is the sample `selected` names. */
 export const isSelected = (
@@ -27,19 +34,39 @@ export const isSelected = (
     : selected.id === selector?.id;
 };
 
-const withSelector = <R>(
-  current: LocationModel<R>,
+const datasetOf = (route: AppRoute) =>
+  route.kind === "dataset" || route.kind === "sample" || route.kind === "group"
+    ? route.name
+    : undefined;
+
+const withSelector = (
+  current: LocationModel<AppRoute>,
   selector: ModalSelector | null | undefined,
-): LocationModel<R> => {
-  const params = { ...current.params };
-  delete params[groupIdParam.key];
-  delete params[sampleIdParam.key];
-  if (selector?.groupId) {
-    params[groupIdParam.key] = selector.groupId;
-  } else if (selector?.id) {
-    params[sampleIdParam.key] = selector.id;
-  }
-  return { ...current, params };
+): LocationModel<AppRoute> => {
+  const name = datasetOf(current.route);
+  if (name === undefined) return current;
+  const route: AppRoute = selector?.groupId
+    ? { kind: "group", name, groupId: selector.groupId }
+    : selector?.id
+      ? { kind: "sample", name, id: selector.id }
+      : { kind: "dataset", name };
+  return { ...current, route };
+};
+
+/** Rewrites a `?id=` or `?groupId=` link to the sample's path, in place. */
+export const redirectLegacyModal = (store: Store) => {
+  const current = store.get();
+  const {
+    [LEGACY_GROUP]: groupId,
+    [LEGACY_SAMPLE]: id,
+    ...params
+  } = current.params;
+  if (!groupId && !id) return;
+  const next =
+    current.route.kind === "dataset"
+      ? withSelector(current, { groupId, id })
+      : current;
+  store.replace({ ...next, params });
 };
 
 // The sample the App's own open pushed, while the entry before it is still
@@ -52,7 +79,7 @@ let opened: Selected;
  * replaces when the entry before is not known to be it.
  */
 export const writeModal = (
-  store: LocationStore<unknown>,
+  store: Store,
   selector: ModalSelector | null | undefined,
 ) => {
   const selected = readModal(store);
@@ -62,7 +89,7 @@ export const writeModal = (
     return;
   }
 
-  const next = (current: LocationModel<unknown>) =>
+  const next = (current: LocationModel<AppRoute>) =>
     withSelector(current, selector);
   const onOpened = selected !== undefined && isSelected(opened, selected);
 

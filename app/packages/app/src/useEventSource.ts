@@ -15,6 +15,7 @@ import { useSetAppCount } from "./sharedSession/hooks";
 import useEvents from "./useEvents";
 import { AppReadyState } from "./useEvents/registerEvent";
 import { appReadyState } from "./useEvents/utils";
+import { splitSamplePath } from "./location/routes";
 import { getDatasetName, getParam } from "./utils";
 
 const useEventSource = (
@@ -37,6 +38,7 @@ const useEventSource = (
   const setAppCount = useSetAppCount();
 
   useEffect(() => {
+    const openSample = splitSamplePath(window.location.pathname).sample;
     getEventSource(
       "/events",
       {
@@ -64,9 +66,9 @@ const useEventSource = (
       {
         initializer: {
           dataset: getDatasetName(),
-          group_id: getParam("groupId"),
+          group_id: openSample?.kind === "group" ? openSample.id : null,
           group_slice: getParam("slice"),
-          sample_id: getParam("id"),
+          sample_id: openSample?.kind === "sample" ? openSample.id : null,
           view: getParam("view"),
           workspace: getParam("workspace"),
         },

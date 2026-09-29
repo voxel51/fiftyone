@@ -12,6 +12,7 @@ import {
   LocationProvider,
   createLocationStore,
   locationBridge,
+  type LocationStore,
 } from "@fiftyone/location";
 import { BeforeScreenshotContext, screenshotCallbacks } from "@fiftyone/state";
 import { SnackbarProvider } from "notistack";
@@ -23,6 +24,8 @@ import Network from "./Network";
 import "./index.css";
 import "@voxel51/voodo/theme.css";
 import { historyAdapter } from "./location/historyAdapter";
+import { redirectLegacyModal } from "./location/modal";
+import type { AppRoute } from "./location/routes";
 import { useProductRoutes } from "./product";
 import { useRouter } from "./routing";
 
@@ -54,6 +57,7 @@ const App: React.FC = () => {
   const routes = useProductRoutes();
   const location = useMemo(() => {
     const store = createLocationStore(historyAdapter(context.history), routes);
+    redirectLegacyModal(store as LocationStore<AppRoute>);
     locationBridge.attach(store);
     return store;
   }, [context, routes]);

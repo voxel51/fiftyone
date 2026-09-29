@@ -18,16 +18,13 @@ vi.mock("@fiftyone/state", () => ({
   useSetModalState: () => setModalState,
 }));
 
+const { appRoutes } = await import("./routes");
 const { default: useModalFromLocation } =
   await import("./useModalFromLocation");
 
 const mount = (href: string) => {
   const harness = memoryHarness(href);
-  const store = createLocationStore(harness.adapter, {
-    parse: (path: string) => path,
-    format: (path: string) => path,
-    scopes: () => ({ dataset: "d" }),
-  });
+  const store = createLocationStore(harness.adapter, appRoutes);
   renderHook(() => useModalFromLocation(), {
     wrapper: ({ children }) => (
       <LocationProvider store={store}>{children}</LocationProvider>
@@ -45,14 +42,14 @@ beforeEach(() => {
 
 describe("useModalFromLocation", () => {
   it("leaves a cold load to the session the server replays", () => {
-    mount("/datasets/d?id=a");
+    mount("/datasets/d/samples/a");
     expect(open).toHaveBeenCalledTimes(0);
     expect(clear).toHaveBeenCalledTimes(0);
   });
 
   it("closes the sample when Back leaves it", () => {
     const harness = mount("/datasets/d");
-    act(() => harness.adapter.push("/datasets/d?id=a"));
+    act(() => harness.adapter.push("/datasets/d/samples/a"));
     session.modalSelector = { id: "a" };
     act(() => harness.back());
     expect(clear).toHaveBeenCalledTimes(1);
@@ -60,7 +57,7 @@ describe("useModalFromLocation", () => {
 
   it("opens the sample Forward lands on", async () => {
     const harness = mount("/datasets/d");
-    act(() => harness.adapter.push("/datasets/d?groupId=g"));
+    act(() => harness.adapter.push("/datasets/d/groups/g"));
     await waitFor(() => expect(open).toHaveBeenCalledWith({ groupId: "g" }));
     expect(setModalState).toHaveBeenCalledTimes(1);
   });
@@ -68,7 +65,7 @@ describe("useModalFromLocation", () => {
   it("leaves the session alone when the App made the move", () => {
     const harness = mount("/datasets/d");
     session.modalSelector = { groupId: "g", id: "a" };
-    act(() => harness.adapter.push("/datasets/d?groupId=g"));
+    act(() => harness.adapter.push("/datasets/d/groups/g"));
     expect(open).toHaveBeenCalledTimes(0);
     expect(clear).toHaveBeenCalledTimes(0);
   });

@@ -107,3 +107,52 @@ describe("resolves current", () => {
     ).toBe("/datasets/my-dataset?view=view");
   });
 });
+
+describe("resolves the open sample", () => {
+  it("keeps it for updates within the same dataset", () => {
+    expect(
+      resolveURL({
+        currentPathname: "/datasets/d/samples/a",
+        currentSearch: "?view=v",
+        nextDataset: "d",
+        nextView: "w",
+      }),
+    ).toBe("/datasets/d/samples/a?view=w");
+    expect(
+      resolveURL({
+        currentPathname: "/datasets/d/groups/g",
+        currentSearch: "",
+        extra: { workspace: "w" },
+      }),
+    ).toBe("/datasets/d/groups/g?workspace=w");
+  });
+
+  it("drops it when changing datasets", () => {
+    expect(
+      resolveURL({
+        currentPathname: "/datasets/d/samples/a",
+        currentSearch: "",
+        nextDataset: "other",
+      }),
+    ).toBe("/datasets/other");
+  });
+
+  it("writes a named sample as a path, a group's by its group", () => {
+    expect(
+      resolveURL({
+        currentPathname: "/datasets/d",
+        currentSearch: "",
+        nextDataset: "d",
+        extra: { groupId: "g", id: "a" },
+      }),
+    ).toBe("/datasets/d/groups/g");
+    expect(
+      resolveURL({
+        currentPathname: "/datasets/d/groups/g",
+        currentSearch: "",
+        nextDataset: "d",
+        extra: { groupId: null, id: null },
+      }),
+    ).toBe("/datasets/d");
+  });
+});

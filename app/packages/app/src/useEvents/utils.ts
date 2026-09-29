@@ -20,6 +20,7 @@ import { env, toCamelCase } from "@fiftyone/utilities";
 import { atom } from "@fiftyone/reverb";
 import type { DatasetPageQuery } from "../pages/datasets/__generated__/DatasetPageQuery.graphql";
 import type { LocationState } from "../routing";
+import { splitSamplePath } from "../location/routes";
 import { getParam } from "../utils";
 import { AppReadyState } from "./registerEvent";
 
@@ -147,8 +148,9 @@ const resolveModalSelector = (state: {
   sample_id?: string;
 }) => {
   if (env().VITE_NO_STATE) {
-    const groupId = getParam("groupId") || undefined;
-    const id = getParam("id") || undefined;
+    const { sample } = splitSamplePath(window.location.pathname);
+    const groupId = sample?.kind === "group" ? sample.id : undefined;
+    const id = sample?.kind === "sample" ? sample.id : undefined;
 
     return groupId || id ? { groupId, id } : undefined;
   }

@@ -15,9 +15,41 @@ export type AppRoute =
   | { kind: "group"; name: string; groupId: string }
   | { kind: "unknown"; path: string };
 
-const DATASETS = "datasets";
-
 const encode = (value: string) => encodeURIComponent(value);
+
+const DATASETS = "datasets";
+const SAMPLES = "samples";
+const GROUPS = "groups";
+
+export type SamplePath = { kind: "sample" | "group"; id: string };
+
+const SAMPLE_PATH = new RegExp(
+  `^(.*/${DATASETS}/[^/]+)/(${SAMPLES}|${GROUPS})/([^/]+)/?$`,
+);
+
+/**
+ * A raw pathname, proxy prefix and all, as its dataset page plus the sample
+ * open on it. The router keys pages on `page`, so opening a sample is not a
+ * page change.
+ */
+export const splitSamplePath = (
+  pathname: string,
+): { page: string; sample?: SamplePath } => {
+  const match = SAMPLE_PATH.exec(pathname);
+  if (!match) return { page: pathname };
+  return {
+    page: match[1],
+    sample: {
+      kind: match[2] === GROUPS ? "group" : "sample",
+      id: decodeURIComponent(match[3]),
+    },
+  };
+};
+
+export const samplePathSuffix = (sample?: SamplePath) =>
+  sample
+    ? `/${sample.kind === "group" ? GROUPS : SAMPLES}/${encode(sample.id)}`
+    : "";
 
 export const appRoutes: RouteCodec<AppRoute> = {
   parse(pathname) {
@@ -29,8 +61,8 @@ export const appRoutes: RouteCodec<AppRoute> = {
     if (!root) return { kind: "index" };
     if (root !== DATASETS || !name) return { kind: "unknown", path: pathname };
     if (!kind) return { kind: "dataset", name };
-    if (kind === "sample" && id) return { kind: "sample", name, id };
-    if (kind === "group" && id) return { kind: "group", name, groupId: id };
+    if (kind === SAMPLES && id) return { kind: "sample", name, id };
+    if (kind === GROUPS && id) return { kind: "group", name, groupId: id };
     return { kind: "unknown", path: pathname };
   },
 
@@ -43,11 +75,15 @@ export const appRoutes: RouteCodec<AppRoute> = {
       case "dataset":
         return `/${DATASETS}/${encode(route.name)}`;
       case "sample":
-        return `/${DATASETS}/${encode(route.name)}/sample/${encode(route.id)}`;
+        return `/${DATASETS}/${encode(route.name)}${samplePathSuffix({
+          kind: "sample",
+          id: route.id,
+        })}`;
       case "group":
-        return `/${DATASETS}/${encode(route.name)}/group/${encode(
-          route.groupId,
-        )}`;
+        return `/${DATASETS}/${encode(route.name)}${samplePathSuffix({
+          kind: "group",
+          id: route.groupId,
+        })}`;
     }
   },
 

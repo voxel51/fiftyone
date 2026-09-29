@@ -6,6 +6,7 @@ import { locationBridge } from "@fiftyone/location";
 import { useSessionSetter, useSetModalState } from "@fiftyone/state";
 import { useCallback } from "react";
 import { writeModal } from "../location/modal";
+import type { AppRoute } from "../location/routes";
 import type { EventHandlerHook } from "./registerEvent";
 
 const useSetSample: EventHandlerHook = () => {
@@ -23,7 +24,7 @@ const useSetSample: EventHandlerHook = () => {
               }
             : undefined;
         setter("modalSelector", selector);
-        writeModal(locationBridge.current(), selector);
+        writeModal(locationBridge.current<AppRoute>(), selector);
       });
     },
     [setModalState, setter],

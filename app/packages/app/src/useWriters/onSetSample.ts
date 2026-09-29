@@ -7,12 +7,13 @@ import { setSample, type setSampleMutation } from "@fiftyone/relay";
 import { env } from "@fiftyone/utilities";
 import { commitMutation } from "relay-runtime";
 import { writeModal } from "../location/modal";
+import type { AppRoute } from "../location/routes";
 import type { RegisteredWriter } from "./registerWriter";
 
 const onSetSample: RegisteredWriter<"modalSelector"> =
   ({ environment, subscription }) =>
   (selector) => {
-    writeModal(locationBridge.current(), selector);
+    writeModal(locationBridge.current<AppRoute>(), selector);
 
     if (env().VITE_NO_STATE) return;
 

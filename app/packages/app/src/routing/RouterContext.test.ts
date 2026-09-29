@@ -73,6 +73,30 @@ describe("param moves", () => {
     ).toBe(false);
   });
 
+  it("keeps the page when a sample opens or closes on its path", () => {
+    expect(
+      isParamMove(
+        at("/datasets/a/samples/s", marked),
+        at("/datasets/a", {}),
+        Action.Push,
+      ),
+    ).toBe(true);
+    expect(
+      isParamMove(
+        at("/datasets/a", { view: [] }),
+        at("/datasets/a/groups/g", marked),
+        Action.Pop,
+      ),
+    ).toBe(true);
+    expect(
+      isParamMove(
+        at("/datasets/b/samples/s", marked),
+        at("/datasets/a", {}),
+        Action.Push,
+      ),
+    ).toBe(false);
+  });
+
   it("keeps the entry on Back from a marked entry to its grid", () => {
     expect(
       isParamMove(

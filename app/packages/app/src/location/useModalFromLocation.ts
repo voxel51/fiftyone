@@ -2,7 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { useLocationParam } from "@fiftyone/location";
+import { useLocation } from "@fiftyone/location";
 import {
   getSessionRef,
   useClearModal,
@@ -11,7 +11,7 @@ import {
 } from "@fiftyone/state";
 import { useEffect, useRef } from "react";
 import { isSelected } from "./modal";
-import { groupIdParam, sampleIdParam } from "./params";
+import type { AppRoute } from "./routes";
 
 /**
  * The URL owns the open sample, so a move the App did not make (Back,
@@ -19,8 +19,9 @@ import { groupIdParam, sampleIdParam } from "./params";
  * replays.
  */
 export default function useModalFromLocation() {
-  const [groupId] = useLocationParam(groupIdParam);
-  const [id] = useLocationParam(sampleIdParam);
+  const { route } = useLocation<AppRoute>();
+  const groupId = route.kind === "group" ? route.groupId : undefined;
+  const id = route.kind === "sample" ? route.id : undefined;
   const clear = useClearModal();
   const open = useSetExpandedSample();
   const setModalState = useSetModalState();

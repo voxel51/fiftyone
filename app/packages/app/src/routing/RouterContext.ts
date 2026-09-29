@@ -21,6 +21,7 @@ import type { Queries } from "../makeRoutes";
 import type RouteDefinition from "./RouteDefinition";
 import type { LocationState, MatchPathResult } from "./matchPath";
 import { matchPath } from "./matchPath";
+import { splitSamplePath } from "../location/routes";
 
 export interface RouteData<T extends OperationType> {
   path: string;
@@ -230,6 +231,9 @@ export const LOCATION_WRITE = "fiftyoneLocationWrite";
 
 type Seen = Pick<Location, "pathname" | "state">;
 
+// the dataset page a path shows, whatever sample is open on it
+const pageOf = (pathname: string) => splitSamplePath(pathname).page;
+
 const isMarked = (state: unknown) =>
   Boolean((state as Record<string, unknown> | null)?.[LOCATION_WRITE]);
 
@@ -242,7 +246,7 @@ const viewOf = (state: unknown) =>
  * and both show the same view, as Back from an open sample to its grid does.
  */
 export const isParamMove = (to: Seen, from: Seen, action: Action) => {
-  if (to.pathname !== from.pathname) return false;
+  if (pageOf(to.pathname) !== pageOf(from.pathname)) return false;
   if (action !== "POP") return isMarked(to.state);
   return (
     (isMarked(to.state) || isMarked(from.state)) &&
@@ -262,7 +266,7 @@ const makeGetEntryResource = <T extends OperationType>() => {
   let currentResource: Resource<Entry<T>>;
 
   const isReusable = (location: FiftyOneLocation) => {
-    if (location.pathname !== currentLocation?.pathname) {
+    if (pageOf(location.pathname) !== pageOf(currentLocation?.pathname ?? "")) {
       return false;
     }
 
@@ -304,7 +308,7 @@ const makeGetEntryResource = <T extends OperationType>() => {
     for (let index = 0; index < routes.length; index++) {
       route = routes[index];
       const match = matchPath<T>(
-        location.pathname,
+        pageOf(location.pathname),
         route,
         location.search,
         location.state,
