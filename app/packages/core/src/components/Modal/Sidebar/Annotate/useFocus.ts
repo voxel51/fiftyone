@@ -2,7 +2,7 @@ import { useLighter } from "@fiftyone/lighter";
 import { isGeneratedView } from "@fiftyone/state";
 import { getDefaultStore } from "jotai";
 import { useCallback, useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { useAnnotationContext } from "./Edit/useAnnotationContext";
 import useExit from "./Edit/useExit";
 import { labelMap } from "./useLabels";
@@ -30,7 +30,7 @@ export interface FocusController {
 export default function useFocus(): FocusController {
   const { scene } = useLighter();
   const onExit = useExit();
-  const isGenerated = useRecoilValue(isGeneratedView);
+  const isGenerated = useReverbValue(isGeneratedView);
   const { readEditing, select } = useAnnotationContext();
 
   const selectOverlay = useCallback(

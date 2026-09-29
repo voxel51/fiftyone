@@ -6,7 +6,7 @@ import {
   DialogContentText,
   DialogTitle,
 } from "@mui/material";
-import { useRecoilState } from "recoil";
+import { useReverbState } from "@fiftyone/reverb";
 import { selectedModelEvaluation } from "./utils";
 
 const ConfirmationDialog = ({
@@ -16,7 +16,7 @@ const ConfirmationDialog = ({
   evaluations,
 }) => {
   const dialogTitle = "Delete model evaluation?";
-  const [selectedEvaluation, setSelectedEvaluation] = useRecoilState(
+  const [selectedEvaluation, setSelectedEvaluation] = useReverbState(
     selectedModelEvaluation,
   );
 

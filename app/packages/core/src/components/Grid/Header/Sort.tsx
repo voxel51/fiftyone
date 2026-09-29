@@ -6,7 +6,7 @@ import {
   similarityParameters,
 } from "@fiftyone/state";
 import { ArrowDownward, ArrowUpward } from "@mui/icons-material";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useReverbState, useReverbValue } from "@fiftyone/reverb";
 import { ActionOption } from "../../Actions/Common";
 import { SORT_BY_INDEXED_FIELDS } from "../../../utils/links";
 import { RightDiv, SliderContainer } from "./Containers";
@@ -16,10 +16,10 @@ const Field = ({ value }: { className?: string; value: string }) => {
 };
 
 export default function Sort() {
-  const fields = useRecoilValue(gridSortFields);
-  const [value, select] = useRecoilState(gridSortBy);
-  const similarity = useRecoilValue(similarityParameters);
-  const isQPEnabled = useRecoilValue(queryPerformance);
+  const fields = useReverbValue(gridSortFields);
+  const [value, select] = useReverbState(gridSortBy);
+  const similarity = useReverbValue(similarityParameters);
+  const isQPEnabled = useReverbValue(queryPerformance);
   if (!fields.length || similarity) {
     return null;
   }

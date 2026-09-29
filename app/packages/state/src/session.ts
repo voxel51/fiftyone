@@ -5,15 +5,22 @@ import {
 } from "@fiftyone/relay";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
 import { useCallback } from "react";
-import { atom, AtomOptions, DefaultValue, RecoilState, selector } from "recoil";
-import { State } from "./recoil";
+import { useStore } from "jotai";
+import {
+  atom,
+  AtomOptions,
+  DefaultValue,
+  ReverbState,
+  selector,
+} from "@fiftyone/reverb";
+import { State } from "./atoms";
 import {
   DEFAULT_LABEL_SELECTION_STYLE,
   DEFAULT_SELECTION_STYLE,
   type LabelSelectionStyle,
   type SelectionStyle,
   type SelectionType,
-} from "./recoil/types";
+} from "./atoms/types";
 
 export const GRID_SPACES_DEFAULT = {
   id: "",
@@ -138,13 +145,22 @@ type SessionAtomOptions<K extends keyof Session> = {
   effects?: AtomOptions<Session[K]>["effects"];
 };
 
+type SessionWriter = <T>(state: ReverbState<T>, value: T) => void;
+
 let sessionRef: Session;
 let setterRef: Setter;
 
-type Setters = Partial<{
-  [K in SetterKeys]: (value: Session[K]) => void;
-}>;
-const setters: Setters = {};
+/**
+ * Registered when each atom is defined. An effect cannot populate this: it
+ * runs on subscription, so a write before anything mounts would reach the
+ * session object and never the store.
+ */
+const registered: Partial<{
+  [K in keyof Session]: {
+    state: ReverbState<Session[K]>;
+    fallback: Session[K];
+  };
+}> = {};
 
 export const useSession = (setter: Setter, ref: Session) => {
   setterRef = setter;
@@ -160,23 +176,72 @@ export const getSessionRef = () => {
 };
 
 export const useSessionSetter = () => {
-  return useCallback(<K extends SetterKeys>(key: K, value: Session[K]) => {
-    const setter = setters[key];
-    if (setter) {
-      setter(value);
-    } else {
-      sessionRef[key] = value;
-    }
-  }, []);
+  const store = useStore();
+
+  return useCallback(
+    <K extends SetterKeys>(key: K, value: Session[K]) => {
+      const entry = registered[key];
+      const resolved = value === undefined && entry ? entry.fallback : value;
+
+      if (!isTest) {
+        sessionRef[key] = resolved;
+      }
+
+      if (entry) {
+        store.set(entry.state, resolved);
+      }
+    },
+    [store],
+  );
 };
 
 const isTest = typeof process !== "undefined" && process.env.MODE === "test";
+
+/**
+ * Syncs every session atom from the session object on each published page.
+ * Registered here rather than per atom: an atom's effect only runs once
+ * something subscribes, and on a reload the server's state can arrive first,
+ * leaving the atom holding whatever its first read resolved.
+ */
+/**
+ * Writes every session atom from the session object. A first read can only
+ * seed from whatever the session held at that moment, and on a reload the
+ * page is loaded rather than published — so nothing else would run.
+ */
+export const syncSessionState = (write: SessionWriter) => {
+  if (isTest) {
+    return;
+  }
+
+  for (const key of Object.keys(registered) as (keyof Session)[]) {
+    const entry = registered[key];
+
+    if (!entry) {
+      continue;
+    }
+
+    const value = sessionRef?.[key];
+
+    write(entry.state, value === undefined ? entry.fallback : value);
+  }
+};
+
+subscribe((_, { set }) => syncSessionState(set));
 
 export function sessionAtom<K extends keyof Session>(
   options: SessionAtomOptions<K>,
 ) {
   const value = atom<Session[K]>({
-    ...options,
+    key: options.key,
+    default: options.default as Session[K],
+    /**
+     * The effect below seeds this from the session, but it cannot run before
+     * the first read returns, so a read takes the session value itself.
+     */
+    resolve: () =>
+      isTest || sessionRef?.[options.key] === undefined
+        ? options.default
+        : sessionRef[options.key],
     effects: [
       ...(options.effects || []),
       ({ setSelf, trigger }) => {
@@ -197,27 +262,15 @@ export function sessionAtom<K extends keyof Session>(
           );
         }
 
-        // @ts-ignore
-        setters[options.key] = (value: Session[K]) => {
-          const resolved = value === undefined ? options.default : value;
-          setSelf(resolved);
-          if (!isTest) {
-            sessionRef[options.key] = resolved;
-          }
-        };
-
-        return subscribe((_, { set }) => {
-          assertValue();
-          set(
-            value,
-            sessionRef[options.key] === undefined
-              ? options.default
-              : sessionRef[options.key],
-          );
-        });
+        return undefined;
       },
     ],
   });
+
+  (registered as Record<string, unknown>)[options.key] = {
+    state: value,
+    fallback: options.default,
+  };
 
   const transitionKeys = new Set<string>([
     "colorScheme",
@@ -236,10 +289,11 @@ export function sessionAtom<K extends keyof Session>(
   return selector<Session[K]>({
     key: `__${options.key}_selector`,
     get: ({ get }) => get(value),
-    set: ({ set }, newValue) => {
-      if (newValue instanceof DefaultValue) {
-        newValue = options.default;
-      }
+    set: ({ set }, incoming) => {
+      // a reset arrives as the sentinel and means this key's default
+      const newValue = (
+        incoming instanceof DefaultValue ? options.default : incoming
+      ) as Session[K];
 
       if (
         options.key in READONLY_SESSION_DEFAULTS ||
@@ -250,7 +304,7 @@ export function sessionAtom<K extends keyof Session>(
 
       if (!isTest) {
         if (setterRef) {
-          setterRef(options.key, newValue);
+          setterRef(options.key as SetterKeys, newValue as Session[SetterKeys]);
         }
         if (sessionRef) {
           sessionRef[options.key] = newValue;
@@ -259,5 +313,5 @@ export function sessionAtom<K extends keyof Session>(
 
       set(value, newValue);
     },
-  }) as RecoilState<NonNullable<Session[K]>>;
+  }) as ReverbState<NonNullable<Session[K]>>;
 }

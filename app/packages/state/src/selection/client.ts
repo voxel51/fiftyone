@@ -1,5 +1,5 @@
 import { getFetchFunctionExtended } from "@fiftyone/utilities";
-import type { State } from "../recoil/types";
+import type { State } from "../atoms/types";
 import type {
   EpisodeSelection,
   SelectionBoundary,

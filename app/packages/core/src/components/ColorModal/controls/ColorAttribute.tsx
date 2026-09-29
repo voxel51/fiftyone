@@ -12,7 +12,7 @@ import KeyboardArrowDownOutlinedIcon from "@mui/icons-material/KeyboardArrowDown
 import KeyboardArrowUpOutlinedIcon from "@mui/icons-material/KeyboardArrowUpOutlined";
 import { cloneDeep } from "lodash";
 import React from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
 import Item from "../../Filters/FilterOption/FilterItem";
 import { activeColorPath } from "../state";
@@ -38,11 +38,11 @@ type Prop = {
 const ColorAttribute: React.FC<Prop> = ({ style }) => {
   const theme = useTheme();
   const VALID_COLOR_ATTRIBUTE_TYPES = [BOOLEAN_FIELD, INT_FIELD, STRING_FIELD];
-  const path = useRecoilValue(activeColorPath);
+  const path = useReverbValue(activeColorPath);
 
-  const expandedPath = useRecoilValue(fos.expandPath(path));
+  const expandedPath = useReverbValue(fos.expandPath(path));
 
-  const subfields = useRecoilValue(
+  const subfields = useReverbValue(
     fos.fields({
       path: expandedPath,
       ftype: [...VALID_COLOR_ATTRIBUTE_TYPES, LIST_FIELD],
@@ -55,7 +55,7 @@ const ColorAttribute: React.FC<Prop> = ({ style }) => {
   useOutsideClick(ref, () => open && setOpen(false));
 
   const setColorScheme = fos.useSetSessionColorScheme();
-  const currentColorScheme = useRecoilValue(fos.colorScheme);
+  const currentColorScheme = useReverbValue(fos.colorScheme);
 
   const index = currentColorScheme.fields.findIndex((s) => s.path == path);
 

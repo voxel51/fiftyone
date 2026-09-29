@@ -6,7 +6,7 @@ import KeyboardArrowDownOutlinedIcon from "@mui/icons-material/KeyboardArrowDown
 import KeyboardArrowUpOutlinedIcon from "@mui/icons-material/KeyboardArrowUpOutlined";
 import React from "react";
 import useMeasure from "react-use-measure";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
 import Item from "../../Filters/categoricalFilter/filterOption/FilterItem";
 
@@ -39,8 +39,8 @@ const OpacityAttribute: React.FC<Prop> = ({ fields }) => {
   const [open, setOpen] = React.useState(false);
   useOutsideClick(ref, () => open && setOpen(false));
   const [mRef, bounds] = useMeasure();
-  const field = useRecoilValue(fos.activeColorField).field as Field;
-  const setting = useRecoilValue(fos.colorScheme).fields.find(
+  const field = useReverbValue(fos.activeColorField).field as Field;
+  const setting = useReverbValue(fos.colorScheme).fields.find(
     (f) => f.path === field.path,
   );
 

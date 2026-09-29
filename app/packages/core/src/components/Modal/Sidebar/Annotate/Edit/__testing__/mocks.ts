@@ -104,17 +104,17 @@ export const createMockScene = (overrides?: Partial<MockScene>): MockScene => ({
   ...overrides,
 });
 
-// ---- recoil partial-mock factory --------------------------------------------
+// ---- store partial-mock factory --------------------------------------------
 
 /**
- * Partial mock for `vi.mock("recoil", ...)`. Preserves the real exports
+ * Partial mock for `vi.mock("@fiftyone/reverb", ...)`. Preserves the real exports
  * (notably `atom`, which `@fiftyone/analytics` imports at module-load time)
- * while stubbing `useRecoilValue` to return `false`. Without this, a bare
+ * while stubbing `useReverbValue` to return `false`. Without this, a bare
  * mock that strips `atom` crashes anything analytics-adjacent.
  */
-export const recoilPartialMock = async (
-  importOriginal: () => Promise<typeof import("recoil")>,
+export const reverbPartialMock = async (
+  importOriginal: () => Promise<typeof import("@fiftyone/reverb")>,
 ) => ({
   ...(await importOriginal()),
-  useRecoilValue: () => false,
+  useReverbValue: () => false,
 });

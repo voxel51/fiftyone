@@ -40,8 +40,8 @@ vi.mock("@fiftyone/state", () => ({
   useStableInteraction3dSample: () => undefined,
 }));
 
-vi.mock("recoil", () => ({
-  useRecoilValue: (key: string) =>
+vi.mock("@fiftyone/reverb", () => ({
+  useReverbValue: (key: string) =>
     key === "isGeneratedView" ? false : undefined,
 }));
 

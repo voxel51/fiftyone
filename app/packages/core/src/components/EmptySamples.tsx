@@ -3,7 +3,7 @@ import * as fos from "@fiftyone/state";
 import ClearAll from "@mui/icons-material/ClearAll";
 import { Typography } from "@mui/material";
 import { useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
 import ErrorImg from "../images/error.svg";
 import { ExternalLink } from "../utils/generic";
@@ -39,8 +39,8 @@ const ActionContainer = styled(TextContainer)`
 `;
 
 export default function EmptySamples() {
-  const loadedView = useRecoilValue(fos.view);
-  const totalSamples = useRecoilValue(
+  const loadedView = useReverbValue(fos.view);
+  const totalSamples = useReverbValue(
     fos.count({ path: "", extended: true, modal: false }),
   );
 

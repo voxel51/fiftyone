@@ -26,9 +26,9 @@ vi.mock("@fiftyone/state", () => ({
   useRenderConfig3dState: vi.fn(),
 }));
 
-vi.mock("recoil", () => ({
-  useRecoilValue: vi.fn(() => null),
-  useSetRecoilState: vi.fn(() => vi.fn()),
+vi.mock("@fiftyone/reverb", () => ({
+  useReverbValue: vi.fn(() => null),
+  useSetReverbState: vi.fn(() => vi.fn()),
 }));
 
 vi.mock("jotai", () => ({

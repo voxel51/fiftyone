@@ -12,8 +12,11 @@ import { useMemo, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import type { VariablesOf } from "react-relay";
 import { fetchQuery, useRelayEnvironment } from "react-relay";
-import type { RecoilValueReadOnly } from "recoil";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import {
+  type ReverbValueReadOnly,
+  useReverbCallback,
+  useReverbValue,
+} from "@fiftyone/reverb";
 import type { Subscription } from "relay-runtime";
 import type { Records } from "./useRecords";
 import useTimeout from "./useTimeout";
@@ -61,18 +64,18 @@ const useSpotlightPager = ({
   zoomSelector,
 }: {
   clearRecords: string;
-  pageSelector: RecoilValueReadOnly<
+  pageSelector: ReverbValueReadOnly<
     (page: number, pageSize: number) => VariablesOf<foq.paginateSamplesQuery>
   >;
   records: Records;
-  zoomSelector: RecoilValueReadOnly<boolean>;
+  zoomSelector: ReverbValueReadOnly<boolean>;
 }) => {
   const environment = useRelayEnvironment();
-  const pager = useRecoilValue(pageSelector);
+  const pager = useReverbValue(pageSelector);
   const [boundary] = useGridSelectionBoundary();
   const { enabled: selectionEnabled } = useGridSelectionDataset();
   const reportSelectionError = useGridSelectionPagingError();
-  const zoom = useRecoilValue(zoomSelector);
+  const zoom = useReverbValue(zoomSelector);
   const handleError = useErrorHandler();
   const store: SampleStore = useMemo(() => new WeakMap(), []);
   const handleTimeout = useTimeout();
@@ -85,7 +88,7 @@ const useSpotlightPager = ({
     return new Set<number>();
   }, [clearRecords]);
 
-  const page = useRecoilCallback(
+  const page = useReverbCallback(
     ({ snapshot }) => {
       return async (pageNumber: number) => {
         const variables = pager(pageNumber, PAGE_SIZE);

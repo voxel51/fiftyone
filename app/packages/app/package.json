@@ -22,6 +22,7 @@
         "@fiftyone/feature-flags": "*",
         "@fiftyone/multimodal": "*",
         "@fiftyone/relay": "*",
+        "@fiftyone/reverb": "workspace:*",
         "@fiftyone/state": "*",
         "@fiftyone/utilities": "*",
         "@fiftyone/video-annotation": "workspace:*",
@@ -44,8 +45,6 @@
         "react-relay": "catalog:",
         "react-use-measure": "catalog:",
         "react-uuid": "catalog:",
-        "recoil": "catalog:",
-        "recoil-relay": "catalog:",
         "relay-runtime": "catalog:",
         "styled-components": "catalog:",
         "uuid": "catalog:"

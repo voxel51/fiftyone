@@ -6,7 +6,7 @@ import {
   queryPerformanceMaxSearch,
 } from "@fiftyone/state";
 import { Launch } from "@mui/icons-material";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { QUERY_PERFORMANCE_RESULTS } from "../../utils/links";
 
 const IncompleteResults = () => {
@@ -26,10 +26,10 @@ const IncompleteResults = () => {
 };
 
 export default function useIncompleteResults(path: string) {
-  const count = useRecoilValue(datasetSampleCount);
-  const max = useRecoilValue(queryPerformanceMaxSearch);
-  const qp = useRecoilValue(queryPerformance);
-  const indexed = useRecoilValue(pathHasIndexes({ path }));
+  const count = useReverbValue(datasetSampleCount);
+  const max = useReverbValue(queryPerformanceMaxSearch);
+  const qp = useReverbValue(queryPerformance);
+  const indexed = useReverbValue(pathHasIndexes({ path }));
 
   if (indexed || !qp || count <= max) {
     return undefined;

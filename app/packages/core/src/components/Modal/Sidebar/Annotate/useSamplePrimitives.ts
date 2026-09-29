@@ -1,5 +1,6 @@
 import { usePrimitiveFieldPaths } from "@fiftyone/state";
 import { useAtomValue } from "jotai";
+
 import { activeLabelSchemas } from "./state";
 
 const useSamplePrimitives = (): string[] => {

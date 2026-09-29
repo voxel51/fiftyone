@@ -1,7 +1,7 @@
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
 import { AnnotationSaveIndicator } from "@fiftyone/annotation";
 import { EntryKind, isGeneratedView } from "@fiftyone/state";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
 import Sidebar from "../../../Sidebar";
 import { useAnnotationContext } from "./Edit/useAnnotationContext";
@@ -23,7 +23,7 @@ const EmptyLabelsContainer = styled.div`
 export default function AnnotateSidebar() {
   usePrimitivesCount();
   const isEditingValue = useAnnotationContext().isEditing;
-  const isGenerated = useRecoilValue(isGeneratedView);
+  const isGenerated = useReverbValue(isGeneratedView);
 
   // Don't show label list in edit mode or in generated views (patches/clips/frames)
   // In generated views, only the edit panel should be visible

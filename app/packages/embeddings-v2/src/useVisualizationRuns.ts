@@ -1,6 +1,6 @@
 import * as fos from "@fiftyone/state";
 import { useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import type { VisualizationRun } from "./protocol";
 
 /** The brain config class every visualization run derives from */
@@ -22,7 +22,7 @@ const VISUALIZATION_CLS = "fiftyone.brain.visualization.";
 export function useVisualizationRuns(): {
   runs: VisualizationRun[] | null;
 } {
-  const dataset = useRecoilValue(fos.dataset);
+  const dataset = useReverbValue(fos.dataset);
 
   const runs = useMemo(() => {
     if (!dataset) return null;

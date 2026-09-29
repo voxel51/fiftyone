@@ -6,7 +6,7 @@ import {
   setSelectedLabels,
   type setSelectedLabelsMutation,
 } from "@fiftyone/relay";
-import { DefaultValue } from "recoil";
+import { DefaultValue } from "@fiftyone/reverb";
 import { commitMutation } from "relay-runtime";
 import type { RegisteredWriter } from "./registerWriter";
 

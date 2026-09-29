@@ -55,6 +55,7 @@ export default function useLabels() {
   const engine = useAnnotationEngine();
   const { scene } = useLighter();
   const active = useAtomValue(visibleLabelSchemas);
+
   const setLoading = useSetAtom(labelsState);
   const sampleId = useActiveAnnotationSampleId();
 

@@ -1,0 +1,197 @@
+import { describe, expect, it, vi } from "vitest";
+vi.mock("@fiftyone/reverb");
+vi.mock("@fiftyone/relay");
+
+import {
+  setMockAtoms,
+  TestSelectorFamily,
+} from "../../../reverb/src/__mocks__/index";
+import * as aggregations from "./aggregations";
+import { State } from "./types";
+
+describe("selection scope in aggregation filters", () => {
+  it("adds the browsing boundary only when it constrains results", () => {
+    expect(aggregations.constrainsScope(null)).toBe(false);
+    expect(aggregations.constrainsScope({})).toBe(false);
+    expect(aggregations.constrainsScope({ subsetId: "subset" })).toBe(true);
+    expect(aggregations.withSelectionScope(null, null)).toBeNull();
+    expect(aggregations.withSelectionScope({ a: 1 }, {})).toEqual({ a: 1 });
+    expect(
+      aggregations.withSelectionScope(null, { subsetId: "subset" }),
+    ).toEqual({ _selection_scope: { subsetId: "subset" } });
+    const provider = { kind: "events" as const, field: "events", values: [] };
+    expect(aggregations.withSelectionScope({ a: 1 }, { provider })).toEqual({
+      a: 1,
+      _selection_scope: { provider },
+    });
+  });
+});
+
+describe("test aggregation path accumulation", () => {
+  it("resolves grouped modal label paths", () => {
+    const testModalSampleAggregationPaths = <
+      TestSelectorFamily<typeof aggregations.modalAggregationPaths>
+    >(<unknown>aggregations.modalAggregationPaths({
+      path: "ground_truth.detections.one",
+    }));
+    setMockAtoms({
+      expandPath: (path) => `${path}.detections`,
+      modalFilterFields: (path) => [
+        path,
+        `${path}.one`,
+        `${path}.two`,
+        `${path}.numeric`,
+      ],
+      isNumericField: (path) => path.endsWith(".numeric"),
+      labelFields: ({ space }) =>
+        space === State.SPACE.SAMPLE
+          ? ["ground_truth", "predictions"]
+          : ["frames.frames_ground_truth", "frames.frames_predictions"],
+      groupId: "groupId",
+    });
+    expect(testModalSampleAggregationPaths()).toStrictEqual([
+      "tags",
+      "ground_truth.detections",
+      "ground_truth.detections.one",
+      "ground_truth.detections.two",
+      "predictions.detections",
+      "predictions.detections.one",
+      "predictions.detections.two",
+    ]);
+
+    const testModalSampleNumericAggregationPaths = <
+      TestSelectorFamily<typeof aggregations.modalAggregationPaths>
+    >(<unknown>aggregations.modalAggregationPaths({
+      path: "ground_truth.detections.numeric",
+    }));
+
+    expect(testModalSampleNumericAggregationPaths()).toStrictEqual([
+      "ground_truth.detections.numeric",
+      "predictions.detections.numeric",
+    ]);
+
+    const testModalFrameAggregationPaths = <
+      TestSelectorFamily<typeof aggregations.modalAggregationPaths>
+    >(<unknown>aggregations.modalAggregationPaths({
+      path: "frames.frames_ground_truth.detections.one",
+    }));
+
+    expect(testModalFrameAggregationPaths()).toStrictEqual([
+      "frames.frames_ground_truth.detections",
+      "frames.frames_ground_truth.detections.one",
+      "frames.frames_ground_truth.detections.two",
+      "frames.frames_predictions.detections",
+      "frames.frames_predictions.detections.one",
+      "frames.frames_predictions.detections.two",
+    ]);
+
+    const testModalFrameNumericAggregationPaths = <
+      TestSelectorFamily<typeof aggregations.modalAggregationPaths>
+    >(<unknown>aggregations.modalAggregationPaths({
+      path: "frames.frames_ground_truth.detections.numeric",
+    }));
+
+    expect(testModalFrameNumericAggregationPaths()).toStrictEqual([
+      "frames.frames_ground_truth.detections.numeric",
+      "frames.frames_predictions.detections.numeric",
+    ]);
+  });
+
+  it("falls back to an empty aggregation list when the query is skipped", () => {
+    const testAggregations = <
+      TestSelectorFamily<typeof aggregations.aggregations>
+    >(<unknown>aggregations.aggregations({
+      extended: false,
+      modal: false,
+      paths: ["ground_truth"],
+    }));
+
+    setMockAtoms({
+      aggregationQuery: () => null,
+      hasFilters: () => false,
+    });
+
+    expect(testAggregations()).toStrictEqual([]);
+  });
+});
+
+describe("extended aggregation requests", () => {
+  const grid = <TestSelectorFamily<typeof aggregations.aggregations>>(
+    (<unknown>aggregations.aggregations({
+      extended: true,
+      modal: false,
+      paths: [""],
+    }))
+  );
+
+  // An extended selection rides in ``extendedStages``, which both the extended
+  // and the unextended query send — so an extended query with no field filters
+  // is a second, identical round trip
+  it.each([
+    ["a lasso selection and no field filters", false, false],
+    ["field filters", true, true],
+  ])("requests extended data with %s: %s", (_name, hasFields, expected) => {
+    let requested: boolean | undefined;
+    setMockAtoms({
+      // A lasso is in play, so the grid "has filters" either way
+      hasFilters: () => true,
+      hasFieldFilters: () => hasFields,
+      aggregationQuery: (params) => {
+        requested = params.extended;
+        return [];
+      },
+    });
+
+    grid();
+    expect(requested).toBe(expected);
+  });
+});
+
+describe("temporal tag aggregations", () => {
+  it("requests temporal tags on their own, in the modal too", () => {
+    const modal = <TestSelectorFamily<typeof aggregations.aggregation>>(
+      (<unknown>aggregations.aggregation({
+        extended: false,
+        modal: true,
+        path: "_temporal_tags",
+      }))
+    );
+    let requested: string[] | undefined;
+    setMockAtoms({
+      aggregations: ({ paths }) => {
+        requested = paths;
+        return [{ path: "_temporal_tags" }];
+      },
+    });
+
+    modal();
+    expect(requested).toStrictEqual(["_temporal_tags"]);
+  });
+
+  it("refetches temporal tags, and only them, after a tag mutation", () => {
+    const query = aggregations.aggregationQuery as unknown as (params: {
+      extended: boolean;
+      modal: boolean;
+      paths: string[];
+    }) => { variables: () => { form: { index: number } } };
+    const index = (paths: string[]) =>
+      query({ extended: false, modal: false, paths }).variables().form.index;
+    setMockAtoms({
+      activeIndex: null,
+      config: {},
+      currentSlices: () => null,
+      _datasetName__setter: "dataset",
+      extendedStagesNoSort: {},
+      groupSlice: null,
+      groupStatistics: () => "slice",
+      hiddenLabelsArray: [],
+      queryPerformance: false,
+      refresher: 3,
+      temporalTagsRevision: 2,
+      _view__setter: [],
+    });
+
+    expect(index(["_temporal_tags"])).toBe(5);
+    expect(index(["tags"])).toBe(3);
+  });
+});

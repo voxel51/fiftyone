@@ -2,13 +2,13 @@
 
 This package contains shared FiftyOne Relay GraphQL queries, mutations, and
 subscriptions along with some core interfaces for syncing Relay data with
-Recoil data flow.
+Reverb data flow.
 
 ### GraphQL Atoms
 
 #### [`graphQLSyncFragmentAtom`](./src/graphQLSyncFragmentAtom.ts)
 
-`graphQLSyncFragmentAtom` wraps a Recoil Atom, tying it to the Relay store via
+`graphQLSyncFragmentAtom` wraps a Reverb Atom, tying it to the Relay store via
 the `Writer`. Given a list of fragments, the `Writer` will attempt to sync the
 atom with the current data for the last fragment in the list, after recursing
 the previous fragment keys. On optional `read` function can be provided for

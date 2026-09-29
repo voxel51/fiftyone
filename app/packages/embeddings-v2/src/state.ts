@@ -1,4 +1,4 @@
-import { atom } from "recoil";
+import { atom } from "@fiftyone/reverb";
 
 /**
  * The active plot selection's size, published by the plot view for

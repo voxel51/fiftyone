@@ -1,6 +1,6 @@
 import { usePanels, usePanelsState, useSpaceNodes } from "@fiftyone/spaces";
 import { constants, isModalActive } from "@fiftyone/state";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { Operator, OperatorConfig } from "../operators";
 import * as types from "../types";
 
@@ -82,7 +82,7 @@ export class ListOpenPanels extends Operator {
   }
 
   useHooks(): ListOpenPanelsHooks {
-    const isModalOpen = useRecoilValue(isModalActive);
+    const isModalOpen = useReverbValue(isModalActive);
     const openedGridPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
     const openedModalPanels = useSpaceNodes(FIFTYONE_MODAL_SPACES_ID);
     const panels = usePanels();

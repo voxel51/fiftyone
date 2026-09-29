@@ -3,8 +3,8 @@
  */
 
 import useUpdateSamples from "./useUpdateSamples";
-import { useSetRecoilState } from "recoil";
-import { refresher } from "../recoil";
+import { useSetReverbState } from "@fiftyone/reverb";
+import { refresher } from "../atoms";
 import { useCallback } from "react";
 import { Sample } from "@fiftyone/looker";
 
@@ -13,7 +13,7 @@ import { Sample } from "@fiftyone/looker";
  */
 export const useRefreshSample = () => {
   const updateSamples = useUpdateSamples();
-  const setRefresher = useSetRecoilState(refresher);
+  const setRefresher = useSetReverbState(refresher);
 
   return useCallback(
     (sample: Sample) => {

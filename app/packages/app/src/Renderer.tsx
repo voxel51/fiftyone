@@ -26,11 +26,11 @@ import {
 } from "react";
 import {
   atom,
-  useRecoilState,
-  useRecoilTransaction_UNSTABLE,
-  useRecoilValue,
-  useSetRecoilState,
-} from "recoil";
+  useReverbState,
+  useReverbTransaction,
+  useReverbValue,
+  useSetReverbState,
+} from "@fiftyone/reverb";
 import { useRouterContext } from "./routing";
 import Pixelating from "./Pixelating";
 
@@ -47,8 +47,8 @@ export const entry = atom<Entry<Queries> | null>({
 
 const ColorScheme = () => {
   const { setMode } = useColorScheme();
-  const current = useRecoilValue(themeConfig);
-  const setTheme = useSetRecoilState(theme);
+  const current = useReverbValue(themeConfig);
+  const setTheme = useSetReverbState(theme);
   useLayoutEffect(() => {
     if (current !== "browser") {
       setTheme(current);
@@ -60,16 +60,16 @@ const ColorScheme = () => {
 };
 
 const Renderer = () => {
-  const routeEntry = useRecoilValue(entry);
+  const routeEntry = useReverbValue(entry);
 
-  const [pending, setPending] = useRecoilState(pendingEntry);
+  const [pending, setPending] = useReverbState(pendingEntry);
   const viewPending = useViewChangePending();
   const router = useRouterContext();
   const [ready, setReady] = useState(false);
   const setModalState = useSetModalState();
   const setExpansion = useSetExpandedSample();
 
-  const apply = useRecoilTransaction_UNSTABLE(
+  const apply = useReverbTransaction(
     ({ set }) =>
       (result: Entry<Queries>) => {
         set(entry, result);
@@ -119,7 +119,7 @@ const Renderer = () => {
 };
 
 const Modal = () => {
-  const active = Boolean(useRecoilValue(isModalActive));
+  const active = Boolean(useReverbValue(isModalActive));
   useEffect(() => {
     document.getElementById("modal")?.classList.toggle("modalon", active);
   }, [active]);

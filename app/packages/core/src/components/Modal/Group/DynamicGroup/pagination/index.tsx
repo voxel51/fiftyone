@@ -17,11 +17,11 @@ import React, {
 import type { PreloadedQuery } from "react-relay";
 import { usePreloadedQuery } from "react-relay";
 import {
-  useRecoilCallback,
-  useRecoilState,
-  useRecoilValue,
-  useSetRecoilState,
-} from "recoil";
+  useReverbCallback,
+  useReverbState,
+  useReverbValue,
+  useSetReverbState,
+} from "@fiftyone/reverb";
 import styled from "styled-components";
 import { useDynamicGroupSamples } from "../useDynamicGroupSamples";
 import { PaginationComponentWithTooltip } from "./PaginationComponentWithTooltip";
@@ -74,11 +74,11 @@ const PaginationBarContent = ({
 }) => {
   const data = usePreloadedQuery(foq.paginateSamples, queryRef);
 
-  const dynamicGroupParameters = useRecoilValue(
+  const dynamicGroupParameters = useReverbValue(
     fos.dynamicGroupParameters,
   ) as fos.State.DynamicGroupParameters;
-  const groupField = useRecoilValue(fos.groupField);
-  const setSample = useRecoilCallback(
+  const groupField = useReverbValue(fos.groupField);
+  const setSample = useReverbCallback(
     ({ set, snapshot }) =>
       async (sample: fos.ModalSample) => {
         const current = await snapshot.getPromise(fos.modalSelector);
@@ -172,14 +172,14 @@ const PaginationBarContent = ({
 };
 
 export const GroupElementsLinkBar = React.memo(() => {
-  const setCursor = useSetRecoilState(fos.dynamicGroupIndex);
-  const { orderBy } = useRecoilValue(fos.dynamicGroupParameters)!;
+  const setCursor = useSetReverbState(fos.dynamicGroupIndex);
+  const { orderBy } = useReverbValue(fos.dynamicGroupParameters)!;
   const isPaginationChangeRef = useRef(false);
   const { queryRef } = useDynamicGroupSamples();
   const deferredQueryRef = useDeferredValue(queryRef);
 
   const [dynamicGroupCurrentElementIndex, setDynamicGroupCurrentElementIndex] =
-    useRecoilState(fos.dynamicGroupCurrentElementIndex);
+    useReverbState(fos.dynamicGroupCurrentElementIndex);
   const deferred = useDeferredValue(dynamicGroupCurrentElementIndex);
 
   const elementsCount = fos.useElementsCount(true);
@@ -231,7 +231,7 @@ export const GroupElementsLinkBar = React.memo(() => {
     [setDynamicGroupCurrentElementIndex, deferred, elementsCount],
   );
 
-  const keyNavigationHandler = useRecoilCallback(
+  const keyNavigationHandler = useReverbCallback(
     () => (e: KeyboardEvent) => {
       if (e.key === ",") {
         e.preventDefault();

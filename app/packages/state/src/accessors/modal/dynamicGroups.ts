@@ -2,15 +2,15 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 import { useRef } from "react";
-import { useRecoilValue, useRecoilValueLoadable } from "recoil";
+import { useReverbValue, useReverbValueLoadable } from "@fiftyone/reverb";
 import {
   groupByFieldValue,
   isDynamicGroup,
   isNestedDynamicGroup,
   isNonNestedDynamicGroup,
-} from "../../recoil/dynamicGroups";
-import { isQueryPerformantDynamicGroup } from "../../recoil/queryPerformance";
-import { dynamicGroupsElementCount } from "../../recoil/pathData/groups";
+} from "../../atoms/dynamicGroups";
+import { isQueryPerformantDynamicGroup } from "../../atoms/queryPerformance";
+import { dynamicGroupsElementCount } from "../../atoms/pathData/groups";
 
 /**
  * Returns the last settled groupByFieldValue without ever suspending.
@@ -21,7 +21,7 @@ import { dynamicGroupsElementCount } from "../../recoil/pathData/groups";
  * sample navigation. Returns undefined until the first value has settled.
  */
 export const useGroupByFieldValue = (): string | null | undefined => {
-  const loadable = useRecoilValueLoadable(groupByFieldValue);
+  const loadable = useReverbValueLoadable(groupByFieldValue);
   const ref = useRef<string | null | undefined>(
     loadable.state === "hasValue" ? loadable.contents : undefined,
   );
@@ -39,7 +39,7 @@ export const useGroupByFieldValue = (): string | null | undefined => {
  */
 export const useElementsCount = (modal: boolean): number => {
   const value = useGroupByFieldValue() ?? null;
-  const loadable = useRecoilValueLoadable(
+  const loadable = useReverbValueLoadable(
     dynamicGroupsElementCount({ modal, value }),
   );
   const ref = useRef<number>(
@@ -55,16 +55,16 @@ export const useElementsCount = (modal: boolean): number => {
 };
 
 /** Whether the current view is a dynamic group. */
-export const useIsDynamicGroup = (): boolean => useRecoilValue(isDynamicGroup);
+export const useIsDynamicGroup = (): boolean => useReverbValue(isDynamicGroup);
 
 /** Whether the current view is a dynamic group over a group dataset. */
 export const useIsNestedDynamicGroup = (): boolean =>
-  useRecoilValue(isNestedDynamicGroup);
+  useReverbValue(isNestedDynamicGroup);
 
 /** Whether the current view is a dynamic group over a non-group dataset. */
 export const useIsNonNestedDynamicGroup = (): boolean =>
-  useRecoilValue(isNonNestedDynamicGroup);
+  useReverbValue(isNonNestedDynamicGroup);
 
 /** Whether the dynamic group is ordered with a fixed order-by key, so paging it is indexed. */
 export const useIsQueryPerformantDynamicGroup = (): boolean =>
-  Boolean(useRecoilValue(isQueryPerformantDynamicGroup));
+  Boolean(useReverbValue(isQueryPerformantDynamicGroup));

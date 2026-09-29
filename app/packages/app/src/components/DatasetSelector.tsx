@@ -12,7 +12,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 
 import styles from "./DatasetSelector.module.css";
 
@@ -25,7 +25,7 @@ const DatasetSelector: React.FC<{
   useSearch: UseSearch<string>;
 }> = ({ useSearch }) => {
   const setDataset = useSetDataset();
-  const dataset = useRecoilValue(datasetName) as string;
+  const dataset = useReverbValue(datasetName) as string;
 
   // Visible text in the input. Decoupled from the *applied* dataset
   // so the user can type a search without losing the active dataset

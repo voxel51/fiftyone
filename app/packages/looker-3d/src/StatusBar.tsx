@@ -19,7 +19,11 @@ import {
   useRef,
   useState,
 } from "react";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import {
+  useReverbState,
+  useReverbValue,
+  useSetReverbState,
+} from "@fiftyone/reverb";
 import styled from "styled-components";
 import type { OrthographicCamera, PerspectiveCamera, Vector3 } from "three";
 import { AnnotationTips } from "./AnnotationTips";
@@ -371,13 +375,13 @@ export const StatusBar = ({
 }) => {
   const theme = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
-  const [showPerfStatus, setShowPerfStatus] = useRecoilState(isStatusBarOnAtom);
-  const setActiveNode = useSetRecoilState(activeNodeAtom);
-  const segmentState = useRecoilValue(activeSegmentationStateAtom);
-  const cameraViewStatus = useRecoilValue(cameraViewStatusAtom);
-  const isMultiviewOn = useRecoilValue(isInMultiPanelViewAtom);
-  const isCreatingCuboid = useRecoilValue(isCreatingCuboidAtom);
-  const cuboidCreationState = useRecoilValue(cuboidCreationStateAtom);
+  const [showPerfStatus, setShowPerfStatus] = useReverbState(isStatusBarOnAtom);
+  const setActiveNode = useSetReverbState(activeNodeAtom);
+  const segmentState = useReverbValue(activeSegmentationStateAtom);
+  const cameraViewStatus = useReverbValue(cameraViewStatusAtom);
+  const isMultiviewOn = useReverbValue(isInMultiPanelViewAtom);
+  const isCreatingCuboid = useReverbValue(isCreatingCuboidAtom);
+  const cuboidCreationState = useReverbValue(cuboidCreationStateAtom);
 
   const cuboidCreationHint =
     cuboidCreationState.step === 0

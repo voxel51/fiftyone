@@ -1,13 +1,13 @@
 import { ValueColorInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import React, { useCallback, useEffect, useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import ValueColorList from "../controls/ValueColorList";
 import { getRandomColorFromPool } from "../utils";
 import { FieldCHILD_STYLE } from "../ShareStyledDiv";
 
 const TemporalTagByValue: React.FC = () => {
-  const colorScheme = useRecoilValue(fos.colorScheme);
+  const colorScheme = useReverbValue(fos.colorScheme);
   const setColorScheme = fos.useSetSessionColorScheme();
 
   const initialValue = colorScheme.temporalTags?.valueColors;

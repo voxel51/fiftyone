@@ -1560,6 +1560,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/analytics@workspace:packages/analytics"
   dependencies:
+    "@fiftyone/reverb": "workspace:*"
     "@segment/analytics-next": "npm:^1.70.0"
   languageName: unknown
   linkType: soft
@@ -1568,6 +1569,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/annotation@workspace:packages/annotation"
   dependencies:
+    "@fiftyone/reverb": "workspace:*"
     "@testing-library/dom": "catalog:"
     "@testing-library/react": "catalog:"
     "@types/lodash": "catalog:"
@@ -1609,6 +1611,7 @@ __metadata:
     "@fiftyone/feature-flags": "npm:*"
     "@fiftyone/multimodal": "npm:*"
     "@fiftyone/relay": "npm:*"
+    "@fiftyone/reverb": "workspace:*"
     "@fiftyone/state": "npm:*"
     "@fiftyone/utilities": "npm:*"
     "@fiftyone/video-annotation": "workspace:*"
@@ -1638,8 +1641,6 @@ __metadata:
     react-relay: "catalog:"
     react-use-measure: "catalog:"
     react-uuid: "catalog:"
-    recoil: "catalog:"
-    recoil-relay: "catalog:"
     relay-compiler: "catalog:"
     relay-runtime: "catalog:"
     rollup-plugin-polyfill-node: "catalog:"
@@ -1705,6 +1706,7 @@ __metadata:
     "@emotion/react": "catalog:"
     "@emotion/styled": "catalog:"
     "@fiftyone/commands": "workspace:^"
+    "@fiftyone/reverb": "workspace:*"
     "@fiftyone/state": "npm:*"
     "@fiftyone/utilities": "npm:*"
     "@mui/icons-material": "catalog:"
@@ -1733,8 +1735,6 @@ __metadata:
     react-relay: "catalog:"
     react-syntax-highlighter: "catalog:"
     react-use: "npm:^17.5.1"
-    recoil: "catalog:"
-    recoil-relay: "catalog:"
     relay-runtime: "catalog:"
     storybook: "catalog:"
     typescript: "catalog:"
@@ -1746,7 +1746,6 @@ __metadata:
     react: "*"
     react-markdown: "*"
     react-relay: "*"
-    recoil: "*"
     styled-components: "*"
   languageName: unknown
   linkType: soft
@@ -1764,6 +1763,7 @@ __metadata:
     "@fiftyone/operators": "npm:*"
     "@fiftyone/playback": "workspace:*"
     "@fiftyone/plugins": "npm:*"
+    "@fiftyone/reverb": "workspace:*"
     "@fiftyone/spotlight": "npm:*"
     "@fiftyone/state": "npm:*"
     "@fiftyone/utilities": "npm:*"
@@ -1816,8 +1816,6 @@ __metadata:
     react-use-measure: "catalog:"
     react-uuid: "catalog:"
     recharts: "npm:^2.12.3"
-    recoil: "catalog:"
-    recoil-relay: "catalog:"
     relay-compiler: "catalog:"
     relay-runtime: "catalog:"
     remark-gfm: "npm:^3.0.1"
@@ -1847,6 +1845,7 @@ __metadata:
     "@fiftyone/components": "npm:*"
     "@fiftyone/operators": "npm:*"
     "@fiftyone/plugins": "npm:*"
+    "@fiftyone/reverb": "workspace:*"
     "@fiftyone/spaces": "npm:*"
     "@fiftyone/state": "npm:*"
     "@fiftyone/utilities": "npm:*"
@@ -1865,15 +1864,12 @@ __metadata:
     react-error-boundary: "catalog:"
     react-is: "catalog:"
     react-relay: "catalog:"
-    recoil: "catalog:"
-    recoil-relay: "catalog:"
     relay-runtime: "catalog:"
     styled-components: "catalog:"
     three: "npm:^0.182.0"
     vitest: "catalog:"
   peerDependencies:
     react: "*"
-    recoil: "*"
   languageName: unknown
   linkType: soft
 
@@ -1884,6 +1880,7 @@ __metadata:
     "@fiftyone/aggregations": "npm:*"
     "@fiftyone/components": "npm:*"
     "@fiftyone/plugins": "npm:*"
+    "@fiftyone/reverb": "workspace:*"
     "@fiftyone/state": "npm:*"
     "@types/react": "catalog:"
     "@vitejs/plugin-react": "catalog:"
@@ -1893,8 +1890,6 @@ __metadata:
     react-dom: "catalog:"
     react-error-boundary: "catalog:"
     react-relay: "catalog:"
-    recoil: "catalog:"
-    recoil-relay: "catalog:"
     relay-runtime: "catalog:"
     styled-components: "catalog:"
     use-resize-observer: "catalog:"
@@ -1903,7 +1898,6 @@ __metadata:
   peerDependencies:
     "@mui/icons-material": "*"
     react-error-boundary: "*"
-    recoil: "*"
   languageName: unknown
   linkType: soft
 
@@ -2045,6 +2039,7 @@ __metadata:
   dependencies:
     "@emotion/react": "catalog:"
     "@emotion/styled": "catalog:"
+    "@fiftyone/reverb": "workspace:*"
     "@miris-inc/core": "npm:latest"
     "@miris-inc/three": "npm:latest"
     "@react-three/drei": "npm:^9.122.0"
@@ -2074,7 +2069,6 @@ __metadata:
     "@mui/icons-material": "*"
     "@mui/material": "*"
     "@react-spring/web": "*"
-    recoil: "*"
   languageName: unknown
   linkType: soft
 
@@ -2114,6 +2108,7 @@ __metadata:
     "@fiftyone/aggregations": "npm:*"
     "@fiftyone/components": "npm:*"
     "@fiftyone/plugins": "npm:*"
+    "@fiftyone/reverb": "workspace:*"
     "@fiftyone/state": "npm:*"
     "@mapbox/mapbox-gl-draw": "npm:1.4.3"
     "@turf/boolean-contains": "npm:^6.5.0"
@@ -2131,8 +2126,6 @@ __metadata:
     react-error-boundary: "catalog:"
     react-map-gl: "npm:^7.0.18"
     react-relay: "catalog:"
-    recoil: "catalog:"
-    recoil-relay: "catalog:"
     relay-runtime: "catalog:"
     styled-components: "catalog:"
     use-resize-observer: "catalog:"
@@ -2145,8 +2138,6 @@ __metadata:
     react-dom: "*"
     react-error-boundary: "*"
     react-relay: "*"
-    recoil: "*"
-    recoil-relay: "*"
     styled-components: "*"
   languageName: unknown
   linkType: soft
@@ -2160,6 +2151,7 @@ __metadata:
     "@fiftyone/components": "npm:*"
     "@fiftyone/playback": "workspace:*"
     "@fiftyone/plugins": "npm:*"
+    "@fiftyone/reverb": "workspace:*"
     "@fiftyone/state": "npm:*"
     "@fiftyone/tiling": "npm:*"
     "@fiftyone/utilities": "npm:*"
@@ -2196,8 +2188,6 @@ __metadata:
     react-error-boundary: "catalog:"
     react-is: "catalog:"
     react-relay: "catalog:"
-    recoil: "catalog:"
-    recoil-relay: "catalog:"
     relay-runtime: "catalog:"
     styled-components: "catalog:"
     three: "patch:three@npm%3A0.185.1#~/.yarn/patches/three-npm-0.185.1-e07195d8b4.patch"
@@ -2211,6 +2201,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/operators@workspace:packages/operators"
   dependencies:
+    "@fiftyone/reverb": "workspace:*"
     "@fiftyone/utilities": "workspace:^"
     "@testing-library/dom": "catalog:"
     "@testing-library/react": "catalog:"
@@ -2232,6 +2223,7 @@ __metadata:
   dependencies:
     "@eslint/compat": "catalog:"
     "@fiftyone/commands": "workspace:^"
+    "@fiftyone/reverb": "workspace:*"
     "@fiftyone/tiling": "npm:*"
     "@voxel51/voodo": "catalog:"
     eslint: "catalog:eslint9"
@@ -2262,6 +2254,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/plugins@workspace:packages/plugins"
   dependencies:
+    "@fiftyone/reverb": "workspace:*"
     "@fiftyone/utilities": "workspace:^"
     moment: "npm:^2.29.4"
     prettier: "catalog:"
@@ -2274,20 +2267,36 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/relay@workspace:packages/relay"
   dependencies:
-    "@recoiljs/refine": "npm:^0.1.1"
+    "@fiftyone/reverb": "workspace:*"
     "@types/react-relay": "catalog:"
     "@types/relay-runtime": "catalog:"
+    jotai: "catalog:"
     prettier: "catalog:"
     react: "catalog:"
     react-relay: "catalog:"
-    recoil: "catalog:"
-    recoil-sync: "npm:^0.2.0"
     relay-compiler: "catalog:"
     relay-compiler-language-typescript: "npm:^15.0.1"
     relay-config: "npm:^12.0.1"
     relay-runtime: "catalog:"
     typescript: "catalog:"
     vite: "catalog:"
+  languageName: unknown
+  linkType: soft
+
+"@fiftyone/reverb@workspace:*, @fiftyone/reverb@workspace:packages/reverb":
+  version: 0.0.0-use.local
+  resolution: "@fiftyone/reverb@workspace:packages/reverb"
+  dependencies:
+    "@testing-library/react": "catalog:"
+    jotai: "catalog:"
+    jotai-effect: "catalog:"
+    jsdom: "npm:^26.0.0"
+    react: "catalog:"
+    react-dom: "catalog:"
+    typescript: "catalog:"
+    vitest: "catalog:"
+  peerDependencies:
+    react: "*"
   languageName: unknown
   linkType: soft
 
@@ -2298,6 +2307,7 @@ __metadata:
     "@fiftyone/components": "npm:*"
     "@fiftyone/operators": "npm:*"
     "@fiftyone/plugins": "npm:*"
+    "@fiftyone/reverb": "workspace:*"
     "@fiftyone/spaces": "npm:*"
     "@fiftyone/state": "npm:*"
     "@mui/icons-material": "catalog:"
@@ -2312,8 +2322,6 @@ __metadata:
     react-error-boundary: "catalog:"
     react-is: "catalog:"
     react-relay: "catalog:"
-    recoil: "catalog:"
-    recoil-relay: "catalog:"
     relay-runtime: "catalog:"
     styled-components: "catalog:"
     vite: "catalog:"
@@ -2328,8 +2336,6 @@ __metadata:
     react-error-boundary: "*"
     react-is: "*"
     react-relay: "*"
-    recoil: "*"
-    recoil-relay: "*"
     styled-components: "*"
   languageName: unknown
   linkType: soft
@@ -2338,6 +2344,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/spaces@workspace:packages/spaces"
   dependencies:
+    "@fiftyone/reverb": "workspace:*"
     "@types/sortablejs": "npm:^1.15.0"
     "@vitejs/plugin-react": "catalog:"
     allotment: "npm:^1.17.0"
@@ -2352,7 +2359,6 @@ __metadata:
     "@react-spring/web": "*"
     react: "*"
     react-dom: "*"
-    recoil: "*"
   languageName: unknown
   linkType: soft
 
@@ -2373,6 +2379,7 @@ __metadata:
   dependencies:
     "@fiftyone/looker": "npm:*"
     "@fiftyone/relay": "npm:*"
+    "@fiftyone/reverb": "workspace:*"
     "@fiftyone/utilities": "npm:*"
     "@microsoft/fetch-event-source": "catalog:"
     "@testing-library/dom": "catalog:"
@@ -2395,8 +2402,6 @@ __metadata:
     react: "*"
     react-error-boundary: "*"
     react-relay: "*"
-    recoil: "*"
-    recoil-relay: "*"
   languageName: unknown
   linkType: soft
 
@@ -2453,6 +2458,7 @@ __metadata:
     "@fiftyone/events": "workspace:*"
     "@fiftyone/lighter": "workspace:*"
     "@fiftyone/playback": "workspace:*"
+    "@fiftyone/reverb": "workspace:*"
     "@fiftyone/spaces": "workspace:*"
     "@fiftyone/state": "workspace:*"
     "@fiftyone/tiling": "workspace:*"
@@ -2476,8 +2482,6 @@ __metadata:
     react-error-boundary: "catalog:"
     react-is: "catalog:"
     react-relay: "catalog:"
-    recoil: "catalog:"
-    recoil-relay: "catalog:"
     relay-runtime: "catalog:"
     styled-components: "catalog:"
     typescript: "catalog:"
@@ -2504,7 +2508,6 @@ __metadata:
   peerDependencies:
     react: "*"
     react-dom: "*"
-    recoil: "*"
   languageName: unknown
   linkType: soft
 
@@ -4896,13 +4899,6 @@ __metadata:
   peerDependencies:
     react: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
   checksum: 10/e2bbb014e03b71d7b5743d0ec0754e213dd954724fe8dcdbdca2af752eb59cfac6380f561ee3a7bcef3935963b18f086305994be93936dbc9894cbe18ab22850
-  languageName: node
-  linkType: hard
-
-"@recoiljs/refine@npm:^0.1.1":
-  version: 0.1.1
-  resolution: "@recoiljs/refine@npm:0.1.1"
-  checksum: 10/7c322fb452c760027f5e582c33beb92b8bf9fa2f1035ad12106ac3abf7e68e06eef3145807ad56c6e9d9fc70e7a0f022b17b4634e4f81ca3dbaaf3b14db8f371
   languageName: node
   linkType: hard
 
@@ -12060,13 +12056,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"hamt_plus@npm:1.0.2":
-  version: 1.0.2
-  resolution: "hamt_plus@npm:1.0.2"
-  checksum: 10/3680a1820b8e03c79e5977edb7e1ccb48b9db853f5a1fbee2d3b3615f8dded7fa276e158f52d3eea8cb6192a27b2622ae2112e197be7602a8f99814793dc096f
-  languageName: node
-  linkType: hard
-
 "has-bigints@npm:^1.0.1":
   version: 1.0.2
   resolution: "has-bigints@npm:1.0.2"
@@ -17270,45 +17259,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"recoil-relay@npm:^0.1.0":
-  version: 0.1.0
-  resolution: "recoil-relay@npm:0.1.0"
-  peerDependencies:
-    react-relay: ">=13.2.0"
-    recoil: ">=0.7.3"
-    relay-runtime: ">=13.2.0"
-  checksum: 10/4243d149535550f06304a9313b734087729e14f04bf6c09009d6ec1d4215f89684875d6144b058d685850cec9739e8d16f5f13fe399a18cb0a708e8dbc83db0f
-  languageName: node
-  linkType: hard
-
-"recoil-sync@npm:^0.2.0":
-  version: 0.2.0
-  resolution: "recoil-sync@npm:0.2.0"
-  dependencies:
-    "@recoiljs/refine": "npm:^0.1.1"
-    transit-js: "npm:^0.8.874"
-  peerDependencies:
-    recoil: ">=0.7.3"
-  checksum: 10/ecc19c0b37e8e3e493876b0c62a58733326fdb0ea96cb65d8127122a258011b3a81dc7d2350abfd603903b5ba278b6c6ea2f0ec5bd0a160922f39cc22abb34f0
-  languageName: node
-  linkType: hard
-
-"recoil@npm:0.7.7":
-  version: 0.7.7
-  resolution: "recoil@npm:0.7.7"
-  dependencies:
-    hamt_plus: "npm:1.0.2"
-  peerDependencies:
-    react: ">=16.13.1"
-  peerDependenciesMeta:
-    react-dom:
-      optional: true
-    react-native:
-      optional: true
-  checksum: 10/4ac9dfeddda2795f213b14290de09767b04fb98f1a760bcabe796c53830229f51de63a02cf54c18991c557f25cfeb9571a129ae0a19d734bd98cfc45eebbc82d
-  languageName: node
-  linkType: hard
-
 "redent@npm:^3.0.0":
   version: 3.0.0
   resolution: "redent@npm:3.0.0"
@@ -19419,13 +19369,6 @@ __metadata:
   version: 0.0.3
   resolution: "tr46@npm:0.0.3"
   checksum: 10/8f1f5aa6cb232f9e1bdc86f485f916b7aa38caee8a778b378ffec0b70d9307873f253f5cbadbe2955ece2ac5c83d0dc14a77513166ccd0a0c7fe197e21396695
-  languageName: node
-  linkType: hard
-
-"transit-js@npm:^0.8.874":
-  version: 0.8.874
-  resolution: "transit-js@npm:0.8.874"
-  checksum: 10/8d796c960acc9b06d9816103d9a0da1640d81437d9e055556bf9cbedb976134f51edeb970d87f58ad1361feb5355822cc43a9fa2890cb9a37c089e4dd6bb54c1
   languageName: node
   linkType: hard
 

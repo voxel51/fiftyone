@@ -1,6 +1,10 @@
 import { act, renderHook } from "@testing-library/react";
 import React from "react";
-import { RecoilRoot, useRecoilState, useResetRecoilState } from "recoil";
+import {
+  ReverbRoot,
+  useReverbState,
+  useResetReverbState,
+} from "@fiftyone/reverb";
 
 import * as fos from "@fiftyone/state";
 import { RelayEnvironmentProvider } from "react-relay";
@@ -15,7 +19,7 @@ const TEST_DS = {
 
 const Root: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
   return (
-    <RecoilRoot
+    <ReverbRoot
       initializeState={({ set }) => {
         set(fos.dataset, TEST_DS);
         set(fos.showNestedFieldsState, false);
@@ -27,7 +31,7 @@ const Root: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
       <RelayEnvironmentProvider environment={new Environment({})}>
         {children}
       </RelayEnvironmentProvider>
-    </RecoilRoot>
+    </ReverbRoot>
   );
 };
 
@@ -39,10 +43,10 @@ describe("useResetExcludedFieldStage ", () => {
   test("should reset excludedFieldsStageState field_names correctly", async () => {
     const { result } = renderHook(
       () => {
-        const [excludedFieldsStage, setExcludedFieldsStage] = useRecoilState(
+        const [excludedFieldsStage, setExcludedFieldsStage] = useReverbState(
           fos.excludedPathsState({}),
         );
-        const resetExcludedPaths = useResetRecoilState(
+        const resetExcludedPaths = useResetReverbState(
           fos.excludedPathsState({}),
         );
 

@@ -10,7 +10,7 @@ import {
 } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
 import { useCallback, useEffect } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { useAnnotationContext } from "../Sidebar/Annotate/Edit/useAnnotationContext";
 import { useDetectionMode } from "../Sidebar/Annotate/Edit/useDetectionMode";
 import {
@@ -37,7 +37,7 @@ export const useBridge = (scene: Scene2D | null) => {
   );
   const { clear, readEditing, setEditingMask } = useAnnotationContext();
   const { getLabelById } = useLabelsContext();
-  const fieldSchema = useRecoilValue(
+  const fieldSchema = useReverbValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE }),
   );
 

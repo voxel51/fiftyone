@@ -6,11 +6,11 @@ import {
 } from "@fiftyone/state/src/jotai";
 import { Autorenew } from "@mui/icons-material";
 import React, { useEffect, useState } from "react";
-import { useSetRecoilState } from "recoil";
+import { useSetReverbState } from "@fiftyone/reverb";
 import { Button } from "../../utils";
 
 const ShuffleColor: React.FC = () => {
-  const setColorSeed = useSetRecoilState(fos.colorSeed);
+  const setColorSeed = useSetReverbState(fos.colorSeed);
   const [isRendering, setIsRendering] = useState(false);
 
   useEffect(() => {

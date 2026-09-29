@@ -7,7 +7,7 @@ import {
   PanelsStateObject,
 } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
-import { SetterOrUpdater } from "recoil";
+import { SetterOrUpdater } from "@fiftyone/reverb";
 import { ExecutionContext as EC } from "../operators";
 
 /*

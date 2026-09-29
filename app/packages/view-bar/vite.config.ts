@@ -9,12 +9,12 @@ export default defineConfig({
       formats: ["es", "umd"],
     },
     rollupOptions: {
-      external: ["react", "react-dom", "recoil", "@fiftyone/state"],
+      external: ["react", "react-dom", "@fiftyone/reverb", "@fiftyone/state"],
       output: {
         globals: {
           react: "React",
           "react-dom": "ReactDOM",
-          recoil: "recoil",
+          "@fiftyone/reverb": "reverb",
           "@fiftyone/state": "__fos__",
         },
       },

@@ -1,16 +1,19 @@
-import type { CallbackInterface, RecoilState } from "recoil";
+import {
+  type CallbackInterface,
+  type ReverbState,
+  useReverbCallback,
+} from "@fiftyone/reverb";
 
 import { useRelayEnvironment } from "react-relay";
-import { useRecoilCallback } from "recoil";
-import * as atoms from "../recoil/atoms";
-import * as filterAtoms from "../recoil/filters";
-import * as groupAtoms from "../recoil/groups";
-import * as group3dAtoms from "../recoil/renderConfig3d.atoms";
-import * as modalAtoms from "../recoil/modal";
-import * as schemaAtoms from "../recoil/schema";
-import * as selectors from "../recoil/selectors";
-import * as sidebarAtoms from "../recoil/sidebar";
-import * as sidebarExpandedAtoms from "../recoil/sidebarExpanded";
+import * as atoms from "../atoms/atoms";
+import * as filterAtoms from "../atoms/filters";
+import * as groupAtoms from "../atoms/groups";
+import * as group3dAtoms from "../atoms/renderConfig3d.atoms";
+import * as modalAtoms from "../atoms/modal";
+import * as schemaAtoms from "../atoms/schema";
+import * as selectors from "../atoms/selectors";
+import * as sidebarAtoms from "../atoms/sidebar";
+import * as sidebarExpandedAtoms from "../atoms/sidebarExpanded";
 import { is3d } from "@fiftyone/utilities";
 
 const setModalFilters = async ({ snapshot, set }: CallbackInterface) => {
@@ -36,7 +39,7 @@ const setModalFilters = async ({ snapshot, set }: CallbackInterface) => {
 export default () => {
   const environment = useRelayEnvironment();
 
-  return useRecoilCallback(
+  return useReverbCallback(
     (cbInterface) => async (navigation?: modalAtoms.ModalNavigation) => {
       const { snapshot, set } = cbInterface;
       const data = [
@@ -78,7 +81,7 @@ export default () => {
 
       const results = await Promise.all(
         data.map(([_, get]) =>
-          snapshot.getPromise(get as RecoilState<unknown>),
+          snapshot.getPromise(get as ReverbState<unknown>),
         ),
       );
 

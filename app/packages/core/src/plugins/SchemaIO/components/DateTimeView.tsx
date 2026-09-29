@@ -9,13 +9,13 @@ import {
   styles,
 } from "@fiftyone/utilities";
 import React, { useEffect, useMemo, useState } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { useKey } from "../hooks";
 import { ViewPropsType } from "../utils/types";
 import FieldWrapper from "./FieldWrapper";
 
 export default function DateTimeView(props: ViewPropsType) {
-  const timeZone = useRecoilValue<string>(fos.timeZone);
+  const timeZone = useReverbValue<string>(fos.timeZone);
   const [formattedDate, setFormattedDate] = useState<string>("");
   const { onChange, schema, path, data } = props;
   const { compact, placeholder = "", readOnly } = schema.view;

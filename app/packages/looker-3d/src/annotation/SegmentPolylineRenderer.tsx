@@ -3,11 +3,11 @@ import { objectId, POLYLINE } from "@fiftyone/utilities";
 import { Line as LineDrei } from "@react-three/drei";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
-  useRecoilCallback,
-  useRecoilState,
-  useRecoilValue,
-  useSetRecoilState,
-} from "recoil";
+  useReverbCallback,
+  useReverbState,
+  useReverbValue,
+  useSetReverbState,
+} from "@fiftyone/reverb";
 import * as THREE from "three";
 import { SNAP_TOLERANCE } from "../constants";
 import { useEmptyCanvasInteraction } from "../hooks/use-empty-canvas-interaction";
@@ -49,23 +49,23 @@ export const SegmentPolylineRenderer = ({
   rubberBandColor = "#ff0000",
   rubberBandLineWidth = 2,
 }: SegmentPolylineRendererProps) => {
-  const currentSampleId = useRecoilValue(fos.currentSampleId);
-  const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
+  const currentSampleId = useReverbValue(fos.currentSampleId);
+  const currentActiveField = useReverbValue(currentActiveAnnotationField3dAtom);
   const [selectedLabelForAnnotation, setSelectedLabelForAnnotation] =
-    useRecoilState(selectedLabelForAnnotationAtom);
-  const [segmentState, setSegmentState] = useRecoilState(
+    useReverbState(selectedLabelForAnnotationAtom);
+  const [segmentState, setSegmentState] = useReverbState(
     activeSegmentationStateAtom,
   );
-  const setTooltipDetail = useSetRecoilState(fos.tooltipDetail);
+  const setTooltipDetail = useSetReverbState(fos.tooltipDetail);
   const { createPolyline, updatePolylinePoints } = usePolylineOperations();
 
   const setEditingToNewPolyline = useSetEditingToNewPolyline();
   const selectForAnnotation = useSelect3DLabelForAnnotation();
 
-  const setIsActivelySegmenting = useSetRecoilState(
+  const setIsActivelySegmenting = useSetReverbState(
     isSegmentingPointerDownAtom,
   );
-  const annotationPlane = useRecoilValue(annotationPlaneAtom);
+  const annotationPlane = useReverbValue(annotationPlaneAtom);
 
   // Track the last click for double-click detection: close in time AND on
   // screen, so two quick clicks at different spots are two vertices
@@ -75,7 +75,7 @@ export const SegmentPolylineRenderer = ({
   const DOUBLE_CLICK_MAX_DISTANCE_PX = 6;
   const lastAddedVertexRef = useRef<[number, number, number] | null>(null);
 
-  const commitSegment = useRecoilCallback(
+  const commitSegment = useReverbCallback(
     ({ snapshot }) =>
       async (
         vertices: [number, number, number][],

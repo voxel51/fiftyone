@@ -5,7 +5,7 @@ import * as fos from "@fiftyone/state";
 import { Link } from "@mui/material";
 import colorString from "color-string";
 import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { COLOR_SCHEME } from "../../utils/links";
 import { Button } from "../utils";
 import { SectionWrapper } from "./ShareStyledDiv";
@@ -37,7 +37,7 @@ const validateTagColors = (tags: ColorSchemeInput["labelTags"]) => ({
 
 const JSONViewer: React.FC = () => {
   const theme = useTheme();
-  const colorScheme = useRecoilValue(fos.colorScheme);
+  const colorScheme = useReverbValue(fos.colorScheme);
   const ref = useRef<HTMLDivElement>(null);
 
   const setting = useMemo(() => {

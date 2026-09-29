@@ -1,5 +1,5 @@
-import { useSetRecoilState } from "recoil";
-import { fieldVisibilityStage } from "../../recoil";
+import { useSetReverbState } from "@fiftyone/reverb";
+import { fieldVisibilityStage } from "../../atoms";
 
 /**
  *
@@ -7,6 +7,6 @@ import { fieldVisibilityStage } from "../../recoil";
  */
 export default function useSetSelectedFieldsStage() {
   return {
-    setFieldVisibilityStage: useSetRecoilState(fieldVisibilityStage),
+    setFieldVisibilityStage: useSetReverbState(fieldVisibilityStage),
   };
 }

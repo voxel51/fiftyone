@@ -1083,7 +1083,7 @@ class DocEnumerationMember extends DocFragment {
 class DocVar extends DocFragment {
   static kind = () => "Variable";
   group() {
-    if (this.type().isRecoil()) {
+    if (this.type().isReverb()) {
       return "State";
     }
     return "Variables";
@@ -1100,12 +1100,12 @@ class DocVar extends DocFragment {
   writeContent(file) {
     const type = this.type();
 
-    if (type.isRecoil()) {
+    if (type.isReverb()) {
       const ex = type.isReadOnly()
-        ? `const ${this.get("name")} = useRecoilValue(fos.${this.label()});`
+        ? `const ${this.get("name")} = useReverbValue(fos.${this.label()});`
         : `const [${this.get("name")}, set${capitalize(
             this.get("name"),
-          )}] = useRecoilState(fos.${this.label()});`;
+          )}] = useReverbState(fos.${this.label()});`;
       const desc = new FragmentDescription();
       for (const T of type.typeArguments()) {
         T.addToDescription(desc, this.label());
@@ -1262,18 +1262,18 @@ class DocType extends DocFragment {
   types() {
     return this.mapArray("types", DocType);
   }
-  isRecoil() {
-    return this.get("package") === "recoil";
+  isReverb() {
+    return this.get("package") === "@fiftyone/reverb";
   }
-  isRecoilWritable() {
-    return this.get("name") === "RecoilState";
+  isReverbWritable() {
+    return this.get("name") === "ReverbState";
   }
-  isRecoilReadOnly() {
-    return this.get("name") === "RecoilValueReadOnly";
+  isReverbReadOnly() {
+    return this.get("name") === "ReverbValueReadOnly";
   }
   isReadOnly() {
     if (this.get("operator") === "readonly") return true;
-    if (this.isRecoilReadOnly()) return true;
+    if (this.isReverbReadOnly()) return true;
     if (
       this.isGeneric() &&
       this.typeArguments().length === 1 &&

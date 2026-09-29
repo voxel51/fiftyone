@@ -2,9 +2,9 @@ import type { PaginateSamplesNode } from "@fiftyone/relay";
 import type { ID, SpotlightConfig } from "@fiftyone/spotlight";
 
 import { get } from "lodash";
-import { useRecoilCallback } from "recoil";
-import * as atoms from "../recoil/atoms";
-import * as groupAtoms from "../recoil/groups";
+import { useReverbCallback } from "@fiftyone/reverb";
+import * as atoms from "../atoms/atoms";
+import * as groupAtoms from "../atoms/groups";
 import useSetExpandedSample from "./useSetExpandedSample";
 import useSetModalState from "./useSetModalState";
 
@@ -14,7 +14,7 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
   const setExpandedSample = useSetExpandedSample();
   const setModalState = useSetModalState();
 
-  return useRecoilCallback(
+  return useReverbCallback(
     ({ snapshot, set }) =>
       async ({
         event,

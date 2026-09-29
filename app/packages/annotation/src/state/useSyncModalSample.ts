@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useSampleInstance } from "./useSample";
 
 /**
- * Hydrate the shared {@link Sample} from the Recoil-backed modal sample.
+ * Hydrate the shared {@link Sample} from the store-backed modal sample.
  *
  * - On sample-id change: clears pending transient edits.
  * - On sample data change: re-sets source data (Sample's internal `gc` drops

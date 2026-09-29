@@ -1,7 +1,7 @@
 import { useAnnotationEventHandler } from "@fiftyone/annotation";
 import { coerceStringBooleans } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate";
 import { useCallback } from "react";
-import { useSetRecoilState } from "recoil";
+import { useSetReverbState } from "@fiftyone/reverb";
 import { useUpdateWorkingLabel } from "../annotation/store";
 import { hoveredLabelAtom, selectedLabelForAnnotationAtom } from "../state";
 import { isDetection3dOverlay, isPolyline3dOverlay } from "../types";
@@ -11,10 +11,10 @@ import { isDetection3dOverlay, isPolyline3dOverlay } from "../types";
  */
 export const use3dAnnotationEventHandlers = () => {
   const updateWorkingLabel = useUpdateWorkingLabel();
-  const setSelectedLabelForAnnotation = useSetRecoilState(
+  const setSelectedLabelForAnnotation = useSetReverbState(
     selectedLabelForAnnotationAtom,
   );
-  const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
+  const setHoveredLabel = useSetReverbState(hoveredLabelAtom);
 
   useAnnotationEventHandler(
     "annotation:sidebarLabelSelected",

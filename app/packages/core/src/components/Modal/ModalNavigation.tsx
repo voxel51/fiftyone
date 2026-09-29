@@ -5,7 +5,7 @@ import {
 import { selectiveRenderingEventBus } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useRecoilValue, useRecoilValueLoadable } from "recoil";
+import { useReverbValue, useReverbValueLoadable } from "@fiftyone/reverb";
 import styled from "styled-components";
 import useExit from "./Sidebar/Annotate/Edit/useExit";
 import useSave from "./Sidebar/Annotate/Edit/useSave";
@@ -59,14 +59,14 @@ const Arrow = styled.span<{
 `;
 
 const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
-  const showModalNavigationControls = useRecoilValue(
+  const showModalNavigationControls = useReverbValue(
     fos.showModalNavigationControls,
   );
   const clearUndo = useUndoRedo(KnownContexts.ModalAnnotate).clear;
-  const sidebarwidth = useRecoilValue(fos.sidebarWidth(true));
+  const sidebarwidth = useReverbValue(fos.sidebarWidth(true));
   const isSidebarVisible = useShowClassicSidebar();
 
-  const countLoadable = useRecoilValueLoadable(
+  const countLoadable = useReverbValueLoadable(
     fos.count({ path: "", extended: true, modal: false }),
   );
   const count = useRef<number | null>(null);
@@ -75,7 +75,7 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
   }
 
   const setModal = fos.useSetExpandedSample();
-  const modal = useRecoilValue(fos.modalSelector);
+  const modal = useReverbValue(fos.modalSelector);
 
   const modalRef = useRef(modal);
 

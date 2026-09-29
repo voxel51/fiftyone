@@ -28,7 +28,7 @@ export default function useLoadSchemas() {
   }, [get.result, setData, setActive]);
 
   // `get.execute` identity can change across renders (its
-  // `useRecoilCallback` deps include `currentSample` / `context`).
+  // `useReverbCallback` deps include `currentSample` / `context`).
   // Mirror it through a ref so the returned callback uses the latest
   // `execute` without churning its own identity — Sidebar.tsx consumes
   // this callback as an effect dep.

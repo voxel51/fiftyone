@@ -2,7 +2,7 @@ import { useTrackEvent } from "@fiftyone/analytics";
 import { PillButton } from "@fiftyone/components";
 import { ColorLens } from "@mui/icons-material";
 import { useEffect, useRef, useState } from "react";
-import { useRecoilState } from "recoil";
+import { useReverbState } from "@fiftyone/reverb";
 import { activeColorEntry } from "../../ColorModal/state";
 import { ACTIVE_FIELD } from "../../ColorModal/utils";
 import type { ActionProps } from "../types";
@@ -15,7 +15,7 @@ export default ({
   const trackEvent = useTrackEvent();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const [activeField, setActiveField] = useRecoilState(activeColorEntry);
+  const [activeField, setActiveField] = useReverbState(activeColorEntry);
 
   const onOpen = () => {
     trackEvent("open_color_settings");

@@ -1,13 +1,13 @@
 import * as fos from "@fiftyone/state";
 import { Controller } from "@react-spring/core";
 import React, { useCallback } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { Entries } from "../../Sidebar";
 
 export const useModalSidebarRenderEntry = () => {
-  const labelPaths = useRecoilValue(fos.labelPaths({ expanded: false }));
-  const disabled = useRecoilValue(fos.fullyDisabledPaths);
-  const mode = useRecoilValue(fos.groupStatistics(true));
+  const labelPaths = useReverbValue(fos.labelPaths({ expanded: false }));
+  const disabled = useReverbValue(fos.fullyDisabledPaths);
+  const mode = useReverbValue(fos.groupStatistics(true));
 
   return useCallback(
     (

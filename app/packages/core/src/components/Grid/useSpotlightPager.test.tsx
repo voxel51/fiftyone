@@ -2,7 +2,7 @@ import query from "@fiftyone/relay/src/queries/__generated__/paginateSamplesQuer
 import { cleanup, renderHook, waitFor } from "@testing-library/react";
 import React from "react";
 import { RelayEnvironmentProvider } from "react-relay";
-import { atom, RecoilRoot, selector } from "recoil";
+import { atom, ReverbRoot, selector } from "@fiftyone/reverb";
 import {
   createOperationDescriptor,
   Environment,
@@ -21,7 +21,7 @@ vi.mock("@fiftyone/relay", async () => ({
 }));
 vi.mock("@fiftyone/looker", () => ({ zoomAspectRatio: vi.fn() }));
 vi.mock("@fiftyone/state", async () => {
-  const { atom } = await import("recoil");
+  const { atom } = await import("@fiftyone/reverb");
   const schema = atom({ key: "pager-test-schema", default: {} });
   return { fieldSchema: () => schema, State: { SPACE: { SAMPLE: "sample" } } };
 });
@@ -95,11 +95,11 @@ function setup() {
     {
       initialProps: "initial",
       wrapper: ({ children }: React.PropsWithChildren) => (
-        <RecoilRoot>
+        <ReverbRoot>
           <RelayEnvironmentProvider environment={environment}>
             {children}
           </RelayEnvironmentProvider>
-        </RecoilRoot>
+        </ReverbRoot>
       ),
     },
   );
@@ -114,7 +114,7 @@ describe("useSpotlightPager", () => {
     const first = result.current.page(1);
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
     const second = result.current.page(1);
-    // Let the second call read its Recoil schema and choose a fetch policy
+    // Let the second call read its Reverb schema and choose a fetch policy
     // while the first network request is still pending.
     await Promise.resolve();
     responses[0]({ data: payload(["grid-test"]) });

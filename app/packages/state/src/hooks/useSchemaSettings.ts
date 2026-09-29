@@ -3,11 +3,11 @@ import * as fos from "@fiftyone/state";
 import _, { isEmpty, keyBy } from "lodash";
 import { useCallback, useEffect, useMemo } from "react";
 import {
-  useRecoilState,
-  useRecoilValue,
-  useResetRecoilState,
-  useSetRecoilState,
-} from "recoil";
+  useReverbState,
+  useReverbValue,
+  useResetReverbState,
+  useSetReverbState,
+} from "@fiftyone/reverb";
 import {
   disabledField,
   getSubPaths,
@@ -26,22 +26,22 @@ const viewSchemaSelector = foq.graphQLSyncFragmentAtom<
 );
 
 export default function useSchemaSettings() {
-  const [settingModal, setSettingsModal] = useRecoilState(fos.settingsModal);
-  const [showMetadata, setShowMetadata] = useRecoilState(fos.showMetadataState);
-  const dataset = useRecoilValue<fos.State.Dataset>(fos.dataset);
+  const [settingModal, setSettingsModal] = useReverbState(fos.settingsModal);
+  const [showMetadata, setShowMetadata] = useReverbState(fos.showMetadataState);
+  const dataset = useReverbValue<fos.State.Dataset>(fos.dataset);
   const isGroupDataset = dataset?.groupField;
-  const isFieldVisibilityActive = useRecoilValue(fos.isFieldVisibilityActive);
+  const isFieldVisibilityActive = useReverbValue(fos.isFieldVisibilityActive);
 
-  const resetTextFilter = useResetRecoilState(fos.textFilter(false));
-  const datasetName = useRecoilValue(fos.datasetName) as string;
+  const resetTextFilter = useResetReverbState(fos.textFilter(false));
+  const datasetName = useReverbValue(fos.datasetName) as string;
 
-  const [filters, setFilters] = useRecoilState(fos.filters);
-  const [modalFilters, setModalFilters] = useRecoilState(fos.modalFilters);
-  const [attributeVisibility, setAttributeVisibility] = useRecoilState(
+  const [filters, setFilters] = useReverbState(fos.filters);
+  const [modalFilters, setModalFilters] = useReverbState(fos.modalFilters);
+  const [attributeVisibility, setAttributeVisibility] = useReverbState(
     fos.attributeVisibility,
   );
   const [modalAttributeVisibility, setModalAttributeVisibility] =
-    useRecoilState(fos.modalAttributeVisibility);
+    useReverbState(fos.modalAttributeVisibility);
 
   const resetAttributeFilters = () => {
     !_.isEmpty(filters) && setFilters({});
@@ -50,36 +50,36 @@ export default function useSchemaSettings() {
     !_.isEmpty(modalAttributeVisibility) && setModalAttributeVisibility({});
   };
 
-  const excludedPathsStripped = useRecoilValue(fos.excludedPathsStrippedState);
+  const excludedPathsStripped = useReverbValue(fos.excludedPathsStrippedState);
 
-  const setViewSchema = useSetRecoilState(fos.viewSchemaState);
-  const setFieldSchema = useSetRecoilState(fos.fieldSchemaState);
-  const [searchTerm, setSearchTerm] = useRecoilState<string>(
+  const setViewSchema = useSetReverbState(fos.viewSchemaState);
+  const setFieldSchema = useSetReverbState(fos.fieldSchemaState);
+  const [searchTerm, setSearchTerm] = useReverbState<string>(
     fos.schemaSearchTerm,
   );
   const isVideo = dataset?.mediaType === "video";
 
-  const [allFieldsChecked, setAllFieldsChecked] = useRecoilState(
+  const [allFieldsChecked, setAllFieldsChecked] = useReverbState(
     fos.allFieldsCheckedState,
   );
 
-  const [includeNestedFields, setIncludeNestedFieldsRaw] = useRecoilState(
+  const [includeNestedFields, setIncludeNestedFieldsRaw] = useReverbState(
     fos.includeNestedFieldsState,
   );
 
-  const fieldVisibilityStage = useRecoilValue(fos.fieldVisibilityStage);
+  const fieldVisibilityStage = useReverbValue(fos.fieldVisibilityStage);
   const extendedExcludedPaths = fieldVisibilityStage?.kwargs?.field_names || [];
   const affectedPathCount = extendedExcludedPaths?.length || 0;
 
-  const isPatchesView = useRecoilValue(fos.isPatchesView);
-  const isFrameView = useRecoilValue(fos.isFramesView);
-  const isClipsView = useRecoilValue(fos.isClipsView);
+  const isPatchesView = useReverbValue(fos.isPatchesView);
+  const isFrameView = useReverbValue(fos.isFramesView);
+  const isClipsView = useReverbValue(fos.isClipsView);
 
-  const [expandedPaths, setExpandedPaths] = useRecoilState(
+  const [expandedPaths, setExpandedPaths] = useReverbState(
     fos.expandedPathsState,
   );
 
-  const data = useRecoilValue(viewSchemaSelector);
+  const data = useReverbValue(viewSchemaSelector);
 
   const { fieldSchema: fieldSchemaRaw, frameFieldSchema } =
     data?.schemaForViewStages || {};
@@ -95,7 +95,7 @@ export default function useSchemaSettings() {
   }, [combinedSchema]);
 
   const excludedPathsState = fos.excludedPathsState({});
-  const [excludedPaths, setExcludedPaths] = useRecoilState(excludedPathsState);
+  const [excludedPaths, setExcludedPaths] = useReverbState(excludedPathsState);
 
   useEffect(() => {
     // when dataset changes, we need to initialize the excludedPaths
@@ -121,11 +121,11 @@ export default function useSchemaSettings() {
     }
   }, [viewSchema, fieldSchema, setViewSchema, setFieldSchema]);
 
-  const [showNestedFields, setShowNestedFields] = useRecoilState<boolean>(
+  const [showNestedFields, setShowNestedFields] = useReverbState<boolean>(
     fos.showNestedFieldsState,
   );
 
-  const [selectedTab, setSelectedTab] = useRecoilState(
+  const [selectedTab, setSelectedTab] = useReverbState(
     fos.schemaSelectedSettingsTab,
   );
   const filterRuleTab = selectedTab === fos.TAB_OPTIONS_MAP.FILTER_RULE;

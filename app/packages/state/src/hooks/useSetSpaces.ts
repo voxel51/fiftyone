@@ -1,8 +1,8 @@
-import { useSetRecoilState } from "recoil";
-import { sessionSpaces } from "../recoil";
+import { useSetReverbState } from "@fiftyone/reverb";
+import { sessionSpaces } from "../atoms";
 
 const useSetSpaces = () => {
-  return useSetRecoilState(sessionSpaces);
+  return useSetReverbState(sessionSpaces);
 };
 
 export default useSetSpaces;

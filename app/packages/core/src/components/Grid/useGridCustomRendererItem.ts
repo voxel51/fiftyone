@@ -14,10 +14,7 @@ import * as fos from "@fiftyone/state";
 import { useGridSelection } from "@fiftyone/state/src/selection";
 import type React from "react";
 import { useCallback, useMemo, useRef } from "react";
-import {
-  useRecoilBridgeAcrossReactRoots_UNSTABLE,
-  useRecoilCallback,
-} from "recoil";
+import { useReverbBridge, useReverbCallback } from "@fiftyone/reverb";
 import { GridCustomRendererItem } from "./GridCustomRendererItem";
 
 type GridSampleResult = SampleRendererSampleLike;
@@ -43,7 +40,7 @@ export function useGridCustomRendererItem(
 
   const selectedMediaField = fos.useSelectedMediaFieldGrid();
 
-  const RecoilBridge = useRecoilBridgeAcrossReactRoots_UNSTABLE();
+  const ReverbBridge = useReverbBridge();
   const hasTrackedRendererUsageRef = useRef(false);
 
   // Synchronous, non-hook lookup so a GridCustomRendererItem instance can
@@ -51,7 +48,7 @@ export function useGridCustomRendererItem(
   // it's reattached from the cache (e.g. after scrolling out of and back into
   // the shown viewport) instead of trusting a value it hasn't been updated
   // with while offscreen.
-  const isSampleSelected = useRecoilCallback(
+  const isSampleSelected = useReverbCallback(
     ({ snapshot }) =>
       (sampleId: string) =>
         selectionRef.current.enabled
@@ -142,8 +139,8 @@ export function useGridCustomRendererItem(
               ?.clickBehavior,
           pluginName: resolvedRenderer.registration.name,
           Renderer: resolvedRenderer.Renderer,
-          RecoilBridge:
-            RecoilBridge as React.ComponentType<React.PropsWithChildren>,
+          ReverbBridge:
+            ReverbBridge as React.ComponentType<React.PropsWithChildren>,
           ctx: resolvedRenderer.ctx,
           symbol: id,
           isSampleSelected,
@@ -168,7 +165,7 @@ export function useGridCustomRendererItem(
     [
       createDefaultItem,
       getResolvedRenderer,
-      RecoilBridge,
+      ReverbBridge,
       trackEvent,
       isSampleSelected,
     ],

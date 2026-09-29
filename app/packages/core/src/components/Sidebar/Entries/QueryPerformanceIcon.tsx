@@ -3,7 +3,7 @@ import { OPTIMIZING_QUERY_PERFORMANCE } from "../../../utils/links";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state";
 import { Bolt } from "@mui/icons-material";
 import { Box, Button, Tooltip } from "@mui/material";
-import { atom, useRecoilState } from "recoil";
+import { atom, useReverbState } from "@fiftyone/reverb";
 import styled from "styled-components";
 
 const SectionTitle = styled.div`
@@ -38,7 +38,7 @@ const showExpandedTooltip = atom({
 
 const QueryPerformanceIcon = () => {
   const theme = useTheme();
-  const [showExpanded, setShowExpanded] = useRecoilState(showExpandedTooltip);
+  const [showExpanded, setShowExpanded] = useReverbState(showExpandedTooltip);
   const lightningBoltColor = showExpanded
     ? theme.custom.lightning
     : theme.text.secondary;

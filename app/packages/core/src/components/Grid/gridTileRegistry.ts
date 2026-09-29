@@ -7,7 +7,7 @@
  * Decoupling tile DOM management (in `useRenderer`) from React
  * rendering (in `TileDecoratorPortals`) lets us keep `showItem` a
  * cheap synchronous callback while letting decorators use any React /
- * Recoil / Jotai patterns inside.
+ * Reverb / Jotai patterns inside.
  */
 
 import { useSyncExternalStore } from "react";

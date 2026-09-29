@@ -1,12 +1,12 @@
 import type { ModalSelector } from "../session";
 
 import { useCallback } from "react";
-import { useRecoilCallback } from "recoil";
-import { modalSelector } from "../recoil";
-import * as dynamicGroupAtoms from "../recoil/dynamicGroups";
+import { useReverbCallback } from "@fiftyone/reverb";
+import { modalSelector } from "../atoms";
+import * as dynamicGroupAtoms from "../atoms/dynamicGroups";
 
 export default () => {
-  const setter = useRecoilCallback(
+  const setter = useReverbCallback(
     ({ reset }) =>
       async () => {
         reset(dynamicGroupAtoms.dynamicGroupIndex);
@@ -15,7 +15,7 @@ export default () => {
     [],
   );
 
-  const commit = useRecoilCallback(
+  const commit = useReverbCallback(
     ({ set }) =>
       async (selector: ModalSelector) => {
         set(modalSelector, selector);

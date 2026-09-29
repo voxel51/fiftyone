@@ -10,13 +10,13 @@ import {
   MenuItem,
 } from "@mui/material";
 import React, { useState } from "react";
-import { useSetRecoilState } from "recoil";
+import { useSetReverbState } from "@fiftyone/reverb";
 import { openModelEvalDialog, selectedModelEvaluation } from "./utils";
 
 export default function ActionMenu(props: ActionMenuProps) {
   const { canDelete } = props;
-  const setOpenModelEvalDialog = useSetRecoilState(openModelEvalDialog);
-  const setEvaluation = useSetRecoilState(selectedModelEvaluation);
+  const setOpenModelEvalDialog = useSetReverbState(openModelEvalDialog);
+  const setEvaluation = useSetReverbState(selectedModelEvaluation);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const handleOpen = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();

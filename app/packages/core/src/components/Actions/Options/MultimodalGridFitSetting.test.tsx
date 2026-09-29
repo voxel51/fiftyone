@@ -15,9 +15,9 @@ vi.mock("@fiftyone/state", () => ({
   multimodalGridFit: Symbol("multimodalGridFit"),
 }));
 
-vi.mock("recoil", () => ({
-  useRecoilState: () => [harness.fit, harness.setFit],
-  useRecoilValue: () => harness.isMultimodal,
+vi.mock("@fiftyone/reverb", () => ({
+  useReverbState: () => [harness.fit, harness.setFit],
+  useReverbValue: () => harness.isMultimodal,
 }));
 
 vi.mock("@fiftyone/components", () => ({

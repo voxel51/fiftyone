@@ -4,7 +4,7 @@ import * as fos from "@fiftyone/state";
 import { groupId, useBrowserStorage } from "@fiftyone/state";
 import { Resizable } from "re-resizable";
 import { useEffect, useMemo, useRef } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import EnsureGroupSample from "./EnsureGroupSample";
 import { groupContainer, mainGroup } from "./Group.module.css";
 import { GroupCarousel } from "./GroupCarousel";
@@ -16,8 +16,8 @@ const DEFAULT_SPLIT_VIEW_LEFT_WIDTH = "800";
 
 export const GroupView = () => {
   const theme = useTheme();
-  const key = useRecoilValue(groupId);
-  const mediaField = useRecoilValue(fos.selectedMediaField(true));
+  const key = useReverbValue(groupId);
+  const mediaField = useReverbValue(fos.selectedMediaField(true));
   const is3dVisible = fos.useIs3dVisible();
   const isCarouselVisible = fos.useIsGroupCarouselVisible();
   const isMainVisible = fos.useIsGroupMain2dViewerVisible();
@@ -30,7 +30,7 @@ export const GroupView = () => {
     return isCarouselVisible && is3dVisible && !isMainVisible;
   }, [is3dVisible, isCarouselVisible, isMainVisible]);
 
-  const activeSliceDescriptorLabel = useRecoilValue(
+  const activeSliceDescriptorLabel = useReverbValue(
     fos.activeSliceDescriptorLabel,
   );
   const [_, setPanelTitle, resetPanelTitle] = usePanelTitle();

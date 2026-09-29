@@ -2,17 +2,17 @@ import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { useCallback, useMemo } from "react";
 import { loadQuery, useRelayEnvironment } from "react-relay";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 
 export const useDynamicGroupSamples = () => {
   const environment = useRelayEnvironment();
-  const slice = useRecoilValue(fos.groupSlice);
-  const modalSlice = useRecoilValue(fos.modalGroupSlice);
-  const view = useRecoilValue(fos.view);
+  const slice = useReverbValue(fos.groupSlice);
+  const modalSlice = useReverbValue(fos.modalGroupSlice);
+  const view = useReverbValue(fos.view);
   const dynamicGroup = fos.useGroupByFieldValue();
-  const dataset = useRecoilValue(fos.datasetName);
-  const dynamicGroupIndex = useRecoilValue(fos.dynamicGroupIndex);
-  const shouldRenderImavid = useRecoilValue(fos.shouldRenderImaVidLooker(true));
+  const dataset = useReverbValue(fos.datasetName);
+  const dynamicGroupIndex = useReverbValue(fos.dynamicGroupIndex);
+  const shouldRenderImavid = useReverbValue(fos.shouldRenderImaVidLooker(true));
 
   const filter = useMemo(
     // slice is how the group was accessed, i.e. from the grid

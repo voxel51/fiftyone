@@ -32,5 +32,8 @@
         "@mui/icons-material": "*",
         "@mui/material": "*",
         "react": "*"
+    },
+    "dependencies": {
+        "@fiftyone/reverb": "workspace:*"
     }
 }

@@ -1,9 +1,9 @@
 /**
- * Recoil state atoms for camera frustum visualization.
+ * store state atoms for camera frustum visualization.
  */
 
-import { getBrowserStorageEffectForKey } from "@fiftyone/state/src/recoil/customEffects";
-import { atom } from "recoil";
+import { getBrowserStorageEffectForKey } from "@fiftyone/state/src/atoms/customEffects";
+import { atom } from "@fiftyone/reverb";
 
 /**
  * Global toggle for frustum visibility.

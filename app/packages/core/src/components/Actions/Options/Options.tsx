@@ -10,11 +10,11 @@ import { useAtomValue } from "jotai";
 import type { RefObject } from "react";
 import { default as React, useMemo } from "react";
 import {
-  useRecoilState,
-  useRecoilValue,
-  useResetRecoilState,
-  useSetRecoilState,
-} from "recoil";
+  useReverbState,
+  useReverbValue,
+  useResetReverbState,
+  useSetReverbState,
+} from "@fiftyone/reverb";
 import {
   MANAGING_GRID_MEMORY,
   OPTIMIZING_QUERY_PERFORMANCE,
@@ -22,16 +22,16 @@ import {
 } from "../../../utils/links";
 import Checkbox from "../../Common/Checkbox";
 import RadioGroup from "../../Common/RadioGroup";
-import { gridAutosizing, maxGridItemsSizeBytes } from "../../Grid/recoil";
+import { gridAutosizing, maxGridItemsSizeBytes } from "../../Grid/atoms";
 import { ActionOption } from "../Common";
 import Popout from "../Popout";
 import MultimodalGridFitSetting from "./MultimodalGridFitSetting";
 
 const SortFilterResults = ({ modal }) => {
-  const [{ count, asc }, setSortFilterResults] = useRecoilState(
+  const [{ count, asc }, setSortFilterResults] = useReverbState(
     fos.sortFilterResults(modal),
   );
-  const queryPerformance = useRecoilValue(fos.queryPerformance);
+  const queryPerformance = useReverbValue(fos.queryPerformance);
   if (queryPerformance) {
     // sidebar sorting is not configurable
     return null;
@@ -65,8 +65,8 @@ const SortFilterResults = ({ modal }) => {
 };
 
 const Patches = ({ modal }: { modal: boolean }) => {
-  const isPatches = useRecoilValue(fos.isPatchesView);
-  const [crop, setCrop] = useRecoilState(fos.cropToContent(modal));
+  const isPatches = useReverbValue(fos.isPatchesView);
+  const [crop, setCrop] = useReverbState(fos.cropToContent(modal));
 
   if (!isPatches) {
     return null;
@@ -85,10 +85,10 @@ const Patches = ({ modal }: { modal: boolean }) => {
 };
 
 const MediaFields = ({ modal }) => {
-  const [selectedMediaField, setSelectedMediaField] = useRecoilState(
+  const [selectedMediaField, setSelectedMediaField] = useReverbState(
     fos.selectedMediaField(modal),
   );
-  const mediaFields = useRecoilValue(fos.mediaFields);
+  const mediaFields = useReverbValue(fos.mediaFields);
 
   if (!mediaFields || mediaFields?.length <= 1) return null;
 
@@ -105,7 +105,7 @@ const MediaFields = ({ modal }) => {
 };
 
 const GroupStatistics = ({ modal }) => {
-  const [statistics, setStatistics] = useRecoilState(groupStatistics(modal));
+  const [statistics, setStatistics] = useReverbState(groupStatistics(modal));
 
   return (
     <>
@@ -123,14 +123,14 @@ const GroupStatistics = ({ modal }) => {
 };
 
 const DynamicGroupsViewMode = ({ modal }: { modal: boolean }) => {
-  const isOrderedDynamicGroup = useRecoilValue(fos.isOrderedDynamicGroup);
-  const hasGroupSlices = useRecoilValue(fos.hasGroupSlices);
+  const isOrderedDynamicGroup = useReverbValue(fos.isOrderedDynamicGroup);
+  const hasGroupSlices = useReverbValue(fos.hasGroupSlices);
 
-  const [mode, setMode] = useRecoilState(fos.dynamicGroupsViewMode(modal));
-  const setIsCarouselVisible = useSetRecoilState(
+  const [mode, setMode] = useReverbState(fos.dynamicGroupsViewMode(modal));
+  const setIsCarouselVisible = useSetReverbState(
     fos.groupMediaIsCarouselVisibleSetting,
   );
-  const setIsMainVisible = useSetRecoilState(
+  const setIsMainVisible = useSetReverbState(
     fos.groupMediaIsMain2DViewerVisibleSetting,
   );
 
@@ -195,12 +195,12 @@ const DynamicGroupsViewMode = ({ modal }: { modal: boolean }) => {
 
 const QueryPerformance = () => {
   const theme = useTheme();
-  const [enabled, setEnabled] = useRecoilState(fos.queryPerformance);
-  const [maxSearch, setMaxSearch] = useRecoilState(
+  const [enabled, setEnabled] = useReverbState(fos.queryPerformance);
+  const [maxSearch, setMaxSearch] = useReverbState(
     fos.queryPerformanceMaxSearch,
   );
-  const resetMaxSearch = useResetRecoilState(fos.queryPerformanceMaxSearch);
-  if (!useRecoilValue(fos.enableQueryPerformanceConfig)) {
+  const resetMaxSearch = useResetReverbState(fos.queryPerformanceMaxSearch);
+  if (!useReverbValue(fos.enableQueryPerformanceConfig)) {
     return null;
   }
 
@@ -288,7 +288,7 @@ const QueryPerformance = () => {
 };
 
 const HideFieldSetting = () => {
-  const [hideNone, setHideNone] = useRecoilState(fos.hideNoneValuedFields);
+  const [hideNone, setHideNone] = useReverbState(fos.hideNoneValuedFields);
   const theme = useTheme();
 
   return (
@@ -319,7 +319,7 @@ const HideFieldSetting = () => {
 
 const ShowModalNav = () => {
   const [showModalNavigationControls, setShowModalNavigationControls] =
-    useRecoilState(fos.showModalNavigationControls);
+    useReverbState(fos.showModalNavigationControls);
   const theme = useTheme();
 
   return (
@@ -348,9 +348,9 @@ const ShowModalNav = () => {
 };
 
 const Grid = () => {
-  const [autosizing, setAutosizing] = useRecoilState(gridAutosizing);
-  const resetSizeBytes = useResetRecoilState(maxGridItemsSizeBytes);
-  const [sizeBytes, setSizeBytes] = useRecoilState(maxGridItemsSizeBytes);
+  const [autosizing, setAutosizing] = useReverbState(gridAutosizing);
+  const resetSizeBytes = useResetReverbState(maxGridItemsSizeBytes);
+  const [sizeBytes, setSizeBytes] = useReverbState(maxGridItemsSizeBytes);
   const theme = useTheme();
 
   return (
@@ -420,9 +420,9 @@ type OptionsProps = {
 };
 
 const Options = ({ modal, anchorRef }: OptionsProps) => {
-  const isGroup = useRecoilValue(fos.isGroup);
-  const isDynamicGroup = useRecoilValue(fos.isDynamicGroup);
-  const view = useRecoilValue(fos.view);
+  const isGroup = useReverbValue(fos.isGroup);
+  const isDynamicGroup = useReverbValue(fos.isDynamicGroup);
+  const view = useReverbValue(fos.view);
   const mode = useAtomValue(fos.modalMode);
 
   const exploreWithModal = modal && mode === fos.EXPLORE;

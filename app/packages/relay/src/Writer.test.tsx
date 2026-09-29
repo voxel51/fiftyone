@@ -1,6 +1,6 @@
 import { render, waitFor } from "@testing-library/react";
 import React from "react";
-import { RecoilRoot } from "recoil";
+import { ReverbRoot } from "@fiftyone/reverb";
 import type { OperationType } from "relay-runtime";
 import { describe, expect, test, vi } from "vitest";
 import type { PageQuery } from "./Writer";
@@ -15,7 +15,7 @@ describe("Writer", () => {
 
     try {
       const { unmount } = render(
-        <RecoilRoot>
+        <ReverbRoot>
           <Writer<OperationType>
             read={() => page}
             setters={new Map()}
@@ -24,7 +24,7 @@ describe("Writer", () => {
               return vi.fn();
             }}
           />
-        </RecoilRoot>,
+        </ReverbRoot>,
       );
 
       await waitFor(() => expect(synchronize).toHaveBeenCalledOnce());

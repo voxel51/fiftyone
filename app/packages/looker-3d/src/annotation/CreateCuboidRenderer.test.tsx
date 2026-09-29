@@ -1,7 +1,11 @@
 import { act, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Mock } from "vitest";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import {
+  useReverbState,
+  useReverbValue,
+  useSetReverbState,
+} from "@fiftyone/reverb";
 import type { CuboidCreationState } from "../types";
 import { CreateCuboidRenderer } from "./CreateCuboidRenderer";
 
@@ -52,10 +56,10 @@ vi.mock("@fiftyone/utilities", () => ({
   objectId: () => "new-cuboid-id",
 }));
 
-vi.mock("recoil", () => ({
-  useRecoilState: vi.fn(),
-  useRecoilValue: vi.fn(),
-  useSetRecoilState: vi.fn(),
+vi.mock("@fiftyone/reverb", () => ({
+  useReverbState: vi.fn(),
+  useReverbValue: vi.fn(),
+  useSetReverbState: vi.fn(),
 }));
 
 vi.mock("../hooks/use-empty-canvas-interaction", () => ({
@@ -131,7 +135,7 @@ describe("CreateCuboidRenderer", () => {
     mocks.directPcdWorldTransformsBySampleId = {};
     creationStateValue = INITIAL_CREATION_STATE;
 
-    (useRecoilState as Mock).mockImplementation((atom) => {
+    (useReverbState as Mock).mockImplementation((atom) => {
       if (atom === mocks.atoms.isCreatingCuboidAtom) {
         return [true, setIsCreatingCuboid];
       }
@@ -140,10 +144,10 @@ describe("CreateCuboidRenderer", () => {
         return [creationStateValue, setCreationState];
       }
 
-      throw new Error(`Unexpected recoil state: ${String(atom)}`);
+      throw new Error(`Unexpected state: ${String(atom)}`);
     });
 
-    (useRecoilValue as Mock).mockImplementation((atom) => {
+    (useReverbValue as Mock).mockImplementation((atom) => {
       if (atom === mocks.atoms.currentActiveAnnotationField3dAtom) {
         return "ground_truth";
       }
@@ -166,7 +170,7 @@ describe("CreateCuboidRenderer", () => {
       return null;
     });
 
-    (useSetRecoilState as Mock).mockImplementation((atom) => {
+    (useSetReverbState as Mock).mockImplementation((atom) => {
       if (atom === mocks.atoms.isCreatingCuboidPointerDownAtom) {
         return setIsCreatingCuboidPointerDown;
       }
@@ -183,7 +187,7 @@ describe("CreateCuboidRenderer", () => {
         return setTransformMode;
       }
 
-      throw new Error(`Unexpected recoil setter: ${String(atom)}`);
+      throw new Error(`Unexpected setter: ${String(atom)}`);
     });
   });
 

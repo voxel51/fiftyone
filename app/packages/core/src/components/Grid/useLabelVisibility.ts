@@ -1,6 +1,6 @@
 import { activeLabelFields } from "@fiftyone/state";
 import { useCallback } from "react";
-import { useRecoilCallback } from "recoil";
+import { useReverbCallback } from "@fiftyone/reverb";
 import { gridActivePathsLUT } from "../Sidebar/useDetectNewActiveLabelFields";
 
 /**
@@ -8,7 +8,7 @@ import { gridActivePathsLUT } from "../Sidebar/useDetectNewActiveLabelFields";
  */
 export default () => ({
   onDispose: useCallback((key: string) => gridActivePathsLUT.delete(key), []),
-  onSet: useRecoilCallback(
+  onSet: useReverbCallback(
     ({ snapshot }) =>
       (key: string) => {
         const currentActiveLabelFields = snapshot

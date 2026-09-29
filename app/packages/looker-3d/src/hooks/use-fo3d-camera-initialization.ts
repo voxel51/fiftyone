@@ -1,6 +1,6 @@
 import * as fos from "@fiftyone/state";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import type { Box3, PerspectiveCamera } from "three";
 import { Vector3 } from "three";
 import { DEFAULT_CAMERA_POSITION } from "../constants";
@@ -50,8 +50,8 @@ export const useFo3dCameraInitialization = ({
   isBoundsResolved,
   dispatchCameraLifecycle,
 }: UseFo3dCameraInitializationArgs) => {
-  const datasetName = useRecoilValue(fos.datasetName);
-  const overriddenCameraPosition = useRecoilValue(cameraPositionAtom);
+  const datasetName = useReverbValue(fos.datasetName);
+  const overriddenCameraPosition = useReverbValue(cameraPositionAtom);
 
   const { applyLookAt } = useFo3dCameraLookAt({
     cameraRef,

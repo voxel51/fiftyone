@@ -19,8 +19,8 @@ vi.mock("@fiftyone/state", () => ({
   useModalSample: () => ({ sample: { _id: mockModalSampleId } }),
 }));
 
-vi.mock("recoil", () => ({
-  useRecoilValue: () => mockMain2dVisible,
+vi.mock("@fiftyone/reverb", () => ({
+  useReverbValue: () => mockMain2dVisible,
 }));
 
 // pinning walks fo3d -> pcd -> fo3d in a grouped image + fo3d + pcd modal; the

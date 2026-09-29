@@ -23,14 +23,17 @@ const stateStore = vi.hoisted(() => ({
   loadables: {} as Record<string, { state: string; contents: unknown }>,
 }));
 
-vi.mock("../../recoil/dynamicGroups", () => mockSelectors);
-vi.mock("../../recoil/pathData/groups", () => mockPathData);
+vi.mock("../../atoms/dynamicGroups", () => mockSelectors);
+vi.mock("../../atoms/pathData/groups", () => mockPathData);
 
-vi.mock("recoil", async () => {
-  const actual = await vi.importActual<typeof import("recoil")>("recoil");
+vi.mock("@fiftyone/reverb", async () => {
+  const actual =
+    await vi.importActual<typeof import("@fiftyone/reverb")>(
+      "@fiftyone/reverb",
+    );
   return {
     ...actual,
-    useRecoilValueLoadable: (node: { key: string }) =>
+    useReverbValueLoadable: (node: { key: string }) =>
       stateStore.loadables[node.key] ?? { state: "loading" },
   };
 });

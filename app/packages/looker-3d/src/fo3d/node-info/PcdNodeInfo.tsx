@@ -1,7 +1,7 @@
 import { IconButton } from "@fiftyone/components";
 import CloseIcon from "@mui/icons-material/Close";
 import { Typography } from "@mui/material";
-import { useSetRecoilState } from "recoil";
+import { useSetReverbState } from "@fiftyone/reverb";
 import type { FoSceneNode } from "../../hooks";
 import { activeNodeAtom } from "../../state";
 import {
@@ -15,7 +15,7 @@ interface PcdNodeInfoProps {
 }
 
 export const PcdNodeInfo = ({ node }: PcdNodeInfoProps) => {
-  const setActiveNode = useSetRecoilState(activeNodeAtom);
+  const setActiveNode = useSetReverbState(activeNodeAtom);
 
   return (
     <NodeInfoContainer>

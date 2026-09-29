@@ -29,7 +29,7 @@ import {
   useTheme,
 } from "@mui/material";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { atom } from "recoil";
+import { atom } from "@fiftyone/reverb";
 import AlertView from "../../../AlertView";
 import ConfusionMatrixConfig from "../../components/ConfusionMatrixConfig";
 import CreateScenario from "../../components/CreateScenario";

@@ -14,7 +14,7 @@ vi.mock("@fiftyone/state", () => ({
   escapeKeyHandlerIdsAtom: {},
   useKeyDown: vi.fn(),
 }));
-vi.mock("recoil", () => ({ useSetRecoilState: () => vi.fn() }));
+vi.mock("@fiftyone/reverb", () => ({ useSetReverbState: () => vi.fn() }));
 vi.mock("react-sortablejs", () => ({
   ReactSortable: ({
     children,

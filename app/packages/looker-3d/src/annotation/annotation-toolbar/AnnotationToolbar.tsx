@@ -3,7 +3,7 @@ import { ActionToolbar } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import type { AnnotationToolbarProps } from "../types";
 import { useAnnotationActions } from "./useAnnotationActions";
 import { Orientation, ZIndex } from "@voxel51/voodo";
@@ -14,7 +14,7 @@ export const AnnotationToolbar = ({ className }: AnnotationToolbarProps) => {
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(
     null,
   );
-  const isFullscreen = useRecoilValue(fos.fullscreen);
+  const isFullscreen = useReverbValue(fos.fullscreen);
 
   // Find the modal container to render the toolbar in the same stacking context as navigation arrows
   useEffect(() => {

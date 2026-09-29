@@ -1,5 +1,5 @@
 import { isSidebarFilterMode } from "@fiftyone/state";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { getIcon } from "./FilterItem";
 import { Option, OptionKey } from "./useOptions";
 
@@ -14,7 +14,7 @@ const Selected = ({
 }) => {
   // render the icon for selected filter method
 
-  const isFilterMode = useRecoilValue(isSidebarFilterMode);
+  const isFilterMode = useReverbValue(isSidebarFilterMode);
   const icon = options.find(
     (o) => o.key === (isFilterMode ? filterKey : visibilityKey),
   )?.icon;

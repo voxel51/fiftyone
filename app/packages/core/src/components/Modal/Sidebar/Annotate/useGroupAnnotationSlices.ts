@@ -2,10 +2,10 @@ import { currentGroupSliceNames, groupMediaTypes } from "@fiftyone/state";
 import { is3d, isAnnotationSupported } from "@fiftyone/utilities";
 import { useMemo } from "react";
 import {
-  useRecoilCallback,
-  useRecoilValue,
-  useRecoilValueLoadable,
-} from "recoil";
+  useReverbCallback,
+  useReverbValue,
+  useReverbValueLoadable,
+} from "@fiftyone/reverb";
 
 export interface AnnotationSliceInfo {
   /** Slice name. */
@@ -47,8 +47,8 @@ export function useGroupAnnotationSlices(): {
   resolved: AnnotationSliceInfo[] | "loading";
   request: () => Promise<AnnotationSliceInfo[]>;
 } {
-  const currentSlices = useRecoilValueLoadable(currentGroupSliceNames);
-  const sliceInfo = useRecoilValue(groupMediaTypes);
+  const currentSlices = useReverbValueLoadable(currentGroupSliceNames);
+  const sliceInfo = useReverbValue(groupMediaTypes);
 
   const resolved = useMemo(() => {
     if (currentSlices.state === "loading") {
@@ -68,7 +68,7 @@ export function useGroupAnnotationSlices(): {
 
   return {
     resolved,
-    request: useRecoilCallback(
+    request: useReverbCallback(
       ({ snapshot }) =>
         async () => {
           const slices = await snapshot.getPromise(currentGroupSliceNames);

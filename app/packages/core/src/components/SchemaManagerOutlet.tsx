@@ -12,7 +12,7 @@
  *
  * Operator-backed schema loading/UI is gated on `canManageSchema` and operator
  * availability. Mount once per app — `DatasetPage.tsx` in OSS, the samples
- * page in teams-app — inside the Recoil/Jotai-aware tree.
+ * page in downstream repos — inside the store-aware tree.
  */
 
 import { useRegisterAnnotationContextManager } from "@fiftyone/annotation";

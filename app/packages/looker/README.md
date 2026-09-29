@@ -34,8 +34,8 @@ Looker is a client-side JavaScript media viewer that can render label overlays
 - Canvas
 - Bespoke internal state management
     - Allows for hooks in react to call `looker.updateOptions()` and similar
-- Requires wrapping react code to mediate recoil hooks
-- Duplicates recoil state
+- Requires wrapping react code to mediate Reverb hooks
+- Duplicates Reverb state
 
 # State
 

@@ -6,9 +6,11 @@ import type { EventHandlerHook } from "./registerEvent";
 
 import { env } from "@fiftyone/utilities";
 import { useCallback } from "react";
-import { useSetRecoilState } from "recoil";
+import { useSetReverbState, useReverbStore } from "@fiftyone/reverb";
 import { getDatasetName, getParam, resolveURL } from "../utils";
 import { AppReadyState } from "./registerEvent";
+import { syncSessionState } from "@fiftyone/state";
+import type { DatasetPageQuery } from "../pages/datasets/__generated__/DatasetPageQuery.graphql";
 import { appReadyState, processState } from "./utils";
 
 const useStateUpdate: EventHandlerHook = ({
@@ -16,11 +18,12 @@ const useStateUpdate: EventHandlerHook = ({
   readyStateRef,
   session,
 }) => {
-  const setReadyState = useSetRecoilState(appReadyState);
+  const setReadyState = useSetReverbState(appReadyState);
+  const store = useReverbStore();
 
   return useCallback(
     (payload: { state: { [key: string]: unknown } }) => {
-      const state = processState(session.current, payload.state);
+      const { state, stage } = processState(session.current, payload.state);
       const stateless = env().VITE_NO_STATE;
       const path = resolveURL({
         currentPathname: router.history.location.pathname,
@@ -41,12 +44,18 @@ const useStateUpdate: EventHandlerHook = ({
 
       if (readyStateRef.current !== AppReadyState.OPEN) {
         router.history.replace(path, state);
-        router.load().then(() => setReadyState(AppReadyState.OPEN));
+        router.load().then((entry) => {
+          // The first page is loaded rather than published, so the session
+          // atoms have had nothing to sync them.
+          stage(entry as { data: DatasetPageQuery["response"] });
+          syncSessionState(store.set);
+          setReadyState(AppReadyState.OPEN);
+        });
       } else {
         router.history.push(path, state);
       }
     },
-    [readyStateRef, router, session, setReadyState],
+    [readyStateRef, router, session, setReadyState, store],
   );
 };
 

@@ -1,11 +1,11 @@
 import { isFilterDefault, isSidebarFilterMode } from "@fiftyone/state";
 import React from "react";
 import {
-  RecoilState,
-  useRecoilCallback,
-  useRecoilState,
-  useRecoilValue,
-} from "recoil";
+  ReverbState,
+  useReverbCallback,
+  useReverbState,
+  useReverbValue,
+} from "@fiftyone/reverb";
 import { Option, OptionKey } from "./useOptions";
 
 export default function ({
@@ -17,15 +17,15 @@ export default function ({
   path,
 }: {
   close: () => void;
-  excludeAtom: RecoilState<boolean>;
-  isMatchingAtom: RecoilState<boolean>;
+  excludeAtom: ReverbState<boolean>;
+  isMatchingAtom: ReverbState<boolean>;
   options: Option[];
   modal: boolean;
   path: string;
 }) {
-  const [excluded, setExcluded] = useRecoilState(excludeAtom);
-  const [isMatching, setIsMatching] = useRecoilState(isMatchingAtom);
-  const defaultToFilter = useRecoilValue(isFilterDefault({ modal, path }));
+  const [excluded, setExcluded] = useReverbState(excludeAtom);
+  const [isMatching, setIsMatching] = useReverbState(isMatchingAtom);
+  const defaultToFilter = useReverbValue(isFilterDefault({ modal, path }));
 
   const [filterKey, setFilterKey] = React.useState<OptionKey>(() => {
     if (defaultToFilter) return !excluded ? "filter" : "negativeFilter";
@@ -34,7 +34,7 @@ export default function ({
   const [visibilityKey, setVisibilityKey] = React.useState<OptionKey>(() => {
     return !excluded ? "visible" : "notVisible";
   });
-  const isFilterMode = useRecoilValue(isSidebarFilterMode);
+  const isFilterMode = useReverbValue(isSidebarFilterMode);
   const selected = options.find(
     (o) => o.key === (isFilterMode ? filterKey : visibilityKey),
   )?.value;
@@ -70,7 +70,7 @@ export default function ({
   return {
     filterKey,
     visibilityKey,
-    onSelect: useRecoilCallback(
+    onSelect: useReverbCallback(
       ({ snapshot }) =>
         async (key: OptionKey) => {
           const isFilterMode = await snapshot.getPromise(isSidebarFilterMode);

@@ -5,7 +5,7 @@ import {
   queryPerformance,
   rangeAtom,
 } from "@fiftyone/state";
-import { selectorFamily } from "recoil";
+import { selectorFamily } from "@fiftyone/reverb";
 
 export const FLOAT_NONFINITES: Nonfinite[] = ["inf", "ninf", "nan"];
 

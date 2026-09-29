@@ -1,7 +1,7 @@
 import * as fos from "@fiftyone/state";
 import { isInMultiPanelViewAtom } from "@fiftyone/state";
 import { useEffect, useMemo } from "react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useReverbValue, useSetReverbState } from "@fiftyone/reverb";
 import { annotationPlaneAtom } from "../state";
 import { RenderPath } from "../types";
 
@@ -21,12 +21,12 @@ export const useFo3dPanelRouting = ({
   isSceneReady,
   recomputeBounds,
 }: UseFo3dPanelRoutingArgs) => {
-  const is2DSampleViewerVisible = useRecoilValue(
+  const is2DSampleViewerVisible = useReverbValue(
     fos.groupMediaIsMain2DViewerVisible,
   );
-  const isGroup = useRecoilValue(fos.isGroup);
-  const isAnnotationPlaneEnabled = useRecoilValue(annotationPlaneAtom).enabled;
-  const setIsInMultiPanelView = useSetRecoilState(isInMultiPanelViewAtom);
+  const isGroup = useReverbValue(fos.isGroup);
+  const isAnnotationPlaneEnabled = useReverbValue(annotationPlaneAtom).enabled;
+  const setIsInMultiPanelView = useSetReverbState(isInMultiPanelViewAtom);
 
   const shouldRenderMultiPanelView = useMemo(
     () =>

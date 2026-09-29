@@ -19,8 +19,8 @@ const state = vi.hoisted(() => ({
   isQueryPerformant: true,
 }));
 
-vi.mock("recoil", () => ({
-  useRecoilValue: (node: { key: string }) => {
+vi.mock("@fiftyone/reverb", () => ({
+  useReverbValue: (node: { key: string }) => {
     switch (node.key) {
       case "readOnly":
         return state.readOnly;
@@ -33,7 +33,7 @@ vi.mock("recoil", () => ({
       case "isPatchesView":
         return state.isPatchesView;
       default:
-        throw new Error(`unexpected recoil node ${node.key}`);
+        throw new Error(`unexpected reverb node ${node.key}`);
     }
   },
 }));

@@ -2,11 +2,11 @@ import type { ID } from "@fiftyone/spotlight";
 import { useMemo } from "react";
 import {
   atom,
-  useRecoilCallback,
-  useRecoilTransaction_UNSTABLE,
-  useRecoilValue,
-} from "recoil";
-import { gridAt, gridOffset, gridPage } from "./recoil";
+  useReverbCallback,
+  useReverbTransaction,
+  useReverbValue,
+} from "@fiftyone/reverb";
+import { gridAt, gridOffset, gridPage } from "./atoms";
 
 const gridJump = atom({
   key: "gridJump",
@@ -15,7 +15,7 @@ const gridJump = atom({
 
 /** Signals that the grid should rebuild at its newly requested location. */
 export function useGridJumpRevision() {
-  return useRecoilValue(gridJump);
+  return useReverbValue(gridJump);
 }
 
 /** The sample and pixel offset at the start of a grid page. */
@@ -27,7 +27,7 @@ export interface ScrollLocation {
 
 /** Saves, restores, and explicitly changes the grid's scroll anchor. */
 export default function useScrollLocation(pageReset: string) {
-  const getPage = useRecoilTransaction_UNSTABLE(
+  const getPage = useReverbTransaction(
     ({ get }) =>
       (ref: { current: number | null }) => {
         ref.current = get(gridPage);
@@ -51,7 +51,7 @@ export default function useScrollLocation(pageReset: string) {
     };
   }, [getPage, pageReset]);
 
-  const get = useRecoilCallback(
+  const get = useReverbCallback(
     ({ snapshot }) =>
       () => {
         const key = getKey();
@@ -72,8 +72,8 @@ export default function useScrollLocation(pageReset: string) {
     [getKey],
   );
 
-  // when scrolling ends, use set to save the grid location to recoil
-  const set = useRecoilTransaction_UNSTABLE(
+  // when scrolling ends, use set to save the grid location to the store
+  const set = useReverbTransaction(
     ({ set }) =>
       (location: ScrollLocation) => {
         set(gridPage, location.page);
@@ -85,7 +85,7 @@ export default function useScrollLocation(pageReset: string) {
 
   // Point the grid at a sample on a known page; the layout refresher sees
   // the jump and rebuilds the grid there, as it does after the modal closes.
-  const jump = useRecoilTransaction_UNSTABLE(
+  const jump = useReverbTransaction(
     ({ set }) =>
       ({ page, at }: { page: number; at: string }) => {
         set(gridPage, page);

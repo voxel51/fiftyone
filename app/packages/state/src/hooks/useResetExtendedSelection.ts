@@ -1,17 +1,17 @@
-import { useRecoilCallback, useRecoilTransaction_UNSTABLE } from "recoil";
+import { useReverbCallback, useReverbTransaction } from "@fiftyone/reverb";
 import {
   clearExtendedSelectionMirror,
   extendedSelection,
   extendedSelectionOverrideStage,
   writeExtendedSelectionMirror,
-} from "../recoil/atoms";
+} from "../atoms/atoms";
 import {
   runExtendedSelectionResetParticipants,
   type ExtendedSelectionResetInterface,
 } from "./extendedSelectionReset";
 
 /**
- * Clears every extended-selection layer inside the caller's Recoil
+ * Clears every extended-selection layer inside the caller's Reverb
  * transaction. The atoms' effects update the mirror they restore themselves
  * from on fragment refetches only once the transaction commits, so the
  * mirror is cleared here as well, in step with the reset.
@@ -27,7 +27,7 @@ export function resetExtendedSelectionTransaction(
 }
 
 export default function useResetExtendedSelection() {
-  return useRecoilTransaction_UNSTABLE(
+  return useReverbTransaction(
     ({ set, reset }) =>
       () =>
         resetExtendedSelectionTransaction({ set, reset }),
@@ -58,9 +58,9 @@ export function publishExtendedSelection(
   decorate?.(cb);
 }
 
-/** {@link publishExtendedSelection}, committed as one Recoil batch. */
+/** {@link publishExtendedSelection}, committed as one Reverb batch. */
 export function usePublishExtendedSelection() {
-  return useRecoilCallback(
+  return useReverbCallback(
     ({ set, reset }) =>
       (
         stage: Record<string, Record<string, unknown>>,

@@ -1,16 +1,16 @@
 import * as fos from "@fiftyone/state";
 import { default as React, useState } from "react";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import { useReverbCallback, useReverbValue } from "@fiftyone/reverb";
 
 import { InputDiv } from "./utils";
 
 const AddGroup = () => {
   const [value, setValue] = useState("");
-  const isFieldVisibilityApplied = useRecoilValue(fos.isFieldVisibilityActive);
-  const canModifySidebarGroup = useRecoilValue(fos.canModifySidebarGroup);
+  const isFieldVisibilityApplied = useReverbValue(fos.isFieldVisibilityActive);
+  const canModifySidebarGroup = useReverbValue(fos.canModifySidebarGroup);
   const disabled = canModifySidebarGroup.enabled !== true;
 
-  const addGroup = useRecoilCallback(
+  const addGroup = useReverbCallback(
     ({ set, snapshot }) =>
       async (newGroup: string) => {
         const current = await snapshot.getPromise(

@@ -3,7 +3,7 @@
  */
 
 import { useCallback } from "react";
-import { useSetRecoilState } from "recoil";
+import { useSetReverbState } from "@fiftyone/reverb";
 import { frustumsVisibleAtom } from "../../state";
 
 /**
@@ -11,7 +11,7 @@ import { frustumsVisibleAtom } from "../../state";
  * @returns Object with action functions
  */
 export function useFrustumActions() {
-  const setIsVisible = useSetRecoilState(frustumsVisibleAtom);
+  const setIsVisible = useSetReverbState(frustumsVisibleAtom);
 
   const toggle = useCallback(() => {
     setIsVisible((prev) => !prev);

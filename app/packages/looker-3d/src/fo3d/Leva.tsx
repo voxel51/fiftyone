@@ -1,7 +1,7 @@
 import { useFont, useTheme } from "@fiftyone/components";
 import { Leva as LevaOptions } from "leva";
 import { createPortal } from "react-dom";
-import { useRecoilState } from "recoil";
+import { useReverbState } from "@fiftyone/reverb";
 import { useHotkey } from "../hooks";
 import { isLevaConfigPanelOnAtom } from "../state";
 
@@ -11,7 +11,7 @@ export const Leva = () => {
   const theme = useTheme();
   const font = useFont();
 
-  const [isLevaPanelOn, setIsLevaPanelOn] = useRecoilState(
+  const [isLevaPanelOn, setIsLevaPanelOn] = useReverbState(
     isLevaConfigPanelOnAtom,
   );
 

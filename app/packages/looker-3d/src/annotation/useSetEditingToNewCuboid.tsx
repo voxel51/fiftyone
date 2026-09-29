@@ -3,7 +3,7 @@ import * as fos from "@fiftyone/state";
 import { type PrimitiveAtom, useSetAtom } from "jotai";
 import { atomWithReset, useResetAtom } from "jotai/utils";
 import { useCallback, useEffect } from "react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useReverbValue, useSetReverbState } from "@fiftyone/reverb";
 import {
   clearTransformStateSelector,
   currentActiveAnnotationField3dAtom,
@@ -19,12 +19,12 @@ export const currentEditingCuboidAtom =
  */
 export const useSetEditingToNewCuboid = () => {
   const resetCurrentEditing = useResetAtom(currentEditingCuboidAtom);
-  const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
+  const currentActiveField = useReverbValue(currentActiveAnnotationField3dAtom);
 
   const setCurrentEditing = useSetAtom(currentEditingCuboidAtom);
   const { clear, readEditing, select } = useAnnotationContext();
 
-  const clearTransformState = useSetRecoilState(clearTransformStateSelector);
+  const clearTransformState = useSetReverbState(clearTransformStateSelector);
 
   useEffect(() => {
     return () => {

@@ -1,5 +1,5 @@
 import { subscribe } from "@fiftyone/relay";
-import { useRecoilCallback } from "recoil";
+import { useReverbCallback } from "@fiftyone/reverb";
 import {
   _activeFields,
   extendedStages,
@@ -8,11 +8,11 @@ import {
   selectedSamples,
   view,
   viewStateForm_INTERNAL,
-} from "../recoil";
+} from "../atoms";
 import resolveActiveGroupSliceForView from "./resolveActiveGroupSliceForView";
 
 export default function useToPatches() {
-  return useRecoilCallback(
+  return useReverbCallback(
     ({ set, snapshot }) =>
       async (field) => {
         set(patching, true);

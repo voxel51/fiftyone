@@ -16,7 +16,7 @@ import {
   useKeyBindings,
 } from "@fiftyone/commands";
 import { useCallback } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { useAnnotationContext } from "./useAnnotationContext";
 import useExit from "./useExit";
 
@@ -63,11 +63,11 @@ export default function useDelete() {
   // the SAMPLE schema, so the guard below would reject every persisted frame
   // label. `fullSchema` nests the frame fields under a synthetic `frames` field
   // so `getFieldSchema` resolves both sample- and frame-level paths.
-  const schema = useRecoilValue(fos.fullSchema);
+  const schema = useReverbValue(fos.fullSchema);
 
   const exit = useExit();
   const setNotification = fos.useNotification();
-  const isGenerated = useRecoilValue(isGeneratedView);
+  const isGenerated = useReverbValue(isGeneratedView);
 
   // Delete is a plain action — the engine's value-based undo stack captures the
   // delete (via useDeleteAnnotation → engine.deleteLabel) and owns restoring it

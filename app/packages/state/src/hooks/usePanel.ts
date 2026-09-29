@@ -1,10 +1,10 @@
 import { useRef } from "react";
-import { useRecoilState } from "recoil";
+import { useReverbState } from "@fiftyone/reverb";
 import { useOutsideClick } from "@fiftyone/state";
 
 export default function usePanel(name, atom) {
   const containerRef = useRef<HTMLDivElement>();
-  const [state, setFullState] = useRecoilState(atom);
+  const [state, setFullState] = useReverbState(atom);
   const setState = (update) =>
     setFullState((fullState) => ({
       ...fullState,

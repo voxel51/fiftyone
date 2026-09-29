@@ -1,7 +1,7 @@
 import { MeshWobbleMaterial } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { Color, type Mesh } from "three";
 import { fo3dLoadingStatusThisSample } from "./state";
 import { LoadingStatus } from "./types";
@@ -12,7 +12,7 @@ import { LoadingStatus } from "./types";
 export const SpinningCube = () => {
   const meshRef = useRef<Mesh>();
 
-  const loadingStatus = useRecoilValue(fo3dLoadingStatusThisSample);
+  const loadingStatus = useReverbValue(fo3dLoadingStatusThisSample);
 
   const shouldShow = useMemo(() => {
     return (

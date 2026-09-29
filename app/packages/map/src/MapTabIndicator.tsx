@@ -1,11 +1,11 @@
 import { FilterAndSelectionIndicator } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { useResetExtendedSelection } from "@fiftyone/state";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { SELECTION_SCOPE } from "./constants";
 
 export default function MapTabIndicator() {
-  const { selection, scope } = useRecoilValue(fos.extendedSelection);
+  const { selection, scope } = useReverbValue(fos.extendedSelection);
   const resetExtendedSelection = useResetExtendedSelection();
 
   if (scope !== SELECTION_SCOPE) return null;

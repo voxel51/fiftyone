@@ -35,7 +35,7 @@ export type DecodeResponse = DecodeSuccess | DecodeFailure;
 
 // `decodeMaskOnDisk` only consults `coloring` in its SEGMENTATION branch;
 // detection masks fall through to the default canvas decode path, so a stub
-// is sufficient and keeps the worker free of state/recoil dependencies.
+// is sufficient and keeps the worker free of state-package dependencies.
 const STUB_COLORING = {} as Coloring;
 
 /**

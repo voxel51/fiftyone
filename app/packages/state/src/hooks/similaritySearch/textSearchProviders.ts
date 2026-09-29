@@ -1,6 +1,6 @@
 import type React from "react";
 import { useSyncExternalStore } from "react";
-import type { State } from "../../recoil/types";
+import type { State } from "../../atoms/types";
 import type { ExtendedSelectionResetInterface } from "../extendedSelectionReset";
 
 /** What a provider's search is asked: the index, the prompt, and how many

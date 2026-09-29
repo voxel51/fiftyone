@@ -3,7 +3,7 @@ import * as fos from "@fiftyone/state";
 import { DragIndicator } from "@mui/icons-material";
 import { animated, useSpring } from "@react-spring/web";
 import React, { useMemo, useState } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 
 const Draggable: React.FC<
   React.PropsWithChildren<{
@@ -19,9 +19,9 @@ const Draggable: React.FC<
   const theme = useTheme();
   const [hovering, setHovering] = useState(false);
   const [dragging, setDragging] = useState(false);
-  const canModifySidebarGroup = useRecoilValue(fos.canModifySidebarGroup);
+  const canModifySidebarGroup = useReverbValue(fos.canModifySidebarGroup);
   const disabled = canModifySidebarGroup.enabled !== true;
-  const isFieldVisibilityApplied = useRecoilValue(fos.isFieldVisibilityActive);
+  const isFieldVisibilityApplied = useReverbValue(fos.isFieldVisibilityActive);
 
   const entryPath = useMemo(() => {
     if (!entryKey) return undefined;

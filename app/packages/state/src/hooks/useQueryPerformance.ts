@@ -1,9 +1,9 @@
 import { useMemo } from "react";
-import { useRecoilCallback } from "recoil";
-import { queryPerformance } from "../recoil";
+import { useReverbCallback } from "@fiftyone/reverb";
+import { queryPerformance } from "../atoms";
 
 export default function () {
-  const disable = useRecoilCallback(
+  const disable = useReverbCallback(
     ({ set }) =>
       () => {
         set(queryPerformance, false);
@@ -11,7 +11,7 @@ export default function () {
     [],
   );
 
-  const enable = useRecoilCallback(
+  const enable = useReverbCallback(
     ({ set }) =>
       () => {
         set(queryPerformance, true);

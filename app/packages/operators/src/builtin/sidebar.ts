@@ -1,5 +1,5 @@
 import * as fos from "@fiftyone/state";
-import { useSetRecoilState } from "recoil";
+import { useSetReverbState } from "@fiftyone/reverb";
 import { Operator, OperatorConfig } from "../operators";
 import { ExecutionContext, SetFiltersHooks, SetFiltersParams } from "../ts";
 import * as types from "../types";
@@ -21,7 +21,7 @@ export class SetFilters extends Operator {
   }
 
   useHooks() {
-    const setFilters = useSetRecoilState(fos.filters);
+    const setFilters = useSetReverbState(fos.filters);
     return { setFilters };
   }
 

@@ -6,11 +6,11 @@ import {
 } from "@fiftyone/state";
 import { useCallback, useEffect, useRef } from "react";
 import {
-  useRecoilCallback,
-  useRecoilState,
-  useRecoilValue,
-  useSetRecoilState,
-} from "recoil";
+  useReverbCallback,
+  useReverbState,
+  useReverbValue,
+  useSetReverbState,
+} from "@fiftyone/reverb";
 import { useApplyAnnotationSliceVisibility } from "./useApplyAnnotationSliceVisibility";
 import { useGroupAnnotationSliceReady } from "./useGroupAnnotationSliceReady";
 import type { AnnotationSliceInfo } from "./useGroupAnnotationSlices";
@@ -25,11 +25,11 @@ export const hasApplicableAnnotationSlice = (
 
 const useApplySlice = () => {
   const { request } = useGroupAnnotationSlices();
-  const modalGroupSlice = useRecoilValue(fos.modalGroupSlice);
+  const modalGroupSlice = useReverbValue(fos.modalGroupSlice);
   const [preferredSlice, setPreferredSlice] =
     fos.usePreferredGroupAnnotationSlice();
 
-  const resolveSlice = useRecoilCallback(
+  const resolveSlice = useReverbCallback(
     () => async () => {
       const allSlices = await request();
       const available = allSlices
@@ -49,7 +49,7 @@ const useApplySlice = () => {
     [modalGroupSlice, preferredSlice, request],
   );
 
-  const setModalGroupSlice = useSetRecoilState(fos.modalGroupSlice);
+  const setModalGroupSlice = useSetReverbState(fos.modalGroupSlice);
   const applyVisibilityForSlice = useApplyAnnotationSliceVisibility();
   return useCallback(async () => {
     const slice = await resolveSlice();
@@ -80,14 +80,14 @@ export function useGroupAnnotationModeController() {
   const mode = useModalMode();
   const threeDVisible = fos.useIs3dVisibleSetting();
   const { setVisible } = fos.useRenderConfig3dActions();
-  const [modalGroupSliceValue, setModalGroupSliceValue] = useRecoilState(
+  const [modalGroupSliceValue, setModalGroupSliceValue] = useReverbState(
     fos.modalGroupSlice,
   );
 
-  const [mainVisible, setMainVisible] = useRecoilState(
+  const [mainVisible, setMainVisible] = useReverbState(
     fos.groupMediaIsMain2DViewerVisibleSetting,
   );
-  const [carouselVisible, setCarouselVisible] = useRecoilState(
+  const [carouselVisible, setCarouselVisible] = useReverbState(
     fos.groupMediaIsCarouselVisibleSetting,
   );
   // Always initialize to EXPLORE so that a modal opening directly in ANNOTATE

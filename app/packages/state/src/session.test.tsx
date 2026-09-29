@@ -1,11 +1,11 @@
 import React from "react";
 import { act, renderHook } from "@testing-library/react";
-import { RecoilRoot, useRecoilValue } from "recoil";
+import { ReverbRoot, useReverbValue } from "@fiftyone/reverb";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { ModalSelector, Session } from "./session";
 
 const Root: React.FC<React.PropsWithChildren<unknown>> = ({ children }) => (
-  <RecoilRoot>{children}</RecoilRoot>
+  <ReverbRoot>{children}</ReverbRoot>
 );
 
 // `session.ts` reads `process.env.MODE` at module load time to decide whether
@@ -37,7 +37,7 @@ describe("sessionAtom", () => {
       () => {
         useSession(() => {}, sessionRef);
         return {
-          value: useRecoilValue(modalSelectorAtom),
+          value: useReverbValue(modalSelectorAtom),
           setSession: useSessionSetter(),
         };
       },

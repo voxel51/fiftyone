@@ -1,6 +1,6 @@
 import * as fos from "@fiftyone/state";
 import { useCallback, useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { GLOBAL_TIMELINE_ID } from "../constants";
 import { getTimelineNameFromSampleAndGroupId } from "./timeline-name";
 
@@ -11,8 +11,8 @@ export { getTimelineNameFromSampleAndGroupId };
  * This hook gives access to the default timeline name based on the current context.
  */
 export const useDefaultTimelineNameImperative = () => {
-  const currentSampleIdVal = useRecoilValue(fos.nullableModalSampleId);
-  const currentGroupIdVal = useRecoilValue(fos.groupId);
+  const currentSampleIdVal = useReverbValue(fos.nullableModalSampleId);
+  const currentGroupIdVal = useReverbValue(fos.groupId);
 
   const getName = useCallback(() => {
     if (!currentSampleIdVal && !currentGroupIdVal) {

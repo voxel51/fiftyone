@@ -1,9 +1,9 @@
 import * as fos from "@fiftyone/state";
 import { get as getPath } from "lodash";
-import { useRecoilCallback } from "recoil";
+import { useReverbCallback } from "@fiftyone/reverb";
 
 export default <T extends fos.Lookers>(store: fos.LookerStore<T>) => {
-  return useRecoilCallback(
+  return useReverbCallback(
     ({ set, snapshot }) =>
       async (_, id: string, __) => {
         const current = await snapshot.getPromise(fos.modalSelector);

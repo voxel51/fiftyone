@@ -6,7 +6,7 @@ import {
   useRefreshSample,
 } from "@fiftyone/state";
 import { useCallback } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { JSONDeltas } from "@fiftyone/core/src/client";
 import { useGetVersionToken } from "./useGetVersionToken";
 import { doPatchSample, DoPatchSampleArgs } from "../util";
@@ -79,8 +79,8 @@ export const usePatchSample = (): ((
   sampleDeltas: JSONDeltas,
   patchOptions?: PatchOptions,
 ) => Promise<boolean>) => {
-  const isGenerated = useRecoilValue(isGeneratedView);
-  const generatedDatasetName = useRecoilValue(generatedDatasetNameAtom);
+  const isGenerated = useReverbValue(isGeneratedView);
+  const generatedDatasetName = useReverbValue(generatedDatasetNameAtom);
 
   return usePatchSampleWith({
     sample: useActiveModalSample(),

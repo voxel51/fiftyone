@@ -14,7 +14,7 @@ import {
 } from "@fiftyone/utilities";
 import type { CSSProperties } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 
 export type InputType =
   | typeof DATE_TIME_FIELD
@@ -60,7 +60,7 @@ export function Input<T extends InputType>({
   ftype,
 }: InputProps<T>) {
   const [state, setState] = useState<string>("");
-  const timeZone = useRecoilValue(fos.timeZone);
+  const timeZone = useReverbValue(fos.timeZone);
   const { from, to } = useMemo(() => {
     return { from: FROM_INPUT(timeZone), to: TO_INPUT(timeZone) };
   }, [timeZone]);

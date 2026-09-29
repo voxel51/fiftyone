@@ -5,7 +5,7 @@ import { DATE_FIELD, DATE_TIME_FIELD, styles } from "@fiftyone/utilities";
 import React, { PureComponent, Suspense, useLayoutEffect } from "react";
 import useMeasure from "react-use-measure";
 import { Bar, BarChart, Tooltip, XAxis, YAxis } from "recharts";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
 import {
   formatDateTime,
@@ -88,7 +88,7 @@ const useData = (path: string) => {
   // raw carries the resolved aggregation's identity: a new object exactly
   // when a new distribution resolves, unlike the mapped data built fresh
   // every render
-  const raw = useRecoilValue(distribution(path));
+  const raw = useReverbValue(distribution(path));
 
   switch (raw.__typename) {
     case "BoolCountValuesResponse":
@@ -146,11 +146,11 @@ const HistogramRenderer: React.FC<{ path: string }> = ({ path }) => {
   const barWidth = 24;
   const stroke = theme.text.secondary;
   const fill = stroke;
-  const isDateTime = useRecoilValue(
+  const isDateTime = useReverbValue(
     fos.meetsType({ path, ftype: DATE_TIME_FIELD }),
   );
-  const isDate = useRecoilValue(fos.meetsType({ path, ftype: DATE_FIELD }));
-  const timeZone = useRecoilValue(fos.timeZone);
+  const isDate = useReverbValue(fos.meetsType({ path, ftype: DATE_FIELD }));
+  const timeZone = useReverbValue(fos.timeZone);
 
   const strData = data.map(({ key, ...rest }) => ({
     ...rest,

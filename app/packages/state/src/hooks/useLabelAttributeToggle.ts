@@ -1,11 +1,11 @@
 import { useCallback } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useReverbState, useReverbValue } from "@fiftyone/reverb";
 import {
   canToggleShownLabelAttributes,
   labelAttributeRow,
   shownLabelAttributes,
   toggleShownLabelAttribute,
-} from "../recoil/labelAttributes";
+} from "../atoms/labelAttributes";
 
 /**
  * Show/hide state for a sidebar label attribute row, e.g.
@@ -13,11 +13,11 @@ import {
  * attribute or toggling it would not change what is rendered.
  */
 export default function useLabelAttributeToggle(path: string, modal: boolean) {
-  const row = useRecoilValue(labelAttributeRow(path));
-  const eligible = useRecoilValue(
+  const row = useReverbValue(labelAttributeRow(path));
+  const eligible = useReverbValue(
     canToggleShownLabelAttributes({ path: row?.labelPath ?? "", modal }),
   );
-  const [shown, setShown] = useRecoilState(
+  const [shown, setShown] = useReverbState(
     shownLabelAttributes(row?.labelPath ?? ""),
   );
 

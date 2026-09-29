@@ -23,7 +23,7 @@ import {
 import React, { Suspense, useCallback, useMemo } from "react";
 import { useFragment, usePaginationFragment } from "react-relay";
 import { useDebounce } from "react-use";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useReverbValue, useSetReverbState } from "@fiftyone/reverb";
 import { graphql } from "relay-runtime";
 import Analytics from "./Analytics";
 import DatasetSelector from "./DatasetSelector";
@@ -35,7 +35,7 @@ import type { NavFragment$key } from "./__generated__/NavFragment.graphql";
 
 const getUseSearch = (fragment: NavDatasets$key) => {
   return (search: string) => {
-    const refresh = useRecoilValue(fos.refresher);
+    const refresh = useReverbValue(fos.refresher);
     const { data, refetch } = usePaginationFragment(
       graphql`
         fragment NavDatasets on Query
@@ -92,10 +92,10 @@ const Nav: React.FC<
   const refresh = useRefresh();
   // Two theme owners, both of which must hear a toggle: MUI's color scheme
   // paints the `--fo-palette-*` variables everything is styled with, and the
-  // recoil atom is what the rest of the app reads. Setting only the atom
+  // store atom is what the rest of the app reads. Setting only the atom
   // leaves the palette stale until a reload re-derives the mode.
   const { mode, setMode } = useColorScheme();
-  const setTheme = useSetRecoilState(fos.theme);
+  const setTheme = useSetReverbState(fos.theme);
   const trackEvent = useTrackEvent();
   const toggleTheme = useCallback(() => {
     const nextMode = mode === "dark" ? "light" : "dark";

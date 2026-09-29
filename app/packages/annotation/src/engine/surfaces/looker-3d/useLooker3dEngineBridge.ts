@@ -6,7 +6,7 @@
  *
  * The working store is INJECTED ({@link WorkingStore3d}) rather than pulled
  * from a scene context (cf. Lighter's `useLighter`): the modal wiring owns the
- * Recoil binding, keyed by the stable scene sample id. `store` and
+ * state binding, keyed by the stable scene sample id. `store` and
  * `resolveColor` must be referentially stable — a new identity re-creates the
  * bridge (clear + rehydrate). An empty `sample` (scene id not yet settled)
  * yields an inert controller until it does.
@@ -34,7 +34,7 @@ export const useLooker3dEngineBridge = ({
   /** Active label paths — the bridge's partial-projection scope. A new set
    *  re-creates the bridge: the outgoing one clears, registration rehydrates. */
   paths?: ReadonlySet<string>;
-  /** Recoil-backed working store, keyed by the scene sample id. */
+  /** store-backed working store, keyed by the scene sample id. */
   store: WorkingStore3d;
   /** Coloring-scheme color for a label, stamped onto the entry at mount. */
   resolveColor?: Looker3dBridgeDeps["resolveColor"];

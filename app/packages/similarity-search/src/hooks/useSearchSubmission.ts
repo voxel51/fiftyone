@@ -1,3 +1,4 @@
+import { useAssertedReverbValue } from "@fiftyone/reverb";
 import { useCallback, useMemo, useState } from "react";
 import { useOperatorExecutor } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
@@ -31,7 +32,7 @@ type UseSearchSubmissionInput = {
 export const useSearchSubmission = (input: UseSearchSubmissionInput) => {
   const { execute: initRun } = useOperatorExecutor(INIT_RUN_OPERATOR_URI);
   const [submitting, setSubmitting] = useState(false);
-  const datasetId = fos.useAssertedRecoilValue(fos.datasetId);
+  const datasetId = useAssertedReverbValue(fos.datasetId);
   const [lastUsedBrainKeys, setLastUsedBrainKeys] = useBrowserStorage<
     Record<string, string>
   >("lastUsedBrainKeys", {});

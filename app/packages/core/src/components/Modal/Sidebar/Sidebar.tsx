@@ -1,19 +1,17 @@
 import {
   EXPLORE,
-  activeFields,
   datasetName,
   modalMode,
   useDisabledCheckboxPaths,
   useModalExplorEntries,
 } from "@fiftyone/state";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import { useEffect } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import ExploreSidebar from "../../Sidebar";
 import { createExploreIsDisabled } from "../../Sidebar/InteractiveSidebar";
 import SidebarContainer from "../../Sidebar/SidebarContainer";
 import Annotate from "./Annotate";
-import { exploreActiveFields } from "./Annotate/state";
 import useCanAnnotate from "./Annotate/useCanAnnotate";
 import useLoadSchemas from "./Annotate/useLoadSchemas";
 import Mode from "./Mode";
@@ -36,16 +34,7 @@ const Explore = () => {
 const Sidebar = () => {
   const mode = useAtomValue(modalMode);
   const { showAnnotationTab, disabledReason } = useCanAnnotate();
-  const datasetNameValue = useRecoilValue(datasetName);
-  const exploreFields = useRecoilValue(
-    activeFields({ modal: true, expanded: false }),
-  );
-  const setExploreFields = useSetAtom(exploreActiveFields);
-
-  useEffect(() => {
-    setExploreFields(exploreFields);
-    return () => setExploreFields(null);
-  }, [exploreFields, setExploreFields]);
+  const datasetNameValue = useReverbValue(datasetName);
 
   const loadSchemas = useLoadSchemas();
 

@@ -4,7 +4,7 @@ import {
   FallbackProps,
   ErrorBoundary as ReactErrorBoundary,
 } from "react-error-boundary";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { TooltipInfo } from "./TooltipInfo";
 
 /**
@@ -32,7 +32,7 @@ export const TooltipInfoBoundary = ({
   onError: (error: Error, info: { componentStack: string }) => void;
   resetKeys: unknown[];
 }) => {
-  const detail = useRecoilValue(fos.tooltipDetail);
+  const detail = useReverbValue(fos.tooltipDetail);
   return (
     <ReactErrorBoundary
       FallbackComponent={FallbackComponent}

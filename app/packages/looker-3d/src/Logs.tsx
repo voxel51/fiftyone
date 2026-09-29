@@ -2,7 +2,7 @@ import DoneIcon from "@mui/icons-material/Done";
 import FeedbackIcon from "@mui/icons-material/Feedback";
 import { CircularProgress, Typography } from "@mui/material";
 import { useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
 import { fo3dLoadingStatusThisSample } from "./state";
 import { LoadingStatus } from "./types";
@@ -17,7 +17,7 @@ const LogContainer = styled.div`
 `;
 
 export const Logs = () => {
-  const loadingStatus = useRecoilValue(fo3dLoadingStatusThisSample);
+  const loadingStatus = useReverbValue(fo3dLoadingStatusThisSample);
 
   const isStillLoading = useMemo(() => {
     return (

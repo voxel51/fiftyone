@@ -8,7 +8,7 @@ import { interpolateColorsHex, rgbStringToHex } from "@fiftyone/utilities";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import IconButton from "@mui/material/IconButton";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import tunnel from "tunnel-rat";
 import { getGradientFromSchemeName } from "../renderables/pcd/shaders/gradientMap";
 
@@ -154,7 +154,7 @@ const PcdColormapModal: React.FC<PcdColormapModalProps> = ({
   onSave,
   initialColorscale,
 }) => {
-  const colorScheme = useRecoilValue(fos.colorScheme);
+  const colorScheme = useReverbValue(fos.colorScheme);
   const [hasChanges, setHasChanges] = useState(false);
   const [newRowIndices, setNewRowIndices] = useState<Set<number>>(new Set());
   const [selectedColormap, setSelectedColormap] = useState<ColormapType | null>(

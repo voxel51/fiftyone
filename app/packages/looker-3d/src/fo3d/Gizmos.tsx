@@ -1,6 +1,6 @@
 import { GizmoHelper, GizmoViewport, Grid, Line } from "@react-three/drei";
 import { useEffect, useMemo } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useReverbState, useReverbValue } from "@fiftyone/reverb";
 import { DoubleSide, Vector3 } from "three";
 import { FO_USER_DATA } from "../constants";
 import {
@@ -90,7 +90,7 @@ export const Gizmos = ({
   isGridVisible: boolean;
 }) => {
   const { upVector, sceneBoundingBox } = useFo3dContext();
-  const isGridOn = useRecoilValue(isGridOnAtom);
+  const isGridOn = useReverbValue(isGridOnAtom);
 
   const gridHelperQuarternion = useMemo(
     () => getGridQuaternionFromUpVector(upVector),
@@ -121,11 +121,11 @@ export const Gizmos = ({
     return Math.max(sceneSize.x, sceneSize.y);
   }, [sceneSize, upVector]);
 
-  const [cellSize, setCellSize] = useRecoilState(gridCellSizeAtom);
-  const [sectionSize, setSectionSize] = useRecoilState(gridSectionSizeAtom);
-  const isGridInfinitelyLarge = useRecoilValue(isGridInfinitelyLargeAtom);
-  const shouldFade = useRecoilValue(shouldGridFadeAtom);
-  const gridSize = useRecoilValue(gridSizeAtom);
+  const [cellSize, setCellSize] = useReverbState(gridCellSizeAtom);
+  const [sectionSize, setSectionSize] = useReverbState(gridSectionSizeAtom);
+  const isGridInfinitelyLarge = useReverbValue(isGridInfinitelyLargeAtom);
+  const shouldFade = useReverbValue(shouldGridFadeAtom);
+  const gridSize = useReverbValue(gridSizeAtom);
 
   // This effect dynamically sets initial cell and section size based on the scene size
   useEffect(() => {

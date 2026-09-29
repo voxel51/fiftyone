@@ -5,9 +5,9 @@ import React, { Suspense, useState } from "react";
 import {
   DefaultValue,
   selectorFamily,
-  useRecoilState,
-  useRecoilValue,
-} from "recoil";
+  useReverbState,
+  useReverbValue,
+} from "@fiftyone/reverb";
 import { NameAndCountContainer } from "../../../utils";
 import { PathEntryCounts } from "../EntryCounts";
 import Icon from "./Icon";
@@ -67,7 +67,7 @@ const hiddenPathLabels = selectorFamily<string[], string>({
 });
 
 const Hidden = ({ path }: { path: string }) => {
-  const [hidden, set] = useRecoilState(hiddenPathLabels(path));
+  const [hidden, set] = useReverbState(hiddenPathLabels(path));
   const num = hidden.length;
   const text = num.toLocaleString();
 
@@ -141,9 +141,9 @@ const useTitleTemplate = ({
     hoverTarget,
     container,
   }: TitleTemplateProps) {
-    const enabled = !useRecoilValue(fos.isDisabledCheckboxPath(path));
-    const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
-    const expandedPath = useRecoilValue(fos.expandPath(path));
+    const enabled = !useReverbValue(fos.isDisabledCheckboxPath(path));
+    const isFilterMode = useReverbValue(fos.isSidebarFilterMode);
+    const expandedPath = useReverbValue(fos.expandPath(path));
     const [hovering, setHovering] = useState(false);
 
     return (

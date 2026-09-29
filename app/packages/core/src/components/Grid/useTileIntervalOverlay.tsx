@@ -26,10 +26,7 @@ import {
 } from "react";
 import type { Root } from "react-dom/client";
 import { createRoot } from "react-dom/client";
-import {
-  useRecoilBridgeAcrossReactRoots_UNSTABLE,
-  useRecoilValue,
-} from "recoil";
+import { useReverbBridge, useReverbValue } from "@fiftyone/reverb";
 import { TileLanes } from "./TileLanes";
 
 const HOST_STYLES: Partial<CSSStyleDeclaration> = {
@@ -64,7 +61,7 @@ function VideoTileLanes({
   readonly metadataDurationNs: number | undefined;
   readonly looker: VideoLooker | null;
 }) {
-  const showTags = useRecoilValue(fos.supportsTemporalTags(false));
+  const showTags = useReverbValue(fos.supportsTemporalTags(false));
   // Known once the poster has loaded
   const [lookerDuration, setLookerDuration] = useState(
     () => looker?.duration ?? null,
@@ -154,7 +151,7 @@ export function useTileIntervalOverlay() {
   // `datasetId`, not `id`: the tag routes are keyed by the dataset's own id,
   // which is what the multimodal tile passes through its renderer context.
   const datasetId = fos.useCurrentDataset()?.datasetId;
-  const RecoilBridge = useRecoilBridgeAcrossReactRoots_UNSTABLE();
+  const ReverbBridge = useReverbBridge();
 
   const mounted = useRef(new Map<string, MountedOverlay>());
 
@@ -223,19 +220,19 @@ export function useTileIntervalOverlay() {
           : undefined;
 
       root.render(
-        <RecoilBridge>
+        <ReverbBridge>
           <VideoTileLanes
             datasetId={datasetId}
             sampleId={sampleId}
             metadataDurationNs={durationNs}
             looker={looker instanceof VideoLooker ? looker : null}
           />
-        </RecoilBridge>,
+        </ReverbBridge>,
       );
 
       mounted.current.set(key, { root, host });
     },
-    [RecoilBridge, datasetId, unmount],
+    [ReverbBridge, datasetId, unmount],
   );
 
   useEffect(() => {

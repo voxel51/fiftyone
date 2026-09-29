@@ -13,12 +13,14 @@ vi.mock("@fiftyone/state", () => ({
 
 const tags = vi.hoisted(() => ({ supported: true }));
 
-vi.mock("recoil", async () => ({
-  ...(await vi.importActual<typeof import("recoil")>("recoil")),
-  useRecoilBridgeAcrossReactRoots_UNSTABLE:
+vi.mock("@fiftyone/reverb", async () => ({
+  ...(await vi.importActual<typeof import("@fiftyone/reverb")>(
+    "@fiftyone/reverb",
+  )),
+  useReverbBridge:
     () =>
     ({ children }: { children: ReactNode }) => <>{children}</>,
-  useRecoilValue: () => tags.supported,
+  useReverbValue: () => tags.supported,
 }));
 
 const lane = vi.hoisted(() => ({ surfaces: [] as string[] }));

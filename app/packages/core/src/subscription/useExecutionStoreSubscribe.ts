@@ -3,7 +3,7 @@ import * as fos from "@fiftyone/state";
 import { getEventSource } from "@fiftyone/utilities/src/fetch";
 import { EventSourceMessage } from "@microsoft/fetch-event-source";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRecoilCallback } from "recoil";
+import { useReverbCallback } from "@fiftyone/reverb";
 // Timeout duration (in milliseconds) after which the subscription is considered unhealthy if no 'ping' is received.
 const UNHEALTHY_SUBSCRIPTION_TIMEOUT = 30 * 1000;
 
@@ -100,7 +100,7 @@ export const useExecutionStoreSubscribe = <T>({
     setIsSubscriptionHealthy(false);
   }, []);
 
-  const setupSubscription = useRecoilCallback(
+  const setupSubscription = useReverbCallback(
     ({ snapshot }) =>
       () => {
         const datasetName = datasetId

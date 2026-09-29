@@ -19,7 +19,7 @@ import "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { datasetQueryContext } from "@fiftyone/state";
 import { usePreloadedQuery } from "react-relay";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { graphql } from "relay-runtime";
 import Nav from "../../components/Nav";
 import type { Route } from "../../routing";
@@ -112,7 +112,7 @@ const DatasetPageQueryNode = graphql`
 const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
   const data = usePreloadedQuery(DatasetPageQueryNode, prepared);
 
-  const count = useRecoilValue(fos.datasetSampleCount);
+  const count = useReverbValue(fos.datasetSampleCount);
   const isEmpty = count === 0;
 
   return (

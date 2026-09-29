@@ -11,7 +11,7 @@ import {
 import { TypeGuards } from "@fiftyone/lighter/src/core/Scene2D";
 import * as fos from "@fiftyone/state";
 import { useCallback, useEffect } from "react";
-import { useRecoilCallback } from "recoil";
+import { useReverbCallback } from "@fiftyone/reverb";
 
 /**
  * Hook that handles tooltip events for lighter overlays.
@@ -24,7 +24,7 @@ export const useLighterTooltipEventHandler = (scene: Scene2D | null) => {
 
   const tooltip = fos.useTooltip();
 
-  const tooltipEventHandler = useRecoilCallback(
+  const tooltipEventHandler = useReverbCallback(
     ({ snapshot, set }) =>
       (
         payload:
@@ -108,7 +108,7 @@ export const useLighterTooltipEventHandler = (scene: Scene2D | null) => {
     ),
   );
 
-  const handleDocumentMouseMove = useRecoilCallback(
+  const handleDocumentMouseMove = useReverbCallback(
     ({ snapshot, set }) =>
       (event: MouseEvent) => {
         const isTooltipLocked = snapshot

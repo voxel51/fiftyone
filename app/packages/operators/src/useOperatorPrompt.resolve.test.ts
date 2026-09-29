@@ -44,21 +44,21 @@ vi.mock("lodash", async (importOriginal) => {
   }) as typeof lodash.debounce;
   return { ...lodash, debounce };
 });
-vi.mock("recoil", () => {
+vi.mock("@fiftyone/reverb", () => {
   return {
     atom: vi.fn(({ key }: { key: string }) => ({ key })),
     selector: vi.fn(({ key }: { key: string }) => ({ key })),
     selectorFamily: vi.fn(({ key }: { key: string }) => () => ({ key })),
-    useRecoilCallback: vi.fn(),
-    useRecoilState: ({ key }: { key: string }) =>
+    useReverbCallback: vi.fn(),
+    useReverbState: ({ key }: { key: string }) =>
       key === "promptingOperator"
         ? [{ operatorName: "@test/op", id: "prompt", params: env.params }]
         : [null, vi.fn()],
-    useRecoilTransaction_UNSTABLE: () => vi.fn(),
-    useRecoilValue: ({ key }: { key: string }) =>
+    useReverbTransaction: () => vi.fn(),
+    useReverbValue: ({ key }: { key: string }) =>
       key === "currentContextSelector" ? { params: env.params } : null,
-    useRecoilValueLoadable: () => ({ state: "hasValue", contents: null }),
-    useSetRecoilState: () => vi.fn(),
+    useReverbValueLoadable: () => ({ state: "hasValue", contents: null }),
+    useSetReverbState: () => vi.fn(),
   };
 });
 vi.mock("@fiftyone/analytics", () => ({ useAnalyticsInfo: () => [null] }));

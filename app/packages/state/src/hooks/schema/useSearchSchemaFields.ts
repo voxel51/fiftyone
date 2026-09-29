@@ -3,11 +3,11 @@ import * as fos from "@fiftyone/state";
 import { useCallback } from "react";
 import { useMutation } from "react-relay";
 import {
-  useRecoilCallback,
-  useRecoilState,
-  useRecoilValue,
-  useSetRecoilState,
-} from "recoil";
+  useReverbCallback,
+  useReverbState,
+  useReverbValue,
+  useSetReverbState,
+} from "@fiftyone/reverb";
 
 /**
  *
@@ -17,17 +17,17 @@ import {
 export default function useSearchSchemaFields(mergedSchema: {
   [key: string]: object;
 }) {
-  const dataset = useRecoilValue(fos.dataset);
+  const dataset = useReverbValue(fos.dataset);
   const datasetName = dataset?.name;
 
-  const setExcludedPaths = useSetRecoilState(fos.excludedPathsState({}));
+  const setExcludedPaths = useSetReverbState(fos.excludedPathsState({}));
 
-  const [searchMetaFilter, setSearchMetaFilter] = useRecoilState(
+  const [searchMetaFilter, setSearchMetaFilter] = useReverbState(
     fos.searchMetaFilterState,
   );
 
-  const searchResults = useRecoilValue(fos.schemaSearchResultList);
-  const setSearchResults = useRecoilCallback(
+  const searchResults = useReverbValue(fos.schemaSearchResultList);
+  const setSearchResults = useReverbCallback(
     ({ set }) =>
       async (newPaths: string[] = []) => {
         set(fos.schemaSearchResultList, newPaths);

@@ -2,7 +2,7 @@ import * as fos from "@fiftyone/state";
 import { useFrame } from "@react-three/fiber";
 import { folder, useControls } from "leva";
 import { useMemo, useRef } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useReverbState, useReverbValue } from "@fiftyone/reverb";
 import {
   DEFAULT_SELECTED_CUBOID_CROP_MARGIN,
   PANEL_ORDER_SCENE_CONTROLS,
@@ -42,9 +42,9 @@ export const SceneControls = ({
     lookAt,
   } = useFo3dContext();
 
-  const datasetName = useRecoilValue(fos.datasetName);
+  const datasetName = useReverbValue(fos.datasetName);
   const [avoidZFighting, setAvoidZFighting] =
-    useRecoilState(avoidZFightingAtom);
+    useReverbState(avoidZFightingAtom);
   const selectedCuboidCropMargin =
     pointCloudSettings.selectedCuboidCropMargin ??
     DEFAULT_SELECTED_CUBOID_CROP_MARGIN;

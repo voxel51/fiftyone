@@ -9,7 +9,7 @@ import {
   useSelectionMembership,
 } from "@fiftyone/state/src/selection";
 import { useCallback, useEffect, useRef } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { useDetectNewActiveLabelFields } from "../Sidebar/useDetectNewActiveLabelFields";
 import type { LookerCache } from "./types";
 
@@ -77,10 +77,10 @@ const useItemUpdater = (
   const { getNewFields, removeField } = useDetectNewActiveLabelFields({
     modal: false,
   });
-  const selected = useRecoilValue(fos.selectedSamples);
+  const selected = useReverbValue(fos.selectedSamples);
   const { enabled, domainId } = useGridSelectionDataset();
   const membership = useSelectionMembership(domainId);
-  const style = useRecoilValue(fos.sampleSelectionStyle);
+  const style = useReverbValue(fos.sampleSelectionStyle);
 
   return useCallback(
     (fontSize: number, lastColoringKey: string | null) => {

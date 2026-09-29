@@ -16,7 +16,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useCallback, useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { CONTENT_BY_MODE } from "./content";
 
 const CREATE_DATASET_OPERATOR = "@voxel51/utils/create_dataset";
@@ -31,7 +31,7 @@ const INSTALL_IO_PLUGIN_LABEL = "@voxel51/io";
 export function Starter(props: StarterPropsType) {
   const { mode } = props;
   const { isLoading } = useOperators(true);
-  const datasetName = useRecoilValue(datasetNameAtom);
+  const datasetName = useReverbValue(datasetNameAtom);
 
   if (!mode) return null;
 

@@ -1,4 +1,4 @@
-import { useRecoilTransactionObserver_UNSTABLE, useRecoilValue } from "recoil";
+import { useTransactionObserver, useReverbValue } from "@fiftyone/reverb";
 import { useEffect, useState, useCallback } from "react";
 import * as fos from "@fiftyone/state";
 import { analyticsInfo, useTrackEvent } from "@fiftyone/analytics";
@@ -38,7 +38,7 @@ const useTrackViewChanges = () => {
     [changes],
   );
 
-  useRecoilTransactionObserver_UNSTABLE(handleStateChange);
+  useTransactionObserver(handleStateChange);
   const trackEvent = useTrackEvent();
 
   useEffect(() => {
@@ -88,7 +88,7 @@ function getFilterNames(filters: { [path: string]: any }) {
 }
 
 export default function EventTracker() {
-  const info = useRecoilValue(analyticsInfo);
+  const info = useReverbValue(analyticsInfo);
   if (!info?.doNotTrack) {
     return <ActualTracker />;
   }

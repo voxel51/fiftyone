@@ -1,4 +1,4 @@
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { fo3dLoadingStatusThisSample } from "../state";
 import { LoadingStatus } from "../types";
 
@@ -6,7 +6,7 @@ import { LoadingStatus } from "../types";
  * Custom hook to easily access and work with three.js loading status
  */
 export const useLoadingStatus = () => {
-  const loadingStatus = useRecoilValue(fo3dLoadingStatusThisSample);
+  const loadingStatus = useReverbValue(fo3dLoadingStatusThisSample);
 
   return {
     /** The current loading status */

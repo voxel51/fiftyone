@@ -16,7 +16,7 @@ import { TileLanes } from "./TileLanes";
 type GridCustomRendererItemConfig = {
   pluginName: string;
   Renderer: React.ComponentType<SampleRendererProps>;
-  RecoilBridge: React.ComponentType<React.PropsWithChildren>;
+  ReverbBridge: React.ComponentType<React.PropsWithChildren>;
   ctx: SampleRendererRenderContext;
   clickBehavior?: SampleRendererGridClickBehavior;
   symbol: ID;
@@ -307,7 +307,7 @@ export class GridCustomRendererItem {
       return;
     }
 
-    const { Renderer, ctx, RecoilBridge } = this.config;
+    const { Renderer, ctx, ReverbBridge } = this.config;
     const sample =
       (ctx.sample as { sample?: Record<string, unknown> })?.sample ??
       (ctx.sample as Record<string, unknown>);
@@ -317,7 +317,7 @@ export class GridCustomRendererItem {
     }
 
     this.pluginRoot.render(
-      <RecoilBridge>
+      <ReverbBridge>
         <GridCustomRendererErrorBoundary
           onError={(error) => this.switchToFallback(error)}
           key={
@@ -344,7 +344,7 @@ export class GridCustomRendererItem {
             </div>
           </GridCustomRendererWrapper>
         </GridCustomRendererErrorBoundary>
-      </RecoilBridge>,
+      </ReverbBridge>,
     );
   }
 
@@ -454,7 +454,7 @@ export class GridCustomRendererItem {
     // real selectedSamples atom.
     //
     // Known trade-off: the selection click handler applies its toggle to
-    // `this.selected` optimistically, before the Recoil write it dispatches
+    // `this.selected` optimistically, before the store write it dispatches
     // has actually committed (that round-trip is async). If this exact
     // instance were detached and reattached inside that narrow window, this
     // reconciliation would read the not-yet-committed snapshot and revert the

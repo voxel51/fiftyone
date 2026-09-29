@@ -1,12 +1,15 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { RecoilRoot } from "recoil";
+import { ReverbRoot } from "@fiftyone/reverb";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const setDatasetSpy = vi.fn();
 
 // Provide just the @fiftyone/state surface the component imports.
 vi.mock("@fiftyone/state", async () => {
-  const { atom } = await vi.importActual<typeof import("recoil")>("recoil");
+  const { atom } =
+    await vi.importActual<typeof import("@fiftyone/reverb")>(
+      "@fiftyone/reverb",
+    );
   return {
     datasetName: atom<string | null>({
       key: "test_datasetName",
@@ -22,9 +25,9 @@ const useSearch = () => ({ values: ["quickstart", "quickstart-video"] });
 
 const setup = () =>
   render(
-    <RecoilRoot>
+    <ReverbRoot>
       <DatasetSelector useSearch={useSearch} />
-    </RecoilRoot>,
+    </ReverbRoot>,
   );
 
 describe("DatasetSelector", () => {

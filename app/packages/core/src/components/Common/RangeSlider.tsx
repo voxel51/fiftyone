@@ -10,8 +10,12 @@ import React, {
   useRef,
   useState,
 } from "react";
-import type { RecoilState, RecoilValueReadOnly } from "recoil";
-import { useRecoilState, useRecoilValue } from "recoil";
+import {
+  type ReverbState,
+  type ReverbValueReadOnly,
+  useReverbState,
+  useReverbValue,
+} from "@fiftyone/reverb";
 import styled from "styled-components";
 import { getDateTimeRangeFormattersWithPrecision } from "../../utils/generic";
 import { getFormatter, getPrecision, getStep } from "./utils";
@@ -116,7 +120,7 @@ type SliderValue = number | undefined | null;
 export type Range = [SliderValue, SliderValue];
 
 type BaseSliderProps<T extends Range | number> = {
-  boundsAtom: RecoilValueReadOnly<Range>;
+  boundsAtom: ReverbValueReadOnly<Range>;
   color: string;
   value: T;
   onChange: (e: ChangeEvent<{}>, v: T) => void;
@@ -156,7 +160,7 @@ const BaseSlider = <T extends Range | number>({
   reserveLabelSpace = false,
 }: BaseSliderProps<T>) => {
   const theme = useTheme();
-  const bounds = useRecoilValue(boundsAtom);
+  const bounds = useReverbValue(boundsAtom);
 
   const dirtyMin = useRef(false);
   const dirtyMax = useRef(false);
@@ -164,7 +168,7 @@ const BaseSlider = <T extends Range | number>({
 
   const timeZone =
     fieldType && [DATE_FIELD, DATE_TIME_FIELD].includes(fieldType)
-      ? useRecoilValue(fos.timeZone)
+      ? useReverbValue(fos.timeZone)
       : null;
   const [clicking, setClicking] = useState(false);
 
@@ -321,8 +325,8 @@ const BaseSlider = <T extends Range | number>({
 };
 
 type SliderProps = {
-  valueAtom: RecoilState<SliderValue>;
-  boundsAtom: RecoilValueReadOnly<Range>;
+  valueAtom: ReverbState<SliderValue>;
+  boundsAtom: ReverbValueReadOnly<Range>;
   color: string;
   persistValue?: boolean;
   fieldType?: string;
@@ -335,7 +339,7 @@ type SliderProps = {
 };
 
 export const Slider = ({ valueAtom, onChange, ...rest }: SliderProps) => {
-  const [value, setValue] = useRecoilState(valueAtom);
+  const [value, setValue] = useReverbState(valueAtom);
   const [localValue, setLocalValue] = useState<SliderValue>(null);
   useLayoutEffect(() => {
     JSON.stringify(value) !== JSON.stringify(localValue) &&
@@ -355,8 +359,8 @@ export const Slider = ({ valueAtom, onChange, ...rest }: SliderProps) => {
 };
 
 type RangeSliderProps = {
-  valueAtom: RecoilState<Range>;
-  boundsAtom: RecoilValueReadOnly<Range>;
+  valueAtom: ReverbState<Range>;
+  boundsAtom: ReverbValueReadOnly<Range>;
   color: string;
   showBounds?: boolean;
   fieldType: string;
@@ -368,14 +372,14 @@ export const RangeSlider = ({
   fieldType,
   ...rest
 }: RangeSliderProps) => {
-  const [value, setValue] = useRecoilState(valueAtom);
+  const [value, setValue] = useReverbState(valueAtom);
   const [localValue, setLocalValue] = useState<Range>([null, null]);
   useLayoutEffect(() => {
     JSON.stringify(value) !== JSON.stringify(localValue) &&
       setLocalValue(value);
   }, [value]);
 
-  const bounds = useRecoilValue(boundsAtom);
+  const bounds = useReverbValue(boundsAtom);
   // Restrict numeric precision to better represent the slider controls.
   const precision = getPrecision(fieldType, bounds as [number, number]);
 

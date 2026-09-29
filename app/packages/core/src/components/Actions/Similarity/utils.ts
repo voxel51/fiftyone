@@ -1,8 +1,11 @@
 import type { Method } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
 import { selectedLabels } from "@fiftyone/state";
-import type { Snapshot } from "recoil";
-import { selectorFamily, useRecoilValueLoadable } from "recoil";
+import {
+  selectorFamily,
+  type Snapshot,
+  useReverbValueLoadable,
+} from "@fiftyone/reverb";
 
 export type QueryIds = {
   queryIds: string[] | string | undefined;
@@ -110,7 +113,7 @@ export const useAvailableSimilarityKeys = (
   modal: boolean,
   isImageSearch: boolean,
 ): string[] | null => {
-  const keys = useRecoilValueLoadable(
+  const keys = useReverbValueLoadable(
     availableSimilarityKeys({ modal, isImageSearch }),
   );
 

@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import * as fos from "@fiftyone/state";
 import { useTextSearchProviders } from "./textSearchProviders";
 
@@ -26,8 +26,8 @@ export interface PromptableSimilarityIndex {
  * index the user most likely just built for exactly this.
  */
 const usePromptableSimilarityKeys = (): PromptableSimilarityIndex[] => {
-  const { samples, patches } = useRecoilValue(fos.similarityMethods);
-  const brainMethods = useRecoilValue(fos.dataset)?.brainMethods ?? [];
+  const { samples, patches } = useReverbValue(fos.similarityMethods);
+  const brainMethods = useReverbValue(fos.dataset)?.brainMethods ?? [];
   const providers = useTextSearchProviders();
   return useMemo(() => {
     const created = new Map(brainMethods.map((m, i) => [m.key, i]));

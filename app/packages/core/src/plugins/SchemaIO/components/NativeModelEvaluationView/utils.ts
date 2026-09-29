@@ -1,6 +1,6 @@
 import { formatValueAsNumber } from "@fiftyone/utilities";
 import { capitalize } from "lodash";
-import { atom } from "recoil";
+import { atom } from "@fiftyone/reverb";
 import { NONE_CLASS } from "./constants";
 
 export function getNumericDifference(

@@ -3,7 +3,7 @@ import {
   isGroup as isGroupAtom,
   parentMediaTypeSelector,
 } from "@fiftyone/state";
-import { useRecoilValue, useRecoilValueLoadable } from "recoil";
+import { useReverbValue, useReverbValueLoadable } from "@fiftyone/reverb";
 import styled from "styled-components";
 import TimedOut from "./Common/TimedOut";
 import { PathEntryCounts } from "./Sidebar/Entries/EntryCounts";
@@ -23,9 +23,9 @@ const RightDiv = styled.div`
 `;
 
 const ResourceCount = () => {
-  const groupStats = useRecoilValue(fos.groupStatistics(false));
-  const queryPerformance = useRecoilValue(fos.queryPerformance);
-  const result = useRecoilValueLoadable(
+  const groupStats = useReverbValue(fos.groupStatistics(false));
+  const queryPerformance = useReverbValue(fos.queryPerformance);
+  const result = useReverbValueLoadable(
     fos.count({ path: "_", extended: true, modal: false }),
   );
 
@@ -44,12 +44,12 @@ const ResourceCount = () => {
 };
 
 const GroupsCount = () => {
-  const element = useRecoilValue(fos.elementNames);
-  const elementTotal = useRecoilValue(
+  const element = useReverbValue(fos.elementNames);
+  const elementTotal = useReverbValue(
     fos.count({ path: "", extended: false, modal: false }),
   );
-  const groupSlice = useRecoilValue(fos.groupSlice);
-  const total = useRecoilValue(
+  const groupSlice = useReverbValue(fos.groupSlice);
+  const total = useReverbValue(
     fos.count({ path: "_", extended: false, modal: false }),
   );
 
@@ -67,20 +67,20 @@ const GroupsCount = () => {
 };
 
 const Count = () => {
-  let element = useRecoilValue(fos.elementNames);
-  const isDynamicGroupViewStageActive = useRecoilValue(fos.isDynamicGroup);
-  let total = useRecoilValue(
+  let element = useReverbValue(fos.elementNames);
+  const isDynamicGroupViewStageActive = useReverbValue(fos.isDynamicGroup);
+  let total = useReverbValue(
     fos.count({ path: "", extended: false, modal: false }),
   );
-  const subtotal = useRecoilValue(
+  const subtotal = useReverbValue(
     fos.count({ path: "", extended: true, modal: false }),
   );
 
-  const parent = useRecoilValue(parentMediaTypeSelector);
-  const slice = useRecoilValue(fos.groupSlice);
+  const parent = useReverbValue(parentMediaTypeSelector);
+  const slice = useReverbValue(fos.groupSlice);
 
-  const isGroup = useRecoilValue(isGroupAtom);
-  const queryPerformance = useRecoilValue(fos.queryPerformance);
+  const isGroup = useReverbValue(isGroupAtom);
+  const queryPerformance = useReverbValue(fos.queryPerformance);
   if (queryPerformance) {
     total = subtotal;
   }

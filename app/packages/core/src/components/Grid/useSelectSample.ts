@@ -4,7 +4,7 @@ import { selectedSampleObjects, selectedSamples } from "@fiftyone/state";
 import type { SelectionType } from "@fiftyone/state";
 import { useGridSelection } from "@fiftyone/state/src/selection";
 import { useRef } from "react";
-import { useRecoilCallback } from "recoil";
+import { useReverbCallback } from "@fiftyone/reverb";
 import type { Records } from "./useRecords";
 import type { GridSelectionClick } from "./useGridSelectionClick";
 
@@ -96,7 +96,7 @@ export default (records: Records, selectBucket: GridSelectionClick) => {
   const selection = useGridSelection();
   const ref =
     useRef<(params: ThumbnailSelectionDetail<Sample>) => Promise<void>>();
-  ref.current = useRecoilCallback(
+  ref.current = useReverbCallback(
     ({ set, snapshot }) =>
       async (params: ThumbnailSelectionDetail<Sample>) => {
         const { shiftKey, altKey, id: sampleId, sample, symbol } = params;

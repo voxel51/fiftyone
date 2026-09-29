@@ -4,7 +4,7 @@ import { useOutsideClick } from "@fiftyone/state";
 import CloseIcon from "@mui/icons-material/Close";
 import { Box, Typography } from "@mui/material";
 import { Fragment, useCallback, useRef } from "react";
-import { useResetRecoilState } from "recoil";
+import { useResetReverbState } from "@fiftyone/reverb";
 import styled from "styled-components";
 import { TabOption } from "../utils";
 import { SchemaSearch } from "./SchemaSearch";
@@ -72,7 +72,7 @@ const SchemaSettings = () => {
   const resetDisabled = isFilterRuleActive && !searchResults.length;
 
   const { setFieldVisibilityStage } = fos.useSetSelectedFieldsStage();
-  const resetFieldVisibilityStage = useResetRecoilState(
+  const resetFieldVisibilityStage = useResetReverbState(
     fos.fieldVisibilityStage,
   );
 

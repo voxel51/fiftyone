@@ -1,12 +1,12 @@
 import * as fos from "@fiftyone/state";
 import { Suspense } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { GroupSuspense } from "../../GroupSuspense";
 import { GroupView } from "../../GroupView";
 import { GroupElementsLinkBar } from "../pagination";
 
 export const NestedGroup = () => {
-  const shouldRenderImaVid = useRecoilValue(fos.shouldRenderImaVidLooker(true));
+  const shouldRenderImaVid = useReverbValue(fos.shouldRenderImaVidLooker(true));
 
   return (
     <>

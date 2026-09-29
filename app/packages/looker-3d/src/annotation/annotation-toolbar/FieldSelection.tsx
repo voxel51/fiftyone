@@ -7,12 +7,12 @@ import {
   POLYLINES,
 } from "@fiftyone/utilities";
 import { useCallback, useEffect } from "react";
-import { useRecoilState } from "recoil";
+import { useReverbState } from "@fiftyone/reverb";
 import { useCurrent3dAnnotationMode } from "../../state/accessors";
 import { use3dAnnotationFields } from "../use3dAnnotationFields";
 
 export const FieldSelection = () => {
-  const [currentActiveField, setCurrentActiveField] = useRecoilState(
+  const [currentActiveField, setCurrentActiveField] = useReverbState(
     currentActiveAnnotationField3dAtom,
   );
 

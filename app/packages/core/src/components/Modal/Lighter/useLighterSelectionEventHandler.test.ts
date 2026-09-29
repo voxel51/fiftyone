@@ -9,7 +9,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * The selection, as this surface sees it: whatever the `@fiftyone/state`
- * accessors hand back. Those are Recoil-backed in the app and tested there
+ * accessors hand back. Those are store-backed in the app and tested there
  * (`useOnSelectLabel.test`), so nothing here needs to know that — the subject
  * of this file is which overlay maps to which label and which events are acted
  * on at all.

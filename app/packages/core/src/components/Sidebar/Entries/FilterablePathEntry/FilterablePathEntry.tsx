@@ -5,7 +5,7 @@ import { makePseudoField } from "@fiftyone/utilities";
 import { Checkbox } from "@mui/material";
 import Color from "color";
 import React, { Suspense } from "react";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import { useReverbCallback, useReverbValue } from "@fiftyone/reverb";
 import FieldLabelAndInfo from "../../../FieldLabelAndInfo";
 import RegularEntry from "../RegularEntry";
 import FilterablePathEntries from "./FilterablePathEntries";
@@ -13,7 +13,7 @@ import Loading from "./Loading";
 import useTitleTemplate from "./useTitleTemplate";
 
 const useOnClick = ({ modal, path }: { modal: boolean; path: string }) => {
-  return useRecoilCallback<[React.MouseEvent<HTMLButtonElement>], void>(
+  return useReverbCallback<[React.MouseEvent<HTMLButtonElement>], void>(
     ({ set }) =>
       async (event) => {
         const checked = (event.target as HTMLInputElement).checked;
@@ -24,7 +24,7 @@ const useOnClick = ({ modal, path }: { modal: boolean; path: string }) => {
 };
 
 const useField = (path: string) =>
-  useRecoilValue(fos.field(path)) || makePseudoField(path);
+  useReverbValue(fos.field(path)) || makePseudoField(path);
 
 const FilterableEntry = ({
   disabled,
@@ -49,11 +49,11 @@ const FilterableEntry = ({
     cb: () => void,
   ) => void;
 }) => {
-  const active = useRecoilValue(fos.activeField({ modal, path }));
-  const pathColor = useRecoilValue(fos.pathColor(path));
+  const active = useReverbValue(fos.activeField({ modal, path }));
+  const pathColor = useReverbValue(fos.pathColor(path));
   const field = useField(path);
-  const fieldIsFiltered = useRecoilValue(fos.fieldIsFiltered({ path, modal }));
-  const expandedPath = useRecoilValue(fos.expandPath(path));
+  const fieldIsFiltered = useReverbValue(fos.fieldIsFiltered({ path, modal }));
+  const expandedPath = useReverbValue(fos.expandPath(path));
   const [expanded, setExpanded] = useSidebarExpandedState({
     modal,
     path: expandedPath,

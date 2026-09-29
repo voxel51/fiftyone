@@ -1,7 +1,12 @@
 import { TemporalTagColorInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import React from "react";
-import { DefaultValue, selector, useRecoilState, useRecoilValue } from "recoil";
+import {
+  DefaultValue,
+  selector,
+  useReverbState,
+  useReverbValue,
+} from "@fiftyone/reverb";
 import Checkbox from "../Common/Checkbox";
 import { SectionWrapper } from "./ShareStyledDiv";
 import TemporalTagByValue from "./colorPalette/TemporalTagByValue";
@@ -30,8 +35,8 @@ const temporalTagSetting = selector<TemporalTagColorInput>({
  * color-by mode.
  */
 const TemporalTag: React.FC = () => {
-  const { colorPool } = useRecoilValue(fos.colorScheme);
-  const [temporalTags, setSetting] = useRecoilState(temporalTagSetting);
+  const { colorPool } = useReverbValue(fos.colorScheme);
+  const [temporalTags, setSetting] = useReverbState(temporalTagSetting);
   const useValueColors = Boolean(temporalTags?.valueColors?.length);
 
   return (

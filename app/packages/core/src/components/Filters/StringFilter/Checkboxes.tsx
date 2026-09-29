@@ -1,12 +1,12 @@
 import { LoadingDots } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import type { RecoilState } from "recoil";
 import {
+  type ReverbState,
   selectorFamily,
-  useRecoilState,
-  useRecoilValue,
-  useRecoilValueLoadable,
-} from "recoil";
+  useReverbState,
+  useReverbValue,
+  useReverbValueLoadable,
+} from "@fiftyone/reverb";
 import Checkbox from "../../Common/Checkbox";
 import FilterOption from "../FilterOption/FilterOption";
 import { isBooleanField, isInKeypointsField } from "../state";
@@ -19,13 +19,13 @@ interface CheckboxesProps {
   color: string;
   /** Optional per-value color override for each row's checkbox dot. */
   resultColor?: (value: string | null) => string;
-  excludeAtom: RecoilState<boolean>;
-  isMatchingAtom: RecoilState<boolean>;
+  excludeAtom: ReverbState<boolean>;
+  isMatchingAtom: ReverbState<boolean>;
 
   modal: boolean;
   path: string;
   results: Result[] | null;
-  selectedAtom: RecoilState<(string | null)[]>;
+  selectedAtom: ReverbState<(string | null)[]>;
   skeleton?: boolean;
 }
 
@@ -61,8 +61,8 @@ const checkboxCounts = selectorFamily({
 });
 
 const useCounts = (modal: boolean, path: string, results: Result[] | null) => {
-  const loadable = useRecoilValueLoadable(checkboxCounts({ modal, path }));
-  const queryPerformance = useRecoilValue(fos.queryPerformance);
+  const loadable = useReverbValueLoadable(checkboxCounts({ modal, path }));
+  const queryPerformance = useReverbValue(fos.queryPerformance);
   const data =
     loadable.state === "hasValue"
       ? loadable.contents
@@ -93,8 +93,8 @@ const useValues = ({
   selected: (string | null)[];
 }) => {
   const name = path.split(".").slice(-1)[0];
-  const queryPerformance = useRecoilValue(fos.queryPerformance);
-  const skeleton = useRecoilValue(isSkeleton(path));
+  const queryPerformance = useReverbValue(fos.queryPerformance);
+  const skeleton = useReverbValue(isSkeleton(path));
   const { counts, loading } = useCounts(modal, path, results);
   const hasCount = (!queryPerformance || modal) && !loading;
 
@@ -103,9 +103,9 @@ const useValues = ({
     count: hasCount ? (counts.get(value) ?? null) : null,
     loading: loading,
   }));
-  const objectId = useRecoilValue(fos.isObjectIdField(path));
+  const objectId = useReverbValue(fos.isObjectIdField(path));
   const selectedSet = new Set(selected);
-  const boolean = useRecoilValue(isBooleanField(path));
+  const boolean = useReverbValue(isBooleanField(path));
 
   const hasCheckboxResults =
     ((!queryPerformance || modal) &&
@@ -114,7 +114,7 @@ const useValues = ({
     skeleton ||
     boolean;
 
-  const sorting = useRecoilValue(fos.sortFilterResults(modal));
+  const sorting = useReverbValue(fos.sortFilterResults(modal));
 
   if (hasCheckboxResults) {
     allValues = [
@@ -139,9 +139,9 @@ const useValues = ({
 };
 
 const useGetCount = (modal: boolean, path: string) => {
-  const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
-  const keypoints = useRecoilValue(isInKeypointsField(path));
-  const queryPerformance = useRecoilValue(fos.queryPerformance);
+  const isFilterMode = useReverbValue(fos.isSidebarFilterMode);
+  const keypoints = useReverbValue(isInKeypointsField(path));
+  const queryPerformance = useReverbValue(fos.queryPerformance);
   return (count: number | null, value: string | null) => {
     // show no count for the 'points' field of a Keypoint, and visibility mode
     if (!isFilterMode || keypoints) {
@@ -168,8 +168,8 @@ const Checkboxes = ({
   selectedAtom,
   skeleton,
 }: CheckboxesProps) => {
-  const [selected, setSelected] = useRecoilState(selectedAtom);
-  const queryPerformance = useRecoilValue(fos.queryPerformance);
+  const [selected, setSelected] = useReverbState(selectedAtom);
+  const queryPerformance = useReverbValue(fos.queryPerformance);
 
   const { loading, name, selectedSet, sorting, values } = useValues({
     modal,
@@ -178,7 +178,7 @@ const Checkboxes = ({
     selected,
   });
 
-  const show = useRecoilValue(fos.isObjectIdField(path));
+  const show = useReverbValue(fos.isObjectIdField(path));
   const getCount = useGetCount(modal, path);
 
   if (!modal && queryPerformance && !skeleton && values.length === 0) {

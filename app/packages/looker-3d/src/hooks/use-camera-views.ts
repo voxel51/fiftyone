@@ -2,7 +2,7 @@ import useCanAnnotate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate
 import * as fos from "@fiftyone/state";
 import { useAtomValue } from "jotai";
 import React, { useCallback, useEffect } from "react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useReverbValue, useSetReverbState } from "@fiftyone/reverb";
 import { type PerspectiveCamera, Quaternion, Vector3 } from "three";
 import { useWorkingLabel } from "../annotation/store";
 import {
@@ -128,20 +128,20 @@ export const useCameraViews = ({
   cameraControlsRef,
 }: UseCameraViewsProps) => {
   const { sceneBoundingBox, upVector } = useFo3dContext();
-  const setCameraViewStatus = useSetRecoilState(cameraViewStatusAtom);
-  const annotationPlane = useRecoilValue(annotationPlaneAtom);
+  const setCameraViewStatus = useSetReverbState(cameraViewStatusAtom);
+  const annotationPlane = useReverbValue(annotationPlaneAtom);
   const canAnnotate = useCanAnnotate();
   const mode = useAtomValue(fos.modalMode);
   const enableAnnotationPlaneCameraView =
     canAnnotate && mode === fos.ModalMode.ANNOTATE;
-  const selectedLabelForAnnotation = useRecoilValue(
+  const selectedLabelForAnnotation = useReverbValue(
     selectedLabelForAnnotationAtom,
   );
-  const currentArchetypeSelectedForTransform = useRecoilValue(
+  const currentArchetypeSelectedForTransform = useReverbValue(
     currentArchetypeSelectedForTransformAtom,
   );
-  const selectedPoint = useRecoilValue(selectedPolylineVertexAtom);
-  const setIsFo3dBackgroundOn = useSetRecoilState(isFo3dBackgroundOnAtom);
+  const selectedPoint = useReverbValue(selectedPolylineVertexAtom);
+  const setIsFo3dBackgroundOn = useSetReverbState(isFo3dBackgroundOnAtom);
 
   const workingLabel = useWorkingLabel(selectedLabelForAnnotation?._id ?? "");
   const selectedTransformArchetype = getSelectedTransformArchetype({

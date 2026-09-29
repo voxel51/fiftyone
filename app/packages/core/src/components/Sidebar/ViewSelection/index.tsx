@@ -4,11 +4,11 @@ import * as fos from "@fiftyone/state";
 import { Suspense, useEffect, useMemo } from "react";
 import {
   atom,
-  useRecoilState,
-  useRecoilValue,
-  useResetRecoilState,
-  useSetRecoilState,
-} from "recoil";
+  useReverbState,
+  useReverbValue,
+  useResetReverbState,
+  useSetReverbState,
+} from "@fiftyone/reverb";
 import { shouldToggleBookMarkIconOnSelector } from "../../Grid/Actions/SaveFilters";
 import SavedViewsSelection from "./SavedViewsSelection";
 import ViewDialog, { viewDialogContent } from "./ViewDialog";
@@ -34,16 +34,16 @@ export interface DatasetView {
 }
 
 export default function ViewSelection() {
-  const [selected, setSelected] = useRecoilState<fos.DatasetViewOption | null>(
+  const [selected, setSelected] = useReverbState<fos.DatasetViewOption | null>(
     fos.selectedSavedViewState,
   );
-  const datasetName = useRecoilValue(fos.datasetName);
-  const canEditSavedViews = useRecoilValue(fos.canEditSavedViews);
-  const setIsOpen = useSetRecoilState(viewDialogOpen);
-  const [savedViewParam, setViewName] = useRecoilState(fos.viewName);
-  const setEditView = useSetRecoilState(viewDialogContent);
-  const resetView = useResetRecoilState(fos.view);
-  const [viewSearch, setViewSearch] = useRecoilState<string>(viewSearchTerm);
+  const datasetName = useReverbValue(fos.datasetName);
+  const canEditSavedViews = useReverbValue(fos.canEditSavedViews);
+  const setIsOpen = useSetReverbState(viewDialogOpen);
+  const [savedViewParam, setViewName] = useReverbState(fos.viewName);
+  const setEditView = useSetReverbState(viewDialogContent);
+  const resetView = useResetReverbState(fos.view);
+  const [viewSearch, setViewSearch] = useReverbState<string>(viewSearchTerm);
 
   const disabled = canEditSavedViews.enabled !== true;
   const disabledMsg = canEditSavedViews.message;
@@ -98,9 +98,9 @@ export default function ViewSelection() {
     }
   }, [searchData, selected]);
 
-  const loadedView = useRecoilValue(fos.view);
-  const bookmarkIconOn = useRecoilValue(shouldToggleBookMarkIconOnSelector);
-  const extendedStagesVal = useRecoilValue(fos.extendedStages);
+  const loadedView = useReverbValue(fos.view);
+  const bookmarkIconOn = useReverbValue(shouldToggleBookMarkIconOnSelector);
+  const extendedStagesVal = useReverbValue(fos.extendedStages);
   const isEmptyView =
     !bookmarkIconOn && !loadedView?.length && extendedStagesVal?.length > 2;
   const trackEvent = useTrackEvent();

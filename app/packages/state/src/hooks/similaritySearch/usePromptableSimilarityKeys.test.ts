@@ -22,8 +22,8 @@ vi.mock("@fiftyone/state", () => ({
   similarityMethods: { key: "similarityMethods" },
   dataset: { key: "dataset" },
 }));
-vi.mock("recoil", () => ({
-  useRecoilValue: ({ key }: { key: keyof typeof values }) => values[key],
+vi.mock("@fiftyone/reverb", () => ({
+  useReverbValue: ({ key }: { key: keyof typeof values }) => values[key],
 }));
 
 import { registerTextSearchProvider } from "./textSearchProviders";

@@ -3,7 +3,7 @@ import { useTriggerPanelEvent } from "@fiftyone/operators";
 import { constants } from "@fiftyone/utilities";
 import { Box } from "@mui/material";
 import React, { useCallback, useMemo } from "react";
-import { useRecoilState, useSetRecoilState } from "recoil";
+import { useReverbState, useSetReverbState } from "@fiftyone/reverb";
 import ConfirmationDialog from "./ConfirmationDialog";
 import Evaluate from "./Evaluate";
 import Evaluation from "./Evaluation";
@@ -14,8 +14,8 @@ const TRY_LINK = "http://voxel51.com/try-evaluation";
 
 export default function NativeModelEvaluationView(props) {
   const { data = {}, schema, onChange } = props;
-  const [openDialog, setOpenDialog] = useRecoilState(openModelEvalDialog);
-  const setSelectedEvaluation = useSetRecoilState(selectedModelEvaluation);
+  const [openDialog, setOpenDialog] = useReverbState(openModelEvalDialog);
+  const setSelectedEvaluation = useSetReverbState(selectedModelEvaluation);
   const { view } = schema;
   const {
     on_change_view,

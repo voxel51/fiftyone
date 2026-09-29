@@ -2,7 +2,7 @@ import * as fos from "@fiftyone/state";
 import { Line, useCursor } from "@react-three/drei";
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useReverbValue, useSetReverbState } from "@fiftyone/reverb";
 import * as THREE from "three";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry";
@@ -413,18 +413,18 @@ export const Cuboid = ({
   useHoverState();
   const { camera, gl } = useThree();
   const { upVector } = useFo3dContext();
-  const hoveredLabel = useRecoilValue(hoveredLabelAtom);
-  const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
-  const isActivelySegmenting = useRecoilValue(isActivelySegmentingSelector);
-  const isCreatingCuboidPointerDown = useRecoilValue(
+  const hoveredLabel = useReverbValue(hoveredLabelAtom);
+  const setHoveredLabel = useSetReverbState(hoveredLabelAtom);
+  const isActivelySegmenting = useReverbValue(isActivelySegmentingSelector);
+  const isCreatingCuboidPointerDown = useReverbValue(
     isCreatingCuboidPointerDownAtom,
   );
   const isCurrentlyTransforming = useIsCurrentlyTransforming();
-  const setIsCurrentlyTransforming = useSetRecoilState(
+  const setIsCurrentlyTransforming = useSetReverbState(
     isCurrentlyTransformingAtom,
   );
-  const hoveredResizeFaceState = useRecoilValue(hoveredResizeFaceAtom);
-  const setHoveredResizeFaceState = useSetRecoilState(hoveredResizeFaceAtom);
+  const hoveredResizeFaceState = useReverbValue(hoveredResizeFaceAtom);
+  const setHoveredResizeFaceState = useSetReverbState(hoveredResizeFaceAtom);
   // Hovered resize face is shared across panels (keyed by label) so the hover
   // feedback (handle opacity/scale, face highlight) appears in every panel, not
   // just the one under the cursor.
@@ -476,9 +476,9 @@ export const Cuboid = ({
 
   const isAnnotateMode = fos.useModalMode() === fos.ModalMode.ANNOTATE;
   const isSelectedForAnnotation =
-    useRecoilValue(selectedLabelForAnnotationAtom)?._id === label.data._id;
+    useReverbValue(selectedLabelForAnnotationAtom)?._id === label.data._id;
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
-  const setCurrentArchetypeSelectedForTransform = useSetRecoilState(
+  const setCurrentArchetypeSelectedForTransform = useSetReverbState(
     currentArchetypeSelectedForTransformAtom,
   );
 
@@ -581,7 +581,7 @@ export const Cuboid = ({
     [hoverSource, isCurrentlyTransforming, label.data._id, setHoveredLabel],
   );
 
-  const transformMode = useRecoilValue(transformModeAtom);
+  const transformMode = useReverbValue(transformModeAtom);
 
   const {
     displayDimensions,

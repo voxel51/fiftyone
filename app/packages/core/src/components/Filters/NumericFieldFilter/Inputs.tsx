@@ -1,5 +1,9 @@
 import * as fos from "@fiftyone/state";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import {
+  useReverbState,
+  useReverbValue,
+  useSetReverbState,
+} from "@fiftyone/reverb";
 import styled from "styled-components";
 import type { InputType } from "./Input";
 import { Input } from "./Input";
@@ -19,15 +23,15 @@ export default function Inputs({
   modal: boolean;
   path: string;
 }) {
-  const ftype = useRecoilValue(fos.fieldType({ path }));
-  const [[min, max], setRange] = useRecoilState(
+  const ftype = useReverbValue(fos.fieldType({ path }));
+  const [[min, max], setRange] = useReverbState(
     fos.rangeAtom({
       modal,
       path,
       withBounds: false,
     }),
   );
-  const setSnackBarErrors = useSetRecoilState(fos.snackbarErrors);
+  const setSnackBarErrors = useSetReverbState(fos.snackbarErrors);
 
   return (
     <Container>

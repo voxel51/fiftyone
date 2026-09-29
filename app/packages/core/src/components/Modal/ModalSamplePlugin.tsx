@@ -1,7 +1,7 @@
 import { ErrorBoundary } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import React, { Suspense, useEffect, useMemo } from "react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useReverbValue, useSetReverbState } from "@fiftyone/reverb";
 import styled from "styled-components";
 import Group from "./Group";
 import { Sample2D } from "./Sample2D";
@@ -19,10 +19,10 @@ const ContentColumn = styled.div`
 `;
 
 export const ModalSample = React.memo(() => {
-  const isGroup = useRecoilValue(fos.isGroup);
-  const is3DMediaType = useRecoilValue(fos.is3DDataset);
-  const setIsTooltipLocked = useSetRecoilState(fos.isTooltipLocked);
-  const setTooltipDetail = useSetRecoilState(fos.tooltipDetail);
+  const isGroup = useReverbValue(fos.isGroup);
+  const is3DMediaType = useReverbValue(fos.is3DDataset);
+  const setIsTooltipLocked = useSetReverbState(fos.isTooltipLocked);
+  const setTooltipDetail = useSetReverbState(fos.tooltipDetail);
 
   useEffect(() => {
     // reset tooltip state when modal is closed
@@ -55,7 +55,7 @@ export const NonGroupModalSample = ({
   is3DMediaType: boolean;
 }) => {
   const { sample } = useRetainedModalSample();
-  const modalMediaField = useRecoilValue(fos.selectedMediaField(true));
+  const modalMediaField = useReverbValue(fos.selectedMediaField(true));
   const isDirect3dSampleUnknownMediaType = useMemo(() => {
     const selectedMedia = fos.resolveMediaFieldLooker({
       mediaField: modalMediaField,

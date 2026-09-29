@@ -1,17 +1,17 @@
 import { PopoutSectionTitle, TabOption } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useReverbState, useReverbValue } from "@fiftyone/reverb";
 
 const FIT_OPTIONS = ["cover", "contain"] as const;
 
 /** Cover/Contain control shown only for multimodal grid datasets. */
 export default function MultimodalGridFitSetting() {
-  const isMultimodal = useRecoilValue(fos.isMultimodalDataset);
+  const isMultimodal = useReverbValue(fos.isMultimodalDataset);
   return isMultimodal ? <FitSetting /> : null;
 }
 
 function FitSetting() {
-  const [fit, setFit] = useRecoilState(fos.multimodalGridFit);
+  const [fit, setFit] = useReverbState(fos.multimodalGridFit);
   return (
     <>
       <PopoutSectionTitle>Multimodal media fit</PopoutSectionTitle>

@@ -6,7 +6,12 @@ import { Divider } from "@mui/material";
 import colorString from "color-string";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { TwitterPicker } from "react-color";
-import { DefaultValue, selector, useRecoilState, useRecoilValue } from "recoil";
+import {
+  DefaultValue,
+  selector,
+  useReverbState,
+  useReverbValue,
+} from "@fiftyone/reverb";
 import Checkbox from "../Common/Checkbox";
 import Input from "../Common/Input";
 import {
@@ -38,10 +43,10 @@ const labelTagSetting = selector<LabelTagColorInput>({
 const LabelTag: React.FC = () => {
   const wrapperRef = React.useRef<HTMLDivElement>(null);
   const pickerRef = React.useRef<TwitterPicker>(null);
-  const coloring = useRecoilValue(fos.coloring);
-  const { colorPool } = useRecoilValue(fos.colorScheme);
-  const colorMap = useRecoilValue(fos.colorMap);
-  const [labelTags, setSetting] = useRecoilState(labelTagSetting);
+  const coloring = useReverbValue(fos.coloring);
+  const { colorPool } = useReverbValue(fos.colorScheme);
+  const colorMap = useReverbValue(fos.colorMap);
+  const [labelTags, setSetting] = useReverbState(labelTagSetting);
 
   const [showFieldPicker, setShowFieldPicker] = useState(false);
   const [input, setInput] = useState(labelTags?.fieldColor);

@@ -1,6 +1,6 @@
 import { getStageKwarg, isPatchesView, view } from "@fiftyone/state";
 import { useAtomValue } from "jotai";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { activeLabelSchemas, labelSchemasData } from "./state";
 
 export interface RequiredField {
@@ -50,8 +50,8 @@ export function getSourceFieldFromStages(
  * or `null` when no action is needed.
  */
 export default function useSourceFieldToActivate(): RequiredField | null {
-  const isPatches = useRecoilValue(isPatchesView);
-  const stages = useRecoilValue(view);
+  const isPatches = useReverbValue(isPatchesView);
+  const stages = useReverbValue(view);
 
   // These reflect the schemas defined on the src dataset.
   const schemas = useAtomValue(labelSchemasData);

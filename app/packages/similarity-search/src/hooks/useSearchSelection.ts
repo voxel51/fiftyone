@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import * as fos from "@fiftyone/state";
 
 /**
@@ -7,9 +7,9 @@ import * as fos from "@fiftyone/state";
  * and derives query IDs for image-based similarity search.
  */
 export const useSearchSelection = () => {
-  const selectedSamples = useRecoilValue(fos.selectedSamples);
-  const selectedLabels = useRecoilValue(fos.selectedLabels);
-  const view = useRecoilValue(fos.view);
+  const selectedSamples = useReverbValue(fos.selectedSamples);
+  const selectedLabels = useReverbValue(fos.selectedLabels);
+  const view = useReverbValue(fos.view);
 
   const hasSamplesSelected = useMemo(
     () =>

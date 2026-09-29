@@ -4,6 +4,7 @@ import * as fos from "@fiftyone/state";
 import { Check } from "@mui/icons-material";
 import type { MutableRefObject } from "react";
 import { useEffect, useRef, useState } from "react";
+
 import type { ActionProps } from "../types";
 import { ActionDiv, getStringAndNumberProps } from "../utils";
 import Grid from "./Grid";
