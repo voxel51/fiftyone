@@ -1,6 +1,8 @@
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
 import { AnnotationSaveIndicator } from "@fiftyone/annotation";
+import { getEventBus } from "@fiftyone/events";
 import { EntryKind, isGeneratedView } from "@fiftyone/state";
+import { useEffect } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Sidebar from "../../../Sidebar";
@@ -20,10 +22,21 @@ const EmptyLabelsContainer = styled.div`
   gap: 0.5rem;
 `;
 
+/** e2e specs wait on the edit form replacing the label list, and back */
+type AnnotateSidebarE2EEvents = {
+  "e2e:annotate:editing": { editing: boolean };
+};
+
 export default function AnnotateSidebar() {
   usePrimitivesCount();
   const isEditingValue = useAnnotationContext().isEditing;
   const isGenerated = useRecoilValue(isGeneratedView);
+
+  useEffect(() => {
+    getEventBus<AnnotateSidebarE2EEvents>().dispatch("e2e:annotate:editing", {
+      editing: isEditingValue,
+    });
+  }, [isEditingValue]);
 
   // Don't show label list in edit mode or in generated views (patches/clips/frames)
   // In generated views, only the edit panel should be visible

@@ -1,8 +1,9 @@
+import { getEventBus } from "@fiftyone/events";
 import { useLighter } from "@fiftyone/lighter";
 import { ANNOTATE_SHORTCUTS } from "./annotateActions";
 import * as fos from "@fiftyone/state";
 import { IconName, Orientation, Spacing, Stack } from "@voxel51/voodo";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import styled from "styled-components";
 import { shortcutToHelpItems } from "../utils";
 import ToolbarButton from "./ToolbarButton";
@@ -29,6 +30,11 @@ const ToolbarContainer = styled.div`
   box-shadow: 0 8px 15px 0 ${({ theme }) => theme.neutral.softBg};
 `;
 
+/** e2e specs wait on the hover toolbar mounting */
+type LighterToolbarE2EEvents = {
+  "e2e:modal:lighter-toolbar-shown": undefined;
+};
+
 /**
  * Toolbar for the Lighter sample renderer (e.g. annotate mode).
  * Renders at the bottom of the Lighter canvas area.
@@ -36,6 +42,12 @@ const ToolbarContainer = styled.div`
 export const LighterToolbar = () => {
   const helpPanel = fos.useHelpPanel();
   const { zoomIn, zoomOut } = useLighter();
+
+  useEffect(() => {
+    getEventBus<LighterToolbarE2EEvents>().dispatch(
+      "e2e:modal:lighter-toolbar-shown",
+    );
+  }, []);
 
   const handleHelp = useCallback(() => {
     helpPanel.open(shortcutToHelpItems(ANNOTATE_SHORTCUTS));
