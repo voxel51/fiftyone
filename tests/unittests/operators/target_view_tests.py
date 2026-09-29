@@ -675,15 +675,21 @@ class TestGroupSliceScopeDescriptions(unittest.TestCase):
         self.assertListEqual(prop.options.available_values(), SCOPED_VALUES)
         self.assertEqual(prop.default, "CURRENT_VIEW")
         self.assertIsInstance(prop.view, types.RadioGroup)
+        # each choice is titled by the samples it covers and described by the
+        # names of their slices
+        self.assertListEqual(
+            [c.label for c in prop.options.choices_view.choices],
+            [
+                "All image slices",
+                "All point cloud slices",
+                "Samples matching filters in the current slice",
+                "Samples matching filters in all image slices",
+                "Samples matching filters in all point cloud slices",
+            ],
+        )
         self.assertListEqual(
             descriptions,
-            [
-                "All image slices (left, right)",
-                "All point cloud slices (lidar)",
-                "Samples matching filters in the current slice (left)",
-                "Samples matching filters in all image slices (left, right)",
-                "Samples matching filters in all point cloud slices (lidar)",
-            ],
+            ["left, right", "lidar", "left", "left, right", "lidar"],
         )
 
     def test_the_whole_grouped_dataset_is_not_offered_disabled(self):
@@ -705,8 +711,7 @@ class TestGroupSliceScopeDescriptions(unittest.TestCase):
         self.assertFalse(prop.invalid)
         self.assertEqual(
             descriptions[SCOPED_VALUES.index("CURRENT_VIEW")],
-            "Samples matching filters in the current slice "
-            f"({self.dataset.default_group_slice})",
+            self.dataset.default_group_slice,
         )
 
     def test_view_targets_describe_the_active_slice(self):
@@ -723,7 +728,7 @@ class TestGroupSliceScopeDescriptions(unittest.TestCase):
 
         self.assertEqual(
             descriptions[SCOPED_VALUES.index("CURRENT_VIEW")],
-            "Samples matching filters in the current slice (left)",
+            "left",
         )
 
     def test_named_slices_override(self):

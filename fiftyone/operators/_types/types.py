@@ -2827,9 +2827,12 @@ def _append_scope(description, scope_description):
 _MEDIA_TYPE_LABELS = {"point-cloud": "point cloud", "3d": "3D"}
 
 
-def _media_scope_description(media_type, slice_names):
-    label = _MEDIA_TYPE_LABELS.get(media_type, media_type)
-    return f"all {label} slices ({', '.join(slice_names)})"
+def _media_scope_label(media_type):
+    return f"all {_MEDIA_TYPE_LABELS.get(media_type, media_type)} slices"
+
+
+def _scoped_label(prefix, scope):
+    return f"{prefix} in {scope}" if prefix else scope[0].upper() + scope[1:]
 
 
 class ViewTargetOptions(object):
@@ -2865,6 +2868,7 @@ class ViewTargetOptions(object):
         dataset_scope_description=None,
         unavailable=None,
         media_scopes=None,
+        current_slice=None,
         **_,
     ):
         """Initializes instance
@@ -2926,7 +2930,11 @@ class ViewTargetOptions(object):
             media_scopes (None): a list of ``(media_type, slice_names)``
                 tuples of a grouped dataset. The dataset and current view
                 targets are then also offered scoped to every slice of each
-                media type, and the dataset is offered only that way
+                media type, and the dataset is offered only that way. Each
+                of these choices is titled by the samples it covers and
+                described by the names of their slices
+            current_slice (None): the active group slice, which the unscoped
+                current view target covers when ``media_scopes`` are given
         """
         super().__init__()
 
@@ -3013,18 +3021,20 @@ class ViewTargetOptions(object):
                 if target_view == constants.ViewTarget.DATASET:
                     # the whole grouped dataset is not a flat collection, so
                     # it is offered one media type at a time instead
-                    self._add_media_scopes(
-                        target_view, label, "", media_scopes
-                    )
+                    self._add_media_scopes(target_view, "", media_scopes)
                     continue
 
                 if target_view == constants.ViewTarget.CURRENT_VIEW:
                     self.choices_view.add_choice(
-                        target_view, label=label, description=description
+                        target_view,
+                        label=_scoped_label(
+                            unscoped_current_view_description,
+                            "the current slice",
+                        ),
+                        description=current_slice,
                     )
                     self._add_media_scopes(
                         target_view,
-                        label,
                         unscoped_current_view_description,
                         media_scopes,
                     )
@@ -3044,17 +3054,12 @@ class ViewTargetOptions(object):
                 disabled=reason is not None,
             )
 
-    def _add_media_scopes(self, target_view, label, description, scopes):
+    def _add_media_scopes(self, target_view, prefix, scopes):
         for media_type, slice_names in scopes:
-            scope = _media_scope_description(media_type, slice_names)
             self.choices_view.add_choice(
                 constants.scope_view_target(target_view, media_type),
-                label=label,
-                description=(
-                    _append_scope(description, f"in {scope}")
-                    if description
-                    else scope[0].upper() + scope[1:]
-                ),
+                label=_scoped_label(prefix, _media_scope_label(media_type)),
+                description=", ".join(slice_names),
             )
 
     @property
@@ -3227,6 +3232,9 @@ class ViewTargetProperty(Property):
             require_flat=require_flat
         )
         media_scopes = ctx.get_group_media_scopes(require_flat=require_flat)
+        current_slice = (
+            ctx.group_slice or ctx.view.group_slice if media_scopes else None
+        )
 
         # Determine which target views are available
         has_base_view = (
@@ -3273,6 +3281,7 @@ class ViewTargetProperty(Property):
             dataset_scope_description=dataset_scope,
             unavailable=unavailable,
             media_scopes=media_scopes,
+            current_slice=current_slice,
         )
         self._options = options
 
