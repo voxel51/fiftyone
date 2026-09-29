@@ -95,3 +95,39 @@ def test_static_layouts(monkeypatch, tmp_path, layout, follow, served):
     else:
         assert response.status_code == 404
         assert response.text == "Not Found"
+
+
+def _app(tmp_path):
+    static = tmp_path / "static"
+    (static / "assets").mkdir(parents=True)
+    (static / "index.html").write_text(_INDEX)
+    (static / "assets" / "app.js").write_text("js")
+    app = Starlette(routes=[Mount("/", app=fosa._app_static(str(static)))])
+    return TestClient(app)
+
+
+@pytest.mark.parametrize(
+    "path, body",
+    [
+        ("/datasets/quickstart", _INDEX),
+        ("/datasets/assets/app.js", "js"),
+        ("/datasets/index.html", _INDEX),
+        ("/datasets/quickstart/samples/66a1", _INDEX),
+        ("/datasets/quickstart/groups/g-7", _INDEX),
+        ("/datasets/quickstart/samples/assets/app.js", "js"),
+    ],
+)
+def test_dataset_pages(tmp_path, path, body):
+    response = _app(tmp_path).get(path, follow_redirects=False)
+
+    assert response.status_code == 200
+    assert response.text == body
+
+
+@pytest.mark.parametrize(
+    "path", ["/datasets/quickstart/samples", "/datasets/quickstart/manage/x"]
+)
+def test_unknown_dataset_paths_are_not_found(tmp_path, path):
+    response = _app(tmp_path).get(path, follow_redirects=False)
+
+    assert response.status_code == 404
