@@ -6,6 +6,7 @@ import { jotaiStore } from "@fiftyone/state/src/jotai";
 import { getVideoElements } from "../elements";
 import { VIDEO_SHORTCUTS } from "../elements/common";
 import { getFrameNumber } from "../elements/util";
+import type { VideoElement } from "../elements/video";
 import { ClassificationsOverlay, loadOverlays } from "../overlays";
 import type { Overlay } from "../overlays/base";
 import processOverlays from "../processOverlays";
@@ -41,6 +42,10 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
     return this.state.playing;
   }
 
+  get duration(): number | null {
+    return this.state.duration;
+  }
+
   get waiting() {
     const video = this.lookerElement.children[0].element as HTMLVideoElement;
     return (
@@ -72,6 +77,18 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
     if (previousPlaying !== playing) {
       playing && this.dispatchEvent("play", null);
       !playing && this.dispatchEvent("pause", { buffering: state.buffering });
+    }
+
+    // Presented frames are reported by the video element; this only reports
+    // playback stopping. Raw `playing`, not the buffering-adjusted flag above:
+    // a stall mid-playback is still a position being presented, while a
+    // thumbnail's mouseleave (which rewinds and stops) is what "no longer
+    // playing" means here.
+    if (previousState.playing && !state.playing) {
+      this.dispatchEvent("frame", {
+        playing: false,
+        timeSeconds: (state.frameNumber - 0.5) / state.config.frameRate,
+      });
     }
   }
 
@@ -443,6 +460,30 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
 
         return clamped === current ? {} : { frameNumber: clamped };
       },
+    );
+  }
+
+  seekToSeconds(seconds: number): void {
+    const {
+      duration,
+      config: { frameRate },
+    } = this.state;
+    if (duration === null || !Number.isFinite(seconds)) return;
+
+    this.seekToFrame(getFrameNumber(seconds, duration, frameRate));
+  }
+
+  /**
+   * Redraws the idle thumbnail at `seconds` into the clip, or at its start
+   * when null, and starts the next hover playback there.
+   */
+  posterAt(seconds: number | null): void {
+    const { config, loaded } = this.state;
+    if (!config.thumbnail || !loaded) return;
+    if (seconds !== null && !Number.isFinite(seconds)) return;
+
+    (this.lookerElement.children[0] as unknown as VideoElement).posterAt(
+      seconds,
     );
   }
 
