@@ -106,8 +106,6 @@ export class Renderer3dPom {
   }
 
   async dragCameraBy(deltaX: number, deltaY: number): Promise<void> {
-    await this.looker3d.waitFor({ state: "visible" });
-
     const box = await this.looker3d.boundingBox();
     if (!box) {
       throw new Error("Unable to find looker3d bounds for camera drag");

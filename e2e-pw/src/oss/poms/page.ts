@@ -35,14 +35,18 @@ export class PagePom {
     return this.page.getByTestId(`${pagename}-page`);
   }
 
+  /** Load the index page, or `dataset` from the selector, once rendered */
   async loadDataset(dataset?: string) {
     if (!dataset) {
-      await this.page.goto("/");
-    } else {
-      await this.datasetSelector.openResults();
-      await this.datasetSelector.selectResult(dataset);
+      await this.eventUtils.afterNavigation("e2e:app:page-change", () =>
+        this.page.goto("/"),
+      );
+      return;
     }
-    await this.getPage(dataset ? "dataset" : "index").waitFor();
+    await this.datasetSelector.openResults();
+    await this.eventUtils.after("e2e:app:page-change", () =>
+      this.datasetSelector.selectResult(dataset),
+    );
   }
 
   /** Go back in history; resolves once the previous page has rendered */

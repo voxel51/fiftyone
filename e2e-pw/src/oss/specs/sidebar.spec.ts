@@ -46,8 +46,10 @@ test.describe.serial("sidebar-filter-visibility", () => {
       // select bottle in ground_truth.detections.label
       await sidebar.clickFieldDropdown("ground_truth");
     });
-    await grid.afterTilesDrawn(1, () =>
-      sidebar.applyLabelFromList(["bottle"], "select-detections-with-label"),
+    await grid.afterEntryCounts(() =>
+      grid.afterTilesDrawn(1, () =>
+        sidebar.applyLabelFromList(["bottle"], "select-detections-with-label"),
+      ),
     );
 
     // verify the number of samples in the result
@@ -84,8 +86,10 @@ test.describe.serial("sidebar-filter-visibility", () => {
     await eventUtils.after("animation-onRest", async () => {
       await sidebar.clickFieldDropdown("ground_truth");
     });
-    await grid.afterTilesDrawn(5, () =>
-      sidebar.applyLabelFromList(["bottle"], "exclude-detections-with-label"),
+    await grid.afterEntryCounts(() =>
+      grid.afterTilesDrawn(5, () =>
+        sidebar.applyLabelFromList(["bottle"], "exclude-detections-with-label"),
+      ),
     );
 
     // verify the number of samples in the result
@@ -123,9 +127,11 @@ test.describe.serial("sidebar-filter-visibility", () => {
       await sidebar.clickFieldDropdown("ground_truth");
     });
 
-    await grid.afterTilesDrawn(1, () =>
-      grid.run(() =>
-        sidebar.applyLabelFromList(["bottle"], "show-samples-with-label"),
+    await grid.afterEntryCounts(() =>
+      grid.afterTilesDrawn(1, () =>
+        grid.run(() =>
+          sidebar.applyLabelFromList(["bottle"], "show-samples-with-label"),
+        ),
       ),
     );
 
@@ -163,8 +169,10 @@ test.describe.serial("sidebar-filter-visibility", () => {
     await eventUtils.after("animation-onRest", async () => {
       await sidebar.clickFieldDropdown("ground_truth");
     });
-    await grid.afterTilesDrawn(4, () =>
-      sidebar.applyLabelFromList(["bottle"], "omit-samples-with-label"),
+    await grid.afterEntryCounts(() =>
+      grid.afterTilesDrawn(4, () =>
+        sidebar.applyLabelFromList(["bottle"], "omit-samples-with-label"),
+      ),
     );
 
     // verify the number of samples in the result

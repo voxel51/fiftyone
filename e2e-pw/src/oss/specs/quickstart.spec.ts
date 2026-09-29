@@ -82,9 +82,11 @@ test.describe.serial("quickstart", () => {
   test("selection bookmark", async ({ grid }) => {
     await grid.toggleSelectFirstSample();
     await grid.actionsRow.assert.hasFiltersBookmark();
-    await grid.run(async () => {
-      await grid.actionsRow.bookmarkFilters();
-    });
+    await grid.afterEntryCounts(() =>
+      grid.run(async () => {
+        await grid.actionsRow.bookmarkFilters();
+      }),
+    );
     await grid.assert.isEntryCountTextEqualTo("1 sample");
   });
 

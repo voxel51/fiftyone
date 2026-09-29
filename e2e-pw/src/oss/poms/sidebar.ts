@@ -94,11 +94,6 @@ export class SidebarPom {
     return this.sidebar.getByTestId(`shown-attribute-${path}`);
   }
 
-  async waitForElement(dataCy: string) {
-    const selector = this.sidebar.getByTestId(dataCy);
-    await selector.waitFor();
-  }
-
   // when less than 25 entries, it's displayed in a list
   async getAttributeItemCount(field: string, attributeValue: string) {
     const container = this.sidebar.getByTestId(`categorical-filter-${field}`);
@@ -138,9 +133,7 @@ export class SidebarPom {
       await this.applyFilter(label);
     }
 
-    const currentMode = this.sidebar.getByTestId("filter-mode-div");
-    await currentMode.waitFor();
-    await currentMode.click();
+    await this.sidebar.getByTestId("filter-mode-div").click();
     // make sure the pop out panel is fully expanded, to make sure click is successful
     const targetMode = this.sidebar.getByTestId(
       `filter-option-${targetModeId}`,

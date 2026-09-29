@@ -28,7 +28,7 @@ export class ModalSidebarPom {
     readonly eventUtils: EventUtils,
   ) {
     this.annotate = new ModalAnnotateSidebarPom(page, eventUtils);
-    this.edit = new ModalAnnotateEditPom(page);
+    this.edit = new ModalAnnotateEditPom(page, eventUtils);
     this.page = page;
     this.assert = new ModalSidebarAsserter(this);
     this.locator = page.getByTestId("modal").getByTestId("sidebar");

@@ -12,6 +12,7 @@ import { PythonRunner } from "src/shared/python-runner/python-runner";
  * an error); custom-renderer tiles are ready once their wrapper commits
  */
 const MODAL_OPENED = "e2e:modal:opened";
+const COUNT_SHOWN = "e2e:components:entry-count-shown";
 const TILE_READY = [
   "e2e:looker:canvas-loaded",
   "e2e:looker:error-shown",
@@ -173,12 +174,18 @@ export class OssLoader extends AbstractFiftyoneLoader {
       (searchParams?.has("id") || searchParams?.has("groupId")) ?? false;
     const drawn = new Set<string>();
     let tileReady = false;
+    let countsShown = !!readyEvent;
     let modalOpened = !opensModal;
     let modalLoaded = !modalSample;
     let ready = !readyEvent;
 
     await eventUtils.afterNavigation(
-      [...TILE_READY, MODAL_OPENED, ...(readyEvent ? [readyEvent] : [])],
+      [
+        ...TILE_READY,
+        MODAL_OPENED,
+        COUNT_SHOWN,
+        ...(readyEvent ? [readyEvent] : []),
+      ],
       navigate,
       ({ event, detail }) => {
         const { sampleId, thumbnail } = (detail ?? {}) as {
@@ -187,6 +194,11 @@ export class OssLoader extends AbstractFiftyoneLoader {
         };
         if (event === readyEvent) ready = true;
         if (event === MODAL_OPENED) modalOpened = true;
+        // the grid's entry counts load after its tiles
+        if (event === COUNT_SHOWN) {
+          countsShown ||=
+            (detail as { signal: string }).signal === "grid-elements";
+        }
         if (TILE_READY.includes(event)) {
           if (!tiles) tileReady = true;
           if (thumbnail && event === "e2e:looker:canvas-loaded") {
@@ -200,7 +212,11 @@ export class OssLoader extends AbstractFiftyoneLoader {
                 event === "e2e:looker:error-shown");
           }
         }
-        return (readyEvent ? ready : tileReady) && modalOpened && modalLoaded;
+        return (
+          (readyEvent ? ready : tileReady && countsShown) &&
+          modalOpened &&
+          modalLoaded
+        );
       },
     );
   }

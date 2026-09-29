@@ -70,8 +70,10 @@ test.describe.serial("quickstart-groups", () => {
     expect(await grid.getEntryCountText()).toEqual("4 groups with slice");
 
     await grid.actionsRow.toggleDisplayOptions();
-    await grid.actionsRow.displayActions.setSidebarStatisticsMode("group");
-    await grid.untilEntryCountsLoaded("groups");
+    await grid.afterEntryCounts(
+      () => grid.actionsRow.displayActions.setSidebarStatisticsMode("group"),
+      "groups",
+    );
     await grid.assert.isEntryCountTextEqualTo(
       "(12 samples) 4 groups with slice",
     );

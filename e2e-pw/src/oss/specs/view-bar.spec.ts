@@ -119,7 +119,7 @@ test.describe("view bar", () => {
 
     // Committing the stage applies it — armed before the key, so nothing
     // waits on elapsed time
-    await grid.run(() => editor.commit("limit"));
+    await grid.afterEntryCounts(() => grid.run(() => editor.commit("limit")));
 
     await grid.assert.isEntryCountTextEqualTo("3 samples");
 

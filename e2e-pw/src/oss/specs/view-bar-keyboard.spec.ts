@@ -55,7 +55,7 @@ test.describe("view bar keyboard", () => {
     await editor.param("limit").getByRole("textbox").pressSequentially("3");
 
     // Enter finishes the stage AND runs the view — one key, no Apply stop
-    await grid.run(() => editor.finish());
+    await grid.afterEntryCounts(() => grid.run(() => editor.finish()));
     await editor.assert.isClosed();
 
     await grid.assert.isEntryCountTextEqualTo("3 samples");
@@ -93,7 +93,7 @@ test.describe("view bar keyboard", () => {
     const limit = await viewBar.typeStage("Limit");
     await limit.assert.isOpen();
     await page.keyboard.type("3");
-    await grid.run(() => limit.finish());
+    await grid.afterEntryCounts(() => grid.run(() => limit.finish()));
 
     await grid.assert.isEntryCountTextEqualTo("3 samples");
     const stages = await getSessionView(request, baseURL, datasetName);

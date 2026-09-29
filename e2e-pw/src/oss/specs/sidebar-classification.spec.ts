@@ -74,12 +74,12 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     await eventUtils.after("animation-onRest", () =>
       sidebar.clickFieldDropdown("ground_truth"),
     );
-    await sidebar.waitForElement("checkbox-frog");
-    await sidebar.waitForElement("checkbox-ship");
     await sidebar.applyLabelFromList(["frog"], "show-samples-with-label");
 
-    await grid.afterTilesDrawn(3, () =>
-      sidebar.applyLabelFromList(["ship"], "show-samples-with-label"),
+    await grid.afterEntryCounts(() =>
+      grid.afterTilesDrawn(3, () =>
+        sidebar.applyLabelFromList(["ship"], "show-samples-with-label"),
+      ),
     );
 
     // verify the number of samples in the result

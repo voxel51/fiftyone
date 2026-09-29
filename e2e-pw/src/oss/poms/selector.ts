@@ -39,8 +39,11 @@ export class SelectorPom {
   }
 
   async closeResults() {
-    await this.input.blur();
-    await this.resultsContainer.waitFor({ state: "detached" });
+    await this.eventUtils.after(
+      "e2e:components:selector-results-closed",
+      () => this.input.blur(),
+      (e) => (e.detail as { cy?: string }).cy === this.title,
+    );
   }
 }
 

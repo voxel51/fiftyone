@@ -1,5 +1,6 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
 import { collapseWhitespace } from "src/oss/utils";
+import { EventUtils } from "src/shared/event-utils";
 
 /**
  * The modal sidebar's edit form when in 'Annotate' mode. Applies to primitives
@@ -10,7 +11,10 @@ export class ModalAnnotateEditPom {
   readonly locator: Locator;
   readonly assert: ModalAnnotateEditAsserter;
 
-  constructor(page: Page) {
+  constructor(
+    page: Page,
+    private readonly eventUtils: EventUtils,
+  ) {
     this.page = page;
     this.assert = new ModalAnnotateEditAsserter(this);
     this.locator = page.getByTestId("modal").getByTestId("sidebar");
@@ -107,16 +111,22 @@ export class ModalAnnotateEditPom {
   }
 
   /**
+   * Run `action` (selecting a masked label) and resolve once the mask preview
+   * it opens has drawn the mask; the preview mounts blank
+   */
+  async afterMaskPreview<T>(action: () => Promise<T>): Promise<T> {
+    return this.eventUtils.after("e2e:annotate:mask-preview-drawn", action);
+  }
+
+  /**
    * Covered fraction of the rendered mask preview: opaque pixels over the area
    * the mask is drawn into (its own size fit to the preview), so it compares
-   * across mask resolutions. The preview mounts blank and stamps its canvas
-   * with the mask size on its first real draw, which the read waits for.
+   * across mask resolutions. Draw it first with {@link afterMaskPreview}.
    */
   async maskPreviewCoverage(): Promise<number> {
     const canvas = this.page
       .getByTestId("annotate-mask-preview")
       .locator("canvas[data-mask-width]");
-    await canvas.waitFor({ state: "attached" });
     return canvas.evaluate((canvas: HTMLCanvasElement) => {
       const width = Number(canvas.dataset.maskWidth);
       const height = Number(canvas.dataset.maskHeight);

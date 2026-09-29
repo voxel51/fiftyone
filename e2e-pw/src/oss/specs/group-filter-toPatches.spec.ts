@@ -76,14 +76,15 @@ test(`group dataset with filters converts toPatches correctly`, async ({
     await sidebar.clickFieldDropdown("predictions");
   });
 
-  await sidebar.waitForElement("checkbox-carrot");
   await sidebar.applyLabelFromList(["carrot"], "select-detections-with-label");
 
   // convert to patches
   await grid.actionsRow.toggleToClipsOrPatches();
-  await grid.run(async () => {
-    await gridActionsRow.clickToPatchesByLabelField("predictions");
-  });
+  await grid.afterEntryCounts(() =>
+    grid.run(async () => {
+      await gridActionsRow.clickToPatchesByLabelField("predictions");
+    }),
+  );
 
   // verify result:
   await grid.assert.isEntryCountTextEqualTo("5 patches");

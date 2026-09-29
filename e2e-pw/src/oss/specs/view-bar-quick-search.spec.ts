@@ -57,7 +57,9 @@ test.describe("view bar quick search", () => {
     await input.click();
     await input.fill(query);
     // The search applies its own result view; the grid reload is the proof
-    await grid.run(() => page.keyboard.press("Enter"));
+    await grid.afterEntryCounts(() =>
+      grid.run(() => page.keyboard.press("Enter")),
+    );
 
     await grid.assert.isEntryCountTextEqualTo("3 samples");
     // A static run applies its results as a Select over the ranked ids;

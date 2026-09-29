@@ -57,9 +57,7 @@ const completeFieldAndExpectOperators = async (
   const filter = editor.param("filter");
   await filter.click();
   // Monaco mounts lazily on activation — type only once it owns the keyboard
-  const monacoBox = filter.locator(".monaco-editor");
-  await monacoBox.waitFor({ state: "visible" });
-  await monacoBox.click();
+  await filter.locator(".monaco-editor").click();
   await page.keyboard.type('F("l');
 
   expect(await editor.suggestions.first().isVisible()).toBe(true);

@@ -94,10 +94,12 @@ test.beforeEach(async ({ page, fiftyoneLoader, grid }) => {
     searchParams: new URLSearchParams({ view: "groups" }),
   });
 
-  await grid.run(async () => {
-    await grid.actionsRow.toggleDisplayOptions();
-    await grid.actionsRow.displayActions.toggleRenderFramesAsVideo();
-  });
+  await grid.afterEntryCounts(() =>
+    grid.run(async () => {
+      await grid.actionsRow.toggleDisplayOptions();
+      await grid.actionsRow.displayActions.toggleRenderFramesAsVideo();
+    }),
+  );
 
   await grid.assert.isEntryCountTextEqualTo("2 groups");
   await grid.assert.isTileCountEqualTo(2);

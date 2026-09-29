@@ -35,7 +35,10 @@ const inFreshContext = async (
     });
     await freshModal.assert.isOpen();
     await freshModal.sidebar.switchMode("annotate");
-    await freshModal.sidebar.annotate.selectActiveLabel("cat", 0);
+    // the seeded label is masked; its preview draws once the form opens
+    await freshModal.sidebar.edit.afterMaskPreview(() =>
+      freshModal.sidebar.annotate.selectActiveLabel("cat", 0),
+    );
     await verify(freshModal);
   } finally {
     await context.close();
@@ -132,7 +135,9 @@ test.describe.serial("2D annotation mask edit (brush)", () => {
     fiftyoneLoader,
     modal,
   }) => {
-    await modal.sidebar.annotate.selectActiveLabel("cat", 0);
+    await modal.sidebar.edit.afterMaskPreview(() =>
+      modal.sidebar.annotate.selectActiveLabel("cat", 0),
+    );
     await modal.sidebar.edit.assert.inSegmentationMode(true);
 
     // seed mask is fully set within its bbox → coverage starts at 1.0.

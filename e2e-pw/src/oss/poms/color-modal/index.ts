@@ -56,10 +56,8 @@ export class ColorModalPom {
   // field level setting
   async changeColorMode(mode: "value" | "field" | "instance") {
     await this.getFieldSelector("color-by-attribute").click();
-    const option = this.getFieldSelector(`option-${mode}`);
-    await option.click();
-    // the options popout sits over the controls below it until it closes
-    await option.waitFor({ state: "detached" });
+    // picking an option closes the popout in the click's own render
+    await this.getFieldSelector(`option-${mode}`).click();
   }
 
   async useCustomValueColors() {

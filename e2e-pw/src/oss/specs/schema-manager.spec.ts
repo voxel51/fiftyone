@@ -227,30 +227,34 @@ test.describe.serial("schema manager", () => {
       searchParams: new URLSearchParams({ view: "patches", id }),
       modalSample: "loaded",
     });
-    await modal.sidebar.switchMode("annotate");
-
     // The required field prompt should appear since "predictions" has no
     // active schema; it mounts once the label schemas load
+    await eventUtils.after("e2e:annotate:required-field-prompt", () =>
+      modal.sidebar.switchMode("annotate"),
+    );
     const activateButton = page.getByTestId("activate-field-schema");
-    await activateButton.waitFor();
     expect(await page.getByText("Field not in label schema").isVisible()).toBe(
       true,
     );
 
     // Click the activate button to initialize and activate the predictions schema
     expect(await activateButton.isEnabled()).toBe(true);
-    // activation generates and activates the schema through operators
+    // activation generates and activates the schema through operators; the
+    // edit panel then mounts with "Edit Detection" once the activated
+    // schemas are refetched
     await eventUtils.after(
-      "e2e:operators:executed",
-      () => activateButton.click(),
-      (e) =>
-        (e.detail as { operator: string }).operator ===
-        "@voxel51/operators/activate_label_schemas",
+      "e2e:annotate:edit-header",
+      () =>
+        eventUtils.after(
+          "e2e:operators:executed",
+          () => activateButton.click(),
+          (e) =>
+            (e.detail as { operator: string }).operator ===
+            "@voxel51/operators/activate_label_schemas",
+        ),
+      (e) => (e.detail as { type: string | null }).type === "Detection",
     );
-
-    // After activation, the edit panel should appear with "Edit Detection";
-    // it mounts once the activated schemas are refetched
-    await page.getByText("Edit Detection").waitFor();
+    expect(await page.getByText("Edit Detection").isVisible()).toBe(true);
 
     // In patches view, the Schema button should not be visible
     expect(await page.getByRole("button", { name: "Schema" }).isVisible()).toBe(

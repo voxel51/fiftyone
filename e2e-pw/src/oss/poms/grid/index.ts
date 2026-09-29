@@ -104,22 +104,26 @@ export class GridPom {
   }
 
   async scrollBottom() {
-    const forwardSectionDiv = this.getForwardSection().locator("div").last();
-    await forwardSectionDiv.waitFor({ state: "visible" });
-    return forwardSectionDiv.scrollIntoViewIfNeeded();
+    return this.getForwardSection()
+      .locator("div")
+      .last()
+      .scrollIntoViewIfNeeded();
   }
 
   async scrollTop() {
-    const backwardSectionDiv = this.getBackwardSection().locator("div").first();
-    await backwardSectionDiv.waitFor({ state: "visible" });
-    return backwardSectionDiv.scrollIntoViewIfNeeded();
+    return this.getBackwardSection()
+      .locator("div")
+      .first()
+      .scrollIntoViewIfNeeded();
   }
 
   async selectSlice(slice: string) {
     if ((await this.sliceSelector.activeSlice()) === slice) return;
 
-    // a slice change remounts the grid
-    await this.run(() => this.sliceSelector.selectSlice(slice));
+    // a slice change remounts the grid and recounts its entries
+    await this.afterEntryCounts(() =>
+      this.run(() => this.sliceSelector.selectSlice(slice)),
+    );
   }
 
   /**
@@ -186,17 +190,24 @@ export class GridPom {
   }
 
   /**
-   * Resolve once the entry counts (of `kind`, when given) have no count still
-   * loading
+   * Run `action` and resolve once the entry counts it reloads have rendered
+   * loaded: the element count, and with `groups` the group count too
    */
-  async untilEntryCountsLoaded(kind?: "groups" | "elements") {
-    const counts = kind
-      ? `[data-cy=entry-counts][data-count-kind=${kind}]`
-      : "[data-cy=entry-counts]";
-    await this.page
-      .locator(`${counts}:not(:has([data-cy=loading-dots]))`)
-      .first()
-      .waitFor({ state: "attached" });
+  async afterEntryCounts<T>(
+    action: () => Promise<T>,
+    kind: "groups" | "elements" = "elements",
+  ): Promise<T> {
+    const pending = new Set(
+      kind === "groups" ? ["grid-elements", "grid-groups"] : ["grid-elements"],
+    );
+    return this.eventUtils.after(
+      "e2e:components:entry-count-shown",
+      action,
+      (e) => {
+        pending.delete((e.detail as { signal: string }).signal);
+        return pending.size === 0;
+      },
+    );
   }
 
   async run<T>(wrap: () => Promise<T>): Promise<T> {
@@ -263,8 +274,11 @@ class GridAsserter {
     expect(await action.first().textContent()).toBe(String(n));
   }
 
+  /**
+   * One read of the entry counts; the loader and {@link GridPom.run} wait for
+   * them to load, other causes go through {@link GridPom.afterEntryCounts}
+   */
   async isEntryCountTextEqualTo(text: string) {
-    await this.gridPom.untilEntryCountsLoaded();
     const counts = await this.gridPom.page
       .getByTestId("entry-counts")
       .textContent();

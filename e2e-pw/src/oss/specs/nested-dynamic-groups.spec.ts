@@ -146,10 +146,12 @@ test(`dynamic groups of groups works`, async ({
       searchParams: new URLSearchParams({ view: "groups" }),
     },
   );
-  await grid.run(async () => {
-    await grid.actionsRow.toggleDisplayOptions();
-    await grid.actionsRow.displayActions.toggleRenderFramesAsVideo();
-  });
+  await grid.afterEntryCounts(() =>
+    grid.run(async () => {
+      await grid.actionsRow.toggleDisplayOptions();
+      await grid.actionsRow.displayActions.toggleRenderFramesAsVideo();
+    }),
+  );
 
   await grid.assert.isTileCountEqualTo(2);
   await grid.assert.isEntryCountTextEqualTo("2 groups with slice");

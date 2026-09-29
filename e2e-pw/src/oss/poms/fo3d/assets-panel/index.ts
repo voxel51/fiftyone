@@ -10,8 +10,6 @@ export class Asset3dPanelPom {
   }
 
   async dragToToLeftCorner() {
-    await this.headerLocator.waitFor({ state: "visible" });
-
     const levaContainerBox = await this.locator.boundingBox();
 
     if (!levaContainerBox) {
