@@ -28,7 +28,8 @@ import {
   TextVariant,
   Variant,
 } from "@voxel51/voodo";
-import { useState } from "react";
+import { useContext, useState } from "react";
+import { SubsetDetailsContext } from "./SubsetDetailsContext";
 import SubsetConfirmationDialog from "./SubsetConfirmationDialog";
 import styles from "./SelectionTray.module.css";
 import { plural, savedSubsetLabel, scopePhrase } from "./format";
@@ -67,6 +68,7 @@ export default function SamplesScopeTab() {
     boundary.subsetId,
   );
   const activeScope = boundary.subsetScope ?? "episodes";
+  const SubsetDetails = useContext(SubsetDetailsContext);
   const segmentScope = scoped && activeScope === "segments";
   const mixed = Boolean(
     active?.memberCounts.fullEpisodes && active.memberCounts.segments,
@@ -288,7 +290,15 @@ export default function SamplesScopeTab() {
                         }
                       >
                         <span className={styles.rowText}>
-                          <Text variant={TextVariant.Md}>{subset.name}</Text>
+                          {current && SubsetDetails ? (
+                            <SubsetDetails subset={active}>
+                              <Text variant={TextVariant.Md}>
+                                {subset.name}
+                              </Text>
+                            </SubsetDetails>
+                          ) : (
+                            <Text variant={TextVariant.Md}>{subset.name}</Text>
+                          )}
                           {subset.preferredGroupSlice && (
                             <Text
                               variant={TextVariant.Xs}

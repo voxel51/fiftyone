@@ -48,7 +48,11 @@ export type SelectionMember = {
 /** A grid page's sample node, so previews can reuse the grid's renderer. */
 export interface GridSampleNode {
   readonly id: string;
-  readonly sample: { readonly _id: string; readonly [key: string]: unknown };
+  readonly sample: {
+    readonly _id: string;
+    readonly filepath?: string;
+    readonly [key: string]: unknown;
+  };
   readonly urls?: readonly {
     readonly field: string;
     readonly url: string | null;
