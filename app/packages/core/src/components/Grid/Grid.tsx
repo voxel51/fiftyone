@@ -8,7 +8,7 @@ import {
   useSyncLegacySelection,
   useSyncSelectionScope,
 } from "@fiftyone/state/src/selection";
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { useMemoOne } from "use-memo-one";
 import { v4 as uuid } from "uuid";
@@ -37,6 +37,7 @@ import useScrollLocation from "./useScrollLocation";
 import useSpotlightPager from "./useSpotlightPager";
 import useUpdates from "./useUpdates";
 import useZoomSetting from "./useZoomSetting";
+import { SelectionTrayPortal } from "./Selection/SelectionTrayPortal";
 import SelectionTray from "./Selection/SelectionTray";
 import { useSavedSegmentTileDecorator } from "./Selection/savedSegmentTileDecorator";
 
@@ -97,13 +98,6 @@ function Grid() {
     selectBucket,
   });
   const { get, set, jump: anchor } = useScrollLocation(pageReset);
-  const jump = useGridJump({
-    records,
-    datasetId: selection.datasetId,
-    request: selection.request,
-    anchor,
-  });
-
   const setSample = fos.useExpandSample(store);
   const autosizing = useRecoilValue(gridAutosizing);
 
@@ -174,6 +168,18 @@ function Grid() {
     });
   }, [cache, autosizing, maxBytes, reset, resizing, spacing, zoom]);
 
+  const scrollToItem = useCallback(
+    (sampleId: string) => spotlight?.scrollToItem(sampleId) ?? false,
+    [spotlight],
+  );
+  const jump = useGridJump({
+    records,
+    datasetId: selection.datasetId,
+    request: selection.request,
+    anchor,
+    scrollToItem,
+  });
+
   useEscape();
   useEvents({ id, cache, pixels, resizing, set, spotlight });
   useTileHover(id);
@@ -199,7 +205,9 @@ function Grid() {
         <TileDecoratorPortals />
       </div>
       {selection.enabled && (
-        <SelectionTray key={selection.domainId} locate={jump} />
+        <SelectionTrayPortal>
+          <SelectionTray key={selection.domainId} locate={jump} />
+        </SelectionTrayPortal>
       )}
     </div>
   );

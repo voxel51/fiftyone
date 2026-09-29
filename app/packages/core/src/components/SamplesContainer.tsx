@@ -6,6 +6,7 @@ import type { Controller } from "@react-spring/web";
 import React, { useCallback } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
+import { SelectionTrayHost } from "./Grid/Selection/SelectionTrayPortal";
 import MainSpace from "./MainSpace";
 import SchemaSettings from "./Schema/SchemaSettings";
 import { Entries, default as RenderSidebar } from "./Sidebar";
@@ -20,6 +21,7 @@ const Container = styled.div`
   display: flex;
   justify-content: space-between;
   flex-grow: 1;
+  min-height: 0;
   overflow: hidden;
   background: ${({ theme }) => theme.background.header};
 `;
@@ -142,22 +144,24 @@ function SamplesContainer() {
   const isModalOpen = useRecoilValue(fos.isModalActive);
 
   return (
-    <Container>
-      {!isModalOpen && (
-        <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />
-      )}
-      {showSidebar && <Sidebar />}
-      <MainSpace />
-      {!isModalOpen && (
-        <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_RIGHT} />
-      )}
-      {IS_APP_MODE_FIFTYONE && (
-        <PanelArea
-          id={PANEL_AREA.GRID_SIDEBAR_RIGHT}
-          resize={{ direction: "left" }}
-        />
-      )}
-    </Container>
+    <SelectionTrayHost>
+      <Container>
+        {!isModalOpen && (
+          <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />
+        )}
+        {showSidebar && <Sidebar />}
+        <MainSpace />
+        {!isModalOpen && (
+          <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_RIGHT} />
+        )}
+        {IS_APP_MODE_FIFTYONE && (
+          <PanelArea
+            id={PANEL_AREA.GRID_SIDEBAR_RIGHT}
+            resize={{ direction: "left" }}
+          />
+        )}
+      </Container>
+    </SelectionTrayHost>
   );
 }
 

@@ -81,6 +81,24 @@ export default class Spotlight<K, V> extends EventTarget {
     return this.#loaded;
   }
 
+  /** Scrolls to a loaded row without rebuilding the grid or its renderers. */
+  scrollToItem(description: string): boolean {
+    if (!this.#loaded) return false;
+    const forward = this.#forward.find(description);
+    const backward = forward ? null : this.#backward.find(description);
+    if (!forward && !backward) return false;
+    const top = forward
+      ? this.#backward.height + forward.from
+      : this.#backward.height - backward.from - backward.height;
+    this.#element.scrollTo({
+      top,
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
+    });
+    return true;
+  }
+
   addEventListener(type: "load", callback: EventCallback<Load<K>>): void;
   addEventListener(type: "rejected", callback: EventCallback<Rejected>): void;
   addEventListener(
