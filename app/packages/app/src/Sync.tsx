@@ -40,8 +40,8 @@ import { type Entry, useRouterContext } from "./routing";
 import useEventSource from "./useEventSource";
 import { AppReadyState } from "./useEvents/registerEvent";
 import useSetters from "./useSetters";
-import useModalFromLocation from "./location/useModalFromLocation";
 import useSliceFromLocation from "./location/useSliceFromLocation";
+import SamplePageProvider from "./samplePage/SamplePageProvider";
 import useWriters from "./useWriters";
 
 export const SessionContext = React.createContext<Session>(SESSION_DEFAULT);
@@ -60,7 +60,6 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
   const setters = useSetters(environment, router, sessionRef);
   useWriters(subscription, environment, router, sessionRef);
   useSliceFromLocation();
-  useModalFromLocation();
 
   const readyState = useEventSource(router, sessionRef);
 
@@ -96,7 +95,9 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
             });
           }}
         >
-          <Plugins>{children}</Plugins>
+          <Plugins>
+            <SamplePageProvider>{children}</SamplePageProvider>
+          </Plugins>
         </Writer>
       )}
     </SessionContext.Provider>

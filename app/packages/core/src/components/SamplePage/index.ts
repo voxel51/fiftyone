@@ -5,17 +5,12 @@
 import { createContext, useContext } from "react";
 
 /**
- * Carries a grid tile into the sample page: the grid hands over the tile it
- * opened, the page lands it on its media, and the ghost leaves once the page
- * shows. The app provides it; the grid only calls `open`.
+ * Carries a grid tile into the sample page. The app provides it; the grid
+ * only hands over the tile it opens.
  */
 export interface SampleTransition {
   /** Lifts a still of `tile` above the app, then opens. */
   open<T>(tile: Element | null, open: () => T): T;
-  /** Flies the lifted still onto `page`'s media; resolves when it is there. */
-  land(page: HTMLElement): Promise<void>;
-  /** Removes the still once the page shows its media, or at once. */
-  settle(page?: HTMLElement): void;
 }
 
 export const SampleTransitionContext = createContext<
@@ -25,8 +20,8 @@ export const SampleTransitionContext = createContext<
 export const useSampleTransition = () => useContext(SampleTransitionContext);
 
 /**
- * Where the dataset body is between the grid and a sample's page: `opening`
- * has the page mounted over the grid while it reveals, `open` has the grid
- * gone.
+ * Where the App is between the grid and a sample's page. `opening` and
+ * `closing` have the page over the App while it reveals or leaves; `open` has
+ * the App behind it gone.
  */
-export type SamplePagePhase = "grid" | "opening" | "open";
+export type SamplePagePhase = "grid" | "opening" | "open" | "closing";

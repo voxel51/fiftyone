@@ -30,7 +30,7 @@ export {
   default as useBeforeScreenshot,
 } from "./useBeforeScreenshot";
 export * from "./useBrowserStorage";
-export { default as useClearModal } from "./useClearModal";
+export { CloseSampleContext, default as useClearModal } from "./useClearModal";
 export { default as useCreateLooker } from "./useCreateLooker";
 export { default as useDimensions } from "./useDimensions";
 export * from "./useExpandSample";
@@ -69,6 +69,7 @@ export { default as useSessionSpaces } from "./useSessionSpaces";
 export { default as useSetDataset } from "./useSetDataset";
 export { default as useSetExpandedSample } from "./useSetExpandedSample";
 export { default as useSetGroupSlice } from "./useSetGroupSlice";
+export { default as useResetModal } from "./useResetModal";
 export { default as useSetModalState } from "./useSetModalState";
 export { default as useSetSelected } from "./useSetSelected";
 export { default as useSetSelectedLabels } from "./useSetSelectedLabels";

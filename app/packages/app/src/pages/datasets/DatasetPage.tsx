@@ -9,7 +9,6 @@ import {
   Modal,
   DatasetGridRendererFailover,
   QueryPerformanceToast,
-  SampleTransitionContext,
   SchemaManagerOutlet,
   Snackbar,
 } from "@fiftyone/core";
@@ -122,7 +121,7 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
   const samplePage = useSamplePage();
   const isModalOpen = useReverbValue(fos.isModalActive);
 
-  const { phase, ref, transition } = samplePage;
+  const { phase, ref } = samplePage;
 
   return (
     <datasetQueryContext.Provider value={data}>
@@ -144,10 +143,10 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
                 <EmptyDatasetSelection />
               </div>
             ) : (
-              <SampleTransitionContext.Provider value={transition}>
+              <>
                 <Dataset overlay={false} />
                 {Panels && <Panels />}
-              </SampleTransitionContext.Provider>
+              </>
             )}
           </div>
         </Nav>

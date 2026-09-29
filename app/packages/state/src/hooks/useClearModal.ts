@@ -1,10 +1,17 @@
-import { useReverbCallback, useSetReverbState } from "@fiftyone/reverb";
-
-import { useCallback } from "react";
-import * as fos from "../atoms";
+import { createContext, useCallback, useContext } from "react";
+import useResetModal from "./useResetModal";
 
 /**
- * A react hook that allows clearing the modal state.
+ * Where the URL owns the open sample, the host navigates away from it and the
+ * session follows from the URL. Returns whether it navigated.
+ */
+export const CloseSampleContext = createContext<(() => boolean) | undefined>(
+  undefined,
+);
+
+/**
+ * A react hook that closes the modal: through the URL where the host routes
+ * it, else by resetting the modal state directly.
  *
  * @example
  * ```ts
@@ -15,33 +22,13 @@ import * as fos from "../atoms";
  *   )
  * }
  * ```
- *
- * @returns A function that clears the modal state.
  */
-
 export default () => {
-  const setModal = useSetReverbState(fos.modalSelector);
-  const close = useReverbCallback(
-    ({ reset, set, snapshot }) =>
-      async () => {
-        const fullscreen = await snapshot.getPromise(fos.fullscreen);
-        if (fullscreen) {
-          return false;
-        }
-
-        const currentOptions = await snapshot.getPromise(
-          fos.savedLookerOptions,
-        );
-        set(fos.savedLookerOptions, { ...currentOptions, showJSON: false });
-        reset(fos.hiddenLabels);
-        fos.modalNavigation.set(null);
-        return true;
-      },
-    [],
-  );
+  const navigate = useContext(CloseSampleContext);
+  const reset = useResetModal();
 
   return useCallback(() => {
-    close();
-    setModal(null);
-  }, [close, setModal]);
+    if (navigate?.()) return;
+    reset();
+  }, [navigate, reset]);
 };

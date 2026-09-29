@@ -130,6 +130,8 @@ export default function useRenderer({
   const showItem = useCallback<Show<number, fos.Sample>>(
     ({ id, element, dimensions, spotlight, zooming }) => {
       const key = id.description;
+      // how the sample page finds the tile a closing sample returns to
+      element.dataset.sampleId = key;
 
       // Wrap the tile element so the looker has a host of its own (which
       // it's free to `replaceChildren` on attach) and decorators have a
