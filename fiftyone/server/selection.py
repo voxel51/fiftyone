@@ -33,7 +33,10 @@ import fiftyone.core.selection_context as fosc
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
 import fiftyone.server.tags as fostag
 import fiftyone.server.view as fosv
-from fiftyone.server.selection_extensions import resolve_filters
+from fiftyone.server.selection_extensions import (
+    resolve_filters,
+    resolve_streams,
+)
 
 SNAPSHOT_TTL = timedelta(hours=1)
 SNAPSHOT_CHUNK = 5000
@@ -2037,14 +2040,13 @@ def _tag_members(view, provider, streams_cache=None):
         view, filter=fot.TemporalTagFilter(tags=values)
     )
     references = view._dataset._contains_media_references()
+    multimodal = view._dataset.media_type == "multimodal"
+    fields = ["media_reference"] if references else []
+    if multimodal:
+        fields.append("metadata")
     samples = (
-        {
-            sample.id: sample
-            for sample in view.select_fields(
-                "media_reference" if references else []
-            )
-        }
-        if references or view._dataset.media_type == "group"
+        {sample.id: sample for sample in view.select_fields(fields)}
+        if references or multimodal or view._dataset.media_type == "group"
         else {}
     )
     result = []
@@ -2095,6 +2097,9 @@ def _sample_streams(sample, dataset, cache=None):
         sample is not None and sample.media_type == "video"
     ):
         return ["filepath"]
+    streams = resolve_streams(sample, dataset, cache)
+    if streams is not None:
+        return streams
     from fiftyone.multimodal.media_reference.field_model import (
         addressable_media_sources,
     )

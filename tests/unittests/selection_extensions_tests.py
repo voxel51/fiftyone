@@ -7,7 +7,7 @@
 
 from contextvars import ContextVar, copy_context
 import unittest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import fiftyone.core.selection_context as context
 import fiftyone.server.selection_extensions as extensions
@@ -73,6 +73,50 @@ class SelectionFilterTests(unittest.TestCase):
                 extensions.resolve_filters(None, {})
         finally:
             unregister()
+
+
+class SelectionStreamTests(unittest.TestCase):
+    def setUp(self):
+        resolver = patch.object(extensions, "_stream_resolver", None)
+        resolver.start()
+        self.addCleanup(resolver.stop)
+
+    def test_provider_receives_sample_dataset_and_request_cache(self):
+        sample, dataset, cache = object(), object(), {}
+        self.assertIsNone(extensions.resolve_streams(sample, dataset, cache))
+        resolver = Mock(return_value=["camera", "imu"])
+        unregister = extensions.register_selection_stream_resolver(resolver)
+        self.assertEqual(
+            extensions.resolve_streams(sample, dataset, cache),
+            ["camera", "imu"],
+        )
+        resolver.assert_called_once_with(sample, dataset, cache)
+        unregister()
+        self.assertIsNone(extensions.resolve_streams(sample, dataset, cache))
+
+    def test_disposal_preserves_newer_provider_and_restores_previous(self):
+        first = extensions.register_selection_stream_resolver(
+            lambda *args: ["first"]
+        )
+        second = extensions.register_selection_stream_resolver(
+            lambda *args: ["second"]
+        )
+        first()
+        self.assertEqual(extensions.resolve_streams(None, None), ["second"])
+        second()
+        self.assertEqual(extensions.resolve_streams(None, None), ["first"])
+        first()
+        self.assertIsNone(extensions.resolve_streams(None, None))
+
+    def test_provider_failure_propagates(self):
+        unregister = extensions.register_selection_stream_resolver(
+            Mock(side_effect=ValueError("Unavailable stream inventory"))
+        )
+        self.addCleanup(unregister)
+        with self.assertRaisesRegex(
+            ValueError, "Unavailable stream inventory"
+        ):
+            extensions.resolve_streams(None, None)
 
 
 class SelectionPreviewTests(unittest.IsolatedAsyncioTestCase):

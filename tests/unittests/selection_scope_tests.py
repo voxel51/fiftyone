@@ -7,7 +7,9 @@ Episode selection identity and complete scope resolution tests.
 """
 
 import asyncio
+import json
 import os
+import tempfile
 import unittest
 from datetime import datetime
 
@@ -16,9 +18,11 @@ from bson import ObjectId
 import fiftyone as fo
 import fiftyone.core.selection as fosel
 import fiftyone.core.tags as fot
+from fiftyone.multimodal.media_reference.field_model import _media_source
 
 import fiftyone.server.samples as foses
 import fiftyone.server.selection as foss
+import fiftyone.server.selection_extensions as extensions
 from fiftyone.server.selection import (
     create_snapshot,
     load_snapshot,
@@ -26,6 +30,7 @@ from fiftyone.server.selection import (
     sample_position,
     selection_availability,
 )
+from fiftyone.utils.lerobot import LeRobotEpisodeReference
 
 
 def _resolve_all(dataset, request):
@@ -315,6 +320,112 @@ def _segment(episode, start, end, provider="events"):
             "provenance": [{"provider": provider, "source": "field"}],
         },
     }
+
+
+class MultimodalTemporalTagSelectionTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.dataset = fo.Dataset()
+        self.addCleanup(self.dataset.delete)
+        self.start = 9007199254740993
+        self.end = self.start + 10
+        self.request = {
+            "boundary": {
+                "provider": {"kind": "temporal-tags", "values": ["testing"]}
+            }
+        }
+
+    def test_provider_receives_metadata_and_resolves_unanchored_tag(self):
+        sample = fo.Sample(
+            filepath=os.path.join(self.directory.name, "episode.mcap"),
+            metadata=fo.Metadata(size_bytes=12),
+        )
+        self.dataset.add_sample(sample)
+        fot.add_temporal_tags(
+            self.dataset,
+            fot.TemporalTag(
+                sample.id, self.start, self.end, "testing", index_type=2
+            ),
+        )
+        seen = []
+
+        def resolve(sample, dataset, cache):
+            seen.append((sample.filepath, sample.metadata.size_bytes))
+            self.assertEqual(dataset.name, self.dataset.name)
+            self.assertIsInstance(cache, dict)
+            return ["camera", "imu"]
+
+        unregister = extensions.register_selection_stream_resolver(resolve)
+        try:
+            result = _resolve_all(self.dataset, self.request)
+        finally:
+            unregister()
+        self.assertTrue(seen)
+        self.assertTrue(all(row == (sample.filepath, 12) for row in seen))
+        bounds = result["groups"][0]["members"][0]["range"]
+        self.assertEqual(bounds["streams"], ["camera", "imu"])
+        self.assertEqual(bounds["start"], str(self.start))
+        self.assertEqual(bounds["end"], str(self.end))
+        self.assertEqual(bounds["timebase"], "duration-ns")
+
+    def test_unsupported_source_preserves_resolution_error(self):
+        sample = fo.Sample(
+            filepath=os.path.join(self.directory.name, "episode.mcap")
+        )
+        self.dataset.add_sample(sample)
+        unregister = extensions.register_selection_stream_resolver(
+            lambda *args: None
+        )
+        try:
+            with self.assertRaisesRegex(
+                ValueError, "cannot resolve all streams"
+            ):
+                foss._sample_streams(sample, self.dataset)
+        finally:
+            unregister()
+
+    def test_reference_source_without_a_filepath_keeps_its_streams(self):
+        dataset = fo.Dataset()
+        self.addCleanup(dataset.delete)
+        source_id = "a1b2c3d4e5f6"
+        root = os.path.join(self.directory.name, "lerobot")
+        os.makedirs(os.path.join(root, "meta"))
+        with open(os.path.join(root, "meta/info.json"), "w") as output:
+            json.dump(
+                {
+                    "features": {
+                        "timestamp": {},
+                        "observation.images.camera": {},
+                        "observation.state": {},
+                    }
+                },
+                output,
+            )
+        dataset._record_media_sources(
+            [_media_source("lerobot-episode", source_id, root)]
+        )
+        sample = fo.Sample(
+            media_reference=LeRobotEpisodeReference.of(
+                source_id, 0, data=[0, 0, 0, 1], videos={}, tasks=[]
+            )
+        )
+        dataset.add_sample(sample)
+        self.assertIsNone(sample.filepath)
+        fot.add_temporal_tags(
+            dataset,
+            fot.TemporalTag(
+                sample.id, self.start, self.end, "testing", index_type=2
+            ),
+        )
+        members = foss.candidate_members(
+            dataset.view(), self.request["boundary"]["provider"]
+        )
+        self.assertEqual(len(members), 1)
+        self.assertEqual(
+            members[0]["range"]["streams"],
+            ["lerobot:observation.images.camera", "lerobot:observation.state"],
+        )
 
 
 class ImageSelectionTests(unittest.TestCase):
