@@ -1,7 +1,9 @@
+import { getEventBus } from "@fiftyone/events";
 import { Checkbox, FormField, Select } from "@voxel51/voodo";
 import clsx from "clsx";
 import React, {
   useCallback,
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -14,8 +16,11 @@ import type { EpisodeDiagnosticState } from "./diagnostic-console-state";
 import type { EpisodeLogConsoleRow } from "./log-console-rows";
 import { virtualLogRowRange } from "./log-console-virtualization";
 import styles from "./LogConsole.module.css";
-import { isE2E } from "@fiftyone/utilities";
-import { ShownSignal } from "../ShownSignal";
+
+/** e2e specs wait on the rows the console shows */
+type LogConsoleE2EEvents = {
+  "e2e:multimodal:log-rows": { mode: string; texts: string };
+};
 
 const LOG_ROW_HEIGHT_PX = 30;
 const DIAGNOSTIC_ROW_HEIGHT_PX = 46;
@@ -212,28 +217,31 @@ export const LogConsole: React.FC<LogConsoleProps> = ({
     [followPlayhead, onFollowPlayheadChange, viewMode],
   );
 
+  // Rebuilt only when the rows change, so a render (scroll, playback) is free.
+  const rowTexts = useMemo(
+    () =>
+      (viewMode === "logs"
+        ? rows.map((row) => [row.message])
+        : diagnostics.map(({ row }) => [
+            row.status ?? row.level,
+            row.groupLabel ?? row.stream,
+            row.stream,
+            row.message,
+          ])
+      )
+        .flat()
+        .join("\n"),
+    [diagnostics, rows, viewMode],
+  );
+  useEffect(() => {
+    getEventBus<LogConsoleE2EEvents>().dispatch("e2e:multimodal:log-rows", {
+      mode: viewMode,
+      texts: rowTexts,
+    });
+  }, [rowTexts, viewMode]);
+
   return (
     <div className={styles.body} data-testid="episode-log-console-tile">
-      {/* the rows' text is built only under automation */}
-      {isE2E() ? (
-        <ShownSignal
-          event="e2e:multimodal:log-rows"
-          detail={{
-            mode: viewMode,
-            texts: (viewMode === "logs"
-              ? rows.map((row) => [row.message])
-              : diagnostics.map(({ row }) => [
-                  row.status ?? row.level,
-                  row.groupLabel ?? row.stream,
-                  row.stream,
-                  row.message,
-                ])
-            )
-              .flat()
-              .join("\n"),
-          }}
-        />
-      ) : null}
       <div className={styles.toolbar}>
         <div className={styles.toolbarPrimary}>
           {availableViewModes.length > 0 ? (
