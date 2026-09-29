@@ -54,8 +54,9 @@ export class SchemaManagerPom {
    * Close the modal
    */
   async close() {
-    await this.locator.getByTestId("close-schema-manager").click();
-    await this.locator.waitFor({ state: "hidden" });
+    await this.eventUtils.after("e2e:schema-manager:closed", () =>
+      this.locator.getByTestId("close-schema-manager").click(),
+    );
   }
 
   /**
@@ -63,8 +64,9 @@ export class SchemaManagerPom {
    * schema manager modal to open
    */
   async open() {
-    await this.page.getByTestId("open-schema-manager").click();
-    await this.locator.waitFor();
+    await this.eventUtils.after("e2e:schema-manager:opened", () =>
+      this.page.getByTestId("open-schema-manager").click(),
+    );
   }
 
   /**
@@ -94,11 +96,8 @@ export class SchemaManagerPom {
     const row = this.getFieldRow(field);
     await row.clickCheckbox();
     await row.assert.isChecked(true);
-    await this.moveFields();
     // the move is a round-trip; the row lands in its new section after it
-    await this.hiddenFields
-      .getByTestId(`field-row-${field}`)
-      .waitFor({ state: "attached" });
+    await this.afterFieldIn("hidden", field, () => this.moveFields());
   }
 
   /**
@@ -111,10 +110,21 @@ export class SchemaManagerPom {
     const row = this.getFieldRow(field);
     await row.clickCheckbox();
     await row.assert.isChecked(true);
-    await this.moveFields();
-    await this.activeFields
-      .getByTestId(`field-row-${field}`)
-      .waitFor({ state: "attached" });
+    await this.afterFieldIn("active", field, () => this.moveFields());
+  }
+
+  /** Run `action` and resolve once `section` renders a row for `field` */
+  private afterFieldIn<T>(
+    section: "active" | "hidden",
+    field: string,
+    action: () => Promise<T>,
+  ): Promise<T> {
+    return this.eventUtils.after("e2e:schema-manager:fields", action, (e) => {
+      const detail = e.detail as { section: string; paths: string };
+      return (
+        detail.section === section && detail.paths.split(",").includes(field)
+      );
+    });
   }
 }
 

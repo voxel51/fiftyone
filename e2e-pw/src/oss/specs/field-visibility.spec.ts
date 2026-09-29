@@ -12,7 +12,7 @@ const test = base.extend<{
 }>({
   fieldVisibility: async ({ page, eventUtils }, use) => {
     const gridPom = new GridPom(page, eventUtils);
-    await use(new FieldVisibilityPom(page, gridPom));
+    await use(new FieldVisibilityPom(page, gridPom, eventUtils));
   },
   sidebar: async ({ page }, use) => {
     await use(new SidebarPom(page));

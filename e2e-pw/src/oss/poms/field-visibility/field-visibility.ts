@@ -1,4 +1,5 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
+import { EventUtils } from "src/shared/event-utils";
 import { GridPom } from "../grid";
 
 const enabledParentPaths = ["uniqueness", "predictions", "ground_truth"];
@@ -42,7 +43,11 @@ export class FieldVisibilityPom {
   readonly sidebarLocator: Locator;
   readonly containerLocator: Locator;
 
-  constructor(page: Page, gridPom: GridPom) {
+  constructor(
+    page: Page,
+    gridPom: GridPom,
+    private readonly eventUtils: EventUtils,
+  ) {
     this.page = page;
     this.gridPom = gridPom;
 
@@ -61,7 +66,7 @@ export class FieldVisibilityPom {
   }
 
   get fieldVisibilityToggleTooltip() {
-    return this.page.getByText("Change field visibility");
+    return this.page.getByTestId("tooltip-Change field visibility");
   }
 
   get clearBtn() {
@@ -172,14 +177,14 @@ export class FieldVisibilityPom {
   }
 
   async openFieldVisibilityModal() {
-    await this.fieldVisibilityBtn.click();
-    await this.modalContainer.waitFor();
+    await this.eventUtils.after("e2e:schema:field-visibility-opened", () =>
+      this.fieldVisibilityBtn.click(),
+    );
   }
 
   /** Hover the field visibility icon; its tooltip opens after a delay */
   async hoverIcon() {
     await this.fieldVisibilityBtn.hover();
-    await this.fieldVisibilityToggleTooltip.waitFor();
   }
 
   async hideFields(paths: string[]) {
@@ -226,8 +231,11 @@ export class FieldVisibilityPom {
 class FieldVisibilityAsserter {
   constructor(private readonly fv: FieldVisibilityPom) {}
 
+  /** The hover's tooltip; the read waits for it to open */
   async fieldVisibilityIconHasTooltip() {
-    expect(await this.fv.fieldVisibilityToggleTooltip.isVisible()).toBe(true);
+    expect(await this.fv.fieldVisibilityToggleTooltip.textContent()).toBe(
+      "Change field visibility",
+    );
   }
 
   async assertAllFieldsSelected(selectionFields: string[] = allParentPaths) {

@@ -16,6 +16,7 @@ import { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { ItemLeft } from "../Components";
 import { TAB_JSON } from "./constants";
+import { useSchemaManagerOpenSignal } from "./e2eSignals";
 import EditFieldLabelSchema from "./EditFieldLabelSchema";
 import GUIView from "./GUIView";
 import {
@@ -171,6 +172,7 @@ const Modal = () => {
   // Note: Selection state is reset by useSelectionCleanup in GUIContent,
   // and JSON editor state is reset by useFullSchemaEditor's cleanup effect.
   useSchemaManagerCleanup();
+  useSchemaManagerOpenSignal();
 
   const { closeSchemaManager } = useSchemaManagerModal();
 
