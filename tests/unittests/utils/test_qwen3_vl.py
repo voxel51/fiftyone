@@ -976,7 +976,6 @@ class TestMergePreparedInputs:
         return {
             "input_ids": torch.tensor([ids]),
             "attention_mask": torch.ones(1, len(ids), dtype=torch.long),
-            "mm_token_type_ids": torch.zeros(1, len(ids), dtype=torch.long),
             "pixel_values_videos": torch.arange(
                 n_patches * 3, dtype=torch.float32
             ).reshape(n_patches, 3),
