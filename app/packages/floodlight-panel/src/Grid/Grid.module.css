@@ -184,3 +184,12 @@
   z-index: 6;
   pointer-events: none;
 }
+
+/* tiles of removed items fade out here after their instance is gone */
+.relayoutOverlay {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 2;
+}

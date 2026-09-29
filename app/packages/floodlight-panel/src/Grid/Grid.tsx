@@ -16,15 +16,14 @@ import {
   gridSquareTiles,
   gridCrop,
   gridSpacing,
-  gridZoom,
   maxGridItemsSizeBytes,
   pageParameters,
 } from "./atoms";
 import { createPageSource } from "../host/pageSource";
-import { createOwnership, type Scoped } from "../host/ownership";
+import { createOwnership } from "../host/ownership";
+import { SLOT } from "../host/createHost";
 import useHost from "../host/useHost";
-import { createGridRenderer } from "./gridRenderer";
-import { handOff } from "./handoff";
+import { createGridRenderer, type GridRenderer } from "./gridRenderer";
 import GridPagesBar from "./Pages/GridPagesBar";
 import { usePagesEnabled } from "./Pages/settings";
 import useGridPages from "./Pages/useGridPages";
@@ -36,6 +35,7 @@ import useItemCache from "./useItemCache";
 import useLabelVisibility from "./useLabelVisibility";
 import useRecords from "./useRecords";
 import useRefreshers from "./useRefreshers";
+import useRelayout, { excluding } from "./useRelayout";
 import useRenderer from "./useRenderer";
 import useScrollLocation from "./useScrollLocation";
 import useSpotlightPager, { PAGE_SIZE } from "./useSpotlightPager";
@@ -43,7 +43,7 @@ import useRail from "../rail/useRail";
 import Storm from "./Storm";
 import useSwimlaneRenderer from "./useSwimlaneRenderer";
 import useUpdates from "./useUpdates";
-import useZoomSetting from "./useZoomSetting";
+import useZoomSetting, { useSettledZoom } from "./useZoomSetting";
 
 const MAX_INSTANCES = 200;
 
@@ -62,8 +62,9 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
   const pixels = useMemoOne(() => uuid(), []);
   const spacing = useReverbValue(gridSpacing);
 
-  const { pageReset, reset } = useRefreshers();
+  const { dataReset, gridReset: reset, pageReset } = useRefreshers();
   const container = useRef<HTMLDivElement>(null);
+  const overlay = useRef<HTMLDivElement>(null);
   const zoom = useZoomSetting();
 
   useSyncLabelsRenderingStatus();
@@ -87,7 +88,7 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
   // `-1` (right of slider) ≈ square row, `-15` (left) ≈ very short.
   const useSwimlanes = layout === "groups";
   const strip = layout === "strip";
-  const zoomValue = useReverbValue(gridZoom);
+  const zoomValue = useSettledZoom();
   const squareTiles = useReverbValue(gridSquareTiles);
   const swimlaneAspect = useSwimlanes
     ? Math.max(1, -(zoomValue ?? -3))
@@ -129,13 +130,24 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
   refs.current = { get, page, renderers };
 
   // pages outlive instances, so a rebuild at a new size reads from memory
-  const source = useMemo(() => createPageSource(page), [page]);
+  const excluded = useRef(new Set<string>());
+  const source = useMemo(
+    () =>
+      createPageSource(
+        (key: number) =>
+          page(key).then((result) => excluding(result, excluded.current)),
+        { ids: (result) => result.items.map((item) => item.id.description) },
+      ),
+    [page],
+  );
   const wire = useInstanceEvents();
   const ownership = useMemo(() => createOwnership(), [cache]);
   const interims = useRef(new WeakSet<object>());
   const cleanups = useRef(new WeakMap<object, () => void>());
-  const scopes = useRef(new WeakMap<object, Scoped<number, fos.Sample>>());
+  const scopes = useRef(new WeakMap<object, GridRenderer<fos.Sample>>());
   const lastSizes = useRef(new Map<string, [number, number]>());
+  // items each instance has loaded, for the rail thumb's scrollbar length
+  const loadedItems = useRef(new WeakMap<object, { items: number }>());
   const hostRef = useRef<{ instance?: object }>();
 
   const { host, instance, status } = useHost<
@@ -161,6 +173,7 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
         shimmer: SHIMMER.showItem,
         sizes: lastSizes.current,
       });
+      const loaded = { items: 0 };
       const next = new Spotlight<number, fos.Sample>({
         key: anchor?.key ?? 0,
         at: anchor?.at,
@@ -176,21 +189,20 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
         // swimlane rows abut so the view reads as one continuous stack
         spacing: useSwimlanes ? 0 : spacing,
         get: (key) =>
-          sourceRef.current.get(key).then((p) => withRowAspects(p, aspects)),
+          sourceRef.current.get(key).then((p) => {
+            loaded.items += p.items.length;
+            return withRowAspects(p, aspects);
+          }),
         // swimlanes and strips place one item per row
         rowAspectRatioThreshold: useSwimlanes || strip ? () => 0 : zoom,
       });
       scopes.current.set(next, scoped);
+      loadedItems.current.set(next, loaded);
       if (interim) interims.current.add(next);
       else cleanups.current.set(next, wire(next));
       return next;
     },
-    onSwap: (next, previous) =>
-      handOff({
-        cache,
-        next: scopes.current.get(next),
-        previous: previous && scopes.current.get(previous),
-      }),
+    onSwap: (next, previous) => swapRef.current(next, previous),
     onAnchor: (anchor) =>
       set({
         at: { description: anchor.at?.description ?? "" },
@@ -211,9 +223,38 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
   const sourceRef = useRef(paging.source);
   sourceRef.current = paging.source;
   hostRef.current = host;
-  const rail = useRail({
+  const relayout = useRelayout<Spotlight<number, fos.Sample>, fos.Sample>({
+    cache,
     container,
-    horizontal: strip,
+    dataReset,
+    excluded: excluded.current,
+    interims: interims.current,
+    overlay,
+    scopes: scopes.current,
+    source,
+    zoom: zoomValue,
+  });
+  relayout.setHost(host);
+  const swapRef = useRef(relayout.swap);
+  swapRef.current = relayout.swap;
+  const rail = useRail({
+    extent: () => {
+      const scroller = container.current?.querySelector(`[${SLOT}="active"]`)
+        ?.lastElementChild as HTMLElement | null | undefined;
+      const items = instance && loadedItems.current.get(instance)?.items;
+      if (!scroller || !items) return undefined;
+      return strip
+        ? {
+            items,
+            loaded: scroller.scrollWidth,
+            viewport: scroller.clientWidth,
+          }
+        : {
+            items,
+            loaded: scroller.scrollHeight,
+            viewport: scroller.clientHeight,
+          };
+    },
     host,
     instance,
     pageSize: PAGE_SIZE,
@@ -294,6 +335,7 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
       >
         <Storm className={styles.storm} />
       </div>
+      <div ref={overlay} className={styles.relayoutOverlay} />
       {pending && (
         <div className={styles.pending}>
           <Pending />

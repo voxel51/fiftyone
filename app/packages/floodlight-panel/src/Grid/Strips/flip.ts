@@ -20,8 +20,10 @@ export const play = (
   to = "none",
   duration = FLIP_MS,
 ) => {
-  if (reducedMotion() || typeof element.animate !== "function") return;
-  element.animate(
+  if (reducedMotion() || typeof element.animate !== "function") {
+    return undefined;
+  }
+  return element.animate(
     [
       { transform: css(from), transformOrigin: "0 0" },
       { transform: to, transformOrigin: "0 0" },
@@ -35,8 +37,10 @@ export const flipFrom = (element: HTMLElement, from: DOMRect) =>
   play(element, invert(from, element.getBoundingClientRect()));
 
 export const fadeIn = (element: HTMLElement, duration = FLIP_MS) => {
-  if (reducedMotion() || typeof element.animate !== "function") return;
-  element.animate([{ opacity: 0 }, { opacity: 1 }], {
+  if (reducedMotion() || typeof element.animate !== "function") {
+    return undefined;
+  }
+  return element.animate([{ opacity: 0 }, { opacity: 1 }], {
     duration,
     easing: EASE,
   });

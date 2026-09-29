@@ -3,6 +3,7 @@ import ResourceCount from "@fiftyone/core/src/components/ResourceCount";
 import { Suspense } from "react";
 import { RightContainer, RightDiv, SamplesHeader } from "./Containers";
 import GridHeaderSampleRendererControls from "./GridHeaderSampleRendererControls";
+import RelayoutDemoButton from "./RelayoutDemoButton";
 import Sentence from "./Sentence";
 import Settings from "./Settings";
 
@@ -20,6 +21,7 @@ const Header = () => (
         <ResourceCount />
       </Suspense>
       <GridHeaderSampleRendererControls />
+      <RelayoutDemoButton />
       <Settings />
     </RightContainer>
   </SamplesHeader>

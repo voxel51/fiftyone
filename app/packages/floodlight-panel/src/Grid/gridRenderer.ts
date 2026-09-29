@@ -25,6 +25,11 @@ export interface GridRendererOptions<V> {
   sizes: Map<string, [number, number]>;
 }
 
+/** A grid instance's renderer, and the tile each item it shows is in. */
+export type GridRenderer<V> = Scoped<number, V> & {
+  tiles: Map<string, HTMLElement>;
+};
+
 /**
  * The renderer one grid instance renders through. An interim build moves a
  * cached looker at its last size (no canvas reallocation) and shimmers the
@@ -32,11 +37,13 @@ export interface GridRendererOptions<V> {
  */
 export const createGridRenderer = <V>(
   options: GridRendererOptions<V>,
-): Scoped<number, V> => {
+): GridRenderer<V> => {
   const { base, cached, interim, reattach, shimmer, sizes } = options;
+  const tiles = new Map<string, HTMLElement>();
 
   const showItem = (item: ShowArgs<V>) => {
     const key = item.id.description;
+    tiles.set(key, item.element);
     if (!interim) {
       sizes.set(key, item.dimensions);
       return base().showItem(item);
@@ -49,12 +56,18 @@ export const createGridRenderer = <V>(
 
   const scoped = scopeRenderer<number, V>(
     {
-      detachItem: (id: ID) => base().detachItem(id),
-      hideItem: (args) => base().hideItem(args),
+      detachItem: (id: ID) => {
+        tiles.delete(id.description);
+        base().detachItem(id);
+      },
+      hideItem: (args) => {
+        tiles.delete(args.id.description);
+        base().hideItem(args);
+      },
       showItem,
     },
     options.ownership,
   );
   options.deferred && scoped.defer();
-  return scoped;
+  return Object.assign(scoped, { tiles });
 };

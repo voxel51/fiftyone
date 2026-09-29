@@ -2,6 +2,7 @@ import styles from "./Grid.module.css";
 import type { Hide, ID, Show } from "@fiftyone/floodlight";
 import * as fos from "@fiftyone/state";
 import { useCallback, useMemo, useRef } from "react";
+import { sampleChanged } from "./sampleChanged";
 import type { ItemCache } from "./types";
 import useFontSize from "./useFontSize";
 import { useGridCustomRendererItem } from "./useGridCustomRendererItem";
@@ -42,6 +43,8 @@ export default function useRenderer({
   // `showItem` must stay stable even as the sample renderer hook refreshes.
   const sampleRendererRef = useRef(sampleRenderer);
   sampleRendererRef.current = sampleRenderer;
+  // the sample each cached item was built with or last handed
+  const held = useMemo(() => new WeakMap<object, fos.Sample>(), [cache]);
 
   const detachItem = useCallback(
     (id: ID) => {
@@ -66,6 +69,20 @@ export default function useRenderer({
 
       const instance = cache.get(key);
       if (instance) {
+        // a data change keeps items, so a kept item takes its refetched sample
+        const next = store.get(id)?.sample;
+        const last = held.get(instance);
+        if (
+          next &&
+          last &&
+          sampleChanged(last, next) &&
+          "updateSample" in instance
+        ) {
+          (instance.updateSample as unknown as (sample: fos.Sample) => void)(
+            next,
+          );
+        }
+        next && held.set(instance, next);
         shimmerUntilLoaded(instance, element);
         instance.attach(element, dimensions, getFontSize());
         cache.show(key);
@@ -103,11 +120,12 @@ export default function useRenderer({
       });
 
       cache.set(key, item);
+      held.set(item, result.sample);
       shimmerUntilLoaded(item, element);
       item.attach(element, dimensions);
       return cache.sizeOf(key);
     },
-    [cache, getFontSize, selectSample, sampleRendererRef, store],
+    [cache, getFontSize, held, selectSample, sampleRendererRef, store],
   );
 
   return {

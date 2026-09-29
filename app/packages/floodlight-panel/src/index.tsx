@@ -1,9 +1,10 @@
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
 import { setDefaultGridPanel } from "@fiftyone/state";
-import type { CSSProperties } from "react";
+import { type CSSProperties, useMemo } from "react";
 import styled from "styled-components";
 import Grid from "./Grid";
 import Header from "./Grid/Header";
+import { createRelayoutDemo, RelayoutDemoContext } from "./Grid/relayoutDemo";
 
 const Container = styled.div`
   position: relative;
@@ -33,17 +34,25 @@ const FloodlightIcon = ({ style }: { style?: CSSProperties }) => (
   </span>
 );
 
+// one demo channel per panel, so duplicate panels answer their own header
+const FloodlightPanel = () => {
+  const demo = useMemo(createRelayoutDemo, []);
+  return (
+    <RelayoutDemoContext.Provider value={demo}>
+      <Container>
+        <Grid key={"grid"} />
+        <Header key={"header"} />
+      </Container>
+    </RelayoutDemoContext.Provider>
+  );
+};
+
 setDefaultGridPanel("Floodlight");
 
 registerComponent({
   name: "Floodlight",
   label: "Floodlight",
-  component: () => (
-    <Container>
-      <Grid key={"grid"} />
-      <Header key={"header"} />
-    </Container>
-  ),
+  component: FloodlightPanel,
   type: PluginComponentType.Panel,
   Icon: FloodlightIcon,
   activator: () => true,

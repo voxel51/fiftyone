@@ -37,14 +37,12 @@ export default function useRefreshers() {
     fieldVisibilityStage;
     mediaField;
     queryPerformanceSetting;
-    refresher;
     return uuid();
   }, [
     cropToContent,
     fieldVisibilityStage,
     mediaField,
     queryPerformanceSetting,
-    refresher,
   ]);
 
   // the values reset the page, i.e. return to the top
@@ -71,11 +69,18 @@ export default function useRefreshers() {
     view,
   ]);
 
-  const reset = useMemoOne(() => {
+  // the grid keeps its items across a data change and relays out instead
+  const gridReset = useMemoOne(() => {
     layoutReset;
     pageReset;
     return uuid();
   }, [layoutReset, pageReset]);
+
+  const reset = useMemoOne(() => {
+    gridReset;
+    refresher;
+    return uuid();
+  }, [gridReset, refresher]);
 
   useEffect(() => {
     const unsubscribe = subscribe(({ event }, { reset }) => {
@@ -93,6 +98,8 @@ export default function useRefreshers() {
   }, []);
 
   return {
+    dataReset: refresher,
+    gridReset,
     pageReset,
     reset,
   };

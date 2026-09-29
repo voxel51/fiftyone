@@ -1,6 +1,8 @@
 import type { Range } from "@fiftyone/state";
 import { useCallback } from "react";
 import { useReverbValue } from "@fiftyone/reverb";
+import { SETTLE } from "../host/createHost";
+import { useSettled } from "../host/useSettled";
 import { gridZoom } from "./atoms";
 
 const WIDEST = 1200;
@@ -23,8 +25,12 @@ export const ZOOM_RANGE: Range = [-15, -1];
  * container width. The smaller the container width, the smaller the maximum
  * aspect ratio to prevent a large number of items from rendering on screen
  */
+/** The zoom once the slider rests, so a drag re-tiles once rather than per step. */
+export const useSettledZoom = () =>
+  useSettled(useReverbValue(gridZoom), SETTLE);
+
 export default () => {
-  const zoom = useReverbValue(gridZoom);
+  const zoom = useSettledZoom();
   return useCallback(
     (width: number) => {
       let min = -8;
