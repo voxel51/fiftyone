@@ -28,7 +28,7 @@ billion points, 3.15 million inertial samples and 4,986 satellite fixes.
 
 -   Dataset name: ``construction-site-traversability``
 -   Dataset source: https://huggingface.co/datasets/Voxel51/Construction-Site-Traversability
--   Dataset size: 18.45 GB
+-   Dataset size: 18.14 GB
 -   Dataset license: CC BY-NC 4.0
 -   Tags: ``multimodal, mcap, robotics, lidar, depth, gnss``
 -   Supported splits: ``N/A``
@@ -51,9 +51,6 @@ billion points, 3.15 million inertial samples and 4,986 satellite fixes.
 
         # The longest run
         view = dataset.sort_by("duration", reverse=True)
-
-        # The runs from the second site
-        view = dataset.match({"site": "site2"})
 
         session = fo.launch_app(dataset, view=view)
 
