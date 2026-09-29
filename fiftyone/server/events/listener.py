@@ -72,6 +72,8 @@ async def add_event_listener(
         # dispatched once this connection's listeners can receive it too
         dispatch_app_count()
 
+    # however the stream ends, including a close while it waits at a yield,
+    # the connection stops counting
     try:
         if data.is_app:
             yield ServerSentEvent(
@@ -85,13 +87,7 @@ async def add_event_listener(
             )
 
         while True:
-            disconnected = await request.is_disconnected()
-            if disconnected:
-                await disconnect(
-                    data.is_app,
-                    data.request_listeners,
-                    payload.subscription,
-                )
+            if await request.is_disconnected():
                 break
 
             events: t.List[t.Tuple[datetime, EventType]] = []
@@ -115,11 +111,10 @@ async def add_event_listener(
 
             await asyncio.sleep(0.2)
 
-    except asyncio.CancelledError as e:
+    finally:
         await disconnect(
             data.is_app, data.request_listeners, payload.subscription
         )
-        raise e
 
 
 async def disconnect(

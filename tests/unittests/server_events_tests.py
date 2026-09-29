@@ -161,6 +161,11 @@ class _Connection:
         self.closed = True
         await self.stream()
 
+    async def abandon(self):
+        # the server closes the stream where it waits, as when the tab goes
+        # away while an event is still being sent
+        await self._events.aclose()
+
 
 class TestAppCount(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
@@ -235,6 +240,16 @@ class TestAppCount(unittest.IsolatedAsyncioTestCase):
 
         # queues are last-in first-out, so a stale count must not linger
         # behind the latest one
+        self.assertEqual(_read_counts("a"), [1])
+
+    async def test_stream_closed_at_a_yield_stops_counting(self):
+        await _Connection("a").open()
+        b = _Connection("b")
+        await b.open()
+        _read_counts("a")
+
+        await b.abandon()
+        self.assertEqual(foss.get_app_count(), 1)
         self.assertEqual(_read_counts("a"), [1])
 
     async def test_session_clients_are_not_counted(self):
