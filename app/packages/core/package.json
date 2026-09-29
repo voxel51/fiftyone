@@ -16,6 +16,8 @@
         "@fiftyone/map": "*",
         "@fiftyone/multimodal": "*",
         "@fiftyone/operators": "*",
+        "@fiftyone/playback": "workspace:*",
+        "@fiftyone/plugins": "*",
         "@fiftyone/reverb": "workspace:*",
         "@fiftyone/spotlight": "*",
         "@fiftyone/state": "*",

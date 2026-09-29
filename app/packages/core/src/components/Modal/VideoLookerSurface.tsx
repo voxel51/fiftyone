@@ -6,7 +6,6 @@ import type { VideoLooker } from "@fiftyone/looker";
 import { PlaybackProvider, type TimelineMode } from "@fiftyone/playback";
 import * as fos from "@fiftyone/state";
 import {
-  FrameLabelsTracks,
   RegisterFrameLabels,
   getModalSampleFrameRate,
   useTimelineMaxSize,
@@ -16,6 +15,7 @@ import React, { useMemo } from "react";
 import { useSavedVideoSegments } from "./useSavedVideoSegments";
 import { useLookerPlaybackBridge } from "./useLookerPlaybackBridge";
 import styles from "./VideoLookerSurface.module.css";
+import { VideoTimelineExtensions } from "./VideoTimelineExtensions";
 import useLooker from "./use-looker";
 import { useVideoModalSelectiveRendering } from "./use-modal-selective-rendering";
 
@@ -107,7 +107,7 @@ export const VideoLookerSurface: React.FC<{ sample: fos.ModalSample }> = ({
           <VideoLookerReact sample={sample} frameRate={frameRate} />
         </div>
         <div className={styles.timeline} style={CARD_BACKGROUND}>
-          <FrameLabelsTracks
+          <VideoTimelineExtensions
             sample={sample}
             maxSize={timelineMaxSize}
             mode="explore"

@@ -11,6 +11,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import SamplesScopeTab from "./ScopeTab";
+import { SubsetDetailsContext } from "./SubsetDetailsContext";
 
 const counts = {
   episodes: 16,
@@ -159,6 +160,40 @@ afterEach(() => {
 });
 
 describe("SamplesScopeTab", () => {
+  it("renders host details only for the active subset", async () => {
+    mocks.boundary = { subsetId: hard.id, subsetScope: "episodes" };
+    mocks.get.mockResolvedValue({
+      ...hard,
+      created_by: "creator-id",
+      created_at: "2026-09-12T12:00:00Z",
+    });
+    mocks.list.mockResolvedValue({
+      subsets: [
+        hard,
+        {
+          ...hard,
+          id: "other",
+          name: "Other subset",
+          created_by: "other-creator",
+        },
+      ],
+      total: 2,
+      count: 2,
+    });
+    const Details = ({ subset }: { subset: { id: string } }) => (
+      <span>Details for {subset.id}</span>
+    );
+    render(
+      <SubsetDetailsContext.Provider value={Details}>
+        <SamplesScopeTab />
+      </SubsetDetailsContext.Provider>,
+    );
+    await waitFor(() => expect(trigger().textContent).toContain(hard.name));
+    fireEvent.click(trigger());
+    await screen.findByText(`Details for ${hard.id}`);
+    expect(screen.queryByText("Details for other")).toBeNull();
+  });
+
   it.each([
     ["patches", "ToPatches"],
     ["frames", "ToFrames"],

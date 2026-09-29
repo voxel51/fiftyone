@@ -11,7 +11,6 @@ import {
 } from "@fiftyone/playback";
 import * as fos from "@fiftyone/state";
 import {
-  FrameLabelsTracks,
   RegisterFrameLabels,
   RegisterVideoExploreLabels,
   LighterVideo,
@@ -27,6 +26,7 @@ import React, {
 } from "react";
 import { useSavedVideoSegments } from "./useSavedVideoSegments";
 import { VideoExploreToolbar } from "./VideoExploreToolbar";
+import { VideoTimelineExtensions } from "./VideoTimelineExtensions";
 import { useVideoExploreKeybindings } from "./useVideoExploreKeybindings";
 import styles from "./VideoTimelineSurface.module.css";
 
@@ -274,7 +274,7 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
             render an empty, inert transport under the error. */}
         {!mediaFailed && (
           <div className={styles.timeline}>
-            <FrameLabelsTracks
+            <VideoTimelineExtensions
               sample={sample}
               maxSize={timelineMaxSize}
               mode="explore"
