@@ -39,6 +39,7 @@ import useUpdates from "./useUpdates";
 import useZoomSetting from "./useZoomSetting";
 import SelectionTray from "./Selection/SelectionTray";
 import { useSavedSegmentTileDecorator } from "./Selection/savedSegmentTileDecorator";
+import { flyOpen } from "./flyOpen";
 
 const MAX_INSTANCES = 200;
 const MAX_ROWS = 200;
@@ -168,7 +169,11 @@ function Grid() {
             return undefined;
           }
         }
-        return shiftKey ? undefined : refs.current.setSample(item);
+        return shiftKey
+          ? undefined
+          : flyOpen(item.event.currentTarget as Element | null, () =>
+              refs.current.setSample(item),
+            );
       },
       rowAspectRatioThreshold: zoom,
     });
