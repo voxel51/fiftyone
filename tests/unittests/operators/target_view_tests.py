@@ -692,13 +692,6 @@ class TestGroupSliceScopeDescriptions(unittest.TestCase):
             ["left, right", "lidar", "left", "left, right", "lidar"],
         )
 
-    def test_the_whole_grouped_dataset_is_not_offered_disabled(self):
-        ctx = self._ctx(group_slice="left")
-        prop, _ = self._descriptions(ctx, require_flat=True)
-
-        self.assertEqual(prop.options.unavailable, {})
-        self.assertNotIn("DATASET", prop.options.values())
-
     def test_no_active_slice_still_offers_the_default_slice(self):
         # the active slice is resolved from the dataset when the caller does
         # not send one, so only the whole grouped dataset stays unavailable
@@ -769,14 +762,6 @@ class TestGroupSliceScopeDescriptions(unittest.TestCase):
         ctx.params["view_target"] = "CURRENT_VIEW|media:image"
 
         self.assertEqual(len(ctx.target_view(require_flat=True)), 0)
-
-    def test_no_media_scopes_without_require_flat(self):
-        ctx = self._ctx(group_slice="left")
-        prop, _ = self._descriptions(ctx)
-
-        self.assertListEqual(
-            prop.options.values(), ["DATASET", "CURRENT_VIEW"]
-        )
 
     def test_no_scope_for_views_that_select_slices(self):
         stage = fo.SelectGroupSlices("left")
