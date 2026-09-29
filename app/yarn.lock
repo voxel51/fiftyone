@@ -2422,6 +2422,7 @@ __metadata:
     "@chainner/node-path": "npm:^0.1.1"
     "@microsoft/fetch-event-source": "catalog:"
     "@types/luxon": "npm:^3.6.2"
+    "@voxel51/voodo": "catalog:"
     fast-json-patch: "catalog:"
     fetch-retry: "npm:^5.0.3"
     lodash: "catalog:"
@@ -7414,9 +7415,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@voxel51/voodo@npm:^1.2.0":
-  version: 1.2.0
-  resolution: "@voxel51/voodo@npm:1.2.0"
+"@voxel51/voodo@npm:^2.0.0":
+  version: 2.0.0
+  resolution: "@voxel51/voodo@npm:2.0.0"
   dependencies:
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/sortable": "npm:^10.0.0"
@@ -7433,7 +7434,7 @@ __metadata:
     react: ^18.0.0
     react-dom: ^18.0.0
     react-is: ^18.0.0
-  checksum: 10/edeb4caa277a14a89f643b31e389b254e67a43c156934a0a197d4444b22166ff457a97278668d56a9ad0f9d770351e9100ccbc361aed07ffa724d6160199a6af
+  checksum: 10/67ecd523839dc6c4f5544d2d6c537cf465d4a49d45bc84a798051004c4ce0064df490375de333b2a219fac525a24cdcbbbf659c8568fc3dac9b04b065d7690b9
   languageName: node
   linkType: hard
 
