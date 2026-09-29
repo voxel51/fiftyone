@@ -44,6 +44,7 @@ import { MaskKeypoints } from "./MaskKeypoints";
 import type { SerializedMask } from "@fiftyone/utilities";
 import {
   getRotatedBoxCorners,
+  getRotatedBoxNorthwestCorner,
   getRotation2d,
   isPointInRotatedBox,
   toRotatedBoxFrame,
@@ -434,16 +435,24 @@ export class DetectionOverlay
         ? style.lineWidth / renderer.getScale() / 2
         : 0;
 
-      // the header stays unrotated, anchored to the STORED box's top-left —
-      // a stationary point while the box rotates under it
+      // the header stays upright, anchored to the box's northwest-most
+      // corner so a rotated box's label stays on its geometry
+      const { x, y, width, height } = this.bounds;
+      const [ax, ay] = getRotatedBoxNorthwestCorner(
+        [x, y, width, height],
+        this.getRotation(),
+        // bounds are already world-space pixels; unit dimensions apply the
+        // rotation in that same space
+        [1, 1],
+      );
       const labelPosition = this.isSelected()
         ? {
-            x: this.bounds.x + offset * HANDLE_OFFSET_X,
-            y: this.bounds.y - offset * HANDLE_OFFSET_Y,
+            x: ax + offset * HANDLE_OFFSET_X,
+            y: ay - offset * HANDLE_OFFSET_Y,
           }
         : {
-            x: this.bounds.x - offset,
-            y: this.bounds.y - offset,
+            x: ax - offset,
+            y: ay - offset,
           };
 
       let textToDraw = this.label?.label;

@@ -8,6 +8,7 @@ import {
 } from "@fiftyone/state/src/jotai";
 import {
   getRotatedBoxCorners,
+  getRotatedBoxNorthwestCorner,
   getRotation2d,
   isPointInRotatedBox,
 } from "@fiftyone/utilities";
@@ -256,10 +257,14 @@ export default class DetectionOverlay<
 
     const color = this.getColor(state);
 
-    // the header stays unrotated, anchored to the stored box's top-left —
-    // matches the annotate-mode (lighter) header, which keeps the anchor
-    // stationary while a box rotates
-    const [tlx, tly] = this.label.bounding_box;
+    // the header stays upright, anchored to the box's northwest-most corner
+    // so a rotated box's label stays on its geometry — matches the
+    // annotate-mode (lighter) header
+    const [tlx, tly] = getRotatedBoxNorthwestCorner(
+      this.label.bounding_box,
+      this.getRotation(),
+      state.dimensions,
+    );
     ctx.beginPath();
     ctx.fillStyle = color;
     let [ox, oy] = t(state, tlx, tly);
