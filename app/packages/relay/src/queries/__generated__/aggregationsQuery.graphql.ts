@@ -1,40 +1,39 @@
 /**
- * @generated SignedSource<<c1ad9100dbb55acd80bd9978cb72e735>>
+ * @generated SignedSource<<bff0a590d9af4e7b49fa9755cca8e4fd>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { ConcreteRequest, Query } from 'relay-runtime';
+import { ConcreteRequest } from 'relay-runtime';
 export type AggregationForm = {
   dataset: string;
-  dynamicGroup?: object | null;
+  dynamicGroup?: object | null | undefined;
   extendedStages: Array;
-  filters?: object | null;
-  groupId?: string | null;
+  filters?: object | null | undefined;
+  groupId?: string | null | undefined;
   hiddenLabels: ReadonlyArray<SelectedLabel>;
-  hint?: string | null;
-  index?: number | null;
-  maxQueryTime?: number | null;
+  hint?: string | null | undefined;
+  index?: number | null | undefined;
+  maxQueryTime?: number | null | undefined;
   mixed: boolean;
   paths: ReadonlyArray<string>;
-  queryPerformance?: boolean | null;
+  queryPerformance?: boolean | null | undefined;
   sampleIds: ReadonlyArray<string>;
-  slice?: string | null;
-  slices?: ReadonlyArray<string> | null;
+  slice?: string | null | undefined;
+  slices?: ReadonlyArray<string> | null | undefined;
   view: Array;
-  viewName?: string | null;
+  viewName?: string | null | undefined;
 };
 export type SelectedLabel = {
   field: string;
-  frameNumber?: number | null;
-  instanceId?: string | null;
+  frameNumber?: number | null | undefined;
+  instanceId?: string | null | undefined;
   labelId: string;
   sampleId: string;
-  type?: string | null;
+  type?: string | null | undefined;
 };
 export type aggregationsQuery$variables = {
   form: AggregationForm;
@@ -60,8 +59,8 @@ export type aggregationsQuery$data = {
     readonly count: number;
     readonly exists: number;
     readonly inf: number;
-    readonly max: number | null;
-    readonly min: number | null;
+    readonly max: number | null | undefined;
+    readonly min: number | null | undefined;
     readonly nan: number;
     readonly ninf: number;
     readonly path: string;
@@ -69,17 +68,17 @@ export type aggregationsQuery$data = {
     readonly __typename: "IntAggregation";
     readonly count: number;
     readonly exists: number;
-    readonly max: number | null;
-    readonly min: number | null;
+    readonly max: number | null | undefined;
+    readonly min: number | null | undefined;
     readonly path: string;
   } | {
     readonly __typename: "RootAggregation";
     readonly count: number;
     readonly exists: number;
     readonly expandedFieldCount: number;
-    readonly frameLabelFieldCount: number | null;
+    readonly frameLabelFieldCount: number | null | undefined;
     readonly path: string;
-    readonly slice: number | null;
+    readonly slice: number | null | undefined;
   } | {
     readonly __typename: "StringAggregation";
     readonly count: number;
@@ -88,7 +87,7 @@ export type aggregationsQuery$data = {
     readonly values: ReadonlyArray<{
       readonly count: number;
       readonly value: string;
-    }> | null;
+    }> | null | undefined;
   } | {
     // This will never be '%other', but we need some
     // value in case none of the concrete values match.
@@ -168,7 +167,7 @@ v6 = [
       {
         "kind": "InlineFragment",
         "selections": [
-          (v1/*: any*/),
+          (v1/*:: as any*/),
           {
             "alias": null,
             "args": null,
@@ -183,9 +182,9 @@ v6 = [
       {
         "kind": "InlineFragment",
         "selections": [
-          (v1/*: any*/),
-          (v2/*: any*/),
-          (v3/*: any*/),
+          (v1/*:: as any*/),
+          (v2/*:: as any*/),
+          (v3/*:: as any*/),
           {
             "alias": null,
             "args": null,
@@ -207,8 +206,8 @@ v6 = [
       {
         "kind": "InlineFragment",
         "selections": [
-          (v1/*: any*/),
-          (v2/*: any*/)
+          (v1/*:: as any*/),
+          (v2/*:: as any*/)
         ],
         "type": "DataAggregation",
         "abstractKey": null
@@ -216,11 +215,11 @@ v6 = [
       {
         "kind": "InlineFragment",
         "selections": [
-          (v1/*: any*/),
-          (v2/*: any*/),
-          (v3/*: any*/),
-          (v4/*: any*/),
-          (v5/*: any*/)
+          (v1/*:: as any*/),
+          (v2/*:: as any*/),
+          (v3/*:: as any*/),
+          (v4/*:: as any*/),
+          (v5/*:: as any*/)
         ],
         "type": "IntAggregation",
         "abstractKey": null
@@ -228,9 +227,9 @@ v6 = [
       {
         "kind": "InlineFragment",
         "selections": [
-          (v1/*: any*/),
-          (v2/*: any*/),
-          (v3/*: any*/),
+          (v1/*:: as any*/),
+          (v2/*:: as any*/),
+          (v3/*:: as any*/),
           {
             "alias": null,
             "args": null,
@@ -238,8 +237,8 @@ v6 = [
             "name": "inf",
             "storageKey": null
           },
-          (v4/*: any*/),
-          (v5/*: any*/),
+          (v4/*:: as any*/),
+          (v5/*:: as any*/),
           {
             "alias": null,
             "args": null,
@@ -261,9 +260,9 @@ v6 = [
       {
         "kind": "InlineFragment",
         "selections": [
-          (v1/*: any*/),
-          (v2/*: any*/),
-          (v3/*: any*/),
+          (v1/*:: as any*/),
+          (v2/*:: as any*/),
+          (v3/*:: as any*/),
           {
             "alias": null,
             "args": null,
@@ -292,9 +291,9 @@ v6 = [
       {
         "kind": "InlineFragment",
         "selections": [
-          (v1/*: any*/),
-          (v2/*: any*/),
-          (v3/*: any*/),
+          (v1/*:: as any*/),
+          (v2/*:: as any*/),
+          (v3/*:: as any*/),
           {
             "alias": null,
             "args": null,
@@ -303,7 +302,7 @@ v6 = [
             "name": "values",
             "plural": true,
             "selections": [
-              (v2/*: any*/),
+              (v2/*:: as any*/),
               {
                 "alias": null,
                 "args": null,
@@ -324,20 +323,20 @@ v6 = [
 ];
 return {
   "fragment": {
-    "argumentDefinitions": (v0/*: any*/),
+    "argumentDefinitions": (v0/*:: as any*/),
     "kind": "Fragment",
     "metadata": null,
     "name": "aggregationsQuery",
-    "selections": (v6/*: any*/),
+    "selections": (v6/*:: as any*/),
     "type": "Query",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
-    "argumentDefinitions": (v0/*: any*/),
+    "argumentDefinitions": (v0/*:: as any*/),
     "kind": "Operation",
     "name": "aggregationsQuery",
-    "selections": (v6/*: any*/)
+    "selections": (v6/*:: as any*/)
   },
   "params": {
     "cacheID": "590742c0e5a6d1e7d4576b3c2412a6e8",

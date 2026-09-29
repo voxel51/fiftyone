@@ -1,5 +1,5 @@
 // @ts-ignore
-import { getFragmentResourceForEnvironment } from "react-relay/lib/relay-hooks/FragmentResource";
+import { getFragmentResourceForEnvironment } from "react-relay/lib/relay-hooks/legacy/FragmentResource";
 import { KeyType, KeyTypeData } from "react-relay/relay-hooks/helpers";
 import {
   GraphQLTaggedNode,

@@ -1,35 +1,34 @@
 /**
- * @generated SignedSource<<5d2f10728df78880ca26dca410b76f6c>>
+ * @generated SignedSource<<7b1307033c65b58245151790e3946f42>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { ConcreteRequest, Mutation } from 'relay-runtime';
+import { ConcreteRequest } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type ColorSchemeInput = {
-  colorBy?: string | null;
+  colorBy?: string | null | undefined;
   colorPool: ReadonlyArray<string>;
-  colorscales?: ReadonlyArray<ColorscaleInput> | null;
-  defaultColorscale?: DefaultColorscaleInput | null;
-  defaultMaskTargetsColors?: ReadonlyArray<MaskColorInput> | null;
-  fields?: ReadonlyArray<CustomizeColorInput> | null;
-  id?: string | null;
-  labelTags?: LabelTagColorInput | null;
-  multicolorKeypoints?: boolean | null;
-  opacity?: number | null;
-  showSkeletons?: boolean | null;
-  temporalTags?: TemporalTagColorInput | null;
+  colorscales?: ReadonlyArray<ColorscaleInput> | null | undefined;
+  defaultColorscale?: DefaultColorscaleInput | null | undefined;
+  defaultMaskTargetsColors?: ReadonlyArray<MaskColorInput> | null | undefined;
+  fields?: ReadonlyArray<CustomizeColorInput> | null | undefined;
+  id?: string | null | undefined;
+  labelTags?: LabelTagColorInput | null | undefined;
+  multicolorKeypoints?: boolean | null | undefined;
+  opacity?: number | null | undefined;
+  showSkeletons?: boolean | null | undefined;
+  temporalTags?: TemporalTagColorInput | null | undefined;
 };
 export type CustomizeColorInput = {
-  colorByAttribute?: string | null;
-  fieldColor?: string | null;
-  maskTargetsColors?: ReadonlyArray<MaskColorInput> | null;
+  colorByAttribute?: string | null | undefined;
+  fieldColor?: string | null | undefined;
+  maskTargetsColors?: ReadonlyArray<MaskColorInput> | null | undefined;
   path: string;
-  valueColors?: ReadonlyArray<ValueColorInput> | null;
+  valueColors?: ReadonlyArray<ValueColorInput> | null | undefined;
 };
 export type ValueColorInput = {
   color: string;
@@ -40,28 +39,28 @@ export type MaskColorInput = {
   intTarget: number;
 };
 export type LabelTagColorInput = {
-  fieldColor?: string | null;
-  valueColors?: ReadonlyArray<ValueColorInput> | null;
+  fieldColor?: string | null | undefined;
+  valueColors?: ReadonlyArray<ValueColorInput> | null | undefined;
 };
 export type TemporalTagColorInput = {
-  fieldColor?: string | null;
-  valueColors?: ReadonlyArray<ValueColorInput> | null;
+  fieldColor?: string | null | undefined;
+  valueColors?: ReadonlyArray<ValueColorInput> | null | undefined;
 };
 export type ColorscaleInput = {
-  list?: ReadonlyArray<ColorscaleListInput> | null;
-  name?: string | null;
+  list?: ReadonlyArray<ColorscaleListInput> | null | undefined;
+  name?: string | null | undefined;
   path: string;
 };
 export type ColorscaleListInput = {
   color: string;
-  value?: number | null;
+  value?: number | null | undefined;
 };
 export type DefaultColorscaleInput = {
-  list?: ReadonlyArray<ColorscaleListInput> | null;
-  name?: string | null;
+  list?: ReadonlyArray<ColorscaleListInput> | null | undefined;
+  name?: string | null | undefined;
 };
 export type setDatasetColorSchemeMutation$variables = {
-  colorScheme?: ColorSchemeInput | null;
+  colorScheme?: ColorSchemeInput | null | undefined;
   datasetName: string;
   subscription: string;
 };
@@ -69,7 +68,7 @@ export type setDatasetColorSchemeMutation$data = {
   readonly setDatasetColorScheme: {
     readonly id: string;
     readonly " $fragmentSpreads": FragmentRefs<"colorSchemeFragment">;
-  } | null;
+  } | null | undefined;
 };
 export type setDatasetColorSchemeMutation = {
   response: setDatasetColorSchemeMutation$data;
@@ -145,14 +144,14 @@ v8 = {
   "name": "valueColors",
   "plural": true,
   "selections": [
-    (v6/*: any*/),
-    (v7/*: any*/)
+    (v6/*:: as any*/),
+    (v7/*:: as any*/)
   ],
   "storageKey": null
 },
 v9 = [
-  (v5/*: any*/),
-  (v8/*: any*/)
+  (v5/*:: as any*/),
+  (v8/*:: as any*/)
 ],
 v10 = [
   {
@@ -162,7 +161,7 @@ v10 = [
     "name": "intTarget",
     "storageKey": null
   },
-  (v6/*: any*/)
+  (v6/*:: as any*/)
 ],
 v11 = {
   "alias": null,
@@ -179,8 +178,8 @@ v12 = {
   "name": "list",
   "plural": true,
   "selections": [
-    (v7/*: any*/),
-    (v6/*: any*/)
+    (v7/*:: as any*/),
+    (v6/*:: as any*/)
   ],
   "storageKey": null
 },
@@ -201,9 +200,9 @@ v14 = {
 return {
   "fragment": {
     "argumentDefinitions": [
-      (v0/*: any*/),
-      (v1/*: any*/),
-      (v2/*: any*/)
+      (v0/*:: as any*/),
+      (v1/*:: as any*/),
+      (v2/*:: as any*/)
     ],
     "kind": "Fragment",
     "metadata": null,
@@ -211,13 +210,13 @@ return {
     "selections": [
       {
         "alias": null,
-        "args": (v3/*: any*/),
+        "args": (v3/*:: as any*/),
         "concreteType": "ColorScheme",
         "kind": "LinkedField",
         "name": "setDatasetColorScheme",
         "plural": false,
         "selections": [
-          (v4/*: any*/),
+          (v4/*:: as any*/),
           {
             "args": null,
             "kind": "FragmentSpread",
@@ -233,22 +232,22 @@ return {
   "kind": "Request",
   "operation": {
     "argumentDefinitions": [
-      (v2/*: any*/),
-      (v1/*: any*/),
-      (v0/*: any*/)
+      (v2/*:: as any*/),
+      (v1/*:: as any*/),
+      (v0/*:: as any*/)
     ],
     "kind": "Operation",
     "name": "setDatasetColorSchemeMutation",
     "selections": [
       {
         "alias": null,
-        "args": (v3/*: any*/),
+        "args": (v3/*:: as any*/),
         "concreteType": "ColorScheme",
         "kind": "LinkedField",
         "name": "setDatasetColorScheme",
         "plural": false,
         "selections": [
-          (v4/*: any*/),
+          (v4/*:: as any*/),
           {
             "alias": null,
             "args": null,
@@ -291,7 +290,7 @@ return {
             "kind": "LinkedField",
             "name": "labelTags",
             "plural": false,
-            "selections": (v9/*: any*/),
+            "selections": (v9/*:: as any*/),
             "storageKey": null
           },
           {
@@ -301,7 +300,7 @@ return {
             "kind": "LinkedField",
             "name": "temporalTags",
             "plural": false,
-            "selections": (v9/*: any*/),
+            "selections": (v9/*:: as any*/),
             "storageKey": null
           },
           {
@@ -311,7 +310,7 @@ return {
             "kind": "LinkedField",
             "name": "defaultMaskTargetsColors",
             "plural": true,
-            "selections": (v10/*: any*/),
+            "selections": (v10/*:: as any*/),
             "storageKey": null
           },
           {
@@ -322,9 +321,9 @@ return {
             "name": "defaultColorscale",
             "plural": false,
             "selections": [
-              (v11/*: any*/),
-              (v12/*: any*/),
-              (v13/*: any*/)
+              (v11/*:: as any*/),
+              (v12/*:: as any*/),
+              (v13/*:: as any*/)
             ],
             "storageKey": null
           },
@@ -336,10 +335,10 @@ return {
             "name": "colorscales",
             "plural": true,
             "selections": [
-              (v14/*: any*/),
-              (v11/*: any*/),
-              (v12/*: any*/),
-              (v13/*: any*/)
+              (v14/*:: as any*/),
+              (v11/*:: as any*/),
+              (v12/*:: as any*/),
+              (v13/*:: as any*/)
             ],
             "storageKey": null
           },
@@ -358,9 +357,9 @@ return {
                 "name": "colorByAttribute",
                 "storageKey": null
               },
-              (v5/*: any*/),
-              (v14/*: any*/),
-              (v8/*: any*/),
+              (v5/*:: as any*/),
+              (v14/*:: as any*/),
+              (v8/*:: as any*/),
               {
                 "alias": null,
                 "args": null,
@@ -368,7 +367,7 @@ return {
                 "kind": "LinkedField",
                 "name": "maskTargetsColors",
                 "plural": true,
-                "selections": (v10/*: any*/),
+                "selections": (v10/*:: as any*/),
                 "storageKey": null
               }
             ],

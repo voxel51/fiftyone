@@ -1,25 +1,24 @@
 /**
- * @generated SignedSource<<00c120fb7c871bcb719ef2818321c36a>>
+ * @generated SignedSource<<f1c350183c4134f1cc694ed843c5f0f7>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { ConcreteRequest, Mutation } from 'relay-runtime';
+import { ConcreteRequest } from 'relay-runtime';
 export type SelectedLabel = {
   field: string;
-  frameNumber?: number | null;
-  instanceId?: string | null;
+  frameNumber?: number | null | undefined;
+  instanceId?: string | null | undefined;
   labelId: string;
   sampleId: string;
-  type?: string | null;
+  type?: string | null | undefined;
 };
 export type setSelectedLabelsMutation$variables = {
   selectedLabels: ReadonlyArray<SelectedLabel>;
-  session?: string | null;
+  session?: string | null | undefined;
   subscription: string;
 };
 export type setSelectedLabelsMutation$data = {
@@ -74,27 +73,27 @@ v3 = [
 return {
   "fragment": {
     "argumentDefinitions": [
-      (v0/*: any*/),
-      (v1/*: any*/),
-      (v2/*: any*/)
+      (v0/*:: as any*/),
+      (v1/*:: as any*/),
+      (v2/*:: as any*/)
     ],
     "kind": "Fragment",
     "metadata": null,
     "name": "setSelectedLabelsMutation",
-    "selections": (v3/*: any*/),
+    "selections": (v3/*:: as any*/),
     "type": "Mutation",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
     "argumentDefinitions": [
-      (v2/*: any*/),
-      (v1/*: any*/),
-      (v0/*: any*/)
+      (v2/*:: as any*/),
+      (v1/*:: as any*/),
+      (v0/*:: as any*/)
     ],
     "kind": "Operation",
     "name": "setSelectedLabelsMutation",
-    "selections": (v3/*: any*/)
+    "selections": (v3/*:: as any*/)
   },
   "params": {
     "cacheID": "bf598288c8d46b7377f6a78b34cf0126",

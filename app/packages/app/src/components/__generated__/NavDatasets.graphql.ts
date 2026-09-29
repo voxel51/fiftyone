@@ -1,14 +1,13 @@
 /**
- * @generated SignedSource<<c3864aa64ab70a5ab8ac553837caae81>>
+ * @generated SignedSource<<8c233ba9e785565570ba827ff17dd4b2>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { ReaderFragment, RefetchableFragment } from 'relay-runtime';
+import { ReaderFragment } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type NavDatasets$data = {
   readonly datasets: {
@@ -18,7 +17,7 @@ export type NavDatasets$data = {
         readonly name: string;
       };
     }>;
-    readonly total: number | null;
+    readonly total: number | null | undefined;
   };
   readonly " $fragmentType": "NavDatasets";
 };
@@ -55,7 +54,7 @@ return {
         "count": "count",
         "cursor": "cursor",
         "direction": "forward",
-        "path": (v0/*: any*/)
+        "path": (v0/*:: as any*/)
       }
     ],
     "refetch": {
@@ -65,7 +64,7 @@ return {
           "cursor": "cursor"
         },
         "backward": null,
-        "path": (v0/*: any*/)
+        "path": (v0/*:: as any*/)
       },
       "fragmentPathInResult": [],
       "operation": DatasetsPaginationQuery_graphql

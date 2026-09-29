@@ -1,22 +1,21 @@
 /**
- * @generated SignedSource<<450e432e6169a85c4f242815d30e7284>>
+ * @generated SignedSource<<754887831300f14130428fad87939541>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { ConcreteRequest, Mutation } from 'relay-runtime';
+import { ConcreteRequest } from 'relay-runtime';
 export type SidebarGroupInput = {
-  expanded?: boolean | null;
+  expanded?: boolean | null | undefined;
   name: string;
-  paths?: ReadonlyArray<string> | null;
+  paths?: ReadonlyArray<string> | null | undefined;
 };
 export type setSidebarGroupsMutation$variables = {
   dataset: string;
-  session?: string | null;
+  session?: string | null | undefined;
   sidebarGroups: ReadonlyArray<SidebarGroupInput>;
   stages: Array;
   subscription: string;
@@ -93,31 +92,31 @@ v5 = [
 return {
   "fragment": {
     "argumentDefinitions": [
-      (v0/*: any*/),
-      (v1/*: any*/),
-      (v2/*: any*/),
-      (v3/*: any*/),
-      (v4/*: any*/)
+      (v0/*:: as any*/),
+      (v1/*:: as any*/),
+      (v2/*:: as any*/),
+      (v3/*:: as any*/),
+      (v4/*:: as any*/)
     ],
     "kind": "Fragment",
     "metadata": null,
     "name": "setSidebarGroupsMutation",
-    "selections": (v5/*: any*/),
+    "selections": (v5/*:: as any*/),
     "type": "Mutation",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
     "argumentDefinitions": [
-      (v4/*: any*/),
-      (v1/*: any*/),
-      (v0/*: any*/),
-      (v3/*: any*/),
-      (v2/*: any*/)
+      (v4/*:: as any*/),
+      (v1/*:: as any*/),
+      (v0/*:: as any*/),
+      (v3/*:: as any*/),
+      (v2/*:: as any*/)
     ],
     "kind": "Operation",
     "name": "setSidebarGroupsMutation",
-    "selections": (v5/*: any*/)
+    "selections": (v5/*:: as any*/)
   },
   "params": {
     "cacheID": "30ff3bb58850612d19abd31673645b9c",

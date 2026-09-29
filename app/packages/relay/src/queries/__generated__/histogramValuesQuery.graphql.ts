@@ -1,23 +1,22 @@
 /**
- * @generated SignedSource<<95648d6c241faccb3eb27b24eb12b622>>
+ * @generated SignedSource<<926ab89a51582fcc78799321751c1a7b>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { ConcreteRequest, Query } from 'relay-runtime';
+import { ConcreteRequest } from 'relay-runtime';
 export type ExtendedViewForm = {
-  filters?: object | null;
-  mixed?: boolean | null;
-  sampleIds?: ReadonlyArray<string> | null;
-  slice?: string | null;
+  filters?: object | null | undefined;
+  mixed?: boolean | null | undefined;
+  sampleIds?: ReadonlyArray<string> | null | undefined;
+  slice?: string | null | undefined;
 };
 export type histogramValuesQuery$variables = {
   dataset: string;
-  form?: ExtendedViewForm | null;
+  form?: ExtendedViewForm | null | undefined;
   path: string;
   view: Array;
 };
@@ -141,8 +140,8 @@ v6 = [
       {
         "kind": "InlineFragment",
         "selections": [
-          (v4/*: any*/),
-          (v5/*: any*/),
+          (v4/*:: as any*/),
+          (v5/*:: as any*/),
           {
             "alias": "datetimes",
             "args": null,
@@ -157,8 +156,8 @@ v6 = [
       {
         "kind": "InlineFragment",
         "selections": [
-          (v4/*: any*/),
-          (v5/*: any*/),
+          (v4/*:: as any*/),
+          (v5/*:: as any*/),
           {
             "alias": "floats",
             "args": null,
@@ -173,8 +172,8 @@ v6 = [
       {
         "kind": "InlineFragment",
         "selections": [
-          (v4/*: any*/),
-          (v5/*: any*/),
+          (v4/*:: as any*/),
+          (v5/*:: as any*/),
           {
             "alias": "ints",
             "args": null,
@@ -193,29 +192,29 @@ v6 = [
 return {
   "fragment": {
     "argumentDefinitions": [
-      (v0/*: any*/),
-      (v1/*: any*/),
-      (v2/*: any*/),
-      (v3/*: any*/)
+      (v0/*:: as any*/),
+      (v1/*:: as any*/),
+      (v2/*:: as any*/),
+      (v3/*:: as any*/)
     ],
     "kind": "Fragment",
     "metadata": null,
     "name": "histogramValuesQuery",
-    "selections": (v6/*: any*/),
+    "selections": (v6/*:: as any*/),
     "type": "Query",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
     "argumentDefinitions": [
-      (v0/*: any*/),
-      (v3/*: any*/),
-      (v2/*: any*/),
-      (v1/*: any*/)
+      (v0/*:: as any*/),
+      (v3/*:: as any*/),
+      (v2/*:: as any*/),
+      (v1/*:: as any*/)
     ],
     "kind": "Operation",
     "name": "histogramValuesQuery",
-    "selections": (v6/*: any*/)
+    "selections": (v6/*:: as any*/)
   },
   "params": {
     "cacheID": "a1feddae2acab40aaa9988ff9a696e8c",

@@ -1,17 +1,16 @@
 /**
- * @generated SignedSource<<7f7e5448668dba5a46cbd016ef2c2ce5>>
+ * @generated SignedSource<<62ddb8277d2397f6b53a4c665fc13eb0>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { Fragment, ReaderFragment } from 'relay-runtime';
+import { ReaderFragment } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type estimatedCountsFragment$data = {
-  readonly estimatedFrameCount: number | null;
+  readonly estimatedFrameCount: number | null | undefined;
   readonly estimatedSampleCount: number;
   readonly " $fragmentType": "estimatedCountsFragment";
 };

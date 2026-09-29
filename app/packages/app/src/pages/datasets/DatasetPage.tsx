@@ -110,7 +110,10 @@ const DatasetPageQueryNode = graphql`
 `;
 
 const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
-  const data = usePreloadedQuery(DatasetPageQueryNode, prepared);
+  const data = usePreloadedQuery<DatasetPageQuery>(
+    DatasetPageQueryNode,
+    prepared,
+  );
 
   const count = useRecoilValue(fos.datasetSampleCount);
   const isEmpty = count === 0;

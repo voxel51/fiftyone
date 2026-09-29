@@ -1,19 +1,18 @@
 /**
- * @generated SignedSource<<76d626fb464595acdec289cd2d1d12b4>>
+ * @generated SignedSource<<f9911f5346d8cdd17653b01b650ccf99>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { ConcreteRequest, Query } from 'relay-runtime';
+import { ConcreteRequest } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type DatasetsPaginationQuery$variables = {
-  count?: number | null;
-  cursor?: string | null;
-  search?: string | null;
+  count?: number | null | undefined;
+  cursor?: string | null | undefined;
+  search?: string | null | undefined;
 };
 export type DatasetsPaginationQuery$data = {
   readonly " $fragmentSpreads": FragmentRefs<"NavDatasets">;
@@ -60,7 +59,7 @@ v1 = [
 ];
 return {
   "fragment": {
-    "argumentDefinitions": (v0/*: any*/),
+    "argumentDefinitions": (v0/*:: as any*/),
     "kind": "Fragment",
     "metadata": null,
     "name": "DatasetsPaginationQuery",
@@ -76,13 +75,13 @@ return {
   },
   "kind": "Request",
   "operation": {
-    "argumentDefinitions": (v0/*: any*/),
+    "argumentDefinitions": (v0/*:: as any*/),
     "kind": "Operation",
     "name": "DatasetsPaginationQuery",
     "selections": [
       {
         "alias": null,
-        "args": (v1/*: any*/),
+        "args": (v1/*:: as any*/),
         "concreteType": "DatasetStrConnection",
         "kind": "LinkedField",
         "name": "datasets",
@@ -175,7 +174,7 @@ return {
       },
       {
         "alias": null,
-        "args": (v1/*: any*/),
+        "args": (v1/*:: as any*/),
         "filters": [
           "search"
         ],

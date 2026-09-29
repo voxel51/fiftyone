@@ -1,30 +1,29 @@
 /**
- * @generated SignedSource<<c70eb03201df8d728e6127a7238d00e9>>
+ * @generated SignedSource<<eecc6cbccae4fdaa58e4bc73f91b6361>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { Fragment, ReaderFragment } from 'relay-runtime';
+import { ReaderFragment } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type datasetAppConfigFragment$data = {
   readonly activeFields: {
-    readonly exclude: boolean | null;
-    readonly paths: ReadonlyArray<string> | null;
-  } | null;
+    readonly exclude: boolean | null | undefined;
+    readonly paths: ReadonlyArray<string> | null | undefined;
+  } | null | undefined;
   readonly colorScheme: {
     readonly " $fragmentSpreads": FragmentRefs<"colorSchemeFragment">;
-  } | null;
-  readonly disableFrameFiltering: boolean | null;
+  } | null | undefined;
+  readonly disableFrameFiltering: boolean | null | undefined;
   readonly dynamicGroupsTargetFrameRate: number;
   readonly gridMediaField: string;
   readonly mediaFallback: boolean;
-  readonly mediaFields: ReadonlyArray<string> | null;
+  readonly mediaFields: ReadonlyArray<string> | null | undefined;
   readonly modalMediaField: string;
-  readonly plugins: object | null;
+  readonly plugins: object | null | undefined;
   readonly " $fragmentType": "datasetAppConfigFragment";
 };
 export type datasetAppConfigFragment$key = {

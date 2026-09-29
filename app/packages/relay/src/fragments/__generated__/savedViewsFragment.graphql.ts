@@ -1,28 +1,27 @@
 /**
- * @generated SignedSource<<b7661626ead4fdc9235f9e307208f532>>
+ * @generated SignedSource<<6b1dba3357c6e57035c4f988c00c7bf7>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { ReaderFragment, RefetchableFragment } from 'relay-runtime';
+import { ReaderFragment } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type savedViewsFragment$data = {
   readonly savedViews: ReadonlyArray<{
-    readonly color: string | null;
-    readonly createdAt: number | null;
-    readonly datasetId: string | null;
-    readonly description: string | null;
-    readonly id: string | null;
-    readonly lastLoadedAt: number | null;
-    readonly lastModifiedAt: number | null;
-    readonly name: string | null;
-    readonly slug: string | null;
-    readonly viewStages: ReadonlyArray<string> | null;
-  }> | null;
+    readonly color: string | null | undefined;
+    readonly createdAt: number | null | undefined;
+    readonly datasetId: string | null | undefined;
+    readonly description: string | null | undefined;
+    readonly id: string | null | undefined;
+    readonly lastLoadedAt: number | null | undefined;
+    readonly lastModifiedAt: number | null | undefined;
+    readonly name: string | null | undefined;
+    readonly slug: string | null | undefined;
+    readonly viewStages: ReadonlyArray<string> | null | undefined;
+  }> | null | undefined;
   readonly " $fragmentType": "savedViewsFragment";
 };
 export type savedViewsFragment$key = {

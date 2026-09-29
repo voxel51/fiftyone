@@ -1,28 +1,27 @@
 /**
- * @generated SignedSource<<fdb78b211662a8c43847ad075072c89a>>
+ * @generated SignedSource<<c7cf67f8450675547f9453c5fa709d14>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { ConcreteRequest, Query } from 'relay-runtime';
+import { ConcreteRequest } from 'relay-runtime';
 export type LightningInput = {
   dataset: string;
-  match?: object | null;
+  match?: object | null | undefined;
   paths: ReadonlyArray<LightningPathInput>;
-  slice?: string | null;
+  slice?: string | null | undefined;
 };
 export type LightningPathInput = {
-  exclude?: ReadonlyArray<string> | null;
-  filters?: object | null;
-  first?: number | null;
-  index?: string | null;
-  maxDocumentsSearch?: number | null;
+  exclude?: ReadonlyArray<string> | null | undefined;
+  filters?: object | null | undefined;
+  first?: number | null | undefined;
+  index?: string | null | undefined;
+  maxDocumentsSearch?: number | null | undefined;
   path: string;
-  search?: string | null;
+  search?: string | null | undefined;
 };
 export type lightningQuery$variables = {
   input: LightningInput;
@@ -36,39 +35,39 @@ export type lightningQuery$data = {
     readonly true: boolean;
   } | {
     readonly __typename: "DateLightningResult";
-    readonly dateMax: number | null;
-    readonly dateMin: number | null;
+    readonly dateMax: number | null | undefined;
+    readonly dateMin: number | null | undefined;
     readonly none: boolean;
     readonly path: string;
   } | {
     readonly __typename: "DateTimeLightningResult";
-    readonly datetimeMax: number | null;
-    readonly datetimeMin: number | null;
+    readonly datetimeMax: number | null | undefined;
+    readonly datetimeMin: number | null | undefined;
     readonly none: boolean;
     readonly path: string;
   } | {
     readonly __typename: "FloatLightningResult";
     readonly inf: boolean;
-    readonly max: number | null;
-    readonly min: number | null;
+    readonly max: number | null | undefined;
+    readonly min: number | null | undefined;
     readonly nan: boolean;
     readonly ninf: boolean;
     readonly none: boolean;
     readonly path: string;
   } | {
     readonly __typename: "IntLightningResult";
-    readonly intMax: number | null;
-    readonly intMin: number | null;
+    readonly intMax: number | null | undefined;
+    readonly intMin: number | null | undefined;
     readonly none: boolean;
     readonly path: string;
   } | {
     readonly __typename: "ObjectIdLightningResult";
     readonly path: string;
-    readonly values: ReadonlyArray<string | null> | null;
+    readonly values: ReadonlyArray<string | null | undefined> | null | undefined;
   } | {
     readonly __typename: "StringLightningResult";
     readonly path: string;
-    readonly values: ReadonlyArray<string | null> | null;
+    readonly values: ReadonlyArray<string | null | undefined> | null | undefined;
   } | {
     // This will never be '%other', but we need some
     // value in case none of the concrete values match.
@@ -103,7 +102,7 @@ v2 = {
   "storageKey": null
 },
 v3 = [
-  (v1/*: any*/),
+  (v1/*:: as any*/),
   {
     "alias": null,
     "args": null,
@@ -137,7 +136,7 @@ v4 = [
       {
         "kind": "InlineFragment",
         "selections": [
-          (v1/*: any*/),
+          (v1/*:: as any*/),
           {
             "alias": null,
             "args": null,
@@ -145,7 +144,7 @@ v4 = [
             "name": "false",
             "storageKey": null
           },
-          (v2/*: any*/),
+          (v2/*:: as any*/),
           {
             "alias": null,
             "args": null,
@@ -160,7 +159,7 @@ v4 = [
       {
         "kind": "InlineFragment",
         "selections": [
-          (v1/*: any*/),
+          (v1/*:: as any*/),
           {
             "alias": "intMax",
             "args": null,
@@ -175,7 +174,7 @@ v4 = [
             "name": "min",
             "storageKey": null
           },
-          (v2/*: any*/)
+          (v2/*:: as any*/)
         ],
         "type": "IntLightningResult",
         "abstractKey": null
@@ -183,7 +182,7 @@ v4 = [
       {
         "kind": "InlineFragment",
         "selections": [
-          (v1/*: any*/),
+          (v1/*:: as any*/),
           {
             "alias": "dateMax",
             "args": null,
@@ -198,7 +197,7 @@ v4 = [
             "name": "min",
             "storageKey": null
           },
-          (v2/*: any*/)
+          (v2/*:: as any*/)
         ],
         "type": "DateLightningResult",
         "abstractKey": null
@@ -206,7 +205,7 @@ v4 = [
       {
         "kind": "InlineFragment",
         "selections": [
-          (v1/*: any*/),
+          (v1/*:: as any*/),
           {
             "alias": "datetimeMax",
             "args": null,
@@ -221,7 +220,7 @@ v4 = [
             "name": "min",
             "storageKey": null
           },
-          (v2/*: any*/)
+          (v2/*:: as any*/)
         ],
         "type": "DateTimeLightningResult",
         "abstractKey": null
@@ -229,7 +228,7 @@ v4 = [
       {
         "kind": "InlineFragment",
         "selections": [
-          (v1/*: any*/),
+          (v1/*:: as any*/),
           {
             "alias": null,
             "args": null,
@@ -265,20 +264,20 @@ v4 = [
             "name": "ninf",
             "storageKey": null
           },
-          (v2/*: any*/)
+          (v2/*:: as any*/)
         ],
         "type": "FloatLightningResult",
         "abstractKey": null
       },
       {
         "kind": "InlineFragment",
-        "selections": (v3/*: any*/),
+        "selections": (v3/*:: as any*/),
         "type": "ObjectIdLightningResult",
         "abstractKey": null
       },
       {
         "kind": "InlineFragment",
-        "selections": (v3/*: any*/),
+        "selections": (v3/*:: as any*/),
         "type": "StringLightningResult",
         "abstractKey": null
       }
@@ -288,20 +287,20 @@ v4 = [
 ];
 return {
   "fragment": {
-    "argumentDefinitions": (v0/*: any*/),
+    "argumentDefinitions": (v0/*:: as any*/),
     "kind": "Fragment",
     "metadata": null,
     "name": "lightningQuery",
-    "selections": (v4/*: any*/),
+    "selections": (v4/*:: as any*/),
     "type": "Query",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
-    "argumentDefinitions": (v0/*: any*/),
+    "argumentDefinitions": (v0/*:: as any*/),
     "kind": "Operation",
     "name": "lightningQuery",
-    "selections": (v4/*: any*/)
+    "selections": (v4/*:: as any*/)
   },
   "params": {
     "cacheID": "b35d938e78bd9e49d107c5edfbc86069",

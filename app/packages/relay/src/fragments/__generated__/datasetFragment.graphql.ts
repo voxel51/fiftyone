@@ -1,70 +1,69 @@
 /**
- * @generated SignedSource<<efe93d7a0e4876d79fad76678634dba5>>
+ * @generated SignedSource<<c41f01ce30618ce70a3b0ad864d53e73>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { Fragment, ReaderFragment } from 'relay-runtime';
+import { ReaderFragment } from 'relay-runtime';
 export type BrainRunType = "similarity" | "visualization" | "%future added value";
 import { FragmentRefs } from "relay-runtime";
 export type datasetFragment$data = {
   readonly appConfig: {
     readonly " $fragmentSpreads": FragmentRefs<"datasetAppConfigFragment">;
-  } | null;
+  } | null | undefined;
   readonly brainMethods: ReadonlyArray<{
     readonly config: {
       readonly cls: string;
-      readonly embeddingsField: string | null;
-      readonly maxK: number | null;
-      readonly method: string | null;
-      readonly model: string | null;
-      readonly numDims: number | null;
-      readonly patchesField: string | null;
-      readonly pointsField: string | null;
-      readonly supportsLeastSimilarity: boolean | null;
-      readonly supportsPrompts: boolean | null;
-      readonly type: BrainRunType | null;
-    } | null;
-    readonly error: string | null;
+      readonly embeddingsField: string | null | undefined;
+      readonly maxK: number | null | undefined;
+      readonly method: string | null | undefined;
+      readonly model: string | null | undefined;
+      readonly numDims: number | null | undefined;
+      readonly patchesField: string | null | undefined;
+      readonly pointsField: string | null | undefined;
+      readonly supportsLeastSimilarity: boolean | null | undefined;
+      readonly supportsPrompts: boolean | null | undefined;
+      readonly type: BrainRunType | null | undefined;
+    } | null | undefined;
+    readonly error: string | null | undefined;
     readonly key: string;
-    readonly ready: boolean | null;
-    readonly timestamp: number | null;
-    readonly version: string | null;
-    readonly viewStages: ReadonlyArray<string> | null;
-  }> | null;
-  readonly createdAt: number | null;
+    readonly ready: boolean | null | undefined;
+    readonly timestamp: number | null | undefined;
+    readonly version: string | null | undefined;
+    readonly viewStages: ReadonlyArray<string> | null | undefined;
+  }> | null | undefined;
+  readonly createdAt: number | null | undefined;
   readonly datasetId: string;
   readonly defaultMaskTargets: ReadonlyArray<{
     readonly target: string;
     readonly value: string;
-  }> | null;
+  }> | null | undefined;
   readonly defaultSkeleton: {
     readonly edges: ReadonlyArray<ReadonlyArray<number>>;
-    readonly labels: ReadonlyArray<string> | null;
-  } | null;
+    readonly labels: ReadonlyArray<string> | null | undefined;
+  } | null | undefined;
   readonly evaluations: ReadonlyArray<{
     readonly config: {
       readonly cls: string;
-      readonly gtField: string | null;
-      readonly predField: string | null;
-    } | null;
+      readonly gtField: string | null | undefined;
+      readonly predField: string | null | undefined;
+    } | null | undefined;
     readonly key: string;
-    readonly timestamp: number | null;
-    readonly version: string | null;
-    readonly viewStages: ReadonlyArray<string> | null;
-  }> | null;
-  readonly groupField: string | null;
+    readonly timestamp: number | null | undefined;
+    readonly version: string | null | undefined;
+    readonly viewStages: ReadonlyArray<string> | null | undefined;
+  }> | null | undefined;
+  readonly groupField: string | null | undefined;
   readonly groupMediaTypes: ReadonlyArray<{
     readonly mediaType: string;
     readonly name: string;
-  }> | null;
+  }> | null | undefined;
   readonly id: string;
-  readonly info: object | null;
-  readonly lastLoadedAt: number | null;
+  readonly info: object | null | undefined;
+  readonly lastLoadedAt: number | null | undefined;
   readonly maskTargets: ReadonlyArray<{
     readonly name: string;
     readonly targets: ReadonlyArray<{
@@ -72,16 +71,16 @@ export type datasetFragment$data = {
       readonly value: string;
     }>;
   }>;
-  readonly mediaSources: object | null;
-  readonly mediaType: string | null;
+  readonly mediaSources: object | null | undefined;
+  readonly mediaType: string | null | undefined;
   readonly name: string;
-  readonly parentMediaType: string | null;
+  readonly parentMediaType: string | null | undefined;
   readonly skeletons: ReadonlyArray<{
     readonly edges: ReadonlyArray<ReadonlyArray<number>>;
-    readonly labels: ReadonlyArray<string> | null;
+    readonly labels: ReadonlyArray<string> | null | undefined;
     readonly name: string;
   }>;
-  readonly version: string | null;
+  readonly version: string | null | undefined;
   readonly " $fragmentSpreads": FragmentRefs<"estimatedCountsFragment" | "frameFieldsFragment" | "groupSliceFragment" | "indexesFragment" | "mediaFieldsFragment" | "mediaTypeFragment" | "sampleFieldsFragment" | "sidebarGroupsFragment" | "viewFragment">;
   readonly " $fragmentType": "datasetFragment";
 };
@@ -225,8 +224,8 @@ return {
       "name": "mediaSources",
       "storageKey": null
     },
-    (v0/*: any*/),
-    (v1/*: any*/),
+    (v0/*:: as any*/),
+    (v1/*:: as any*/),
     {
       "alias": null,
       "args": null,
@@ -234,7 +233,7 @@ return {
       "name": "parentMediaType",
       "storageKey": null
     },
-    (v2/*: any*/),
+    (v2/*:: as any*/),
     {
       "alias": null,
       "args": null,
@@ -259,10 +258,10 @@ return {
       "name": "brainMethods",
       "plural": true,
       "selections": [
-        (v3/*: any*/),
-        (v2/*: any*/),
-        (v4/*: any*/),
-        (v5/*: any*/),
+        (v3/*:: as any*/),
+        (v2/*:: as any*/),
+        (v4/*:: as any*/),
+        (v5/*:: as any*/),
         {
           "alias": null,
           "args": null,
@@ -285,7 +284,7 @@ return {
           "name": "config",
           "plural": false,
           "selections": [
-            (v6/*: any*/),
+            (v6/*:: as any*/),
             {
               "alias": null,
               "args": null,
@@ -369,7 +368,7 @@ return {
       "kind": "LinkedField",
       "name": "defaultMaskTargets",
       "plural": true,
-      "selections": (v7/*: any*/),
+      "selections": (v7/*:: as any*/),
       "storageKey": null
     },
     {
@@ -380,8 +379,8 @@ return {
       "name": "defaultSkeleton",
       "plural": false,
       "selections": [
-        (v8/*: any*/),
-        (v9/*: any*/)
+        (v8/*:: as any*/),
+        (v9/*:: as any*/)
       ],
       "storageKey": null
     },
@@ -393,10 +392,10 @@ return {
       "name": "evaluations",
       "plural": true,
       "selections": [
-        (v3/*: any*/),
-        (v2/*: any*/),
-        (v4/*: any*/),
-        (v5/*: any*/),
+        (v3/*:: as any*/),
+        (v2/*:: as any*/),
+        (v4/*:: as any*/),
+        (v5/*:: as any*/),
         {
           "alias": null,
           "args": null,
@@ -405,7 +404,7 @@ return {
           "name": "config",
           "plural": false,
           "selections": [
-            (v6/*: any*/),
+            (v6/*:: as any*/),
             {
               "alias": null,
               "args": null,
@@ -434,8 +433,8 @@ return {
       "name": "groupMediaTypes",
       "plural": true,
       "selections": [
-        (v1/*: any*/),
-        (v0/*: any*/)
+        (v1/*:: as any*/),
+        (v0/*:: as any*/)
       ],
       "storageKey": null
     },
@@ -447,7 +446,7 @@ return {
       "name": "maskTargets",
       "plural": true,
       "selections": [
-        (v1/*: any*/),
+        (v1/*:: as any*/),
         {
           "alias": null,
           "args": null,
@@ -455,7 +454,7 @@ return {
           "kind": "LinkedField",
           "name": "targets",
           "plural": true,
-          "selections": (v7/*: any*/),
+          "selections": (v7/*:: as any*/),
           "storageKey": null
         }
       ],
@@ -469,9 +468,9 @@ return {
       "name": "skeletons",
       "plural": true,
       "selections": [
-        (v1/*: any*/),
-        (v8/*: any*/),
-        (v9/*: any*/)
+        (v1/*:: as any*/),
+        (v8/*:: as any*/),
+        (v9/*:: as any*/)
       ],
       "storageKey": null
     },

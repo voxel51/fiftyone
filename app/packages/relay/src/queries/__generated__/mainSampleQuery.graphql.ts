@@ -1,27 +1,26 @@
 /**
- * @generated SignedSource<<32602abe51d4e4ca24bed95a107912d8>>
+ * @generated SignedSource<<c65b1f107a3b9fe307fd102bf275d726>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { ConcreteRequest, Query } from 'relay-runtime';
+import { ConcreteRequest } from 'relay-runtime';
 export type SampleFilter = {
-  group?: GroupElementFilter | null;
-  id?: string | null;
+  group?: GroupElementFilter | null | undefined;
+  id?: string | null | undefined;
 };
 export type GroupElementFilter = {
-  id?: string | null;
-  slice?: string | null;
-  slices?: ReadonlyArray<string> | null;
+  id?: string | null | undefined;
+  slice?: string | null | undefined;
+  slices?: ReadonlyArray<string> | null | undefined;
 };
 export type mainSampleQuery$variables = {
   dataset: string;
   filter: SampleFilter;
-  filters?: object | null;
+  filters?: object | null | undefined;
   view: Array;
 };
 export type mainSampleQuery$data = {
@@ -32,7 +31,7 @@ export type mainSampleQuery$data = {
     readonly sample: object;
     readonly urls: ReadonlyArray<{
       readonly field: string;
-      readonly url: string | null;
+      readonly url: string | null | undefined;
     }>;
   } | {
     readonly __typename: "PointCloudSample";
@@ -41,7 +40,7 @@ export type mainSampleQuery$data = {
     readonly sample: object;
     readonly urls: ReadonlyArray<{
       readonly field: string;
-      readonly url: string | null;
+      readonly url: string | null | undefined;
     }>;
   } | {
     readonly __typename: "ThreeDSample";
@@ -50,7 +49,7 @@ export type mainSampleQuery$data = {
     readonly sample: object;
     readonly urls: ReadonlyArray<{
       readonly field: string;
-      readonly url: string | null;
+      readonly url: string | null | undefined;
     }>;
   } | {
     readonly __typename: "UnknownSample";
@@ -59,7 +58,7 @@ export type mainSampleQuery$data = {
     readonly sample: object;
     readonly urls: ReadonlyArray<{
       readonly field: string;
-      readonly url: string | null;
+      readonly url: string | null | undefined;
     }>;
   } | {
     readonly __typename: "VideoSample";
@@ -70,13 +69,13 @@ export type mainSampleQuery$data = {
     readonly sample: object;
     readonly urls: ReadonlyArray<{
       readonly field: string;
-      readonly url: string | null;
+      readonly url: string | null | undefined;
     }>;
   } | {
     // This will never be '%other', but we need some
     // value in case none of the concrete values match.
     readonly __typename: "%other";
-  } | null;
+  } | null | undefined;
 };
 export type mainSampleQuery = {
   response: mainSampleQuery$data;
@@ -151,10 +150,10 @@ v7 = {
   "storageKey": null
 },
 v8 = [
-  (v4/*: any*/),
-  (v5/*: any*/),
-  (v6/*: any*/),
-  (v7/*: any*/)
+  (v4/*:: as any*/),
+  (v5/*:: as any*/),
+  (v6/*:: as any*/),
+  (v7/*:: as any*/)
 ],
 v9 = [
   {
@@ -195,21 +194,21 @@ v9 = [
       },
       {
         "kind": "InlineFragment",
-        "selections": (v8/*: any*/),
+        "selections": (v8/*:: as any*/),
         "type": "ImageSample",
         "abstractKey": null
       },
       {
         "kind": "InlineFragment",
-        "selections": (v8/*: any*/),
+        "selections": (v8/*:: as any*/),
         "type": "PointCloudSample",
         "abstractKey": null
       },
       {
         "kind": "InlineFragment",
         "selections": [
-          (v4/*: any*/),
-          (v5/*: any*/),
+          (v4/*:: as any*/),
+          (v5/*:: as any*/),
           {
             "alias": null,
             "args": null,
@@ -224,21 +223,21 @@ v9 = [
             "name": "frameNumber",
             "storageKey": null
           },
-          (v6/*: any*/),
-          (v7/*: any*/)
+          (v6/*:: as any*/),
+          (v7/*:: as any*/)
         ],
         "type": "VideoSample",
         "abstractKey": null
       },
       {
         "kind": "InlineFragment",
-        "selections": (v8/*: any*/),
+        "selections": (v8/*:: as any*/),
         "type": "ThreeDSample",
         "abstractKey": null
       },
       {
         "kind": "InlineFragment",
-        "selections": (v8/*: any*/),
+        "selections": (v8/*:: as any*/),
         "type": "UnknownSample",
         "abstractKey": null
       }
@@ -249,29 +248,29 @@ v9 = [
 return {
   "fragment": {
     "argumentDefinitions": [
-      (v0/*: any*/),
-      (v1/*: any*/),
-      (v2/*: any*/),
-      (v3/*: any*/)
+      (v0/*:: as any*/),
+      (v1/*:: as any*/),
+      (v2/*:: as any*/),
+      (v3/*:: as any*/)
     ],
     "kind": "Fragment",
     "metadata": null,
     "name": "mainSampleQuery",
-    "selections": (v9/*: any*/),
+    "selections": (v9/*:: as any*/),
     "type": "Query",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
     "argumentDefinitions": [
-      (v0/*: any*/),
-      (v3/*: any*/),
-      (v1/*: any*/),
-      (v2/*: any*/)
+      (v0/*:: as any*/),
+      (v3/*:: as any*/),
+      (v1/*:: as any*/),
+      (v2/*:: as any*/)
     ],
     "kind": "Operation",
     "name": "mainSampleQuery",
-    "selections": (v9/*: any*/)
+    "selections": (v9/*:: as any*/)
   },
   "params": {
     "cacheID": "e9cc29f6cf93be9a0d1b8d9822cb4a9e",

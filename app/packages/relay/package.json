@@ -24,8 +24,6 @@
         "react": "catalog:",
         "recoil": "catalog:",
         "relay-compiler": "catalog:",
-        "relay-compiler-language-typescript": "^15.0.1",
-        "relay-config": "^12.0.1",
         "relay-runtime": "catalog:",
         "typescript": "catalog:",
         "vite": "catalog:"

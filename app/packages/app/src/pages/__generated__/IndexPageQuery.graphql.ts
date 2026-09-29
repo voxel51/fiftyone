@@ -1,20 +1,19 @@
 /**
- * @generated SignedSource<<c40a30869c367669a40e1e3f60ad11c5>>
+ * @generated SignedSource<<7ba0d3ab638de215552b097a590b9299>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { ConcreteRequest, Query } from 'relay-runtime';
+import { ConcreteRequest } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type ColorBy = "field" | "instance" | "value" | "%future added value";
 export type IndexPageQuery$variables = {
-  count?: number | null;
-  cursor?: string | null;
-  search?: string | null;
+  count?: number | null | undefined;
+  cursor?: string | null | undefined;
+  search?: string | null | undefined;
 };
 export type IndexPageQuery$data = {
   readonly allDatasets: number;
@@ -110,9 +109,9 @@ v9 = [
 return {
   "fragment": {
     "argumentDefinitions": [
-      (v0/*: any*/),
-      (v1/*: any*/),
-      (v2/*: any*/)
+      (v0/*:: as any*/),
+      (v1/*:: as any*/),
+      (v2/*:: as any*/)
     ],
     "kind": "Fragment",
     "metadata": null,
@@ -126,15 +125,15 @@ return {
         "name": "config",
         "plural": false,
         "selections": [
-          (v3/*: any*/),
-          (v4/*: any*/),
-          (v5/*: any*/),
-          (v6/*: any*/),
-          (v7/*: any*/)
+          (v3/*:: as any*/),
+          (v4/*:: as any*/),
+          (v5/*:: as any*/),
+          (v6/*:: as any*/),
+          (v7/*:: as any*/)
         ],
         "storageKey": null
       },
-      (v8/*: any*/),
+      (v8/*:: as any*/),
       {
         "args": null,
         "kind": "FragmentSpread",
@@ -152,9 +151,9 @@ return {
   "kind": "Request",
   "operation": {
     "argumentDefinitions": [
-      (v2/*: any*/),
-      (v0/*: any*/),
-      (v1/*: any*/)
+      (v2/*:: as any*/),
+      (v0/*:: as any*/),
+      (v1/*:: as any*/)
     ],
     "kind": "Operation",
     "name": "IndexPageQuery",
@@ -167,11 +166,11 @@ return {
         "name": "config",
         "plural": false,
         "selections": [
-          (v3/*: any*/),
-          (v4/*: any*/),
-          (v5/*: any*/),
-          (v6/*: any*/),
-          (v7/*: any*/),
+          (v3/*:: as any*/),
+          (v4/*:: as any*/),
+          (v5/*:: as any*/),
+          (v6/*:: as any*/),
+          (v7/*:: as any*/),
           {
             "alias": null,
             "args": null,
@@ -287,7 +286,7 @@ return {
         ],
         "storageKey": null
       },
-      (v8/*: any*/),
+      (v8/*:: as any*/),
       {
         "alias": null,
         "args": null,
@@ -325,7 +324,7 @@ return {
       },
       {
         "alias": null,
-        "args": (v9/*: any*/),
+        "args": (v9/*:: as any*/),
         "concreteType": "DatasetStrConnection",
         "kind": "LinkedField",
         "name": "datasets",
@@ -418,7 +417,7 @@ return {
       },
       {
         "alias": null,
-        "args": (v9/*: any*/),
+        "args": (v9/*:: as any*/),
         "filters": [
           "search"
         ],
@@ -427,7 +426,7 @@ return {
         "kind": "LinkedHandle",
         "name": "datasets"
       },
-      (v5/*: any*/)
+      (v5/*:: as any*/)
     ]
   },
   "params": {

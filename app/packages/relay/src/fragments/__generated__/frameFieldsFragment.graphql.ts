@@ -1,25 +1,24 @@
 /**
- * @generated SignedSource<<5e14b8684d241250dd05426f4159dcf1>>
+ * @generated SignedSource<<0aaaa5d5f8894e18995de73a4b8ec20b>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { Fragment, ReaderFragment } from 'relay-runtime';
+import { ReaderFragment } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type frameFieldsFragment$data = {
   readonly frameFields: ReadonlyArray<{
-    readonly dbField: string | null;
-    readonly description: string | null;
-    readonly embeddedDocType: string | null;
+    readonly dbField: string | null | undefined;
+    readonly description: string | null | undefined;
+    readonly embeddedDocType: string | null | undefined;
     readonly ftype: string;
-    readonly info: object | null;
+    readonly info: object | null | undefined;
     readonly path: string;
-    readonly subfield: string | null;
-  }> | null;
+    readonly subfield: string | null | undefined;
+  }> | null | undefined;
   readonly " $fragmentType": "frameFieldsFragment";
 };
 export type frameFieldsFragment$key = {

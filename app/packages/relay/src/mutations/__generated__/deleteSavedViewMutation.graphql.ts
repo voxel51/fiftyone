@@ -1,22 +1,21 @@
 /**
- * @generated SignedSource<<3e290d98eb9b0f8dcabed230f9c39003>>
+ * @generated SignedSource<<9c817d0133099b00832aee363281eeb0>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { ConcreteRequest, Mutation } from 'relay-runtime';
+import { ConcreteRequest } from 'relay-runtime';
 export type deleteSavedViewMutation$variables = {
-  datasetName?: string | null;
-  session?: string | null;
+  datasetName?: string | null | undefined;
+  session?: string | null | undefined;
   subscription: string;
   viewName: string;
 };
 export type deleteSavedViewMutation$data = {
-  readonly deleteSavedView: string | null;
+  readonly deleteSavedView: string | null | undefined;
 };
 export type deleteSavedViewMutation = {
   response: deleteSavedViewMutation$data;
@@ -77,29 +76,29 @@ v4 = [
 return {
   "fragment": {
     "argumentDefinitions": [
-      (v0/*: any*/),
-      (v1/*: any*/),
-      (v2/*: any*/),
-      (v3/*: any*/)
+      (v0/*:: as any*/),
+      (v1/*:: as any*/),
+      (v2/*:: as any*/),
+      (v3/*:: as any*/)
     ],
     "kind": "Fragment",
     "metadata": null,
     "name": "deleteSavedViewMutation",
-    "selections": (v4/*: any*/),
+    "selections": (v4/*:: as any*/),
     "type": "Mutation",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
     "argumentDefinitions": [
-      (v2/*: any*/),
-      (v1/*: any*/),
-      (v3/*: any*/),
-      (v0/*: any*/)
+      (v2/*:: as any*/),
+      (v1/*:: as any*/),
+      (v3/*:: as any*/),
+      (v0/*:: as any*/)
     ],
     "kind": "Operation",
     "name": "deleteSavedViewMutation",
-    "selections": (v4/*: any*/)
+    "selections": (v4/*:: as any*/)
   },
   "params": {
     "cacheID": "4ba96f75c5f2f30f1824a2aaf49fd7eb",

@@ -1,18 +1,17 @@
 /**
- * @generated SignedSource<<335b8f4c74cd303db10f0c6208e614da>>
+ * @generated SignedSource<<e7992e9bd44e189ead59a5fd2ac695c0>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { ConcreteRequest, Query } from 'relay-runtime';
+import { ConcreteRequest } from 'relay-runtime';
 export type Aggregate = {
-  count?: Count | null;
-  countValues?: CountValues | null;
-  histogramValues?: HistogramValues | null;
+  count?: Count | null | undefined;
+  countValues?: CountValues | null | undefined;
+  histogramValues?: HistogramValues | null | undefined;
 };
 export type Count = {
   field: string;
@@ -112,27 +111,27 @@ v3 = [
 return {
   "fragment": {
     "argumentDefinitions": [
-      (v0/*: any*/),
-      (v1/*: any*/),
-      (v2/*: any*/)
+      (v0/*:: as any*/),
+      (v1/*:: as any*/),
+      (v2/*:: as any*/)
     ],
     "kind": "Fragment",
     "metadata": null,
     "name": "aggregateQuery",
-    "selections": (v3/*: any*/),
+    "selections": (v3/*:: as any*/),
     "type": "Query",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
     "argumentDefinitions": [
-      (v1/*: any*/),
-      (v2/*: any*/),
-      (v0/*: any*/)
+      (v1/*:: as any*/),
+      (v2/*:: as any*/),
+      (v0/*:: as any*/)
     ],
     "kind": "Operation",
     "name": "aggregateQuery",
-    "selections": (v3/*: any*/)
+    "selections": (v3/*:: as any*/)
   },
   "params": {
     "cacheID": "811d48ee6fc58f0fb885944a0d758b25",

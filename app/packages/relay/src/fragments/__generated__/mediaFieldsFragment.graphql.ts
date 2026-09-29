@@ -1,22 +1,21 @@
 /**
- * @generated SignedSource<<04b7313af6c823a25d93c822f2e9f8eb>>
+ * @generated SignedSource<<ed1fe3e5f720839e2d13a459097002c0>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { Fragment, ReaderFragment } from 'relay-runtime';
+import { ReaderFragment } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type mediaFieldsFragment$data = {
   readonly appConfig: {
     readonly gridMediaField: string;
     readonly mediaFallback: boolean;
-    readonly mediaFields: ReadonlyArray<string> | null;
+    readonly mediaFields: ReadonlyArray<string> | null | undefined;
     readonly modalMediaField: string;
-  } | null;
+  } | null | undefined;
   readonly name: string;
   readonly sampleFields: ReadonlyArray<{
     readonly path: string;

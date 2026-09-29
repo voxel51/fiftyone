@@ -1,17 +1,16 @@
 /**
- * @generated SignedSource<<df98c751611c995dbe42ded64d84fb20>>
+ * @generated SignedSource<<baea2066fdebab43ec0365314966a807>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { ConcreteRequest, Mutation } from 'relay-runtime';
+import { ConcreteRequest } from 'relay-runtime';
 export type searchSelectFieldsMutation$variables = {
   datasetName: string;
-  metaFilter?: object | null;
+  metaFilter?: object | null | undefined;
 };
 export type searchSelectFieldsMutation$data = {
   readonly searchSelectFields: ReadonlyArray<string>;
@@ -56,20 +55,20 @@ v1 = [
 ];
 return {
   "fragment": {
-    "argumentDefinitions": (v0/*: any*/),
+    "argumentDefinitions": (v0/*:: as any*/),
     "kind": "Fragment",
     "metadata": null,
     "name": "searchSelectFieldsMutation",
-    "selections": (v1/*: any*/),
+    "selections": (v1/*:: as any*/),
     "type": "Mutation",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
-    "argumentDefinitions": (v0/*: any*/),
+    "argumentDefinitions": (v0/*:: as any*/),
     "kind": "Operation",
     "name": "searchSelectFieldsMutation",
-    "selections": (v1/*: any*/)
+    "selections": (v1/*:: as any*/)
   },
   "params": {
     "cacheID": "563c5fb8729433da04289cddf9fd098d",

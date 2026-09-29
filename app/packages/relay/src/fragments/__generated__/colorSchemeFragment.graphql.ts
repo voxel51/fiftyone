@@ -1,71 +1,70 @@
 /**
- * @generated SignedSource<<d2236f5310861d0e081b7574ae239c08>>
+ * @generated SignedSource<<91ba239e2c3d4d2548fe6883d2b50056>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
 /* eslint-disable */
 // @ts-nocheck
 
-import { Fragment, ReaderFragment } from 'relay-runtime';
+import { ReaderFragment } from 'relay-runtime';
 export type ColorBy = "field" | "instance" | "value" | "%future added value";
 import { FragmentRefs } from "relay-runtime";
 export type colorSchemeFragment$data = {
-  readonly colorBy: ColorBy | null;
-  readonly colorPool: ReadonlyArray<string> | null;
+  readonly colorBy: ColorBy | null | undefined;
+  readonly colorPool: ReadonlyArray<string> | null | undefined;
   readonly colorscales: ReadonlyArray<{
     readonly list: ReadonlyArray<{
       readonly color: string;
       readonly value: number;
-    }> | null;
-    readonly name: string | null;
+    }> | null | undefined;
+    readonly name: string | null | undefined;
     readonly path: string;
-    readonly rgb: ReadonlyArray<ReadonlyArray<number>> | null;
-  }> | null;
+    readonly rgb: ReadonlyArray<ReadonlyArray<number>> | null | undefined;
+  }> | null | undefined;
   readonly defaultColorscale: {
     readonly list: ReadonlyArray<{
       readonly color: string;
       readonly value: number;
-    }> | null;
-    readonly name: string | null;
-    readonly rgb: ReadonlyArray<ReadonlyArray<number>> | null;
-  } | null;
+    }> | null | undefined;
+    readonly name: string | null | undefined;
+    readonly rgb: ReadonlyArray<ReadonlyArray<number>> | null | undefined;
+  } | null | undefined;
   readonly defaultMaskTargetsColors: ReadonlyArray<{
     readonly color: string;
     readonly intTarget: number;
-  }> | null;
+  }> | null | undefined;
   readonly fields: ReadonlyArray<{
-    readonly colorByAttribute: string | null;
-    readonly fieldColor: string | null;
+    readonly colorByAttribute: string | null | undefined;
+    readonly fieldColor: string | null | undefined;
     readonly maskTargetsColors: ReadonlyArray<{
       readonly color: string;
       readonly intTarget: number;
-    }> | null;
+    }> | null | undefined;
     readonly path: string;
     readonly valueColors: ReadonlyArray<{
       readonly color: string;
       readonly value: string;
-    }> | null;
-  }> | null;
+    }> | null | undefined;
+  }> | null | undefined;
   readonly id: string;
   readonly labelTags: {
-    readonly fieldColor: string | null;
+    readonly fieldColor: string | null | undefined;
     readonly valueColors: ReadonlyArray<{
       readonly color: string;
       readonly value: string;
-    }> | null;
-  } | null;
-  readonly multicolorKeypoints: boolean | null;
-  readonly opacity: number | null;
-  readonly showSkeletons: boolean | null;
+    }> | null | undefined;
+  } | null | undefined;
+  readonly multicolorKeypoints: boolean | null | undefined;
+  readonly opacity: number | null | undefined;
+  readonly showSkeletons: boolean | null | undefined;
   readonly temporalTags: {
-    readonly fieldColor: string | null;
+    readonly fieldColor: string | null | undefined;
     readonly valueColors: ReadonlyArray<{
       readonly color: string;
       readonly value: string;
-    }> | null;
-  } | null;
+    }> | null | undefined;
+  } | null | undefined;
   readonly " $fragmentType": "colorSchemeFragment";
 };
 export type colorSchemeFragment$key = {
@@ -103,14 +102,14 @@ v3 = {
   "name": "valueColors",
   "plural": true,
   "selections": [
-    (v1/*: any*/),
-    (v2/*: any*/)
+    (v1/*:: as any*/),
+    (v2/*:: as any*/)
   ],
   "storageKey": null
 },
 v4 = [
-  (v0/*: any*/),
-  (v3/*: any*/)
+  (v0/*:: as any*/),
+  (v3/*:: as any*/)
 ],
 v5 = [
   {
@@ -120,7 +119,7 @@ v5 = [
     "name": "intTarget",
     "storageKey": null
   },
-  (v1/*: any*/)
+  (v1/*:: as any*/)
 ],
 v6 = {
   "alias": null,
@@ -137,8 +136,8 @@ v7 = {
   "name": "list",
   "plural": true,
   "selections": [
-    (v2/*: any*/),
-    (v1/*: any*/)
+    (v2/*:: as any*/),
+    (v1/*:: as any*/)
   ],
   "storageKey": null
 },
@@ -211,7 +210,7 @@ return {
       "kind": "LinkedField",
       "name": "labelTags",
       "plural": false,
-      "selections": (v4/*: any*/),
+      "selections": (v4/*:: as any*/),
       "storageKey": null
     },
     {
@@ -221,7 +220,7 @@ return {
       "kind": "LinkedField",
       "name": "temporalTags",
       "plural": false,
-      "selections": (v4/*: any*/),
+      "selections": (v4/*:: as any*/),
       "storageKey": null
     },
     {
@@ -231,7 +230,7 @@ return {
       "kind": "LinkedField",
       "name": "defaultMaskTargetsColors",
       "plural": true,
-      "selections": (v5/*: any*/),
+      "selections": (v5/*:: as any*/),
       "storageKey": null
     },
     {
@@ -242,9 +241,9 @@ return {
       "name": "defaultColorscale",
       "plural": false,
       "selections": [
-        (v6/*: any*/),
-        (v7/*: any*/),
-        (v8/*: any*/)
+        (v6/*:: as any*/),
+        (v7/*:: as any*/),
+        (v8/*:: as any*/)
       ],
       "storageKey": null
     },
@@ -256,10 +255,10 @@ return {
       "name": "colorscales",
       "plural": true,
       "selections": [
-        (v9/*: any*/),
-        (v6/*: any*/),
-        (v7/*: any*/),
-        (v8/*: any*/)
+        (v9/*:: as any*/),
+        (v6/*:: as any*/),
+        (v7/*:: as any*/),
+        (v8/*:: as any*/)
       ],
       "storageKey": null
     },
@@ -278,9 +277,9 @@ return {
           "name": "colorByAttribute",
           "storageKey": null
         },
-        (v0/*: any*/),
-        (v9/*: any*/),
-        (v3/*: any*/),
+        (v0/*:: as any*/),
+        (v9/*:: as any*/),
+        (v3/*:: as any*/),
         {
           "alias": null,
           "args": null,
@@ -288,7 +287,7 @@ return {
           "kind": "LinkedField",
           "name": "maskTargetsColors",
           "plural": true,
-          "selections": (v5/*: any*/),
+          "selections": (v5/*:: as any*/),
           "storageKey": null
         }
       ],
