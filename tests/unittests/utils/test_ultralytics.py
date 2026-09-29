@@ -1069,6 +1069,21 @@ class TestToHeatmaps:
         np.testing.assert_array_equal(heatmap.map, [[0.0, 0.0]])
         assert heatmap.max_depth == 0.0
 
+    def test_non_finite_pixels(self):
+        from fiftyone.utils.ultralytics import to_heatmaps
+
+        nan, inf = float("nan"), float("inf")
+        heatmap = to_heatmaps(_depth_result([[1.0, nan], [inf, 4.0]]))
+
+        assert heatmap.map.dtype == np.float32
+        np.testing.assert_allclose(heatmap.map, [[0.25, 0.0], [0.0, 1.0]])
+        assert heatmap.max_depth == pytest.approx(4.0)
+
+        heatmap = to_heatmaps(_depth_result([[nan, -inf]]))
+
+        np.testing.assert_array_equal(heatmap.map, [[0.0, 0.0]])
+        assert heatmap.max_depth == 0.0
+
     def test_result_without_depth(self):
         from fiftyone.utils.ultralytics import to_heatmaps
 

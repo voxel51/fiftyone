@@ -512,8 +512,9 @@ def to_heatmaps(results):
     """Converts ``ultralytics.YOLO`` depth maps to FiftyOne format.
 
     The depth models predict metric depth in meters. Each map is divided by
-    its maximum, which is stored in the heatmap's ``max_depth`` attribute, so
-    ``heatmap.map * heatmap.max_depth`` is the depth in meters.
+    its largest finite value, which is stored in the heatmap's ``max_depth``
+    attribute, so ``heatmap.map * heatmap.max_depth`` is the depth in meters.
+    Non-finite pixels are set to 0.
 
     Args:
         results: a single or list of ``ultralytics.engine.results.Results``
@@ -539,9 +540,10 @@ def _to_heatmap(result):
         return None
 
     depth = depth.data.detach().cpu().numpy().astype(np.float32)
-    max_depth = float(depth.max()) if depth.size else 0.0
+    finite = np.isfinite(depth)
+    max_depth = float(depth[finite].max()) if finite.any() else 0.0
     if max_depth > 0:
-        depth = depth / max_depth
+        depth = np.where(finite, depth, 0.0) / max_depth
     else:
         depth = np.zeros_like(depth)
 
