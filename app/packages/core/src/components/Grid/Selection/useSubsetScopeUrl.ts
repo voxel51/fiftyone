@@ -6,11 +6,9 @@ import {
   viewConversion,
   type SelectionBoundary,
 } from "@fiftyone/state/src/selection";
+import { locationBridge, useLocationParam } from "@fiftyone/location";
 import { useEffect, useRef } from "react";
-import {
-  useUrlSearch,
-  writeUrlSearch,
-} from "../../../url/useUrlSearchSubscription";
+import { subsetParam, subsetScopeParam } from "./subsetParams";
 import { useOpenSubset } from "./useSubsetScope";
 
 type Scope = Pick<SelectionBoundary, "subsetId" | "subsetScope">;
@@ -55,15 +53,15 @@ function persist(datasetId: string, scope: Scope) {
   } catch {
     // The URL and in-memory scope still work when storage is unavailable.
   }
-  const params = new URLSearchParams(window.location.search);
-  params.delete("subset");
-  params.delete("subsetScope");
-  if (scope.subsetId) {
-    params.set("subset", scope.subsetId);
-    if (scope.subsetScope === "segments") params.set("subsetScope", "segments");
+  const location = locationBridge.current();
+  const subsetScope = scope.subsetId
+    ? (scope.subsetScope ?? "episodes")
+    : "episodes";
+  if (location.read(subsetParam) !== scope.subsetId) {
+    location.write(subsetParam, scope.subsetId);
   }
-  if (params.toString() !== window.location.search.replace(/^\?/, "")) {
-    writeUrlSearch(params.toString());
+  if (location.read(subsetScopeParam) !== subsetScope) {
+    location.write(subsetScopeParam, subsetScope);
   }
 }
 
@@ -85,7 +83,8 @@ export function useSubsetScopeUrl() {
   const { datasetId, domainId, enabled } = useGridSelectionDataset();
   const [boundary, setBoundary] = useSelectionBoundary(domainId);
   const openSubset = useOpenSubset(datasetId);
-  const search = useUrlSearch();
+  const [urlSubset] = useLocationParam(subsetParam);
+  const [urlSubsetScope] = useLocationParam(subsetScopeParam);
   const previous = useRef<SyncedScope | null>(null);
   const transitioning = useRef<{
     datasetId: string;
@@ -114,13 +113,8 @@ export function useSubsetScopeUrl() {
       transitioning.current = null;
       return;
     }
-    const params = new URLSearchParams(window.location.search);
-    const fromUrl: Scope = params.get("subset")
-      ? {
-          subsetId: params.get("subset")!,
-          subsetScope:
-            params.get("subsetScope") === "segments" ? "segments" : "episodes",
-        }
+    const fromUrl: Scope = urlSubset
+      ? { subsetId: urlSubset, subsetScope: urlSubsetScope }
       : {};
     const current = { subsetId, subsetScope };
     const next: SyncedScope = {
@@ -161,7 +155,8 @@ export function useSubsetScopeUrl() {
 
     if (entering || navigating) {
       const remembered = entering ? readPreference(datasetId) : {};
-      const desired = entering && !params.has("subset") ? remembered : fromUrl;
+      const desired =
+        entering && urlSubset === undefined ? remembered : fromUrl;
       const restoring = entering && scopeKey(remembered) === scopeKey(desired);
       const request = ++revision.current;
       if (scopeKey(desired) === next.scope) {
@@ -227,7 +222,8 @@ export function useSubsetScopeUrl() {
     boundary,
     subsetId,
     subsetScope,
-    search,
+    urlSubset,
+    urlSubsetScope,
     openSubset,
     setBoundary,
   ]);

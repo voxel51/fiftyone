@@ -20,6 +20,9 @@ const strip = (pathname: string, proxy: string) =>
     ? `/${pathname.slice(proxy.length)}`.replace("//", "/")
     : pathname;
 
+// a fragment is the page's, not the location's, so a write keeps it
+const withHash = (href: string, hash: string) => `${href}${hash}`;
+
 const restore = (href: string, proxy: string) => {
   if (!proxy) return href;
   const [path, query] = href.split("?");
@@ -47,14 +50,20 @@ export const historyAdapter = (history: History): Adapter => ({
 
   push(href) {
     history.push(
-      restore(href, prefix(history.location.search)),
+      withHash(
+        restore(href, prefix(history.location.search)),
+        history.location.hash,
+      ),
       carried(history),
     );
   },
 
   replace(href) {
     history.replace(
-      restore(href, prefix(history.location.search)),
+      withHash(
+        restore(href, prefix(history.location.search)),
+        history.location.hash,
+      ),
       carried(history),
     );
   },

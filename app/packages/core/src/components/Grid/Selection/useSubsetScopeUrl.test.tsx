@@ -1,5 +1,11 @@
+import {
+  type Adapter,
+  createLocationStore,
+  LocationProvider,
+  locationBridge,
+} from "@fiftyone/location";
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
-import { useState } from "react";
+import React, { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   SavedSubset,
@@ -32,9 +38,47 @@ vi.mock("./useSubsetScope", () => ({
 import { useSubsetScopeUrl } from "./useSubsetScopeUrl";
 
 const preference = (id = "dataset-a") => `fiftyone:grid-scope:${id}`;
-const navigate = (query: string, path = "/datasets/a") => {
-  window.history.replaceState(window.history.state, "", `${path}${query}`);
+
+// the window's URL behind a location store, as the App wires it
+const listeners = new Set<() => void>();
+const notify = () => listeners.forEach((listener) => listener());
+const windowAdapter: Adapter = {
+  get: () => `${window.location.pathname}${window.location.search}`,
+  push: (href) => {
+    window.history.pushState(
+      window.history.state,
+      "",
+      href + window.location.hash,
+    );
+    notify();
+  },
+  replace: (href) => {
+    window.history.replaceState(
+      window.history.state,
+      "",
+      href + window.location.hash,
+    );
+    notify();
+  },
+  subscribe: (listener) => {
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+  },
 };
+window.addEventListener("popstate", notify);
+const store = createLocationStore(windowAdapter, {
+  parse: (path: string) => path,
+  format: (path: string) => path,
+  scopes: (path: string) => ({ dataset: path }),
+});
+locationBridge.attach(store);
+const wrapper = ({ children }: React.PropsWithChildren) => (
+  <LocationProvider store={store}>{children}</LocationProvider>
+);
+const mount = () => renderHook(useSubsetScopeUrl, { wrapper });
+
+const navigate = (query: string, path = "/datasets/a") =>
+  windowAdapter.replace(`${path}${query}`);
 
 beforeEach(() => {
   localStorage.clear();
@@ -57,7 +101,7 @@ describe("saved subset scope URL and preferences", () => {
       preference(),
       JSON.stringify({ subsetId: "one", subsetScope: "segments" }),
     );
-    renderHook(useSubsetScopeUrl);
+    mount();
     await waitFor(() => expect(boundary.subsetId).toBe("one"));
     expect(boundary.subsetScope).toBe("segments");
     expect(window.location.search).toBe("?subset=one&subsetScope=segments");
@@ -67,14 +111,14 @@ describe("saved subset scope URL and preferences", () => {
   it("lets an explicit URL win over storage, including an explicit all-samples link", async () => {
     localStorage.setItem(preference(), JSON.stringify({ subsetId: "old" }));
     navigate("?subset=linked");
-    const hook = renderHook(useSubsetScopeUrl);
+    const hook = mount();
     await waitFor(() => expect(boundary.subsetId).toBe("linked"));
     expect(JSON.parse(localStorage.getItem(preference())!).subsetId).toBe(
       "linked",
     );
     hook.unmount();
     navigate("?subset=");
-    renderHook(useSubsetScopeUrl);
+    mount();
     expect(boundary.subsetId).toBeUndefined();
     expect(localStorage.getItem(preference())).toBeNull();
   });
@@ -82,7 +126,7 @@ describe("saved subset scope URL and preferences", () => {
   it("writes scope commands and clears both URL and preference for All samples", () => {
     navigate("?id=sample&schemaManager=open#anchor");
     window.history.replaceState({ marker: "keep" }, "");
-    renderHook(useSubsetScopeUrl);
+    mount();
     act(() =>
       setBoundary({
         subsetId: "two",
@@ -105,7 +149,7 @@ describe("saved subset scope URL and preferences", () => {
   });
 
   it("reacts to URL changes and removal without restoring the old preference", async () => {
-    renderHook(useSubsetScopeUrl);
+    mount();
     act(() => navigate("?subset=one"));
     await waitFor(() => expect(boundary.subsetId).toBe("one"));
     act(() => navigate("?subset=two&subsetScope=segments"));
@@ -117,9 +161,9 @@ describe("saved subset scope URL and preferences", () => {
 
   it("restores scopes on browser back and forward", async () => {
     navigate("?subset=one");
-    renderHook(useSubsetScopeUrl);
+    mount();
     await waitFor(() => expect(boundary.subsetId).toBe("one"));
-    act(() => window.history.pushState({}, "", "?subset=two"));
+    act(() => windowAdapter.push("/datasets/a?subset=two"));
     await waitFor(() => expect(boundary.subsetId).toBe("two"));
     act(() => window.history.back());
     await waitFor(() => expect(boundary.subsetId).toBe("one"));
@@ -128,7 +172,7 @@ describe("saved subset scope URL and preferences", () => {
   });
 
   it("does not reopen or clear captures when only the modal URL changes", () => {
-    renderHook(useSubsetScopeUrl);
+    mount();
     act(() => setBoundary({ subsetId: "one" }));
     act(() => navigate("?subset=one&id=sample"));
     expect(mocks.openSubset).not.toHaveBeenCalled();
@@ -140,7 +184,7 @@ describe("saved subset scope URL and preferences", () => {
       preference("dataset-b"),
       JSON.stringify({ subsetId: "in-b" }),
     );
-    const { rerender } = renderHook(useSubsetScopeUrl);
+    const { rerender } = mount();
     act(() => setBoundary({ subsetId: "in-a" }));
     act(() => navigate("", "/datasets/b"));
     expect(boundary.subsetId).toBe("in-a");
@@ -164,7 +208,7 @@ describe("saved subset scope URL and preferences", () => {
     ];
     mocks.getSubset.mockResolvedValue({ id: "patches", view });
     navigate("?subset=patches");
-    renderHook(useSubsetScopeUrl);
+    mount();
     await waitFor(() =>
       expect(mocks.openSubset).toHaveBeenCalledWith(
         "patches",
@@ -176,7 +220,7 @@ describe("saved subset scope URL and preferences", () => {
   });
 
   it("clears scope when switching to an unscoped conversion domain", () => {
-    const { rerender } = renderHook(useSubsetScopeUrl);
+    const { rerender } = mount();
     act(() => setBoundary({ subsetId: "one" }));
     act(() => {
       mocks.domainId = "dataset-a|clips";
@@ -192,7 +236,7 @@ describe("saved subset scope URL and preferences", () => {
     mocks.getSubset.mockResolvedValue({ id: "patches", view });
     mocks.openSubset.mockImplementation(() => undefined);
     localStorage.setItem(preference(), JSON.stringify({ subsetId: "patches" }));
-    const { rerender } = renderHook(useSubsetScopeUrl);
+    const { rerender } = mount();
     await waitFor(() => expect(mocks.openSubset).toHaveBeenCalled());
     rerender();
     expect(window.location.search).toBe("?subset=patches");
@@ -216,7 +260,7 @@ describe("saved subset scope URL and preferences", () => {
         }),
     );
     navigate("?subset=slow");
-    renderHook(useSubsetScopeUrl);
+    mount();
     act(() => navigate("?subset=fast"));
     await waitFor(() => expect(boundary.subsetId).toBe("fast"));
     await act(async () =>
@@ -235,7 +279,7 @@ describe("saved subset scope URL and preferences", () => {
   it("keeps unavailable subset links identifiable and escapable", async () => {
     mocks.getSubset.mockRejectedValue(new Error("Missing subset"));
     navigate("?subset=missing");
-    renderHook(useSubsetScopeUrl);
+    mount();
     await waitFor(() => expect(boundary.subsetId).toBe("missing"));
     act(() => setBoundary({}));
     expect(window.location.search).toBe("");
@@ -250,7 +294,7 @@ describe("saved subset scope URL and preferences", () => {
         }),
     );
     navigate("?subset=slow");
-    renderHook(useSubsetScopeUrl);
+    mount();
     act(() => setBoundary({}));
     await act(async () =>
       resolve({
@@ -267,7 +311,7 @@ describe("saved subset scope URL and preferences", () => {
 
   it("tolerates malformed and blocked local storage", async () => {
     localStorage.setItem(preference(), "{invalid");
-    const hook = renderHook(useSubsetScopeUrl);
+    const hook = mount();
     expect(boundary).toEqual({});
     hook.unmount();
     vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
@@ -277,7 +321,7 @@ describe("saved subset scope URL and preferences", () => {
       throw new Error("blocked");
     });
     navigate("?subset=linked");
-    renderHook(useSubsetScopeUrl);
+    mount();
     await waitFor(() => expect(boundary.subsetId).toBe("linked"));
     expect(window.location.search).toBe("?subset=linked");
   });
