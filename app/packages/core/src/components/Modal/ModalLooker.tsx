@@ -1,4 +1,5 @@
 import { useTheme } from "@fiftyone/components";
+import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import type { ImageLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { VideoAnnotationSurface } from "@fiftyone/video-annotation";
@@ -9,6 +10,7 @@ import { ImaVidLookerReact } from "./ImaVidLooker";
 import { LighterSampleRenderer } from "./Lighter/LighterSampleRenderer";
 import { ModalSampleRenderer } from "./ModalSampleRenderer";
 import { VideoLookerSurface } from "./VideoLookerSurface";
+import { VideoTimelineSurface } from "./VideoTimelineSurface";
 import useLooker from "./use-looker";
 import { useImageModalSelectiveRendering } from "./use-modal-selective-rendering";
 
@@ -85,6 +87,11 @@ const ModalLookerContent = React.memo(
     sampleTransitioning?: boolean;
   }) => {
     const mode = useAtomValue(fos.modalMode);
+    // Off until the flag resolves enabled, so the default path renders the
+    // looker on the first paint and never swaps surfaces.
+    const { isEnabled: lighterVideoExplore } = useFeature({
+      feature: FeatureFlag.VFF_LIGHTER_VIDEO_EXPLORE,
+    });
     const shouldRenderImavid = useRecoilValue(
       fos.shouldRenderImaVidLooker(true),
     );
@@ -118,6 +125,16 @@ const ModalLookerContent = React.memo(
     if (isVideo) {
       if (isAnnotate) {
         return <VideoAnnotationSurface sample={sample} />;
+      }
+      // The Lighter surface is not yet the default: it is reached only with
+      // `VFF_LIGHTER_VIDEO_EXPLORE` set.
+      if (lighterVideoExplore) {
+        return (
+          <VideoTimelineSurface
+            sample={sample}
+            videoPath={selectedMedia.selectedMediaPath}
+          />
+        );
       }
       return <VideoLookerSurface sample={sample} />;
     }
