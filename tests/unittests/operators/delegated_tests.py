@@ -8,6 +8,13 @@ FiftyOne delegated operator related unit tests.
 
 import asyncio
 import copy
+import multiprocessing
+import os
+import signal
+import subprocess
+import sys
+import textwrap
+import threading
 import time
 import unittest
 from unittest import mock
@@ -33,8 +40,10 @@ from fiftyone.operators.executor import (
     ExecutionContext,
     ExecutionResult,
     ExecutionRunState,
+    OperationTerminated,
     PipelineExecutionContext,
 )
+import fiftyone.core.utils as fou
 from fiftyone.operators.operator import Operator, OperatorConfig
 from fiftyone.operators.types import Pipeline, PipelineRunInfo, PipelineStage
 
@@ -2540,3 +2549,365 @@ class TestPipelineRequestParamsOverrides(unittest.TestCase):
             doc.pipeline.stages[1].request_params_overrides,
             {"view_name": "export_view"},
         )
+
+
+def _send_sigterm_to_self():
+    os.kill(os.getpid(), signal.SIGTERM)
+
+
+def _noop_handler(signum, frame):
+    pass
+
+
+class DelegatedOperationTerminationTests(unittest.TestCase):
+    """SIGTERM handling for delegated operations; needs no database."""
+
+    TERMINATED_ERROR = "Operation terminated by signal SIGTERM"
+
+    def setUp(self):
+        self.original_handler = signal.getsignal(signal.SIGTERM)
+        # The sync path ends the process after recording a termination
+        terminate_patcher = patch.object(
+            delegated, "_terminate_worker_process"
+        )
+        self.mock_terminate = terminate_patcher.start()
+        self.addCleanup(terminate_patcher.stop)
+
+    def tearDown(self):
+        signal.signal(signal.SIGTERM, self.original_handler)
+
+    def _make_service(self):
+        svc = DelegatedOperationService(repo=mock.MagicMock())
+        svc.set_completed = mock.MagicMock(return_value=mock.MagicMock())
+        svc.set_failed = mock.MagicMock(return_value=mock.MagicMock())
+        return svc
+
+    def _make_operation(self):
+        operation = mock.MagicMock()
+        operation.id = ObjectId()
+        operation.parent_id = None
+        return operation
+
+    def _assert_failed_terminated(self, svc, operation, result):
+        self.assertEqual(result.error, self.TERMINATED_ERROR)
+        svc.set_completed.assert_not_called()
+        svc.set_failed.assert_called_once()
+        kwargs = svc.set_failed.call_args.kwargs
+        self.assertEqual(kwargs["doc_id"], operation.id)
+        self.assertEqual(kwargs["result"].error, self.TERMINATED_ERROR)
+        self.assertEqual(kwargs["required_state"], ExecutionRunState.RUNNING)
+        self.mock_terminate.assert_called_once_with(
+            operation.id, exit_code=128 + signal.SIGTERM
+        )
+
+    def test_terminated_result(self):
+        result = delegated._terminated_result(signal.SIGTERM)
+        self.assertIsInstance(result, ExecutionResult)
+        self.assertEqual(result.error, self.TERMINATED_ERROR)
+
+    def test_operation_terminated_is_not_an_exception(self):
+        self.assertTrue(issubclass(OperationTerminated, BaseException))
+        self.assertFalse(issubclass(OperationTerminated, Exception))
+        self.assertEqual(OperationTerminated(signal.SIGTERM).signum, 15)
+
+    def test_raise_on_sigterm_installs_and_restores_handler(self):
+        previous_calls = []
+
+        def previous(signum, frame):
+            previous_calls.append(signum)
+
+        signal.signal(signal.SIGTERM, previous)
+
+        with delegated._raise_on_sigterm():
+            self.assertIsNot(signal.getsignal(signal.SIGTERM), previous)
+            with self.assertRaises(OperationTerminated) as cm:
+                _send_sigterm_to_self()
+                time.sleep(1)
+            self.assertEqual(cm.exception.signum, signal.SIGTERM)
+
+        self.assertIs(signal.getsignal(signal.SIGTERM), previous)
+        self.assertEqual(previous_calls, [])
+
+    def test_raise_on_sigterm_restores_handler_on_error(self):
+        previous = _noop_handler
+        signal.signal(signal.SIGTERM, previous)
+
+        with self.assertRaises(ValueError):
+            with delegated._raise_on_sigterm():
+                raise ValueError()
+
+        self.assertIs(signal.getsignal(signal.SIGTERM), previous)
+
+    def test_handlers_are_noops_off_main_thread(self):
+        previous = _noop_handler
+        signal.signal(signal.SIGTERM, previous)
+        seen = []
+        errors = []
+
+        def run():
+            try:
+                with delegated._raise_on_sigterm():
+                    seen.append(signal.getsignal(signal.SIGTERM))
+                with delegated._forward_sigterm(mock.MagicMock(), 1):
+                    seen.append(signal.getsignal(signal.SIGTERM))
+            except BaseException as e:  # pylint: disable=broad-except
+                errors.append(e)
+
+        thread = threading.Thread(target=run)
+        thread.start()
+        thread.join()
+
+        self.assertEqual(errors, [])
+        self.assertEqual(seen, [previous, previous])
+        self.assertIs(signal.getsignal(signal.SIGTERM), previous)
+
+    def test_sync_path_marks_async_operator_terminated(self):
+        svc = self._make_service()
+        operation = self._make_operation()
+
+        async def execute(_):
+            _send_sigterm_to_self()
+            await asyncio.sleep(5)
+            return ExecutionResult(result={"ran": "to completion"})
+
+        svc._execute_operator = execute
+        result = svc._execute_operation_sync(operation)
+
+        self._assert_failed_terminated(svc, operation, result)
+        self.assertIs(signal.getsignal(signal.SIGTERM), self.original_handler)
+
+    def test_sync_path_termination_not_swallowed_by_except_exception(self):
+        svc = self._make_service()
+        operation = self._make_operation()
+
+        async def execute(_):
+            try:
+                _send_sigterm_to_self()
+                await asyncio.sleep(5)
+            except Exception:  # pylint: disable=broad-except
+                return ExecutionResult(result={"swallowed": True})
+            return ExecutionResult(result={"ran": "to completion"})
+
+        svc._execute_operator = execute
+        result = svc._execute_operation_sync(operation)
+
+        self._assert_failed_terminated(svc, operation, result)
+
+    def test_sync_path_does_not_wait_for_sync_operator_thread(self):
+        svc = self._make_service()
+        operation = self._make_operation()
+
+        def sync_execute():
+            try:
+                _send_sigterm_to_self()
+                time.sleep(3)
+            except Exception:  # pylint: disable=broad-except
+                pass
+            return ExecutionResult(result={"ran": "to completion"})
+
+        async def execute(_):
+            return await fou.run_sync_task(sync_execute)
+
+        svc._execute_operator = execute
+        start = time.monotonic()
+        result = svc._execute_operation_sync(operation)
+        elapsed = time.monotonic() - start
+
+        self._assert_failed_terminated(svc, operation, result)
+        self.assertLess(elapsed, 2)
+
+    def test_sync_path_exits_even_if_marking_failed_raises(self):
+        svc = self._make_service()
+        svc.set_failed.side_effect = RuntimeError("database unavailable")
+        operation = self._make_operation()
+
+        async def execute(_):
+            _send_sigterm_to_self()
+            await asyncio.sleep(5)
+
+        svc._execute_operator = execute
+        svc._execute_operation_sync(operation)
+
+        svc.set_failed.assert_called_once()
+        self.mock_terminate.assert_called_once_with(
+            operation.id, exit_code=128 + signal.SIGTERM
+        )
+
+    def test_sync_path_completes_without_signal(self):
+        svc = self._make_service()
+        operation = self._make_operation()
+
+        async def execute(_):
+            return ExecutionResult(result={"ok": True})
+
+        svc._execute_operator = execute
+        result = svc._execute_operation_sync(operation)
+
+        self.assertEqual(result.result, {"ok": True})
+        svc.set_completed.assert_called_once()
+        svc.set_failed.assert_not_called()
+        self.mock_terminate.assert_not_called()
+        self.assertIs(signal.getsignal(signal.SIGTERM), self.original_handler)
+
+    @patch.object(delegated, "_terminate_worker_process")
+    @patch.object(delegated, "DelegatedOperationService")
+    @patch("os.setsid")
+    def test_child_process_path_marks_operator_terminated(
+        self, _setsid, mock_service_cls, mock_terminate_worker
+    ):
+        svc = self._make_service()
+        operation = self._make_operation()
+        svc.get = mock.MagicMock(return_value=operation)
+
+        async def execute(_):
+            try:
+                _send_sigterm_to_self()
+                await asyncio.sleep(5)
+            except Exception:  # pylint: disable=broad-except
+                return ExecutionResult(result={"swallowed": True})
+
+        svc._execute_operator = execute
+        mock_service_cls.return_value = svc
+
+        delegated._execute_operator_in_child_process(operation.id)
+
+        svc.set_completed.assert_not_called()
+        svc.set_failed.assert_called_once()
+        kwargs = svc.set_failed.call_args.kwargs
+        self.assertEqual(kwargs["result"].error, self.TERMINATED_ERROR)
+        self.assertEqual(kwargs["required_state"], ExecutionRunState.RUNNING)
+        mock_terminate_worker.assert_called_once()
+        self.assertIs(signal.getsignal(signal.SIGTERM), self.original_handler)
+
+    def test_forward_sigterm_forwards_joins_then_exits(self):
+        child = mock.MagicMock()
+        child.pid = 4242
+        calls = mock.MagicMock()
+        child.join.side_effect = lambda timeout: calls.join(timeout)
+
+        with patch.object(
+            delegated.os, "kill", side_effect=calls.kill
+        ), patch.object(delegated.sys, "exit", side_effect=calls.exit):
+            with delegated._forward_sigterm(child, 7):
+                handler = signal.getsignal(signal.SIGTERM)
+                handler(signal.SIGTERM, None)
+
+        self.assertEqual(
+            calls.mock_calls,
+            [
+                mock.call.kill(4242, signal.SIGTERM),
+                mock.call.join(7),
+                mock.call.exit(128 + signal.SIGTERM),
+            ],
+        )
+        self.assertIs(signal.getsignal(signal.SIGTERM), self.original_handler)
+
+    def test_forward_sigterm_to_real_child_process(self):
+        ctx = multiprocessing.get_context("spawn")
+        child = ctx.Process(target=time.sleep, args=(30,))
+        child.start()
+        try:
+            with patch.object(delegated.sys, "exit") as mock_exit:
+                with delegated._forward_sigterm(child, 10):
+                    _send_sigterm_to_self()
+                    time.sleep(0.1)
+
+            mock_exit.assert_called_once_with(128 + signal.SIGTERM)
+            self.assertFalse(child.is_alive())
+            self.assertEqual(child.exitcode, -signal.SIGTERM)
+        finally:
+            if child.is_alive():
+                child.kill()
+                child.join()
+
+    def test_forward_sigterm_exits_launcher_with_128_plus_signum(self):
+        script = textwrap.dedent(
+            """
+            import multiprocessing
+            import os
+            import signal
+            import time
+
+            from fiftyone.operators import delegated
+
+            ctx = multiprocessing.get_context("spawn")
+            child = ctx.Process(target=time.sleep, args=(30,))
+            child.start()
+            with delegated._forward_sigterm(child, 10):
+                os.kill(os.getpid(), signal.SIGTERM)
+                time.sleep(30)
+            """
+        )
+        proc = subprocess.run(
+            [sys.executable, "-c", script],
+            capture_output=True,
+            timeout=120,
+        )
+        self.assertEqual(
+            proc.returncode, 128 + signal.SIGTERM, proc.stderr.decode()
+        )
+
+    def test_sync_launcher_exits_without_starting_next_queued_op(self):
+        script = textwrap.dedent(
+            """
+            import os
+            import signal
+            import time
+            from unittest import mock
+
+            import fiftyone.core.utils as fou
+            from fiftyone.operators.delegated import (
+                DelegatedOperationService,
+            )
+            from fiftyone.operators.executor import ExecutionResult
+
+            op_a, op_b = mock.MagicMock(), mock.MagicMock()
+            op_a.id, op_b.id = "op-a", "op-b"
+            op_a.parent_id = op_b.parent_id = None
+
+            svc = DelegatedOperationService(repo=mock.MagicMock())
+            svc.list_operations = mock.MagicMock(return_value=[op_a, op_b])
+
+            def set_running(doc_id, **kwargs):
+                print(f"RUNNING {doc_id}", flush=True)
+                return mock.MagicMock()
+
+            def set_failed(doc_id, result, **kwargs):
+                print(f"FAILED {doc_id}: {result.error}", flush=True)
+                return mock.MagicMock()
+
+            svc.set_running = set_running
+            svc.set_failed = set_failed
+            svc.set_completed = mock.MagicMock(return_value=mock.MagicMock())
+
+            def sync_operator():
+                os.kill(os.getpid(), signal.SIGTERM)
+                time.sleep(30)
+                return ExecutionResult()
+
+            async def execute(operation):
+                return await fou.run_sync_task(sync_operator)
+
+            svc._execute_operator = execute
+            svc.execute_queued_operations()
+            print("LAUNCHER RETURNED", flush=True)
+            """
+        )
+        start = time.monotonic()
+        proc = subprocess.run(
+            [sys.executable, "-c", script],
+            capture_output=True,
+            timeout=120,
+        )
+        elapsed = time.monotonic() - start
+        stdout = proc.stdout.decode()
+
+        self.assertEqual(
+            proc.returncode, 128 + signal.SIGTERM, proc.stderr.decode()
+        )
+        self.assertIn(f"FAILED op-a: {self.TERMINATED_ERROR}", stdout)
+        self.assertIn("RUNNING op-a", stdout)
+        self.assertNotIn("RUNNING op-b", stdout)
+        self.assertNotIn("LAUNCHER RETURNED", stdout)
+        # Does not wait for the operator's 30s sleep
+        self.assertLess(elapsed, 25)

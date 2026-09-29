@@ -1580,6 +1580,25 @@ class ExecutionError(Exception):
     """An error that occurs while executing an operator."""
 
 
+class OperationTerminated(BaseException):
+    """Raised inside a delegated operation when its process is asked to
+    stop, for example by ``SIGTERM`` from an orchestrator enforcing a
+    deadline.
+
+    A :class:`BaseException`, like :class:`KeyboardInterrupt`, so that an
+    operator's ``except Exception`` does not swallow it and run on until
+    the process is killed. An operator that must clean up can catch it
+    explicitly and re-raise.
+
+    Args:
+        signum: the number of the signal that stopped the operation
+    """
+
+    def __init__(self, signum):
+        self.signum = signum
+        super().__init__(signum)
+
+
 class ValidationError(object):
     """A validation error.
 

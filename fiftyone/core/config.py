@@ -174,6 +174,12 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_DELEGATED_OPERATION_MONITOR_INTERVAL",
             default=60,
         )
+        self.delegated_termination_grace_seconds = self.parse_int(
+            d,
+            "delegated_termination_grace_seconds",
+            env_var="FIFTYONE_DELEGATED_TERMINATION_GRACE_SECONDS",
+            default=110,
+        )
         self.batcher_static_size = self.parse_int(
             d,
             "batcher_static_size",
