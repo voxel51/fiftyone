@@ -81,11 +81,19 @@ export function useGridSelectionDataset() {
   };
 }
 
-/** Active range constraints include positive temporal-tag sidebar filters. */
-export function useGridSelectionBoundary() {
+/**
+ * Active range constraints include positive temporal-tag sidebar filters.
+ * `rangeConstraint: false` leaves out an extension's published ranges, for
+ * requests its own extended stage already narrows to their samples.
+ */
+export function useGridSelectionBoundary({
+  rangeConstraint: withRanges = true,
+}: { readonly rangeConstraint?: boolean } = {}) {
   const { domainId, conversion } = useGridSelectionDataset();
   const [boundary, setBoundary] = useSelectionBoundary(domainId);
-  const { filters: currentFilters, rangeConstraint } = useGridViewScope();
+  const { filters: currentFilters, rangeConstraint: published } =
+    useGridViewScope();
+  const rangeConstraint = withRanges ? published : undefined;
   const schema = useSampleSchema();
   const tags = currentFilters._temporal_tags;
   const effective = useMemo<SelectionBoundary>(() => {
@@ -655,7 +663,7 @@ export function reconcileSelection(
  */
 export function useSyncSelectionScope() {
   const { domainId, enabled } = useGridSelectionDataset();
-  const [boundary] = useGridSelectionBoundary();
+  const [boundary] = useGridSelectionBoundary({ rangeConstraint: false });
   const setScope = useSetSelectionScopeBoundary();
   // This effect mirrors the boundary whenever it changes.
   useEffect(() => {
