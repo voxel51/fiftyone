@@ -1,6 +1,6 @@
 .root {
   background: var(--color-background-primary);
-  color: var(--color-content-text);
+  color: var(--color-content-text-primary);
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -80,7 +80,7 @@
   align-items: center;
   background: color-mix(in srgb, currentColor 6%, transparent);
   border-radius: 50%;
-  color: var(--color-content-text);
+  color: var(--color-content-text-primary);
   display: flex;
   height: 64px;
   justify-content: center;

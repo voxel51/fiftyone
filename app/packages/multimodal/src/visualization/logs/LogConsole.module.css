@@ -295,7 +295,7 @@
 
 .errorState {
   align-items: center;
-  color: var(--color-content-text-error, #ff837a);
+  color: var(--color-content-text-failure);
   display: flex;
   flex: 1;
   font-size: 12px;

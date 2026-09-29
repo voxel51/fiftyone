@@ -64,7 +64,7 @@
 }
 
 .statsValue {
-  color: var(--color-content-text);
+  color: var(--color-content-text-primary);
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
   text-align: right;
@@ -92,7 +92,7 @@
 }
 
 .streamName {
-  color: var(--color-content-text);
+  color: var(--color-content-text-primary);
   flex: 1 1 auto;
   font-size: 11px;
   line-height: 1.25;
