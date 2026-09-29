@@ -33,6 +33,8 @@ const test = base.extend<{ datasetName: string; modal: ModalPom }>({
     const datasetName = getUniqueDatasetNameWithPrefix("annotate-2d-rotate");
 
     await datasetFactory.createDataset({
+      // the App colors fields in first-request order; pin it for screenshots
+      colorScheme: { fields: [{ path: "detections", fieldColor: "#009999" }] },
       datasetName,
       imageOptions: { fillColor: "white", width: 640, height: 480 },
       schema: {
