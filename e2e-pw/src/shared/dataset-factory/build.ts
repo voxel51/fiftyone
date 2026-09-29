@@ -45,6 +45,7 @@ function isLabelType(fieldType: string): fieldType is Label {
 export interface BuildOptions extends Pick<
   BaseDatasetOptions,
   | "datasetName"
+  | "colorScheme"
   | "labelSchemas"
   | "promptableIndexes"
   | "savedViews"
@@ -85,6 +86,7 @@ const addField = (fieldPath: string, fieldType: FieldType) => {
 export const build = (() => {
   const loader = new OssLoader();
   return async ({
+    colorScheme,
     datasetName,
     frames = [],
     groupSlices = [],
@@ -98,7 +100,13 @@ export const build = (() => {
     staticTransforms = [],
   }: BuildOptions) => {
     const payload = writeToTmpFile(
-      JSON.stringify({ samples, frames, labelSchemas, staticTransforms }),
+      JSON.stringify({
+        samples,
+        frames,
+        labelSchemas,
+        staticTransforms,
+        colorScheme: colorScheme ?? null,
+      }),
       "json",
     );
     const hasVideo =
@@ -140,6 +148,10 @@ ${Object.entries(schema)
 
 for transform in payload["staticTransforms"]:
     dataset.add_static_transform(StaticTransform(**transform))
+
+if payload["colorScheme"]:
+    dataset.app_config.color_scheme = fo.ColorScheme(**payload["colorScheme"])
+    dataset.save()
 
 now = datetime.now()
 

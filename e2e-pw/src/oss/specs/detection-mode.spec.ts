@@ -31,6 +31,7 @@ const test = base.extend<{
           component: "dropdown",
         },
       },
+      colorScheme: { fields: [{ path: "detections", fieldColor: "#009999" }] },
     });
 
     await use(name);
