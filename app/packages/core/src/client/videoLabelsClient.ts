@@ -18,6 +18,8 @@ type VideoLabelsRequestBase = {
   view: unknown[];
   /** Per-frame label fields to read (frame-relative, e.g. `"detections"`). */
   fields: string[];
+  /** Dynamic-group value; labels are read off the group's ordered samples. */
+  dynamicGroup?: string | null;
   /** Optional extended view stages. */
   extended?: unknown;
 };

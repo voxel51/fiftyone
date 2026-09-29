@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { ReverbRoot, useReverbValue } from "@fiftyone/reverb";
+import { createStore } from "jotai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   clearSelectionNonceState,
@@ -36,7 +37,7 @@ describe("TabIndicator", () => {
 
   it("renders nothing without a selection", () => {
     const { container } = render(
-      <ReverbRoot>
+      <ReverbRoot store={createStore()}>
         <TabIndicator />
       </ReverbRoot>,
     );
@@ -45,7 +46,10 @@ describe("TabIndicator", () => {
 
   it("shows the count and requests a clear on click", () => {
     render(
-      <ReverbRoot initializeState={({ set }) => set(selectionCountState, 1234)}>
+      <ReverbRoot
+        store={createStore()}
+        initializeState={({ set }) => set(selectionCountState, 1234)}
+      >
         <TabIndicator />
         <NonceProbe />
       </ReverbRoot>,
@@ -65,6 +69,7 @@ describe("TabIndicator", () => {
     // count (one sample can own many points) is only the fallback
     render(
       <ReverbRoot
+        store={createStore()}
         initializeState={({ set }) => {
           set(selectionCountState, 1234);
           set(selectionSampleCountState, 3);

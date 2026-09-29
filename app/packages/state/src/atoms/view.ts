@@ -126,9 +126,6 @@ export const isRootView = selector<boolean>({
   key: "isRootView",
   get: ({ get }) =>
     [undefined, null, "fiftyone.core.view.DatasetView"].includes(get(viewCls)),
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 const CLIPS_VIEW = "fiftyone.core.clips.ClipsView";
@@ -172,9 +169,6 @@ export const rootElementName = selector<string>({
 
     return ELEMENT_NAMES.SAMPLE;
   },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const rootElementNamePlural = selector<string>({
@@ -193,9 +187,6 @@ export const rootElementNamePlural = selector<string>({
         return ELEMENT_NAMES_PLURAL.SAMPLE;
     }
   },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const elementNames = selector<{ plural: string; singular: string }>({
@@ -206,18 +197,12 @@ export const elementNames = selector<{ plural: string; singular: string }>({
       singular: get(rootElementName),
     };
   },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const isClipsView = selector<boolean>({
   key: "isClipsView",
   get: ({ get }) => {
     return get(rootElementName) === ELEMENT_NAMES.CLIP;
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
   },
 });
 
@@ -226,18 +211,12 @@ export const isPatchesView = selector<boolean>({
   get: ({ get }) => {
     return get(rootElementName) === ELEMENT_NAMES.PATCH;
   },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const isFramesView = selector<boolean>({
   key: "isFramesView",
   get: ({ get }) => {
     return get(rootElementName) === ELEMENT_NAMES.FRAME;
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
   },
 });
 
@@ -246,9 +225,6 @@ export const isGeneratedView = selector<boolean>({
   key: "isGeneratedView",
   get: ({ get }) => {
     return get(rootElementName) !== ELEMENT_NAMES.SAMPLE;
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
   },
 });
 
@@ -312,9 +288,6 @@ export const generatedDatasetName = selector<string | undefined>({
     }
 
     return undefined;
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
   },
 });
 

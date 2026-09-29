@@ -46,6 +46,8 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
   private codecString: string | null = null;
   private decoder: VideoDecoder | null = null;
   private readonly decoderQueueWaiters = new Set<(error: Error) => void>();
+  /** Submitted chunks whose pictures are discarded, by timestamp. */
+  private readonly discardedOutputs = new Map<number, () => void>();
   private failed: Error | null = null;
   private hevcParameterSets: Uint8Array | undefined;
   private lastOutputTimeNs: bigint | null = null;
@@ -57,6 +59,7 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
   private readonly reorderedOutputs = new Map<bigint, ReorderedOutput>();
   private readonly reorderedSubmitted = new Set<bigint>();
   private sps: Uint8Array | undefined;
+  private submittedSinceConfigure = false;
 
   constructor(private environmentValue?: WebCodecsDecoderEnvironment) {}
 
@@ -114,7 +117,14 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
     let target: VideoFrame | undefined;
     try {
       if (
-        decodable.some((unit) => unit.frame.decodeTimestampNs !== undefined)
+        decodable.some(
+          (unit) =>
+            unit.frame.decodeTimestampNs !== undefined ||
+            // Only the reordered path keeps a picture decoded as preroll
+            unit.frame.preroll?.some(
+              (entry) => entry.timestampNs !== undefined,
+            ),
+        )
       ) {
         return await this.decodeReordered(decodable, targetTimeNs, signal);
       }
@@ -160,7 +170,11 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
     const decoder = this.decoder;
     if (!decoder) throw new Error("Video decoder closed");
     let timer: ReturnType<typeof setTimeout> | null = null;
+    let settled = false;
+    // Outputs can arrive after the transaction ends; a timer they armed then
+    // would fail a healthy decoder
     const armProgressTimer = () => {
+      if (settled) return;
       if (timer !== null) this.environment.clearTimeout(timer);
       timer = this.environment.setTimeout(() => {
         timer = null;
@@ -224,6 +238,7 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
       if (this.protectedReorderedOutputTimeNs === targetTimeNs) {
         this.protectedReorderedOutputTimeNs = null;
       }
+      settled = true;
       if (timer !== null) this.environment.clearTimeout(timer);
     }
   }
@@ -270,7 +285,11 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
     if (!decoder) throw new Error("Video decoder closed");
 
     let timer: ReturnType<typeof setTimeout> | null = null;
+    let settled = false;
+    // Outputs can arrive after the transaction ends; a timer they armed then
+    // would fail a healthy decoder
     const armProgressTimer = () => {
+      if (settled) return;
       if (timer !== null) this.environment.clearTimeout(timer);
       timer = this.environment.setTimeout(() => {
         timer = null;
@@ -305,6 +324,7 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
       if (outputs.some(Boolean)) this.lastOutputTimeNs = targetTimeNs;
       return outputs;
     } finally {
+      settled = true;
       if (timer !== null) this.environment.clearTimeout(timer);
     }
   }
@@ -350,6 +370,7 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
     if (this.closed) throw new Error("Video decoder closed");
     this.failed = null;
     this.codecString = nextCodec;
+    this.submittedSinceConfigure = false;
     this.decoder = new this.environment.VideoDecoder({
       error: (error) => this.failDecoder(toError(error)),
       output: (frame) => this.handleOutput(frame),
@@ -370,55 +391,163 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
     decoder: VideoDecoder,
     unit: EncodedVideoAccessUnit,
     onProgress: () => void,
+    retainPreroll = false,
   ): Promise<VideoFrame> {
-    const data = this.chunkData(unit);
+    const data = this.chunkData(unit.frame);
     // Preserve source PTS for browser-level observability. LeRobot MP4 units
     // carry an explicit DTS and may be submitted in non-monotonic PTS order
     // when B-frames are present. Units without DTS retain monotonic nudging.
     const sourceTimestampUs = Number(unit.timeNs / 1_000n);
     const submissionTimestampUs =
       unit.frame.decodeTimestampNs !== undefined
-        ? uniquePendingTimestamp(sourceTimestampUs, this.pending)
+        ? this.unusedTimestampFrom(sourceTimestampUs, 1)
         : this.lastSubmissionTimestampUs === null
           ? sourceTimestampUs
           : Math.max(sourceTimestampUs, this.lastSubmissionTimestampUs + 1);
     this.lastSubmissionTimestampUs = submissionTimestampUs;
-    let resolveOutput!: (frame: VideoFrame) => void;
-    let rejectOutput!: (error: Error) => void;
-    const promise = new Promise<VideoFrame>((resolve, reject) => {
-      resolveOutput = resolve;
-      rejectOutput = reject;
-    });
-    const pending: PendingOutput = {
-      promise,
-      reject: rejectOutput,
-      resolve: (frame) => {
-        onProgress();
-        resolveOutput(frame);
-      },
-      timeNs: unit.timeNs,
+    const preroll = unit.frame.preroll ?? [];
+    // Discarded pictures take timestamps below the carrier's, which no
+    // awaited output uses, so handleOutput closes them
+    let discardCeilingUs = sourceTimestampUs;
+    try {
+      for (const entry of preroll) {
+        // A fresh decoder takes a key chunk first; a helper ahead of one
+        // belongs to a GOP this decoder never saw
+        if (!this.submittedSinceConfigure && !entry.keyframe) continue;
+        const entryData = this.chunkData(unit.frame, entry.bytes);
+        const type = entry.keyframe ? "key" : "delta";
+        const timeNs = entry.timestampNs;
+        if (
+          retainPreroll &&
+          timeNs !== undefined &&
+          !this.reorderedOutputs.has(timeNs)
+        ) {
+          const promise = this.enqueue(
+            decoder,
+            unit.frame,
+            entryData,
+            this.unusedTimestampFrom(Number(timeNs / 1_000n), 1),
+            type,
+            onProgress,
+            timeNs,
+          );
+          this.trackReorderedOutput(timeNs, promise);
+          continue;
+        }
+        discardCeilingUs = this.unusedTimestampFrom(discardCeilingUs - 1, -1);
+        this.enqueue(
+          decoder,
+          unit.frame,
+          entryData,
+          discardCeilingUs,
+          type,
+          onProgress,
+        );
+      }
+    } catch (error) {
+      return Promise.reject(toError(error));
+    }
+    return this.enqueue(
+      decoder,
+      unit.frame,
+      data,
       submissionTimestampUs,
-    };
-    this.pending.push(pending);
+      unit.frame.keyframe && !preroll.some((entry) => entry.keyframe)
+        ? "key"
+        : "delta",
+      onProgress,
+      unit.timeNs,
+    );
+  }
+
+  /** The first timestamp from `start`, stepping by `step`, no output uses. */
+  private unusedTimestampFrom(start: number, step: 1 | -1): number {
+    let timestamp = start;
+    while (
+      this.discardedOutputs.has(timestamp) ||
+      this.pending.some((entry) => entry.submissionTimestampUs === timestamp)
+    ) {
+      timestamp += step;
+    }
+    return timestamp;
+  }
+
+  /**
+   * Hands one chunk to the decoder. With a `timeNs`, its picture resolves the
+   * returned promise; without one, the picture is discarded on arrival. Either
+   * arrival is decoder progress.
+   */
+  private enqueue(
+    decoder: VideoDecoder,
+    frame: EncodedVideoVisualization,
+    data: Uint8Array,
+    timestampUs: number,
+    type: "key" | "delta",
+    onProgress: () => void,
+    timeNs: bigint,
+  ): Promise<VideoFrame>;
+  private enqueue(
+    decoder: VideoDecoder,
+    frame: EncodedVideoVisualization,
+    data: Uint8Array,
+    timestampUs: number,
+    type: "key" | "delta",
+    onProgress: () => void,
+  ): void;
+  private enqueue(
+    decoder: VideoDecoder,
+    frame: EncodedVideoVisualization,
+    data: Uint8Array,
+    timestampUs: number,
+    type: "key" | "delta",
+    onProgress: () => void,
+    timeNs?: bigint,
+  ): Promise<VideoFrame> | void {
+    let pending: PendingOutput | undefined;
+    if (timeNs !== undefined) {
+      let resolveOutput!: (frame: VideoFrame) => void;
+      let rejectOutput!: (error: Error) => void;
+      const promise = new Promise<VideoFrame>((resolve, reject) => {
+        resolveOutput = resolve;
+        rejectOutput = reject;
+      });
+      pending = {
+        promise,
+        reject: rejectOutput,
+        resolve: (output) => {
+          onProgress();
+          resolveOutput(output);
+        },
+        timeNs,
+        submissionTimestampUs: timestampUs,
+      };
+      this.pending.push(pending);
+    } else {
+      this.discardedOutputs.set(timestampUs, onProgress);
+    }
     try {
       decoder.decode(
         new this.environment.EncodedVideoChunk({
           data,
-          timestamp: submissionTimestampUs,
-          type: unit.frame.keyframe ? "key" : "delta",
+          timestamp: timestampUs,
+          type,
         }),
       );
+      this.submittedSinceConfigure = true;
     } catch (error) {
-      const index = this.pending.indexOf(pending);
-      if (index >= 0) this.pending.splice(index, 1);
       const failure = new VideoDecoderFailureError(
-        `Failed to submit a ${encodedVideoCodecName(unit.frame)} access unit`,
+        `Failed to submit a ${encodedVideoCodecName(frame)} access unit`,
         { cause: error },
       );
+      if (pending) {
+        const index = this.pending.indexOf(pending);
+        if (index >= 0) this.pending.splice(index, 1);
+      }
       this.failDecoder(failure);
-      rejectOutput(failure);
+      if (!pending) throw failure;
+      pending.reject(failure);
     }
-    return promise;
+    return pending?.promise;
   }
 
   private submitReordered(
@@ -428,15 +557,23 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
   ): Promise<VideoFrame> {
     const existing = this.reorderedOutputs.get(unit.timeNs);
     if (existing) return existing.promise;
-    const promise = this.submit(decoder, unit, onProgress);
-    const output: ReorderedOutput = { frame: null, promise };
-    this.reorderedOutputs.set(unit.timeNs, output);
-    this.reorderedSubmitted.add(unit.timeNs);
+    const promise = this.submit(decoder, unit, onProgress, true);
+    this.trackReorderedOutput(unit.timeNs, promise);
     const decodeTimeNs = unit.frame.decodeTimestampNs ?? unit.timeNs;
     this.lastSubmittedDecodeTimeNs = decodeTimeNs;
+    return promise;
+  }
+
+  private trackReorderedOutput(
+    timeNs: bigint,
+    promise: Promise<VideoFrame>,
+  ): void {
+    const output: ReorderedOutput = { frame: null, promise };
+    this.reorderedOutputs.set(timeNs, output);
+    this.reorderedSubmitted.add(timeNs);
     void promise.then(
       (frame) => {
-        if (this.reorderedOutputs.get(unit.timeNs) !== output) {
+        if (this.reorderedOutputs.get(timeNs) !== output) {
           frame.close();
           return;
         }
@@ -444,13 +581,12 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
         this.trimReorderedOutputs();
       },
       () => {
-        if (this.reorderedOutputs.get(unit.timeNs) === output) {
-          this.reorderedOutputs.delete(unit.timeNs);
-          this.reorderedSubmitted.delete(unit.timeNs);
+        if (this.reorderedOutputs.get(timeNs) === output) {
+          this.reorderedOutputs.delete(timeNs);
+          this.reorderedSubmitted.delete(timeNs);
         }
       },
     );
-    return promise;
   }
 
   private async waitForReorderedProgress(signal: AbortSignal): Promise<void> {
@@ -534,7 +670,10 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
     );
     const pending = index >= 0 ? this.pending.splice(index, 1)[0] : undefined;
     if (!pending) {
+      const onProgress = this.discardedOutputs.get(timestamp);
+      this.discardedOutputs.delete(timestamp);
       frame.close();
+      onProgress?.();
       return;
     }
     pending.resolve(frame);
@@ -554,6 +693,7 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
   private disposeDecoder(error: Error, reset = true): void {
     for (const fail of [...this.decoderQueueWaiters]) fail(error);
     for (const pending of this.pending.splice(0)) pending.reject(error);
+    this.discardedOutputs.clear();
     for (const output of this.reorderedOutputs.values()) {
       if (output.frame) output.frame.close();
     }
@@ -578,6 +718,7 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
     this.lastSubmittedDecodeTimeNs = null;
     this.lastOutputTimeNs = null;
     this.lastSubmissionTimestampUs = null;
+    this.submittedSinceConfigure = false;
     // Cached sets belong to the disposed decoder's configuration; a codec
     // switch that reused them would inline contradictory parameter sets, and
     // every path to a new decoder starts from a keyframe that carries its own
@@ -586,35 +727,27 @@ export class WebCodecsVideoDecoder implements VideoDecoderActor {
     this.hevcParameterSets = undefined;
   }
 
-  private chunkData(unit: EncodedVideoAccessUnit): Uint8Array {
+  private chunkData(
+    frame: EncodedVideoVisualization,
+    bytes: Uint8Array = frame.bytes,
+  ): Uint8Array {
     // A frame's parameter sets come from the container's out-of-band record
     // (avcC/hvcC), so the access unit still needs them inlined; a stream that
     // also carries them in-band decodes fine with the repeat
-    if (unit.frame.codec === "h265") {
-      const parameterSets = unit.frame.hevc?.parameterSets;
+    if (frame.codec === "h265") {
+      const parameterSets = frame.hevc?.parameterSets;
       if (parameterSets) this.hevcParameterSets = parameterSets;
-      return concatAnnexB([this.hevcParameterSets, unit.frame.bytes]);
+      return concatAnnexB([this.hevcParameterSets, bytes]);
     }
-    if (unit.frame.codec !== "h264") return unit.frame.bytes;
-    if (unit.frame.h264?.sps) this.sps = unit.frame.h264.sps;
-    if (unit.frame.h264?.pps) this.pps = unit.frame.h264.pps;
+    if (frame.codec !== "h264") return bytes;
+    if (frame.h264?.sps) this.sps = frame.h264.sps;
+    if (frame.h264?.pps) this.pps = frame.h264.pps;
     return h264AccessUnitWithParameterSets({
-      bytes: unit.frame.bytes,
+      bytes,
       pps: this.pps,
       sps: this.sps,
     });
   }
-}
-
-function uniquePendingTimestamp(
-  preferred: number,
-  pending: readonly PendingOutput[],
-) {
-  let timestamp = preferred;
-  while (pending.some((entry) => entry.submissionTimestampUs === timestamp)) {
-    timestamp += 1;
-  }
-  return timestamp;
 }
 
 function abortableDecoderOutput<T>(

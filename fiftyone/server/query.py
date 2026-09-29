@@ -58,11 +58,6 @@ from fiftyone.server.exceptions import QueryTimeout
 from fiftyone.server.utils import from_dict
 from fiftyone.server.workspace import Workspace
 
-ID = gql.scalar(
-    t.NewType("ID", str),
-    serialize=lambda v: str(v),
-    parse_value=lambda v: ObjectId(v),
-)
 DATASET_FILTER = [{"sample_collection_name": {"$regex": "^samples\\."}}]
 DATASET_FILTER_STAGE = [{"$match": DATASET_FILTER[0]}]
 

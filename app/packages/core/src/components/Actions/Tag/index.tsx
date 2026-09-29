@@ -20,18 +20,18 @@ export default ({
 }) => {
   const [open, setOpen] = useState(false);
   const [available, setAvailable] = useState(true);
-  const labels = useReverbValue(fos.selectedLabelIds);
-  const samples = useReverbValue(fos.selectedSamples);
   const canTag = useReverbValue(fos.canTagSamplesOrLabels);
+  const patches = fos.useIsPatchesView();
   const disableTag = !canTag.enabled;
 
-  const selected = labels.size > 0 || samples.size > 0;
   const tagging = useReverbValue(fos.anyTagging);
   const ref = useRef<HTMLDivElement>(null);
   fos.useOutsideClick(ref, () => open && setOpen(false));
   const disabled = tagging || disableTag;
 
-  const baseTitle = `Tag sample${modal ? "" : "s"} or labels`;
+  const baseTitle = patches
+    ? "Tag labels"
+    : `Tag sample${modal ? "" : "s"} or labels`;
 
   const title = disabled
     ? (canTag.message || "").replace("#action", baseTitle.toLowerCase())
@@ -62,7 +62,7 @@ export default ({
         icon={tagging ? <Loading /> : <LocalOffer />}
         open={open}
         onClick={() => !disabled && available && !disableTag && setOpen(!open)}
-        highlight={(selected || open) && available}
+        highlight={open && available}
         title={title}
         data-cy="action-tag-sample-labels"
       />

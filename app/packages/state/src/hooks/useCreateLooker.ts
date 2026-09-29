@@ -282,7 +282,8 @@ export default <T extends AbstractLooker<BaseState>>(
           abortControllerRef.current.signal,
         );
 
-        return looker;
+        // the caller names the looker type it expects for its media
+        return looker as T;
       },
     [
       dataset,

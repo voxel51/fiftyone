@@ -104,7 +104,7 @@ export const workingAtom = selector<WorkingState>({
  */
 export function useBindStableSceneSampleId(): void {
   const setSceneId = useSetReverbState(stableSceneSampleIdAtom);
-  const sceneId = fos.useStableSceneSample3d()?.sample?._id;
+  const sceneId = fos.useStableInteraction3dSample()?.sample?._id;
 
   useEffect(() => {
     setSceneId(sceneId);

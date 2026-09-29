@@ -33,6 +33,8 @@ export interface VideoFrameLabelsStreamOptions {
   dataset: string;
   /** Active view stages — same shape sent on every dataset query. */
   view: Stage[];
+  /** Dynamic-group value; routes the window read to that group's ordered samples. */
+  dynamicGroup?: string | null;
   /** Total frame count of the clip (1-indexed up to this number). */
   frameCount: number;
   /** Frame rate in frames per second. */
@@ -138,6 +140,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   private readonly sampleId: string;
   private readonly dataset: string;
   private readonly view: Stage[];
+  private readonly dynamicGroup: string | null;
   private readonly frameCount: number;
   private readonly frameRate: number;
   private frameField: string;
@@ -166,10 +169,8 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
    */
   private readonly maskUndecodable = new Set<number>();
   /**
-   * Memoized per-frame mask sources. Deriving these walks every detection on the
-   * frame, and the hold window re-checks the same frames on every commit, so
-   * without memoization that walk dominates the commit. Invalidated when a
-   * frame's document is replaced.
+   * Memoized per-frame mask sources, invalidated when a frame's document is
+   * replaced. The hold window re-checks the same frames on every commit.
    */
   private readonly maskSourceCache = new Map<number, MaskSource[]>();
   // Notified whenever a chunk lands. The annotation engine's frame store
@@ -198,6 +199,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
     this.sampleId = opts.sampleId;
     this.dataset = opts.dataset;
     this.view = opts.view;
+    this.dynamicGroup = opts.dynamicGroup ?? null;
     this.frameCount = opts.frameCount;
     this.frameRate = opts.frameRate;
     this.frameField = opts.frameField ?? DEFAULT_FRAME_FIELD;
@@ -210,12 +212,8 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   }
 
   /**
-   * Resolve once the frame containing `time` is cached. Coalesces against
-   * any in-flight chunk covering that frame; otherwise kicks one off.
-   *
-   * Intended for "show overlays before the user plays" — call this after
-   * registering the stream, then `seek(time)` once it resolves so the
-   * engine commits with the frame in hand.
+   * Resolve once the frame containing `time` is cached, fetching its chunk if
+   * needed. Call before `seek(time)` to show overlays before the user plays.
    */
   async warmup(time = 0): Promise<void> {
     const frame = this.timeToFrame(time);
@@ -233,10 +231,8 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   }
 
   /**
-   * Resolve once every frame in [1, frameCount] is cached. Coalesces
-   * against any in-flight chunks; otherwise walks the range in chunk-
-   * sized strides and dispatches fetches in parallel. Expensive over long
-   * clips; used for one-shot full-clip analyses (e.g. timeline tracks).
+   * Resolve once every frame in [1, frameCount] is cached, fetching missing
+   * chunks in parallel. Expensive over long clips; for one-shot full-clip work.
    */
   async warmupAll(): Promise<void> {
     const promises: Promise<void>[] = [];
@@ -287,11 +283,20 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   }
 
   /**
-   * Repoint the primary label field the read-only snapshot ({@link getValue})
-   * extracts from. Every field in {@link frameFields} is already fetched into
-   * the per-frame cache, so this only changes which one the snapshot reads — no
+   * Engine label path for the primary field: `frames.<field>` for a video, the
+   * bare field for a dynamic group. Use this rather than a hardcoded `frames.`
+   * prefix when addressing the engine.
+   */
+  get labelsPath(): string {
+    return this.dynamicGroup !== null
+      ? this.frameField
+      : `frames.${this.frameField}`;
+  }
+
+  /**
+   * Repoint the primary label field {@link getValue} extracts from, without a
    * refetch. Lets the active field follow a field-move without rebuilding the
-   * stream (which would tear down the engine's frame store and its edits).
+   * stream and losing the frame store's edits.
    */
   setPrimaryField(field: string): void {
     this.frameField = field;
@@ -301,8 +306,18 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
    * The dataset query this stream reads against — the params the
    * `/video-labels/{index,window}` fetches share with the `/frames` seed.
    */
-  labelQuery(): { sampleId: string; dataset: string; view: Stage[] } {
-    return { sampleId: this.sampleId, dataset: this.dataset, view: this.view };
+  labelQuery(): {
+    sampleId: string;
+    dataset: string;
+    view: Stage[];
+    dynamicGroup: string | null;
+  } {
+    return {
+      sampleId: this.sampleId,
+      dataset: this.dataset,
+      view: this.view,
+      dynamicGroup: this.dynamicGroup,
+    };
   }
 
   bufferState(time: number): BufferReadiness {
@@ -324,19 +339,10 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   }
 
   /**
-   * Readiness of this frame's decoded masks, folded into {@link bufferState} so
-   * the clock waits for masks it can actually draw rather than merely for the
-   * bytes they decode from. Without this the stream reports ready as soon as
-   * the label document lands, and a mask decoded a few frames later paints
-   * against whatever frame the playhead has since reached.
-   *
-   * Ready means this frame's masks are BORROWED, not merely that a decode pass
-   * ran for it once. An earlier version settled a frame permanently after one
-   * pass, which made the gate a first-visit-only check: on a looping play-through
-   * every frame was already settled, so the clock advanced against masks the
-   * cache had long since evicted and the draw path decoded them late. Holding
-   * borrows re-gates every visit and keeps the cache from evicting what the gate
-   * has promised.
+   * Whether this frame's masks are currently borrowed, folded into
+   * {@link bufferState} so the clock waits for drawable masks rather than for
+   * label bytes. Borrowing, not a one-time decode pass, is the gate so that
+   * evicted masks re-gate on every visit.
    */
   private maskReadiness(frame: number): BufferReadiness {
     if (!MASK_GATE_ENABLED) {
@@ -550,14 +556,9 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   }
 
   /**
-   * Return every mask borrow this stream holds. Must be called when the
-   * surface unmounts (sample change, modal close): the stream is the sole
-   * owner of its holds, and an unreturned borrow pins its entry in the
-   * process-wide cache for good — the bitmap can never be closed.
-   *
-   * The window is emptied FIRST so a warm pass still in flight releases its
-   * borrows on completion instead of re-holding ({@link maskHoldWanted} is
-   * window-scoped).
+   * Return every mask borrow this stream holds; an unreturned borrow pins its
+   * cache entry for good. The window is emptied first so an in-flight warm pass
+   * releases rather than re-holds.
    */
   dispose(): void {
     this.maskHoldStart = 0;
@@ -584,16 +585,8 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
 
   /**
    * Re-centre the hold window on the committed frame: hold forward, release
-   * behind.
-   *
-   * Called from `onCommit` as well as `prefetch` because the engine only calls
-   * `prefetch` while a stream reports NOT ready — decode-ahead has to keep
-   * running through the ready stretches too, which is what `frameBitmapStream`
-   * does for the same reason.
-   *
-   * The window is sized in FRAMES rather than from `lookaheadSeconds` (~58
-   * frames here) because every frame in it pins its masks: a window that large
-   * would hold most of a small cache, and holds are exempt from eviction.
+   * behind. Sized in frames rather than `lookaheadSeconds` because every held
+   * frame pins its masks against eviction.
    */
   private holdWindow(time: number): void {
     const frame = this.timeToFrame(time);
@@ -722,11 +715,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
     this.publish(store, this.getValue(time));
   }
 
-  /**
-   * Subscribe to cache-mutation events (chunks landing). Returns an
-   * unsubscribe function. Used to re-seed an external store (the engine's
-   * frame store) whenever the `/frames` cache changes.
-   */
+  /** Subscribe to `/frames` cache mutations (chunks landing); returns an unsubscribe function. */
   subscribeToEdits(listener: () => void): () => void {
     this.editListeners.add(listener);
     return () => {
@@ -786,12 +775,12 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
         sampleId: this.sampleId,
         dataset: this.dataset,
         view: this.view,
+        dynamicGroup: this.dynamicGroup ?? undefined,
         fields: this.frameFields,
         startFrame,
         endFrame,
       });
 
-      let landed = 0;
       for (const [frameNumber, fields] of Object.entries(result.frames)) {
         // Field-projected window payload → the cache's per-frame doc shape.
         // The engine owns edits, so the stream never reconciles against it.
@@ -804,14 +793,13 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
         this.maskSourceCache.delete(Number(frameNumber));
         this.maskUndecodable.delete(Number(frameNumber));
         this.releaseMasksAt(Number(frameNumber));
-        landed++;
       }
 
       mergeRange(this.fetchedRanges, result.range);
 
-      if (landed > 0) {
-        this.notifyEdits();
-      }
+      // Also when nothing landed: a window with no frame documents is still an
+      // answer, and the first landing is what settles a store born loading
+      this.notifyEdits();
     } catch (error) {
       // Surface but don't crash — the engine will keep asking; subsequent
       // prefetch calls will retry the missing frames.

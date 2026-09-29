@@ -238,8 +238,10 @@ export default function PlotView({
           </span>
           <ColorByMenu
             // Openable while the list is still filling: a dead pill gives a
-            // reader nothing to read, and the panel is where we say why
-            disabled={!choices.length && !choicesLoading}
+            // reader nothing to read, and the panel is where we say why.
+            disabled={
+              !choices.length && !choicesLoading && !features.colorByFooter
+            }
             loading={choicesLoading}
             value={colorField ?? NONE_FIELD}
             options={colorOptions}

@@ -21,10 +21,12 @@ export const TAB_JSON = "json" as const;
 export const TAB_IDS = [TAB_GUI, TAB_JSON] as const;
 export type TabId = (typeof TAB_IDS)[number];
 
-// System read-only fields that cannot be edited or scanned
+// System read-only fields that cannot be edited or scanned; a video frame's
+// number is its clock
 const SYSTEM_READ_ONLY_FIELDS_ARRAY = [
   "_sample_id",
   "created_at",
+  "frames.frame_number",
   "id",
   "last_modified_at",
   "sample_id",

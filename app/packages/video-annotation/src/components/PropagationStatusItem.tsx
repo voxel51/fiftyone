@@ -14,16 +14,14 @@ import {
 import React from "react";
 
 /**
- * Right-hand top-bar status content for an in-flight propagation run. Drive
- * it through {@link useVideoAnnotationStatus}'s `setContent`: re-set on each
- * progress tick and clear (`null`) on completion. The `done`/`total` count
- * is shown only when both are provided — omit them for indeterminate phases
- * (e.g. one-time model download). `onStop`, when provided, renders a Stop
- * button — propagation polls the same flag via `shouldAbort`.
+ * Modal status bar content for an in-flight propagation run; set it through
+ * `useModalStatusBar`'s `setContent` on each progress tick and clear it with
+ * `null` on completion. `done`/`total` render only when both are provided,
+ * and `onStop` renders a Stop button.
  *
  * @example
- * setContent(<PropagationStatusItem label="Loading SAM2…" onStop={stop} />);
- * setContent(<PropagationStatusItem label="SAM2 tracking" done={n} total={t} onStop={stop} />);
+ * setContent({ status: <PropagationStatusItem label="Loading SAM2…" onStop={stop} /> });
+ * setContent({ status: <PropagationStatusItem label="SAM2 tracking" done={n} total={t} onStop={stop} /> });
  */
 export const PropagationStatusItem: React.FC<{
   label: string;

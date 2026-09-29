@@ -8,6 +8,7 @@
 // (shard count; with blob-dir, flags runs whose reports are incomplete),
 // RUN_STARTED_AT (attempt start, for the wall-clock line), REPORT_URL
 // (merged HTML report artifact download link), BURN_IN_COUNT (spec files
+// BURN_IN_SKIPPED ("true" when the skip-burn-in label opted the PR out),
 // selected for burn-in; 0/empty = none this run), BURN_IN_RESULT (burn-in
 // job conclusion)
 
@@ -241,6 +242,8 @@ if (burnInCount > 0) {
         : ""
     }`,
   );
+} else if (process.env.BURN_IN_SKIPPED === "true") {
+  lines.push("", "**burn-in**: skipped by the `skip-burn-in` label");
 }
 // the python matrix usually outlasts the e2e verdict; post a placeholder
 // and let the suite-refresh job settle it from the pytest-results artifacts

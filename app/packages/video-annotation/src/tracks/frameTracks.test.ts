@@ -1,8 +1,10 @@
+import { temporalTagTrackId } from "@fiftyone/playback";
 import type { LabelData } from "@fiftyone/utilities";
 import { describe, expect, it, vi } from "vitest";
 import {
   buildPerInstanceTracks,
   parseSubTrackId,
+  parseTimelineSubTrackId,
   segmentAttribute,
   subTrackId,
   type FrameLabelReader,
@@ -225,6 +227,29 @@ describe("buildPerInstanceTracks", () => {
     const intervals = tracks[0].events.filter((e) => e.endSec !== undefined);
     expect(intervals).toHaveLength(2);
   });
+
+  it("draws a keyframe on a track's last frame at the bar's end", () => {
+    const det = (keyframe: boolean): LabelData => ({
+      _id: "doc-1",
+      _cls: "Detection",
+      label: "person",
+      index: 1,
+      keyframe,
+      instance: { _cls: "Instance", _id: "runner" },
+    });
+    // Present 1-3; keyframes on the first and last frames.
+    const tracks = build(5, {
+      1: [det(true)],
+      2: [det(false)],
+      3: [det(true)],
+    });
+
+    const markers = tracks[0].events
+      .filter((e) => e.endSec === undefined)
+      .map((e) => e.startSec)
+      .sort((a, b) => a - b);
+    expect(markers).toEqual([0, 3 / FPS]);
+  });
 });
 
 describe("segmentAttribute", () => {
@@ -366,5 +391,22 @@ describe("buildPerInstanceTracks dynamic-attribute sub-tracks", () => {
 
     expect(tracks).toHaveLength(1);
     expect(parseSubTrackId(tracks[0].id)).toBeNull();
+  });
+});
+
+describe("parseTimelineSubTrackId", () => {
+  it("reads a sub-track row exactly as the plain parse does", () => {
+    const id = subTrackId("instance-1", "occluded");
+
+    expect(parseTimelineSubTrackId(id)).toEqual(parseSubTrackId(id));
+  });
+
+  it("refuses to read a temporal-tag row as somebody's child", () => {
+    // The plain parse sees the `::` in the tag id and invents a parent; a row
+    // attributed to a parent that does not exist never renders.
+    const id = temporalTagTrackId("review");
+
+    expect(parseSubTrackId(id)).not.toBeNull();
+    expect(parseTimelineSubTrackId(id)).toBeNull();
   });
 });

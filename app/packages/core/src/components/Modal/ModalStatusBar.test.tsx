@@ -5,12 +5,8 @@ import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useEffect } from "react";
 import { afterEach, describe, expect, it } from "vitest";
-import {
-  ModalStatusBar,
-  StatusContent,
-  StatusHelp,
-  useModalStatusBar,
-} from "./ModalStatusBar";
+import { type StatusContent, useModalStatusBar } from "@fiftyone/annotation";
+import { ModalStatusBar, StatusHelp } from "./ModalStatusBar";
 
 const helpContent = (
   <StatusHelp

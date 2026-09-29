@@ -15,7 +15,7 @@ const onSetSessionSpaces: RegisteredWriter<"sessionSpaces"> =
     router.replace(
       resolveURL({
         currentPathname: router.history.location.pathname,
-        currentSearch: router.history.location.search,
+        currentSearch: router.location.search,
         extra: {
           workspace: spaces._name || null,
         },

@@ -23,6 +23,21 @@ const rendererHarness = vi.hoisted(() => ({
   defaultPinnedTrackIds: undefined as readonly string[] | undefined,
 }));
 
+vi.mock("@fiftyone/state/src/selection/grid-hooks", () => ({
+  useGridSelectionBoundary: () => [{}],
+}));
+vi.mock("@fiftyone/state/src/selection/segment-hooks", () => ({
+  useScopedSegments: () => ({
+    active: false,
+    members: [],
+    loading: false,
+    error: null,
+  }),
+}));
+vi.mock("../../../extensions/episode-intervals/use-episode-time-range", () => ({
+  useEpisodeTimeRange: () => rendererHarness.timeRange,
+}));
+
 vi.mock("react", async (importOriginal) => {
   const react = await importOriginal<typeof import("react")>();
   return {

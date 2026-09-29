@@ -234,7 +234,7 @@ or by setting the `default_backend` parameter of your
 :ref:`annotation config <annotation-config>` located at
 `~/.fiftyone/annotation_config.json`:
 
-.. code-block:: text
+.. code-block:: json
 
     {
         "default_backend": "labelbox"
@@ -262,12 +262,12 @@ You can also store your credentials in your
 :ref:`annotation config <annotation-config>` located at
 `~/.fiftyone/annotation_config.json`:
 
-.. code-block:: text
+.. code-block:: json
 
     {
         "backends": {
             "labelbox": {
-                "api_key": ...,
+                "api_key": "<api_key>"
             }
         }
     }
@@ -333,7 +333,7 @@ you can configure the URL of your server in any of the following ways:
     :ref:`annotation config <annotation-config>` at
     `~/.fiftyone/annotation_config.json`:
 
-.. code-block:: text
+.. code-block:: json
 
     {
         "backends": {

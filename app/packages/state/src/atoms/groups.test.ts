@@ -3,6 +3,7 @@ vi.mock("@fiftyone/reverb");
 vi.mock("@fiftyone/relay");
 
 import {
+  mockValues,
   setMockAtoms,
   TestSelector,
 } from "../../../reverb/src/__mocks__/index";
@@ -112,5 +113,35 @@ describe("currentGroupSliceNames", () => {
     });
 
     expect(testCurrentGroupSliceNames()).toStrictEqual([]);
+  });
+});
+
+describe("groupSlice", () => {
+  const testGroupSlice = groups.groupSlice as unknown as TestSelector<
+    typeof groups.groupSlice
+  > & { set: (slice: string) => void };
+  const temporalTags = { values: ["my tag"], exclude: false };
+  const labelTags = { values: ["reviewed"], exclude: false };
+
+  const switchTo = (slice: string) => {
+    setMockAtoms({
+      similarityParameters: null,
+      defaultGroupSlice: "left",
+      groupMediaTypesMap: { left: "image", video: "video" },
+      filters: { _temporal_tags: temporalTags, _label_tags: labelTags },
+    });
+    testGroupSlice.set(slice);
+    return (mockValues as Record<string, unknown>).filters;
+  };
+
+  it("drops a temporal tags filter on moving to a slice that cannot carry temporal tags", () => {
+    expect(switchTo("left")).toEqual({ _label_tags: labelTags });
+  });
+
+  it("keeps a temporal tags filter on moving to a video slice", () => {
+    expect(switchTo("video")).toEqual({
+      _temporal_tags: temporalTags,
+      _label_tags: labelTags,
+    });
   });
 });

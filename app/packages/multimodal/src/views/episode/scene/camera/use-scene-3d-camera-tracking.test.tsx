@@ -216,6 +216,7 @@ describe("useScene3dCameraTracking", () => {
 
     // Mid-drag: samples flow through refs, no commit has fired yet.
     act(() => {
+      result.current.rig.onGestureStart(pose(1));
       result.current.rig.onPoseSample({ anchor, pose: pose(6) });
     });
     expect(viewStateStore.getSnapshot().cameraView).toBeNull();
@@ -564,6 +565,7 @@ describe("useScene3dCameraTracking view-state restore", () => {
       trackingProps({
         frameTransforms: translationTransforms(10, 0, 0),
         placementStatus: "transformed",
+        navigationReferenceSettled: false,
         provisionalFrameIds: [],
         provisionalPlaybackFrame: provisionalFrame("lidar", 5n),
         restore,
@@ -901,6 +903,7 @@ describe("useScene3dCameraTracking view-state restore", () => {
     // Navigation can replace the source before OrbitControls emits its gesture
     // commit. The latest sample must still seed B's portable composition.
     act(() => {
+      result.current.rig.onGestureStart(pose(1));
       result.current.rig.onPoseSample({ anchor, pose: pose(6) });
     });
     expect(viewStateStore.getSnapshot().navigationCompositions).toEqual([]);
@@ -1235,6 +1238,344 @@ describe("useScene3dCameraTracking view-state restore", () => {
 
     // The user's grab wins; the carried anchor never lands.
     expect(result.current.rig.adoptAnchor).toBeNull();
+  });
+});
+
+describe("startup camera policy", () => {
+  const startupProps = (overrides: Partial<TrackingProps> = {}) =>
+    trackingProps({
+      cameraTargetIsEgo: true,
+      cameraTargetSelectionSource: "auto",
+      placementStatus: "transformed",
+      ...overrides,
+    });
+
+  it("applies the existing ego preset once without scheduling any transform work", () => {
+    const frameTransforms = {
+      ...translationTransforms(10, 0, 0),
+      getPlacementReadiness: vi.fn(),
+      prefetchPlacement: vi.fn(),
+    };
+    const { result, rerender } = renderHook(useScene3dCameraTracking, {
+      initialProps: startupProps({ frameTransforms }),
+    });
+
+    expect(result.current.poseCommand).toEqual({
+      position: [-12, 0, 7],
+      target: [10, 0, 0],
+    });
+    expect(result.current.trackingMode).toBe("position");
+    expect(viewStateStore.getSnapshot().cameraView?.pose).toEqual(
+      result.current.poseCommand,
+    );
+    const initialPose = result.current.poseCommand;
+    rerender(startupProps({ frameTransforms, playbackTimeNs: 100n }));
+    expect(result.current.poseCommand).toBe(initialPose);
+    expect(frameTransforms.getPlacementReadiness).not.toHaveBeenCalled();
+    expect(frameTransforms.prefetchPlacement).not.toHaveBeenCalled();
+  });
+
+  it("keeps fit available while loading, then uses the current pose and heading", () => {
+    const { result, rerender } = renderHook(useScene3dCameraTracking, {
+      initialProps: startupProps({
+        navigationReferenceSettled: false,
+        placementStatus: "provisional",
+        provisionalFrameIds: ["lidar"],
+        provisionalPlaybackFrame: provisionalFrame("lidar", 0n),
+      }),
+    });
+    act(() => {
+      result.current.noteRenderedCameraPose(pose(1));
+      result.current.rig.onPoseSample({
+        anchor: trackingAnchor({}),
+        pose: pose(1),
+      });
+    });
+    // A null command leaves the existing panel fit path immediately usable.
+    expect(result.current.poseCommand).toBeNull();
+    expect(viewStateStore.getSnapshot().navigationCompositions).toEqual([]);
+
+    const transforms = translationTransforms(100, 50, 1);
+    const resolve = vi.fn<FrameTransformsState["resolve"]>(
+      (source, target, time) => {
+        const resolution = transforms.resolve(source, target, time);
+        if (resolution.status === "resolved") {
+          resolution.transform.rotation.setFromAxisAngle(
+            new Vector3(0, 0, 1),
+            Math.PI / 2,
+          );
+        }
+        return resolution;
+      },
+    );
+    rerender(
+      startupProps({
+        frameTransforms: { ...transforms, resolve },
+        playbackTimeNs: 42n,
+      }),
+    );
+
+    expect(resolve).toHaveBeenCalledWith("base_link", "map", 42n);
+    const camera = result.current.poseCommand;
+    expect(camera?.target).toEqual([100, 50, 1]);
+    expect(camera?.position[0]).toBeCloseTo(100);
+    expect(camera?.position[1]).toBeCloseTo(28);
+    expect(camera?.position[2]).toBeCloseTo(8);
+    const composition = viewStateStore.getSnapshot().navigationCompositions[0];
+    expect(composition?.kind).toBe("target-relative");
+    if (composition?.kind === "target-relative") {
+      expect(composition.relativePosition[0]).toBeCloseTo(0);
+      expect(composition.relativePosition[1]).toBeCloseTo(-22);
+      expect(composition.relativePosition[2]).toBeCloseTo(7);
+      expect(composition.relativeTarget).toEqual([0, 0, 0]);
+    }
+  });
+
+  it("waits for a playhead and adoption of a carried camera target", () => {
+    const { result, rerender } = renderHook(useScene3dCameraTracking, {
+      initialProps: startupProps({ playbackTimeNs: undefined }),
+    });
+    expect(result.current.poseCommand).toBeNull();
+    rerender(startupProps({ cameraTargetSettled: false }));
+    expect(result.current.poseCommand).toBeNull();
+    rerender(startupProps());
+    expect(result.current.poseCommand?.position).toEqual([-22, 0, 7]);
+  });
+
+  it.each(["missing", "pending"] as const)(
+    "finishes on fit for a %s target after existing transform reads settle",
+    (status) => {
+      const { result, rerender } = renderHook(useScene3dCameraTracking, {
+        initialProps: startupProps({
+          frameTransforms: {
+            ...translationTransforms(0, 0, 0),
+            resolve: (sourceFrameId, targetFrameId) => ({
+              sourceFrameId,
+              targetFrameId,
+              status,
+            }),
+          },
+        }),
+      });
+      expect(result.current.poseCommand).toBeNull();
+      rerender(startupProps({ playbackTimeNs: 10n }));
+      expect(result.current.poseCommand).toBeNull();
+    },
+  );
+
+  it.each(["unmatched", "provisional", "unframed"] as const)(
+    "keeps a final fit for %s data even if a valid ego arrives later",
+    (kind) => {
+      const { result, rerender, unmount } = renderHook(
+        useScene3dCameraTracking,
+        {
+          initialProps: startupProps({
+            cameraTargetIsEgo: kind !== "unmatched",
+            placementStatus: kind === "unmatched" ? "transformed" : kind,
+          }),
+        },
+      );
+      act(() => result.current.noteRenderedCameraPose(pose(1)));
+      rerender(startupProps());
+      expect(result.current.poseCommand).toBeNull();
+      unmount();
+      expect(viewStateStore.getSnapshot().cameraView).toBeNull();
+      expect(viewStateStore.getSnapshot().navigationCompositions).toEqual([]);
+    },
+  );
+
+  it.each([100n, 101n])(
+    "uses held poses only within the freshness threshold (age %s)",
+    (ageNs) => {
+      const transforms = translationTransforms(10, 0, 0);
+      const { result } = renderHook(useScene3dCameraTracking, {
+        initialProps: startupProps({
+          defaultTrackingMode: "free",
+          frameTransforms: {
+            ...transforms,
+            resolve: (source, target, time) => ({
+              ...transforms.resolve(source, target, time),
+              heldEdges: [
+                {
+                  ageNs,
+                  staleAfterNs: 100n,
+                  reason: "after-last-sample",
+                  sourceFrameId: source,
+                  sourceTimeNs: 0n,
+                  targetFrameId: target,
+                },
+              ],
+            }),
+          },
+        }),
+      });
+      expect(result.current.poseCommand !== null).toBe(ageNs <= 100n);
+    },
+  );
+
+  it("accepts an ego that is itself the reference frame", () => {
+    const resolve = vi.fn();
+    const { result } = renderHook(useScene3dCameraTracking, {
+      initialProps: startupProps({
+        worldFrameId: "base_link",
+        frameTransforms: { ...missingTransforms(), resolve },
+      }),
+    });
+    expect(result.current.poseCommand).toEqual({
+      position: [-22, 0, 7],
+      target: [0, 0, 0],
+    });
+    expect(resolve).not.toHaveBeenCalled();
+  });
+
+  it.each(["gesture", "interaction", "focus", "mode", "selection"] as const)(
+    "lets a user %s permanently cancel pending startup",
+    (action) => {
+      const { result, rerender } = renderHook(useScene3dCameraTracking, {
+        initialProps: startupProps({ navigationReferenceSettled: false }),
+      });
+      act(() => {
+        result.current.noteRenderedCameraPose(pose(5));
+        if (action === "gesture") result.current.rig.onGestureStart(pose(5));
+        else if (action === "mode") result.current.setTrackingMode("free");
+        else if (action === "selection") result.current.cancelStartupView();
+        else result.current.handleCameraPoseChange(pose(5), action);
+      });
+      const command = result.current.poseCommand;
+      rerender(startupProps());
+      expect(result.current.poseCommand).toBe(command);
+      expect(result.current.getDisplayedCameraPose()).toEqual(pose(5));
+    },
+  );
+
+  it.each(["exact", "portable"] as const)(
+    "gives a %s saved view priority over startup",
+    (kind) => {
+      const restore = cameraRestore(
+        kind === "exact"
+          ? {
+              cameraView: {
+                pose: pose(7),
+                sourceKey: "source-a",
+                worldFrameId: "map",
+              },
+            }
+          : { navigationCompositions: [targetComposition({})] },
+      );
+      const { result, rerender } = renderHook(useScene3dCameraTracking, {
+        initialProps: startupProps({
+          navigationReferenceSettled: false,
+          placementStatus: "empty",
+          restore,
+        }),
+      });
+      expect(result.current.poseCommand).toBeNull();
+      rerender(startupProps({ restore }));
+      expect(result.current.poseCommand).toEqual(
+        pose(kind === "exact" ? 7 : 5),
+      );
+      const restored = result.current.poseCommand;
+      rerender(startupProps({ playbackTimeNs: 10n, restore }));
+      expect(result.current.poseCommand).toBe(restored);
+    },
+  );
+
+  it("discards an incompatible settled raw restore and uses the startup preset", () => {
+    const restore = cameraRestore({
+      cameraView: {
+        pose: pose(7),
+        sourceKey: "source-a",
+        worldFrameId: "odom",
+      },
+    });
+    viewStateStore.recordCameraView(restore.cameraView);
+    const { result } = renderHook(useScene3dCameraTracking, {
+      initialProps: startupProps({ restore }),
+    });
+    expect(result.current.poseCommand?.position).toEqual([-22, 0, 7]);
+    expect(viewStateStore.getSnapshot().cameraView?.worldFrameId).toBe("map");
+  });
+
+  it("tries a compatible portable view before ego when the raw saved frame no longer matches", () => {
+    const restore = cameraRestore({
+      cameraView: {
+        pose: pose(7),
+        sourceKey: "source-a",
+        worldFrameId: "odom",
+      },
+      navigationCompositions: [targetComposition({})],
+    });
+    viewStateStore.recordCameraView(restore.cameraView);
+    viewStateStore.recordNavigationCompositions(restore.navigationCompositions);
+    const { result } = renderHook(useScene3dCameraTracking, {
+      initialProps: startupProps({ restore }),
+    });
+    expect(result.current.poseCommand).toEqual(pose(5));
+  });
+
+  it("preserves a pending saved view when a settings change cancels startup", () => {
+    const restore = cameraRestore({
+      navigationCompositions: [targetComposition({})],
+    });
+    const { result, rerender } = renderHook(useScene3dCameraTracking, {
+      initialProps: startupProps({
+        navigationReferenceSettled: false,
+        restore,
+      }),
+    });
+    act(() => {
+      result.current.noteRenderedCameraPose(pose(1));
+      result.current.cancelStartupView();
+    });
+    expect(viewStateStore.getSnapshot().navigationCompositions).toEqual([]);
+    rerender(startupProps({ restore }));
+    expect(result.current.poseCommand).toEqual(pose(5));
+  });
+
+  it.each(["preferredWorldFrameId", "preferredCameraTargetFrameId"] as const)(
+    "cancels startup in every tile when shared %s changes without authoring a fit",
+    (preference) => {
+      const { result, rerender, unmount } = renderHook(
+        useScene3dCameraTracking,
+        {
+          initialProps: startupProps({ navigationReferenceSettled: false }),
+        },
+      );
+      act(() => result.current.noteRenderedCameraPose(pose(1)));
+      rerender(startupProps({ [preference]: "base_link" }));
+      expect(result.current.poseCommand).toBeNull();
+      unmount();
+      expect(viewStateStore.getSnapshot().cameraView).toBeNull();
+      expect(viewStateStore.getSnapshot().navigationCompositions).toEqual([]);
+    },
+  );
+
+  it("does not persist an untouched fit after a local settings change", () => {
+    const { result, rerender, unmount } = renderHook(useScene3dCameraTracking, {
+      initialProps: startupProps({ navigationReferenceSettled: false }),
+    });
+    act(() => {
+      result.current.cancelStartupView();
+      result.current.noteRenderedCameraPose(pose(1));
+    });
+    rerender(startupProps());
+    expect(result.current.poseCommand).toBeNull();
+    unmount();
+    expect(viewStateStore.getSnapshot().cameraView).toBeNull();
+    expect(viewStateStore.getSnapshot().navigationCompositions).toEqual([]);
+  });
+
+  it("rearms for a new recording after an untouched fit, but not during an unbound interval", () => {
+    const { result, rerender } = renderHook(useScene3dCameraTracking, {
+      initialProps: startupProps({ cameraTargetIsEgo: false }),
+    });
+    act(() => result.current.noteRenderedCameraPose(pose(1)));
+    rerender(startupProps({ sourceKey: "" }));
+    expect(result.current.poseCommand).toBeNull();
+    rerender(startupProps());
+    expect(result.current.poseCommand).toBeNull();
+    rerender(startupProps({ sourceKey: "source-b" }));
+    expect(result.current.poseCommand?.position).toEqual([-22, 0, 7]);
   });
 });
 

@@ -43,4 +43,18 @@ export interface ModalViewportState extends ViewportState {
  * @internal Do not import this atom directly. Use `useSaveModalViewport`,
  * `useModalViewport`, or `modalBridge.getModalViewport()` instead.
  */
-export const __unsafeModalViewportAtom = atom<ModalViewportState | null>(null);
+export const __unsafeModalViewportAtom = atom<ModalViewportState | null>(
+  null as ModalViewportState | null,
+);
+
+/** The kinds of annotation surface the modal can mount. */
+export type AnnotationSurface = "image" | "video" | "dgva" | "3d";
+
+/**
+ * The annotation surface currently mounted, reported by the surface itself.
+ *
+ * @internal Use `useAnnotationSurface` or `useReportAnnotationSurface`.
+ */
+export const __unsafeAnnotationSurfaceAtom = atom<AnnotationSurface | null>(
+  null as AnnotationSurface | null,
+);

@@ -30,13 +30,8 @@ const observers = new WeakMap<Store, Set<Observer>>();
 
 /** Observers see writes made through a transaction or callback, not every set. */
 export const observeTransactions = (store: Store, observer: Observer) => {
-  let held = observers.get(store);
-
-  if (!held) {
-    held = new Set();
-    observers.set(store, held);
-  }
-
+  const held = observers.get(store) ?? new Set<Observer>();
+  observers.set(store, held);
   held.add(observer);
 
   return () => void held.delete(observer);

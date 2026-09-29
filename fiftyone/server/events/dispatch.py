@@ -14,6 +14,7 @@ import fiftyone.core.context as focx
 import fiftyone.core.odm as foo
 from fiftyone.core.session.events import (
     add_screenshot,
+    AppCountUpdate,
     CaptureNotebookCell,
     DeactivateNotebookCell,
     ReactivateNotebookCell,
@@ -31,7 +32,12 @@ from fiftyone.core.session.events import (
     SetFieldVisibilityStage,
 )
 
-from fiftyone.server.events.state import get_listeners, get_state, set_state
+from fiftyone.server.events.state import (
+    get_app_count,
+    get_listeners,
+    get_state,
+    set_state,
+)
 
 
 async def dispatch_event(
@@ -94,3 +100,19 @@ async def dispatch_event(
         listener.queue.put_nowait((datetime.now(), event))
 
     return event
+
+
+def dispatch_app_count() -> None:
+    """Dispatch the current App count to all listeners registered for the
+    server process.
+
+    Listener queues are last-in first-out, so a listener with an unread count
+    could otherwise receive the newest count before an older one. Only the
+    latest count matters, so any unread count is replaced.
+    """
+    event = AppCountUpdate(count=get_app_count())
+    for listener in get_listeners()[event.get_event_name()]:
+        while not listener.queue.empty():
+            listener.queue.get_nowait()
+
+        listener.queue.put_nowait((datetime.now(), event))

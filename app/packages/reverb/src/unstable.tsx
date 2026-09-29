@@ -51,9 +51,10 @@ export function useTransactionObserver(
 export function useReverbBridge(): React.FC<{ children?: React.ReactNode }> {
   const store = useStore();
 
-  return useMemo(
-    () =>
-      ({ children }) => <Provider store={store}>{children}</Provider>,
-    [store],
-  );
+  return useMemo(() => {
+    const ReverbBridge = ({ children }: { children?: React.ReactNode }) => (
+      <Provider store={store}>{children}</Provider>
+    );
+    return ReverbBridge;
+  }, [store]);
 }

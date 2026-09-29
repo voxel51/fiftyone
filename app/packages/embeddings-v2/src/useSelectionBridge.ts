@@ -15,6 +15,8 @@ import type {
 } from "./extensions";
 import { buildIdIndex, fetchLassoStage, fetchSampleInfo } from "./protocol";
 import type { EmbeddingsViewHandle, HoverHit } from "./renderer";
+import { usePatchSampleIndex } from "./usePatchSampleIndex";
+import { useSelectedPatchOwners } from "./useSelectedPatchOwners";
 import type { Loaded } from "./useRunColumns";
 
 export interface SelectionBridgeOptions {
@@ -40,6 +42,15 @@ export interface SelectionBridgeOptions {
   resetExtended: () => void;
   selectedSamples: Map<string, SelectionType>;
   setSelectedSamples: SetterOrUpdater<Map<string, SelectionType>>;
+  /** Other panels' selection (see foreignSelection.ts): the lowest emphasis
+   * layer. Null when there is none, or when this panel's own stage outranks
+   * it. */
+  foreignSelection: readonly string[] | null;
+  /** Whether the server's ids column can answer for this run. False for an
+   * extension-owned run, whose points are not sample-keyed. */
+  serverIds: boolean;
+  /** The grid shows a patches view, so its selections are patch ids */
+  isPatchesView: boolean;
   /** Joins each publish with the extension's selection artifacts (called
    * with the kept indices; null on clear). Null when nothing decorates. */
   decorateSelection: ((kept: number[] | null) => SelectionDecorator) | null;
@@ -77,8 +88,10 @@ export function stageSampleCount(
  * (the grid checkboxes) alone: scoping the grid is not the same as
  * marking samples for an action taken on them.
  * Grid -> plot: selected sample ids style the plot through a lazily
- * built id -> wire-indices map (one id can own many points). Esc (and
- * `clearAll`) clears every layer.
+ * built id -> wire-indices map (one id can own many points); other
+ * panels' selections style it the same way, below the grid's. On a
+ * patches run a sample id also resolves to every point its sample owns.
+ * Esc (and `clearAll`) clears every layer.
  */
 export function useSelectionBridge({
   datasetName,
@@ -92,6 +105,9 @@ export function useSelectionBridge({
   resetExtended,
   selectedSamples,
   setSelectedSamples,
+  foreignSelection,
+  serverIds,
+  isPatchesView,
   decorateSelection,
   resolveLassoStage,
   publishSelection,
@@ -176,6 +192,40 @@ export function useSelectionBridge({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [clearAll]);
 
+  // A patches run's points are labels, so sample-level ids (a samples-view
+  // grid's checkboxes, other panels' selections) resolve through each
+  // point's owning sample. Only fetched once something needs it
+  const patchSampleIndex = usePatchSampleIndex(
+    datasetName,
+    brainKey,
+    serverIds ? patchesField : null,
+    selectedSamples.size > 0 || foreignSelection !== null,
+    // The live selection; a failed fetch retries when it changes
+    selectedSamples.size > 0 ? selectedSamples : foreignSelection,
+  );
+
+  // The reverse case: a patches view hands over patch ids, which never name
+  // an images run's points, so the server maps them to their samples. The
+  // grid's checkboxes outrank another panel's selection, as below
+  const selectedPatchIds = useMemo(() => {
+    if (!isPatchesView || patchesField || !serverIds) return null;
+    if (selectedSamples.size) return Array.from(selectedSamples.keys());
+    return foreignSelection;
+  }, [
+    isPatchesView,
+    patchesField,
+    serverIds,
+    selectedSamples,
+    foreignSelection,
+  ]);
+  const patchOwners = useSelectedPatchOwners(
+    datasetName,
+    brainKey,
+    view,
+    selectedPatchIds,
+    loaded?.points.length ?? 0,
+  );
+
   // Grid/checkbox selections style the plot (id -> every wire index
   // sharing that id — one sample can own many points, e.g. every window
   // of an episode in a multimodal run). The map is built lazily and
@@ -188,10 +238,11 @@ export function useSelectionBridge({
   const resolveIndices = useCallback(
     (ids: Iterable<string>): number[] => {
       if (!loaded) return [];
+      const count = loaded.points.length;
       if (idIndexRef.current?.token !== loaded) {
         idIndexRef.current = {
           token: loaded,
-          map: buildIdIndex(loaded.ids, loaded.points.length),
+          map: buildIdIndex(loaded.ids, count),
         };
       }
       const indices: number[] = [];
@@ -200,10 +251,16 @@ export function useSelectionBridge({
         // Plain loop: spread-push overflows the arg limit past ~100k
         // matches, and one id can own every window of an episode
         if (matches) for (const m of matches) indices.push(m);
+        // Both id spaces, every time — never branch on the run type: a
+        // patches-view grid hands over label ids (the points' own), a
+        // samples-view grid hands over sample ids (their owners'). The
+        // owner index spans the whole run, so clip to what is loaded
+        const owned = patchSampleIndex?.get(id);
+        if (owned) for (const m of owned) if (m < count) indices.push(m);
       }
       return indices;
     },
-    [loaded],
+    [loaded, patchSampleIndex],
   );
   const selectedIndices = useMemo(() => {
     // Both layers emphasize the same way: grid checkboxes, and the clicks
@@ -212,19 +269,30 @@ export function useSelectionBridge({
       ? resolveIndices(selectedSamples.keys())
       : [];
     if (!clickIndices?.length) {
-      // No id resolving means the selection is not representable in this
-      // plot's id space (sample selections against a patches run, whose
-      // wire ids are label ids). That is "no selection" (null) — an empty
-      // selection would dim every point and outrank the filter-match
-      // layer in the host's precedence
-      return grid.length ? grid : null;
+      if (grid.length) return grid;
+      // A patches view's selection, already ranked (checkboxes first)
+      if (patchOwners) return patchOwners;
+      // Another panel's selection is the lowest layer, the old panel's
+      // order: checkboxes and clicks outrank it here, and this panel's
+      // own stage gates it off upstream (see foreignSelection.ts)
+      const foreign = foreignSelection ? resolveIndices(foreignSelection) : [];
+      // Nothing resolving means the selection names no loaded point. That
+      // is "no selection" (null) — an empty selection would dim every
+      // point and outrank the filter-match layer in the host's precedence
+      return foreign.length ? foreign : null;
     }
     if (!grid.length) return clickIndices;
     // Concat, not spread: one grid-selected id can own every window of an
     // episode, and spread-push overflows the arg limit past ~100k
     const seen = new Set(grid);
     return grid.concat(clickIndices.filter((i) => !seen.has(i)));
-  }, [selectedSamples, resolveIndices, clickIndices]);
+  }, [
+    selectedSamples,
+    resolveIndices,
+    clickIndices,
+    foreignSelection,
+    patchOwners,
+  ]);
 
   // Lasso -> view stage -> the grid. The override stage alone drives
   // the grid; the stage builds locally when the extension supplies a

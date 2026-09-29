@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  resolveTemporalDetectionSupport,
   resolveTrackExtentEdit,
   type ResolveTrackExtentEditInput,
 } from "./trackExtentEdit";
@@ -140,5 +141,77 @@ describe("resolveTrackExtentEdit", () => {
       );
       expect(edit).toMatchObject({ op: "shift", delta: 8 });
     });
+  });
+});
+
+describe("resolveTemporalDetectionSupport", () => {
+  const TOTAL = 120;
+  const td = (
+    mode: ResolveTrackExtentEditInput["mode"],
+    first: number,
+    last: number,
+  ) =>
+    resolveTemporalDetectionSupport({
+      mode,
+      newStartSec: startSecOf(first),
+      newEndSec: endSecOf(last),
+      fps: FPS,
+      totalFrames: TOTAL,
+    });
+
+  it("returns null for degenerate fps", () => {
+    expect(
+      resolveTemporalDetectionSupport({
+        mode: "move",
+        newStartSec: 0,
+        newEndSec: 1,
+        fps: 0,
+        totalFrames: TOTAL,
+      }),
+    ).toBeNull();
+  });
+
+  it("returns null for a non-positive clip length", () => {
+    for (const totalFrames of [0, -3, Number.NaN]) {
+      expect(
+        resolveTemporalDetectionSupport({
+          mode: "resize-end",
+          newStartSec: 0,
+          newEndSec: 1,
+          fps: FPS,
+          totalFrames,
+        }),
+      ).toBeNull();
+    }
+  });
+
+  it("inverts the build's seconds mapping for an in-range drag", () => {
+    expect(td("resize-end", SEG_FIRST, 50)).toEqual([SEG_FIRST, 50]);
+    expect(td("resize-start", 5, SEG_LAST)).toEqual([5, SEG_LAST]);
+    expect(td("move", 20, 40)).toEqual([20, 40]);
+  });
+
+  it("stops a resize-end at the clip's last frame", () => {
+    expect(td("resize-end", SEG_FIRST, TOTAL + 15)).toEqual([SEG_FIRST, TOTAL]);
+  });
+
+  it("stops a resize-start at frame 1", () => {
+    expect(td("resize-start", -4, SEG_LAST)).toEqual([1, SEG_LAST]);
+  });
+
+  it("slides a move back onto the clip, keeping its width", () => {
+    // [111, 131] is 21 frames wide and overruns by 11 → [100, 120]
+    expect(td("move", TOTAL - 9, TOTAL + 11)).toEqual([TOTAL - 20, TOTAL]);
+    // [-5, 15] → [1, 21]
+    expect(td("move", -5, 15)).toEqual([1, 21]);
+  });
+
+  it("pins a move of a span wider than the clip to the whole clip", () => {
+    expect(td("move", 10, 10 + TOTAL + 30)).toEqual([1, TOTAL]);
+  });
+
+  it("never produces a zero-width or inverted support", () => {
+    expect(td("resize-end", 50, 40)).toEqual([50, 50]);
+    expect(td("resize-end", TOTAL + 5, TOTAL + 9)).toEqual([TOTAL, TOTAL]);
   });
 });

@@ -40,7 +40,7 @@ export class ModalPom {
 
   constructor(
     private readonly page: Page,
-    private readonly eventUtils: EventUtils,
+    readonly eventUtils: EventUtils,
   ) {
     this.assert = new ModalAsserter(this);
     this.locator = page.getByTestId("modal");
@@ -68,6 +68,23 @@ export class ModalPom {
     return this.locator
       .getByTestId("panel-tab-fo-sample-modal-plugin")
       .textContent();
+  }
+
+  /** The saved subset's read-only range marks on the existing media timeline. */
+  get savedRangeTracks() {
+    return this.locator.locator('[data-track-id^="fiftyone:saved-segments"]');
+  }
+
+  get savedRangeBars() {
+    return this.savedRangeTracks
+      .first()
+      .locator("[data-event-index]:not([data-resize-handle])");
+  }
+
+  savedRangeBarsFor(sourceLabel: string) {
+    return this.savedRangeTracks
+      .filter({ hasText: sourceLabel })
+      .locator("[data-event-index]:not([data-resize-handle])");
   }
 
   get groupLooker() {
@@ -341,6 +358,15 @@ export class ModalPom {
     await this.clickOnLooker3d();
   }
 
+  /** Chrome hidden from 3D screenshots: the action bar, selection bar, and panels. */
+  get looker3dScreenshotMasks(): Locator[] {
+    return [
+      this.locator.getByTestId("looker3d-action-bar"),
+      this.locator.getByTestId("selectable-bar"),
+      this.locator.getByTestId("panel-container"),
+    ];
+  }
+
   async clickOnLooker() {
     return this.looker.click();
   }
@@ -422,7 +448,11 @@ class ModalAsserter {
   async verifySelectionCount(n: number) {
     const action = this.modalPom.locator.getByTestId("action-manage-selected");
 
-    await expect(action.first()).toHaveText(String(n));
+    await expect(action.first()).toHaveText(
+      n === 0
+        ? "0 samples · 0 labels"
+        : `${n.toLocaleString()} sample${n === 1 ? "" : "s"}`,
+    );
   }
 
   async verifyCarouselLength(expectedCount: number) {

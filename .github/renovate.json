@@ -33,6 +33,12 @@
             "addLabels": ["python"]
         },
         {
+            "matchManagers": ["pip_setup"],
+            "matchDepNames": ["strawberry-graphql"],
+            "groupName": null,
+            "separateMultipleMinor": true
+        },
+        {
             "matchManagers": ["github-actions"],
             "groupName": "github-actions",
             "addLabels": ["github-actions"]

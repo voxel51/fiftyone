@@ -209,6 +209,14 @@ export interface InteractionHandler {
   cleanup?(): void;
 }
 
+const isTextEditingElement = (
+  element: Element | null,
+): element is HTMLElement =>
+  element instanceof HTMLElement &&
+  (element.tagName === "INPUT" ||
+    element.tagName === "TEXTAREA" ||
+    element.contentEditable === "true");
+
 /**
  * Manages all interaction events and coordinates with overlays.
  * Now knows about overlays and manages drag state internally.
@@ -391,6 +399,13 @@ export class InteractionManager {
     // ignore right click, handled by `handleRightClick`
     if (event.button === 2) return;
 
+    // A press on the canvas ends text editing elsewhere, as it would if the
+    // handlers below did not preventDefault; keyboard shortcuts then reach the canvas.
+    const active = document.activeElement;
+    if (isTextEditingElement(active)) {
+      active.blur();
+    }
+
     const point = this.getCanvasPoint(event);
     const worldPoint = this.renderer.screenToWorld(point);
     const scale = this.renderer.getScale();
@@ -464,19 +479,24 @@ export class InteractionManager {
         multipleSelection: this.selectionManager.isMultipleSelection(),
       });
 
-      if (selectionAction !== "none") {
-        if (selectionAction === "toggle") {
-          this.selectionManager.toggle(handler!.id, { event });
-        } else {
-          this.selectionManager.select(handler!.id);
-        }
+      if (selectionAction === "toggle") {
+        this.selectionManager.toggle(handler!.id, { event });
+      } else if (selectionAction === "select") {
+        this.selectionManager.select(handler!.id);
+      }
 
-        // Select an overlay before issuing any edits. The cursor at this point
-        // is a 'pointer' indicating selection, not painting/erasing/keypoint.
-        if (segmentationModeBridge.isActive()) {
-          event.preventDefault();
-          return;
-        }
+      if (isSelectableOverlay && !drawOverOverlay) {
+        this.eventBus.dispatch("lighter:overlay-click", {
+          id: handler!.id,
+          point: worldPoint,
+        });
+      }
+
+      // Select an overlay before issuing any edits. The cursor at this point
+      // is a 'pointer' indicating selection, not painting/erasing/keypoint.
+      if (selectionAction !== "none" && segmentationModeBridge.isActive()) {
+        event.preventDefault();
+        return;
       }
 
       // Detection mode: defer overlay creation until we confirm this is a drag.
@@ -1119,13 +1139,7 @@ export class InteractionManager {
    */
   private handleKeyDown = async (event: KeyboardEvent): Promise<void> => {
     // Check if we're in an input field - don't handle shortcuts there
-    const activeElement = document.activeElement;
-    if (
-      activeElement &&
-      (activeElement.tagName === "INPUT" ||
-        activeElement.tagName === "TEXTAREA" ||
-        (activeElement as HTMLElement).contentEditable === "true")
-    ) {
+    if (isTextEditingElement(document.activeElement)) {
       return;
     }
 
@@ -1170,13 +1184,7 @@ export class InteractionManager {
    */
   private handleKeyUp = (event: KeyboardEvent): void => {
     // Check if we're in an input field - don't handle shortcuts there
-    const activeElement = document.activeElement;
-    if (
-      activeElement &&
-      (activeElement.tagName === "INPUT" ||
-        activeElement.tagName === "TEXTAREA" ||
-        (activeElement as HTMLElement).contentEditable === "true")
-    ) {
+    if (isTextEditingElement(document.activeElement)) {
       return;
     }
 

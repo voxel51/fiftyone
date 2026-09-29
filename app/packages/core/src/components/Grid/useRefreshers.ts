@@ -1,12 +1,15 @@
 import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
+import { useGridSelectionRequest } from "@fiftyone/state/src/selection";
 import { useEffect } from "react";
 import uuid from "react-uuid";
 import { useReverbValue } from "@fiftyone/reverb";
 import { useMemoOne } from "use-memo-one";
 import { gridAt, gridOffset, gridPage } from "./atoms";
+import { useGridJumpRevision } from "./useScrollLocation";
 
 export default function useRefreshers() {
+  const { key: selectionScopeKey } = useGridSelectionRequest();
   const cropToContent = useReverbValue(fos.cropToContent(false));
   const datasetName = useReverbValue(fos.datasetName);
   const extendedStagesUnsorted = fos.stringifyObj(
@@ -20,6 +23,7 @@ export default function useRefreshers() {
   const mediaField = useReverbValue(fos.selectedMediaField(false));
   const queryPerformanceSetting = useReverbValue(fos.queryPerformanceSetting);
   const refresher = useReverbValue(fos.refresher);
+  const jump = useGridJumpRevision();
   const shouldRenderImaVidLooker = useReverbValue(
     fos.shouldRenderImaVidLooker(false),
   );
@@ -29,10 +33,12 @@ export default function useRefreshers() {
   const sort = useReverbValue(fos.gridSortBy);
   const view = fos.filterView(useReverbValue(fos.view) ?? []);
 
-  // only reload, attempt to return to the last grid location
+  // only reload, attempt to return to the last grid location (or the one
+  // a jump just wrote)
   const layoutReset = useMemoOne(() => {
     cropToContent;
     fieldVisibilityStage;
+    jump;
     mediaField;
     queryPerformanceSetting;
     refresher;
@@ -40,6 +46,7 @@ export default function useRefreshers() {
   }, [
     cropToContent,
     fieldVisibilityStage,
+    jump,
     mediaField,
     queryPerformanceSetting,
     refresher,
@@ -56,6 +63,7 @@ export default function useRefreshers() {
     view;
     return uuid();
   }, [
+    selectionScopeKey,
     datasetName,
     extendedStagesUnsorted,
     filters,

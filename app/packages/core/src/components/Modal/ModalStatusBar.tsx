@@ -1,3 +1,4 @@
+import { useModalStatusBarContent } from "@fiftyone/annotation";
 import {
   Anchor,
   Icon,
@@ -11,23 +12,8 @@ import {
   TextVariant,
   Tooltip,
 } from "@voxel51/voodo";
-import { atom, PrimitiveAtom, useAtomValue, useSetAtom } from "jotai";
-import { Fragment, ReactElement, useMemo } from "react";
+import { Fragment } from "react";
 import styled from "styled-components";
-
-export type StatusContent = {
-  /**
-   * Live state the user cannot read anywhere else — inference progress, a
-   * chosen merge target, an error. Keep it to a few words: instructions belong
-   * in `help`, not here, so the bar stays clear of the panel tabs to its left.
-   */
-  status?: ReactElement;
-  /** Instructions for the active mode, revealed by the help affordance. */
-  help?: ReactElement;
-} | null;
-
-const initialContent: StatusContent = null;
-const statusContentAtom: PrimitiveAtom<StatusContent> = atom(initialContent);
 
 // Matches the panel tab strip the bar sits over (`StyledPanel` subtracts the
 // same height), so bar content is centered in that strip.
@@ -95,7 +81,7 @@ const HelpTrigger = styled.span`
  * `setContent` based on their own state.
  */
 export const ModalStatusBar = () => {
-  const content = useAtomValue(statusContentAtom);
+  const content = useModalStatusBarContent();
   if (!content) return null;
   if (!content.status && !content.help) return null;
 
@@ -123,19 +109,6 @@ export const ModalStatusBar = () => {
       )}
     </Container>
   );
-};
-
-/**
- * Hook for mode-specific status registrars. Call `setContent(...)` when the
- * mode becomes active, `setContent(null)` when it leaves.
- *
- * Last-writer-wins; rely on conditional mounting so at most one writer is
- * mounted at a time and React's commit ordering (cleanup before next mount)
- * handles transitions.
- */
-export const useModalStatusBar = () => {
-  const setContent = useSetAtom(statusContentAtom);
-  return useMemo(() => ({ setContent }), [setContent]);
 };
 
 export type StatusHelpEntry = {

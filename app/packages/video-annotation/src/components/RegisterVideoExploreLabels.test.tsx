@@ -42,8 +42,8 @@ vi.mock("../hooks/useSyncAnnotationFrameClock", () => ({
 }));
 
 vi.mock("../hooks/useSyncAnnotationVideoStore", () => ({
-  useSyncAnnotationVideoStore: (labelTypesArg: unknown, options: unknown) => {
-    calls.push(`store:${JSON.stringify(labelTypesArg)}`);
+  useSyncAnnotationVideoStore: (options: { labelTypes: unknown }) => {
+    calls.push(`store:${JSON.stringify(options.labelTypes)}`);
     calls.push(`storeOptions:${JSON.stringify(options)}`);
   },
 }));

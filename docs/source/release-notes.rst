@@ -3,6 +3,53 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.25.1
+--------------------------
+*Released September 28, 2026*
+
+Includes all updates from :ref:`FiftyOne 1.22.1 <release-notes-v1.22.1>`, plus:
+
+- **Azure support for multimodal datasets**: episodes, projections, and
+  embeddings stored in Azure Blob Storage now load, query, and embed like
+  they do on GCS and S3
+- Multimodal embeddings are computed for every time window; windows at the
+  end of an episode are no longer dropped
+- GPU video decoding no longer falls back to the CPU after a decoder error
+  on datasets with several concurrent streams
+- MCAP projection setup samples large datasets and reuses stream metadata,
+  so discovery is much faster; `infer_manifest_from_mcaps()` infers an
+  editable projection manifest from a set of MCAP files without creating a
+  dataset
+- Compute embeddings over MCAP video streams, not only image streams
+- Labelers can use SAM2 video tracking and click-to-segment when their
+  license grants built-in plugin execution
+
+.. _release-notes-v1.22.1:
+
+FiftyOne 1.22.1
+---------------
+*Released September 28, 2026*
+
+App
+^^^
+- Toggling a per-frame field in the video modal sidebar no longer closes and
+  reopens the timeline drawer
+  `#8540 <https://github.com/voxel51/fiftyone/pull/8540>`_
+- Per-frame Segmentation and Heatmap label fields are now projected for the
+  video timeline surfaces
+  `#8461 <https://github.com/voxel51/fiftyone/pull/8461>`_
+- Deleting several labels in quick succession no longer fails with a version
+  mismatch and rolls the deletes back
+  `#8489 <https://github.com/voxel51/fiftyone/pull/8489>`_
+- Annotation creation modes now exit consistently: right-click commits the
+  in-progress label and keeps the tool armed, right-click again with no label
+  open to return to Select, and the Back arrow returns to Select directly in
+  every mode
+  `#8481 <https://github.com/voxel51/fiftyone/pull/8481>`_
+- The label schema editor lets you choose a Radio or Dropdown input for a
+  label field's classes, so fields with many classes get a searchable list
+  `#8464 <https://github.com/voxel51/fiftyone/pull/8464>`_
+
 FiftyOne Enterprise 2.25.0
 --------------------------
 *Released September 11, 2026*

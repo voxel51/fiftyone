@@ -1,12 +1,13 @@
 import { VALID_KEYPOINTS } from "@fiftyone/utilities";
 import { selectorFamily, waitForAll } from "@fiftyone/reverb";
-import { aggregation } from "../aggregations";
+import { aggregation, constrainsScope } from "../aggregations";
 import { datasetSampleCount } from "../dataset";
 import * as filterAtoms from "../filters";
 import { queryPerformance } from "../queryPerformance";
 import * as schemaAtoms from "../schema";
 import * as selectors from "../selectors";
-import { MATCH_LABEL_TAGS } from "../sidebar";
+import { selectionScopeBoundary } from "../selectionScope";
+import { MATCH_LABEL_TAGS, TEMPORAL_TAGS_FIELD } from "../sidebar";
 import * as viewAtoms from "../view";
 import { booleanCountResults } from "./boolean";
 import { gatherPaths } from "./utils";
@@ -25,11 +26,14 @@ export const count = selectorFamily({
       value?: string | null;
     }) =>
     ({ get }): number | Promise<number> => {
+      // The estimated dataset count is only right when nothing narrows the
+      // results: no view, no filters, and no saved subset or segment source.
       if (
         !params.modal &&
         (params.path === "" || params.path === "_") &&
         !get(viewAtoms.view).length &&
-        get(queryPerformance)
+        get(queryPerformance) &&
+        !constrainsScope(get(selectionScopeBoundary))
       ) {
         if (
           !get(filterAtoms.hasFilters(false)) ||
@@ -71,6 +75,19 @@ export const count = selectorFamily({
             get(cumulativeCounts({ ...params, ...MATCH_LABEL_TAGS }))[value] ??
             0
           );
+        }
+
+        if (first === TEMPORAL_TAGS_FIELD) {
+          const data = get(counts({ ...params, path: TEMPORAL_TAGS_FIELD }));
+
+          // `undefined` asks for the total; `null` asks for the "no value"
+          // row, which temporal tags do not have — a tag either covers a span
+          // of a sample or is absent from it.
+          if (value === undefined) {
+            return Object.values(data).reduce((a, b) => a + b, 0);
+          }
+
+          return value === null ? 0 : (data[value] ?? 0);
         }
 
         if (split.length < 2) {

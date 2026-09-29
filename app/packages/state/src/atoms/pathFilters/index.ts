@@ -85,9 +85,6 @@ const primitiveFilter = selectorFamily<
 
       return (_value) => true;
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export type PathFilterSelector = (path: string, value: unknown) => boolean;
@@ -164,9 +161,6 @@ export const pathFilter = selectorFamily<PathFilterSelector, boolean>({
         return newFilters[path](value);
       };
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const keypointFilter = (

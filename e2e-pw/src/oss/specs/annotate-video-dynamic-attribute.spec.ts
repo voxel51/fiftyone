@@ -1,21 +1,11 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Dynamic-attribute propagation on the video-annotation surface. An attribute
- * declared `dynamic` in the `frames.detections` schema carries per-frame
- * meaning, so a sidebar edit does NOT fan across the whole track (that is the
- * static-attribute behaviour, guarded by `track-edit`). Instead it forward-fills
- * from the edited frame:
- *
- *  - editing at frame F sets `[F, end]`, leaving frames before F untouched;
- *  - a later edit creates a change boundary, and a subsequent edit before it
- *    fills only up to that boundary (sample-and-hold), preserving the later
- *    segment;
- *  - the whole forward-fill is a single engine transaction — one undo step.
- *
- * The dataset is re-seeded per test (one tracked `vehicle` instance with a
- * dynamic `turn_signal` attribute = "off" on every frame) so a persisting edit
- * can't leak into the next test.
+ * Dynamic-attribute propagation on the video surface: an attribute declared
+ * `dynamic` forward-fills from the edited frame instead of fanning across the
+ * track, a later edit creates a boundary that an earlier edit fills up to
+ * (sample-and-hold), and the fill is one undo step. Re-seeded per test with one
+ * tracked `vehicle` carrying `turn_signal` = "off" on every frame.
  */
 import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -27,7 +17,6 @@ const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-video-dynamic-attr",
 );
 const id = "000000000000000000000000";
-const clip = `/tmp/${datasetName}.webm`;
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -35,17 +24,8 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
-  // 20 frames @ 10fps — long enough to fill several frames forward.
-  await mediaFactory.createVideo({
-    outputPath: clip,
-    duration: 2,
-    width: 64,
-    height: 64,
-    frameRate: 10,
-    color: "#3050a0",
-  });
 });
 
 test.afterAll(async ({ foWebServer }) => {
@@ -105,13 +85,52 @@ const setSignal = async (modal: ModalPom, page: Page, choice: string) => {
 };
 
 // re-seed per test: one tracked instance carrying turn_signal="off" everywhere.
-test.beforeEach(async ({ videoAnnotateSDK }) => {
-  await videoAnnotateSDK.seed({
+// 20 frames @ 10fps — long enough to fill several frames forward.
+test.beforeEach(async ({ datasetFactory }) => {
+  await datasetFactory.createDataset({
+    mediaType: "video",
     datasetName,
-    videoPaths: [clip],
-    withEvents: false,
-    trackedSampleIndices: [0],
-    dynamicAttribute: { name: ATTR, values: ["off", "left", "right"] },
+    sampleFrames: true,
+    schema: {
+      "frames.detections": "Detections",
+      "frames.detections.detections.instance": "Instance",
+      "frames.detections.detections.keyframe": "BooleanField",
+      "frames.detections.detections.propagation": "DictField",
+      [`frames.detections.detections.${ATTR}`]: "StringField",
+    },
+    labelSchemas: {
+      "frames.detections": {
+        type: "detections",
+        component: "dropdown",
+        classes: ["vehicle", "person", "road sign"],
+        attributes: [
+          { name: "id", type: "id", component: "text", read_only: true },
+          { name: "tags", type: "list<str>", component: "text" },
+          { name: "confidence", type: "float", component: "text" },
+          { name: "index", type: "int", component: "text" },
+          { name: "mask_path", type: "str", component: "text" },
+          {
+            name: ATTR,
+            type: "str",
+            component: "dropdown",
+            values: ["off", "left", "right"],
+            dynamic: true,
+          },
+        ],
+      },
+    },
+    // one tracked vehicle on every frame, turn_signal "off" throughout
+    withFrameData: (_, { label }) => ({
+      detections: label.detections([
+        label.detection({
+          label: "vehicle",
+          bounding_box: [0.3, 0.3, 0.2, 0.2],
+          index: 1,
+          instance: label.instance("vehicle-1"),
+          [ATTR]: "off",
+        }),
+      ]),
+    }),
   });
 });
 

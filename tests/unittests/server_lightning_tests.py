@@ -16,12 +16,12 @@ from strawberry.schema.config import StrawberryConfig
 
 import fiftyone as fo
 
-from fiftyone.server.constants import SCALAR_OVERRIDES
 from fiftyone.server.lightning import (
     lightning_resolver,
     LightningInput,
     LightningPathInput,
 )
+from fiftyone.server.scalars import SCALAR_MAP
 
 from decorators import drop_async_dataset
 from utils.graphql import execute
@@ -34,8 +34,7 @@ class LightningQuery:
 
 schema = gql.Schema(
     query=LightningQuery,
-    scalar_overrides=SCALAR_OVERRIDES,
-    config=StrawberryConfig(auto_camel_case=False),
+    config=StrawberryConfig(auto_camel_case=False, scalar_map=SCALAR_MAP),
 )
 
 

@@ -198,6 +198,7 @@ const GridCustomRendererWrapper = ({
       {children}
       {showSelectionControl && (
         <Checkbox
+          data-fo-selection-checkbox=""
           style={SELECT_SAMPLE_BUTTON_STYLES}
           title={selected ? "Selected" : "Select sample"}
           checked={selected}

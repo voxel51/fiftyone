@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useRef } from "react";
 
-export interface DeferredSearchOptions {
+export interface DeferredSearchOptions<T> {
   /**
    * The registry has loaded, or failed to and never will — either way
    * `registered` is the answer.
@@ -17,7 +17,7 @@ export interface DeferredSearchOptions {
   settled: boolean;
   /** The search operator is in the registry. */
   registered: boolean;
-  submit: (query: string) => void;
+  submit: (request: T) => void;
   /** The registry loaded without the operator: tell the user why nothing ran. */
   onUnavailable: () => void;
   /** A query was parked to wait for the registry — show it as in flight. */
@@ -26,23 +26,23 @@ export interface DeferredSearchOptions {
   onDrop: () => void;
 }
 
-export const useDeferredSearch = ({
+export const useDeferredSearch = <T>({
   settled,
   registered,
   submit,
   onUnavailable,
   onHold,
   onDrop,
-}: DeferredSearchOptions): ((query: string) => void) => {
+}: DeferredSearchOptions<T>): ((request: T) => void) => {
   // Only the latest query waits — a second Enter replaces the first
-  const pending = useRef<string | null>(null);
+  const pending = useRef<{ request: T } | null>(null);
 
   useEffect(() => {
     if (!settled || pending.current === null) return;
-    const query = pending.current;
+    const { request } = pending.current;
     pending.current = null;
     if (registered) {
-      submit(query);
+      submit(request);
     } else {
       onDrop();
       onUnavailable();
@@ -50,13 +50,13 @@ export const useDeferredSearch = ({
   }, [settled, registered, submit, onUnavailable, onDrop]);
 
   return useCallback(
-    (query: string) => {
+    (request: T) => {
       if (settled) {
-        if (registered) submit(query);
+        if (registered) submit(request);
         else onUnavailable();
         return;
       }
-      pending.current = query;
+      pending.current = { request };
       onHold();
     },
     [settled, registered, submit, onUnavailable, onHold],

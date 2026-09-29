@@ -56,6 +56,7 @@ foud = fou.lazy_import("fiftyone.utils.data")
 food = fou.lazy_import("fiftyone.operators.delegated")
 foos = fou.lazy_import("fiftyone.operators.store")
 fota = fou.lazy_import("fiftyone.core.tags")
+fosub = fou.lazy_import("fiftyone.core.subsets")
 fmm = fou.lazy_import("fiftyone.multimodal.media_reference.field_model")
 
 
@@ -4409,12 +4410,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             -   a list of IDs of the samples that were added to this dataset
         """
         dicts = [doc for _, doc in samples_and_docs]
+        coll = self._sample_collection
 
         # adds `_id` to each dict
         res = foo.database._admitted_write(
             self._sample_collection_name,
             len(dicts),
-            lambda: self._sample_collection.insert_many(dicts),
+            lambda: coll.insert_many(dicts),
+            docs=dicts,
+            codec_options=coll.codec_options,
         )
 
         for sample, d in samples_and_docs:
@@ -4559,10 +4563,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             return len(ops) - existing
 
+        # Unsized: the ops also replace existing documents, which `num_new`
+        # does not count, so sizing them would over-count near a byte cap
         foo.database._admitted_write(
             self._sample_collection_name,
             num_new,
             lambda: self._sample_collection.bulk_write(ops, ordered=False),
+            docs=None,
         )
 
         for sample, d in samples_and_docs:
@@ -10233,6 +10240,7 @@ def _delete_dataset_extras(dataset):
     svc.cleanup()
 
     fota.delete_for_dataset_id(dataset_id)
+    fosub.delete_for_dataset_id(dataset_id)
 
 
 def _clone_collection(

@@ -75,7 +75,6 @@ import { isFieldVisibilityActive } from "./schemaSettings.atoms";
 import {
   datasetName,
   disableFrameFiltering,
-  isMultimodalDataset,
   isVideoDataset,
   stateSubscription,
 } from "./selectors";
@@ -539,10 +538,9 @@ export const sidebarGroups = selectorFamily<
       }
 
       const tagGroupIndex = groupNames.indexOf("tags");
-      // Temporal tags are a multimodal-only concept for now, so only surface
-      // the filter for `multimodal` datasets (e.g. not `quickstart`). We may
-      // extend this to videos later.
-      groups[tagGroupIndex].paths = get(isMultimodalDataset)
+      // Temporal tags need a playhead to hang an interval on, so the filter is
+      // only offered where one exists (e.g. not `quickstart`).
+      groups[tagGroupIndex].paths = get(atoms.supportsTemporalTags(modal))
         ? ["_label_tags", "_temporal_tags", "tags"]
         : ["_label_tags", "tags"];
 
@@ -645,9 +643,6 @@ export const sidebarGroups = selectorFamily<
           sidebarGroups: groups,
         });
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const persistSidebarGroups = (
@@ -770,9 +765,6 @@ export const sidebarEntries = selectorFamily<
         }, [] as State.SidebarGroup[]),
       );
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 /**
@@ -938,9 +930,6 @@ export const collapsedPaths = selector<Set<string>>({
 
     return new Set(paths);
   },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const sidebarGroupMapping = selectorFamily<
@@ -972,9 +961,6 @@ export const sidebarGroup = selectorFamily<
 
       return match.length ? match[0].paths : [];
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const sidebarPaths = selector({
@@ -994,9 +980,6 @@ export const sidebarGroupNames = selectorFamily<string[], boolean>({
         ({ name }) => name,
       );
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const groupIsEmpty = selectorFamily<
@@ -1012,9 +995,6 @@ export const groupIsEmpty = selectorFamily<
           .length === 0,
       );
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const groupShown = selectorFamily<

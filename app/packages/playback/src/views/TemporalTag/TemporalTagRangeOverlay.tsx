@@ -168,6 +168,7 @@ const TemporalTagRangeOverlay: React.FC<TemporalTagRangeOverlayProps> = ({
     <>
       <div
         ref={overlayRef}
+        data-testid="temporal-tag-range-overlay"
         className={[
           styles.overlay,
           phase === "ready" ||
