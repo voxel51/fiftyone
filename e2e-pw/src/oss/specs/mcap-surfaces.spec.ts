@@ -22,6 +22,7 @@ test.describe("MCAP surfaces", () => {
     modal,
     page,
   }) => {
+    await grid.untilTileDrawn(tinyA.fileName);
     const tile = grid.getNthTile(0);
     expect(await tile.locator("canvas").isVisible()).toBe(true);
     expect(

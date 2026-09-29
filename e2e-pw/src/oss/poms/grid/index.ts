@@ -172,6 +172,25 @@ export class GridPom {
   }
 
   /**
+   * Resolve once the tile of `fileName` has drawn, which it does on its own
+   * after the page loads
+   */
+  async untilTileDrawn(fileName: string) {
+    const isTile = (detail: unknown) =>
+      String(
+        (detail as { sampleFilepath?: string } | undefined)?.sampleFilepath,
+      ).endsWith(`/${fileName}`);
+    await this.eventUtils.untilState(
+      "e2e:looker:canvas-loaded",
+      async () =>
+        (await this.eventUtils.recorded("e2e:looker:canvas-loaded")).some(
+          isTile,
+        ),
+      (e) => isTile(e.detail),
+    );
+  }
+
+  /**
    * Run `action` and resolve once `count` distinct tiles have drawn their
    * canvas because of it
    */

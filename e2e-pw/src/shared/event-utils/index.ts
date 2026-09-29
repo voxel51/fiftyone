@@ -305,6 +305,23 @@ export class EventUtils {
   }
 
   /**
+   * Every payload of `event` in the current document so far, read once from
+   * the record {@link recordLoads} keeps
+   */
+  public async recorded(event: string): Promise<Record<string, unknown>[]> {
+    if (!recordingPages.has(this.page)) {
+      throw new Error("recorded needs recordLoads() before navigating");
+    }
+    return this.page.evaluate(
+      (name) =>
+        (window.__FO_EVENT_LOG__?.records ?? [])
+          .filter(({ event: e }) => e === name)
+          .map(({ detail }) => detail),
+      event,
+    );
+  }
+
+  /**
    * The latest payload of each of `events` in the current document, read
    * once from the record {@link recordLoads} keeps; absent if never sent
    */

@@ -154,8 +154,15 @@ export class EpisodePom {
   }
 
   /** The raw tile for `stream` shows a newly settled record ("" for none) */
-  raw(stream: string): EventCondition {
-    return shown("raw-shown", (d) => d.stream === stream);
+  raw(stream: string, validFrom?: string): EventCondition {
+    const validFromNs =
+      validFrom === undefined ? undefined : utcDateTimeToNanoseconds(validFrom);
+    return shown(
+      "raw-shown",
+      (d) =>
+        d.stream === stream &&
+        (validFromNs === undefined || d.validFromNs === String(validFromNs)),
+    );
   }
 
   /** The log console, in `mode`, shows each of `texts` */
@@ -177,12 +184,9 @@ export class EpisodePom {
     );
   }
 
-  /** The image tile for `stream` shows the frame it asked for */
-  imageShown(stream: string): EventCondition {
-    return shown(
-      "image-shown",
-      (d) => d.stream === stream || d.stream === `/${stream}`,
-    );
+  /** The image tile titled `title` shows the frame it asked for */
+  imageShown(title: string): EventCondition {
+    return shown("image-shown", (d) => d.title === title);
   }
 
   get controls(): Locator {
@@ -598,9 +602,33 @@ export class EpisodePom {
       return delta >= 0 && delta <= maxStepMs;
     };
 
-    // the seek moves the readout once
+    // a coarse ruler seek can land on the time already shown, which moves
+    // nothing; only a seek that moved the playhead re-renders the readout
     const before = await this.timestampButton.textContent();
-    await this.after([this.utcTimeChanged(before), ...conditions], seek);
+    const changed = this.utcTimeChanged(before);
+    const readout = await this.eventUtils.arm(
+      changed.events,
+      changed.predicate,
+    );
+    try {
+      let moved = true;
+      await this.after(
+        [
+          {
+            events: "e2e:playback:seek-applied",
+            predicate: (e) => {
+              moved = (e.detail as { moved: boolean }).moved;
+              return true;
+            },
+          },
+          ...conditions,
+        ],
+        seek,
+      );
+      if (moved) await readout.received;
+    } finally {
+      await readout.dispose();
+    }
     const current = await this.timestampButton.textContent();
     expect(
       inRange(current),
@@ -637,16 +665,11 @@ export class EpisodePom {
       name: "Custom data sampling rate",
     });
     if (!(await preset.inputValue()).startsWith("Custom")) {
+      // choose by keyboard: focus stays on the input, so the list (which
+      // opens on focus) closes on the choice instead of reopening
       await preset.click();
-      const customOption = this.page.getByRole("option", {
-        name: "Custom…",
-        exact: true,
-      });
-      // the custom controls commit in the option click's render; blur the
-      // select's input directly so portal closure cannot race a
-      // document-level Escape with the controlled selection rerender
-      await customOption.click();
-      await preset.blur();
+      await preset.press("End");
+      await preset.press("Enter");
     }
     await customRate.click();
     await customRate.fill(String(rateHz));
@@ -747,6 +770,14 @@ export class EpisodePom {
 
   async inspectStream(stream: string): Promise<void> {
     await this.openStreams();
+    // an episode's layout restores its raw tiles, and inspecting a stream
+    // already shown only focuses its tile, which sends nothing
+    if (
+      (await byDataTestId(this.tile(stream), "episode-raw-tree").count()) > 0
+    ) {
+      this.inspectedStream = stream;
+      return;
+    }
     await this.after([this.raw(stream)], () =>
       this.scope
         .getByRole("button", { name: "Inspect " + stream, exact: true })

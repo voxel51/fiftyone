@@ -107,11 +107,13 @@ test.describe("MCAP playback", () => {
 
     const first = "2024-01-01 00:00:00.000";
     const playhead = "2024-01-01 00:00:00.000 / 2024-01-01 00:00:02.000";
+    // A restores its own layout, with its one camera tile
     await episode.navigateDatasetSample("backward", tinyA.fileName, [
       episode.utcTime(first),
       episode.playhead(playhead),
+      episode.imageShown("camera/front"),
     ]);
-    await episode.expectTileTitleCount("camera/front", 2);
+    await episode.expectTileTitleCount("camera/front", 1);
     await episode.expectTileTitles(
       ["camera/front", "points"],
       ["camera/rear", "camera/side", "Logs / Diagnostics"],
@@ -198,8 +200,12 @@ test.describe("MCAP playback", () => {
       relativeSecond(longExpectation.lidarAfterGapSecond),
     );
 
-    await episode.seekToUtcTime("2024-01-01 01:00:00.000", 500, () =>
-      episode.scrubToFraction(1),
+    // the scrub moves the open /status tile to its terminal record
+    await episode.seekToUtcTime(
+      "2024-01-01 01:00:00.000",
+      500,
+      () => episode.scrubToFraction(1),
+      [episode.raw("/status", "2024-01-01 01:00:00.000")],
     );
     await episode.expectPlayhead(
       "2024-01-01 01:00:00.000 / 2024-01-01 01:00:00.000",

@@ -999,6 +999,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
               event="e2e:multimodal:image-shown"
               detail={{
                 stream,
+                title: images.find((s) => s.id === stream)?.label ?? "",
                 contentTimeNs: requestedImageContentTimeNs.toString(),
               }}
             />
