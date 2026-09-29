@@ -101,9 +101,7 @@ const openAnnotate = async (
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id: SAMPLE_ID }),
   });
-  await modal.waitForOpen();
-  await modal.sidebar.switchMode("annotate");
-  await modal.waitForLighterReady();
+  await modal.afterLighterReady(() => modal.sidebar.switchMode("annotate"));
   await modal.sidebar.annotate.segmentationMode();
   await modal.sidebar.annotate.assert.segmentationModeIsActive();
 };

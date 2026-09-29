@@ -1,5 +1,6 @@
 import { Locator, Page } from "src/oss/fixtures";
 import { ModalPom } from "../../modal";
+import { afterPopout } from "../popout";
 
 export class ModalTaggerPom {
   readonly locator: Locator;
@@ -22,10 +23,9 @@ export class ModalTaggerPom {
 
   /** Apply the pending tags; the tagger closes once they are written */
   private async apply() {
-    await this.locator.getByTestId("button-Apply").click();
-    await this.locator
-      .getByTestId("tagger-container")
-      .waitFor({ state: "detached" });
+    await afterPopout(this.modal.eventUtils, "popout", false, () =>
+      this.locator.getByTestId("button-Apply").click(),
+    );
   }
 
   async addSampleTag(tag: string) {

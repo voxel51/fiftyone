@@ -66,8 +66,7 @@ test.describe.serial("quickstart", () => {
     });
     await sidebar.asserter.assertFilterIsVisible("id", "categorical");
 
-    await grid.openFirstSample();
-    await modal.waitForSampleLoadDomAttribute();
+    await modal.afterSampleLoaded(() => grid.openFirstSample());
 
     grid.url.assert.verifySampleId(
       await modal.sidebar.getSidebarEntryText("id"),

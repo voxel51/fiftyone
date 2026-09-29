@@ -159,8 +159,7 @@ test(`dynamic groups of groups works`, async ({
   await grid.assert.nthSampleHasTagValue(0, "order_key", "1");
   await grid.assert.nthSampleHasTagValue(1, "order_key", "1");
 
-  await grid.openFirstSample();
-  await modal.waitForSampleLoadDomAttribute();
+  await modal.afterSampleLoaded(() => grid.openFirstSample());
 
   await modal.sidebar.assert.verifySidebarEntryTexts({
     scene_key: "1",
@@ -170,16 +169,13 @@ test(`dynamic groups of groups works`, async ({
   await modal.imavid.setLooping(false);
   await modal.imavid.toggleSettings();
 
-  await modal.imavid.togglePlay();
-  await modal.imavid.waitUntilFrameTextIs("2 / 2", true);
-  await modal.sidebar.assert.waitUntilSidebarEntryTextEqualsMultiple({
-    scene_key: "1",
-    order_key: "2",
-  });
-  await modal.navigateNextSample();
+  const second = { scene_key: "1", order_key: "2" };
+  await modal.sidebar.afterEntries(second, () =>
+    modal.imavid.afterFrameText("2 / 2", () => modal.imavid.togglePlay(), true),
+  );
+  await modal.sidebar.assert.verifySidebarEntryTexts(second);
 
-  await modal.sidebar.assert.waitUntilSidebarEntryTextEqualsMultiple({
-    scene_key: "2",
-    order_key: "1",
-  });
+  const next = { scene_key: "2", order_key: "1" };
+  await modal.sidebar.afterEntries(next, () => modal.navigateNextSample());
+  await modal.sidebar.assert.verifySidebarEntryTexts(next);
 });

@@ -182,17 +182,17 @@ export class SampleCanvasPom {
     this.#mouseX = xy.x;
     this.#mouseY = xy.y;
 
-    await this.page.mouse.move(xy.x, xy.y);
-    if (cursor) {
-      // The deepest hovered element is whatever surface is under the pointer
-      // (Lighter canvas, looker, overlay); a mode's cursor is stamped on it
-      // when the mode installs, even after the move.
-      await this.eventUtils.untilDom(
-        this.page.locator(":hover").last(),
-        (element, expected) => getComputedStyle(element).cursor === expected,
-        cursor,
-      );
+    if (!cursor) {
+      await this.page.mouse.move(xy.x, xy.y);
+      return;
     }
+    // Lighter writes its canvas cursor on each move, and a drawing mode
+    // stamps its own when it installs, even after the move
+    await this.eventUtils.after(
+      "e2e:lighter:cursor",
+      () => this.page.mouse.move(xy.x, xy.y),
+      (e) => (e.detail as { cursor: string }).cursor === cursor,
+    );
   }
 
   /**
@@ -260,26 +260,6 @@ export class SampleCanvasPom {
   }
 
   /**
-   * Wait for a drawing tool to be armed on the scene.
-   *
-   * `Scene2D.enterInteractiveMode` stamps the installed handler's own cursor
-   * onto the canvas as it installs it, and that install happens in a React
-   * effect that runs *after* the mode flag flips. Clicks fired on the same
-   * tick as the toolbar button therefore reach no handler at all: nothing is
-   * drawn, no request is sent, and the edit form never opens.
-   *
-   * @param cursor The cursor the armed handler advertises (the polyline and
-   *   detection creation handlers use "crosshair")
-   */
-  async waitForDrawingCursor(cursor = "crosshair") {
-    await this.eventUtils.untilDom(
-      this.lighterCanvas,
-      (element, expected) => getComputedStyle(element).cursor === expected,
-      cursor,
-    );
-  }
-
-  /**
    * Park the mouse on the modal backdrop beside its content, where nothing
    * reacts to hover, so tooltips and hover highlights stay out of screenshots
    */
@@ -306,7 +286,7 @@ export class SampleCanvasPom {
 
   /** Hover a label at relative `x`, `y`; resolves once its tooltip shows */
   async hoverLabel(x: number, y: number) {
-    await this.tooltip.afterShown(() => this.move(x, y, "pointer"));
+    await this.tooltip.afterShown(() => this.move(x, y));
   }
 
   /**
@@ -314,8 +294,9 @@ export class SampleCanvasPom {
    * mounts is there
    */
   async revealToolbar() {
-    await this.move(0.5, 0.5);
-    await this.toolbar.locator.waitFor();
+    await this.eventUtils.after("e2e:modal:lighter-toolbar-shown", () =>
+      this.move(0.5, 0.5),
+    );
   }
 
   /**
@@ -329,13 +310,11 @@ export class SampleCanvasPom {
     if (type === SampleCanvasType.LIGHTER) {
       return this.eventUtils.after("e2e:modal:lighter-revealed", action);
     }
-    const result = await action();
-    await this.locator
-      .getByTestId(type)
-      .locator('[canvas-loaded="true"]')
-      .first()
-      .waitFor({ state: "attached" });
-    return result;
+    return this.eventUtils.after(
+      "e2e:looker:canvas-loaded",
+      action,
+      (e) => !(e.detail as { thumbnail: boolean }).thumbnail,
+    );
   }
 
   async #toScreenCoordinates(x: number, y: number) {

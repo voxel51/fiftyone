@@ -103,12 +103,18 @@ test.describe.serial("flat direct 3d parity", () => {
   }) => {
     const seenSampleIndices = new Set<number>();
 
-    const assertFlatSample = async (specIndex: number) => {
+    /** Run `step` to show sample `specIndex`, then check it */
+    const assertFlatSample = async (
+      specIndex: number,
+      step: () => Promise<unknown>,
+    ) => {
       const spec = sampleSpecs[specIndex];
 
       if (!seenSampleIndices.has(specIndex)) {
-        await modal.looker3dControls.waitForAllAssetsLoaded();
+        await modal.looker3dControls.afterAllAssetsLoaded(step);
         seenSampleIndices.add(specIndex);
+      } else {
+        await step();
       }
 
       expect(await modal.looker3d.isVisible()).toBe(true);
@@ -123,17 +129,10 @@ test.describe.serial("flat direct 3d parity", () => {
       );
     };
 
-    await grid.openFirstSample();
-    await assertFlatSample(0);
-
-    await modal.navigateNextSample();
-    await assertFlatSample(1);
-
-    await modal.navigateNextSample();
-    await assertFlatSample(2);
-
-    await modal.navigatePreviousSample();
-    await assertFlatSample(1);
+    await assertFlatSample(0, () => grid.openFirstSample());
+    await assertFlatSample(1, () => modal.navigateNextSample());
+    await assertFlatSample(2, () => modal.navigateNextSample());
+    await assertFlatSample(1, () => modal.navigatePreviousSample());
 
     // TODO: add canvas screenshot assertions once 3D modal screenshots stabilize.
   });

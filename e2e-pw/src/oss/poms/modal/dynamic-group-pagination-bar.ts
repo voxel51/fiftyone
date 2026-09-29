@@ -16,9 +16,12 @@ export class DynamicGroupPaginationPom {
     this.assert = new DynamicGroupPaginationAsserter(this);
   }
 
+  /** Page to another group element, resolving once the sidebar shows it */
   async navigatePage(page: number) {
-    await this.getPageButton(page).click();
-    await this.modal.waitForCarouselToLoad();
+    const current = await this.modal.sidebar.getSampleId();
+    await this.modal.sidebar.afterEntryChanged("id", current, () =>
+      this.getPageButton(page).click(),
+    );
   }
 
   getPageButton(page: number) {
@@ -29,12 +32,10 @@ export class DynamicGroupPaginationPom {
     return this.page.getByTestId(`tooltip-${text}`);
   }
 
-  /** Hover a page button until its `text` tooltip opens (after a delay) */
+  /** Hover a page button; its `text` tooltip opens after a delay */
   async hoverPage(page: number, text: string) {
     await this.getPageButton(page).hover();
-    const tooltip = this.getTooltip(text);
-    await tooltip.waitFor();
-    return tooltip;
+    return this.getTooltip(text);
   }
 }
 

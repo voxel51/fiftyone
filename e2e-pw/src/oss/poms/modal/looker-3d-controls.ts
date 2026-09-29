@@ -1,9 +1,8 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
-import { exactText } from "src/oss/utils";
 import { ModalPom } from ".";
 import { ModalLevaPom } from "./leva";
 
-const SUCCESS_MSG = "All assets loaded successfully!";
+const SLICE_SELECTOR = "e2e:looker3d:slice-selector";
 
 export class Looker3DControlsPom {
   readonly page: Page;
@@ -36,16 +35,11 @@ export class Looker3DControlsPom {
   }
 
   /**
-   * Wait until every scene asset has loaded and the scene has rendered with
-   * its settled camera.
+   * Run `action` and resolve once the scene it (re)mounts has loaded every
+   * asset and rendered with its settled camera
    */
-  async waitForAllAssetsLoaded() {
-    await this.locator
-      .getByTestId("looker3d-logs-action-bar")
-      .filter({ hasText: exactText(SUCCESS_MSG) })
-      .waitFor({ state: "attached" });
-
-    await this.modal.untilSceneReady();
+  async afterAllAssetsLoaded<T>(action: () => Promise<T>): Promise<T> {
+    return this.modal.afterSceneReady(action);
   }
 
   /**
@@ -67,18 +61,16 @@ export class Looker3DControlsPom {
 
   async toggleGridHelper() {
     const toggle = this.locator.getByTestId("looker-3d-toggle-grid-helper");
-    const pressed = await toggle.getAttribute("aria-pressed");
-    await toggle.click();
-    await this.modal.eventUtils.untilDom(
-      toggle,
-      (el, was) => el.getAttribute("aria-pressed") !== was,
-      pressed,
+    const on = (await toggle.getAttribute("aria-pressed")) === "true";
+    await this.modal.eventUtils.after(
+      "e2e:looker3d:grid-toggled",
+      () => toggle.click(),
+      (e) => (e.detail as { on: boolean }).on !== on,
     );
   }
 
   async openSliceSelector() {
-    await this.sliceSelector.click();
-    await this.sliceSelectorCheckboxes.waitFor({ state: "visible" });
+    await this.afterSliceSelector(true, () => this.sliceSelector.click());
   }
 
   async closeSliceSelector() {
@@ -86,8 +78,15 @@ export class Looker3DControlsPom {
       return;
     }
 
-    await this.modal.clickOnLooker3d();
-    await this.sliceSelectorCheckboxes.waitFor({ state: "detached" });
+    await this.afterSliceSelector(false, () => this.modal.clickOnLooker3d());
+  }
+
+  private afterSliceSelector<T>(open: boolean, action: () => Promise<T>) {
+    return this.modal.eventUtils.after(
+      SLICE_SELECTOR,
+      action,
+      (e) => (e.detail as { open: boolean }).open === open,
+    );
   }
 
   getSliceCheckbox(slice: string) {

@@ -72,9 +72,7 @@ test.describe.serial("segmentation pen-tool round-trip", () => {
     modal,
   }) => {
     // ── 1. Enter annotate → segmentation mode → pick Pen ─────────────────────
-    await modal.waitForOpen();
-    await modal.sidebar.switchMode("annotate");
-    await modal.waitForLighterReady();
+    await modal.afterLighterReady(() => modal.sidebar.switchMode("annotate"));
 
     await modal.sidebar.annotate.segmentationMode();
     await modal.sidebar.annotate.assert.segmentationModeIsActive();
@@ -121,11 +119,12 @@ test.describe.serial("segmentation pen-tool round-trip", () => {
       const freshPage = await context.newPage();
       await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
         searchParams: new URLSearchParams({ id: sampleId }),
+        modalSample: "loaded",
       });
       const fresh = new ModalPom(freshPage, new EventUtils(freshPage));
-      await fresh.waitForSampleLoadDomAttribute();
-      await fresh.sidebar.switchMode("annotate");
-      await fresh.sidebar.annotate.waitForLabelList();
+      await fresh.sidebar.annotate.afterLabelList(() =>
+        fresh.sidebar.switchMode("annotate"),
+      );
       const rows = fresh.sidebar.annotate.labelRowsFor("instances");
       // both polygons were committed as their own detections
       expect(await rows.count()).toBe(2);

@@ -120,9 +120,9 @@ const inFreshContext = async (
   try {
     await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
       searchParams: new URLSearchParams({ id }),
+      modalSample: "loaded",
     });
     const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-    await freshModal.waitForSampleLoadDomAttribute();
     await freshModal.sidebar.switchMode("annotate");
 
     await verify(freshModal);
@@ -139,8 +139,8 @@ for (const cfg of KINDS) {
       await createMaskDataset(datasetFactory, cfg);
       await fiftyoneLoader.waitUntilGridVisible(page, cfg.datasetName, {
         searchParams: new URLSearchParams({ id }),
+        modalSample: "loaded",
       });
-      await modal.waitForSampleLoadDomAttribute();
       await modal.assert.isOpen();
       await modal.sidebar.switchMode("annotate");
     });

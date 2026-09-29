@@ -11,6 +11,7 @@ import { PythonRunner } from "src/shared/python-runner/python-runner";
  * A grid tile's terminal states: lookers finish drawing a canvas (or report
  * an error); custom-renderer tiles are ready once their wrapper commits
  */
+const MODAL_OPENED = "e2e:modal:opened";
 const TILE_READY = [
   "e2e:looker:canvas-loaded",
   "e2e:looker:error-shown",
@@ -75,7 +76,7 @@ export class OssLoader extends AbstractFiftyoneLoader {
     datasetName: string,
     options?: WaitUntilGridVisibleOptions,
   ): Promise<void> {
-    const { readyEvent, searchParams, tiles } = options ?? {};
+    const { modalSample, readyEvent, searchParams, tiles } = options ?? {};
     const eventUtils = new EventUtils(page);
     await eventUtils.recordLoads();
 
@@ -167,28 +168,40 @@ export class OssLoader extends AbstractFiftyoneLoader {
       }
     };
 
-    if (readyEvent) {
-      await eventUtils.afterNavigation(readyEvent, navigate);
-      return;
-    }
+    // a deep link to a sample or group opens the modal as the page loads
+    const opensModal =
+      (searchParams?.has("id") || searchParams?.has("groupId")) ?? false;
+    const drawn = new Set<string>();
+    let tileReady = false;
+    let modalOpened = !opensModal;
+    let modalLoaded = !modalSample;
+    let ready = !readyEvent;
 
-    if (tiles) {
-      const drawn = new Set<string>();
-      await eventUtils.afterNavigation(
-        "e2e:looker:canvas-loaded",
-        navigate,
-        (e) => {
-          const { sampleId, thumbnail } = e.detail as {
-            sampleId: string;
-            thumbnail: boolean;
-          };
-          if (thumbnail) drawn.add(sampleId);
-          return drawn.size === tiles;
-        },
-      );
-      return;
-    }
-
-    await eventUtils.afterNavigation(TILE_READY, navigate);
+    await eventUtils.afterNavigation(
+      [...TILE_READY, MODAL_OPENED, ...(readyEvent ? [readyEvent] : [])],
+      navigate,
+      ({ event, detail }) => {
+        const { sampleId, thumbnail } = (detail ?? {}) as {
+          sampleId?: string;
+          thumbnail?: boolean;
+        };
+        if (event === readyEvent) ready = true;
+        if (event === MODAL_OPENED) modalOpened = true;
+        if (TILE_READY.includes(event)) {
+          if (!tiles) tileReady = true;
+          if (thumbnail && event === "e2e:looker:canvas-loaded") {
+            drawn.add(sampleId);
+            tileReady ||= drawn.size === tiles;
+          }
+          if (thumbnail === false) {
+            modalLoaded ||=
+              event === "e2e:looker:canvas-loaded" ||
+              (modalSample === "loaded-or-error" &&
+                event === "e2e:looker:error-shown");
+          }
+        }
+        return (readyEvent ? ready : tileReady) && modalOpened && modalLoaded;
+      },
+    );
   }
 }

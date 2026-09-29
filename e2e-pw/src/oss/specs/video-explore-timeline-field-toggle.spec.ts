@@ -82,11 +82,10 @@ test("toggling a frame field keeps the timeline drawer and its rows mounted", as
 }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
+    modalSample: "loaded",
+    readyEvent: "e2e:video-annotation:tracks-rendered",
   });
-  await modal.waitForOpen();
-  await modal.waitForSampleLoadDomAttribute();
   const va = modal.videoAnnotate;
-  await va.waitForTimeline();
 
   // both fields are active by default: one row each
   await va.assert.objectTrackCount(2);

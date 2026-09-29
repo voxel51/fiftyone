@@ -45,8 +45,7 @@ test.describe.serial("lighter-toolbar-smoke", () => {
     grid,
     modal,
   }) => {
-    await grid.openFirstSample();
-    await modal.waitForSampleLoadDomAttribute();
+    await modal.afterSampleLoaded(() => grid.openFirstSample());
     await modal.sampleCanvas.afterRenderer(SampleCanvasType.LIGHTER, () =>
       modal.sidebar.switchMode("annotate"),
     );

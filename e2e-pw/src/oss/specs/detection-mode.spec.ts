@@ -49,9 +49,9 @@ test.describe.serial("detection mode", () => {
   test.beforeEach(async ({ datasetName, fiftyoneLoader, modal, page }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ id: "000000000000000000000000" }),
+      modalSample: "loaded-or-error",
     });
 
-    await modal.waitForSampleLoadDomAttribute(true);
     await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
     await modal.sidebar.switchMode("annotate");
   });

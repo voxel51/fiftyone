@@ -84,9 +84,9 @@ test("frame primitives follow the playhead and the frame number is read-only", a
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
   });
-  await modal.waitForOpen();
-  await modal.sidebar.switchMode("annotate");
-  await modal.videoAnnotate.waitForSurface();
+  await modal.videoAnnotate.afterSurface(() =>
+    modal.sidebar.switchMode("annotate"),
+  );
 
   const sidebar = modal.sidebar.annotate;
   await sidebar.assert.primitiveValue("frames.weather", weatherAt(1));

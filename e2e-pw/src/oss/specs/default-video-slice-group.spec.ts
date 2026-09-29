@@ -84,22 +84,20 @@ test.describe.serial("default video slice group", () => {
     await grid.sliceSelector.assert.verifyActiveSlice("video");
     await grid.assert.isTileCountEqualTo(1);
 
-    await grid.openFirstSample();
-    await modal.waitForSampleLoadDomAttribute();
-    await modal.waitForCarouselToLoad();
+    await modal.afterCarouselRendered(() =>
+      modal.afterSampleLoaded(() => grid.openFirstSample()),
+    );
     await modal.assert.verifyCarouselLength(2);
     await modal.close();
 
     await grid.selectSlice("image");
 
     await grid.assert.isTileCountEqualTo(2);
-    await grid.openFirstSample();
-    await modal.waitForSampleLoadDomAttribute();
-    await modal.waitForCarouselToLoad();
+    await modal.afterCarouselRendered(() =>
+      modal.afterSampleLoaded(() => grid.openFirstSample()),
+    );
     await modal.assert.verifyCarouselLength(2);
-    await modal.navigateNextSample();
-    await modal.waitForSampleLoadDomAttribute();
-    await modal.waitForCarouselToLoad();
+    await modal.afterCarouselRendered(() => modal.navigateNextSample());
     await modal.assert.verifyCarouselLength(1);
   });
 });

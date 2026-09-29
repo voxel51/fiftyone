@@ -131,8 +131,9 @@ test.describe.skip("camera initialization", () => {
     // Ensure no saved camera state exists
     await renderer3d.clearSavedCameraState(basicDatasetName);
 
-    await grid.openFirstSample();
-    await modal.looker3dControls.waitForAllAssetsLoaded();
+    await modal.looker3dControls.afterAllAssetsLoaded(() =>
+      grid.openFirstSample(),
+    );
 
     // the scene reveals only once the camera has settled
     expect(
@@ -158,8 +159,9 @@ test.describe.skip("camera initialization", () => {
     fiftyoneLoader,
   }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, basicDatasetName);
-    await grid.openFirstSample();
-    await modal.looker3dControls.waitForAllAssetsLoaded();
+    await modal.looker3dControls.afterAllAssetsLoaded(() =>
+      grid.openFirstSample(),
+    );
 
     const cameraBefore = await renderer3d.getCameraPosition();
 
@@ -212,8 +214,9 @@ test.describe.skip("camera initialization", () => {
     // Clear any saved state so we start fresh
     await renderer3d.clearSavedCameraState(scenePosDatasetName);
 
-    await grid.openFirstSample();
-    await modal.looker3dControls.waitForAllAssetsLoaded();
+    await modal.looker3dControls.afterAllAssetsLoaded(() =>
+      grid.openFirstSample(),
+    );
 
     expect(
       positionsAreClose(
@@ -236,8 +239,9 @@ test.describe.skip("camera initialization", () => {
     await fiftyoneLoader.waitUntilGridVisible(page, basicDatasetName);
     await renderer3d.clearSavedCameraState(basicDatasetName);
 
-    await grid.openFirstSample();
-    await modal.looker3dControls.waitForAllAssetsLoaded();
+    await modal.looker3dControls.afterAllAssetsLoaded(() =>
+      grid.openFirstSample(),
+    );
     // the modal opens in explore, so this switch remounts nothing
     await modal.sidebar.switchMode("explore");
 
@@ -287,8 +291,9 @@ test.describe.skip("camera initialization", () => {
     // Clear saved state to get a fresh bbox-based init
     await renderer3d.clearSavedCameraState(basicDatasetName);
 
-    await grid.openFirstSample();
-    await modal.looker3dControls.waitForAllAssetsLoaded();
+    await modal.looker3dControls.afterAllAssetsLoaded(() =>
+      grid.openFirstSample(),
+    );
 
     // Record the initial camera position
     const initialPosition = await renderer3d.getCameraPosition();

@@ -44,26 +44,24 @@ export class VideoAnnotatePom {
   }
 
   /**
-   * Wait until the video-annotation surface has mounted AND the timeline
-   * has committed its tracks (`data-timeline-loaded="true"` — stamped once
-   * label schemas land and the frame index resolves). Track reads after
-   * this are deterministic single-shots; no polling required.
+   * Run `action` (e.g. the switch to annotate) and resolve once the
+   * video-annotation surface it mounts has lifted its cover. The cover stays
+   * until media, store and tracks are ready (clicks before land on it), so
+   * track reads after this are deterministic single reads.
    */
-  async waitForSurface() {
-    // the surface stays under an opaque cover until media, store and tracks
-    // are ready; clicks before that land on the cover
-    await this.page
-      .locator('[data-cy="video-annotation-surface"][data-revealed="true"]')
-      .waitFor();
-    await this.waitForTimeline();
+  async afterSurface<T>(action: () => Promise<T>): Promise<T> {
+    return this.modal.eventUtils.after(
+      "e2e:video-annotation:surface-revealed",
+      action,
+    );
   }
 
-  /** Wait until the timeline (Annotate or Explore) has committed its tracks. */
-  async waitForTimeline() {
-    await this.page
-      .locator('[data-timeline-loaded="true"]')
-      .first()
-      .waitFor({ state: "attached" });
+  /**
+   * Run `action` and resolve once the timeline (Annotate or Explore) has
+   * committed its tracks because of it
+   */
+  async afterTimeline<T>(action: () => Promise<T>): Promise<T> {
+    return this.modal.eventUtils.after(TRACKS_RENDERED, action);
   }
 
   /** All distinct timeline track ids (object instanceIds + `td-…` rows). */
@@ -105,12 +103,10 @@ export class VideoAnnotatePom {
   }
 
   /**
-   * Wait until at least one object track has built (timeline warmup is async),
-   * then return the first object track's id. Use instead of indexing
-   * `objectTrackIds()` directly right after the surface mounts.
+   * The first object track's id; the surface reveals only once its frame
+   * tracks have resolved (see {@link afterSurface})
    */
   async firstObjectTrackId(): Promise<string> {
-    await this.objectTracks.first().waitFor({ state: "attached" });
     return (await this.objectTrackIds())[0];
   }
 
@@ -270,18 +266,20 @@ export class VideoAnnotatePom {
    */
   async navigateSample(direction: "next" | "previous") {
     const current = new Set(await this.trackIds());
-    await this.modal.eventUtils.after(
-      TRACKS_RENDERED,
-      () =>
-        this.page.keyboard.press(
-          direction === "next" ? "ArrowRight" : "ArrowLeft",
-        ),
-      (e) => {
-        const ids = renderedIds(e);
-        return ids.length > 0 && !ids.some((id) => current.has(id));
-      },
+    // the surface remounts per sample, so the next one reveals anew
+    await this.afterSurface(() =>
+      this.modal.eventUtils.after(
+        TRACKS_RENDERED,
+        () =>
+          this.page.keyboard.press(
+            direction === "next" ? "ArrowRight" : "ArrowLeft",
+          ),
+        (e) => {
+          const ids = renderedIds(e);
+          return ids.length > 0 && !ids.some((id) => current.has(id));
+        },
+      ),
     );
-    await this.waitForSurface();
   }
 
   /** The label text in a track row's left column. */
@@ -291,10 +289,10 @@ export class VideoAnnotatePom {
 
   /** Right-click a track's interval bar and read its context menu items. */
   async trackContextMenuItems(trackId: string): Promise<string[]> {
-    await this.trackBar(trackId).click({ button: "right" });
-    const items = this.page.getByRole("menuitem");
-    await items.first().waitFor();
-    return items.allTextContents();
+    await this.modal.eventUtils.after("e2e:playback:lane-menu-opened", () =>
+      this.trackBar(trackId).click({ button: "right" }),
+    );
+    return this.page.getByRole("menuitem").allTextContents();
   }
 
   /** The human-readable interval span shown in a track bar's `title` tooltip. */
@@ -532,14 +530,12 @@ export class VideoAnnotatePom {
 
   /**
    * Draw a polyline by clicking each vertex on the canvas (polyline mode must
-   * already be active). The first click seeds a new polyline via the creation
+   * already be armed, see `polylineMode`). The first click seeds a new polyline via the creation
    * handler; each subsequent click extends it from the nearest endpoint.
    *
    * @param vertices Container-relative [0, 1] points, one per vertex.
    */
   async drawPolyline(vertices: Array<[number, number]>) {
-    await this.modal.sampleCanvas.waitForDrawingCursor();
-
     // the first vertex creates the polyline and establishes its track
     const [[x0, y0], ...rest] = vertices;
     await this.afterTracksChange(() => this.modal.sampleCanvas.click(x0, y0));
@@ -554,7 +550,6 @@ export class VideoAnnotatePom {
    * mode must already be active), resolving once its track is on the timeline.
    */
   async drawBox(from: [number, number], to: [number, number]) {
-    await this.modal.sampleCanvas.waitForDrawingCursor();
     await this.afterTracksChange(async () => {
       await this.modal.sampleCanvas.move(from[0], from[1]);
       await this.modal.sampleCanvas.down();

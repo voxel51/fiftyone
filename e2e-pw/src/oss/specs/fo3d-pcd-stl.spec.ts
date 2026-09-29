@@ -98,9 +98,10 @@ test.describe.serial("fo3d", () => {
   test("scene is rendered correctly", async ({ modal, grid, modalSidebar }) => {
     await grid.assert.hasScreenshot("orthographic-projection-grid-cuboids.png");
 
-    await grid.openFirstSample();
     // each loaded asset adds its folders to the render preferences
-    await modal.looker3dControls.waitForAllAssetsLoaded();
+    await modal.looker3dControls.afterAllAssetsLoaded(() =>
+      grid.openFirstSample(),
+    );
     await modal.modalContainer.hover();
 
     const leva = modal.looker3dControls.leva;

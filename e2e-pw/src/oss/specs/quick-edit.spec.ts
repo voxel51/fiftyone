@@ -210,9 +210,9 @@ test.describe("quick edit", () => {
   ) => {
     await fiftyoneLoader.waitUntilGridVisible(page, DATASET_NAME, {
       searchParams: new URLSearchParams({ id }),
+      modalSample: "loaded",
     });
 
-    await modal.waitForSampleLoadDomAttribute();
     await modal.assert.isOpen();
     await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
   };

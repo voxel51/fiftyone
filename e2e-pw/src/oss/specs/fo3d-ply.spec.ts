@@ -83,10 +83,10 @@ test.describe.serial("fo3d-ply", () => {
     await page.evaluate(() => {
       localStorage.setItem("fo-3d-annotation-tips-dismissed", "true");
     });
-    await grid.openFirstSample();
+    await modal.looker3dControls.afterAllAssetsLoaded(() =>
+      grid.openFirstSample(),
+    );
     await modal.modalContainer.hover();
-
-    await modal.looker3dControls.waitForAllAssetsLoaded();
 
     // Go to top view (press keyboard "T")
     await modal.looker3dControls.setTopView();

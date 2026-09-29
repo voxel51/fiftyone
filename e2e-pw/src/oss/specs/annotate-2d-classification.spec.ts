@@ -33,11 +33,12 @@ const expectPersistedClassification = async (
     const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
     await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
       searchParams: new URLSearchParams({ id }),
+      modalSample: "loaded",
     });
-    await freshModal.waitForSampleLoadDomAttribute();
     await freshModal.assert.isOpen();
-    await freshModal.sidebar.switchMode("annotate");
-    await freshModal.sidebar.annotate.waitForLabelList();
+    await freshModal.sidebar.annotate.afterLabelList(() =>
+      freshModal.sidebar.switchMode("annotate"),
+    );
     const rows = freshModal.sidebar.annotate.labelRowsFor(FIELD);
     expect(await rows.count()).toBe(label === null ? 0 : 1);
     if (label !== null) {
@@ -80,8 +81,8 @@ test.describe.serial("2D annotation classification", () => {
     });
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ id }),
+      modalSample: "loaded",
     });
-    await modal.waitForSampleLoadDomAttribute();
     await modal.assert.isOpen();
     await modal.sidebar.switchMode("annotate");
   });

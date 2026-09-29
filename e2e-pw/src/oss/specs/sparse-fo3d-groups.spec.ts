@@ -130,9 +130,11 @@ test.describe.serial("sparse grouped fo3d", () => {
   });
 
   test("keeps sparse 3d modal navigation stable", async ({ grid, modal }) => {
+    /** Run `step` to show `expectedSlice` of group `index`, then check it */
     const assertSingleSliceState = async (
       index: number,
       expectedSlice: "x" | "y" | "z",
+      step: () => Promise<unknown>,
     ) => {
       const spec = groupSpecs[index];
       const sample = spec.samples.find(({ slice }) => slice === expectedSlice);
@@ -143,35 +145,30 @@ test.describe.serial("sparse grouped fo3d", () => {
         );
       }
 
-      await modal.looker3dControls.waitForAllAssetsLoaded();
+      const entries = {
+        "group.name": expectedSlice,
+        name: sample.name,
+        scene: spec.scene,
+      };
+      await modal.sidebar.afterEntries(entries, () =>
+        modal.looker3dControls.afterAllAssetsLoaded(step),
+      );
       await modal.looker3dControls.assert.verifySliceSelectorLabel(
         expectedSlice,
       );
       await modal.assert.verifyHasNoViewerError();
-      await modal.sidebar.assert.waitUntilSidebarEntryTextEqualsMultiple({
-        "group.name": expectedSlice,
-        name: sample.name,
-        scene: spec.scene,
-      });
+      await modal.sidebar.assert.verifySidebarEntryTexts(entries);
     };
 
     await grid.assert.isEntryCountTextEqualTo("4 groups with slice");
 
-    await grid.openFirstSample();
-    await modal.waitForSampleLoadDomAttribute(true);
-    await assertSingleSliceState(0, "z");
-
-    await modal.toggleLooker3dSlice("y");
-    await assertSingleSliceState(0, "y");
-
-    await modal.navigateNextSample(true);
-    await assertSingleSliceState(1, "y");
-
-    await modal.navigateNextSample(true);
-    await assertSingleSliceState(2, "z");
-
-    await modal.navigateNextSample(true);
-    await assertSingleSliceState(3, "z");
+    await assertSingleSliceState(0, "z", () =>
+      modal.afterSampleLoaded(() => grid.openFirstSample(), true),
+    );
+    await assertSingleSliceState(0, "y", () => modal.toggleLooker3dSlice("y"));
+    await assertSingleSliceState(1, "y", () => modal.navigateNextSample(true));
+    await assertSingleSliceState(2, "z", () => modal.navigateNextSample(true));
+    await assertSingleSliceState(3, "z", () => modal.navigateNextSample(true));
   });
 
   test("opens the first modal cleanly from every grid slice", async ({
@@ -189,14 +186,13 @@ test.describe.serial("sparse grouped fo3d", () => {
       await grid.sliceSelector.assert.verifyActiveSlice(slice);
       await grid.assert.isEntryCountTextEqualTo(entryCount);
 
-      await grid.openFirstSample();
-      await modal.waitForSampleLoadDomAttribute(true);
-      await modal.looker3dControls.waitForAllAssetsLoaded();
-      await modal.assert.verifyHasNoViewerError();
-      await modal.sidebar.assert.waitUntilSidebarEntryTextEquals(
-        "group.name",
-        slice,
+      await modal.sidebar.afterEntries({ "group.name": slice }, () =>
+        modal.looker3dControls.afterAllAssetsLoaded(() =>
+          modal.afterSampleLoaded(() => grid.openFirstSample(), true),
+        ),
       );
+      await modal.assert.verifyHasNoViewerError();
+      await modal.sidebar.assert.verifySidebarEntryText("group.name", slice);
 
       await modal.close();
       await modal.assert.isClosed();

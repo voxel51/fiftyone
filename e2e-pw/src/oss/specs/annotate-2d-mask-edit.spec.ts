@@ -31,8 +31,8 @@ const inFreshContext = async (
     const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
     await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
       searchParams: new URLSearchParams({ id }),
+      modalSample: "loaded",
     });
-    await freshModal.waitForSampleLoadDomAttribute();
     await freshModal.assert.isOpen();
     await freshModal.sidebar.switchMode("annotate");
     await freshModal.sidebar.annotate.selectActiveLabel("cat", 0);
@@ -90,8 +90,8 @@ test.describe.serial("2D annotation mask edit (brush)", () => {
     });
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ id }),
+      modalSample: "loaded",
     });
-    await modal.waitForSampleLoadDomAttribute();
     await modal.assert.isOpen();
     await modal.sidebar.switchMode("annotate");
   });

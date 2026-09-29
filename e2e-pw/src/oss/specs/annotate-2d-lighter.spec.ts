@@ -54,8 +54,8 @@ test.afterAll(async ({ foWebServer }) => {
 test.beforeEach(async ({ fiftyoneLoader, modal, page }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
+    modalSample: "loaded",
   });
-  await modal.waitForSampleLoadDomAttribute();
   await modal.assert.isOpen();
   await modal.sampleCanvas.afterRenderer(SampleCanvasType.LIGHTER, () =>
     modal.sidebar.switchMode("annotate"),
@@ -137,9 +137,9 @@ test.describe.serial("2D Lighter annotation", () => {
     try {
       await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
         searchParams: new URLSearchParams({ id }),
+        modalSample: "loaded",
       });
       const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-      await freshModal.waitForSampleLoadDomAttribute();
       await freshModal.sidebar.switchMode("annotate");
 
       await expectLabelsCount(freshModal, before + 1);

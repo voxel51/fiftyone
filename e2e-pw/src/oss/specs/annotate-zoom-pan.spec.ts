@@ -106,7 +106,6 @@ test.describe.serial("Lighter zoom and pan", () => {
       modal.sidebar.switchMode("annotate"),
     );
     await modal.sampleCanvas.assert.is(SampleCanvasType.LIGHTER);
-    await modal.waitForLighterReady();
 
     await zoomPanReset(modal, "image");
   });
@@ -119,9 +118,9 @@ test.describe.serial("Lighter zoom and pan", () => {
     await fiftyoneLoader.waitUntilGridVisible(page, videoDatasetName, {
       searchParams: new URLSearchParams({ id: videoId }),
     });
-    await modal.waitForOpen();
-    await modal.sidebar.switchMode("annotate");
-    await modal.videoAnnotate.waitForSurface();
+    await modal.videoAnnotate.afterSurface(() =>
+      modal.sidebar.switchMode("annotate"),
+    );
 
     await zoomPanReset(modal, "video");
   });

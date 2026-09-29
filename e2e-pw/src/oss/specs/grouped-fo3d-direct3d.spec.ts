@@ -202,75 +202,69 @@ test.describe.serial("grouped fo3d and direct 3d", () => {
     grid,
     modal,
   }) => {
-    const seenGroupIndices = new Set<number>();
-
+    /** Run `step` to show only `expectedSlice` of group `index`, then check it */
     const assertFo3dOnlyState = async (
       index: number,
       expectedSlice: "fo3d_left" | "fo3d_right",
+      step: () => Promise<unknown>,
     ) => {
       const spec = groupSpecs[index];
       const expectedName =
         expectedSlice === "fo3d_left" ? spec.fo3dLeftName : spec.fo3dRightName;
-
-      if (!seenGroupIndices.has(index)) {
-        await modal.looker3dControls.waitForAllAssetsLoaded();
-        seenGroupIndices.add(index);
-      }
-
-      await modal.assert.verifyModalSamplePluginTitle(expectedSlice, {
-        pinned: true,
-      });
-      await modal.sidebar.assert.verifySidebarEntryTexts({
+      const entries = {
         "group.name": expectedSlice,
         name: expectedName,
         scene: spec.scene,
+      };
+
+      await modal.sidebar.afterEntries(entries, step);
+      await modal.assert.verifyModalSamplePluginTitle(expectedSlice, {
+        pinned: true,
       });
+      await modal.sidebar.assert.verifySidebarEntryTexts(entries);
       await modal.sidebar.assert.verifySidebarFieldCount("detections", 1);
     };
 
+    /**
+     * Run `step` to show fo3d_right and pcd_as_3d of group `index`, then check
+     * them. `sceneLoads` when the step loads the scene anew.
+     */
     const assertFo3dAndDirectState = async (
       index: number,
-      waitForAssets = true,
+      step: () => Promise<unknown>,
+      sceneLoads = true,
     ) => {
       const spec = groupSpecs[index];
-
-      if (waitForAssets) {
-        await modal.looker3dControls.waitForAllAssetsLoaded();
-      }
-
-      await modal.assert.verifyModalSamplePluginTitle(
-        "fo3d_right and pcd_as_3d",
-        { pinned: true },
-      );
-      await modal.looker3dControls.assert.verifySliceSelectorLabel("2 slices");
-      await modal.sidebar.assert.verifySidebarEntryTexts({
+      const entries = {
         "fo3d_right-group.name": "fo3d_right",
         "pcd_as_3d-group.name": "pcd_as_3d",
         "fo3d_right-name": spec.fo3dRightName,
         "pcd_as_3d-name": spec.pcdAs3dName,
         "fo3d_right-scene": spec.scene,
         "pcd_as_3d-scene": spec.scene,
-      });
+      };
+
+      await modal.sidebar.afterEntries(entries, () =>
+        sceneLoads ? modal.looker3dControls.afterAllAssetsLoaded(step) : step(),
+      );
+      await modal.assert.verifyModalSamplePluginTitle(
+        "fo3d_right and pcd_as_3d",
+        { pinned: true },
+      );
+      await modal.looker3dControls.assert.verifySliceSelectorLabel("2 slices");
+      await modal.sidebar.assert.verifySidebarEntryTexts(entries);
       await modal.sidebar.assert.verifySidebarFieldCount("detections", 2);
     };
 
-    const navigateMixedState = async (
-      direction: "forward" | "backward",
-      expectedIndex: number,
-    ) => {
-      const spec = groupSpecs[expectedIndex];
+    const navigate = (direction: "forward" | "backward") => () =>
+      modal.afterSampleLoaded(
+        () => modal.getSampleNavigation(direction).click(),
+        true,
+      );
 
-      await modal.getSampleNavigation(direction).click();
-      await modal.waitForSampleLoadDomAttribute(true);
-      await modal.sidebar.assert.waitUntilSidebarEntryTextEqualsMultiple({
-        "fo3d_right-name": spec.fo3dRightName,
-        "pcd_as_3d-name": spec.pcdAs3dName,
-      });
-    };
-
-    await grid.openFirstSample();
-    await modal.waitForSampleLoadDomAttribute(true);
-    await modal.looker3dControls.waitForAllAssetsLoaded();
+    await modal.looker3dControls.afterAllAssetsLoaded(() =>
+      modal.afterSampleLoaded(() => grid.openFirstSample(), true),
+    );
 
     await modal.assert.verifyModalSamplePluginTitle("image", { pinned: true });
     await modal.looker3dControls.assert.verifySliceSelectorLabel("fo3d_left");
@@ -281,8 +275,7 @@ test.describe.serial("grouped fo3d and direct 3d", () => {
     });
     await modal.sidebar.assert.verifySidebarFieldCount("detections", 1);
 
-    await modal.clickOnLooker3d();
-    await assertFo3dOnlyState(0, "fo3d_left");
+    await assertFo3dOnlyState(0, "fo3d_left", () => modal.clickOnLooker3d());
     await modal.looker3dControls.assert.verifySliceSelectorLabel("fo3d_left");
     await modal.looker3dControls.openSliceSelector();
     await modal.looker3dControls.assert.verifySliceChecked("fo3d_left");
@@ -290,8 +283,9 @@ test.describe.serial("grouped fo3d and direct 3d", () => {
     await modal.looker3dControls.assert.verifySliceChecked("pcd_as_3d", false);
     await modal.looker3dControls.closeSliceSelector();
 
-    await modal.toggleLooker3dSlice("fo3d_right");
-    await assertFo3dOnlyState(0, "fo3d_right");
+    await assertFo3dOnlyState(0, "fo3d_right", () =>
+      modal.toggleLooker3dSlice("fo3d_right"),
+    );
     await modal.looker3dControls.assert.verifySliceSelectorLabel("fo3d_right");
     await modal.looker3dControls.openSliceSelector();
     await modal.looker3dControls.assert.verifySliceChecked("fo3d_left", false);
@@ -299,22 +293,18 @@ test.describe.serial("grouped fo3d and direct 3d", () => {
     await modal.looker3dControls.assert.verifySliceChecked("pcd_as_3d", false);
     await modal.looker3dControls.closeSliceSelector();
 
-    await modal.toggleLooker3dSlice("pcd_as_3d");
-    await assertFo3dAndDirectState(0);
+    await assertFo3dAndDirectState(0, () =>
+      modal.toggleLooker3dSlice("pcd_as_3d"),
+    );
     await modal.looker3dControls.openSliceSelector();
     await modal.looker3dControls.assert.verifySliceChecked("fo3d_left", false);
     await modal.looker3dControls.assert.verifySliceChecked("fo3d_right");
     await modal.looker3dControls.assert.verifySliceChecked("pcd_as_3d");
     await modal.looker3dControls.closeSliceSelector();
 
-    await navigateMixedState("forward", 1);
-    await assertFo3dAndDirectState(1);
-
-    await navigateMixedState("forward", 2);
-    await assertFo3dAndDirectState(2);
-
-    await navigateMixedState("backward", 1);
-    await assertFo3dAndDirectState(1, false);
+    await assertFo3dAndDirectState(1, navigate("forward"));
+    await assertFo3dAndDirectState(2, navigate("forward"));
+    await assertFo3dAndDirectState(1, navigate("backward"), false);
 
     // TODO: add canvas screenshot assertions once 3D modal screenshots stabilize.
   });

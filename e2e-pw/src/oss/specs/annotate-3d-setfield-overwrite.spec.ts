@@ -54,7 +54,6 @@ const inFreshContext = async (
     await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
       searchParams: new URLSearchParams({ id, view: baseSlug }),
     });
-    await freshModal.waitForOpen();
     await verify(freshModal);
   } finally {
     await context.close();
@@ -69,9 +68,9 @@ const openAnnotate = async (
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id, view: viewSlug }),
   });
-  await modal.waitForOpen();
-  await modal.sidebar.switchMode("annotate");
-  await modal.annotate3d.waitForSurface();
+  await modal.annotate3d.afterSurface(() =>
+    modal.sidebar.switchMode("annotate"),
+  );
 };
 
 test.describe.serial("3d annotate set_field overwrite", () => {
@@ -148,8 +147,9 @@ test.describe.serial("3d annotate set_field overwrite", () => {
     // either (the field-level save path's clobber vector)
     await inFreshContext(browser, fiftyoneLoader, async (fresh) => {
       await fresh.sidebar.assert.verifySidebarEntryText("note", "db-original");
-      await fresh.sidebar.switchMode("annotate");
-      await fresh.annotate3d.waitForSurface();
+      await fresh.annotate3d.afterSurface(() =>
+        fresh.sidebar.switchMode("annotate"),
+      );
       await fresh.annotate3d.assert.labelCount(1);
       await fresh.annotate3d.assert.labelListed("truck");
       await fresh.annotate3d.selectLabel("truck");

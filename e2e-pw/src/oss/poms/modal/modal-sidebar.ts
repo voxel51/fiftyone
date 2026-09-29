@@ -1,8 +1,11 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
-import { collapseWhitespace, exactText } from "src/oss/utils";
+import { collapseWhitespace } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
 import { ModalAnnotateEditPom } from "./annotate-edit";
 import { ModalAnnotateSidebarPom } from "./annotate-sidebar";
+
+/** Dispatched as a sidebar entry shows its loaded value, with its text */
+const SIDEBAR_ENTRY = "e2e:modal:sidebar-entry";
 
 /**
  * The modal sidebar in 'Explore' mode
@@ -20,7 +23,10 @@ export class ModalSidebarPom {
    * @param page - The Playwright Page object used to locate elements within
    *  the modal sidebar
    */
-  constructor(page: Page, eventUtils: EventUtils) {
+  constructor(
+    page: Page,
+    readonly eventUtils: EventUtils,
+  ) {
     this.annotate = new ModalAnnotateSidebarPom(page, eventUtils);
     this.edit = new ModalAnnotateEditPom(page);
     this.page = page;
@@ -161,6 +167,46 @@ export class ModalSidebarPom {
   }
 
   /**
+   * Run `action` and resolve once each of `entries` (key to text) shows its
+   * text. An entry already showing it counts: an unchanged value need not
+   * render again.
+   */
+  async afterEntries<T>(
+    entries: Record<string, string>,
+    action: () => Promise<T>,
+  ): Promise<T> {
+    const pending = new Map(Object.entries(entries));
+    for (const [key, text] of pending) {
+      const entry = this.getSidebarEntry(key);
+      if ((await entry.count()) > 0 && (await entry.textContent()) === text) {
+        pending.delete(key);
+      }
+    }
+    if (pending.size === 0) return action();
+
+    return this.eventUtils.after(SIDEBAR_ENTRY, action, (e) => {
+      const { path, text } = e.detail as { path: string; text: string };
+      if (pending.get(path) === text) pending.delete(path);
+      return pending.size === 0;
+    });
+  }
+
+  /**
+   * Run `action` and resolve once the entry `key` shows a value other than
+   * `current`, e.g. the sample id after a navigation
+   */
+  async afterEntryChanged<T>(
+    key: string,
+    current: string,
+    action: () => Promise<T>,
+  ): Promise<T> {
+    return this.eventUtils.after(SIDEBAR_ENTRY, action, (e) => {
+      const { path, text } = e.detail as { path: string; text: string };
+      return path === key && text !== current;
+    });
+  }
+
+  /**
    * Hovers over a sidebar field and clicks the quick edit button to open
    * inline editing
    *
@@ -224,39 +270,6 @@ class ModalSidebarAsserter {
   }
 
   /**
-   * Waits until a sidebar entry's text content equals the expected value.
-   *
-   * @param key - The key identifier of the sidebar entry to watch
-   * @param value - The expected text content to wait for
-   * @returns A promise that resolves when the entry text matches the expected value
-   */
-  async waitUntilSidebarEntryTextEquals(key: string, value: string) {
-    await this.modalSidebarPom
-      .getSidebarEntry(key)
-      .filter({ hasText: exactText(value) })
-      .waitFor({ state: "attached" });
-  }
-
-  /**
-   * Waits until multiple sidebar entries each match their expected text values
-   * concurrently
-   *
-   * @param entries - A map of sidebar entry keys to their expected text
-   *  content values
-   * @returns A promise that resolves when all entries match their expected
-   *  values
-   */
-  async waitUntilSidebarEntryTextEqualsMultiple(entries: {
-    [key: string]: string;
-  }) {
-    await Promise.all(
-      Object.entries(entries).map(([key, value]) =>
-        this.waitUntilSidebarEntryTextEquals(key, value),
-      ),
-    );
-  }
-
-  /**
    * Asserts that multiple sidebar entries each match their expected text
    * content values
    *
@@ -287,18 +300,13 @@ class ModalSidebarAsserter {
   }
 
   /**
-   * Asserts the sample tag count once it has loaded; a tag applied through
-   * the tagger reloads it
+   * Asserts the sample tag count; a tag applied through the tagger reloads
+   * it, so wait on {@link ModalSidebarPom.afterEntries} for `tags` first
    *
    * @param count - The expected number of sample tags
    */
   async verifySampleTagCount(count: number) {
     const entry = this.modalSidebarPom.getSidebarEntry("tags");
-    await entry
-      .filter({
-        hasNot: this.modalSidebarPom.page.locator("[data-cy=loading-dots]"),
-      })
-      .waitFor({ state: "attached" });
     expect(await entry.textContent()).toBe(String(count));
   }
 

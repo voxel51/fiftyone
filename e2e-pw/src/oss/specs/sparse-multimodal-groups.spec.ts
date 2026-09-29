@@ -205,45 +205,54 @@ test.describe.serial("sparse multimodal groups", () => {
     await grid.sliceSelector.assert.verifyActiveSlice("pcd");
     await grid.assert.isEntryCountTextEqualTo("4 groups with slice");
 
-    await grid.openFirstSample();
-    await modal.looker3dControls.waitForAllAssetsLoaded();
-    await modal.assert.verify3dRendererVisible();
-    await modal.assert.verifyHasNoViewerError();
-    await modal.sidebar.assert.waitUntilSidebarEntryTextEqualsMultiple({
+    const first = {
       "group.name": "pcd",
       name: groupSpecs[0].pcdName,
       scene: groupSpecs[0].scene,
-    });
-
-    await modal.navigateNextSample(true);
-    await modal.looker3dControls.waitForAllAssetsLoaded();
+    };
+    await modal.sidebar.afterEntries(first, () =>
+      modal.looker3dControls.afterAllAssetsLoaded(() => grid.openFirstSample()),
+    );
+    await modal.assert.verify3dRendererVisible();
     await modal.assert.verifyHasNoViewerError();
-    await modal.sidebar.assert.waitUntilSidebarEntryTextEqualsMultiple({
+    await modal.sidebar.assert.verifySidebarEntryTexts(first);
+
+    const second = {
       "group.name": "pcd",
       name: groupSpecs[1].pcdName,
       scene: groupSpecs[1].scene,
-    });
+    };
+    await modal.sidebar.afterEntries(second, () =>
+      modal.looker3dControls.afterAllAssetsLoaded(() =>
+        modal.navigateNextSample(true),
+      ),
+    );
+    await modal.assert.verifyHasNoViewerError();
+    await modal.sidebar.assert.verifySidebarEntryTexts(second);
   });
 
   test("opens the first modal cleanly from every grid slice", async ({
     grid,
     modal,
   }) => {
-    const assertModalHasNoViewerError = async ({
-      is3dSlice,
-      mode,
-    }: {
-      is3dSlice: boolean;
-      mode: "annotate" | "explore";
-    }) => {
+    type Viewer = { is3dSlice: boolean; mode: "annotate" | "explore" };
+
+    /** Run `step` and resolve once the viewer it shows has loaded */
+    const afterViewer = (
+      { is3dSlice, mode }: Viewer,
+      step: () => Promise<unknown>,
+    ) =>
+      is3dSlice
+        ? modal.looker3dControls.afterAllAssetsLoaded(step)
+        : mode === "annotate"
+          ? modal.afterLighterReady(step)
+          : modal.afterSampleLoaded(step, true);
+
+    const assertModalHasNoViewerError = async ({ is3dSlice, mode }: Viewer) => {
       if (is3dSlice) {
-        await modal.looker3dControls.waitForAllAssetsLoaded();
         await modal.assert.verify3dRendererVisible();
       } else if (mode === "annotate") {
-        await modal.waitForLighterReady();
         await modal.sampleCanvas.assert.is(SampleCanvasType.LIGHTER);
-      } else {
-        await modal.waitForSampleLoadDomAttribute(true);
       }
 
       await modal.assert.verifyHasNoViewerError();
@@ -283,56 +292,37 @@ test.describe.serial("sparse multimodal groups", () => {
       await grid.sliceSelector.assert.verifyActiveSlice(slice);
       await grid.assert.isEntryCountTextEqualTo(entryCount);
 
-      await grid.openFirstSample();
-      await assertModalHasNoViewerError({
-        is3dSlice: slice === "pcd",
-        mode: "explore",
-      });
-      await modal.sidebar.assert.waitUntilSidebarEntryTextEqualsMultiple({
+      const is3dSlice = slice === "pcd";
+      const explore: Viewer = { is3dSlice, mode: "explore" };
+      const annotate: Viewer = { is3dSlice, mode: "annotate" };
+      const opened = {
         "group.name": slice,
         name: expectedName,
         scene: expectedScene,
-      });
+      };
 
-      await modal.sidebar.switchMode("annotate");
-      await modal.sidebar.annotate.assert.verifyAvailableAnnotationSlices(
-        expectedAnnotationSlices,
+      await modal.sidebar.afterEntries(opened, () =>
+        afterViewer(explore, () => grid.openFirstSample()),
       );
-      await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice(slice);
-      await assertModalHasNoViewerError({
-        is3dSlice: slice === "pcd",
-        mode: "annotate",
-      });
+      await assertModalHasNoViewerError(explore);
+      await modal.sidebar.assert.verifySidebarEntryTexts(opened);
 
-      await modal.sidebar.switchMode("explore");
-      await assertModalHasNoViewerError({
-        is3dSlice: slice === "pcd",
-        mode: "explore",
-      });
-      await modal.sidebar.assert.waitUntilSidebarEntryTextEquals(
-        "group.name",
-        slice,
-      );
+      for (let round = 0; round < 2; round++) {
+        await afterViewer(annotate, () => modal.sidebar.switchMode("annotate"));
+        await modal.sidebar.annotate.assert.verifyAvailableAnnotationSlices(
+          expectedAnnotationSlices,
+        );
+        await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice(
+          slice,
+        );
+        await assertModalHasNoViewerError(annotate);
 
-      await modal.sidebar.switchMode("annotate");
-      await modal.sidebar.annotate.assert.verifyAvailableAnnotationSlices(
-        expectedAnnotationSlices,
-      );
-      await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice(slice);
-      await assertModalHasNoViewerError({
-        is3dSlice: slice === "pcd",
-        mode: "annotate",
-      });
-
-      await modal.sidebar.switchMode("explore");
-      await assertModalHasNoViewerError({
-        is3dSlice: slice === "pcd",
-        mode: "explore",
-      });
-      await modal.sidebar.assert.waitUntilSidebarEntryTextEquals(
-        "group.name",
-        slice,
-      );
+        await modal.sidebar.afterEntries({ "group.name": slice }, () =>
+          afterViewer(explore, () => modal.sidebar.switchMode("explore")),
+        );
+        await assertModalHasNoViewerError(explore);
+        await modal.sidebar.assert.verifySidebarEntryText("group.name", slice);
+      }
 
       await modal.close();
       await modal.assert.isClosed();

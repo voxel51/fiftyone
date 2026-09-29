@@ -87,8 +87,7 @@ test.describe.serial("dynamic groups smoke test", () => {
       await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
         searchParams: new URLSearchParams({ view: "dynamic-group" }),
       });
-      await grid.openFirstSample();
-      await modal.waitForSampleLoadDomAttribute();
+      await modal.afterSampleLoaded(() => grid.openFirstSample());
 
       await modal.group.assert.assertIsPaginationBarVisible();
       await modal.group.assert.assertIsCarouselNotVisible();

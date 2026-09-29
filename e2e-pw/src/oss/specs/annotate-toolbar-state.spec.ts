@@ -74,6 +74,7 @@ test.afterAll(async ({ foWebServer }) => {
 test.beforeEach(async ({ page, fiftyoneLoader }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
+    modalSample: "loaded",
   });
 });
 
@@ -83,10 +84,9 @@ test.afterEach(async ({ modal, page }) => {
 });
 
 const openAnnotate = async (modal: ModalPom) => {
-  await modal.waitForOpen();
-  await modal.waitForSampleLoadDomAttribute();
-  await modal.sidebar.switchMode("annotate");
-  await modal.sidebar.annotate.waitForLabelList();
+  await modal.sidebar.annotate.afterLabelList(() =>
+    modal.sidebar.switchMode("annotate"),
+  );
 };
 
 /** The label list's header, which unmounts while the edit form is showing. */
@@ -145,9 +145,8 @@ test.describe.serial("annotate toolbar state", () => {
   test("detection mode draws under a crosshair, stays active after a draw, and click-to-quit returns to Select", async ({
     modal,
   }) => {
-    await openAnnotate(modal);
     // canvas overlays are not hit-testable until lighter's first render
-    await modal.waitForLighterReady();
+    await modal.afterLighterReady(() => openAnnotate(modal));
 
     await modal.sidebar.annotate.detectionMode("Detections");
     await expectActive(modal, "detection");
@@ -164,13 +163,12 @@ test.describe.serial("annotate toolbar state", () => {
     await modal.sampleCanvas.move(0.8, 0.8, "crosshair");
     await modal.sampleCanvas.down();
     await modal.sampleCanvas.move(0.9, 0.9);
-    await modal.sampleCanvas.up();
+    // quitting before the async establish flow commits would re-activate
+    // detection mode, so wait for the edit form first
+    await modal.sidebar.annotate.afterEditing(() => modal.sampleCanvas.up());
     await modal.sampleCanvas.assert.hasCursor("nwse-resize");
     await expectActive(modal, "detection");
 
-    // quitting before the async establish flow commits would re-activate
-    // detection mode, so wait for the edit form first
-    await labelListHeader(modal).waitFor({ state: "hidden" });
     await clickCanvas(modal, 0.09, 0.09, "crosshair");
     await expectActive(modal, "select");
   });
@@ -178,8 +176,7 @@ test.describe.serial("annotate toolbar state", () => {
   test("overlay clicks enter the matching action; in detection mode they quit it", async ({
     modal,
   }) => {
-    await openAnnotate(modal);
-    await modal.waitForLighterReady();
+    await modal.afterLighterReady(() => openAnnotate(modal));
 
     // in detection mode the existing detection doesn't claim the click:
     // click-to-quit applies over overlays like empty canvas

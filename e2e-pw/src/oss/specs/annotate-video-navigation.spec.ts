@@ -106,9 +106,9 @@ test.describe.serial("video annotation sample navigation", () => {
     // open the modal from the grid so it carries the sample sequence
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
     await grid.openFirstSample();
-    await modal.waitForOpen();
-    await modal.sidebar.switchMode("annotate");
-    await modal.videoAnnotate.waitForSurface();
+    await modal.videoAnnotate.afterSurface(() =>
+      modal.sidebar.switchMode("annotate"),
+    );
 
     const va = modal.videoAnnotate;
     await va.assert.objectTrackCount(1);

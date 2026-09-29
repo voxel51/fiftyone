@@ -55,9 +55,8 @@ test("mask fields are one read-only row each, with a hole at missing frames", as
 }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
+    modalSample: "loaded",
   });
-  await modal.waitForOpen();
-  await modal.waitForSampleLoadDomAttribute();
   const va = modal.videoAnnotate;
 
   // dense label fields start inactive; the drawer toggle needs a row, and

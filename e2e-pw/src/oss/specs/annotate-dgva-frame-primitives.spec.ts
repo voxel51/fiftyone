@@ -89,10 +89,10 @@ test("primitives follow the playhead and the order-by field is read-only", async
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ view: "dgva" }),
   });
-  await grid.openFirstSample();
-  await modal.waitForSampleLoadDomAttribute();
-  await modal.sidebar.switchMode("annotate");
-  await modal.videoAnnotate.waitForSurface();
+  await modal.afterSampleLoaded(() => grid.openFirstSample());
+  await modal.videoAnnotate.afterSurface(() =>
+    modal.sidebar.switchMode("annotate"),
+  );
 
   const sidebar = modal.sidebar.annotate;
   await sidebar.assert.primitiveValue("weather", weatherAt(1));

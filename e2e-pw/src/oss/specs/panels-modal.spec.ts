@@ -45,8 +45,7 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
 });
 
 test("Modal Panels: Counter", async ({ eventUtils, grid, modal }) => {
-  await grid.openFirstSample();
-  await modal.waitForSampleLoadDomAttribute(true);
+  await modal.afterSampleLoaded(() => grid.openFirstSample(), true);
   await modal.panel.assert.verifyAvailableTabs([
     SAMPLE_TAB_LABEL,
     COUNTER_TAB_LABEL,

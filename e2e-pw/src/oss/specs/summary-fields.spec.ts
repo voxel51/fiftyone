@@ -55,8 +55,7 @@ test.describe.serial("summary fields", () => {
     page,
   }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-    await grid.openFirstSample();
-    await modal.waitForSampleLoadDomAttribute(true);
+    await modal.afterSampleLoaded(() => grid.openFirstSample(), true);
     await modal.sidebar.assert.verifyObject("summary", {
       one: "two",
       three: "four",

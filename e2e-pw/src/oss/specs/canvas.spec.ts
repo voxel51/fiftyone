@@ -52,18 +52,17 @@ test.describe.serial("Canvas Rendering Regressions", () => {
     // Navigate to the grid and open the sample modal for the target sample ID
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ id: "000000000000000000000000" }),
+      modalSample: "loaded-or-error",
     });
 
     // Confirm the modal opened and is displaying the Looker (Explore) canvas
-    await modal.waitForSampleLoadDomAttribute(true);
     await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
 
     // Assert pixelated rendering in Explore mode via screenshot comparison
     await modal.sampleCanvas.assert.hasScreenshot("pixelated.png");
 
     // Switch to Annotate mode and assert pixelated rendering there as well
-    await modal.sidebar.switchMode("annotate");
-    await modal.waitForLighterReady();
+    await modal.afterLighterReady(() => modal.sidebar.switchMode("annotate"));
     await modal.sampleCanvas.assert.hasScreenshot("pixelated.png");
   });
 });

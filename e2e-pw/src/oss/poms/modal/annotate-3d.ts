@@ -24,13 +24,12 @@ export class ModalAnnotate3dPom {
   }
 
   /**
-   * Wait until the 3D scene is interactable: the looker3d container is mounted
-   * and all scene assets have finished loading. Call this before any toolbar /
-   * canvas interaction.
+   * Run `action` (the switch to annotate, or an annotation slice pick) and
+   * resolve once the 3D scene it (re)mounts is interactable: all assets
+   * loaded and the camera settled. Toolbar and canvas interaction goes after.
    */
-  async waitForSurface() {
-    await this.container.waitFor();
-    await this.modal.untilSceneReady();
+  async afterSurface<T>(action: () => Promise<T>): Promise<T> {
+    return this.modal.afterSceneReady(action);
   }
 
   /**
@@ -210,13 +209,14 @@ export class ModalAnnotate3dPom {
     for (const [index, point] of points.entries()) {
       const [x, y] = toScreen(point);
       await this.page.mouse.move(x, y);
-      await this.page.mouse.down();
-      await this.page.mouse.up();
-      await this.page
-        .locator(
-          `[data-cy="looker3d"][data-cy-draft-vertex-count="${index + 1}"]`,
-        )
-        .waitFor({ state: "attached" });
+      await this.modal.eventUtils.after(
+        "e2e:looker3d:draft-vertices",
+        async () => {
+          await this.page.mouse.down();
+          await this.page.mouse.up();
+        },
+        (e) => (e.detail as { count: number }).count === index + 1,
+      );
     }
 
     // Enter commits the segment; a double-click would ride on wall-clock timing

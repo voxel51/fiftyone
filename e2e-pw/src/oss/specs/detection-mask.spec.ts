@@ -111,8 +111,7 @@ test.describe.serial("detection-mask", () => {
     await grid.assert.isEntryCountTextEqualTo("3 samples");
 
     // bad sample, assert it loads in the modal fine, too
-    await grid.openFirstSample();
-    await modal.waitForSampleLoadDomAttribute();
+    await modal.afterSampleLoaded(() => grid.openFirstSample());
 
     // close modal and assert grid screenshot (compares all detections)
     await modal.close();

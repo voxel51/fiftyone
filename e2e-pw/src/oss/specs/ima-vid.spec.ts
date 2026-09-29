@@ -108,10 +108,9 @@ test.skip("check modal playback and tagging behavior", async ({
   modal,
   grid,
 }) => {
-  await grid.openFirstSample();
-  await modal.waitForSampleLoadDomAttribute();
-
-  await modal.imavid.waitUntilFrameTextIs("1 / 150");
+  await modal.imavid.afterFrameText("1 / 150", () =>
+    modal.afterSampleLoaded(() => grid.openFirstSample()),
+  );
 
   const tagged = await modal.imavid.playUntilFrames("13 / 150");
 
@@ -121,21 +120,27 @@ test.skip("check modal playback and tagging behavior", async ({
   //   mask: [modal.imavid.controls],
   //   animations: "allow",
   // });
-  await modal.sidebar.assert.waitUntilSidebarEntryTextEqualsMultiple({
+  await modal.sidebar.assert.verifySidebarEntryTexts({
     frame_number: String(tagged),
     video_id: "1",
   });
 
   // tag current frame and ensure sidebar updates
   const currentSampleTagCount = await modal.sidebar.getSampleTagCount();
+  const tags = String(currentSampleTagCount + 1);
   await modal.tagger.toggleOpen();
   await modal.tagger.switchTagMode("sample");
-  await modal.tagger.addSampleTag("tag-1-13");
+  await modal.sidebar.afterEntries({ tags }, () =>
+    modal.tagger.addSampleTag("tag-1-13"),
+  );
   await modal.sidebar.assert.verifySampleTagCount(currentSampleTagCount + 1);
 
   // skip a couple of frames and see that sample tag count is zero
-  const untagged = await modal.imavid.playUntilFrames("20 / 150");
-  await modal.sidebar.assert.waitUntilSidebarEntryTextEqualsMultiple({
+  let untagged = 0;
+  await modal.sidebar.afterEntries({ tags: "0" }, async () => {
+    untagged = await modal.imavid.playUntilFrames("20 / 150");
+  });
+  await modal.sidebar.assert.verifySidebarEntryTexts({
     frame_number: String(untagged),
     video_id: "1",
   });

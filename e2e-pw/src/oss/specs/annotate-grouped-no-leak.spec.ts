@@ -124,15 +124,17 @@ const expectPersistedSliceClasses = async (
     const modal = new ModalPom(readPage, new EventUtils(readPage));
     await fiftyoneLoader.waitUntilGridVisible(readPage, datasetName, {
       searchParams: new URL(page.url()).searchParams,
+      modalSample: "loaded-or-error",
     });
-    await modal.waitForSampleLoadDomAttribute(true);
     await modal.sidebar.switchMode("annotate");
     for (const slice of SLICE_NAMES) {
-      await modal.sidebar.annotate.selectAnnotationSlice(slice);
-      await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice(slice);
+      const select = () => modal.sidebar.annotate.selectAnnotationSlice(slice);
       if (SLICES[slice].media === "3d") {
-        await modal.annotate3d.waitForSurface();
+        await modal.annotate3d.afterSurface(select);
+      } else {
+        await select();
       }
+      await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice(slice);
       // switching the annotation slice re-federates the active sample (and
       // loads a 3D slice's scene), so settle on the count first
       await modal.sidebar.annotate.assert.hasActiveLabelsCount(
@@ -266,16 +268,16 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     fiftyoneLoader,
     page,
   }) => {
-    await grid.openFirstSample();
-    await modal.waitForSampleLoadDomAttribute(true);
+    await modal.afterSampleLoaded(() => grid.openFirstSample(), true);
     await modal.sidebar.switchMode("annotate");
 
     // select the mesh slice as the annotation target — in annotate mode this
     // mounts the 3D looker + its annotation surface (the grouped 3D path); the
     // surface must finish loading before the cuboid is selectable
-    await modal.sidebar.annotate.selectAnnotationSlice("mesh");
+    await modal.annotate3d.afterSurface(() =>
+      modal.sidebar.annotate.selectAnnotationSlice("mesh"),
+    );
     await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice("mesh");
-    await modal.annotate3d.waitForSurface();
     await modal.sidebar.annotate.assert.hasActiveLabelsCount(1);
 
     // select the mesh cuboid and change its class
@@ -298,13 +300,13 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     fiftyoneLoader,
     page,
   }) => {
-    await grid.openFirstSample();
-    await modal.waitForSampleLoadDomAttribute(true);
+    await modal.afterSampleLoaded(() => grid.openFirstSample(), true);
     await modal.sidebar.switchMode("annotate");
 
-    await modal.sidebar.annotate.selectAnnotationSlice("mesh");
+    await modal.annotate3d.afterSurface(() =>
+      modal.sidebar.annotate.selectAnnotationSlice("mesh"),
+    );
     await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice("mesh");
-    await modal.annotate3d.waitForSurface();
     await modal.sidebar.annotate.assert.hasActiveLabelsCount(1);
 
     // keep the seeded cuboid so the detections field stays enabled (an emptied
@@ -341,13 +343,13 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     fiftyoneLoader,
     page,
   }) => {
-    await grid.openFirstSample();
-    await modal.waitForSampleLoadDomAttribute(true);
+    await modal.afterSampleLoaded(() => grid.openFirstSample(), true);
     await modal.sidebar.switchMode("annotate");
 
-    await modal.sidebar.annotate.selectAnnotationSlice("mesh");
+    await modal.annotate3d.afterSurface(() =>
+      modal.sidebar.annotate.selectAnnotationSlice("mesh"),
+    );
     await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice("mesh");
-    await modal.annotate3d.waitForSurface();
     await modal.sidebar.annotate.assert.hasActiveLabelsCount(1);
 
     // delete the mesh cuboid via the 3D annotation toolbar

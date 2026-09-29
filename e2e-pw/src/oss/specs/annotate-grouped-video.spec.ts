@@ -174,10 +174,10 @@ test.beforeEach(async ({ datasetFactory, fiftyoneLoader, modal, page }) => {
  * it.
  */
 const enterVideoAnnotate = async (grid: GridPom, modal: ModalPom) => {
-  await grid.openFirstSample();
-  await modal.waitForSampleLoadDomAttribute();
-  await modal.sidebar.switchMode("annotate");
-  await modal.videoAnnotate.waitForSurface();
+  await modal.afterSampleLoaded(() => grid.openFirstSample());
+  await modal.videoAnnotate.afterSurface(() =>
+    modal.sidebar.switchMode("annotate"),
+  );
 };
 
 test.describe.serial("grouped video annotation", () => {
@@ -214,8 +214,9 @@ test.describe.serial("grouped video annotation", () => {
   }) => {
     await enterVideoAnnotate(grid, modal);
 
-    await modal.sidebar.annotate.selectAnnotationSlice("image");
-    await modal.waitForLighterReady();
+    await modal.afterLighterReady(() =>
+      modal.sidebar.annotate.selectAnnotationSlice("image"),
+    );
 
     for (const path of ["detections", "classification"]) {
       await modal.videoAnnotate.assert.listsPath(path);
@@ -274,8 +275,9 @@ test.describe.serial("grouped video annotation", () => {
   }) => {
     await enterVideoAnnotate(grid, modal);
 
-    await modal.sidebar.annotate.selectAnnotationSlice("image");
-    await modal.waitForLighterReady();
+    await modal.afterLighterReady(() =>
+      modal.sidebar.annotate.selectAnnotationSlice("image"),
+    );
 
     await modal.videoAnnotate.assert.labelListed("vehicle");
     await modal.videoAnnotate.selectLabel("vehicle");

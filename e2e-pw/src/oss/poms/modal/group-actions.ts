@@ -1,6 +1,13 @@
 import { Page, expect } from "src/oss/fixtures";
 import { ModalPom } from ".";
+import { afterPopout } from "../action-row/popout";
 import { DynamicGroupPaginationPom } from "./dynamic-group-pagination-bar";
+
+const MEDIA_CHECKBOX = {
+  "3d": "checkbox-3D Viewer",
+  carousel: "checkbox-Carousel",
+  viewer: "checkbox-2D Viewer",
+} as const;
 
 const NAVIGATION_MODE_OPTIONS = {
   carousel: "Sequential Access",
@@ -32,24 +39,28 @@ export class ModalGroupActionsPom {
   }
 
   async openMediaVisibility() {
-    await this.toggleMediaButton.click();
-    await this.groupMediaVisibilityPopout.waitFor();
+    await afterPopout(
+      this.modal.eventUtils,
+      "group-media-visibility-popout",
+      true,
+      () => this.toggleMediaButton.click(),
+    );
   }
 
   /** Toggle one renderer; open the popout first with `openMediaVisibility` */
-  async toggleMedia(media: "3d" | "carousel" | "viewer") {
-    switch (media) {
-      case "3d":
-        await this.modal.locator.getByTestId("checkbox-3D Viewer").click();
-        break;
-      case "carousel":
-        await this.modal.locator.getByTestId("checkbox-Carousel").click();
-        break;
-      case "viewer":
-        await this.modal.locator.getByTestId("checkbox-2D Viewer").click();
-        break;
-      default:
-        throw new Error(`Unknown media type: ${media}`);
+  async toggleMedia(media: keyof typeof MEDIA_CHECKBOX) {
+    await this.modal.locator.getByTestId(MEDIA_CHECKBOX[media]).click();
+  }
+
+  /**
+   * Show one renderer, toggling it only if its checkbox is off; open the
+   * popout first with `openMediaVisibility`, which renders the checkboxes
+   * from the visibility state
+   */
+  async showMedia(media: keyof typeof MEDIA_CHECKBOX) {
+    const checkbox = this.modal.locator.getByTestId(MEDIA_CHECKBOX[media]);
+    if (!(await checkbox.getByRole("checkbox").isChecked())) {
+      await checkbox.click();
     }
   }
 
@@ -68,8 +79,9 @@ export class ModalGroupActionsPom {
     );
     await this.modal.toggleDisplayOptionsButton.click();
     await option.click();
-    await this.modal.toggleDisplayOptionsButton.click();
-    await option.waitFor({ state: "detached" });
+    await afterPopout(this.modal.eventUtils, "popout", false, () =>
+      this.modal.toggleDisplayOptionsButton.click(),
+    );
   }
 }
 

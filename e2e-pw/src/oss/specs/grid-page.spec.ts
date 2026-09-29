@@ -61,9 +61,8 @@ test.describe.serial("grid page", () => {
     page,
   }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, groupDatasetName);
-    await grid.openFirstSample();
+    await modal.afterCarouselRendered(() => grid.openFirstSample());
     await modal.sidebar.toggleSidebarGroup("GROUP");
-    await modal.waitForCarouselToLoad();
     await modal.scrollCarouselTo("20");
     await modal.navigateSlice("group.name", "20", true);
     await modal.sidebar.assert.verifySidebarEntryText("group.name", "20");
@@ -79,8 +78,9 @@ test.describe.serial("grid page", () => {
       searchParams: new URLSearchParams({ view: "group" }),
     });
     await grid.openFirstSample();
-    await modal.group.setDynamicGroupsNavigationMode("carousel");
-    await modal.waitForCarouselToLoad();
+    await modal.afterCarouselRendered(() =>
+      modal.group.setDynamicGroupsNavigationMode("carousel"),
+    );
     await modal.scrollCarouselTo("20");
     await modal.navigateSlice("i", "20", true);
     await modal.sidebar.assert.verifySidebarEntryText("i", "20");

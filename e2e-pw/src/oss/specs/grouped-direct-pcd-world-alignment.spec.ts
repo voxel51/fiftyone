@@ -74,8 +74,7 @@ test("renders both point-cloud slices aligned in the world frame", async ({
   // each wait is armed before the action that causes the reveal, so no earlier
   // reveal can satisfy it
   await eventUtils.after(SCENE_REVEALED, async () => {
-    await grid.openFirstSample();
-    await modal.waitForSampleLoadDomAttribute(true);
+    await modal.afterSampleLoaded(() => grid.openFirstSample(), true);
   });
 
   await eventUtils.after(SCENE_REVEALED, async () => {

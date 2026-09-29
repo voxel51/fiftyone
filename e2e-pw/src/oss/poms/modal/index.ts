@@ -1,10 +1,11 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
 import { expectScreenshot } from "src/oss/utils/screenshot";
 import { EventUtils } from "src/shared/event-utils";
+import { afterPopout } from "../action-row/popout";
 import { ModalTaggerPom } from "../action-row/tagger/modal-tagger";
 import { EpisodePom } from "../multimodal/episode";
 import { ModalPanelPom } from "../panels/modal-panel";
-import { collapseWhitespace, escapeRegExp, exactText } from "src/oss/utils";
+import { collapseWhitespace, escapeRegExp } from "src/oss/utils";
 import { UrlPom } from "../url";
 import { ModalAnnotate3dPom } from "./annotate-3d";
 import { ModalGroupActionsPom } from "./group-actions";
@@ -14,6 +15,9 @@ import { ModalSidebarPom } from "./modal-sidebar";
 import { SampleCanvasPom } from "./sample-canvas";
 import { VideoAnnotatePom } from "./video-annotate";
 import { ModalVideoControlsPom } from "./video-controls";
+
+const SAMPLE_LOADED = "e2e:looker:canvas-loaded";
+const SAMPLE_ERROR = "e2e:looker:error-shown";
 
 export class ModalPom {
   readonly assert: ModalAsserter;
@@ -96,6 +100,40 @@ export class ModalPom {
     return this.eventUtils.after("e2e:modal:looker-attached", action);
   }
 
+  /** Run `action` and resolve once the modal has mounted because of it */
+  afterOpened<T>(action: () => Promise<T>): Promise<T> {
+    return this.eventUtils.after("e2e:modal:opened", action);
+  }
+
+  /**
+   * Run `action` and resolve once the modal's sample surface has drawn its
+   * sample (or, with `allowErrorInfo`, shown its load error) because of it
+   */
+  afterSampleLoaded<T>(
+    action: () => Promise<T>,
+    allowErrorInfo = false,
+  ): Promise<T> {
+    return this.eventUtils.after(
+      allowErrorInfo ? [SAMPLE_LOADED, SAMPLE_ERROR] : SAMPLE_LOADED,
+      action,
+      (e) => !(e.detail as { thumbnail: boolean }).thumbnail,
+    );
+  }
+
+  /**
+   * Run `action` and resolve once the group carousel has settled a render
+   * with no page request pending
+   */
+  afterCarouselRendered<T>(action: () => Promise<T>): Promise<T> {
+    return this.eventUtils.after("e2e:flashlight:rendered", action, (e) => {
+      const { horizontal, pending } = e.detail as {
+        horizontal: boolean;
+        pending: boolean;
+      };
+      return horizontal && !pending;
+    });
+  }
+
   getSampleNavigation(direction: "forward" | "backward") {
     return this.locator.getByTestId(
       `nav-${direction === "forward" ? "right" : "left"}-button`,
@@ -117,8 +155,9 @@ export class ModalPom {
     const radio = this.page.getByTestId(`radio-button-${field}`);
     await this.toggleDisplayOptionsButton.click();
     await radio.click();
-    await this.toggleDisplayOptionsButton.click();
-    await radio.waitFor({ state: "detached" });
+    await afterPopout(this.eventUtils, "popout", false, () =>
+      this.toggleDisplayOptionsButton.click(),
+    );
   }
 
   async navigateSample(
@@ -127,20 +166,13 @@ export class ModalPom {
   ) {
     const currentSampleId = await this.sidebar.getSampleId();
 
-    await this.locator
-      .getByTestId(`nav-${direction === "forward" ? "right" : "left"}-button`)
-      .click();
-
     // the sidebar remounts its entries on a sample change
-    await this.page
-      .locator("[data-cy=sidebar-entry-id]")
-      .filter({
-        hasText: new RegExp(`^(?!${escapeRegExp(currentSampleId)}$)\\S`),
-      })
-      .first()
-      .waitFor({ state: "attached" });
-
-    return this.waitForSampleLoadDomAttribute(allowErrorInfo);
+    await this.sidebar.afterEntryChanged("id", currentSampleId, () =>
+      this.afterSampleLoaded(
+        () => this.getSampleNavigation(direction).click(),
+        allowErrorInfo,
+      ),
+    );
   }
 
   async scrollCarousel(left: number = null) {
@@ -187,9 +219,10 @@ export class ModalPom {
   async navigateCarousel(index: number, allowErrorInfo = false) {
     const looker = this.groupCarousel.getByTestId("looker").nth(index);
 
-    await looker.click({ position: { x: 10, y: 60 } });
-
-    return this.waitForSampleLoadDomAttribute(allowErrorInfo);
+    await this.afterSampleLoaded(
+      () => looker.click({ position: { x: 10, y: 60 } }),
+      allowErrorInfo,
+    );
   }
 
   async panSample(
@@ -229,13 +262,6 @@ export class ModalPom {
     await this.locator.getByTestId("action-tag-sample-labels").click();
   }
 
-  async waitForCarouselToLoad() {
-    await this.groupCarousel
-      .getByTestId("looker")
-      .first()
-      .waitFor({ state: "visible" });
-  }
-
   async navigateSlice(
     groupField: string,
     slice: string,
@@ -245,18 +271,15 @@ export class ModalPom {
     const lookers = this.groupCarousel.getByTestId("looker");
     const looker = lookers.filter({ hasText: slice }).first();
 
-    await looker.click({ position: { x: 10, y: 60 } });
-
-    // wait for slice to change
-    await this.sidebar
-      .getSidebarEntry(groupField)
-      .filter({ hasNotText: exactText(currentSlice ?? "") })
-      .waitFor({ state: "attached" });
-    return this.waitForSampleLoadDomAttribute(allowErrorInfo);
+    await this.sidebar.afterEntryChanged(groupField, currentSlice ?? "", () =>
+      this.afterSampleLoaded(
+        () => looker.click({ position: { x: 10, y: 60 } }),
+        allowErrorInfo,
+      ),
+    );
   }
 
   async enterFullscreen() {
-    await this.modalContent.waitFor({ state: "visible" });
     if (!(await this.isFullscreen())) {
       await this.locator.getByTestId("action-toggle-fullscreen").click();
     }
@@ -275,8 +298,9 @@ export class ModalPom {
         await this.assert.isFullscreen(false);
       }
 
-      await this.page.click("body", { position: { x: 0, y: 0 } });
-      await this.locator.waitFor({ state: "hidden" });
+      await this.eventUtils.after("e2e:modal:closed", () =>
+        this.page.click("body", { position: { x: 0, y: 0 } }),
+      );
     } catch (e) {
       if (ignoreError) {
         return;
@@ -321,52 +345,34 @@ export class ModalPom {
     return this.looker.click();
   }
 
-  /** Wait for the modal to open, e.g. from a deep link as the page loads */
-  async waitForOpen() {
-    await this.locator.waitFor();
-  }
-
-  async waitForSampleLoadDomAttribute(allowErrorInfo = false) {
-    // any surface may raise the marker: the lookers set it on their canvas,
-    // the plain video surface sets it on the `<video>`
-    const container = '[data-cy="modal"] [data-cy="modal-looker-container"]';
-    const loaded = `${container} [canvas-loaded="true"]`;
-    await this.page
-      .locator(
-        allowErrorInfo
-          ? `${loaded}, ${container} [data-cy="looker-error-info"]`
-          : loaded,
-      )
-      .first()
-      .waitFor({ state: "attached" });
-  }
-
-  /** Move the mouse off the looker and wait for its controls to hide */
+  /**
+   * Hover the looker, then move the mouse off it and wait for its controls
+   * to hide. The hover makes the mouse leave the looker, which is what hides
+   * them.
+   */
   async hideLookerControls() {
-    await this.sampleCanvas.parkMouse();
-    await this.eventUtils.untilDom(
-      this.looker.getByTestId("looker-controls"),
-      (controls) => (controls as HTMLElement).style.display === "none",
+    await this.looker.hover();
+    await this.eventUtils.after(
+      "e2e:looker:controls-rendered",
+      () => this.sampleCanvas.parkMouse(),
+      (e) => !(e.detail as { shown: boolean }).shown,
     );
   }
 
-  async waitForLighterReady() {
-    await this.page
-      .locator(
-        '[data-cy="modal"] [data-cy="lighter-sample-renderer"][style*="visibility: visible"]',
-      )
-      .first()
-      .waitFor({ state: "attached" });
+  /**
+   * Run `action` (e.g. the switch to annotate) and resolve once the Lighter
+   * renderer has revealed its sample because of it
+   */
+  afterLighterReady<T>(action: () => Promise<T>): Promise<T> {
+    return this.eventUtils.after("e2e:modal:lighter-revealed", action);
   }
 
-  /** Resolve once the 3D scene is loaded, its camera settled and revealed */
-  async untilSceneReady() {
-    await this.page
-      .locator(
-        '[data-cy="modal"] [data-cy="looker3d"][data-scene-ready="true"]',
-      )
-      .first()
-      .waitFor({ state: "attached" });
+  /**
+   * Run `action` and resolve once a 3D scene is loaded, its camera settled
+   * and revealed because of it
+   */
+  afterSceneReady<T>(action: () => Promise<T>): Promise<T> {
+    return this.eventUtils.after("e2e:looker3d:scene-ready", action);
   }
 
   private async isFullscreen() {
@@ -403,8 +409,8 @@ class ModalAsserter {
     expect(await this.modalPom.locator.isVisible()).toBe(true);
   }
 
+  /** Open with `afterSampleLoaded` first */
   async verifyModalOpenedSuccessfully() {
-    await this.modalPom.waitForSampleLoadDomAttribute();
     expect(await this.modalPom.locator.isVisible()).toBe(true);
   }
 

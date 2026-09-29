@@ -46,16 +46,13 @@ const openAnnotate = async (
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
   });
-  await modal.waitForOpen();
-  await modal.sidebar.switchMode("annotate");
-  await modal.videoAnnotate.waitForSurface();
+  await modal.videoAnnotate.afterSurface(() =>
+    modal.sidebar.switchMode("annotate"),
+  );
 };
 
 /** Re-select the track and return to a form-open state (a move drops the anchor). */
 const reselect = async (modal: ModalPom, label = "vehicle") => {
-  if (await modal.sidebar.edit.backButton.isVisible()) {
-    await modal.sidebar.edit.exitToList();
-  }
   await modal.videoAnnotate.selectLabel(label);
 };
 

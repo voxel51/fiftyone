@@ -38,8 +38,7 @@ test.describe.serial("annotate-multimodal-disabled", () => {
     modal,
     page,
   }) => {
-    await grid.openFirstSample();
-    await modal.waitForOpen();
+    await modal.afterOpened(() => grid.openFirstSample());
 
     // Multimodal media renders through its own MM sidebar (Inspect/Fields
     // tabs) instead of the classic sidebar entirely, so there's no

@@ -79,8 +79,7 @@ test.describe.serial("quickstart-groups", () => {
 
   test.describe("modal", () => {
     test.beforeEach(async ({ modal, grid }) => {
-      await grid.openFirstSample();
-      await modal.waitForSampleLoadDomAttribute();
+      await modal.afterSampleLoaded(() => grid.openFirstSample());
     });
 
     test('changes slice to "pcd" when 3D viewer is clicked', async ({
@@ -160,22 +159,20 @@ test.describe.serial("quickstart-groups", () => {
       fiftyoneLoader,
     }) => {
       await modal.sidebar.switchMode("annotate");
-      await modal.sidebar.annotate.selectAnnotationSlice("pcd");
-      await modal.waitForSampleLoadDomAttribute(true);
-      await modal.looker3dControls.waitForAllAssetsLoaded();
+      await modal.looker3dControls.afterAllAssetsLoaded(() =>
+        modal.afterSampleLoaded(
+          () => modal.sidebar.annotate.selectAnnotationSlice("pcd"),
+          true,
+        ),
+      );
       await modal.assert.verifyHasNoViewerError();
       await renderer3d.assert.expectSomethingToRender();
 
       await modal.sidebar.switchMode("explore");
       await modal.group.openMediaVisibility();
 
-      if (!(await modal.groupLooker.isVisible())) {
-        await modal.group.toggleMedia("viewer");
-      }
-
-      if (!(await modal.looker3d.isVisible())) {
-        await modal.group.toggleMedia("3d");
-      }
+      await modal.group.showMedia("viewer");
+      await modal.group.showMedia("3d");
 
       expect(await modal.groupLooker.isVisible()).toBe(true);
       expect(await modal.looker3d.isVisible()).toBe(true);
@@ -188,16 +185,18 @@ test.describe.serial("quickstart-groups", () => {
       await page.reload();
       await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 
-      await grid.openFirstSample();
-      await modal.waitForSampleLoadDomAttribute(true);
+      await modal.afterSampleLoaded(() => grid.openFirstSample(), true);
       await modal.assert.verifyModalSamplePluginTitle("left", { pinned: true });
       expect(await modal.groupLooker.isVisible()).toBe(true);
       expect(await modal.looker3d.isVisible()).toBe(true);
 
-      await modal.sidebar.switchMode("annotate");
+      await modal.looker3dControls.afterAllAssetsLoaded(() =>
+        modal.afterSampleLoaded(
+          () => modal.sidebar.switchMode("annotate"),
+          true,
+        ),
+      );
       await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice("pcd");
-      await modal.waitForSampleLoadDomAttribute(true);
-      await modal.looker3dControls.waitForAllAssetsLoaded();
       await modal.assert.verifyHasNoViewerError();
       await renderer3d.assert.expectSomethingToRender();
     });
@@ -220,8 +219,7 @@ test.describe.serial("quickstart-groups", () => {
       await sidebar.applyFilter("left");
     });
 
-    await grid.openFirstSample();
-    await modal.waitForSampleLoadDomAttribute();
+    await modal.afterSampleLoaded(() => grid.openFirstSample());
 
     await modal.navigateSlice("group.name", "right");
     await modal.sidebar.assert.verifySidebarEntryText("group.name", "right");

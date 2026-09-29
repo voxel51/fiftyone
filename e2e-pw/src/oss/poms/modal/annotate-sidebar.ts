@@ -57,15 +57,21 @@ export class ModalAnnotateSidebarPom {
   }
 
   /**
-   * Wait for the label list to finish loading after entering annotate mode:
-   * the Labels group is shown and no entry is still loading.
+   * Run `action` and resolve once the sidebar has swapped the label list for
+   * the edit form (`editing`) or back because of it
    */
-  async waitForLabelList() {
-    await this.page
-      .locator(
-        '[data-cy="modal"] [data-cy="sidebar"]:has([data-cy="sidebar-group-Labels-field-count"]):not(:has([data-cy="loading-dots"]))',
-      )
-      .waitFor({ state: "attached" });
+  async afterEditing<T>(action: () => Promise<T>, editing = true): Promise<T> {
+    return this.eventUtils.after("e2e:annotate:editing", action, (e) => {
+      return (e.detail as { editing: boolean }).editing === editing;
+    });
+  }
+
+  /**
+   * Run `action` (the switch to annotate) and resolve once the label list it
+   * mounts has replaced its loading entry with the labels
+   */
+  async afterLabelList<T>(action: () => Promise<T>): Promise<T> {
+    return this.eventUtils.after("e2e:annotate:label-list-loaded", action);
   }
 
   /**
@@ -159,8 +165,11 @@ export class ModalAnnotateSidebarPom {
    * Opens the annotation slice selector results menu.
    */
   async openAnnotationSliceResults() {
-    await this.annotationSliceSelector.click();
-    await this.annotationSliceResultsContainer.waitFor();
+    await this.eventUtils.after(
+      "e2e:components:selector-results",
+      () => this.annotationSliceSelector.click(),
+      (e) => (e.detail as { cy?: string }).cy === "annotation-slice",
+    );
     return this.annotationSliceResultsContainer;
   }
 
@@ -186,13 +195,8 @@ export class ModalAnnotateSidebarPom {
    * @param slice The slice name to select
    */
   async selectAnnotationSlice(slice: string) {
-    // a 3D slice becomes selectable once the group's samples load, and the
-    // option list is computed when it opens, so open it only after that
-    await this.locator
-      .locator(
-        `[data-cy="annotation-slice-selector"][data-cy-selectable-slices~="${slice}"]`,
-      )
-      .waitFor({ state: "attached" });
+    // a 3D slice is listed once the group's samples load; the open list
+    // follows, so the result click below waits for it
     await this.annotationSliceSelector.click();
     await this.annotationSliceResultsContainer
       .getByTestId(`selector-result-${slice}`)
@@ -240,9 +244,22 @@ export class ModalAnnotateSidebarPom {
     }
   }
 
-  /** Activate polyline-drawing mode (the Polyline action button). */
+  /**
+   * Toggle polyline-drawing mode (the Polyline action button). Turning it on
+   * resolves once its handler is armed: the handler installs in an effect
+   * after the mode flips, and clicks before that reach nothing.
+   */
   async polylineMode() {
-    await this.page.getByTestId("polyline-mode").click();
+    const button = this.page.getByTestId("polyline-mode");
+    if ((await button.getAttribute("data-cy-active")) === "true") {
+      await button.click();
+      return;
+    }
+    await this.eventUtils.after(
+      "lighter:scene-interactive-mode-changed",
+      () => button.click(),
+      (e) => (e.detail as { interactiveMode: boolean }).interactiveMode,
+    );
   }
 
   /**

@@ -135,8 +135,6 @@ test.describe.serial("schema manager", () => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ id }),
     });
-    // Init
-    await modal.waitForOpen();
     await modal.sidebar.switchMode("annotate");
     await schemaManager.open();
     await schemaManager.assert.isOpen();
@@ -227,8 +225,8 @@ test.describe.serial("schema manager", () => {
     // Navigate to patches view
     await fiftyoneLoader.waitUntilGridVisible(page, detectionDatasetName, {
       searchParams: new URLSearchParams({ view: "patches", id }),
+      modalSample: "loaded",
     });
-    await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
 
     // The required field prompt should appear since "predictions" has no
@@ -274,7 +272,6 @@ test.describe.serial("schema manager", () => {
     await fiftyoneLoader.waitUntilGridVisible(page, groupVideoDatasetName, {
       searchParams: new URLSearchParams({ id: groupVideoId }),
     });
-    await modal.waitForOpen();
     await modal.sidebar.switchMode("annotate");
 
     await schemaManager.assert.isEnabled();

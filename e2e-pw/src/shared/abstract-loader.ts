@@ -14,9 +14,16 @@ export type WaitUntilGridVisibleOptions = {
   readyEvent?: string;
 
   /**
-   * The number of distinct grid tiles that must be ready (default 1)
+   * The number of distinct grid lookers that must have drawn (by default,
+   * one tile of any kind ready)
    */
   tiles?: number;
+
+  /**
+   * Also wait for the modal a deep link opens to draw its sample, or to
+   * draw it or show its load error
+   */
+  modalSample?: "loaded" | "loaded-or-error";
 };
 export abstract class AbstractFiftyoneLoader {
   protected pythonRunner: PythonRunner;

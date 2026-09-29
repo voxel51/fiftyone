@@ -40,14 +40,19 @@ export class ModalImaAsVideoControlsPom {
     return timelineId;
   }
 
-  // only the paused and playing states render an icon with a click handler
+  // only the paused and playing states render an icon with a click handler,
+  // and buffering ends on its own
   private async waitUntilClickable() {
-    await this.page
-      .locator(
-        '[data-cy=imavid-playhead][data-playhead-state="paused"], [data-cy=imavid-playhead][data-playhead-state="playing"]',
-      )
-      .first()
-      .waitFor({ state: "attached" });
+    const clickable = (state: string | null) =>
+      state === "paused" || state === "playing";
+    await this.modal.eventUtils.untilState(
+      "e2e:playback:playhead-state",
+      async () =>
+        clickable(
+          await this.playPauseButton.getAttribute("data-playhead-state"),
+        ),
+      (e) => clickable((e.detail as { state: string }).state),
+    );
   }
 
   public async togglePlay() {
@@ -72,16 +77,23 @@ export class ModalImaAsVideoControlsPom {
     await this.controls.first().hover();
   }
 
-  async waitUntilFrameTextIs(frameText: string, matchBeginning = false) {
-    await this.page
-      .locator("[data-cy=imavid-status-indicator]")
-      .filter({
-        hasText: new RegExp(
-          `^${escapeRegExp(frameText)}${matchBeginning ? "" : "$"}`,
-        ),
-      })
-      .first()
-      .waitFor({ state: "attached" });
+  /**
+   * Run `action` and resolve once the status readout shows `frameText` (or,
+   * with `matchBeginning`, text starting with it) because of it
+   */
+  async afterFrameText<T>(
+    frameText: string,
+    action: () => Promise<T>,
+    matchBeginning = false,
+  ): Promise<T> {
+    const pattern = new RegExp(
+      `^${escapeRegExp(frameText)}${matchBeginning ? "" : "$"}`,
+    );
+    return this.modal.eventUtils.after(
+      "e2e:playback:status-shown",
+      action,
+      (e) => pattern.test((e.detail as { text: string }).text),
+    );
   }
 
   /**
@@ -89,8 +101,11 @@ export class ModalImaAsVideoControlsPom {
    * frame the pause lands on, which a draw in flight can carry past it
    */
   async playUntilFrames(frameText: string, matchBeginning = false) {
-    await this.togglePlay();
-    await this.waitUntilFrameTextIs(frameText, matchBeginning);
+    await this.afterFrameText(
+      frameText,
+      () => this.togglePlay(),
+      matchBeginning,
+    );
     let landed = 0;
     await this.modal.eventUtils.after(
       "e2e:playback:paused",

@@ -45,8 +45,7 @@ test.describe.serial("viewport-bridge-visual", () => {
     grid,
     modal,
   }) => {
-    await grid.openFirstSample();
-    await modal.waitForSampleLoadDomAttribute();
+    await modal.afterSampleLoaded(() => grid.openFirstSample());
     await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
 
     await modal.sampleCanvas.move(0.5, 0.5);
@@ -69,7 +68,6 @@ test.describe.serial("viewport-bridge-visual", () => {
       modal.sidebar.switchMode("explore"),
     );
     await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
-    await modal.waitForSampleLoadDomAttribute();
 
     await modal.sampleCanvas.assert.hasScreenshot("round-trip-looker.png");
   });
@@ -78,8 +76,7 @@ test.describe.serial("viewport-bridge-visual", () => {
     grid,
     modal,
   }) => {
-    await grid.openFirstSample();
-    await modal.waitForSampleLoadDomAttribute();
+    await modal.afterSampleLoaded(() => grid.openFirstSample());
     await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
 
     await modal.sampleCanvas.move(0.5, 0.5);
