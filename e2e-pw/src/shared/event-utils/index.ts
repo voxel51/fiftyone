@@ -78,7 +78,10 @@ export class EventCounter {
   }
 }
 
-type ArmHandler = (e: { detail?: unknown }) => boolean;
+/** An observed event: its name (one of the names waited on) and payload */
+export type ObservedEvent = { event: string; detail?: unknown };
+
+type ArmHandler = (e: ObservedEvent) => boolean;
 
 /**
  * One exposed binding per page routes every armed listener by id. Playwright
@@ -97,7 +100,7 @@ const dispatcherFor = (page: Page) => {
     // an id with no handler has resolved or been disposed: detach it
     const exposed = page.exposeFunction(
       name,
-      (id: string, e: { detail?: unknown }) => handlers.get(id)?.(e) ?? true,
+      (id: string, e: ObservedEvent) => handlers.get(id)?.(e) ?? true,
     );
     dispatcher = { name, handlers, exposed };
     dispatchers.set(page, dispatcher);
@@ -109,9 +112,9 @@ export class EventUtils {
   constructor(private readonly page: Page) {}
 
   /**
-   * Arm a listener for an app event: an `@fiftyone/events` bus event on any
-   * channel (the `e2e:` signals), or a document or window CustomEvent the app
-   * dispatches for its own use. Resolves only after the
+   * Arm a listener for an app event (or the first of several): an
+   * `@fiftyone/events` bus event on any channel (the `e2e:` signals), or a
+   * document or window CustomEvent the app dispatches for its own use. Resolves only after the
    * in-page listener is attached, so an event fired any time after arming is
    * guaranteed to be observed — arm BEFORE the action that fires the event,
    * then await the handle's `received` after it:
@@ -121,12 +124,13 @@ export class EventUtils {
    *   await armed.received;
    */
   public async arm(
-    eventName: string,
-    predicate: (e: { detail?: unknown }) => boolean = () => true,
+    events: string | readonly string[],
+    predicate: (e: ObservedEvent) => boolean = () => true,
   ): Promise<ArmedEvent> {
     const dispatcher = dispatcherFor(this.page);
     await dispatcher.exposed;
-    const id = getFunctionNameWithRandomSuffix(eventName);
+    const names = typeof events === "string" ? [events] : [...events];
+    const id = getFunctionNameWithRandomSuffix(names.join("|"));
 
     let resolveReceived: () => void;
     const received = new Promise<void>((resolve) => {
@@ -146,11 +150,11 @@ export class EventUtils {
     // the listener is attached in its own evaluate — not inside the promise
     // that carries the wait — so attachment is complete when `arm` returns
     await this.page.evaluate(
-      ({ eventName_, dispatcher_, id_ }) => {
+      ({ names_, dispatcher_, id_ }) => {
         let detach = () => {};
-        const deliver = (detail: unknown) => {
+        const deliver = (event: string, detail: unknown) => {
           // @ts-expect-error - the function is exposed at runtime
-          window[dispatcher_](id_, { detail }).then(
+          window[dispatcher_](id_, { event, detail }).then(
             (matched: boolean) => matched && detach(),
           );
         };
@@ -158,15 +162,18 @@ export class EventUtils {
         // CustomEvent instances don't serialize across the boundary;
         // forward only the detail. A document event bubbles on to window, so
         // the window listener takes only events dispatched on window itself.
-        const onDom = (e: Event) => deliver((e as CustomEvent).detail);
+        const onDom = (e: Event) => deliver(e.type, (e as CustomEvent).detail);
         const onWindow = (e: Event) => e.target === window && onDom(e);
-        document.addEventListener(eventName_, onDom);
-        window.addEventListener(eventName_, onWindow);
+        names_.forEach((name) => {
+          document.addEventListener(name, onDom);
+          window.addEventListener(name, onWindow);
+        });
 
         // bus payloads can hold live objects; forward only primitive fields
         const offBus = window.__FO_EVENTS__?.tap((event, data) => {
-          if (event !== eventName_) return;
+          if (!names_.includes(event)) return;
           deliver(
+            event,
             Object.fromEntries(
               Object.entries((data ?? {}) as Record<string, unknown>).filter(
                 ([, v]) =>
@@ -179,14 +186,16 @@ export class EventUtils {
 
         const armed = (window.__FO_ARMED__ ??= {});
         detach = () => {
-          document.removeEventListener(eventName_, onDom);
-          window.removeEventListener(eventName_, onWindow);
+          names_.forEach((name) => {
+            document.removeEventListener(name, onDom);
+            window.removeEventListener(name, onWindow);
+          });
           offBus?.();
           delete armed[id_];
         };
         armed[id_] = detach;
       },
-      { eventName_: eventName, dispatcher_: dispatcher.name, id_: id },
+      { names_: names, dispatcher_: dispatcher.name, id_: id },
     );
 
     return new ArmedEvent(received, async () => {
@@ -320,7 +329,7 @@ export class EventUtils {
   public async afterNavigation<T>(
     events: string | readonly string[],
     navigate: () => Promise<T>,
-    predicate: (e: { event: string; detail?: unknown }) => boolean = () => true,
+    predicate: (e: ObservedEvent) => boolean = () => true,
   ): Promise<T> {
     if (!recordingPages.has(this.page)) {
       throw new Error("afterNavigation needs recordLoads() before navigating");
@@ -356,14 +365,34 @@ export class EventUtils {
   }
 
   /**
-   * Resolve on the next `eventName` from now. Only for events no test action
+   * Resolve once `holds()` is true, reading it once after arming `events`
+   * and otherwise waiting for the first matching event. Only for a state the
+   * app settles into on its own (buffering finishing), which no test action
+   * causes; otherwise use {@link after}.
+   */
+  public async untilState(
+    events: string | readonly string[],
+    holds: () => Promise<boolean>,
+    predicate?: (e: ObservedEvent) => boolean,
+  ): Promise<void> {
+    const armed = await this.arm(events, predicate);
+    try {
+      if (await holds()) return;
+      await armed.received;
+    } finally {
+      await armed.dispose();
+    }
+  }
+
+  /**
+   * Resolve on the next of `events` from now. Only for events no test action
    * causes (an autosave tick, a periodic persist); otherwise use {@link after}.
    */
   public async next(
-    eventName: string,
-    predicate?: (e: { detail?: unknown }) => boolean,
+    events: string | readonly string[],
+    predicate?: (e: ObservedEvent) => boolean,
   ): Promise<void> {
-    const armed = await this.arm(eventName, predicate);
+    const armed = await this.arm(events, predicate);
     try {
       await armed.received;
     } finally {
@@ -372,17 +401,17 @@ export class EventUtils {
   }
 
   /**
-   * Run `action` and resolve once `eventName` fires because of it. The
+   * Run `action` and resolve once one of `events` fires because of it. The
    * listener is armed before `action` starts, so the event cannot be missed:
    *
    *   await eventUtils.after("e2e:app:page-change", () => page.goBack());
    */
   public async after<T>(
-    eventName: string,
+    events: string | readonly string[],
     action: () => Promise<T>,
-    predicate?: (e: { detail?: unknown }) => boolean,
+    predicate?: (e: ObservedEvent) => boolean,
   ): Promise<T> {
-    const armed = await this.arm(eventName, predicate);
+    const armed = await this.arm(events, predicate);
     try {
       const result = await action();
       await armed.received;
