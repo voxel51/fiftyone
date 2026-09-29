@@ -61,8 +61,6 @@ setup(
         "dill>=0.1,<0.5",
         "exceptiongroup>=1,<2",
         "ftfy>=4,<7",
-        # Strawberry 0.316 requires the GraphQL Core 3.2 execution API
-        "graphql-core>=3.2,<3.3",
         "humanize>=2,<5",
         "hypercorn>=0.13.2,<0.19",
         "Jinja2>=3,<4",
