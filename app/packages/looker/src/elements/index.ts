@@ -152,6 +152,9 @@ export const getVideoElements: GetElements<VideoState> = (params) => {
       {
         node: common.ErrorElement,
       },
+      {
+        node: video.LoadingElement,
+      },
       { node: common.TagsElement },
       {
         node: common.ThumbnailSelectorElement,

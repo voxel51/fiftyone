@@ -49,6 +49,67 @@
   opacity: 0.75;
 }
 
+/*
+ * Loading indicator for thumbnails whose media has not drawn yet, rebuilt in
+ * plain DOM from the multimodal grid tile's. Colors, sizes and timing must
+ * stay aligned with LoadingAscii.module.css and that tile's .root background
+ * (GridRenderer.module.css).
+ */
+@keyframes lookerLoadingFall {
+  0% {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
+
+  24% {
+    opacity: 1;
+  }
+
+  74% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+}
+
+.lookerLoading {
+  align-items: center;
+  background: #101114;
+  display: none;
+  inset: 0;
+  justify-content: center;
+  pointer-events: none;
+  position: absolute;
+}
+
+.lookerLoadingShown {
+  display: flex;
+}
+
+.lookerLoadingBox {
+  color: rgba(108, 214, 255, 0.9);
+  display: inline-block;
+  height: 22px;
+  overflow: hidden;
+  position: relative;
+  width: 28px;
+}
+
+.lookerLoadingBoxInner {
+  animation: lookerLoadingFall 1.15s ease-in infinite;
+  display: block;
+  font-family: "SF Mono", Consolas, "Liberation Mono", monospace;
+  font-size: 6px;
+  font-weight: 800;
+  line-height: 0.9;
+  text-align: left;
+  text-shadow: 0 0 8px rgba(108, 214, 255, 0.5);
+  white-space: pre;
+}
+
 .looker {
   position: relative;
   width: 100%;
