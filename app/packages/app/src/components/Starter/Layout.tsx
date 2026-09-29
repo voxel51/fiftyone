@@ -40,12 +40,9 @@ export function Layout({
   subtitle: ReactNode;
   title: string;
 }) {
-  // The operators decide what the subtitle offers, so the screen waits rather
-  // than telling someone to install a plugin they already have. Discovery that
-  // failed knows of no operators at all, which reads the same way, so the
-  // screen drops the offer instead and keeps the code
-  // A product registers before the first render, so the hook this resolves to
-  // is the same one for the life of the screen
+  // The subtitle offers an operator, so the screen waits rather than telling
+  // someone to install a plugin they have. Discovery that failed knows of no
+  // operators either, so it drops the offer and keeps the code.
   const useStatus = useProduct().useOperatorsStatus ?? useEveryOperator;
   const { hasError, isLoading } = useStatus();
 

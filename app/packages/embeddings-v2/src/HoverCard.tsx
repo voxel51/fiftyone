@@ -37,9 +37,9 @@ import type { HoverHit } from "./renderer";
 const CLICK_SLOP_PX = 4;
 
 const TOKEN_VARS = {
-  "--emb-popover": `var(${getColorCssVar(BackgroundColor.Popover)})`,
-  "--emb-border-subtle": `var(${getColorCssVar(BorderColor.Subtle)})`,
-  "--emb-fg": `var(${getColorCssVar(TextColor.Fg)})`,
+  "--emb-popover": getColorCssVar(BackgroundColor.Popover),
+  "--emb-border-subtle": getColorCssVar(BorderColor.Subtle),
+  "--emb-fg": getColorCssVar(TextColor.Fg),
 } as CSSProperties;
 
 export interface HoverContent {

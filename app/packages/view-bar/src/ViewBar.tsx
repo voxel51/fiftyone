@@ -123,12 +123,14 @@ const ALL_SLICE_MEDIA_TYPES: fos.GroupSliceMediaType[] = [
 ];
 
 /**
- * Where a press is still "in the bar": the bar itself (both rows), the stage
- * editor and search settings popovers, and any portaled popout — a list, a
- * select menu, a tooltip — that a control in the bar opened.
+ * Where a press is still "in the bar": the bar itself, the stages row — which
+ * a host may place outside the bar — the stage editor and search settings
+ * popovers, and any portaled popout — a list, a select menu, a tooltip — that
+ * a control in the bar opened.
  */
 const STILL_IN_BAR = [
   "[data-cy='view-bar']",
+  "[data-cy='view-bar-stages-row']",
   "[data-cy='view-stage-editor']",
   "[data-cy='view-bar-search-settings']",
   "[data-headlessui-portal]",
@@ -784,7 +786,11 @@ const ViewBarInner: React.FC<{
       setEditingId(null);
       applyOnLeaveRef.current();
       if (stagesRowOpenRef.current) {
-        setStagesOpen(false);
+        // Closing the row shortens the header and moves the page under the
+        // pointer, so wait for the press to finish on what it started on
+        window.addEventListener("click", () => setStagesOpen(false), {
+          once: true,
+        });
       }
     };
 

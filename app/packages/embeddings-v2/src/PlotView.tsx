@@ -41,13 +41,13 @@ import { type CameraAdapterFactory, type InteractionMode } from "./renderer";
 import { NONE_FIELD, useRunPlotData } from "./useRunPlotData";
 
 const TOKEN_VARS = {
-  "--emb-bg": `var(${getColorCssVar(BackgroundColor.Background)})`,
-  "--emb-card-bg": `var(${getColorCssVar(BackgroundColor.Card2)})`,
-  "--emb-card-elevated": `var(${getColorCssVar(BackgroundColor.CardElevated)})`,
-  "--emb-border-subtle": `var(${getColorCssVar(BorderColor.Subtle)})`,
-  "--emb-border-strong": `var(${getColorCssVar(BorderColor.Strong)})`,
-  "--emb-brand": `var(${getColorCssVar(BrandColor.Primary)})`,
-  "--emb-fg": `var(${getColorCssVar(TextColor.Fg)})`,
+  "--emb-bg": getColorCssVar(BackgroundColor.Background),
+  "--emb-card-bg": getColorCssVar(BackgroundColor.Card2),
+  "--emb-card-elevated": getColorCssVar(BackgroundColor.CardElevated),
+  "--emb-border-subtle": getColorCssVar(BorderColor.Subtle),
+  "--emb-border-strong": getColorCssVar(BorderColor.Strong),
+  "--emb-brand": getColorCssVar(BrandColor.Primary),
+  "--emb-fg": getColorCssVar(TextColor.Fg),
 } as CSSProperties;
 
 function ModeSegment({

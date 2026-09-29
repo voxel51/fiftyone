@@ -28,8 +28,8 @@ import styles from "./SharedSessionBanner.module.css";
 import SharedSessionUpgrade from "./SharedSessionUpgrade";
 
 const TOKENS = {
-  "--banner-tint": `var(${getColorCssVar(SemanticColor.Warning)})`,
-  "--banner-surface": `var(${getColorCssVar(BackgroundColor.Background)})`,
+  "--banner-tint": getColorCssVar(SemanticColor.Warning),
+  "--banner-surface": getColorCssVar(BackgroundColor.Background),
 } as CSSProperties;
 
 const Notice = () => {
