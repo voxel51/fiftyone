@@ -75,3 +75,77 @@ describe("createPageSource", () => {
     expect(listener).not.toHaveBeenCalled();
   });
 });
+
+describe("invalidate", () => {
+  const server = (pages: Record<number, string[]>) => {
+    const fetch = vi.fn(async (key: number) => ({ ids: [...pages[key]] }));
+    const source = createPageSource(fetch, { ids: (page) => page.ids });
+    return { fetch, pages, source };
+  };
+
+  test("refetches the pages it drops and keeps the rest", async () => {
+    const { fetch, source } = server({ 0: ["a"], 1: ["b"] });
+    await source.get(0);
+    await source.get(1);
+
+    source.invalidate((key) => key === 0);
+    await source.get(0);
+    await source.get(1);
+
+    expect(fetch.mock.calls.map(([key]) => key)).toEqual([0, 1, 0]);
+  });
+
+  test("drops every page when given no keys", async () => {
+    const { fetch, source } = server({ 0: ["a"], 1: ["b"] });
+    await source.get(0);
+    await source.get(1);
+
+    source.invalidate();
+    await source.get(0);
+    await source.get(1);
+
+    expect(fetch).toHaveBeenCalledTimes(4);
+  });
+
+  test("reports an id no refetched page holds", async () => {
+    const { pages, source } = server({ 0: ["a", "b", "c"] });
+    await source.get(0);
+
+    pages[0] = ["a", "c"];
+    source.invalidate();
+    await source.get(0);
+    await Promise.resolve();
+
+    expect([...source.takeRemoved()]).toEqual(["b"]);
+    expect([...source.takeRemoved()]).toEqual([]);
+  });
+
+  test("does not report an id that only moved to another refetched page", async () => {
+    const { pages, source } = server({ 0: ["a", "b"], 1: ["c", "d"] });
+    await source.get(0);
+    await source.get(1);
+
+    // "a" deleted: skip paging shifts "c" onto page 0
+    pages[0] = ["b", "c"];
+    pages[1] = ["d"];
+    source.invalidate();
+    await source.get(0);
+    await source.get(1);
+    await Promise.resolve();
+
+    expect([...source.takeRemoved()]).toEqual(["a"]);
+  });
+
+  test("reports nothing without an ids reader", async () => {
+    let ids = ["a", "b"];
+    const source = createPageSource(async () => ({ ids }));
+    await source.get(0);
+
+    ids = ["a"];
+    source.invalidate();
+    await source.get(0);
+    await Promise.resolve();
+
+    expect(source.takeRemoved().size).toBe(0);
+  });
+});

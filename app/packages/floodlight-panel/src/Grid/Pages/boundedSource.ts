@@ -37,5 +37,7 @@ export const createBoundedSource = <P extends Linked>(
   get fetching() {
     return source.fetching;
   },
+  invalidate: (keys) => source.invalidate(keys),
+  takeRemoved: () => source.takeRemoved(),
   subscribe: (listener) => source.subscribe(listener),
 });

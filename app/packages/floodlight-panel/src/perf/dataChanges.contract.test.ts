@@ -2,7 +2,7 @@ import Spotlight, { type Response, RowChange } from "@fiftyone/floodlight";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { createBoundedSource } from "../Grid/Pages/boundedSource";
 import { keyRange } from "../Grid/Pages/model";
-import { createPageSource, type PageSource } from "../host/pageSource";
+import { createPageSource } from "../host/pageSource";
 import { type Environment, installEnvironment } from "./environment";
 import type { createFakePages, FakeItem } from "./fakePages";
 import { mountHost } from "./mountHost";
@@ -63,21 +63,6 @@ const ids = (page: Page) => page.items.map((item) => item.id.description);
 
 const duplicates = (list: string[]) =>
   list.filter((id, i) => list.indexOf(id) !== i);
-
-/**
- * The invalidation the design adds to `PageSource`: drops cached pages whose
- * key passes `keys` (all when omitted), so the next `get` refetches them.
- * Absent today, so these calls are no-ops and the cached pages stay.
- */
-const invalidate = <K, P>(
-  source: PageSource<K, P>,
-  keys?: (key: K) => boolean,
-) =>
-  (
-    source as PageSource<K, P> & {
-      invalidate?: (keys?: (key: K) => boolean) => void;
-    }
-  ).invalidate?.(keys);
 
 describe("skip paging under deletion: page source", () => {
   test.fails(
@@ -202,22 +187,18 @@ describe("skip paging under deletion: host and engine", () => {
     },
   );
 
-  test.fails(
-    "an anchor on a deleted sample starts the new instance at its surviving neighbor",
-    async () => {
-      const server = createServer(200);
-      server.delete("s27");
-      const mounted = await start(server, {
-        key: 1,
-        at: { description: "s27", fraction: 0 },
-      });
+  test("an anchor on a deleted sample starts the new instance at its page", async () => {
+    const server = createServer(200);
+    server.delete("s27");
+    const mounted = await start(server, {
+      key: 1,
+      at: { description: "s27", fraction: 0 },
+    });
 
-      // page 1 is now s20..s26, s28..s40: s28 takes s27's place. The engine
-      // finds no `at`, never scrolls (the view shows page 0 from s0) and
-      // reports { at: "s25", fraction: 1 }
-      expect(mounted.top()).toEqual({ at: "s28", fraction: 0 });
-    },
-  );
+    // page 1 is now s20..s26, s28..s40. A cold start cannot know s27's old
+    // neighbor, so it starts at the page; a live rebuild resolves the neighbor
+    expect(mounted.top()).toEqual({ at: "s20", fraction: 0 });
+  });
 
   test.fails(
     "a bulk deletion before the anchor moves it off the pages it is rebuilt from",
@@ -236,45 +217,39 @@ describe("skip paging under deletion: host and engine", () => {
   );
 });
 
-describe("known data changes: rebuild through the host (proposed invalidation)", () => {
-  test.fails(
-    "a rebuild after a known deletion still shows the deleted sample (pages are cached for the host's lifetime)",
-    async () => {
-      const server = createServer(200);
-      const mounted = await start(server);
-      expect(mounted.looker.tiles("i0")).toContain("s3");
+describe("known data changes: rebuild through the host", () => {
+  test("a rebuild after a deletion drops the sample and evicts only its item", async () => {
+    const server = createServer(200);
+    const mounted = await start(server);
+    expect(mounted.looker.tiles("i0")).toContain("s3");
 
-      server.delete("s3");
-      invalidate(mounted.source, (key) => key >= 0);
-      mounted.host.rebuild({ key: 0 });
-      await env.idle();
+    server.delete("s3");
+    mounted.source.invalidate((key) => key >= 0);
+    mounted.host.rebuild({ key: 0 });
+    await env.idle();
 
-      expect(mounted.current).toBe("i1");
-      expect(mounted.looker.tiles("i1")).not.toContain("s3");
-      // survivors keep their lookers; only the deleted one leaves the cache
-      expect(mounted.looker.counts("i1").creates).toBe(1);
-      expect(mounted.looker.cache.get("s3")).toBeUndefined();
-    },
-  );
+    expect(mounted.current).toBe("i1");
+    expect(mounted.looker.tiles("i1")).not.toContain("s3");
+    // survivors keep their items; only the deleted one leaves the cache
+    expect(mounted.looker.counts("i1").creates).toBe(1);
+    expect(mounted.looker.cache.get("s3")).toBeUndefined();
+  });
 
-  test.fails(
-    "a rebuild after a known aspect-ratio change keeps tiling the item at its fetch-time ratio",
-    async () => {
-      const server = createServer(200);
-      const mounted = await start(server);
-      const [width, height] = mounted.looker.cache.get("s2")?.dimensions ?? [];
-      expect(width).toBe(height);
+  test("a rebuild after an aspect-ratio change reattaches the item at its new ratio", async () => {
+    const server = createServer(200);
+    const mounted = await start(server);
+    const [width, height] = mounted.looker.cache.get("s2")?.dimensions ?? [];
+    expect(width).toBe(height);
 
-      server.setAspectRatio("s2", 2);
-      invalidate(mounted.source, (key) => key === 0);
-      mounted.host.rebuild({ key: 0 });
-      await env.idle();
+    server.setAspectRatio("s2", 2);
+    mounted.source.invalidate((key) => key === 0);
+    mounted.host.rebuild({ key: 0 });
+    await env.idle();
 
-      const [w, h] = mounted.looker.cache.get("s2")?.dimensions ?? [];
-      expect(Math.round((w / h) * 100) / 100).toBe(2);
-      // the looker is reattached at the new size, not created again
-      expect(mounted.looker.counts("i1").creates).toBe(0);
-      expect(mounted.fetches.calls.get(0)).toBe(2);
-    },
-  );
+    const [w, h] = mounted.looker.cache.get("s2")?.dimensions ?? [];
+    expect(Math.round((w / h) * 100) / 100).toBe(2);
+    // the item is reattached at the new size, not created again
+    expect(mounted.looker.counts("i1").creates).toBe(0);
+    expect(mounted.fetches.calls.get(0)).toBe(2);
+  });
 });

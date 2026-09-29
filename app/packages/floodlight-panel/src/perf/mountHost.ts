@@ -34,7 +34,9 @@ export const mountHost = ({
 } = {}) => {
   const container = createContainer();
   const fetches = countCalls(pages.fetch);
-  const source = createPageSource(fetches.fn);
+  const source = createPageSource(fetches.fn, {
+    ids: (page) => page.items.map((item) => item.id.description),
+  });
   const looker = createCacheRenderer<number, Data>();
   const renderer = createCountingRenderer<number, Data>(looker);
   const ownership = createOwnership();
@@ -45,6 +47,8 @@ export const mountHost = ({
   const shimmers = new Map<string, number>();
   const sizes = new Map<string, [number, number]>();
   const scopes = new Map<Engine, Scoped<number, Data>>();
+  // right after each swap: the next instance's tiles the cache calls unshown
+  const unshownAtSwap = new Map<string, string[]>();
   // at each load, before the host swaps: what the instance had done, the
   // violation total, and how many tiles of the visible instance were blank
   const atLoad = new Map<
@@ -107,9 +111,15 @@ export const mountHost = ({
       previous && renderer.release(labels.get(previous) ?? "");
       handOff({
         cache: looker.cache,
+        evict: source.takeRemoved(),
         next: scopes.get(next),
         previous: previous && scopes.get(previous),
       });
+      const label = labels.get(next) ?? "";
+      unshownAtSwap.set(
+        label,
+        looker.tiles(label).filter((id) => !looker.cache.isShown(id)),
+      );
     },
   });
 
@@ -123,6 +133,7 @@ export const mountHost = ({
     looker,
     shimmers,
     log,
+    unshownAtSwap,
     pages,
     renderer,
     source,
