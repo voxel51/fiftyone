@@ -31,7 +31,8 @@ import {
   TextVariant,
   Variant,
 } from "@voxel51/voodo";
-import React from "react";
+import React, { useEffect } from "react";
+import { dispatchSearchSettings } from "./focusPlaced";
 
 import styles from "./panel.module.css";
 
@@ -102,6 +103,15 @@ const ResultsInput: React.FC<{ k: number; onChangeK: (k: number) => void }> = ({
   );
 };
 
+/** Signals the panel mounting and unmounting as the popover opens and closes */
+const SettingsOpenSignal = () => {
+  useEffect(() => {
+    dispatchSearchSettings(true);
+    return () => dispatchSearchSettings(false);
+  }, []);
+  return null;
+};
+
 export const SearchSettingsPopover: React.FC<SearchSettingsPopoverProps> = ({
   trigger,
   promptKeys,
@@ -129,6 +139,7 @@ export const SearchSettingsPopover: React.FC<SearchSettingsPopoverProps> = ({
           orientation={Orientation.Column}
           spacing={Spacing.Md}
         >
+          <SettingsOpenSignal />
           <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
             <Text variant={TextVariant.Md} color={TextColor.Primary}>
               Search settings

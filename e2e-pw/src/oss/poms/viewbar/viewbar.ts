@@ -3,6 +3,19 @@ import type { EventUtils } from "src/shared/event-utils";
 
 /** The bar moves the keyboard a frame after an edit, then dispatches this */
 const FOCUS_PLACED = "e2e:view-bar:focus-placed";
+const STAGE_EDITOR = "e2e:view-bar:stage-editor";
+
+/** Run `action`, resolving once a stage editor has opened or closed */
+const afterStageEditor = <T>(
+  eventUtils: EventUtils,
+  open: boolean,
+  action: () => Promise<T>,
+) =>
+  eventUtils.after(
+    STAGE_EDITOR,
+    action,
+    (e) => (e.detail as { open: boolean }).open === open,
+  );
 
 /** Whether `locator` holds the keyboard, read once */
 const isFocused = (locator: Locator) =>
@@ -90,15 +103,18 @@ export class ViewBarPom {
   async setSearchMatches(k: number) {
     await this.searchSettingsTrigger.click();
     await this.searchSettings.getByTestId("search-settings-k").fill(String(k));
-    await this.searchSettingsTrigger.click();
-    await this.searchSettings.waitFor({ state: "hidden" });
+    await this.eventUtils.after(
+      "e2e:view-bar:search-settings",
+      () => this.searchSettingsTrigger.click(),
+      (e) => !(e.detail as { open: boolean }).open,
+    );
   }
 
   /**
    * Makes the stages row visible. A bar holding stages opens it on its own;
    * an empty bar needs the toggle, which also lands the keyboard in the row
    * a frame later. The toggle's aria-expanded reflects the open state
-   * synchronously, so this never races the row mounting.
+   * synchronously and the row mounts in that commit, so this never races it.
    */
   async openStages() {
     const expanded = await this.stagesToggle.getAttribute("aria-expanded");
@@ -107,22 +123,24 @@ export class ViewBarPom {
         this.stagesToggle.click(),
       );
     }
-    await this.stagesRow.waitFor();
   }
 
   /**
    * Makes the stages of a non-empty bar visible. A view arriving from
    * anywhere but the search opens the row on its own, so this is the
-   * idempotent path for the cases that do not.
+   * idempotent path for the cases that do not; the row renders the view's
+   * stages as it mounts.
    */
   async expand() {
     await this.openStages();
-    await this.waitForStages();
   }
 
-  /** Wait for a view that arrived from elsewhere to show its stages. */
-  async waitForStages() {
-    await this.viewStages.first().waitFor();
+  /**
+   * Run `action` (e.g. an operator setting the view) and resolve once the
+   * stages row it opens shows the view's stages
+   */
+  async afterStagesShown<T>(action: () => Promise<T>): Promise<T> {
+    return this.eventUtils.after("e2e:view-bar:stages-shown", action);
   }
 
   /**
@@ -131,8 +149,9 @@ export class ViewBarPom {
    */
   async typeStage(name: string) {
     await this.page.keyboard.type(name);
-    await this.page.keyboard.press("Enter");
-    await this.stageEditor.locator.waitFor();
+    await afterStageEditor(this.eventUtils, true, () =>
+      this.page.keyboard.press("Enter"),
+    );
     return this.stageEditor;
   }
 
@@ -146,18 +165,20 @@ export class ViewBarPom {
       .last()
       .or(this.insertTypeahead)
       .click();
-    await this.page
-      .getByRole("listbox")
-      .getByRole("option", { name, exact: true })
-      .click();
-    await this.stageEditor.locator.waitFor();
+    await afterStageEditor(this.eventUtils, true, () =>
+      this.page
+        .getByRole("listbox")
+        .getByRole("option", { name, exact: true })
+        .click(),
+    );
     return this.stageEditor;
   }
 
   /** Reopens an already-applied stage's editor and returns it. */
   async editStage(index: number) {
-    await this.viewStages.nth(index).getByLabel("Edit stage").click();
-    await this.stageEditor.locator.waitFor();
+    await afterStageEditor(this.eventUtils, true, () =>
+      this.viewStages.nth(index).getByLabel("Edit stage").click(),
+    );
     return this.stageEditor;
   }
 }
@@ -232,8 +253,9 @@ export class StageEditorPom {
   }
 
   private async closing(action: () => Promise<void>) {
-    await this.eventUtils.after(FOCUS_PLACED, action);
-    await this.locator.waitFor({ state: "hidden" });
+    await afterStageEditor(this.eventUtils, false, () =>
+      this.eventUtils.after(FOCUS_PLACED, action),
+    );
   }
 
   /** Picks an option in a param's picker, e.g. a field param's path. */

@@ -28,7 +28,7 @@ import React from "react";
 
 import type { Kind, Operator } from "./builder/catalog";
 import { ParamInput } from "./controls";
-import { dispatchFocusPlaced } from "./focusPlaced";
+import { dispatchFocusPlaced, dispatchStageEditor } from "./focusPlaced";
 import {
   blockedBy,
   expressionScope,
@@ -146,6 +146,7 @@ export const StageCard: React.FC<StageCardProps> = ({
   // moment the content is guaranteed to be in the DOM.
   const focusEditor = React.useCallback((el: HTMLDivElement | null) => {
     popoverContentRef.current = el;
+    dispatchStageEditor(el !== null);
     if (!el) return;
 
     // Not a combobox: voodo's Select opens its options on focus, and opening

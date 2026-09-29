@@ -63,8 +63,9 @@ test("Built-in operators: set view", async ({
 }) => {
   await operatorsBrowser.show();
   await operatorsBrowser.search("E2E");
-  await url.pageChange(() => operatorsBrowser.choose("E2E: Set view"));
   // A view set by an operator opens the stages row on its own
-  await viewBar.waitForStages();
+  await viewBar.afterStagesShown(() =>
+    url.pageChange(() => operatorsBrowser.choose("E2E: Set view")),
+  );
   await viewBar.assert.hasViewStage("Limit3");
 });
