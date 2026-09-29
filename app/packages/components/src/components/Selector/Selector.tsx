@@ -4,6 +4,7 @@ import React, {
   useCallback,
   useLayoutEffect,
   useMemo,
+  useReducer,
   useRef,
   useState,
 } from "react";
@@ -106,6 +107,15 @@ function Selector<T>(props: SelectorProps<T>) {
 
   const ref = useRef<HTMLInputElement | null>();
   const hovering = useRef(false);
+
+  // the autosize input measures its text only when it renders, so a webfont
+  // that swaps in later leaves it (and the underline) at the fallback width
+  const [, remeasure] = useReducer((count: number) => count + 1, 0);
+  useLayoutEffect(() => {
+    const fonts = document.fonts;
+    fonts?.addEventListener("loadingdone", remeasure);
+    return () => fonts?.removeEventListener("loadingdone", remeasure);
+  }, []);
 
   useLayoutEffect(() => {
     if (!editing) {
