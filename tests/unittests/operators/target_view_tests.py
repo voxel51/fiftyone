@@ -694,7 +694,7 @@ class TestGroupSliceScopeDescriptions(unittest.TestCase):
 
     def test_no_active_slice_still_offers_the_default_slice(self):
         # the active slice is resolved from the dataset when the caller does
-        # not send one, so only the whole grouped dataset stays unavailable
+        # not send one
         ctx = self._ctx()
         prop, descriptions = self._descriptions(ctx, require_flat=True)
 
