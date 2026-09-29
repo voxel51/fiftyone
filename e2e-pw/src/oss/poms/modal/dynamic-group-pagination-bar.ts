@@ -16,6 +16,14 @@ export class DynamicGroupPaginationPom {
     this.assert = new DynamicGroupPaginationAsserter(this);
   }
 
+  /** Run `action` and resolve once the bar shows its pages because of it */
+  afterShown<T>(action: () => Promise<T>): Promise<T> {
+    return this.modal.eventUtils.after(
+      "e2e:modal:dynamic-group-pagination",
+      action,
+    );
+  }
+
   /** Page to another group element, resolving once the sidebar shows it */
   async navigatePage(page: number) {
     const current = await this.modal.sidebar.getSampleId();

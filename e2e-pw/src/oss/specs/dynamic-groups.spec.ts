@@ -87,7 +87,10 @@ test.describe.serial("dynamic groups smoke test", () => {
       await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
         searchParams: new URLSearchParams({ view: "dynamic-group" }),
       });
-      await modal.afterSampleLoaded(() => grid.openFirstSample());
+      // the samples have no media files, so the modal shows an error tile
+      await modal.group.dynamicGroupPagination.afterShown(() =>
+        modal.afterSampleLoaded(() => grid.openFirstSample(), true),
+      );
 
       await modal.group.assert.assertIsPaginationBarVisible();
       await modal.group.assert.assertIsCarouselNotVisible();
