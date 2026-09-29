@@ -60,6 +60,7 @@ const windowAdapter: Adapter = {
     );
     notify();
   },
+  back: () => window.history.back(),
   subscribe: (listener) => {
     listeners.add(listener);
     return () => listeners.delete(listener);

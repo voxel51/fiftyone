@@ -118,4 +118,22 @@ export const CONFORMANCE_CASES: ConformanceCase[] = [
       );
     },
   },
+  {
+    name: "the adapter's back returns to the previous entry",
+    run: (harness) => {
+      const original = harness.adapter.get();
+      harness.adapter.push("/datasets/quickstart/samples/abc");
+      let calls = 0;
+      const unsubscribe = harness.adapter.subscribe(() => {
+        calls += 1;
+      });
+      harness.adapter.back();
+      unsubscribe();
+      assert(
+        harness.adapter.get() === original,
+        `back landed on "${harness.adapter.get()}"`,
+      );
+      assert(calls === 1, `expected 1 notification, got ${calls}`);
+    },
+  },
 ];

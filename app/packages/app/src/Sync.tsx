@@ -8,8 +8,6 @@ import {
   Writer,
   setDataset,
   type setDatasetMutation,
-  setSample,
-  type setSampleMutation,
   setSpaces,
   type setSpacesMutation,
   setView,
@@ -42,6 +40,7 @@ import { type Entry, useRouterContext } from "./routing";
 import useEventSource from "./useEventSource";
 import { AppReadyState } from "./useEvents/registerEvent";
 import useSetters from "./useSetters";
+import useModalFromLocation from "./location/useModalFromLocation";
 import useSliceFromLocation from "./location/useSliceFromLocation";
 import useWriters from "./useWriters";
 
@@ -61,6 +60,7 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
   const setters = useSetters(environment, router, sessionRef);
   useWriters(subscription, environment, router, sessionRef);
   useSliceFromLocation();
+  useModalFromLocation();
 
   const readyState = useEventSource(router, sessionRef);
 
@@ -122,26 +122,6 @@ const dispatchSideEffect = ({
     return;
   }
 
-  session.modalSelector = nextEntry.state.modalSelector;
-
-  if (
-    currentEntry.state.event === "modal" ||
-    nextEntry.state.event === "modal"
-  ) {
-    if (nextEntry.state.event !== "modal") {
-      session.selectedLabels = [];
-    }
-    commitMutation<setSampleMutation>(environment, {
-      mutation: setSample,
-      variables: {
-        groupId: nextEntry.state.modalSelector?.groupId,
-        id: nextEntry.state.modalSelector?.id,
-        subscription,
-      },
-    });
-    return;
-  }
-
   session.selectedLabels = [];
   session.selectedSamples = new Map();
   session.sampleSelectionStyle = fos.DEFAULT_SELECTION_STYLE;
@@ -166,7 +146,6 @@ const dispatchSideEffect = ({
 
   const data = nextEntry.data as DatasetPageQuery$data;
 
-  session.modalSelector = nextEntry.state?.modalSelector;
   let update = !fos.viewsAreEqual(
     currentEntry.state.view,
     nextEntry.state.view,

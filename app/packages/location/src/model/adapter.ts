@@ -11,7 +11,8 @@
  * served from.
  *
  * Deliberately expressible with `location.pathname`, `location.search`,
- * `history.pushState`, `history.replaceState` and `popstate` alone: a method
+ * `history.pushState`, `history.replaceState`, `history.back` and `popstate`
+ * alone: a method
  * that needs `as`, `options`, `shallow`, a pop veto or a parsed query object
  * has let a router concept leak, and the interface is wrong rather than the
  * host.
@@ -22,6 +23,11 @@ export interface Adapter {
   push(href: string): void;
   /** Same history entry. */
   replace(href: string): void;
+  /**
+   * The previous history entry, as the browser's Back. It may land after it
+   * returns; `subscribe` fires when it does.
+   */
+  back(): void;
   /**
    * Fires after every change, including the adapter's own writes: it is the
    * only signal React has that the location moved, and the only thing that

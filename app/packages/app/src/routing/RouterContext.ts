@@ -97,7 +97,7 @@ export const createRouter = <T extends OperationType>(
             environment,
             routes,
             location: location as FiftyOneLocation,
-            hard: location.state.event !== "modal",
+            hard: true,
             handleError,
           });
       } catch (e) {
@@ -132,13 +132,14 @@ export const createRouter = <T extends OperationType>(
     });
   };
 
-  // the path the current entry was routed for
-  let routedPath = history.location.pathname;
+  // the history entry on screen, routed or not
+  let shown: Seen = history.location;
 
   const cleanup = history.listen(({ location, action }) => {
     if (!currentEntryResource) return;
-    if (isParamWrite(location.state, location.pathname, routedPath)) return;
-    routedPath = location.pathname;
+    const from = shown;
+    shown = location;
+    if (isParamMove(location, from, action)) return;
     update(
       {
         ...location,
@@ -218,7 +219,7 @@ export const createRouter = <T extends OperationType>(
   };
 };
 
-const SKIP_EVENTS = new Set(["modal", "spaces"]);
+const SKIP_EVENTS = new Set(["spaces"]);
 
 /**
  * Marks an entry the location store wrote. Its params moved but its route did
@@ -227,13 +228,27 @@ const SKIP_EVENTS = new Set(["modal", "spaces"]);
  */
 export const LOCATION_WRITE = "fiftyoneLocationWrite";
 
-export const isParamWrite = (
-  state: unknown,
-  pathname: string,
-  routedPath: string,
-) =>
-  Boolean((state as Record<string, unknown> | null)?.[LOCATION_WRITE]) &&
-  pathname === routedPath;
+type Seen = Pick<Location, "pathname" | "state">;
+
+const isMarked = (state: unknown) =>
+  Boolean((state as Record<string, unknown> | null)?.[LOCATION_WRITE]);
+
+const viewOf = (state: unknown) =>
+  (state as LocationState | null)?.view ?? undefined;
+
+/**
+ * Whether moving `from` → `to` leaves the route where it is. A write is one
+ * when the store made it; a pop is one when either end is the store's entry
+ * and both show the same view, as Back from an open sample to its grid does.
+ */
+export const isParamMove = (to: Seen, from: Seen, action: Action) => {
+  if (to.pathname !== from.pathname) return false;
+  if (action !== "POP") return isMarked(to.state);
+  return (
+    (isMarked(to.state) || isMarked(from.state)) &&
+    viewsAreEqual(viewOf(to.state), viewOf(from.state))
+  );
+};
 
 /** A routed entry never inherits the mark from the state it was spread from. */
 const routed = (state: LocationState): LocationState => {

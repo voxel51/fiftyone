@@ -68,6 +68,8 @@ export const historyAdapter = (history: History): Adapter => ({
     );
   },
 
+  back: () => history.back(),
+
   // `listen` already fires for push, replace and pop alike, so there is no
   // separate notification for our own writes.
   subscribe: (listener) => history.listen(() => listener()),

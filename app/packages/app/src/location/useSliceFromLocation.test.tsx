@@ -5,7 +5,6 @@
 import { createLocationStore, LocationProvider } from "@fiftyone/location";
 import { memoryHarness } from "@fiftyone/location/src/testing";
 import { act, renderHook } from "@testing-library/react";
-import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const setSlice = vi.fn();
