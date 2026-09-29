@@ -746,6 +746,7 @@ export class Scene2D {
    */
   setCursor(cursor: string): void {
     this.config.canvas.style.cursor = cursor;
+    this.eventBus.dispatch("e2e:lighter:cursor", { cursor });
   }
 
   /**

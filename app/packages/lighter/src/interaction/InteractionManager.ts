@@ -525,7 +525,7 @@ export class InteractionManager {
         this.currentModifiers,
       );
       if (cursor) {
-        this.canvas.style.cursor = cursor;
+        this.setCursor(cursor);
       }
 
       // If this is a spatial overlay with move state, track drag/resize lifecycle.
@@ -562,6 +562,12 @@ export class InteractionManager {
     }
   };
 
+  /** Write the canvas cursor; e2e specs wait on the cursor a move leaves */
+  private setCursor(cursor: string): void {
+    this.canvas.style.cursor = cursor;
+    this.eventBus.dispatch("e2e:lighter:cursor", { cursor });
+  }
+
   /** Looker's cursors for a read-only surface: panning, then any label. */
   private readOnlyCursor(handler?: InteractionHandler): string {
     if (this.readOnlyPanning) return "all-scroll";
@@ -579,7 +585,7 @@ export class InteractionManager {
     scale: number,
   ): void {
     if (this.readOnly) {
-      this.canvas.style.cursor = this.readOnlyCursor(handler);
+      this.setCursor(this.readOnlyCursor(handler));
       return;
     }
 
@@ -591,7 +597,7 @@ export class InteractionManager {
         handler instanceof DetectionOverlay &&
         handler.hasMask() &&
         handler.id !== segmentationModeBridge.getMergeTargetId();
-      this.canvas.style.cursor = isMergeable ? "cell" : "default";
+      this.setCursor(isMergeable ? "cell" : "default");
       return;
     }
 
@@ -600,18 +606,16 @@ export class InteractionManager {
       TypeGuards.isSelectable(handler) && !handler.isSelected?.();
 
     if (isUnselectedOverlay && !this.isDrawModeActive()) {
-      this.canvas.style.cursor = "pointer";
+      this.setCursor("pointer");
     } else if (segmentationModeBridge.isActive()) {
-      this.canvas.style.cursor = buildBrushCursor(
-        segmentationModeBridge.getToolState(scale)!,
+      this.setCursor(
+        buildBrushCursor(segmentationModeBridge.getToolState(scale)!),
       );
     } else if (isUnselectedOverlay && detectionModeBridge.isActive()) {
-      this.canvas.style.cursor = "crosshair";
+      this.setCursor("crosshair");
     } else if (TypeGuards.isInteractionHandler(handler) && handler.getCursor) {
-      this.canvas.style.cursor = handler.getCursor(
-        worldPoint,
-        scale,
-        this.currentModifiers,
+      this.setCursor(
+        handler.getCursor(worldPoint, scale, this.currentModifiers),
       );
     }
   }
@@ -877,18 +881,20 @@ export class InteractionManager {
     if (this.readOnly) {
       this.readOnlyPanning =
         !!this.clickStartPoint && this.isSpatialDragEvent(event);
-      this.canvas.style.cursor = this.readOnlyCursor(cursorHandler);
+      this.setCursor(this.readOnlyCursor(cursorHandler));
     } else if (cursorHandler) {
       this.configureCursorStyle(cursorHandler, worldPoint, scale);
     } else if (segmentationModeBridge.isActive() && !interactiveHandler) {
       const isMergeTool =
         segmentationModeBridge.getActiveTool() === SegmentationTool.Merge;
 
-      this.canvas.style.cursor = isMergeTool
-        ? "default"
-        : buildBrushCursor(segmentationModeBridge.getToolState(scale)!);
+      this.setCursor(
+        isMergeTool
+          ? "default"
+          : buildBrushCursor(segmentationModeBridge.getToolState(scale)!),
+      );
     } else if (detectionModeBridge.isActive() && !interactiveHandler) {
-      this.canvas.style.cursor = "crosshair";
+      this.setCursor("crosshair");
     }
   };
 
@@ -1090,12 +1096,13 @@ export class InteractionManager {
     }
 
     this.renderer.enableZoomPan();
-    this.canvas.style.cursor =
+    this.setCursor(
       handler?.getCursor?.(worldPoint, scale, this.currentModifiers) ||
-      this.canvas.style.cursor;
+        this.canvas.style.cursor,
+    );
     if (this.readOnly) {
       this.readOnlyPanning = false;
-      this.canvas.style.cursor = this.readOnlyCursor(handler);
+      this.setCursor(this.readOnlyCursor(handler));
     }
     this.clickStartPoint = undefined;
     this.clickStartTime = 0;
@@ -1244,7 +1251,7 @@ export class InteractionManager {
         this.currentModifiers,
       );
       if (cursor) {
-        this.canvas.style.cursor = cursor;
+        this.setCursor(cursor);
       }
     }
   }
@@ -1557,12 +1564,12 @@ export class InteractionManager {
       // overwrite that, producing the flicker between mode cursor and
       // "default" reported during bounding-box creation.
       if (this.readOnly) {
-        this.canvas.style.cursor = this.readOnlyCursor();
+        this.setCursor(this.readOnlyCursor());
       } else if (
         !segmentationModeBridge.isActive() &&
         !detectionModeBridge.isActive()
       ) {
-        this.canvas.style.cursor = "default";
+        this.setCursor("default");
       }
 
       if (this.hoveredHandler) {
@@ -1595,9 +1602,10 @@ export class InteractionManager {
     // If we are hovering on a new overlay, hover the new one
     if (handler && this.hoveredHandler !== handler && !interactingHandler) {
       handler.onHoverEnter?.(point, event);
-      this.canvas.style.cursor =
+      this.setCursor(
         handler.getCursor?.(worldPoint, scale, this.currentModifiers) ||
-        this.canvas.style.cursor;
+          this.canvas.style.cursor,
+      );
 
       this.eventBus.dispatch("lighter:overlay-hover", {
         id: handler.id,
@@ -1607,9 +1615,10 @@ export class InteractionManager {
 
     // If we are hovering on the same overlay, move the hover
     if (this.hoveredHandler === handler) {
-      this.canvas.style.cursor =
+      this.setCursor(
         handler.getCursor?.(worldPoint, scale, this.currentModifiers) ||
-        this.canvas.style.cursor;
+          this.canvas.style.cursor,
+      );
 
       this.eventBus.dispatch("lighter:overlay-hover-move", {
         id: handler.id,
@@ -1635,14 +1644,14 @@ export class InteractionManager {
         handler instanceof DetectionOverlay &&
         handler.hasMask() &&
         handler.id !== segmentationModeBridge.getMergeTargetId();
-      this.canvas.style.cursor = isMergeable ? "cell" : "default";
+      this.setCursor(isMergeable ? "cell" : "default");
 
       return;
     }
 
     const scale = this.renderer.getScale();
-    this.canvas.style.cursor = buildBrushCursor(
-      segmentationModeBridge.getToolState(scale)!,
+    this.setCursor(
+      buildBrushCursor(segmentationModeBridge.getToolState(scale)!),
     );
   };
 

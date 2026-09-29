@@ -306,6 +306,8 @@ export type LighterEventGroup = {
   "lighter:renderer-ready": Record<string, never>;
   /** A frame reached the screen. Emitted under browser automation only. */
   "e2e:lighter:frame-painted": Record<string, never>;
+  /** The canvas cursor was written. Emitted under browser automation only. */
+  "e2e:lighter:cursor": { cursor: string };
 
   // ============================================================================
   // "DO" EVENTS USERS CAN EMIT TO FORCE STATE CHANGES OR ACTIONS
