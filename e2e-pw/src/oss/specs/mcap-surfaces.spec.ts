@@ -61,8 +61,7 @@ test.describe("MCAP surfaces", () => {
     await page.evaluate(async () => {
       await Promise.all((await caches.keys()).map((key) => caches.delete(key)));
     });
-    await page.reload();
-    await grid.locator.waitFor();
+    await grid.reload();
 
     const sourceUrl = new RegExp(tinyA.fileName.replace(/\./g, "\\."));
     await page.route(sourceUrl, (route) => route.abort("failed"));

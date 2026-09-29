@@ -74,8 +74,7 @@ test.describe("MCAP persistence", () => {
 
       await modal.episode.fullscreenTile("Logs / Diagnostics");
       await modal.close();
-      await page.reload();
-      await grid.locator.waitFor();
+      await grid.reload();
       await openMcapModal(grid, modal, 0);
       await modal.episode.waitForReady(tinyA.fileName);
       await expectRestoredWorkspace(modal);
@@ -133,8 +132,7 @@ test.describe("MCAP persistence", () => {
     await modal.episode.expectCameraPose("points", egoPose);
 
     await modal.close();
-    await page.reload();
-    await grid.locator.waitFor();
+    await grid.reload();
     await openMcapModal(
       grid,
       modal,
@@ -168,8 +166,7 @@ test.describe("MCAP persistence", () => {
     await expectRepresentativeSidebarPreferences(modal);
 
     await modal.close();
-    await page.reload();
-    await grid.locator.waitFor();
+    await grid.reload();
     await openMcapModal(
       grid,
       modal,

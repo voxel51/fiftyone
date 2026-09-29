@@ -1,3 +1,4 @@
+import { getEventBus } from "@fiftyone/events";
 import {
   Button,
   Divider,
@@ -11,7 +12,13 @@ import {
   TextVariant,
   Variant,
 } from "@voxel51/voodo";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { hasMcapCloudSourceResolver } from "../../extensions/mcap-explorer";
 import type { ByteSourceDescriptor } from "../../ir/index";
 import {
@@ -27,6 +34,11 @@ import {
   resolveRemoteMcapSourceDescriptor,
 } from "./source-descriptors";
 import styles from "./McapExplorerPanel.module.css";
+
+/** e2e specs wait on the explorer showing an error for what was opened */
+type ExplorerE2EEvents = {
+  "e2e:multimodal:explorer-error": { message: string };
+};
 
 type ActiveAnyMcapSource = {
   readonly fileName: string;
@@ -49,6 +61,14 @@ const McapExplorerPanel: React.FC = () => {
   const [active, setActive] = useState<ActiveAnyMcapSource | null>(null);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<ViewerError | null>(null);
+  useEffect(() => {
+    if (error) {
+      getEventBus<ExplorerE2EEvents>().dispatch(
+        "e2e:multimodal:explorer-error",
+        { message: error.message },
+      );
+    }
+  }, [error]);
   const [openingUrl, setOpeningUrl] = useState(false);
   const [urlInput, setUrlInput] = useState("");
   const dragDepthRef = useRef(0);

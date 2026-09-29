@@ -117,6 +117,18 @@ export class GridPom {
       .scrollIntoViewIfNeeded();
   }
 
+  /** Reload the page, resolving once the reloaded grid has a tile ready */
+  async reload() {
+    await this.eventUtils.afterNavigation(
+      [
+        "e2e:looker:canvas-loaded",
+        "e2e:looker:error-shown",
+        "e2e:grid:custom-renderer-mounted",
+      ],
+      () => this.page.reload(),
+    );
+  }
+
   async selectSlice(slice: string) {
     if ((await this.sliceSelector.activeSlice()) === slice) return;
 
