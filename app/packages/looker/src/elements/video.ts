@@ -18,6 +18,7 @@ import {
   createBufferingIndicator,
   setBufferingShown,
 } from "./common/buffering";
+import { createLoadingIndicator, setLoadingShown } from "./common/loading";
 import { dispatchTooltipEvent } from "./common/util";
 import {
   acquirePlayer,
@@ -78,6 +79,29 @@ export class LoaderBar extends BaseElement<VideoState> {
 
     this.shown = shown;
     setBufferingShown(this.element, this.shown && start !== end);
+    return this.element;
+  }
+}
+
+/** A thumbnail's loading animation, until its media draws or fails. */
+export class LoadingElement extends BaseElement<VideoState> {
+  private shown: boolean = undefined;
+
+  isShown({ thumbnail }: Readonly<VideoState["config"]>) {
+    return thumbnail;
+  }
+
+  createHTMLElement() {
+    return createLoadingIndicator();
+  }
+
+  renderSelf({ loaded, error }: Readonly<VideoState>) {
+    const shown = !loaded && !error;
+    if (shown !== this.shown) {
+      this.shown = shown;
+      setLoadingShown(this.element, shown);
+    }
+
     return this.element;
   }
 }
