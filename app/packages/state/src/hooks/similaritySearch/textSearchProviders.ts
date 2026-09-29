@@ -56,6 +56,9 @@ export interface SearchSources {
   /** Names the values as a group, plural, such as "Streams". */
   label: string;
   values: string[];
+  /** Set when the index cannot be narrowed to these values: why, shown in
+   * place of the choice. The search then covers the entire index. */
+  unavailableReason?: string;
 }
 
 /** What the search field offers for the text typed so far. */

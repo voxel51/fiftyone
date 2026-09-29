@@ -819,6 +819,17 @@ class ExecutionContext(contextlib.AbstractContextManager):
 
         target, media_type = constants.split_view_target(target)
         if media_type is not None:
+            # scoping bypasses the selection handling of the other targets,
+            # so a selection would be silently dropped
+            if target not in (
+                constants.ViewTarget.DATASET,
+                constants.ViewTarget.CURRENT_VIEW,
+            ):
+                raise ValueError(
+                    "View target '%s' cannot be scoped to a media type"
+                    % target
+                )
+
             sample_collection, _ = self._get_target_collection(target)
             return self.flatten_group_slices(
                 sample_collection, media_type=media_type

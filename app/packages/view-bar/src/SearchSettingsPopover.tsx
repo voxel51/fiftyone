@@ -147,6 +147,25 @@ const SourcesPicker: React.FC<{
   selected: string[] | null;
   onChange: (values: string[]) => void;
 }> = ({ sources, selected, onChange }) => {
+  if (sources.unavailableReason) {
+    return (
+      <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
+        <Text variant={TextVariant.Label} color={TextColor.Tertiary}>
+          {sources.label}
+        </Text>
+        <DropdownTrigger
+          className={styles.pickerTrigger}
+          data-cy="search-settings-sources"
+          disabled
+        >
+          All
+        </DropdownTrigger>
+        <Text variant={TextVariant.Xs} color={TextColor.Tertiary}>
+          {sources.unavailableReason}
+        </Text>
+      </Stack>
+    );
+  }
   const isChecked = (value: string) => !selected || selected.includes(value);
   const shown = sources.values.filter(isChecked).length;
   const toggle = (value: string) => {

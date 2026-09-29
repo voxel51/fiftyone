@@ -4,7 +4,8 @@
  * Text search through the server's similarity search operator, for an index
  * the server can sort by. The operator builds and applies the result view
  * itself; whoever shows the view hands each arriving one to `claimView`. On a
- * grouped dataset an index's sources are the group slices it covers.
+ * grouped dataset an index's sources are the group slices it covers; an index
+ * that recorded none offers the dataset's slices as unavailable.
  */
 
 import {
@@ -24,6 +25,9 @@ import { useDeferredSearch } from "./useDeferredSearch";
 
 /** The Similarity action's server-side search operator. */
 export const SIMILARITY_SEARCH_OPERATOR = "@voxel51/panels/similarity_search";
+
+export const SLICES_UNAVAILABLE_REASON =
+  "This index does not support filtering by slice. The entire index will be searched.";
 
 export interface OperatorSearch extends SearchStrategy {
   onUnavailable: () => void;
@@ -53,6 +57,7 @@ export const useOperatorSearch = ({
   const notify = fos.useNotification();
   const registryState = useOperatorRegistryState();
   const registered = useOperatorAvailability(SIMILARITY_SEARCH_OPERATOR);
+  const datasetSlices = fos.useGroupSlices();
 
   // The run a submitted search created, then, once its view lands, the
   // fingerprint of that view
@@ -194,11 +199,22 @@ export const useOperatorSearch = ({
     [promptKeys],
   );
   const selectedSlices = selectedIndex && indexSlices.get(selectedIndex.key);
-  const sources = useMemo(
-    () =>
-      selectedSlices ? { label: "Slices", values: [...selectedSlices] } : null,
-    [selectedSlices],
-  );
+  // Only a sample-level index searches by slice; a patches index has none
+  const unrecorded =
+    !!selectedIndex &&
+    !selectedIndex.patchesField &&
+    !selectedIndex.groupSlices?.length;
+  const sources = useMemo(() => {
+    if (selectedSlices) return { label: "Slices", values: [...selectedSlices] };
+    if (unrecorded && datasetSlices.length) {
+      return {
+        label: "Slices",
+        values: datasetSlices,
+        unavailableReason: SLICES_UNAVAILABLE_REASON,
+      };
+    }
+    return null;
+  }, [selectedSlices, unrecorded, datasetSlices]);
 
   // Until the registry loads the operator is not missing, only unknown: a
   // query is held and runs, or explains itself, once it lands

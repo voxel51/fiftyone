@@ -54,6 +54,18 @@ def test_records_the_slices_the_index_holds_samples_from(fixture_dataset):
     assert _results_meta(dataset)["group_slices"] == ["left", "right"]
 
 
+def test_slices_are_collected_across_id_batches(fixture_dataset):
+    dataset = _grouped_dataset(fixture_dataset)
+    results = _index(dataset.select_group_slices(["left", "right"]))
+
+    with patch(
+        "fiftyone.core.utils.recommend_batch_size_for_value", return_value=1
+    ):
+        results.save()
+
+    assert _results_meta(dataset)["group_slices"] == ["left", "right"]
+
+
 def test_without_sample_ids_the_embeddings_field_marks_the_samples(
     fixture_dataset,
 ):
@@ -71,7 +83,7 @@ def test_without_sample_ids_the_embeddings_field_marks_the_samples(
     assert _results_meta(dataset)["group_slices"] == ["right"]
 
 
-def test_an_index_that_cannot_list_its_samples_covers_every_slice(
+def test_an_index_that_cannot_list_its_samples_records_no_slices(
     fixture_dataset,
 ):
     dataset = _grouped_dataset(fixture_dataset)
@@ -83,7 +95,7 @@ def test_an_index_that_cannot_list_its_samples_covers_every_slice(
         sample_ids.return_value = None
         results.save()
 
-    assert _results_meta(dataset)["group_slices"] == ["left", "right", "pcd"]
+    assert "group_slices" not in _results_meta(dataset)
 
 
 def test_a_dataset_without_groups_records_no_slices(fixture_dataset):

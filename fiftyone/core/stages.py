@@ -8156,7 +8156,9 @@ class SortBySimilarity(ViewStage):
             -   a prompt or iterable of prompts (if supported by the index)
 
         k (None): the number of matches to return. By default, the entire
-            collection is sorted
+            collection is sorted. Applied to a grouped collection, ``k``
+            limits the matched samples, so fewer than ``k`` groups are
+            selected when several matches belong to the same group
         reverse (False): whether to sort by least similarity (True) or greatest
             similarity (False). Some backends may not support least similarity
         dist_field (None): the name of a float field in which to store the

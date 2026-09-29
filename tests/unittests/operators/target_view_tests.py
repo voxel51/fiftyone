@@ -743,6 +743,13 @@ class TestGroupSliceScopeDescriptions(unittest.TestCase):
             sorted(target.values("group.name")), ["left", "right"]
         )
 
+    def test_only_dataset_and_current_view_can_be_scoped(self):
+        ctx = self._ctx(group_slice="left", selected=["sample_id_one"])
+        ctx.params["view_target"] = "SELECTED_SAMPLES|media:image"
+
+        with self.assertRaises(ValueError):
+            ctx.target_view(require_flat=True)
+
     def test_a_scoped_current_view_keeps_its_filters(self):
         # no sample carries the tag, so only a view that kept its filter
         # comes back empty; the unfiltered scope holds both image slices

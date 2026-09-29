@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import type { PromptableSimilarityIndex } from "@fiftyone/state";
+import type { PromptableSimilarityIndex, SearchSources } from "@fiftyone/state";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const HINT = "Ranked over the whole index.";
@@ -29,7 +29,7 @@ const openWith = (
   }: {
     promptKeys?: PromptableSimilarityIndex[];
     indexSlices?: ReadonlyMap<string, readonly string[]>;
-    sources?: typeof STREAMS | null;
+    sources?: SearchSources | null;
     selectedSources?: string[] | null;
     onChangeSources?: (values: string[]) => void;
   } = {},
@@ -105,6 +105,18 @@ describe("SearchSettingsPopover", () => {
     cleanup();
     openWith("emb_sim", { sources: STREAMS, selectedSources: ["/cam_left"] });
     expect(screen.getByRole("button", { name: "1 of 2" })).toBeTruthy();
+  });
+
+  it("shows unavailable sources disabled, with the reason", () => {
+    const reason = "This index does not support filtering by slice.";
+    openWith("clip_sim", {
+      sources: { ...STREAMS, unavailableReason: reason },
+    });
+    expect(
+      (screen.getByRole("button", { name: "All" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+    expect(screen.getByText(reason)).toBeTruthy();
   });
 
   it("checks every source again when the last one is unchecked", () => {

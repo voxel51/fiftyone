@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const env = vi.hoisted(() => ({
   execute: vi.fn(),
   onRun: vi.fn(),
+  datasetSlices: [] as string[],
 }));
 
 vi.mock("@fiftyone/operators", () => ({
@@ -14,6 +15,7 @@ vi.mock("@fiftyone/operators", () => ({
 vi.mock("@fiftyone/state", () => ({
   useSetViewChangePending: () => vi.fn(),
   useNotification: () => vi.fn(),
+  useGroupSlices: () => env.datasetSlices,
 }));
 vi.mock("@fiftyone/utilities", () => ({
   buildSimilarityRunName: () => "run name",
@@ -22,7 +24,10 @@ vi.mock("@fiftyone/utilities", () => ({
 import type { PromptableSimilarityIndex } from "@fiftyone/state";
 
 import type { SerializedStage } from "./state";
-import { useOperatorSearch } from "./useOperatorSearch";
+import {
+  SLICES_UNAVAILABLE_REASON,
+  useOperatorSearch,
+} from "./useOperatorSearch";
 
 const INDEX: PromptableSimilarityIndex = {
   key: "clip_sim",
@@ -123,5 +128,17 @@ describe("useOperatorSearch", () => {
 
     expect(result.current.sources).toBeNull();
     expect(result.current.indexSlices).toStrictEqual(new Map());
+  });
+
+  it("offers the dataset's slices as unavailable on a grouped dataset for an index that recorded none", () => {
+    env.datasetSlices = ["left", "right"];
+    const { result } = renderHook(() => operatorSearch([]));
+    env.datasetSlices = [];
+
+    expect(result.current.sources).toStrictEqual({
+      label: "Slices",
+      values: ["left", "right"],
+      unavailableReason: SLICES_UNAVAILABLE_REASON,
+    });
   });
 });
