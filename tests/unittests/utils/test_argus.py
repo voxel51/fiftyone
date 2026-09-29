@@ -25,7 +25,7 @@ class TestArgusModelConfig:
         assert config.name_or_path == "phanerozoic/argus"
         assert config.task == "detection"
         assert config.resolution is None
-        assert config.nms_thresh == 0.5
+        assert config.nms_thresh is None
         assert config.max_detections == 100
         assert config.raw_inputs is True
 
@@ -152,6 +152,12 @@ class _FakeArgus(object):
         self._record("depth", images, kwargs)
         return [torch.full((4, 4), 3.0) for _ in images]
 
+    def embed(self, images):
+        self._record("embed", images, {})
+        return torch.stack(
+            [torch.full((4,), float(i.size[0])) for i in images]
+        )
+
     def detect(self, images, **kwargs):
         self._record("detect", images, kwargs)
         return [
@@ -215,12 +221,15 @@ class TestPredictAll:
             )
         ]
 
-    def test_detection_default_score_threshold(self):
+    def test_detection_defaults(self):
         model = _model()
 
         model._predict_all([PILImage.new("RGB", (10, 10))])
 
-        assert model._model.calls[0][2]["score_thresh"] == 0.05
+        # The model's own NMS threshold applies unless one is set
+        assert model._model.calls == [
+            ("detect", 1, {"score_thresh": 0.05, "max_per_image": 100})
+        ]
 
     def test_arrays_and_tensors_are_converted(self):
         model = _model()
@@ -252,6 +261,32 @@ class TestPredictAll:
         assert model._predict_all([PILImage.new("RGB", (10, 10))]) == [None]
 
 
+class TestEmbeddings:
+    @pytest.mark.parametrize("task", foua._TASKS)
+    def test_every_task_has_embeddings(self, task):
+        assert _model({"task": task}).has_embeddings is True
+
+    def test_embed_all(self):
+        model = _model({"task": "segmentation"})
+        images = [
+            PILImage.new("RGB", (10, 10)),
+            np.zeros((10, 20, 3), dtype=np.uint8),
+        ]
+
+        out = model.embed_all(images)
+
+        assert model._model.calls == [("embed", 2, {})]
+        assert isinstance(out, np.ndarray)
+        np.testing.assert_array_equal(out, [[10.0] * 4, [20.0] * 4])
+
+    def test_embed(self):
+        model = _model()
+
+        out = model.embed(PILImage.new("RGB", (30, 10)))
+
+        np.testing.assert_array_equal(out, [30.0] * 4)
+
+
 class TestMaskTargets:
     def test_segmentation_names_the_ade20k_classes(self):
         targets = _model({"task": "segmentation"}).mask_targets
@@ -267,7 +302,14 @@ class TestMaskTargets:
 
 
 class TestZooEntry:
-    def test_entry_is_wired_to_the_wrapper(self):
+    @pytest.mark.parametrize(
+        "name,repo",
+        [
+            ("argus-torch", "phanerozoic/argus"),
+            ("argus-lite-torch", "phanerozoic/argus-lite"),
+        ],
+    )
+    def test_entry_is_wired_to_the_wrapper(self, name, repo):
         path = os.path.join(
             os.path.dirname(foua.__file__),
             os.pardir,
@@ -278,10 +320,16 @@ class TestZooEntry:
         with open(path, "r", encoding="utf-8") as f:
             models = {m["base_name"]: m for m in json.load(f)["models"]}
 
-        entry = models["argus-torch"]
+        entry = models[name]
         deployment = entry["default_deployment_config_dict"]
 
         assert deployment["type"] == "fiftyone.utils.argus.ArgusModel"
-        assert deployment["config"]["name_or_path"] == "phanerozoic/argus"
-        assert "detection" in entry["tags"]
-        assert "depth" not in entry["tags"]
+        assert deployment["config"]["name_or_path"] == repo
+        for tag in (
+            "detection",
+            "classification",
+            "segmentation",
+            "depth",
+            "embeddings",
+        ):
+            assert tag in entry["tags"]
