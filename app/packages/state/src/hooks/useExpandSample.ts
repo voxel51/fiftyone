@@ -6,11 +6,24 @@ import { useReverbCallback } from "@fiftyone/reverb";
 import * as atoms from "../atoms/atoms";
 import * as groupAtoms from "../atoms/groups";
 import useSetExpandedSample from "./useSetExpandedSample";
+import {
+  createSampleNavigator,
+  type SamplePage,
+  type SamplePosition,
+} from "../navigation/sampleNavigator";
 import useSetModalState from "./useSetModalState";
 
 export type Sample = Exclude<PaginateSamplesNode, null>;
 
-export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
+type PagedSample = { id: ID; data: Sample };
+
+/** The pages a grid shows, and where a sample sits in them. */
+export interface ExpandSamplePages {
+  get: (key: number) => Promise<SamplePage<number, PagedSample>>;
+  positionOf: (id: string) => SamplePosition<number> | undefined;
+}
+
+export default (pages: ExpandSamplePages) => {
   const setExpandedSample = useSetExpandedSample();
   const setModalState = useSetModalState();
 
@@ -19,7 +32,6 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
       async ({
         event,
         item,
-        iter: cursor,
       }: Parameters<SpotlightConfig<number, Sample>["onItemClick"]>["0"]) => {
         if (event.ctrlKey || event.metaKey) {
           set(atoms.selectedSamples, (selected) => {
@@ -43,75 +55,55 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
           snapshot.getPromise(groupAtoms.groupField),
         ]);
 
-        const iter = async (request: Promise<ID | undefined>) => {
-          const id = await request;
-          const sample = store.get(id);
-
-          if (!sample) {
-            throw new Error("unable to paginate to next sample");
-          }
-
-          let groupId: string;
-          if (hasGroupSlices) {
-            groupId = get(sample.sample, groupField)._id as string;
-          }
-
-          return { id: id.description, groupId };
-        };
-
-        const next = async (offset = 1) => {
-          const nextId = await cursor.next(offset);
-          const nextCheckId = await cursor.next(offset, true);
-
-          const result = await iter(Promise.resolve(nextId));
-          return {
-            hasNext: Boolean(nextCheckId),
-            hasPrevious: true,
-            ...result,
-          };
-        };
-
-        const previous = async (offset: number) => {
-          const prevId = await cursor.next(-1 * offset);
-          const prevCheckId = await cursor.next(-1 * offset, true);
-
-          const result = await iter(Promise.resolve(prevId));
-          return {
-            hasNext: true,
-            hasPrevious: Boolean(prevCheckId),
-            ...result,
-          };
-        };
-
-        // Soft cursor walks resolve the target id (loading pages on the
-        // way) without committing focus, so peeking never navigates. The
-        // store maps ids to paginated sample nodes ({ sample, urls, ... }).
-        const peek = async (offset: number) => {
-          const id = await cursor.next(offset, true);
-          if (!id) {
-            return null;
-          }
-
-          const node = store.get(id);
-          if (!node) {
-            return null;
-          }
-
-          return { id: id.description, sample: node };
-        };
-
-        const hasNext = Boolean(await cursor.next(1, true));
-        const hasPrevious = Boolean(await cursor.next(-1, true));
-
-        await setModalState({
-          next,
-          peek,
-          previous,
+        const selectorOf = ({ id, data }: PagedSample) => ({
+          id: id.description,
+          groupId: hasGroupSlices
+            ? (get(data.sample, groupField)._id as string)
+            : undefined,
         });
 
-        const data = await iter(Promise.resolve(item.id));
-        await setExpandedSample({ ...data, hasNext, hasPrevious });
+        // navigation walks the grid's pages, not the grid, so it outlives it
+        const at = pages.positionOf(item.id.description);
+        const navigator = at && createSampleNavigator({ at, get: pages.get });
+
+        const step = async (offset: number) => {
+          const found = await navigator?.step(offset);
+          if (!found) {
+            throw new Error("unable to paginate to next sample");
+          }
+          const [hasNext, hasPrevious] = await Promise.all([
+            navigator?.peek(1),
+            navigator?.peek(-1),
+          ]);
+          return {
+            ...selectorOf(found),
+            hasNext: Boolean(hasNext),
+            hasPrevious: Boolean(hasPrevious),
+          };
+        };
+
+        const next = (offset = 1) => step(offset);
+        const previous = (offset = 1) => step(-offset);
+        const peek = async (offset: number) => {
+          const found = await navigator?.peek(offset);
+          return found
+            ? { id: found.id.description, sample: found.data }
+            : null;
+        };
+
+        const [hasNext, hasPrevious] = await Promise.all([
+          navigator?.peek(1),
+          navigator?.peek(-1),
+        ]);
+
+        await setModalState(navigator ? { next, peek, previous } : undefined);
+
+        await setExpandedSample({
+          ...selectorOf(item),
+          hasNext: Boolean(hasNext),
+          hasPrevious: Boolean(hasPrevious),
+        });
       },
-    [setExpandedSample, setModalState],
+    [pages, setExpandedSample, setModalState],
   );
 };
