@@ -2,30 +2,22 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { subscribeBefore } from "@fiftyone/relay";
+import { locationBridge } from "@fiftyone/location";
+import { useSessionSetter } from "@fiftyone/state";
 import { useCallback } from "react";
+import { sliceParam } from "../location/params";
 import type { EventHandlerHook } from "./registerEvent";
 
-const useSetGroupSlice: EventHandlerHook = ({ router, session }) => {
+/** The server moved the slice: take it, and put it in the URL, without echoing it back. */
+const useSetGroupSlice: EventHandlerHook = () => {
+  const setter = useSessionSetter();
+
   return useCallback(
     ({ slice }) => {
-      const search = new URLSearchParams(router.location.search);
-      slice ? search.set("slice", slice) : search.delete("slice");
-
-      const string = `?${search.toString()}`;
-
-      const pathname = router.history.location.pathname + string;
-      subscribeBefore(() => {
-        session.current.sessionGroupSlice = slice;
-      });
-
-      router.push(pathname, {
-        ...router.location.state,
-        event: "slice",
-        groupSlice: slice,
-      });
+      setter("sessionGroupSlice", slice);
+      locationBridge.current().write(sliceParam, slice);
     },
-    [router, session],
+    [setter],
   );
 };
 

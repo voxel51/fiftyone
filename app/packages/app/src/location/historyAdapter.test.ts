@@ -6,6 +6,7 @@ import type { AdapterHarness } from "@fiftyone/location/src/testing";
 import { CONFORMANCE_CASES } from "@fiftyone/location/src/testing";
 import { createMemoryHistory } from "history";
 import { describe, expect, it } from "vitest";
+import { LOCATION_WRITE } from "../routing/RouterContext";
 import { historyAdapter } from "./historyAdapter";
 
 const harness = (): AdapterHarness => {
@@ -50,5 +51,25 @@ describe("proxy prefix", () => {
     expect(adapter.get()).toBe("/datasets/quickstart");
     adapter.push("/datasets/other");
     expect(history.location.pathname).toBe("/datasets/other");
+  });
+});
+
+describe("entry state", () => {
+  it("carries the entry's state forward and marks the write", () => {
+    const history = createMemoryHistory({
+      initialEntries: [
+        {
+          pathname: "/datasets/quickstart",
+          state: { view: [{ _cls: "Limit" }] },
+        },
+      ],
+    });
+
+    historyAdapter(history).replace("/datasets/quickstart?slice=left");
+
+    expect(history.location.state).toEqual({
+      view: [{ _cls: "Limit" }],
+      [LOCATION_WRITE]: true,
+    });
   });
 });

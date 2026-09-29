@@ -1,6 +1,6 @@
 import type { Environment } from "relay-runtime";
 import { afterEach, describe, expect, it } from "vitest";
-import { createRouter } from "./RouterContext";
+import { createRouter, isParamWrite, LOCATION_WRITE } from "./RouterContext";
 
 afterEach(() => window.history.replaceState({}, "", "/"));
 
@@ -31,5 +31,21 @@ describe("current URL search parameters", () => {
     expect(router.context.location.pathname).toBe("/datasets/one");
     expect(router.context.location.search).toBe("?subset=one");
     router.cleanup();
+  });
+});
+
+describe("param writes", () => {
+  const marked = { view: [], [LOCATION_WRITE]: true };
+
+  it("keeps the entry for a marked write on the routed path", () => {
+    expect(isParamWrite(marked, "/datasets/a", "/datasets/a")).toBe(true);
+  });
+
+  it("routes a marked entry on another path, and any unmarked change", () => {
+    expect(isParamWrite(marked, "/datasets/a", "/datasets/b")).toBe(false);
+    expect(isParamWrite({ view: [] }, "/datasets/a", "/datasets/a")).toBe(
+      false,
+    );
+    expect(isParamWrite(null, "/datasets/a", "/datasets/a")).toBe(false);
   });
 });

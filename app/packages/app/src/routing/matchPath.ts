@@ -14,7 +14,7 @@ const compilePath = (path: string) =>
   });
 
 export type LocationState<T extends OperationType = OperationType> = {
-  event?: "modal" | "slice" | "spaces";
+  event?: "modal" | "spaces";
   fieldVisibility?: State.FieldVisibilityStage;
   groupSlice?: string;
   modalSelector?: ModalSelector;

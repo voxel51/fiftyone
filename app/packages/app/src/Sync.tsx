@@ -8,8 +8,6 @@ import {
   Writer,
   setDataset,
   type setDatasetMutation,
-  setGroupSlice,
-  type setGroupSliceMutation,
   setSample,
   type setSampleMutation,
   setSpaces,
@@ -44,6 +42,7 @@ import { type Entry, useRouterContext } from "./routing";
 import useEventSource from "./useEventSource";
 import { AppReadyState } from "./useEvents/registerEvent";
 import useSetters from "./useSetters";
+import useSliceFromLocation from "./location/useSliceFromLocation";
 import useWriters from "./useWriters";
 
 export const SessionContext = React.createContext<Session>(SESSION_DEFAULT);
@@ -61,6 +60,7 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
   const sessionRef = useRef<Session>(SESSION_DEFAULT);
   const setters = useSetters(environment, router, sessionRef);
   useWriters(subscription, environment, router, sessionRef);
+  useSliceFromLocation();
 
   const readyState = useEventSource(router, sessionRef);
 
@@ -167,12 +167,6 @@ const dispatchSideEffect = ({
   const data = nextEntry.data as DatasetPageQuery$data;
 
   session.modalSelector = nextEntry.state?.modalSelector;
-  const updateSlice =
-    currentEntry.state.groupSlice !== nextEntry.state.groupSlice;
-  if (updateSlice) {
-    session.sessionGroupSlice = nextEntry.state.groupSlice || undefined;
-  }
-
   let update = !fos.viewsAreEqual(
     currentEntry.state.view,
     nextEntry.state.view,
@@ -204,15 +198,6 @@ const dispatchSideEffect = ({
             mutation: setSpaces,
             variables: {
               spaces: nextEntry.state?.workspace,
-              subscription,
-            },
-          });
-
-        updateSlice &&
-          commitMutation<setGroupSliceMutation>(environment, {
-            mutation: setGroupSlice,
-            variables: {
-              slice: session.sessionGroupSlice,
               subscription,
             },
           });

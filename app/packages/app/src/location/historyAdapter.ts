@@ -4,6 +4,7 @@
 
 import type { Adapter } from "@fiftyone/location";
 import type { History } from "history";
+import { LOCATION_WRITE } from "../routing/RouterContext";
 
 /**
  * `?proxy=` is a deployment path prefix, not part of the location: today
@@ -32,6 +33,12 @@ const restore = (href: string, proxy: string) => {
  * memory history where `window.location` is not the location at all, and a
  * write that does not go through this instance would not notify us.
  */
+// the entry keeps the state it had, marked as a param write for the router
+const carried = (history: History) => ({
+  ...(history.location.state as Record<string, unknown> | null),
+  [LOCATION_WRITE]: true,
+});
+
 export const historyAdapter = (history: History): Adapter => ({
   get: () => {
     const { pathname, search } = history.location;
@@ -39,11 +46,17 @@ export const historyAdapter = (history: History): Adapter => ({
   },
 
   push(href) {
-    history.push(restore(href, prefix(history.location.search)));
+    history.push(
+      restore(href, prefix(history.location.search)),
+      carried(history),
+    );
   },
 
   replace(href) {
-    history.replace(restore(href, prefix(history.location.search)));
+    history.replace(
+      restore(href, prefix(history.location.search)),
+      carried(history),
+    );
   },
 
   // `listen` already fires for push, replace and pop alike, so there is no

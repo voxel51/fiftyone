@@ -132,9 +132,20 @@ export const createRouter = <T extends OperationType>(
     });
   };
 
+  // the path the current entry was routed for
+  let routedPath = history.location.pathname;
+
   const cleanup = history.listen(({ location, action }) => {
     if (!currentEntryResource) return;
-    update(location as FiftyOneLocation, action);
+    if (isParamWrite(location.state, location.pathname, routedPath)) return;
+    routedPath = location.pathname;
+    update(
+      {
+        ...location,
+        state: routed((location.state ?? {}) as LocationState),
+      } as FiftyOneLocation,
+      action,
+    );
   });
 
   const context: RoutingContext<T> = {
@@ -184,11 +195,11 @@ export const createRouter = <T extends OperationType>(
     },
 
     push(to: string, state: LocationState) {
-      history.push(to, state);
+      history.push(to, routed(state));
     },
 
     replace(to: string, state: LocationState) {
-      history.replace(to, state);
+      history.replace(to, routed(state));
     },
 
     subscribe(cb, onPending) {
@@ -207,7 +218,29 @@ export const createRouter = <T extends OperationType>(
   };
 };
 
-const SKIP_EVENTS = new Set(["modal", "slice", "spaces"]);
+const SKIP_EVENTS = new Set(["modal", "spaces"]);
+
+/**
+ * Marks an entry the location store wrote. Its params moved but its route did
+ * not, so the router keeps the entry; the store carries the entry's state
+ * forward, since it still holds what the URL cannot, like unsaved stages.
+ */
+export const LOCATION_WRITE = "fiftyoneLocationWrite";
+
+export const isParamWrite = (
+  state: unknown,
+  pathname: string,
+  routedPath: string,
+) =>
+  Boolean((state as Record<string, unknown> | null)?.[LOCATION_WRITE]) &&
+  pathname === routedPath;
+
+/** A routed entry never inherits the mark from the state it was spread from. */
+const routed = (state: LocationState): LocationState => {
+  const { [LOCATION_WRITE]: _, ...rest } = state as LocationState &
+    Record<string, unknown>;
+  return rest as LocationState;
+};
 
 const makeGetEntryResource = <T extends OperationType>() => {
   let currentLocation: FiftyOneLocation;
