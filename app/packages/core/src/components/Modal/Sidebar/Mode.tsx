@@ -1,6 +1,9 @@
 import { useAnnotationController } from "@fiftyone/annotation";
 import { useTheme } from "@fiftyone/components";
 import { ModalMode, useIsGroupDataset, useModalMode } from "@fiftyone/state";
+import { IconName, RichButtonGroup } from "@voxel51/voodo";
+import { useModalContext } from "../hooks";
+import type { HTMLAttributes } from "react";
 import styled from "styled-components";
 import useCanAnnotate from "./Annotate/useCanAnnotate";
 import { useGroupAnnotationModeController } from "./Annotate/useGroupAnnotationModeController";
@@ -35,42 +38,91 @@ const GroupsController = (): null => {
   return null;
 };
 
-const Mode = () => {
+/** Switches the modal between exploring and annotating. */
+const useModeSwitch = () => {
   const mode = useModalMode();
   const { enterAnnotationMode, exitAnnotationMode } = useAnnotationController();
-  const theme = useTheme();
-  const background = { background: theme.background.level1 };
-  const text = { color: theme.text.secondary };
   const isGroupDataset = useIsGroupDataset();
   const { disabledReason, showAnnotationTab } = useCanAnnotate();
 
-  const showTransitionManager =
-    showAnnotationTab && isGroupDataset && !disabledReason;
+  return {
+    annotating: mode === ModalMode.ANNOTATE,
+    explore: () => mode === ModalMode.ANNOTATE && exitAnnotationMode(),
+    annotate: () => mode !== ModalMode.ANNOTATE && enterAnnotationMode(),
+    // group annotation keeps its own mode in step while the switch is shown
+    groups: showAnnotationTab && isGroupDataset && !disabledReason,
+    shown: showAnnotationTab,
+  };
+};
+
+// the switch keeps the selectors the old tabs had
+const testId = (id: string): HTMLAttributes<HTMLDivElement> =>
+  ({ "data-cy": id }) as HTMLAttributes<HTMLDivElement>;
+
+/** The sample page header's Inspect/Annotate switch. */
+export const ModalModeSwitch = () => {
+  const { annotate, annotating, explore, groups, shown } = useModeSwitch();
+  if (!shown) return null;
 
   return (
     <>
-      {showTransitionManager && <GroupsController />}
+      {groups && <GroupsController />}
+      <RichButtonGroup
+        exclusive
+        buttons={[
+          {
+            id: ModalMode.EXPLORE,
+            data: {
+              ...testId(ModalMode.EXPLORE),
+              active: !annotating,
+              icon: IconName.Inspect,
+              label: "Inspect",
+              onClick: explore,
+            },
+          },
+          {
+            id: ModalMode.ANNOTATE,
+            data: {
+              ...testId(ModalMode.ANNOTATE),
+              active: annotating,
+              icon: IconName.Pencil,
+              label: "Annotate",
+              onClick: annotate,
+            },
+          },
+        ]}
+      />
+    </>
+  );
+};
+
+const Mode = () => {
+  const mode = useModalMode();
+  const { annotate, explore, groups } = useModeSwitch();
+  const theme = useTheme();
+  const background = { background: theme.background.level1 };
+  const text = { color: theme.text.secondary };
+  const { page } = useModalContext();
+
+  // the sample page's header has the switch
+  if (page) return null;
+
+  return (
+    <>
+      {groups && <GroupsController />}
       <Container>
         <Items>
           <Item
             data-cy={ModalMode.EXPLORE}
             style={mode === ModalMode.EXPLORE ? background : text}
-            onClick={() => {
-              if (mode === ModalMode.ANNOTATE) {
-                exitAnnotationMode();
-              }
-            }}
+            onClick={explore}
           >
             Explore
           </Item>
           <Item
             data-cy={ModalMode.ANNOTATE}
             style={mode === ModalMode.ANNOTATE ? background : text}
-            onClick={() => {
-              if (mode !== ModalMode.ANNOTATE) {
-                enterAnnotationMode();
-              }
-            }}
+            onClick={annotate}
           >
             Annotate
           </Item>

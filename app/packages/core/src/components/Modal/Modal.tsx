@@ -392,6 +392,7 @@ const Modal = ({
     <modalContext.Provider
       value={{
         activeLookerRef,
+        page,
         setActiveLookerRef,
       }}
     >

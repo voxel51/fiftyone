@@ -8,6 +8,7 @@ import {
   EmptyDatasetSelection,
   Modal,
   ModalActionItems,
+  ModalModeSwitch,
   DatasetGridRendererFailover,
   QueryPerformanceToast,
   SchemaManagerOutlet,
@@ -163,7 +164,12 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
           {isModalOpen && (
             <Modal
               page
-              header={<SamplePageHeader actions={<ModalActionItems />} />}
+              header={
+                <SamplePageHeader
+                  actions={<ModalActionItems />}
+                  mode={<ModalModeSwitch />}
+                />
+              }
             />
           )}
         </div>

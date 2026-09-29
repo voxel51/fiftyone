@@ -11,7 +11,6 @@ import {
   Icon,
   IconName,
   Orientation,
-  RichButtonGroup,
   Size,
   Spacing,
   Stack,
@@ -53,11 +52,6 @@ const Separator = () => (
   <Divider orientation={Orientation.Column} className={styles.separator} />
 );
 
-const MODES = [
-  { id: "inspect", data: { icon: IconName.Inspect, label: "Inspect" } },
-  { id: "annotate", data: { icon: IconName.Pencil, label: "Annotate" } },
-];
-
 /**
  * The sample page's header: where the sample is, stepping between samples,
  * and the page's tools. Back closes the sample and `actions` are live; the
@@ -65,9 +59,12 @@ const MODES = [
  */
 export default function SamplePageHeader({
   actions,
+  mode,
 }: {
   /** The sample's actions, in the toolbar where the mock places its tools. */
   actions?: React.ReactNode;
+  /** The Inspect/Annotate switch. */
+  mode?: React.ReactNode;
 }) {
   const close = useClearModal();
   const dataset = useProduct().useDatasetDisplayName();
@@ -114,7 +111,7 @@ export default function SamplePageHeader({
         <Action icon={IconName.History} label="History" />
         <Action icon={IconName.Notes} label="Comments" />
         <Action icon={IconName.ExternalLink} label="Copy link" />
-        <RichButtonGroup buttons={MODES} exclusive className={styles.modes} />
+        {mode}
         <Action icon={IconName.Sliders} label="Panel" />
         <Action icon={IconName.MoreHorizontal} label="More" />
       </Stack>
