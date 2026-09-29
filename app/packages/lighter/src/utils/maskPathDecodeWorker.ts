@@ -8,15 +8,18 @@
  * Pairs with `maskPathDecoding.ts` (the pool manager).
  */
 
-import type { Coloring } from "@fiftyone/looker";
 import type { OverlayMask } from "@fiftyone/looker/src/numpy";
+import type { MaskTargets } from "@fiftyone/looker/src/state";
 import { decodeMaskOnDisk } from "@fiftyone/looker/src/worker/mask-decoder";
+import { coloringForMaskDecode } from "./maskDecodeColoring";
 
 interface DecodeRequest {
   uuid: string;
   url: string;
   field: string;
   cls: string;
+  /** The field's mask targets; see {@link coloringForMaskDecode}. */
+  maskTargets?: MaskTargets;
 }
 
 interface DecodeSuccess {
@@ -33,11 +36,6 @@ interface DecodeFailure {
 
 export type DecodeResponse = DecodeSuccess | DecodeFailure;
 
-// `decodeMaskOnDisk` only consults `coloring` in its SEGMENTATION branch;
-// detection masks fall through to the default canvas decode path, so a stub
-// is sufficient and keeps the worker free of state/recoil dependencies.
-const STUB_COLORING = {} as Coloring;
-
 /**
  * True only when this module is running as a dedicated worker.
  */
@@ -52,7 +50,7 @@ const isWorkerScope = (): boolean => {
 };
 
 const handleMessage = async (event: MessageEvent<DecodeRequest>) => {
-  const { uuid, url, field, cls } = event.data;
+  const { uuid, url, field, cls, maskTargets } = event.data;
 
   // Defensive: callers should never reach the worker with a non-string URL,
   // but if they do, `fetch(undefined)` coerces to `fetch("undefined")` and
@@ -80,7 +78,12 @@ const handleMessage = async (event: MessageEvent<DecodeRequest>) => {
       return;
     }
     const blob = await response.blob();
-    const mask = await decodeMaskOnDisk(blob, cls, field, STUB_COLORING);
+    const mask = await decodeMaskOnDisk(
+      blob,
+      cls,
+      field,
+      coloringForMaskDecode(field, maskTargets),
+    );
 
     if (!mask) {
       const payload: DecodeFailure = {
