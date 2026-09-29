@@ -53,7 +53,8 @@ test.describe.serial("detection mode", () => {
     });
 
     await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
-    await modal.sidebar.switchMode("annotate");
+    // the canvas takes pointer moves only after Lighter's first render
+    await modal.afterLighterReady(() => modal.sidebar.switchMode("annotate"));
   });
 
   test("toggle button deactivates detection mode", async ({ modal }) => {
