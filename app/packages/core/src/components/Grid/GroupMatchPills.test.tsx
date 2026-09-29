@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const env = vi.hoisted(() => ({
   grouped: true,
   view: [] as { _cls: string; kwargs: [string, unknown][] }[],
+  published: null as Map<string, string[]> | null,
   options: {} as Record<string, unknown>,
 }));
 
@@ -11,6 +12,7 @@ vi.mock("@fiftyone/state", () => ({
   useCurrentDataset: () => ({ groupField: "camera" }),
   useIsGroupDataset: () => env.grouped,
   useLookerOptions: () => env.options,
+  usePublishedGroupMatches: () => env.published,
   useView: () => env.view,
 }));
 
@@ -51,6 +53,7 @@ describe("useGroupMatchTileDecorator", () => {
   beforeEach(() => {
     env.grouped = true;
     env.view = searchedFor({ g1: ["right", "left"], g2: ["left"] });
+    env.published = null;
     env.options = { coloring: coloring("field"), customizeColorSetting: [] };
     if (!globalThis.CSS?.supports) {
       vi.stubGlobal("CSS", {
@@ -87,6 +90,17 @@ describe("useGroupMatchTileDecorator", () => {
 
     expect(pillsOf("g1").map((pill) => pill.textContent)).toStrictEqual([
       "match: right",
+    ]);
+    unmount();
+  });
+
+  it("names the matches a search published without a stage", () => {
+    env.view = [];
+    env.published = new Map([["g1", ["left"]]]);
+    const { unmount } = renderHook(() => useGroupMatchTileDecorator());
+
+    expect(pillsOf("g1").map((pill) => pill.textContent)).toStrictEqual([
+      "match: left",
     ]);
     unmount();
   });

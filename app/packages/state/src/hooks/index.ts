@@ -7,6 +7,11 @@ export {
   type PromptableSimilarityIndex,
 } from "./similaritySearch/usePromptableSimilarityKeys";
 export {
+  groupMatchesBridge,
+  usePublishedGroupMatches,
+  type GroupMatches,
+} from "./similaritySearch/groupMatches";
+export {
   registerTextSearchProvider,
   useTextSearchProviders,
   type SearchSources,

@@ -26,16 +26,15 @@ const SORT_BY_SIMILARITY = "fiftyone.core.stages.SortBySimilarity";
 const DEFAULT_FONT_SIZE = 14;
 const SPACING_COEFFICIENT = 0.1;
 
-/** Group ID to the names of its slices that matched, best match first. */
-export type GroupMatches = ReadonlyMap<string, readonly string[]>;
-
 /**
  * The matched slices the last `SortBySimilarity` stage in `view` recorded in
  * its state when it searched a grouped collection, or null when it did not.
  * A later search decides the results, so an earlier one's matches no longer
  * describe them.
  */
-export const groupMatchesOf = (view: State.Stage[]): GroupMatches | null => {
+export const groupMatchesOf = (
+  view: State.Stage[],
+): fos.GroupMatches | null => {
   for (const stage of [...view].reverse()) {
     if (stage._cls !== SORT_BY_SIMILARITY) continue;
     const state = Object.fromEntries(stage.kwargs)._state as
@@ -108,14 +107,15 @@ function GroupMatchPills({
 }
 
 /** Shows each tile's matched slices while a grouped similarity search is in
- * the view. */
+ * the view, or while a search that ran without one has published them. */
 export function useGroupMatchTileDecorator() {
   const grouped = fos.useIsGroupDataset();
   const groupField = fos.useCurrentDataset()?.groupField;
   const view = fos.useView();
+  const published = fos.usePublishedGroupMatches();
   const matches = useMemo(
-    () => (grouped ? groupMatchesOf(view) : null),
-    [grouped, view],
+    () => (grouped ? (published ?? groupMatchesOf(view)) : null),
+    [grouped, published, view],
   );
 
   useEffect(() => {
