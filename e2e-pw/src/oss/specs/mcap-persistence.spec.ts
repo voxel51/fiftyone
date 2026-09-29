@@ -23,8 +23,9 @@ test.describe("MCAP persistence", () => {
       modal,
       page,
     }) => {
-      await openMcapModal(grid, modal, 0);
-      await modal.episode.waitForReady(tinyA.fileName);
+      await modal.episode.afterReady(tinyA.fileName, () =>
+        openMcapModal(grid, modal, 0),
+      );
       await modal.episode.expectTileCount(2);
       await modal.episode.expectTileTitles(
         ["camera/front", "points"],
@@ -52,7 +53,9 @@ test.describe("MCAP persistence", () => {
       );
       await expectCustomizedWorkspaceSaved(page);
 
-      await modal.episode.navigateDatasetSample("forward", tinyB.fileName);
+      await modal.episode.navigateDatasetSample("forward", tinyB.fileName, [
+        modal.episode.raw("/status"),
+      ]);
       await modal.episode.expectTileCount(2);
       await modal.episode.expectTileTitleCount("camera/rear", 1);
       await modal.episode.expectTileTitles(
@@ -63,20 +66,28 @@ test.describe("MCAP persistence", () => {
       await modal.episode.expectRawField("status_code", tinyB.statusCodes[0]);
       await modal.episode.expectNoViewerError();
 
-      await modal.episode.navigateDatasetSample("backward", tinyA.fileName);
+      await modal.episode.navigateDatasetSample("backward", tinyA.fileName, [
+        modal.episode.raw("/pose"),
+      ]);
       await expectRestoredWorkspace(modal);
 
       await modal.episode.fullscreenTile("Logs / Diagnostics");
       await modal.close();
-      await openMcapModal(grid, modal, 0);
-      await modal.episode.waitForReady(tinyA.fileName);
+      await modal.episode.afterReady(
+        tinyA.fileName,
+        () => openMcapModal(grid, modal, 0),
+        [modal.episode.raw("/pose")],
+      );
       await expectRestoredWorkspace(modal);
 
       await modal.episode.fullscreenTile("Logs / Diagnostics");
       await modal.close();
       await grid.reload();
-      await openMcapModal(grid, modal, 0);
-      await modal.episode.waitForReady(tinyA.fileName);
+      await modal.episode.afterReady(
+        tinyA.fileName,
+        () => openMcapModal(grid, modal, 0),
+        [modal.episode.raw("/pose")],
+      );
       await expectRestoredWorkspace(modal);
     });
   });
@@ -85,8 +96,9 @@ test.describe("MCAP persistence", () => {
     grid,
     modal,
   }) => {
-    await openMcapModal(grid, modal, sampleIndex.episodeB);
-    await modal.episode.waitForReady(tinyB.fileName);
+    await modal.episode.afterReady(tinyB.fileName, () =>
+      openMcapModal(grid, modal, sampleIndex.episodeB),
+    );
     await modal.episode.selectImageSource("camera/rear", "camera/side");
     await modal.episode.expectTileTitleCount("camera/side", 2);
     await modal.episode.expectTileTitles([], ["camera/rear"]);
@@ -102,8 +114,9 @@ test.describe("MCAP persistence", () => {
     await modal.episode.expectTileTitles([], ["camera/rear"]);
 
     await modal.close();
-    await openMcapModal(grid, modal, sampleIndex.episodeB);
-    await modal.episode.waitForReady(tinyB.fileName);
+    await modal.episode.afterReady(tinyB.fileName, () =>
+      openMcapModal(grid, modal, sampleIndex.episodeB),
+    );
     await modal.episode.expectTileTitleCount("camera/side", 2);
     await modal.episode.expectTileTitles([], ["camera/rear"]);
   });
@@ -113,8 +126,9 @@ test.describe("MCAP persistence", () => {
     modal,
     page,
   }) => {
-    await openMcapModal(grid, modal, sampleIndex.cameraPoseStart);
-    await modal.episode.waitForReady(cameraPoseFileNames[0]);
+    await modal.episode.afterReady(cameraPoseFileNames[0], () =>
+      openMcapModal(grid, modal, sampleIndex.cameraPoseStart),
+    );
     const egoPose = await modal.episode.applyEgoView("points");
 
     for (const fileName of cameraPoseFileNames.slice(1)) {
@@ -123,22 +137,24 @@ test.describe("MCAP persistence", () => {
     }
 
     await modal.close();
-    await openMcapModal(
-      grid,
-      modal,
-      sampleIndex.cameraPoseStart + cameraPoseFileNames.length - 1,
+    await modal.episode.afterReady(cameraPoseFileNames[3], () =>
+      openMcapModal(
+        grid,
+        modal,
+        sampleIndex.cameraPoseStart + cameraPoseFileNames.length - 1,
+      ),
     );
-    await modal.episode.waitForReady(cameraPoseFileNames[3]);
     await modal.episode.expectCameraPose("points", egoPose);
 
     await modal.close();
     await grid.reload();
-    await openMcapModal(
-      grid,
-      modal,
-      sampleIndex.cameraPoseStart + cameraPoseFileNames.length - 1,
+    await modal.episode.afterReady(cameraPoseFileNames[3], () =>
+      openMcapModal(
+        grid,
+        modal,
+        sampleIndex.cameraPoseStart + cameraPoseFileNames.length - 1,
+      ),
     );
-    await modal.episode.waitForReady(cameraPoseFileNames[3]);
     await modal.episode.expectCameraPose("points", egoPose);
   });
 
@@ -147,8 +163,9 @@ test.describe("MCAP persistence", () => {
     modal,
     page,
   }) => {
-    await openMcapModal(grid, modal, sampleIndex.sidebarStart);
-    await modal.episode.waitForReady(sidebarFileNames[0]);
+    await modal.episode.afterReady(sidebarFileNames[0], () =>
+      openMcapModal(grid, modal, sampleIndex.sidebarStart),
+    );
     await setRepresentativeSidebarPreferences(modal);
 
     for (const fileName of sidebarFileNames.slice(1)) {
@@ -157,22 +174,24 @@ test.describe("MCAP persistence", () => {
     }
 
     await modal.close();
-    await openMcapModal(
-      grid,
-      modal,
-      sampleIndex.sidebarStart + sidebarFileNames.length - 1,
+    await modal.episode.afterReady(sidebarFileNames[3], () =>
+      openMcapModal(
+        grid,
+        modal,
+        sampleIndex.sidebarStart + sidebarFileNames.length - 1,
+      ),
     );
-    await modal.episode.waitForReady(sidebarFileNames[3]);
     await expectRepresentativeSidebarPreferences(modal);
 
     await modal.close();
     await grid.reload();
-    await openMcapModal(
-      grid,
-      modal,
-      sampleIndex.sidebarStart + sidebarFileNames.length - 1,
+    await modal.episode.afterReady(sidebarFileNames[3], () =>
+      openMcapModal(
+        grid,
+        modal,
+        sampleIndex.sidebarStart + sidebarFileNames.length - 1,
+      ),
     );
-    await modal.episode.waitForReady(sidebarFileNames[3]);
     await expectRepresentativeSidebarPreferences(modal);
   });
 });

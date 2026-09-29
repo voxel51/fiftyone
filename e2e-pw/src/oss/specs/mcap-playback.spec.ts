@@ -24,100 +24,120 @@ test.describe("MCAP playback", () => {
     grid,
     modal,
   }) => {
-    await openMcapModal(grid, modal, sampleIndex.episodeA);
-    await modal.episode.waitForReady(tinyA.fileName);
-    await modal.episode.addTile("log", "Logs / Diagnostics");
-    await modal.episode.setSamplingRate(1);
-    await modal.episode.inspectStream("/pose");
-    await modal.episode.expectRawField("position.x", tinyA.poseX[0]);
-    await expectDominantColor(
-      modal.episode.image("camera/front"),
-      tinyA.imageRgb[0],
+    const { episode } = modal;
+    await episode.afterReady(
+      tinyA.fileName,
+      () => openMcapModal(grid, modal, sampleIndex.episodeA),
+      [episode.imageShown("camera/front")],
     );
+    await episode.addTile("log", "Logs / Diagnostics");
+    await episode.setSamplingRate(1);
+    await episode.inspectStream("/pose");
+    await episode.expectRawField("position.x", tinyA.poseX[0]);
+    await expectDominantColor(episode.image("camera/front"), tinyA.imageRgb[0]);
 
-    await modal.episode.stepForward();
-    await modal.episode.expectUtcTime("2024-01-01 00:00:01.000");
-    await modal.episode.expectPlayhead(
-      "2024-01-01 00:00:01.000 / 2024-01-01 00:00:02.000",
+    const second = "2024-01-01 00:00:01.000";
+    const playhead = "2024-01-01 00:00:01.000 / 2024-01-01 00:00:02.000";
+    await episode.after(
+      [
+        episode.utcTime(second),
+        episode.playhead(playhead),
+        episode.raw("/pose"),
+        episode.logs(["A log 1"]),
+        episode.imageShown("camera/front"),
+      ],
+      () => episode.stepForward(),
     );
-    await modal.episode.expectRawField("position.x", tinyA.poseX[1]);
-    await modal.episode.expectLog("A log 1");
-    await expectDominantColor(
-      modal.episode.image("camera/front"),
-      tinyA.imageRgb[1],
-    );
+    await episode.expectUtcTime(second);
+    await episode.expectPlayhead(playhead);
+    await episode.expectRawField("position.x", tinyA.poseX[1]);
+    await episode.expectLog("A log 1");
+    await expectDominantColor(episode.image("camera/front"), tinyA.imageRgb[1]);
 
-    await modal.episode.stepBack();
-    await modal.episode.expectUtcTime("2024-01-01 00:00:00.000");
-    await modal.episode.expectRawField("position.x", tinyA.poseX[0]);
+    const first = "2024-01-01 00:00:00.000";
+    await episode.after([episode.utcTime(first), episode.raw("/pose")], () =>
+      episode.stepBack(),
+    );
+    await episode.expectUtcTime(first);
+    await episode.expectRawField("position.x", tinyA.poseX[0]);
   });
 
   test("replaces inventory, layout, capabilities, clock, and decoded content A-B-A", async ({
     grid,
     modal,
   }) => {
-    await openMcapModal(grid, modal, sampleIndex.episodeA);
-    await modal.episode.waitForReady(tinyA.fileName);
-    await modal.episode.expectTileTitles(
+    const { episode } = modal;
+    await episode.afterReady(tinyA.fileName, () =>
+      openMcapModal(grid, modal, sampleIndex.episodeA),
+    );
+    await episode.expectTileTitles(
       ["camera/front", "points"],
       ["Logs / Diagnostics"],
     );
-    await modal.episode.expectStreams([
-      "/camera/front",
-      "/points",
-      "/log",
-      "/pose",
-    ]);
+    await episode.expectStreams(["/camera/front", "/points", "/log", "/pose"]);
 
-    await modal.episode.navigateDatasetSample("forward", tinyB.fileName);
-    await modal.episode.expectStreams(
+    await episode.navigateDatasetSample("forward", tinyB.fileName, [
+      episode.playhead("0:00.00 / 0:01.50"),
+      episode.imageShown("camera/rear"),
+    ]);
+    await episode.expectStreams(
       ["/camera/rear", "/camera/side", "/scan/rear", "/status"],
       ["/camera/front", "/points", "/log", "/pose"],
     );
-    await modal.episode.expectTileTitles(
+    await episode.expectTileTitles(
       ["camera/rear", "camera/side", "scan/rear"],
       ["camera/front", "Logs / Diagnostics"],
     );
-    await modal.episode.expectNoUtcTime();
-    await modal.episode.expectPlayhead("0:00.00 / 0:01.50");
-    await modal.episode.setSamplingRate(2);
-    await modal.episode.inspectStream("/status");
-    await modal.episode.expectRawField("status_code", tinyB.statusCodes[0]);
+    await episode.expectNoUtcTime();
+    await episode.expectPlayhead("0:00.00 / 0:01.50");
+    await episode.setSamplingRate(2);
+    await episode.inspectStream("/status");
+    await episode.expectRawField("status_code", tinyB.statusCodes[0]);
     await expectDominantColor(
-      modal.episode.image("camera/rear"),
+      episode.image("camera/rear"),
       tinyB.rearImageRgb[0],
     );
 
-    await modal.episode.stepForward();
-    await modal.episode.expectPlayhead("0:00.50 / 0:01.50");
-    await modal.episode.expectRawField("status_code", tinyB.statusCodes[1]);
+    await episode.after(
+      [episode.playhead("0:00.50 / 0:01.50"), episode.raw("/status")],
+      () => episode.stepForward(),
+    );
+    await episode.expectPlayhead("0:00.50 / 0:01.50");
+    await episode.expectRawField("status_code", tinyB.statusCodes[1]);
 
-    await modal.episode.navigateDatasetSample("backward", tinyA.fileName);
-    await modal.episode.expectTileTitleCount("camera/front", 2);
-    await modal.episode.expectTileTitles(
+    const first = "2024-01-01 00:00:00.000";
+    const playhead = "2024-01-01 00:00:00.000 / 2024-01-01 00:00:02.000";
+    await episode.navigateDatasetSample("backward", tinyA.fileName, [
+      episode.utcTime(first),
+      episode.playhead(playhead),
+    ]);
+    await episode.expectTileTitleCount("camera/front", 2);
+    await episode.expectTileTitles(
       ["camera/front", "points"],
       ["camera/rear", "camera/side", "Logs / Diagnostics"],
     );
-    await modal.episode.expectUtcTime("2024-01-01 00:00:00.000");
-    await modal.episode.expectPlayhead(
-      "2024-01-01 00:00:00.000 / 2024-01-01 00:00:02.000",
-    );
-    await modal.episode.setSamplingRate(1);
-    await modal.episode.stepForward();
-    await modal.episode.expectUtcTime("2024-01-01 00:00:01.000");
+    await episode.expectUtcTime(first);
+    await episode.expectPlayhead(playhead);
+    await episode.setSamplingRate(1);
+    const second = "2024-01-01 00:00:01.000";
+    await episode.after([episode.utcTime(second)], () => episode.stepForward());
+    await episode.expectUtcTime(second);
   });
 
   test("seeks, scrubs, synchronizes sparse streams, and clamps one-hour boundaries", async ({
     grid,
     modal,
   }) => {
-    await openMcapModal(grid, modal, sampleIndex.long);
-    await modal.episode.waitForReady(long.fileName);
-    await modal.episode.setSamplingRate(2);
-    await modal.episode.expectPlayhead(
-      "2024-01-01 00:00:00.000 / 2024-01-01 01:00:00.000",
+    const { episode } = modal;
+    const start = "2024-01-01 00:00:00.000 / 2024-01-01 01:00:00.000";
+    await episode.afterReady(
+      long.fileName,
+      () => openMcapModal(grid, modal, sampleIndex.long),
+      [episode.playhead(start)],
     );
-    await modal.episode.expectStreams([
+    await episode.setSamplingRate(2);
+    await episode.expectPlayhead(start);
+    await episode.expectStreams([
       "/camera/front",
       "/camera/rear",
       "/lidar/points",
@@ -131,252 +151,283 @@ test.describe("MCAP playback", () => {
       "/diagnostics",
     ]);
 
-    await modal.episode.stepForward();
-    await modal.episode.expectUtcTime("2024-01-01 00:00:00.500");
-    await modal.episode.stepBack();
-    await modal.episode.expectUtcTime("2024-01-01 00:00:00.000");
-
-    await modal.episode.scrubToFraction(0.5);
-    await modal.episode.expectUtcTime("2024-01-01 00:30:00.000");
-    await modal.episode.expectPlayhead(
-      "2024-01-01 00:30:00.000 / 2024-01-01 01:00:00.000",
+    await episode.after([episode.utcTime("2024-01-01 00:00:00.500")], () =>
+      episode.stepForward(),
     );
-    await modal.episode.inspectStream("/odometry");
-    await modal.episode.expectRawField("pose.pose.position.x", 180);
-    await modal.episode.inspectStream("/status");
-    await modal.episode.expectRawField(
+    await episode.expectUtcTime("2024-01-01 00:00:00.500");
+    await episode.after([episode.utcTime("2024-01-01 00:00:00.000")], () =>
+      episode.stepBack(),
+    );
+    await episode.expectUtcTime("2024-01-01 00:00:00.000");
+
+    const midpoint = "2024-01-01 00:30:00.000";
+    const midpointPlayhead = `${midpoint} / 2024-01-01 01:00:00.000`;
+    await episode.after(
+      [episode.utcTime(midpoint), episode.playhead(midpointPlayhead)],
+      () => episode.scrubToFraction(0.5),
+    );
+    await episode.expectUtcTime(midpoint);
+    await episode.expectPlayhead(midpointPlayhead);
+    await episode.inspectStream("/odometry");
+    await episode.expectRawField("pose.pose.position.x", 180);
+    await episode.inspectStream("/status");
+    await episode.expectRawField(
       "counter",
       longExpectation.statusCounterAtMidpoint,
     );
-    await modal.episode.expectRawField("state", "active-warning");
+    await episode.expectRawField("state", "active-warning");
 
-    await modal.episode.inspectStream("/lidar/points");
-    await modal.episode.expectRawMeta(
+    await episode.inspectStream("/lidar/points");
+    await episode.expectRawMeta(
       relativeSecond(longExpectation.lidarBeforeGapSecond),
     );
-    await modal.episode.seekToFraction(0.75);
-    await modal.episode.expectUtcTime("2024-01-01 00:45:00.000");
-    await modal.episode.seekToFraction(
-      fractionOfLongRecording(longExpectation.lidarAfterGapSecond),
+    await episode.after([episode.utcTime("2024-01-01 00:45:00.000")], () =>
+      episode.seekToFraction(0.75),
     );
-    await modal.episode.expectUtcTimeAfterAtMostOneForwardStep(
+    await episode.expectUtcTime("2024-01-01 00:45:00.000");
+    await episode.seekToUtcTime(
       "2024-01-01 00:30:12.000",
       500,
+      () =>
+        episode.seekToFraction(
+          fractionOfLongRecording(longExpectation.lidarAfterGapSecond),
+        ),
+      [episode.raw("/lidar/points")],
     );
-    await modal.episode.expectRawMeta(
+    await episode.expectRawMeta(
       relativeSecond(longExpectation.lidarAfterGapSecond),
     );
 
-    await modal.episode.scrubToFraction(1);
-    await modal.episode.expectUtcTimeAfterAtMostOneForwardStep(
-      "2024-01-01 01:00:00.000",
-      500,
+    await episode.seekToUtcTime("2024-01-01 01:00:00.000", 500, () =>
+      episode.scrubToFraction(1),
     );
-    await modal.episode.expectPlayhead(
+    await episode.expectPlayhead(
       "2024-01-01 01:00:00.000 / 2024-01-01 01:00:00.000",
     );
-    await modal.episode.inspectStream("/status");
-    await modal.episode.expectRawField("state", "complete");
-    await modal.episode.stepForward();
-    await modal.episode.expectUtcTime("2024-01-01 01:00:00.000");
-    await modal.episode.stepBack();
-    await modal.episode.expectUtcTime("2024-01-01 00:59:59.500");
+    await episode.inspectStream("/status");
+    await episode.expectRawField("state", "complete");
+    // the playhead is clamped at the end, so this step changes nothing
+    await episode.stepForward();
+    await episode.expectUtcTime("2024-01-01 01:00:00.000");
+    await episode.after([episode.utcTime("2024-01-01 00:59:59.500")], () =>
+      episode.stepBack(),
+    );
+    await episode.expectUtcTime("2024-01-01 00:59:59.500");
   });
 
   test("resets duration, streams, playback, seek state, and values short-long-short", async ({
     grid,
     modal,
   }) => {
-    await openMcapModal(grid, modal, sampleIndex.shortBeforeLong);
-    await modal.episode.waitForReady(tinyA.fileName);
-    await modal.episode.setSamplingRate(1);
-    await modal.episode.stepForward();
-    await modal.episode.expectUtcTime("2024-01-01 00:00:01.000");
-    await modal.episode.inspectStream("/pose");
-    await modal.episode.expectRawField("position.x", tinyA.poseX[1]);
-    await expectDominantColor(
-      modal.episode.image("camera/front"),
-      tinyA.imageRgb[1],
+    const { episode } = modal;
+    await episode.afterReady(tinyA.fileName, () =>
+      openMcapModal(grid, modal, sampleIndex.shortBeforeLong),
     );
+    await episode.setSamplingRate(1);
+    await episode.after(
+      [
+        episode.utcTime("2024-01-01 00:00:01.000"),
+        episode.imageShown("camera/front"),
+      ],
+      () => episode.stepForward(),
+    );
+    await episode.expectUtcTime("2024-01-01 00:00:01.000");
+    await episode.inspectStream("/pose");
+    await episode.expectRawField("position.x", tinyA.poseX[1]);
+    await expectDominantColor(episode.image("camera/front"), tinyA.imageRgb[1]);
 
-    await modal.episode.navigateDatasetSample("forward", long.fileName);
-    await modal.episode.expectPaused();
-    await modal.episode.expectPlayhead(
-      "2024-01-01 00:00:00.000 / 2024-01-01 01:00:00.000",
-    );
-    await modal.episode.expectStreams(
+    const longStart = "2024-01-01 00:00:00.000 / 2024-01-01 01:00:00.000";
+    await episode.navigateDatasetSample("forward", long.fileName, [
+      episode.playhead(longStart),
+      episode.imageShown("camera/front"),
+    ]);
+    await episode.expectPaused();
+    await episode.expectPlayhead(longStart);
+    await episode.expectStreams(
       ["/camera/rear", "/odometry", "/status", "/diagnostics"],
       ["/points", "/log", "/pose"],
     );
-    await modal.episode.expectTileTitles(["camera/front"], ["/pose"]);
-    await modal.episode.inspectStream("/status");
-    await modal.episode.expectRawField("counter", 0);
+    await episode.expectTileTitles(["camera/front"], ["/pose"]);
+    await episode.inspectStream("/status");
+    await episode.expectRawField("counter", 0);
     await expectDominantColor(
-      modal.episode.image("camera/front"),
+      episode.image("camera/front"),
       long.cameraPhaseRgb[0],
     );
 
-    await modal.episode.seekToFraction(0.75);
-    await modal.episode.expectUtcTime("2024-01-01 00:45:00.000");
-    await modal.episode.expectRawField(
+    await episode.after(
+      [episode.utcTime("2024-01-01 00:45:00.000"), episode.raw("/status")],
+      () => episode.seekToFraction(0.75),
+    );
+    await episode.expectUtcTime("2024-01-01 00:45:00.000");
+    await episode.expectRawField(
       "counter",
       longExpectation.statusCounterAtThreeQuarters,
     );
 
-    await modal.episode.navigateDatasetSample("forward", tinyA.fileName);
-    await modal.episode.expectPaused();
-    await modal.episode.expectPlayhead(
-      "2024-01-01 00:00:00.000 / 2024-01-01 00:00:02.000",
-    );
-    await modal.episode.expectStreams(
+    const tinyStart = "2024-01-01 00:00:00.000 / 2024-01-01 00:00:02.000";
+    await episode.navigateDatasetSample("forward", tinyA.fileName, [
+      episode.playhead(tinyStart),
+      episode.raw(""),
+      episode.imageShown("camera/front"),
+    ]);
+    await episode.expectPaused();
+    await episode.expectPlayhead(tinyStart);
+    await episode.expectStreams(
       ["/camera/front", "/points", "/log", "/pose"],
       ["/camera/rear", "/odometry", "/status", "/diagnostics"],
     );
-    await modal.episode.expectTileTitles(
+    await episode.expectTileTitles(
       ["camera/front", "points"],
       ["camera/rear", "/status", "Logs / Diagnostics"],
     );
-    await modal.episode.expectRawSelectionCleared();
-    await modal.episode.inspectStream("/pose");
-    await modal.episode.expectRawField("position.x", tinyA.poseX[0]);
-    await expectDominantColor(
-      modal.episode.image("camera/front"),
-      tinyA.imageRgb[0],
-    );
+    await episode.expectRawSelectionCleared();
+    await episode.inspectStream("/pose");
+    await episode.expectRawField("position.x", tinyA.poseX[0]);
+    await expectDominantColor(episode.image("camera/front"), tinyA.imageRgb[0]);
   });
 
   test("honors rear-camera first and last temporal boundaries through seeks and scrubs", async ({
     grid,
     modal,
   }) => {
-    await openMcapModal(grid, modal, sampleIndex.long);
-    await modal.episode.waitForReady(long.fileName);
-    await modal.episode.setSamplingRate(2);
+    const { episode } = modal;
+    await episode.afterReady(long.fileName, () =>
+      openMcapModal(grid, modal, sampleIndex.long),
+    );
+    await episode.setSamplingRate(2);
 
-    await modal.episode.seekToFraction(
-      fractionOfLongRecording(long.rearFirstSecond - 0.5),
+    // the rear camera shows the same pre-start message from the beginning
+    await episode.seekToUtcTime("2024-01-01 00:09:59.500", 500, () =>
+      episode.seekToFraction(
+        fractionOfLongRecording(long.rearFirstSecond - 0.5),
+      ),
     );
-    await modal.episode.expectUtcTimeAfterAtMostOneForwardStep(
-      "2024-01-01 00:09:59.500",
-      500,
-    );
-    await modal.episode.expectTileEmpty("camera/rear", "Starts at 10:00.00");
+    await episode.expectTileEmpty("camera/rear", "Starts at 10:00.00");
 
-    await modal.episode.scrubToFraction(
-      fractionOfLongRecording(long.rearFirstSecond),
-    );
-    await modal.episode.expectUtcTimeAfterAtMostOneForwardStep(
+    await episode.seekToUtcTime(
       "2024-01-01 00:10:00.000",
       500,
+      () =>
+        episode.scrubToFraction(fractionOfLongRecording(long.rearFirstSecond)),
+      [episode.imageShown("camera/rear")],
     );
     await expectDominantColor(
-      modal.episode.image("camera/rear"),
+      episode.image("camera/rear"),
       long.cameraPhaseRgb[0],
     );
 
-    await modal.episode.seekToFraction(
-      fractionOfLongRecording(long.rearLastSecond),
-    );
-    await modal.episode.expectUtcTimeAfterAtMostOneForwardStep(
+    await episode.seekToUtcTime(
       "2024-01-01 00:50:00.000",
       500,
+      () =>
+        episode.seekToFraction(fractionOfLongRecording(long.rearLastSecond)),
+      [episode.imageShown("camera/rear")],
     );
     await expectDominantColor(
-      modal.episode.image("camera/rear"),
+      episode.image("camera/rear"),
       long.cameraPhaseRgb[3],
     );
 
-    await modal.episode.scrubToFraction(
-      fractionOfLongRecording(long.rearLastSecond + 0.5),
-    );
-    await modal.episode.expectUtcTimeAfterAtMostOneForwardStep(
+    await episode.seekToUtcTime(
       "2024-01-01 00:50:00.500",
       500,
+      () =>
+        episode.scrubToFraction(
+          fractionOfLongRecording(long.rearLastSecond + 0.5),
+        ),
+      [episode.tileEmpty("No data at this time")],
     );
-    await modal.episode.expectTileEmpty("camera/rear", "No data at this time");
+    await episode.expectTileEmpty("camera/rear", "No data at this time");
   });
 
   test("keeps sparse log and diagnostic predecessor anchors synchronized", async ({
     grid,
     modal,
   }) => {
-    await openMcapModal(grid, modal, sampleIndex.long);
-    await modal.episode.waitForReady(long.fileName);
-    await modal.episode.addTile("log", "Logs / Diagnostics");
-    await modal.episode.setSamplingRate(2);
-
-    await modal.episode.seekToFraction(
-      fractionOfLongRecording(long.midpointSecond - 0.5),
+    const { episode } = modal;
+    await episode.afterReady(long.fileName, () =>
+      openMcapModal(grid, modal, sampleIndex.long),
     );
-    await modal.episode.expectUtcTimeAfterAtMostOneForwardStep(
+    await episode.addTile("log", "Logs / Diagnostics");
+    await episode.setSamplingRate(2);
+
+    await episode.seekToUtcTime(
       "2024-01-01 00:29:59.500",
       500,
+      () =>
+        episode.seekToFraction(
+          fractionOfLongRecording(long.midpointSecond - 0.5),
+        ),
+      [episode.imageShown("camera/front")],
     );
-    await modal.episode.inspectStream("/diagnostics");
-    await modal.episode.expectRawMeta(
+    await episode.inspectStream("/diagnostics");
+    await episode.expectRawMeta(
       relativeSecond(longExpectation.diagnosticBeforeMidpointSecond),
     );
-    await modal.episode.expectRawField("status.0.message", "nominal");
-    await modal.episode.inspectStream("/rosout");
-    await modal.episode.expectRawMeta(
-      relativeSecond(long.logBeforeMidpointSecond),
-    );
-    await modal.episode.expectRawField("msg", "LONG pre-midpoint nominal");
+    await episode.expectRawField("status.0.message", "nominal");
+    await episode.inspectStream("/rosout");
+    await episode.expectRawMeta(relativeSecond(long.logBeforeMidpointSecond));
+    await episode.expectRawField("msg", "LONG pre-midpoint nominal");
     await expectDominantColor(
-      modal.episode.image("camera/front"),
+      episode.image("camera/front"),
       long.cameraPhaseRgb[1],
     );
 
-    await modal.episode.scrubToFraction(
-      fractionOfLongRecording(long.midpointSecond),
-    );
-    await modal.episode.expectUtcTimeAfterAtMostOneForwardStep(
+    await episode.seekToUtcTime(
       "2024-01-01 00:30:00.000",
       500,
+      () =>
+        episode.scrubToFraction(fractionOfLongRecording(long.midpointSecond)),
+      [
+        episode.raw("/diagnostics"),
+        episode.raw("/rosout"),
+        episode.logs(["LONG midpoint warning"]),
+        episode.imageShown("camera/front"),
+      ],
     );
-    await modal.episode.focusRawTile("/diagnostics");
-    await modal.episode.expectRawMeta(relativeSecond(long.midpointSecond));
-    await modal.episode.expectRawField("status.0.message", "midpoint warning");
-    await modal.episode.expectRawField("status.0.level", 1);
-    await modal.episode.focusRawTile("/rosout");
-    await modal.episode.expectRawMeta(relativeSecond(long.midpointSecond));
-    await modal.episode.expectRawField("msg", "LONG midpoint warning");
-    await modal.episode.expectLogs(["LONG midpoint warning"]);
-    await modal.episode.expectDiagnostics(["midpoint warning"]);
+    episode.focusRawTile("/diagnostics");
+    await episode.expectRawMeta(relativeSecond(long.midpointSecond));
+    await episode.expectRawField("status.0.message", "midpoint warning");
+    await episode.expectRawField("status.0.level", 1);
+    episode.focusRawTile("/rosout");
+    await episode.expectRawMeta(relativeSecond(long.midpointSecond));
+    await episode.expectRawField("msg", "LONG midpoint warning");
+    await episode.expectLogs(["LONG midpoint warning"]);
+    await episode.expectDiagnostics(["midpoint warning"]);
     await expectDominantColor(
-      modal.episode.image("camera/front"),
+      episode.image("camera/front"),
       long.cameraPhaseRgb[2],
     );
 
-    await modal.episode.seekToFraction(
-      fractionOfLongRecording(long.midpointSecond + 0.5),
+    // both anchors stay on the midpoint records, so nothing re-renders
+    await episode.seekToUtcTime("2024-01-01 00:30:00.500", 500, () =>
+      episode.seekToFraction(
+        fractionOfLongRecording(long.midpointSecond + 0.5),
+      ),
     );
-    await modal.episode.expectUtcTimeAfterAtMostOneForwardStep(
-      "2024-01-01 00:30:00.500",
-      500,
-    );
-    await modal.episode.focusRawTile("/diagnostics");
-    await modal.episode.expectRawMeta(relativeSecond(long.midpointSecond));
-    await modal.episode.focusRawTile("/rosout");
-    await modal.episode.expectRawMeta(relativeSecond(long.midpointSecond));
+    episode.focusRawTile("/diagnostics");
+    await episode.expectRawMeta(relativeSecond(long.midpointSecond));
+    episode.focusRawTile("/rosout");
+    await episode.expectRawMeta(relativeSecond(long.midpointSecond));
 
-    await modal.episode.scrubToFraction(
-      fractionOfLongRecording(long.midpointSecond - 0.5),
-    );
-    await modal.episode.expectUtcTimeAfterAtMostOneForwardStep(
+    await episode.seekToUtcTime(
       "2024-01-01 00:29:59.500",
       500,
+      () =>
+        episode.scrubToFraction(
+          fractionOfLongRecording(long.midpointSecond - 0.5),
+        ),
+      [episode.raw("/diagnostics"), episode.raw("/rosout")],
     );
-    await modal.episode.focusRawTile("/diagnostics");
-    await modal.episode.expectRawMeta(
+    episode.focusRawTile("/diagnostics");
+    await episode.expectRawMeta(
       relativeSecond(longExpectation.diagnosticBeforeMidpointSecond),
     );
-    await modal.episode.expectRawField("status.0.message", "nominal");
-    await modal.episode.focusRawTile("/rosout");
-    await modal.episode.expectRawMeta(
-      relativeSecond(long.logBeforeMidpointSecond),
-    );
-    await modal.episode.expectRawField("msg", "LONG pre-midpoint nominal");
+    await episode.expectRawField("status.0.message", "nominal");
+    episode.focusRawTile("/rosout");
+    await episode.expectRawMeta(relativeSecond(long.logBeforeMidpointSecond));
+    await episode.expectRawField("msg", "LONG pre-midpoint nominal");
   });
 });
 

@@ -11,6 +11,7 @@ import {
   tinyA,
   tinyB,
 } from "src/oss/fixtures/mcap";
+import { unsupportedText } from "src/oss/poms/multimodal/episode";
 import { collapseWhitespace } from "src/oss/utils";
 
 const SOURCE_FACTS_DATABASE_NAME = "fiftyone-multimodal-source-facts";
@@ -29,16 +30,19 @@ test.describe("MCAP surfaces", () => {
         .getAttribute("placeholder"),
     ).toBe("Stream: Auto");
 
-    await openMcapModal(grid, modal, sampleIndex.episodeA);
-    await modal.episode.waitForReady(tinyA.fileName);
+    const start = "2024-01-01 00:00:00.000";
+    const playhead = "2024-01-01 00:00:00.000 / 2024-01-01 00:00:02.000";
+    await modal.episode.afterReady(
+      tinyA.fileName,
+      () => openMcapModal(grid, modal, sampleIndex.episodeA),
+      [modal.episode.utcTime(start), modal.episode.playhead(playhead)],
+    );
     await modal.episode.expectTileTitles(
       ["camera/front", "points"],
       ["Logs / Diagnostics"],
     );
-    await modal.episode.expectUtcTime("2024-01-01 00:00:00.000");
-    await modal.episode.expectPlayhead(
-      "2024-01-01 00:00:00.000 / 2024-01-01 00:00:02.000",
-    );
+    await modal.episode.expectUtcTime(start);
+    await modal.episode.expectPlayhead(playhead);
     await modal.episode.expectNoViewerError();
   });
 
@@ -51,8 +55,9 @@ test.describe("MCAP surfaces", () => {
     await modal.eventUtils.after(
       "e2e:multimodal:source-facts-saved",
       async () => {
-        await openMcapModal(grid, modal, sampleIndex.episodeA);
-        await modal.episode.waitForReady(tinyA.fileName);
+        await modal.episode.afterReady(tinyA.fileName, () =>
+          openMcapModal(grid, modal, sampleIndex.episodeA),
+        );
       },
     );
     expect(await sourceFactsEntryCount(page)).toBeGreaterThan(0);
@@ -65,7 +70,9 @@ test.describe("MCAP surfaces", () => {
 
     const sourceUrl = new RegExp(tinyA.fileName.replace(/\./g, "\\."));
     await page.route(sourceUrl, (route) => route.abort("failed"));
-    await openMcapModal(grid, modal, sampleIndex.episodeA);
+    await modal.episode.after([modal.episode.shellShown(tinyA.fileName)], () =>
+      openMcapModal(grid, modal, sampleIndex.episodeA),
+    );
     await modal.episode.expectWarmBootstrapShell(tinyA.fileName, [
       "camera/front",
       "points",
@@ -73,8 +80,9 @@ test.describe("MCAP surfaces", () => {
 
     await modal.close();
     await page.unroute(sourceUrl);
-    await openMcapModal(grid, modal, sampleIndex.episodeA);
-    await modal.episode.waitForReady(tinyA.fileName);
+    await modal.episode.afterReady(tinyA.fileName, () =>
+      openMcapModal(grid, modal, sampleIndex.episodeA),
+    );
     await modal.episode.expectNoViewerError();
   });
 
@@ -89,8 +97,9 @@ test.describe("MCAP surfaces", () => {
       expect(await tile.getAttribute("data-cy")).toBe("looker");
       await expectDominantColor(tile.locator("canvas"), [255, 0, 255]);
 
-      await openMcapModal(grid, modal, 0);
-      await modal.episode.waitForReady(tinyA.fileName);
+      await modal.episode.afterReady(tinyA.fileName, () =>
+        openMcapModal(grid, modal, 0),
+      );
       await modal.episode.expectTileTitles(
         ["camera/front", "points"],
         ["Logs / Diagnostics"],
@@ -117,8 +126,9 @@ test.describe("MCAP surfaces", () => {
         [0, 255, 255],
       );
 
-      await modal.selectMediaField("filepath");
-      await modal.episode.waitForReady(tinyB.fileName);
+      await modal.episode.afterReady(tinyB.fileName, () =>
+        modal.selectMediaField("filepath"),
+      );
       await modal.episode.expectTileTitles(
         ["camera/rear", "camera/side", "scan/rear"],
         ["Logs / Diagnostics"],
@@ -133,13 +143,20 @@ test.describe("MCAP surfaces", () => {
     await explorer.open();
     await explorer.expectInvalidExtension(fixturePaths.invalid);
 
-    await explorer.upload(fixturePaths.episodeA);
-    await explorer.episode.waitForReady(tinyA.fileName);
-    await explorer.episode.expectUtcTime("2024-01-01 00:00:00.000");
+    const start = "2024-01-01 00:00:00.000";
+    await explorer.episode.afterReady(
+      tinyA.fileName,
+      () => explorer.upload(fixturePaths.episodeA),
+      [explorer.episode.utcTime(start)],
+    );
+    await explorer.episode.expectUtcTime(start);
     await explorer.unmount();
 
-    await explorer.upload(fixturePaths.episodeB);
-    await explorer.episode.waitForReady(tinyB.fileName);
+    await explorer.episode.afterReady(
+      tinyB.fileName,
+      () => explorer.upload(fixturePaths.episodeB),
+      [explorer.episode.playhead("0:00.00 / 0:01.50")],
+    );
     await explorer.episode.expectStreams(
       ["/camera/rear", "/camera/side", "/scan/rear", "/status"],
       ["/camera/front", "/points", "/log", "/pose"],
@@ -147,7 +164,10 @@ test.describe("MCAP surfaces", () => {
     await explorer.episode.expectNoUtcTime();
     await explorer.episode.expectPlayhead("0:00.00 / 0:01.50");
     await explorer.episode.setSamplingRate(2);
-    await explorer.episode.stepForward();
+    await explorer.episode.after(
+      [explorer.episode.playhead("0:00.50 / 0:01.50")],
+      () => explorer.episode.stepForward(),
+    );
     await explorer.episode.expectPlayhead("0:00.50 / 0:01.50");
   });
 
@@ -155,7 +175,10 @@ test.describe("MCAP surfaces", () => {
     grid,
     modal,
   }) => {
-    await openMcapModal(grid, modal, sampleIndex.unsupported);
+    await modal.episode.after(
+      [modal.episode.stateShown(unsupportedText(1))],
+      () => openMcapModal(grid, modal, sampleIndex.unsupported),
+    );
     await modal.episode.expectUnsupported();
     await modal.episode.expectNoViewerError();
   });
@@ -173,8 +196,9 @@ test.describe("MCAP surfaces", () => {
         "webgl2",
       );
 
-      await openMcapModal(grid, modal, sampleIndex.episodeA);
-      await modal.episode.waitForReady(tinyA.fileName);
+      await modal.episode.afterReady(tinyA.fileName, () =>
+        openMcapModal(grid, modal, sampleIndex.episodeA),
+      );
       await modal.episode.setSamplingRate(1);
       const pointTile = modal.episode.tile("points");
       const canvas = pointTile.locator('[data-graphics-surface="modal-3d"]');
@@ -212,8 +236,9 @@ test.describe("MCAP surfaces", () => {
       await modal.episode.afterImageFrame(
         { at: "2024-01-01 00:00:00.000", projectedStreams: 0 },
         async () => {
-          await openMcapModal(grid, modal, sampleIndex.sidebarStart);
-          await modal.episode.waitForReady(sidebarFileNames[0]);
+          await modal.episode.afterReady(sidebarFileNames[0], () =>
+            openMcapModal(grid, modal, sampleIndex.sidebarStart),
+          );
           await modal.episode.setSidebarToggle(
             "camera/front",
             "Toggle pointcloud projections",

@@ -3,7 +3,7 @@ import path from "path";
 import { Locator, Page, expect } from "src/oss/fixtures";
 import { exactText } from "src/oss/utils";
 import { expectScreenshot } from "src/oss/utils/screenshot";
-import { EventUtils } from "src/shared/event-utils";
+import { EventCondition, EventUtils } from "src/shared/event-utils";
 
 /**
  * Screenshot style that hides everything in the episode shell except its
@@ -29,7 +29,23 @@ interface ImageFrameDetail {
   readonly projectedStreamCount: number;
 }
 
-/** Shared user-facing episode interactions for modal and Explorer MCAP hosts. */
+/** The text a readout shows, with the padding spaces it renders collapsed */
+const readout = (text: string) => text.replace(/\s+/g, " ").trim();
+
+/** An `e2e:multimodal:*` ShownSignal condition on its detail */
+const shown = (
+  event: string,
+  matches: (detail: Record<string, unknown>) => boolean,
+): EventCondition => ({
+  events: `e2e:multimodal:${event}`,
+  predicate: (e) => matches((e.detail ?? {}) as Record<string, unknown>),
+});
+
+/**
+ * Shared user-facing episode interactions for modal and Explorer MCAP hosts.
+ * A step's effects (readouts, raw values, logs, pixels) are awaited through
+ * {@link EpisodePom.after} with the conditions below, then read once.
+ */
 export class EpisodePom {
   readonly assert: EpisodeAsserter;
   readonly shell: Locator;
@@ -95,6 +111,80 @@ export class EpisodePom {
     );
   }
 
+  /** Run `action` and resolve once each of `conditions` is met because of it */
+  async after<T>(
+    conditions: readonly EventCondition[],
+    action: () => Promise<T>,
+  ): Promise<T> {
+    return this.eventUtils.afterAll(conditions, action);
+  }
+
+  /** The episode shell for `fileName` has mounted (possibly still loading) */
+  shellShown(fileName: string): EventCondition {
+    return shown("episode-shell", (d) => d.fileName === fileName);
+  }
+
+  /** The episode for `fileName` is ready: no source swap is in flight */
+  ready(fileName: string): EventCondition {
+    return shown("episode-ready", (d) => d.fileName === fileName);
+  }
+
+  /** The playback state message reads `text` */
+  stateShown(text: string): EventCondition {
+    return shown("episode-state", (d) => d.text === text);
+  }
+
+  /** The UTC readout shows `time` */
+  utcTime(time: string): EventCondition {
+    return shown("utc-time", (d) => d.text === time);
+  }
+
+  /** The UTC readout shows a time other than `current` */
+  utcTimeChanged(current: string | null): EventCondition {
+    return shown("utc-time", (d) => d.text !== current);
+  }
+
+  /** The playhead readout shows `text` */
+  playhead(text: string): EventCondition {
+    return {
+      events: "e2e:playback:playhead-time",
+      predicate: (e) =>
+        readout((e.detail as { label: string }).label) === readout(text),
+    };
+  }
+
+  /** The raw tile for `stream` shows a newly settled record ("" for none) */
+  raw(stream: string): EventCondition {
+    return shown("raw-shown", (d) => d.stream === stream);
+  }
+
+  /** The log console, in `mode`, shows each of `texts` */
+  logs(texts: readonly string[], mode: "logs" | "diagnostics" = "logs") {
+    return shown("log-rows", (d) => {
+      const shownTexts = String(d.texts).split("\n");
+      return (
+        d.mode === mode && texts.every((text) => shownTexts.includes(text))
+      );
+    });
+  }
+
+  /** A tile's empty state shows `message` */
+  tileEmpty(message: string | RegExp): EventCondition {
+    return shown("tile-empty", (d) =>
+      typeof message === "string"
+        ? d.message === message
+        : message.test(String(d.message)),
+    );
+  }
+
+  /** The image tile for `stream` shows the frame it asked for */
+  imageShown(stream: string): EventCondition {
+    return shown(
+      "image-shown",
+      (d) => d.stream === stream || d.stream === `/${stream}`,
+    );
+  }
+
   get controls(): Locator {
     return byDataTestId(this.shell, "timeline-controls-root");
   }
@@ -129,40 +219,50 @@ export class EpisodePom {
     return root.locator("[data-cy=episode-raw-meta]");
   }
 
-  async waitForReady(fileName: string): Promise<void> {
-    await this.shell.waitFor();
-    await this.scope.getByText(fileName, { exact: true }).waitFor();
-    // the attribute is present only while a source swap is in flight
-    await this.shell
-      .and(this.page.locator(`:not([data-episode-source-transitioning])`))
-      .waitFor();
-    await byDataTestId(this.scope, "episode-preparing-scaffold").waitFor({
-      state: "hidden",
-    });
+  /**
+   * Run `action` (opening or loading an episode) and resolve once `fileName`
+   * is ready and each of `conditions` is met
+   */
+  async afterReady<T>(
+    fileName: string,
+    action: () => Promise<T>,
+    conditions: readonly EventCondition[] = [],
+  ): Promise<T> {
+    return this.after([this.ready(fileName), ...conditions], action);
   }
 
-  /** Verifies useful episode topology is visible before source reads recover. */
+  /**
+   * Verifies useful episode topology is visible before source reads recover;
+   * open it with {@link shellShown}
+   */
   async expectWarmBootstrapShell(
     fileName: string,
     tileTitles: readonly string[],
   ): Promise<void> {
-    await this.shell.waitFor();
-    await this.scope.getByText(fileName, { exact: true }).waitFor();
+    expect(
+      await this.scope.getByText(fileName, { exact: true }).isVisible(),
+    ).toBe(true);
     await this.expectTileTitles(tileTitles);
     expect(
       await byDataTestId(this.scope, "episode-preparing-scaffold").isVisible(),
     ).toBe(false);
   }
 
+  /** Page to the adjacent sample, `fileName`, once it and `conditions` are */
   async navigateDatasetSample(
     direction: "forward" | "backward",
     fileName: string,
+    conditions: readonly EventCondition[] = [],
   ): Promise<void> {
     await this.blurActiveElement();
-    await this.page.keyboard.press(
-      direction === "forward" ? "ArrowRight" : "ArrowLeft",
+    await this.afterReady(
+      fileName,
+      () =>
+        this.page.keyboard.press(
+          direction === "forward" ? "ArrowRight" : "ArrowLeft",
+        ),
+      conditions,
     );
-    await this.waitForReady(fileName);
   }
 
   async applyEgoView(
@@ -170,22 +270,20 @@ export class EpisodePom {
   ): Promise<Readonly<Record<string, number>>> {
     const inputs = await this.openViewpointInputs(tileTitle);
     // the committed values, as the inputs reflect them in aria-valuenow
-    const changed: Locator[] = [];
-    for (const name of CAMERA_POSE_INPUT_NAMES) {
-      const input = inputs.getByRole("spinbutton", { name });
-      const raw = (await input.getAttribute("aria-valuenow")) ?? "";
-      changed.push(
-        input.and(this.page.locator(`:not([aria-valuenow="${raw}"])`)),
-      );
-    }
+    const before = await this.readCameraPoseValues(inputs);
     await this.blurActiveElement();
-    await this.page.keyboard.press("e");
     // one commit publishes the whole pose, and a valid pose can keep a
-    // coordinate, so any input changing means the new pose is in
-    await changed
-      .reduce((any, input) => any.or(input))
-      .first()
-      .waitFor();
+    // coordinate, so any coordinate changing means the new pose is in
+    await this.eventUtils.after(
+      "e2e:multimodal:camera-pose",
+      () => this.page.keyboard.press("e"),
+      (e) => {
+        const pose = e.detail as Record<string, number>;
+        return CAMERA_POSE_INPUT_NAMES.some(
+          (name) => Math.abs(pose[name] - before[name]) >= 5e-7,
+        );
+      },
+    );
     return this.readCameraPoseInputs(inputs);
   }
 
@@ -193,18 +291,22 @@ export class EpisodePom {
     tileTitle: string,
     expected: Readonly<Record<string, number>>,
   ): Promise<void> {
-    const inputs = await this.openViewpointInputs(tileTitle);
-    for (const [name, value] of Object.entries(expected)) {
-      // a stale pose can be showing after a navigation or reload; wait for
-      // this one, compared at 6-digit precision
-      await this.eventUtils.untilDom(
-        inputs.getByRole("spinbutton", { name }),
-        (element, target) =>
-          Math.abs(Number(element.getAttribute("aria-valuenow")) - target) <
-          5e-7,
-        value,
+    const matches = (pose: Readonly<Record<string, number>>) =>
+      Object.entries(expected).every(
+        ([name, value]) => Math.abs(pose[name] - value) < 5e-7,
       );
-    }
+    // a navigation or reload restores the pose once the camera appears, on
+    // its own; compared at 6-digit precision
+    await this.eventUtils.untilState(
+      "e2e:multimodal:camera-pose",
+      async () =>
+        matches(
+          await this.readCameraPoseValues(
+            await this.openViewpointInputs(tileTitle),
+          ),
+        ),
+      (e) => matches(e.detail as Record<string, number>),
+    );
   }
 
   async setSidebarToggle(
@@ -217,7 +319,6 @@ export class EpisodePom {
       name: accessibleName,
       exact: true,
     });
-    await toggle.waitFor();
     if ((await toggle.isChecked()) !== checked) await toggle.click();
     await this.expectSidebarToggle(tileTitle, accessibleName, checked);
   }
@@ -232,10 +333,8 @@ export class EpisodePom {
       name: accessibleName,
       exact: true,
     });
-    if (checked)
-      await toggle.and(this.page.locator('[aria-checked="true"]')).waitFor();
-    else
-      await toggle.and(this.page.locator('[aria-checked="false"]')).waitFor();
+    // the setting renders from its store as the tile's settings open
+    expect(await toggle.getAttribute("aria-checked")).toBe(String(checked));
   }
 
   /** Size the camera tile's projected points (a plain number input). */
@@ -271,10 +370,26 @@ export class EpisodePom {
     value: number,
   ): Promise<void> {
     await this.openTileSettings(tileTitle);
-    await this.scope
-      .getByRole("spinbutton", { name: accessibleName, exact: true })
-      .and(this.page.locator(`[aria-valuenow="${value}"]`))
-      .waitFor();
+    const input = this.scope.getByRole("spinbutton", {
+      name: accessibleName,
+      exact: true,
+    });
+    expect(await input.getAttribute("aria-valuenow")).toBe(String(value));
+  }
+
+  /** The pose the inputs hold, as committed (aria-valuenow) */
+  private async readCameraPoseValues(
+    inputs: Locator,
+  ): Promise<Readonly<Record<string, number>>> {
+    const pose: Record<string, number> = {};
+    for (const name of CAMERA_POSE_INPUT_NAMES) {
+      pose[name] = Number(
+        await inputs
+          .getByRole("spinbutton", { name })
+          .getAttribute("aria-valuenow"),
+      );
+    }
+    return pose;
   }
 
   private async readCameraPoseInputs(
@@ -301,12 +416,7 @@ export class EpisodePom {
 
   private async openTileSettings(tileTitle: string): Promise<void> {
     await this.tileTitle(tileTitle).first().click();
-    const panelTab = this.scope.getByRole("tab", {
-      name: tileTitle,
-      exact: true,
-    });
-    await panelTab.waitFor();
-    await panelTab.click();
+    await this.scope.getByRole("tab", { name: tileTitle, exact: true }).click();
   }
 
   async expectFileName(fileName: string): Promise<void> {
@@ -335,8 +445,9 @@ export class EpisodePom {
     await this.shell
       .getByRole("button", { name: "Layout", exact: true })
       .click();
+    // the layout adds the tile, and its header, in the click's render
     await this.page.locator(`[data-testid="episode-add-tile-${type}"]`).click();
-    await this.tileTitle(title).waitFor();
+    expect(await this.tileTitle(title).count()).toBeGreaterThan(0);
   }
 
   async selectMessageSource(
@@ -348,11 +459,8 @@ export class EpisodePom {
       name: nextTitle,
       exact: true,
     });
-    await source.waitFor();
-    await source.check();
+    await this.after([this.raw(nextTitle)], () => source.check());
     this.inspectedStream = nextTitle;
-    await this.tileTitle(nextTitle).first().waitFor();
-    await this.rawTree.waitFor();
   }
 
   async closeTile(title: string): Promise<void> {
@@ -379,22 +487,26 @@ export class EpisodePom {
     await this.expectTileFullscreen(title);
   }
 
+  /** Leave fullscreen; the layout swaps the button in the click's render */
   async exitTileFullscreen(title: string): Promise<void> {
-    await this.tile(title)
-      .first()
+    const tile = this.tile(title).first();
+    await tile
       .getByRole("button", { name: "Exit fullscreen", exact: true })
       .click();
-    await this.tile(title)
-      .first()
-      .getByRole("button", { name: "Fullscreen", exact: true })
-      .waitFor();
+    expect(
+      await tile
+        .getByRole("button", { name: "Fullscreen", exact: true })
+        .count(),
+    ).toBe(1);
   }
 
   async expectTileFullscreen(title: string): Promise<void> {
-    await this.tile(title)
-      .first()
-      .getByRole("button", { name: "Exit fullscreen", exact: true })
-      .waitFor();
+    expect(
+      await this.tile(title)
+        .first()
+        .getByRole("button", { name: "Exit fullscreen", exact: true })
+        .count(),
+    ).toBe(1);
   }
 
   async expectTileCount(count: number): Promise<void> {
@@ -418,19 +530,18 @@ export class EpisodePom {
     nextTitle: string,
   ): Promise<void> {
     await this.tileTitle(currentTitle).first().click();
-    const source = this.scope.locator('[aria-label="Source"]');
-    await source.waitFor();
-    await source.click();
-    await this.page
-      .getByRole("option", { name: nextTitle, exact: true })
-      .click();
-    await this.tileTitle(nextTitle).first().waitFor();
+    await this.scope.locator('[aria-label="Source"]').click();
+    await this.after([this.imageShown(nextTitle)], () =>
+      this.page.getByRole("option", { name: nextTitle, exact: true }).click(),
+    );
   }
 
   async expectPaused(): Promise<void> {
-    await this.shell
-      .getByRole("button", { name: "Play", exact: true })
-      .waitFor();
+    expect(
+      await this.shell
+        .getByRole("button", { name: "Play", exact: true })
+        .count(),
+    ).toBe(1);
     expect(
       await this.shell
         .getByRole("button", { name: "Pause", exact: true })
@@ -444,16 +555,20 @@ export class EpisodePom {
   ): Promise<void> {
     const tile = this.tile(title);
     const empty = byDataTestId(tile, "episode-tile-empty-state");
-    await empty.filter({ hasText: message }).waitFor();
+    expect(await empty.filter({ hasText: message }).count()).toBe(1);
     expect(await this.image(title).count()).toBe(0);
   }
 
   async expectPlayhead(text: string): Promise<void> {
-    await this.controls.getByText(text, { exact: true }).waitFor();
+    const shownText = await byDataTestId(
+      this.controls,
+      "timeline-playhead-time",
+    ).textContent();
+    expect(readout(shownText ?? "")).toBe(readout(text));
   }
 
   async expectUtcTime(time: string): Promise<void> {
-    await this.timestampButton.filter({ hasText: exactText(time) }).waitFor();
+    expect(await this.timestampButton.textContent()).toBe(time);
     const timezone = byDataTestId(
       this.timestampReadout,
       "episode-timezone-picker",
@@ -461,9 +576,16 @@ export class EpisodePom {
     expect(await timezone.inputValue()).toBe("UTC");
   }
 
-  async expectUtcTimeAfterAtMostOneForwardStep(
+  /**
+   * Run `seek` (a seek or scrub toward `time`) and check it lands on `time`,
+   * or at most `maxStepMs` before it and one step forward reaches it: a seek
+   * snaps to the sampling grid, which may sit just before the target
+   */
+  async seekToUtcTime(
     time: string,
     maxStepMs: number,
+    seek: () => Promise<unknown>,
+    conditions: readonly EventCondition[] = [],
   ): Promise<void> {
     const targetMs = utcDateTimeToMilliseconds(time);
     if (targetMs === null) {
@@ -476,21 +598,16 @@ export class EpisodePom {
       return delta >= 0 && delta <= maxStepMs;
     };
 
-    // the seek that preceded this moves the readout once; wait for that move
-    // unless it has already landed
-    let current = await this.timestampButton.textContent();
-    if (!inRange(current)) {
-      await this.timestampButton
-        .filter({ hasNotText: exactText(current ?? "") })
-        .waitFor();
-      current = await this.timestampButton.textContent();
-    }
+    // the seek moves the readout once
+    const before = await this.timestampButton.textContent();
+    await this.after([this.utcTimeChanged(before), ...conditions], seek);
+    const current = await this.timestampButton.textContent();
     expect(
       inRange(current),
       `readout ${current} should be within ${maxStepMs}ms before ${time}`,
     ).toBe(true);
-    if ((await this.timestampButton.textContent()) !== time) {
-      await this.stepForward();
+    if (current !== time) {
+      await this.after([this.utcTime(time)], () => this.stepForward());
     }
     await this.expectUtcTime(time);
   }
@@ -525,22 +642,23 @@ export class EpisodePom {
         name: "Custom…",
         exact: true,
       });
+      // the custom controls commit in the option click's render; blur the
+      // select's input directly so portal closure cannot race a
+      // document-level Escape with the controlled selection rerender
       await customOption.click();
-      await customRate.waitFor();
-      // The select opens immediately on focus. Wait for the custom controls to
-      // commit, then blur its input directly so portal closure cannot race a
-      // document-level Escape with the controlled selection rerender.
       await preset.blur();
-      await customOption.waitFor({ state: "hidden" });
     }
     await customRate.click();
     await customRate.fill(String(rateHz));
     await customRate.press("Enter");
-    await this.scope
-      .getByRole("button", { name: "Apply sampling rate" })
-      .click();
+    await this.eventUtils.after(
+      "e2e:multimodal:sampling-rate",
+      () =>
+        this.scope.getByRole("button", { name: "Apply sampling rate" }).click(),
+      (e) => (e.detail as { rateHz: number }).rateHz === rateHz,
+    );
     await playback.click();
-    await playback.filter({ hasText: `Custom · ${rateHz} Hz` }).waitFor();
+    expect(await playback.textContent()).toContain(`Custom · ${rateHz} Hz`);
   }
 
   async seekToFraction(fraction: number): Promise<void> {
@@ -618,26 +736,28 @@ export class EpisodePom {
     }
   }
 
+  /** A raw tile has lost its stream; wait with {@link raw}("") first */
   async expectRawSelectionCleared(): Promise<void> {
     const clearedTile = this.shell
       .locator("[data-cy=episode-raw-tile]")
       .filter({ hasText: "Choose a stream in the panel settings" });
-    await clearedTile.waitFor();
+    expect(await clearedTile.count()).toBe(1);
     expect(await byDataTestId(clearedTile, "episode-raw-tree").count()).toBe(0);
   }
 
   async inspectStream(stream: string): Promise<void> {
     await this.openStreams();
-    await this.scope
-      .getByRole("button", { name: "Inspect " + stream, exact: true })
-      .click();
+    await this.after([this.raw(stream)], () =>
+      this.scope
+        .getByRole("button", { name: "Inspect " + stream, exact: true })
+        .click(),
+    );
     this.inspectedStream = stream;
-    await this.rawTree.waitFor();
   }
 
-  async focusRawTile(stream: string): Promise<void> {
+  /** Read from the raw tile already showing `stream` */
+  focusRawTile(stream: string): void {
     this.inspectedStream = stream;
-    await this.rawTree.waitFor();
   }
 
   rawField(path: string): Locator {
@@ -669,15 +789,21 @@ export class EpisodePom {
         : typeof value === "string"
           ? JSON.stringify(value)
           : value;
-    await renderedValue
-      .filter({
-        hasText: typeof expected === "string" ? exactText(expected) : expected,
-      })
-      .waitFor();
+    const text = (await renderedValue.textContent()) ?? "";
+    if (typeof expected === "string") {
+      expect(text).toBe(expected);
+    } else {
+      expect(text).toMatch(expected);
+    }
   }
 
   async expectRawMeta(value: string | RegExp): Promise<void> {
-    await this.rawMeta.filter({ hasText: value }).waitFor();
+    const text = (await this.rawMeta.textContent()) ?? "";
+    if (typeof value === "string") {
+      expect(text).toContain(value);
+    } else {
+      expect(text).toMatch(value);
+    }
   }
 
   async expectLogs(
@@ -701,9 +827,19 @@ export class EpisodePom {
   ): Promise<void> {
     const logs = this.tile("Logs / Diagnostics");
     await logs.getByRole("button", { name: "Fullscreen", exact: true }).click();
-    await logs.getByRole("button", { name: view, exact: true }).click();
+    const viewButton = logs.getByRole("button", { name: view, exact: true });
+    // switching the view renders its rows; a view already showing had its
+    // rows waited on by the step that loaded them
+    if ((await viewButton.getAttribute("aria-pressed")) !== "true") {
+      await this.after(
+        [this.logs(present, view === "Logs" ? "logs" : "diagnostics")],
+        () => viewButton.click(),
+      );
+    }
     for (const text of present) {
-      await logs.getByText(text, { exact: true }).waitFor();
+      expect(
+        await logs.getByText(text, { exact: true }).first().isVisible(),
+      ).toBe(true);
     }
     for (const text of absent) {
       expect(await logs.getByText(text, { exact: true }).count()).toBe(0);
@@ -717,15 +853,13 @@ export class EpisodePom {
     await this.expectLogs([text]);
   }
 
+  /** The unsupported-recording message; open with {@link stateShown} */
   async expectUnsupported(streamCount = 1): Promise<void> {
-    await this.state
-      .getByText(
-        "No previewable streams in this recording (" +
-          streamCount +
-          " streams found)",
-        { exact: true },
-      )
-      .waitFor();
+    expect(
+      await this.state
+        .getByText(unsupportedText(streamCount), { exact: true })
+        .isVisible(),
+    ).toBe(true);
   }
 
   async expectNoViewerError(): Promise<void> {
@@ -763,6 +897,10 @@ const CAMERA_POSE_INPUT_NAMES = [
   "Target Y",
   "Target Z",
 ] as const;
+
+/** The playback state message for a recording with nothing to preview */
+export const unsupportedText = (streamCount: number) =>
+  `No previewable streams in this recording (${streamCount} streams found)`;
 
 function byDataTestId(root: Locator, id: string): Locator {
   return root.locator('[data-testid="' + id + '"]');

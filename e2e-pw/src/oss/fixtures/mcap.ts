@@ -9,7 +9,6 @@ import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { getLocatorDominantColorShare } from "src/oss/utils/screenshot";
 import { MCAP_FIXTURE_CONTRACT } from "src/shared/media-factory/mcap";
-import { EventUtils } from "src/shared/event-utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("mcap-correctness");
 export const alternateMediaDatasetName = getUniqueDatasetNameWithPrefix(
@@ -276,23 +275,15 @@ export async function openMcapModal(
   await modal.enterFullscreen();
 }
 
+/**
+ * One read of `locator`'s dominant color. Pixels are meaningful once painted:
+ * wait on the episode image tile's `imageShown`, or on the looker's
+ * canvas-loaded, first.
+ */
 export async function expectDominantColor(
   locator: Locator,
   expected: readonly [number, number, number],
 ): Promise<void> {
-  // pixels are only meaningful once painted: an episode image tile once it
-  // shows the frame it asked for, a looker canvas once it has drawn
-  await new EventUtils(locator.page()).untilDom(locator, (element) => {
-    const stack = element.closest("[data-episode-image-requested]");
-    if (!stack) {
-      return element.getAttribute("canvas-loaded") === "true";
-    }
-    const requested = stack.getAttribute("data-episode-image-requested");
-    return (
-      !!requested &&
-      requested === stack.getAttribute("data-episode-image-committed")
-    );
-  });
   expect(await getLocatorDominantColorShare(locator, expected)).toBeGreaterThan(
     0.15,
   );

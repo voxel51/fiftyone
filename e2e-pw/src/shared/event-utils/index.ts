@@ -1,4 +1,4 @@
-import { Frame, Locator, Page } from "@playwright/test";
+import { Page } from "@playwright/test";
 
 /**
  * Handle for an armed app-event listener. Deliberately not a thenable:
@@ -80,6 +80,12 @@ export class EventCounter {
 
 /** An observed event: its name (one of the names waited on) and payload */
 export type ObservedEvent = { event: string; detail?: unknown };
+
+/** An event (or one of several) to wait for, and the payload it must carry */
+export type EventCondition = {
+  events: string | readonly string[];
+  predicate?: (e: ObservedEvent) => boolean;
+};
 
 type ArmHandler = (e: ObservedEvent) => boolean;
 
@@ -205,72 +211,6 @@ export class EventUtils {
         // a navigated or closed page took the listener with it
         .catch((): void => undefined);
     });
-  }
-
-  /**
-   * Resolve once `predicate(element, arg)` holds for the element `locator`
-   * resolves to, re-checking on every DOM mutation. The predicate runs in the
-   * page, so it must be self-contained (no closure over test variables).
-   */
-  public async untilDom<A>(
-    locator: Locator,
-    predicate: (element: Element, arg: A) => boolean,
-    arg?: A,
-  ): Promise<void> {
-    await locator.waitFor({ state: "attached" });
-    await this.reportingNavigation(locator.toString(), () =>
-      locator.evaluate(
-        (element, { source, arg_ }) =>
-          new Promise<void>((resolve) => {
-            const check = new Function(`return (${source})`)() as (
-              element: Element,
-              arg: unknown,
-            ) => boolean;
-            if (check(element, arg_)) {
-              resolve();
-              return;
-            }
-            const observer = new MutationObserver(() => {
-              if (check(element, arg_)) {
-                observer.disconnect();
-                resolve();
-              }
-            });
-            observer.observe(element.ownerDocument, {
-              subtree: true,
-              childList: true,
-              attributes: true,
-              characterData: true,
-            });
-          }),
-        { source: predicate.toString(), arg_: arg },
-      ),
-    );
-  }
-
-  /**
-   * Run a DOM wait; if the document is replaced under it, fail with the URLs
-   * the page navigated to, since the wait can never resolve on that document
-   */
-  private async reportingNavigation<T>(
-    target: string,
-    wait: () => Promise<T>,
-  ): Promise<T> {
-    const urls: string[] = [];
-    const record = (frame: Frame) => {
-      if (frame === this.page.mainFrame()) urls.push(frame.url());
-    };
-    this.page.on("framenavigated", record);
-    try {
-      return await wait();
-    } catch (error) {
-      if (urls.length === 0) throw error;
-      throw new Error(
-        `the page navigated to ${urls.join(" -> ")} while waiting for ${target}: ${(error as Error).message}`,
-      );
-    } finally {
-      this.page.off("framenavigated", record);
-    }
   }
 
   /**
@@ -418,6 +358,26 @@ export class EventUtils {
       return result;
     } finally {
       await armed.dispose();
+    }
+  }
+
+  /**
+   * Run `action` and resolve once each of `conditions` has been met by an
+   * event it causes, in any order; all are armed before `action` starts
+   */
+  public async afterAll<T>(
+    conditions: readonly EventCondition[],
+    action: () => Promise<T>,
+  ): Promise<T> {
+    const armed = await Promise.all(
+      conditions.map(({ events, predicate }) => this.arm(events, predicate)),
+    );
+    try {
+      const result = await action();
+      await Promise.all(armed.map((handle) => handle.received));
+      return result;
+    } finally {
+      await Promise.all(armed.map((handle) => handle.dispose()));
     }
   }
 
