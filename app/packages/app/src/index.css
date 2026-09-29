@@ -22,22 +22,6 @@ body,
   min-width: 660px;
 }
 
-#modal {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  background-color: var(--fo-palette-background-modalBackdrop);
-  top: 0;
-  z-index: 1000;
-  display: block;
-  visibility: hidden;
-  overflow: hidden;
-}
-
-#modal.modalon {
-  visibility: visible;
-}
-
 * {
   box-sizing: border-box;
 }

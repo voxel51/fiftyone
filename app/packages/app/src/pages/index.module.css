@@ -13,3 +13,12 @@
 .icons {
   flex-shrink: 0;
 }
+
+/* the open sample, over the whole App while it reveals, then in its place */
+.samplePage {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  background: var(--fo-palette-background-level2);
+}

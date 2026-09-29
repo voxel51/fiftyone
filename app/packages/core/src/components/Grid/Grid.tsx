@@ -39,7 +39,7 @@ import useUpdates from "./useUpdates";
 import useZoomSetting from "./useZoomSetting";
 import SelectionTray from "./Selection/SelectionTray";
 import { useSavedSegmentTileDecorator } from "./Selection/savedSegmentTileDecorator";
-import { flyOpen } from "./flyOpen";
+import { useSampleTransition } from "../SamplePage";
 
 const MAX_INSTANCES = 200;
 const MAX_ROWS = 200;
@@ -106,6 +106,7 @@ function Grid() {
   });
 
   const setSample = fos.useExpandSample(store);
+  const transition = useSampleTransition();
   const autosizing = useReverbValue(gridAutosizing);
 
   // `reset` is the grid's refresh signal. The callables below are routed
@@ -119,8 +120,17 @@ function Grid() {
     setSample,
     selection,
     selectBucket,
+    transition,
   });
-  refs.current = { get, page, renderer, setSample, selection, selectBucket };
+  refs.current = {
+    get,
+    page,
+    renderer,
+    setSample,
+    selection,
+    selectBucket,
+    transition,
+  };
 
   const spotlight = useMemoOne(() => {
     /** SPOTLIGHT REFRESHER */
@@ -169,11 +179,12 @@ function Grid() {
             return undefined;
           }
         }
-        return shiftKey
-          ? undefined
-          : flyOpen(item.event.currentTarget as Element | null, () =>
-              refs.current.setSample(item),
-            );
+        if (shiftKey) return undefined;
+        const open = () => refs.current.setSample(item);
+        const { transition } = refs.current;
+        return transition
+          ? transition.open(item.event.currentTarget as Element | null, open)
+          : open();
       },
       rowAspectRatioThreshold: zoom,
     });

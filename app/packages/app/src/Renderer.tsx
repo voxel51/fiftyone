@@ -7,7 +7,6 @@ import type { Entry } from "./routing";
 
 import { subscribe } from "@fiftyone/relay";
 import {
-  isModalActive,
   theme,
   themeConfig,
   useSetExpandedSample,
@@ -112,7 +111,6 @@ const Renderer = () => {
   return (
     <Suspense fallback={loading}>
       <ColorScheme key={"color-scheme"} />
-      <Modal key={"modal"} />
       <Route key={"route"} route={routeEntry} />
       {(pending || viewPending) && (
         <div className={styles.pending} key={"pending"}>
@@ -127,14 +125,6 @@ const Renderer = () => {
   );
 };
 
-const Modal = () => {
-  const active = Boolean(useReverbValue(isModalActive));
-  useEffect(() => {
-    document.getElementById("modal")?.classList.toggle("modalon", active);
-  }, [active]);
-
-  return null;
-};
 const Route = ({ route }: { route: Entry<Queries> }) => {
   const Component = route.component;
 

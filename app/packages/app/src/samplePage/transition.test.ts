@@ -3,7 +3,7 @@
  */
 
 import { describe, expect, it, vi } from "vitest";
-import { containIn, flyOpen } from "./flyOpen";
+import { containIn, createSampleTransition } from "./transition";
 
 describe("containIn", () => {
   it("fits a wide tile to the box's width, centered", () => {
@@ -22,11 +22,16 @@ describe("containIn", () => {
   });
 });
 
-describe("flyOpen", () => {
-  it("opens without a ghost when there is no tile", () => {
+describe("createSampleTransition", () => {
+  it("opens without a still when there is no tile", async () => {
+    const transition = createSampleTransition();
     const open = vi.fn(() => "opened");
-    expect(flyOpen(null, open)).toBe("opened");
+    expect(transition.open(null, open)).toBe("opened");
     expect(open).toHaveBeenCalledTimes(1);
     expect(document.body.children).toHaveLength(0);
+    // nothing lifted, so a landing has nothing to wait on
+    await expect(
+      transition.land(document.createElement("div")),
+    ).resolves.toBeUndefined();
   });
 });
