@@ -1,0 +1,30 @@
+.header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  padding: 0 16px;
+}
+
+.action {
+  display: inline-flex;
+  padding: 6px;
+  cursor: pointer;
+}
+
+.placeholder {
+  display: inline-flex;
+  padding: 6px;
+  opacity: 0.5;
+  cursor: default;
+}
+
+.separator {
+  height: 20px;
+  margin: 0 4px;
+}
+
+.modes {
+  margin: 0 4px;
+}

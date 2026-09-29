@@ -24,6 +24,7 @@ import { graphql } from "relay-runtime";
 import Nav from "../../components/Nav";
 import { AddSample } from "../../components/Starter";
 import { useProduct } from "../../product";
+import SamplePageHeader from "../../samplePage/SamplePageHeader";
 import useSamplePage from "../../samplePage/useSamplePage";
 import type { Route } from "../../routing";
 import style from "../index.module.css";
@@ -158,7 +159,10 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
           style={{ opacity: phase === "opening" ? 0 : 1 }}
           data-cy={"sample-page"}
         >
-          {isModalOpen && <Modal page />}
+          <SamplePageHeader />
+          <div className={style.samplePageBody}>
+            {isModalOpen && <Modal page />}
+          </div>
         </div>
       )}
       {/* Outside the isEmpty branch so `?schemaManager=open` works on an empty
