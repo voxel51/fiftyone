@@ -56,6 +56,8 @@ import { modalContext } from "./modal-context";
 // As a page it fills its layer, and its stacking stays inside it
 const PAGE_WRAPPER = {
   position: "relative",
+  flexDirection: "column",
+  alignItems: "stretch",
   zIndex: "auto",
   isolation: "isolate",
   backgroundColor: "transparent",
@@ -63,7 +65,8 @@ const PAGE_WRAPPER = {
 
 const PAGE_CONTAINER = {
   width: "100%",
-  height: "100%",
+  flex: 1,
+  minHeight: 0,
   border: "none",
   boxShadow: "none",
 } as const;
@@ -139,7 +142,14 @@ const ModalErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
 };
 
 /** The open sample, as an overlay on the grid or, with `page`, a page. */
-const Modal = ({ page = false }: { page?: boolean }) => {
+const Modal = ({
+  header,
+  page = false,
+}: {
+  /** As a page, drawn above the sample in place of the floating actions. */
+  header?: React.ReactNode;
+  page?: boolean;
+}) => {
   useAnnotationStatus();
 
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -401,7 +411,7 @@ const Modal = ({ page = false }: { page?: boolean }) => {
           onError={trackBoundaryError}
           resetKeys={[modalSelector?.id, modalSelector?.groupId]}
         >
-          <Actions />
+          {page ? header : <Actions />}
         </ReactErrorBoundary>
         {isAnnotationEnabled && (
           <Suspense>

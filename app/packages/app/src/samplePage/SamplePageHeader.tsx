@@ -20,6 +20,7 @@ import {
   TextVariant,
   Tooltip,
 } from "@voxel51/voodo";
+import type React from "react";
 import type { AppRoute } from "../location/routes";
 import { useProduct } from "../product";
 import styles from "./SamplePageHeader.module.css";
@@ -59,10 +60,15 @@ const MODES = [
 
 /**
  * The sample page's header: where the sample is, stepping between samples,
- * and the page's tools. A skeleton: back closes the sample, and the rest are
- * placeholders until their follow-ups land.
+ * and the page's tools. Back closes the sample and `actions` are live; the
+ * rest are placeholders until their follow-ups land.
  */
-export default function SamplePageHeader() {
+export default function SamplePageHeader({
+  actions,
+}: {
+  /** The sample's actions, in the toolbar where the mock places its tools. */
+  actions?: React.ReactNode;
+}) {
   const close = useClearModal();
   const dataset = useProduct().useDatasetDisplayName();
   const { route } = useLocation<AppRoute>();
@@ -103,10 +109,7 @@ export default function SamplePageHeader() {
         align={Align.Center}
         spacing={Spacing.Sm}
       >
-        <Action icon={IconName.GridView} label="Group" />
-        <Action icon={IconName.Tag} label="Tags" />
-        <Action icon={IconName.Search} label="Search" />
-        <Action icon={IconName.Puzzle} label="Plugins" />
+        {actions}
         <Separator />
         <Action icon={IconName.History} label="History" />
         <Action icon={IconName.Notes} label="Comments" />

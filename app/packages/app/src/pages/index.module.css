@@ -23,10 +23,3 @@
   flex-direction: column;
   background: var(--fo-palette-background-level2);
 }
-
-.samplePageBody {
-  position: relative;
-  display: flex;
-  flex: 1;
-  min-height: 0;
-}

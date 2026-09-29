@@ -73,18 +73,40 @@ const DragActionsRow = () => {
   );
 };
 
-export default () => {
+/** The modal's actions, for the floating row or a host's own toolbar. */
+export const ModalActionItems = () => {
   const { activeLookerRef } = useModalContext();
 
   const isActualGroup = useReverbValue(fos.isGroup);
   const isDynamicGroup = useReverbValue(fos.isDynamicGroup);
-  const isFullScreen = useReverbValue(fos.fullscreen);
   const isMultimodal = fos.useIsMediaType(MEDIA_TYPE_MULTIMODAL);
   const mode = useAtomValue(modalMode);
   const isGroup = useMemo(
     () => isActualGroup || isDynamicGroup,
     [isActualGroup, isDynamicGroup],
   );
+
+  return (
+    <>
+      <HiddenLabels modal />
+      {mode === EXPLORE && <Selected modal lookerRef={activeLookerRef} />}
+      {mode === EXPLORE && !isMultimodal && <Similarity modal />}
+      <ColorScheme modal />
+      {mode === EXPLORE && <Tag modal lookerRef={activeLookerRef} />}
+      <Options modal />
+      {isGroup && <GroupVisibility />}
+      <BrowseOperations modal />
+      <OperatorPlacements modal place={types.Places.SAMPLES_VIEWER_ACTIONS} />
+      <ToggleFullscreen />
+      {/* multimodal owns its own right panel and never mounts the classic
+          sidebar, so there's nothing for this to toggle there */}
+      {!isMultimodal && <ToggleSidebar modal />}
+    </>
+  );
+};
+
+export default () => {
+  const isFullScreen = useReverbValue(fos.fullscreen);
 
   const [defaultXCoord, setDefaultXCoord] = fos.useBrowserStorage<number>(
     "modal-actions-row-x-coord",
@@ -103,19 +125,7 @@ export default () => {
     >
       <Container $isFullScreen={isFullScreen}>
         <DragActionsRow />
-        <HiddenLabels modal />
-        {mode === EXPLORE && <Selected modal lookerRef={activeLookerRef} />}
-        {mode === EXPLORE && !isMultimodal && <Similarity modal />}
-        <ColorScheme modal />
-        {mode === EXPLORE && <Tag modal lookerRef={activeLookerRef} />}
-        <Options modal />
-        {isGroup && <GroupVisibility />}
-        <BrowseOperations modal />
-        <OperatorPlacements modal place={types.Places.SAMPLES_VIEWER_ACTIONS} />
-        <ToggleFullscreen />
-        {/* multimodal owns its own right panel and never mounts the classic
-            sidebar, so there's nothing for this to toggle there */}
-        {!isMultimodal && <ToggleSidebar modal />}
+        <ModalActionItems />
       </Container>
     </Draggable>
   );

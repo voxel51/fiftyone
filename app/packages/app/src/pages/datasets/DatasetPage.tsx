@@ -7,6 +7,7 @@ import {
   Dataset,
   EmptyDatasetSelection,
   Modal,
+  ModalActionItems,
   DatasetGridRendererFailover,
   QueryPerformanceToast,
   SchemaManagerOutlet,
@@ -159,10 +160,12 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
           style={{ opacity: phase === "opening" ? 0 : 1 }}
           data-cy={"sample-page"}
         >
-          <SamplePageHeader />
-          <div className={style.samplePageBody}>
-            {isModalOpen && <Modal page />}
-          </div>
+          {isModalOpen && (
+            <Modal
+              page
+              header={<SamplePageHeader actions={<ModalActionItems />} />}
+            />
+          )}
         </div>
       )}
       {/* Outside the isEmpty branch so `?schemaManager=open` works on an empty
