@@ -88,17 +88,11 @@ export const stateSubscription = selector<string>({
 export const mediaTypeSelector = selector({
   key: "mediaTypeSelector",
   get: ({ get }) => get(datasetAtom)?.mediaType,
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
-export const parentMediaTypeSelector = selector({
+export const parentMediaTypeSelector = selector<string>({
   key: "parentMediaTypeSelector",
   get: ({ get }) => get(datasetAtom)?.parentMediaType,
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const isVideoDataset = selector({
@@ -193,9 +187,6 @@ export const defaultTargets = selector({
   get: ({ get }) => {
     return get(datasetAtom)?.defaultMaskTargets || {};
   },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const targets = selector({
@@ -207,9 +198,6 @@ export const targets = selector({
       defaults,
       fields: labelTargets,
     };
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
   },
 });
 
@@ -262,9 +250,6 @@ export const getTarget = selector({
 
       return maskTargets[target];
     };
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
   },
 });
 
@@ -332,9 +317,6 @@ export const anyTagging = selector<boolean>({
       }),
     );
   },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const hiddenLabelsArray = selector({
@@ -392,9 +374,6 @@ export const pathHiddenLabelsMap = selector<{
 
     set(atoms.hiddenLabels, newLabels);
   },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const hiddenFieldLabels = selectorFamily<string[], string>({
@@ -416,9 +395,6 @@ export const hiddenFieldLabels = selectorFamily<string[], string>({
       }
       return [];
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 // sort_by_similarity has no server-side index for this backend
@@ -476,9 +452,6 @@ export const similarityMethods = selector<{
         },
         { patches: [], samples: [] },
       );
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
   },
 });
 

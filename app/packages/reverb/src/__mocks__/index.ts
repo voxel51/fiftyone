@@ -4,6 +4,7 @@
 
 import type {
   AtomFamilyOptions,
+  GetReverbValue,
   AtomOptions,
   ReadWriteSelectorFamilyOptions,
   ReadWriteSelectorOptions,
@@ -15,10 +16,13 @@ export * from "../index";
 
 /** State stands in as its key alone, so a test addresses it without a store. */
 type Stub = { key: string; params?: unknown };
+type WaitForAll = { __waitForAll: true; deps: unknown };
+type Values = Record<string, unknown>;
+type Update = (current: unknown) => unknown;
 
-export let mockValues = {};
-export const mockValuesStore = {};
-export let mockDefaults = {};
+export let mockValues: Values = {};
+export const mockValuesStore: Record<string, Values> = {};
+export let mockDefaults: Values = {};
 export function setMockAtoms(newMockValues: { [key: string]: unknown }) {
   mockValues = {
     ...mockValues,
@@ -27,16 +31,19 @@ export function setMockAtoms(newMockValues: { [key: string]: unknown }) {
   mockDefaults = { ...mockDefaults, ...newMockValues };
 }
 
-export const getValue = (atom) => {
+export const getValue = (atom: Stub | WaitForAll): unknown => {
   // ``waitForAll`` resolves its dependencies eagerly here (the double has no
   // async/loadable machinery): map ``getValue`` over the deps, preserving the
   // array/object shape the caller passed.
-  if (atom && atom.__waitForAll) {
+  if ("__waitForAll" in atom) {
     const { deps } = atom;
     return Array.isArray(deps)
       ? deps.map(getValue)
       : Object.fromEntries(
-          Object.entries(deps).map(([k, v]) => [k, getValue(v)]),
+          Object.entries(deps as Record<string, Stub>).map(([k, v]) => [
+            k,
+            getValue(v),
+          ]),
         );
   }
 
@@ -48,7 +55,7 @@ export const getValue = (atom) => {
   }
 
   if (atom.params !== undefined) {
-    return mockValues[atom.key](atom.params);
+    return (mockValues[atom.key] as (params: unknown) => unknown)(atom.params);
   }
 
   const mockValue = mockValues[atom.key];
@@ -59,7 +66,10 @@ export const getValue = (atom) => {
   return mockValue;
 };
 
-const resetValue = (atom) => {
+// the double's stand-ins are keys, not state, so selectors read them through this
+const get = getValue as unknown as GetReverbValue;
+
+const resetValue = (atom: Stub) => {
   if (atom.params && mockValuesStore[atom.key]) {
     delete mockValuesStore[atom.key][JSON.stringify(atom.params)];
   } else {
@@ -67,15 +77,16 @@ const resetValue = (atom) => {
   }
 };
 
-const setValue = (atom, value) => {
+const setValue = (atom: Stub, value: unknown) => {
   if (atom.params) {
     if (!mockValuesStore[atom.key]) mockValuesStore[atom.key] = {};
     const current = mockValuesStore[atom.key][JSON.stringify(atom.params)];
     mockValuesStore[atom.key][JSON.stringify(atom.params)] =
-      value instanceof Function ? value(current) : value;
+      value instanceof Function ? (value as Update)(current) : value;
   } else {
     const current = mockValues[atom.key];
-    mockValues[atom.key] = value instanceof Function ? value(current) : value;
+    mockValues[atom.key] =
+      value instanceof Function ? (value as Update)(current) : value;
   }
 };
 
@@ -100,11 +111,11 @@ export function selector<T>(options: ReadWriteSelectorOptions<T>): {
   set: (value: T) => void;
 } {
   function resolver() {
-    return options.get({ get: getValue }) as T;
+    return options.get({ get }) as T;
   }
   resolver.key = options.key;
-  resolver.set = (value) =>
-    options.set({ set: setValue, get: getValue, reset: resetValue }, value);
+  resolver.set = (value: T) =>
+    options.set({ set: setValue, get, reset: resetValue }, value);
   return resolver;
 }
 
@@ -113,15 +124,12 @@ export function selectorFamily<T, P extends SerializableParam>(
 ): (params: P) => { (): T; key: string; set: (value: T) => void } {
   return (params) => {
     function resolver() {
-      return options.get(params)({ get: getValue }) as T;
+      return options.get(params)({ get }) as T;
     }
     resolver.key = options.key;
     resolver.params = params;
-    resolver.set = (value) =>
-      options.set(params)(
-        { set: setValue, get: getValue, reset: resetValue },
-        value,
-      );
+    resolver.set = (value: T) =>
+      options.set(params)({ set: setValue, get, reset: resetValue }, value);
     return resolver;
   };
 }

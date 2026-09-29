@@ -1,6 +1,5 @@
 import { useEffect, useMemo } from "react";
 import {
-  DefaultValue,
   atom,
   selector,
   selectorFamily,
@@ -91,11 +90,7 @@ export const temporalTagsRevision = atom<number>({
   default: 0,
   effects: [
     ({ setSelf }) =>
-      onTemporalTagsMutated(() =>
-        setSelf(
-          (revision) => (revision instanceof DefaultValue ? 0 : revision) + 1,
-        ),
-      ),
+      onTemporalTagsMutated(() => setSelf((revision) => revision + 1)),
   ],
 });
 

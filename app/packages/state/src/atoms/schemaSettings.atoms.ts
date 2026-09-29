@@ -105,9 +105,6 @@ export const schemaSearchResultList = selector<string[]>({
       .map((path) => getRawPath(path));
     set(schemaSearchResults, greenPaths);
   },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const schemaSearchResults = atom<string[]>({

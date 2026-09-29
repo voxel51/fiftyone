@@ -73,9 +73,6 @@ export const coloring = selector<Coloring>({
         .map((_, i) => getColor(colorScheme.colorPool, seed, i)),
     };
   },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const colorMap = selector<(val) => string>({
@@ -84,9 +81,6 @@ export const colorMap = selector<(val) => string>({
     const pool = get(atoms.colorScheme).colorPool;
     const seed = get(atoms.colorSeed);
     return createColorGenerator(pool, seed);
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
   },
 });
 
@@ -118,9 +112,6 @@ export const temporalTagColor = selector<(value: string) => string>({
   get: ({ get }) => {
     const resolve = get(valueColor(TEMPORAL_TAGS_FIELD));
     return (value: string) => resolve(value);
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
   },
 });
 
@@ -288,9 +279,6 @@ export const valueColor = selectorFamily<
       return (value) =>
         value === null ? field : (configured.get(value) ?? map(value));
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 /**
@@ -315,9 +303,6 @@ const pathValueColors = selectorFamily<
     (paths) =>
     ({ get }) =>
       Object.fromEntries(paths.map((path) => [path, get(valueColor(path))])),
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 /**

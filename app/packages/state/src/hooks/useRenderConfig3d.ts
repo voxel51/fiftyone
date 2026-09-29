@@ -2,7 +2,7 @@ import { is3d } from "@fiftyone/utilities";
 import { useMemo } from "react";
 import {
   type CallbackInterface,
-  type Snapshot,
+  type SnapshotInterface,
   useReverbCallback,
   useReverbValue,
 } from "@fiftyone/reverb";
@@ -26,7 +26,7 @@ type RenderConfig3dSampleMap = Record<string, ModalSample>;
  * its write.
  */
 const ensurePinned = async (
-  snapshot: Snapshot,
+  snapshot: SnapshotInterface,
   set: CallbackInterface["set"],
 ) => {
   const all3dSlices = await snapshot.getPromise(internals.all3dSlices);

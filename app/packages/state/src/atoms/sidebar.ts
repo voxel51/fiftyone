@@ -643,9 +643,6 @@ export const sidebarGroups = selectorFamily<
           sidebarGroups: groups,
         });
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const persistSidebarGroups = (
@@ -768,9 +765,6 @@ export const sidebarEntries = selectorFamily<
         }, [] as State.SidebarGroup[]),
       );
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 /**
@@ -936,9 +930,6 @@ export const collapsedPaths = selector<Set<string>>({
 
     return new Set(paths);
   },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const sidebarGroupMapping = selectorFamily<
@@ -970,9 +961,6 @@ export const sidebarGroup = selectorFamily<
 
       return match.length ? match[0].paths : [];
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const sidebarPaths = selector({
@@ -992,9 +980,6 @@ export const sidebarGroupNames = selectorFamily<string[], boolean>({
         ({ name }) => name,
       );
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const groupIsEmpty = selectorFamily<
@@ -1010,9 +995,6 @@ export const groupIsEmpty = selectorFamily<
           .length === 0,
       );
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const groupShown = selectorFamily<

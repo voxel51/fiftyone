@@ -4,6 +4,10 @@
     "type": "module",
     "main": "src/index.ts",
     "scripts": {
+        "check": "yarn check:lint && yarn check:deps && yarn check:types",
+        "check:types": "node ./scripts/check-types.mjs",
+        "check:lint": "node ./scripts/check-lint.mjs",
+        "check:deps": "node ./scripts/check-deps.mjs",
         "test": "vitest"
     },
     "dependencies": {
