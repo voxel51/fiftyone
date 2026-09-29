@@ -136,26 +136,22 @@ export const labelAt = (
   return found?.label;
 };
 
-/** Where the rank-rate sample was taken: top rank and scroll offset. */
-export interface ScrollSample {
-  rank: number;
-  offset: number;
+/** The pixel extents of an instance: its viewport and its loaded rows. */
+export interface Extent {
+  viewport: number;
+  /** Primary extent of the rows the instance has loaded. */
+  loaded: number;
+  /** Items those rows hold. */
+  items: number;
 }
 
 /**
- * Items on screen, from how fast the top rank moves per pixel of scroll
- * between two samples. Undefined until the samples differ.
+ * Items the viewport holds at the loaded rows' density. Over the total it is
+ * the viewport over the order's estimated full height, as a scrollbar's
+ * thumb would be.
  */
-export const visibleEstimate = (
-  previous: ScrollSample,
-  next: ScrollSample,
-  viewport: number,
-): number | undefined => {
-  const pixels = Math.abs(next.offset - previous.offset);
-  const ranks = Math.abs(next.rank - previous.rank);
-  if (pixels === 0 || ranks === 0 || viewport <= 0) return undefined;
-  return Math.round((ranks / pixels) * viewport);
-};
+export const extentVisible = ({ items, loaded, viewport }: Extent) =>
+  items > 0 && loaded > 0 ? (viewport * items) / loaded : undefined;
 
 /** The thumb's share of the track: the visible share of the order. */
 export const thumbSpan = (

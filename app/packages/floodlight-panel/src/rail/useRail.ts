@@ -3,10 +3,10 @@
  */
 
 import type { RowChange } from "@fiftyone/floodlight";
-import { type RefObject, useCallback, useEffect, useState } from "react";
-import { type Anchor, SLOT } from "../host/createHost";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { Anchor } from "../host/createHost";
 import { jumpAnchor, type Ranks } from "./jump";
-import { jumpTarget, type ScrollSample, visibleEstimate } from "./model";
+import { type Extent, extentVisible, jumpTarget } from "./model";
 
 /** What the rail needs from the instance host. */
 export interface RailHost {
@@ -20,16 +20,14 @@ export interface UseRailOptions {
   instance?: EventTarget;
   ranks: Ranks;
   pageSize: number;
-  /** The host's element, to read the active instance's scroll offset. */
-  container?: RefObject<HTMLElement>;
-  /** The instance scrolls left to right. */
-  horizontal?: boolean;
+  /** The instance's extents, for a thumb sized like a scrollbar's. */
+  extent?: () => Extent | undefined;
 }
 
 export interface Rail {
   /** Rank of the item at the top of the view, once known. */
   anchorRank?: number;
-  /** Estimated items on screen, once the grid has scrolled a row. */
+  /** How many items fill the viewport at the loaded rows' density. */
   visible?: number;
   /** Rebuilds the grid at a rail position. */
   jump: (position: number, total: number) => void;
@@ -40,13 +38,8 @@ export interface Rail {
  * the host. Page keys are `floor(rank / pageSize)`, so a jump lands on the
  * target's page.
  */
-// attach() appends the instance's scroller as its slot's last child
-const scroller = (container?: RefObject<HTMLElement>) =>
-  container?.current?.querySelector(`[${SLOT}="active"]`)?.lastElementChild;
-
 export default function useRail({
-  container,
-  horizontal = false,
+  extent,
   host,
   instance,
   pageSize,
@@ -54,6 +47,8 @@ export default function useRail({
 }: UseRailOptions): Rail {
   const [anchorRank, setAnchorRank] = useState<number>();
   const [visible, setVisible] = useState<number>();
+  const measure = useRef(extent);
+  measure.current = extent;
 
   // a new order starts at the top
   useEffect(() => setAnchorRank(undefined), [ranks]);
@@ -64,26 +59,16 @@ export default function useRail({
     rank !== undefined && setAnchorRank(rank);
     if (!instance) return undefined;
 
-    let sample: ScrollSample | undefined;
     const onRow = (event: Event) => {
       const rank = ranks.get((event as RowChange<number>).at.description);
       if (rank === undefined) return;
       setAnchorRank(rank);
-
-      const element = scroller(container);
-      if (!element) return;
-      const next = {
-        rank,
-        offset: horizontal ? element.scrollLeft : element.scrollTop,
-      };
-      const viewport = horizontal ? element.clientWidth : element.clientHeight;
-      const estimate = sample && visibleEstimate(sample, next, viewport);
-      estimate !== undefined && setVisible(estimate);
-      sample = next;
+      const next = measure.current?.();
+      setVisible(next && extentVisible(next));
     };
     instance.addEventListener("rowchange", onRow);
     return () => instance.removeEventListener("rowchange", onRow);
-  }, [container, horizontal, host, instance, ranks]);
+  }, [host, instance, ranks]);
 
   const jump = useCallback(
     (position: number, total: number) => {

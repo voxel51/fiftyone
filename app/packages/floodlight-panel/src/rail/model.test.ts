@@ -12,10 +12,10 @@ import {
   rankLabel,
   rankTicks,
   rankToPosition,
+  extentVisible,
   thumbPosition,
   thumbSpan,
   thumbTop,
-  visibleEstimate,
 } from "./model";
 
 describe("rank and position", () => {
@@ -150,23 +150,17 @@ describe("labels", () => {
 });
 
 describe("thumb span", () => {
-  it("estimates items on screen from the rank rate", () => {
-    expect(
-      visibleEstimate({ rank: 0, offset: 0 }, { rank: 40, offset: 800 }, 1000),
-    ).toBe(50);
-    expect(
-      visibleEstimate(
-        { rank: 60, offset: 900 },
-        { rank: 20, offset: 100 },
-        400,
-      ),
-    ).toBe(20);
-    expect(
-      visibleEstimate({ rank: 5, offset: 10 }, { rank: 5, offset: 90 }, 400),
-    ).toBe(undefined);
-    expect(
-      visibleEstimate({ rank: 5, offset: 10 }, { rank: 9, offset: 10 }, 400),
-    ).toBe(undefined);
+  it("sizes the thumb as the viewport over the estimated full height", () => {
+    // 40 items fill 2,000px, so 1,000 items would be 50,000px tall
+    const visible = extentVisible({ items: 40, loaded: 2000, viewport: 600 });
+    expect(visible).toBe(12);
+    expect(thumbSpan(visible, 1000, 0)).toBe(0.012);
+  });
+
+  it("has no size before anything is loaded", () => {
+    expect(extentVisible({ items: 0, loaded: 0, viewport: 600 })).toBe(
+      undefined,
+    );
   });
 
   it("spans the visible share of the order, at least the minimum", () => {

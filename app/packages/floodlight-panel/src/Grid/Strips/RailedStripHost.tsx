@@ -39,8 +39,6 @@ export default function RailedStripHost({
     [recordBase, span, strips.records],
   );
   const rail = useRail({
-    container: ref,
-    horizontal: true,
     host,
     instance,
     pageSize: PAGE_SIZE,
