@@ -305,6 +305,29 @@ export class EventUtils {
   }
 
   /**
+   * The latest payload of each of `events` in the current document, read
+   * once from the record {@link recordLoads} keeps; absent if never sent
+   */
+  public async latest<E extends string>(
+    events: readonly E[],
+  ): Promise<Partial<Record<E, Record<string, unknown>>>> {
+    if (!recordingPages.has(this.page)) {
+      throw new Error("latest needs recordLoads() before navigating");
+    }
+    return this.page.evaluate(
+      (names) => {
+        const found: Record<string, Record<string, unknown>> = {};
+        for (const { event, detail } of window.__FO_EVENT_LOG__?.records ??
+          []) {
+          if (names.includes(event)) found[event] = detail;
+        }
+        return found;
+      },
+      events as readonly string[],
+    ) as Promise<Partial<Record<E, Record<string, unknown>>>>;
+  }
+
+  /**
    * Resolve once `holds()` is true, reading it once after arming `events`
    * and otherwise waiting for the first matching event. Only for a state the
    * app settles into on its own (buffering finishing), which no test action

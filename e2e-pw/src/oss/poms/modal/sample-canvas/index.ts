@@ -1,6 +1,6 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
 import { expectScreenshot } from "src/oss/utils/screenshot";
-import type { EventUtils } from "src/shared/event-utils";
+import type { EventUtils, ObservedEvent } from "src/shared/event-utils";
 import { ToolbarPom } from "./toolbar";
 import { TooltipPom } from "./tooltip";
 
@@ -9,6 +9,13 @@ import { TooltipPom } from "./tooltip";
  * center. Used by {@link SampleCanvasPom.clickEmptyArea}.
  */
 const EMPTY_AREA = 0.05;
+
+/** Events each hover affordance sends with `{ visible }` as it shows and hides */
+const HOVER_AFFORDANCES = [
+  "e2e:modal:lighter-toolbar",
+  "e2e:modal:sample-checkbox",
+  "e2e:modal:tooltip",
+] as const;
 
 export interface Box {
   x: number;
@@ -272,16 +279,19 @@ export class SampleCanvasPom {
   }
 
   /**
-   * Park the mouse and wait for every hover affordance to unmount. Leaving
-   * the canvas hides them in a later render, and only if one was showing.
+   * Park the mouse and resolve once every hover affordance that was showing
+   * has hidden; ones already hidden send nothing.
    */
   async prepareForScreenshot() {
-    await this.parkMouse();
-    await Promise.all(
-      [this.checkbox, this.tooltip.content, this.toolbar.locator].map(
-        (locator) => locator.waitFor({ state: "detached" }),
-      ),
-    );
+    const latest = await this.eventUtils.latest(HOVER_AFFORDANCES);
+    const hides = HOVER_AFFORDANCES.filter(
+      (event) => latest[event]?.visible === true,
+    ).map((events) => ({
+      events,
+      predicate: (e: ObservedEvent) =>
+        (e.detail as { visible?: boolean })?.visible === false,
+    }));
+    await this.eventUtils.afterAll(hides, () => this.parkMouse());
   }
 
   /** Hover a label at relative `x`, `y`; resolves once its tooltip shows */
@@ -294,8 +304,10 @@ export class SampleCanvasPom {
    * mounts is there
    */
   async revealToolbar() {
-    await this.eventUtils.after("e2e:modal:lighter-toolbar-shown", () =>
-      this.move(0.5, 0.5),
+    await this.eventUtils.after(
+      "e2e:modal:lighter-toolbar",
+      () => this.move(0.5, 0.5),
+      (e) => (e.detail as { visible?: boolean })?.visible === true,
     );
   }
 

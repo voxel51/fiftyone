@@ -30,9 +30,9 @@ const ToolbarContainer = styled.div`
   box-shadow: 0 8px 15px 0 ${({ theme }) => theme.neutral.softBg};
 `;
 
-/** e2e specs wait on the hover toolbar mounting */
+/** e2e specs wait on the hover toolbar mounting and unmounting */
 type LighterToolbarE2EEvents = {
-  "e2e:modal:lighter-toolbar-shown": undefined;
+  "e2e:modal:lighter-toolbar": { visible: boolean };
 };
 
 /**
@@ -44,9 +44,9 @@ export const LighterToolbar = () => {
   const { zoomIn, zoomOut } = useLighter();
 
   useEffect(() => {
-    getEventBus<LighterToolbarE2EEvents>().dispatch(
-      "e2e:modal:lighter-toolbar-shown",
-    );
+    const bus = getEventBus<LighterToolbarE2EEvents>();
+    bus.dispatch("e2e:modal:lighter-toolbar", { visible: true });
+    return () => bus.dispatch("e2e:modal:lighter-toolbar", { visible: false });
   }, []);
 
   const handleHelp = useCallback(() => {
