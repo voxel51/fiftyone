@@ -161,11 +161,13 @@ test.describe.serial("annotate toolbar state", () => {
     // draw away from the existing overlay; the new box opens its edit form
     await modal.sidebar.annotate.detectionMode("Detections");
     await modal.sampleCanvas.move(0.8, 0.8, "crosshair");
-    await modal.sampleCanvas.down();
-    await modal.sampleCanvas.move(0.9, 0.9);
     // quitting before the async establish flow commits would re-activate
-    // detection mode, so wait for the edit form first
-    await modal.sidebar.annotate.afterEditing(() => modal.sampleCanvas.up());
+    // detection mode, so wait for the edit form the drag opens first
+    await modal.sidebar.annotate.afterEditing(async () => {
+      await modal.sampleCanvas.down();
+      await modal.sampleCanvas.move(0.9, 0.9);
+      await modal.sampleCanvas.up();
+    });
     await modal.sampleCanvas.assert.hasCursor("nwse-resize");
     await expectActive(modal, "detection");
 
