@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useReverbValue } from "@fiftyone/reverb";
 import * as fos from "@fiftyone/state";
-import { useTextSearchExtensions } from "./textSearchExtensions";
+import { useTextSearchProviders } from "./textSearchProviders";
 
 export interface PromptableSimilarityIndex {
   key: string;
@@ -9,10 +9,10 @@ export interface PromptableSimilarityIndex {
   patchesField: string | null;
   /** The model the index embeds with, when the run recorded one. */
   model?: string | null;
-  /** Set when a registered {@link TextSearchExtension} searches this index
+  /** Set when a registered {@link TextSearchProvider} searches this index
    * client-side instead of the server's `SortBySimilarity`: the run's
    * method. */
-  extension?: string | null;
+  provider?: string | null;
   /** When the run was computed. */
   timestamp?: string | null;
 }
@@ -21,14 +21,14 @@ export interface PromptableSimilarityIndex {
  * The dataset's similarity indexes that accept text prompts, newest first,
  * for surfaces that turn a typed query into a search. Most become a
  * `SortBySimilarity` stage; those whose method has a registered text search
- * extension are searched by it instead. Brain runs append to `brainMethods` in
+ * provider are searched by it instead. Brain runs append to `brainMethods` in
  * creation order, so the reversed order is "most recently computed" — the
  * index the user most likely just built for exactly this.
  */
 const usePromptableSimilarityKeys = (): PromptableSimilarityIndex[] => {
   const { samples, patches } = useReverbValue(fos.similarityMethods);
   const brainMethods = useReverbValue(fos.dataset)?.brainMethods ?? [];
-  const extensions = useTextSearchExtensions();
+  const providers = useTextSearchProviders();
   return useMemo(() => {
     const created = new Map(brainMethods.map((m, i) => [m.key, i]));
     const models = new Map(brainMethods.map((m) => [m.key, m.config.model]));
@@ -51,21 +51,21 @@ const usePromptableSimilarityKeys = (): PromptableSimilarityIndex[] => {
           timestamp: timestamps.get(key),
         })),
       // `similarityMethods` leaves these out: `SortBySimilarity` cannot run
-      // on them, so only a registered extension makes them searchable
+      // on them, so only a registered provider makes them searchable
       ...brainMethods
         .filter(
           ({ config }) =>
-            config.supportsPrompts === true && extensions.has(config.method),
+            config.supportsPrompts === true && providers.has(config.method),
         )
         .map(({ key, config, timestamp }) => ({
           key,
           patchesField: null,
           model: config.model,
-          extension: config.method,
+          provider: config.method,
           timestamp,
         })),
     ].sort((a, b) => (created.get(b.key) ?? -1) - (created.get(a.key) ?? -1));
-  }, [samples, patches, brainMethods, extensions]);
+  }, [samples, patches, brainMethods, providers]);
 };
 
 export default usePromptableSimilarityKeys;
