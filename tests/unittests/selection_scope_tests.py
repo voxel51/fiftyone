@@ -351,6 +351,9 @@ class ImageSelectionTests(unittest.TestCase):
 
     def test_grid_nodes_for_ids_carry_the_grid_sample_and_urls(self):
         ids = self.dataset.values("id")[:2]
+        sample = self.dataset[ids[0]]
+        sample["payload"] = {"rows": [1, 2, 3]}
+        sample.save()
         nodes = asyncio.run(foses.sample_nodes_for_ids(self.dataset, ids))
         self.assertEqual(sorted(nodes), sorted(ids))
         node = nodes[ids[0]]
@@ -358,6 +361,7 @@ class ImageSelectionTests(unittest.TestCase):
         self.assertEqual(
             node.sample["filepath"], self.dataset[ids[0]].filepath
         )
+        self.assertNotIn("payload", node.sample)
         self.assertEqual([url.field for url in node.urls], ["filepath"])
         self.assertEqual(
             asyncio.run(foses.sample_nodes_for_ids(self.dataset, [])), {}
@@ -403,6 +407,19 @@ class ConvertedViewSelectionTests(unittest.TestCase):
         )
         self.assertFalse(availability[patch_ids[0]]["unavailable"])
         self.assertTrue(list(availability.values())[1]["unavailable"])
+
+    def test_generated_preview_nodes_use_patch_ids_and_parent_media(self):
+        view = self.dataset.to_patches("ground_truth")
+        ids = view.values("id")
+        target = foss.view_dataset(self.dataset, view._serialize())
+        nodes = asyncio.run(foses.sample_nodes_for_ids(target, ids))
+        self.assertEqual(set(nodes), set(ids))
+        self.assertTrue(set(nodes).isdisjoint(self.dataset.values("id")))
+        for sample in view:
+            node = nodes[sample.id]
+            self.assertEqual(node.sample["filepath"], sample.filepath)
+            self.assertEqual(node.urls[0].field, "filepath")
+            self.assertEqual(node.urls[0].url, sample.filepath)
 
     def test_patch_previews_keep_distinct_crops_in_details_and_availability(
         self,

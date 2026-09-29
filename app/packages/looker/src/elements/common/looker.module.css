@@ -110,6 +110,12 @@
   white-space: pre;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .lookerLoadingBoxInner {
+    animation: none;
+  }
+}
+
 .looker {
   position: relative;
   width: 100%;

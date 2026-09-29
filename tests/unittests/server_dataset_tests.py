@@ -17,8 +17,7 @@ import fiftyone as fo
 import fiftyone.brain as fob
 import fiftyone.core.media as fom
 
-from fiftyone.server.constants import SCALAR_OVERRIDES
-from fiftyone.server.scalars import BSONArray
+from fiftyone.server.scalars import BSONArray, SCALAR_MAP
 from fiftyone.server.query import Dataset
 
 from decorators import drop_async_dataset
@@ -32,8 +31,7 @@ class DatasetQuery:
 
 schema = gql.Schema(
     query=DatasetQuery,
-    scalar_overrides=SCALAR_OVERRIDES,
-    config=StrawberryConfig(auto_camel_case=False),
+    config=StrawberryConfig(auto_camel_case=False, scalar_map=SCALAR_MAP),
 )
 
 MEDIA_TYPES = {media_type: media_type for media_type in fom.MEDIA_TYPES}

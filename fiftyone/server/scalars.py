@@ -15,39 +15,44 @@ import typing as t
 from fiftyone.core.json import stringify
 from fiftyone.core.utils import datetime_to_timestamp, timestamp_to_datetime
 
-BSON = gql.scalar(
-    t.NewType("BSON", object),
-    serialize=lambda v: json.loads(json_util.dumps(v)),
-    parse_value=lambda v: json_util.loads(json.dumps(v)),
-)
-
-BSONArray = gql.scalar(
-    t.NewType("BSONArray", object),
-    serialize=lambda v: json.loads(json_util.dumps(v)),
-    parse_value=lambda v: json_util.loads(json.dumps(v)),
-)
-
-JSON = gql.scalar(
-    t.NewType("JSON", object),
-    serialize=lambda v: stringify(v),
-    parse_value=lambda v: v,
-)
-
-JSONArray = gql.scalar(
-    t.NewType("JSONArray", object),
-    serialize=lambda v: json.loads(json_util.dumps(v)),
-    parse_value=lambda v: json_util.loads(json.dumps(v)),
-)
+BSON = t.NewType("BSON", object)
+BSONArray = t.NewType("BSONArray", object)
+JSON = t.NewType("JSON", object)
+JSONArray = t.NewType("JSONArray", object)
 
 DateTime = gql.scalar(
-    datetime,
+    name="datetime",
     serialize=lambda v: datetime_to_timestamp(v),
     parse_value=lambda v: timestamp_to_datetime(v),
 )
-
 
 Date = gql.scalar(
-    date,
+    name="date",
     serialize=lambda v: datetime_to_timestamp(v),
     parse_value=lambda v: timestamp_to_datetime(v),
 )
+
+SCALAR_MAP = {
+    BSON: gql.scalar(
+        name="BSON",
+        serialize=lambda v: json.loads(json_util.dumps(v)),
+        parse_value=lambda v: json_util.loads(json.dumps(v)),
+    ),
+    BSONArray: gql.scalar(
+        name="BSONArray",
+        serialize=lambda v: json.loads(json_util.dumps(v)),
+        parse_value=lambda v: json_util.loads(json.dumps(v)),
+    ),
+    JSON: gql.scalar(
+        name="JSON",
+        serialize=lambda v: stringify(v),
+        parse_value=lambda v: v,
+    ),
+    JSONArray: gql.scalar(
+        name="JSONArray",
+        serialize=lambda v: json.loads(json_util.dumps(v)),
+        parse_value=lambda v: json_util.loads(json.dumps(v)),
+    ),
+    date: Date,
+    datetime: DateTime,
+}
