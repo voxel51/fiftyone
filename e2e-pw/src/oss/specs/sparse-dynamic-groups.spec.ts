@@ -78,7 +78,9 @@ test.describe("sparse dynamic groups", () => {
     });
 
     await grid.assert.isEntryCountTextEqualTo("1 group with slice");
-    await grid.openFirstSample();
+    await modal.group.dynamicGroupPagination.afterShown(() =>
+      grid.openFirstSample(),
+    );
     await modal.sidebar.toggleSidebarGroup("GROUP");
     await modal.sidebar.assert.verifySidebarEntryTexts({
       frame: "0",
@@ -104,7 +106,9 @@ test.describe("sparse dynamic groups", () => {
     });
     await grid.selectSlice("right");
     await grid.assert.isEntryCountTextEqualTo("1 group with slice");
-    await grid.openFirstSample();
+    await modal.group.dynamicGroupPagination.afterShown(() =>
+      grid.openFirstSample(),
+    );
     await modal.sidebar.toggleSidebarGroup("GROUP");
     await modal.sidebar.assert.verifySidebarEntryTexts({
       frame: "0",

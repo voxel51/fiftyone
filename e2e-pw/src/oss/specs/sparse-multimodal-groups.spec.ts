@@ -193,6 +193,11 @@ if fo.dataset_exists("${datasetName}"):
 });
 
 test.describe.serial("sparse multimodal groups", () => {
+  // the session restores an open modal into the next test's page
+  test.afterEach(async ({ modal }) => {
+    await modal.close({ ignoreError: true });
+  });
+
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });

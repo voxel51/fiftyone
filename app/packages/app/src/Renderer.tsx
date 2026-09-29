@@ -23,6 +23,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useRef,
   useState,
 } from "react";
 import {
@@ -38,6 +39,7 @@ import Pixelating from "./Pixelating";
 /** e2e specs wait on the route that a navigation commits */
 type RendererE2EEvents = {
   "e2e:app:page-change": undefined;
+  "e2e:modal:closed": undefined;
 };
 
 export const pendingEntry = atom<boolean>({
@@ -126,8 +128,14 @@ const Renderer = () => {
 
 const Modal = () => {
   const active = Boolean(useRecoilValue(isModalActive));
+  const wasActive = useRef(false);
   useEffect(() => {
     document.getElementById("modal")?.classList.toggle("modalon", active);
+    // closed once the modal layer stops taking the page's pointer
+    if (wasActive.current && !active) {
+      getEventBus<RendererE2EEvents>().dispatch("e2e:modal:closed");
+    }
+    wasActive.current = active;
   }, [active]);
 
   return null;
