@@ -8,6 +8,7 @@ import {
   isBufferingAtom,
   isPlayPendingAtom,
   isPlayingAtom,
+  confineToLoopAtom,
   loopEndAtom,
   loopStartAtom,
   playheadAtom,
@@ -739,11 +740,32 @@ export function usePlaybackEngine({
     const snapPlayheadToFrame = () => settlePlayhead(false);
     const settleSeek = () => settlePlayhead(true);
 
+    /**
+     * The range user-driven playhead moves clamp to: the loop region while
+     * `confineToLoopAtom` is set, the whole timeline otherwise. The upper
+     * bound is the START of the last frame inside the range — `loopEnd` /
+     * `duration` are exclusive ends, so landing exactly on them would show
+     * the first frame past it. Absolute timelines keep their inclusive
+     * endpoint (see `stepForward`).
+     */
+    const seekBounds = (): { lo: number; hi: number } => {
+      const duration = store.get(durationAtom);
+      const step = store.get(stepIntervalAtom);
+      if (store.get(confineToLoopAtom)) {
+        const lo = store.get(loopStartAtom);
+        const end = store.get(loopEndAtom);
+        const hi = step > 0 ? Math.max(lo, lastFrameStart(end, step)) : end;
+        return { lo, hi };
+      }
+      return { lo: 0, hi: duration };
+    };
+
     return {
       settleSeek,
       snapPlayheadToFrame,
       seek: (time: number) => {
-        const clamped = clamp(time, 0, store.get(durationAtom));
+        const { lo, hi } = seekBounds();
+        const clamped = clamp(time, lo, hi);
         store.set(playheadAtom, clamped);
         fireSeekEvent(clamped);
         commitWhenReady(clamped);
@@ -757,7 +779,8 @@ export function usePlaybackEngine({
       // where users want the playhead to track discrete frame numbers
       // continuously instead of only on drag-end settle.
       seekSnapped: (time: number) => {
-        const clamped = clamp(time, 0, store.get(durationAtom));
+        const { lo, hi } = seekBounds();
+        const clamped = clamp(time, lo, hi);
         const step = store.get(stepIntervalAtom);
 
         if (!snapToFrameRef.current || step <= 0) {
@@ -786,9 +809,10 @@ export function usePlaybackEngine({
         // Half-step ties round toward +Infinity per JS `Math.round`, so
         // an exact midpoint cursor tips forward — deterministic and
         // imperceptible in practice (sub-frame mouse precision).
-        const snapped = Math.min(
+        const snapped = clamp(
           Math.round(clamped / step) * step,
-          lastFrameStart(store.get(durationAtom), step),
+          lo,
+          Math.min(hi, lastFrameStart(store.get(durationAtom), step)),
         );
 
         // Early-return when the snap result matches the current playhead —
@@ -819,14 +843,15 @@ export function usePlaybackEngine({
         snapPlayheadToFrame();
       },
       stepBack: () => {
+        const { lo, hi } = seekBounds();
         const next = clamp(
           frameBoundaryStep(
             store.get(playheadAtom),
             store.get(stepIntervalAtom),
             "back",
           ),
-          0,
-          store.get(durationAtom),
+          lo,
+          hi,
         );
         store.set(playheadAtom, next);
         fireSeekEvent(next);
@@ -836,13 +861,16 @@ export function usePlaybackEngine({
       stepForward: () => {
         const step = store.get(stepIntervalAtom);
         const duration = store.get(durationAtom);
+        const { lo, hi } = seekBounds();
         const next = clamp(
           frameBoundaryStep(store.get(playheadAtom), step, "forward"),
-          0,
+          lo,
           // Duration-based media treats `duration` as the exclusive end of
           // its final frame. Absolute timelines can instead have a real
           // observation exactly at their inclusive endpoint.
-          mode.kind === "absolute" ? duration : lastFrameStart(duration, step),
+          mode.kind === "absolute" && !store.get(confineToLoopAtom)
+            ? duration
+            : Math.min(hi, lastFrameStart(duration, step)),
         );
         store.set(playheadAtom, next);
         fireSeekEvent(next);
@@ -868,6 +896,9 @@ export function usePlaybackEngine({
         if (!bounds) return;
         store.set(loopStartAtom, bounds.start);
         store.set(loopEndAtom, bounds.end);
+      },
+      setConfineToLoop: (confine: boolean) => {
+        store.set(confineToLoopAtom, confine);
       },
       setSpeed: (speed: number) => {
         // NaN / Infinity / non-positive values would corrupt `dt` in

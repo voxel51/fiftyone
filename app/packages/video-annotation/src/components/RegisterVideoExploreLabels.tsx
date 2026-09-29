@@ -53,7 +53,19 @@ import {
  * wrapper when duration lands, which would remount anything nested inside it
  * and tear the store back down.
  */
-export const RegisterVideoExploreLabels: React.FC = () => {
+export interface RegisterVideoExploreLabelsProps {
+  /**
+   * A clip sample's support `[first, last]`, or `null`. Sample-level labels
+   * are present only within it — the clip's own label describes those frames
+   * of the parent video and nothing else — matching the looker, which hid
+   * sample overlays outside the support.
+   */
+  support?: readonly [number, number] | null;
+}
+
+export const RegisterVideoExploreLabels: React.FC<
+  RegisterVideoExploreLabelsProps
+> = ({ support = null }) => {
   // Explore scopes the store and the bridge to the sidebar's active frame
   // fields. The annotation-schema defaults these hooks fall back on are only
   // populated once the Annotate sidebar (or the Schema Manager) has loaded
@@ -78,7 +90,7 @@ export const RegisterVideoExploreLabels: React.FC = () => {
   // The instance is shared and the hook is idempotent (it re-sets the same
   // data/schema), so it is safe alongside Annotate's own mount.
   useSyncModalSample();
-  useSyncAnnotationFrameClock();
+  useSyncAnnotationFrameClock(support);
   // `seedWholeClip: false` — Explore is read-only, so nothing here walks the
   // whole clip, and the up-front fetch competes with the <video>'s own
   // buffering rather than helping it. The engine's `prefetch` window keeps

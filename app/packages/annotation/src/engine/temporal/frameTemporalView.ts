@@ -81,6 +81,13 @@ export class FrameTemporalView implements TemporalView {
   private clock: Clock;
   /** Maps clock time (seconds) → frame number; injected so fps lives in one place. */
   private frameAtTime: (time: number) => number;
+  /**
+   * Frames within which sample-level labels are present at all, inclusive.
+   * A clip sample's labels describe only its support frames of the parent
+   * video, so outside this span every sample-level label is absent. `null`
+   * means the whole video (the default).
+   */
+  private sampleSpan: readonly [number, number] | null;
 
   private listeners = new Set<PresenceListener>();
   private frameListeners = new Set<FrameListener>();
@@ -97,10 +104,12 @@ export class FrameTemporalView implements TemporalView {
     reads: FrameReads,
     clock: Clock,
     frameAtTime: (time: number) => number,
+    sampleSpan: readonly [number, number] | null = null,
   ) {
     this.reads = reads;
     this.clock = clock;
     this.frameAtTime = frameAtTime;
+    this.sampleSpan = sampleSpan;
     this.lastFrame = this.currentFrame();
     this.present = this.computePresent();
 
@@ -184,6 +193,13 @@ export class FrameTemporalView implements TemporalView {
    * support falls through to present so a label is never silently dropped.
    */
   private sampleLevelPresent(ref: LabelRef, frame: number): boolean {
+    if (
+      this.sampleSpan &&
+      (frame < this.sampleSpan[0] || frame > this.sampleSpan[1])
+    ) {
+      return false;
+    }
+
     const label = this.reads.getLabel(ref) as PresenceProbe | undefined;
 
     if (!isTemporalDetection(label)) {

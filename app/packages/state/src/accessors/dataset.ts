@@ -275,6 +275,9 @@ export const useDynamicGroupGroupBy = (): string | null => {
 /** Whether the current view is a patches view. */
 export const useIsPatchesView = (): boolean => useRecoilValue(isPatchesView);
 
+/** Whether the current view is a clips view (`to_clips()`). */
+export const useIsClipsView = (): boolean => useRecoilValue(isClipsView);
+
 /** The server's stage descriptors, as `fiftyone/core/stages.py` describes them. */
 export const useStageDefinitions = () => useRecoilValue(stageDefinitions);
 
