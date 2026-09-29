@@ -105,6 +105,7 @@ import { projectionStreamsForHover } from "./hover-projection-streams";
 import { useSourcePoster } from "./source-poster-context";
 import { shouldPresentDestinationPoster } from "./destination-poster";
 import { usePublishVisibleStreams } from "../stream-discovery/visible-streams";
+import { ShownSignal } from "../../../visualization/ShownSignal";
 
 const IMAGE_FIT = "contain";
 const EMPTY_PROJECTION_STREAMS: readonly string[] = [];
@@ -992,6 +993,16 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
           ref={mediaSurfaceRef}
           style={imagePanZoom.surfaceStyle}
         >
+          {requestedImageContentTimeNs !== null &&
+          committedImage?.contentTimeNs === requestedImageContentTimeNs ? (
+            <ShownSignal
+              event="e2e:multimodal:image-shown"
+              detail={{
+                stream,
+                contentTimeNs: requestedImageContentTimeNs.toString(),
+              }}
+            />
+          ) : null}
           {frame && playbackFrame ? (
             frame.kind === "encoded-video" ? (
               isSharedEncodedVideoVisualization(frame) ? (
