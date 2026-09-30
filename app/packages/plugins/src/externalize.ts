@@ -59,7 +59,7 @@ if (typeof window !== "undefined") {
       if (!warnedFoc) {
         warnedFoc = true;
         console.warn(
-          "@fiftyone/components is deprecated and will be removed from plugin environments in the next major version. Use @voxel51/voodo instead.",
+          "@fiftyone/components is deprecated and will be removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead.",
         );
       }
       return foc;
