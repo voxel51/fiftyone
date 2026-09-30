@@ -534,7 +534,7 @@ const SchemaOverview = () => {
                   <Button
                     variant={Variant.Icon}
                     borderless
-                    data-cy={`edit-${row.path}`}
+                    data-cy="edit"
                     onClick={() => setCurrentField(row.path)}
                   >
                     <Icon name={IconName.Edit} size={Size.Md} />
@@ -550,7 +550,7 @@ const SchemaOverview = () => {
                   portal
                 >
                   <Button
-                    data-cy={`setup-${row.path}`}
+                    data-cy="scan"
                     size={Size.Sm}
                     variant={Variant.Secondary}
                     onClick={() => setUpField(row)}

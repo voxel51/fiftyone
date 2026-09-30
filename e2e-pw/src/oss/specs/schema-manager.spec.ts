@@ -188,7 +188,9 @@ test.describe.serial("schema manager", () => {
       { name: "classification", type: "Classification" },
     ]);
 
-    // Hide
+    // Hide: the dataset default shows every field, so hiding happens in
+    // a custom schema
+    await schemaManager.createSchema("hide-classification");
     await row.clickCheckbox();
     await row.assert.isChecked(true);
     await schemaManager.moveFields();

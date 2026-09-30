@@ -134,6 +134,23 @@ const assertBothFieldsRendered = async (modal: ModalPom) => {
   await va.assert.labelListed("approach", true);
 };
 
+/**
+ * Hide `field` through a fresh custom schema and view the sample through
+ * it: the dataset default shows every field, so gating is exercised via a
+ * schema that hides the field, applied as the sidebar's schema lens.
+ */
+const hideThroughSchema = async (
+  schemaManager: SchemaManagerPom,
+  schemaName: string,
+  field: string,
+) => {
+  await schemaManager.open();
+  await schemaManager.createSchema(schemaName);
+  await schemaManager.deactivateField(field);
+  await schemaManager.close();
+  await schemaManager.applyLens(schemaName);
+};
+
 test.describe.serial("video annotation schema activation gating", () => {
   test("deactivating a frame field hides its canvas overlays, timeline tracks, and sidebar rows", async ({
     fiftyoneLoader,
@@ -146,9 +163,7 @@ test.describe.serial("video annotation schema activation gating", () => {
 
     await assertBothFieldsRendered(modal);
 
-    await schemaManager.open();
-    await schemaManager.deactivateField(FRAME_FIELD);
-    await schemaManager.close();
+    await hideThroughSchema(schemaManager, "no-frame-field", FRAME_FIELD);
 
     // the frame field is gone everywhere; the TD field is untouched
     await va.assert.canvasRendersField(FRAME_FIELD, false);
@@ -171,9 +186,7 @@ test.describe.serial("video annotation schema activation gating", () => {
 
     await assertBothFieldsRendered(modal);
 
-    await schemaManager.open();
-    await schemaManager.deactivateField(TD_FIELD);
-    await schemaManager.close();
+    await hideThroughSchema(schemaManager, "no-td-field", TD_FIELD);
 
     // the TD field is gone everywhere; the frame field is untouched
     await va.assert.canvasRendersField(TD_FIELD, false);
@@ -196,13 +209,12 @@ test.describe.serial("video annotation schema activation gating", () => {
 
     await assertBothFieldsRendered(modal);
 
-    // deactivate, confirm it's gone from the canvas, then reactivate
-    await schemaManager.open();
-    await schemaManager.deactivateField(FRAME_FIELD);
-    await schemaManager.close();
+    // hide, confirm it's gone from the canvas, then show it again
+    await hideThroughSchema(schemaManager, "toggle-frame-field", FRAME_FIELD);
     await va.assert.canvasRendersField(FRAME_FIELD, false);
     await va.assert.objectTrackCount(0);
 
+    // the manager opens on the schema in use; closing it re-applies the lens
     await schemaManager.open();
     await schemaManager.activateField(FRAME_FIELD);
     await schemaManager.close();

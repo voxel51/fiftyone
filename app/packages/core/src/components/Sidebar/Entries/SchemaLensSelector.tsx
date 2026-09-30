@@ -89,13 +89,17 @@ export const useSchemaLensAvailable = () => {
   const canManageSchema = useRecoilValue(fos.canManageSchema);
   const taskDoc = useAtomValue(taskLabelSchemaDoc);
   const taskGoverns = useRecoilValue(fos.taskSchemaGoverns);
+  // Patches views expose labels, not the dataset's fields: no schema row
+  // (and no Schema Manager entry) there, matching the Create section.
+  const patches = useRecoilValue(fos.isPatchesView);
   // Labelers (and any role an org restricts to task-only browsing).
   const restricted = useRestrictedBrowsing();
 
   const canSwitch =
     !restricted && Boolean(canEditLabels?.enabled || canManageSchema?.enabled);
   return {
-    available: Boolean(datasetName) && canSwitch && !taskDoc && !taskGoverns,
+    available:
+      Boolean(datasetName) && canSwitch && !patches && !taskDoc && !taskGoverns,
     canSwitch,
     datasetName,
   };
