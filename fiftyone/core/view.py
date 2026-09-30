@@ -22,6 +22,7 @@ import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
+import fiftyone.core.frame_pipelines as fofp
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
@@ -1631,6 +1632,34 @@ class DatasetView(foc.SampleCollection):
             detach_frames = False
             frames_only = False
 
+        _pipeline = None
+        if _contains_videos:
+            _pipeline = fofp.make_pipeline(
+                self,
+                attach_frames=attach_frames or frames_only,
+                limit_frames=limit_frames,
+                support=support,
+            )
+
+        if _pipeline is not None:
+            if attach_frames or frames_only:
+                attach_frames = None  # special syntax: frames already attached
+
+            return self._dataset_pipeline(
+                _pipeline,
+                pipeline=pipeline,
+                media_type=media_type,
+                attach_frames=attach_frames,
+                detach_frames=detach_frames,
+                frames_only=frames_only,
+                group_slice=group_slice,
+                group_slices=group_slices,
+                detach_groups=detach_groups,
+                groups_only=groups_only,
+                manual_group_select=manual_group_select,
+                post_pipeline=post_pipeline,
+            )
+
         idx = 0
         for stage in self._stages:
             _pipeline = stage.to_mongo(_view)
@@ -1726,19 +1755,11 @@ class DatasetView(foc.SampleCollection):
             )
             _pipelines.insert(_adjust(_attach_groups_idx), _pipeline)
 
-        if pipeline is not None:
-            _pipelines.append(pipeline)
-
         _pipeline = list(itertools.chain.from_iterable(_pipelines))
 
-        if media_type is None and not self._is_dynamic_groups:
-            media_type = self.media_type
-
-        if group_slice is None and self._dataset.media_type == fom.GROUP:
-            group_slice = self.__group_slice
-
-        return self._dataset._pipeline(
-            pipeline=_pipeline,
+        return self._dataset_pipeline(
+            _pipeline,
+            pipeline=pipeline,
             media_type=media_type,
             attach_frames=attach_frames,
             detach_frames=detach_frames,
@@ -1752,6 +1773,45 @@ class DatasetView(foc.SampleCollection):
             manual_group_select=manual_group_select,
             post_pipeline=post_pipeline,
         )
+
+    def _dataset_pipeline(
+        self,
+        stages_pipeline,
+        pipeline=None,
+        media_type=None,
+        group_slice=None,
+        **kwargs,
+    ):
+        if pipeline is not None:
+            stages_pipeline = stages_pipeline + pipeline
+
+        if media_type is None and not self._is_dynamic_groups:
+            media_type = self.media_type
+
+        if group_slice is None and self._dataset.media_type == fom.GROUP:
+            group_slice = self.__group_slice
+
+        return self._dataset._pipeline(
+            pipeline=stages_pipeline,
+            media_type=media_type,
+            group_slice=group_slice,
+            **kwargs,
+        )
+
+    def _get_frame_roles(self):
+        """Returns the :meth:`fiftyone.core.stages.ViewStage._frame_role` of
+        each stage in this view.
+
+        Returns:
+            a list of roles
+        """
+        roles = []
+        _view = self._base_view
+        for stage in self._stages:
+            roles.append(stage._frame_role(_view))
+            _view = _view._add_view_stage(stage, validate=False)
+
+        return roles
 
     def _aggregate(
         self,

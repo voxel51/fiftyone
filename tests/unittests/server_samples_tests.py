@@ -10,12 +10,15 @@ import unittest
 from unittest.mock import AsyncMock, Mock, patch
 
 import fiftyone as fo
+import fiftyone.core.frame_pipelines as fofp
 import fiftyone.core.media as fom
+import fiftyone.core.odm as foo
 from fiftyone.server.samples import (
     UnknownSample,
     _create_sample_item,
     get_samples_pipeline,
 )
+import fiftyone.server.view as fosv
 
 from decorators import drop_async_dataset
 
@@ -140,36 +143,29 @@ class ServerSamplesTests(unittest.IsolatedAsyncioTestCase):
             limited_lookup,
         )
 
-        # test select fields
-        self.assertEqual(
-            await _resolve_lookup_stage(
-                dataset.select_fields("frames.labels")
-            ),
-            limited_lookup,
-        )
+        # test select fields and set field, which frame-first pipelines
+        # otherwise handle
+        with fofp._disabled():
+            self.assertEqual(
+                await _resolve_lookup_stage(
+                    dataset.select_fields("frames.labels")
+                ),
+                limited_lookup,
+            )
 
-        # test set field
-        self.assertEqual(
-            await _resolve_lookup_stage(
-                dataset.add_stage(
-                    fo.SetField("frames.labels", None, _allow_limit=True)
-                )
-            ),
-            limited_lookup,
-        )
+            self.assertEqual(
+                await _resolve_lookup_stage(
+                    dataset.add_stage(
+                        fo.SetField("frames.labels", None, _allow_limit=True)
+                    )
+                ),
+                limited_lookup,
+            )
 
     @drop_async_dataset
     async def test_full_frames_lookup(self, dataset: fo.Dataset):
         _add_video_sample(dataset)
         full_lookup = _get_expected_lookup_stage(dataset, limit=False)
-
-        # test match frames field
-        self.assertEqual(
-            await _resolve_lookup_stage(
-                dataset.match({"frames.filepath": "frame.png"}),
-            ),
-            full_lookup,
-        )
 
         # test match frames field expression
         self.assertEqual(
@@ -179,13 +175,95 @@ class ServerSamplesTests(unittest.IsolatedAsyncioTestCase):
             full_lookup,
         )
 
-        # test filter frame labels
-        self.assertEqual(
-            await _resolve_lookup_stage(
-                dataset.filter_labels("frames.labels", F("label") == "label"),
-            ),
-            full_lookup,
+        # frame-first pipelines otherwise handle these
+        with fofp._disabled():
+            # test match frames field
+            self.assertEqual(
+                await _resolve_lookup_stage(
+                    dataset.match({"frames.filepath": "frame.png"}),
+                ),
+                full_lookup,
+            )
+
+            # test filter frame labels
+            self.assertEqual(
+                await _resolve_lookup_stage(
+                    dataset.filter_labels(
+                        "frames.labels", F("label") == "label"
+                    ),
+                ),
+                full_lookup,
+            )
+
+    @drop_async_dataset
+    async def test_frame_first_grid_pipeline(self, dataset: fo.Dataset):
+        video = fo.Sample(filepath="video.mp4")
+        for frame_number in range(1, 201):
+            video[frame_number]["detections"] = fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="person" if frame_number > 150 else "car",
+                        confidence=i / 5,
+                    )
+                    for i in range(5)
+                ]
+            )
+        other = fo.Sample(filepath="other.mp4")
+        other[1]["detections"] = fo.Detections(
+            detections=[fo.Detection(label="car")]
         )
+        dataset.add_samples([video, other])
+
+        filters = {
+            "frames.detections.detections.label": {
+                "values": ["person"],
+                "exclude": False,
+                "isMatching": False,
+            }
+        }
+        view = fosv.get_view(dataset.name, filters=filters)
+        self.assertEqual(
+            [type(s).__name__ for s in view._stages], ["Match", "FilterLabels"]
+        )
+
+        pipeline = await get_samples_pipeline(view, None)
+        with fofp._disabled():
+            old_pipeline = await get_samples_pipeline(view, None)
+
+        # The sample-first grid attaches every frame, then maps over them
+        [old_lookup] = _frame_lookups(dataset, old_pipeline)
+        self.assertNotIn({"$limit": 1}, old_lookup["pipeline"])
+        self.assertTrue(fofp._contains(old_pipeline, "$frames"))
+
+        # The frame-first grid checks for a matching frame and attaches only
+        # the first filtered frame
+        lookups = _frame_lookups(dataset, pipeline)
+        self.assertEqual(len(lookups), 3)
+        for lookup in lookups:
+            self.assertIn({"$limit": 1}, lookup["pipeline"])
+        self.assertEqual(lookups[-1]["as"], "frames")
+
+        # Only the grid's trailing `$slice` reads the attached frames
+        self.assertFalse(fofp._contains(pipeline[:-1], "$frames"))
+
+        collection = foo.get_async_db_conn()[dataset._sample_collection_name]
+        docs = await foo.aggregate(collection, pipeline).to_list(None)
+        old_docs = await foo.aggregate(collection, old_pipeline).to_list(None)
+        self.assertEqual(docs, old_docs)
+        self.assertEqual(len(docs), 1)
+        [frame] = docs[0]["frames"]
+        self.assertEqual(frame["frame_number"], 1)
+        self.assertEqual(frame["detections"]["detections"], [])
+        self.assertEqual(view.count(), 1)
+
+
+def _frame_lookups(dataset, pipeline):
+    return [
+        stage["$lookup"]
+        for stage in pipeline
+        if "$lookup" in stage
+        and stage["$lookup"]["from"] == dataset._frame_collection_name
+    ]
 
 
 async def _resolve_lookup_stage(view: fo.DatasetView):

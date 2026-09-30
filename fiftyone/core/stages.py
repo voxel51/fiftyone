@@ -45,10 +45,16 @@ fob = fou.lazy_import("fiftyone.brain")
 focl = fou.lazy_import("fiftyone.core.clips")
 foc = fou.lazy_import("fiftyone.core.collections")
 fod = fou.lazy_import("fiftyone.core.dataset")
+fofp = fou.lazy_import("fiftyone.core.frame_pipelines")
 fop = fou.lazy_import("fiftyone.core.patches")
 fov = fou.lazy_import("fiftyone.core.view")
 fovi = fou.lazy_import("fiftyone.core.video")
 foug = fou.lazy_import("fiftyone.utils.geojson")
+
+# Values of ViewStage._frame_role()
+_SAMPLE_ROLE = "sample"
+_FRAME_ROLE = "frame"
+_FRAME_MATCH_ROLE = "frame_match"
 
 
 class ViewStage(object):
@@ -316,6 +322,31 @@ class ViewStage(object):
             True/False
         """
         return False
+
+    def _frame_role(self, sample_collection):
+        """How the stage reads the frames of video samples.
+
+        Args:
+            sample_collection: the
+                :class:`fiftyone.core.collections.SampleCollection` to which
+                the stage is being applied
+
+        Returns:
+            one of
+
+            -   ``"sample"``: the stage reads and writes only sample-level
+                fields
+            -   ``"frame"``: the stage transforms each frame independently of
+                the other frames, and drops a sample only when it has no
+                frames left
+            -   ``"frame_match"``: like ``"frame"``, but the stage also drops
+                samples based on a predicate over their frames
+            -   ``None``: the stage may require the full frames array
+        """
+        if type(self) in _SAMPLE_ROLE_STAGES:
+            return _SAMPLE_ROLE
+
+        return None
 
     def _needs_group_slices(self, sample_collection):
         """Whether the stage requires group slice(s) to be attached.
@@ -1131,6 +1162,12 @@ class ExcludeFields(ViewStage):
 
         return [{"$project": {p: False for p in excluded_paths}}]
 
+    def _frame_role(self, sample_collection):
+        if self._needs_frames(sample_collection):
+            return _FRAME_ROLE
+
+        return _SAMPLE_ROLE
+
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():
             return False
@@ -1479,6 +1516,9 @@ class ExcludeFrames(ViewStage):
                 "placeholder": "omit empty (default=True)",
             },
         ]
+
+    def _frame_role(self, _):
+        return _FRAME_ROLE
 
     def _needs_frames(self, _):
         return True
@@ -1845,6 +1885,15 @@ class ExcludeLabels(ViewStage):
             },
         ]
 
+    def _frame_role(self, sample_collection):
+        if not self._needs_frames(sample_collection):
+            return _SAMPLE_ROLE
+
+        if self._omit_empty:
+            return _FRAME_MATCH_ROLE
+
+        return _FRAME_ROLE
+
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():
             return False
@@ -2056,6 +2105,12 @@ class Exists(ViewStage):
 
         return [{"$match": {"$expr": expr.to_mongo()}}]
 
+    def _frame_role(self, sample_collection):
+        if not self._needs_frames(sample_collection):
+            return _SAMPLE_ROLE
+
+        return _FRAME_MATCH_ROLE
+
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():
             return False
@@ -2212,6 +2267,18 @@ class FilterField(ViewStage):
     def _get_new_field(self, sample_collection):
         new_field, _ = sample_collection._handle_frame_field(self._new_field)
         return new_field
+
+    def _frame_role(self, sample_collection):
+        if foe.is_frames_expr(self._get_mongo_filter()):
+            return None
+
+        if not self._needs_frames(sample_collection):
+            return _SAMPLE_ROLE
+
+        if self._only_matches:
+            return _FRAME_MATCH_ROLE
+
+        return _FRAME_ROLE
 
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():
@@ -2808,6 +2875,22 @@ class FilterLabels(ViewStage):
 
         return new_field
 
+    def _frame_role(self, sample_collection):
+        if foe.is_frames_expr(self._get_mongo_filter()):
+            return None
+
+        if not self._needs_frames(sample_collection):
+            return _SAMPLE_ROLE
+
+        # Trajectories are matched across all frames of a sample
+        if self._trajectories:
+            return None
+
+        if self._only_matches:
+            return _FRAME_MATCH_ROLE
+
+        return _FRAME_ROLE
+
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():
             return False
@@ -3264,6 +3347,15 @@ class FilterKeypoints(ViewStage):
             return ".".join([new_field, field.split(".")[-1]])
 
         return new_field
+
+    def _frame_role(self, sample_collection):
+        if not self._needs_frames(sample_collection):
+            return _SAMPLE_ROLE
+
+        if self._only_matches:
+            return _FRAME_MATCH_ROLE
+
+        return _FRAME_ROLE
 
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():
@@ -4462,6 +4554,12 @@ class LimitLabels(ViewStage):
 
         return pipeline
 
+    def _frame_role(self, sample_collection):
+        if self._needs_frames(sample_collection):
+            return _FRAME_ROLE
+
+        return _SAMPLE_ROLE
+
     def _needs_frames(self, sample_collection):
         return self._is_frame_field
 
@@ -4621,6 +4719,12 @@ class MapLabels(ViewStage):
         )
         return pipeline
 
+    def _frame_role(self, sample_collection):
+        if self._needs_frames(sample_collection):
+            return _FRAME_ROLE
+
+        return _SAMPLE_ROLE
+
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():
             return False
@@ -4754,6 +4858,12 @@ class MapValues(ViewStage):
             self._field, expr
         )
         return pipeline
+
+    def _frame_role(self, sample_collection):
+        if self._needs_frames(sample_collection):
+            return _FRAME_ROLE
+
+        return _SAMPLE_ROLE
 
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():
@@ -4934,6 +5044,22 @@ class SetField(ViewStage):
             )
 
         return self._pipeline
+
+    def _frame_role(self, sample_collection):
+        if foe.is_frames_expr(self._get_mongo_expr()):
+            return None
+
+        field_name, is_frame_field = sample_collection._handle_frame_field(
+            self._field
+        )
+        if not is_frame_field:
+            return _SAMPLE_ROLE
+
+        # Setting the frames array itself is not a per-frame edit
+        if not field_name:
+            return None
+
+        return _FRAME_ROLE
 
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():
@@ -5125,6 +5251,15 @@ class Match(ViewStage):
 
     def to_mongo(self, _):
         return [{"$match": self._get_mongo_expr()}]
+
+    def _frame_role(self, sample_collection):
+        if not self._needs_frames(sample_collection):
+            return _SAMPLE_ROLE
+
+        if fofp.is_frame_match(self.to_mongo(sample_collection)):
+            return _FRAME_MATCH_ROLE
+
+        return None
 
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():
@@ -5784,6 +5919,12 @@ class MatchFrames(ViewStage):
                 "Filter must be a ViewExpression or a MongoDB aggregation "
                 "expression defining a filter; found '%s'" % self._filter
             )
+
+    def _frame_role(self, _):
+        if foe.is_frames_expr(self._get_mongo_expr()):
+            return None
+
+        return _FRAME_ROLE
 
     def _needs_frames(self, _):
         return True
@@ -7012,6 +7153,12 @@ class SelectFields(ViewStage):
 
         return [{"$project": {f: True for f in selected_paths}}]
 
+    def _frame_role(self, sample_collection):
+        if self._needs_frames(sample_collection):
+            return _FRAME_ROLE
+
+        return _SAMPLE_ROLE
+
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():
             return False
@@ -7165,6 +7312,9 @@ class SelectFrames(ViewStage):
                 "placeholder": "omit empty (default=True)",
             },
         ]
+
+    def _frame_role(self, _):
+        return _FRAME_ROLE
 
     def _needs_frames(self, _):
         return True
@@ -7560,6 +7710,16 @@ class SelectLabels(ViewStage):
                 "placeholder": "omit empty (default=True)",
             },
         ]
+
+    def _frame_role(self, sample_collection):
+        if not self._needs_frames(sample_collection):
+            return _SAMPLE_ROLE
+
+        # Selecting explicit labels omits empty samples by their IDs
+        if self._omit_empty and self._labels is None:
+            return _FRAME_MATCH_ROLE
+
+        return _FRAME_ROLE
 
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():
@@ -7970,6 +8130,12 @@ class SortBy(ViewStage):
             pipeline.append({"$project": {f: False for f in set_dict.keys()}})
 
         return pipeline
+
+    def _frame_role(self, sample_collection):
+        if not self._needs_frames(sample_collection):
+            return _SAMPLE_ROLE
+
+        return None
 
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():
@@ -9865,6 +10031,21 @@ _STAGES_THAT_SELECT_OR_REORDER = {
     Select,
     SelectBy,
     SelectGroupSlices,
+    Skip,
+    Take,
+}
+
+# Registry of stages that never read or write frames
+_SAMPLE_ROLE_STAGES = {
+    Exclude,
+    ExcludeGroups,
+    ExcludeGroupSlices,
+    Limit,
+    MatchTags,
+    Select,
+    SelectGroups,
+    SelectGroupSlices,
+    Shuffle,
     Skip,
     Take,
 }

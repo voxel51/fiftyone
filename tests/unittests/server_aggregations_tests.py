@@ -12,6 +12,8 @@ import strawberry as gql
 from strawberry.schema.config import StrawberryConfig
 
 import fiftyone as fo
+import fiftyone.core.frame_pipelines as fofp
+import fiftyone.core.stages as fosg
 import fiftyone.core.tags as fota
 
 from fiftyone.server.aggregate import AggregateQuery
@@ -189,6 +191,86 @@ class TestGroupModeSidebarCounts(unittest.IsolatedAsyncioTestCase):
                     },
                 ],
             },
+        )
+
+
+class TestFrameFirstSidebarAggregations(unittest.IsolatedAsyncioTestCase):
+    @drop_async_dataset
+    async def test_frame_paths_match_old_path(self, dataset: fo.Dataset):
+        samples = []
+        for idx in range(3):
+            video = fo.Sample(filepath="video%d.mp4" % idx, tags=["a"])
+            for frame_number in range(1, 21):
+                video[frame_number]["detections"] = fo.Detections(
+                    detections=[
+                        fo.Detection(
+                            label=(
+                                "person" if frame_number > idx * 5 else "car"
+                            ),
+                            confidence=frame_number / 20,
+                        )
+                        for _ in range(3)
+                    ]
+                )
+                video[frame_number]["flag"] = frame_number % 2 == 0
+
+            samples.append(video)
+
+        samples[-1].tags = []
+        dataset.add_samples(samples)
+
+        query = """
+            query Query($form: AggregationForm!) {
+                aggregations(form: $form) {
+                    ... on StringAggregation {
+                        path count exists values { count value }
+                    }
+                    ... on FloatAggregation {
+                        path count exists min max inf nan ninf
+                    }
+                    ... on BooleanAggregation { path count exists true false }
+                    ... on RootAggregation { path count exists }
+                }
+            }
+        """
+        form = {
+            "dataset": dataset.name,
+            "extended_stages": {},
+            "filters": {
+                "frames.detections.detections.label": {
+                    "values": ["person"],
+                    "exclude": False,
+                    "isMatching": False,
+                }
+            },
+            "group_id": None,
+            "hidden_labels": [],
+            "index": 0,
+            "mixed": False,
+            "paths": [
+                "",
+                "frames.detections.detections.label",
+                "frames.detections.detections.confidence",
+                "frames.flag",
+            ],
+            "sample_ids": [],
+            "slice": None,
+            "slices": None,
+            "view": [fosg.MatchTags("a")._serialize()],
+        }
+
+        result = await execute(schema, query, {"form": form})
+        with fofp._disabled():
+            expected = await execute(schema, query, {"form": form})
+
+        self.assertIsNone(result.errors)
+        self.assertEqual(result.data, expected.data)
+
+        by_path = {a["path"]: a for a in result.data["aggregations"]}
+        self.assertEqual(by_path[""]["count"], 2)
+        self.assertEqual(
+            by_path["frames.detections.detections.label"]["values"],
+            [{"count": 105, "value": "person"}],
         )
 
 

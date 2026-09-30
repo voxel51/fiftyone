@@ -50,6 +50,7 @@ import fiftyone.core.utils as fou
 from fiftyone.internal.docs import hide_from_docs
 
 fod = fou.lazy_import("fiftyone.core.dataset")
+fofa = fou.lazy_import("fiftyone.core.frame_aggregations")
 foma = fou.lazy_import("fiftyone.multimodal.media_reference.asset_planning")
 fos = fou.lazy_import("fiftyone.core.stages")
 fota = fou.lazy_import("fiftyone.core.tags")
@@ -11655,7 +11656,7 @@ class SampleCollection(object):
             pipelines.append(pipeline)
 
         # Build facet-able pipelines
-        compiled_facet_aggs, facet_pipelines, _ = self._build_facets(
+        compiled_facet_aggs, facet_pipelines, _, plans = self._build_facets(
             facet_aggs
         )
         for idx, pipeline in facet_pipelines.items():
@@ -11665,10 +11666,24 @@ class SampleCollection(object):
         if _mongo:
             return pipelines[0] if scalar_result else pipelines
 
+        db = foo.get_db_conn()
+        collections = [self._dataset._sample_collection] * len(pipelines)
+        for idx, plan in plans.items():
+            sample_ids = None
+            if plan.ids_pipeline is not None:
+                sample_ids = [
+                    d["_id"]
+                    for d in foo.aggregate(
+                        self._dataset._sample_collection, plan.ids_pipeline
+                    )
+                ]
+
+            coll_name, pipeline = plan.build(sample_ids)
+            collections[idx_map[idx]] = db[coll_name]
+            pipelines[idx_map[idx]] = pipeline
+
         # Run all aggregations
-        _results = foo.aggregate(
-            self._dataset._sample_collection, pipelines, _stream=stream
-        )
+        _results = foo.aggregate(collections, pipelines, _stream=stream)
 
         # Parse batch results
         if batch_aggs:
@@ -11779,18 +11794,37 @@ class SampleCollection(object):
 
         if facet_aggs:
             # Build facet-able pipelines
-            compiled_facet_aggs, facet_pipelines, hints = self._build_facets(
-                facet_aggs
-            )
+            (
+                compiled_facet_aggs,
+                facet_pipelines,
+                hints,
+                plans,
+            ) = self._build_facets(facet_aggs)
             for idx, pipeline in facet_pipelines.items():
                 idx_map[idx] = len(pipelines)
                 pipelines.append(pipeline)
 
+            db = foo.get_async_db_conn()
+            sample_collection = db[self._dataset._sample_collection_name]
+            collections = [sample_collection] * len(pipelines)
+            for idx, plan in plans.items():
+                sample_ids = None
+                if plan.ids_pipeline is not None:
+                    docs = await foo.aggregate(
+                        sample_collection, plan.ids_pipeline
+                    ).to_list(None)
+                    sample_ids = [d["_id"] for d in docs]
+
+                coll_name, pipeline = plan.build(sample_ids)
+                collections[idx_map[idx]] = db[coll_name]
+                pipelines[idx_map[idx]] = pipeline
+
+                # Index hints refer to the sample collection
+                hints[idx_map[idx]] = None
+
             # Run all aggregations
-            coll_name = self._dataset._sample_collection_name
-            collection = foo.get_async_db_conn()[coll_name]
             _results = await foo.aggregate(
-                collection, pipelines, hints, maxTimeMS=maxTimeMS
+                collections, pipelines, hints, maxTimeMS=maxTimeMS
             )
 
             # Parse facet-able results
@@ -11916,15 +11950,21 @@ class SampleCollection(object):
 
         pipelines = {}
         hints = []
+        plans = {}
         for idx, aggregation in compiled.items():
+            pipeline = aggregation.to_mongo(self)
             pipelines[idx] = self._pipeline(
-                pipeline=aggregation.to_mongo(self),
+                pipeline=pipeline,
                 attach_frames=aggregation._needs_frames(self),
                 group_slices=aggregation._needs_group_slices(self),
             )
             hints.append(getattr(aggregation, "_hint", None))
 
-        return compiled, pipelines, hints
+            plan = fofa.plan_aggregation(self, aggregation, pipeline)
+            if plan is not None:
+                plans[idx] = plan
+
+        return compiled, pipelines, hints, plans
 
     def _parse_big_result(self, aggregation, result):
         if result:

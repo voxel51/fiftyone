@@ -29,6 +29,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.json as foj
 import fiftyone.core.labels as fol
 import fiftyone.core.odm as foo
+import fiftyone.core.stages as fosg
 from fiftyone.core.utils import run_sync_task
 import fiftyone.core.view as fov
 
@@ -46,6 +47,11 @@ TRACK_INDEX_PREFIX = "track-"
 # ``@fiftyone/video-annotation`` so a mask field is one timeline row.
 SINGLETON_ADDRESS_PREFIX = "field:"
 _SINGLETON_LABEL_TYPES = (fol.Segmentation, fol.Heatmap)
+
+# A stage that drops a sample by a predicate over all of its frames
+# (``"frame_match"``) can drop it for frames outside the window, so it needs
+# the whole clip
+_WINDOW_ROLES = {fosg._SAMPLE_ROLE, fosg._FRAME_ROLE}
 
 
 def run_length_encode(frames: t.Iterable[int]) -> t.List[t.List[int]]:
@@ -450,25 +456,9 @@ class VideoLabelsWindow(HTTPEndpoint):
         view = await fosv.get_view(
             dataset, stages=stages, extended_stages=extended, awaitable=True
         )
-        support = None if stages else [start_frame, end_frame]
-
-        def run(view):
-            view = fov.make_optimized_select_view(
-                view, sample_id, flatten=True
-            )
-
-            if not support:
-                view = view.set_field(
-                    "frames",
-                    F("frames").filter(
-                        (F("frame_number") >= start_frame)
-                        & (F("frame_number") <= end_frame)
-                    ),
-                )
-
-            return view
-
-        view = await run_sync_task(run, view)
+        view, support = await run_sync_task(
+            window_view, view, sample_id, start_frame, end_frame
+        )
         windowed = await aggregate_window(view, fields, support)
 
         return JSONResponse(
@@ -477,6 +467,30 @@ class VideoLabelsWindow(HTTPEndpoint):
                 "range": [start_frame, end_frame],
             }
         )
+
+
+def window_view(
+    view, sample_id: str, start_frame: int, end_frame: int
+) -> t.Tuple[fov.DatasetView, t.Optional[t.List[int]]]:
+    """Selects ``sample_id`` from ``view`` for a read of the inclusive frame
+    window.
+
+    Returns the view and the ``support`` to pass to :func:`aggregate_window`.
+    When every stage is sample-level or per-frame, ``support`` bounds the
+    frame lookup to the window, so the stages only see the windowed frames.
+    Otherwise ``support`` is ``None`` and the view reads the whole clip, then
+    keeps the frames in the window.
+    """
+    view = fov.make_optimized_select_view(view, sample_id, flatten=True)
+
+    if all(role in _WINDOW_ROLES for role in view._get_frame_roles()):
+        return view, [start_frame, end_frame]
+
+    view = view.match_frames(
+        (F("frame_number") >= start_frame) & (F("frame_number") <= end_frame),
+        omit_empty=False,
+    )
+    return view, None
 
 
 async def aggregate_window(
