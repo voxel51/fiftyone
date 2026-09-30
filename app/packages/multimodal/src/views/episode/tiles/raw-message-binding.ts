@@ -1,6 +1,7 @@
 import { useTileId } from "@fiftyone/tiling";
-import { atom, useAtomValue, useStore } from "jotai";
+import { atom, useAtomValue } from "jotai";
 import { useCallback } from "react";
+import { useEpisodeStore } from "../../../extensions/host/episode-store";
 
 /**
  * Inspected stream per raw-message tile (tile id → stream). Lives in the
@@ -15,15 +16,16 @@ export const rawTileStreamAtom = atom<RawTileStreams>({});
 
 /** Subscribe to the surrounding raw-message tile's inspected stream. */
 export function useRawTileStream(): string | null {
+  const store = useEpisodeStore();
   const tileId = useTileId();
-  const byTile = useAtomValue(rawTileStreamAtom);
+  const byTile = useAtomValue(rawTileStreamAtom, { store });
   return tileId ? (byTile[tileId] ?? null) : null;
 }
 
 /** Set (or clear, with null) the surrounding raw tile's stream. */
 export function useSetRawTileStream(): (stream: string | null) => void {
   const tileId = useTileId();
-  const store = useStore();
+  const store = useEpisodeStore();
   return useCallback(
     (stream) => {
       if (!tileId) {

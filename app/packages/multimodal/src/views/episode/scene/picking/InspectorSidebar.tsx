@@ -16,6 +16,7 @@ import {
   type SelectedSceneObject,
 } from "../../interaction/selection/selected-object";
 import settingsStyles from "../../tiles/Tile.settings.module.css";
+import { useEpisodeStore } from "../../../../extensions/host/episode-store";
 
 /**
  * Right-sidebar inspector for the episode modal. Follows the modal-wide
@@ -25,8 +26,9 @@ import settingsStyles from "../../tiles/Tile.settings.module.css";
  * everything the fields don't cover.
  */
 const InspectorSidebar: React.FC = () => {
+  const store = useEpisodeStore();
   const selected = useSelectedObject();
-  const setSelected = useSetAtom(selectedObjectAtom);
+  const setSelected = useSetAtom(selectedObjectAtom, { store });
   const sources = useSceneInventory();
   const sourceNamesById = useMemo(
     () => new Map(sources.map((source) => [source.id, source.sourceName])),

@@ -5,7 +5,6 @@ import {
   useTileId,
 } from "@fiftyone/tiling";
 import { useIsPlaying } from "@fiftyone/playback";
-import { useStore } from "jotai";
 import React, {
   useCallback,
   useEffect,
@@ -103,6 +102,7 @@ import { projectionStreamsForHover } from "./hover-projection-streams";
 import { useSourcePoster } from "./source-poster-context";
 import { shouldPresentDestinationPoster } from "./destination-poster";
 import { usePublishVisibleStreams } from "../stream-discovery/visible-streams";
+import { useEpisodeStore } from "../../../extensions/host/episode-store";
 
 const IMAGE_FIT = "contain";
 const EMPTY_PROJECTION_STREAMS: readonly string[] = [];
@@ -143,7 +143,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
   const setTileTitle = useSetTileTitle();
   const setTileTitleHighlighted = useSetTileTitleHighlighted();
   const hoveredFrustumImageStream = useHoveredFrustumImageStream();
-  const jotaiStore = useStore();
+  const jotaiStore = useEpisodeStore();
   // Open on the resolver-assigned source; tiles added by hand (split
   // buttons, add-tile menu) bind the default-preferred stream no sibling
   // tile is already showing — splitting repeatedly walks through cameras.

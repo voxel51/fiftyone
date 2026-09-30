@@ -1,5 +1,5 @@
 import { useTileId } from "@fiftyone/tiling";
-import { atom, useAtomValue, useStore } from "jotai";
+import { atom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo } from "react";
 import type { SceneSource } from "../../../scene-inventory";
 import {
@@ -8,6 +8,7 @@ import {
   usePanelVisibilityScope,
   useSidebarSourceIdentity,
 } from "../preferences";
+import { useEpisodeStore } from "../../../extensions/host/episode-store";
 
 type ImageTileBindings = Readonly<Record<string, string>>;
 
@@ -40,7 +41,8 @@ export const persistedAudioTileBindingsAtom = atom<ImageTileBindings>({});
 
 /** Subscribe to the current tile→source bindings map. */
 export function useImageTileBindings(): Readonly<Record<string, string>> {
-  return useAtomValue(imageTileBindingsAtom);
+  const store = useEpisodeStore();
+  return useAtomValue(imageTileBindingsAtom, { store });
 }
 
 /**
@@ -82,7 +84,7 @@ export function usePreferredAudioTileStream(): string | null | undefined {
  */
 export function usePublishImageTileBinding(sourceId: string): void {
   const tileId = useTileId();
-  const store = useStore();
+  const store = useEpisodeStore();
   // This effect mirrors the tile's current binding into the shared map —
   // an external (cross-tile) store, so an effect is the right tool.
   useEffect(() => {
@@ -111,7 +113,7 @@ export function usePersistImageTileBinding(
   sourceId: string,
 ): (sourceId: string) => void {
   const tileId = useTileId();
-  const store = useStore();
+  const store = useEpisodeStore();
   const scopeKey = usePanelVisibilityScope();
   const identity = useSidebarSourceIdentity();
   const preferredRuntimeId = usePreferredImageTileStream();
@@ -173,7 +175,7 @@ export function usePersistAudioTileBinding(
   sourceId: string,
 ): (sourceId: string) => void {
   const tileId = useTileId();
-  const store = useStore();
+  const store = useEpisodeStore();
   const scopeKey = usePanelVisibilityScope();
   const identity = useSidebarSourceIdentity();
   const preferredRuntimeId = usePreferredAudioTileStream();
@@ -231,7 +233,8 @@ export const hoveredImageStreamAtom = atom<string | null>(null);
 
 /** Subscribe to the hovered image source id. */
 export function useHoveredImageStream(): string | null {
-  return useAtomValue(hoveredImageStreamAtom);
+  const store = useEpisodeStore();
+  return useAtomValue(hoveredImageStreamAtom, { store });
 }
 
 /** Image stream whose textured 3D camera frustum is currently hovered. */
@@ -239,7 +242,8 @@ const hoveredFrustumImageStreamAtom = atom<string | null>(null);
 
 /** Subscribe to the image stream hovered from the 3D camera surface. */
 export function useHoveredFrustumImageStream(): string | null {
-  return useAtomValue(hoveredFrustumImageStreamAtom);
+  const store = useEpisodeStore();
+  return useAtomValue(hoveredFrustumImageStreamAtom, { store });
 }
 
 /** Domain operations for publishing hover from a 3D camera frustum. */
@@ -247,7 +251,7 @@ export function useFrustumImageHover(): {
   readonly clearIfCurrent: (stream: string) => boolean;
   readonly setHovered: (stream: string) => void;
 } {
-  const store = useStore();
+  const store = useEpisodeStore();
   return useMemo(
     () => ({
       clearIfCurrent: (stream: string) => {
@@ -274,7 +278,7 @@ export function useImageTileHoverProps(sourceId: string): {
   readonly onPointerEnter: () => void;
   readonly onPointerLeave: () => void;
 } {
-  const store = useStore();
+  const store = useEpisodeStore();
   // This effect releases a still-published hover when the tile unmounts
   // or rebinds to another source.
   useEffect(

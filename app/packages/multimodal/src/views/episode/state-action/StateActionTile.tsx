@@ -52,6 +52,7 @@ import {
 } from "./state-action-format";
 import StateActionTileSettings from "./StateActionTileSettings";
 import styles from "./StateActionTile.module.css";
+import { useEpisodeStore } from "../../../extensions/host/episode-store";
 
 const ROW_HEIGHT_PX = 22;
 const VIRTUALIZE_AFTER_ROWS = 150;
@@ -67,6 +68,7 @@ const ACTION_PANE_LABEL = "Action";
  * exact row cursor while seeking cameras to the row's timestamp.
  */
 const StateActionTile: React.FC<EpisodeTileProps> = () => {
+  const store = useEpisodeStore();
   const tileId = useTileId();
   const setTileTitle = useSetTileTitle();
   const { pause, seek } = usePlayback();
@@ -152,8 +154,8 @@ const StateActionTile: React.FC<EpisodeTileProps> = () => {
     return () => controller.abort();
   }, [readEpisodeProfile, schemaFacts]);
   const row = rowState?.row ?? null;
-  const valueMode = useAtomValue(stateActionValueModeAtom);
-  const markerScope = useAtomValue(stateActionMarkerScopeAtom);
+  const valueMode = useAtomValue(stateActionValueModeAtom, { store });
+  const markerScope = useAtomValue(stateActionMarkerScopeAtom, { store });
 
   const [previousRow, setPreviousRow] = useState<{
     readonly forCursor: string;

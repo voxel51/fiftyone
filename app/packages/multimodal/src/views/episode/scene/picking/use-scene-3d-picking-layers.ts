@@ -1,5 +1,5 @@
 import { type SetStateAction, useCallback, useEffect, useMemo } from "react";
-import { type PrimitiveAtom, useStore } from "jotai";
+import { type PrimitiveAtom } from "jotai";
 
 import type { SceneSource } from "../../../../ir";
 import { useKeyedIdentityMap } from "../../../../visualization/panel-ui/use-keyed-identity-map";
@@ -28,6 +28,7 @@ import {
   useSelectedObject,
 } from "../../interaction/selection/selected-object";
 import { frameTransformIdentityInputs } from "../entities/scene-3d-layer-identity";
+import { useEpisodeStore } from "../../../../extensions/host/episode-store";
 
 type SelectedObjectState = ReturnType<typeof useSelectedObject>;
 
@@ -45,7 +46,7 @@ export function useScene3dPickingLayers({
   readonly sourceLabelsById: ReadonlyMap<string, string>;
   readonly worldFrameId: string;
 }) {
-  const jotaiStore = useStore();
+  const jotaiStore = useEpisodeStore();
   const {
     containerProps: hoverTooltipContainerProps,
     onHoverCamera,

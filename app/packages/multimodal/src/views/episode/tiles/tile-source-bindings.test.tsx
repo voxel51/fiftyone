@@ -509,6 +509,10 @@ describe("usePersistAudioTileBinding", () => {
     props: { readonly selectedSourceId?: string; readonly sourceId: string },
     scopeKey?: string,
   ) {
+    // Episode atoms bind to the shell's store; outside a shell they fall
+    // back to the ambient one, so give each render its own to keep the
+    // cases isolated.
+    const store = createStore();
     const tree = (
       nextSources: readonly SceneSource[],
       nextProps: {
@@ -516,15 +520,17 @@ describe("usePersistAudioTileBinding", () => {
         readonly sourceId: string;
       },
     ) => (
-      <PanelVisibilityProvider scopeKey={scopeKey} sources={nextSources}>
-        <TilingProvider>
-          <TileIdScope tileId="audio-1">
-            <AudioPreferencePublisher {...nextProps} />
-            <PreferredAudioBindingProbe />
-          </TileIdScope>
-          <PersistedAudioBindingsProbe />
-        </TilingProvider>
-      </PanelVisibilityProvider>
+      <JotaiProvider store={store}>
+        <PanelVisibilityProvider scopeKey={scopeKey} sources={nextSources}>
+          <TilingProvider>
+            <TileIdScope tileId="audio-1">
+              <AudioPreferencePublisher {...nextProps} />
+              <PreferredAudioBindingProbe />
+            </TileIdScope>
+            <PersistedAudioBindingsProbe />
+          </TilingProvider>
+        </PanelVisibilityProvider>
+      </JotaiProvider>
     );
     const view = render(tree(sources, props));
     return {

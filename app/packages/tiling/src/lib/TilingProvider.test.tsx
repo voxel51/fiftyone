@@ -16,6 +16,7 @@ import React, { useEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useTileDuplicator, useTileTypes } from "./use-tile-state";
 import { useTileRegistry } from "./use-tile-registry";
+import { registeredTilesAtom } from "./atoms";
 import {
   TileIdScope,
   TileSettingsContent,
@@ -1106,8 +1107,8 @@ describe("spawn operations", () => {
   describe("store binding", () => {
     // An atom the surrounding app owns — the kind of thing a looker or a
     // sidebar reads with a plain `useAtomValue`. The host writes it into
-    // its own store; a tile body must see that value only when the
-    // provider is not isolating.
+    // its own store; a tile body must keep seeing that value, because
+    // tiling never mounts a Jotai <Provider> of its own.
     const hostAtom = atom("unset");
 
     function HostAtomProbe({ onValue }: { onValue: (v: string) => void }) {
@@ -1118,34 +1119,65 @@ describe("spawn operations", () => {
       return null;
     }
 
-    const renderInHost = (isolateStore: boolean) => {
+    it("tile bodies read the surrounding app's store, not a tiling one", () => {
       const hostStore = createStore();
       hostStore.set(hostAtom, "from-host");
       const seen: string[] = [];
       render(
         <JotaiProvider store={hostStore}>
-          <TilingProvider isolateStore={isolateStore}>
+          <TilingProvider>
             <HostAtomProbe onValue={(v) => seen.push(v)} />
           </TilingProvider>
         </JotaiProvider>,
       );
-      return { hostStore, seen };
-    };
-
-    it("isolates by default: tile bodies do not see the host store", () => {
-      const { seen } = renderInHost(true);
-      expect(seen).toEqual(["unset"]);
-    });
-
-    it("with isolateStore=false tile bodies read the host store", () => {
-      const { seen } = renderInHost(false);
       expect(seen).toEqual(["from-host"]);
     });
 
-    it("binds tiling atoms to its own store even when the host nests a Jotai Provider inside", () => {
-      // A tile body that mounts its own Jotai <Provider> (as multimodal's
-      // per-tile scopes do) must not hide the registry from tiling hooks
-      // rendered below it.
+    it("keeps tiling atoms private per provider without touching the ambient store", () => {
+      const hostStore = createStore();
+      function Registrar({ type }: { type: string }) {
+        const { registerTile } = useTileRegistry();
+        useEffect(
+          () =>
+            registerTile({
+              type,
+              typeLabel: type,
+              icon: "grid_view" as never,
+              Tile: () => null,
+            }),
+          [registerTile, type],
+        );
+        return null;
+      }
+      function TypesProbe({ onTypes }: { onTypes: (t: string[]) => void }) {
+        const types = useTileTypes();
+        useEffect(() => {
+          onTypes(types.map((t) => t.type));
+        }, [onTypes, types]);
+        return null;
+      }
+      const a: string[][] = [];
+      const b: string[][] = [];
+      render(
+        <JotaiProvider store={hostStore}>
+          <TilingProvider>
+            <Registrar type="camera" />
+            <TypesProbe onTypes={(t) => a.push(t)} />
+          </TilingProvider>
+          <TilingProvider>
+            <Registrar type="lidar" />
+            <TypesProbe onTypes={(t) => b.push(t)} />
+          </TilingProvider>
+        </JotaiProvider>,
+      );
+      expect(a.at(-1)).toEqual(["camera"]);
+      expect(b.at(-1)).toEqual(["lidar"]);
+      expect(hostStore.get(registeredTilesAtom)).toEqual([]);
+    });
+
+    it("binds tiling atoms to its own store even when a tile body nests a Jotai Provider", () => {
+      // A tile body that mounts its own Jotai <Provider> must not hide the
+      // registry from tiling hooks rendered below it.
       const innerStore = createStore();
       function Registrar() {
         const { registerTile } = useTileRegistry();

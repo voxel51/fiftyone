@@ -1,7 +1,8 @@
 import { useTileId } from "@fiftyone/tiling";
-import { atom, useAtomValue, useStore } from "jotai";
+import { atom, useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
 import { MAP_BASE_LAYER, type MapBaseLayer } from "../rendering/types";
+import { useEpisodeStore } from "../../../../extensions/host/episode-store";
 
 export { MAP_BASE_LAYER, type MapBaseLayer } from "../rendering/types";
 
@@ -30,8 +31,9 @@ export const DEFAULT_MAP_TILE_SETTINGS: MapTileSettings = {
 export const mapTileSettingsAtom = atom<MapTileSettingsByTile>({});
 
 export function useMapTileSettings(): MapTileSettings {
+  const store = useEpisodeStore();
   const tileId = useTileId();
-  const byTile = useAtomValue(mapTileSettingsAtom);
+  const byTile = useAtomValue(mapTileSettingsAtom, { store });
   return useMemo(
     () =>
       tileId
@@ -45,7 +47,7 @@ export function useSetMapTileSettings(): (
   patch: Partial<MapTileSettings>,
 ) => void {
   const tileId = useTileId();
-  const store = useStore();
+  const store = useEpisodeStore();
   return useCallback(
     (patch) => {
       if (!tileId) return;
@@ -75,7 +77,7 @@ export function useToggleMapTileStream(): (
   allStreams: readonly string[],
 ) => void {
   const tileId = useTileId();
-  const store = useStore();
+  const store = useEpisodeStore();
   return useCallback(
     (stream, enabled, allStreams) => {
       if (!tileId) return;

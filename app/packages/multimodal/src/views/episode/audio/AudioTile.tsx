@@ -14,7 +14,6 @@ import {
   TextVariant,
   Variant,
 } from "@voxel51/voodo";
-import { useStore } from "jotai";
 import React, {
   useCallback,
   useEffect,
@@ -41,6 +40,7 @@ import AudioTileSettings from "./AudioTileSettings";
 import styles from "./AudioTile.module.css";
 import WaveformSurface from "./WaveformSurface";
 import { type WaveformTrackSpec } from "./WaveformViewer";
+import { useEpisodeStore } from "../../../extensions/host/episode-store";
 
 /**
  * Audio tile: metadata header + waveform viewer for one or more audio
@@ -62,7 +62,7 @@ const AudioTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
   const [primarySourceId, setPrimarySourceId] = useState<string | undefined>(
     () => initialSourceId ?? sources[0]?.id,
   );
-  const jotaiStore = useStore();
+  const jotaiStore = useEpisodeStore();
   const preferredSourceId = usePreferredAudioTileStream();
   /** Wheel-zoom surface spanning the ruler and the waveform beneath it. */
   const zoomRef = useRef<HTMLDivElement>(null);

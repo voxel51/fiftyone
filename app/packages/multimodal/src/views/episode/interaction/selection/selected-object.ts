@@ -1,6 +1,7 @@
-import { atom, useAtomValue, useStore } from "jotai";
+import { atom, useAtomValue, type PrimitiveAtom } from "jotai";
 import React, { useEffect } from "react";
 import type { SceneEntityVisualization } from "../../../../ir";
+import { useEpisodeStore } from "../../../../extensions/host/episode-store";
 
 /**
  * Cross-tile object selection for the episode modal. One object at a time,
@@ -44,10 +45,15 @@ export interface SelectedImageObject {
 
 export type SelectedObject = SelectedSceneObject | SelectedImageObject;
 
-export const selectedObjectAtom = atom<SelectedObject | null>(null);
+// `atom<T | null>(null)` resolves to a read-only `Atom` through jotai's
+// overloads; the cast keeps the writable shape for `useSetAtom(..., { store })`.
+export const selectedObjectAtom = atom<SelectedObject | null>(
+  null,
+) as PrimitiveAtom<SelectedObject | null>;
 
 export function useSelectedObject(): SelectedObject | null {
-  return useAtomValue(selectedObjectAtom);
+  const store = useEpisodeStore();
+  return useAtomValue(selectedObjectAtom, { store });
 }
 
 // Metadata keys producers commonly use for an object's class/label, in
@@ -109,7 +115,7 @@ export function isLabelEcho(
  * the modal; with nothing selected the event passes through untouched.
  */
 function useClearSelectionOnEscape(): void {
-  const store = useStore();
+  const store = useEpisodeStore();
   // This effect binds a capture-phase Escape listener for the lifetime
   // of the modal shell.
   useEffect(() => {
