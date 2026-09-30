@@ -234,8 +234,14 @@ test("whole episodes and segments retain separate action scopes", async ({
     () => grid.run(() => tray.openCreatedSubset("Mixed drive")),
     1,
   );
-  // a mixed subset opens on its whole episodes, so this re-chooses its scope
-  await tray.chooseSubset("Mixed drive", "Whole episodes");
+  // a mixed subset opens on its whole episodes; re-choosing it reloads them
+  await tray.afterResults(
+    () =>
+      grid.afterRendererTilesMounted(1, () =>
+        grid.run(() => tray.chooseSubset("Mixed drive", "Whole episodes")),
+      ),
+    1,
+  );
   await grid.assert.isTileCountEqualTo(1);
   await tray.assert.contains("Act on all episodes in the grid");
   await modal.episode.afterReady(tinyA.fileName, () => grid.openFirstSample());
@@ -243,7 +249,10 @@ test("whole episodes and segments retain separate action scopes", async ({
 
   await tray.afterTray(
     (shown) => !shown.explicit && shown.segments === 1,
-    () => grid.run(() => tray.chooseSubset("Mixed drive", "Segments")),
+    () =>
+      grid.afterRendererTilesMounted(1, () =>
+        grid.run(() => tray.chooseSubset("Mixed drive", "Segments")),
+      ),
   );
   await grid.assert.isTileCountEqualTo(1);
   await tray.assert.contains("Act on 1 segment across 1 episode");
@@ -255,8 +264,10 @@ test("whole episodes and segments retain separate action scopes", async ({
   );
   await tray.assert.contains(/1\s*segment selected/);
   await tray.createSubset("Second range only");
-  await grid.run(() =>
-    tray.openCreatedSubset("Second range only", "1 episode · 1 segment"),
+  await grid.afterRendererTilesMounted(1, () =>
+    grid.run(() =>
+      tray.openCreatedSubset("Second range only", "1 episode · 1 segment"),
+    ),
   );
   await tray.assert.scopeContains(/1 episode\s*·\s*1 segment/);
   await grid.assert.isTileCountEqualTo(1);
@@ -285,7 +296,9 @@ test("filters narrow saved MCAP ranges without changing stored membership", asyn
   const editor = await viewBar.addStage("Limit");
   await editor.fill("limit", "1");
   await tray.afterScope({ label: name, count: "1 episode · 2 segments" }, () =>
-    grid.run(() => editor.commit("limit")),
+    grid.afterRendererTilesMounted(1, () =>
+      grid.run(() => editor.commit("limit")),
+    ),
   );
   await grid.assert.isTileCountEqualTo(1);
   await tray.assert.scopeContains(/1 episode\s*·\s*2 segments/);
@@ -296,11 +309,13 @@ test("filters narrow saved MCAP ranges without changing stored membership", asyn
 
   await viewBar.expand();
   await tray.afterScope({ label: name, count: "2 episodes · 3 segments" }, () =>
-    grid.run(() =>
-      viewBar.viewStages
-        .first()
-        .getByRole("button", { name: "Remove stage" })
-        .click(),
+    grid.afterRendererTilesMounted(2, () =>
+      grid.run(() =>
+        viewBar.viewStages
+          .first()
+          .getByRole("button", { name: "Remove stage" })
+          .click(),
+      ),
     ),
   );
   await grid.assert.isTileCountEqualTo(2);
@@ -332,7 +347,9 @@ test("filters narrow saved MCAP ranges without changing stored membership", asyn
   ).toMatch(/Temporal tag: braking.*\(0\.30-0\.40s\)/);
   await modal.close();
   await tray.afterScope({ label: name, count: "2 episodes · 3 segments" }, () =>
-    grid.run(() => sidebar.applyFilter("focus")),
+    grid.afterRendererTilesMounted(2, () =>
+      grid.run(() => sidebar.applyFilter("focus")),
+    ),
   );
   await grid.assert.isTileCountEqualTo(2);
   await tray.assert.scopeContains(/2 episodes\s*·\s*3 segments/);
@@ -387,8 +404,11 @@ assert sorted((tag.sample_id, tag.start, tag.end, tag.anchor) for tag in reviewe
       freshPage,
       new EventUtils(freshPage),
     );
-    // The server session may still be browsing the saved subset. Start from
-    // the full dataset so this checks the temporal tag filter itself.
+    // The server session carries the selection over and may still be
+    // browsing the saved subset. Start from the full dataset's results so
+    // this checks the temporal tag filter itself.
+    await freshTray.untilTray((shown) => shown.explicit);
+    await freshTray.afterResults(() => freshTray.clear());
     await freshTray.chooseAllSamples();
     await freshSidebar.clickFieldDropdown("_temporal_tags");
     await freshTray.afterTray(

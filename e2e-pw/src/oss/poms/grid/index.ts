@@ -281,6 +281,22 @@ export class GridPom {
     });
   }
 
+  /**
+   * Run `action` and resolve once `count` custom-renderer tiles have mounted
+   * because of it; they mount after the grid does
+   */
+  async afterRendererTilesMounted<T>(
+    count: number,
+    action: () => Promise<T>,
+  ): Promise<T> {
+    let mounted = 0;
+    return this.eventUtils.after(
+      "e2e:grid:custom-renderer-mounted",
+      action,
+      () => ++mounted === count,
+    );
+  }
+
   /** How many tile tag renders the document has recorded so far */
   async tagsRenderedMark(): Promise<number> {
     return (await this.eventUtils.recorded("e2e:looker:tags-rendered")).length;
