@@ -1,28 +1,29 @@
 /**
- * The schema row: the schema lens dropdown on the left and, for schema
- * managers, the Schema Manager gear on the right (the same gear as the
- * sample modal's Annotate "Create" row). Rendered in the grid sidebar
- * between the saved-view selector and the Filter / Visibility row, and
- * in the sample modal above the Explore groups and the Annotate
- * "Create" section. Only on the Samples tab — inside a workflow task
- * the stage schema governs and the row is absent (the "Create" row
- * keeps its own gear there, still MANAGE-only).
+ * The schema row: the schema lens dropdown (layers icon + current
+ * schema + chevron; "Manage schema" lives inside its menu for schema
+ * managers) and, on the right, a reset control that returns to the
+ * dataset default. Rendered in the grid sidebar between the saved-view
+ * selector and the Filter / Visibility row, and in the sample modal
+ * above the Explore groups and the Annotate "Create" section. Only on
+ * the Samples tab — inside a workflow task the stage schema governs and
+ * the row is absent (the "Create" row keeps its own gear there, still
+ * MANAGE-only).
  */
 
+import * as fos from "@fiftyone/state";
 import {
   Anchor,
   Button,
-  Icon,
-  IconName,
+  CloseIcon,
   Size,
   Text,
   Tooltip,
   Variant,
 } from "@voxel51/voodo";
+import { useRecoilState } from "recoil";
 import styled from "styled-components";
-import { useSchemaManagerModal } from "../Modal/Sidebar/Annotate/SchemaManager/hooks";
-import useCanManageSchema from "../Modal/Sidebar/Annotate/useCanManageSchema";
 import SchemaLensSelector, {
+  ALL_FIELDS_LENS,
   useSchemaLensAvailable,
 } from "./Entries/SchemaLensSelector";
 
@@ -42,32 +43,33 @@ const SchemaLensRow = ({
   /** Side padding; off where the parent already insets its rows (the grid). */
   padded?: boolean;
 }) => {
-  const { available } = useSchemaLensAvailable();
-  const canManage = useCanManageSchema();
-  const { openSchemaManager } = useSchemaManagerModal();
+  const { available, datasetName } = useSchemaLensAvailable();
+  const [lens, setLens] = useRecoilState(fos.schemaLens);
 
   if (!available) return null;
 
+  const onDefault =
+    !lens || lens.dataset !== datasetName || lens.docId === ALL_FIELDS_LENS;
+
   return (
     <Row data-cy="schema-lens-row" $padded={padded}>
-      <SchemaLensSelector maxValueWidth={200} />
-      {canManage ? (
-        <Tooltip
-          anchor={Anchor.Bottom}
-          content={<Text>Open schema manager</Text>}
-          portal
+      <SchemaLensSelector maxValueWidth={180} />
+      <Tooltip
+        anchor={Anchor.Bottom}
+        content={<Text>Back to the default schema</Text>}
+        portal
+      >
+        <Button
+          variant={Variant.Icon}
+          borderless
+          data-cy="schema-lens-reset"
+          aria-label="Back to the default schema"
+          disabled={onDefault}
+          onClick={() => setLens(null)}
         >
-          <Button
-            variant={Variant.Icon}
-            borderless
-            data-cy="open-schema-manager"
-            aria-label="Open schema manager"
-            onClick={() => openSchemaManager()}
-          >
-            <Icon name={IconName.Settings} size={Size.Md} />
-          </Button>
-        </Tooltip>
-      ) : null}
+          <CloseIcon size={Size.Sm} />
+        </Button>
+      </Tooltip>
     </Row>
   );
 };

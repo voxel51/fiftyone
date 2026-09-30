@@ -37,15 +37,20 @@ import {
   Pill,
   RichList,
   Size,
+  Spinner,
   Text,
   TextColor,
   TextVariant,
   Tooltip,
   Variant,
   Select,
+  AddIcon,
+  ContentCopyIcon,
+  DeleteIcon,
   Dropdown,
   DropdownAnchor,
-  MenuTextItem,
+  EditIcon,
+  MenuIconTextItem,
 } from "@voxel51/voodo";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -685,7 +690,7 @@ const SchemaOverview = () => {
               options={[
                 {
                   id: DEFAULT_SCHEMA_OPTION,
-                  data: { label: "Default schema" },
+                  data: { label: "Default schema (all fields)" },
                 },
                 ...docs.map((d) => ({ id: d.id, data: { label: d.name } })),
               ]}
@@ -709,40 +714,40 @@ const SchemaOverview = () => {
                 </Button>
               }
             >
-              <MenuTextItem
+              <MenuIconTextItem
                 data-cy="schema-action-new"
+                icon={<AddIcon size={Size.Sm} />}
+                text="New schema"
                 onClick={() => {
                   setNameValue("");
                   setNaming("create");
                 }}
-              >
-                + New schema
-              </MenuTextItem>
+              />
               {docMode ? (
-                <MenuTextItem
+                <MenuIconTextItem
                   data-cy="schema-action-rename"
+                  icon={<EditIcon size={Size.Sm} />}
+                  text="Rename"
                   onClick={() => {
                     setNameValue(doc?.name ?? "");
                     setNaming("rename");
                   }}
-                >
-                  Rename
-                </MenuTextItem>
+                />
               ) : null}
-              <MenuTextItem
+              <MenuIconTextItem
                 data-cy="schema-action-duplicate"
+                icon={<ContentCopyIcon size={Size.Sm} />}
+                text="Duplicate"
                 onClick={() => duplicateSchema()}
-              >
-                Duplicate
-              </MenuTextItem>
+              />
               {docMode ? (
-                <MenuTextItem
+                <MenuIconTextItem
                   data-cy="schema-action-delete"
+                  icon={<DeleteIcon size={Size.Sm} />}
+                  text="Delete schema"
                   destructive
                   onClick={() => deleteSchema()}
-                >
-                  Delete schema
-                </MenuTextItem>
+                />
               ) : null}
             </Dropdown>
           </>
@@ -787,7 +792,18 @@ const SchemaOverview = () => {
             data-cy="schema-search"
           />
           {loading ? (
-            <div style={styles.emptyText}>Loading fields…</div>
+            <div
+              data-cy="schema-overview-loading"
+              aria-label="Loading fields"
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                padding: "2rem 0",
+              }}
+            >
+              <Spinner size={Size.Lg} />
+            </div>
           ) : (
             <>
               <GUISectionHeader>

@@ -15,20 +15,36 @@
  * With no custom schemas the dropdown still renders, with a hint, so
  * the feature is discoverable to schema-capable viewers.
  *
- * Renders as a bare inline voodo ``Select`` — ``FilterEntry`` places it
- * in the sidebar's single header row next to the mode dropdown.
+ * Renders as a text trigger (layers icon + current schema + chevron)
+ * opening a menu of check items — the dataset default first — with a
+ * "Manage schema" entry below a separator for schema managers.
+ * ``SchemaLensRow`` places it in the sidebar with a reset control.
  */
 
 import { useOperatorAvailability } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
-import { Anchor, Select, Text, TextColor, Tooltip } from "@voxel51/voodo";
+import {
+  Dropdown,
+  DropdownAnchor,
+  DropdownTrigger,
+  LayersIcon,
+  MenuCheckItem,
+  MenuIconTextItem,
+  MenuSeparator,
+  MenuTextItem,
+  SettingsIcon,
+  Size,
+  Spinner,
+} from "@voxel51/voodo";
 import { useAtomValue } from "jotai";
 import React, { useEffect, useState } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
+import { useSchemaManagerModal } from "../../Modal/Sidebar/Annotate/SchemaManager/hooks";
 import {
   schemaManagerDisplayedAtom,
   taskLabelSchemaDoc,
 } from "../../Modal/Sidebar/Annotate/state";
+import useCanManageSchema from "../../Modal/Sidebar/Annotate/useCanManageSchema";
 import {
   LIST_LABEL_SCHEMA_DOCS_OPERATOR,
   useSchemaDocs,
@@ -37,8 +53,9 @@ import {
 
 export const ALL_FIELDS_LENS = "__all__";
 
-// The empty-state hint row (selecting it never changes the lens).
-const NO_SCHEMAS = "__none__";
+/** Menu label of the dataset default; the trigger shows the short form. */
+export const DEFAULT_SCHEMA_LABEL = "Default schema (all fields)";
+const DEFAULT_SCHEMA_SHORT_LABEL = "Default schema";
 
 // FiftyOne Teams restricts some roles (Labelers) to task-only browsing;
 // OSS has no such role and no such hook. Resolved once at module load so
@@ -86,9 +103,14 @@ const SchemaLensSelector = ({
 
   const { available, canSwitch, datasetName } = useSchemaLensAvailable();
   const [lens, setLens] = useRecoilState(fos.schemaLens);
+  const canManage = useCanManageSchema();
+  const { openSchemaManager } = useSchemaManagerModal();
 
   const [docs, setDocs] = useState<SchemaDocSummary[]>([]);
   const [busy, setBusy] = useState(false);
+  // Until the first listing lands (operators registering, dataset
+  // schema loading) the menu shows a spinner rather than "no schemas".
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     // Only schema-capable viewers list docs: the read operators are
@@ -105,6 +127,9 @@ const SchemaLensSelector = ({
       })
       .catch(() => {
         if (!stale) setDocs([]);
+      })
+      .finally(() => {
+        if (!stale) setLoaded(true);
       });
     return () => {
       stale = true;
@@ -119,12 +144,14 @@ const SchemaLensSelector = ({
     return null;
   }
 
-  // voodo's Select shows nothing for an empty id, so the default option
-  // carries the ALL_FIELDS_LENS sentinel.
   const current =
     lens?.dataset === datasetName && lens.docId !== ALL_FIELDS_LENS
       ? lens.docId
       : ALL_FIELDS_LENS;
+  const currentLabel =
+    current === ALL_FIELDS_LENS
+      ? DEFAULT_SCHEMA_SHORT_LABEL
+      : (docs.find((doc) => doc.id === current)?.name ?? lens?.name ?? "");
 
   const select = async (docId: string) => {
     if (!docId || docId === ALL_FIELDS_LENS) {
@@ -150,16 +177,51 @@ const SchemaLensSelector = ({
     }
   };
 
-  const options = [
-    { id: ALL_FIELDS_LENS, data: { label: "Default schema (all fields)" } },
-    ...docs.map((doc) => ({
-      id: doc.id,
-      data: {
-        label: doc.name,
-        // Long names ellipsize in the row; the native title shows the rest.
-        content: (
+  return (
+    <Dropdown
+      portal
+      anchor={DropdownAnchor.BottomStart}
+      disabled={busy}
+      trigger={
+        <DropdownTrigger
+          borderless
+          data-cy="schema-lens-select"
+          aria-label="View the dataset through a label schema"
+          title={currentLabel}
+          leadingIcon={LayersIcon}
+          style={{ maxWidth: maxValueWidth + 40, minWidth: 0 }}
+        >
+          {!loaded || busy ? <Spinner size={Size.Sm} /> : null}
           <span
-            title={doc.name}
+            style={{
+              display: "block",
+              maxWidth: maxValueWidth,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {currentLabel}
+          </span>
+        </DropdownTrigger>
+      }
+    >
+      <MenuCheckItem
+        data-cy="schema-lens-option-default"
+        checked={current === ALL_FIELDS_LENS}
+        onClick={() => select(ALL_FIELDS_LENS)}
+      >
+        {DEFAULT_SCHEMA_LABEL}
+      </MenuCheckItem>
+      {docs.map((doc) => (
+        <MenuCheckItem
+          key={doc.id}
+          data-cy="schema-lens-option"
+          checked={current === doc.id}
+          title={doc.name}
+          onClick={() => select(doc.id)}
+        >
+          <span
             style={{
               display: "block",
               maxWidth: 260,
@@ -170,43 +232,27 @@ const SchemaLensSelector = ({
           >
             {doc.name}
           </span>
-        ),
-      },
-    })),
-  ];
-  if (!docs.length) {
-    options.push({
-      id: NO_SCHEMAS,
-      data: {
-        label: "No custom schemas",
-        content: (
-          <Tooltip
-            anchor={Anchor.Right}
-            portal
-            content={<Text>Create one in Schema Manager</Text>}
-          >
-            <Text color={TextColor.Secondary}>No custom schemas</Text>
-          </Tooltip>
-        ),
-      },
-    });
-  }
-  return (
-    <Select
-      exclusive
-      portal
-      data-cy="schema-lens-select"
-      aria-label="View the dataset through a label schema"
-      value={current}
-      options={options}
-      disabled={busy}
-      onChange={(id) => {
-        if (typeof id !== "string") return;
-        if (id === NO_SCHEMAS) return;
-        select(id);
-      }}
-      style={{ flex: 1, minWidth: 0, maxWidth: maxValueWidth + 40 }}
-    />
+        </MenuCheckItem>
+      ))}
+      {!loaded ? (
+        <MenuTextItem disabled data-cy="schema-lens-loading">
+          <Spinner size={Size.Sm} /> Loading schemas…
+        </MenuTextItem>
+      ) : !docs.length ? (
+        <MenuTextItem disabled>No custom schemas</MenuTextItem>
+      ) : null}
+      {canManage ? (
+        <>
+          <MenuSeparator />
+          <MenuIconTextItem
+            data-cy="open-schema-manager"
+            icon={<SettingsIcon size={Size.Sm} />}
+            text="Manage schema"
+            onClick={() => openSchemaManager()}
+          />
+        </>
+      ) : null}
+    </Dropdown>
   );
 };
 
