@@ -194,9 +194,7 @@ def _update_shape(
         if group_id is not None:
             shape["group"] = group_id
         if attributes is not None:
-            attr_id_map, _, class_id_map, _ = api._get_attr_class_maps(
-                task_id
-            )
+            attr_id_map, _, class_id_map, _ = api._get_attr_class_maps(task_id)
             if label is None:
                 label_id = shape["label_id"]
                 attr_id_map = attr_id_map[label_id]
