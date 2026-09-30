@@ -290,7 +290,8 @@ def load_zoo_model(
             instance
 
     Returns:
-        a :class:`fiftyone.core.models.Model`
+        a :class:`fiftyone.core.models.Model`, whose ``zoo_model_name``
+        attribute is the name it can be loaded by again
     """
     if model_name is not None:
         name = model_name
@@ -326,6 +327,8 @@ def load_zoo_model(
     else:
         model_path = model.get_path_in_dir(models_dir)
         model = fom.load_model(config_dict, model_path=model_path, **kwargs)
+
+    model.zoo_model_name = name
 
     if cache and key is not None:
         _MODELS[key] = model
