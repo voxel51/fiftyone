@@ -45,7 +45,9 @@ def is_admin(ctx) -> bool:
     user = getattr(ctx, "user", None)
     if user is None:
         return False
-    return str(getattr(user, "role", None)) == ADMIN_ROLE
+    # Enum or string, like ``permission_rank``.
+    role = getattr(user, "role", None)
+    return str(getattr(role, "value", role)) == ADMIN_ROLE
 
 
 def has_min_dataset_permission(ctx, minimum: str) -> bool:

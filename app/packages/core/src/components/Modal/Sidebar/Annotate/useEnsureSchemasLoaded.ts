@@ -51,6 +51,12 @@ export const useEnsureSchemasLoaded = (enabled: boolean): void => {
   const schemasDataRef = useRef(schemasData);
   schemasDataRef.current = schemasData;
 
+  // The dataset as of the latest render: the atoms are scoped to it at
+  // write time, so a result that lands after a dataset switch must be
+  // dropped rather than written under the new dataset's name.
+  const datasetRef = useRef(datasetName);
+  datasetRef.current = datasetName;
+
   // One fetch per dataset at a time.
   const inFlightRef = useRef<string | null>(null);
 
@@ -62,11 +68,13 @@ export const useEnsureSchemasLoaded = (enabled: boolean): void => {
     // No "cancelled" flag: if the effect re-runs while the fetch is in
     // flight (e.g. `enabled` flips off and on) the in-flight guard above
     // returns early, so discarding this result would leave the atoms
-    // null for good. The ref re-check below is the only guard needed —
-    // it keeps a stale fetch from clobbering data another loader set.
+    // null for good. The ref re-checks below are the only guards needed:
+    // the dataset one drops a result that outlived a dataset switch, the
+    // data one keeps a stale fetch from clobbering another loader's data.
     operatorAsPromise(getRef.current, {})
       .then((result) => {
         if (inFlightRef.current === datasetName) inFlightRef.current = null;
+        if (datasetRef.current !== datasetName) return;
         if (schemasDataRef.current !== null) return;
         setData(result.label_schemas);
         setActive(result.active_label_schemas);

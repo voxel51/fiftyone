@@ -122,10 +122,10 @@ export const fieldSchema = selectorFamily<Schema, { space: State.SPACE }>({
         for (const path of excluded) {
           if (space === State.SPACE.FRAME) {
             if (path.startsWith("frames.")) {
-              delete schema[path.slice("frames.".length)];
+              deleteSchemaPath(schema, path.slice("frames.".length));
             }
           } else if (!path.startsWith("frames.")) {
-            delete schema[path];
+            deleteSchemaPath(schema, path);
           }
         }
       }
@@ -133,6 +133,22 @@ export const fieldSchema = selectorFamily<Schema, { space: State.SPACE }>({
       return schema;
     },
 });
+
+/**
+ * Removes a (possibly nested, dotted) path from a reduced schema, so a
+ * nested exclusion such as "info.field" takes effect like the subtree
+ * exclusion `fieldPaths` applies.
+ */
+type NestedSchema = Record<string, { fields?: NestedSchema } | undefined>;
+const deleteSchemaPath = (schema: NestedSchema, path: string) => {
+  const parts = path.split(".");
+  let fields: NestedSchema | undefined = schema;
+  for (const part of parts.slice(0, -1)) {
+    fields = fields?.[part]?.fields;
+    if (!fields) return;
+  }
+  delete fields[parts[parts.length - 1]];
+};
 
 export const pathIsShown = selectorFamily<boolean, string>({
   key: "pathIsShown",

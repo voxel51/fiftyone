@@ -37,7 +37,7 @@ import {
   Spinner,
 } from "@voxel51/voodo";
 import { useAtomValue } from "jotai";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { useSchemaManagerModal } from "../../Modal/Sidebar/Annotate/SchemaManager/hooks";
 import {
@@ -56,6 +56,20 @@ export const ALL_FIELDS_LENS = "__all__";
 /** Menu label of the dataset default; the trigger shows the short form. */
 export const DEFAULT_SCHEMA_LABEL = "Default schema (all fields)";
 const DEFAULT_SCHEMA_SHORT_LABEL = "Default schema";
+
+/** The lens value for a resolved schema doc. */
+const lensFromDoc = (
+  dataset: string,
+  docId: string,
+  doc: Awaited<ReturnType<ReturnType<typeof useSchemaDocs>["getDoc"]>>,
+) => ({
+  dataset,
+  docId,
+  name: doc.name,
+  excluded: doc.resolved?.excluded_paths ?? [],
+  excludedAttrs: doc.resolved?.excluded_attr_paths ?? [],
+  excludedAttrDb: doc.resolved?.excluded_attr_db_paths ?? [],
+});
 
 // FiftyOne Teams restricts some roles (Labelers) to task-only browsing;
 // OSS has no such role and no such hook. Resolved once at module load so
@@ -111,6 +125,12 @@ const SchemaLensSelector = ({
   // Until the first listing lands (operators registering, dataset
   // schema loading) the menu shows a spinner rather than "no schemas".
   const [loaded, setLoaded] = useState(false);
+  // The dataset the current `docs` were listed for.
+  const listedDatasetRef = useRef<string | null>(null);
+  // The applied lens as of the latest render, for the reconcile below
+  // (reading it through a ref keeps the listing effect off its deps).
+  const lensRef = useRef(lens);
+  lensRef.current = lens;
 
   useEffect(() => {
     // Only schema-capable viewers list docs: the read operators are
@@ -119,11 +139,38 @@ const SchemaLensSelector = ({
     if (!datasetName || !canSwitch || !docsAvailable) {
       return undefined;
     }
+    if (listedDatasetRef.current !== datasetName) {
+      // A new dataset: the previous rows are not its schemas.
+      listedDatasetRef.current = datasetName;
+      setDocs([]);
+      setLoaded(false);
+    }
     let stale = false;
     api
       .listDocs()
       .then((rows) => {
-        if (!stale) setDocs(rows);
+        if (stale) return;
+        setDocs(rows);
+        // Reconcile an applied lens with the fresh listing: its doc may
+        // have been edited or deleted in the Schema Manager meanwhile.
+        const applied = lensRef.current;
+        if (
+          !applied ||
+          applied.dataset !== datasetName ||
+          applied.docId === ALL_FIELDS_LENS
+        ) {
+          return;
+        }
+        if (!rows.some((doc) => doc.id === applied.docId)) {
+          setLens(null);
+          return;
+        }
+        api
+          .getDoc(applied.docId, true)
+          .then((doc) => {
+            if (!stale) setLens(lensFromDoc(datasetName, applied.docId, doc));
+          })
+          .catch(() => undefined);
       })
       .catch(() => {
         if (!stale) setDocs([]);
@@ -134,11 +181,18 @@ const SchemaLensSelector = ({
     return () => {
       stale = true;
     };
-    // `api` is referentially stable. Refetch per dataset, once the
-    // operators are available, and whenever the Schema Manager closes
-    // (schemas may have been created, renamed or deleted in it).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [datasetName, canSwitch, docsAvailable, schemaManagerDisplayed]);
+    // Refetch per dataset, once the operators are available, and each
+    // time the Schema Manager opens or closes (schemas may have been
+    // created, renamed or deleted in it). `api` is memoized and `setLens`
+    // is a Recoil setter; both are stable.
+  }, [
+    api,
+    datasetName,
+    canSwitch,
+    docsAvailable,
+    schemaManagerDisplayed,
+    setLens,
+  ]);
 
   if (!available || !datasetName) {
     return null;
@@ -162,14 +216,7 @@ const SchemaLensSelector = ({
     setBusy(true);
     try {
       const doc = await api.getDoc(docId, true);
-      setLens({
-        dataset: datasetName,
-        docId,
-        name: doc.name,
-        excluded: doc.resolved?.excluded_paths ?? [],
-        excludedAttrs: doc.resolved?.excluded_attr_paths ?? [],
-        excludedAttrDb: doc.resolved?.excluded_attr_db_paths ?? [],
-      });
+      setLens(lensFromDoc(datasetName, docId, doc));
     } catch (err) {
       console.error("Failed to apply schema lens:", err);
     } finally {
@@ -191,7 +238,15 @@ const SchemaLensSelector = ({
           leadingIcon={LayersIcon}
           style={{ maxWidth: maxValueWidth + 40, minWidth: 0 }}
         >
-          {!loaded || busy ? <Spinner size={Size.Sm} /> : null}
+          {!loaded || busy ? (
+            <span
+              role="status"
+              aria-label={busy ? "Applying schema" : "Loading schemas"}
+              style={{ display: "inline-flex" }}
+            >
+              <Spinner size={Size.Sm} />
+            </span>
+          ) : null}
           <span
             style={{
               display: "block",

@@ -452,7 +452,10 @@ export const useManagerDocMode = () => {
   const [docId] = useAtom(selectedSchemaDocId);
   const [doc, setDoc] = useAtom(loadedSchemaDoc);
   const api = useSchemaDocs();
-  if (!docId || !doc) return null;
+  // The two atoms are written independently; a doc restored by an
+  // async write-back after the selection moved on must not be paired
+  // with the new id (a later save would write it to the wrong schema).
+  if (!docId || !doc || doc.id !== docId) return null;
   return { docId, doc, setDoc, api };
 };
 
@@ -476,7 +479,10 @@ export const useOpenOnCurrentSchema = () => {
       : null;
   const currentId = (taskDoc as { id?: string } | null)?.id ?? explicit;
 
-  const initialRef = useRef<{ selected: string | null; currentId }>();
+  const initialRef = useRef<{
+    selected: string | null;
+    currentId: string | null;
+  }>();
   if (!initialRef.current) {
     initialRef.current = { selected, currentId };
   }

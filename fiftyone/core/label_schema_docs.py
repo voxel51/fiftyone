@@ -457,7 +457,14 @@ def create(
         raise ValueError(
             f"A schema named {name!r} already exists on this dataset"
         )
-    coll.insert_one(doc)
+    try:
+        coll.insert_one(doc)
+    except pymongo.errors.DuplicateKeyError:
+        # The pre-check and the insert are not atomic; the unique
+        # (dataset_id, name) index is the last word.
+        raise ValueError(
+            f"A schema named {name!r} already exists on this dataset"
+        )
     return _public(doc)
 
 
@@ -525,16 +532,19 @@ def update(
             raise ValueError(f"A schema named {new_name!r} already exists")
     if "label_schema" in updates:
         # Retire the legacy key so converted docs don't carry both.
-        coll.update_one(
-            query,
-            {
-                "$set": updates,
-                "$unset": {"content": ""},
-                "$inc": {"version": 1},
-            },
-        )
+        change = {
+            "$set": updates,
+            "$unset": {"content": ""},
+            "$inc": {"version": 1},
+        }
     else:
-        coll.update_one(query, {"$set": updates, "$inc": {"version": 1}})
+        change = {"$set": updates, "$inc": {"version": 1}}
+    try:
+        coll.update_one(query, change)
+    except pymongo.errors.DuplicateKeyError:
+        # The name pre-check and the write are not atomic; the unique
+        # (dataset_id, name) index is the last word.
+        raise ValueError(f"A schema named {new_name!r} already exists")
     return _public(coll.find_one(query))
 
 

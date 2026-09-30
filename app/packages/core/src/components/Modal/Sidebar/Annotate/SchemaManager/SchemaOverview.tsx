@@ -38,6 +38,7 @@ import {
   RichList,
   Size,
   Spinner,
+  ToggleSwitch,
   Text,
   TextColor,
   TextVariant,
@@ -62,7 +63,7 @@ import {
   removeFromActiveSchemas,
 } from "../state";
 import { useSchemaManager } from "../useSchemaManager";
-import { isSystemReadOnlyField, TAB_GUI, TAB_JSON } from "./constants";
+import { isSystemReadOnlyField, TAB_GUI, TAB_IDS, TAB_JSON } from "./constants";
 import {
   useActiveFieldsList,
   useFullSchemaEditor,
@@ -98,7 +99,6 @@ import {
 function makeStyles(theme: ReturnType<typeof useTheme>) {
   const onSurface = theme.text.primary;
   const onSurfaceMuted = theme.text.secondary;
-  const border = `1px solid ${theme.primary.plainBorder}`;
 
   return {
     bar: {
@@ -106,42 +106,6 @@ function makeStyles(theme: ReturnType<typeof useTheme>) {
       alignItems: "center",
       gap: 8,
       marginBottom: 12,
-    },
-    search: {
-      width: "100%",
-      boxSizing: "border-box" as const,
-      padding: "8px 10px",
-      borderRadius: 6,
-      border,
-      backgroundColor: theme.background.level1,
-      color: onSurface,
-      fontSize: 13,
-      marginBottom: 12,
-    },
-    segmented: {
-      display: "inline-flex",
-      borderRadius: 6,
-      border,
-      overflow: "hidden",
-      flex: "0 0 auto",
-    },
-    segment: {
-      padding: "5px 12px",
-      fontSize: 12,
-      lineHeight: "16px",
-      border: "none",
-      background: "transparent",
-      color: onSurfaceMuted,
-      cursor: "pointer",
-    },
-    segmentActive: {
-      padding: "5px 12px",
-      fontSize: 12,
-      lineHeight: "16px",
-      border: "none",
-      backgroundColor: theme.background.level2,
-      color: onSurface,
-      cursor: "pointer",
     },
     fieldName: {
       fontSize: 13,
@@ -230,6 +194,9 @@ const SchemaOverview = () => {
   const [renameId, setRenameId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const loadSeq = useRef(0);
+  // The selection as of the latest render, for async callbacks.
+  const selectedIdRef = useRef(selectedId);
+  selectedIdRef.current = selectedId;
 
   const refreshDocs = () =>
     api
@@ -239,6 +206,9 @@ const SchemaOverview = () => {
 
   useEffect(() => {
     if (docsAvailable) refreshDocs();
+    // `refreshDocs` is recreated every render (it closes over the stable
+    // api and setters only); this effect must run once when the
+    // operators become available, not on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docsAvailable]);
 
@@ -249,10 +219,12 @@ const SchemaOverview = () => {
     // (or persisting to) a stale doc under a new selection is how
     // schemas once appeared to share settings.
     setDoc(null);
+    // Bump the sequence even when nothing is selected, so a getDoc still
+    // in flight for the previous selection is discarded on arrival.
+    const seq = ++loadSeq.current;
     if (!selectedId) {
       return;
     }
-    const seq = ++loadSeq.current;
     api
       .getDoc(selectedId)
       .then((loaded) => {
@@ -401,8 +373,14 @@ const SchemaOverview = () => {
   const persistDoc = (updates: Parameters<typeof api.updateDoc>[1]) => {
     // Guard: never write to a doc that isn't the current selection.
     if (!doc || doc.id !== selectedId) return;
+    const previous = doc;
     setDoc({ ...doc, ...updates });
-    api.updateDoc(doc.id, updates).catch((err) => setError(String(err)));
+    api.updateDoc(doc.id, updates).catch((err) => {
+      setError(String(err));
+      // Roll the optimistic update back, but only while this doc is
+      // still the selection: a newer selection owns the atom by then.
+      if (selectedIdRef.current === previous.id) setDoc(previous);
+    });
   };
 
   // "Setup" = the original setup flow: open the field editor. In a
@@ -606,8 +584,10 @@ const SchemaOverview = () => {
 
   // Fields arrive after the modal mounts; an empty list before then
   // would read as "this dataset has no fields".
-  const loading =
-    datasetSchemas === null || !docsAvailable || Boolean(selectedId && !doc);
+  // The default-schema rows need only the dataset schema; a selected
+  // doc additionally waits for its body. Operator availability gates
+  // the schema picker, not the field list.
+  const loading = datasetSchemas === null || Boolean(selectedId && !doc);
 
   const activeCount =
     sections.scanned.length +
@@ -679,7 +659,7 @@ const SchemaOverview = () => {
               Cancel
             </Button>
           </>
-        ) : (
+        ) : docsAvailable ? (
           <>
             <Select
               exclusive
@@ -751,24 +731,18 @@ const SchemaOverview = () => {
               ) : null}
             </Dropdown>
           </>
-        )}
+        ) : null}
         <div style={{ flex: 1 }} />
-        <span style={styles.segmented} role="group" aria-label="View as">
-          <button
-            type="button"
-            style={tab === TAB_GUI ? styles.segmentActive : styles.segment}
-            onClick={() => setTab(TAB_GUI)}
-          >
-            GUI
-          </button>
-          <button
-            type="button"
-            style={tab === TAB_JSON ? styles.segmentActive : styles.segment}
-            onClick={() => setTab(TAB_JSON)}
-          >
-            JSON
-          </button>
-        </span>
+        <ToggleSwitch
+          size={Size.Md}
+          aria-label="View as"
+          index={TAB_IDS.indexOf(tab)}
+          onChange={(index: number) => setTab(TAB_IDS[index])}
+          tabs={[
+            { id: TAB_GUI, data: { label: "GUI", content: null } },
+            { id: TAB_JSON, data: { label: "JSON", content: null } },
+          ]}
+        />
         <Button
           size={Size.Md}
           variant={Variant.Primary}
@@ -784,16 +758,18 @@ const SchemaOverview = () => {
         <OverviewJSON />
       ) : (
         <>
-          <input
-            style={styles.search}
+          <Input
+            size={Size.Sm}
             placeholder="Search fields"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             data-cy="schema-search"
+            style={{ width: "100%", marginBottom: 12 }}
           />
           {loading ? (
             <div
               data-cy="schema-overview-loading"
+              role="status"
               aria-label="Loading fields"
               style={{
                 display: "flex",

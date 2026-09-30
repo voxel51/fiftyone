@@ -24,24 +24,41 @@ export const redactSample = (
   }
   const clone = JSON.parse(JSON.stringify(sample));
 
+  // Exclusions may be nested ("info.field"); walk the dotted path.
+  const parentOf = (obj: unknown, dotted: string) => {
+    const parts = dotted.split(".");
+    let current: unknown = obj;
+    for (const part of parts.slice(0, -1)) {
+      if (!current || typeof current !== "object") return undefined;
+      current = (current as Record<string, unknown>)[part];
+    }
+    return current && typeof current === "object"
+      ? { parent: current as Record<string, unknown>, key: parts.at(-1)! }
+      : undefined;
+  };
+  const getNested = (obj: unknown, dotted: string) => {
+    const hit = parentOf(obj, dotted);
+    return hit ? hit.parent[hit.key] : undefined;
+  };
+  const deleteNested = (obj: unknown, dotted: string) => {
+    const hit = parentOf(obj, dotted);
+    if (hit) delete hit.parent[hit.key];
+  };
+
   const resolveTargets = (fieldPath: string): unknown[] => {
     if (fieldPath.startsWith("frames.") && Array.isArray(clone.frames)) {
       const key = fieldPath.slice("frames.".length);
-      return clone.frames.map((frame: unknown) =>
-        frame && typeof frame === "object" ? frame[key] : undefined,
-      );
+      return clone.frames.map((frame: unknown) => getNested(frame, key));
     }
-    return [clone[fieldPath]];
+    return [getNested(clone, fieldPath)];
   };
 
   for (const fieldPath of excludedFields) {
     if (fieldPath.startsWith("frames.") && Array.isArray(clone.frames)) {
       const key = fieldPath.slice("frames.".length);
-      for (const frame of clone.frames) {
-        if (frame && typeof frame === "object") delete frame[key];
-      }
+      for (const frame of clone.frames) deleteNested(frame, key);
     } else {
-      delete clone[fieldPath];
+      deleteNested(clone, fieldPath);
     }
   }
 

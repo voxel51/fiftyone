@@ -15,6 +15,7 @@ import {
   addToActiveSchemas,
   currentField,
   labelSchemaData,
+  labelSchemasData,
   removeFromActiveSchemas,
 } from "../../state";
 import {
@@ -243,10 +244,14 @@ const useConfigUpdate = (field: string) => {
 
 const useSavedLabelSchema = (field: string) => {
   const [data, setAtom] = useAtom(labelSchemaData(field));
+  // Write back onto the RAW dataset entry, not the effective one: the
+  // effective value may carry task-policy stamps (e.g. `read_only`)
+  // that must not outlive the policy.
+  const raw = useAtomValue(labelSchemasData)?.[field];
   return [
     data?.label_schema,
     (labelSchema: unknown) => {
-      setAtom({ ...data, label_schema: labelSchema });
+      setAtom({ ...(raw ?? data), label_schema: labelSchema });
     },
   ] as const;
 };

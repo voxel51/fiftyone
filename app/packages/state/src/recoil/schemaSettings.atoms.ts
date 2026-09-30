@@ -312,13 +312,6 @@ export const schemaLens = atom<SchemaLensValue | null>({
 });
 
 /**
- * The dataset's DEFAULT schema, auto-applied on the Samples page for
- * every viewer (VIEW+) when no explicit lens is chosen. Kept separate
- * from `schemaLens` so an admin's explicit choice — including the
- * explicit "all fields" escape hatch — overrides it.
- */
-
-/**
  * True while a workflow task is active: the task's schema (or its
  * absence — an unrestricted task) governs, and no Explore lens or
  * dataset default may contribute exclusions.
@@ -469,13 +462,6 @@ export const activeSchemaAttrExclusions = selector<string[] | null>({
 });
 
 /**
- * The union of every schema-policy exclusion channel — the active
- * workflow task's hidden fields and the admin Explore lens (when it
- * targets the current dataset). THE read for exclusion consumers
- * (`fieldSchema`, `labelFields`, `fieldPaths`, `fieldExclusionStage`,
- * the page-query reload): individual channels are write-side details.
- */
-/**
  * Identity of the schema currently governing Explore fetches — the
  * page-query reload is keyed on THIS (not just the exclusion list), so
  * switching schemas always refetches even when two schemas hide the
@@ -496,6 +482,13 @@ export const activeSchemaLensKey = selector<string>({
   },
 });
 
+/**
+ * The union of every schema-policy exclusion channel — the active
+ * workflow task's hidden fields and the admin Explore lens (when it
+ * targets the current dataset). THE read for exclusion consumers
+ * (`fieldSchema`, `labelFields`, `fieldPaths`, `fieldExclusionStage`,
+ * the page-query reload): individual channels are write-side details.
+ */
 export const activeSchemaExclusions = selector<string[] | null>({
   key: "activeSchemaExclusions",
   get: ({ get }) => {
