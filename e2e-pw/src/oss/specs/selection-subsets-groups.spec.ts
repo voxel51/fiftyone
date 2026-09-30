@@ -168,7 +168,7 @@ test("a limited dynamic group saves its concrete members", async ({
   await viewBar.expand();
   await grid.run(() =>
     viewBar.viewStages
-      .first()
+      .filter({ hasText: "Limit" })
       .getByRole("button", { name: "Remove stage" })
       .click(),
   );
