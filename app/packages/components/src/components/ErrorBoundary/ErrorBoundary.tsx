@@ -46,6 +46,8 @@ interface ErrorDisplayProps<T extends AppError> {
 /**
  * Note: we shouldn't add any side effects to this component.
  * For that, use `ErrorsDisplayWithSideEffects`.
+ *
+ * @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead.
  */
 export const ErrorDisplayMarkup = <T extends AppError>({
   error,
@@ -190,6 +192,7 @@ const TrackFallback =
     return <ActualFallback {...props} />;
   };
 
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 const ErrorBoundary: React.FC<
   PropsWithChildren<{
     onReset?: () => void;

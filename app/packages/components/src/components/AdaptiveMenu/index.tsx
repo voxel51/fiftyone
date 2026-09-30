@@ -17,6 +17,7 @@ import PillButton from "../PillButton";
 import PopoutButton from "../PopoutButton";
 import { hideOverflowingNodes } from "./utils";
 
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 export default function AdaptiveMenu<T extends AdaptiveMenuItemPropsType>(
   props: AdaptiveMenuPropsType<T>,
 ) {
@@ -304,6 +305,7 @@ function MoreItems<T extends AdaptiveMenuItemPropsType>(
   );
 }
 
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 export type AdaptiveMenuItemComponentPropsType = {
   variant: "visible" | "overflow";
   closeOverflow?: () => void;

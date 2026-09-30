@@ -2,6 +2,7 @@ import classNames from "classnames";
 import React from "react";
 import styles from "./Loading.module.css";
 
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 const Loading: React.FC<
   React.PropsWithChildren<{
     dataCy?: string;

@@ -1,5 +1,6 @@
 import React, { MouseEventHandler } from "react";
 
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 const Link: React.FC<
   React.PropsWithChildren<{
     to?: MouseEventHandler;

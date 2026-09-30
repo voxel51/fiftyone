@@ -306,14 +306,17 @@ let theme = extendMuiTheme({
   },
 });
 
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 export const useTheme = () => {
   return theme.colorSchemes[useRecoilValue(fos.theme)].palette;
 };
 
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 export const useFont = () => {
   return theme.typography.fontFamily;
 };
 
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 const ThemeProvider: React.FC<
   React.PropsWithChildren<{ customTheme?: typeof theme }>
 > = ({ children, customTheme }) => {

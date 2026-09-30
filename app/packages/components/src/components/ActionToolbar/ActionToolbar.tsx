@@ -43,6 +43,7 @@ const StyledToolbarAction = styled(ToolbarAction)({
   },
 });
 
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 export interface ActionToolbarProps {
   groups: ToolbarActionGroup[];
   orientation?: Orientation;
@@ -111,6 +112,8 @@ const ActionButton = ({ action }: { action: ToolbarActionItem }) => {
  *
  * The component owns no portal logic, no domain state, and no visibility
  * gating — callers handle mounting, action wiring, and when to show it.
+ *
+ * @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead.
  */
 export const ActionToolbar = ({
   groups,

@@ -5,6 +5,7 @@ import styles from "./panel.module.css";
 import { Close as CloseIcon } from "@fiftyone/components";
 import { Fragment, useMemo } from "react";
 
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 export default function HelpPanel({ containerRef, onClose, items }) {
   const groupedItems = useMemo(() => {
     // Group items by key if keys exist

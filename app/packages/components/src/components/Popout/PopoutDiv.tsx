@@ -1,6 +1,7 @@
 import { animated } from "@react-spring/web";
 import styled from "styled-components";
 
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 const PopoutDiv = animated(styled.div`
   background-color: ${({ theme }) => theme.background.level2};
   border: 1px solid ${({ theme }) => theme.primary.plainBorder};

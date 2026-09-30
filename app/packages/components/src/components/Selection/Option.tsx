@@ -11,6 +11,7 @@ import {
   LabelText,
 } from "./styledComponents";
 
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 export interface DatasetViewOption {
   id: string;
   label: string;

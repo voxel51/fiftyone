@@ -17,6 +17,7 @@ import MuiIconFont from "../MuiIconFont";
 const { IS_APP_MODE_FIFTYONE, BOOK_A_DEMO_LINK, TRY_IN_BROWSER_LINK } =
   constants;
 
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 export default function PanelCTA(props: PanelCTAProps) {
   const {
     demoLabel,
@@ -172,6 +173,7 @@ function TypographyOrNode(props: TypographyProps) {
   return null;
 }
 
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 export type PanelCTAProps = {
   Actions?: FunctionComponent<any>;
   caption?: string | React.ReactNode;
