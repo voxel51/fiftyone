@@ -17,7 +17,6 @@ import {
   KeypointPointHitAction,
   type KeypointPointHitContext,
 } from "./InteractiveKeypointHandler";
-import { KeypointOverlay } from "../overlay/KeypointOverlay";
 
 const INTERACTIVE_POLYLINE_HANDLER_ID = "interactive-polyline-handler";
 
@@ -407,12 +406,7 @@ export class InteractivePolylineHandler implements InteractionHandler {
     // engine records one write for the whole gesture.
     this.overlay.emitPointMoved(id, from, to);
 
-    const cmd = new MoveKeypointPointCommand(
-      this.overlay as unknown as KeypointOverlay,
-      id,
-      from,
-      to,
-    );
+    const cmd = new MoveKeypointPointCommand(this.overlay, id, from, to);
     CommandContextManager.instance().getActiveContext().pushUndoable(cmd);
     this.pushedCommandIds.add(cmd.id);
 

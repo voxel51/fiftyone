@@ -3,10 +3,11 @@
  */
 
 import type { Undoable } from "@fiftyone/commands";
-import type { KeypointOverlay } from "../overlay/KeypointOverlay";
+import type { KeypointOverlay, PointLabel } from "../overlay/KeypointOverlay";
 
 /**
- * Undoable command for moving a single point within a KeypointOverlay.
+ * Undoable command for moving a single point within a KeypointOverlay, or
+ * any subclass (polylines) whatever label shape it holds.
  */
 export class MoveKeypointPointCommand implements Undoable {
   readonly id: string;
@@ -18,7 +19,7 @@ export class MoveKeypointPointCommand implements Undoable {
    *   this: they persist once, on completion, never per placement.
    */
   constructor(
-    private overlay: KeypointOverlay,
+    private overlay: KeypointOverlay<PointLabel>,
     private pointId: string,
     private from: [number, number],
     private to: [number, number],

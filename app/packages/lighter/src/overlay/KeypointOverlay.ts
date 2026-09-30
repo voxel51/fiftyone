@@ -50,6 +50,30 @@ export type KeypointLabel = RawLookerLabel & {
 };
 
 /**
+ * What {@link KeypointOverlay} needs from any label it holds: an optional
+ * class name for the tag, and `points` in whatever shape the concrete overlay
+ * reads through {@link KeypointOverlay.pointsFromLabel} (flat pairs for
+ * keypoints, nested segments for polylines).
+ */
+export type PointLabel = RawLookerLabel & {
+  label?: string;
+  points?: unknown;
+};
+
+/** Options for {@link KeypointOverlay.addPoint} and its overrides. */
+export interface AddPointOptions {
+  variant?: string;
+  id?: string;
+  dragging?: boolean;
+  silent?: boolean;
+}
+
+const toPointRows = (points: unknown): ReadonlyArray<readonly unknown[]> => {
+  const rows: unknown[] = Array.isArray(points) ? points : [];
+  return rows.map((row) => (Array.isArray(row) ? row : []));
+};
+
+/**
  * Normalizes one raw label point to a finite `[x, y]` pair, or a `[NaN, NaN]`
  * hole. Sample reads deliver missing nodes as `"nan"`-style strings
  * (see `NONFINITE` in `@fiftyone/looker`) and in-app edits hold real `NaN`s;
@@ -96,9 +120,9 @@ export interface LabelTextPlacement {
  * - Sequential connections with `closed: true`: polygon / ROI
  * - Skeleton-defined connections: keypoint labels
  */
-export interface KeypointOptions {
+export interface KeypointOptions<L extends PointLabel = KeypointLabel> {
   id: string;
-  label: KeypointLabel;
+  label: L;
   field: string;
   /** Edge index paths, e.g. [[0,1,2], [3,4]]. Omit for unconnected points. */
   connections?: number[][];
@@ -138,7 +162,7 @@ export interface KeypointEffectPoint {
  * contribution.
  */
 export interface KeypointEffectContext {
-  overlay: KeypointOverlay;
+  overlay: KeypointOverlay<PointLabel>;
   renderer: Renderer2D;
   /** Per-point snapshot for this frame, in entry order. */
   points: ReadonlyArray<KeypointEffectPoint>;
@@ -179,8 +203,8 @@ export type KeypointRenderContext = {
  * - Polygon drawing: sequential connections, closed
  * - Keypoint labels: skeleton-defined connections
  */
-export class KeypointOverlay
-  extends BaseOverlay<KeypointLabel>
+export class KeypointOverlay<L extends PointLabel = KeypointLabel>
+  extends BaseOverlay<L>
   implements Selectable, Spatial, Hoverable
 {
   private isDraggable: boolean;
@@ -234,9 +258,9 @@ export class KeypointOverlay
 
   public cursor = "pointer";
 
-  constructor(options: KeypointOptions) {
+  constructor(options: KeypointOptions<L>) {
     super(options.id, options.field, options.label);
-    this.#points = (options.label?.points ?? []).map((p) => ({
+    this.#points = this.pointsFromLabel(options.label).map((p) => ({
       id: uuidv4(),
       position: sanitizePoint(p),
     }));
@@ -253,14 +277,25 @@ export class KeypointOverlay
   }
 
   /**
-   * Applies label state, rebuilding point geometry from `label.points` (cf.
-   * {@link PolylineOverlay.applyLabel}); without this, Sample→overlay
-   * reconciliation would update `label` but leave stale geometry on screen.
-   * Points keep their entry ids by index so sub-selection and pending
-   * point-command references survive a reconciliation.
+   * The label's points as one flat row per point — the overlay's only read of
+   * label geometry. A subclass holding another label shape overrides it
+   * (polylines flatten their segments) and inherits everything else. Must not
+   * read instance state: the constructor calls it before subclass fields
+   * exist.
    */
-  override applyLabel(label: KeypointLabel): void {
-    this.#points = (label?.points ?? []).map((position, i) => ({
+  protected pointsFromLabel(label: L): ReadonlyArray<readonly unknown[]> {
+    return toPointRows(label?.points);
+  }
+
+  /**
+   * Applies label state, rebuilding point geometry from
+   * {@link pointsFromLabel}; without this, Sample→overlay reconciliation would
+   * update `label` but leave stale geometry on screen. Points keep their
+   * entry ids by index so sub-selection and pending point-command references
+   * survive a reconciliation.
+   */
+  override applyLabel(label: L): void {
+    this.#points = this.pointsFromLabel(label).map((position, i) => ({
       id: this.#points[i]?.id ?? uuidv4(),
       position: sanitizePoint(position),
       variant: this.#points[i]?.variant,
@@ -884,14 +919,15 @@ export class KeypointOverlay
     renderer: Renderer2D,
     ctx: KeypointRenderContext,
   ): void {
-    if (!this.label || !this.label.label?.length) return;
+    const text = this.label?.label;
+    if (!text) return;
     if (!BaseOverlay.validBounds(this.bounds)) return;
 
     const placement = this.computeLabelTextPlacement(renderer, ctx.absPoints);
     if (!placement) return;
 
     renderer.drawText(
-      this.label.label,
+      text,
       placement.position,
       {
         fontColor: "#ffffff",
@@ -1115,15 +1151,7 @@ export class KeypointOverlay
    *             drafts place silently and commit once, on completion.
    * @returns The id of the new point.
    */
-  addPoint(
-    worldPoint: Point,
-    options?: {
-      variant?: string;
-      id?: string;
-      dragging?: boolean;
-      silent?: boolean;
-    },
-  ): string {
+  addPoint(worldPoint: Point, options?: AddPointOptions): string {
     const { variant, id, silent } = options ?? {};
     const position = this.absolutePointToRelative(worldPoint);
     const entry: KeypointEntry = { id: id ?? uuidv4(), position, variant };

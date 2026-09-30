@@ -16,8 +16,8 @@ import {
   projectOntoSegment2d,
 } from "../utils/geometry";
 import {
+  type AddPointOptions,
   KeypointOverlay,
-  type KeypointLabel,
   type KeypointRenderContext,
 } from "./KeypointOverlay";
 import { BaseOverlay } from "./BaseOverlay";
@@ -88,7 +88,7 @@ const flattenPolylinePoints = (
  * For persistence, callers should read points back via {@link getNestedPoints}
  * to recover the original `[[number, number][], ...]` shape.
  */
-export class PolylineOverlay extends KeypointOverlay {
+export class PolylineOverlay extends KeypointOverlay<PolylineLabel> {
   private segmentBoundaries: number[];
   private polylineClosed: boolean;
   private polylineFilled: boolean;
@@ -123,20 +123,15 @@ export class PolylineOverlay extends KeypointOverlay {
   private textBounds?: Rect;
 
   constructor(options: PolylineOptions) {
-    const { flatPoints, connections, segmentBoundaries } =
-      flattenPolylinePoints(options.label.points ?? []);
+    const { connections, segmentBoundaries } = flattenPolylinePoints(
+      options.label.points ?? [],
+    );
 
-    // Synthesize a Keypoint-compatible label so the parent's render machinery
-    // operates on a flat point list
-    const flatLabel = {
-      ...options.label,
-      points: flatPoints,
-    } as unknown as KeypointLabel;
-
+    // the parent reads the nested segments through pointsFromLabel
     super({
       id: options.id,
       field: options.field,
-      label: flatLabel,
+      label: options.label,
       connections,
       closed: options.label.closed ?? false,
       draggable: options.draggable,
@@ -145,7 +140,6 @@ export class PolylineOverlay extends KeypointOverlay {
       variantStyles: options.variantStyles,
     });
 
-    this.label = options.label as unknown as KeypointLabel;
     this.segmentBoundaries = segmentBoundaries;
     this.polylineClosed = options.label.closed ?? false;
     this.polylineFilled = options.label.filled ?? false;
@@ -155,25 +149,28 @@ export class PolylineOverlay extends KeypointOverlay {
     return "PolylineOverlay";
   }
 
+  /** Nested segments, flattened in segment order (see getNestedPoints). */
+  protected override pointsFromLabel(
+    label: PolylineLabel,
+  ): ReadonlyArray<readonly unknown[]> {
+    return flattenPolylinePoints(label?.points ?? []).flatPoints;
+  }
+
   override applyLabel(label: PolylineLabel): void {
-    // Apply polyline-specific state (`closed`/`filled`/points) before the base
-    // label set so the overlay's derived getters are current.
-    const { flatPoints, connections, segmentBoundaries } =
-      flattenPolylinePoints(label.points ?? []);
+    // Polyline-specific state first, so the parent's point rebuild (through
+    // pointsFromLabel) lands on current segment boundaries and connections
+    const { connections, segmentBoundaries } = flattenPolylinePoints(
+      label.points ?? [],
+    );
 
     this.segmentBoundaries = segmentBoundaries;
     this.polylineClosed = label.closed ?? false;
     this.polylineFilled = label.filled ?? false;
 
-    this.setRelativePoints(flatPoints);
     this.setConnections(connections);
     this.setClosed(this.polylineClosed);
 
-    // Set the label directly (as the constructor does) rather than chaining
-    // through KeypointOverlay.applyLabel: that override ingests `points` as
-    // flat [x, y] pairs, which would clobber the flattened segment geometry
-    // applied above (polyline `points` is nested per-segment).
-    this.label = label as unknown as KeypointLabel;
+    super.applyLabel(label);
   }
 
   override getSelectionPriority(): number {
@@ -246,11 +243,11 @@ export class PolylineOverlay extends KeypointOverlay {
    * to target a specific segment.
    *
    * @param worldPoint Absolute (world-space) coordinates of the new point.
-   * @param variant Optional variant key used to determine render style.
-   * @param id Optional point id; one is generated when omitted.
+   * @param options Variant, point id (generated when omitted), and emit
+   *   flags, forwarded unchanged to {@link KeypointOverlay.addPoint}.
    * @returns The id of the new point.
    */
-  override addPoint(worldPoint: Point, variant?: string, id?: string): string {
+  override addPoint(worldPoint: Point, options?: AddPointOptions): string {
     // Bump boundaries BEFORE super, since `super.addPoint` synchronously
     // dispatches `lighter:keypoint-point-added`.
     if (this.segmentBoundaries.length === 0) {
@@ -259,7 +256,7 @@ export class PolylineOverlay extends KeypointOverlay {
       this.segmentBoundaries[this.segmentBoundaries.length - 1] += 1;
     }
 
-    const newId = super.addPoint(worldPoint, variant, id);
+    const newId = super.addPoint(worldPoint, options);
 
     this.setConnections(this.rebuildConnectionsFromBoundaries());
 
