@@ -1,8 +1,18 @@
-import { getFetchFunctionExtended } from "@fiftyone/utilities";
-import { useCallback, useEffect, useMemo, useRef } from "react";
-import { atom, selector, useRecoilValue, useSetRecoilState } from "recoil";
+import { useEffect, useMemo } from "react";
+import {
+  DefaultValue,
+  atom,
+  selector,
+  selectorFamily,
+  useRecoilCallback,
+  useRecoilValue,
+} from "recoil";
+import {
+  createTemporalTagsClient,
+  onTemporalTagsMutated,
+} from "../temporal-tags";
 import { useActiveFilterValues } from "./filters";
-import { isModalActive } from "./modal";
+import { counts } from "./pathData/counts";
 import { activeField } from "./schema";
 import { datasetId } from "./selectors";
 import { TEMPORAL_TAGS_FIELD } from "./sidebar";
@@ -20,117 +30,158 @@ export interface TemporalTagResults {
 }
 
 /**
- * Available temporal-tag values (with counts) for the current dataset. A plain
- * atom (rather than an async selector) so reading it never suspends the
- * sidebar. Kept private — exposed only through the read selector + sync hook
- * below so the atom stays an implementation detail.
+ * Every temporal-tag value defined on the current dataset, with its count over
+ * the whole dataset: the vocabulary a tag editor offers. A plain atom (rather
+ * than an async selector) so reading it never suspends. Kept private — exposed
+ * only through the read selector + sync hook below so the atom stays an
+ * implementation detail.
  */
+const NO_RESULTS: TemporalTagResults = { results: [], count: null };
+
 const temporalTagResultsAtom = atom<TemporalTagResults>({
   key: "temporalTagResultsAtom",
-  default: { results: [], count: null },
+  default: NO_RESULTS,
 });
 
+/** The dataset whose vocabulary `temporalTagResultsAtom` holds. */
+const temporalTagResultsDatasetAtom = atom<string | null>({
+  key: "temporalTagResultsDatasetAtom",
+  default: null,
+});
+
+// Shared by every editor that loads the vocabulary, so a response that is no
+// longer the latest request, from any of them, is dropped rather than
+// overwriting fresher results.
+let latestVocabularyRequest = 0;
+
 /**
- * Read-only view of the temporal-tag results, exposed as the string filter's
- * `resultsAtom` (a RecoilValue, mirroring `labelTagsCount`). Populate it via
- * {@link useSyncTemporalTagResults}.
+ * Read-only view of the dataset's temporal-tag vocabulary. Populate it via
+ * {@link useSyncTemporalTagResults}. The sidebar's counts are not these; they
+ * are {@link temporalTagCounts}, scoped to the view.
  */
 export const temporalTagResults = selector<TemporalTagResults>({
   key: "temporalTagResults",
   get: ({ get }) => get(temporalTagResultsAtom),
 });
 
-type TemporalTagCountsResponse = { counts: Record<string, number> };
-
-/**
- * Fetches temporal-tag value counts for a dataset from the multimodal tags
- * REST endpoint and shapes them for the string filter. Mirrors the
- * `@fiftyone/multimodal` client's `countDatasetTemporalTags` — duplicated here
- * because `@fiftyone/state` cannot depend on `@fiftyone/multimodal`.
- */
+/** Fetches the temporal-tag vocabulary of a dataset, with counts. */
 export const fetchTemporalTagResults = async (
   datasetId: string,
 ): Promise<TemporalTagResults> => {
-  const fetchFunction = getFetchFunctionExtended();
-  const { response } = await fetchFunction<
-    undefined,
-    TemporalTagCountsResponse
-  >({
-    method: "GET",
-    // `by_sample=true` counts distinct samples per tag (a sample with multiple
-    // intervals of the same tag counts once), matching what selecting the value
-    // filters the grid to.
-    path: `/dataset/${encodeURIComponent(datasetId)}/tags/counts?by_sample=true`,
+  const tagCounts = await createTemporalTagsClient().countDatasetTemporalTags({
+    datasetId,
   });
 
-  const results = Object.entries(response.counts ?? {}).map(
-    ([value, count]) => ({ value, count }),
-  );
+  const results = Object.entries(tagCounts ?? {}).map(([value, count]) => ({
+    value,
+    count,
+  }));
   const count = results.reduce((acc, { count }) => acc + (count ?? 0), 0);
 
   return { results, count };
 };
 
 /**
- * Loads temporal-tag value counts for the active dataset into the results atom.
- * Encapsulates all Recoil + fetch access so the filter component never touches
- * atoms directly. Call once from the temporal-tags sidebar filter.
+ * Bumped after every temporal tag mutation. Temporal tags are not sample
+ * fields, so no other input to their aggregation changes when one is created,
+ * edited or deleted; this is what refetches it.
+ */
+export const temporalTagsRevision = atom<number>({
+  key: "temporalTagsRevision",
+  default: 0,
+  effects: [
+    ({ setSelf }) =>
+      onTemporalTagsMutated(() =>
+        setSelf(
+          (revision) => (revision instanceof DefaultValue ? 0 : revision) + 1,
+        ),
+      ),
+  ],
+});
+
+/**
+ * The temporal-tag values on the samples in view, with how many intervals
+ * each has there, shaped for the string filter's `resultsAtom`. Scoped like
+ * every other sidebar count: the view, the active slice, and with `extended`
+ * the filters.
+ */
+export const temporalTagCounts = selectorFamily<
+  TemporalTagResults,
+  { modal: boolean; extended: boolean }
+>({
+  key: "temporalTagCounts",
+  get:
+    (params) =>
+    ({ get }) => {
+      const results = Object.entries(
+        get(counts({ ...params, path: TEMPORAL_TAGS_FIELD })),
+      ).map(([value, count]) => ({ value, count }));
+
+      return {
+        results,
+        count: results.reduce((acc, { count }) => acc + count, 0),
+      };
+    },
+});
+
+/**
+ * Loads the active dataset's temporal-tag vocabulary into the results atom,
+ * once per dataset, and refreshes it after every temporal tag mutation. Call
+ * from each tag editor that offers the existing values.
  */
 export const useSyncTemporalTagResults = (): void => {
   const currentDatasetId = useRecoilValue(datasetId);
-  const setResults = useSetRecoilState(temporalTagResultsAtom);
-  const modalActive = useRecoilValue(isModalActive);
-  const wasModalActive = useRef(modalActive);
 
-  // Shared across both call sites below (mount/dataset-change and
-  // modal-close), which can overlap: the dataset-change effect can still be
-  // in flight when the modal closes and re-triggers `load`. A `cancelled`
-  // flag scoped to a single call can't see a *later* call — only this
-  // counter, bumped by every call, can tell an in-flight response that it is
-  // no longer the latest one and let it drop its result instead of
-  // clobbering fresher data.
-  const requestGenerationRef = useRef(0);
+  const load = useRecoilCallback(
+    ({ set }) =>
+      (targetDatasetId: string) => {
+        const request = ++latestVocabularyRequest;
+        fetchTemporalTagResults(targetDatasetId)
+          .then((results) => {
+            if (request === latestVocabularyRequest) {
+              set(temporalTagResultsAtom, results);
+            }
+          })
+          .catch(() => {
+            // Keep what is shown, and let the next editor mount retry.
+            if (request === latestVocabularyRequest) {
+              set(temporalTagResultsDatasetAtom, null);
+            }
+          });
+      },
+    [],
+  );
 
-  const load = useCallback(() => {
-    const generation = ++requestGenerationRef.current;
-    const isStale = () => requestGenerationRef.current !== generation;
+  // An editor mounting for a dataset whose vocabulary is already held neither
+  // clears it nor refetches it.
+  const sync = useRecoilCallback(
+    ({ snapshot, set }) =>
+      () => {
+        const loadedFor = snapshot
+          .getLoadable(temporalTagResultsDatasetAtom)
+          .getValue();
+        if (loadedFor === currentDatasetId) return;
 
-    if (!currentDatasetId) {
-      // No active dataset — clear any stale results from a prior one.
-      setResults({ results: [], count: null });
-      return;
-    }
-
-    // Clear the prior dataset's results immediately — otherwise
-    // `useTemporalTagValues` keeps returning the old dataset's vocabulary
-    // until this fetch resolves.
-    setResults({ results: [], count: null });
-
-    fetchTemporalTagResults(currentDatasetId)
-      .then((results) => {
-        if (!isStale()) {
-          setResults(results);
+        set(temporalTagResultsDatasetAtom, currentDatasetId);
+        set(temporalTagResultsAtom, NO_RESULTS);
+        if (currentDatasetId) {
+          load(currentDatasetId);
+        } else {
+          ++latestVocabularyRequest;
         }
-      })
-      .catch(() => {
-        if (!isStale()) {
-          setResults({ results: [], count: null });
-        }
-      });
-    // `setResults` is a stable Recoil setter.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentDatasetId]);
+      },
+    [currentDatasetId, load],
+  );
 
-  // Initial load and on dataset change.
-  useEffect(() => load(), [load]);
+  useEffect(() => sync(), [sync]);
 
-  // Re-fetch when the modal closes: a tag may have been created / edited /
-  // deleted in the modal, so the grid's tag list is stale until we refresh.
+  // A created, renamed or deleted tag changes the vocabulary; refresh it in
+  // place so the editor never offers an empty list meanwhile.
   useEffect(() => {
-    const closed = wasModalActive.current && !modalActive;
-    wasModalActive.current = modalActive;
-    if (closed) load();
-  }, [modalActive, load]);
+    if (!currentDatasetId) return undefined;
+
+    return onTemporalTagsMutated(() => load(currentDatasetId));
+  }, [currentDatasetId, load]);
 };
 
 const NO_VALUES: string[] = [];

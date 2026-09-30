@@ -34,6 +34,10 @@ export interface LabelBuilders {
   classification(fields: JSONObject): JSONObject;
   /** A `Classifications` list field holding `items`. */
   classifications(items: JSONObject[]): JSONObject;
+  /** A `Segmentation`; pass a `mask` from `helpers.targetMask`. */
+  segmentation(fields: JSONObject): JSONObject;
+  /** A `Heatmap`; pass a `map` from `helpers.valueMap`. */
+  heatmap(fields: JSONObject): JSONObject;
   /** A `TemporalDetection` with a `[first, last]` frame `support`. */
   temporalDetection(fields: JSONObject): JSONObject;
   /** A `TemporalDetections` list field holding `items`. */
@@ -66,6 +70,8 @@ export const makeLabelBuilders = (): LabelBuilders => {
     classification: (fields) => document("Classification", fields),
     classifications: (items) =>
       list("Classifications", "classifications", items),
+    segmentation: (fields) => document("Segmentation", fields),
+    heatmap: (fields) => document("Heatmap", fields),
     temporalDetection: (fields) => document("TemporalDetection", fields),
     temporalDetections: (items) =>
       list("TemporalDetections", "detections", items),

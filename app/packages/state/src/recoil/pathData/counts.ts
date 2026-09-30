@@ -1,13 +1,13 @@
 import { VALID_KEYPOINTS } from "@fiftyone/utilities";
 import { selectorFamily, waitForAll } from "recoil";
-import { aggregation } from "../aggregations";
+import { aggregation, constrainsScope } from "../aggregations";
 import { datasetSampleCount } from "../dataset";
 import * as filterAtoms from "../filters";
 import { queryPerformance } from "../queryPerformance";
 import * as schemaAtoms from "../schema";
 import * as selectors from "../selectors";
+import { selectionScopeBoundary } from "../selectionScope";
 import { MATCH_LABEL_TAGS, TEMPORAL_TAGS_FIELD } from "../sidebar";
-import { temporalTagResults } from "../temporalTags";
 import * as viewAtoms from "../view";
 import { booleanCountResults } from "./boolean";
 import { gatherPaths } from "./utils";
@@ -26,11 +26,14 @@ export const count = selectorFamily({
       value?: string | null;
     }) =>
     ({ get }): number => {
+      // The estimated dataset count is only right when nothing narrows the
+      // results: no view, no filters, and no saved subset or segment source.
       if (
         !params.modal &&
         (params.path === "" || params.path === "_") &&
         !get(viewAtoms.view).length &&
-        get(queryPerformance)
+        get(queryPerformance) &&
+        !constrainsScope(get(selectionScopeBoundary))
       ) {
         if (
           !get(filterAtoms.hasFilters(false)) ||
@@ -123,19 +126,6 @@ export const counts = selectorFamily({
       // for it should not reach the server
       if (params.path === "_label_tags") {
         return get(cumulativeCounts({ ...params, ...MATCH_LABEL_TAGS }));
-      }
-
-      // Temporal tags live in their own collection, not in the sample schema,
-      // so there is no aggregation to run for them: asking for one leaves the
-      // sidebar's expanded entry on its loading state forever. Their counts
-      // come from the dataset tag-counts endpoint the filter's options already
-      // come from — dataset-wide, so `extended` makes no difference to them.
-      if (params.path === TEMPORAL_TAGS_FIELD) {
-        return Object.fromEntries(
-          get(temporalTagResults).results.flatMap(({ count, value }) =>
-            value === null || count === null ? [] : [[value, count]],
-          ),
-        );
       }
 
       const exists = Boolean(get(schemaAtoms.field(params.path)));

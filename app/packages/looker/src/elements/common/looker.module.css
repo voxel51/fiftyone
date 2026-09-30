@@ -4,28 +4,116 @@
 
 @import url("https://fonts.googleapis.com/css2?family=Palanquin&display=swap");
 
-@keyframes shimmer {
-  0% {
-    background-position: -2000px 0;
-  }
-  100% {
-    background-position: 2000px 0;
+@keyframes lookerSpin {
+  to {
+    transform: rotate(360deg);
   }
 }
 
-.lookerLoader {
-  animation: shimmer 5s infinite;
-  background-size: 200% 100%;
-  height: 5px;
+/*
+ * Buffering indicator for hover-playing thumbnails, rebuilt in plain DOM from
+ * the multimodal grid tile's spinner. Geometry must stay aligned with that
+ * tile's .bufferingIndicator (GridRenderer.module.css): a 20px disc 8px in from
+ * the top right, clear of the interval lanes along the bottom edge.
+ */
+.lookerBuffering {
+  align-items: center;
+  background: rgba(16, 17, 20, 0.72);
+  border-radius: 50%;
+  display: none;
+  height: 20px;
+  justify-content: center;
+  pointer-events: none;
   position: absolute;
-  bottom: 0;
-  width: 100%;
-  background-image: linear-gradient(
-    130deg,
-    rgba(225, 100, 40, 0) 0%,
-    rgb(225, 100, 40) 50%,
-    rgba(225, 100, 40, 0) 100%
-  );
+  right: 8px;
+  top: 8px;
+  width: 20px;
+  z-index: 2;
+}
+
+.lookerBufferingShown {
+  display: flex;
+}
+
+.lookerBufferingIcon {
+  animation: lookerSpin 1s linear infinite;
+  height: 12px;
+  width: 12px;
+}
+
+.lookerBufferingRing {
+  opacity: 0.25;
+}
+
+.lookerBufferingArc {
+  opacity: 0.75;
+}
+
+/*
+ * Loading indicator for thumbnails whose media has not drawn yet, rebuilt in
+ * plain DOM from the multimodal grid tile's. Colors, sizes and timing must
+ * stay aligned with LoadingAscii.module.css and that tile's .root background
+ * (GridRenderer.module.css).
+ */
+@keyframes lookerLoadingFall {
+  0% {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
+
+  24% {
+    opacity: 1;
+  }
+
+  74% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+}
+
+.lookerLoading {
+  align-items: center;
+  background: #101114;
+  display: none;
+  inset: 0;
+  justify-content: center;
+  pointer-events: none;
+  position: absolute;
+}
+
+.lookerLoadingShown {
+  display: flex;
+}
+
+.lookerLoadingBox {
+  color: rgba(108, 214, 255, 0.9);
+  display: inline-block;
+  height: 22px;
+  overflow: hidden;
+  position: relative;
+  width: 28px;
+}
+
+.lookerLoadingBoxInner {
+  animation: lookerLoadingFall 1.15s ease-in infinite;
+  display: block;
+  font-family: "SF Mono", Consolas, "Liberation Mono", monospace;
+  font-size: 6px;
+  font-weight: 800;
+  line-height: 0.9;
+  text-align: left;
+  text-shadow: 0 0 8px rgba(108, 214, 255, 0.5);
+  white-space: pre;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lookerLoadingBoxInner {
+    animation: none;
+  }
 }
 
 .looker {

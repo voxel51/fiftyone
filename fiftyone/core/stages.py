@@ -8150,7 +8150,9 @@ class SortBySimilarity(ViewStage):
             -   a prompt or iterable of prompts (if supported by the index)
 
         k (None): the number of matches to return. By default, the entire
-            collection is sorted
+            collection is sorted. Applied to a grouped collection, ``k``
+            limits the matched samples, so fewer than ``k`` groups are
+            selected when several matches belong to the same group
         reverse (False): whether to sort by least similarity (True) or greatest
             similarity (False). Some backends may not support least similarity
         dist_field (None): the name of a float field in which to store the
@@ -8160,6 +8162,11 @@ class SortBySimilarity(ViewStage):
             :meth:`fiftyone.brain.compute_similarity` run on the dataset. If
             not specified, the dataset must have an applicable run, which will
             be used by default
+        group_slices (None): when applied to a grouped collection, the group
+            slices to search. By default, every slice the index covers is
+            searched. Applied to a grouped collection, the stage selects the
+            groups with a matching sample in any searched slice, in order of
+            their best match
     """
 
     def __init__(
@@ -8169,6 +8176,7 @@ class SortBySimilarity(ViewStage):
         reverse=False,
         dist_field=None,
         brain_key=None,
+        group_slices=None,
         _state=None,
     ):
         query, query_kwarg, is_prompt = _parse_similarity_query(query)
@@ -8180,8 +8188,12 @@ class SortBySimilarity(ViewStage):
         self._reverse = reverse
         self._dist_field = dist_field
         self._brain_key = brain_key
+        self._group_slices = (
+            list(group_slices) if group_slices is not None else None
+        )
         self._state = _state
         self._pipeline = None
+        self._group_matches = None
 
     @property
     def query(self):
@@ -8208,6 +8220,19 @@ class SortBySimilarity(ViewStage):
         """The brain key of the similarity index to use."""
         return self._brain_key
 
+    @property
+    def group_slices(self):
+        """The group slices to search in a grouped collection, or ``None``
+        to search every slice the index covers."""
+        return self._group_slices
+
+    @property
+    def group_matches(self):
+        """When applied to a grouped collection, a dict mapping each selected
+        group ID to the names of its slices that matched, best match first;
+        otherwise ``None``. Available after :meth:`validate`."""
+        return self._group_matches
+
     def to_mongo(self, _):
         if self._pipeline is None:
             raise ValueError(
@@ -8224,6 +8249,7 @@ class SortBySimilarity(ViewStage):
             ["reverse", self._reverse],
             ["dist_field", self._dist_field],
             ["brain_key", self._brain_key],
+            ["group_slices", self._group_slices],
             ["_state", self._state],
         ]
 
@@ -8265,6 +8291,12 @@ class SortBySimilarity(ViewStage):
                 "placeholder": "brain key",
                 "choices": _similarity_key_choices(),
             },
+            {
+                "name": "group_slices",
+                "type": "NoneType|list<str>",
+                "default": "None",
+                "placeholder": "group slices (default=None)",
+            },
             {"name": "_state", "type": "NoneType|json", "default": "None"},
         ]
 
@@ -8277,21 +8309,23 @@ class SortBySimilarity(ViewStage):
             "reverse": self._reverse,
             "dist_field": self._dist_field,
             "brain_key": self._brain_key,
+            "group_slices": self._group_slices,
         }
 
-        last_state = deepcopy(self._state)
-        if last_state is not None:
-            pipeline = last_state.pop("pipeline", None)
-        else:
-            pipeline = None
+        last_state = deepcopy(self._state) or {}
+        pipeline = last_state.pop("pipeline", None)
+        group_matches = last_state.pop("group_matches", None)
 
         if pipeline is None or state != last_state:
-            pipeline = self._make_pipeline(sample_collection)
+            pipeline, group_matches = self._make_pipeline(sample_collection)
 
         state["pipeline"] = pipeline
+        if group_matches is not None:
+            state["group_matches"] = group_matches
 
         self._state = state
         self._pipeline = pipeline
+        self._group_matches = group_matches
 
     def _make_pipeline(self, sample_collection):
         if self._brain_key is not None:
@@ -8309,18 +8343,55 @@ class SortBySimilarity(ViewStage):
                 "environment?" % brain_key
             )
 
+        if (
+            sample_collection.media_type == fom.GROUP
+            and results.config.patches_field is None
+        ):
+            return self._make_group_pipeline(sample_collection, results)
+
         with contextlib.ExitStack() as context:
             if sample_collection.view() != results.view.view():
                 results.use_view(sample_collection)
                 context.enter_context(results)
 
-            return results.sort_by_similarity(
+            pipeline = results.sort_by_similarity(
                 self._query,
                 k=self._k,
                 reverse=self._reverse,
                 dist_field=self._dist_field,
                 _mongo=True,
             )
+
+        return pipeline, None
+
+    def _make_group_pipeline(self, sample_collection, results):
+        # Neighbors are found over the searched slices together, so a match
+        # in any slice selects its group, while the grouped collection goes
+        # on showing its active slice
+        samples = sample_collection.select_group_slices(
+            self._group_slices, _allow_mixed=True
+        )
+
+        with results.use_view(samples):
+            matches = results.sort_by_similarity(
+                self._query,
+                k=self._k,
+                reverse=self._reverse,
+                dist_field=self._dist_field,
+            )
+            group_path = sample_collection.group_field
+            group_ids, slice_names = matches.values(
+                [group_path + ".id", group_path + ".name"]
+            )
+
+        # Insertion order is the order of each group's best match
+        group_matches = {}
+        for group_id, slice_name in zip(group_ids, slice_names):
+            group_matches.setdefault(group_id, []).append(slice_name)
+
+        stage = SelectGroups(list(group_matches), ordered=True)
+        stage.validate(sample_collection)
+        return stage.to_mongo(sample_collection), group_matches
 
 
 def _parse_similarity_query(query):
@@ -8896,6 +8967,14 @@ class ToClips(ViewStage):
         return self._config
 
     def load_view(self, sample_collection, saved_view=False, reload=False):
+        subset_id = (self._config or {}).get("_subset_id")
+        if subset_id is not None:
+            from fiftyone.core.subsets import load_materialized_view
+
+            return load_materialized_view(
+                sample_collection, subset_id, self, reload=reload
+            )
+
         state = {
             "dataset_id": str(sample_collection._root_dataset._doc.id),
             "stages": sample_collection.view()._serialize(include_uuids=False),
@@ -9292,7 +9371,23 @@ class ToFrames(ViewStage):
         """Parameters specifying how to perform the conversion."""
         return self._config
 
+    @property
+    def _samples_source_frames(self):
+        # Saved frame subsets render video positions dynamically. Materializing
+        # their read cache never samples files or writes source frame records.
+        return not (self._config or {}).get("_subset_id") and bool(
+            (self._config or {}).get("sample_frames")
+        )
+
     def load_view(self, sample_collection, saved_view=False, reload=False):
+        subset_id = (self._config or {}).get("_subset_id")
+        if subset_id is not None:
+            from fiftyone.core.subsets import load_materialized_view
+
+            return load_materialized_view(
+                sample_collection, subset_id, self, reload=reload
+            )
+
         state = {
             "dataset_id": str(sample_collection._root_dataset._doc.id),
             "stages": sample_collection.view()._serialize(include_uuids=False),

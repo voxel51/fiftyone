@@ -103,6 +103,7 @@ type BrainRun implements Run {
   timestamp: datetime
   config: BrainRunConfig
   viewStages: [String!]
+  resultsMeta: BrainRunResultsMeta
   ready: Boolean
   error: String
 }
@@ -119,6 +120,10 @@ type BrainRunConfig implements RunConfig {
   type: BrainRunType
   maxK: Int
   supportsLeastSimilarity: Boolean
+}
+
+type BrainRunResultsMeta {
+  groupSlices: [String!]
 }
 
 enum BrainRunType {
@@ -448,9 +453,7 @@ type KeypointSkeleton {
   edges: [[Int!]!]!
 }
 
-"""
-The kind of value a view expression operator accepts or produces
-"""
+"""The kind of value a view expression operator accepts or produces"""
 enum Kind {
   ANY
   NUMBER

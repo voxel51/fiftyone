@@ -1,4 +1,4 @@
-import type { SampleRendererProps } from "@fiftyone/plugins";
+import type { IntervalTileContext } from "../extensions/episode-intervals";
 import {
   useCallback,
   useEffect,
@@ -20,6 +20,7 @@ import {
   useEpisodeTimeRange,
 } from "../extensions/episode-intervals";
 import { temporalTagIntervalSource } from "./temporal-tag-interval-source";
+import { savedSegmentIntervalSource } from "../extensions/episode-intervals/saved-segments";
 import styles from "./grid-overlay.module.css";
 
 /** Cap the stacked levels so the lane stays compact on a small grid tile. */
@@ -73,7 +74,10 @@ const MAX_READOUT_NAMES = 12;
  * Sources that ship in this package. Everything else arrives through the
  * registry — see `extensions/episode-intervals/types.ts`.
  */
-const BUILT_IN_SOURCES = [temporalTagIntervalSource];
+const BUILT_IN_SOURCES = [
+  savedSegmentIntervalSource,
+  temporalTagIntervalSource,
+];
 
 /**
  * Bottom-of-tile interval lane for multimodal grid previews.
@@ -83,7 +87,7 @@ const BUILT_IN_SOURCES = [temporalTagIntervalSource];
  * different sources share levels and enabling another source never makes the
  * tile taller. Renders nothing when no source contributes anything.
  */
-export function EpisodeGridOverlay({ ctx }: SampleRendererProps) {
+export function EpisodeGridOverlay({ ctx }: { ctx: IntervalTileContext }) {
   return (
     <EpisodeIntervalSources builtInSources={BUILT_IN_SOURCES} ctx={ctx}>
       {(resolved) => <IntervalLane ctx={ctx} resolved={resolved} />}
@@ -95,7 +99,7 @@ function IntervalLane({
   ctx,
   resolved,
 }: {
-  readonly ctx: SampleRendererProps["ctx"];
+  readonly ctx: IntervalTileContext;
   readonly resolved: readonly ResolvedEpisodeIntervals[];
 }) {
   const episodeId = ctx.sample.sample._id;

@@ -141,7 +141,16 @@ export const createRouter = <T extends OperationType>(
     history,
 
     get location() {
-      return history.location as FiftyOneLocation;
+      const location = history.location as FiftyOneLocation;
+      // Shared UI features write query parameters without a route transition.
+      // Read those changes before a modal/view writer builds the next URL.
+      return !isNotebook() && window.location.pathname === location.pathname
+        ? {
+            ...location,
+            search: window.location.search,
+            hash: window.location.hash,
+          }
+        : location;
     },
 
     get(next = false) {

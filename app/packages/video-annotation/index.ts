@@ -28,6 +28,8 @@ export {
   VIDEO_STREAM_ID,
 } from "./src/utils/ids";
 export { getModalSampleFrameRate } from "./src/utils/modalSample";
+export { resolveFrameCount } from "./src/utils/frameCount";
+export { resolveTemporalDetectionSupport } from "./src/tracks/trackExtentEdit";
 export { useTimelineMaxSize } from "./src/hooks/useTimelineMaxSize";
 export { DynamicGroupImageStream } from "./src/streams/DynamicGroupImageStream";
 export type { DynamicGroupImageFrame } from "./src/streams/DynamicGroupImageStream";
