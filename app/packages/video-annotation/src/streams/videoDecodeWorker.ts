@@ -31,10 +31,12 @@
  * decode forward through the latest. Lead-in frames are emitted as bonus —
  * they're already decoded and help scrub-back. The sync table is verified
  * against sample bytes before a snap relies on it (see {@link KeyframeIndex}),
- * and a chunk that starts right after the previous one continues the open
- * decoder instead of snapping back (see {@link DecodeSession}). A decoder
- * holds finished frames until later input arrives, so chunks are settled by
- * attributing frames as they land, not by flushing at each boundary.
+ * an all-intra picture the table flags can start the decode where the browser
+ * allows it (see {@link ./intraStartProbe}), and a chunk that starts right
+ * after the previous one continues the open decoder instead of snapping back
+ * (see {@link DecodeSession}). A decoder holds finished frames until later
+ * input arrives, so chunks are settled by attributing frames as they land, not
+ * by flushing at each boundary.
  *
  * Scope: MP4 / H.264 first (mp4box + the common `avcC`/`hvcC`/`av1C`/`vpcC`
  * description boxes). Other containers/codecs are follow-ons gated on
@@ -56,7 +58,8 @@ import {
   presentedInOrder,
 } from "./editList";
 import { DecodeSession } from "./decodeSession";
-import { KeyframeIndex } from "./keyframeIndex";
+import { decodesAsStart, intraStarts } from "./intraStartProbe";
+import { type Gop, KeyframeIndex } from "./keyframeIndex";
 import { keyframeProbe } from "./sampleKeyframe";
 import {
   ByteRangeCache,
@@ -372,9 +375,21 @@ function buildSampleTable(
   });
 
   const cfg = config as VideoDecoderConfig;
+  const probe = keyframeProbe(
+    cfg.codec,
+    cfg.description as Uint8Array | undefined,
+  );
+  // With reordering, the pictures decoded after an intra start but presented
+  // before it may reference the previous GOP, so only an IDR is safe.
+  const reorders = decodeOrder.some(
+    (s, i) => i > 0 && s.tsMicros < decodeOrder[i - 1].tsMicros,
+  );
   keyframes = new KeyframeIndex(
     decodeOrder,
-    keyframeProbe(cfg.codec, cfg.description as Uint8Array | undefined),
+    probe,
+    probe.family === "avc" && !reorders
+      ? intraStarts(probe.nalLengthSize, (chunk) => decodesAsStart(cfg, chunk))
+      : undefined,
   );
 
   totalFrames = byFrameNumber.length;
@@ -529,7 +544,7 @@ async function runJob(
   // keyframe, which needs the longer span.
   const ready = await prepared.span;
   const continuing = dec.canContinue(dStart);
-  const gop =
+  const gop: Gop | null =
     continuing && ready
       ? { kf: dStart, span: ready }
       : await keyframes.resolveGop(dStart, (kf) => fetchFrom(kf, dEnd));
@@ -542,7 +557,7 @@ async function runJob(
     return;
   }
 
-  const { kf, span } = gop;
+  const { kf, span, start } = gop;
   if (kf !== dStart || !dec.canContinue(dStart)) {
     // A restart discards whatever the decoder still holds, so let the frames
     // already fed arrive and settle their chunks first.
@@ -576,10 +591,13 @@ async function runJob(
 
   for (let i = kf; i <= dEnd; i++) {
     const s = decodeOrder[i];
-    const data = sliceSampleBytes(span.buffer, span.fileStart, s);
+    const data =
+      i === kf && start
+        ? start
+        : sliceSampleBytes(span.buffer, span.fileStart, s);
     dec.decode(
       new EncodedVideoChunk({
-        type: keyframes.chunkType(s, data),
+        type: i === kf && start ? "key" : keyframes.chunkType(s, data),
         timestamp: s.tsMicros,
         duration: s.durMicros,
         data,

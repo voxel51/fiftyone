@@ -109,3 +109,49 @@ describe("KeyframeIndex.resolveGop", () => {
     await expect(index.resolveGop(0, async () => null)).resolves.toBeNull();
   });
 });
+
+describe("KeyframeIndex with intra starts", () => {
+  /** Accepts every flagged sample, answering `start` for the chunk. */
+  const starts = (start: Uint8Array | null) => ({
+    candidate: vi.fn(() => true),
+    chunk: vi.fn(async () => start),
+  });
+
+  it("starts from a flagged intra picture instead of walking back", async () => {
+    const { samples, fetchFrom } = layout(
+      [KEY, INTER, INTER, INTER, INTER],
+      [0, 3],
+    );
+    const start = Uint8Array.of(1, 2);
+    const index = new KeyframeIndex(samples, VP9, starts(start));
+
+    await expect(index.resolveGop(4, fetchFrom)).resolves.toMatchObject({
+      kf: 3,
+      start,
+    });
+    expect(fetchFrom).toHaveBeenCalledTimes(1);
+    expect(samples[3].isSync).toBe(true);
+  });
+
+  it("keeps a candidate flagged while decoding through it", () => {
+    const { samples } = layout([KEY, INTER], [0, 1]);
+    const index = new KeyframeIndex(samples, VP9, starts(null));
+
+    expect(index.chunkType(samples[1], Uint8Array.of(INTER))).toBe("delta");
+    expect(index.atOrBefore(1)).toBe(1);
+  });
+
+  it("demotes and walks back when the picture cannot start a decode", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const { samples, fetchFrom } = layout(
+      [KEY, INTER, INTER, INTER, INTER],
+      [0, 3],
+    );
+    const index = new KeyframeIndex(samples, VP9, starts(null));
+
+    const gop = await index.resolveGop(4, fetchFrom);
+    expect(gop).toMatchObject({ kf: 0 });
+    expect(gop?.start).toBeUndefined();
+    expect(index.atOrBefore(4)).toBe(0);
+  });
+});

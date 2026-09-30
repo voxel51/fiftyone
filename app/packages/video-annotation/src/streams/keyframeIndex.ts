@@ -16,6 +16,24 @@ export interface SyncSample {
 }
 
 /**
+ * Starting a decode from a sync-flagged sample that is not a keyframe, for
+ * encoders that flag all-intra refresh pictures (see {@link ./intraStartProbe}).
+ */
+export interface IntraStarts {
+  /** Whether the sample may serve as a start point, so is not demoted yet. */
+  candidate(data: Uint8Array): boolean;
+  /** Bytes to decode as the start chunk, or `null` when it cannot be one. */
+  chunk(data: Uint8Array): Promise<Uint8Array | null>;
+}
+
+/** A decode span from a start point; `start` replaces the first sample's bytes. */
+export interface Gop {
+  kf: number;
+  span: SpanBuffer;
+  start?: Uint8Array;
+}
+
+/**
  * The keyframes a chunk decode can start from, in decode order, with the
  * container's sync flags verified against sample bytes before they are relied
  * on. A sync table can flag a sample that is not a keyframe (open-GOP encodes
@@ -29,6 +47,7 @@ export class KeyframeIndex {
   constructor(
     private readonly samples: readonly SyncSample[],
     private readonly probe: KeyframeProbe,
+    private readonly intraStarts?: IntraStarts,
   ) {
     this.indices = samples.filter((s) => s.isSync).map((s) => s.decodeIndex);
   }
@@ -58,7 +77,7 @@ export class KeyframeIndex {
       return sample.isSync ? "key" : "delta";
     }
 
-    if (sample.isSync && !byBytes) {
+    if (sample.isSync && !byBytes && !this.intraStarts?.candidate(data)) {
       this.demote(sample);
     }
 
@@ -69,13 +88,13 @@ export class KeyframeIndex {
    * Snap the decode span starting at `dStart` back to a keyframe whose bytes
    * confirm it. `fetchFrom(kf)` fetches the span's bytes from candidate `kf`;
    * a candidate the bytes contradict is demoted and the previous keyframe
-   * tried. Returns `null` when `fetchFrom` has nothing to fetch and throws when
+   * tried, unless it can start the decode as an intra picture. Returns `null` when `fetchFrom` has nothing to fetch and throws when
    * no real keyframe precedes the span.
    */
   async resolveGop(
     dStart: number,
     fetchFrom: (kf: number) => Promise<{ kf: number; span: SpanBuffer } | null>,
-  ): Promise<{ kf: number; span: SpanBuffer } | null> {
+  ): Promise<Gop | null> {
     let kf = this.atOrBefore(dStart);
 
     for (;;) {
@@ -88,6 +107,15 @@ export class KeyframeIndex {
       const data = sliceSampleBytes(span.buffer, span.fileStart, first);
       if (this.chunkType(first, data) === "key") {
         return { kf, span };
+      }
+
+      if (first.isSync) {
+        const start = await this.intraStarts?.chunk(data);
+        if (start) {
+          return { kf, span, start };
+        }
+
+        this.demote(first);
       }
 
       if (kf === 0) {
