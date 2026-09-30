@@ -1,8 +1,8 @@
 import { Tooltip } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import { formatPrimitive, type Primitive } from "@fiftyone/utilities";
 import { PaginationItemProps } from "@mui/material";
 import React, { useMemo } from "react";
-import { useRecoilValue } from "recoil";
 
 export const PaginationComponentWithTooltip = React.memo(
   React.forwardRef(
@@ -15,23 +15,36 @@ export const PaginationComponentWithTooltip = React.memo(
       }: PaginationItemProps & {
         currentPage: number | null;
         isButton: boolean;
-        orderByValue?: string | number | boolean;
+        orderByValue?: Primitive | boolean;
       },
       ref: React.Ref<HTMLDivElement>,
     ) => {
-      const { orderBy } = useRecoilValue(fos.dynamicGroupParameters)!;
+      const orderBy = fos.useDynamicGroupOrderBy();
+      const ftype = fos.useFieldType(orderBy);
+      const timeZone = fos.useTimeZone();
 
       const tooltipText = useMemo(() => {
         if (!orderBy || isButton) {
           return null;
         }
 
-        return `${orderBy}: ${orderByValue ?? "click to load"}`;
-      }, [isButton, orderBy, orderByValue]);
+        if (orderByValue === undefined || orderByValue === null) {
+          return `${orderBy}: click to load`;
+        }
 
-      props["data-cy"] = `dynamic-group-pagination-item-${
-        isButton ? "btn" : currentPage
-      }`;
+        // a date field arrives as a `{_cls, datetime}` wrapper, which reads as
+        // "[object Object]" when interpolated raw
+        const formatted =
+          typeof orderByValue === "boolean"
+            ? String(orderByValue)
+            : (formatPrimitive({
+                ftype: ftype ?? "",
+                timeZone,
+                value: orderByValue,
+              }) ?? orderByValue);
+
+        return `${orderBy}: ${formatted}`;
+      }, [ftype, isButton, orderBy, orderByValue, timeZone]);
 
       props["data-cy"] = `dynamic-group-pagination-item-${
         isButton ? "btn" : currentPage

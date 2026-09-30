@@ -437,6 +437,12 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_ENABLE_QUERY_PERFORMANCE",
             default=True,
         )
+        self.follow_static_symlinks = self.parse_bool(
+            d,
+            "follow_static_symlinks",
+            env_var="FIFTYONE_APP_FOLLOW_STATIC_SYMLINKS",
+            default=True,
+        )
         self.default_query_performance = self.parse_bool(
             d,
             "default_query_performance",

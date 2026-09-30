@@ -83,9 +83,10 @@ export const RegisterVideoExploreLabels: React.FC = () => {
   // whole clip, and the up-front fetch competes with the <video>'s own
   // buffering rather than helping it. The engine's `prefetch` window keeps
   // the store seeded around the playhead instead.
-  useSyncAnnotationVideoStore(labelTypes, {
-    seedWholeClip: false,
+  useSyncAnnotationVideoStore({
+    labelTypes,
     sampleLevelPaths,
+    seedWholeClip: false,
   });
   // after the clock + store, so the bridge reconciles against the
   // FrameTemporalView and a seeded frame store

@@ -7,6 +7,7 @@ import { useRecoilValue, useResetRecoilState } from "recoil";
 import styled from "styled-components";
 import Grid from "../components/Grid";
 import Header from "../components/Grid/Header";
+import SamplesScopeTab from "../components/Grid/Selection/ScopeTab";
 
 const Container = styled.div`
   position: relative;
@@ -29,28 +30,28 @@ registerComponent({
   type: PluginComponentType.Panel,
   Icon: AppsIcon,
   activator: () => true,
-  panelOptions: { TabIndicator, priority: BUILT_IN_PANEL_PRIORITY_CONST },
+  panelOptions: {
+    TabIndicator,
+    TabLabel: SamplesScopeTab,
+    priority: BUILT_IN_PANEL_PRIORITY_CONST,
+  },
 });
 
+/**
+ * Only the similarity-sort reset lives in the tab. The selection itself is
+ * stated, counted, and cleared in the selection tray below the grid.
+ */
 function TabIndicator() {
   const similarityParameters = useRecoilValue(fos.similarityParameters);
   const resetSimilarityParameters = useResetRecoilState(
     fos.similarityParameters,
   );
-  const selectedSamples = useRecoilValue(fos.selectedSamples);
-  const resetSelectedSamples = useResetRecoilState(fos.selectedSamples);
-
-  const selectedSamplesCount = selectedSamples.size;
 
   return (
     <FilterAndSelectionIndicator
       filterCount={similarityParameters ? "" : undefined}
       filterTitle="Reset sort by similarity"
       onClickFilter={resetSimilarityParameters}
-      selectionCount={
-        selectedSamplesCount > 0 ? selectedSamplesCount.toString() : undefined
-      }
-      onClickSelection={resetSelectedSamples}
     />
   );
 }

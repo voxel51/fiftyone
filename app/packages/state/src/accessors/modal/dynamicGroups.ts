@@ -2,8 +2,14 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 import { useRef } from "react";
-import { useRecoilValueLoadable } from "recoil";
-import { groupByFieldValue } from "../../recoil/dynamicGroups";
+import { useRecoilValue, useRecoilValueLoadable } from "recoil";
+import {
+  groupByFieldValue,
+  isDynamicGroup,
+  isNestedDynamicGroup,
+  isNonNestedDynamicGroup,
+} from "../../recoil/dynamicGroups";
+import { isQueryPerformantDynamicGroup } from "../../recoil/queryPerformance";
 import { dynamicGroupsElementCount } from "../../recoil/pathData/groups";
 
 /**
@@ -47,3 +53,18 @@ export const useElementsCount = (modal: boolean): number => {
   }
   return ref.current;
 };
+
+/** Whether the current view is a dynamic group. */
+export const useIsDynamicGroup = (): boolean => useRecoilValue(isDynamicGroup);
+
+/** Whether the current view is a dynamic group over a group dataset. */
+export const useIsNestedDynamicGroup = (): boolean =>
+  useRecoilValue(isNestedDynamicGroup);
+
+/** Whether the current view is a dynamic group over a non-group dataset. */
+export const useIsNonNestedDynamicGroup = (): boolean =>
+  useRecoilValue(isNonNestedDynamicGroup);
+
+/** Whether the dynamic group is ordered with a fixed order-by key, so paging it is indexed. */
+export const useIsQueryPerformantDynamicGroup = (): boolean =>
+  Boolean(useRecoilValue(isQueryPerformantDynamicGroup));

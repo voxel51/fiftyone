@@ -3,6 +3,12 @@ import type { EventUtils } from "src/shared/event-utils";
 import { ToolbarPom } from "./toolbar";
 import { TooltipPom } from "./tooltip";
 
+/**
+ * A corner of the canvas, clear of anything these tests draw around the
+ * center. Used by {@link SampleCanvasPom.clickEmptyArea}.
+ */
+const EMPTY_AREA = 0.05;
+
 export interface Box {
   x: number;
   y: number;
@@ -84,6 +90,14 @@ export class SampleCanvasPom {
     this.#mouseX = xy.x;
     this.#mouseY = xy.y;
     await this.page.mouse.click(xy.x, xy.y);
+  }
+
+  /**
+   * Click a part of the canvas with nothing drawn on it. In segmentation mode
+   * with the Select tool this is the deselect gesture.
+   */
+  async clickEmptyArea() {
+    await this.click(EMPTY_AREA, EMPTY_AREA);
   }
 
   /**

@@ -2,10 +2,7 @@ import type { SampleRendererProps } from "@fiftyone/plugins";
 import type { TemporalTagCreatePayload } from "@fiftyone/playback";
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type {
-  TemporalTag,
-  UseSampleTemporalTagsResult,
-} from "../../../temporal-tags/types";
+import type { TemporalTag, UseSampleTemporalTagsResult } from "@fiftyone/state";
 import { useTemporalTags } from "./use-temporal-tags";
 
 // ---------------------------------------------------------------------------

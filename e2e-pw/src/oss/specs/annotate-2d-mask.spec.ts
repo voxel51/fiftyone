@@ -1,30 +1,11 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * 2D segmentation-mask lifecycle WITHOUT a paint brush, across BOTH mask
- * representations — an embedded numpy `mask` and an on-disk `mask_path` (the
- * two valid forms, with slightly different decode paths). A detection is seeded
- * WITH a mask, so we exercise the mask-commit channel (`overlay.removeMask()` →
- * `overlay-commit-requested` → engine commit + undo + autosave) through removal,
- * which is a real committed diff:
- *   - selecting a masked detection enters segmentation mode,
- *   - removing the mask drops it, in one autosave patch,
- *   - the removal is undoable/redoable on the engine stack,
- *   - the removal persists across a true server round-trip.
- *
- * NOT covered (needs a segmentation-brush harness that doesn't exist yet):
- * painting a mask and draw-box→add-mask→undo (an empty `initMask()` is a no-op
- * at the engine level — no committed diff, no undo entry).
- *
- * SEED MASKS VIA `fo.Detection`, NOT the factory's JSON `withSampleData`: the
- * JSON path omits `_cls`, and the server's mask encoder (`core/json.stringify`)
- * only converts an embedded numpy `mask` to the zlib-base64 the app decodes when
- * the label's `_cls` is a mask class. Without `_cls` it ships the mask's shape
- * string and the app fails with "incorrect header check". A real `fo.Detection`
- * carries `_cls`, so both representations decode.
- *
- * Mask presence is read off the label menu: "Remove mask" shows for a masked
- * detection, "Add mask" for a maskless one (`Edit/Header.tsx`).
+ * 2D mask lifecycle without a brush, for both an embedded numpy `mask` and an
+ * on-disk `mask_path`: selecting a masked detection enters segmentation mode,
+ * and removing the mask is one autosave patch that undoes/redoes and persists.
+ * Mask presence is read off the label menu ("Remove mask" vs "Add mask"), and
+ * seeded detections carry `_cls` so the embedded mask decodes.
  */
 import fs from "node:fs";
 import { Browser, expect, test as base } from "src/oss/fixtures";
@@ -32,6 +13,7 @@ import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
+import type { DatasetFactory } from "src/shared/dataset-factory";
 
 /** Fixed ObjectId addressing the single sample (so we can deep-link the modal). */
 const id = "000000000000000000000000";
@@ -58,24 +40,41 @@ const KINDS: MaskKind[] = [
   },
 ];
 
-/** Python that (re-)seeds the single sample's detection with a mask of `kind`. */
-const seedDetection = ({ kind, datasetName }: MaskKind) => {
-  const maskArg =
-    kind === "mask"
-      ? "mask=np.ones((50, 50), dtype=bool)"
-      : `mask_path="${sharedMaskPath}"`;
-  return `
-import fiftyone as fo
-import numpy as np
-
-dataset = fo.load_dataset("${datasetName}")
-sample = dataset.first()
-sample.detections = fo.Detections(detections=[
-    fo.Detection(label="cat", bounding_box=[0.4, 0.4, 0.2, 0.2], ${maskArg})
-])
-sample.save()
-`;
-};
+/** (Re)create the single-sample dataset with a "cat" detection masked by `kind`. */
+const createMaskDataset = (
+  datasetFactory: typeof DatasetFactory,
+  { kind, datasetName }: MaskKind,
+) =>
+  datasetFactory.createDataset({
+    datasetName,
+    imageOptions: { fillColor: "white", width: 640, height: 480 },
+    schema: { detections: "Detections" },
+    labelSchemas: {
+      detections: {
+        type: "detections",
+        classes: ["cat", "dog"],
+        attributes: [],
+        component: "dropdown",
+      },
+    },
+    withSampleData: (_, { createId, mask }) => ({
+      detections: {
+        _cls: "Detections",
+        detections: [
+          {
+            _id: createId(),
+            _cls: "Detection",
+            tags: [],
+            label: "cat",
+            bounding_box: [0.4, 0.4, 0.2, 0.2],
+            ...(kind === "mask"
+              ? { mask: mask(50, 50) }
+              : { mask_path: sharedMaskPath }),
+          },
+        ],
+      },
+    }),
+  });
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -83,45 +82,18 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(
-  async ({
-    annotateSDK,
-    datasetFactory,
-    fiftyoneLoader,
-    foWebServer,
-    mediaFactory,
-  }) => {
-    await foWebServer.startWebServer();
+test.beforeAll(async ({ foWebServer, mediaFactory }) => {
+  await foWebServer.startWebServer();
 
-    // A solid-white PNG → a full instance mask (every pixel in-mask).
-    await mediaFactory.createImage({
-      outputPath: sharedMaskPath,
-      width: 64,
-      height: 64,
-      fillColor: "white",
-      hideLogs: true,
-    });
-
-    for (const cfg of KINDS) {
-      await datasetFactory.createDataset({
-        datasetName: cfg.datasetName,
-        imageOptions: { fillColor: "white", width: 640, height: 480 },
-        schema: { detections: "Detections" },
-      });
-      await fiftyoneLoader.executePythonCode(seedDetection(cfg));
-      await annotateSDK.updateLabelSchema(cfg.datasetName, "detections", {
-        type: "detections",
-        classes: ["cat", "dog"],
-        attributes: [],
-        component: "dropdown",
-      });
-      await annotateSDK.addFieldToActiveLabelSchema(
-        cfg.datasetName,
-        "detections",
-      );
-    }
-  },
-);
+  // A solid-white PNG → a full instance mask (every pixel in-mask).
+  await mediaFactory.createImage({
+    outputPath: sharedMaskPath,
+    width: 64,
+    height: 64,
+    fillColor: "white",
+    hideLogs: true,
+  });
+});
 
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
@@ -163,8 +135,8 @@ for (const cfg of KINDS) {
   test.describe.serial(`2D annotation mask (${cfg.kind})`, () => {
     // Re-seed before each test so a prior test's persisted removal doesn't bleed
     // in — every test starts mask-present and independent.
-    test.beforeEach(async ({ fiftyoneLoader, modal, page }) => {
-      await fiftyoneLoader.executePythonCode(seedDetection(cfg));
+    test.beforeEach(async ({ datasetFactory, fiftyoneLoader, modal, page }) => {
+      await createMaskDataset(datasetFactory, cfg);
       await fiftyoneLoader.waitUntilGridVisible(page, cfg.datasetName, {
         searchParams: new URLSearchParams({ id }),
       });

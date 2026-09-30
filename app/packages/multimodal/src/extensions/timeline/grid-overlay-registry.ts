@@ -1,5 +1,5 @@
-import type { SampleRendererProps } from "@fiftyone/plugins";
 import { useSyncExternalStore, type ComponentType } from "react";
+import type { IntervalTileContext } from "../host/tile-context";
 
 /**
  * Grid-tile overlay components an edition contributes (e.g. an
@@ -8,12 +8,16 @@ import { useSyncExternalStore, type ComponentType } from "react";
  * registration, so no OSS-synced file ever imports edition code.
  */
 
-export type McapGridOverlayComponent = ComponentType<SampleRendererProps>;
+/** Every tile passes what identifies it; a custom-renderer tile's renderer
+ * context satisfies this too. */
+export type GridOverlayComponent = ComponentType<{
+  readonly ctx: IntervalTileContext;
+}>;
 
-interface McapGridOverlayRegistry {
-  readonly overlays: Set<McapGridOverlayComponent>;
+interface GridOverlayRegistry {
+  readonly overlays: Set<GridOverlayComponent>;
   readonly listeners: Set<() => void>;
-  snapshot: readonly McapGridOverlayComponent[];
+  snapshot: readonly GridOverlayComponent[];
 }
 
 const REGISTRY_KEY = Symbol.for(
@@ -24,7 +28,7 @@ const registry = (globalRegistry[REGISTRY_KEY] ??= {
   overlays: new Set(),
   listeners: new Set(),
   snapshot: [],
-} satisfies McapGridOverlayRegistry) as McapGridOverlayRegistry;
+} satisfies GridOverlayRegistry) as GridOverlayRegistry;
 
 function rebuildSnapshot(): void {
   registry.snapshot = [...registry.overlays];
@@ -34,9 +38,7 @@ function rebuildSnapshot(): void {
 /** Registers one overlay component. Registering the same component twice is
  * an idempotent no-op for module reloads. Returns the unregister, for HMR
  * disposal. */
-export function registerMcapGridOverlay(
-  overlay: McapGridOverlayComponent,
-): () => void {
+export function registerGridOverlay(overlay: GridOverlayComponent): () => void {
   if (registry.overlays.has(overlay)) return () => undefined;
   registry.overlays.add(overlay);
   rebuildSnapshot();
@@ -52,7 +54,21 @@ const subscribe = (listener: () => void): (() => void) => {
 };
 const getSnapshot = () => registry.snapshot;
 
+// By reference, not array position, so an earlier overlay unregistering does
+// not remount a later one
+const overlayIds = new WeakMap<GridOverlayComponent, number>();
+let nextOverlayId = 0;
+
+export function gridOverlayKey(overlay: GridOverlayComponent): number {
+  let id = overlayIds.get(overlay);
+  if (id === undefined) {
+    id = nextOverlayId++;
+    overlayIds.set(overlay, id);
+  }
+  return id;
+}
+
 /** The registered overlays; empty before anything registers. */
-export function useMcapGridOverlays(): readonly McapGridOverlayComponent[] {
+export function useGridOverlays(): readonly GridOverlayComponent[] {
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
