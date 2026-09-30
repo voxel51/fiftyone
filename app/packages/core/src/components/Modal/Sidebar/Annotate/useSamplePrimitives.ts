@@ -1,27 +1,17 @@
-import { State, fieldPaths } from "@fiftyone/state";
-import { DICT_FIELD, VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
+import { usePrimitiveFieldPaths } from "@fiftyone/state";
 import { useAtomValue } from "jotai";
-import { useRecoilValue } from "recoil";
 import { activeLabelSchemas } from "./state";
 
 const useSamplePrimitives = (): string[] => {
   const activeFields = useAtomValue(activeLabelSchemas);
-  const primitivePaths = useRecoilValue(
-    fieldPaths({
-      space: State.SPACE.SAMPLE,
-      ftype: [...VALID_PRIMITIVE_TYPES, DICT_FIELD],
-    }),
-  );
+  // both spaces: a video's `frames.*` primitives list alongside the sample's
+  const primitivePaths = usePrimitiveFieldPaths();
 
   if (!activeFields) {
     return [];
   }
 
-  const validPrimitivePaths = primitivePaths.filter((path) =>
-    activeFields.includes(path),
-  );
-
-  return validPrimitivePaths;
+  return primitivePaths.filter((path) => activeFields.includes(path));
 };
 
 export default useSamplePrimitives;

@@ -24,7 +24,7 @@ const useStateUpdate: EventHandlerHook = ({
       const stateless = env().VITE_NO_STATE;
       const path = resolveURL({
         currentPathname: router.history.location.pathname,
-        currentSearch: router.history.location.search,
+        currentSearch: router.location.search,
         nextDataset: stateless
           ? getDatasetName()
           : ((payload.state.dataset as string) ?? null),

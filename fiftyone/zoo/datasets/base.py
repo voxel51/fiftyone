@@ -3813,6 +3813,85 @@ class BoilingBenchMultimodalDataset(FiftyOneDataset):
         return dataset_type, num_samples, None
 
 
+class HiltiSLAMChallenge2021Dataset(FiftyOneDataset):
+    """The Hilti SLAM Challenge 2021 recordings, as native ``.mcap``
+    episodes.
+
+    The first of the Hilti challenges and the one with the densest sensor
+    suite. Twelve sequences were walked through offices, a lab, basements,
+    a parking deck, campuses and construction sites, chosen for the things
+    that break a SLAM system in the field: bare corridors with almost no
+    geometric or visual structure, illumination that changes as the
+    operator moves between floors and outdoors, stairs, and long loops.
+
+    The rig is a surveying pole carrying a Sevensense Alphasense head with
+    five global-shutter cameras at 1440x1080 and an inertial unit, an
+    Ouster OS0-64 spinning LiDAR, a Livox MID70 solid-state LiDAR and an
+    ADIS16445 inertial unit. Every sensor's clock agrees to within a
+    millisecond. Both LiDARs and all five cameras run at 10 Hz, so every
+    visual and 3D stream in an episode shares one clock.
+
+    Ten sequences carry sparse 3-DoF reference positions measured with a
+    total station while the rig was held still, and two carry a continuous
+    6-DoF trajectory from an Optitrack motion-capture system. Both are
+    timed, and every episode carries the reference at the instants the
+    release measured it along with the rig's calibrated frame tree.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("hilti-slam-challenge-2021")
+
+        # The sequences with a continuous reference trajectory
+        view = dataset.match({"has_dense_ground_truth": True})
+
+        session = fo.launch_app(dataset, view=view)
+
+    Dataset size
+        120.67 GB
+    """
+
+    _REPO_ID = "Voxel51/Hilti-SLAM-Challenge-2021"
+    # Pinned so a loaded dataset is reproducible; the default branch is
+    # mutable and could change media, labels or size underneath a user
+    _REVISION = "460f89496379861363aa2c5a969b4712ddfce8eb"
+
+    @property
+    def name(self):
+        return "hilti-slam-challenge-2021"
+
+    @property
+    def license(self):
+        return "CC-BY-NC-SA-3.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "slam", "lidar", "imu")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        logger.info("Downloading %s from the Hugging Face Hub", self._REPO_ID)
+        hfh.snapshot_download(
+            repo_id=self._REPO_ID,
+            repo_type="dataset",
+            revision=self._REVISION,
+            local_dir=dataset_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
 class HiltiTrimbleSLAMChallenge2026Dataset(FiftyOneDataset):
     """The Hilti x Trimble SLAM Challenge 2026 recordings, as native
     ``.mcap`` episodes.
@@ -3890,6 +3969,84 @@ class HiltiTrimbleSLAMChallenge2026Dataset(FiftyOneDataset):
         return dataset_type, num_samples, None
 
 
+class ConstructionSiteTraversabilityDataset(FiftyOneDataset):
+    """Construction-site recordings from an autonomous mobile robot, as
+    native ``.mcap`` episodes.
+
+    A tracked mobile robot drives closed loops through two active
+    construction sites carrying an OAK-D colour and range camera, a Livox
+    3D LiDAR, two inertial units and a u-blox GNSS receiver, with a
+    LiDAR-inertial odometry estimate and the wheel encoders recorded
+    alongside them. The runs revisit the same ground, which is what makes
+    them useful for loop closure and for traversability work.
+
+    Four sessions and 105 minutes of driving over 9,760 m of ground. The
+    colour camera and the LiDAR both run at 10 Hz and the range camera is
+    halved onto the same clock, so every visual and 3D stream in an episode
+    shares one rate.
+
+    Every episode carries the camera's intrinsics and the transforms
+    placing the camera and the LiDAR on the robot, taken from the
+    calibration the authors publish alongside their annotated frames.
+
+    The recordings were made on working sites and contain site personnel
+    and vehicles in the camera streams.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("construction-site-traversability")
+
+        # The longest run
+        view = dataset.sort_by("duration", reverse=True)
+
+        session = fo.launch_app(dataset, view=view)
+
+    Dataset size
+        18.14 GB
+    """
+
+    _REPO_ID = "Voxel51/Construction-Site-Traversability"
+    # Pinned so a loaded dataset is reproducible; the default branch is
+    # mutable and could change media, labels or size underneath a user
+    _REVISION = "c52c1418239df91b24f530e6475851d52a172ff8"
+
+    @property
+    def name(self):
+        return "construction-site-traversability"
+
+    @property
+    def license(self):
+        return "CC-BY-NC-4.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "robotics", "lidar", "depth", "gnss")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        logger.info("Downloading %s from the Hugging Face Hub", self._REPO_ID)
+        hfh.snapshot_download(
+            repo_id=self._REPO_ID,
+            repo_type="dataset",
+            revision=self._REVISION,
+            local_dir=dataset_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
 AVAILABLE_DATASETS = {
     "activitynet-100": ActivityNet100Dataset,
     "activitynet-200": ActivityNet200Dataset,
@@ -3900,8 +4057,10 @@ AVAILABLE_DATASETS = {
     "cityscapes": CityscapesDataset,
     "coco-2014": COCO2014Dataset,
     "coco-2017": COCO2017Dataset,
+    "construction-site-traversability": ConstructionSiteTraversabilityDataset,
     "egocentric-emg-force": EgocentricEMGForceDataset,
     "fiw": FIWDataset,
+    "hilti-slam-challenge-2021": HiltiSLAMChallenge2021Dataset,
     "hilti-trimble-slam-challenge-2026": HiltiTrimbleSLAMChallenge2026Dataset,
     "hmdb51": HMDB51Dataset,
     "imagenet-sample": ImageNetSampleDataset,

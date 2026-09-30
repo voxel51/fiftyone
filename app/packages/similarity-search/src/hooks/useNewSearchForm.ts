@@ -73,12 +73,6 @@ export const useNewSearchForm = (
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(
     null,
   );
-  const { targets, defaultTarget } = useViewTargets({ requireFlat: true });
-  const viewTargetOptions = useMemo(
-    () => targets.filter((meta) => meta.target !== ViewTarget.SELECTED_SAMPLES),
-    [targets],
-  );
-  const [viewTarget, setViewTarget] = useState<ViewTarget>(defaultTarget);
 
   // ─── Derived config ─────────────────────────────────────────────
 
@@ -92,6 +86,17 @@ export const useNewSearchForm = (
   const selectedConfig = compatibleKeys.find(
     (bk) => bk.key === effectiveBrainKey,
   );
+
+  // As the operator resolves it: a grouped dataset is searched across its
+  // slices, so only a patches index needs a flat target
+  const { targets, defaultTarget } = useViewTargets({
+    requireFlat: Boolean(selectedConfig?.patches_field),
+  });
+  const viewTargetOptions = useMemo(
+    () => targets.filter((meta) => meta.target !== ViewTarget.SELECTED_SAMPLES),
+    [targets],
+  );
+  const [viewTarget, setViewTarget] = useState<ViewTarget>(defaultTarget);
   const supportsPrompts = selectedConfig?.supports_prompts ?? false;
   const supportsLeast = selectedConfig?.supports_least_similarity ?? false;
   const supportsUpload =

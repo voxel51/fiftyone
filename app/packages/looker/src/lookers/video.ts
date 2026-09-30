@@ -6,6 +6,7 @@ import { jotaiStore } from "@fiftyone/state/src/jotai";
 import { getVideoElements } from "../elements";
 import { VIDEO_SHORTCUTS } from "../elements/common";
 import { getFrameNumber } from "../elements/util";
+import type { VideoElement } from "../elements/video";
 import { ClassificationsOverlay, loadOverlays } from "../overlays";
 import type { Overlay } from "../overlays/base";
 import processOverlays from "../processOverlays";
@@ -31,6 +32,7 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
   private firstFrameNumber: number;
   private frames: Map<number, WeakRef<Frame>> = new Map();
   private requestFrames: (frameNumber: number) => void;
+  private readingFrames = false;
 
   get frameNumber() {
     return this.state.frameNumber;
@@ -38,6 +40,10 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
 
   get playing() {
     return this.state.playing;
+  }
+
+  get duration(): number | null {
+    return this.state.duration;
   }
 
   get waiting() {
@@ -72,6 +78,18 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
       playing && this.dispatchEvent("play", null);
       !playing && this.dispatchEvent("pause", { buffering: state.buffering });
     }
+
+    // Presented frames are reported by the video element; this only reports
+    // playback stopping. Raw `playing`, not the buffering-adjusted flag above:
+    // a stall mid-playback is still a position being presented, while a
+    // thumbnail's mouseleave (which rewinds and stops) is what "no longer
+    // playing" means here.
+    if (previousState.playing && !state.playing) {
+      this.dispatchEvent("frame", {
+        playing: false,
+        timeSeconds: (state.frameNumber - 0.5) / state.config.frameRate,
+      });
+    }
   }
 
   getCurrentSampleLabels(): LabelData[] {
@@ -96,7 +114,7 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
   }
 
   getCurrentFrameLabels(): LabelData[] {
-    const frame = this.frames.get(this.frameNumber).deref();
+    const frame = this.getFrame(this.frameNumber);
     if (!frame) {
       return [];
     }
@@ -251,6 +269,12 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
       this.state.buffering && this.dispatchEvent("buffering", false);
       this.state.playing = false;
       this.state.buffering = false;
+    } else if (
+      LOOKER_WITH_READER === this &&
+      this.readingFrames !== this.needsFrameStream()
+    ) {
+      this.state.buffers = this.initialBuffers(this.state.config);
+      this.setReader();
     }
 
     if (LOOKER_WITH_READER === this) {
@@ -280,6 +304,16 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
         totalFrames: frameCount,
       },
     });
+
+    this.readingFrames = this.needsFrameStream();
+    if (!this.readingFrames) {
+      // Nothing on the tile draws a frame document, so the whole clip counts
+      // as buffered and playback never waits on a stream
+      clearReader();
+      this.state.buffers = [[1, frameCount]];
+      this.requestFrames = () => undefined;
+      return;
+    }
 
     this.requestFrames = acquireReader({
       addFrame: (frameNumber, frame) =>
@@ -317,7 +351,9 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
                 ...{
                   filter: this.state.options.filter,
                   value: {
-                    ...this.frames.get(this.frameNumber).deref().sample,
+                    ...(this.getFrame(this.frameNumber)?.sample ?? {
+                      frame_number: this.frameNumber,
+                    }),
                   },
                   schema: this.state.config.fieldSchema.frames.fields,
                   keys: ["frames"],
@@ -338,13 +374,31 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
     return DEFAULT_VIDEO_OPTIONS;
   }
 
+  /**
+   * Starts playback, first rewinding from the last frame the way the Space
+   * shortcut does, so a finished clip plays again.
+   */
   play(): void {
-    this.updater(({ playing }) => {
-      if (!playing) {
-        return { playing: true };
-      }
-      return {};
-    });
+    this.updater(
+      ({ playing, duration, frameNumber, lockedToSupport, config }) => {
+        if (playing) {
+          return {};
+        }
+
+        const end = lockedToSupport
+          ? config.support[1]
+          : duration === null
+            ? null
+            : getFrameNumber(duration, duration, config.frameRate);
+
+        return frameNumber === end
+          ? {
+              playing: true,
+              frameNumber: lockedToSupport ? config.support[0] : 1,
+            }
+          : { playing: true };
+      },
+    );
   }
 
   pause(): void {
@@ -354,6 +408,83 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
       }
       return {};
     });
+  }
+
+  /**
+   * Hands play/pause and frame stepping to an external transport, such as
+   * the modal's shared timeline. Those shortcuts leave this looker's map so
+   * one key press is not handled by both; everything else (zoom, pan, JSON,
+   * help, overlays) stays with the looker.
+   */
+  useExternalTransport(): void {
+    const EXTERNAL = new Set(["Space", ">", "<"]);
+
+    // Assigned, not sent through the updater: updates deep-merge into the
+    // current state, so a map with keys removed would merge back to the full
+    // one. Copied first because the initial map is a module-level constant
+    // shared by every video looker.
+    (this.state as { SHORTCUTS: VideoState["SHORTCUTS"] }).SHORTCUTS =
+      Object.fromEntries(
+        Object.entries(this.state.SHORTCUTS).filter(
+          ([, control]) => !EXTERNAL.has(control.shortcut),
+        ),
+      );
+
+    this.updater({});
+  }
+
+  /**
+   * Moves the playhead to a 1-indexed frame, clamped to the clip (or to its
+   * support while locked to it), the way the seek bar does. Lets an external transport (the modal's shared
+   * timeline) drive this looker without reaching into its state.
+   */
+  seekToFrame(frameNumber: number): void {
+    this.updater(
+      ({
+        duration,
+        config: { frameRate, support },
+        frameNumber: current,
+        lockedToSupport,
+      }) => {
+        if (duration === null || !Number.isFinite(frameNumber)) {
+          return {};
+        }
+
+        const [first, last] = lockedToSupport
+          ? support
+          : [1, getFrameNumber(duration, duration, frameRate)];
+        const clamped = Math.min(
+          Math.max(first, Math.round(frameNumber)),
+          last,
+        );
+
+        return clamped === current ? {} : { frameNumber: clamped };
+      },
+    );
+  }
+
+  seekToSeconds(seconds: number): void {
+    const {
+      duration,
+      config: { frameRate },
+    } = this.state;
+    if (duration === null || !Number.isFinite(seconds)) return;
+
+    this.seekToFrame(getFrameNumber(seconds, duration, frameRate));
+  }
+
+  /**
+   * Redraws the idle thumbnail at `seconds` into the clip, or at its start
+   * when null, and starts the next hover playback there.
+   */
+  posterAt(seconds: number | null): void {
+    const { config, loaded } = this.state;
+    if (!config.thumbnail || !loaded) return;
+    if (seconds !== null && !Number.isFinite(seconds)) return;
+
+    (this.lookerElement.children[0] as unknown as VideoElement).posterAt(
+      seconds,
+    );
   }
 
   postProcess(): VideoState {
@@ -426,6 +557,17 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
 
   getVideo() {
     return this.lookerElement.children[0].element as HTMLVideoElement;
+  }
+
+  /**
+   * Whether playback needs the frame stream. A thumbnail draws only the
+   * frame fields shown in the sidebar; the expanded view always streams.
+   */
+  private needsFrameStream() {
+    return (
+      !this.state.config.thumbnail ||
+      this.state.options.activePaths.some((path) => path.startsWith("frames."))
+    );
   }
 
   private hasFrame(frameNumber: number) {

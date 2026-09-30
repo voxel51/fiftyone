@@ -1,16 +1,10 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Creating and deleting a 2D polyline on the image surface. Image polyline was
- * previously read-only in coverage (only video polyline create was tested):
- *   - activating polyline mode and clicking vertices self-creates a Polyline,
- *     opens the edit form, commits on class assignment, and persists across a
- *     true server round-trip (fresh browser context),
- *   - the polyline can be deleted, and the delete is undoable on the engine
- *     stack.
- *
- * The polyline self-creates through the same `usePolylineMode` creation handler
- * the video surface uses; here it runs on the image (Lighter) canvas.
+ * Creating and deleting a 2D polyline on the image surface: polyline-mode
+ * vertex clicks self-create a Polyline, class assignment commits it and
+ * persists across a fresh browser context, and its delete undoes. The same
+ * `usePolylineMode` creation handler as video runs here on the Lighter canvas.
  */
 import { Browser, expect, test as base, type Page } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -42,17 +36,6 @@ const TRIANGLE_2: Array<[number, number]> = TRIANGLE.map(([x, y]) => [
   x + 0.25,
   y + 0.25,
 ]);
-
-/** Clear the sample's labels so each serial test starts from zero. */
-const clearPolylines = () => `
-import fiftyone as fo
-
-dataset = fo.load_dataset("${datasetName}")
-sample = dataset.first()
-sample.polylines = fo.Polylines(polylines=[])
-sample.detections = None
-sample.save()
-`;
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -91,53 +74,42 @@ const inFreshContext = async (
   }
 };
 
-test.beforeAll(
-  async ({ annotateSDK, datasetFactory, fiftyoneLoader, foWebServer }) => {
-    await foWebServer.startWebServer();
-    await datasetFactory.createDataset({
-      datasetName,
-      imageOptions: { fillColor: "white", width: 640, height: 480 },
-    });
-    // The factory only models Detection(s)/Classification(s); declare the
-    // Polylines field directly. A Detections field rides along so the
-    // exit-cadence test below can follow a polyline with a brush stroke.
-    await fiftyoneLoader.executePythonCode(`
-import fiftyone as fo
-
-dataset = fo.load_dataset("${datasetName}")
-dataset.add_sample_field(
-    "polylines", fo.EmbeddedDocumentField, embedded_doc_type=fo.Polylines
-)
-dataset.add_sample_field("polylines.polylines.index", fo.IntField)
-dataset.add_sample_field(
-    "detections", fo.EmbeddedDocumentField, embedded_doc_type=fo.Detections
-)
-dataset.save()
-`);
-    await annotateSDK.updateLabelSchema(datasetName, "polylines", {
-      type: "polylines",
-      classes: ["lane", "curb"],
-      attributes: [],
-      component: "dropdown",
-    });
-    await annotateSDK.addFieldToActiveLabelSchema(datasetName, "polylines");
-    await annotateSDK.updateLabelSchema(datasetName, "detections", {
-      type: "detections",
-      classes: ["cat"],
-      attributes: [],
-      component: "dropdown",
-    });
-    await annotateSDK.addFieldToActiveLabelSchema(datasetName, "detections");
-  },
-);
+test.beforeAll(async ({ foWebServer }) => {
+  await foWebServer.startWebServer();
+});
 
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
 test.describe.serial("2D annotation polyline", () => {
-  test.beforeEach(async ({ fiftyoneLoader, modal, page }) => {
-    await fiftyoneLoader.executePythonCode(clearPolylines());
+  test.beforeEach(async ({ datasetFactory, fiftyoneLoader, modal, page }) => {
+    // a fresh dataset per test so each serial test starts from zero polylines
+    await datasetFactory.createDataset({
+      datasetName,
+      imageOptions: { fillColor: "white", width: 640, height: 480 },
+      schema: {
+        polylines: "Polylines",
+        "polylines.polylines.index": "IntField",
+        // the exit-cadence test follows a polyline with a brush stroke, which
+        // opens a mask detection
+        detections: "Detections",
+      },
+      labelSchemas: {
+        polylines: {
+          type: "polylines",
+          classes: ["lane", "curb"],
+          attributes: [],
+          component: "dropdown",
+        },
+        detections: {
+          type: "detections",
+          classes: ["cat"],
+          attributes: [],
+          component: "dropdown",
+        },
+      },
+    });
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ id }),
     });

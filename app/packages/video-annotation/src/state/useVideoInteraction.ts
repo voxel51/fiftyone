@@ -6,68 +6,18 @@ import {
   type ScopedRef,
   useActiveSampleId,
   useAnnotationEngine,
-  useInteraction,
   useSurfaceActions,
 } from "@fiftyone/annotation";
-import type { TimelineTracksScroller } from "@fiftyone/playback";
-import { LabelType } from "@fiftyone/utilities";
-import type React from "react";
-import { useCallback, useEffect, useRef } from "react";
-import { useCurrentFrame, useCurrentFrameGetter } from "./useCurrentFrame";
+import { useCallback } from "react";
+import { useCurrentFrameGetter } from "./useCurrentFrame";
+import { useHoveredTrackIds, useSelectedTrackIds } from "./useVideoSelection";
 
 const SURFACE = "video-timeline";
 
-// Keyframes exist to drive linear propagation, so a type is keyframeable iff
-// propagation can interpolate its geometry: a detection's bounding box, or a
-// polyline's vertices. Keep this in step with `linearAgentFor` in
-// `useVideoPropagate` — a type that resolves to a linear agent there but is
-// missing here has a working interpolation path with no way to manage its
-// keyframes from the toolbar.
-const KEYFRAME_TYPES: ReadonlySet<LabelType> = new Set([
-  LabelType.Detection,
-  LabelType.Detections,
-  LabelType.Polyline,
-  LabelType.Polylines,
-]);
-
-// Split is a track-identity op, valid for any frame-level instance geometry we
-// support as a track (detections + polylines), but not for TDs / classifications.
-const INSTANCE_TRACK_TYPES: ReadonlySet<LabelType> = new Set([
-  LabelType.Detection,
-  LabelType.Detections,
-  LabelType.Polyline,
-  LabelType.Polylines,
-]);
-
-const TEMPORAL_TYPES: ReadonlySet<LabelType> = new Set([
-  LabelType.TemporalDetection,
-  LabelType.TemporalDetections,
-]);
-
-/** Membership equality so a selector only re-renders on an id set change. */
-const sameIds = (a: ReadonlySet<string>, b: ReadonlySet<string>): boolean => {
-  if (a.size !== b.size) {
-    return false;
-  }
-
-  for (const id of a) {
-    if (!b.has(id)) {
-      return false;
-    }
-  }
-
-  return true;
-};
-
 /**
- * The timeline's seam onto engine interaction. A timeline row is a whole
- * track, so it links on the engine's `instanceId` (the linkage key spanning a
- * track's per-frame occurrences) — a track lights up when ANY of its
- * occurrences is active / hovered. Writes address the occurrence at the current
- * playhead frame, since interaction state is keyed on the full ref.
- *
- * The video canvas Lighter bridge reads the same engine interaction state, so
- * select / hover from a row reflects on the canvas with no extra wiring.
+ * The timeline's seam onto engine interaction. A row is a whole track, so
+ * reads link on `instanceId` across occurrences while writes address the
+ * occurrence at the playhead frame.
  */
 export interface VideoInteraction {
   /** Track ids (= engine instanceIds) currently selected. */
@@ -91,72 +41,6 @@ export interface VideoInteraction {
   selectLabel: (ref: ScopedRef) => void;
   hoverLabel: (ref: ScopedRef, on: boolean) => void;
 }
-
-/** Read selected track ids (engine instanceIds) from interaction state. */
-export const useSelectedTrackIds = (): ReadonlySet<string> => {
-  const engine = useAnnotationEngine();
-  return useInteraction(
-    engine,
-    (i) => new Set(i.getActive().map((ref) => ref.instanceId)),
-    sameIds,
-  );
-};
-
-/**
- * True iff the selection is non-empty and every active ref's field resolves to
- * a label type in `allowed`. The type is read from the dataset schema via
- * `engine.getLabelType`, so this gates on what the FIELD is — not on whether a
- * given label happens to carry a `bounding_box`. Used to scope toolbar actions
- * to the label kinds they make sense for.
- */
-const useSelectionTypeGate = (allowed: ReadonlySet<LabelType>): boolean => {
-  const engine = useAnnotationEngine();
-  return useInteraction(engine, (i) => {
-    const active = i.getActive();
-    return (
-      active.length > 0 &&
-      active.every((ref) => allowed.has(engine.getLabelType(ref.path)))
-    );
-  });
-};
-
-/** True iff every selected track is keyframeable — gates Mark Keyframe. */
-export const useSelectionIsKeyframeable = (): boolean =>
-  useSelectionTypeGate(KEYFRAME_TYPES);
-
-/**
- * True iff every selected track is an instance-geometry type (detection or
- * polyline) — gates Split.
- */
-export const useSelectionIsInstanceTrack = (): boolean =>
-  useSelectionTypeGate(INSTANCE_TRACK_TYPES);
-
-/**
- * The field path of the selected temporal detection, or `null` when the
- * selection isn't a TD. Read from engine interaction — active refs carry their
- * `.path`, and the field's type comes from `engine.getLabelType` — so "New TD"
- * targets the field the user is working in without reaching into the sidebar's
- * editing pointer.
- */
-export const useSelectedTemporalDetectionField = (): string | null => {
-  const engine = useAnnotationEngine();
-  return useInteraction(engine, (i) => {
-    const td = i
-      .getActive()
-      .find((ref) => TEMPORAL_TYPES.has(engine.getLabelType(ref.path)));
-    return td?.path ?? null;
-  });
-};
-
-/** Read hovered track ids (engine instanceIds) from interaction state. */
-export const useHoveredTrackIds = (): ReadonlySet<string> => {
-  const engine = useAnnotationEngine();
-  return useInteraction(
-    engine,
-    (i) => new Set(i.getHovered().map((ref) => ref.instanceId)),
-    sameIds,
-  );
-};
 
 /** The full select / hover seam for timeline rows. */
 export const useVideoInteraction = (): VideoInteraction => {
@@ -200,72 +84,4 @@ export const useVideoInteraction = (): VideoInteraction => {
     selectLabel,
     hoverLabel,
   };
-};
-
-/**
- * Keep the editing anchor on the playhead. While a video frame label is the
- * anchor (the form follows it), advancing the playhead re-stamps the anchor to
- * the SAME track (`instanceId`) at the new frame, so the form and canvas
- * selection track the instance across frames. Only re-stamps when that track
- * has an occurrence on the new frame — a gap leaves the anchor on its current
- * occurrence rather than blanking the form. Sample-level anchors (no `frame`,
- * e.g. a temporal detection) are left alone.
- */
-export const useFollowAnchorFrame = (): void => {
-  const engine = useAnnotationEngine();
-  const frame = useCurrentFrame();
-
-  useEffect(() => {
-    const anchor = engine.interaction.getAnchor();
-
-    if (!anchor || anchor.frame == null || anchor.frame === frame) {
-      return;
-    }
-
-    const next = { ...anchor, frame };
-
-    // track absent on this frame — keep editing the current occurrence
-    if (!engine.getLabel(next)) {
-      return;
-    }
-
-    engine.interaction.setActive([next]);
-  }, [engine, frame]);
-};
-
-/**
- * Bring the anchored (lead) track's row into view when selection moves — the
- * engine-native replacement for the scene-event scroll.
- *
- * Goes through the timeline's {@link TimelineTracksScroller} rather than the
- * DOM: the tracks drawer is virtualized, so an off-screen row has no
- * `[data-track-id]` node to scroll to and a DOM query would silently no-op for
- * exactly the rows that need scrolling. The scroller falls back to the DOM for
- * pinned rows, which always render. Both paths land on "nearest", so a row
- * that's already visible generates no scroll.
- */
-export const useScrollTrackToAnchor = (
-  scroller: React.RefObject<TimelineTracksScroller | null>,
-): void => {
-  const engine = useAnnotationEngine();
-  const anchorId = useInteraction(
-    engine,
-    (i) => i.getAnchor()?.instanceId ?? null,
-  );
-  const previous = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (!anchorId || anchorId === previous.current) {
-      previous.current = anchorId;
-      return;
-    }
-
-    previous.current = anchorId;
-
-    // Defer to the next frame so any layout shift from the selection settles
-    // before scrolling.
-    requestAnimationFrame(() => {
-      scroller.current?.scrollToTrack(anchorId);
-    });
-  }, [anchorId, scroller]);
 };

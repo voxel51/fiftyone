@@ -9,6 +9,7 @@ jobs:
     name: Prepare e2e assets
     outputs:
       burn-in-count: ${{ steps.burn-in-specs.outputs.count }}
+      burn-in-skipped: ${{ steps.burn-in-specs.outputs.skipped }}
       burn-in-specs: ${{ steps.burn-in-specs.outputs.specs }}
     defaults:
       run:
@@ -97,13 +98,22 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          # the `skip-burn-in` label opts a PR out (e.g. a refactor touching
+          # dozens of specs that cannot fit the burn-in budget)
+          SKIP_BURN_IN: ${{ contains(github.event.pull_request.labels.*.name, 'skip-burn-in') }}
         run: |
-          SPECS=$(node ../.github/scripts/burn-in-specs.mjs)
+          if [ "$SKIP_BURN_IN" = "true" ]; then
+            SPECS=""
+            echo "::notice::burn-in skipped by the skip-burn-in label"
+          else
+            SPECS=$(node ../.github/scripts/burn-in-specs.mjs)
+          fi
           COUNT=0
           if [ -n "$SPECS" ]; then
             COUNT=$(printf '%s\n' "$SPECS" | wc -l | tr -d ' ')
           fi
           echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "skipped=$SKIP_BURN_IN" >> "$GITHUB_OUTPUT"
           {
             echo "specs<<BURN_IN_EOF"
             printf '%s\n' "$SPECS"
@@ -529,6 +539,7 @@ jobs:
           TEST_E2E_RESULT: ${{ needs.test-e2e.result }}
           EXPECTED_SHARDS: "8"
           BURN_IN_COUNT: ${{ needs.prepare-e2e.outputs.burn-in-count }}
+          BURN_IN_SKIPPED: ${{ needs.prepare-e2e.outputs.burn-in-skipped }}
           BURN_IN_RESULT: ${{ needs.burn-in.result }}
           BURN_IN_REPORT_URL: ${{ steps.upload-burn-in.outputs.artifact-url }}
           REPORT_URL: ${{ steps.upload-merged.outputs.artifact-url }}
@@ -592,6 +603,7 @@ jobs:
           EXPECTED_SHARDS: "8"
           TEST_E2E_RESULT: ${{ needs.test-e2e.result }}
           BURN_IN_COUNT: ${{ needs.prepare-e2e.outputs.burn-in-count }}
+          BURN_IN_SKIPPED: ${{ needs.prepare-e2e.outputs.burn-in-skipped }}
           BURN_IN_RESULT: ${{ needs.burn-in.result }}
         run: node ../.github/scripts/enforce-verdict.mjs merged-results.json all-blob-reports burn-in-results.json
 

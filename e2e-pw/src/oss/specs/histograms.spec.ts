@@ -48,7 +48,7 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 });
 
-test("histograms panel", async ({ histogram, panel }) => {
+test("histograms panel", async ({ histogram, panel, page }) => {
   await panel.open("Histograms");
   await histogram.assert.isLoaded();
 
@@ -81,6 +81,9 @@ test("histograms panel", async ({ histogram, panel }) => {
     "str",
     "tags",
   ]);
+  // Field enumeration leaves the pointer over a result on some runners.
+  // Keep hover styling out of the visual assertion.
+  await page.mouse.move(0, 0);
   await expect(histogram.locator).toHaveScreenshot("bool-histogram.png", {
     animations: "allow",
   });

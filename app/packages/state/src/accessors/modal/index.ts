@@ -4,7 +4,7 @@ export * from "./use-active-modal-sample-value";
 
 import type { Schema } from "@fiftyone/utilities";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   useRecoilState,
   useRecoilValue,
@@ -13,8 +13,11 @@ import {
 } from "recoil";
 import { ModalMode, modalMode } from "../../jotai";
 import { preferredGroupAnnotationSliceAtom } from "../../jotai/group-annotation";
-import type { ModalViewportState } from "../../jotai/modal";
-import { __unsafeModalViewportAtom } from "../../jotai/modal";
+import type { AnnotationSurface, ModalViewportState } from "../../jotai/modal";
+import {
+  __unsafeAnnotationSurfaceAtom,
+  __unsafeModalViewportAtom,
+} from "../../jotai/modal";
 import type { ModalSample } from "../../recoil";
 import type { Sample } from "@fiftyone/looker";
 import {
@@ -207,4 +210,28 @@ export const useModalMediaPath = (): string | null => {
     ? (sample.urls.find((u) => u.field === mediaField)?.url ??
         sample.urls[0]?.url)
     : sample.urls[mediaField];
+};
+
+/** The annotation surface currently mounted in the modal, if any. */
+export const useAnnotationSurface = (): AnnotationSurface | null =>
+  useAtomValue(__unsafeAnnotationSurfaceAtom);
+
+/**
+ * Called by an annotation surface to report itself while mounted. Pass
+ * `null` while the component is not acting as an annotation surface.
+ */
+export const useReportAnnotationSurface = (
+  surface: AnnotationSurface | null,
+) => {
+  const set = useSetAtom(__unsafeAnnotationSurfaceAtom);
+  useEffect(() => {
+    if (!surface) {
+      return undefined;
+    }
+
+    set(surface);
+    return () => {
+      set((current) => (current === surface ? null : current));
+    };
+  }, [set, surface]);
 };

@@ -29,6 +29,9 @@ const registryAtom = atom<RegistryMap>({
     id: "propagate-linear-polyline",
     label: "Linear interpolation (polyline)",
     agent: new PolylinePropagationBrowserAgent(),
+    // like the other propagation agents: dispatched by label type, never a
+    // user-pickable annotation model
+    unlisted: true,
   },
   "propagate-sam2": {
     id: "propagate-sam2",

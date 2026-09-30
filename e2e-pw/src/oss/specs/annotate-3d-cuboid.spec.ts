@@ -1,30 +1,21 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Foundational coverage for the 3D (looker-3d) annotation surface — the engine
- * surface that previously had NO e2e coverage. Opens an `.fo3d` scene carrying
- * a seeded cuboid (`fo.Detection` with location/dimensions/rotation) in
- * annotate mode and exercises the deterministic flows: the annotation toolbar
- * mounts, the cuboid lists in the sidebar and is selectable, selecting it opens
- * the edit form + transform gizmo, and deleting it round-trips through undo and
- * persists.
- *
- * The three-click canvas cuboid-DRAW gesture raycasts into the three.js scene
- * (camera/scene-dependent, non-deterministic in world space) and is left to a
- * follow-up spec; this harness establishes select/edit/delete/undo/persist on a
- * seeded cuboid.
+ * 3D (looker-3d) cuboid annotation on a seeded `Detection` with
+ * location/dimensions/rotation: the toolbar mounts, the cuboid lists and
+ * selects, its form edits persist, and delete round-trips through undo. The
+ * three-click canvas draw is covered in its own describe on an empty scene.
  */
-import { expect, test as base } from "src/oss/fixtures";
+import { Browser, expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import { EventUtils } from "src/shared/event-utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-3d-cuboid");
 
 /** Fixed ObjectId addressing the first sample (so we can deep-link the modal). */
 const id = "000000000000000000000000";
-const plyPath = `/tmp/${datasetName}.ply`;
-const scenePath = `/tmp/${datasetName}.fo3d`;
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -32,12 +23,8 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
-  // a single PLY cube wrapped in a minimal fo3d scene is enough geometry for
-  // the viewer to mount and frame the scene.
-  mediaFactory.createPly({ outputPath: plyPath, shape: "cube" });
-  mediaFactory.createFo3d({ outputPath: scenePath, plyPath });
 });
 
 test.afterAll(async ({ foWebServer }) => {
@@ -58,15 +45,73 @@ const openAnnotate = async (
   await modal.annotate3d.waitForSurface();
 };
 
+/** Verify persisted state from a brand-new browser context (true round-trip). */
+const inFreshContext = async (
+  browser: Browser,
+  fiftyoneLoader: AbstractFiftyoneLoader,
+  verify: (modal: ModalPom) => Promise<void>,
+) => {
+  const context = await browser.newContext();
+  const freshPage = await context.newPage();
+  try {
+    const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+    await openAnnotate(fiftyoneLoader, freshModal, freshPage);
+    await verify(freshModal);
+  } finally {
+    await context.close();
+  }
+};
+
+/** The labels listed in the annotate sidebar of a fresh browser context. */
+const expectPersistedLabels = (
+  browser: Browser,
+  fiftyoneLoader: AbstractFiftyoneLoader,
+  labels: string[],
+) =>
+  inFreshContext(browser, fiftyoneLoader, async (fresh) => {
+    await fresh.annotate3d.assert.labelCount(labels.length);
+    for (const label of labels) {
+      await fresh.annotate3d.assert.labelListed(label);
+    }
+  });
+
 test.describe.serial("3d cuboid annotation", () => {
   // Re-seed per test so each delete/undo case starts from a clean cuboid
   // (mirrors the video label-create specs).
-  test.beforeEach(async ({ annotate3dSDK, fiftyoneLoader, modal, page }) => {
-    await annotate3dSDK.seed({
+  test.beforeEach(async ({ datasetFactory, fiftyoneLoader, modal, page }) => {
+    await datasetFactory.createDataset({
+      mediaType: "3d",
       datasetName,
-      scenePaths: [scenePath],
-      classes: ["car", "truck", "pedestrian"],
-      cuboidSampleIndices: [0],
+      schema: {
+        detections: "Detections",
+        "detections.detections.location": "ListField<FloatField>",
+        "detections.detections.dimensions": "ListField<FloatField>",
+        "detections.detections.rotation": "ListField<FloatField>",
+      },
+      labelSchemas: {
+        detections: {
+          type: "detections",
+          component: "dropdown",
+          classes: ["car", "truck", "pedestrian"],
+          attributes: [
+            { name: "id", type: "id", component: "text", read_only: true },
+            { name: "tags", type: "list<str>", component: "text" },
+          ],
+        },
+      },
+      // one seeded cuboid at the origin; the grid looker reads the declared
+      // bounding_box list even on a 3D detection
+      withSampleData: (_, { label }) => ({
+        detections: label.detections([
+          label.detection({
+            label: "car",
+            bounding_box: [],
+            location: [0, 0, 0],
+            dimensions: [2, 2, 2],
+            rotation: [0, 0, 0],
+          }),
+        ]),
+      }),
     });
     await openAnnotate(fiftyoneLoader, modal, page);
   });
@@ -78,9 +123,7 @@ test.describe.serial("3d cuboid annotation", () => {
     await modal.annotate3d.assert.labelListed("car");
   });
 
-  // Flaky: selection intermittently doesn't arm annotation mode, so the
-  // toolbar/scale gizmo never mounts
-  test.skip("selecting the cuboid opens its edit form, toolbar, and scale gizmo", async ({
+  test("selecting the cuboid opens its edit form, toolbar, and scale gizmo", async ({
     modal,
   }) => {
     await modal.annotate3d.selectLabel("car");
@@ -95,7 +138,8 @@ test.describe.serial("3d cuboid annotation", () => {
   });
 
   test("editing a cuboid's position via the form persists and round-trips through undo/redo", async ({
-    annotate3dSDK,
+    browser,
+    fiftyoneLoader,
     modal,
     page,
   }) => {
@@ -115,17 +159,10 @@ test.describe.serial("3d cuboid annotation", () => {
 
     // the new x persists (form edits store the value verbatim — no
     // container/world coordinate ambiguity)
-    await expect
-      .poll(
-        async () => {
-          const geom = await annotate3dSDK.getCuboidGeometry(datasetName);
-          return geom.location
-            ? Math.round(geom.location[0] * 100) / 100
-            : null;
-        },
-        { timeout: 20_000 },
-      )
-      .toBe(1.5);
+    await inFreshContext(browser, fiftyoneLoader, async (fresh) => {
+      await fresh.annotate3d.selectLabel("car");
+      await expect(fresh.annotate3d.geometryField("x")).toHaveValue("1.50");
+    });
 
     // the form value mirrors the committed engine state, so undo/redo of the
     // geometry edit round-trips there
@@ -136,7 +173,8 @@ test.describe.serial("3d cuboid annotation", () => {
   });
 
   test("a class edit on the cuboid persists across a fresh save", async ({
-    annotate3dSDK,
+    browser,
+    fiftyoneLoader,
     modal,
     page,
   }) => {
@@ -152,13 +190,7 @@ test.describe.serial("3d cuboid annotation", () => {
     await saved;
 
     // the cuboid stays a single detection whose class is now persisted "truck"
-    await expect
-      .poll(async () => annotate3dSDK.getCuboidLabels(datasetName), {
-        // each readback spawns a python process, so give the DB round-trip
-        // room for several attempts (the default 5s is too tight).
-        timeout: 20_000,
-      })
-      .toEqual(["truck"]);
+    await expectPersistedLabels(browser, fiftyoneLoader, ["truck"]);
   });
 
   test("deleting the cuboid drops its row; undo restores it and redo re-deletes", async ({
@@ -180,7 +212,8 @@ test.describe.serial("3d cuboid annotation", () => {
   });
 
   test("a delete persists across a fresh save", async ({
-    annotate3dSDK,
+    browser,
+    fiftyoneLoader,
     modal,
     page,
   }) => {
@@ -195,13 +228,7 @@ test.describe.serial("3d cuboid annotation", () => {
     await modal.annotate3d.assert.labelCount(0);
     await saved;
 
-    await expect
-      .poll(async () => annotate3dSDK.getCuboidLabels(datasetName), {
-        // each readback spawns a python process, so give the DB round-trip
-        // room for several attempts (the default 5s is too tight).
-        timeout: 20_000,
-      })
-      .toEqual([]);
+    await expectPersistedLabels(browser, fiftyoneLoader, []);
   });
 
   // The audit flagged that undo/redo durability across an autosave is
@@ -209,7 +236,8 @@ test.describe.serial("3d cuboid annotation", () => {
   // engine's command stack must still drive undo AND redo — and each step must
   // itself re-persist (the engine commits through the same save path).
   test("undo and redo of a persisted class edit re-persist through the DB", async ({
-    annotate3dSDK,
+    browser,
+    fiftyoneLoader,
     modal,
     page,
   }) => {
@@ -226,13 +254,7 @@ test.describe.serial("3d cuboid annotation", () => {
     let saved = awaitSave();
     await modal.sidebar.edit.selectFieldChoice("label", "truck");
     await saved;
-    await expect
-      .poll(async () => annotate3dSDK.getCuboidLabels(datasetName), {
-        // each readback spawns a python process, so give the DB round-trip
-        // room for several attempts (the default 5s is too tight).
-        timeout: 20_000,
-      })
-      .toEqual(["truck"]);
+    await expectPersistedLabels(browser, fiftyoneLoader, ["truck"]);
 
     // after the autosave the stack survives: undo reverts the class and
     // re-persists "car"
@@ -241,13 +263,7 @@ test.describe.serial("3d cuboid annotation", () => {
     await modal.sidebar.edit.undo();
     await modal.sidebar.edit.assert.verifyFieldValue("label", "car");
     await saved;
-    await expect
-      .poll(async () => annotate3dSDK.getCuboidLabels(datasetName), {
-        // each readback spawns a python process, so give the DB round-trip
-        // room for several attempts (the default 5s is too tight).
-        timeout: 20_000,
-      })
-      .toEqual(["car"]);
+    await expectPersistedLabels(browser, fiftyoneLoader, ["car"]);
 
     // redo re-applies the class and re-persists "truck"
     saved = awaitSave();
@@ -255,13 +271,7 @@ test.describe.serial("3d cuboid annotation", () => {
     await modal.sidebar.edit.redo();
     await modal.sidebar.edit.assert.verifyFieldValue("label", "truck");
     await saved;
-    await expect
-      .poll(async () => annotate3dSDK.getCuboidLabels(datasetName), {
-        // each readback spawns a python process, so give the DB round-trip
-        // room for several attempts (the default 5s is too tight).
-        timeout: 20_000,
-      })
-      .toEqual(["truck"]);
+    await expectPersistedLabels(browser, fiftyoneLoader, ["truck"]);
   });
 });
 
@@ -271,18 +281,37 @@ test.describe.serial("3d cuboid annotation", () => {
 // click (selecting it instead of drawing), so a clean scene makes the gesture
 // deterministic.
 test.describe.serial("3d cuboid creation", () => {
-  test.beforeEach(async ({ annotate3dSDK, fiftyoneLoader, modal, page }) => {
-    await annotate3dSDK.seed({
+  test.beforeEach(async ({ datasetFactory, fiftyoneLoader, modal, page }) => {
+    await datasetFactory.createDataset({
+      mediaType: "3d",
       datasetName,
-      scenePaths: [scenePath],
-      classes: ["car", "truck", "pedestrian"],
-      cuboidSampleIndices: [],
+      schema: {
+        detections: "Detections",
+        "detections.detections.location": "ListField<FloatField>",
+        "detections.detections.dimensions": "ListField<FloatField>",
+        "detections.detections.rotation": "ListField<FloatField>",
+      },
+      labelSchemas: {
+        detections: {
+          type: "detections",
+          component: "dropdown",
+          classes: ["car", "truck", "pedestrian"],
+          attributes: [
+            { name: "id", type: "id", component: "text", read_only: true },
+            { name: "tags", type: "list<str>", component: "text" },
+          ],
+        },
+      },
+      withSampleData: (_, { label }) => ({
+        detections: label.detections([]),
+      }),
     });
     await openAnnotate(fiftyoneLoader, modal, page);
   });
 
   test("drawing a cuboid on the canvas creates a label, assigns a class, and persists", async ({
-    annotate3dSDK,
+    browser,
+    fiftyoneLoader,
     modal,
     page,
   }) => {
@@ -304,6 +333,8 @@ test.describe.serial("3d cuboid creation", () => {
     // replaces the label list), so verify creation through the form, then
     // assign a distinct class and let it autosave
     await modal.sidebar.edit.assert.verifyFieldValue("label", "car");
+    // the draw's own autosave must land first, or it satisfies the waiter below
+    await modal.sidebar.annotate.waitForSavesSettled();
     const saved = page.waitForResponse(
       (r) =>
         /\/sample\//.test(r.url()) &&
@@ -314,10 +345,6 @@ test.describe.serial("3d cuboid creation", () => {
     await saved;
 
     // the drawn cuboid persists as a single detection carrying the class
-    await expect
-      .poll(async () => annotate3dSDK.getCuboidLabels(datasetName), {
-        timeout: 20_000,
-      })
-      .toEqual(["truck"]);
+    await expectPersistedLabels(browser, fiftyoneLoader, ["truck"]);
   });
 });

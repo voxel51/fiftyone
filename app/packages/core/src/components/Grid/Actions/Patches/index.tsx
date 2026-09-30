@@ -6,7 +6,7 @@ import { useRecoilValue } from "recoil";
 import Loading from "../../../Actions/Loading";
 import type { ActionProps } from "../../../Actions/types";
 import { ActionDiv, getStringAndNumberProps } from "../../../Actions/utils";
-import Patches, { patchesFields } from "./Patches";
+import Patches from "./Patches";
 
 export default ({ adaptiveMenuItemProps }: ActionProps) => {
   const [open, setOpen] = useState(false);
@@ -14,7 +14,6 @@ export default ({ adaptiveMenuItemProps }: ActionProps) => {
   const isVideo = useRecoilValue(fos.isVideoDataset);
   const ref = useRef<HTMLDivElement>(null);
   fos.useOutsideClick(ref, () => open && setOpen(false));
-  const fields = useRecoilValue(patchesFields);
 
   return (
     <ActionDiv
@@ -25,7 +24,7 @@ export default ({ adaptiveMenuItemProps }: ActionProps) => {
         icon={loading ? <Loading /> : <FlipToBack />}
         open={open}
         onClick={() => !loading && setOpen(!open)}
-        highlight={open || Boolean(fields.length)}
+        highlight={open}
         title={isVideo ? "Clips" : "Patches"}
         style={{ cursor: loading ? "default" : "pointer" }}
         data-cy="action-clips-patches"
