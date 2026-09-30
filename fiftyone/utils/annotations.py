@@ -349,7 +349,7 @@ _DEFAULT_LABEL_FIELDS_MAP = {
 
 # Label fields that are overwritten when spatial changes are allowed
 _SPATIAL_LABEL_FIELDS_MAP = {
-    fol.Detection: ["bounding_box", "mask"],
+    fol.Detection: ["bounding_box", "mask", "rotation"],
     fol.Polyline: ["points", "closed", "filled"],
     fol.Keypoint: ["points"],
     fol.Segmentation: ["mask"],
@@ -929,6 +929,12 @@ def _get_label_attributes(
     # The keyframe attribute has special semantics for video track annotations
     if _is_trackable_field(samples, label_field, label_type):
         attributes.pop("keyframe", None)
+
+    # A detection's ``rotation`` is spatial (like ``bounding_box``): backends
+    # that support rotated boxes carry it on the shape itself, so it must not
+    # also be surfaced as an editable attribute
+    if label_type in ("detection", "detections"):
+        attributes.pop("rotation", None)
 
     return attributes
 
@@ -1772,14 +1778,29 @@ def _merge_label(
 
     if allow_spatial_edits:
         for field in _SPATIAL_LABEL_FIELDS_MAP.get(type(label), []):
+            if field == "rotation":
+                # dynamic 2D attribute: absent means "not rotated"; clear a
+                # previously rotated box rather than leaving its old angle
+                value = anno_label.get_attribute_value("rotation", None)
+                if value is not None or label.has_attribute("rotation"):
+                    label["rotation"] = value
+
+                continue
+
             label[field] = anno_label[field]
 
     if only_keyframes:
         label.keyframe = anno_label.get_attribute_value("keyframe", None)
 
+    spatial_fields = _SPATIAL_LABEL_FIELDS_MAP.get(type(label), [])
+
     if global_attrs is None:
         # All attributes
         for name, value in anno_label.iter_attributes():
+            if name in spatial_fields:
+                # handled above, subject to ``allow_spatial_edits``
+                continue
+
             label.set_attribute_value(name, value)
     else:
         # Global attributes + class-specific attributes
