@@ -42,6 +42,12 @@ function isLabelType(fieldType: string): fieldType is Label {
   return LABEL_TYPES.has(fieldType);
 }
 
+/**
+ * The App assigns pool colors in first-request order, so a multi-color pool
+ * makes screenshots depend on render order; one color makes them exact
+ */
+export const DEFAULT_COLOR_SCHEME = { colorPool: ["#009999"] };
+
 export interface BuildOptions extends Pick<
   BaseDatasetOptions,
   | "datasetName"
@@ -105,7 +111,7 @@ export const build = (() => {
         frames,
         labelSchemas,
         staticTransforms,
-        colorScheme: colorScheme ?? null,
+        colorScheme: colorScheme ?? DEFAULT_COLOR_SCHEME,
       }),
       "json",
     );
@@ -149,9 +155,8 @@ ${Object.entries(schema)
 for transform in payload["staticTransforms"]:
     dataset.add_static_transform(StaticTransform(**transform))
 
-if payload["colorScheme"]:
-    dataset.app_config.color_scheme = fo.ColorScheme(**payload["colorScheme"])
-    dataset.save()
+dataset.app_config.color_scheme = fo.ColorScheme(**payload["colorScheme"])
+dataset.save()
 
 now = datetime.now()
 

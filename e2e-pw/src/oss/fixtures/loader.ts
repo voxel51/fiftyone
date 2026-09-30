@@ -1,3 +1,4 @@
+import { DEFAULT_COLOR_SCHEME } from "src/shared/dataset-factory/build";
 import { Page } from "@playwright/test";
 import { getPythonCommand, getStringifiedKwargs } from "src/oss/utils/commands";
 import {
@@ -32,15 +33,14 @@ export class OssLoader extends AbstractFiftyoneLoader {
     options: { colorScheme?: Record<string, unknown> } = {},
   ) {
     const kwargsStringified = getStringifiedKwargs(kwargs);
-    // the App colors fields in first-request order unless the scheme pins them
-    const colorScheme = options.colorScheme
-      ? `
+    const colorScheme = `
       import json
       dataset.app_config.color_scheme = fo.ColorScheme(
-        **json.loads(${JSON.stringify(JSON.stringify(options.colorScheme))})
+        **json.loads(${JSON.stringify(
+          JSON.stringify(options.colorScheme ?? DEFAULT_COLOR_SCHEME),
+        )})
       )
-      dataset.save()`
-      : "";
+      dataset.save()`;
 
     return this.pythonRunner.exec(`
       import fcntl

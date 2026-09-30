@@ -40,7 +40,7 @@ export abstract class AbstractFiftyoneLoader {
     id: string,
     kwargs?: Record<string, string | number | boolean>,
     options?: {
-      /** `fo.ColorScheme` kwargs; pin field colors for screenshots */
+      /** `fo.ColorScheme` kwargs; defaults to the factory's one-color pool */
       colorScheme?: Record<string, unknown>;
     },
   ): Promise<void>;

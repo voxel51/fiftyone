@@ -261,11 +261,11 @@ export interface BaseDatasetOptions<S extends SampleScaffold = SampleScaffold> {
 
   /**
    * Keyword arguments of `fiftyone.core.odm.dataset.ColorScheme`, set as the
-   * dataset's App color scheme. Pin a field's color here for screenshots:
-   * the App otherwise assigns pool colors in first-request order.
+   * dataset's App color scheme. Defaults to a one-color pool, so screenshots
+   * never depend on the order the App assigns colors in.
    *
    * @example
-   * colorScheme: { fields: [{ path: "detections", fieldColor: "#009999" }] }
+   * colorScheme: { colorBy: "value", colorPool: ["#ee0000", "#009999"] }
    */
   colorScheme?: JSONObject;
 

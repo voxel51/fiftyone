@@ -21,16 +21,9 @@ test.afterAll(async ({ foWebServer }) => {
 test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
   await foWebServer.startWebServer();
 
-  await fiftyoneLoader.loadZooDataset(
-    "quickstart",
-    datasetName,
-    { max_samples: 5 },
-    {
-      colorScheme: {
-        fields: [{ path: "ground_truth", fieldColor: "#009999" }],
-      },
-    },
-  );
+  await fiftyoneLoader.loadZooDataset("quickstart", datasetName, {
+    max_samples: 5,
+  });
 });
 
 test.describe.serial("sidebar-filter-visibility", () => {
