@@ -1,6 +1,6 @@
-import { useStore } from "jotai";
 import { useCallback } from "react";
 import { registeredTilesAtom } from "./atoms";
+import { useTilingStore } from "./store-context";
 import type { RegisteredTile } from "./types";
 
 /**
@@ -11,7 +11,7 @@ import type { RegisteredTile } from "./types";
 export function useTileRegistry(): {
   registerTile: (entry: RegisteredTile) => () => void;
 } {
-  const store = useStore();
+  const store = useTilingStore();
   const registerTile = useCallback(
     (entry: RegisteredTile) => {
       store.set(registeredTilesAtom, (prev) => {
