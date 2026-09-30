@@ -3467,7 +3467,7 @@ class RTKSLAMAbsoluteAccuracyDataset(FiftyOneDataset):
         # Where the sky was hardest to see
         view = dataset.sort_by("gnss_fix_rate")
 
-        session = fo.launch_app(dataset)
+        session = fo.launch_app(dataset, view=view)
 
     Dataset size
         10.85 GB
