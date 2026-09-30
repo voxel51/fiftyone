@@ -59,6 +59,7 @@ import {
 } from "../util";
 import { ProcessSample } from "../worker";
 import { AsyncLabelsRenderingManager } from "../worker/async-labels-rendering-manager";
+import { RENDER_STATUS_PENDING } from "../worker/shared";
 import { LookerUtils } from "./shared";
 import { retrieveTransferables } from "./utils";
 
@@ -68,6 +69,8 @@ type LookerE2EEvents = {
     sampleFilepath: string;
     sampleId: string;
     thumbnail: boolean;
+    /** a worker job is still painting labels, so a later draw adds them */
+    labelsPending: boolean;
   };
 };
 
@@ -122,6 +125,7 @@ export abstract class AbstractLooker<
   private previousState?: Readonly<State>;
   private readonly rootEvents: Events<State>;
   private isSampleUpdating: boolean = false;
+  private labelPaintingJobs = 0;
 
   protected readonly abortController: AbortController;
   protected currentOverlays: Overlay<State>[];
@@ -523,6 +527,13 @@ export abstract class AbstractLooker<
           sampleFilepath: this.sample.filepath,
           sampleId: this.sample.id,
           thumbnail: this.state.config.thumbnail,
+          labelsPending:
+            this.isSampleUpdating ||
+            this.labelPaintingJobs > 0 ||
+            this.currentOverlays.some(
+              (overlay) =>
+                overlay.label?._renderStatus === RENDER_STATUS_PENDING,
+            ),
         });
       } catch (error) {
         if (error instanceof AppError || error instanceof MediaError) {
@@ -684,7 +695,12 @@ export abstract class AbstractLooker<
 
         this.isSampleUpdating = true;
         try {
-          this.loadSample(sample, retrieveTransferables(this.sampleOverlays));
+          // a reload requested before the first load returned has no sample;
+          // posting none would transfer away the painted bitmaps for nothing
+          this.loadSample(
+            sample ?? this.sample,
+            retrieveTransferables(this.sampleOverlays),
+          );
         } catch (error) {
           this.isSampleUpdating = false;
           console.error(error);
@@ -709,10 +725,14 @@ export abstract class AbstractLooker<
       return;
     }
 
+    this.labelPaintingJobs++;
     this.asyncLabelsRenderingManager
       .enqueueLabelPaintingJob({
         sample: this.sample,
         labels: renderLabels,
+      })
+      .finally(() => {
+        this.labelPaintingJobs--;
       })
       .then(({ sample, coloring }) => {
         this.sample = sample;
@@ -945,6 +965,8 @@ export abstract class AbstractLooker<
         this.cleanOverlays();
         this.sample = sample;
         this.loadOverlays(sample);
+        // cleared before the update so its draw reports the labels painted
+        this.isSampleUpdating = false;
         this.updater((prev) => ({
           ...prev,
           overlaysPrepared: true,
@@ -957,8 +979,6 @@ export abstract class AbstractLooker<
         }));
 
         labelsWorker.removeEventListener("message", listener);
-
-        this.isSampleUpdating = false;
       }
     };
 

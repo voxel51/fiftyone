@@ -199,7 +199,8 @@ ${colorScheme}
       ],
       navigate,
       ({ event, detail }) => {
-        const { sampleId, thumbnail } = (detail ?? {}) as {
+        const { labelsPending, sampleId, thumbnail } = (detail ?? {}) as {
+          labelsPending?: boolean;
           sampleId?: string;
           thumbnail?: boolean;
         };
@@ -212,7 +213,12 @@ ${colorScheme}
         }
         if (TILE_READY.includes(event)) {
           if (!tiles) tileReady = true;
-          if (thumbnail && event === "e2e:looker:canvas-loaded") {
+          // a tile counts once it has drawn with all of its labels painted
+          if (
+            thumbnail &&
+            !labelsPending &&
+            event === "e2e:looker:canvas-loaded"
+          ) {
             drawn.add(sampleId);
             tileReady ||= drawn.size === tiles;
           }
