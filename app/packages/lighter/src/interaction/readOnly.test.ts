@@ -29,6 +29,32 @@ import type { Renderer2D } from "../renderer/Renderer2D";
 import type { ResourceLoader } from "../resource/ResourceLoader";
 import { DetectionOverlay } from "../overlay/DetectionOverlay";
 import { Scene2D } from "../core/Scene2D";
+import { CoordinateSystem2D } from "../core/CoordinateSystem2D";
+import {
+  KeypointOverlay,
+  type KeypointLabel,
+} from "../overlay/KeypointOverlay";
+import { MockRenderer2D } from "../renderer/MockRenderer2D";
+import { GuidedKeypointHandler } from "./GuidedKeypointHandler";
+
+/**
+ * A keypoint overlay over an identity 100×100 media region, so the test
+ * pointer at canvas (10, 10) lands on relative (0.1, 0.1).
+ */
+const makeKeypoint = (points: [number, number][]): KeypointOverlay => {
+  const coordinateSystem = new CoordinateSystem2D();
+  coordinateSystem.updateTransform({ x: 0, y: 0, width: 100, height: 100 });
+
+  const overlay = new KeypointOverlay({
+    id: "kp1",
+    field: "keypoints",
+    label: { label: "person", points } as KeypointLabel,
+  });
+  overlay.setRenderer(new MockRenderer2D());
+  overlay.setCoordinateSystem(coordinateSystem);
+
+  return overlay;
+};
 
 /** A stub overlay handler that hit-tests true everywhere. */
 const makeHandler = (id: string) => {
@@ -157,6 +183,70 @@ describe("InteractionManager read-only", () => {
     });
   });
 
+  // Explore is moving to Lighter, so keypoint placement and node drags are
+  // part of the same safety property (review of the keypoint PR, 2026-09-30)
+  describe("keypoint placement and node drags", () => {
+    const hole: [number, number] = [NaN, NaN];
+
+    it("never places a node when read-only", () => {
+      const overlay = makeKeypoint([hole]);
+      const onPlaced = vi.fn();
+      manager.addHandler(
+        new GuidedKeypointHandler(overlay, {
+          getTargetIndex: () => 0,
+          onPlaced,
+        }),
+      );
+      manager.setReadOnly(true);
+
+      pointerDown(canvas);
+
+      expect(onPlaced).not.toHaveBeenCalled();
+      expect(overlay.getRelativePoints()[0][0]).toBeNaN();
+    });
+
+    it("DOES place a node when editable", () => {
+      const overlay = makeKeypoint([hole]);
+      const onPlaced = vi.fn();
+      manager.addHandler(
+        new GuidedKeypointHandler(overlay, {
+          getTargetIndex: () => 0,
+          onPlaced,
+        }),
+      );
+      manager.setReadOnly(false);
+
+      pointerDown(canvas);
+
+      expect(onPlaced).toHaveBeenCalledWith(0);
+      expect(overlay.getRelativePoints()[0]).toEqual([0.1, 0.1]);
+    });
+
+    it("never hands a press on a placed node to the overlay when read-only", () => {
+      const overlay = makeKeypoint([[0.1, 0.1]]);
+      const onPointerDown = vi.spyOn(overlay, "onPointerDown");
+      manager.addHandler(overlay);
+      manager.setReadOnly(true);
+
+      pointerDown(canvas);
+
+      // the overlay's own pointer-down is what starts a node drag
+      expect(onPointerDown).not.toHaveBeenCalled();
+      expect(overlay.getRelativePoints()[0]).toEqual([0.1, 0.1]);
+    });
+
+    it("DOES hand a press on a placed node to the overlay when editable", () => {
+      const overlay = makeKeypoint([[0.1, 0.1]]);
+      const onPointerDown = vi.spyOn(overlay, "onPointerDown");
+      manager.addHandler(overlay);
+      manager.setReadOnly(false);
+
+      pointerDown(canvas);
+
+      expect(onPointerDown).toHaveBeenCalled();
+    });
+  });
+
   describe("Delete / Backspace on a sub-selected keypoint", () => {
     /** A handler that can mutate keypoint geometry, which read-only forbids. */
     const makeKeypointHandler = (id: string) => {
@@ -265,6 +355,16 @@ describe("Scene2D read-only affordances", () => {
 
     expect(overlay.getDraggable()).toBe(false);
     expect(overlay.getResizeable()).toBe(false);
+  });
+
+  it("strips the node-drag affordance from keypoint overlays", () => {
+    const scene = makeScene();
+    scene.setReadOnly(true);
+
+    const overlay = makeKeypoint([[0.1, 0.1]]);
+    scene.addOverlay(overlay);
+
+    expect(overlay.getDraggable()).toBe(false);
   });
 
   it("leaves affordances alone on an editable scene", () => {
