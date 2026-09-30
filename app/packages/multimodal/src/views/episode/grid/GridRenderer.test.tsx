@@ -9,7 +9,10 @@ import {
 import type { ReactElement } from "react";
 import { RecoilRoot, useSetRecoilState } from "recoil";
 import { multimodalGridFit } from "@fiftyone/state";
-import { publishMcapEmbeddingSelection } from "../../../extensions/timeline";
+import {
+  publishSampleFocus,
+  type SampleFocus,
+} from "../../../extensions/timeline";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   WEBGPU_DEVICE_BUDGET,
@@ -43,8 +46,6 @@ import type {
   ResolvedGridPosterProviderDescriptor,
 } from "./use-grid-poster-provider";
 
-// The grid mounts custom renderers under a RecoilBridge, which is what lets
-// the tile read the embeddings panel's published match for its episode.
 function render(ui: ReactElement) {
   return renderBare(ui, { wrapper: RecoilRoot });
 }
@@ -73,15 +74,8 @@ function GridFitController() {
   return null;
 }
 
-type PublishedWindows = Record<
-  string,
-  Array<{ stream: string; startNs: string; endNs: string }>
->;
-
-function renderWithMatches(ui: ReactElement, byEpisode: PublishedWindows) {
-  // The published selection reaches tiles through the extensions/timeline store
-  // (their own React roots), not through this Recoil tree
-  publishMcapEmbeddingSelection({ byEpisode });
+function renderWithFocus(ui: ReactElement, focus: Record<string, SampleFocus>) {
+  publishSampleFocus(focus);
   return render(ui);
 }
 
@@ -339,7 +333,7 @@ vi.mock("../../../visualization/composition", () => ({
 
 afterEach(() => {
   cleanup();
-  publishMcapEmbeddingSelection(null);
+  publishSampleFocus(null);
   vi.useRealTimers();
   resetGridLiveLeasesForTests();
   resetGraphicsRendererRegistryForTests();
@@ -511,25 +505,20 @@ describe("GridRenderer", () => {
     expect(secondKey).toContain(descriptor.cacheRevision);
   });
 
-  it("posters at the earliest window the embeddings panel matched", () => {
-    renderWithMatches(<GridRenderer ctx={rendererCtx()} />, {
-      "1": [
-        { stream: "/camera/front", startNs: "1700", endNs: "1800" },
-        { stream: "/lidar/top", startNs: "1200", endNs: "1200" },
-      ],
+  it("posters at the published focus of its sample", () => {
+    renderWithFocus(<GridRenderer ctx={rendererCtx()} />, {
+      "1": { startUs: 1200, stream: "/lidar/top" },
     });
 
     expect(vi.mocked(useGridPreview).mock.lastCall?.[0]).toMatchObject({
-      posterStartTimeNs: 1_200n,
+      posterStartTimeNs: 1_200_000n,
       posterSourceName: "/lidar/top",
     });
   });
 
-  it("posters at the recording start when the lasso missed this episode", () => {
-    renderWithMatches(<GridRenderer ctx={rendererCtx()} />, {
-      "other-episode": [
-        { stream: "/camera/front", startNs: "1700", endNs: "1800" },
-      ],
+  it("posters at the recording start when only other samples are focused", () => {
+    renderWithFocus(<GridRenderer ctx={rendererCtx()} />, {
+      "other-episode": { startUs: 1700, stream: "/camera/front" },
     });
 
     expect(vi.mocked(useGridPreview).mock.lastCall?.[0]).toMatchObject({
@@ -794,6 +783,34 @@ describe("GridRenderer", () => {
 
     expect(screen.getByTestId("bitmap-image-view")).toBeTruthy();
     expect(screen.getByTestId("episode-grid-buffering-indicator")).toBeTruthy();
+  });
+
+  it("shows the buffering indicator over a native tile's poster, but never over its error", () => {
+    previewHarness.preview.cachedPoster = {
+      bytes: new Uint8Array([1, 2, 3]),
+      height: 180,
+      mimeType: "image/webp",
+      sourceKind: "image",
+      streamId: "/cam/video",
+      streamSourceName: "/cam/video",
+      streamSourceNames: ["/cam/video"],
+      width: 320,
+    };
+    previewHarness.preview.nativeVideo = {
+      codec: "h264",
+      codecString: "avc1.64000a",
+      endTimeSeconds: 37.5,
+      source: { sourceId: "video", url: "/asset/video.mp4" },
+      startTimeSeconds: 14.2,
+    };
+    previewHarness.preview.isBuffering = true;
+    previewHarness.preview.status = "ready";
+
+    render(<GridRenderer ctx={rendererCtx()} />);
+    expect(screen.getByTestId("episode-grid-buffering-indicator")).toBeTruthy();
+
+    act(() => nativeVideoHarness.onError?.(new Error("Native decode failed")));
+    expect(screen.queryByTestId("episode-grid-buffering-indicator")).toBeNull();
   });
 
   it("reports retained frame and decoded bitmap bytes to the grid LRU", async () => {

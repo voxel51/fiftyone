@@ -59,14 +59,18 @@ def merge_prepared_inputs(inputs_list, pad_token_id):
         if set(inputs.keys()) != keys:
             return None
 
-    pad_keys = {"input_ids", "attention_mask"}
+    # mm_token_type_ids (text 0, image 1, video 2) is returned by newer
+    # processors and required by the model for its multimodal positions;
+    # padded positions are dropped through attention_mask before it is read
+    pad_keys = {"input_ids", "attention_mask", "mm_token_type_ids"}
+    required_keys = {"input_ids", "attention_mask"}
     cat_keys = {
         "pixel_values_videos",
         "video_grid_thw",
         "pixel_values",
         "image_grid_thw",
     }
-    if not pad_keys <= keys:
+    if not required_keys <= keys:
         return None
 
     max_len = max(int(i["input_ids"].shape[-1]) for i in inputs_list)

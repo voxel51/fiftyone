@@ -73,6 +73,23 @@ export class ModalPom {
       .textContent();
   }
 
+  /** The saved subset's read-only range marks on the existing media timeline. */
+  get savedRangeTracks() {
+    return this.locator.locator('[data-track-id^="fiftyone:saved-segments"]');
+  }
+
+  get savedRangeBars() {
+    return this.savedRangeTracks
+      .first()
+      .locator("[data-event-index]:not([data-resize-handle])");
+  }
+
+  savedRangeBarsFor(sourceLabel: string) {
+    return this.savedRangeTracks
+      .filter({ hasText: sourceLabel })
+      .locator("[data-event-index]:not([data-resize-handle])");
+  }
+
   get groupLooker() {
     return this.locator
       .getByTestId("group-sample-wrapper")
@@ -433,7 +450,9 @@ class ModalAsserter {
     const action = this.modalPom.locator.getByTestId("action-manage-selected");
 
     expect(collapseWhitespace(await action.first().textContent())).toBe(
-      String(n),
+      n === 0
+        ? "0 samples · 0 labels"
+        : `${n.toLocaleString()} sample${n === 1 ? "" : "s"}`,
     );
   }
 

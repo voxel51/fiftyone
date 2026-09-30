@@ -204,7 +204,7 @@ export default function NewSearch({
                     meta.target === ViewTarget.DATASET
                       ? isPatchesView
                         ? "All Patches"
-                        : "Full Dataset"
+                        : "Full Index"
                       : isPatchesView
                         ? "Current Patches View"
                         : "Current View",

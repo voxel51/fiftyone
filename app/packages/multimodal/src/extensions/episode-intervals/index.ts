@@ -30,6 +30,7 @@ export type {
   EpisodeIntervalContribution,
   EpisodeIntervalSource,
   EpisodeIntervalSourceProps,
+  IntervalTileContext,
   ResolvedEpisodeIntervals,
 } from "./types";
 export type { PackableInterval, PackedIntervals } from "./pack-intervals";

@@ -6,15 +6,16 @@ import type { VideoLooker } from "@fiftyone/looker";
 import { PlaybackProvider, type TimelineMode } from "@fiftyone/playback";
 import * as fos from "@fiftyone/state";
 import {
-  FrameLabelsTracks,
   RegisterFrameLabels,
   getModalSampleFrameRate,
   useTimelineMaxSize,
 } from "@fiftyone/video-annotation";
 import { BackgroundColor, getColorCssVar } from "@voxel51/voodo";
 import React, { useMemo } from "react";
+import { useSavedVideoSegments } from "./useSavedVideoSegments";
 import { useLookerPlaybackBridge } from "./useLookerPlaybackBridge";
 import styles from "./VideoLookerSurface.module.css";
+import { VideoTimelineExtensions } from "./VideoTimelineExtensions";
 import useLooker from "./use-looker";
 import { useVideoModalSelectiveRendering } from "./use-modal-selective-rendering";
 
@@ -70,6 +71,7 @@ export const VideoLookerSurface: React.FC<{ sample: fos.ModalSample }> = ({
   const timelineMaxSize = useTimelineMaxSize(surfaceHeight);
 
   const frameRate = getModalSampleFrameRate(sample);
+  const savedSegments = useSavedVideoSegments(sample.sample._id, frameRate);
 
   // Sequence mode when the frame rate is known, so the engine steps whole
   // frames and the ruler can count them; elapsed seconds if not.
@@ -83,15 +85,20 @@ export const VideoLookerSurface: React.FC<{ sample: fos.ModalSample }> = ({
 
   // `PlaybackProvider` resolves `mode` at mount only, so a sample with a
   // different frame rate has to remount it.
-  const playbackKey =
+  const clockKey =
     mode.kind === "sequence" ? `sequence:${mode.fps}` : mode.kind;
+  const playbackKey = `${sample.sample._id}:${clockKey}:${savedSegments.pinScopeKey ?? ""}`;
 
   return (
     <PlaybackProvider key={playbackKey} mode={mode} defaultDisplay="duration">
       {/* Registers the label stream the tracks read. A SIBLING of the media:
           it re-keys on the resolved frame count, and nesting the looker under
           it would rebuild the looker on the way to ready. */}
-      <RegisterFrameLabels sample={sample} mode="explore" />
+      <RegisterFrameLabels
+        sample={sample}
+        mode="explore"
+        initialTime={savedSegments.initialTime}
+      />
       <div
         ref={dimensions.ref as React.RefObject<HTMLDivElement>}
         className={styles.root}
@@ -100,10 +107,13 @@ export const VideoLookerSurface: React.FC<{ sample: fos.ModalSample }> = ({
           <VideoLookerReact sample={sample} frameRate={frameRate} />
         </div>
         <div className={styles.timeline} style={CARD_BACKGROUND}>
-          <FrameLabelsTracks
+          <VideoTimelineExtensions
             sample={sample}
             maxSize={timelineMaxSize}
             mode="explore"
+            additionalTracks={savedSegments.tracks}
+            initialPinnedIds={savedSegments.initialPinnedIds}
+            pinScopeKey={savedSegments.pinScopeKey}
           />
         </div>
       </div>

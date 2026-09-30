@@ -63,9 +63,11 @@ export class GridPom {
   async toggleSelectNthSample(n: number) {
     const tile = this.getNthTile(n);
     if (await this.isCustomRendererTile(tile)) {
-      // the selection checkbox is revealed on tile hover
-      await tile.hover();
-      await tile.getByRole("checkbox").click();
+      // the selection checkbox is revealed in the tile's top selection region
+      await tile.hover({ position: { x: 10, y: 5 } });
+      const checkbox = tile.locator("[data-fo-selection-checkbox]");
+      await expect(checkbox).toBeVisible();
+      await checkbox.click();
       return;
     }
     await tile.click({ position: { x: 10, y: 5 } });
@@ -73,6 +75,21 @@ export class GridPom {
 
   async toggleSelectFirstSample() {
     await this.toggleSelectNthSample(0);
+  }
+
+  async addNthSampleToBucket(n: number, bucketName: string) {
+    const tile = this.getNthTile(n);
+    const box = await tile.boundingBox();
+    if (!box) throw new Error(`grid tile ${n} has no bounds`);
+    // Bucket chips appear when hovering near the tile's top edge.
+    await tile.hover({
+      position: { x: box.width / 2, y: Math.min(20, box.height / 8) },
+    });
+    const button = this.page.getByRole("button", {
+      name: `Add to ${bucketName}`,
+    });
+    await expect(button).toBeVisible();
+    await button.click();
   }
 
   async openNthSample(n: number) {
@@ -97,6 +114,34 @@ export class GridPom {
 
   async openFirstSample() {
     return this.openNthSample(0);
+  }
+
+  /**
+   * Temporal-tag marks drawn on the tiles' interval lanes. One per interval on
+   * a tagged sample; tiles whose sample carries no tag draw no lane at all.
+   */
+  temporalTagMarks(): Locator {
+    return this.page.locator(
+      '[data-testid="episode-grid-overlay"] [data-source="fiftyone:temporal-tags"]',
+    );
+  }
+
+  async temporalTagMarkCount(): Promise<number> {
+    return this.temporalTagMarks().count();
+  }
+
+  /**
+   * The first mark's position on its lane, as the percentages the lane lays it
+   * out with — the tag's own time over the lane's time axis.
+   */
+  async temporalTagMarkGeometry(): Promise<{ left: number; width: number }> {
+    const mark = this.temporalTagMarks().first();
+    const [left, width] = await Promise.all([
+      mark.evaluate((el) => Number.parseFloat((el as HTMLElement).style.left)),
+      mark.evaluate((el) => Number.parseFloat((el as HTMLElement).style.width)),
+    ]);
+
+    return { left, width };
   }
 
   async getEntryCountText() {
@@ -209,6 +254,29 @@ export class GridPom {
    * Run `action` and resolve once the tiles of every one of `filepaths` have
    * redrawn their tag bubbles because of it
    */
+  /** How many tile tag renders the document has recorded so far */
+  async tagsRenderedMark(): Promise<number> {
+    return (await this.eventUtils.recorded("e2e:looker:tags-rendered")).length;
+  }
+
+  /**
+   * Resolve once the tile of `filepath` has rendered its tags after `mark`
+   * (from {@link tagsRenderedMark}); tiles render as they scroll into view
+   */
+  async untilTagsRenderedSince(mark: number, filepath: string) {
+    const isTile = (detail: unknown) =>
+      (detail as { sampleFilepath?: string } | undefined)?.sampleFilepath ===
+      filepath;
+    await this.eventUtils.untilState(
+      "e2e:looker:tags-rendered",
+      async () =>
+        (await this.eventUtils.recorded("e2e:looker:tags-rendered"))
+          .slice(mark)
+          .some(isTile),
+      (e) => isTile(e.detail),
+    );
+  }
+
   async afterTagsRendered<T>(
     filepaths: string[],
     action: () => Promise<T>,
@@ -269,8 +337,7 @@ class GridAsserter {
   }
 
   async isTileCountEqualTo(n: number) {
-    const tileCount = await this.gridPom.locator.locator(TILE_SELECTOR).count();
-    expect(tileCount).toBe(n);
+    await expect(this.gridPom.locator.locator(TILE_SELECTOR)).toHaveCount(n);
   }
 
   async isNthSampleSelected(n: number) {
@@ -293,16 +360,20 @@ class GridAsserter {
   }
 
   async isSelectionCountEqualTo(n: number) {
-    const action = this.gridPom.actionsRow.gridActionsRow.getByTestId(
-      "action-manage-selected",
-    );
+    const tray = this.gridPom.page.getByRole("region", { name: "Selection" });
 
     if (n === 0) {
-      expect(await action.isVisible()).toBe(false);
+      expect(await tray.textContent()).toContain(
+        "Act on all samples in the grid",
+      );
       return;
     }
 
-    expect(await action.first().textContent()).toBe(String(n));
+    expect(await tray.textContent()).toMatch(
+      new RegExp(
+        `${n.toLocaleString()}\\s*sample${n === 1 ? "" : "s"} selected`,
+      ),
+    );
   }
 
   /**

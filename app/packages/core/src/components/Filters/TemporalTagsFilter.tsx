@@ -2,16 +2,15 @@ import {
   isMatchingAtom,
   stringExcludeAtom,
   stringSelectedValuesAtom,
-  temporalTagResults,
-  useSyncTemporalTagResults,
+  temporalTagCounts,
 } from "@fiftyone/state";
 import React from "react";
 import StringFilter from "./StringFilter/StringFilter";
 
 /**
  * Sidebar filter for temporal tags. Temporal tags live in a dedicated
- * collection (not sample fields), so the selectable values are fetched from the
- * multimodal tags REST endpoint and fed into the shared string filter. Selecting
+ * collection (not sample fields), so the selectable values come from their own
+ * aggregation, scoped to the view like any other sidebar count. Selecting
  * values writes `{ values, exclude }` under the `_temporal_tags` key of the
  * filters atom, which the server resolves in `get_extended_view`.
  *
@@ -31,8 +30,6 @@ const TemporalTagsFilter = ({
   onBlur?: () => void;
   title: string;
 }) => {
-  useSyncTemporalTagResults();
-
   return (
     <StringFilter
       excludeAtom={stringExcludeAtom({ modal, path })}
@@ -40,7 +37,7 @@ const TemporalTagsFilter = ({
       modal={modal}
       named={false}
       path={path}
-      resultsAtom={temporalTagResults}
+      resultsAtom={temporalTagCounts({ modal, extended: false })}
       selectedAtom={stringSelectedValuesAtom({ modal, path })}
       {...rest}
     />

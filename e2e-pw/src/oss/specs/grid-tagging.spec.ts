@@ -1,19 +1,18 @@
+import { rm } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { test as base, expect } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
-import { ModalPom } from "src/oss/poms/modal";
+import { SelectionTrayPom } from "src/oss/poms/selection-tray";
+import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
-import { SidebarPom } from "../poms/sidebar";
 
 const test = base.extend<{
   grid: GridPom;
-  modal: ModalPom;
   sidebar: SidebarPom;
 }>({
   grid: async ({ page, eventUtils }, use) => {
     await use(new GridPom(page, eventUtils));
-  },
-  modal: async ({ page, eventUtils }, use) => {
-    await use(new ModalPom(page, eventUtils));
   },
   sidebar: async ({ page }, use) => {
     await use(new SidebarPom(page));
@@ -21,60 +20,57 @@ const test = base.extend<{
 });
 
 const datasetName = getUniqueDatasetNameWithPrefix("grid-tagging");
+const mediaDir = path.join(os.tmpdir(), datasetName);
 
-test.afterAll(async ({ foWebServer }) => {
-  await foWebServer.stopWebServer();
+test.afterAll(async ({ fiftyoneLoader, foWebServer }) => {
+  try {
+    await fiftyoneLoader.executePythonCode(`
+      import fiftyone as fo
+      if fo.dataset_exists("${datasetName}"):
+          fo.delete_dataset("${datasetName}")
+    `);
+  } finally {
+    await foWebServer.stopWebServer();
+    await rm(mediaDir, { recursive: true, force: true });
+  }
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-
-  await fiftyoneLoader.executePythonCode(`
-    import fiftyone as fo
-
-    filepaths = []
-    for i in range(1, 511):
-        filepath = f"/tmp/{i}-${datasetName}.png"
-        filepaths.append((i, filepath))
-    
-    dataset = fo.Dataset("${datasetName}")
-    dataset.persistent = True
-    dataset.add_samples(
-        fo.Sample(filepath=filepath, index=i) for (i, filepath) in filepaths
-    )
-  `);
+  await datasetFactory.createDataset({ datasetName, numSamples: 100 });
 });
 
-test("grid tagging", async ({ fiftyoneLoader, grid, page, sidebar }) => {
+test("grid tagging refreshes visible tiles across pages without reloading", async ({
+  fiftyoneLoader,
+  grid,
+  page,
+  sidebar,
+}) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-  const indexes = Array.from({ length: 24 }, (_, i) => i + 31);
-  const filepaths = indexes.map((i) => `/tmp/${i}-${datasetName}.png`);
-  const bubble = (filepath: string) => grid.locator.getByText(filepath);
+  const filepath = (index: number) => path.join(mediaDir, `${index}.png`);
+  const tile = (index: number) =>
+    grid.locator.getByTestId("looker").filter({ hasText: filepath(index) });
+  const tag = (index: number) => tile(index).getByTestId("tag-tags-grid-test");
 
-  await grid.afterTagsRendered(filepaths, async () => {
+  await grid.afterTagsRendered([filepath(0)], async () => {
     await sidebar.clickFieldCheckbox("filepath");
     await sidebar.clickFieldCheckbox("tags");
-    await grid.scrollBottom();
   });
-  for (const filepath of filepaths) {
-    expect(await bubble(filepath).isVisible()).toBe(true);
-  }
 
-  await grid.afterTagsRendered(filepaths, () =>
-    grid.run(async () => {
-      await grid.actionsRow.toggleTagSamplesOrLabels();
-      await grid.tagger.setActiveTaggerMode("sample");
-      await grid.tagger.addNewTag("sample", "grid-test");
-    }),
-  );
+  // Visit later pages before tagging so Relay already holds their old data.
+  const visited = await grid.tagsRenderedMark();
+  await grid.scrollBottom();
+  await tile(30).scrollIntoViewIfNeeded();
+  await grid.untilTagsRenderedSince(visited, filepath(30));
+  expect(await tag(30).count()).toBe(0);
 
-  for (const filepath of filepaths) {
-    expect(await bubble(filepath).isVisible()).toBe(true);
-    expect(
-      await bubble(filepath)
-        .locator("..")
-        .getByTestId("tag-tags-grid-test")
-        .isVisible(),
-    ).toBe(true);
+  const tagged = await grid.tagsRenderedMark();
+  await grid.run(() => new SelectionTrayPom(page).tagSamples("grid-test"));
+
+  // Check actual viewport contents, including previously cached later pages.
+  for (const index of [0, 30, 47, 53]) {
+    await tile(index).scrollIntoViewIfNeeded();
+    await grid.untilTagsRenderedSince(tagged, filepath(index));
+    expect(await tag(index).isVisible()).toBe(true);
   }
 });

@@ -1007,6 +1007,17 @@
   border-radius: 0.25rem;
 }
 
+/* Patch crop: the same frame as .emb-hover-image. The element's viewBox
+   selects the patch and the browser fits and centers it, so the leftover
+   space around an oddly-shaped patch is just the card's surface */
+.emb-hover-crop {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 0.25rem;
+  background: var(--emb-popover);
+}
+
 .emb-hover-value {
   display: flex;
   align-items: center;

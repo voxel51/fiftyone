@@ -7,13 +7,12 @@ import {
 } from "@fiftyone/plugins";
 import type { ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
-import { useMcapGridOverlays } from "@fiftyone/multimodal/extensions/timeline";
-import { EpisodeGridOverlay } from "@fiftyone/multimodal/grid-overlay";
 import { MEDIA_TYPE_MULTIMODAL } from "@fiftyone/utilities";
 import { Checkbox } from "@mui/material";
 import React from "react";
 import { createRoot, type Root } from "react-dom/client";
 import GridTagBubbles from "./GridTagBubbles";
+import { TileLanes } from "./TileLanes";
 
 /** e2e specs wait on a custom-rendered tile committing */
 type GridCustomRendererE2EEvents = {
@@ -210,6 +209,7 @@ const GridCustomRendererWrapper = ({
       {children}
       {showSelectionControl && (
         <Checkbox
+          data-fo-selection-checkbox=""
           style={SELECT_SAMPLE_BUTTON_STYLES}
           title={selected ? "Selected" : "Select sample"}
           checked={selected}
@@ -217,40 +217,6 @@ const GridCustomRendererWrapper = ({
         />
       )}
     </div>
-  );
-};
-
-// Keyed by the overlay's own reference (stable per registration), not its
-// position in the registry's array — an earlier overlay unregistering must
-// not shift a later one's key and force it to remount.
-const overlayIds = new WeakMap<
-  React.ComponentType<SampleRendererProps>,
-  number
->();
-let nextOverlayId = 0;
-function overlayKey(overlay: React.ComponentType<SampleRendererProps>): number {
-  let id = overlayIds.get(overlay);
-  if (id === undefined) {
-    id = nextOverlayId++;
-    overlayIds.set(overlay, id);
-  }
-  return id;
-}
-
-/** Edition-registered grid-tile overlays (rendered inside the multimodal
- * guard); nothing renders before anything registers. */
-const McapGridOverlays = ({
-  ctx,
-}: {
-  readonly ctx: SampleRendererRenderContext;
-}) => {
-  const overlays = useMcapGridOverlays();
-  return (
-    <>
-      {overlays.map((Overlay) => (
-        <Overlay key={overlayKey(Overlay)} ctx={ctx} />
-      ))}
-    </>
   );
 };
 
@@ -385,10 +351,7 @@ export class GridCustomRendererItem {
             <div style={FOOTER_STYLES}>
               <GridTagBubbles sample={sample} />
               {ctx.media?.mediaType === MEDIA_TYPE_MULTIMODAL ? (
-                <>
-                  <EpisodeGridOverlay ctx={ctx} />
-                  <McapGridOverlays ctx={ctx} />
-                </>
+                <TileLanes ctx={ctx} />
               ) : null}
             </div>
           </GridCustomRendererWrapper>

@@ -8,11 +8,16 @@
  * Similarity Search panel to create one.
  *
  * The magnifying glass is where the search's settings live (which index, how
- * many results); focusing the input offers the dataset's previous queries.
+ * many results, which of its sources to search); focusing the input offers
+ * the dataset's previous queries.
  */
 
-import type { PromptableSimilarityIndex } from "@fiftyone/state";
-import { useViewChangePending } from "@fiftyone/state";
+import type { TextSearchSuggestions } from "@fiftyone/state";
+import {
+  useCurrentDatasetName,
+  useNotification,
+  useViewChangePending,
+} from "@fiftyone/state";
 import {
   Align,
   Button,
@@ -25,6 +30,7 @@ import {
   SearchIcon,
   Size,
   Spacing,
+  Spinner,
   Stack,
   Text,
   TextColor,
@@ -35,11 +41,12 @@ import React from "react";
 
 import styles from "./LanguageSearch.module.css";
 import { SearchSettingsPopover } from "./SearchSettingsPopover";
+import type { TextSearchController } from "./useTextSearch";
 
 export const LANGUAGE_SEARCH_LABEL = "Search or ask in natural language";
 
 export interface LanguageSearchProps {
-  onSubmit: (query: string) => void;
+  search: TextSearchController;
   /**
    * Reports whether the input holds text — while it does, the bar's clear
    * [x] shows even with no stages applied.
@@ -47,62 +54,80 @@ export interface LanguageSearchProps {
   onHasTextChange?: (hasText: boolean) => void;
   /** The input taking focus — the bar folds its stages row behind it. */
   onFocus?: () => void;
-  /**
-   * Whether the similarity search operator may exist — registered, or not yet
-   * known to be missing while the registry loads. Known missing, the field
-   * still shows, and a click explains itself through `onUnavailable` instead
-   * of offering anything.
-   */
-  available: boolean;
-  onUnavailable: () => void;
-  /** Whether a prompt-capable index exists — typing only searches with one. */
-  enabled: boolean;
-  /** The dataset's previous queries, most recent first. */
-  history: readonly string[];
-  /** The dataset's prompt-capable indexes, for the settings popover. */
-  promptKeys: PromptableSimilarityIndex[];
-  /** The index quick search will use. */
-  selectedKey: string | null;
-  onSelectKey: (key: string) => void;
-  k: number;
-  onChangeK: (k: number) => void;
-  onOpenPanel: () => void;
 }
 
-export const LanguageSearch: React.FC<LanguageSearchProps> = ({
-  onSubmit,
+/**
+ * The field, remounted per dataset: a query typed over one dataset means
+ * nothing in the next, and a search still running for it must not publish
+ * there. The bar itself stays mounted across the switch.
+ */
+export const LanguageSearch: React.FC<LanguageSearchProps> = (props) => {
+  const datasetName = useCurrentDatasetName();
+  return <LanguageSearchField key={datasetName ?? ""} {...props} />;
+};
+
+const LanguageSearchField: React.FC<LanguageSearchProps> = ({
+  search: {
+    available,
+    onUnavailable,
+    enabled,
+    history,
+    promptKeys,
+    selectedIndex,
+    onSelectKey,
+    k,
+    onChangeK,
+    onOpenPanel,
+    submit,
+    searchIndex,
+    Suggestions,
+    onOpenSettings,
+    sources,
+    indexSlices,
+  },
   onHasTextChange,
   onFocus,
-  available,
-  onUnavailable,
-  enabled,
-  history,
-  promptKeys,
-  selectedKey,
-  onSelectKey,
-  k,
-  onChangeK,
-  onOpenPanel,
 }) => {
   const [query, setQuery] = React.useState("");
   React.useEffect(() => {
     onHasTextChange?.(!!query);
     return () => onHasTextChange?.(false);
   }, [query, onHasTextChange]);
-  // Set when the submitted search is still resolving into a view — only the
-  // quick search drives the flag, so it can't fire for unrelated loads
+  // Set while the submitted search is still running — only the quick search
+  // drives the flag, so it can't fire for unrelated loads
   const pending = useViewChangePending();
+  const notify = useNotification();
+  const selectedKey = selectedIndex?.key ?? null;
 
-  // The dropdown under the box: previous queries matching the draft. With no
-  // prompt-capable index there is nothing to offer, and the empty state is
-  // the on-ramp to creating one
-  const options = React.useMemo<ComboboxOption[]>(() => {
-    if (!available || !enabled) return [];
-    const q = query.trim().toLowerCase();
-    return history
-      .filter((h) => !q || h.toLowerCase().includes(q))
-      .map((h) => ({ id: h, label: h }));
-  }, [available, enabled, history, query]);
+  // Per index, the sources chosen to search; an index absent here searches
+  // all of them
+  const [chosenSources, setChosenSources] = React.useState<
+    Record<string, string[]>
+  >({});
+  const selectedSources = React.useMemo(() => {
+    if (!sources || !selectedKey) return null;
+    const chosen = chosenSources[selectedKey];
+    if (!chosen) return null;
+    // Values the index no longer reports cannot be searched
+    const kept = sources.values.filter((value) => chosen.includes(value));
+    return kept.length && kept.length < sources.values.length ? kept : null;
+  }, [sources, selectedKey, chosenSources]);
+  const onChangeSources = React.useCallback(
+    (values: string[]) => {
+      if (!selectedKey) return;
+      setChosenSources((chosen) => ({ ...chosen, [selectedKey]: values }));
+    },
+    [selectedKey],
+  );
+  const [listOpen, setListOpen] = React.useState(false);
+
+  // The dropdown under the box is what the selected search offers. With no
+  // prompt-capable index it is empty, and the empty state is the on-ramp to
+  // creating one
+  const optionsFor = (suggestions: TextSearchSuggestions): ComboboxOption[] =>
+    available && enabled
+      ? suggestions.prompts.map((text) => ({ id: text, label: text }))
+      : [];
 
   // A picked row or committed text: a previous query re-runs, typed text
   // runs. With no index there is nothing to run, and the query is the reason
@@ -118,49 +143,46 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
         onOpenPanel();
         return;
       }
-      onSubmit(text);
+      submit(text, selectedSources);
     },
-    [available, enabled, onOpenPanel, onSubmit],
+    [available, enabled, onOpenPanel, submit, selectedSources],
   );
 
-  return (
-    <Stack
-      orientation={Orientation.Row}
-      align={Align.Center}
-      spacing={Spacing.Xs}
-      className={styles.root}
+  // An Enter that commits nothing, with no search operator or on text that
+  // is no row where only rows can run, says why rather than leaving the
+  // query waiting on nothing
+  const explainUnrunnable = (
+    event: React.KeyboardEvent,
+    suggestions: TextSearchSuggestions,
+  ) => {
+    if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+    if (!query.trim()) return;
+    if (!available) {
+      onUnavailable();
+      return;
+    }
+    if (!enabled || suggestions.freeText) return;
+    if (optionsFor(suggestions).length > 0) return;
+    notify({
+      key: "view-bar-search-unrunnable",
+      variant: "info",
+      msg: suggestions.loading
+        ? "This index's searches are still loading. Try again in a moment."
+        : "This index can only run the searches it suggests. Pick one from the list.",
+    });
+  };
+
+  const renderField = (suggestions: TextSearchSuggestions) => (
+    <div
+      className={styles.fieldKeys}
+      onKeyDown={(event) => explainUnrunnable(event, suggestions)}
     >
-      {/* The magnifying glass is where the search's settings live — which
-          index, how many results, and the hand-off to the Similarity Search
-          panel (or, with no index, the explanation and the on-ramp). It
-          floats over the field's leading padding so the field — and the
-          list anchored to it — starts at the bar's left edge. */}
-      <div className={styles.magnifier}>
-        <SearchSettingsPopover
-          trigger={
-            <Button
-              variant={Variant.Icon}
-              size={Size.Xs}
-              borderless
-              leadingIcon={SearchIcon}
-              aria-label="Similarity search settings"
-              data-cy="view-bar-search-settings-trigger"
-            />
-          }
-          promptKeys={promptKeys}
-          selectedKey={selectedKey}
-          onSelectKey={onSelectKey}
-          k={k}
-          onChangeK={onChangeK}
-          onOpenPanel={onOpenPanel}
-        />
-      </div>
       <Combobox
         aria-label={LANGUAGE_SEARCH_LABEL}
         placeholder={LANGUAGE_SEARCH_LABEL}
         size={Size.Sm}
         className={styles.field}
-        options={options}
+        options={optionsFor(suggestions)}
         // Nothing is ever "picked": a search is an action, so every commit
         // arrives through onChange and the field keeps the text it ran with
         value={null}
@@ -169,10 +191,14 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
         onChange={commit}
         onFocus={onFocus}
         // Committed without an index, the text is a request for one
-        allowFreeText={available}
+        allowFreeText={available && suggestions.freeText}
+        // Enter takes the top row when typed text alone cannot run
+        autoHighlight={!suggestions.freeText}
+        loading={Boolean(suggestions.loading)}
         // Without the operator there is nothing to open; the click gets an
         // explanation instead
         onOpenChange={(isOpen) => {
+          setListOpen(isOpen);
           if (isOpen && !available) onUnavailable();
         }}
         // Enter runs the search; clicking elsewhere must not
@@ -184,7 +210,8 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
         // With previous searches to offer the list is the offer; with none it
         // is noise, so it stays hidden
         emptyMessage={
-          !available || enabled
+          (available && enabled && suggestions.emptyMessage) ||
+          (!available || enabled
             ? null
             : // Text search needs a similarity index that supports prompts:
               // the list says so, and its one action is to go make one —
@@ -219,9 +246,69 @@ export const LanguageSearch: React.FC<LanguageSearchProps> = ({
                     Create index
                   </Button>
                 </div>
-              )
+              ))
         }
       />
+    </div>
+  );
+
+  return (
+    <Stack
+      orientation={Orientation.Row}
+      align={Align.Center}
+      spacing={Spacing.Xs}
+      className={styles.root}
+    >
+      {/* The magnifying glass is where the search's settings live — which
+          index, how many results, which of its sources to search, and the
+          hand-off to the Similarity Search panel while an index the server
+          sorts exists (or, with no index, the explanation and the on-ramp).
+          It floats over the field's leading padding so the field — and the
+          list anchored to it — starts at the bar's left edge. */}
+      <div className={styles.magnifier}>
+        {pending ? (
+          // Shut while a search runs: switching the index mid-search could
+          // let a server search, which cannot be cancelled, land over the
+          // newer one
+          <Spinner
+            size={Size.Xs}
+            aria-label="Search in progress"
+            data-cy="view-bar-search-in-progress"
+          />
+        ) : (
+          <SearchSettingsPopover
+            trigger={
+              <Button
+                variant={Variant.Icon}
+                size={Size.Xs}
+                borderless
+                leadingIcon={SearchIcon}
+                aria-label="Similarity search settings"
+                data-cy="view-bar-search-settings-trigger"
+                onClick={onOpenSettings}
+              />
+            }
+            promptKeys={promptKeys}
+            indexSlices={indexSlices}
+            selectedKey={selectedKey}
+            onSelectKey={onSelectKey}
+            k={k}
+            onChangeK={onChangeK}
+            sources={sources}
+            selectedSources={selectedSources}
+            onChangeSources={onChangeSources}
+            onOpenPanel={onOpenPanel}
+          />
+        )}
+      </div>
+      <Suggestions
+        index={searchIndex}
+        query={query}
+        history={history}
+        open={listOpen}
+      >
+        {renderField}
+      </Suggestions>
       {pending && (
         // Legible even for a sub-second search: a word, not just the dots — the
         // grid's own word for it

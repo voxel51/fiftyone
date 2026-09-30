@@ -3,15 +3,18 @@
  *
  * The magnifier's popover: where the quick search's similarity settings live.
  * With prompt-capable indexes present it offers the index to search with,
- * the number of results, and a hand-off to the Similarity Search panel for
- * everything richer; with none it explains that text search needs an index,
- * and hands off to the panel to create one.
+ * the number of results, which of the index's sources to search when it has
+ * them, and a hand-off to the Similarity Search panel for everything richer;
+ * with none it explains that text search needs an index, and hands off to
+ * the panel to create one.
  */
 
-import type { PromptableSimilarityIndex } from "@fiftyone/state";
+import type { PromptableSimilarityIndex, SearchSources } from "@fiftyone/state";
+import { useTextSearchProviders } from "@fiftyone/state";
 import {
   Align,
   Button,
+  Checkbox,
   Dropdown,
   DropdownAnchor,
   DropdownTrigger,
@@ -23,6 +26,7 @@ import {
   MenuTextItem,
   Orientation,
   Popover,
+  PopoverAnchor,
   Size,
   Spacing,
   Stack,
@@ -40,11 +44,18 @@ export interface SearchSettingsPopoverProps {
   /** The magnifier: clicking it opens the settings under it. */
   trigger: React.ReactNode;
   promptKeys: PromptableSimilarityIndex[];
+  /** On a grouped dataset, the slices each index covers, by brain key. */
+  indexSlices?: ReadonlyMap<string, readonly string[]>;
   /** The index quick search will use (the resolved value, never null). */
   selectedKey: string | null;
   onSelectKey: (key: string) => void;
   k: number;
   onChangeK: (k: number) => void;
+  /** The selected index's sources, or null when it has none to choose. */
+  sources: SearchSources | null;
+  /** The sources to search; null searches all of them. */
+  selectedSources: string[] | null;
+  onChangeSources: (values: string[]) => void;
   onOpenPanel: () => void;
 }
 
@@ -67,6 +78,30 @@ export const describeIndex = (index: PromptableSimilarityIndex): string => {
     ? `${label} (patches: ${index.patchesField})`
     : label;
 };
+
+/** An index's name, then the slices it covers as a quiet note, which is
+ * what tells an image index from a point-cloud one on a grouped dataset. */
+const IndexName: React.FC<{
+  index: PromptableSimilarityIndex;
+  slices: readonly string[] | undefined;
+}> = ({ index, slices }) => (
+  <Stack
+    orientation={Orientation.Row}
+    align={Align.Center}
+    spacing={Spacing.Sm}
+  >
+    {describeIndex(index)}
+    {slices && (
+      <Text
+        variant={TextVariant.Sm}
+        color={TextColor.Secondary}
+        data-cy="search-settings-index-slices"
+      >
+        {slices.join(", ")}
+      </Text>
+    )}
+  </Stack>
+);
 
 /**
  * The results count, typed freely: the field holds whatever is being typed —
@@ -112,16 +147,109 @@ const SettingsOpenSignal = () => {
   return null;
 };
 
+/**
+ * The sources to search, as a pill reading "All" or "n of m" that opens a
+ * checklist. Unchecking the last one checks them all again: a search over no
+ * source would find nothing.
+ */
+const SourcesPicker: React.FC<{
+  sources: SearchSources;
+  selected: string[] | null;
+  onChange: (values: string[]) => void;
+}> = ({ sources, selected, onChange }) => {
+  if (sources.unavailableReason) {
+    return (
+      <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
+        <Text variant={TextVariant.Label} color={TextColor.Tertiary}>
+          {sources.label}
+        </Text>
+        <DropdownTrigger
+          className={styles.pickerTrigger}
+          data-cy="search-settings-sources"
+          disabled
+        >
+          All
+        </DropdownTrigger>
+        <Text variant={TextVariant.Xs} color={TextColor.Tertiary}>
+          {sources.unavailableReason}
+        </Text>
+      </Stack>
+    );
+  }
+  const isChecked = (value: string) => !selected || selected.includes(value);
+  const shown = sources.values.filter(isChecked).length;
+  const toggle = (value: string) => {
+    const next = sources.values.filter((v) =>
+      v === value ? !isChecked(v) : isChecked(v),
+    );
+    onChange(next.length ? next : sources.values);
+  };
+  return (
+    <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
+      <Text variant={TextVariant.Label} color={TextColor.Tertiary}>
+        {sources.label}
+      </Text>
+      {/* A popover, not a dropdown: a menu closes on every pick, and choosing
+          sources takes several. Kept out of a portal so a click in it is not
+          a click outside the settings, which would close them */}
+      <Popover
+        portal={false}
+        anchor={PopoverAnchor.BottomStart}
+        matchTriggerWidth
+        className={styles.picker}
+        trigger={
+          <DropdownTrigger
+            className={styles.pickerTrigger}
+            data-cy="search-settings-sources"
+          >
+            {shown === sources.values.length
+              ? "All"
+              : `${shown} of ${sources.values.length}`}
+          </DropdownTrigger>
+        }
+      >
+        <Stack
+          orientation={Orientation.Column}
+          spacing={Spacing.Xs}
+          data-cy="search-settings-sources-list"
+        >
+          {sources.values.map((value) => (
+            <Checkbox
+              key={value}
+              size={Size.Sm}
+              label={value}
+              checked={isChecked(value)}
+              onChange={() => toggle(value)}
+            />
+          ))}
+        </Stack>
+      </Popover>
+    </Stack>
+  );
+};
+
 export const SearchSettingsPopover: React.FC<SearchSettingsPopoverProps> = ({
   trigger,
   promptKeys,
+  indexSlices,
   selectedKey,
   onSelectKey,
   k,
   onChangeK,
+  sources,
+  selectedSources,
+  onChangeSources,
   onOpenPanel,
 }) => {
   const selected = promptKeys.find((index) => index.key === selectedKey);
+  // The panel sorts only indexes the server can: one of those anywhere in the
+  // dataset is worth a way there, whichever index is selected
+  const offerPanel =
+    promptKeys.length === 0 || promptKeys.some((index) => !index.provider);
+  const providers = useTextSearchProviders();
+  const resultsHint = selected?.provider
+    ? providers.get(selected.provider)?.resultsHint
+    : undefined;
   return (
     <Popover
       trigger={trigger}
@@ -166,7 +294,14 @@ export const SearchSettingsPopover: React.FC<SearchSettingsPopoverProps> = ({
                   data-cy="search-settings-indexes"
                   trigger={
                     <DropdownTrigger className={styles.pickerTrigger}>
-                      {selected ? describeIndex(selected) : "Choose an index"}
+                      {selected ? (
+                        <IndexName
+                          index={selected}
+                          slices={indexSlices?.get(selected.key)}
+                        />
+                      ) : (
+                        "Choose an index"
+                      )}
                     </DropdownTrigger>
                   }
                 >
@@ -182,7 +317,10 @@ export const SearchSettingsPopover: React.FC<SearchSettingsPopoverProps> = ({
                         justify={Justify.Between}
                         spacing={Spacing.Sm}
                       >
-                        {describeIndex(index)}
+                        <IndexName
+                          index={index}
+                          slices={indexSlices?.get(index.key)}
+                        />
                         {index.key === selectedKey && (
                           <Icon name={IconName.Check} size={Size.Sm} />
                         )}
@@ -195,36 +333,50 @@ export const SearchSettingsPopover: React.FC<SearchSettingsPopoverProps> = ({
                 <Text variant={TextVariant.Label} color={TextColor.Tertiary}>
                   Results
                 </Text>
+                {resultsHint && (
+                  <Text variant={TextVariant.Xs} color={TextColor.Tertiary}>
+                    {resultsHint}
+                  </Text>
+                )}
                 <ResultsInput k={k} onChangeK={onChangeK} />
               </Stack>
+              {sources && (
+                <SourcesPicker
+                  sources={sources}
+                  selected={selectedSources}
+                  onChange={onChangeSources}
+                />
+              )}
             </>
           )}
 
-          <Button
-            variant={Variant.Secondary}
-            size={Size.Sm}
-            data-cy="search-settings-open-panel"
-            onClick={() => {
-              onOpenPanel();
-              close();
-            }}
-          >
-            {promptKeys.length > 0 ? (
-              <Stack
-                orientation={Orientation.Row}
-                align={Align.Center}
-                spacing={Spacing.Xs}
-              >
-                Open
-                {/* the Similarity Search panel's own icon, so the button
+          {offerPanel && (
+            <Button
+              variant={Variant.Secondary}
+              size={Size.Sm}
+              data-cy="search-settings-open-panel"
+              onClick={() => {
+                onOpenPanel();
+                close();
+              }}
+            >
+              {promptKeys.length > 0 ? (
+                <Stack
+                  orientation={Orientation.Row}
+                  align={Align.Center}
+                  spacing={Spacing.Xs}
+                >
+                  Open
+                  {/* the Similarity Search panel's own icon, so the button
                     reads as a pointer to that panel */}
-                <Icon name={IconName.ImageSearch} size={Size.Sm} />
-                Similarity Search
-              </Stack>
-            ) : (
-              "Create index"
-            )}
-          </Button>
+                  <Icon name={IconName.ImageSearch} size={Size.Sm} />
+                  Similarity Search
+                </Stack>
+              ) : (
+                "Create index"
+              )}
+            </Button>
+          )}
         </Stack>
       )}
     </Popover>

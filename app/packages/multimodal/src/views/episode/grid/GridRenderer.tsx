@@ -44,7 +44,7 @@ import {
 } from "./grid-stream-state";
 import { useGridCameraPose } from "./grid-camera-state";
 import { cameraScopeKey } from "../scope/camera-scope";
-import { useSampleRendererFirstMatch } from "../../../extensions/timeline";
+import { useSampleFocus } from "../../../extensions/timeline";
 import { useGridPreview, type GridPreviewStatus } from "./use-grid-preview";
 import {
   getGridPosterCache,
@@ -151,10 +151,9 @@ export function GridRenderer({
   const [selectedStream] = useGridSelectedStream(ctx.dataset.name);
   const selectedSourceName =
     selectedStream === GRID_STREAM_AUTO ? null : selectedStream;
-  // A lasso/search in the embeddings panel posters this tile at its earliest
-  // matched window, so both the requested time and preferred stream belong to
-  // the poster cache identity.
-  const firstMatch = useSampleRendererFirstMatch(ctx);
+  // A published focus posters this tile at its time and stream, so both belong
+  // to the poster cache identity
+  const focus = useSampleFocus(ctx);
   const [cameraPose, setCameraPose] = useGridCameraPose(
     gridCameraScopeKey,
     visible,
@@ -180,8 +179,8 @@ export function GridRenderer({
             episodeId: sampleId,
             mediaField: ctx.media?.field,
             mediaPath: ctx.media?.path,
-            posterSourceName: firstMatch?.stream,
-            posterStartTimeNs: firstMatch?.startNs,
+            posterSourceName: focus?.stream,
+            posterStartTimeNs: focus?.startNs,
             providerRevision: providerCacheScope,
             selectedSourceName,
             source,
@@ -191,8 +190,8 @@ export function GridRenderer({
       ctx.dataset.datasetId,
       ctx.media?.field,
       ctx.media?.path,
-      firstMatch?.startNs,
-      firstMatch?.stream,
+      focus?.startNs,
+      focus?.stream,
       providerCacheScope,
       sampleId,
       selectedSourceName,
@@ -232,7 +231,7 @@ export function GridRenderer({
     cacheKey,
     cameraPose,
     enabled: visible && cacheLookupStatus === "miss" && cachedPoster === null,
-    posterStartTimeNs: firstMatch?.startNs ?? null,
+    posterStartTimeNs: focus?.startNs ?? null,
     resolved: providerDescriptor.resolved,
     selectedSourceName,
   });
@@ -282,8 +281,8 @@ export function GridRenderer({
     hovered,
     initialVideoDecodeLookaheadNs: REORDERED_VIDEO_DECODE_LOOKAHEAD_NS,
     onReadResult: gridVideoPlayback.onReadResult,
-    posterStartTimeNs: firstMatch?.startNs ?? null,
-    posterSourceName: firstMatch?.stream ?? null,
+    posterStartTimeNs: focus?.startNs ?? null,
+    posterSourceName: focus?.stream ?? null,
     previewSession: previewSession.session,
     previewSessionError: previewSession.error,
     previewSessionStatus: previewSession.status,
@@ -530,7 +529,13 @@ export function GridRenderer({
           {nativeVideoError}
         </div>
       ) : null}
-      {preview.frame && preview.isBuffering ? (
+      {preview.isBuffering &&
+      (preview.frame ||
+        // A native tile rarely has a decoded frame: its picture is the cached
+        // poster or the one the element painted
+        (preview.nativeVideo &&
+          !nativeVideoError &&
+          (preview.cachedPoster || nativePosterPainted))) ? (
         <span
           className={
             blocksGridActivation
@@ -547,6 +552,7 @@ export function GridRenderer({
           active={visible}
           capturePoster={!preview.frame && !preview.cachedPoster}
           key={`${preview.nativeVideo.source.sourceId}:${preview.nativeVideo.codec}:${preview.nativeVideo.startTimeSeconds}:${preview.nativeVideo.endTimeSeconds}`}
+          onBufferingChange={preview.reportNativeBuffering}
           onCanvasCommitted={handleNativePosterCanvasCommitted}
           onError={handleNativeVideoError}
           onPresentedTimeSeconds={preview.presentNativeTimeSeconds}
