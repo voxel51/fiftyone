@@ -10,7 +10,6 @@ import {
   QueryPerformanceToast,
   SchemaManagerOutlet,
   Snackbar,
-  Starter,
 } from "@fiftyone/core";
 import "@fiftyone/embeddings-v2";
 import "@fiftyone/map";
@@ -22,6 +21,8 @@ import { usePreloadedQuery } from "react-relay";
 import { useRecoilValue } from "recoil";
 import { graphql } from "relay-runtime";
 import Nav from "../../components/Nav";
+import { AddSample } from "../../components/Starter";
+import { useProduct } from "../../product";
 import type { Route } from "../../routing";
 import style from "../index.module.css";
 import type { DatasetPageQuery } from "./__generated__/DatasetPageQuery.graphql";
@@ -114,6 +115,7 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
 
   const count = useRecoilValue(fos.datasetSampleCount);
   const isEmpty = count === 0;
+  const { Panels } = useProduct();
 
   return (
     <Nav fragment={data} hasDataset={!isEmpty}>
@@ -130,7 +132,7 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
             style={{ display: "flex", flexDirection: "column", height: "100%" }}
           >
             <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
-              <Starter mode="ADD_SAMPLE" />
+              <AddSample />
             </div>
             <EmptyDatasetSelection />
           </div>
@@ -138,6 +140,7 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
           <datasetQueryContext.Provider value={data}>
             <OperatorCore />
             <Dataset />
+            {Panels && <Panels />}
           </datasetQueryContext.Provider>
         )}
       </div>

@@ -3,6 +3,7 @@ import { useOutsideClick } from "@fiftyone/state";
 import { Box, BoxProps, SxProps } from "@mui/material";
 import React, { PropsWithChildren } from "react";
 
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 export default function PopoutButton(props: PopoutButtonPropsType) {
   const { Button, children, containerProps, popoutProps, open, onClose } =
     props;

@@ -52,6 +52,8 @@ type SelectionProps = {
  *   - `insideModal`: when true, raises the dropdown's z-index so it overlays modal/dialog layers.
  *
  * @returns The JSX element for the selection dropdown, or `null` if `selected` is not provided.
+ *
+ * @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead.
  */
 export default function Selection(props: SelectionProps) {
   const {

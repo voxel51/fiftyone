@@ -5,6 +5,7 @@ import { PlacementType } from "react-laag/dist/PlacementType";
 import { useTheme } from "../..";
 import style from "./Tooltip.module.css";
 
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 const Tooltip: React.FC<{
   children: React.ReactNode;
   placement: PlacementType;

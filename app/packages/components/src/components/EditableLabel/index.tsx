@@ -14,6 +14,7 @@ import {
 import { useState } from "react";
 import TooltipProvider from "../TooltipProvider";
 
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 export default function EditableLabel(props: EditableLabelProps) {
   const {
     label,

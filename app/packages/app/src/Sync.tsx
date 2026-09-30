@@ -2,7 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { Loading } from "@fiftyone/components";
+import { LoadingScreen } from "@voxel51/voodo";
 import { usePlugins } from "@fiftyone/plugins";
 import {
   Writer,
@@ -50,7 +50,7 @@ export const SessionContext = React.createContext<Session>(SESSION_DEFAULT);
 
 const Plugins = ({ children }: { children: React.ReactNode }) => {
   const plugins = usePlugins();
-  if (plugins.isLoadingPlugins) return <Loading>Pixelating...</Loading>;
+  if (plugins.isLoadingPlugins) return <LoadingScreen text="Pixelating" />;
   return <>{children}</>;
 };
 
@@ -68,7 +68,7 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
     <SessionContext.Provider value={sessionRef.current}>
       {readyState === AppReadyState.CLOSED && <Setup />}
       {readyState === AppReadyState.CONNECTING && (
-        <Loading>Pixelating...</Loading>
+        <LoadingScreen text="Pixelating" />
       )}
       {readyState === AppReadyState.OPEN && <SharedSessionBanner />}
       {readyState === AppReadyState.OPEN && (

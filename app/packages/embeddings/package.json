@@ -16,6 +16,7 @@
         "@fiftyone/components": "*",
         "@fiftyone/plugins": "*",
         "@fiftyone/state": "*",
+        "@voxel51/voodo": "catalog:",
         "plotly.js": "^3.1.1",
         "use-resize-observer": "catalog:"
     },

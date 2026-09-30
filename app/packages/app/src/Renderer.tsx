@@ -5,7 +5,6 @@
 import type { Queries } from "./makeRoutes";
 import type { Entry } from "./routing";
 
-import { Pending } from "@fiftyone/components";
 import { subscribe } from "@fiftyone/relay";
 import {
   isModalActive,
@@ -17,6 +16,7 @@ import {
   viewChangePending,
 } from "@fiftyone/state";
 import { useColorScheme } from "@mui/material";
+import { BackgroundColor, Progress, Size } from "@voxel51/voodo";
 import {
   Suspense,
   useCallback,
@@ -33,6 +33,7 @@ import {
 } from "recoil";
 import { useRouterContext } from "./routing";
 import Pixelating from "./Pixelating";
+import styles from "./Renderer.module.css";
 
 export const pendingEntry = atom<boolean>({
   key: "pendingEntry",
@@ -113,7 +114,15 @@ const Renderer = () => {
       <ColorScheme key={"color-scheme"} />
       <Modal key={"modal"} />
       <Route key={"route"} route={routeEntry} />
-      {(pending || viewPending) && <Pending key={"pending"} />}
+      {(pending || viewPending) && (
+        <div className={styles.pending} key={"pending"}>
+          <Progress
+            aria-label="Loading"
+            size={Size.Sm}
+            trackColor={BackgroundColor.Transparent}
+          />
+        </div>
+      )}
     </Suspense>
   );
 };

@@ -1,0 +1,40 @@
+.page {
+  width: 100%;
+  padding: 4rem 1rem;
+  box-sizing: border-box;
+}
+
+.divider {
+  width: 100%;
+}
+
+/* The code and its captions share the block's width, so the caption sits over
+   the code rather than over the centered column */
+.codeSection {
+  width: min(48rem, 100%);
+}
+
+.codeSubtitle {
+  padding-bottom: 0.5rem;
+}
+
+.prose {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.prose:hover {
+  text-decoration: none;
+}
+
+/* A button that has to read as part of the sentence around it */
+.proseButton {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  line-height: inherit;
+  vertical-align: baseline;
+  cursor: pointer;
+}

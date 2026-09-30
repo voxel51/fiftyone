@@ -1,0 +1,58 @@
+/* The title, dataset selector and right-side actions sit on one 40px row,
+   centered within it; anything the shell puts under that row spans the window.
+   The surface is the shell's own until the shell moves to design-system tokens
+   as a whole — no voodo surface token matches it in the dark theme, and a
+   header on a different grey than the panels around it reads as a seam. */
+.header {
+  background-color: var(--fo-palette-background-header);
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 56px;
+  /* The right-side icon buttons carry their own hit padding, so the header
+     contributes the difference — the rightmost glyph sits as far from the
+     edge as the logo does on the left */
+  padding: 8px 0.25rem 8px 0.75rem;
+}
+
+.row {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Full width, inset to the header's own gutters, so a view bar under the row
+   uses the window rather than the gap between the selector and the actions */
+.belowRow {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0 0.5rem 0 0;
+}
+
+/* The row the title and selector share with the view bar's search row */
+.left {
+  height: 40px;
+}
+
+.title {
+  cursor: pointer;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.logo {
+  height: 28px;
+  width: 28px;
+  transform: rotate(1turn);
+  /* Quick, with a spring's overshoot at the end, as one curve */
+  transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: transform;
+}
+
+.turned {
+  transform: rotate(0turn);
+}
+
+.wordmark {
+  white-space: nowrap;
+}

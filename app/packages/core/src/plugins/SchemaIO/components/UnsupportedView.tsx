@@ -1,4 +1,5 @@
-import { CodeBlock } from "@fiftyone/components";
+import { Highlighted } from "@voxel51/voodo/code";
+import { CodeBlock } from "@voxel51/voodo";
 import { Box } from "@mui/material";
 import { useState } from "react";
 import Button from "./Button";
@@ -21,10 +22,9 @@ export default function UnsupportedView(props) {
       />
 
       {show && (
-        <CodeBlock
-          language="javascript"
-          text={JSON.stringify(props, null, 2)}
-        />
+        <CodeBlock code={JSON.stringify(props, null, 2)} lineNumbers>
+          <Highlighted code={JSON.stringify(props, null, 2)} language="json" />
+        </CodeBlock>
       )}
     </Box>
   );

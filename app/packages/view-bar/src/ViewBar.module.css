@@ -60,6 +60,11 @@
   border-radius: 0 0 4px 4px;
 }
 
+/* Rendered away from the search row, the stages row is a frame of its own */
+.stagesRow.detached {
+  border-radius: 4px;
+}
+
 /* Scrolls sideways for long stage chains. The breathing room lives inside the
    scroller, so it scrolls away with the content. */
 .scroller {

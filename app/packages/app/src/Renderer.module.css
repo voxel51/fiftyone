@@ -1,0 +1,9 @@
+/* The bar rides the top edge of the window while a route or view resolves,
+   over whatever is already painted */
+.pending {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 10;
+}

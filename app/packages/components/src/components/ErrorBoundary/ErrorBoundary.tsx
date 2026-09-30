@@ -18,7 +18,9 @@ import React, {
 } from "react";
 import { ErrorBoundary as Boundary, FallbackProps } from "react-error-boundary";
 import scrollableStyles from "../../scrollable.module.css";
-import CodeBlock from "../CodeBlock";
+import { CodeBlock } from "@voxel51/voodo";
+
+import { Highlighted } from "@voxel51/voodo/code";
 import Loading from "../Loading";
 import style from "./ErrorBoundary.module.css";
 
@@ -44,6 +46,8 @@ interface ErrorDisplayProps<T extends AppError> {
 /**
  * Note: we shouldn't add any side effects to this component.
  * For that, use `ErrorsDisplayWithSideEffects`.
+ *
+ * @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead.
  */
 export const ErrorDisplayMarkup = <T extends AppError>({
   error,
@@ -125,9 +129,14 @@ export const ErrorDisplayMarkup = <T extends AppError>({
             </div>
             {content && (
               <CodeBlock
-                text={content.trim().replace(/\n+/g, "\n")}
-                language="javascript"
-              />
+                code={content.trim().replace(/\n+/g, "\n")}
+                lineNumbers
+              >
+                <Highlighted
+                  code={content.trim().replace(/\n+/g, "\n")}
+                  language="javascript"
+                />
+              </CodeBlock>
             )}
           </div>
         ))}
@@ -183,6 +192,7 @@ const TrackFallback =
     return <ActualFallback {...props} />;
   };
 
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 const ErrorBoundary: React.FC<
   PropsWithChildren<{
     onReset?: () => void;

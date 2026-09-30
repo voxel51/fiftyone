@@ -8,16 +8,12 @@
 # add new entries for newly-written code — new code should use an existing
 # @voxel51/voodo component/icon, or flag a gap to the Voodoo owners if one
 # doesn't exist yet.
-packages/app/src/components/AnalyticsConsent.tsx
 packages/app/src/components/Nav.tsx
-packages/app/src/components/Teams.tsx
 packages/app/src/Renderer.tsx
 packages/components/src/components/ActionToolbar/ActionToolbar.tsx
 packages/components/src/components/AdaptiveMenu/index.tsx
 packages/components/src/components/CenteredStack/index.tsx
-packages/components/src/components/CodeBlock/index.tsx
 packages/components/src/components/Code/index.tsx
-packages/components/src/components/CodeTabs/index.tsx
 packages/components/src/components/ColoredDot/index.tsx
 packages/components/src/components/CopyButton/index.tsx
 packages/components/src/components/Dialog/index.tsx
@@ -142,8 +138,6 @@ packages/core/src/components/Sidebar/Entries/QueryPerformanceIcon.tsx
 packages/core/src/components/Sidebar/SidebarContainer.tsx
 packages/core/src/components/Sidebar/ViewSelection/styledComponents.tsx
 packages/core/src/components/Sidebar/ViewSelection/ViewDialog.tsx
-packages/core/src/components/Snackbar.tsx
-packages/core/src/components/Starter/index.tsx
 packages/core/src/components/ViewBar/ViewBar.tsx
 packages/core/src/components/ViewBar/ViewStage/ErrorMessage.tsx
 packages/core/src/components/ViewBar/ViewStage/ViewStageParameter.tsx

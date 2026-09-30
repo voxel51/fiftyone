@@ -1,0 +1,16 @@
+/* Lifted clear of the bottom of the window, as the notices were before */
+.notice {
+  bottom: 50px;
+}
+
+.link {
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  text-decoration: underline;
+}
+
+.link:hover {
+  text-decoration: none;
+}

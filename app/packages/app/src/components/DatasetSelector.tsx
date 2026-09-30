@@ -2,7 +2,6 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import type { UseSearch } from "@fiftyone/components";
 import { datasetName, useSetDataset } from "@fiftyone/state";
 import { Combobox, type ComboboxOption, Size } from "@voxel51/voodo";
 import React, {
@@ -14,7 +13,10 @@ import React, {
 } from "react";
 import { useRecoilValue } from "recoil";
 
+import { useDatasetDisplayName } from "../product";
 import styles from "./DatasetSelector.module.css";
+
+type UseSearch = (search: string) => { values: string[]; total?: number };
 
 /**
  * Dataset typeahead on voodo's `Combobox`. The option list is driven by the
@@ -22,15 +24,18 @@ import styles from "./DatasetSelector.module.css";
  * continues to work for large installs.
  */
 const DatasetSelector: React.FC<{
-  useSearch: UseSearch<string>;
+  useSearch: UseSearch;
 }> = ({ useSearch }) => {
   const setDataset = useSetDataset();
   const dataset = useRecoilValue(datasetName) as string;
+  // What the field shows. A product may display a dataset under a different
+  // name than the one the router loads, which stays `dataset` throughout.
+  const displayName = useDatasetDisplayName();
 
   // Visible text in the input. Decoupled from the *applied* dataset
   // so the user can type a search without losing the active dataset
   // name; the input snaps back when the list closes with nothing picked.
-  const [query, setQuery] = useState<string>(dataset ?? "");
+  const [query, setQuery] = useState<string>(displayName ?? "");
   const [open, setOpen] = useState(false);
   // The dataset just picked, held until `datasetName` catches up. Loading a
   // dataset is asynchronous, so without this the snap-back below would
@@ -64,8 +69,8 @@ const DatasetSelector: React.FC<{
       return;
     }
 
-    setQuery(dataset ?? "");
-  }, [dataset, open, pending]);
+    setQuery(displayName ?? "");
+  }, [dataset, displayName, open, pending]);
 
   const options = useMemo<ComboboxOption[]>(
     () =>
@@ -78,8 +83,8 @@ const DatasetSelector: React.FC<{
   );
 
   const value = useMemo<ComboboxOption | null>(
-    () => (dataset ? { id: dataset, label: dataset } : null),
-    [dataset],
+    () => (dataset ? { id: dataset, label: displayName ?? dataset } : null),
+    [dataset, displayName],
   );
 
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -87,6 +92,14 @@ const DatasetSelector: React.FC<{
     (option: ComboboxOption | null) => {
       // Typing past the applied name reports null; nothing was picked
       if (!option) return;
+
+      // Picking the dataset already open is a no-op, not a reload of it
+      if (option.id === dataset) {
+        setQuery(displayName ?? option.id);
+        rootRef.current?.querySelector("input")?.blur();
+        return;
+      }
+
       pendingRef.current = option.id;
       setPending(option.id);
       setDataset(option.id);
@@ -95,7 +108,7 @@ const DatasetSelector: React.FC<{
       // the page, as it did with the previous selector
       rootRef.current?.querySelector("input")?.blur();
     },
-    [setDataset],
+    [dataset, displayName, setDataset],
   );
 
   // The e2e harness arms a listener for this before opening the dropdown;
@@ -135,7 +148,7 @@ const DatasetSelector: React.FC<{
           } else {
             // Closed with nothing picked: back to the applied name
             // A pick keeps its name in the field while the dataset loads
-            setQuery(pendingRef.current ?? dataset ?? "");
+            setQuery(pendingRef.current ?? displayName ?? "");
           }
         }}
       />

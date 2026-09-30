@@ -6,6 +6,7 @@ type CopyButtonProps = ButtonProps & {
   text: string;
 };
 
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 export default function CopyButton({ text = "", ...props }: CopyButtonProps) {
   const [copied, setCopied] = useState<boolean>(false);
 
