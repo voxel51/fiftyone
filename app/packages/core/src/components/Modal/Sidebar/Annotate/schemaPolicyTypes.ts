@@ -24,6 +24,10 @@ export interface ResolvedLabelSchemaDoc {
   label_schemas: Record<string, unknown>;
   active: string[];
   excluded_paths: string[];
+  /** ``<field>.<attr>`` entries hidden by the doc (sidebar filtering). */
+  excluded_attr_paths?: string[];
+  /** DB paths (``<field>.<list_key>.<attr>``) of hidden attributes. */
+  excluded_attr_db_paths?: string[];
 }
 
 export type StageFieldAccess = "hidden" | "read_only" | "editable";
@@ -59,4 +63,10 @@ export interface StageSchemaPolicy {
   default: StageFieldAccess;
   /** Field paths the workspace view must exclude (hidden fields). */
   excluded_paths: string[];
+  /**
+   * Copied from the stage's ``label_schema_doc`` when one governs:
+   * ``<field>.<attr>`` entries hidden by the doc, and their DB paths.
+   */
+  excluded_attr_paths?: string[];
+  excluded_attr_db_paths?: string[];
 }

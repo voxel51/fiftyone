@@ -54,7 +54,7 @@ import {
   MenuIconTextItem,
 } from "@voxel51/voodo";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   addToActiveSchemas,
   currentField,
@@ -187,7 +187,9 @@ const SchemaOverview = () => {
   const [docs, setDocs] = useState<SchemaDocSummary[]>([]);
   const [search, setSearch] = useState("");
   const [hiddenExpanded, setHiddenExpanded] = useState(true);
-  const [naming, setNaming] = useState<null | "create" | "rename">(null);
+  const [naming, setNaming] = useState<null | "create" | "rename" | "delete">(
+    null,
+  );
   const [nameValue, setNameValue] = useState("");
   // The doc a rename targets — set explicitly after Duplicate, since the
   // duplicate's body may still be loading when the user submits.
@@ -481,84 +483,89 @@ const SchemaOverview = () => {
       setSelectedId(null);
     } catch (err) {
       setError(String(err));
+    } finally {
+      setNaming(null);
     }
   };
 
   // ---- Render ----
 
-  const buildItem = (row: RowData, draggable: boolean) => {
-    const type = rowTypes[row.path];
-    const attrCount = rowAttrCounts[row.path];
-    const actionable = !row.system && !row.unsupported;
-    const canOpen = row.setUp && actionable;
-    const hidden = row.tier === "hidden";
-    // Checkboxes drive the footer's Active ↔ Hidden move; only custom
-    // schemas hide, and protected fields can never be hidden.
-    const canSelect =
-      docMode && actionable && (hidden || !PROTECTED_PATHS.has(row.path));
-    return {
-      id: row.path,
-      data: {
-        canSelect,
-        canDrag: draggable,
-        "data-cy": `field-row-${row.path}`,
-        primaryContent: (
-          <span style={styles.fieldName} title={row.path}>
-            {row.path}
-          </span>
-        ),
-        secondaryContent: (
-          <SecondaryText
-            fieldType={type ? String(type) : ""}
-            attrCount={attrCount}
-            isSystemReadOnly={row.system}
-          />
-        ),
-        actions: (
-          <span
-            style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
-          >
-            {row.unsupported ? <Pill size={Size.Md}>Unsupported</Pill> : null}
-            {row.system ? <Pill size={Size.Md}>System</Pill> : null}
-            {canOpen ? (
-              <Tooltip
-                content={<Text>Configure label schema</Text>}
-                anchor={Anchor.Bottom}
-                portal
-              >
-                <Button
-                  variant={Variant.Icon}
-                  borderless
-                  data-cy={`edit-${row.path}`}
-                  onClick={() => setCurrentField(row.path)}
+  const buildItem = useCallback(
+    (row: RowData, draggable: boolean) => {
+      const type = rowTypes[row.path];
+      const attrCount = rowAttrCounts[row.path];
+      const actionable = !row.system && !row.unsupported;
+      const canOpen = row.setUp && actionable;
+      const hidden = row.tier === "hidden";
+      // Checkboxes drive the footer's Active ↔ Hidden move; only custom
+      // schemas hide, and protected fields can never be hidden.
+      const canSelect =
+        docMode && actionable && (hidden || !PROTECTED_PATHS.has(row.path));
+      return {
+        id: row.path,
+        data: {
+          canSelect,
+          canDrag: draggable,
+          "data-cy": `field-row-${row.path}`,
+          primaryContent: (
+            <span style={styles.fieldName} title={row.path}>
+              {row.path}
+            </span>
+          ),
+          secondaryContent: (
+            <SecondaryText
+              fieldType={type ? String(type) : ""}
+              attrCount={attrCount}
+              isSystemReadOnly={row.system}
+            />
+          ),
+          actions: (
+            <span
+              style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
+            >
+              {row.unsupported ? <Pill size={Size.Md}>Unsupported</Pill> : null}
+              {row.system ? <Pill size={Size.Md}>System</Pill> : null}
+              {canOpen ? (
+                <Tooltip
+                  content={<Text>Configure label schema</Text>}
+                  anchor={Anchor.Bottom}
+                  portal
                 >
-                  <Icon name={IconName.Edit} size={Size.Md} />
-                </Button>
-              </Tooltip>
-            ) : null}
-            {actionable && !hidden && !row.setUp ? (
-              <Tooltip
-                content={
-                  <Text>Scan the field to set it up for annotation</Text>
-                }
-                anchor={Anchor.Bottom}
-                portal
-              >
-                <Button
-                  data-cy={`setup-${row.path}`}
-                  size={Size.Sm}
-                  variant={Variant.Secondary}
-                  onClick={() => setUpField(row)}
+                  <Button
+                    variant={Variant.Icon}
+                    borderless
+                    data-cy={`edit-${row.path}`}
+                    onClick={() => setCurrentField(row.path)}
+                  >
+                    <Icon name={IconName.Edit} size={Size.Md} />
+                  </Button>
+                </Tooltip>
+              ) : null}
+              {actionable && !hidden && !row.setUp ? (
+                <Tooltip
+                  content={
+                    <Text>Scan the field to set it up for annotation</Text>
+                  }
+                  anchor={Anchor.Bottom}
+                  portal
                 >
-                  Setup
-                </Button>
-              </Tooltip>
-            ) : null}
-          </span>
-        ),
-      } as ListItemProps,
-    };
-  };
+                  <Button
+                    data-cy={`setup-${row.path}`}
+                    size={Size.Sm}
+                    variant={Variant.Secondary}
+                    onClick={() => setUpField(row)}
+                  >
+                    Setup
+                  </Button>
+                </Tooltip>
+              ) : null}
+            </span>
+          ),
+        } as ListItemProps,
+      };
+    },
+    [rowTypes, rowAttrCounts, docMode, styles, setCurrentField, setUpField],
+  );
 
   // Drag-reorder of set-up fields (dataset default, unfiltered view):
   // the stored order drives the Annotate sidebar.
@@ -626,7 +633,31 @@ const SchemaOverview = () => {
   return (
     <div>
       <div style={styles.bar}>
-        {naming ? (
+        {naming === "delete" ? (
+          // Deleting is one click away in the menu and has no undo; stages
+          // referencing the doc fall back to the default schema.
+          <>
+            <Text data-cy="schema-delete-confirm">
+              Delete schema &ldquo;{doc?.name}&rdquo;? Workflow stages that
+              reference it fall back to the default schema.
+            </Text>
+            <Button
+              size={Size.Sm}
+              variant={Variant.Danger}
+              data-cy="schema-delete-confirm-button"
+              onClick={() => deleteSchema()}
+            >
+              Delete
+            </Button>
+            <Button
+              size={Size.Sm}
+              variant={Variant.Secondary}
+              onClick={cancelNaming}
+            >
+              Cancel
+            </Button>
+          </>
+        ) : naming ? (
           <>
             <Input
               size={Size.Sm}
@@ -726,7 +757,7 @@ const SchemaOverview = () => {
                   icon={<DeleteIcon size={Size.Sm} />}
                   text="Delete schema"
                   destructive
-                  onClick={() => deleteSchema()}
+                  onClick={() => setNaming("delete")}
                 />
               ) : null}
             </Dropdown>

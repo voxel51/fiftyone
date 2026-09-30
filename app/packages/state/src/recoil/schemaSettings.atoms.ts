@@ -324,7 +324,7 @@ export const taskSchemaGoverns = atom<boolean>({
 const lensContribution = (
   lens: SchemaLensValue | null,
   governs: boolean,
-  dataset: unknown,
+  dataset: string | null,
 ): SchemaLensValue | null => {
   if (governs) {
     return null;

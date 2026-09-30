@@ -122,7 +122,7 @@ export const policyFieldAccess = (
   path: string,
 ): StageFieldAccess => {
   if (!policy) return "editable";
-  return policy.fields[path]?.visibility ?? policy.default;
+  return policy.fields?.[path]?.visibility ?? policy.default;
 };
 
 /**
@@ -286,7 +286,7 @@ export const effectiveLabelSchemasData = atom((get) => {
   for (const [path, meta] of Object.entries(raw)) {
     out[path] = applyPolicyToMeta(
       meta,
-      policy.fields[path],
+      policy.fields?.[path],
       policyFieldAccess(policy, path),
     );
   }
