@@ -1,6 +1,7 @@
 import { useTileId } from "@fiftyone/tiling";
-import { atom, createStore, useAtomValue, useStore } from "jotai";
+import { atom, createStore, useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo } from "react";
+import { useEpisodeStore } from "../../../../extensions/host/episode-store";
 
 type PointCloudCountsByTile = Readonly<
   Record<string, ReadonlyMap<string, number>>
@@ -35,7 +36,7 @@ export function usePublishPointCloudCounts(): (
   pointCounts: ReadonlyMap<string, number>,
 ) => void {
   const tileId = useTileId();
-  const store = useStore();
+  const store = useEpisodeStore();
 
   useEffect(() => {
     if (!tileId) return undefined;
@@ -52,6 +53,7 @@ export function usePublishPointCloudCounts(): (
 
 /** Subscribes to one source's live point count in the surrounding 3D tile. */
 export function usePointCloudCount(sourceId: string): number | undefined {
+  const store = useEpisodeStore();
   const tileId = useTileId();
   const pointCountAtom = useMemo(
     () =>
@@ -60,7 +62,7 @@ export function usePointCloudCount(sourceId: string): number | undefined {
       ),
     [sourceId, tileId],
   );
-  return useAtomValue(pointCountAtom);
+  return useAtomValue(pointCountAtom, { store });
 }
 
 function pointCountMapsEqual(

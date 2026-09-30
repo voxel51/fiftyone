@@ -1,11 +1,6 @@
 import { useMemo, useRef } from "react";
-import {
-  atom,
-  useAtomValue,
-  useSetAtom,
-  useStore,
-  type PrimitiveAtom,
-} from "jotai";
+import { atom, useAtomValue, useSetAtom, type PrimitiveAtom } from "jotai";
+import { useEpisodeStore } from "../../../../extensions/host/episode-store";
 
 /**
  * Cross-pane hover echo for the episode modal: whatever the pointer is
@@ -68,12 +63,14 @@ export const hoverEchoAtom = atom<HoverEcho | null>(
 
 /** Reads the point currently echoed across episode panes. */
 export function useHoverEcho(): HoverEcho | null {
-  return useAtomValue(hoverEchoAtom);
+  const store = useEpisodeStore();
+  return useAtomValue(hoverEchoAtom, { store });
 }
 
 /** Returns the setter for the modal-local hover echo. */
 export function useSetHoverEcho() {
-  return useSetAtom(hoverEchoAtom);
+  const store = useEpisodeStore();
+  return useSetAtom(hoverEchoAtom, { store });
 }
 
 /** One hover relinquished by an owned publisher. */
@@ -102,7 +99,7 @@ export interface OwnedHoverEchoPublisher<Key> {
 export function useOwnedHoverEchoPublisher<
   Key,
 >(): OwnedHoverEchoPublisher<Key> {
-  const store = useStore();
+  const store = useEpisodeStore();
   const ownedRef = useRef(new Map<Key, HoverEcho>());
 
   return useMemo(() => {

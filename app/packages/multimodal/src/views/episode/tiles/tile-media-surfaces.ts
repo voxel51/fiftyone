@@ -1,5 +1,4 @@
 import { useTileId } from "@fiftyone/tiling";
-import { useStore } from "jotai";
 import { useEffect, useRef } from "react";
 import {
   tileMediaSurfacesAtom,
@@ -12,6 +11,7 @@ import {
   type ImageDisplaySize,
   type ImageViewTransform,
 } from "../../../visualization/media-2d/Base2dScene";
+import { useEpisodeStore } from "../../../extensions/host/episode-store";
 
 /** What a registering tile knows about its own media presentation. */
 export type TileMediaSurfaceConfig = {
@@ -38,7 +38,7 @@ export function useRegisterTileMediaSurface(
   config: TileMediaSurfaceConfig,
 ): void {
   const tileId = useTileId();
-  const store = useStore();
+  const store = useEpisodeStore();
 
   const configRef = useRef(config);
   useEffect(() => {

@@ -26,6 +26,7 @@ import {
   formatStateActionValue,
 } from "./state-action-format";
 import styles from "./StateActionStatisticsSidebar.module.css";
+import { useEpisodeStore } from "../../../extensions/host/episode-store";
 
 /**
  * "Statistics" sidebar tab for state/action sessions. A persisted scope
@@ -44,6 +45,7 @@ const StateActionStatisticsSidebar: React.FC = () => {
 };
 
 const ProvidedStatistics: React.FC = () => {
+  const store = useEpisodeStore();
   const { ensureSchema, readDimensionStats, readEpisodeProfile, schema } =
     useStateActionContext();
   const [stats, setStats] = useState<StateActionStats | null | "loading">(
@@ -52,7 +54,7 @@ const ProvidedStatistics: React.FC = () => {
   const [profile, setProfile] = useState<StateActionEpisodeProfile | null>(
     null,
   );
-  const [scope, setScope] = useAtom(stateActionStatsScopeAtom);
+  const [scope, setScope] = useAtom(stateActionStatsScopeAtom, { store });
   const { pause, seek } = usePlayback();
   const dataStream = useDataStream();
   const timeline = dataStream?.getTimelineIndex() ?? null;

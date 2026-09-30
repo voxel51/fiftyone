@@ -1,4 +1,4 @@
-import { atom, useAtomValue, useSetAtom } from "jotai";
+import { atom, useAtomValue, useSetAtom, type PrimitiveAtom } from "jotai";
 
 import type { RawImageVisualization } from "../../../ir";
 import {
@@ -6,6 +6,7 @@ import {
   unprojectCameraPixel,
   type CameraModel,
 } from "./camera-geometry/camera-model";
+import { useEpisodeStore } from "../../../extensions/host/episode-store";
 
 const MINIMUM_RAY_Z = 1e-9;
 
@@ -24,16 +25,21 @@ export interface DepthHover extends DepthSample {
 }
 
 /** Modal-local depth hover shared by image and 3D tiles. */
-const depthHoverAtom = atom<DepthHover | null>(null);
+// Same jotai null-init overload quirk as `selectedObjectAtom`.
+const depthHoverAtom = atom<DepthHover | null>(
+  null,
+) as PrimitiveAtom<DepthHover | null>;
 
 /** Reads the depth sample currently hovered in an image tile. */
 export function useDepthHover(): DepthHover | null {
-  return useAtomValue(depthHoverAtom);
+  const store = useEpisodeStore();
+  return useAtomValue(depthHoverAtom, { store });
 }
 
 /** Returns the setter for the modal-local depth hover. */
 export function useSetDepthHover() {
-  return useSetAtom(depthHoverAtom);
+  const store = useEpisodeStore();
+  return useSetAtom(depthHoverAtom, { store });
 }
 
 /**

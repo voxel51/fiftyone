@@ -1,4 +1,4 @@
-import { Provider as JotaiProvider, createStore, useStore } from "jotai";
+import { createStore } from "jotai";
 import React, {
   createContext,
   useCallback,
@@ -57,20 +57,6 @@ export interface TilingProviderProps {
   resetLayout?: MosaicNode<string> | null;
   /** Optional geometry-aware builder for the Reset Layout arrangement. */
   resetLayoutStrategy?: TilingAutoLayoutStrategy;
-  /**
-   * Whether tiling state lives in a private Jotai store. Defaults to
-   * `true`: the provider creates its own store and mounts a Jotai
-   * `<Provider>` around its children, so several tiling hosts on one page
-   * (and the atoms their tile bodies read with plain Jotai hooks) stay
-   * isolated from each other. Jotai resolves EVERY atom against the
-   * nearest `<Provider>`, so this also shadows the host app's store for
-   * anything rendered inside a tile. Pass `false` when tile bodies must
-   * keep reading the surrounding app's store: tiling then binds its own
-   * atoms to the ambient store explicitly and mounts no `<Provider>`.
-   * Only one non-isolated host should be mounted at a time.
-   * @default true
-   */
-  isolateStore?: boolean;
   children: React.ReactNode;
 }
 
@@ -95,7 +81,6 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
   resetManualTileTitles,
   resetLayout: resetLayoutProp,
   resetLayoutStrategy,
-  isolateStore = true,
   children,
 }) => {
   const initialLayoutValueRef = useRef<MosaicNode<string> | null | undefined>(
@@ -155,15 +140,14 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
     focusedTileIdRef.current = focusedTileId;
   }, [focusedTileId]);
   // Per-instance Jotai store so multiple <TilingProvider>s on the same
-  // page each get isolated atom state (sources, selections, registry).
-  // When the host opts out of isolation, tiling atoms live in the ambient
-  // store instead and no Jotai <Provider> is mounted below, so tile bodies
-  // keep resolving the app's atoms against the app's store. Tiling's own
-  // hooks always bind to `jotaiStore` explicitly (see `store-context.ts`),
-  // never to whichever Jotai <Provider> happens to be nearest.
-  const ambientStore = useStore();
-  const isolatedStore = useMemo(() => createStore(), []);
-  const jotaiStore = isolateStore ? isolatedStore : ambientStore;
+  // page each get isolated atom state (selections, titles, registry). It
+  // is handed down through `TilingStoreContext`, NOT through Jotai's own
+  // <Provider>: Jotai resolves every atom against the nearest <Provider>,
+  // so mounting one here would shadow the host app's store for everything
+  // rendered inside a tile body. Tiling's hooks bind to this store
+  // explicitly (see `store-context.ts`); tile bodies keep whatever store
+  // the surrounding app has.
+  const jotaiStore = useMemo(() => createStore(), []);
   // Portal target the settings sidebar registers; `<TileSettingsContent>`
   // children render here when their tile is focused.
   const [settingsSlotEl, setSettingsSlotEl] = useState<HTMLElement | null>(
@@ -535,16 +519,10 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
     ],
   );
 
-  const tree = (
+  return (
     <TilingStoreContext.Provider value={jotaiStore}>
       <TilingContext.Provider value={value}>{children}</TilingContext.Provider>
     </TilingStoreContext.Provider>
-  );
-
-  return isolateStore ? (
-    <JotaiProvider store={jotaiStore}>{tree}</JotaiProvider>
-  ) : (
-    tree
   );
 };
 

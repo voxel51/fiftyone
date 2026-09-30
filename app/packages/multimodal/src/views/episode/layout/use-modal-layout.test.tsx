@@ -1,6 +1,11 @@
 import { TilingProvider, useTiling } from "@fiftyone/tiling";
 import { act, cleanup, render, renderHook } from "@testing-library/react";
-import { useAtomValue, useStore } from "jotai";
+import {
+  createStore,
+  Provider as JotaiProvider,
+  useAtomValue,
+  useStore,
+} from "jotai";
 import { useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SceneSource } from "../../../scene-inventory";
@@ -1417,10 +1422,14 @@ describe("portable viewer capture and apply", () => {
         </TilingProvider>
       );
     }
+    // Episode atoms fall back to the ambient store outside a shell; a fresh
+    // one keeps other cases' plot and 3D settings out of this capture.
     render(
-      <PortableLayoutHost scopeKey="portable-key" mediaField="filepath">
-        <Viewer />
-      </PortableLayoutHost>,
+      <JotaiProvider store={createStore()}>
+        <PortableLayoutHost scopeKey="portable-key" mediaField="filepath">
+          <Viewer />
+        </PortableLayoutHost>
+      </JotaiProvider>,
     );
     if (!controls) throw new Error("Missing layout controls");
     const baseline = controls.changeKey(incoming);

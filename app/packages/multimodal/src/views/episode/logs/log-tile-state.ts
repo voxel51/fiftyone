@@ -1,7 +1,8 @@
 import { useTileId } from "@fiftyone/tiling";
-import { atom, useAtomValue, useStore } from "jotai";
+import { atom, useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
 import { LOG_LEVELS, type LogLevel } from "../../../ir";
+import { useEpisodeStore } from "../../../extensions/host/episode-store";
 
 /**
  * View configuration for one log console tile. This is the log tile's
@@ -45,8 +46,9 @@ export const logTileSettingsAtom = atom<LogTileSettingsByTile>({});
 
 /** Subscribe to the surrounding log tile's view settings. */
 export function useLogTileSettings(): LogTileSettings {
+  const store = useEpisodeStore();
   const tileId = useTileId();
-  const byTile = useAtomValue(logTileSettingsAtom);
+  const byTile = useAtomValue(logTileSettingsAtom, { store });
   return useMemo(
     () =>
       tileId
@@ -61,7 +63,7 @@ export function useSetLogTileSettings(): (
   patch: Partial<LogTileSettings>,
 ) => void {
   const tileId = useTileId();
-  const store = useStore();
+  const store = useEpisodeStore();
   return useCallback(
     (patch) => {
       if (!tileId) return;

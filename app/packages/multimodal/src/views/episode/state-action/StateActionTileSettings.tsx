@@ -13,6 +13,7 @@ import {
   type StateActionMarkerScope,
   type StateActionValueMode,
 } from "./state-action-display";
+import { useEpisodeStore } from "../../../extensions/host/episode-store";
 
 const MARKER_RANGE_TOOLTIP =
   "The span behind each row's faint marker. Episode uses this episode's observed min–max, so ticks travel the full track; Dataset uses the declared min–max with its q01–q99 band and flags out-of-range values.";
@@ -25,9 +26,14 @@ const VALUE_SCALE_TOOLTIP =
  * Schema facts and statistics live in the Statistics tab, not here.
  */
 const StateActionTileSettings: React.FC = () => {
+  const store = useEpisodeStore();
   const { readDimensionStats } = useStateActionContext();
-  const [valueMode, setValueMode] = useAtom(stateActionValueModeAtom);
-  const [markerScope, setMarkerScope] = useAtom(stateActionMarkerScopeAtom);
+  const [valueMode, setValueMode] = useAtom(stateActionValueModeAtom, {
+    store,
+  });
+  const [markerScope, setMarkerScope] = useAtom(stateActionMarkerScopeAtom, {
+    store,
+  });
   const [stats, setStats] = useState<StateActionStats | null | "loading">(
     "loading",
   );

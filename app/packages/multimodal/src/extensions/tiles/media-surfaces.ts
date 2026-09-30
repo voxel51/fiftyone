@@ -1,5 +1,6 @@
 import { atom, useAtomValue } from "jotai";
 import { useMemo } from "react";
+import { useEpisodeStore } from "../host/episode-store";
 
 /**
  * Where each 2D-media tile draws its stream, and the episode's media
@@ -49,7 +50,8 @@ export const tileMediaSurfacesAtom = atom<
 
 /** Every mounted 2D-media tile surface. */
 export function useTileMediaSurfaces(): readonly TileMediaSurface[] {
-  const surfaces = useAtomValue(tileMediaSurfacesAtom);
+  const store = useEpisodeStore();
+  const surfaces = useAtomValue(tileMediaSurfacesAtom, { store });
   return useMemo(() => Object.values(surfaces), [surfaces]);
 }
 
@@ -79,5 +81,6 @@ export const tileMediaEpisodeAtom = atom<TileMediaEpisode | null>(
 
 /** The mounted episode's media commands, or null outside an episode modal. */
 export function useTileMediaEpisode(): TileMediaEpisode | null {
-  return useAtomValue(tileMediaEpisodeAtom);
+  const store = useEpisodeStore();
+  return useAtomValue(tileMediaEpisodeAtom, { store });
 }

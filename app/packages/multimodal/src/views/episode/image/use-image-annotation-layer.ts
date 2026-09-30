@@ -28,6 +28,7 @@ import {
   useSelectedObject,
 } from "../interaction/selection/selected-object";
 import { useInterpolatedImageAnnotationSets } from "./use-interpolated-image-annotations";
+import { useEpisodeStore } from "../../../extensions/host/episode-store";
 
 const SHARED_EMPTY_RESOURCE_KEY = "image-annotations\nshared-empty";
 
@@ -58,6 +59,7 @@ export function useImageAnnotationLayer({
   readonly resourceKey: string;
   readonly streams: readonly string[];
 }): ImageAnnotationLayerState {
+  const store = useEpisodeStore();
   // Recorded annotations are authoritative. Smooth interpolation intentionally
   // remains disabled for this renderer.
   const annotationSets = useInterpolatedImageAnnotationSets(streams, {
@@ -89,7 +91,7 @@ export function useImageAnnotationLayer({
     null,
   );
   const selectedObject = useSelectedObject();
-  const setSelectedObject = useSetAtom(selectedObjectAtom);
+  const setSelectedObject = useSetAtom(selectedObjectAtom, { store });
   const setTileSelection = useSetTileSelection();
   const highlightIndices = useMemo(() => {
     const indices = new Set<number>();

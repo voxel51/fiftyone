@@ -1,6 +1,7 @@
 import { useTileId } from "@fiftyone/tiling";
-import { atom, useAtomValue, useStore } from "jotai";
+import { atom, useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
+import { useEpisodeStore } from "../../../extensions/host/episode-store";
 
 /**
  * One series shown by a plot tile: a stream's numeric field, drawn in a
@@ -75,8 +76,9 @@ export function addPlotSeriesToTile(
 
 /** Subscribe to the surrounding plot tile's enabled series. */
 export function usePlotTileSeries(): readonly PlotSeriesConfig[] {
+  const store = useEpisodeStore();
   const tileId = useTileId();
-  const byTile = useAtomValue(plotTileSeriesAtom);
+  const byTile = useAtomValue(plotTileSeriesAtom, { store });
   return useMemo(
     () => (tileId ? (byTile[tileId] ?? []) : []),
     [byTile, tileId],
@@ -85,8 +87,9 @@ export function usePlotTileSeries(): readonly PlotSeriesConfig[] {
 
 /** Subscribe to external reset requests for the surrounding plot tile. */
 export function usePlotTileResetZoomRevision(): number {
+  const store = useEpisodeStore();
   const tileId = useTileId();
-  const byTile = useAtomValue(plotTileResetZoomRevisionAtom);
+  const byTile = useAtomValue(plotTileResetZoomRevisionAtom, { store });
   return tileId ? (byTile[tileId] ?? 0) : 0;
 }
 
@@ -102,7 +105,7 @@ export function useTogglePlotSeries(): (
   enabled: boolean,
 ) => void {
   const tileId = useTileId();
-  const store = useStore();
+  const store = useEpisodeStore();
   return useCallback(
     (stream, fieldPath, enabled) => {
       if (!tileId) {
