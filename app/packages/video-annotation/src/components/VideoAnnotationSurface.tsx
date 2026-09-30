@@ -353,10 +353,11 @@ const VideoAnnotationSurfaceForSample: React.FC<
     </Registrar>
   );
 
-  // No TilingProvider: it mounts an isolated jotai store, which would
-  // shadow modal-scoped atoms the sidebar writes to (lighterSceneAtom,
-  // detection-mode, label list). Reintroducing multi-tile here requires
-  // first pinning those atoms to the modal-default store explicitly.
+  // No TilingProvider yet: this surface is single-tile. It used to be
+  // blocked on TilingProvider mounting a Jotai <Provider> that shadowed the
+  // atoms the sidebar writes to (lighterSceneAtom, detection-mode, label
+  // list); tiling now keeps its store in its own React context and mounts
+  // no Jotai <Provider>, so multi-tile can be reintroduced here directly.
   return (
     // Annotation wants the playhead to rest on a real frame after a pause or
     // scrub-drag, so the labels snapshot and any keyframe op align to a frame.
