@@ -129,6 +129,7 @@ test.describe.serial("operator prompt", () => {
   });
 
   test("Prompt: Progress", async ({
+    fiftyoneLoader,
     operatorsBrowser,
     operatorsPrompt,
     operatorsPromptViewModal,
@@ -137,9 +138,15 @@ test.describe.serial("operator prompt", () => {
     await operatorsBrowser.search("E2E");
     await operatorsBrowser.choose("E2E: Progress");
     await operatorsPrompt.assert.isExecuting();
+    // e2e_progress holds step 1 until released below, so this can't miss it
     await expect(operatorsPromptViewModal.content).toContainText(
       "Loading 1 of 2",
     );
+    await fiftyoneLoader.executePythonCode(`
+      import fiftyone.operators as foo
+
+      foo.ExecutionStore.create("e2e_progress_release").set("${datasetName}", 1)
+    `);
     await expect(operatorsPromptViewModal.content).toContainText(
       "Loading 2 of 2",
     );

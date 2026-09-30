@@ -2,6 +2,7 @@ import fiftyone.operators as foo
 import fiftyone.operators.types as types
 import json
 import asyncio
+import time
 from bson import json_util
 
 
@@ -72,6 +73,23 @@ class E2ESayHelloInDrawer(foo.Operator):
         return types.Property(outputs)
 
 
+# The Prompt: Progress spec writes a step number under its dataset name here to
+# release E2EProgress past that step
+PROGRESS_RELEASE_STORE = "e2e_progress_release"
+PROGRESS_RELEASE_TIMEOUT_SECONDS = 60
+
+
+async def _wait_for_progress_release(store, key, step):
+    deadline = time.monotonic() + PROGRESS_RELEASE_TIMEOUT_SECONDS
+    while (store.get(key) or 0) < step:
+        if time.monotonic() > deadline:
+            raise TimeoutError(
+                f"Progress step {step} was not released within "
+                f"{PROGRESS_RELEASE_TIMEOUT_SECONDS}s"
+            )
+        await asyncio.sleep(0.1)
+
+
 class E2EProgress(foo.Operator):
     @property
     def config(self):
@@ -84,6 +102,9 @@ class E2EProgress(foo.Operator):
 
     async def execute(self, ctx):
         MAX = 2
+        release_store = foo.ExecutionStore.create(PROGRESS_RELEASE_STORE)
+        # a release left by an earlier run on this dataset would skip the gate
+        release_store.delete(ctx.dataset_name)
         for i in range(MAX + 1):
             progress_label = f"Loading {i} of {MAX}"
             progress_view = types.ProgressView(label=progress_label)
@@ -94,6 +115,12 @@ class E2EProgress(foo.Operator):
                 "results": {"percent_complete": i / MAX},
             }
             yield ctx.trigger("show_output", show_output_params)
+            # a timed step can come and go between two polls of the spec's
+            # assertion, so intermediate steps wait for the spec's release
+            if 0 < i < MAX:
+                await _wait_for_progress_release(
+                    release_store, ctx.dataset_name, i
+                )
             # simulate computation
             await asyncio.sleep(0.5)
 
