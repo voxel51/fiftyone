@@ -17,7 +17,9 @@ import {
   type SelectionUnit,
   type SubsetPage,
 } from "@fiftyone/state/src/selection";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
+
+import { SubsetPagesContext } from "./subsetPages";
 
 /**
  * Opens a saved subset (or the entire dataset) as the browsing boundary. A
@@ -91,46 +93,83 @@ export function useSavedSubsets(
   options: { search?: string; page?: number; view?: readonly unknown[] } = {},
 ) {
   const { search = "", page = 0 } = options;
+  const cache = useContext(SubsetPagesContext);
   const viewKey = JSON.stringify(options.view);
   const revision = useSelectionScopeRevision(datasetId);
+  const cacheKey = JSON.stringify([
+    datasetId,
+    revision,
+    search.trim(),
+    page,
+    viewKey,
+  ]);
   const [state, setState] = useState<{
+    datasetId: string;
     page: SubsetPage | null;
     error: string | null;
     loading: boolean;
-  }>({ page: null, error: null, loading: true });
+  }>(() => ({
+    datasetId,
+    page: cache?.peek(cacheKey) ?? null,
+    error: null,
+    loading: !cache?.peek(cacheKey),
+  }));
   const [reloads, setReloads] = useState(0);
-  const reload = useCallback(() => setReloads((count) => count + 1), []);
+  const forceReload = useRef(false);
+  const reload = useCallback(() => {
+    forceReload.current = true;
+    setReloads((count) => count + 1);
+  }, []);
   // This effect fetches the requested page, and again whenever a subset
   // write bumps the scope revision or a caller asks for a reload.
   useEffect(() => {
     if (!datasetId) return undefined;
     let active = true;
-    setState((current) => ({ ...current, loading: true }));
-    listSubsets(datasetId, {
-      search: search.trim() || undefined,
-      skip: page * SUBSET_PAGE_SIZE,
-      limit: SUBSET_PAGE_SIZE,
-      ...(viewKey !== undefined && { view: JSON.parse(viewKey) }),
-    })
+    const cached = cache?.peek(cacheKey);
+    setState((current) => ({
+      datasetId,
+      page: cached ?? (current.datasetId === datasetId ? current.page : null),
+      error: null,
+      loading: !cached,
+    }));
+    const load = () =>
+      listSubsets(datasetId, {
+        search: search.trim() || undefined,
+        skip: page * SUBSET_PAGE_SIZE,
+        limit: SUBSET_PAGE_SIZE,
+        ...(viewKey !== undefined && { view: JSON.parse(viewKey) }),
+      });
+    const pending = cache
+      ? cache.get(cacheKey, load, forceReload.current)
+      : load();
+    forceReload.current = false;
+    pending
       .then((value) => {
-        if (active) setState({ page: value, error: null, loading: false });
+        if (active)
+          setState({ datasetId, page: value, error: null, loading: false });
       })
       .catch((cause: unknown) => {
         if (active)
-          setState({ page: null, error: String(cause), loading: false });
+          setState({
+            datasetId,
+            page: null,
+            error: String(cause),
+            loading: false,
+          });
       });
     return () => {
       active = false;
     };
-  }, [datasetId, revision, reloads, search, page, viewKey]);
+  }, [cache, cacheKey, datasetId, revision, reloads, search, page, viewKey]);
+  const current = state.datasetId === datasetId;
   return {
-    subsets: state.page?.subsets ?? null,
+    subsets: current ? (state.page?.subsets ?? null) : null,
     /** How many subsets match the search. */
-    total: state.page?.total ?? 0,
+    total: current ? (state.page?.total ?? 0) : 0,
     /** How many subsets the dataset has in all. */
-    count: state.page?.count ?? 0,
-    loading: state.loading,
-    error: state.error,
+    count: current ? (state.page?.count ?? 0) : 0,
+    loading: !current || state.loading,
+    error: current ? state.error : null,
     reload,
   };
 }

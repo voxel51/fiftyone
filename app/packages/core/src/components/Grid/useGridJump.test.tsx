@@ -31,6 +31,22 @@ afterEach(() => {
 });
 
 describe("useGridJump", () => {
+  it("scrolls loaded rows without rebuilding or looking up their index", async () => {
+    const scrollToItem = vi.fn(() => true);
+    const { result } = renderHook(() =>
+      useGridJump({
+        records: new Map(),
+        datasetId: "dataset",
+        request,
+        anchor,
+        scrollToItem,
+      }),
+    );
+    expect(await result.current("loaded")).toBe(true);
+    expect(scrollToItem).toHaveBeenCalledWith("loaded");
+    expect(anchor).not.toHaveBeenCalled();
+    expect(client.resolveSamplePosition).not.toHaveBeenCalled();
+  });
   it("anchors the grid on a page from a known index without the server", async () => {
     const { result } = renderHook(() => useHarness(new Map([["seen", 47]])));
     expect(await result.current("seen")).toBe(true);

@@ -102,7 +102,9 @@ function useStripResize(root: RefObject<HTMLElement>, cardHeight: number) {
     Math.max(
       minimum,
       Math.floor(
-        (root.current?.parentElement?.clientHeight ?? 640) * STRIP_MAX_FRACTION,
+        (root.current?.closest("[data-selection-workspace]")?.clientHeight ??
+          root.current?.parentElement?.clientHeight ??
+          640) * STRIP_MAX_FRACTION,
       ),
     );
   const clamp = (value: number) =>
@@ -110,7 +112,7 @@ function useStripResize(root: RefObject<HTMLElement>, cardHeight: number) {
   const { isDragging, handleProps } = useDragDelta({
     axis: "vertical",
     onDragStart: () => {
-      start.current = height;
+      start.current = clamp(height);
     },
     onDelta: (delta) => setHeight(clamp(start.current - delta)),
   });
@@ -130,7 +132,7 @@ function useStripResize(root: RefObject<HTMLElement>, cardHeight: number) {
     setHeight(clamp(next));
   };
   return {
-    height: Math.max(height, minimum),
+    height: clamp(height),
     min: minimum,
     max: maximum(),
     dragging: isDragging,

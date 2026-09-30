@@ -11,6 +11,7 @@ import {
   BackgroundColor,
   Button,
   CloseIcon,
+  LoadingDots,
   Pill,
   RefreshIcon,
   Size,
@@ -274,17 +275,21 @@ export default function SelectionSummary({
             >
               {`No ${unit.many} in the grid`}
             </Text>
+          ) : loading ? (
+            <LoadingDots
+              variant={TextVariant.Sm}
+              color={TextColor.Secondary}
+              aria-label="Loading results"
+            />
           ) : (
             <Text
               variant={TextVariant.Sm}
               color={TextColor.Secondary}
               className={styles.summaryLabel}
             >
-              {loading
-                ? "Loading current results…"
-                : counts.segments
-                  ? `Act on ${selectionScopeLabel(counts, unit)}`
-                  : `Act on all ${unit.many} in the grid`}
+              {counts.segments
+                ? `Act on ${selectionScopeLabel(counts, unit)}`
+                : `Act on all ${unit.many} in the grid`}
             </Text>
           )}
         </span>

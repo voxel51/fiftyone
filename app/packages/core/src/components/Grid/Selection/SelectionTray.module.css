@@ -1,3 +1,11 @@
+.workspace {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
 /* ---------------------------------------------------------------------------
  * Tray shell
  * ------------------------------------------------------------------------- */
@@ -664,6 +672,24 @@
   color: var(--tray-text);
 }
 
+.subsetSheet {
+  width: min(240px, calc(100vw - 24px));
+}
+
+.subsetFormSheet {
+  width: min(270px, calc(100vw - 24px));
+}
+
+.subsetFormSheet .sheetBody {
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.subsetNameInput {
+  border-color: var(--tray-border-strong);
+  background: var(--tray-card-bg);
+}
+
 /* The same panel inside a modal takes the modal's width, not its own. */
 .modalSheet {
   box-sizing: border-box;
@@ -757,7 +783,7 @@
 
 /* The scope panel is narrower than the action sheets. */
 .scopeSheet {
-  width: min(360px, calc(100vw - 24px));
+  width: min(240px, calc(100vw - 24px));
 }
 
 /* Descriptions wrap to two lines, then trail off; the title holds the rest. */
@@ -1392,4 +1418,20 @@
   border-radius: 4px;
   background: var(--tray-overlay);
   pointer-events: auto;
+}
+
+.scopeSheet .sheetBody,
+.subsetSheet .sheetBody {
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.scopeSheet .row,
+.subsetSheet .row {
+  min-height: 36px;
+  gap: 8px;
+}
+
+.scopeSheet .list:empty {
+  display: none;
 }

@@ -113,6 +113,8 @@ export type SegmentConstraint =
 
 /** A browsing boundary is independent of explicit tray choices. */
 export interface SelectionBoundary {
+  /** Source-owned ranges used for captures; grid filters still choose parents. */
+  readonly captureSource?: import("./range-sources").SelectionRangeSource;
   readonly subsetId?: string;
   readonly subsetScope?: "episodes" | "segments";
   readonly provider?: SegmentConstraint;

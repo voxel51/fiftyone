@@ -472,24 +472,27 @@ describe("SamplesScopeTab", () => {
     }
   });
 
-  it("saves all current results as a new subset from the tab", async () => {
+  it("creates an empty subset from the tab without freezing or saving grid results", async () => {
     render(<SamplesScopeTab />);
     fireEvent.click(trigger());
     fireEvent.click(await screen.findByText("New subset…"));
-    await screen.findByText("New subset from all 48 samples in view");
-    await waitFor(() =>
-      expect(mocks.selection.snapshot).toHaveBeenCalledTimes(1),
-    );
+    await screen.findByText("New subset");
+    expect(mocks.selection.snapshot).not.toHaveBeenCalled();
     fireEvent.change(screen.getByLabelText("New subset name"), {
       target: { value: "Night drives" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Create subset" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save subset" }));
     await waitFor(() =>
-      expect(mocks.start).toHaveBeenCalledWith(
+      expect(mocks.request).toHaveBeenCalledWith(
+        "dataset",
+        "",
         expect.objectContaining({ name: "Night drives" }),
-        expect.objectContaining({ snapshotId: "snap" }),
       ),
     );
+    await waitFor(() =>
+      expect(screen.queryByLabelText("New subset name")).toBeNull(),
+    );
+    expect(mocks.start).not.toHaveBeenCalled();
   });
 
   it("shows episode cards before segment counts without recounting subset metadata", async () => {

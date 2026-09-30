@@ -41,6 +41,7 @@ export default function SubsetBrowser({
     view,
   });
   const pages = Math.max(1, Math.ceil(total / SUBSET_PAGE_SIZE));
+  // Keep the current page valid after a deletion shrinks the list.
   useEffect(() => {
     if (!loading && !error) setPage((current) => Math.min(current, pages - 1));
   }, [loading, error, pages]);
@@ -78,13 +79,15 @@ export default function SubsetBrowser({
             {error}
           </Text>
         ) : !subsets?.length ? (
-          <Text
-            variant={TextVariant.Sm}
-            color={TextColor.Secondary}
-            className={styles.listEmpty}
-          >
-            {search.trim() ? "No subsets match" : emptyText}
-          </Text>
+          (search.trim() || emptyText) && (
+            <Text
+              variant={TextVariant.Sm}
+              color={TextColor.Secondary}
+              className={styles.listEmpty}
+            >
+              {search.trim() ? "No subsets match" : emptyText}
+            </Text>
+          )
         ) : (
           subsets.map(renderSubset)
         )}

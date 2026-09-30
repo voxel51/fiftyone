@@ -58,6 +58,8 @@ import type {
   SegmentConstraint,
 } from "./types";
 
+import { useSelectionRangeSource } from "./range-sources";
+
 const EMPTY_GROUPS: readonly EpisodeSelection[] = [];
 const EMPTY_CAPTURES: Captures = new Map();
 const NO_CANDIDATES: ReadonlyMap<string, EpisodeSelection | null> = new Map();
@@ -83,10 +85,14 @@ export function useGridSelectionDataset() {
 
 /** Active range constraints include positive temporal-tag sidebar filters. */
 export function useGridSelectionBoundary() {
-  const { domainId, conversion } = useGridSelectionDataset();
+  const { domainId, conversion, mediaType } = useGridSelectionDataset();
   const [boundary, setBoundary] = useSelectionBoundary(domainId);
   const { filters: currentFilters, rangeConstraint } = useGridViewScope();
   const schema = useSampleSchema();
+  const captureSource = useSelectionRangeSource({
+    mediaType,
+    filters: currentFilters,
+  });
   const tags = currentFilters._temporal_tags;
   const effective = useMemo<SelectionBoundary>(() => {
     const values = Array.isArray(tags?.values)
@@ -116,16 +122,26 @@ export function useGridSelectionBoundary() {
         if (!filter?.exclude && eventValues.length)
           providers.push({ kind: "events", field, values: eventValues });
       }
+    const scoped =
+      captureSource && !conversion ? { ...boundary, captureSource } : boundary;
     return providers.length
       ? {
-          ...boundary,
+          ...scoped,
           provider:
             providers.length === 1
               ? providers[0]
               : { kind: "intersection", providers },
         }
-      : boundary;
-  }, [boundary, conversion, currentFilters, rangeConstraint, schema, tags]);
+      : scoped;
+  }, [
+    boundary,
+    captureSource,
+    conversion,
+    currentFilters,
+    rangeConstraint,
+    schema,
+    tags,
+  ]);
   return [effective, setBoundary] as const;
 }
 
@@ -166,6 +182,7 @@ export function isPlainScope(request: SelectionRequest) {
   const conversion = viewConversion(request.view)?.kind;
   return (
     !request.boundary.provider &&
+    !request.boundary.captureSource &&
     !request.boundary.subsetId &&
     !request.expand &&
     conversion !== "frames" &&
