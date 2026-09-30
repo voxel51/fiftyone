@@ -6,6 +6,7 @@ import {
   ImageOverlay,
   lighterInitErrorAtom,
   overlayFactory,
+  useForwardSceneEventsForTest,
   useLighterSetupWithPixi,
   useViewportInitReveal,
 } from "@fiftyone/lighter";
@@ -164,6 +165,7 @@ const LighterSetupImpl = (props: {
   const canvas = singletonCanvas.getCanvas(containerRef.current ?? undefined);
 
   const { scene } = useLighterSetupWithPixi(canvas, mergedOptions, sceneId);
+  useForwardSceneEventsForTest(scene);
 
   // Add the canonical image overlay to the scene that belongs to *this* mount.
   // The identity guard prevents firing against a stale scene that the
