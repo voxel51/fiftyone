@@ -95,6 +95,7 @@ class RunTests(unittest.TestCase):
 
         info = dataset2.get_run_info("still_custom")
         results = dataset2.load_run_results("still_custom")
+        self.assertEqual(results.foo, "eggs")
 
         dataset2.delete_runs()
 
