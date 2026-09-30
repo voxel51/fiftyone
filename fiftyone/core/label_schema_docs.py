@@ -177,9 +177,19 @@ def _ensure_indexes(coll, indexes: Sequence[pymongo.IndexModel]) -> None:
         coll.create_indexes(to_create)
 
 
+# Databases whose indexes this process has already verified. Index
+# verification is a ``list_indexes`` round-trip; doing it once per
+# database rather than on every read keeps the sidebar's listing cheap.
+_INDEXED_DBS: set = set()
+
+
 def _coll():
-    coll = _db()[COLLECTION]
-    _ensure_indexes(coll, INDEXES)
+    db = _db()
+    coll = db[COLLECTION]
+    key = (id(getattr(db, "client", None)), getattr(db, "name", None))
+    if key not in _INDEXED_DBS:
+        _ensure_indexes(coll, INDEXES)
+        _INDEXED_DBS.add(key)
     return coll
 
 
