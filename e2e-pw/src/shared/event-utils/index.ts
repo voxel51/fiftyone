@@ -89,6 +89,36 @@ export type EventCondition = {
 
 type ArmHandler = (e: ObservedEvent) => boolean;
 
+/** An armed wait not yet satisfied, kept to explain a test that hangs */
+interface PendingWait {
+  names: string[];
+  armedAt: number;
+  /** Where the page's event record stood at arming; -1 if it has none */
+  recordFrom: number;
+  caller: string;
+}
+
+/** Every pending wait on a page, whichever EventUtils armed it */
+const pendingWaits = new WeakMap<Page, Map<string, PendingWait>>();
+
+const pendingFor = (page: Page) => {
+  let pending = pendingWaits.get(page);
+  if (!pending) {
+    pending = new Map();
+    pendingWaits.set(page, pending);
+  }
+  return pending;
+};
+
+/** The spec or POM line that armed a wait */
+const armingCaller = (): string => {
+  const frames = (new Error().stack ?? "").split("\n").slice(1);
+  const frame = frames.find(
+    (line) => line.includes("/src/") && !line.includes("/event-utils/"),
+  );
+  return frame?.trim().replace(/^at /, "") ?? "unknown";
+};
+
 /**
  * One exposed binding per page routes every armed listener by id. Playwright
  * cannot remove a binding, so a binding per arm would pile up across a spec.
@@ -143,11 +173,15 @@ export class EventUtils {
       resolveReceived = resolve;
     });
 
+    const pending = pendingFor(this.page);
+    const caller = armingCaller();
+
     // the return value tells the page to detach once the wait is satisfied
     dispatcher.handlers.set(id, (e) => {
       const matched = predicate(e);
       if (matched) {
         dispatcher.handlers.delete(id);
+        pending.delete(id);
         resolveReceived();
       }
       return matched;
@@ -155,7 +189,7 @@ export class EventUtils {
 
     // the listener is attached in its own evaluate — not inside the promise
     // that carries the wait — so attachment is complete when `arm` returns
-    await this.page.evaluate(
+    const recordFrom = await this.page.evaluate(
       ({ names_, dispatcher_, id_ }) => {
         let detach = () => {};
         const deliver = (event: string, detail: unknown) => {
@@ -200,12 +234,15 @@ export class EventUtils {
           delete armed[id_];
         };
         armed[id_] = detach;
+        return window.__FO_EVENT_LOG__?.records.length ?? -1;
       },
       { names_: names, dispatcher_: dispatcher.name, id_: id },
     );
+    pending.set(id, { names, armedAt: Date.now(), recordFrom, caller });
 
     return new ArmedEvent(received, async () => {
       dispatcher.handlers.delete(id);
+      pending.delete(id);
       await this.page
         .evaluate((key): void => window.__FO_ARMED__?.[key]?.(), id)
         // a navigated or closed page took the listener with it
@@ -302,6 +339,54 @@ export class EventUtils {
       if (predicate(record)) return result;
       from = record.index + 1;
     }
+  }
+
+  /**
+   * Explain each wait still pending on this page: what it waits for, where it
+   * was armed, and the `e2e:` events the page sent since. Null if none.
+   */
+  public async describePending(): Promise<string | null> {
+    const waits = [...(pendingWaits.get(this.page)?.values() ?? [])];
+    if (!waits.length) return null;
+    const records = await this.page
+      .evaluate(() => window.__FO_EVENT_LOG__?.records ?? null)
+      .catch((): null => null);
+
+    const lines: string[] = [];
+    for (const wait of waits) {
+      lines.push(
+        `still waiting ${Date.now() - wait.armedAt}ms for ` +
+          `${wait.names.join(" | ")} (armed at ${wait.caller})`,
+      );
+      if (!records || wait.recordFrom < 0) {
+        lines.push("  no event record for this document");
+        continue;
+      }
+      const since = records.slice(wait.recordFrom);
+      const matching = since.filter(({ event }) => wait.names.includes(event));
+      lines.push(
+        matching.length
+          ? `  arrived but rejected by its predicate (last ${Math.min(5, matching.length)} of ${matching.length}):`
+          : "  never arrived",
+      );
+      for (const { event, detail } of matching.slice(-5)) {
+        lines.push(`    ${event} ${JSON.stringify(detail)}`);
+      }
+      const counts = new Map<string, number>();
+      for (const { event } of since) {
+        if (!wait.names.includes(event)) {
+          counts.set(event, (counts.get(event) ?? 0) + 1);
+        }
+      }
+      lines.push(
+        counts.size
+          ? `  other events since arming: ${[...counts]
+              .map(([event, n]) => `${event} x${n}`)
+              .join(", ")}`
+          : "  no other events since arming",
+      );
+    }
+    return lines.join("\n");
   }
 
   /**

@@ -83,10 +83,21 @@ export const test = customFixtures.extend<CustomFixturesWithPage>({
     });
     await use(page);
   },
-  eventUtils: async ({ page }, use) => {
+  eventUtils: async ({ page }, use, testInfo) => {
     const eventUtils = new EventUtils(page);
     await eventUtils.recordLoads();
     await use(eventUtils);
+    // a hung event wait fails as a bare timeout; say what it was waiting for
+    if (testInfo.status !== testInfo.expectedStatus) {
+      const report = await eventUtils.describePending();
+      if (report) {
+        console.log(`pending event waits:\n${report}`);
+        await testInfo.attach("pending event waits", {
+          body: report,
+          contentType: "text/plain",
+        });
+      }
+    }
   },
   aggregationWatcher: async ({ page }, use) => {
     await use(new AggregationWatcher(page));
