@@ -14,7 +14,12 @@ const h = vi.hoisted(() => ({
 
 vi.mock("@fiftyone/annotation", () => ({
   useActiveSampleId: () => "sample-1",
-  useAnnotationEngine: () => ({ loadedFrames: () => [], listLabels: () => [] }),
+  useAnnotationEngine: () => ({
+    loadedFrames: () => [],
+    editedFrames: () => [],
+    editVersion: () => 0,
+    listLabels: () => [],
+  }),
   useEngineSelector: (_engine: unknown, selector: () => unknown) => selector(),
 }));
 

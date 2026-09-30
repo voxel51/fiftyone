@@ -12,9 +12,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 interface FakeStream {
   cachedFrames: () => { frame_number: number }[];
-  subscribeToEdits: (listener: () => void) => () => void;
+  cachedFramesIn: (range: [number, number]) => { frame_number: number }[];
+  subscribeToEdits: (listener: (range: [number, number]) => void) => () => void;
   warmupAll: () => Promise<void>;
-  listener: (() => void) | null;
+  cancelWarmup: () => void;
+  listener: ((range: [number, number]) => void) | null;
 }
 
 const hoisted = vi.hoisted(() => ({
@@ -54,6 +56,10 @@ import { useSyncAnnotationVideoStore } from "./useSyncAnnotationVideoStore";
 const makeStream = (cached: { frame_number: number }[]): FakeStream => {
   const stream: FakeStream = {
     cachedFrames: () => cached,
+    cachedFramesIn: ([start, end]) =>
+      cached.filter(
+        (doc) => doc.frame_number >= start && doc.frame_number <= end,
+      ),
     subscribeToEdits: (listener) => {
       stream.listener = listener;
       return () => {
@@ -62,6 +68,7 @@ const makeStream = (cached: { frame_number: number }[]): FakeStream => {
     },
     // Never resolves: settling must not depend on the warmup
     warmupAll: () => new Promise(() => undefined),
+    cancelWarmup: () => undefined,
     listener: null,
   };
   return stream;
@@ -100,7 +107,7 @@ describe("useSyncAnnotationVideoStore loading state", () => {
 
     expect(hoisted.registered[0].isLoading()).toBe(true);
 
-    act(() => hoisted.stream?.listener?.());
+    act(() => hoisted.stream?.listener?.([1, 60]));
     expect(hoisted.registered[0].isLoading()).toBe(false);
   });
 });

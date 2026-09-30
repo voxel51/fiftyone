@@ -5,6 +5,7 @@
 import type { AnnotationEngine } from "@fiftyone/annotation";
 import type { useLighter } from "@fiftyone/lighter";
 import type { AnnotationLabel, AnnotationLabelData } from "@fiftyone/state";
+import { type LabelData, LabelType } from "@fiftyone/utilities";
 import { getDefaultStore } from "jotai";
 import { useCallback, useRef } from "react";
 import {
@@ -18,10 +19,58 @@ import { labels } from "./labelsAtoms";
 
 type LighterScene = ReturnType<typeof useLighter>["scene"];
 
+const ALL_LABEL_TYPES = Object.values(LabelType).filter(
+  (type) => type !== LabelType.Unknown,
+);
+
+/**
+ * On a temporal (video) surface, the labels at the playhead's frame plus every
+ * sample-level label, by path; `null` elsewhere, where rows cover the whole
+ * sample.
+ */
+const presentLabelsByPath = (
+  engine: AnnotationEngine,
+  sampleId: string,
+): Map<string, LabelData[]> | null => {
+  const frame = engine.temporal?.isTemporal
+    ? engine.temporal.frame()
+    : undefined;
+
+  if (frame === undefined) {
+    return null;
+  }
+
+  const byPath = new Map<string, LabelData[]>();
+
+  for (const ref of engine.enumerateLabelsAt(ALL_LABEL_TYPES, frame)) {
+    if (ref.sample !== sampleId) {
+      continue;
+    }
+
+    const data = engine.getLabel(ref);
+
+    if (!data) {
+      continue;
+    }
+
+    const list = byPath.get(ref.path);
+
+    if (list) {
+      list.push(data);
+    } else {
+      byPath.set(ref.path, [data]);
+    }
+  }
+
+  return byPath;
+};
+
 /**
  * Derive the sidebar label rows from the engine into the `labels` atom. Every
  * in-scope engine label gets a row (live overlay or stub); engine-unknown rows
- * pass through unless the engine knew them last pass.
+ * pass through unless the engine knew them last pass. On a video, rows cover
+ * the playhead's frame plus sample-level labels, so a pass costs the frame's
+ * labels rather than the clip's.
  */
 export const useReconcileLabels = ({
   engine,
@@ -50,6 +99,7 @@ export const useReconcileLabels = ({
     const previousById = new Map(previous.map((l) => [l.data._id, l]));
     const engineIds = new Set<string>();
     const next: AnnotationLabel[] = [];
+    const present = presentLabelsByPath(engine, sampleId);
 
     for (const path of active) {
       const type = SINGULAR[engine.getLabelType(path)];
@@ -58,7 +108,11 @@ export const useReconcileLabels = ({
         continue;
       }
 
-      for (const data of engine.listLabels({ sample: sampleId, path })) {
+      const pathLabels = present
+        ? (present.get(path) ?? [])
+        : engine.listLabels({ sample: sampleId, path });
+
+      for (const data of pathLabels) {
         engineIds.add(data._id);
 
         // the scene keys overlays by the engine `instanceId`, which differs

@@ -182,46 +182,66 @@ export const useAnnotationContext = (): AnnotationContext => {
     ),
   );
 
+  // A path's labels across the whole sample. On a video the `labels` atom
+  // holds only the playhead's frame, so these clip-wide defaults read the
+  // engine (on demand, once per new label).
+  const sampleLabelsOf = useCallback(
+    (
+      byPath: Record<string, AnnotationLabel[]>,
+      path: string,
+    ): Array<{ label?: unknown }> =>
+      engine.temporal?.isTemporal && sample
+        ? engine.listLabels({ sample, path })
+        : (byPath[path] ?? []).map((l) => l.data ?? {}),
+    [engine, sample],
+  );
+
   // remembered → most-populated → defaultField
   const computeFieldFor = useAtomCallback(
-    useCallback((get, _set, t: LabelType): string | null => {
-      const valid = get(fieldsOfType(t));
-      const remembered = get(lastUsedFieldAtom(t));
-      if (remembered && valid.includes(remembered)) return remembered;
+    useCallback(
+      (get, _set, t: LabelType): string | null => {
+        const valid = get(fieldsOfType(t));
+        const remembered = get(lastUsedFieldAtom(t));
+        if (remembered && valid.includes(remembered)) return remembered;
 
-      const byPath = get(labelsByPath);
-      let bestPath: string | null = null;
-      let bestCount = 0;
-      for (const path of valid) {
-        const count = byPath[path]?.length ?? 0;
-        if (count > bestCount) {
-          bestCount = count;
-          bestPath = path;
+        const byPath = get(labelsByPath);
+        let bestPath: string | null = null;
+        let bestCount = 0;
+        for (const path of valid) {
+          const count = sampleLabelsOf(byPath, path).length;
+          if (count > bestCount) {
+            bestCount = count;
+            bestPath = path;
+          }
         }
-      }
-      if (bestPath) return bestPath;
+        if (bestPath) return bestPath;
 
-      return get(defaultField(t));
-    }, []),
+        return get(defaultField(t));
+      },
+      [sampleLabelsOf],
+    ),
   );
 
   // remembered → most-common in field → first class in schema.
   const computeLabelFor = useAtomCallback(
-    useCallback((get, _set, path: string): string | null => {
-      const remembered = get(lastUsedLabelAtom(path));
-      if (remembered) return remembered;
+    useCallback(
+      (get, _set, path: string): string | null => {
+        const remembered = get(lastUsedLabelAtom(path));
+        if (remembered) return remembered;
 
-      const fieldLabels = get(labelsByPath)[path] ?? [];
-      const withLabel = fieldLabels.filter((l) => l.data?.label);
-      if (withLabel.length > 0) {
-        const counts = countBy(withLabel, (l) => l.data.label as string);
-        const top = maxBy(Object.entries(counts), ([, c]) => c);
-        if (top?.[0]) return top[0];
-      }
+        const fieldLabels = sampleLabelsOf(get(labelsByPath), path);
+        const withLabel = fieldLabels.filter((l) => l.label);
+        if (withLabel.length > 0) {
+          const counts = countBy(withLabel, (l) => l.label as string);
+          const top = maxBy(Object.entries(counts), ([, c]) => c);
+          if (top?.[0]) return top[0];
+        }
 
-      const classes = get(labelSchemaData(path))?.label_schema?.classes;
-      return classes?.[0] ?? null;
-    }, []),
+        const classes = get(labelSchemaData(path))?.label_schema?.classes;
+        return classes?.[0] ?? null;
+      },
+      [sampleLabelsOf],
+    ),
   );
 
   const selectExisting = useAtomCallback(

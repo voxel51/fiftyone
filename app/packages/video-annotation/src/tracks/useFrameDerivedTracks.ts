@@ -9,7 +9,7 @@ import {
 } from "@fiftyone/annotation";
 import type { Track } from "@fiftyone/playback";
 import type { LabelData, LabelType } from "@fiftyone/utilities";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { useVideoLabelsIndex } from "../hooks/useVideoLabelsIndex";
 import {
   useFrameLabelFields,
@@ -118,21 +118,52 @@ export function useFrameDerivedTracks(
   // field's index and rebuilds every track, even when nothing in the engine
   // changed. `tracksEqual` below still gates the re-RENDER; this is what lets
   // it also gate the (much more expensive) rebuild.
-  const selectTracks = useCallback(() => {
-    if (!stream || !sampleId || !loaded || paths.length === 0) {
-      return EMPTY_TRACKS;
-    }
+  //
+  // The index is server truth for every frame the session hasn't written, so
+  // the overlay is only the frames written this session, and a version bump
+  // that moved none of them (a chunk landing) reuses the last build. A field
+  // whose index didn't load overlays every loaded frame and always rebuilds.
+  const selectTracks = useMemo(() => {
+    let cached: { version: number; tracks: Track[] } | null = null;
 
-    return paths.flatMap((path) =>
-      buildTracksFromIndex({
-        path,
-        index: indexByPath[path] ?? [],
-        overlay: readEngineOverlay(engine, sampleId, path),
-        fps: stream.fps,
-        resolveColor,
-        dynamicAttributes: dynamicByPath[path] ?? [],
-      }),
-    );
+    return () => {
+      if (!stream || !sampleId || !loaded || paths.length === 0) {
+        return EMPTY_TRACKS;
+      }
+
+      const indexed = paths.every((path) => indexByPath[path] !== undefined);
+      // NaN never matches, so an unindexed field rebuilds on every bump
+      const version = indexed ? engine.editVersion(sampleId) : Number.NaN;
+
+      if (cached && cached.version === version) {
+        return cached.tracks;
+      }
+
+      const tracks = buildTracks(indexed);
+      cached = { version, tracks };
+      return tracks;
+    };
+
+    function buildTracks(indexed: boolean): Track[] {
+      if (!stream || !sampleId) {
+        return EMPTY_TRACKS;
+      }
+
+      const frames = indexed
+        ? engine.editedFrames(sampleId)
+        : engine.loadedFrames(sampleId);
+
+      return paths.flatMap((path) =>
+        buildTracksFromIndex({
+          path,
+          index: indexByPath[path] ?? [],
+          overlay: readEngineOverlay(engine, sampleId, path, frames),
+          fps: stream.fps,
+          resolveColor,
+          dynamicAttributes: dynamicByPath[path] ?? [],
+        }),
+      );
+    }
   }, [
     engine,
     stream,
@@ -173,23 +204,21 @@ export function tracksEqual(a: Track[], b: Track[]): boolean {
 }
 
 /**
- * The engine's materialized frames + their live labels, keyed by frame number —
- * the overlay that shadows the server index. Reads every loaded frame, not just
- * the dirty set: a successful autosave folds edits into the seed and clears the
- * dirty set, so a dirty-only overlay would revert the timeline to the stale
- * index after each save. The engine is authoritative for every frame it holds,
- * so overlaying all of them keeps the timeline correct post-save and composes
- * index (unloaded) ⊕ engine (loaded window) once the seed is windowed. Bounded
- * by the loaded window, which today is the whole clip (see `warmupAll`).
+ * The engine's live labels at `frames`, keyed by frame number — the overlay
+ * that shadows the server index. Callers pass the frames written this session
+ * (`editedFrames`), not the dirty set: a successful autosave folds edits into
+ * the seed and clears the dirty set, so a dirty-only overlay would revert the
+ * timeline to the stale index after each save.
  */
 function readEngineOverlay(
   engine: ReturnType<typeof useAnnotationEngine>,
   sample: string,
   path: string,
+  frames: readonly number[],
 ): FrameOverlay {
   const overlay: FrameOverlay = new Map<number, LabelData[]>();
 
-  for (const frame of engine.loadedFrames(sample)) {
+  for (const frame of frames) {
     overlay.set(frame, engine.listLabels({ sample, path, frame }));
   }
 

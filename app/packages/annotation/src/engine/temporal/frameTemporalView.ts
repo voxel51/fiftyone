@@ -70,6 +70,8 @@ const supportSpan = (
 /** The pool half the view reads, plus the change channel it tracks. */
 export interface FrameReads {
   enumerateLabels(kinds: readonly LabelType[]): LabelRef[];
+  /** The frame's refs plus sample-level ones; read instead of the whole pool. */
+  enumerateLabelsAt?(kinds: readonly LabelType[], frame: number): LabelRef[];
   getLabel(ref: LabelRef): unknown;
   subscribeChanges(listener: ChangeListener): () => void;
 }
@@ -161,7 +163,12 @@ export class FrameTemporalView implements TemporalView {
     const frame = this.currentFrame();
     const present = new Map<string, LabelRef>();
 
-    for (const ref of this.reads.enumerateLabels(ALL_LABEL_TYPES)) {
+    // the playhead's frame only: the whole pool is every label in the clip
+    const refs = this.reads.enumerateLabelsAt
+      ? this.reads.enumerateLabelsAt(ALL_LABEL_TYPES, frame)
+      : this.reads.enumerateLabels(ALL_LABEL_TYPES);
+
+    for (const ref of refs) {
       if (ref.frame == null) {
         if (this.sampleLevelPresent(ref, frame)) {
           present.set(linkageKey(ref), ref);
