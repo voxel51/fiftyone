@@ -2,6 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { registerNonfiniteFields } from "@fiftyone/utilities";
 import { describe, expect, it } from "vitest";
 import {
   patchPathFieldContext,
@@ -123,6 +124,27 @@ describe("toExtendedJson", () => {
 
     expect(result).toEqual({
       confidence: [0.9, { $numberDouble: "NaN" }],
+    });
+  });
+
+  // Regression (2026-09-30): a custom float attribute's "nan" echo was
+  // written back as the string "nan"
+  it("converts a schema-registered float field's 'nan' strings", () => {
+    registerNonfiniteFields({
+      tx_test_visibility: {
+        dbField: null,
+        description: null,
+        embeddedDocType: null,
+        ftype: "fiftyone.core.fields.ListField",
+        info: null,
+        name: "",
+        path: "",
+        subfield: "fiftyone.core.fields.FloatField",
+      },
+    });
+
+    expect(toExtendedJson({ tx_test_visibility: ["nan", 0.5] })).toEqual({
+      tx_test_visibility: [{ $numberDouble: "NaN" }, 0.5],
     });
   });
 

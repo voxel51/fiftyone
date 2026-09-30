@@ -1,18 +1,54 @@
 import { isEqual } from "lodash";
 
+import { FLOAT_FIELD, LIST_FIELD } from "../constants";
+import type { Schema } from "../schema";
+
+/**
+ * The live set behind {@link NONFINITE_FIELDS}: the built-in label fields,
+ * plus every float field a dataset schema declares (see
+ * {@link registerNonfiniteFields}).
+ */
+const nonfiniteFields = new Set<string>(["points", "confidence"]);
+
 /**
  * The field names whose non-finite doubles travel as strings on the wire —
- * the GraphQL sample-read convention (see `NONFINITE` in `@fiftyone/looker`)
- * and the write-side inverse in `core/src/client/transformer.ts`, which
- * imports this set. The string collapse below is GATED to these keys:
- * normalized trees also feed patch payloads (`structuralSupplier`,
- * `serializeAdd`), so an ungated collapse would rewrite a string field whose
- * literal value is `"nan"` (legal for a str point attribute) into float NaN.
+ * the server stringifies every non-finite float (`fiftyone.core.json`), and
+ * `core/src/client/transformer.ts` imports this set for the write-side
+ * inverse. The string collapse below is GATED to these keys: normalized trees
+ * also feed patch payloads (`structuralSupplier`, `serializeAdd`), so an
+ * ungated collapse would rewrite a string field whose literal value is
+ * `"nan"` (legal for a str point attribute) into float NaN.
+ *
+ * `points` and `confidence` are built in; every other float field comes from
+ * the dataset schema, so a custom float attribute (a per-point list filled
+ * with NaN, or a label-level score) compares equal to its own echo and is
+ * never written back as the string `"nan"`. Keyed by field name: a str
+ * attribute sharing a name with some float field would have a literal `"nan"`
+ * read as NaN, an accepted edge.
  */
-export const NONFINITE_FIELDS: ReadonlySet<string> = new Set([
-  "points",
-  "confidence",
-]);
+export const NONFINITE_FIELDS: ReadonlySet<string> = nonfiniteFields;
+
+/**
+ * Add every float and float-list field that `schema` declares, at any depth
+ * (label attributes are nested under their label field), to
+ * {@link NONFINITE_FIELDS}. Registration only grows the set; names from a
+ * previously viewed dataset stay registered, which is harmless for fields
+ * that no longer exist.
+ */
+export const registerNonfiniteFields = (schema: Schema): void => {
+  for (const [name, field] of Object.entries(schema)) {
+    if (
+      field.ftype === FLOAT_FIELD ||
+      (field.ftype === LIST_FIELD && field.subfield === FLOAT_FIELD)
+    ) {
+      nonfiniteFields.add(name);
+    }
+
+    if (field.fields) {
+      registerNonfiniteFields(field.fields);
+    }
+  }
+};
 
 /**
  * Plain JSON cannot represent non-finite doubles, so the App holds them in

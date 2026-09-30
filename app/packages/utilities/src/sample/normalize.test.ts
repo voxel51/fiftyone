@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { equalsNormalized, normalizeForCompare } from "./normalize";
+import {
+  equalsNormalized,
+  NONFINITE_FIELDS,
+  normalizeForCompare,
+  registerNonfiniteFields,
+} from "./normalize";
 
 const ISO = "2020-01-01T00:00:00.000Z";
 const MS = Date.parse(ISO);
@@ -166,5 +171,57 @@ describe("equalsNormalized", () => {
   it("keeps distinct non-finite values distinct", () => {
     expect(equalsNormalized("nan", "inf", "points")).toBe(false);
     expect(equalsNormalized(NaN, "inf", "confidence")).toBe(false);
+  });
+});
+
+// Regression (2026-09-30, review of the keypoint PR): only `points` and
+// `confidence` collapsed "nan" strings, so a custom float attribute's echo
+// never compared equal (autosave re-sent it forever) and a whole-label
+// re-send wrote it back as the string "nan"
+describe("registerNonfiniteFields", () => {
+  const field = (ftype: string, subfield: string | null = null) => ({
+    dbField: null,
+    description: null,
+    embeddedDocType: null,
+    ftype,
+    info: null,
+    name: "",
+    path: "",
+    subfield,
+  });
+
+  it("registers float and float-list fields nested in a label schema", () => {
+    registerNonfiniteFields({
+      kp_test_field: {
+        ...field("fiftyone.core.fields.EmbeddedDocumentField"),
+        fields: {
+          kp_test_visibility: field(
+            "fiftyone.core.fields.ListField",
+            "fiftyone.core.fields.FloatField",
+          ),
+          kp_test_score: field("fiftyone.core.fields.FloatField"),
+          kp_test_note: field(
+            "fiftyone.core.fields.ListField",
+            "fiftyone.core.fields.StringField",
+          ),
+        },
+      },
+    });
+
+    expect(NONFINITE_FIELDS.has("kp_test_visibility")).toBe(true);
+    expect(NONFINITE_FIELDS.has("kp_test_score")).toBe(true);
+    expect(NONFINITE_FIELDS.has("kp_test_note")).toBe(false);
+  });
+
+  it("then collapses a registered field's echo but not a string field's", () => {
+    expect(
+      equalsNormalized(
+        { kp_test_visibility: [NaN, 0.5] },
+        { kp_test_visibility: ["nan", 0.5] },
+      ),
+    ).toBe(true);
+    expect(
+      equalsNormalized({ kp_test_note: [NaN] }, { kp_test_note: ["nan"] }),
+    ).toBe(false);
   });
 });
