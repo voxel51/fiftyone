@@ -29,8 +29,18 @@ export class OssLoader extends AbstractFiftyoneLoader {
     zooDatasetName: string,
     id: string,
     kwargs: Record<string, string> = {},
+    options: { colorScheme?: Record<string, unknown> } = {},
   ) {
     const kwargsStringified = getStringifiedKwargs(kwargs);
+    // the App colors fields in first-request order unless the scheme pins them
+    const colorScheme = options.colorScheme
+      ? `
+      import json
+      dataset.app_config.color_scheme = fo.ColorScheme(
+        **json.loads(${JSON.stringify(JSON.stringify(options.colorScheme))})
+      )
+      dataset.save()`
+      : "";
 
     return this.pythonRunner.exec(`
       import fcntl
@@ -52,6 +62,7 @@ export class OssLoader extends AbstractFiftyoneLoader {
         )
 
       dataset.persistent = True
+${colorScheme}
     `);
   }
 

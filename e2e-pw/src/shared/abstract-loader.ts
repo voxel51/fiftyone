@@ -39,6 +39,10 @@ export abstract class AbstractFiftyoneLoader {
     zooDatasetName: string,
     id: string,
     kwargs?: Record<string, string | number | boolean>,
+    options?: {
+      /** `fo.ColorScheme` kwargs; pin field colors for screenshots */
+      colorScheme?: Record<string, unknown>;
+    },
   ): Promise<void>;
 
   /**
