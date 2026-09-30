@@ -1,17 +1,12 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * A painted instance mask is a keyframe on the draw frame only; the box
- * auto-extends forward as non-keyframe filler. As the playhead moves onto a
- * filler frame, the track's overlay carries the box but NOT the mask — so the
- * mask must visibly clear (guards the `DetectionOverlay.applyLabel` fix: a frame
- * label whose `mask` is `undefined` — not just `null` — clears the stale mask).
- *
- * The sidebar mask preview is the render-level signal: it mounts only when the
- * selected label's live overlay reports `hasMask()`, so its presence on the
- * keyframe and absence on a filler frame proves the overlay paints/clears the
- * mask with the playhead. Detection-box draw + auto-extend are covered in
- * `annotate-video-auto-extend.spec.ts`.
+ * A painted instance mask is a keyframe on the draw frame only, so on an
+ * auto-extended filler frame the overlay carries the box but must clear the
+ * mask (a frame label whose `mask` is `undefined` clears the stale one). The
+ * sidebar mask preview mounts only when the live overlay reports `hasMask()`,
+ * so its presence on the keyframe and absence on a filler frame is the
+ * render-level signal.
  */
 import { expect, test as base, type Page } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -22,7 +17,6 @@ const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-video-mask-playback",
 );
 const id = "000000000000000000000000";
-const clip = `/tmp/${datasetName}.webm`;
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -30,23 +24,37 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory, videoAnnotateSDK }) => {
+test.beforeAll(async ({ foWebServer, datasetFactory }) => {
   await foWebServer.startWebServer();
   // 40 frames @ 10fps — the 30-frame auto-extend stays clear of the clip end.
-  await mediaFactory.createVideo({
-    outputPath: clip,
-    duration: 4,
-    width: 64,
-    height: 64,
-    frameRate: 10,
-    color: "#3050a0",
-  });
-  // clean slate (no pre-seeded tracks) with the detections schema active, so
+  // Clean slate (no pre-seeded tracks) with the detections schema active, so
   // segmentation mode is enterable and the first paint creates the only track.
-  await videoAnnotateSDK.seed({
+  await datasetFactory.createDataset({
+    mediaType: "video",
     datasetName,
-    videoPaths: [clip],
-    withEvents: false,
+    videoOptions: { duration: 4 },
+    sampleFrames: true,
+    schema: {
+      "frames.detections": "Detections",
+      "frames.detections.detections.instance": "Instance",
+      "frames.detections.detections.keyframe": "BooleanField",
+      "frames.detections.detections.propagation": "DictField",
+    },
+    labelSchemas: {
+      "frames.detections": {
+        type: "detections",
+        component: "dropdown",
+        classes: ["vehicle", "person", "road sign"],
+        attributes: [
+          { name: "id", type: "id", component: "text", read_only: true },
+          { name: "tags", type: "list<str>", component: "text" },
+          { name: "confidence", type: "float", component: "text" },
+          { name: "index", type: "int", component: "text" },
+          { name: "mask_path", type: "str", component: "text" },
+        ],
+      },
+    },
+    withFrameData: (_, { label }) => ({ detections: label.detections([]) }),
   });
 });
 

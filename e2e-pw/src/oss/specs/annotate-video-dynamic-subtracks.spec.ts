@@ -1,31 +1,23 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Dynamic-attribute sub-track rows on the video-annotation timeline. An
- * attribute declared `dynamic` in the `frames.detections` schema gets a
- * collapsible sub-track row beneath its parent object track, with the
- * attribute's value coalesced into segments along the timeline:
- *
- *  - sub-tracks are collapsed by default — a parent's chevron reveals them;
- *  - a declared-dynamic attribute always gets a row (uniform → one segment);
- *  - a mid-track edit (forward-fill) splits the row into two value segments;
- *  - collapsing hides the sub-track rows again.
- *
- * The dataset is re-seeded per test (one tracked `vehicle` instance with a
- * dynamic `turn_signal` attribute = "off" on every frame) so a persisting edit
- * can't leak into the next test.
+ * Dynamic-attribute sub-track rows on the video timeline: collapsed by default
+ * behind the parent's chevron, one row per declared-dynamic attribute with its
+ * value coalesced into segments, and a mid-track forward-fill splits a row into
+ * two segments. Re-seeded per test with one tracked `vehicle` carrying
+ * `turn_signal` = "off" on every frame.
  */
 import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
+import type { DatasetFactory } from "src/shared/dataset-factory";
 import type { Page } from "src/oss/fixtures";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-video-dynamic-subtracks",
 );
 const id = "000000000000000000000000";
-const clip = `/tmp/${datasetName}.webm`;
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -33,17 +25,8 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
-  // 20 frames @ 10fps — long enough to fill several frames forward.
-  await mediaFactory.createVideo({
-    outputPath: clip,
-    duration: 2,
-    width: 64,
-    height: 64,
-    frameRate: 10,
-    color: "#3050a0",
-  });
 });
 
 test.afterAll(async ({ foWebServer }) => {
@@ -102,19 +85,59 @@ const setSignal = async (modal: ModalPom, page: Page, choice: string) => {
 const assertSignal = async (modal: ModalPom, expected: string) =>
   expect.poll(() => modal.sidebar.edit.getFieldValue(ATTR)).toBe(expected);
 
-/** Seed one tracked instance carrying `turn_signal`="off" on every frame. */
-const seedSingle = (sdk: { seed: (o: object) => Promise<unknown> }) =>
-  sdk.seed({
+/**
+ * Seed one tracked instance carrying `turn_signal`="off" on every frame. 20
+ * frames @ 10fps — long enough to fill several frames forward.
+ */
+const seedSingle = (datasetFactory: typeof DatasetFactory) =>
+  datasetFactory.createDataset({
+    mediaType: "video",
     datasetName,
-    videoPaths: [clip],
-    withEvents: false,
-    trackedSampleIndices: [0],
-    dynamicAttribute: { name: ATTR, values: ["off", "left", "right"] },
+    sampleFrames: true,
+    schema: {
+      "frames.detections": "Detections",
+      "frames.detections.detections.instance": "Instance",
+      "frames.detections.detections.keyframe": "BooleanField",
+      "frames.detections.detections.propagation": "DictField",
+      [`frames.detections.detections.${ATTR}`]: "StringField",
+    },
+    labelSchemas: {
+      "frames.detections": {
+        type: "detections",
+        component: "dropdown",
+        classes: ["vehicle", "person", "road sign"],
+        attributes: [
+          { name: "id", type: "id", component: "text", read_only: true },
+          { name: "tags", type: "list<str>", component: "text" },
+          { name: "confidence", type: "float", component: "text" },
+          { name: "index", type: "int", component: "text" },
+          { name: "mask_path", type: "str", component: "text" },
+          {
+            name: ATTR,
+            type: "str",
+            component: "dropdown",
+            values: ["off", "left", "right"],
+            dynamic: true,
+          },
+        ],
+      },
+    },
+    withFrameData: (_, { label }) => ({
+      detections: label.detections([
+        label.detection({
+          label: "vehicle",
+          bounding_box: [0.3, 0.3, 0.2, 0.2],
+          index: 1,
+          instance: label.instance("vehicle-1"),
+          [ATTR]: "off",
+        }),
+      ]),
+    }),
   });
 
 test.describe.serial("video annotation dynamic attribute sub-tracks", () => {
-  test.beforeEach(async ({ videoAnnotateSDK }) => {
-    await seedSingle(videoAnnotateSDK);
+  test.beforeEach(async ({ datasetFactory }) => {
+    await seedSingle(datasetFactory);
   });
 
   test("a chevron reveals one sub-track per dynamic attribute; collapsing hides it", async ({
@@ -263,16 +286,59 @@ test.describe.serial("video annotation dynamic attribute sub-tracks", () => {
 });
 
 test.describe.serial("video annotation multiple dynamic attributes", () => {
-  test.beforeEach(async ({ videoAnnotateSDK }) => {
-    await videoAnnotateSDK.seed({
+  test.beforeEach(async ({ datasetFactory }) => {
+    await datasetFactory.createDataset({
+      mediaType: "video",
       datasetName,
-      videoPaths: [clip],
-      withEvents: false,
-      trackedSampleIndices: [0],
-      dynamicAttributes: [
-        { name: ATTR, values: ["off", "left", "right"] },
-        { name: "brake", values: ["off", "on"] },
-      ],
+      sampleFrames: true,
+      schema: {
+        "frames.detections": "Detections",
+        "frames.detections.detections.instance": "Instance",
+        "frames.detections.detections.keyframe": "BooleanField",
+        "frames.detections.detections.propagation": "DictField",
+        [`frames.detections.detections.${ATTR}`]: "StringField",
+        "frames.detections.detections.brake": "StringField",
+      },
+      labelSchemas: {
+        "frames.detections": {
+          type: "detections",
+          component: "dropdown",
+          classes: ["vehicle", "person", "road sign"],
+          attributes: [
+            { name: "id", type: "id", component: "text", read_only: true },
+            { name: "tags", type: "list<str>", component: "text" },
+            { name: "confidence", type: "float", component: "text" },
+            { name: "index", type: "int", component: "text" },
+            { name: "mask_path", type: "str", component: "text" },
+            {
+              name: ATTR,
+              type: "str",
+              component: "dropdown",
+              values: ["off", "left", "right"],
+              dynamic: true,
+            },
+            {
+              name: "brake",
+              type: "str",
+              component: "dropdown",
+              values: ["off", "on"],
+              dynamic: true,
+            },
+          ],
+        },
+      },
+      withFrameData: (_, { label }) => ({
+        detections: label.detections([
+          label.detection({
+            label: "vehicle",
+            bounding_box: [0.3, 0.3, 0.2, 0.2],
+            index: 1,
+            instance: label.instance("vehicle-1"),
+            [ATTR]: "off",
+            brake: "off",
+          }),
+        ]),
+      }),
     });
   });
 

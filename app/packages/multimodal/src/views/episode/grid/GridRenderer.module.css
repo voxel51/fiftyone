@@ -14,19 +14,35 @@
   cursor: pointer;
 }
 
+/*
+ * Hover playback is buffering.
+ *
+ * Top-right rather than bottom-left: the interval lane occupies the bottom
+ * edge of every multimodal tile, and it is painted by the grid's footer
+ * column, which is a sibling of this renderer. Down there the spinner was
+ * behind the lane and unreadable — hence both the corner and the z-index,
+ * which has to clear that footer (10) from inside a subtree that does not
+ * create its own stacking context.
+ */
 .bufferingIndicator {
   align-items: center;
   background: rgba(16, 17, 20, 0.72);
   border-radius: 50%;
-  bottom: 8px;
   display: flex;
   height: 20px;
   justify-content: center;
-  left: 8px;
   pointer-events: none;
   position: absolute;
+  right: 8px;
+  top: 8px;
   width: 20px;
-  z-index: 2;
+  z-index: 30;
+}
+
+/* Point-cloud tiles put their open-modal button in the same corner; the
+   spinner steps aside rather than stacking on top of it. */
+.bufferingIndicatorBesideButton {
+  right: 34px;
 }
 
 .imagePanel {

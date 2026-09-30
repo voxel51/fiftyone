@@ -23,7 +23,7 @@ const useSetSample: EventHandlerHook = ({ router }) => {
   return useCallback(
     (payload: { sample_id?: string; group_id?: string }) => {
       setModalState().then(() => {
-        const search = new URLSearchParams(router.history.location.search);
+        const search = new URLSearchParams(router.location.search);
         if (payload?.group_id) {
           handleGroupId(search, payload.group_id);
         } else if (payload?.sample_id) {

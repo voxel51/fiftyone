@@ -44,6 +44,7 @@ vi.mock("@fiftyone/annotation", () => ({
 
 vi.mock("@fiftyone/state", () => ({
   useStableSceneSample3d: () => ({ sample: { _id: "scene-sample" } }),
+  useStableInteraction3dSample: () => ({ sample: { _id: "scene-sample" } }),
 }));
 
 vi.mock("@fiftyone/utilities", () => ({

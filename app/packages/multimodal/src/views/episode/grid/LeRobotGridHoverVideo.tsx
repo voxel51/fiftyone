@@ -30,6 +30,11 @@ const POSTER_RETRY_LIMIT = 50;
 interface LeRobotGridHoverVideoProps {
   readonly active: boolean;
   readonly capturePoster: boolean;
+  /**
+   * Reports whether playback is waiting on data: from the moment it is asked
+   * to play, or the element reports `waiting`, until a frame is presented.
+   */
+  readonly onBufferingChange?: (waiting: boolean) => void;
   readonly onCanvasCommitted: (
     canvas: HTMLCanvasElement,
     size: BitmapDrawSize,
@@ -43,6 +48,16 @@ interface LeRobotGridHoverVideoProps {
   readonly onPresentedTimeSeconds?: (mediaTimeSeconds: number) => void;
   readonly onSurfaceRetainedBytesChange: (bytes: number) => void;
   readonly playing: boolean;
+  /**
+   * Where to move the element's clock to, in its own media seconds, carrying
+   * the id of the request that asked. The element owns its clock, so a seek
+   * from outside — a click on the tile's interval lane — can only reach it as
+   * a prop; the id is what makes asking twice for the same instant two seeks.
+   */
+  readonly seek?: {
+    readonly requestId: number;
+    readonly timeSeconds: number;
+  } | null;
   readonly video: EpisodePreviewNativeVideo;
 }
 
@@ -50,20 +65,31 @@ interface LeRobotGridHoverVideoProps {
 export function LeRobotGridHoverVideo({
   active,
   capturePoster,
+  onBufferingChange,
   onCanvasCommitted,
   onError,
   onPresentedTimeSeconds,
   onSurfaceRetainedBytesChange,
   playing,
+  seek,
   video,
 }: LeRobotGridHoverVideoProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const posterRef = useRef<HTMLCanvasElement | null>(null);
   const posterReadyRef = useRef(false);
   const requestRef = useRef<GridNativeVideoLeaseRequest | null>(null);
+  /**
+   * A seek that arrived before the element had a source, clamped and ready to
+   * apply. The lease can queue behind other tiles, so the request routinely
+   * lands while there is no clock to move; without this the element would
+   * later start at the episode's beginning and the clicked instant would be
+   * lost. Consumed once, by the first start after the source is assigned.
+   */
+  const pendingSeekRef = useRef<number | null>(null);
   const onCanvasCommittedRef = useLatestRef(onCanvasCommitted);
   const onErrorRef = useLatestRef(onError);
   const onPresentedTimeSecondsRef = useLatestRef(onPresentedTimeSeconds);
+  const onBufferingChangeRef = useLatestRef(onBufferingChange);
   const onSurfaceRetainedBytesChangeRef = useLatestRef(
     onSurfaceRetainedBytesChange,
   );
@@ -99,7 +125,16 @@ export function LeRobotGridHoverVideo({
     let posterCaptured = posterReadyRef.current;
     let posterRetryCount = 0;
     let posterRetryTimer: ReturnType<typeof setTimeout> | null = null;
+    let waiting = false;
 
+    const setWaiting = (next: boolean) => {
+      if (waiting === next) return;
+      waiting = next;
+      onBufferingChangeRef.current?.(next);
+    };
+    const onWaiting = () => {
+      if (playing) setWaiting(true);
+    };
     const setShowingVideo = (showing: boolean) => {
       if (showingVideo === showing) return;
       showingVideo = showing;
@@ -127,12 +162,22 @@ export function LeRobotGridHoverVideo({
       }
       frameHandle = requestFrame.call(element, onPresentedFrame);
     };
-    const play = () => {
+    const play = (retry = true) => {
       const generation = ++playGeneration;
-      void element.play().catch(() => {
-        if (!disposed && generation === playGeneration) {
-          setShowingVideo(false);
+      void element.play().catch((error: unknown) => {
+        if (disposed || generation !== playGeneration) return;
+        // An interrupted request, such as the browser pausing an offscreen
+        // video to save power, is asked once more before it counts as a
+        // failure; failing releases the lease so the tile falls back
+        if (
+          retry &&
+          error instanceof DOMException &&
+          error.name === "AbortError"
+        ) {
+          play(false);
+          return;
         }
+        fail(error);
       });
     };
     const startAtEpisodeStart = () => {
@@ -140,7 +185,13 @@ export function LeRobotGridHoverVideo({
       setShowingVideo(false);
       cancelPendingFrame();
       element?.pause();
-      element.currentTime = startTimeSeconds;
+      // A seek that could not be applied while the lease was queued is spent
+      // here, on the first start after the source lands. Taken exactly once,
+      // so the `ended` wrap and the past-the-end restart below still go to
+      // the episode's beginning as they should.
+      const pending = pendingSeekRef.current;
+      pendingSeekRef.current = null;
+      element.currentTime = pending ?? startTimeSeconds;
       scheduleFrame();
       if (playing) play();
       else schedulePosterRetry();
@@ -203,6 +254,7 @@ export function LeRobotGridHoverVideo({
         try {
           if (!capturePresentedPoster()) schedulePosterRetry();
           setShowingVideo(playing);
+          setWaiting(false);
           onPresentedTimeSecondsRef.current?.(element.currentTime);
         } catch (error) {
           fail(error);
@@ -237,6 +289,8 @@ export function LeRobotGridHoverVideo({
       element.removeEventListener("loadedmetadata", startAtEpisodeStart);
       element.removeEventListener("seeked", presentFallbackFrame);
       element.removeEventListener("timeupdate", onTimeUpdate);
+      element.removeEventListener("waiting", onWaiting);
+      setWaiting(false);
       element.style.visibility = "hidden";
       poster.style.visibility = posterCaptured ? "visible" : "hidden";
       element.pause();
@@ -274,6 +328,7 @@ export function LeRobotGridHoverVideo({
       try {
         if (!capturePresentedPoster()) schedulePosterRetry();
         setShowingVideo(playing);
+        setWaiting(false);
         onPresentedTimeSecondsRef.current?.(metadata.mediaTime);
         if (playing) scheduleFrame();
       } catch (error) {
@@ -290,11 +345,15 @@ export function LeRobotGridHoverVideo({
       element.addEventListener("loadedmetadata", startAtEpisodeStart);
       element.addEventListener("seeked", presentFallbackFrame);
       element.addEventListener("timeupdate", onTimeUpdate);
+      element.addEventListener("waiting", onWaiting);
       setShowingVideo(false);
       element.setAttribute("src", sourceUrl);
       element.load();
       if (element.readyState >= 1) startAtEpisodeStart();
     };
+    // Waiting from the moment playback is asked for, which covers a lease
+    // still queued behind other tiles and the media loading
+    if (playing) setWaiting(true);
     const request = requestGridNativeVideoLease(
       holderId,
       playing ? "playing" : "poster",
@@ -304,6 +363,7 @@ export function LeRobotGridHoverVideo({
     requestRef.current = request;
 
     return () => {
+      setWaiting(false);
       disposed = true;
       request.release();
       if (requestRef.current === request) requestRef.current = null;
@@ -316,6 +376,7 @@ export function LeRobotGridHoverVideo({
     endTimeSeconds,
     holderId,
     onCanvasCommittedRef,
+    onBufferingChangeRef,
     onErrorRef,
     onPresentedTimeSecondsRef,
     onSurfaceRetainedBytesChangeRef,
@@ -324,6 +385,42 @@ export function LeRobotGridHoverVideo({
     startTimeSeconds,
     wantsMedia,
   ]);
+
+  // This effect moves the element's clock to a requested instant.
+  //
+  // Separate from the lifecycle effect above so that a seek does not tear the
+  // media down and rebuild it. Nothing further is needed to present the
+  // result: the `seeked` listener and the frame callback both already run on
+  // whatever the element lands on.
+  const seekRequestId = seek?.requestId;
+  const seekTimeSeconds = seek?.timeSeconds;
+  useEffect(() => {
+    if (seekRequestId === undefined || seekTimeSeconds === undefined) {
+      // The request was withdrawn, or this tile was pointed at another
+      // episode. Either way a target held for a queued lease is now a time on
+      // media this element is not going to play.
+      pendingSeekRef.current = null;
+      return;
+    }
+    const target = Math.min(
+      Math.max(seekTimeSeconds, startTimeSeconds),
+      // The episode's last instant is not part of it — landing exactly on the
+      // end would read as "ran out" and wrap straight back to the start.
+      Math.max(endTimeSeconds - START_TIME_EPSILON_SECONDS, startTimeSeconds),
+    );
+    const element = videoRef.current;
+    // No source means no clock to move yet: the lease is still queued behind
+    // another tile. Hold the target so the start that follows the grant lands
+    // on it instead of the episode's beginning. A source whose metadata has
+    // not arrived is the same case: the first start runs off `loadedmetadata`
+    // and would write the episode's beginning over anything set before it.
+    if (!element?.getAttribute("src") || element.readyState < 1) {
+      pendingSeekRef.current = target;
+      return;
+    }
+    pendingSeekRef.current = null;
+    element.currentTime = target;
+  }, [endTimeSeconds, seekRequestId, seekTimeSeconds, startTimeSeconds]);
 
   // This effect releases the captured poster surface when the grid cell is no
   // longer visible, even if the component remains mounted by virtualization.

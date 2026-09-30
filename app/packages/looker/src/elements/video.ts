@@ -5,7 +5,7 @@
 import { playbackRate, volume as volumeIcon, volumeMuted } from "../icons";
 import lockIcon from "../icons/lock.svg";
 import lockOpenIcon from "../icons/lockOpen.svg";
-import type { VideoState } from "../state";
+import type { DispatchEvent, VideoState } from "../state";
 import type { Events } from "./base";
 import { BaseElement } from "./base";
 import {
@@ -14,6 +14,11 @@ import {
   resetPlaybackRate,
   supportLock,
 } from "./common/actions";
+import {
+  createBufferingIndicator,
+  setBufferingShown,
+} from "./common/buffering";
+import { createLoadingIndicator, setLoadingShown } from "./common/loading";
 import { dispatchTooltipEvent } from "./common/util";
 import {
   acquirePlayer,
@@ -29,7 +34,6 @@ import {
   lookerControlActive,
   lookerTime,
 } from "./common/controls.module.css";
-import { lookerLoader } from "./common/looker.module.css";
 import {
   bufferingCircle,
   bufferingPath,
@@ -48,9 +52,7 @@ export class LoaderBar extends BaseElement<VideoState> {
   }
 
   createHTMLElement() {
-    const element = document.createElement("div");
-    element.classList.add(lookerLoader);
-    return element;
+    return createBufferingIndicator();
   }
 
   renderSelf({
@@ -76,11 +78,30 @@ export class LoaderBar extends BaseElement<VideoState> {
       : getFrameNumber(duration, duration, frameRate);
 
     this.shown = shown;
-    if (this.shown && start !== end) {
-      this.element.style.display = "block";
-    } else {
-      this.element.style.display = "none";
+    setBufferingShown(this.element, this.shown && start !== end);
+    return this.element;
+  }
+}
+
+/** A thumbnail's loading animation, until its media draws or fails. */
+export class LoadingElement extends BaseElement<VideoState> {
+  private shown: boolean = undefined;
+
+  isShown({ thumbnail }: Readonly<VideoState["config"]>) {
+    return thumbnail;
+  }
+
+  createHTMLElement() {
+    return createLoadingIndicator();
+  }
+
+  renderSelf({ loaded, error }: Readonly<VideoState>) {
+    const shown = !loaded && !error;
+    if (shown !== this.shown) {
+      this.shown = shown;
+      setLoadingShown(this.element, shown);
     }
+
     return this.element;
   }
 }
@@ -392,12 +413,30 @@ export class TimeElement extends BaseElement<VideoState> {
   }
 }
 
+/**
+ * Reports the frame the video element is presenting, for chrome drawn beside
+ * the looker (the grid's tile lanes): from the playback loop, whose frame
+ * number is read off the element's own clock, and once a seek has completed.
+ * The looker reports playback stopping separately.
+ */
+const dispatchPresentedFrame = (
+  dispatchEvent: DispatchEvent,
+  { config: { frameRate }, frameNumber, playing }: Readonly<VideoState>,
+) =>
+  dispatchEvent("frame", {
+    playing,
+    timeSeconds: (frameNumber - 0.5) / frameRate,
+  });
+
 export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
   private canvas: HTMLCanvasElement;
   private frameNumber: number;
   private loop = false;
   private playbackRate = 1;
   private posterFrame: number;
+  private posterDraw = 0;
+  /** Where the poster shows, in seconds, or null for the clip's start. */
+  private posterSeconds: number | null = null;
   private requestCallback: (callback: (time: number) => void) => void;
   private release: () => void;
   private src: string;
@@ -447,6 +486,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
                   waitingForVideo: false,
                 };
               },
+              (state) => dispatchPresentedFrame(dispatchEvent, state),
             );
             dispatchEvent("load");
           });
@@ -480,8 +520,14 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
                 playing,
               };
             },
-            ({ playing, seeking, buffering }) => {
-              if (playing && !seeking && !buffering) {
+            (state) => {
+              // A callback queued before a seek began reads the seek target
+              // while the old picture is still shown; `seeked` reports where
+              // the seek landed
+              if (!this.element?.seeking && !state.seeking) {
+                dispatchPresentedFrame(dispatchEvent, state);
+              }
+              if (state.playing && !state.seeking && !state.buffering) {
                 this.requestCallback(callback);
               }
             },
@@ -534,43 +580,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
       if (thumbnail) {
         this.canvas = document.createElement("canvas");
         this.canvas.style.imageRendering = "pixelated";
-        acquireThumbnailer().then(([video, release]) => {
-          const error = () => {
-            video.removeEventListener("error", error);
-            video.removeEventListener("seeked", seeked);
-            release();
-            this.update({ error: true, loaded: true, dimensions: [512, 512] });
-          };
-
-          const seeked = () => {
-            const ctx = this.canvas.getContext("2d");
-            ctx.imageSmoothingEnabled = false;
-            ctx.drawImage(video, 0, 0);
-            video.removeEventListener("seeked", seeked);
-            video.removeEventListener("error", error);
-            release();
-            this.update({
-              hasPoster: true,
-              duration: video.duration,
-              loaded: true,
-            });
-          };
-
-          const load = () => {
-            video.addEventListener("seeked", seeked);
-            video.currentTime = support ? getTime(support[0], frameRate) : 0;
-            video.removeEventListener("loadedmetadata", load);
-
-            this.canvas.width = video.videoWidth;
-            this.canvas.height = video.videoHeight;
-
-            this.update({ dimensions: [video.videoWidth, video.videoHeight] });
-          };
-
-          video.addEventListener("error", error);
-          video.addEventListener("loadedmetadata", load);
-          video.src = src;
-        });
+        this.drawPoster(src, frameRate, support, null, true);
       } else {
         this.element = document.createElement("video");
         this.element.preload = "metadata";
@@ -607,19 +617,30 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
       if (!waitingForVideo && !error) {
         acquirePlayer().then(([video, release]) => {
           this.update(
-            ({ frameNumber, hovering, config: { frameRate, thumbnail } }) => {
+            ({
+              duration,
+              frameNumber,
+              hovering,
+              config: { frameRate, thumbnail },
+            }) => {
               this.element = video;
               this.release = release;
               if ((!hovering && thumbnail) || this.waitingToRelease) {
                 this.releaseVideo();
-              } else {
-                this.attachEvents();
-                this.frameNumber = getTime(frameNumber, frameRate);
-                this.element.currentTime = getTime(frameNumber, frameRate);
-                this.element.src = this.src;
+                return {};
               }
 
-              return {};
+              // Hover playback starts at the poster
+              const start =
+                thumbnail && this.posterSeconds !== null
+                  ? getFrameNumber(this.posterSeconds, duration, frameRate)
+                  : frameNumber;
+              this.attachEvents();
+              this.frameNumber = start;
+              this.element.currentTime = getTime(start, frameRate);
+              this.element.src = this.src;
+
+              return start === frameNumber ? {} : { frameNumber: start };
             },
           );
         });
@@ -633,6 +654,87 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     });
 
     return called;
+  }
+
+  posterAt(seconds: number | null) {
+    this.update(({ config: { src, frameRate, support } }) => {
+      this.drawPoster(src, frameRate, support, seconds, false);
+      return {};
+    });
+  }
+
+  /**
+   * Draws the poster seeked to `seconds`, or to the clip's start when null.
+   * The `initial` draw marks the looker loaded, so no redraw supersedes it;
+   * redraws supersede one another, so a slower earlier one cannot land last.
+   */
+  private drawPoster(
+    src: string,
+    frameRate: number,
+    support: [number, number] | undefined,
+    seconds: number | null,
+    initial: boolean,
+  ) {
+    const draw = initial ? this.posterDraw : ++this.posterDraw;
+    acquireThumbnailer().then(([video, release]) => {
+      const error = () => {
+        video.removeEventListener("error", error);
+        video.removeEventListener("seeked", seeked);
+        release();
+        if (initial) {
+          this.update({ error: true, loaded: true, dimensions: [512, 512] });
+        }
+      };
+
+      const seeked = () => {
+        video.removeEventListener("seeked", seeked);
+        video.removeEventListener("error", error);
+        if (!initial && draw !== this.posterDraw) {
+          release();
+          return;
+        }
+
+        const ctx = this.canvas.getContext("2d");
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(video, 0, 0);
+        const duration = video.duration;
+        if (!initial) {
+          this.posterSeconds = seconds === null ? null : video.currentTime;
+        }
+        release();
+        this.update(
+          initial
+            ? { hasPoster: true, duration, loaded: true }
+            : { hasPoster: true },
+        );
+      };
+
+      const load = () => {
+        video.addEventListener("seeked", seeked);
+        video.currentTime =
+          seconds === null
+            ? support
+              ? getTime(support[0], frameRate)
+              : 0
+            : Math.min(Math.max(seconds, 0), video.duration);
+        video.removeEventListener("loadedmetadata", load);
+
+        // Assigning a size clears the canvas
+        if (
+          this.canvas.width !== video.videoWidth ||
+          this.canvas.height !== video.videoHeight
+        ) {
+          this.canvas.width = video.videoWidth;
+          this.canvas.height = video.videoHeight;
+        }
+
+        this.update({ dimensions: [video.videoWidth, video.videoHeight] });
+      };
+
+      video.addEventListener("error", error);
+      video.addEventListener("loadedmetadata", load);
+      video.src = src;
+    });
   }
 
   private releaseVideo() {
@@ -655,11 +757,15 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     this.release?.();
     this.release = null;
 
-    this.update({
+    // Back to the frame the poster shows, which may have moved to a match
+    this.update(({ duration, config: { frameRate, thumbnail } }) => ({
       waitingForVideo: false,
-      frameNumber: this.posterFrame,
+      frameNumber:
+        thumbnail && this.posterSeconds !== null
+          ? getFrameNumber(this.posterSeconds, duration, frameRate)
+          : this.posterFrame,
       playing: false,
-    });
+    }));
   }
 
   renderSelf({
@@ -691,7 +797,12 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
       return null;
     }
 
-    if (hasPoster && frameNumber === this.posterFrame) {
+    // A poster moved to a match must not stand in for frame 1 when playback
+    // loops
+    const videoShowsNothing = !this.element || this.element.readyState < 2;
+    const posterIsPlayhead =
+      this.posterSeconds === null && frameNumber === this.posterFrame;
+    if (hasPoster && (videoShowsNothing || posterIsPlayhead)) {
       this.imageSource = this.canvas;
     } else {
       this.imageSource = this.element;

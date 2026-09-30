@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import HoverCard, { type HoverContent } from "./HoverCard";
 
 afterEach(cleanup);
@@ -142,5 +142,89 @@ describe("HoverCard", () => {
     fireEvent.pointerDown(document.body);
 
     expect(screen.getByText("frame.png")).toBeTruthy();
+  });
+});
+
+describe("HoverCard: patch crop", () => {
+  /** jsdom never loads images, so the card's preload would never settle.
+   * This stand-in settles at a fixed natural size the moment it is given a
+   * source, unless the test is holding loads back. */
+  let holdLoads = false;
+  class InstantImage {
+    naturalWidth = 600;
+    naturalHeight = 400;
+    onload: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    private current = "";
+    get src() {
+      return this.current;
+    }
+    set src(value: string) {
+      this.current = value;
+      if (!holdLoads) this.onload?.();
+    }
+  }
+
+  beforeEach(() => {
+    holdLoads = false;
+    vi.stubGlobal("Image", InstantImage);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const ORIGIN = { left: 0, top: 0 };
+  const PATCH: HoverContent = {
+    hit: { index: 3, id: "label3", label: "", x: 10, y: 20 },
+    src: "https://media/img.jpg",
+    value: null,
+    filename: "img.jpg",
+    bounds: [0.1, 0.2, 0.5, 0.25],
+  };
+  const crop = () => document.querySelector("svg.emb-hover-crop");
+
+  it("crops to the patch, clipped to it", () => {
+    render(<HoverCard content={PATCH} origin={ORIGIN} />);
+
+    const svg = crop();
+    // The patch in the image's own pixels: 600x400 source
+    expect(svg?.getAttribute("viewBox")).toBe("60 80 300 100");
+    // The clip is the crop's other half: without it, `meet` fills the
+    // letterbox with neighbouring image instead of card surface
+    const clipId = svg?.querySelector("clipPath")?.id;
+    expect(clipId).toBeTruthy();
+    expect(svg?.querySelector("image")?.getAttribute("clip-path")).toBe(
+      `url(#${clipId})`,
+    );
+    expect(svg?.getAttribute("aria-hidden")).toBe("true");
+    expect(document.querySelector("img")).toBeNull();
+  });
+
+  it("shows the whole image for a sample-level point", () => {
+    render(<HoverCard content={{ ...PATCH, bounds: null }} origin={ORIGIN} />);
+
+    expect(crop()).toBeNull();
+    expect(document.querySelector("img")?.getAttribute("src")).toBe(
+      "https://media/img.jpg",
+    );
+  });
+
+  it("shows nothing for a new image until its own preload settles", () => {
+    const { rerender } = render(<HoverCard content={PATCH} origin={ORIGIN} />);
+    expect(crop()).not.toBeNull();
+
+    holdLoads = true;
+    rerender(
+      <HoverCard
+        content={{ ...PATCH, src: "https://media/other.jpg" }}
+        origin={ORIGIN}
+      />,
+    );
+
+    // The settled size belongs to the first image; cropping the second
+    // with it would frame the wrong region
+    expect(crop()).toBeNull();
+    expect(document.querySelector("img")).toBeNull();
   });
 });

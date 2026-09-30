@@ -7,7 +7,6 @@ import { useDatasetName, useModalSampleId } from "../state/accessors";
 import { probeNativeDecode } from "../streams/probeNativeDecode";
 import {
   type DecodeStrategy,
-  parseForcedStrategy,
   resolveDecodeStrategy,
 } from "../utils/decodeStrategy";
 import { nativeDecodeCache } from "../utils/nativeDecodeCache";
@@ -33,31 +32,27 @@ export interface DecodeResolution {
 export interface DecodeStrategyInput {
   /** Resolved source video URL, or null when the sample has no media URL. */
   videoSrc: string | null;
-  /** Clip frame count (gates the frames probe); from `useAnnotatePrerequisites`. */
+  /** Clip frame count; gates the frames probe. */
   frameCount: number | undefined;
   /** Metadata is resolved — safe to probe. */
   enabled: boolean;
+  /** Caller-resolved strategy that skips both probes. */
+  force?: DecodeStrategy;
 }
 
 /**
- * Decide how the surface sources its frames: `extract` (WebCodecs on demand),
- * `fetch` (`to_frames` images), or `html` (`<video>` element). Gathers the
- * capability flags — a forced URL override, whether the source is natively
- * decodable, and whether `to_frames` frames exist — and feeds the pure
- * {@link resolveDecodeStrategy} policy.
- *
- * A forced override short-circuits both probes. Otherwise the frames probe and
- * the native-decode probe run in parallel; resolution reports `resolving` until
- * both settle, then applies the policy once.
+ * Decide how the surface sources its frames — `extract` (WebCodecs), `fetch`
+ * (`to_frames` images), or `html` (`<video>`) — by probing native decodability
+ * and frame availability in parallel and feeding {@link resolveDecodeStrategy}.
+ * `force` short-circuits both probes; otherwise `resolving` until both settle.
  */
 export function useDecodeStrategy(
   input: DecodeStrategyInput,
 ): DecodeResolution {
-  const { videoSrc, frameCount, enabled } = input;
+  const { videoSrc, frameCount, enabled, force: forced } = input;
   const dataset = useDatasetName();
   const sampleId = useModalSampleId();
 
-  const forced = useForcedStrategy();
   const active = enabled && !forced;
 
   const framesState = useSampledFramesProbe(frameCount, active);
@@ -175,17 +170,4 @@ function useNativeDecodable(input: NativeDecodableInput): NativeDecodableState {
   }, [enabled, videoSrc, dataset, sampleId]);
 
   return state;
-}
-
-/** Read a forced-strategy URL override once at mount (see `parseForcedStrategy`). */
-function useForcedStrategy(): DecodeStrategy | undefined {
-  const [forced] = useState<DecodeStrategy | undefined>(() => {
-    if (typeof window === "undefined") {
-      return undefined;
-    }
-
-    return parseForcedStrategy(window.location.search);
-  });
-
-  return forced;
 }

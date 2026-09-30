@@ -48,14 +48,6 @@ interface Props {
   named?: boolean;
   resultsAtom: ResultsAtom;
   selectedAtom: RecoilState<(string | null)[]>;
-  /**
-   * Overrides the per-value color of the checkbox dot for fields whose values
-   * are colored by something other than the color scheme's rules for `path`
-   * (temporal tags, which are always colored by their name). Left unset, the
-   * dot follows the color scheme: the field's color when coloring by field,
-   * the value's own color when coloring by value.
-   */
-  resultColor?: (value: string | null) => string;
 }
 
 const useName = (path: string) => {
@@ -80,7 +72,6 @@ const StringFilter = ({
   path,
   resultsAtom,
   selectedAtom,
-  resultColor,
 }: Props) => {
   const name = useName(path);
   const schemeColor = fos.useValueColor(path);
@@ -88,8 +79,7 @@ const StringFilter = ({
   // Coloring by field leaves the dot on the color the entry passed down: an
   // entry colors every row under it the same, and a nested path can resolve to
   // a different field color than its own entry does.
-  const valueColor =
-    resultColor ?? (coloringBy === COLOR_BY.VALUE ? schemeColor : undefined);
+  const valueColor = coloringBy === COLOR_BY.VALUE ? schemeColor : undefined;
   const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
   const field = useRecoilValue(fos.field(path));
   const { results, showSearch, useSearch } = useSelected(

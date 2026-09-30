@@ -2,8 +2,8 @@ import * as fos from "@fiftyone/state";
 import type { MutableRefObject } from "react";
 import { useCallback } from "react";
 import { useRecoilValue } from "recoil";
-import { ActionOption } from "../Common";
 import Popout from "../Popout";
+import SelectionSection from "./SelectionSection";
 import { useClearSampleSelection, useClearSelectedLabels } from "./hooks";
 
 export default ({
@@ -31,7 +31,7 @@ export default ({
     [close, selected, setView],
   );
   const selectedLabels = useRecoilValue(fos.selectedLabelIds);
-  const items = [
+  const labelItems = [
     {
       key: "clear-labels",
       text: "Clear selected labels",
@@ -42,29 +42,30 @@ export default ({
 
   return (
     <Popout modal={false} fixed anchorRef={anchorRef}>
-      {[
-        ...items,
-        {
-          key: "clear",
-          onClick: clearSelection,
-          text: `Clear selected ${elementNames.plural}`,
-          title: `Deselect all selected ${elementNames.plural}`,
-        },
-        {
-          key: "show",
-          onClick: () => addStage("Select"),
-          text: `Only show selected ${elementNames.plural}`,
-          title: `Hide all other ${elementNames.plural}`,
-        },
-        {
-          key: "hide",
-          onClick: () => addStage("Exclude"),
-          text: `Hide selected ${elementNames.plural}`,
-          title: `Show only unselected ${elementNames.plural}`,
-        },
-      ].map(({ key, ...props }) => (
-        <ActionOption key={key} {...props} />
-      ))}
+      <SelectionSection
+        label={elementNames.plural}
+        items={[
+          {
+            key: "clear",
+            onClick: clearSelection,
+            text: `Clear selected ${elementNames.plural}`,
+            title: `Deselect all selected ${elementNames.plural}`,
+          },
+          {
+            key: "show",
+            onClick: () => addStage("Select"),
+            text: `Only show selected ${elementNames.plural}`,
+            title: `Hide all other ${elementNames.plural}`,
+          },
+          {
+            key: "hide",
+            onClick: () => addStage("Exclude"),
+            text: `Hide selected ${elementNames.plural}`,
+            title: `Show only unselected ${elementNames.plural}`,
+          },
+        ]}
+      />
+      <SelectionSection label="Labels" items={labelItems} />
     </Popout>
   );
 };
