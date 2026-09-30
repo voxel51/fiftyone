@@ -53,16 +53,17 @@ test("grid tagging refreshes visible tiles across pages without reloading", asyn
     grid.locator.getByTestId("looker").filter({ hasText: filepath(index) });
   const tag = (index: number) => tile(index).getByTestId("tag-tags-grid-test");
 
+  // tiles render their tags once the checkbox shows them, not when scrolled
+  const shown = await grid.tagsRenderedMark();
   await grid.afterTagsRendered([filepath(0)], async () => {
     await sidebar.clickFieldCheckbox("filepath");
     await sidebar.clickFieldCheckbox("tags");
   });
 
   // Visit later pages before tagging so Relay already holds their old data.
-  const visited = await grid.tagsRenderedMark();
   await grid.scrollBottom();
   await tile(30).scrollIntoViewIfNeeded();
-  await grid.untilTagsRenderedSince(visited, filepath(30));
+  await grid.untilTagsRenderedSince(shown, filepath(30));
   expect(await tag(30).count()).toBe(0);
 
   const tagged = await grid.tagsRenderedMark();
